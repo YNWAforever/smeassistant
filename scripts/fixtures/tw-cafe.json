@@ -1,0 +1,193 @@
+{
+  "name": "tw-cafe",
+  "market": "tw",
+  "collectedAt": "2026-09-01T02:00:00.000Z",
+  "ig": {
+    "status": "measured",
+    "confidence": "high",
+    "data": {
+      "available": true,
+      "username": "shanlan.coffee",
+      "bio": "山嵐咖啡｜大安區手沖咖啡與甜點｜LINE 預約",
+      "followers": 1560,
+      "following": 340,
+      "posts_count": 210,
+      "profile_pic_url": "https://media.example.invalid/shanlan/profile.jpg",
+      "is_verified": false,
+      "external_url": "https://shanlan.example.invalid",
+      "posts_last_12": [
+        { "id": "sl-p01", "caption": "本週手沖：衣索比亞耶加雪菲。", "media_type": "image", "like_count": 96, "comment_count": 7, "posted_at": "2026-08-23T09:10:00.000Z" },
+        { "id": "sl-p02", "caption": "新甜點：焙茶巴斯克。", "media_type": "carousel", "like_count": 122, "comment_count": 11, "posted_at": "2026-08-14T08:40:00.000Z" },
+        { "id": "sl-p03", "caption": "午後座位開放預約。", "media_type": "image", "like_count": 64, "comment_count": 3, "posted_at": "2026-08-05T10:00:00.000Z" },
+        { "id": "sl-p04", "caption": "拿鐵拉花練習。", "media_type": "video", "like_count": 143, "comment_count": 9, "posted_at": "2026-07-27T09:30:00.000Z" },
+        { "id": "sl-p05", "caption": "夏季限定冰滴。", "media_type": "image", "like_count": 88, "comment_count": 5, "posted_at": "2026-07-18T08:20:00.000Z" },
+        { "id": "sl-p06", "caption": "豆單更新。", "media_type": "image", "like_count": 71, "comment_count": 4, "posted_at": "2026-07-09T10:15:00.000Z" },
+        { "id": "sl-p07", "caption": "週末杯測活動。", "media_type": "carousel", "like_count": 109, "comment_count": 8, "posted_at": "2026-06-30T09:00:00.000Z" },
+        { "id": "sl-p08", "caption": "肯亞 AA 到貨。", "media_type": "image", "like_count": 83, "comment_count": 6, "posted_at": "2026-06-21T08:45:00.000Z" },
+        { "id": "sl-p09", "caption": "店貓值班中。", "media_type": "image", "like_count": 187, "comment_count": 15, "posted_at": "2026-06-12T09:20:00.000Z" },
+        { "id": "sl-p10", "caption": "手沖課程開放報名。", "media_type": "image", "like_count": 77, "comment_count": 5, "posted_at": "2026-06-03T10:30:00.000Z" },
+        { "id": "sl-p11", "caption": "新烘焙日期。", "media_type": "image", "like_count": 59, "comment_count": 2, "posted_at": "2026-05-25T09:50:00.000Z" },
+        { "id": "sl-p12", "caption": "早鳥優惠延長。", "media_type": "image", "like_count": 68, "comment_count": 4, "posted_at": "2026-05-16T08:10:00.000Z" }
+      ],
+      "reels_count": 12,
+      "reels_last_12": [
+        { "id": "sl-r01", "caption": "手沖過程", "play_count": 2100, "like_count": 130, "comment_count": 10, "posted_at": "2026-08-20T09:00:00.000Z" },
+        { "id": "sl-r02", "caption": "拉花", "play_count": 1800, "like_count": 104, "comment_count": 6, "posted_at": "2026-07-30T09:30:00.000Z" },
+        { "id": "sl-r03", "caption": "烘豆日", "play_count": 1500, "like_count": 92, "comment_count": 5, "posted_at": "2026-07-05T10:00:00.000Z" }
+      ],
+      "highlights_count": 3,
+      "highlight_titles": ["菜單", "預約", "課程"],
+      "stories_count": 0
+    }
+  },
+  "gbp": {
+    "status": "measured",
+    "confidence": "high",
+    "data": {
+      "available": true,
+      "place_id": "ChIJfixture-tw-cafe",
+      "name": "山嵐咖啡 Shanlan Coffee",
+      "rating": 4.6,
+      "reviews_count": 138,
+      "reviews": [
+        { "rating": 5, "text": "手沖很細緻，甜點也好吃。", "time": "2026-08-30T06:20:00.000Z", "owner_response": "謝謝您的光臨，期待再見！" },
+        { "rating": 5, "text": "環境安靜，適合工作。", "time": "2026-08-27T11:05:00.000Z", "owner_response": "感謝支持，歡迎常來。" },
+        { "rating": 4, "text": "價格偏高但品質不錯。", "time": "2026-08-21T08:15:00.000Z", "owner_response": "謝謝建議，我們會持續精進。" },
+        { "rating": 5, "text": "店貓超可愛，咖啡很順口。", "time": "2026-08-15T13:40:00.000Z", "owner_response": "謝謝您！店貓也向您問好。" },
+        { "rating": 3, "text": "假日太多人，等了半小時。", "time": "2026-08-09T09:25:00.000Z" }
+      ],
+      "photos_count": 96,
+      "latest_photo_at": "2026-08-02T07:00:00.000Z",
+      "hours_complete": true,
+      "categories": ["咖啡廳", "Coffee shop", "Cafe"],
+      "recent_posts_count": 0
+    }
+  },
+  "aeo": {
+    "status": "measured",
+    "confidence": "high",
+    "data": {
+      "available": true,
+      "serpapi_runs": [
+        { "query": "大安區 手沖咖啡 推薦", "ai_overview_mentioned": true, "ai_mode_mentioned": true, "brand_organic_rank": 4, "competitors_mentioned": ["Fika Fika Cafe", "Simple Kaffa"] },
+        { "query": "best pour over coffee Daan Taipei", "ai_overview_mentioned": false, "ai_mode_mentioned": false, "brand_organic_rank": null, "competitors_mentioned": ["Simple Kaffa", "Fika Fika Cafe"] },
+        { "query": "台北 哪裡有安靜的咖啡廳 可以工作", "ai_overview_mentioned": false, "ai_mode_mentioned": true, "brand_organic_rank": null, "competitors_mentioned": ["Fika Fika Cafe"] },
+        { "query": "大安區 咖啡廳", "ai_overview_mentioned": false, "ai_mode_mentioned": false, "brand_organic_rank": 2, "competitors_mentioned": ["Simple Kaffa"] }
+      ],
+      "performance_runs": [
+        { "query": "大安區 手沖咖啡 推薦", "query_type": "discovery", "engine": "google", "available": true, "unsupported": false, "ai_overview_triggered": true, "ai_answered": true, "ai_mentioned": true, "ai_cited": true, "organic_rank": 4, "local_pack_rank": 1, "maps_rank": null, "confidence": "high", "matched_by": ["domain", "gbp_name"], "competitors_above": ["Fika Fika Cafe", "Simple Kaffa"] },
+        { "query": "best pour over coffee Daan Taipei", "query_type": "discovery", "engine": "google", "available": true, "unsupported": false, "ai_overview_triggered": false, "ai_answered": null, "ai_mentioned": false, "ai_cited": false, "organic_rank": null, "local_pack_rank": null, "maps_rank": null, "confidence": "none", "matched_by": [], "competitors_above": ["Simple Kaffa", "Fika Fika Cafe"] },
+        { "query": "台北 哪裡有安靜的咖啡廳 可以工作", "query_type": "need", "engine": "google_ai_mode", "available": true, "unsupported": false, "ai_overview_triggered": null, "ai_answered": true, "ai_mentioned": true, "ai_cited": false, "organic_rank": null, "local_pack_rank": null, "maps_rank": null, "confidence": "medium", "matched_by": ["brand_alias"], "competitors_above": ["Fika Fika Cafe"] },
+        { "query": "大安區 咖啡廳", "query_type": "maps", "engine": "google_maps", "available": true, "unsupported": false, "ai_overview_triggered": null, "ai_answered": null, "ai_mentioned": false, "ai_cited": false, "organic_rank": null, "local_pack_rank": null, "maps_rank": 2, "confidence": "high", "matched_by": ["place_id"], "competitors_above": ["Simple Kaffa"] }
+      ],
+      "website": { "available": true, "has_faq_schema": true, "meta_description_len": 155, "h1_count": 1 }
+    }
+  },
+  "raw": {
+    "ig": {
+      "profile": {
+        "username": "shanlan.coffee",
+        "full_name": "山嵐咖啡 Shanlan Coffee",
+        "bio": "山嵐咖啡｜大安區手沖咖啡與甜點｜LINE 預約",
+        "followers": 1560,
+        "following": 340,
+        "posts_count": 210,
+        "profile_pic_url": "https://media.example.invalid/shanlan/profile.jpg",
+        "is_verified": false,
+        "external_url": "https://shanlan.example.invalid"
+      },
+      "posts": [
+        { "id": "sl-p01", "caption": "本週手沖：衣索比亞耶加雪菲。", "media_type": "image", "like_count": 96, "comment_count": 7, "posted_at": "2026-08-23T09:10:00.000Z", "thumbnail_url": "https://media.example.invalid/shanlan/p01.jpg", "permalink": "https://www.instagram.com/p/SLFIX0001/" },
+        { "id": "sl-p02", "caption": "新甜點：焙茶巴斯克。", "media_type": "carousel", "like_count": 122, "comment_count": 11, "posted_at": "2026-08-14T08:40:00.000Z", "thumbnail_url": "https://media.example.invalid/shanlan/p02.jpg", "permalink": "https://www.instagram.com/p/SLFIX0002/" },
+        { "id": "sl-p03", "caption": "午後座位開放預約。", "media_type": "image", "like_count": 64, "comment_count": 3, "posted_at": "2026-08-05T10:00:00.000Z", "thumbnail_url": "https://media.example.invalid/shanlan/p03.jpg", "permalink": "https://www.instagram.com/p/SLFIX0003/" },
+        { "id": "sl-p04", "caption": "拿鐵拉花練習。", "media_type": "video", "like_count": 143, "comment_count": 9, "posted_at": "2026-07-27T09:30:00.000Z", "thumbnail_url": "https://media.example.invalid/shanlan/p04.jpg", "permalink": "https://www.instagram.com/p/SLFIX0004/" }
+      ],
+      "reels": [
+        { "id": "sl-r01", "caption": "手沖過程", "play_count": 2100, "like_count": 130, "comment_count": 10, "posted_at": "2026-08-20T09:00:00.000Z", "thumbnail_url": "https://media.example.invalid/shanlan/r01.jpg", "permalink": "https://www.instagram.com/reel/SLFIXR001/" },
+        { "id": "sl-r02", "caption": "拉花", "play_count": 1800, "like_count": 104, "comment_count": 6, "posted_at": "2026-07-30T09:30:00.000Z", "thumbnail_url": "https://media.example.invalid/shanlan/r02.jpg", "permalink": "https://www.instagram.com/reel/SLFIXR002/" }
+      ],
+      "highlights": [
+        { "id": "sl-h01", "title": "菜單", "items_count": 6 },
+        { "id": "sl-h02", "title": "預約", "items_count": 2 },
+        { "id": "sl-h03", "title": "課程", "items_count": 4 }
+      ],
+      "stories_count": 0
+    },
+    "gbp": {
+      "source": "google_places_new",
+      "name": "山嵐咖啡 Shanlan Coffee",
+      "place_id": "ChIJfixture-tw-cafe",
+      "address": "台北市大安區溫州街 18 巷 6 號",
+      "maps_url": "https://maps.google.com/?cid=9876543210987654321",
+      "data_id": null,
+      "data_cid": null,
+      "rating": 4.6,
+      "reviews_count": 138,
+      "categories": ["咖啡廳", "Coffee shop", "Cafe"],
+      "photo_names": [],
+      "photos": [],
+      "posts": [],
+      "evidence_failures": [],
+      "reviews": [
+        { "id": "sl-rv01", "rating": 5, "text": "手沖很細緻，甜點也好吃。", "time": "2026-08-30T06:20:00.000Z", "owner_response": "謝謝您的光臨，期待再見！" },
+        { "id": "sl-rv02", "rating": 5, "text": "環境安靜，適合工作。", "time": "2026-08-27T11:05:00.000Z", "owner_response": "感謝支持，歡迎常來。" },
+        { "id": "sl-rv03", "rating": 4, "text": "價格偏高但品質不錯。", "time": "2026-08-21T08:15:00.000Z", "owner_response": "謝謝建議，我們會持續精進。" },
+        { "id": "sl-rv04", "rating": 5, "text": "店貓超可愛，咖啡很順口。", "time": "2026-08-15T13:40:00.000Z", "owner_response": "謝謝您！店貓也向您問好。" },
+        { "id": "sl-rv05", "rating": 3, "text": "假日太多人，等了半小時。", "time": "2026-08-09T09:25:00.000Z" }
+      ]
+    },
+    "aeo": {
+      "serpapi_runs": [
+        {
+          "query": "大安區 手沖咖啡 推薦",
+          "engine": "google",
+          "ai_overview": { "text": "大安區的手沖咖啡選擇包括 Fika Fika Cafe、Simple Kaffa 與山嵐咖啡，各有特色豆單。", "brand_mentioned": true, "sources": ["https://shanlan.example.invalid", "https://foodblog.example.invalid/daan-coffee"] },
+          "ai_mode": { "text": "山嵐咖啡以手沖與甜點聞名，適合午後久坐。", "brand_mentioned": true },
+          "organic_results": [
+            { "title": "大安區手沖咖啡推薦", "url": "https://foodblog.example.invalid/daan-coffee", "snippet": "大安區手沖……", "position": 1 },
+            { "title": "山嵐咖啡 Shanlan Coffee", "url": "https://shanlan.example.invalid", "snippet": "大安區手沖咖啡與甜點……", "position": 4 }
+          ],
+          "brand_organic_rank": 4,
+          "competitors_mentioned": ["Fika Fika Cafe", "Simple Kaffa"],
+          "available": true
+        },
+        {
+          "query": "best pour over coffee Daan Taipei",
+          "engine": "google",
+          "ai_overview": null,
+          "ai_mode": null,
+          "organic_results": [
+            { "title": "Best pour-over coffee in Taipei", "url": "https://travel.example.invalid/taipei-coffee", "snippet": "Simple Kaffa, Fika Fika……", "position": 1 }
+          ],
+          "brand_organic_rank": null,
+          "competitors_mentioned": ["Simple Kaffa", "Fika Fika Cafe"],
+          "available": true
+        },
+        {
+          "query": "台北 哪裡有安靜的咖啡廳 可以工作",
+          "engine": "google_ai_mode",
+          "ai_overview": null,
+          "ai_mode": { "text": "台北適合工作的安靜咖啡廳有 Fika Fika Cafe，大安區的山嵐咖啡也常被推薦。", "brand_mentioned": true },
+          "organic_results": [],
+          "brand_organic_rank": null,
+          "competitors_mentioned": ["Fika Fika Cafe"],
+          "available": true
+        },
+        {
+          "query": "大安區 咖啡廳",
+          "engine": "google",
+          "ai_overview": null,
+          "ai_mode": null,
+          "organic_results": [
+            { "title": "Simple Kaffa", "url": "https://simplekaffa.example.invalid", "snippet": "Simple Kaffa……", "position": 1 },
+            { "title": "山嵐咖啡 Shanlan Coffee", "url": "https://shanlan.example.invalid", "snippet": "大安區手沖咖啡……", "position": 2 }
+          ],
+          "brand_organic_rank": 2,
+          "competitors_mentioned": ["Simple Kaffa"],
+          "available": true
+        }
+      ],
+      "website": { "url": "https://shanlan.example.invalid", "has_faq_schema": true, "meta_description_len": 155, "h1_count": 1 }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+"use client"
+
+import { useRouter } from "next/navigation"
+import { useMemo, useState } from "react"
+import { ArrowRight, BadgeCheck, Check, Globe2, TriangleAlert } from "lucide-react"
+
+import { CapabilityBadge, DemoBadge, PublicPageFrame } from "@/components/product-ui"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { PrototypeLocale } from "@/lib/copy"
+
+export function OnboardingPage({ locale, claim, plan, initialLocation }: { locale: PrototypeLocale; claim?: string; plan?: string; initialLocation?: string }) {
+  const router = useRouter()
+  const isChinese = locale !== "en"
+  const [step, setStep] = useState(1)
+  const [workspaceName, setWorkspaceName] = useState("錦汶館")
+  const [location, setLocation] = useState(initialLocation === "tin-hau" ? "tin-hau" : "yik-yam")
+  const steps = isChinese ? ["驗證認領", "設定工作台", "連接來源", "品牌基本資料"] : ["Verify claim", "Set workspace", "Connections", "Brand basics"]
+  const body = useMemo(() => {
+    if (step === 1) return <div className="onboarding-choice"><span className="onboarding-icon"><BadgeCheck /></span><div><Badge variant="outline">{isChinese ? "示範認領證據" : "Sample claim evidence"}</Badge><h2>{isChinese ? "確認錦汶館" : "Confirm 錦汶館"}</h2><p>{isChinese ? "香港跑馬地奕蔭街 8 號" : "8 Yik Yam Street, Happy Valley · Hong Kong"}</p><dl><div><dt>{isChinese ? "認領方式" : "Claim method"}</dt><dd>{isChinese ? "正式產品需要驗證" : "Production verification required"}</dd></div><div><dt>{isChinese ? "公開報告" : "Public report"}</dt><dd>DEMO-247</dd></div></dl></div></div>
+    if (step === 2) return <div className="onboarding-form"><div className="field-stack"><Label htmlFor="workspace-name">{isChinese ? "工作台名稱" : "Workspace name"}</Label><Input id="workspace-name" value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} /></div><div className="field-stack"><Label htmlFor="primary-location">{isChinese ? "主要地點" : "Primary location"}</Label><Select value={location} onValueChange={setLocation}><SelectTrigger id="primary-location" className="w-full"><SelectValue>{location === "tin-hau" ? (isChinese ? "天后" : "Tin Hau") : (isChinese ? "奕蔭街" : "Yik Yam Street")}</SelectValue></SelectTrigger><SelectContent><SelectItem value="yik-yam">{isChinese ? "奕蔭街" : "Yik Yam Street"}</SelectItem><SelectItem value="tin-hau">{isChinese ? "天后" : "Tin Hau"}</SelectItem></SelectContent></Select></div><div className="two-column-fields"><div className="field-stack"><Label htmlFor="onboarding-market">{isChinese ? "市場" : "Market"}</Label><Input id="onboarding-market" defaultValue={isChinese ? "香港" : "Hong Kong"} readOnly /></div><div className="field-stack"><Label htmlFor="onboarding-timezone">{isChinese ? "時區" : "Timezone"}</Label><Input id="onboarding-timezone" defaultValue="Asia/Hong_Kong" readOnly /></div></div></div>
+    if (step === 3) return <div className="connection-choice"><div><span><Globe2 /></span><div><h3>Google Business Profile</h3><p>{isChinese ? "讀取商戶檔案及評論證據；不會啟用直接發佈。" : "Read profile and review evidence. Direct publishing is not enabled."}</p></div><CapabilityBadge value="Requires connection" /></div><Button variant="outline" disabled>{isChinese ? "在正式環境設定" : "Set up in production"}</Button><button className="text-action" type="button" onClick={() => setStep(4)}>{isChinese ? "暫時略過並只保留匯出" : "Skip for now and keep export-only"}</button></div>
+    return <div className="onboarding-form"><div className="field-stack"><Label htmlFor="onboarding-voice">{isChinese ? "品牌語氣" : "Brand voice"}</Label><Select defaultValue="warm"><SelectTrigger id="onboarding-voice" className="w-full"><SelectValue>{isChinese ? "親切、本地、真誠" : "Warm, local and sincere"}</SelectValue></SelectTrigger><SelectContent><SelectItem value="warm">{isChinese ? "親切、本地、真誠" : "Warm, local and sincere"}</SelectItem><SelectItem value="concise">{isChinese ? "簡潔、專業" : "Concise and professional"}</SelectItem><SelectItem value="playful">{isChinese ? "活潑、有活力" : "Playful and energetic"}</SelectItem></SelectContent></Select></div><div className="field-stack"><Label htmlFor="approved-fact">{isChinese ? "已核准事實描述" : "Approved factual claim"}</Label><Input id="approved-fact" defaultValue={isChinese ? "跑馬地港式家常菜" : "Hong Kong-style comfort food in Happy Valley"} /></div><div className="field-stack"><Label htmlFor="prohibited-language">{isChinese ? "禁止用語" : "Prohibited terms"}</Label><Input id="prohibited-language" defaultValue={isChinese ? "全港最好、保證、絕對防敏" : "best in Hong Kong, guaranteed, allergy-safe"} /></div><p className="limitation-note"><TriangleAlert /> {isChinese ? "餐牌材料、致敏原、價格及法律聲明必須由店主確認。" : "Menu ingredients, allergens, prices and legal claims always require owner confirmation."}</p></div>
+  }, [isChinese, location, step, workspaceName])
+  return (
+    <PublicPageFrame locale={locale}>
+      <main className="onboarding-page"><div className="onboarding-head"><div><Badge variant="outline">{isChinese ? "延續認領流程" : "Claim continuation"}{claim ? ` · ${claim}` : ""}</Badge><h1>{isChinese ? "設定你的能見度工作台" : "Set up your visibility workspace"}</h1><p>{isChinese ? "4 個聚焦步驟，將市場、語言及權限分開設定。" : "Four focused steps, with market, language and permissions kept separate."}</p>{plan && <Badge>{isChinese ? "已保留所選方案" : "Selected plan preserved"} · {plan === "multi" ? (isChinese ? "多地點" : "Multi-location") : (isChinese ? "增長工作台" : "Growth Workspace")}</Badge>}</div><DemoBadge locale={locale} /></div><div className="onboarding-layout"><aside><ol>{steps.map((label, index) => <li key={label} aria-current={step === index + 1 ? "step" : undefined} className={step === index + 1 ? "is-active" : step > index + 1 ? "is-complete" : ""}><span>{step > index + 1 ? <Check /> : index + 1}</span><strong>{label}</strong></li>)}</ol></aside><section className="onboarding-card" aria-live="polite"><div><span className="step-kicker">{isChinese ? `第 ${step} 步，共 4 步` : `Step ${step} of 4`}</span><h2>{steps[step - 1]}</h2></div>{body}<div className="flow-card-footer"><Button variant="outline" onClick={() => setStep(Math.max(1, step - 1))} disabled={step === 1}>{isChinese ? "返回" : "Back"}</Button><Button onClick={() => { if (step === 2 && !workspaceName.trim()) return; if (step < 4) setStep(step + 1); else router.push(`/${locale}/owner/kam-man-house?location=${location}`) }}>{isChinese ? (step < 4 ? "繼續" : "開啟工作台") : (step < 4 ? "Continue" : "Open workspace")}<ArrowRight /></Button></div></section></div></main>
+    </PublicPageFrame>
+  )
+}

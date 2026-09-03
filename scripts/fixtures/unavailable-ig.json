@@ -1,0 +1,128 @@
+{
+  "name": "unavailable-ig",
+  "market": "hk",
+  "collectedAt": "2026-09-01T02:00:00.000Z",
+  "ig": {
+    "status": "unavailable",
+    "limitationCode": "IG_HANDLE_NOT_PROVIDED"
+  },
+  "gbp": {
+    "status": "measured",
+    "confidence": "medium",
+    "data": {
+      "available": true,
+      "place_id": "ChIJfixture-tak-kee-congee",
+      "name": "德記粥麵 Tak Kee Congee & Noodles",
+      "rating": 4.1,
+      "reviews_count": 260,
+      "reviews": [
+        { "rating": 4, "text": "艇仔粥好足料，牛腩麵一般。", "time": "2026-08-25T04:30:00.000Z" },
+        { "rating": 5, "text": "老字號，價錢實惠。", "time": "2026-08-19T10:10:00.000Z", "owner_response": "多謝支持！" },
+        { "rating": 3, "text": "早上好多人排隊，要等。", "time": "2026-08-10T02:45:00.000Z" },
+        { "rating": 4, "text": "油炸鬼即叫即炸。", "time": "2026-08-02T03:20:00.000Z" },
+        { "rating": 2, "text": "服務態度麻麻。", "time": "2026-07-26T11:05:00.000Z" }
+      ],
+      "photos_count": 72,
+      "latest_photo_at": "2026-07-18T05:00:00.000Z",
+      "hours_complete": false,
+      "categories": ["粥店", "Congee restaurant", "Noodle shop"],
+      "recent_posts_count": 0
+    }
+  },
+  "aeo": {
+    "status": "measured",
+    "confidence": "medium",
+    "data": {
+      "available": true,
+      "serpapi_runs": [
+        { "query": "深水埗 粥麵 推介", "ai_overview_mentioned": false, "ai_mode_mentioned": false, "brand_organic_rank": null, "competitors_mentioned": ["劉森記麵家", "維記咖啡粥品"] },
+        { "query": "best congee Sham Shui Po", "ai_overview_mentioned": false, "ai_mode_mentioned": false, "brand_organic_rank": null, "competitors_mentioned": ["Wai Kee", "Lau Sum Kee"] },
+        { "query": "深水埗 邊度食早餐 粥", "ai_overview_mentioned": false, "ai_mode_mentioned": false, "brand_organic_rank": null, "competitors_mentioned": ["維記咖啡粥品"] },
+        { "query": "深水埗 粥店", "ai_overview_mentioned": false, "ai_mode_mentioned": false, "brand_organic_rank": 9, "competitors_mentioned": ["維記咖啡粥品", "劉森記麵家"] }
+      ],
+      "performance_runs": [
+        { "query": "深水埗 粥麵 推介", "query_type": "discovery", "engine": "google", "available": true, "unsupported": false, "ai_overview_triggered": true, "ai_answered": true, "ai_mentioned": false, "ai_cited": false, "organic_rank": null, "local_pack_rank": null, "maps_rank": null, "confidence": "none", "matched_by": [], "competitors_above": ["劉森記麵家", "維記咖啡粥品"] },
+        { "query": "best congee Sham Shui Po", "query_type": "discovery", "engine": "google", "available": true, "unsupported": false, "ai_overview_triggered": false, "ai_answered": null, "ai_mentioned": false, "ai_cited": false, "organic_rank": null, "local_pack_rank": null, "maps_rank": null, "confidence": "none", "matched_by": [], "competitors_above": ["Wai Kee", "Lau Sum Kee"] },
+        { "query": "深水埗 邊度食早餐 粥", "query_type": "need", "engine": "google_ai_mode", "available": true, "unsupported": false, "ai_overview_triggered": null, "ai_answered": true, "ai_mentioned": false, "ai_cited": false, "organic_rank": null, "local_pack_rank": null, "maps_rank": null, "confidence": "none", "matched_by": [], "competitors_above": ["維記咖啡粥品"] },
+        { "query": "深水埗 粥店", "query_type": "maps", "engine": "google_maps", "available": true, "unsupported": false, "ai_overview_triggered": null, "ai_answered": null, "ai_mentioned": false, "ai_cited": false, "organic_rank": null, "local_pack_rank": null, "maps_rank": 6, "confidence": "high", "matched_by": ["place_id"], "competitors_above": ["維記咖啡粥品", "劉森記麵家", "公和荳品廠"] }
+      ],
+      "website": { "available": false }
+    }
+  },
+  "raw": {
+    "gbp": {
+      "source": "serpapi",
+      "name": "德記粥麵 Tak Kee Congee & Noodles",
+      "place_id": "ChIJfixture-tak-kee-congee",
+      "address": "香港深水埗北河街 88 號地下",
+      "maps_url": "https://maps.google.com/?cid=5555555555555555555",
+      "data_id": "0x340400fixture:0xtakkee",
+      "data_cid": "5555555555555555555",
+      "rating": 4.1,
+      "reviews_count": 260,
+      "categories": ["粥店", "Congee restaurant", "Noodle shop"],
+      "photos": [],
+      "posts": [],
+      "evidence_failures": [],
+      "reviews": [
+        { "id": "tk-rv01", "rating": 4, "text": "艇仔粥好足料，牛腩麵一般。", "time": "2026-08-25T04:30:00.000Z" },
+        { "id": "tk-rv02", "rating": 5, "text": "老字號，價錢實惠。", "time": "2026-08-19T10:10:00.000Z", "owner_response": "多謝支持！" },
+        { "id": "tk-rv03", "rating": 3, "text": "早上好多人排隊，要等。", "time": "2026-08-10T02:45:00.000Z" },
+        { "id": "tk-rv04", "rating": 4, "text": "油炸鬼即叫即炸。", "time": "2026-08-02T03:20:00.000Z" },
+        { "id": "tk-rv05", "rating": 2, "text": "服務態度麻麻。", "time": "2026-07-26T11:05:00.000Z" }
+      ]
+    },
+    "aeo": {
+      "serpapi_runs": [
+        {
+          "query": "深水埗 粥麵 推介",
+          "engine": "google",
+          "ai_overview": { "text": "深水埗的粥麵店以劉森記麵家和維記咖啡粥品最為人熟悉。", "brand_mentioned": false, "sources": ["https://openrice.example.invalid/ssp-congee"] },
+          "ai_mode": null,
+          "organic_results": [
+            { "title": "深水埗粥麵推介", "url": "https://openrice.example.invalid/ssp-congee", "snippet": "劉森記、維記……", "position": 1 }
+          ],
+          "brand_organic_rank": null,
+          "competitors_mentioned": ["劉森記麵家", "維記咖啡粥品"],
+          "available": true
+        },
+        {
+          "query": "best congee Sham Shui Po",
+          "engine": "google",
+          "ai_overview": null,
+          "ai_mode": null,
+          "organic_results": [
+            { "title": "Best congee in Sham Shui Po", "url": "https://foodie.example.invalid/ssp", "snippet": "Wai Kee, Lau Sum Kee……", "position": 1 }
+          ],
+          "brand_organic_rank": null,
+          "competitors_mentioned": ["Wai Kee", "Lau Sum Kee"],
+          "available": true
+        },
+        {
+          "query": "深水埗 邊度食早餐 粥",
+          "engine": "google_ai_mode",
+          "ai_overview": null,
+          "ai_mode": { "text": "深水埗食粥可以去維記咖啡粥品。", "brand_mentioned": false },
+          "organic_results": [],
+          "brand_organic_rank": null,
+          "competitors_mentioned": ["維記咖啡粥品"],
+          "available": true
+        },
+        {
+          "query": "深水埗 粥店",
+          "engine": "google",
+          "ai_overview": null,
+          "ai_mode": null,
+          "organic_results": [
+            { "title": "維記咖啡粥品", "url": "https://waikee.example.invalid", "snippet": "維記……", "position": 1 },
+            { "title": "德記粥麵", "url": "https://maps.google.com/?cid=5555555555555555555", "snippet": "深水埗北河街……", "position": 9 }
+          ],
+          "brand_organic_rank": 9,
+          "competitors_mentioned": ["維記咖啡粥品", "劉森記麵家"],
+          "available": true
+        }
+      ],
+      "website": null
+    }
+  }
+}

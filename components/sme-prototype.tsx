@@ -3,6 +3,8 @@ import { ArrowRight, SearchX } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { normaliseLocale } from "@/lib/copy"
+import { resolveMarketParam } from "@/lib/funnel/pricing"
+import { sampleReportProps } from "@/lib/funnel/sample-report"
 import { PublicPageFrame, WorkspacePageFrame } from "@/components/product-ui"
 import {
   LandingPage,
@@ -66,14 +68,15 @@ export function SmePrototype({ path, searchBusiness, searchMarket, searchRole, s
   const locale = normaliseLocale(path[0])
   const route = path.slice(1)
 
-  if (route.length === 0) return <LandingPage locale={locale} />
-  if ((route[0] === "scan" || route[0] === "scanner") && route.length === 1) return <ScanPage locale={locale} requestedBusiness={searchBusiness} requestedMarket={searchMarket} />
-  if (route[0] === "scanning" && route.length === 2) return <ScanningPage locale={locale} requestedBusiness={searchBusiness} requestedMarket={searchMarket} />
-  if (route[0] === "r" && route.length === 2) return <ReportPage locale={locale} requestedBusiness={searchBusiness} requestedMarket={searchMarket} />
-  if (route[0] === "sample-report" && route.length === 1) return <ReportPage locale={locale} sample />
+  const market = resolveMarketParam(searchMarket, locale)
+
+  if (route.length === 0) return <LandingPage locale={locale} market={market} />
+  if ((route[0] === "scan" || route[0] === "scanner") && route.length === 1) return <ScanPage locale={locale} initialMarket={market} initialBusiness={searchBusiness} />
+  if (route[0] === "scanning" && route.length === 2) return <ScanningPage locale={locale} jobId={route[1]} />
+  if (route[0] === "sample-report" && route.length === 1) return <ReportPage {...sampleReportProps(locale)} />
   if (route[0] === "demo-workspace" && route.length === 1) return <PublicDemoWorkspacePage locale={locale} />
-  if (route[0] === "unlock" && route.length === 2) return <UnlockPage locale={locale} />
-  if (route[0] === "pricing" && route.length === 1) return <PricingPage locale={locale} />
+  if (route[0] === "unlock" && route.length === 2) return <UnlockPage locale={locale} slug={route[1]} market={market} />
+  if (route[0] === "pricing" && route.length === 1) return <PricingPage locale={locale} market={market} />
   if (route[0] === "methodology" && route.length === 1) return <MethodologyPage locale={locale} />
   if (route[0] === "trust" && route.length === 1) return <TrustPage locale={locale} />
 
@@ -100,7 +103,7 @@ export function SmePrototype({ path, searchBusiness, searchMarket, searchRole, s
     else if (destination === "settings" && nested === "team") page = <TeamPage locale={locale} />
     else if (destination === "settings" && nested === "billing") page = <BillingPage locale={locale} />
     else if (destination === "settings" && nested === "notifications") page = <NotificationsPage locale={locale} />
-    if (page && route.length <= 4) return <WorkspacePageFrame locale={locale}>{page}</WorkspacePageFrame>
+    if (page && route.length <= 4) return <WorkspacePageFrame locale={locale} demo>{page}</WorkspacePageFrame>
   }
 
   return <NotAvailable locale={locale} />

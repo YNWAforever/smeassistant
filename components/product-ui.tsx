@@ -69,16 +69,21 @@ import { copy, normaliseLocale, supportedLocales, type PrototypeLocale } from "@
 import type { Capability, ProviderState } from "@/lib/demo-data"
 import { ContextualAssistant, type AssistantSurface } from "@/components/pocket-assistant/assistant-sheet"
 
-export function EnvironmentBar({ locale }: { locale: PrototypeLocale }) {
-  const t = copy[locale]
-  const isChinese = locale !== "en"
+/**
+ * Demo-surface only (CLAUDE.md §5 "Global"): /sample-report, /demo-workspace and
+ * workspaces with `is_demo`. `show` defaults to false so every production surface
+ * renders no bar; the markup and the `.prototype-bar` CSS are unchanged.
+ */
+export function EnvironmentBar({ locale, show = false }: { locale: PrototypeLocale; show?: boolean }) {
+  const bar = copy[locale].funnel.demoBar
+  if (!show) return null
   return (
-    <div className="prototype-bar" role="status" aria-label={`${t.prototype}, ${t.sampleData}`}>
+    <div className="prototype-bar" role="status" aria-label={`${bar.title}, ${bar.body}`}>
       <span className="prototype-dot" aria-hidden="true" />
-      <strong>{t.prototype}</strong>
+      <strong>{bar.title}</strong>
       <span aria-hidden="true">·</span>
-      <span>{t.sampleData}</span>
-      <span className="ml-auto hidden sm:inline">{isChinese ? "不包含即時掃描、付款或自動對外發佈" : "No live scans, payments or external publishing"}</span>
+      <span>{bar.body}</span>
+      <span className="ml-auto hidden sm:inline">{bar.note}</span>
     </div>
   )
 }
@@ -128,7 +133,7 @@ export function DemoBadge({ locale = "en" }: { locale?: PrototypeLocale }) {
   return <Badge className="demo-badge">{copy[locale].common.demo}</Badge>
 }
 
-export function ScoreDial({ score, coverage, delta }: { score: number; coverage: number; delta?: number }) {
+export function ScoreDial({ score, coverage, delta }: { score: number; coverage: number | null; delta?: number }) {
   const pathname = usePathname()
   const locale = normaliseLocale(pathname.split("/").filter(Boolean)[0])
   const isChinese = locale !== "en"
@@ -138,7 +143,7 @@ export function ScoreDial({ score, coverage, delta }: { score: number; coverage:
         className="score-dial"
         style={{ "--score": `${score * 3.6}deg` } as React.CSSProperties}
         role="img"
-        aria-label={isChinese ? `能見度評分 ${score} 分（滿分 100）。覆蓋率 ${coverage}%。${typeof delta === "number" ? `可比較變化 ${delta}。` : ""}` : `Visibility score ${score} out of 100. Coverage ${coverage} percent.${typeof delta === "number" ? ` Change ${delta}.` : ""}`}
+        aria-label={isChinese ? `能見度評分 ${score} 分（滿分 100）。${coverage == null ? "" : `覆蓋率 ${coverage}%。`}${typeof delta === "number" ? `可比較變化 ${delta}。` : ""}` : `Visibility score ${score} out of 100.${coverage == null ? "" : ` Coverage ${coverage} percent.`}${typeof delta === "number" ? ` Change ${delta}.` : ""}`}
       >
         <div className="score-dial-core">
           <span className="score-number">{score}</span>
@@ -146,7 +151,7 @@ export function ScoreDial({ score, coverage, delta }: { score: number; coverage:
         </div>
       </div>
       <div className="score-dial-meta">
-        <strong>{coverage}% {isChinese ? "覆蓋率" : "coverage"}</strong>
+        {coverage != null && <strong>{coverage}% {isChinese ? "覆蓋率" : "coverage"}</strong>}
         {typeof delta === "number" && (
           <span className={delta < 0 ? "delta-down" : "delta-up"}>
             {delta > 0 ? "+" : ""}{delta} {isChinese ? "（自上次可比較掃描）" : "since comparable scan"}
@@ -431,39 +436,47 @@ export function WorkspaceShell({ locale, children }: { locale: PrototypeLocale; 
   )
 }
 
-export function PublicPageFrame({ locale, children }: { locale: PrototypeLocale; children: ReactNode }) {
+/**
+ * `demo` renders the EnvironmentBar and adds the `has-env-bar` hook the CSS
+ * offsets are gated behind (CLAUDE.md §5 "Global"); it is false everywhere else.
+ */
+export function PublicPageFrame({ locale, demo = false, children }: { locale: PrototypeLocale; demo?: boolean; children: ReactNode }) {
   const isChinese = locale !== "en"
+  const t = copy[locale].funnel.footer
   useEffect(() => {
     document.documentElement.lang = locale === "zh-HK" ? "zh-HK" : locale === "zh-TW" ? "zh-TW" : "en"
   }, [locale])
   return (
-    <div className="public-site">
-      <EnvironmentBar locale={locale} />
+    <div className={`public-site${demo ? " has-env-bar" : ""}`}>
+      <EnvironmentBar locale={locale} show={demo} />
       <PublicHeader locale={locale} />
       {children}
       <footer className="public-footer">
         <div>
-          <div className="brand-lockup"><span className="brand-mark"><Search /></span><span><strong>SME Scanner</strong><small>{isChinese ? "證據為先，行動為本。" : "Evidence first, action next."}</small></span></div>
-          <p>{isChinese ? "互動產品示範。正式客戶資料、掃描、帳單及外部整合仍由 SME Scanner 正式系統處理。" : "Interactive implementation reference. Production customer data, scans, billing and integrations remain in the SME Scanner runtime."}</p>
+          <div className="brand-lockup"><span className="brand-mark"><Search /></span><span><strong>SME Scanner</strong><small>{t.tagline}</small></span></div>
+          <p>{t.body}</p>
+          <small>© {new Date().getFullYear()} Fimmick</small>
         </div>
         <nav aria-label={isChinese ? "頁尾導覽" : "Footer navigation"}>
           <Link href={`/${locale}/methodology`}>{isChinese ? "評分方法與限制" : "Methodology & limitations"}</Link>
           <Link href={`/${locale}/trust`}>{isChinese ? "安全與私隱" : "Security & privacy"}</Link>
           <Link href={`/${locale}/pricing`}>{isChinese ? "收費方案" : "Pricing"}</Link>
+          <Link href={`/${locale}/legal/privacy`}>{t.privacy}</Link>
+          <Link href={`/${locale}/legal/terms`}>{t.terms}</Link>
         </nav>
       </footer>
     </div>
   )
 }
 
-export function WorkspacePageFrame({ locale, children }: { locale: string; children: ReactNode }) {
+export function WorkspacePageFrame({ locale, demo = false, children }: { locale: string; demo?: boolean; children: ReactNode }) {
   const safeLocale = normaliseLocale(locale)
   useEffect(() => {
     document.documentElement.lang = safeLocale === "zh-HK" ? "zh-HK" : safeLocale === "zh-TW" ? "zh-TW" : "en"
   }, [safeLocale])
   return (
-    <div className="workspace-root">
-      <EnvironmentBar locale={safeLocale} />
+    <div className={`workspace-root${demo ? " has-env-bar" : ""}`}>
+      <EnvironmentBar locale={safeLocale} show={demo} />
       <WorkspaceShell locale={safeLocale}>{children}</WorkspaceShell>
     </div>
   )

@@ -1,0 +1,203 @@
+{
+  "name": "kam-man-house",
+  "market": "hk",
+  "collectedAt": "2026-09-01T02:00:00.000Z",
+  "ig": {
+    "status": "measured",
+    "confidence": "high",
+    "data": {
+      "available": true,
+      "username": "kammanhouse.hk",
+      "bio": "錦汶館｜天后街坊茶餐廳 · 每日新鮮出爐菠蘿包 · WhatsApp 訂座",
+      "followers": 3820,
+      "following": 210,
+      "posts_count": 486,
+      "profile_pic_url": "https://media.example.invalid/kammanhouse/profile.jpg",
+      "is_verified": false,
+      "external_url": "https://kammanhouse.example.invalid",
+      "posts_last_12": [
+        { "id": "kmh-p01", "caption": "新鮮出爐菠蘿包，每日下午三點出爐。", "media_type": "image", "like_count": 168, "comment_count": 14, "posted_at": "2026-08-28T10:15:00.000Z" },
+        { "id": "kmh-p02", "caption": "午市套餐加咗焗豬扒飯。", "media_type": "carousel", "like_count": 121, "comment_count": 9, "posted_at": "2026-08-24T09:30:00.000Z" },
+        { "id": "kmh-p03", "caption": "天后店外賣自取九折。", "media_type": "image", "like_count": 97, "comment_count": 6, "posted_at": "2026-08-20T11:00:00.000Z" },
+        { "id": "kmh-p04", "caption": "絲襪奶茶沖法小教學。", "media_type": "video", "like_count": 143, "comment_count": 11, "posted_at": "2026-08-16T08:45:00.000Z" },
+        { "id": "kmh-p05", "caption": "多謝街坊支持，週末加開晚市。", "media_type": "image", "like_count": 88, "comment_count": 5, "posted_at": "2026-08-12T10:00:00.000Z" },
+        { "id": "kmh-p06", "caption": "西多士配自家煉奶。", "media_type": "image", "like_count": 112, "comment_count": 8, "posted_at": "2026-08-08T09:20:00.000Z" },
+        { "id": "kmh-p07", "caption": "新餐牌上線。", "media_type": "carousel", "like_count": 76, "comment_count": 4, "posted_at": "2026-08-03T10:40:00.000Z" },
+        { "id": "kmh-p08", "caption": "早餐 A 餐：沙嗲牛麵配奶茶。", "media_type": "image", "like_count": 134, "comment_count": 10, "posted_at": "2026-07-29T11:10:00.000Z" },
+        { "id": "kmh-p09", "caption": "颱風日照常營業至六點。", "media_type": "image", "like_count": 65, "comment_count": 3, "posted_at": "2026-07-24T09:00:00.000Z" },
+        { "id": "kmh-p10", "caption": "凍檸茶加大不加價。", "media_type": "image", "like_count": 102, "comment_count": 7, "posted_at": "2026-07-19T10:30:00.000Z" },
+        { "id": "kmh-p11", "caption": "廚房團隊合照。", "media_type": "image", "like_count": 149, "comment_count": 12, "posted_at": "2026-07-14T08:50:00.000Z" },
+        { "id": "kmh-p12", "caption": "餐蛋麵回歸。", "media_type": "image", "like_count": 91, "comment_count": 6, "posted_at": "2026-07-09T10:05:00.000Z" }
+      ],
+      "reels_count": 38,
+      "reels_last_12": [
+        { "id": "kmh-r01", "caption": "菠蘿包出爐一刻", "play_count": 4200, "like_count": 210, "comment_count": 18, "posted_at": "2026-08-26T10:00:00.000Z" },
+        { "id": "kmh-r02", "caption": "奶茶拉茶", "play_count": 3100, "like_count": 165, "comment_count": 12, "posted_at": "2026-08-18T09:00:00.000Z" },
+        { "id": "kmh-r03", "caption": "焗豬扒飯製作", "play_count": 2800, "like_count": 140, "comment_count": 9, "posted_at": "2026-08-10T09:30:00.000Z" },
+        { "id": "kmh-r04", "caption": "西多士煎法", "play_count": 2500, "like_count": 122, "comment_count": 7, "posted_at": "2026-08-01T10:15:00.000Z" },
+        { "id": "kmh-r05", "caption": "早市準備", "play_count": 1900, "like_count": 98, "comment_count": 5, "posted_at": "2026-07-22T08:30:00.000Z" },
+        { "id": "kmh-r06", "caption": "餐廳一日", "play_count": 2200, "like_count": 110, "comment_count": 8, "posted_at": "2026-07-12T09:45:00.000Z" }
+      ],
+      "highlights_count": 5,
+      "highlight_titles": ["餐牌", "天后店", "限定", "訂座", "評價"],
+      "stories_count": 2
+    }
+  },
+  "gbp": {
+    "status": "measured",
+    "confidence": "high",
+    "data": {
+      "available": true,
+      "place_id": "ChIJfixture-kam-man-house",
+      "name": "錦汶館 Kam Man House",
+      "rating": 4.3,
+      "reviews_count": 412,
+      "reviews": [
+        { "rating": 5, "text": "菠蘿包真係好食，奶茶夠滑。", "time": "2026-08-29T03:12:00.000Z", "owner_response": "多謝你嘅支持，歡迎再嚟！" },
+        { "rating": 4, "text": "午市等位十五分鐘，出餐幾快。", "time": "2026-08-26T12:40:00.000Z" },
+        { "rating": 3, "text": "食物唔錯但座位太迫。", "time": "2026-08-22T07:05:00.000Z" },
+        { "rating": 5, "text": "街坊價錢，焗豬扒飯份量足。", "time": "2026-08-17T14:20:00.000Z", "owner_response": "多謝讚賞，我哋會繼續努力。" },
+        { "rating": 4, "text": "西多士好正，凍奶茶偏甜。", "time": "2026-08-11T09:55:00.000Z" }
+      ],
+      "photos_count": 184,
+      "latest_photo_at": "2026-08-20T06:00:00.000Z",
+      "hours_complete": true,
+      "categories": ["茶餐廳", "Cha chaan teng", "Restaurant"],
+      "recent_posts_count": 1
+    }
+  },
+  "aeo": {
+    "status": "measured",
+    "confidence": "high",
+    "data": {
+      "available": true,
+      "serpapi_runs": [
+        { "query": "天后 茶餐廳 推介", "ai_overview_mentioned": true, "ai_mode_mentioned": false, "brand_organic_rank": 7, "competitors_mentioned": ["華星冰室", "新釗記"] },
+        { "query": "best cha chaan teng Tin Hau", "ai_overview_mentioned": false, "ai_mode_mentioned": false, "brand_organic_rank": null, "competitors_mentioned": ["Sun Kee", "Wah Sing"] },
+        { "query": "天后 邊度食早餐 平靚正", "ai_overview_mentioned": false, "ai_mode_mentioned": false, "brand_organic_rank": null, "competitors_mentioned": ["華星冰室"] },
+        { "query": "天后 茶餐廳", "ai_overview_mentioned": false, "ai_mode_mentioned": false, "brand_organic_rank": 3, "competitors_mentioned": ["新釗記", "金鳳茶餐廳"] }
+      ],
+      "performance_runs": [
+        { "query": "天后 茶餐廳 推介", "query_type": "discovery", "engine": "google", "available": true, "unsupported": false, "ai_overview_triggered": true, "ai_answered": true, "ai_mentioned": true, "ai_cited": false, "organic_rank": 7, "local_pack_rank": 2, "maps_rank": null, "confidence": "high", "matched_by": ["gbp_name"], "competitors_above": ["華星冰室", "新釗記"] },
+        { "query": "best cha chaan teng Tin Hau", "query_type": "discovery", "engine": "google", "available": true, "unsupported": false, "ai_overview_triggered": false, "ai_answered": null, "ai_mentioned": false, "ai_cited": false, "organic_rank": null, "local_pack_rank": null, "maps_rank": null, "confidence": "none", "matched_by": [], "competitors_above": ["Sun Kee", "Wah Sing", "Kam Fung"] },
+        { "query": "天后 邊度食早餐 平靚正", "query_type": "need", "engine": "google_ai_mode", "available": true, "unsupported": false, "ai_overview_triggered": null, "ai_answered": true, "ai_mentioned": false, "ai_cited": false, "organic_rank": null, "local_pack_rank": null, "maps_rank": null, "confidence": "none", "matched_by": [], "competitors_above": ["華星冰室"] },
+        { "query": "天后 茶餐廳", "query_type": "maps", "engine": "google_maps", "available": true, "unsupported": false, "ai_overview_triggered": null, "ai_answered": null, "ai_mentioned": false, "ai_cited": false, "organic_rank": null, "local_pack_rank": null, "maps_rank": 3, "confidence": "high", "matched_by": ["place_id"], "competitors_above": ["新釗記", "金鳳茶餐廳"] }
+      ],
+      "website": { "available": true, "has_faq_schema": false, "meta_description_len": 138, "h1_count": 1 }
+    }
+  },
+  "raw": {
+    "ig": {
+      "profile": {
+        "username": "kammanhouse.hk",
+        "full_name": "錦汶館 Kam Man House",
+        "bio": "錦汶館｜天后街坊茶餐廳 · 每日新鮮出爐菠蘿包 · WhatsApp 訂座",
+        "followers": 3820,
+        "following": 210,
+        "posts_count": 486,
+        "profile_pic_url": "https://media.example.invalid/kammanhouse/profile.jpg",
+        "is_verified": false,
+        "external_url": "https://kammanhouse.example.invalid"
+      },
+      "posts": [
+        { "id": "kmh-p01", "caption": "新鮮出爐菠蘿包，每日下午三點出爐。", "media_type": "image", "like_count": 168, "comment_count": 14, "posted_at": "2026-08-28T10:15:00.000Z", "thumbnail_url": "https://media.example.invalid/kammanhouse/p01.jpg", "permalink": "https://www.instagram.com/p/KMHFIX001/" },
+        { "id": "kmh-p02", "caption": "午市套餐加咗焗豬扒飯。", "media_type": "carousel", "like_count": 121, "comment_count": 9, "posted_at": "2026-08-24T09:30:00.000Z", "thumbnail_url": "https://media.example.invalid/kammanhouse/p02.jpg", "permalink": "https://www.instagram.com/p/KMHFIX002/" },
+        { "id": "kmh-p03", "caption": "天后店外賣自取九折。", "media_type": "image", "like_count": 97, "comment_count": 6, "posted_at": "2026-08-20T11:00:00.000Z", "thumbnail_url": "https://media.example.invalid/kammanhouse/p03.jpg", "permalink": "https://www.instagram.com/p/KMHFIX003/" },
+        { "id": "kmh-p04", "caption": "絲襪奶茶沖法小教學。", "media_type": "video", "like_count": 143, "comment_count": 11, "posted_at": "2026-08-16T08:45:00.000Z", "thumbnail_url": "https://media.example.invalid/kammanhouse/p04.jpg", "permalink": "https://www.instagram.com/p/KMHFIX004/" },
+        { "id": "kmh-p05", "caption": "多謝街坊支持，週末加開晚市。", "media_type": "image", "like_count": 88, "comment_count": 5, "posted_at": "2026-08-12T10:00:00.000Z", "thumbnail_url": "https://media.example.invalid/kammanhouse/p05.jpg", "permalink": "https://www.instagram.com/p/KMHFIX005/" },
+        { "id": "kmh-p06", "caption": "西多士配自家煉奶。", "media_type": "image", "like_count": 112, "comment_count": 8, "posted_at": "2026-08-08T09:20:00.000Z", "thumbnail_url": "https://media.example.invalid/kammanhouse/p06.jpg", "permalink": "https://www.instagram.com/p/KMHFIX006/" }
+      ],
+      "reels": [
+        { "id": "kmh-r01", "caption": "菠蘿包出爐一刻", "play_count": 4200, "like_count": 210, "comment_count": 18, "posted_at": "2026-08-26T10:00:00.000Z", "thumbnail_url": "https://media.example.invalid/kammanhouse/r01.jpg", "permalink": "https://www.instagram.com/reel/KMHFIXR01/" },
+        { "id": "kmh-r02", "caption": "奶茶拉茶", "play_count": 3100, "like_count": 165, "comment_count": 12, "posted_at": "2026-08-18T09:00:00.000Z", "thumbnail_url": "https://media.example.invalid/kammanhouse/r02.jpg", "permalink": "https://www.instagram.com/reel/KMHFIXR02/" },
+        { "id": "kmh-r03", "caption": "焗豬扒飯製作", "play_count": 2800, "like_count": 140, "comment_count": 9, "posted_at": "2026-08-10T09:30:00.000Z", "thumbnail_url": "https://media.example.invalid/kammanhouse/r03.jpg", "permalink": "https://www.instagram.com/reel/KMHFIXR03/" }
+      ],
+      "highlights": [
+        { "id": "kmh-h01", "title": "餐牌", "items_count": 8 },
+        { "id": "kmh-h02", "title": "天后店", "items_count": 5 },
+        { "id": "kmh-h03", "title": "限定", "items_count": 4 },
+        { "id": "kmh-h04", "title": "訂座", "items_count": 2 },
+        { "id": "kmh-h05", "title": "評價", "items_count": 6 }
+      ],
+      "stories_count": 2
+    },
+    "gbp": {
+      "source": "google_places_new",
+      "name": "錦汶館 Kam Man House",
+      "place_id": "ChIJfixture-kam-man-house",
+      "address": "香港天后英皇道 12 號地下",
+      "maps_url": "https://maps.google.com/?cid=1234567890123456789",
+      "data_id": null,
+      "data_cid": null,
+      "rating": 4.3,
+      "reviews_count": 412,
+      "categories": ["茶餐廳", "Cha chaan teng", "Restaurant"],
+      "photo_names": [],
+      "photos": [],
+      "posts": [],
+      "evidence_failures": [],
+      "reviews": [
+        { "id": "kmh-rv01", "rating": 5, "text": "菠蘿包真係好食，奶茶夠滑。", "time": "2026-08-29T03:12:00.000Z", "owner_response": "多謝你嘅支持，歡迎再嚟！" },
+        { "id": "kmh-rv02", "rating": 4, "text": "午市等位十五分鐘，出餐幾快。", "time": "2026-08-26T12:40:00.000Z" },
+        { "id": "kmh-rv03", "rating": 3, "text": "食物唔錯但座位太迫。", "time": "2026-08-22T07:05:00.000Z" },
+        { "id": "kmh-rv04", "rating": 5, "text": "街坊價錢，焗豬扒飯份量足。", "time": "2026-08-17T14:20:00.000Z", "owner_response": "多謝讚賞，我哋會繼續努力。" },
+        { "id": "kmh-rv05", "rating": 4, "text": "西多士好正，凍奶茶偏甜。", "time": "2026-08-11T09:55:00.000Z" }
+      ]
+    },
+    "aeo": {
+      "serpapi_runs": [
+        {
+          "query": "天后 茶餐廳 推介",
+          "engine": "google",
+          "ai_overview": { "text": "天后區有多間受歡迎的茶餐廳，包括華星冰室、新釗記和錦汶館，以奶茶和菠蘿包聞名。", "brand_mentioned": true, "sources": ["https://openrice.example.invalid/tin-hau-cha-chaan-teng"] },
+          "ai_mode": null,
+          "organic_results": [
+            { "title": "天后十大茶餐廳推介", "url": "https://openrice.example.invalid/tin-hau-top-10", "snippet": "天后茶餐廳推介……", "position": 1 },
+            { "title": "華星冰室 天后店", "url": "https://wahsing.example.invalid", "snippet": "華星冰室天后分店……", "position": 2 },
+            { "title": "錦汶館 Kam Man House", "url": "https://kammanhouse.example.invalid", "snippet": "天后街坊茶餐廳……", "position": 7 }
+          ],
+          "brand_organic_rank": 7,
+          "competitors_mentioned": ["華星冰室", "新釗記"],
+          "available": true
+        },
+        {
+          "query": "best cha chaan teng Tin Hau",
+          "engine": "google",
+          "ai_overview": null,
+          "ai_mode": null,
+          "organic_results": [
+            { "title": "Best cha chaan teng in Tin Hau", "url": "https://foodie.example.invalid/tin-hau", "snippet": "Sun Kee, Wah Sing and Kam Fung……", "position": 1 }
+          ],
+          "brand_organic_rank": null,
+          "competitors_mentioned": ["Sun Kee", "Wah Sing"],
+          "available": true
+        },
+        {
+          "query": "天后 邊度食早餐 平靚正",
+          "engine": "google_ai_mode",
+          "ai_overview": null,
+          "ai_mode": { "text": "天后食早餐可以考慮華星冰室的常餐，或者附近的粥店。", "brand_mentioned": false },
+          "organic_results": [],
+          "brand_organic_rank": null,
+          "competitors_mentioned": ["華星冰室"],
+          "available": true
+        },
+        {
+          "query": "天后 茶餐廳",
+          "engine": "google",
+          "ai_overview": null,
+          "ai_mode": null,
+          "organic_results": [
+            { "title": "新釗記 天后", "url": "https://sunkee.example.invalid", "snippet": "新釗記天后店……", "position": 1 },
+            { "title": "金鳳茶餐廳", "url": "https://kamfung.example.invalid", "snippet": "金鳳茶餐廳……", "position": 2 },
+            { "title": "錦汶館 Kam Man House", "url": "https://kammanhouse.example.invalid", "snippet": "天后街坊茶餐廳……", "position": 3 }
+          ],
+          "brand_organic_rank": 3,
+          "competitors_mentioned": ["新釗記", "金鳳茶餐廳"],
+          "available": true
+        }
+      ],
+      "website": { "url": "https://kammanhouse.example.invalid", "has_faq_schema": false, "meta_description_len": 138, "h1_count": 1 }
+    }
+  }
+}

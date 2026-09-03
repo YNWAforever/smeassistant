@@ -1,8 +1,13 @@
-import { SmePrototype } from "@/components/sme-prototype"
+import { redirect } from "next/navigation";
 
-// The prototype shell reads search params on the client; render this route on demand like the catch-all.
-export const dynamic = "force-dynamic";
+import { DEFAULT_LOCALE } from "@/lib/locale";
 
-export default function Home() {
-  return <SmePrototype path={["zh-HK"]} />
+/**
+ * Every route in this app is locale-prefixed (CLAUDE.md §3.1). `proxy.ts`
+ * already redirects "/" to "/zh-HK"; this page repeats the same decision for
+ * the requests that never reach the proxy (a direct render, a test harness),
+ * so the two can never disagree.
+ */
+export default function RootRedirect() {
+  redirect(`/${DEFAULT_LOCALE}`);
 }

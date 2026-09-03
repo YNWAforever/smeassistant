@@ -20,7 +20,7 @@ import type { PrototypeLocale } from "@/lib/copy"
 export function PublicDemoWorkspacePage({ locale }: { locale: PrototypeLocale }) {
   const isChinese = locale !== "en"
   return (
-    <PublicPageFrame locale={locale}>
+    <PublicPageFrame locale={locale} demo>
       <main className="public-demo-workspace">
         <header className="public-demo-head">
           <div>
