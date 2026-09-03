@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated output of the workspace packages and the test tooling.
+    "packages/**/dist/**",
+    "coverage/**",
+    "playwright-report/**",
+    "test-results/**",
   ]),
   {
     files: ["components/ui/**/*.{ts,tsx}", "hooks/use-mobile.ts"],
@@ -21,6 +26,16 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-unused-vars": "off",
       "react-hooks/purity": "off",
       "react-hooks/set-state-in-effect": "off",
+    },
+  },
+  {
+    files: ["packages/**/*.{ts,tsx}"],
+    rules: {
+      // packages/* are vendored verbatim from the sme-scanner upstream, which
+      // lints with core-web-vitals only; its untyped third-party JSON boundary
+      // (SerpApi / RapidAPI / Places) is typed as `any` on purpose.
+      "@typescript-eslint/no-explicit-any": "off",
+      "@next/next/no-assign-module-variable": "off",
     },
   },
 ]);

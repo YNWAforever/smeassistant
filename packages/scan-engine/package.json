@@ -1,0 +1,26 @@
+{
+  "name": "@sme-scanner/scan-engine",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "sideEffects": false,
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
+    "lint": "echo 'no lint yet'",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@sme-scanner/scoring": "workspace:*",
+    "@sme-scanner/region": "workspace:*",
+    "@sme-scanner/contracts": "workspace:*",
+    "@supabase/supabase-js": "^2.45.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.7"
+  }
+}

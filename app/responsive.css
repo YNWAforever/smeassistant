@@ -1,5 +1,6 @@
 .prototype-bar{position:sticky;top:0}
-.public-header{top:30px}
+.public-header{top:0}
+.has-env-bar .public-header{top:30px}
 
 @media (max-width:1180px){
   .source-grid{grid-template-columns:repeat(2,1fr)}
@@ -20,7 +21,8 @@
 
 @media (max-width:767px){
   .prototype-bar{min-height:38px;padding:7px 10px;font-size:8px}
-  .public-header{top:38px}
+  .public-header{top:0}
+  .has-env-bar .public-header{top:38px}
   .public-header-inner{width:calc(100% - 28px);min-height:58px;gap:12px}
   .header-actions .locale-trigger{max-width:112px}
   .public-footer{width:calc(100% - 28px);align-items:flex-start;flex-direction:column}

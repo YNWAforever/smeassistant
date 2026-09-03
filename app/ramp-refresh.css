@@ -136,7 +136,7 @@ button:focus-visible {
 }
 
 .public-header {
-  top: 30px;
+  top: 0;
   padding: 12px 0;
   border: 0;
   background: transparent;
@@ -1819,7 +1819,7 @@ button:focus-visible {
 
 @media (max-width: 767px) {
   .public-header {
-    top: 38px;
+    top: 0;
     padding: 8px 10px;
   }
 
@@ -3096,4 +3096,42 @@ button:focus-visible {
   .brief-priority-actions [data-slot="button"] {
     width: 100%;
   }
+}
+
+/* Environment bar offsets: applied only when the demo bar renders (CLAUDE.md 5 "Global"). */
+.has-env-bar .public-header { top: 30px; }
+@media (max-width: 767px) {
+  .has-env-bar .public-header { top: 38px; }
+}
+
+/* Legal documents (privacy, terms): a single-column stack of the shared section cards. */
+.legal-sections {
+  display: grid;
+  gap: 14px;
+}
+
+.legal-sections h2 {
+  margin: 0 0 10px;
+  font-size: 17px;
+}
+
+.legal-body {
+  margin: 0;
+  color: var(--soft);
+  font-size: 12px;
+  line-height: 1.75;
+  white-space: pre-line;
+}
+
+.legal-back {
+  margin-top: 30px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+}
+
+.legal-back a {
+  color: var(--teal);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
