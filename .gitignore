@@ -43,3 +43,6 @@ supabase/.temp/
 # typescript
 next-env.d.ts
 *.tsbuildinfo
+
+# workspace packages
+**/node_modules/
