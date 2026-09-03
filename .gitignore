@@ -11,7 +11,9 @@
 !.yarn/versions
 
 # testing
-/coverage
+coverage/
+playwright-report/
+test-results/
 
 # next.js
 /.next/
@@ -27,16 +29,17 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files (.env.example is committed; local values are not)
+.env
+.env.local
+.env*.local
 
 # vercel
 .vercel
 
+# supabase cli link artefacts
+supabase/.temp/
+
 # typescript
 next-env.d.ts
-/dist/
-/.wrangler/
-/.sites-runtime/
-/outputs/
-/work/
+*.tsbuildinfo
