@@ -11,18 +11,19 @@ import { isLocale } from "@/lib/locale"
  * `/{locale}/owner/sign-in`, `/{locale}/owner/onboarding`,
  * `/{locale}/owner/select-workspace` and the workspace home
  * `/{locale}/owner/[workspaceSlug]`. Only the not-yet-ported workspace
- * sub-pages (`/{locale}/owner/<slug>/create`, `/assets`, `/settings/{brand,team,billing}`) still render
- * the prototype dispatcher against `lib/demo-data.ts`, until Phases 4–6 wire
- * each one; the Phase 3 pages are real routes and are refused here too. Anything else 404s rather than silently falling back to a demo
- * page (guardrail 12).
+ * sub-pages (`/{locale}/owner/<slug>/settings/{brand,team}`) still render
+ * the prototype dispatcher against `lib/demo-data.ts`, until Phase 6 wires
+ * them; the Phase 3 and Phase 4 pages (`create`, `assets`, `settings/billing`)
+ * are real routes and are refused here too. Anything else 404s rather than
+ * silently falling back to a demo page (guardrail 12).
  */
 export const dynamic = "force-dynamic"
 
 /** Segments that have real routes now; guarded here too so a routing change can never resurface the prototype versions. */
 const REAL_OWNER_ROUTES = new Set(["sign-in", "onboarding", "select-workspace"])
-/** Workspace sub-pages wired to real data in Phase 3; only create, assets and settings/{brand,team,billing} still come from the prototype until Phases 4-6. */
-const REAL_WORKSPACE_PAGES = new Set(["actions", "insights", "activity", "calendar", "more"])
-const REAL_SETTINGS_PAGES = new Set(["integrations", "notifications"])
+/** Workspace sub-pages wired to real data in Phases 3-4; only settings/{brand,team} still come from the prototype until Phase 6. */
+const REAL_WORKSPACE_PAGES = new Set(["actions", "insights", "activity", "calendar", "more", "create", "assets"])
+const REAL_SETTINGS_PAGES = new Set(["integrations", "notifications", "billing"])
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value

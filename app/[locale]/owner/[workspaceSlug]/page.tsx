@@ -32,6 +32,7 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
         locations={page.locations}
         brief={brief}
         demo={page.ctx.workspace.isDemo}
+        fixPack={{ workspaceId: page.ctx.workspace.id, role: page.membership.role }}
       />
     </>
   );

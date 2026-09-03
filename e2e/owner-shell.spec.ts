@@ -75,10 +75,10 @@ test.describe("magic link (local) → onboarding → workspace shell", () => {
   });
 });
 
-// Phase 3: the workspace data pages are real routes now (they redirect to
-// sign-in without a session), while the not-yet-ported sub-pages still come
-// from the prototype bridge and the public demo page is unchanged.
-for (const segment of ["actions", "insights", "activity", "calendar", "more", "settings/integrations", "settings/notifications"]) {
+// Phase 3/4: the workspace pages are real routes now (they redirect to
+// sign-in without a session); only settings/{brand,team} still come from the
+// prototype bridge until Phase 6, and the public demo page is unchanged.
+for (const segment of ["actions", "insights", "activity", "calendar", "more", "create", "assets", "settings/integrations", "settings/notifications", "settings/billing"]) {
   test(`/zh-HK/owner/kam-man-house/${segment} is a real route that requires sign-in`, async ({ page }) => {
     await page.goto(`/zh-HK/owner/kam-man-house/${segment}`);
     const url = new URL(page.url());
@@ -89,10 +89,58 @@ for (const segment of ["actions", "insights", "activity", "calendar", "more", "s
   });
 }
 
-test("/zh-HK/owner/kam-man-house/create still renders from the prototype bridge", async ({ page }) => {
-  const response = await page.goto("/zh-HK/owner/kam-man-house/create");
+test("/zh-HK/owner/kam-man-house/settings/brand still renders from the prototype bridge", async ({ page }) => {
+  const response = await page.goto("/zh-HK/owner/kam-man-house/settings/brand");
   expect(response?.status()).toBe(200);
   await expect(page.locator(".workspace-content")).toBeVisible();
+});
+
+/**
+ * Phase 4 journey: draft → approve → export (CLAUDE.md Phase 4 verification).
+ * Needs a Supabase project with a seeded workspace the E2E owner belongs to
+ * (`E2E_WORKSPACE_SLUG`), a signed-in session (`E2E_STORAGE_STATE`, a
+ * Playwright storageState captured after the magic link) and an LLM key or
+ * the run route's test stub. Until that lands, the manual path is:
+ *   a. Sign in, open /owner/<slug>/actions?location=<primary>, pick an action
+ *      whose template has an agent (e.g. "Reply to unanswered Google reviews").
+ *   b. "Generate a draft" → the run row appears under Workflow states and
+ *      version 1 appears under Version & audit history (run.started /
+ *      run.succeeded / version.created in the audit-mini list).
+ *      If the agent asks for inputs, fill the form and "Save inputs and generate".
+ *   c. Edit the caption and "Save manual edits as a new version" → version 2,
+ *      version 1 shows "Superseded".
+ *   d. "Approve Version 2" → dialog → approve; the delivery card enables.
+ *      Approving again reports "already approved" without a new audit row.
+ *   e. "Export approved version" downloads `<template>-v2.md`; the sidebar
+ *      usage increments by one. "Copy text" afterwards does not increment.
+ *   f. On a lite workspace at its allowance, export shows the allowance card
+ *      with the billing link instead of a download.
+ */
+test.describe("draft → approve → export", () => {
+  test.skip(!SUPABASE_CONFIGURED || !process.env.E2E_STORAGE_STATE || !process.env.E2E_WORKSPACE_SLUG, "Needs NEXT_PUBLIC_SUPABASE_URL, E2E_STORAGE_STATE (signed-in owner) and E2E_WORKSPACE_SLUG (seeded workspace).");
+  test.use({ storageState: process.env.E2E_STORAGE_STATE });
+
+  test("generates, edits, approves and exports one exact version", async ({ page }) => {
+    const slug = process.env.E2E_WORKSPACE_SLUG!;
+    await page.goto(`/zh-HK/owner/${slug}/actions`);
+    await page.locator(".action-card a[href*='/actions/']").first().click();
+    await expect(page.locator(".action-detail-page")).toBeVisible();
+
+    await page.getByRole("button", { name: /生成草稿|Generate a draft|重新生成|Regenerate/ }).click();
+    await expect(page.locator(".version-list button").first()).toBeVisible({ timeout: 90_000 });
+
+    await page.fill("#draft-content", `${await page.inputValue("#draft-content")}\n\n多謝支持。`);
+    await page.getByRole("button", { name: /儲存手動修改|Save manual edits/ }).click();
+    await expect(page.locator(".version-list button")).toHaveCount(2);
+
+    await page.getByRole("button", { name: /^核准第 2 版|^Approve Version 2/ }).click();
+    await page.getByRole("dialog").getByRole("button", { name: /核准第 2 版|Approve Version 2/ }).click();
+    await expect(page.locator(".approved-state")).toBeVisible();
+
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: /匯出已核准版本|Export approved version/ }).click();
+    expect((await download).suggestedFilename()).toMatch(/-v2\.md$/);
+  });
 });
 
 test("/zh-HK/demo-workspace keeps the demo shell and the demo bar", async ({ page }) => {

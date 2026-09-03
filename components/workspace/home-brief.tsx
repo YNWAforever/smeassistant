@@ -5,6 +5,7 @@ import { ContextualAssistant } from "@/components/pocket-assistant/assistant-she
 import { CapabilityBadge, FactType, PageIntro, ScoreDial, SectionCard } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { FixPackCard } from "@/components/workspace/fix-pack-card"
 import { LocationSelect } from "@/components/workspace/location-select"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { resolveText } from "@/lib/domain"
@@ -12,6 +13,7 @@ import { effortLabel, findingLabel, formatDateTime, formatDay, metricLabel, prio
 import { measuredPrimarySources } from "@/lib/workspace/module-states"
 import type { HomeBrief } from "@/lib/workspace/queries-pages"
 import type { ActionOverview } from "@/lib/workspace/overview"
+import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 
 export interface HomeBriefViewProps {
   locale: PrototypeLocale
@@ -22,6 +24,8 @@ export interface HomeBriefViewProps {
   locations: Array<{ slug: string; name: string }>
   brief: HomeBrief
   demo?: boolean
+  /** When present, the Fix Pack drafts card (agent_runs) renders after the secondary grid. */
+  fixPack?: { workspaceId: string; role: WorkspaceRole }
 }
 
 function actionHref(locale: PrototypeLocale, slug: string, action: ActionOverview, location: string): string {
@@ -30,7 +34,7 @@ function actionHref(locale: PrototypeLocale, slug: string, action: ActionOvervie
   return withLocation(href, location)
 }
 
-export function HomeBriefView({ locale, workspaceSlug, tier, timezone, locations, brief, demo = false }: HomeBriefViewProps) {
+export function HomeBriefView({ locale, workspaceSlug, tier, timezone, locations, brief, demo = false, fixPack }: HomeBriefViewProps) {
   const t = copy[locale].home
   const isChinese = locale !== "en"
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -149,6 +153,8 @@ export function HomeBriefView({ locale, workspaceSlug, tier, timezone, locations
           </div>
         </SectionCard>
       </div>
+
+      {fixPack && <FixPackCard locale={locale} workspaceId={fixPack.workspaceId} viewerRole={fixPack.role} />}
 
       <SectionCard className="change-ledger-card">
         <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "最近變化紀錄" : "Recent change ledger"}</p><h2>{isChinese ? "先看證據，再看圖表" : "Evidence before charts"}</h2></div><Badge variant="outline">{snapshot ? `${formatDay(snapshot.observedAt, locale, timezone)}${changed.comparable ? (isChinese ? " 可比較掃描" : " comparable scan") : ""}` : (isChinese ? "尚未有掃描" : "No scan yet")}</Badge></div>

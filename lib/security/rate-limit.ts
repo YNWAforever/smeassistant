@@ -22,7 +22,10 @@ export type RateLimitScope =
   | "staff_erasure"
   | "staff_consent_withdrawal"
   | "staff_fix_pack_generate"
-  | "workspace_claim";
+  | "workspace_claim"
+  | "action_run"
+  | "action_mutation"
+  | "asset_upload";
 
 export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> = {
   scan_start: { limit: 10, windowSeconds: 60 * 60 },
@@ -85,6 +88,14 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   // completing a claim writes locations/brand_profiles/workspace_usage and
   // a burst of retries from a stuck onboarding step should not hammer them.
   workspace_claim: { limit: 10, windowSeconds: 60 * 60 },
+  // Phase 4 workspace mutations (CLAUDE.md §3.2.3), keyed per session user
+  // plus the source-IP HMAC. action_run spends real LLM tokens on every call,
+  // so it is a runaway-cost guard like staff_fix_pack_generate; the other two
+  // are runaway-write guards for a stuck editor or upload form, not abuse
+  // boundaries (authorizeWorkspaceRequest is the boundary).
+  action_run: { limit: 30, windowSeconds: 60 * 60 },
+  action_mutation: { limit: 120, windowSeconds: 60 * 60 },
+  asset_upload: { limit: 30, windowSeconds: 60 * 60 },
 };
 
 export interface RateLimitDecision {
