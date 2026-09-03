@@ -1,3 +1,6 @@
+import type { ShellWorkspace } from "@/components/product-ui"
+import type { PrototypeLocale } from "@/lib/copy"
+
 export type Capability = "Live" | "Beta" | "Demo" | "Requires connection" | "Planned"
 export type ProviderState = "measured" | "unavailable" | "unsupported" | "failed" | "pending"
 export type ActionState = "recommended" | "needs_input" | "ready" | "in_progress" | "completed" | "dismissed" | "cancelled" | "expired"
@@ -39,6 +42,41 @@ export const merchant = {
   currency: "HKD",
   timezone: "Asia/Hong_Kong",
   demo: true,
+}
+
+/**
+ * The fixed Kam Man House sample the workspace chrome renders on
+ * /demo-workspace and the prototype bridge pages (guardrail 12). Real
+ * workspaces build a ShellWorkspace from the database (lib/workspace/shell.ts)
+ * and never read this. `demoShellWorkspaceFor` localises the location names
+ * and role label the way the prototype did inline.
+ */
+export const demoShellWorkspace: ShellWorkspace = {
+  slug: "kam-man-house",
+  name: "錦汶館",
+  avatarInitial: "錦",
+  locations: [
+    { slug: "yik-yam", name: "Yik Yam Street" },
+    { slug: "tin-hau", name: "Tin Hau" },
+  ],
+  defaultLocationSlug: "yik-yam",
+  usage: { approvedDeliveries: 5, allowance: 12 },
+  account: { name: "Willy Lai", email: "owner@example.com", roleLabel: "Owner" },
+  unreadNotifications: 3,
+  demo: true,
+  urgentActions: 3,
+}
+
+export function demoShellWorkspaceFor(locale: PrototypeLocale): ShellWorkspace {
+  const isChinese = locale !== "en"
+  return {
+    ...demoShellWorkspace,
+    locations: [
+      { slug: "yik-yam", name: isChinese ? "奕蔭街" : "Yik Yam Street" },
+      { slug: "tin-hau", name: isChinese ? "天后" : "Tin Hau" },
+    ],
+    account: { ...demoShellWorkspace.account, roleLabel: isChinese ? "店主" : "Owner" },
+  }
 }
 
 export const locations = [

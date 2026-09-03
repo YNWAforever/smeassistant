@@ -210,16 +210,25 @@ join pg_class ref on ref.oid=con.confrelid
 join pg_attribute att on att.attrelid=rel.oid and att.attnum=con.conkey[1]
 where con.contype='f' and ref.relname in ('audit_jobs','workspaces')
   and rel.relnamespace='public'::regnamespace order by 1;\"")
-EXPECTED="aeo_surface_snapshots.job_id=cascade
+EXPECTED="action_measurements.workspace_id=cascade
+action_runs.workspace_id=cascade
+actions.workspace_id=cascade
+aeo_surface_snapshots.job_id=cascade
 agent_runs.job_id=cascade
+assets.workspace_id=cascade
+audit_events.workspace_id=cascade
 audit_findings.job_id=cascade
 audit_jobs.parent_job_id=cascade
 audit_jobs.workspace_id=set null
+brand_profiles.workspace_id=cascade
 consent_records.job_id=cascade
+deliveries.workspace_id=cascade
 leads.job_id=cascade
+locations.workspace_id=cascade
 notification_events.job_id=set null
 notification_events.workspace_id=cascade
 oauth_connections.workspace_id=cascade
+output_versions.workspace_id=cascade
 report_access_grants.job_id=cascade
 report_evidence.job_id=cascade
 scan_diffs.base_job_id=cascade
@@ -227,12 +236,16 @@ scan_diffs.head_job_id=cascade
 scan_events.job_id=cascade
 scan_schedules.last_job_id=set null
 scan_schedules.workspace_id=set null
+scan_snapshots.job_id=cascade
+scan_snapshots.workspace_id=cascade
 staff_report_events.job_id=set null
 workspace_access_requests.job_id=cascade
 workspace_claim_events.job_id=set null
 workspace_claim_events.workspace_id=set null
 workspace_members.workspace_id=cascade
-workspace_tier_events.workspace_id=cascade"
+workspace_notifications.workspace_id=cascade
+workspace_tier_events.workspace_id=cascade
+workspace_usage.workspace_id=cascade"
 if [ "$ACTUAL" = "$EXPECTED" ]; then
   log "    ok  every reference has the intended on-delete action"
 else

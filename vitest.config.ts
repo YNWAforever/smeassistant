@@ -22,7 +22,9 @@ export default defineConfig({
     // Node by default. Vitest 4 removed `environmentMatchGlobs`, so DOM tests
     // opt in per file with a `// @vitest-environment jsdom` comment at the top.
     environment: "node",
-    include: ["tests/**/*.test.{ts,tsx}", "lib/**/*.test.{ts,tsx}", "app/**/*.test.{ts,tsx}"],
+    // test/integration holds the Docker harness; its own unit tests (jwt,
+    // websocket-shim, global-setup) run here, the *.integration.test.ts files do not.
+    include: ["tests/**/*.test.{ts,tsx}", "lib/**/*.test.{ts,tsx}", "app/**/*.test.{ts,tsx}", "test/**/*.test.{ts,tsx}"],
     // Playwright owns e2e/; packages/* run their own vitest via `pnpm -r test`;
     // *.integration.test.ts needs Docker and belongs to vitest.integration.config.ts.
     exclude: [...configDefaults.exclude, "e2e/**", ".next/**", "packages/**", "**/*.integration.test.ts"],

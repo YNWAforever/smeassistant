@@ -67,7 +67,29 @@ import {
 } from "@/components/ui/sidebar"
 import { copy, normaliseLocale, supportedLocales, type PrototypeLocale } from "@/lib/copy"
 import type { Capability, ProviderState } from "@/lib/demo-data"
+import { accountInitials, resolveLocationSlug, usagePercent } from "@/lib/workspace/shell"
 import { ContextualAssistant, type AssistantSurface } from "@/components/pocket-assistant/assistant-sheet"
+
+/**
+ * Everything the workspace chrome renders about the current workspace
+ * (CLAUDE.md Phase 2 item 6). Real pages build it from `loadWorkspaceContext`
+ * via `buildShellWorkspace`; the demo and prototype pages pass
+ * `demoShellWorkspace` from lib/demo-data.ts. The shell itself carries no
+ * workspace literal.
+ */
+export type ShellWorkspace = {
+  slug: string
+  name: string
+  avatarInitial: string
+  locations: Array<{ slug: string; name: string }>
+  defaultLocationSlug: string
+  usage: { approvedDeliveries: number; allowance: number | null }
+  account: { name: string; email: string; roleLabel: string }
+  unreadNotifications: number
+  demo: boolean
+  /** Open urgent actions, shown as the Actions nav badge; omitted or 0 hides it. */
+  urgentActions?: number
+}
 
 /**
  * Demo-surface only (CLAUDE.md §5 "Global"): /sample-report, /demo-workspace and
@@ -266,10 +288,9 @@ const primaryWorkspaceNav: ReadonlyArray<{
   label: string
   icon: typeof Home
   suffix: string
-  badge?: string
 }> = [
   { key: "home", label: "Home", icon: Home, suffix: "" },
-  { key: "actions", label: "Actions", icon: FileClock, suffix: "/actions", badge: "3" },
+  { key: "actions", label: "Actions", icon: FileClock, suffix: "/actions" },
   { key: "create", label: "Create", icon: WandSparkles, suffix: "/create" },
   { key: "insights", label: "Insights", icon: BarChart3, suffix: "/insights" },
 ]
@@ -284,15 +305,26 @@ const secondaryWorkspaceNav = [
   { label: "Plan & billing", icon: BadgeCheck, suffix: "/settings/billing" },
 ] as const
 
-export function WorkspaceShell({ locale, children }: { locale: PrototypeLocale; children: ReactNode }) {
+const englishSmallNumbers = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+
+function unreadLabel(count: number, isChinese: boolean) {
+  if (isChinese) return `通知，${count} 則未讀`
+  return `Notifications, ${englishSmallNumbers[count] ?? String(count)} unread`
+}
+
+export function WorkspaceShell({ locale, workspace, children }: { locale: PrototypeLocale; workspace: ShellWorkspace; children: ReactNode }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const t = copy[locale]
   const isChinese = locale !== "en"
-  const base = `/${locale}/owner/kam-man-house`
-  const location = ["all", "tin-hau", "yik-yam"].includes(searchParams.get("location") ?? "") ? searchParams.get("location")! : "yik-yam"
-  const locationName = isChinese ? (location === "all" ? "所有地點" : location === "tin-hau" ? "天后" : "奕蔭街") : (location === "all" ? "All locations" : location === "tin-hau" ? "Tin Hau" : "Yik Yam Street")
+  const base = `/${locale}/owner/${workspace.slug}`
+  const location = resolveLocationSlug(searchParams.get("location"), workspace.locations, workspace.defaultLocationSlug)
+  const locationName = location === "all"
+    ? (isChinese ? "所有地點" : "All locations")
+    : (workspace.locations.find((item) => item.slug === location)?.name ?? location)
   const scopedHref = (href: string) => `${href}${href.includes("?") ? "&" : "?"}location=${location}`
+  const usageShare = usagePercent(workspace.usage.approvedDeliveries, workspace.usage.allowance)
+  const actionsBadge = workspace.urgentActions && workspace.urgentActions > 0 ? String(workspace.urgentActions) : undefined
   const workspaceSection = pathname.includes("/actions/")
     ? (isChinese ? "審閱與審批" : "Review & approve")
     : pathname.endsWith("/actions")
@@ -345,8 +377,8 @@ export function WorkspaceShell({ locale, children }: { locale: PrototypeLocale; 
             <span><strong>Visibility</strong><small>Workspace</small></span>
           </Link>
           <Link className="workspace-switcher" href={`/${locale}/owner/select-workspace`} aria-label={isChinese ? "切換工作台或分店" : "Switch workspace or location"}>
-            <span className="workspace-avatar">錦</span>
-            <span><strong>錦汶館</strong><small>{locationName}</small></span>
+            <span className="workspace-avatar">{workspace.avatarInitial}</span>
+            <span><strong>{workspace.name}</strong><small>{locationName}</small></span>
             <ChevronDown aria-hidden="true" />
           </Link>
         </SidebarHeader>
@@ -355,9 +387,10 @@ export function WorkspaceShell({ locale, children }: { locale: PrototypeLocale; 
             <SidebarGroupLabel>{isChinese ? "今日工作" : "Operate"}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {primaryWorkspaceNav.map(({ label, icon: Icon, suffix, badge }) => {
+                {primaryWorkspaceNav.map(({ key, label, icon: Icon, suffix }) => {
                   const href = scopedHref(`${base}${suffix}`)
                   const active = suffix ? pathname.startsWith(href) : pathname === base || pathname === `/${locale}/owner`
+                  const badge = key === "actions" ? actionsBadge : undefined
                   return (
                     <SidebarMenuItem key={label}>
                       <SidebarMenuButton asChild isActive={active} tooltip={labelMap[label] ?? label}>
@@ -391,13 +424,13 @@ export function WorkspaceShell({ locale, children }: { locale: PrototypeLocale; 
         </SidebarContent>
         <SidebarFooter className="workspace-sidebar-footer">
           <div className="usage-mini">
-            <div><span>{isChinese ? "本月核准後交付" : "Approved deliveries"}</span><strong>5 / 12</strong></div>
-            <div className="usage-track"><span style={{ width: "42%" }} /></div>
+            <div><span>{isChinese ? "本月核准後交付" : "Approved deliveries"}</span><strong>{workspace.usage.approvedDeliveries} / {workspace.usage.allowance === null ? "∞" : workspace.usage.allowance}</strong></div>
+            {usageShare !== null && <div className="usage-track"><span style={{ width: `${usageShare}%` }} /></div>}
             <small>{isChinese ? "生成、修改或拒絕均不扣用量" : "Generation, revisions and rejection use no allowance"}</small>
           </div>
-          <button className="account-button" type="button">
-            <span className="account-avatar">WL</span>
-            <span><strong>Willy Lai</strong><small>{isChinese ? "店主" : "Owner"}</small></span>
+          <button className="account-button" type="button" title={workspace.account.email}>
+            <span className="account-avatar">{accountInitials(workspace.account.name)}</span>
+            <span><strong>{workspace.account.name}</strong><small>{workspace.account.roleLabel}</small></span>
             <MoreHorizontal aria-hidden="true" />
           </button>
         </SidebarFooter>
@@ -406,7 +439,7 @@ export function WorkspaceShell({ locale, children }: { locale: PrototypeLocale; 
         <header className="workspace-topbar">
           <div className="workspace-mobile-brand md:hidden">
             <span className="brand-mark" aria-hidden="true"><Search /></span>
-            <span><strong>{isChinese ? "能見度工作台" : "Visibility Workspace"}</strong><small>錦汶館 · {locationName}</small></span>
+            <span><strong>{isChinese ? "能見度工作台" : "Visibility Workspace"}</strong><small>{workspace.name} · {locationName}</small></span>
           </div>
           <div className="workspace-topbar-context hidden md:flex" aria-label={isChinese ? `目前區域：${workspaceSection}` : `Current section: ${workspaceSection}`}>
             <span>{isChinese ? "店主工作台" : "Owner workspace"}</span>
@@ -415,10 +448,10 @@ export function WorkspaceShell({ locale, children }: { locale: PrototypeLocale; 
           <div className="workspace-topbar-spacer" />
           <ContextualAssistant locale={locale} surface={assistantSurface} triggerLabel={isChinese ? "問增長助理" : "Ask operator"} />
           <Button asChild variant="ghost" size="icon" className="notification-button">
-            <Link href={`${base}/settings/notifications`} aria-label={isChinese ? "通知，3 則未讀" : "Notifications, three unread"}><Bell /><span className="notification-dot" /></Link>
+            <Link href={`${base}/settings/notifications`} aria-label={unreadLabel(workspace.unreadNotifications, isChinese)}><Bell />{workspace.unreadNotifications > 0 && <span className="notification-dot" />}</Link>
           </Button>
           <LocaleSelect locale={locale} />
-          <DemoBadge locale={locale} />
+          {workspace.demo && <DemoBadge locale={locale} />}
         </header>
         <main className="workspace-content">{children}</main>
         <nav className="mobile-bottom-nav md:hidden" aria-label={isChinese ? "工作台導覽" : "Workspace navigation"}>
@@ -469,7 +502,12 @@ export function PublicPageFrame({ locale, demo = false, children }: { locale: Pr
   )
 }
 
-export function WorkspacePageFrame({ locale, demo = false, children }: { locale: string; demo?: boolean; children: ReactNode }) {
+/**
+ * `demo` keeps the EnvironmentBar / `has-env-bar` behaviour (CLAUDE.md §5
+ * "Global"); `workspace` is the real (or demo) shell data — the frame never
+ * invents either.
+ */
+export function WorkspacePageFrame({ locale, workspace, demo = false, children }: { locale: string; workspace: ShellWorkspace; demo?: boolean; children: ReactNode }) {
   const safeLocale = normaliseLocale(locale)
   useEffect(() => {
     document.documentElement.lang = safeLocale === "zh-HK" ? "zh-HK" : safeLocale === "zh-TW" ? "zh-TW" : "en"
@@ -477,7 +515,7 @@ export function WorkspacePageFrame({ locale, demo = false, children }: { locale:
   return (
     <div className={`workspace-root${demo ? " has-env-bar" : ""}`}>
       <EnvironmentBar locale={safeLocale} show={demo} />
-      <WorkspaceShell locale={safeLocale}>{children}</WorkspaceShell>
+      <WorkspaceShell locale={safeLocale} workspace={workspace}>{children}</WorkspaceShell>
     </div>
   )
 }

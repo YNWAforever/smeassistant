@@ -23,7 +23,6 @@ import { getMarketConfig, type Market } from "@sme-scanner/region"
 import type { ScoreResult } from "@sme-scanner/scoring"
 
 export { LandingPage } from "@/components/landing-page"
-export { OnboardingPage } from "@/components/onboarding-page"
 export { ReportPage } from "@/components/report-view"
 export { ScanPage } from "@/components/scan-page"
 export { ScanningPage } from "@/components/scanning-page"

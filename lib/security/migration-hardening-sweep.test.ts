@@ -105,6 +105,13 @@ describe("migration hardening sweep", () => {
     // table was legitimately added, add it here AND confirm the hardening
     // assertions below still pass for it.
     expect(tables).toEqual([
+      // Added 2026-09-03 with 20260903000000_workspace_layer.sql (the whole
+      // Visibility Workspace layer, CLAUDE.md 3.3), each in alphabetical
+      // position below. The tripwire fired first, and the RLS/revoke/grant
+      // assertions below passed for every one before these lines existed.
+      "action_measurements",
+      "action_runs",
+      "actions",
       // Added 2026-08-24 with 20260824000000_aeo_surface_snapshots.sql. The
       // tripwire fired first, and the RLS/revoke/grant assertions below
       // passed for it before this line existed.
@@ -113,14 +120,24 @@ describe("migration hardening sweep", () => {
       // first, and the RLS/revoke/grant assertions below passed for it before
       // this line existed.
       "agent_runs",
+      // Added 2026-09-03 with 20260903000000_workspace_layer.sql.
+      "assets",
+      // Added 2026-09-03 with 20260903000000_workspace_layer.sql.
+      "audit_events",
       "audit_findings",
       "audit_jobs",
+      // Added 2026-09-03 with 20260903000000_workspace_layer.sql.
+      "brand_profiles",
       "consent_records",
+      // Added 2026-09-03 with 20260903000000_workspace_layer.sql.
+      "deliveries",
       // Added 2026-08-06 with 20260806000000_data_lifecycle.sql. Same order as
       // below: the tripwire fired, the RLS/revoke/grant assertions passed for it,
       // and only then was this line added.
       "erasure_events",
       "leads",
+      // Added 2026-09-03 with 20260903000000_workspace_layer.sql.
+      "locations",
       // Added 2026-08-20 with 20260820000000_notification_layer.sql. The
       // tripwire fired first, and the RLS/revoke/grant assertions below
       // passed for it before this line existed.
@@ -130,6 +147,8 @@ describe("migration hardening sweep", () => {
       // passed for them before this list was touched — which is the order the
       // comment above asks for.
       "oauth_connections",
+      // Added 2026-09-03 with 20260903000000_workspace_layer.sql.
+      "output_versions",
       "rate_limit_buckets",
       "report_access_grants",
       "report_evidence",
@@ -142,6 +161,8 @@ describe("migration hardening sweep", () => {
       // the comment above asks for: the tripwire fired first, and the
       // RLS/revoke/grant assertions below passed for it before this line existed.
       "scan_schedules",
+      // Added 2026-09-03 with 20260903000000_workspace_layer.sql.
+      "scan_snapshots",
       "staff_report_events",
       // Added 2026-08-15 with 20260815000000_workspace_access_requests.sql, in
       // the order the comment above asks for: the tripwire fired first, and the
@@ -155,10 +176,14 @@ describe("migration hardening sweep", () => {
       // tripwire fired first, and the RLS/revoke/grant assertions below
       // passed for it before this line existed.
       "workspace_members",
+      // Added 2026-09-03 with 20260903000000_workspace_layer.sql.
+      "workspace_notifications",
       // Added 2026-08-19 with 20260819000000_workspace_billing.sql. The
       // tripwire fired first, and the RLS/revoke/grant assertions below
       // passed for it before this line existed.
       "workspace_tier_events",
+      // Added 2026-09-03 with 20260903000000_workspace_layer.sql.
+      "workspace_usage",
       "workspaces",
     ]);
   });
@@ -304,6 +329,8 @@ describe("audit_jobs delete graph", () => {
       "scan_diffs.head_job_id",
       "scan_events.job_id",
       "scan_schedules.last_job_id",
+      // Added 2026-09-03 with 20260903000000_workspace_layer.sql.
+      "scan_snapshots.job_id",
       "staff_report_events.job_id",
       "workspace_access_requests.job_id",
       "workspace_claim_events.job_id",
@@ -351,6 +378,11 @@ describe("audit_jobs delete graph", () => {
       // relationship -- erase one report and the schedule that would have
       // produced next month's disappears with it, silently.
       "scan_schedules.last_job_id": "set null",
+      // cascade: a workspace snapshot is derived from one job's module_results
+      // (CLAUDE.md 3.3, "never a second score"); erasing the job leaves nothing
+      // for the snapshot to describe, and a dangling snapshot would keep the
+      // merchant's coverage/metrics alive after the takedown.
+      "scan_snapshots.job_id": "cascade",
       "staff_report_events.job_id": "set null",
       // cascade, unlike staff_report_events: a request is merchant-supplied data
       // about one report, not proof that Fimmick handled something. Erasing the

@@ -20,6 +20,7 @@
     "e2e": "playwright test",
     "test:secret-boundary": "node scripts/assert-secret-boundary.mjs",
     "db:verify": "bash supabase/verify-migrations.sh",
+    "db:types": "tsx scripts/gen-types.ts",
     "seed:demo": "tsx scripts/seed-demo.ts"
   },
   "dependencies": {

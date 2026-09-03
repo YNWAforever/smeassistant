@@ -5,17 +5,15 @@ import { Button } from "@/components/ui/button"
 import { normaliseLocale } from "@/lib/copy"
 import { resolveMarketParam } from "@/lib/funnel/pricing"
 import { sampleReportProps } from "@/lib/funnel/sample-report"
+import { demoShellWorkspaceFor } from "@/lib/demo-data"
 import { PublicPageFrame, WorkspacePageFrame } from "@/components/product-ui"
 import {
   LandingPage,
   MethodologyPage,
-  OnboardingPage,
   PricingPage,
   ReportPage,
   ScanPage,
   ScanningPage,
-  SelectWorkspacePage,
-  SignInPage,
   TrustPage,
   UnlockPage,
 } from "@/components/public-pages"
@@ -41,10 +39,7 @@ type PrototypeProps = {
   searchBusiness?: string
   searchMarket?: string
   searchRole?: string
-  searchClaim?: string
-  searchPlan?: string
   searchLocation?: string
-  signInHref?: string
 }
 
 function NotAvailable({ locale }: { locale: ReturnType<typeof normaliseLocale> }) {
@@ -64,7 +59,13 @@ function NotAvailable({ locale }: { locale: ReturnType<typeof normaliseLocale> }
   )
 }
 
-export function SmePrototype({ path, searchBusiness, searchMarket, searchRole, searchClaim, searchPlan, searchLocation, signInHref }: PrototypeProps) {
+/**
+ * Prototype dispatcher. Since Phase 2 the owner sign-in, onboarding and
+ * select-workspace pages have real routes under app/[locale]/owner/**, so they
+ * are no longer dispatched here; the remaining `kam-man-house` sub-pages keep
+ * rendering the fixed demo data until Phases 3–6 wire each one.
+ */
+export function SmePrototype({ path, searchBusiness, searchMarket, searchRole, searchLocation }: PrototypeProps) {
   const locale = normaliseLocale(path[0])
   const route = path.slice(1)
 
@@ -79,10 +80,6 @@ export function SmePrototype({ path, searchBusiness, searchMarket, searchRole, s
   if (route[0] === "pricing" && route.length === 1) return <PricingPage locale={locale} market={market} />
   if (route[0] === "methodology" && route.length === 1) return <MethodologyPage locale={locale} />
   if (route[0] === "trust" && route.length === 1) return <TrustPage locale={locale} />
-
-  if (route[0] === "owner" && route[1] === "sign-in" && route.length === 2) return <SignInPage locale={locale} signInHref={signInHref} plan={searchPlan} />
-  if (route[0] === "owner" && route[1] === "onboarding" && route.length === 2) return <OnboardingPage locale={locale} claim={searchClaim} plan={searchPlan} initialLocation={searchLocation} />
-  if (route[0] === "owner" && route[1] === "select-workspace" && route.length === 2) return <SelectWorkspacePage locale={locale} />
 
   if (route[0] === "owner" && route[1] === "kam-man-house") {
     const destination = route[2]
@@ -103,7 +100,7 @@ export function SmePrototype({ path, searchBusiness, searchMarket, searchRole, s
     else if (destination === "settings" && nested === "team") page = <TeamPage locale={locale} />
     else if (destination === "settings" && nested === "billing") page = <BillingPage locale={locale} />
     else if (destination === "settings" && nested === "notifications") page = <NotificationsPage locale={locale} />
-    if (page && route.length <= 4) return <WorkspacePageFrame locale={locale} demo>{page}</WorkspacePageFrame>
+    if (page && route.length <= 4) return <WorkspacePageFrame locale={locale} workspace={demoShellWorkspaceFor(locale)} demo>{page}</WorkspacePageFrame>
   }
 
   return <NotAvailable locale={locale} />

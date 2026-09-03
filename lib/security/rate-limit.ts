@@ -21,7 +21,8 @@ export type RateLimitScope =
   | "staff_lead_contact"
   | "staff_erasure"
   | "staff_consent_withdrawal"
-  | "staff_fix_pack_generate";
+  | "staff_fix_pack_generate"
+  | "workspace_claim";
 
 export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> = {
   scan_start: { limit: 10, windowSeconds: 60 * 60 },
@@ -78,6 +79,12 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   // Staff-authenticated, so this is a runaway-cost guard against repeat
   // clicks (each call spends real LLM tokens), not an abuse boundary.
   staff_fix_pack_generate: { limit: 20, windowSeconds: 60 * 60 },
+  // POST /api/workspaces/claim (this app). Session-authenticated and
+  // idempotent, so this is a runaway-write guard per user (keyed on the
+  // session user id plus the source-IP HMAC), not an abuse boundary:
+  // completing a claim writes locations/brand_profiles/workspace_usage and
+  // a burst of retries from a stuck onboarding step should not hammer them.
+  workspace_claim: { limit: 10, windowSeconds: 60 * 60 },
 };
 
 export interface RateLimitDecision {
