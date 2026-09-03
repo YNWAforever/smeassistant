@@ -27,8 +27,8 @@ const context: WorkspaceContext = {
     district: null,
   },
   locations: [
-    { id: "loc-2", slug: "tin-hau", name: "Tin Hau", address: null, district: null, isPrimary: false },
-    { id: "loc-1", slug: "yik-yam", name: "Yik Yam Street", address: null, district: null, isPrimary: true },
+    { id: "loc-2", slug: "tin-hau", name: "Tin Hau", address: null, district: null, isPrimary: false, placeId: null },
+    { id: "loc-1", slug: "yik-yam", name: "Yik Yam Street", address: null, district: null, isPrimary: true, placeId: null },
   ],
   usage: { period: "2026-09", approvedDeliveries: 5, allowance: 12 },
   unreadNotifications: 3,

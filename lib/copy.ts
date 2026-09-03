@@ -1,4 +1,6 @@
 export const supportedLocales = ["en", "zh-HK", "zh-TW"] as const
+import { workspaceEn, workspaceZhHK, workspaceZhTW, type WorkspaceCopy } from "@/lib/copy-workspace"
+
 export type PrototypeLocale = (typeof supportedLocales)[number]
 
 export function normaliseLocale(value: string | undefined): PrototypeLocale {
@@ -314,6 +316,7 @@ type Copy = {
     continue: string
   }
   funnel: FunnelCopy
+  workspace: WorkspaceCopy
 }
 
 const funnelEn: FunnelCopy = {
@@ -1221,6 +1224,7 @@ export const copy: Record<PrototypeLocale, Copy> = {
       continue: "Continue",
     },
     funnel: funnelEn,
+    workspace: workspaceEn,
   },
   "zh-HK": {
     language: "繁體中文（香港）",
@@ -1274,6 +1278,7 @@ export const copy: Record<PrototypeLocale, Copy> = {
       continue: "繼續",
     },
     funnel: funnelZhHK,
+    workspace: workspaceZhHK,
   },
   "zh-TW": {
     language: "繁體中文（台灣）",
@@ -1327,5 +1332,6 @@ export const copy: Record<PrototypeLocale, Copy> = {
       continue: "繼續",
     },
     funnel: funnelZhTW,
+    workspace: workspaceZhTW,
   },
 }

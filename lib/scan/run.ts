@@ -6,6 +6,7 @@ import {
 } from "@sme-scanner/scan-engine";
 import { persistEvidenceSnapshots } from "@/lib/evidence/persist";
 import { supabaseServer } from "@/lib/supabase/admin";
+import { postProcessWorkspaceScan } from "@/lib/workspace/post-process";
 import { createFixtureCollector, isScanFixtureName, type ScanFixtureName } from "./fixtures";
 
 export {
@@ -53,5 +54,11 @@ export function resolveScanCollector(env: NodeJS.ProcessEnv = process.env): Scan
  * source mode changes is the `collect` dependency.
  */
 export async function runScan(jobId: string, anonymousSessionId: string): Promise<ScanProcessResult> {
-  return processScan(jobId, anonymousSessionId, resolveScanCollector(), persistEvidenceSnapshots, supabaseServer());
+  const db = supabaseServer();
+  const result = await processScan(jobId, anonymousSessionId, resolveScanCollector(), persistEvidenceSnapshots, db);
+  // Workspace-linked jobs also get a snapshot and derived actions (Phase 3).
+  // postProcessWorkspaceScan checks the attachment and terminal status itself
+  // and never throws: the scan result the merchant sees is already final.
+  if (result.status === "done" || result.status === "partial") await postProcessWorkspaceScan(db, jobId);
+  return result;
 }

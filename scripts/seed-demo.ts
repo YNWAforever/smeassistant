@@ -26,6 +26,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { buildTrendDiffDeps, persistScanDiff, processScan } from "@sme-scanner/scan-engine";
 import { createFixtureCollector } from "../lib/scan/fixtures";
+import { buildSnapshot } from "../lib/workspace/snapshots";
 
 const WORKSPACE_ID = "d0000000-0000-4000-8000-000000000001";
 const LOCATION_YIK_YAM = "d0000000-0000-4000-8000-000000000011";
@@ -217,56 +218,22 @@ async function ensureDiff(db: SupabaseClient): Promise<{ id: string; comparable:
 }
 
 // 4. One snapshot per job.
-type JobRow = {
-  id: string;
-  status: string;
-  overall_score: number | null;
-  score_coverage: number | null;
-  scoring_version: string | null;
-  module_results: Record<string, { status?: string; confidence?: string; limitationCode?: string }> | null;
-  completed_at: string | null;
-  created_at: string;
-};
-
 async function seedSnapshot(
   db: SupabaseClient,
   snapshotId: string,
   jobId: string,
-  locationId: string,
-  link: { comparableTo: string | null; diffId: string | null },
+  _locationId: string,
+  _link: { comparableTo: string | null; diffId: string | null },
 ) {
-  const job = unwrap(
-    "read audit_jobs",
-    await db
-      .from("audit_jobs")
-      .select("id, status, overall_score, score_coverage, scoring_version, module_results, completed_at, created_at")
-      .eq("id", jobId)
-      .single(),
-  ) as JobRow;
-  const moduleStates = Object.fromEntries(
-    Object.entries(job.module_results ?? {}).map(([key, module]) => [
-      key,
-      { status: module.status ?? "unavailable", confidence: module.confidence ?? null, limitationCode: module.limitationCode ?? null },
-    ]),
-  );
-  await insertIfMissing(db, "scan_snapshots", "id", [
-    {
-      id: snapshotId,
-      job_id: jobId,
-      workspace_id: WORKSPACE_ID,
-      location_id: locationId,
-      market: "hk",
-      observed_at: job.completed_at ?? job.created_at,
-      scoring_version: job.scoring_version,
-      overall_score: job.overall_score,
-      coverage: job.score_coverage ?? 0,
-      module_states: moduleStates,
-      // Phase 3's lib/workspace/snapshots.ts recomputes metrics from module_results.
-      metrics: {},
-      comparable_to: link.comparableTo,
-      diff_id: link.diffId,
-    },
-  ]);
+  // lib/workspace/snapshots.ts derives module states, metrics, website checks
+  // and the scan_diffs linkage from the persisted job, exactly as production
+  // does after a scan. The location and link arguments are kept for the call
+  // sites' readability; the builder reads both from the job and scan_diffs.
+  const built = await buildSnapshot(db, jobId, { fetchWebsite: async () => ({ evaluated: 0, passed: 0, results: [] }) });
+  if (built.id !== snapshotId) {
+    // Pin the fixed demo id so the seeded actions can reference it idempotently.
+    unwrap("pin scan_snapshots id", await db.from("scan_snapshots").update({ id: snapshotId }).eq("id", built.id));
+  }
 }
 
 // 5. Actions and output versions, titles from lib/demo-data.ts.

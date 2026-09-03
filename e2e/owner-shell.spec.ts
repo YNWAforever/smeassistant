@@ -74,3 +74,30 @@ test.describe("magic link (local) → onboarding → workspace shell", () => {
     await expect(page.locator("main.auth-page .onboarding-choice")).toBeVisible();
   });
 });
+
+// Phase 3: the workspace data pages are real routes now (they redirect to
+// sign-in without a session), while the not-yet-ported sub-pages still come
+// from the prototype bridge and the public demo page is unchanged.
+for (const segment of ["actions", "insights", "activity", "calendar", "more", "settings/integrations", "settings/notifications"]) {
+  test(`/zh-HK/owner/kam-man-house/${segment} is a real route that requires sign-in`, async ({ page }) => {
+    await page.goto(`/zh-HK/owner/kam-man-house/${segment}`);
+    const url = new URL(page.url());
+    expect(url.pathname).toBe("/zh-HK/owner/sign-in");
+    // Without Supabase env the proxy gate is skipped and the layout-level membership check redirects,
+    // which knows the workspace but not the sub-path (Phase 2 behaviour).
+    expect(url.searchParams.get("returnTo")).toContain("/owner/kam-man-house");
+  });
+}
+
+test("/zh-HK/owner/kam-man-house/create still renders from the prototype bridge", async ({ page }) => {
+  const response = await page.goto("/zh-HK/owner/kam-man-house/create");
+  expect(response?.status()).toBe(200);
+  await expect(page.locator(".workspace-content")).toBeVisible();
+});
+
+test("/zh-HK/demo-workspace keeps the demo shell and the demo bar", async ({ page }) => {
+  const response = await page.goto("/zh-HK/demo-workspace");
+  expect(response?.status()).toBe(200);
+  await expect(page.locator("body")).toContainText("錦汶館");
+  await expect(page.locator(".prototype-bar")).toBeVisible();
+});

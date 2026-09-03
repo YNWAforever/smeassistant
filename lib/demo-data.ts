@@ -1,13 +1,10 @@
 import type { ShellWorkspace } from "@/components/product-ui"
 import type { PrototypeLocale } from "@/lib/copy"
 
-export type Capability = "Live" | "Beta" | "Demo" | "Requires connection" | "Planned"
-export type ProviderState = "measured" | "unavailable" | "unsupported" | "failed" | "pending"
-export type ActionState = "recommended" | "needs_input" | "ready" | "in_progress" | "completed" | "dismissed" | "cancelled" | "expired"
-export type RunState = "queued" | "running" | "succeeded" | "failed" | "cancelled" | "timed_out"
-export type ApprovalState = "draft" | "changes_requested" | "approved" | "rejected" | "superseded"
-export type DeliveryState = "not_requested" | "export_ready" | "exported" | "scheduled" | "publishing" | "published" | "failed" | "cancelled"
-export type MeasurementState = "not_eligible" | "awaiting_comparable_scan" | "measured" | "insufficient_coverage"
+// Domain enums live in lib/domain.ts (CLAUDE.md section 3.4); re-exported here unchanged.
+export type { ActionState, ApprovalState, Capability, DeliveryState, MeasurementState, ProviderState, RunState } from "@/lib/domain"
+import type { ActionState, ApprovalState, Capability, DeliveryState, MeasurementState, ProviderState, RunState } from "@/lib/domain"
+
 
 export type DemoAction = {
   id: string
