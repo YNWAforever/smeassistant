@@ -1,0 +1,71 @@
+name: CI
+
+# Same gate order as upstream sme-scanner (CLAUDE.md Phase 7): install, lint,
+# typecheck, unit, secret boundary, verify-migrations (postgresql-16),
+# integration (Docker), build, e2e on fixtures. Nothing here reaches a paid
+# provider or the shared Supabase project: SCAN_SOURCES=fixture and the
+# integration suite runs against its own Postgres + PostgREST containers.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SCAN_SOURCES: fixture
+      RATE_LIMIT_SECRET: ci-rate-limit-secret-not-for-production
+      NEXT_PUBLIC_SITE_URL: http://localhost:3100
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Installs the pnpm pinned by `packageManager`; must precede setup-node so
+      # `cache: pnpm` can resolve the store (see upstream's ci.yml for why a bare
+      # `corepack enable` does not work here).
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Assert server secrets never reach the client
+        run: pnpm test:secret-boundary
+
+      - name: Verify migrations
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-16
+          sudo bash ./supabase/verify-migrations.sh
+
+      - name: Integration tests (Docker Postgres + PostgREST)
+        run: pnpm test:integration
+
+      - name: Build
+        run: pnpm build
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: pnpm e2e

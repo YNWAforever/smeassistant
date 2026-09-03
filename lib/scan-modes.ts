@@ -102,9 +102,9 @@ export const SCAN_MODES: Record<ScanModeKey, ScanModeConfig> = {
       badge: { "zh-HK": "免費 AI 能見度診斷", en: "Free AI Visibility Audit", "zh-TW": "免費 AI 能見度診斷" },
       headline: { "zh-HK": "AI、Google、IG 都搵唔到你？", en: "Can AI, Google, and IG find your business?", "zh-TW": "AI、Google、IG 都找不到你？" },
       subheading: {
-        "zh-HK": "免費 30 秒 scan，即睇三大流量缺口。",
-        en: "Free 30-second scan. See your three biggest traffic gaps.",
-        "zh-TW": "免費 30 秒掃描，立即看見三大流量缺口。",
+        "zh-HK": "免費 scan，幾分鐘內即睇三大流量缺口。",
+        en: "Free scan. In a few minutes, see your three biggest traffic gaps.",
+        "zh-TW": "免費掃描，幾分鐘內看見三大流量缺口。",
       },
       checklist: { "zh-HK": sharedChecklistZh, en: sharedChecklistEn, "zh-TW": sharedChecklistTw },
       cta: { "zh-HK": "開始免費 Scan", en: "Start Free Scan", "zh-TW": "開始免費掃描" },

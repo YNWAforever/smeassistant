@@ -15,7 +15,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit && corepack pnpm -r typecheck",
-    "test": "vitest run && corepack pnpm -r test",
+    "test": "vitest run --exclude lib/evidence/safe-media.test.ts && vitest run lib/evidence/safe-media.test.ts && corepack pnpm -r test",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "e2e": "playwright test",
     "test:secret-boundary": "node scripts/assert-secret-boundary.mjs",
