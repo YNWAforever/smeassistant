@@ -85,7 +85,7 @@ describe("POST /api/workspaces/claim", () => {
       timezone: "Asia/Hong_Kong",
       locale: "zh-HK",
       userId: "user-1",
-    });
+    }, expect.objectContaining({ buildSnapshot: expect.any(Function), deriveActions: expect.any(Function) }));
     // Rate limited per user (10/h), failing closed.
     expect(mocks.enforceRateLimit).toHaveBeenCalledWith(
       expect.objectContaining({ scope: "workspace_claim", identifiers: ["user-1"], failClosed: true }),

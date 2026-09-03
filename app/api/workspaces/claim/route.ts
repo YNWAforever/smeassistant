@@ -3,7 +3,9 @@ import { getUser } from "@/lib/auth";
 import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
 import { supabaseServer } from "@/lib/supabase/admin";
+import { deriveActionsForSnapshot } from "@/lib/workspace/actions";
 import { completeWorkspaceClaim, isValidTimezone, type ClaimMarket } from "@/lib/workspace/claim";
+import { buildSnapshot, loadSnapshotForJob } from "@/lib/workspace/snapshots";
 
 /**
  * POST /api/workspaces/claim (CLAUDE.md §3.2.3).
@@ -102,7 +104,19 @@ export async function POST(req: Request) {
   if (!limit.allowed) return rateLimitedResponse(limit.retryAfterSeconds);
 
   try {
-    const result = await completeWorkspaceClaim(supabaseServer(), { ...parsed.body, userId: user.id });
+    const db = supabaseServer();
+    // Phase 3 seam (CLAUDE.md Phase 2 item 3): build the snapshot for the
+    // claimed job, then derive its actions. Both are idempotent, so a retry of
+    // this route after a partial failure converges.
+    const result = await completeWorkspaceClaim(db, { ...parsed.body, userId: user.id }, {
+      buildSnapshot: async (jobId) => {
+        await buildSnapshot(db, jobId);
+      },
+      deriveActions: async (jobId) => {
+        const snapshot = await loadSnapshotForJob(db, jobId);
+        if (snapshot) await deriveActionsForSnapshot(db, snapshot.id);
+      },
+    });
     switch (result.kind) {
       case "completed":
         return NextResponse.json({ ok: true, workspaceSlug: result.workspaceSlug, locationId: result.locationId });

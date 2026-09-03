@@ -56,3 +56,26 @@ export type DemoAssistantRunResponse = {
 export function isDemoQuestionId(value: unknown): value is DemoQuestionId {
   return typeof value === "string" && demoQuestionIds.includes(value as DemoQuestionId)
 }
+
+/** Where the assistant was opened from; decides which intents are offered (§3.8). */
+export type AssistantSurface = "sample" | "report" | "home" | "actions" | "action" | "create" | "insights" | "assets" | "rescan" | "workspace"
+
+export type AssistantMode = "demo" | "live"
+
+/** Live-mode context: which workspace rows the answer may cite. Demo mode ignores it. */
+export type AssistantContext = {
+  workspaceId: string
+  locationId?: string
+  snapshotId?: string
+  actionId?: string
+  versionId?: string
+}
+
+/** Request body for `POST /api/assistant/run` (§3.8). */
+export type AssistantRunRequest = {
+  mode: AssistantMode
+  surface: AssistantSurface
+  intentId: DemoQuestionId
+  locale: "zh-HK" | "zh-TW" | "en"
+  context?: AssistantContext
+}

@@ -34,6 +34,7 @@ export type LocationSummary = {
   address: string | null;
   district: string | null;
   isPrimary: boolean;
+  placeId: string | null;
 };
 
 export type UsageSummary = { period: string; approvedDeliveries: number; allowance: number | null };
@@ -88,6 +89,7 @@ interface LocationRow {
   address: string | null;
   district: string | null;
   is_primary: boolean | null;
+  place_id?: string | null;
 }
 
 interface UsageRow {
@@ -103,7 +105,7 @@ interface SnapshotRow {
 }
 
 const WORKSPACE_COLUMNS = "id, slug, business_name, market, tier, timezone, is_demo, instagram_handle, industry, district";
-const LOCATION_COLUMNS = "id, workspace_id, slug, name, address, district, is_primary";
+const LOCATION_COLUMNS = "id, workspace_id, slug, name, address, district, is_primary, place_id";
 
 /** 'YYYY-MM' in the workspace's timezone (§3.10). An unknown IANA name falls back to UTC rather than throwing. */
 export function currentPeriod(timezone: string, now: Date = new Date()): string {
@@ -155,6 +157,7 @@ function summariseLocation(row: LocationRow): LocationSummary {
     address: row.address ?? null,
     district: row.district ?? null,
     isPrimary: Boolean(row.is_primary),
+    placeId: row.place_id ?? null,
   };
 }
 

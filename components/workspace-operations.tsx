@@ -28,6 +28,7 @@ import { CapabilityBadge, FactType, PageIntro, SectionCard } from "@/components/
 import type { PrototypeLocale } from "@/lib/copy"
 import { activity, analyticsEvents, comparableScans, integrations } from "@/lib/demo-data"
 import type { DemoAssistantRunResponse, DemoQuestionId } from "@/lib/pocket-assistant/contracts"
+import { downloadText } from "@/lib/download"
 
 const goals = [
   { id: "reviews", icon: MessageSquareText, en: "Reply to reviews", zh: "回覆評論", detailEn: "Prepare seven evidence-linked replies", detailZh: "準備 7 則連結原始證據的回覆", reasonEn: "Response rate fell from 31% to 18%", reasonZh: "回覆率由 31% 降至 18%", effortEn: "About 10 minutes to review", effortZh: "店主約需 10 分鐘審閱", recommended: true },
@@ -35,16 +36,6 @@ const goals = [
   { id: "faq", icon: Search, en: "Improve search visibility", zh: "改善搜尋能見度", detailEn: "Draft a private-dining FAQ", detailZh: "準備私人宴會常見問題", reasonEn: "Three high-intent questions have no supported answer", reasonZh: "3 個高意向問題仍沒有可靠答案", effortEn: "About 15 minutes after facts are supplied", effortZh: "提供資料後約需 15 分鐘", recommended: true },
   { id: "translation", icon: Languages, en: "Translate the menu", zh: "翻譯餐牌", detailEn: "Prepare bilingual menu labels", detailZh: "準備雙語餐牌標籤", reasonEn: "9 of 24 items lack English labels", reasonZh: "24 個項目中有 9 個缺少英文標籤", effortEn: "About 20 minutes to confirm facts", effortZh: "約需 20 分鐘確認資料", recommended: false },
 ] as const
-
-function downloadText(filename: string, content: string, type = "text/plain;charset=utf-8") {
-  const blob = new Blob([content], { type })
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement("a")
-  anchor.href = url
-  anchor.download = filename
-  anchor.click()
-  URL.revokeObjectURL(url)
-}
 
 export function CreatePage({ locale }: { locale: PrototypeLocale }) {
   const isChinese = locale !== "en"
@@ -65,10 +56,10 @@ export function CreatePage({ locale }: { locale: PrototypeLocale }) {
       translation: "generate_menu",
     }
     try {
-      const response = await fetch("/api/pocket-assistant/demo", {
+      const response = await fetch("/api/assistant/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionId: questionId[selected.id], locale, sampleId: "demo-kam-man-house" }),
+        body: JSON.stringify({ mode: "demo", surface: "create", intentId: questionId[selected.id], locale }),
       })
       if (!response.ok) throw new Error("assistant_run_failed")
       const result = await response.json() as DemoAssistantRunResponse

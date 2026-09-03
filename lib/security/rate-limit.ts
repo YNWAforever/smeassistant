@@ -22,7 +22,13 @@ export type RateLimitScope =
   | "staff_erasure"
   | "staff_consent_withdrawal"
   | "staff_fix_pack_generate"
-  | "workspace_claim";
+  | "workspace_claim"
+  | "action_run"
+  | "action_mutation"
+  | "asset_upload"
+  | "assistant_run"
+  | "rescan"
+  | "brand_update";
 
 export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> = {
   scan_start: { limit: 10, windowSeconds: 60 * 60 },
@@ -85,6 +91,30 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   // completing a claim writes locations/brand_profiles/workspace_usage and
   // a burst of retries from a stuck onboarding step should not hammer them.
   workspace_claim: { limit: 10, windowSeconds: 60 * 60 },
+  // Phase 4 workspace mutations (CLAUDE.md §3.2.3), keyed per session user
+  // plus the source-IP HMAC. action_run spends real LLM tokens on every call,
+  // so it is a runaway-cost guard like staff_fix_pack_generate; the other two
+  // are runaway-write guards for a stuck editor or upload form, not abuse
+  // boundaries (authorizeWorkspaceRequest is the boundary).
+  action_run: { limit: 30, windowSeconds: 60 * 60 },
+  action_mutation: { limit: 120, windowSeconds: 60 * 60 },
+  asset_upload: { limit: 30, windowSeconds: 60 * 60 },
+  // POST /api/assistant/run in live mode (CLAUDE.md §3.8), keyed per session
+  // user plus the source-IP HMAC. Template intents are cheap reads but the
+  // draft intents spend LLM tokens, so this is a runaway-cost guard sized for a
+  // chatty sheet session (one question a minute), not an abuse boundary.
+  assistant_run: { limit: 60, windowSeconds: 60 * 60 },
+  // POST /api/workspaces/[id]/rescan (CLAUDE.md §3.2.3, Phase 6): keyed on the
+  // *workspace* id (the route passes it as the identifier) plus the source-IP
+  // HMAC, so the 3/day budget is shared by every member of the workspace. A
+  // rescan spends real provider calls and the monthly schedule already covers
+  // the routine cadence; three on-demand runs a day is a "did my fix land
+  // yet" allowance, not a monitoring channel.
+  rescan: { limit: 3, windowSeconds: 24 * 60 * 60 },
+  // PUT /api/workspaces/[id]/brand: owner-only upsert of a single row, keyed
+  // per session user. A runaway-write guard for a stuck settings form, not an
+  // abuse boundary.
+  brand_update: { limit: 30, windowSeconds: 60 * 60 },
 };
 
 export interface RateLimitDecision {

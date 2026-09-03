@@ -59,6 +59,11 @@ export function defaultLocationSlug(locations: ReadonlyArray<{ slug: string; isP
   return locations.find((location) => location.isPrimary)?.slug ?? locations[0]?.slug ?? "all";
 }
 
+/** The id behind `defaultLocationSlug`; undefined for a workspace without locations. */
+export function defaultLocationId(locations: ReadonlyArray<{ id: string; isPrimary?: boolean }>): string | undefined {
+  return locations.find((location) => location.isPrimary)?.id ?? locations[0]?.id;
+}
+
 /**
  * `scan_snapshots.coverage` is copied from `audit_jobs.score_coverage`, a 0–1
  * fraction; older rows may already hold a percentage. Render both as a whole
@@ -81,6 +86,7 @@ export function buildShellWorkspace(
   extras: { urgentActions?: number } = {},
 ): ShellWorkspace {
   const { workspace, locations, usage, unreadNotifications, membership, account } = context;
+  const locationId = defaultLocationId(locations);
   return {
     slug: workspace.slug,
     name: workspace.name,
@@ -92,5 +98,7 @@ export function buildShellWorkspace(
     unreadNotifications,
     demo: workspace.isDemo,
     ...(extras.urgentActions !== undefined ? { urgentActions: extras.urgentActions } : {}),
+    // Real shells always carry the ids the topbar assistant needs for live mode (§3.8).
+    assistant: { workspaceId: workspace.id, ...(locationId ? { locationId } : {}) },
   };
 }
