@@ -1,4 +1,6 @@
 import { authorizeVersionMutation, json, readJson } from "@/app/api/actions/_shared/mutation";
+import { localized } from "@/lib/domain";
+import { hasNotificationSince, notifyWorkspace, workspaceHomeHref } from "@/lib/workspace/notify";
 import { getUsage } from "@/lib/workspace/usage";
 import { exportVersion, VersionError } from "@/lib/workspace/versions";
 
@@ -27,6 +29,34 @@ export async function POST(req: Request, { params }: { params: Promise<{ version
     const { data: workspace, error } = await auth.db.from("workspaces").select("timezone, tier").eq("id", auth.scope.workspaceId).maybeSingle<{ timezone: string | null; tier: string | null }>();
     if (error) throw new Error("workspace lookup failed");
     const usage = await getUsage(auth.db, auth.scope.workspaceId, workspace?.timezone || "Asia/Hong_Kong", workspace?.tier === "paid" ? "paid" : "lite");
+    // In-app notices (Phase 6 item 4); both best-effort and never thrown. The
+    // delivery notice fires for a new delivery only (an idempotent retry
+    // returns the existing one); the allowance notice once per period.
+    if (delivery.kind === "exported") {
+      const home = await workspaceHomeHref(auth.db, auth.scope.workspaceId);
+      await notifyWorkspace(auth.db, {
+        workspaceId: auth.scope.workspaceId,
+        kind: "delivery.exported",
+        title: localized(mode === "copy" ? "Approved version copied" : "Approved version exported", mode === "copy" ? "已複製批准版本" : "已匯出批准版本"),
+        body: usage.allowance === null
+          ? localized(`${usage.approvedDeliveries} approved deliveries this period.`, `本期已批准交付 ${usage.approvedDeliveries} 項。`)
+          : localized(`${usage.approvedDeliveries} of ${usage.allowance} approved deliveries used this period.`, `本期已用 ${usage.approvedDeliveries} / ${usage.allowance} 項批准交付。`),
+        href: home ? `${home}/actions/${auth.scope.actionId}` : null,
+      });
+    }
+    if (usage.allowance !== null && usage.approvedDeliveries >= 0.8 * usage.allowance) {
+      const periodStart = `${usage.period}-01T00:00:00Z`;
+      if (!(await hasNotificationSince(auth.db, auth.scope.workspaceId, "usage.allowance_80", periodStart))) {
+        const home = await workspaceHomeHref(auth.db, auth.scope.workspaceId);
+        await notifyWorkspace(auth.db, {
+          workspaceId: auth.scope.workspaceId,
+          kind: "usage.allowance_80",
+          title: localized("80% of this period's delivery allowance used", "本期交付額度已使用 80%"),
+          body: localized(`${usage.approvedDeliveries} of ${usage.allowance} approved deliveries used. Upgrade for unlimited deliveries.`, `已用 ${usage.approvedDeliveries} / ${usage.allowance} 項批准交付。升級即可無限交付。`),
+          href: home ? `${home}/settings/billing` : null,
+        });
+      }
+    }
     return json({
       deliveryId: delivery.deliveryId,
       counted: delivery.counted,

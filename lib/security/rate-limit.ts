@@ -26,7 +26,9 @@ export type RateLimitScope =
   | "action_run"
   | "action_mutation"
   | "asset_upload"
-  | "assistant_run";
+  | "assistant_run"
+  | "rescan"
+  | "brand_update";
 
 export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> = {
   scan_start: { limit: 10, windowSeconds: 60 * 60 },
@@ -102,6 +104,17 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   // draft intents spend LLM tokens, so this is a runaway-cost guard sized for a
   // chatty sheet session (one question a minute), not an abuse boundary.
   assistant_run: { limit: 60, windowSeconds: 60 * 60 },
+  // POST /api/workspaces/[id]/rescan (CLAUDE.md §3.2.3, Phase 6): keyed on the
+  // *workspace* id (the route passes it as the identifier) plus the source-IP
+  // HMAC, so the 3/day budget is shared by every member of the workspace. A
+  // rescan spends real provider calls and the monthly schedule already covers
+  // the routine cadence; three on-demand runs a day is a "did my fix land
+  // yet" allowance, not a monitoring channel.
+  rescan: { limit: 3, windowSeconds: 24 * 60 * 60 },
+  // PUT /api/workspaces/[id]/brand: owner-only upsert of a single row, keyed
+  // per session user. A runaway-write guard for a stuck settings form, not an
+  // abuse boundary.
+  brand_update: { limit: 30, windowSeconds: 60 * 60 },
 };
 
 export interface RateLimitDecision {

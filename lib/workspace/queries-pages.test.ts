@@ -16,6 +16,8 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock("server-only", () => ({}));
+const evidenceMock = vi.hoisted(() => ({ loadAuthorizedEvidence: vi.fn(async () => ({ items: [] as unknown[] })) }));
+vi.mock("@/lib/evidence/load-authorized", () => ({ loadAuthorizedEvidence: evidenceMock.loadAuthorizedEvidence }));
 vi.mock("@/lib/supabase/admin", () => ({
   supabaseServer: () => ({
     from: (table: string) => {
@@ -84,6 +86,20 @@ describe("getHomeBrief", () => {
     expect(brief.changed.factType).toBe("Unknown");
     expect(brief.openActions.length).toBe(2);
     expect(brief.locationSlug).toBe("all");
+    expect(brief.evidence).toEqual([]);
+  });
+
+  it("carries signed evidence for the snapshot's job (at most 6) and degrades to an empty gallery when the loader fails", async () => {
+    const item = { id: "ev-1", provider: "instagram", evidenceType: "post", sourceUrl: null, mediaUrl: "https://x.test/signed", capturedAt: "2026-09-01T00:00:00Z", publishedAt: null, text: null, metadata: {}, status: "stored", limitationCode: null };
+    evidenceMock.loadAuthorizedEvidence.mockResolvedValueOnce({ items: Array.from({ length: 8 }, (_, i) => ({ ...item, id: `ev-${i}` })) });
+    const brief = await getHomeBrief(ctx, "yik-yam");
+    expect(evidenceMock.loadAuthorizedEvidence).toHaveBeenCalledWith("job-1");
+    expect(brief.evidence).toHaveLength(6);
+
+    evidenceMock.loadAuthorizedEvidence.mockRejectedValueOnce(new Error("evidence_signing_failed"));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect((await getHomeBrief(ctx, "yik-yam")).evidence).toEqual([]);
+    spy.mockRestore();
   });
 
   it("reads the change from scan_diffs and reports incomparable reasons", async () => {

@@ -1,6 +1,8 @@
 import { buildAeoTrendModel, type AeoSnapshotRow, type AeoTrendModel } from "@/lib/trends/aeo-trend-model";
 import { buildTrendModel, type StoredDiff, type TrendModel } from "@/lib/trends/history-model";
 import { CLOSED_ACTION_STATES, localized, type ActionState, type FactType, type LocalizedText } from "@/lib/domain";
+import { loadAuthorizedEvidence } from "@/lib/evidence/load-authorized";
+import type { EvidenceGalleryItem } from "@/lib/report/view-model";
 import { supabaseServer } from "@/lib/supabase/admin";
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { currentPeriod, type LocationSummary, type WorkspaceContext } from "@/lib/workspace/queries";
@@ -49,6 +51,22 @@ export interface HomeBrief {
   agentStrip: { scout: boolean; priority: boolean; drafts: number; awaiting: number };
   ledger: { resolved: string[]; regressed: string[]; decayed: string[] };
   integrations: IntegrationsModel;
+  /** Signed evidence (300 s URLs) for the snapshot's job, newest first, at most HOME_EVIDENCE_LIMIT; empty when none or unavailable. */
+  evidence: EvidenceGalleryItem[];
+}
+
+export const HOME_EVIDENCE_LIMIT = 6;
+
+/** Best-effort: the Home brief must render even when the evidence bucket is unreachable. */
+export async function loadHomeEvidence(jobId: string | null): Promise<EvidenceGalleryItem[]> {
+  if (!jobId) return [];
+  try {
+    const gallery = await loadAuthorizedEvidence(jobId);
+    return gallery.items.slice(0, HOME_EVIDENCE_LIMIT);
+  } catch (cause) {
+    console.error("[workspace/home] evidence unavailable", { category: "home_evidence_failed", message: cause instanceof Error ? cause.message : "unknown" });
+    return [];
+  }
 }
 
 export interface ActionFilters {
@@ -376,7 +394,7 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
   const proofRow = proofResult.data?.[0] ?? null;
   const drafts = draftsResult.data?.length ?? 0;
   const completed = completedResult.data ?? [];
-  const integrations = await getIntegrations(ctx, snapshot);
+  const [integrations, evidence] = await Promise.all([getIntegrations(ctx, snapshot), loadHomeEvidence(snapshot?.jobId ?? null)]);
 
   return {
     locationSlug: location ? location.slug : "all",
@@ -408,6 +426,7 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
     agentStrip: { scout: Boolean(snapshot), priority: openActions.length > 0, drafts, awaiting: drafts },
     ledger: diff ? { resolved: diff.resolved_findings, regressed: diff.regressed_findings, decayed: diff.decayed_findings } : { resolved: [], regressed: [], decayed: [] },
     integrations,
+    evidence,
   };
 }
 

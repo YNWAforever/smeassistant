@@ -56,9 +56,12 @@ export function resolveScanCollector(env: NodeJS.ProcessEnv = process.env): Scan
 export async function runScan(jobId: string, anonymousSessionId: string): Promise<ScanProcessResult> {
   const db = supabaseServer();
   const result = await processScan(jobId, anonymousSessionId, resolveScanCollector(), persistEvidenceSnapshots, db);
-  // Workspace-linked jobs also get a snapshot and derived actions (Phase 3).
-  // postProcessWorkspaceScan checks the attachment and terminal status itself
-  // and never throws: the scan result the merchant sees is already final.
-  if (result.status === "done" || result.status === "partial") await postProcessWorkspaceScan(db, jobId);
+  // Workspace-linked jobs also get a snapshot and derived actions (Phase 3),
+  // measurements and an in-app notification (Phase 6); a failed workspace scan
+  // gets the notification only. postProcessWorkspaceScan checks the
+  // attachment and terminal status itself and never throws: the scan result
+  // the merchant sees is already final. `already_claimed` means another
+  // runner owns the job and will post-process it.
+  if (result.status !== "already_claimed") await postProcessWorkspaceScan(db, jobId);
   return result;
 }

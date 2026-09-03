@@ -161,3 +161,55 @@ export function exportVersion(versionId: string, mode: ExportMode): Promise<Clie
   const idempotency_key = idempotencyKeyFor(versionId, mode);
   return post(`/api/versions/${encodeURIComponent(versionId)}/export`, { mode, idempotency_key });
 }
+
+// ---------------------------------------------------------------------------
+// Phase 6: rescan, notification preferences, team, brand, Instagram handle
+// (CONTRACT-6 "UI contracts"). Same never-throw result shape as above.
+// ---------------------------------------------------------------------------
+
+export type RescanResult = { jobId: string };
+export type NotificationPreferences = { notifyRescanComplete?: boolean; notifyRegressionAlert?: boolean; notifyMonthlyDigest?: boolean };
+export type InviteMemberResult = { memberId: string };
+export type MemberPatch = { role?: "manager" | "viewer"; location_scope?: string[] | null };
+export type BrandInput = { voice: string; approved_claims: string[]; prohibited_terms: string[]; languages: string[]; facts: Record<string, string> };
+export type ConfirmInstagramHandleResult = { ok: true; handle: string };
+
+function patch<T>(url: string, body: unknown): Promise<ClientResult<T>> {
+  return request<T>(url, { method: "PATCH", headers: JSON_HEADERS, body: JSON.stringify(body ?? {}) });
+}
+
+/**
+ * Enqueues a rescan for one location, then asks the process route to start
+ * it (the same two-step the scan funnel uses). A failed process call still
+ * returns the jobId: the job is queued and the scanning page polls it.
+ */
+export async function rescanLocation(workspaceId: string, locationId: string): Promise<ClientResult<RescanResult>> {
+  const queued = await post<RescanResult>(`/api/workspaces/${encodeURIComponent(workspaceId)}/rescan`, { locationId });
+  if (!queued.ok) return queued;
+  await post("/api/scan/process", { jobId: queued.data.jobId });
+  return queued;
+}
+
+export function saveNotificationPreferences(workspaceId: string, prefs: NotificationPreferences): Promise<ClientResult<{ ok: true }>> {
+  return patch(`/api/workspaces/${encodeURIComponent(workspaceId)}/notification-preferences`, prefs);
+}
+
+export function inviteMember(workspaceId: string, body: { email: string; role: "manager" | "viewer"; locale?: string }): Promise<ClientResult<InviteMemberResult>> {
+  return post(`/api/workspaces/${encodeURIComponent(workspaceId)}/members`, body);
+}
+
+export function removeMember(workspaceId: string, memberId: string): Promise<ClientResult<{ ok: true }>> {
+  return request(`/api/workspaces/${encodeURIComponent(workspaceId)}/members?memberId=${encodeURIComponent(memberId)}`, { method: "DELETE" });
+}
+
+export function updateMember(workspaceId: string, memberId: string, body: MemberPatch): Promise<ClientResult<{ ok: true }>> {
+  return patch(`/api/workspaces/${encodeURIComponent(workspaceId)}/members/${encodeURIComponent(memberId)}`, body);
+}
+
+export function saveBrand(workspaceId: string, brand: BrandInput): Promise<ClientResult<{ ok: true }>> {
+  return request(`/api/workspaces/${encodeURIComponent(workspaceId)}/brand`, { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify(brand) });
+}
+
+export function confirmInstagramHandle(workspaceId: string, handle: string, locale?: string): Promise<ClientResult<ConfirmInstagramHandleResult>> {
+  return post(`/api/workspaces/${encodeURIComponent(workspaceId)}/instagram-handle`, locale ? { handle, locale } : { handle });
+}

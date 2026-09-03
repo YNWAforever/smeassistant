@@ -34,6 +34,7 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
         brief={brief}
         demo={page.ctx.workspace.isDemo}
         fixPack={{ workspaceId: page.ctx.workspace.id, role: page.membership.role }}
+        role={page.membership.role}
       />
     </>
   );

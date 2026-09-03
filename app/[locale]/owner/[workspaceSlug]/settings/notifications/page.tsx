@@ -13,5 +13,5 @@ export async function generateMetadata(props: OwnerPageProps): Promise<Metadata>
 export default async function NotificationsRoute(props: OwnerPageProps) {
   const page = await loadOwnerPage(props);
   const model = await getNotifications(page.ctx);
-  return <NotificationsView locale={page.locale} timezone={page.ctx.workspace.timezone} model={model} />;
+  return <NotificationsView locale={page.locale} workspaceId={page.ctx.workspace.id} timezone={page.ctx.workspace.timezone} model={model} />;
 }

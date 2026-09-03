@@ -3,16 +3,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   approveVersion,
+  confirmInstagramHandle,
   createObjectiveAction,
   decideVersion,
   exportVersion,
   forgetIdempotencyKey,
   idempotencyKeyFor,
+  inviteMember,
   mintIdempotencyKey,
+  removeMember,
+  rescanLocation,
   runAction,
+  saveBrand,
+  saveNotificationPreferences,
   saveVersion,
   setAssetRights,
   updateAction,
+  updateMember,
   uploadAsset,
 } from "./client";
 
@@ -148,5 +155,71 @@ describe("export idempotency key", () => {
       Object.defineProperty(window, "sessionStorage", { configurable: true, value: original });
       forgetIdempotencyKey("v7", "copy");
     }
+  });
+});
+
+describe("phase 6 helpers", () => {
+  it("rescans: POSTs the rescan route, then the process route with the new jobId", async () => {
+    fetchMock.mockResolvedValueOnce(reply(200, { jobId: "job-2" })).mockResolvedValueOnce(reply(202, { ok: true }));
+    const result = await rescanLocation("ws", "loc-1");
+    expect(result).toEqual({ ok: true, data: { jobId: "job-2" } });
+    const [first, second] = fetchMock.mock.calls as Array<[string, RequestInit]>;
+    expect(first[0]).toBe("/api/workspaces/ws/rescan");
+    expect(JSON.parse(String(first[1].body))).toEqual({ locationId: "loc-1" });
+    expect(second[0]).toBe("/api/scan/process");
+    expect(JSON.parse(String(second[1].body))).toEqual({ jobId: "job-2" });
+  });
+
+  it("rescans: surfaces the tier gate without calling the process route", async () => {
+    fetchMock.mockResolvedValueOnce(reply(403, { error: "tier_required" }));
+    expect(await rescanLocation("ws", "loc-1")).toEqual({ ok: false, status: 403, error: "tier_required" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("rescans: still returns the jobId when the process call fails (the job stays queued)", async () => {
+    fetchMock.mockResolvedValueOnce(reply(200, { jobId: "job-3" })).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    expect(await rescanLocation("ws", "loc-1")).toEqual({ ok: true, data: { jobId: "job-3" } });
+  });
+
+  it("patches notification preferences with the route's camelCase body", async () => {
+    fetchMock.mockResolvedValue(reply(200, { ok: true }));
+    await saveNotificationPreferences("ws", { notifyRescanComplete: true, notifyMonthlyDigest: false });
+    expect(lastCall().url).toBe("/api/workspaces/ws/notification-preferences");
+    expect(lastCall().init.method).toBe("PATCH");
+    expect(JSON.parse(String(lastCall().init.body))).toEqual({ notifyRescanComplete: true, notifyMonthlyDigest: false });
+  });
+
+  it("invites, updates and removes members on the contract paths", async () => {
+    fetchMock.mockResolvedValue(reply(201, { memberId: "m1" }));
+    expect(await inviteMember("ws", { email: "may@example.com", role: "manager", locale: "zh-HK" })).toEqual({ ok: true, data: { memberId: "m1" } });
+    expect(lastCall().url).toBe("/api/workspaces/ws/members");
+    expect(JSON.parse(String(lastCall().init.body))).toEqual({ email: "may@example.com", role: "manager", locale: "zh-HK" });
+
+    fetchMock.mockResolvedValue(reply(200, { ok: true }));
+    await updateMember("ws", "m1", { location_scope: ["loc-1"] });
+    expect(lastCall().url).toBe("/api/workspaces/ws/members/m1");
+    expect(lastCall().init.method).toBe("PATCH");
+    expect(JSON.parse(String(lastCall().init.body))).toEqual({ location_scope: ["loc-1"] });
+
+    await removeMember("ws", "m1");
+    expect(lastCall().url).toBe("/api/workspaces/ws/members?memberId=m1");
+    expect(lastCall().init.method).toBe("DELETE");
+
+    fetchMock.mockResolvedValue(reply(409, { error: "already invited" }));
+    expect(await inviteMember("ws", { email: "may@example.com", role: "viewer" })).toEqual({ ok: false, status: 409, error: "already invited" });
+  });
+
+  it("PUTs the brand profile and POSTs the Instagram handle", async () => {
+    fetchMock.mockResolvedValue(reply(200, { ok: true }));
+    const brand = { voice: "warm", approved_claims: ["20 seats"], prohibited_terms: ["best"], languages: ["zh-HK", "en"], facts: { seats: "20" } };
+    await saveBrand("ws", brand);
+    expect(lastCall().url).toBe("/api/workspaces/ws/brand");
+    expect(lastCall().init.method).toBe("PUT");
+    expect(JSON.parse(String(lastCall().init.body))).toEqual(brand);
+
+    fetchMock.mockResolvedValue(reply(200, { ok: true, handle: "kammanhouse" }));
+    expect(await confirmInstagramHandle("ws", "@KamManHouse")).toEqual({ ok: true, data: { ok: true, handle: "kammanhouse" } });
+    expect(lastCall().url).toBe("/api/workspaces/ws/instagram-handle");
+    expect(JSON.parse(String(lastCall().init.body))).toEqual({ handle: "@KamManHouse" });
   });
 });

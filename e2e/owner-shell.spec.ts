@@ -75,10 +75,11 @@ test.describe("magic link (local) → onboarding → workspace shell", () => {
   });
 });
 
-// Phase 3/4: the workspace pages are real routes now (they redirect to
-// sign-in without a session); only settings/{brand,team} still come from the
-// prototype bridge until Phase 6, and the public demo page is unchanged.
-for (const segment of ["actions", "insights", "activity", "calendar", "more", "create", "assets", "settings/integrations", "settings/notifications", "settings/billing"]) {
+// Phase 3-6: every workspace page is a real route now (they redirect to
+// sign-in without a session). The prototype bridge (`app/[...path]`) is gone,
+// so nothing under /owner/<slug>/* can render demo data; the public demo page
+// keeps its own route.
+for (const segment of ["actions", "insights", "activity", "calendar", "more", "create", "assets", "settings/integrations", "settings/notifications", "settings/billing", "settings/team", "settings/brand"]) {
   test(`/zh-HK/owner/kam-man-house/${segment} is a real route that requires sign-in`, async ({ page }) => {
     await page.goto(`/zh-HK/owner/kam-man-house/${segment}`);
     const url = new URL(page.url());
@@ -89,10 +90,12 @@ for (const segment of ["actions", "insights", "activity", "calendar", "more", "c
   });
 }
 
-test("/zh-HK/owner/kam-man-house/settings/brand still renders from the prototype bridge", async ({ page }) => {
-  const response = await page.goto("/zh-HK/owner/kam-man-house/settings/brand");
-  expect(response?.status()).toBe(200);
-  await expect(page.locator(".workspace-content")).toBeVisible();
+test("no /owner/kam-man-house/* path renders the prototype any more", async ({ page }) => {
+  // An unknown sub-page is a plain 404 (no catch-all), never a demo workspace page.
+  const response = await page.goto("/zh-HK/owner/kam-man-house/settings/unknown");
+  expect(response?.status()).toBe(404);
+  await expect(page.locator(".prototype-bar")).toHaveCount(0);
+  await expect(page.locator("body")).not.toContainText("錦汶館");
 });
 
 /**

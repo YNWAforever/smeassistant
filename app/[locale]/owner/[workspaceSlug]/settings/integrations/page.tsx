@@ -14,5 +14,5 @@ export async function generateMetadata(props: OwnerPageProps): Promise<Metadata>
 export default async function IntegrationsRoute(props: OwnerPageProps) {
   const page = await loadOwnerPage(props, { minRole: "owner" });
   const model = await getIntegrations(page.ctx);
-  return <IntegrationsView locale={page.locale} workspaceSlug={page.workspaceSlug} timezone={page.ctx.workspace.timezone} model={model} />;
+  return <IntegrationsView locale={page.locale} workspaceSlug={page.workspaceSlug} workspaceId={page.ctx.workspace.id} timezone={page.ctx.workspace.timezone} model={model} />;
 }

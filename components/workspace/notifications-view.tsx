@@ -2,20 +2,19 @@ import Link from "next/link"
 import { Bell, Check } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { PageIntro, SectionCard } from "@/components/product-ui"
+import { NotificationPreferencesForm } from "@/components/workspace/notifications-client"
 import type { PrototypeLocale } from "@/lib/copy"
 import { resolveText } from "@/lib/domain"
 import { formatDateTime } from "@/lib/workspace/format"
 import type { NotificationsModel } from "@/lib/workspace/queries-pages"
 
 /**
- * Email preferences are read from `workspaces.notify_*`; the toggles are
- * rendered disabled until Phase 6 wires the PATCH route into this page. In-app
- * rows come from `workspace_notifications` for the signed-in member.
+ * Email preferences are read from `workspaces.notify_*` and saved through the
+ * copied PATCH route (Phase 6, any accepted member). In-app rows come from
+ * `workspace_notifications` for the signed-in member.
  */
-export function NotificationsView({ locale, timezone, model }: { locale: PrototypeLocale; timezone: string; model: NotificationsModel }) {
+export function NotificationsView({ locale, workspaceId, timezone, model }: { locale: PrototypeLocale; workspaceId: string; timezone: string; model: NotificationsModel }) {
   const isChinese = locale !== "en"
   const unread = model.inApp.filter((n) => !n.read_at).length
   return (
@@ -25,12 +24,8 @@ export function NotificationsView({ locale, timezone, model }: { locale: Prototy
         <SectionCard>
           <p className="eyebrow">Email</p>
           <h2>{isChinese ? "營運更新" : "Operational updates"}</h2>
-          <div className="switch-list">
-            <Label htmlFor="rescan-alert"><Switch id="rescan-alert" checked={model.email.rescanComplete} disabled /><span><strong>{isChinese ? "重新掃描完成" : "Rescan complete"}</strong><small>{isChinese ? "每次掃描完成後一封電郵" : "One email when a scan finishes"}</small></span></Label>
-            <Label htmlFor="regression-alert"><Switch id="regression-alert" checked={model.email.regressionAlert} disabled /><span><strong>{isChinese ? "退步提示" : "Regression alert"}</strong><small>{isChinese ? "可比較掃描出現退步時" : "When a comparable scan regresses"}</small></span></Label>
-            <Label htmlFor="monthly-digest"><Switch id="monthly-digest" checked={model.email.monthlyDigest} disabled /><span><strong>{isChinese ? "每月摘要" : "Monthly digest"}</strong><small>{isChinese ? "每月一次的成效摘要" : "A monthly summary of what changed"}</small></span></Label>
-          </div>
-          <p className="limitation-note"><Check /> {isChinese ? "偏好設定在第 6 階段接上後可以修改。" : "Editing these preferences is wired in Phase 6."}</p>
+          <NotificationPreferencesForm locale={locale} workspaceId={workspaceId} initial={model.email} />
+          <p className="limitation-note"><Check /> {isChinese ? "電郵只在你選擇的事件發生時寄出；應用內通知不受影響。" : "Emails are sent only for the events you choose; in-app notifications are unaffected."}</p>
         </SectionCard>
         <SectionCard>
           <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "應用內" : "In-app"}</p><h2>{isChinese ? "通知" : "Notifications"}</h2></div><Badge variant="outline"><Bell /> {isChinese ? `${unread} 則未讀` : `${unread} unread`}</Badge></div>

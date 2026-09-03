@@ -5,8 +5,10 @@ import { ContextualAssistant } from "@/components/pocket-assistant/assistant-she
 import { CapabilityBadge, FactType, PageIntro, ScoreDial, SectionCard } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { EvidenceGallery } from "@/components/workspace/evidence-gallery"
 import { FixPackCard } from "@/components/workspace/fix-pack-card"
 import { LocationSelect } from "@/components/workspace/location-select"
+import { RescanButton } from "@/components/workspace/rescan-button"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { resolveText } from "@/lib/domain"
 import { effortLabel, findingLabel, formatDateTime, formatDay, metricLabel, priorityClass, priorityLabel, scorePercent, signed, withLocation } from "@/lib/workspace/format"
@@ -14,6 +16,10 @@ import { measuredPrimarySources } from "@/lib/workspace/module-states"
 import type { HomeBrief } from "@/lib/workspace/queries-pages"
 import type { ActionOverview } from "@/lib/workspace/overview"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
+import type { EvidenceGalleryItem } from "@/lib/report/view-model"
+
+/** Phase 6 adds `evidence` to the brief (Stream A); read defensively so the page renders either way. */
+type HomeBriefWithEvidence = HomeBrief & { evidence?: EvidenceGalleryItem[] | null }
 
 export interface HomeBriefViewProps {
   locale: PrototypeLocale
@@ -23,10 +29,12 @@ export interface HomeBriefViewProps {
   tier: "lite" | "paid"
   timezone: string
   locations: Array<{ slug: string; name: string }>
-  brief: HomeBrief
+  brief: HomeBriefWithEvidence
   demo?: boolean
   /** When present, the Fix Pack drafts card (agent_runs) renders after the secondary grid. */
   fixPack?: { workspaceId: string; role: WorkspaceRole }
+  /** The signed-in member's real role; drives the Rescan button (hidden for viewers). Omitted = no rescan control. */
+  role?: WorkspaceRole
 }
 
 function actionHref(locale: PrototypeLocale, slug: string, action: ActionOverview, location: string): string {
@@ -35,7 +43,7 @@ function actionHref(locale: PrototypeLocale, slug: string, action: ActionOvervie
   return withLocation(href, location)
 }
 
-export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, fixPack }: HomeBriefViewProps) {
+export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, fixPack, role }: HomeBriefViewProps) {
   const t = copy[locale].home
   const isChinese = locale !== "en"
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -57,7 +65,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         eyebrow={snapshot ? `${isChinese ? "快照" : "Snapshot"} · ${formatDateTime(snapshot.observedAt, locale, timezone)}` : (isChinese ? "尚未有快照" : "No snapshot yet")}
         title={t.title}
         description={t.subtitle}
-        actions={<LocationSelect locale={locale} value={location} locations={locations} />}
+        actions={<>{role && <RescanButton locale={locale} workspaceId={workspaceId} workspaceSlug={workspaceSlug} locationId={brief.location?.id ?? null} tier={tier} role={role} />}<LocationSelect locale={locale} value={location} locations={locations} /></>}
       />
 
       <section className="workspace-agent-strip" aria-label={isChinese ? "AI 能見度團隊狀態" : "AI Visibility Team status"}>
@@ -166,6 +174,8 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
           {!changed.comparable && <article><FactType type="Unknown" /><div><h3>{isChinese ? "比較暫時未能取得" : "Comparison unavailable"}</h3><p>{changedReason ?? (isChinese ? "需要兩次符合資格的掃描才會推論變化。" : "Two eligible scans are needed before any change is inferred.")}</p><small>{isChinese ? "覆蓋缺口 · 不計分" : "Coverage gap · Not scored"}</small></div><Button asChild variant="outline" size="sm"><Link href={`${base}/settings/integrations`}>{isChinese ? "檢查來源" : "Check source"}</Link></Button></article>}
         </div>
       </SectionCard>
+
+      <EvidenceGallery locale={locale} items={brief.evidence} />
 
       <div className="operational-footnote"><ShieldCheck /><span>{isChinese ? "所有數字均來自已儲存的掃描快照；未量度的來源會降低覆蓋率，不會當成零分。" : "Every number comes from a stored scan snapshot; unmeasured sources lower coverage and are never scored as zero."}</span>{demo && <CapabilityBadge value="Demo" />}</div>
     </div>
