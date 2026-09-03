@@ -27,11 +27,16 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile"
 import type { PrototypeLocale } from "@/lib/copy"
 import type {
+  AssistantContext,
+  AssistantMode,
+  AssistantSurface,
   DemoAssistantRunResponse,
   DemoQuestionId,
 } from "@/lib/pocket-assistant/contracts"
+import { ASSISTANT_RUN_ENDPOINT, buildAssistantRequest } from "@/lib/pocket-assistant/request"
 
-export type AssistantSurface = "sample" | "report" | "home" | "actions" | "action" | "create" | "insights" | "assets" | "rescan" | "workspace"
+/** `AssistantSurface` now lives in contracts.ts (§3.8); re-exported for existing importers. */
+export type { AssistantSurface } from "@/lib/pocket-assistant/contracts"
 
 const surfaceQuestions: Record<AssistantSurface, DemoQuestionId[]> = {
   sample: ["explain_priority", "explain_change", "explain_limits", "fallback_plan", "draft_review_reply"],
@@ -62,6 +67,21 @@ const labels: Record<DemoQuestionId, { zh: string; en: string }> = {
   generate_menu: { zh: "建立餐牌翻譯工作批次", en: "Create a menu translation batch" },
 }
 
+/**
+ * Live mode answers from the workspace's own snapshots, so the labels that
+ * quote the Kam Man House sample numbers get number-free phrasing (§3.8).
+ * Demo labels above stay exactly as they are.
+ */
+const liveLabels: Partial<Record<DemoQuestionId, { zh: string; en: string }>> = {
+  explain_change: { zh: "最新的分數變化代表甚麼？", en: "What does the latest score change mean?" },
+  fallback_plan: { zh: "如果分數再次下跌，今星期應做甚麼？", en: "What if the score falls again this week?" },
+}
+
+function questionLabel(questionId: DemoQuestionId, mode: AssistantMode, isChinese: boolean) {
+  const label = (mode === "live" ? liveLabels[questionId] : undefined) ?? labels[questionId]
+  return label[isChinese ? "zh" : "en"]
+}
+
 function surfaceTitle(surface: AssistantSurface, isChinese: boolean) {
   const map: Record<AssistantSurface, [string, string]> = {
     sample: ["錦汶館公開示範", "Kam Man House public demo"],
@@ -85,6 +105,8 @@ export function ContextualAssistant({
   trigger,
   onCreateVersion,
   disabled = false,
+  mode = "demo",
+  context,
 }: {
   locale: PrototypeLocale
   surface: AssistantSurface
@@ -92,6 +114,9 @@ export function ContextualAssistant({
   trigger?: ReactNode
   onCreateVersion?: (body: string, run: DemoAssistantRunResponse) => void
   disabled?: boolean
+  /** `live` answers from this workspace's evidence (requires `context`); default `demo` keeps the fixed sample (§3.8). */
+  mode?: AssistantMode
+  context?: AssistantContext
 }) {
   const isChinese = locale !== "en"
   const isMobile = useIsMobile()
@@ -108,10 +133,10 @@ export function ContextualAssistant({
     setVersionCreated(false)
     setState("running")
     try {
-      const response = await fetch("/api/pocket-assistant/demo", {
+      const response = await fetch(ASSISTANT_RUN_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionId, locale, sampleId: "demo-kam-man-house" }),
+        body: JSON.stringify(buildAssistantRequest(mode, surface, questionId, locale, context)),
       })
       if (!response.ok) throw new Error("assistant_run_failed")
       const result = await response.json() as DemoAssistantRunResponse
@@ -152,12 +177,12 @@ export function ContextualAssistant({
         </SheetHeader>
 
         <div className="assistant-sheet-body">
-          <div className="assistant-boundary"><LockKeyhole aria-hidden="true" /><span>{isChinese ? "公開及示範模式只使用固定、已清理的錦汶館資料；不接受其他商戶或客戶資料。" : "Public and demo mode uses fixed, sanitised Kam Man House data only; no other business or customer data is accepted."}</span></div>
+          <div className="assistant-boundary"><LockKeyhole aria-hidden="true" /><span>{mode === "live" ? (isChinese ? "答案只使用此工作台的證據快照；這裡不會發佈或核准任何內容。" : "Answers use only this workspace's evidence snapshots; nothing is published or approved here.") : (isChinese ? "公開及示範模式只使用固定、已清理的錦汶館資料；不接受其他商戶或客戶資料。" : "Public and demo mode uses fixed, sanitised Kam Man House data only; no other business or customer data is accepted.")}</span></div>
 
           <section className="assistant-question-section" aria-labelledby="assistant-question-title">
             <p className="eyebrow" id="assistant-question-title">{isChinese ? "由目前問題開始" : "Start from the current problem"}</p>
             <div className="assistant-question-list">
-              {questions.map((questionId) => <button key={questionId} type="button" aria-pressed={selected === questionId} onClick={() => ask(questionId)}><span>{labels[questionId][isChinese ? "zh" : "en"]}</span><ArrowRight aria-hidden="true" /></button>)}
+              {questions.map((questionId) => <button key={questionId} type="button" aria-pressed={selected === questionId} onClick={() => ask(questionId)}><span>{questionLabel(questionId, mode, isChinese)}</span><ArrowRight aria-hidden="true" /></button>)}
             </div>
           </section>
 

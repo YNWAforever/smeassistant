@@ -29,9 +29,11 @@ export default async function ActionsRoute(props: OwnerPageProps) {
     <ActionsListView
       locale={page.locale}
       workspaceSlug={page.workspaceSlug}
+      workspaceId={page.ctx.workspace.id}
       timezone={page.ctx.workspace.timezone}
       role={page.membership.role}
       locations={page.locations}
+      locationId={page.ctx.locations.find((l) => l.slug === page.locationSlug)?.id ?? null}
       filters={filters}
       result={result}
     />

@@ -68,7 +68,8 @@ import {
 import { copy, normaliseLocale, supportedLocales, type PrototypeLocale } from "@/lib/copy"
 import type { Capability, ProviderState } from "@/lib/demo-data"
 import { accountInitials, resolveLocationSlug, usagePercent } from "@/lib/workspace/shell"
-import { ContextualAssistant, type AssistantSurface } from "@/components/pocket-assistant/assistant-sheet"
+import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet"
+import type { AssistantSurface } from "@/lib/pocket-assistant/contracts"
 
 /**
  * Everything the workspace chrome renders about the current workspace
@@ -89,6 +90,8 @@ export type ShellWorkspace = {
   demo: boolean
   /** Open urgent actions, shown as the Actions nav badge; omitted or 0 hides it. */
   urgentActions?: number
+  /** Real workspaces only: the topbar assistant runs in live mode against these ids (§3.8). Absent on demo/prototype shells. */
+  assistant?: { workspaceId: string; locationId?: string }
 }
 
 /**
@@ -446,7 +449,7 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
             <strong>{workspaceSection}</strong>
           </div>
           <div className="workspace-topbar-spacer" />
-          <ContextualAssistant locale={locale} surface={assistantSurface} triggerLabel={isChinese ? "問增長助理" : "Ask operator"} />
+          <ContextualAssistant locale={locale} surface={assistantSurface} triggerLabel={isChinese ? "問增長助理" : "Ask operator"} mode={workspace.assistant ? "live" : "demo"} context={workspace.assistant} />
           <Button asChild variant="ghost" size="icon" className="notification-button">
             <Link href={`${base}/settings/notifications`} aria-label={unreadLabel(workspace.unreadNotifications, isChinese)}><Bell />{workspace.unreadNotifications > 0 && <span className="notification-dot" />}</Link>
           </Button>

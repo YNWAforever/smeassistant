@@ -207,7 +207,7 @@ function locationText(location: LocationSummary | null): { id: string | null; sl
 // Loaders (service role; rows only)
 // ---------------------------------------------------------------------------
 
-async function loadSnapshotsForLocation(workspaceId: string, locationId: string, limit = 12): Promise<SnapshotRecord[]> {
+export async function loadSnapshotsForLocation(workspaceId: string, locationId: string, limit = 12): Promise<SnapshotRecord[]> {
   const { data, error } = await supabaseServer()
     .from("scan_snapshots")
     .select("*")
@@ -220,7 +220,7 @@ async function loadSnapshotsForLocation(workspaceId: string, locationId: string,
   return (data ?? []).map(rowToSnapshot);
 }
 
-async function loadDiffById(diffId: string | null): Promise<ScanDiffRow | null> {
+export async function loadDiffById(diffId: string | null): Promise<ScanDiffRow | null> {
   if (!diffId) return null;
   const { data, error } = await supabaseServer().from("scan_diffs").select("*").eq("id", diffId).maybeSingle<ScanDiffRow>();
   if (error) throw new Error("diff lookup failed");
@@ -230,7 +230,7 @@ async function loadDiffById(diffId: string | null): Promise<ScanDiffRow | null> 
 interface LatestRunRow { action_id: string; state: RunRow["state"]; created_at: string }
 interface LatestVersionRow { id: string; action_id: string; version_no: number; approval_state: VersionRow["approval_state"]; delivery_state: VersionRow["delivery_state"]; created_at: string }
 
-async function loadActionRows(workspaceId: string, opts: { locationId?: string | null; states?: ActionState[]; ids?: string[] } = {}): Promise<ActionRow[]> {
+export async function loadActionRows(workspaceId: string, opts: { locationId?: string | null; states?: ActionState[]; ids?: string[] } = {}): Promise<ActionRow[]> {
   let query = supabaseServer().from("actions").select("*").eq("workspace_id", workspaceId);
   if (opts.locationId) query = query.or(`location_id.eq.${opts.locationId},location_id.is.null`);
   if (opts.states) query = query.in("action_state", opts.states);

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
+import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet"
 import { FactType, PageIntro, SectionCard } from "@/components/product-ui"
 import { LocationSelect } from "@/components/workspace/location-select"
 import { copy, type PrototypeLocale } from "@/lib/copy"
@@ -100,7 +101,7 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
         eyebrow={isChinese ? "以成果為本的內容建立中心" : "Outcome-led creation centre"}
         title={isChinese ? "你想完成甚麼？" : "What do you want to get done?"}
         description={isChinese ? "先選業務成果；工作台會在背後協調證據、草稿、品牌檢查與審批。你毋須先理解每個 Agent。" : "Choose a business outcome; the workspace coordinates evidence, drafting, brand checks and approval behind the scenes."}
-        actions={<><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /><Button asChild variant="outline"><Link href={withLocation(`${base}/actions`, location)}>{isChinese ? "開啟行動清單" : "Open action queue"}<ArrowRight /></Link></Button></>}
+        actions={<><ContextualAssistant locale={locale} surface="create" mode="live" context={{ workspaceId, locationId: locationId ?? undefined }} /><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /><Button asChild variant="outline"><Link href={withLocation(`${base}/actions`, location)}>{isChinese ? "開啟行動清單" : "Open action queue"}<ArrowRight /></Link></Button></>}
       />
       {!canCreate && <div className="permission-banner"><AlertTriangle /><div><strong>{isChinese ? "此角色或地點範圍只可查看" : "Read only for this role or location scope"}</strong><span>{isChinese ? "建立行動需要店主或負責此地點的經理。" : "Creating an action needs an owner or a manager in scope for this location."}</span></div><Badge variant="outline">{isChinese ? "只讀" : "Read only"}</Badge></div>}
       <Tabs value={tab} onValueChange={setTab} className="create-tabs">

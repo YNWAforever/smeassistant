@@ -21,6 +21,7 @@ import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
+import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet"
 import { CapabilityBadge, FactType, SectionCard } from "@/components/product-ui"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { resolveText } from "@/lib/domain"
@@ -34,6 +35,7 @@ import type { ActionDetail, AuditEventRow, VersionRow } from "@/lib/workspace/qu
 export interface ActionDetailClientProps {
   locale: PrototypeLocale
   workspaceSlug: string
+  workspaceId: string
   timezone: string
   role: WorkspaceRole
   inScope: boolean
@@ -64,7 +66,7 @@ function runProgress(state: string | undefined): number {
   return state ? 100 : 0
 }
 
-export function ActionDetailClient({ locale, workspaceSlug, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets }: ActionDetailClientProps) {
+export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets }: ActionDetailClientProps) {
   const isChinese = locale !== "en"
   const router = useRouter()
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -219,6 +221,29 @@ export function ActionDetailClient({ locale, workspaceSlug, timezone, role, inSc
     router.refresh()
   }
 
+  /**
+   * "Create a new version" from the Visibility Operator (§3.8): the assistant
+   * never writes; the artifact body goes through the same versions route as a
+   * manual save, based on the selected version, then the server tree refreshes.
+   */
+  async function createAssistantVersion(body: string) {
+    if (!canEdit) {
+      toast.error(isChinese ? "目前角色或連線狀態不允許建立版本。" : "Your current role or connection state cannot create a version.")
+      return
+    }
+    if (!body.trim()) { toast.error(isChinese ? "版本內容不能為空。" : "A version cannot be empty."); return }
+    setBusy("save")
+    const result = await saveVersion(action.id, { body, base_version_id: selectedVersion?.id })
+    setBusy(null)
+    if (!result.ok) {
+      if (result.status === 409 && result.error === "version_conflict") { setConflict(true); return }
+      return failureToast(result)
+    }
+    setPendingSelect(result.data.versionId)
+    toast.success(isChinese ? `已儲存為不可變更的第 ${result.data.versionNo} 版` : `Saved as immutable version ${result.data.versionNo}`)
+    router.refresh()
+  }
+
   function loadLatest() {
     setConflict(false)
     toast.message(isChinese ? "已載入最新狀態；本機文字仍保留" : "Latest state loaded; local text preserved")
@@ -341,7 +366,7 @@ export function ActionDetailClient({ locale, workspaceSlug, timezone, role, inSc
               {(social || altText) && <div className="field-stack"><Label htmlFor="alt-text">{isChinese ? "圖片替代文字" : "Image alt text"}</Label><Textarea id="alt-text" value={altText} onChange={(event) => setAltText(event.target.value)} rows={3} disabled={!canEdit} /><small>{isChinese ? "無障礙匯出所需；請確認描述與已核准素材相符。" : "Required for accessible export; confirm it matches the approved asset."}</small></div>}
               <div className="brand-check-panel"><div className="brand-check-head"><ShieldCheck /><div><strong>{isChinese ? "品牌保障提醒" : "Brand guardrail reminder"}</strong><span>{isChinese ? "生成內容只使用店主確認的事實。" : "Generated content uses owner-confirmed facts only."}</span></div><Badge variant="outline">{isChinese ? "1 項提醒" : "1 reminder"}</Badge></div><p><AlertTriangle /> {isChinese ? "除非店主已確認，否則不要加入食材、致敏原、價格或優惠日期。" : "Do not add ingredients, allergens, pricing or offer dates unless the owner confirmed them."}</p></div>
               {lastRunError && <p className="limitation-note" role="alert"><CircleAlert /> {isChinese ? "上次生成失敗：" : "Last generation failed: "}{lastRunError}</p>}
-              <div className="draft-editor-actions"><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? (isChinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version") : (isChinese ? "生成草稿" : "Generate a draft")}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {isChinese ? "儲存手動修改為新版本" : "Save manual edits as a new version"}</Button></div>
+              <div className="draft-editor-actions"><ContextualAssistant locale={locale} surface={social ? "create" : "action"} triggerLabel={isChinese ? "用助理修改並建立新版本" : "Revise with operator as a new version"} mode="live" context={{ workspaceId, locationId: action.location.id ?? undefined, actionId: action.id, versionId: selectedVersion?.id }} onCreateVersion={(body) => void createAssistantVersion(body)} disabled={!canEdit} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? (isChinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version") : (isChinese ? "生成草稿" : "Generate a draft")}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {isChinese ? "儲存手動修改為新版本" : "Save manual edits as a new version"}</Button></div>
               {conflict && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "另一位審閱者已更新輸出" : "Another reviewer changed this output"}</strong><p>{isChinese ? "未儲存文字仍保留在本機。載入最新版本、比較內容，再建立新版本。" : "Unsaved text is preserved locally. Load the latest version, compare, then create a new version."}</p><Button size="sm" onClick={loadLatest}><RefreshCw /> {isChinese ? "安全載入最新狀態" : "Load latest safely"}</Button></div></div>}
             </SectionCard>
 

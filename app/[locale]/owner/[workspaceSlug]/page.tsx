@@ -26,6 +26,7 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
       <HomeBriefView
         locale={page.locale}
         workspaceSlug={page.workspaceSlug}
+        workspaceId={page.ctx.workspace.id}
         workspaceName={page.ctx.workspace.name}
         tier={page.ctx.workspace.tier}
         timezone={page.ctx.workspace.timezone}

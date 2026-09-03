@@ -95,7 +95,16 @@ describe("buildShellWorkspace", () => {
       unreadNotifications: 3,
       demo: false,
       urgentActions: 2,
+      assistant: { workspaceId: "ws-1", locationId: "loc-1" },
     });
+  });
+
+  it("fills the assistant ids from the workspace id and the default (primary) location id", () => {
+    expect(buildShellWorkspace(context, "en").assistant).toEqual({ workspaceId: "ws-1", locationId: "loc-1" });
+    const firstOnly = buildShellWorkspace({ ...context, locations: [{ ...context.locations[0], isPrimary: false }] }, "en");
+    expect(firstOnly.assistant).toEqual({ workspaceId: "ws-1", locationId: "loc-2" });
+    expect(buildShellWorkspace({ ...context, locations: [] }, "en").assistant).toEqual({ workspaceId: "ws-1" });
+    expect(demoShellWorkspace.assistant).toBeUndefined();
   });
 
   it("marks demo workspaces so the shell shows the DemoBadge only there", () => {

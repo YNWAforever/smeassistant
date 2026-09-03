@@ -25,7 +25,8 @@ export type RateLimitScope =
   | "workspace_claim"
   | "action_run"
   | "action_mutation"
-  | "asset_upload";
+  | "asset_upload"
+  | "assistant_run";
 
 export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> = {
   scan_start: { limit: 10, windowSeconds: 60 * 60 },
@@ -96,6 +97,11 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   action_run: { limit: 30, windowSeconds: 60 * 60 },
   action_mutation: { limit: 120, windowSeconds: 60 * 60 },
   asset_upload: { limit: 30, windowSeconds: 60 * 60 },
+  // POST /api/assistant/run in live mode (CLAUDE.md §3.8), keyed per session
+  // user plus the source-IP HMAC. Template intents are cheap reads but the
+  // draft intents spend LLM tokens, so this is a runaway-cost guard sized for a
+  // chatty sheet session (one question a minute), not an abuse boundary.
+  assistant_run: { limit: 60, windowSeconds: 60 * 60 },
 };
 
 export interface RateLimitDecision {

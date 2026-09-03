@@ -56,10 +56,10 @@ export function CreatePage({ locale }: { locale: PrototypeLocale }) {
       translation: "generate_menu",
     }
     try {
-      const response = await fetch("/api/pocket-assistant/demo", {
+      const response = await fetch("/api/assistant/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionId: questionId[selected.id], locale, sampleId: "demo-kam-man-house" }),
+        body: JSON.stringify({ mode: "demo", surface: "create", intentId: questionId[selected.id], locale }),
       })
       if (!response.ok) throw new Error("assistant_run_failed")
       const result = await response.json() as DemoAssistantRunResponse

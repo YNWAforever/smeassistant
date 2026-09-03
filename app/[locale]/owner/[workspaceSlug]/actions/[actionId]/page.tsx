@@ -37,6 +37,7 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
     <ActionDetailView
       locale={page.locale}
       workspaceSlug={page.workspaceSlug}
+      workspaceId={page.ctx.workspace.id}
       timezone={page.ctx.workspace.timezone}
       role={page.membership.role}
       inScope={inScopeFor(page.membership, detail.action.location.id)}

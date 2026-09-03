@@ -18,6 +18,7 @@ import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 export interface HomeBriefViewProps {
   locale: PrototypeLocale
   workspaceSlug: string
+  workspaceId: string
   workspaceName: string
   tier: "lite" | "paid"
   timezone: string
@@ -34,7 +35,7 @@ function actionHref(locale: PrototypeLocale, slug: string, action: ActionOvervie
   return withLocation(href, location)
 }
 
-export function HomeBriefView({ locale, workspaceSlug, tier, timezone, locations, brief, demo = false, fixPack }: HomeBriefViewProps) {
+export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, fixPack }: HomeBriefViewProps) {
   const t = copy[locale].home
   const isChinese = locale !== "en"
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -78,7 +79,7 @@ export function HomeBriefView({ locale, workspaceSlug, tier, timezone, locations
               <p>{resolveText(priority.summary, locale)}</p>
               <div className="why-now-box"><FactType type={priority.evidence.factType} /><div><strong>{isChinese ? "為何現在做" : "Why now"}</strong><span>{resolveText(priority.evidence.detail, locale)}</span><small>{isChinese ? "觀察於" : "Observed"} {formatDateTime(priority.evidence.observedAt, locale, timezone)} · {priority.evidence.source}</small></div></div>
               <div className="brief-action-meta"><span><Clock3 /> {effortLabel(priority.effortMinutes, locale)} {isChinese ? "店主時間" : "owner time"}</span><span><FileClock /> {resolveText(priority.displayPhase, locale)}</span></div>
-              <div className="brief-priority-actions"><Button asChild size="lg"><Link href={actionHref(locale, workspaceSlug, priority, location)}>{priority.missingInputs.length ? (isChinese ? "審閱所需資料" : "Review required inputs") : t.reviewDrafts}<ArrowRight /></Link></Button><ContextualAssistant locale={locale} surface="home" triggerLabel={isChinese ? "問為何先做這項" : "Ask why this comes first"} /></div>
+              <div className="brief-priority-actions"><Button asChild size="lg"><Link href={actionHref(locale, workspaceSlug, priority, location)}>{priority.missingInputs.length ? (isChinese ? "審閱所需資料" : "Review required inputs") : t.reviewDrafts}<ArrowRight /></Link></Button><ContextualAssistant locale={locale} surface="home" triggerLabel={isChinese ? "問為何先做這項" : "Ask why this comes first"} mode="live" context={{ workspaceId, locationId: brief.location?.id, snapshotId: snapshot?.id }} /></div>
             </>
           ) : (
             <>

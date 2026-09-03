@@ -77,7 +77,7 @@ function addUsage(total: LLMUsage, next: LLMUsage | undefined): LLMUsage {
   return { inputTokens: add(total.inputTokens, next.inputTokens), outputTokens: add(total.outputTokens, next.outputTokens) };
 }
 
-async function loadLatestSnapshot(db: SupabaseClient, workspaceId: string, locationId: string | null): Promise<SnapshotRecord | null> {
+export async function loadLatestSnapshot(db: SupabaseClient, workspaceId: string, locationId: string | null): Promise<SnapshotRecord | null> {
   let query = db.from("scan_snapshots").select("*").eq("workspace_id", workspaceId);
   if (locationId) query = query.eq("location_id", locationId);
   const { data, error } = await query.order("observed_at", { ascending: false }).limit(1).returns<ScanSnapshotRow[]>();
@@ -96,7 +96,7 @@ export async function loadSampledReviews(db: SupabaseClient, jobId: string): Pro
     .map((review) => ({ rating: review.rating || null, text: review.text.slice(0, 500), time: review.time || null }));
 }
 
-function snapshotEvidence(snapshot: SnapshotRecord | null): Record<string, unknown> {
+export function snapshotEvidence(snapshot: SnapshotRecord | null): Record<string, unknown> {
   if (!snapshot) return { snapshot: null };
   return {
     snapshot: {

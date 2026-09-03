@@ -6,6 +6,7 @@ import type { ActionDetail, AuditEventRow } from "@/lib/workspace/queries-pages"
 export interface ActionDetailViewProps {
   locale: PrototypeLocale
   workspaceSlug: string
+  workspaceId: string
   timezone: string
   role: WorkspaceRole
   inScope: boolean
