@@ -51,6 +51,7 @@ export function buildProbes(origin, { claimFlagOn }) {
   ];
 }
 
+// Test helper: run() always passes the real origin; evaluate() defaults it for unit tests.
 export function evaluate(probe, response, origin = "https://example.test") {
   return probe.check(response, origin);
 }
@@ -71,6 +72,7 @@ async function run(probe, origin) {
     redirect: "manual",
     headers: probe.body ? { "content-type": "application/json" } : undefined,
     body: probe.body ? JSON.stringify(probe.body) : undefined,
+    signal: AbortSignal.timeout(15000),
   });
   const headers = Object.fromEntries([...response.headers.entries()]);
   return probe.check({ status: response.status, headers, body: await response.text() }, origin);

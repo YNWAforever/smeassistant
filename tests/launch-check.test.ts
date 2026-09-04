@@ -27,6 +27,8 @@ describe("launch-check probes", () => {
     expect(evaluate(stripe, { status: 400, headers: {}, body: "" }).ok).toBe(true);
     expect(evaluate(stripe, { status: 200, headers: {}, body: "" }).ok).toBe(false);
     expect(evaluate(guard, { status: 400, headers: {}, body: "{}" }).ok).toBe(true);
+    expect(evaluate(guard, { status: 429, headers: {}, body: "" }).ok).toBe(true);
+    expect(evaluate(guard, { status: 200, headers: {}, body: "{}" }).ok).toBe(false);
   });
 
   it("expects the claim route to answer 404 when the flag is off", () => {
