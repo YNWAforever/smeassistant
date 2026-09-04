@@ -238,7 +238,7 @@ export function PublicHeader({ locale }: { locale: PrototypeLocale }) {
   return (
     <header className="public-header">
       <div className="public-header-inner">
-        <Link className="brand-lockup" href={`/${locale}`} aria-label={isChinese ? "SME Scanner 主頁" : "SME Scanner home"}>
+        <Link className="brand-lockup" href={`/${locale}`} aria-label={isChinese ? "SME Scanner · 主頁" : "SME Scanner · home"}>
           <span className="brand-mark" aria-hidden="true"><Search /></span>
           <span>
             <strong>SME Scanner</strong>
