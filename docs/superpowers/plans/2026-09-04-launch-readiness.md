@@ -441,7 +441,7 @@ corepack pnpm launch:check --origin http://127.0.0.1:3016 --claim-flag off; echo
 PID=$(netstat -ano | grep -E 'TCP.*:3016 .*LISTENING' | awk '{print $NF}' | head -1); [ -n "$PID" ] && taskkill //F //PID "$PID" >/dev/null 2>&1
 ```
 
-Expected locally (no env): locale pages PASS; `hreflang alternates`, `robots.txt` and `sitemap.xml` FAIL with "wrong origin" because `NEXT_PUBLIC_SITE_URL` is unset (they print `http://localhost:3000`); `magic-link route` PASS or FAIL 503 (no `RATE_LIMIT_SECRET`) — either is fine locally; `google claim start` PASS (404, flag off); `stripe webhook unsigned` PASS; `fixture guard` PASS. Exit code 1 is expected here; the point is that every line prints a reason.
+Expected locally (no env): locale pages PASS; `hreflang alternates`, `robots.txt` and `sitemap.xml` FAIL with "wrong origin" because `NEXT_PUBLIC_SITE_URL` is unset (they print `http://localhost:3000`); `magic-link route` PASS or FAIL 503 (no `RATE_LIMIT_SECRET`) — either is fine locally; `google claim start` PASS (404, flag off); `stripe webhook unsigned` FAIL 500 locally when `STRIPE_WEBHOOK_SECRET` is unset (the route checks the secret before the signature; with the secret set it answers 400 and the probe passes); `fixture guard` PASS. Exit code 1 is expected here; the point is that every line prints a reason.
 
 - [ ] **Step 7: Lint and commit**
 
