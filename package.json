@@ -21,7 +21,8 @@
     "test:secret-boundary": "node scripts/assert-secret-boundary.mjs",
     "db:verify": "bash supabase/verify-migrations.sh",
     "db:types": "tsx scripts/gen-types.ts",
-    "seed:demo": "tsx scripts/seed-demo.ts"
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "launch:check": "node scripts/launch-check.mjs"
   },
   "dependencies": {
     "@sme-scanner/contracts": "workspace:*",
