@@ -68,12 +68,12 @@ In `app/ramp-refresh.css` replace the `.header-scan-cta` block with:
 
 Leave `.header-scan-cta svg { width: 15px; }` as is.
 
-- [ ] **Step 3: Make the brand link's accessible name start with its visible text**
+- [ ] **Step 3: Make the brand link's accessible name contain its visible text**
 
-In `components/product-ui.tsx` line 241 change the `aria-label` to:
+The visible text is "SME Scanner" plus the caption "by Fimmick" (with a space between them — add `{" "}` between the `<strong>` and `<small>` so the DOM text reads "SME Scanner by Fimmick"). In `components/product-ui.tsx` line 241 change the `aria-label` to:
 
 ```tsx
-<Link className="brand-lockup" href={`/${locale}`} aria-label={isChinese ? "SME Scanner · 主頁" : "SME Scanner · home"}>
+<Link className="brand-lockup" href={`/${locale}`} aria-label={isChinese ? "SME Scanner by Fimmick · 主頁" : "SME Scanner by Fimmick · home"}>
 ```
 
 - [ ] **Step 4: Rebuild, re-run Lighthouse on the three surfaces**
