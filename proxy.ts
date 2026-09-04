@@ -6,6 +6,7 @@ import {
   isOwnerGatedPath,
   isOwnerPath,
   localeFromPathname,
+  resolveLegacyRedirect,
   resolveLocaleRedirect,
   signInRedirectFor,
 } from "@/lib/funnel/locale-redirect";
@@ -13,6 +14,9 @@ import {
 /**
  * Next 16 request interception (the file formerly called middleware.ts).
  *
+ * 0. Legacy sme-scanner merchant paths (/owner, /privacy, /terms, /scanner,
+ *    optionally locale-prefixed) are 308-redirected to their new homes here,
+ *    before any other check runs.
  * 1. Any page path without a locale prefix is redirected (307) to its zh-HK
  *    twin, search string preserved: "/scan?market=tw" → "/zh-HK/scan?market=tw".
  * 2. Locale-prefixed requests continue with an `x-sme-locale` request header so
@@ -51,6 +55,12 @@ export function resetProxyWarnings(): void {
 
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+  const legacy = resolveLegacyRedirect(pathname);
+  if (legacy) {
+    const url = request.nextUrl.clone();
+    url.pathname = legacy;
+    return NextResponse.redirect(url, 308);
+  }
   const target = resolveLocaleRedirect(pathname);
   if (target) {
     const url = request.nextUrl.clone();
