@@ -201,7 +201,9 @@ button:focus-visible {
   border-color: #172019;
 }
 
-.header-scan-cta {
+.public-header .header-actions .header-scan-cta,
+.public-header .header-actions .header-scan-cta:hover,
+.public-header .header-actions .header-scan-cta:focus-visible {
   border-color: var(--lime) !important;
   background: var(--lime) !important;
   color: #172019 !important;

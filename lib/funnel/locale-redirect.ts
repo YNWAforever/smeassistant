@@ -75,3 +75,25 @@ export function safeReturnTo(raw: string | null | undefined): string | null {
   if (!/^\/(?![/\\])/.test(raw)) return null;
   return raw;
 }
+
+/**
+ * Paths the legacy sme-scanner app served that live elsewhere here. Bookmarks
+ * and search results keep working after the domain moves. A locale prefix is
+ * honoured when present; otherwise the default locale applies. Returns the
+ * target for a 308, or null when the path is not a legacy one.
+ */
+const LEGACY_PATHS: Record<string, string> = {
+  owner: "/owner/select-workspace",
+  privacy: "/legal/privacy",
+  terms: "/legal/terms",
+  scanner: "/scan",
+};
+
+export function resolveLegacyRedirect(pathname: string): string | null {
+  const segments = pathname.split("/").filter(Boolean);
+  const locale = segments[0] && isLocale(segments[0]) ? segments[0] : null;
+  const rest = locale ? segments.slice(1) : segments;
+  if (rest.length !== 1) return null;
+  const target = LEGACY_PATHS[rest[0]];
+  return target ? `/${locale ?? DEFAULT_LOCALE}${target}` : null;
+}

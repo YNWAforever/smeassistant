@@ -6,6 +6,7 @@ import {
   isOwnerPath,
   localeFromPathname,
   resolveHtmlLang,
+  resolveLegacyRedirect,
   resolveLocaleRedirect,
   safeReturnTo,
   signInRedirectFor,
@@ -169,6 +170,12 @@ describe("proxy()", () => {
     expect(supabase.createServerClient).not.toHaveBeenCalled();
   });
 
+  it("redirects legacy merchant paths with 308 and keeps the query string", async () => {
+    const response = await proxy(req("/owner?workspace=123"));
+    expect(response.status).toBe(308);
+    expect(response.headers.get("location")).toBe("https://app.test/zh-HK/owner/select-workspace?workspace=123");
+  });
+
   it("sends a signed-out visitor on an owner page to sign-in with returnTo", async () => {
     const response = await proxy(req("/en/owner/kam-man-house/actions?state=open"));
     expect(response.status).toBe(307);
@@ -210,6 +217,26 @@ describe("proxy()", () => {
     expect(supabase.createServerClient).not.toHaveBeenCalled();
     expect(warn).toHaveBeenCalledTimes(1);
     warn.mockRestore();
+  });
+});
+
+describe("resolveLegacyRedirect", () => {
+  it("maps the legacy merchant paths to their new homes, keeping an explicit locale", () => {
+    expect(resolveLegacyRedirect("/owner")).toBe("/zh-HK/owner/select-workspace");
+    expect(resolveLegacyRedirect("/en/owner")).toBe("/en/owner/select-workspace");
+    expect(resolveLegacyRedirect("/privacy")).toBe("/zh-HK/legal/privacy");
+    expect(resolveLegacyRedirect("/zh-TW/terms")).toBe("/zh-TW/legal/terms");
+    expect(resolveLegacyRedirect("/scanner")).toBe("/zh-HK/scan");
+    expect(resolveLegacyRedirect("/en/scanner")).toBe("/en/scan");
+  });
+
+  it("leaves every other path alone, including the new routes themselves", () => {
+    expect(resolveLegacyRedirect("/zh-HK/owner/select-workspace")).toBeNull();
+    expect(resolveLegacyRedirect("/zh-HK/legal/privacy")).toBeNull();
+    expect(resolveLegacyRedirect("/zh-HK/owner/kam-man-house")).toBeNull();
+    expect(resolveLegacyRedirect("/scan")).toBeNull();
+    expect(resolveLegacyRedirect("/")).toBeNull();
+    expect(resolveLegacyRedirect("/api/scan/start")).toBeNull();
   });
 });
 

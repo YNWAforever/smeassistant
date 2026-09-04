@@ -27,6 +27,12 @@ export type ScanSourceMode = "live" | "fixture";
 
 export function resolveScanSourceMode(env: NodeJS.ProcessEnv = process.env): ScanSourceMode {
   const raw = env.SCAN_SOURCES?.trim().toLowerCase();
+  if (raw === "fixture" && env.VERCEL_ENV === "production") {
+    // A preview setting copied into production would ship fixture scans to
+    // merchants. Fail towards live evidence and say so loudly.
+    console.error("[scan] SCAN_SOURCES=fixture is not allowed in production; using live", { category: "scan_sources_fixture_in_production" });
+    return "live";
+  }
   if (raw === "live" || raw === "fixture") return raw;
   if (raw) console.warn("[scan] SCAN_SOURCES not recognised, using the default", { category: "scan_sources_unrecognised" });
   return env.NODE_ENV === "test" ? "fixture" : "live";
