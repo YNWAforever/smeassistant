@@ -2,6 +2,24 @@
 
 Prepared, not executed. Everything below is a checklist for the first preview and production deployments.
 
+## Where things are (observed 2026-09-04)
+
+| Item | Value |
+|---|---|
+| Vercel team | `ynwaforevers-projects` (`team_qvzlsFmfCsLkgItSypqHjw3z`, Hobby) |
+| This app's project | `smeassistant` (`prj_Hbox4o4NhM3p0yxRxmY8Xq1mjtb5`), linked to `YNWAforever/smeassistant`, production branch `main` |
+| Legacy project | `sme-scanner` (`prj_zKzNcbLTwlSXbhYTMe59spRQh1BC`), custom domain `smescanner.fimmick.com`, staff hostname `sme-scanner-one.vercel.app` |
+| Public hostname after cut-over | `smescanner.fimmick.com` → `smeassistant` (domain moved in Vercel; DNS unchanged) |
+| Pre-cut-over production origin | `https://smeassistant.vercel.app` |
+
+## Cut-over runbook
+
+1. `corepack pnpm launch:check --origin https://smeassistant.vercel.app --claim-flag on` — all probes pass except none; fix registrations first.
+2. Live smoke test (both markets) recorded in `docs/integration/LAUNCH-REPORT.md`.
+3. In Vercel: remove `smescanner.fimmick.com` from `sme-scanner`, add it to `smeassistant`. Wait for the certificate.
+4. `corepack pnpm launch:check --origin https://smescanner.fimmick.com --claim-flag on` — all probes pass.
+5. Rollback at any point: move the domain back. No data step exists in either direction.
+
 ## Vercel project
 
 | Setting | Value |
