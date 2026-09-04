@@ -33,6 +33,21 @@ describe("resolveScanSourceMode", () => {
       warn.mockRestore();
     }
   });
+
+  it("refuses fixtures on a Vercel production deployment and falls back to live", () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      expect(resolveScanSourceMode({ SCAN_SOURCES: "fixture", VERCEL_ENV: "production", NODE_ENV: "production" } as unknown as NodeJS.ProcessEnv)).toBe("live");
+      expect(error).toHaveBeenCalledWith("[scan] SCAN_SOURCES=fixture is not allowed in production; using live", { category: "scan_sources_fixture_in_production" });
+    } finally {
+      error.mockRestore();
+    }
+  });
+
+  it("still allows fixtures on preview deployments and locally", () => {
+    expect(resolveScanSourceMode({ SCAN_SOURCES: "fixture", VERCEL_ENV: "preview", NODE_ENV: "production" } as unknown as NodeJS.ProcessEnv)).toBe("fixture");
+    expect(resolveScanSourceMode({ SCAN_SOURCES: "fixture", NODE_ENV: "development" } as unknown as NodeJS.ProcessEnv)).toBe("fixture");
+  });
 });
 
 describe("resolveScanFixtureName", () => {
