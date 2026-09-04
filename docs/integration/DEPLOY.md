@@ -14,7 +14,7 @@ Prepared, not executed. Everything below is a checklist for the first preview an
 
 ## Cut-over runbook
 
-1. `corepack pnpm launch:check --origin https://smeassistant.vercel.app --claim-flag on` — all probes pass except none; fix registrations first.
+1. `corepack pnpm launch:check --origin https://smeassistant.vercel.app --claim-flag on` — expect `hreflang alternates`, `robots.txt` and `sitemap.xml` to fail here (the origin variables already point at `smescanner.fimmick.com`, by design) and `google claim start` to fail until the Google redirect URI is registered; every other probe must pass. Fix registrations first, then re-run after the domain move in step 4.
 2. Live smoke test (both markets) recorded in `docs/integration/LAUNCH-REPORT.md`.
 3. In Vercel: remove `smescanner.fimmick.com` from `sme-scanner`, add it to `smeassistant`. Wait for the certificate.
 4. `corepack pnpm launch:check --origin https://smescanner.fimmick.com --claim-flag on` — all probes pass.
