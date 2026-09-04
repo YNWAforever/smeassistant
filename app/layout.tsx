@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 import "./responsive.css";
@@ -20,7 +20,11 @@ export const metadata: Metadata = {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
   },
+  openGraph: { siteName: "SME Scanner", type: "website" },
 };
+
+/** Brand teal; matches the workspace sidebar and the OG card. */
+export const viewport: Viewport = { themeColor: "#173b34", width: "device-width", initialScale: 1 };
 
 /**
  * The only place `<html>`/`<body>` exist, so `<html lang>` has to be resolved

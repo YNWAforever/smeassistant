@@ -47,6 +47,8 @@ export function publicMetadata(input: {
     description,
     alternates: publicAlternates(locale, path),
     openGraph: {
+      siteName: "SME Scanner",
+      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "SME Scanner Visibility Workspace" }],
       title: `${title} · SME Scanner`,
       description,
       type: "website",

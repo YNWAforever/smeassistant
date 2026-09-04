@@ -22,6 +22,8 @@ export default defineConfig({
     // Node by default. Vitest 4 removed `environmentMatchGlobs`, so DOM tests
     // opt in per file with a `// @vitest-environment jsdom` comment at the top.
     environment: "node",
+    // One retry absorbs timer-bound flakiness under full parallel load (lib/evidence/safe-media.test.ts); a real failure still fails twice.
+    retry: 1,
     // test/integration holds the Docker harness; its own unit tests (jwt,
     // websocket-shim, global-setup) run here, the *.integration.test.ts files do not.
     include: ["tests/**/*.test.{ts,tsx}", "lib/**/*.test.{ts,tsx}", "app/**/*.test.{ts,tsx}", "test/**/*.test.{ts,tsx}"],

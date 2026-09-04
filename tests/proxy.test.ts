@@ -212,3 +212,12 @@ describe("proxy()", () => {
     warn.mockRestore();
   });
 });
+
+describe("metadata file routes", () => {
+  it("never locale-redirects the root Open Graph image or icon routes", async () => {
+    const { resolveLocaleRedirect } = await import("@/lib/funnel/locale-redirect");
+    expect(resolveLocaleRedirect("/opengraph-image")).toBeNull();
+    expect(resolveLocaleRedirect("/icon")).toBeNull();
+    expect(resolveLocaleRedirect("/apple-icon")).toBeNull();
+  });
+});

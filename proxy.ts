@@ -109,5 +109,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|auth/|_next|_vercel|.*\\..*).*)"],
+  matcher: ["/((?!api|auth/|_next|_vercel|opengraph-image|twitter-image|icon|apple-icon|.*\\..*).*)"],
 };

@@ -4,7 +4,7 @@ import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/locale";
 export const LOCALE_HEADER = "x-sme-locale";
 
 /** Top-level segments the locale prefix never applies to (route handlers, Next internals). */
-const PASSTHROUGH_ROOTS = new Set(["api", "auth", "_next", "_vercel"]);
+const PASSTHROUGH_ROOTS = new Set(["api", "auth", "_next", "_vercel", "opengraph-image", "twitter-image", "icon", "apple-icon"]);
 
 export function localeFromPathname(pathname: string): Locale | null {
   const first = pathname.split("/").filter(Boolean)[0];

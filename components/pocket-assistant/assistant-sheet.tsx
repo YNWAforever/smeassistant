@@ -186,7 +186,7 @@ export function ContextualAssistant({
             </div>
           </section>
 
-          <AssistantRunStatus state={state} isChinese={isChinese} />
+          <AssistantRunStatus state={state} isChinese={isChinese} mode={mode} />
 
           {run && <div className="assistant-result" aria-live="polite">
             <section className="assistant-answer-card">

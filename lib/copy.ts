@@ -266,7 +266,6 @@ type FunnelCopy = {
 
 type Copy = {
   language: string
-  prototype: string
   sampleData: string
   nav: {
     scanner: string
@@ -1174,7 +1173,6 @@ const funnelZhTW: FunnelCopy = {
 export const copy: Record<PrototypeLocale, Copy> = {
   en: {
     language: "English",
-    prototype: "Interactive prototype",
     sampleData: "Sample data",
     nav: {
       scanner: "Free scanner",
@@ -1228,7 +1226,6 @@ export const copy: Record<PrototypeLocale, Copy> = {
   },
   "zh-HK": {
     language: "繁體中文（香港）",
-    prototype: "互動原型",
     sampleData: "示範資料",
     nav: {
       scanner: "免費掃描",
@@ -1282,7 +1279,6 @@ export const copy: Record<PrototypeLocale, Copy> = {
   },
   "zh-TW": {
     language: "繁體中文（台灣）",
-    prototype: "互動原型",
     sampleData: "範例資料",
     nav: {
       scanner: "免費掃描",
