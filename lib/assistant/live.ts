@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AGENTS, AGENT_LLM_OPTIONS, parseAgentOutput, type AgentContext, type AgentKey } from "@/lib/agents";
+import { inLocationScope, roleAtLeast, type Membership } from "@/lib/auth";
 import type { PrototypeLocale } from "@/lib/copy";
 import { localized } from "@/lib/domain";
 import { llmComplete, llmConfigured } from "@/lib/llm";
@@ -14,7 +15,8 @@ import { fallbackIntentFor, isTemplateIntent, templateAnswer, type TemplateConte
 
 /**
  * Live assistant runs (CLAUDE.md §3.8 live mode). Authorization is the
- * route's job; this module resolves the evidence context, answers template
+ * route's job for membership; this module enforces draft scope on resolved
+ * actions and evidence, answers template
  * intents deterministically and runs the matching agent once for the draft
  * intents. It never writes: no action_runs, no versions, no audit rows — a
  * draft only becomes a version when the owner clicks "Create a new version".
@@ -32,6 +34,8 @@ export interface LiveRunInput {
   surface: AssistantSurface;
   locale: PrototypeLocale;
   context: LiveRunContext;
+  /** Accepted membership resolved by the server, never request JSON. */
+  membership: Membership;
   /** Injected for tests; defaults to the service-role client. */
   db?: SupabaseClient;
   llm?: typeof llmComplete;
@@ -82,8 +86,20 @@ function asStrings(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
 }
 
-function isDraftIntent(intent: DemoQuestionId): intent is DraftIntent {
+export function isDraftIntent(intent: DemoQuestionId): intent is DraftIntent {
   return Object.prototype.hasOwnProperty.call(DRAFT_AGENTS, intent);
+}
+
+export class AssistantAccessError extends Error {
+  readonly status: 403 | 404;
+  constructor(readonly code: "forbidden" | "not_found") {
+    super(code);
+    this.status = code === "forbidden" ? 403 : 404;
+  }
+}
+
+function requireDraftScope(input: LiveRunInput, locationId: string | null) {
+  if (!inLocationScope(input.membership, locationId)) throw new AssistantAccessError("forbidden");
 }
 
 function overviewOf(row: ActionRow, location: LocationRow | null): ActionOverview {
@@ -125,21 +141,63 @@ async function resolveContext(db: SupabaseClient, input: LiveRunInput): Promise<
     focusedRow = data ?? null;
   }
 
-  const locationId = input.context.locationId ?? focusedRow?.location_id ?? locations.find((l) => l.is_primary)?.id ?? locations[0]?.id ?? null;
-  const location = locations.find((l) => l.id === locationId) ?? null;
+  const drafting = isDraftIntent(input.intentId);
+  if (drafting) {
+    if (!workspace || (input.context.actionId && !focusedRow)) throw new AssistantAccessError("not_found");
+    // Select the implicit action before choosing its evidence, using the same
+    // ordering as the existing draft runner. Never replace an explicit miss.
+    if (!focusedRow) {
+      const selectionLocation = input.context.locationId ?? locations.find((l) => l.is_primary)?.id ?? locations[0]?.id ?? null;
+      const candidates = await loadActionRows(workspaceId, { locationId: selectionLocation, states: ["recommended", "needs_input", "ready", "in_progress"] }) as ActionSourceRow[];
+      const spec = DRAFT_AGENTS[input.intentId as DraftIntent];
+      focusedRow = candidates.find((a) => spec.templates.includes(a.template_key)) ?? candidates[0] ?? null;
+    }
+    if (focusedRow) {
+      if (focusedRow.workspace_id !== workspaceId) throw new AssistantAccessError("not_found");
+      requireDraftScope(input, focusedRow.location_id);
+      if (focusedRow.location_id && !locations.some((l) => l.id === focusedRow!.location_id)) throw new AssistantAccessError("not_found");
+      if (input.context.locationId && focusedRow.location_id && input.context.locationId !== focusedRow.location_id) throw new AssistantAccessError("not_found");
+    }
+    if (input.context.locationId && !locations.some((l) => l.id === input.context.locationId)) throw new AssistantAccessError("not_found");
+  }
+
+  let locationId: string | null = input.context.locationId ?? focusedRow?.location_id ?? locations.find((l) => l.is_primary)?.id ?? locations[0]?.id ?? null;
+  let location = locations.find((l) => l.id === locationId) ?? null;
 
   // snapshotId → the action's source snapshot → the latest for the location.
   let snapshot: SnapshotRecord | null = null;
   if (input.context.snapshotId) snapshot = await loadSnapshotById(db, input.context.snapshotId);
-  if (!snapshot && focusedRow?.source_snapshot_id) snapshot = await loadSnapshotById(db, focusedRow.source_snapshot_id);
+  if (drafting && input.context.snapshotId && !snapshot) throw new AssistantAccessError("not_found");
+  if (!snapshot && focusedRow?.source_snapshot_id) {
+    snapshot = await loadSnapshotById(db, focusedRow.source_snapshot_id);
+    if (drafting && !snapshot) throw new AssistantAccessError("not_found");
+  }
+  if (drafting && snapshot) {
+    if (snapshot.workspaceId !== workspaceId) throw new AssistantAccessError("not_found");
+    requireDraftScope(input, snapshot.locationId);
+    if ((focusedRow?.location_id && focusedRow.location_id !== snapshot.locationId) ||
+        (input.context.locationId && input.context.locationId !== snapshot.locationId)) throw new AssistantAccessError("not_found");
+    // Workspace-wide actions can use location evidence, but that evidence's
+    // persisted location remains part of the draft authority decision.
+    locationId = snapshot.locationId;
+    location = locations.find((l) => l.id === locationId) ?? null;
+    if (locationId && !location) throw new AssistantAccessError("not_found");
+  }
   if (snapshot && snapshot.workspaceId !== workspaceId) snapshot = null;
+  if (drafting) requireDraftScope(input, locationId);
   if (!snapshot) snapshot = await loadLatestSnapshot(db, workspaceId, locationId);
+  if (drafting && snapshot) {
+    if (snapshot.workspaceId !== workspaceId || (locationId && snapshot.locationId !== locationId)) throw new AssistantAccessError("not_found");
+    requireDraftScope(input, snapshot.locationId);
+  }
 
   const [diff, base, openRows] = await Promise.all([
     loadDiffById(snapshot?.diffId ?? null),
     snapshot?.comparableTo ? loadSnapshotById(db, snapshot.comparableTo) : Promise.resolve(null),
     loadActionRows(workspaceId, { locationId, states: ["recommended", "needs_input", "ready", "in_progress"] }),
   ]);
+
+  if (drafting && base && (base.workspaceId !== workspaceId || base.locationId !== snapshot?.locationId)) throw new AssistantAccessError("not_found");
 
   const open = (openRows as ActionSourceRow[]).map((row) => ({ row, overview: overviewOf(row, locations.find((l) => l.id === row.location_id) ?? null) }));
   const focused = focusedRow ? { row: focusedRow, overview: overviewOf(focusedRow, locations.find((l) => l.id === focusedRow.location_id) ?? null) } : null;
@@ -205,7 +263,7 @@ async function agentContext(db: SupabaseClient, input: LiveRunInput, ctx: Resolv
 
 async function draft(intent: DraftIntent, input: LiveRunInput, db: SupabaseClient, ctx: ResolvedContext): Promise<DemoAssistantRunResponse> {
   const spec = DRAFT_AGENTS[intent];
-  const action = ctx.focused ?? ctx.open.find((a) => spec.templates.includes(a.row.template_key)) ?? ctx.open[0] ?? null;
+  const action = ctx.focused; // Already selected and authorized with its evidence.
   if (!action) return { ...completed("explain_limits", input, ctx, [NO_ACTION_FOR_DRAFT[input.locale]]) };
 
   const ready = (input.llmReady ?? llmConfigured)();
@@ -220,7 +278,7 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: SupabaseClien
 
   const warnings = [...output.warnings, ...agent.acceptance(agentCtx, output)];
   const title = action.overview.title[input.locale];
-  if (!output.body.trim() && output.facts_needed.length) {
+  if (output.facts_needed.length > 0) {
     const base = completed(fallbackIntentFor(intent), input, ctx);
     return { ...base, answer: NEEDS_FACTS[input.locale].replace("{facts}", output.facts_needed.join(", ")), warnings: [...warnings, ...base.warnings] };
   }
@@ -245,6 +303,8 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: SupabaseClien
 }
 
 export async function runLiveAssistant(input: LiveRunInput): Promise<DemoAssistantRunResponse> {
+  if (!input.membership || input.membership.workspaceId !== input.context.workspaceId ||
+      (isDraftIntent(input.intentId) && !roleAtLeast(input.membership.role, "manager"))) throw new AssistantAccessError("forbidden");
   const db = input.db ?? supabaseServer();
   const ctx = await resolveContext(db, input);
   if (isDraftIntent(input.intentId)) return draft(input.intentId, input, db, ctx);

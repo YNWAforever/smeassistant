@@ -21,6 +21,7 @@ const sentinels = {
   OAUTH_TOKEN_ENCRYPTION_KEY: Buffer.from(`oauth-encryption-sentinel-${uuid()}`).toString("base64"),
   SUPABASE_SERVICE_ROLE_KEY: `service-role-secret-${uuid()}`,
   RATE_LIMIT_SECRET: `rate-limit-secret-${uuid()}`,
+  WORKSPACE_COMPLETION_SECRET: `workspace-completion-secret-${uuid()}`,
   STRIPE_SECRET_KEY: `stripe-secret-${uuid()}`,
   STRIPE_WEBHOOK_SECRET: `stripe-webhook-secret-${uuid()}`,
   RESEND_API_KEY: `resend-secret-${uuid()}`,

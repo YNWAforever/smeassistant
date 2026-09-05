@@ -178,6 +178,7 @@ describe("migration hardening sweep", () => {
       "workspace_members",
       // Added 2026-09-03 with 20260903000000_workspace_layer.sql.
       "workspace_notifications",
+      "workspace_scan_completions",
       // Added 2026-08-19 with 20260819000000_workspace_billing.sql. The
       // tripwire fired first, and the RLS/revoke/grant assertions below
       // passed for it before this line existed.
@@ -334,6 +335,7 @@ describe("audit_jobs delete graph", () => {
       "staff_report_events.job_id",
       "workspace_access_requests.job_id",
       "workspace_claim_events.job_id",
+      "workspace_scan_completions.job_id",
     ]);
   });
 
@@ -396,6 +398,8 @@ describe("audit_jobs delete graph", () => {
       // exactly the moment (a takedown) someone would go looking for it, leaving
       // a live, owned workspace with no record of how it came to be owned.
       "workspace_claim_events.job_id": "set null",
+      // Recovery state describes this job only; erasure must remove it.
+      "workspace_scan_completions.job_id": "cascade",
     });
   });
 

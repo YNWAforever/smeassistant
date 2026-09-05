@@ -18,6 +18,8 @@
     "test": "vitest run --exclude lib/evidence/safe-media.test.ts && vitest run lib/evidence/safe-media.test.ts && corepack pnpm -r test",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "e2e": "playwright test",
+    "e2e:acceptance": "playwright test --config playwright.acceptance.config.ts",
+    "e2e:live": "playwright test --config playwright.live.config.ts",
     "test:secret-boundary": "node scripts/assert-secret-boundary.mjs",
     "db:verify": "bash supabase/verify-migrations.sh",
     "db:types": "tsx scripts/gen-types.ts",

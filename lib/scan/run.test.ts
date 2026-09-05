@@ -10,6 +10,8 @@ vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: supabaseMocks.supabaseS
 const persistMocks = vi.hoisted(() => ({ persistEvidenceSnapshots: vi.fn(async () => undefined) }));
 vi.mock("@/lib/evidence/persist", () => ({ persistEvidenceSnapshots: persistMocks.persistEvidenceSnapshots }));
 
+const completionMock = vi.hoisted(() => vi.fn(async () => ({ status: "completed" })));
+vi.mock("@/lib/workspace/completion", () => ({ completeWorkspaceScan: completionMock }));
 import { resolveScanCollector, resolveScanFixtureName, resolveScanSourceMode, resolveScanRuntime, runScan } from "./run";
 
 describe("resolveScanSourceMode", () => {
@@ -101,5 +103,20 @@ describe("runScan", () => {
   it("re-exports the execution runtime switch", () => {
     vi.stubEnv("SCAN_EXECUTION_RUNTIME", "vercel");
     expect(resolveScanRuntime("client")).toBe("vercel");
+  });
+});
+
+describe("durable completion integration", () => {
+  afterEach(() => { vi.unstubAllEnvs(); completionMock.mockReset(); });
+  it("uses persisted completion only when explicitly enabled", async () => {
+    vi.stubEnv("WORKSPACE_COMPLETION_ENABLED", "true");
+    completionMock.mockResolvedValue({ status: "completed" });
+    await expect(runScan("job", "session")).resolves.toEqual({ status: "done" });
+    expect(completionMock).toHaveBeenCalledWith({ marker: "fake-client" }, "job");
+  });
+  it("preserves terminal scan success when completion persistence is unavailable", async () => {
+    vi.stubEnv("WORKSPACE_COMPLETION_ENABLED", "true");
+    completionMock.mockRejectedValue(new Error("missing migration"));
+    await expect(runScan("job", "session")).resolves.toEqual({ status: "done" });
   });
 });

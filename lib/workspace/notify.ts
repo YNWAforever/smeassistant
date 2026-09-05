@@ -1,3 +1,4 @@
+import { completionId } from "@/lib/workspace/completion-id";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LocalizedText } from "@/lib/domain";
 
@@ -23,6 +24,8 @@ export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
 export interface NotifyWorkspaceInput {
   workspaceId: string;
+  /** Terminal scan identity supplied only by the server-resolved completion hook. */
+  completionJobId?: string;
   kind: NotificationKind;
   title: LocalizedText;
   body?: LocalizedText | null;
@@ -56,6 +59,7 @@ export async function notifyWorkspace(db: SupabaseClient, input: NotifyWorkspace
     if (!recipients.length) return { inserted: 0, error: null };
 
     const rows = recipients.map((userId) => ({
+      ...(input.completionJobId ? { id: completionId("notification", input.workspaceId, input.completionJobId, input.kind, userId) } : {}),
       workspace_id: input.workspaceId,
       user_id: userId,
       kind: input.kind,
@@ -63,6 +67,12 @@ export async function notifyWorkspace(db: SupabaseClient, input: NotifyWorkspace
       body: input.body ?? null,
       href: input.href ?? null,
     }));
+    if (input.completionJobId) {
+      const { data, error } = await db.from("workspace_notifications")
+        .upsert(rows, { onConflict: "id", ignoreDuplicates: true }).select("id");
+      if (error) throw new Error("notification insert failed");
+      return { inserted: data?.length ?? 0, error: null };
+    }
     const { error } = await db.from("workspace_notifications").insert(rows);
     if (error) throw new Error("notification insert failed");
     return { inserted: rows.length, error: null };

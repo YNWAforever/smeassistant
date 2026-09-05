@@ -1,3 +1,4 @@
+import { POST } from "./route";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ACTION_ID, LOCATION_ID, WORKSPACE_ID, authorizeLike, makeDb, type Query } from "@/app/api/actions/_shared/test-db";
 
@@ -38,7 +39,7 @@ function respond(q: Query): unknown {
 }
 
 const PARAMS = { params: Promise.resolve({ actionId: ACTION_ID }) };
-const post = (body: unknown = {}) => import("./route").then(({ POST }) => POST(new Request(`https://app.test/api/actions/${ACTION_ID}/run`, { method: "POST", body: JSON.stringify(body) }), PARAMS));
+const post = (body: unknown = {}) => POST(new Request(`https://app.test/api/actions/${ACTION_ID}/run`, { method: "POST", body: JSON.stringify(body) }), PARAMS);
 
 beforeEach(() => {
   vi.clearAllMocks();

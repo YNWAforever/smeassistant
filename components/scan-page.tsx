@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import {
   ArrowRight,
   Check,
@@ -58,6 +58,11 @@ import { t } from "@/lib/i18n"
 import { interpolate } from "@/lib/share"
 import { DISTRICTS_HK, DISTRICTS_TW, INDUSTRIES_HK, INDUSTRIES_TW } from "@sme-scanner/region"
 
+// Keep the initial wizard controls inert until their handlers are attached.
+const subscribeHydration = () => () => {}
+const clientHydrated = () => true
+const serverHydrated = () => false
+
 const OBJECTIVE_MESSAGE_KEYS: Record<ScanObjective, string> = {
   more_leads: "scanner.objectiveMoreLeads",
   better_visibility: "scanner.objectiveBetterVisibility",
@@ -76,6 +81,7 @@ export function ScanPage({
   initialMarket: ScanMarket
   initialBusiness?: string
 }) {
+  const hydrated = useSyncExternalStore(subscribeHydration, clientHydrated, serverHydrated)
   const c = copy[locale].funnel.scan
   const language = copy[locale].language
   const router = useRouter()
@@ -294,7 +300,7 @@ export function ScanPage({
                   <Label htmlFor="scan-business">{c.businessLabel}</Label>
                   <div className="input-with-icon">
                     <Search />
-                    <Input
+                    <Input disabled={!hydrated}
                       id="scan-business"
                       value={draft.businessName}
                       onChange={(event) => {
@@ -311,7 +317,7 @@ export function ScanPage({
                   </Label>
                   <div className="input-with-icon">
                     <Link2 />
-                    <Input
+                    <Input disabled={!hydrated}
                       id="scan-maps-url"
                       inputMode="url"
                       value={draft.mapsUrl}
@@ -325,7 +331,7 @@ export function ScanPage({
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={search.status === "searching" || !shouldSearchMerchantQuery(draft.mapsUrl.trim() || draft.businessName)}
+                  disabled={!hydrated || search.status === "searching" || !shouldSearchMerchantQuery(draft.mapsUrl.trim() || draft.businessName)}
                   onClick={() => void runSearch(draft.mapsUrl.trim() || draft.businessName, searchMarket)}
                 >
                   {search.status === "searching" ? c.searching : c.searchButton}
@@ -392,6 +398,7 @@ export function ScanPage({
 
                 <button
                   className="text-action"
+                  disabled={!hydrated}
                   type="button"
                   onClick={() => {
                     update({ candidate: null, manualEntry: true })
@@ -501,7 +508,7 @@ export function ScanPage({
                     <Label htmlFor="website">
                       {c.websiteLabel} <span>{c.optional}</span>
                     </Label>
-                    <Input id="website" inputMode="url" value={draft.websiteUrl} onChange={(event) => update({ websiteUrl: event.target.value })} />
+                    <Input disabled={!hydrated} id="website" inputMode="url" value={draft.websiteUrl} onChange={(event) => update({ websiteUrl: event.target.value })} />
                     <small>{c.websiteHelp}</small>
                   </div>
                   <div className="field-stack">
@@ -510,7 +517,7 @@ export function ScanPage({
                     </Label>
                     <div className="input-with-icon">
                       <AtSign />
-                      <Input
+                      <Input disabled={!hydrated}
                         id="instagram"
                         value={draft.instagramHandle}
                         onChange={(event) => update({ instagramHandle: event.target.value, instagramMatchProvenance: null })}
@@ -649,10 +656,10 @@ export function ScanPage({
             )}
 
             <div className="flow-card-footer">
-              <Button variant="outline" onClick={() => setStep(Math.max(1, step - 1))} disabled={step === 1 || submitting}>
+              <Button variant="outline" onClick={() => setStep(Math.max(1, step - 1))} disabled={!hydrated || step === 1 || submitting}>
                 <ChevronLeft /> {c.back}
               </Button>
-              <Button onClick={next} disabled={submitting}>
+              <Button onClick={next} disabled={!hydrated || submitting}>
                 {step === 4 ? (submitting ? c.submitting : c.start) : c.continue}
                 <ArrowRight />
               </Button>

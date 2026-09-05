@@ -1,3 +1,4 @@
+import { completionId } from "@/lib/workspace/completion-id";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { localized, OPEN_ACTION_STATES, type Capability, type FactType, type LocalizedText, type Priority } from "@/lib/domain";
 import { scorePriority, type PriorityFactor } from "./priority";
@@ -348,6 +349,15 @@ export async function deriveActionsForSnapshot(db: SupabaseClient, snapshotId: s
   if (!snapshot.workspaceId) throw new Error("snapshot_requires_workspace");
   const workspaceId = snapshot.workspaceId;
 
+  // Sequential recovery must not replace newer evidence/close newer actions.
+  // This read is not a transaction fence: concurrent stale-worker recovery must
+  // remain disabled until writes and lease validation share a DB transaction.
+  let latestQuery = db.from("scan_snapshots").select("id").eq("workspace_id", workspaceId);
+  latestQuery = snapshot.locationId ? latestQuery.eq("location_id", snapshot.locationId) : latestQuery.is("location_id", null);
+  const { data: latest, error: latestError } = await latestQuery.order("observed_at", { ascending: false }).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(1).maybeSingle<{ id: string }>();
+  if (latestError || !latest) throw new Error("latest snapshot lookup failed");
+  if (latest.id !== snapshot.id) return { created: 0, updated: 0, completed: 0, expired: 0 };
+
   const [findingsResult, diff, brandResult, googleResult, workspaceResult, draftsResult] = await Promise.all([
     db
       .from("audit_findings")
@@ -402,9 +412,11 @@ export async function deriveActionsForSnapshot(db: SupabaseClient, snapshotId: s
     { now: opts.now },
   );
 
-  const { data: priorAudit } = await db.from("audit_events").select("id").eq("event", "action.derived").eq("entity_id", snapshotId).limit(1);
+  const { data: priorAudit, error: auditLookupError } = await db.from("audit_events").select("id").eq("event", "action.derived").eq("entity_id", snapshotId).limit(1);
+  if (auditLookupError) throw new Error("action audit lookup failed");
   if (!priorAudit?.length) {
-    await db.from("audit_events").insert({
+    const { error: auditError } = await db.from("audit_events").upsert({
+      idempotency_key: completionId("action.derived", snapshotId),
       workspace_id: workspaceId,
       location_id: snapshot.locationId,
       actor_type: "system",
@@ -413,7 +425,8 @@ export async function deriveActionsForSnapshot(db: SupabaseClient, snapshotId: s
       entity_type: "scan_snapshot",
       entity_id: snapshotId,
       payload: { locale: null, ...upserted, ...closed },
-    });
+    }, { onConflict: "idempotency_key", ignoreDuplicates: true });
+    if (auditError) throw new Error("action audit insert failed");
   }
 
   return { ...upserted, ...closed };

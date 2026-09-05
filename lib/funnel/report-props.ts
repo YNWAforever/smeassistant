@@ -344,7 +344,7 @@ export function buildReportProps(model: ReportViewModelLike, locale: PrototypeLo
     priorities,
     locked:
       model.access === "public"
-        ? { hiddenFindingCount: model.unlock.hiddenFindingCount, unlockHref: `/${locale}${model.unlock.href}` }
+        ? { hiddenFindingCount: model.unlock.hiddenFindingCount, unlockHref: model.unlock.href }
         : null,
     summary: full?.summary ?? null,
     findingGroups,

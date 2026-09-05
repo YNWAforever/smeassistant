@@ -1,3 +1,4 @@
+import { buildReportProps } from "@/lib/funnel/report-props";
 import { describe, expect, it } from "vitest";
 import { buildReportViewModel, resolveFixPackDraftText, type ReportViewSource } from "./view-model";
 
@@ -203,4 +204,9 @@ describe("resolveFixPackDraftText", () => {
     expect(resolveFixPackDraftText(output, "zh-TW")).toBe("中文帖");
     expect(resolveFixPackDraftText(null, "en")).toBeNull();
   });
+});
+
+it.each(["en", "zh-HK", "zh-TW"] as const)("keeps exactly one locale in the rendered %s Taiwan unlock link", (locale) => {
+  const model = buildReportViewModel({ ...fixture, job: { ...fixture.job, locale, region: "tw" } }, { kind: "public" });
+  expect(buildReportProps(model, locale).locked?.unlockHref).toBe(`/${locale}/unlock/shop?market=TW`);
 });

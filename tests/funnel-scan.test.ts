@@ -74,6 +74,7 @@ describe("buildScanStartPayload", () => {
       district: "台北市",
       objective: "more_leads",
       manual_entry: true,
+      continue_without_place: true,
       website_url: "https://example.tw",
       maps_url: "https://maps.app.goo.gl/abc",
     });

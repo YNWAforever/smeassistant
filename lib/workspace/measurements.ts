@@ -1,3 +1,4 @@
+import { completionId } from "@/lib/workspace/completion-id";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MetricKey } from "@/lib/workspace/metrics";
 import { loadSnapshotById, type ScanDiffRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
@@ -141,7 +142,7 @@ export async function recordMeasurements(db: SupabaseClient, input: RecordMeasur
   const ids = actions.map((row) => row.id);
 
   const [existingResult, exportsResult] = await Promise.all([
-    db.from("action_measurements").select("action_id").eq("after_snapshot_id", head.id).in("action_id", ids).returns<Array<{ action_id: string }>>(),
+    db.from("action_measurements").select("action_id, fact_type").eq("after_snapshot_id", head.id).in("action_id", ids).returns<Array<{ action_id: string; fact_type: MeasurementFactType }>>(),
     db.from("output_versions").select("action_id, first_exported_at").in("action_id", ids).not("first_exported_at", "is", null).returns<ExportedVersionRow[]>(),
   ]);
   if (existingResult.error) throw new Error("measurement lookup failed");
@@ -163,21 +164,36 @@ export async function recordMeasurements(db: SupabaseClient, input: RecordMeasur
     const row = buildMeasurement({ action, base, head, exportedBeforeHead: exportedBeforeHead.has(action.id) });
     if (row) inserts.push(row);
   }
-  if (!inserts.length) return { comparable: true, recorded: 0, skipped };
+  let recorded = 0;
+  if (inserts.length) {
+    const { data, error: insertError } = await db.from("action_measurements")
+      .upsert(inserts.map((row) => ({ ...row, id: completionId("measurement", row.action_id, head.id) })), { onConflict: "id", ignoreDuplicates: true }).select("id");
+    if (insertError) throw new Error("measurement insert failed");
+    recorded = data?.length ?? 0;
+  }
 
-  const { error: insertError } = await db.from("action_measurements").insert(inserts);
-  if (insertError) throw new Error("measurement insert failed");
+  // Repair the second half after an earlier process persisted measurements but
+  // failed before updating action state. Preserve the saved fact classification.
+  const allMeasurements = [...(existingResult.data ?? []), ...inserts];
+
+  // Historical measurements remain immutable evidence. Their replay must not
+  // overwrite the mutable state derived from a newer same-location scan.
+  let latestQuery = db.from("scan_snapshots").select("id").eq("workspace_id", head.workspaceId);
+  latestQuery = head.locationId ? latestQuery.eq("location_id", head.locationId) : latestQuery.is("location_id", null);
+  const { data: latest, error: latestError } = await latestQuery.order("observed_at", { ascending: false }).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(1).maybeSingle<{ id: string }>();
+  if (latestError || !latest) throw new Error("measurement latest snapshot lookup failed");
+  if (latest.id !== head.id) return { comparable: true, recorded, skipped };
 
   const nowIso = now.toISOString();
-  const measured = inserts.filter((row) => row.fact_type !== "Unknown").map((row) => row.action_id);
-  const insufficient = inserts.filter((row) => row.fact_type === "Unknown").map((row) => row.action_id);
+  const measured = allMeasurements.filter((row) => row.fact_type !== "Unknown").map((row) => row.action_id);
+  const insufficient = allMeasurements.filter((row) => row.fact_type === "Unknown").map((row) => row.action_id);
   if (measured.length) {
     const { error } = await db.from("actions").update({ measurement_state: "measured", updated_at: nowIso }).in("id", measured);
-    if (error) console.error("[workspace/measurements] measurement_state not updated", { category: "measurement_state_update_failed" });
+    if (error) throw new Error("measurement state update failed");
   }
   if (insufficient.length) {
     const { error } = await db.from("actions").update({ measurement_state: "insufficient_coverage", updated_at: nowIso }).in("id", insufficient);
-    if (error) console.error("[workspace/measurements] measurement_state not updated", { category: "measurement_state_update_failed" });
+    if (error) throw new Error("measurement state update failed");
   }
-  return { comparable: true, recorded: inserts.length, skipped };
+  return { comparable: true, recorded, skipped };
 }

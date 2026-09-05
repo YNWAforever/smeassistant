@@ -1,5 +1,7 @@
 # Launch Readiness Implementation Plan
 
+> **Status — superseded execution sequence (2026-09-05):** Tasks 1–5 below are historical implementation material merged before audited main `3fae6ef020d72ff528a4a9b50b5b013c2c5b1995`; their unchecked boxes do not restart completed work. The embedded checker examples and rollout Tasks 6–9 are obsolete instructions, not current acceptance criteria or operational authorization. Use [DEPLOY.md](../../integration/DEPLOY.md) and [LAUNCH-REPORT.md](../../integration/LAUNCH-REPORT.md) for the corrected staging/final-origin sequence and evidence categories. Public probes do not validate provider registration, payment fulfillment or fixture execution. Production fixture mode converts to live when `VERCEL_ENV=production`. Domain rollback does not undo application data or external events. Require applicable authorization for external operations and record real HK/TW acceptance on the exact final build; do not count skipped browser cases as passed.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Serve `smescanner.fimmick.com` from this app for HK and TW, proven by a live smoke test on the same build, with reversible cut-over.
@@ -10,7 +12,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-04-launch-readiness-design.md`. **Branch:** `feat/launch-readiness` (on top of `feat/phase-7-hardening`).
 
-**Conventions:** run every command from the repo root `C:\Users\laich\Documents\smeassistant` with `export COREPACK_ENABLE_DOWNLOAD_PROMPT=0`. Commits end with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`. Shell heredocs must stay under ~4 KB per command. Never paste a secret into chat, a file or a commit.
+**Conventions:** run every command from the repo root `C:\Users\laich\Documents\smeassistant` using PowerShell-safe `corepack pnpm` commands. Use scoped commits and the `codex/` branch prefix for new work; preserve unrelated changes. Never paste a secret into chat, a file or a commit.
 
 ---
 
@@ -43,7 +45,7 @@ Start a production server and read the CTA's computed style through the Chrome D
 corepack pnpm exec next build > /dev/null 2>&1 && (corepack pnpm exec next start -p 3016 > /tmp/p.log 2>&1 &) ; sleep 8; curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3016/zh-HK
 ```
 
-Then `new_page` on `http://127.0.0.1:3016/zh-HK` and `evaluate_script` with:
+Historical measurement example: inspect `http://127.0.0.1:3016/zh-HK` with an available browser tool and evaluate:
 
 ```js
 (() => { const a = document.querySelector(".header-actions a.header-scan-cta"); const s = getComputedStyle(a); return { color: s.color, background: s.backgroundColor, classes: a.className }; })()
@@ -96,7 +98,7 @@ corepack pnpm exec tsc --noEmit && corepack pnpm exec eslint components/product-
 git add components/product-ui.tsx app/ramp-refresh.css
 git commit -m "fix: header CTA contrast and brand link accessible name
 
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+"
 ```
 
 ### Task 2: Production fixture guard
@@ -161,7 +163,7 @@ Expected: all pass (the existing "honours an explicit SCAN_SOURCES value" case s
 git add lib/scan/run.ts lib/scan/run.test.ts
 git commit -m "fix: refuse fixture scans on production deployments
 
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+"
 ```
 
 ### Task 3: Legacy path redirects
@@ -254,7 +256,7 @@ Expected: all proxy tests pass (the existing `proxy()` tests are unaffected beca
 git add lib/funnel/locale-redirect.ts proxy.ts tests/proxy.test.ts
 git commit -m "feat: redirect legacy sme-scanner merchant paths
 
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+"
 ```
 
 ### Task 4: Launch readiness check script
@@ -450,7 +452,7 @@ corepack pnpm exec eslint scripts/launch-check.mjs tests/launch-check.test.ts
 git add scripts/launch-check.mjs tests/launch-check.test.ts package.json
 git commit -m "feat: add read-only launch readiness check
 
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+"
 ```
 
 ### Task 5: Gate, docs, and the code PR
@@ -496,11 +498,11 @@ Expected: typecheck clean, 0 lint errors, all tests pass (suite, isolated decode
 git add docs/integration/DEPLOY.md
 git commit -m "docs: cut-over runbook with the real Vercel ids
 
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+"
 git push -u origin feat/launch-readiness
 gh pr create --base main --head feat/launch-readiness --title "Launch readiness: a11y fixes, production guard, legacy redirects, launch check" --body "See docs/superpowers/specs/2026-09-04-launch-readiness-design.md. Code only; the rollout steps run after merge.
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)"
+Prepared for review"
 ```
 
 Expected: PR opened; CI green. Willy merges PR #3 (Phase 7) first if it is still open, then this one. Tasks 6–9 run against `main` after merge.
@@ -511,16 +513,16 @@ No repo files. Executed through the Vercel MCP connector; every result is verifi
 
 - [ ] **Step 1: Project settings** — set on `smeassistant`: Node 22.x, root `/`, install `pnpm install --frozen-lockfile`, build `pnpm build`, production branch `main`, deployment protection off for production. Verify with `get_project` (`nodeVersion` = `22.x`).
 - [ ] **Step 2: Preview environment** — set for the Preview scope: `SCAN_SOURCES=fixture`, `NEXT_PUBLIC_SITE_URL` unset (the app falls back to `VERCEL_URL`), `APP_ORIGIN` = `https://smeassistant-git-main-ynwaforevers-projects.vercel.app` (mailed preview links only), `RATE_LIMIT_SECRET` (Willy pastes), the three Supabase variables (Willy pastes). No provider, LLM or payment keys.
-- [ ] **Step 3: Production environment** — set for the Production scope every non-secret value: `SCAN_SOURCES=live`, `WORKSPACE_CLAIM_VIA_OAUTH_ENABLED=true`, `NEXT_PUBLIC_SITE_URL=https://smescanner.fimmick.com`, `APP_ORIGIN=https://smescanner.fimmick.com`, `GOOGLE_OAUTH_REDIRECT_URI=https://smescanner.fimmick.com/api/oauth/google/callback`, `GOOGLE_OAUTH_CLAIM_REDIRECT_URI=https://smescanner.fimmick.com/api/oauth/google/claim/callback`, `NEXT_PUBLIC_REGION` unset, `POSTHOG_HOST` as in `.env.example`. Willy pastes every secret from the legacy project's production environment: Supabase, `RATE_LIMIT_SECRET`, `REPORT_ACCESS_TOKEN_SECRET`, `OAUTH_TOKEN_ENCRYPTION_KEY`, provider keys, LLM key, `RESEND_API_KEY`, `REPORT_EMAIL_FROM`, Stripe keys and price ids, Google client id and secret. Claude then lists the configured variable names and diffs them against `.env.example` — every non-comment key must be present or consciously blank.
+- [ ] **Step 3: Production environment** — set for the Production scope every non-secret value: `SCAN_SOURCES=live`, `WORKSPACE_CLAIM_VIA_OAUTH_ENABLED=true`, `NEXT_PUBLIC_SITE_URL=https://smescanner.fimmick.com`, `APP_ORIGIN=https://smescanner.fimmick.com`, `GOOGLE_OAUTH_REDIRECT_URI=https://smescanner.fimmick.com/api/oauth/google/callback`, `GOOGLE_OAUTH_CLAIM_REDIRECT_URI=https://smescanner.fimmick.com/api/oauth/google/claim/callback`, `NEXT_PUBLIC_REGION` unset, `POSTHOG_HOST` as in `.env.example`. Willy pastes every secret from the legacy project's production environment: Supabase, `RATE_LIMIT_SECRET`, `REPORT_ACCESS_TOKEN_SECRET`, `OAUTH_TOKEN_ENCRYPTION_KEY`, provider keys, LLM key, `RESEND_API_KEY`, `REPORT_EMAIL_FROM`, Stripe keys and price ids, Google client id and secret. The operator then lists the configured variable names and diffs them against `.env.example` — every non-comment key must be present or consciously blank.
 - [ ] **Step 4: Deploy production from `main`** and run `corepack pnpm launch:check --origin https://smeassistant.vercel.app --claim-flag on`. Expected before the domain move: the three locale pages pass; `hreflang alternates`, `robots.txt` and `sitemap.xml` FAIL with "wrong origin" because they print the final hostname (`NEXT_PUBLIC_SITE_URL`), which is intended and clears itself in Task 8; `google claim start` fails until Task 7 step 2; `stripe webhook unsigned` passes once the secret is set; `magic-link route` passes. Record the output.
 
 ### Task 7: External registrations (Willy), verified one by one
 
 No repo files. Each step is: Willy performs the registration → Claude runs the probe → the result is recorded.
 
-- [ ] **Step 1: Supabase Auth redirect allowlist** — Willy adds `https://smescanner.fimmick.com/auth/callback` and `https://smeassistant.vercel.app/auth/callback`. Claude verifies: on `https://smeassistant.vercel.app/zh-HK/owner/sign-in` request a magic link for a lead that exists on a test report slug; Willy confirms the mailed link opens `/auth/callback` on the `vercel.app` origin and lands on `/zh-HK/owner/select-workspace` signed in.
-- [ ] **Step 2: Google Cloud OAuth client** — Willy adds redirect URIs `/api/oauth/google/callback` and `/api/oauth/google/claim/callback` on both origins and both origins as JavaScript origins. Claude verifies: `corepack pnpm launch:check --origin https://smeassistant.vercel.app --claim-flag on` shows `google claim start  PASS 302 to Google`.
-- [ ] **Step 3: Stripe webhook** — Willy adds endpoint `https://smescanner.fimmick.com/api/webhooks/stripe` and `https://smeassistant.vercel.app/api/webhooks/stripe`, pastes the signing secret into the Production env, and sends a test `checkout.session.completed` from the dashboard. Claude verifies: the Vercel runtime logs (`get_runtime_logs`) show a 200 for the test event and the unsigned probe still reports 400.
+- [ ] **Step 1: Supabase Auth redirect allowlist** — Willy adds `https://smescanner.fimmick.com/auth/callback` and `https://smeassistant.vercel.app/auth/callback`. The operator verifies: on `https://smeassistant.vercel.app/zh-HK/owner/sign-in` request a magic link for a lead that exists on a test report slug; Willy confirms the mailed link opens `/auth/callback` on the `vercel.app` origin and lands on `/zh-HK/owner/select-workspace` signed in.
+- [ ] **Step 2: Google Cloud OAuth client** — Willy adds redirect URIs `/api/oauth/google/callback` and `/api/oauth/google/claim/callback` on both origins and both origins as JavaScript origins. The operator verifies: `corepack pnpm launch:check --origin https://smeassistant.vercel.app --claim-flag on` shows `google claim start  PASS 302 to Google`.
+- [ ] **Step 3: Stripe webhook** — Willy adds endpoint `https://smescanner.fimmick.com/api/webhooks/stripe` and `https://smeassistant.vercel.app/api/webhooks/stripe`, pastes the signing secret into the Production env, and sends a test `checkout.session.completed` from the dashboard. The operator verifies: the Vercel runtime logs (`get_runtime_logs`) show a 200 for the test event and the unsigned probe still reports 400.
 - [ ] **Step 4: Workspace migrations** — Willy applies `supabase/migrations/20260903000000_workspace_layer.sql` then `20260903000001_workspace_rpcs.sql` in the SQL editor on a non-production project, then production, in that order. Claude verifies with a read-only query Willy runs: `select count(*) from public.scan_snapshots; select proname from pg_proc where proname in ('approve_output_version','export_output_version');` — two function names returned.
 
 ### Task 8: Live smoke test and cut-over
@@ -545,7 +547,7 @@ No repo files. Stops at the first failure; nothing later runs.
 ```bash
 git checkout -b docs/launch-report main && git add docs/integration/LAUNCH-REPORT.md && git commit -m "docs: launch report
 
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>" && git push -u origin docs/launch-report && gh pr create --base main --head docs/launch-report --title "docs: launch report" --body "Record of the rollout; no code.
+" && git push -u origin docs/launch-report && gh pr create --base main --head docs/launch-report --title "docs: launch report" --body "Record of the rollout; no code.
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)"
+Prepared for review"
 ```

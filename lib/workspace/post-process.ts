@@ -15,8 +15,10 @@ import { buildSnapshot, loadDiffForHeadJob } from "@/lib/workspace/snapshots";
  *
  * Best-effort by contract: the scan result is already persisted and reported
  * to the merchant, so a failure here is logged and never surfaces as a failed
- * scan. The claim route re-runs the snapshot + actions steps, which is also
- * the retry path when this one fails.
+ * scan. Errors stay visible in the outcome and logs; callers can repeat this
+ * hook against the persisted terminal job without invoking collectors. Durable
+ * cross-runner reconciliation remains a separate rollout dependency; this hook
+ * is not a durable retry queue.
  */
 export interface PostProcessOutcome {
   ran: boolean;
@@ -48,42 +50,47 @@ async function workspaceHref(db: SupabaseClient, workspaceId: string, locationId
 }
 
 export async function postProcessWorkspaceScan(db: SupabaseClient, jobId: string): Promise<PostProcessOutcome> {
+  let snapshotId: string | null = null;
   try {
     const { data: job, error } = await db
       .from("audit_jobs")
       .select("id, workspace_id, location_id, status, business_name")
       .eq("id", jobId)
       .maybeSingle<PostProcessJob>();
-    if (error || !job || !job.workspace_id) return { ran: false, snapshotId: null, error: null };
+    if (error) throw new Error("post-process job lookup failed");
+    if (!job || !job.workspace_id) return { ran: false, snapshotId: null, error: null };
     const name = job.business_name?.trim() || "";
 
     if (job.status === "failed") {
-      await notifyWorkspace(db, {
+      const notification = await notifyWorkspace(db, {
         workspaceId: job.workspace_id,
+        completionJobId: job.id,
         kind: "scan.failed",
         title: localized(name ? `Scan failed for ${name}` : "Scan failed", name ? `${name} 掃描失敗` : "掃描失敗"),
         body: localized("The scan could not finish. Try a rescan later or check the integrations page.", "掃描未能完成。請稍後重新掃描，或檢查整合頁面。"),
         href: await workspaceHref(db, job.workspace_id, job.location_id),
       });
+      if (notification.error) throw new Error(notification.error);
       return { ran: true, snapshotId: null, error: null };
     }
     if (job.status !== "done" && job.status !== "partial") return { ran: false, snapshotId: null, error: null };
 
     const snapshot = await buildSnapshot(db, jobId);
+    snapshotId = snapshot.id;
     await deriveActionsForSnapshot(db, snapshot.id);
 
-    // Measurements only when scan-engine wrote a comparable diff; a failure
-    // here must not cost the merchant the completion notice.
-    try {
-      const diff = await loadDiffForHeadJob(db, jobId);
-      if (diff?.comparable) await recordMeasurements(db, { headSnapshot: snapshot, diff });
-    } catch (cause) {
-      const message = cause instanceof Error ? cause.message : "unknown";
-      console.error("[workspace/post-process] measurements failed", { category: "workspace_measurements_failed", jobId, message });
+    // A missing measurement is an incomplete workspace update, even though
+    // the original scan remains valid. Do not announce completed workspace
+    // refresh until required side effects succeed.
+    const diff = await loadDiffForHeadJob(db, jobId);
+    if (diff?.comparable) {
+      const measurements = await recordMeasurements(db, { headSnapshot: snapshot, diff });
+      if (!measurements.comparable) throw new Error("measurement base snapshot not ready");
     }
 
-    await notifyWorkspace(db, {
+    const notification = await notifyWorkspace(db, {
       workspaceId: job.workspace_id,
+      completionJobId: job.id,
       kind: "scan.completed",
       title: localized(name ? `Scan completed for ${name}` : "Scan completed", name ? `${name} 掃描完成` : "掃描完成"),
       body: job.status === "partial"
@@ -91,10 +98,11 @@ export async function postProcessWorkspaceScan(db: SupabaseClient, jobId: string
         : localized("Your workspace has fresh evidence and refreshed actions.", "工作區已有最新證據及更新後的行動。"),
       href: await workspaceHref(db, job.workspace_id, job.location_id),
     });
+    if (notification.error) throw new Error(notification.error);
     return { ran: true, snapshotId: snapshot.id, error: null };
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : "unknown";
     console.error("[workspace/post-process] failed", { category: "workspace_post_process_failed", jobId, message });
-    return { ran: true, snapshotId: null, error: message };
+    return { ran: true, snapshotId, error: message };
   }
 }

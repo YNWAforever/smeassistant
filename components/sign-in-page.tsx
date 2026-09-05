@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useState, type FormEvent } from "react"
+import { useState, useSyncExternalStore, type FormEvent } from "react"
 import { ArrowRight, Building2, Check, CircleAlert, KeyRound, LockKeyhole, ScanSearch, ShieldCheck } from "lucide-react"
 
 import { PublicPageFrame } from "@/components/product-ui"
@@ -12,6 +12,11 @@ import { Label } from "@/components/ui/label"
 import type { PrototypeLocale } from "@/lib/copy"
 
 import type { SignInErrorCode } from "@/lib/funnel/sign-in"
+
+// Keep native form submission unavailable until React owns the event handlers.
+const subscribeHydration = () => () => {}
+const clientHydrated = () => true
+const serverHydrated = () => false
 
 function errorCopy(code: SignInErrorCode, isChinese: boolean): string {
   switch (code) {
@@ -50,6 +55,7 @@ export function SignInPage({
 }) {
   const isChinese = locale !== "en"
   const planLabel = plan === "multi" ? (isChinese ? "多地點工作台" : "Multi-location") : plan === "growth" ? (isChinese ? "增長工作台" : "Growth Workspace") : null
+  const hydrated = useSyncExternalStore(subscribeHydration, clientHydrated, serverHydrated)
   const [email, setEmail] = useState("")
   const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle")
   const [formError, setFormError] = useState("")
@@ -108,10 +114,10 @@ export function SignInPage({
               <form onSubmit={submit} noValidate>
                 <div className="field-stack">
                   <Label htmlFor="sign-in-email">{isChinese ? "電郵地址" : "Email address"}</Label>
-                  <Input id="sign-in-email" name="email" type="email" autoComplete="email" inputMode="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder={isChinese ? "you@example.com" : "you@example.com"} />
+                  <Input id="sign-in-email" disabled={!hydrated} name="email" type="email" autoComplete="email" inputMode="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder={isChinese ? "you@example.com" : "you@example.com"} />
                 </div>
                 {formError && <div className="form-error" role="alert"><CircleAlert /> {formError}</div>}
-                <Button type="submit" className="w-full" size="lg" disabled={status === "sending"}><ShieldCheck />{status === "sending" ? (isChinese ? "發送中…" : "Sending…") : (isChinese ? "寄出登入連結" : "Email me a sign-in link")}<ArrowRight /></Button>
+                <Button type="submit" className="w-full" size="lg" disabled={!hydrated || status === "sending"}><ShieldCheck />{status === "sending" ? (isChinese ? "發送中…" : "Sending…") : (isChinese ? "寄出登入連結" : "Email me a sign-in link")}<ArrowRight /></Button>
               </form>
             </>
           )}

@@ -42,13 +42,13 @@ async function freePort(): Promise<number> {
   });
 }
 
-function waitForPostgres(container: string): void {
+async function waitForPostgres(container: string): Promise<void> {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     try {
       run(["exec", container, "pg_isready", "-U", "postgres"]);
       return;
     } catch {
-      execFileSync("sleep", ["0.5"]);
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
   }
   throw new Error("postgres did not become ready within 30s");
@@ -162,16 +162,16 @@ export async function startContainers(jwtSecret: string): Promise<IntegrationCon
     run([
       "run", "-d", "--name", dbName, "--network", network,
       "-e", "POSTGRES_PASSWORD=postgres",
-      "-p", `${pgPort}:5432`, PG_IMAGE,
+      "-p", `127.0.0.1:${pgPort}:5432`, PG_IMAGE,
     ]);
-    waitForPostgres(dbName);
+    await waitForPostgres(dbName);
     run([
       "run", "-d", "--name", apiName, "--network", network,
       "-e", `PGRST_DB_URI=postgres://postgres:postgres@${dbName}:5432/postgres`,
       "-e", "PGRST_DB_SCHEMAS=public",
       "-e", "PGRST_DB_ANON_ROLE=anon",
       "-e", `PGRST_JWT_SECRET=${jwtSecret}`,
-      "-p", `${apiPort}:3000`, PGRST_IMAGE,
+      "-p", `127.0.0.1:${apiPort}:3000`, PGRST_IMAGE,
     ]);
     const rawPostgrestUrl = `http://127.0.0.1:${apiPort}`;
     await waitForPostgrest(rawPostgrestUrl);
