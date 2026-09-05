@@ -12,6 +12,8 @@ const state = vi.hoisted(() => ({
   measurements: [] as Row[],
   versions: [] as Row[],
   inserted: [] as Row[],
+  updateError: false,
+  latestSnapshotId: "snap-head",
   updates: [] as { patch: Row; ids: unknown }[],
 }));
 
@@ -21,10 +23,11 @@ function client(): SupabaseClient {
     let inserted: Row[] | null = null;
     let patch: Row | null = null;
     const terminal = () => {
-      if (table === "scan_snapshots") return { data: state.snapshots[String(filters.id)] ?? null, error: null };
+      if (table === "scan_snapshots") return { data: filters.id ? state.snapshots[String(filters.id)] ?? null : { id: state.latestSnapshotId }, error: null };
       if (table === "audit_jobs") return { data: state.headJob, error: null };
       if (table === "actions") {
         if (patch) {
+          if (state.updateError) return { data: null, error: { message: "state unavailable" } };
           state.updates.push({ patch, ids: filters.id });
           return { data: null, error: null };
         }
@@ -45,6 +48,8 @@ function client(): SupabaseClient {
     const self = () => chain;
     Object.assign(chain, {
       select: self,
+      order: self,
+      limit: self,
       or: self,
       is: self,
       not: self,
@@ -59,6 +64,11 @@ function client(): SupabaseClient {
       insert: (rows: Row[]) => {
         inserted = rows;
         return Promise.resolve(terminal());
+      },
+      upsert: (rows: Row[], options: { onConflict: string; ignoreDuplicates: boolean }) => {
+        expect(options).toEqual({ onConflict: "id", ignoreDuplicates: true });
+        inserted = rows.filter((row) => !state.measurements.some((existing) => existing.id === row.id));
+        return { select: () => { const result = terminal(); return Promise.resolve({ ...result, data: inserted }); } };
       },
       update: (row: Row) => {
         patch = row;
@@ -133,6 +143,8 @@ const diff: ScanDiffRow = {
 };
 
 beforeEach(() => {
+  state.updateError = false;
+  state.latestSnapshotId = "snap-head";
   state.snapshots = {
     "snap-base": snapshotRow({ id: "snap-base", job_id: "job-base", observed_at: "2026-08-02T10:00:00Z", metrics: { "gbp.response_rate_pct": 20, "ig.days_since_last_post": 14 } }),
   };
@@ -228,4 +240,26 @@ describe("recordMeasurements", () => {
     state.actions = [{ id: "a-reconnect", template_key: "google-reconnect", location_id: "loc-1" }];
     expect(await recordMeasurements(client(), { headSnapshot: snapshot({}), diff })).toEqual({ comparable: true, recorded: 0, skipped: 0 });
   });
+});
+
+
+it("repairs action state after measurements persisted but state update failed", async () => {
+  state.updateError = true;
+  await expect(recordMeasurements(client(), { headSnapshot: snapshot({}), diff })).rejects.toThrow("measurement state update failed");
+  expect(state.measurements).toHaveLength(2);
+  state.updateError = false;
+  expect(await recordMeasurements(client(), { headSnapshot: snapshot({}), diff })).toEqual({ comparable: true, recorded: 0, skipped: 2 });
+  expect(state.measurements).toHaveLength(2);
+  expect(state.updates).toEqual([{ patch: expect.objectContaining({ measurement_state: "measured" }), ids: ["a-review", "a-social"] }]);
+});
+
+
+it("records historical measurements without overwriting newer action measurement state", async () => {
+  state.latestSnapshotId = "snap-newer";
+  await recordMeasurements(client(), { headSnapshot: snapshot({}), diff });
+  expect(state.measurements).toHaveLength(2);
+  expect(state.updates).toEqual([]);
+  await recordMeasurements(client(), { headSnapshot: snapshot({}), diff });
+  expect(state.measurements).toHaveLength(2);
+  expect(state.updates).toEqual([]);
 });

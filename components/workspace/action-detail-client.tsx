@@ -50,6 +50,11 @@ export interface ActionDetailClientProps {
 type Busy = null | "run" | "save" | "approve" | "decide" | "export" | "copy" | "inputs"
 type PreviewRole = "owner" | "manager" | "viewer"
 
+// Mutation controls stay disabled until their client event handlers are attached.
+const subscribeHydration = () => () => {}
+const clientHydrated = () => true
+const serverHydrated = () => false
+
 function subscribeOnline(callback: () => void) {
   window.addEventListener("online", callback)
   window.addEventListener("offline", callback)
@@ -73,6 +78,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   const { action, versions, runs, measurements } = detail
   const inputs = copy[locale].workspace.inputs
   const social = action.templateKey === "social-post"
+  const hydrated = useSyncExternalStore(subscribeHydration, clientHydrated, serverHydrated)
   const online = useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true)
   const offline = !online
 
@@ -115,8 +121,8 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   const versionLabel = (no: number) => (isChinese ? `第 ${no} 版` : `Version ${no}`)
   const versionName = selectedVersion ? versionLabel(selectedVersion.version_no) : (isChinese ? "尚未有版本" : "No version yet")
   const approvalText = (state: VersionRow["approval_state"] | null) => (state ? stateLabel(state, locale) : (isChinese ? "尚未有版本" : "No version yet"))
-  const canEdit = !offline && inScope && effectiveRole !== "viewer" && busy === null
-  const canApprove = !offline && inScope && effectiveRole !== "viewer" && busy === null && selectedVersion !== null
+  const canEdit = hydrated && !offline && inScope && effectiveRole !== "viewer" && busy === null
+  const canApprove = hydrated && !offline && inScope && effectiveRole !== "viewer" && busy === null && selectedVersion !== null
   const isApprovedCurrent = approval === "approved" && !dirty
   const canApproveCurrent = canApprove && !dirty && approval !== "rejected" && approval !== "superseded" && approval !== "approved"
   const latestRun = runs[0]
@@ -310,7 +316,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
         <Link href={withLocation(`${base}/actions`, location)} className="back-link"><ArrowLeft /> {isChinese ? "返回行動" : "Back to actions"}</Link>
         <div>
           {role === "owner" ? (
-            <Select value={previewRole} onValueChange={(value) => setPreviewRole(value as PreviewRole)}>
+            <Select disabled={!hydrated} value={previewRole} onValueChange={(value) => setPreviewRole(value as PreviewRole)}>
               <SelectTrigger className="role-select" aria-label={isChinese ? "預覽角色" : "Preview role"}><UserRound /><SelectValue>{roleName(previewRole)}</SelectValue></SelectTrigger>
               <SelectContent align="end"><SelectItem value="owner">{isChinese ? "店主" : "Owner"}</SelectItem><SelectItem value="manager">{isChinese ? "經理" : "Manager"}</SelectItem><SelectItem value="viewer">{isChinese ? "檢視者" : "Viewer"}</SelectItem></SelectContent>
             </Select>
@@ -350,7 +356,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                   <p className="limitation-note"><AlertTriangle /> {isChinese ? "Agent 不會猜測事實。請提供以下資料，再重新生成。" : "The agent never guesses facts. Provide the inputs below, then generate again."}</p>
                   {neededKeys.map((key) => key === "asset_or_text_only" ? (
                     <div key={key} className="field-stack"><Label htmlFor={`input-${key}`}>{inputs[key] ?? key}</Label>
-                      <Select value={inputValues[key] ?? ""} onValueChange={(value) => setInputValues((prev) => ({ ...prev, [key]: value }))}>
+                      <Select disabled={!hydrated} value={inputValues[key] ?? ""} onValueChange={(value) => setInputValues((prev) => ({ ...prev, [key]: value }))}>
                         <SelectTrigger id={`input-${key}`} aria-label={inputs[key] ?? key}><SelectValue placeholder={isChinese ? "選擇已核准素材或純文字" : "Choose an approved asset or text only"} /></SelectTrigger>
                         <SelectContent><SelectItem value="text_only">{isChinese ? "純文字（不使用相片）" : "Text only (no photo)"}</SelectItem>{approvedAssets.map((asset) => <SelectItem key={asset.id} value={asset.id}>{asset.filename}</SelectItem>)}</SelectContent>
                       </Select>
@@ -413,7 +419,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
         <TabsContent value="history">
           <div className="history-layout">
             <SectionCard><p className="eyebrow">{isChinese ? "不可變更的輸出版本" : "Immutable output versions"}</p><h2>{isChinese ? "版本紀錄" : "Version history"}</h2>
-              {versions.length === 0 ? <p>{isChinese ? "尚未有版本。" : "No versions yet."}</p> : <div className="version-list">{versions.map((item) => <button key={item.id} type="button" onClick={() => selectVersion(item.id)} aria-pressed={versionId === item.id} className={versionId === item.id ? "is-active" : ""}><span><History /></span><div><strong>{versionLabel(item.version_no)} · {stateLabel(item.approval_state, locale)}</strong><small>{item.author_type === "agent" ? "Agent" : (isChinese ? "成員" : "Member")} · {formatDateTime(item.created_at, locale, timezone)}{item.reviewer_comment ? ` · ${item.reviewer_comment}` : ""}</small></div>{versionId === item.id && <Check />}</button>)}</div>}
+              {versions.length === 0 ? <p>{isChinese ? "尚未有版本。" : "No versions yet."}</p> : <div className="version-list">{versions.map((item) => <button key={item.id} type="button" disabled={!hydrated} onClick={() => selectVersion(item.id)} aria-pressed={versionId === item.id} className={versionId === item.id ? "is-active" : ""}><span><History /></span><div><strong>{versionLabel(item.version_no)} · {stateLabel(item.approval_state, locale)}</strong><small>{item.author_type === "agent" ? "Agent" : (isChinese ? "成員" : "Member")} · {formatDateTime(item.created_at, locale, timezone)}{item.reviewer_comment ? ` · ${item.reviewer_comment}` : ""}</small></div>{versionId === item.id && <Check />}</button>)}</div>}
             </SectionCard>
             <SectionCard><div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "衝突及冪等性" : "Conflict and idempotency"}</p><h2>{isChinese ? "安全狀態" : "Safety states"}</h2></div></div>
               {conflict ? <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "另一位審閱者已更新輸出" : "Another reviewer changed this output"}</strong><p>{isChinese ? "未儲存文字仍保留在本機。載入最新版本、比較內容，再建立新版本。" : "Unsaved text is preserved locally. Load the latest version, compare, then create a new version."}</p><Button size="sm" onClick={loadLatest}><RefreshCw /> {isChinese ? "安全載入最新狀態" : "Load latest safely"}</Button></div></div> : <div className="idempotent-state"><CheckCircle2 /><div><strong>{isChinese ? "目前沒有衝突" : "No active conflict"}</strong><p>{isChinese ? "重複審批或匯出會返回原本結果，不會重複工作或用量。" : "Repeated approval or export returns the original transition without duplicate work or usage."}</p></div></div>}

@@ -42,6 +42,11 @@ function client(): SupabaseClient {
         inserted = rows;
         return Promise.resolve(terminal());
       },
+      upsert: (rows: Row[], options: { onConflict: string; ignoreDuplicates: boolean }) => {
+        expect(options).toEqual({ onConflict: "id", ignoreDuplicates: true });
+        inserted = rows.filter((row) => !state.inserted.some((existing) => existing.id === row.id));
+        return { select: () => { const result = terminal(); return Promise.resolve({ ...result, data: result.error ? null : inserted }); } };
+      },
       returns: () => Promise.resolve(terminal()),
       maybeSingle: () => Promise.resolve(terminal()),
       then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => Promise.resolve(terminal()).then(resolve, reject),
@@ -103,4 +108,19 @@ describe("hasNotificationSince / workspaceHomeHref", () => {
     state.slug = null;
     expect(await workspaceHomeHref(client(), "ws-1")).toBeNull();
   });
+});
+
+
+it("deduplicates the same terminal job per recipient after process recreation without resetting read state", async () => {
+  const input = { workspaceId: "ws-1", kind: "scan.completed" as const, title, completionJobId: "job-1" };
+  expect(await notifyWorkspace(client(), input)).toEqual({ inserted: 2, error: null });
+  state.inserted[0]!.read_at = "2026-09-05T00:00:00Z";
+  expect(await notifyWorkspace(client(), input)).toEqual({ inserted: 0, error: null });
+  expect(state.inserted).toHaveLength(2);
+  expect(state.inserted[0]!.read_at).toBe("2026-09-05T00:00:00Z");
+  expect(state.inserted[0]!.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  await notifyWorkspace(client(), { ...input, completionJobId: "job-2" });
+  await notifyWorkspace(client(), { ...input, workspaceId: "ws-2" });
+  await notifyWorkspace(client(), { ...input, kind: "scan.failed" });
+  expect(new Set(state.inserted.map((row) => row.id)).size).toBe(8);
 });

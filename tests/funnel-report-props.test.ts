@@ -28,7 +28,7 @@ const preview: ReportPreviewLike = {
   ],
 };
 
-const publicModel: ReportViewModelLike = { access: "public", preview, unlock: { hiddenFindingCount: 7, href: "/unlock/share-slug?market=HK" } };
+const publicModel: ReportViewModelLike = { access: "public", preview, unlock: { hiddenFindingCount: 7, href: "/zh-HK/unlock/share-slug?market=HK" } };
 
 const viewerModel: ReportViewModelLike = {
   access: "viewer",

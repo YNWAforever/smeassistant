@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { runLiveAssistant } from "@/lib/assistant/live";
+import { AssistantAccessError, isDraftIntent, runLiveAssistant } from "@/lib/assistant/live";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
 import { isLocale } from "@/lib/locale";
 import type { PrototypeLocale } from "@/lib/copy";
@@ -11,7 +11,7 @@ import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit
  * POST /api/assistant/run (CLAUDE.md §3.8).
  *   { mode: "demo"|"live", surface, intentId, locale, context? }
  * demo → createDemoAssistantRun, no auth, context ignored. live → membership
- * of context.workspaceId (any role), one assistant_run token per user, then
+ * of context.workspaceId (manager floor for drafts), one assistant_run token per user, then
  * lib/assistant/live. Draft intents call the model once (45 s bound).
  */
 export const maxDuration = 60;
@@ -26,7 +26,7 @@ function json(body: unknown, status = 200): Response {
 
 function optionalId(value: unknown): string | undefined | null {
   if (value === undefined || value === null || value === "") return undefined;
-  return typeof value === "string" && UUID_RE.test(value) ? value : null;
+  return typeof value === "string" && UUID_RE.test(value) ? value.toLowerCase() : null;
 }
 
 export async function POST(request: Request) {
@@ -52,20 +52,24 @@ export async function POST(request: Request) {
   const ids = { locationId: optionalId(ctx?.locationId), snapshotId: optionalId(ctx?.snapshotId), actionId: optionalId(ctx?.actionId), versionId: optionalId(ctx?.versionId) };
   if (Object.values(ids).some((id) => id === null)) return json({ error: "invalid_context" }, 400);
 
-  const auth = await authorizeWorkspaceRequest({ id: workspaceId });
+  const auth = isDraftIntent(intentId)
+    ? await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager" })
+    : await authorizeWorkspaceRequest({ id: workspaceId });
   if (!auth.ok) return json({ error: auth.code }, auth.status);
   const decision = await enforceRateLimit({ req: request, scope: "assistant_run", identifiers: [auth.user.id], failClosed: true });
   if (!decision.allowed) return rateLimitedResponse(decision.retryAfterSeconds);
 
   try {
     const result = await runLiveAssistant({
+      membership: auth.membership,
       intentId,
       surface: surface as AssistantSurface,
       locale: locale as PrototypeLocale,
       context: { workspaceId, locationId: ids.locationId ?? undefined, snapshotId: ids.snapshotId ?? undefined, actionId: ids.actionId ?? undefined, versionId: ids.versionId ?? undefined },
     });
     return json(result);
-  } catch {
+  } catch (error) {
+    if (error instanceof AssistantAccessError) return json({ error: error.code }, error.status);
     console.error("[api/assistant/run] failed", { category: "assistant_run_failed" });
     return json({ error: "unavailable" }, 503);
   }

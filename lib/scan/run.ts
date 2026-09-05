@@ -7,6 +7,7 @@ import {
 import { persistEvidenceSnapshots } from "@/lib/evidence/persist";
 import { supabaseServer } from "@/lib/supabase/admin";
 import { postProcessWorkspaceScan } from "@/lib/workspace/post-process";
+import { completeWorkspaceScan } from "@/lib/workspace/completion";
 import { createFixtureCollector, isScanFixtureName, type ScanFixtureName } from "./fixtures";
 
 export {
@@ -67,7 +68,13 @@ export async function runScan(jobId: string, anonymousSessionId: string): Promis
   // gets the notification only. postProcessWorkspaceScan checks the
   // attachment and terminal status itself and never throws: the scan result
   // the merchant sees is already final. `already_claimed` means another
-  // runner owns the job and will post-process it.
-  if (result.status !== "already_claimed") await postProcessWorkspaceScan(db, jobId);
+  // runner owns the job. The pinned legacy runner does not yet call this hook;
+  // cross-runner reconciliation remains a rollout dependency, not an assurance.
+  if (result.status !== "already_claimed") {
+    if (process.env.WORKSPACE_COMPLETION_ENABLED === "true") {
+      try { await completeWorkspaceScan(db, jobId); }
+      catch { console.error("[scan] workspace completion pending", { category: "workspace_completion_pending", jobId }); }
+    } else await postProcessWorkspaceScan(db, jobId);
+  }
   return result;
 }

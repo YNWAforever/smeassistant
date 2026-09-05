@@ -7,6 +7,7 @@ type Row = Record<string, unknown>;
 
 const state = vi.hoisted(() => ({
   snapshot: null as Row | null,
+  latestSnapshot: null as Row | null,
   findings: [] as Row[],
   diffs: [] as Row[],
   actions: [] as Row[],
@@ -14,6 +15,7 @@ const state = vi.hoisted(() => ({
   google: [] as Row[],
   versions: [] as Row[],
   audits: [] as Row[],
+  auditInsertError: false,
   inserts: [] as Row[],
 }));
 
@@ -24,7 +26,7 @@ function client(): SupabaseClient {
     let patch: Row | null = null;
     const terminal = () => {
       const f = (col: string) => filters.find(([c]) => c === col)?.[1];
-      if (table === "scan_snapshots") return { data: state.snapshot, error: null };
+      if (table === "scan_snapshots") return { data: f("id") ? state.snapshot : state.latestSnapshot ?? state.snapshot, error: null };
       if (table === "audit_findings") return { data: state.findings, error: null };
       if (table === "scan_diffs") return { data: state.diffs, error: null };
       if (table === "brand_profiles") return { data: state.brand, error: null };
@@ -32,7 +34,8 @@ function client(): SupabaseClient {
       if (table === "workspaces") return { data: { industry: "fnb" }, error: null };
       if (table === "output_versions") return { data: state.versions, error: null };
       if (table === "audit_events") {
-        if (ins) state.audits.push(ins);
+        if (ins && state.auditInsertError) return { data: null, error: { message: "audit failed" } };
+        if (ins && !state.audits.some((audit) => audit.idempotency_key === ins!.idempotency_key)) state.audits.push(ins);
         return { data: state.audits.filter((a) => a.entity_id === f("entity_id")), error: null };
       }
       if (table === "actions") {
@@ -69,6 +72,7 @@ function client(): SupabaseClient {
       in: (c: string, v: unknown) => { filters.push([`${c}:in`, v]); return chain; },
       is: (c: string, v: unknown) => { filters.push([`${c}:is`, v]); return chain; },
       insert: (r: Row) => { ins = r; return Promise.resolve(terminal()); },
+      upsert: (r: Row) => { ins = r; return Promise.resolve(terminal()); },
       update: (r: Row) => { patch = r; return chain; },
       returns: () => Promise.resolve(terminal()),
       maybeSingle: () => Promise.resolve(terminal()),
@@ -109,6 +113,8 @@ const diffRow = (over: Partial<ScanDiffRow>): ScanDiffRow => ({
 });
 
 beforeEach(() => {
+  state.latestSnapshot = null;
+  state.auditInsertError = false;
   state.snapshot = { id: "snap-1", job_id: "job-1", workspace_id: "ws-1", location_id: "loc-1", market: "hk", observed_at: snapshot.observedAt, scoring_version: "2026-08-16", overall_score: 62, coverage: 0.78, module_states: snapshot.moduleStates, metrics: {}, website_checks: snapshot.websiteChecks, comparable_to: null, diff_id: null, created_at: snapshot.createdAt };
   state.findings = findings as unknown as Row[];
   state.diffs = []; state.actions = []; state.brand = { workspace_id: "ws-1" }; state.google = [{ status: "active" }]; state.versions = []; state.audits = []; state.inserts = [];
@@ -176,4 +182,28 @@ describe("upsertOpenActions / closeResolvedActions", () => {
     expect(state.audits.filter((a) => a.event === "action.derived")).toHaveLength(1);
     expect(state.actions).toHaveLength(result.created);
   });
+});
+
+
+it("repairs a failed action audit without duplicate actions or audit rows", async () => {
+  state.auditInsertError = true;
+  await expect(deriveActionsForSnapshot(client(), "snap-1")).rejects.toThrow("action audit insert failed");
+  const actionCount = state.actions.length;
+  expect(actionCount).toBeGreaterThan(0);
+  state.auditInsertError = false;
+  await deriveActionsForSnapshot(client(), "snap-1");
+  await deriveActionsForSnapshot(client(), "snap-1");
+  expect(state.actions).toHaveLength(actionCount);
+  expect(state.audits).toHaveLength(1);
+});
+
+
+it("does not refresh or close newer actions when retrying an older snapshot", async () => {
+  await deriveActionsForSnapshot(client(), "snap-1");
+  state.latestSnapshot = { id: "snap-newer" };
+  state.actions.forEach((action) => { action.source_snapshot_id = "snap-newer"; action.evidence = { value: "new evidence" }; });
+  const before = structuredClone(state.actions);
+  state.findings = [];
+  expect(await deriveActionsForSnapshot(client(), "snap-1")).toEqual({ created: 0, updated: 0, completed: 0, expired: 0 });
+  expect(state.actions).toEqual(before);
 });

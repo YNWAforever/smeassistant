@@ -77,6 +77,7 @@ export interface ScanStartPayload {
   place_match_confidence?: MatchConfidence;
   provider?: "serpapi";
   manual_entry?: boolean;
+  continue_without_place?: boolean;
   ig_handle?: string;
   ig_match_provenance?: IgMatchProvenance;
   website_url?: string;
@@ -108,6 +109,7 @@ export function buildScanStartPayload(draft: ScanDraft, locale: string): ScanSta
     payload.provider = "serpapi";
   } else {
     payload.manual_entry = true;
+    payload.continue_without_place = true;
   }
 
   if (candidate?.address?.trim()) payload.address = candidate.address.trim();

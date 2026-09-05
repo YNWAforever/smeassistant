@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   measure: vi.fn(),
   notify: vi.fn(),
   job: null as Record<string, unknown> | null,
+  lookupError: null as { message: string } | null,
 }));
 vi.mock("@/lib/workspace/snapshots", () => ({ buildSnapshot: mocks.build, loadDiffForHeadJob: mocks.diff }));
 vi.mock("@/lib/workspace/actions", () => ({ deriveActionsForSnapshot: mocks.derive }));
@@ -22,7 +23,7 @@ const db = {
       eq: () => ({
         maybeSingle: async () => ({
           data: table === "audit_jobs" ? mocks.job : table === "workspaces" ? { slug: "kam-man-house" } : table === "locations" ? { slug: "yik-yam" } : null,
-          error: null,
+          error: table === "audit_jobs" ? mocks.lookupError : null,
         }),
       }),
     }),
@@ -30,6 +31,7 @@ const db = {
 } as unknown as SupabaseClient;
 
 beforeEach(() => {
+  mocks.lookupError = null;
   mocks.build.mockReset();
   mocks.derive.mockReset();
   mocks.diff.mockReset().mockResolvedValue(null);
@@ -72,14 +74,17 @@ describe("postProcessWorkspaceScan", () => {
     expect(mocks.measure).toHaveBeenCalledWith(db, { headSnapshot: { id: "snap" }, diff: { id: "diff-1", comparable: true } });
   });
 
-  it("a measurement failure is logged and the completion notice still goes out", async () => {
+  it("a measurement failure stays visible for retry and does not announce completion", async () => {
     mocks.build.mockResolvedValue({ id: "snap" });
     mocks.derive.mockResolvedValue({});
     mocks.diff.mockResolvedValue({ id: "diff-1", comparable: true });
     mocks.measure.mockRejectedValue(new Error("boom"));
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await postProcessWorkspaceScan(db, "job")).toEqual({ ran: true, snapshotId: "snap", error: "boom" });
+    expect(mocks.notify).not.toHaveBeenCalled();
+    mocks.measure.mockResolvedValue({ comparable: true, recorded: 1, skipped: 0 });
     expect(await postProcessWorkspaceScan(db, "job")).toEqual({ ran: true, snapshotId: "snap", error: null });
-    expect(mocks.notify).toHaveBeenCalledWith(db, expect.objectContaining({ kind: "scan.completed" }));
+    expect(mocks.notify).toHaveBeenCalledTimes(1);
     spy.mockRestore();
   });
 
@@ -97,4 +102,52 @@ describe("postProcessWorkspaceScan", () => {
     expect(mocks.notify).not.toHaveBeenCalled();
     spy.mockRestore();
   });
+});
+
+
+describe("post-process recoverable failures", () => {
+  it.each(["done", "partial", "failed"])("reports returned notification failures for %s jobs", async (status) => {
+    mocks.job!.status = status;
+    mocks.build.mockResolvedValue({ id: "snap" });
+    mocks.notify.mockResolvedValueOnce({ inserted: 0, error: "notification insert failed" });
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await postProcessWorkspaceScan(db, "job")).toEqual({
+      ran: true, snapshotId: status === "failed" ? null : "snap", error: "notification insert failed",
+    });
+    expect((await postProcessWorkspaceScan(db, "job")).error).toBeNull();
+    expect(mocks.job!.status).toBe(status);
+    spy.mockRestore();
+  });
+
+  it("preserves the persisted snapshot ID when action derivation fails and retries without changing the job", async () => {
+    mocks.build.mockResolvedValue({ id: "snap" });
+    mocks.derive.mockRejectedValueOnce(new Error("action update failed"));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await postProcessWorkspaceScan(db, "job")).toEqual({ ran: true, snapshotId: "snap", error: "action update failed" });
+    expect(mocks.notify).not.toHaveBeenCalled();
+    expect(await postProcessWorkspaceScan(db, "job")).toEqual({ ran: true, snapshotId: "snap", error: null });
+    expect(mocks.job!.status).toBe("done");
+    spy.mockRestore();
+  });
+});
+
+
+it("reports lookup failures instead of treating them as an unclaimed job", async () => {
+  mocks.lookupError = { message: "database unavailable" };
+  const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+  expect(await postProcessWorkspaceScan(db, "job")).toEqual({ ran: true, snapshotId: null, error: "post-process job lookup failed" });
+  expect(mocks.build).not.toHaveBeenCalled();
+  expect(mocks.notify).not.toHaveBeenCalled();
+  spy.mockRestore();
+});
+
+
+it("does not announce a comparable scan whose measurement base is not ready", async () => {
+  mocks.build.mockResolvedValue({ id: "snap" });
+  mocks.diff.mockResolvedValue({ comparable: true });
+  mocks.measure.mockResolvedValue({ comparable: false, recorded: 0, skipped: 0 });
+  const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+  expect(await postProcessWorkspaceScan(db, "job")).toEqual({ ran: true, snapshotId: "snap", error: "measurement base snapshot not ready" });
+  expect(mocks.notify).not.toHaveBeenCalled();
+  spy.mockRestore();
 });

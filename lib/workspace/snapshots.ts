@@ -1,3 +1,4 @@
+import { completionId } from "@/lib/workspace/completion-id";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { runWebsiteChecks, type WebsiteChecks } from "@/lib/website/checks";
 import { deriveMetrics, type SnapshotMetrics } from "./metrics";
@@ -169,10 +170,24 @@ export async function loadDiffForHeadJob(db: SupabaseClient, jobId: string): Pro
   return data?.[0] ?? null;
 }
 
+async function ensureSnapshotAudit(db: SupabaseClient, snapshot: SnapshotRecord): Promise<void> {
+  // Preserve pre-existing randomly keyed audit rows from earlier releases.
+  const { data, error } = await db.from("audit_events").select("id").eq("event", "snapshot.created").eq("entity_id", snapshot.id).limit(1);
+  if (error) throw new Error("snapshot audit lookup failed");
+  if (data?.length) return;
+  const { error: insertError } = await db.from("audit_events").upsert({
+    idempotency_key: completionId("snapshot.created", snapshot.id),
+    workspace_id: snapshot.workspaceId, location_id: snapshot.locationId,
+    actor_type: "scanner", actor_id: null, event: "snapshot.created",
+    entity_type: "scan_snapshot", entity_id: snapshot.id,
+    payload: { locale: null, coverage: snapshot.coverage, overall_score: snapshot.overallScore, job_id: snapshot.jobId },
+  }, { onConflict: "idempotency_key", ignoreDuplicates: true });
+  if (insertError) throw new Error("snapshot audit insert failed");
+}
+
 /**
- * Build (or rebuild) the snapshot for one workspace-linked job. Idempotent:
- * upserts on `job_id`; the `snapshot.created` audit event is written only the
- * first time. Throws `snapshot_requires_workspace` for an unattached job, so a
+ * Build the snapshot for one workspace-linked job. Retries preserve evidence
+ * and repair missing audit/link records; they do not re-fetch a saved website. Throws `snapshot_requires_workspace` for an unattached job, so a
  * public scan can never grow workspace rows (guardrail 15).
  */
 export async function buildSnapshot(db: SupabaseClient, jobId: string, opts: BuildSnapshotOptions = {}): Promise<SnapshotRecord> {
@@ -191,11 +206,18 @@ export async function buildSnapshot(db: SupabaseClient, jobId: string, opts: Bui
   if (findingsResult.error) throw new Error("snapshot findings lookup failed");
   if (aeoResult.error) throw new Error("snapshot aeo lookup failed");
 
+  if (existing && (existing.workspaceId !== job.workspace_id || existing.locationId !== job.location_id)) {
+    throw new Error("snapshot_scope_mismatch");
+  }
+  if (existing && (!diff || (existing.diffId === diff.id && (!diff.comparable || existing.comparableTo)))) {
+    await ensureSnapshotAudit(db, existing);
+    return existing;
+  }
   const websiteUrl = websiteUrlOf(job);
-  const websiteChecks = websiteUrl ? await (opts.fetchWebsite ?? runWebsiteChecks)(websiteUrl) : null;
+  const websiteChecks = existing ? existing.websiteChecks : websiteUrl ? await (opts.fetchWebsite ?? runWebsiteChecks)(websiteUrl) : null;
 
-  const moduleStates = deriveModuleStates(job, websiteChecks, Boolean(websiteUrl));
-  const metrics = deriveMetrics({
+  const moduleStates = existing?.moduleStates ?? deriveModuleStates(job, websiteChecks, Boolean(websiteUrl));
+  const metrics = existing?.metrics ?? deriveMetrics({
     rawData: job.raw_data,
     findings: (findingsResult.data ?? []) as Array<{ finding_key: string; evidence: Record<string, unknown> | null }>,
     aeoRows: (aeoResult.data ?? []) as Array<{ surface: string; cited: boolean; rank: number | null }>,
@@ -233,19 +255,7 @@ export async function buildSnapshot(db: SupabaseClient, jobId: string, opts: Bui
     .single<ScanSnapshotRow>();
   if (saveError || !saved) throw new Error("snapshot upsert failed");
 
-  if (!existing) {
-    const { error: auditError } = await db.from("audit_events").insert({
-      workspace_id: job.workspace_id,
-      location_id: job.location_id,
-      actor_type: "scanner",
-      actor_id: null,
-      event: "snapshot.created",
-      entity_type: "scan_snapshot",
-      entity_id: saved.id,
-      payload: { locale: null, coverage: row.coverage, overall_score: row.overall_score, job_id: jobId },
-    });
-    if (auditError) console.error("[workspace/snapshots] audit event not recorded", { category: "snapshot_audit_failed" });
-  }
-
-  return rowToSnapshot(saved);
+  const snapshot = rowToSnapshot(saved);
+  await ensureSnapshotAudit(db, snapshot);
+  return snapshot;
 }

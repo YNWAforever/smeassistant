@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   snapshotsByJob: {} as Record<string, Row | undefined>,
   upserts: [] as Row[],
   audits: [] as Row[],
+  auditError: false,
 }));
 
 /** Minimal chainable client: the terminal resolves from `state` per table. */
@@ -35,8 +36,10 @@ function client(): SupabaseClient {
         return { data: state.snapshotsByJob[String(filters.job_id)] ?? null, error: null };
       }
       if (table === "audit_events") {
-        if (inserted) state.audits.push(inserted);
-        return { data: null, error: null };
+        if (state.auditError) return { data: null, error: { message: "audit unavailable" } };
+        const row = inserted ?? upserted;
+        if (row && !state.audits.some((audit) => audit.idempotency_key === row.idempotency_key)) state.audits.push(row);
+        return { data: state.audits.filter((audit) => audit.entity_id === filters.entity_id), error: null };
       }
       return { data: null, error: null };
     };
@@ -111,6 +114,7 @@ const diffComparable: ScanDiffRow = {
 const fetchWebsite = async () => ({ evaluated: 15, passed: 9, results: [{ key: "faq_schema" as const, pass: false }] });
 
 beforeEach(() => {
+  state.auditError = false;
   state.job = { ...job };
   state.findings = [];
   state.aeo = [];
@@ -162,10 +166,10 @@ describe("buildSnapshot", () => {
     expect(snapshot.diffId).toBe("diff-1");
   });
 
-  it("is idempotent: a rebuild upserts again but records the audit event once", async () => {
+  it("reuses persisted evidence on retry and records the audit event once", async () => {
     await buildSnapshot(client(), "job-head", { fetchWebsite });
     await buildSnapshot(client(), "job-head", { fetchWebsite });
-    expect(state.upserts).toHaveLength(2);
+    expect(state.upserts).toHaveLength(1);
     expect(state.audits).toHaveLength(1);
   });
 
@@ -209,4 +213,17 @@ describe("rowToSnapshot / websiteUrlOf", () => {
     expect(websiteUrlOf({ website_url: null, input_snapshot: null, raw_data: { aeo: { website: { url: "https://c.test" } } } })).toBe("https://c.test");
     expect(websiteUrlOf({ website_url: null, input_snapshot: null, raw_data: null })).toBeNull();
   });
+});
+
+
+it("repairs a missing snapshot audit after snapshot persistence without refetching evidence", async () => {
+  const fetch = vi.fn(fetchWebsite);
+  state.auditError = true;
+  await expect(buildSnapshot(client(), "job-head", { fetchWebsite: fetch })).rejects.toThrow("snapshot audit lookup failed");
+  expect(state.upserts).toHaveLength(1);
+  state.auditError = false;
+  await buildSnapshot(client(), "job-head", { fetchWebsite: fetch });
+  await buildSnapshot(client(), "job-head", { fetchWebsite: fetch });
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(state.audits).toHaveLength(1);
 });

@@ -69,3 +69,6 @@ jobs:
 
       - name: End-to-end tests
         run: pnpm e2e
+
+      - name: Required merchant acceptance (isolated Auth, database, mail and LLM)
+        run: pnpm e2e:acceptance
