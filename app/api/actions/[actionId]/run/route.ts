@@ -1,4 +1,9 @@
-import { authorizeActionMutation, json, localeFrom, readJson } from "@/app/api/actions/_shared/mutation";
+import {
+  authorizeActionMutation,
+  json,
+  localeFrom,
+  readJson,
+} from "@/app/api/actions/_shared/mutation";
 import { RunError, runAgentForAction } from "@/lib/workspace/runs";
 
 /**
@@ -8,23 +13,51 @@ import { RunError, runAgentForAction } from "@/lib/workspace/runs";
  */
 export const maxDuration = 60;
 
-export async function POST(req: Request, { params }: { params: Promise<{ actionId: string }> }) {
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ actionId: string }> },
+) {
   const { actionId } = await params;
   const auth = await authorizeActionMutation(req, actionId, "action_run");
   if (!auth.ok) return auth.response;
 
   const body = await readJson(req);
-  const agentKey = typeof body?.agentKey === "string" ? body.agentKey : undefined;
-  const inputs = body?.inputs && typeof body.inputs === "object" && !Array.isArray(body.inputs) ? (body.inputs as Record<string, unknown>) : undefined;
+  const agentKey =
+    typeof body?.agentKey === "string" ? body.agentKey : undefined;
+  const inputs =
+    body?.inputs &&
+    typeof body.inputs === "object" &&
+    !Array.isArray(body.inputs)
+      ? (body.inputs as Record<string, unknown>)
+      : undefined;
 
   try {
-    const result = await runAgentForAction(auth.db, { actionId, actorId: auth.user.id, agentKey, inputs, locale: localeFrom(req, body), ipHash: auth.ipHash });
+    const result = await runAgentForAction(auth.repository, {
+      actionId,
+      actorId: auth.user.id,
+      membership: auth.membership,
+      agentKey,
+      inputs,
+      locale: localeFrom(req, body),
+      ipHash: auth.ipHash,
+    });
     return json(result);
   } catch (error) {
     if (error instanceof RunError) {
-      return json({ error: error.code === "action_not_found" ? "not_found" : "agent_unavailable" }, error.code === "action_not_found" ? 404 : 409);
+      if (error.code === "forbidden") return json({ error: "forbidden" }, 403);
+      return json(
+        {
+          error:
+            error.code === "action_not_found"
+              ? "not_found"
+              : "agent_unavailable",
+        },
+        error.code === "action_not_found" ? 404 : 409,
+      );
     }
-    console.error("[api/actions/run] failed", { category: "action_run_route_failed" });
+    console.error("[api/actions/run] failed", {
+      category: "action_run_route_failed",
+    });
     return json({ error: "unavailable" }, 503);
   }
 }
