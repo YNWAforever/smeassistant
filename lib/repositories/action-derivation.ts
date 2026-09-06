@@ -3,7 +3,7 @@ import type { Pool } from 'pg';
 import { getPool } from '../db/client';
 import { withTransaction } from '../db/transaction';
 import { snapshotRepository } from './snapshots';
-import { loadSnapshotById, loadSnapshotForJob } from '../workspace/snapshots';
+import { loadSnapshotById, loadSnapshotForJob, type ScanDiffRow } from '../workspace/snapshots';
 import { deriveActions, type FindingRow } from '../workspace/actions';
 import { completionId } from '../workspace/completion-id';
 import { WEBSITE_FAQ_TRIGGER, type TemplateKey } from '../workspace/templates';
@@ -32,22 +32,31 @@ export function actionDerivationRepository(db:Pick<Pool,'query'>):ActionDerivati
    if(opts.rejectStale)throw new Error('stale_snapshot');
    return {created:0,updated:0,completed:0,expired:0};
   }
-  // A corrupt snapshot must not smuggle foreign diff/base evidence into derived content.
-  const invalidSource=(await db.query(`SELECT s.id FROM scan_snapshots s WHERE s.id=$1 AND (
-   (s.diff_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM scan_diffs d JOIN audit_jobs b ON b.id=d.base_job_id
-    WHERE d.id=s.diff_id AND d.head_job_id=s.job_id AND b.workspace_id=s.workspace_id AND b.location_id IS NOT DISTINCT FROM s.location_id))
-   OR (s.comparable_to IS NOT NULL AND NOT EXISTS(SELECT 1 FROM scan_snapshots b JOIN audit_jobs j ON j.id=b.job_id
-    JOIN scan_diffs d ON d.id=s.diff_id AND d.base_job_id=b.job_id AND d.head_job_id=s.job_id AND d.comparable
-    WHERE b.id=s.comparable_to AND b.workspace_id=s.workspace_id AND b.location_id IS NOT DISTINCT FROM s.location_id
-    AND j.workspace_id=s.workspace_id AND j.location_id IS NOT DISTINCT FROM s.location_id)))`,[snapshotId])).rows;
-  if(invalidSource.length)throw new Error('derivation_scope_mismatch');
+  // Consume only the comparison pinned by this snapshot. Another comparison
+  // for the same head may be valid yet establish a different measured outcome.
+  let diff:ScanDiffRow|null=null;
+  if(snapshot.diffId) {
+   diff=(await db.query<ScanDiffRow>(`SELECT d.*,d.created_at::text AS created_at FROM scan_diffs d
+    JOIN audit_jobs h ON h.id=d.head_job_id JOIN audit_jobs b ON b.id=d.base_job_id
+    WHERE d.id=$1 AND d.head_job_id=$2 AND h.workspace_id=$3 AND b.workspace_id=$3
+    AND h.location_id IS NOT DISTINCT FROM $4::uuid AND b.location_id IS NOT DISTINCT FROM $4::uuid
+    AND ($5::uuid IS NULL OR (d.comparable AND EXISTS(
+     SELECT 1 FROM scan_snapshots s WHERE s.id=$5 AND s.job_id=d.base_job_id
+     AND s.workspace_id=$3 AND s.location_id IS NOT DISTINCT FROM $4::uuid)))`,
+   [snapshot.diffId,snapshot.jobId,ws,loc,snapshot.comparableTo])).rows[0]??null;
+   if(!diff)throw new Error('derivation_scope_mismatch');
+   // Snapshot building can retain a diff before a base snapshot is available.
+   // Keep that identity, but do not infer measured or regressed evidence from it.
+   if(!snapshot.comparableTo && diff.comparable)diff={...diff,comparable:false};
+  } else if(snapshot.comparableTo) {
+   throw new Error('derivation_scope_mismatch');
+  }
   const invalidActions=(await db.query(`SELECT a.id FROM actions a WHERE a.workspace_id=$1 AND a.location_id IS NOT DISTINCT FROM $2::uuid
    AND a.action_state=ANY($3::text[]) AND a.source_snapshot_id IS NOT NULL AND NOT EXISTS(
     SELECT 1 FROM scan_snapshots s JOIN audit_jobs j ON j.id=s.job_id AND j.workspace_id=s.workspace_id AND j.location_id IS NOT DISTINCT FROM s.location_id
     WHERE s.id=a.source_snapshot_id AND s.workspace_id=a.workspace_id AND s.location_id IS NOT DISTINCT FROM a.location_id) FOR UPDATE OF a`,[ws,loc,OPEN_ACTION_STATES])).rows;
   if(invalidActions.length)throw new Error('derivation_scope_mismatch');
   const findings=(await db.query<FindingRow>(`SELECT finding_key,module,severity,score_impact,owner_message_zh,owner_message_en,owner_action_zh,owner_action_en,evidence FROM audit_findings WHERE job_id=$1`,[snapshot.jobId])).rows;
-  const diff=await snapshots.diff(snapshot.jobId);
   const brand=(await db.query('SELECT workspace_id FROM brand_profiles WHERE workspace_id=$1',[ws])).rows[0];
   const google=(await db.query<{status:string}>("SELECT status FROM oauth_connections WHERE workspace_id=$1 AND provider='google_gbp' ORDER BY connected_at DESC,id DESC LIMIT 1",[ws])).rows[0]??null;
   const workspace=(await db.query<{industry:string|null}>('SELECT industry FROM workspaces WHERE id=$1',[ws])).rows[0];

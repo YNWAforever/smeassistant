@@ -89,7 +89,8 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon final action runtime',(
  it('marks only comparable resolved findings measured and expires missing evidence at exact location',async()=>{
   const f=await setup();await deriveActionsForSnapshot(db,f.snapshot);
   const next=await setup(f.ws,f.loc,'2026-09-02');await db.query('DELETE FROM audit_findings WHERE job_id=$1',[next.job]);
-  await db.query("INSERT INTO scan_diffs(base_job_id,head_job_id,comparable,resolved_findings) VALUES($1,$2,true,ARRAY['gbp.owner_response_low'])",[f.job,next.job]);
+  const linked=(await db.query("INSERT INTO scan_diffs(base_job_id,head_job_id,comparable,resolved_findings) VALUES($1,$2,true,ARRAY['gbp.owner_response_low']) RETURNING id",[f.job,next.job])).rows[0].id;
+  await db.query('UPDATE scan_snapshots SET diff_id=$1,comparable_to=$2 WHERE id=$3',[linked,f.snapshot,next.snapshot]);
   expect(await deriveActionsForSnapshot(db,next.snapshot)).toMatchObject({completed:1,expired:0});
   expect((await db.query("SELECT measurement_state FROM actions WHERE workspace_id=$1 AND template_key='review-response'",[f.ws])).rows[0].measurement_state).toBe('measured');
   const other=await setup();await deriveActionsForSnapshot(db,other.snapshot);
@@ -148,6 +149,46 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon final action runtime',(
    expect((await db.query('SELECT id FROM actions WHERE workspace_id=$1',[f.ws])).rows).toHaveLength(0);
    expect((await db.query('SELECT id FROM audit_events WHERE workspace_id=$1',[f.ws])).rows).toHaveLength(0);
   }finally{await owner.query('DROP TRIGGER fixture_fail_claim_action ON actions');await owner.query('DROP FUNCTION fixture_fail_claim_action()');}
+ });
+
+ it.each([true,false])('consumes the pinned comparison for closure and priority when a newer comparison disagrees (%s)',async pinnedResolved=>{
+  const base=await setup();await deriveActionsForSnapshot(db,base.snapshot);
+  const otherBase=await setup(base.ws,base.loc,'2026-09-02');
+  const head=await setup(base.ws,base.loc,'2026-09-03');
+  await db.query("UPDATE audit_findings SET finding_key='ig.content_consistency',module='ig' WHERE job_id=$1",[head.job]);
+  const pinned=(await db.query("INSERT INTO scan_diffs(base_job_id,head_job_id,comparable,resolved_findings,regressed_findings,created_at) VALUES($1,$2,true,$3,$4,'2026-09-03') RETURNING id",[base.job,head.job,pinnedResolved?['gbp.owner_response_low']:[],pinnedResolved?['ig.content_consistency']:[]])).rows[0].id;
+  await db.query("INSERT INTO scan_diffs(base_job_id,head_job_id,comparable,resolved_findings,regressed_findings,created_at) VALUES($1,$2,true,$3,$4,'2026-09-04')",[otherBase.job,head.job,pinnedResolved?[]:['gbp.owner_response_low'],pinnedResolved?[]:['ig.content_consistency']]);
+  await db.query('UPDATE scan_snapshots SET diff_id=$1,comparable_to=$2 WHERE id=$3',[pinned,base.snapshot,head.snapshot]);
+  const result=await deriveActionsForSnapshot(db,head.snapshot,{now:new Date('2026-09-04')});
+  expect(result).toMatchObject({completed:pinnedResolved?1:0,expired:pinnedResolved?0:1});
+  const closed=(await db.query("SELECT action_state,measurement_state FROM actions WHERE workspace_id=$1 AND template_key='review-response'",[base.ws])).rows[0];
+  expect(closed).toEqual({action_state:pinnedResolved?'completed':'expired',measurement_state:pinnedResolved?'measured':'not_eligible'});
+  const social=(await db.query("SELECT priority_factors FROM actions WHERE workspace_id=$1 AND template_key='social-post'",[base.ws])).rows[0];
+  expect(social.priority_factors).toContainEqual({key:'urgency',points:pinnedResolved?15:8});
+ });
+ it.each([false,true])('does not infer measured evidence without a linked base snapshot (diff linked %s)',async linkDiff=>{
+  const base=await setup();await deriveActionsForSnapshot(db,base.snapshot);
+  const head=await setup(base.ws,base.loc,'2026-09-02');await db.query('DELETE FROM audit_findings WHERE job_id=$1',[head.job]);
+  const diff=(await db.query("INSERT INTO scan_diffs(base_job_id,head_job_id,comparable,resolved_findings) VALUES($1,$2,true,ARRAY['gbp.owner_response_low']) RETURNING id",[base.job,head.job])).rows[0].id;
+  if(linkDiff)await db.query('UPDATE scan_snapshots SET diff_id=$1 WHERE id=$2',[diff,head.snapshot]);
+  expect(await deriveActionsForSnapshot(db,head.snapshot)).toMatchObject({completed:0,expired:1});
+  expect((await db.query("SELECT measurement_state FROM actions WHERE workspace_id=$1 AND template_key='review-response'",[base.ws])).rows[0].measurement_state).toBe('not_eligible');
+ });
+ it.each(['wrong-head','wrong-base-snapshot','foreign-base-job','foreign-base-snapshot','foreign-base-location','base-without-diff'])('rejects corrupt pinned comparison %s before writes',async corruption=>{
+  const base=await setup();await deriveActionsForSnapshot(db,base.snapshot);
+  const head=await setup(base.ws,base.loc,'2026-09-02'),foreign=await setup();
+  const diff=(await db.query("INSERT INTO scan_diffs(base_job_id,head_job_id,comparable,resolved_findings) VALUES($1,$2,true,ARRAY['gbp.owner_response_low']) RETURNING id",[base.job,head.job])).rows[0].id;
+  await db.query('UPDATE scan_snapshots SET diff_id=$1,comparable_to=$2 WHERE id=$3',[diff,base.snapshot,head.snapshot]);
+  if(corruption==='wrong-head')await db.query('UPDATE scan_diffs SET head_job_id=$1 WHERE id=$2',[foreign.job,diff]);
+  if(corruption==='wrong-base-snapshot')await db.query('UPDATE scan_snapshots SET comparable_to=$1 WHERE id=$2',[head.snapshot,head.snapshot]);
+  if(corruption==='foreign-base-job')await db.query('UPDATE audit_jobs SET workspace_id=$1 WHERE id=$2',[foreign.ws,base.job]);
+  if(corruption==='foreign-base-snapshot')await db.query('UPDATE scan_snapshots SET workspace_id=$1 WHERE id=$2',[foreign.ws,base.snapshot]);
+  if(corruption==='foreign-base-location')await db.query('UPDATE audit_jobs SET location_id=$1 WHERE id=$2',[foreign.loc,base.job]);
+  if(corruption==='base-without-diff')await db.query('UPDATE scan_snapshots SET diff_id=NULL WHERE id=$1',[head.snapshot]);
+  const before=(await db.query('SELECT id,action_state,source_snapshot_id FROM actions WHERE workspace_id=$1 ORDER BY id',[base.ws])).rows;
+  await expect(deriveActionsForSnapshot(db,head.snapshot)).rejects.toThrow('scope');
+  expect((await db.query('SELECT id,action_state,source_snapshot_id FROM actions WHERE workspace_id=$1 ORDER BY id',[base.ws])).rows).toEqual(before);
+  expect((await db.query("SELECT id FROM audit_events WHERE entity_id=$1 AND event='action.derived'",[head.snapshot])).rows).toHaveLength(0);
  });
 
 });
