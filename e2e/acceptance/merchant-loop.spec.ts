@@ -4,7 +4,7 @@ import { test, expect, signIn } from "../../test/e2e/fixtures";
 import { sql } from "../../test/e2e/environment";
 import { seedMerchant } from "../../test/e2e/seed";
 
-for (const market of ["hk", "tw"] as const) test(`${market}: real magic link, exact draft approval/download, repeat usage and fresh edit`, async ({ page, environment }) => {
+for (const market of ["hk", "tw"] as const) test(`${market}: local fixture link redemption, exact draft approval/download, repeat usage and fresh edit`, async ({ page, environment }) => {
   const merchant = await seedMerchant(environment, market);
   const link = await signIn(page, environment, merchant);
   expect(sql(environment.db, `select count(*) from workspace_members where workspace_id='${merchant.workspaceId}' and accepted_at is not null;`)).toBe("1");
@@ -29,9 +29,16 @@ for (const market of ["hk", "tw"] as const) test(`${market}: real magic link, ex
   const version = sql(environment.db, `select id from output_versions where action_id='${merchant.actionId}' and version_no=2 and approval_state='approved';`);
   expect(version).toMatch(/^[a-f0-9-]{36}$/);
   const key = randomUUID();
-  for (let i = 0; i < 2; i++) expect((await page.request.post(`/api/versions/${version}/export`, { data: { mode: "copy", idempotency_key: key } })).status()).toBe(200);
+  const deliveries: string[] = [];
+  for (let i = 0; i < 2; i++) {
+    const response = await page.request.post(`/api/versions/${version}/export`, { data: { mode: "copy", idempotency_key: key } });
+    expect(response.status()).toBe(200);
+    const result = await response.json(); expect(result.counted).toBe(false); deliveries.push(result.deliveryId);
+  }
+  expect(deliveries[0]).toMatch(/^[a-f0-9-]{36}$/);
+  expect(deliveries[1]).toBe(deliveries[0]);
   expect(sql(environment.db, `select approved_deliveries from workspace_usage where workspace_id='${merchant.workspaceId}';`)).toBe("1");
-  expect(sql(environment.db, `select count(*) from deliveries where idempotency_key='${key}';`)).toBe("1");
+  expect(sql(environment.db, `select count(*) from deliveries where id='${deliveries[0]}' and version_id='${version}' and mode='copy';`)).toBe("1");
   const edit = await page.request.post(`/api/actions/${merchant.actionId}/versions`, { data: { body: "Fresh edit requires approval", base_version_id: version } });
   expect(edit.status()).toBe(201);
   const v3 = await edit.json() as { versionId: string; versionNo: number };

@@ -19,7 +19,9 @@ function callback(value: unknown, origin: string): URL | null {
   return url.pathname === "/auth/callback" ? url : null;
 }
 export async function GET(request: Request, context: Context) {
-  try { return await getNeonAuth().handler().GET(freshRequest(request), context); }
+  try {
+    if (process.env.SME_TEST_IDENTITY) return await (await import("@/test/e2e/composition")).handleFixtureAuth(request, (await context.params).path.join("/"));
+    return await getNeonAuth().handler().GET(freshRequest(request), context); }
   catch { return unavailable(); }
 }
 export async function POST(request: Request, context: Context) {
@@ -51,7 +53,9 @@ export async function POST(request: Request, context: Context) {
       // No password/signup/reset mail surface is exposed by this application.
       return NextResponse.json({ error: "not_found" }, { status: 404 });
     }
-    response = await getNeonAuth().handler().POST(request, context);
+    response = process.env.SME_TEST_IDENTITY
+      ? await (await import("@/test/e2e/composition")).handleFixtureAuth(request, path)
+      : await getNeonAuth().handler().POST(request, context);
   } catch { response = unavailable(); }
   if (path === "sign-out") {
     const cleared = new NextResponse(response.body, { status: response.status, headers: response.headers });

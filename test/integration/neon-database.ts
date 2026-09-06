@@ -1,6 +1,6 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { createServer } from "node:net";
+import { createServer, type Socket } from "node:net";
 
 const PG_IMAGE = "postgres:16";
 const OWNERSHIP_LABEL = "com.sme-scanner.integration";
@@ -98,8 +98,14 @@ export async function startNeonDatabaseFixture(nodeEnv = process.env.NODE_ENV): 
   assertOwnedPostgresFixture(identity);
 
   let containerId: string | undefined;
+  let relay: ReturnType<typeof createServer> | undefined;
+  const sockets=new Set<Socket>();
+  const children=new Set<ChildProcess>();
   const stop = () => {
     assertOwnedPostgresFixture(identity);
+    for(const socket of sockets)socket.destroy();
+    for(const child of children){child.stdin?.end();child.kill();}
+    relay?.close();relay=undefined;
     if (!containerId) return;
     const inspect = JSON.parse(run(["inspect", containerName])) as Array<{
       Id?: unknown;
@@ -118,8 +124,34 @@ export async function startNeonDatabaseFixture(nodeEnv = process.env.NODE_ENV): 
   };
 
   try {
-    containerId = run(["run", "-d", "--name", containerName, "--label", `${OWNERSHIP_LABEL}=neon-postgres`, "--label", `${DATABASE_LABEL}=${databaseName}`, "-e", "POSTGRES_PASSWORD=postgres", "-e", `POSTGRES_DB=${databaseName}`, "-p", `127.0.0.1:${port}:5432`, PG_IMAGE]);
+    containerId = run(["run", "--pull=never", "-d", "--name", containerName, "--label", `${OWNERSHIP_LABEL}=neon-postgres`, "--label", `${DATABASE_LABEL}=${databaseName}`, "-e", "POSTGRES_PASSWORD=postgres", "-e", `POSTGRES_DB=${databaseName}`, "--network", "none", PG_IMAGE]);
     await waitForPostgres(containerName, databaseName);
+    // Docker Desktop cannot publish ports from an internal-only network.
+    // Carry the PostgreSQL byte stream over owned Docker exec pipes instead:
+    // the DB has network=none; only this explicit host loopback listener exists.
+    relay=createServer(socket=>{
+      sockets.add(socket);
+      const relayProgram = `use IO::Socket::INET; use IO::Select;
+        my $socket=IO::Socket::INET->new(PeerAddr=>"127.0.0.1",PeerPort=>5432,Proto=>"tcp") or die "local_socket_failed";
+        binmode STDIN; binmode STDOUT; binmode $socket;
+        my $select=IO::Select->new(\*STDIN,$socket);
+        while(1){for my $source($select->can_read){my $bytes=sysread($source,my $buffer,65536); exit unless defined($bytes) && $bytes;
+          my $target=fileno($source)==fileno(STDIN)?$socket:\*STDOUT;
+          while(length($buffer)){my $written=syswrite($target,$buffer);exit unless defined($written) && $written;substr($buffer,0,$written,"");}
+        }}`;
+      const child=spawn("docker",["exec","-i",containerName,"perl","-e",relayProgram],{stdio:["pipe","pipe","ignore"],windowsHide:true});
+      children.add(child);socket.pipe(child.stdin!);child.stdout!.pipe(socket);
+      child.stdin!.on("error",()=>socket.destroy());child.on("error",()=>socket.destroy());
+      child.once("exit",()=>{children.delete(child);socket.destroy();});
+      socket.once("close",()=>{
+        sockets.delete(socket);
+        // EOF must reach Docker's attached stdin before its CLI exits. Killing
+        // the CLI here can strand the remote shell/PG transaction and its locks.
+        child.stdin?.end();
+      });
+      socket.on("error",()=>socket.destroy());
+    });
+    await new Promise<void>((resolve,reject)=>{relay!.once("error",reject);relay!.listen(port,"127.0.0.1",resolve);});
     return { databaseUrl, databaseName, containerName, stop };
   } catch (error) {
     stop();

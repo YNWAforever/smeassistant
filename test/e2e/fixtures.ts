@@ -3,6 +3,13 @@ import { startEnvironment, type AcceptanceEnvironment } from "./environment";
 import { seedMerchant, type MerchantSeed } from "./seed";
 export const test = base.extend<{ merchant: MerchantSeed }, { environment: AcceptanceEnvironment }>({
   environment: [async ({}, runFixture) => { const env = await startEnvironment(); try { await runFixture(env); } finally { await env.stop(); } }, { scope: "worker", timeout: 240000 }],
+  context: async ({ context }, runFixture) => {
+    await context.route('**/*', route => {
+      const url=new URL(route.request().url());
+      return ['localhost','127.0.0.1','[::1]'].includes(url.hostname) ? route.continue() : route.abort('blockedbyclient');
+    });
+    await runFixture(context);
+  },
   baseURL: async ({ environment }, runFixture) => runFixture(environment.app),
   merchant: async ({ environment }, runFixture) => runFixture(await seedMerchant(environment, "hk")),
 });
@@ -21,7 +28,7 @@ export async function requestSignInLink(page: Page, env: AcceptanceEnvironment, 
     expect(message).toBeDefined();
     const full = await (await fetch(`${env.mail}/api/v1/message/${message!.ID}`)).json() as { HTML: string; Text: string };
     const links = [...full.HTML.matchAll(/href=["']([^"']+)["']/g)].map((m) => m[1].replaceAll("&amp;", "&"));
-    link = links.find((value) => value.startsWith(`${env.api}/auth/v1/verify?`)) ?? "";
+    link = links.find((value) => value.startsWith(`${env.app}/api/auth/verify?`)) ?? "";
     expect(link).not.toBe("");
   }).toPass({ timeout: 30000 });
   return link;

@@ -34,6 +34,7 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon final action runtime',(
   await db.query("INSERT INTO oauth_connections(workspace_id,provider,access_token_encrypted,status,connected_at) VALUES($1,'google_gbp','fixture','active',now())",[f.ws]);
   const first=await deriveActionsForSnapshot(db,f.snapshot);expect(first.created).toBe(1);
   const before=(await db.query('SELECT * FROM actions WHERE workspace_id=$1',[f.ws])).rows;
+  expect(before[0]).toMatchObject({action_state:'needs_input',dedupe_key:`${f.ws}:${f.loc}:review-response`});
   await db.query("UPDATE actions SET provided_inputs='{\"tone\":\"warm\"}',action_state='in_progress' WHERE workspace_id=$1",[f.ws]);
   expect(await deriveActionsForSnapshot(db,f.snapshot)).toMatchObject({created:0,updated:1});
   const after=(await db.query('SELECT * FROM actions WHERE workspace_id=$1',[f.ws])).rows;
@@ -55,6 +56,26 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon final action runtime',(
   try {await expect(deriveActionsForSnapshot(db,f.snapshot)).rejects.toThrow('fixture derived failure');
    expect((await db.query('SELECT id FROM actions WHERE workspace_id=$1',[f.ws])).rows).toHaveLength(0);
   } finally {await owner.query('DROP TRIGGER fixture_fail_derived ON audit_events');await owner.query('DROP FUNCTION fixture_fail_derived()');}
+ });
+ it('retained facade: retry after failed audit repairs once without partial actions',async()=>{
+  const f=await setup();
+  await owner.query("CREATE FUNCTION fixture_audit_retry() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event='action.derived' THEN RAISE EXCEPTION 'fixture audit failure'; END IF; RETURN NEW; END $$");
+  await owner.query('CREATE TRIGGER fixture_audit_retry BEFORE INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION fixture_audit_retry()');
+  try {await expect(deriveActionsForSnapshot(db,f.snapshot)).rejects.toThrow('fixture audit failure');expect((await db.query('SELECT id FROM actions WHERE workspace_id=$1',[f.ws])).rows).toEqual([]);}
+  finally {await owner.query('DROP TRIGGER fixture_audit_retry ON audit_events');await owner.query('DROP FUNCTION fixture_audit_retry()');}
+  const first=await deriveActionsForSnapshot(db,f.snapshot);expect(first.created).toBeGreaterThan(0);
+  await deriveActionsForSnapshot(db,f.snapshot);
+  expect((await db.query('SELECT id FROM actions WHERE workspace_id=$1',[f.ws])).rows).toHaveLength(first.created);
+  expect((await db.query("SELECT id FROM audit_events WHERE workspace_id=$1 AND event='action.derived'",[f.ws])).rows).toHaveLength(1);
+ });
+ it('retained facade: stale retry preserves newer evidence and action contents',async()=>{
+  const old=await setup();await deriveActionsForSnapshot(db,old.snapshot);
+  const newer=await setup(old.ws,old.loc,'2026-09-03');await deriveActionsForSnapshot(db,newer.snapshot);
+  await db.query("UPDATE actions SET evidence='{\"value\":\"new evidence\"}' WHERE workspace_id=$1",[old.ws]);
+  const before=(await db.query('SELECT * FROM actions WHERE workspace_id=$1 ORDER BY id',[old.ws])).rows;
+  await db.query('DELETE FROM audit_findings WHERE job_id=$1',[old.job]);
+  expect(await deriveActionsForSnapshot(db,old.snapshot)).toEqual({created:0,updated:0,completed:0,expired:0});
+  expect((await db.query('SELECT * FROM actions WHERE workspace_id=$1 ORDER BY id',[old.ws])).rows).toEqual(before);
  });
  it('Fix Pack joins owned jobs, hides invalid locations, and allows only one conditional reviewer',async()=>{
   const f=await setup(),foreign=await setup(),repo=fixPackRepository(db);
@@ -88,11 +109,13 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon final action runtime',(
  });
  it('marks only comparable resolved findings measured and expires missing evidence at exact location',async()=>{
   const f=await setup();await deriveActionsForSnapshot(db,f.snapshot);
+  await db.query("INSERT INTO actions(workspace_id,location_id,source_snapshot_id,template_key,source,source_finding_keys,title,summary,evidence,priority,priority_score,priority_factors,effort_minutes,capability,dedupe_key,action_state) VALUES($1,$2,$3,'visibility-content','finding',ARRAY['website.checks.faq_schema'],'{}','{}','{}','low',1,'{}',5,'Live',$4,'needs_input')",[f.ws,f.loc,f.snapshot,`${f.ws}:${f.loc}:visibility-content`]);
   const next=await setup(f.ws,f.loc,'2026-09-02');await db.query('DELETE FROM audit_findings WHERE job_id=$1',[next.job]);
   const linked=(await db.query("INSERT INTO scan_diffs(base_job_id,head_job_id,comparable,resolved_findings) VALUES($1,$2,true,ARRAY['gbp.owner_response_low']) RETURNING id",[f.job,next.job])).rows[0].id;
   await db.query('UPDATE scan_snapshots SET diff_id=$1,comparable_to=$2 WHERE id=$3',[linked,f.snapshot,next.snapshot]);
   expect(await deriveActionsForSnapshot(db,next.snapshot)).toMatchObject({completed:1,expired:0});
   expect((await db.query("SELECT measurement_state FROM actions WHERE workspace_id=$1 AND template_key='review-response'",[f.ws])).rows[0].measurement_state).toBe('measured');
+  expect((await db.query("SELECT action_state FROM actions WHERE workspace_id=$1 AND template_key='visibility-content'",[f.ws])).rows[0].action_state).toBe('needs_input');
   const other=await setup();await deriveActionsForSnapshot(db,other.snapshot);
   const gap=await setup(other.ws,other.loc,'2026-09-02');await db.query('DELETE FROM audit_findings WHERE job_id=$1',[gap.job]);
   expect(await deriveActionsForSnapshot(db,gap.snapshot)).toMatchObject({completed:0,expired:1});

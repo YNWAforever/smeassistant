@@ -1,43 +1,4 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { ScanProviderCollection } from "@sme-scanner/scan-engine";
-
-export function integrationClient(): SupabaseClient {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } },
-  );
-}
-
-let slugCounter = 0;
-
-/** Insert a queued job and return its id and share slug. */
-export async function seedQueuedJob(
-  overrides: Record<string, unknown> = {},
-): Promise<{ jobId: string; shareSlug: string }> {
-  slugCounter += 1;
-  const shareSlug = `it-slug-${process.pid.toString(36)}-${slugCounter}`;
-  const supabase = integrationClient();
-  const { data, error } = await supabase
-    .from("audit_jobs")
-    .insert({
-      business_name: "Integration Cafe",
-      ig_handle: "integration.cafe",
-      website_url: "https://example.com",
-      industry: "cafe",
-      district: "Central",
-      region: "hk",
-      status: "queued",
-      share_slug: shareSlug,
-      ...overrides,
-    })
-    .select("id")
-    .single();
-
-  if (error) throw new Error(`seedQueuedJob failed: ${error.message}`);
-  return { jobId: (data as { id: string }).id, shareSlug };
-}
-
 const COLLECTED_AT = "2026-08-11T00:00:00.000Z";
 
 const measuredIg = {
@@ -99,17 +60,7 @@ const measuredAeo = {
   },
 };
 
-/**
- * Build a provider collection for the processor.
- *
- * `evidence` is deliberately omitted. processScan's callers inject
- * `persistEvidence` (it takes no default) — every real caller in this repo
- * passes `persistEvidenceSnapshots`, which uploads to Supabase Storage, and
- * this harness serves PostgREST only, with no Storage endpoint. An empty
- * candidate list keeps that call a no-op regardless of which persistEvidence
- * a given test wires in; adding candidates here would fail against the
- * container for reasons unrelated to what is under test.
- */
+/** Deterministic collector data; no remote providers or evidence downloads. */
 export function fakeProviders(
   overrides: Partial<ScanProviderCollection> = {},
 ): ScanProviderCollection {

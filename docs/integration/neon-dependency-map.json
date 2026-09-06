@@ -1227,15 +1227,15 @@
   {
     "path": "lib/workspace/actions.test.ts",
     "kind": "test",
-    "task": 10,
+    "task": 14,
     "replacements": [
-      "lib/workspace/actions.ts",
-      "lib/repositories/action-derivation.ts"
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
     ],
     "status": "replaced",
     "evidence": [
-      "Task 10 actions domain is transport-free; transactional Neon derivation and claim hook use owned persisted evidence.",
-      "test/integration/neon-action-derivation.integration.test.ts; original-client legacy derivation tracked separately under Task 13."
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
     ]
   },
   {
@@ -1456,14 +1456,15 @@
   {
     "path": "lib/workspace/measurements.test.ts",
     "kind": "test",
-    "task": 13,
+    "task": 14,
     "replacements": [
-      "lib/repositories/measurements.ts",
-      "test/integration/neon-snapshots.integration.test.ts"
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "Intentional domain fixtures use legacyMeasurementRepository and SupabaseClient to protect the temporary fenced completion adapter. PostgreSQL domain behavior is covered by neon-snapshots.integration.test.ts. Retire legacy fixture transport with Task 13 completion; Task 10 also replaces snapshot artifact readers. No mixed database fallback."
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
     ]
   },
   {
@@ -1484,16 +1485,15 @@
   {
     "path": "lib/workspace/notify.test.ts",
     "kind": "test",
-    "task": 13,
+    "task": 14,
     "replacements": [
-      "lib/repositories/notifications.ts",
-      "lib/workspace/notify.ts"
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference",
-      "Task 11 verified shared Neon notification dedupe. Only named original-client completion wrappers/tests remain deferred to Task 13; no email sender exists in this app."
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
     ]
   },
   {
@@ -1674,14 +1674,15 @@
   {
     "path": "lib/workspace/snapshots.test.ts",
     "kind": "test",
-    "task": 13,
+    "task": 14,
     "replacements": [
-      "lib/repositories/snapshots.ts",
-      "test/integration/neon-snapshots.integration.test.ts"
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "Intentional domain fixtures use legacySnapshotRepository and SupabaseClient to protect the temporary fenced completion adapter. PostgreSQL domain behavior is covered by neon-snapshots.integration.test.ts. Retire legacy fixture transport with Task 13 completion; Task 10 also replaces snapshot artifact readers. No mixed database fallback."
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
     ]
   },
   {
@@ -2691,12 +2692,12 @@
     "task": 14,
     "replacements": [
       "test/e2e/identity-provider.ts",
-      "test/integration/neon-database.ts"
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "SupabaseClient type reference",
-      "supabaseServer reference"
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
     ]
   },
   {
@@ -2705,12 +2706,12 @@
     "task": 14,
     "replacements": [
       "test/e2e/identity-provider.ts",
-      "test/integration/neon-database.ts"
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
     ]
   },
   {
@@ -2719,11 +2720,12 @@
     "task": 14,
     "replacements": [
       "test/e2e/identity-provider.ts",
-      "test/integration/neon-database.ts"
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
     ]
   },
   {
@@ -2732,12 +2734,12 @@
     "task": 14,
     "replacements": [
       "test/e2e/identity-provider.ts",
-      "test/integration/neon-database.ts"
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "SupabaseClient type reference",
-      "supabaseServer reference"
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
     ]
   },
   {
@@ -2759,11 +2761,12 @@
     "task": 14,
     "replacements": [
       "test/e2e/identity-provider.ts",
-      "test/integration/neon-database.ts"
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "RPC consumer"
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
     ]
   },
   {
@@ -2908,48 +2911,56 @@
     "path": "test/helpers/legacy-snapshots.ts",
     "kind": "test",
     "task": 14,
-    "status": "pending",
+    "status": "replaced",
     "replacements": [
-      "Explicit repository fixtures without Supabase transport in Task14"
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
     ],
     "evidence": [
-      "Task13 preserved historical domain assertions in test-only facade; Task14 ports fixtures before Task15 dependency removal"
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
     ]
   },
   {
     "path": "test/helpers/legacy-measurements.ts",
     "kind": "test",
     "task": 14,
-    "status": "pending",
+    "status": "replaced",
     "replacements": [
-      "Explicit repository fixtures without Supabase transport in Task14"
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
     ],
     "evidence": [
-      "Task13 preserved historical domain assertions in test-only facade; Task14 ports fixtures before Task15 dependency removal"
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
     ]
   },
   {
     "path": "test/helpers/legacy-action-derivation.ts",
     "kind": "test",
     "task": 14,
-    "status": "pending",
+    "status": "replaced",
     "replacements": [
-      "Explicit repository fixtures without Supabase transport in Task14"
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
     ],
     "evidence": [
-      "Task13 preserved historical domain assertions in test-only facade; Task14 ports fixtures before Task15 dependency removal"
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
     ]
   },
   {
     "path": "test/helpers/legacy-notifications.ts",
     "kind": "test",
     "task": 14,
-    "status": "pending",
+    "status": "replaced",
     "replacements": [
-      "Explicit repository fixtures without Supabase transport in Task14"
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
     ],
     "evidence": [
-      "Task13 preserved historical domain assertions in test-only facade; Task14 ports fixtures before Task15 dependency removal"
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
     ]
   }
 ]

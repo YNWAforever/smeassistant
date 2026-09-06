@@ -1,6 +1,8 @@
-import { legacySnapshotRepository } from "@/test/helpers/legacy-snapshots";
+import type { SnapshotRepository } from "@/lib/repositories/snapshots";
+import { completionId } from "./completion-id";
+import type { ScanSnapshotRow, SnapshotJobRow } from "./snapshots";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { buildSnapshot, linkComparable, rowToSnapshot, websiteUrlOf, type ScanDiffRow } from "./snapshots";
 
 type Row = Record<string, unknown>;
@@ -17,61 +19,18 @@ const state = vi.hoisted(() => ({
   auditError: false,
 }));
 
-/** Minimal chainable client: the terminal resolves from `state` per table. */
-function client(): SupabaseClient {
-  const from = (table: string) => {
-    const filters: Record<string, unknown> = {};
-    let upserted: Row | null = null;
-    let inserted: Row | null = null;
-    const terminal = () => {
-      if (table === "locations") return { data: state.locations.find(row => row.id === filters.id && row.workspace_id === filters.workspace_id) ?? null, error: null };
-      if (table === "audit_jobs") return { data: state.job, error: null };
-      if (table === "audit_findings") return { data: state.findings, error: null };
-      if (table === "aeo_surface_snapshots") return { data: state.aeo, error: null };
-      if (table === "scan_diffs") return { data: state.diffs.filter((d) => d.head_job_id === filters.head_job_id), error: null };
-      if (table === "scan_snapshots") {
-        if (upserted) {
-          const saved = { id: `snap-${upserted.job_id}`, created_at: "2026-09-03T00:00:00Z", ...upserted };
-          state.upserts.push(saved);
-          state.snapshotsByJob[String(upserted.job_id)] = saved;
-          return { data: saved, error: null };
-        }
-        return { data: state.snapshotsByJob[String(filters.job_id)] ?? null, error: null };
-      }
-      if (table === "audit_events") {
-        if (state.auditError) return { data: null, error: { message: "audit unavailable" } };
-        const row = inserted ?? upserted;
-        if (row && !state.audits.some((audit) => audit.idempotency_key === row.idempotency_key)) state.audits.push(row);
-        return { data: state.audits.filter((audit) => audit.entity_id === filters.entity_id), error: null };
-      }
-      return { data: null, error: null };
-    };
-    const chain: Record<string, unknown> = {};
-    const self = () => chain;
-    Object.assign(chain, {
-      select: self,
-      eq: (column: string, value: unknown) => {
-        filters[column] = value;
-        return chain;
-      },
-      order: self,
-      limit: self,
-      upsert: (row: Row) => {
-        upserted = row;
-        return chain;
-      },
-      insert: (row: Row) => {
-        inserted = row;
-        return Promise.resolve(terminal());
-      },
-      returns: () => Promise.resolve(terminal()),
-      maybeSingle: () => Promise.resolve(terminal()),
-      single: () => Promise.resolve(terminal()),
-      then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => Promise.resolve(terminal()).then(resolve, reject),
-    });
-    return chain;
-  };
-  return { from } as unknown as SupabaseClient;
+/** Explicit domain ports; SQL scope and concurrency are covered by owned database suites. */
+function client(): SnapshotRepository {
+ return {
+  async job(){if(state.job?.workspace_id && state.job.location_id && !state.locations.some(row=>row.id===state.job!.location_id && row.workspace_id===state.job!.workspace_id))throw new Error('snapshot_scope_mismatch');return state.job as unknown as SnapshotJobRow|null;},
+  async findings(){return state.findings as Awaited<ReturnType<SnapshotRepository['findings']>>;},
+  async aeo(){return state.aeo as Awaited<ReturnType<SnapshotRepository['aeo']>>;},
+  async forJob(id){return (state.snapshotsByJob[id] ?? null) as ScanSnapshotRow|null;},
+  async byId(id){return (Object.values(state.snapshotsByJob).find(row=>row?.id===id) ?? null) as ScanSnapshotRow|null;},
+  async diff(id){return state.diffs.find(row=>row.head_job_id===id) ?? null;},
+  async save(row){const saved={id:`snap-${row.job_id}`,created_at:'2026-09-03T00:00:00Z',...row};state.upserts.push(saved);state.snapshotsByJob[row.job_id]=saved;return saved;},
+  async ensureAudit(snapshot){if(state.auditError)throw new Error('snapshot audit lookup failed');if(!state.audits.some(row=>row.entity_id===snapshot.id))state.audits.push({idempotency_key:completionId('snapshot.created',snapshot.id),workspace_id:snapshot.workspaceId,location_id:snapshot.locationId,actor_type:'scanner',actor_id:null,event:'snapshot.created',entity_type:'scan_snapshot',entity_id:snapshot.id,payload:{locale:null,coverage:snapshot.coverage,overall_score:snapshot.overallScore,job_id:snapshot.jobId}});},
+ };
 }
 
 const job = {
@@ -141,7 +100,7 @@ describe("linkComparable", () => {
 
 describe("buildSnapshot", () => {
   it("refuses a foreign persisted location before replaying or repairing an audit", async () => {
-    const repo = legacySnapshotRepository(client());
+    const repo = client();
     const saved = await buildSnapshot(repo, "job-head", { fetchWebsite });
     state.audits = [];
     state.locations = [{ id: "loc-1", workspace_id: "foreign" }];
@@ -153,14 +112,14 @@ describe("buildSnapshot", () => {
   });
   it("refuses a job that is not attached to a workspace", async () => {
     state.job = { ...job, workspace_id: null };
-    await expect(buildSnapshot(legacySnapshotRepository(client()), "job-head", { fetchWebsite })).rejects.toThrow("snapshot_requires_workspace");
+    await expect(buildSnapshot(client(), "job-head", { fetchWebsite })).rejects.toThrow("snapshot_requires_workspace");
     expect(state.upserts).toHaveLength(0);
   });
 
   it("stores states, metrics, website checks and links a comparable diff", async () => {
     state.diffs = [diffComparable];
     state.snapshotsByJob["job-base"] = { id: "snap-base", job_id: "job-base", workspace_id: "ws-1", location_id: "loc-1" };
-    const snapshot = await buildSnapshot(legacySnapshotRepository(client()), "job-head", { fetchWebsite, now: new Date("2026-09-03T00:00:00Z") });
+    const snapshot = await buildSnapshot(client(), "job-head", { fetchWebsite, now: new Date("2026-09-03T00:00:00Z") });
     expect(snapshot.overallScore).toBe(62);
     expect(snapshot.coverage).toBe(0.78);
     expect(snapshot.moduleStates.instagram.status).toBe("unavailable");
@@ -176,21 +135,21 @@ describe("buildSnapshot", () => {
   it("keeps diff_id but no comparable_to on a SCORING_VERSION_MISMATCH diff", async () => {
     state.diffs = [{ ...diffComparable, comparable: false, incomparable_reason: "SCORING_VERSION_MISMATCH" }];
     state.snapshotsByJob["job-base"] = { id: "snap-base", job_id: "job-base", workspace_id: "ws-1", location_id: "loc-1" };
-    const snapshot = await buildSnapshot(legacySnapshotRepository(client()), "job-head", { fetchWebsite });
+    const snapshot = await buildSnapshot(client(), "job-head", { fetchWebsite });
     expect(snapshot.comparableTo).toBeNull();
     expect(snapshot.diffId).toBe("diff-1");
   });
 
   it("reuses persisted evidence on retry and records the audit event once", async () => {
-    await buildSnapshot(legacySnapshotRepository(client()), "job-head", { fetchWebsite });
-    await buildSnapshot(legacySnapshotRepository(client()), "job-head", { fetchWebsite });
+    await buildSnapshot(client(), "job-head", { fetchWebsite });
+    await buildSnapshot(client(), "job-head", { fetchWebsite });
     expect(state.upserts).toHaveLength(1);
     expect(state.audits).toHaveLength(1);
   });
 
   it("reports the website as unsupported when no url is known", async () => {
     state.job = { ...job, input_snapshot: {}, raw_data: {} };
-    const snapshot = await buildSnapshot(legacySnapshotRepository(client()), "job-head", { fetchWebsite });
+    const snapshot = await buildSnapshot(client(), "job-head", { fetchWebsite });
     expect(snapshot.moduleStates.website.status).toBe("unsupported");
     expect(snapshot.websiteChecks).toBeNull();
   });
@@ -234,11 +193,11 @@ describe("rowToSnapshot / websiteUrlOf", () => {
 it("repairs a missing snapshot audit after snapshot persistence without refetching evidence", async () => {
   const fetch = vi.fn(fetchWebsite);
   state.auditError = true;
-  await expect(buildSnapshot(legacySnapshotRepository(client()), "job-head", { fetchWebsite: fetch })).rejects.toThrow("snapshot audit lookup failed");
+  await expect(buildSnapshot(client(), "job-head", { fetchWebsite: fetch })).rejects.toThrow("snapshot audit lookup failed");
   expect(state.upserts).toHaveLength(1);
   state.auditError = false;
-  await buildSnapshot(legacySnapshotRepository(client()), "job-head", { fetchWebsite: fetch });
-  await buildSnapshot(legacySnapshotRepository(client()), "job-head", { fetchWebsite: fetch });
+  await buildSnapshot(client(), "job-head", { fetchWebsite: fetch });
+  await buildSnapshot(client(), "job-head", { fetchWebsite: fetch });
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(state.audits).toHaveLength(1);
 });

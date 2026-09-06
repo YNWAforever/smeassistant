@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getNeonAuth } from "@/lib/identity/neon";
+import { sendMagicLink } from "@/lib/identity/composition";
 import { claimsRepository } from "@/lib/repositories/claims";
 import {
   enforceCompositeIdentifierRateLimit,
@@ -98,7 +98,7 @@ export async function POST(req: Request) {
     redirect.searchParams.set("locale", locale);
     if (returnTo) redirect.searchParams.set("returnTo", returnTo);
 
-    const { error } = await getNeonAuth().signIn.magicLink({
+    const { error } = await sendMagicLink({
       email,
       callbackURL: redirect.toString(),
     });

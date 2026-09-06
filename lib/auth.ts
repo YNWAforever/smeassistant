@@ -56,8 +56,8 @@ export function inLocationScope(m: Membership, locationId: string | null): boole
 
 /** Verified server identity mapped to an app UUID. Outages remain errors, absence is null. */
 export async function getUser(): Promise<SessionUser | null> {
-  const { neonIdentityProvider } = await import("@/lib/identity/neon");
-  const identity = await neonIdentityProvider.getIdentity();
+  const { identityProvider } = await import("@/lib/identity/composition");
+  const identity = await (await identityProvider()).getIdentity();
   if (!identity) return null;
   const { resolveApplicationUser } = await import("@/lib/identity/users");
   return resolveApplicationUser(identity);
@@ -163,8 +163,8 @@ export async function listMemberships(userId: string): Promise<Membership[]> {
 export async function signOut(): Promise<void> {
   let failed = false;
   try {
-    const { neonIdentityProvider } = await import("@/lib/identity/neon");
-    await neonIdentityProvider.signOut();
+    const { identityProvider } = await import("@/lib/identity/composition");
+    await (await identityProvider()).signOut();
   } catch { failed = true; }
   try {
     const { cookies } = await import("next/headers");

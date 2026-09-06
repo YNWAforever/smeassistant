@@ -35,6 +35,11 @@ export async function proxy(request: NextRequest) {
   const loginUrl = new URL(signInRedirectFor(locale, pathname, search), request.url);
   let managed: NextResponse | undefined;
   try {
+    if (process.env.SME_TEST_IDENTITY) {
+      const { fixtureProvider } = await import("@/test/e2e/composition");
+      if (await (await fixtureProvider(request)).getIdentity()) return response;
+      return NextResponse.redirect(loginUrl, 307);
+    }
     // The SDK accepts a signed cache without checking upstream revocation.
     // Omit only that optimization on this validation clone; preserve tokens,
     // original URL and locale. No internal query flag reaches navigation.
