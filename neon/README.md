@@ -1,6 +1,6 @@
-# Fresh application schema (Task 3 foundation)
+# Fresh application schema and atomic workflows
 
-The three SQL migrations create 34 final business tables and 2 application identity tables on an empty PostgreSQL database. They never replay legacy account backfills or create managed Auth/storage schemas. The independently captured original catalog and source SHA-256 manifest live in `test/integration/fixtures/`.
+The four SQL migrations create 34 final business tables and 2 application identity tables on an empty PostgreSQL database. They never replay legacy account backfills or create managed Auth/storage schemas. The independently captured original catalog and source SHA-256 manifest live in `test/integration/fixtures/`.
 
 The owner runs `applyMigrations` from `scripts/neon/migrations.ts`. The runner takes a migration-only pool, locks a transaction, validates the entire applied prefix with SHA-256, and commits DDL and journal together. Never edit applied migration files. Append an ordered migration instead. `drizzle.config.ts` describes the typed schema for inspection; the SQL migrations own the function/grant behavior and journal.
 
@@ -16,6 +16,10 @@ corepack pnpm test:integration -- test/integration/neon-schema.integration.test.
 
 Retained ordinary invariants: `delete_orphaned_workspace` / `workspace_members_cleanup_orphan` and `touch_actions_updated_at` / `actions_touch_updated_at`. The cleanup function now also has an empty search path; both remain invoker functions.
 
-Task 4 must translate eleven functions: `approve_output_version`, `claim_audit_job`, `claim_workspace_completion`, `complete_report_unlock`, `consume_rate_limit`, `create_output_version`, `decide_output_version`, `export_output_version`, `fence_workspace_completion_write`, `finish_workspace_completion`, and `pending_workspace_completions`. Five dependent triggers are deferred with fencing: `completion_fence_measurements`, `completion_fence_actions`, `completion_fence_audits`, `completion_fence_snapshots`, and `completion_fence_notifications`.
+Migration 0004 translates the eleven remaining final functions and five completion fence triggers. All thirteen application functions revoke PUBLIC execution and grant the runtime group explicitly. Former SECURITY DEFINER workflows now run as SECURITY INVOKER: the runtime login already has the required RLS-backed DML, so operations need no owner elevation. Nested fence triggers therefore see the actual inherited runtime login. The effective role guard uses pg_has_role(current_user, 'sme_app_runtime', 'USAGE'); comparing the login name with the NOLOGIN group would reject legitimate calls. All workflow search paths remain empty. Report-unlock hashing uses core PostgreSQL SHA-256 of UTF-8 bytes, preserving the original digest without the Supabase extensions schema.
 
-Private storage metadata and paths are retained. Storage provider replacement is pending; this foundation is not a deployable replacement application or a storage/atomic-workflow completion claim.
+The typed workflowRepository exposes the ten callable domain operations; the eleventh function is a trigger. Pass the PoolClient received by withCompletionContext(jobId, token, callback) into workflowRepository(client) for completion writes. The helper sets app.completion_job and app.completion_token transaction-locally on that exact client. Settings supply context only: the SQL still locks workspace before completion ledger and validates workspace, state, current lease/token, terminal job, location, measurement snapshot and newer-snapshot rules. No-context interactive writes retain their original behavior. Task 13 still owns completion orchestration.
+
+Original SQL retry semantics remain intact. Concurrent same-key exports can raise PostgreSQL 23505 for the losing transaction; retrying after rollback returns the existing delivery and does not consume allowance again. Repository methods preserve SQL codes/messages and enforce scalar versus zero-or-one claim cardinality. Existing default arguments remain in SQL, including pending-workspace-completions' limit of five.
+
+Private storage metadata and paths are retained. Storage provider replacement is pending; this slice is not a deployable replacement application or a storage-provider completion claim.
