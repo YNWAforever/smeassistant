@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { eventRepository } from "@/lib/repositories/events";
 import {
+  capturePostHog,
   recordEvent as recordEventCore,
   forwardEventToPostHog as forwardEventToPostHogCore,
   type AnalyticsDependencies,
@@ -21,24 +22,7 @@ export type {
 function defaultDependencies(): AnalyticsDependencies {
   return {
     insert: (row, signal) => eventRepository().insert(row, signal),
-    capturePostHog: async (event, anonymousSessionId, signal) => {
-      const key = process.env.POSTHOG_KEY;
-      if (!key) return;
-      const host = (
-        process.env.POSTHOG_HOST ?? "https://eu.i.posthog.com"
-      ).replace(/\/$/, "");
-      const response = await fetch(host + "/capture/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          api_key: key,
-          event: event.name,
-          properties: { distinct_id: anonymousSessionId, ...event.properties },
-        }),
-        signal,
-      });
-      if (!response.ok) throw new Error("posthog_capture_failed");
-    },
+    capturePostHog,
     reportError: (category) =>
       console.error("[analytics] event_record_failed", { category }),
   };

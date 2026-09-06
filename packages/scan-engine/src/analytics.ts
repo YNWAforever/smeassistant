@@ -121,6 +121,24 @@ async function runAbortBounded<T>(
   }
 }
 
+/** Shared environment-backed HTTP transport; callers can still inject capturePostHog. */
+export async function capturePostHog(event: ScanEvent, anonymousSessionId: string, signal: AbortSignal): Promise<void> {
+  const key = process.env.POSTHOG_KEY;
+  if (!key) return;
+  const host = (process.env.POSTHOG_HOST ?? "https://eu.i.posthog.com").replace(/\/$/, "");
+  const response = await fetch(host + "/capture/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      api_key: key,
+      event: event.name,
+      properties: { distinct_id: anonymousSessionId, ...event.properties },
+    }),
+    signal,
+  });
+  if (!response.ok) throw new Error("posthog_capture_failed");
+}
+
 /**
  * The production dependency set, with the Supabase client injected as a
  * factory rather than an instance. apps/web passes supabaseServer() itself
@@ -148,22 +166,7 @@ export function createAnalyticsDependencies(getSupabase: () => SupabaseClient): 
       if (error) throw new Error("analytics_insert_failed");
       return { inserted: Boolean(data) };
     },
-    capturePostHog: async (event, anonymousSessionId, signal) => {
-      const key = process.env.POSTHOG_KEY;
-      if (!key) return;
-      const host = (process.env.POSTHOG_HOST ?? "https://eu.i.posthog.com").replace(/\/$/, "");
-      const response = await fetch(host + "/capture/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          api_key: key,
-          event: event.name,
-          properties: { distinct_id: anonymousSessionId, ...event.properties },
-        }),
-        signal,
-      });
-      if (!response.ok) throw new Error("posthog_capture_failed");
-    },
+    capturePostHog,
     reportError: safeReportError,
   };
 }

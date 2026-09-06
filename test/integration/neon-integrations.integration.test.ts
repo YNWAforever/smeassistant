@@ -215,6 +215,83 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
         ).rows[0].tier,
       ).toBe("lite");
     });
+    it("cancels locked analytics, frees its connection and never inserts after unlock", async () => {
+      const locker = await owner.connect();
+      const session = randomUUID();
+      const initial = runtime.totalCount;
+      const capture = vi.fn();
+      const reportError = vi.fn();
+      await locker.query(
+        "BEGIN; LOCK TABLE scan_events IN ACCESS EXCLUSIVE MODE",
+      );
+      try {
+        const started = Date.now();
+        const { eventRepository } =
+          await import("../../lib/repositories/events");
+        const pending = recordEvent(
+          { name: "full_report_viewed", properties: { access: "viewer" } },
+          { anonymousSessionId: session, timeoutMs: 500 },
+          {
+            insert: eventRepository(runtime).insert,
+            capturePostHog: capture,
+            reportError,
+          },
+        );
+        await expect
+          .poll(
+            async () =>
+              Number(
+                (
+                  await owner.query(
+                    "SELECT count(*) FROM pg_stat_activity WHERE usename='fixture_runtime' AND wait_event_type='Lock' AND query LIKE '%INSERT INTO scan_events%'",
+                  )
+                ).rows[0].count,
+              ),
+            { timeout: 400, interval: 10 },
+          )
+          .toBe(1);
+        expect(await pending).toEqual({
+          recorded: false,
+          category: "backend_unavailable",
+        });
+        expect(Date.now() - started).toBeLessThan(750);
+        await expect
+          .poll(() => runtime.totalCount - runtime.idleCount, { timeout: 750 })
+          .toBe(0);
+        await expect
+          .poll(
+            async () =>
+              Number(
+                (
+                  await owner.query(
+                    "SELECT count(*) FROM pg_stat_activity WHERE usename='fixture_runtime' AND state <> 'idle' AND query LIKE '%INSERT INTO scan_events%'",
+                  )
+                ).rows[0].count,
+              ),
+            { timeout: 2000 },
+          )
+          .toBe(0);
+        expect(runtime.totalCount).toBeLessThanOrEqual(initial);
+        expect(capture).not.toHaveBeenCalled();
+      } finally {
+        await locker.query("ROLLBACK");
+        locker.release();
+      }
+      expect(
+        (
+          await runtime.query(
+            "SELECT id FROM scan_events WHERE anonymous_session_id=$1",
+            [session],
+          )
+        ).rows,
+      ).toHaveLength(0);
+      expect(
+        await recordEvent(
+          { name: "full_report_viewed", properties: { access: "viewer" } },
+          { anonymousSessionId: session },
+        ),
+      ).toEqual({ recorded: true });
+    });
     it("records analytics through Neon and suppresses duplicate provider effects", async () => {
       const job = (
         await runtime.query(
