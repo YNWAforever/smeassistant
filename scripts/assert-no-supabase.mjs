@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const historical = new Set(['docs/integration/neon-dependency-map.json','test/integration/fixtures/legacy-final-catalog.json']);
 const ignoredDirectories = new Set(['node_modules','.git','.next','.superpowers','test-results','playwright-report']);
 const retired = 'supa' + 'base';
-const forbidden = new RegExp('@'+retired+'(?:/|\\b)|'+retired+'(?:Client|Server)|'+retired+'\\.(?:co|in)|(?:NEXT_PUBLIC_)?'+retired+'_\\w+|(?:from|import)[^\\n]*(?:lib/|\\.\\.?/)'+retired+'|post'+'grest|/rest/'+'v1', 'i');
+const forbidden = new RegExp('@'+retired+'(?:/|\\b)|'+retired+'(?:Client|Server)|'+retired+'\\.(?:co|in)|(?:NEXT_PUBLIC_)?'+retired+'_\\w+|(?:from|import|require\\s*\\()[^\\n]*(?:lib/|\\.\\.?/)'+retired+'|post'+'grest|/rest/'+'v1', 'i');
 /** Includes untracked active source so temporary regressions cannot evade the gate. */
 /** @param {string} root */
 export async function scan(root) {
