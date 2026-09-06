@@ -1,5 +1,5 @@
 import { authorizeWorkspaceRequest, type RouteAuth } from "@/lib/auth";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { billingRepository } from "@/lib/repositories/billing";
 
 export interface WorkspaceBillingRow {
   id: string;
@@ -26,20 +26,23 @@ export interface WorkspaceBillingRow {
  * rejected caller must not cause a workspace read at all, let alone leak
  * whether the id exists.
  */
-export async function loadWorkspaceBillingContext(workspaceId: string): Promise<{
+export async function loadWorkspaceBillingContext(
+  workspaceId: string,
+): Promise<{
   access: RouteAuth;
   workspace: WorkspaceBillingRow | null;
 }> {
-  const access = await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "owner" });
+  const access = await authorizeWorkspaceRequest(
+    { id: workspaceId },
+    { minRole: "owner" },
+  );
   if (!access.ok) {
     return { access, workspace: null };
   }
 
-  const { data: workspace } = await supabaseServer()
-    .from("workspaces")
-    .select("id, slug, market, tier, stripe_customer_id")
-    .eq("id", workspaceId)
-    .maybeSingle<WorkspaceBillingRow>();
+  const workspace = await billingRepository()
+    .workspace(workspaceId)
+    .catch(() => null);
 
   return { access, workspace: workspace ?? null };
 }

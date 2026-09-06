@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
-import { supabaseServer } from "@/lib/supabase/admin";
+import {
+  notificationRepository,
+  type NotificationPreferences,
+} from "@/lib/repositories/notifications";
 
 /**
  * Lets a workspace member toggle their workspace's notification preferences.
@@ -11,35 +14,57 @@ import { supabaseServer } from "@/lib/supabase/admin";
  * PATCH -- authorizeWorkspaceRequest with no minRole. Staff sessions are
  * never accepted. The write itself is unchanged.
  */
-export async function PATCH(req: Request, { params }: { params: Promise<{ workspaceId: string }> }) {
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ workspaceId: string }> },
+) {
   const { workspaceId } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(workspaceId)) {
-    return NextResponse.json({ error: "workspaceId is invalid" }, { status: 400 });
+    return NextResponse.json(
+      { error: "workspaceId is invalid" },
+      { status: 400 },
+    );
   }
 
   const auth = await authorizeWorkspaceRequest({ id: workspaceId });
-  if (!auth.ok) return NextResponse.json({ error: auth.code }, { status: auth.status });
+  if (!auth.ok)
+    return NextResponse.json({ error: auth.code }, { status: auth.status });
 
-  let body: { notifyRescanComplete?: unknown; notifyRegressionAlert?: unknown; notifyMonthlyDigest?: unknown };
+  let body: {
+    notifyRescanComplete?: unknown;
+    notifyRegressionAlert?: unknown;
+    notifyMonthlyDigest?: unknown;
+  };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const updates: Record<string, boolean> = {};
-  if (typeof body.notifyRescanComplete === "boolean") updates.notify_rescan_complete = body.notifyRescanComplete;
-  if (typeof body.notifyRegressionAlert === "boolean") updates.notify_regression_alert = body.notifyRegressionAlert;
-  if (typeof body.notifyMonthlyDigest === "boolean") updates.notify_monthly_digest = body.notifyMonthlyDigest;
+  const updates: NotificationPreferences = {};
+  if (typeof body.notifyRescanComplete === "boolean")
+    updates.notify_rescan_complete = body.notifyRescanComplete;
+  if (typeof body.notifyRegressionAlert === "boolean")
+    updates.notify_regression_alert = body.notifyRegressionAlert;
+  if (typeof body.notifyMonthlyDigest === "boolean")
+    updates.notify_monthly_digest = body.notifyMonthlyDigest;
   if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: "No valid preference fields provided" }, { status: 400 });
+    return NextResponse.json(
+      { error: "No valid preference fields provided" },
+      { status: 400 },
+    );
   }
 
-  const supabase = supabaseServer();
-  const { error } = await supabase.from("workspaces").update(updates).eq("id", workspaceId);
-  if (error) {
-    console.error("Failed to update notification preferences", error);
-    return NextResponse.json({ error: "Failed to update preferences" }, { status: 500 });
+  try {
+    await notificationRepository().updatePreferences(workspaceId, updates);
+  } catch {
+    console.error("Failed to update notification preferences", {
+      category: "notification_preferences_failed",
+    });
+    return NextResponse.json(
+      { error: "Failed to update preferences" },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({ ok: true });

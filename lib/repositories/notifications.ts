@@ -2,11 +2,46 @@ import "server-only";
 import type { Pool } from "pg";
 import { getPool } from "../db/client";
 import type { NotificationRepository } from "../workspace/notify";
+export type NotificationPreferences = Partial<
+  Record<
+    | "notify_rescan_complete"
+    | "notify_regression_alert"
+    | "notify_monthly_digest",
+    boolean
+  >
+>;
 export function notificationRepository(
   client?: Pick<Pool, "query">,
-): NotificationRepository {
+): NotificationRepository & {
+  updatePreferences(
+    workspaceId: string,
+    updates: NotificationPreferences,
+  ): Promise<void>;
+} {
   const db = () => client ?? getPool();
   return {
+    async updatePreferences(workspaceId, updates) {
+      const keys = [
+        "notify_rescan_complete",
+        "notify_regression_alert",
+        "notify_monthly_digest",
+      ] as const;
+      if (
+        !Object.keys(updates).length ||
+        Object.keys(updates).some(
+          (key) =>
+            !keys.includes(key as (typeof keys)[number]) ||
+            typeof updates[key as (typeof keys)[number]] !== "boolean",
+        )
+      )
+        throw new Error("invalid_notification_preferences");
+      const result = await db().query(
+        "UPDATE workspaces SET notify_rescan_complete=COALESCE($2,notify_rescan_complete), notify_regression_alert=COALESCE($3,notify_regression_alert), notify_monthly_digest=COALESCE($4,notify_monthly_digest) WHERE id=$1 RETURNING id",
+        [workspaceId, ...keys.map((key) => updates[key] ?? null)],
+      );
+      if (!result.rows.length)
+        throw new Error("notification_workspace_not_found");
+    },
     async acceptedMemberIds(workspaceId) {
       try {
         return (

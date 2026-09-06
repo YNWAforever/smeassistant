@@ -469,13 +469,12 @@
     "kind": "test",
     "task": 11,
     "replacements": [
-      "lib/repositories/billing.ts",
-      "lib/repositories/events.ts",
-      "lib/repositories/lifecycle.ts"
+      "lib/repositories/billing.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
     ]
   },
   {
@@ -483,13 +482,12 @@
     "kind": "runtime",
     "task": 11,
     "replacements": [
-      "lib/repositories/billing.ts",
-      "lib/repositories/events.ts",
-      "lib/repositories/lifecycle.ts"
+      "lib/repositories/billing.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
     ]
   },
   {
@@ -617,10 +615,11 @@
     "replacements": [
       "lib/repositories/billing.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "supabaseServer reference",
-      "Ownership reconciled with Task 11 Stripe customer persistence."
+      "Ownership reconciled with Task 11 Stripe customer persistence.",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
     ]
   },
   {
@@ -762,13 +761,12 @@
     "kind": "test",
     "task": 11,
     "replacements": [
-      "lib/repositories/billing.ts",
-      "lib/repositories/events.ts",
-      "lib/repositories/lifecycle.ts"
+      "lib/repositories/notifications.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
     ]
   },
   {
@@ -776,13 +774,12 @@
     "kind": "runtime",
     "task": 11,
     "replacements": [
-      "lib/repositories/billing.ts",
-      "lib/repositories/events.ts",
-      "lib/repositories/lifecycle.ts"
+      "lib/repositories/notifications.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
     ]
   },
   {
@@ -925,13 +922,12 @@
     "kind": "runtime",
     "task": 11,
     "replacements": [
-      "lib/repositories/billing.ts",
-      "lib/repositories/events.ts",
-      "lib/repositories/lifecycle.ts"
+      "lib/repositories/events.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
     ]
   },
   {
@@ -1040,13 +1036,12 @@
     "kind": "test",
     "task": 11,
     "replacements": [
-      "lib/repositories/billing.ts",
-      "lib/repositories/events.ts",
-      "lib/repositories/lifecycle.ts"
+      "lib/repositories/billing.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
     ]
   },
   {
@@ -1054,13 +1049,12 @@
     "kind": "runtime",
     "task": 11,
     "replacements": [
-      "lib/repositories/billing.ts",
-      "lib/repositories/events.ts",
-      "lib/repositories/lifecycle.ts"
+      "lib/repositories/billing.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
     ]
   },
   {
@@ -1315,13 +1309,12 @@
     "kind": "test",
     "task": 11,
     "replacements": [
-      "lib/repositories/billing.ts",
-      "lib/repositories/events.ts",
-      "lib/repositories/lifecycle.ts"
+      "lib/repositories/billing.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
     ]
   },
   {
@@ -1329,15 +1322,14 @@
     "kind": "runtime",
     "task": 11,
     "replacements": [
-      "lib/repositories/billing.ts",
-      "lib/repositories/events.ts",
-      "lib/repositories/lifecycle.ts"
+      "lib/repositories/billing.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
       "SupabaseClient type reference",
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
     ]
   },
   {
@@ -1488,32 +1480,32 @@
   {
     "path": "lib/workspace/notify.test.ts",
     "kind": "test",
-    "task": 11,
+    "task": 13,
     "replacements": [
-      "lib/repositories/billing.ts",
-      "lib/repositories/events.ts",
-      "lib/repositories/lifecycle.ts"
-    ],
-    "status": "pending",
-    "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference"
-    ]
-  },
-  {
-    "path": "lib/workspace/notify.ts",
-    "kind": "runtime",
-    "task": 11,
-    "replacements": [
-      "lib/repositories/billing.ts",
-      "lib/repositories/events.ts",
-      "lib/repositories/lifecycle.ts"
+      "lib/repositories/notifications.ts",
+      "lib/workspace/notify.ts"
     ],
     "status": "pending",
     "evidence": [
       "tracked @supabase reference",
       "SupabaseClient type reference",
-      "Task 10 approve/export use lib/repositories/notifications.ts through shared explicit domain functions. Named legacyNotificationRepository and original-client wrappers remain for Task 11/13 consumers; broader notification migration still pending."
+      "Task 11 verified shared Neon notification dedupe. Only named original-client completion wrappers/tests remain deferred to Task 13; no email sender exists in this app."
+    ]
+  },
+  {
+    "path": "lib/workspace/notify.ts",
+    "kind": "runtime",
+    "task": 13,
+    "replacements": [
+      "lib/repositories/notifications.ts",
+      "lib/workspace/notify.ts"
+    ],
+    "status": "pending",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "Task 10 approve/export use lib/repositories/notifications.ts through shared explicit domain functions. Named legacyNotificationRepository and original-client wrappers remain for Task 11/13 consumers; broader notification migration still pending.",
+      "Task 11 verified shared Neon notification dedupe. Only named original-client completion wrappers/tests remain deferred to Task 13; no email sender exists in this app."
     ]
   },
   {
@@ -2241,9 +2233,11 @@
     "kind": "schema",
     "task": 11,
     "replacements": [
-      "neon/migrations/0001_initial_schema.sql"
+      "neon/migrations/0001_identity.sql",
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "source migration",
       "sql-object:constraint:audit_jobs_parent_job_id_fkey",
@@ -2259,7 +2253,8 @@
       "sql-object:table:public.erasure_events",
       "sql-object:table:public.leads",
       "sql-object:table:public.scan_events",
-      "sql-object:table:public.staff_report_events"
+      "sql-object:table:public.staff_report_events",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
     ]
   },
   {
@@ -2343,9 +2338,11 @@
     "kind": "schema",
     "task": 11,
     "replacements": [
-      "neon/migrations/0001_initial_schema.sql"
+      "neon/migrations/0001_identity.sql",
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "source migration",
       "sql-object:column:public.workspaces.stripe_customer_id",
@@ -2355,7 +2352,8 @@
       "sql-object:index:workspace_tier_events_workspace_idx",
       "sql-object:revoke-statement:revoke all on table public.workspace_tier_events from public, anon, authenticated;",
       "sql-object:table:public.workspace_tier_events",
-      "sql-object:table:public.workspaces"
+      "sql-object:table:public.workspaces",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
     ]
   },
   {
@@ -2363,9 +2361,11 @@
     "kind": "schema",
     "task": 11,
     "replacements": [
-      "neon/migrations/0001_initial_schema.sql"
+      "neon/migrations/0001_identity.sql",
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "source migration",
       "sql-object:column:public.workspaces.notify_monthly_digest",
@@ -2376,7 +2376,8 @@
       "sql-object:index:notification_events_workspace_idx",
       "sql-object:revoke-statement:revoke all on table public.notification_events from public, anon, authenticated;",
       "sql-object:table:public.notification_events",
-      "sql-object:table:public.workspaces"
+      "sql-object:table:public.workspaces",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
     ]
   },
   {
@@ -2491,15 +2492,18 @@
     "kind": "schema",
     "task": 11,
     "replacements": [
-      "neon/migrations/0001_initial_schema.sql"
+      "neon/migrations/0001_identity.sql",
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "source migration",
       "sql-object:constraint:workspace_tier_events_tier_check",
       "sql-object:constraint:workspaces_tier_check",
       "sql-object:table:public.workspace_tier_events",
-      "sql-object:table:public.workspaces"
+      "sql-object:table:public.workspaces",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
     ]
   },
   {
