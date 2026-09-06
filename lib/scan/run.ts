@@ -1,3 +1,4 @@
+import { waitUntil } from "@vercel/functions";
 import {
   collectScanProviders,
   processScan,
@@ -61,7 +62,8 @@ export async function runScan(
   anonymousSessionId: string,
 ): Promise<ScanProcessResult> {
   const result = await processScan(jobId, {
-    store: createScanExecutionStore(anonymousSessionId),
+    // Keep terminal insertion and its later capture owned by this Vercel request.
+    store: createScanExecutionStore(anonymousSessionId, { waitUntil }),
     collect: resolveScanCollector(),
     persistEvidence: persistEvidenceSnapshots,
     persistDiff: (id) => persistScanDiff(id, buildTrendDiffDeps(getPool(), id)),

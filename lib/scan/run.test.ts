@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createScanExecutionStore } from "./execution-store";
 import { collectScanProviders, processScan } from "@sme-scanner/scan-engine";
 
 vi.mock("@sme-scanner/scan-engine", async (importOriginal) => {
@@ -8,11 +9,24 @@ vi.mock("@sme-scanner/scan-engine", async (importOriginal) => {
 });
 const storeMock = vi.hoisted(() => ({ marker: "neon-store" }));
 vi.mock("./execution-store", () => ({
-  createScanExecutionStore: () => storeMock,
+  createScanExecutionStore: vi.fn(() => storeMock),
   buildTrendDiffDeps: vi.fn(),
   buildAeoSnapshotDeps: vi.fn(),
 }));
-vi.mock("@/lib/db/client", () => ({ getPool: () => ({}) }));
+const runtimeMocks = vi.hoisted(() => ({
+  query: vi.fn(),
+  insert: vi.fn(),
+  capturePostHog: vi.fn(),
+}));
+vi.mock("@/lib/db/client", () => ({
+  getPool: () => ({ query: runtimeMocks.query }),
+}));
+vi.mock("@/lib/repositories/events", () => ({
+  eventRepository: () => ({ insert: runtimeMocks.insert }),
+}));
+vi.mock("@/lib/analytics/posthog", () => ({
+  capturePostHog: runtimeMocks.capturePostHog,
+}));
 const persistMocks = vi.hoisted(() => ({
   persistEvidenceSnapshots: vi.fn(async () => undefined),
 }));
@@ -219,3 +233,95 @@ describe("pending Neon workspace completion bridge", () => {
 vi.mock("@/lib/supabase/admin", () => ({
   supabaseServer: () => ({ marker: "legacy" }),
 }));
+
+describe("runScan host terminal lifetime", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
+  });
+
+  it("registers pending insertion and delayed capture with the actual Vercel lifetime API", async () => {
+    const engine = await vi.importActual<
+      typeof import("@sme-scanner/scan-engine")
+    >("@sme-scanner/scan-engine");
+    const adapter =
+      await vi.importActual<typeof import("./execution-store")>(
+        "./execution-store",
+      );
+    vi.mocked(processScan).mockImplementationOnce(engine.processScan);
+    vi.mocked(createScanExecutionStore).mockImplementationOnce(
+      adapter.createScanExecutionStore,
+    );
+    vi.stubEnv("SCAN_SOURCES", "fixture");
+    vi.stubEnv("SCAN_FIXTURE", "tw-cafe");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const waited: Promise<unknown>[] = [];
+    // The installed official API obtains the host owner from this request context.
+    vi.stubGlobal(Symbol.for("@vercel/request-context"), {
+      get: () => ({
+        waitUntil: (promise: Promise<unknown>) => waited.push(promise),
+      }),
+    });
+    runtimeMocks.query.mockImplementation(
+      async (sql: string, values: unknown[]) => {
+        if (sql.includes("RETURNING *"))
+          return {
+            rows: [{ id: "job", business_name: "fixture", region: "tw" }],
+          };
+        // Run the real fixture collector, then fail at the scoring stage so no
+        // successful-scan postprocessing can accidentally keep analytics alive.
+        if (values[1] === "scoring") throw new Error("fixture stage failure");
+        return { rows: [{ id: "job" }] };
+      },
+    );
+    let finishInsert!: () => void;
+    let finishCapture!: () => void;
+    const insertion = new Promise<void>((resolve) => {
+      finishInsert = resolve;
+    });
+    const capture = new Promise<void>((resolve) => {
+      finishCapture = resolve;
+    });
+    runtimeMocks.insert.mockReturnValue(insertion);
+    runtimeMocks.capturePostHog.mockReturnValue(capture);
+    try {
+      await expect(runScan("job", "session")).resolves.toMatchObject({
+        status: "failed",
+        failurePersistence: "persisted",
+      });
+      expect(runtimeMocks.query).toHaveBeenCalledWith(expect.any(String), [
+        "job",
+        "collecting_aeo",
+        "collecting",
+      ]);
+      expect(runtimeMocks.insert).toHaveBeenCalledTimes(1);
+      expect(waited).toHaveLength(1);
+      let inserted = false;
+      void waited[0].then(() => {
+        inserted = true;
+      });
+      await Promise.resolve();
+      expect(inserted).toBe(false);
+      expect(runtimeMocks.capturePostHog).not.toHaveBeenCalled();
+      finishInsert();
+      await waited[0];
+      expect(waited).toHaveLength(2);
+      expect(runtimeMocks.capturePostHog).toHaveBeenCalledTimes(1);
+      let captured = false;
+      void waited[1].then(() => {
+        captured = true;
+      });
+      await Promise.resolve();
+      expect(captured).toBe(false);
+      finishCapture();
+      await waited[1];
+      expect(captured).toBe(true);
+    } finally {
+      finishInsert();
+      finishCapture();
+      await Promise.all(waited);
+    }
+  });
+});
