@@ -88,6 +88,23 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon live assistant authorit
   expect(req.llmReady).not.toHaveBeenCalled();expect(req.llm).not.toHaveBeenCalled();await noWrites(req);
  });
 
+ it.each(['action','action_location','version','version_location'])('denies valid A snapshot override of B source via %s before model or writes',async(kind)=>{
+  const selectedJob=(await runtime.query("INSERT INTO audit_jobs(workspace_id,location_id,business_name,status) VALUES($1,$2,'Selected A','done') RETURNING id",[workspace,locA])).rows[0].id;
+  const selected=(await runtime.query("INSERT INTO scan_snapshots(workspace_id,location_id,job_id,market,observed_at,coverage,module_states,metrics) VALUES($1,$2,$3,'hk',now(),1,'{}','{}') RETURNING id",[workspace,locA,selectedJob])).rows[0].id;
+  const version=kind.startsWith('version')?(await runtime.query("INSERT INTO output_versions(workspace_id,action_id,version_no,body,author_type) VALUES($1,$2,1,'Version fixture','user') RETURNING id",[workspace,wide])).rows[0].id:undefined;
+  const context={workspaceId:workspace,snapshotId:selected,...(version?{versionId:version}:{actionId:wide}),...(kind.endsWith('location')?{locationId:locA}:{})};
+  const before=(await runtime.query('SELECT * FROM actions WHERE id=$1',[wide])).rows;
+  const req=request('manager',[locA]);
+  await expect(runLiveAssistant({...req,context})).rejects.toMatchObject({code:'forbidden'});
+  expect(req.llmReady).not.toHaveBeenCalled();expect(req.llm).not.toHaveBeenCalled();expect(req.persistence).not.toHaveBeenCalled();
+  expect((await runtime.query('SELECT * FROM actions WHERE id=$1',[wide])).rows).toEqual(before);
+  expect((await runtime.query('SELECT id FROM output_versions WHERE workspace_id=$1',[workspace])).rows).toHaveLength(version?1:0);
+  for(const table of ['action_runs','audit_events'])expect((await runtime.query(`SELECT id FROM ${table} WHERE workspace_id=$1`,[workspace])).rows).toHaveLength(0);
+  for(const allowed of [request('owner'),request('manager',[locA,locB])]){
+   expect((await runLiveAssistant({...allowed,context})).output?.body).toBe(output.body);expect(allowed.llm).toHaveBeenCalledOnce();expect(allowed.persistence).not.toHaveBeenCalled();
+  }
+ });
+
  it('rejects a foreign comparable base instead of treating the filtered base as absent',async()=>{
   const baseJob=(await runtime.query("INSERT INTO audit_jobs(workspace_id,business_name,status) VALUES($1,'Foreign base','done') RETURNING id",[foreign])).rows[0].id;
   const base=(await runtime.query("INSERT INTO scan_snapshots(workspace_id,job_id,market,observed_at,coverage,module_states,metrics) VALUES($1,$2,'hk',now(),1,'{}','{}') RETURNING id",[foreign,baseJob])).rows[0].id;
@@ -112,6 +129,24 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon live assistant authorit
   expect(await req.repository.assistantDiff(older,workspace,job)).toMatchObject({id:older,composite_delta:'-4'});
   expect(await req.repository.assistantDiff(newer,workspace,job)).toMatchObject({id:newer,composite_delta:'12'});
   expect(req.llm).not.toHaveBeenCalled();await noWrites(req);
+ });
+ it.each(['viewer','manager','owner'] as const)('withholds inconsistent same-location base comparison for %s',async(role)=>{
+  const {baseOne,baseTwo}=await comparisons();
+  await runtime.query(`UPDATE scan_snapshots SET metrics='{"gbp.rating":4}' WHERE job_id=$1`,[baseOne]);
+  const wrongBase=(await runtime.query(`INSERT INTO scan_snapshots(workspace_id,location_id,job_id,market,observed_at,coverage,module_states,metrics) VALUES($1,$2,$3,'hk',now(),1,'{}','{"gbp.rating":2}') RETURNING id`,[workspace,locB,baseTwo])).rows[0].id;
+  await runtime.query(`UPDATE scan_snapshots SET comparable_to=$1,metrics='{"gbp.rating":3}' WHERE id=$2`,[wrongBase,snapshot]);
+  const req=request(role,role==='owner'?null:[locA]);
+  const result=await runLiveAssistant({...req,intentId:'explain_change'});
+  expect(result.state).toBe('completed');
+  expect(result.evidenceRefs.find(ref=>ref.evidenceId===`ev_${snapshot}_composite`)).toBeUndefined();
+  expect(result.evidenceRefs.find(ref=>ref.evidenceId===`ev_${snapshot}_gbp.rating`)).toBeUndefined();
+  expect(JSON.stringify(result)).not.toContain('2.0 → 3.0');
+  expect(req.llmReady).not.toHaveBeenCalled();expect(req.llm).not.toHaveBeenCalled();await noWrites(req);
+ });
+ it('preserves drafting with a pinned diff but legitimately missing base snapshot',async()=>{
+  await comparisons();await runtime.query('UPDATE scan_snapshots SET comparable_to=NULL WHERE id=$1',[snapshot]);
+  const req=request(),result=await runLiveAssistant(req);
+  expect(result.output?.body).toBe(output.body);expect(req.llm).toHaveBeenCalledOnce();await noWrites(req);
  });
  it.each(['workspace','expected_head','foreign_base','foreign_head','different_location','foreign_location_owner'])('refuses exact diff with invalid %s scope',async(kind)=>{
   const {older,baseOne}=await comparisons(),repo=artifactRepository(runtime);

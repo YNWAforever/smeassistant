@@ -148,6 +148,13 @@ async function resolveContext(db: LiveAssistantRepository, input: LiveRunInput):
       if (!scope || scope.workspaceId !== workspaceId || scope.locationId !== focusedRow.location_id) throw new AssistantAccessError("not_found");
       if (focusedRow.workspace_id !== workspaceId) throw new AssistantAccessError("not_found");
       requireDraftScope(input, focusedRow.location_id);
+      // Client evidence selection cannot replace authority over the action's
+      // persisted source, including workspace-wide and version-resolved actions.
+      if (focusedRow.source_snapshot_id) {
+        const source = await db.assistantSnapshot(workspaceId, focusedRow.source_snapshot_id);
+        if (!source || source.workspaceId !== workspaceId) throw new AssistantAccessError("not_found");
+        requireDraftScope(input, source.locationId);
+      }
       if (focusedRow.location_id && !locations.some((l) => l.id === focusedRow!.location_id)) throw new AssistantAccessError("not_found");
       if (input.context.locationId && focusedRow.location_id && input.context.locationId !== focusedRow.location_id) throw new AssistantAccessError("not_found");
     }
@@ -184,14 +191,25 @@ async function resolveContext(db: LiveAssistantRepository, input: LiveRunInput):
     requireDraftScope(input, snapshot.locationId);
   }
 
-  const [diff, base, openRows] = await Promise.all([
+  const [storedDiff, storedBase, openRows] = await Promise.all([
     db.assistantDiff(snapshot?.diffId ?? null, workspaceId, snapshot?.jobId ?? null),
     snapshot?.comparableTo ? db.assistantSnapshot(workspaceId, snapshot.comparableTo) : Promise.resolve(null),
     db.assistantActions(workspaceId, { locationId, states: ["recommended", "needs_input", "ready", "in_progress"] }),
   ]);
 
+  let diff = storedDiff;
+  let base = storedBase;
   if (drafting && snapshot?.comparableTo && !base) throw new AssistantAccessError("not_found");
   if (drafting && base && (base.workspaceId !== workspaceId || base.locationId !== snapshot?.locationId)) throw new AssistantAccessError("not_found");
+
+  // A valid same-location snapshot can still belong to a different comparison.
+  // Withhold the pair together so templates cannot label mixed evidence Observed.
+  // A null comparableTo legitimately means that no base snapshot was retained.
+  if (snapshot?.comparableTo && (!base || !diff || base.jobId !== diff.base_job_id ||
+      base.workspaceId !== workspaceId || base.locationId !== snapshot.locationId)) {
+    diff = null;
+    base = null;
+  }
 
   const open = openRows.map((row) => ({ row, overview: overviewOf(row, locations.find((l) => l.id === row.location_id) ?? null) }));
   const focused = focusedRow ? { row: focusedRow, overview: overviewOf(focusedRow, locations.find((l) => l.id === focusedRow.location_id) ?? null) } : null;
