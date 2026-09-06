@@ -1,10 +1,13 @@
+import { execFile } from "node:child_process";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
 import { checkInventory, extractSqlObjects } from "../scripts/neon/check-inventory.mjs";
 
 const ownedDirectories: string[] = [];
+const execFileAsync = promisify(execFile);
 
 async function fixture(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "neon-inventory-"));
@@ -80,6 +83,67 @@ describe("Neon dependency inventory", () => {
     expect(objects).toContain("revoke-statement:revoke all on function public.claim_job(uuid) from public, anon;");
     expect(objects).toContain("grant-statement:grant select on public.audit_jobs to anon;");
     expect(objects).toContain("grant-statement:grant select on all tables in schema public to reporting_role;");
+  });
+
+
+  it("tracks concrete DROP constraint and index objects without treating IF EXISTS as a name", () => {
+    const objects = extractSqlObjects(`
+      alter table public.workspaces drop constraint if exists workspaces_owner_identity_check;
+      drop index if exists public.workspaces_owner_user_id_key;
+      drop index if exists public.workspaces_owner_email_key;
+    `);
+
+    expect(objects).toContain("constraint:workspaces_owner_identity_check");
+    expect(objects).toContain("index:public.workspaces_owner_user_id_key");
+    expect(objects).toContain("index:public.workspaces_owner_email_key");
+    expect(objects).not.toContain("constraint:if");
+  });
+
+  it.each([
+    ["path", 42, "record 0 has invalid path"],
+    ["replacements", ["valid", 42], "record 0 has invalid replacements"],
+    ["evidence", ["valid", false], "record 0 has invalid evidence"],
+  ])("rejects malformed %s values", async (field, value, expectedError) => {
+    const root = await fixture();
+    const record = {
+      path: "lib/consumer.ts",
+      kind: "runtime",
+      task: 2,
+      replacements: ["lib/db/client.ts"],
+      status: "pending",
+      evidence: ["tracked @supabase reference"],
+      [field]: value,
+    };
+    await writeFile(join(root, "inventory.json"), JSON.stringify([record]));
+
+    const result = await checkInventory({ root, inventoryPath: "inventory.json", trackedFiles: [] });
+
+    expect(result.errors).toContain(expectedError);
+  });
+
+  it("uses real Git enumeration and covers its tracked self-test consumer", async () => {
+    const root = await fixture();
+    await mkdir(join(root, "tests"), { recursive: true });
+    await writeFile(join(root, "tests", "neon-inventory.test.ts"), 'import { createClient } from "@supabase/supabase-js";\n');
+    await writeFile(join(root, "inventory.json"), JSON.stringify([{
+      path: "tests/neon-inventory.test.ts",
+      kind: "test",
+      task: 1,
+      replacements: ["scripts/neon/check-inventory.mjs"],
+      status: "pending",
+      evidence: ["inventory checker self-test"],
+    }]));
+    await execFileAsync("git", ["init", "--quiet"], { cwd: root });
+    await execFileAsync("git", ["add", "inventory.json", "tests/neon-inventory.test.ts"], { cwd: root });
+
+    await expect(checkInventory({ root, inventoryPath: "inventory.json" })).resolves.toMatchObject({ ok: true, errors: [] });
+  });
+
+  it("fails closed when real Git enumeration fails", async () => {
+    const root = await fixture();
+    await writeFile(join(root, "inventory.json"), "[]\n");
+
+    await expect(checkInventory({ root, inventoryPath: "inventory.json" })).rejects.toThrow();
   });
 
   it("does not inspect credential files", async () => {

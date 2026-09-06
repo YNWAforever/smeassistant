@@ -30,6 +30,7 @@ export function extractSqlObjects(sql) {
   addMatches(/\bcreate\s+(?:or\s+replace\s+)?(?:materialized\s+)?view\s+([\w."-]+)/gi, "view");
   addMatches(/\bcreate\s+type\s+([\w."-]+)/gi, "type");
   addMatches(/\bcreate\s+(?:unique\s+)?index\s+(?:if\s+not\s+exists\s+)?([\w."-]+)/gi, "index");
+  addMatches(/\bdrop\s+index\s+(?:if\s+exists\s+)?([\w."-]+)/gi, "index");
   for (const match of source.matchAll(/\bcreate\s+(?:unique\s+)?index\s+on\s+([\w."-]+)/gi)) {
     objects.delete("index:on");
     objects.add(`index:auto@${match[1].replaceAll('"', "").toLowerCase()}`);
@@ -42,9 +43,12 @@ export function extractSqlObjects(sql) {
     for (const column of match[2].matchAll(/\badd\s+column\s+(?:if\s+not\s+exists\s+)?([\w"-]+)/gi)) {
       objects.add(`column:${table}.${column[1].replaceAll('"', "").toLowerCase()}`);
     }
+    for (const constraint of match[2].matchAll(/\bdrop\s+constraint\s+(?:if\s+exists\s+)?([\w"-]+)/gi)) {
+      objects.add(`constraint:${constraint[1].replaceAll('"', "").toLowerCase()}`);
+    }
   }
   addMatches(/\bcreate\s+(?:user|role)\s+([\w"-]+)/gi, "role");
-  addMatches(/\bconstraint\s+([\w"-]+)/gi, "constraint");
+  addMatches(/\b(?:add\s+)?constraint\s+(?!if\b)([\w"-]+)/gi, "constraint");
   for (const match of source.matchAll(/\b(grant|revoke)\s+[\s\S]*?;/gi)) {
     const action = match[1].toLowerCase();
     const statement = match[0].replace(/\s+/g, " ").replaceAll('"', "").trim().toLowerCase();
@@ -65,11 +69,14 @@ export async function checkInventory(options = {}) {
   const byPath = new Map();
   for (const [index, record] of inventory.entries()) {
     for (const key of REQUIRED_KEYS) if (!(key in record)) errors.push(`record ${index} missing ${key}`);
+    if (typeof record.path !== "string" || record.path.length === 0) errors.push(`record ${index} has invalid path`);
     if (!/^(runtime|schema|test|operation)$/.test(record.kind)) errors.push(`record ${index} has invalid kind`);
     if (!Number.isInteger(record.task) || record.task < 1 || record.task > 17) errors.push(`record ${index} has invalid task`);
     if (!/^(pending|replaced)$/.test(record.status)) errors.push(`record ${index} has invalid status`);
     if (!Array.isArray(record.replacements) || record.replacements.length === 0) errors.push(`record ${index} needs replacements`);
+    else if (!record.replacements.every((value) => typeof value === "string")) errors.push(`record ${index} has invalid replacements`);
     if (!Array.isArray(record.evidence) || record.evidence.length === 0) errors.push(`record ${index} needs evidence`);
+    else if (!record.evidence.every((value) => typeof value === "string")) errors.push(`record ${index} has invalid evidence`);
     if (typeof record.path === "string") {
       if (byPath.has(record.path)) errors.push(`duplicate inventory path: ${record.path}`);
       byPath.set(record.path, record);

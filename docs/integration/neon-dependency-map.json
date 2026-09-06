@@ -8,7 +8,7 @@
     ],
     "status": "pending",
     "evidence": [
-      "CI currently starts Supabase CLI",
+      "CI installs PostgreSQL, verifies migrations, and runs Docker PostgreSQL/PostgREST integration services",
       "required mode: CI"
     ]
   },
@@ -494,12 +494,12 @@
       "lib/repositories/evidence.ts",
       "lib/repositories/workspace.ts",
       "lib/repositories/assets.ts",
-      "Neon object storage adapter"
+      "private object-storage adapter (provider decision pending Task 9)"
     ],
     "status": "pending",
     "evidence": [
       "supabaseServer reference",
-      "Supabase Storage consumer"
+      "Supabase Storage upload/remove/signed-URL consumer"
     ]
   },
   {
@@ -523,12 +523,12 @@
       "lib/repositories/evidence.ts",
       "lib/repositories/workspace.ts",
       "lib/repositories/assets.ts",
-      "Neon object storage adapter"
+      "private object-storage adapter (provider decision pending Task 9)"
     ],
     "status": "pending",
     "evidence": [
       "supabaseServer reference",
-      "Supabase Storage consumer"
+      "Supabase Storage upload/remove/signed-URL consumer"
     ]
   },
   {
@@ -835,7 +835,7 @@
     ],
     "status": "pending",
     "evidence": [
-      "external boundary: Vercel scheduled producer to scan runner consumer",
+      "external boundary: retained worker scheduler targets the legacy origin; no new cron is introduced",
       "required modes: vercel, scheduled, cloudflare",
       "verified source absence: no runtime realtime subscription; compatibility shims fail closed",
       "verified source absence: no Edge Function invocation"
@@ -954,11 +954,13 @@
     "task": 9,
     "replacements": [
       "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/workspace.ts",
+      "private object-storage adapter (provider decision pending Task 9)"
     ],
     "status": "pending",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Supabase Storage upload/list/remove consumer"
     ]
   },
   {
@@ -1026,6 +1028,20 @@
     "status": "pending",
     "evidence": [
       "supabaseServer reference"
+    ]
+  },
+  {
+    "path": "lib/scan/dispatch-runtime.ts",
+    "kind": "operation",
+    "task": 15,
+    "replacements": [
+      "retained scheduler and Cloudflare scan worker dispatch boundary"
+    ],
+    "status": "pending",
+    "evidence": [
+      "required modes: vercel, scheduled, cloudflare",
+      "external boundary: Vercel route dispatches to Cloudflare worker when SCAN_EXECUTION_RUNTIME selects it",
+      "SCAN_WORKER_URL configures the worker consumer origin"
     ]
   },
   {
@@ -1184,13 +1200,13 @@
       "lib/repositories/evidence.ts",
       "lib/repositories/workspace.ts",
       "lib/repositories/assets.ts",
-      "Neon object storage adapter"
+      "private object-storage adapter (provider decision pending Task 9)"
     ],
     "status": "pending",
     "evidence": [
       "tracked @supabase reference",
       "SupabaseClient type reference",
-      "Supabase Storage consumer"
+      "Supabase Storage upload/remove/signed-URL consumer"
     ]
   },
   {
@@ -2124,8 +2140,8 @@
       "sql-object:column:public.workspaces.assigned_at",
       "sql-object:column:public.workspaces.assigned_by_staff_user_id",
       "sql-object:column:public.workspaces.owner_email",
-      "sql-object:constraint:if",
       "sql-object:constraint:workspaces_owner_identity_check",
+
       "sql-object:index:workspaces_owner_email_key",
       "sql-object:table:public.workspaces"
     ]
@@ -2142,7 +2158,7 @@
       "source migration",
       "sql-object:constraint:audit_jobs_parent_job_id_fkey",
       "sql-object:constraint:audit_jobs_workspace_id_fkey",
-      "sql-object:constraint:if",
+      "sql-object:constraint:workspaces_owner_identity_check",
       "sql-object:constraint:leads_job_id_fkey",
       "sql-object:constraint:scan_events_job_id_fkey",
       "sql-object:constraint:staff_report_events_job_id_fkey",
@@ -2306,7 +2322,7 @@
     "status": "pending",
     "evidence": [
       "source migration",
-      "sql-object:constraint:if",
+      "sql-object:constraint:workspaces_owner_identity_check",
       "sql-object:external:auth.users",
       "sql-object:function:public.delete_orphaned_workspace",
       "sql-object:grant-statement:grant select, insert, update, delete on table public.workspace_members to service_role;",
@@ -2314,6 +2330,8 @@
       "sql-object:index:workspace_members_one_owner_idx",
       "sql-object:index:workspace_members_pending_email_idx",
       "sql-object:index:workspace_members_user_workspace_idx",
+      "sql-object:index:public.workspaces_owner_email_key",
+      "sql-object:index:public.workspaces_owner_user_id_key",
       "sql-object:revoke-statement:revoke all on table public.workspace_members from public, anon, authenticated;",
       "sql-object:table:public.workspace_members",
       "sql-object:table:public.workspaces",
@@ -2348,6 +2366,7 @@
     "status": "pending",
     "evidence": [
       "source migration",
+      "sql-object:index:public.workspace_members_pending_email_idx",
       "sql-object:index:workspace_members_email_idx_unique"
     ]
   },
@@ -2627,6 +2646,18 @@
     "status": "pending",
     "evidence": [
       "RPC consumer"
+    ]
+  },
+  {
+    "path": "tests/neon-inventory.test.ts",
+    "kind": "test",
+    "task": 1,
+    "replacements": [
+      "scripts/neon/check-inventory.mjs"
+    ],
+    "status": "pending",
+    "evidence": [
+      "inventory checker self-test and fixture Supabase references"
     ]
   },
   {
