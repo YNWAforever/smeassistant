@@ -95,4 +95,30 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon live assistant authorit
   const req=request();await expect(runLiveAssistant(req)).rejects.toMatchObject({code:'not_found'});
   expect(req.llmReady).not.toHaveBeenCalled();expect(req.llm).not.toHaveBeenCalled();await noWrites(req);
  });
+
+ async function comparisons(){
+  const baseOne=(await runtime.query("INSERT INTO audit_jobs(workspace_id,location_id,business_name,status) VALUES($1,$2,'Base one','done') RETURNING id",[workspace,locB])).rows[0].id;
+  const baseTwo=(await runtime.query("INSERT INTO audit_jobs(workspace_id,location_id,business_name,status) VALUES($1,$2,'Base two','done') RETURNING id",[workspace,locB])).rows[0].id;
+  const baseSnapshot=(await runtime.query("INSERT INTO scan_snapshots(workspace_id,location_id,job_id,market,observed_at,coverage,module_states,metrics,overall_score) VALUES($1,$2,$3,'hk','2026-08-01',1,'{}','{}',66) RETURNING id",[workspace,locB,baseOne])).rows[0].id;
+  const older=(await runtime.query("INSERT INTO scan_diffs(base_job_id,head_job_id,comparable,composite_base,composite_head,composite_delta,intersection_modules,created_at) VALUES($1,$2,true,66,62,-4,ARRAY['gbp'],'2026-08-02') RETURNING id",[baseOne,job])).rows[0].id;
+  const newer=(await runtime.query("INSERT INTO scan_diffs(base_job_id,head_job_id,comparable,composite_base,composite_head,composite_delta,intersection_modules,created_at) VALUES($1,$2,true,50,62,12,ARRAY['gbp'],'2026-08-03') RETURNING id",[baseTwo,job])).rows[0].id;
+  await runtime.query('UPDATE scan_snapshots SET comparable_to=$1,diff_id=$2,overall_score=62 WHERE id=$3',[baseSnapshot,older,snapshot]);
+  return {baseOne,baseTwo,older,newer};
+ }
+ it('preserves the exact stored comparison when another valid diff for the same head is newer',async()=>{
+  const {older,newer}=await comparisons(),req=request('viewer',[locA]);
+  const result=await runLiveAssistant({...req,intentId:'explain_change'});
+  expect(result.evidenceRefs.find(ref=>ref.evidenceId===`ev_${snapshot}_composite`)).toMatchObject({factType:'Observed',value:'66 → 62 (-4)'});
+  expect(await req.repository.assistantDiff(older,workspace,job)).toMatchObject({id:older,composite_delta:'-4'});
+  expect(await req.repository.assistantDiff(newer,workspace,job)).toMatchObject({id:newer,composite_delta:'12'});
+  expect(req.llm).not.toHaveBeenCalled();await noWrites(req);
+ });
+ it.each(['workspace','expected_head','foreign_base','foreign_head','different_location','foreign_location_owner'])('refuses exact diff with invalid %s scope',async(kind)=>{
+  const {older,baseOne}=await comparisons(),repo=artifactRepository(runtime);
+  if(kind==='foreign_base')await runtime.query('UPDATE audit_jobs SET workspace_id=$1 WHERE id=$2',[foreign,baseOne]);
+  if(kind==='foreign_head')await runtime.query('UPDATE audit_jobs SET workspace_id=$1 WHERE id=$2',[foreign,job]);
+  if(kind==='different_location')await runtime.query('UPDATE audit_jobs SET location_id=$1 WHERE id=$2',[locA,baseOne]);
+  if(kind==='foreign_location_owner')await runtime.query('UPDATE locations SET workspace_id=$1 WHERE id=$2',[foreign,locB]);
+  expect(await repo.assistantDiff(older,kind==='workspace'?foreign:workspace,kind==='expected_head'?baseOne:job)).toBeNull();
+ });
 });

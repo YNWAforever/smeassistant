@@ -3,9 +3,8 @@ import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { getPool } from '../db/client';
 import { workflowRepository, type CreateOutputVersionInput } from './workflow';
-import { workspaceReadRepository, SNAPSHOT_COLUMNS } from './workspace-read';
-import { snapshotRepository } from './snapshots';
-import { rowToSnapshot, type ScanSnapshotRow } from '../workspace/snapshots';
+import { workspaceReadRepository, SNAPSHOT_COLUMNS, DIFF_COLUMNS } from './workspace-read';
+import { rowToSnapshot, type ScanSnapshotRow, type ScanDiffRow } from '../workspace/snapshots';
 import type { ActionState } from '../domain';
 import type { ActionScope, VersionScope } from '../workspace/versions';
 
@@ -76,10 +75,14 @@ export function artifactRepository(client?: Executor) {
   async assistantDiff(id: string|null, workspaceId: string, headJobId: string|null) {
    return operation(async () => {
    if(!id || !headJobId) return null;
-   const row=await snapshotRepository(client).diff(headJobId);
-   if(!row || row.id!==id) return null;
-   const head=(await db().query('SELECT id FROM audit_jobs WHERE id=$1 AND workspace_id=$2',[headJobId,workspaceId])).rows[0];
-   return head ? row : null;
+   // A snapshot pins one comparison; another base may have a newer diff for this head.
+   const row=(await db().query<ScanDiffRow>(`SELECT ${DIFF_COLUMNS} FROM scan_diffs d
+    WHERE id=$1 AND head_job_id=$3
+    AND EXISTS(SELECT 1 FROM audit_jobs h JOIN audit_jobs b ON b.id=d.base_job_id
+      AND b.workspace_id=h.workspace_id AND b.location_id IS NOT DISTINCT FROM h.location_id
+      WHERE h.id=d.head_job_id AND h.workspace_id=$2
+      AND (h.location_id IS NULL OR EXISTS(SELECT 1 FROM locations l WHERE l.id=h.location_id AND l.workspace_id=h.workspace_id)))`,[id,workspaceId,headJobId])).rows[0];
+   return row ?? null;
    });
   },
   assistantBrand(workspaceId: string) {
