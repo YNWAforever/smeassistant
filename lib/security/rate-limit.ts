@@ -1,4 +1,4 @@
-import { supabaseServer } from "@/lib/supabase/admin";
+import { workflowRepository } from "@/lib/repositories/workflow";
 import {
   hmacFingerprint,
   RateLimitConfigurationError,
@@ -163,7 +163,7 @@ export async function consumeRateLimit({
     p_limit: limit,
     p_window_seconds: windowSeconds,
   });
-  if (error) throw new RateLimitUnavailableError(error.message ?? "consume_rate_limit failed");
+  if (error) throw new RateLimitUnavailableError("consume_rate_limit failed");
   const row = Array.isArray(data) ? data[0] : data;
   if (!row || typeof row !== "object") throw new RateLimitUnavailableError("Invalid limiter response");
   const result = row as { allowed?: unknown; retry_after_seconds?: unknown };
@@ -195,16 +195,11 @@ export async function enforceRateLimit({
   const policy = RATE_LIMITS[scope];
   try {
     const key = rateLimitBucketKey(scope, ...identifiers, requestFingerprint(req));
-    const dbClient = client ?? (supabaseServer() as unknown as RateLimitClient);
+    const dbClient: RateLimitClient = client ?? { rpc: async (_fn, args) => ({ data: await workflowRepository().consumeRateLimit(String(args.p_bucket_key), Number(args.p_limit), Number(args.p_window_seconds)), error: null }) };
     return await consumeRateLimit({ client: dbClient, bucketKey: key, ...policy });
   } catch (error) {
-    // Route tests do not provide Supabase credentials. Keep them hermetic;
-    // deployed routes still fail closed for required policies.
-    if ((process.env.NODE_ENV === "test" || process.env.VITEST === "true" || process.argv.some((arg) => arg.includes("vitest"))) && !process.env.NEXT_PUBLIC_SUPABASE_URL && !client) {
-      return { allowed: true, retryAfterSeconds: 1, unavailable: true };
-    }
     if (!(error instanceof RateLimitConfigurationError)) {
-      console.error("Rate limiter unavailable", error);
+      console.error("Rate limiter unavailable", { category: "database_unavailable" });
     }
     return {
       allowed: !failClosed,

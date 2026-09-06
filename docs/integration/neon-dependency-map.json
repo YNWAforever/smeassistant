@@ -73,9 +73,10 @@
       "lib/repositories/scans.ts",
       "lib/repositories/reports.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 8: typed Neon jobs/reports and atomic workflow repositories; restricted PostgreSQL fixture and focused contracts verified."
     ]
   },
   {
@@ -364,28 +365,29 @@
   {
     "path": "app/api/report-access/unlock/route.ts",
     "kind": "runtime",
-    "task": 9,
+    "task": 8,
     "replacements": [
-      "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/reports.ts",
+      "lib/repositories/workflow.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "supabaseServer reference",
-      "RPC consumer"
+      "RPC consumer",
+      "Task 8 explicit brief owns this consumer; restricted PostgreSQL fixtures and focused repository contracts verified."
     ]
   },
   {
     "path": "app/api/scan/process/route.test.ts",
     "kind": "test",
-    "task": 8,
+    "task": 12,
     "replacements": [
-      "lib/repositories/scans.ts",
-      "lib/repositories/reports.ts"
+      "lib/scan/execution-store.ts"
     ],
     "status": "pending",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Mocks processScan runtime Supabase dependency; limiter is already explicitly mocked. Follows Task 12 execution-store migration."
     ]
   },
   {
@@ -393,12 +395,12 @@
     "kind": "test",
     "task": 8,
     "replacements": [
-      "lib/repositories/scans.ts",
-      "lib/repositories/reports.ts"
+      "lib/repositories/jobs.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 8 explicit brief owns this consumer; restricted PostgreSQL fixtures and focused repository contracts verified."
     ]
   },
   {
@@ -406,12 +408,12 @@
     "kind": "test",
     "task": 8,
     "replacements": [
-      "lib/repositories/scans.ts",
-      "lib/repositories/reports.ts"
+      "lib/repositories/jobs.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 8 explicit brief owns this consumer; restricted PostgreSQL fixtures and focused repository contracts verified."
     ]
   },
   {
@@ -422,9 +424,10 @@
       "lib/repositories/scans.ts",
       "lib/repositories/reports.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 8: typed Neon jobs/reports and atomic workflow repositories; restricted PostgreSQL fixture and focused contracts verified."
     ]
   },
   {
@@ -583,92 +586,94 @@
   {
     "path": "app/api/workspaces/[workspaceId]/checkout-link/route.ts",
     "kind": "runtime",
-    "task": 8,
+    "task": 11,
     "replacements": [
-      "lib/repositories/scans.ts",
-      "lib/repositories/reports.ts"
+      "lib/repositories/billing.ts"
     ],
     "status": "pending",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Ownership reconciled with Task 11 Stripe customer persistence."
     ]
   },
   {
     "path": "app/api/workspaces/[workspaceId]/fix-pack-drafts/[runId]/route.test.ts",
     "kind": "test",
-    "task": 8,
+    "task": 10,
     "replacements": [
-      "lib/repositories/scans.ts",
-      "lib/repositories/reports.ts"
+      "lib/repositories/artifacts.ts"
     ],
     "status": "pending",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Ownership reconciled with explicit Task 10 artifact review/read scope; not a Task 8 scan persistence consumer."
     ]
   },
   {
     "path": "app/api/workspaces/[workspaceId]/fix-pack-drafts/[runId]/route.ts",
     "kind": "runtime",
-    "task": 8,
+    "task": 10,
     "replacements": [
-      "lib/repositories/scans.ts",
-      "lib/repositories/reports.ts"
+      "lib/repositories/artifacts.ts"
     ],
     "status": "pending",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Ownership reconciled with explicit Task 10 artifact review/read scope; not a Task 8 scan persistence consumer."
     ]
   },
   {
     "path": "app/api/workspaces/[workspaceId]/fix-pack-drafts/route.test.ts",
     "kind": "test",
-    "task": 8,
+    "task": 10,
     "replacements": [
-      "lib/repositories/scans.ts",
-      "lib/repositories/reports.ts"
+      "lib/repositories/artifacts.ts"
     ],
     "status": "pending",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Ownership reconciled with explicit Task 10 artifact review/read scope; not a Task 8 scan persistence consumer."
     ]
   },
   {
     "path": "app/api/workspaces/[workspaceId]/fix-pack-drafts/route.ts",
     "kind": "runtime",
-    "task": 8,
+    "task": 10,
     "replacements": [
-      "lib/repositories/scans.ts",
-      "lib/repositories/reports.ts"
+      "lib/repositories/artifacts.ts"
     ],
     "status": "pending",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Ownership reconciled with explicit Task 10 artifact review/read scope; not a Task 8 scan persistence consumer."
     ]
   },
   {
     "path": "app/api/workspaces/[workspaceId]/instagram-handle/route.test.ts",
     "kind": "test",
-    "task": 8,
+    "task": 9,
     "replacements": [
-      "lib/repositories/scans.ts",
-      "lib/repositories/reports.ts"
+      "lib/repositories/workspace.ts",
+      "lib/repositories/events.ts"
     ],
     "status": "pending",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Ownership reconciled with Task 9 workspace, primary location and audit event writes."
     ]
   },
   {
     "path": "app/api/workspaces/[workspaceId]/instagram-handle/route.ts",
     "kind": "runtime",
-    "task": 8,
+    "task": 9,
     "replacements": [
-      "lib/repositories/scans.ts",
-      "lib/repositories/reports.ts"
+      "lib/repositories/workspace.ts",
+      "lib/repositories/events.ts"
     ],
     "status": "pending",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Ownership reconciled with Task 9 workspace, primary location and audit event writes."
     ]
   },
   {
@@ -1057,14 +1062,15 @@
   {
     "path": "lib/report/store.ts",
     "kind": "runtime",
-    "task": 9,
+    "task": 8,
     "replacements": [
-      "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/reports.ts",
+      "lib/repositories/workflow.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 8 explicit brief owns this consumer; restricted PostgreSQL fixtures and focused repository contracts verified."
     ]
   },
   {
@@ -1120,15 +1126,16 @@
   {
     "path": "lib/scan/start-job.ts",
     "kind": "runtime",
-    "task": 12,
+    "task": 8,
     "replacements": [
-      "lib/scan/execution-store.ts"
+      "lib/repositories/jobs.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
       "SupabaseClient type reference",
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 8 explicit brief owns this consumer; restricted PostgreSQL fixtures and focused repository contracts verified."
     ]
   },
   {
@@ -1139,10 +1146,11 @@
       "lib/repositories/scans.ts",
       "lib/repositories/reports.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "supabaseServer reference",
-      "RPC consumer"
+      "RPC consumer",
+      "Task 8: typed Neon jobs/reports and atomic workflow repositories; restricted PostgreSQL fixture and focused contracts verified."
     ]
   },
   {

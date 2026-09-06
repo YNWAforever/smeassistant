@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { setViewerGrantCookie } from "@/lib/report-access/cookie";
 import { createViewerTokenFromIdempotencyKey, isValidIdempotencyKey } from "@/lib/report-access/token";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { reportsRepository } from "@/lib/repositories/reports";
+import { workflowRepository, type UnlockResult } from "@/lib/repositories/workflow";
+import { randomUUID } from "node:crypto";
 import { enforceCompositeIdentifierRateLimit, rateLimitUnavailableResponse, rateLimitedResponse } from "@/lib/security/rate-limit";
 
 import { isContactChannelForMarket, normalizeMarketContact } from "@/lib/leads/contact";
@@ -100,9 +102,10 @@ export async function POST(req: Request) {
   if (limiter.unavailable) return rateLimitUnavailableResponse();
   if (!limiter.allowed) return rateLimitedResponse(limiter.retryAfterSeconds);
 
-  const supabase = supabaseServer();
-  const { data: job, error: jobError } = await supabase.from("audit_jobs").select("id, share_slug, region, business_objective").eq("share_slug", slug).single();
-  if (jobError || !job) return NextResponse.json({ error: "Report not found" }, { status: 404 });
+  let job;
+  try { job = await reportsRepository().readUnlockJob(slug); }
+  catch { return NextResponse.json({ error: "Unable to load report", correlationId: randomUUID() }, { status: 503 }); }
+  if (!job) return NextResponse.json({ error: "Report not found" }, { status: 404 });
   const jobRegion = (job as { region?: string | null }).region;
   const contactMarket: "HK" | "TW" = jobRegion === "tw" ? "TW" : jobRegion === "hk" ? "HK" : market.toUpperCase() as "HK" | "TW";
   if (!isContactChannelForMarket(contactMarket, preferredContactChannel)) {
@@ -129,29 +132,27 @@ export async function POST(req: Request) {
     properties: { market: contactMarket, channel: preferredContactChannel, objective: analyticsObjective },
   });
   const eventProperties = unlockEvent.properties;
-  const { data: unlockData, error: unlockError } = await supabase.rpc("complete_report_unlock", {
-    p_job_id: job.id,
-    p_whatsapp: preferredContactChannel === "whatsapp" ? contactIdentifier : null,
-    p_email: preferredContactChannel === "email" ? contactIdentifier : null,
-    p_recovery_email: recoveryEmail,
-    p_preferred_contact_channel: preferredContactChannel,
-    p_contact_identifier: contactIdentifier,
-    p_business_objective: effectiveObjective,
-    p_report_delivery_consent: reportDelivery,
-    p_scan_discussion_consent: scanDiscussion,
-    p_marketing_consent: marketing,
-    p_policy_version: resolveConsentPolicyVersion(process.env.REPORT_CONSENT_POLICY_VERSION),
-    p_locale: locale,
-    p_token_hash: tokenHash,
-    p_idempotency_key: effectiveIdempotencyKey,
-    p_purpose: "viewer_report",
-    p_expires_at: expiresAt,
-    p_anonymous_session_id: session.id,
-    p_event_properties: eventProperties,
-  });
-  if (unlockError || !unlockData?.[0]?.grant_id) return NextResponse.json({ error: "Failed to unlock report" }, { status: 500 });
-
-  const result = unlockData[0] as { lead_id: string; grant_id: string; event_created?: boolean };
+  let result: UnlockResult;
+  try { result = await workflowRepository().completeReportUnlock({
+    jobId: job.id,
+    whatsapp: preferredContactChannel === "whatsapp" ? contactIdentifier : null,
+    email: preferredContactChannel === "email" ? contactIdentifier : null,
+    recoveryEmail: recoveryEmail,
+    preferredContactChannel: preferredContactChannel,
+    contactIdentifier: contactIdentifier,
+    businessObjective: effectiveObjective,
+    reportDeliveryConsent: reportDelivery,
+    scanDiscussionConsent: scanDiscussion,
+    marketingConsent: marketing,
+    policyVersion: resolveConsentPolicyVersion(process.env.REPORT_CONSENT_POLICY_VERSION),
+    locale: locale,
+    tokenHash: tokenHash,
+    idempotencyKey: effectiveIdempotencyKey,
+    purpose: "viewer_report",
+    expiresAt: expiresAt,
+    anonymousSessionId: session.id,
+    eventProperties: eventProperties,
+  }); } catch { return NextResponse.json({ error: "Failed to unlock report", correlationId: randomUUID() }, { status: 503 }); }
   if (result.event_created === true) {
     void forwardEventToPostHog(unlockEvent, session.id).catch(() => {
       console.error("[analytics] event_record_failed", { category: "provider_unavailable" });

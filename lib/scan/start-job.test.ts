@@ -119,22 +119,7 @@ describe("buildScanJobInsert", () => {
   });
 });
 
-describe("insertScanJob", () => {
-  function fakeClient(result: { data: unknown; error: unknown }) {
-    const insert = vi.fn(() => ({ select: () => ({ single: async () => result }) }));
-    const from = vi.fn(() => ({ insert }));
-    return { client: { from } as never, from, insert };
-  }
-
-  it("inserts into audit_jobs and returns the new id", async () => {
-    const { client, from, insert } = fakeClient({ data: { id: "job-1" }, error: null });
-    await expect(insertScanJob(parsed(), { workspaceId: "ws-1" }, client)).resolves.toEqual({ ok: true, jobId: "job-1" });
-    expect(from).toHaveBeenCalledWith("audit_jobs");
-    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ workspace_id: "ws-1", status: "queued" }));
-  });
-
-  it("surfaces the database error instead of throwing", async () => {
-    const { client } = fakeClient({ data: null, error: { message: "boom" } });
-    await expect(insertScanJob(parsed(), {}, client)).resolves.toEqual({ ok: false, error: { message: "boom" } });
-  });
+describe("insertScanJob",()=>{
+ it("inserts through the repository and returns its selected ID",async()=>{const insert=vi.fn().mockResolvedValue({id:"job-1"});expect(await insertScanJob(parsed(),{workspaceId:"ws-1"},{insert})).toEqual({ok:true,jobId:"job-1"});expect(insert).toHaveBeenCalledWith(expect.objectContaining({workspace_id:"ws-1",status:"queued"}));});
+ it("sanitizes database failures instead of throwing",async()=>{const insert=vi.fn().mockRejectedValue(Error("postgresql://user:secret@host/db"));expect(await insertScanJob(parsed(),{},{insert})).toEqual({ok:false,error:Error("scan_persistence_unavailable")});});
 });

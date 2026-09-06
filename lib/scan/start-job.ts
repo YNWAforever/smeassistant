@@ -1,7 +1,7 @@
 import { randomBytes } from "crypto";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { jobsRepository, type JobsRepository } from "@/lib/repositories/jobs";
 import type { IgMatchProvenance } from "@sme-scanner/contracts";
-import { supabaseServer } from "@/lib/supabase/admin";
+
 
 /**
  * Validation and insert for `POST /api/scan/start`, lifted verbatim from
@@ -190,7 +190,7 @@ export interface ScanJobAttribution {
 }
 
 /** The `audit_jobs` row upstream inserts, plus optional server-side attribution. */
-export function buildScanJobInsert(input: ScanStartInput, attribution: ScanJobAttribution = {}): Record<string, unknown> {
+export function buildScanJobInsert(input: ScanStartInput, attribution: ScanJobAttribution = {}) {
   const inputSnapshot = {
     version: 2,
     locale: input.locale,
@@ -238,15 +238,12 @@ export function buildScanJobInsert(input: ScanStartInput, attribution: ScanJobAt
 export type ScanJobInsertResult = { ok: true; jobId: string } | { ok: false; error: unknown };
 
 export async function insertScanJob(
-  input: ScanStartInput,
-  attribution: ScanJobAttribution = {},
-  client: SupabaseClient = supabaseServer(),
+ input: ScanStartInput,
+ attribution: ScanJobAttribution = {},
+ repository: JobsRepository = jobsRepository,
 ): Promise<ScanJobInsertResult> {
-  const { data: row, error } = await client
-    .from("audit_jobs")
-    .insert(buildScanJobInsert(input, attribution))
-    .select("id")
-    .single();
-  if (error || !row) return { ok: false, error: error ?? new Error("audit_jobs insert returned no row") };
-  return { ok: true, jobId: (row as { id: string }).id };
+ try {
+  const row=await repository.insert(buildScanJobInsert(input,attribution));
+  return {ok:true,jobId:row.id};
+ } catch { return {ok:false,error:new Error("scan_persistence_unavailable")}; }
 }
