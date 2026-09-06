@@ -2,31 +2,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
-  from: vi.fn(),
+  workspace: vi.fn(),
+  accepted: vi.fn(),
+  replaceGoogleConnection: vi.fn(),
+  recordClaimAuditEvent: vi.fn(),
+  encryptToken: vi.fn((plaintext: string) => `enc:${plaintext}`),
   verifyState: vi.fn(),
   exchangeCode: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({getUser:async()=>{const response=await mocks.getUser();const user=response?.data?.user;return user?{...user,verified:true}:null;}}));
 vi.mock("@/lib/repositories/membership",()=>({membershipRepository:{
- workspace:async(ref:{id:string})=>{const r=await mocks.from("workspaces").select().eq("id",ref.id).maybeSingle();if(r.error)throw r.error;return r.data;},
- accepted:async(user:string,ws:string)=>{const r=await mocks.from("workspace_members").select().eq("workspace_id",ws).eq("user_id",user).not("accepted_at","is",null).maybeSingle();if(r.error)throw r.error;return r.data;},
+ workspace:mocks.workspace,
+ accepted:mocks.accepted,
 }}));
 vi.mock("@/lib/repositories/claims",()=>({
- recordClaimAuditEvent:async(input:unknown)=>{await mocks.from("audit_events").insert(input);},
- claimsRepository:{
- jobById:async(id:string)=>{const r=await mocks.from("audit_jobs").select().eq("id",id).maybeSingle();if(r.error)throw r.error;return r.data;},
- recordMerchantClaimEvent:async(input:unknown)=>{await mocks.from("workspace_claim_events").insert(input);},
- replaceGoogleConnection:async(input:{workspaceId:string;accountRef?:string;accessTokenEncrypted:string;refreshTokenEncrypted:string;scopes:string[];expiresAt:string|null})=>{
-  const table=mocks.from("oauth_connections");
-  const inserted=await table.insert({workspace_id:input.workspaceId,provider:"google_gbp",...(input.accountRef?{account_ref:input.accountRef}:{}),access_token_encrypted:input.accessTokenEncrypted,refresh_token_encrypted:input.refreshTokenEncrypted,scopes:input.scopes,expires_at:input.expiresAt,status:"expired"}).select().single();
-  if(inserted.error||!inserted.data)throw new Error("storage failed");
-  const revoked=await table.update({status:"revoked",updated_at:new Date().toISOString()}).eq("workspace_id",input.workspaceId).eq("provider","google_gbp").eq("status","active");
-  if(revoked.error)throw new Error("storage failed");
-  const promoted=await table.update({status:"active",updated_at:new Date().toISOString()}).eq("id",inserted.data.id);
-  if(promoted.error)throw new Error("storage failed");return inserted.data.id;
- },
-}}));
+ recordClaimAuditEvent:mocks.recordClaimAuditEvent,
+ claimsRepository:{replaceGoogleConnection:mocks.replaceGoogleConnection},
+}));
+vi.mock("@/lib/security/token-crypto", () => ({ encryptToken: mocks.encryptToken }));
 vi.mock("@/lib/oauth/google-connection", () => ({
   GBP_SCOPE_REQUIRED: "https://www.googleapis.com/auth/business.manage",
   verifyState: mocks.verifyState,
@@ -48,33 +42,12 @@ const TOKENS = {
   scopes: ["https://www.googleapis.com/auth/business.manage"],
 };
 
-/** workspaces / workspace_members / oauth_connections / audit_events with all-success responses. */
+/** Configures repository boundaries for the callback's workspace and membership checks. */
 function tables({ role, slug = "demo-cafe" }: { role: string | null; slug?: string | null }) {
-  const connectionInsert = vi.fn(() => ({
-    select: () => ({ single: async () => ({ data: { id: "conn-1" }, error: null }) }),
-  }));
-  const update = vi.fn((payload: { status: string }) =>
-    payload.status === "revoked"
-      ? { eq: () => ({ eq: () => ({ eq: async () => ({ error: null }) }) }) }
-      : { eq: async () => ({ error: null }) },
-  );
-  const auditInsert = vi.fn(async () => ({ error: null }));
-  mocks.from.mockImplementation((table: string) => {
-    if (table === "workspaces") {
-      return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: "ws-1", slug }, error: null }) }) }) };
-    }
-    if (table === "workspace_members") {
-      return {
-        select: () => ({
-          eq: () => ({ eq: () => ({ not: () => ({ maybeSingle: async () => ({ data: role ? { role } : null, error: null }) }) }) }),
-        }),
-      };
-    }
-    if (table === "oauth_connections") return { insert: connectionInsert, update };
-    if (table === "audit_events") return { insert: auditInsert };
-    throw new Error(`unexpected table ${table}`);
-  });
-  return { connectionInsert, update, auditInsert };
+  mocks.workspace.mockResolvedValue({ id: "ws-1", slug });
+  mocks.accepted.mockResolvedValue(role ? { role } : null);
+  mocks.replaceGoogleConnection.mockResolvedValue("conn-1");
+  mocks.recordClaimAuditEvent.mockResolvedValue(undefined);
 }
 
 function location(response: Response): URL {
@@ -181,21 +154,24 @@ describe("GET /api/oauth/google/callback", () => {
     expect(location(response).searchParams.get("connected")).toBe("ok");
   });
 
-  it("stores the connection insert-then-promote, records an audit event and lands on the workspace's integrations page", async () => {
+  it("passes encrypted connection fields to the repository, records an audit event and lands on the workspace's integrations page", async () => {
     mocks.verifyState.mockReturnValue(STATE);
     mocks.getUser.mockResolvedValue({ data: { user: { id: "user-1", email: "owner@example.com" } } });
-    const { connectionInsert, update, auditInsert } = tables({ role: "owner" });
+    tables({ role: "owner" });
     mocks.exchangeCode.mockResolvedValue(TOKENS);
 
     const url = location(await GET(request("?code=abc&state=good-signature")));
 
     expect(url.pathname).toBe("/en/owner/demo-cafe/settings/integrations");
     expect(url.searchParams.get("connected")).toBe("ok");
-    expect(connectionInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ workspace_id: "ws-1", provider: "google_gbp", status: "expired" }),
-    );
-    expect(update.mock.calls.map(([payload]) => (payload as { status: string }).status)).toEqual(["revoked", "active"]);
-    expect(auditInsert).toHaveBeenCalledWith(
+    expect(mocks.replaceGoogleConnection).toHaveBeenCalledWith({
+      workspaceId: "ws-1",
+      accessTokenEncrypted: "enc:token-abc",
+      refreshTokenEncrypted: "enc:refresh-abc",
+      scopes: TOKENS.scopes,
+      expiresAt: TOKENS.expiresAt,
+    });
+    expect(mocks.recordClaimAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         workspace_id: "ws-1",
         actor_type: "user",

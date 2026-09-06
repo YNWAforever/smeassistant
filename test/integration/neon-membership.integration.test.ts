@@ -36,11 +36,12 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon membership boundaries
  });
  it("binds all matching pending invitations once and preserves their role and scope", async () => {
   const user=await resolveApplicationUser(identity()); const a=await workspace(); const b=await workspace("b");
-  await runtime.query("INSERT INTO workspace_members(workspace_id,email,role,invited_at,created_at) VALUES($1,'MEMBER@example.test','manager','2000-01-01','2000-01-01'),($2,'member@example.test','viewer',now(),now())",[a,b]);
+  const locationScope=["00000000-0000-4000-8000-000000000001"];
+  await runtime.query("INSERT INTO workspace_members(workspace_id,email,role,location_scope,invited_at,created_at) VALUES($1,'MEMBER@example.test','manager',$3::uuid[],'2000-01-01','2000-01-01'),($2,'member@example.test','viewer',null,now(),now())",[a,b,locationScope]);
   expect(await members.bindPending(user)).toBe(a);
   expect(await members.listAccepted(user.id)).toHaveLength(2);
   expect((await members.accepted(user.id,a))?.role).toBe("manager");
-  expect((await members.accepted(user.id,a))?.location_scope).toBeNull();
+  expect((await members.accepted(user.id,a))?.location_scope).toEqual(locationScope);
   expect(await members.bindPending(user)).toBeNull();
  });
  it("does not bind an unverified, mismatched, or unknown application identity", async () => {
