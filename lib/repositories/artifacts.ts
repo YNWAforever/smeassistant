@@ -3,6 +3,10 @@ import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { getPool } from '../db/client';
 import { workflowRepository, type CreateOutputVersionInput } from './workflow';
+import { workspaceReadRepository, SNAPSHOT_COLUMNS } from './workspace-read';
+import { snapshotRepository } from './snapshots';
+import { rowToSnapshot, type ScanSnapshotRow } from '../workspace/snapshots';
+import type { ActionState } from '../domain';
 import type { ActionScope, VersionScope } from '../workspace/versions';
 
 type Executor = Pick<Pool | PoolClient, 'query'>;
@@ -52,8 +56,39 @@ export function artifactRepository(client?: Executor) {
  async function requireVersion(versionId: string) {
   if (!await versionScope(versionId)) throw new Error('version_not_found');
  }
+ async function assistantSnapshot(workspaceId: string, snapshotId: string | null, locationId: string | null) {
+  return operation(async () => {
+   const row=(await db().query<ScanSnapshotRow>(`SELECT ${SNAPSHOT_COLUMNS} FROM scan_snapshots s
+    WHERE workspace_id=$1 AND ($2::uuid IS NULL OR id=$2) AND ($3::uuid IS NULL OR location_id=$3)
+    AND EXISTS(SELECT 1 FROM audit_jobs j WHERE j.id=s.job_id AND j.workspace_id=s.workspace_id AND j.location_id IS NOT DISTINCT FROM s.location_id)
+    AND (location_id IS NULL OR EXISTS(SELECT 1 FROM locations l WHERE l.id=s.location_id AND l.workspace_id=s.workspace_id))
+    ORDER BY observed_at DESC,created_at DESC,id DESC LIMIT 1`,[workspaceId,snapshotId,locationId])).rows[0];
+   return row ? rowToSnapshot(row) : null;
+  });
+ }
  return {
   actionScope,versionScope,
+  async assistantWorkspace(workspaceId: string) { return (await workspaceReadRepository(client).workspaces([workspaceId]))[0] ?? null; },
+  assistantLocations(workspaceId: string) { return workspaceReadRepository(client).locations([workspaceId]); },
+  assistantActions(workspaceId: string, opts: {locationId?: string|null;states?: ActionState[];ids?:string[]} = {}) { return workspaceReadRepository(client).actions(workspaceId,opts); },
+  assistantSnapshot(workspaceId: string, snapshotId: string) { return assistantSnapshot(workspaceId,snapshotId,null); },
+  assistantLatestSnapshot(workspaceId: string, locationId: string|null) { return assistantSnapshot(workspaceId,null,locationId); },
+  async assistantDiff(id: string|null, workspaceId: string, headJobId: string|null) {
+   return operation(async () => {
+   if(!id || !headJobId) return null;
+   const row=await snapshotRepository(client).diff(headJobId);
+   if(!row || row.id!==id) return null;
+   const head=(await db().query('SELECT id FROM audit_jobs WHERE id=$1 AND workspace_id=$2',[headJobId,workspaceId])).rows[0];
+   return head ? row : null;
+   });
+  },
+  assistantBrand(workspaceId: string) {
+   return operation(async ()=>(await db().query<{voice:string|null;approved_claims:unknown;prohibited_terms:unknown;languages:unknown;facts:unknown}>('SELECT voice,approved_claims,prohibited_terms,languages,facts FROM brand_profiles WHERE workspace_id=$1',[workspaceId])).rows[0] ?? null);
+  },
+  assistantReviewData(workspaceId: string, jobId: string) {
+   return operation(async ()=>(await db().query<{raw_data:unknown}>(`SELECT raw_data FROM audit_jobs j WHERE id=$1 AND workspace_id=$2
+    AND (location_id IS NULL OR EXISTS(SELECT 1 FROM locations l WHERE l.id=j.location_id AND l.workspace_id=j.workspace_id))`,[jobId,workspaceId])).rows[0]?.raw_data ?? null);
+  },
   createOutputVersion(input: CreateOutputVersionInput) {
    return operation(async () => {
     const scope=await actionScope(input.actionId);
@@ -88,3 +123,6 @@ export function artifactRepository(client?: Executor) {
  };
 }
 export type ArtifactRepository = ReturnType<typeof artifactRepository>;
+
+/** Live drafting has a read-only repository capability; saving is an explicit separate action. */
+export type LiveAssistantRepository = Pick<ArtifactRepository,'actionScope'|'assistantWorkspace'|'assistantLocations'|'assistantActions'|'assistantSnapshot'|'assistantLatestSnapshot'|'assistantDiff'|'assistantBrand'|'assistantReviewData'|'versionScope'>;

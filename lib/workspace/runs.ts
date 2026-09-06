@@ -90,7 +90,12 @@ export async function loadLatestSnapshot(db: SupabaseClient, workspaceId: string
 export async function loadSampledReviews(db: SupabaseClient, jobId: string): Promise<SampledReview[]> {
   const { data, error } = await db.from("audit_jobs").select("raw_data").eq("id", jobId).maybeSingle<{ raw_data: unknown }>();
   if (error) throw new Error("job lookup failed");
-  const proof = sanitizeReportProof(data?.raw_data ?? null, []);
+  return sampledReviewsFromRawData(data?.raw_data ?? null);
+}
+
+/** Shared excerpt transformation; no persistence or provider transport. */
+export function sampledReviewsFromRawData(rawData: unknown): SampledReview[] {
+  const proof = sanitizeReportProof(rawData, []);
   return (proof.gbp?.recentReviews ?? [])
     .filter((review) => !review.ownerResponse && review.text)
     .sort((a, b) => (b.time || "").localeCompare(a.time || ""))
