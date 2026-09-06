@@ -1,0 +1,5268 @@
+{
+  "source": "d578739 original 33 migrations on owned Docker fixture; schema only, no business data",
+  "tables": [
+    {
+      "name": "action_measurements",
+      "rls": true
+    },
+    {
+      "name": "action_runs",
+      "rls": true
+    },
+    {
+      "name": "actions",
+      "rls": true
+    },
+    {
+      "name": "aeo_surface_snapshots",
+      "rls": true
+    },
+    {
+      "name": "agent_runs",
+      "rls": true
+    },
+    {
+      "name": "assets",
+      "rls": true
+    },
+    {
+      "name": "audit_events",
+      "rls": true
+    },
+    {
+      "name": "audit_findings",
+      "rls": true
+    },
+    {
+      "name": "audit_jobs",
+      "rls": true
+    },
+    {
+      "name": "brand_profiles",
+      "rls": true
+    },
+    {
+      "name": "consent_records",
+      "rls": true
+    },
+    {
+      "name": "deliveries",
+      "rls": true
+    },
+    {
+      "name": "erasure_events",
+      "rls": true
+    },
+    {
+      "name": "leads",
+      "rls": true
+    },
+    {
+      "name": "locations",
+      "rls": true
+    },
+    {
+      "name": "notification_events",
+      "rls": true
+    },
+    {
+      "name": "oauth_connections",
+      "rls": true
+    },
+    {
+      "name": "output_versions",
+      "rls": true
+    },
+    {
+      "name": "rate_limit_buckets",
+      "rls": true
+    },
+    {
+      "name": "report_access_grants",
+      "rls": true
+    },
+    {
+      "name": "report_evidence",
+      "rls": true
+    },
+    {
+      "name": "scan_diffs",
+      "rls": true
+    },
+    {
+      "name": "scan_events",
+      "rls": true
+    },
+    {
+      "name": "scan_schedules",
+      "rls": true
+    },
+    {
+      "name": "scan_snapshots",
+      "rls": true
+    },
+    {
+      "name": "staff_report_events",
+      "rls": true
+    },
+    {
+      "name": "workspace_access_requests",
+      "rls": true
+    },
+    {
+      "name": "workspace_claim_events",
+      "rls": true
+    },
+    {
+      "name": "workspace_members",
+      "rls": true
+    },
+    {
+      "name": "workspace_notifications",
+      "rls": true
+    },
+    {
+      "name": "workspace_scan_completions",
+      "rls": true
+    },
+    {
+      "name": "workspace_tier_events",
+      "rls": true
+    },
+    {
+      "name": "workspace_usage",
+      "rls": true
+    },
+    {
+      "name": "workspaces",
+      "rls": true
+    }
+  ],
+  "columns": [
+    {
+      "table_name": "action_measurements",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "action_measurements",
+      "column_name": "workspace_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "action_measurements",
+      "column_name": "action_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "action_measurements",
+      "column_name": "before_snapshot_id",
+      "ordinal_position": 4,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_measurements",
+      "column_name": "after_snapshot_id",
+      "ordinal_position": 5,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_measurements",
+      "column_name": "metric_key",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "action_measurements",
+      "column_name": "before_value",
+      "ordinal_position": 7,
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_measurements",
+      "column_name": "after_value",
+      "ordinal_position": 8,
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_measurements",
+      "column_name": "delta",
+      "ordinal_position": 9,
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_measurements",
+      "column_name": "fact_type",
+      "ordinal_position": 10,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "action_measurements",
+      "column_name": "window_days",
+      "ordinal_position": 11,
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_measurements",
+      "column_name": "created_at",
+      "ordinal_position": 12,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "action_runs",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "action_runs",
+      "column_name": "workspace_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "action_runs",
+      "column_name": "action_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "action_runs",
+      "column_name": "agent_key",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "action_runs",
+      "column_name": "state",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'queued'::text"
+    },
+    {
+      "table_name": "action_runs",
+      "column_name": "input",
+      "ordinal_position": 6,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_runs",
+      "column_name": "output",
+      "ordinal_position": 7,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_runs",
+      "column_name": "model",
+      "ordinal_position": 8,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_runs",
+      "column_name": "prompt_version",
+      "ordinal_position": 9,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_runs",
+      "column_name": "error",
+      "ordinal_position": 10,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_runs",
+      "column_name": "input_tokens",
+      "ordinal_position": 11,
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_runs",
+      "column_name": "output_tokens",
+      "ordinal_position": 12,
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_runs",
+      "column_name": "cost_usd",
+      "ordinal_position": 13,
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_runs",
+      "column_name": "requested_by",
+      "ordinal_position": 14,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_runs",
+      "column_name": "created_at",
+      "ordinal_position": 15,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "action_runs",
+      "column_name": "started_at",
+      "ordinal_position": 16,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_runs",
+      "column_name": "finished_at",
+      "ordinal_position": 17,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "actions",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "actions",
+      "column_name": "workspace_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "actions",
+      "column_name": "location_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "actions",
+      "column_name": "template_key",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "actions",
+      "column_name": "source",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'finding'::text"
+    },
+    {
+      "table_name": "actions",
+      "column_name": "source_finding_keys",
+      "ordinal_position": 6,
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "NO",
+      "column_default": "'{}'::text[]"
+    },
+    {
+      "table_name": "actions",
+      "column_name": "source_snapshot_id",
+      "ordinal_position": 7,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "actions",
+      "column_name": "title",
+      "ordinal_position": 8,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "actions",
+      "column_name": "summary",
+      "ordinal_position": 9,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "actions",
+      "column_name": "evidence",
+      "ordinal_position": 10,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "actions",
+      "column_name": "priority",
+      "ordinal_position": 11,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "actions",
+      "column_name": "priority_score",
+      "ordinal_position": 12,
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "actions",
+      "column_name": "priority_factors",
+      "ordinal_position": 13,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "actions",
+      "column_name": "effort_minutes",
+      "ordinal_position": 14,
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "actions",
+      "column_name": "required_inputs",
+      "ordinal_position": 15,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "NO",
+      "column_default": "'[]'::jsonb"
+    },
+    {
+      "table_name": "actions",
+      "column_name": "provided_inputs",
+      "ordinal_position": 16,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "NO",
+      "column_default": "'{}'::jsonb"
+    },
+    {
+      "table_name": "actions",
+      "column_name": "assignee_user_id",
+      "ordinal_position": 17,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "actions",
+      "column_name": "due_at",
+      "ordinal_position": 18,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "actions",
+      "column_name": "action_state",
+      "ordinal_position": 19,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'recommended'::text"
+    },
+    {
+      "table_name": "actions",
+      "column_name": "measurement_state",
+      "ordinal_position": 20,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'not_eligible'::text"
+    },
+    {
+      "table_name": "actions",
+      "column_name": "capability",
+      "ordinal_position": 21,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "actions",
+      "column_name": "dedupe_key",
+      "ordinal_position": 22,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "actions",
+      "column_name": "created_at",
+      "ordinal_position": 23,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "actions",
+      "column_name": "updated_at",
+      "ordinal_position": 24,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "actions",
+      "column_name": "completed_at",
+      "ordinal_position": 25,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "aeo_surface_snapshots",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "aeo_surface_snapshots",
+      "column_name": "job_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "aeo_surface_snapshots",
+      "column_name": "place_id",
+      "ordinal_position": 3,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "aeo_surface_snapshots",
+      "column_name": "surface",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "aeo_surface_snapshots",
+      "column_name": "query_text",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "aeo_surface_snapshots",
+      "column_name": "locale",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "aeo_surface_snapshots",
+      "column_name": "market",
+      "ordinal_position": 7,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "aeo_surface_snapshots",
+      "column_name": "cited",
+      "ordinal_position": 8,
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "aeo_surface_snapshots",
+      "column_name": "rank",
+      "ordinal_position": 9,
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "aeo_surface_snapshots",
+      "column_name": "competitors",
+      "ordinal_position": 10,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "NO",
+      "column_default": "'[]'::jsonb"
+    },
+    {
+      "table_name": "aeo_surface_snapshots",
+      "column_name": "excerpt",
+      "ordinal_position": 11,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "aeo_surface_snapshots",
+      "column_name": "captured_at",
+      "ordinal_position": 12,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "agent_runs",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "agent_runs",
+      "column_name": "job_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "agent_runs",
+      "column_name": "finding_key",
+      "ordinal_position": 3,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "agent_runs",
+      "column_name": "agent_key",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "agent_runs",
+      "column_name": "status",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'draft'::text"
+    },
+    {
+      "table_name": "agent_runs",
+      "column_name": "output",
+      "ordinal_position": 6,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "agent_runs",
+      "column_name": "input_tokens",
+      "ordinal_position": 7,
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "agent_runs",
+      "column_name": "output_tokens",
+      "ordinal_position": 8,
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "agent_runs",
+      "column_name": "cost_usd",
+      "ordinal_position": 9,
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "agent_runs",
+      "column_name": "reviewed_by",
+      "ordinal_position": 10,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "agent_runs",
+      "column_name": "reviewed_at",
+      "ordinal_position": 11,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "agent_runs",
+      "column_name": "created_at",
+      "ordinal_position": 12,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "assets",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "assets",
+      "column_name": "workspace_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "assets",
+      "column_name": "location_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "assets",
+      "column_name": "kind",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "assets",
+      "column_name": "storage_path",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "assets",
+      "column_name": "filename",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "assets",
+      "column_name": "alt_text",
+      "ordinal_position": 7,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "assets",
+      "column_name": "rights_status",
+      "ordinal_position": 8,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'needs_review'::text"
+    },
+    {
+      "table_name": "assets",
+      "column_name": "rights_confirmed_at",
+      "ordinal_position": 9,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "assets",
+      "column_name": "uploaded_by",
+      "ordinal_position": 10,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "assets",
+      "column_name": "created_at",
+      "ordinal_position": 11,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "audit_events",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": "nextval('audit_events_id_seq'::regclass)"
+    },
+    {
+      "table_name": "audit_events",
+      "column_name": "workspace_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_events",
+      "column_name": "location_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_events",
+      "column_name": "actor_type",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_events",
+      "column_name": "actor_id",
+      "ordinal_position": 5,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_events",
+      "column_name": "event",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_events",
+      "column_name": "entity_type",
+      "ordinal_position": 7,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_events",
+      "column_name": "entity_id",
+      "ordinal_position": 8,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_events",
+      "column_name": "payload",
+      "ordinal_position": 9,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_events",
+      "column_name": "created_at",
+      "ordinal_position": 10,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "audit_events",
+      "column_name": "idempotency_key",
+      "ordinal_position": 11,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_findings",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "audit_findings",
+      "column_name": "job_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_findings",
+      "column_name": "workspace_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_findings",
+      "column_name": "finding_key",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_findings",
+      "column_name": "module",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_findings",
+      "column_name": "severity",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_findings",
+      "column_name": "score_impact",
+      "ordinal_position": 7,
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_findings",
+      "column_name": "owner_message_zh",
+      "ordinal_position": 8,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_findings",
+      "column_name": "evidence",
+      "ordinal_position": 9,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_findings",
+      "column_name": "v02_agent_hint",
+      "ordinal_position": 10,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_findings",
+      "column_name": "created_at",
+      "ordinal_position": 11,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "audit_findings",
+      "column_name": "owner_message_en",
+      "ordinal_position": 12,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_findings",
+      "column_name": "owner_message_tw",
+      "ordinal_position": 13,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_findings",
+      "column_name": "owner_action_zh",
+      "ordinal_position": 14,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_findings",
+      "column_name": "owner_action_en",
+      "ordinal_position": 15,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "workspace_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "business_name",
+      "ordinal_position": 3,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "ig_handle",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "website_url",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "industry",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "district",
+      "ordinal_position": 7,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "user_role",
+      "ordinal_position": 8,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "status",
+      "ordinal_position": 9,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'queued'::text"
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "raw_payload",
+      "ordinal_position": 10,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "overall_score",
+      "ordinal_position": 11,
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "module_scores",
+      "ordinal_position": 12,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "share_slug",
+      "ordinal_position": 13,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "unlocked",
+      "ordinal_position": 14,
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "created_at",
+      "ordinal_position": 15,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "completed_at",
+      "ordinal_position": 16,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "raw_data",
+      "ordinal_position": 17,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "summary_en",
+      "ordinal_position": 18,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "summary_zh",
+      "ordinal_position": 19,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "summary_tw",
+      "ordinal_position": 20,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "region",
+      "ordinal_position": 21,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'hk'::text"
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "processing_stage",
+      "ordinal_position": 22,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "module_results",
+      "ordinal_position": 23,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "score_coverage",
+      "ordinal_position": 24,
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "scoring_version",
+      "ordinal_position": 25,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "input_snapshot",
+      "ordinal_position": 26,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "failure_category",
+      "ordinal_position": 27,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "failure_correlation_id",
+      "ordinal_position": 28,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "attempt_count",
+      "ordinal_position": 29,
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": "0"
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "last_attempt_at",
+      "ordinal_position": 30,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "business_objective",
+      "ordinal_position": 31,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "place_id",
+      "ordinal_position": 32,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "place_match_confidence",
+      "ordinal_position": 33,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "parent_job_id",
+      "ordinal_position": 34,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "audit_jobs",
+      "column_name": "location_id",
+      "ordinal_position": 35,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "brand_profiles",
+      "column_name": "workspace_id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "brand_profiles",
+      "column_name": "voice",
+      "ordinal_position": 2,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'warm'::text"
+    },
+    {
+      "table_name": "brand_profiles",
+      "column_name": "approved_claims",
+      "ordinal_position": 3,
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "NO",
+      "column_default": "'{}'::text[]"
+    },
+    {
+      "table_name": "brand_profiles",
+      "column_name": "prohibited_terms",
+      "ordinal_position": 4,
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "NO",
+      "column_default": "'{}'::text[]"
+    },
+    {
+      "table_name": "brand_profiles",
+      "column_name": "languages",
+      "ordinal_position": 5,
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "NO",
+      "column_default": "'{zh-HK}'::text[]"
+    },
+    {
+      "table_name": "brand_profiles",
+      "column_name": "facts",
+      "ordinal_position": 6,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "NO",
+      "column_default": "'{}'::jsonb"
+    },
+    {
+      "table_name": "brand_profiles",
+      "column_name": "updated_at",
+      "ordinal_position": 7,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "consent_records",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "consent_records",
+      "column_name": "job_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "consent_records",
+      "column_name": "lead_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "consent_records",
+      "column_name": "consent_type",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "consent_records",
+      "column_name": "granted",
+      "ordinal_position": 5,
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "consent_records",
+      "column_name": "policy_version",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "consent_records",
+      "column_name": "locale",
+      "ordinal_position": 7,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "consent_records",
+      "column_name": "recorded_at",
+      "ordinal_position": 8,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "deliveries",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "deliveries",
+      "column_name": "workspace_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "deliveries",
+      "column_name": "version_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "deliveries",
+      "column_name": "mode",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "deliveries",
+      "column_name": "channel",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deliveries",
+      "column_name": "state",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "deliveries",
+      "column_name": "counted",
+      "ordinal_position": 7,
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "NO",
+      "column_default": "false"
+    },
+    {
+      "table_name": "deliveries",
+      "column_name": "idempotency_key",
+      "ordinal_position": 8,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "deliveries",
+      "column_name": "payload",
+      "ordinal_position": 9,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deliveries",
+      "column_name": "created_by",
+      "ordinal_position": 10,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deliveries",
+      "column_name": "created_at",
+      "ordinal_position": 11,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "erasure_events",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "erasure_events",
+      "column_name": "erased_job_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "erasure_events",
+      "column_name": "staff_user_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "erasure_events",
+      "column_name": "staff_email_normalized",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "erasure_events",
+      "column_name": "reason",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "erasure_events",
+      "column_name": "removed_counts",
+      "ordinal_position": 6,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "erasure_events",
+      "column_name": "created_at",
+      "ordinal_position": 7,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "leads",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "leads",
+      "column_name": "job_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "leads",
+      "column_name": "workspace_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "leads",
+      "column_name": "whatsapp",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "leads",
+      "column_name": "email",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "leads",
+      "column_name": "consent_bd_contact",
+      "ordinal_position": 6,
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "leads",
+      "column_name": "lead_score",
+      "ordinal_position": 7,
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "leads",
+      "column_name": "routed_to",
+      "ordinal_position": 8,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "leads",
+      "column_name": "routed_at",
+      "ordinal_position": 9,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "leads",
+      "column_name": "created_at",
+      "ordinal_position": 10,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "leads",
+      "column_name": "preferred_contact_channel",
+      "ordinal_position": 11,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "leads",
+      "column_name": "contact_identifier",
+      "ordinal_position": 12,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "leads",
+      "column_name": "business_objective",
+      "ordinal_position": 13,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "locations",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "locations",
+      "column_name": "workspace_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "locations",
+      "column_name": "slug",
+      "ordinal_position": 3,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "locations",
+      "column_name": "name",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "locations",
+      "column_name": "address",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "locations",
+      "column_name": "district",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "locations",
+      "column_name": "place_id",
+      "ordinal_position": 7,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "locations",
+      "column_name": "ig_handle",
+      "ordinal_position": 8,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "locations",
+      "column_name": "website_url",
+      "ordinal_position": 9,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "locations",
+      "column_name": "is_primary",
+      "ordinal_position": 10,
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "NO",
+      "column_default": "false"
+    },
+    {
+      "table_name": "locations",
+      "column_name": "created_at",
+      "ordinal_position": 11,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "notification_events",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "notification_events",
+      "column_name": "workspace_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "notification_events",
+      "column_name": "job_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "notification_events",
+      "column_name": "sections_included",
+      "ordinal_position": 4,
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "notification_events",
+      "column_name": "resend_message_id",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "notification_events",
+      "column_name": "created_at",
+      "ordinal_position": 6,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "oauth_connections",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "oauth_connections",
+      "column_name": "workspace_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_connections",
+      "column_name": "provider",
+      "ordinal_position": 3,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_connections",
+      "column_name": "account_ref",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_connections",
+      "column_name": "access_token_encrypted",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_connections",
+      "column_name": "refresh_token_encrypted",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_connections",
+      "column_name": "scopes",
+      "ordinal_position": 7,
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "NO",
+      "column_default": "'{}'::text[]"
+    },
+    {
+      "table_name": "oauth_connections",
+      "column_name": "expires_at",
+      "ordinal_position": 8,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_connections",
+      "column_name": "status",
+      "ordinal_position": 9,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'active'::text"
+    },
+    {
+      "table_name": "oauth_connections",
+      "column_name": "connected_at",
+      "ordinal_position": 10,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "oauth_connections",
+      "column_name": "updated_at",
+      "ordinal_position": 11,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "output_versions",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "output_versions",
+      "column_name": "workspace_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "output_versions",
+      "column_name": "action_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "output_versions",
+      "column_name": "version_no",
+      "ordinal_position": 4,
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "output_versions",
+      "column_name": "body",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "output_versions",
+      "column_name": "alt_text",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "output_versions",
+      "column_name": "meta",
+      "ordinal_position": 7,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "NO",
+      "column_default": "'{}'::jsonb"
+    },
+    {
+      "table_name": "output_versions",
+      "column_name": "author_type",
+      "ordinal_position": 8,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "output_versions",
+      "column_name": "author_user_id",
+      "ordinal_position": 9,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "output_versions",
+      "column_name": "action_run_id",
+      "ordinal_position": 10,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "output_versions",
+      "column_name": "approval_state",
+      "ordinal_position": 11,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'draft'::text"
+    },
+    {
+      "table_name": "output_versions",
+      "column_name": "approved_by",
+      "ordinal_position": 12,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "output_versions",
+      "column_name": "approved_at",
+      "ordinal_position": 13,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "output_versions",
+      "column_name": "reviewer_comment",
+      "ordinal_position": 14,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "output_versions",
+      "column_name": "delivery_state",
+      "ordinal_position": 15,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'not_requested'::text"
+    },
+    {
+      "table_name": "output_versions",
+      "column_name": "first_exported_at",
+      "ordinal_position": 16,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "output_versions",
+      "column_name": "created_at",
+      "ordinal_position": 17,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "rate_limit_buckets",
+      "column_name": "bucket_key",
+      "ordinal_position": 1,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "rate_limit_buckets",
+      "column_name": "window_started_at",
+      "ordinal_position": 2,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "rate_limit_buckets",
+      "column_name": "request_count",
+      "ordinal_position": 3,
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": "0"
+    },
+    {
+      "table_name": "rate_limit_buckets",
+      "column_name": "updated_at",
+      "ordinal_position": 4,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "rate_limit_buckets",
+      "column_name": "expires_at",
+      "ordinal_position": 5,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "report_access_grants",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "report_access_grants",
+      "column_name": "job_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "report_access_grants",
+      "column_name": "lead_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "report_access_grants",
+      "column_name": "token_hash",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "report_access_grants",
+      "column_name": "idempotency_key",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "report_access_grants",
+      "column_name": "purpose",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "report_access_grants",
+      "column_name": "email_normalized",
+      "ordinal_position": 7,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "report_access_grants",
+      "column_name": "expires_at",
+      "ordinal_position": 8,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "report_access_grants",
+      "column_name": "redeemed_at",
+      "ordinal_position": 9,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "report_access_grants",
+      "column_name": "revoked_at",
+      "ordinal_position": 10,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "report_access_grants",
+      "column_name": "last_used_at",
+      "ordinal_position": 11,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "report_access_grants",
+      "column_name": "created_at",
+      "ordinal_position": 12,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "job_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "provider",
+      "ordinal_position": 3,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "evidence_type",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "source_id",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "source_url",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "captured_at",
+      "ordinal_position": 7,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "published_at",
+      "ordinal_position": 8,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "text_content",
+      "ordinal_position": 9,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "metadata",
+      "ordinal_position": 10,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "NO",
+      "column_default": "'{}'::jsonb"
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "storage_bucket",
+      "ordinal_position": 11,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "storage_path",
+      "ordinal_position": 12,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "content_sha256",
+      "ordinal_position": 13,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "mime_type",
+      "ordinal_position": 14,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "byte_size",
+      "ordinal_position": 15,
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "width",
+      "ordinal_position": 16,
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "height",
+      "ordinal_position": 17,
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "collection_status",
+      "ordinal_position": 18,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "limitation_code",
+      "ordinal_position": 19,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "report_evidence",
+      "column_name": "created_at",
+      "ordinal_position": 20,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "scan_diffs",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "scan_diffs",
+      "column_name": "base_job_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_diffs",
+      "column_name": "head_job_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_diffs",
+      "column_name": "comparable",
+      "ordinal_position": 4,
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_diffs",
+      "column_name": "incomparable_reason",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_diffs",
+      "column_name": "composite_withheld_reason",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_diffs",
+      "column_name": "intersection_modules",
+      "ordinal_position": 7,
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "NO",
+      "column_default": "'{}'::text[]"
+    },
+    {
+      "table_name": "scan_diffs",
+      "column_name": "composite_base",
+      "ordinal_position": 8,
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_diffs",
+      "column_name": "composite_head",
+      "ordinal_position": 9,
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_diffs",
+      "column_name": "composite_delta",
+      "ordinal_position": 10,
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_diffs",
+      "column_name": "resolved_findings",
+      "ordinal_position": 11,
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "NO",
+      "column_default": "'{}'::text[]"
+    },
+    {
+      "table_name": "scan_diffs",
+      "column_name": "regressed_findings",
+      "ordinal_position": 12,
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "NO",
+      "column_default": "'{}'::text[]"
+    },
+    {
+      "table_name": "scan_diffs",
+      "column_name": "decayed_findings",
+      "ordinal_position": 13,
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "NO",
+      "column_default": "'{}'::text[]"
+    },
+    {
+      "table_name": "scan_diffs",
+      "column_name": "lost_coverage",
+      "ordinal_position": 14,
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "NO",
+      "column_default": "'{}'::text[]"
+    },
+    {
+      "table_name": "scan_diffs",
+      "column_name": "gained_coverage",
+      "ordinal_position": 15,
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "NO",
+      "column_default": "'{}'::text[]"
+    },
+    {
+      "table_name": "scan_diffs",
+      "column_name": "created_at",
+      "ordinal_position": 16,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "scan_events",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": "nextval('scan_events_id_seq'::regclass)"
+    },
+    {
+      "table_name": "scan_events",
+      "column_name": "job_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_events",
+      "column_name": "event_name",
+      "ordinal_position": 3,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_events",
+      "column_name": "payload",
+      "ordinal_position": 4,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_events",
+      "column_name": "created_at",
+      "ordinal_position": 5,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "scan_events",
+      "column_name": "anonymous_session_id",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_events",
+      "column_name": "properties",
+      "ordinal_position": 7,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_events",
+      "column_name": "dedupe_key",
+      "ordinal_position": 8,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_schedules",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "scan_schedules",
+      "column_name": "place_id",
+      "ordinal_position": 2,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_schedules",
+      "column_name": "input_snapshot",
+      "ordinal_position": 3,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_schedules",
+      "column_name": "cadence",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'monthly'::text"
+    },
+    {
+      "table_name": "scan_schedules",
+      "column_name": "anniversary_day",
+      "ordinal_position": 5,
+      "data_type": "smallint",
+      "udt_name": "int2",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_schedules",
+      "column_name": "last_job_id",
+      "ordinal_position": 6,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_schedules",
+      "column_name": "next_run_at",
+      "ordinal_position": 7,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_schedules",
+      "column_name": "created_by",
+      "ordinal_position": 8,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_schedules",
+      "column_name": "created_at",
+      "ordinal_position": 9,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "scan_schedules",
+      "column_name": "workspace_id",
+      "ordinal_position": 10,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_snapshots",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "scan_snapshots",
+      "column_name": "job_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_snapshots",
+      "column_name": "workspace_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_snapshots",
+      "column_name": "location_id",
+      "ordinal_position": 4,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_snapshots",
+      "column_name": "market",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_snapshots",
+      "column_name": "observed_at",
+      "ordinal_position": 6,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_snapshots",
+      "column_name": "scoring_version",
+      "ordinal_position": 7,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_snapshots",
+      "column_name": "overall_score",
+      "ordinal_position": 8,
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_snapshots",
+      "column_name": "coverage",
+      "ordinal_position": 9,
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_snapshots",
+      "column_name": "module_states",
+      "ordinal_position": 10,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_snapshots",
+      "column_name": "metrics",
+      "ordinal_position": 11,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_snapshots",
+      "column_name": "website_checks",
+      "ordinal_position": 12,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_snapshots",
+      "column_name": "comparable_to",
+      "ordinal_position": 13,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_snapshots",
+      "column_name": "diff_id",
+      "ordinal_position": 14,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_snapshots",
+      "column_name": "created_at",
+      "ordinal_position": 15,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "staff_report_events",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "staff_report_events",
+      "column_name": "staff_user_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "staff_report_events",
+      "column_name": "staff_email_normalized",
+      "ordinal_position": 3,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "staff_report_events",
+      "column_name": "job_id",
+      "ordinal_position": 4,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "staff_report_events",
+      "column_name": "action",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "staff_report_events",
+      "column_name": "metadata",
+      "ordinal_position": 6,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "staff_report_events",
+      "column_name": "created_at",
+      "ordinal_position": 7,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "workspace_access_requests",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "workspace_access_requests",
+      "column_name": "job_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_access_requests",
+      "column_name": "user_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_access_requests",
+      "column_name": "requested_at",
+      "ordinal_position": 4,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "workspace_access_requests",
+      "column_name": "resolved_at",
+      "ordinal_position": 5,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_access_requests",
+      "column_name": "resolved_by_staff_user_id",
+      "ordinal_position": 6,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_claim_events",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "workspace_claim_events",
+      "column_name": "job_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_claim_events",
+      "column_name": "erased_job_id",
+      "ordinal_position": 3,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_claim_events",
+      "column_name": "workspace_id",
+      "ordinal_position": 4,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_claim_events",
+      "column_name": "erased_workspace_id",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_claim_events",
+      "column_name": "matched_location_id",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_claim_events",
+      "column_name": "claimed_by_user_id",
+      "ordinal_position": 7,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_claim_events",
+      "column_name": "created_at",
+      "ordinal_position": 8,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "workspace_members",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "workspace_members",
+      "column_name": "workspace_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_members",
+      "column_name": "user_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_members",
+      "column_name": "email",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_members",
+      "column_name": "role",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_members",
+      "column_name": "invited_by",
+      "ordinal_position": 6,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_members",
+      "column_name": "invited_at",
+      "ordinal_position": 7,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "workspace_members",
+      "column_name": "accepted_at",
+      "ordinal_position": 8,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_members",
+      "column_name": "created_at",
+      "ordinal_position": 9,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "workspace_members",
+      "column_name": "location_scope",
+      "ordinal_position": 10,
+      "data_type": "ARRAY",
+      "udt_name": "_uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_notifications",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "workspace_notifications",
+      "column_name": "workspace_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_notifications",
+      "column_name": "user_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_notifications",
+      "column_name": "kind",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_notifications",
+      "column_name": "title",
+      "ordinal_position": 5,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_notifications",
+      "column_name": "body",
+      "ordinal_position": 6,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_notifications",
+      "column_name": "href",
+      "ordinal_position": 7,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_notifications",
+      "column_name": "read_at",
+      "ordinal_position": 8,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_notifications",
+      "column_name": "created_at",
+      "ordinal_position": 9,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "workspace_scan_completions",
+      "column_name": "job_id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_scan_completions",
+      "column_name": "workspace_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_scan_completions",
+      "column_name": "state",
+      "ordinal_position": 3,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_scan_completions",
+      "column_name": "attempts",
+      "ordinal_position": 4,
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": "0"
+    },
+    {
+      "table_name": "workspace_scan_completions",
+      "column_name": "lease_token",
+      "ordinal_position": 5,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_scan_completions",
+      "column_name": "lease_until",
+      "ordinal_position": 6,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_scan_completions",
+      "column_name": "next_attempt_at",
+      "ordinal_position": 7,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "workspace_scan_completions",
+      "column_name": "last_error",
+      "ordinal_position": 8,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_scan_completions",
+      "column_name": "completed_at",
+      "ordinal_position": 9,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_scan_completions",
+      "column_name": "updated_at",
+      "ordinal_position": 10,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "workspace_tier_events",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "workspace_tier_events",
+      "column_name": "workspace_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_tier_events",
+      "column_name": "tier",
+      "ordinal_position": 3,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_tier_events",
+      "column_name": "source",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_tier_events",
+      "column_name": "staff_user_id",
+      "ordinal_position": 5,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_tier_events",
+      "column_name": "stripe_event_id",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_tier_events",
+      "column_name": "created_at",
+      "ordinal_position": 7,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "workspace_usage",
+      "column_name": "workspace_id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_usage",
+      "column_name": "period",
+      "ordinal_position": 2,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "workspace_usage",
+      "column_name": "approved_deliveries",
+      "ordinal_position": 3,
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": "0"
+    },
+    {
+      "table_name": "workspace_usage",
+      "column_name": "allowance",
+      "ordinal_position": 4,
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspaces",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "workspaces",
+      "column_name": "business_name",
+      "ordinal_position": 3,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspaces",
+      "column_name": "industry",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspaces",
+      "column_name": "district",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspaces",
+      "column_name": "market",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspaces",
+      "column_name": "tier",
+      "ordinal_position": 7,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'lite'::text"
+    },
+    {
+      "table_name": "workspaces",
+      "column_name": "created_at",
+      "ordinal_position": 8,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "workspaces",
+      "column_name": "stripe_customer_id",
+      "ordinal_position": 12,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspaces",
+      "column_name": "notify_rescan_complete",
+      "ordinal_position": 13,
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "NO",
+      "column_default": "true"
+    },
+    {
+      "table_name": "workspaces",
+      "column_name": "notify_regression_alert",
+      "ordinal_position": 14,
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "NO",
+      "column_default": "true"
+    },
+    {
+      "table_name": "workspaces",
+      "column_name": "notify_monthly_digest",
+      "ordinal_position": 15,
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "NO",
+      "column_default": "true"
+    },
+    {
+      "table_name": "workspaces",
+      "column_name": "instagram_handle",
+      "ordinal_position": 16,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspaces",
+      "column_name": "slug",
+      "ordinal_position": 17,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "workspaces",
+      "column_name": "timezone",
+      "ordinal_position": 18,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'Asia/Hong_Kong'::text"
+    },
+    {
+      "table_name": "workspaces",
+      "column_name": "is_demo",
+      "ordinal_position": 19,
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "NO",
+      "column_default": "false"
+    }
+  ],
+  "constraints": [
+    {
+      "table_name": "action_measurements",
+      "name": "action_measurements_action_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (action_id) REFERENCES actions(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "action_measurements",
+      "name": "action_measurements_after_snapshot_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (after_snapshot_id) REFERENCES scan_snapshots(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "action_measurements",
+      "name": "action_measurements_before_snapshot_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (before_snapshot_id) REFERENCES scan_snapshots(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "action_measurements",
+      "name": "action_measurements_fact_type_check",
+      "type": "c",
+      "definition": "CHECK ((fact_type = ANY (ARRAY['Observed'::text, 'Attributed'::text, 'Unknown'::text])))"
+    },
+    {
+      "table_name": "action_measurements",
+      "name": "action_measurements_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "action_measurements",
+      "name": "action_measurements_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "action_runs",
+      "name": "action_runs_action_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (action_id) REFERENCES actions(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "action_runs",
+      "name": "action_runs_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "action_runs",
+      "name": "action_runs_requested_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (requested_by) REFERENCES auth.users(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "action_runs",
+      "name": "action_runs_state_check",
+      "type": "c",
+      "definition": "CHECK ((state = ANY (ARRAY['queued'::text, 'running'::text, 'succeeded'::text, 'failed'::text, 'cancelled'::text, 'timed_out'::text])))"
+    },
+    {
+      "table_name": "action_runs",
+      "name": "action_runs_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "actions",
+      "name": "actions_action_state_check",
+      "type": "c",
+      "definition": "CHECK ((action_state = ANY (ARRAY['recommended'::text, 'needs_input'::text, 'ready'::text, 'in_progress'::text, 'completed'::text, 'dismissed'::text, 'cancelled'::text, 'expired'::text])))"
+    },
+    {
+      "table_name": "actions",
+      "name": "actions_assignee_user_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (assignee_user_id) REFERENCES auth.users(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "actions",
+      "name": "actions_capability_check",
+      "type": "c",
+      "definition": "CHECK ((capability = ANY (ARRAY['Live'::text, 'Beta'::text, 'Demo'::text, 'Requires connection'::text, 'Planned'::text])))"
+    },
+    {
+      "table_name": "actions",
+      "name": "actions_location_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "actions",
+      "name": "actions_measurement_state_check",
+      "type": "c",
+      "definition": "CHECK ((measurement_state = ANY (ARRAY['not_eligible'::text, 'awaiting_comparable_scan'::text, 'measured'::text, 'insufficient_coverage'::text])))"
+    },
+    {
+      "table_name": "actions",
+      "name": "actions_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "actions",
+      "name": "actions_priority_check",
+      "type": "c",
+      "definition": "CHECK ((priority = ANY (ARRAY['urgent'::text, 'high'::text, 'medium'::text, 'low'::text])))"
+    },
+    {
+      "table_name": "actions",
+      "name": "actions_source_check",
+      "type": "c",
+      "definition": "CHECK ((source = ANY (ARRAY['finding'::text, 'owner_objective'::text, 'system'::text])))"
+    },
+    {
+      "table_name": "actions",
+      "name": "actions_source_snapshot_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (source_snapshot_id) REFERENCES scan_snapshots(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "actions",
+      "name": "actions_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "aeo_surface_snapshots",
+      "name": "aeo_surface_snapshots_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (job_id) REFERENCES audit_jobs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "aeo_surface_snapshots",
+      "name": "aeo_surface_snapshots_job_id_surface_query_text_key",
+      "type": "u",
+      "definition": "UNIQUE (job_id, surface, query_text)"
+    },
+    {
+      "table_name": "aeo_surface_snapshots",
+      "name": "aeo_surface_snapshots_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "aeo_surface_snapshots",
+      "name": "aeo_surface_snapshots_surface_check",
+      "type": "c",
+      "definition": "CHECK ((surface = ANY (ARRAY['ai_overview'::text, 'ai_mode'::text, 'organic'::text])))"
+    },
+    {
+      "table_name": "agent_runs",
+      "name": "agent_runs_agent_key_check",
+      "type": "c",
+      "definition": "CHECK ((agent_key = ANY (ARRAY['review_reply_agent'::text, 'gbp_post_agent'::text])))"
+    },
+    {
+      "table_name": "agent_runs",
+      "name": "agent_runs_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (job_id) REFERENCES audit_jobs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "agent_runs",
+      "name": "agent_runs_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "agent_runs",
+      "name": "agent_runs_reviewed_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (reviewed_by) REFERENCES auth.users(id)"
+    },
+    {
+      "table_name": "agent_runs",
+      "name": "agent_runs_status_check",
+      "type": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['draft'::text, 'approved'::text, 'rejected'::text])))"
+    },
+    {
+      "table_name": "assets",
+      "name": "assets_kind_check",
+      "type": "c",
+      "definition": "CHECK ((kind = ANY (ARRAY['image'::text, 'document'::text, 'menu'::text])))"
+    },
+    {
+      "table_name": "assets",
+      "name": "assets_location_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "assets",
+      "name": "assets_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "assets",
+      "name": "assets_rights_status_check",
+      "type": "c",
+      "definition": "CHECK ((rights_status = ANY (ARRAY['approved'::text, 'needs_review'::text, 'rejected'::text])))"
+    },
+    {
+      "table_name": "assets",
+      "name": "assets_uploaded_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (uploaded_by) REFERENCES auth.users(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "assets",
+      "name": "assets_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "audit_events",
+      "name": "audit_events_actor_type_check",
+      "type": "c",
+      "definition": "CHECK ((actor_type = ANY (ARRAY['user'::text, 'agent'::text, 'system'::text, 'scanner'::text])))"
+    },
+    {
+      "table_name": "audit_events",
+      "name": "audit_events_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "audit_events",
+      "name": "audit_events_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "audit_findings",
+      "name": "audit_findings_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (job_id) REFERENCES audit_jobs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "audit_findings",
+      "name": "audit_findings_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "audit_jobs",
+      "name": "audit_jobs_location_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "audit_jobs",
+      "name": "audit_jobs_parent_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (parent_job_id) REFERENCES audit_jobs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "audit_jobs",
+      "name": "audit_jobs_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "audit_jobs",
+      "name": "audit_jobs_share_slug_key",
+      "type": "u",
+      "definition": "UNIQUE (share_slug)"
+    },
+    {
+      "table_name": "audit_jobs",
+      "name": "audit_jobs_status_check",
+      "type": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['queued'::text, 'collecting'::text, 'scoring'::text, 'persisting'::text, 'done'::text, 'partial'::text, 'failed'::text])))"
+    },
+    {
+      "table_name": "audit_jobs",
+      "name": "audit_jobs_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "brand_profiles",
+      "name": "brand_profiles_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (workspace_id)"
+    },
+    {
+      "table_name": "brand_profiles",
+      "name": "brand_profiles_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "consent_records",
+      "name": "consent_records_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (job_id) REFERENCES audit_jobs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "consent_records",
+      "name": "consent_records_lead_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "consent_records",
+      "name": "consent_records_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "deliveries",
+      "name": "deliveries_created_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "deliveries",
+      "name": "deliveries_idempotency_key_key",
+      "type": "u",
+      "definition": "UNIQUE (idempotency_key)"
+    },
+    {
+      "table_name": "deliveries",
+      "name": "deliveries_mode_check",
+      "type": "c",
+      "definition": "CHECK ((mode = ANY (ARRAY['export'::text, 'copy'::text, 'publish'::text])))"
+    },
+    {
+      "table_name": "deliveries",
+      "name": "deliveries_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "deliveries",
+      "name": "deliveries_state_check",
+      "type": "c",
+      "definition": "CHECK ((state = ANY (ARRAY['export_ready'::text, 'exported'::text, 'scheduled'::text, 'publishing'::text, 'published'::text, 'failed'::text, 'cancelled'::text])))"
+    },
+    {
+      "table_name": "deliveries",
+      "name": "deliveries_version_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (version_id) REFERENCES output_versions(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "deliveries",
+      "name": "deliveries_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "erasure_events",
+      "name": "erasure_events_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "leads",
+      "name": "leads_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (job_id) REFERENCES audit_jobs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "leads",
+      "name": "leads_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "locations",
+      "name": "locations_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "locations",
+      "name": "locations_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "locations",
+      "name": "locations_workspace_id_slug_key",
+      "type": "u",
+      "definition": "UNIQUE (workspace_id, slug)"
+    },
+    {
+      "table_name": "notification_events",
+      "name": "notification_events_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (job_id) REFERENCES audit_jobs(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "notification_events",
+      "name": "notification_events_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "notification_events",
+      "name": "notification_events_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "oauth_connections",
+      "name": "oauth_connections_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "oauth_connections",
+      "name": "oauth_connections_provider_check",
+      "type": "c",
+      "definition": "CHECK ((provider = ANY (ARRAY['instagram'::text, 'google_gbp'::text, 'ga4'::text])))"
+    },
+    {
+      "table_name": "oauth_connections",
+      "name": "oauth_connections_status_check",
+      "type": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['active'::text, 'expired'::text, 'revoked'::text, 'error'::text])))"
+    },
+    {
+      "table_name": "oauth_connections",
+      "name": "oauth_connections_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "output_versions",
+      "name": "output_versions_action_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (action_id) REFERENCES actions(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "output_versions",
+      "name": "output_versions_action_id_version_no_key",
+      "type": "u",
+      "definition": "UNIQUE (action_id, version_no)"
+    },
+    {
+      "table_name": "output_versions",
+      "name": "output_versions_action_run_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (action_run_id) REFERENCES action_runs(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "output_versions",
+      "name": "output_versions_approval_state_check",
+      "type": "c",
+      "definition": "CHECK ((approval_state = ANY (ARRAY['draft'::text, 'changes_requested'::text, 'approved'::text, 'rejected'::text, 'superseded'::text])))"
+    },
+    {
+      "table_name": "output_versions",
+      "name": "output_versions_approved_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (approved_by) REFERENCES auth.users(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "output_versions",
+      "name": "output_versions_author_type_check",
+      "type": "c",
+      "definition": "CHECK ((author_type = ANY (ARRAY['user'::text, 'agent'::text])))"
+    },
+    {
+      "table_name": "output_versions",
+      "name": "output_versions_author_user_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (author_user_id) REFERENCES auth.users(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "output_versions",
+      "name": "output_versions_delivery_state_check",
+      "type": "c",
+      "definition": "CHECK ((delivery_state = ANY (ARRAY['not_requested'::text, 'export_ready'::text, 'exported'::text, 'scheduled'::text, 'publishing'::text, 'published'::text, 'failed'::text, 'cancelled'::text])))"
+    },
+    {
+      "table_name": "output_versions",
+      "name": "output_versions_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "output_versions",
+      "name": "output_versions_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "rate_limit_buckets",
+      "name": "rate_limit_buckets_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (bucket_key)"
+    },
+    {
+      "table_name": "rate_limit_buckets",
+      "name": "rate_limit_buckets_request_count_check",
+      "type": "c",
+      "definition": "CHECK ((request_count >= 0))"
+    },
+    {
+      "table_name": "report_access_grants",
+      "name": "report_access_grants_idempotency_key_check",
+      "type": "c",
+      "definition": "CHECK ((btrim(idempotency_key) <> ''::text))"
+    },
+    {
+      "table_name": "report_access_grants",
+      "name": "report_access_grants_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (job_id) REFERENCES audit_jobs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "report_access_grants",
+      "name": "report_access_grants_lead_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "report_access_grants",
+      "name": "report_access_grants_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "report_access_grants",
+      "name": "report_access_grants_token_hash_sha256_check",
+      "type": "c",
+      "definition": "CHECK ((token_hash ~ '^[0-9a-f]{64}$'::text))"
+    },
+    {
+      "table_name": "report_evidence",
+      "name": "report_evidence_byte_size_check",
+      "type": "c",
+      "definition": "CHECK (((byte_size IS NULL) OR ((byte_size >= 1) AND (byte_size <= 5242880))))"
+    },
+    {
+      "table_name": "report_evidence",
+      "name": "report_evidence_collection_status_check",
+      "type": "c",
+      "definition": "CHECK ((collection_status = ANY (ARRAY['stored'::text, 'metadata_only'::text, 'failed'::text])))"
+    },
+    {
+      "table_name": "report_evidence",
+      "name": "report_evidence_content_sha256_check",
+      "type": "c",
+      "definition": "CHECK (((content_sha256 IS NULL) OR (content_sha256 ~ '^[0-9a-f]{64}$'::text)))"
+    },
+    {
+      "table_name": "report_evidence",
+      "name": "report_evidence_evidence_type_check",
+      "type": "c",
+      "definition": "CHECK ((evidence_type = ANY (ARRAY['profile'::text, 'post'::text, 'reel'::text, 'story'::text, 'highlight'::text, 'photo'::text, 'review'::text])))"
+    },
+    {
+      "table_name": "report_evidence",
+      "name": "report_evidence_height_check",
+      "type": "c",
+      "definition": "CHECK (((height IS NULL) OR ((height >= 1) AND (height <= 4800))))"
+    },
+    {
+      "table_name": "report_evidence",
+      "name": "report_evidence_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (job_id) REFERENCES audit_jobs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "report_evidence",
+      "name": "report_evidence_job_id_provider_evidence_type_source_id_key",
+      "type": "u",
+      "definition": "UNIQUE (job_id, provider, evidence_type, source_id)"
+    },
+    {
+      "table_name": "report_evidence",
+      "name": "report_evidence_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "report_evidence",
+      "name": "report_evidence_provider_check",
+      "type": "c",
+      "definition": "CHECK ((provider = ANY (ARRAY['instagram'::text, 'google_maps'::text])))"
+    },
+    {
+      "table_name": "report_evidence",
+      "name": "report_evidence_width_check",
+      "type": "c",
+      "definition": "CHECK (((width IS NULL) OR ((width >= 1) AND (width <= 4800))))"
+    },
+    {
+      "table_name": "scan_diffs",
+      "name": "scan_diffs_base_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (base_job_id) REFERENCES audit_jobs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "scan_diffs",
+      "name": "scan_diffs_base_job_id_head_job_id_key",
+      "type": "u",
+      "definition": "UNIQUE (base_job_id, head_job_id)"
+    },
+    {
+      "table_name": "scan_diffs",
+      "name": "scan_diffs_head_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (head_job_id) REFERENCES audit_jobs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "scan_diffs",
+      "name": "scan_diffs_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "scan_events",
+      "name": "scan_events_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (job_id) REFERENCES audit_jobs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "scan_events",
+      "name": "scan_events_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "scan_schedules",
+      "name": "scan_schedules_anniversary_day_check",
+      "type": "c",
+      "definition": "CHECK (((anniversary_day >= 1) AND (anniversary_day <= 28)))"
+    },
+    {
+      "table_name": "scan_schedules",
+      "name": "scan_schedules_cadence_check",
+      "type": "c",
+      "definition": "CHECK ((cadence = ANY (ARRAY['monthly'::text, 'paused'::text])))"
+    },
+    {
+      "table_name": "scan_schedules",
+      "name": "scan_schedules_created_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+    },
+    {
+      "table_name": "scan_schedules",
+      "name": "scan_schedules_last_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (last_job_id) REFERENCES audit_jobs(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "scan_schedules",
+      "name": "scan_schedules_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "scan_schedules",
+      "name": "scan_schedules_place_id_key",
+      "type": "u",
+      "definition": "UNIQUE (place_id)"
+    },
+    {
+      "table_name": "scan_schedules",
+      "name": "scan_schedules_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "scan_snapshots",
+      "name": "scan_snapshots_comparable_to_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (comparable_to) REFERENCES scan_snapshots(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "scan_snapshots",
+      "name": "scan_snapshots_diff_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (diff_id) REFERENCES scan_diffs(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "scan_snapshots",
+      "name": "scan_snapshots_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (job_id) REFERENCES audit_jobs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "scan_snapshots",
+      "name": "scan_snapshots_job_id_key",
+      "type": "u",
+      "definition": "UNIQUE (job_id)"
+    },
+    {
+      "table_name": "scan_snapshots",
+      "name": "scan_snapshots_location_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "scan_snapshots",
+      "name": "scan_snapshots_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "scan_snapshots",
+      "name": "scan_snapshots_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "staff_report_events",
+      "name": "staff_report_events_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (job_id) REFERENCES audit_jobs(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "staff_report_events",
+      "name": "staff_report_events_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "workspace_access_requests",
+      "name": "workspace_access_requests_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (job_id) REFERENCES audit_jobs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "workspace_access_requests",
+      "name": "workspace_access_requests_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "workspace_access_requests",
+      "name": "workspace_access_requests_resolved_by_staff_user_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (resolved_by_staff_user_id) REFERENCES auth.users(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "workspace_access_requests",
+      "name": "workspace_access_requests_user_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "workspace_claim_events",
+      "name": "workspace_claim_events_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (job_id) REFERENCES audit_jobs(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "workspace_claim_events",
+      "name": "workspace_claim_events_matched_location_id_check",
+      "type": "c",
+      "definition": "CHECK ((matched_location_id ~~ 'locations/%'::text))"
+    },
+    {
+      "table_name": "workspace_claim_events",
+      "name": "workspace_claim_events_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "workspace_claim_events",
+      "name": "workspace_claim_events_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "workspace_members",
+      "name": "workspace_members_invited_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (invited_by) REFERENCES auth.users(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "workspace_members",
+      "name": "workspace_members_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "workspace_members",
+      "name": "workspace_members_role_check",
+      "type": "c",
+      "definition": "CHECK ((role = ANY (ARRAY['owner'::text, 'manager'::text, 'viewer'::text])))"
+    },
+    {
+      "table_name": "workspace_members",
+      "name": "workspace_members_user_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "workspace_members",
+      "name": "workspace_members_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "workspace_notifications",
+      "name": "workspace_notifications_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "workspace_notifications",
+      "name": "workspace_notifications_user_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "workspace_notifications",
+      "name": "workspace_notifications_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "workspace_scan_completions",
+      "name": "workspace_scan_completions_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (job_id) REFERENCES audit_jobs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "workspace_scan_completions",
+      "name": "workspace_scan_completions_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (job_id)"
+    },
+    {
+      "table_name": "workspace_scan_completions",
+      "name": "workspace_scan_completions_state_check",
+      "type": "c",
+      "definition": "CHECK ((state = ANY (ARRAY['running'::text, 'retry'::text, 'completed'::text])))"
+    },
+    {
+      "table_name": "workspace_scan_completions",
+      "name": "workspace_scan_completions_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "workspace_tier_events",
+      "name": "workspace_tier_events_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "workspace_tier_events",
+      "name": "workspace_tier_events_source_check",
+      "type": "c",
+      "definition": "CHECK ((source = ANY (ARRAY['stripe_webhook'::text, 'staff_grant'::text])))"
+    },
+    {
+      "table_name": "workspace_tier_events",
+      "name": "workspace_tier_events_staff_user_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (staff_user_id) REFERENCES auth.users(id)"
+    },
+    {
+      "table_name": "workspace_tier_events",
+      "name": "workspace_tier_events_tier_check",
+      "type": "c",
+      "definition": "CHECK ((tier = ANY (ARRAY['lite'::text, 'paid'::text])))"
+    },
+    {
+      "table_name": "workspace_tier_events",
+      "name": "workspace_tier_events_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "workspace_usage",
+      "name": "workspace_usage_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (workspace_id, period)"
+    },
+    {
+      "table_name": "workspace_usage",
+      "name": "workspace_usage_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "workspaces",
+      "name": "workspaces_market_check",
+      "type": "c",
+      "definition": "CHECK ((market = ANY (ARRAY['hk'::text, 'tw'::text])))"
+    },
+    {
+      "table_name": "workspaces",
+      "name": "workspaces_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "workspaces",
+      "name": "workspaces_tier_check",
+      "type": "c",
+      "definition": "CHECK ((tier = ANY (ARRAY['lite'::text, 'paid'::text])))"
+    }
+  ],
+  "indexes": [
+    {
+      "tablename": "action_measurements",
+      "indexname": "action_measurements_pkey",
+      "indexdef": "CREATE UNIQUE INDEX action_measurements_pkey ON public.action_measurements USING btree (id)"
+    },
+    {
+      "tablename": "action_runs",
+      "indexname": "action_runs_pkey",
+      "indexdef": "CREATE UNIQUE INDEX action_runs_pkey ON public.action_runs USING btree (id)"
+    },
+    {
+      "tablename": "actions",
+      "indexname": "actions_open_dedupe_idx",
+      "indexdef": "CREATE UNIQUE INDEX actions_open_dedupe_idx ON public.actions USING btree (dedupe_key) WHERE (action_state <> ALL (ARRAY['completed'::text, 'dismissed'::text, 'cancelled'::text, 'expired'::text]))"
+    },
+    {
+      "tablename": "actions",
+      "indexname": "actions_pkey",
+      "indexdef": "CREATE UNIQUE INDEX actions_pkey ON public.actions USING btree (id)"
+    },
+    {
+      "tablename": "aeo_surface_snapshots",
+      "indexname": "aeo_surface_snapshots_job_id_surface_query_text_key",
+      "indexdef": "CREATE UNIQUE INDEX aeo_surface_snapshots_job_id_surface_query_text_key ON public.aeo_surface_snapshots USING btree (job_id, surface, query_text)"
+    },
+    {
+      "tablename": "aeo_surface_snapshots",
+      "indexname": "aeo_surface_snapshots_job_idx",
+      "indexdef": "CREATE INDEX aeo_surface_snapshots_job_idx ON public.aeo_surface_snapshots USING btree (job_id)"
+    },
+    {
+      "tablename": "aeo_surface_snapshots",
+      "indexname": "aeo_surface_snapshots_pkey",
+      "indexdef": "CREATE UNIQUE INDEX aeo_surface_snapshots_pkey ON public.aeo_surface_snapshots USING btree (id)"
+    },
+    {
+      "tablename": "aeo_surface_snapshots",
+      "indexname": "aeo_surface_snapshots_place_surface_idx",
+      "indexdef": "CREATE INDEX aeo_surface_snapshots_place_surface_idx ON public.aeo_surface_snapshots USING btree (place_id, surface, captured_at DESC)"
+    },
+    {
+      "tablename": "agent_runs",
+      "indexname": "agent_runs_job_status_idx",
+      "indexdef": "CREATE INDEX agent_runs_job_status_idx ON public.agent_runs USING btree (job_id, status)"
+    },
+    {
+      "tablename": "agent_runs",
+      "indexname": "agent_runs_pkey",
+      "indexdef": "CREATE UNIQUE INDEX agent_runs_pkey ON public.agent_runs USING btree (id)"
+    },
+    {
+      "tablename": "assets",
+      "indexname": "assets_pkey",
+      "indexdef": "CREATE UNIQUE INDEX assets_pkey ON public.assets USING btree (id)"
+    },
+    {
+      "tablename": "audit_events",
+      "indexname": "audit_events_idempotency_key_idx",
+      "indexdef": "CREATE UNIQUE INDEX audit_events_idempotency_key_idx ON public.audit_events USING btree (idempotency_key)"
+    },
+    {
+      "tablename": "audit_events",
+      "indexname": "audit_events_pkey",
+      "indexdef": "CREATE UNIQUE INDEX audit_events_pkey ON public.audit_events USING btree (id)"
+    },
+    {
+      "tablename": "audit_events",
+      "indexname": "audit_events_workspace_idx",
+      "indexdef": "CREATE INDEX audit_events_workspace_idx ON public.audit_events USING btree (workspace_id, created_at DESC)"
+    },
+    {
+      "tablename": "audit_findings",
+      "indexname": "audit_findings_job_finding_key_unique_idx",
+      "indexdef": "CREATE UNIQUE INDEX audit_findings_job_finding_key_unique_idx ON public.audit_findings USING btree (job_id, finding_key)"
+    },
+    {
+      "tablename": "audit_findings",
+      "indexname": "audit_findings_job_id_finding_key_idx",
+      "indexdef": "CREATE INDEX audit_findings_job_id_finding_key_idx ON public.audit_findings USING btree (job_id, finding_key)"
+    },
+    {
+      "tablename": "audit_findings",
+      "indexname": "audit_findings_pkey",
+      "indexdef": "CREATE UNIQUE INDEX audit_findings_pkey ON public.audit_findings USING btree (id)"
+    },
+    {
+      "tablename": "audit_jobs",
+      "indexname": "audit_jobs_pkey",
+      "indexdef": "CREATE UNIQUE INDEX audit_jobs_pkey ON public.audit_jobs USING btree (id)"
+    },
+    {
+      "tablename": "audit_jobs",
+      "indexname": "audit_jobs_place_created_idx",
+      "indexdef": "CREATE INDEX audit_jobs_place_created_idx ON public.audit_jobs USING btree (place_id, created_at DESC)"
+    },
+    {
+      "tablename": "audit_jobs",
+      "indexname": "audit_jobs_share_slug_idx",
+      "indexdef": "CREATE INDEX audit_jobs_share_slug_idx ON public.audit_jobs USING btree (share_slug)"
+    },
+    {
+      "tablename": "audit_jobs",
+      "indexname": "audit_jobs_share_slug_key",
+      "indexdef": "CREATE UNIQUE INDEX audit_jobs_share_slug_key ON public.audit_jobs USING btree (share_slug)"
+    },
+    {
+      "tablename": "audit_jobs",
+      "indexname": "audit_jobs_stale_claim_idx",
+      "indexdef": "CREATE INDEX audit_jobs_stale_claim_idx ON public.audit_jobs USING btree (last_attempt_at) WHERE (status = ANY (ARRAY['collecting'::text, 'scoring'::text, 'persisting'::text]))"
+    },
+    {
+      "tablename": "brand_profiles",
+      "indexname": "brand_profiles_pkey",
+      "indexdef": "CREATE UNIQUE INDEX brand_profiles_pkey ON public.brand_profiles USING btree (workspace_id)"
+    },
+    {
+      "tablename": "consent_records",
+      "indexname": "consent_records_job_id_idx",
+      "indexdef": "CREATE INDEX consent_records_job_id_idx ON public.consent_records USING btree (job_id)"
+    },
+    {
+      "tablename": "consent_records",
+      "indexname": "consent_records_pkey",
+      "indexdef": "CREATE UNIQUE INDEX consent_records_pkey ON public.consent_records USING btree (id)"
+    },
+    {
+      "tablename": "deliveries",
+      "indexname": "deliveries_idempotency_key_key",
+      "indexdef": "CREATE UNIQUE INDEX deliveries_idempotency_key_key ON public.deliveries USING btree (idempotency_key)"
+    },
+    {
+      "tablename": "deliveries",
+      "indexname": "deliveries_pkey",
+      "indexdef": "CREATE UNIQUE INDEX deliveries_pkey ON public.deliveries USING btree (id)"
+    },
+    {
+      "tablename": "erasure_events",
+      "indexname": "erasure_events_created_at_idx",
+      "indexdef": "CREATE INDEX erasure_events_created_at_idx ON public.erasure_events USING btree (created_at DESC)"
+    },
+    {
+      "tablename": "erasure_events",
+      "indexname": "erasure_events_pkey",
+      "indexdef": "CREATE UNIQUE INDEX erasure_events_pkey ON public.erasure_events USING btree (id)"
+    },
+    {
+      "tablename": "leads",
+      "indexname": "leads_pkey",
+      "indexdef": "CREATE UNIQUE INDEX leads_pkey ON public.leads USING btree (id)"
+    },
+    {
+      "tablename": "locations",
+      "indexname": "locations_pkey",
+      "indexdef": "CREATE UNIQUE INDEX locations_pkey ON public.locations USING btree (id)"
+    },
+    {
+      "tablename": "locations",
+      "indexname": "locations_workspace_id_slug_key",
+      "indexdef": "CREATE UNIQUE INDEX locations_workspace_id_slug_key ON public.locations USING btree (workspace_id, slug)"
+    },
+    {
+      "tablename": "notification_events",
+      "indexname": "notification_events_job_id_key",
+      "indexdef": "CREATE UNIQUE INDEX notification_events_job_id_key ON public.notification_events USING btree (job_id) WHERE (job_id IS NOT NULL)"
+    },
+    {
+      "tablename": "notification_events",
+      "indexname": "notification_events_pkey",
+      "indexdef": "CREATE UNIQUE INDEX notification_events_pkey ON public.notification_events USING btree (id)"
+    },
+    {
+      "tablename": "notification_events",
+      "indexname": "notification_events_workspace_idx",
+      "indexdef": "CREATE INDEX notification_events_workspace_idx ON public.notification_events USING btree (workspace_id, created_at DESC)"
+    },
+    {
+      "tablename": "oauth_connections",
+      "indexname": "oauth_connections_active_provider_key",
+      "indexdef": "CREATE UNIQUE INDEX oauth_connections_active_provider_key ON public.oauth_connections USING btree (workspace_id, provider) WHERE (status = 'active'::text)"
+    },
+    {
+      "tablename": "oauth_connections",
+      "indexname": "oauth_connections_pkey",
+      "indexdef": "CREATE UNIQUE INDEX oauth_connections_pkey ON public.oauth_connections USING btree (id)"
+    },
+    {
+      "tablename": "oauth_connections",
+      "indexname": "oauth_connections_workspace_idx",
+      "indexdef": "CREATE INDEX oauth_connections_workspace_idx ON public.oauth_connections USING btree (workspace_id)"
+    },
+    {
+      "tablename": "output_versions",
+      "indexname": "output_versions_action_id_version_no_key",
+      "indexdef": "CREATE UNIQUE INDEX output_versions_action_id_version_no_key ON public.output_versions USING btree (action_id, version_no)"
+    },
+    {
+      "tablename": "output_versions",
+      "indexname": "output_versions_pkey",
+      "indexdef": "CREATE UNIQUE INDEX output_versions_pkey ON public.output_versions USING btree (id)"
+    },
+    {
+      "tablename": "rate_limit_buckets",
+      "indexname": "rate_limit_buckets_expires_at_idx",
+      "indexdef": "CREATE INDEX rate_limit_buckets_expires_at_idx ON public.rate_limit_buckets USING btree (expires_at)"
+    },
+    {
+      "tablename": "rate_limit_buckets",
+      "indexname": "rate_limit_buckets_pkey",
+      "indexdef": "CREATE UNIQUE INDEX rate_limit_buckets_pkey ON public.rate_limit_buckets USING btree (bucket_key)"
+    },
+    {
+      "tablename": "report_access_grants",
+      "indexname": "report_access_grants_job_id_idx",
+      "indexdef": "CREATE INDEX report_access_grants_job_id_idx ON public.report_access_grants USING btree (job_id)"
+    },
+    {
+      "tablename": "report_access_grants",
+      "indexname": "report_access_grants_job_idempotency_key_unique_idx",
+      "indexdef": "CREATE UNIQUE INDEX report_access_grants_job_idempotency_key_unique_idx ON public.report_access_grants USING btree (job_id, idempotency_key)"
+    },
+    {
+      "tablename": "report_access_grants",
+      "indexname": "report_access_grants_pkey",
+      "indexdef": "CREATE UNIQUE INDEX report_access_grants_pkey ON public.report_access_grants USING btree (id)"
+    },
+    {
+      "tablename": "report_access_grants",
+      "indexname": "report_access_grants_token_hash_unique_idx",
+      "indexdef": "CREATE UNIQUE INDEX report_access_grants_token_hash_unique_idx ON public.report_access_grants USING btree (token_hash)"
+    },
+    {
+      "tablename": "report_evidence",
+      "indexname": "report_evidence_job_captured_idx",
+      "indexdef": "CREATE INDEX report_evidence_job_captured_idx ON public.report_evidence USING btree (job_id, captured_at DESC)"
+    },
+    {
+      "tablename": "report_evidence",
+      "indexname": "report_evidence_job_id_provider_evidence_type_source_id_key",
+      "indexdef": "CREATE UNIQUE INDEX report_evidence_job_id_provider_evidence_type_source_id_key ON public.report_evidence USING btree (job_id, provider, evidence_type, source_id)"
+    },
+    {
+      "tablename": "report_evidence",
+      "indexname": "report_evidence_pkey",
+      "indexdef": "CREATE UNIQUE INDEX report_evidence_pkey ON public.report_evidence USING btree (id)"
+    },
+    {
+      "tablename": "scan_diffs",
+      "indexname": "scan_diffs_base_job_id_head_job_id_key",
+      "indexdef": "CREATE UNIQUE INDEX scan_diffs_base_job_id_head_job_id_key ON public.scan_diffs USING btree (base_job_id, head_job_id)"
+    },
+    {
+      "tablename": "scan_diffs",
+      "indexname": "scan_diffs_head_idx",
+      "indexdef": "CREATE INDEX scan_diffs_head_idx ON public.scan_diffs USING btree (head_job_id)"
+    },
+    {
+      "tablename": "scan_diffs",
+      "indexname": "scan_diffs_pkey",
+      "indexdef": "CREATE UNIQUE INDEX scan_diffs_pkey ON public.scan_diffs USING btree (id)"
+    },
+    {
+      "tablename": "scan_events",
+      "indexname": "scan_events_dedupe_identity_unique_idx",
+      "indexdef": "CREATE UNIQUE INDEX scan_events_dedupe_identity_unique_idx ON public.scan_events USING btree (job_id, anonymous_session_id, event_name, dedupe_key)"
+    },
+    {
+      "tablename": "scan_events",
+      "indexname": "scan_events_job_id_created_at_idx",
+      "indexdef": "CREATE INDEX scan_events_job_id_created_at_idx ON public.scan_events USING btree (job_id, created_at DESC)"
+    },
+    {
+      "tablename": "scan_events",
+      "indexname": "scan_events_job_id_event_name_idx",
+      "indexdef": "CREATE INDEX scan_events_job_id_event_name_idx ON public.scan_events USING btree (job_id, event_name)"
+    },
+    {
+      "tablename": "scan_events",
+      "indexname": "scan_events_pkey",
+      "indexdef": "CREATE UNIQUE INDEX scan_events_pkey ON public.scan_events USING btree (id)"
+    },
+    {
+      "tablename": "scan_schedules",
+      "indexname": "scan_schedules_due_idx",
+      "indexdef": "CREATE INDEX scan_schedules_due_idx ON public.scan_schedules USING btree (next_run_at) WHERE (cadence = 'monthly'::text)"
+    },
+    {
+      "tablename": "scan_schedules",
+      "indexname": "scan_schedules_pkey",
+      "indexdef": "CREATE UNIQUE INDEX scan_schedules_pkey ON public.scan_schedules USING btree (id)"
+    },
+    {
+      "tablename": "scan_schedules",
+      "indexname": "scan_schedules_place_id_key",
+      "indexdef": "CREATE UNIQUE INDEX scan_schedules_place_id_key ON public.scan_schedules USING btree (place_id)"
+    },
+    {
+      "tablename": "scan_schedules",
+      "indexname": "scan_schedules_workspace_idx",
+      "indexdef": "CREATE INDEX scan_schedules_workspace_idx ON public.scan_schedules USING btree (workspace_id)"
+    },
+    {
+      "tablename": "scan_snapshots",
+      "indexname": "scan_snapshots_job_id_key",
+      "indexdef": "CREATE UNIQUE INDEX scan_snapshots_job_id_key ON public.scan_snapshots USING btree (job_id)"
+    },
+    {
+      "tablename": "scan_snapshots",
+      "indexname": "scan_snapshots_pkey",
+      "indexdef": "CREATE UNIQUE INDEX scan_snapshots_pkey ON public.scan_snapshots USING btree (id)"
+    },
+    {
+      "tablename": "staff_report_events",
+      "indexname": "staff_report_events_job_id_created_at_idx",
+      "indexdef": "CREATE INDEX staff_report_events_job_id_created_at_idx ON public.staff_report_events USING btree (job_id, created_at DESC)"
+    },
+    {
+      "tablename": "staff_report_events",
+      "indexname": "staff_report_events_pkey",
+      "indexdef": "CREATE UNIQUE INDEX staff_report_events_pkey ON public.staff_report_events USING btree (id)"
+    },
+    {
+      "tablename": "workspace_access_requests",
+      "indexname": "workspace_access_requests_open_idx",
+      "indexdef": "CREATE UNIQUE INDEX workspace_access_requests_open_idx ON public.workspace_access_requests USING btree (job_id, user_id) WHERE (resolved_at IS NULL)"
+    },
+    {
+      "tablename": "workspace_access_requests",
+      "indexname": "workspace_access_requests_pending_idx",
+      "indexdef": "CREATE INDEX workspace_access_requests_pending_idx ON public.workspace_access_requests USING btree (requested_at DESC) WHERE (resolved_at IS NULL)"
+    },
+    {
+      "tablename": "workspace_access_requests",
+      "indexname": "workspace_access_requests_pkey",
+      "indexdef": "CREATE UNIQUE INDEX workspace_access_requests_pkey ON public.workspace_access_requests USING btree (id)"
+    },
+    {
+      "tablename": "workspace_claim_events",
+      "indexname": "workspace_claim_events_claimed_by_idx",
+      "indexdef": "CREATE INDEX workspace_claim_events_claimed_by_idx ON public.workspace_claim_events USING btree (claimed_by_user_id)"
+    },
+    {
+      "tablename": "workspace_claim_events",
+      "indexname": "workspace_claim_events_job_idx",
+      "indexdef": "CREATE INDEX workspace_claim_events_job_idx ON public.workspace_claim_events USING btree (job_id, created_at DESC)"
+    },
+    {
+      "tablename": "workspace_claim_events",
+      "indexname": "workspace_claim_events_pkey",
+      "indexdef": "CREATE UNIQUE INDEX workspace_claim_events_pkey ON public.workspace_claim_events USING btree (id)"
+    },
+    {
+      "tablename": "workspace_claim_events",
+      "indexname": "workspace_claim_events_workspace_idx",
+      "indexdef": "CREATE INDEX workspace_claim_events_workspace_idx ON public.workspace_claim_events USING btree (workspace_id, created_at DESC)"
+    },
+    {
+      "tablename": "workspace_members",
+      "indexname": "workspace_members_email_idx",
+      "indexdef": "CREATE INDEX workspace_members_email_idx ON public.workspace_members USING btree (lower(email))"
+    },
+    {
+      "tablename": "workspace_members",
+      "indexname": "workspace_members_email_idx_unique",
+      "indexdef": "CREATE UNIQUE INDEX workspace_members_email_idx_unique ON public.workspace_members USING btree (workspace_id, lower(email))"
+    },
+    {
+      "tablename": "workspace_members",
+      "indexname": "workspace_members_one_owner_idx",
+      "indexdef": "CREATE UNIQUE INDEX workspace_members_one_owner_idx ON public.workspace_members USING btree (workspace_id) WHERE (role = 'owner'::text)"
+    },
+    {
+      "tablename": "workspace_members",
+      "indexname": "workspace_members_pkey",
+      "indexdef": "CREATE UNIQUE INDEX workspace_members_pkey ON public.workspace_members USING btree (id)"
+    },
+    {
+      "tablename": "workspace_members",
+      "indexname": "workspace_members_user_workspace_idx",
+      "indexdef": "CREATE UNIQUE INDEX workspace_members_user_workspace_idx ON public.workspace_members USING btree (workspace_id, user_id) WHERE (user_id IS NOT NULL)"
+    },
+    {
+      "tablename": "workspace_notifications",
+      "indexname": "workspace_notifications_pkey",
+      "indexdef": "CREATE UNIQUE INDEX workspace_notifications_pkey ON public.workspace_notifications USING btree (id)"
+    },
+    {
+      "tablename": "workspace_scan_completions",
+      "indexname": "workspace_scan_completions_pkey",
+      "indexdef": "CREATE UNIQUE INDEX workspace_scan_completions_pkey ON public.workspace_scan_completions USING btree (job_id)"
+    },
+    {
+      "tablename": "workspace_tier_events",
+      "indexname": "workspace_tier_events_pkey",
+      "indexdef": "CREATE UNIQUE INDEX workspace_tier_events_pkey ON public.workspace_tier_events USING btree (id)"
+    },
+    {
+      "tablename": "workspace_tier_events",
+      "indexname": "workspace_tier_events_stripe_event_id_key",
+      "indexdef": "CREATE UNIQUE INDEX workspace_tier_events_stripe_event_id_key ON public.workspace_tier_events USING btree (stripe_event_id) WHERE (stripe_event_id IS NOT NULL)"
+    },
+    {
+      "tablename": "workspace_tier_events",
+      "indexname": "workspace_tier_events_workspace_idx",
+      "indexdef": "CREATE INDEX workspace_tier_events_workspace_idx ON public.workspace_tier_events USING btree (workspace_id, created_at DESC)"
+    },
+    {
+      "tablename": "workspace_usage",
+      "indexname": "workspace_usage_pkey",
+      "indexdef": "CREATE UNIQUE INDEX workspace_usage_pkey ON public.workspace_usage USING btree (workspace_id, period)"
+    },
+    {
+      "tablename": "workspaces",
+      "indexname": "workspaces_pkey",
+      "indexdef": "CREATE UNIQUE INDEX workspaces_pkey ON public.workspaces USING btree (id)"
+    },
+    {
+      "tablename": "workspaces",
+      "indexname": "workspaces_slug_key",
+      "indexdef": "CREATE UNIQUE INDEX workspaces_slug_key ON public.workspaces USING btree (slug) WHERE (slug IS NOT NULL)"
+    }
+  ],
+  "triggers": [
+    {
+      "table_name": "action_measurements",
+      "name": "completion_fence_measurements",
+      "definition": "CREATE TRIGGER completion_fence_measurements BEFORE INSERT OR UPDATE ON public.action_measurements FOR EACH ROW EXECUTE FUNCTION fence_workspace_completion_write()"
+    },
+    {
+      "table_name": "actions",
+      "name": "actions_touch_updated_at",
+      "definition": "CREATE TRIGGER actions_touch_updated_at BEFORE UPDATE ON public.actions FOR EACH ROW EXECUTE FUNCTION touch_actions_updated_at()"
+    },
+    {
+      "table_name": "actions",
+      "name": "completion_fence_actions",
+      "definition": "CREATE TRIGGER completion_fence_actions BEFORE INSERT OR UPDATE ON public.actions FOR EACH ROW EXECUTE FUNCTION fence_workspace_completion_write()"
+    },
+    {
+      "table_name": "audit_events",
+      "name": "completion_fence_audits",
+      "definition": "CREATE TRIGGER completion_fence_audits BEFORE INSERT OR UPDATE ON public.audit_events FOR EACH ROW EXECUTE FUNCTION fence_workspace_completion_write()"
+    },
+    {
+      "table_name": "scan_snapshots",
+      "name": "completion_fence_snapshots",
+      "definition": "CREATE TRIGGER completion_fence_snapshots BEFORE INSERT OR UPDATE ON public.scan_snapshots FOR EACH ROW EXECUTE FUNCTION fence_workspace_completion_write()"
+    },
+    {
+      "table_name": "workspace_members",
+      "name": "workspace_members_cleanup_orphan",
+      "definition": "CREATE TRIGGER workspace_members_cleanup_orphan AFTER DELETE ON public.workspace_members FOR EACH ROW EXECUTE FUNCTION delete_orphaned_workspace()"
+    },
+    {
+      "table_name": "workspace_notifications",
+      "name": "completion_fence_notifications",
+      "definition": "CREATE TRIGGER completion_fence_notifications BEFORE INSERT OR UPDATE ON public.workspace_notifications FOR EACH ROW EXECUTE FUNCTION fence_workspace_completion_write()"
+    }
+  ],
+  "functions": [
+    {
+      "name": "approve_output_version",
+      "arguments": "p_version_id uuid, p_actor uuid, p_comment text",
+      "result": "jsonb",
+      "security_definer": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.approve_output_version(p_version_id uuid, p_actor uuid, p_comment text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\r\ndeclare\r\n  v public.output_versions%rowtype;\r\nbegin\r\n  select * into v from public.output_versions where id = p_version_id for update;\r\n  if not found then\r\n    raise exception using errcode = 'P0001', message = 'version_not_found';\r\n  end if;\r\n  if v.approval_state in ('rejected', 'superseded') then\r\n    raise exception using errcode = 'P0001', message = 'version_closed';\r\n  end if;\r\n  if v.approval_state = 'approved' then\r\n    return jsonb_build_object('kind', 'already-approved', 'version_id', v.id, 'version_no', v.version_no);\r\n  end if;\r\n\r\n  update public.output_versions\r\n  set approval_state = 'superseded'\r\n  where action_id = v.action_id\r\n    and id <> v.id\r\n    and approval_state = 'approved';\r\n\r\n  update public.output_versions\r\n  set approval_state = 'approved',\r\n      approved_by = p_actor,\r\n      approved_at = now(),\r\n      reviewer_comment = p_comment,\r\n      delivery_state = 'export_ready'\r\n  where id = v.id;\r\n\r\n  update public.actions\r\n  set action_state = 'in_progress'\r\n  where id = v.action_id\r\n    and action_state not in ('completed', 'dismissed', 'cancelled', 'expired');\r\n\r\n  insert into public.audit_events (workspace_id, actor_type, actor_id, event, entity_type, entity_id, payload)\r\n  values (v.workspace_id, 'user', p_actor, 'version.approved', 'output_version', v.id,\r\n          jsonb_build_object('version_no', v.version_no, 'action_id', v.action_id, 'comment', p_comment));\r\n\r\n  return jsonb_build_object('kind', 'approved', 'version_id', v.id, 'version_no', v.version_no);\r\nend;\r\n$function$\n"
+    },
+    {
+      "name": "claim_audit_job",
+      "arguments": "p_job_id uuid",
+      "result": "SETOF audit_jobs",
+      "security_definer": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.claim_audit_job(p_job_id uuid)\n RETURNS SETOF audit_jobs\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\r\nbegin\r\n  return query\r\n  update public.audit_jobs\r\n  set status = 'collecting',\r\n      processing_stage = 'collecting',\r\n      attempt_count = attempt_count + 1,\r\n      last_attempt_at = now()\r\n  where id = p_job_id\r\n    and (\r\n      status = 'queued'\r\n      or (\r\n        status in ('collecting', 'scoring', 'persisting')\r\n        and attempt_count < 3\r\n        and last_attempt_at is not null\r\n        and last_attempt_at < now() - interval '30 minutes'\r\n      )\r\n    )\r\n  returning *;\r\nend;\r\n$function$\n"
+    },
+    {
+      "name": "claim_workspace_completion",
+      "arguments": "p_job_id uuid",
+      "result": "jsonb",
+      "security_definer": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.claim_workspace_completion(p_job_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\r\ndeclare j public.audit_jobs%rowtype; c public.workspace_scan_completions%rowtype; token uuid;\r\nbegin\r\n  select * into j from public.audit_jobs where id = p_job_id;\r\n  if not found or j.workspace_id is null or j.status not in ('done','partial','failed') then\r\n    return jsonb_build_object('status','skipped');\r\n  end if;\r\n  -- Serialize claims across this workspace, including jobs without a ledger row.\r\n  perform 1 from public.workspaces where id = j.workspace_id for update;\r\n  select * into c from public.workspace_scan_completions where job_id = p_job_id for update;\r\n  if c.state = 'completed' then return jsonb_build_object('status','completed'); end if;\r\n  if c.next_attempt_at > now() or exists (\r\n    select 1 from public.workspace_scan_completions\r\n    where workspace_id = j.workspace_id and state = 'running' and lease_until > now()\r\n  ) then return jsonb_build_object('status','busy'); end if;\r\n  token := gen_random_uuid();\r\n  insert into public.workspace_scan_completions(job_id,workspace_id,state,attempts,lease_token,lease_until)\r\n  values(j.id,j.workspace_id,'running',1,token,now() + interval '5 minutes')\r\n  on conflict(job_id) do update set state='running', attempts=public.workspace_scan_completions.attempts+1,\r\n    lease_token=token, lease_until=now()+interval '5 minutes', updated_at=now();\r\n  return jsonb_build_object('status','claimed','token',token);\r\nend; $function$\n"
+    },
+    {
+      "name": "complete_report_unlock",
+      "arguments": "p_job_id uuid, p_whatsapp text, p_email text, p_recovery_email text, p_preferred_contact_channel text, p_contact_identifier text, p_business_objective text, p_report_delivery_consent boolean, p_scan_discussion_consent boolean, p_marketing_consent boolean, p_policy_version text, p_locale text, p_token_hash text, p_idempotency_key text, p_purpose text, p_expires_at timestamp with time zone, p_anonymous_session_id text, p_event_properties jsonb",
+      "result": "TABLE(lead_id uuid, grant_id uuid, event_created boolean)",
+      "security_definer": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.complete_report_unlock(p_job_id uuid, p_whatsapp text, p_email text, p_recovery_email text, p_preferred_contact_channel text, p_contact_identifier text, p_business_objective text, p_report_delivery_consent boolean, p_scan_discussion_consent boolean, p_marketing_consent boolean, p_policy_version text, p_locale text, p_token_hash text, p_idempotency_key text, p_purpose text, p_expires_at timestamp with time zone, p_anonymous_session_id text, p_event_properties jsonb)\n RETURNS TABLE(lead_id uuid, grant_id uuid, event_created boolean)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\r\ndeclare\r\n  existing_lead_id uuid;\r\n  existing_grant_id uuid;\r\n  created_lead_id uuid;\r\n  created_grant_id uuid;\r\n  created_event_count integer := 0;\r\nbegin\r\n  if btrim(coalesce(p_idempotency_key, '')) = '' then\r\n    raise exception 'idempotency_key_required' using errcode = '22023';\r\n  end if;\r\n  if p_token_hash !~ '^[0-9a-f]{64}$' then\r\n    raise exception 'token_hash_must_be_sha256_hex' using errcode = '22023';\r\n  end if;\r\n  if p_event_properties is null\r\n     or jsonb_typeof(p_event_properties) <> 'object'\r\n     or not (p_event_properties ?& array['market', 'channel', 'objective'])\r\n     or exists (\r\n       select 1\r\n       from jsonb_object_keys(p_event_properties) as property_key\r\n       where property_key not in ('market', 'channel', 'objective')\r\n     )\r\n     or p_event_properties->>'market' not in ('HK', 'TW')\r\n     or jsonb_typeof(p_event_properties->'channel') <> 'string'\r\n     or btrim(p_event_properties->>'channel') = ''\r\n     or jsonb_typeof(p_event_properties->'objective') <> 'string'\r\n     or btrim(p_event_properties->>'objective') = '' then\r\n    raise exception 'analytics_event_properties_invalid' using errcode = '22023';\r\n  end if;\r\n\r\n  -- Serialize retries for one job/key pair so a concurrent request cannot\r\n  -- create a second lead before the unique grant boundary is checked.\r\n  perform pg_advisory_xact_lock(\r\n    hashtextextended(p_job_id::text || ':' || p_idempotency_key, 0::bigint)\r\n  );\r\n\r\n  select access_grant.lead_id, access_grant.id\r\n  into existing_lead_id, existing_grant_id\r\n  from public.report_access_grants access_grant\r\n  where access_grant.job_id = p_job_id\r\n    and access_grant.idempotency_key = p_idempotency_key\r\n  limit 1;\r\n\r\n  if found then\r\n    return query select existing_lead_id, existing_grant_id, false;\r\n    return;\r\n  end if;\r\n\r\n  insert into public.leads (\r\n    job_id,\r\n    whatsapp,\r\n    email,\r\n    consent_bd_contact,\r\n    preferred_contact_channel,\r\n    contact_identifier,\r\n    business_objective\r\n  ) values (\r\n    p_job_id,\r\n    nullif(btrim(p_whatsapp), ''),\r\n    nullif(lower(btrim(p_email)), ''),\r\n    p_scan_discussion_consent,\r\n    nullif(btrim(p_preferred_contact_channel), ''),\r\n    nullif(btrim(p_contact_identifier), ''),\r\n    nullif(btrim(p_business_objective), '')\r\n  )\r\n  returning id into created_lead_id;\r\n\r\n  insert into public.consent_records (job_id, lead_id, consent_type, granted, policy_version, locale)\r\n  values\r\n    (p_job_id, created_lead_id, 'report_delivery', p_report_delivery_consent, p_policy_version, p_locale),\r\n    (p_job_id, created_lead_id, 'scan_discussion', p_scan_discussion_consent, p_policy_version, p_locale),\r\n    (p_job_id, created_lead_id, 'marketing', p_marketing_consent, p_policy_version, p_locale);\r\n\r\n  insert into public.report_access_grants (\r\n    job_id,\r\n    lead_id,\r\n    token_hash,\r\n    idempotency_key,\r\n    purpose,\r\n    email_normalized,\r\n    expires_at\r\n  ) values (\r\n    p_job_id,\r\n    created_lead_id,\r\n    p_token_hash,\r\n    p_idempotency_key,\r\n    p_purpose,\r\n    nullif(lower(btrim(p_recovery_email)), ''),\r\n    p_expires_at\r\n  )\r\n  returning id into created_grant_id;\r\n\r\n  insert into public.scan_events (\r\n    job_id,\r\n    anonymous_session_id,\r\n    event_name,\r\n    properties,\r\n    dedupe_key\r\n  ) values (\r\n    p_job_id,\r\n    p_anonymous_session_id,\r\n    'report_unlocked',\r\n    p_event_properties,\r\n    encode(extensions.digest(p_job_id::text || ':' || p_idempotency_key, 'sha256'), 'hex')\r\n  )\r\n  on conflict (job_id, anonymous_session_id, event_name, dedupe_key) do nothing;\r\n  get diagnostics created_event_count = row_count;\r\n\r\n  return query select created_lead_id, created_grant_id, created_event_count = 1;\r\nend;\r\n$function$\n"
+    },
+    {
+      "name": "consume_rate_limit",
+      "arguments": "p_bucket_key text, p_limit integer, p_window_seconds integer",
+      "result": "TABLE(allowed boolean, retry_after_seconds integer)",
+      "security_definer": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.consume_rate_limit(p_bucket_key text, p_limit integer, p_window_seconds integer)\n RETURNS TABLE(allowed boolean, retry_after_seconds integer)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\r\ndeclare\r\n  current_bucket public.rate_limit_buckets%rowtype;\r\n  now_at timestamptz := clock_timestamp();\r\n  window_ends_at timestamptz;\r\nbegin\r\n  if btrim(coalesce(p_bucket_key, '')) = '' then\r\n    raise exception 'bucket_key_required' using errcode = '22023';\r\n  end if;\r\n  if p_limit is null or p_limit < 1 then\r\n    raise exception 'limit_must_be_positive' using errcode = '22023';\r\n  end if;\r\n  if p_window_seconds is null or p_window_seconds < 1 then\r\n    raise exception 'window_must_be_positive' using errcode = '22023';\r\n  end if;\r\n\r\n  -- Bound cleanup work while ensuring expired attacker-created keys do not\r\n  -- remain as permanent storage.\r\n  with expired as (\r\n    select bucket_key\r\n    from public.rate_limit_buckets\r\n    where expires_at <= now_at\r\n      and bucket_key <> p_bucket_key\r\n    order by expires_at\r\n    limit 100\r\n    for update skip locked\r\n  )\r\n  delete from public.rate_limit_buckets as bucket\r\n  using expired\r\n  where bucket.bucket_key = expired.bucket_key;\r\n\r\n  -- Serialize the missing-row and existing-row cases alike. The key is a\r\n  -- digest, so using it as an advisory lock does not reveal raw identity.\r\n  perform pg_advisory_xact_lock(hashtextextended(p_bucket_key, 0::bigint));\r\n  select *\r\n  into current_bucket\r\n  from public.rate_limit_buckets\r\n  where bucket_key = p_bucket_key\r\n  for update;\r\n\r\n  if not found then\r\n    insert into public.rate_limit_buckets (bucket_key, window_started_at, request_count, updated_at, expires_at)\r\n    values (p_bucket_key, now_at, 1, now_at, now_at + (p_window_seconds * interval '1 second'));\r\n    return query select true, 0;\r\n    return;\r\n  end if;\r\n\r\n  window_ends_at := current_bucket.window_started_at + (p_window_seconds * interval '1 second');\r\n  if window_ends_at <= now_at then\r\n    update public.rate_limit_buckets\r\n    set\r\n      window_started_at = now_at,\r\n      request_count = 1,\r\n      updated_at = now_at,\r\n      expires_at = now_at + (p_window_seconds * interval '1 second')\r\n    where bucket_key = p_bucket_key;\r\n    return query select true, 0;\r\n    return;\r\n  end if;\r\n\r\n  if current_bucket.request_count < p_limit then\r\n    update public.rate_limit_buckets\r\n    set\r\n      request_count = current_bucket.request_count + 1,\r\n      updated_at = now_at,\r\n      expires_at = window_ends_at\r\n    where bucket_key = p_bucket_key;\r\n    return query select true, 0;\r\n    return;\r\n  end if;\r\n\r\n  return query select false, greatest(1, ceil(extract(epoch from (window_ends_at - now_at)))::integer);\r\nend;\r\n$function$\n"
+    },
+    {
+      "name": "create_output_version",
+      "arguments": "p_action_id uuid, p_actor uuid, p_author_type text, p_action_run_id uuid, p_body text, p_alt text, p_meta jsonb, p_base_version_id uuid",
+      "result": "jsonb",
+      "security_definer": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.create_output_version(p_action_id uuid, p_actor uuid, p_author_type text, p_action_run_id uuid, p_body text, p_alt text, p_meta jsonb, p_base_version_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\r\ndeclare\r\n  a public.actions%rowtype;\r\n  latest_id uuid;\r\n  next_no int;\r\n  new_id uuid;\r\nbegin\r\n  -- Lock the action row so two concurrent drafts cannot both compute max+1.\r\n  select * into a from public.actions where id = p_action_id for update;\r\n  if not found then\r\n    raise exception using errcode = 'P0001', message = 'version_not_found';\r\n  end if;\r\n\r\n  select id into latest_id\r\n  from public.output_versions\r\n  where action_id = p_action_id\r\n  order by version_no desc\r\n  limit 1;\r\n\r\n  -- Optimistic concurrency: a caller that names the version it edited must\r\n  -- still be looking at the latest one. A null base appends unconditionally\r\n  -- (the first draft, or an agent run that never read a version).\r\n  if p_base_version_id is not null and p_base_version_id is distinct from latest_id then\r\n    raise exception using errcode = 'P0001', message = 'version_conflict';\r\n  end if;\r\n\r\n  select coalesce(max(version_no), 0) + 1 into next_no\r\n  from public.output_versions\r\n  where action_id = p_action_id;\r\n\r\n  -- Earlier drafts that were never approved are replaced by this one; an\r\n  -- approved version stays approved until approve_output_version says otherwise.\r\n  update public.output_versions\r\n  set approval_state = 'superseded'\r\n  where action_id = p_action_id\r\n    and approval_state in ('draft', 'changes_requested');\r\n\r\n  insert into public.output_versions (\r\n    workspace_id, action_id, version_no, body, alt_text, meta,\r\n    author_type, author_user_id, action_run_id\r\n  )\r\n  values (\r\n    a.workspace_id, p_action_id, next_no, p_body, p_alt, coalesce(p_meta, '{}'::jsonb),\r\n    p_author_type, case when p_author_type = 'user' then p_actor else null end, p_action_run_id\r\n  )\r\n  returning id into new_id;\r\n\r\n  insert into public.audit_events (workspace_id, location_id, actor_type, actor_id, event, entity_type, entity_id, payload)\r\n  values (a.workspace_id, a.location_id, 'user', p_actor, 'version.created', 'output_version', new_id,\r\n          jsonb_build_object('version_no', next_no, 'action_id', p_action_id, 'author_type', p_author_type,\r\n                             'base_version_id', p_base_version_id, 'action_run_id', p_action_run_id));\r\n\r\n  return jsonb_build_object('kind', 'created', 'version_id', new_id, 'version_no', next_no);\r\nend;\r\n$function$\n"
+    },
+    {
+      "name": "decide_output_version",
+      "arguments": "p_version_id uuid, p_actor uuid, p_decision text, p_comment text",
+      "result": "jsonb",
+      "security_definer": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.decide_output_version(p_version_id uuid, p_actor uuid, p_decision text, p_comment text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\r\ndeclare\r\n  v public.output_versions%rowtype;\r\nbegin\r\n  if p_decision not in ('changes_requested', 'rejected') then\r\n    raise exception using errcode = 'P0001', message = 'invalid_decision';\r\n  end if;\r\n\r\n  select * into v from public.output_versions where id = p_version_id for update;\r\n  if not found then\r\n    raise exception using errcode = 'P0001', message = 'version_not_found';\r\n  end if;\r\n  if v.approval_state in ('rejected', 'superseded') then\r\n    raise exception using errcode = 'P0001', message = 'version_closed';\r\n  end if;\r\n  if v.approval_state = p_decision then\r\n    return jsonb_build_object('kind', 'already-decided', 'version_id', v.id, 'version_no', v.version_no, 'decision', p_decision);\r\n  end if;\r\n\r\n  update public.output_versions\r\n  set approval_state = p_decision,\r\n      reviewer_comment = p_comment,\r\n      approved_by = null,\r\n      approved_at = null,\r\n      delivery_state = case when delivery_state = 'export_ready' then 'not_requested' else delivery_state end\r\n  where id = v.id;\r\n\r\n  insert into public.audit_events (workspace_id, actor_type, actor_id, event, entity_type, entity_id, payload)\r\n  values (v.workspace_id, 'user', p_actor,\r\n          case when p_decision = 'rejected' then 'version.rejected' else 'version.changes_requested' end,\r\n          'output_version', v.id,\r\n          jsonb_build_object('version_no', v.version_no, 'action_id', v.action_id, 'comment', p_comment));\r\n\r\n  return jsonb_build_object('kind', 'decided', 'version_id', v.id, 'version_no', v.version_no, 'decision', p_decision);\r\nend;\r\n$function$\n"
+    },
+    {
+      "name": "delete_orphaned_workspace",
+      "arguments": "",
+      "result": "trigger",
+      "security_definer": false,
+      "config": null,
+      "definition": "CREATE OR REPLACE FUNCTION public.delete_orphaned_workspace()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\r\nbegin\r\n  if not exists (select 1 from public.workspace_members where workspace_id = old.workspace_id) then\r\n    delete from public.workspaces where id = old.workspace_id;\r\n  end if;\r\n  return old;\r\nend;\r\n$function$\n"
+    },
+    {
+      "name": "export_output_version",
+      "arguments": "p_version_id uuid, p_actor uuid, p_mode text, p_idempotency_key text",
+      "result": "jsonb",
+      "security_definer": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.export_output_version(p_version_id uuid, p_actor uuid, p_mode text, p_idempotency_key text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\r\ndeclare\r\n  v public.output_versions%rowtype;\r\n  existing public.deliveries%rowtype;\r\n  ws_timezone text;\r\n  ws_tier text;\r\n  usage_period text;\r\n  usage_row public.workspace_usage%rowtype;\r\n  first_export boolean;\r\n  delivery_id uuid;\r\nbegin\r\n  if p_mode not in ('export', 'copy') then\r\n    raise exception using errcode = 'P0001', message = 'invalid_mode';\r\n  end if;\r\n\r\n  -- Same key, same answer: the route can retry without a second count.\r\n  select * into existing from public.deliveries where idempotency_key = p_idempotency_key;\r\n  if found then\r\n    return jsonb_build_object('kind', 'existing', 'delivery_id', existing.id, 'version_id', existing.version_id,\r\n                              'counted', false, 'state', existing.state);\r\n  end if;\r\n\r\n  select * into v from public.output_versions where id = p_version_id for update;\r\n  if not found then\r\n    raise exception using errcode = 'P0001', message = 'version_not_found';\r\n  end if;\r\n  if v.approval_state <> 'approved' then\r\n    raise exception using errcode = 'P0001', message = 'not_approved';\r\n  end if;\r\n\r\n  first_export := v.first_exported_at is null;\r\n\r\n  if first_export then\r\n    select timezone, tier into ws_timezone, ws_tier from public.workspaces where id = v.workspace_id;\r\n    usage_period := to_char(now() at time zone coalesce(ws_timezone, 'Asia/Hong_Kong'), 'YYYY-MM');\r\n\r\n    -- Lazily create the period row with the tier's allowance (lite 3, paid\r\n    -- unlimited) so the first export of a month never fails for lack of one.\r\n    insert into public.workspace_usage (workspace_id, period, approved_deliveries, allowance)\r\n    values (v.workspace_id, usage_period, 0, case when ws_tier = 'paid' then null else 3 end)\r\n    on conflict (workspace_id, period) do nothing;\r\n\r\n    select * into usage_row from public.workspace_usage\r\n    where workspace_id = v.workspace_id and period = usage_period\r\n    for update;\r\n\r\n    if usage_row.allowance is not null and usage_row.approved_deliveries >= usage_row.allowance then\r\n      raise exception using errcode = 'P0001', message = 'allowance_exceeded';\r\n    end if;\r\n\r\n    update public.workspace_usage\r\n    set approved_deliveries = approved_deliveries + 1\r\n    where workspace_id = v.workspace_id and period = usage_period;\r\n\r\n    update public.output_versions\r\n    set first_exported_at = now(), delivery_state = 'exported'\r\n    where id = v.id;\r\n  end if;\r\n\r\n  insert into public.deliveries (workspace_id, version_id, mode, state, counted, idempotency_key, payload, created_by)\r\n  values (v.workspace_id, v.id, p_mode, 'exported', first_export, p_idempotency_key,\r\n          jsonb_build_object('version_no', v.version_no), p_actor)\r\n  returning id into delivery_id;\r\n\r\n  insert into public.audit_events (workspace_id, actor_type, actor_id, event, entity_type, entity_id, payload)\r\n  values (v.workspace_id, 'user', p_actor,\r\n          case when p_mode = 'copy' then 'delivery.copied' else 'delivery.exported' end,\r\n          'delivery', delivery_id,\r\n          jsonb_build_object('version_no', v.version_no, 'version_id', v.id, 'action_id', v.action_id,\r\n                             'counted', first_export, 'idempotency_key', p_idempotency_key));\r\n\r\n  return jsonb_build_object('kind', 'exported', 'delivery_id', delivery_id, 'version_id', v.id,\r\n                            'counted', first_export, 'state', 'exported');\r\nend;\r\n$function$\n"
+    },
+    {
+      "name": "fence_workspace_completion_write",
+      "arguments": "",
+      "result": "trigger",
+      "security_definer": false,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.fence_workspace_completion_write()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO ''\nAS $function$\r\ndeclare headers jsonb; job uuid; token uuid; target_workspace uuid;\r\n  j public.audit_jobs%rowtype; c public.workspace_scan_completions%rowtype;\r\nbegin\r\n  headers := coalesce(nullif(current_setting('request.headers',true),''),'{}')::jsonb;\r\n  if not (headers ? 'x-workspace-completion-job' or headers ? 'x-workspace-completion-token') then return new; end if;\r\n  if current_user <> 'service_role' then raise exception 'completion_role_denied'; end if;\r\n  if not (headers ? 'x-workspace-completion-job' and headers ? 'x-workspace-completion-token') then\r\n    raise exception 'completion_context_missing';\r\n  end if;\r\n  job := (headers->>'x-workspace-completion-job')::uuid;\r\n  token := (headers->>'x-workspace-completion-token')::uuid;\r\n  target_workspace := new.workspace_id;\r\n  -- Same lock order as claim: workspace first, then completion record.\r\n  perform 1 from public.workspaces where id = target_workspace for update;\r\n  select * into c from public.workspace_scan_completions where job_id=job for update;\r\n  if not found or c.workspace_id is distinct from target_workspace or c.state <> 'running'\r\n     or c.lease_token is distinct from token or c.lease_until is null or c.lease_until <= clock_timestamp() then\r\n    raise exception 'completion_lease_lost';\r\n  end if;\r\n  select * into j from public.audit_jobs where id=job;\r\n  if j.workspace_id is distinct from target_workspace or j.status not in ('done','partial','failed') then\r\n    raise exception 'completion_job_changed';\r\n  end if;\r\n  if tg_table_name = 'scan_snapshots' then\r\n    if new.job_id is distinct from job or new.location_id is distinct from j.location_id then\r\n      raise exception 'completion_snapshot_scope';\r\n    end if;\r\n  elsif tg_table_name = 'actions' then\r\n    if new.location_id is distinct from j.location_id then\r\n      if not (tg_op = 'UPDATE' and new.location_id is null\r\n        and (to_jsonb(new) - 'measurement_state' - 'updated_at') = (to_jsonb(old) - 'measurement_state' - 'updated_at'))\r\n        then raise exception 'completion_action_scope'; end if;\r\n    end if;\r\n    if exists (\r\n      select 1 from public.scan_snapshots s join public.scan_snapshots head on head.job_id=job\r\n      where s.workspace_id=j.workspace_id and s.location_id is not distinct from j.location_id\r\n      and (s.observed_at,s.created_at,s.id) > (head.observed_at,head.created_at,head.id)\r\n    ) then raise exception 'completion_newer_snapshot'; end if;\r\n  elsif tg_table_name = 'action_measurements' then\r\n    if not exists(select 1 from public.scan_snapshots s where s.id=new.after_snapshot_id\r\n      and s.job_id=job and s.workspace_id=target_workspace and s.location_id is not distinct from j.location_id)\r\n      then raise exception 'completion_measurement_scope'; end if;\r\n  end if;\r\n  return new;\r\nend; $function$\n"
+    },
+    {
+      "name": "finish_workspace_completion",
+      "arguments": "p_job_id uuid, p_token uuid, p_succeeded boolean, p_error text",
+      "result": "boolean",
+      "security_definer": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.finish_workspace_completion(p_job_id uuid, p_token uuid, p_succeeded boolean, p_error text)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\r\nbegin\r\n  perform 1 from public.workspaces where id=(select workspace_id from public.workspace_scan_completions where job_id=p_job_id) for update;\r\n  update public.workspace_scan_completions set state=case when p_succeeded then 'completed' else 'retry' end,\r\n    completed_at=case when p_succeeded then now() else null end,\r\n    last_error=case when p_succeeded then null else 'workspace_post_process_failed' end,\r\n    next_attempt_at=now()+interval '5 minutes',lease_until=null,lease_token=null,updated_at=now()\r\n  where job_id=p_job_id and lease_token=p_token and state='running' and lease_until > clock_timestamp();\r\n  return found;\r\nend; $function$\n"
+    },
+    {
+      "name": "pending_workspace_completions",
+      "arguments": "p_limit integer",
+      "result": "TABLE(job_id uuid)",
+      "security_definer": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.pending_workspace_completions(p_limit integer DEFAULT 5)\n RETURNS TABLE(job_id uuid)\n LANGUAGE sql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\r\n  select j.id from public.audit_jobs j left join public.workspace_scan_completions c on c.job_id=j.id\r\n  where j.workspace_id is not null and j.status in ('done','partial','failed')\r\n    and (c.job_id is null or (c.state <> 'completed' and c.next_attempt_at <= now()\r\n      and (c.lease_until is null or c.lease_until <= now())))\r\n  order by j.created_at,j.id limit greatest(1,least(coalesce(p_limit,5),5));\r\n$function$\n"
+    },
+    {
+      "name": "touch_actions_updated_at",
+      "arguments": "",
+      "result": "trigger",
+      "security_definer": false,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definition": "CREATE OR REPLACE FUNCTION public.touch_actions_updated_at()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO ''\nAS $function$\r\nbegin\r\n  new.updated_at := now();\r\n  return new;\r\nend;\r\n$function$\n"
+    }
+  ],
+  "enums": []
+}

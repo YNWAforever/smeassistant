@@ -48,7 +48,8 @@ async function freePort(): Promise<number> {
 async function waitForPostgres(containerName: string, databaseName: string): Promise<void> {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     try {
-      run(["exec", containerName, "pg_isready", "-U", "postgres", "-d", databaseName]);
+      // The image initialization server accepts sockets before the final TCP server starts.
+      run(["exec", containerName, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", databaseName]);
       return;
     } catch {
       await new Promise((resolve) => setTimeout(resolve, 500));
