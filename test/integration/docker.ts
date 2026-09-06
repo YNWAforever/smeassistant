@@ -16,6 +16,10 @@ function run(args: string[]): string {
   return execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 }
 
+export function neonIntegrationSelected(env: Record<string, string | undefined> = process.env): boolean {
+  return env.NEON_INTEGRATION === "1";
+}
+
 export function dockerAvailable(): boolean {
   try {
     run(["info"]);

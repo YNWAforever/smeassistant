@@ -7,13 +7,17 @@ import { defineConfig } from "vitest/config";
 // Same alias set as vitest.config.ts: `@` is the repo root and "server-only" is
 // stubbed so lib/supabase/admin.ts can be imported from a test worker.
 const repoRoot = path.dirname(fileURLToPath(import.meta.url));
+const neonIntegration = process.env.NEON_INTEGRATION === "1";
 
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["**/*.integration.test.ts"],
+    include: neonIntegration
+      ? ["test/integration/neon-*.integration.test.ts"]
+      : ["**/*.integration.test.ts"],
     // packages/* run their own vitest via `pnpm -r test`; Playwright owns e2e/.
     exclude: ["node_modules/**", ".next/**", "e2e/**", "packages/**"],
+    // NEON_INTEGRATION=1 selects the owned PostgreSQL-only fixture; default suites keep PostgREST.
     globalSetup: ["./test/integration/global-setup.ts"],
     // Runs per worker, which is the point: supabase-js is constructed inside the
     // tests and inside lib/supabase/admin.ts, and on Node 20 it throws without a

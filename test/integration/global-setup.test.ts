@@ -2,13 +2,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   dockerAvailable: vi.fn(),
+  neonIntegrationSelected: vi.fn(),
+  startNeonDatabaseFixture: vi.fn(),
   startContainers: vi.fn(),
   applySchema: vi.fn(),
 }));
 
 vi.mock("./docker", () => ({
   dockerAvailable: mocks.dockerAvailable,
+  neonIntegrationSelected: mocks.neonIntegrationSelected,
   startContainers: mocks.startContainers,
+}));
+
+vi.mock("./neon-database", () => ({
+  startNeonDatabaseFixture: mocks.startNeonDatabaseFixture,
 }));
 
 vi.mock("./schema", () => ({
@@ -22,6 +29,8 @@ const ENV_KEYS = [
   "SUPABASE_SERVICE_ROLE_KEY",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "RATE_LIMIT_SECRET",
+  "DATABASE_URL",
+  "DATABASE_URL_UNPOOLED",
 ] as const;
 
 describe("integration global setup", () => {
@@ -34,6 +43,7 @@ describe("integration global setup", () => {
     vi.resetAllMocks();
     savedEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
     mocks.dockerAvailable.mockReturnValue(true);
+    mocks.neonIntegrationSelected.mockReturnValue(false);
     mocks.startContainers.mockResolvedValue({
       postgrestUrl: "http://127.0.0.1:54321",
       postgresUri: "postgres://postgres:postgres@127.0.0.1:54322/postgres",
@@ -70,6 +80,25 @@ describe("integration global setup", () => {
     expect(stop).toHaveBeenCalledTimes(1);
   });
 
+  it("uses only the owned PostgreSQL fixture in explicit Neon mode", async () => {
+    const neonStop = vi.fn();
+    mocks.neonIntegrationSelected.mockReturnValue(true);
+    mocks.startNeonDatabaseFixture.mockResolvedValue({
+      databaseUrl: "postgresql://postgres:postgres@127.0.0.1:54323/sme_neon_it_unit",
+      databaseName: "sme_neon_it_unit",
+      containerName: "sme-neon-it-db-unit",
+      stop: neonStop,
+    });
+    process.env.DATABASE_URL_UNPOOLED = "postgresql://must-not-be-used.example/app";
+
+    const teardown = await setup();
+
+    expect(process.env.DATABASE_URL).toBe("postgresql://postgres:postgres@127.0.0.1:54323/sme_neon_it_unit");
+    expect(process.env.DATABASE_URL_UNPOOLED).toBeUndefined();
+    expect(mocks.startContainers).not.toHaveBeenCalled();
+    teardown();
+    expect(neonStop).toHaveBeenCalledTimes(1);
+  });
   it("never starts containers when Docker is unavailable", async () => {
     mocks.dockerAvailable.mockReturnValue(false);
 

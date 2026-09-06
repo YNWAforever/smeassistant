@@ -1,6 +1,7 @@
-import { dockerAvailable, startContainers } from "./docker";
+import { dockerAvailable, neonIntegrationSelected, startContainers } from "./docker";
 import { applySchema } from "./schema";
 import { mintServiceRoleJwt } from "./jwt";
+import { startNeonDatabaseFixture } from "./neon-database";
 
 const JWT_SECRET = "sme-scanner-integration-jwt-secret-32b";
 
@@ -12,6 +13,13 @@ export default async function setup() {
       "Integration tests require Docker, which is not available.\n" +
         "Start Docker Desktop and re-run, or run `pnpm test` for the unit suite only.",
     );
+  }
+
+  if (neonIntegrationSelected()) {
+    const fixture = await startNeonDatabaseFixture(process.env.NODE_ENV);
+    process.env.DATABASE_URL = fixture.databaseUrl;
+    delete process.env.DATABASE_URL_UNPOOLED;
+    return () => fixture.stop();
   }
 
   const containers = await startContainers(JWT_SECRET);
