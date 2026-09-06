@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { buildScanJobInsert, insertScanJob, parseScanStartBody, type ScanStartInput } from "./start-job";
 
-vi.mock("@/lib/supabase/admin", () => ({
-  supabaseServer: () => {
+vi.mock("@/lib/db/client", () => ({
+  getPool: () => {
     throw new Error("start-job tests must inject a client");
   },
 }));

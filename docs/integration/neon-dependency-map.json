@@ -403,10 +403,11 @@
     "replacements": [
       "lib/scan/execution-store.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "supabaseServer reference",
-      "Mocks processScan runtime Supabase dependency; limiter is already explicitly mocked. Follows Task 12 execution-store migration."
+      "Mocks processScan runtime Supabase dependency; limiter is already explicitly mocked. Follows Task 12 execution-store migration.",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
     ]
   },
   {
@@ -1118,9 +1119,10 @@
     "replacements": [
       "lib/scan/execution-store.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
     ]
   },
   {
@@ -1130,9 +1132,10 @@
     "replacements": [
       "lib/scan/execution-store.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
     ]
   },
   {
@@ -1142,9 +1145,10 @@
     "replacements": [
       "lib/scan/execution-store.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
     ]
   },
   {
@@ -1815,10 +1819,11 @@
     "replacements": [
       "lib/scan/execution-store.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "SupabaseClient type reference",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
     ]
   },
   {
@@ -1828,11 +1833,12 @@
     "replacements": [
       "lib/scan/execution-store.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
       "SupabaseClient type reference",
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
     ]
   },
   {
@@ -1842,10 +1848,11 @@
     "replacements": [
       "lib/scan/execution-store.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "SupabaseClient type reference",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
     ]
   },
   {
@@ -1855,10 +1862,11 @@
     "replacements": [
       "lib/scan/execution-store.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "SupabaseClient type reference",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
     ]
   },
   {
@@ -1868,11 +1876,12 @@
     "replacements": [
       "lib/scan/execution-store.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
       "SupabaseClient type reference",
-      "RPC consumer"
+      "RPC consumer",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
     ]
   },
   {
@@ -1882,9 +1891,10 @@
     "replacements": [
       "lib/scan/execution-store.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "createServiceClient reference"
+      "createServiceClient reference",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
     ]
   },
   {
@@ -1894,11 +1904,12 @@
     "replacements": [
       "lib/scan/execution-store.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
       "SupabaseClient type reference",
-      "createServiceClient reference"
+      "createServiceClient reference",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
     ]
   },
   {
@@ -1936,7 +1947,8 @@
     "status": "pending",
     "evidence": [
       "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "SupabaseClient type reference",
+      "Task12 disables legacy executable before imports/writes; Task15 owns Neon demo seed rewrite. tests/neon-seed-boundary.test.ts proves inert entrypoint."
     ]
   },
   {
@@ -2181,13 +2193,14 @@
     "replacements": [
       "neon/migrations/0001_initial_schema.sql"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "source migration",
       "sql-object:function:public.claim_audit_job",
       "sql-object:grant-statement:grant execute on function public.claim_audit_job(uuid) to service_role;",
       "sql-object:index:audit_jobs_stale_claim_idx",
-      "sql-object:revoke-statement:revoke execute on function public.claim_audit_job(uuid) from public, anon, authenticated;"
+      "sql-object:revoke-statement:revoke execute on function public.claim_audit_job(uuid) from public, anon, authenticated;",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
     ]
   },
   {
@@ -2404,12 +2417,13 @@
     "replacements": [
       "neon/migrations/0001_initial_schema.sql"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "source migration",
       "sql-object:function:public.claim_audit_job",
       "sql-object:grant-statement:grant execute on function public.claim_audit_job(uuid) to service_role;",
-      "sql-object:revoke-statement:revoke execute on function public.claim_audit_job(uuid) from public, anon, authenticated;"
+      "sql-object:revoke-statement:revoke execute on function public.claim_audit_job(uuid) from public, anon, authenticated;",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
     ]
   },
   {
@@ -2477,14 +2491,15 @@
     "replacements": [
       "neon/migrations/0001_initial_schema.sql"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "source migration",
       "sql-object:grant-statement:grant select, insert, update, delete on table public.aeo_surface_snapshots to service_role;",
       "sql-object:index:aeo_surface_snapshots_job_idx",
       "sql-object:index:aeo_surface_snapshots_place_surface_idx",
       "sql-object:revoke-statement:revoke all on table public.aeo_surface_snapshots from public, anon, authenticated;",
-      "sql-object:table:public.aeo_surface_snapshots"
+      "sql-object:table:public.aeo_surface_snapshots",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
     ]
   },
   {
@@ -2879,6 +2894,18 @@
     "status": "replaced",
     "evidence": [
       "Supabase symbol is an intentional throwing transport trap; actual runtime runs against owned PostgreSQL fixtures, not Supabase. No external provider calls."
+    ]
+  },
+  {
+    "path": "packages/scan-engine/src/storage-boundary.test.ts",
+    "kind": "test",
+    "task": 12,
+    "replacements": [
+      "packages/scan-engine/src/execution-store.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Negative import boundary assertions only; no legacy database execution."
     ]
   }
 ]

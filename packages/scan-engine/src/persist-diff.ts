@@ -1,3 +1,4 @@
+/** Persistence ports are supplied by the host; SQL adapters live in the application. */
 import { diffScans } from "@sme-scanner/scoring";
 import { toDiffInput, type DiffJobRow } from "./to-diff-input";
 import { selectBaseJob, type PairCandidate } from "./select-pair";

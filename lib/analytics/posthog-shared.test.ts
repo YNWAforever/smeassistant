@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { capturePostHog } from "./analytics";
+import { capturePostHog } from "./posthog";
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();

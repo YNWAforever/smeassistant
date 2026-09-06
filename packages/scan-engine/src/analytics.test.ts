@@ -1,5 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { describe, expect, it, vi } from "vitest";
 import {
   AnalyticsValidationError,
   createAnalyticsDependencies,
@@ -193,119 +192,32 @@ describe("recordEvent review regressions", () => {
   });
 });
 
-function createStubSupabaseClient(maybeSingleResult: { data: unknown; error: unknown }) {
-  const maybeSingle = vi.fn().mockResolvedValue(maybeSingleResult);
-  const abortSignal = vi.fn().mockReturnValue({ maybeSingle });
-  const select = vi.fn().mockReturnValue({ abortSignal });
-  const upsert = vi.fn().mockReturnValue({ select });
-  const insert = vi.fn().mockReturnValue({ select });
-  const from = vi.fn().mockReturnValue({ upsert, insert });
-  const client = { from } as unknown as SupabaseClient;
-  return { client, from, upsert, insert };
-}
-
 describe("createAnalyticsDependencies", () => {
-  const event = { name: "scan_started", properties: { market: "HK", locale: "en" } } as const;
-
-  it("upserts on the dedupe onConflict target when the row carries a dedupe_key", async () => {
-    const { client, upsert, insert } = createStubSupabaseClient({ data: { id: "row-1" }, error: null });
-    const dependencies = createAnalyticsDependencies(() => client);
-
-    const result = await recordEvent(event, {
-      jobId: "job-1",
-      anonymousSessionId: "anon-session",
-      dedupeKey: "scan_started:0123456789abcdef01234567",
-      timeoutMs: 50,
-    }, { ...dependencies, capturePostHog: async () => {} });
-
-    expect(result).toEqual({ recorded: true });
-    expect(upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ dedupe_key: "scan_started:0123456789abcdef01234567" }),
-      { onConflict: "job_id,anonymous_session_id,event_name,dedupe_key", ignoreDuplicates: true },
+  it("preserves explicit storage and transport ports", () => {
+    const insert = vi.fn();
+    const capture = vi.fn();
+    expect(createAnalyticsDependencies(insert, capture)).toMatchObject({
+      insert,
+      capturePostHog: capture,
+    });
+  });
+  it("forwards dedupe identity and cancellation to the supplied store", async () => {
+    const insert = vi.fn(async () => ({ inserted: false }));
+    const capture = vi.fn();
+    expect(
+      await recordEvent(
+        { name: "scan_started", properties: { market: "HK", locale: "en" } },
+        { jobId: "job", anonymousSessionId: "session", dedupeKey: "key" },
+        createAnalyticsDependencies(insert, capture),
+      ),
+    ).toEqual({ recorded: false, deduplicated: true });
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({ dedupe_key: "key" }),
+      expect.any(AbortSignal),
     );
-    expect(insert).not.toHaveBeenCalled();
-  });
-
-  it("performs a plain insert when the row carries no dedupe_key", async () => {
-    const { client, upsert, insert } = createStubSupabaseClient({ data: { id: "row-1" }, error: null });
-    const dependencies = createAnalyticsDependencies(() => client);
-
-    const result = await recordEvent(event, {
-      jobId: "job-1",
-      anonymousSessionId: "anon-session",
-      timeoutMs: 50,
-    }, { ...dependencies, capturePostHog: async () => {} });
-
-    expect(result).toEqual({ recorded: true });
-    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ dedupe_key: null }));
-    expect(upsert).not.toHaveBeenCalled();
-  });
-
-  it("propagates a falsy insert result (no row returned) as a deduplicated recordEvent outcome", async () => {
-    const { client } = createStubSupabaseClient({ data: null, error: null });
-    const dependencies = createAnalyticsDependencies(() => client);
-
-    const result = await recordEvent(event, {
-      jobId: "job-1",
-      anonymousSessionId: "anon-session",
-      dedupeKey: "scan_started:0123456789abcdef01234567",
-      timeoutMs: 50,
-    }, { ...dependencies, capturePostHog: async () => {} });
-
-    expect(result).toEqual({ recorded: false, deduplicated: true });
-  });
-
-  it("degrades to backend_unavailable, without rejecting, when the client factory throws", async () => {
-    const dependencies = createAnalyticsDependencies(() => {
-      throw new Error("Node.js 20 detected without native WebSocket support");
-    });
-    const categories: string[] = [];
-
-    await expect(recordEvent(event, {
-      jobId: "job-1",
-      anonymousSessionId: "anon-session",
-    }, { ...dependencies, reportError: (category) => { categories.push(category); } })).resolves.toEqual({
-      recorded: false,
-      category: "backend_unavailable",
-    });
-
-    expect(categories).toEqual(["backend_unavailable"]);
-  });
-
-  it("hands the fire-and-forget PostHog capture to waitUntil when the caller supplies one", async () => {
-    const { client } = createStubSupabaseClient({ data: { id: "row-1" }, error: null });
-    const waited: Promise<unknown>[] = [];
-    const dependencies: AnalyticsDependencies = {
-      ...createAnalyticsDependencies(() => client),
-      capturePostHog: async () => {},
-      waitUntil: (promise) => { waited.push(promise); },
-    };
-
-    await recordEvent(event, { jobId: "job-1", anonymousSessionId: "anon-session" }, dependencies);
-
-    expect(waited).toHaveLength(1);
-    await expect(waited[0]).resolves.toBeUndefined();
-  });
-
-  it("still resolves with recorded: true when waitUntil itself throws", async () => {
-    // Cloudflare's ctx.waitUntil throws once the request context has closed.
-    // recordEvent's contract is to never reject on transport/infrastructure
-    // trouble, so a throwing waitUntil must not become a rejected promise.
-    const { client } = createStubSupabaseClient({ data: { id: "row-1" }, error: null });
-    const dependencies: AnalyticsDependencies = {
-      ...createAnalyticsDependencies(() => client),
-      capturePostHog: async () => {},
-      waitUntil: () => {
-        throw new Error("request context has already closed");
-      },
-    };
-
-    await expect(
-      recordEvent(event, { jobId: "job-1", anonymousSessionId: "anon-session" }, dependencies),
-    ).resolves.toEqual({ recorded: true });
+    expect(capture).not.toHaveBeenCalled();
   });
 });
-
 describe("forwardEventToPostHog", () => {
   it("forwards the parsed event and an AbortSignal to the injected capture", async () => {
     const capturePostHog = vi.fn().mockResolvedValue(undefined);
@@ -326,82 +238,5 @@ describe("forwardEventToPostHog", () => {
       "anon-session",
       expect.any(AbortSignal),
     );
-  });
-});
-
-describe("createAnalyticsDependencies's capturePostHog implementation", () => {
-  const originalKey = process.env.POSTHOG_KEY;
-  const originalHost = process.env.POSTHOG_HOST;
-
-  afterEach(() => {
-    if (originalKey === undefined) delete process.env.POSTHOG_KEY;
-    else process.env.POSTHOG_KEY = originalKey;
-    if (originalHost === undefined) delete process.env.POSTHOG_HOST;
-    else process.env.POSTHOG_HOST = originalHost;
-    vi.unstubAllGlobals();
-  });
-
-  it("posts the parsed event to a normalized PostHog host with the api key and distinct_id", async () => {
-    process.env.POSTHOG_KEY = "phc_test_key";
-    process.env.POSTHOG_HOST = "https://posthog.example.com/";
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true } as Response);
-    vi.stubGlobal("fetch", fetchMock);
-
-    const { client } = createStubSupabaseClient({ data: { id: "row-1" }, error: null });
-    const dependencies = createAnalyticsDependencies(() => client);
-
-    await forwardEventToPostHog(
-      { name: "report_preview_viewed", properties: { market: "HK" } },
-      "anon-session",
-      dependencies,
-    );
-
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    // The trailing slash on POSTHOG_HOST must not survive into the request URL.
-    expect(url).toBe("https://posthog.example.com/capture/");
-    expect(init.method).toBe("POST");
-    expect(JSON.parse(init.body as string)).toEqual({
-      api_key: "phc_test_key",
-      event: "report_preview_viewed",
-      properties: { distinct_id: "anon-session", market: "HK" },
-    });
-  });
-
-  it("skips the request entirely when POSTHOG_KEY is unset", async () => {
-    delete process.env.POSTHOG_KEY;
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-
-    const { client } = createStubSupabaseClient({ data: { id: "row-1" }, error: null });
-    const dependencies = createAnalyticsDependencies(() => client);
-
-    await forwardEventToPostHog(
-      { name: "report_preview_viewed", properties: { market: "HK" } },
-      "anon-session",
-      dependencies,
-    );
-
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("reports provider_unavailable, via reportError, when PostHog responds with a non-ok status", async () => {
-    process.env.POSTHOG_KEY = "phc_test_key";
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false } as Response));
-
-    const { client } = createStubSupabaseClient({ data: { id: "row-1" }, error: null });
-    const categories: string[] = [];
-    const dependencies: AnalyticsDependencies = {
-      ...createAnalyticsDependencies(() => client),
-      reportError: (category) => { categories.push(category); },
-    };
-
-    await forwardEventToPostHog(
-      { name: "report_preview_viewed", properties: { market: "HK" } },
-      "anon-session",
-      dependencies,
-    );
-
-    expect(categories).toEqual(["provider_unavailable"]);
   });
 });

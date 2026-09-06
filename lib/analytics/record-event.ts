@@ -1,7 +1,7 @@
+import { capturePostHog } from "./posthog";
 import { randomUUID } from "crypto";
 import { eventRepository } from "@/lib/repositories/events";
 import {
-  capturePostHog,
   recordEvent as recordEventCore,
   forwardEventToPostHog as forwardEventToPostHogCore,
   type AnalyticsDependencies,

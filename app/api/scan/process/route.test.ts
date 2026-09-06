@@ -23,8 +23,8 @@ vi.mock("@/lib/security/rate-limit", () => ({
   enforceCompositeIdentifierRateLimit: limiterMocks.enforceCompositeIdentifierRateLimit,
   rateLimitedResponse: vi.fn(() => new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 })),
 }));
-const supabaseMocks = vi.hoisted(() => ({ supabaseServer: vi.fn(() => ({ marker: "fake-client" })) }));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: supabaseMocks.supabaseServer }));
+const storeMocks = vi.hoisted(() => ({ createScanExecutionStore: vi.fn(() => ({ marker: "neon-store" })) }));
+vi.mock("@/lib/scan/execution-store", () => ({ createScanExecutionStore: storeMocks.createScanExecutionStore, buildTrendDiffDeps: vi.fn(), buildAeoSnapshotDeps: vi.fn() }));
 
 // Under vitest lib/scan/run.ts defaults to the fixture collector (CLAUDE.md
 // 3.2.1). This file exercises the real collectScanProviders through the route
@@ -60,16 +60,13 @@ describe("scan process route", () => {
     }));
     expect(processScan).toHaveBeenCalledWith(
       "00000000-0000-4000-8000-000000000001",
-      "11111111-1111-4111-8111-111111111111",
-      expect.any(Function),
-      expect.any(Function),
-      { marker: "fake-client" },
+      expect.objectContaining({ store: { marker: "neon-store" }, collect: expect.any(Function), persistEvidence: expect.any(Function) }),
     );
     await expect(response.json()).resolves.toEqual({ status: "partial" });
   });
 
-  it("does not construct a Supabase client for a rate-limited request", async () => {
-    supabaseMocks.supabaseServer.mockClear();
+  it("does not construct an execution store for a rate-limited request", async () => {
+    storeMocks.createScanExecutionStore.mockClear();
     vi.mocked(processScan).mockClear();
     limiterMocks.enforceCompositeIdentifierRateLimit.mockResolvedValueOnce({
       allowed: false,
@@ -82,7 +79,7 @@ describe("scan process route", () => {
     }));
     expect(response.status).toBe(429);
     expect(processScan).not.toHaveBeenCalled();
-    expect(supabaseMocks.supabaseServer).not.toHaveBeenCalled();
+    expect(storeMocks.createScanExecutionStore).not.toHaveBeenCalled();
   });
 });
 
@@ -368,7 +365,7 @@ describe("scan process route boundaries", () => {
     let collectedRaw: RawData | undefined;
     let collectedStoriesCount: number | undefined;
     let collectedEvidence: EvidenceCandidate[] | undefined;
-    vi.mocked(processScan).mockImplementationOnce(async (_jobId, _sessionId, collect) => {
+    vi.mocked(processScan).mockImplementationOnce(async (_jobId, { collect }) => {
       const collected = await collect({
         id: "00000000-0000-4000-8000-000000000001",
         business_name: "Demo Cafe",
@@ -604,7 +601,7 @@ describe("scan process route boundaries", () => {
     vi.stubEnv("SERPAPI_API_KEY", "preferred-serp-key");
 
     let aeo: unknown;
-    vi.mocked(processScan).mockImplementationOnce(async (_jobId, _sessionId, collect) => {
+    vi.mocked(processScan).mockImplementationOnce(async (_jobId, { collect }) => {
       const collected = await collect({
         id: "00000000-0000-4000-8000-000000000001",
         business_name: "Demo Cafe",
