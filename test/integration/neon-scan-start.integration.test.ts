@@ -12,6 +12,10 @@ import { buildScanStartPayload, emptyScanDraft } from "../../lib/funnel/scan-sta
 import { parseScanStartBody, insertScanJob } from "../../lib/scan/start-job";
 const ports = vi.hoisted(() => ({ pool: undefined as Pool | undefined }));
 vi.mock("../../lib/db/client", () => ({ getPool: () => ports.pool, getDatabase: () => drizzle(ports.pool!) }));
+vi.mock("../../lib/analytics/record-event", async () => {
+    const actual = await vi.importActual<typeof import("../../lib/analytics/record-event")>("../../lib/analytics/record-event");
+    return { ...actual, forwardEventToPostHog: vi.fn(async () => {}) };
+});
 describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan persistence", () => {
     let fixture: NeonDatabaseFixture;
     let owner: Pool;
@@ -105,6 +109,24 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan persistence", ()
         await runtime.query("UPDATE report_access_grants SET revoked_at=now(),last_used_at=null WHERE id=$1", [grants[0].id]);
         await store.markViewerGrantUsed(job, grants[0].id);
         expect((await store.findViewerGrant(job, grants[0].id))?.last_used_at).toBeNull();
+    });
+    it("does not forward unlock analytics outside the integration fixture", async () => {
+        const job = (await runtime.query("INSERT INTO audit_jobs(business_name,share_slug,region,business_objective) VALUES('Analytics isolation','analytics-isolation','tw','more_leads') RETURNING id")).rows[0].id;
+        const body = { slug: "analytics-isolation", market: "tw", objective: "other", preferred_contact_channel: "line", contact_identifier: "fixture", locale: "zh-TW", report_delivery: true, idempotency_key: "B".repeat(43) };
+        const originalFetch = globalThis.fetch;
+        const fetchStub = vi.fn(async () => new Response(null, { status: 200 }));
+        vi.stubEnv("POSTHOG_KEY", "fixture-only-posthog-key");
+        globalThis.fetch = fetchStub as unknown as typeof fetch;
+        try {
+            const response = await unlock(new Request("https://fixture.test/api/report-access/unlock", { method: "POST", body: JSON.stringify(body) }));
+            expect(response.status).toBe(200);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            expect(fetchStub).not.toHaveBeenCalled();
+            expect((await runtime.query("SELECT id FROM audit_jobs WHERE id=$1", [job])).rows).toHaveLength(1);
+        } finally {
+            globalThis.fetch = originalFetch;
+            vi.unstubAllEnvs();
+        }
     });
 
  it("caps public findings while retaining private evidence, approved runs and summary caches",async()=>{
