@@ -83,3 +83,16 @@ it("rejects foreign objects returned by native flat listing", async () => {
   mock.get("https://vercel.com").intercept({ path: "/api/blob?limit=100&prefix=report-evidence%2Fjob%2F&mode=expanded", method: "GET" }).reply(200, { blobs: [{ pathname: "report-evidence/other/a.png", uploadedAt: "2026-09-06T00:00:00Z" }], hasMore: false });
   await expect(storage().list("report-evidence", "job", { limit: 100 })).rejects.toThrow("private_blob_list_path_invalid");
 });
+
+it.each(["material", "delegation"] as const)("rejects malformed %s expiry before returning a signed URL", async target => {
+  mock.get("https://vercel.com").intercept({ path: "/api/blob/signed-token", method: "POST" }).reply(200, (opts: { body: string }) => {
+    const scope = JSON.parse(opts.body);
+    return {
+      delegationToken: Buffer.from(JSON.stringify({ storeId: "store_fixture", ...scope, ...(target === "delegation" ? {validUntil: "invalid"} : {}) })).toString("base64url") + ".fixture",
+      clientSigningToken: Buffer.from("fixture-key").toString("base64url"),
+      validUntil: target === "material" ? "invalid" : scope.validUntil,
+    };
+  });
+  await expect(storage().sign("report-evidence", "job/photo/a.png", 300)).rejects.toThrow(target === "material" ? "private_blob_expiry_invalid" : "private_blob_delegation_invalid");
+  mock.assertNoPendingInterceptors();
+});

@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   enqueueRescan: vi.fn(),
   ensureMonthlySchedule: vi.fn(),
   tier: "paid" as string | null,
+  readTier: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({ authorizeWorkspaceRequest: (...args: unknown[]) => mocks.authorizeWorkspaceRequest(...args) }));
@@ -17,13 +18,8 @@ vi.mock("@/lib/workspace/rescan", () => ({
   enqueueRescan: (...args: unknown[]) => mocks.enqueueRescan(...args),
   ensureMonthlySchedule: (...args: unknown[]) => mocks.ensureMonthlySchedule(...args),
 }));
-vi.mock("@/lib/supabase/admin", () => ({
-  supabaseServer: () => ({
-    from: (table: string) => ({
-      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: table === "workspaces" ? { tier: mocks.tier } : null, error: null }) }) }),
-    }),
-  }),
-}));
+vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => { throw new Error("legacy transport forbidden"); } }));
+vi.mock("@/lib/repositories/rescan", () => ({ rescanRepository: () => ({tier: (...args: unknown[]) => mocks.readTier(...args)}) }));
 
 const WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";
 const LOCATION_ID = "22222222-2222-4222-8222-222222222222";
@@ -44,6 +40,7 @@ function post(body: unknown) {
 
 beforeEach(() => {
   mocks.tier = "paid";
+  mocks.readTier.mockImplementation(async () => mocks.tier);
   mocks.enforceRateLimit.mockResolvedValue({ allowed: true, retryAfterSeconds: 1 });
   mocks.enqueueRescan.mockResolvedValue({ ok: true, jobId: "job-new", sourceJob: { id: "job-src", status: "done", place_id: "place-1", created_at: "2026-08-15T10:00:00Z", input_snapshot: { version: 2 } } });
   mocks.ensureMonthlySchedule.mockResolvedValue({ created: true });
@@ -131,4 +128,22 @@ describe("POST /api/workspaces/[workspaceId]/rescan", () => {
     warn.mockRestore();
     error.mockRestore();
   });
+});
+
+it("keeps authorization, tier, atomic rate limit and enqueue ordering", async () => {
+ mocks.authorizeWorkspaceRequest.mockResolvedValue(auth("owner"));
+ expect((await post({locationId:LOCATION_ID,locale:"zh-TW"})).status).toBe(201);
+ expect(mocks.readTier).toHaveBeenCalledWith(WORKSPACE_ID);
+ const order=[mocks.authorizeWorkspaceRequest,mocks.readTier,mocks.enforceRateLimit,mocks.enqueueRescan,mocks.ensureMonthlySchedule].map(fn=>fn.mock.invocationCallOrder[0]);
+ expect(order).toEqual([...order].sort((a,b)=>a-b));
+});
+it("maps tier SQL failure to503 before spending the budget",async()=>{
+ mocks.authorizeWorkspaceRequest.mockResolvedValue(auth("owner"));
+ mocks.readTier.mockRejectedValue(new Error("private SQL detail"));
+ const res=await post({locationId:LOCATION_ID});expect(res.status).toBe(503);expect(await res.json()).toEqual({error:"unavailable"});
+ expect(mocks.enforceRateLimit).not.toHaveBeenCalled(); expect(mocks.enqueueRescan).not.toHaveBeenCalled();
+});
+it.each([["snapshot_not_v2",409,"snapshot_not_rescannable"],["insert_failed",503,"unavailable"]])("maps %s without a schedule",async(reason,status,error)=>{
+ mocks.authorizeWorkspaceRequest.mockResolvedValue(auth("owner"));mocks.enqueueRescan.mockResolvedValue({ok:false,reason});
+ const res=await post({locationId:LOCATION_ID});expect(res.status).toBe(status);expect(await res.json()).toEqual({error});expect(mocks.ensureMonthlySchedule).not.toHaveBeenCalled();
 });

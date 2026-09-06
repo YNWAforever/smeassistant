@@ -1,7 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { getUser, signOut } from "@/lib/auth";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { reportsRepository } from "@/lib/repositories/reports";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/locale";
 import { claimsRepository } from "@/lib/repositories/claims";
 import { safeReturnPath } from "@/lib/identity/return-path";
@@ -53,11 +53,7 @@ async function holdsViewerGrant(jobId: string): Promise<boolean> {
   const presented = raw ? parseViewerGrantCookie(raw) : null;
   if (!presented) return false;
 
-  const { data } = await supabaseServer()
-    .from("report_access_grants")
-    .select("id, job_id, token_hash, expires_at, revoked_at")
-    .eq("id", presented.grantId)
-    .maybeSingle();
+  const data = await reportsRepository().findViewerGrant(jobId, presented.grantId);
 
   if (!data || data.job_id !== jobId || data.revoked_at != null) return false;
   const expiry = Date.parse(data.expires_at);

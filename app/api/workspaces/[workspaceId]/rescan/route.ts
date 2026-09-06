@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
 import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { rescanRepository } from "@/lib/repositories/rescan";
 import { ipHashFor } from "@/lib/workspace/audit";
 import { isWorkspacePaid } from "@/lib/workspace/entitlement";
 import { enqueueRescan, ensureMonthlySchedule } from "@/lib/workspace/rescan";
@@ -40,10 +40,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ workspa
   const auth = await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager", locationId });
   if (!auth.ok) return NextResponse.json({ error: auth.code }, { status: auth.status });
 
-  const db = supabaseServer();
-  const { data: workspace, error: workspaceError } = await db.from("workspaces").select("tier").eq("id", workspaceId).maybeSingle<{ tier: string | null }>();
-  if (workspaceError) return NextResponse.json({ error: "unavailable" }, { status: 503 });
-  if (!isWorkspacePaid(workspace?.tier)) return NextResponse.json({ error: "tier_required" }, { status: 403 });
+  const repo = rescanRepository();
+  let tier: string | null;
+  try { tier = await repo.tier(workspaceId); }
+  catch { return NextResponse.json({ error: "unavailable" }, { status: 503 }); }
+  if (!isWorkspacePaid(tier)) return NextResponse.json({ error: "tier_required" }, { status: 403 });
 
   const decision = await enforceRateLimit({ req, scope: "rescan", identifiers: [workspaceId], failClosed: true });
   if (!decision.allowed) return rateLimitedResponse(decision.retryAfterSeconds);
@@ -54,7 +55,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ workspa
 
   let result: Awaited<ReturnType<typeof enqueueRescan>>;
   try {
-    result = await enqueueRescan(db, { workspaceId, locationId, actorId: auth.user.id, now, locale, ipHash: ipHashFor(req) });
+    result = await enqueueRescan(repo, { workspaceId, locationId, actorId: auth.user.id, now, locale, ipHash: ipHashFor(req) });
   } catch {
     console.error("[api/workspaces/rescan] failed", { category: "rescan_failed" });
     return NextResponse.json({ error: "unavailable" }, { status: 503 });
@@ -66,7 +67,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ workspa
   }
 
   try {
-    const schedule = await ensureMonthlySchedule(db, { job: result.sourceJob, workspaceId, actorId: auth.user.id, nowIso: now.toISOString() });
+    const schedule = await ensureMonthlySchedule(repo, { job: result.sourceJob, workspaceId, actorId: auth.user.id, nowIso: now.toISOString() });
     if (!schedule.created && schedule.reason !== "exists") {
       console.warn("[api/workspaces/rescan] monthly schedule not created", { category: "rescan_schedule_refused", reason: schedule.reason });
     }

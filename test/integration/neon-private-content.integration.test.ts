@@ -10,6 +10,8 @@ import { evidenceRepository } from "../../lib/repositories/evidence";
 import { resolveApplicationUser } from "../../lib/identity/users";
 import { membershipRepository } from "../../lib/repositories/membership";
 import { authorizeReport } from "../../lib/report-access/authorize-report";
+import { createReportLoader } from "../../lib/report/load-report";
+import { reportsRepository } from "../../lib/repositories/reports";
 import { loadAuthorizedEvidence } from "../../lib/evidence/load-authorized";
 import { persistEvidenceSnapshots } from "../../lib/evidence/persist";
 const ports = vi.hoisted(() => ({ pool: undefined as Pool | undefined, sign: vi.fn(async (_ns: string, path: string) => `https://fixture.private.blob.vercel-storage.com/${path}?fixture=1`) }));
@@ -80,9 +82,32 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon private content metad
     expect(ports.sign).toHaveBeenCalledWith("report-evidence", path, 300);
     await runtime.query("UPDATE workspace_members SET role='manager',location_scope=ARRAY[gen_random_uuid()] WHERE workspace_id=$1", [ws]);
     expect(await access(ws)).toMatchObject({ kind: "member", role: "manager" });
+    await runtime.query("UPDATE audit_jobs SET share_slug='private-fixture' WHERE id=$1",[job]);
+    const loadEvidence = vi.fn(loadAuthorizedEvidence);
+    let membershipWorkspace = ws;
+    const loader = createReportLoader({
+      store: reportsRepository(runtime), languageService: {resolveSummary: async () => "fixture only"},
+      loadEvidence, getViewerToken: async () => null, getStaffUser: async () => null,
+      getMembership: async () => {
+        const member=await membershipRepository.accepted(user.id,membershipWorkspace);
+        return member ? {workspaceId:member.workspace_id,role:member.role} : null;
+      },
+      scheduleAfter: () => { throw new Error("fixture forbids background work"); },
+    });
+    ports.sign.mockClear();
+    expect((await loader('private-fixture','zh-TW')).access).toBe('member');
+    expect(loadEvidence).toHaveBeenCalledWith(job);
+    expect(ports.sign).toHaveBeenCalledWith("report-evidence",path,300);
+    await runtime.query("INSERT INTO workspace_members(workspace_id,user_id,email,role,accepted_at) VALUES($1,$2,$3,'owner',now())",[other,user.id,user.email]);
     expect(await access(other)).toMatchObject({ kind: "public" });
+    membershipWorkspace=other; loadEvidence.mockClear(); ports.sign.mockClear();
+    expect((await loader('private-fixture','zh-TW')).access).toBe('public');
+    expect(loadEvidence).not.toHaveBeenCalled(); expect(ports.sign).not.toHaveBeenCalled();
     await runtime.query("DELETE FROM workspace_members WHERE workspace_id=$1", [ws]);
     expect(await access(ws)).toMatchObject({ kind: "public" });
+    membershipWorkspace=ws;
+    expect((await loader('private-fixture','zh-TW')).access).toBe('public');
+    expect(loadEvidence).not.toHaveBeenCalled(); expect(ports.sign).not.toHaveBeenCalled();
   });
 
   it("rejects asset locations from another workspace before metadata insertion", async () => {

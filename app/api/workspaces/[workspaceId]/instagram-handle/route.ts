@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { workspaceProfileRepository } from "@/lib/repositories/workspace-profile";
+import { recordNeonEvent } from "@/lib/workspace/audit";
 import { normalizeInstagramHandle } from "@/lib/scanner/ig-search/handle";
 
 const WORKSPACE_ID_RE = /^[0-9a-f-]{36}$/i;
@@ -38,36 +39,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ workspa
     return NextResponse.json({ error: "handle is invalid" }, { status: 400 });
   }
 
-  const supabase = supabaseServer();
-  const { error } = await supabase
-    .from("workspaces")
-    .update({ instagram_handle: handle })
-    .eq("id", workspaceId);
-  if (error) {
+  const repo = workspaceProfileRepository();
+  try { await repo.setInstagramHandle(workspaceId, handle); }
+  catch {
     console.error("Workspace instagram_handle save failed");
     return NextResponse.json({ error: "unavailable" }, { status: 500 });
   }
 
-  // The primary location mirrors the workspace-level handle so rescans and
-  // the location cards read the confirmed value. Best-effort: the workspace
-  // row is the source of truth and is already saved.
-  const { error: locationError } = await supabase
-    .from("locations")
-    .update({ ig_handle: handle })
-    .eq("workspace_id", workspaceId)
-    .eq("is_primary", true);
-  if (locationError) console.error("Primary location ig_handle sync failed");
-
-  const { error: eventError } = await supabase.from("audit_events").insert({
-    workspace_id: workspaceId,
-    actor_type: "user",
-    actor_id: auth.user.id,
-    event: "integration.updated",
-    entity_type: "workspace",
-    entity_id: workspaceId,
-    payload: { locale: typeof body.locale === "string" ? body.locale : null, integration: "instagram", handle },
-  });
-  if (eventError) console.error("Instagram handle audit event not recorded");
+  // The workspace is already saved; primary-location sync and audit are best-effort.
+  try { await repo.syncPrimaryInstagramHandle(workspaceId, handle); }
+  catch { console.error("Primary location ig_handle sync failed"); }
+  try {
+    await recordNeonEvent({
+      workspaceId, actorType: "user", actorId: auth.user.id,
+      event: "integration.updated", entityType: "workspace", entityId: workspaceId,
+      locale: typeof body.locale === "string" ? body.locale : null,
+      payload: { integration: "instagram", handle },
+    });
+  } catch { console.error("Instagram handle audit event not recorded"); }
 
   return NextResponse.json({ ok: true, handle });
 }

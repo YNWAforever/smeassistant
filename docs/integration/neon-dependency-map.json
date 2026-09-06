@@ -661,13 +661,12 @@
     "kind": "test",
     "task": 9,
     "replacements": [
-      "lib/repositories/workspace.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/workspace-profile.ts",
+      "lib/workspace/audit.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference",
-      "Ownership reconciled with Task 9 workspace, primary location and audit event writes."
+      "Task9 owner-authorized Neon workspace handle, best-effort scoped primary-location and audit writes. Actual restricted SQL and route fixtures."
     ]
   },
   {
@@ -675,13 +674,12 @@
     "kind": "runtime",
     "task": 9,
     "replacements": [
-      "lib/repositories/workspace.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/workspace-profile.ts",
+      "lib/workspace/audit.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference",
-      "Ownership reconciled with Task 9 workspace, primary location and audit event writes."
+      "Task9 owner-authorized Neon workspace handle, best-effort scoped primary-location and audit writes. Actual restricted SQL and route fixtures."
     ]
   },
   {
@@ -773,12 +771,13 @@
     "kind": "test",
     "task": 9,
     "replacements": [
-      "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/rescan.ts",
+      "lib/repositories/jobs.ts",
+      "lib/workspace/audit.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task9 Neon source/tier/schedule SQL; jobsRepository insertion and explicit Neon audit. Dispatch and scheduler execution remain Tasks12/14. Focused route/domain and owned restricted SQL fixtures."
     ]
   },
   {
@@ -786,12 +785,13 @@
     "kind": "runtime",
     "task": 9,
     "replacements": [
-      "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/rescan.ts",
+      "lib/repositories/jobs.ts",
+      "lib/workspace/audit.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task9 Neon source/tier/schedule SQL; jobsRepository insertion and explicit Neon audit. Dispatch and scheduler execution remain Tasks12/14. Focused route/domain and owned restricted SQL fixtures."
     ]
   },
   {
@@ -866,13 +866,13 @@
     "kind": "runtime",
     "task": 9,
     "replacements": [
-      "lib/auth/provider.ts",
-      "lib/auth/session.ts"
+      "lib/repositories/reports.ts",
+      "lib/repositories/claims.ts",
+      "lib/repositories/membership.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference",
-      "Task7 migrated membership, claim, lead and access request stores. Remaining holdsViewerGrant report_access_grants read belongs to Task9; self-service gate unchanged."
+      "Task9 holdsViewerGrant reuses scoped reportsRepository.findViewerGrant; finite future expiry, revocation and token hash checks retained. Earlier Task7 callback persistence unchanged."
     ]
   },
   {
@@ -1580,13 +1580,13 @@
     "kind": "test",
     "task": 9,
     "replacements": [
-      "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/rescan.ts",
+      "lib/repositories/jobs.ts",
+      "lib/workspace/audit.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "Task9 Neon source/tier/schedule SQL; jobsRepository insertion and explicit Neon audit. Dispatch and scheduler execution remain Tasks12/14. Focused route/domain and owned restricted SQL fixtures."
     ]
   },
   {
@@ -1594,13 +1594,13 @@
     "kind": "runtime",
     "task": 9,
     "replacements": [
-      "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/rescan.ts",
+      "lib/repositories/jobs.ts",
+      "lib/workspace/audit.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "Task9 Neon source/tier/schedule SQL; jobsRepository insertion and explicit Neon audit. Dispatch and scheduler execution remain Tasks12/14. Focused route/domain and owned restricted SQL fixtures."
     ]
   },
   {
@@ -2780,6 +2780,30 @@
     "status": "pending",
     "evidence": [
       "Temporary narrow measurement adapter preserving supplied fenced Supabase client. Task 13 must wire the PostgreSQL completion transaction client and remove this adapter."
+    ]
+  },
+  {
+    "path": "app/auth/callback/viewer-grant.test.ts",
+    "kind": "test",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/reports.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Fixture explicitly forbids legacy transport; Task9 Neon repository acceptance."
+    ]
+  },
+  {
+    "path": "test/integration/neon-rescan.integration.test.ts",
+    "kind": "test",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/rescan.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Fixture explicitly forbids legacy transport; Task9 Neon repository acceptance."
     ]
   }
 ]

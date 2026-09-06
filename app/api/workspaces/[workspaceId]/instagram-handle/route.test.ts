@@ -1,10 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const authorizeWorkspaceRequest = vi.fn();
-const from = vi.fn();
+const workspaceUpdate = vi.fn();
+const locationUpdate = vi.fn();
+const auditInsert = vi.fn();
 
 vi.mock("@/lib/auth", () => ({ authorizeWorkspaceRequest: (...args: unknown[]) => authorizeWorkspaceRequest(...args) }));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({ from }) }));
+vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => { throw new Error("legacy transport forbidden"); } }));
+vi.mock("@/lib/repositories/workspace-profile", () => ({ workspaceProfileRepository: () => ({ setInstagramHandle: (...args: unknown[]) => workspaceUpdate(...args), syncPrimaryInstagramHandle: (...args: unknown[]) => locationUpdate(...args) }) }));
+vi.mock("@/lib/workspace/audit", () => ({ recordNeonEvent: (...args: unknown[]) => auditInsert(...args) }));
 
 const WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";
 
@@ -24,16 +28,10 @@ function post(body: unknown, workspaceId = WORKSPACE_ID) {
 }
 
 function tables() {
-  const workspaceUpdate = vi.fn(() => ({ eq: async () => ({ error: null }) }));
-  const locationUpdate = vi.fn(() => ({ eq: () => ({ eq: async () => ({ error: null }) }) }));
-  const auditInsert = vi.fn(async () => ({ error: null }));
-  from.mockImplementation((table: string) => {
-    if (table === "workspaces") return { update: workspaceUpdate };
-    if (table === "locations") return { update: locationUpdate };
-    if (table === "audit_events") return { insert: auditInsert };
-    throw new Error(`unexpected table ${table}`);
-  });
-  return { workspaceUpdate, locationUpdate, auditInsert };
+ workspaceUpdate.mockResolvedValue(undefined);
+ locationUpdate.mockResolvedValue(undefined);
+ auditInsert.mockResolvedValue(undefined);
+ return {workspaceUpdate,locationUpdate,auditInsert};
 }
 
 afterEach(() => vi.resetAllMocks());
@@ -48,15 +46,16 @@ describe("POST /api/workspaces/[workspaceId]/instagram-handle", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true, handle: "kammanhouse.hk" });
     expect(authorizeWorkspaceRequest).toHaveBeenCalledWith({ id: WORKSPACE_ID }, { minRole: "owner" });
-    expect(workspaceUpdate).toHaveBeenCalledWith({ instagram_handle: "kammanhouse.hk" });
-    expect(locationUpdate).toHaveBeenCalledWith({ ig_handle: "kammanhouse.hk" });
+    expect(workspaceUpdate).toHaveBeenCalledWith(WORKSPACE_ID, "kammanhouse.hk");
+    expect(locationUpdate).toHaveBeenCalledWith(WORKSPACE_ID, "kammanhouse.hk");
     expect(auditInsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        workspace_id: WORKSPACE_ID,
-        actor_type: "user",
-        actor_id: "user-1",
+        workspaceId: WORKSPACE_ID,
+        actorType: "user",
+        actorId: "user-1",
         event: "integration.updated",
-        payload: expect.objectContaining({ locale: "zh-HK", integration: "instagram", handle: "kammanhouse.hk" }),
+        locale: "zh-HK",
+        payload: expect.objectContaining({ integration: "instagram", handle: "kammanhouse.hk" }),
       }),
     );
   });
@@ -84,7 +83,9 @@ describe("POST /api/workspaces/[workspaceId]/instagram-handle", () => {
 
     authorizeWorkspaceRequest.mockResolvedValue({ ok: false, status: 404, code: "not_found" });
     expect((await post({ handle: "kmh" })).status).toBe(404);
-    expect(from).not.toHaveBeenCalled();
+    expect(workspaceUpdate).not.toHaveBeenCalled();
+    expect(locationUpdate).not.toHaveBeenCalled();
+    expect(auditInsert).not.toHaveBeenCalled();
   });
 
   it("400s a malformed workspace id before authorizing", async () => {
@@ -94,11 +95,9 @@ describe("POST /api/workspaces/[workspaceId]/instagram-handle", () => {
 
   it("still succeeds when the location sync or the audit insert fails", async () => {
     authorizeWorkspaceRequest.mockResolvedValue(OWNER_AUTH);
-    from.mockImplementation((table: string) => {
-      if (table === "workspaces") return { update: () => ({ eq: async () => ({ error: null }) }) };
-      if (table === "locations") return { update: () => ({ eq: () => ({ eq: async () => ({ error: { message: "boom" } }) }) }) };
-      return { insert: async () => ({ error: { message: "boom" } }) };
-    });
+    tables();
+    locationUpdate.mockRejectedValue(new Error("fixture location unavailable"));
+    auditInsert.mockRejectedValue(new Error("fixture audit unavailable"));
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
     expect((await post({ handle: "kmh" })).status).toBe(200);
@@ -107,7 +106,8 @@ describe("POST /api/workspaces/[workspaceId]/instagram-handle", () => {
 
   it("500s without detail when the workspace update fails", async () => {
     authorizeWorkspaceRequest.mockResolvedValue(OWNER_AUTH);
-    from.mockImplementation(() => ({ update: () => ({ eq: async () => ({ error: { message: "db.internal" } }) }) }));
+    tables();
+    workspaceUpdate.mockRejectedValue(new Error("db.internal"));
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const res = await post({ handle: "kmh" });
