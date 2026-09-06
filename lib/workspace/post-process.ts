@@ -2,7 +2,7 @@ import { legacyMeasurementRepository } from "@/lib/repositories/legacy-measureme
 import { legacySnapshotRepository } from "@/lib/repositories/legacy-snapshots";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { localized } from "@/lib/domain";
-import { deriveActionsForSnapshot } from "@/lib/workspace/actions";
+import { deriveLegacyActionsForSnapshot } from "@/lib/repositories/legacy-action-derivation";
 import { recordMeasurements } from "@/lib/workspace/measurements";
 import { notifyWorkspace } from "@/lib/workspace/notify";
 import { buildSnapshot, loadDiffForHeadJob } from "@/lib/workspace/snapshots";
@@ -79,7 +79,7 @@ export async function postProcessWorkspaceScan(db: SupabaseClient, jobId: string
 
     const snapshot = await buildSnapshot(legacySnapshotRepository(db), jobId);
     snapshotId = snapshot.id;
-    await deriveActionsForSnapshot(db, snapshot.id);
+    await deriveLegacyActionsForSnapshot(db, snapshot.id);
 
     // A missing measurement is an incomplete workspace update, even though
     // the original scan remains valid. Do not announce completed workspace

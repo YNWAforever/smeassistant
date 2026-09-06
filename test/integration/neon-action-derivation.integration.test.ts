@@ -1,0 +1,153 @@
+import { Pool } from 'pg';
+import { beforeAll, afterAll, describe, it, expect, vi } from 'vitest';
+import { applyMigrations } from '../../scripts/neon/migrations';
+import { startNeonDatabaseFixture, type NeonDatabaseFixture } from './neon-database';
+import { deriveActionsForSnapshot, deriveActionsForClaim, actionDerivationRepository } from '../../lib/repositories/action-derivation';
+import { completeWorkspaceClaim } from '../../lib/workspace/claim';
+import { claimCompletionStore } from '../../lib/repositories/claims';
+import { buildSnapshot } from '../../lib/workspace/snapshots';
+import { snapshotRepository } from '../../lib/repositories/snapshots';
+const ports=vi.hoisted(()=>({pool:undefined as Pool|undefined}));
+vi.mock('../../lib/db/client',()=>({getPool:()=>{if(!ports.pool)throw new Error('default_database_forbidden');return ports.pool;}}));
+import { fixPackRepository } from '../../lib/repositories/fix-pack';
+
+describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon final action runtime',()=>{
+ let fixture:NeonDatabaseFixture, owner:Pool, db:Pool, actor:string;
+ beforeAll(async()=>{
+  fixture=await startNeonDatabaseFixture('test');owner=new Pool({connectionString:fixture.databaseUrl});
+  await owner.query('CREATE ROLE sme_app_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS');
+  await applyMigrations(owner);await owner.query("CREATE ROLE final_runtime_login LOGIN PASSWORD 'fixture-only' IN ROLE sme_app_runtime");
+  const url=new URL(fixture.databaseUrl);url.username='final_runtime_login';url.password='fixture-only';db=new Pool({connectionString:url.href});
+  actor=(await db.query("INSERT INTO app_users(email) VALUES('final-runtime@example.test') RETURNING id")).rows[0].id;
+ });
+ afterAll(async()=>{await Promise.all([db?.end(),owner?.end()]);fixture?.stop();});
+ async function setup(workspace?:string,location?:string,observed='2026-09-01') {
+  const ws=workspace??(await db.query('INSERT INTO workspaces DEFAULT VALUES RETURNING id')).rows[0].id;
+  const loc=location??(await db.query("INSERT INTO locations(workspace_id,slug,name) VALUES($1,'fixture','Fixture') RETURNING id",[ws])).rows[0].id;
+  const job=(await db.query("INSERT INTO audit_jobs(workspace_id,location_id,business_name,status,website_url) VALUES($1,$2,'Fixture','done',NULL) RETURNING id",[ws,loc])).rows[0].id;
+  const snapshot=(await db.query("INSERT INTO scan_snapshots(workspace_id,location_id,job_id,market,observed_at,coverage,module_states,metrics) VALUES($1,$2,$3,'hk',$4,1,'{}','{}') RETURNING id",[ws,loc,job,observed])).rows[0].id;
+  await db.query("INSERT INTO audit_findings(job_id,finding_key,module,severity,score_impact) VALUES($1,'gbp.owner_response_low','gbp','warning',-10)",[job]);
+  return {ws,loc,job,snapshot};
+ }
+ it('derives atomically, keeps stable IDs/state/inputs and deduplicates audit on retry',async()=>{
+  const f=await setup();
+  await db.query("INSERT INTO oauth_connections(workspace_id,provider,access_token_encrypted,status,connected_at) VALUES($1,'google_gbp','fixture','active',now())",[f.ws]);
+  const first=await deriveActionsForSnapshot(db,f.snapshot);expect(first.created).toBe(1);
+  const before=(await db.query('SELECT * FROM actions WHERE workspace_id=$1',[f.ws])).rows;
+  await db.query("UPDATE actions SET provided_inputs='{\"tone\":\"warm\"}',action_state='in_progress' WHERE workspace_id=$1",[f.ws]);
+  expect(await deriveActionsForSnapshot(db,f.snapshot)).toMatchObject({created:0,updated:1});
+  const after=(await db.query('SELECT * FROM actions WHERE workspace_id=$1',[f.ws])).rows;
+  expect(after[0]).toMatchObject({id:before[0].id,action_state:'in_progress',provided_inputs:{tone:'warm'}});
+  expect((await db.query("SELECT id FROM audit_events WHERE workspace_id=$1 AND event='action.derived'",[f.ws])).rows).toHaveLength(1);
+ });
+ it('skips stale exact-location snapshots and rejects corrupted source parent scope',async()=>{
+  const f=await setup();const newer=await setup(f.ws,f.loc,'2026-09-02');
+  expect(await deriveActionsForSnapshot(db,f.snapshot)).toEqual({created:0,updated:0,completed:0,expired:0});
+  expect((await db.query('SELECT id FROM actions WHERE workspace_id=$1',[f.ws])).rows).toHaveLength(0);
+  const foreign=await setup();await db.query('UPDATE audit_jobs SET location_id=$1 WHERE id=$2',[foreign.loc,newer.job]);
+  await expect(deriveActionsForSnapshot(db,newer.snapshot)).rejects.toThrow('scope');
+  expect((await db.query('SELECT id FROM actions WHERE workspace_id=$1',[f.ws])).rows).toHaveLength(0);
+ });
+ it('rolls back all action writes when audit persistence fails',async()=>{
+  const f=await setup();
+  await owner.query("CREATE FUNCTION fixture_fail_derived() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event='action.derived' THEN RAISE EXCEPTION 'fixture derived failure'; END IF; RETURN NEW; END $$");
+  await owner.query('CREATE TRIGGER fixture_fail_derived BEFORE INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION fixture_fail_derived()');
+  try {await expect(deriveActionsForSnapshot(db,f.snapshot)).rejects.toThrow('fixture derived failure');
+   expect((await db.query('SELECT id FROM actions WHERE workspace_id=$1',[f.ws])).rows).toHaveLength(0);
+  } finally {await owner.query('DROP TRIGGER fixture_fail_derived ON audit_events');await owner.query('DROP FUNCTION fixture_fail_derived()');}
+ });
+ it('Fix Pack joins owned jobs, hides invalid locations, and allows only one conditional reviewer',async()=>{
+  const f=await setup(),foreign=await setup(),repo=fixPackRepository(db);
+  const run=(await db.query("INSERT INTO agent_runs(job_id,finding_key,agent_key,output) VALUES($1,'fixture','review_reply_agent','{}') RETURNING id",[f.job])).rows[0].id;
+  expect(await repo.scope(run)).toEqual({workspaceId:f.ws,locationId:f.loc});
+  expect(await repo.review(run,foreign.ws,f.loc,'approved',actor)).toBe(false);
+  expect(await repo.review(run,f.ws,foreign.loc,'approved',actor)).toBe(false);
+  const race=await Promise.all([repo.review(run,f.ws,f.loc,'approved',actor),repo.review(run,f.ws,f.loc,'rejected',actor)]);
+  expect(race.filter(Boolean)).toHaveLength(1);
+  expect((await db.query('SELECT reviewed_by FROM agent_runs WHERE id=$1',[run])).rows[0].reviewed_by).toBe(actor);
+  await db.query("UPDATE agent_runs SET status='draft' WHERE id=$1",[run]);
+  await db.query('UPDATE audit_jobs SET location_id=$1 WHERE id=$2',[foreign.loc,f.job]);
+  expect(await repo.scope(run)).toBeNull();expect(await repo.list(f.ws)).toEqual([]);
+  expect(await repo.review(run,f.ws,foreign.loc,'approved',actor)).toBe(false);
+  expect((await db.query('SELECT status FROM agent_runs WHERE id=$1',[run])).rows[0].status).toBe('draft');
+ });
+ it('rejects an existing action with a foreign source snapshot before replacing its content',async()=>{
+  const f=await setup(),foreign=await setup();await deriveActionsForSnapshot(db,f.snapshot);
+  await db.query('UPDATE actions SET source_snapshot_id=$1 WHERE workspace_id=$2',[foreign.snapshot,f.ws]);
+  const before=(await db.query('SELECT title,source_snapshot_id FROM actions WHERE workspace_id=$1 ORDER BY id',[f.ws])).rows;
+  await expect(deriveActionsForSnapshot(db,f.snapshot)).rejects.toThrow('scope');
+  expect((await db.query('SELECT title,source_snapshot_id FROM actions WHERE workspace_id=$1 ORDER BY id',[f.ws])).rows).toEqual(before);
+ });
+ it('uses the supplied transaction executor and rolls back without a default database',async()=>{
+  const f=await setup(),client=await db.connect();
+  try {await client.query('BEGIN');await actionDerivationRepository(client).derive(f.snapshot);
+   expect((await db.query('SELECT id FROM actions WHERE workspace_id=$1',[f.ws])).rows).toHaveLength(0);
+   await client.query('ROLLBACK');
+   expect((await db.query('SELECT id FROM audit_events WHERE workspace_id=$1',[f.ws])).rows).toHaveLength(0);
+  }finally{client.release();}
+ });
+ it('marks only comparable resolved findings measured and expires missing evidence at exact location',async()=>{
+  const f=await setup();await deriveActionsForSnapshot(db,f.snapshot);
+  const next=await setup(f.ws,f.loc,'2026-09-02');await db.query('DELETE FROM audit_findings WHERE job_id=$1',[next.job]);
+  await db.query("INSERT INTO scan_diffs(base_job_id,head_job_id,comparable,resolved_findings) VALUES($1,$2,true,ARRAY['gbp.owner_response_low'])",[f.job,next.job]);
+  expect(await deriveActionsForSnapshot(db,next.snapshot)).toMatchObject({completed:1,expired:0});
+  expect((await db.query("SELECT measurement_state FROM actions WHERE workspace_id=$1 AND template_key='review-response'",[f.ws])).rows[0].measurement_state).toBe('measured');
+  const other=await setup();await deriveActionsForSnapshot(db,other.snapshot);
+  const gap=await setup(other.ws,other.loc,'2026-09-02');await db.query('DELETE FROM audit_findings WHERE job_id=$1',[gap.job]);
+  expect(await deriveActionsForSnapshot(db,gap.snapshot)).toMatchObject({completed:0,expired:1});
+  expect((await db.query("SELECT measurement_state FROM actions WHERE workspace_id=$1 AND template_key='review-response'",[other.ws])).rows[0].measurement_state).toBe('not_eligible');
+ });
+ it('claim hook resolves job IDs, rejects stale/foreign scope, and converges full claim retries',async()=>{
+  const f=await setup(),foreign=await setup();
+  await expect(deriveActionsForClaim(f.job,foreign.ws,f.loc,db)).rejects.toThrow('scope');
+  await expect(deriveActionsForClaim(f.job,f.ws,foreign.loc,db)).rejects.toThrow('scope');
+  expect((await db.query('SELECT id FROM actions WHERE workspace_id=$1',[f.ws])).rows).toHaveLength(0);
+  await setup(f.ws,f.loc,'2026-09-02');
+  await expect(deriveActionsForClaim(f.job,f.ws,f.loc,db)).rejects.toThrow('stale_snapshot');
+  const claim=await setup();await db.query('DELETE FROM scan_snapshots WHERE id=$1',[claim.snapshot]);
+  await db.query("UPDATE locations SET is_primary=true WHERE id=$1",[claim.loc]);
+  const slug='claim-'+claim.job;
+  await db.query('UPDATE audit_jobs SET share_slug=$1 WHERE id=$2',[slug,claim.job]);
+  await db.query("INSERT INTO workspace_members(workspace_id,user_id,email,role,accepted_at) VALUES($1,$2,'final-runtime@example.test','owner',now())",[claim.ws,actor]);
+  ports.pool=db;
+  try {
+   const input={claimSlug:slug,userId:actor,workspaceName:'Fixture',primaryLocation:{name:'Fixture',address:null},market:'hk' as const,timezone:'Asia/Hong_Kong',locale:'en'};
+   const hooks={buildSnapshot:async(jobId:string)=>{await buildSnapshot(snapshotRepository(db),jobId);},deriveActions:(job:string,ws:string,loc:string)=>deriveActionsForClaim(job,ws,loc,db)};
+   const first=await completeWorkspaceClaim(claimCompletionStore,input,hooks);expect(first.kind).toBe('completed');
+   const ids=(await db.query('SELECT id FROM actions WHERE workspace_id=$1 ORDER BY id',[claim.ws])).rows;
+   expect(await completeWorkspaceClaim(claimCompletionStore,input,hooks)).toEqual(first);
+   expect((await db.query('SELECT id FROM actions WHERE workspace_id=$1 ORDER BY id',[claim.ws])).rows).toEqual(ids);
+   expect(ids.length).toBeGreaterThan(0);
+   expect((await db.query("SELECT id FROM audit_events WHERE workspace_id=$1 AND event='action.derived'",[claim.ws])).rows).toHaveLength(1);
+   await db.query('UPDATE workspace_members SET accepted_at=NULL WHERE workspace_id=$1',[claim.ws]);
+   expect((await completeWorkspaceClaim(claimCompletionStore,input,hooks)).kind).toBe('forbidden');
+  }finally{ports.pool=undefined;}
+ });
+
+ it('Fix Pack lists newest50 pending/approved rows only from owned jobs',async()=>{
+  const f=await setup(),foreign=await setup(),repo=fixPackRepository(db);
+  await db.query("INSERT INTO agent_runs(job_id,finding_key,agent_key,status,output,created_at) SELECT $1,'fixture','review_reply_agent',CASE WHEN n%2=0 THEN 'approved' ELSE 'draft' END,'{}','2026-09-01'::timestamptz+n*interval '1 second' FROM generate_series(1,55) n",[f.job]);
+  await db.query("INSERT INTO agent_runs(job_id,finding_key,agent_key,status,output) VALUES($1,'fixture','review_reply_agent','rejected','{}'),($2,'fixture','review_reply_agent','draft','{}')",[f.job,foreign.job]);
+  const rows=await repo.list(f.ws);expect(rows).toHaveLength(50);
+  expect(rows.every(row=>row.job_id===f.job&&['approved','draft'].includes(row.status))).toBe(true);
+  expect(rows.map(row=>Date.parse(row.created_at))).toEqual([...rows.map(row=>Date.parse(row.created_at))].sort((a,b)=>b-a));
+ });
+ it('does not use foreign output version workspace identities as existing draft priority evidence',async()=>{
+  const f=await setup(),foreign=await setup();await deriveActionsForSnapshot(db,f.snapshot);
+  const action=(await db.query("SELECT id,priority_score FROM actions WHERE workspace_id=$1 AND template_key='review-response'",[f.ws])).rows[0];
+  await db.query("INSERT INTO output_versions(workspace_id,action_id,version_no,body,author_type,approval_state) VALUES($1,$2,1,'Fixture','user','draft')",[foreign.ws,action.id]);
+  await deriveActionsForSnapshot(db,f.snapshot);
+  expect((await db.query('SELECT priority_score FROM actions WHERE id=$1',[action.id])).rows[0].priority_score).toBe(action.priority_score);
+ });
+ it('claim derivation write failure leaves no partial actions or derived audit',async()=>{
+  const f=await setup();
+  await owner.query("CREATE FUNCTION fixture_fail_claim_action() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.template_key='google-reconnect' THEN RAISE EXCEPTION 'fixture claim failure'; END IF; RETURN NEW; END $$");
+  await owner.query('CREATE TRIGGER fixture_fail_claim_action BEFORE INSERT ON actions FOR EACH ROW EXECUTE FUNCTION fixture_fail_claim_action()');
+  try {
+   await expect(deriveActionsForClaim(f.job,f.ws,f.loc,db)).rejects.toThrow('fixture claim failure');
+   expect((await db.query('SELECT id FROM actions WHERE workspace_id=$1',[f.ws])).rows).toHaveLength(0);
+   expect((await db.query('SELECT id FROM audit_events WHERE workspace_id=$1',[f.ws])).rows).toHaveLength(0);
+  }finally{await owner.query('DROP TRIGGER fixture_fail_claim_action ON actions');await owner.query('DROP FUNCTION fixture_fail_claim_action()');}
+ });
+
+});

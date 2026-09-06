@@ -1,5 +1,4 @@
 import { recordClaimAuditEvent } from "@/lib/repositories/claims";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { requestFingerprint } from "@/lib/security/request-fingerprint";
 
 /**
@@ -42,7 +41,7 @@ export function ipHashFor(req: Request): string | null {
 }
 
 /** Best-effort: a failed audit insert is logged, never thrown, so it cannot undo the mutation it describes. */
-export async function recordEvent(db: SupabaseClient | undefined, input: AuditEventInput): Promise<void> {
+export async function recordNeonEvent(input: AuditEventInput): Promise<void> {
   const payload: Record<string, unknown> = { locale: input.locale ?? null, ...(input.ipHash ? { ip_hash: input.ipHash } : {}), ...(input.payload ?? {}) };
   try {
     const row = {
@@ -55,15 +54,8 @@ export async function recordEvent(db: SupabaseClient | undefined, input: AuditEv
       entity_id: input.entityId ?? null,
       payload,
     };
-    if (!db) { await recordClaimAuditEvent(row); return; }
-    const { error } = await db.from("audit_events").insert(row);
-    if (error) console.error("[workspace/audit] event not recorded", { category: "audit_insert_failed", event: input.event });
+    await recordClaimAuditEvent(row);
   } catch {
     console.error("[workspace/audit] event not recorded", { category: "audit_insert_failed", event: input.event });
   }
-}
-
-/** Explicit Neon transport for migrated consumers; legacy callers retain their supplied database. */
-export async function recordNeonEvent(input: AuditEventInput): Promise<void> {
-  return recordEvent(undefined, input);
 }

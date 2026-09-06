@@ -1,15 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { AUDIT_EVENTS, ipHashFor, recordEvent } from "./audit";
+import { AUDIT_EVENTS, ipHashFor, recordNeonEvent } from "./audit";
 
-function db(insert: (row: unknown) => Promise<{ error: unknown }>) {
-  return { from: () => ({ insert }) } as unknown as SupabaseClient;
-}
+const insert = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/repositories/claims', () => ({recordClaimAuditEvent:insert}));
 
-describe("recordEvent", () => {
+describe("recordNeonEvent", () => {
   it("writes the §3.11 row shape with locale and ip_hash merged into the payload", async () => {
-    const insert = vi.fn(async () => ({ error: null }));
-    await recordEvent(db(insert), {
+    insert.mockResolvedValue(undefined);
+    await recordNeonEvent( {
       workspaceId: "ws-1",
       locationId: "loc-1",
       actorType: "user",
@@ -35,10 +33,10 @@ describe("recordEvent", () => {
 
   it("omits ip_hash when unknown and never throws on a failed insert", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-    const insert = vi.fn(async () => ({ error: { message: "boom" } }));
-    await expect(recordEvent(db(insert), { workspaceId: "ws-1", actorType: "system", event: "action.updated" })).resolves.toBeUndefined();
+    insert.mockRejectedValue(new Error("boom"));
+    await expect(recordNeonEvent( { workspaceId: "ws-1", actorType: "system", event: "action.updated" })).resolves.toBeUndefined();
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ actor_id: null, location_id: null, payload: { locale: null } }));
-    await expect(recordEvent(db(async () => { throw new Error("down"); }), { workspaceId: "ws-1", actorType: "system", event: "action.updated" })).resolves.toBeUndefined();
+    await expect(recordNeonEvent( { workspaceId: "ws-1", actorType: "system", event: "action.updated" })).resolves.toBeUndefined();
     consoleError.mockRestore();
   });
 

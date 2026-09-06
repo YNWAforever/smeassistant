@@ -1,6 +1,7 @@
+import { closeResolvedActions, upsertOpenActions, deriveLegacyActionsForSnapshot as deriveActionsForSnapshot } from "@/lib/repositories/legacy-action-derivation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { closeResolvedActions, deriveActions, deriveActionsForSnapshot, rankActions, upsertOpenActions, type FindingRow } from "./actions";
+import { deriveActions, rankActions, type FindingRow } from "./actions";
 import type { ScanDiffRow, SnapshotRecord } from "./snapshots";
 
 type Row = Record<string, unknown>;

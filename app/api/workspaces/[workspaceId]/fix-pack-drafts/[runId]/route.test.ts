@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const authorizeWorkspaceRequest = vi.fn();
-const from = vi.fn();
+const scope = vi.fn();
+const review = vi.fn();
 
 vi.mock("@/lib/auth", () => ({ authorizeWorkspaceRequest: (...args: unknown[]) => authorizeWorkspaceRequest(...args) }));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({ from }) }));
+vi.mock("@/lib/repositories/fix-pack", () => ({ fixPackRepository: () => ({ scope, review }) }));
 
 const WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";
 const RUN_ID = "22222222-2222-4222-8222-222222222222";
@@ -29,28 +30,10 @@ function patch(body: unknown) {
   );
 }
 
-/** agent_runs mock: run lookup (select...maybeSingle) + conditional update. */
-function runsTable({ runWorkspaceId, updatedRows = [{ id: RUN_ID }] }: { runWorkspaceId: string | null; updatedRows?: unknown[] }) {
-  const update = vi.fn(() => ({
-    eq: () => ({
-      eq: () => ({ select: async () => ({ data: updatedRows, error: null }) }),
-    }),
-  }));
-  from.mockImplementation((table: string) => {
-    if (table !== "agent_runs") throw new Error(`unexpected table ${table}`);
-    return {
-      select: () => ({
-        eq: () => ({
-          maybeSingle: async () => ({
-            data: runWorkspaceId === null ? null : { job_id: "job-1", audit_jobs: { workspace_id: runWorkspaceId } },
-            error: null,
-          }),
-        }),
-      }),
-      update,
-    };
-  });
-  return { update };
+function runsTable({runWorkspaceId,updatedRows=[{id:RUN_ID}]}:{runWorkspaceId:string|null;updatedRows?:unknown[]}) {
+ scope.mockResolvedValue(runWorkspaceId ? {workspaceId:runWorkspaceId,locationId:'actual-location'} : null);
+ review.mockResolvedValue(updatedRows.length>0);
+ return {update:review};
 }
 
 afterEach(() => vi.resetAllMocks());
@@ -64,7 +47,7 @@ describe("PATCH /api/workspaces/[workspaceId]/fix-pack-drafts/[runId]", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
     expect(authorizeWorkspaceRequest).toHaveBeenCalledWith({ id: WORKSPACE_ID }, { minRole: "manager" });
-    expect(update).toHaveBeenCalledWith(expect.objectContaining({ status: "approved", reviewed_by: "user-1" }));
+    expect(update).toHaveBeenCalledWith(RUN_ID, WORKSPACE_ID, "actual-location", "approved", "user-1");
   });
 
   it("lets a manager reject a pending draft", async () => {
@@ -78,7 +61,7 @@ describe("PATCH /api/workspaces/[workspaceId]/fix-pack-drafts/[runId]", () => {
     authorizeWorkspaceRequest.mockResolvedValue({ ok: false, status: 403, code: "forbidden" });
 
     expect((await patch({ status: "approved" })).status).toBe(403);
-    expect(from).not.toHaveBeenCalled();
+    expect(scope).not.toHaveBeenCalled();
   });
 
   it("404s a run belonging to a different workspace, same as a nonexistent run", async () => {
@@ -103,4 +86,10 @@ describe("PATCH /api/workspaces/[workspaceId]/fix-pack-drafts/[runId]", () => {
     expect((await patch({ status: "draft" })).status).toBe(400);
     expect((await patch({ status: "delivered" })).status).toBe(400);
   });
+});
+
+it.each([{status:'approved'}, {status:'approved',locationId:'allowed',workspaceId:WORKSPACE_ID}])('denies manager outside actual persisted location %#', async body => {
+ const allowed=auth('manager'); allowed.membership.locationScope=['allowed'] as never;
+ authorizeWorkspaceRequest.mockResolvedValue(allowed); runsTable({runWorkspaceId:WORKSPACE_ID});
+ expect((await patch(body)).status).toBe(403); expect(review).not.toHaveBeenCalled();
 });

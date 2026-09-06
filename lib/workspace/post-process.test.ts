@@ -16,7 +16,7 @@ vi.mock("@/lib/repositories/legacy-measurements", async (importOriginal) => {
   return { ...original, legacyMeasurementRepository: vi.fn(original.legacyMeasurementRepository) };
 });
 vi.mock("@/lib/workspace/snapshots", () => ({ buildSnapshot: mocks.build, loadDiffForHeadJob: mocks.diff }));
-vi.mock("@/lib/workspace/actions", () => ({ deriveActionsForSnapshot: mocks.derive }));
+vi.mock("@/lib/repositories/legacy-action-derivation", () => ({ deriveLegacyActionsForSnapshot: mocks.derive }));
 vi.mock("@/lib/workspace/measurements", () => ({ recordMeasurements: mocks.measure }));
 vi.mock("@/lib/workspace/notify", () => ({ notifyWorkspace: mocks.notify }));
 

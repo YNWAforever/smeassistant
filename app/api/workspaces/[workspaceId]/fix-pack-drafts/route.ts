@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
 import { t } from "@/lib/i18n";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { fixPackRepository, type FixPackDraft } from "@/lib/repositories/fix-pack";
 import { resolveFindingLabel } from "@/lib/report/finding-label";
 import { resolveFixPackDraftText } from "@/lib/report/view-model";
 
@@ -29,17 +29,6 @@ import { resolveFixPackDraftText } from "@/lib/report/view-model";
 const WORKSPACE_ID_RE = /^[0-9a-f-]{36}$/i;
 const LOCALES = new Set(["en", "zh-HK", "zh-TW"]);
 
-interface DraftRow {
-  id: string;
-  job_id: string;
-  finding_key: string;
-  agent_key: string;
-  status: string;
-  output: Record<string, unknown> | null;
-  created_at: string;
-  audit_jobs: { workspace_id: string; business_name: string | null } | null;
-}
-
 export async function GET(req: Request, { params }: { params: Promise<{ workspaceId: string }> }) {
   const { workspaceId } = await params;
   if (!WORKSPACE_ID_RE.test(workspaceId)) {
@@ -55,21 +44,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ workspac
   const auth = await authorizeWorkspaceRequest({ id: workspaceId });
   if (!auth.ok) return NextResponse.json({ error: auth.code }, { status: auth.status });
 
-  const supabase = supabaseServer();
-  const { data: rows, error } = await supabase
-    .from("agent_runs")
-    .select("id, job_id, finding_key, agent_key, status, output, created_at, audit_jobs!inner(workspace_id, business_name)")
-    .eq("audit_jobs.workspace_id", workspaceId)
-    .in("status", ["draft", "approved"])
-    .order("created_at", { ascending: false })
-    .limit(50);
-  if (error) {
+  let rows: FixPackDraft[];
+  try { rows = await fixPackRepository().list(workspaceId); } catch {
     console.error("[owner/fix-pack-drafts] list failed", { category: "fix_pack_list_failed" });
     return NextResponse.json({ error: "unavailable" }, { status: 500 });
   }
 
   const translate = (key: string) => t(locale, `report.${key}`);
-  const drafts = ((rows ?? []) as unknown as DraftRow[]).map((row) => ({
+  const drafts = rows.map((row) => ({
     id: row.id,
     jobId: row.job_id,
     businessName: row.audit_jobs?.business_name ?? null,

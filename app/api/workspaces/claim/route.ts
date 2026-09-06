@@ -1,3 +1,4 @@
+import { deriveActionsForClaim } from "@/lib/repositories/action-derivation";
 import { snapshotRepository } from "@/lib/repositories/snapshots";
 import { NextResponse } from "next/server";
 import { claimCompletionStore } from "@/lib/repositories/claims";
@@ -111,11 +112,7 @@ export async function POST(req: Request) {
       buildSnapshot: async (jobId) => {
         await buildSnapshot(snapshotRepository(), jobId);
       },
-      deriveActions: async () => {
-        // Task 10 must wire Neon artifact derivation here. A Neon snapshot ID
-        // must never be passed to the deferred Supabase artifact writer.
-        throw new Error("neon_action_derivation_pending_task_10");
-      },
+      deriveActions: deriveActionsForClaim,
     });
     switch (result.kind) {
       case "completed":

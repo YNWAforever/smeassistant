@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
   legacy: vi.fn(),
+  derive: vi.fn(async () => undefined),
   snapshotRepo: { marker: "neon" },
   buildSnapshot: vi.fn(async () => undefined),
   completeWorkspaceClaim: vi.fn(),
   enforceRateLimit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 1 })),
 }));
 
+vi.mock("@/lib/repositories/action-derivation", () => ({ deriveActionsForClaim: mocks.derive }));
 vi.mock("@/lib/repositories/snapshots", () => ({ snapshotRepository: () => mocks.snapshotRepo }));
 vi.mock("@/lib/workspace/snapshots", () => ({ buildSnapshot: mocks.buildSnapshot, loadSnapshotForJob: vi.fn(async () => null) }));
 vi.mock("@/lib/auth", () => ({ getUser: mocks.getUser }));
@@ -59,7 +61,7 @@ describe("POST /api/workspaces/claim", () => {
     expect(mocks.legacy).not.toHaveBeenCalled();
   });
 
-  it("builds a Neon snapshot after eligibility and exposes pending Task 10 derivation without legacy writes", async () => {
+  it("builds a Neon snapshot and derives by hook job and persisted scope", async () => {
     mocks.getUser.mockResolvedValue(USER);
     mocks.completeWorkspaceClaim.mockImplementationOnce(async (_store, _input, hooks) => {
       await hooks.buildSnapshot("job-1", "ws-1", "loc-1");
@@ -69,8 +71,8 @@ describe("POST /api/workspaces/claim", () => {
     const response = await post(BODY);
     expect(mocks.buildSnapshot).toHaveBeenCalledWith(mocks.snapshotRepo, "job-1");
     expect(mocks.legacy).not.toHaveBeenCalled();
-    expect(response.status).toBe(503);
-    expect(await response.json()).toEqual({ error: "unavailable" });
+    expect(response.status).toBe(200);
+    expect(mocks.derive).toHaveBeenCalledWith("job-1", "ws-1", "loc-1");
   });
 
   it("401s without a verified session, before reading the body", async () => {
@@ -185,4 +187,18 @@ describe("parseClaimBody", () => {
       error: "primary_location.address is invalid",
     });
   });
+});
+
+it('returns503 when Neon derivation fails after eligibility, without invoking legacy transport',async()=>{
+ mocks.getUser.mockResolvedValue(USER);
+ mocks.derive.mockRejectedValueOnce(new Error('fixture derivation failure'));
+ mocks.completeWorkspaceClaim.mockImplementationOnce(async(_store,_input,hooks)=>{
+  await hooks.deriveActions('job-1','ws-1','loc-1');
+ });
+ const log=vi.spyOn(console,'error').mockImplementation(()=>{});
+ try {
+  const response=await post(BODY);expect(response.status).toBe(503);
+  expect(await response.json()).toEqual({error:'unavailable'});
+  expect(mocks.legacy).not.toHaveBeenCalled();
+ }finally{log.mockRestore();}
 });
