@@ -1,11 +1,10 @@
-/** Temporary Task 13 adapter: retain the caller's original fenced legacy client.
- * Remove when completion orchestration supplies a PostgreSQL transaction client. */
+/** Historical facade fixture for retained domain tests only; never import from application runtime. */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { MeasurementRepository } from './measurements';
+import type { MeasurementRepository } from '@/lib/repositories/measurements';
 import { legacySnapshotRepository } from './legacy-snapshots';
-import { loadSnapshotById } from '../workspace/snapshots';
-import { completionId } from '../workspace/completion-id';
-import type { MeasurableActionRow, ExportedVersionRow, MeasurementFactType } from '../workspace/measurements';
+import { loadSnapshotById } from '@/lib/workspace/snapshots';
+import { completionId } from '@/lib/workspace/completion-id';
+import type { MeasurableActionRow, ExportedVersionRow, MeasurementFactType } from '@/lib/workspace/measurements';
 export function legacyMeasurementRepository(db: SupabaseClient): MeasurementRepository {
  return {
   base: (head) => loadSnapshotById(legacySnapshotRepository(db), head.comparableTo!),

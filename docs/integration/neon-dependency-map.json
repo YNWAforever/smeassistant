@@ -194,11 +194,12 @@
     "kind": "runtime",
     "task": 13,
     "replacements": [
-      "lib/workspace/completion-transaction.ts"
+      "lib/workspace/completion-transaction.ts",
+      "test/integration/neon-completion.integration.test.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task13 explicit same-transaction Neon repositories; actual stale-client and recovery coverage"
     ]
   },
   {
@@ -1431,12 +1432,12 @@
     "kind": "runtime",
     "task": 13,
     "replacements": [
-      "lib/workspace/completion-transaction.ts"
+      "lib/workspace/completion-transaction.ts",
+      "test/integration/neon-completion.integration.test.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "Task13 explicit same-transaction Neon repositories; actual stale-client and recovery coverage"
     ]
   },
   {
@@ -1444,13 +1445,12 @@
     "kind": "runtime",
     "task": 13,
     "replacements": [
-      "lib/workspace/completion-transaction.ts"
+      "lib/workspace/completion-transaction.ts",
+      "test/integration/neon-completion.integration.test.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference",
-      "RPC consumer"
+      "Task13 explicit same-transaction Neon repositories; actual stale-client and recovery coverage"
     ]
   },
   {
@@ -1501,15 +1501,12 @@
     "kind": "runtime",
     "task": 13,
     "replacements": [
-      "lib/repositories/notifications.ts",
-      "lib/workspace/notify.ts"
+      "lib/workspace/completion-transaction.ts",
+      "test/integration/neon-completion.integration.test.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference",
-      "Task 10 approve/export use lib/repositories/notifications.ts through shared explicit domain functions. Named legacyNotificationRepository and original-client wrappers remain for Task 11/13 consumers; broader notification migration still pending.",
-      "Task 11 verified shared Neon notification dedupe. Only named original-client completion wrappers/tests remain deferred to Task 13; no email sender exists in this app."
+      "Task13 explicit same-transaction Neon repositories; actual stale-client and recovery coverage"
     ]
   },
   {
@@ -1530,13 +1527,12 @@
     "kind": "runtime",
     "task": 13,
     "replacements": [
-      "lib/workspace/completion-transaction.ts"
+      "lib/workspace/completion-transaction.ts",
+      "test/integration/neon-completion.integration.test.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference",
-      "Task 10 extraction calls named legacy-action-derivation.ts with the original supplied fenced completion client; actual legacy completion suite retained."
+      "Task13 explicit same-transaction Neon repositories; actual stale-client and recovery coverage"
     ]
   },
   {
@@ -2747,16 +2743,14 @@
   {
     "path": "test/integration/workspace-completion.integration.test.ts",
     "kind": "test",
-    "task": 14,
+    "task": 13,
     "replacements": [
-      "test/e2e/identity-provider.ts",
-      "test/integration/neon-database.ts"
+      "lib/workspace/completion-transaction.ts",
+      "test/integration/neon-completion.integration.test.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference",
-      "RPC consumer"
+      "Task13 explicit same-transaction Neon repositories; actual stale-client and recovery coverage"
     ]
   },
   {
@@ -2816,11 +2810,12 @@
     "kind": "runtime",
     "task": 13,
     "replacements": [
-      "lib/repositories/snapshots.ts"
+      "test/helpers/legacy-snapshots.ts",
+      "lib/workspace/completion-transaction.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "Temporary narrow domain adapter preserving supplied Supabase completion fence client. Task 10 replaces artifact readers and Task 13 replaces completion caller then removes this adapter. No mixed-database fallback."
+      "Task13 removed runtime legacy adapter; historical domain fixture retained only under test/helpers"
     ]
   },
   {
@@ -2828,11 +2823,12 @@
     "kind": "runtime",
     "task": 13,
     "replacements": [
-      "lib/repositories/measurements.ts"
+      "test/helpers/legacy-measurements.ts",
+      "lib/workspace/completion-transaction.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "Temporary narrow measurement adapter preserving supplied fenced Supabase client. Task 13 must wire the PostgreSQL completion transaction client and remove this adapter."
+      "Task13 removed runtime legacy adapter; historical domain fixture retained only under test/helpers"
     ]
   },
   {
@@ -2864,12 +2860,12 @@
     "kind": "runtime",
     "task": 13,
     "replacements": [
-      "lib/repositories/action-derivation.ts",
+      "test/helpers/legacy-action-derivation.ts",
       "lib/workspace/completion-transaction.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "Temporary explicit derivation adapter shares pure actions rules and retains the original supplied Supabase completion client and fences. Task 13 must port completion transaction ownership before removing it."
+      "Task13 removed runtime legacy adapter; historical domain fixture retained only under test/helpers"
     ]
   },
   {
@@ -2906,6 +2902,54 @@
     "status": "replaced",
     "evidence": [
       "Negative import boundary assertions only; no legacy database execution."
+    ]
+  },
+  {
+    "path": "test/helpers/legacy-snapshots.ts",
+    "kind": "test",
+    "task": 14,
+    "status": "pending",
+    "replacements": [
+      "Explicit repository fixtures without Supabase transport in Task14"
+    ],
+    "evidence": [
+      "Task13 preserved historical domain assertions in test-only facade; Task14 ports fixtures before Task15 dependency removal"
+    ]
+  },
+  {
+    "path": "test/helpers/legacy-measurements.ts",
+    "kind": "test",
+    "task": 14,
+    "status": "pending",
+    "replacements": [
+      "Explicit repository fixtures without Supabase transport in Task14"
+    ],
+    "evidence": [
+      "Task13 preserved historical domain assertions in test-only facade; Task14 ports fixtures before Task15 dependency removal"
+    ]
+  },
+  {
+    "path": "test/helpers/legacy-action-derivation.ts",
+    "kind": "test",
+    "task": 14,
+    "status": "pending",
+    "replacements": [
+      "Explicit repository fixtures without Supabase transport in Task14"
+    ],
+    "evidence": [
+      "Task13 preserved historical domain assertions in test-only facade; Task14 ports fixtures before Task15 dependency removal"
+    ]
+  },
+  {
+    "path": "test/helpers/legacy-notifications.ts",
+    "kind": "test",
+    "task": 14,
+    "status": "pending",
+    "replacements": [
+      "Explicit repository fixtures without Supabase transport in Task14"
+    ],
+    "evidence": [
+      "Task13 preserved historical domain assertions in test-only facade; Task14 ports fixtures before Task15 dependency removal"
     ]
   }
 ]

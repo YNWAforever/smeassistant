@@ -1,3 +1,4 @@
+import { completeWorkspaceScan } from "@/lib/workspace/completion";
 import { waitUntil } from "@vercel/functions";
 import {
   collectScanProviders,
@@ -70,13 +71,11 @@ export async function runScan(
     persistAeoSnapshots: (id) =>
       persistAeoSnapshots(id, buildAeoSnapshotDeps(getPool())),
   });
-  // Task13 must replace this visible intermediate boundary before release.
-  // Never pass a Neon job to the legacy workspace completion client.
   if (result.status !== "already_claimed") {
-    console.error("[scan] workspace completion pending", {
-      category: "neon_workspace_completion_pending",
-      jobId,
-    });
+    try {
+      const completion=await completeWorkspaceScan(getPool(),jobId);
+      if(completion.status==="retry")console.error("[scan] workspace completion retry",{category:"workspace_completion_retry",jobId});
+    }catch{console.error("[scan] workspace completion unavailable",{category:"workspace_completion_unavailable",jobId});}
   }
   return result;
 }

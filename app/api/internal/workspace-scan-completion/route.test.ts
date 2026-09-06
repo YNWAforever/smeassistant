@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const { complete, reconcile, admin } = vi.hoisted(() => ({ complete: vi.fn(), reconcile: vi.fn(), admin: vi.fn(() => ({})) }));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: admin }));
+vi.mock("@/lib/db/client", () => ({ getPool: admin }));
 vi.mock("@/lib/workspace/completion", () => ({ completeWorkspaceScan: complete, reconcileWorkspaceScans: reconcile }));
 import { POST } from "./route";
 const secret = "fixture-completion-secret-32-bytes-long";

@@ -1,8 +1,7 @@
-/** Temporary Task 10/13 adapter. Remove when artifact and completion callers use Neon.
- * Always retains the supplied legacy client, including completion fence headers. */
+/** Historical facade fixture for retained domain tests only; never import from application runtime. */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { completionId } from "@/lib/workspace/completion-id";
-import type { SnapshotRepository } from "./snapshots";
+import type { SnapshotRepository } from "@/lib/repositories/snapshots";
 import type { SnapshotJobRow, ScanSnapshotRow, ScanDiffRow, SnapshotRecord } from "@/lib/workspace/snapshots";
 async function ensureSnapshotAudit(db: SupabaseClient, snapshot: SnapshotRecord): Promise<void> {
   // Preserve pre-existing randomly keyed audit rows from earlier releases.

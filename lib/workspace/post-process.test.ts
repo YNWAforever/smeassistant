@@ -1,6 +1,6 @@
-import { legacyMeasurementRepository } from "@/lib/repositories/legacy-measurements";
+import { measurementRepository } from "@/lib/repositories/measurements";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PoolClient } from "pg";
 
 const mocks = vi.hoisted(() => ({
   build: vi.fn(),
@@ -11,32 +11,22 @@ const mocks = vi.hoisted(() => ({
   job: null as Record<string, unknown> | null,
   lookupError: null as { message: string } | null,
 }));
-vi.mock("@/lib/repositories/legacy-measurements", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@/lib/repositories/legacy-measurements")>();
-  return { ...original, legacyMeasurementRepository: vi.fn(original.legacyMeasurementRepository) };
+vi.mock("@/lib/repositories/measurements", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/repositories/measurements")>();
+  return { ...original, measurementRepository: vi.fn(original.measurementRepository) };
 });
 vi.mock("@/lib/workspace/snapshots", () => ({ buildSnapshot: mocks.build, loadDiffForHeadJob: mocks.diff }));
-vi.mock("@/lib/repositories/legacy-action-derivation", () => ({ deriveLegacyActionsForSnapshot: mocks.derive }));
+vi.mock("@/lib/repositories/action-derivation", () => ({ actionDerivationRepository: () => ({derive:mocks.derive}) }));
 vi.mock("@/lib/workspace/measurements", () => ({ recordMeasurements: mocks.measure }));
-vi.mock("@/lib/workspace/notify", () => ({ notifyWorkspace: mocks.notify }));
+vi.mock("@/lib/workspace/notify", () => ({ notifyWithRepository: mocks.notify }));
 
 import { postProcessWorkspaceScan } from "./post-process";
 
-const db = {
-  from: (table: string) => ({
-    select: () => ({
-      eq: () => ({
-        maybeSingle: async () => ({
-          data: table === "audit_jobs" ? mocks.job : table === "workspaces" ? { slug: "kam-man-house" } : table === "locations" ? { slug: "yik-yam" } : null,
-          error: table === "audit_jobs" ? mocks.lookupError : null,
-        }),
-      }),
-    }),
-  }),
-} as unknown as SupabaseClient;
+vi.mock("@/lib/repositories/notifications",()=>({notificationRepository:()=>db}));
+const db = {query:vi.fn(async(sql:string)=>{if(sql.includes("audit_jobs")){if(mocks.lookupError)throw new Error("post-process job lookup failed");return {rows:mocks.job?[mocks.job]:[]};}return {rows:[{slug:sql.includes("locations")?"yik-yam":"kam-man-house"}]};})} as unknown as PoolClient;
 
 beforeEach(() => {
-  vi.mocked(legacyMeasurementRepository).mockClear();
+  vi.mocked(measurementRepository).mockClear();
   mocks.lookupError = null;
   mocks.build.mockReset();
   mocks.derive.mockReset();
@@ -60,7 +50,7 @@ describe("postProcessWorkspaceScan", () => {
     mocks.build.mockResolvedValue({ id: "snap" });
     mocks.derive.mockResolvedValue({});
     expect(await postProcessWorkspaceScan(db, "job")).toEqual({ ran: true, snapshotId: "snap", error: null });
-    expect(mocks.derive).toHaveBeenCalledWith(db, "snap");
+    expect(mocks.derive).toHaveBeenCalledWith("snap");
     expect(mocks.measure).not.toHaveBeenCalled();
     expect(mocks.notify).toHaveBeenCalledWith(
       db,
@@ -77,8 +67,8 @@ describe("postProcessWorkspaceScan", () => {
 
     mocks.diff.mockResolvedValue({ id: "diff-1", comparable: true });
     await postProcessWorkspaceScan(db, "job");
-    expect(legacyMeasurementRepository).toHaveBeenCalledWith(db);
-    expect(mocks.measure).toHaveBeenCalledWith(vi.mocked(legacyMeasurementRepository).mock.results.at(-1)?.value, { headSnapshot: { id: "snap" }, diff: { id: "diff-1", comparable: true } });
+    expect(measurementRepository).toHaveBeenCalledWith(db);
+    expect(mocks.measure).toHaveBeenCalledWith(vi.mocked(measurementRepository).mock.results.at(-1)?.value, { headSnapshot: { id: "snap" }, diff: { id: "diff-1", comparable: true } });
   });
 
   it("a measurement failure stays visible for retry and does not announce completion", async () => {
@@ -158,3 +148,5 @@ it("does not announce a comparable scan whose measurement base is not ready", as
   expect(mocks.notify).not.toHaveBeenCalled();
   spy.mockRestore();
 });
+
+it("uses persisted evidence only at completion composition",async()=>{mocks.build.mockResolvedValue({id:"snap"});await postProcessWorkspaceScan(db,"job");expect(mocks.build).toHaveBeenCalledWith(expect.anything(),"job",{persistedOnly:true});});

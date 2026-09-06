@@ -87,6 +87,8 @@ export interface SnapshotJobRow {
 }
 
 export interface BuildSnapshotOptions {
+  /** Completion/recovery only uses saved evidence; missing website checks remain unavailable. */
+  persistedOnly?: boolean;
   fetchWebsite?: (url: string) => Promise<WebsiteChecks>;
   now?: Date;
 }
@@ -182,9 +184,12 @@ export async function buildSnapshot(repo: SnapshotRepository, jobId: string, opt
     return existing;
   }
   const websiteUrl = websiteUrlOf(job);
-  const websiteChecks = existing ? existing.websiteChecks : websiteUrl ? await (opts.fetchWebsite ?? runWebsiteChecks)(websiteUrl) : null;
+  const websiteChecks = existing ? existing.websiteChecks : websiteUrl && !opts.persistedOnly ? await (opts.fetchWebsite ?? runWebsiteChecks)(websiteUrl) : null;
 
   const moduleStates = existing?.moduleStates ?? deriveModuleStates(job, websiteChecks, Boolean(websiteUrl));
+  if (!existing && opts.persistedOnly && websiteUrl && !websiteChecks) {
+    moduleStates.website = { ...moduleStates.website, limitationCode: "WEBSITE_CHECKS_NOT_RECORDED" };
+  }
   const metrics = existing?.metrics ?? deriveMetrics({
     rawData: job.raw_data,
     findings: findings,

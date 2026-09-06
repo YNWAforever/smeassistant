@@ -1,4 +1,4 @@
-import { legacyMeasurementRepository } from "@/lib/repositories/legacy-measurements";
+import { legacyMeasurementRepository } from "@/test/helpers/legacy-measurements";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ScanDiffRow, SnapshotRecord } from "./snapshots";

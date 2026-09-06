@@ -1,11 +1,11 @@
-/** Task 13 completion adapter: every write uses the original supplied, fenced Supabase client. */
+/** Historical facade fixture for retained domain tests only; never import from application runtime. */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { legacySnapshotRepository } from './legacy-snapshots';
-import { completionId } from '../workspace/completion-id';
-import { OPEN_ACTION_STATES } from '../domain';
-import { deriveActions, type DerivedAction, type FindingRow } from '../workspace/actions';
-import { loadDiffForHeadJob, loadSnapshotById, type ScanDiffRow } from '../workspace/snapshots';
-import { WEBSITE_FAQ_TRIGGER, type TemplateKey } from '../workspace/templates';
+import { completionId } from '@/lib/workspace/completion-id';
+import { OPEN_ACTION_STATES } from '@/lib/domain';
+import { deriveActions, type DerivedAction, type FindingRow } from '@/lib/workspace/actions';
+import { loadDiffForHeadJob, loadSnapshotById, type ScanDiffRow } from '@/lib/workspace/snapshots';
+import { WEBSITE_FAQ_TRIGGER, type TemplateKey } from '@/lib/workspace/templates';
 function impactOf(finding:FindingRow):number {
  const value=Number(finding.score_impact); return Number.isFinite(value)?value:0;
 }

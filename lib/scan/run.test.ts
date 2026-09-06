@@ -208,32 +208,12 @@ describe("runScan", () => {
   });
 });
 
-describe("pending Neon workspace completion bridge", () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    completionMock.mockReset();
-    vi.restoreAllMocks();
-  });
-  it.each(["true", "false"])(
-    "never sends Neon jobs to legacy completion when flag=%s",
-    async (flag) => {
-      vi.stubEnv("WORKSPACE_COMPLETION_ENABLED", flag);
-      const log = vi.spyOn(console, "error").mockImplementation(() => {});
-      await expect(runScan("job", "session")).resolves.toEqual({
-        status: "done",
-      });
-      expect(completionMock).not.toHaveBeenCalled();
-      expect(log).toHaveBeenCalledWith("[scan] workspace completion pending", {
-        category: "neon_workspace_completion_pending",
-        jobId: "job",
-      });
-    },
-  );
+describe("Neon workspace completion bridge",()=>{
+ afterEach(()=>{vi.unstubAllEnvs();completionMock.mockClear();completionMock.mockResolvedValue({status:"completed"});vi.restoreAllMocks();});
+ it.each(["true","false"])("completes Neon jobs independent of internal receiver flag=%s",async flag=>{completionMock.mockClear();vi.stubEnv("WORKSPACE_COMPLETION_ENABLED",flag);await expect(runScan("job","session")).resolves.toEqual({status:"done"});expect(completionMock).toHaveBeenCalledWith({query:runtimeMocks.query},"job");});
+ it("does not change persisted terminal result when workspace effects need retry",async()=>{completionMock.mockResolvedValueOnce({status:"retry"});const log=vi.spyOn(console,"error").mockImplementation(()=>{});await expect(runScan("job","session")).resolves.toEqual({status:"done"});expect(log).toHaveBeenCalledWith("[scan] workspace completion retry",{category:"workspace_completion_retry",jobId:"job"});});
+ it("does not complete work claimed by another runner",async()=>{completionMock.mockClear();vi.mocked(processScan).mockResolvedValueOnce({status:"already_claimed"});await runScan("job","session");expect(completionMock).not.toHaveBeenCalled();});
 });
-vi.mock("@/lib/supabase/admin", () => ({
-  supabaseServer: () => ({ marker: "legacy" }),
-}));
-
 describe("runScan host terminal lifetime", () => {
   afterEach(() => {
     vi.unstubAllEnvs();

@@ -1,4 +1,4 @@
-import { legacySnapshotRepository } from "@/lib/repositories/legacy-snapshots";
+import { legacySnapshotRepository } from "@/test/helpers/legacy-snapshots";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildSnapshot, linkComparable, rowToSnapshot, websiteUrlOf, type ScanDiffRow } from "./snapshots";

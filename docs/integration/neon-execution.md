@@ -8,7 +8,7 @@ Analytics storage and HTTP credentials belong to the app. Hosts that end work wh
 
 Intermediate release restrictions:
 
-- `runScan` logs `neon_workspace_completion_pending` for executed jobs. Task13 must replace this explicit seam with Neon workspace completion before release. Legacy completion is never called for Neon job IDs.
+- `runScan` invokes fenced Neon workspace completion after execution. Workspace effect failures remain retryable in the completion ledger independently of engine status. See `NEON-RUNNER-COMPATIBILITY.md` for the external receiver gate.
 - `seed:demo` fails before imports or writes with `demo_seed_neon_migration_pending`. Task15 owns the Neon demo fixture rewrite.
 - External Cloudflare workers are outside this checkout. Their consumers must adopt this explicit store/analytics/evidence contract before rollout. The legacy `createServiceClient` export is removed. No external worker or provider was modified.
 - Historical migrations are unchanged. Package dependency/lockfile cleanup and retained scheduler/worker deployment checks remain owned by later migration tasks.

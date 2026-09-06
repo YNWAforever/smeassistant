@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { localized } from "@/lib/domain";
-import { hasNotificationSince, notifyWorkspace, workspaceHomeHref } from "./notify";
+import { hasNotificationSince, notifyWorkspace, workspaceHomeHref } from "@/test/helpers/legacy-notifications";
 
 type Row = Record<string, unknown>;
 
