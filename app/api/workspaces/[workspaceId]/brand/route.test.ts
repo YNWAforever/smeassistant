@@ -73,7 +73,6 @@ describe("PUT /api/workspaces/[workspaceId]/brand", () => {
     expect(mocks.authorizeWorkspaceRequest).toHaveBeenCalledWith({ id: WORKSPACE_ID }, { minRole: "owner" });
     expect(mocks.enforceRateLimit).toHaveBeenCalledWith(expect.objectContaining({ scope: "brand_update", identifiers: ["user-1"], failClosed: true }));
     expect(mocks.putBrand).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({
         workspaceId: WORKSPACE_ID,
         actorId: "user-1",

@@ -1,4 +1,5 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { assetRepository } from "@/lib/repositories/assets";
+import { createPrivateBlobStorage } from "@/lib/storage/private-blob";
 import type { LocationSummary } from "@/lib/workspace/queries";
 
 /**
@@ -69,31 +70,20 @@ export function storagePathFor(workspaceId: string, assetId: string, filename: s
 }
 
 export async function listAssets(
-  db: SupabaseClient,
   workspaceId: string,
   locations: Array<Pick<LocationSummary, "id" | "name">> = [],
   opts: { signedUrls?: boolean } = {},
 ): Promise<AssetItem[]> {
-  const { data, error } = await db.from("assets").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).returns<AssetRow[]>();
-  if (error) throw new Error("assets lookup failed");
-  const rows = data ?? [];
-  const byLocation = new Map(locations.map((l) => [l.id, l.name]));
-  let signed = new Map<string, string | null>();
-  if (opts.signedUrls !== false && rows.length) {
-    const result = await db.storage.from(ASSET_BUCKET).createSignedUrls(rows.map((r) => r.storage_path), SIGNED_URL_SECONDS);
-    if (!result.error && result.data) signed = new Map(result.data.filter((item) => item.signedUrl && item.path).map((item) => [item.path as string, item.signedUrl]));
-  }
-  return rows.map((row) => ({
-    ...row,
-    signedUrl: signed.get(row.storage_path) ?? null,
+  const rows = await assetRepository().list(workspaceId);
+  const byLocation = new Map(locations.map(l => [l.id, l.name]));
+  return Promise.all(rows.map(async row => ({ ...row,
+    signedUrl: opts.signedUrls !== false && row.storage_path.startsWith(`${workspaceId}/${row.id}/`) ? await signedUrlFor(row.storage_path) : null,
     locationName: row.location_id ? byLocation.get(row.location_id) ?? null : null,
-  }));
+  })));
 }
-
-export async function signedUrlFor(db: SupabaseClient, storagePath: string): Promise<string | null> {
-  const { data, error } = await db.storage.from(ASSET_BUCKET).createSignedUrl(storagePath, SIGNED_URL_SECONDS);
-  if (error || !data?.signedUrl) return null;
-  return data.signedUrl;
+export async function signedUrlFor(storagePath: string): Promise<string | null> {
+  try { return await createPrivateBlobStorage().sign(ASSET_BUCKET, storagePath, SIGNED_URL_SECONDS); }
+  catch { return null; }
 }
 
 export interface InsertAssetInput {
@@ -110,13 +100,13 @@ export interface InsertAssetInput {
 }
 
 /** Upload the object first, then insert the row; a failed insert removes the object so the bucket never holds orphans. */
-export async function insertAsset(db: SupabaseClient, input: InsertAssetInput): Promise<AssetRow> {
+export async function insertAsset(input: InsertAssetInput): Promise<AssetRow> {
   const assetId = input.id ?? crypto.randomUUID();
   const filename = safeFilename(input.filename, input.contentType);
   const storagePath = storagePathFor(input.workspaceId, assetId, filename);
-  const bucket = db.storage.from(ASSET_BUCKET);
-  const upload = await bucket.upload(storagePath, input.bytes, { contentType: input.contentType, upsert: false, cacheControl: "0" });
-  if (upload.error) throw new Error("asset_storage_upload_failed");
+  const storage = createPrivateBlobStorage();
+  try { await storage.upload(ASSET_BUCKET, storagePath, input.bytes, { contentType: input.contentType, overwrite: false }); }
+  catch { throw new Error("asset_storage_upload_failed"); }
   const row = {
     id: assetId,
     workspace_id: input.workspaceId,
@@ -129,12 +119,11 @@ export async function insertAsset(db: SupabaseClient, input: InsertAssetInput): 
     rights_confirmed_at: null,
     uploaded_by: input.uploadedBy,
   };
-  const { data, error } = await db.from("assets").insert(row).select("*").single<AssetRow>();
-  if (error || !data) {
-    await bucket.remove([storagePath]).catch(() => undefined);
+  try { return await assetRepository().insert(row); }
+  catch {
+    await storage.remove(ASSET_BUCKET, [storagePath]).catch(() => undefined);
     throw new Error("asset_insert_failed");
   }
-  return data;
 }
 
 export interface UpdateRightsInput {
@@ -146,19 +135,9 @@ export interface UpdateRightsInput {
 }
 
 /** Sets rights_confirmed_at with the decision; returns null when the asset is not in this workspace. */
-export async function updateAssetRights(db: SupabaseClient, input: UpdateRightsInput): Promise<AssetRow | null> {
-  const patch: Record<string, unknown> = {
-    rights_status: input.rightsStatus,
-    rights_confirmed_at: (input.now ?? new Date()).toISOString(),
-  };
-  if (input.altText !== undefined) patch.alt_text = input.altText;
-  const { data, error } = await db.from("assets").update(patch).eq("id", input.assetId).eq("workspace_id", input.workspaceId).select("*").maybeSingle<AssetRow>();
-  if (error) throw new Error("asset_update_failed");
-  return data ?? null;
+export async function updateAssetRights(input: UpdateRightsInput): Promise<AssetRow | null> {
+  return assetRepository().updateRights(input, (input.now ?? new Date()).toISOString());
 }
-
-export async function getAsset(db: SupabaseClient, workspaceId: string, assetId: string): Promise<AssetRow | null> {
-  const { data, error } = await db.from("assets").select("*").eq("id", assetId).eq("workspace_id", workspaceId).maybeSingle<AssetRow>();
-  if (error) throw new Error("asset_lookup_failed");
-  return data ?? null;
+export async function getAsset(workspaceId: string, assetId: string): Promise<AssetRow | null> {
+  return assetRepository().get(workspaceId, assetId);
 }

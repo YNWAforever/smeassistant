@@ -13,6 +13,8 @@ const root = resolve(import.meta.dirname, "..");
 const uuid = () => crypto.randomUUID();
 
 const sentinels = {
+  BLOB_READ_WRITE_TOKEN: `vercel_blob_rw_fixture_${uuid()}`,
+  VERCEL_OIDC_TOKEN: `oidc-secret-${uuid()}`,
   SERPAPI_API_KEY: `serpapi-secret-${uuid()}`,
   RAPIDAPI_INSTAGRAM_KEY: `rapidapi-instagram-secret-${uuid()}`,
   GOOGLE_OAUTH_CLIENT_SECRET: `google-oauth-secret-${uuid()}`,

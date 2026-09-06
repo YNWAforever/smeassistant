@@ -12,42 +12,12 @@ const state = vi.hoisted(() => ({
   signed: vi.fn(),
 }));
 
-function queryFor(table: string) {
-  let columns = "";
-  const query = {
-    select(value: string) {
-      columns = value;
-      state.selections.push({ table, columns });
-      return query;
-    },
-    eq(_column: string, jobId: string) {
-      state.selections[state.selections.length - 1]!.jobId = jobId;
-      return query;
-    },
-    order() {
-      if (state.queryThrows) return Promise.reject(new Error("thrown database credential detail"));
-      return Promise.resolve({
-        data: state.queryError ? null : state.rows,
-        error: state.queryError,
-      });
-    },
-  };
-  return query;
-}
-
-vi.mock("server-only", () => ({}));
-
-vi.mock("@/lib/supabase/admin", () => ({
-  supabaseServer: vi.fn(() => ({
-    from: (table: string) => queryFor(table),
-    storage: {
-      from: (bucket: string) => {
-        if (bucket !== "report-evidence") throw new Error("unexpected bucket");
-        return { createSignedUrls: state.signed };
-      },
-    },
-  })),
-}));
+vi.mock("@/lib/repositories/evidence", () => ({ evidenceRepository: () => ({ list: async (jobId: string) => {
+  state.selections.push({ table: "report_evidence", columns: "", jobId });
+  if (state.queryThrows || state.queryError) throw new Error("database credential detail");
+  return state.rows;
+} }) }));
+vi.mock("@/lib/storage/private-blob", () => ({ createPrivateBlobStorage: () => ({ sign: state.signed }) }));
 
 import { loadAuthorizedEvidence } from "./load-authorized";
 
@@ -68,7 +38,6 @@ const storedRow = {
 
 describe("loadAuthorizedEvidence", () => {
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://project.supabase.co";
     state.rows = [];
     state.queryError = null;
     state.queryThrows = false;
@@ -76,14 +45,9 @@ describe("loadAuthorizedEvidence", () => {
     state.signError = null;
     state.signThrows = false;
     state.selections.length = 0;
-    state.signed.mockReset().mockImplementation(async (paths: string[], expiresIn: number) => {
-      if (state.signThrows) throw new Error("thrown storage token detail");
-      return {
-      data: state.signError ? null : state.signData,
-      error: state.signError,
-      paths,
-      expiresIn,
-    };
+    state.signed.mockReset().mockImplementation(async (_namespace: string, path: string) => {
+      if (state.signThrows || state.signError) throw new Error("storage token detail");
+      return `https://fixture.private.blob.vercel-storage.com/report-evidence/${path}?vercel-blob-signature=signed-token`;
     });
   });
 
@@ -103,7 +67,7 @@ describe("loadAuthorizedEvidence", () => {
       table: "report_evidence",
       jobId: "job-1",
     })]);
-    expect(state.signed).toHaveBeenCalledWith([storedRow.storage_path], 300);
+    expect(state.signed).toHaveBeenCalledWith("report-evidence", storedRow.storage_path, 300);
     expect(model.items).toHaveLength(2);
     expect(model.items[0]?.mediaUrl).toContain("signed-token");
   });
@@ -206,41 +170,11 @@ describe("loadAuthorizedEvidence", () => {
 
     const model = await loadAuthorizedEvidence("job-1");
 
-    expect(state.signed).toHaveBeenCalledWith([storedRow.storage_path], 300);
+    expect(state.signed).toHaveBeenCalledWith("report-evidence", storedRow.storage_path, 300);
     expect(model.items.map((item) => item.id)).toEqual([
       "evidence-1",
       "valid-metadata",
     ]);
-  });
-
-  it("accepts only an exact signed URL with one non-empty bounded token", async () => {
-    const secondDigest = "b".repeat(64);
-    const secondPath = `job-1/instagram/post/${secondDigest}.jpg`;
-    state.rows = [
-      storedRow,
-      { ...storedRow, id: "evidence-2", storage_path: secondPath },
-    ];
-    state.signData = [
-      {
-        path: storedRow.storage_path,
-        signedUrl: `https://project.supabase.co/storage/v1/object/sign/report-evidence/${storedRow.storage_path}?token=&debug=credential-detail`,
-      },
-      {
-        path: secondPath,
-        signedUrl: `https://project.supabase.co/storage/v1/object/sign/report-evidence/${secondPath}?token=signed-token#fragment`,
-      },
-      {
-        path: secondPath,
-        signedUrl: `https://project.supabase.co/storage/v1/object/sign/report-evidence/${secondPath}?token=signed-token`,
-      },
-    ];
-
-    const model = await loadAuthorizedEvidence("job-1");
-
-    expect(model.items[0]?.mediaUrl).toBeNull();
-    expect(model.items[1]?.mediaUrl).toBe(
-      `https://project.supabase.co/storage/v1/object/sign/report-evidence/${secondPath}?token=signed-token`,
-    );
   });
 
   it("rejects an invalid report identifier before querying private evidence", async () => {
@@ -264,7 +198,7 @@ describe("loadAuthorizedEvidence", () => {
     state.rows = [storedRow];
     state.signThrows = true;
     await expect(loadAuthorizedEvidence("job-1")).rejects.toThrow("evidence_signing_failed");
-    await expect(loadAuthorizedEvidence("job-1")).rejects.not.toThrow("thrown storage token detail");
+    await expect(loadAuthorizedEvidence("job-1")).rejects.not.toThrow("storage token detail");
     state.signThrows = false;
 
     state.signError = new Error("storage token detail");

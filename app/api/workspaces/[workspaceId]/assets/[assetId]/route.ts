@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
 import { isLocale } from "@/lib/locale";
-import { supabaseServer } from "@/lib/supabase/admin";
 import { getAsset, updateAssetRights } from "@/lib/workspace/assets";
-import { ipHashFor, recordEvent } from "@/lib/workspace/audit";
+import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
 
 /**
  * PATCH /api/workspaces/[workspaceId]/assets/[assetId] { rights_status: 'approved'|'rejected', alt_text?, locale? } → 200
@@ -43,22 +42,21 @@ export async function PATCH(req: Request, context: { params: Promise<{ workspace
   const member = await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager" });
   if (!member.ok) return bad(member.code, member.status);
 
-  const db = supabaseServer();
   try {
-    const asset = await getAsset(db, workspaceId, assetId);
+    const asset = await getAsset(workspaceId, assetId);
     if (!asset) return bad("not_found", 404);
     if (asset.location_id) {
       const scoped = await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager", locationId: asset.location_id });
       if (!scoped.ok) return bad(scoped.code, scoped.status);
     }
-    const updated = await updateAssetRights(db, {
+    const updated = await updateAssetRights({
       workspaceId,
       assetId,
       rightsStatus: body.rights_status,
       ...(body.alt_text !== undefined ? { altText: body.alt_text } : {}),
     });
     if (!updated) return bad("not_found", 404);
-    await recordEvent(db, {
+    await recordNeonEvent({
       workspaceId,
       locationId: updated.location_id,
       actorType: "user",

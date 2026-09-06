@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
 import { isLocale } from "@/lib/locale";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
-import { supabaseServer } from "@/lib/supabase/admin";
 import { insertAsset, isAllowedMime, isAssetKind, listAssets, MAX_ASSET_BYTES, signedUrlFor } from "@/lib/workspace/assets";
-import { ipHashFor, recordEvent } from "@/lib/workspace/audit";
+import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
 import { loadWorkspaceContext } from "@/lib/workspace/queries";
 
 /**
@@ -27,7 +26,7 @@ export async function GET(_req: Request, context: { params: Promise<{ workspaceI
   if (!auth.ok) return bad(auth.code, auth.status);
   try {
     const ctx = await loadWorkspaceContext(auth.membership);
-    const assets = await listAssets(supabaseServer(), workspaceId, ctx.locations);
+    const assets = await listAssets(workspaceId, ctx.locations);
     return NextResponse.json({ assets });
   } catch {
     console.error("[api/workspaces/assets] list failed", { category: "asset_list_failed" });
@@ -67,14 +66,13 @@ export async function POST(req: Request, context: { params: Promise<{ workspaceI
   const limit = await enforceRateLimit({ req, scope: "asset_upload", identifiers: [auth.user.id], failClosed: true });
   if (!limit.allowed) return rateLimitedResponse(limit.retryAfterSeconds);
 
-  const db = supabaseServer();
   try {
     if (locationId) {
       const ctx = await loadWorkspaceContext(auth.membership);
       if (!ctx.locations.some((l) => l.id === locationId)) return bad("invalid_location");
     }
     const filename = file instanceof File && file.name ? file.name : `asset.${file.type.split("/")[1] ?? "bin"}`;
-    const asset = await insertAsset(db, {
+    const asset = await insertAsset({
       workspaceId,
       locationId,
       kind,
@@ -84,7 +82,7 @@ export async function POST(req: Request, context: { params: Promise<{ workspaceI
       altText,
       uploadedBy: auth.user.id,
     });
-    await recordEvent(db, {
+    await recordNeonEvent({
       workspaceId,
       locationId,
       actorType: "user",
@@ -96,7 +94,7 @@ export async function POST(req: Request, context: { params: Promise<{ workspaceI
       ipHash: ipHashFor(req),
       payload: { kind, filename: asset.filename, bytes: file.size, content_type: file.type },
     });
-    const signedUrl = await signedUrlFor(db, asset.storage_path);
+    const signedUrl = await signedUrlFor(asset.storage_path);
     return NextResponse.json({ assetId: asset.id, signedUrl }, { status: 201 });
   } catch (error) {
     const category = error instanceof Error && error.message === "asset_storage_upload_failed" ? "asset_storage_upload_failed" : "asset_insert_failed";

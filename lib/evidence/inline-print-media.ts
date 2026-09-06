@@ -11,8 +11,8 @@ import "server-only";
  *
  * lib/evidence/safe-media.ts is deliberately not reused. That fetcher hardens
  * requests to untrusted third-party hosts with DNS and IP pinning, which would
- * work against our own Supabase CDN. These URLs are already origin-pinned and
- * structurally validated by safeSignedUrl in load-authorized.ts.
+ * work against our own private Blob CDN. These URLs are already origin-pinned and
+ * structurally validated by the private storage adapter before loading.
  */
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_BYTES = 2 * 1024 * 1024;

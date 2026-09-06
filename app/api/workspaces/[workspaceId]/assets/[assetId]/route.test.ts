@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   authorizeWorkspaceRequest: vi.fn(),
   getAsset: vi.fn(),
   updateAssetRights: vi.fn(),
-  recordEvent: vi.fn(async () => undefined),
+  recordNeonEvent: vi.fn(async () => undefined),
 }));
 
 vi.mock("@/lib/auth", () => ({ authorizeWorkspaceRequest: mocks.authorizeWorkspaceRequest }));
@@ -13,7 +13,7 @@ vi.mock("@/lib/workspace/assets", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/workspace/assets")>();
   return { ...original, getAsset: mocks.getAsset, updateAssetRights: mocks.updateAssetRights };
 });
-vi.mock("@/lib/workspace/audit", () => ({ recordEvent: mocks.recordEvent, ipHashFor: () => "hash" }));
+vi.mock("@/lib/workspace/audit", () => ({ recordNeonEvent: mocks.recordNeonEvent, ipHashFor: () => "hash" }));
 
 import { PATCH } from "./route";
 
@@ -64,19 +64,19 @@ describe("PATCH /api/workspaces/[workspaceId]/assets/[assetId]", () => {
   it("404s an asset from another workspace", async () => {
     mocks.getAsset.mockResolvedValueOnce(null);
     expect((await patch({ rights_status: "approved" })).status).toBe(404);
-    expect(mocks.recordEvent).not.toHaveBeenCalled();
+    expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
   });
 
   it("sets rights_confirmed_at and records asset.rights_confirmed", async () => {
     const res = await patch({ rights_status: "approved", alt_text: "Lunch set", locale: "en" });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true, rights_status: "approved", rights_confirmed_at: "2026-09-03T10:00:00Z" });
-    expect(mocks.updateAssetRights).toHaveBeenCalledWith(expect.anything(), { workspaceId: WORKSPACE, assetId: ASSET, rightsStatus: "approved", altText: "Lunch set" });
-    expect(mocks.recordEvent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ event: "asset.rights_confirmed", entityType: "asset", entityId: ASSET, locationId: LOCATION, actorId: USER.id, locale: "en", payload: { rights_status: "approved", filename: "lunch.jpg" } }));
+    expect(mocks.updateAssetRights).toHaveBeenCalledWith({ workspaceId: WORKSPACE, assetId: ASSET, rightsStatus: "approved", altText: "Lunch set" });
+    expect(mocks.recordNeonEvent).toHaveBeenCalledWith(expect.objectContaining({ event: "asset.rights_confirmed", entityType: "asset", entityId: ASSET, locationId: LOCATION, actorId: USER.id, locale: "en", payload: { rights_status: "approved", filename: "lunch.jpg" } }));
   });
 
   it("leaves alt_text untouched when it is omitted", async () => {
     await patch({ rights_status: "rejected" });
-    expect(mocks.updateAssetRights).toHaveBeenCalledWith(expect.anything(), { workspaceId: WORKSPACE, assetId: ASSET, rightsStatus: "rejected" });
+    expect(mocks.updateAssetRights).toHaveBeenCalledWith({ workspaceId: WORKSPACE, assetId: ASSET, rightsStatus: "rejected" });
   });
 });

@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   insertAsset: vi.fn(),
   listAssets: vi.fn(),
   signedUrlFor: vi.fn(async () => "https://signed/url"),
-  recordEvent: vi.fn(async () => undefined),
+  recordNeonEvent: vi.fn(async () => undefined),
   loadWorkspaceContext: vi.fn(async () => ({ locations: [{ id: "11111111-1111-4111-8111-111111111111", name: "Yik Yam Street" }] })),
 }));
 
@@ -20,7 +20,7 @@ vi.mock("@/lib/workspace/assets", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/workspace/assets")>();
   return { ...original, insertAsset: mocks.insertAsset, listAssets: mocks.listAssets, signedUrlFor: mocks.signedUrlFor };
 });
-vi.mock("@/lib/workspace/audit", () => ({ recordEvent: mocks.recordEvent, ipHashFor: () => "hash" }));
+vi.mock("@/lib/workspace/audit", () => ({ recordNeonEvent: mocks.recordNeonEvent, ipHashFor: () => "hash" }));
 vi.mock("@/lib/workspace/queries", () => ({ loadWorkspaceContext: mocks.loadWorkspaceContext }));
 
 import { GET, POST } from "./route";
@@ -65,7 +65,7 @@ describe("POST /api/workspaces/[workspaceId]/assets", () => {
     expect(res.status).toBe(403);
     expect(mocks.authorizeWorkspaceRequest).toHaveBeenLastCalledWith({ id: WORKSPACE }, { minRole: "manager", locationId: LOCATION });
     expect(mocks.insertAsset).not.toHaveBeenCalled();
-    expect(mocks.recordEvent).not.toHaveBeenCalled();
+    expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
   });
 
   it("429s when the asset_upload budget is spent", async () => {
@@ -80,8 +80,8 @@ describe("POST /api/workspaces/[workspaceId]/assets", () => {
     const res = await POST(multipart({ kind: "image", location_id: LOCATION, alt_text: "  Lunch set  ", locale: "zh-HK" }, { bytes: 10, type: "image/jpeg", name: "lunch.jpg" }), params);
     expect(res.status).toBe(201);
     expect(await res.json()).toEqual({ assetId: "33333333-3333-4333-8333-333333333333", signedUrl: "https://signed/url" });
-    expect(mocks.insertAsset).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ workspaceId: WORKSPACE, locationId: LOCATION, kind: "image", filename: "lunch.jpg", contentType: "image/jpeg", altText: "Lunch set", uploadedBy: USER.id }));
-    expect(mocks.recordEvent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ event: "asset.uploaded", entityType: "asset", entityId: "33333333-3333-4333-8333-333333333333", actorId: USER.id, locale: "zh-HK", payload: expect.objectContaining({ kind: "image", bytes: 10 }) }));
+    expect(mocks.insertAsset).toHaveBeenCalledWith(expect.objectContaining({ workspaceId: WORKSPACE, locationId: LOCATION, kind: "image", filename: "lunch.jpg", contentType: "image/jpeg", altText: "Lunch set", uploadedBy: USER.id }));
+    expect(mocks.recordNeonEvent).toHaveBeenCalledWith(expect.objectContaining({ event: "asset.uploaded", entityType: "asset", entityId: "33333333-3333-4333-8333-333333333333", actorId: USER.id, locale: "zh-HK", payload: expect.objectContaining({ kind: "image", bytes: 10 }) }));
   });
 
   it("rejects a location that is not in the workspace", async () => {
@@ -95,7 +95,7 @@ describe("POST /api/workspaces/[workspaceId]/assets", () => {
     mocks.insertAsset.mockRejectedValueOnce(new Error("asset_storage_upload_failed"));
     const res = await POST(multipart({ kind: "menu" }, { bytes: 10, type: "application/pdf", name: "menu.pdf" }), params);
     expect(res.status).toBe(503);
-    expect(mocks.recordEvent).not.toHaveBeenCalled();
+    expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
   });
 });
 
@@ -110,7 +110,7 @@ describe("GET /api/workspaces/[workspaceId]/assets", () => {
     const res = await GET(new Request(`https://app.test/api/workspaces/${WORKSPACE}/assets`), params);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ assets: [{ id: "a1", signedUrl: "https://signed/a1" }] });
-    expect(mocks.listAssets).toHaveBeenCalledWith(expect.anything(), WORKSPACE, expect.any(Array));
+    expect(mocks.listAssets).toHaveBeenCalledWith(WORKSPACE, expect.any(Array));
   });
 
   it("401s without a session", async () => {

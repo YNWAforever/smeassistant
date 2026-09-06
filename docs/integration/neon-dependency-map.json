@@ -33,9 +33,10 @@
       "lib/repositories/evidence.ts",
       "lib/repositories/workspace.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
     ]
   },
   {
@@ -46,9 +47,10 @@
       "lib/repositories/evidence.ts",
       "lib/repositories/workspace.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
     ]
   },
   {
@@ -507,9 +509,10 @@
       "lib/repositories/evidence.ts",
       "lib/repositories/workspace.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
     ]
   },
   {
@@ -522,10 +525,11 @@
       "lib/repositories/assets.ts",
       "private object-storage adapter (provider decision pending Task 9)"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "supabaseServer reference",
-      "Supabase Storage upload/remove/signed-URL consumer"
+      "Supabase Storage upload/remove/signed-URL consumer",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
     ]
   },
   {
@@ -536,9 +540,10 @@
       "lib/repositories/evidence.ts",
       "lib/repositories/workspace.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
     ]
   },
   {
@@ -551,10 +556,11 @@
       "lib/repositories/assets.ts",
       "private object-storage adapter (provider decision pending Task 9)"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "supabaseServer reference",
-      "Supabase Storage upload/remove/signed-URL consumer"
+      "Supabase Storage upload/remove/signed-URL consumer",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
     ]
   },
   {
@@ -565,9 +571,10 @@
       "lib/repositories/evidence.ts",
       "lib/repositories/workspace.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
     ]
   },
   {
@@ -578,9 +585,10 @@
       "lib/repositories/evidence.ts",
       "lib/repositories/workspace.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
     ]
   },
   {
@@ -985,9 +993,10 @@
       "lib/repositories/evidence.ts",
       "lib/repositories/workspace.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
     ]
   },
   {
@@ -999,10 +1008,11 @@
       "lib/repositories/workspace.ts",
       "private object-storage adapter (provider decision pending Task 9)"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "supabaseServer reference",
-      "Supabase Storage upload/list/remove consumer"
+      "Supabase Storage upload/list/remove consumer",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
     ]
   },
   {
@@ -1231,10 +1241,11 @@
       "lib/repositories/evidence.ts",
       "lib/repositories/workspace.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "SupabaseClient type reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
     ]
   },
   {
@@ -1247,11 +1258,12 @@
       "lib/repositories/assets.ts",
       "private object-storage adapter (provider decision pending Task 9)"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
       "SupabaseClient type reference",
-      "Supabase Storage upload/remove/signed-URL consumer"
+      "Supabase Storage upload/remove/signed-URL consumer",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
     ]
   },
   {
@@ -1320,10 +1332,11 @@
       "lib/repositories/evidence.ts",
       "lib/repositories/workspace.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "SupabaseClient type reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
     ]
   },
   {
@@ -1334,10 +1347,11 @@
       "lib/repositories/evidence.ts",
       "lib/repositories/workspace.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "SupabaseClient type reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
     ]
   },
   {

@@ -1,6 +1,7 @@
 import { downloadEvidenceMedia, type MediaDownload } from "./safe-media";
 import type { EvidenceCandidate } from "./types";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { evidenceRepository } from "@/lib/repositories/evidence";
+import { createPrivateBlobStorage } from "@/lib/storage/private-blob";
 
 const EVIDENCE_BUCKET = "report-evidence";
 const JOB_SEGMENT = /^[A-Za-z0-9_-]{1,128}$/;
@@ -34,9 +35,6 @@ type StorageUploadOptions = {
   cacheControl: string;
 };
 
-/** One entry from a Storage listing. Supabase gives folders a null `id`. */
-type StorageEntry = { name: string; id: string | null };
-
 export interface EvidencePersistenceDeps {
   download: (url: string) => Promise<MediaDownload>;
   storage: {
@@ -46,13 +44,9 @@ export interface EvidencePersistenceDeps {
       options: StorageUploadOptions,
     ) => Promise<unknown>;
     remove: (paths: string[]) => Promise<unknown>;
-    /**
-     * Lists one level under a prefix. Required, not optional, so a fake that
-     * forgets it fails typecheck instead of silently skipping the sweep in
-     * deleteEvidenceForReport — which would be a test that proves erasure works
-     * while erasure quietly leaves objects behind.
-     */
-    list: (prefix: string, options: { limit: number; offset: number }) => Promise<unknown>;
+    /** Flat object listing, continued only with the provider cursor. */
+    list: (prefix: string, options: { limit: number; cursor?: string }) => Promise<{ paths: string[]; hasMore: boolean; cursor?: string }>;
+
   };
   rows: {
     upsert: (
@@ -89,43 +83,16 @@ function throwForApiError(result: unknown, code: string): void {
   }
 }
 
-function createEvidenceRowRepository(
-  supabase: ReturnType<typeof supabaseServer>,
-): EvidencePersistenceDeps["rows"] {
-  return {
-    async upsert(row, options) {
-      const { error } = await supabase.from("report_evidence").upsert(row, options);
-      if (error) throw new Error("evidence_row_upsert_failed");
-    },
-    async listPaths(jobId) {
-      const { data, error } = await supabase
-        .from("report_evidence")
-        .select("storage_path")
-        .eq("job_id", jobId);
-      if (error) throw new Error("evidence_path_query_failed");
-      return data ?? [];
-    },
-    async delete(jobId) {
-      const { error } = await supabase
-        .from("report_evidence")
-        .delete()
-        .eq("job_id", jobId);
-      if (error) throw new Error("evidence_row_delete_failed");
-    },
-  };
-}
-
 function createProductionEvidenceDeps(): EvidencePersistenceDeps {
-  const supabase = supabaseServer();
-  const bucket = supabase.storage.from(EVIDENCE_BUCKET);
+  // Lazy storage creation permits metadata-only retention without credentials.
   return {
     download: downloadEvidenceMedia,
     storage: {
-      upload: (path, bytes, options) => bucket.upload(path, bytes, options),
-      remove: (paths) => bucket.remove(paths),
-      list: (prefix, options) => bucket.list(prefix, options),
+      upload: (path, bytes, options) => createPrivateBlobStorage().upload(EVIDENCE_BUCKET, path, bytes, { contentType: options.contentType, overwrite: options.upsert }),
+      remove: paths => createPrivateBlobStorage().remove(EVIDENCE_BUCKET, paths),
+      list: (prefix, options) => createPrivateBlobStorage().list(EVIDENCE_BUCKET, prefix, options),
     },
-    rows: createEvidenceRowRepository(supabase),
+    rows: evidenceRepository(),
   };
 }
 
@@ -266,89 +233,28 @@ function ownedStoragePaths(
   return [...new Set(paths)];
 }
 
-/** Page size, recursion depth and entry ceiling for the prefix sweep below. */
 const SWEEP_PAGE_SIZE = 100;
-const SWEEP_MAX_DEPTH = 8;
-/**
- * Counts EVERY entry seen, folders included — not just the files that end up
- * removed. Bounding files alone let a prefix that returns a full page of folders
- * paginate forever: folder entries land in the next frontier rather than in
- * `files`, so the ceiling never tripped and the loop never exited. That hangs an
- * operator's erasure request instead of failing it, which is the worse of the two.
- */
 const SWEEP_MAX_ENTRIES = 10_000;
-/** Second, independent bound: no single prefix may be paged more than this. */
-const SWEEP_MAX_PAGES_PER_PREFIX = 200;
-
-/**
- * Supabase Storage rejects an over-large remove() batch, and the sweep can now
- * surface far more paths than the ≤41 evidence rows a job is capped at, so the
- * removal is chunked. An unchunked call would fail the whole erasure on exactly
- * the buckets that most needed sweeping.
- */
+const SWEEP_MAX_PAGES = 200;
 const REMOVE_BATCH_SIZE = 100;
 
-function storageEntries(result: unknown): StorageEntry[] {
-  const data = result && typeof result === "object" ? (result as { data?: unknown }).data : null;
-  if (!Array.isArray(data)) return [];
-  return data.flatMap((entry) => {
-    if (!entry || typeof entry !== "object") return [];
-    const name = (entry as { name?: unknown }).name;
-    if (typeof name !== "string" || !name || name.includes("/")) return [];
-    const id = (entry as { id?: unknown }).id;
-    return [{ name, id: typeof id === "string" ? id : null }];
-  });
-}
-
-/**
- * Every object actually sitting under `${jobId}/`, whatever report_evidence says.
- *
- * The row list is not a complete index of the bucket. persistEvidenceSnapshots
- * uploads the object and then writes the row, so any failure between the two —
- * a crashed function, a row write that errors — leaves an object with nothing
- * pointing at it. Erasing only row-referenced paths left those behind forever:
- * unreachable through the app and now undeletable, because the row that named
- * them is gone too. That is the state the design rejects a pure cascade for, and
- * it arrived by a different door.
- *
- * Walks breadth-first because Storage lists one level at a time and evidence
- * paths are `${jobId}/{provider}/{type}/{file}`. Bounded on depth, page count and
- * total objects: this runs inside an operator's erasure request, and an
- * unbounded walk over a malformed prefix would hang it.
- */
-async function sweepStoragePrefix(
-  jobId: string,
-  deps: EvidencePersistenceDeps,
-): Promise<string[]> {
+/** Discover every orphan before removing objects or rows; incomplete sweeps fail closed. */
+async function sweepStoragePrefix(jobId: string, deps: EvidencePersistenceDeps): Promise<string[]> {
   const files: string[] = [];
-  let seen = 0;
-  let frontier = [jobId];
-
-  for (let depth = 0; depth < SWEEP_MAX_DEPTH && frontier.length > 0; depth += 1) {
-    const next: string[] = [];
-    for (const prefix of frontier) {
-      for (let page = 0; page < SWEEP_MAX_PAGES_PER_PREFIX; page += 1) {
-        const result = await deps.storage.list(prefix, {
-          limit: SWEEP_PAGE_SIZE,
-          offset: page * SWEEP_PAGE_SIZE,
-        });
-        throwForApiError(result, "evidence_storage_list_failed");
-        const entries = storageEntries(result);
-        for (const entry of entries) {
-          const path = `${prefix}/${entry.name}`;
-          if (entry.id === null) next.push(path);
-          else files.push(path);
-        }
-        // Every entry counts, not just the files. See SWEEP_MAX_ENTRIES.
-        seen += entries.length;
-        if (seen > SWEEP_MAX_ENTRIES) throw new Error("evidence_storage_sweep_too_large");
-        if (entries.length < SWEEP_PAGE_SIZE) break;
-      }
-    }
-    frontier = next;
+  const cursors = new Set<string>();
+  let cursor: string | undefined;
+  for (let page = 0; page < SWEEP_MAX_PAGES; page++) {
+    let result: Awaited<ReturnType<EvidencePersistenceDeps["storage"]["list"]>>;
+    try { result = await deps.storage.list(jobId, { limit: SWEEP_PAGE_SIZE, ...(cursor ? { cursor } : {}) }); }
+    catch { throw new Error("evidence_storage_list_failed"); }
+    if (!Array.isArray(result.paths) || typeof result.hasMore !== "boolean") throw new Error("evidence_storage_list_failed");
+    files.push(...result.paths);
+    if (files.length > SWEEP_MAX_ENTRIES) throw new Error("evidence_storage_sweep_too_large");
+    if (!result.hasMore) return files;
+    if (!result.cursor || cursors.has(result.cursor)) throw new Error("evidence_storage_cursor_invalid");
+    cursors.add(result.cursor); cursor = result.cursor;
   }
-
-  return files;
+  throw new Error("evidence_storage_sweep_too_large");
 }
 
 export async function deleteEvidenceForReport(
