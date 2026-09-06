@@ -1,3 +1,4 @@
+import { legacySnapshotRepository } from "@/lib/repositories/legacy-snapshots";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AGENTS, AGENT_LLM_OPTIONS, parseAgentOutput, type AgentContext, type AgentKey } from "@/lib/agents";
 import { inLocationScope, roleAtLeast, type Membership } from "@/lib/auth";
@@ -166,10 +167,10 @@ async function resolveContext(db: SupabaseClient, input: LiveRunInput): Promise<
 
   // snapshotId → the action's source snapshot → the latest for the location.
   let snapshot: SnapshotRecord | null = null;
-  if (input.context.snapshotId) snapshot = await loadSnapshotById(db, input.context.snapshotId);
+  if (input.context.snapshotId) snapshot = await loadSnapshotById(legacySnapshotRepository(db), input.context.snapshotId);
   if (drafting && input.context.snapshotId && !snapshot) throw new AssistantAccessError("not_found");
   if (!snapshot && focusedRow?.source_snapshot_id) {
-    snapshot = await loadSnapshotById(db, focusedRow.source_snapshot_id);
+    snapshot = await loadSnapshotById(legacySnapshotRepository(db), focusedRow.source_snapshot_id);
     if (drafting && !snapshot) throw new AssistantAccessError("not_found");
   }
   if (drafting && snapshot) {
@@ -193,7 +194,7 @@ async function resolveContext(db: SupabaseClient, input: LiveRunInput): Promise<
 
   const [diff, base, openRows] = await Promise.all([
     loadDiffById(snapshot?.diffId ?? null, workspaceId, snapshot?.jobId ?? null),
-    snapshot?.comparableTo ? loadSnapshotById(db, snapshot.comparableTo) : Promise.resolve(null),
+    snapshot?.comparableTo ? loadSnapshotById(legacySnapshotRepository(db), snapshot.comparableTo) : Promise.resolve(null),
     loadActionRows(workspaceId, { locationId, states: ["recommended", "needs_input", "ready", "in_progress"] }),
   ]);
 

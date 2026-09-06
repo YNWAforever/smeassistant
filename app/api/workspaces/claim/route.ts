@@ -1,12 +1,11 @@
+import { snapshotRepository } from "@/lib/repositories/snapshots";
 import { NextResponse } from "next/server";
 import { claimCompletionStore } from "@/lib/repositories/claims";
 import { getUser } from "@/lib/auth";
 import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
-import { supabaseServer } from "@/lib/supabase/admin";
-import { deriveActionsForSnapshot } from "@/lib/workspace/actions";
 import { completeWorkspaceClaim, isValidTimezone, type ClaimMarket } from "@/lib/workspace/claim";
-import { buildSnapshot, loadSnapshotForJob } from "@/lib/workspace/snapshots";
+import { buildSnapshot } from "@/lib/workspace/snapshots";
 
 /**
  * POST /api/workspaces/claim (CLAUDE.md §3.2.3).
@@ -110,12 +109,12 @@ export async function POST(req: Request) {
     // this route after a partial failure converges.
     const result = await completeWorkspaceClaim(claimCompletionStore, { ...parsed.body, userId: user.id }, {
       buildSnapshot: async (jobId) => {
-        await buildSnapshot(supabaseServer(), jobId);
+        await buildSnapshot(snapshotRepository(), jobId);
       },
-      deriveActions: async (jobId) => {
-        const db = supabaseServer();
-        const snapshot = await loadSnapshotForJob(db, jobId);
-        if (snapshot) await deriveActionsForSnapshot(db, snapshot.id);
+      deriveActions: async () => {
+        // Task 10 must wire Neon artifact derivation here. A Neon snapshot ID
+        // must never be passed to the deferred Supabase artifact writer.
+        throw new Error("neon_action_derivation_pending_task_10");
       },
     });
     switch (result.kind) {

@@ -840,10 +840,11 @@
     "replacements": [
       "lib/repositories/workspaces.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "supabaseServer reference",
-      "Task7 completion writes use claimCompletionStore. Remaining Supabase buildSnapshot/loadSnapshotForJob hooks belong to Task9; deriveActionsForSnapshot belongs to Task10."
+      "Task7 completion writes use claimCompletionStore. Remaining Supabase buildSnapshot/loadSnapshotForJob hooks belong to Task9; deriveActionsForSnapshot belongs to Task10.",
+      "Task 9: eligible claim snapshot uses Neon; Task 10 action derivation explicitly fails closed with pending error and HTTP 503 until Neon artifact hook is wired. Not deployment ready."
     ]
   },
   {
@@ -1463,10 +1464,11 @@
       "lib/repositories/evidence.ts",
       "lib/repositories/workspace.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "SupabaseClient type reference",
+      "Task 9 snapshot/measurement checkpoint: explicit domain repository port with same-client PostgreSQL factory; deferred legacy callers explicitly choose narrow adapters owned by Tasks 10/13."
     ]
   },
   {
@@ -1681,10 +1683,11 @@
       "lib/repositories/evidence.ts",
       "lib/repositories/workspace.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "SupabaseClient type reference",
+      "Task 9 snapshot/measurement checkpoint: explicit domain repository port with same-client PostgreSQL factory; deferred legacy callers explicitly choose narrow adapters owned by Tasks 10/13."
     ]
   },
   {
@@ -2753,6 +2756,30 @@
     "evidence": [
       "Task 5 lazy identity regression retains the Supabase membership-store mock until Task 7.",
       "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "lib/repositories/legacy-snapshots.ts",
+    "kind": "runtime",
+    "task": 13,
+    "replacements": [
+      "lib/repositories/snapshots.ts"
+    ],
+    "status": "pending",
+    "evidence": [
+      "Temporary narrow domain adapter preserving supplied Supabase completion fence client. Task 10 replaces artifact readers and Task 13 replaces completion caller then removes this adapter. No mixed-database fallback."
+    ]
+  },
+  {
+    "path": "lib/repositories/legacy-measurements.ts",
+    "kind": "runtime",
+    "task": 13,
+    "replacements": [
+      "lib/repositories/measurements.ts"
+    ],
+    "status": "pending",
+    "evidence": [
+      "Temporary narrow measurement adapter preserving supplied fenced Supabase client. Task 13 must wire the PostgreSQL completion transaction client and remove this adapter."
     ]
   }
 ]

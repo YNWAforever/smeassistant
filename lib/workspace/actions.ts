@@ -1,3 +1,4 @@
+import { legacySnapshotRepository } from "@/lib/repositories/legacy-snapshots";
 import { completionId } from "@/lib/workspace/completion-id";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { localized, OPEN_ACTION_STATES, type Capability, type FactType, type LocalizedText, type Priority } from "@/lib/domain";
@@ -344,7 +345,7 @@ export async function closeResolvedActions(
 
 /** Full pipeline for one snapshot: derive → upsert → close, with one audit event. */
 export async function deriveActionsForSnapshot(db: SupabaseClient, snapshotId: string, opts: { now?: Date } = {}): Promise<UpsertResult & CloseResult> {
-  const snapshot = await loadSnapshotById(db, snapshotId);
+  const snapshot = await loadSnapshotById(legacySnapshotRepository(db), snapshotId);
   if (!snapshot) throw new Error("snapshot_not_found");
   if (!snapshot.workspaceId) throw new Error("snapshot_requires_workspace");
   const workspaceId = snapshot.workspaceId;
@@ -364,7 +365,7 @@ export async function deriveActionsForSnapshot(db: SupabaseClient, snapshotId: s
       .select("finding_key, module, severity, score_impact, owner_message_zh, owner_message_en, owner_action_zh, owner_action_en, evidence")
       .eq("job_id", snapshot.jobId)
       .returns<FindingRow[]>(),
-    loadDiffForHeadJob(db, snapshot.jobId),
+    loadDiffForHeadJob(legacySnapshotRepository(db), snapshot.jobId),
     db.from("brand_profiles").select("workspace_id").eq("workspace_id", workspaceId).maybeSingle(),
     db
       .from("oauth_connections")

@@ -1,3 +1,5 @@
+import { legacyMeasurementRepository } from "@/lib/repositories/legacy-measurements";
+import { legacySnapshotRepository } from "@/lib/repositories/legacy-snapshots";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { localized } from "@/lib/domain";
 import { deriveActionsForSnapshot } from "@/lib/workspace/actions";
@@ -75,16 +77,16 @@ export async function postProcessWorkspaceScan(db: SupabaseClient, jobId: string
     }
     if (job.status !== "done" && job.status !== "partial") return { ran: false, snapshotId: null, error: null };
 
-    const snapshot = await buildSnapshot(db, jobId);
+    const snapshot = await buildSnapshot(legacySnapshotRepository(db), jobId);
     snapshotId = snapshot.id;
     await deriveActionsForSnapshot(db, snapshot.id);
 
     // A missing measurement is an incomplete workspace update, even though
     // the original scan remains valid. Do not announce completed workspace
     // refresh until required side effects succeed.
-    const diff = await loadDiffForHeadJob(db, jobId);
+    const diff = await loadDiffForHeadJob(legacySnapshotRepository(db), jobId);
     if (diff?.comparable) {
-      const measurements = await recordMeasurements(db, { headSnapshot: snapshot, diff });
+      const measurements = await recordMeasurements(legacyMeasurementRepository(db), { headSnapshot: snapshot, diff });
       if (!measurements.comparable) throw new Error("measurement base snapshot not ready");
     }
 

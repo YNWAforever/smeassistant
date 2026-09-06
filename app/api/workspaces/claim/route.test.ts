@@ -3,10 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
   legacy: vi.fn(),
+  snapshotRepo: { marker: "neon" },
+  buildSnapshot: vi.fn(async () => undefined),
   completeWorkspaceClaim: vi.fn(),
   enforceRateLimit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 1 })),
 }));
 
+vi.mock("@/lib/repositories/snapshots", () => ({ snapshotRepository: () => mocks.snapshotRepo }));
+vi.mock("@/lib/workspace/snapshots", () => ({ buildSnapshot: mocks.buildSnapshot, loadSnapshotForJob: vi.fn(async () => null) }));
 vi.mock("@/lib/auth", () => ({ getUser: mocks.getUser }));
 vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => {mocks.legacy();return { from: vi.fn() };} }));
 vi.mock("@/lib/security/rate-limit", async (importOriginal) => {
@@ -53,6 +57,20 @@ describe("POST /api/workspaces/claim", () => {
     mocks.legacy.mockImplementation(()=>{throw new Error("legacy store unavailable");});
     expect((await post(BODY)).status).toBe(409);
     expect(mocks.legacy).not.toHaveBeenCalled();
+  });
+
+  it("builds a Neon snapshot after eligibility and exposes pending Task 10 derivation without legacy writes", async () => {
+    mocks.getUser.mockResolvedValue(USER);
+    mocks.completeWorkspaceClaim.mockImplementationOnce(async (_store, _input, hooks) => {
+      await hooks.buildSnapshot("job-1", "ws-1", "loc-1");
+      await hooks.deriveActions("job-1", "ws-1", "loc-1");
+      return { kind: "completed", workspaceSlug: "unexpected", locationId: "loc-1" };
+    });
+    const response = await post(BODY);
+    expect(mocks.buildSnapshot).toHaveBeenCalledWith(mocks.snapshotRepo, "job-1");
+    expect(mocks.legacy).not.toHaveBeenCalled();
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "unavailable" });
   });
 
   it("401s without a verified session, before reading the body", async () => {

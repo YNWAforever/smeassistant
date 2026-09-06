@@ -1,3 +1,4 @@
+import { legacyMeasurementRepository } from "@/lib/repositories/legacy-measurements";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -10,6 +11,10 @@ const mocks = vi.hoisted(() => ({
   job: null as Record<string, unknown> | null,
   lookupError: null as { message: string } | null,
 }));
+vi.mock("@/lib/repositories/legacy-measurements", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/repositories/legacy-measurements")>();
+  return { ...original, legacyMeasurementRepository: vi.fn(original.legacyMeasurementRepository) };
+});
 vi.mock("@/lib/workspace/snapshots", () => ({ buildSnapshot: mocks.build, loadDiffForHeadJob: mocks.diff }));
 vi.mock("@/lib/workspace/actions", () => ({ deriveActionsForSnapshot: mocks.derive }));
 vi.mock("@/lib/workspace/measurements", () => ({ recordMeasurements: mocks.measure }));
@@ -31,6 +36,7 @@ const db = {
 } as unknown as SupabaseClient;
 
 beforeEach(() => {
+  vi.mocked(legacyMeasurementRepository).mockClear();
   mocks.lookupError = null;
   mocks.build.mockReset();
   mocks.derive.mockReset();
@@ -71,7 +77,8 @@ describe("postProcessWorkspaceScan", () => {
 
     mocks.diff.mockResolvedValue({ id: "diff-1", comparable: true });
     await postProcessWorkspaceScan(db, "job");
-    expect(mocks.measure).toHaveBeenCalledWith(db, { headSnapshot: { id: "snap" }, diff: { id: "diff-1", comparable: true } });
+    expect(legacyMeasurementRepository).toHaveBeenCalledWith(db);
+    expect(mocks.measure).toHaveBeenCalledWith(vi.mocked(legacyMeasurementRepository).mock.results.at(-1)?.value, { headSnapshot: { id: "snap" }, diff: { id: "diff-1", comparable: true } });
   });
 
   it("a measurement failure stays visible for retry and does not announce completion", async () => {

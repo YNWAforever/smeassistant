@@ -1,3 +1,4 @@
+import { legacySnapshotRepository } from "@/lib/repositories/legacy-snapshots";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AGENTS, AGENT_LLM_OPTIONS, computeCostUsd, isAgentKey, parseAgentOutput, type AgentContext, type AgentKey, type AgentOutput, type SampledReview } from "@/lib/agents";
 import { localized } from "@/lib/domain";
@@ -153,7 +154,7 @@ export async function runAgentForAction(db: SupabaseClient, input: RunAgentInput
     row.location_id
       ? db.from("locations").select("id, slug, name, address, district").eq("id", row.location_id).maybeSingle<{ id: string; slug: string; name: string; address: string | null; district: string | null }>()
       : Promise.resolve({ data: null, error: null }),
-    row.source_snapshot_id ? loadSnapshotById(db, row.source_snapshot_id) : loadLatestSnapshot(db, row.workspace_id, row.location_id),
+    row.source_snapshot_id ? loadSnapshotById(legacySnapshotRepository(db), row.source_snapshot_id) : loadLatestSnapshot(db, row.workspace_id, row.location_id),
   ]);
   if (workspaceResult.error || brandResult.error || locationResult.error) throw new Error("run context lookup failed");
   const workspace = workspaceResult.data;

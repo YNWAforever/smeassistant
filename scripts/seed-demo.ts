@@ -1,3 +1,4 @@
+import { legacySnapshotRepository } from "@/lib/repositories/legacy-snapshots";
 /**
  * Seed the 錦汶館 demo workspace for local QA.
  *
@@ -229,7 +230,7 @@ async function seedSnapshot(
   // and the scan_diffs linkage from the persisted job, exactly as production
   // does after a scan. The location and link arguments are kept for the call
   // sites' readability; the builder reads both from the job and scan_diffs.
-  const built = await buildSnapshot(db, jobId, { fetchWebsite: async () => ({ evaluated: 0, passed: 0, results: [] }) });
+  const built = await buildSnapshot(legacySnapshotRepository(db), jobId, { fetchWebsite: async () => ({ evaluated: 0, passed: 0, results: [] }) });
   if (built.id !== snapshotId) {
     // Pin the fixed demo id so the seeded actions can reference it idempotently.
     unwrap("pin scan_snapshots id", await db.from("scan_snapshots").update({ id: snapshotId }).eq("id", built.id));

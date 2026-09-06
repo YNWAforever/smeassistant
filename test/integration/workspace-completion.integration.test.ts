@@ -1,3 +1,5 @@
+import { legacyMeasurementRepository } from "@/lib/repositories/legacy-measurements";
+import { legacySnapshotRepository } from "@/lib/repositories/legacy-snapshots";
 import { createHmac, randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -167,25 +169,25 @@ describe("workspace completion real database recovery and fences", () => {
       if new.workspace_id = '${workspace}'::uuid and new.measurement_state = 'measured' then raise exception 'injected state failure'; end if;
       return new; end; $$;
       create trigger it_completion_measurement_fault before update on public.actions for each row execute function public.it_completion_measurement_fault();`);
-    const head = await loadSnapshotForJob(db, job);
+    const head = await loadSnapshotForJob(legacySnapshotRepository(db), job);
     expect(head!.comparableTo).toBe(baseSnapshot);
     const diff: ScanDiffRow = { id: randomUUID(), base_job_id: base.jobId, head_job_id: job, comparable: true,
       incomparable_reason: null, composite_withheld_reason: null, intersection_modules: ["gbp"],
       composite_base: 20, composite_head: 60, composite_delta: 40, resolved_findings: [], regressed_findings: [],
       decayed_findings: [], lost_coverage: [], gained_coverage: [], created_at: "2026-09-05T00:00:00Z" };
     try {
-      await expect(recordMeasurements(completionClient(job, token), { headSnapshot: head!, diff })).rejects.toThrow("measurement state update failed");
+      await expect(recordMeasurements(legacyMeasurementRepository(completionClient(job, token)), { headSnapshot: head!, diff })).rejects.toThrow("measurement state update failed");
       expect(await count("action_measurements")).toBe(1);
     } finally {
       sql("drop trigger it_completion_measurement_fault on public.actions; drop function public.it_completion_measurement_fault();");
     }
-    expect(await recordMeasurements(completionClient(job, token), { headSnapshot: head!, diff })).toEqual({ comparable: true, recorded: 0, skipped: 1 });
+    expect(await recordMeasurements(legacyMeasurementRepository(completionClient(job, token)), { headSnapshot: head!, diff })).toEqual({ comparable: true, recorded: 0, skipped: 1 });
     const measurement = await db.from("action_measurements").select("before_snapshot_id,after_snapshot_id,delta,fact_type").eq("workspace_id", workspace).single();
     expect(measurement.data).toMatchObject({ before_snapshot_id: baseSnapshot, after_snapshot_id: headSnapshot, delta: 40, fact_type: "Observed" });
     expect((await db.from("actions").select("measurement_state").eq("id", action).single()).data!.measurement_state).toBe("measured");
     expect(await count("action_measurements")).toBe(1);
     // An incomparable pair does not invent another measurement or trend.
-    expect(await recordMeasurements(completionClient(job, token), { headSnapshot: head!, diff: { ...diff, comparable: false, incomparable_reason: "SCORING_VERSION_MISMATCH" } })).toEqual({ comparable: false, recorded: 0, skipped: 0 });
+    expect(await recordMeasurements(legacyMeasurementRepository(completionClient(job, token)), { headSnapshot: head!, diff: { ...diff, comparable: false, incomparable_reason: "SCORING_VERSION_MISMATCH" } })).toEqual({ comparable: false, recorded: 0, skipped: 0 });
     expect(await count("action_measurements")).toBe(1);
   });
 });

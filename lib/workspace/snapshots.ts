@@ -1,5 +1,4 @@
-import { completionId } from "@/lib/workspace/completion-id";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SnapshotRepository } from "@/lib/repositories/snapshots";
 import { runWebsiteChecks, type WebsiteChecks } from "@/lib/website/checks";
 import { deriveMetrics, type SnapshotMetrics } from "./metrics";
 import { deriveModuleStates, type ModuleStates } from "./module-states";
@@ -69,7 +68,7 @@ export interface ScanDiffRow {
   created_at: string;
 }
 
-interface SnapshotJobRow {
+export interface SnapshotJobRow {
   id: string;
   workspace_id: string | null;
   location_id: string | null;
@@ -143,46 +142,14 @@ export function rowToSnapshot(row: ScanSnapshotRow): SnapshotRecord {
   };
 }
 
-const JOB_COLUMNS =
-  "id, workspace_id, location_id, region, status, completed_at, created_at, scoring_version, overall_score, score_coverage, module_results, module_scores, raw_data, input_snapshot, website_url";
-
-export async function loadSnapshotForJob(db: SupabaseClient, jobId: string): Promise<SnapshotRecord | null> {
-  const { data, error } = await db.from("scan_snapshots").select("*").eq("job_id", jobId).maybeSingle<ScanSnapshotRow>();
-  if (error) throw new Error("snapshot lookup failed");
-  return data ? rowToSnapshot(data) : null;
+export async function loadSnapshotForJob(repo: SnapshotRepository, jobId: string): Promise<SnapshotRecord | null> {
+ const row = await repo.forJob(jobId); return row ? rowToSnapshot(row) : null;
 }
-
-export async function loadSnapshotById(db: SupabaseClient, snapshotId: string): Promise<SnapshotRecord | null> {
-  const { data, error } = await db.from("scan_snapshots").select("*").eq("id", snapshotId).maybeSingle<ScanSnapshotRow>();
-  if (error) throw new Error("snapshot lookup failed");
-  return data ? rowToSnapshot(data) : null;
+export async function loadSnapshotById(repo: SnapshotRepository, id: string): Promise<SnapshotRecord | null> {
+ const row = await repo.byId(id); return row ? rowToSnapshot(row) : null;
 }
-
-export async function loadDiffForHeadJob(db: SupabaseClient, jobId: string): Promise<ScanDiffRow | null> {
-  const { data, error } = await db
-    .from("scan_diffs")
-    .select("*")
-    .eq("head_job_id", jobId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .returns<ScanDiffRow[]>();
-  if (error) throw new Error("diff lookup failed");
-  return data?.[0] ?? null;
-}
-
-async function ensureSnapshotAudit(db: SupabaseClient, snapshot: SnapshotRecord): Promise<void> {
-  // Preserve pre-existing randomly keyed audit rows from earlier releases.
-  const { data, error } = await db.from("audit_events").select("id").eq("event", "snapshot.created").eq("entity_id", snapshot.id).limit(1);
-  if (error) throw new Error("snapshot audit lookup failed");
-  if (data?.length) return;
-  const { error: insertError } = await db.from("audit_events").upsert({
-    idempotency_key: completionId("snapshot.created", snapshot.id),
-    workspace_id: snapshot.workspaceId, location_id: snapshot.locationId,
-    actor_type: "scanner", actor_id: null, event: "snapshot.created",
-    entity_type: "scan_snapshot", entity_id: snapshot.id,
-    payload: { locale: null, coverage: snapshot.coverage, overall_score: snapshot.overallScore, job_id: snapshot.jobId },
-  }, { onConflict: "idempotency_key", ignoreDuplicates: true });
-  if (insertError) throw new Error("snapshot audit insert failed");
+export async function loadDiffForHeadJob(repo: SnapshotRepository, jobId: string): Promise<ScanDiffRow | null> {
+ return repo.diff(jobId);
 }
 
 /**
@@ -190,27 +157,28 @@ async function ensureSnapshotAudit(db: SupabaseClient, snapshot: SnapshotRecord)
  * and repair missing audit/link records; they do not re-fetch a saved website. Throws `snapshot_requires_workspace` for an unattached job, so a
  * public scan can never grow workspace rows (guardrail 15).
  */
-export async function buildSnapshot(db: SupabaseClient, jobId: string, opts: BuildSnapshotOptions = {}): Promise<SnapshotRecord> {
+export async function buildSnapshot(repo: SnapshotRepository, jobId: string, opts: BuildSnapshotOptions = {}): Promise<SnapshotRecord> {
   const now = opts.now ?? new Date();
-  const { data: job, error: jobError } = await db.from("audit_jobs").select(JOB_COLUMNS).eq("id", jobId).maybeSingle<SnapshotJobRow>();
-  if (jobError) throw new Error("snapshot job lookup failed");
+  const job = await repo.job(jobId);
   if (!job) throw new Error("snapshot_job_not_found");
   if (!job.workspace_id) throw new Error("snapshot_requires_workspace");
 
-  const [findingsResult, aeoResult, diff, existing] = await Promise.all([
-    db.from("audit_findings").select("finding_key, evidence").eq("job_id", jobId),
-    db.from("aeo_surface_snapshots").select("surface, cited, rank").eq("job_id", jobId),
-    loadDiffForHeadJob(db, jobId),
-    loadSnapshotForJob(db, jobId),
-  ]);
-  if (findingsResult.error) throw new Error("snapshot findings lookup failed");
-  if (aeoResult.error) throw new Error("snapshot aeo lookup failed");
+  // Also supports one completion transaction client; do not queue concurrent queries on it.
+  const findings = await repo.findings(jobId);
+  const aeoRows = await repo.aeo(jobId);
+  const diff = await loadDiffForHeadJob(repo, jobId);
+  const existing = await loadSnapshotForJob(repo, jobId);
 
   if (existing && (existing.workspaceId !== job.workspace_id || existing.locationId !== job.location_id)) {
     throw new Error("snapshot_scope_mismatch");
   }
-  if (existing && (!diff || (existing.diffId === diff.id && (!diff.comparable || existing.comparableTo)))) {
-    await ensureSnapshotAudit(db, existing);
+  let baseSnapshotId: string | null = null;
+  if (diff?.comparable) {
+    const base = await loadSnapshotForJob(repo, diff.base_job_id);
+    baseSnapshotId = base?.workspaceId === job.workspace_id && base.locationId === job.location_id ? base.id : null;
+  }
+  if (existing && existing.diffId === (diff?.id ?? null) && existing.comparableTo === baseSnapshotId) {
+    await repo.ensureAudit(existing);
     return existing;
   }
   const websiteUrl = websiteUrlOf(job);
@@ -219,17 +187,12 @@ export async function buildSnapshot(db: SupabaseClient, jobId: string, opts: Bui
   const moduleStates = existing?.moduleStates ?? deriveModuleStates(job, websiteChecks, Boolean(websiteUrl));
   const metrics = existing?.metrics ?? deriveMetrics({
     rawData: job.raw_data,
-    findings: (findingsResult.data ?? []) as Array<{ finding_key: string; evidence: Record<string, unknown> | null }>,
-    aeoRows: (aeoResult.data ?? []) as Array<{ surface: string; cited: boolean; rank: number | null }>,
+    findings: findings,
+    aeoRows: aeoRows,
     websiteChecks,
     now,
   });
 
-  let baseSnapshotId: string | null = null;
-  if (diff?.comparable) {
-    const base = await loadSnapshotForJob(db, diff.base_job_id);
-    baseSnapshotId = base?.id ?? null;
-  }
   const link = linkComparable(diff, baseSnapshotId);
 
   const row = {
@@ -248,14 +211,9 @@ export async function buildSnapshot(db: SupabaseClient, jobId: string, opts: Bui
     diff_id: link.diffId,
   };
 
-  const { data: saved, error: saveError } = await db
-    .from("scan_snapshots")
-    .upsert(row, { onConflict: "job_id" })
-    .select("*")
-    .single<ScanSnapshotRow>();
-  if (saveError || !saved) throw new Error("snapshot upsert failed");
+  const saved = await repo.save(row);
 
   const snapshot = rowToSnapshot(saved);
-  await ensureSnapshotAudit(db, snapshot);
+  await repo.ensureAudit(snapshot);
   return snapshot;
 }

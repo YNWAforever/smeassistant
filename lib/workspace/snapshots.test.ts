@@ -1,3 +1,4 @@
+import { legacySnapshotRepository } from "@/lib/repositories/legacy-snapshots";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildSnapshot, linkComparable, rowToSnapshot, websiteUrlOf, type ScanDiffRow } from "./snapshots";
@@ -138,14 +139,14 @@ describe("linkComparable", () => {
 describe("buildSnapshot", () => {
   it("refuses a job that is not attached to a workspace", async () => {
     state.job = { ...job, workspace_id: null };
-    await expect(buildSnapshot(client(), "job-head", { fetchWebsite })).rejects.toThrow("snapshot_requires_workspace");
+    await expect(buildSnapshot(legacySnapshotRepository(client()), "job-head", { fetchWebsite })).rejects.toThrow("snapshot_requires_workspace");
     expect(state.upserts).toHaveLength(0);
   });
 
   it("stores states, metrics, website checks and links a comparable diff", async () => {
     state.diffs = [diffComparable];
-    state.snapshotsByJob["job-base"] = { id: "snap-base", job_id: "job-base" };
-    const snapshot = await buildSnapshot(client(), "job-head", { fetchWebsite, now: new Date("2026-09-03T00:00:00Z") });
+    state.snapshotsByJob["job-base"] = { id: "snap-base", job_id: "job-base", workspace_id: "ws-1", location_id: "loc-1" };
+    const snapshot = await buildSnapshot(legacySnapshotRepository(client()), "job-head", { fetchWebsite, now: new Date("2026-09-03T00:00:00Z") });
     expect(snapshot.overallScore).toBe(62);
     expect(snapshot.coverage).toBe(0.78);
     expect(snapshot.moduleStates.instagram.status).toBe("unavailable");
@@ -160,22 +161,22 @@ describe("buildSnapshot", () => {
 
   it("keeps diff_id but no comparable_to on a SCORING_VERSION_MISMATCH diff", async () => {
     state.diffs = [{ ...diffComparable, comparable: false, incomparable_reason: "SCORING_VERSION_MISMATCH" }];
-    state.snapshotsByJob["job-base"] = { id: "snap-base", job_id: "job-base" };
-    const snapshot = await buildSnapshot(client(), "job-head", { fetchWebsite });
+    state.snapshotsByJob["job-base"] = { id: "snap-base", job_id: "job-base", workspace_id: "ws-1", location_id: "loc-1" };
+    const snapshot = await buildSnapshot(legacySnapshotRepository(client()), "job-head", { fetchWebsite });
     expect(snapshot.comparableTo).toBeNull();
     expect(snapshot.diffId).toBe("diff-1");
   });
 
   it("reuses persisted evidence on retry and records the audit event once", async () => {
-    await buildSnapshot(client(), "job-head", { fetchWebsite });
-    await buildSnapshot(client(), "job-head", { fetchWebsite });
+    await buildSnapshot(legacySnapshotRepository(client()), "job-head", { fetchWebsite });
+    await buildSnapshot(legacySnapshotRepository(client()), "job-head", { fetchWebsite });
     expect(state.upserts).toHaveLength(1);
     expect(state.audits).toHaveLength(1);
   });
 
   it("reports the website as unsupported when no url is known", async () => {
     state.job = { ...job, input_snapshot: {}, raw_data: {} };
-    const snapshot = await buildSnapshot(client(), "job-head", { fetchWebsite });
+    const snapshot = await buildSnapshot(legacySnapshotRepository(client()), "job-head", { fetchWebsite });
     expect(snapshot.moduleStates.website.status).toBe("unsupported");
     expect(snapshot.websiteChecks).toBeNull();
   });
@@ -219,11 +220,11 @@ describe("rowToSnapshot / websiteUrlOf", () => {
 it("repairs a missing snapshot audit after snapshot persistence without refetching evidence", async () => {
   const fetch = vi.fn(fetchWebsite);
   state.auditError = true;
-  await expect(buildSnapshot(client(), "job-head", { fetchWebsite: fetch })).rejects.toThrow("snapshot audit lookup failed");
+  await expect(buildSnapshot(legacySnapshotRepository(client()), "job-head", { fetchWebsite: fetch })).rejects.toThrow("snapshot audit lookup failed");
   expect(state.upserts).toHaveLength(1);
   state.auditError = false;
-  await buildSnapshot(client(), "job-head", { fetchWebsite: fetch });
-  await buildSnapshot(client(), "job-head", { fetchWebsite: fetch });
+  await buildSnapshot(legacySnapshotRepository(client()), "job-head", { fetchWebsite: fetch });
+  await buildSnapshot(legacySnapshotRepository(client()), "job-head", { fetchWebsite: fetch });
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(state.audits).toHaveLength(1);
 });

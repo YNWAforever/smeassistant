@@ -1,3 +1,4 @@
+import { legacyMeasurementRepository } from "@/lib/repositories/legacy-measurements";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ScanDiffRow, SnapshotRecord } from "./snapshots";
@@ -186,7 +187,7 @@ describe("recordMeasurements", () => {
   it("is Attributed when the action was exported before the head scan started, Observed otherwise", async () => {
     state.versions = [{ action_id: "a-review", first_exported_at: "2026-08-20T00:00:00Z" }];
 
-    const outcome = await recordMeasurements(client(), { headSnapshot: snapshot({}), diff });
+    const outcome = await recordMeasurements(legacyMeasurementRepository(client()), { headSnapshot: snapshot({}), diff });
 
     expect(outcome).toEqual({ comparable: true, recorded: 2, skipped: 0 });
     const byAction = Object.fromEntries(state.inserted.map((row) => [row.action_id, row]));
@@ -207,7 +208,7 @@ describe("recordMeasurements", () => {
 
   it("an export after the head scan started does not attribute the change", async () => {
     state.versions = [{ action_id: "a-review", first_exported_at: "2026-09-01T09:30:00Z" }];
-    await recordMeasurements(client(), { headSnapshot: snapshot({}), diff });
+    await recordMeasurements(legacyMeasurementRepository(client()), { headSnapshot: snapshot({}), diff });
     expect(state.inserted.find((row) => row.action_id === "a-review")?.fact_type).toBe("Observed");
   });
 
@@ -215,7 +216,7 @@ describe("recordMeasurements", () => {
     state.actions = [{ id: "a-review", template_key: "review-response", location_id: "loc-1" }];
     state.versions = [{ action_id: "a-review", first_exported_at: "2026-08-20T00:00:00Z" }];
 
-    await recordMeasurements(client(), { headSnapshot: snapshot({ metrics: {} }), diff });
+    await recordMeasurements(legacyMeasurementRepository(client()), { headSnapshot: snapshot({ metrics: {} }), diff });
 
     expect(state.inserted[0]).toMatchObject({ before_value: 20, after_value: null, delta: null, fact_type: "Unknown" });
     expect(state.updates).toEqual([{ patch: expect.objectContaining({ measurement_state: "insufficient_coverage" }), ids: ["a-review"] }]);
@@ -223,32 +224,32 @@ describe("recordMeasurements", () => {
 
   it("is idempotent per (action, head snapshot)", async () => {
     const db = client();
-    expect(await recordMeasurements(db, { headSnapshot: snapshot({}), diff })).toEqual({ comparable: true, recorded: 2, skipped: 0 });
-    expect(await recordMeasurements(db, { headSnapshot: snapshot({}), diff })).toEqual({ comparable: true, recorded: 0, skipped: 2 });
+    expect(await recordMeasurements(legacyMeasurementRepository(db), { headSnapshot: snapshot({}), diff })).toEqual({ comparable: true, recorded: 2, skipped: 0 });
+    expect(await recordMeasurements(legacyMeasurementRepository(db), { headSnapshot: snapshot({}), diff })).toEqual({ comparable: true, recorded: 0, skipped: 2 });
     expect(state.inserted).toHaveLength(2);
   });
 
   it("does nothing when the pair is not comparable or the base snapshot is gone", async () => {
-    expect(await recordMeasurements(client(), { headSnapshot: snapshot({}), diff: { ...diff, comparable: false } })).toEqual({ comparable: false, recorded: 0, skipped: 0 });
-    expect(await recordMeasurements(client(), { headSnapshot: snapshot({ comparableTo: null }), diff })).toEqual({ comparable: false, recorded: 0, skipped: 0 });
+    expect(await recordMeasurements(legacyMeasurementRepository(client()), { headSnapshot: snapshot({}), diff: { ...diff, comparable: false } })).toEqual({ comparable: false, recorded: 0, skipped: 0 });
+    expect(await recordMeasurements(legacyMeasurementRepository(client()), { headSnapshot: snapshot({ comparableTo: null }), diff })).toEqual({ comparable: false, recorded: 0, skipped: 0 });
     state.snapshots = {};
-    expect(await recordMeasurements(client(), { headSnapshot: snapshot({}), diff })).toEqual({ comparable: false, recorded: 0, skipped: 0 });
+    expect(await recordMeasurements(legacyMeasurementRepository(client()), { headSnapshot: snapshot({}), diff })).toEqual({ comparable: false, recorded: 0, skipped: 0 });
     expect(state.inserted).toEqual([]);
   });
 
   it("skips templates without a metric", async () => {
     state.actions = [{ id: "a-reconnect", template_key: "google-reconnect", location_id: "loc-1" }];
-    expect(await recordMeasurements(client(), { headSnapshot: snapshot({}), diff })).toEqual({ comparable: true, recorded: 0, skipped: 0 });
+    expect(await recordMeasurements(legacyMeasurementRepository(client()), { headSnapshot: snapshot({}), diff })).toEqual({ comparable: true, recorded: 0, skipped: 0 });
   });
 });
 
 
 it("repairs action state after measurements persisted but state update failed", async () => {
   state.updateError = true;
-  await expect(recordMeasurements(client(), { headSnapshot: snapshot({}), diff })).rejects.toThrow("measurement state update failed");
+  await expect(recordMeasurements(legacyMeasurementRepository(client()), { headSnapshot: snapshot({}), diff })).rejects.toThrow("measurement state update failed");
   expect(state.measurements).toHaveLength(2);
   state.updateError = false;
-  expect(await recordMeasurements(client(), { headSnapshot: snapshot({}), diff })).toEqual({ comparable: true, recorded: 0, skipped: 2 });
+  expect(await recordMeasurements(legacyMeasurementRepository(client()), { headSnapshot: snapshot({}), diff })).toEqual({ comparable: true, recorded: 0, skipped: 2 });
   expect(state.measurements).toHaveLength(2);
   expect(state.updates).toEqual([{ patch: expect.objectContaining({ measurement_state: "measured" }), ids: ["a-review", "a-social"] }]);
 });
@@ -256,10 +257,10 @@ it("repairs action state after measurements persisted but state update failed", 
 
 it("records historical measurements without overwriting newer action measurement state", async () => {
   state.latestSnapshotId = "snap-newer";
-  await recordMeasurements(client(), { headSnapshot: snapshot({}), diff });
+  await recordMeasurements(legacyMeasurementRepository(client()), { headSnapshot: snapshot({}), diff });
   expect(state.measurements).toHaveLength(2);
   expect(state.updates).toEqual([]);
-  await recordMeasurements(client(), { headSnapshot: snapshot({}), diff });
+  await recordMeasurements(legacyMeasurementRepository(client()), { headSnapshot: snapshot({}), diff });
   expect(state.measurements).toHaveLength(2);
   expect(state.updates).toEqual([]);
 });
