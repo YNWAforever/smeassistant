@@ -19,6 +19,8 @@ export default defineConfig({
     },
   },
   test: {
+    // Transform the pinned SDK so Next request context can be fixture-mocked.
+    server: { deps: { inline: ["@neondatabase/auth"] } },
     // Node by default. Vitest 4 removed `environmentMatchGlobs`, so DOM tests
     // opt in per file with a `// @vitest-environment jsdom` comment at the top.
     environment: "node",

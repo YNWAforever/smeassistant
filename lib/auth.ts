@@ -55,33 +55,13 @@ export function inLocationScope(m: Membership, locationId: string | null): boole
   return m.locationScope.includes(locationId);
 }
 
-/**
- * The signed-in, email-verified user, or null. Mirrors the user block of
- * upstream's loadOwnerSession: a missing Supabase Auth configuration reads as
- * "not signed in", never a 500, and an unverified email is not a session.
- */
+/** Verified server identity mapped to an app UUID. Outages remain errors, absence is null. */
 export async function getUser(): Promise<SessionUser | null> {
-  let user: SessionUser | null = null;
-  try {
-    const client = await createSupabaseServerClient();
-    const { data, error } = await client.auth.getUser();
-    const found = data?.user;
-    if (error || !found?.id || !found.email) return null;
-    user = {
-      id: found.id,
-      email: found.email,
-      verified: Boolean(found.email_confirmed_at ?? found.confirmed_at),
-    };
-  } catch {
-    // A missing Supabase Auth configuration must read as "not signed in", not as
-    // a 500 — an owner hitting an outage should see the sign-in path, not a stack.
-    return null;
-  }
-  // Deliberately stricter than the OAuth start routes, which check only
-  // user.id. The callback requires a verified email before binding a
-  // workspace, so every surface that displays one must too.
-  if (!user.verified) return null;
-  return user;
+  const { neonIdentityProvider } = await import("@/lib/identity/neon");
+  const identity = await neonIdentityProvider.getIdentity();
+  if (!identity) return null;
+  const { resolveApplicationUser } = await import("@/lib/identity/users");
+  return resolveApplicationUser(identity);
 }
 
 export function signInPath(locale: string, returnTo: string): string {

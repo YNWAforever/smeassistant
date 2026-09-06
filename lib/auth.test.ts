@@ -7,6 +7,8 @@ const state = vi.hoisted(() => ({
   authUser: null as null | { id: string; email?: string | null; email_confirmed_at?: string | null; confirmed_at?: string | null },
   authError: null as null | { message: string },
   authThrows: false,
+  mappingThrows: false,
+  resolve: vi.fn(),
   workspace: null as null | { id: string; slug: string | null },
   workspaceError: null as null | { message: string },
   membership: null as null | {
@@ -47,6 +49,21 @@ vi.mock("@/lib/supabase/server", () => ({
   },
 }));
 
+vi.mock("@/lib/identity/neon", () => ({
+  neonIdentityProvider: { getIdentity: async () => {
+    if (state.authThrows) throw new Error("identity_config_invalid");
+    const user = state.authUser;
+    if (state.authError || !user?.email || !(user.email_confirmed_at ?? user.confirmed_at)) return null;
+    return { provider: "neon", subject: "opaque|subject", email: user.email, verified: true };
+  } },
+}));
+vi.mock("@/lib/identity/users", () => ({
+  resolveApplicationUser: async (identity: {email:string}) => {
+    state.resolve(identity);
+    if (state.mappingThrows) throw new Error("identity_resolution_failed");
+    return {id:"a8098c1a-f86e-41da-bd1a-00112444be1e",email:identity.email,verified:true};
+  },
+}));
 vi.mock("@/lib/supabase/admin", () => ({
   supabaseServer: () => ({
     from: (table: string) => {
@@ -99,7 +116,7 @@ import {
   type Membership,
 } from "./auth";
 
-const VERIFIED = { id: "user-1", email: "owner@example.com", email_confirmed_at: "2026-09-01T00:00:00Z" };
+const VERIFIED = { id: "a8098c1a-f86e-41da-bd1a-00112444be1e", email: "owner@example.com", email_confirmed_at: "2026-09-01T00:00:00Z" };
 const LOCATION_A = "11111111-1111-4111-8111-111111111111";
 const LOCATION_B = "22222222-2222-4222-8222-222222222222";
 
@@ -127,6 +144,8 @@ beforeEach(() => {
   state.authUser = VERIFIED;
   state.authError = null;
   state.authThrows = false;
+  state.mappingThrows = false;
+  state.resolve.mockClear();
   state.workspace = { id: "ws-1", slug: "kam-man-house" };
   state.workspaceError = null;
   state.membership = accepted("owner");
@@ -155,7 +174,7 @@ describe("inLocationScope", () => {
   const base: Membership = {
     workspaceId: "ws-1",
     workspaceSlug: "kam-man-house",
-    userId: "user-1",
+    userId: "a8098c1a-f86e-41da-bd1a-00112444be1e",
     email: "owner@example.com",
     role: "manager",
     locationScope: [LOCATION_A],
@@ -176,23 +195,37 @@ describe("inLocationScope", () => {
 
 describe("getUser", () => {
   it("returns the verified user", async () => {
-    await expect(getUser()).resolves.toEqual({ id: "user-1", email: "owner@example.com", verified: true });
+    await expect(getUser()).resolves.toEqual({ id: "a8098c1a-f86e-41da-bd1a-00112444be1e", email: "owner@example.com", verified: true });
   });
 
   it("treats an unverified email as signed out", async () => {
-    state.authUser = { id: "user-1", email: "owner@example.com", email_confirmed_at: null, confirmed_at: null };
+    state.authUser = { id: "a8098c1a-f86e-41da-bd1a-00112444be1e", email: "owner@example.com", email_confirmed_at: null, confirmed_at: null };
     await expect(getUser()).resolves.toBeNull();
   });
 
-  it("treats a missing email, an auth error, or a misconfigured client as signed out, never throwing", async () => {
-    state.authUser = { id: "user-1", email: null };
+  it("keeps absent or expired sessions null while misconfiguration remains an error", async () => {
+    state.authUser = { id: "a8098c1a-f86e-41da-bd1a-00112444be1e", email: null };
     await expect(getUser()).resolves.toBeNull();
     state.authUser = VERIFIED;
     state.authError = { message: "jwt expired" };
     await expect(getUser()).resolves.toBeNull();
     state.authError = null;
     state.authThrows = true;
-    await expect(getUser()).resolves.toBeNull();
+    await expect(getUser()).rejects.toThrow("identity_config_invalid");
+  });
+});
+
+describe("application identity adapter", () => {
+  it("maps a provider subject to the app UUID and propagates mapping failures", async () => {
+    expect(await getUser()).toEqual({id:"a8098c1a-f86e-41da-bd1a-00112444be1e",email:VERIFIED.email,verified:true});
+    expect(state.resolve).toHaveBeenCalledWith({provider:"neon",subject:"opaque|subject",email:VERIFIED.email,verified:true});
+    state.mappingThrows = true;
+    await expect(getUser()).rejects.toThrow("identity_resolution_failed");
+  });
+  it("does not resolve absent identities", async () => {
+    state.authUser = null;
+    expect(await getUser()).toBeNull();
+    expect(state.resolve).not.toHaveBeenCalled();
   });
 });
 
@@ -211,14 +244,14 @@ describe("requireMembership", () => {
     expect(membership).toEqual({
       workspaceId: "ws-1",
       workspaceSlug: "kam-man-house",
-      userId: "user-1",
+      userId: "a8098c1a-f86e-41da-bd1a-00112444be1e",
       email: "owner@example.com",
       role: "owner",
       locationScope: null,
     });
     expect(state.workspaceFilters).toEqual([["slug", "kam-man-house"]]);
     expect(state.memberFilters).toEqual([
-      ["user_id", "user-1"],
+      ["user_id", "a8098c1a-f86e-41da-bd1a-00112444be1e"],
       ["workspace_id", "ws-1"],
     ]);
     expect(state.notFilters).toEqual([["accepted_at", "is", null]]);
@@ -232,7 +265,7 @@ describe("requireMembership", () => {
   });
 
   it("redirects an unverified email to sign-in", async () => {
-    state.authUser = { id: "user-1", email: "owner@example.com" };
+    state.authUser = { id: "a8098c1a-f86e-41da-bd1a-00112444be1e", email: "owner@example.com" };
     await expect(redirectTarget(() => requireMembership("kam-man-house", "zh-HK"))).resolves.toContain(
       "/zh-HK/owner/sign-in?returnTo=",
     );
@@ -320,11 +353,11 @@ describe("authorizeWorkspaceRequest", () => {
       authorizeWorkspaceRequest({ id: "ws-1" }, { minRole: "manager", locationId: LOCATION_A }),
     ).resolves.toEqual({
       ok: true,
-      user: { id: "user-1", email: "owner@example.com", verified: true },
+      user: { id: "a8098c1a-f86e-41da-bd1a-00112444be1e", email: "owner@example.com", verified: true },
       membership: {
         workspaceId: "ws-1",
         workspaceSlug: "kam-man-house",
-        userId: "user-1",
+        userId: "a8098c1a-f86e-41da-bd1a-00112444be1e",
         email: "owner@example.com",
         role: "manager",
         locationScope: [LOCATION_A],
