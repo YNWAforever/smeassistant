@@ -14,6 +14,11 @@ export interface OwnedPostgresFixtureIdentity {
   nodeEnv: string | undefined;
 }
 
+export interface InspectedPostgresContainer {
+  id: string;
+  labels: Record<string, string>;
+}
+
 export interface NeonDatabaseFixture {
   databaseUrl: string;
   databaseName: string;
@@ -66,6 +71,21 @@ export function assertOwnedPostgresFixture(identity: OwnedPostgresFixtureIdentit
   }
 }
 
+export function assertOwnedPostgresContainer(
+  expectedContainerId: string,
+  actual: InspectedPostgresContainer,
+  identity: OwnedPostgresFixtureIdentity,
+): void {
+  try {
+    assertOwnedPostgresFixture(identity);
+    const owned = actual.labels[OWNERSHIP_LABEL] === identity.containerLabels[OWNERSHIP_LABEL];
+    const sameDatabase = actual.labels[DATABASE_LABEL] === identity.databaseName;
+    if (actual.id !== expectedContainerId || !owned || !sameDatabase) throw new Error("unsafe");
+  } catch {
+    throw new Error("unsafe_postgres_container");
+  }
+}
+
 export async function startNeonDatabaseFixture(nodeEnv = process.env.NODE_ENV): Promise<NeonDatabaseFixture> {
   const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
   const databaseName = `${DATABASE_PREFIX}${suffix}`;
@@ -76,16 +96,28 @@ export async function startNeonDatabaseFixture(nodeEnv = process.env.NODE_ENV): 
   const identity = { databaseUrl, databaseName, containerLabels, nodeEnv };
   assertOwnedPostgresFixture(identity);
 
-  let started = false;
+  let containerId: string | undefined;
   const stop = () => {
     assertOwnedPostgresFixture(identity);
-    if (started) run(["rm", "-f", containerName]);
-    started = false;
+    if (!containerId) return;
+    const inspect = JSON.parse(run(["inspect", containerName])) as Array<{
+      Id?: unknown;
+      Config?: { Labels?: unknown };
+    }>;
+    const actual = inspect[0];
+    const inspectedContainer = {
+      id: typeof actual?.Id === "string" ? actual.Id : "",
+      labels: actual?.Config?.Labels && typeof actual.Config.Labels === "object"
+        ? actual.Config.Labels as Record<string, string>
+        : {},
+    };
+    assertOwnedPostgresContainer(containerId, inspectedContainer, identity);
+    run(["rm", "-f", containerId]);
+    containerId = undefined;
   };
 
   try {
-    run(["run", "-d", "--name", containerName, "--label", `${OWNERSHIP_LABEL}=neon-postgres`, "--label", `${DATABASE_LABEL}=${databaseName}`, "-e", "POSTGRES_PASSWORD=postgres", "-e", `POSTGRES_DB=${databaseName}`, "-p", `127.0.0.1:${port}:5432`, PG_IMAGE]);
-    started = true;
+    containerId = run(["run", "-d", "--name", containerName, "--label", `${OWNERSHIP_LABEL}=neon-postgres`, "--label", `${DATABASE_LABEL}=${databaseName}`, "-e", "POSTGRES_PASSWORD=postgres", "-e", `POSTGRES_DB=${databaseName}`, "-p", `127.0.0.1:${port}:5432`, PG_IMAGE]);
     await waitForPostgres(containerName, databaseName);
     return { databaseUrl, databaseName, containerName, stop };
   } catch (error) {

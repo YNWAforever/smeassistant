@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { assertOwnedPostgresFixture } from "./neon-database";
+import { assertOwnedPostgresContainer, assertOwnedPostgresFixture } from "./neon-database";
 
 const ownedFixture = {
   databaseUrl: "postgresql://postgres:postgres@127.0.0.1:54321/sme_neon_it_abc",
@@ -26,6 +26,33 @@ describe("assertOwnedPostgresFixture", () => {
   ])("rejects %s", (_name, changes) => {
     expect(() => assertOwnedPostgresFixture({ ...ownedFixture, ...changes })).toThrow(
       "unsafe_postgres_fixture",
+    );
+  });
+});
+
+describe("assertOwnedPostgresContainer", () => {
+  const expectedContainerId = "0123456789abcdef";
+
+  it("accepts the exact started container with matching live labels", () => {
+    expect(() => assertOwnedPostgresContainer(expectedContainerId, {
+      id: expectedContainerId,
+      labels: ownedFixture.containerLabels,
+    }, ownedFixture)).not.toThrow();
+  });
+
+  it.each([
+    ["a replacement container", { id: "fedcba9876543210", labels: ownedFixture.containerLabels }],
+    ["missing live labels", { id: expectedContainerId, labels: {} }],
+    ["mismatched database label", {
+      id: expectedContainerId,
+      labels: {
+        ...ownedFixture.containerLabels,
+        "com.sme-scanner.integration.database": "sme_neon_it_other",
+      },
+    }],
+  ])("refuses cleanup of %s", (_name, actualContainer) => {
+    expect(() => assertOwnedPostgresContainer(expectedContainerId, actualContainer, ownedFixture)).toThrow(
+      "unsafe_postgres_container",
     );
   });
 });
