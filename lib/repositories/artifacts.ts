@@ -1,7 +1,11 @@
 import 'server-only';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { getPool } from '../db/client';
+import { withTransaction } from '../db/transaction';
+import type { AgentOutput } from '../agents';
+import type { LLMUsage } from '../llm';
+import type { Json } from './workflow';
 import { workflowRepository, type CreateOutputVersionInput } from './workflow';
 import { workspaceReadRepository, SNAPSHOT_COLUMNS, DIFF_COLUMNS } from './workspace-read';
 import { rowToSnapshot, type ScanSnapshotRow, type ScanDiffRow } from '../workspace/snapshots';
@@ -129,3 +133,110 @@ export type ArtifactRepository = ReturnType<typeof artifactRepository>;
 
 /** Live drafting has a read-only repository capability; saving is an explicit separate action. */
 export type LiveAssistantRepository = Pick<ArtifactRepository,'actionScope'|'assistantWorkspace'|'assistantLocations'|'assistantActions'|'assistantSnapshot'|'assistantLatestSnapshot'|'assistantDiff'|'assistantBrand'|'assistantReviewData'|'versionScope'>;
+
+
+export interface QueueActionRunInput {
+ actionId: string;
+ actorId: string;
+ agentKey: string;
+ input: Record<string, unknown>;
+ promptVersion: string;
+ model: string | null;
+ now: Date;
+ providedInputs?: Record<string, unknown>;
+}
+export interface RunAttribution { runId: string; actorId: string; locale: string; ipHash?: string | null }
+export interface FinishActionRunInput extends RunAttribution {
+ usage: LLMUsage;
+ costUsd: number | null;
+ output: AgentOutput | null;
+ factsNeeded?: string[];
+ error?: string;
+ reason?: string;
+ finishedAt: Date;
+}
+export type ActionRunCompletion = {runId:string;state:'succeeded';versionId?:string;versionNo?:number;factsNeeded?:string[]}
+ | {runId:string;state:'failed';error:string};
+type RunTransaction = <T>(run: (client: PoolClient) => Promise<T>) => Promise<T>;
+type PersistedRun = { id:string;action_id:string;workspace_id:string;location_id:string|null;agent_key:string;prompt_version:string;requested_by:string|null;state:string };
+
+/**
+ * All run writes require an explicit transaction capability. Its callback owns
+ * the connection; injected callers keep their pool or existing transaction.
+ * Calls are short and never enclose model/provider work. Savepoints keep each
+ * operation atomic even when a caller catches an error in a larger transaction.
+ * Membership and evidence-location authorization must precede queue().
+ */
+export function actionRunRepository(transaction: RunTransaction = withTransaction) {
+ async function atomic<T>(run: (client: PoolClient) => Promise<T>): Promise<T> {
+  try {
+   return await transaction(async client => {
+    const savepoint=`artifact_run_${randomUUID().replaceAll('-','')}`;
+    await client.query(`SAVEPOINT ${savepoint}`);
+    try {
+     const result=await run(client);
+     await client.query(`RELEASE SAVEPOINT ${savepoint}`);
+     return result;
+    } catch(error) {
+     await client.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+     await client.query(`RELEASE SAVEPOINT ${savepoint}`);
+     throw error;
+    }
+   });
+  } catch { throw new Error('artifact_run_operation_failed'); }
+ }
+ async function loadRun(client: PoolClient, input: RunAttribution, state: string): Promise<PersistedRun> {
+  const row=(await client.query<PersistedRun>(`SELECT r.id,r.action_id,r.workspace_id,a.location_id,r.agent_key,r.prompt_version,r.requested_by,r.state
+   FROM action_runs r JOIN actions a ON a.id=r.action_id AND a.workspace_id=r.workspace_id
+   WHERE r.id=$1 FOR UPDATE OF r,a`,[input.runId])).rows[0];
+  if(!row || row.state!==state || row.requested_by!==input.actorId || !await artifactRepository(client).actionScope(row.action_id)) throw new Error('invalid_run_transition');
+  return row;
+ }
+ async function audit(client:PoolClient,row:PersistedRun,input:RunAttribution,event:string,payload:Record<string,unknown>) {
+  await client.query(`INSERT INTO audit_events(workspace_id,location_id,actor_type,actor_id,event,entity_type,entity_id,payload)
+   VALUES($1,$2,'user',$3,$4,'action_run',$5,$6)`,[row.workspace_id,row.location_id,input.actorId,event,row.id,
+   JSON.stringify({locale:input.locale,...(input.ipHash?{ip_hash:input.ipHash}:{}),agent_key:row.agent_key,action_id:row.action_id,...payload})]);
+ }
+ return {
+  queue(input:QueueActionRunInput):Promise<string> {
+   return atomic(async client => {
+    await client.query('SELECT id FROM actions WHERE id=$1 FOR UPDATE',[input.actionId]);
+    const scope=await artifactRepository(client).actionScope(input.actionId);
+    if(!scope) throw new Error('artifact_scope_mismatch');
+    if(input.providedInputs) await client.query('UPDATE actions SET provided_inputs=$2,updated_at=$3 WHERE id=$1',[input.actionId,JSON.stringify(input.providedInputs),input.now]);
+    const row=(await client.query<{id:string}>(`INSERT INTO action_runs(workspace_id,action_id,agent_key,state,input,prompt_version,model,requested_by,created_at)
+     VALUES($1,$2,$3,'queued',$4,$5,$6,$7,$8) RETURNING id`,[scope.workspaceId,input.actionId,input.agentKey,JSON.stringify(input.input),input.promptVersion,input.model,input.actorId,input.now])).rows[0];
+    if(!row) throw new Error('run_insert_failed');
+    return row.id;
+   });
+  },
+  start(input:RunAttribution):Promise<void> {
+   return atomic(async client => {
+    const row=await loadRun(client,input,'queued');
+    await client.query("UPDATE action_runs SET state='running',started_at=now() WHERE id=$1",[row.id]);
+    await audit(client,row,input,'run.started',{});
+   });
+  },
+  finish(input:FinishActionRunInput):Promise<ActionRunCompletion> {
+   return atomic(async client => {
+    const row=await loadRun(client,input,'running');
+    const factsNeeded=input.output?.facts_needed.length ? input.output.facts_needed : input.factsNeeded ?? [];
+    if(!input.error && !input.output && !factsNeeded.length) throw new Error('missing_run_output');
+    let version: {version_id:string;version_no:number} | undefined;
+    if(!input.error && !factsNeeded.length && input.output) {
+     const output=input.output;
+     version=await artifactRepository(client).createOutputVersion({actionId:row.action_id,actor:input.actorId,authorType:'agent',actionRunId:row.id,
+      body:output.body,alt:output.alt_text ?? null,meta:{title:output.title,acceptance_criteria:output.acceptance_criteria,warnings:output.warnings,facts_used:output.facts_used,agent_key:row.agent_key,prompt_version:row.prompt_version} as Json,baseVersionId:null});
+    }
+    const state=input.error?'failed':'succeeded';
+    await client.query('UPDATE action_runs SET state=$2,output=$3,error=$4,input_tokens=$5,output_tokens=$6,cost_usd=$7,finished_at=$8 WHERE id=$1',
+     [row.id,state,JSON.stringify(input.output ?? (factsNeeded.length?{facts_needed:factsNeeded}:null)),input.error ?? null,input.usage.inputTokens,input.usage.outputTokens,input.costUsd,input.finishedAt]);
+    if(!input.error) await client.query('UPDATE actions SET action_state=$2,updated_at=$3 WHERE id=$1',[row.action_id,factsNeeded.length?'needs_input':'in_progress',input.finishedAt]);
+    await audit(client,row,input,input.error?'run.failed':'run.succeeded',input.error?{reason:input.reason ?? 'unknown'}:version?{version_id:version.version_id,version_no:version.version_no,warnings:input.output?.warnings ?? []}:{facts_needed:factsNeeded});
+    if(input.error) return {runId:row.id,state:'failed',error:input.error};
+    return version?{runId:row.id,state:'succeeded',versionId:version.version_id,versionNo:version.version_no}:{runId:row.id,state:'succeeded',factsNeeded};
+   });
+  },
+ };
+}
+export type ActionRunRepository=ReturnType<typeof actionRunRepository>;

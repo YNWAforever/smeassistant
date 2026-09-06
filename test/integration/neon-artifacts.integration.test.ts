@@ -4,6 +4,8 @@ import { beforeAll, afterAll, describe, it, expect } from 'vitest';
 import { applyMigrations } from '../../scripts/neon/migrations';
 import { startNeonDatabaseFixture, type NeonDatabaseFixture } from './neon-database';
 import { artifactRepository } from '../../lib/repositories/artifacts';
+import * as artifactModule from '../../lib/repositories/artifacts';
+import { withTransaction } from '../../lib/db/transaction';
 
 describe.runIf(process.env.NEON_INTEGRATION === '1')('Neon artifact persistence and scope', () => {
  let fixture: NeonDatabaseFixture, owner: Pool, runtime: Pool, actor: string;
@@ -151,4 +153,94 @@ describe.runIf(process.env.NEON_INTEGRATION === '1')('Neon artifact persistence 
   await expect(repo.exportOutputVersion(version.version_id,actor,'export','denied')).rejects.toThrow('version_not_found');
   expect(await state()).toEqual(before);
  });
+ it('atomically completes a run with its version, action state and required audit on the supplied database',async () => {
+  expect(artifactModule.actionRunRepository).toBeTypeOf('function');
+  const {workspace,action}=await setup();
+  const repo=artifactModule.actionRunRepository(run=>withTransaction(run,runtime));
+  const runId=await repo.queue({actionId:action,actorId:actor,agentKey:'review_reply',input:{fixture:true},promptVersion:'fixture',model:null,now:new Date(),providedInputs:{voice:'warm'}});
+  await repo.start({runId,actorId:actor,locale:'en'});
+  const result=await repo.finish({runId,actorId:actor,locale:'en',usage:{inputTokens:150,outputTokens:75},costUsd:0.1,
+   output:{title:'Fixture',body:'Safe draft',warnings:[],facts_used:[],facts_needed:[],acceptance_criteria:[]},finishedAt:new Date()});
+  expect(result).toMatchObject({state:'succeeded',versionNo:1});
+  expect((await runtime.query('SELECT state,input_tokens,output_tokens FROM action_runs WHERE id=$1',[runId])).rows[0]).toEqual({state:'succeeded',input_tokens:150,output_tokens:75});
+  expect((await runtime.query('SELECT action_state,provided_inputs FROM actions WHERE id=$1',[action])).rows[0]).toEqual({action_state:'in_progress',provided_inputs:{voice:'warm'}});
+  expect((await runtime.query('SELECT event FROM audit_events WHERE workspace_id=$1 ORDER BY created_at,id',[workspace])).rows.map(row=>row.event).sort()).toEqual(['run.started','run.succeeded','version.created']);
+  expect((await runtime.query('SELECT * FROM workspace_usage WHERE workspace_id=$1',[workspace])).rows).toEqual([]);
+ });
+ it('rolls back the created version when required terminal audit fails, retaining the caller transaction',async () => {
+  expect(artifactModule.actionRunRepository).toBeTypeOf('function');
+  const {workspace,action}=await setup();
+  const repo=artifactModule.actionRunRepository(run=>withTransaction(run,runtime));
+  const runId=await repo.queue({actionId:action,actorId:actor,agentKey:'review_reply',input:{},promptVersion:'fixture',model:null,now:new Date()});
+  await repo.start({runId,actorId:actor,locale:'en'});
+  await owner.query(`CREATE OR REPLACE FUNCTION reject_fixture_terminal_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event='run.succeeded' THEN RAISE EXCEPTION 'fixture_audit_rejected'; END IF; RETURN NEW; END $$`);
+  await owner.query('CREATE TRIGGER fixture_terminal_audit BEFORE INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION reject_fixture_terminal_audit()');
+  try {
+   await expect(repo.finish({runId,actorId:actor,locale:'en',usage:{inputTokens:1,outputTokens:1},costUsd:0,
+    output:{title:'Fixture',body:'Must roll back',warnings:[],facts_used:[],facts_needed:[],acceptance_criteria:[]},finishedAt:new Date()})).rejects.toThrow('artifact_run_operation_failed');
+   expect((await runtime.query('SELECT * FROM output_versions WHERE action_id=$1',[action])).rows).toEqual([]);
+   expect((await runtime.query('SELECT state FROM action_runs WHERE id=$1',[runId])).rows[0].state).toBe('running');
+   expect((await runtime.query("SELECT * FROM audit_events WHERE workspace_id=$1 AND event='version.created'",[workspace])).rows).toEqual([]);
+   const retained=await runtime.connect();
+   try {
+    await retained.query('BEGIN');
+    await expect(artifactModule.actionRunRepository(run=>run(retained)).finish({runId,actorId:actor,locale:'en',usage:{inputTokens:1,outputTokens:1},costUsd:0,
+     output:{title:'Fixture',body:'Still must roll back',warnings:[],facts_used:[],facts_needed:[],acceptance_criteria:[]},finishedAt:new Date()})).rejects.toThrow('artifact_run_operation_failed');
+    // Catching a failed operation cannot accidentally commit its partial version.
+    await retained.query('COMMIT');
+    expect((await runtime.query('SELECT * FROM output_versions WHERE action_id=$1',[action])).rows).toEqual([]);
+   } finally { await retained.query('ROLLBACK'); retained.release(); }
+  } finally { await owner.query('DROP TRIGGER fixture_terminal_audit ON audit_events'); }
+  const client=await runtime.connect();
+  try {
+   await client.query('BEGIN');
+   const bound=artifactModule.actionRunRepository(run=>run(client));
+   await bound.finish({runId,actorId:actor,locale:'en',usage:{inputTokens:1,outputTokens:1},costUsd:0,
+    output:{title:'Fixture',body:'Uncommitted',warnings:[],facts_used:[],facts_needed:[],acceptance_criteria:[]},finishedAt:new Date()});
+   expect((await runtime.query('SELECT * FROM output_versions WHERE action_id=$1',[action])).rows).toEqual([]);
+   await client.query('ROLLBACK');
+   expect((await runtime.query('SELECT state FROM action_runs WHERE id=$1',[runId])).rows[0].state).toBe('running');
+  } finally { await client.query('ROLLBACK'); client.release(); }
+ });
+ it('retains facts-needed as a successful needs-input run without a usable version even with nonempty body',async () => {
+  expect(artifactModule.actionRunRepository).toBeTypeOf('function');
+  const {workspace,action}=await setup(),repo=artifactModule.actionRunRepository(run=>withTransaction(run,runtime));
+  const runId=await repo.queue({actionId:action,actorId:actor,agentKey:'review_reply',input:{},promptVersion:'fixture',model:null,now:new Date()});
+  await repo.start({runId,actorId:actor,locale:'en'});
+  expect(await repo.finish({runId,actorId:actor,locale:'en',usage:{inputTokens:1,outputTokens:2},costUsd:0,
+   output:{title:'Fixture',body:'Unsafe usable draft',warnings:[],facts_used:[],facts_needed:['opening_hours'],acceptance_criteria:[]},finishedAt:new Date()})).toEqual({runId,state:'succeeded',factsNeeded:['opening_hours']});
+  expect((await runtime.query('SELECT * FROM output_versions WHERE action_id=$1',[action])).rows).toEqual([]);
+  expect((await runtime.query('SELECT action_state FROM actions WHERE id=$1',[action])).rows[0].action_state).toBe('needs_input');
+  expect((await runtime.query('SELECT * FROM workspace_usage WHERE workspace_id=$1',[workspace])).rows).toEqual([]);
+ });
+
+ it('checks run actor and transitions and propagates failed-state persistence errors',async () => {
+  const {workspace,action}=await setup(),repo=artifactModule.actionRunRepository(run=>withTransaction(run,runtime));
+  const runId=await repo.queue({actionId:action,actorId:actor,agentKey:'review_reply',input:{},promptVersion:'fixture',model:null,now:new Date()});
+  await expect(repo.start({runId,actorId:randomUUID(),locale:'en'})).rejects.toThrow('artifact_run_operation_failed');
+  expect((await runtime.query('SELECT state FROM action_runs WHERE id=$1',[runId])).rows[0].state).toBe('queued');
+  await repo.start({runId,actorId:actor,locale:'en'});
+  await expect(repo.start({runId,actorId:actor,locale:'en'})).rejects.toThrow('artifact_run_operation_failed');
+  const failed={runId,actorId:actor,locale:'en',usage:{inputTokens:null,outputTokens:null},costUsd:null,output:null,error:'Please try again',reason:'invalid_output',finishedAt:new Date()};
+  const client=await runtime.connect();
+  try {
+   // A query-only connection without an active transaction is not a substitute.
+   await expect(artifactModule.actionRunRepository(run=>run(client)).finish(failed)).rejects.toThrow('artifact_run_operation_failed');
+   expect((await runtime.query('SELECT state FROM action_runs WHERE id=$1',[runId])).rows[0].state).toBe('running');
+  } finally { client.release(); }
+  expect(await repo.finish(failed)).toEqual({runId,state:'failed',error:'Please try again'});
+  await expect(repo.finish(failed)).rejects.toThrow('artifact_run_operation_failed');
+  expect((await runtime.query("SELECT count(*)::int AS n FROM audit_events WHERE workspace_id=$1 AND event='run.failed'",[workspace])).rows[0].n).toBe(1);
+  expect((await runtime.query('SELECT * FROM output_versions WHERE action_id=$1',[action])).rows).toEqual([]);
+  expect((await runtime.query('SELECT action_state FROM actions WHERE id=$1',[action])).rows[0].action_state).toBe('recommended');
+ });
+
+ it('rolls back provided inputs when queue insertion fails',async () => {
+  const {action}=await setup(),repo=artifactModule.actionRunRepository(run=>withTransaction(run,runtime));
+  const before=(await runtime.query('SELECT provided_inputs FROM actions WHERE id=$1',[action])).rows[0];
+  await expect(repo.queue({actionId:action,actorId:randomUUID(),agentKey:'review_reply',input:{},promptVersion:'fixture',model:null,now:new Date(),providedInputs:{must:'rollback'}})).rejects.toThrow('artifact_run_operation_failed');
+  expect((await runtime.query('SELECT provided_inputs FROM actions WHERE id=$1',[action])).rows[0]).toEqual(before);
+  expect((await runtime.query('SELECT * FROM action_runs WHERE action_id=$1',[action])).rows).toEqual([]);
+ });
+
 });

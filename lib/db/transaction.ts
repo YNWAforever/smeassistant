@@ -1,11 +1,11 @@
 import "server-only";
 
-import type { PoolClient } from "pg";
+import type { Pool, PoolClient } from "pg";
 
 import { getPool } from "./client";
 
-export async function withTransaction<T>(run: (client: PoolClient) => Promise<T>): Promise<T> {
-  const client = await getPool().connect();
+export async function withTransaction<T>(run: (client: PoolClient) => Promise<T>, pool: Pick<Pool, "connect"> = getPool()): Promise<T> {
+  const client = await pool.connect();
   let destroyClient = false;
   try {
     await client.query("BEGIN");
