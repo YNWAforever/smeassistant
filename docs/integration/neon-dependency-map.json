@@ -17,12 +17,12 @@
     "kind": "runtime",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/workspace-read.ts",
+      "lib/repositories/assets.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Stale Task 10 inventory marker reconciled: action detail already uses Task 9 typed queries-pages and listAssets without a legacy client."
     ]
   },
   {
@@ -87,13 +87,14 @@
     "task": 10,
     "replacements": [
       "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/action-mutations.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference",
-      "supabaseServer reference"
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
     ]
   },
   {
@@ -102,11 +103,14 @@
     "task": 10,
     "replacements": [
       "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/action-mutations.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
     ]
   },
   {
@@ -115,11 +119,14 @@
     "task": 10,
     "replacements": [
       "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/action-mutations.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
     ]
   },
   {
@@ -128,11 +135,14 @@
     "task": 10,
     "replacements": [
       "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/action-mutations.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
     ]
   },
   {
@@ -141,11 +151,14 @@
     "task": 10,
     "replacements": [
       "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/action-mutations.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
     ]
   },
   {
@@ -154,11 +167,14 @@
     "task": 10,
     "replacements": [
       "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/action-mutations.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
     ]
   },
   {
@@ -438,12 +454,14 @@
     "kind": "test",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/artifacts.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
     ]
   },
   {
@@ -610,12 +628,12 @@
     "kind": "test",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts"
+      "lib/repositories/fix-pack.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference",
-      "Ownership reconciled with explicit Task 10 artifact review/read scope; not a Task 8 scan persistence consumer."
+      "Task 10 typed Fix Pack reads retain accepted viewer and out-of-scope manager access; approval uses persisted job/location scope and conditional draft update.",
+      "test/integration/neon-action-derivation.integration.test.ts and Fix Pack route fixtures"
     ]
   },
   {
@@ -623,12 +641,12 @@
     "kind": "runtime",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts"
+      "lib/repositories/fix-pack.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference",
-      "Ownership reconciled with explicit Task 10 artifact review/read scope; not a Task 8 scan persistence consumer."
+      "Task 10 typed Fix Pack reads retain accepted viewer and out-of-scope manager access; approval uses persisted job/location scope and conditional draft update.",
+      "test/integration/neon-action-derivation.integration.test.ts and Fix Pack route fixtures"
     ]
   },
   {
@@ -636,12 +654,12 @@
     "kind": "test",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts"
+      "lib/repositories/fix-pack.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference",
-      "Ownership reconciled with explicit Task 10 artifact review/read scope; not a Task 8 scan persistence consumer."
+      "Task 10 typed Fix Pack reads retain accepted viewer and out-of-scope manager access; approval uses persisted job/location scope and conditional draft update.",
+      "test/integration/neon-action-derivation.integration.test.ts and Fix Pack route fixtures"
     ]
   },
   {
@@ -649,12 +667,12 @@
     "kind": "runtime",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts"
+      "lib/repositories/fix-pack.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference",
-      "Ownership reconciled with explicit Task 10 artifact review/read scope; not a Task 8 scan persistence consumer."
+      "Task 10 typed Fix Pack reads retain accepted viewer and out-of-scope manager access; approval uses persisted job/location scope and conditional draft update.",
+      "test/integration/neon-action-derivation.integration.test.ts and Fix Pack route fixtures"
     ]
   },
   {
@@ -800,12 +818,11 @@
     "kind": "test",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/workspace-read.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task 10 explicit Neon usage read/upsert; accepted-member route and usage domain fixtures preserve period, timezone and tier contracts."
     ]
   },
   {
@@ -813,12 +830,11 @@
     "kind": "runtime",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/workspace-read.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task 10 explicit Neon usage read/upsert; accepted-member route and usage domain fixtures preserve period, timezone and tier contracts."
     ]
   },
   {
@@ -923,12 +939,14 @@
     "kind": "test",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/artifacts.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
     ]
   },
   {
@@ -936,14 +954,14 @@
     "kind": "runtime",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/artifacts.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference",
-      "supabaseServer reference"
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
     ]
   },
   {
@@ -1212,13 +1230,13 @@
     "kind": "test",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/workspace/actions.ts",
+      "lib/repositories/action-derivation.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "Task 10 actions domain is transport-free; transactional Neon derivation and claim hook use owned persisted evidence.",
+      "test/integration/neon-action-derivation.integration.test.ts; original-client legacy derivation tracked separately under Task 13."
     ]
   },
   {
@@ -1226,13 +1244,13 @@
     "kind": "runtime",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/workspace/actions.ts",
+      "lib/repositories/action-derivation.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "Task 10 actions domain is transport-free; transactional Neon derivation and claim hook use owned persisted evidence.",
+      "test/integration/neon-action-derivation.integration.test.ts; original-client legacy derivation tracked separately under Task 13."
     ]
   },
   {
@@ -1273,13 +1291,11 @@
     "kind": "test",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "Task 10 removed unused legacy audit branch; explicit recordNeonEvent and typed audit fixtures retain payload and best-effort behavior."
     ]
   },
   {
@@ -1287,13 +1303,11 @@
     "kind": "runtime",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "Task 10 removed unused legacy audit branch; explicit recordNeonEvent and typed audit fixtures retain payload and best-effort behavior."
     ]
   },
   {
@@ -1498,7 +1512,8 @@
     "status": "pending",
     "evidence": [
       "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "SupabaseClient type reference",
+      "Task 10 approve/export use lib/repositories/notifications.ts through shared explicit domain functions. Named legacyNotificationRepository and original-client wrappers remain for Task 11/13 consumers; broader notification migration still pending."
     ]
   },
   {
@@ -1524,7 +1539,8 @@
     "status": "pending",
     "evidence": [
       "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "SupabaseClient type reference",
+      "Task 10 extraction calls named legacy-action-derivation.ts with the original supplied fenced completion client; actual legacy completion suite retained."
     ]
   },
   {
@@ -1608,13 +1624,14 @@
     "kind": "test",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/artifacts.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
     ]
   },
   {
@@ -1622,13 +1639,14 @@
     "kind": "runtime",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/artifacts.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
     ]
   },
   {
@@ -1725,13 +1743,11 @@
     "kind": "test",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/workspace-read.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "Task 10 explicit Neon usage read/upsert; accepted-member route and usage domain fixtures preserve period, timezone and tier contracts."
     ]
   },
   {
@@ -1739,13 +1755,11 @@
     "kind": "runtime",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/workspace-read.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "Task 10 explicit Neon usage read/upsert; accepted-member route and usage domain fixtures preserve period, timezone and tier contracts."
     ]
   },
   {
@@ -1753,13 +1767,14 @@
     "kind": "test",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/artifacts.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
     ]
   },
   {
@@ -1767,14 +1782,14 @@
     "kind": "runtime",
     "task": 10,
     "replacements": [
-      "lib/repositories/artifacts.ts",
-      "lib/repositories/events.ts"
+      "lib/repositories/artifacts.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference",
-      "RPC consumer"
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
     ]
   },
   {
@@ -2308,16 +2323,19 @@
     "kind": "schema",
     "task": 10,
     "replacements": [
-      "neon/migrations/0001_initial_schema.sql"
+      "neon/migrations/0001_identity.sql",
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "source migration",
       "sql-object:external:auth.users",
       "sql-object:grant-statement:grant select, insert, update, delete on table public.agent_runs to service_role;",
       "sql-object:index:agent_runs_job_status_idx",
       "sql-object:revoke-statement:revoke all on table public.agent_runs from public, anon, authenticated;",
-      "sql-object:table:public.agent_runs"
+      "sql-object:table:public.agent_runs",
+      "Historical source retained unchanged; app UUID schema and atomic artifact operations exercised by test/integration/neon-artifacts.integration.test.ts and neon-artifact-runtime.integration.test.ts. No shared migration or legacy resource removal performed."
     ]
   },
   {
@@ -2505,9 +2523,11 @@
     "kind": "schema",
     "task": 10,
     "replacements": [
-      "neon/migrations/0001_initial_schema.sql"
+      "neon/migrations/0001_identity.sql",
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "source migration",
       "sql-object:column:public.audit_jobs.location_id",
@@ -2562,7 +2582,8 @@
       "sql-object:table:public.workspace_notifications",
       "sql-object:table:public.workspace_usage",
       "sql-object:table:public.workspaces",
-      "sql-object:trigger:actions_touch_updated_at"
+      "sql-object:trigger:actions_touch_updated_at",
+      "Historical source retained unchanged; app UUID schema and atomic artifact operations exercised by test/integration/neon-artifacts.integration.test.ts and neon-artifact-runtime.integration.test.ts. No shared migration or legacy resource removal performed."
     ]
   },
   {
@@ -2570,9 +2591,9 @@
     "kind": "schema",
     "task": 10,
     "replacements": [
-      "neon/migrations/0001_initial_schema.sql"
+      "neon/migrations/0004_atomic_operations.sql"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "source migration",
       "sql-object:function:public.approve_output_version",
@@ -2586,7 +2607,8 @@
       "sql-object:revoke-statement:revoke all on function public.approve_output_version(uuid, uuid, text) from public, anon, authenticated;",
       "sql-object:revoke-statement:revoke all on function public.create_output_version(uuid, uuid, text, uuid, text, text, jsonb, uuid) from public, anon, authenticated;",
       "sql-object:revoke-statement:revoke all on function public.decide_output_version(uuid, uuid, text, text) from public, anon, authenticated;",
-      "sql-object:revoke-statement:revoke all on function public.export_output_version(uuid, uuid, text, text) from public, anon, authenticated;"
+      "sql-object:revoke-statement:revoke all on function public.export_output_version(uuid, uuid, text, text) from public, anon, authenticated;",
+      "Historical source retained unchanged; app UUID schema and atomic artifact operations exercised by test/integration/neon-artifacts.integration.test.ts and neon-artifact-runtime.integration.test.ts. No shared migration or legacy resource removal performed."
     ]
   },
   {
@@ -2816,6 +2838,43 @@
     "status": "replaced",
     "evidence": [
       "Fixture explicitly forbids legacy transport; Task9 Neon repository acceptance."
+    ]
+  },
+  {
+    "path": "lib/repositories/legacy-action-derivation.ts",
+    "kind": "runtime",
+    "task": 13,
+    "replacements": [
+      "lib/repositories/action-derivation.ts",
+      "lib/workspace/completion-transaction.ts"
+    ],
+    "status": "pending",
+    "evidence": [
+      "Temporary explicit derivation adapter shares pure actions rules and retains the original supplied Supabase completion client and fences. Task 13 must port completion transaction ownership before removing it."
+    ]
+  },
+  {
+    "path": "test/integration/neon-artifact-runtime.integration.test.ts",
+    "kind": "test",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/artifacts.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Supabase symbol is an intentional throwing transport trap; actual runtime runs against owned PostgreSQL fixtures, not Supabase. No external provider calls."
+    ]
+  },
+  {
+    "path": "test/integration/neon-assistant-live.integration.test.ts",
+    "kind": "test",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/artifacts.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Supabase symbol is an intentional throwing transport trap; actual runtime runs against owned PostgreSQL fixtures, not Supabase. No external provider calls."
     ]
   }
 ]
