@@ -1,7 +1,7 @@
 # Neon migration design
 
 Date: 2026-09-06
-Status: Approved design sections consolidated; written specification awaiting user review.
+Status: Written specification approved by the user; implementation plan prepared separately.
 Baseline: origin/main 9f89cbca02e233d49a616d251ed4a5b07ddde402.
 Scope: C:/Users/laich/Documents/smeassistant. The legacy Documents/smescanner checkout is not an implementation target.
 
@@ -141,4 +141,4 @@ No existing production billing state or pending webhook is blindly rebound to ne
 
 ## Specification self-review
 
-Checked against the approved scope: empty target, all features, email links and Google sign-in, managed Neon Auth, Vercel hosting, preserved authorization and source resources. No implementation or cloud mutation was performed. Hosted acceptance is explicitly distinct from fixtures. Remaining environment selections are release inputs with verification gates; they are not evidence of configured resources. The next step is user review of this document, followed by the detailed implementation plan.
+Checked against the approved scope: empty target, all features, email links and Google sign-in, managed Neon Auth, Vercel hosting, preserved authorization and source resources. No implementation or cloud mutation was performed. Hosted acceptance is explicitly distinct from fixtures. Remaining environment selections are release inputs with verification gates; they are not evidence of configured resources. The user approved this written specification. The detailed implementation plan is docs/superpowers/plans/2026-09-06-neon-migration.md; implementation and external operations have not started.
