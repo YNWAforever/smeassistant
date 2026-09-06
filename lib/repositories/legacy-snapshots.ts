@@ -22,7 +22,13 @@ async function ensureSnapshotAudit(db: SupabaseClient, snapshot: SnapshotRecord)
 
 export function legacySnapshotRepository(db: SupabaseClient): SnapshotRepository {
  return {
- async job(jobId) { const {data,error} = await db.from("audit_jobs").select("id,workspace_id,location_id,region,status,completed_at,created_at,scoring_version,overall_score,score_coverage,module_results,module_scores,raw_data,input_snapshot,website_url").eq("id",jobId).maybeSingle<SnapshotJobRow>(); if(error) throw new Error("snapshot job lookup failed"); return data; },
+ async job(jobId) { const {data,error} = await db.from("audit_jobs").select("id,workspace_id,location_id,region,status,completed_at,created_at,scoring_version,overall_score,score_coverage,module_results,module_scores,raw_data,input_snapshot,website_url").eq("id",jobId).maybeSingle<SnapshotJobRow>(); if(error) throw new Error("snapshot job lookup failed");
+  if (data?.workspace_id && data.location_id) {
+   const location = await db.from("locations").select("id").eq("id",data.location_id).eq("workspace_id",data.workspace_id).maybeSingle<{id:string}>();
+   if(location.error) throw new Error("snapshot location lookup failed");
+   if(!location.data) throw new Error("snapshot_scope_mismatch");
+  }
+  return data; },
  async findings(jobId) { const {data,error} = await db.from("audit_findings").select("finding_key,evidence").eq("job_id",jobId); if(error) throw new Error("snapshot findings lookup failed"); return data ?? []; },
  async aeo(jobId) { const {data,error} = await db.from("aeo_surface_snapshots").select("surface,cited,rank").eq("job_id",jobId); if(error) throw new Error("snapshot aeo lookup failed"); return data ?? []; },
  async forJob(jobId) { const {data,error} = await db.from("scan_snapshots").select("*").eq("job_id",jobId).maybeSingle<ScanSnapshotRow>(); if(error) throw new Error("snapshot lookup failed"); return data; },

@@ -30,6 +30,29 @@ describe.runIf(process.env.NEON_INTEGRATION === '1')('Neon snapshot persistence'
   expect(fetchWebsite).toHaveBeenCalledTimes(1);
   expect((await runtime.query("SELECT count(*)::int AS n FROM audit_events WHERE entity_id=$1 AND event='snapshot.created'", [snapshot.id])).rows[0].n).toBe(1);
  });
+ it('rejects replay of a persisted snapshot and job pointing to a foreign location before website or audit', async () => {
+  const ws = await workspace('replay-scope'), foreign = await workspace('replay-foreign'), id = await job(ws);
+  const repo = snapshotRepository(runtime), saved = await buildSnapshot(repo, id);
+  const loc = (await runtime.query("INSERT INTO locations(workspace_id,slug,name) VALUES($1,'foreign','Foreign') RETURNING id",[foreign])).rows[0].id;
+  await runtime.query('UPDATE audit_jobs SET location_id=$1 WHERE id=$2',[loc,id]);
+  await runtime.query('UPDATE scan_snapshots SET location_id=$1 WHERE id=$2',[loc,saved.id]);
+  await runtime.query('DELETE FROM audit_events WHERE entity_id=$1',[saved.id]);
+  const fetchWebsite = vi.fn(async () => ({ evaluated:0, passed:0, results:[] }));
+  await expect(buildSnapshot(repo,id,{fetchWebsite})).rejects.toThrow('snapshot_scope_mismatch');
+  expect(fetchWebsite).not.toHaveBeenCalled();
+  expect((await runtime.query('SELECT id FROM audit_events WHERE entity_id=$1',[saved.id])).rows).toHaveLength(0);
+ });
+ it('replays an owned location snapshot and repairs its audit without fetching', async () => {
+  const ws=await workspace('owned-replay'), id=await job(ws), repo=snapshotRepository(runtime);
+  const loc=(await runtime.query("INSERT INTO locations(workspace_id,slug,name) VALUES($1,'owned','Owned') RETURNING id",[ws])).rows[0].id;
+  await runtime.query('UPDATE audit_jobs SET location_id=$1 WHERE id=$2',[loc,id]);
+  const saved=await buildSnapshot(repo,id);
+  await runtime.query('DELETE FROM audit_events WHERE entity_id=$1',[saved.id]);
+  const fetchWebsite=vi.fn(async () => ({evaluated:0,passed:0,results:[]}));
+  expect((await buildSnapshot(repo,id,{fetchWebsite})).id).toBe(saved.id);
+  expect(fetchWebsite).not.toHaveBeenCalled();
+  expect((await runtime.query('SELECT id FROM audit_events WHERE entity_id=$1',[saved.id])).rows).toHaveLength(1);
+ });
  it('uses the supplied connection, including rollback of snapshot and audit', async () => {
   const ws = await workspace('connection'), id = await job(ws), client = await runtime.connect();
   try {

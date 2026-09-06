@@ -5,6 +5,7 @@ import { completionId } from '../workspace/completion-id';
 import type { ScanSnapshotRow, ScanDiffRow, SnapshotJobRow, SnapshotRecord } from '../workspace/snapshots';
 export type SnapshotInsert = Omit<ScanSnapshotRow, 'id' | 'created_at'>;
 export interface SnapshotRepository {
+ /** Rejects a workspace-linked job whose non-null location belongs elsewhere. */
  job(id: string): Promise<SnapshotJobRow | null>;
  findings(jobId: string): Promise<Array<{ finding_key: string; evidence: Record<string, unknown> | null }>>;
  aeo(jobId: string): Promise<Array<{ surface: string; cited: boolean; rank: number | null }>>;
@@ -21,7 +22,14 @@ const DIFF_COLUMNS = 'd.id,d.base_job_id,d.head_job_id,d.comparable,d.incomparab
 export function snapshotRepository(client?: Pick<Pool, 'query'>): SnapshotRepository {
  const db = () => client ?? getPool();
  return {
-  async job(id) { return (await db().query<SnapshotJobRow>(`SELECT ${JOB_COLUMNS} FROM audit_jobs WHERE id=$1`, [id])).rows[0] ?? null; },
+  async job(id) {
+   const row = (await db().query<SnapshotJobRow & { location_owned: boolean }>(`SELECT ${JOB_COLUMNS},
+    (workspace_id IS NULL OR location_id IS NULL OR EXISTS(SELECT 1 FROM locations l WHERE l.id=audit_jobs.location_id AND l.workspace_id=audit_jobs.workspace_id)) AS location_owned
+    FROM audit_jobs WHERE id=$1`, [id])).rows[0];
+   if (!row) return null;
+   if (!row.location_owned) throw new Error('snapshot_scope_mismatch');
+   return row;
+  },
   async findings(jobId) { return (await db().query('SELECT finding_key,evidence FROM audit_findings WHERE job_id=$1', [jobId])).rows; },
   async aeo(jobId) { return (await db().query('SELECT surface,cited,rank FROM aeo_surface_snapshots WHERE job_id=$1', [jobId])).rows; },
   async forJob(jobId) { return (await db().query<ScanSnapshotRow>(`SELECT ${SNAPSHOT_COLUMNS} FROM scan_snapshots WHERE job_id=$1`, [jobId])).rows[0] ?? null; },

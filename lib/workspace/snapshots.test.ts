@@ -7,6 +7,7 @@ type Row = Record<string, unknown>;
 
 const state = vi.hoisted(() => ({
   job: null as Row | null,
+  locations: [] as Row[],
   findings: [] as Row[],
   aeo: [] as Row[],
   diffs: [] as ScanDiffRow[],
@@ -23,6 +24,7 @@ function client(): SupabaseClient {
     let upserted: Row | null = null;
     let inserted: Row | null = null;
     const terminal = () => {
+      if (table === "locations") return { data: state.locations.find(row => row.id === filters.id && row.workspace_id === filters.workspace_id) ?? null, error: null };
       if (table === "audit_jobs") return { data: state.job, error: null };
       if (table === "audit_findings") return { data: state.findings, error: null };
       if (table === "aeo_surface_snapshots") return { data: state.aeo, error: null };
@@ -117,6 +119,7 @@ const fetchWebsite = async () => ({ evaluated: 15, passed: 9, results: [{ key: "
 beforeEach(() => {
   state.auditError = false;
   state.job = { ...job };
+  state.locations = [{ id: "loc-1", workspace_id: "ws-1" }];
   state.findings = [];
   state.aeo = [];
   state.diffs = [];
@@ -137,6 +140,17 @@ describe("linkComparable", () => {
 });
 
 describe("buildSnapshot", () => {
+  it("refuses a foreign persisted location before replaying or repairing an audit", async () => {
+    const repo = legacySnapshotRepository(client());
+    const saved = await buildSnapshot(repo, "job-head", { fetchWebsite });
+    state.audits = [];
+    state.locations = [{ id: "loc-1", workspace_id: "foreign" }];
+    const website = vi.fn(fetchWebsite);
+    await expect(buildSnapshot(repo, "job-head", { fetchWebsite: website })).rejects.toThrow("snapshot_scope_mismatch");
+    expect(website).not.toHaveBeenCalled();
+    expect(state.audits).toEqual([]);
+    expect(saved.locationId).toBe("loc-1");
+  });
   it("refuses a job that is not attached to a workspace", async () => {
     state.job = { ...job, workspace_id: null };
     await expect(buildSnapshot(legacySnapshotRepository(client()), "job-head", { fetchWebsite })).rejects.toThrow("snapshot_requires_workspace");
