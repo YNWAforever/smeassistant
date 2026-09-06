@@ -34,6 +34,7 @@
     "@sme-scanner/scoring": "workspace:*",
     "@supabase/ssr": "^0.12.1",
     "@supabase/supabase-js": "^2.106.1",
+    "@vercel/blob": "2.8.0",
     "@vercel/functions": "3.9.5",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",

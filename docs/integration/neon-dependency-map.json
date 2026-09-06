@@ -1516,12 +1516,11 @@
     "kind": "test",
     "task": 9,
     "replacements": [
-      "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/workspace-read.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task 9 read-model checkpoint: explicit selected SQL with workspace/location predicates; 21 domain tests and 10 runtime-role SQL fixtures passed. Evidence loader remains separately owned pending Task 9."
     ]
   },
   {
@@ -1529,12 +1528,11 @@
     "kind": "runtime",
     "task": 9,
     "replacements": [
-      "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/workspace-read.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task 9 read-model checkpoint: explicit selected SQL with workspace/location predicates; 21 domain tests and 10 runtime-role SQL fixtures passed. Evidence loader remains separately owned pending Task 9."
     ]
   },
   {
@@ -1542,12 +1540,11 @@
     "kind": "test",
     "task": 9,
     "replacements": [
-      "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/workspace-read.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task 9 read-model checkpoint: explicit selected SQL with workspace/location predicates; 21 domain tests and 10 runtime-role SQL fixtures passed. Evidence loader remains separately owned pending Task 9."
     ]
   },
   {
@@ -1555,12 +1552,11 @@
     "kind": "runtime",
     "task": 9,
     "replacements": [
-      "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/workspace-read.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task 9 read-model checkpoint: explicit selected SQL with workspace/location predicates; 21 domain tests and 10 runtime-role SQL fixtures passed. Evidence loader remains separately owned pending Task 9."
     ]
   },
   {

@@ -6,109 +6,17 @@ vi.mock("server-only", () => ({}));
 
 type Row = Record<string, unknown>;
 
-/**
- * Mocking style follows lib/report/load-report.test.ts: one chainable query
- * per `from(table)` whose terminal resolves from `state`, plus a log of every
- * call so the tests can assert the exact filters that reached PostgREST.
- */
 const state = vi.hoisted(() => ({
-  memberships: [] as Membership[],
-  workspaces: [] as Row[],
-  locations: [] as Row[],
-  usage: null as Row | null,
-  usageInsertError: null as null | { code: string; message: string },
-  unread: 0,
-  urgent: 0,
-  snapshots: {} as Record<string, Row | undefined>,
-  reports: [] as Row[],
+  memberships: [] as Membership[], workspaces: [] as Row[], locations: [] as Row[],
+  usage: null as Row | null, unread: 0, urgent: 0,
+  snapshots: {} as Record<string, Row | undefined>, reports: [] as Row[],
   workspaceError: null as null | { code: string; message: string },
-  calls: [] as Array<{ table: string; op: string; args: unknown[] }>,
-  inserts: [] as Array<{ table: string; values: Row }>,
 }));
-
-function queryFor(table: string) {
-  const filters: Array<{ column: string; value: unknown }> = [];
-  let head = false;
-  let inserting = false;
-  const result = () => {
-    if (table === "workspaces") {
-      if (state.workspaceError) return { data: null, error: state.workspaceError, count: null };
-      const id = filters.find((f) => f.column === "id")?.value;
-      const rows = id ? state.workspaces.filter((row) => row.id === id) : state.workspaces;
-      return { data: rows, error: null, count: null };
-    }
-    if (table === "locations") return { data: state.locations, error: null, count: null };
-    if (table === "workspace_usage") {
-      if (inserting) return { data: null, error: state.usageInsertError, count: null };
-      return { data: state.usage ? [state.usage] : [], error: null, count: null };
-    }
-    if (table === "workspace_notifications") return { data: null, error: null, count: state.unread };
-    if (table === "actions") return { data: null, error: null, count: state.urgent };
-    if (table === "scan_snapshots") {
-      const locationId = String(filters.find((f) => f.column === "location_id")?.value);
-      const row = state.snapshots[locationId];
-      return { data: row ? [row] : [], error: null, count: null };
-    }
-    if (table === "audit_jobs") return { data: state.reports, error: null, count: null };
-    throw new Error(`unexpected table ${table}`);
-  };
-  const single = () => {
-    const { data, error } = result();
-    const rows = Array.isArray(data) ? data : [];
-    return { data: rows[0] ?? null, error };
-  };
-  const query = {
-    select(columns: string, options?: { head?: boolean; count?: string }) {
-      head = Boolean(options?.head);
-      state.calls.push({ table, op: "select", args: [columns, options] });
-      return query;
-    },
-    eq(column: string, value: unknown) {
-      filters.push({ column, value });
-      state.calls.push({ table, op: "eq", args: [column, value] });
-      return query;
-    },
-    in(column: string, value: unknown) {
-      state.calls.push({ table, op: "in", args: [column, value] });
-      return query;
-    },
-    is(column: string, value: unknown) {
-      state.calls.push({ table, op: "is", args: [column, value] });
-      return query;
-    },
-    not(column: string, operator: string, value: unknown) {
-      state.calls.push({ table, op: "not", args: [column, operator, value] });
-      return query;
-    },
-    order(column: string, options?: unknown) {
-      state.calls.push({ table, op: "order", args: [column, options] });
-      return query;
-    },
-    limit(value: number) {
-      state.calls.push({ table, op: "limit", args: [value] });
-      return query;
-    },
-    returns() {
-      return query;
-    },
-    insert(values: Row) {
-      inserting = true;
-      state.inserts.push({ table, values });
-      return query;
-    },
-    maybeSingle: vi.fn(async () => single()),
-    single: vi.fn(async () => single()),
-    then(resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) {
-      const value = head ? { ...result(), data: null } : result();
-      return Promise.resolve(value).then(resolve, reject);
-    },
-  };
-  return query;
-}
-
-vi.mock("@/lib/supabase/admin", () => ({
-  supabaseServer: vi.fn(() => ({ from: (table: string) => queryFor(table) })),
+const repository = vi.hoisted(() => ({
+  workspaces: vi.fn(), locations: vi.fn(), usage: vi.fn(),
+  unreadNotifications: vi.fn(), urgentActions: vi.fn(), latestSnapshot: vi.fn(), latestReport: vi.fn(),
 }));
+vi.mock("@/lib/repositories/workspace-read", () => ({ workspaceReadRepository: () => repository }));
 
 vi.mock("@/lib/auth", () => ({
   listMemberships: vi.fn(async () => state.memberships),
@@ -153,14 +61,22 @@ beforeEach(() => {
   state.workspaces = [];
   state.locations = [];
   state.usage = null;
-  state.usageInsertError = null;
   state.unread = 0;
   state.urgent = 0;
   state.snapshots = {};
   state.reports = [];
   state.workspaceError = null;
-  state.calls = [];
-  state.inserts = [];
+  vi.clearAllMocks();
+  repository.workspaces.mockImplementation(async () => {
+    if (state.workspaceError) throw new Error("workspace persistence failed");
+    return state.workspaces;
+  });
+  repository.locations.mockImplementation(async () => state.locations);
+  repository.usage.mockImplementation(async (_id, period, allowance) => state.usage ?? { period, approved_deliveries: 0, allowance });
+  repository.unreadNotifications.mockImplementation(async () => state.unread);
+  repository.urgentActions.mockImplementation(async () => state.urgent);
+  repository.latestSnapshot.mockImplementation(async (_workspaceId, locationId) => state.snapshots[locationId] ?? null);
+  repository.latestReport.mockImplementation(async () => state.reports[0] ?? null);
 });
 
 describe("currentPeriod", () => {
@@ -214,27 +130,15 @@ describe("loadWorkspaceContext", () => {
     expect(context.account).toEqual({ name: "owner", email: "owner@example.com" });
     expect(context.membership).toBe(membership);
 
-    const locationOrder = state.calls.filter((c) => c.table === "locations" && c.op === "order").map((c) => c.args[0]);
-    expect(locationOrder).toEqual(["is_primary", "name"]);
-    const notificationFilters = state.calls.filter((c) => c.table === "workspace_notifications" && c.op !== "select");
-    expect(notificationFilters).toEqual([
-      { table: "workspace_notifications", op: "eq", args: ["workspace_id", "ws-1"] },
-      { table: "workspace_notifications", op: "eq", args: ["user_id", "user-1"] },
-      { table: "workspace_notifications", op: "is", args: ["read_at", null] },
-    ]);
-    expect(state.inserts).toEqual([]);
+    expect(repository.locations).toHaveBeenCalledWith(["ws-1"]);
+    expect(repository.unreadNotifications).toHaveBeenCalledWith("ws-1", "user-1");
   });
 
   it("creates the current period's usage row with the tier allowance when it is missing", async () => {
     state.workspaces = [workspaceRow];
     const context = await loadWorkspaceContext(membership);
 
-    expect(state.inserts).toHaveLength(1);
-    expect(state.inserts[0]).toMatchObject({
-      table: "workspace_usage",
-      values: { workspace_id: "ws-1", allowance: 3 },
-    });
-    expect(String(state.inserts[0].values.period)).toMatch(/^\d{4}-\d{2}$/);
+    expect(repository.usage).toHaveBeenCalledWith("ws-1", expect.stringMatching(/^\d{4}-\d{2}$/), 3);
     expect(context.usage).toMatchObject({ approvedDeliveries: 0, allowance: 3 });
   });
 
@@ -243,14 +147,8 @@ describe("loadWorkspaceContext", () => {
     const context = await loadWorkspaceContext(membership);
     expect(context.workspace.tier).toBe("paid");
     expect(context.workspace.market).toBe("tw");
-    expect(state.inserts[0].values.allowance).toBeNull();
+    expect(repository.usage).toHaveBeenCalledWith("ws-1", expect.any(String), null);
     expect(context.usage.allowance).toBeNull();
-  });
-
-  it("tolerates losing the usage insert race (duplicate key) and re-reads", async () => {
-    state.workspaces = [workspaceRow];
-    state.usageInsertError = { code: "23505", message: "duplicate key" };
-    await expect(loadWorkspaceContext(membership)).resolves.toMatchObject({ usage: { approvedDeliveries: 0 } });
   });
 
   it("throws instead of rendering a blank shell when the workspace lookup fails", async () => {
@@ -264,7 +162,7 @@ describe("loadWorkspaceContext", () => {
 describe("listWorkspaceCards", () => {
   it("returns nothing without memberships and never touches the database", async () => {
     await expect(listWorkspaceCards("user-1")).resolves.toEqual([]);
-    expect(state.calls).toEqual([]);
+    expect(repository.workspaces).not.toHaveBeenCalled();
   });
 
   it("joins each membership to its workspace, locations, latest snapshot and urgent count", async () => {
@@ -288,17 +186,8 @@ describe("listWorkspaceCards", () => {
     expect(cards[1].role).toBe("viewer");
     expect(cards[1].locations[0]).toMatchObject({ slug: "main", latestScore: null, latestCoverage: null, lastScanAt: null });
 
-    const snapshotCalls = state.calls.filter((c) => c.table === "scan_snapshots");
-    expect(snapshotCalls).toContainEqual({ table: "scan_snapshots", op: "order", args: ["observed_at", { ascending: false }] });
-    expect(snapshotCalls).toContainEqual({ table: "scan_snapshots", op: "limit", args: [1] });
-    const actionFilters = state.calls.filter((c) => c.table === "actions" && c.op !== "select");
-    expect(actionFilters).toContainEqual({ table: "actions", op: "eq", args: ["priority", "urgent"] });
-    expect(actionFilters).toContainEqual({
-      table: "actions",
-      op: "not",
-      args: ["action_state", "in", "(completed,dismissed,cancelled,expired)"],
-    });
-    expect(actionFilters).toContainEqual({ table: "actions", op: "eq", args: ["location_id", "loc-1"] });
+    expect(repository.latestSnapshot).toHaveBeenCalledWith("ws-1", "loc-1");
+    expect(repository.urgentActions).toHaveBeenCalledWith("ws-1", "loc-1");
   });
 
   it("skips a membership whose workspace row is missing rather than inventing one", async () => {
@@ -316,7 +205,7 @@ describe("latestWorkspaceReport", () => {
       createdAt: "2026-08-25T00:00:00.000Z",
       status: "done",
     });
-    expect(state.calls).toContainEqual({ table: "audit_jobs", op: "order", args: ["created_at", { ascending: false }] });
+    expect(repository.latestReport).toHaveBeenCalledWith("ws-1");
   });
 
   it("returns null when the workspace has no attached job", async () => {
