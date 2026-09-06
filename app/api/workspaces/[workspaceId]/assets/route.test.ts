@@ -11,7 +11,6 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/auth", () => ({ authorizeWorkspaceRequest: mocks.authorizeWorkspaceRequest }));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({}) }));
 vi.mock("@/lib/security/rate-limit", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/security/rate-limit")>();
   return { ...original, enforceRateLimit: mocks.enforceRateLimit };

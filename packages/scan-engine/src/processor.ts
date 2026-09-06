@@ -151,7 +151,7 @@ function failureCategory(error: unknown): ScanFailure["category"] {
   const message = error instanceof Error ? error.message.toLowerCase() : "";
   if (message.includes("claim")) return "CLAIM_FAILED";
   if (message.includes("score")) return "SCORING_FAILED";
-  if (message.includes("persist") || message.includes("supabase")) return "PERSIST_FAILED";
+  if (message.includes("persist")) return "PERSIST_FAILED";
   if (message.includes("provider") || message.includes("collect")) return "COLLECTION_FAILED";
   return "PROCESSOR_FAILED";
 }

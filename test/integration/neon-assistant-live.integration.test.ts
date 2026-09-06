@@ -6,7 +6,6 @@ import { artifactRepository } from '../../lib/repositories/artifacts';
 import type { llmComplete } from '../../lib/llm';
 import { runLiveAssistant } from '../../lib/assistant/live';
 import { auth } from '../../app/api/actions/_shared/test-db';
-vi.mock('../../lib/supabase/admin',()=>({supabaseServer:()=>{throw new Error('legacy_transport_forbidden');}}));
 const output={title:'Fixture reply',body:'Thank you for telling us.',acceptance_criteria:[],warnings:[],facts_used:[],facts_needed:[]};
 describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon live assistant authority',()=>{
  let fixture:NeonDatabaseFixture,owner:Pool,runtime:Pool,workspace:string,foreign:string,locA:string,locB:string,snapshot:string,job:string,wide:string,scoped:string;

@@ -215,7 +215,7 @@ vi.mock("@/lib/evidence/load-authorized", () => ({
         evidenceType: "post",
         sourceUrl: "https://www.instagram.com/p/code/",
         mediaUrl:
-          "https://project.supabase.co/storage/v1/object/sign/report-evidence/job-1/post.jpg?token=signed-token",
+          "https://evidence.example.test/private/job-1/post.jpg?token=signed-token",
         capturedAt: "2026-07-21T00:00:00.000Z",
         publishedAt: null,
         text: "Post",
@@ -422,7 +422,7 @@ function makeLoaderDeps(options: {
         evidenceType: "post",
         sourceUrl: "https://www.instagram.com/p/code/",
         mediaUrl:
-          "https://project.supabase.co/storage/v1/object/sign/report-evidence/job-1/post.jpg?token=signed-token",
+          "https://evidence.example.test/private/job-1/post.jpg?token=signed-token",
         capturedAt: "2026-07-21T00:00:00.000Z",
         publishedAt: null,
         text: "Post",

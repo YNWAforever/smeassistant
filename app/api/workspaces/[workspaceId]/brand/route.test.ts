@@ -12,7 +12,6 @@ vi.mock("@/lib/security/rate-limit", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/security/rate-limit")>();
   return { ...actual, enforceRateLimit: (...args: unknown[]) => mocks.enforceRateLimit(...args) };
 });
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({ marker: "db" }) }));
 vi.mock("@/lib/workspace/brand", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/workspace/brand")>();
   return { ...actual, getBrand: (...args: unknown[]) => mocks.getBrand(...args), putBrand: (...args: unknown[]) => mocks.putBrand(...args) };

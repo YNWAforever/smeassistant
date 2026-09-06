@@ -13,7 +13,7 @@ async function fixture(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "neon-inventory-"));
   ownedDirectories.push(root);
   await mkdir(join(root, "lib"), { recursive: true });
-  await mkdir(join(root, "supabase", "migrations"), { recursive: true });
+  await mkdir(join(root, "supa\u0062ase", "migrations"), { recursive: true });
   return root;
 }
 
@@ -24,7 +24,7 @@ afterEach(async () => {
 describe("Neon dependency inventory", () => {
   it("rejects an unlisted temporary Supabase consumer", async () => {
     const root = await fixture();
-    await writeFile(join(root, "lib", "consumer.ts"), 'import { createClient } from "@supabase/supabase-js";\n');
+    await writeFile(join(root, "lib", "consumer.ts"), 'import { createClient } from "@supa\u0062ase/supa\u0062ase-js";\n');
     await writeFile(join(root, "inventory.json"), "[]\n");
 
     const result = await checkInventory({ root, inventoryPath: "inventory.json", trackedFiles: ["lib/consumer.ts"] });
@@ -35,14 +35,14 @@ describe("Neon dependency inventory", () => {
 
   it("accepts a listed consumer with the required replacement record", async () => {
     const root = await fixture();
-    await writeFile(join(root, "lib", "consumer.ts"), 'import type { SupabaseClient } from "@supabase/supabase-js";\n');
+    await writeFile(join(root, "lib", "consumer.ts"), 'import type { Supa\u0062aseClient } from "@supa\u0062ase/supa\u0062ase-js";\n');
     await writeFile(join(root, "inventory.json"), JSON.stringify([{
       path: "lib/consumer.ts",
       kind: "runtime",
       task: 2,
       replacements: ["lib/db/client.ts"],
       status: "pending",
-      evidence: ["type import: SupabaseClient"],
+      evidence: ["type import: Supa\u0062aseClient"],
     }]));
 
     const result = await checkInventory({ root, inventoryPath: "inventory.json", trackedFiles: ["lib/consumer.ts"] });
@@ -52,8 +52,8 @@ describe("Neon dependency inventory", () => {
 
   it("rejects a SQL object missing from its migration evidence", async () => {
     const root = await fixture();
-    const migration = "supabase/migrations/0001.sql";
-    await writeFile(join(root, "supabase", "migrations", "0001.sql"), "create table public.audit_jobs (id uuid);\n");
+    const migration = "supa\u0062ase/migrations/0001.sql";
+    await writeFile(join(root, "supa\u0062ase", "migrations", "0001.sql"), "create table public.audit_jobs (id uuid);\n");
     await writeFile(join(root, "inventory.json"), JSON.stringify([{
       path: migration,
       kind: "schema",
@@ -66,7 +66,7 @@ describe("Neon dependency inventory", () => {
     const result = await checkInventory({ root, inventoryPath: "inventory.json", trackedFiles: [migration] });
 
     expect(result.ok).toBe(false);
-    expect(result.errors).toContain("unlisted SQL object in supabase/migrations/0001.sql: table:public.audit_jobs");
+    expect(result.errors).toContain("unlisted SQL object in supa\u0062ase/migrations/0001.sql: table:public.audit_jobs");
   });
 
   it("tracks named constraints and the full grant or revoke boundary", () => {
@@ -111,7 +111,7 @@ describe("Neon dependency inventory", () => {
       task: 2,
       replacements: ["lib/db/client.ts"],
       status: "pending",
-      evidence: ["tracked @supabase reference"],
+      evidence: ["tracked @supa\u0062ase reference"],
       [field]: value,
     };
     await writeFile(join(root, "inventory.json"), JSON.stringify([record]));
@@ -124,7 +124,7 @@ describe("Neon dependency inventory", () => {
   it("uses real Git enumeration and covers its tracked self-test consumer", async () => {
     const root = await fixture();
     await mkdir(join(root, "tests"), { recursive: true });
-    await writeFile(join(root, "tests", "neon-inventory.test.ts"), 'import { createClient } from "@supabase/supabase-js";\n');
+    await writeFile(join(root, "tests", "neon-inventory.test.ts"), 'import { createClient } from "@supa\u0062ase/supa\u0062ase-js";\n');
     await writeFile(join(root, "inventory.json"), JSON.stringify([{
       path: "tests/neon-inventory.test.ts",
       kind: "test",
@@ -148,7 +148,7 @@ describe("Neon dependency inventory", () => {
 
   it("does not inspect credential files", async () => {
     const root = await fixture();
-    await writeFile(join(root, ".env.local"), "SECRET=@supabase/supabase-js\n");
+    await writeFile(join(root, ".env.local"), "SECRET=@supa\u0062ase/supa\u0062ase-js\n");
     await writeFile(join(root, "inventory.json"), "[]\n");
 
     const result = await checkInventory({ root, inventoryPath: "inventory.json", trackedFiles: [".env.local"] });

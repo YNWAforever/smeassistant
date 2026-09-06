@@ -58,7 +58,7 @@ describe("loadAuthorizedEvidence", () => {
     ];
     state.signData = [{
       path: storedRow.storage_path,
-      signedUrl: `https://project.supabase.co/storage/v1/object/sign/report-evidence/${storedRow.storage_path}?token=signed-token`,
+      signedUrl: `https://evidence.example.test/private/${storedRow.storage_path}?token=signed-token`,
     }];
 
     const model = await loadAuthorizedEvidence("job-1");
@@ -165,7 +165,7 @@ describe("loadAuthorizedEvidence", () => {
     ];
     state.signData = [{
       path: storedRow.storage_path,
-      signedUrl: `https://project.supabase.co/storage/v1/object/sign/report-evidence/${storedRow.storage_path}?token=signed-token`,
+      signedUrl: `https://evidence.example.test/private/${storedRow.storage_path}?token=signed-token`,
     }];
 
     const model = await loadAuthorizedEvidence("job-1");

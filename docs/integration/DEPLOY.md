@@ -2,6 +2,25 @@
 
 Prepared for review; this document does not execute or authorize remote operations. Public checks prove only their named response boundaries. Launch acceptance is **not run** until evidence is recorded for the exact staging and final deployments in [LAUNCH-REPORT.md](LAUNCH-REPORT.md).
 
+## Current Neon preparation status
+
+Task 15 supplies local readiness and removal tooling. Hosted Neon project/branch, Auth endpoint, staging origin and authorized accounts are **NOT CHOSEN**. Hosted validation, provisioning, migration and deployment are **NOT RUN**. The historical references below are not selected destinations.
+
+| Variable | Source and boundary |
+|---|---|
+| `DATABASE_URL` | Selected Neon branch pooled application-role connection string; server-only |
+| `DATABASE_URL_UNPOOLED` | Same selected branch/database direct administrative connection; read-only metadata readiness uses this to access the migration journal; server-only |
+| `NEON_READINESS_HOST`, `NEON_READINESS_DATABASE` | Independently confirmed nonsecret expected branch endpoint and database; pooled `-pooler` hostname is normalized |
+| `NEON_AUTH_BASE_URL` | Auth endpoint from that selected branch; HTTPS without credentials/query/fragment; never a database URL |
+| `NEON_AUTH_COOKIE_SECRET` | Distinct securely generated random value of at least 32 characters; server-only |
+| `APP_ORIGIN`, `NEXT_PUBLIC_SITE_URL` | Same explicitly chosen bare app origin; no credentials/path/query/fragment |
+
+A registered variable name or placeholder is not a usable configuration value. Readiness performs a read-only transaction: current database identity, journal checksums, expected tables/functions. It never queries personal/business rows and emits only status/category plus validated nonsecret host/database. It does not contact Auth or prove delivery, expiry, replay or revocation. Missing/unavailable/wrong targets fail closed. Do not run against an unapproved hosted target.
+
+Local commands: `corepack pnpm db:verify`, `corepack pnpm db:types`, `corepack pnpm seed:demo --owned-test`, `corepack pnpm test:no-supabase`. The seed command creates, seeds, verifies and destroys its own fixture; ambient URLs are ignored and arbitrary target arguments are refused. No persistent or managed Auth seed is implied. The migration harness uses only an already-present `postgres:16` image; CI explicitly prepares that image before running the same harness. Existing lint/typecheck/unit/secret/migration/integration/build/public/acceptance gates remain.
+
+The strict exit gate currently remains blocked: the pinned Neon Auth SDK itself imports its transitive legacy Auth library at runtime. Direct application clients are removed, but no exception, SDK patch or upgrade has been authorized. Do not treat the gate as passing or this branch as release-ready.
+
 ## Repository and historical targets
 
 Use `YNWAforever/smeassistant` in `C:\Users\laich\Documents\smeassistant`. Preserve unrelated work in the legacy `Documents/smescanner` checkout. Phases 0–7 are implemented; do not restart them.
@@ -23,7 +42,7 @@ The following identifiers are historical audit references from 2026-09-05, not a
 2. Complete assistant capability/missing-facts fixes, corrected public checks, isolated merchant acceptance (continuation Task 3), and durable workspace completion across retained runners (Task 4). Public smoke checks alone do not satisfy these prerequisites.
 3. Run the normal repository gate: `corepack pnpm typecheck`, `corepack pnpm lint`, `corepack pnpm test`, `corepack pnpm build`. Run `corepack pnpm test:secret-boundary` sequentially: it builds its own sentinel bundle. Also run the migration verifier, `corepack pnpm test:integration`, `corepack pnpm e2e` and `corepack pnpm e2e:acceptance`. The 2026-09-06 local result is recorded in LAUNCH-REPORT.md: 33-migration gate, 18 integrations, 16 required acceptance cases and 27 public cases passed; this is not exact-deployment CI or provider acceptance.
 4. Record actual outcomes, including skipped cases. The historical four skipped cases (manual scan → report → unlock, live business search, magic-link form submission, draft → approve → export) are not passing acceptance evidence.
-5. Prepare schema inventory and compatibility evidence read-only. Compare all 28 pinned upstream migrations and the two workspace additions, including constraints, grants, RLS and RPC behavior. Empty-database tests do not prove a shared database's state. Prepare exact missing migrations and verification for review; apply only under applicable authorization, isolated staging first.
+5. Prepare schema inventory and compatibility evidence read-only. Compare all 28 pinned upstream migrations and the two workspace additions, including constraints, grants, RLS and RPC behavior. Empty-database tests do not prove a shared database's state. The historical SQL corpus remains compatibility evidence; the current Neon migration journal is authoritative for this branch. Prepare any hosted operation separately for review.
 
 Repository build settings: Next.js, root `/`, Node 22.x (`.nvmrc`), pnpm 9.12.0; install `pnpm install --frozen-lockfile`, build `pnpm build`. Record actual deployed runtime separately. Keep the existing scheduler; do not create a competing cron. An engine-completed job is not proof that workspace post-processing completed.
 
@@ -39,7 +58,7 @@ Keep every staging callback, mailed link and checkout return on that same stagin
 |---|---|---|
 | `NEXT_PUBLIC_SITE_URL` | `<staging-origin>` | `https://smescanner.fimmick.com` |
 | `APP_ORIGIN` | `<staging-origin>` | `https://smescanner.fimmick.com` |
-| Supabase Auth allowlist | `<staging-origin>/auth/callback` in the isolated project | `<final-origin>/auth/callback` in the authorized final project |
+| Neon Auth origin registration | `<staging-origin>/auth/callback` in the isolated project | `<final-origin>/auth/callback` in the authorized final project |
 | `GOOGLE_OAUTH_REDIRECT_URI` | `<staging-origin>/api/oauth/google/callback` | `<final-origin>/api/oauth/google/callback` |
 | `GOOGLE_OAUTH_CLAIM_REDIRECT_URI` | `<staging-origin>/api/oauth/google/claim/callback` | `<final-origin>/api/oauth/google/claim/callback` |
 | Google client registration | Both exact callback URIs and the staging JavaScript origin | Both exact final callback URIs and the final JavaScript origin |
@@ -50,7 +69,7 @@ Two Stripe endpoints have distinct signing secrets; one secret must not be assum
 
 Inventory variable names and purposes from `.env.example`, never secret values:
 
-- Supabase: isolated/final project identity, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, server-only `SUPABASE_SERVICE_ROLE_KEY`.
+- Neon PostgreSQL/Auth: configuration source map above; isolated and final target identities remain separately selected.
 - Security: `RATE_LIMIT_SECRET`, `REPORT_ACCESS_TOKEN_SECRET`, `OAUTH_TOKEN_ENCRYPTION_KEY`.
 - Google: `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, both redirect variables and claim flag.
 - Scan: `SCAN_SOURCES`, `SCAN_EXECUTION_RUNTIME`, relevant worker settings and explicitly authorized evidence-provider coverage.

@@ -14,7 +14,6 @@ vi.mock("@/lib/repositories/action-derivation", () => ({ deriveActionsForClaim: 
 vi.mock("@/lib/repositories/snapshots", () => ({ snapshotRepository: () => mocks.snapshotRepo }));
 vi.mock("@/lib/workspace/snapshots", () => ({ buildSnapshot: mocks.buildSnapshot, loadSnapshotForJob: vi.fn(async () => null) }));
 vi.mock("@/lib/auth", () => ({ getUser: mocks.getUser }));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => {mocks.legacy();return { from: vi.fn() };} }));
 vi.mock("@/lib/security/rate-limit", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/security/rate-limit")>();
   return { ...original, enforceRateLimit: mocks.enforceRateLimit };

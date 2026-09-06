@@ -1,0 +1,16 @@
+import { beforeAll,afterAll,it,expect } from 'vitest';
+import { Pool } from 'pg';
+import { startNeonDatabaseFixture,type NeonDatabaseFixture } from './neon-database';
+import { applyMigrations } from '../../scripts/neon/migrations';
+import { readiness } from '../../scripts/neon/readiness';
+let fixture:NeonDatabaseFixture,db:Pool;
+const env:Record<string,string>={NEON_AUTH_BASE_URL:'https://auth.example.test/auth',NEON_AUTH_COOKIE_SECRET:'readiness-fixture-cookie-secret-at-least-32',APP_ORIGIN:'https://app.example.test',NEXT_PUBLIC_SITE_URL:'https://app.example.test',NEON_READINESS_HOST:'127.0.0.1'};
+beforeAll(async()=>{fixture=await startNeonDatabaseFixture('test');db=new Pool({connectionString:fixture.databaseUrl});Object.assign(env,{DATABASE_URL:fixture.databaseUrl,DATABASE_URL_UNPOOLED:fixture.databaseUrl,NEON_READINESS_DATABASE:fixture.databaseName});await db.query('CREATE ROLE sme_app_runtime NOLOGIN');await applyMigrations(db);},60000);
+afterAll(async()=>{await db?.end();fixture?.stop();});
+it('verifies an owned migrated schema without modifying its journal',async()=>{expect(await readiness(env)).toMatchObject({status:'ready',target:{database:fixture.databaseName}});expect((await db.query('SELECT count(*)::int AS n FROM neon_migrations.journal')).rows[0].n).toBe(4);});
+it('refuses a different expected target before transport',async()=>expect((await readiness({...env,NEON_READINESS_DATABASE:'other'})).category).toBe('target'));
+it('rejects missing journal',async()=>{await db.query('ALTER TABLE neon_migrations.journal RENAME TO hidden_journal');try{expect((await readiness(env)).category).toBe('schema');}finally{await db.query('ALTER TABLE neon_migrations.hidden_journal RENAME TO journal');}});
+it('rejects checksum mismatch',async()=>{const checksum=(await db.query('SELECT checksum FROM neon_migrations.journal WHERE ordinal=1')).rows[0].checksum;await db.query("UPDATE neon_migrations.journal SET checksum=repeat('0',64) WHERE ordinal=1");try{expect((await readiness(env)).category).toBe('schema');}finally{await db.query('UPDATE neon_migrations.journal SET checksum=$1 WHERE ordinal=1',[checksum]);}});
+it('rejects a missing expected table',async()=>{await db.query('ALTER TABLE public.app_users RENAME TO hidden_app_users');try{expect((await readiness(env)).category).toBe('schema');}finally{await db.query('ALTER TABLE public.hidden_app_users RENAME TO app_users');}});
+it('rejects a missing expected function',async()=>{await db.query('ALTER FUNCTION public.touch_actions_updated_at() RENAME TO hidden_touch');try{expect((await readiness(env)).category).toBe('schema');}finally{await db.query('ALTER FUNCTION public.hidden_touch() RENAME TO touch_actions_updated_at');}});
+it('returns only sanitized categories when the listener is unavailable',async()=>{const bad=new URL(fixture.databaseUrl);bad.port='1';const result=await readiness({...env,DATABASE_URL:bad.href,DATABASE_URL_UNPOOLED:bad.href});expect(result.category).toBe('connection');expect(JSON.stringify(result)).not.toContain('postgresql:');});

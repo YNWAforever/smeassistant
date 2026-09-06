@@ -14,7 +14,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": repoRoot,
-      // lib/supabase/admin.ts imports "server-only", which throws outside React Server Components.
+      // Server-only application repositories throw outside React Server Components.
       "server-only": path.join(repoRoot, "tests/empty-module.ts"),
     },
   },
@@ -26,8 +26,8 @@ export default defineConfig({
     environment: "node",
     // One retry absorbs timer-bound flakiness under full parallel load (lib/evidence/safe-media.test.ts); a real failure still fails twice.
     retry: 1,
-    // test/integration holds the Docker harness; its own unit tests (jwt,
-    // websocket-shim, global-setup) run here, the *.integration.test.ts files do not.
+    // test/integration holds the owned Docker harness; its unit tests run here,
+    // while *.integration.test.ts files use the dedicated SQL configuration.
     include: ["tests/**/*.test.{ts,tsx}", "lib/**/*.test.{ts,tsx}", "app/**/*.test.{ts,tsx}", "test/**/*.test.{ts,tsx}"],
     // Playwright owns e2e/; packages/* run their own vitest via `pnpm -r test`;
     // *.integration.test.ts needs Docker and belongs to vitest.integration.config.ts.

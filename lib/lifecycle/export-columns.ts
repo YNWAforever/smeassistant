@@ -1,18 +1,7 @@
 /**
- * The columns the subject-access export reads, kept out of the route file.
- *
- * It lives here for the same reason lib/scan/collect-providers.ts does: Next.js
- * route files may export only route handlers and config fields, so a route that
- * exports anything else fails typecheck against the generated .next types.
- *
- * Named and exported so a contract test can check every column against the
- * migration schema. That is not decoration. `report_evidence` has
- * `collection_status`, not `status`; the export shipped asking for `status`,
- * PostgREST rejects the whole query on an unknown column, and every export would
- * have returned 500. Ten green route tests said nothing, because every mocked
- * PostgREST builder in this repo resolves `{ data, error: null }` without ever
- * looking at the string passed to `.select()`. The schema is the only thing that
- * knows, so lib/security/export-column-contract.test.ts reads the schema.
+ * Export column contracts remain independent of route exports. Historical schema
+ * tests catch invalid names; actual Neon SQL integration covers the live repository.
+ * In particular report_evidence uses collection_status, not status.
  */
 export const EXPORT_COLUMNS = {
   audit_jobs:

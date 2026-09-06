@@ -8,7 +8,6 @@ import { workspaceProfileRepository } from '../../lib/repositories/workspace-pro
 import { enqueueRescan, ensureMonthlySchedule } from '../../lib/workspace/rescan';
 const ports=vi.hoisted(()=>({pool:undefined as Pool|undefined}));
 vi.mock('../../lib/db/client',()=>({getPool:()=>ports.pool,getDatabase:()=>drizzle(ports.pool!)}));
-vi.mock('../../lib/supabase/admin',()=>({supabaseServer:()=>{throw new Error('legacy transport forbidden');}}));
 const snapshot={version:2,market:'TW',locale:'zh-TW',businessName:'台北 fixture',industry:'fnb',district:'taipei',objective:'more_leads',placeId:'fixture-place',instagramHandle:'fixture',instagramMatchProvenance:'manual_typed'};
 describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon rescan and owner profile persistence',()=>{
  let fixture:NeonDatabaseFixture,owner:Pool,runtime:Pool;

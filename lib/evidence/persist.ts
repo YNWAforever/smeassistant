@@ -188,7 +188,7 @@ export async function persistEvidenceSnapshots(
       const result = await deps.storage.upload(objectPath, media.bytes, {
         contentType: media.mimeType,
         upsert: true,
-        // Supabase FileOptions expects seconds, not a full Cache-Control header.
+        // The storage adapter expects seconds, not a full Cache-Control header.
         cacheControl: "0",
       });
       throwForApiError(result, "evidence_storage_upload_failed");

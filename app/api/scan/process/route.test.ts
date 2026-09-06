@@ -119,20 +119,21 @@ describe("scan process route runtime switch", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("dispatches to the worker and 202s without scanning when the runtime is cloudflare", async () => {
+  it("executes on Neon locally when an unreviewed worker is configured", async () => {
     vi.stubEnv("SCAN_EXECUTION_RUNTIME", "cloudflare");
     vi.stubEnv("SCAN_WORKER_URL", "https://scan-worker.example");
     vi.stubEnv("CRON_SECRET", "d".repeat(32));
     vi.mocked(processScan).mockClear();
+    vi.mocked(processScan).mockResolvedValueOnce({ status: "done" } as never);
     const fetchMock = vi.fn(async () => new Response("{}", { status: 202 }));
     vi.stubGlobal("fetch", fetchMock);
 
     const response = await POST(post());
 
-    expect(response.status).toBe(202);
-    expect(await response.json()).toEqual({ accepted: true });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(processScan).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: "done" });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(processScan).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ store: { marker: "neon-store" } }));
   });
 
   it("still 500s a failed scan when the runtime is vercel, matching the pre-L6 contract", async () => {
@@ -154,25 +155,22 @@ describe("scan process route runtime switch", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("502s without scanning when the worker rejects the dispatch", async () => {
-    // Regression: `{ status: accepted ? 202 : 502 }` collapsed to a bare 202
-    // kept every other test in this file green -- nothing here previously
-    // exercised the rejected-dispatch branch. A silent 202 on a job the
-    // Worker never accepted would make the scanning page poll forever with
-    // no operator signal that dispatch failed.
+  it("returns local scan failure without contacting an unreviewed worker", async () => {
+    // External worker URLs never establish Neon receiver compatibility.
     vi.stubEnv("SCAN_EXECUTION_RUNTIME", "cloudflare");
     vi.stubEnv("SCAN_WORKER_URL", "https://scan-worker.example");
     vi.stubEnv("CRON_SECRET", "d".repeat(32));
     vi.mocked(processScan).mockClear();
+    vi.mocked(processScan).mockResolvedValueOnce({ status: "failed" } as never);
     const fetchMock = vi.fn(async () => new Response("nope", { status: 401 }));
     vi.stubGlobal("fetch", fetchMock);
 
     const response = await POST(post());
 
-    expect(response.status).toBe(502);
-    expect(await response.json()).toEqual({ accepted: false });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(processScan).not.toHaveBeenCalled();
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ status: "failed" });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(processScan).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ store: { marker: "neon-store" } }));
   });
 });
 

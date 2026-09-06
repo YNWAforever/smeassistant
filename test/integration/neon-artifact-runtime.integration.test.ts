@@ -29,11 +29,6 @@ vi.mock("../../lib/db/client", () => ({
     return state.pool;
   },
 }));
-vi.mock("../../lib/supabase/admin", () => ({
-  supabaseServer: () => {
-    throw new Error("legacy_transport_forbidden");
-  },
-}));
 vi.mock("../../lib/auth", async (original) => ({
   ...(await original<typeof import("../../lib/auth")>()),
   authorizeWorkspaceRequest: async () => ({

@@ -70,7 +70,7 @@ describe("atomic rate-limit contract", () => {
     expect(RATE_LIMITS.staff_magic_link).toEqual({ limit: 5, windowSeconds: 3600 });
     // A brute-force bound on the 6-digit fallback code, not a typo allowance:
     // 10 guesses against 1,000,000 possibilities is negligible per hour even
-    // before Supabase's own per-token attempt limit is considered.
+    // before the identity provider's per-token attempt limit is considered.
     expect(RATE_LIMITS.staff_otp_verify).toEqual({ limit: 10, windowSeconds: 3600 });
     expect(RATE_LIMITS.report_recovery).toEqual({ limit: 5, windowSeconds: 3600 });
     expect(RATE_LIMITS.composite_identifier_outer).toEqual({ limit: 1000, windowSeconds: 3600 });

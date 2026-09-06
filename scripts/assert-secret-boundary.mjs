@@ -1,4 +1,4 @@
-// Client secret boundary sweep (CLAUDE.md §6, Appendix B `test:secret-boundary`).
+// Client secret boundary sweep (CLAUDE.md 禮6, Appendix B `test:secret-boundary`).
 //
 // Ported from upstream's scripts/assert-merchant-search-secret-boundary.mjs and
 // widened for this app: every server-only secret is set to a unique sentinel,
@@ -21,7 +21,9 @@ const sentinels = {
   // Must be valid base64 decoding to >= 32 bytes or token-crypto throws during
   // the build and the sweep fails for the wrong reason.
   OAUTH_TOKEN_ENCRYPTION_KEY: Buffer.from(`oauth-encryption-sentinel-${uuid()}`).toString("base64"),
-  SUPABASE_SERVICE_ROLE_KEY: `service-role-secret-${uuid()}`,
+  DATABASE_URL: `postgresql://fixture:db-secret-${uuid()}@127.0.0.1:1/secret_boundary`,
+  DATABASE_URL_UNPOOLED: `postgresql://fixture:direct-secret-${uuid()}@127.0.0.1:1/secret_boundary`,
+  NEON_AUTH_COOKIE_SECRET: `auth-cookie-secret-${uuid()}`,
   RATE_LIMIT_SECRET: `rate-limit-secret-${uuid()}`,
   WORKSPACE_COMPLETION_SECRET: `workspace-completion-secret-${uuid()}`,
   STRIPE_SECRET_KEY: `stripe-secret-${uuid()}`,
@@ -61,6 +63,8 @@ const files = [
 if (!files.length) throw new Error("No client/static or rendered public artifacts were found");
 
 const forbidden = [
+  { label: "DATABASE_URL password", pattern: new URL(sentinels.DATABASE_URL).password },
+  { label: "DATABASE_URL_UNPOOLED password", pattern: new URL(sentinels.DATABASE_URL_UNPOOLED).password },
   ...Object.entries(sentinels).flatMap(([name, value]) => [
     { label: `${name} value`, pattern: value },
     { label: `${name} env name`, pattern: name },

@@ -8,7 +8,6 @@ import { reportsRepository } from "@/lib/repositories/reports";
 
 /**
  * Ported verbatim from upstream `apps/web/app/[locale]/r/[slug]/opengraph-image.tsx`
- * (only the imports moved: `@/lib/supabase` → `@/lib/supabase/admin`, `@/lib/types`
  * → `@sme-scanner/contracts`). It reads the legacy `module_scores` column, not
  * `module_results`, because the share card predates the coverage-aware payload.
  *

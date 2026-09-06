@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { assertLocalOrigin, isolatedEnv } from "./safety";
 describe("acceptance isolation", () => {
-  it.each(["https://project.supabase.co", "http://localhost.example:3000", "http://127.0.0.1", "http://user:secret@127.0.0.1:3000", "http://127.0.0.1:3000/path", "http://127.0.0.1:3000?key=secret"]) ("rejects unsafe target %s", (url) => expect(() => assertLocalOrigin(url)).toThrow());
+  it.each(["https://remote.example.test", "http://localhost.example:3000", "http://127.0.0.1", "http://user:secret@127.0.0.1:3000", "http://127.0.0.1:3000/path", "http://127.0.0.1:3000?key=secret"]) ("rejects unsafe target %s", (url) => expect(() => assertLocalOrigin(url)).toThrow());
   it("accepts only explicit loopback origins", () => expect(assertLocalOrigin("http://127.0.0.1:1234")).toBe("http://127.0.0.1:1234"));
   it("accepts the Next local redirect hostname", () => expect(assertLocalOrigin("http://localhost:1234")).toBe("http://localhost:1234"));
   const original = process.env.SERPAPI_API_KEY;

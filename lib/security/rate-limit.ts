@@ -56,7 +56,7 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   // clicks it, so they fall back to typing the emailed 6-digit code
   // instead). This bounds guesses against a live code, not requests for one:
   // 10 attempts against 1,000,000 possibilities is a negligible brute-force
-  // budget even before Supabase's own per-token attempt limit applies.
+  // budget even before the identity provider's per-token attempt limit applies.
   staff_otp_verify: { limit: 10, windowSeconds: 60 * 60 },
   report_recovery: { limit: 5, windowSeconds: 60 * 60 },
   // Staff are allowlisted and email-verified, so this is not about distrusting

@@ -41,7 +41,7 @@ const fixture: ReportViewSource = {
     evidence: { items: [{
       id: "e1", provider: "instagram", evidenceType: "post",
       sourceUrl: "https://www.instagram.com/p/code/",
-      mediaUrl: "https://project.supabase.co/storage/v1/object/sign/report-evidence/job-1/post.jpg?token=PRIVATE_EVIDENCE_TOKEN",
+      mediaUrl: "https://evidence.example.test/private/job-1/post.jpg?token=PRIVATE_EVIDENCE_TOKEN",
       capturedAt: "2026-07-21T00:00:00.000Z", publishedAt: null, text: "Post",
       metadata: { likes: 5 }, status: "stored", limitationCode: null,
     }] },

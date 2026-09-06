@@ -35,7 +35,7 @@ export function resolveHtmlLang(headerValue: string | null | undefined): Locale 
 }
 
 /**
- * True for every path under `/{locale}/owner` — the surface whose Supabase
+ * True for every path under `/{locale}/owner` — the surface whose Auth
  * session the proxy refreshes on each request (sign-in included, so the
  * sign-in page can see an existing session).
  */

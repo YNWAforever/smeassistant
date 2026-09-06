@@ -4,12 +4,14 @@
     "kind": "operation",
     "task": 15,
     "replacements": [
-      "PostgreSQL migration and integration CI services"
+      "scripts/assert-no-supabase.mjs",
+      "scripts/neon/readiness.ts",
+      "scripts/gen-types.ts",
+      "scripts/seed-demo.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "CI installs PostgreSQL, verifies migrations, and runs Docker PostgreSQL/PostgREST integration services",
-      "required mode: CI"
+      "Task15: active clients and direct dependencies removed; typed schema generation and owned disposable demo seeding implemented. Hosted targets NOT CHOSEN and NOT RUN."
     ]
   },
   {
@@ -1104,13 +1106,14 @@
     "kind": "operation",
     "task": 15,
     "replacements": [
-      "retained scheduler and Cloudflare scan worker dispatch boundary"
+      "scripts/assert-no-supabase.mjs",
+      "scripts/neon/readiness.ts",
+      "scripts/gen-types.ts",
+      "scripts/seed-demo.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "required modes: vercel, scheduled, cloudflare",
-      "external boundary: Vercel route dispatches to Cloudflare worker when SCAN_EXECUTION_RUNTIME selects it",
-      "SCAN_WORKER_URL configures the worker consumer origin"
+      "Task15: active clients and direct dependencies removed; typed schema generation and owned disposable demo seeding implemented. Hosted targets NOT CHOSEN and NOT RUN."
     ]
   },
   {
@@ -1185,43 +1188,46 @@
   {
     "path": "lib/supabase/admin.ts",
     "kind": "runtime",
-    "task": 6,
+    "task": 15,
     "replacements": [
-      "lib/auth/provider.ts",
-      "lib/auth/session.ts"
+      "scripts/assert-no-supabase.mjs",
+      "scripts/neon/readiness.ts",
+      "scripts/gen-types.ts",
+      "scripts/seed-demo.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference",
-      "supabaseServer reference"
+      "Task15: active clients and direct dependencies removed; typed schema generation and owned disposable demo seeding implemented. Hosted targets NOT CHOSEN and NOT RUN."
     ]
   },
   {
     "path": "lib/supabase/client.ts",
     "kind": "runtime",
-    "task": 6,
+    "task": 15,
     "replacements": [
-      "lib/auth/provider.ts",
-      "lib/auth/session.ts"
+      "scripts/assert-no-supabase.mjs",
+      "scripts/neon/readiness.ts",
+      "scripts/gen-types.ts",
+      "scripts/seed-demo.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference"
+      "Task15: active clients and direct dependencies removed; typed schema generation and owned disposable demo seeding implemented. Hosted targets NOT CHOSEN and NOT RUN."
     ]
   },
   {
     "path": "lib/supabase/server.ts",
     "kind": "runtime",
-    "task": 6,
+    "task": 15,
     "replacements": [
-      "lib/auth/provider.ts",
-      "lib/auth/session.ts"
+      "scripts/assert-no-supabase.mjs",
+      "scripts/neon/readiness.ts",
+      "scripts/gen-types.ts",
+      "scripts/seed-demo.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "Task15: active clients and direct dependencies removed; typed schema generation and owned disposable demo seeding implemented. Hosted targets NOT CHOSEN and NOT RUN."
     ]
   },
   {
@@ -1790,11 +1796,14 @@
     "kind": "operation",
     "task": 15,
     "replacements": [
-      "scripts/assert-no-supabase.mjs"
+      "scripts/assert-no-supabase.mjs",
+      "scripts/neon/readiness.ts",
+      "scripts/gen-types.ts",
+      "scripts/seed-demo.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference"
+      "Task15: active clients and direct dependencies removed; typed schema generation and owned disposable demo seeding implemented. Hosted targets NOT CHOSEN and NOT RUN."
     ]
   },
   {
@@ -1802,11 +1811,14 @@
     "kind": "operation",
     "task": 15,
     "replacements": [
-      "scripts/assert-no-supabase.mjs"
+      "scripts/assert-no-supabase.mjs",
+      "scripts/neon/readiness.ts",
+      "scripts/gen-types.ts",
+      "scripts/seed-demo.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference"
+      "Task15: active clients and direct dependencies removed; typed schema generation and owned disposable demo seeding implemented. Hosted targets NOT CHOSEN and NOT RUN."
     ]
   },
   {
@@ -1914,11 +1926,14 @@
     "kind": "runtime",
     "task": 15,
     "replacements": [
-      "scripts/assert-no-supabase.mjs"
+      "scripts/assert-no-supabase.mjs",
+      "scripts/neon/readiness.ts",
+      "scripts/gen-types.ts",
+      "scripts/seed-demo.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference"
+      "Task15: active clients and direct dependencies removed; typed schema generation and owned disposable demo seeding implemented. Hosted targets NOT CHOSEN and NOT RUN."
     ]
   },
   {
@@ -1939,13 +1954,14 @@
     "kind": "runtime",
     "task": 15,
     "replacements": [
-      "scripts/assert-no-supabase.mjs"
+      "scripts/assert-no-supabase.mjs",
+      "scripts/neon/readiness.ts",
+      "scripts/gen-types.ts",
+      "scripts/seed-demo.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference",
-      "Task12 disables legacy executable before imports/writes; Task15 owns Neon demo seed rewrite. tests/neon-seed-boundary.test.ts proves inert entrypoint."
+      "Task15: active clients and direct dependencies removed; typed schema generation and owned disposable demo seeding implemented. Hosted targets NOT CHOSEN and NOT RUN."
     ]
   },
   {

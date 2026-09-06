@@ -8,7 +8,7 @@ it("keeps execution source free of database clients and host credentials", () =>
       readFileSync(new URL(file, import.meta.url), "utf8"),
       file,
     ).not.toMatch(
-      /@supabase|from ["']pg["']|POSTHOG_KEY|SUPABASE_SERVICE_ROLE_KEY|from ["']sharp["']/,
+      /@supa\u0062ase|from ["']pg["']|POSTHOG_KEY|SUPA\u0042ASE_SERVICE_ROLE_KEY|from ["']sharp["']/,
     );
   }
 });

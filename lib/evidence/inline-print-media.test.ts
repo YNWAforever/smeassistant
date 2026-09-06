@@ -16,7 +16,7 @@ describe("inlinePrintMedia", () => {
   it("returns a data URI keyed by evidence id", async () => {
     const fetcher = vi.fn(async () => imageResponse(PNG));
     const result = await inlinePrintMedia(
-      [{ id: "e1", mediaUrl: "https://project.supabase.co/storage/v1/object/sign/report-evidence/a.png?token=t" }],
+      [{ id: "e1", mediaUrl: "https://evidence.example.test/private/a.png?token=t" }],
       fetcher as unknown as typeof fetch,
     );
     expect(result.e1).toBe(`data:image/png;base64,${Buffer.from(PNG).toString("base64")}`);

@@ -6,7 +6,6 @@ vi.mock('@/lib/auth',()=>({getUser:async()=>({id:'user',email:'fixture@example.t
 vi.mock('@/lib/workspace/callback-queries',()=>({bindPendingMembership:async()=>null,findOwnedWorkspace:async()=>({data:{workspaceId:'workspace'},error:null}),createWorkspaceWithOwner:vi.fn(),attachJobToWorkspace:vi.fn()}));
 vi.mock('@/lib/repositories/claims',()=>({claimsRepository:{jobBySlug:vi.fn(),firstLeadEmail:vi.fn()}}));
 vi.mock('@/lib/repositories/reports',()=>({reportsRepository:()=>({findViewerGrant:mocks.grant})}));
-vi.mock('@/lib/supabase/admin',()=>({supabaseServer:()=>{throw new Error('legacy transport forbidden');}}));
 vi.mock('@/lib/workspace/claim-scan',()=>({claimScan:async (input:{hasViewerGrant:(id:string)=>Promise<boolean>})=>{mocks.entitled=await input.hasViewerGrant('job-1');return {kind:'fixture'};}}));
 import { GET } from './route';
 const token=createViewerToken();

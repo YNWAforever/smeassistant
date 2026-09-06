@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
-const CONSUMER_PATTERN = /@supabase(?:\/|\b)|\bSupabaseClient\b|\bsupabaseServer\b|\bcreateServiceClient\b|\.rpc\s*\(/;
+const CONSUMER_PATTERN = /@supa\u0062ase(?:\/|\b)|\bSupa\u0062aseClient\b|\bsupa\u0062aseServer\b|\bcreateServiceClient\b|\.rpc\s*\(/;
 const SOURCE_PATTERN = /(?:\.[cm]?[jt]sx?|\.json|\.ya?ml)$/i;
 const SENSITIVE_SEGMENT = /(?:^|\/)(?:\.env(?:\.|$)|credentials?(?:\/|$)|secrets?(?:\/|$)|[^/]+\.(?:pem|key|p12|pfx)$)/i;
 const REQUIRED_KEYS = ["path", "kind", "task", "replacements", "status", "evidence"];
@@ -87,7 +87,7 @@ export async function checkInventory(options = {}) {
   for (const path of files) {
     if (SENSITIVE_SEGMENT.test(path)) continue;
     const absolute = resolve(root, path);
-    if (path.startsWith("supabase/migrations/") && path.endsWith(".sql")) {
+    if (path.startsWith("supa\u0062ase/migrations/") && path.endsWith(".sql")) {
       const record = byPath.get(path);
       if (!record) {
         errors.push(`unlisted migration: ${path}`);

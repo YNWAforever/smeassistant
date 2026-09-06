@@ -18,7 +18,6 @@ vi.mock("@/lib/workspace/rescan", () => ({
   enqueueRescan: (...args: unknown[]) => mocks.enqueueRescan(...args),
   ensureMonthlySchedule: (...args: unknown[]) => mocks.ensureMonthlySchedule(...args),
 }));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => { throw new Error("legacy transport forbidden"); } }));
 vi.mock("@/lib/repositories/rescan", () => ({ rescanRepository: () => ({tier: (...args: unknown[]) => mocks.readTier(...args)}) }));
 
 const WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";

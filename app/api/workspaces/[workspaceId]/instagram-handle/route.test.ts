@@ -6,7 +6,6 @@ const locationUpdate = vi.fn();
 const auditInsert = vi.fn();
 
 vi.mock("@/lib/auth", () => ({ authorizeWorkspaceRequest: (...args: unknown[]) => authorizeWorkspaceRequest(...args) }));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => { throw new Error("legacy transport forbidden"); } }));
 vi.mock("@/lib/repositories/workspace-profile", () => ({ workspaceProfileRepository: () => ({ setInstagramHandle: (...args: unknown[]) => workspaceUpdate(...args), syncPrimaryInstagramHandle: (...args: unknown[]) => locationUpdate(...args) }) }));
 vi.mock("@/lib/workspace/audit", () => ({ recordNeonEvent: (...args: unknown[]) => auditInsert(...args) }));
 

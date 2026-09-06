@@ -21,10 +21,13 @@
     "e2e:acceptance": "playwright test --config playwright.acceptance.config.ts",
     "e2e:live": "playwright test --config playwright.live.config.ts",
     "test:secret-boundary": "node scripts/assert-secret-boundary.mjs",
-    "db:verify": "bash supabase/verify-migrations.sh",
+    "db:verify": "tsx scripts/neon/verify-migrations.ts",
     "db:types": "tsx scripts/gen-types.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
-    "launch:check": "node scripts/launch-check.mjs"
+    "launch:check": "node scripts/launch-check.mjs",
+    "neon:readiness": "tsx scripts/neon/readiness.ts",
+    "test:no-supabase": "node scripts/assert-no-supabase.mjs",
+    "e2e:neon-auth": "playwright test --config playwright.neon-auth.config.ts"
   },
   "dependencies": {
     "@neondatabase/auth": "0.5.0-beta",
@@ -32,8 +35,6 @@
     "@sme-scanner/region": "workspace:*",
     "@sme-scanner/scan-engine": "workspace:*",
     "@sme-scanner/scoring": "workspace:*",
-    "@supabase/ssr": "^0.12.1",
-    "@supabase/supabase-js": "^2.106.1",
     "@vercel/blob": "2.8.0",
     "@vercel/functions": "3.9.5",
     "class-variance-authority": "0.7.1",

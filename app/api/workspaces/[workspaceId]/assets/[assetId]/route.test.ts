@@ -8,7 +8,6 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/auth", () => ({ authorizeWorkspaceRequest: mocks.authorizeWorkspaceRequest }));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({}) }));
 vi.mock("@/lib/workspace/assets", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/workspace/assets")>();
   return { ...original, getAsset: mocks.getAsset, updateAssetRights: mocks.updateAssetRights };

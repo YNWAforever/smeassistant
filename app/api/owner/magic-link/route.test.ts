@@ -27,7 +27,7 @@ function request(body: unknown): Request {
   });
 }
 
-function wireSupabase(options: { job?: { id: string } | null; knownLead?: boolean } = {}) {
+function wireRepositories(options: { job?: { id: string } | null; knownLead?: boolean } = {}) {
  const { job = {id:"job-1"}, knownLead = false } = options;
  mocks.from.mockResolvedValue(Boolean(job && knownLead));
 }
@@ -38,11 +38,11 @@ describe("POST /api/owner/magic-link", () => {
     process.env.NEXT_PUBLIC_SITE_URL = "https://configured.fimmick.com";
     mocks.signInWithOtp.mockResolvedValue({ error: null });
     mocks.enforceCompositeIdentifierRateLimit.mockResolvedValue({ allowed: true, retryAfterSeconds: 1 });
-    wireSupabase();
+    wireRepositories();
   });
 
   it("does not mail an address that is not already a lead on the named report", async () => {
-    wireSupabase({ job: { id: "job-1" }, knownLead: false });
+    wireRepositories({ job: { id: "job-1" }, knownLead: false });
     const response = await POST(request({ slug: "abcdef", email: "stranger@example.com" }));
 
     // The open-mailer guard: the route answers ok either way so it cannot be
@@ -53,7 +53,7 @@ describe("POST /api/owner/magic-link", () => {
   });
 
   it("mails a magic link to an address already recorded as a lead on the report", async () => {
-    wireSupabase({ job: { id: "job-1" }, knownLead: true });
+    wireRepositories({ job: { id: "job-1" }, knownLead: true });
     const response = await POST(request({ slug: "abcdef", email: "known@example.com" }));
 
     expect(response.status).toBe(200);
@@ -69,7 +69,7 @@ describe("POST /api/owner/magic-link", () => {
   // Local additions: the link carries the validated locale and returnTo so the
   // callback can land on a locale-prefixed page.
   it("carries a valid locale and same-origin returnTo on the link", async () => {
-    wireSupabase({ job: { id: "job-1" }, knownLead: true });
+    wireRepositories({ job: { id: "job-1" }, knownLead: true });
     await POST(request({ slug: "abcdef", email: "known@example.com", locale: "en", returnTo: "/en/owner/select-workspace" }));
 
     expect(mocks.signInWithOtp).toHaveBeenCalledWith(
@@ -81,7 +81,7 @@ describe("POST /api/owner/magic-link", () => {
   });
 
   it("drops an unknown locale and an off-origin returnTo", async () => {
-    wireSupabase({ job: { id: "job-1" }, knownLead: true });
+    wireRepositories({ job: { id: "job-1" }, knownLead: true });
     await POST(request({ slug: "abcdef", email: "known@example.com", locale: "fr", returnTo: "https://evil.example/" }));
 
     expect(mocks.signInWithOtp).toHaveBeenCalledWith(
@@ -93,7 +93,7 @@ describe("POST /api/owner/magic-link", () => {
 
   it("falls back to the request origin when NEXT_PUBLIC_SITE_URL is unset", async () => {
     delete process.env.NEXT_PUBLIC_SITE_URL;
-    wireSupabase({ job: { id: "job-1" }, knownLead: true });
+    wireRepositories({ job: { id: "job-1" }, knownLead: true });
     await POST(request({ slug: "abcdef", email: "known@example.com" }));
 
     expect(mocks.signInWithOtp).toHaveBeenCalledWith(
