@@ -4,6 +4,7 @@ import { getPool } from "../db/client";
 import type { ReportStore, PublicReportJob, AuthorizedJobData, LoadedAuthorizedFinding } from "../report/store";
 import type { ViewerGrantRecord } from "../report-access/authorize-report";
 export function reportsRepository(client?: Pick<Pool, "query">): ReportStore & {
+    revokeViewerGrant(grantId: string, tokenHash: string): Promise<void>;
     readUnlockJob(slug: string): Promise<{
         id: string;
         share_slug: string;
@@ -46,6 +47,9 @@ export function reportsRepository(client?: Pick<Pool, "query">): ReportStore & {
         },
         async findViewerGrant(jobId, grantId) {
             return (await rows<ViewerGrantRecord>("SELECT id,job_id,token_hash,expires_at::text,redeemed_at::text,revoked_at::text,last_used_at::text FROM report_access_grants WHERE id=$1 AND job_id=$2", [grantId, jobId]))[0] ?? null;
+        },
+        async revokeViewerGrant(grantId, tokenHash) {
+            await rows("UPDATE report_access_grants SET revoked_at=now() WHERE id=$1 AND token_hash=$2 AND revoked_at IS NULL", [grantId, tokenHash]);
         },
         async markViewerGrantUsed(jobId, grantId) { await rows("UPDATE report_access_grants SET last_used_at=now() WHERE id=$1 AND job_id=$2 AND revoked_at IS NULL", [grantId, jobId]); },
         async cacheSummary(jobId, column, value) {

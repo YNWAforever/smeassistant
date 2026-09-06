@@ -330,12 +330,12 @@
     "kind": "test",
     "task": 9,
     "replacements": [
-      "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/reports.ts",
+      "test/integration/neon-report-signout.integration.test.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task 9 sign-out now revokes through typed PostgreSQL reportsRepository using grant id, token hash and revoked_at IS NULL. Route fixtures preserve uniform cookie clearing and managed auth 503; restricted-runtime SQL proves mismatched tokens cannot revoke and captured cookies cannot authorize after revocation."
     ]
   },
   {
@@ -343,25 +343,26 @@
     "kind": "runtime",
     "task": 9,
     "replacements": [
-      "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/reports.ts",
+      "test/integration/neon-report-signout.integration.test.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task 9 sign-out now revokes through typed PostgreSQL reportsRepository using grant id, token hash and revoked_at IS NULL. Route fixtures preserve uniform cookie clearing and managed auth 503; restricted-runtime SQL proves mismatched tokens cannot revoke and captured cookies cannot authorize after revocation."
     ]
   },
   {
     "path": "app/api/report-access/unlock/route.test.ts",
     "kind": "test",
-    "task": 9,
+    "task": 8,
     "replacements": [
-      "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/reports.ts",
+      "lib/repositories/workflow.ts",
+      "test/integration/neon-scan-start.integration.test.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task 8 route fixtures mock typed reports/workflow repositories; local from/rpc-named fixture helpers are not provider imports. Owned SQL integration verifies actual unlock."
     ]
   },
   {
@@ -825,12 +826,12 @@
     "kind": "test",
     "task": 9,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/workspaces.ts",
+      "lib/repositories/snapshots.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference",
-      "Task7 checks use Neon completion store. Remaining legacy mock guards deferred Task9 snapshot store lazy initialization; action derivation belongs to Task10."
+      "Task 9 fixture uses Neon snapshotRepository and asserts legacy Supabase guard is never called. Legacy mock is retained only as a negative assertion. Task 10 action derivation remains explicitly unavailable (503), not completed by this marker."
     ]
   },
   {
@@ -979,11 +980,11 @@
     "task": 9,
     "replacements": [
       "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/storage/private-blob.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Task 9 loader fixtures mock typed evidence repository and Private Blob signer. Historical signed-URL example strings are inert fixture data, not a Supabase runtime dependency; native signing is verified in private-blob SDK fixtures."
     ]
   },
   {
@@ -1049,12 +1050,12 @@
     "kind": "test",
     "task": 9,
     "replacements": [
-      "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/reports.ts",
+      "test/integration/neon-scan-start.integration.test.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Report persistence already uses PostgreSQL query fixtures and reportsRepository. Historical signed-URL strings in loader fixtures are inert model data; authorization/read separation and actual SQL projection are covered by report and Neon integration suites."
     ]
   },
   {
@@ -1062,12 +1063,12 @@
     "kind": "test",
     "task": 9,
     "replacements": [
-      "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/reports.ts",
+      "test/integration/neon-scan-start.integration.test.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "Report persistence already uses PostgreSQL query fixtures and reportsRepository. Historical signed-URL strings in loader fixtures are inert model data; authorization/read separation and actual SQL projection are covered by report and Neon integration suites."
     ]
   },
   {
@@ -1445,15 +1446,14 @@
   {
     "path": "lib/workspace/measurements.test.ts",
     "kind": "test",
-    "task": 9,
+    "task": 13,
     "replacements": [
-      "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/measurements.ts",
+      "test/integration/neon-snapshots.integration.test.ts"
     ],
     "status": "pending",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "Intentional domain fixtures use legacyMeasurementRepository and SupabaseClient to protect the temporary fenced completion adapter. PostgreSQL domain behavior is covered by neon-snapshots.integration.test.ts. Retire legacy fixture transport with Task 13 completion; Task 10 also replaces snapshot artifact readers. No mixed database fallback."
     ]
   },
   {
@@ -1664,15 +1664,14 @@
   {
     "path": "lib/workspace/snapshots.test.ts",
     "kind": "test",
-    "task": 9,
+    "task": 13,
     "replacements": [
-      "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/snapshots.ts",
+      "test/integration/neon-snapshots.integration.test.ts"
     ],
     "status": "pending",
     "evidence": [
-      "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "Intentional domain fixtures use legacySnapshotRepository and SupabaseClient to protect the temporary fenced completion adapter. PostgreSQL domain behavior is covered by neon-snapshots.integration.test.ts. Retire legacy fixture transport with Task 13 completion; Task 10 also replaces snapshot artifact readers. No mixed database fallback."
     ]
   },
   {
@@ -2151,16 +2150,21 @@
     "kind": "schema",
     "task": 9,
     "replacements": [
-      "neon/migrations/0001_initial_schema.sql"
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql",
+      "lib/storage/private-blob.ts",
+      "docs/integration/neon-private-storage.md"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "source migration",
       "sql-object:external:storage.buckets",
       "sql-object:grant-statement:grant select, insert, update, delete on table public.report_evidence to service_role;",
       "sql-object:index:report_evidence_job_captured_idx",
       "sql-object:revoke-statement:revoke all on table public.report_evidence from public, anon, authenticated;",
-      "sql-object:table:public.report_evidence"
+      "sql-object:table:public.report_evidence",
+      "Historical source SQL remains immutable. Business tables, indexes and columns are represented in 0002_business.sql; application identity FKs reference app_users and runtime grants replace service_role in 0003_workflows.sql. Owned fixture schema and domain integration suites verify the replacement.",
+      "Supabase storage.buckets is intentionally not recreated. Private Blob adapter implements evidence access/retention with fixture-only SDK tests; no hosted store is provisioned."
     ]
   },
   {
@@ -2266,9 +2270,10 @@
     "kind": "schema",
     "task": 9,
     "replacements": [
-      "neon/migrations/0001_initial_schema.sql"
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "source migration",
       "sql-object:external:auth.users",
@@ -2276,7 +2281,8 @@
       "sql-object:index:audit_jobs_place_created_idx",
       "sql-object:index:scan_schedules_due_idx",
       "sql-object:revoke-statement:revoke all on table public.scan_schedules from public, anon, authenticated;",
-      "sql-object:table:public.scan_schedules"
+      "sql-object:table:public.scan_schedules",
+      "Historical source SQL remains immutable. Business tables, indexes and columns are represented in 0002_business.sql; application identity FKs reference app_users and runtime grants replace service_role in 0003_workflows.sql. Owned fixture schema and domain integration suites verify the replacement."
     ]
   },
   {
@@ -2284,15 +2290,17 @@
     "kind": "schema",
     "task": 9,
     "replacements": [
-      "neon/migrations/0001_initial_schema.sql"
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "source migration",
       "sql-object:grant-statement:grant select, insert, update, delete on table public.scan_diffs to service_role;",
       "sql-object:index:scan_diffs_head_idx",
       "sql-object:revoke-statement:revoke all on table public.scan_diffs from public, anon, authenticated;",
-      "sql-object:table:public.scan_diffs"
+      "sql-object:table:public.scan_diffs",
+      "Historical source SQL remains immutable. Business tables, indexes and columns are represented in 0002_business.sql; application identity FKs reference app_users and runtime grants replace service_role in 0003_workflows.sql. Owned fixture schema and domain integration suites verify the replacement."
     ]
   },
   {
@@ -2358,14 +2366,16 @@
     "kind": "schema",
     "task": 9,
     "replacements": [
-      "neon/migrations/0001_initial_schema.sql"
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "source migration",
       "sql-object:column:public.scan_schedules.workspace_id",
       "sql-object:index:scan_schedules_workspace_idx",
-      "sql-object:table:public.scan_schedules"
+      "sql-object:table:public.scan_schedules",
+      "Historical source SQL remains immutable. Business tables, indexes and columns are represented in 0002_business.sql; application identity FKs reference app_users and runtime grants replace service_role in 0003_workflows.sql. Owned fixture schema and domain integration suites verify the replacement."
     ]
   },
   {
@@ -2479,13 +2489,15 @@
     "kind": "schema",
     "task": 9,
     "replacements": [
-      "neon/migrations/0001_initial_schema.sql"
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "source migration",
       "sql-object:column:public.workspaces.instagram_handle",
-      "sql-object:table:public.workspaces"
+      "sql-object:table:public.workspaces",
+      "Historical source SQL remains immutable. Business tables, indexes and columns are represented in 0002_business.sql; application identity FKs reference app_users and runtime grants replace service_role in 0003_workflows.sql. Owned fixture schema and domain integration suites verify the replacement."
     ]
   },
   {

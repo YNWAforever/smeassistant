@@ -3,7 +3,7 @@ import { MANAGED_AUTH_COOKIES, expiredAuthCookie } from "@/lib/identity/cookies"
 import { NextResponse } from "next/server";
 import { clearViewerGrantCookie, parseViewerGrantCookie, VIEWER_GRANT_COOKIE } from "@/lib/report-access/cookie";
 import { hashViewerToken } from "@/lib/report-access/token";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { reportsRepository } from "@/lib/repositories/reports";
 
 /**
  * Ends a viewer's report session on this device, and revokes the grant behind it.
@@ -41,18 +41,7 @@ export async function POST(req: Request) {
 
   if (presented) {
     try {
-      const { error } = await supabaseServer()
-        .from("report_access_grants")
-        .update({ revoked_at: new Date().toISOString() })
-        .eq("id", presented.grantId)
-        .eq("token_hash", hashViewerToken(presented.rawToken))
-        .is("revoked_at", null);
-      if (error) {
-        // Logged, not surfaced. The cookie is cleared below either way, so the
-        // caller is signed out on this device; what is lost is revocation of a
-        // token they still hold, which is the state they were in before asking.
-        console.error("[report-access] sign-out revoke failed", { category: "grant_revoke_failed" });
-      }
+      await reportsRepository().revokeViewerGrant(presented.grantId, hashViewerToken(presented.rawToken));
     } catch {
       console.error("[report-access] sign-out revoke failed", { category: "grant_revoke_failed" });
     }
