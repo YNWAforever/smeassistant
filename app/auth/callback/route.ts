@@ -1,28 +1,9 @@
-// Owner sign-in callback, and the point where an anonymous scan becomes owned.
-//
-// Deliberately NOT an extension of /auth/callback. That route ends in
-// `isAllowedStaffEmail(email)` and redirects everyone else to not_authorized —
-// an owner arriving there would simply be rejected. Teaching one route two
-// different authorization rules is how "which rules apply here?" bugs start, and
-// this is the wrong place to invite them.
-//
-// Note /auth/ is excluded from the next-intl matcher (see middleware.ts). Without
-// that, this path would be rewritten to /en/auth/owner/callback and the code
-// exchange would fail on a code that never arrived.
-//
-// Ported from upstream app/auth/owner/callback/route.ts. This app has no staff
-// console, so the handler lives at /auth/callback (proxy.ts excludes /auth/ from
-// the locale matcher for the same reason as above). The only local change is
-// where it lands: every route here is locale-prefixed, so the redirect targets
-// are built from the `locale` and `returnTo` query params carried through the
-// magic link (CLAUDE.md §3.1, Phase 2 contract).
-
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { cookies } from "next/headers";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getUser, signOut } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/admin";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/locale";
-import { safeReturnTo } from "@/lib/funnel/locale-redirect";
+import { safeReturnPath } from "@/lib/identity/return-path";
 import { bindWorkspaceToUser } from "@/lib/workspace/bind-workspace";
 import { recordAccessRequest, shouldRecordAccessRequest } from "@/lib/workspace/access-request";
 import { parseViewerGrantCookie, VIEWER_GRANT_COOKIE } from "@/lib/report-access/cookie";
@@ -35,7 +16,6 @@ import {
   findOwnedWorkspace,
 } from "@/lib/workspace/callback-queries";
 
-type OwnerAuthClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 
 interface LandingContext {
   locale: Locale;
@@ -60,15 +40,6 @@ function landing(req: Request, ctx: LandingContext, params: Record<string, strin
   if (ctx.claimSlug) url.searchParams.set("claim", ctx.claimSlug);
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
   return url;
-}
-
-async function clearLocalSession(client?: OwnerAuthClient): Promise<void> {
-  try {
-    const authClient = client ?? (await createSupabaseServerClient());
-    await authClient.auth.signOut({ scope: "local" });
-  } catch {
-    // A safe redirect is still the correct response when auth is unavailable.
-  }
 }
 
 /**
@@ -96,39 +67,38 @@ async function holdsViewerGrant(jobId: string): Promise<boolean> {
 
 export async function GET(req: Request) {
   const requestUrl = new URL(req.url);
-  const code = requestUrl.searchParams.get("code");
+
   // Validated here, not only where the link is built. Unvalidated, `claim` is
   // interpolated into a path and `new URL("/r/../../en/staff", base)`
   // normalizes the /r/ prefix away — an unauthenticated redirect to any in-app
-  // path with attacker-chosen query parameters, reachable on the no-code branch
-  // before any authentication happens.
+  // path with attacker-chosen query parameters before authentication.
   const rawClaim = requestUrl.searchParams.get("claim");
   const claimSlug = rawClaim && /^[A-Za-z0-9_-]{6,64}$/.test(rawClaim) ? rawClaim : null;
   const rawLocale = requestUrl.searchParams.get("locale");
   const ctx: LandingContext = {
     locale: isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE,
     claimSlug,
-    returnTo: safeReturnTo(requestUrl.searchParams.get("returnTo")),
+    returnTo: safeReturnPath(requestUrl.searchParams.get("returnTo") ?? "", "") || null,
   };
 
-  if (!code) {
-    await clearLocalSession();
-    return NextResponse.redirect(landing(req, ctx, { error: "missing_code" }));
-  }
-
   try {
-    const client = await createSupabaseServerClient();
-    const { error: exchangeError } = await client.auth.exchangeCodeForSession(code);
-    if (exchangeError) {
-      await clearLocalSession(client);
+    // Managed Auth verifies links/OAuth; only fresh app-mapped identity is used here.
+    if (requestUrl.searchParams.has("error")) {
+      await signOut();
       return NextResponse.redirect(landing(req, ctx, { error: "invalid_code" }));
     }
-
-    const { data, error: userError } = await client.auth.getUser();
-    const user = data.user;
-    const verified = Boolean(user?.email_confirmed_at ?? user?.confirmed_at);
-    if (userError || !user?.id || !verified) {
-      await clearLocalSession(client);
+    if (requestUrl.searchParams.has("neon_auth_session_verifier")) {
+      const { getNeonAuth } = await import("@/lib/identity/neon");
+      const exchanged = await getNeonAuth().middleware()(new NextRequest(req));
+      const clean = new URL(req.url);
+      clean.searchParams.delete("neon_auth_session_verifier");
+      if (exchanged.headers.get("location") === clean.toString()) return exchanged;
+      await signOut();
+      return NextResponse.redirect(landing(req, ctx, { error: "invalid_code" }));
+    }
+    const user = await getUser();
+    if (!user?.id || !user.verified) {
+      await signOut();
       return NextResponse.redirect(landing(req, ctx, { error: "not_authorized" }));
     }
 
@@ -260,10 +230,10 @@ export async function GET(req: Request) {
     });
 
     return NextResponse.redirect(landing(req, ctx, { claimed: outcome.kind }));
-  } catch (error) {
+  } catch {
     // Generic, per house convention: never leak provider text to the client.
-    console.error("Owner auth callback failed", error);
-    await clearLocalSession();
+    console.error("Owner auth callback failed", { category: "auth_unavailable" });
+    await signOut().catch(() => {});
     return NextResponse.redirect(landing(req, ctx, { error: "auth_unavailable" }));
   }
 }

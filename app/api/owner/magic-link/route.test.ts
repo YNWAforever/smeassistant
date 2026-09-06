@@ -6,8 +6,8 @@ const mocks = vi.hoisted(() => ({
   enforceCompositeIdentifierRateLimit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 1 })),
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
-  createSupabaseServerClient: async () => ({ auth: { signInWithOtp: mocks.signInWithOtp } }),
+vi.mock("@/lib/identity/neon", () => ({
+  getNeonAuth: () => ({ signIn: { magicLink: mocks.signInWithOtp } }),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({ from: mocks.from }) }));
@@ -78,9 +78,7 @@ describe("POST /api/owner/magic-link", () => {
     expect(mocks.signInWithOtp).toHaveBeenCalledWith(
       expect.objectContaining({
         email: "known@example.com",
-        options: expect.objectContaining({
-          emailRedirectTo: "https://configured.fimmick.com/auth/callback?claim=abcdef&locale=zh-HK",
-        }),
+        callbackURL: "https://configured.fimmick.com/auth/callback?claim=abcdef&locale=zh-HK",
       }),
     );
   });
@@ -93,10 +91,8 @@ describe("POST /api/owner/magic-link", () => {
 
     expect(mocks.signInWithOtp).toHaveBeenCalledWith(
       expect.objectContaining({
-        options: expect.objectContaining({
-          emailRedirectTo:
+        callbackURL:
             "https://configured.fimmick.com/auth/callback?claim=abcdef&locale=en&returnTo=%2Fen%2Fowner%2Fselect-workspace",
-        }),
       }),
     );
   });
@@ -107,9 +103,7 @@ describe("POST /api/owner/magic-link", () => {
 
     expect(mocks.signInWithOtp).toHaveBeenCalledWith(
       expect.objectContaining({
-        options: expect.objectContaining({
-          emailRedirectTo: "https://configured.fimmick.com/auth/callback?claim=abcdef&locale=zh-HK",
-        }),
+        callbackURL: "https://configured.fimmick.com/auth/callback?claim=abcdef&locale=zh-HK",
       }),
     );
   });
@@ -121,9 +115,7 @@ describe("POST /api/owner/magic-link", () => {
 
     expect(mocks.signInWithOtp).toHaveBeenCalledWith(
       expect.objectContaining({
-        options: expect.objectContaining({
-          emailRedirectTo: "https://scanner.test/auth/callback?claim=abcdef&locale=zh-HK",
-        }),
+        callbackURL: "https://scanner.test/auth/callback?claim=abcdef&locale=zh-HK",
       }),
     );
   });

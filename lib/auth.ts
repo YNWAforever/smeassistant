@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { supabaseServer } from "@/lib/supabase/admin";
 import { authorizeWorkspace, type WorkspaceRole } from "@/lib/workspace/authorize-workspace";
 
@@ -9,7 +8,7 @@ import { authorizeWorkspace, type WorkspaceRole } from "@/lib/workspace/authoriz
  * The impure half only: this module reads cookies and the database, then hands
  * the access decision to upstream's pure `authorizeWorkspace`, the same split
  * as upstream's owner-session.ts. Data is read with the service-role client
- * after the decision; the anon client is used for `auth.*` only.
+ * after the decision; managed identity is resolved independently.
  *
  * Staff sessions are never accepted here — the staff console is the legacy
  * app — so every workspace check requires `kind === "member"`.
@@ -224,12 +223,18 @@ export async function listMemberships(userId: string): Promise<Membership[]> {
   });
 }
 
-/** Local sign-out (cookies only). Never throws: a safe redirect is still correct when auth is down. */
+/** Revoke managed identity; always invalidate local cookies, report remote failure. */
 export async function signOut(): Promise<void> {
+  let failed = false;
   try {
-    const client = await createSupabaseServerClient();
-    await client.auth.signOut({ scope: "local" });
-  } catch {
-    // Auth unavailable: nothing to clear server-side.
-  }
+    const { neonIdentityProvider } = await import("@/lib/identity/neon");
+    await neonIdentityProvider.signOut();
+  } catch { failed = true; }
+  try {
+    const { cookies } = await import("next/headers");
+    const { MANAGED_AUTH_COOKIES, expiredAuthCookie } = await import("@/lib/identity/cookies");
+    const jar = await cookies();
+    for (const name of MANAGED_AUTH_COOKIES) jar.set(name, "", expiredAuthCookie);
+  } catch { failed = true; }
+  if (failed) throw new Error("identity_signout_failed");
 }

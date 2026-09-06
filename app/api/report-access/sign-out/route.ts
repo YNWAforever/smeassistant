@@ -1,3 +1,5 @@
+import { signOut } from "@/lib/auth";
+import { MANAGED_AUTH_COOKIES, expiredAuthCookie } from "@/lib/identity/cookies";
 import { NextResponse } from "next/server";
 import { clearViewerGrantCookie, parseViewerGrantCookie, VIEWER_GRANT_COOKIE } from "@/lib/report-access/cookie";
 import { hashViewerToken } from "@/lib/report-access/token";
@@ -17,9 +19,8 @@ import { supabaseServer } from "@/lib/supabase/admin";
  *
  * Unauthenticated by design: presenting the cookie is the only thing being asked,
  * and the worst a forged call can do is revoke a grant the caller already holds.
- * Always answers 200 — whether a grant was found is not something an
- * unauthenticated caller should be able to probe for, and "you are signed out" is
- * true either way.
+ * Grant outcomes always answer uniformly. Managed-session revocation failure
+ * returns a sanitized 503 while local cookies are still invalidated.
  */
 export async function POST(req: Request) {
   const raw = req.headers.get("cookie") ?? "";
@@ -57,6 +58,13 @@ export async function POST(req: Request) {
     }
   }
 
-  const response = NextResponse.json({ ok: true });
+  let managedFailed = false;
+  if (raw.includes("__Secure-neon-auth.")) {
+    try { await signOut(); } catch { managedFailed = true; }
+  }
+  const response = managedFailed
+    ? NextResponse.json({ error: "auth_unavailable", correlationId: crypto.randomUUID() }, { status: 503 })
+    : NextResponse.json({ ok: true });
+  for (const name of MANAGED_AUTH_COOKIES) response.cookies.set(name, "", expiredAuthCookie);
   return clearViewerGrantCookie(response);
 }

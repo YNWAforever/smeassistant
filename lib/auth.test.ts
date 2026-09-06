@@ -37,20 +37,10 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
-  createSupabaseServerClient: async () => {
-    if (state.authThrows) throw new Error("Supabase Auth is not configured");
-    return {
-      auth: {
-        getUser: async () => ({ data: { user: state.authUser }, error: state.authError }),
-        signOut: state.signOut,
-      },
-    };
-  },
-}));
+vi.mock("next/headers", () => ({ cookies: async () => ({ set: vi.fn() }) }));
 
 vi.mock("@/lib/identity/neon", () => ({
-  neonIdentityProvider: { getIdentity: async () => {
+  neonIdentityProvider: { signOut: async () => { if (state.authThrows) throw new Error("unavailable"); await state.signOut(); }, getIdentity: async () => {
     if (state.authThrows) throw new Error("identity_config_invalid");
     const user = state.authUser;
     if (state.authError || !user?.email || !(user.email_confirmed_at ?? user.confirmed_at)) return null;
@@ -367,10 +357,10 @@ describe("authorizeWorkspaceRequest", () => {
 });
 
 describe("signOut", () => {
-  it("signs out locally and never throws when auth is unavailable", async () => {
+  it("revokes managed identity and reports unavailable revocation", async () => {
     await signOut();
-    expect(state.signOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(state.signOut).toHaveBeenCalledWith();
     state.authThrows = true;
-    await expect(signOut()).resolves.toBeUndefined();
+    await expect(signOut()).rejects.toThrow("identity_signout_failed");
   });
 });

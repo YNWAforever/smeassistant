@@ -2672,5 +2672,17 @@
     "evidence": [
       "tracked @supabase reference"
     ]
+  },
+  {
+    "path": "lib/identity/auth-lazy.test.ts",
+    "kind": "test",
+    "task": 7,
+    "replacements": [
+      "Neon membership adapter mocks"
+    ],
+    "status": "pending",
+    "evidence": [
+      "Task 5 lazy identity regression retains the Supabase membership-store mock until Task 7."
+    ]
   }
 ]

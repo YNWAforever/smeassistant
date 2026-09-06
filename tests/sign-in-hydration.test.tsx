@@ -16,12 +16,13 @@ it("blocks native pre-hydration submission then posts email with claim context a
   const submit = container.querySelector<HTMLButtonElement>("button[type=submit]")!;
   expect(input.disabled).toBe(true);
   expect(submit.disabled).toBe(true);
-  const fetch = vi.fn(async () => Response.json({ ok: true })); vi.stubGlobal("fetch", fetch);
+  const fetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(async () => Response.json({ ok: true })); vi.stubGlobal("fetch", fetch);
   await act(async () => { root = hydrateRoot(container, page); });
   await waitFor(() => expect(input.disabled).toBe(false));
   expect(submit.disabled).toBe(false);
   fireEvent.change(input, { target: { value: "owner@acceptance.test" } });
   fireEvent.submit(container.querySelector("form")!);
   await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
-  expect(fetch).toHaveBeenCalledWith("/api/owner/magic-link", expect.objectContaining({ method: "POST", body: JSON.stringify({ email: "owner@acceptance.test", slug: "fixture-report", locale: "en", returnTo: "/en/owner/fixture" }) }));
+  expect(String(fetch.mock.calls[0][0])).toContain("/api/auth/sign-in/magic-link");
+  expect(JSON.parse(fetch.mock.calls[0][1]!.body as string)).toMatchObject({ email: "owner@acceptance.test", callbackURL: "/auth/callback?locale=en&claim=fixture-report&returnTo=%2Fen%2Fowner%2Ffixture" });
 });

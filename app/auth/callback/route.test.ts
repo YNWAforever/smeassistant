@@ -14,9 +14,7 @@ vi.mock("next/headers", () => ({
   cookies: async () => ({ get: () => undefined }),
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
-  createSupabaseServerClient: vi.fn(async () => ({ auth: mocks })),
-}));
+vi.mock("@/lib/auth", () => ({ getUser: mocks.getUser, signOut: mocks.signOut }));
 
 /** Every query on a table resolves to mocks.results[table]; the chain records its calls. */
 function chain(table: string) {
@@ -47,13 +45,13 @@ const originalSelfService = process.env.OWNER_SELF_SERVICE_CLAIM;
 describe("GET /auth/callback", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.signOut.mockResolvedValue(undefined);
     mocks.calls.length = 0;
     // Guardrail 15: never enabled. The tests assert the default path.
     delete process.env.OWNER_SELF_SERVICE_CLAIM;
     mocks.exchangeCodeForSession.mockResolvedValue({ error: null });
     mocks.getUser.mockResolvedValue({
-      data: { user: { id: "user-1", email: "Owner@Example.com", email_confirmed_at: "2026-09-01T00:00:00Z" } },
-      error: null,
+      id: "user-1", email: "Owner@Example.com", verified: true,
     });
     mocks.results = {
       workspace_members: { data: [], error: null },
@@ -68,28 +66,30 @@ describe("GET /auth/callback", () => {
   });
 
   it("signs out and lands on the locale sign-in page when the code is missing", async () => {
+    mocks.getUser.mockResolvedValue(null);
     const response = await GET(request("claim=abcdef&locale=zh-TW"));
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
-      "https://app.test/zh-TW/owner/sign-in?claim=abcdef&error=missing_code",
+      "https://app.test/zh-TW/owner/sign-in?claim=abcdef&error=not_authorized",
     );
-    expect(mocks.signOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(mocks.signOut).toHaveBeenCalledWith();
   });
 
   it("falls back to the default locale when the locale param is unknown", async () => {
+    mocks.getUser.mockResolvedValue(null);
     const response = await GET(request("locale=fr"));
-    expect(response.headers.get("location")).toBe("https://app.test/zh-HK/owner/sign-in?error=missing_code");
+    expect(response.headers.get("location")).toBe("https://app.test/zh-HK/owner/sign-in?error=not_authorized");
   });
 
   it("reports an invalid code without a session", async () => {
-    mocks.exchangeCodeForSession.mockResolvedValue({ error: { message: "bad" } });
-    const response = await GET(request("code=abc&locale=en"));
+    mocks.getUser.mockResolvedValue(null);
+    const response = await GET(request("error=expired_token&locale=en"));
     expect(response.headers.get("location")).toBe("https://app.test/en/owner/sign-in?error=invalid_code");
-    expect(mocks.signOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(mocks.signOut).toHaveBeenCalledWith();
   });
 
   it("refuses an unverified email", async () => {
-    mocks.getUser.mockResolvedValue({ data: { user: { id: "user-1", email: "x@y.com" } }, error: null });
+    mocks.getUser.mockResolvedValue({ id: "user-1", email: "x@y.com", verified: false });
     const response = await GET(request("code=abc&locale=en"));
     expect(response.headers.get("location")).toBe("https://app.test/en/owner/sign-in?error=not_authorized");
   });
@@ -106,7 +106,7 @@ describe("GET /auth/callback", () => {
   });
 
   it("ignores a returnTo that is not a same-origin path", async () => {
-    for (const bad of ["https://evil.example/x", "//evil.example", "/\\evil.example", "owner"]) {
+    for (const bad of ["https://evil.example/x", "//evil.example", "/\\evil.example", "/%252fevil.example", "/en/%0a", "owner"]) {
       mocks.calls.length = 0;
       const response = await GET(request(`code=abc&locale=en&returnTo=${encodeURIComponent(bad)}`));
       expect(response.headers.get("location")).toBe("https://app.test/en/owner/select-workspace");
@@ -140,12 +140,13 @@ describe("GET /auth/callback", () => {
   });
 
   it("drops a malformed claim slug before it reaches a path", async () => {
+    mocks.getUser.mockResolvedValue(null);
     const response = await GET(request("claim=..%2F..%2Fen%2Fstaff&locale=en"));
-    expect(response.headers.get("location")).toBe("https://app.test/en/owner/sign-in?error=missing_code");
+    expect(response.headers.get("location")).toBe("https://app.test/en/owner/sign-in?error=not_authorized");
   });
 
   it("lands on sign-in with auth_unavailable when the auth client throws", async () => {
-    mocks.exchangeCodeForSession.mockRejectedValue(new Error("down"));
+    mocks.getUser.mockRejectedValue(new Error("down"));
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const response = await GET(request("code=abc&claim=abcdef&locale=en"));
     expect(response.headers.get("location")).toBe(

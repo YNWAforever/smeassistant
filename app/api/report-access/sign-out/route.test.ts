@@ -5,7 +5,8 @@ import { authorizeReport, type ViewerGrantRecord } from "@/lib/report-access/aut
 const GRANT_ID = "22222222-2222-4222-8222-222222222222";
 const JOB_ID = "11111111-1111-4111-8111-111111111111";
 
-const mocks = vi.hoisted(() => ({ from: vi.fn(), update: vi.fn(), filters: [] as Array<[string, unknown]> }));
+const mocks = vi.hoisted(() => ({ signOut: vi.fn(), from: vi.fn(), update: vi.fn(), filters: [] as Array<[string, unknown]> }));
+vi.mock("@/lib/auth", () => ({ signOut: mocks.signOut }));
 vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({ from: mocks.from }) }));
 
 import { POST } from "./route";
@@ -26,6 +27,7 @@ function validCookie(): string {
 describe("POST /api/report-access/sign-out", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.signOut.mockResolvedValue(undefined);
     mocks.filters = [];
     mocks.update.mockImplementation((payload: Record<string, unknown>) => {
       mocks.filters.push(["payload", payload]);
@@ -113,4 +115,12 @@ describe("POST /api/report-access/sign-out", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("set-cookie") ?? "").toMatch(/Max-Age=0/i);
   });
+});
+
+it("clears managed cookies as well as the report grant and reports failed revocation",async()=>{
+ mocks.signOut.mockRejectedValue(new Error("private upstream"));
+ const response=await POST(request("__Secure-neon-auth.session_token=fixture"));
+ expect(response.status).toBe(503);
+ expect(response.headers.get("set-cookie")).toContain("__Secure-neon-auth.session_token=");
+ expect(await response.json()).toMatchObject({error:"auth_unavailable"});
 });

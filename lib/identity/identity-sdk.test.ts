@@ -27,3 +27,49 @@ it("rejects a replayed valid cached identity when upstream revoked its session",
  expect(await neonIdentityProvider.getIdentity()).toBeNull();
  expect(transport).toHaveBeenCalledTimes(1);
 });
+
+it("protected proxy rejects SDK signed-cache replay and preserves original locale URL", async () => {
+ const { NextRequest } = await import("next/server");
+ const { getNeonAuth } = await import("./neon");
+ const request = new NextRequest("https://app.test/zh-TW/owner/acme?tab=actions", {headers:{cookie:context.cookie}});
+ const transport=vi.fn(async(input:RequestInfo|URL)=>{ const url=new URL(typeof input==="string"?input:input instanceof URL?input.href:input.url); expect(url.origin).toBe("https://auth.example.test"); expect(url.pathname).toBe("/auth/get-session"); return Response.json(null); }); vi.stubGlobal("fetch",transport);
+ expect((await getNeonAuth().middleware()(request)).status).toBe(200);
+ expect(transport).not.toHaveBeenCalled();
+ const {proxy}=await import("@/proxy");
+ const response=await proxy(request);
+ expect(response.status).toBe(307);
+ const location=new URL(response.headers.get("location")!);
+ expect(location.pathname).toBe("/zh-TW/owner/sign-in");
+ expect(location.searchParams.get("returnTo")).toBe("/zh-TW/owner/acme?tab=actions");
+ expect(location.href).not.toContain("disableCookieCache");
+ expect(transport).toHaveBeenCalled();
+});
+
+it("managed logout fixture revokes upstream and captured cached cookie cannot reopen a protected route",async()=>{
+ let revoked=false;
+ const transport=vi.fn(async(input:RequestInfo|URL)=>{
+   const url=new URL(typeof input==="string"?input:input instanceof URL?input.href:input.url);
+   expect(url.origin).toBe("https://auth.example.test");
+   if(url.pathname==="/auth/sign-out"){revoked=true;return Response.json({success:true});}
+   expect(url.pathname).toBe("/auth/get-session");return Response.json(revoked?null:session);
+ });vi.stubGlobal("fetch",transport);
+ const {signOut}=await import("@/lib/auth");await signOut();expect(revoked).toBe(true);
+ const {NextRequest}=await import("next/server");const {proxy}=await import("@/proxy");
+ expect((await proxy(new NextRequest("https://app.test/en/owner/acme",{headers:{cookie:context.cookie}}))).status).toBe(307);
+});
+it("actual SDK handler ignores the signed cache when upstream revoked identity",async()=>{
+ const transport=vi.fn(async(input:RequestInfo|URL)=>{
+  const url=new URL(typeof input==="string"?input:input instanceof URL?input.href:input.url);
+  expect(url.origin).toBe("https://auth.example.test");expect(url.pathname).toBe("/auth/get-session");return Response.json(null);
+ });vi.stubGlobal("fetch",transport);
+ const {GET}=await import("@/app/api/auth/[...path]/route");
+ const response=await GET(new Request("https://app.test/api/auth/get-session",{headers:{cookie:context.cookie}}),{params:Promise.resolve({path:["get-session"]})});
+ expect(await response.json()).toBeNull();expect(transport).toHaveBeenCalled();
+});
+it.each(["__Secure-neon-auth.session_token=%zz; __Secure-neon-auth.local.session_data=garbage", "__Secure-neon-auth.local.session_data=garbage", ""])("malformed or absent session fails closed: %s",async cookie=>{
+ vi.stubGlobal("fetch",vi.fn(async(input:RequestInfo|URL)=>{
+  const url=new URL(typeof input==="string"?input:input instanceof URL?input.href:input.url);expect(url.origin).toBe("https://auth.example.test");return Response.json(null);
+ }));
+ const {NextRequest}=await import("next/server");const {proxy}=await import("@/proxy");
+ expect((await proxy(new NextRequest("https://app.test/en/owner/acme",{headers:{cookie}}))).status).toBe(307);
+});
