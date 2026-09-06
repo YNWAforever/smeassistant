@@ -238,9 +238,9 @@ export async function loadSnapshotsForLocation(workspaceId: string, locationId: 
   return rows.map(rowToSnapshot);
 }
 
-export async function loadDiffById(diffId: string | null): Promise<ScanDiffRow | null> {
-  if (!diffId) return null;
-  return read("diff", () => workspaceReadRepository().diff(diffId));
+export async function loadDiffById(diffId: string | null, workspaceId: string, headJobId: string | null): Promise<ScanDiffRow | null> {
+  if (!diffId || !headJobId) return null;
+  return read("diff", () => workspaceReadRepository().diff(diffId, workspaceId, headJobId));
 }
 
 export async function loadActionRows(workspaceId: string, opts: { locationId?: string | null; states?: ActionState[]; ids?: string[] } = {}): Promise<ActionRow[]> {
@@ -331,7 +331,7 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
   // "all" never aggregates: no snapshot, no score, actions across locations.
   const snapshots = location ? await loadSnapshotsForLocation(workspaceId, location.id, 2) : [];
   const snapshot = snapshots[0] ?? null;
-  const diff = await loadDiffById(snapshot?.diffId ?? null);
+  const diff = await loadDiffById(snapshot?.diffId ?? null, workspaceId, snapshot?.jobId ?? null);
   const changed = changedFrom(snapshot, diff);
 
   const openRows = await loadActionRows(workspaceId, { locationId: location?.id ?? null, states: OPEN_STATES });
@@ -463,7 +463,7 @@ async function locationSummaries(ctx: WorkspaceContext): Promise<InsightsLocatio
   const out: InsightsLocationSummary[] = [];
   for (const location of ctx.locations) {
     const [latest] = await loadSnapshotsForLocation(ctx.workspace.id, location.id, 1);
-    const diff = await loadDiffById(latest?.diffId ?? null);
+    const diff = await loadDiffById(latest?.diffId ?? null, ctx.workspace.id, latest?.jobId ?? null);
     out.push({
       location,
       score: latest?.overallScore ?? null,
@@ -493,7 +493,7 @@ export async function getInsights(ctx: WorkspaceContext, scope: LocationScope): 
 
   const snapshots = await loadSnapshotsForLocation(ctx.workspace.id, location.id, 12);
   const diffs = new Map<string, ScanDiffRow | null>();
-  for (const snapshot of snapshots) diffs.set(snapshot.id, await loadDiffById(snapshot.diffId));
+  for (const snapshot of snapshots) diffs.set(snapshot.id, await loadDiffById(snapshot.diffId, ctx.workspace.id, snapshot.jobId));
   const series: InsightsSeriesPoint[] = [...snapshots].reverse().map((snapshot) => {
     const diff = diffs.get(snapshot.id) ?? null;
     return {

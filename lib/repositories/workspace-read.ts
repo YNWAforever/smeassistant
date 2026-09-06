@@ -66,8 +66,11 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
     async snapshots(workspaceId: string, locationId: string, limit: number): Promise<ScanSnapshotRow[]> {
       return rows<ScanSnapshotRow>(`SELECT ${SNAPSHOT_COLUMNS} FROM scan_snapshots WHERE workspace_id=$1 AND location_id=$2 ORDER BY observed_at DESC LIMIT $3`, [workspaceId, locationId, pageLimit(limit)]);
     },
-    async diff(id: string): Promise<ScanDiffRow | null> {
-      const [row] = await rows<ScanDiffRow>(`SELECT ${DIFF_COLUMNS} FROM scan_diffs WHERE id=$1`, [id]);
+    async diff(id: string, workspaceId: string, headJobId: string): Promise<ScanDiffRow | null> {
+      const [row] = await rows<ScanDiffRow>(`SELECT ${DIFF_COLUMNS} FROM scan_diffs
+        WHERE id=$1 AND head_job_id=$3
+          AND EXISTS (SELECT 1 FROM audit_jobs base WHERE base.id=scan_diffs.base_job_id AND base.workspace_id=$2)
+          AND EXISTS (SELECT 1 FROM audit_jobs head WHERE head.id=scan_diffs.head_job_id AND head.workspace_id=$2)`, [id, workspaceId, headJobId]);
       return row ?? null;
     },
     async actions(workspaceId: string, opts: { locationId?: string | null; states?: ActionState[]; ids?: string[] } = {}): Promise<ActionRow[]> {

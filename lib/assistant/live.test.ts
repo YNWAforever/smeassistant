@@ -5,6 +5,8 @@ import { LIVE_BOUNDARY, runLiveAssistant } from "./live";
 
 const mocks = vi.hoisted(() => ({ db: null as ReturnType<typeof import("@/app/api/actions/_shared/test-db").makeDb> | null }));
 vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => mocks.db }));
+const repository = vi.hoisted(() => ({ diff: vi.fn(), actions: vi.fn() }));
+vi.mock("@/lib/repositories/workspace-read", () => ({ workspaceReadRepository: () => repository }));
 
 type Llm = (prompt: string, opts?: unknown) => Promise<typeof good | null>;
 const LOCATION_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -38,11 +40,12 @@ const run = (over: Partial<Parameters<typeof runLiveAssistant>[0]> = {}) =>
 const writes = () => mocks.db!.calls.filter((c) => c.op !== "select");
 
 beforeEach(() => {
-  const db = makeDb(respond);
-  const from = db.from;
-  // loadActionRows uses `.or(...)`, which the shared stand-in does not chain.
-  db.from = (table: string) => { const chain = from(table); (chain as Record<string, unknown>).or = (filter: string) => { (chain.eq as (key: string, value: string) => unknown)("location_id", filter.split(",")[0].slice("location_id.eq.".length)); return chain; }; return chain; };
-  mocks.db = db;
+  vi.clearAllMocks();
+  mocks.db = makeDb(respond);
+  repository.diff.mockImplementation(async (id) => id === diff.id ? diff : null);
+  repository.actions.mockImplementation(async (workspaceId, opts = {}) => state.actions.filter(a =>
+    a.workspace_id === workspaceId && (!opts.locationId || a.location_id === opts.locationId || a.location_id === null) &&
+    (!opts.states || opts.states.includes(a.action_state)) && (!opts.ids || opts.ids.includes(a.id))));
   state.actions = [actionRow, socialRow];
   state.snapshots = [snapshot, base];
 });
@@ -51,6 +54,7 @@ describe("runLiveAssistant", () => {
   it("answers explain intents from the template with real evidence ids and no model call", async () => {
     const llm = vi.fn();
     const result = await run({ intentId: "explain_change", llm });
+    expect(repository.diff).toHaveBeenCalledWith(diff.id, WORKSPACE_ID, snapshot.jobId);
     expect(llm).not.toHaveBeenCalled();
     expect(result).toMatchObject({ state: "completed", requiresApproval: false, demoBoundary: LIVE_BOUNDARY.en });
     expect(result.runId).toMatch(/^live_run_[0-9a-f-]{36}$/);

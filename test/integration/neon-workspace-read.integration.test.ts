@@ -126,8 +126,37 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon workspace read models
     expect(newest).toMatchObject({ job_id: jobs[1].id, market: "tw", metrics: { "gbp.rating": 4.2 }, diff_id: null });
     expect(typeof newest.observed_at).toBe("string");
     expect(await repository.snapshots(id, location, 12)).toHaveLength(2);
-    expect(await repository.diff("00000000-0000-4000-8000-000000000001")).toBeNull();
+    expect(await repository.diff("00000000-0000-4000-8000-000000000001", id, jobs[1].id)).toBeNull();
     expect(await repository.aeoSnapshots(other, jobs.map(row => row.id))).toEqual([]);
+  });
+  it.each(["foreign-diff", "foreign-base", "foreign-head", "wrong-head", "valid"])("scopes snapshot diff %s using independent job foreign keys", async (kind) => {
+    const id = await workspace();
+    const other = await workspace("other");
+    const location = (await runtime.query("INSERT INTO locations(workspace_id,slug,name) VALUES($1,'main','Main') RETURNING id", [id])).rows[0].id;
+    const jobs = (await runtime.query("INSERT INTO audit_jobs(workspace_id,business_name,region) VALUES($1,'Base','hk'),($1,'Head','hk'),($1,'Different head','hk'),($2,'Foreign base','hk'),($2,'Foreign head','hk') RETURNING id", [id, other])).rows;
+    const baseId = jobs[kind === "foreign-diff" || kind === "foreign-base" ? 3 : 0].id;
+    const headId = jobs[kind === "foreign-diff" || kind === "foreign-head" ? 4 : kind === "wrong-head" ? 2 : 1].id;
+    const diff = (await runtime.query(`INSERT INTO scan_diffs(base_job_id,head_job_id,comparable,composite_base,composite_head,composite_delta,resolved_findings,regressed_findings)
+      VALUES($1,$2,true,60,65,5,ARRAY['gbp.rating_low'],ARRAY['gbp.owner_response_low']) RETURNING id`, [baseId, headId])).rows[0];
+    // A matching head alone is insufficient: snapshot workspace and job FKs
+    // are independent. These fixtures retain valid foreign key references.
+    const snapshotJobId = kind === "foreign-head" ? headId : jobs[1].id;
+    await runtime.query(`INSERT INTO scan_snapshots(job_id,workspace_id,location_id,market,observed_at,coverage,module_states,metrics,diff_id)
+      VALUES($1,$2,$3,'hk','2026-09-01',0.8,'{}','{}',$4)`, [snapshotJobId, id, location, diff.id]);
+    const [snapshot] = await repository.snapshots(id, location, 1);
+    expect(snapshot).toMatchObject({ workspace_id: id, job_id: snapshotJobId, diff_id: diff.id });
+    const result = await repository.diff(snapshot.diff_id!, id, snapshot.job_id);
+    if (kind === "valid") {
+      expect(result).toMatchObject({ id: diff.id, base_job_id: baseId, head_job_id: headId, comparable: true, composite_delta: "5", resolved_findings: ["gbp.rating_low"], regressed_findings: ["gbp.owner_response_low"] });
+    } else {
+      expect(result).toBeNull();
+    }
+  });
+  it("surfaces diff SQL failure instead of returning a missing relation", async () => {
+    const unavailable = new Pool({ connectionString: fixture.databaseUrl });
+    await unavailable.end();
+    const id = "00000000-0000-4000-8000-000000000001";
+    await expect(workspaceReadRepository(unavailable).diff(id, id, id)).rejects.toThrow("workspace_read_unavailable");
   });
   it("executes remaining empty optional reads without hiding query failures", async () => {
     const id = await workspace();

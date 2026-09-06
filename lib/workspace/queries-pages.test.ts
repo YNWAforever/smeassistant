@@ -26,7 +26,7 @@ const repository = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/repositories/workspace-read", () => ({ workspaceReadRepository: () => repository }));
 
-import { getHomeBrief, getInsights, listActions, getActivity, getIntegrations, getAction, loadActionRows } from "./queries-pages";
+import { getHomeBrief, getInsights, listActions, getActivity, getIntegrations, getAction, loadActionRows, loadDiffById } from "./queries-pages";
 
 const ctx: WorkspaceContext = {
   workspace: { id: "ws-1", slug: "kam-man-house", name: "Kam Man House", market: "hk", tier: "paid", timezone: "Asia/Hong_Kong", isDemo: false, instagramHandle: null, industry: "fnb", district: null },
@@ -100,6 +100,7 @@ describe("getHomeBrief", () => {
     state.snapshots = [snapshotRow({ diff_id: "d1" })];
     state.diffs.d1 = { id: "d1", comparable: false, incomparable_reason: "SCORING_VERSION_MISMATCH", composite_withheld_reason: null, composite_base: 66, composite_head: 62, composite_delta: -4, resolved_findings: [], regressed_findings: [], decayed_findings: [] };
     const brief = await getHomeBrief(ctx, "yik-yam");
+    expect(repository.diff).toHaveBeenCalledWith("d1", "ws-1", "job-1");
     expect(brief.snapshot?.id).toBe("snap-1");
     expect(brief.changed).toMatchObject({ factType: "Unknown", delta: null, reason: "SCORING_VERSION_MISMATCH", comparable: false });
     expect(brief.nextScanAt).toBe("2026-09-14T00:00:00Z");
@@ -124,6 +125,17 @@ describe("listActions", () => {
 });
 
 describe("getInsights", () => {
+  it("binds summary and series diffs to each snapshot job for an accepted viewer", async () => {
+    const viewer = { ...ctx, membership: { ...ctx.membership, role: "viewer" as const } };
+    state.snapshots = [snapshotRow({ diff_id: "d1" }), snapshotRow({ id: "snap-2", job_id: "job-2", diff_id: "d2" })];
+    await getInsights(viewer, "all");
+    expect(repository.diff).toHaveBeenCalledWith("d1", "ws-1", "job-1");
+    repository.diff.mockClear();
+    await getInsights(viewer, "yik-yam");
+    expect(repository.diff).toHaveBeenCalledWith("d1", "ws-1", "job-1");
+    expect(repository.diff).toHaveBeenCalledWith("d2", "ws-1", "job-2");
+  });
+
   it("returns per-location summaries only for location=all and a series otherwise", async () => {
     const all = await getInsights(ctx, "all");
     expect(all.series).toEqual([]);
@@ -137,6 +149,15 @@ describe("getInsights", () => {
 
 
 describe("page repository boundaries", () => {
+  it("keeps absent diff relations empty and propagates SQL failure", async () => {
+    expect(await loadDiffById(null, "ws-1", "job-1")).toBeNull();
+    expect(await loadDiffById("d1", "ws-1", null)).toBeNull();
+    expect(repository.diff).not.toHaveBeenCalled();
+    expect(await loadDiffById("missing", "ws-1", "job-1")).toBeNull();
+    repository.diff.mockRejectedValueOnce(new Error("fixture SQL unavailable"));
+    await expect(loadDiffById("d1", "ws-1", "job-1")).rejects.toThrow("diff lookup failed");
+  });
+
   it("passes omitted and empty action filters through without broadening them", async () => {
     await loadActionRows("ws-1", { ids: [], states: [] });
     expect(repository.actions).toHaveBeenCalledWith("ws-1", { ids: [], states: [] });

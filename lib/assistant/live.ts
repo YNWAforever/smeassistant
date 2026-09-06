@@ -192,7 +192,7 @@ async function resolveContext(db: SupabaseClient, input: LiveRunInput): Promise<
   }
 
   const [diff, base, openRows] = await Promise.all([
-    loadDiffById(snapshot?.diffId ?? null),
+    loadDiffById(snapshot?.diffId ?? null, workspaceId, snapshot?.jobId ?? null),
     snapshot?.comparableTo ? loadSnapshotById(db, snapshot.comparableTo) : Promise.resolve(null),
     loadActionRows(workspaceId, { locationId, states: ["recommended", "needs_input", "ready", "in_progress"] }),
   ]);
