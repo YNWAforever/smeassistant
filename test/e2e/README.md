@@ -12,7 +12,7 @@ The hosted suite is opt-in: `corepack pnpm exec playwright test --config playwri
 - `NEON_AUTH_TEST_ORIGIN`, an isolated HTTPS app origin, and `NEON_AUTH_TEST_BRANCH`, its dedicated br-* Neon branch.
 - `NEON_AUTH_TEST_PRODUCTION_ORIGIN`, the production alias, which cannot be the target.
 - `NEON_AUTH_TEST_PROVIDER_ORIGIN` and `NEON_AUTH_TEST_PRODUCTION_PROVIDER_ORIGIN`, distinct HTTPS managed Auth origins; delivered/expired links may only target the isolated app/provider.
-- `NEON_AUTH_TEST_RECIPIENT`, a separately authorized mailbox with an app invitation; `NEON_AUTH_TEST_INBOX_URL` and optional `NEON_AUTH_TEST_INBOX_TOKEN`, an authorized HTTPS mailbox adapter returning `{recipient,url,receivedAt}` after sending.
+- `NEON_AUTH_TEST_REDEMPTION_RECIPIENT` and `NEON_AUTH_TEST_EXPIRY_RECIPIENT`, two distinct, separately authorized mailboxes, each with its own pending app invitation. Redeeming the first recipient's link consumes all pending invitations for that recipient, so the expiry scenario must use the second recipient. `NEON_AUTH_TEST_INBOX_URL` and optional `NEON_AUTH_TEST_INBOX_TOKEN` configure an authorized HTTPS mailbox adapter returning `{recipient,url,receivedAt}` after sending.
 - `NEON_AUTH_TEST_GOOGLE_EMAIL` and `NEON_AUTH_TEST_GOOGLE_STATE`, the authorized dedicated Google account and locally protected Playwright state file. The test must perform actual account selection and consent; it fails if no consent screen is presented.
 - `NEON_AUTH_TEST_LINK_TTL_MS`, the isolated provider's configured magic-link lifetime in milliseconds (1000 through3600000). The expiry case requests a real new message and waits this lifetime before attempting redemption; it never substitutes an arbitrary invalid link.
 
