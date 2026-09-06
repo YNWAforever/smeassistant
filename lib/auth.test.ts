@@ -54,45 +54,21 @@ vi.mock("@/lib/identity/users", () => ({
     return {id:"a8098c1a-f86e-41da-bd1a-00112444be1e",email:identity.email,verified:true};
   },
 }));
-vi.mock("@/lib/supabase/admin", () => ({
-  supabaseServer: () => ({
-    from: (table: string) => {
-      if (table === "workspaces") {
-        const chain = {
-          select: () => chain,
-          eq: (column: string, value: string) => {
-            state.workspaceFilters.push([column, value]);
-            return chain;
-          },
-          maybeSingle: async () => ({ data: state.workspace, error: state.workspaceError }),
-        };
-        return chain;
-      }
-      if (table === "workspace_members") {
-        const chain = {
-          select: () => chain,
-          eq: (column: string, value: string) => {
-            state.memberFilters.push([column, value]);
-            return chain;
-          },
-          not: (column: string, op: string, value: unknown) => {
-            state.notFilters.push([column, op, value]);
-            return chain;
-          },
-          order: () => chain,
-          limit: () => chain,
-          returns: async () => {
-            const row = state.membership;
-            // The real query filters accepted_at IS NOT NULL server-side; mirror it.
-            const rows = row && row.accepted_at !== null ? [row] : [];
-            return { data: rows, error: state.membershipError };
-          },
-        };
-        return chain;
-      }
-      throw new Error(`unexpected table ${table}`);
-    },
-  }),
+vi.mock("@/lib/repositories/membership", () => ({
+ membershipRepository: {
+  workspace: async (ref: {id?:string;slug?:string}) => {
+   if (ref.id) state.workspaceFilters.push(["id",ref.id]);
+   else if (ref.slug) state.workspaceFilters.push(["slug",ref.slug]);
+   if (state.workspaceError) throw new Error("Unable to load workspace");
+   return state.workspace;
+  },
+  accepted: async (userId:string, workspaceId:string) => {
+   state.memberFilters.push(["user_id",userId],["workspace_id",workspaceId]);
+   state.notFilters.push(["accepted_at","is",null]);
+   if (state.membershipError) throw new Error("Unable to load membership");
+   return state.membership?.accepted_at ? state.membership : null;
+  },
+ },
 }));
 
 import {

@@ -3,9 +3,10 @@ import { cookies } from "next/headers";
 import { getUser, signOut } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/admin";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/locale";
+import { claimsRepository } from "@/lib/repositories/claims";
 import { safeReturnPath } from "@/lib/identity/return-path";
 import { bindWorkspaceToUser } from "@/lib/workspace/bind-workspace";
-import { recordAccessRequest, shouldRecordAccessRequest } from "@/lib/workspace/access-request";
+import { shouldRecordAccessRequest } from "@/lib/workspace/access-request";
 import { parseViewerGrantCookie, VIEWER_GRANT_COOKIE } from "@/lib/report-access/cookie";
 import { tokenHashMatches } from "@/lib/report-access/token";
 import { claimScan, type ClaimOutcome } from "@/lib/workspace/claim-scan";
@@ -112,7 +113,7 @@ export async function GET(req: Request) {
       verifiedEmail: user.email ?? null,
       // The concurrency and multi-invite story is documented on
       // bindPendingMembership itself.
-      bindByEmail: (userId, email) => bindPendingMembership(supabaseServer(), userId, email),
+      bindByEmail: () => bindPendingMembership(user),
     });
 
     // Ownership is read, not inferred. bindWorkspaceToUser returns "none" for an
@@ -126,7 +127,6 @@ export async function GET(req: Request) {
     // correct and matches the access-request block below, which wraps
     // itself in its own try/catch for the same reason.
     const { data: ownedWorkspace, error: ownedWorkspaceError } = await findOwnedWorkspace(
-      supabaseServer(),
       user.id,
     );
     if (ownedWorkspaceError) {
@@ -140,34 +140,8 @@ export async function GET(req: Request) {
       // to persist must not turn a successful sign-in into an error. Contrast
       // lib/staff/lead-access-log.ts, which throws — nothing is disclosed here.
       try {
-        const requestDb = supabaseServer();
-        const { data: requestedJob } = await requestDb
-          .from("audit_jobs")
-          .select("id")
-          .eq("share_slug", claimSlug)
-          .maybeSingle();
-
-        if (requestedJob?.id) {
-          const { data: open } = await requestDb
-            .from("workspace_access_requests")
-            .select("id")
-            .eq("job_id", requestedJob.id)
-            .eq("user_id", user.id)
-            .is("resolved_at", null)
-            .maybeSingle();
-
-          // Checked rather than relied upon: the partial unique index is the real
-          // guarantee, but a duplicate insert would log noise on every re-visit.
-          if (!open?.id) {
-            await recordAccessRequest(
-              { jobId: requestedJob.id, userId: user.id },
-              {
-                insert: async (row) =>
-                  await requestDb.from("workspace_access_requests").insert(row),
-              },
-            );
-          }
-        }
+        const requestedJob = await claimsRepository.jobBySlug(claimSlug!);
+        if (requestedJob) await claimsRepository.recordAccessRequest(requestedJob.id, user.id);
       } catch {
         console.error("[owner/callback] access request not recorded", {
           category: "owner_access_request_failed",
@@ -181,7 +155,6 @@ export async function GET(req: Request) {
     // to the locale's select-workspace page.
     if (!claimSlug) return NextResponse.redirect(landing(req, ctx, {}));
 
-    const db = supabaseServer();
     const outcome: ClaimOutcome = await claimScan({
       slug: claimSlug,
       sessionUser: { id: user.id, email: user.email ?? null },
@@ -189,44 +162,22 @@ export async function GET(req: Request) {
       // signals are writable by anyone holding the slug, so self-service
       // claiming is a scan-hijack primitive until an unforgeable proof exists.
       selfServiceEnabled: process.env.OWNER_SELF_SERVICE_CLAIM === "true",
-      lookupJobBySlug: async (slug) => {
-        const { data: job } = await db
-          .from("audit_jobs")
-          .select("id, workspace_id, business_name, industry, district, region")
-          .eq("share_slug", slug)
-          .maybeSingle();
-        return job ?? null;
-      },
+      lookupJobBySlug: claimsRepository.jobBySlug,
       hasViewerGrant: holdsViewerGrant,
-      lookupLeadEmail: async (jobId) => {
-        // NOT maybeSingle(): leads.job_id has no uniqueness, and unlocking the
-        // same report twice inserts a second row. postgrest turns >1 row into
-        // data=null plus PGRST116, and the discarded error made this return
-        // null for exactly the owners who unlocked more than once. Ordered and
-        // limited instead, so the choice is the earliest lead rather than
-        // whichever row the planner happened to return.
-        const { data: leads, error } = await db
-          .from("leads")
-          .select("email, created_at")
-          .eq("job_id", jobId)
-          .not("email", "is", null)
-          .order("created_at", { ascending: true })
-          .limit(1);
-        if (error) throw new Error("lead lookup failed");
-        return leads?.[0]?.email ?? null;
-      },
+      // Earliest non-null lead, including repeated unlocks of the same report.
+      lookupLeadEmail: claimsRepository.firstLeadEmail,
       // Fail CLOSED here, unlike the best-effort lookup above: claimScan's
       // whole function is wrapped in a top-level try/catch that turns any
       // thrown error into { kind: "unavailable" } — the correct, existing
       // pattern for this function's other injected lookups, several of which
       // already throw on error.
       findWorkspaceForUser: async (userId) => {
-        const { data, error } = await findOwnedWorkspace(db, userId);
+        const { data, error } = await findOwnedWorkspace(userId);
         if (error) throw new Error("workspace lookup failed");
         return data ? { id: data.workspaceId } : null;
       },
-      createWorkspace: (input) => createWorkspaceWithOwner(db, input),
-      attachJobToWorkspace: (jobId, workspaceId) => attachJobToWorkspace(db, jobId, workspaceId),
+      createWorkspace: (input) => createWorkspaceWithOwner(input),
+      attachJobToWorkspace: (jobId, workspaceId) => attachJobToWorkspace(jobId, workspaceId),
     });
 
     return NextResponse.redirect(landing(req, ctx, { claimed: outcome.kind }));

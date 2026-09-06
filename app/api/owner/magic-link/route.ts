@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getNeonAuth } from "@/lib/identity/neon";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { claimsRepository } from "@/lib/repositories/claims";
 import {
   enforceCompositeIdentifierRateLimit,
   rateLimitUnavailableResponse,
@@ -91,20 +91,7 @@ export async function POST(req: Request) {
     // the public unlock endpoint, which is why claiming itself is gated (see
     // claim-scan.ts) — but it does stop the endpoint being a general-purpose
     // mailer pointed at arbitrary third parties.
-    const { data: job } = await supabaseServer()
-      .from("audit_jobs")
-      .select("id")
-      .eq("share_slug", slug)
-      .maybeSingle();
-    if (!job) return NextResponse.json({ ok: true });
-
-    const { data: known } = await supabaseServer()
-      .from("leads")
-      .select("id")
-      .eq("job_id", job.id)
-      .eq("email", email)
-      .limit(1);
-    if (!known?.length) return NextResponse.json({ ok: true });
+    if (!await claimsRepository.isLeadRecipient(slug, email)) return NextResponse.json({ ok: true });
 
     const redirect = new URL("/auth/callback", appOrigin);
     redirect.searchParams.set("claim", slug);

@@ -7,7 +7,7 @@ const rateLimit = vi.fn();
 vi.mock("@/lib/identity/neon", () => ({
   getNeonAuth: () => ({ signIn: { magicLink: signInWithOtp } }),
 }));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({ from }) }));
+vi.mock("@/lib/repositories/membership", () => ({ membershipRepository: { hasPendingInvitation: (email:string) => from(email) } }));
 vi.mock("@/lib/security/rate-limit", () => ({
   enforceCompositeIdentifierRateLimit: () => rateLimit(),
   rateLimitUnavailableResponse: () => new Response(JSON.stringify({ error: "unavailable" }), { status: 503 }),
@@ -22,15 +22,7 @@ function post(body: unknown) {
   );
 }
 
-function pendingRow(exists: boolean) {
-  return {
-    select: () => ({
-      eq: () => ({
-        is: () => ({ limit: async () => ({ data: exists ? [{ id: "member-1" }] : [], error: null }) }),
-      }),
-    }),
-  };
-}
+function pendingRow(exists: boolean) { return Promise.resolve(exists); }
 
 beforeEach(() => {
   process.env.NEXT_PUBLIC_SITE_URL = "https://app.example.com";

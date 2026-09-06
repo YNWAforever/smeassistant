@@ -10,7 +10,7 @@ vi.mock("@/lib/identity/neon", () => ({
   getNeonAuth: () => ({ signIn: { magicLink: mocks.signInWithOtp } }),
 }));
 
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({ from: mocks.from }) }));
+vi.mock("@/lib/repositories/claims", () => ({ claimsRepository: { isLeadRecipient: mocks.from } }));
 
 vi.mock("@/lib/security/rate-limit", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/security/rate-limit")>();
@@ -27,26 +27,9 @@ function request(body: unknown): Request {
   });
 }
 
-/** audit_jobs is looked up by .eq().maybeSingle(); leads by .eq().eq().limit(). */
 function wireSupabase(options: { job?: { id: string } | null; knownLead?: boolean } = {}) {
-  const { job = { id: "job-1" }, knownLead = false } = options;
-  mocks.from.mockImplementation((table: string) => {
-    if (table === "audit_jobs") {
-      return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: job, error: null }) }) }) };
-    }
-    if (table === "leads") {
-      return {
-        select: () => ({
-          eq: () => ({
-            eq: () => ({
-              limit: async () => ({ data: knownLead ? [{ id: "lead-1" }] : [], error: null }),
-            }),
-          }),
-        }),
-      };
-    }
-    throw new Error(`unexpected table ${table}`);
-  });
+ const { job = {id:"job-1"}, knownLead = false } = options;
+ mocks.from.mockResolvedValue(Boolean(job && knownLead));
 }
 
 describe("POST /api/owner/magic-link", () => {

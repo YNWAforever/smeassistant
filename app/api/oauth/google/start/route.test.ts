@@ -8,10 +8,12 @@ const mocks = vi.hoisted(() => ({
   googleOAuthConfigured: vi.fn(() => true),
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
-  createSupabaseServerClient: async () => ({ auth: { getUser: mocks.getUser } }),
-}));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({ from: mocks.from }) }));
+vi.mock("@/lib/auth", () => ({getUser:async()=>{const response=await mocks.getUser();const user=response?.data?.user;return user?{...user,verified:true}:null;}}));
+vi.mock("@/lib/repositories/membership",()=>({membershipRepository:{
+ workspace:async(ref:{slug:string})=>{const r=await mocks.from("workspaces").select().eq("slug",ref.slug).maybeSingle();if(r.error)throw r.error;return r.data;},
+ accepted:async(user:string,ws:string)=>{const r=await mocks.from("workspace_members").select().eq("user_id",user).eq("workspace_id",ws).not("accepted_at","is",null).order("created_at").limit(1);if(r.error)throw r.error;return r.data?.[0]??null;},
+ listAccepted:async(user:string)=>{const r=await mocks.from("workspace_members").select().eq("user_id",user).not("accepted_at","is",null).order("created_at").limit(1);if(r.error)throw r.error;return r.data;},
+}}));
 vi.mock("@/lib/oauth/google-connection", () => ({
   buildConsentUrl: mocks.buildConsentUrl,
   signState: mocks.signState,

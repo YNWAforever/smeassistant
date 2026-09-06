@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
 import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
-import { supabaseServer } from "@/lib/supabase/admin";
-import { ipHashFor, recordEvent } from "@/lib/workspace/audit";
+import { membershipRepository, type MemberRow } from "@/lib/repositories/membership";
+import { recordClaimAuditEvent } from "@/lib/repositories/claims";
+import { ipHashFor } from "@/lib/workspace/audit";
 import { loadLocationIds } from "@/lib/workspace/team";
 
 /**
@@ -47,7 +48,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ worksp
     }
     updates.role = body.role;
   }
-  const db = supabaseServer();
+  const db = membershipRepository;
   if (body.location_scope !== undefined) {
     if (body.location_scope === null) {
       updates.location_scope = null;
@@ -76,33 +77,30 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ worksp
   }
 
   // Scoped by workspace_id on every read/write: a foreign memberId matches no row.
-  const { data: target, error: lookupError } = await db
-    .from("workspace_members")
-    .select("id, role, location_scope")
-    .eq("id", memberId)
-    .eq("workspace_id", workspaceId)
-    .maybeSingle<{ id: string; role: string; location_scope: string[] | null }>();
-  if (lookupError) return NextResponse.json({ error: "unavailable" }, { status: 503 });
+  let target: MemberRow | null;
+  try { target = await db.member(workspaceId,memberId); }
+  catch { return NextResponse.json({error:"unavailable"},{status:503}); }
   if (!target) return NextResponse.json({ error: "not found" }, { status: 404 });
   if (target.role === "owner") return NextResponse.json({ error: "owner row is immutable" }, { status: 403 });
 
-  const { error } = await db.from("workspace_members").update(updates).eq("id", memberId).eq("workspace_id", workspaceId);
-  if (error) {
+  try {
+    if (!await db.update(workspaceId,memberId,updates)) return NextResponse.json({error:"not found"},{status:404});
+  } catch {
     console.error("Workspace member update failed");
-    return NextResponse.json({ error: "unavailable" }, { status: 500 });
+    return NextResponse.json({error:"unavailable"},{status:500});
   }
 
   const candidate = typeof body.locale === "string" ? body.locale : req.headers.get("x-sme-locale") ?? "";
-  await recordEvent(db, {
-    workspaceId,
-    actorType: "user",
-    actorId: auth.user.id,
+  await recordClaimAuditEvent({
+    workspace_id: workspaceId,
+    actor_type: "user",
+    actor_id: auth.user.id,
     event: "member.role_changed",
-    entityType: "workspace_member",
-    entityId: memberId,
-    locale: isLocale(candidate) ? candidate : DEFAULT_LOCALE,
-    ipHash: ipHashFor(req),
+    entity_type: "workspace_member",
+    entity_id: memberId,
     payload: {
+      locale: isLocale(candidate) ? candidate : DEFAULT_LOCALE,
+      ...(ipHashFor(req) ? {ip_hash:ipHashFor(req)} : {}),
       from_role: target.role,
       role: updates.role ?? target.role,
       location_scope: updates.location_scope === undefined ? target.location_scope : updates.location_scope,

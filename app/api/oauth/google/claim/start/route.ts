@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { getUser } from "@/lib/auth";
+import { claimsRepository } from "@/lib/repositories/claims";
 import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
 import { claimViaOAuthEnabled } from "@/lib/oauth/claim-flow-flag";
 import { buildConsentUrl, googleOAuthClaimConfigured, signClaimState } from "@/lib/oauth/google-connection";
@@ -14,7 +14,7 @@ import { buildConsentUrl, googleOAuthClaimConfigured, signClaimState } from "@/l
  * yet, and completing this flow is what creates one, but only once the
  * callback verifies Google's own attestation of ownership.
  *
- * A signed-in Supabase session is still required (via the existing owner
+ * A verified application session is still required (via the existing owner
  * magic-link flow) -- Google OAuth here is an ownership proof and an API
  * credential, never an identity provider.
  *
@@ -59,20 +59,10 @@ export async function GET(req: Request) {
   const locale = isLocale(requestedLocale) ? requestedLocale : DEFAULT_LOCALE;
 
   try {
-    const client = await createSupabaseServerClient();
-    const { data } = await client.auth.getUser();
-    if (!data.user?.id) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+    const user = await getUser();
+    if (!user?.id || !user.verified) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
 
-    const { data: job, error: jobError } = await supabaseServer()
-      .from("audit_jobs")
-      .select("id, place_id, workspace_id")
-      .eq("share_slug", slug)
-      .maybeSingle();
-    // Matches /api/oauth/google/start's membershipError posture: log, do not
-    // leak. Without this a Postgres outage is indistinguishable in the logs
-    // from an ordinary bad slug -- the client response is identical either
-    // way (404 not_found), which is correct; only the log needs the detail.
-    if (jobError) console.error("[oauth/google/claim/start] job lookup failed", jobError);
+    const job = await claimsRepository.jobBySlug(slug);
     if (!job) return NextResponse.json({ error: "not_found" }, { status: 404 });
     if (!job.place_id) return NextResponse.json({ error: "no_place_id" }, { status: 422 });
     if (job.workspace_id) return NextResponse.json({ error: "already_claimed" }, { status: 409 });

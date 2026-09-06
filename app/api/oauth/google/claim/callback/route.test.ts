@@ -13,10 +13,22 @@ const mocks = vi.hoisted(() => ({
   claimViaOAuthEnabled: vi.fn(() => true),
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
-  createSupabaseServerClient: async () => ({ auth: { getUser: mocks.getUser } }),
-}));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({ from: mocks.from }) }));
+vi.mock("@/lib/auth", () => ({getUser:async()=>{const response=await mocks.getUser();const user=response?.data?.user;return user?{...user,verified:true}:null;}}));
+vi.mock("@/lib/repositories/claims",()=>({
+ recordClaimAuditEvent:async(input:unknown)=>{await mocks.from("audit_events").insert(input);},
+ claimsRepository:{
+ jobById:async(id:string)=>{const r=await mocks.from("audit_jobs").select().eq("id",id).maybeSingle();if(r.error)throw r.error;return r.data;},
+ recordMerchantClaimEvent:async(input:unknown)=>{await mocks.from("workspace_claim_events").insert(input);},
+ replaceGoogleConnection:async(input:{workspaceId:string;accountRef?:string;accessTokenEncrypted:string;refreshTokenEncrypted:string;scopes:string[];expiresAt:string|null})=>{
+  const table=mocks.from("oauth_connections");
+  const inserted=await table.insert({workspace_id:input.workspaceId,provider:"google_gbp",...(input.accountRef?{account_ref:input.accountRef}:{}),access_token_encrypted:input.accessTokenEncrypted,refresh_token_encrypted:input.refreshTokenEncrypted,scopes:input.scopes,expires_at:input.expiresAt,status:"expired"}).select().single();
+  if(inserted.error||!inserted.data)throw new Error("storage failed");
+  const revoked=await table.update({status:"revoked",updated_at:new Date().toISOString()}).eq("workspace_id",input.workspaceId).eq("provider","google_gbp").eq("status","active");
+  if(revoked.error)throw new Error("storage failed");
+  const promoted=await table.update({status:"active",updated_at:new Date().toISOString()}).eq("id",inserted.data.id).eq("status","expired");
+  if(promoted.error)throw new Error("storage failed");return inserted.data.id;
+ },
+}}));
 vi.mock("@/lib/oauth/claim-flow-flag", () => ({ claimViaOAuthEnabled: mocks.claimViaOAuthEnabled }));
 vi.mock("@/lib/oauth/google-connection", () => ({
   GBP_SCOPE_REQUIRED: "https://www.googleapis.com/auth/business.manage",
@@ -307,14 +319,13 @@ describe("GET /api/oauth/google/claim/callback", () => {
     expect(location.searchParams.get("claim")).toBe("abc123");
     expect(location.searchParams.get("claimed")).toBe("1");
     expect(mocks.createWorkspaceWithOwner).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({
         ownerUserId: "user-1",
         ownerEmail: "owner@example.com",
         businessName: "Demo Cafe",
       }),
     );
-    expect(mocks.attachJobToWorkspace).toHaveBeenCalledWith(expect.anything(), "job-1", "ws-new");
+    expect(mocks.attachJobToWorkspace).toHaveBeenCalledWith("job-1", "ws-new");
     expect(insert).toHaveBeenCalledWith(
       expect.objectContaining({
         workspace_id: "ws-new",
@@ -359,7 +370,7 @@ describe("GET /api/oauth/google/claim/callback", () => {
 
     expect(redirectPath(response)).toBe("/en/owner/onboarding");
     expect(mocks.createWorkspaceWithOwner).not.toHaveBeenCalled();
-    expect(mocks.attachJobToWorkspace).toHaveBeenCalledWith(expect.anything(), "job-1", "ws-existing");
+    expect(mocks.attachJobToWorkspace).toHaveBeenCalledWith("job-1", "ws-existing");
   });
 
   it("revokes an existing active google_gbp connection before promoting the new one, so a repeat claim on an already-connected workspace does not 23505 on oauth_connections_active_provider_key", async () => {

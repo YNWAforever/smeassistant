@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { membershipRepository } from "@/lib/repositories/membership";
+import { recordClaimAuditEvent } from "@/lib/repositories/claims";
 
 /**
  * Invite (POST) and remove (DELETE) non-owner workspace members.
@@ -47,42 +48,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ workspa
     return NextResponse.json({ error: "role must be manager or viewer" }, { status: 400 });
   }
 
-  const supabase = supabaseServer();
-  const { data: created, error } = await supabase
-    .from("workspace_members")
-    .insert({
-      workspace_id: workspaceId,
-      email,
-      role,
-      invited_by: auth.user.id,
-      invited_at: new Date().toISOString(),
-    })
-    .select("id")
-    .single();
-  // 23505 is workspace_members_email_idx_unique: this email already has a
-  // row (pending or accepted) on this workspace.
-  if ((error as { code?: string } | null)?.code === "23505") {
-    return NextResponse.json({ error: "already invited" }, { status: 409 });
-  }
-  if (error || !created) {
+  let memberId: string;
+  try {
+    memberId = await membershipRepository.invite({workspaceId,email,role,invitedBy:auth.user.id});
+    if (!memberId) throw new Error("invite failed");
+  } catch (error) {
+    if ((error as {code?:string})?.code === "23505") return NextResponse.json({error:"already invited"},{status:409});
     console.error("Workspace member invite failed");
-    return NextResponse.json({ error: "unavailable" }, { status: 500 });
+    return NextResponse.json({error:"unavailable"},{status:500});
   }
 
   // Best-effort audit trail (§3.11). The invite row exists; a failed log
   // write must not turn a successful invite into an error.
-  const { error: eventError } = await supabase.from("audit_events").insert({
+  await recordClaimAuditEvent({
     workspace_id: workspaceId,
     actor_type: "user",
     actor_id: auth.user.id,
     event: "member.invited",
     entity_type: "workspace_member",
-    entity_id: created.id,
+    entity_id: memberId,
     payload: { locale: typeof body.locale === "string" ? body.locale : null, role },
   });
-  if (eventError) console.error("Workspace member invite audit event not recorded");
 
-  return NextResponse.json({ memberId: created.id }, { status: 201 });
+  return NextResponse.json({ memberId: memberId }, { status: 201 });
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ workspaceId: string }> }) {
@@ -99,30 +87,14 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ works
     return NextResponse.json({ error: "memberId is invalid" }, { status: 400 });
   }
 
-  const supabase = supabaseServer();
-  // Deliberately no `.not("accepted_at", "is", null)` filter here: a still-
-  // pending invite must be reachable too, so a mis-sent or poisoned invite can
-  // be rescinded before it's ever accepted. The owner-row-protection check
-  // below is unaffected -- it only changes whether a pending row is found at
-  // all, not who may remove what once found.
-  const { data: target } = await supabase
-    .from("workspace_members")
-    .select("role")
-    .eq("id", memberId)
-    .eq("workspace_id", workspaceId)
-    .maybeSingle();
-  if (!target) return NextResponse.json({ error: "not found" }, { status: 404 });
-  // Only the owner may remove the owner row — a manager removing it would let
-  // a workspace end up with no owner at all. minRole above already makes the
-  // caller an owner; kept as defence in depth should that ever loosen.
-  if (target.role === "owner" && auth.membership.role !== "owner") {
-    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
-  }
-
-  const { error } = await supabase.from("workspace_members").delete().eq("id", memberId).eq("workspace_id", workspaceId);
-  if (error) {
+  try {
+    const target = await membershipRepository.member(workspaceId, memberId);
+    if (!target) return NextResponse.json({error:"not found"},{status:404});
+    if (target.role === "owner" && auth.membership.role !== "owner") return NextResponse.json({error:"Not authorized"},{status:403});
+    await membershipRepository.remove(workspaceId,memberId);
+  } catch {
     console.error("Workspace member removal failed");
-    return NextResponse.json({ error: "unavailable" }, { status: 500 });
+    return NextResponse.json({error:"unavailable"},{status:500});
   }
 
   return NextResponse.json({ ok: true });

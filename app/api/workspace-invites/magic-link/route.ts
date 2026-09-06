@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getNeonAuth } from "@/lib/identity/neon";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { membershipRepository } from "@/lib/repositories/membership";
 import {
   enforceCompositeIdentifierRateLimit,
   rateLimitUnavailableResponse,
@@ -66,13 +66,7 @@ export async function POST(req: Request) {
     // validated and the request origin is only the fallback.
     const appOrigin = safeAppOrigin(process.env.NEXT_PUBLIC_SITE_URL) ?? new URL(req.url).origin;
 
-    const { data: pendingRows } = await supabaseServer()
-      .from("workspace_members")
-      .select("id")
-      .eq("email", email)
-      .is("accepted_at", null)
-      .limit(1);
-    if (!pendingRows?.length) return NextResponse.json({ ok: true });
+    if (!await membershipRepository.hasPendingInvitation(email)) return NextResponse.json({ ok: true });
 
     const redirect = new URL("/auth/callback", appOrigin);
     redirect.searchParams.set("locale", locale);

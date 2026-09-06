@@ -2,12 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
+  legacy: vi.fn(),
   completeWorkspaceClaim: vi.fn(),
   enforceRateLimit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 1 })),
 }));
 
 vi.mock("@/lib/auth", () => ({ getUser: mocks.getUser }));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({ from: vi.fn() }) }));
+vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => {mocks.legacy();return { from: vi.fn() };} }));
 vi.mock("@/lib/security/rate-limit", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/security/rate-limit")>();
   return { ...original, enforceRateLimit: mocks.enforceRateLimit };
@@ -42,7 +43,16 @@ function post(body: unknown): Promise<Response> {
 describe("POST /api/workspaces/claim", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.legacy.mockReset();
     mocks.enforceRateLimit.mockResolvedValue({ allowed: true, retryAfterSeconds: 1 });
+  });
+
+  it("checks Neon claim eligibility before initializing deferred snapshot stores", async () => {
+    mocks.getUser.mockResolvedValue(USER);
+    mocks.completeWorkspaceClaim.mockResolvedValue({kind:"not_attached"});
+    mocks.legacy.mockImplementation(()=>{throw new Error("legacy store unavailable");});
+    expect((await post(BODY)).status).toBe(409);
+    expect(mocks.legacy).not.toHaveBeenCalled();
   });
 
   it("401s without a verified session, before reading the body", async () => {

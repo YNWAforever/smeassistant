@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { getUser } from "@/lib/auth";
+import { membershipRepository } from "@/lib/repositories/membership";
 import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
 import { buildConsentUrl, googleOAuthConfigured, signState } from "@/lib/oauth/google-connection";
 import { authorizeWorkspace } from "@/lib/workspace/authorize-workspace";
@@ -42,47 +42,17 @@ export async function GET(req: Request) {
   }
 
   try {
-    const client = await createSupabaseServerClient();
-    const { data } = await client.auth.getUser();
-    const user = data.user;
-    if (!user?.id) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+    const user = await getUser();
+    if (!user?.id || !user.verified) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
 
-    const db = supabaseServer();
-
-    let targetWorkspaceId: string | null = null;
+    let membership;
     if (workspaceSlug) {
-      const { data: workspace, error: workspaceError } = await db
-        .from("workspaces")
-        .select("id")
-        .eq("slug", workspaceSlug)
-        .maybeSingle();
-      if (workspaceError) {
-        console.error("[oauth/google/start] workspace lookup failed", workspaceError);
-      }
-      // An unknown slug and a workspace the caller is not a member of answer
-      // identically (403 below), so this cannot probe which slugs exist.
-      if (!workspace) return NextResponse.json({ error: "no_workspace" }, { status: 403 });
-      targetWorkspaceId = workspace.id;
+      const workspace = await membershipRepository.workspace({slug:workspaceSlug});
+      if (!workspace) return NextResponse.json({error:"no_workspace"},{status:403});
+      membership = await membershipRepository.accepted(user.id,workspace.id);
+    } else {
+      membership = (await membershipRepository.listAccepted(user.id))[0] ?? null;
     }
-
-    let membershipQuery = db
-      .from("workspace_members")
-      .select("workspace_id, role, created_at")
-      .eq("user_id", user.id)
-      .not("accepted_at", "is", null);
-    if (targetWorkspaceId) membershipQuery = membershipQuery.eq("workspace_id", targetWorkspaceId);
-    const { data: membershipRows, error: membershipError } = await membershipQuery
-      // Same reasoning as owner-session.ts: a person can now legitimately
-      // belong to more than one workspace. Pick the oldest membership,
-      // matching what the dashboard itself shows as "the" workspace, rather
-      // than letting a second row throw PGRST116 and silently 403 as if the
-      // caller owned nothing.
-      .order("created_at", { ascending: true })
-      .limit(1);
-    if (membershipError) {
-      console.error("[oauth/google/start] membership lookup failed", membershipError);
-    }
-    const membership = membershipRows?.[0];
 
     const access = authorizeWorkspace({
       membership: membership ? { workspaceId: membership.workspace_id, role: membership.role } : null,

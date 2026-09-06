@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { claimCompletionStore } from "@/lib/repositories/claims";
 import { getUser } from "@/lib/auth";
 import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
@@ -104,15 +105,15 @@ export async function POST(req: Request) {
   if (!limit.allowed) return rateLimitedResponse(limit.retryAfterSeconds);
 
   try {
-    const db = supabaseServer();
     // Phase 3 seam (CLAUDE.md Phase 2 item 3): build the snapshot for the
     // claimed job, then derive its actions. Both are idempotent, so a retry of
     // this route after a partial failure converges.
-    const result = await completeWorkspaceClaim(db, { ...parsed.body, userId: user.id }, {
+    const result = await completeWorkspaceClaim(claimCompletionStore, { ...parsed.body, userId: user.id }, {
       buildSnapshot: async (jobId) => {
-        await buildSnapshot(db, jobId);
+        await buildSnapshot(supabaseServer(), jobId);
       },
       deriveActions: async (jobId) => {
+        const db = supabaseServer();
         const snapshot = await loadSnapshotForJob(db, jobId);
         if (snapshot) await deriveActionsForSnapshot(db, snapshot.id);
       },

@@ -7,10 +7,26 @@ const mocks = vi.hoisted(() => ({
   exchangeCode: vi.fn(),
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
-  createSupabaseServerClient: async () => ({ auth: { getUser: mocks.getUser } }),
-}));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({ from: mocks.from }) }));
+vi.mock("@/lib/auth", () => ({getUser:async()=>{const response=await mocks.getUser();const user=response?.data?.user;return user?{...user,verified:true}:null;}}));
+vi.mock("@/lib/repositories/membership",()=>({membershipRepository:{
+ workspace:async(ref:{id:string})=>{const r=await mocks.from("workspaces").select().eq("id",ref.id).maybeSingle();if(r.error)throw r.error;return r.data;},
+ accepted:async(user:string,ws:string)=>{const r=await mocks.from("workspace_members").select().eq("workspace_id",ws).eq("user_id",user).not("accepted_at","is",null).maybeSingle();if(r.error)throw r.error;return r.data;},
+}}));
+vi.mock("@/lib/repositories/claims",()=>({
+ recordClaimAuditEvent:async(input:unknown)=>{await mocks.from("audit_events").insert(input);},
+ claimsRepository:{
+ jobById:async(id:string)=>{const r=await mocks.from("audit_jobs").select().eq("id",id).maybeSingle();if(r.error)throw r.error;return r.data;},
+ recordMerchantClaimEvent:async(input:unknown)=>{await mocks.from("workspace_claim_events").insert(input);},
+ replaceGoogleConnection:async(input:{workspaceId:string;accountRef?:string;accessTokenEncrypted:string;refreshTokenEncrypted:string;scopes:string[];expiresAt:string|null})=>{
+  const table=mocks.from("oauth_connections");
+  const inserted=await table.insert({workspace_id:input.workspaceId,provider:"google_gbp",...(input.accountRef?{account_ref:input.accountRef}:{}),access_token_encrypted:input.accessTokenEncrypted,refresh_token_encrypted:input.refreshTokenEncrypted,scopes:input.scopes,expires_at:input.expiresAt,status:"expired"}).select().single();
+  if(inserted.error||!inserted.data)throw new Error("storage failed");
+  const revoked=await table.update({status:"revoked",updated_at:new Date().toISOString()}).eq("workspace_id",input.workspaceId).eq("provider","google_gbp").eq("status","active");
+  if(revoked.error)throw new Error("storage failed");
+  const promoted=await table.update({status:"active",updated_at:new Date().toISOString()}).eq("id",inserted.data.id);
+  if(promoted.error)throw new Error("storage failed");return inserted.data.id;
+ },
+}}));
 vi.mock("@/lib/oauth/google-connection", () => ({
   GBP_SCOPE_REQUIRED: "https://www.googleapis.com/auth/business.manage",
   verifyState: mocks.verifyState,

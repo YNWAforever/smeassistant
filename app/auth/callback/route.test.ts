@@ -16,23 +16,15 @@ vi.mock("next/headers", () => ({
 
 vi.mock("@/lib/auth", () => ({ getUser: mocks.getUser, signOut: mocks.signOut }));
 
-/** Every query on a table resolves to mocks.results[table]; the chain records its calls. */
-function chain(table: string) {
-  const c: Record<string, unknown> = {};
-  for (const method of ["select", "update", "insert", "eq", "is", "not", "order", "limit", "maybeSingle", "single"]) {
-    c[method] = (...args: unknown[]) => {
-      mocks.calls.push({ table, method, args });
-      return c;
-    };
-  }
-  c.then = (resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) =>
-    Promise.resolve(mocks.results[table] ?? { data: null, error: null }).then(resolve, reject);
-  return c;
-}
-
-vi.mock("@/lib/supabase/admin", () => ({
-  supabaseServer: () => ({ from: (table: string) => chain(table) }),
-}));
+vi.mock("@/lib/repositories/membership", () => ({ membershipRepository: {
+ bindPending: async (user:unknown) => {mocks.calls.push({table:"members",method:"bind",args:[user]});return null;},
+ ownedWorkspace: async () => null,
+} }));
+vi.mock("@/lib/repositories/claims", () => ({ claimsRepository: {
+ jobBySlug: async () => (mocks.results.audit_jobs as {data:unknown}).data,
+ recordAccessRequest: async (...args:unknown[]) => {mocks.calls.push({table:"workspace_access_requests",method:"insert",args});},
+ firstLeadEmail: async () => null, createWorkspaceWithOwner: vi.fn(), attachJob: vi.fn(),
+} }));
 
 import { GET } from "./route";
 
@@ -99,10 +91,7 @@ describe("GET /auth/callback", () => {
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe("https://app.test/en/owner/kam-man-house?tab=actions");
 
-    const bind = mocks.calls.find((c) => c.table === "workspace_members" && c.method === "update");
-    expect(bind?.args[0]).toMatchObject({ user_id: "user-1" });
-    expect(mocks.calls).toContainEqual({ table: "workspace_members", method: "eq", args: ["email", "owner@example.com"] });
-    expect(mocks.calls).toContainEqual({ table: "workspace_members", method: "is", args: ["user_id", null] });
+    expect(mocks.calls).toContainEqual({table:"members",method:"bind",args:[{id:"user-1",email:"Owner@Example.com",verified:true}]});
   });
 
   it("ignores a returnTo that is not a same-origin path", async () => {

@@ -54,14 +54,15 @@
   {
     "path": "app/[locale]/owner/onboarding/page.tsx",
     "kind": "runtime",
-    "task": 8,
+    "task": 7,
     "replacements": [
-      "lib/repositories/scans.ts",
-      "lib/repositories/reports.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -186,11 +187,13 @@
     "kind": "test",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -198,11 +201,13 @@
     "kind": "runtime",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -210,11 +215,13 @@
     "kind": "test",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -222,11 +229,13 @@
     "kind": "runtime",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -234,11 +243,13 @@
     "kind": "test",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -246,11 +257,13 @@
     "kind": "runtime",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -258,11 +271,13 @@
     "kind": "test",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -270,37 +285,41 @@
     "kind": "runtime",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
     "path": "app/api/owner/magic-link/route.test.ts",
     "kind": "test",
-    "task": 8,
+    "task": 7,
     "replacements": [
-      "lib/repositories/scans.ts",
-      "lib/repositories/reports.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
     "path": "app/api/owner/magic-link/route.ts",
     "kind": "runtime",
-    "task": 8,
+    "task": 7,
     "replacements": [
-      "lib/repositories/scans.ts",
-      "lib/repositories/reports.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -454,11 +473,13 @@
     "kind": "test",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -466,11 +487,13 @@
     "kind": "runtime",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -653,11 +676,13 @@
     "kind": "test",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -665,11 +690,13 @@
     "kind": "runtime",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -677,11 +704,13 @@
     "kind": "test",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -689,11 +718,13 @@
     "kind": "runtime",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -779,51 +810,55 @@
   {
     "path": "app/api/workspaces/claim/route.test.ts",
     "kind": "test",
-    "task": 7,
+    "task": 9,
     "replacements": [
       "lib/repositories/workspaces.ts"
     ],
     "status": "pending",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7 checks use Neon completion store. Remaining legacy mock guards deferred Task9 snapshot store lazy initialization; action derivation belongs to Task10."
     ]
   },
   {
     "path": "app/api/workspaces/claim/route.ts",
     "kind": "runtime",
-    "task": 7,
+    "task": 9,
     "replacements": [
       "lib/repositories/workspaces.ts"
     ],
     "status": "pending",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7 completion writes use claimCompletionStore. Remaining Supabase buildSnapshot/loadSnapshotForJob hooks belong to Task9; deriveActionsForSnapshot belongs to Task10."
     ]
   },
   {
     "path": "app/auth/callback/route.test.ts",
     "kind": "test",
-    "task": 6,
+    "task": 7,
     "replacements": [
-      "lib/auth/provider.ts",
-      "lib/auth/session.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
     "path": "app/auth/callback/route.ts",
     "kind": "runtime",
-    "task": 6,
+    "task": 9,
     "replacements": [
       "lib/auth/provider.ts",
       "lib/auth/session.ts"
     ],
     "status": "pending",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7 migrated membership, claim, lead and access request stores. Remaining holdsViewerGrant report_access_grants read belongs to Task9; self-service gate unchanged."
     ]
   },
   {
@@ -899,27 +934,29 @@
   {
     "path": "lib/auth.test.ts",
     "kind": "test",
-    "task": 6,
+    "task": 7,
     "replacements": [
-      "lib/auth/provider.ts",
-      "lib/auth/session.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
     "path": "lib/auth.ts",
     "kind": "runtime",
-    "task": 6,
+    "task": 7,
     "replacements": [
-      "lib/auth/provider.ts",
-      "lib/auth/session.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -1298,29 +1335,31 @@
   {
     "path": "lib/workspace/callback-queries.test.ts",
     "kind": "test",
-    "task": 9,
+    "task": 7,
     "replacements": [
-      "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "SupabaseClient type reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
     "path": "lib/workspace/callback-queries.ts",
     "kind": "runtime",
-    "task": 9,
+    "task": 7,
     "replacements": [
-      "lib/repositories/evidence.ts",
-      "lib/repositories/workspace.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "SupabaseClient type reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -1328,12 +1367,14 @@
     "kind": "test",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "SupabaseClient type reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -1341,12 +1382,14 @@
     "kind": "runtime",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "SupabaseClient type reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -1573,12 +1616,14 @@
     "kind": "test",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "SupabaseClient type reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -1586,12 +1631,14 @@
     "kind": "runtime",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "SupabaseClient type reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -1627,12 +1674,14 @@
     "kind": "test",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
-      "SupabaseClient type reference"
+      "SupabaseClient type reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -1640,13 +1689,15 @@
     "kind": "runtime",
     "task": 7,
     "replacements": [
-      "lib/repositories/workspaces.ts"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
       "tracked @supabase reference",
       "SupabaseClient type reference",
-      "supabaseServer reference"
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   },
   {
@@ -2141,7 +2192,6 @@
       "sql-object:column:public.workspaces.assigned_by_staff_user_id",
       "sql-object:column:public.workspaces.owner_email",
       "sql-object:constraint:workspaces_owner_identity_check",
-
       "sql-object:index:workspaces_owner_email_key",
       "sql-object:table:public.workspaces"
     ]
@@ -2678,11 +2728,13 @@
     "kind": "test",
     "task": 7,
     "replacements": [
-      "Neon membership adapter mocks"
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
     ],
-    "status": "pending",
+    "status": "replaced",
     "evidence": [
-      "Task 5 lazy identity regression retains the Supabase membership-store mock until Task 7."
+      "Task 5 lazy identity regression retains the Supabase membership-store mock until Task 7.",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
     ]
   }
 ]

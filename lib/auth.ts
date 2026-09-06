@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { membershipRepository } from "@/lib/repositories/membership";
 import { authorizeWorkspace, type WorkspaceRole } from "@/lib/workspace/authorize-workspace";
 
 /**
@@ -7,7 +7,7 @@ import { authorizeWorkspace, type WorkspaceRole } from "@/lib/workspace/authoriz
  *
  * The impure half only: this module reads cookies and the database, then hands
  * the access decision to upstream's pure `authorizeWorkspace`, the same split
- * as upstream's owner-session.ts. Data is read with the service-role client
+ * as upstream's owner-session.ts. Business data is read from Neon
  * after the decision; managed identity is resolved independently.
  *
  * Staff sessions are never accepted here — the staff console is the legacy
@@ -73,50 +73,9 @@ export async function requireUser(locale: string, returnTo: string): Promise<Ses
   return user;
 }
 
-interface MembershipRow {
-  workspace_id: string;
-  role: WorkspaceRole;
-  location_scope: string[] | null;
-  email: string | null;
-}
-
-interface WorkspaceRefRow {
-  id: string;
-  slug: string | null;
-}
-
-async function loadWorkspaceRef(ref: { id?: string; slug?: string }): Promise<WorkspaceRefRow | null> {
-  const db = supabaseServer();
-  let query = db.from("workspaces").select("id, slug");
-  if (ref.id) query = query.eq("id", ref.id);
-  else if (ref.slug) query = query.eq("slug", ref.slug);
-  else return null;
-  const { data, error } = await query.maybeSingle<WorkspaceRefRow>();
-  // Throw rather than fall through to "not found": supabase-js resolves
-  // `{ data: null, error }` instead of rejecting, so swallowing this would deny
-  // a legitimate member on any transient PostgREST blip.
-  if (error) {
-    console.error("[auth] workspace lookup failed", { category: "auth_query_failed" });
-    throw new Error("Unable to load workspace");
-  }
-  return data ?? null;
-}
-
-async function loadAcceptedMembership(userId: string, workspaceId: string): Promise<MembershipRow | null> {
-  const { data, error } = await supabaseServer()
-    .from("workspace_members")
-    .select("workspace_id, role, location_scope, email")
-    .eq("user_id", userId)
-    .eq("workspace_id", workspaceId)
-    .not("accepted_at", "is", null)
-    .limit(1)
-    .returns<MembershipRow[]>();
-  if (error) {
-    console.error("[auth] membership lookup failed", { category: "auth_query_failed" });
-    throw new Error("Unable to load membership");
-  }
-  return data?.[0] ?? null;
-}
+interface WorkspaceRefRow { id: string; slug: string | null }
+const loadWorkspaceRef = membershipRepository.workspace;
+const loadAcceptedMembership = membershipRepository.accepted;
 
 type Decision =
   | { kind: "ok"; membership: Membership }
@@ -191,36 +150,13 @@ export async function authorizeWorkspaceRequest(
   return { ok: true, user, membership: decision.membership };
 }
 
-interface MembershipListRow extends MembershipRow {
-  user_id: string;
-  created_at: string;
-  workspaces: { slug: string | null } | Array<{ slug: string | null }> | null;
-}
-
 /** Accepted memberships joined to workspaces.slug, oldest first. */
 export async function listMemberships(userId: string): Promise<Membership[]> {
-  const { data, error } = await supabaseServer()
-    .from("workspace_members")
-    .select("workspace_id, user_id, role, location_scope, email, created_at, workspaces(slug)")
-    .eq("user_id", userId)
-    .not("accepted_at", "is", null)
-    .order("created_at", { ascending: true })
-    .returns<MembershipListRow[]>();
-  if (error) {
-    console.error("[auth] membership list failed", { category: "auth_query_failed" });
-    throw new Error("Unable to load memberships");
-  }
-  return (data ?? []).map((row) => {
-    const joined = Array.isArray(row.workspaces) ? row.workspaces[0] : row.workspaces;
-    return {
-      workspaceId: row.workspace_id,
-      workspaceSlug: joined?.slug ?? "",
-      userId: row.user_id,
-      email: row.email ?? "",
-      role: row.role,
-      locationScope: Array.isArray(row.location_scope) ? row.location_scope : null,
-    };
-  });
+ return (await membershipRepository.listAccepted(userId)).map(row => ({
+  workspaceId: row.workspace_id, workspaceSlug: row.workspace_slug ?? "",
+  userId: row.user_id, email: row.email ?? "", role: row.role,
+  locationScope: Array.isArray(row.location_scope) ? row.location_scope : null,
+ }));
 }
 
 /** Revoke managed identity; always invalidate local cookies, report remote failure. */
