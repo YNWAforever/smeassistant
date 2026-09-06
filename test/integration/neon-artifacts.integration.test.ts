@@ -101,4 +101,54 @@ describe.runIf(process.env.NEON_INTEGRATION === '1')('Neon artifact persistence 
    expect((await runtime.query('SELECT id FROM audit_events WHERE entity_id=$1',[draft.version_id])).rows).toHaveLength(0);
   } finally { await client.query('ROLLBACK'); client.release(); }
  });
+ async function evidence(workspace: string, location: string | null) {
+  const job=(await runtime.query("INSERT INTO audit_jobs(workspace_id,location_id,business_name,status) VALUES($1,$2,'Fixture','done') RETURNING id",[workspace,location])).rows[0].id as string;
+  const snapshot=(await runtime.query("INSERT INTO scan_snapshots(workspace_id,location_id,job_id,market,observed_at,coverage,module_states,metrics) VALUES($1,$2,$3,'hk',now(),1,'{}','{}') RETURNING id",[workspace,location,job])).rows[0].id as string;
+  return {job,snapshot};
+ }
+ async function location(workspace: string) {
+  return (await runtime.query("INSERT INTO locations(workspace_id,slug,name) VALUES($1,$2,'Fixture') RETURNING id",[workspace,randomUUID()])).rows[0].id as string;
+ }
+ it.each([false,true])('permits workspace-wide actions and version operations with owned location evidence=%s',async (located) => {
+  const a=await setup(),repo=artifactRepository(runtime),loc=located ? await location(a.workspace) : null;
+  const source=await evidence(a.workspace,loc);
+  await runtime.query('UPDATE actions SET source_snapshot_id=$1 WHERE id=$2',[source.snapshot,a.action]);
+  // Scope returns the persisted action scope, never grants evidence-location permission.
+  expect(await repo.actionScope(a.action)).toEqual({actionId:a.action,workspaceId:a.workspace,locationId:null});
+  const version=await repo.createOutputVersion(input(a.action));
+  expect(await repo.versionScope(version.version_id)).toEqual({actionId:a.action,workspaceId:a.workspace,locationId:null,versionId:version.version_id});
+  expect(await repo.approveOutputVersion(version.version_id,actor,null)).toMatchObject({kind:'approved'});
+  expect(await repo.exportOutputVersion(version.version_id,actor,'export','owned-source')).toMatchObject({counted:true,version_id:version.version_id});
+ });
+ it.each(['snapshot_workspace','job_workspace','foreign_location_owner','job_location','action_location'])('denies corrupt version-parent %s without state or accounting effects',async (corruption) => {
+  const a=await setup(),b=await setup(),repo=artifactRepository(runtime);
+  const loc=await location(a.workspace),otherLoc=await location(a.workspace),foreignLoc=await location(b.workspace);
+  const source=await evidence(a.workspace,loc);
+  const version=await repo.createOutputVersion(input(a.action));
+  await repo.approveOutputVersion(version.version_id,actor,null);
+  await runtime.query('UPDATE actions SET source_snapshot_id=$1 WHERE id=$2',[source.snapshot,a.action]);
+  if(corruption==='snapshot_workspace') await runtime.query('UPDATE scan_snapshots SET workspace_id=$1 WHERE id=$2',[b.workspace,source.snapshot]);
+  if(corruption==='job_workspace') await runtime.query('UPDATE audit_jobs SET workspace_id=$1 WHERE id=$2',[b.workspace,source.job]);
+  if(corruption==='foreign_location_owner') {
+   await runtime.query('UPDATE scan_snapshots SET location_id=$1 WHERE id=$2',[foreignLoc,source.snapshot]);
+   await runtime.query('UPDATE audit_jobs SET location_id=$1 WHERE id=$2',[foreignLoc,source.job]);
+  }
+  if(corruption==='job_location') await runtime.query('UPDATE audit_jobs SET location_id=$1 WHERE id=$2',[otherLoc,source.job]);
+  if(corruption==='action_location') await runtime.query('UPDATE actions SET location_id=$1 WHERE id=$2',[otherLoc,a.action]);
+  const state=async () => ({
+   version:(await runtime.query('SELECT approval_state,delivery_state,approved_by,approved_at FROM output_versions WHERE id=$1',[version.version_id])).rows,
+   actions:(await runtime.query('SELECT action_state,measurement_state FROM actions WHERE id=$1',[a.action])).rows,
+   usage:(await runtime.query('SELECT * FROM workspace_usage WHERE workspace_id=$1',[a.workspace])).rows,
+   deliveries:(await runtime.query('SELECT * FROM deliveries WHERE version_id=$1',[version.version_id])).rows,
+   audit:(await runtime.query('SELECT * FROM audit_events WHERE workspace_id=$1 ORDER BY id',[a.workspace])).rows,
+  });
+  const before=await state();
+  expect(await repo.actionScope(a.action)).toBeNull();
+  expect(await repo.versionScope(version.version_id)).toBeNull();
+  await expect(repo.createOutputVersion(input(a.action))).rejects.toThrow('artifact_scope_mismatch');
+  await expect(repo.approveOutputVersion(version.version_id,actor,null)).rejects.toThrow('version_not_found');
+  await expect(repo.decideOutputVersion(version.version_id,actor,'rejected','denied')).rejects.toThrow('version_not_found');
+  await expect(repo.exportOutputVersion(version.version_id,actor,'export','denied')).rejects.toThrow('version_not_found');
+  expect(await state()).toEqual(before);
+ });
 });

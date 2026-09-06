@@ -7,6 +7,15 @@ import type { ActionScope, VersionScope } from '../workspace/versions';
 
 type Executor = Pick<Pool | PoolClient, 'query'>;
 const EXPECTED_ERRORS = new Set(['version_conflict','not_approved','allowance_exceeded','version_closed','version_not_found','invalid_decision','invalid_mode','artifact_scope_mismatch']);
+// Fixed SQL fragment for the actions alias `a`, shared by both scope entry points.
+// A workspace-wide action can use location evidence; callers must separately
+// authorize the evidence's persisted location before drafting.
+const ACTION_SCOPE_PREDICATE = `(a.location_id IS NULL OR EXISTS(SELECT 1 FROM locations l WHERE l.id=a.location_id AND l.workspace_id=a.workspace_id))
+ AND (a.source_snapshot_id IS NULL OR EXISTS(SELECT 1 FROM scan_snapshots s JOIN audit_jobs j ON j.id=s.job_id
+  WHERE s.id=a.source_snapshot_id AND s.workspace_id=a.workspace_id AND j.workspace_id=a.workspace_id
+  AND (a.location_id IS NULL OR s.location_id=a.location_id)
+  AND j.location_id IS NOT DISTINCT FROM s.location_id
+  AND (s.location_id IS NULL OR EXISTS(SELECT 1 FROM locations evidence_location WHERE evidence_location.id=s.location_id AND evidence_location.workspace_id=a.workspace_id))))`;
 /** Preserve domain failures without exposing driver messages, SQL or connection details. */
 async function operation<T>(run: () => Promise<T>): Promise<T> {
  try { return await run(); }
@@ -27,10 +36,7 @@ export function artifactRepository(client?: Executor) {
  async function actionScope(actionId: string): Promise<ActionScope | null> {
   return operation(async () => {
    const row=(await db().query<{id:string;workspace_id:string;location_id:string|null}>(`SELECT a.id,a.workspace_id,a.location_id FROM actions a
-    WHERE a.id=$1 AND (a.location_id IS NULL OR EXISTS(SELECT 1 FROM locations l WHERE l.id=a.location_id AND l.workspace_id=a.workspace_id))
-    AND (a.source_snapshot_id IS NULL OR EXISTS(SELECT 1 FROM scan_snapshots s JOIN audit_jobs j ON j.id=s.job_id
-      WHERE s.id=a.source_snapshot_id AND s.workspace_id=a.workspace_id AND j.workspace_id=a.workspace_id
-      AND s.location_id IS NOT DISTINCT FROM a.location_id AND j.location_id IS NOT DISTINCT FROM s.location_id))`,[actionId])).rows[0];
+    WHERE a.id=$1 AND ${ACTION_SCOPE_PREDICATE}`,[actionId])).rows[0];
    return row ? {actionId:row.id,workspaceId:row.workspace_id,locationId:row.location_id} : null;
   });
  }
@@ -38,7 +44,7 @@ export function artifactRepository(client?: Executor) {
   return operation(async () => {
    const row=(await db().query<{id:string;action_id:string;workspace_id:string;location_id:string|null}>(`SELECT v.id,v.action_id,a.workspace_id,a.location_id FROM output_versions v
     JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id
-    WHERE v.id=$1 AND (a.location_id IS NULL OR EXISTS(SELECT 1 FROM locations l WHERE l.id=a.location_id AND l.workspace_id=a.workspace_id))
+    WHERE v.id=$1 AND ${ACTION_SCOPE_PREDICATE}
     AND (v.action_run_id IS NULL OR EXISTS(SELECT 1 FROM action_runs r WHERE r.id=v.action_run_id AND r.action_id=a.id AND r.workspace_id=a.workspace_id))`,[versionId])).rows[0];
    return row ? {versionId:row.id,actionId:row.action_id,workspaceId:row.workspace_id,locationId:row.location_id} : null;
   });
