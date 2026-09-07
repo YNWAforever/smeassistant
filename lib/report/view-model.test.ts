@@ -210,3 +210,13 @@ it.each(["en", "zh-HK", "zh-TW"] as const)("keeps exactly one locale in the rend
   const model = buildReportViewModel({ ...fixture, job: { ...fixture.job, locale, region: "tw" } }, { kind: "public" });
   expect(buildReportProps(model, locale).locked?.unlockHref).toBe(`/${locale}/unlock/shop?market=TW`);
 });
+it('preserves private dashboard sentinels only through authorized projections and serialization', () => {
+  const sentinels = ['OWNER_SECRET', 'FIX_SECRET', 'CACHED_SUMMARY_SECRET', 'proof_ig', 'PROOF_GBP', 'PROOF_AEO_QUERY', 'PROOF_MERCHANT_QUERY', 'PRIVATE_EVIDENCE_TOKEN'];
+  const publicProps = buildReportProps(buildReportViewModel(fixture, { kind: 'public' }), 'en');
+  for (const sentinel of sentinels) expect(JSON.stringify(publicProps)).not.toContain(sentinel);
+  const accesses = [{ kind: 'viewer', grantId: 'g1' }, { kind: 'member', workspaceId: 'ws-1', role: 'viewer' }, { kind: 'staff', userId: 'u1', email: 'staff@example.com' }] as const;
+  for (const access of accesses) {
+    const props = buildReportProps(buildReportViewModel(fixture, access), 'en');
+    for (const sentinel of sentinels) expect(JSON.stringify(props)).toContain(sentinel);
+  }
+});

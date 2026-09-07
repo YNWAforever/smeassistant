@@ -163,3 +163,18 @@ it("keeps the complete priority context in authorized disclosures even without f
   for (const text of ['Supporting sentence', 'Private action', 'Original source', 'Complete excerpt', '2026-09-06', 'Recorded impact']) expect(disclosures).toContain(text);
   expect(root.querySelector('[data-dashboard-priorities] a')).toBeNull();
 });
+it.each(['en', 'zh-HK', 'zh-TW'] as const)('renders no-image partial and failed report fixtures honestly in %s', locale => {
+  for (const status of ['partial', 'failed']) {
+    const root = markup(<ReportPage {...report} locale={locale} status={status} score={null} modules={report.modules.filter(item => item.state !== 'measured')} proof={null} evidence={[]} />);
+    expect(root.querySelector('img')).toBeNull();
+    expect(root.querySelector('meter')).toBeNull();
+    expect(root.querySelector('.score-dial')).toBeNull();
+    expect(root.textContent).toContain(copy[locale].funnel.report.dashboard.unavailable);
+  }
+});
+it('supports the original sample report with no images or proof', () => {
+  const root = markup(<ReportPage {...report} sample={true} access="sample" proof={null} evidence={[]} />);
+  expect(root.querySelector('img')).toBeNull();
+  expect(root.querySelector('[data-slot="dialog-trigger"]')).toBeNull();
+  expect(root.textContent).toContain(copy.en.funnel.report.dashboard.unavailable);
+});
