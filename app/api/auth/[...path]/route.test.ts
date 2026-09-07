@@ -39,3 +39,21 @@ it("rejects an alternate foreign new-user callback before Google dispatch",async
  const response=await POST(new Request("https://app.test/api/auth/sign-in/social",{method:"POST",body:JSON.stringify({provider:"google",callbackURL:"/auth/callback",newUserCallbackURL:"https://evil.example"})}),context("sign-in/social"));
  expect(response.status).toBe(400);expect(mocks.POST).not.toHaveBeenCalled();
 });
+
+it("forwards a framework-wrapped GET with its query and session token, excluding signed caches", async () => {
+ const { GET } = await import("./route");
+ const original = new Request("https://app.test/api/auth/get-session?disableCookieCache=true", {
+  headers: { cookie: "__Secure-neon-auth.local.session_data=first; __Secure-neon-auth.session_token=fixture; __Secure-neon-auth.local.session_data=second", origin: "https://app.test" },
+ });
+ // Next's production route wrapper is a Proxy: native Undici private fields
+ // cannot be accessed by passing that wrapper to the Request copy constructor.
+ const wrapped = new Proxy(original, { get(target, property) { return Reflect.get(target, property, target); } });
+ const response = await GET(wrapped, context("get-session"));
+ expect(response.status).toBe(200);
+ expect(mocks.GET).toHaveBeenCalledOnce();
+ const forwarded = mocks.GET.mock.calls[0][0] as Request;
+ expect(forwarded.url).toBe(original.url);
+ expect(forwarded.method).toBe("GET");
+ expect(forwarded.headers.get("origin")).toBe("https://app.test");
+ expect(forwarded.headers.get("cookie")).toBe("__Secure-neon-auth.session_token=fixture");
+});
