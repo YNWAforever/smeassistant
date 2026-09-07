@@ -1,7 +1,7 @@
 # Existing scan evidence metrics
 
 Date: 2026-09-08
-Status: Design sections approved; written specification awaiting user review.
+Status: Written specification approved by user; implementation planning complete.
 Baseline: origin/main at 88b912d9e79a9191d4bde758e9d0407d24b0f948 (dashboard PR #8 merged).
 
 ## Outcome and scope
@@ -74,4 +74,4 @@ Acceptance: an authorized merchant can see the captured IG sample and its limita
 
 Self-review checked historical zero ambiguity, success/surface eligibility, deduplication conflicts, sample truncation, missing dates, access separation, scope, and fixture coverage. No unresolved product choices are required for implementation planning. Exact helper names, safety-limit constants, and fixture paths are implementation-plan decisions constrained by these rules.
 
-This document records an approved design, not implemented behavior or test results. After the user reviews this written specification, use the writing-plans skill to prepare the implementation plan. Do not begin implementation before that step.
+This document records an approved design, not implemented behavior or test results. The user approved this written specification. The implementation plan is docs/superpowers/plans/2026-09-08-existing-scan-metrics.md; execution awaits the selected workflow.
