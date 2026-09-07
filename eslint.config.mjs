@@ -40,6 +40,14 @@ const eslintConfig = defineConfig([
       "@next/next/no-assign-module-variable": "off",
     },
   },
+  {
+    // This file is a CommonJS preload injected through NODE_OPTIONS into the
+    // fixture process; require() is intentional and cannot be converted to ESM.
+    files: ["test/e2e/transport-guard.cjs"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;
