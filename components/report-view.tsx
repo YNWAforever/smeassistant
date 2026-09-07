@@ -1,10 +1,11 @@
+import { EvidenceGallery } from "@/components/report/evidence-gallery"
 import { DashboardSummary } from "@/components/report/dashboard-summary"
 import { DashboardMetrics } from "@/components/report/dashboard-metrics"
 import { DashboardPriorities } from "@/components/report/dashboard-priorities"
 import { buildReportDashboard } from "@/lib/funnel/report-dashboard"
 import styles from "@/components/report/dashboard.module.css"
 import Link from "next/link"
-import { ArrowRight, Check, ImageOff, LockKeyhole, MessageCircle, TriangleAlert } from "lucide-react"
+import { ArrowRight, Check, LockKeyhole, MessageCircle, TriangleAlert } from "lucide-react"
 
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet"
 import {
@@ -17,7 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { copy } from "@/lib/copy"
-import type { ReportEvidenceItem, ReportProofData, ReportProps } from "@/lib/funnel/report-props"
+import type { ReportProofData, ReportProps } from "@/lib/funnel/report-props"
 import { interpolate } from "@/lib/share"
 
 /**
@@ -26,12 +27,6 @@ import { interpolate } from "@/lib/share"
  * take the same shape, so nothing here reads lib/demo-data or the database.
  * No hooks — the route segment renders this on the server.
  */
-
-function isoDate(value: string | null): string | null {
-  if (!value) return null
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : date.toISOString().slice(0, 10)
-}
 
 function ProofRows({ rows }: { rows: Array<[string, string]> }) {
   return (
@@ -172,51 +167,6 @@ function ProofPanels({ proof, locale }: { proof: ReportProofData; locale: Report
             {panel.rows.length > 0 && <ProofRows rows={panel.rows} />}
             {panel.extra}
           </SectionCard>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function EvidenceGallery({ items, locale }: { items: ReportEvidenceItem[]; locale: ReportProps["locale"] }) {
-  const c = copy[locale].funnel.report
-  if (!items.length) return null
-  return (
-    <section className="report-section">
-      <div className="section-heading-inline">
-        <div>
-          <p className="eyebrow">{c.evidenceEyebrow}</p>
-          <h2>{c.evidenceTitle}</h2>
-        </div>
-      </div>
-      <p className="proof-caveat">{c.evidenceBody}</p>
-      <div className="evidence-passport">
-        {items.map((item) => (
-          <article key={item.id}>
-            <div>
-              {item.mediaUrl ? (
-                <img src={item.mediaUrl} alt={item.text ?? `${item.provider} ${item.evidenceType}`} loading="lazy" decoding="async" />
-              ) : (
-                <span className="collector-icon collector-unavailable" aria-hidden="true">
-                  <ImageOff />
-                </span>
-              )}
-              <h3>{`${item.provider} · ${item.evidenceType}`}</h3>
-              {item.text && <p>{item.text}</p>}
-              <small>{interpolate(c.evidenceCaptured, { date: isoDate(item.capturedAt) ?? "" })}</small>
-              {item.sourceUrl && (
-                <a href={item.sourceUrl} target="_blank" rel="noreferrer">
-                  {c.evidenceSource}
-                </a>
-              )}
-            </div>
-            <div className="evidence-passport-value">
-              <strong>
-                {item.status === "stored" ? c.measuredLabel : item.status === "metadata_only" ? c.evidenceMetadataOnly : c.evidenceFailed}
-              </strong>
-              {item.limitationCode && <small>{item.limitationCode}</small>}
-            </div>
-          </article>
         ))}
       </div>
     </section>

@@ -197,7 +197,14 @@ type FunnelCopy = {
     evidenceBody: string
     evidenceCaptured: string
     evidenceMetadataOnly: string
+    evidenceStoredUnavailable: string
     evidenceFailed: string
+    evidencePublished: string
+    evidenceCaption: string
+    evidenceOpen: string
+    evidenceClose: string
+    evidenceShowMore: string
+    evidenceShowLess: string
     evidenceSource: string
     passportEyebrow: string
     passportTitle: string
@@ -520,7 +527,9 @@ const funnelEn: FunnelCopy = {
     evidenceBody: "Provider facts are shown separately from SME Scanner analysis. Media is stored only where the retention setting allows it.",
     evidenceCaptured: "Captured {date}",
     evidenceMetadataOnly: "Metadata only · snapshot not stored",
+    evidenceStoredUnavailable: "Stored image unavailable",
     evidenceFailed: "Snapshot unavailable",
+    evidencePublished: "Published {date}", evidenceCaption: "Caption details", evidenceOpen: "Open photo: {title}", evidenceClose: "Close photo", evidenceShowMore: "Show {count} more", evidenceShowLess: "Show fewer",
     evidenceSource: "View source",
     passportEyebrow: "Evidence passport",
     passportTitle: "Source coverage and limitations",
@@ -805,7 +814,9 @@ const funnelZhHK: FunnelCopy = {
     evidenceBody: "來源事實與 SME Scanner 的分析分開顯示。只有在保留設定容許時才會儲存媒體。",
     evidenceCaptured: "擷取於 {date}",
     evidenceMetadataOnly: "只有中繼資料 · 未儲存快照",
+    evidenceStoredUnavailable: "已儲存相片暫時未能顯示",
     evidenceFailed: "快照未能取得",
+    evidencePublished: "發佈於 {date}", evidenceCaption: "相片文字詳情", evidenceOpen: "開啟相片：{title}", evidenceClose: "關閉相片", evidenceShowMore: "顯示其餘 {count} 項", evidenceShowLess: "顯示較少",
     evidenceSource: "查看來源",
     passportEyebrow: "證據護照",
     passportTitle: "來源覆蓋範圍與限制",
@@ -1090,7 +1101,9 @@ const funnelZhTW: FunnelCopy = {
     evidenceBody: "來源事實與 SME Scanner 的分析分開顯示。只有在保留設定允許時才會儲存媒體。",
     evidenceCaptured: "擷取於 {date}",
     evidenceMetadataOnly: "僅有中繼資料 · 未儲存快照",
+    evidenceStoredUnavailable: "已儲存相片暫時無法顯示",
     evidenceFailed: "快照無法取得",
+    evidencePublished: "發佈於 {date}", evidenceCaption: "相片文字詳情", evidenceOpen: "開啟相片：{title}", evidenceClose: "關閉相片", evidenceShowMore: "顯示其餘 {count} 項", evidenceShowLess: "顯示較少",
     evidenceSource: "查看來源",
     passportEyebrow: "證據護照",
     passportTitle: "來源涵蓋範圍與限制",
