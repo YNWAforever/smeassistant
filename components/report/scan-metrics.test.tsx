@@ -40,10 +40,11 @@ describe("scan metrics", () => {
   expect(root.textContent).toContain(locale === "en" ? "3 search groups omitted" : "已省略 3 組搜尋");
   expect(root.textContent).toContain(locale === "en" ? "Evidence rows limited" : "證據列已截短");
  });
- it("does not draw an unavailable zero-denominator meter", () => {
-  const root = markup({ ...report, scanMetrics: { ...report.scanMetrics!, instagram: null, search: [{ ...report.scanMetrics!.search[0], denominator: 0, state: "unavailable" }] } });
+ it.each(["en", "zh-HK", "zh-TW"] as const)("does not draw an unavailable zero-denominator meter in %s", locale => {
+  const root = markup({ ...report, locale, scanMetrics: { ...report.scanMetrics!, instagram: null, search: [{ ...report.scanMetrics!.search[0], denominator: 0, state: "unavailable" }] } });
   expect(root.querySelector("meter")).toBeNull();
-  expect(root.textContent).toContain("Measurement unavailable");
+  expect(root.textContent).toContain(locale === "en" ? "Measurement unavailable" : "未能量度");
+  expect(root.textContent).toContain(locale === "en" ? "Eligible observations: 0" : "合資格觀察：0");
   expect(root.textContent).not.toContain("0%");
  });
  it("qualifies recorded zero counts and captured-surface outcomes", () => {
