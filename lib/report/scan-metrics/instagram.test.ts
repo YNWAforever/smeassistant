@@ -86,6 +86,25 @@ describe('deriveInstagramSample', () => {
     ]);
   });
 
+  it('allows harmless key-containing query names but rejects credential names', () => {
+    const sample = deriveInstagramSample({ posts: [
+      { permalink: 'https://instagram.com/p/monkey/?monkey=banana' },
+      { permalink: 'https://instagram.com/p/keyboard/?keyboard=mechanical' },
+      { permalink: 'https://instagram.com/p/access/?access_token=secret' },
+      { permalink: 'https://instagram.com/p/api/?apiKey=secret' },
+      { permalink: 'https://instagram.com/p/password/?password=secret' },
+    ] });
+
+    expect(sample?.distinctPosts).toBe(2);
+    expect(sample?.coverage.excluded.unidentified).toBe(3);
+    expect(sample?.observations.map((row) => row.identity)).toEqual([
+      'https://www.instagram.com/p/monkey/',
+      'https://www.instagram.com/p/keyboard/',
+      null,
+      null,
+      null,
+    ]);
+  });
   it('counts all seven valid stored posts and ignores the separate reels list', () => {
     const posts = Array.from({ length: 7 }, (_, index) => ({ id: `post-${index}` }));
     const sample = deriveInstagramSample({

@@ -18,7 +18,25 @@ interface GroupedObservation {
 const ISO_DATE =
   /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(Z|[+-]\d{2}:\d{2}))?$/;
 const INSTAGRAM_PATH = /^\/(p|reel)\/([A-Za-z0-9_-]+)\/?$/;
-const SENSITIVE_QUERY_KEY = /(token|auth|password|passwd|secret|session|cookie|key)/i;
+const SENSITIVE_QUERY_PARTS = new Set([
+  'token', 'secret', 'password', 'passwd', 'credential', 'credentials',
+  'authorization', 'auth', 'signature', 'sig', 'jwt',
+]);
+const SENSITIVE_QUERY_COMPACT_NAMES = new Set([
+  'key', 'apikey', 'xapikey', 'accesstoken', 'refreshtoken', 'idtoken',
+  'clientsecret', 'apisecret', 'privatekey', 'subscriptionkey',
+  'ocpapimsubscriptionkey', 'xamzcredential', 'xamzsignature',
+  'xamzsecuritytoken', 'xgoogcredential', 'xgoogsignature',
+  'xgoogalgorithm', 'googleaccessid',
+]);
+
+function isSensitiveQueryName(value: string): boolean {
+  const separated = value.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+  const parts = separated.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const compact = parts.join('');
+  return SENSITIVE_QUERY_COMPACT_NAMES.has(compact)
+    || parts.some((part) => SENSITIVE_QUERY_PARTS.has(part));
+}
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -77,7 +95,7 @@ function instagramUrl(value: unknown): string | null {
       return null;
     }
     for (const key of parsed.searchParams.keys()) {
-      if (SENSITIVE_QUERY_KEY.test(key)) return null;
+      if (isSensitiveQueryName(key)) return null;
     }
 
     const path = parsed.pathname.endsWith('/') ? parsed.pathname : `${parsed.pathname}/`;
