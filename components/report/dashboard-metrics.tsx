@@ -1,5 +1,6 @@
 import { FactType, ProviderBadge } from "@/components/product-ui";
-import { copy } from "@/lib/copy";
+import { ScanMetricsPanel } from "./scan-metrics";
+import { copy, scanMetricsCopy } from "@/lib/copy";
 import type { DashboardMetric, ReportDashboard } from "@/lib/funnel/report-dashboard";
 import type { ReportProps } from "@/lib/funnel/report-props";
 import styles from "./dashboard.module.css";
@@ -13,20 +14,23 @@ export function DashboardMetrics({ report, dashboard }: { report: ReportProps; d
   const c = copy[report.locale].funnel.report;
   const d = c.dashboard;
   const number = new Intl.NumberFormat(report.locale);
+  const hasSearchMetrics = report.modules.some(row => row.key === "aeo" && row.state === "measured") && Boolean(report.scanMetrics?.search.length);
+  const hasIgSample = report.modules.some(row => row.key === "ig" && row.state === "measured") && Boolean(report.scanMetrics?.instagram);
   const unit = (metric: Extract<DashboardMetric, { state: "measured" }>) => metric.unit === "rating" ? "/ 5" : metric.unit === "percent" ? "%" : metric.key === "instagram-followers" ? d.followersUnit : metric.key === "google-reviews" ? d.reviewsUnit : d.countUnit;
   return <div className={styles.dashboard}>
     <section aria-labelledby="dashboard-statistics">
       <div className={styles.sectionHeading}><h2 id="dashboard-statistics">{d.statistics}</h2><FactType type="Observed" /></div>
       <div className={styles.metrics}>
-        {dashboard.metrics.map(metric => {
+        {dashboard.metrics.filter(metric => metric.key !== "search-visibility" || !hasSearchMetrics).map(metric => {
           const sourceModule = report.modules.find(row => row.key === (metric.key.startsWith("instagram") ? "ig" : metric.key.startsWith("google") ? "gbp" : "aeo"));
           return <article key={metric.key} data-metric={metric.key} className={styles.metric}>
             <p className={styles.metricSource}>{metric.source}</p><h3>{metric.label}</h3>
-            {metric.state === "measured" ? <><div className={styles.value}><strong>{number.format(metric.value)}</strong><span>{unit(metric)}</span></div>{metric.sampleSize != null && <p>{d.sampleSize}: {number.format(metric.sampleSize)}</p>}</> : <><p className={styles.unavailable}>{d.unavailable}</p><p className={styles.caption}>{metric.reason === d.unavailable ? d.unavailableReason : metric.reason}</p></>}
+            {metric.state === "measured" ? <><div className={styles.value}><strong>{number.format(metric.value)}</strong><span>{unit(metric)}</span></div>{metric.sampleSize != null && <p>{d.sampleSize}: {number.format(metric.sampleSize)}</p>}</> : <><p className={styles.unavailable}>{d.unavailable}</p><p className={styles.caption}>{metric.key === "instagram-engagement" && hasIgSample ? scanMetricsCopy[report.locale].historical : metric.reason === d.unavailable ? d.unavailableReason : metric.reason}</p></>}
             <footer className={styles.provenance}><ObservationDate value={sourceModule?.observedAt} fallback={d.dateUnavailable} />{sourceModule && sourceModule.state !== "measured" && <ProviderBadge state={sourceModule.state} />}</footer>
           </article>;
         })}
       </div>
+      <ScanMetricsPanel report={report} />
     </section>
     <div className={styles.benchmarks}>
       <section className={styles.panel} aria-labelledby="dashboard-rubric">
