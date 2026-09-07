@@ -57,7 +57,7 @@ export function sanitizeReportProof(rawData: unknown, findings: Array<{ evidence
   return {
     ig: profile ? {
       username: text(profile.username, 100), fullName: text(profile.full_name, 160), bio: text(profile.bio, 500),
-      followers: number(profile.followers), following: number(profile.following), postsCount: number(profile.posts_count),
+      followers: nullableNumber(profile.followers), following: number(profile.following), postsCount: number(profile.posts_count),
       verified: bool(profile.is_verified), websiteUrl: safeUrl(profile.external_url),
       recentPosts: asArray(ig?.posts).slice(0, 6).flatMap((value) => {
         const post = asRecord(value); return post ? [{ caption: text(post.caption, 500), mediaType: text(post.media_type, 40), likes: number(post.like_count),
@@ -69,7 +69,7 @@ export function sanitizeReportProof(rawData: unknown, findings: Array<{ evidence
     } : null,
     gbp: gbp ? {
       name: text(gbp.name, 200), address: text(gbp.address, 300), mapsUrl: safeGoogleMapsUrl(gbp.maps_url),
-      rating: number(gbp.rating), reviewsCount: number(gbp.reviews_count),
+      rating: nullableNumber(gbp.rating), reviewsCount: nullableNumber(gbp.reviews_count),
       categories: asArray(gbp.categories).slice(0, 8).map((value) => text(value, 100)).filter(Boolean),
       recentReviews: asArray(gbp.reviews).slice(0, 3).flatMap((value) => {
         const review = asRecord(value); return review ? [{ rating: number(review.rating), text: text(review.text, 500), time: text(review.time, 40),

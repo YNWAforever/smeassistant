@@ -21,7 +21,7 @@ export function reportsRepository(client?: Pick<Pool, "query">): ReportStore & {
             throw new Error("report_persistence_unavailable");
         }
     }
-    const publicColumns = "id,share_slug,business_name,district,industry,status,overall_score::float8 AS overall_score,module_scores,module_results,score_coverage::float8 AS score_coverage,region,scoring_version,workspace_id";
+    const publicColumns = "id,share_slug,business_name,district,industry,status,overall_score::float8 AS overall_score,module_scores,module_results,score_coverage::float8 AS score_coverage,region,scoring_version,workspace_id,completed_at::text AS completed_at";
     const findingColumns = "id,job_id,module,finding_key,severity,score_impact::float8 AS score_impact";
     return {
         async readPublicJobBySlug(slug) { return (await rows<PublicReportJob>(`SELECT ${publicColumns} FROM audit_jobs WHERE share_slug=$1`, [slug]))[0] ?? null; },

@@ -1,20 +1,24 @@
+import { EvidenceGallery } from "@/components/report/evidence-gallery"
+import { DashboardSummary } from "@/components/report/dashboard-summary"
+import { DashboardMetrics } from "@/components/report/dashboard-metrics"
+import { DashboardPriorities } from "@/components/report/dashboard-priorities"
+import { buildReportDashboard } from "@/lib/funnel/report-dashboard"
+import styles from "@/components/report/dashboard.module.css"
 import Link from "next/link"
-import { ArrowRight, Check, CircleAlert, ImageOff, LockKeyhole, MessageCircle, TriangleAlert } from "lucide-react"
+import { ArrowRight, Check, LockKeyhole, MessageCircle, TriangleAlert } from "lucide-react"
 
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet"
 import {
-  DemoBadge,
   FactType,
   LoopRibbon,
   ProviderBadge,
   PublicPageFrame,
-  ScoreDial,
   SectionCard,
 } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { copy } from "@/lib/copy"
-import type { ReportEvidenceItem, ReportProofData, ReportProps } from "@/lib/funnel/report-props"
+import type { ReportProofData, ReportProps } from "@/lib/funnel/report-props"
 import { interpolate } from "@/lib/share"
 
 /**
@@ -23,12 +27,6 @@ import { interpolate } from "@/lib/share"
  * take the same shape, so nothing here reads lib/demo-data or the database.
  * No hooks — the route segment renders this on the server.
  */
-
-function isoDate(value: string | null): string | null {
-  if (!value) return null
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : date.toISOString().slice(0, 10)
-}
 
 function ProofRows({ rows }: { rows: Array<[string, string]> }) {
   return (
@@ -55,7 +53,7 @@ function ProofPanels({ proof, locale }: { proof: ReportProofData; locale: Report
       key: "ig",
       title: p.ig,
       rows: [
-        [p.followers, String(ig.followers)],
+        [p.followers, ig.followers == null ? p.unknown : String(ig.followers)],
         [p.following, String(ig.following)],
         [p.posts, String(ig.postsCount)],
       ],
@@ -68,8 +66,8 @@ function ProofPanels({ proof, locale }: { proof: ReportProofData; locale: Report
       key: "gbp",
       title: p.gbp,
       rows: [
-        [p.rating, String(gbp.rating)],
-        [p.reviews, String(gbp.reviewsCount)],
+        [p.rating, gbp.rating == null ? p.unknown : String(gbp.rating)],
+        [p.reviews, gbp.reviewsCount == null ? p.unknown : String(gbp.reviewsCount)],
       ],
       extra: gbp.recentReviews.length ? (
         <ul className="evidence-list">
@@ -175,194 +173,23 @@ function ProofPanels({ proof, locale }: { proof: ReportProofData; locale: Report
   )
 }
 
-function EvidenceGallery({ items, locale }: { items: ReportEvidenceItem[]; locale: ReportProps["locale"] }) {
-  const c = copy[locale].funnel.report
-  if (!items.length) return null
-  return (
-    <section className="report-section">
-      <div className="section-heading-inline">
-        <div>
-          <p className="eyebrow">{c.evidenceEyebrow}</p>
-          <h2>{c.evidenceTitle}</h2>
-        </div>
-      </div>
-      <p className="proof-caveat">{c.evidenceBody}</p>
-      <div className="evidence-passport">
-        {items.map((item) => (
-          <article key={item.id}>
-            <div>
-              {item.mediaUrl ? (
-                <img src={item.mediaUrl} alt={item.text ?? `${item.provider} ${item.evidenceType}`} loading="lazy" decoding="async" />
-              ) : (
-                <span className="collector-icon collector-unavailable" aria-hidden="true">
-                  <ImageOff />
-                </span>
-              )}
-              <h3>{`${item.provider} · ${item.evidenceType}`}</h3>
-              {item.text && <p>{item.text}</p>}
-              <small>{interpolate(c.evidenceCaptured, { date: isoDate(item.capturedAt) ?? "" })}</small>
-              {item.sourceUrl && (
-                <a href={item.sourceUrl} target="_blank" rel="noreferrer">
-                  {c.evidenceSource}
-                </a>
-              )}
-            </div>
-            <div className="evidence-passport-value">
-              <strong>
-                {item.status === "stored" ? c.measuredLabel : item.status === "metadata_only" ? c.evidenceMetadataOnly : c.evidenceFailed}
-              </strong>
-              {item.limitationCode && <small>{item.limitationCode}</small>}
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  )
-}
-
 export function ReportPage(props: ReportProps) {
-  const { locale, access, sample, market, status, score, coverage, comparison, modules, priorities, locked } = props
+  const { locale, sample, modules, locked } = props
   const t = copy[locale]
   const c = t.funnel.report
-  const failed = status === "failed"
-  const partial = status === "partial" || (coverage != null && coverage < 100)
-  const measured = modules.filter((module) => module.state === "measured").length
-  const unavailable = modules.length - measured
-  const marketLabel = market === "tw" ? c.marketTW : c.marketHK
-  const subtitle =
-    props.subtitle ??
-    [marketLabel, props.district, props.industry, comparison.kind === "first_scan" ? c.firstScan : null].filter(Boolean).join(" · ")
-  const accessNote = sample ? c.sampleNote : access === "member" ? c.memberNote : access === "viewer" || access === "staff" ? c.viewerNote : null
-
+  const authorized = props.access !== "public" && !locked
+  const dashboard = buildReportDashboard(props)
   return (
     <PublicPageFrame locale={locale} demo={sample}>
       <main className="report-page">
-        <div className="report-title-row">
-          <div>
-            <Badge variant="outline">{sample ? c.sampleBadge : locked ? c.previewBadge : c.fullBadge}</Badge>
-            <h1>{interpolate(c.title, { business: props.businessName })}</h1>
-            <p>{subtitle}</p>
-            {accessNote && <small>{accessNote}</small>}
-          </div>
-          <div className="report-title-badges">
-            {sample && <DemoBadge locale={locale} />}
-            {failed && <Badge variant="outline">{c.failedBadge}</Badge>}
-            {!failed && partial && <Badge variant="outline">{c.partialBadge}</Badge>}
-            {sample && <ContextualAssistant locale={locale} surface="report" />}
-          </div>
-        </div>
-
+        <DashboardSummary report={props} />
+        <DashboardMetrics report={props} dashboard={dashboard} />
+        <DashboardPriorities report={props} />
+        {authorized && <EvidenceGallery items={props.evidence} locale={locale} />}
+        {sample && <ContextualAssistant locale={locale} surface="report" />}
         <LoopRibbon active={sample ? 2 : 1} />
-
-        <section className="report-score-panel">
-          {score == null ? (
-            <div className="score-dial-wrap">
-              <div className="score-dial-core">
-                <span className="score-number">{c.notScored}</span>
-                {coverage != null && <span className="score-label">{`${coverage}% ${t.common.coverage}`}</span>}
-              </div>
-            </div>
-          ) : (
-            <ScoreDial
-              score={score}
-              coverage={coverage}
-              {...(comparison.kind === "comparable" ? { delta: comparison.delta } : {})}
-            />
-          )}
-          <div className="score-explanation">
-            <FactType type={score == null ? "Unknown" : "Observed"} />
-            <h2>
-              {failed
-                ? c.failedTitle
-                : score == null
-                  ? c.withheldTitle
-                  : comparison.kind === "comparable"
-                    ? comparison.title
-                    : comparison.kind === "incomparable"
-                      ? c.comparisonLabel
-                      : c.firstScanTitle}
-            </h2>
-            <p>
-              {failed
-                ? c.failedBody
-                : score == null
-                  ? c.withheldBody
-                  : comparison.kind === "comparable"
-                    ? comparison.body
-                    : comparison.kind === "incomparable"
-                      ? comparison.reason
-                      : c.firstScanBody}
-            </p>
-            <div className="score-meta-grid">
-              <div>
-                <span>{c.measuredLabel}</span>
-                <strong>{interpolate(c.sourceCount, { count: measured })}</strong>
-              </div>
-              <div>
-                <span>{c.unavailableLabel}</span>
-                <strong>{interpolate(c.sourceCount, { count: unavailable })}</strong>
-              </div>
-              <div>
-                <span>{c.comparisonLabel}</span>
-                <strong>{comparison.kind === "comparable" ? c.comparisonEligible : c.comparisonNotYet}</strong>
-              </div>
-            </div>
-            <Link href={`/${locale}/methodology`}>
-              {c.howMeasured} <ArrowRight />
-            </Link>
-          </div>
-        </section>
-
-        <section className="report-section">
-          <div className="section-heading-inline">
-            <div>
-              <p className="eyebrow">{c.prioritiesEyebrow}</p>
-              <h2>{c.prioritiesTitle}</h2>
-            </div>
-            <Badge variant="outline">{c.prioritiesRanked}</Badge>
-          </div>
-          {priorities.length === 0 ? (
-            <div className="limitations-box">
-              <CircleAlert />
-              <div>
-                <p>{c.prioritiesEmpty}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="priority-report-grid">
-              {priorities.map((priority) => (
-                <article key={priority.key}>
-                  <div className="priority-rank">{String(priority.rank).padStart(2, "0")}</div>
-                  <div className="priority-card-head">
-                    <Badge variant="outline" className={`priority-${priority.tone}`}>
-                      {priority.severityLabel}
-                    </Badge>
-                    {priority.overallImpact && <span>{priority.overallImpact}</span>}
-                  </div>
-                  <h3>{priority.label}</h3>
-                  {priority.summary && <p>{priority.summary}</p>}
-                  {priority.evidence && (
-                    <div className="evidence-excerpt">
-                      <FactType type="Observed" />
-                      <strong>{priority.evidence.source}</strong>
-                      <span>{priority.evidence.excerpt}</span>
-                      {priority.evidence.observedAt && <small>{priority.evidence.observedAt}</small>}
-                    </div>
-                  )}
-                  {priority.action && (
-                    <div className="recommendation-line">
-                      <FactType type="Recommended" />
-                      <span>{priority.action}</span>
-                    </div>
-                  )}
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="report-section">
-          <div className="section-heading-inline">
+        <details className={styles.detailDisclosure}>
+          <summary>{c.passportTitle}</summary><div className="section-heading-inline">
             <div>
               <p className="eyebrow">{c.passportEyebrow}</p>
               <h2>{c.passportTitle}</h2>
@@ -384,7 +211,7 @@ export function ReportPage(props: ReportProps) {
               </article>
             ))}
           </div>
-        </section>
+        </details>
 
         {locked && (
           <section className="unlock-banner">
@@ -405,22 +232,7 @@ export function ReportPage(props: ReportProps) {
           </section>
         )}
 
-        {props.summary && (
-          <section className="report-section">
-            <div className="section-heading-inline">
-              <div>
-                <p className="eyebrow">{c.summaryEyebrow}</p>
-                <h2>{c.summaryTitle}</h2>
-              </div>
-            </div>
-            <SectionCard>
-              <FactType type="Inference" />
-              <p>{props.summary}</p>
-            </SectionCard>
-          </section>
-        )}
-
-        {!locked && (
+        {authorized && (
           <section className="report-section">
             <div className="section-heading-inline">
               <div>
@@ -437,8 +249,8 @@ export function ReportPage(props: ReportProps) {
               </div>
             ) : (
               props.findingGroups.map((group) => (
-                <SectionCard key={group.module}>
-                  <h3>{group.label}</h3>
+                <div key={group.module}><h3 id={`report-detail-${group.module}`} className={styles.detailAnchor}>{group.label}</h3><details className={styles.detailDisclosure}><summary>{c.findingsTitle} · {group.label}</summary>
+
                   <ul className="evidence-list">
                     {group.findings.map((finding) => (
                       <li key={finding.id}>
@@ -468,14 +280,30 @@ export function ReportPage(props: ReportProps) {
                       </li>
                     ))}
                   </ul>
-                </SectionCard>
+                </details></div>
               ))
             )}
           </section>
         )}
 
-        {props.proof && <ProofPanels proof={props.proof} locale={locale} />}
-        <EvidenceGallery items={props.evidence} locale={locale} />
+        {authorized && props.priorities.length > 0 && (
+          <details className={styles.detailDisclosure}>
+            <summary>{c.prioritiesTitle} · {c.evidenceLabel}</summary>
+            {props.priorities.map(priority => <article key={priority.key}>
+              <h3>{priority.label}</h3>
+              {priority.overallImpact && <p>{priority.overallImpact}</p>}
+              {priority.summary && <p>{priority.summary}</p>}
+              {priority.evidence && <div className="evidence-excerpt">
+                <FactType type="Observed" /><strong>{priority.evidence.source}</strong>
+                <span>{priority.evidence.excerpt}</span>
+                {priority.evidence.observedAt && <small>{priority.evidence.observedAt}</small>}
+              </div>}
+              {priority.action && <div className="recommendation-line"><FactType type="Recommended" /><span>{priority.action}</span></div>}
+            </article>)}
+          </details>
+        )}
+        {authorized && props.proof && <details className={styles.detailDisclosure}><summary>{c.proofTitle}</summary><ProofPanels proof={props.proof} locale={locale} /></details>}
+
 
         {props.ctas.length > 0 && (
           <SectionCard className="retention-summary">

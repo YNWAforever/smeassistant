@@ -30,6 +30,7 @@ export interface ReportPreviewLike {
   businessName: string;
   district: string | null;
   industry: string | null;
+  scannedAt?: string | null;
   status: string;
   overallScore: number | null;
   coverage: {
@@ -63,7 +64,7 @@ export interface ReportProofData {
     username: string;
     fullName: string;
     bio: string;
-    followers: number;
+    followers: number | null;
     following: number;
     postsCount: number;
     verified: boolean;
@@ -77,8 +78,8 @@ export interface ReportProofData {
     name: string;
     address: string;
     mapsUrl: string | null;
-    rating: number;
-    reviewsCount: number;
+    rating: number | null;
+    reviewsCount: number | null;
     categories: string[];
     recentReviews: Array<{ rating: number; text: string; time: string; ownerResponse: string | null }>;
   } | null;
@@ -164,6 +165,7 @@ export interface ReportPriorityRow {
 
 export interface ReportModuleRow {
   key: string;
+  score: number | null;
   label: string;
   state: ProviderState;
   value: string;
@@ -216,6 +218,7 @@ export interface ReportProps {
   businessName: string;
   district: string | null;
   industry: string | null;
+  scannedAt?: string | null;
   status: string;
   /** Pre-formatted subtitle override (demo pages); null builds market · district · industry · first scan. */
   subtitle: string | null;
@@ -264,6 +267,7 @@ export function buildReportProps(model: ReportViewModelLike, locale: PrototypeLo
     .sort((a, b) => moduleOrder(a.module) - moduleOrder(b.module))
     .map((result) => ({
       key: result.module,
+      score: result.score,
       label: moduleLabel(locale, result.module),
       state: result.status,
       value: result.score == null ? c.notScored : interpolate(c.scoreOutOf, { score: result.score }),
@@ -336,6 +340,7 @@ export function buildReportProps(model: ReportViewModelLike, locale: PrototypeLo
     industry: preview.industry,
     status: preview.status,
     subtitle: null,
+    scannedAt: preview.scannedAt ?? null,
     score: preview.overallScore,
     coverage: preview.coverage.percent,
     // Phase 3 reads scan_diffs; until then every report is presented as a first scan.

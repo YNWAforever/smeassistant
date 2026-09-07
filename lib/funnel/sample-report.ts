@@ -55,6 +55,7 @@ export function sampleReportProps(locale: PrototypeLocale): ReportProps {
     const zh = providerZh[provider.name]
     return {
       key: provider.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      score: null,
       label: isChinese && zh ? zh.name : provider.name,
       state: provider.state,
       value: isChinese && zh ? zh.value : provider.value,
@@ -74,6 +75,7 @@ export function sampleReportProps(locale: PrototypeLocale): ReportProps {
     district: isChinese ? "跑馬地" : "Happy Valley",
     industry: isChinese ? "餐飲" : "F&B",
     status: "partial",
+    scannedAt: "2026-08-25T01:42:00.000Z",
     subtitle: isChinese
       ? "香港市場 · scan_kmh_20260825 · 觀察於 2026 年 8 月 25 日 09:42 HKT · 示範證據"
       : "Hong Kong market · scan_kmh_20260825 · Observed 25 Aug 2026, 09:42 HKT · Sample evidence",
@@ -93,7 +95,14 @@ export function sampleReportProps(locale: PrototypeLocale): ReportProps {
     summary: null,
     findingGroups: [],
     proof: null,
-    evidence: [],
+    // Local illustrations only: never imported by the real report loader.
+    evidence: Array.from({ length: 7 }, (_, index) => ({
+      id: `sample-illustration-${index}`, provider: "instagram", evidenceType: "post",
+      sourceUrl: null, mediaUrl: "/sample-report/illustration.svg",
+      capturedAt: "2026-08-25T01:42:00.000Z", publishedAt: null,
+      text: isChinese ? "示範插圖，並非商戶實際照片。".repeat(12) : "Illustrative sample artwork, not an actual merchant photograph. ".repeat(12),
+      status: "stored" as const, limitationCode: isChinese ? "示範插圖" : "Illustrative sample artwork",
+    })),
     ctas: [],
   }
 }

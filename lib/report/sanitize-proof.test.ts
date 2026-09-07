@@ -23,6 +23,15 @@ function rawWithCompetitor(competitor: Record<string, unknown>) {
 }
 
 describe("sanitizeReportProof competitor fields", () => {
+  it("preserves missing dashboard metrics as null while retaining measured zero", () => {
+    const missing = sanitizeReportProof({ ig: { profile: {} }, gbp: {} }, []);
+    const zero = sanitizeReportProof({ ig: { profile: { followers: 0 } }, gbp: { rating: 0, reviews_count: 0 } }, []);
+
+    expect(missing.ig?.followers).toBeNull();
+    expect(missing.gbp).toMatchObject({ rating: null, reviewsCount: null });
+    expect(zero.ig?.followers).toBe(0);
+    expect(zero.gbp).toMatchObject({ rating: 0, reviewsCount: 0 });
+  });
   it("carries competitor rating and review count into the view model", () => {
     const proof = sanitizeReportProof(
       rawWithCompetitor({ name: "Rival Cafe", source: "maps", rank: 1, rating: 4.6, reviews: 87 }),
