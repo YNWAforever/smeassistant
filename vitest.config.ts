@@ -28,7 +28,7 @@ export default defineConfig({
     retry: 1,
     // test/integration holds the owned Docker harness; its unit tests run here,
     // while *.integration.test.ts files use the dedicated SQL configuration.
-    include: ["tests/**/*.test.{ts,tsx}", "lib/**/*.test.{ts,tsx}", "app/**/*.test.{ts,tsx}", "test/**/*.test.{ts,tsx}"],
+    include: ["components/**/*.test.{ts,tsx}", "tests/**/*.test.{ts,tsx}", "lib/**/*.test.{ts,tsx}", "app/**/*.test.{ts,tsx}", "test/**/*.test.{ts,tsx}"],
     // Playwright owns e2e/; packages/* run their own vitest via `pnpm -r test`;
     // *.integration.test.ts needs Docker and belongs to vitest.integration.config.ts.
     exclude: [...configDefaults.exclude, "e2e/**", ".next/**", "packages/**", "**/*.integration.test.ts"],
