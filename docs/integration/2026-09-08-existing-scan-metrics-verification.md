@@ -10,7 +10,7 @@ Branch: `codex/existing-scan-metrics`
 
 Runtime tested SHA: `ac5e999f5173a2547b669edffa93835473637bc7`
 
-## Scope verified so far
+## Verified scope
 
 This slice derives and presents bounded metrics from existing stored report evidence. It does not add collection, provider calls, database schema or migration work, scoring changes, authorization changes, or competitor-comparison changes. Instagram engagement averages and follower-based engagement rates remain unavailable. Search visibility is separated by surface and uses conservative eligibility; ambiguous organic observations remain excluded or unavailable where the stored evidence cannot support a measured result.
 
@@ -36,7 +36,15 @@ The browser flow verified separate organic, AI, and Maps denominators, localized
 
 ## Final full-gate evidence
 
-The controller-owned normal repository gate completed at the corrected runtime head. The baseline is `origin/main` at `88b912d9e79a9191d4bde758e9d0407d24b0f948`; the tested SHA is `ac5e999f5173a2547b669edffa93835473637bc7`. All 14 recorded gate steps exited 0: install, lint, typecheck, unit, secret-boundary, retired-transport, Docker, fixture image, migrations, integration, build, browser install, public e2e, and acceptance.`r`n`r`nUnit verification recorded 2,536 passing tests, broken down as `1979 + 62 + 23 + 183 + 20 + 269`. Lint exited 0 with 29 baseline warnings and no errors. Secret-boundary produced 45 artifacts. Docker used Linux engine 29.7.2 and the fixture image; migration verification reported an empty replay list, 34 tables, 403 columns, 151 constraints, 84 indexes, 7 triggers, 13 functions, zero seeded rows, and no deferred items.`r`n`r`nThe first SQL integration attempt recorded 240 passing tests and 1 failure: the existing analytics lock-observation test exceeded its 400ms polling window at test line 252. The source was unchanged. An isolated selected reproduction passed once with 13 name-filtered skips. The complete SQL rerun then passed 241 tests across 23 files with zero skips. This recovery is recorded explicitly; the gate did not have a blanket no-failure history. Public e2e passed 31 tests with zero skips; acceptance passed 20 tests with zero skips in 8.5 minutes. Build passed.`r`n`r`nThe separate pre-date-fix gate was intentionally interrupted and is not evidence of a full pass.`r`n`r`n## Hosted and operational limitations
+The controller-owned normal repository gate completed at the corrected runtime head. The baseline is `origin/main` at `88b912d9e79a9191d4bde758e9d0407d24b0f948`; the tested SHA is `ac5e999f5173a2547b669edffa93835473637bc7`. All 14 recorded gate steps exited 0: install, lint, typecheck, unit, secret-boundary, retired-transport, Docker, fixture image, migrations, integration, build, browser install, public e2e, and acceptance.
 
-No live provider calls, real email delivery, shared database use, migration mutation, production mutation, push, merge, deployment, or live seeding is included. Historical IG zero values are retained without averages; ambiguous organic observations remain conservatively unknown. Staff proof remains model-only. RSC response privacy is verified, while router-cache navigation is not claimed. Baseline launcher/Vite/DEP0190 warnings remain informational and do not affect the zero exit codes.
+Unit verification recorded 2,536 passing tests, broken down as `1979 + 62 + 23 + 183 + 20 + 269`. Lint exited 0 with 29 baseline warnings and no errors. Secret-boundary verification passed across 45 public artifacts. Docker used Linux engine 29.7.2 and the fixture image; migration verification reported an empty replay list, 34 tables, 403 columns, 151 constraints, 84 indexes, 7 triggers, 13 functions, zero seeded rows, and no deferred items.
+
+The first SQL integration attempt recorded 240 passing tests and 1 failure: the existing analytics lock-observation test exceeded its 400ms polling window at test line 252. The source was unchanged. An isolated selected reproduction passed once with 13 name-filtered skips. The complete SQL rerun then passed 241 tests across 23 files with zero skips. This recovery is recorded explicitly; the gate did not have a blanket no-failure history. Public e2e passed 31 tests with zero skips; acceptance passed 20 tests with zero skips in 8.5 minutes. Build passed.
+
+The separate pre-date-fix gate was intentionally interrupted and is not evidence of a full pass.
+
+## Hosted and operational limitations
+
+No live provider calls, real email delivery, shared database use or migration, production mutation, push, merge, deployment, or live seeding is included. Historical IG zero values are retained without averages; ambiguous organic observations remain conservatively unknown. Staff proof remains model-only. RSC response privacy is verified, while router-cache navigation is not claimed. Baseline launcher/Vite/DEP0190 warnings remain informational and do not affect the zero exit codes.
 

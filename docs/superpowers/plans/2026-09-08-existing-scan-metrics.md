@@ -93,7 +93,7 @@ These are upper bounds per input stream, not promises of complete collection. Re
 **Consumes:** stored rawData.ig.posts as unknown.
 **Produces:** `deriveInstagramSample(rawIg: unknown): IgSample | null`.
 
-- [ ] Read the approved spec and the collector's rawPosts construction. Do not change collectors. Add a failing fixture test:
+- [x] Read the approved spec and the collector's rawPosts construction. Do not change collectors. Add a failing fixture test:
 
 ```ts
 import { expect, it } from 'vitest';
@@ -111,10 +111,10 @@ it('does not turn historical zero into engagement', () => {
 });
 ```
 
-- [ ] Run `corepack pnpm exec vitest run lib/report/scan-metrics/instagram.test.ts`; require the missing-module failure before implementation.
-- [ ] Implement type-safe unknown-object reads, finite nonnegative integer counts, strict ISO calendar date validation, and bounded strings. Reject dates that normalize impossible calendar days. Prefer a nonempty bounded ID; otherwise accept a canonical HTTPS Instagram post/reel URL without credentials or sensitive query parameters. Use a maximum 300-character identity and discard query/hash from accepted post URLs. Never identify by caption, index, or date.
-- [ ] Apply deterministic first-1000-record processing; group identities before counting. Exact normalized repeats increment duplicates. Conflicting dates/counts become null field-by-field; a conflicting identity still contributes once to distinctPosts, but conflict coverage increments once per identity. Unidentified records never contribute to distinctPosts or date span. Missing posts is null (unavailable); an explicitly empty stored array produces a zero-length captured sample, not a claim of account inactivity.
-- [ ] Use this count rule and retain historical zero provenance:
+- [x] Run `corepack pnpm exec vitest run lib/report/scan-metrics/instagram.test.ts`; require the missing-module failure before implementation.
+- [x] Implement type-safe unknown-object reads, finite nonnegative integer counts, strict ISO calendar date validation, and bounded strings. Reject dates that normalize impossible calendar days. Prefer a nonempty bounded ID; otherwise accept a canonical HTTPS Instagram post/reel URL without credentials or sensitive query parameters. Use a maximum 300-character identity and discard query/hash from accepted post URLs. Never identify by caption, index, or date.
+- [x] Apply deterministic first-1000-record processing; group identities before counting. Exact normalized repeats increment duplicates. Conflicting dates/counts become null field-by-field; a conflicting identity still contributes once to distinctPosts, but conflict coverage increments once per identity. Unidentified records never contribute to distinctPosts or date span. Missing posts is null (unavailable); an explicitly empty stored array produces a zero-length captured sample, not a claim of account inactivity.
+- [x] Use this count rule and retain historical zero provenance:
 
 ```ts
 const count = (v: unknown): number | null =>
@@ -123,8 +123,8 @@ const ambiguousZero = (likes: number | null, comments: number | null) =>
   likes === 0 || comments === 0;
 ```
 
-- [ ] Add table cases for invalid/nonfinite/fractional/negative counts; malformed dates; duplicate/conflicting identities; ID-less rows; seven valid posts (all seven counted); 1001 rows (truncated true); more than 50 observations (evidenceTruncated true); and a separate reels list (not counted). Assert exact counts and ranges, not snapshots of implementation internals.
-- [ ] Run focused tests and `corepack pnpm typecheck`. Review diff; stage the three new files and commit `feat: derive honest stored Instagram samples`.
+- [x] Add table cases for invalid/nonfinite/fractional/negative counts; malformed dates; duplicate/conflicting identities; ID-less rows; seven valid posts (all seven counted); 1001 rows (truncated true); more than 50 observations (evidenceTruncated true); and a separate reels list (not counted). Assert exact counts and ranges, not snapshots of implementation internals.
+- [x] Run focused tests and `corepack pnpm typecheck`. Review diff; stage the three new files and commit `feat: derive honest stored Instagram samples`.
 
 ## Task 2: Derive separate search and AI denominators
 
@@ -132,8 +132,8 @@ const ambiguousZero = (likes: number | null, comments: number | null) =>
 **Consumes:** rawData.aeo as unknown.
 **Produces:** `deriveSearchMetrics(rawAeo: unknown): { groups: SearchMetric[]; omittedGroups: number }`.
 
-- [ ] Trace packages/scoring/src/types.ts MerchantPerformanceEvidenceRun, packages/scan-engine/src/serpapi-normalizers.ts, and the collector's stored raw_refs. Read only; do not import a collector into report rendering.
-- [ ] Add a failed-request regression before implementation:
+- [x] Trace packages/scoring/src/types.ts MerchantPerformanceEvidenceRun, packages/scan-engine/src/serpapi-normalizers.ts, and the collector's stored raw_refs. Read only; do not import a collector into report rendering.
+- [x] Add a failed-request regression before implementation:
 
 ```ts
 import { expect, it } from 'vitest';
@@ -151,13 +151,13 @@ it('does not count a failed query as absence', () => {
 });
 ```
 
-- [ ] Run `corepack pnpm exec vitest run lib/report/scan-metrics/search.test.ts`; require RED.
-- [ ] Normalize from stored merchant runs, preserving success/error, engine, query type, settings context, requested_at, presence and raw_refs before any UI slices. Legacy serpapi_runs are fallback only when no merchant-run collection exists, and only explicit available true is successful. Do not reuse sanitizer's missing-availability-is-true fallback. Treat mixed unsupported schemas as unknown.
-- [ ] Define context with stable JSON of market/language/location/device/map anchor from existing settings, bounded per value. Identity is stable run ID plus context, otherwise exact query/engine/query-type/context/requested-at. Detect identity collisions with inconsistent query/engine/context as conflicts instead of merging favorable results. Do not expose search IDs, raw errors, credentials, or provider URLs in presentation rows.
-- [ ] Create organic groups for google, Maps groups for google_maps, and AI groups for google/google_ai_mode/google_ai_overview. A positive safe integer surface rank proves presence only after success. For absent rank, require stored surface results/snippets with the matching organic/maps source; an empty or missing list and null rank is unknown. Do not equate local-pack rank with Maps rank. This conservative rule is intentionally narrower than general request success.
-- [ ] For AI, use explicit returned-answer evidence: google requires ai_overview_triggered true with retained answer text/references; AI engines require retained nonempty answer text or references. Require an explicit boolean ai_mentioned. Missing answer is no_answer; missing boolean is unknown. Do not use found, confidence, citation, or false-by-default presentation flags as substitute measurements. Legacy AI data without equivalent proof remains unavailable.
-- [ ] Deduplicate identical validated observation records before grouping. Conflicting duplicates produce one excluded conflict for each affected group, never a success/absence. Use mutually exclusive exclusion reasons in order: unsupported, failed, unknown structural evidence, no_answer, unknown outcome. Apply conflict exclusion first. Duplicate count is separate from eligible/excluded count.
-- [ ] Aggregate only present/absent outcomes:
+- [x] Run `corepack pnpm exec vitest run lib/report/scan-metrics/search.test.ts`; require RED.
+- [x] Normalize from stored merchant runs, preserving success/error, engine, query type, settings context, requested_at, presence and raw_refs before any UI slices. Legacy serpapi_runs are fallback only when no merchant-run collection exists, and only explicit available true is successful. Do not reuse sanitizer's missing-availability-is-true fallback. Treat mixed unsupported schemas as unknown.
+- [x] Define context with stable JSON of market/language/location/device/map anchor from existing settings, bounded per value. Identity is stable run ID plus context, otherwise exact query/engine/query-type/context/requested-at. Detect identity collisions with inconsistent query/engine/context as conflicts instead of merging favorable results. Do not expose search IDs, raw errors, credentials, or provider URLs in presentation rows.
+- [x] Create organic groups for google, Maps groups for google_maps, and AI groups for google/google_ai_mode/google_ai_overview. A positive safe integer surface rank proves presence only after success. For absent rank, require stored surface results/snippets with the matching organic/maps source; an empty or missing list and null rank is unknown. Do not equate local-pack rank with Maps rank. This conservative rule is intentionally narrower than general request success.
+- [x] For AI, use explicit returned-answer evidence: google requires ai_overview_triggered true with retained answer text/references; AI engines require retained nonempty answer text or references. Require an explicit boolean ai_mentioned. Missing answer is no_answer; missing boolean is unknown. Do not use found, confidence, citation, or false-by-default presentation flags as substitute measurements. Legacy AI data without equivalent proof remains unavailable.
+- [x] Deduplicate identical validated observation records before grouping. Conflicting duplicates produce one excluded conflict for each affected group, never a success/absence. Use mutually exclusive exclusion reasons in order: unsupported, failed, unknown structural evidence, no_answer, unknown outcome. Apply conflict exclusion first. Duplicate count is separate from eligible/excluded count.
+- [x] Aggregate only present/absent outcomes:
 
 ```ts
 const eligible = rows.filter(r => r.outcome === 'present' || r.outcome === 'absent');
@@ -166,8 +166,8 @@ const denominator = eligible.length;
 const state = denominator > 0 ? 'measured' : 'unavailable';
 ```
 
-- [ ] Add fixtures yielding 1/2 organic, 0/2 Maps, 1/1 AI with another no-answer excluded; test omitted status, error with Success, null rank lacking surface proof, fractional rank, false/unknown mention, legacy fallback, duplicate conflicts, differing engines/contexts, missing date, and both input/evidence/group limits. Verify beyond-six observations are counted. Keep percentages out of this module.
-- [ ] Run focused tests and typecheck. Independent review must verify numerator/denominator provenance against producers. Commit `feat: derive scoped search observation metrics` with only task paths.
+- [x] Add fixtures yielding 1/2 organic, 0/2 Maps, 1/1 AI with another no-answer excluded; test omitted status, error with Success, null rank lacking surface proof, fractional rank, false/unknown mention, legacy fallback, duplicate conflicts, differing engines/contexts, missing date, and both input/evidence/group limits. Verify beyond-six observations are counted. Keep percentages out of this module.
+- [x] Run focused tests and typecheck. Independent review must verify numerator/denominator provenance against producers. Commit `feat: derive scoped search observation metrics` with only task paths.
 
 ## Task 3: Integrate metrics through authorized projections
 
@@ -175,15 +175,15 @@ const state = denominator > 0 ? 'measured' : 'unavailable';
 **Consumes:** Task 1/2 derivation.
 **Produces:** `deriveScanMetrics(rawData: unknown, measured: { ig: boolean; aeo: boolean }): ScanMetrics`; optional `scanMetrics?: ScanMetrics` on authorized source/viewer/member/staff model and full report props, never public model.
 
-- [ ] Add the module guard regression:
+- [x] Add the module guard regression:
 
 ```ts
 expect(deriveScanMetrics({ ig: { posts: [{ id: 'private' }] } },
   { ig: false, aeo: false })).toEqual({ instagram: null, search: [], omittedSearchGroups: 0 });
 ```
 
-- [ ] Run `corepack pnpm exec vitest run lib/report/scan-metrics/derive.test.ts`; require RED.
-- [ ] Compose the pure helpers; make absent/malformed raw data return empty/unavailable without throwing. In createReportLoader, call derivation only after the public early return, using authorizedJob.raw_data and moduleResults(job). Exact wiring:
+- [x] Run `corepack pnpm exec vitest run lib/report/scan-metrics/derive.test.ts`; require RED.
+- [x] Compose the pure helpers; make absent/malformed raw data return empty/unavailable without throwing. In createReportLoader, call derivation only after the public early return, using authorizedJob.raw_data and moduleResults(job). Exact wiring:
 
 ```ts
 const modules = moduleResults(job);
@@ -193,9 +193,9 @@ const scanMetrics = deriveScanMetrics(authorizedJob.raw_data, {
 });
 ```
 
-- [ ] Put scanMetrics on AuthorizedReportSource and copy only into non-public variants in buildReportViewModel. Extend ReportViewModelLike/ReportProps with optional scanMetrics and map it only for `model.access !== 'public'`. Optional fields preserve existing sample callers; never synthesize sample metrics for real reports.
-- [ ] Add loader assertions that public access never reads authorized raw data; viewer/member/staff permitted projection contains metrics; revoked/foreign grants remain public. Add poisoned source/model tests proving public JSON omits new sentinel query strings and counts. Add dashboard module-state regression to suppress stale metrics passed directly in props.
-- [ ] Run `corepack pnpm exec vitest run lib/report/scan-metrics lib/report/load-report.test.ts lib/report/view-model.test.ts lib/funnel/report-dashboard.test.ts` and typecheck. Independently review access and tests. Commit `feat: project stored metrics only to authorized reports`.
+- [x] Put scanMetrics on AuthorizedReportSource and copy only into non-public variants in buildReportViewModel. Extend ReportViewModelLike/ReportProps with optional scanMetrics and map it only for `model.access !== 'public'`. Optional fields preserve existing sample callers; never synthesize sample metrics for real reports.
+- [x] Add loader assertions that public access never reads authorized raw data; viewer/member/staff permitted projection contains metrics; revoked/foreign grants remain public. Add poisoned source/model tests proving public JSON omits new sentinel query strings and counts. Add dashboard module-state regression to suppress stale metrics passed directly in props.
+- [x] Run `corepack pnpm exec vitest run lib/report/scan-metrics lib/report/load-report.test.ts lib/report/view-model.test.ts lib/funnel/report-dashboard.test.ts` and typecheck. Independently review access and tests. Commit `feat: project stored metrics only to authorized reports`.
 
 ## Task 4: Render localized samples and measurement coverage
 
@@ -203,10 +203,10 @@ const scanMetrics = deriveScanMetrics(authorizedJob.raw_data, {
 **Consumes:** `report: ReportProps` including authorized scanMetrics.
 **Produces:** `ScanMetricsPanel({ report }: { report: ReportProps })`, server presentation component.
 
-- [ ] Add renderToStaticMarkup tests for public/locked poisoned props, measured 0/2, unavailable 0/0, incomplete coverage, dates and omitted groups in all three locales. Require RED by running `corepack pnpm exec vitest run components/report/scan-metrics.test.tsx`.
-- [ ] Render no panel for public/locked props. Filter IG/search again against current report module states. Show IG distinctPosts, datedPosts/span, historical-count note, and bounded evidence disclosure. Keep the existing IG engagement card unavailable with a specific localized historical-data reason when applicable.
-- [ ] Replace the generic search-visibility placeholder with the scoped panel when groups exist; otherwise retain a localized unavailable explanation. Preserve followers, GBP numbers, rubric bars, and competitor comparisons. Place the new panel inside statistics before benchmarks; do not create a second page shell.
-- [ ] Use native meter and details elements. Core rendering formula:
+- [x] Add renderToStaticMarkup tests for public/locked poisoned props, measured 0/2, unavailable 0/0, incomplete coverage, dates and omitted groups in all three locales. Require RED by running `corepack pnpm exec vitest run components/report/scan-metrics.test.tsx`.
+- [x] Render no panel for public/locked props. Filter IG/search again against current report module states. Show IG distinctPosts, datedPosts/span, historical-count note, and bounded evidence disclosure. Keep the existing IG engagement card unavailable with a specific localized historical-data reason when applicable.
+- [x] Replace the generic search-visibility placeholder with the scoped panel when groups exist; otherwise retain a localized unavailable explanation. Preserve followers, GBP numbers, rubric bars, and competitor comparisons. Place the new panel inside statistics before benchmarks; do not create a second page shell.
+- [x] Use native meter and details elements. Core rendering formula:
 
 ```tsx
 const format = new Intl.NumberFormat(report.locale, { maximumFractionDigits: 1 });
@@ -217,9 +217,9 @@ const percent = metric.denominator > 0
   aria-label={localizedSurfaceLabel} />
 ```
 
-- [ ] Add typed copy keys for surfaces, X-of-N, eligible/excluded, all exclusion reasons, historical zero, captured date span, date unavailable, incomplete sample, omitted groups and evidence rows. Chinese labels include 未能量度 and clearly distinguish Google 搜尋, Google 地圖, AI 提及. Use interpolated localized text, never raw error codes. Scan date and observation dates are separately labeled; no invented observation timestamp.
-- [ ] Use scoped existing CSS layout with min-width:0 and overflow-wrap:anywhere for long queries. Visible count labels accompany all bars. Details summaries remain keyboard accessible; no animation or chart dependency. Do not expose raw payload objects through data attributes.
-- [ ] Run component tests, dashboard tests, typecheck, and scoped ESLint. Review localization and access guards; commit `feat: display evidence-backed scan metrics`.
+- [x] Add typed copy keys for surfaces, X-of-N, eligible/excluded, all exclusion reasons, historical zero, captured date span, date unavailable, incomplete sample, omitted groups and evidence rows. Chinese labels include 未能量度 and clearly distinguish Google 搜尋, Google 地圖, AI 提及. Use interpolated localized text, never raw error codes. Scan date and observation dates are separately labeled; no invented observation timestamp.
+- [x] Use scoped existing CSS layout with min-width:0 and overflow-wrap:anywhere for long queries. Visible count labels accompany all bars. Details summaries remain keyboard accessible; no animation or chart dependency. Do not expose raw payload objects through data attributes.
+- [x] Run component tests, dashboard tests, typecheck, and scoped ESLint. Review localization and access guards; commit `feat: display evidence-backed scan metrics`.
 
 ## Task 5: Verify the real report flow with owned fixtures
 
@@ -227,18 +227,18 @@ const percent = metric.denominator > 0
 **Consumes:** completed authorized rendering.
 **Produces:** deterministic browser proof, including final runtime-error assertions.
 
-- [ ] Copy the existing owned report test's fixture/environment setup into the new spec; use a unique report slug and owned SQL fixture only. Seed eight identified posts and complete stored search metadata with distinct query sentinels: organic 1/2, Maps 0/2, AI 1/1 plus one no-answer. Include an IG ambiguous zero. Use real stored schema fields; never add an eligibility flag that producers do not store.
-- [ ] Add public response-body and DOM assertions before unlock:
+- [x] Copy the existing owned report test's fixture/environment setup into the new spec; use a unique report slug and owned SQL fixture only. Seed eight identified posts and complete stored search metadata with distinct query sentinels: organic 1/2, Maps 0/2, AI 1/1 plus one no-answer. Include an IG ambiguous zero. Use real stored schema fields; never add an eligibility flag that producers do not store.
+- [x] Add public response-body and DOM assertions before unlock:
 
 ```ts
 expect(await response.text()).not.toContain('PRIVATE_METRIC_QUERY');
 await expect(page.locator('[data-scan-metrics]')).toHaveCount(0);
 ```
 
-- [ ] Use the existing fixture signIn and /api/report-access/unlock grant flow. Assert visible 8-post sample, 1/2 organic, 0/2 Maps, and 1/1 AI separately; verify failed/no-answer exclusions and the historical IG note. No engagement percentage may appear.
-- [ ] Run `corepack pnpm e2e:acceptance e2e/acceptance/report-scan-metrics.spec.ts`. If it fails, preserve diagnostics and diagnose before changing expectations. Do not treat fixture harness problems as product success.
-- [ ] Exercise 375px and 1440px, en/zh-HK/zh-TW, Enter/Space disclosure toggling after hydration, long query wrapping and no horizontal overflow. Capture fixture-only screenshots. Assert collected pageerror/console errors at the end of interactions. Verify RSC navigation cannot expose metrics after a revoked viewer grant using the owned fixture's existing grant store.
-- [ ] Run focused browser and unit projection suites. Independent review must check stored-field realism, private-data exclusions, and denominators. Commit `test: verify stored scan metrics report flow`.
+- [x] Use the existing fixture signIn and /api/report-access/unlock grant flow. Assert visible 8-post sample, 1/2 organic, 0/2 Maps, and 1/1 AI separately; verify failed/no-answer exclusions and the historical IG note. No engagement percentage may appear.
+- [x] Run `corepack pnpm e2e:acceptance e2e/acceptance/report-scan-metrics.spec.ts`. If it fails, preserve diagnostics and diagnose before changing expectations. Do not treat fixture harness problems as product success.
+- [x] Exercise 375px and 1440px, en/zh-HK/zh-TW, Enter/Space disclosure toggling after hydration, long query wrapping and no horizontal overflow. Capture fixture-only screenshots. Assert collected pageerror/console errors at the end of interactions. Verify RSC navigation cannot expose metrics after a revoked viewer grant using the owned fixture's existing grant store.
+- [x] Run focused browser and unit projection suites. Independent review must check stored-field realism, private-data exclusions, and denominators. Commit `test: verify stored scan metrics report flow`.
 
 ## Task 6: Full gate and reviewable handoff
 
@@ -272,8 +272,16 @@ corepack pnpm e2e:acceptance
 - [x] Mark the approved spec implemented only when all implementation work is verified. Run `git diff --check`; commit only the documentation paths as `docs: record stored metrics verification`.
 - [x] Use finishing-a-development-branch to offer integration choices. Preserve this pre-existing worktree. No push/PR/deployment is authorized by this plan.
 
-## Task 6 execution record`r`n`r`n- Baseline: `88b912d9e79a9191d4bde758e9d0407d24b0f948`.`r`n- Tested runtime: `ac5e999f5173a2547b669edffa93835473637bc7`.`r`n- Final gate: all 14 steps exited 0. Unit total was 2,536 (`1979 + 62 + 23 + 183 + 20 + 269`); lint had 0 errors and 29 baseline warnings; SQL integration completed at 241 passing tests across 23 files with zero skips; public e2e completed 31 passing tests with zero skips; acceptance completed 20 passing tests with zero skips in 8.5 minutes; build passed.`r`n- SQL deviation and recovery: the first attempt was 240 pass/1 fail on the existing analytics lock-observation 400ms poll at line 252, with source unchanged. The isolated selected reproduction passed once with 13 name-filtered skips. The full SQL rerun passed 241/241. The separate pre-date-fix gate was intentionally interrupted.`r`n- Review: final independent review approved the corrected date validation; no Critical or Important findings remain. Baseline launcher/Vite/DEP0190 warnings remain informational.`r`n`r`n## Plan self-review
+## Task 6 execution record
+
+- Baseline: `88b912d9e79a9191d4bde758e9d0407d24b0f948`.
+- Tested runtime: `ac5e999f5173a2547b669edffa93835473637bc7`.
+- Final gate: all 14 steps exited 0. Unit total was 2,536 (`1979 + 62 + 23 + 183 + 20 + 269`); lint had 0 errors and 29 baseline warnings; SQL integration completed at 241 passing tests across 23 files with zero skips; public e2e completed 31 passing tests with zero skips; acceptance completed 20 passing tests with zero skips in 8.5 minutes; build passed.
+- SQL deviation and recovery: the first attempt was 240 pass/1 fail on the existing analytics lock-observation 400ms poll at line 252, with source unchanged. The isolated selected reproduction passed once with 13 name-filtered skips. The full SQL rerun passed 241/241. The separate pre-date-fix gate was intentionally interrupted.
+- Review: final independent review approved the corrected date validation; no Critical or Important findings remain. Baseline launcher/Vite/DEP0190 warnings remain informational.
+
+## Plan self-review
 
 Spec coverage: IG provenance and sample dates map to Task 1; search success, surfaces and denominators to Task 2; authorization and pre-display aggregation to Task 3; localization/coverage and UI to Task 4; fixture browser/access checks to Task 5; full repository evidence and independent review to Task 6. Contracts use the same function and property names throughout. Safety limits and partial coverage are explicit. No collector, schema, scoring, membership resolver, or paid-provider work is included.
 
-Planning is complete; no runtime implementation or test execution is claimed by this document.
+Tasks 1-6 are implemented and fixture verified. The execution record above and the integration verification document record the actual checks and limitations.
