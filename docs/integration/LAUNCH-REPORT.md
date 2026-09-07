@@ -33,7 +33,7 @@ Tasks 11–15 are approved and the pinned Neon SDK/auth-js exception is complete
 
 ## Task 17 local preparation — 2026-09-07
 
-Prepared [Neon cutover and recovery runbook](NEON-CUTOVER.md), configuration source/scope map, immutable migration byte checksums, named-but-unassigned operational roles, bounded proposed acceptance and recovery decisions. Hosted project/region/branch/database/origins/accounts remain NOT CHOSEN. All external operations remain NOT READY / NOT RUN. Task 17 independent re-review is pending after the bounded fixes.
+Prepared [Neon cutover and recovery runbook](NEON-CUTOVER.md), configuration source/scope map, immutable migration byte checksums, named-but-unassigned operational roles, bounded proposed acceptance and recovery decisions. Hosted project/region/branch/database/origins/accounts remain NOT CHOSEN. All external operations remain NOT READY / NOT RUN. Task 17 independent re-review approved the bounded fixes at `9aec5b7674bd52a8ce1e6f485735c78034d2636e`.
 
 | Check | Status | Evidence / boundary |
 |---|---|---|
