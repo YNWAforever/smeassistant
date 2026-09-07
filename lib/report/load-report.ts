@@ -49,7 +49,7 @@ function sourceFor(job: LoadedJob, findings: LoadedFinding[], findingCount: numb
   authorized?: AuthorizedReportSource, agentRuns: ApprovedAgentRun[] = []): ReportViewSource {
   return {
     job: { id: job.id, slug: job.share_slug, locale, region: job.region ?? "hk", businessName: job.business_name,
-      district: job.district ?? null, industry: job.industry ?? null, status: job.status,
+      district: job.district ?? null, industry: job.industry ?? null, completedAt: job.completed_at ?? null, status: job.status,
       overallScore: job.overall_score, scoreCoverage: job.score_coverage, moduleResults: moduleResults(job) },
     findingCount,
     findings: findings.map((finding) => ({

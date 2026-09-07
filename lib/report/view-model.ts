@@ -6,14 +6,14 @@ export type ReportModuleStatus = "measured" | "unavailable" | "unsupported" | "f
 export type ReportModuleConfidence = "high" | "medium" | "low" | "none";
 
 export interface InstagramProofModel {
-  username: string; fullName: string; bio: string; followers: number; following: number; postsCount: number;
+  username: string; fullName: string; bio: string; followers: number | null; following: number; postsCount: number;
   verified: boolean; websiteUrl: string | null;
   recentPosts: Array<{ caption: string; mediaType: string; likes: number; comments: number; postedAt: string }>;
   reelsCount: number; highlights: string[]; storiesCount: number;
 }
 export interface GoogleBusinessProofModel {
   name: string; address: string; mapsUrl: string | null;
-  rating: number; reviewsCount: number; categories: string[];
+  rating: number | null; reviewsCount: number | null; categories: string[];
   recentReviews: Array<{ rating: number; text: string; time: string; ownerResponse: string | null }>;
 }
 export interface AeoProofModel {
@@ -51,7 +51,7 @@ export interface AuthorizedReportSource {
 export interface ReportViewSource {
   job: {
     id: string; slug?: string; locale?: string; region?: string; businessName: string;
-    district?: string | null; industry?: string | null; status: string;
+    district?: string | null; industry?: string | null; completedAt?: string | null; status: string;
     overallScore: number | null; scoreCoverage: number | null;
     moduleResults: Record<string, { status: ReportModuleStatus; score: number | null; confidence: ReportModuleConfidence; limitationCode: string | null }>;
   };
@@ -67,7 +67,7 @@ export interface ReportViewSource {
 export interface PreviewPriority { findingKey: string; module: string; severity: string; scoreImpact: number }
 export interface ReportPreview {
   slug: string; locale: string; region: string; businessName: string;
-  district: string | null; industry: string | null;
+  district: string | null; industry: string | null; scannedAt: string | null;
   status: string; overallScore: number | null;
   coverage: {
     percent: number | null; method: "weighted_measured_modules";
@@ -142,7 +142,7 @@ function buildPreview(source: ReportViewSource): ReportPreview {
   }));
   return {
     slug: source.job.slug ?? "", locale, region: source.job.region ?? "hk", businessName: source.job.businessName,
-    district: source.job.district ?? null, industry: source.job.industry ?? null,
+    district: source.job.district ?? null, industry: source.job.industry ?? null, scannedAt: source.job.completedAt ?? null,
     status: source.job.status, overallScore: failed ? null : source.job.overallScore,
     coverage: {
       percent: failed ? null : coveragePercent(source.job.scoreCoverage), method: "weighted_measured_modules", confidenceLegend: legend,

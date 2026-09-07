@@ -58,6 +58,7 @@ const state = vi.hoisted(() => ({
     score_coverage: 0.3,
     region: "hk",
     scoring_version: "2026-08-02",
+    completed_at: "2026-09-06T01:00:00.000Z",
   },
   authorizedJob: {
     summary_en: "CACHED_SUMMARY",
@@ -660,6 +661,7 @@ describe("createReportLoader", () => {
     const model = await loader("slug-1", "en");
 
     expect(model.access).toBe("public");
+    expect(model.preview.scannedAt).toBe("2026-09-06T01:00:00.000Z");
     expect(readPublicFindings).toHaveBeenCalledWith("job-1");
     expect(readAuthorizedJobData).not.toHaveBeenCalled();
     expect(markViewerGrantUsed).not.toHaveBeenCalled();

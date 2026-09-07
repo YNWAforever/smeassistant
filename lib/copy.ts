@@ -162,6 +162,7 @@ type FunnelCopy = {
     proofEyebrow: string
     proofTitle: string
     proofBody: string
+    dashboard: { engagement: string; searchVisibility: string; unavailable: string }
     proof: {
       ig: string
       gbp: string
@@ -484,6 +485,7 @@ const funnelEn: FunnelCopy = {
     proofEyebrow: "Verified report proof",
     proofTitle: "Sanitised public evidence behind the score",
     proofBody: "Bounded excerpts from public sources captured at scan time. Provider identifiers, raw payloads and private data are never shown.",
+    dashboard: { engagement: "Sampled engagement", searchVisibility: "Search visibility", unavailable: "Measurement unavailable" },
     proof: {
       ig: "Instagram proof",
       gbp: "Google Business proof",
@@ -768,6 +770,7 @@ const funnelZhHK: FunnelCopy = {
     proofEyebrow: "已驗證報告證據",
     proofTitle: "評分背後已清理的公開證據",
     proofBody: "掃描時擷取的公開來源節錄，範圍受限。來源識別碼、原始載荷及私人資料一律不會顯示。",
+    dashboard: { engagement: "抽樣互動率", searchVisibility: "搜尋能見度", unavailable: "未能量度" },
     proof: {
       ig: "Instagram 證據",
       gbp: "Google 商戶證據",
@@ -1052,6 +1055,7 @@ const funnelZhTW: FunnelCopy = {
     proofEyebrow: "已驗證報告證據",
     proofTitle: "分數背後已清理的公開證據",
     proofBody: "掃描時擷取的公開來源節錄，範圍受限。來源識別碼、原始資料與私人資料一律不會顯示。",
+    dashboard: { engagement: "抽樣互動率", searchVisibility: "搜尋能見度", unavailable: "無法衡量" },
     proof: {
       ig: "Instagram 證據",
       gbp: "Google 商家證據",

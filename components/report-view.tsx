@@ -55,7 +55,7 @@ function ProofPanels({ proof, locale }: { proof: ReportProofData; locale: Report
       key: "ig",
       title: p.ig,
       rows: [
-        [p.followers, String(ig.followers)],
+        [p.followers, ig.followers == null ? p.unknown : String(ig.followers)],
         [p.following, String(ig.following)],
         [p.posts, String(ig.postsCount)],
       ],
@@ -68,8 +68,8 @@ function ProofPanels({ proof, locale }: { proof: ReportProofData; locale: Report
       key: "gbp",
       title: p.gbp,
       rows: [
-        [p.rating, String(gbp.rating)],
-        [p.reviews, String(gbp.reviewsCount)],
+        [p.rating, gbp.rating == null ? p.unknown : String(gbp.rating)],
+        [p.reviews, gbp.reviewsCount == null ? p.unknown : String(gbp.reviewsCount)],
       ],
       extra: gbp.recentReviews.length ? (
         <ul className="evidence-list">

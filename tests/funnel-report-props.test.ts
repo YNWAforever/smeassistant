@@ -67,7 +67,8 @@ describe("buildReportProps", () => {
     expect(props.modules.map((module) => module.key)).toEqual(["ig", "gbp", "aeo", "trust"]);
     expect(props.modules[0]).toMatchObject({ state: "unavailable", value: "Not scored", limitationCode: "IG_HANDLE_NOT_PROVIDED" });
     expect(props.modules[0].detail).toContain("IG handle not provided");
-    expect(props.modules[1]).toMatchObject({ state: "measured", value: "61 / 100", label: getMessages("en").report.moduleGbp });
+    expect(props.modules[1]).toMatchObject({ state: "measured", score: 61, value: "61 / 100", label: getMessages("en").report.moduleGbp });
+    expect(props.modules[0].score).toBeNull();
   });
 
   it("labels priorities from the report messages with the weighted impact", () => {
@@ -101,6 +102,11 @@ describe("buildReportProps", () => {
     expect(props.findingGroups[1].findings[0].evidence).toEqual([["queries", "4"]]);
     // priorities pick up message/action from the full findings
     expect(props.priorities[0]).toMatchObject({ summary: "回覆率低", action: "回覆評論", evidence: { excerpt: "response rate: 18" } });
+  });
+
+  it("carries the safe scan timestamp from the preview", () => {
+    const props = buildReportProps({ ...publicModel, preview: { ...preview, scannedAt: "2026-09-06T01:00:00.000Z" } }, "en");
+    expect(props.scannedAt).toBe("2026-09-06T01:00:00.000Z");
   });
 
   it("keeps a withheld or failed score null", () => {

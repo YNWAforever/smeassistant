@@ -18,6 +18,7 @@ export interface PublicReportJob {
   score_coverage: number | null;
   region: string | null;
   scoring_version: string | null;
+  completed_at: string | null;
   /** `audit_jobs.workspace_id`; null until the job is attached to a workspace. */
   workspace_id?: string | null;
 }
