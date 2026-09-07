@@ -19,7 +19,7 @@ A registered variable name or placeholder is not a usable configuration value. R
 
 Local commands: `corepack pnpm db:verify`, `corepack pnpm db:types`, `corepack pnpm seed:demo --owned-test`, `corepack pnpm test:no-supabase`. The seed command creates, seeds, verifies and destroys its own fixture; ambient URLs are ignored and arbitrary target arguments are refused. No persistent or managed Auth seed is implied. The migration harness uses only an already-present `postgres:16` image; CI explicitly prepares that image before running the same harness. Existing lint/typecheck/unit/secret/migration/integration/build/public/acceptance gates remain.
 
-The strict exit gate currently remains blocked: the pinned Neon Auth SDK itself imports its transitive legacy Auth library at runtime. Direct application clients are removed, but no exception, SDK patch or upgrade has been authorized. Do not treat the gate as passing or this branch as release-ready.
+User-approved amendment (2026-09-07): retain pinned `@neondatabase/auth@0.5.0-beta` and only its transitive `@supabase/auth-js@2.79.0` library relationship. The library is runtime-reachable through Neon error helpers; this is not zero Supabase-authored packages. No direct application SDK client, Supabase service use, credentials, endpoints or active imports are allowed. The exit gate validates the pinned manifest/importer, package integrity, snapshot and sole introducer edge, then scans all remaining lockfile content. Version or introducer drift fails closed. No SDK patch or upgrade is authorized. This supersedes the literal zero-dependency acceptance wording only; hosted acceptance and release remain separate gates.
 
 ## Repository and historical targets
 

@@ -1,5 +1,7 @@
 # Neon Migration Implementation Plan
 
+> User-approved amendment (2026-09-07): retain pinned `@neondatabase/auth@0.5.0-beta` and only its transitive `@supabase/auth-js@2.79.0` library relationship. The library is runtime-reachable through Neon error helpers; this is not zero Supabase-authored packages. No direct application SDK client, Supabase service use, credentials, endpoints or active imports are allowed. The exit gate validates the pinned manifest/importer, package integrity, snapshot and sole introducer edge, then scans all remaining lockfile content. Version or introducer drift fails closed. No SDK patch or upgrade is authorized. This supersedes the literal zero-dependency acceptance wording only; hosted acceptance and release remain separate gates.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace all active Supabase dependencies with Neon Postgres and Neon managed Auth, starting empty and preserving every current product flow.
