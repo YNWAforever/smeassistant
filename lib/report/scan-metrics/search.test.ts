@@ -167,3 +167,42 @@ it('treats missing engine and mixed legacy surface schemas as unknown', () => {
   expect(result.groups[0].denominator).toBe(0);
   expect(result.groups[0].coverage.excluded.unknown).toBe(1);
 });
+
+it('documents indistinguishable organic fuzzy and unmatched evidence under an AI citation match', async () => {
+  // Exercise the pure producer only in this fixture; report rendering never imports it.
+  const { normalizeGoogleSearchRun } = await import('../../../packages/scan-engine/src/serpapi-normalizers');
+  const { matchMerchantCandidate } = await import('../../../packages/scan-engine/src/entity-matcher');
+  const entity = {
+    businessName: 'Blue Bakery', aliases: [], domain: 'merchant.test',
+    websiteUrl: 'https://merchant.test', placeId: null, gbpName: null,
+    district: null, categories: [],
+  };
+  const fuzzyEntity = { ...entity, businessName: 'Happy Cafe' };
+  const candidate = { title: 'Cafe Happy', link: 'https://other.test', snippet: '' };
+  expect(matchMerchantCandidate(entity, candidate)).toMatchObject({ found: false, confidence: 'none' });
+  expect(matchMerchantCandidate(fuzzyEntity, candidate)).toMatchObject({ found: true, confidence: 'low' });
+  const normalize = (merchant: typeof entity) => normalizeGoogleSearchRun({
+    entity: merchant,
+    plan: {
+      id: 'citation-masks-organic', query: 'best local business', query_type: 'discovery',
+      engine: 'google', hl: 'en', gl: 'hk', location: null, ll: null, device: 'desktop',
+    },
+    requestedAt: '2026-09-08T00:00:00Z',
+    data: {
+      search_metadata: { status: 'Success' },
+      organic_results: [{ ...candidate, position: 1 }],
+      ai_overview: { answer: 'Local suggestions', references: [{ title: 'Official website', link: 'https://merchant.test' }] },
+    },
+  });
+  const unmatched = normalize(entity);
+  const fuzzy = normalize(fuzzyEntity);
+  expect(unmatched.merchant_presence).toMatchObject({ found: true, confidence: 'high', organic_rank: null });
+  // Citation bestMatch erases which organic candidate was fuzzy; competitors retain both.
+  expect(JSON.parse(JSON.stringify(unmatched))).toEqual(JSON.parse(JSON.stringify(fuzzy)));
+  for (const stored of [unmatched, fuzzy]) {
+    expect(derive([stored]).groups[0]).toMatchObject({
+      surface: 'organic', numerator: 0, denominator: 0,
+      coverage: { excluded: { unknown: 1 } },
+    });
+  }
+});
