@@ -220,3 +220,32 @@ it('preserves private dashboard sentinels only through authorized projections an
     for (const sentinel of sentinels) expect(JSON.stringify(props)).toContain(sentinel);
   }
 });
+describe("scan metrics model boundary", () => {
+  const scanMetrics = {
+    instagram: null, omittedSearchGroups: 937461, search: [{
+      engine: "google_maps", queryType: null, context: "", surface: "maps" as const,
+      numerator: 937462, denominator: 937463, state: "measured" as const,
+      coverage: { inspected: 1, duplicates: 0, truncated: false, evidenceTruncated: false,
+        excluded: { unknown: 0, failed: 0, unsupported: 0, no_answer: 0, conflict: 0, unidentified: 0 } },
+      observations: [{ query: "PRIVATE_METRICS_SENTINEL", observedAt: null, outcome: "present" as const }],
+    }],
+  };
+  const source = { ...fixture, authorized: { ...fixture.authorized!, scanMetrics } };
+  it("omits poisoned private metrics from the public model and props", () => {
+    const model = buildReportViewModel(source, { kind: "public" });
+    const props = buildReportProps({ ...model, scanMetrics } as typeof model, "en");
+    for (const value of [model, props]) {
+      expect(value).not.toHaveProperty("scanMetrics");
+      expect(JSON.stringify(value)).not.toMatch(/PRIVATE_METRICS_SENTINEL|937461|937462|937463/);
+    }
+  });
+  it.each([
+    { kind: "viewer" as const, grantId: "grant-1" },
+    { kind: "member" as const, workspaceId: "ws-1", role: "manager" as const },
+    { kind: "staff" as const, userId: "staff-1", email: "staff@example.test" },
+  ])("carries optional metrics through authorized model and props: $kind", (access) => {
+    const model = buildReportViewModel(source, access);
+    expect(model).toHaveProperty("scanMetrics", scanMetrics);
+    expect(buildReportProps(model, "en")).toHaveProperty("scanMetrics", scanMetrics);
+  });
+});

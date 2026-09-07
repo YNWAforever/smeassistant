@@ -904,3 +904,58 @@ describe("loadReport", () => {
     );
   });
 });
+
+describe("scan metrics authorized projection", () => {
+  it.each(["viewer", "member"] as const)("projects stored metrics for %s", async (kind) => {
+    const viewer = createViewerAccessGrant();
+    const deps = makeLoaderDeps({
+      ...(kind === "viewer" ? viewer : {}),
+      ...(kind === "member" ? { publicJob: { ...publicJobFixture(), workspace_id: "ws-1" }, membership: { workspaceId: "ws-1", role: "manager" as const } } : {}),
+      authorizedJob: authorizedJobFixture({ raw_data: { ig: { posts: Array.from({ length: 60 }, (_, i) => ({ id: String(i) })) } } }),
+    });
+    const model = await deps.loader("slug-1", "en");
+    expect(model.access).toBe(kind);
+    expect(model).toHaveProperty("scanMetrics.instagram.distinctPosts", 60);
+    expect(model).toHaveProperty("scanMetrics.instagram.observations.length", 50);
+  });
+
+  it.each(["public", "revoked", "foreign", "staff-looking"] as const)("never reads raw data for %s access", async (kind) => {
+    const viewer = createViewerAccessGrant(kind === "revoked" ? { revoked_at: new Date().toISOString() } : { job_id: "other-job" });
+    const authorizedJob = authorizedJobFixture();
+    const rawRead = vi.fn(() => { throw new Error("private raw data accessed"); });
+    Object.defineProperty(authorizedJob, "raw_data", { get: rawRead });
+    const deps = makeLoaderDeps({ ...(kind === "public" || kind === "staff-looking" ? {} : viewer),
+      ...(kind === "staff-looking" ? { staffUser: { id: "staff-1", email: "staff@fimmick.com" } } : {}), authorizedJob });
+    const model = await deps.loader("slug-1", "en");
+    expect(model.access).toBe("public");
+    expect(model).not.toHaveProperty("scanMetrics");
+    expect(deps.readAuthorizedJobData).not.toHaveBeenCalled();
+    expect(rawRead).not.toHaveBeenCalled();
+  });
+
+  it("ignores stale raw metrics when module status is not measured", async () => {
+    const viewer = createViewerAccessGrant();
+    const job = publicJobFixture();
+    job.module_results = { ig: { ...job.module_results!.ig!, status: "failed", score: null } };
+    const deps = makeLoaderDeps({ ...viewer, publicJob: job });
+    const model = await deps.loader("slug-1", "en");
+    expect(model).toHaveProperty("scanMetrics", { instagram: null, search: [], omittedSearchGroups: 0 });
+  });
+});
+
+it("projects search observations only from the authorized stored payload", async () => {
+  const job = publicJobFixture();
+  job.module_results = { ...job.module_results, aeo: { status: "measured", score: 70, confidence: "high", limitationCode: null, evidenceCollectedAt: null } };
+  const deps = makeLoaderDeps({
+    ...createViewerAccessGrant(), publicJob: job,
+    authorizedJob: authorizedJobFixture({ raw_data: { aeo: { merchant_performance: { runs: [{
+      id: "metric-one", query: "PRIVATE_METRICS_QUERY", engine: "google_maps",
+      serpapi: { status: "Success" }, merchant_presence: { maps_rank: 1 },
+      raw_refs: { secret: "NOT_METRICS_EVIDENCE" },
+    }] } } } }),
+  });
+  const model = await deps.loader("slug-1", "en");
+  expect(model).toHaveProperty("scanMetrics.search.0.denominator", 1);
+  expect(model).toHaveProperty("scanMetrics.search.0.observations.0.query", "PRIVATE_METRICS_QUERY");
+  expect(JSON.stringify(model)).not.toContain("NOT_METRICS_EVIDENCE");
+});
