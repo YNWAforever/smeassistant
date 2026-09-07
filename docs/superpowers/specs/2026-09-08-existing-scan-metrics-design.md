@@ -1,7 +1,7 @@
 # Existing scan evidence metrics
 
 Date: 2026-09-08
-Status: Written specification approved by user; implementation planning complete.
+Status: Implemented and verified at `ac5e999f5173a2547b669edffa93835473637bc7`.
 Baseline: origin/main at 88b912d9e79a9191d4bde758e9d0407d24b0f948 (dashboard PR #8 merged).
 
 ## Outcome and scope
@@ -74,4 +74,4 @@ Acceptance: an authorized merchant can see the captured IG sample and its limita
 
 Self-review checked historical zero ambiguity, success/surface eligibility, deduplication conflicts, sample truncation, missing dates, access separation, scope, and fixture coverage. No unresolved product choices are required for implementation planning. Exact helper names, safety-limit constants, and fixture paths are implementation-plan decisions constrained by these rules.
 
-This document records an approved design, not implemented behavior or test results. The user approved this written specification. The implementation plan is docs/superpowers/plans/2026-09-08-existing-scan-metrics.md; execution awaits the selected workflow.
+The implementation and full verification are recorded in docs/integration/2026-09-08-existing-scan-metrics-verification.md. The implementation plan is docs/superpowers/plans/2026-09-08-existing-scan-metrics.md. The final gate completed at the corrected head; its first SQL attempt and successful rerun are recorded separately in the verification document.

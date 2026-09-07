@@ -246,8 +246,8 @@ await expect(page.locator('[data-scan-metrics]')).toHaveCount(0);
 **Consumes:** committed runtime code and task reviews.
 **Produces:** exact verification record, final independent review, integration handoff.
 
-- [ ] Confirm clean intended scope and reconcile current origin/main without replacing unrelated edits. Record source SHA before the gate.
-- [ ] Run the normal repository sequence, stop and diagnose failures, retain per-command exit codes:
+- [x] Confirm clean intended scope and reconcile current origin/main without replacing unrelated edits. Record source SHA before the gate.
+- [x] Run the normal repository sequence, stop and diagnose failures, retain per-command exit codes:
 
 ```powershell
 corepack pnpm install --frozen-lockfile
@@ -266,13 +266,13 @@ corepack pnpm e2e
 corepack pnpm e2e:acceptance
 ```
 
-- [ ] Require Docker Linux engine for database/browser suites. Keep fixture transport guards active. Missing Docker is an environment blocker, never permission to use shared Neon. Do not run e2e:live or provider-backed suites.
-- [ ] Request independent final review of the full runtime diff and test realism; resolve Critical/Important findings and rerun affected checks. Record optional findings separately.
-- [ ] Write docs/integration/2026-09-08-existing-scan-metrics-verification.md with base/tested SHA, exact test counts/skips, lint warnings, screenshots, independent review outcome, and hosted limitations. Do not reuse prior phase test counts as current results.
-- [ ] Mark the approved spec implemented only when all implementation work is verified. Run `git diff --check`; commit only the documentation paths as `docs: record stored metrics verification`.
-- [ ] Use finishing-a-development-branch to offer integration choices. Preserve this pre-existing worktree. No push/PR/deployment is authorized by this plan.
+- [x] Require Docker Linux engine for database/browser suites. Keep fixture transport guards active. Missing Docker is an environment blocker, never permission to use shared Neon. Do not run e2e:live or provider-backed suites.
+- [x] Request independent final review of the full runtime diff and test realism; resolve Critical/Important findings and rerun affected checks. Record optional findings separately.
+- [x] Write docs/integration/2026-09-08-existing-scan-metrics-verification.md with base/tested SHA, exact test counts/skips, lint warnings, screenshots, independent review outcome, and hosted limitations. Do not reuse prior phase test counts as current results.
+- [x] Mark the approved spec implemented only when all implementation work is verified. Run `git diff --check`; commit only the documentation paths as `docs: record stored metrics verification`.
+- [x] Use finishing-a-development-branch to offer integration choices. Preserve this pre-existing worktree. No push/PR/deployment is authorized by this plan.
 
-## Plan self-review
+## Task 6 execution record`r`n`r`n- Baseline: `88b912d9e79a9191d4bde758e9d0407d24b0f948`.`r`n- Tested runtime: `ac5e999f5173a2547b669edffa93835473637bc7`.`r`n- Final gate: all 14 steps exited 0. Unit total was 2,536 (`1979 + 62 + 23 + 183 + 20 + 269`); lint had 0 errors and 29 baseline warnings; SQL integration completed at 241 passing tests across 23 files with zero skips; public e2e completed 31 passing tests with zero skips; acceptance completed 20 passing tests with zero skips in 8.5 minutes; build passed.`r`n- SQL deviation and recovery: the first attempt was 240 pass/1 fail on the existing analytics lock-observation 400ms poll at line 252, with source unchanged. The isolated selected reproduction passed once with 13 name-filtered skips. The full SQL rerun passed 241/241. The separate pre-date-fix gate was intentionally interrupted.`r`n- Review: final independent review approved the corrected date validation; no Critical or Important findings remain. Baseline launcher/Vite/DEP0190 warnings remain informational.`r`n`r`n## Plan self-review
 
 Spec coverage: IG provenance and sample dates map to Task 1; search success, surfaces and denominators to Task 2; authorization and pre-display aggregation to Task 3; localization/coverage and UI to Task 4; fixture browser/access checks to Task 5; full repository evidence and independent review to Task 6. Contracts use the same function and property names throughout. Safety limits and partial coverage are explicit. No collector, schema, scoring, membership resolver, or paid-provider work is included.
 
