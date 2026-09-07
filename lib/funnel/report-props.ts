@@ -1,3 +1,4 @@
+import type { ScanMetrics } from "@/lib/report/scan-metrics/types";
 import { getMarketCtas, type Market } from "@sme-scanner/region";
 
 import { copy, type PrototypeLocale } from "@/lib/copy";
@@ -132,6 +133,7 @@ export type ReportViewModelLike =
   | {
       access: "viewer" | "member" | "staff";
       preview: ReportPreviewLike;
+      scanMetrics?: ScanMetrics;
       fullFindings: ViewerFindingLike[];
       summary: string | null;
       proof: ReportProofData;
@@ -210,6 +212,7 @@ export interface ReportCta {
 }
 
 export interface ReportProps {
+  scanMetrics?: ScanMetrics;
   locale: PrototypeLocale;
   access: ReportAccessKind;
   sample: boolean;
@@ -351,6 +354,7 @@ export function buildReportProps(model: ReportViewModelLike, locale: PrototypeLo
       model.access === "public"
         ? { hiddenFindingCount: model.unlock.hiddenFindingCount, unlockHref: model.unlock.href }
         : null,
+    ...(full?.scanMetrics ? { scanMetrics: full.scanMetrics } : {}),
     summary: full?.summary ?? null,
     findingGroups,
     proof: full?.proof ?? null,

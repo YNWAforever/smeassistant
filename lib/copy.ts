@@ -1348,3 +1348,35 @@ export const copy: Record<PrototypeLocale, Copy> = {
     workspace: workspaceZhTW,
   },
 }
+
+/** Localised presentation of stored scan evidence; never a combined visibility score. */
+export const scanMetricsCopy = {
+ en: {
+  title: "Captured scan samples", instagram: "Instagram post sample", organic: "Google Search", maps: "Google Maps", ai: "AI mentions",
+  appearances: "{x} of {n} eligible observations confirmed an appearance in the captured surface",
+  scope: "This measures confirmed appearances in the captured results only, not overall search visibility.",
+  posts: "{n} distinct posts", dated: "{n} posts with a recorded publication date", span: "Captured publication date span", published: "Publication date", scanned: "Scan date", observed: "Observation date", dateUnavailable: "Observation date unavailable", publicationUnavailable: "Publication date unavailable", scanUnavailable: "Scan date unavailable",
+  historical: "Engagement averages and follower-based rates are unavailable: historical counts cannot reliably distinguish missing values from zero.", zero: "Historical zeros may mean missing counts", likes: "Recorded likes", comments: "Recorded comments", missing: "Not recorded", recorded: "Counts as recorded in stored evidence; not current totals.",
+  unavailable: "Measurement unavailable", inspected: "Inspected records: {n}", duplicates: "Duplicate records: {n}", eligible: "Eligible observations: {n}", excluded: "Excluded observations: {n}", incomplete: "Incomplete sample: input records were limited.", evidenceLimited: "Evidence rows limited; totals use the inspected sample.", omitted: "{n} search groups omitted", evidence: "Stored evidence ({n} rows)",
+  engine: "Engine", queryType: "Query type", contextUnavailable: "Source context not recorded", queryTypeUnavailable: "Not recorded", gl: "Country", hl: "Language", location: "Location", device: "Device", ll: "Map coordinates", mobile: "Mobile", desktop: "Desktop", discovery: "Discovery", branded: "Branded",
+  present: "Confirmed appearance in captured surface", absent: "No confirmed appearance in captured surface", unknown: "Unknown outcome", failed: "Failed observation", unsupported: "Unsupported surface", no_answer: "No usable answer", conflict: "Conflicting evidence", unidentified: "Unidentified record",
+ },
+ "zh-HK": {
+  title: "已擷取的掃描樣本", instagram: "Instagram 帖文樣本", organic: "Google 搜尋", maps: "Google 地圖", ai: "AI 提及",
+  appearances: "{n} 次合資格觀察中，{x} 次確認在已擷取結果中出現", scope: "只量度已擷取結果中確認出現的次數，並非整體搜尋能見度。",
+  posts: "{n} 則不重複帖文", dated: "{n} 則帖文有發佈日期記錄", span: "已擷取帖文的發佈日期範圍", published: "發佈日期", scanned: "掃描日期", observed: "觀察日期", dateUnavailable: "觀察日期未有提供", publicationUnavailable: "發佈日期未有提供", scanUnavailable: "掃描日期未有提供",
+  historical: "未能量度平均互動及按追蹤者計算的互動率：歷史數據無法可靠地區分缺失數值與零。", zero: "歷史零值可能代表未有記錄", likes: "已記錄讚好數", comments: "已記錄留言數", missing: "未有記錄", recorded: "數值來自已儲存證據，並非目前總數。",
+  unavailable: "未能量度", inspected: "已檢視記錄：{n}", duplicates: "重複記錄：{n}", eligible: "合資格觀察：{n}", excluded: "已排除觀察：{n}", incomplete: "樣本不完整：輸入記錄已截短。", evidenceLimited: "證據列已截短；總數按已檢視樣本計算。", omitted: "已省略 {n} 組搜尋", evidence: "已儲存證據（{n} 列）",
+  engine: "引擎", queryType: "查詢類型", contextUnavailable: "未有來源設定記錄", queryTypeUnavailable: "未有記錄", gl: "國家", hl: "語言", location: "地點", device: "裝置", ll: "地圖座標", mobile: "流動裝置", desktop: "桌面裝置", discovery: "探索", branded: "品牌",
+  present: "確認在已擷取結果中出現", absent: "未確認在已擷取結果中出現", unknown: "結果不明", failed: "觀察失敗", unsupported: "不支援此結果類型", no_answer: "沒有可用回答", conflict: "證據互相矛盾", unidentified: "無法識別的記錄",
+ },
+ "zh-TW": {
+  title: "已擷取的掃描樣本", instagram: "Instagram 貼文樣本", organic: "Google 搜尋", maps: "Google 地圖", ai: "AI 提及",
+  appearances: "{n} 次合資格觀察中，{x} 次確認在已擷取結果中出現", scope: "僅衡量已擷取結果中確認出現的次數，並非整體搜尋能見度。",
+  posts: "{n} 則不重複貼文", dated: "{n} 則貼文有發布日期記錄", span: "已擷取貼文的發布日期範圍", published: "發布日期", scanned: "掃描日期", observed: "觀察日期", dateUnavailable: "未提供觀察日期", publicationUnavailable: "未提供發布日期", scanUnavailable: "未提供掃描日期",
+  historical: "未能量度平均互動及依追蹤者計算的互動率：歷史資料無法可靠地區分缺漏數值與零。", zero: "歷史零值可能代表未有記錄", likes: "已記錄按讚數", comments: "已記錄留言數", missing: "未有記錄", recorded: "數值來自已儲存證據，並非目前總數。",
+  unavailable: "未能量度", inspected: "已檢視記錄：{n}", duplicates: "重複記錄：{n}", eligible: "合資格觀察：{n}", excluded: "已排除觀察：{n}", incomplete: "樣本不完整：輸入記錄已截短。", evidenceLimited: "證據列已截短；總數依已檢視樣本計算。", omitted: "已省略 {n} 組搜尋", evidence: "已儲存證據（{n} 列）",
+  engine: "引擎", queryType: "查詢類型", contextUnavailable: "未記錄來源設定", queryTypeUnavailable: "未有記錄", gl: "國家", hl: "語言", location: "地點", device: "裝置", ll: "地圖座標", mobile: "行動裝置", desktop: "桌面裝置", discovery: "探索", branded: "品牌",
+  present: "確認在已擷取結果中出現", absent: "未確認在已擷取結果中出現", unknown: "結果不明", failed: "觀察失敗", unsupported: "不支援此結果類型", no_answer: "沒有可用回答", conflict: "證據互相矛盾", unidentified: "無法識別的記錄",
+ },
+} satisfies Record<PrototypeLocale, Record<string, string>>;

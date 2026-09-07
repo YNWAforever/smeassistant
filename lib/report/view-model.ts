@@ -1,3 +1,4 @@
+import type { ScanMetrics } from "./scan-metrics/types";
 import type { ReportAccess, ReportMemberRole } from "@/lib/report-access/authorize-report";
 import type { EvidenceProvider, EvidenceType } from "@sme-scanner/contracts";
 import { selectTopPriorities } from "./top-priorities";
@@ -45,7 +46,7 @@ export interface EvidenceGalleryItem {
 }
 export interface EvidenceGalleryModel { items: EvidenceGalleryItem[] }
 export interface AuthorizedReportSource {
-  summary: string | null; proof: ReportProofModel; evidence: EvidenceGalleryModel;
+  summary: string | null; proof: ReportProofModel; evidence: EvidenceGalleryModel; scanMetrics?: ScanMetrics;
 }
 
 export interface ReportViewSource {
@@ -89,7 +90,7 @@ export interface StaffActionsModel { userId: string; email: string; jobId: strin
 export interface PublicReportModel { access: "public"; preview: ReportPreview; unlock: UnlockPrompt }
 export interface ViewerReportModel {
   access: "viewer"; preview: ReportPreview; fullFindings: ViewerFinding[];
-  summary: string | null; proof: ReportProofModel; evidence: EvidenceGalleryModel;
+  summary: string | null; proof: ReportProofModel; evidence: EvidenceGalleryModel; scanMetrics?: ScanMetrics;
 }
 /**
  * A signed-in workspace member reading a report attached to their workspace
@@ -99,11 +100,11 @@ export interface ViewerReportModel {
 export interface MemberReportModel {
   access: "member"; workspaceId: string; role: ReportMemberRole;
   preview: ReportPreview; fullFindings: ViewerFinding[];
-  summary: string | null; proof: ReportProofModel; evidence: EvidenceGalleryModel;
+  summary: string | null; proof: ReportProofModel; evidence: EvidenceGalleryModel; scanMetrics?: ScanMetrics;
 }
 export interface StaffReportModel {
   access: "staff"; preview: ReportPreview; fullFindings: ViewerFinding[];
-  summary: string | null; proof: ReportProofModel; evidence: EvidenceGalleryModel;
+  summary: string | null; proof: ReportProofModel; evidence: EvidenceGalleryModel; scanMetrics?: ScanMetrics;
   staffActions: StaffActionsModel;
 }
 export type ReportViewModel = PublicReportModel | ViewerReportModel | MemberReportModel | StaffReportModel;
@@ -205,12 +206,13 @@ export function buildReportViewModel(source: ReportViewSource, access: ReportAcc
   const summary = source.authorized?.summary ?? null;
   const proof = source.authorized?.proof ?? EMPTY_PROOF;
   const evidence = source.authorized?.evidence ?? { items: [] };
-  if (access.kind === "viewer") return { access: "viewer", preview, fullFindings, summary, proof, evidence };
+  const metrics = source.authorized?.scanMetrics ? { scanMetrics: source.authorized.scanMetrics } : {};
+  if (access.kind === "viewer") return { access: "viewer", preview, fullFindings, summary, proof, evidence, ...metrics };
   if (access.kind === "member") {
-    return { access: "member", workspaceId: access.workspaceId, role: access.role, preview, fullFindings, summary, proof, evidence };
+    return { access: "member", workspaceId: access.workspaceId, role: access.role, preview, fullFindings, summary, proof, evidence, ...metrics };
   }
   return {
-    access: "staff", preview, fullFindings, summary, proof, evidence,
+    access: "staff", preview, fullFindings, summary, proof, evidence, ...metrics,
     staffActions: { userId: access.userId, email: access.email, jobId: source.job.id },
   };
 }

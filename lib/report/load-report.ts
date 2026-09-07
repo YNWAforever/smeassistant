@@ -1,3 +1,4 @@
+import { deriveScanMetrics } from "./scan-metrics/derive";
 import { unstable_noStore as noStore } from "next/cache";
 import { after } from "next/server";
 import { cookies } from "next/headers";
@@ -146,7 +147,13 @@ export function createReportLoader(
         deps.scheduleAfter(work);
       },
     );
+    const modules = moduleResults(job);
+    const scanMetrics = deriveScanMetrics(authorizedJob.raw_data, {
+      ig: modules.ig?.status === "measured",
+      aeo: modules.aeo?.status === "measured",
+    });
     const authorized: AuthorizedReportSource = {
+      scanMetrics,
       summary,
       proof: sanitizeReportProof(authorizedJob.raw_data, findings),
       evidence,

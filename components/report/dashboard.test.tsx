@@ -178,3 +178,14 @@ it('supports the original sample report with no images or proof', () => {
   expect(root.querySelector('[data-slot="dialog-trigger"]')).toBeNull();
   expect(root.textContent).toContain(copy.en.funnel.report.dashboard.unavailable);
 });
+describe("scan metric dashboard integration", () => {
+ it("replaces the placeholder and explains historical engagement inside statistics", () => {
+  const scanMetrics: NonNullable<ReportProps["scanMetrics"]> = { instagram: { distinctPosts: 1, datedPosts: 0, earliest: null, latest: null, engagement: "unavailable_historical_counts", coverage: { inspected: 1, duplicates: 0, excluded: { unknown: 0, failed: 0, unsupported: 0, no_answer: 0, conflict: 0, unidentified: 0 }, truncated: false, evidenceTruncated: false }, observations: [] }, search: [{ engine: "google", queryType: null, context: "{}", surface: "organic", numerator: 0, denominator: 1, state: "measured", coverage: { inspected: 1, duplicates: 0, excluded: { unknown: 0, failed: 0, unsupported: 0, no_answer: 0, conflict: 0, unidentified: 0 }, truncated: false, evidenceTruncated: false }, observations: [] }], omittedSearchGroups: 0 };
+  const root = markup(<DashboardMetrics report={{ ...report, scanMetrics, modules: report.modules.map(row => ({ ...row, state: "measured" })) }} dashboard={{ ...dashboard, metrics: [...dashboard.metrics, { key: "search-visibility", label: "Search visibility", source: "Search", state: "unavailable", reason: "Not enough data" }] }} />);
+  expect(root.querySelector('[data-metric="search-visibility"]')).toBeNull();
+  expect(root.querySelector('[data-metric="instagram-engagement"]')?.textContent).toContain("historical counts");
+  expect(root.querySelector('[aria-labelledby="dashboard-statistics"] #scan-metrics-title')).not.toBeNull();
+  expect(root.querySelector('[data-metric="instagram-followers"]')).not.toBeNull();
+  expect(root.querySelector('[aria-labelledby="dashboard-comparisons"]')).not.toBeNull();
+ });
+});

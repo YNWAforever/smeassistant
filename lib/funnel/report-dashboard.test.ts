@@ -160,3 +160,22 @@ describe("buildReportDashboard", () => {
     expect(buildReportDashboard(report({ proof: proof({ merchant }) })).comparisons).toEqual([]);
   });
 });
+it.each(["unavailable", "failed", "unsupported"] as const)("ignores stale scan metrics in direct props when modules are %s", (state) => {
+  const dashboard = buildReportDashboard(report({
+    modules: ["ig", "aeo"].map((key) => ({
+      key, state, score: null, label: key, value: "Not scored", detail: "", observedAt: null, limitationCode: null,
+    })),
+    proof: proof(),
+    scanMetrics: {
+      instagram: {
+        distinctPosts: 987654, datedPosts: 0, earliest: null, latest: null, engagement: "unavailable_historical_counts",
+        coverage: { inspected: 1, duplicates: 0, truncated: false, evidenceTruncated: false,
+          excluded: { unknown: 0, failed: 0, unsupported: 0, no_answer: 0, conflict: 0, unidentified: 0 } },
+        observations: [{ identity: "PRIVATE_METRICS_SENTINEL", postedAt: null, likes: 987653, comments: null, ambiguousZero: false }],
+      },
+      search: [], omittedSearchGroups: 987652,
+    },
+  }));
+  expect(dashboard.metrics.every((metric) => metric.state === "unavailable")).toBe(true);
+  expect(JSON.stringify(dashboard)).not.toMatch(/PRIVATE_METRICS_SENTINEL|987654|987653|987652/);
+});
