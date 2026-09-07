@@ -1,6 +1,6 @@
 # Scan Result Dashboard Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Replace the text-heavy report with the approved direction A dashboard, using existing measurements and authorized photo evidence.
 
@@ -69,9 +69,9 @@ export interface ReportDashboard {
 }
 ```
 
-- [ ] Add failing tests to lib/funnel/report-dashboard.test.ts using a fully typed local ReportProps fixture: public access returns empty metrics/comparisons even if a caller supplies proof; null proof returns unavailable authorized cards; followers=0 remains measured; negative/nonfinite values are unavailable; absent Google reviews differs from zero.
-- [ ] Run `corepack pnpm exec vitest run lib/funnel/report-dashboard.test.ts`; confirm the new module import or behavior fails.
-- [ ] Implement the adapter's access guard first:
+- [x] Add failing tests to lib/funnel/report-dashboard.test.ts using a fully typed local ReportProps fixture: public access returns empty metrics/comparisons even if a caller supplies proof; null proof returns unavailable authorized cards; followers=0 remains measured; negative/nonfinite values are unavailable; absent Google reviews differs from zero.
+- [x] Run `corepack pnpm exec vitest run lib/funnel/report-dashboard.test.ts`; confirm the new module import or behavior fails.
+- [x] Implement the adapter's access guard first:
 
 ```ts
 if (props.access === "public" || props.locked) {
@@ -79,22 +79,22 @@ if (props.access === "public" || props.locked) {
 }
 ```
 
-- [ ] Derive followers, Google rating and review count from authorized proof, validating finite nonnegative numbers and rating <=5. Resolve labels through copy[props.locale].funnel.report. Keep unavailable reasons localized. Do not insert sample defaults.
-- [ ] Trace existing canonical engagement and search measurement producers before exposing those two cards. Reuse their typed values and denominator if available through the authorized projection; otherwise emit unavailable. AEO runs with available=false cannot enter the denominator. Merchant runs lack an explicit availability field, so do not infer an aggregate success rate from found alone. Do not introduce a new formula or infer a metric from finding text.
-- [ ] Derive comparisons per merchant run, keeping query, engine and source groups separate. Compare run.mapsRating or run.mapsReviews only with competitor values that explicitly identify the same Maps source and metric. Omit a group when the current business value is absent or no compatible competitor remains. Deduplicate exact same name/source observations within that run; sampleSize is the displayed row count. Keep different queries as separate groups; never call them industry averages.
-- [ ] Extend ReportModuleRow with optional score: number | null, populated directly from preview.coverage.modules in buildReportProps. Missing scores render unavailable bars. Audit sample-report construction and all literal props fixtures for compatibility.
-- [ ] Trace a real scan timestamp through the existing loader; add optional scannedAt only if an existing safe report field supports it. Missing time displays date unavailable. Merchant generatedAt labels that comparison only, not the whole scan.
-- [ ] Run the focused test and existing report mapping/view-model tests, check the diff, and commit only this adapter/projection slice with message `feat: derive truthful report dashboard metrics`.
+- [x] Derive followers, Google rating and review count from authorized proof, validating finite nonnegative numbers and rating <=5. Resolve labels through copy[props.locale].funnel.report. Keep unavailable reasons localized. Do not insert sample defaults.
+- [x] Trace existing canonical engagement and search measurement producers before exposing those two cards. Reuse their typed values and denominator if available through the authorized projection; otherwise emit unavailable. AEO runs with available=false cannot enter the denominator. Merchant runs lack an explicit availability field, so do not infer an aggregate success rate from found alone. Do not introduce a new formula or infer a metric from finding text.
+- [x] Derive comparisons per merchant run, keeping query, engine and source groups separate. Compare run.mapsRating or run.mapsReviews only with competitor values that explicitly identify the same Maps source and metric. Omit a group when the current business value is absent or no compatible competitor remains. Deduplicate exact same name/source observations within that run; sampleSize is the displayed row count. Keep different queries as separate groups; never call them industry averages.
+- [x] Extend ReportModuleRow with optional score: number | null, populated directly from preview.coverage.modules in buildReportProps. Missing scores render unavailable bars. Audit sample-report construction and all literal props fixtures for compatibility.
+- [x] Trace a real scan timestamp through the existing loader; add optional scannedAt only if an existing safe report field supports it. Missing time displays date unavailable. Merchant generatedAt labels that comparison only, not the whole scan.
+- [x] Run the focused test and existing report mapping/view-model tests, check the diff, and commit only this adapter/projection slice with message `feat: derive truthful report dashboard metrics`.
 
 ## Task 2: Render summary, cards and honest comparisons
 
 **Consumes:** ReportProps; ReportDashboard from Task 1.
 **Produces:** DashboardSummary({ report }: { report: ReportProps }) and DashboardMetrics({ report, dashboard }: { report: ReportProps; dashboard: ReportDashboard }).
 
-- [ ] Add rendering tests in components/report/dashboard.test.tsx for numeric zero, unavailable cards without zero-width implied scores, first_scan without deltas, and incomparable reasons. Use renderToStaticMarkup for server components and Testing Library for interactive controls.
-- [ ] Run `corepack pnpm exec vitest run components/report/dashboard.test.tsx`; confirm expected failures before implementation.
-- [ ] Extract the score/title section into DashboardSummary, retaining ScoreDial, comparison.kind, sample badges and access notes. Show coverage and an existing supported summary; disclose long summary text. Never label an inference as a measured fact.
-- [ ] Implement numeric cards and score bars in DashboardMetrics. Use this rendering rule, with localized labels and formatted numbers:
+- [x] Add rendering tests in components/report/dashboard.test.tsx for numeric zero, unavailable cards without zero-width implied scores, first_scan without deltas, and incomparable reasons. Use renderToStaticMarkup for server components and Testing Library for interactive controls.
+- [x] Run `corepack pnpm exec vitest run components/report/dashboard.test.tsx`; confirm expected failures before implementation.
+- [x] Extract the score/title section into DashboardSummary, retaining ScoreDial, comparison.kind, sample badges and access notes. Show coverage and an existing supported summary; disclose long summary text. Never label an inference as a measured fact.
+- [x] Implement numeric cards and score bars in DashboardMetrics. Use this rendering rule, with localized labels and formatted numbers:
 
 ```tsx
 {metric.state === "measured" ? (
@@ -104,42 +104,42 @@ if (props.access === "public" || props.locked) {
 )}
 ```
 
-- [ ] Render measured module scores with a native meter min=0 max=100 and a visible numeric label; leave unavailable modules as text. Render each competitor group with its query/engine/date/source/sample size and numeric row values. Scale review-count bars to that group's maximum; rating bars use max=5. Do not show competitor percentile, uplift or historical charts.
-- [ ] Add zh-HK, zh-TW and en copy for key statistics, rubric score, observed search comparisons, unavailable measurement, sample size and unavailable date. Keep technical provider errors in expandable explanations with a concise friendly reason beside the metric.
-- [ ] Add report-scoped CSS for a responsive metric grid, wrapping labels and visible focus; no chart dependency. At <=640px use one column. Keep essential uncertainty visible.
-- [ ] Rerun rendering and adapter tests, then commit only this slice with message `feat: add visual report summary and benchmarks`.
+- [x] Render measured module scores with a native meter min=0 max=100 and a visible numeric label; leave unavailable modules as text. Render each competitor group with its query/engine/date/source/sample size and numeric row values. Scale review-count bars to that group's maximum; rating bars use max=5. Do not show competitor percentile, uplift or historical charts.
+- [x] Add zh-HK, zh-TW and en copy for key statistics, rubric score, observed search comparisons, unavailable measurement, sample size and unavailable date. Keep technical provider errors in expandable explanations with a concise friendly reason beside the metric.
+- [x] Add report-scoped CSS for a responsive metric grid, wrapping labels and visible focus; no chart dependency. At <=640px use one column. Keep essential uncertainty visible.
+- [x] Rerun rendering and adapter tests, then commit only this slice with message `feat: add visual report summary and benchmarks`.
 
 ## Task 3: Compact priorities and preserve detailed evidence
 
 **Consumes:** ReportProps.priorities and findingGroups.
 **Produces:** DashboardPriorities({ report }: { report: ReportProps }); stable anchors `report-detail-${module}` on authorized module disclosures.
 
-- [ ] Add tests for zero/two/three priorities, preserved rank ordering, no fabricated actions, and public output excluding private evidence/action/draft content.
-- [ ] Run `corepack pnpm exec vitest run components/report/dashboard.test.tsx`; confirm the expected failures.
-- [ ] Extract priority cards using report.priorities.slice(0, 3), the existing localized labels and tone. Show a brief action/summary and a link to the corresponding module details when available. For locked reports link to the existing unlock URL; never create nonexistent evidence anchors.
-- [ ] Compose ReportPage in approved order: summary, authorized statistics, module/competitor bars, priorities, authorized gallery, detailed disclosures. Preserve unlock CTA, sample badge, member/staff affordances, existing contact CTAs and assistant behavior.
-- [ ] Wrap existing proof panels, findings and methodology/limitations in native details/summary. Keep all existing details reachable. Module deep links must open the corresponding disclosure when activated, or target a visible module heading immediately before it; do not scroll users into hidden content.
-- [ ] Guard authorized components with `props.access !== "public" && !props.locked`; preserve the upstream projection guard rather than relying on this UI guard alone.
-- [ ] Run rendering, report mapping and report-access tests; commit the slice with message `feat: simplify report priorities and detailed findings`.
+- [x] Add tests for zero/two/three priorities, preserved rank ordering, no fabricated actions, and public output excluding private evidence/action/draft content.
+- [x] Run `corepack pnpm exec vitest run components/report/dashboard.test.tsx`; confirm the expected failures.
+- [x] Extract priority cards using report.priorities.slice(0, 3), the existing localized labels and tone. Show a brief action/summary and a link to the corresponding module details when available. For locked reports link to the existing unlock URL; never create nonexistent evidence anchors.
+- [x] Compose ReportPage in approved order: summary, authorized statistics, module/competitor bars, priorities, authorized gallery, detailed disclosures. Preserve unlock CTA, sample badge, member/staff affordances, existing contact CTAs and assistant behavior.
+- [x] Wrap existing proof panels, findings and methodology/limitations in native details/summary. Keep all existing details reachable. Module deep links must open the corresponding disclosure when activated, or target a visible module heading immediately before it; do not scroll users into hidden content.
+- [x] Guard authorized components with `props.access !== "public" && !props.locked`; preserve the upstream projection guard rather than relying on this UI guard alone.
+- [x] Run rendering, report mapping and report-access tests; commit the slice with message `feat: simplify report priorities and detailed findings`.
 
 ## Task 4: Accessible photo evidence gallery
 
 **Consumes:** items: ReportEvidenceItem[] and locale: ReportProps["locale"], passed only from the authorized report composition.
 **Produces:** EvidenceGallery({ items, locale }) in components/report/evidence-gallery.tsx, a small client component. No database imports or full ReportProps client prop.
 
-- [ ] Add evidence-gallery.test.tsx cases for stored thumbnails, metadata-only and failed items, broken-image fallback, six-item initial group limit, reveal remaining count, keyboard opening/closing and focus restoration.
-- [ ] Run `corepack pnpm exec vitest run components/report/evidence-gallery.test.tsx`; confirm failures.
-- [ ] Group by existing provider identifier without dropping other evidence providers. Display six thumbnails per provider initially and a localized reveal control for the rest. A failed or metadata-only item remains a labeled metadata card; only status=stored plus a nonnull mediaUrl may render a photo.
-- [ ] Use the installed Radix Dialog primitive for previews and focus trapping. Each thumbnail is a button with a descriptive accessible name; Dialog.Title identifies the photo, Dialog.Close is keyboard accessible, Escape closes, and focus returns to the trigger. Use img onError to show the metadata fallback. Never request a fresh scan or fetch private storage directly.
-- [ ] Keep source and captured/published timestamps available in the preview. Use lazy images with fixed aspect ratio and object-fit; wrap long captions in a disclosure. Validate source links with existing URL-safety handling.
-- [ ] Add localized labels and reduced-motion styling. Run gallery tests and existing lib/evidence/load-authorized.test.ts, then commit with message `feat: present authorized report photo galleries`.
+- [x] Add evidence-gallery.test.tsx cases for stored thumbnails, metadata-only and failed items, broken-image fallback, six-item initial group limit, reveal remaining count, keyboard opening/closing and focus restoration.
+- [x] Run `corepack pnpm exec vitest run components/report/evidence-gallery.test.tsx`; confirm failures.
+- [x] Group by existing provider identifier without dropping other evidence providers. Display six thumbnails per provider initially and a localized reveal control for the rest. A failed or metadata-only item remains a labeled metadata card; only status=stored plus a nonnull mediaUrl may render a photo.
+- [x] Use the installed Radix Dialog primitive for previews and focus trapping. Each thumbnail is a button with a descriptive accessible name; Dialog.Title identifies the photo, Dialog.Close is keyboard accessible, Escape closes, and focus returns to the trigger. Use img onError to show the metadata fallback. Never request a fresh scan or fetch private storage directly.
+- [x] Keep source and captured/published timestamps available in the preview. Use lazy images with fixed aspect ratio and object-fit; wrap long captions in a disclosure. Validate source links with existing URL-safety handling.
+- [x] Add localized labels and reduced-motion styling. Run gallery tests and existing lib/evidence/load-authorized.test.ts, then commit with message `feat: present authorized report photo galleries`.
 
 ## Task 5: Fixture browser acceptance and boundary regression
 
 **Files:** e2e/report-dashboard.spec.ts; components/report/dashboard.test.tsx; lib/funnel/report-dashboard.test.ts. Reuse the existing local sample report route and owned acceptance fixture setup; never create a production fixture route.
 
-- [ ] Add semantic assertions to the existing sample-report browser journey. Determine its locale-prefixed path from the route graph before writing page.goto; use that route with the existing fixture server config.
-- [ ] Add 375px and 1440px viewport checks. The overflow assertion is:
+- [x] Add semantic assertions to the existing sample-report browser journey. Determine its locale-prefixed path from the route graph before writing page.goto; use that route with the existing fixture server config.
+- [x] Add 375px and 1440px viewport checks. The overflow assertion is:
 
 ```ts
 expect(await page.evaluate(() =>
@@ -147,15 +147,15 @@ expect(await page.evaluate(() =>
 )).toBe(true);
 ```
 
-- [ ] Assert summary/statistics precede long findings, disclosure controls work by keyboard, gallery preview closes with Escape and returns focus, and long Chinese/English fixture text wraps. Use local deterministic image fixtures; block external image/provider requests through existing transport guards.
-- [ ] Extend projection tests with sentinel private values and assert those strings/URLs never appear in public serialized output. Cover viewer/member/staff full read access with existing authorization fixtures; do not change draft authority tests or roles.
-- [ ] Ensure the scenario matrix covers full/partial/failed data, zero, unavailable metrics, absent benchmarks, first/comparable/incomparable scans, all three media states and all supported locales. Keep noninteractive edge cases in component tests; browser tests cover actual navigation/keyboard/layout.
-- [ ] Run `corepack pnpm exec vitest run lib/funnel/report-dashboard.test.ts components/report/dashboard.test.tsx components/report/evidence-gallery.test.tsx lib/report/view-model.test.ts lib/evidence/load-authorized.test.ts` and `corepack pnpm exec playwright test e2e/report-dashboard.spec.ts`.
-- [ ] Save labeled local fixture screenshots for desktop/mobile review; do not use screenshots alone as assertions. Commit tests with message `test: verify dashboard fixtures and report access boundaries`.
+- [x] Assert summary/statistics precede long findings, disclosure controls work by keyboard, gallery preview closes with Escape and returns focus, and long Chinese/English fixture text wraps. Use local deterministic image fixtures; block external image/provider requests through existing transport guards.
+- [x] Extend projection tests with sentinel private values and assert those strings/URLs never appear in public serialized output. Cover viewer/member/staff full read access with existing authorization fixtures; do not change draft authority tests or roles.
+- [x] Ensure the scenario matrix covers full/partial/failed data, zero, unavailable metrics, absent benchmarks, first/comparable/incomparable scans, all three media states and all supported locales. Keep noninteractive edge cases in component tests; browser tests cover actual navigation/keyboard/layout.
+- [x] Run `corepack pnpm exec vitest run lib/funnel/report-dashboard.test.ts components/report/dashboard.test.tsx components/report/evidence-gallery.test.tsx lib/report/view-model.test.ts lib/evidence/load-authorized.test.ts` and `corepack pnpm exec playwright test e2e/report-dashboard.spec.ts`.
+- [x] Save labeled local fixture screenshots for desktop/mobile review; do not use screenshots alone as assertions. Commit tests with message `test: verify dashboard fixtures and report access boundaries`.
 
 ## Task 6: Normal repository gate and reviewable handoff
 
-- [ ] Set the fixture environment in the chosen PowerShell session:
+- [x] Set the fixture environment in the chosen PowerShell session:
 
 ```powershell
 $env:SCAN_SOURCES = 'fixture'
@@ -165,7 +165,7 @@ $env:RATE_LIMIT_SECRET = 'ci-rate-limit-secret-not-for-production'
 $env:NEXT_PUBLIC_SITE_URL = 'http://localhost:3100'
 ```
 
-- [ ] Run the current CI sequence, stopping to diagnose each failure before dependent steps:
+- [x] Run the current CI sequence, stopping to diagnose each failure before dependent steps:
 
 ```powershell
 corepack pnpm install --frozen-lockfile
@@ -184,10 +184,14 @@ corepack pnpm e2e
 corepack pnpm e2e:acceptance
 ```
 
-- [ ] Require Docker's Linux engine for owned fixture suites; never replace it with a shared database. Linux CI uses `playwright install --with-deps chromium`; preserve that workflow. Capture exact exit codes and test totals, including skips and environment blockers. Do not claim hosted acceptance from fixture results.
-- [ ] Review the final diff against the spec: access boundary, sample denominators, comparison source grouping, null-versus-zero, no invented statistics, accessible gallery and mobile overflow. Follow the selected execution workflow's reviewer requirements; integrate one task at a time.
-- [ ] Run `git diff --check` and verify only intended files changed. Record validation and remaining operational gates in the implementation handoff. Do not automatically deploy, merge, submit contact forms, or call providers. Use finishing-a-development-branch after verification to offer integration options.
+- [x] Require Docker's Linux engine for owned fixture suites; never replace it with a shared database. Linux CI uses `playwright install --with-deps chromium`; preserve that workflow. Capture exact exit codes and test totals, including skips and environment blockers. Do not claim hosted acceptance from fixture results.
+- [x] Review the final diff against the spec: access boundary, sample denominators, comparison source grouping, null-versus-zero, no invented statistics, accessible gallery and mobile overflow. Follow the selected execution workflow's reviewer requirements; integrate one task at a time.
+- [x] Run `git diff --check` and verify only intended files changed. Record validation and remaining operational gates in the implementation handoff. Do not automatically deploy, merge, submit contact forms, or call providers. Use finishing-a-development-branch after verification to offer integration options.
 
 ## Plan self-review
 
 All six approved page sections map to Tasks 2-4. Measurement and authorization rules map to Tasks 1 and 5. Missing model fields are explicitly unavailable unless backed by existing canonical data. Accessibility, locale, photo failures and responsive layout map to Tasks 2, 4 and 5. Task 6 reproduces the current repository gate and separates fixture verification from hosted actions. This document is an execution plan, not evidence that any implementation or test has passed.
+
+## Execution record
+
+Task 6 completed on 2026-09-07 at tested commit `e45204e2f56cf183c131570c6c7648bbf4331222`, from baseline `3a8a923b8a38fc34bdeb6659d54be26cdeabef4c`. The existing isolated checkout was reused. CSS Modules were used instead of global CSS, and the supplemental owned acceptance file was retained. No canonical aggregate was invented: engagement/search remain unavailable without a canonical denominator, and snapshot capture limits were preserved without backfill. The normal gate passed with 14/14 stages exit 0 and 0 skipped tests; verification is fixture-local and does not claim remote CI, deployment, provider, email, shared-database, or push execution. See `docs/integration/2026-09-07-scan-result-dashboard-verification.md` and `.superpowers/sdd/dashboard/task-6-report.md`.
