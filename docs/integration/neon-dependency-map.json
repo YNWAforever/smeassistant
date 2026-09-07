@@ -917,8 +917,9 @@
     ],
     "status": "pending",
     "evidence": [
-      "launch evidence currently names Supabase",
-      "external boundary: application to managed Auth and database"
+      "Task16 local technical gate at source 853bdee87031cd1d1b2282969ab1b238c498d147: all ten exact commands exited 0; readiness independently probes the exact application URL and rejects invalid or privileged application credentials.",
+      "Worktree proof includes unstaged user-owned e2e/owner-shell.spec.ts SHA256 C34D6BB9BD439AF56AF8EB3A47693170CE8EC4C54FE6A5DBB112C41C545236D4; it is not commit-only or remote-CI proof.",
+      "Operation remains pending: invitation-specific token/expiry contract requires explicit user decision; hosted project, branch and origin are not chosen; hosted database/Auth/mail/Google/provider acceptance, migration, deployment and cutover were not run; Task17 not started."
     ]
   },
   {

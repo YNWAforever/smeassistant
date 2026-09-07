@@ -1,12 +1,39 @@
-# Launch evidence — local suites passed; deployment acceptance not run
+# Launch evidence — Task 16 local technical gates passed; overall acceptance blocked
 
-**Staging/final acceptance: not run.** Local fixture results below are verified against an uncommitted working tree. They do not authorize remote operations in the [deployment runbook](DEPLOY.md).
+**Current checkpoint (2026-09-07): Task 16 technical gates passed locally; Task 16 overall review/spec acceptance remains blocked.** The invitation contract still requires an explicit user decision. Hosted Neon project, branch and origin are not chosen; hosted database/Auth/mail/Google/provider acceptance, migration, deployment and cutover were not run. Task 17 has not started. This report is neither Task 16 completion nor merge, deployment or release approval.
 
 Use only these status values: `passed`, `failed`, `blocked`, `not run`. A pass applies only to the named category on the recorded commit/deployment. Record failed and blocked attempts as separate rows before adding a successful rerun. No credentials, cookies, private payloads or test contact details belong here.
 
 Runtime/origin configuration must include Node version, request origin, expected canonical origin, `APP_ORIGIN`, scan source mode, execution runtime, claim flag, isolated/shared database identity (non-secret), and provider test/live mode as applicable. Use `not applicable` for deployment fields on a local fixture test; do not invent deployment evidence from unit results.
 
-## Current acceptance table
+## Task 16 final local technical gate — source `853bdee87031cd1d1b2282969ab1b238c498d147`
+
+All ten commands ran sequentially against the owned local fixture and exited 0. Runtime was Node 24.18.0, pnpm 9.12.0, Docker Linux 29.7.2, Next 16.2.6 with Turbopack, and Vitest 4.1.11. The run used `VITEST_MAX_WORKERS=1`, `NEON_INTEGRATION=1`, and the absolute Task 9 transport-guard `NODE_OPTIONS`. It selected the local production build and owned acceptance fixture; no hosted target or provider was used.
+
+This is worktree evidence, not commit-only or remote-CI evidence. The public worktree proof includes the unstaged, user-owned `e2e/owner-shell.spec.ts` at SHA256 `C34D6BB9BD439AF56AF8EB3A47693170CE8EC4C54FE6A5DBB112C41C545236D4`; that file was not modified, staged or restored by the gate run.
+
+| Exact command | Status | Exact result |
+|---|---|---|
+| `corepack pnpm typecheck` | passed | Exit 0; root plus four workspace packages passed |
+| `corepack pnpm lint` | passed | Exit 0; 0 errors and 30 warnings |
+| `corepack pnpm test` | passed | Exit 0; 249 files / 2,394 tests: app 199/1,837, isolated 1/62, region 3/23, scoring 16/183, contracts 3/20, engine 27/269 |
+| `corepack pnpm db:verify` | passed | Exit 0; immutable migrations 0001–0004, empty replay, 34 tables / 403 columns / 151 constraints / 84 indexes / 7 triggers / 13 functions, zero seeds |
+| `corepack pnpm test:integration` | passed | Exit 0; 21 files / 232 tests |
+| `corepack pnpm build` | passed | Exit 0; 26/26 static pages. Dynamic OG font fetch attempts were blocked by `fixture_external_transport_forbidden`; this does not claim remote font success |
+| `corepack pnpm e2e` | passed | Exit 0; 27 public production-build tests |
+| `corepack pnpm e2e:acceptance` | passed | Exit 0; 18 owned-local acceptance tests |
+| `corepack pnpm test:secret-boundary` | passed | Exit 0; 44 public artifacts scanned |
+| `corepack pnpm test:no-supabase` | passed | Exit 0; active dependency scanner permits only the separately approved pinned Neon SDK/auth-js transitive relationship |
+
+The isolated fixture proves local PostgreSQL, managed-Auth-shaped handoff, mail and provider-shaped behavior within the transport fence. It does not prove any hosted service. Warnings retained in the successful epoch were 30 lint warnings, a Vite config-loader warning, Playwright `NO_COLOR`/`FORCE_COLOR`, and secret-boundary `DEP0190`. Two test-written snapshots were verified as empty diffs with their HEAD blob IDs before exact-path normalization; the user-owned E2E file remained untouched.
+
+Independent review found the readiness false-positive issue, which was fixed and re-reviewed at this source SHA: readiness now probes the exact application URL separately and rejects invalid, migration-owner or privileged application credentials. The remaining Important finding is the invitation contract. Current behavior binds a verified email to a pending invitation until accepted or revoked, while the [approved specification](../superpowers/specs/2026-09-06-neon-migration-design.md#authentication-and-authorization) requires invitation-specific token, expiry, intended-recipient and accepted-membership validation, and the [Task 7 plan](../superpowers/plans/2026-09-06-neon-migration.md#task-7-membership-invitations-and-merchant-claims) requires expired/replayed invitation SQL cases. The acceptance expiry case covers an expired local fixture sign-in link, not business-invitation expiry. No requirement amendment or arbitrary TTL is inferred.
+
+Tasks 11–15 are approved and the pinned Neon SDK/auth-js exception is complete. The Task 16 technical gate is passed, but overall Task 16 review/spec acceptance remains **blocked** pending the invitation-policy decision. Hosted project/branch/origin remain **not chosen** and every hosted database/Auth/mail/Google/provider, migration, deployment and cutover action remains **not run**.
+
+## Historical pre-Neon acceptance table — not current Task 16 proof
+
+The following table predates the Neon migration checkpoint. It is retained as historical evidence and must not be used as current Neon proof.
 
 | Probe category / case | Status | Commit SHA | Deployment ID | Runtime/origin configuration | Result | Reference |
 |---|---|---|---|---|---|---|
