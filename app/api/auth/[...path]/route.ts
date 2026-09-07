@@ -11,7 +11,7 @@ function freshRequest(request: Request) {
   const headers = new Headers(request.headers);
   headers.set("cookie", (headers.get("cookie") ?? "").split(";")
     .filter(part => part.trim().split("=")[0] !== "__Secure-neon-auth.local.session_data").join(";"));
-  return new Request(request, { headers });
+  return new Request(request.url, { method: "GET", headers });
 }
 function callback(value: unknown, origin: string): URL | null {
   if (typeof value !== "string" || !safeReturnPath(value, "")) return null;
