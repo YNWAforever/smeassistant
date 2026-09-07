@@ -48,14 +48,16 @@ Readiness is **read-only**. It checks configuration, migration journal/checksums
 
 ## Immutable reviewed migrations
 
-SHA256 from current file bytes, not a copied historical Supabase checksum. Verify bytes again in the exact candidate checkout; any mismatch is STOP, not a reason to rewrite the journal. Migration loader reads UTF-8 and journals the SHA256 of each SQL string.
+SHA256 of the committed LF migration blobs in the reviewed source candidate, not a copied historical Supabase checksum. Verify bytes again in the exact candidate checkout; any mismatch is STOP, not a reason to rewrite the journal. Migration loader reads UTF-8 and journals the SHA256 of each SQL string.
 
 | Order / file | SHA256 |
 |---|---|
 | `neon/migrations/0001_identity.sql` | `f2e65e08e94c6514735db9a7eb6b0dcc5ec522732e2fb3e573b02b62aedb60fa` |
 | `neon/migrations/0002_business.sql` | `34c46b53bc08e12d7c76d365c177877890ebadec27fbf4d7836e253d901021a1` |
-| `neon/migrations/0003_workflows.sql` | `bfd553d6b500e953af6c663c8af9130a4e659fa0781d0582ffb0b91a278e599a` |
+| `neon/migrations/0003_workflows.sql` | `b8f80980ab7758ae068bcab9dfea4ae0fcc6cc78b2ed49b6410c92b103a12ab1` |
 | `neon/migrations/0004_atomic_operations.sql` | `b24f2cbba79881d1f97118e05a5d7990a847fdaed6ecd5461682f404af076069` |
+
+CI correction (2026-09-07): the previous `0003_workflows.sql` hash in this table came from a local mixed-CRLF checkout. The committed file is LF-only under `.gitattributes`; the table now records the SHA256 of its existing committed contents. No migration or journal bytes were changed. Catalog verification normalizes function-definition CRLF for comparison only; migration checksums remain byte-sensitive. Use a fresh LF checkout and stop if the bytes do not match this table.
 
 The authorized DB operator must provision a separate restricted non-owner group `sme_app_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS` before migrations. Provision an independent application LOGIN role with usable inherited membership in that group, no owner/admin-role membership, no elevated flags, and a securely delivered password. Store its pooled connection directly in the authorized runtime secret store, without terminal echo or a credential-bearing command argument. Migration-owner credentials belong only to the operator process. Current migrations apply grants/policies; readiness checks them but never repairs them.
 

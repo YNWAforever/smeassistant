@@ -22,6 +22,14 @@ function translateLegacyWorkflow(def: string) {
 }
 
 type Row = Record<string, unknown>;
+// PostgreSQL preserves body line endings from migration input. Compare only that
+// checkout representation canonically; metadata, other text and journal bytes stay strict.
+function normalizeFunctionLineEndings(rows: Row[]): Row[] {
+  return rows.map(row => ({
+    ...row,
+    definition: typeof row.definition === "string" ? row.definition.replaceAll("\r\n", "\n") : row.definition,
+  }));
+}
 export async function verifyCatalog(pool: Pool) {
   const legacy = JSON.parse(await readFile(new URL("../../test/integration/fixtures/legacy-final-catalog.json", import.meta.url), "utf8")) as Record<string, Row[]>;
   const actual: Record<string, Row[]> = {};
@@ -35,8 +43,8 @@ export async function verifyCatalog(pool: Pool) {
   assert.deepEqual(business(actual.constraints), legacy.constraints.map(row => ({...row, definition:String(row.definition).replaceAll("auth.users", "app_users")})), "constraints and deletion semantics");
   assert.deepEqual(business(actual.indexes), legacy.indexes, "all final indexes and predicates");
   assert.deepEqual(actual.triggers, legacy.triggers.filter(row => !deferredTriggers.includes(String(row.name))), "ordinary invariant triggers");
-  const expectedFunctions = legacy.functions.filter(row => retainedFunctions.includes(String(row.name))).map(row => row.name === "delete_orphaned_workspace" ? {...row,config:['search_path=""'],definition:String(row.definition).replace(" LANGUAGE plpgsql\nAS", " LANGUAGE plpgsql\n SET search_path TO ''\nAS")} : row.name === "touch_actions_updated_at" ? row : {...row, security_definer:false, definition:translateLegacyWorkflow(String(row.definition))});
-  assert.deepEqual(actual.functions, expectedFunctions, "retained function definitions with constrained search_path");
+  const expectedFunctions = normalizeFunctionLineEndings(legacy.functions).filter(row => retainedFunctions.includes(String(row.name))).map(row => row.name === "delete_orphaned_workspace" ? {...row,config:['search_path=""'],definition:String(row.definition).replace(" LANGUAGE plpgsql\nAS", " LANGUAGE plpgsql\n SET search_path TO ''\nAS")} : row.name === "touch_actions_updated_at" ? row : {...row, security_definer:false, definition:translateLegacyWorkflow(String(row.definition))});
+  assert.deepEqual(normalizeFunctionLineEndings(actual.functions), expectedFunctions, "retained function definitions with constrained search_path");
   assert.deepEqual(actual.enums, legacy.enums, "enum catalog");
   const policy = (await pool.query("SELECT tablename,roles::text[] AS roles,cmd,qual,with_check FROM pg_policies WHERE schemaname='public' ORDER BY tablename")).rows;
   assert.equal(policy.length, legacy.tables.length + 2);
