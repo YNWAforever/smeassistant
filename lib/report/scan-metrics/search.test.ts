@@ -122,6 +122,18 @@ describe('identity, legacy data, and bounded presentation', () => {
     expect(JSON.stringify(output)).not.toContain('serpapi.com');
   });
 
+  it('rejects impossible observation calendar days while preserving valid leap days', () => {
+    const output = derive([
+      run('impossible-day', { requested_at: '2026-02-30T00:00:00Z' }),
+      run('leap-day', { requested_at: '2024-02-29T00:00:00Z' }),
+    ]);
+
+    expect(output.groups[0].observations.map((row) => row.observedAt)).toEqual([
+      null,
+      '2024-02-29T00:00:00.000Z',
+    ]);
+  });
+
   it('uses legacy only without merchant runs and requires explicit availability', () => {
     const legacy = { query: 'Legacy', engine: 'google', brand_organic_rank: 2, ai_overview_mentioned: true };
     expect(deriveSearchMetrics({ serpapi_runs: [legacy] }).groups[0].denominator).toBe(0);
