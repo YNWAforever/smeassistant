@@ -6,7 +6,7 @@ import type { ReportProps } from "@/lib/funnel/report-props";
 import type { ReportDashboard } from "@/lib/funnel/report-dashboard";
 import { DashboardSummary } from "./dashboard-summary";
 import { DashboardMetrics } from "./dashboard-metrics";
-vi.mock("next/navigation", () => ({ usePathname: () => "/en/r/fixture" }));
+vi.mock("next/navigation", () => ({ usePathname: () => "/en/r/fixture", useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
 const report: ReportProps = {
   locale: "en", access: "viewer", sample: false, slug: "fixture", market: "hk", businessName: "Fixture Cafe",
   district: null, industry: null, status: "done", subtitle: null, scannedAt: "2026-09-07T01:00:00Z", score: 0, coverage: 50,
@@ -102,4 +102,64 @@ describe("comparison and confidence qualifications", () => {
     expect(root.querySelector('[data-metric="sample"]')?.textContent).toContain("0%");
     expect(root.textContent).toContain("Sample size: 10");
   });
+});
+// The complete page must enforce the same projection boundary as its children.
+import { ReportPage } from "@/components/report-view";
+import { DashboardPriorities } from "./dashboard-priorities";
+const priority = (rank: number): ReportProps["priorities"][number] => ({ key: `priority-${rank}`, rank, label: `Action ${rank}`, module: "ig", moduleLabel: "Instagram", severity: "high", severityLabel: "High", tone: "high", scoreImpact: null, overallImpact: null, summary: "Supporting sentence", action: "Private action", evidence: { source: "Private source", excerpt: "Private excerpt", observedAt: null }, effort: null });
+const detailed: ReportProps = { ...report, priorities: [priority(2), priority(1), priority(3), priority(4)], findingGroups: [{ module: "ig", label: "Instagram details", findings: [{ id: "finding", key: "priority-2", module: "ig", label: "Private finding", severity: "high", severityLabel: "High", tone: "high", scoreImpact: null, overallImpact: null, message: "Private message", action: "Private action", evidence: [["source", "Private excerpt"]], fixPackDraft: "Private draft" }] }], evidence: [{ id: "image", provider: "instagram", evidenceType: "post", sourceUrl: "https://example.com/source", mediaUrl: "/private-photo", capturedAt: "2026-09-07", publishedAt: null, text: "Fixture photo", status: "stored", limitationCode: null }] };
+describe("dashboard priorities", () => {
+  it("preserves supplied non-sequential ranks instead of using display indexes", () => {
+    const root = markup(<DashboardPriorities report={{ ...report, priorities: [priority(7), priority(12)] }} />);
+    const cards = root.querySelectorAll('[data-dashboard-priorities] article');
+    expect(Array.from(cards).map(card => card.querySelector("div span")?.textContent)).toEqual(["07", "12"]);
+    expect(Array.from(cards).map(card => card.querySelector("h3")?.textContent)).toEqual(["Action 7", "Action 12"]);
+  });
+
+  it("keeps the priority label while omitting absent action and summary paragraphs", () => {
+    const item = { ...priority(7), action: null, summary: null };
+    const root = markup(<DashboardPriorities report={{ ...report, priorities: [item] }} />);
+    const article = root.querySelector('[data-dashboard-priorities] article')!;
+    expect(article.querySelector("h3")?.textContent).toBe("Action 7");
+    expect(article.querySelector("p")).toBeNull();
+  });
+});
+describe("dashboard page integration", () => {
+  it.each([0, 2, 3, 4])("shows at most three supported priorities from %s without reordering", count => {
+    const root = markup(<ReportPage {...detailed} priorities={detailed.priorities.slice(0, count)} />);
+    const cards = root.querySelectorAll('[data-dashboard-priorities] article');
+    expect(cards).toHaveLength(Math.min(count, 3));
+    expect(Array.from(cards).map(card => card.querySelector("h3")?.textContent)).toEqual(detailed.priorities.slice(0, Math.min(count, 3)).map(item => item.label));
+  });
+  it("puts metrics before priorities and gallery before collapsed full evidence with visible anchor targets", () => {
+    const root = markup(<ReportPage {...detailed} />);
+    expect(root.querySelectorAll("h1")).toHaveLength(1);
+    const priorities = root.querySelector('[data-dashboard-priorities]')!;
+    expect(root.querySelector('meter')!.compareDocumentPosition(priorities) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const anchor = root.querySelector('#report-detail-ig')!;
+    expect(anchor).not.toBeNull();
+    expect(anchor.closest('details')).toBeNull();
+    expect(anchor.nextElementSibling?.tagName).toBe('DETAILS');
+    expect(anchor.nextElementSibling?.hasAttribute('open')).toBe(false);
+    expect(root.querySelector('img')!.compareDocumentPosition(anchor) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(priorities.querySelector('a')?.getAttribute('href')).toBe('#report-detail-ig');
+    expect(root.textContent).toContain('Private draft');
+  });
+  it("omits all privileged content from public and locked pages but retains coverage and unlock links", () => {
+    for (const access of ['public', 'viewer'] as const) {
+      const root = markup(<ReportPage {...detailed} access={access} summary="Private summary" locked={{ hiddenFindingCount: 2, unlockHref: '/unlock' }} />);
+      expect(root.innerHTML).not.toMatch(/Private (action|source|excerpt|finding|message|draft|summary)|private-photo/);
+      expect(root.textContent).toContain('Small sample');
+      expect(root.querySelector('[data-dashboard-priorities] a')?.getAttribute('href')).toBe('/unlock');
+      expect(root.querySelector('[id^="report-detail-"]')).toBeNull();
+    }
+    const publicRoot = markup(<ReportPage {...detailed} access="public" />);
+    expect(publicRoot.innerHTML).not.toMatch(/Private (action|source|excerpt|finding|message|draft)|private-photo/);
+  });
+});
+it("keeps the complete priority context in authorized disclosures even without finding groups", () => {
+  const root = markup(<ReportPage {...report} priorities={[{ ...priority(1), overallImpact: 'Recorded impact', evidence: { source: 'Original source', excerpt: 'Complete excerpt', observedAt: '2026-09-06' } }]} />);
+  const disclosures = Array.from(root.querySelectorAll('details')).map(item => item.textContent).join(' ');
+  for (const text of ['Supporting sentence', 'Private action', 'Original source', 'Complete excerpt', '2026-09-06', 'Recorded impact']) expect(disclosures).toContain(text);
+  expect(root.querySelector('[data-dashboard-priorities] a')).toBeNull();
 });

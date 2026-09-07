@@ -22,3 +22,15 @@
 .disclosure { color: #51667c; font-size: 12px; line-height: 1.65; }.disclosure summary { width: fit-content; cursor: pointer; padding-block: 7px; color: #175cd3; font-weight: 650; }.disclosure p { white-space: pre-wrap; }.summary a:focus-visible, .disclosure summary:focus-visible { outline: 3px solid #175cd3; outline-offset: 4px; border-radius: 2px; }
 @media (max-width: 1000px) { .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .metrics, .benchmarks, .health, .coverage { grid-template-columns: minmax(0, 1fr); }.titleRow { flex-direction: column; gap: 10px; }.health { gap: 24px; }.coverage { gap: 12px; }.coverage > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }.coverage dd { text-align: right; }.dial { justify-self: center; }.metric { padding: 20px; }.panel { padding: 20px; }.value strong { font-size: 34px; }.bar { gap: 8px; }.summary { border-radius: 14px; }.scanDate { flex-shrink: 1; }.sectionHeading { flex-wrap: wrap; } }
+.priorities { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.priorities article { min-width: 0; padding: 22px; border: 1px solid #dbe4ee; border-radius: 16px; background: #fff; overflow-wrap: anywhere; }
+.priorities h3 { margin: 16px 0 8px; font-size: 1.1rem; }
+.priorities p { color: #51667c; line-height: 1.65; }
+.priorities a { display: inline-block; margin-top: 16px; font-weight: 600; }
+.priorityMeta { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.rank { color: #175cd3; font-size: 1.8rem; font-weight: 700; }
+.detailDisclosure { margin: 16px 0; padding: 20px; border: 1px solid #dbe4ee; border-radius: 16px; background: #fff; overflow-wrap: anywhere; }
+.detailDisclosure > summary { cursor: pointer; font-weight: 600; }
+.detailDisclosure > summary:focus-visible { outline: 2px solid #175cd3; outline-offset: 5px; }
+.detailAnchor { scroll-margin-top: 100px; margin-top: 24px; }
+@media (max-width: 700px) { .priorities { grid-template-columns: minmax(0, 1fr); } }
