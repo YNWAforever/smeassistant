@@ -9,6 +9,8 @@ Analytics storage and HTTP credentials belong to the app. Hosts that end work wh
 Intermediate release restrictions:
 
 - `runScan` invokes fenced Neon workspace completion after execution. Workspace effect failures remain retryable in the completion ledger independently of engine status. See `NEON-RUNNER-COMPATIBILITY.md` for the external receiver gate.
-- `seed:demo` fails before imports or writes with `demo_seed_neon_migration_pending`. Task15 owns the Neon demo fixture rewrite.
+- `corepack pnpm seed:demo --owned-test` creates, seeds, verifies and destroys its own owned local PostgreSQL fixture. Ambient database URLs are ignored; arbitrary targets are refused. No managed Auth or persistent production seed is supported.
 - External Cloudflare workers are outside this checkout. Their consumers must adopt this explicit store/analytics/evidence contract before rollout. The legacy `createServiceClient` export is removed. No external worker or provider was modified.
-- Historical migrations are unchanged. Package dependency/lockfile cleanup and retained scheduler/worker deployment checks remain owned by later migration tasks.
+- Migrations 0001–0004 remain immutable. Task 16 local gates and independent review are approved, including the pinned Neon SDK/auth-js exception. Hosted retained scheduler/worker verification remains NOT RUN. See `NEON-CUTOVER.md` for Task 17 preparation and data-preserving recovery gates.
+
+Raw scan thirty-minute/max-three-attempt claims do not provide a per-attempt fence for every engine write. The process route has a separate 300-second duration limit. Workspace completion effects have their own transactional token/lease fencing; do not infer that guarantee for all engine persistence.

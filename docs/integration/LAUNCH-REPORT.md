@@ -1,6 +1,6 @@
-# Launch evidence — Task 16 local technical gates passed; approved invitation amendment awaiting final review closure
+# Launch evidence — Task 16 independently approved; Task 17 local preparation
 
-**Current checkpoint (2026-09-07): Task 16 technical gates passed locally; the invitation policy amendment is approved and awaits independent final review closure.** Pending workspace invitations remain valid until accepted or explicitly revoked. Managed sign-in links retain expiry and replay protection. Hosted Neon project, branch and origin are not chosen; hosted database/Auth/mail/Google/provider acceptance, migration, deployment and cutover were not run. Task 17 has not started. This report is not yet Task 16 final closure and is neither merge, deployment nor release approval.
+**Current checkpoint (2026-09-07): Task 16 technical gates and independent implementation/specification review are approved, including the invitation policy amendment.** Pending workspace invitations remain valid until accepted or explicitly revoked. Managed sign-in links retain expiry and replay protection. Hosted Neon project, branch and origin are not chosen; hosted database/Auth/mail/Google/provider acceptance, migration, deployment and cutover were not run. Task 17 runbook and local recovery rehearsal are prepared, awaiting independent review. This is neither merge, deployment nor release approval.
 
 Use only these status values: `passed`, `failed`, `blocked`, `not run`. A pass applies only to the named category on the recorded commit/deployment. Record failed and blocked attempts as separate rows before adding a successful rerun. No credentials, cookies, private payloads or test contact details belong here.
 
@@ -29,7 +29,23 @@ The isolated fixture proves local PostgreSQL, managed-Auth-shaped handoff, mail 
 
 Independent review found the readiness false-positive issue, which was fixed and re-reviewed at this source SHA: readiness now probes the exact application URL separately and rejects invalid, migration-owner or privileged application credentials. The remaining Important finding was a requirement gap for invitation lifetime. **Approved amendment — 2026-09-07:** the [specification](../superpowers/specs/2026-09-06-neon-migration-design.md#authentication-and-authorization) and [Task 7 plan](../superpowers/plans/2026-09-06-neon-migration.md#task-7-membership-invitations-and-merchant-claims) now state that a pending workspace invitation remains valid until accepted or explicitly revoked. Acceptance still requires verified intended-recipient identity, a pending unrevoked membership and transactional acceptance. Managed sign-in links retain provider-enforced expiry and replay rejection; an expired or replayed link is a no-op, and a later fresh link may accept the still-pending invitation. The local acceptance expiry case proves sign-in-link expiry only. No invitation-specific SQL expiry was tested or is claimed, and no arbitrary TTL was added.
 
-Tasks 11–15 are approved and the pinned Neon SDK/auth-js exception is complete. The Task 16 technical gate is passed and the invitation-policy decision is now recorded; overall Task 16 awaits **independent final review closure** of this documentation-only amendment. Hosted project/branch/origin remain **not chosen** and every hosted database/Auth/mail/Google/provider, migration, deployment and cutover action remains **not run**.
+Tasks 11–15 are approved and the pinned Neon SDK/auth-js exception is complete. The Task 16 technical gate is passed and **independent final review is approved**, including the readiness fix and explicit invitation-policy amendment; no outstanding Critical/Important findings remain. Hosted project/branch/origin remain **not chosen** and every hosted database/Auth/mail/Google/provider, migration, deployment and cutover action remains **not run**.
+
+## Task 17 local preparation — 2026-09-07
+
+Prepared [Neon cutover and recovery runbook](NEON-CUTOVER.md), configuration source/scope map, immutable migration byte checksums, named-but-unassigned operational roles, bounded proposed acceptance and recovery decisions. Hosted project/region/branch/database/origins/accounts remain NOT CHOSEN. All external operations remain NOT READY / NOT RUN. Task 17 independent review is pending.
+
+| Check | Status | Evidence / boundary |
+|---|---|---|
+| Owned recovery SQL initial rehearsal | passed | New `neon-recovery.integration.test.ts`: 1 file / 1 test, exit 0, 14.43s; Node 24.18.0, pnpm 9.12.0, Vitest 4.1.11, Docker Linux 29.7.2 |
+| Intentional data-loss negative control | failed | Expected: deleting only the owned report before drain/restart caused repository equality to fail (null vs saved report), 1 failed, exit 1, 13.40s; temporary deletion removed |
+| Final restored recovery SQL rehearsal | passed | 1 file / 1 test, exit 0, 13.71s; original preserving sequence restored |
+| Task 17 focused checks | passed | Typecheck app + four packages; scoped recovery-test ESLint; inventory checker; 11 inventory regression tests (1.66s); diff whitespace check, all exit 0 |
+| Recovery behavior | passed | Restricted runtime creates new app user, accepted membership and related report; original pool drains/closes; exact owned network-none DB container stops/restarts; same DB reconnect preserves exact repository report data and user relation; subsequent repository write/read passes |
+| Hosted rollback / prior deployed build / traffic maintenance | not run | Local restart/reconnect of current repository only; no hosted Neon restore, traffic change, provider/Auth/mail or old-build execution |
+| Hosted release readiness | blocked | Target, origin, identities, operators, budget and compatible recovery deployment not chosen; no provisioning/migration/deployment/promotion |
+
+Task 17 parent source is `0da3b65af99c4c7381907b3b5ad97001a5599d6b`. Changes are docs/env comments and the new recovery test; runtime source remains `853bdee87031cd1d1b2282969ab1b238c498d147`. The earlier all-ten-gate counts above were not rerun for this slice and must not be attributed to the new candidate commit. The protected owner-shell delta remains unstaged and retains its recorded SHA256; no commit-only or remote-CI claim is made. Actual deployment candidate SHA/ID must be recorded after review and applicable authorization. Operational evidence belongs in a later separate record/commit.
 
 ## Historical pre-Neon acceptance table — not current Task 16 proof
 

@@ -1,3 +1,32 @@
+# Neon deployment and acceptance procedure
+
+**Task 16 local gates and independent review: approved. Task 17: prepared locally, awaiting independent review. Hosted actions: NOT READY / NOT RUN.** Target project, region, branch, database, stable origin, accounts and operators remain NOT CHOSEN. The authoritative active procedure is [NEON-CUTOVER.md](NEON-CUTOVER.md); record outcomes in [LAUNCH-REPORT.md](LAUNCH-REPORT.md).
+
+1. Complete the release worksheet and source/configuration map in NEON-CUTOVER. Runtime source is `853bdee87031cd1d1b2282969ab1b238c498d147`; full-gate evidence includes the protected unstaged owner-shell delta, not the commit alone. Record the eventual exact candidate SHA and review any runtime difference. Preparation commits do not prove remote CI.
+2. After explicit isolated-target provisioning authorization, select an empty Neon/Auth target and verify regional capabilities and identities. Use the separate migration role/direct URL for approved schema work; pooled runtime credentials must be a restricted member of `sme_app_runtime`. Verify immutable 0001–0004 checksums and use the reviewed `applyMigrations` API described in the cutover runbook. Never run historical Supabase migrations/RPC setup as an active Neon procedure.
+3. Run `corepack pnpm neon:readiness` with both scoped URLs injected into the authorized operator process. It independently probes direct schema/journal and exact app-role credentials in read-only transactions; it does not provision, grant, seed or contact Auth. The direct migration URL must not be deployed with web runtime credentials.
+4. After deployment authorization, deploy the exact reviewed candidate on one approved stable staging origin. Planned runtime is Node 24 (locally tested 24.18.0), pnpm 9.12.0, frozen-lockfile install and `corepack pnpm build`. `.nvmrc` 22 remains a historical local default, not verified Node 22 compatibility. Record the actual deployed runtime and run readiness before hosted Auth acceptance.
+5. Confirm managed Auth origins/mail/Google sign-in registration separately from business Google OAuth/claim callbacks and report mail. Execute only the approved bounded public/Auth/HK/TW/provider/payment matrix in NEON-CUTOVER. A redirect or local fixture pass is not registration/delivery/provider evidence.
+6. Select Vercel execution. Verify [runner and completion parity](NEON-RUNNER-COMPATIBILITY.md), same job database and one existing scheduler owner. Current code blocks external scheduled/cloudflare dispatch. An unchanged Supabase worker blocks promotion for that mode. Do not create a new cron or move the legacy domain.
+7. Prepare production schema/readiness, final callbacks, payment mode/webhook routing, explicit old-subscription reconciliation and data-preserving recovery. Obtain exact promotion authorization before switching serving traffic or enabling integrations. Repeat readiness and approved probes on the serving deployment; preserve failed attempts and stop at the approved bounds.
+
+`vercel.json` keeps automatic Git deployment disabled for the migration and completion branches. No push/merge/deploy permission is implied by this guide. Old Supabase resources, legacy staff access and domain stay untouched.
+
+## Local verification and limits
+
+The Task 16 all-ten-gate epoch is recorded in LAUNCH-REPORT with exact source and warning counts. Task 17 adds one actual-SQL recovery rehearsal: a new application user and report survive a drained pool, restart of the same owned network-none Postgres container and compatible repository reconnect. It also verifies a continued report write. This is not hosted rollback, managed Auth recovery or an old build test.
+
+Commands remain `corepack pnpm typecheck`, `corepack pnpm lint`, `corepack pnpm test`, `corepack pnpm db:verify`, `corepack pnpm test:integration`, `corepack pnpm build`, `corepack pnpm e2e`, `corepack pnpm e2e:acceptance`, `corepack pnpm test:secret-boundary`, `corepack pnpm test:no-supabase`. Do heavy gates sequentially and record the exact worktree scope. `db:verify` always owns a disposable local database; it is not a hosted migration command. `corepack pnpm db:types` generates schema types; `corepack pnpm seed:demo --owned-test` creates/seeds/verifies/destroys its own local fixture and ignores ambient DB URLs. Never seed managed Auth or production demo data.
+
+The approved dependency exception remains only pinned `@neondatabase/auth@0.5.0-beta` and its runtime-reachable transitive `@supabase/auth-js@2.79.0` library relationship. No Supabase service, direct application SDK client, credential or endpoint is allowed; the inventory and exit scanner enforce that boundary.
+
+## Historical pre-Neon runbook archive — not active instructions
+
+The collapsed original document below is retained for provenance only. Its targets, Node 22 guidance, shared Supabase schema/RPC procedures, old pending task states and proposed domain moves are superseded by the active Neon procedure above. Do not execute archived steps or treat archived identifiers as selected destinations.
+
+<details>
+<summary>Archived preparation through Task 16, before Task 17</summary>
+
 # Deployment and acceptance runbook
 
 Prepared for review; this document does not execute or authorize remote operations. Public checks prove only their named response boundaries. Launch acceptance is **not run** until evidence is recorded for the exact staging and final deployments in [LAUNCH-REPORT.md](LAUNCH-REPORT.md).
@@ -223,3 +252,5 @@ Prepare the retained legacy patch as a separate reviewable change: after inline 
 The local code does not alter the pinned legacy checkout or deployed scheduler. The caller patch is prepared/source-reviewed and local SQL race tests pass. Task 4 cross-runtime exit remains incomplete until full retained caller/receiver parity and isolated-staging validation pass. Missing completions remain visible in `workspace_scan_completions`; a completed engine job is insufficient. A disabled feature continues the original best-effort hook with the reviewed retry repairs, without promising process-exit recovery.
 
 The concrete retained-runner change is prepared in [legacy-workspace-completion.patch](legacy-workspace-completion.patch), pinned to upstream `b9b4151fb89217a926e38f187873b5ff9f10f90f`. `git apply --check` passes and its extracted transport fixtures pass 20 cases. It is not applied to the pinned checkout or a deployed service. Independent source review is complete; execute full caller/receiver integration locally before requesting its operational rollout.
+
+</details>

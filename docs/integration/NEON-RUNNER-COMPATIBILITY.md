@@ -23,3 +23,9 @@ Both runtime resolver and direct dispatch refuse external execution. SCAN_WORKER
 Claim uses the original database ledger contract. Each effects transaction locks workspace then current ledger, validates live token, sets app.completion_job/token locally, composes snapshot/action/measurement/notification/audit repositories on that same client, and commits effects with successful finish. Any partial failure rolls back; bounded retry acknowledgement uses the original token, which cannot finalize a newer lease. Recovery retains saved website checks; absent checks stay unavailable instead of making a network call. No provider, mail, payment or collector runs inside this transaction.
 
 Historical migrations 0001-0004 remain immutable. Existing 0004 fencing is sufficient under actual two-client tests; no appended migration was necessary.
+
+## Task 17 release and recovery gate
+
+Local Task 16 implementation/specification review is independently approved. Hosted target and scheduler/operator inputs are still NOT CHOSEN; hosted parity is NOT RUN. Task 17 prepares the exact [cutover and recovery procedure](NEON-CUTOVER.md), with Vercel selected and one existing scheduler owner to be confirmed before promotion. No external worker change or scheduler registration was executed.
+
+The raw scan claim is a thirty-minute/max-three-attempt retry lease, not a per-attempt write fence. The 300-second process route limit is separate; a long-lived retained receiver requires separately reviewed runtime behavior. Only workspace completion effects carry the described transaction-local token fencing. After a write, recover on the same Neon database with a verified compatible build or forward fix, or hold maintenance. An old Supabase build cannot serve new Neon records. Local owned-database restart/reconnect proof does not establish hosted caller parity or deployment rollback.
