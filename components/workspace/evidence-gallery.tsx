@@ -24,7 +24,7 @@ export function EvidenceGallery({ locale, items }: { locale: PrototypeLocale; it
           <article key={item.id}>
             <div>
               {item.mediaUrl ? (
-                // Short-lived signed Supabase URLs: not routable through next/image without remotePatterns, same as the report.
+                // Short-lived private evidence URLs: not routable through next/image without remotePatterns, same as the report.
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={item.mediaUrl} alt={item.text ?? `${item.provider} ${item.evidenceType}`} loading="lazy" decoding="async" />
               ) : (

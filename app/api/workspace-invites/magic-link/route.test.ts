@@ -4,10 +4,10 @@ const signInWithOtp = vi.fn(async () => ({ error: null }));
 const from = vi.fn();
 const rateLimit = vi.fn();
 
-vi.mock("@/lib/supabase/server", () => ({
-  createSupabaseServerClient: async () => ({ auth: { signInWithOtp } }),
+vi.mock("@/lib/identity/neon", () => ({
+  getNeonAuth: () => ({ signIn: { magicLink: signInWithOtp } }),
 }));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({ from }) }));
+vi.mock("@/lib/repositories/membership", () => ({ membershipRepository: { hasPendingInvitation: (email:string) => from(email) } }));
 vi.mock("@/lib/security/rate-limit", () => ({
   enforceCompositeIdentifierRateLimit: () => rateLimit(),
   rateLimitUnavailableResponse: () => new Response(JSON.stringify({ error: "unavailable" }), { status: 503 }),
@@ -22,15 +22,7 @@ function post(body: unknown) {
   );
 }
 
-function pendingRow(exists: boolean) {
-  return {
-    select: () => ({
-      eq: () => ({
-        is: () => ({ limit: async () => ({ data: exists ? [{ id: "member-1" }] : [], error: null }) }),
-      }),
-    }),
-  };
-}
+function pendingRow(exists: boolean) { return Promise.resolve(exists); }
 
 beforeEach(() => {
   process.env.NEXT_PUBLIC_SITE_URL = "https://app.example.com";
@@ -53,9 +45,7 @@ describe("POST /api/workspace-invites/magic-link", () => {
     expect(signInWithOtp).toHaveBeenCalledWith(
       expect.objectContaining({
         email: "invited@example.com",
-        options: expect.objectContaining({
-          emailRedirectTo: "https://app.example.com/auth/callback?locale=zh-HK",
-        }),
+        callbackURL: "https://app.example.com/auth/callback?locale=zh-HK",
       }),
     );
   });
@@ -68,17 +58,15 @@ describe("POST /api/workspace-invites/magic-link", () => {
     await post({ email: "invited@example.com", locale: "zh-TW", returnTo: "/zh-TW/owner/select-workspace" });
     expect(signInWithOtp).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        options: expect.objectContaining({
-          emailRedirectTo:
+        callbackURL:
             "https://app.example.com/auth/callback?locale=zh-TW&returnTo=%2Fzh-TW%2Fowner%2Fselect-workspace",
-        }),
       }),
     );
 
     await post({ email: "invited@example.com", locale: "xx", returnTo: "//evil.example" });
     expect(signInWithOtp).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        options: expect.objectContaining({ emailRedirectTo: "https://app.example.com/auth/callback?locale=zh-HK" }),
+        callbackURL: "https://app.example.com/auth/callback?locale=zh-HK",
       }),
     );
   });
@@ -90,7 +78,7 @@ describe("POST /api/workspace-invites/magic-link", () => {
     await post({ email: "invited@example.com" });
     expect(signInWithOtp).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        options: expect.objectContaining({ emailRedirectTo: "https://app.test/auth/callback?locale=zh-HK" }),
+        callbackURL: "https://app.test/auth/callback?locale=zh-HK",
       }),
     );
   });

@@ -67,7 +67,6 @@ describe("viewer grant tokens", () => {
     const key = createIdempotencyKey();
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("REPORT_ACCESS_TOKEN_SECRET", "");
-    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "repository-visible-service-role-placeholder");
 
     expect(() => createViewerTokenFromIdempotencyKey(key)).toThrow(
       "REPORT_ACCESS_TOKEN_SECRET must be at least 32 bytes in production",

@@ -1,15 +1,42 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { LOCATION_ID, WORKSPACE_ID, authorizeLike, makeDb, type Query } from "@/app/api/actions/_shared/test-db";
+import {
+  LOCATION_ID,
+  WORKSPACE_ID,
+  authorizeLike,
+  makeDb,
+  type Query,
+} from "@/app/api/actions/_shared/test-db";
 import { objectiveDedupeKey } from "@/app/api/actions/_shared/mutation";
 
 const mocks = vi.hoisted(() => ({
   authorizeWorkspaceRequest: vi.fn(),
   runAgentForAction: vi.fn(),
-  db: null as ReturnType<typeof import("@/app/api/actions/_shared/test-db").makeDb> | null,
+  db: null as ReturnType<
+    typeof import("@/app/api/actions/_shared/test-db").makeDb
+  > | null,
 }));
 
-vi.mock("@/lib/auth", () => ({ authorizeWorkspaceRequest: (...args: unknown[]) => mocks.authorizeWorkspaceRequest(...args) }));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => mocks.db }));
+vi.mock("@/lib/auth", async (original) => ({
+  ...(await original<typeof import("@/lib/auth")>()),
+  authorizeWorkspaceRequest: (...args: unknown[]) =>
+    mocks.authorizeWorkspaceRequest(...args),
+}));
+vi.mock("@/lib/repositories/artifacts", async (original) => ({
+  ...(await original<typeof import("@/lib/repositories/artifacts")>()),
+  artifactRepository: () => mocks.db,
+}));
+vi.mock("@/lib/repositories/action-mutations", () => ({
+  actionMutationRepository: () => mocks.db,
+}));
+vi.mock("@/lib/repositories/workspace-read", () => ({
+  workspaceReadRepository: () => mocks.db,
+}));
+vi.mock("@/lib/repositories/notifications", () => ({
+  notificationRepository: () => mocks.db,
+}));
+vi.mock("@/lib/repositories/claims", () => ({
+  recordClaimAuditEvent: (row: Record<string, unknown>) => mocks.db?.audit(row),
+}));
 vi.mock("@/lib/security/rate-limit", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/security/rate-limit")>()),
   enforceRateLimit: async () => ({ allowed: true, retryAfterSeconds: 1 }),
@@ -28,8 +55,22 @@ function respond(q: Query): unknown {
   return null;
 }
 
-const post = (body: unknown) => import("./route").then(({ POST }) => POST(new Request("https://app.test/api/actions", { method: "POST", body: JSON.stringify(body) })));
-const base = { workspace_id: WORKSPACE_ID, template_key: "menu-translation", location_id: LOCATION_ID, objective: "Translate the dinner menu", locale: "zh-HK" };
+const post = (body: unknown) =>
+  import("./route").then(({ POST }) =>
+    POST(
+      new Request("https://app.test/api/actions", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    ),
+  );
+const base = {
+  workspace_id: WORKSPACE_ID,
+  template_key: "menu-translation",
+  location_id: LOCATION_ID,
+  objective: "Translate the dinner menu",
+  locale: "zh-HK",
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -43,8 +84,13 @@ describe("POST /api/actions", () => {
     const res = await post({ ...base, inputs: { menu_items: "叉燒飯" } });
     expect(res.status).toBe(201);
     expect(await res.json()).toEqual({ actionId: "act-new" });
-    expect(mocks.authorizeWorkspaceRequest).toHaveBeenCalledWith({ id: WORKSPACE_ID }, { minRole: "manager", locationId: LOCATION_ID });
-    const insert = mocks.db!.calls.find((c) => c.table === "actions" && c.op === "insert")?.payload as Record<string, unknown>;
+    expect(mocks.authorizeWorkspaceRequest).toHaveBeenCalledWith(
+      { id: WORKSPACE_ID },
+      { minRole: "manager", locationId: LOCATION_ID },
+    );
+    const insert = mocks.db!.calls.find(
+      (c) => c.table === "actions" && c.op === "insert",
+    )?.payload as Record<string, unknown>;
     expect(insert).toMatchObject({
       workspace_id: WORKSPACE_ID,
       location_id: LOCATION_ID,
@@ -53,20 +99,59 @@ describe("POST /api/actions", () => {
       action_state: "recommended",
       capability: "Beta",
       provided_inputs: { menu_items: "叉燒飯" },
-      dedupe_key: objectiveDedupeKey(WORKSPACE_ID, LOCATION_ID, "menu-translation", "Translate the dinner menu"),
+      dedupe_key: objectiveDedupeKey(
+        WORKSPACE_ID,
+        LOCATION_ID,
+        "menu-translation",
+        "Translate the dinner menu",
+      ),
     });
-    expect(insert.evidence).toMatchObject({ factType: "Recommended", detail: { en: "Translate the dinner menu" } });
-    expect(insert.dedupe_key).toMatch(new RegExp(`^${WORKSPACE_ID}:${LOCATION_ID}:menu-translation:objective:[0-9a-f]{8}$`));
-    expect((mocks.db!.calls.find((c) => c.table === "audit_events")?.payload as { event: string }).event).toBe("action.updated");
+    expect(insert.evidence).toMatchObject({
+      factType: "Recommended",
+      detail: { en: "Translate the dinner menu" },
+    });
+    expect(insert.dedupe_key).toMatch(
+      new RegExp(
+        `^${WORKSPACE_ID}:${LOCATION_ID}:menu-translation:objective:[0-9a-f]{8}$`,
+      ),
+    );
+    expect(
+      (
+        mocks.db!.calls.find((c) => c.table === "audit_events")?.payload as {
+          event: string;
+        }
+      ).event,
+    ).toBe("action.updated");
   });
 
   it("marks the action needs_input when template inputs are missing and runs it when asked", async () => {
-    mocks.runAgentForAction.mockResolvedValue({ runId: "run-1", state: "succeeded", versionId: "v-1", versionNo: 1 });
+    mocks.runAgentForAction.mockResolvedValue({
+      runId: "run-1",
+      state: "succeeded",
+      versionId: "v-1",
+      versionNo: 1,
+    });
     const res = await post({ ...base, run: true });
     expect(res.status).toBe(201);
-    expect(await res.json()).toMatchObject({ actionId: "act-new", runId: "run-1", versionId: "v-1" });
-    expect((mocks.db!.calls.find((c) => c.table === "actions" && c.op === "insert")?.payload as { action_state: string }).action_state).toBe("needs_input");
-    expect(mocks.runAgentForAction).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ actionId: "act-new", actorId: "user-1", locale: "zh-HK" }));
+    expect(await res.json()).toMatchObject({
+      actionId: "act-new",
+      runId: "run-1",
+      versionId: "v-1",
+    });
+    expect(
+      (
+        mocks.db!.calls.find((c) => c.table === "actions" && c.op === "insert")
+          ?.payload as { action_state: string }
+      ).action_state,
+    ).toBe("needs_input");
+    expect(mocks.runAgentForAction).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        actionId: "act-new",
+        actorId: "user-1",
+        locale: "zh-HK",
+      }),
+    );
   });
 
   it("returns the existing open action on a duplicate objective", async () => {
@@ -79,11 +164,15 @@ describe("POST /api/actions", () => {
   it("403s a viewer and an out-of-scope manager; 400s a bad template or objective", async () => {
     mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("viewer"));
     expect((await post(base)).status).toBe(403);
-    mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("manager", ["elsewhere"]));
+    mocks.authorizeWorkspaceRequest.mockImplementation(
+      authorizeLike("manager", ["elsewhere"]),
+    );
     expect((await post(base)).status).toBe(403);
     expect(mocks.db!.calls.filter((c) => c.op === "insert")).toEqual([]);
     mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("owner"));
-    expect((await post({ ...base, template_key: "not-a-template" })).status).toBe(400);
+    expect(
+      (await post({ ...base, template_key: "not-a-template" })).status,
+    ).toBe(400);
     expect((await post({ ...base, objective: "" })).status).toBe(400);
   });
 });

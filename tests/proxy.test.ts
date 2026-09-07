@@ -12,30 +12,18 @@ import {
   signInRedirectFor,
 } from "@/lib/funnel/locale-redirect";
 
-const supabase = vi.hoisted(() => ({
-  user: null as null | { id: string },
-  error: null as null | { message: string },
-  createServerClient: vi.fn(),
-  setAll: null as null | ((cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) => void),
-}));
-
-vi.mock("@supabase/ssr", () => ({
-  createServerClient: (url: string, key: string, opts: { cookies: { setAll: typeof supabase.setAll } }) => {
-    supabase.createServerClient(url, key);
-    supabase.setAll = opts.cookies.setAll;
-    return {
-      auth: {
-        getUser: async () => {
-          // Simulate a refresh rotating the auth cookie before answering.
-          supabase.setAll?.([{ name: "sb-test-auth-token", value: "rotated", options: { path: "/" } }]);
-          return { data: { user: supabase.user }, error: supabase.error };
-        },
-      },
-    };
-  },
-}));
-
-import { proxy, resetProxyWarnings } from "@/proxy";
+const auth = vi.hoisted(() => ({ allowed: false, fail: false, validate: vi.fn() }));
+vi.mock("@/lib/identity/neon", () => ({ getNeonAuth: () => {
+  if (auth.fail) throw new Error("config invalid");
+  return { middleware: () => async (request: NextRequest) => {
+    auth.validate(request);
+    const { NextResponse } = await import("next/server");
+    const response = auth.allowed ? NextResponse.next() : NextResponse.redirect(new URL("/auth/sign-in", request.url));
+    response.cookies.set("__Secure-neon-auth.session_token", "rotated");
+    return response;
+  } };
+} }));
+import { proxy } from "@/proxy";
 
 describe("resolveLocaleRedirect", () => {
   it("prefixes unlocalised page paths with the default locale", () => {
@@ -131,8 +119,6 @@ describe("owner gate decisions", () => {
 });
 
 describe("proxy()", () => {
-  const env = { url: process.env.NEXT_PUBLIC_SUPABASE_URL, key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY };
-
   function req(path: string, cookies: Record<string, string> = {}) {
     const headers = new Headers();
     const cookie = Object.entries(cookies)
@@ -142,21 +128,8 @@ describe("proxy()", () => {
     return new NextRequest(`https://app.test${path}`, { headers });
   }
 
-  beforeEach(() => {
-    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://project.supabase.test";
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon-key";
-    supabase.user = null;
-    supabase.error = null;
-    supabase.createServerClient.mockClear();
-    resetProxyWarnings();
-  });
-
-  afterEach(() => {
-    if (env.url === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL;
-    else process.env.NEXT_PUBLIC_SUPABASE_URL = env.url;
-    if (env.key === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    else process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = env.key;
-  });
+  beforeEach(() => { auth.allowed = false; auth.fail = false; auth.validate.mockClear(); });
+  afterEach(() => { vi.restoreAllMocks(); });
 
   it("still redirects unlocalised paths and stamps the locale header", async () => {
     const redirected = await proxy(req("/scan?market=tw"));
@@ -167,7 +140,7 @@ describe("proxy()", () => {
     expect(passed.status).toBe(200);
     expect(passed.headers.get("x-middleware-request-x-sme-locale")).toBe("en");
     // Public pages never touch Supabase.
-    expect(supabase.createServerClient).not.toHaveBeenCalled();
+    expect(auth.validate).not.toHaveBeenCalled();
   });
 
   it("redirects legacy merchant paths with 308 and keeps the query string", async () => {
@@ -182,42 +155,36 @@ describe("proxy()", () => {
     expect(response.headers.get("location")).toBe(
       "https://app.test/en/owner/sign-in?returnTo=%2Fen%2Fowner%2Fkam-man-house%2Factions%3Fstate%3Dopen",
     );
-    expect(supabase.createServerClient).toHaveBeenCalledWith("https://project.supabase.test", "anon-key");
+    expect(auth.validate).toHaveBeenCalledOnce();
   });
 
   it("lets a signed-in user through and forwards refreshed auth cookies", async () => {
-    supabase.user = { id: "user-1" };
-    const response = await proxy(req("/zh-HK/owner/select-workspace", { "sb-test-auth-token": "old" }));
+    auth.allowed = true;
+    const response = await proxy(req("/zh-HK/owner/select-workspace", { "__Secure-neon-auth.session_token": "old" }));
     expect(response.status).toBe(200);
     expect(response.headers.get("x-middleware-request-x-sme-locale")).toBe("zh-HK");
-    expect(response.cookies.get("sb-test-auth-token")?.value).toBe("rotated");
+    expect(response.cookies.get("__Secure-neon-auth.session_token")?.value).toBe("rotated");
   });
 
-  it("never gates the sign-in page but still refreshes the session there", async () => {
+  it("never gates the sign-in page without invoking Auth", async () => {
     const response = await proxy(req("/zh-TW/owner/sign-in?claim=abcdef"));
     expect(response.status).toBe(200);
-    expect(supabase.createServerClient).toHaveBeenCalledTimes(1);
+    expect(auth.validate).not.toHaveBeenCalled();
   });
 
   it("treats an auth error as signed out", async () => {
-    supabase.error = { message: "jwt expired" };
+    auth.fail = true;
     const response = await proxy(req("/en/owner/onboarding"));
     expect(response.status).toBe(307);
   });
 
-  it("skips the gate, warning once, when Supabase env is absent", async () => {
-    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
-    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-    const first = await proxy(req("/en/owner/select-workspace"));
-    const second = await proxy(req("/en/owner/kam-man-house"));
-    expect(first.status).toBe(200);
-    expect(second.status).toBe(200);
-    expect(supabase.createServerClient).not.toHaveBeenCalled();
-    expect(warn).toHaveBeenCalledTimes(1);
-    warn.mockRestore();
+  it("fails closed on protected pages when Auth config is absent, keeping public pages public", async () => {
+    auth.fail = true;
+    expect((await proxy(req("/en/owner/select-workspace"))).status).toBe(307);
+    expect((await proxy(req("/en/scan"))).status).toBe(200);
+    expect((await proxy(req("/en/owner/sign-in"))).status).toBe(200);
   });
+
 });
 
 describe("resolveLegacyRedirect", () => {

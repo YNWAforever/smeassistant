@@ -10,11 +10,7 @@ vi.mock("@/lib/security/rate-limit", () => ({
   enforceRateLimit: mocks.enforceRateLimit,
   rateLimitedResponse: vi.fn(() => new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 })),
 }));
-vi.mock("@/lib/supabase/admin", () => ({
-  supabaseServer: () => ({
-    from: () => ({ insert: mocks.insert }),
-  }),
-}));
+vi.mock("@/lib/repositories/jobs", () => ({ jobsRepository: { insert: mocks.insert } }));
 
 vi.mock("@/lib/analytics/record-event", () => ({
   recordEvent: mocks.recordEvent,
@@ -50,11 +46,7 @@ describe("POST /api/scan/start progressive input", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.enforceRateLimit.mockResolvedValue({ allowed: true, retryAfterSeconds: 1 });
-    mocks.insert.mockImplementation((payload: Record<string, unknown>) => ({
-      select: () => ({
-        single: async () => ({ data: { id: "job-1", payload }, error: null }),
-      }),
-    }));
+    mocks.insert.mockResolvedValue({ id: "job-1" });
   });
 
   it("allows optional Instagram and website and persists the exact normalized snapshot", async () => {
@@ -234,9 +226,7 @@ describe("POST /api/scan/start analytics isolation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.enforceRateLimit.mockResolvedValue({ allowed: true, retryAfterSeconds: 1 });
-    mocks.insert.mockImplementation((payload: Record<string, unknown>) => ({
-      select: () => ({ single: async () => ({ data: { id: "job-1", payload }, error: null }) }),
-    }));
+    mocks.insert.mockResolvedValue({ id: "job-1" });
   });
 
   it("returns the committed job when analytics never settles", async () => {

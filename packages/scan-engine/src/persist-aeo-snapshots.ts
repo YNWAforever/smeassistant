@@ -1,3 +1,4 @@
+/** Persistence ports are supplied by the host; SQL adapters live in the application. */
 import type { RawData } from "@sme-scanner/contracts";
 
 /** Bounded per this repo's evidence-retention discipline: never persist full model text. */

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Pool } from "pg";
 import { firstFreeSlug, slugify, uniqueLocationSlug, uniqueWorkspaceSlug } from "./slug";
 
 describe("slugify", () => {
@@ -48,22 +48,16 @@ describe("firstFreeSlug", () => {
   });
 });
 
-/** Stubs `.from(table).select("slug")[.eq()].like()` resolving to the given rows. */
 function stubDb(rows: Array<{ slug: string | null }>, error: { message: string } | null = null) {
-  const like = vi.fn(async () => ({ data: error ? null : rows, error }));
-  const eq = vi.fn(() => ({ like }));
-  const select = vi.fn(() => ({ like, eq }));
-  const from = vi.fn(() => ({ select }));
-  return { db: { from } as unknown as SupabaseClient, from, select, eq, like };
+ const query=vi.fn(async()=>{if(error)throw new Error(error.message);return {rows};});
+ return {db:{query} as unknown as Pick<Pool,"query">,query};
 }
 
 describe("uniqueWorkspaceSlug", () => {
   it("queries workspaces.slug by prefix and returns the first free suffix", async () => {
     const stub = stubDb([{ slug: "kam-man" }, { slug: "kam-man-2" }, { slug: "kam-man-house" }]);
     await expect(uniqueWorkspaceSlug(stub.db, "kam-man")).resolves.toBe("kam-man-3");
-    expect(stub.from).toHaveBeenCalledWith("workspaces");
-    expect(stub.select).toHaveBeenCalledWith("slug");
-    expect(stub.like).toHaveBeenCalledWith("slug", "kam-man%");
+    expect(stub.query).toHaveBeenCalledWith("SELECT slug FROM workspaces WHERE slug LIKE $1", ["kam-man%"]);
   });
 
   it("returns the base when the table has no match", async () => {
@@ -74,7 +68,7 @@ describe("uniqueWorkspaceSlug", () => {
   it("escapes LIKE wildcards in the base", async () => {
     const stub = stubDb([]);
     await uniqueWorkspaceSlug(stub.db, "a_b");
-    expect(stub.like).toHaveBeenCalledWith("slug", "a\\_b%");
+    expect(stub.query).toHaveBeenCalledWith("SELECT slug FROM workspaces WHERE slug LIKE $1", ["a\\_b%"] );
   });
 
   it("throws on a lookup error instead of guessing", async () => {
@@ -87,8 +81,6 @@ describe("uniqueLocationSlug", () => {
   it("scopes the lookup to the workspace", async () => {
     const stub = stubDb([{ slug: "tin-hau" }]);
     await expect(uniqueLocationSlug(stub.db, "ws-1", "tin-hau")).resolves.toBe("tin-hau-2");
-    expect(stub.from).toHaveBeenCalledWith("locations");
-    expect(stub.eq).toHaveBeenCalledWith("workspace_id", "ws-1");
-    expect(stub.like).toHaveBeenCalledWith("slug", "tin-hau%");
+    expect(stub.query).toHaveBeenCalledWith("SELECT slug FROM locations WHERE workspace_id=$1 AND slug LIKE $2", ["ws-1","tin-hau%"]);
   });
 });

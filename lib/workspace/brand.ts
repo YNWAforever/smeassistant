@@ -1,5 +1,5 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { recordEvent } from "@/lib/workspace/audit";
+import { brandRepository } from "@/lib/repositories/brand";
+import { recordNeonEvent } from "@/lib/workspace/audit";
 
 /**
  * Brand profile read/write (CLAUDE.md §3.2.3 `brand_profiles`, §3.9 owner-only
@@ -33,7 +33,7 @@ export interface BrandInput {
 
 export type BrandParse = { ok: true; brand: BrandInput } | { ok: false; error: string };
 
-interface BrandRow {
+export interface BrandRow {
   workspace_id: string;
   voice: string | null;
   approved_claims: string[] | null;
@@ -132,9 +132,8 @@ function rowToBrand(row: BrandRow): BrandProfile {
   };
 }
 
-export async function getBrand(db: SupabaseClient, workspaceId: string): Promise<BrandProfile> {
-  const { data, error } = await db.from("brand_profiles").select("*").eq("workspace_id", workspaceId).maybeSingle<BrandRow>();
-  if (error) throw new Error("brand lookup failed");
+export async function getBrand(workspaceId: string): Promise<BrandProfile> {
+  const data = await brandRepository().get(workspaceId);
   return data ? rowToBrand(data) : defaultBrand(workspaceId);
 }
 
@@ -147,27 +146,11 @@ export interface PutBrandInput {
   now?: Date;
 }
 
-export async function putBrand(db: SupabaseClient, input: PutBrandInput): Promise<BrandProfile> {
+export async function putBrand(input: PutBrandInput): Promise<BrandProfile> {
   const now = (input.now ?? new Date()).toISOString();
-  const { data, error } = await db
-    .from("brand_profiles")
-    .upsert(
-      {
-        workspace_id: input.workspaceId,
-        voice: input.brand.voice,
-        approved_claims: input.brand.approved_claims,
-        prohibited_terms: input.brand.prohibited_terms,
-        languages: input.brand.languages,
-        facts: input.brand.facts,
-        updated_at: now,
-      },
-      { onConflict: "workspace_id" },
-    )
-    .select("*")
-    .single<BrandRow>();
-  if (error || !data) throw new Error("brand upsert failed");
+  const data = await brandRepository().put({ workspace_id: input.workspaceId, ...input.brand, updated_at: now });
 
-  await recordEvent(db, {
+  await recordNeonEvent({
     workspaceId: input.workspaceId,
     actorType: "user",
     actorId: input.actorId,

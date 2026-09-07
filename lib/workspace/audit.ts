@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { recordClaimAuditEvent } from "@/lib/repositories/claims";
 import { requestFingerprint } from "@/lib/security/request-fingerprint";
 
 /**
@@ -41,10 +41,10 @@ export function ipHashFor(req: Request): string | null {
 }
 
 /** Best-effort: a failed audit insert is logged, never thrown, so it cannot undo the mutation it describes. */
-export async function recordEvent(db: SupabaseClient, input: AuditEventInput): Promise<void> {
+export async function recordNeonEvent(input: AuditEventInput): Promise<void> {
   const payload: Record<string, unknown> = { locale: input.locale ?? null, ...(input.ipHash ? { ip_hash: input.ipHash } : {}), ...(input.payload ?? {}) };
   try {
-    const { error } = await db.from("audit_events").insert({
+    const row = {
       workspace_id: input.workspaceId,
       location_id: input.locationId ?? null,
       actor_type: input.actorType,
@@ -53,8 +53,8 @@ export async function recordEvent(db: SupabaseClient, input: AuditEventInput): P
       entity_type: input.entityType ?? null,
       entity_id: input.entityId ?? null,
       payload,
-    });
-    if (error) console.error("[workspace/audit] event not recorded", { category: "audit_insert_failed", event: input.event });
+    };
+    await recordClaimAuditEvent(row);
   } catch {
     console.error("[workspace/audit] event not recorded", { category: "audit_insert_failed", event: input.event });
   }

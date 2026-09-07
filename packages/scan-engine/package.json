@@ -15,8 +15,7 @@
   "dependencies": {
     "@sme-scanner/scoring": "workspace:*",
     "@sme-scanner/region": "workspace:*",
-    "@sme-scanner/contracts": "workspace:*",
-    "@supabase/supabase-js": "^2.45.4"
+    "@sme-scanner/contracts": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.7.5",

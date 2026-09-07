@@ -1,40 +1,81 @@
 import "server-only";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Pool } from "pg";
 import { postProcessWorkspaceScan } from "./post-process";
-import { completionClient } from "./completion-client";
-
-export type CompletionResult = { status: "completed" | "busy" | "skipped" | "retry" };
-type Processor = typeof postProcessWorkspaceScan;
-
-/** Recover workspace effects from persisted evidence; never invoke scan collectors. */
-export async function completeWorkspaceScan(db: SupabaseClient, jobId: string, process: Processor = postProcessWorkspaceScan, scopedClient = completionClient): Promise<CompletionResult> {
-  const { data: claim, error } = await db.rpc("claim_workspace_completion", { p_job_id: jobId });
-  if (error || !claim) throw new Error("completion_claim_failed");
-  if (["completed", "busy", "skipped"].includes(claim.status)) return { status: claim.status };
-  if (claim.status !== "claimed" || typeof claim.token !== "string") throw new Error("completion_claim_invalid");
-  let succeeded = false;
+import { completionTransaction } from "./completion-transaction";
+export type CompletionResult = {
+  status: "completed" | "busy" | "skipped" | "retry";
+};
+type Database = Pick<Pool, "query" | "connect">;
+/** Claims are short transactions. Effects and successful finish commit together; recovery reads persisted evidence only. */
+export async function completeWorkspaceScan(
+  db: Database,
+  jobId: string,
+  process = postProcessWorkspaceScan,
+): Promise<CompletionResult> {
+  let claim: { status: string; token?: string } | undefined;
   try {
-    const outcome = await process(scopedClient(jobId, claim.token), jobId);
-    succeeded = outcome.ran && outcome.error === null;
+    claim = (
+      await db.query("SELECT claim_workspace_completion($1) AS claim", [jobId])
+    ).rows[0]?.claim;
   } catch {
-    // Persist only a bounded category; raw errors can contain merchant/provider data.
+    throw new Error("completion_claim_failed");
   }
-  const finished = await db.rpc("finish_workspace_completion", {
-    p_job_id: jobId, p_token: claim.token, p_succeeded: succeeded,
-    p_error: succeeded ? null : "workspace_post_process_failed",
-  });
-  if (finished.error || finished.data !== true) return { status: "retry" };
-  return { status: succeeded ? "completed" : "retry" };
+  if (!claim) throw new Error("completion_claim_failed");
+  if (
+    claim.status === "completed" ||
+    claim.status === "busy" ||
+    claim.status === "skipped"
+  )
+    return { status: claim.status };
+  if (claim.status !== "claimed" || typeof claim.token !== "string")
+    throw new Error("completion_claim_invalid");
+  const token = claim.token;
+  try {
+    await completionTransaction(db, jobId, token, async (client) => {
+      const outcome = await process(client, jobId);
+      if (!outcome.ran || outcome.error !== null)
+        throw new Error("workspace_post_process_failed");
+      const result = await client.query(
+        "SELECT finish_workspace_completion($1,$2,true,NULL) AS finished",
+        [jobId, token],
+      );
+      if (result.rows[0]?.finished !== true)
+        throw new Error("completion_lease_lost");
+    });
+    return { status: "completed" };
+  } catch {
+    // Rollback has completed. A stale token cannot acknowledge another runner's lease.
+    try {
+      await db.query(
+        "SELECT finish_workspace_completion($1,$2,false,$3) AS finished",
+        [jobId, token, "workspace_post_process_failed"],
+      );
+    } catch {
+      /* retained scheduler retries after lease expiry */
+    }
+    return { status: "retry" };
+  }
 }
-
-/** Called by the retained scheduler's authorized forwarding phase, not a new cron. */
-export async function reconcileWorkspaceScans(db: SupabaseClient, complete = completeWorkspaceScan): Promise<CompletionResult[]> {
-  const { data, error } = await db.rpc("pending_workspace_completions", { p_limit: 5 });
-  if (error || !Array.isArray(data)) throw new Error("completion_inventory_failed");
+/** Invoked by the one retained authorized scheduler, never collectors. */
+export async function reconcileWorkspaceScans(
+  db: Database,
+  complete = completeWorkspaceScan,
+): Promise<CompletionResult[]> {
+  let rows: Array<{ job_id: string }>;
+  try {
+    rows = (
+      await db.query("SELECT * FROM pending_workspace_completions($1)", [5])
+    ).rows;
+  } catch {
+    throw new Error("completion_inventory_failed");
+  }
   const results: CompletionResult[] = [];
-  for (const row of data.slice(0, 5)) {
-    try { results.push(await complete(db, row.job_id)); }
-    catch { results.push({ status: "retry" }); }
+  for (const row of rows.slice(0, 5)) {
+    try {
+      results.push(await complete(db, row.job_id));
+    } catch {
+      results.push({ status: "retry" });
+    }
   }
   return results;
 }

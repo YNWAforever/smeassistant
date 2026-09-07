@@ -1,6 +1,6 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ClaimCompletionStore } from "@/lib/repositories/claims";
 import { deliveryAllowanceForTier } from "@/lib/workspace/entitlement";
-import { slugify, uniqueLocationSlug, uniqueWorkspaceSlug } from "@/lib/workspace/slug";
+import { slugify } from "@/lib/workspace/slug";
 
 /**
  * Completes a workspace after ownership has been proven (CLAUDE.md §3.2.3
@@ -49,9 +49,6 @@ export interface CompleteWorkspaceClaimHooks {
 const noopHook = async (): Promise<void> => {};
 
 export const DEFAULT_WORKSPACE_TIMEZONE = "Asia/Hong_Kong";
-
-const JOB_COLUMNS =
-  "id, workspace_id, business_name, district, place_id, ig_handle, website_url, input_snapshot, module_results, region, status";
 
 /** True when `Intl` accepts the zone; a bad zone must not poison every later period calculation. */
 export function isValidTimezone(value: unknown): value is string {
@@ -106,13 +103,8 @@ function normaliseHandle(value: string | null): string | null {
   return handle || null;
 }
 
-function fail(step: string, error: unknown): never {
-  console.error(`[workspace/claim] ${step} failed`, error);
-  throw new Error(`${step} failed`);
-}
-
 export async function completeWorkspaceClaim(
-  db: SupabaseClient,
+  db: ClaimCompletionStore,
   input: CompleteWorkspaceClaimInput,
   hooks: CompleteWorkspaceClaimHooks = {},
 ): Promise<CompleteWorkspaceClaimResult> {
@@ -122,35 +114,18 @@ export async function completeWorkspaceClaim(
 
   // --- Read-only checks. Nothing below this block runs unless all pass. ---
 
-  const { data: job, error: jobError } = await db
-    .from("audit_jobs")
-    .select(JOB_COLUMNS)
-    .eq("share_slug", input.claimSlug)
-    .maybeSingle();
-  if (jobError) fail("job lookup", jobError);
+  const job = await db.job(input.claimSlug);
   if (!job) return { kind: "not_found" };
   // Guardrail 15: the job must already be attached by the OAuth claim
   // callback or staff assignment. This function never attaches.
   if (!job.workspace_id) return { kind: "not_attached" };
 
-  const { data: membership, error: membershipError } = await db
-    .from("workspace_members")
-    .select("role")
-    .eq("workspace_id", job.workspace_id)
-    .eq("user_id", input.userId)
-    .not("accepted_at", "is", null)
-    .maybeSingle();
-  if (membershipError) fail("membership lookup", membershipError);
+  const membership = await db.membership(input.userId, job.workspace_id);
   // Owner only (§3.9: settings/claim are owner capabilities). A manager or
   // viewer on the same workspace is forbidden, exactly like a stranger.
   if (!membership || membership.role !== "owner") return { kind: "forbidden" };
 
-  const { data: workspace, error: workspaceError } = await db
-    .from("workspaces")
-    .select("id, slug, tier, timezone")
-    .eq("id", job.workspace_id)
-    .maybeSingle();
-  if (workspaceError) fail("workspace lookup", workspaceError);
+  const workspace = await db.workspace(job.workspace_id);
   if (!workspace) return { kind: "not_found" };
 
   // --- Idempotent writes. ---
@@ -168,18 +143,12 @@ export async function completeWorkspaceClaim(
   const workspaceSlug: string =
     typeof workspace.slug === "string" && workspace.slug
       ? workspace.slug
-      : await uniqueWorkspaceSlug(db, slugify(workspaceName));
+      : await db.workspaceSlug(slugify(workspaceName));
 
-  const { error: workspaceUpdateError } = await db
-    .from("workspaces")
-    .update({
-      business_name: workspaceName,
-      timezone,
-      market: input.market,
-      ...(workspace.slug ? {} : { slug: workspaceSlug }),
-    })
-    .eq("id", workspace.id);
-  if (workspaceUpdateError) fail("workspace update", workspaceUpdateError);
+  await db.updateWorkspace(workspace.id, {
+    business_name: workspaceName, timezone, market: input.market,
+    ...(workspace.slug ? {} : { slug: workspaceSlug }),
+  });
 
   const snapshot = job.input_snapshot;
   const locationFields = {
@@ -193,77 +162,32 @@ export async function completeWorkspaceClaim(
     website_url: optionalString(job.website_url) ?? snapshotString(snapshot, [["websiteUrl"], ["website_url"]]),
   };
 
-  const { data: existingLocation, error: locationLookupError } = await db
-    .from("locations")
-    .select("id")
-    .eq("workspace_id", workspace.id)
-    .eq("is_primary", true)
-    .maybeSingle();
-  if (locationLookupError) fail("location lookup", locationLookupError);
-
+  const existingLocation = await db.primaryLocation(workspace.id);
   let locationId: string;
   if (existingLocation) {
     locationId = existingLocation.id;
-    const { error } = await db.from("locations").update(locationFields).eq("id", locationId);
-    if (error) fail("location update", error);
+    await db.updateLocation(locationId, locationFields);
   } else {
-    const slug = await uniqueLocationSlug(db, workspace.id, slugify(locationFields.name));
-    const { data: created, error } = await db
-      .from("locations")
-      .insert({ workspace_id: workspace.id, slug, is_primary: true, ...locationFields })
-      .select("id")
-      .single();
-    if (error || !created) fail("location insert", error);
+    const slug = await db.locationSlug(workspace.id, slugify(locationFields.name));
+    const created = await db.insertLocation({ workspace_id: workspace.id, slug, is_primary: true, ...locationFields });
     locationId = created.id;
   }
-
-  const { error: jobUpdateError } = await db.from("audit_jobs").update({ location_id: locationId }).eq("id", job.id);
-  if (jobUpdateError) fail("job location update", jobUpdateError);
-
-  // Defaults come from the table (voice 'warm', languages '{zh-HK}'); an
-  // existing profile the owner already edited must not be reset.
-  const { error: brandError } = await db
-    .from("brand_profiles")
-    .upsert({ workspace_id: workspace.id }, { onConflict: "workspace_id", ignoreDuplicates: true });
-  if (brandError) fail("brand profile upsert", brandError);
-
-  // Same posture for usage: the current period's row is created lazily with
-  // the tier's allowance and never reset (approved_deliveries is money).
-  const { error: usageError } = await db.from("workspace_usage").upsert(
-    {
-      workspace_id: workspace.id,
-      period: claimPeriod(timezone, now()),
-      allowance: deliveryAllowanceForTier(workspace.tier),
-    },
-    { onConflict: "workspace_id,period", ignoreDuplicates: true },
-  );
-  if (usageError) fail("usage upsert", usageError);
+  await db.attachLocation(job.id, locationId);
+  // Conflict-ignore preserves previously edited brand and money-bearing usage.
+  await db.ensureBrand(workspace.id);
+  await db.ensureUsage({ workspace_id: workspace.id, period: claimPeriod(timezone, now()), allowance: deliveryAllowanceForTier(workspace.tier) });
 
   await buildSnapshot(job.id, workspace.id, locationId);
   await deriveActions(job.id, workspace.id, locationId);
 
   // One `workspace.claimed` event per job (§3.11). The OAuth callback may
   // already have written it; a staff-assigned claim gets it here.
-  const { data: existingEvents, error: eventLookupError } = await db
-    .from("audit_events")
-    .select("id")
-    .eq("event", "workspace.claimed")
-    .eq("entity_id", job.id)
-    .limit(1);
-  if (eventLookupError) fail("audit event lookup", eventLookupError);
-  if (!existingEvents?.length) {
-    const { error: eventError } = await db.from("audit_events").insert({
-      workspace_id: workspace.id,
-      location_id: locationId,
-      actor_type: "user",
-      actor_id: input.userId,
-      event: "workspace.claimed",
-      entity_type: "audit_job",
-      entity_id: job.id,
-      payload: { locale: input.locale },
+  if (!await db.hasClaimEvent(job.id)) {
+    await db.auditEvent({
+      workspace_id: workspace.id, location_id: locationId, actor_type: "user",
+      actor_id: input.userId, event: "workspace.claimed", entity_type: "audit_job",
+      entity_id: job.id, payload: { locale: input.locale },
     });
-    // Best-effort: the claim is complete; a failed log write is logged, not surfaced.
-    if (eventError) console.error("[workspace/claim] audit event not recorded");
   }
 
   return { kind: "completed", workspaceId: workspace.id, workspaceSlug, locationId };

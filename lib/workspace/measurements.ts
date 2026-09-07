@@ -1,7 +1,6 @@
-import { completionId } from "@/lib/workspace/completion-id";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { MeasurementRepository } from "@/lib/repositories/measurements";
 import type { MetricKey } from "@/lib/workspace/metrics";
-import { loadSnapshotById, type ScanDiffRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
+import type { ScanDiffRow, SnapshotRecord } from "@/lib/workspace/snapshots";
 import type { TemplateKey } from "@/lib/workspace/templates";
 
 /**
@@ -69,13 +68,13 @@ export interface RecordMeasurementsOutcome {
 /** Actions that can still be measured: open ones and completed ones (dismissed/expired never). */
 const MEASURABLE_STATES = ["recommended", "needs_input", "ready", "in_progress", "completed"] as const;
 
-interface MeasurableActionRow {
+export interface MeasurableActionRow {
   id: string;
   template_key: string;
   location_id: string | null;
 }
 
-interface ExportedVersionRow {
+export interface ExportedVersionRow {
   action_id: string;
   first_exported_at: string | null;
 }
@@ -121,35 +120,24 @@ export function buildMeasurement(input: {
   };
 }
 
-export async function recordMeasurements(db: SupabaseClient, input: RecordMeasurementsInput): Promise<RecordMeasurementsOutcome> {
+export async function recordMeasurements(repo: MeasurementRepository, input: RecordMeasurementsInput): Promise<RecordMeasurementsOutcome> {
   const head = input.headSnapshot;
   const now = input.now ?? new Date();
   if (!input.diff?.comparable || !head.comparableTo || !head.workspaceId) return { comparable: false, recorded: 0, skipped: 0 };
-  const base = await loadSnapshotById(db, head.comparableTo);
-  if (!base) return { comparable: false, recorded: 0, skipped: 0 };
-
-  // Head job start: the cut-off for "exported before this scan".
-  const { data: headJob, error: jobError } = await db.from("audit_jobs").select("created_at").eq("id", head.jobId).maybeSingle<{ created_at: string }>();
-  if (jobError) throw new Error("measurement job lookup failed");
+  const base = await repo.base(head, input.diff);
+  if (!base || base.workspaceId !== head.workspaceId || base.locationId !== head.locationId || base.jobId !== input.diff.base_job_id || head.jobId !== input.diff.head_job_id) return { comparable: false, recorded: 0, skipped: 0 };
+  const headJob = await repo.headJob(head);
   const headStartedAt = Date.parse(headJob?.created_at ?? head.observedAt);
-
-  let actionQuery = db.from("actions").select("id, template_key, location_id").eq("workspace_id", head.workspaceId).in("action_state", [...MEASURABLE_STATES]);
-  actionQuery = head.locationId ? actionQuery.or(`location_id.eq.${head.locationId},location_id.is.null`) : actionQuery.is("location_id", null);
-  const { data: actionRows, error: actionsError } = await actionQuery.returns<MeasurableActionRow[]>();
-  if (actionsError) throw new Error("measurement actions lookup failed");
+  const actionRows = await repo.actions(head, [...MEASURABLE_STATES]);
   const actions = (actionRows ?? []).filter((row) => TEMPLATE_METRIC[row.template_key as TemplateKey]);
   if (!actions.length) return { comparable: true, recorded: 0, skipped: 0 };
   const ids = actions.map((row) => row.id);
 
-  const [existingResult, exportsResult] = await Promise.all([
-    db.from("action_measurements").select("action_id, fact_type").eq("after_snapshot_id", head.id).in("action_id", ids).returns<Array<{ action_id: string; fact_type: MeasurementFactType }>>(),
-    db.from("output_versions").select("action_id, first_exported_at").in("action_id", ids).not("first_exported_at", "is", null).returns<ExportedVersionRow[]>(),
-  ]);
-  if (existingResult.error) throw new Error("measurement lookup failed");
-  if (exportsResult.error) throw new Error("measurement exports lookup failed");
-  const alreadyMeasured = new Set((existingResult.data ?? []).map((row) => row.action_id));
+  const existing = await repo.existing(head, ids);
+  const exports = await repo.exports(head, ids);
+  const alreadyMeasured = new Set(existing.map((row) => row.action_id));
   const exportedBeforeHead = new Set<string>();
-  for (const row of exportsResult.data ?? []) {
+  for (const row of exports) {
     const exportedAt = row.first_exported_at ? Date.parse(row.first_exported_at) : Number.NaN;
     if (Number.isFinite(exportedAt) && exportedAt < headStartedAt) exportedBeforeHead.add(row.action_id);
   }
@@ -166,34 +154,27 @@ export async function recordMeasurements(db: SupabaseClient, input: RecordMeasur
   }
   let recorded = 0;
   if (inserts.length) {
-    const { data, error: insertError } = await db.from("action_measurements")
-      .upsert(inserts.map((row) => ({ ...row, id: completionId("measurement", row.action_id, head.id) })), { onConflict: "id", ignoreDuplicates: true }).select("id");
-    if (insertError) throw new Error("measurement insert failed");
-    recorded = data?.length ?? 0;
+    recorded = await repo.insert(inserts, head);
   }
 
   // Repair the second half after an earlier process persisted measurements but
   // failed before updating action state. Preserve the saved fact classification.
-  const allMeasurements = [...(existingResult.data ?? []), ...inserts];
+  const allMeasurements = [...existing, ...inserts];
 
   // Historical measurements remain immutable evidence. Their replay must not
   // overwrite the mutable state derived from a newer same-location scan.
-  let latestQuery = db.from("scan_snapshots").select("id").eq("workspace_id", head.workspaceId);
-  latestQuery = head.locationId ? latestQuery.eq("location_id", head.locationId) : latestQuery.is("location_id", null);
-  const { data: latest, error: latestError } = await latestQuery.order("observed_at", { ascending: false }).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(1).maybeSingle<{ id: string }>();
-  if (latestError || !latest) throw new Error("measurement latest snapshot lookup failed");
+  const latest = await repo.latest(head);
+  if (!latest) throw new Error("measurement latest snapshot lookup failed");
   if (latest.id !== head.id) return { comparable: true, recorded, skipped };
 
   const nowIso = now.toISOString();
   const measured = allMeasurements.filter((row) => row.fact_type !== "Unknown").map((row) => row.action_id);
   const insufficient = allMeasurements.filter((row) => row.fact_type === "Unknown").map((row) => row.action_id);
   if (measured.length) {
-    const { error } = await db.from("actions").update({ measurement_state: "measured", updated_at: nowIso }).in("id", measured);
-    if (error) throw new Error("measurement state update failed");
+    await repo.updateState(head, measured, "measured", nowIso);
   }
   if (insufficient.length) {
-    const { error } = await db.from("actions").update({ measurement_state: "insufficient_coverage", updated_at: nowIso }).in("id", insufficient);
-    if (error) throw new Error("measurement state update failed");
+    await repo.updateState(head, insufficient, "insufficient_coverage", nowIso);
   }
   return { comparable: true, recorded, skipped };
 }

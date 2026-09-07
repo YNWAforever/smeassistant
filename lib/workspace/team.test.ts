@@ -1,25 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { MembershipRepository } from "@/lib/repositories/membership";
 import type { WorkspaceContext } from "@/lib/workspace/queries";
 import { getTeam, loadLocationIds, rowToTeamMember } from "./team";
 
 type Row = Record<string, unknown>;
 
-function client(rows: Record<string, Row[]>): SupabaseClient {
-  const from = (table: string) => {
-    const chain: Record<string, unknown> = {};
-    const self = () => chain;
-    const terminal = () => ({ data: rows[table] ?? [], error: null });
-    Object.assign(chain, {
-      select: self,
-      eq: self,
-      order: self,
-      returns: () => Promise.resolve(terminal()),
-      then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => Promise.resolve(terminal()).then(resolve, reject),
-    });
-    return chain;
-  };
-  return { from } as unknown as SupabaseClient;
+function client(rows: Record<string, Row[]>): MembershipRepository {
+ return {team: async () => rows.workspace_members ?? [], locationIds: async () => (rows.locations ?? []).map(row => row.id)} as unknown as MembershipRepository;
 }
 
 const ctx: WorkspaceContext = {

@@ -7,10 +7,7 @@ export async function seedMerchant(env: AcceptanceEnvironment, market: "hk" | "t
   const workspaceId = randomUUID(), locationId = randomUUID(), otherLocationId = randomUUID(), actionId = randomUUID();
   const slug = `acceptance-${market}-${workspaceId.slice(0, 8)}`;
   const emails = { owner: `owner-${workspaceId}@acceptance.test`, manager: `manager-${workspaceId}@acceptance.test`, viewer: `viewer-${workspaceId}@acceptance.test` };
-  const response = await fetch(`${env.api}/auth/v1/admin/users`, { method: "POST", headers: { authorization: `Bearer ${env.service}`, apikey: env.service, "content-type": "application/json" }, body: JSON.stringify({ email: emails.owner, email_confirm: false }) });
-  if (!response.ok) throw new Error(`Local Auth seed failed (${response.status})`);
-  const owner = await response.json() as { id: string };
-  if (!/^[a-f0-9-]{36}$/.test(owner.id)) throw new Error("Local Auth returned invalid user identity");
+  for (const email of Object.values(emails)) {const userId=randomUUID();sql(env.db, `insert into app_users(id,email) values ('${userId}','${email}'); insert into auth_identities(provider,subject,user_id) values ('neon','fixture:${email}','${userId}');`);}
   sql(env.db, `insert into workspaces(id, business_name, market, slug, tier, timezone) values ('${workspaceId}','Acceptance ${market.toUpperCase()}','${market}','${slug}','lite','${market === "tw" ? "Asia/Taipei" : "Asia/Hong_Kong"}');
     insert into locations(id,workspace_id,slug,name,is_primary) values ('${locationId}','${workspaceId}','primary','Primary',true),('${otherLocationId}','${workspaceId}','other','Other',false);
     insert into workspace_members(workspace_id,email,role,location_scope) values ('${workspaceId}','${emails.owner}','owner',null),('${workspaceId}','${emails.manager}','manager',array['${otherLocationId}']::uuid[]),('${workspaceId}','${emails.viewer}','viewer',null);

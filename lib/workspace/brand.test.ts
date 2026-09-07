@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { defaultBrand, getBrand, parseBrandBody, putBrand } from "./brand";
 
 type Row = Record<string, unknown>;
@@ -10,45 +10,11 @@ const state = vi.hoisted(() => ({
   audits: [] as Row[],
 }));
 
-function client(): SupabaseClient {
-  const from = (table: string) => {
-    let upserted: Row | null = null;
-    let inserted: Row | null = null;
-    const terminal = () => {
-      if (table === "brand_profiles") {
-        if (upserted) {
-          state.upserts.push(upserted);
-          state.row = { ...upserted };
-          return { data: state.row, error: null };
-        }
-        return { data: state.row, error: null };
-      }
-      if (table === "audit_events") {
-        if (inserted) state.audits.push(inserted);
-        return { data: null, error: null };
-      }
-      return { data: null, error: null };
-    };
-    const chain: Record<string, unknown> = {};
-    const self = () => chain;
-    Object.assign(chain, {
-      select: self,
-      eq: self,
-      upsert: (row: Row) => {
-        upserted = row;
-        return chain;
-      },
-      insert: (row: Row) => {
-        inserted = row;
-        return Promise.resolve(terminal());
-      },
-      single: () => Promise.resolve(terminal()),
-      maybeSingle: () => Promise.resolve(terminal()),
-    });
-    return chain;
-  };
-  return { from } as unknown as SupabaseClient;
-}
+vi.mock("@/lib/repositories/brand", () => ({ brandRepository: () => ({
+  get: async () => state.row,
+  put: async (row: Row) => { state.upserts.push(row); return row; },
+}) }));
+vi.mock("@/lib/repositories/claims", () => ({ recordClaimAuditEvent: async (row: Row) => { state.audits.push(row); } }));
 
 beforeEach(() => {
   state.row = null;
@@ -86,12 +52,12 @@ describe("parseBrandBody", () => {
 
 describe("getBrand", () => {
   it("returns the defaults when no row exists yet", async () => {
-    expect(await getBrand(client(), "ws-1")).toEqual(defaultBrand("ws-1"));
+    expect(await getBrand("ws-1")).toEqual(defaultBrand("ws-1"));
   });
 
   it("shapes a stored row and drops unknown values", async () => {
     state.row = { workspace_id: "ws-1", voice: "direct", approved_claims: ["a"], prohibited_terms: null, languages: ["en", "fr"], facts: { k: "v", n: 1 }, updated_at: "2026-09-04T00:00:00Z" };
-    expect(await getBrand(client(), "ws-1")).toEqual({
+    expect(await getBrand("ws-1")).toEqual({
       workspaceId: "ws-1",
       voice: "direct",
       approvedClaims: ["a"],
@@ -107,7 +73,7 @@ describe("putBrand", () => {
   it("upserts on workspace_id and records brand.updated", async () => {
     const parsed = parseBrandBody(VALID);
     if (!parsed.ok) throw new Error("fixture invalid");
-    const brand = await putBrand(client(), { workspaceId: "ws-1", actorId: "user-1", brand: parsed.brand, locale: "en", now: new Date("2026-09-04T09:00:00Z") });
+    const brand = await putBrand({ workspaceId: "ws-1", actorId: "user-1", brand: parsed.brand, locale: "en", now: new Date("2026-09-04T09:00:00Z") });
     expect(state.upserts[0]).toMatchObject({ workspace_id: "ws-1", voice: "professional", approved_claims: ["Est. 1998"], languages: ["zh-HK", "en"], facts: { opening_hours: "11:00-22:00" }, updated_at: "2026-09-04T09:00:00.000Z" });
     expect(brand).toMatchObject({ workspaceId: "ws-1", voice: "professional", approvedClaims: ["Est. 1998"], updatedAt: "2026-09-04T09:00:00.000Z" });
     expect(state.audits[0]).toMatchObject({

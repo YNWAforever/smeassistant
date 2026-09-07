@@ -1,15 +1,13 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { artifactRepository, type LiveAssistantRepository } from "@/lib/repositories/artifacts";
 import { AGENTS, AGENT_LLM_OPTIONS, parseAgentOutput, type AgentContext, type AgentKey } from "@/lib/agents";
 import { inLocationScope, roleAtLeast, type Membership } from "@/lib/auth";
 import type { PrototypeLocale } from "@/lib/copy";
 import { localized } from "@/lib/domain";
 import { llmComplete, llmConfigured } from "@/lib/llm";
 import type { AssistantArtifact, AssistantSurface, DemoAssistantRunResponse, DemoQuestionId, EvidenceReference } from "@/lib/pocket-assistant/contracts";
-import { supabaseServer } from "@/lib/supabase/admin";
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
-import { loadActionRows, loadDiffById } from "@/lib/workspace/queries-pages";
-import { loadLatestSnapshot, loadSampledReviews, snapshotEvidence } from "@/lib/workspace/runs";
-import { loadSnapshotById, type SnapshotRecord } from "@/lib/workspace/snapshots";
+import { sampledReviewsFromRawData, snapshotEvidence } from "@/lib/workspace/runs";
+import { type ScanDiffRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
 import { buildEvidenceRefs } from "./evidence";
 import { fallbackIntentFor, isTemplateIntent, templateAnswer, type TemplateContext } from "./templates";
 
@@ -36,8 +34,8 @@ export interface LiveRunInput {
   context: LiveRunContext;
   /** Accepted membership resolved by the server, never request JSON. */
   membership: Membership;
-  /** Injected for tests; defaults to the service-role client. */
-  db?: SupabaseClient;
+  /** Explicit read-only data capability; defaults to the Neon repository. */
+  repository?: LiveAssistantRepository;
   llm?: typeof llmComplete;
   llmReady?: () => boolean;
 }
@@ -75,7 +73,6 @@ const NEEDS_FACTS = localized("The agent still needs: {facts}.", "Agent 仍需�
 
 interface WorkspaceRow { business_name: string | null; market: string | null; timezone: string | null }
 interface LocationRow { id: string; slug: string; name: string; address: string | null; district: string | null; is_primary: boolean | null }
-interface BrandRow { voice: string | null; approved_claims: unknown; prohibited_terms: unknown; languages: unknown; facts: unknown }
 type ActionSourceRow = ActionRow & { source_snapshot_id: string | null };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -115,7 +112,7 @@ interface ResolvedContext {
   location: LocationRow | null;
   snapshot: SnapshotRecord | null;
   base: SnapshotRecord | null;
-  diff: Awaited<ReturnType<typeof loadDiffById>>;
+  diff: ScanDiffRow | null;
   focused: { row: ActionSourceRow; overview: ActionOverview } | null;
   open: Array<{ row: ActionSourceRow; overview: ActionOverview }>;
   evidenceRefs: EvidenceReference[];
@@ -123,38 +120,41 @@ interface ResolvedContext {
   timezone: string;
 }
 
-async function resolveContext(db: SupabaseClient, input: LiveRunInput): Promise<ResolvedContext> {
+async function resolveContext(db: LiveAssistantRepository, input: LiveRunInput): Promise<ResolvedContext> {
   const { workspaceId } = input.context;
-  const [workspaceResult, locationsResult] = await Promise.all([
-    db.from("workspaces").select("business_name, market, timezone").eq("id", workspaceId).maybeSingle<WorkspaceRow>(),
-    db.from("locations").select("id, slug, name, address, district, is_primary").eq("workspace_id", workspaceId).order("is_primary", { ascending: false }).returns<LocationRow[]>(),
-  ]);
-  if (workspaceResult.error || locationsResult.error) throw new Error("assistant context lookup failed");
-  const workspace = workspaceResult.data ?? null;
-  const locations = locationsResult.data ?? [];
-
-  // The focused action, only when it belongs to this workspace.
-  let focusedRow: ActionSourceRow | null = null;
-  if (input.context.actionId) {
-    const { data, error } = await db.from("actions").select("*").eq("id", input.context.actionId).eq("workspace_id", workspaceId).maybeSingle<ActionSourceRow>();
-    if (error) throw new Error("assistant action lookup failed");
-    focusedRow = data ?? null;
+  const [workspace, locations] = await Promise.all([db.assistantWorkspace(workspaceId),db.assistantLocations(workspaceId)]);
+  let actionId = input.context.actionId;
+  if (input.context.versionId) {
+    const version = await db.versionScope(input.context.versionId);
+    if (!version || version.workspaceId !== workspaceId || (actionId && actionId !== version.actionId)) throw new AssistantAccessError("not_found");
+    actionId = version.actionId;
   }
+  let focusedRow: ActionSourceRow | null = null;
+  if (actionId) focusedRow = (await db.assistantActions(workspaceId,{ids:[actionId]}))[0] ?? null;
 
   const drafting = isDraftIntent(input.intentId);
   if (drafting) {
-    if (!workspace || (input.context.actionId && !focusedRow)) throw new AssistantAccessError("not_found");
+    if (!workspace || (actionId && !focusedRow)) throw new AssistantAccessError("not_found");
     // Select the implicit action before choosing its evidence, using the same
     // ordering as the existing draft runner. Never replace an explicit miss.
     if (!focusedRow) {
       const selectionLocation = input.context.locationId ?? locations.find((l) => l.is_primary)?.id ?? locations[0]?.id ?? null;
-      const candidates = await loadActionRows(workspaceId, { locationId: selectionLocation, states: ["recommended", "needs_input", "ready", "in_progress"] }) as ActionSourceRow[];
+      const candidates = await db.assistantActions(workspaceId, { locationId: selectionLocation, states: ["recommended", "needs_input", "ready", "in_progress"] });
       const spec = DRAFT_AGENTS[input.intentId as DraftIntent];
       focusedRow = candidates.find((a) => spec.templates.includes(a.template_key)) ?? candidates[0] ?? null;
     }
     if (focusedRow) {
+      const scope = await db.actionScope(focusedRow.id);
+      if (!scope || scope.workspaceId !== workspaceId || scope.locationId !== focusedRow.location_id) throw new AssistantAccessError("not_found");
       if (focusedRow.workspace_id !== workspaceId) throw new AssistantAccessError("not_found");
       requireDraftScope(input, focusedRow.location_id);
+      // Client evidence selection cannot replace authority over the action's
+      // persisted source, including workspace-wide and version-resolved actions.
+      if (focusedRow.source_snapshot_id) {
+        const source = await db.assistantSnapshot(workspaceId, focusedRow.source_snapshot_id);
+        if (!source || source.workspaceId !== workspaceId) throw new AssistantAccessError("not_found");
+        requireDraftScope(input, source.locationId);
+      }
       if (focusedRow.location_id && !locations.some((l) => l.id === focusedRow!.location_id)) throw new AssistantAccessError("not_found");
       if (input.context.locationId && focusedRow.location_id && input.context.locationId !== focusedRow.location_id) throw new AssistantAccessError("not_found");
     }
@@ -166,10 +166,10 @@ async function resolveContext(db: SupabaseClient, input: LiveRunInput): Promise<
 
   // snapshotId → the action's source snapshot → the latest for the location.
   let snapshot: SnapshotRecord | null = null;
-  if (input.context.snapshotId) snapshot = await loadSnapshotById(db, input.context.snapshotId);
+  if (input.context.snapshotId) snapshot = await db.assistantSnapshot(workspaceId, input.context.snapshotId);
   if (drafting && input.context.snapshotId && !snapshot) throw new AssistantAccessError("not_found");
   if (!snapshot && focusedRow?.source_snapshot_id) {
-    snapshot = await loadSnapshotById(db, focusedRow.source_snapshot_id);
+    snapshot = await db.assistantSnapshot(workspaceId, focusedRow.source_snapshot_id);
     if (drafting && !snapshot) throw new AssistantAccessError("not_found");
   }
   if (drafting && snapshot) {
@@ -185,21 +185,33 @@ async function resolveContext(db: SupabaseClient, input: LiveRunInput): Promise<
   }
   if (snapshot && snapshot.workspaceId !== workspaceId) snapshot = null;
   if (drafting) requireDraftScope(input, locationId);
-  if (!snapshot) snapshot = await loadLatestSnapshot(db, workspaceId, locationId);
+  if (!snapshot) snapshot = await db.assistantLatestSnapshot(workspaceId, locationId);
   if (drafting && snapshot) {
     if (snapshot.workspaceId !== workspaceId || (locationId && snapshot.locationId !== locationId)) throw new AssistantAccessError("not_found");
     requireDraftScope(input, snapshot.locationId);
   }
 
-  const [diff, base, openRows] = await Promise.all([
-    loadDiffById(snapshot?.diffId ?? null),
-    snapshot?.comparableTo ? loadSnapshotById(db, snapshot.comparableTo) : Promise.resolve(null),
-    loadActionRows(workspaceId, { locationId, states: ["recommended", "needs_input", "ready", "in_progress"] }),
+  const [storedDiff, storedBase, openRows] = await Promise.all([
+    db.assistantDiff(snapshot?.diffId ?? null, workspaceId, snapshot?.jobId ?? null),
+    snapshot?.comparableTo ? db.assistantSnapshot(workspaceId, snapshot.comparableTo) : Promise.resolve(null),
+    db.assistantActions(workspaceId, { locationId, states: ["recommended", "needs_input", "ready", "in_progress"] }),
   ]);
 
+  let diff = storedDiff;
+  let base = storedBase;
+  if (drafting && snapshot?.comparableTo && !base) throw new AssistantAccessError("not_found");
   if (drafting && base && (base.workspaceId !== workspaceId || base.locationId !== snapshot?.locationId)) throw new AssistantAccessError("not_found");
 
-  const open = (openRows as ActionSourceRow[]).map((row) => ({ row, overview: overviewOf(row, locations.find((l) => l.id === row.location_id) ?? null) }));
+  // A valid same-location snapshot can still belong to a different comparison.
+  // Withhold the pair together so templates cannot label mixed evidence Observed.
+  // A null comparableTo legitimately means that no base snapshot was retained.
+  if (snapshot?.comparableTo && (!base || !diff || base.jobId !== diff.base_job_id ||
+      base.workspaceId !== workspaceId || base.locationId !== snapshot.locationId)) {
+    diff = null;
+    base = null;
+  }
+
+  const open = openRows.map((row) => ({ row, overview: overviewOf(row, locations.find((l) => l.id === row.location_id) ?? null) }));
   const focused = focusedRow ? { row: focusedRow, overview: overviewOf(focusedRow, locations.find((l) => l.id === focusedRow.location_id) ?? null) } : null;
   const locationName = location?.name ?? workspace?.business_name ?? "Workspace";
   const evidenceRefs = snapshot ? buildEvidenceRefs({ snapshot, diff, base, action: focused?.overview ?? open[0]?.overview ?? null, locationName, locale: input.locale }) : [];
@@ -234,15 +246,10 @@ function completed(intent: DemoQuestionId, input: LiveRunInput, ctx: ResolvedCon
   };
 }
 
-async function agentContext(db: SupabaseClient, input: LiveRunInput, ctx: ResolvedContext, action: { row: ActionSourceRow; overview: ActionOverview }, agentKey: AgentKey, intent: DraftIntent): Promise<AgentContext> {
-  const { data: brand, error } = await db
-    .from("brand_profiles")
-    .select("voice, approved_claims, prohibited_terms, languages, facts")
-    .eq("workspace_id", input.context.workspaceId)
-    .maybeSingle<BrandRow>();
-  if (error) throw new Error("assistant brand lookup failed");
+async function agentContext(db: LiveAssistantRepository, input: LiveRunInput, ctx: ResolvedContext, action: { row: ActionSourceRow; overview: ActionOverview }, agentKey: AgentKey, intent: DraftIntent): Promise<AgentContext> {
+  const brand = await db.assistantBrand(input.context.workspaceId);
   const provided = { ...asRecord(action.row.provided_inputs), ...(intent === "friendlier_review_reply" ? { tone_instruction: WARMER_INSTRUCTION } : {}) };
-  const sampledReviews = agentKey === "review_reply" && ctx.snapshot ? await loadSampledReviews(db, ctx.snapshot.jobId) : undefined;
+  const sampledReviews = agentKey === "review_reply" && ctx.snapshot ? sampledReviewsFromRawData(await db.assistantReviewData(input.context.workspaceId, ctx.snapshot.jobId)) : undefined;
   return {
     locale: input.locale,
     market: ctx.workspace?.market?.toLowerCase() === "tw" ? "tw" : "hk",
@@ -261,7 +268,7 @@ async function agentContext(db: SupabaseClient, input: LiveRunInput, ctx: Resolv
   };
 }
 
-async function draft(intent: DraftIntent, input: LiveRunInput, db: SupabaseClient, ctx: ResolvedContext): Promise<DemoAssistantRunResponse> {
+async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistantRepository, ctx: ResolvedContext): Promise<DemoAssistantRunResponse> {
   const spec = DRAFT_AGENTS[intent];
   const action = ctx.focused; // Already selected and authorized with its evidence.
   if (!action) return { ...completed("explain_limits", input, ctx, [NO_ACTION_FOR_DRAFT[input.locale]]) };
@@ -305,7 +312,7 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: SupabaseClien
 export async function runLiveAssistant(input: LiveRunInput): Promise<DemoAssistantRunResponse> {
   if (!input.membership || input.membership.workspaceId !== input.context.workspaceId ||
       (isDraftIntent(input.intentId) && !roleAtLeast(input.membership.role, "manager"))) throw new AssistantAccessError("forbidden");
-  const db = input.db ?? supabaseServer();
+  const db = input.repository ?? artifactRepository();
   const ctx = await resolveContext(db, input);
   if (isDraftIntent(input.intentId)) return draft(input.intentId, input, db, ctx);
   return completed(input.intentId, input, ctx);

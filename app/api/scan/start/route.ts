@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
 import { recordEvent, resolveAnalyticsSession, setAnalyticsSessionCookie } from "@/lib/analytics/record-event";
@@ -25,8 +26,9 @@ export async function POST(req: Request) {
 
   const created = await insertScanJob(parsed.input);
   if (!created.ok) {
-    console.error("Supabase insert error:", created.error);
-    return NextResponse.json({ error: "Failed to create scan job" }, { status: 500 });
+    const correlationId = randomUUID();
+    console.error("Scan persistence unavailable", { category: "database_unavailable", correlationId });
+    return NextResponse.json({ error: "Failed to create scan job", correlationId }, { status: 503 });
   }
 
   const session = resolveAnalyticsSession(req);

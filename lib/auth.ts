@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { membershipRepository } from "@/lib/repositories/membership";
 import { authorizeWorkspace, type WorkspaceRole } from "@/lib/workspace/authorize-workspace";
 
 /**
@@ -8,8 +7,8 @@ import { authorizeWorkspace, type WorkspaceRole } from "@/lib/workspace/authoriz
  *
  * The impure half only: this module reads cookies and the database, then hands
  * the access decision to upstream's pure `authorizeWorkspace`, the same split
- * as upstream's owner-session.ts. Data is read with the service-role client
- * after the decision; the anon client is used for `auth.*` only.
+ * as upstream's owner-session.ts. Business data is read from Neon
+ * after the decision; managed identity is resolved independently.
  *
  * Staff sessions are never accepted here — the staff console is the legacy
  * app — so every workspace check requires `kind === "member"`.
@@ -55,33 +54,13 @@ export function inLocationScope(m: Membership, locationId: string | null): boole
   return m.locationScope.includes(locationId);
 }
 
-/**
- * The signed-in, email-verified user, or null. Mirrors the user block of
- * upstream's loadOwnerSession: a missing Supabase Auth configuration reads as
- * "not signed in", never a 500, and an unverified email is not a session.
- */
+/** Verified server identity mapped to an app UUID. Outages remain errors, absence is null. */
 export async function getUser(): Promise<SessionUser | null> {
-  let user: SessionUser | null = null;
-  try {
-    const client = await createSupabaseServerClient();
-    const { data, error } = await client.auth.getUser();
-    const found = data?.user;
-    if (error || !found?.id || !found.email) return null;
-    user = {
-      id: found.id,
-      email: found.email,
-      verified: Boolean(found.email_confirmed_at ?? found.confirmed_at),
-    };
-  } catch {
-    // A missing Supabase Auth configuration must read as "not signed in", not as
-    // a 500 — an owner hitting an outage should see the sign-in path, not a stack.
-    return null;
-  }
-  // Deliberately stricter than the OAuth start routes, which check only
-  // user.id. The callback requires a verified email before binding a
-  // workspace, so every surface that displays one must too.
-  if (!user.verified) return null;
-  return user;
+  const { identityProvider } = await import("@/lib/identity/composition");
+  const identity = await (await identityProvider()).getIdentity();
+  if (!identity) return null;
+  const { resolveApplicationUser } = await import("@/lib/identity/users");
+  return resolveApplicationUser(identity);
 }
 
 export function signInPath(locale: string, returnTo: string): string {
@@ -94,50 +73,9 @@ export async function requireUser(locale: string, returnTo: string): Promise<Ses
   return user;
 }
 
-interface MembershipRow {
-  workspace_id: string;
-  role: WorkspaceRole;
-  location_scope: string[] | null;
-  email: string | null;
-}
-
-interface WorkspaceRefRow {
-  id: string;
-  slug: string | null;
-}
-
-async function loadWorkspaceRef(ref: { id?: string; slug?: string }): Promise<WorkspaceRefRow | null> {
-  const db = supabaseServer();
-  let query = db.from("workspaces").select("id, slug");
-  if (ref.id) query = query.eq("id", ref.id);
-  else if (ref.slug) query = query.eq("slug", ref.slug);
-  else return null;
-  const { data, error } = await query.maybeSingle<WorkspaceRefRow>();
-  // Throw rather than fall through to "not found": supabase-js resolves
-  // `{ data: null, error }` instead of rejecting, so swallowing this would deny
-  // a legitimate member on any transient PostgREST blip.
-  if (error) {
-    console.error("[auth] workspace lookup failed", { category: "auth_query_failed" });
-    throw new Error("Unable to load workspace");
-  }
-  return data ?? null;
-}
-
-async function loadAcceptedMembership(userId: string, workspaceId: string): Promise<MembershipRow | null> {
-  const { data, error } = await supabaseServer()
-    .from("workspace_members")
-    .select("workspace_id, role, location_scope, email")
-    .eq("user_id", userId)
-    .eq("workspace_id", workspaceId)
-    .not("accepted_at", "is", null)
-    .limit(1)
-    .returns<MembershipRow[]>();
-  if (error) {
-    console.error("[auth] membership lookup failed", { category: "auth_query_failed" });
-    throw new Error("Unable to load membership");
-  }
-  return data?.[0] ?? null;
-}
+interface WorkspaceRefRow { id: string; slug: string | null }
+const loadWorkspaceRef = membershipRepository.workspace;
+const loadAcceptedMembership = membershipRepository.accepted;
 
 type Decision =
   | { kind: "ok"; membership: Membership }
@@ -212,44 +150,27 @@ export async function authorizeWorkspaceRequest(
   return { ok: true, user, membership: decision.membership };
 }
 
-interface MembershipListRow extends MembershipRow {
-  user_id: string;
-  created_at: string;
-  workspaces: { slug: string | null } | Array<{ slug: string | null }> | null;
-}
-
 /** Accepted memberships joined to workspaces.slug, oldest first. */
 export async function listMemberships(userId: string): Promise<Membership[]> {
-  const { data, error } = await supabaseServer()
-    .from("workspace_members")
-    .select("workspace_id, user_id, role, location_scope, email, created_at, workspaces(slug)")
-    .eq("user_id", userId)
-    .not("accepted_at", "is", null)
-    .order("created_at", { ascending: true })
-    .returns<MembershipListRow[]>();
-  if (error) {
-    console.error("[auth] membership list failed", { category: "auth_query_failed" });
-    throw new Error("Unable to load memberships");
-  }
-  return (data ?? []).map((row) => {
-    const joined = Array.isArray(row.workspaces) ? row.workspaces[0] : row.workspaces;
-    return {
-      workspaceId: row.workspace_id,
-      workspaceSlug: joined?.slug ?? "",
-      userId: row.user_id,
-      email: row.email ?? "",
-      role: row.role,
-      locationScope: Array.isArray(row.location_scope) ? row.location_scope : null,
-    };
-  });
+ return (await membershipRepository.listAccepted(userId)).map(row => ({
+  workspaceId: row.workspace_id, workspaceSlug: row.workspace_slug ?? "",
+  userId: row.user_id, email: row.email ?? "", role: row.role,
+  locationScope: Array.isArray(row.location_scope) ? row.location_scope : null,
+ }));
 }
 
-/** Local sign-out (cookies only). Never throws: a safe redirect is still correct when auth is down. */
+/** Revoke managed identity; always invalidate local cookies, report remote failure. */
 export async function signOut(): Promise<void> {
+  let failed = false;
   try {
-    const client = await createSupabaseServerClient();
-    await client.auth.signOut({ scope: "local" });
-  } catch {
-    // Auth unavailable: nothing to clear server-side.
-  }
+    const { identityProvider } = await import("@/lib/identity/composition");
+    await (await identityProvider()).signOut();
+  } catch { failed = true; }
+  try {
+    const { cookies } = await import("next/headers");
+    const { MANAGED_AUTH_COOKIES, expiredAuthCookie } = await import("@/lib/identity/cookies");
+    const jar = await cookies();
+    for (const name of MANAGED_AUTH_COOKIES) jar.set(name, "", expiredAuthCookie);
+  } catch { failed = true; }
+  if (failed) throw new Error("identity_signout_failed");
 }

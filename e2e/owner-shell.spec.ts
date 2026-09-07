@@ -52,16 +52,22 @@ for (const segment of ["actions", "insights", "activity", "calendar", "more", "c
     await page.goto(`/zh-HK/owner/kam-man-house/${segment}`);
     const url = new URL(page.url());
     expect(url.pathname).toBe("/zh-HK/owner/sign-in");
-    // Without Supabase env the proxy gate is skipped and the layout-level membership check redirects,
-    // which knows the workspace but not the sub-path (Phase 2 behaviour).
-    expect(url.searchParams.get("returnTo")).toContain("/owner/kam-man-house");
+    // The proxy gates the full owner path even when managed auth is unconfigured.
+    expect(url.searchParams.get("returnTo")).toBe(`/zh-HK/owner/kam-man-house/${segment}`);
   });
 }
 
 test("no /owner/kam-man-house/* path renders the prototype any more", async ({ page }) => {
-  // An unknown sub-page is a plain 404 (no catch-all), never a demo workspace page.
-  const response = await page.goto("/zh-HK/owner/kam-man-house/settings/unknown");
-  expect(response?.status()).toBe(404);
+  // The signed-out proxy gate runs before route matching, including unknown pages.
+  // page.goto follows its redirect, so the final response is the sign-in page.
+  const path = "/zh-HK/owner/kam-man-house/settings/unknown";
+  const response = await page.goto(path);
+  expect(response?.status()).toBe(200);
+  const url = new URL(page.url());
+  expect(url.pathname).toBe("/zh-HK/owner/sign-in");
+  expect(url.searchParams.get("returnTo")).toBe(path);
+  await expect(page.locator("main.auth-page")).toBeVisible();
+  await expect(page.locator("#sign-in-email")).toBeVisible();
   await expect(page.locator(".prototype-bar")).toHaveCount(0);
   await expect(page.locator("body")).not.toContainText("錦汶館");
 });

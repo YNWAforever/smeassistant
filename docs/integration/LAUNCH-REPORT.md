@@ -1,12 +1,56 @@
-# Launch evidence — local suites passed; deployment acceptance not run
+# Launch evidence — Tasks 16–17 independently approved; hosted execution not run
 
-**Staging/final acceptance: not run.** Local fixture results below are verified against an uncommitted working tree. They do not authorize remote operations in the [deployment runbook](DEPLOY.md).
+**Current checkpoint (2026-09-07): Task 16 technical gates and independent implementation/specification review are approved, including the invitation policy amendment.** Pending workspace invitations remain valid until accepted or explicitly revoked. Managed sign-in links retain expiry and replay protection. Hosted Neon project, branch and origin are not chosen; hosted database/Auth/mail/Google/provider acceptance, migration, deployment and cutover were not run. Task 17 preparation and the owned recovery rehearsal are independently approved after re-review of `9aec5b7674bd52a8ce1e6f485735c78034d2636e`; the source-record and fixture-cleanup findings are resolved. The reviewed source candidate remains `214884c78ba0e4b1cf7e24fbbebca20f459ae1a4`. This is neither merge, deployment nor release approval.
 
 Use only these status values: `passed`, `failed`, `blocked`, `not run`. A pass applies only to the named category on the recorded commit/deployment. Record failed and blocked attempts as separate rows before adding a successful rerun. No credentials, cookies, private payloads or test contact details belong here.
 
 Runtime/origin configuration must include Node version, request origin, expected canonical origin, `APP_ORIGIN`, scan source mode, execution runtime, claim flag, isolated/shared database identity (non-secret), and provider test/live mode as applicable. Use `not applicable` for deployment fields on a local fixture test; do not invent deployment evidence from unit results.
 
-## Current acceptance table
+## Task 16 final local technical gate — source `853bdee87031cd1d1b2282969ab1b238c498d147`
+
+All ten commands ran sequentially against the owned local fixture and exited 0. Runtime was Node 24.18.0, pnpm 9.12.0, Docker Linux 29.7.2, Next 16.2.6 with Turbopack, and Vitest 4.1.11. The run used `VITEST_MAX_WORKERS=1`, `NEON_INTEGRATION=1`, and the absolute Task 9 transport-guard `NODE_OPTIONS`. It selected the local production build and owned acceptance fixture; no hosted target or provider was used.
+
+This is worktree evidence, not commit-only or remote-CI evidence. The public worktree proof includes the unstaged, user-owned `e2e/owner-shell.spec.ts` at SHA256 `C34D6BB9BD439AF56AF8EB3A47693170CE8EC4C54FE6A5DBB112C41C545236D4`; that file was not modified, staged or restored by the gate run.
+
+| Exact command | Status | Exact result |
+|---|---|---|
+| `corepack pnpm typecheck` | passed | Exit 0; root plus four workspace packages passed |
+| `corepack pnpm lint` | passed | Exit 0; 0 errors and 30 warnings |
+| `corepack pnpm test` | passed | Exit 0; 249 files / 2,394 tests: app 199/1,837, isolated 1/62, region 3/23, scoring 16/183, contracts 3/20, engine 27/269 |
+| `corepack pnpm db:verify` | passed | Exit 0; immutable migrations 0001–0004, empty replay, 34 tables / 403 columns / 151 constraints / 84 indexes / 7 triggers / 13 functions, zero seeds |
+| `corepack pnpm test:integration` | passed | Exit 0; 21 files / 232 tests |
+| `corepack pnpm build` | passed | Exit 0; 26/26 static pages. Dynamic OG font fetch attempts were blocked by `fixture_external_transport_forbidden`; this does not claim remote font success |
+| `corepack pnpm e2e` | passed | Exit 0; 27 public production-build tests |
+| `corepack pnpm e2e:acceptance` | passed | Exit 0; 18 owned-local acceptance tests |
+| `corepack pnpm test:secret-boundary` | passed | Exit 0; 44 public artifacts scanned |
+| `corepack pnpm test:no-supabase` | passed | Exit 0; active dependency scanner permits only the separately approved pinned Neon SDK/auth-js transitive relationship |
+
+The isolated fixture proves local PostgreSQL, managed-Auth-shaped handoff, mail and provider-shaped behavior within the transport fence. It does not prove any hosted service. Warnings retained in the successful epoch were 30 lint warnings, a Vite config-loader warning, Playwright `NO_COLOR`/`FORCE_COLOR`, and secret-boundary `DEP0190`. Two test-written snapshots were verified as empty diffs with their HEAD blob IDs before exact-path normalization; the user-owned E2E file remained untouched.
+
+Independent review found the readiness false-positive issue, which was fixed and re-reviewed at this source SHA: readiness now probes the exact application URL separately and rejects invalid, migration-owner or privileged application credentials. The remaining Important finding was a requirement gap for invitation lifetime. **Approved amendment — 2026-09-07:** the [specification](../superpowers/specs/2026-09-06-neon-migration-design.md#authentication-and-authorization) and [Task 7 plan](../superpowers/plans/2026-09-06-neon-migration.md#task-7-membership-invitations-and-merchant-claims) now state that a pending workspace invitation remains valid until accepted or explicitly revoked. Acceptance still requires verified intended-recipient identity, a pending unrevoked membership and transactional acceptance. Managed sign-in links retain provider-enforced expiry and replay rejection; an expired or replayed link is a no-op, and a later fresh link may accept the still-pending invitation. The local acceptance expiry case proves sign-in-link expiry only. No invitation-specific SQL expiry was tested or is claimed, and no arbitrary TTL was added.
+
+Tasks 11–15 are approved and the pinned Neon SDK/auth-js exception is complete. The Task 16 technical gate is passed and **independent final review is approved**, including the readiness fix and explicit invitation-policy amendment; no outstanding Critical/Important findings remain. Hosted project/branch/origin remain **not chosen** and every hosted database/Auth/mail/Google/provider, migration, deployment and cutover action remains **not run**.
+
+## Task 17 local preparation — 2026-09-07
+
+Prepared [Neon cutover and recovery runbook](NEON-CUTOVER.md), configuration source/scope map, immutable migration byte checksums, named-but-unassigned operational roles, bounded proposed acceptance and recovery decisions. Hosted project/region/branch/database/origins/accounts remain NOT CHOSEN. All external operations remain NOT READY / NOT RUN. Task 17 independent re-review approved the bounded fixes at `9aec5b7674bd52a8ce1e6f485735c78034d2636e`.
+
+| Check | Status | Evidence / boundary |
+|---|---|---|
+| Owned recovery SQL initial rehearsal | passed | New `neon-recovery.integration.test.ts`: 1 file / 1 test, exit 0, 14.43s; Node 24.18.0, pnpm 9.12.0, Vitest 4.1.11, Docker Linux 29.7.2 |
+| Intentional data-loss negative control | failed | Expected: deleting only the owned report before drain/restart caused repository equality to fail (null vs saved report), 1 failed, exit 1, 13.40s; temporary deletion removed |
+| Final restored recovery SQL rehearsal | passed | 1 file / 1 test, exit 0, 13.71s; original preserving sequence restored |
+| Task 17 focused checks | passed | Typecheck app + four packages; scoped recovery-test ESLint; inventory checker; 11 inventory regression tests (1.66s); diff whitespace check, all exit 0 |
+| Recovery behavior | passed | Restricted runtime creates new app user, accepted membership and related report; original pool drains/closes; exact owned network-none DB container stops/restarts; same DB reconnect preserves exact repository report data and user relation; subsequent repository write/read passes |
+| Hosted rollback / prior deployed build / traffic maintenance | not run | Local restart/reconnect of current repository only; no hosted Neon restore, traffic change, provider/Auth/mail or old-build execution |
+| Hosted release readiness | blocked | Target, origin, identities, operators, budget and compatible recovery deployment not chosen; no provisioning/migration/deployment/promotion |
+
+Task 17 parent source is `0da3b65af99c4c7381907b3b5ad97001a5599d6b`. Reviewed source candidate `214884c78ba0e4b1cf7e24fbbebca20f459ae1a4` is the eight-file documentation/env-comment/focused-recovery-test commit; production runtime source remains `853bdee87031cd1d1b2282969ab1b238c498d147`. The earlier all-ten-gate counts above were not rerun for this slice and remain attributed to that runtime source plus the protected owner-shell worktree delta. The protected file remains unstaged with its recorded SHA256; no commit-only or remote-CI claim is made. The closure commit records review/source identity only: it does not select a hosted target, authorize deployment, or supply a deployment ID. Operational evidence belongs in a later separately authorized record/commit.
+Review-fix verification: the post-acquisition Docker inspect, identity derivation and pool setup now execute inside the same `try/finally` that calls `fixture.stop()`, so an early setup failure after fixture acquisition reaches owned cleanup. The focused actual-SQL recovery test passed once after this change: **1 file / 1 test**, exit 0, 11.16s (7.92s test time). Root plus all four package typechecks passed; scoped recovery-test ESLint passed with no output; Neon inventory passed; inventory regression passed **1 file / 11 tests**, exit 0. No heavy full gate was rerun, and no new full-gate epoch is claimed.
+
+## Historical pre-Neon acceptance table — not current Task 16 proof
+
+The following table predates the Neon migration checkpoint. It is retained as historical evidence and must not be used as current Neon proof.
 
 | Probe category / case | Status | Commit SHA | Deployment ID | Runtime/origin configuration | Result | Reference |
 |---|---|---|---|---|---|---|

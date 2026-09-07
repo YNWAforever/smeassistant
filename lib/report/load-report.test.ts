@@ -215,7 +215,7 @@ vi.mock("@/lib/evidence/load-authorized", () => ({
         evidenceType: "post",
         sourceUrl: "https://www.instagram.com/p/code/",
         mediaUrl:
-          "https://project.supabase.co/storage/v1/object/sign/report-evidence/job-1/post.jpg?token=signed-token",
+          "https://evidence.example.test/private/job-1/post.jpg?token=signed-token",
         capturedAt: "2026-07-21T00:00:00.000Z",
         publishedAt: null,
         text: "Post",
@@ -293,9 +293,15 @@ function queryFor(table: string) {
   return query;
 }
 
-vi.mock("@/lib/supabase/admin", () => ({
-  supabaseServer: vi.fn(() => ({ from: (table: string) => queryFor(table) })),
-}));
+vi.mock("@/lib/db/client", () => ({ getPool: () => ({ query: async (sql:string) => {
+ const table = /(?:FROM|UPDATE) (\w+)/.exec(sql)?.[1]; if(!table) throw Error("unexpected fixture SQL");
+ const q=queryFor(table); const columns=sql.slice(7,sql.indexOf(" FROM ")).replace(/::float8 AS \w+/g,"").replaceAll(",",", ");
+ const counting=sql.includes("count(*)");
+ if(sql.startsWith("UPDATE")) q.update(); else q.select(columns,{head:counting});
+ const result=await q.single();
+ if(result.error && result.error.code!=="PGRST116") throw result.error;
+ return {rows:counting?[{count:result.count}]:Array.isArray(result.data)?result.data:result.data?[result.data]:[]};
+ } }) }));
 
 import { loadAuthorizedEvidence } from "@/lib/evidence/load-authorized";
 import { createReportLoader, loadReport } from "./load-report";
@@ -416,7 +422,7 @@ function makeLoaderDeps(options: {
         evidenceType: "post",
         sourceUrl: "https://www.instagram.com/p/code/",
         mediaUrl:
-          "https://project.supabase.co/storage/v1/object/sign/report-evidence/job-1/post.jpg?token=signed-token",
+          "https://evidence.example.test/private/job-1/post.jpg?token=signed-token",
         capturedAt: "2026-07-21T00:00:00.000Z",
         publishedAt: null,
         text: "Post",
@@ -859,14 +865,14 @@ describe("loadReport", () => {
   it("throws an operational job query error", async () => {
     state.jobError = { code: "XX000", message: "database offline" };
 
-    await expect(loadReport("shop", "en")).rejects.toThrow("Unable to load report job");
+    await expect(loadReport("shop", "en")).rejects.toThrow("report_persistence_unavailable");
   });
 
   it("throws public finding query errors", async () => {
     state.publicFindingError = { code: "XX001", message: "findings unavailable" };
 
     await expect(loadReport("shop", "en")).rejects.toThrow(
-      "Unable to load public report findings",
+      "report_persistence_unavailable",
     );
   });
 
@@ -874,7 +880,7 @@ describe("loadReport", () => {
     state.countError = { code: "XX002", message: "count unavailable" };
 
     await expect(loadReport("shop", "en")).rejects.toThrow(
-      "Unable to count public report findings",
+      "report_persistence_unavailable",
     );
   });
 
@@ -883,7 +889,7 @@ describe("loadReport", () => {
     state.authorizedJobError = { code: "XX003", message: "proof unavailable" };
 
     await expect(loadReport("shop", "en")).rejects.toThrow(
-      "Unable to load authorized report proof",
+      "report_persistence_unavailable",
     );
   });
 
@@ -892,7 +898,7 @@ describe("loadReport", () => {
     state.authorizedFindingError = { code: "XX004", message: "detail unavailable" };
 
     await expect(loadReport("shop", "en")).rejects.toThrow(
-      "Unable to load authorized report findings",
+      "report_persistence_unavailable",
     );
   });
 });

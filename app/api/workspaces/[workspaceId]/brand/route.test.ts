@@ -12,7 +12,6 @@ vi.mock("@/lib/security/rate-limit", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/security/rate-limit")>();
   return { ...actual, enforceRateLimit: (...args: unknown[]) => mocks.enforceRateLimit(...args) };
 });
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({ marker: "db" }) }));
 vi.mock("@/lib/workspace/brand", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/workspace/brand")>();
   return { ...actual, getBrand: (...args: unknown[]) => mocks.getBrand(...args), putBrand: (...args: unknown[]) => mocks.putBrand(...args) };
@@ -73,7 +72,6 @@ describe("PUT /api/workspaces/[workspaceId]/brand", () => {
     expect(mocks.authorizeWorkspaceRequest).toHaveBeenCalledWith({ id: WORKSPACE_ID }, { minRole: "owner" });
     expect(mocks.enforceRateLimit).toHaveBeenCalledWith(expect.objectContaining({ scope: "brand_update", identifiers: ["user-1"], failClosed: true }));
     expect(mocks.putBrand).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({
         workspaceId: WORKSPACE_ID,
         actorId: "user-1",

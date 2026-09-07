@@ -1,5 +1,7 @@
 # CLAUDE.md — SME Scanner Visibility Workspace (`YNWAforever/smeassistant`)
 
+> User-approved amendment (2026-09-07): retain pinned `@neondatabase/auth@0.5.0-beta` and only its transitive `@supabase/auth-js@2.79.0` library relationship. The library is runtime-reachable through Neon error helpers; this is not zero Supabase-authored packages. No direct application SDK client, Supabase service use, credentials, endpoints or active imports are allowed. The exit gate validates the pinned manifest/importer, package integrity, snapshot and sole introducer edge, then scans all remaining lockfile content. Version or introducer drift fails closed. No SDK patch or upgrade is authorized. This supersedes the literal zero-dependency acceptance wording only; hosted acceptance and release remain separate gates.
+
 > **What this file is.** The operating manual + executable integration playbook for Claude Code in this repo.
 > Part A (sections 0–3) is always-on context and contracts. Part B (section 4) is the phased playbook.
 > Sections 5–7 are content rules, verification and pitfalls. Appendix D is the decisions log. Read Part A fully before touching code.
@@ -7,7 +9,7 @@
 > **Mission.** Turn the ChatGPT-Sites prototype in this repo (the design that lives at
 > `https://sme-scanner-visibility-workspace.laichiwillyjp.chatgpt.site`) into the production
 > **SME Scanner Visibility Workspace**, running on **Vercel + standard Next.js 16**, powered by the
-> already-built backend in **`YNWAforever/sme-scanner`** (`origin/main`) and its **existing Supabase project**.
+> existing scan/scoring contracts, with merchant persistence on typed Neon PostgreSQL repositories and Neon Auth.
 > The final, integrated code lives **here**.
 >
 > **Owner:** Willy Lai (Fimmick / Kinnso). **Markets:** Hong Kong (HKD, WhatsApp) and Taiwan (TWD, LINE).
@@ -19,6 +21,18 @@
 > The checkout at `C:\Users\laich\Documents\smescanner` (local `main` 8415a327) is **not a source for anything**.
 
 ---
+
+## Current Neon migration operating contract (Task 15)
+
+This section supersedes historical database/Auth setup and deployment instructions below. Older phases remain design and migration evidence, not instructions to reconnect the legacy database. Hosted branch, staging origin and Auth target are NOT CHOSEN; hosted acceptance and deployment are NOT RUN.
+
+- Use `db:verify` for an owned disposable PostgreSQL migration/catalog/replay check; immutable Neon migrations 0001–0004 must not be edited.
+- Use `db:types` to generate actual row and insert type mappings from `lib/db/schema/`; no hosted introspection or CLI credentials are needed.
+- `seed:demo --owned-test` creates, seeds, verifies and destroys its own labeled fixture; no arbitrary or ambient target is accepted.
+- `neon:readiness` validates usable values, canonical origins and explicit expected host/database before read-only journal and schema metadata queries. It does not test personal/business rows or send Auth requests. A READY result is schema/configuration readiness, not hosted Auth delivery acceptance.
+- The exit scanner covers active source, manifests, scripts and tests, including untracked temporary source. Historical SQL and catalog evidence do not authorize active transport imports.
+- Keep all CI gates. Secret-boundary verification builds its own bundle with synthetic database URL and cookie-secret sentinels. Run heavy gates sequentially.
+- Configuration sources and unresolved provider actions are in `docs/integration/DEPLOY.md`. No provisioning, shared migration, deployment or paid/provider action follows from these local commands.
 
 ## How to use this file
 

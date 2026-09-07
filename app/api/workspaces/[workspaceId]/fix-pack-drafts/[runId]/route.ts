@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { fixPackRepository } from "@/lib/repositories/fix-pack";
 
 /**
  * Owner/manager approve or reject a pending Fix Pack draft -- the "may
@@ -47,41 +47,25 @@ export async function PATCH(
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const status = typeof body.status === "string" && VALID_STATUSES.has(body.status) ? body.status : null;
+  const status = typeof body?.status === "string" && VALID_STATUSES.has(body.status) ? body.status : null;
   if (!status) {
     return NextResponse.json({ error: "status must be approved or rejected" }, { status: 400 });
   }
 
-  const supabase = supabaseServer();
-
-  // Workspace scoping: the run's job must belong to the path's workspace. A
-  // run from another workspace answers the same 404 as a nonexistent run, so
-  // this cannot be used to probe which run ids exist.
-  const { data: run } = await supabase
-    .from("agent_runs")
-    .select("job_id, audit_jobs!inner(workspace_id)")
-    .eq("id", runId)
-    .maybeSingle();
-  const runWorkspaceId = (run as { audit_jobs?: { workspace_id?: string } } | null)?.audit_jobs?.workspace_id;
-  if (!run || runWorkspaceId !== workspaceId) {
-    return NextResponse.json({ error: "not found" }, { status: 404 });
-  }
-
-  const { data: updated, error } = await supabase
-    .from("agent_runs")
-    .update({ status, reviewed_by: auth.user.id, reviewed_at: new Date().toISOString() })
-    .eq("id", runId)
-    .eq("status", "draft")
-    .select("id");
-  if (error) {
-    console.error("[owner/fix-pack-drafts] review failed", { category: "fix_pack_review_failed" });
-    return NextResponse.json({ error: "unavailable" }, { status: 500 });
-  }
-  if (!updated?.length) {
-    // Zero rows: the conditional .eq("status", "draft") matched nothing --
-    // someone (this user double-clicking, another manager, or staff) already
-    // reviewed it.
-    return NextResponse.json({ error: "already reviewed" }, { status: 409 });
+  const repository = fixPackRepository();
+  try {
+    const scope = await repository.scope(runId);
+    if (!scope || scope.workspaceId !== workspaceId) return NextResponse.json({error:"not found"},{status:404});
+    const member = auth.membership;
+    if (member.role !== "owner" && (member.role !== "manager" || (member.locationScope !== null && scope.locationId !== null && !member.locationScope.includes(scope.locationId)))) {
+      return NextResponse.json({error:"forbidden"},{status:403});
+    }
+    if (!await repository.review(runId, workspaceId, scope.locationId, status, auth.user.id)) {
+      return NextResponse.json({error:"already reviewed"},{status:409});
+    }
+  } catch {
+    console.error("[owner/fix-pack-drafts] review failed", {category:"fix_pack_review_failed"});
+    return NextResponse.json({error:"unavailable"},{status:500});
   }
 
   return NextResponse.json({ ok: true });

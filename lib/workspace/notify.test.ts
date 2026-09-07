@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { NotificationRepository } from "./notify";
 import { localized } from "@/lib/domain";
-import { hasNotificationSince, notifyWorkspace, workspaceHomeHref } from "./notify";
+import { hasSinceWithRepository as hasNotificationSince, notifyWithRepository as notifyWorkspace, homeHrefWithRepository as workspaceHomeHref } from "./notify";
 
 type Row = Record<string, unknown>;
 
@@ -14,46 +14,13 @@ const state = vi.hoisted(() => ({
   slug: "kam-man-house" as string | null,
 }));
 
-function client(): SupabaseClient {
-  const from = (table: string) => {
-    let inserted: Row[] | null = null;
-    const terminal = () => {
-      if (table === "workspace_members") return { data: state.membersError ? null : state.members, error: state.membersError };
-      if (table === "workspace_notifications") {
-        if (inserted) {
-          if (state.insertError) return { data: null, error: state.insertError };
-          state.inserted.push(...inserted);
-          return { data: null, error: null };
-        }
-        return { data: state.existing, error: null };
-      }
-      if (table === "workspaces") return { data: state.slug ? { slug: state.slug } : null, error: null };
-      return { data: null, error: null };
-    };
-    const chain: Record<string, unknown> = {};
-    const self = () => chain;
-    Object.assign(chain, {
-      select: self,
-      eq: self,
-      not: self,
-      gte: self,
-      limit: self,
-      insert: (rows: Row[]) => {
-        inserted = rows;
-        return Promise.resolve(terminal());
-      },
-      upsert: (rows: Row[], options: { onConflict: string; ignoreDuplicates: boolean }) => {
-        expect(options).toEqual({ onConflict: "id", ignoreDuplicates: true });
-        inserted = rows.filter((row) => !state.inserted.some((existing) => existing.id === row.id));
-        return { select: () => { const result = terminal(); return Promise.resolve({ ...result, data: result.error ? null : inserted }); } };
-      },
-      returns: () => Promise.resolve(terminal()),
-      maybeSingle: () => Promise.resolve(terminal()),
-      then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => Promise.resolve(terminal()).then(resolve, reject),
-    });
-    return chain;
-  };
-  return { from } as unknown as SupabaseClient;
+function client(): NotificationRepository {
+ return {
+  async acceptedMemberIds(){if(state.membersError)throw new Error("members lookup failed");return state.members.map(row=>String(row.user_id));},
+  async insert(rows,dedupe){if(state.insertError)throw new Error("notification insert failed");const fresh=dedupe?rows.filter(row=>!state.inserted.some(existing=>existing.id===row.id)):rows;state.inserted.push(...fresh.map(row=>({...row})));return fresh.length;},
+  async hasSince(){return Boolean(state.existing.length);},
+  async workspaceSlug(){return state.slug;},
+ };
 }
 
 beforeEach(() => {

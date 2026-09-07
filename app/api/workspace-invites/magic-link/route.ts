@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { sendMagicLink } from "@/lib/identity/composition";
+import { membershipRepository } from "@/lib/repositories/membership";
 import {
   enforceCompositeIdentifierRateLimit,
   rateLimitUnavailableResponse,
   rateLimitedResponse,
 } from "@/lib/security/rate-limit";
 import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
-import { safeReturnTo } from "@/lib/funnel/locale-redirect";
+import { safeReturnPath } from "@/lib/identity/return-path";
 
 /**
  * Sends an invited team member a magic link that returns through
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
 
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const locale = isLocale(body.locale) ? body.locale : DEFAULT_LOCALE;
-  const returnTo = safeReturnTo(typeof body.returnTo === "string" ? body.returnTo : null);
+  const returnTo = safeReturnPath(typeof body.returnTo === "string" ? body.returnTo : "", "");
   if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: "invalid_email" }, { status: 400 });
   }
@@ -66,22 +66,15 @@ export async function POST(req: Request) {
     // validated and the request origin is only the fallback.
     const appOrigin = safeAppOrigin(process.env.NEXT_PUBLIC_SITE_URL) ?? new URL(req.url).origin;
 
-    const { data: pendingRows } = await supabaseServer()
-      .from("workspace_members")
-      .select("id")
-      .eq("email", email)
-      .is("accepted_at", null)
-      .limit(1);
-    if (!pendingRows?.length) return NextResponse.json({ ok: true });
+    if (!await membershipRepository.hasPendingInvitation(email)) return NextResponse.json({ ok: true });
 
     const redirect = new URL("/auth/callback", appOrigin);
     redirect.searchParams.set("locale", locale);
     if (returnTo) redirect.searchParams.set("returnTo", returnTo);
 
-    const client = await createSupabaseServerClient();
-    const { error } = await client.auth.signInWithOtp({
+    const { error } = await sendMagicLink({
       email,
-      options: { emailRedirectTo: redirect.toString() },
+      callbackURL: redirect.toString(),
     });
     if (error) {
       console.error("Workspace invite magic-link provider rejected request");
@@ -89,8 +82,8 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (error) {
-    console.error("Workspace invite magic-link request failed", error);
+  } catch {
+    console.error("Workspace invite magic-link request failed", { category: "magic_link_failed" });
     return NextResponse.json({ ok: true });
   }
 }

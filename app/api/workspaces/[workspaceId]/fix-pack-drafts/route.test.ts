@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const authorizeWorkspaceRequest = vi.fn();
-const from = vi.fn();
+const list = vi.fn();
 
 vi.mock("@/lib/auth", () => ({ authorizeWorkspaceRequest: (...args: unknown[]) => authorizeWorkspaceRequest(...args) }));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({ from }) }));
+vi.mock("@/lib/repositories/fix-pack", () => ({ fixPackRepository: () => ({ list }) }));
 
 const WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";
 
@@ -24,18 +24,6 @@ function get(query = "?locale=zh-HK") {
   );
 }
 
-function draftsTable(rows: unknown[]) {
-  return {
-    select: () => ({
-      eq: () => ({
-        in: () => ({
-          order: () => ({ limit: async () => ({ data: rows, error: null }) }),
-        }),
-      }),
-    }),
-  };
-}
-
 const DRAFT_ROW = {
   id: "run-1",
   job_id: "job-1",
@@ -52,10 +40,7 @@ afterEach(() => vi.resetAllMocks());
 describe("GET /api/workspaces/[workspaceId]/fix-pack-drafts", () => {
   it("returns display-ready rows for any member, viewer included", async () => {
     authorizeWorkspaceRequest.mockResolvedValue(auth("viewer"));
-    from.mockImplementation((table: string) => {
-      if (table !== "agent_runs") throw new Error(`unexpected table ${table}`);
-      return draftsTable([DRAFT_ROW]);
-    });
+    list.mockResolvedValue([DRAFT_ROW]);
 
     const res = await get();
 
@@ -82,8 +67,7 @@ describe("GET /api/workspaces/[workspaceId]/fix-pack-drafts", () => {
 
   it("ships a gbp post draft without review fields, text picked by locale, and humanises an unknown finding key", async () => {
     authorizeWorkspaceRequest.mockResolvedValue(auth("owner"));
-    from.mockImplementation(() =>
-      draftsTable([
+    list.mockResolvedValue([
         {
           ...DRAFT_ROW,
           id: "run-2",
@@ -91,8 +75,7 @@ describe("GET /api/workspaces/[workspaceId]/fix-pack-drafts", () => {
           agent_key: "gbp_post_agent",
           output: { agentKey: "gbp_post_agent", draftPostZh: "中文帖", draftPostEn: "English post", seedEvidence: [] },
         },
-      ]),
-    );
+      ]);
 
     const res = await get("?locale=en");
 
@@ -113,11 +96,18 @@ describe("GET /api/workspaces/[workspaceId]/fix-pack-drafts", () => {
     authorizeWorkspaceRequest.mockResolvedValue({ ok: false, status: 403, code: "forbidden" });
     const res = await get();
     expect(res.status).toBe(403);
-    expect(from).not.toHaveBeenCalled();
+    expect(list).not.toHaveBeenCalled();
   });
 
   it("rejects an unknown locale before touching auth", async () => {
     expect((await get("?locale=fr")).status).toBe(400);
     expect(authorizeWorkspaceRequest).not.toHaveBeenCalled();
   });
+});
+
+it('allows an out-of-scope manager to read evidence', async () => {
+ authorizeWorkspaceRequest.mockResolvedValue({...auth('manager'), membership:{...auth('manager').membership,locationScope:['other']}});
+ list.mockResolvedValue([DRAFT_ROW]);
+ expect((await get()).status).toBe(200);
+ expect(list).toHaveBeenCalledWith(WORKSPACE_ID);
 });

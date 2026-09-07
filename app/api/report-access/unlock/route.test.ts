@@ -8,12 +8,8 @@ const mocks = vi.hoisted(() => ({
   sessionId: "anonymous-session",
 }));
 
-vi.mock("@/lib/supabase/admin", () => ({
-  supabaseServer: () => ({
-    from: mocks.from,
-    rpc: mocks.rpc,
-  }),
-}));
+vi.mock("@/lib/repositories/reports",()=>({reportsRepository:()=>({readUnlockJob:async()=>{const result=await mocks.from("audit_jobs").select().eq().single();if(result.error)throw result.error;return result.data;}})}));
+vi.mock("@/lib/repositories/workflow",()=>({workflowRepository:()=>({completeReportUnlock:async(input:unknown)=>{const result=await mocks.rpc(input);if(result.error)throw result.error;return result.data[0];}})}));
 
 vi.mock("@/lib/security/rate-limit", () => ({
   enforceCompositeIdentifierRateLimit: mocks.enforceCompositeIdentifierRateLimit,
@@ -128,17 +124,16 @@ describe("POST /api/report-access/unlock", () => {
       "anonymous-session",
     );
     expect(mocks.rpc).toHaveBeenCalledWith(
-      "complete_report_unlock",
-      expect.objectContaining({
-        p_job_id: "job-1",
-        p_anonymous_session_id: "anonymous-session",
-        p_event_properties: { market: "HK", channel: "whatsapp", objective: "other" },
-        p_contact_identifier: "+85291234567",
-        p_email: null,
-        p_report_delivery_consent: true,
-        p_scan_discussion_consent: false,
-        p_marketing_consent: false,
-        p_purpose: "viewer_report",
+            expect.objectContaining({
+        jobId: "job-1",
+        anonymousSessionId: "anonymous-session",
+        eventProperties: { market: "HK", channel: "whatsapp", objective: "other" },
+        contactIdentifier: "+85291234567",
+        email: null,
+        reportDeliveryConsent: true,
+        scanDiscussionConsent: false,
+        marketingConsent: false,
+        purpose: "viewer_report",
       }),
     );
 
@@ -159,11 +154,10 @@ describe("POST /api/report-access/unlock", () => {
 
     expect(response.status).toBe(200);
     expect(mocks.rpc).toHaveBeenCalledWith(
-      "complete_report_unlock",
-      expect.objectContaining({
-        p_contact_identifier: "owner@example.com",
-        p_email: "owner@example.com",
-        p_whatsapp: null,
+            expect.objectContaining({
+        contactIdentifier: "owner@example.com",
+        email: "owner@example.com",
+        whatsapp: null,
       }),
     );
   });
@@ -179,10 +173,9 @@ describe("POST /api/report-access/unlock", () => {
 
     expect(response.status).toBe(200);
     expect(mocks.rpc).toHaveBeenCalledWith(
-      "complete_report_unlock",
-      expect.objectContaining({
-        p_contact_identifier: "owner@example.com",
-        p_event_properties: { market: "HK", channel: "email", objective: "other" },
+            expect.objectContaining({
+        contactIdentifier: "owner@example.com",
+        eventProperties: { market: "HK", channel: "email", objective: "other" },
       }),
     );
   });

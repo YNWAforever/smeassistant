@@ -10,44 +10,15 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/auth", () => ({ authorizeWorkspaceRequest: (...args: unknown[]) => mocks.authorizeWorkspaceRequest(...args) }));
-vi.mock("@/lib/workspace/audit", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/workspace/audit")>();
-  return { ...actual, recordEvent: (...args: unknown[]) => mocks.recordEvent(...args) };
-});
-vi.mock("@/lib/supabase/admin", () => ({
-  supabaseServer: () => ({
-    from: (table: string) => {
-      const filters: Record<string, unknown> = {};
-      const chain: Record<string, unknown> = {};
-      const self = () => chain;
-      Object.assign(chain, {
-        select: self,
-        eq: (column: string, value: unknown) => {
-          filters[column] = value;
-          return chain;
-        },
-        update: (patch: Record<string, unknown>) => {
-          const updateChain: Record<string, unknown> = {};
-          const done = () => Promise.resolve({ error: mocks.updateError });
-          Object.assign(updateChain, {
-            eq: (column: string, value: unknown) => {
-              filters[column] = value;
-              return updateChain;
-            },
-            then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => {
-              mocks.updates.push({ patch, filters: { ...filters } });
-              return done().then(resolve, reject);
-            },
-          });
-          return updateChain;
-        },
-        returns: () => Promise.resolve({ data: table === "locations" ? mocks.locations : [], error: null }),
-        maybeSingle: () => Promise.resolve({ data: table === "workspace_members" ? mocks.target : null, error: null }),
-      });
-      return chain;
-    },
-  }),
-}));
+vi.mock("@/lib/repositories/claims",()=>({recordClaimAuditEvent:(...args:unknown[])=>mocks.recordEvent(...args)}));
+vi.mock("@/lib/repositories/membership",()=>({membershipRepository:{
+ member:async()=>mocks.target,
+ locationIds:async()=>mocks.locations.map(row=>row.id),
+ update:async(workspaceId:string,id:string,patch:Record<string,unknown>)=>{
+  mocks.updates.push({patch,filters:{id,workspace_id:workspaceId}});
+  if(mocks.updateError) throw new Error("update failed");return true;
+ },
+}}));
 
 const WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";
 const LOC_1 = "22222222-2222-4222-8222-222222222222";
@@ -88,16 +59,14 @@ describe("PATCH /api/workspaces/[workspaceId]/members/[memberId]", () => {
     expect(mocks.authorizeWorkspaceRequest).toHaveBeenCalledWith({ id: WORKSPACE_ID }, { minRole: "owner" });
     expect(mocks.updates).toEqual([{ patch: { role: "viewer", location_scope: [LOC_1] }, filters: { id: "member-2", workspace_id: WORKSPACE_ID } }]);
     expect(mocks.recordEvent).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({
-        workspaceId: WORKSPACE_ID,
-        actorType: "user",
-        actorId: "user-1",
+        workspace_id: WORKSPACE_ID,
+        actor_type: "user",
+        actor_id: "user-1",
         event: "member.role_changed",
-        entityType: "workspace_member",
-        entityId: "member-2",
-        locale: "en",
-        payload: { from_role: "manager", role: "viewer", location_scope: [LOC_1] },
+        entity_type: "workspace_member",
+        entity_id: "member-2",
+        payload: expect.objectContaining({ locale:"en", from_role: "manager", role: "viewer", location_scope: [LOC_1] }),
       }),
     );
   });

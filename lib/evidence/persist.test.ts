@@ -29,8 +29,8 @@ function createDeps() {
     })),
     storage: {
       upload: vi.fn(async (): Promise<{ error: unknown }> => ({ error: null })),
-      remove: vi.fn(async (): Promise<{ error: unknown }> => ({ error: null })),
-      list: vi.fn(async (): Promise<{ data: unknown[]; error: unknown }> => ({ data: [], error: null })),
+      remove: vi.fn<(paths: string[]) => Promise<{ error: unknown }>>().mockResolvedValue({ error: null }),
+      list: vi.fn(async (): Promise<{ paths: string[]; hasMore: boolean; cursor?: string }> => ({ paths: [], hasMore: false })),
     },
     rows: {
       upsert: vi.fn(async () => undefined),
@@ -276,225 +276,52 @@ describe("deleteEvidenceForReport", () => {
   });
 });
 
-/**
- * The containment guard is the only thing standing between a malformed or tampered
- * storage_path and a bucket removal outside the job's own prefix. It threw
- * correctly from the day it was written and nothing asserted it, so a refactor
- * that softened it would have been silent.
- */
-function deps(
-  paths: Array<{ storage_path: string | null }>,
-  listing: Record<string, Array<{ name: string; id: string | null }>> = {},
-) {
-  const removed: string[][] = [];
-  let rowsDeleted = false;
-  return {
-    removed,
-    wasRowsDeleted: () => rowsDeleted,
-    deps: {
-      download: async () => { throw new Error("not used"); },
-      storage: {
-        upload: async () => ({}),
-        remove: async (targets: string[]) => { removed.push(targets); return {}; },
-        list: async (prefix: string, options: { offset: number }) => ({
-          // One page is enough for these fixtures; a second call must return
-          // nothing or the sweep would loop.
-          data: options.offset === 0 ? listing[prefix] ?? [] : [],
-          error: null,
-        }),
-      },
-      rows: {
-        upsert: async () => {},
-        listPaths: async () => paths,
-        delete: async () => { rowsDeleted = true; },
-      },
-    } as unknown as Parameters<typeof deleteEvidenceForReport>[1],
-  };
-}
 
-describe("deleteEvidenceForReport path containment", () => {
-  it("refuses a stored path that escapes the job prefix", async () => {
-    const harness = deps([{ storage_path: "../other-job/instagram/post/a.jpg" }]);
-    await expect(deleteEvidenceForReport("job-1", harness.deps)).rejects.toThrow("evidence_storage_path_invalid");
-    expect(harness.removed).toEqual([]);
-    expect(harness.wasRowsDeleted()).toBe(false);
-  });
-
-  it("refuses a path belonging to a different job", async () => {
-    const harness = deps([{ storage_path: "job-2/instagram/post/a.jpg" }]);
-    await expect(deleteEvidenceForReport("job-1", harness.deps)).rejects.toThrow("evidence_storage_path_invalid");
-    expect(harness.removed).toEqual([]);
-  });
-
-  it("refuses a job id that is not a safe path segment", async () => {
-    const harness = deps([]);
-    await expect(deleteEvidenceForReport("../etc", harness.deps)).rejects.toThrow("invalid_evidence_job_id");
-  });
-
-  it("removes owned paths once, then the rows", async () => {
-    const harness = deps([
-      { storage_path: "job-1/instagram/post/a.jpg" },
-      { storage_path: "job-1/instagram/post/a.jpg" },
-      { storage_path: null },
-    ]);
-    await deleteEvidenceForReport("job-1", harness.deps);
-    expect(harness.removed).toEqual([["job-1/instagram/post/a.jpg"]]);
-    expect(harness.wasRowsDeleted()).toBe(true);
-  });
-});
-
-/**
- * The row list is not a complete index of the bucket. persistEvidenceSnapshots
- * uploads the object and then writes the row, so a crash between the two leaves
- * an object nothing points at. Erasing only row-referenced paths left those
- * behind permanently -- unreachable through the app AND undeletable, because the
- * row that named them was gone too.
- */
-describe("deleteEvidenceForReport storage sweep", () => {
-  it("removes an orphaned object that no row references", async () => {
-    const harness = deps(
-      [],
-      {
-        "job-1": [{ name: "instagram", id: null }],
-        "job-1/instagram": [{ name: "post", id: null }],
-        "job-1/instagram/post": [{ name: "orphan.jpg", id: "obj-1" }],
-      },
-    );
-    await deleteEvidenceForReport("job-1", harness.deps);
-    expect(harness.removed).toEqual([["job-1/instagram/post/orphan.jpg"]]);
-    expect(harness.wasRowsDeleted()).toBe(true);
-  });
-
-  it("unions swept objects with row-referenced paths, without duplicating", async () => {
-    const harness = deps(
-      [{ storage_path: "job-1/instagram/post/a.jpg" }],
-      {
-        "job-1": [{ name: "instagram", id: null }],
-        "job-1/instagram": [{ name: "post", id: null }],
-        "job-1/instagram/post": [
-          { name: "a.jpg", id: "obj-1" },
-          { name: "orphan.jpg", id: "obj-2" },
-        ],
-      },
-    );
-    await deleteEvidenceForReport("job-1", harness.deps);
-    expect(harness.removed[0]!.sort()).toEqual([
-      "job-1/instagram/post/a.jpg",
-      "job-1/instagram/post/orphan.jpg",
-    ]);
-  });
-
-  it("holds swept paths to the same containment rule as rows", async () => {
-    // A listing is not more trustworthy than a stored path just because it came
-    // from the bucket. Both go through ownedStoragePaths.
-    const harness = deps([], { "job-1": [{ name: "..", id: "obj-1" }] });
-    await expect(deleteEvidenceForReport("job-1", harness.deps)).rejects.toThrow(
-      "evidence_storage_path_invalid",
-    );
-    expect(harness.removed).toEqual([]);
-  });
-
-  it("aborts the erasure when the listing itself fails", async () => {
-    const removed: string[][] = [];
-    const failing = {
-      download: async () => { throw new Error("not used"); },
-      storage: {
-        upload: async () => ({}),
-        remove: async (targets: string[]) => { removed.push(targets); return {}; },
-        list: async () => ({ data: null, error: { message: "down" } }),
-      },
-      rows: {
-        upsert: async () => {},
-        listPaths: async () => [{ storage_path: "job-1/instagram/post/a.jpg" }],
-        delete: async () => { throw new Error("rows must not be deleted"); },
-      },
-    } as unknown as Parameters<typeof deleteEvidenceForReport>[1];
-
-    await expect(deleteEvidenceForReport("job-1", failing)).rejects.toThrow("evidence_storage_list_failed");
-    // A listing outage must not downgrade into "erased what we could see".
-    expect(removed).toEqual([]);
-  });
-
-  it("does not walk forever when the bucket keeps returning folders", async () => {
-    // Depth is bounded, so a cyclic or pathological prefix cannot hang an
-    // operator's erasure request.
-    const harness = deps([], new Proxy({}, {
-      get: () => [{ name: "deeper", id: null }],
-      has: () => true,
-    }) as Record<string, Array<{ name: string; id: string | null }>>);
-    await deleteEvidenceForReport("job-1", harness.deps);
-    expect(harness.wasRowsDeleted()).toBe(true);
-  });
-});
-
-describe("deleteEvidenceForReport sweep termination", () => {
-  /** Returns a FULL page of folders every time, so pagination never self-limits. */
-  function foldersForever(safetyLimit = 400) {
-    let calls = 0;
-    return {
-      calls: () => calls,
-      deps: {
-        download: async () => { throw new Error("not used"); },
-        storage: {
-          upload: async () => ({}),
-          remove: async () => ({}),
-          list: async () => {
-            calls += 1;
-            if (calls > safetyLimit) throw new Error("list_called_unboundedly");
-            return {
-              data: Array.from({ length: 100 }, (_, index) => ({ name: `d${index}`, id: null })),
-              error: null,
-            };
-          },
-        },
-        rows: {
-          upsert: async () => {},
-          listPaths: async () => [],
-          delete: async () => { throw new Error("rows must not be deleted"); },
-        },
-      } as unknown as Parameters<typeof deleteEvidenceForReport>[1],
-    };
-  }
-
-  it("gives up instead of paginating forever on a page full of folders", async () => {
-    // Folder entries do not grow `files`, so a ceiling that only counts files
-    // never trips and the pagination loop runs forever -- hanging the operator's
-    // erasure request rather than failing it.
-    const harness = foldersForever();
-    await expect(deleteEvidenceForReport("job-1", harness.deps)).rejects.toThrow(
-      "evidence_storage_sweep_too_large",
-    );
-    expect(harness.calls()).toBeLessThanOrEqual(400);
-  });
-
-  it("chunks the removal so a large sweep is not one over-sized batch", async () => {
-    // 250 objects under one folder -> three remove() calls, not one.
-    const listing: Record<string, Array<{ name: string; id: string | null }>> = {
-      "job-1": [{ name: "instagram", id: null }],
-    };
-    const objects = Array.from({ length: 250 }, (_, index) => ({ name: `f${index}.jpg`, id: `o${index}` }));
-    const removed: string[][] = [];
-    const deps = {
-      download: async () => { throw new Error("not used"); },
-      storage: {
-        upload: async () => ({}),
-        remove: async (targets: string[]) => { removed.push(targets); return {}; },
-        list: async (prefix: string, options: { limit: number; offset: number }) => ({
-          data: prefix === "job-1/instagram"
-            ? objects.slice(options.offset, options.offset + options.limit)
-            : options.offset === 0 ? listing[prefix] ?? [] : [],
-          error: null,
-        }),
-      },
-      rows: {
-        upsert: async () => {},
-        listPaths: async () => [],
-        delete: async () => {},
-      },
-    } as unknown as Parameters<typeof deleteEvidenceForReport>[1];
-
+describe("flat cursor evidence retention", () => {
+  it("unions orphan objects and database references before deleting rows", async () => {
+    const deps = createDeps();
+    deps.rows.listPaths.mockResolvedValue([{ storage_path: "job-1/a.jpg" }]);
+    deps.storage.list.mockResolvedValueOnce({ paths: ["job-1/a.jpg", "job-1/orphan.jpg"], hasMore: false });
     await deleteEvidenceForReport("job-1", deps);
-    expect(removed.map((batch) => batch.length)).toEqual([100, 100, 50]);
-    expect(removed.flat()).toHaveLength(250);
+    expect(deps.storage.remove).toHaveBeenCalledWith(["job-1/a.jpg", "job-1/orphan.jpg"]);
+    expect(deps.storage.remove.mock.invocationCallOrder[0]).toBeLessThan(deps.rows.delete.mock.invocationCallOrder[0]!);
+  });
+  it.each(["../other/a.jpg", "job-2/a.jpg", "job-1/../a.jpg", "job-1/a\\b.jpg"])("denies escaped reference %s", async path => {
+    const deps = createDeps(); deps.rows.listPaths.mockResolvedValue([{ storage_path: path }]);
+    await expect(deleteEvidenceForReport("job-1", deps)).rejects.toThrow("evidence_storage_path_invalid");
+    expect(deps.rows.delete).not.toHaveBeenCalled(); expect(deps.storage.remove).not.toHaveBeenCalled();
+  });
+  it("denies escaped listed objects and malformed job IDs", async () => {
+    const deps = createDeps(); deps.storage.list.mockResolvedValue({ paths: ["other/a.jpg"], hasMore: false });
+    await expect(deleteEvidenceForReport("job-1", deps)).rejects.toThrow("evidence_storage_path_invalid");
+    await expect(deleteEvidenceForReport("../etc", deps)).rejects.toThrow("invalid_evidence_job_id");
+    expect(deps.rows.delete).not.toHaveBeenCalled();
+  });
+  it("fails before deleting anything on listing failure", async () => {
+    const deps = createDeps(); deps.storage.list.mockRejectedValue(new Error("storage"));
+    await expect(deleteEvidenceForReport("job-1", deps)).rejects.toThrow("evidence_storage_list_failed");
+    expect(deps.storage.remove).not.toHaveBeenCalled(); expect(deps.rows.delete).not.toHaveBeenCalled();
+  });
+  it("rejects missing or repeated cursors", async () => {
+    const deps = createDeps(); deps.storage.list.mockResolvedValue({ paths: [], hasMore: true, cursor: "same" });
+    await expect(deleteEvidenceForReport("job-1", deps)).rejects.toThrow("evidence_storage_cursor_invalid");
+    expect(deps.rows.delete).not.toHaveBeenCalled();
+  });
+  it("bounds pages even when empty and objects when pages are full", async () => {
+    for (const full of [false, true]) {
+      const deps = createDeps(); let page = 0;
+      deps.storage.list.mockImplementation(async () => ({ paths: full ? Array.from({ length: 100 }, (_, i) => `job-1/${page}-${i}.jpg`) : [], hasMore: true, cursor: String(++page) }));
+      await expect(deleteEvidenceForReport("job-1", deps)).rejects.toThrow("evidence_storage_sweep_too_large");
+      expect(page).toBeLessThanOrEqual(200); expect(deps.rows.delete).not.toHaveBeenCalled();
+    }
+  });
+  it("uses flat continuation cursors and removes in batches of 100", async () => {
+    const deps = createDeps();
+    deps.storage.list.mockResolvedValueOnce({ paths: Array.from({ length: 100 }, (_, i) => `job-1/${i}.jpg`), hasMore: true, cursor: "second" })
+      .mockResolvedValueOnce({ paths: Array.from({ length: 100 }, (_, i) => `job-1/${100+i}.jpg`), hasMore: true, cursor: "third" })
+      .mockResolvedValueOnce({ paths: Array.from({ length: 50 }, (_, i) => `job-1/${200+i}.jpg`), hasMore: false });
+    await deleteEvidenceForReport("job-1", deps);
+    expect(deps.storage.list).toHaveBeenNthCalledWith(2, "job-1", { limit: 100, cursor: "second" });
+    expect(deps.storage.remove.mock.calls.map(call => (call[0] as string[]).length)).toEqual([100,100,50]);
   });
 });

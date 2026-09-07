@@ -1,8 +1,9 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { RescanRepository } from "@/lib/repositories/rescan";
+import { jobsRepository } from "@/lib/repositories/jobs";
 import type { IgMatchProvenance } from "@sme-scanner/contracts";
 import { buildScanJobInsert, type ScanStartInput } from "@/lib/scan/start-job";
 import { buildScheduleInsert, type SchedulableJob, type ScheduleRefusal } from "@/lib/scheduler/create-schedule";
-import { recordEvent } from "@/lib/workspace/audit";
+import { recordNeonEvent } from "@/lib/workspace/audit";
 
 /**
  * Owner "Rescan now" (CLAUDE.md §3.2.3, Phase 6 item 1): queue a new
@@ -22,7 +23,6 @@ const IG_MATCH_PROVENANCE = new Set<string>(["manual_typed", "picker_confirmed",
 const LOCALES = new Set<string>(["en", "zh-HK", "zh-TW"]);
 const OBJECTIVES = new Set<string>(["more_leads", "better_visibility", "improve_trust", "understand_performance"]);
 const CONFIDENCES = new Set<string>(["high", "medium", "low"]);
-const FINISHED_STATUSES = ["done", "partial"] as const;
 
 export interface RescanSourceJob extends SchedulableJob {
   workspace_id: string | null;
@@ -102,18 +102,8 @@ export function scanInputFromSnapshot(raw: unknown, parentJobId: string): ScanSt
 }
 
 /** The location's newest finished (`done|partial`) job, or null. */
-export async function loadLatestFinishedJob(db: SupabaseClient, workspaceId: string, locationId: string): Promise<RescanSourceJob | null> {
-  const { data, error } = await db
-    .from("audit_jobs")
-    .select("id, status, place_id, created_at, input_snapshot, workspace_id, location_id")
-    .eq("workspace_id", workspaceId)
-    .eq("location_id", locationId)
-    .in("status", [...FINISHED_STATUSES])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .returns<RescanSourceJob[]>();
-  if (error) throw new Error("rescan source lookup failed");
-  return data?.[0] ?? null;
+export async function loadLatestFinishedJob(repo: RescanRepository, workspaceId: string, locationId: string): Promise<RescanSourceJob | null> {
+ return repo.latestFinishedJob(workspaceId, locationId);
 }
 
 export interface EnqueueRescanInput {
@@ -125,8 +115,8 @@ export interface EnqueueRescanInput {
   ipHash?: string | null;
 }
 
-export async function enqueueRescan(db: SupabaseClient, input: EnqueueRescanInput): Promise<EnqueueRescanResult> {
-  const sourceJob = await loadLatestFinishedJob(db, input.workspaceId, input.locationId);
+export async function enqueueRescan(repo: RescanRepository, input: EnqueueRescanInput): Promise<EnqueueRescanResult> {
+  const sourceJob = await loadLatestFinishedJob(repo, input.workspaceId, input.locationId);
   if (!sourceJob) return { ok: false, reason: "no_finished_job" };
 
   let scanInput: ScanStartInput;
@@ -139,13 +129,14 @@ export async function enqueueRescan(db: SupabaseClient, input: EnqueueRescanInpu
   // Server-side attribution only (CLAUDE.md 3.2.2): workspace_id + location_id
   // come from the authorized membership, never from a request body.
   const row = buildScanJobInsert(scanInput, { workspaceId: input.workspaceId, locationId: input.locationId });
-  const { data: created, error } = await db.from("audit_jobs").insert(row).select("id").single<{ id: string }>();
-  if (error || !created) {
+  let created: { id: string };
+  try { created = await jobsRepository.insert(row); }
+  catch {
     console.error("[workspace/rescan] job insert failed", { category: "rescan_insert_failed" });
     return { ok: false, reason: "insert_failed" };
   }
 
-  await recordEvent(db, {
+  await recordNeonEvent( {
     workspaceId: input.workspaceId,
     locationId: input.locationId,
     actorType: "user",
@@ -173,24 +164,19 @@ export type EnsureScheduleOutcome =
  * logged by the caller, never fatal: the rescan itself has already landed.
  */
 export async function ensureMonthlySchedule(
-  db: SupabaseClient,
+  repo: RescanRepository,
   input: { job: SchedulableJob; workspaceId: string; actorId: string; nowIso: string },
 ): Promise<EnsureScheduleOutcome> {
   const built = buildScheduleInsert({ job: input.job, staffUserId: input.actorId, nowIso: input.nowIso, workspaceId: input.workspaceId });
   if (!built.ok) return { created: false, reason: built.reason };
 
-  const { data: existing, error: lookupError } = await db
-    .from("scan_schedules")
-    .select("id")
-    .eq("place_id", built.insert.place_id)
-    .limit(1)
-    .returns<Array<{ id: string }>>();
-  if (lookupError) return { created: false, reason: "lookup_failed" };
-  if (existing?.length) return { created: false, reason: "exists" };
-
-  const { error } = await db.from("scan_schedules").insert(built.insert);
-  // 23505: a concurrent rescan created it first — same outcome as "exists".
-  if (error && (error as { code?: string }).code === "23505") return { created: false, reason: "exists" };
-  if (error) return { created: false, reason: "insert_failed" };
+  try {
+    if (await repo.scheduleExists(built.insert.place_id)) return { created: false, reason: "exists" };
+  } catch { return { created: false, reason: "lookup_failed" }; }
+  try { await repo.insertSchedule(built.insert); }
+  catch (error) {
+    if ((error as { code?: string } | null)?.code === "23505") return { created: false, reason: "exists" };
+    return { created: false, reason: "insert_failed" };
+  }
   return { created: true };
 }

@@ -11,6 +11,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import type { PrototypeLocale } from "@/lib/copy"
 
+import { authClient } from "@/lib/identity/client"
+import { safeReturnPath } from "@/lib/identity/return-path"
+
 import type { SignInErrorCode } from "@/lib/funnel/sign-in"
 
 // Keep native form submission unavailable until React owns the event handlers.
@@ -31,15 +34,7 @@ function errorCopy(code: SignInErrorCode, isChinese: boolean): string {
   }
 }
 
-/**
- * Real magic-link sign-in in the prototype's auth-page layout (CLAUDE.md §3.1,
- * §5 "Sign-in"). With a `claim` (report slug) the request goes to
- * `POST /api/owner/magic-link`, which mails only when a lead exists on that
- * report; otherwise `POST /api/workspace-invites/magic-link` mails only a
- * pending invitee. Both answer `{ ok: true }` regardless (anti-enumeration),
- * so the UI always moves to "check your inbox". No Google sign-in here: Google
- * is used to *prove ownership* during onboarding, never as an identity.
- */
+/** Managed email-link and Google identity; authorization remains server-side. */
 export function SignInPage({
   locale,
   claim,
@@ -60,6 +55,25 @@ export function SignInPage({
   const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle")
   const [formError, setFormError] = useState("")
 
+  function callbackURL() {
+    const query = new URLSearchParams({ locale })
+    if (claim) query.set("claim", claim)
+    const target = safeReturnPath(returnTo ?? "", "")
+    if (target) query.set("returnTo", target)
+    return `/auth/callback?${query}`
+  }
+
+  async function googleSignIn() {
+    setFormError("")
+    setStatus("sending")
+    try {
+      const result = await authClient.signIn.social({ provider: "google", callbackURL: callbackURL(), errorCallbackURL: callbackURL() })
+      if (result.error) throw new Error()
+    } catch {
+      setFormError(isChinese ? "登入服務暫時未能使用，請稍後再試。" : "Sign-in is temporarily unavailable. Please try again shortly.")
+    } finally { setStatus("idle") }
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const trimmed = email.trim().toLowerCase()
@@ -69,21 +83,15 @@ export function SignInPage({
     }
     setFormError("")
     setStatus("sending")
-    const endpoint = claim ? "/api/owner/magic-link" : "/api/workspace-invites/magic-link"
-    const body = claim ? { email: trimmed, slug: claim, locale, returnTo } : { email: trimmed, locale, returnTo }
     try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      })
-      if (response.ok) {
+      const { error } = await authClient.signIn.magicLink({ email: trimmed, callbackURL: callbackURL() })
+      if (!error) {
         setStatus("sent")
         return
       }
-      const data = (await response.json().catch(() => ({}))) as { error?: string }
+      const data = { error: error.code }
       setStatus("idle")
-      if (response.status === 429) setFormError(isChinese ? "請求太頻密，請稍後再試。" : "Too many requests. Please wait a moment and try again.")
+      if (error.status === 429) setFormError(isChinese ? "請求太頻密，請稍後再試。" : "Too many requests. Please wait a moment and try again.")
       else if (data.error === "invalid_email") setFormError(isChinese ? "請輸入有效的電郵地址。" : "Enter a valid email address.")
       else if (data.error === "invalid_slug") setFormError(isChinese ? "報告連結無效，請由報告頁重新進入。" : "The report reference is invalid. Return from the report page.")
       else setFormError(isChinese ? "暫時未能發送登入電郵，請稍後再試。" : "We could not send the sign-in email. Please try again shortly.")
@@ -119,6 +127,7 @@ export function SignInPage({
                 {formError && <div className="form-error" role="alert"><CircleAlert /> {formError}</div>}
                 <Button type="submit" className="w-full" size="lg" disabled={!hydrated || status === "sending"}><ShieldCheck />{status === "sending" ? (isChinese ? "發送中…" : "Sending…") : (isChinese ? "寄出登入連結" : "Email me a sign-in link")}<ArrowRight /></Button>
               </form>
+              <Button type="button" variant="outline" className="w-full" disabled={!hydrated || status === "sending"} onClick={googleSignIn}>{isChinese ? "使用 Google 登入" : "Continue with Google"}</Button>
             </>
           )}
           <div className="auth-divider"><span>{isChinese ? "尚未認領商戶？" : "Haven’t claimed a business?"}</span></div>

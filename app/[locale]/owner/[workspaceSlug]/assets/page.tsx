@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import { AssetsView } from "@/components/workspace/assets-view";
-import { supabaseServer } from "@/lib/supabase/admin";
 import { listAssets } from "@/lib/workspace/assets";
 import { inScopeFor, loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 
@@ -14,7 +13,7 @@ export async function generateMetadata(props: OwnerPageProps): Promise<Metadata>
 /** Assets with 60 s signed thumbnails; rights decisions are scoped per row (§3.9). */
 export default async function AssetsRoute(props: OwnerPageProps) {
   const page = await loadOwnerPage(props);
-  const rows = await listAssets(supabaseServer(), page.ctx.workspace.id, page.ctx.locations);
+  const rows = await listAssets(page.ctx.workspace.id, page.ctx.locations);
   const assets = rows.map((asset) => ({ ...asset, inScope: inScopeFor(page.membership, asset.location_id) }));
   const scopedLocation = page.locationSlug === "all" ? null : page.ctx.locations.find((l) => l.slug === page.locationSlug) ?? null;
   return (

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { getUser } from "@/lib/auth";
+import { claimsRepository, recordClaimAuditEvent } from "@/lib/repositories/claims";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/locale";
 import { claimViaOAuthEnabled } from "@/lib/oauth/claim-flow-flag";
 import { GBP_SCOPE_REQUIRED, exchangeCode, verifyClaimState } from "@/lib/oauth/google-connection";
@@ -82,10 +82,8 @@ export async function GET(req: Request) {
   if (!payload) return back(origin, locale, null, { claim: "invalid_state" });
 
   try {
-    const client = await createSupabaseServerClient();
-    const { data } = await client.auth.getUser();
-    const user = data.user;
-    if (!user?.id) return back(origin, locale, payload.slug, { claim: "unauthenticated" });
+    const user = await getUser();
+    if (!user?.id || !user.verified) return back(origin, locale, payload.slug, { claim: "unauthenticated" });
 
     const tokens = await exchangeCode(code, process.env.GOOGLE_OAUTH_CLAIM_REDIRECT_URI);
     if (!tokens) return back(origin, locale, payload.slug, { claim: "exchange_failed" });
@@ -114,21 +112,16 @@ export async function GET(req: Request) {
     const match = managed.find((location) => location.placeId === payload.placeId);
     if (!match) return back(origin, locale, payload.slug, { claim: "place_not_managed" });
 
-    const db = supabaseServer();
-    const { data: job } = await db
-      .from("audit_jobs")
-      .select("id, business_name, industry, district, region")
-      .eq("id", payload.jobId)
-      .maybeSingle();
+    const job = await claimsRepository.jobById(payload.jobId);
     if (!job) return back(origin, locale, payload.slug, { claim: "not_found" });
 
-    const { data: existing, error: findError } = await findOwnedWorkspace(db, user.id);
+    const { data: existing, error: findError } = await findOwnedWorkspace(user.id);
     if (findError) throw new Error("workspace lookup failed");
 
     const workspace =
       existing != null
         ? { id: existing.workspaceId }
-        : await createWorkspaceWithOwner(db, {
+        : await createWorkspaceWithOwner({
             ownerUserId: user.id,
             ownerEmail: user.email ?? "",
             businessName: job.business_name ?? null,
@@ -137,79 +130,35 @@ export async function GET(req: Request) {
             market: job.region ?? null,
           });
 
-    const attached = await attachJobToWorkspace(db, job.id, workspace.id);
+    const attached = await attachJobToWorkspace(job.id, workspace.id);
     if (!attached) return back(origin, locale, payload.slug, { claim: "already_claimed" });
 
     const encrypted = {
       access_token_encrypted: encryptToken(tokens.accessToken),
       refresh_token_encrypted: encryptToken(tokens.refreshToken),
     };
-    const { data: inserted, error: insertError } = await db
-      .from("oauth_connections")
-      .insert({
-        workspace_id: workspace.id,
-        provider: "google_gbp",
-        account_ref: match.locationName,
-        ...encrypted,
-        scopes: tokens.scopes,
-        expires_at: tokens.expiresAt,
-        status: "expired",
-      })
-      .select("id")
-      .single();
-    if (insertError || !inserted) {
-      console.error("[oauth/google/claim/callback] connection insert failed");
-      return back(origin, locale, payload.slug, { claim: "storage_failed" });
-    }
-
-    const nowIso = new Date().toISOString();
-
-    // Retire any predecessor before promoting the new row, mirroring the
-    // connect-flow callback exactly. findOwnedWorkspace can return an existing
-    // workspace that already has an active google_gbp connection (the owner
-    // connected once before, or is claiming a second scan), and
-    // oauth_connections_active_provider_key only allows one active row per
-    // (workspace_id, provider). Without this, the promote below would 23505 --
-    // and by then attachJobToWorkspace has already run, so the job would be
-    // stuck attached with no way to retry.
-    const { error: revokeError } = await db
-      .from("oauth_connections")
-      .update({ status: "revoked", updated_at: nowIso })
-      .eq("workspace_id", workspace.id)
-      .eq("provider", "google_gbp")
-      .eq("status", "active");
-    if (revokeError) {
-      console.error("[oauth/google/claim/callback] predecessor revoke failed");
-      return back(origin, locale, payload.slug, { claim: "storage_failed" });
-    }
-
-    const { error: promoteError } = await db
-      .from("oauth_connections")
-      .update({ status: "active", updated_at: nowIso })
-      .eq("id", inserted.id)
-      .eq("status", "expired");
-    if (promoteError) {
-      console.error("[oauth/google/claim/callback] connection promote failed");
-      return back(origin, locale, payload.slug, { claim: "storage_failed" });
+    try {
+      await claimsRepository.replaceGoogleConnection({
+        workspaceId:workspace.id, accountRef:match.locationName,
+        accessTokenEncrypted:encrypted.access_token_encrypted, refreshTokenEncrypted:encrypted.refresh_token_encrypted,
+        scopes:tokens.scopes, expiresAt:tokens.expiresAt,
+      });
+    } catch {
+      console.error("[oauth/google/claim/callback] connection storage failed");
+      return back(origin,locale,payload.slug,{claim:"storage_failed"});
     }
 
     // Best-effort. The claim itself already succeeded; a failed audit insert
     // must not turn a successful claim into an error shown to the owner.
-    const { error: eventError } = await db.from("workspace_claim_events").insert({
-      job_id: job.id,
-      workspace_id: workspace.id,
-      matched_location_id: match.locationName,
-      claimed_by_user_id: user.id,
+    await claimsRepository.recordMerchantClaimEvent({
+      job_id:job.id,workspace_id:workspace.id,matched_location_id:match.locationName,claimed_by_user_id:user.id,
     });
-    if (eventError) {
-      console.error("[oauth/google/claim/callback] claim event not recorded", { category: "claim_event_failed" });
-    }
 
     // Same posture for this app's own append-only audit log (CLAUDE.md
     // §3.11 `workspace.claimed`; guardrail 10). workspace_claim_events above
     // is upstream's staff-console table, audit_events is what the Activity
     // page renders.
-    const { error: auditError } = await db.from("audit_events").insert({
+    await recordClaimAuditEvent({
       workspace_id: workspace.id,
       actor_type: "user",
       actor_id: user.id,
@@ -218,9 +167,6 @@ export async function GET(req: Request) {
       entity_id: job.id,
       payload: { locale },
     });
-    if (auditError) {
-      console.error("[oauth/google/claim/callback] audit event not recorded", { category: "audit_event_failed" });
-    }
 
     // The merchant now has a workspace attached to this job; onboarding picks
     // the flow up (`claimed=1`) and POSTs /api/workspaces/claim to complete it.

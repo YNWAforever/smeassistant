@@ -1,13 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ClaimCompletionStore } from "@/lib/repositories/claims";
 
 vi.mock("@/lib/workspace/entitlement", () => ({
   deliveryAllowanceForTier: (tier: string) => (tier === "paid" ? null : 3),
 }));
 vi.mock("@/lib/workspace/slug", () => ({
   slugify: (input: string) => input.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "workspace",
-  uniqueWorkspaceSlug: vi.fn(async (_db: unknown, base: string) => `${base}-2`),
-  uniqueLocationSlug: vi.fn(async (_db: unknown, _workspaceId: string, base: string) => base),
 }));
 
 import { claimPeriod, completeWorkspaceClaim, isValidTimezone } from "./claim";
@@ -29,57 +27,29 @@ interface Call {
 type Responder = (call: Call) => { data?: unknown; error?: unknown } | undefined;
 
 function fakeDb(respond: Responder) {
-  const calls: Call[] = [];
-  function builder(table: string) {
-    const call: Call = { table, op: "select", filters: [] };
-    const resolve = () => {
-      calls.push(call);
-      const answer = respond(call) ?? {};
-      return { data: answer.data ?? null, error: answer.error ?? null };
-    };
-    const api = {
-      select: () => api,
-      insert: (payload: unknown) => {
-        call.op = "insert";
-        call.payload = payload;
-        return api;
-      },
-      update: (payload: unknown) => {
-        call.op = "update";
-        call.payload = payload;
-        return api;
-      },
-      upsert: (payload: unknown, options?: unknown) => {
-        call.op = "upsert";
-        call.payload = payload;
-        call.options = options;
-        return api;
-      },
-      eq: (column: string, value: unknown) => {
-        call.filters.push(["eq", column, value]);
-        return api;
-      },
-      not: (column: string, operator: string, value: unknown) => {
-        call.filters.push(["not", column, `${operator} ${value}`]);
-        return api;
-      },
-      is: (column: string, value: unknown) => {
-        call.filters.push(["is", column, value]);
-        return api;
-      },
-      like: (column: string, value: unknown) => {
-        call.filters.push(["like", column, value]);
-        return api;
-      },
-      limit: () => api,
-      maybeSingle: async () => resolve(),
-      single: async () => resolve(),
-      then: (onFulfilled: (value: { data: unknown; error: unknown }) => unknown, onRejected?: (reason: unknown) => unknown) =>
-        Promise.resolve(resolve()).then(onFulfilled, onRejected),
-    };
-    return api;
-  }
-  return { calls, db: { from: builder } as unknown as SupabaseClient };
+ const calls: Call[] = [];
+ async function call(table:string,op:Call["op"],payload?:unknown,filters:Call["filters"]=[],options?:unknown) {
+  const invocation={table,op,payload,filters,options}; calls.push(invocation);
+  const result=respond(invocation)??{}; if(result.error) throw new Error(`${table === "audit_jobs" ? "job lookup" : table} failed`);
+  return result.data??null;
+ }
+ const eq=(key:string,value:unknown):Call["filters"]=>[["eq",key,value]];
+ const db={
+  job: (slug:string)=>call("audit_jobs","select",undefined,eq("share_slug",slug)),
+  membership: (user:string,ws:string)=>call("workspace_members","select",undefined,[["eq","workspace_id",ws],["eq","user_id",user],["not","accepted_at","is null"]]),
+  workspace: (id:string)=>call("workspaces","select",undefined,eq("id",id)),
+  workspaceSlug: async (base:string)=>`${base}-2`, locationSlug:async (_ws:string,base:string)=>base,
+  updateWorkspace:(id:string,payload:unknown)=>call("workspaces","update",payload,eq("id",id)),
+  primaryLocation:(ws:string)=>call("locations","select",undefined,[["eq","workspace_id",ws],["eq","is_primary",true]]),
+  updateLocation:(id:string,payload:unknown)=>call("locations","update",payload,eq("id",id)),
+  insertLocation:(payload:unknown)=>call("locations","insert",payload),
+  attachLocation:(job:string,id:string)=>call("audit_jobs","update",{location_id:id},eq("id",job)),
+  ensureBrand:(ws:string)=>call("brand_profiles","upsert",{workspace_id:ws},[],{onConflict:"workspace_id",ignoreDuplicates:true}),
+  ensureUsage:(payload:unknown)=>call("workspace_usage","upsert",payload,[],{onConflict:"workspace_id,period",ignoreDuplicates:true}),
+  hasClaimEvent:async (job:string)=>Boolean((await call("audit_events","select",undefined,eq("entity_id",job)) as unknown[])?.length),
+  auditEvent:(payload:unknown)=>call("audit_events","insert",payload),
+ } as unknown as ClaimCompletionStore;
+ return {calls,db};
 }
 
 const JOB = {

@@ -1,7 +1,6 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { membershipRepository, type MembershipRepository } from "@/lib/repositories/membership";
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace";
 import type { LocationSummary, WorkspaceContext } from "@/lib/workspace/queries";
-import { supabaseServer } from "@/lib/supabase/admin";
 
 /**
  * Team read model (CLAUDE.md Phase 6 item 5, §3.9): every `workspace_members`
@@ -48,22 +47,13 @@ export function rowToTeamMember(row: MemberRow): TeamMember {
   };
 }
 
-export async function getTeam(ctx: WorkspaceContext, db: SupabaseClient = supabaseServer()): Promise<TeamModel> {
-  const { data, error } = await db
-    .from("workspace_members")
-    .select("id, email, role, user_id, accepted_at, invited_at, location_scope, created_at")
-    .eq("workspace_id", ctx.workspace.id)
-    .order("created_at", { ascending: true })
-    .returns<MemberRow[]>();
-  if (error) throw new Error("team lookup failed");
-  // Owner first, then by join order: the table reads like the prototype's.
-  const members = (data ?? []).map(rowToTeamMember).sort((a, b) => (a.role === "owner" ? -1 : b.role === "owner" ? 1 : 0));
-  return { members, locations: ctx.locations };
+export async function getTeam(ctx: WorkspaceContext, db: MembershipRepository = membershipRepository): Promise<TeamModel> {
+ const rows = await db.team(ctx.workspace.id);
+ const members = rows.map(rowToTeamMember).sort((a,b) => Number(b.role === "owner") - Number(a.role === "owner"));
+ return {members, locations: ctx.locations};
 }
 
-/** The workspace's location ids, for validating a manager's `location_scope`. */
-export async function loadLocationIds(db: SupabaseClient, workspaceId: string): Promise<Set<string>> {
-  const { data, error } = await db.from("locations").select("id").eq("workspace_id", workspaceId).returns<Array<{ id: string }>>();
-  if (error) throw new Error("locations lookup failed");
-  return new Set((data ?? []).map((row) => row.id));
+/** The workspace's location ids, for validating a manager's location_scope. */
+export async function loadLocationIds(db: MembershipRepository, workspaceId: string): Promise<Set<string>> {
+ return new Set(await db.locationIds(workspaceId));
 }

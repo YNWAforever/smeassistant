@@ -1,5 +1,5 @@
 import { listMemberships, type Membership } from "@/lib/auth";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace";
 import { deliveryAllowanceForTier } from "@/lib/workspace/entitlement";
 
@@ -7,7 +7,7 @@ import { deliveryAllowanceForTier } from "@/lib/workspace/entitlement";
  * Read models for the workspace shell and the select-workspace page
  * (CLAUDE.md Phase 2 items 5–6, §3.10).
  *
- * Every read goes through the service-role client *after* the caller has
+ * Every read goes through the application repository *after* the caller has
  * been authorized (`requireMembership` / `requireUser` in lib/auth.ts); this
  * module never decides access, it only shapes rows. Numbers are copied from
  * the tables that own them (`scan_snapshots.overall_score`, `.coverage`) and
@@ -68,7 +68,7 @@ const DEFAULT_TIMEZONE = "Asia/Hong_Kong";
 /** Action states that no longer count as open (mirrors the partial index on `actions.dedupe_key`). */
 export const CLOSED_ACTION_STATES = ["completed", "dismissed", "cancelled", "expired"] as const;
 
-interface WorkspaceRow {
+export interface WorkspaceRow {
   id: string;
   slug: string | null;
   business_name: string | null;
@@ -81,7 +81,7 @@ interface WorkspaceRow {
   district: string | null;
 }
 
-interface LocationRow {
+export interface LocationRow {
   id: string;
   workspace_id?: string;
   slug: string;
@@ -92,20 +92,18 @@ interface LocationRow {
   place_id?: string | null;
 }
 
-interface UsageRow {
+export interface UsageRow {
   period: string;
   approved_deliveries: number | null;
   allowance: number | null;
 }
 
-interface SnapshotRow {
+export interface SnapshotRow {
   overall_score: number | string | null;
   coverage: number | string | null;
   observed_at: string;
 }
 
-const WORKSPACE_COLUMNS = "id, slug, business_name, market, tier, timezone, is_demo, instagram_handle, industry, district";
-const LOCATION_COLUMNS = "id, workspace_id, slug, name, address, district, is_primary, place_id";
 
 /** 'YYYY-MM' in the workspace's timezone (§3.10). An unknown IANA name falls back to UTC rather than throwing. */
 export function currentPeriod(timezone: string, now: Date = new Date()): string {
@@ -166,95 +164,40 @@ function fail(what: string, category: string): never {
   throw new Error(`Unable to load ${what}`);
 }
 
+async function read<T>(what: string, work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch {
+    fail(what, "workspace_query_failed");
+  }
+}
+
 async function loadWorkspaceRow(workspaceId: string): Promise<WorkspaceRow> {
-  const { data, error } = await supabaseServer()
-    .from("workspaces")
-    .select(WORKSPACE_COLUMNS)
-    .eq("id", workspaceId)
-    .maybeSingle<WorkspaceRow>();
-  if (error || !data) fail("workspace", "workspace_query_failed");
-  return data;
+  const rows = await read("workspace", () => workspaceReadRepository().workspaces([workspaceId]));
+  if (!rows[0]) fail("workspace", "workspace_query_failed");
+  return rows[0];
 }
 
 async function loadLocationRows(workspaceIds: string[]): Promise<LocationRow[]> {
-  if (workspaceIds.length === 0) return [];
-  const { data, error } = await supabaseServer()
-    .from("locations")
-    .select(LOCATION_COLUMNS)
-    .in("workspace_id", workspaceIds)
-    .order("is_primary", { ascending: false })
-    .order("name", { ascending: true })
-    .returns<LocationRow[]>();
-  if (error) fail("locations", "workspace_query_failed");
-  return data ?? [];
+  return read("locations", () => workspaceReadRepository().locations(workspaceIds));
 }
 
-/**
- * The usage row for the current period, created lazily with the allowance the
- * tier carries at creation time (§3.10). A concurrent insert loses the race to
- * the primary key and simply re-reads.
- */
 async function loadOrCreateUsage(workspaceId: string, tier: WorkspaceSummary["tier"], period: string): Promise<UsageSummary> {
-  const db = supabaseServer();
-  const read = async (): Promise<UsageRow | null> => {
-    const { data, error } = await db
-      .from("workspace_usage")
-      .select("period, approved_deliveries, allowance")
-      .eq("workspace_id", workspaceId)
-      .eq("period", period)
-      .maybeSingle<UsageRow>();
-    if (error) fail("usage", "workspace_query_failed");
-    return data ?? null;
-  };
-  let row = await read();
-  if (!row) {
-    const allowance = deliveryAllowanceForTier(tier);
-    const { error } = await db.from("workspace_usage").insert({ workspace_id: workspaceId, period, allowance });
-    if (error && error.code !== "23505") fail("usage", "workspace_usage_insert_failed");
-    row = (await read()) ?? { period, approved_deliveries: 0, allowance };
-  }
-  return {
-    period: row.period,
-    approvedDeliveries: row.approved_deliveries ?? 0,
-    allowance: row.allowance ?? null,
-  };
+  const row = await read("usage", () => workspaceReadRepository().usage(workspaceId, period, deliveryAllowanceForTier(tier)));
+  return { period: row.period, approvedDeliveries: row.approved_deliveries ?? 0, allowance: row.allowance ?? null };
 }
 
 async function countUnreadNotifications(workspaceId: string, userId: string): Promise<number> {
-  const { count, error } = await supabaseServer()
-    .from("workspace_notifications")
-    .select("id", { count: "exact", head: true })
-    .eq("workspace_id", workspaceId)
-    .eq("user_id", userId)
-    .is("read_at", null);
-  if (error) fail("notifications", "workspace_query_failed");
-  return count ?? 0;
+  return read("notifications", () => workspaceReadRepository().unreadNotifications(workspaceId, userId));
 }
 
-/** Open urgent actions, for one location or (locationId omitted) the whole workspace. */
+/** Open urgent actions for one location or the entire workspace. */
 export async function countUrgentActions(workspaceId: string, locationId?: string): Promise<number> {
-  let query = supabaseServer()
-    .from("actions")
-    .select("id", { count: "exact", head: true })
-    .eq("workspace_id", workspaceId)
-    .eq("priority", "urgent")
-    .not("action_state", "in", `(${CLOSED_ACTION_STATES.join(",")})`);
-  if (locationId) query = query.eq("location_id", locationId);
-  const { count, error } = await query;
-  if (error) fail("actions", "workspace_query_failed");
-  return count ?? 0;
+  return read("actions", () => workspaceReadRepository().urgentActions(workspaceId, locationId));
 }
 
-async function latestSnapshot(locationId: string): Promise<SnapshotRow | null> {
-  const { data, error } = await supabaseServer()
-    .from("scan_snapshots")
-    .select("overall_score, coverage, observed_at")
-    .eq("location_id", locationId)
-    .order("observed_at", { ascending: false })
-    .limit(1)
-    .returns<SnapshotRow[]>();
-  if (error) fail("snapshots", "workspace_query_failed");
-  return data?.[0] ?? null;
+async function latestSnapshot(workspaceId: string, locationId: string): Promise<SnapshotRow | null> {
+  return read("snapshots", () => workspaceReadRepository().latestSnapshot(workspaceId, locationId));
 }
 
 /** Everything the shell needs for one accepted membership (Phase 2 item 6). */
@@ -281,12 +224,7 @@ export async function listWorkspaceCards(userId: string): Promise<WorkspaceCard[
   const memberships = await listMemberships(userId);
   if (memberships.length === 0) return [];
   const workspaceIds = memberships.map((m) => m.workspaceId);
-  const { data: workspaceRows, error } = await supabaseServer()
-    .from("workspaces")
-    .select(WORKSPACE_COLUMNS)
-    .in("id", workspaceIds)
-    .returns<WorkspaceRow[]>();
-  if (error) fail("workspaces", "workspace_query_failed");
+  const workspaceRows = await read("workspaces", () => workspaceReadRepository().workspaces(workspaceIds));
   const byId = new Map((workspaceRows ?? []).map((row) => [row.id, summariseWorkspace(row)]));
   const locationRows = await loadLocationRows(workspaceIds);
 
@@ -298,7 +236,7 @@ export async function listWorkspaceCards(userId: string): Promise<WorkspaceCard[
       locationRows
         .filter((row) => row.workspace_id === workspace.id)
         .map(async (row): Promise<WorkspaceCardLocation> => {
-          const [snapshot, urgentActions] = await Promise.all([latestSnapshot(row.id), countUrgentActions(workspace.id, row.id)]);
+          const [snapshot, urgentActions] = await Promise.all([latestSnapshot(workspace.id, row.id), countUrgentActions(workspace.id, row.id)]);
           return {
             ...summariseLocation(row),
             latestScore: toNumber(snapshot?.overall_score),
@@ -315,15 +253,7 @@ export async function listWorkspaceCards(userId: string): Promise<WorkspaceCard[
 
 /** The newest report attached to the workspace, for the "workspace ready" home page until Phase 3 wires the brief. */
 export async function latestWorkspaceReport(workspaceId: string): Promise<LatestReportRef | null> {
-  const { data, error } = await supabaseServer()
-    .from("audit_jobs")
-    .select("share_slug, created_at, status")
-    .eq("workspace_id", workspaceId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .returns<Array<{ share_slug: string | null; created_at: string; status: string | null }>>();
-  if (error) fail("reports", "workspace_query_failed");
-  const row = data?.[0];
+  const row = await read("reports", () => workspaceReadRepository().latestReport(workspaceId));
   if (!row?.share_slug) return null;
   return { shareSlug: row.share_slug, createdAt: row.created_at, status: row.status };
 }

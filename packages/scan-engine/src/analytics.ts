@@ -1,4 +1,3 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ScanEvent } from "./analytics-events";
 
 export class AnalyticsValidationError extends Error {
@@ -121,51 +120,12 @@ async function runAbortBounded<T>(
   }
 }
 
-/**
- * The production dependency set, with the Supabase client injected as a
- * factory rather than an instance. apps/web passes supabaseServer() itself
- * (not its result); the Cloudflare scan Worker passes a factory built from
- * its own secrets. This package must never construct one itself -- doing so
- * is what forced a runtime import back into apps/web before L6 Plan B.
- *
- * The factory is called lazily, inside `insert`, so a throwing client
- * construction (e.g. createClient's Node-version guard) surfaces inside
- * recordEvent's try/catch and degrades to
- * `{ recorded: false, category: "backend_unavailable" }` instead of
- * rejecting before recordEvent's body ever runs.
- */
-export function createAnalyticsDependencies(getSupabase: () => SupabaseClient): AnalyticsDependencies {
-  return {
-    insert: async (row, signal) => {
-      const table = getSupabase().from("scan_events");
-      const query = row.dedupe_key
-        ? table.upsert(row, {
-            onConflict: "job_id,anonymous_session_id,event_name,dedupe_key",
-            ignoreDuplicates: true,
-          })
-        : table.insert(row);
-      const { data, error } = await query.select("id").abortSignal(signal).maybeSingle();
-      if (error) throw new Error("analytics_insert_failed");
-      return { inserted: Boolean(data) };
-    },
-    capturePostHog: async (event, anonymousSessionId, signal) => {
-      const key = process.env.POSTHOG_KEY;
-      if (!key) return;
-      const host = (process.env.POSTHOG_HOST ?? "https://eu.i.posthog.com").replace(/\/$/, "");
-      const response = await fetch(host + "/capture/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          api_key: key,
-          event: event.name,
-          properties: { distinct_id: anonymousSessionId, ...event.properties },
-        }),
-        signal,
-      });
-      if (!response.ok) throw new Error("posthog_capture_failed");
-    },
-    reportError: safeReportError,
-  };
+/** Host supplies storage and transport; the engine never reads credentials. */
+export function createAnalyticsDependencies(
+  insert: AnalyticsDependencies["insert"],
+  capturePostHog: AnalyticsDependencies["capturePostHog"],
+): AnalyticsDependencies {
+  return { insert, capturePostHog, reportError: safeReportError };
 }
 
 export async function forwardEventToPostHog(

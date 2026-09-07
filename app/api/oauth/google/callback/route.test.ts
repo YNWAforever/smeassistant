@@ -2,15 +2,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
-  from: vi.fn(),
+  workspace: vi.fn(),
+  accepted: vi.fn(),
+  replaceGoogleConnection: vi.fn(),
+  recordClaimAuditEvent: vi.fn(),
+  encryptToken: vi.fn((plaintext: string) => `enc:${plaintext}`),
   verifyState: vi.fn(),
   exchangeCode: vi.fn(),
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
-  createSupabaseServerClient: async () => ({ auth: { getUser: mocks.getUser } }),
+vi.mock("@/lib/auth", () => ({getUser:async()=>{const response=await mocks.getUser();const user=response?.data?.user;return user?{...user,verified:true}:null;}}));
+vi.mock("@/lib/repositories/membership",()=>({membershipRepository:{
+ workspace:mocks.workspace,
+ accepted:mocks.accepted,
+}}));
+vi.mock("@/lib/repositories/claims",()=>({
+ recordClaimAuditEvent:mocks.recordClaimAuditEvent,
+ claimsRepository:{replaceGoogleConnection:mocks.replaceGoogleConnection},
 }));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({ from: mocks.from }) }));
+vi.mock("@/lib/security/token-crypto", () => ({ encryptToken: mocks.encryptToken }));
 vi.mock("@/lib/oauth/google-connection", () => ({
   GBP_SCOPE_REQUIRED: "https://www.googleapis.com/auth/business.manage",
   verifyState: mocks.verifyState,
@@ -32,33 +42,12 @@ const TOKENS = {
   scopes: ["https://www.googleapis.com/auth/business.manage"],
 };
 
-/** workspaces / workspace_members / oauth_connections / audit_events with all-success responses. */
+/** Configures repository boundaries for the callback's workspace and membership checks. */
 function tables({ role, slug = "demo-cafe" }: { role: string | null; slug?: string | null }) {
-  const connectionInsert = vi.fn(() => ({
-    select: () => ({ single: async () => ({ data: { id: "conn-1" }, error: null }) }),
-  }));
-  const update = vi.fn((payload: { status: string }) =>
-    payload.status === "revoked"
-      ? { eq: () => ({ eq: () => ({ eq: async () => ({ error: null }) }) }) }
-      : { eq: async () => ({ error: null }) },
-  );
-  const auditInsert = vi.fn(async () => ({ error: null }));
-  mocks.from.mockImplementation((table: string) => {
-    if (table === "workspaces") {
-      return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: "ws-1", slug }, error: null }) }) }) };
-    }
-    if (table === "workspace_members") {
-      return {
-        select: () => ({
-          eq: () => ({ eq: () => ({ not: () => ({ maybeSingle: async () => ({ data: role ? { role } : null, error: null }) }) }) }),
-        }),
-      };
-    }
-    if (table === "oauth_connections") return { insert: connectionInsert, update };
-    if (table === "audit_events") return { insert: auditInsert };
-    throw new Error(`unexpected table ${table}`);
-  });
-  return { connectionInsert, update, auditInsert };
+  mocks.workspace.mockResolvedValue({ id: "ws-1", slug });
+  mocks.accepted.mockResolvedValue(role ? { role } : null);
+  mocks.replaceGoogleConnection.mockResolvedValue("conn-1");
+  mocks.recordClaimAuditEvent.mockResolvedValue(undefined);
 }
 
 function location(response: Response): URL {
@@ -165,21 +154,24 @@ describe("GET /api/oauth/google/callback", () => {
     expect(location(response).searchParams.get("connected")).toBe("ok");
   });
 
-  it("stores the connection insert-then-promote, records an audit event and lands on the workspace's integrations page", async () => {
+  it("passes encrypted connection fields to the repository, records an audit event and lands on the workspace's integrations page", async () => {
     mocks.verifyState.mockReturnValue(STATE);
     mocks.getUser.mockResolvedValue({ data: { user: { id: "user-1", email: "owner@example.com" } } });
-    const { connectionInsert, update, auditInsert } = tables({ role: "owner" });
+    tables({ role: "owner" });
     mocks.exchangeCode.mockResolvedValue(TOKENS);
 
     const url = location(await GET(request("?code=abc&state=good-signature")));
 
     expect(url.pathname).toBe("/en/owner/demo-cafe/settings/integrations");
     expect(url.searchParams.get("connected")).toBe("ok");
-    expect(connectionInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ workspace_id: "ws-1", provider: "google_gbp", status: "expired" }),
-    );
-    expect(update.mock.calls.map(([payload]) => (payload as { status: string }).status)).toEqual(["revoked", "active"]);
-    expect(auditInsert).toHaveBeenCalledWith(
+    expect(mocks.replaceGoogleConnection).toHaveBeenCalledWith({
+      workspaceId: "ws-1",
+      accessTokenEncrypted: "enc:token-abc",
+      refreshTokenEncrypted: "enc:refresh-abc",
+      scopes: TOKENS.scopes,
+      expiresAt: TOKENS.expiresAt,
+    });
+    expect(mocks.recordClaimAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         workspace_id: "ws-1",
         actor_type: "user",

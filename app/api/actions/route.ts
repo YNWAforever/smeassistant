@@ -1,10 +1,20 @@
-import { json, localeFrom, objectiveDedupeKey, readJson, UUID_RE } from "@/app/api/actions/_shared/mutation";
-import { authorizeWorkspaceRequest } from "@/lib/auth";
-import { localized, OPEN_ACTION_STATES } from "@/lib/domain";
-import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
-import { supabaseServer } from "@/lib/supabase/admin";
+import {
+  json,
+  localeFrom,
+  objectiveDedupeKey,
+  readJson,
+  UUID_RE,
+} from "@/app/api/actions/_shared/mutation";
+import { authorizeWorkspaceRequest, inLocationScope } from "@/lib/auth";
+import { localized } from "@/lib/domain";
+import {
+  enforceRateLimit,
+  rateLimitedResponse,
+} from "@/lib/security/rate-limit";
+import { artifactRepository } from "@/lib/repositories/artifacts";
+import { actionMutationRepository } from "@/lib/repositories/action-mutations";
 import { freshnessText } from "@/lib/workspace/actions";
-import { ipHashFor, recordEvent } from "@/lib/workspace/audit";
+import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
 import { runAgentForAction, RunError } from "@/lib/workspace/runs";
 import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
 
@@ -23,35 +33,88 @@ const TEMPLATE_KEYS = new Set<string>(TEMPLATES.map((t) => t.key));
 export async function POST(req: Request) {
   const body = await readJson(req);
   if (!body) return json({ error: "Invalid JSON" }, 400);
-  const workspaceId = typeof body.workspace_id === "string" ? body.workspace_id : "";
-  if (!UUID_RE.test(workspaceId)) return json({ error: "workspace_id is invalid" }, 400);
-  const templateKey = typeof body.template_key === "string" && TEMPLATE_KEYS.has(body.template_key) ? (body.template_key as TemplateKey) : null;
+  const workspaceId =
+    typeof body.workspace_id === "string" ? body.workspace_id : "";
+  if (!UUID_RE.test(workspaceId))
+    return json({ error: "workspace_id is invalid" }, 400);
+  const templateKey =
+    typeof body.template_key === "string" &&
+    TEMPLATE_KEYS.has(body.template_key)
+      ? (body.template_key as TemplateKey)
+      : null;
   if (!templateKey) return json({ error: "template_key is invalid" }, 400);
-  const locationId = body.location_id === undefined || body.location_id === null ? null : typeof body.location_id === "string" && UUID_RE.test(body.location_id) ? body.location_id : "";
+  const locationId =
+    body.location_id === undefined || body.location_id === null
+      ? null
+      : typeof body.location_id === "string" && UUID_RE.test(body.location_id)
+        ? body.location_id
+        : "";
   if (locationId === "") return json({ error: "location_id is invalid" }, 400);
-  const objective = typeof body.objective === "string" ? body.objective.trim() : "";
-  if (!objective || objective.length > 500) return json({ error: "objective is invalid" }, 400);
-  const inputs = body.inputs && typeof body.inputs === "object" && !Array.isArray(body.inputs) ? (body.inputs as Record<string, unknown>) : {};
+  const objective =
+    typeof body.objective === "string" ? body.objective.trim() : "";
+  if (!objective || objective.length > 500)
+    return json({ error: "objective is invalid" }, 400);
+  const inputs =
+    body.inputs &&
+    typeof body.inputs === "object" &&
+    !Array.isArray(body.inputs)
+      ? (body.inputs as Record<string, unknown>)
+      : {};
 
-  const auth = await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager", locationId: locationId ?? undefined });
+  const auth = await authorizeWorkspaceRequest(
+    { id: workspaceId },
+    { minRole: "manager", locationId: locationId ?? undefined },
+  );
   if (!auth.ok) return json({ error: auth.code }, auth.status);
-  const limit = await enforceRateLimit({ req, scope: "action_mutation", identifiers: [auth.user.id], failClosed: true });
-  if (!limit.allowed) return rateLimitedResponse(limit.retryAfterSeconds);
-
-  const db = supabaseServer();
+  const db = artifactRepository();
   if (locationId) {
-    const { data: location, error } = await db.from("locations").select("id").eq("id", locationId).eq("workspace_id", workspaceId).maybeSingle();
-    if (error) return json({ error: "unavailable" }, 503);
-    if (!location) return json({ error: "location_id is invalid" }, 400);
+    try {
+      if (
+        !(await db.assistantLocations(workspaceId)).some(
+          (l) => l.id === locationId,
+        )
+      )
+        return json({ error: "location_id is invalid" }, 400);
+    } catch {
+      return json({ error: "unavailable" }, 503);
+    }
   }
+
+  if (body.run === true) {
+    try {
+      const evidence = await db.assistantLatestSnapshot(
+        workspaceId,
+        locationId,
+      );
+      if (evidence && !inLocationScope(auth.membership, evidence.locationId))
+        return json({ error: "forbidden" }, 403);
+    } catch {
+      return json({ error: "unavailable" }, 503);
+    }
+  }
+  const limit = await enforceRateLimit({
+    req,
+    scope: "action_mutation",
+    identifiers: [auth.user.id],
+    failClosed: true,
+  });
+  if (!limit.allowed) return rateLimitedResponse(limit.retryAfterSeconds);
 
   const template = TEMPLATES.find((t) => t.key === templateKey)!;
   const now = new Date();
-  const dedupeKey = objectiveDedupeKey(workspaceId, locationId, templateKey, objective);
-  const missing = template.requiredInputs.filter((key) => inputs[key] === undefined || inputs[key] === null || inputs[key] === "");
-  const { data: created, error: insertError } = await db
-    .from("actions")
-    .insert({
+  const dedupeKey = objectiveDedupeKey(
+    workspaceId,
+    locationId,
+    templateKey,
+    objective,
+  );
+  const missing = template.requiredInputs.filter(
+    (key) =>
+      inputs[key] === undefined || inputs[key] === null || inputs[key] === "",
+  );
+  let created: { id: string; created: boolean };
+  try {
+    created = await actionMutationRepository().createObjective({
       workspace_id: workspaceId,
       location_id: locationId,
       template_key: templateKey,
@@ -59,7 +122,14 @@ export async function POST(req: Request) {
       source_finding_keys: [],
       title: template.title,
       summary: template.summary,
-      evidence: { factType: "Recommended", source: "Owner objective", value: "", detail: localized(objective, objective), observedAt: now.toISOString(), freshness: freshnessText(now.toISOString(), now) },
+      evidence: {
+        factType: "Recommended",
+        source: "Owner objective",
+        value: "",
+        detail: localized(objective, objective),
+        observedAt: now.toISOString(),
+        freshness: freshnessText(now.toISOString(), now),
+      },
       priority: "medium",
       priority_score: 50,
       priority_factors: [],
@@ -70,31 +140,59 @@ export async function POST(req: Request) {
       measurement_state: "not_eligible",
       capability: template.capability,
       dedupe_key: dedupeKey,
-    })
-    .select("id")
-    .single<{ id: string }>();
-
-  let actionId = created?.id ?? null;
-  if (insertError && (insertError as { code?: string }).code === "23505") {
-    const { data: existing } = await db.from("actions").select("id").eq("workspace_id", workspaceId).eq("dedupe_key", dedupeKey).in("action_state", OPEN_ACTION_STATES).limit(1).maybeSingle<{ id: string }>();
-    actionId = existing?.id ?? null;
-  }
-  if (!actionId) {
-    console.error("[api/actions] create failed", { category: "action_create_failed" });
+    });
+  } catch {
     return json({ error: "unavailable" }, 503);
   }
+  const actionId = created.id;
   const locale = localeFrom(req, body);
-  if (created) {
-    await recordEvent(db, { workspaceId, locationId, actorType: "user", actorId: auth.user.id, event: "action.updated", entityType: "action", entityId: actionId, locale, ipHash: ipHashFor(req), payload: { change: "created", source: "owner_objective", template_key: templateKey } });
+  if (created.created) {
+    await recordNeonEvent({
+      workspaceId,
+      locationId,
+      actorType: "user",
+      actorId: auth.user.id,
+      event: "action.updated",
+      entityType: "action",
+      entityId: actionId,
+      locale,
+      ipHash: ipHashFor(req),
+      payload: {
+        change: "created",
+        source: "owner_objective",
+        template_key: templateKey,
+      },
+    });
   }
 
   if (body.run !== true) return json({ actionId }, 201);
   try {
-    const run = await runAgentForAction(db, { actionId, actorId: auth.user.id, locale, ipHash: ipHashFor(req) });
-    return json({ actionId, runId: run.runId, versionId: run.versionId, state: run.state, factsNeeded: run.factsNeeded }, 201);
+    const run = await runAgentForAction(db, {
+      actionId,
+      actorId: auth.user.id,
+      membership: auth.membership,
+      locale,
+      ipHash: ipHashFor(req),
+    });
+    return json(
+      {
+        actionId,
+        runId: run.runId,
+        versionId: run.versionId,
+        state: run.state,
+        factsNeeded: run.factsNeeded,
+      },
+      201,
+    );
   } catch (error) {
     // The action exists either way; a template without an agent (or an
     // unavailable one) is reported, not turned into a failed create.
-    return json({ actionId, runError: error instanceof RunError ? error.code : "unavailable" }, 201);
+    return json(
+      {
+        actionId,
+        runError: error instanceof RunError ? error.code : "unavailable",
+      },
+      201,
+    );
   }
 }

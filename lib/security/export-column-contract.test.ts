@@ -5,22 +5,9 @@ import { describe, expect, it } from "vitest";
 import { EXPORT_COLUMNS } from "@/lib/lifecycle/export-columns";
 
 /**
- * Every column the subject-access export asks for must exist in the schema.
- *
- * This exists because a mocked PostgREST builder cannot catch a wrong column
- * name, and every route test in this repo uses one. The fakes resolve
- * `{ data, error: null }` without ever inspecting the string passed to
- * `.select()`, so `select("id, status")` and `select("id, collection_status")`
- * are indistinguishable to them — while PostgREST rejects the whole query for the
- * first and the route returns 500 for every caller.
- *
- * That is not hypothetical: `report_evidence` has `collection_status`, the export
- * shipped asking for `status`, ten green route tests said nothing, and every
- * export would have failed in production.
- *
- * The schema is parsed from the migration corpus rather than a live database
- * because migrations here are applied by hand with no CLI step — the corpus is
- * the only machine-readable description of the schema this repo has.
+ * Retains the historical export-column compatibility contract against the pinned
+ * migration corpus. Current typed schema and actual Neon repository SQL have
+ * separate integration coverage; this historical proof does not contact a database.
  */
 
 const MIGRATIONS_DIR = fileURLToPath(new URL("../../supabase/migrations/", import.meta.url));
@@ -97,6 +84,6 @@ describe("subject-access export column contract", () => {
       .map((column) => column.trim().toLowerCase())
       .filter((column) => column.length > 0 && !known!.has(column));
 
-    expect(missing, `${table} has no column(s) ${missing.join(", ")} — PostgREST rejects the whole query`).toEqual([]);
+    expect(missing, `${table} has no column(s) ${missing.join(", ")} — SQL rejects the whole query`).toEqual([]);
   });
 });

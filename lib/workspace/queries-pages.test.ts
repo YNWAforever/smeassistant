@@ -18,37 +18,15 @@ const state = vi.hoisted(() => ({
 vi.mock("server-only", () => ({}));
 const evidenceMock = vi.hoisted(() => ({ loadAuthorizedEvidence: vi.fn(async () => ({ items: [] as unknown[] })) }));
 vi.mock("@/lib/evidence/load-authorized", () => ({ loadAuthorizedEvidence: evidenceMock.loadAuthorizedEvidence }));
-vi.mock("@/lib/supabase/admin", () => ({
-  supabaseServer: () => ({
-    from: (table: string) => {
-      const filters: Record<string, unknown> = {};
-      const terminal = () => {
-        if (table === "scan_snapshots") return { data: state.snapshots.filter((s) => s.location_id === filters.location_id), error: null };
-        if (table === "scan_diffs") return { data: state.diffs[String(filters.id)] ?? null, error: null };
-        if (table === "actions") return { data: filters.action_state === "completed" ? state.completed : state.actions, error: null };
-        if (table === "action_measurements") return { data: state.measurements, error: null };
-        if (table === "output_versions") return { data: state.versions, error: null };
-        if (table === "action_runs") return { data: state.runs, error: null };
-        if (table === "scan_schedules") return { data: state.schedule, error: null };
-        if (table === "oauth_connections") return { data: state.connections, error: null };
-        if (table === "aeo_surface_snapshots") return { data: [], error: null };
-        return { data: null, error: null };
-      };
-      const chain: Record<string, unknown> = {};
-      const self = () => chain;
-      Object.assign(chain, {
-        select: self, order: self, limit: self, or: self, in: self, gte: self,
-        eq: (c: string, v: unknown) => { filters[c] = v; return chain; },
-        returns: () => Promise.resolve(terminal()),
-        maybeSingle: () => Promise.resolve(terminal()),
-        then: (res: (v: unknown) => unknown, rej?: (e: unknown) => unknown) => Promise.resolve(terminal()).then(res, rej),
-      });
-      return chain;
-    },
-  }),
+const repository = vi.hoisted(() => ({
+  snapshots: vi.fn(), diff: vi.fn(), actions: vi.fn(), runs: vi.fn(), versions: vi.fn(),
+  latestConnection: vi.fn(), measurements: vi.fn(), draftVersions: vi.fn(),
+  completedActions: vi.fn(), schedules: vi.fn(), aeoSnapshots: vi.fn(),
+  activity: vi.fn(), notifications: vi.fn(), notificationPreferences: vi.fn(),
 }));
+vi.mock("@/lib/repositories/workspace-read", () => ({ workspaceReadRepository: () => repository }));
 
-import { getHomeBrief, getInsights, listActions } from "./queries-pages";
+import { getHomeBrief, getInsights, listActions, getActivity, getIntegrations, getAction, loadActionRows, loadDiffById } from "./queries-pages";
 
 const ctx: WorkspaceContext = {
   workspace: { id: "ws-1", slug: "kam-man-house", name: "Kam Man House", market: "hk", tier: "paid", timezone: "Asia/Hong_Kong", isDemo: false, instagramHandle: null, industry: "fnb", district: null },
@@ -74,6 +52,22 @@ const actionRow = (over: Row): Row => ({
 });
 
 beforeEach(() => {
+  vi.clearAllMocks();
+  repository.snapshots.mockImplementation(async (_workspaceId, locationId) => state.snapshots.filter(row => row.location_id === locationId));
+  repository.diff.mockImplementation(async id => state.diffs[id] ?? null);
+  repository.actions.mockImplementation(async () => state.actions);
+  repository.runs.mockImplementation(async () => state.runs);
+  repository.versions.mockImplementation(async () => state.versions);
+  repository.latestConnection.mockImplementation(async () => state.connections[0] ?? null);
+  repository.measurements.mockImplementation(async () => state.measurements);
+  repository.draftVersions.mockImplementation(async () => state.versions);
+  repository.completedActions.mockImplementation(async () => state.completed);
+  repository.schedules.mockImplementation(async () => state.schedule ? [state.schedule] : []);
+  repository.aeoSnapshots.mockResolvedValue([]);
+  repository.activity.mockResolvedValue([]);
+  repository.notifications.mockResolvedValue([]);
+  repository.notificationPreferences.mockResolvedValue(null);
+
   state.snapshots = [snapshotRow({})];
   state.diffs = {}; state.actions = [actionRow({}), actionRow({ id: "a2", template_key: "social-post", priority: "high", priority_score: 45, action_state: "recommended", required_inputs: [] })];
   state.measurements = []; state.versions = []; state.completed = []; state.schedule = { next_run_at: "2026-09-14T00:00:00Z" }; state.connections = [{ status: "active" }]; state.runs = [];
@@ -106,6 +100,7 @@ describe("getHomeBrief", () => {
     state.snapshots = [snapshotRow({ diff_id: "d1" })];
     state.diffs.d1 = { id: "d1", comparable: false, incomparable_reason: "SCORING_VERSION_MISMATCH", composite_withheld_reason: null, composite_base: 66, composite_head: 62, composite_delta: -4, resolved_findings: [], regressed_findings: [], decayed_findings: [] };
     const brief = await getHomeBrief(ctx, "yik-yam");
+    expect(repository.diff).toHaveBeenCalledWith("d1", "ws-1", "job-1");
     expect(brief.snapshot?.id).toBe("snap-1");
     expect(brief.changed).toMatchObject({ factType: "Unknown", delta: null, reason: "SCORING_VERSION_MISMATCH", comparable: false });
     expect(brief.nextScanAt).toBe("2026-09-14T00:00:00Z");
@@ -130,6 +125,17 @@ describe("listActions", () => {
 });
 
 describe("getInsights", () => {
+  it("binds summary and series diffs to each snapshot job for an accepted viewer", async () => {
+    const viewer = { ...ctx, membership: { ...ctx.membership, role: "viewer" as const } };
+    state.snapshots = [snapshotRow({ diff_id: "d1" }), snapshotRow({ id: "snap-2", job_id: "job-2", diff_id: "d2" })];
+    await getInsights(viewer, "all");
+    expect(repository.diff).toHaveBeenCalledWith("d1", "ws-1", "job-1");
+    repository.diff.mockClear();
+    await getInsights(viewer, "yik-yam");
+    expect(repository.diff).toHaveBeenCalledWith("d1", "ws-1", "job-1");
+    expect(repository.diff).toHaveBeenCalledWith("d2", "ws-1", "job-2");
+  });
+
   it("returns per-location summaries only for location=all and a series otherwise", async () => {
     const all = await getInsights(ctx, "all");
     expect(all.series).toEqual([]);
@@ -138,5 +144,51 @@ describe("getInsights", () => {
     const one = await getInsights(ctx, "yik-yam");
     expect(one.series).toHaveLength(1);
     expect(one.metricCards.find((c) => c.metricKey === "gbp.rating")).toMatchObject({ after: 4.2, factType: "Unknown", delta: null });
+  });
+});
+
+
+describe("page repository boundaries", () => {
+  it("keeps absent diff relations empty and propagates SQL failure", async () => {
+    expect(await loadDiffById(null, "ws-1", "job-1")).toBeNull();
+    expect(await loadDiffById("d1", "ws-1", null)).toBeNull();
+    expect(repository.diff).not.toHaveBeenCalled();
+    expect(await loadDiffById("missing", "ws-1", "job-1")).toBeNull();
+    repository.diff.mockRejectedValueOnce(new Error("fixture SQL unavailable"));
+    await expect(loadDiffById("d1", "ws-1", "job-1")).rejects.toThrow("diff lookup failed");
+  });
+
+  it("passes omitted and empty action filters through without broadening them", async () => {
+    await loadActionRows("ws-1", { ids: [], states: [] });
+    expect(repository.actions).toHaveBeenCalledWith("ws-1", { ids: [], states: [] });
+  });
+
+  it("preserves empty activity and explicit zero limit, while surfacing SQL failures", async () => {
+    expect(await getActivity(ctx, { limit: 0 })).toEqual([]);
+    expect(repository.activity).toHaveBeenCalledWith("ws-1", 0);
+    await getActivity(ctx);
+    expect(repository.activity).toHaveBeenCalledWith("ws-1", 100);
+    repository.activity.mockRejectedValueOnce(new Error("fixture SQL unavailable"));
+    await expect(getActivity(ctx)).rejects.toThrow("activity lookup failed");
+  });
+
+  it("renders unknown integrations for an empty TW merchant and retains read-only membership", async () => {
+    state.connections = [];
+    const empty = { ...ctx, workspace: { ...ctx.workspace, market: "tw" as const }, locations: [], membership: { ...ctx.membership, role: "viewer" as const } };
+    expect(await getIntegrations(empty)).toEqual({
+      google: { status: "not_connected", expiresAt: null, updatedAt: null },
+      instagram: { handle: null, state: "unknown", limitationCode: null },
+      website: { state: "unknown", checksPassed: null, checksEvaluated: null, observedAt: null },
+    });
+    expect(repository.snapshots).not.toHaveBeenCalled();
+  });
+
+  it("keeps actions readable with no optional versions, runs or measurements", async () => {
+    const detail = await getAction(ctx, "a1");
+    expect(detail?.action.id).toBe("a1");
+    expect(detail).toMatchObject({ versions: [], runs: [], measurements: [] });
+    expect(repository.versions).toHaveBeenCalledWith("ws-1", ["a1"]);
+    state.actions = [];
+    expect(await getAction(ctx, "missing")).toBeNull();
   });
 });

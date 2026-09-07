@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { sendMagicLink } from "@/lib/identity/composition";
+import { claimsRepository } from "@/lib/repositories/claims";
 import {
   enforceCompositeIdentifierRateLimit,
   rateLimitUnavailableResponse,
   rateLimitedResponse,
 } from "@/lib/security/rate-limit";
 import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
-import { safeReturnTo } from "@/lib/funnel/locale-redirect";
+import { safeReturnPath } from "@/lib/identity/return-path";
 
 /**
  * Sends the owner a magic link that returns through /auth/callback
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const slug = typeof body.slug === "string" ? body.slug.trim() : "";
   const locale = isLocale(body.locale) ? body.locale : DEFAULT_LOCALE;
-  const returnTo = safeReturnTo(typeof body.returnTo === "string" ? body.returnTo : null);
+  const returnTo = safeReturnPath(typeof body.returnTo === "string" ? body.returnTo : "", "");
   if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: "invalid_email" }, { status: 400 });
   }
@@ -82,8 +82,8 @@ export async function POST(req: Request) {
     // value without a scheme makes `new URL` throw (every owner then sees
     // "check your email" and no link ever arrives), and embedded credentials
     // would be mailed to every owner inside emailRedirectTo. Without the env
-    // (local dev, preview deployments) the request origin is used; Supabase
-    // Auth still refuses any redirect origin not on its allowlist.
+    // (local dev, preview deployments) the request origin is used; managed
+    // Auth still requires its configured redirect allowlist.
     const appOrigin = safeAppOrigin(process.env.NEXT_PUBLIC_SITE_URL) ?? new URL(req.url).origin;
 
     // Only addresses already recorded as a lead on THIS report may be mailed.
@@ -91,35 +91,16 @@ export async function POST(req: Request) {
     // the public unlock endpoint, which is why claiming itself is gated (see
     // claim-scan.ts) — but it does stop the endpoint being a general-purpose
     // mailer pointed at arbitrary third parties.
-    const { data: job } = await supabaseServer()
-      .from("audit_jobs")
-      .select("id")
-      .eq("share_slug", slug)
-      .maybeSingle();
-    if (!job) return NextResponse.json({ ok: true });
-
-    const { data: known } = await supabaseServer()
-      .from("leads")
-      .select("id")
-      .eq("job_id", job.id)
-      .eq("email", email)
-      .limit(1);
-    if (!known?.length) return NextResponse.json({ ok: true });
+    if (!await claimsRepository.isLeadRecipient(slug, email)) return NextResponse.json({ ok: true });
 
     const redirect = new URL("/auth/callback", appOrigin);
     redirect.searchParams.set("claim", slug);
     redirect.searchParams.set("locale", locale);
     if (returnTo) redirect.searchParams.set("returnTo", returnTo);
 
-    const client = await createSupabaseServerClient();
-    const { error } = await client.auth.signInWithOtp({
+    const { error } = await sendMagicLink({
       email,
-      // shouldCreateUser stays true (default): owners are always new Supabase
-      // Auth users, and setting it false would make signup impossible. The
-      // open-mailer problem is bounded above instead, by refusing to mail an
-      // address that is not already a lead on the named report -- the staff
-      // route bounds the same problem with its FIMMICK_STAFF_EMAILS allowlist.
-      options: { emailRedirectTo: redirect.toString() },
+      callbackURL: redirect.toString(),
     });
     if (error) {
       console.error("Owner magic-link provider rejected request");
@@ -129,8 +110,8 @@ export async function POST(req: Request) {
     // One response shape regardless of outcome, so this cannot be used to
     // enumerate which merchants already have accounts.
     return NextResponse.json({ ok: true });
-  } catch (error) {
-    console.error("Owner magic-link request failed", error);
+  } catch {
+    console.error("Owner magic-link request failed", { category: "magic_link_failed" });
     return NextResponse.json({ ok: true });
   }
 }

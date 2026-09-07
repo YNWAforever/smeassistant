@@ -161,12 +161,12 @@ export async function main(argv, { fetchImpl = fetch, log = console.log, timeout
   for (const probe of buildProbes(args.origin, args)) {
     let result;
     try { result = await runProbe(probe, args.origin, { fetchImpl, timeoutMs }); }
-    catch (error) { result = verdict(false, `request failed: ${error instanceof Error ? error.message : String(error)}`); }
+    catch { result = verdict(false, "request failed: transport unavailable"); }
     if (!result.ok) failed += 1;
     log(`${result.status.toUpperCase()}  [${probe.category}] ${probe.name}: ${result.detail}`);
   }
   log(failed ? `${failed} public check(s) failed or blocked` : "All public checks passed");
-  log("Authenticated/provider acceptance: not run (OAuth registration/consent/claim, email redemption, signed payments, actual scans and merchant journeys).");
+  log("Authenticated/provider acceptance: not run (Neon Auth delivery/session revocation, OAuth registration/consent/claim, email redemption, signed payments, actual scans and merchant journeys).");
   return failed ? 1 : 0;
 }
 

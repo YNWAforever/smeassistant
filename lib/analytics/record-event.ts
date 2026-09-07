@@ -1,7 +1,7 @@
+import { capturePostHog } from "./posthog";
 import { randomUUID } from "crypto";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { eventRepository } from "@/lib/repositories/events";
 import {
-  createAnalyticsDependencies,
   recordEvent as recordEventCore,
   forwardEventToPostHog as forwardEventToPostHogCore,
   type AnalyticsDependencies,
@@ -18,19 +18,14 @@ export type {
   RecordEventContext,
 } from "@sme-scanner/scan-engine";
 
-/**
- * apps/web's env contract, kept out of @sme-scanner/scan-engine on purpose:
- * the package is bundled into a Cloudflare Worker that has no supabaseServer()
- * and no NEXT_PUBLIC_* variables. Every caller in this app keeps its existing
- * two-argument recordEvent(input, context) call because the default lives here.
- *
- * Passes the supabaseServer function itself, not its result: the engine's
- * createAnalyticsDependencies calls it lazily inside `insert`, so a throwing
- * createClient() (e.g. its Node-version guard) surfaces inside recordEvent's
- * try/catch instead of rejecting before recordEvent's body ever runs.
- */
+/** Keep the engine validation/failure contract and app-owned PostHog transport. */
 function defaultDependencies(): AnalyticsDependencies {
-  return createAnalyticsDependencies(supabaseServer);
+  return {
+    insert: (row, signal) => eventRepository().insert(row, signal),
+    capturePostHog,
+    reportError: (category) =>
+      console.error("[analytics] event_record_failed", { category }),
+  };
 }
 
 export async function recordEvent(
@@ -47,7 +42,12 @@ export async function forwardEventToPostHog(
   dependencies: AnalyticsDependencies = defaultDependencies(),
   timeoutMs = 2000,
 ): Promise<void> {
-  return forwardEventToPostHogCore(input, anonymousSessionId, dependencies, timeoutMs);
+  return forwardEventToPostHogCore(
+    input,
+    anonymousSessionId,
+    dependencies,
+    timeoutMs,
+  );
 }
 
 export const ANALYTICS_SESSION_COOKIE = "sme_analytics_session";
@@ -69,19 +69,30 @@ export function resolveAnalyticsSession(request: Request): AnalyticsSession {
     } catch {
       continue;
     }
-    if (key === ANALYTICS_SESSION_COOKIE && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+    if (
+      key === ANALYTICS_SESSION_COOKIE &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        value,
+      )
+    ) {
       return { id: value, created: false };
     }
   }
   return { id: randomUUID(), created: true };
 }
 
-export function setAnalyticsSessionCookie(response: Response, session: AnalyticsSession): void {
+export function setAnalyticsSessionCookie(
+  response: Response,
+  session: AnalyticsSession,
+): void {
   if (!session.created) return;
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
   response.headers.append(
     "set-cookie",
-    ANALYTICS_SESSION_COOKIE + "=" + encodeURIComponent(session.id) +
-      "; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax" + secure,
+    ANALYTICS_SESSION_COOKIE +
+      "=" +
+      encodeURIComponent(session.id) +
+      "; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax" +
+      secure,
   );
 }

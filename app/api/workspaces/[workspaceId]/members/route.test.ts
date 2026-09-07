@@ -4,7 +4,21 @@ const authorizeWorkspaceRequest = vi.fn();
 const from = vi.fn();
 
 vi.mock("@/lib/auth", () => ({ authorizeWorkspaceRequest: (...args: unknown[]) => authorizeWorkspaceRequest(...args) }));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({ from }) }));
+vi.mock("@/lib/repositories/membership", () => ({ membershipRepository: {
+ invite: async (input:{workspaceId:string;email:string;role:string;invitedBy:string}) => {
+  const result=await from("workspace_members").insert({workspace_id:input.workspaceId,email:input.email,role:input.role,invited_by:input.invitedBy}).select().single();
+  if(result.error) throw result.error;return result.data?.id;
+ },
+ member: async (workspaceId:string,memberId:string) => {
+  const result=await from("workspace_members").select().eq("id",memberId).eq("workspace_id",workspaceId).maybeSingle();
+  if(result.error) throw result.error;return result.data;
+ },
+ remove: async (workspaceId:string,memberId:string) => {
+  const result=await from("workspace_members").delete().eq("id",memberId).eq("workspace_id",workspaceId);
+  if(result.error) throw result.error;return true;
+ },
+} }));
+vi.mock("@/lib/repositories/claims",()=>({recordClaimAuditEvent:async(input:unknown)=>{await from("audit_events").insert(input);}}));
 
 const WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";
 const URL_BASE = `https://app.test/api/workspaces/${WORKSPACE_ID}/members`;

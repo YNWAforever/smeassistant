@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { RescanRepository } from "@/lib/repositories/rescan";
+vi.mock("@/lib/workspace/audit", () => ({ recordNeonEvent: vi.fn(async (input) => { state.inserted.audit_events.push({ workspace_id: input.workspaceId, location_id: input.locationId, actor_type: input.actorType, actor_id: input.actorId, event: input.event, entity_id: input.entityId, payload: { locale: input.locale ?? null, ...input.payload } }); }) }));
+vi.mock("@/lib/repositories/jobs", () => ({ jobsRepository: { insert: vi.fn(async (row) => { if(state.jobInsertError) throw state.jobInsertError; const saved={id: `job-${state.inserted.audit_jobs.length+1}`, ...row}; state.inserted.audit_jobs.push(saved); return {id:saved.id}; }) } }));
 import { enqueueRescan, ensureMonthlySchedule, scanInputFromSnapshot } from "./rescan";
 
 type Row = Record<string, unknown>;
@@ -12,60 +14,13 @@ const state = vi.hoisted(() => ({
   inserted: { audit_jobs: [] as Row[], scan_schedules: [] as Row[], audit_events: [] as Row[] } as Record<string, Row[]>,
 }));
 
-/** Minimal chainable client: the terminal resolves from `state` per table. */
-function client(): SupabaseClient {
-  const from = (table: string) => {
-    const filters: Record<string, unknown> = {};
-    let inserted: Row | null = null;
-    const terminal = () => {
-      if (table === "audit_jobs") {
-        if (inserted) {
-          if (state.jobInsertError) return { data: null, error: state.jobInsertError };
-          const saved = { id: `job-${state.inserted.audit_jobs.length + 1}`, ...inserted };
-          state.inserted.audit_jobs.push(saved);
-          return { data: { id: saved.id }, error: null };
-        }
-        const rows = state.jobs.filter((j) => j.workspace_id === filters.workspace_id && j.location_id === filters.location_id);
-        return { data: rows, error: null };
-      }
-      if (table === "scan_schedules") {
-        if (inserted) {
-          if (state.scheduleInsertError) return { data: null, error: state.scheduleInsertError };
-          state.inserted.scan_schedules.push(inserted);
-          state.schedules.push(inserted);
-          return { data: null, error: null };
-        }
-        return { data: state.schedules.filter((s) => s.place_id === filters.place_id), error: null };
-      }
-      if (table === "audit_events") {
-        if (inserted) state.inserted.audit_events.push(inserted);
-        return { data: null, error: null };
-      }
-      return { data: null, error: null };
-    };
-    const chain: Record<string, unknown> = {};
-    const self = () => chain;
-    Object.assign(chain, {
-      select: self,
-      in: self,
-      order: self,
-      limit: self,
-      eq: (column: string, value: unknown) => {
-        filters[column] = value;
-        return chain;
-      },
-      insert: (row: Row) => {
-        inserted = row;
-        return chain;
-      },
-      returns: () => Promise.resolve(terminal()),
-      single: () => Promise.resolve(terminal()),
-      maybeSingle: () => Promise.resolve(terminal()),
-      then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => Promise.resolve(terminal()).then(resolve, reject),
-    });
-    return chain;
-  };
-  return { from } as unknown as SupabaseClient;
+function client(): RescanRepository {
+ return {
+  tier: async () => "paid",
+  latestFinishedJob: async (ws, loc) => state.jobs.find(j => j.workspace_id===ws && j.location_id===loc) as never ?? null,
+  scheduleExists: async place => state.schedules.some(s => s.place_id===place),
+  insertSchedule: async row => { if(state.scheduleInsertError) throw state.scheduleInsertError; state.inserted.scan_schedules.push({...row}); state.schedules.push({...row}); },
+ };
 }
 
 const SNAPSHOT = {

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import { BrandView } from "@/components/workspace/brand-view";
-import { supabaseServer } from "@/lib/supabase/admin";
 import { getBrand } from "@/lib/workspace/brand";
 import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 
@@ -18,6 +17,6 @@ export async function generateMetadata(props: OwnerPageProps): Promise<Metadata>
  */
 export default async function BrandRoute(props: OwnerPageProps) {
   const page = await loadOwnerPage(props);
-  const brand = await getBrand(supabaseServer(), page.ctx.workspace.id);
+  const brand = await getBrand(page.ctx.workspace.id);
   return <BrandView locale={page.locale} workspaceId={page.ctx.workspace.id} role={page.membership.role} brand={brand} />;
 }

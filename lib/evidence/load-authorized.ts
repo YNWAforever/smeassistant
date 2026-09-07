@@ -1,5 +1,6 @@
 import "server-only";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { evidenceRepository } from "@/lib/repositories/evidence";
+import { createPrivateBlobStorage } from "@/lib/storage/private-blob";
 import type {
   EvidenceGalleryItem,
   EvidenceGalleryModel,
@@ -144,64 +145,15 @@ function normalizeRow(value: unknown, jobId: string): EvidenceRow | null {
   };
 }
 
-function expectedSignedOrigin(): string | null {
-  try {
-    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").origin;
-  } catch {
-    return null;
-  }
-}
-
-function safeSignedUrl(
-  value: unknown,
-  expectedOrigin: string | null,
-  expectedPath: string,
-): string | null {
-  const text = boundedString(value, 4_096);
-  if (!text) return null;
-  try {
-    const url = new URL(text);
-    const tokens = url.searchParams.getAll("token");
-    if (
-      url.protocol !== "https:"
-      || url.username
-      || url.password
-      || !expectedOrigin
-      || url.origin !== expectedOrigin
-      || url.pathname !== `/storage/v1/object/sign/report-evidence/${expectedPath}`
-      || url.hash
-      || [...url.searchParams].length !== 1
-      || tokens.length !== 1
-      || tokens[0]!.length < 1
-      || tokens[0]!.length > 2_048
-    ) return null;
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
-
 export async function loadAuthorizedEvidence(
   jobId: string,
 ): Promise<EvidenceGalleryModel> {
   if (!/^[A-Za-z0-9_-]{1,128}$/.test(jobId)) {
     throw new Error("evidence_job_id_invalid");
   }
-  const supabase = supabaseServer();
-  let queryResult: { data: unknown; error: unknown };
-  try {
-    queryResult = await supabase
-      .from("report_evidence")
-      .select(
-        "id,provider,evidence_type,source_url,captured_at,published_at,text_content,metadata,storage_path,collection_status,limitation_code",
-      )
-      .eq("job_id", jobId)
-      .order("captured_at", { ascending: false });
-  } catch {
-    throw new Error("evidence_query_failed");
-  }
-  if (queryResult.error) throw new Error("evidence_query_failed");
-  const data = queryResult.data;
+  let data: unknown;
+  try { data = await evidenceRepository().list(jobId); }
+  catch { throw new Error("evidence_query_failed"); }
 
   const rows = (Array.isArray(data) ? data : [])
     .map((row) => normalizeRow(row, jobId))
@@ -211,27 +163,10 @@ export async function loadAuthorizedEvidence(
   )];
   const signedByPath = new Map<string, string>();
   if (paths.length > 0) {
-    let signResult: { data: unknown; error: unknown };
     try {
-      signResult = await supabase.storage
-        .from(EVIDENCE_BUCKET)
-        .createSignedUrls(paths, SIGNED_URL_SECONDS);
-    } catch {
-      throw new Error("evidence_signing_failed");
-    }
-    if (signResult.error) throw new Error("evidence_signing_failed");
-    const signed = signResult.data;
-    const origin = expectedSignedOrigin();
-    for (const item of Array.isArray(signed) ? signed : []) {
-      if (!item || typeof item !== "object") continue;
-      const candidate = item as Record<string, unknown>;
-      if (candidate.error) continue;
-      const path = boundedString(candidate.path, 1_024);
-      const signedUrl = path
-        ? safeSignedUrl(candidate.signedUrl, origin, path)
-        : null;
-      if (path && paths.includes(path) && signedUrl) signedByPath.set(path, signedUrl);
-    }
+      const storage = createPrivateBlobStorage();
+      for (const path of paths) signedByPath.set(path, await storage.sign(EVIDENCE_BUCKET, path, SIGNED_URL_SECONDS));
+    } catch { throw new Error("evidence_signing_failed"); }
   }
 
   return {

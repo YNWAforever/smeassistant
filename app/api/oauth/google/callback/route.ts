@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { claimsRepository, recordClaimAuditEvent } from "@/lib/repositories/claims";
+import { getUser } from "@/lib/auth";
+import { membershipRepository } from "@/lib/repositories/membership";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/locale";
 import { exchangeCode, GBP_SCOPE_REQUIRED, verifyState } from "@/lib/oauth/google-connection";
 import { encryptToken } from "@/lib/security/token-crypto";
@@ -36,7 +37,7 @@ function back(origin: string, locale: Locale, workspaceSlug: string | null, para
  */
 async function workspaceSlugFor(workspaceId: string): Promise<string | null> {
   try {
-    const { data } = await supabaseServer().from("workspaces").select("slug").eq("id", workspaceId).maybeSingle();
+    const data = await membershipRepository.workspace({id:workspaceId});
     return typeof data?.slug === "string" ? data.slug : null;
   } catch {
     return null;
@@ -65,27 +66,14 @@ export async function GET(req: Request) {
   if (!payload) return back(origin, locale, null, { connected: "invalid_state" });
 
   try {
-    const client = await createSupabaseServerClient();
-    const { data } = await client.auth.getUser();
-    const user = data.user;
-    if (!user?.id) return back(origin, locale, null, { connected: "unauthenticated" });
+    const user = await getUser();
+    if (!user?.id || !user.verified) return back(origin, locale, null, { connected: "unauthenticated" });
 
-    const db = supabaseServer();
-    const { data: workspace } = await db
-      .from("workspaces")
-      .select("id, slug")
-      .eq("id", payload.workspaceId)
-      .maybeSingle();
+    const workspace = await membershipRepository.workspace({id:payload.workspaceId});
     if (!workspace) return back(origin, locale, null, { connected: "forbidden" });
     const workspaceSlug: string | null = typeof workspace.slug === "string" ? workspace.slug : null;
 
-    const { data: membership } = await db
-      .from("workspace_members")
-      .select("role")
-      .eq("workspace_id", payload.workspaceId)
-      .eq("user_id", user.id)
-      .not("accepted_at", "is", null)
-      .maybeSingle();
+    const membership = await membershipRepository.accepted(user.id,payload.workspaceId);
     // The signature proves the state is ours; it does not prove the person
     // returning still has access. A viewer must not be able to complete a
     // consent flow they were never allowed to start.
@@ -122,63 +110,29 @@ export async function GET(req: Request) {
       refresh_token_encrypted: encryptToken(tokens.refreshToken),
     };
 
-    // Retire the predecessor only once the replacement is safely stored. The
-    // reverse order destroyed a working connection whenever the insert failed —
-    // and the partial unique index guarantees the old row is retired before the
-    // new one can go active, so this is ordered insert-then-promote instead.
-    const { data: inserted, error: insertError } = await db
-      .from("oauth_connections")
-      .insert({
-        workspace_id: workspace.id,
-        provider: "google_gbp",
-        ...encrypted,
-        scopes: tokens.scopes,
-        expires_at: tokens.expiresAt,
-        // Inserted inactive so it cannot collide with the still-active
-        // predecessor on oauth_connections_active_provider_key.
-        status: "expired",
-      })
-      .select("id")
-      .single();
-    if (insertError || !inserted) {
-      console.error("Google OAuth connection insert failed");
-      return back(origin, locale, workspaceSlug, { connected: "storage_failed" });
-    }
-
-    const nowIso = new Date().toISOString();
-    const { error: revokeError } = await db
-      .from("oauth_connections")
-      .update({ status: "revoked", updated_at: nowIso })
-      .eq("workspace_id", workspace.id)
-      .eq("provider", "google_gbp")
-      .eq("status", "active");
-    if (revokeError) {
-      console.error("Google OAuth predecessor revoke failed");
-      return back(origin, locale, workspaceSlug, { connected: "storage_failed" });
-    }
-
-    const { error: promoteError } = await db
-      .from("oauth_connections")
-      .update({ status: "active", updated_at: nowIso })
-      .eq("id", inserted.id);
-    if (promoteError) {
-      console.error("Google OAuth connection promote failed");
-      return back(origin, locale, workspaceSlug, { connected: "storage_failed" });
+    let connectionId: string;
+    try {
+      connectionId = await claimsRepository.replaceGoogleConnection({
+        workspaceId:workspace.id, accessTokenEncrypted:encrypted.access_token_encrypted,
+        refreshTokenEncrypted:encrypted.refresh_token_encrypted, scopes:tokens.scopes, expiresAt:tokens.expiresAt,
+      });
+    } catch {
+      console.error("Google OAuth connection storage failed");
+      return back(origin,locale,workspaceSlug,{connected:"storage_failed"});
     }
 
     // Best-effort audit trail (CLAUDE.md §3.11 `integration.updated`). The
     // connection is already active; a failed log write must not surface as a
     // failed connection.
-    const { error: eventError } = await db.from("audit_events").insert({
+    await recordClaimAuditEvent({
       workspace_id: workspace.id,
       actor_type: "user",
       actor_id: user.id,
       event: "integration.updated",
       entity_type: "oauth_connection",
-      entity_id: inserted.id,
+      entity_id: connectionId,
       payload: { locale, provider: "google_gbp" },
     });
-    if (eventError) console.error("[google-oauth] audit event not recorded");
 
     return back(origin, locale, workspaceSlug, { connected: "ok" });
   } catch (error) {

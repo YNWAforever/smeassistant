@@ -1,9 +1,15 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { MARKETS, type MarketPricing } from "@sme-scanner/region";
 
-import { supabaseServer } from "@/lib/supabase/admin";
-import { deliveryAllowanceForTier, type WorkspaceTier } from "@/lib/workspace/entitlement";
-import { currentPeriod, type UsageSummary, type WorkspaceContext } from "@/lib/workspace/queries";
+import { billingRepository } from "@/lib/repositories/billing";
+import {
+  deliveryAllowanceForTier,
+  type WorkspaceTier,
+} from "@/lib/workspace/entitlement";
+import {
+  currentPeriod,
+  type UsageSummary,
+  type WorkspaceContext,
+} from "@/lib/workspace/queries";
 
 /**
  * Billing read model for `/settings/billing` and `GET /api/workspaces/[id]/usage`
@@ -30,61 +36,34 @@ export interface BillingModel {
   marketPrice: MarketPricing;
 }
 
-interface UsageRow {
-  period: string;
-  approved_deliveries: number | null;
-  allowance: number | null;
-}
-
-interface TierEventRow {
-  id: string;
-  tier: string;
-  source: string;
-  stripe_event_id: string | null;
-  created_at: string;
-}
-
-/**
- * The usage row for the given period, created lazily with the allowance the
- * tier carries at creation time -- the same lazy pattern as
- * lib/workspace/queries.ts so both readers agree on the row. A concurrent
- * insert loses the race to the primary key and simply re-reads.
- */
+export type BillingRepository = ReturnType<typeof billingRepository>;
 export async function readUsage(
-  db: SupabaseClient,
-  args: { workspaceId: string; tier: WorkspaceTier; timezone: string; now?: Date },
+  db: Pick<BillingRepository, "usage">,
+  args: {
+    workspaceId: string;
+    tier: WorkspaceTier;
+    timezone: string;
+    now?: Date;
+  },
 ): Promise<UsageSummary> {
   const period = currentPeriod(args.timezone, args.now);
-  const read = async (): Promise<UsageRow | null> => {
-    const { data, error } = await db
-      .from("workspace_usage")
-      .select("period, approved_deliveries, allowance")
-      .eq("workspace_id", args.workspaceId)
-      .eq("period", period)
-      .maybeSingle<UsageRow>();
-    if (error) throw new Error("workspace_usage read failed");
-    return data ?? null;
+  const row = await db.usage(
+    args.workspaceId,
+    period,
+    deliveryAllowanceForTier(args.tier),
+  );
+  return {
+    period: row.period,
+    approvedDeliveries: row.approved_deliveries ?? 0,
+    allowance: row.allowance ?? null,
   };
-  let row = await read();
-  if (!row) {
-    const allowance = deliveryAllowanceForTier(args.tier);
-    const { error } = await db.from("workspace_usage").insert({ workspace_id: args.workspaceId, period, allowance });
-    if (error && error.code !== "23505") throw new Error("workspace_usage insert failed");
-    row = (await read()) ?? { period, approved_deliveries: 0, allowance };
-  }
-  return { period: row.period, approvedDeliveries: row.approved_deliveries ?? 0, allowance: row.allowance ?? null };
 }
-
-export async function listTierEvents(db: SupabaseClient, workspaceId: string, limit = 10): Promise<TierEvent[]> {
-  const { data, error } = await db
-    .from("workspace_tier_events")
-    .select("id, tier, source, stripe_event_id, created_at")
-    .eq("workspace_id", workspaceId)
-    .order("created_at", { ascending: false })
-    .limit(limit)
-    .returns<TierEventRow[]>();
-  if (error) throw new Error("workspace_tier_events read failed");
-  return (data ?? []).map((row) => ({
+export async function listTierEvents(
+  db: Pick<BillingRepository, "tierEvents">,
+  workspaceId: string,
+  limit = 10,
+): Promise<TierEvent[]> {
+  return (await db.tierEvents(workspaceId, limit)).map((row) => ({
     id: row.id,
     tier: row.tier,
     source: row.source,
@@ -92,19 +71,18 @@ export async function listTierEvents(db: SupabaseClient, workspaceId: string, li
     createdAt: row.created_at,
   }));
 }
-
-export async function hasStripeCustomer(db: SupabaseClient, workspaceId: string): Promise<boolean> {
-  const { data, error } = await db
-    .from("workspaces")
-    .select("stripe_customer_id")
-    .eq("id", workspaceId)
-    .maybeSingle<{ stripe_customer_id: string | null }>();
-  if (error) throw new Error("workspace billing read failed");
-  return Boolean(data?.stripe_customer_id);
+export async function hasStripeCustomer(
+  db: Pick<BillingRepository, "workspace">,
+  workspaceId: string,
+): Promise<boolean> {
+  return Boolean((await db.workspace(workspaceId))?.stripe_customer_id);
 }
 
 /** The billing page model. `ctx.usage` is already the lazily-created current-period row. */
-export async function getBilling(ctx: WorkspaceContext, db: SupabaseClient = supabaseServer()): Promise<BillingModel> {
+export async function getBilling(
+  ctx: WorkspaceContext,
+  db: BillingRepository = billingRepository(),
+): Promise<BillingModel> {
   const [tierEvents, stripeCustomer] = await Promise.all([
     listTierEvents(db, ctx.workspace.id),
     hasStripeCustomer(db, ctx.workspace.id),

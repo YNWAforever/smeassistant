@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Pool } from "pg";
 
 /**
  * URL slugs for workspaces and locations (CLAUDE.md §3.1: every owner route is
@@ -62,39 +62,18 @@ function likePrefix(base: string): string {
   return `${base.replace(/[\\%_]/g, "\\$&")}%`;
 }
 
-async function existingSlugs(
-  query: PromiseLike<{ data: Array<{ slug: string | null }> | null; error: { message: string } | null }>,
-  label: string,
-): Promise<string[]> {
-  const { data, error } = await query;
-  if (error) throw new Error(`${label} slug lookup failed`);
-  return (data ?? []).map((row) => row.slug).filter((slug): slug is string => typeof slug === "string");
+/** Unique slug candidates; the persisted unique indexes arbitrate write races. */
+export async function uniqueWorkspaceSlug(db: Pick<Pool,"query">, base:string):Promise<string> {
+ try {
+  const result=await db.query<{slug:string|null}>("SELECT slug FROM workspaces WHERE slug LIKE $1",[likePrefix(base)]);
+  return firstFreeSlug(base,result.rows.map(row=>row.slug).filter((slug):slug is string=>slug!==null));
+ } catch {throw new Error("workspace slug lookup failed");}
 }
 
-/**
- * Unique against `workspaces.slug`. The select is a prefix match (`base%`) so
- * one round-trip returns every candidate the suffix rule could collide with;
- * unrelated prefixes (`base-shop`) are filtered out by firstFreeSlug. The
- * partial unique index on workspaces.slug is the real guarantee — a lost race
- * surfaces as an insert error for the caller to retry.
- */
-export async function uniqueWorkspaceSlug(db: SupabaseClient, base: string): Promise<string> {
-  const taken = await existingSlugs(
-    db.from("workspaces").select("slug").like("slug", likePrefix(base)),
-    "workspace",
-  );
-  return firstFreeSlug(base, taken);
-}
-
-/** Unique per workspace against `locations.slug` (unique on (workspace_id, slug)). */
-export async function uniqueLocationSlug(
-  db: SupabaseClient,
-  workspaceId: string,
-  base: string,
-): Promise<string> {
-  const taken = await existingSlugs(
-    db.from("locations").select("slug").eq("workspace_id", workspaceId).like("slug", likePrefix(base)),
-    "location",
-  );
-  return firstFreeSlug(base, taken);
+/** Location slugs are unique only within their owning workspace. */
+export async function uniqueLocationSlug(db:Pick<Pool,"query">,workspaceId:string,base:string):Promise<string> {
+ try {
+  const result=await db.query<{slug:string|null}>("SELECT slug FROM locations WHERE workspace_id=$1 AND slug LIKE $2",[workspaceId,likePrefix(base)]);
+  return firstFreeSlug(base,result.rows.map(row=>row.slug).filter((slug):slug is string=>slug!==null));
+ } catch {throw new Error("location slug lookup failed");}
 }

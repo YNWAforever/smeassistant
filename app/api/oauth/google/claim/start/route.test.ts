@@ -9,10 +9,8 @@ const mocks = vi.hoisted(() => ({
   claimViaOAuthEnabled: vi.fn(() => true),
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
-  createSupabaseServerClient: async () => ({ auth: { getUser: mocks.getUser } }),
-}));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({ from: mocks.from }) }));
+vi.mock("@/lib/auth", () => ({getUser:async()=>{const response=await mocks.getUser();const user=response?.data?.user;return user?{...user,verified:true}:null;}}));
+vi.mock("@/lib/repositories/claims",()=>({claimsRepository:{jobBySlug:async(slug:string)=>{const r=await mocks.from("audit_jobs").select().eq("share_slug",slug).maybeSingle();if(r.error)throw r.error;return r.data;}}}));
 vi.mock("@/lib/oauth/claim-flow-flag", () => ({ claimViaOAuthEnabled: mocks.claimViaOAuthEnabled }));
 vi.mock("@/lib/oauth/google-connection", () => ({
   buildConsentUrl: mocks.buildConsentUrl,
@@ -28,7 +26,7 @@ function request(query: string): Request {
 
 /** Pins the table name and the exact `eq` filter, not just the returned data. */
 function mockAuditJobsRow(row: { id: string; place_id: string | null; workspace_id: string | null } | null) {
-  const eq = vi.fn((_column: string, _value: string) => ({
+  const eq = vi.fn<(column:string,value:string)=>unknown>(() => ({
     maybeSingle: async () => ({ data: row, error: null }),
   }));
   mocks.from.mockImplementation((table: string) => {
@@ -138,12 +136,12 @@ describe("GET /api/oauth/google/claim/start", () => {
 
     const response = await GET(request("?slug=abc123"));
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(500);
     const body = await response.json();
-    expect(body).toEqual({ error: "not_found" });
+    expect(body).toEqual({ error: "unavailable" });
     expect(JSON.stringify(body)).not.toMatch(/db\.internal/);
     expect(consoleError).toHaveBeenCalledWith(
-      "[oauth/google/claim/start] job lookup failed",
+      "[oauth/google/claim/start] failed",
       expect.objectContaining({ message: "connection refused to db.internal:5432" }),
     );
     consoleError.mockRestore();

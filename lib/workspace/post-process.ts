@@ -1,8 +1,11 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { measurementRepository } from "@/lib/repositories/measurements";
+import { snapshotRepository } from "@/lib/repositories/snapshots";
+import type { PoolClient } from "pg";
+import { notificationRepository } from "@/lib/repositories/notifications";
 import { localized } from "@/lib/domain";
-import { deriveActionsForSnapshot } from "@/lib/workspace/actions";
+import { actionDerivationRepository } from "@/lib/repositories/action-derivation";
 import { recordMeasurements } from "@/lib/workspace/measurements";
-import { notifyWorkspace } from "@/lib/workspace/notify";
+import { notifyWithRepository } from "@/lib/workspace/notify";
 import { buildSnapshot, loadDiffForHeadJob } from "@/lib/workspace/snapshots";
 
 /**
@@ -17,8 +20,8 @@ import { buildSnapshot, loadDiffForHeadJob } from "@/lib/workspace/snapshots";
  * to the merchant, so a failure here is logged and never surfaces as a failed
  * scan. Errors stay visible in the outcome and logs; callers can repeat this
  * hook against the persisted terminal job without invoking collectors. Durable
- * cross-runner reconciliation remains a separate rollout dependency; this hook
- * is not a durable retry queue.
+ * reconciliation is owned by completion.ts and its ledger; this function runs
+ * only database operations on the caller-owned transaction.
  */
 export interface PostProcessOutcome {
   ran: boolean;
@@ -34,13 +37,13 @@ interface PostProcessJob {
   business_name: string | null;
 }
 
-async function workspaceHref(db: SupabaseClient, workspaceId: string, locationId: string | null): Promise<string | null> {
+async function workspaceHref(db: PoolClient, workspaceId: string, locationId: string | null): Promise<string | null> {
   try {
-    const { data } = await db.from("workspaces").select("slug").eq("id", workspaceId).maybeSingle<{ slug: string | null }>();
+    const data = (await db.query<{slug:string|null}>("SELECT slug FROM workspaces WHERE id=$1",[workspaceId])).rows[0];
     if (!data?.slug) return null;
     let query = "";
     if (locationId) {
-      const { data: location } = await db.from("locations").select("slug").eq("id", locationId).maybeSingle<{ slug: string | null }>();
+      const location = (await db.query<{slug:string|null}>("SELECT slug FROM locations WHERE id=$1 AND workspace_id=$2",[locationId,workspaceId])).rows[0];
       if (location?.slug) query = `?location=${encodeURIComponent(location.slug)}`;
     }
     return `/owner/${data.slug}${query}`;
@@ -49,20 +52,15 @@ async function workspaceHref(db: SupabaseClient, workspaceId: string, locationId
   }
 }
 
-export async function postProcessWorkspaceScan(db: SupabaseClient, jobId: string): Promise<PostProcessOutcome> {
+export async function postProcessWorkspaceScan(db: PoolClient, jobId: string): Promise<PostProcessOutcome> {
   let snapshotId: string | null = null;
   try {
-    const { data: job, error } = await db
-      .from("audit_jobs")
-      .select("id, workspace_id, location_id, status, business_name")
-      .eq("id", jobId)
-      .maybeSingle<PostProcessJob>();
-    if (error) throw new Error("post-process job lookup failed");
+    const job = (await db.query<PostProcessJob>("SELECT id,workspace_id,location_id,status,business_name FROM audit_jobs WHERE id=$1",[jobId])).rows[0];
     if (!job || !job.workspace_id) return { ran: false, snapshotId: null, error: null };
     const name = job.business_name?.trim() || "";
 
     if (job.status === "failed") {
-      const notification = await notifyWorkspace(db, {
+      const notification = await notifyWithRepository(notificationRepository(db), {
         workspaceId: job.workspace_id,
         completionJobId: job.id,
         kind: "scan.failed",
@@ -75,20 +73,20 @@ export async function postProcessWorkspaceScan(db: SupabaseClient, jobId: string
     }
     if (job.status !== "done" && job.status !== "partial") return { ran: false, snapshotId: null, error: null };
 
-    const snapshot = await buildSnapshot(db, jobId);
+    const snapshot = await buildSnapshot(snapshotRepository(db), jobId, { persistedOnly: true });
     snapshotId = snapshot.id;
-    await deriveActionsForSnapshot(db, snapshot.id);
+    await actionDerivationRepository(db).derive(snapshot.id);
 
     // A missing measurement is an incomplete workspace update, even though
     // the original scan remains valid. Do not announce completed workspace
     // refresh until required side effects succeed.
-    const diff = await loadDiffForHeadJob(db, jobId);
+    const diff = await loadDiffForHeadJob(snapshotRepository(db), jobId);
     if (diff?.comparable) {
-      const measurements = await recordMeasurements(db, { headSnapshot: snapshot, diff });
+      const measurements = await recordMeasurements(measurementRepository(db), { headSnapshot: snapshot, diff });
       if (!measurements.comparable) throw new Error("measurement base snapshot not ready");
     }
 
-    const notification = await notifyWorkspace(db, {
+    const notification = await notifyWithRepository(notificationRepository(db), {
       workspaceId: job.workspace_id,
       completionJobId: job.id,
       kind: "scan.completed",

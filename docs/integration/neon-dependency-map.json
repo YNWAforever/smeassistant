@@ -1,0 +1,2984 @@
+[
+  {
+    "path": ".github/workflows/ci.yml",
+    "kind": "operation",
+    "task": 15,
+    "replacements": [
+      "scripts/assert-no-supabase.mjs",
+      "scripts/neon/readiness.ts",
+      "scripts/gen-types.ts",
+      "scripts/seed-demo.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task15: active clients and direct dependencies removed; typed schema generation and owned disposable demo seeding implemented. Hosted targets NOT CHOSEN and NOT RUN."
+    ]
+  },
+  {
+    "path": "app/[locale]/owner/[workspaceSlug]/actions/[actionId]/page.tsx",
+    "kind": "runtime",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/workspace-read.ts",
+      "lib/repositories/assets.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Stale Task 10 inventory marker reconciled: action detail already uses Task 9 typed queries-pages and listAssets without a legacy client."
+    ]
+  },
+  {
+    "path": "app/[locale]/owner/[workspaceSlug]/assets/page.tsx",
+    "kind": "runtime",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/evidence.ts",
+      "lib/repositories/workspace.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
+    ]
+  },
+  {
+    "path": "app/[locale]/owner/[workspaceSlug]/settings/brand/page.tsx",
+    "kind": "runtime",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/evidence.ts",
+      "lib/repositories/workspace.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
+    ]
+  },
+  {
+    "path": "app/[locale]/owner/onboarding/page.tsx",
+    "kind": "runtime",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "app/[locale]/r/[slug]/opengraph-image.tsx",
+    "kind": "runtime",
+    "task": 8,
+    "replacements": [
+      "lib/repositories/scans.ts",
+      "lib/repositories/reports.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 8: typed Neon jobs/reports and atomic workflow repositories; restricted PostgreSQL fixture and focused contracts verified."
+    ]
+  },
+  {
+    "path": "app/api/actions/_shared/mutation.ts",
+    "kind": "runtime",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/artifacts.ts",
+      "lib/repositories/action-mutations.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
+    ]
+  },
+  {
+    "path": "app/api/actions/[actionId]/route.test.ts",
+    "kind": "test",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/artifacts.ts",
+      "lib/repositories/action-mutations.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
+    ]
+  },
+  {
+    "path": "app/api/actions/[actionId]/run/route.test.ts",
+    "kind": "test",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/artifacts.ts",
+      "lib/repositories/action-mutations.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
+    ]
+  },
+  {
+    "path": "app/api/actions/[actionId]/versions/route.test.ts",
+    "kind": "test",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/artifacts.ts",
+      "lib/repositories/action-mutations.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
+    ]
+  },
+  {
+    "path": "app/api/actions/route.test.ts",
+    "kind": "test",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/artifacts.ts",
+      "lib/repositories/action-mutations.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
+    ]
+  },
+  {
+    "path": "app/api/actions/route.ts",
+    "kind": "runtime",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/artifacts.ts",
+      "lib/repositories/action-mutations.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
+    ]
+  },
+  {
+    "path": "app/api/internal/workspace-scan-completion/route.test.ts",
+    "kind": "test",
+    "task": 13,
+    "replacements": [
+      "lib/workspace/completion-transaction.ts"
+    ],
+    "status": "pending",
+    "evidence": [
+      "supabaseServer reference"
+    ]
+  },
+  {
+    "path": "app/api/internal/workspace-scan-completion/route.ts",
+    "kind": "runtime",
+    "task": 13,
+    "replacements": [
+      "lib/workspace/completion-transaction.ts",
+      "test/integration/neon-completion.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task13 explicit same-transaction Neon repositories; actual stale-client and recovery coverage"
+    ]
+  },
+  {
+    "path": "app/api/oauth/google/callback/route.test.ts",
+    "kind": "test",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "app/api/oauth/google/callback/route.ts",
+    "kind": "runtime",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "app/api/oauth/google/claim/callback/route.test.ts",
+    "kind": "test",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "app/api/oauth/google/claim/callback/route.ts",
+    "kind": "runtime",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "app/api/oauth/google/claim/start/route.test.ts",
+    "kind": "test",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "app/api/oauth/google/claim/start/route.ts",
+    "kind": "runtime",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "app/api/oauth/google/start/route.test.ts",
+    "kind": "test",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "app/api/oauth/google/start/route.ts",
+    "kind": "runtime",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "app/api/owner/magic-link/route.test.ts",
+    "kind": "test",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "app/api/owner/magic-link/route.ts",
+    "kind": "runtime",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "app/api/report-access/sign-out/route.test.ts",
+    "kind": "test",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/reports.ts",
+      "test/integration/neon-report-signout.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 9 sign-out now revokes through typed PostgreSQL reportsRepository using grant id, token hash and revoked_at IS NULL. Route fixtures preserve uniform cookie clearing and managed auth 503; restricted-runtime SQL proves mismatched tokens cannot revoke and captured cookies cannot authorize after revocation."
+    ]
+  },
+  {
+    "path": "app/api/report-access/sign-out/route.ts",
+    "kind": "runtime",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/reports.ts",
+      "test/integration/neon-report-signout.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 9 sign-out now revokes through typed PostgreSQL reportsRepository using grant id, token hash and revoked_at IS NULL. Route fixtures preserve uniform cookie clearing and managed auth 503; restricted-runtime SQL proves mismatched tokens cannot revoke and captured cookies cannot authorize after revocation."
+    ]
+  },
+  {
+    "path": "app/api/report-access/unlock/route.test.ts",
+    "kind": "test",
+    "task": 8,
+    "replacements": [
+      "lib/repositories/reports.ts",
+      "lib/repositories/workflow.ts",
+      "test/integration/neon-scan-start.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 8 route fixtures mock typed reports/workflow repositories; local from/rpc-named fixture helpers are not provider imports. Owned SQL integration verifies actual unlock."
+    ]
+  },
+  {
+    "path": "app/api/report-access/unlock/route.ts",
+    "kind": "runtime",
+    "task": 8,
+    "replacements": [
+      "lib/repositories/reports.ts",
+      "lib/repositories/workflow.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "RPC consumer",
+      "Task 8 explicit brief owns this consumer; restricted PostgreSQL fixtures and focused repository contracts verified."
+    ]
+  },
+  {
+    "path": "app/api/scan/process/route.test.ts",
+    "kind": "test",
+    "task": 12,
+    "replacements": [
+      "lib/scan/execution-store.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Mocks processScan runtime Supabase dependency; limiter is already explicitly mocked. Follows Task 12 execution-store migration.",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
+    ]
+  },
+  {
+    "path": "app/api/scan/start/route.test.ts",
+    "kind": "test",
+    "task": 8,
+    "replacements": [
+      "lib/repositories/jobs.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 8 explicit brief owns this consumer; restricted PostgreSQL fixtures and focused repository contracts verified."
+    ]
+  },
+  {
+    "path": "app/api/scan/status/route.test.ts",
+    "kind": "test",
+    "task": 8,
+    "replacements": [
+      "lib/repositories/jobs.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 8 explicit brief owns this consumer; restricted PostgreSQL fixtures and focused repository contracts verified."
+    ]
+  },
+  {
+    "path": "app/api/scan/status/route.ts",
+    "kind": "runtime",
+    "task": 8,
+    "replacements": [
+      "lib/repositories/scans.ts",
+      "lib/repositories/reports.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 8: typed Neon jobs/reports and atomic workflow repositories; restricted PostgreSQL fixture and focused contracts verified."
+    ]
+  },
+  {
+    "path": "app/api/versions/[versionId]/versions.test.ts",
+    "kind": "test",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/artifacts.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
+    ]
+  },
+  {
+    "path": "app/api/webhooks/stripe/route.test.ts",
+    "kind": "test",
+    "task": 11,
+    "replacements": [
+      "lib/repositories/billing.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
+    ]
+  },
+  {
+    "path": "app/api/webhooks/stripe/route.ts",
+    "kind": "runtime",
+    "task": 11,
+    "replacements": [
+      "lib/repositories/billing.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
+    ]
+  },
+  {
+    "path": "app/api/workspace-invites/magic-link/route.test.ts",
+    "kind": "test",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "app/api/workspace-invites/magic-link/route.ts",
+    "kind": "runtime",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/assets/[assetId]/route.test.ts",
+    "kind": "test",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/evidence.ts",
+      "lib/repositories/workspace.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/assets/[assetId]/route.ts",
+    "kind": "runtime",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/evidence.ts",
+      "lib/repositories/workspace.ts",
+      "lib/repositories/assets.ts",
+      "private object-storage adapter (provider decision pending Task 9)"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Supabase Storage upload/remove/signed-URL consumer",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/assets/route.test.ts",
+    "kind": "test",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/evidence.ts",
+      "lib/repositories/workspace.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/assets/route.ts",
+    "kind": "runtime",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/evidence.ts",
+      "lib/repositories/workspace.ts",
+      "lib/repositories/assets.ts",
+      "private object-storage adapter (provider decision pending Task 9)"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Supabase Storage upload/remove/signed-URL consumer",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/brand/route.test.ts",
+    "kind": "test",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/evidence.ts",
+      "lib/repositories/workspace.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/brand/route.ts",
+    "kind": "runtime",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/evidence.ts",
+      "lib/repositories/workspace.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/checkout-link/route.ts",
+    "kind": "runtime",
+    "task": 11,
+    "replacements": [
+      "lib/repositories/billing.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Ownership reconciled with Task 11 Stripe customer persistence.",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/fix-pack-drafts/[runId]/route.test.ts",
+    "kind": "test",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/fix-pack.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 typed Fix Pack reads retain accepted viewer and out-of-scope manager access; approval uses persisted job/location scope and conditional draft update.",
+      "test/integration/neon-action-derivation.integration.test.ts and Fix Pack route fixtures"
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/fix-pack-drafts/[runId]/route.ts",
+    "kind": "runtime",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/fix-pack.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 typed Fix Pack reads retain accepted viewer and out-of-scope manager access; approval uses persisted job/location scope and conditional draft update.",
+      "test/integration/neon-action-derivation.integration.test.ts and Fix Pack route fixtures"
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/fix-pack-drafts/route.test.ts",
+    "kind": "test",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/fix-pack.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 typed Fix Pack reads retain accepted viewer and out-of-scope manager access; approval uses persisted job/location scope and conditional draft update.",
+      "test/integration/neon-action-derivation.integration.test.ts and Fix Pack route fixtures"
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/fix-pack-drafts/route.ts",
+    "kind": "runtime",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/fix-pack.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 typed Fix Pack reads retain accepted viewer and out-of-scope manager access; approval uses persisted job/location scope and conditional draft update.",
+      "test/integration/neon-action-derivation.integration.test.ts and Fix Pack route fixtures"
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/instagram-handle/route.test.ts",
+    "kind": "test",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/workspace-profile.ts",
+      "lib/workspace/audit.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task9 owner-authorized Neon workspace handle, best-effort scoped primary-location and audit writes. Actual restricted SQL and route fixtures."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/instagram-handle/route.ts",
+    "kind": "runtime",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/workspace-profile.ts",
+      "lib/workspace/audit.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task9 owner-authorized Neon workspace handle, best-effort scoped primary-location and audit writes. Actual restricted SQL and route fixtures."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/members/[memberId]/route.test.ts",
+    "kind": "test",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/members/[memberId]/route.ts",
+    "kind": "runtime",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/members/route.test.ts",
+    "kind": "test",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/members/route.ts",
+    "kind": "runtime",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/notification-preferences/route.test.ts",
+    "kind": "test",
+    "task": 11,
+    "replacements": [
+      "lib/repositories/notifications.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/notification-preferences/route.ts",
+    "kind": "runtime",
+    "task": 11,
+    "replacements": [
+      "lib/repositories/notifications.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/rescan/route.test.ts",
+    "kind": "test",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/rescan.ts",
+      "lib/repositories/jobs.ts",
+      "lib/workspace/audit.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task9 Neon source/tier/schedule SQL; jobsRepository insertion and explicit Neon audit. Dispatch and scheduler execution remain Tasks12/14. Focused route/domain and owned restricted SQL fixtures."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/rescan/route.ts",
+    "kind": "runtime",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/rescan.ts",
+      "lib/repositories/jobs.ts",
+      "lib/workspace/audit.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task9 Neon source/tier/schedule SQL; jobsRepository insertion and explicit Neon audit. Dispatch and scheduler execution remain Tasks12/14. Focused route/domain and owned restricted SQL fixtures."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/usage/route.test.ts",
+    "kind": "test",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/workspace-read.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 explicit Neon usage read/upsert; accepted-member route and usage domain fixtures preserve period, timezone and tier contracts."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/[workspaceId]/usage/route.ts",
+    "kind": "runtime",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/workspace-read.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 explicit Neon usage read/upsert; accepted-member route and usage domain fixtures preserve period, timezone and tier contracts."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/claim/route.test.ts",
+    "kind": "test",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/workspaces.ts",
+      "lib/repositories/snapshots.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 9 fixture uses Neon snapshotRepository and asserts legacy Supabase guard is never called. Legacy mock is retained only as a negative assertion. Task 10 action derivation remains explicitly unavailable (503), not completed by this marker."
+    ]
+  },
+  {
+    "path": "app/api/workspaces/claim/route.ts",
+    "kind": "runtime",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/workspaces.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7 completion writes use claimCompletionStore. Remaining Supabase buildSnapshot/loadSnapshotForJob hooks belong to Task9; deriveActionsForSnapshot belongs to Task10.",
+      "Task 9: eligible claim snapshot uses Neon; Task 10 action derivation explicitly fails closed with pending error and HTTP 503 until Neon artifact hook is wired. Not deployment ready."
+    ]
+  },
+  {
+    "path": "app/auth/callback/route.test.ts",
+    "kind": "test",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "app/auth/callback/route.ts",
+    "kind": "runtime",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/reports.ts",
+      "lib/repositories/claims.ts",
+      "lib/repositories/membership.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task9 holdsViewerGrant reuses scoped reportsRepository.findViewerGrant; finite future expiry, revocation and token hash checks retained. Earlier Task7 callback persistence unchanged."
+    ]
+  },
+  {
+    "path": "docs/integration/DEPLOY.md",
+    "kind": "operation",
+    "task": 17,
+    "replacements": [
+      "docs/integration/NEON-CUTOVER.md"
+    ],
+    "status": "pending",
+    "evidence": [
+      "external boundary: retained worker scheduler targets the legacy origin; no new cron is introduced",
+      "required modes: vercel, scheduled, cloudflare",
+      "verified source absence: no runtime realtime subscription; compatibility shims fail closed",
+      "verified source absence: no Edge Function invocation"
+    ]
+  },
+  {
+    "path": "docs/integration/LAUNCH-REPORT.md",
+    "kind": "operation",
+    "task": 16,
+    "replacements": [
+      "Neon readiness and final verification evidence"
+    ],
+    "status": "pending",
+    "evidence": [
+      "Task16 local technical gate at source 853bdee87031cd1d1b2282969ab1b238c498d147: all ten exact commands exited 0; readiness independently probes the exact application URL and rejects invalid or privileged application credentials.",
+      "Worktree proof includes unstaged user-owned e2e/owner-shell.spec.ts SHA256 C34D6BB9BD439AF56AF8EB3A47693170CE8EC4C54FE6A5DBB112C41C545236D4; it is not commit-only or remote-CI proof.",
+      "2026-09-07 approved requirement amendment: pending workspace invitations remain valid until accepted or explicitly revoked; acceptance requires verified intended-recipient identity, pending unrevoked membership and transactional acceptance; managed sign-in-link expiry/replay remains enforced and rejected links are no-ops. No invitation-specific SQL expiry is tested or claimed.",
+      "Task16 independent implementation/specification review is approved, including readiness and the explicit invitation amendment. Task17 local runbook preparation and owned SQL recovery rehearsal are complete pending independent review; hosted project, region, branch and origin remain not chosen. Hosted database/Auth/mail/Google/provider acceptance, migration, deployment and cutover were not run; release remains blocked on target inputs and applicable operational authorization."
+    ]
+  },
+  {
+    "path": "lib/analytics/record-event.ts",
+    "kind": "runtime",
+    "task": 11,
+    "replacements": [
+      "lib/repositories/events.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
+    ]
+  },
+  {
+    "path": "lib/assistant/live.test.ts",
+    "kind": "test",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/artifacts.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
+    ]
+  },
+  {
+    "path": "lib/assistant/live.ts",
+    "kind": "runtime",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/artifacts.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
+    ]
+  },
+  {
+    "path": "lib/auth.test.ts",
+    "kind": "test",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "lib/auth.ts",
+    "kind": "runtime",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "lib/evidence/load-authorized.test.ts",
+    "kind": "test",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/evidence.ts",
+      "lib/storage/private-blob.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 9 loader fixtures mock typed evidence repository and Private Blob signer. Historical signed-URL example strings are inert fixture data, not a Supabase runtime dependency; native signing is verified in private-blob SDK fixtures."
+    ]
+  },
+  {
+    "path": "lib/evidence/load-authorized.ts",
+    "kind": "runtime",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/evidence.ts",
+      "lib/repositories/workspace.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
+    ]
+  },
+  {
+    "path": "lib/evidence/persist.ts",
+    "kind": "runtime",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/evidence.ts",
+      "lib/repositories/workspace.ts",
+      "private object-storage adapter (provider decision pending Task 9)"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Supabase Storage upload/list/remove consumer",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
+    ]
+  },
+  {
+    "path": "lib/owner/billing-authorization.test.ts",
+    "kind": "test",
+    "task": 11,
+    "replacements": [
+      "lib/repositories/billing.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
+    ]
+  },
+  {
+    "path": "lib/owner/billing-authorization.ts",
+    "kind": "runtime",
+    "task": 11,
+    "replacements": [
+      "lib/repositories/billing.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
+    ]
+  },
+  {
+    "path": "lib/report/load-report.test.ts",
+    "kind": "test",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/reports.ts",
+      "test/integration/neon-scan-start.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Report persistence already uses PostgreSQL query fixtures and reportsRepository. Historical signed-URL strings in loader fixtures are inert model data; authorization/read separation and actual SQL projection are covered by report and Neon integration suites."
+    ]
+  },
+  {
+    "path": "lib/report/store.test.ts",
+    "kind": "test",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/reports.ts",
+      "test/integration/neon-scan-start.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Report persistence already uses PostgreSQL query fixtures and reportsRepository. Historical signed-URL strings in loader fixtures are inert model data; authorization/read separation and actual SQL projection are covered by report and Neon integration suites."
+    ]
+  },
+  {
+    "path": "lib/report/store.ts",
+    "kind": "runtime",
+    "task": 8,
+    "replacements": [
+      "lib/repositories/reports.ts",
+      "lib/repositories/workflow.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 8 explicit brief owns this consumer; restricted PostgreSQL fixtures and focused repository contracts verified."
+    ]
+  },
+  {
+    "path": "lib/scan/dispatch-runtime.ts",
+    "kind": "operation",
+    "task": 15,
+    "replacements": [
+      "scripts/assert-no-supabase.mjs",
+      "scripts/neon/readiness.ts",
+      "scripts/gen-types.ts",
+      "scripts/seed-demo.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task15: active clients and direct dependencies removed; typed schema generation and owned disposable demo seeding implemented. Hosted targets NOT CHOSEN and NOT RUN."
+    ]
+  },
+  {
+    "path": "lib/scan/run.test.ts",
+    "kind": "test",
+    "task": 12,
+    "replacements": [
+      "lib/scan/execution-store.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
+    ]
+  },
+  {
+    "path": "lib/scan/run.ts",
+    "kind": "runtime",
+    "task": 12,
+    "replacements": [
+      "lib/scan/execution-store.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
+    ]
+  },
+  {
+    "path": "lib/scan/start-job.test.ts",
+    "kind": "test",
+    "task": 12,
+    "replacements": [
+      "lib/scan/execution-store.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
+    ]
+  },
+  {
+    "path": "lib/scan/start-job.ts",
+    "kind": "runtime",
+    "task": 8,
+    "replacements": [
+      "lib/repositories/jobs.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "supabaseServer reference",
+      "Task 8 explicit brief owns this consumer; restricted PostgreSQL fixtures and focused repository contracts verified."
+    ]
+  },
+  {
+    "path": "lib/security/rate-limit.ts",
+    "kind": "runtime",
+    "task": 8,
+    "replacements": [
+      "lib/repositories/scans.ts",
+      "lib/repositories/reports.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "RPC consumer",
+      "Task 8: typed Neon jobs/reports and atomic workflow repositories; restricted PostgreSQL fixture and focused contracts verified."
+    ]
+  },
+  {
+    "path": "lib/supabase/admin.ts",
+    "kind": "runtime",
+    "task": 15,
+    "replacements": [
+      "scripts/assert-no-supabase.mjs",
+      "scripts/neon/readiness.ts",
+      "scripts/gen-types.ts",
+      "scripts/seed-demo.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task15: active clients and direct dependencies removed; typed schema generation and owned disposable demo seeding implemented. Hosted targets NOT CHOSEN and NOT RUN."
+    ]
+  },
+  {
+    "path": "lib/supabase/client.ts",
+    "kind": "runtime",
+    "task": 15,
+    "replacements": [
+      "scripts/assert-no-supabase.mjs",
+      "scripts/neon/readiness.ts",
+      "scripts/gen-types.ts",
+      "scripts/seed-demo.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task15: active clients and direct dependencies removed; typed schema generation and owned disposable demo seeding implemented. Hosted targets NOT CHOSEN and NOT RUN."
+    ]
+  },
+  {
+    "path": "lib/supabase/server.ts",
+    "kind": "runtime",
+    "task": 15,
+    "replacements": [
+      "scripts/assert-no-supabase.mjs",
+      "scripts/neon/readiness.ts",
+      "scripts/gen-types.ts",
+      "scripts/seed-demo.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task15: active clients and direct dependencies removed; typed schema generation and owned disposable demo seeding implemented. Hosted targets NOT CHOSEN and NOT RUN."
+    ]
+  },
+  {
+    "path": "lib/workspace/actions.test.ts",
+    "kind": "test",
+    "task": 14,
+    "replacements": [
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
+    ]
+  },
+  {
+    "path": "lib/workspace/actions.ts",
+    "kind": "runtime",
+    "task": 10,
+    "replacements": [
+      "lib/workspace/actions.ts",
+      "lib/repositories/action-derivation.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 actions domain is transport-free; transactional Neon derivation and claim hook use owned persisted evidence.",
+      "test/integration/neon-action-derivation.integration.test.ts; original-client legacy derivation tracked separately under Task 13."
+    ]
+  },
+  {
+    "path": "lib/workspace/assets.test.ts",
+    "kind": "test",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/evidence.ts",
+      "lib/repositories/workspace.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
+    ]
+  },
+  {
+    "path": "lib/workspace/assets.ts",
+    "kind": "runtime",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/evidence.ts",
+      "lib/repositories/workspace.ts",
+      "lib/repositories/assets.ts",
+      "private object-storage adapter (provider decision pending Task 9)"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "Supabase Storage upload/remove/signed-URL consumer",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
+    ]
+  },
+  {
+    "path": "lib/workspace/audit.test.ts",
+    "kind": "test",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 removed unused legacy audit branch; explicit recordNeonEvent and typed audit fixtures retain payload and best-effort behavior."
+    ]
+  },
+  {
+    "path": "lib/workspace/audit.ts",
+    "kind": "runtime",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 removed unused legacy audit branch; explicit recordNeonEvent and typed audit fixtures retain payload and best-effort behavior."
+    ]
+  },
+  {
+    "path": "lib/workspace/billing.test.ts",
+    "kind": "test",
+    "task": 11,
+    "replacements": [
+      "lib/repositories/billing.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "supabaseServer reference",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
+    ]
+  },
+  {
+    "path": "lib/workspace/billing.ts",
+    "kind": "runtime",
+    "task": 11,
+    "replacements": [
+      "lib/repositories/billing.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "supabaseServer reference",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
+    ]
+  },
+  {
+    "path": "lib/workspace/brand.test.ts",
+    "kind": "test",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/evidence.ts",
+      "lib/repositories/workspace.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
+    ]
+  },
+  {
+    "path": "lib/workspace/brand.ts",
+    "kind": "runtime",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/evidence.ts",
+      "lib/repositories/workspace.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "Task 9 private content checkpoint: Neon metadata repository and private Blob boundary; scoped fixture verification."
+    ]
+  },
+  {
+    "path": "lib/workspace/callback-queries.test.ts",
+    "kind": "test",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "lib/workspace/callback-queries.ts",
+    "kind": "runtime",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "lib/workspace/claim.test.ts",
+    "kind": "test",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "lib/workspace/claim.ts",
+    "kind": "runtime",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "lib/workspace/completion-client.ts",
+    "kind": "runtime",
+    "task": 13,
+    "replacements": [
+      "lib/workspace/completion-transaction.ts",
+      "test/integration/neon-completion.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task13 explicit same-transaction Neon repositories; actual stale-client and recovery coverage"
+    ]
+  },
+  {
+    "path": "lib/workspace/completion.ts",
+    "kind": "runtime",
+    "task": 13,
+    "replacements": [
+      "lib/workspace/completion-transaction.ts",
+      "test/integration/neon-completion.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task13 explicit same-transaction Neon repositories; actual stale-client and recovery coverage"
+    ]
+  },
+  {
+    "path": "lib/workspace/measurements.test.ts",
+    "kind": "test",
+    "task": 14,
+    "replacements": [
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
+    ]
+  },
+  {
+    "path": "lib/workspace/measurements.ts",
+    "kind": "runtime",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/evidence.ts",
+      "lib/repositories/workspace.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "Task 9 snapshot/measurement checkpoint: explicit domain repository port with same-client PostgreSQL factory; deferred legacy callers explicitly choose narrow adapters owned by Tasks 10/13."
+    ]
+  },
+  {
+    "path": "lib/workspace/notify.test.ts",
+    "kind": "test",
+    "task": 14,
+    "replacements": [
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
+    ]
+  },
+  {
+    "path": "lib/workspace/notify.ts",
+    "kind": "runtime",
+    "task": 13,
+    "replacements": [
+      "lib/workspace/completion-transaction.ts",
+      "test/integration/neon-completion.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task13 explicit same-transaction Neon repositories; actual stale-client and recovery coverage"
+    ]
+  },
+  {
+    "path": "lib/workspace/post-process.test.ts",
+    "kind": "test",
+    "task": 13,
+    "replacements": [
+      "lib/workspace/completion-transaction.ts"
+    ],
+    "status": "pending",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference"
+    ]
+  },
+  {
+    "path": "lib/workspace/post-process.ts",
+    "kind": "runtime",
+    "task": 13,
+    "replacements": [
+      "lib/workspace/completion-transaction.ts",
+      "test/integration/neon-completion.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task13 explicit same-transaction Neon repositories; actual stale-client and recovery coverage"
+    ]
+  },
+  {
+    "path": "lib/workspace/queries-pages.test.ts",
+    "kind": "test",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/workspace-read.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 9 read-model checkpoint: explicit selected SQL with workspace/location predicates; 21 domain tests and 10 runtime-role SQL fixtures passed. Evidence loader remains separately owned pending Task 9."
+    ]
+  },
+  {
+    "path": "lib/workspace/queries-pages.ts",
+    "kind": "runtime",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/workspace-read.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 9 read-model checkpoint: explicit selected SQL with workspace/location predicates; 21 domain tests and 10 runtime-role SQL fixtures passed. Evidence loader remains separately owned pending Task 9."
+    ]
+  },
+  {
+    "path": "lib/workspace/queries.test.ts",
+    "kind": "test",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/workspace-read.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 9 read-model checkpoint: explicit selected SQL with workspace/location predicates; 21 domain tests and 10 runtime-role SQL fixtures passed. Evidence loader remains separately owned pending Task 9."
+    ]
+  },
+  {
+    "path": "lib/workspace/queries.ts",
+    "kind": "runtime",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/workspace-read.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 9 read-model checkpoint: explicit selected SQL with workspace/location predicates; 21 domain tests and 10 runtime-role SQL fixtures passed. Evidence loader remains separately owned pending Task 9."
+    ]
+  },
+  {
+    "path": "lib/workspace/rescan.test.ts",
+    "kind": "test",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/rescan.ts",
+      "lib/repositories/jobs.ts",
+      "lib/workspace/audit.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task9 Neon source/tier/schedule SQL; jobsRepository insertion and explicit Neon audit. Dispatch and scheduler execution remain Tasks12/14. Focused route/domain and owned restricted SQL fixtures."
+    ]
+  },
+  {
+    "path": "lib/workspace/rescan.ts",
+    "kind": "runtime",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/rescan.ts",
+      "lib/repositories/jobs.ts",
+      "lib/workspace/audit.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task9 Neon source/tier/schedule SQL; jobsRepository insertion and explicit Neon audit. Dispatch and scheduler execution remain Tasks12/14. Focused route/domain and owned restricted SQL fixtures."
+    ]
+  },
+  {
+    "path": "lib/workspace/runs.test.ts",
+    "kind": "test",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/artifacts.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
+    ]
+  },
+  {
+    "path": "lib/workspace/runs.ts",
+    "kind": "runtime",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/artifacts.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
+    ]
+  },
+  {
+    "path": "lib/workspace/slug.test.ts",
+    "kind": "test",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "lib/workspace/slug.ts",
+    "kind": "runtime",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "lib/workspace/snapshots.test.ts",
+    "kind": "test",
+    "task": 14,
+    "replacements": [
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
+    ]
+  },
+  {
+    "path": "lib/workspace/snapshots.ts",
+    "kind": "runtime",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/evidence.ts",
+      "lib/repositories/workspace.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "Task 9 snapshot/measurement checkpoint: explicit domain repository port with same-client PostgreSQL factory; deferred legacy callers explicitly choose narrow adapters owned by Tasks 10/13."
+    ]
+  },
+  {
+    "path": "lib/workspace/team.test.ts",
+    "kind": "test",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "lib/workspace/team.ts",
+    "kind": "runtime",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "supabaseServer reference",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "lib/workspace/usage.test.ts",
+    "kind": "test",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/workspace-read.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 explicit Neon usage read/upsert; accepted-member route and usage domain fixtures preserve period, timezone and tier contracts."
+    ]
+  },
+  {
+    "path": "lib/workspace/usage.ts",
+    "kind": "runtime",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/workspace-read.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 explicit Neon usage read/upsert; accepted-member route and usage domain fixtures preserve period, timezone and tier contracts."
+    ]
+  },
+  {
+    "path": "lib/workspace/versions.test.ts",
+    "kind": "test",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/artifacts.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
+    ]
+  },
+  {
+    "path": "lib/workspace/versions.ts",
+    "kind": "runtime",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/artifacts.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 10 explicit Neon artifact transport preserves read evidence, persisted action/evidence draft scope, history and retry semantics.",
+      "test/integration/neon-artifacts.integration.test.ts",
+      "test/integration/neon-artifact-runtime.integration.test.ts",
+      "test/integration/neon-assistant-live.integration.test.ts"
+    ]
+  },
+  {
+    "path": "package.json",
+    "kind": "operation",
+    "task": 15,
+    "replacements": [
+      "scripts/assert-no-supabase.mjs",
+      "scripts/neon/readiness.ts",
+      "scripts/gen-types.ts",
+      "scripts/seed-demo.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task15: active clients and direct dependencies removed; typed schema generation and owned disposable demo seeding implemented. Hosted targets NOT CHOSEN and NOT RUN."
+    ]
+  },
+  {
+    "path": "packages/scan-engine/package.json",
+    "kind": "operation",
+    "task": 15,
+    "replacements": [
+      "scripts/assert-no-supabase.mjs",
+      "scripts/neon/readiness.ts",
+      "scripts/gen-types.ts",
+      "scripts/seed-demo.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task15: active clients and direct dependencies removed; typed schema generation and owned disposable demo seeding implemented. Hosted targets NOT CHOSEN and NOT RUN."
+    ]
+  },
+  {
+    "path": "packages/scan-engine/src/analytics.test.ts",
+    "kind": "test",
+    "task": 12,
+    "replacements": [
+      "lib/scan/execution-store.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
+    ]
+  },
+  {
+    "path": "packages/scan-engine/src/analytics.ts",
+    "kind": "runtime",
+    "task": 12,
+    "replacements": [
+      "lib/scan/execution-store.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "supabaseServer reference",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
+    ]
+  },
+  {
+    "path": "packages/scan-engine/src/execution-analytics-lifetime.test.ts",
+    "kind": "test",
+    "task": 12,
+    "replacements": [
+      "lib/scan/execution-store.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
+    ]
+  },
+  {
+    "path": "packages/scan-engine/src/execution.test.ts",
+    "kind": "test",
+    "task": 12,
+    "replacements": [
+      "lib/scan/execution-store.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
+    ]
+  },
+  {
+    "path": "packages/scan-engine/src/execution.ts",
+    "kind": "runtime",
+    "task": 12,
+    "replacements": [
+      "lib/scan/execution-store.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "RPC consumer",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
+    ]
+  },
+  {
+    "path": "packages/scan-engine/src/supabase-client.test.ts",
+    "kind": "test",
+    "task": 12,
+    "replacements": [
+      "lib/scan/execution-store.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "createServiceClient reference",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
+    ]
+  },
+  {
+    "path": "packages/scan-engine/src/supabase-client.ts",
+    "kind": "runtime",
+    "task": 12,
+    "replacements": [
+      "lib/scan/execution-store.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "tracked @supabase reference",
+      "SupabaseClient type reference",
+      "createServiceClient reference",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
+    ]
+  },
+  {
+    "path": "pnpm-lock.yaml",
+    "kind": "runtime",
+    "task": 15,
+    "replacements": [
+      "scripts/assert-no-supabase.mjs",
+      "scripts/neon/readiness.ts",
+      "scripts/gen-types.ts",
+      "scripts/seed-demo.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task15: active clients and direct dependencies removed; typed schema generation and owned disposable demo seeding implemented. Hosted targets NOT CHOSEN and NOT RUN."
+    ]
+  },
+  {
+    "path": "proxy.ts",
+    "kind": "runtime",
+    "task": 6,
+    "replacements": [
+      "lib/auth/provider.ts",
+      "lib/auth/session.ts"
+    ],
+    "status": "pending",
+    "evidence": [
+      "tracked @supabase reference"
+    ]
+  },
+  {
+    "path": "scripts/seed-demo.ts",
+    "kind": "runtime",
+    "task": 15,
+    "replacements": [
+      "scripts/assert-no-supabase.mjs",
+      "scripts/neon/readiness.ts",
+      "scripts/gen-types.ts",
+      "scripts/seed-demo.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task15: active clients and direct dependencies removed; typed schema generation and owned disposable demo seeding implemented. Hosted targets NOT CHOSEN and NOT RUN."
+    ]
+  },
+  {
+    "path": "supabase/migrations/0001_v0_1_schema.sql",
+    "kind": "schema",
+    "task": 3,
+    "replacements": [
+      "neon/migrations/0001_initial_schema.sql"
+    ],
+    "status": "pending",
+    "evidence": [
+      "source migration",
+      "sql-object:index:auto@audit_findings",
+      "sql-object:index:auto@audit_jobs",
+      "sql-object:index:auto@scan_events",
+      "sql-object:table:audit_findings",
+      "sql-object:table:audit_jobs",
+      "sql-object:table:leads",
+      "sql-object:table:scan_events"
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260524_add_raw_data.sql",
+    "kind": "schema",
+    "task": 3,
+    "replacements": [
+      "neon/migrations/0001_initial_schema.sql"
+    ],
+    "status": "pending",
+    "evidence": [
+      "source migration",
+      "sql-object:column:audit_jobs.raw_data",
+      "sql-object:table:audit_jobs"
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260616_add_english_columns.sql",
+    "kind": "schema",
+    "task": 3,
+    "replacements": [
+      "neon/migrations/0001_initial_schema.sql"
+    ],
+    "status": "pending",
+    "evidence": [
+      "source migration",
+      "sql-object:column:audit_findings.owner_message_en",
+      "sql-object:column:audit_jobs.summary_en",
+      "sql-object:table:audit_findings",
+      "sql-object:table:audit_jobs"
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260617_add_summary_zh.sql",
+    "kind": "schema",
+    "task": 3,
+    "replacements": [
+      "neon/migrations/0001_initial_schema.sql"
+    ],
+    "status": "pending",
+    "evidence": [
+      "source migration",
+      "sql-object:column:audit_jobs.summary_zh",
+      "sql-object:table:audit_jobs"
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260620_add_taiwan_columns.sql",
+    "kind": "schema",
+    "task": 3,
+    "replacements": [
+      "neon/migrations/0001_initial_schema.sql"
+    ],
+    "status": "pending",
+    "evidence": [
+      "source migration",
+      "sql-object:column:audit_findings.owner_message_tw",
+      "sql-object:column:audit_jobs.region",
+      "sql-object:column:audit_jobs.summary_tw",
+      "sql-object:table:audit_findings",
+      "sql-object:table:audit_jobs"
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260702_add_owner_action_columns.sql",
+    "kind": "schema",
+    "task": 3,
+    "replacements": [
+      "neon/migrations/0001_initial_schema.sql"
+    ],
+    "status": "pending",
+    "evidence": [
+      "source migration",
+      "sql-object:column:audit_findings.owner_action_en",
+      "sql-object:column:audit_findings.owner_action_zh",
+      "sql-object:table:audit_findings"
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260714_trust_foundation.sql",
+    "kind": "schema",
+    "task": 4,
+    "replacements": [
+      "neon/migrations/0004_atomic_operations.sql"
+    ],
+    "status": "pending",
+    "evidence": [
+      "source migration",
+      "sql-object:column:audit_findings.finding_key",
+      "sql-object:column:audit_jobs.attempt_count",
+      "sql-object:column:audit_jobs.business_objective",
+      "sql-object:column:audit_jobs.failure_category",
+      "sql-object:column:audit_jobs.failure_correlation_id",
+      "sql-object:column:audit_jobs.input_snapshot",
+      "sql-object:column:audit_jobs.last_attempt_at",
+      "sql-object:column:audit_jobs.module_results",
+      "sql-object:column:audit_jobs.parent_job_id",
+      "sql-object:column:audit_jobs.place_id",
+      "sql-object:column:audit_jobs.place_match_confidence",
+      "sql-object:column:audit_jobs.processing_stage",
+      "sql-object:column:audit_jobs.score_coverage",
+      "sql-object:column:audit_jobs.scoring_version",
+      "sql-object:column:leads.business_objective",
+      "sql-object:column:leads.contact_identifier",
+      "sql-object:column:leads.preferred_contact_channel",
+      "sql-object:column:report_access_grants.idempotency_key",
+      "sql-object:column:report_access_grants.lead_id",
+      "sql-object:column:scan_events.anonymous_session_id",
+      "sql-object:column:scan_events.dedupe_key",
+      "sql-object:column:scan_events.properties",
+      "sql-object:constraint:audit_jobs_status_check",
+      "sql-object:constraint:report_access_grants_idempotency_key_check",
+      "sql-object:constraint:report_access_grants_token_hash_sha256_check",
+      "sql-object:function:public.claim_audit_job",
+      "sql-object:function:public.complete_report_unlock",
+      "sql-object:grant-statement:grant execute on function public.claim_audit_job(uuid) to service_role;",
+      "sql-object:grant-statement:grant execute on function public.complete_report_unlock( uuid, text, text, text, text, text, text, boolean, boolean, boolean, text, text, text, text, text, timestamptz, text, jsonb ) to service_role;",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.audit_jobs, public.audit_findings, public.leads, public.report_access_grants, public.consent_records, public.staff_report_events, public.scan_events, public.rate_limit_buckets to service_role;",
+      "sql-object:grant-statement:grant usage, select, update on sequence public.scan_events_id_seq to service_role;",
+      "sql-object:index:audit_findings_job_finding_key_unique_idx",
+      "sql-object:index:consent_records_job_id_idx",
+      "sql-object:index:report_access_grants_job_id_idx",
+      "sql-object:index:report_access_grants_job_idempotency_key_unique_idx",
+      "sql-object:index:report_access_grants_token_hash_unique_idx",
+      "sql-object:index:scan_events_dedupe_identity_unique_idx",
+      "sql-object:index:scan_events_job_id_created_at_idx",
+      "sql-object:index:staff_report_events_job_id_created_at_idx",
+      "sql-object:revoke-statement:revoke all on sequence public.scan_events_id_seq from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on table public.audit_jobs, public.audit_findings, public.leads, public.report_access_grants, public.consent_records, public.staff_report_events, public.scan_events, public.rate_limit_buckets from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke execute on function public.claim_audit_job(uuid) from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke execute on function public.complete_report_unlock( uuid, text, text, text, text, text, text, boolean, boolean, boolean, text, text, text, text, text, timestamptz, text, jsonb ) from public, anon, authenticated;",
+      "sql-object:table:audit_findings",
+      "sql-object:table:audit_jobs",
+      "sql-object:table:consent_records",
+      "sql-object:table:leads",
+      "sql-object:table:public.audit_findings",
+      "sql-object:table:public.audit_jobs",
+      "sql-object:table:public.consent_records",
+      "sql-object:table:public.leads",
+      "sql-object:table:public.rate_limit_buckets",
+      "sql-object:table:public.report_access_grants",
+      "sql-object:table:public.scan_events",
+      "sql-object:table:public.staff_report_events",
+      "sql-object:table:rate_limit_buckets",
+      "sql-object:table:report_access_grants",
+      "sql-object:table:scan_events",
+      "sql-object:table:staff_report_events"
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260715_add_rate_limit_rpc.sql",
+    "kind": "schema",
+    "task": 4,
+    "replacements": [
+      "neon/migrations/0004_atomic_operations.sql"
+    ],
+    "status": "pending",
+    "evidence": [
+      "source migration",
+      "sql-object:column:public.rate_limit_buckets.expires_at",
+      "sql-object:function:public.consume_rate_limit",
+      "sql-object:grant-statement:grant execute on function public.consume_rate_limit(text, integer, integer) to service_role;",
+      "sql-object:index:rate_limit_buckets_expires_at_idx",
+      "sql-object:revoke-statement:revoke execute on function public.consume_rate_limit(text, integer, integer) from public, anon, authenticated;",
+      "sql-object:table:public.rate_limit_buckets"
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260717022612_harden_server_only_grants.sql",
+    "kind": "schema",
+    "task": 4,
+    "replacements": [
+      "neon/migrations/0004_atomic_operations.sql"
+    ],
+    "status": "pending",
+    "evidence": [
+      "source migration",
+      "sql-object:function:public.complete_report_unlock",
+      "sql-object:grant-statement:grant execute on function public.claim_audit_job(uuid) to service_role;",
+      "sql-object:grant-statement:grant execute on function public.complete_report_unlock( uuid, text, text, text, text, text, text, boolean, boolean, boolean, text, text, text, text, text, timestamptz, text, jsonb ) to service_role;",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.audit_jobs, public.audit_findings, public.leads, public.report_access_grants, public.consent_records, public.staff_report_events, public.scan_events, public.rate_limit_buckets to service_role;",
+      "sql-object:grant-statement:grant usage, select, update on sequence public.scan_events_id_seq to service_role;",
+      "sql-object:revoke-statement:revoke all on sequence public.scan_events_id_seq from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on table public.audit_jobs, public.audit_findings, public.leads, public.report_access_grants, public.consent_records, public.staff_report_events, public.scan_events, public.rate_limit_buckets from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke execute on function public.claim_audit_job(uuid) from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke execute on function public.complete_report_unlock( uuid, text, text, text, text, text, text, boolean, boolean, boolean, text, text, text, text, text, timestamptz, text, jsonb ) from public, anon, authenticated;",
+      "sql-object:table:public.audit_findings",
+      "sql-object:table:public.audit_jobs",
+      "sql-object:table:public.consent_records",
+      "sql-object:table:public.leads",
+      "sql-object:table:public.rate_limit_buckets",
+      "sql-object:table:public.report_access_grants",
+      "sql-object:table:public.scan_events",
+      "sql-object:table:public.staff_report_events"
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260721174713_private_report_evidence.sql",
+    "kind": "schema",
+    "task": 9,
+    "replacements": [
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql",
+      "lib/storage/private-blob.ts",
+      "docs/integration/neon-private-storage.md"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "source migration",
+      "sql-object:external:storage.buckets",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.report_evidence to service_role;",
+      "sql-object:index:report_evidence_job_captured_idx",
+      "sql-object:revoke-statement:revoke all on table public.report_evidence from public, anon, authenticated;",
+      "sql-object:table:public.report_evidence",
+      "Historical source SQL remains immutable. Business tables, indexes and columns are represented in 0002_business.sql; application identity FKs reference app_users and runtime grants replace service_role in 0003_workflows.sql. Owned fixture schema and domain integration suites verify the replacement.",
+      "Supabase storage.buckets is intentionally not recreated. Private Blob adapter implements evidence access/retention with fixture-only SDK tests; no hosted store is provisioned."
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260729000000_scan_claim_lease.sql",
+    "kind": "schema",
+    "task": 12,
+    "replacements": [
+      "neon/migrations/0001_initial_schema.sql"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "source migration",
+      "sql-object:function:public.claim_audit_job",
+      "sql-object:grant-statement:grant execute on function public.claim_audit_job(uuid) to service_role;",
+      "sql-object:index:audit_jobs_stale_claim_idx",
+      "sql-object:revoke-statement:revoke execute on function public.claim_audit_job(uuid) from public, anon, authenticated;",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260801000000_workspaces_oauth_connections.sql",
+    "kind": "schema",
+    "task": 7,
+    "replacements": [
+      "neon/migrations/0001_initial_schema.sql"
+    ],
+    "status": "pending",
+    "evidence": [
+      "source migration",
+      "sql-object:external:auth.users",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.workspaces, public.oauth_connections to service_role;",
+      "sql-object:index:oauth_connections_active_provider_key",
+      "sql-object:index:oauth_connections_workspace_idx",
+      "sql-object:index:workspaces_owner_user_id_key",
+      "sql-object:revoke-statement:revoke all on table public.workspaces, public.oauth_connections from public, anon, authenticated;",
+      "sql-object:table:public.oauth_connections",
+      "sql-object:table:public.workspaces"
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260801100000_workspace_email_assignment.sql",
+    "kind": "schema",
+    "task": 7,
+    "replacements": [
+      "neon/migrations/0001_initial_schema.sql"
+    ],
+    "status": "pending",
+    "evidence": [
+      "source migration",
+      "sql-object:column:public.workspaces.assigned_at",
+      "sql-object:column:public.workspaces.assigned_by_staff_user_id",
+      "sql-object:column:public.workspaces.owner_email",
+      "sql-object:constraint:workspaces_owner_identity_check",
+      "sql-object:index:workspaces_owner_email_key",
+      "sql-object:table:public.workspaces"
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260806000000_data_lifecycle.sql",
+    "kind": "schema",
+    "task": 11,
+    "replacements": [
+      "neon/migrations/0001_identity.sql",
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "source migration",
+      "sql-object:constraint:audit_jobs_parent_job_id_fkey",
+      "sql-object:constraint:audit_jobs_workspace_id_fkey",
+      "sql-object:constraint:workspaces_owner_identity_check",
+      "sql-object:constraint:leads_job_id_fkey",
+      "sql-object:constraint:scan_events_job_id_fkey",
+      "sql-object:constraint:staff_report_events_job_id_fkey",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.erasure_events to service_role;",
+      "sql-object:index:erasure_events_created_at_idx",
+      "sql-object:revoke-statement:revoke all on table public.erasure_events from public, anon, authenticated;",
+      "sql-object:table:public.audit_jobs",
+      "sql-object:table:public.erasure_events",
+      "sql-object:table:public.leads",
+      "sql-object:table:public.scan_events",
+      "sql-object:table:public.staff_report_events",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260815000000_workspace_access_requests.sql",
+    "kind": "schema",
+    "task": 7,
+    "replacements": [
+      "neon/migrations/0001_initial_schema.sql"
+    ],
+    "status": "pending",
+    "evidence": [
+      "source migration",
+      "sql-object:external:auth.users",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.workspace_access_requests to service_role;",
+      "sql-object:index:workspace_access_requests_open_idx",
+      "sql-object:index:workspace_access_requests_pending_idx",
+      "sql-object:revoke-statement:revoke all on table public.workspace_access_requests from public, anon, authenticated;",
+      "sql-object:table:public.workspace_access_requests"
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260816000000_scan_schedules.sql",
+    "kind": "schema",
+    "task": 9,
+    "replacements": [
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "source migration",
+      "sql-object:external:auth.users",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.scan_schedules to service_role;",
+      "sql-object:index:audit_jobs_place_created_idx",
+      "sql-object:index:scan_schedules_due_idx",
+      "sql-object:revoke-statement:revoke all on table public.scan_schedules from public, anon, authenticated;",
+      "sql-object:table:public.scan_schedules",
+      "Historical source SQL remains immutable. Business tables, indexes and columns are represented in 0002_business.sql; application identity FKs reference app_users and runtime grants replace service_role in 0003_workflows.sql. Owned fixture schema and domain integration suites verify the replacement."
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260817000000_scan_diffs.sql",
+    "kind": "schema",
+    "task": 9,
+    "replacements": [
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "source migration",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.scan_diffs to service_role;",
+      "sql-object:index:scan_diffs_head_idx",
+      "sql-object:revoke-statement:revoke all on table public.scan_diffs from public, anon, authenticated;",
+      "sql-object:table:public.scan_diffs",
+      "Historical source SQL remains immutable. Business tables, indexes and columns are represented in 0002_business.sql; application identity FKs reference app_users and runtime grants replace service_role in 0003_workflows.sql. Owned fixture schema and domain integration suites verify the replacement."
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260818000000_agent_runs.sql",
+    "kind": "schema",
+    "task": 10,
+    "replacements": [
+      "neon/migrations/0001_identity.sql",
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "source migration",
+      "sql-object:external:auth.users",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.agent_runs to service_role;",
+      "sql-object:index:agent_runs_job_status_idx",
+      "sql-object:revoke-statement:revoke all on table public.agent_runs from public, anon, authenticated;",
+      "sql-object:table:public.agent_runs",
+      "Historical source retained unchanged; app UUID schema and atomic artifact operations exercised by test/integration/neon-artifacts.integration.test.ts and neon-artifact-runtime.integration.test.ts. No shared migration or legacy resource removal performed."
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260819000000_workspace_billing.sql",
+    "kind": "schema",
+    "task": 11,
+    "replacements": [
+      "neon/migrations/0001_identity.sql",
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "source migration",
+      "sql-object:column:public.workspaces.stripe_customer_id",
+      "sql-object:external:auth.users",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.workspace_tier_events to service_role;",
+      "sql-object:index:workspace_tier_events_stripe_event_id_key",
+      "sql-object:index:workspace_tier_events_workspace_idx",
+      "sql-object:revoke-statement:revoke all on table public.workspace_tier_events from public, anon, authenticated;",
+      "sql-object:table:public.workspace_tier_events",
+      "sql-object:table:public.workspaces",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260820000000_notification_layer.sql",
+    "kind": "schema",
+    "task": 11,
+    "replacements": [
+      "neon/migrations/0001_identity.sql",
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "source migration",
+      "sql-object:column:public.workspaces.notify_monthly_digest",
+      "sql-object:column:public.workspaces.notify_regression_alert",
+      "sql-object:column:public.workspaces.notify_rescan_complete",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.notification_events to service_role;",
+      "sql-object:index:notification_events_job_id_key",
+      "sql-object:index:notification_events_workspace_idx",
+      "sql-object:revoke-statement:revoke all on table public.notification_events from public, anon, authenticated;",
+      "sql-object:table:public.notification_events",
+      "sql-object:table:public.workspaces",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260821000000_scan_schedules_workspace_id.sql",
+    "kind": "schema",
+    "task": 9,
+    "replacements": [
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "source migration",
+      "sql-object:column:public.scan_schedules.workspace_id",
+      "sql-object:index:scan_schedules_workspace_idx",
+      "sql-object:table:public.scan_schedules",
+      "Historical source SQL remains immutable. Business tables, indexes and columns are represented in 0002_business.sql; application identity FKs reference app_users and runtime grants replace service_role in 0003_workflows.sql. Owned fixture schema and domain integration suites verify the replacement."
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260821000001_widen_claim_lease.sql",
+    "kind": "schema",
+    "task": 12,
+    "replacements": [
+      "neon/migrations/0001_initial_schema.sql"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "source migration",
+      "sql-object:function:public.claim_audit_job",
+      "sql-object:grant-statement:grant execute on function public.claim_audit_job(uuid) to service_role;",
+      "sql-object:revoke-statement:revoke execute on function public.claim_audit_job(uuid) from public, anon, authenticated;",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260822000000_workspace_members.sql",
+    "kind": "schema",
+    "task": 7,
+    "replacements": [
+      "neon/migrations/0001_initial_schema.sql"
+    ],
+    "status": "pending",
+    "evidence": [
+      "source migration",
+      "sql-object:constraint:workspaces_owner_identity_check",
+      "sql-object:external:auth.users",
+      "sql-object:function:public.delete_orphaned_workspace",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.workspace_members to service_role;",
+      "sql-object:index:workspace_members_email_idx",
+      "sql-object:index:workspace_members_one_owner_idx",
+      "sql-object:index:workspace_members_pending_email_idx",
+      "sql-object:index:workspace_members_user_workspace_idx",
+      "sql-object:index:public.workspaces_owner_email_key",
+      "sql-object:index:public.workspaces_owner_user_id_key",
+      "sql-object:revoke-statement:revoke all on table public.workspace_members from public, anon, authenticated;",
+      "sql-object:table:public.workspace_members",
+      "sql-object:table:public.workspaces",
+      "sql-object:trigger:workspace_members_cleanup_orphan"
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260822090000_workspace_claim_events.sql",
+    "kind": "schema",
+    "task": 7,
+    "replacements": [
+      "neon/migrations/0001_initial_schema.sql"
+    ],
+    "status": "pending",
+    "evidence": [
+      "source migration",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.workspace_claim_events to service_role;",
+      "sql-object:index:workspace_claim_events_claimed_by_idx",
+      "sql-object:index:workspace_claim_events_job_idx",
+      "sql-object:index:workspace_claim_events_workspace_idx",
+      "sql-object:revoke-statement:revoke all on table public.workspace_claim_events from public, anon, authenticated;",
+      "sql-object:table:public.workspace_claim_events"
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260823000000_workspace_members_unique_email.sql",
+    "kind": "schema",
+    "task": 7,
+    "replacements": [
+      "neon/migrations/0001_initial_schema.sql"
+    ],
+    "status": "pending",
+    "evidence": [
+      "source migration",
+      "sql-object:index:public.workspace_members_pending_email_idx",
+      "sql-object:index:workspace_members_email_idx_unique"
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260824000000_aeo_surface_snapshots.sql",
+    "kind": "schema",
+    "task": 12,
+    "replacements": [
+      "neon/migrations/0001_initial_schema.sql"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "source migration",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.aeo_surface_snapshots to service_role;",
+      "sql-object:index:aeo_surface_snapshots_job_idx",
+      "sql-object:index:aeo_surface_snapshots_place_surface_idx",
+      "sql-object:revoke-statement:revoke all on table public.aeo_surface_snapshots from public, anon, authenticated;",
+      "sql-object:table:public.aeo_surface_snapshots",
+      "Task12 explicit ScanExecutionStore; app-owned SQL claims/results/diff/AEO/events. Package and restricted PostgreSQL fixtures verify behavior. Completion bridge visibly pending Task13; external worker contract rollout remains deferred."
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260826000000_workspace_tier_integrity.sql",
+    "kind": "schema",
+    "task": 11,
+    "replacements": [
+      "neon/migrations/0001_identity.sql",
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "source migration",
+      "sql-object:constraint:workspace_tier_events_tier_check",
+      "sql-object:constraint:workspaces_tier_check",
+      "sql-object:table:public.workspace_tier_events",
+      "sql-object:table:public.workspaces",
+      "Task 11: explicit Neon capabilities and local signed-event / PostgreSQL integration verification in test/integration/neon-integrations.integration.test.ts."
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260826000001_workspaces_instagram_handle.sql",
+    "kind": "schema",
+    "task": 9,
+    "replacements": [
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "source migration",
+      "sql-object:column:public.workspaces.instagram_handle",
+      "sql-object:table:public.workspaces",
+      "Historical source SQL remains immutable. Business tables, indexes and columns are represented in 0002_business.sql; application identity FKs reference app_users and runtime grants replace service_role in 0003_workflows.sql. Owned fixture schema and domain integration suites verify the replacement."
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260903000000_workspace_layer.sql",
+    "kind": "schema",
+    "task": 10,
+    "replacements": [
+      "neon/migrations/0001_identity.sql",
+      "neon/migrations/0002_business.sql",
+      "neon/migrations/0003_workflows.sql"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "source migration",
+      "sql-object:column:public.audit_jobs.location_id",
+      "sql-object:column:public.workspace_members.location_scope",
+      "sql-object:column:public.workspaces.is_demo",
+      "sql-object:column:public.workspaces.slug",
+      "sql-object:column:public.workspaces.timezone",
+      "sql-object:external:auth.users",
+      "sql-object:external:storage.buckets",
+      "sql-object:function:public.touch_actions_updated_at",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.action_measurements to service_role;",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.action_runs to service_role;",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.actions to service_role;",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.assets to service_role;",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.audit_events to service_role;",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.brand_profiles to service_role;",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.deliveries to service_role;",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.locations to service_role;",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.output_versions to service_role;",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.scan_snapshots to service_role;",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.workspace_notifications to service_role;",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.workspace_usage to service_role;",
+      "sql-object:grant-statement:grant usage, select, update on sequence public.audit_events_id_seq to service_role;",
+      "sql-object:index:actions_open_dedupe_idx",
+      "sql-object:index:audit_events_workspace_idx",
+      "sql-object:index:workspaces_slug_key",
+      "sql-object:revoke-statement:revoke all on sequence public.audit_events_id_seq from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on table public.action_measurements from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on table public.action_runs from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on table public.actions from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on table public.assets from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on table public.audit_events from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on table public.brand_profiles from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on table public.deliveries from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on table public.locations from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on table public.output_versions from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on table public.scan_snapshots from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on table public.workspace_notifications from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on table public.workspace_usage from public, anon, authenticated;",
+      "sql-object:table:public.action_measurements",
+      "sql-object:table:public.action_runs",
+      "sql-object:table:public.actions",
+      "sql-object:table:public.assets",
+      "sql-object:table:public.audit_events",
+      "sql-object:table:public.audit_jobs",
+      "sql-object:table:public.brand_profiles",
+      "sql-object:table:public.deliveries",
+      "sql-object:table:public.locations",
+      "sql-object:table:public.output_versions",
+      "sql-object:table:public.scan_snapshots",
+      "sql-object:table:public.workspace_members",
+      "sql-object:table:public.workspace_notifications",
+      "sql-object:table:public.workspace_usage",
+      "sql-object:table:public.workspaces",
+      "sql-object:trigger:actions_touch_updated_at",
+      "Historical source retained unchanged; app UUID schema and atomic artifact operations exercised by test/integration/neon-artifacts.integration.test.ts and neon-artifact-runtime.integration.test.ts. No shared migration or legacy resource removal performed."
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260903000001_workspace_rpcs.sql",
+    "kind": "schema",
+    "task": 10,
+    "replacements": [
+      "neon/migrations/0004_atomic_operations.sql"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "source migration",
+      "sql-object:function:public.approve_output_version",
+      "sql-object:function:public.create_output_version",
+      "sql-object:function:public.decide_output_version",
+      "sql-object:function:public.export_output_version",
+      "sql-object:grant-statement:grant execute on function public.approve_output_version(uuid, uuid, text) to service_role;",
+      "sql-object:grant-statement:grant execute on function public.create_output_version(uuid, uuid, text, uuid, text, text, jsonb, uuid) to service_role;",
+      "sql-object:grant-statement:grant execute on function public.decide_output_version(uuid, uuid, text, text) to service_role;",
+      "sql-object:grant-statement:grant execute on function public.export_output_version(uuid, uuid, text, text) to service_role;",
+      "sql-object:revoke-statement:revoke all on function public.approve_output_version(uuid, uuid, text) from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on function public.create_output_version(uuid, uuid, text, uuid, text, text, jsonb, uuid) from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on function public.decide_output_version(uuid, uuid, text, text) from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on function public.export_output_version(uuid, uuid, text, text) from public, anon, authenticated;",
+      "Historical source retained unchanged; app UUID schema and atomic artifact operations exercised by test/integration/neon-artifacts.integration.test.ts and neon-artifact-runtime.integration.test.ts. No shared migration or legacy resource removal performed."
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260905000000_completion_idempotency.sql",
+    "kind": "schema",
+    "task": 13,
+    "replacements": [
+      "neon/migrations/0004_atomic_operations.sql"
+    ],
+    "status": "pending",
+    "evidence": [
+      "source migration",
+      "sql-object:column:public.audit_events.idempotency_key",
+      "sql-object:index:audit_events_idempotency_key_idx",
+      "sql-object:table:public.audit_events"
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260905000001_workspace_completion_ledger.sql",
+    "kind": "schema",
+    "task": 13,
+    "replacements": [
+      "neon/migrations/0004_atomic_operations.sql"
+    ],
+    "status": "pending",
+    "evidence": [
+      "source migration",
+      "sql-object:function:public.claim_workspace_completion",
+      "sql-object:function:public.finish_workspace_completion",
+      "sql-object:function:public.pending_workspace_completions",
+      "sql-object:grant-statement:grant execute on function public.claim_workspace_completion(uuid) to service_role;",
+      "sql-object:grant-statement:grant execute on function public.finish_workspace_completion(uuid,uuid,boolean,text) to service_role;",
+      "sql-object:grant-statement:grant execute on function public.pending_workspace_completions(integer) to service_role;",
+      "sql-object:grant-statement:grant select, insert, update, delete on table public.workspace_scan_completions to service_role;",
+      "sql-object:revoke-statement:revoke all on function public.claim_workspace_completion(uuid) from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on function public.finish_workspace_completion(uuid,uuid,boolean,text) from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on function public.pending_workspace_completions(integer) from public, anon, authenticated;",
+      "sql-object:revoke-statement:revoke all on table public.workspace_scan_completions from public, anon, authenticated;",
+      "sql-object:table:public.workspace_scan_completions"
+    ]
+  },
+  {
+    "path": "supabase/migrations/20260905000002_workspace_completion_fencing.sql",
+    "kind": "schema",
+    "task": 13,
+    "replacements": [
+      "neon/migrations/0004_atomic_operations.sql"
+    ],
+    "status": "pending",
+    "evidence": [
+      "source migration",
+      "sql-object:function:public.fence_workspace_completion_write",
+      "sql-object:grant-statement:grant execute on function public.fence_workspace_completion_write() to service_role;",
+      "sql-object:revoke-statement:revoke all on function public.fence_workspace_completion_write() from public, anon, authenticated;",
+      "sql-object:trigger:completion_fence_actions",
+      "sql-object:trigger:completion_fence_audits",
+      "sql-object:trigger:completion_fence_measurements",
+      "sql-object:trigger:completion_fence_notifications",
+      "sql-object:trigger:completion_fence_snapshots"
+    ]
+  },
+  {
+    "path": "test/integration/docker.ts",
+    "kind": "test",
+    "task": 14,
+    "replacements": [
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
+    ]
+  },
+  {
+    "path": "test/integration/fixtures.ts",
+    "kind": "test",
+    "task": 14,
+    "replacements": [
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
+    ]
+  },
+  {
+    "path": "test/integration/jwt.ts",
+    "kind": "test",
+    "task": 14,
+    "replacements": [
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
+    ]
+  },
+  {
+    "path": "test/integration/websocket-shim.ts",
+    "kind": "test",
+    "task": 14,
+    "replacements": [
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
+    ]
+  },
+  {
+    "path": "test/integration/workspace-completion.integration.test.ts",
+    "kind": "test",
+    "task": 13,
+    "replacements": [
+      "lib/workspace/completion-transaction.ts",
+      "test/integration/neon-completion.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task13 explicit same-transaction Neon repositories; actual stale-client and recovery coverage"
+    ]
+  },
+  {
+    "path": "test/integration/workspace-layer.integration.test.ts",
+    "kind": "test",
+    "task": 14,
+    "replacements": [
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
+    ]
+  },
+  {
+    "path": "tests/neon-inventory.test.ts",
+    "kind": "test",
+    "task": 1,
+    "replacements": [
+      "scripts/neon/check-inventory.mjs"
+    ],
+    "status": "pending",
+    "evidence": [
+      "inventory checker self-test and fixture Supabase references"
+    ]
+  },
+  {
+    "path": "tests/proxy.test.ts",
+    "kind": "test",
+    "task": 6,
+    "replacements": [
+      "lib/auth/provider.ts",
+      "lib/auth/session.ts"
+    ],
+    "status": "pending",
+    "evidence": [
+      "tracked @supabase reference"
+    ]
+  },
+  {
+    "path": "lib/identity/auth-lazy.test.ts",
+    "kind": "test",
+    "task": 7,
+    "replacements": [
+      "lib/repositories/membership.ts",
+      "lib/repositories/claims.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task 5 lazy identity regression retains the Supabase membership-store mock until Task 7.",
+      "Task7: Neon business repository boundary and focused tests; managed Auth identity remains independently verified."
+    ]
+  },
+  {
+    "path": "lib/repositories/legacy-snapshots.ts",
+    "kind": "runtime",
+    "task": 13,
+    "replacements": [
+      "test/helpers/legacy-snapshots.ts",
+      "lib/workspace/completion-transaction.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task13 removed runtime legacy adapter; historical domain fixture retained only under test/helpers"
+    ]
+  },
+  {
+    "path": "lib/repositories/legacy-measurements.ts",
+    "kind": "runtime",
+    "task": 13,
+    "replacements": [
+      "test/helpers/legacy-measurements.ts",
+      "lib/workspace/completion-transaction.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task13 removed runtime legacy adapter; historical domain fixture retained only under test/helpers"
+    ]
+  },
+  {
+    "path": "app/auth/callback/viewer-grant.test.ts",
+    "kind": "test",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/reports.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Fixture explicitly forbids legacy transport; Task9 Neon repository acceptance."
+    ]
+  },
+  {
+    "path": "test/integration/neon-rescan.integration.test.ts",
+    "kind": "test",
+    "task": 9,
+    "replacements": [
+      "lib/repositories/rescan.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Fixture explicitly forbids legacy transport; Task9 Neon repository acceptance."
+    ]
+  },
+  {
+    "path": "lib/repositories/legacy-action-derivation.ts",
+    "kind": "runtime",
+    "task": 13,
+    "replacements": [
+      "test/helpers/legacy-action-derivation.ts",
+      "lib/workspace/completion-transaction.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Task13 removed runtime legacy adapter; historical domain fixture retained only under test/helpers"
+    ]
+  },
+  {
+    "path": "test/integration/neon-artifact-runtime.integration.test.ts",
+    "kind": "test",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/artifacts.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Supabase symbol is an intentional throwing transport trap; actual runtime runs against owned PostgreSQL fixtures, not Supabase. No external provider calls."
+    ]
+  },
+  {
+    "path": "test/integration/neon-assistant-live.integration.test.ts",
+    "kind": "test",
+    "task": 10,
+    "replacements": [
+      "lib/repositories/artifacts.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Supabase symbol is an intentional throwing transport trap; actual runtime runs against owned PostgreSQL fixtures, not Supabase. No external provider calls."
+    ]
+  },
+  {
+    "path": "packages/scan-engine/src/storage-boundary.test.ts",
+    "kind": "test",
+    "task": 12,
+    "replacements": [
+      "packages/scan-engine/src/execution-store.ts"
+    ],
+    "status": "replaced",
+    "evidence": [
+      "Negative import boundary assertions only; no legacy database execution."
+    ]
+  },
+  {
+    "path": "test/helpers/legacy-snapshots.ts",
+    "kind": "test",
+    "task": 14,
+    "status": "replaced",
+    "replacements": [
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
+    ],
+    "evidence": [
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
+    ]
+  },
+  {
+    "path": "test/helpers/legacy-measurements.ts",
+    "kind": "test",
+    "task": 14,
+    "status": "replaced",
+    "replacements": [
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
+    ],
+    "evidence": [
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
+    ]
+  },
+  {
+    "path": "test/helpers/legacy-action-derivation.ts",
+    "kind": "test",
+    "task": 14,
+    "status": "replaced",
+    "replacements": [
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
+    ],
+    "evidence": [
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
+    ]
+  },
+  {
+    "path": "test/helpers/legacy-notifications.ts",
+    "kind": "test",
+    "task": 14,
+    "status": "replaced",
+    "replacements": [
+      "test/e2e/identity-provider.ts",
+      "test/integration/neon-database.ts",
+      "test/integration/neon-action-derivation.integration.test.ts"
+    ],
+    "evidence": [
+      "Task14: owned PostgreSQL and explicit typed fixture ports replace active legacy test transport. Domain behaviors retained; action persistence assertions execute the production Neon repository. Obsolete JWT/WebSocket scaffolding removed."
+    ]
+  }
+]

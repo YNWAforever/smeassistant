@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ActionDetailView } from "@/components/workspace/action-detail-view";
-import { supabaseServer } from "@/lib/supabase/admin";
 import { listAssets } from "@/lib/workspace/assets";
 import { inScopeFor, loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 import { getAction, getActivity } from "@/lib/workspace/queries-pages";
@@ -28,7 +27,7 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
   const entityIds = new Set<string>([actionId, ...detail.versions.map((v) => v.id), ...detail.runs.map((r) => r.id)]);
   const [activity, assets] = await Promise.all([
     getActivity(page.ctx, { limit: 200 }),
-    listAssets(supabaseServer(), page.ctx.workspace.id, page.ctx.locations, { signedUrls: false }).catch(() => []),
+    listAssets(page.ctx.workspace.id, page.ctx.locations, { signedUrls: false }).catch(() => []),
   ]);
   const auditRows = activity.filter((row) => row.entity_id !== null && entityIds.has(row.entity_id));
   const approvedAssets = assets.filter((asset) => asset.rights_status === "approved" && asset.kind === "image").map((asset) => ({ id: asset.id, filename: asset.filename }));

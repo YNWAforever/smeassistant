@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { OnboardingPage, type ClaimEvidence } from "@/components/onboarding-page";
 import { requireUser } from "@/lib/auth";
 import { copy, normaliseLocale } from "@/lib/copy";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { membershipRepository } from "@/lib/repositories/membership";
+import { claimsRepository, type ClaimJob } from "@/lib/repositories/claims";
 
 import { publicMetadata } from "../../_meta";
 import { firstParam } from "../../_params";
@@ -25,18 +26,6 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   };
 }
 
-interface ClaimJobRow {
-  business_name: string | null;
-  district: string | null;
-  region: string | null;
-  share_slug: string;
-  workspace_id: string | null;
-  place_id: string | null;
-  ig_handle: string | null;
-  website_url: string | null;
-  /** lib/scan/start-job.ts stores the parsed input in camelCase; older rows may carry the API's snake_case. */
-  input_snapshot: { instagramHandle?: unknown; websiteUrl?: unknown; ig_handle?: unknown; website_url?: unknown } | null;
-}
 
 function text(...values: unknown[]): string | null {
   for (const value of values) {
@@ -51,13 +40,10 @@ function text(...values: unknown[]): string | null {
  * after `requireUser`; a bad or unknown slug simply yields no evidence.
  */
 async function loadClaimEvidence(slug: string): Promise<ClaimEvidence | null> {
-  const { data, error } = await supabaseServer()
-    .from("audit_jobs")
-    .select("business_name, district, region, share_slug, workspace_id, place_id, ig_handle, website_url, input_snapshot")
-    .eq("share_slug", slug)
-    .maybeSingle<ClaimJobRow>();
-  if (error) {
-    console.error("[onboarding] claim evidence lookup failed", { category: "workspace_query_failed" });
+  let data:ClaimJob|null;
+  try { data = await claimsRepository.jobBySlug(slug); }
+  catch {
+    console.error("[onboarding] claim evidence lookup failed", {category:"workspace_query_failed"});
     return null;
   }
   if (!data) return null;
@@ -76,29 +62,16 @@ async function loadClaimEvidence(slug: string): Promise<ClaimEvidence | null> {
 
 /** Accepted owner row for this user on the job's workspace — the only thing that unlocks steps 3–4. */
 async function ownsWorkspace(userId: string, workspaceId: string): Promise<boolean> {
-  const { count, error } = await supabaseServer()
-    .from("workspace_members")
-    .select("id", { count: "exact", head: true })
-    .eq("workspace_id", workspaceId)
-    .eq("user_id", userId)
-    .eq("role", "owner")
-    .not("accepted_at", "is", null);
-  if (error) {
-    console.error("[onboarding] ownership lookup failed", { category: "workspace_query_failed" });
+  try { return (await membershipRepository.accepted(userId,workspaceId))?.role === "owner"; }
+  catch {
+    console.error("[onboarding] ownership lookup failed",{category:"workspace_query_failed"});
     return false;
   }
-  return (count ?? 0) > 0;
 }
 
-async function hasActiveGbpConnection(workspaceId: string): Promise<boolean> {
-  const { count, error } = await supabaseServer()
-    .from("oauth_connections")
-    .select("id", { count: "exact", head: true })
-    .eq("workspace_id", workspaceId)
-    .eq("provider", "google_gbp")
-    .eq("status", "active");
-  if (error) return false;
-  return (count ?? 0) > 0;
+async function hasActiveGbpConnection(workspaceId:string):Promise<boolean> {
+  try {return await claimsRepository.hasActiveGoogleConnection(workspaceId);}
+  catch {return false;}
 }
 
 export default async function OwnerOnboarding({

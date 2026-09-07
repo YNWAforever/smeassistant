@@ -1,13 +1,16 @@
+import { completeWorkspaceScan } from "@/lib/workspace/completion";
+import { waitUntil } from "@vercel/functions";
 import {
   collectScanProviders,
   processScan,
+  persistScanDiff,
+  persistAeoSnapshots,
   type ScanProcessResult,
   type ScanProviderCollector,
 } from "@sme-scanner/scan-engine";
 import { persistEvidenceSnapshots } from "@/lib/evidence/persist";
-import { supabaseServer } from "@/lib/supabase/admin";
-import { postProcessWorkspaceScan } from "@/lib/workspace/post-process";
-import { completeWorkspaceScan } from "@/lib/workspace/completion";
+import { getPool } from "@/lib/db/client";
+import { createScanExecutionStore, buildTrendDiffDeps, buildAeoSnapshotDeps } from "./execution-store";
 import { createFixtureCollector, isScanFixtureName, type ScanFixtureName } from "./fixtures";
 
 export {
@@ -54,27 +57,25 @@ export function resolveScanCollector(env: NodeJS.ProcessEnv = process.env): Scan
     : collectScanProviders;
 }
 
-/**
- * Run one queued scan inline: upstream's `processScan` (claim via
- * `claim_audit_job`, collect, score, persist, diff, AEO snapshots) with this
- * app's evidence persistence and service-role client. The only thing the
- * source mode changes is the `collect` dependency.
- */
-export async function runScan(jobId: string, anonymousSessionId: string): Promise<ScanProcessResult> {
-  const db = supabaseServer();
-  const result = await processScan(jobId, anonymousSessionId, resolveScanCollector(), persistEvidenceSnapshots, db);
-  // Workspace-linked jobs also get a snapshot and derived actions (Phase 3),
-  // measurements and an in-app notification (Phase 6); a failed workspace scan
-  // gets the notification only. postProcessWorkspaceScan checks the
-  // attachment and terminal status itself and never throws: the scan result
-  // the merchant sees is already final. `already_claimed` means another
-  // runner owns the job. The pinned legacy runner does not yet call this hook;
-  // cross-runner reconciliation remains a rollout dependency, not an assurance.
+/** Execute with application-owned SQL and explicit media persistence. */
+export async function runScan(
+  jobId: string,
+  anonymousSessionId: string,
+): Promise<ScanProcessResult> {
+  const result = await processScan(jobId, {
+    // Keep terminal insertion and its later capture owned by this Vercel request.
+    store: createScanExecutionStore(anonymousSessionId, { waitUntil }),
+    collect: resolveScanCollector(),
+    persistEvidence: persistEvidenceSnapshots,
+    persistDiff: (id) => persistScanDiff(id, buildTrendDiffDeps(getPool(), id)),
+    persistAeoSnapshots: (id) =>
+      persistAeoSnapshots(id, buildAeoSnapshotDeps(getPool())),
+  });
   if (result.status !== "already_claimed") {
-    if (process.env.WORKSPACE_COMPLETION_ENABLED === "true") {
-      try { await completeWorkspaceScan(db, jobId); }
-      catch { console.error("[scan] workspace completion pending", { category: "workspace_completion_pending", jobId }); }
-    } else await postProcessWorkspaceScan(db, jobId);
+    try {
+      const completion=await completeWorkspaceScan(getPool(),jobId);
+      if(completion.status==="retry")console.error("[scan] workspace completion retry",{category:"workspace_completion_retry",jobId});
+    }catch{console.error("[scan] workspace completion unavailable",{category:"workspace_completion_unavailable",jobId});}
   }
   return result;
 }

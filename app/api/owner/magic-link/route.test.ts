@@ -6,11 +6,11 @@ const mocks = vi.hoisted(() => ({
   enforceCompositeIdentifierRateLimit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 1 })),
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
-  createSupabaseServerClient: async () => ({ auth: { signInWithOtp: mocks.signInWithOtp } }),
+vi.mock("@/lib/identity/neon", () => ({
+  getNeonAuth: () => ({ signIn: { magicLink: mocks.signInWithOtp } }),
 }));
 
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({ from: mocks.from }) }));
+vi.mock("@/lib/repositories/claims", () => ({ claimsRepository: { isLeadRecipient: mocks.from } }));
 
 vi.mock("@/lib/security/rate-limit", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/security/rate-limit")>();
@@ -27,26 +27,9 @@ function request(body: unknown): Request {
   });
 }
 
-/** audit_jobs is looked up by .eq().maybeSingle(); leads by .eq().eq().limit(). */
-function wireSupabase(options: { job?: { id: string } | null; knownLead?: boolean } = {}) {
-  const { job = { id: "job-1" }, knownLead = false } = options;
-  mocks.from.mockImplementation((table: string) => {
-    if (table === "audit_jobs") {
-      return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: job, error: null }) }) }) };
-    }
-    if (table === "leads") {
-      return {
-        select: () => ({
-          eq: () => ({
-            eq: () => ({
-              limit: async () => ({ data: knownLead ? [{ id: "lead-1" }] : [], error: null }),
-            }),
-          }),
-        }),
-      };
-    }
-    throw new Error(`unexpected table ${table}`);
-  });
+function wireRepositories(options: { job?: { id: string } | null; knownLead?: boolean } = {}) {
+ const { job = {id:"job-1"}, knownLead = false } = options;
+ mocks.from.mockResolvedValue(Boolean(job && knownLead));
 }
 
 describe("POST /api/owner/magic-link", () => {
@@ -55,11 +38,11 @@ describe("POST /api/owner/magic-link", () => {
     process.env.NEXT_PUBLIC_SITE_URL = "https://configured.fimmick.com";
     mocks.signInWithOtp.mockResolvedValue({ error: null });
     mocks.enforceCompositeIdentifierRateLimit.mockResolvedValue({ allowed: true, retryAfterSeconds: 1 });
-    wireSupabase();
+    wireRepositories();
   });
 
   it("does not mail an address that is not already a lead on the named report", async () => {
-    wireSupabase({ job: { id: "job-1" }, knownLead: false });
+    wireRepositories({ job: { id: "job-1" }, knownLead: false });
     const response = await POST(request({ slug: "abcdef", email: "stranger@example.com" }));
 
     // The open-mailer guard: the route answers ok either way so it cannot be
@@ -70,7 +53,7 @@ describe("POST /api/owner/magic-link", () => {
   });
 
   it("mails a magic link to an address already recorded as a lead on the report", async () => {
-    wireSupabase({ job: { id: "job-1" }, knownLead: true });
+    wireRepositories({ job: { id: "job-1" }, knownLead: true });
     const response = await POST(request({ slug: "abcdef", email: "known@example.com" }));
 
     expect(response.status).toBe(200);
@@ -78,9 +61,7 @@ describe("POST /api/owner/magic-link", () => {
     expect(mocks.signInWithOtp).toHaveBeenCalledWith(
       expect.objectContaining({
         email: "known@example.com",
-        options: expect.objectContaining({
-          emailRedirectTo: "https://configured.fimmick.com/auth/callback?claim=abcdef&locale=zh-HK",
-        }),
+        callbackURL: "https://configured.fimmick.com/auth/callback?claim=abcdef&locale=zh-HK",
       }),
     );
   });
@@ -88,42 +69,36 @@ describe("POST /api/owner/magic-link", () => {
   // Local additions: the link carries the validated locale and returnTo so the
   // callback can land on a locale-prefixed page.
   it("carries a valid locale and same-origin returnTo on the link", async () => {
-    wireSupabase({ job: { id: "job-1" }, knownLead: true });
+    wireRepositories({ job: { id: "job-1" }, knownLead: true });
     await POST(request({ slug: "abcdef", email: "known@example.com", locale: "en", returnTo: "/en/owner/select-workspace" }));
 
     expect(mocks.signInWithOtp).toHaveBeenCalledWith(
       expect.objectContaining({
-        options: expect.objectContaining({
-          emailRedirectTo:
+        callbackURL:
             "https://configured.fimmick.com/auth/callback?claim=abcdef&locale=en&returnTo=%2Fen%2Fowner%2Fselect-workspace",
-        }),
       }),
     );
   });
 
   it("drops an unknown locale and an off-origin returnTo", async () => {
-    wireSupabase({ job: { id: "job-1" }, knownLead: true });
+    wireRepositories({ job: { id: "job-1" }, knownLead: true });
     await POST(request({ slug: "abcdef", email: "known@example.com", locale: "fr", returnTo: "https://evil.example/" }));
 
     expect(mocks.signInWithOtp).toHaveBeenCalledWith(
       expect.objectContaining({
-        options: expect.objectContaining({
-          emailRedirectTo: "https://configured.fimmick.com/auth/callback?claim=abcdef&locale=zh-HK",
-        }),
+        callbackURL: "https://configured.fimmick.com/auth/callback?claim=abcdef&locale=zh-HK",
       }),
     );
   });
 
   it("falls back to the request origin when NEXT_PUBLIC_SITE_URL is unset", async () => {
     delete process.env.NEXT_PUBLIC_SITE_URL;
-    wireSupabase({ job: { id: "job-1" }, knownLead: true });
+    wireRepositories({ job: { id: "job-1" }, knownLead: true });
     await POST(request({ slug: "abcdef", email: "known@example.com" }));
 
     expect(mocks.signInWithOtp).toHaveBeenCalledWith(
       expect.objectContaining({
-        options: expect.objectContaining({
-          emailRedirectTo: "https://scanner.test/auth/callback?claim=abcdef&locale=zh-HK",
-        }),
+        callbackURL: "https://scanner.test/auth/callback?claim=abcdef&locale=zh-HK",
       }),
     );
   });

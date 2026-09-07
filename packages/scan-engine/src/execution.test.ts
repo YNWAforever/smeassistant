@@ -1,202 +1,43 @@
 import { describe, expect, it, vi } from "vitest";
-import { scoreAll } from "@sme-scanner/scoring";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { createScanProcessor, type ScanProviderCollector } from "./processor";
 import { createScanExecution } from "./execution";
-import { recordEvent } from "./analytics";
-
-vi.mock("./processor", async () => {
-  const actual = await vi.importActual<typeof import("./processor")>("./processor");
-  return {
-    ...actual,
-    createScanProcessor: vi.fn(),
-  };
+import type { ScanExecutionStore } from "./execution-store";
+vi.mock("./processor", async () => ({
+  ...(await vi.importActual<typeof import("./processor")>("./processor")),
+  createScanProcessor: vi.fn(),
+}));
+const store = (): ScanExecutionStore => ({
+  claimJob: vi.fn(),
+  setStage: vi.fn(),
+  persist: vi.fn(),
+  fail: vi.fn(),
+  recordTerminal: vi.fn(),
 });
-
-vi.mock("./analytics", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("./analytics")>();
-  // createAnalyticsDependencies must stay real: recordScanCompleted calls it
-  // with the fake supabase client these tests already supply, and a blanket
-  // mock object would replace it with undefined. recordEvent resolves rather
-  // than defaulting to undefined because recordScanCompleted now calls
-  // `.then(...)` on its return value directly (to hand ctx.waitUntil an
-  // always-resolving view of the promise), not just `await`s it.
-  return { ...actual, recordEvent: vi.fn().mockResolvedValue({ recorded: true }) };
-});
-
 describe("createScanExecution", () => {
-  it("builds the production processor with current persistence and analytics adapters", async () => {
-    const processor = vi.fn().mockResolvedValue({ status: "done" });
-    vi.mocked(createScanProcessor).mockReturnValue(processor);
-    const rpc = vi.fn().mockResolvedValue({
-      data: [{
-        id: "job-1",
-        business_name: "Demo Coffee",
-        ig_handle: "demo.coffee",
-        website_url: "https://example.com",
-        industry: "Cafe",
-        district: "Central",
-        region: "hk",
-      }],
-      error: null,
-    });
-    const stageEq = vi.fn().mockResolvedValue({ error: null });
-    const findingsUpsert = vi.fn().mockResolvedValue({ error: null });
-    const persistEq = vi.fn().mockResolvedValue({ error: null });
-    const failureSelect = vi.fn().mockResolvedValue({ data: [{ id: "job-1" }], error: null });
-    const failureIn = vi.fn().mockReturnValue({ select: failureSelect });
-    const failureEq = vi.fn().mockReturnValue({ in: failureIn });
-    const auditJobsUpdate = vi.fn((payload: Record<string, unknown>) => {
-      if ("failure_category" in payload) return { eq: failureEq };
-      if ("module_results" in payload) return { eq: persistEq };
-      return { eq: stageEq };
-    });
-    const from = vi.fn((table: string) => {
-      if (table === "audit_jobs") return { update: auditJobsUpdate };
-      if (table === "audit_findings") return { upsert: findingsUpsert };
-      throw new Error(`unexpected table: ${table}`);
-    });
-    const fakeSupabase = { rpc, from } as unknown as SupabaseClient;
-    const collectProviders = vi.fn() as unknown as ScanProviderCollector;
-    const persistEvidence = vi.fn();
-    const waitUntil = vi.fn();
-    const run = createScanExecution({
-      supabase: fakeSupabase,
-      anonymousSessionId: "session-1",
-      collect: collectProviders,
-      persistEvidence,
-      waitUntil,
-    });
-
-    await run("job-1");
-
-    expect(createScanProcessor).toHaveBeenCalledWith(expect.objectContaining({
-      claimJob: expect.any(Function),
-      collect: collectProviders,
-      score: scoreAll,
-      setStage: expect.any(Function),
-      persist: expect.any(Function),
-      persistEvidence,
-      recordTerminal: expect.any(Function),
-      fail: expect.any(Function),
-    }));
-
-    const deps = vi.mocked(createScanProcessor).mock.calls[0]![0];
-    await expect(deps.claimJob("job-1")).resolves.toMatchObject({
-      id: "job-1",
-      business_name: "Demo Coffee",
-      ig_handle: "demo.coffee",
-    });
-    expect(rpc).toHaveBeenCalledWith("claim_audit_job", { p_job_id: "job-1" });
-
-    await deps.setStage?.("job-1", "collecting");
-    expect(from).toHaveBeenCalledWith("audit_jobs");
-    expect(auditJobsUpdate).toHaveBeenCalledWith({
-      processing_stage: "collecting",
-      status: "collecting",
-    });
-    expect(stageEq).toHaveBeenCalledWith("id", "job-1");
-
-    await deps.persist({
-      jobId: "job-1",
-      status: "partial",
-      overall: 87,
-      coverage: 0.55,
-      scoringVersion: "test-version",
-      moduleResults: {
-        ig: { status: "measured", score: 90, confidence: "high", evidenceCollectedAt: null, limitationCode: null },
-      } as never,
-      findings: [{
-        finding_key: "ig-bio",
-        module: "ig",
-        severity: "medium",
-        score_impact: -10,
-        owner_message_zh: "msg",
-        owner_message_en: "msg",
-        owner_action_zh: null,
-        owner_action_en: null,
-        evidence: {},
-        v02_agent_hint: null,
-      }] as never,
-      rawData: undefined,
-    });
-    expect(findingsUpsert).toHaveBeenCalledWith([expect.objectContaining({
-      job_id: "job-1",
-      finding_key: "ig-bio",
-      module: "ig",
-    })], { onConflict: "job_id,finding_key" });
-    expect(auditJobsUpdate).toHaveBeenCalledWith(expect.objectContaining({
-      status: "partial",
-      processing_stage: "partial",
-      overall_score: 87,
-      score_coverage: 0.55,
-      scoring_version: "test-version",
-    }));
-    expect(persistEq).toHaveBeenCalledWith("id", "job-1");
-
-    await deps.recordTerminal?.({ jobId: "job-1", status: "partial", coverage: 0.55 });
-    expect(recordEvent).toHaveBeenCalledWith(
-      { name: "scan_completed", properties: { outcome: "partial", coverage: 0.55 } },
-      { jobId: "job-1", anonymousSessionId: "session-1" },
-      expect.objectContaining({
-        insert: expect.any(Function),
-        capturePostHog: expect.any(Function),
-        waitUntil,
-      }),
+  it("passes the explicit store into the processor without a database client", async () => {
+    vi.mocked(createScanProcessor).mockReturnValue(
+      vi.fn().mockResolvedValue({ status: "already_claimed" }),
     );
-
-    await expect(
-      deps.fail?.({ jobId: "job-1", category: "PROCESSOR_FAILED", correlationId: "corr-1" }),
-    ).resolves.toBe(true);
-    expect(auditJobsUpdate).toHaveBeenCalledWith(expect.objectContaining({
-      status: "failed",
-      processing_stage: "failed",
-      failure_category: "PROCESSOR_FAILED",
-      failure_correlation_id: "corr-1",
-    }));
-    expect(failureEq).toHaveBeenCalledWith("id", "job-1");
-    expect(failureIn).toHaveBeenCalledWith("status", ["collecting", "scoring", "persisting"]);
-    expect(failureSelect).toHaveBeenCalledWith("id");
-  });
-
-  it("hands waitUntil an always-resolving view of the analytics promise, even if recordEvent itself rejects", async () => {
-    // recordScanCompleted still awaits and propagates the real recordEvent
-    // promise -- deps.recordTerminal below is expected to reject, and
-    // processor.ts's own .catch is what contains that. The promise handed to
-    // waitUntil is a separate concern: ctx.waitUntil tracks it directly
-    // (there's no .catch in between on the Worker side), so a rejection there
-    // must not surface as invocation-level noise.
-    vi.mocked(recordEvent).mockRejectedValueOnce(new Error("posthog and postgres both down"));
-    const waitUntil = vi.fn();
-
-    createScanExecution({
-      supabase: {} as unknown as SupabaseClient,
-      anonymousSessionId: "session-1",
-      collect: vi.fn() as unknown as ScanProviderCollector,
+    const storage = store();
+    await createScanExecution({
+      store: storage,
+      collect: vi.fn(),
       persistEvidence: vi.fn(),
-      waitUntil,
-    });
-    const deps = vi.mocked(createScanProcessor).mock.calls.at(-1)![0];
-
-    await expect(
-      deps.recordTerminal?.({ jobId: "job-1", status: "failed", coverage: 0 }),
-    ).rejects.toThrow("posthog and postgres both down");
-
-    expect(waitUntil).toHaveBeenCalledTimes(1);
-    const registered = waitUntil.mock.calls[0]![0] as Promise<unknown>;
-    await expect(registered).resolves.toBeUndefined();
+    })("job");
+    expect(createScanProcessor).toHaveBeenLastCalledWith(
+      expect.objectContaining(storage),
+    );
   });
-
   it("does not fail the scan when the trend diff throws", async () => {
     const processor = vi.fn().mockResolvedValue({ status: "done" });
     vi.mocked(createScanProcessor).mockReturnValue(processor);
-    const fakeSupabase = {} as unknown as SupabaseClient;
     const persistDiff = vi.fn().mockRejectedValue(new Error("diff boom"));
-    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
     const run = createScanExecution({
-      supabase: fakeSupabase,
-      anonymousSessionId: "session-1",
+      store: store(),
       collect: vi.fn() as unknown as ScanProviderCollector,
       persistEvidence: vi.fn(),
       persistDiff,
@@ -214,12 +55,10 @@ describe("createScanExecution", () => {
   it("runs the trend diff for a successful scan", async () => {
     const processor = vi.fn().mockResolvedValue({ status: "partial" });
     vi.mocked(createScanProcessor).mockReturnValue(processor);
-    const fakeSupabase = {} as unknown as SupabaseClient;
     const persistDiff = vi.fn().mockResolvedValue({ stored: true });
 
     const run = createScanExecution({
-      supabase: fakeSupabase,
-      anonymousSessionId: "session-1",
+      store: store(),
       collect: vi.fn() as unknown as ScanProviderCollector,
       persistEvidence: vi.fn(),
       persistDiff,
@@ -235,13 +74,11 @@ describe("createScanExecution", () => {
   it("runs the AEO snapshot persistence for a successful scan, concurrently with the diff", async () => {
     const processor = vi.fn().mockResolvedValue({ status: "done" });
     vi.mocked(createScanProcessor).mockReturnValue(processor);
-    const fakeSupabase = {} as unknown as SupabaseClient;
     const persistDiff = vi.fn().mockResolvedValue({ stored: true });
     const persistAeoSnapshots = vi.fn().mockResolvedValue({ stored: 3 });
 
     const run = createScanExecution({
-      supabase: fakeSupabase,
-      anonymousSessionId: "session-1",
+      store: store(),
       collect: vi.fn() as unknown as ScanProviderCollector,
       persistEvidence: vi.fn(),
       persistDiff,
@@ -258,13 +95,15 @@ describe("createScanExecution", () => {
   it("does not fail the scan when AEO snapshot persistence throws", async () => {
     const processor = vi.fn().mockResolvedValue({ status: "done" });
     vi.mocked(createScanProcessor).mockReturnValue(processor);
-    const fakeSupabase = {} as unknown as SupabaseClient;
-    const persistAeoSnapshots = vi.fn().mockRejectedValue(new Error("snapshot boom"));
-    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const persistAeoSnapshots = vi
+      .fn()
+      .mockRejectedValue(new Error("snapshot boom"));
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
     const run = createScanExecution({
-      supabase: fakeSupabase,
-      anonymousSessionId: "session-1",
+      store: store(),
       collect: vi.fn() as unknown as ScanProviderCollector,
       persistEvidence: vi.fn(),
       persistDiff: vi.fn().mockResolvedValue({ stored: true }),
@@ -282,13 +121,14 @@ describe("createScanExecution", () => {
   });
 
   it("does not run AEO snapshot persistence for a failed scan", async () => {
-    const processor = vi.fn().mockResolvedValue({ status: "failed", failurePersistence: "persisted" });
+    const processor = vi
+      .fn()
+      .mockResolvedValue({ status: "failed", failurePersistence: "persisted" });
     vi.mocked(createScanProcessor).mockReturnValue(processor);
     const persistAeoSnapshots = vi.fn().mockResolvedValue({ stored: 0 });
 
     const run = createScanExecution({
-      supabase: {} as unknown as SupabaseClient,
-      anonymousSessionId: "session-1",
+      store: store(),
       collect: vi.fn() as unknown as ScanProviderCollector,
       persistEvidence: vi.fn(),
       persistAeoSnapshots,
@@ -296,7 +136,10 @@ describe("createScanExecution", () => {
 
     const result = await run("job-1");
 
-    expect(result).toEqual({ status: "failed", failurePersistence: "persisted" });
+    expect(result).toEqual({
+      status: "failed",
+      failurePersistence: "persisted",
+    });
     expect(persistAeoSnapshots).not.toHaveBeenCalled();
   });
 
@@ -306,12 +149,10 @@ describe("createScanExecution", () => {
       failurePersistence: "persisted",
     });
     vi.mocked(createScanProcessor).mockReturnValue(processor);
-    const fakeSupabase = {} as unknown as SupabaseClient;
     const persistDiff = vi.fn().mockResolvedValue({ stored: true });
 
     const run = createScanExecution({
-      supabase: fakeSupabase,
-      anonymousSessionId: "session-1",
+      store: store(),
       collect: vi.fn() as unknown as ScanProviderCollector,
       persistEvidence: vi.fn(),
       persistDiff,
@@ -319,7 +160,10 @@ describe("createScanExecution", () => {
 
     const result = await run("job-1");
 
-    expect(result).toEqual({ status: "failed", failurePersistence: "persisted" });
+    expect(result).toEqual({
+      status: "failed",
+      failurePersistence: "persisted",
+    });
     expect(persistDiff).not.toHaveBeenCalled();
   });
 
@@ -331,8 +175,7 @@ describe("createScanExecution", () => {
     const persistDiff = vi.fn().mockResolvedValue({ stored: true });
 
     const run = createScanExecution({
-      supabase: {} as unknown as SupabaseClient,
-      anonymousSessionId: "session-1",
+      store: store(),
       collect: vi.fn() as unknown as ScanProviderCollector,
       persistEvidence: vi.fn(),
       persistDiff,
@@ -348,21 +191,15 @@ describe("createScanExecution", () => {
     // and this log line never happens.
     const processor = vi.fn().mockResolvedValue({ status: "done" });
     vi.mocked(createScanProcessor).mockReturnValue(processor);
-    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-    const fakeSupabase = {
-      from: () => ({
-        select: () => ({
-          eq: () => ({
-            maybeSingle: async () => ({ data: null, error: { message: "connection reset" } }),
-          }),
-        }),
-      }),
-    } as unknown as SupabaseClient;
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
     const run = createScanExecution({
-      supabase: fakeSupabase,
-      anonymousSessionId: "session-1",
+      store: store(),
+      persistDiff: async () => {
+        throw new Error("diff_head_read_failed");
+      },
       collect: vi.fn() as unknown as ScanProviderCollector,
       persistEvidence: vi.fn(),
     });
@@ -381,12 +218,13 @@ describe("createScanExecution", () => {
     vi.useFakeTimers();
     const processor = vi.fn().mockResolvedValue({ status: "done" });
     vi.mocked(createScanProcessor).mockReturnValue(processor);
-    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
     const persistDiff = vi.fn(() => new Promise<never>(() => {}));
 
     const run = createScanExecution({
-      supabase: {} as unknown as SupabaseClient,
-      anonymousSessionId: "session-1",
+      store: store(),
       collect: vi.fn() as unknown as ScanProviderCollector,
       persistEvidence: vi.fn(),
       persistDiff,

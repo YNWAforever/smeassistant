@@ -56,12 +56,12 @@ function createDeps(now?: () => number) {
     storage: {
       upload: vi.fn(async (): Promise<{ error: unknown }> => ({ error: null })),
       remove: vi.fn(async (): Promise<{ error: unknown }> => ({ error: null })),
-      list: vi.fn(async (): Promise<{ data: unknown[]; error: unknown }> => ({ data: [], error: null })),
+      list: vi.fn(async (): Promise<{ paths: string[]; hasMore: boolean }> => ({ paths: [], hasMore: false })),
     },
     rows: {
       // Parameters are declared so mock.calls is typed and the row assertions
       // below do not need a cast through unknown.
-      upsert: vi.fn(async (_row: Record<string, unknown>, _options: { onConflict: string }) => undefined),
+      upsert: vi.fn(async (_row: Record<string, unknown>, _options: { onConflict: string }) => { void _row; void _options; }),
       listPaths: vi.fn(async () => [] as Array<{ storage_path: string | null }>),
       delete: vi.fn(async () => undefined),
     },

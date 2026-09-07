@@ -1,12 +1,12 @@
-import { buildAeoTrendModel, type AeoSnapshotRow, type AeoTrendModel } from "@/lib/trends/aeo-trend-model";
+import { buildAeoTrendModel, type AeoTrendModel } from "@/lib/trends/aeo-trend-model";
 import { buildTrendModel, type StoredDiff, type TrendModel } from "@/lib/trends/history-model";
 import { CLOSED_ACTION_STATES, localized, type ActionState, type FactType, type LocalizedText } from "@/lib/domain";
 import { loadAuthorizedEvidence } from "@/lib/evidence/load-authorized";
 import type { EvidenceGalleryItem } from "@/lib/report/view-model";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { currentPeriod, type LocationSummary, type WorkspaceContext } from "@/lib/workspace/queries";
-import { rowToSnapshot, type ScanDiffRow, type ScanSnapshotRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
+import { rowToSnapshot, type ScanDiffRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
 import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
 import type { MetricKey } from "@/lib/workspace/metrics";
 
@@ -225,66 +225,46 @@ function locationText(location: LocationSummary | null): { id: string | null; sl
 // Loaders (service role; rows only)
 // ---------------------------------------------------------------------------
 
+async function read<T>(label: string, work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch {
+    throw new Error(`${label} lookup failed`);
+  }
+}
+
 export async function loadSnapshotsForLocation(workspaceId: string, locationId: string, limit = 12): Promise<SnapshotRecord[]> {
-  const { data, error } = await supabaseServer()
-    .from("scan_snapshots")
-    .select("*")
-    .eq("workspace_id", workspaceId)
-    .eq("location_id", locationId)
-    .order("observed_at", { ascending: false })
-    .limit(limit)
-    .returns<ScanSnapshotRow[]>();
-  if (error) throw new Error("snapshots lookup failed");
-  return (data ?? []).map(rowToSnapshot);
+  const rows = await read("snapshots", () => workspaceReadRepository().snapshots(workspaceId, locationId, limit));
+  return rows.map(rowToSnapshot);
 }
 
-export async function loadDiffById(diffId: string | null): Promise<ScanDiffRow | null> {
-  if (!diffId) return null;
-  const { data, error } = await supabaseServer().from("scan_diffs").select("*").eq("id", diffId).maybeSingle<ScanDiffRow>();
-  if (error) throw new Error("diff lookup failed");
-  return data ?? null;
+export async function loadDiffById(diffId: string | null, workspaceId: string, headJobId: string | null): Promise<ScanDiffRow | null> {
+  if (!diffId || !headJobId) return null;
+  return read("diff", () => workspaceReadRepository().diff(diffId, workspaceId, headJobId));
 }
-
-interface LatestRunRow { action_id: string; state: RunRow["state"]; created_at: string }
-interface LatestVersionRow { id: string; action_id: string; version_no: number; approval_state: VersionRow["approval_state"]; delivery_state: VersionRow["delivery_state"]; created_at: string }
 
 export async function loadActionRows(workspaceId: string, opts: { locationId?: string | null; states?: ActionState[]; ids?: string[] } = {}): Promise<ActionRow[]> {
-  let query = supabaseServer().from("actions").select("*").eq("workspace_id", workspaceId);
-  if (opts.locationId) query = query.or(`location_id.eq.${opts.locationId},location_id.is.null`);
-  if (opts.states) query = query.in("action_state", opts.states);
-  if (opts.ids) query = query.in("id", opts.ids);
-  const { data, error } = await query.order("priority_score", { ascending: false }).order("updated_at", { ascending: false }).returns<ActionRow[]>();
-  if (error) throw new Error("actions lookup failed");
-  return data ?? [];
+  return read("actions", () => workspaceReadRepository().actions(workspaceId, opts));
 }
 
 async function overviewsFor(ctx: WorkspaceContext, rows: ActionRow[]): Promise<ActionOverview[]> {
   if (!rows.length) return [];
-  const ids = rows.map((r) => r.id);
-  const db = supabaseServer();
-  const [runsResult, versionsResult] = await Promise.all([
-    db.from("action_runs").select("action_id, state, created_at").in("action_id", ids).order("created_at", { ascending: false }).returns<LatestRunRow[]>(),
-    db
-      .from("output_versions")
-      .select("id, action_id, version_no, approval_state, delivery_state, created_at")
-      .in("action_id", ids)
-      .order("version_no", { ascending: false })
-      .returns<LatestVersionRow[]>(),
+  const ids = rows.map(row => row.id);
+  const repository = workspaceReadRepository();
+  const [runs, versions] = await Promise.all([
+    read("runs", () => repository.runs(ctx.workspace.id, ids)),
+    read("versions", () => repository.versions(ctx.workspace.id, ids)),
   ]);
-  if (runsResult.error) throw new Error("runs lookup failed");
-  if (versionsResult.error) throw new Error("versions lookup failed");
-  const latestRun = new Map<string, LatestRunRow>();
-  for (const run of runsResult.data ?? []) if (!latestRun.has(run.action_id)) latestRun.set(run.action_id, run);
-  const latestVersion = new Map<string, LatestVersionRow>();
-  for (const version of versionsResult.data ?? []) if (!latestVersion.has(version.action_id)) latestVersion.set(version.action_id, version);
-  const byLocation = new Map(ctx.locations.map((l) => [l.id, l]));
-  return rows.map((row) =>
-    buildActionOverview(row, {
-      location: row.location_id ? locationText(byLocation.get(row.location_id) ?? null) : null,
-      latestRun: latestRun.get(row.id) ? { state: latestRun.get(row.id)!.state } : null,
-      latestVersion: latestVersion.get(row.id) ?? null,
-    }),
-  );
+  const latestRun = new Map<string, RunRow>();
+  for (const run of runs) if (!latestRun.has(run.action_id)) latestRun.set(run.action_id, run);
+  const latestVersion = new Map<string, VersionRow>();
+  for (const version of versions) if (!latestVersion.has(version.action_id)) latestVersion.set(version.action_id, version);
+  const byLocation = new Map(ctx.locations.map(location => [location.id, location]));
+  return rows.map(row => buildActionOverview(row, {
+    location: row.location_id ? locationText(byLocation.get(row.location_id) ?? null) : null,
+    latestRun: latestRun.get(row.id) ?? null,
+    latestVersion: latestVersion.get(row.id) ?? null,
+  }));
 }
 
 function changedFrom(snapshot: SnapshotRecord | null, diff: ScanDiffRow | null): HomeChanged {
@@ -317,22 +297,12 @@ function toStoredDiff(diff: ScanDiffRow | null): StoredDiff | null {
 // ---------------------------------------------------------------------------
 
 export async function getIntegrations(ctx: WorkspaceContext, latest?: SnapshotRecord | null): Promise<IntegrationsModel> {
-  const db = supabaseServer();
-  const { data: google, error } = await db
-    .from("oauth_connections")
-    .select("status, expires_at, updated_at, created_at")
-    .eq("workspace_id", ctx.workspace.id)
-    .eq("provider", "google_gbp")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .returns<Array<{ status: IntegrationsModel["google"]["status"]; expires_at: string | null; updated_at: string | null; created_at: string }>>();
-  if (error) throw new Error("connections lookup failed");
+  const row = await read("connections", () => workspaceReadRepository().latestConnection(ctx.workspace.id));
   let snapshot = latest ?? null;
   if (snapshot === undefined || snapshot === null) {
     const primary = ctx.locations.find((l) => l.isPrimary) ?? ctx.locations[0];
     snapshot = primary ? (await loadSnapshotsForLocation(ctx.workspace.id, primary.id, 1))[0] ?? null : null;
   }
-  const row = google?.[0];
   return {
     google: { status: row?.status ?? "not_connected", expiresAt: row?.expires_at ?? null, updatedAt: row?.updated_at ?? row?.created_at ?? null },
     instagram: {
@@ -354,14 +324,14 @@ export async function getIntegrations(ctx: WorkspaceContext, latest?: SnapshotRe
 // ---------------------------------------------------------------------------
 
 export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope): Promise<HomeBrief> {
-  const db = supabaseServer();
+  const repository = workspaceReadRepository();
   const location = resolveLocation(ctx, scope);
   const workspaceId = ctx.workspace.id;
 
   // "all" never aggregates: no snapshot, no score, actions across locations.
   const snapshots = location ? await loadSnapshotsForLocation(workspaceId, location.id, 2) : [];
   const snapshot = snapshots[0] ?? null;
-  const diff = await loadDiffById(snapshot?.diffId ?? null);
+  const diff = await loadDiffById(snapshot?.diffId ?? null, workspaceId, snapshot?.jobId ?? null);
   const changed = changedFrom(snapshot, diff);
 
   const openRows = await loadActionRows(workspaceId, { locationId: location?.id ?? null, states: OPEN_STATES });
@@ -371,29 +341,14 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
 
   const period = currentPeriod(ctx.workspace.timezone);
   const periodStart = `${period}-01T00:00:00Z`;
-  const [proofResult, draftsResult, completedResult, scheduleResult] = await Promise.all([
-    db
-      .from("action_measurements")
-      .select("metric_key, before_value, after_value, delta, fact_type, window_days, created_at, action_id")
-      .eq("workspace_id", workspaceId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .returns<MeasurementRow[]>(),
-    db.from("output_versions").select("id, actions!inner(workspace_id)").eq("actions.workspace_id", workspaceId).eq("approval_state", "draft").returns<Array<{ id: string }>>(),
-    db
-      .from("actions")
-      .select("id, measurement_state, completed_at")
-      .eq("workspace_id", workspaceId)
-      .eq("action_state", "completed")
-      .gte("completed_at", periodStart)
-      .returns<Array<{ id: string; measurement_state: string; completed_at: string | null }>>(),
-    location?.placeId
-      ? db.from("scan_schedules").select("next_run_at").eq("place_id", location.placeId).maybeSingle<{ next_run_at: string | null }>()
-      : Promise.resolve({ data: null, error: null }),
-  ]);
-  const proofRow = proofResult.data?.[0] ?? null;
-  const drafts = draftsResult.data?.length ?? 0;
-  const completed = completedResult.data ?? [];
+  const [measurements, draftVersions, completed, schedules] = await read("home", () => Promise.all([
+    repository.measurements(workspaceId, undefined, 1),
+    repository.draftVersions(workspaceId),
+    repository.completedActions(workspaceId, periodStart),
+    location?.placeId ? repository.schedules(workspaceId, [location.placeId]) : Promise.resolve([]),
+  ]));
+  const proofRow = measurements[0] ?? null;
+  const drafts = draftVersions.length;
   const [integrations, evidence] = await Promise.all([getIntegrations(ctx, snapshot), loadHomeEvidence(snapshot?.jobId ?? null)]);
 
   return {
@@ -421,7 +376,7 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
       completed: completed.length,
       measured: completed.filter((row) => row.measurement_state === "measured").length,
     },
-    nextScanAt: scheduleResult.data?.next_run_at ?? null,
+    nextScanAt: schedules[0]?.next_run_at ?? null,
     drafts,
     agentStrip: { scout: Boolean(snapshot), priority: openActions.length > 0, drafts, awaiting: drafts },
     ledger: diff ? { resolved: diff.resolved_findings, regressed: diff.regressed_findings, decayed: diff.decayed_findings } : { resolved: [], regressed: [], decayed: [] },
@@ -474,14 +429,13 @@ export async function getAction(ctx: WorkspaceContext, actionId: string): Promis
   const row = rows[0];
   if (!row || row.workspace_id !== ctx.workspace.id) return null;
   const [action] = await overviewsFor(ctx, [row]);
-  const db = supabaseServer();
-  const [versions, runs, measurements] = await Promise.all([
-    db.from("output_versions").select("*").eq("action_id", actionId).order("version_no", { ascending: false }).returns<VersionRow[]>(),
-    db.from("action_runs").select("*").eq("action_id", actionId).order("created_at", { ascending: false }).returns<RunRow[]>(),
-    db.from("action_measurements").select("*").eq("action_id", actionId).order("created_at", { ascending: false }).returns<MeasurementRow[]>(),
-  ]);
-  if (versions.error || runs.error || measurements.error) throw new Error("action detail lookup failed");
-  return { action, versions: versions.data ?? [], runs: runs.data ?? [], measurements: measurements.data ?? [] };
+  const repository = workspaceReadRepository();
+  const [versions, runs, measurements] = await read("action detail", () => Promise.all([
+    repository.versions(ctx.workspace.id, [actionId]),
+    repository.runs(ctx.workspace.id, [actionId]),
+    repository.measurements(ctx.workspace.id, actionId),
+  ]));
+  return { action, versions, runs, measurements };
 }
 
 // ---------------------------------------------------------------------------
@@ -509,7 +463,7 @@ async function locationSummaries(ctx: WorkspaceContext): Promise<InsightsLocatio
   const out: InsightsLocationSummary[] = [];
   for (const location of ctx.locations) {
     const [latest] = await loadSnapshotsForLocation(ctx.workspace.id, location.id, 1);
-    const diff = await loadDiffById(latest?.diffId ?? null);
+    const diff = await loadDiffById(latest?.diffId ?? null, ctx.workspace.id, latest?.jobId ?? null);
     out.push({
       location,
       score: latest?.overallScore ?? null,
@@ -539,7 +493,7 @@ export async function getInsights(ctx: WorkspaceContext, scope: LocationScope): 
 
   const snapshots = await loadSnapshotsForLocation(ctx.workspace.id, location.id, 12);
   const diffs = new Map<string, ScanDiffRow | null>();
-  for (const snapshot of snapshots) diffs.set(snapshot.id, await loadDiffById(snapshot.diffId));
+  for (const snapshot of snapshots) diffs.set(snapshot.id, await loadDiffById(snapshot.diffId, ctx.workspace.id, snapshot.jobId));
   const series: InsightsSeriesPoint[] = [...snapshots].reverse().map((snapshot) => {
     const diff = diffs.get(snapshot.id) ?? null;
     return {
@@ -555,19 +509,16 @@ export async function getInsights(ctx: WorkspaceContext, scope: LocationScope): 
   const headDiff = head ? diffs.get(head.id) ?? null : null;
   const base = head?.comparableTo ? snapshots.find((s) => s.id === head.comparableTo) ?? null : null;
 
-  const db = supabaseServer();
+  const repository = workspaceReadRepository();
   const jobIds = snapshots.map((s) => s.jobId);
-  const aeoRows = jobIds.length
-    ? await db.from("aeo_surface_snapshots").select("job_id, surface, cited, captured_at").in("job_id", jobIds).returns<AeoSnapshotRow[]>()
-    : { data: [], error: null };
-  if (aeoRows.error) throw new Error("aeo rows lookup failed");
+  const aeoRows = await read("aeo rows", () => repository.aeoSnapshots(ctx.workspace.id, jobIds));
 
   return {
     locationSlug: location.slug,
     location,
     series,
     trend: buildTrendModel(toStoredDiff(headDiff)),
-    aeoTrend: buildAeoTrendModel(aeoRows.data ?? []),
+    aeoTrend: buildAeoTrendModel(aeoRows),
     metricCards: metricCards(head, base, Boolean(headDiff?.comparable)),
     ledger: headDiff ? { resolved: headDiff.resolved_findings, regressed: headDiff.regressed_findings, decayed: headDiff.decayed_findings } : { resolved: [], regressed: [], decayed: [] },
     perLocation,
@@ -579,31 +530,20 @@ export async function getInsights(ctx: WorkspaceContext, scope: LocationScope): 
 // ---------------------------------------------------------------------------
 
 export async function getActivity(ctx: WorkspaceContext, opts: { limit?: number } = {}): Promise<AuditEventRow[]> {
-  const { data, error } = await supabaseServer()
-    .from("audit_events")
-    .select("*")
-    .eq("workspace_id", ctx.workspace.id)
-    .order("created_at", { ascending: false })
-    .limit(opts.limit ?? 100)
-    .returns<AuditEventRow[]>();
-  if (error) throw new Error("activity lookup failed");
-  return data ?? [];
+  return read("activity", () => workspaceReadRepository().activity(ctx.workspace.id, opts.limit ?? 100));
 }
 
 export async function getCalendar(ctx: WorkspaceContext): Promise<CalendarModel> {
-  const db = supabaseServer();
+  const repository = workspaceReadRepository();
   const placeIds = ctx.locations.map((l) => l.placeId).filter((p): p is string => Boolean(p));
   const [schedules, rows] = await Promise.all([
-    placeIds.length
-      ? db.from("scan_schedules").select("place_id, cadence, next_run_at").in("place_id", placeIds).returns<Array<{ place_id: string; cadence: string; next_run_at: string | null }>>()
-      : Promise.resolve({ data: [], error: null }),
+    read("schedules", () => repository.schedules(ctx.workspace.id, placeIds)),
     loadActionRows(ctx.workspace.id, { states: OPEN_STATES }),
   ]);
-  if (schedules.error) throw new Error("schedules lookup failed");
   const byPlace = new Map(ctx.locations.filter((l) => l.placeId).map((l) => [l.placeId as string, l]));
   const dueRows = rows.filter((r) => r.due_at).sort((a, b) => String(a.due_at).localeCompare(String(b.due_at)));
   return {
-    nextScans: (schedules.data ?? []).map((s) => ({
+    nextScans: schedules.map((s) => ({
       locationId: byPlace.get(s.place_id)?.id ?? null,
       locationName: byPlace.get(s.place_id)?.name ?? null,
       placeId: s.place_id,
@@ -615,29 +555,17 @@ export async function getCalendar(ctx: WorkspaceContext): Promise<CalendarModel>
 }
 
 export async function getNotifications(ctx: WorkspaceContext): Promise<NotificationsModel> {
-  const db = supabaseServer();
-  const [inApp, prefs] = await Promise.all([
-    db
-      .from("workspace_notifications")
-      .select("id, kind, title, body, href, read_at, created_at")
-      .eq("workspace_id", ctx.workspace.id)
-      .eq("user_id", ctx.membership.userId)
-      .order("created_at", { ascending: false })
-      .limit(50)
-      .returns<NotificationRow[]>(),
-    db
-      .from("workspaces")
-      .select("notify_rescan_complete, notify_regression_alert, notify_monthly_digest")
-      .eq("id", ctx.workspace.id)
-      .maybeSingle<{ notify_rescan_complete: boolean | null; notify_regression_alert: boolean | null; notify_monthly_digest: boolean | null }>(),
-  ]);
-  if (inApp.error || prefs.error) throw new Error("notifications lookup failed");
+  const repository = workspaceReadRepository();
+  const [inApp, prefs] = await read("notifications", () => Promise.all([
+    repository.notifications(ctx.workspace.id, ctx.membership.userId),
+    repository.notificationPreferences(ctx.workspace.id),
+  ]));
   return {
-    inApp: inApp.data ?? [],
+    inApp,
     email: {
-      rescanComplete: prefs.data?.notify_rescan_complete ?? true,
-      regressionAlert: prefs.data?.notify_regression_alert ?? true,
-      monthlyDigest: prefs.data?.notify_monthly_digest ?? true,
+      rescanComplete: prefs?.notify_rescan_complete ?? true,
+      regressionAlert: prefs?.notify_regression_alert ?? true,
+      monthlyDigest: prefs?.notify_monthly_digest ?? true,
     },
   };
 }

@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { getPool } from "@/lib/db/client";
 import { completeWorkspaceScan, reconcileWorkspaceScans } from "@/lib/workspace/completion";
 
 export const maxDuration = 60;
@@ -19,7 +19,7 @@ export async function POST(request: Request): Promise<Response> {
   try { parsed = input.safeParse(await request.json()); } catch { return json({ error: "invalid_input" }, 400); }
   if (!parsed.success) return json({ error: "invalid_input" }, 400);
   try {
-    const db = supabaseServer();
+    const db = getPool();
     if ("jobId" in parsed.data) {
       const result = await completeWorkspaceScan(db, parsed.data.jobId.toLowerCase());
       return json(result, result.status === "retry" ? 503 : result.status === "busy" ? 202 : 200);

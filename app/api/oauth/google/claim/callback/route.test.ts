@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
-  from: vi.fn(),
   verifyClaimState: vi.fn(),
   exchangeCode: vi.fn(),
   listManagedPlaceIds: vi.fn(),
@@ -11,12 +10,21 @@ const mocks = vi.hoisted(() => ({
   createWorkspaceWithOwner: vi.fn(),
   attachJobToWorkspace: vi.fn(),
   claimViaOAuthEnabled: vi.fn(() => true),
+  jobById: vi.fn(),
+  replaceGoogleConnection: vi.fn(),
+  recordMerchantClaimEvent: vi.fn(),
+  recordClaimAuditEvent: vi.fn(),
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
-  createSupabaseServerClient: async () => ({ auth: { getUser: mocks.getUser } }),
+vi.mock("@/lib/auth", () => ({getUser:async()=>{const response=await mocks.getUser();const user=response?.data?.user;return user?{...user,verified:true}:null;}}));
+vi.mock("@/lib/repositories/claims",()=>({
+ recordClaimAuditEvent:mocks.recordClaimAuditEvent,
+ claimsRepository:{
+  jobById:mocks.jobById,
+  recordMerchantClaimEvent:mocks.recordMerchantClaimEvent,
+  replaceGoogleConnection:mocks.replaceGoogleConnection,
+ },
 }));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => ({ from: mocks.from }) }));
 vi.mock("@/lib/oauth/claim-flow-flag", () => ({ claimViaOAuthEnabled: mocks.claimViaOAuthEnabled }));
 vi.mock("@/lib/oauth/google-connection", () => ({
   GBP_SCOPE_REQUIRED: "https://www.googleapis.com/auth/business.manage",
@@ -58,61 +66,20 @@ interface JobRow {
 
 const JOB_ROW: JobRow = { id: "job-1", business_name: "Demo Cafe", industry: "fnb", district: "Central", region: "hk" };
 
-/** Wires audit_jobs / oauth_connections / workspace_claim_events / audit_events with all-success responses. */
+/** Configures repository outcomes for the callback's persistence boundaries. */
 function mockHappyPathTables(overrides?: {
-  connectionInsertError?: { message: string } | null;
-  revokeError?: { message: string } | null;
-  promoteError?: { message: string } | null;
+  replacementError?: Error;
   claimEventError?: { message: string } | null;
   auditEventError?: { message: string } | null;
   jobRow?: JobRow | null;
 }) {
   const jobRow = overrides && "jobRow" in overrides ? overrides.jobRow : JOB_ROW;
-  const jobSelect = vi.fn(() => ({
-    eq: () => ({
-      maybeSingle: async () => ({ data: jobRow, error: null }),
-    }),
-  }));
-  const insert = vi.fn(() => ({
-    select: () => ({
-      single: async () =>
-        overrides?.connectionInsertError
-          ? { data: null, error: overrides.connectionInsertError }
-          : { data: { id: "conn-1" }, error: null },
-    }),
-  }));
-  // Dispatches on the update payload's `status` rather than call order, so the
-  // mock mirrors two distinct queries: revoke (workspace_id + provider + status
-  // filters, three chained `.eq()`s) and promote (id + status filters, two
-  // chained `.eq()`s) -- exactly like the connect-flow callback's real queries.
-  const update = vi.fn((payload: { status: string }) => {
-    if (payload.status === "revoked") {
-      return {
-        eq: () => ({
-          eq: () => ({
-            eq: async () => ({ error: overrides?.revokeError ?? null }),
-          }),
-        }),
-      };
-    }
-    return {
-      eq: () => ({
-        eq: async () => ({ error: overrides?.promoteError ?? null }),
-      }),
-    };
-  });
-  const claimEventInsert = vi.fn(async () => ({ error: overrides?.claimEventError ?? null }));
-  const auditEventInsert = vi.fn(async () => ({ error: overrides?.auditEventError ?? null }));
-  mocks.from.mockImplementation((table: string) => {
-    if (table === "audit_jobs") return { select: jobSelect };
-    if (table === "oauth_connections") return { insert, update };
-    if (table === "workspace_claim_events") return { insert: claimEventInsert };
-    if (table === "audit_events") return { insert: auditEventInsert };
-    throw new Error(`unexpected table ${table}`);
-  });
-  return { jobSelect, insert, update, claimEventInsert, auditEventInsert };
+  mocks.jobById.mockResolvedValue(jobRow);
+  if (overrides?.replacementError) mocks.replaceGoogleConnection.mockRejectedValue(overrides.replacementError);
+  else mocks.replaceGoogleConnection.mockResolvedValue("conn-1");
+  mocks.recordMerchantClaimEvent.mockResolvedValue(overrides?.claimEventError ? false : true);
+  mocks.recordClaimAuditEvent.mockResolvedValue(overrides?.auditEventError ? false : true);
 }
-
 function claimParam(response: Response): string | null {
   return new URL(response.headers.get("location")!).searchParams.get("claim");
 }
@@ -264,11 +231,7 @@ describe("GET /api/oauth/google/claim/callback", () => {
   });
 
   it("refuses when the connected account manages a different business, and creates nothing", async () => {
-    // Mutation guard: this is what would fail if the place_id match check were
-    // deleted and the route always proceeded to create+attach. mocks.from has
-    // no implementation configured in this test, so any write path (or even
-    // the read-only job lookup) throws and the test fails with "unavailable"
-    // instead of the expected "place_not_managed".
+    // Mutation guard: repository boundaries stay untouched before the provider ownership match.
     mocks.verifyClaimState.mockReturnValue(CLAIM_PAYLOAD);
     mocks.getUser.mockResolvedValue({ data: { user: { id: "user-1", email: "owner@example.com" } } });
     mocks.exchangeCode.mockResolvedValue(TOKENS);
@@ -280,7 +243,7 @@ describe("GET /api/oauth/google/claim/callback", () => {
     expect(redirectPath(response)).toBe("/en/r/abc123");
     expect(mocks.createWorkspaceWithOwner).not.toHaveBeenCalled();
     expect(mocks.attachJobToWorkspace).not.toHaveBeenCalled();
-    expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.jobById).not.toHaveBeenCalled();
   });
 
   it("verifies a match, creates the workspace, attaches the job, records both events and continues onboarding", async () => {
@@ -295,7 +258,7 @@ describe("GET /api/oauth/google/claim/callback", () => {
     mocks.createWorkspaceWithOwner.mockResolvedValue({ id: "ws-new", slug: "demo-cafe" });
     mocks.attachJobToWorkspace.mockResolvedValue(true);
 
-    const { insert, claimEventInsert, auditEventInsert } = mockHappyPathTables();
+    mockHappyPathTables();
 
     const response = await GET(request("?code=abc&state=good"));
 
@@ -307,24 +270,22 @@ describe("GET /api/oauth/google/claim/callback", () => {
     expect(location.searchParams.get("claim")).toBe("abc123");
     expect(location.searchParams.get("claimed")).toBe("1");
     expect(mocks.createWorkspaceWithOwner).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({
         ownerUserId: "user-1",
         ownerEmail: "owner@example.com",
         businessName: "Demo Cafe",
       }),
     );
-    expect(mocks.attachJobToWorkspace).toHaveBeenCalledWith(expect.anything(), "job-1", "ws-new");
-    expect(insert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        workspace_id: "ws-new",
-        provider: "google_gbp",
-        account_ref: "locations/aaa",
-        access_token_encrypted: "encrypted:access-token-1",
-        refresh_token_encrypted: "encrypted:refresh-token-1",
-      }),
-    );
-    expect(claimEventInsert).toHaveBeenCalledWith(
+    expect(mocks.attachJobToWorkspace).toHaveBeenCalledWith("job-1", "ws-new");
+    expect(mocks.replaceGoogleConnection).toHaveBeenCalledWith({
+      workspaceId: "ws-new",
+      accountRef: "locations/aaa",
+      accessTokenEncrypted: "encrypted:access-token-1",
+      refreshTokenEncrypted: "encrypted:refresh-token-1",
+      scopes: TOKENS.scopes,
+      expiresAt: TOKENS.expiresAt,
+    });
+    expect(mocks.recordMerchantClaimEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         job_id: "job-1",
         workspace_id: "ws-new",
@@ -332,7 +293,7 @@ describe("GET /api/oauth/google/claim/callback", () => {
         claimed_by_user_id: "user-1",
       }),
     );
-    expect(auditEventInsert).toHaveBeenCalledWith({
+    expect(mocks.recordClaimAuditEvent).toHaveBeenCalledWith({
       workspace_id: "ws-new",
       actor_type: "user",
       actor_id: "user-1",
@@ -359,51 +320,7 @@ describe("GET /api/oauth/google/claim/callback", () => {
 
     expect(redirectPath(response)).toBe("/en/owner/onboarding");
     expect(mocks.createWorkspaceWithOwner).not.toHaveBeenCalled();
-    expect(mocks.attachJobToWorkspace).toHaveBeenCalledWith(expect.anything(), "job-1", "ws-existing");
-  });
-
-  it("revokes an existing active google_gbp connection before promoting the new one, so a repeat claim on an already-connected workspace does not 23505 on oauth_connections_active_provider_key", async () => {
-    // Regression test: the owner already connected Google once before (or is
-    // claiming a second scan into the same workspace), so findOwnedWorkspace
-    // returns an existing workspace that may already have an active
-    // google_gbp row. Without a revoke step between insert and promote, the
-    // promote update would collide with the partial unique index on
-    // (workspace_id, provider) where status = 'active' -- and by then
-    // attachJobToWorkspace has already run, so the job is stuck attached with
-    // no way to retry (the start route would now say already_claimed).
-    mocks.verifyClaimState.mockReturnValue(CLAIM_PAYLOAD);
-    mocks.getUser.mockResolvedValue({ data: { user: { id: "user-1", email: "owner@example.com" } } });
-    mocks.exchangeCode.mockResolvedValue(TOKENS);
-    mocks.listManagedPlaceIds.mockResolvedValue([{ placeId: "place-a", locationName: "locations/aaa" }]);
-    mocks.findOwnedWorkspace.mockResolvedValue({ data: { workspaceId: "ws-existing" }, error: null });
-    mocks.attachJobToWorkspace.mockResolvedValue(true);
-
-    const { update } = mockHappyPathTables();
-
-    const response = await GET(request("?code=abc&state=good"));
-
-    expect(redirectPath(response)).toBe("/en/owner/onboarding");
-    const statuses = update.mock.calls.map(([payload]) => (payload as { status: string }).status);
-    expect(statuses).toEqual(["revoked", "active"]);
-  });
-
-  it("returns storage_failed when revoking an existing active connection fails, without promoting or recording a claim event", async () => {
-    mocks.verifyClaimState.mockReturnValue(CLAIM_PAYLOAD);
-    mocks.getUser.mockResolvedValue({ data: { user: { id: "user-1", email: "owner@example.com" } } });
-    mocks.exchangeCode.mockResolvedValue(TOKENS);
-    mocks.listManagedPlaceIds.mockResolvedValue([{ placeId: "place-a", locationName: "locations/aaa" }]);
-    mocks.findOwnedWorkspace.mockResolvedValue({ data: { workspaceId: "ws-existing" }, error: null });
-    mocks.attachJobToWorkspace.mockResolvedValue(true);
-
-    const { update, claimEventInsert, auditEventInsert } = mockHappyPathTables({ revokeError: { message: "revoke failed" } });
-
-    const response = await GET(request("?code=abc&state=good"));
-
-    expect(claimParam(response)).toBe("storage_failed");
-    const statuses = update.mock.calls.map(([payload]) => (payload as { status: string }).status);
-    expect(statuses).toEqual(["revoked"]);
-    expect(claimEventInsert).not.toHaveBeenCalled();
-    expect(auditEventInsert).not.toHaveBeenCalled();
+    expect(mocks.attachJobToWorkspace).toHaveBeenCalledWith("job-1", "ws-existing");
   });
 
   it("returns not_found when the job row backing the claim state no longer exists", async () => {
@@ -429,7 +346,7 @@ describe("GET /api/oauth/google/claim/callback", () => {
     mocks.createWorkspaceWithOwner.mockResolvedValue({ id: "ws-new", slug: "demo-cafe" });
     mocks.attachJobToWorkspace.mockResolvedValue(false);
 
-    const { insert, update, claimEventInsert } = mockHappyPathTables({
+    mockHappyPathTables({
       jobRow: { id: "job-1", business_name: "Demo Cafe", industry: null, district: null, region: "hk" },
     });
 
@@ -437,12 +354,11 @@ describe("GET /api/oauth/google/claim/callback", () => {
     expect(claimParam(response)).toBe("already_claimed");
     // The lost race must stop before any oauth_connections row or audit event
     // is written for a workspace this caller no longer has a claim on.
-    expect(insert).not.toHaveBeenCalled();
-    expect(update).not.toHaveBeenCalled();
-    expect(claimEventInsert).not.toHaveBeenCalled();
+    expect(mocks.replaceGoogleConnection).not.toHaveBeenCalled();
+    expect(mocks.recordMerchantClaimEvent).not.toHaveBeenCalled();
   });
 
-  it("returns storage_failed when the oauth_connections insert fails, without recording a claim event", async () => {
+  it("returns storage_failed when the repository rejects connection replacement without recording a claim event", async () => {
     mocks.verifyClaimState.mockReturnValue(CLAIM_PAYLOAD);
     mocks.getUser.mockResolvedValue({ data: { user: { id: "user-1", email: "owner@example.com" } } });
     mocks.exchangeCode.mockResolvedValue(TOKENS);
@@ -450,30 +366,14 @@ describe("GET /api/oauth/google/claim/callback", () => {
     mocks.findOwnedWorkspace.mockResolvedValue({ data: null, error: null });
     mocks.createWorkspaceWithOwner.mockResolvedValue({ id: "ws-new", slug: "demo-cafe" });
     mocks.attachJobToWorkspace.mockResolvedValue(true);
-
-    const { claimEventInsert } = mockHappyPathTables({ connectionInsertError: { message: "insert failed" } });
-
-    const response = await GET(request("?code=abc&state=good"));
-    expect(claimParam(response)).toBe("storage_failed");
-    expect(claimEventInsert).not.toHaveBeenCalled();
-  });
-
-  it("returns storage_failed when promoting the connection to active fails", async () => {
-    mocks.verifyClaimState.mockReturnValue(CLAIM_PAYLOAD);
-    mocks.getUser.mockResolvedValue({ data: { user: { id: "user-1", email: "owner@example.com" } } });
-    mocks.exchangeCode.mockResolvedValue(TOKENS);
-    mocks.listManagedPlaceIds.mockResolvedValue([{ placeId: "place-a", locationName: "locations/aaa" }]);
-    mocks.findOwnedWorkspace.mockResolvedValue({ data: null, error: null });
-    mocks.createWorkspaceWithOwner.mockResolvedValue({ id: "ws-new", slug: "demo-cafe" });
-    mocks.attachJobToWorkspace.mockResolvedValue(true);
-
-    const { claimEventInsert } = mockHappyPathTables({ promoteError: { message: "promote failed" } });
+    mockHappyPathTables({ replacementError: new Error("replace failed") });
 
     const response = await GET(request("?code=abc&state=good"));
-    expect(claimParam(response)).toBe("storage_failed");
-    expect(claimEventInsert).not.toHaveBeenCalled();
-  });
 
+    expect(claimParam(response)).toBe("storage_failed");
+    expect(mocks.recordMerchantClaimEvent).not.toHaveBeenCalled();
+    expect(mocks.recordClaimAuditEvent).not.toHaveBeenCalled();
+  });
   it("still reports success when the best-effort claim-event or audit-event insert fails", async () => {
     // A failed audit-log write must never turn an otherwise-successful claim
     // into an error shown to the owner (repo convention for best-effort ops).

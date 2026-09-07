@@ -46,3 +46,6 @@ next-env.d.ts
 
 # workspace packages
 **/node_modules/
+
+# isolated implementation worktrees
+/.worktrees/

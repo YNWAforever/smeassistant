@@ -17,6 +17,8 @@ const eslintConfig = defineConfig([
     "coverage/**",
     "playwright-report/**",
     "test-results/**",
+    // Generated local workflow logs and helper scripts; never application source.
+    ".superpowers/**",
   ]),
   {
     files: ["components/ui/**/*.{ts,tsx}", "hooks/use-mobile.ts"],
@@ -36,6 +38,14 @@ const eslintConfig = defineConfig([
       // (SerpApi / RapidAPI / Places) is typed as `any` on purpose.
       "@typescript-eslint/no-explicit-any": "off",
       "@next/next/no-assign-module-variable": "off",
+    },
+  },
+  {
+    // This file is a CommonJS preload injected through NODE_OPTIONS into the
+    // fixture process; require() is intentional and cannot be converted to ESM.
+    files: ["test/e2e/transport-guard.cjs"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
     },
   },
 ]);

@@ -1,0 +1,138 @@
+{
+  "capture": "Original 33 SQL migrations applied to independently owned PostgreSQL 16 Docker fixture; no business rows",
+  "sourceCommit": "d578739",
+  "files": [
+    {
+      "name": "0001_v0_1_schema.sql",
+      "sha256": "208655be6fef946d12dc29483d94bd9cba98e2daa5243c53f5f80006e1aa96ca"
+    },
+    {
+      "name": "20260524_add_raw_data.sql",
+      "sha256": "5aa2c349d014dd4f8f83c6920a8b28c58473bd0761923b9d06e1a932bfc1d410"
+    },
+    {
+      "name": "20260616_add_english_columns.sql",
+      "sha256": "a55d5f734d26225245a8f0dadf002060563818767c67bafd2ca23dcb0b26c895"
+    },
+    {
+      "name": "20260617_add_summary_zh.sql",
+      "sha256": "acab5b1b7bea878028059cabc0aa9439ed0230a6796c4d7952e0ea5476393c2e"
+    },
+    {
+      "name": "20260620_add_taiwan_columns.sql",
+      "sha256": "a019fc0bb3d8d672bc2c37c6c272f3caf367768f1bd0f2f6bdba082edf36eb38"
+    },
+    {
+      "name": "20260702_add_owner_action_columns.sql",
+      "sha256": "df8e6d5990cf89a4c2caf600e8650f73ffdd9f9847d83a9d8c508613e9845609"
+    },
+    {
+      "name": "20260714_trust_foundation.sql",
+      "sha256": "6bcb1dd99da557583840b7c02d15a5cfbb5de72363aa2571a77ae4361bb61c83"
+    },
+    {
+      "name": "20260715_add_rate_limit_rpc.sql",
+      "sha256": "a61672b9e78d68e36a2b238d09f0662fe00b416e0f593293f31c76e659460091"
+    },
+    {
+      "name": "20260717022612_harden_server_only_grants.sql",
+      "sha256": "050f62492db395a3e43942c0bff4fafeec71ed9ad6fc3e0cd92b60b8bd432053"
+    },
+    {
+      "name": "20260721174713_private_report_evidence.sql",
+      "sha256": "09fff26ea0aafc60e7617dbd6c912e0c0c49b4ca819f405b8e1187ebbd911db9"
+    },
+    {
+      "name": "20260729000000_scan_claim_lease.sql",
+      "sha256": "48f7052ceffd7e6ddf1ec807103af9272a9e1eba0009456658e2e6d7efb9a8c3"
+    },
+    {
+      "name": "20260801000000_workspaces_oauth_connections.sql",
+      "sha256": "cdfcb7a264816cd981ea4b4641e9283eb717b7276472694fbfea7fe14fd562cb"
+    },
+    {
+      "name": "20260801100000_workspace_email_assignment.sql",
+      "sha256": "19d1e07c62c4b7e4e7bcfc81e6b61c8c2d956667649539069847d551ea3ea57c"
+    },
+    {
+      "name": "20260806000000_data_lifecycle.sql",
+      "sha256": "078ed5d500cd719e7a81b4c2af80b029b65ba960f3e31909c4d7ebc231160d21"
+    },
+    {
+      "name": "20260815000000_workspace_access_requests.sql",
+      "sha256": "bbf956ce601a7bb960cc25e67f0639e1b310921038cf193c2f1ca319f0e402b1"
+    },
+    {
+      "name": "20260816000000_scan_schedules.sql",
+      "sha256": "974c22d2b1143281e87fd202f17f7f5a59a958ca23433adba66005b388c8c178"
+    },
+    {
+      "name": "20260817000000_scan_diffs.sql",
+      "sha256": "01a16555d34fe077b15b3a0f3f95ebf3cb101c05c562e2a60b453fbacd990069"
+    },
+    {
+      "name": "20260818000000_agent_runs.sql",
+      "sha256": "a4e3e4449c967106fb52ab036f4e84229ee260a0881a9e3bc4607fcf9ea90f07"
+    },
+    {
+      "name": "20260819000000_workspace_billing.sql",
+      "sha256": "ac2addfd9e02a3e604aa32c5e656d0f6f496e589bf45bf2402a19b678765bc5e"
+    },
+    {
+      "name": "20260820000000_notification_layer.sql",
+      "sha256": "fe268c4b65a3bd610eed75a4fbcfea843952947024c9bb50872d716bbd5babf3"
+    },
+    {
+      "name": "20260821000000_scan_schedules_workspace_id.sql",
+      "sha256": "a591b442be1472e0c92cb75f66a31228876ae81b1403f980f470cc903ecfca34"
+    },
+    {
+      "name": "20260821000001_widen_claim_lease.sql",
+      "sha256": "5d04c82d575b4d2e7bb43db4f873db7cc8a258bf5e32aab13f8d7ef1e965006e"
+    },
+    {
+      "name": "20260822000000_workspace_members.sql",
+      "sha256": "621e642ef2d0242bc3fcd3b7140ecd9e6212e172eeef38c794d42ff537187fdf"
+    },
+    {
+      "name": "20260822090000_workspace_claim_events.sql",
+      "sha256": "99db1f7c152a4388a5188ecc45547daf1fc7f4d280e92460aea7433231b10f9e"
+    },
+    {
+      "name": "20260823000000_workspace_members_unique_email.sql",
+      "sha256": "cb970650552ccdc013b176dc530d240b9704c5491b4213ec016140907c26f296"
+    },
+    {
+      "name": "20260824000000_aeo_surface_snapshots.sql",
+      "sha256": "18fea9264bb4c354cb6066277242baca0469766e3d4d17668d8f07f515e5cb7b"
+    },
+    {
+      "name": "20260826000000_workspace_tier_integrity.sql",
+      "sha256": "2f88733db631cf0d2b57be92dcab31dc9a2ffd45554edbdc245e71d3612fa865"
+    },
+    {
+      "name": "20260826000001_workspaces_instagram_handle.sql",
+      "sha256": "c4f954df549694db41015a954d4bd66c28ec730e451e535cdc1f19a7338f821f"
+    },
+    {
+      "name": "20260903000000_workspace_layer.sql",
+      "sha256": "8f28fa2be4e86cef0d278f795dec962cd16864a8de8b3762d68c44e2d559420b"
+    },
+    {
+      "name": "20260903000001_workspace_rpcs.sql",
+      "sha256": "9fb185e7a3fdd34efa5765ab22c6db3d03c83b034cd70b17871af5e5ca217435"
+    },
+    {
+      "name": "20260905000000_completion_idempotency.sql",
+      "sha256": "b855c946dfbe7dc7a0eea5f87721cfb458d74c6589dafc87f314ba1646522f07"
+    },
+    {
+      "name": "20260905000001_workspace_completion_ledger.sql",
+      "sha256": "74bcfcbef7980ea79d38fe634fc34283ebeb54878198644ab61ebbf77a117a58"
+    },
+    {
+      "name": "20260905000002_workspace_completion_fencing.sql",
+      "sha256": "0b809410021a7c631a375720a735a3691da3dc5a6093e316051e1f35742779ef"
+    }
+  ]
+}

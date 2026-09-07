@@ -1,5 +1,8 @@
+import type { MeasurementRepository } from "@/lib/repositories/measurements";
+import { completionId } from "./completion-id";
+import { rowToSnapshot, type ScanSnapshotRow } from "./snapshots";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
+
 import type { ScanDiffRow, SnapshotRecord } from "./snapshots";
 import { buildMeasurement, recordMeasurements, TEMPLATE_METRIC, windowDaysBetween } from "./measurements";
 
@@ -17,70 +20,17 @@ const state = vi.hoisted(() => ({
   updates: [] as { patch: Row; ids: unknown }[],
 }));
 
-function client(): SupabaseClient {
-  const from = (table: string) => {
-    const filters: Record<string, unknown> = {};
-    let inserted: Row[] | null = null;
-    let patch: Row | null = null;
-    const terminal = () => {
-      if (table === "scan_snapshots") return { data: filters.id ? state.snapshots[String(filters.id)] ?? null : { id: state.latestSnapshotId }, error: null };
-      if (table === "audit_jobs") return { data: state.headJob, error: null };
-      if (table === "actions") {
-        if (patch) {
-          if (state.updateError) return { data: null, error: { message: "state unavailable" } };
-          state.updates.push({ patch, ids: filters.id });
-          return { data: null, error: null };
-        }
-        return { data: state.actions, error: null };
-      }
-      if (table === "action_measurements") {
-        if (inserted) {
-          state.inserted.push(...inserted);
-          state.measurements.push(...inserted);
-          return { data: null, error: null };
-        }
-        return { data: state.measurements.filter((m) => m.after_snapshot_id === filters.after_snapshot_id), error: null };
-      }
-      if (table === "output_versions") return { data: state.versions.filter((v) => v.first_exported_at), error: null };
-      return { data: null, error: null };
-    };
-    const chain: Record<string, unknown> = {};
-    const self = () => chain;
-    Object.assign(chain, {
-      select: self,
-      order: self,
-      limit: self,
-      or: self,
-      is: self,
-      not: self,
-      eq: (column: string, value: unknown) => {
-        filters[column] = value;
-        return chain;
-      },
-      in: (column: string, value: unknown) => {
-        filters[column] = value;
-        return chain;
-      },
-      insert: (rows: Row[]) => {
-        inserted = rows;
-        return Promise.resolve(terminal());
-      },
-      upsert: (rows: Row[], options: { onConflict: string; ignoreDuplicates: boolean }) => {
-        expect(options).toEqual({ onConflict: "id", ignoreDuplicates: true });
-        inserted = rows.filter((row) => !state.measurements.some((existing) => existing.id === row.id));
-        return { select: () => { const result = terminal(); return Promise.resolve({ ...result, data: inserted }); } };
-      },
-      update: (row: Row) => {
-        patch = row;
-        return chain;
-      },
-      returns: () => Promise.resolve(terminal()),
-      maybeSingle: () => Promise.resolve(terminal()),
-      then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => Promise.resolve(terminal()).then(resolve, reject),
-    });
-    return chain;
-  };
-  return { from } as unknown as SupabaseClient;
+function client(): MeasurementRepository {
+ return {
+  async base(head){const row=state.snapshots[head.comparableTo!];return row?rowToSnapshot(row as unknown as ScanSnapshotRow):null;},
+  async headJob(){return state.headJob as {created_at:string}|null;},
+  async actions(){return state.actions as unknown as Awaited<ReturnType<MeasurementRepository['actions']>>;},
+  async existing(head){return state.measurements.filter(m=>m.after_snapshot_id===head.id) as unknown as Awaited<ReturnType<MeasurementRepository['existing']>>;},
+  async exports(){return state.versions.filter(v=>v.first_exported_at) as unknown as Awaited<ReturnType<MeasurementRepository['exports']>>;},
+  async insert(rows,head){const fresh=rows.map(row=>({...row,id:completionId('measurement',row.action_id,head.id)})).filter(row=>!state.measurements.some(existing=>existing.id===row.id));state.inserted.push(...fresh);state.measurements.push(...fresh);return fresh.length;},
+  async latest(){return {id:state.latestSnapshotId};},
+  async updateState(_head,ids,value,now){if(state.updateError)throw new Error('measurement state update failed');state.updates.push({patch:{measurement_state:value,updated_at:now},ids});},
+ };
 }
 
 const snapshotRow = (over: Row): Row => ({

@@ -4,11 +4,10 @@ import type { AuditJobRow } from "@sme-scanner/contracts";
 
 import { loadOgFont } from "@/lib/og-font";
 import { buildShareCardData, type ScoreBand } from "@/lib/share";
-import { supabaseServer } from "@/lib/supabase/admin";
+import { reportsRepository } from "@/lib/repositories/reports";
 
 /**
  * Ported verbatim from upstream `apps/web/app/[locale]/r/[slug]/opengraph-image.tsx`
- * (only the imports moved: `@/lib/supabase` → `@/lib/supabase/admin`, `@/lib/types`
  * → `@sme-scanner/contracts`). It reads the legacy `module_scores` column, not
  * `module_results`, because the share card predates the coverage-aware payload.
  *
@@ -32,12 +31,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
 
   let job: AuditJobRow | null = null;
   try {
-    const { data } = await supabaseServer()
-      .from("audit_jobs")
-      .select("business_name, overall_score, module_scores")
-      .eq("share_slug", slug)
-      .single();
-    job = (data as AuditJobRow) ?? null;
+    job = await reportsRepository().readShareCard(slug) as AuditJobRow | null;
   } catch {
     job = null;
   }

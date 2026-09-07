@@ -42,6 +42,6 @@ export default async function Image() {
         <div style={{ fontSize: 24, color: "#7fd0ba" }}>Hong Kong · Taiwan · zh-HK · zh-TW · en</div>
       </div>
     ),
-    { ...size, fonts: font ? [{ name: font.name, data: font.data, weight: 700, style: "normal" }] : [] },
+    { ...size, fonts: font ? [{ name: font.name, data: font.data, weight: 700, style: "normal" }] : undefined },
   );
 }

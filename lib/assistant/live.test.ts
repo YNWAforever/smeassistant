@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { auth, makeDb, type Query } from "@/app/api/actions/_shared/test-db";
+import { auth } from "@/app/api/actions/_shared/test-db";
 import { ACTION_ID, LOCATION_ID, SNAPSHOT_ID, WORKSPACE_ID, actionRow, base, diff, socialRow, snapshot } from "./__fixtures__";
 import { LIVE_BOUNDARY, runLiveAssistant } from "./live";
 
-const mocks = vi.hoisted(() => ({ db: null as ReturnType<typeof import("@/app/api/actions/_shared/test-db").makeDb> | null }));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: () => mocks.db }));
+const repository = vi.hoisted(() => ({ actionScope:vi.fn(),assistantWorkspace:vi.fn(),assistantLocations:vi.fn(),assistantActions:vi.fn(),assistantSnapshot:vi.fn(),assistantLatestSnapshot:vi.fn(),assistantDiff:vi.fn(),assistantBrand:vi.fn(),assistantReviewData:vi.fn(),versionScope:vi.fn(),createOutputVersion:vi.fn() }));
+vi.mock("@/lib/repositories/artifacts",()=>({artifactRepository:()=>repository}));
 
 type Llm = (prompt: string, opts?: unknown) => Promise<typeof good | null>;
 const LOCATION_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -12,37 +12,26 @@ const ACTION_B = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const SNAPSHOT_B = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const state = { actions: [actionRow, socialRow] as Array<typeof actionRow>, snapshots: [snapshot, base] as Array<typeof snapshot> };
 
-function snapshotRow(s: typeof snapshot) {
-  return { id: s.id, job_id: s.jobId, workspace_id: s.workspaceId, location_id: s.locationId, market: s.market, observed_at: s.observedAt, scoring_version: s.scoringVersion, overall_score: s.overallScore, coverage: s.coverage, module_states: s.moduleStates, metrics: s.metrics, website_checks: null, comparable_to: s.comparableTo, diff_id: s.diffId, created_at: s.createdAt };
-}
-
-function respond(q: Query): unknown {
-  switch (q.table) {
-    case "workspaces": return { business_name: "Kam Man House", market: "hk", timezone: "Asia/Hong_Kong" };
-    case "locations": return [{ id: LOCATION_ID, slug: "yik-yam", name: "Yik Yam", address: null, district: "Happy Valley", is_primary: true }, { id: LOCATION_B, slug: "branch-b", name: "Branch B", address: null, district: null, is_primary: false }];
-    case "actions": { const rows = state.actions.filter((a) => a.workspace_id === q.filters.workspace_id && (!q.filters.location_id || a.location_id === q.filters.location_id || a.location_id === null)); return q.filters.id ? rows.find((a) => a.id === q.filters.id) ?? null : rows; }
-    case "scan_snapshots": {
-      const byId = q.filters.id ? state.snapshots.find((s) => s.id === q.filters.id) ?? null : state.snapshots.find((s) => s.workspaceId === q.filters.workspace_id && (!q.filters.location_id || s.locationId === q.filters.location_id)) ?? null;
-      return q.filters.id ? (byId ? snapshotRow(byId) : null) : byId ? [snapshotRow(byId)] : [];
-    }
-    case "scan_diffs": return q.filters.id === diff.id ? diff : null;
-    case "brand_profiles": return { voice: "warm", approved_claims: ["Family-run since 1988"], prohibited_terms: ["best in Hong Kong"], languages: ["zh-HK"], facts: {} };
-    case "audit_jobs": return { raw_data: { gbp: { reviews: [{ rating: 3, text: "Waited 25 minutes on Friday", time: "2026-08-22", owner_response: null }] } } };
-    default: return null;
-  }
-}
 
 const good: { text: string; usage: { inputTokens: number; outputTokens: number } } = { text: JSON.stringify({ title: "Reply draft", body: "1. “Waited 25…” — Thank you for telling us; we are adding a host at Friday lunch. Please come back.", acceptance_criteria: ["no compensation"], warnings: [], facts_used: ["voice"], facts_needed: [] }), usage: { inputTokens: 10, outputTokens: 5 } };
 const run = (over: Partial<Parameters<typeof runLiveAssistant>[0]> = {}) =>
   runLiveAssistant({ intentId: "explain_priority", surface: "home", locale: "en", membership: auth("owner").membership, context: { workspaceId: WORKSPACE_ID, locationId: LOCATION_ID }, llmReady: () => true, ...over });
-const writes = () => mocks.db!.calls.filter((c) => c.op !== "select");
+const writes = () => repository.createOutputVersion.mock.calls;
 
 beforeEach(() => {
-  const db = makeDb(respond);
-  const from = db.from;
-  // loadActionRows uses `.or(...)`, which the shared stand-in does not chain.
-  db.from = (table: string) => { const chain = from(table); (chain as Record<string, unknown>).or = (filter: string) => { (chain.eq as (key: string, value: string) => unknown)("location_id", filter.split(",")[0].slice("location_id.eq.".length)); return chain; }; return chain; };
-  mocks.db = db;
+  vi.clearAllMocks();
+  repository.actionScope.mockImplementation(async(id)=>{const row=state.actions.find(a=>a.id===id);return row?{actionId:row.id,workspaceId:row.workspace_id,locationId:row.location_id}:null;});
+  repository.assistantWorkspace.mockResolvedValue({business_name:"Kam Man House",market:"hk",timezone:"Asia/Hong_Kong"});
+  repository.assistantLocations.mockResolvedValue([{id:LOCATION_ID,slug:"yik-yam",name:"Yik Yam",address:null,district:"Happy Valley",is_primary:true},{id:LOCATION_B,slug:"branch-b",name:"Branch B",address:null,district:null,is_primary:false}]);
+  repository.assistantSnapshot.mockImplementation(async(workspaceId,id)=>state.snapshots.find(s=>s.id===id && s.workspaceId===workspaceId) ?? null);
+  repository.assistantLatestSnapshot.mockImplementation(async(workspaceId,locationId)=>state.snapshots.find(s=>s.workspaceId===workspaceId && (!locationId || s.locationId===locationId)) ?? null);
+  repository.assistantBrand.mockResolvedValue({voice:"warm",approved_claims:["Family-run since 1988"],prohibited_terms:["best in Hong Kong"],languages:["zh-HK"],facts:{}});
+  repository.assistantReviewData.mockResolvedValue({gbp:{reviews:[{rating:3,text:"Waited 25 minutes on Friday",time:"2026-08-22",owner_response:null}]}});
+  repository.versionScope.mockResolvedValue(null);
+  repository.assistantDiff.mockImplementation(async (id) => id === diff.id ? diff : null);
+  repository.assistantActions.mockImplementation(async (workspaceId, opts = {}) => state.actions.filter(a =>
+    a.workspace_id === workspaceId && (!opts.locationId || a.location_id === opts.locationId || a.location_id === null) &&
+    (!opts.states || opts.states.includes(a.action_state)) && (!opts.ids || opts.ids.includes(a.id))));
   state.actions = [actionRow, socialRow];
   state.snapshots = [snapshot, base];
 });
@@ -51,6 +40,7 @@ describe("runLiveAssistant", () => {
   it("answers explain intents from the template with real evidence ids and no model call", async () => {
     const llm = vi.fn();
     const result = await run({ intentId: "explain_change", llm });
+    expect(repository.assistantDiff).toHaveBeenCalledWith(diff.id, WORKSPACE_ID, snapshot.jobId);
     expect(llm).not.toHaveBeenCalled();
     expect(result).toMatchObject({ state: "completed", requiresApproval: false, demoBoundary: LIVE_BOUNDARY.en });
     expect(result.runId).toMatch(/^live_run_[0-9a-f-]{36}$/);
@@ -59,7 +49,7 @@ describe("runLiveAssistant", () => {
     expect(result.evidenceRefs.map((r) => r.evidenceId)).toContain(`ev_${SNAPSHOT_ID}_composite`);
     expect(result.evidenceRefs.every((r) => r.scanId === "job-head")).toBe(true);
     expect(writes()).toEqual([]);
-    expect(mocks.db!.rpc).not.toHaveBeenCalled();
+    expect(repository.createOutputVersion).not.toHaveBeenCalled();
   });
 
   it("resolves the snapshot from snapshotId, then the action's source snapshot, then the location's latest", async () => {
@@ -92,7 +82,7 @@ describe("runLiveAssistant", () => {
     expect(result.output!.body).toContain("adding a host");
     expect(result.answer).toContain("「回覆未回覆的 Google 評論」的草稿已準備好");
     expect(writes()).toEqual([]);
-    expect(mocks.db!.rpc).not.toHaveBeenCalled();
+    expect(repository.createOutputVersion).not.toHaveBeenCalled();
   });
 
   it("adds the warmer instruction for friendlier_review_reply and picks the matching open action when none is focused", async () => {
@@ -152,7 +142,7 @@ describe("draft authority from persisted context", () => {
     expect(llmReady).not.toHaveBeenCalled();
     expect(llm).not.toHaveBeenCalled();
     expect(writes()).toEqual([]);
-    expect(mocks.db!.rpc).not.toHaveBeenCalled();
+    expect(repository.createOutputVersion).not.toHaveBeenCalled();
   }
 
   it.each([undefined, LOCATION_B, LOCATION_ID])("denies location-B action with supplied location %s", async (locationId) => {
@@ -166,7 +156,7 @@ describe("draft authority from persisted context", () => {
     expect(llmReady).not.toHaveBeenCalled();
     expect(llm).not.toHaveBeenCalled();
     expect(writes()).toEqual([]);
-    expect(mocks.db!.rpc).not.toHaveBeenCalled();
+    expect(repository.createOutputVersion).not.toHaveBeenCalled();
   });
 
   it("denies implicit drafts at an out-of-scope location and with entirely omitted context", async () => {
@@ -210,7 +200,7 @@ describe("draft authority from persisted context", () => {
     expect(llm.mock.calls[0][0]).toContain("Branch B");
     expect(result.evidenceRefs.every((ref) => ref.evidenceId.includes(SNAPSHOT_B))).toBe(true);
     expect(writes()).toEqual([]);
-    expect(mocks.db!.rpc).not.toHaveBeenCalled();
+    expect(repository.createOutputVersion).not.toHaveBeenCalled();
   });
 
   it.each(["viewer", "manager"] as const)("preserves %s reads of location-B evidence", async (role) => {
@@ -236,7 +226,7 @@ it.each([null, [LOCATION_ID]] as Array<string[] | null>)("allows manager scope %
   expect(result.requiresApproval).toBe(true);
   expect(llm).toHaveBeenCalledTimes(1);
   expect(writes()).toEqual([]);
-  expect(mocks.db!.rpc).not.toHaveBeenCalled();
+  expect(repository.createOutputVersion).not.toHaveBeenCalled();
 });
 
 it("uses the implicitly selected action's source snapshot instead of the location's latest", async () => {
@@ -263,7 +253,7 @@ it("rejects a persisted action/source-snapshot location mismatch", async () => {
   await expect(run({ intentId: "draft_review_reply", context: { workspaceId: WORKSPACE_ID, actionId: ACTION_ID }, llm })).rejects.toMatchObject({ status: 404, code: "not_found" });
   expect(llm).not.toHaveBeenCalled();
   expect(writes()).toEqual([]);
-  expect(mocks.db!.rpc).not.toHaveBeenCalled();
+  expect(repository.createOutputVersion).not.toHaveBeenCalled();
 });
 
 it("denies implicit workspace-wide action using out-of-scope source evidence", async () => {
@@ -273,7 +263,7 @@ it("denies implicit workspace-wide action using out-of-scope source evidence", a
   await expect(run({ intentId: "draft_review_reply", context: { workspaceId: WORKSPACE_ID }, membership: auth("manager", [LOCATION_ID]).membership, llm })).rejects.toMatchObject({ status: 403, code: "forbidden" });
   expect(llm).not.toHaveBeenCalled();
   expect(writes()).toEqual([]);
-  expect(mocks.db!.rpc).not.toHaveBeenCalled();
+  expect(repository.createOutputVersion).not.toHaveBeenCalled();
 });
 
 it.each(["en", "zh-HK", "zh-TW"] as const)("withholds a nonempty draft when required facts are missing (%s)", async (locale) => {
@@ -290,5 +280,5 @@ it.each(["en", "zh-HK", "zh-TW"] as const)("withholds a nonempty draft when requ
   expect(result.evidenceRefs.length).toBeGreaterThan(0);
   expect(llm).toHaveBeenCalledTimes(1);
   expect(writes()).toEqual([]);
-  expect(mocks.db!.rpc).not.toHaveBeenCalled();
+  expect(repository.createOutputVersion).not.toHaveBeenCalled();
 });

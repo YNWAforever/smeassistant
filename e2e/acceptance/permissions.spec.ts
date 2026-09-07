@@ -28,7 +28,7 @@ test("unverified identity and invalid callback cannot acquire workspace authorit
   expect(sql(environment.db, `select count(*) from workspace_members where workspace_id='${merchant.workspaceId}' and accepted_at is not null;`)).toBe("0");
   expect((await page.request.post(`/api/actions/${merchant.actionId}/run`, { data: {} })).status()).toBe(401);
   await page.goto("/auth/callback?code=invalid-fixture-code&locale=en");
-  await expect(page).toHaveURL(/owner\/sign-in\?error=invalid_code/);
+  await expect(page).toHaveURL(/owner\/sign-in\?error=not_authorized/);
   expect(sql(environment.db, `select count(*) from workspace_members where workspace_id='${merchant.workspaceId}' and accepted_at is not null;`)).toBe("0");
 });
 
@@ -47,10 +47,23 @@ test("lite permits three distinct approved deliveries and blocks the fourth", as
 });
 
 
- test("expired real Auth link cannot accept an invitation", async ({ page, merchant, environment }) => {
+ test("expired local fixture link cannot accept an invitation", async ({ page, merchant, environment }) => {
   const link = await requestSignInLink(page, environment, merchant);
-  sql(environment.db, `update auth.users set confirmation_sent_at=now()-interval '2 hours', recovery_sent_at=now()-interval '2 hours' where email='${merchant.emails.owner}';`);
+  environment.expireLink(link);
   await page.goto(link);
   await expect(page).toHaveURL(/error=/);
   expect(sql(environment.db, `select count(*) from workspace_members where workspace_id='${merchant.workspaceId}' and accepted_at is not null;`)).toBe("0");
  });
+
+test('authenticated fixture session can observe an unknown owner route 404',async({page,merchant,environment})=>{
+ await signIn(page,environment,merchant);
+ const response=await page.goto(`/en/owner/${merchant.slug}/fixture-unknown-route`);
+ expect(response?.status()).toBe(404);
+});
+test('local logout revokes retained fixture session credentials',async({page,browser,merchant,environment})=>{
+ await signIn(page,environment,merchant);
+ const state=await page.context().storageState();
+ expect((await page.request.post('/api/auth/sign-out')).status()).toBe(200);
+ const old=await browser.newContext({storageState:state});
+ try {const other=await old.newPage();await other.goto(`${environment.app}/en/owner/${merchant.slug}`);await expect(other).toHaveURL(/owner\/sign-in/);}finally{await old.close();}
+});

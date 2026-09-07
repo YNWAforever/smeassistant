@@ -23,8 +23,8 @@ vi.mock("@/lib/security/rate-limit", () => ({
   enforceCompositeIdentifierRateLimit: limiterMocks.enforceCompositeIdentifierRateLimit,
   rateLimitedResponse: vi.fn(() => new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 })),
 }));
-const supabaseMocks = vi.hoisted(() => ({ supabaseServer: vi.fn(() => ({ marker: "fake-client" })) }));
-vi.mock("@/lib/supabase/admin", () => ({ supabaseServer: supabaseMocks.supabaseServer }));
+const storeMocks = vi.hoisted(() => ({ createScanExecutionStore: vi.fn(() => ({ marker: "neon-store" })) }));
+vi.mock("@/lib/scan/execution-store", () => ({ createScanExecutionStore: storeMocks.createScanExecutionStore, buildTrendDiffDeps: vi.fn(), buildAeoSnapshotDeps: vi.fn() }));
 
 // Under vitest lib/scan/run.ts defaults to the fixture collector (CLAUDE.md
 // 3.2.1). This file exercises the real collectScanProviders through the route
@@ -60,16 +60,13 @@ describe("scan process route", () => {
     }));
     expect(processScan).toHaveBeenCalledWith(
       "00000000-0000-4000-8000-000000000001",
-      "11111111-1111-4111-8111-111111111111",
-      expect.any(Function),
-      expect.any(Function),
-      { marker: "fake-client" },
+      expect.objectContaining({ store: { marker: "neon-store" }, collect: expect.any(Function), persistEvidence: expect.any(Function) }),
     );
     await expect(response.json()).resolves.toEqual({ status: "partial" });
   });
 
-  it("does not construct a Supabase client for a rate-limited request", async () => {
-    supabaseMocks.supabaseServer.mockClear();
+  it("does not construct an execution store for a rate-limited request", async () => {
+    storeMocks.createScanExecutionStore.mockClear();
     vi.mocked(processScan).mockClear();
     limiterMocks.enforceCompositeIdentifierRateLimit.mockResolvedValueOnce({
       allowed: false,
@@ -82,7 +79,7 @@ describe("scan process route", () => {
     }));
     expect(response.status).toBe(429);
     expect(processScan).not.toHaveBeenCalled();
-    expect(supabaseMocks.supabaseServer).not.toHaveBeenCalled();
+    expect(storeMocks.createScanExecutionStore).not.toHaveBeenCalled();
   });
 });
 
@@ -122,20 +119,21 @@ describe("scan process route runtime switch", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("dispatches to the worker and 202s without scanning when the runtime is cloudflare", async () => {
+  it("executes on Neon locally when an unreviewed worker is configured", async () => {
     vi.stubEnv("SCAN_EXECUTION_RUNTIME", "cloudflare");
     vi.stubEnv("SCAN_WORKER_URL", "https://scan-worker.example");
     vi.stubEnv("CRON_SECRET", "d".repeat(32));
     vi.mocked(processScan).mockClear();
+    vi.mocked(processScan).mockResolvedValueOnce({ status: "done" } as never);
     const fetchMock = vi.fn(async () => new Response("{}", { status: 202 }));
     vi.stubGlobal("fetch", fetchMock);
 
     const response = await POST(post());
 
-    expect(response.status).toBe(202);
-    expect(await response.json()).toEqual({ accepted: true });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(processScan).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: "done" });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(processScan).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ store: { marker: "neon-store" } }));
   });
 
   it("still 500s a failed scan when the runtime is vercel, matching the pre-L6 contract", async () => {
@@ -157,25 +155,22 @@ describe("scan process route runtime switch", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("502s without scanning when the worker rejects the dispatch", async () => {
-    // Regression: `{ status: accepted ? 202 : 502 }` collapsed to a bare 202
-    // kept every other test in this file green -- nothing here previously
-    // exercised the rejected-dispatch branch. A silent 202 on a job the
-    // Worker never accepted would make the scanning page poll forever with
-    // no operator signal that dispatch failed.
+  it("returns local scan failure without contacting an unreviewed worker", async () => {
+    // External worker URLs never establish Neon receiver compatibility.
     vi.stubEnv("SCAN_EXECUTION_RUNTIME", "cloudflare");
     vi.stubEnv("SCAN_WORKER_URL", "https://scan-worker.example");
     vi.stubEnv("CRON_SECRET", "d".repeat(32));
     vi.mocked(processScan).mockClear();
+    vi.mocked(processScan).mockResolvedValueOnce({ status: "failed" } as never);
     const fetchMock = vi.fn(async () => new Response("nope", { status: 401 }));
     vi.stubGlobal("fetch", fetchMock);
 
     const response = await POST(post());
 
-    expect(response.status).toBe(502);
-    expect(await response.json()).toEqual({ accepted: false });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(processScan).not.toHaveBeenCalled();
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ status: "failed" });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(processScan).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ store: { marker: "neon-store" } }));
   });
 });
 
@@ -368,7 +363,7 @@ describe("scan process route boundaries", () => {
     let collectedRaw: RawData | undefined;
     let collectedStoriesCount: number | undefined;
     let collectedEvidence: EvidenceCandidate[] | undefined;
-    vi.mocked(processScan).mockImplementationOnce(async (_jobId, _sessionId, collect) => {
+    vi.mocked(processScan).mockImplementationOnce(async (_jobId, { collect }) => {
       const collected = await collect({
         id: "00000000-0000-4000-8000-000000000001",
         business_name: "Demo Cafe",
@@ -604,7 +599,7 @@ describe("scan process route boundaries", () => {
     vi.stubEnv("SERPAPI_API_KEY", "preferred-serp-key");
 
     let aeo: unknown;
-    vi.mocked(processScan).mockImplementationOnce(async (_jobId, _sessionId, collect) => {
+    vi.mocked(processScan).mockImplementationOnce(async (_jobId, { collect }) => {
       const collected = await collect({
         id: "00000000-0000-4000-8000-000000000001",
         business_name: "Demo Cafe",
