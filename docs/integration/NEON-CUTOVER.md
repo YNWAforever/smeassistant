@@ -8,7 +8,7 @@ Prepared locally on 2026-09-07. **Hosted execution: NOT READY / NOT RUN.** The u
 |---|---|
 | Reviewed runtime source | `853bdee87031cd1d1b2282969ab1b238c498d147` |
 | Preparation parent | `0da3b65af99c4c7381907b3b5ad97001a5599d6b`; Task 17 adds documentation, env comments and one SQL rehearsal only |
-| Exact deploy candidate SHA | NOT SELECTED. After independent Task 17 review record the full candidate commit and verify its runtime diff from the reviewed source; a docs/test commit is not a new full-gate run |
+| Reviewed source candidate | `214884c78ba0e4b1cf7e24fbbebca20f459ae1a4`; this eight-file Task 17 commit adds documentation/env comments and one focused SQL recovery test after runtime source `853bdee87031cd1d1b2282969ab1b238c498d147`. The Task 16 full-gate evidence remains attributed to that runtime source plus the protected owner-shell worktree delta. This candidate record does not select a hosted target or authorize deployment, and the later closure commit records review/source identity only |
 | Local Task 16 evidence | All ten technical gates passed on runtime source above **plus** user-owned unstaged `e2e/owner-shell.spec.ts`, SHA256 `C34D6BB9BD439AF56AF8EB3A47693170CE8EC4C54FE6A5DBB112C41C545236D4`. This is not commit-only or remote CI proof |
 | Independent Task 16 review | APPROVED, including readiness fix and explicit pending-invitation amendment; no outstanding Critical/Important findings |
 | Tested runtime | Node `24.18.0`, pnpm `9.12.0`; select Node 24 for the planned deployment and record its actual version. `.nvmrc` 22 is a historical local default, not evidence of a passing Node 22 run |

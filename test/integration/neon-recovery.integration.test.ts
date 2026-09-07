@@ -9,24 +9,25 @@ import { assertOwnedPostgresContainer, startNeonDatabaseFixture } from "./neon-d
 // Existing behavior rehearsal only: no managed Auth, deployment or traffic control.
 it("preserves a new application user and related report across drained access and an owned database restart", async () => {
   const fixture = await startNeonDatabaseFixture("test");
-  const docker = (args: string[]) => execFileSync("docker", args, { encoding: "utf8", windowsHide: true }).trim();
-  const inspect = () => JSON.parse(docker(["inspect", fixture.containerName]))[0] as {
-    Id: string; Config: { Labels: Record<string, string> };
-    HostConfig: { NetworkMode: string; PortBindings: Record<string, unknown> };
-    State: { Running: boolean; StartedAt: string };
-  };
-  const original = inspect();
-  const identity = { databaseUrl: fixture.databaseUrl, databaseName: fixture.databaseName, containerLabels: original.Config.Labels, nodeEnv: "test" };
-  const assertOwned = () => {
-    const current = inspect();
-    assertOwnedPostgresContainer(original.Id, { id: current.Id, labels: current.Config.Labels }, identity);
-    expect(current.HostConfig.NetworkMode).toBe("none");
-    expect(current.HostConfig.PortBindings).toEqual({});
-    return current;
-  };
-  let owner: Pool | undefined = new Pool({ connectionString: fixture.databaseUrl });
+  let owner: Pool | undefined;
   let runtime: Pool | undefined;
   try {
+    const docker = (args: string[]) => execFileSync("docker", args, { encoding: "utf8", windowsHide: true }).trim();
+    const inspect = () => JSON.parse(docker(["inspect", fixture.containerName]))[0] as {
+      Id: string; Config: { Labels: Record<string, string> };
+      HostConfig: { NetworkMode: string; PortBindings: Record<string, unknown> };
+      State: { Running: boolean; StartedAt: string };
+    };
+    const original = inspect();
+    const identity = { databaseUrl: fixture.databaseUrl, databaseName: fixture.databaseName, containerLabels: original.Config.Labels, nodeEnv: "test" };
+    const assertOwned = () => {
+      const current = inspect();
+      assertOwnedPostgresContainer(original.Id, { id: current.Id, labels: current.Config.Labels }, identity);
+      expect(current.HostConfig.NetworkMode).toBe("none");
+      expect(current.HostConfig.PortBindings).toEqual({});
+      return current;
+    };
+    owner = new Pool({ connectionString: fixture.databaseUrl });
     assertOwned();
     await owner.query("CREATE ROLE sme_app_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; CREATE ROLE fixture_runtime LOGIN PASSWORD 'fixture-only' IN ROLE sme_app_runtime");
     await applyMigrations(owner);

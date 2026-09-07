@@ -1,6 +1,6 @@
-# Launch evidence — Task 16 independently approved; Task 17 local preparation
+# Launch evidence — Task 16 independently approved; Task 17 fixes pending re-review
 
-**Current checkpoint (2026-09-07): Task 16 technical gates and independent implementation/specification review are approved, including the invitation policy amendment.** Pending workspace invitations remain valid until accepted or explicitly revoked. Managed sign-in links retain expiry and replay protection. Hosted Neon project, branch and origin are not chosen; hosted database/Auth/mail/Google/provider acceptance, migration, deployment and cutover were not run. Task 17 runbook and local recovery rehearsal are prepared, awaiting independent review. This is neither merge, deployment nor release approval.
+**Current checkpoint (2026-09-07): Task 16 technical gates and independent implementation/specification review are approved, including the invitation policy amendment.** Pending workspace invitations remain valid until accepted or explicitly revoked. Managed sign-in links retain expiry and replay protection. Hosted Neon project, branch and origin are not chosen; hosted database/Auth/mail/Google/provider acceptance, migration, deployment and cutover were not run. Task 17 initial review completed with one Important source-record finding and one Minor fixture-cleanup finding; both bounded fixes are prepared locally and await independent re-review. This is neither merge, deployment nor release approval.
 
 Use only these status values: `passed`, `failed`, `blocked`, `not run`. A pass applies only to the named category on the recorded commit/deployment. Record failed and blocked attempts as separate rows before adding a successful rerun. No credentials, cookies, private payloads or test contact details belong here.
 
@@ -33,7 +33,7 @@ Tasks 11–15 are approved and the pinned Neon SDK/auth-js exception is complete
 
 ## Task 17 local preparation — 2026-09-07
 
-Prepared [Neon cutover and recovery runbook](NEON-CUTOVER.md), configuration source/scope map, immutable migration byte checksums, named-but-unassigned operational roles, bounded proposed acceptance and recovery decisions. Hosted project/region/branch/database/origins/accounts remain NOT CHOSEN. All external operations remain NOT READY / NOT RUN. Task 17 independent review is pending.
+Prepared [Neon cutover and recovery runbook](NEON-CUTOVER.md), configuration source/scope map, immutable migration byte checksums, named-but-unassigned operational roles, bounded proposed acceptance and recovery decisions. Hosted project/region/branch/database/origins/accounts remain NOT CHOSEN. All external operations remain NOT READY / NOT RUN. Task 17 independent re-review is pending after the bounded fixes.
 
 | Check | Status | Evidence / boundary |
 |---|---|---|
@@ -45,7 +45,8 @@ Prepared [Neon cutover and recovery runbook](NEON-CUTOVER.md), configuration sou
 | Hosted rollback / prior deployed build / traffic maintenance | not run | Local restart/reconnect of current repository only; no hosted Neon restore, traffic change, provider/Auth/mail or old-build execution |
 | Hosted release readiness | blocked | Target, origin, identities, operators, budget and compatible recovery deployment not chosen; no provisioning/migration/deployment/promotion |
 
-Task 17 parent source is `0da3b65af99c4c7381907b3b5ad97001a5599d6b`. Changes are docs/env comments and the new recovery test; runtime source remains `853bdee87031cd1d1b2282969ab1b238c498d147`. The earlier all-ten-gate counts above were not rerun for this slice and must not be attributed to the new candidate commit. The protected owner-shell delta remains unstaged and retains its recorded SHA256; no commit-only or remote-CI claim is made. Actual deployment candidate SHA/ID must be recorded after review and applicable authorization. Operational evidence belongs in a later separate record/commit.
+Task 17 parent source is `0da3b65af99c4c7381907b3b5ad97001a5599d6b`. Reviewed source candidate `214884c78ba0e4b1cf7e24fbbebca20f459ae1a4` is the eight-file documentation/env-comment/focused-recovery-test commit; production runtime source remains `853bdee87031cd1d1b2282969ab1b238c498d147`. The earlier all-ten-gate counts above were not rerun for this slice and remain attributed to that runtime source plus the protected owner-shell worktree delta. The protected file remains unstaged with its recorded SHA256; no commit-only or remote-CI claim is made. The closure commit records review/source identity only: it does not select a hosted target, authorize deployment, or supply a deployment ID. Operational evidence belongs in a later separately authorized record/commit.
+Review-fix verification: the post-acquisition Docker inspect, identity derivation and pool setup now execute inside the same `try/finally` that calls `fixture.stop()`, so an early setup failure after fixture acquisition reaches owned cleanup. The focused actual-SQL recovery test passed once after this change: **1 file / 1 test**, exit 0, 11.16s (7.92s test time). Root plus all four package typechecks passed; scoped recovery-test ESLint passed with no output; Neon inventory passed; inventory regression passed **1 file / 11 tests**, exit 0. No heavy full gate was rerun, and no new full-gate epoch is claimed.
 
 ## Historical pre-Neon acceptance table — not current Task 16 proof
 
