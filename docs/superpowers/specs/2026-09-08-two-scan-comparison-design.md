@@ -1,7 +1,7 @@
 # Changes-first two-scan comparison
 
 Date: 2026-09-08
-Status: Written specification approved by the user on 2026-09-08. Not implemented.
+Status: Implemented and independently reviewed through runtime commit `855f647`; the full local repository gate passed and verification is recorded in the documentation commit containing this file.
 Baseline: origin/main at be2107d429f2b924f3441765caa24a06a2a1fbac (PR #9 merged).
 
 ## Outcome and scope
@@ -24,7 +24,7 @@ Use persisted location identity, not business-name similarity or caller-supplied
 
 Show both scan dates. When a newer eligible-to-read candidate cannot be compared and an older candidate is selected, describe the pair as the previous comparable scan rather than the immediately previous scan. Never disclose inaccessible candidates, their existence, dates, counts, or evidence.
 
-Do not silently select the best-looking result. Selection depends on chronological order and comparability, never the direction or size of a change. Candidate lookup must remain location-scoped and deterministically ordered. Reuse repository pagination as needed; any safety bound must yield an explicit unavailable result when exhausted rather than a false first-scan claim.
+Do not silently select the best-looking result. Selection depends on chronological order and comparability, never the direction or size of a change. Candidate lookup must remain location-scoped and deterministically ordered. Reuse repository pagination as needed. A safety-bound exhaustion remains an internal selector result and is projected outward as the same neutral `no_accessible_pair` state used for empty or inaccessible history. It must never create a false first-scan claim or reveal hidden history cardinality.
 
 ## Comparable values and coverage
 
@@ -62,10 +62,10 @@ Metric tests assert exact values and differences for matched queries/settings, m
 
 Authorization tests deny each side independently, including a viewer grant for the current report only, revoked/expired grants where supported, and omitted or spoofed context. Check that inaccessible candidate metadata never leaks. Preserve existing accepted-viewer and manager read regressions and draft-denial tests. Test public and locked props, HTML, and real RSC payloads, not only hidden UI.
 
-Component and browser fixtures cover a valid changed pair, unchanged pair, partial coverage, no comparable history, and comparison lookup failure in all three languages at mobile and desktop sizes. Verify readable labels, dates, expandable evidence, keyboard operation, and unchanged access to the current report.
+Component tests cover valid changed, unchanged, IG-only, partial, and unavailable states in all three languages. Actual-route browser coverage proves locked and current-only-unlocked HTML/RSC privacy plus the unavailable state. Because the default route cannot independently authorize an earlier scan and no fixture-only browser surface exists, successful-pair browser screenshots and keyboard disclosure activation remain explicit release gaps rather than passed cases.
 
 Run focused tests, the normal repository gate, and the relevant fixture E2E suites during implementation. Report exact passes, failures, and skips separately; do not treat skipped cases as passed. Independent authorization and test review belongs before integration. No live scan, provider, shared-database mutation, or deployment is needed to verify this design.
 
 ## Review and next step
 
-The user approved this complete specification on 2026-09-08. The implementation plan is docs/superpowers/plans/2026-09-08-two-scan-comparison.md. Execute one reviewable slice at a time after execution selection. Runtime implementation and publication have not begun.
+The user approved this complete specification on 2026-09-08. The implementation plan is docs/superpowers/plans/2026-09-08-two-scan-comparison.md. Tasks 1-5, the whole-branch authorization/test review, and the Task 6 local repository gate are complete through runtime commit `855f647`. Verification is recorded in `docs/integration/2026-09-08-two-scan-comparison-verification.md`. No publication is included. The next task is branch integration; the successful-pair browser and default-route authorization-entry-point limitation remains unresolved. No publication is included.

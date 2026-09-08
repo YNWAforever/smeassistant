@@ -64,7 +64,9 @@ export interface QueryFact {
 export interface QueryCohort {
   key: string; // exact JSON tuple [engine, queryType, gl, hl, location, device, ll, surface]
   engine: string; surface: 'organic' | 'maps' | 'ai';
-  label: string; facts: QueryFact[]; complete: boolean;
+  label: string; queryType: string; gl: string; hl: string;
+  location: string; device: string; ll: string | null;
+  facts: QueryFact[]; complete: boolean;
 }
 export interface ComparisonInput {
   scannedAt: string;
@@ -73,6 +75,8 @@ export interface ComparisonInput {
 }
 export interface MetricChange {
   key: string; engine: string; surface: 'organic' | 'maps' | 'ai';
+  queryType: string; gl: string; hl: string; location: string;
+  device: string; ll: string | null;
   previous: number; current: number; denominator: number;
   deltaPercentagePoints: number;
   direction: 'increased' | 'decreased' | 'unchanged';
@@ -93,7 +97,9 @@ export type ScanComparison =
       | 'invalid_current_scan' | 'lookup_failed' | 'history_limit' };
 ```
 
-An IG-only compatible pair is valid, but yields zero search-change counts and a neutral sample-coverage card. UI says no comparable search measurements, not no business change. Query labels in output must use current safe text conventions; exact identity stays server-side. The output key must be an opaque deterministic row index, not the raw settings tuple.
+`history_limit` is an internal selector state only. Authorized view-model and report-props projections must collapse it to `no_accessible_pair`, making empty, all-denied, and capped-denied history indistinguishable in serialized output.
+
+An IG-only compatible pair is valid, but yields zero search-change counts and a neutral sample-coverage card. UI says no comparable search measurements, not no business change. Query labels and scope fields in output must use current safe text conventions; exact query and raw cohort identity stay server-side. Unknown or conflicting facts remain represented internally so omission counts are truthful, but they never enter the comparable denominator or direction. The output key must be an opaque deterministic row index, not the raw settings tuple.
 
 ### Task 1: Derive exact common-cohort changes
 
@@ -129,7 +135,7 @@ const input = (facts: QueryFact[]): ComparisonInput => ({
 
 - [ ] Run `corepack pnpm exec vitest run lib/report/comparison/derive.test.ts`; expect failure from the missing derivation export, not test configuration.
 - [ ] Refactor the existing private search validation into a shared internal result consumed by both display and comparison derivation. Keep display output byte-for-byte equivalent on existing fixtures. Capture exact raw query/settings before text truncation. Require nonempty engine/query/query type/gl/hl/location/device; ll may be explicit null. Missing context excludes the cohort. Do not invent missing context from defaults.
-- [ ] Fold repeated identical query outcomes to one fact. A conflicting outcome, or any unknown repeated fact for a query, excludes that query. Observation timestamps are preserved only when identical across collapsed facts; otherwise null. Apply the existing organic success/presence rules before folding. No time-based cherry-picking.
+- [ ] Fold repeated identical query outcomes to one fact. Retain a valid query identity with `outcome: 'unknown'` when its stored observations are unknown or conflicting, so it contributes to omission totals while remaining excluded from the comparable denominator and direction. Observation timestamps are preserved only when unambiguous and identical across collapsed facts; otherwise null. Apply the existing organic success/presence rules before folding. No time-based cherry-picking.
 - [ ] Compute per-group intersection of eligible exact query keys. Sum previous/current booleans over that intersection. Difference is `100 * (current - previous) / denominator`; compare integer counts for direction. Output exactly one row per cohort, never separate numerator and percentage rows.
 - [ ] Enforce existing 1000-input and 50-group bounds. Mark an affected cohort incomplete and withhold its delta if input/group truncation prevents complete matching. Cap comparable cohort evidence at 50 queries by withholding an oversized cohort, rather than computing a hidden partial intersection. Sanitize display strings only after identity matching. Count withheld groups separately.
 - [ ] Compare IG counts only when both measured samples are complete and use stored-post-sample-v1. Return null if there is neither a search row nor comparable IG coverage. Keep IG out of direction counts.
@@ -174,7 +180,7 @@ LIMIT 25 OFFSET $2
 
 The actual SELECT must include all PublicReportJob columns, each qualified with candidate, preserving float/text casts in reportsRepository. No raw_data, findings or grants are part of candidate reads.
 
-- [ ] Validate current status done/partial and valid completed timestamp/location/workspace. In the loader recheck each candidate's same workspace/location, done/partial status, and strictly earlier valid timestamp even though SQL constrains them. Authorize before readInput. Compare in query order and return the first non-null result. After 1000 candidates, fetch one more metadata page to distinguish exhaustion from history_limit; do not authorize or read extra evidence. Catch failures as lookup_failed without exception text or IDs. Denied-all and empty history share no_accessible_pair.
+- [ ] Validate current status done/partial and valid completed timestamp/location/workspace. In the loader recheck each candidate's same workspace/location, done/partial status, and strictly earlier valid timestamp even though SQL constrains them. Authorize before readInput. Compare in query order and return the first non-null result. After 1000 candidates, fetch one more metadata page to distinguish internal exhaustion from `history_limit`; do not authorize or read extra evidence. Collapse that internal reason to `no_accessible_pair` at every outward projection. Catch failures as lookup_failed without exception text or IDs. Empty, all-denied, and capped-denied history serialize identically.
 - [ ] Run the loader tests to green. Add owned SQL fixtures for another workspace, another location, identical names, tied dates, partial completion, incomplete jobs, and pagination. Use the existing owned integration harness, never DATABASE_URL from a shared environment. Run `corepack pnpm exec vitest run --config vitest.integration.config.ts test/integration/neon-report-comparison.integration.test.ts`; require NEON_INTEGRATION=1 and Docker Linux before execution.
 - [ ] Obtain independent authorization/SQL review, fix findings, and commit explicit files as `feat: select independently authorized report history`.
 
