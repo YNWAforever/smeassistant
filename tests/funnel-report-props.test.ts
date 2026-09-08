@@ -54,7 +54,8 @@ describe("buildReportProps", () => {
     expect(props.score).toBe(58);
     expect(props.coverage).toBe(70);
     expect(props.market).toBe("hk");
-    expect(props.comparison).toEqual({ kind: "first_scan" });
+    expect(props.comparison).toEqual({ kind: "not_evaluated" });
+    expect(props).not.toHaveProperty("scanComparison");
     expect(props.locked).toEqual({ hiddenFindingCount: 7, unlockHref: "/zh-HK/unlock/share-slug?market=HK" });
     expect(props.findingGroups).toEqual([]);
     expect(props.summary).toBeNull();
