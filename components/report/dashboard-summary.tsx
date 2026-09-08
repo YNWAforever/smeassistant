@@ -14,8 +14,8 @@ export function DashboardSummary({ report }: { report: ReportProps }) {
   const measured = report.modules.filter(module => module.state === "measured").length;
   const accessNote = report.sample ? c.sampleNote : report.access === "member" ? c.memberNote : ["viewer", "staff"].includes(report.access) ? c.viewerNote : null;
   const subtitle = report.subtitle ?? [report.market === "tw" ? c.marketTW : c.marketHK, report.district, report.industry].filter(Boolean).join(" · ");
-  const title = failed ? c.failedTitle : score == null ? c.withheldTitle : comparison.kind === "comparable" ? comparison.title : comparison.kind === "incomparable" ? c.comparisonLabel : c.firstScanTitle;
-  const body = failed ? c.failedBody : score == null ? c.withheldBody : comparison.kind === "comparable" ? comparison.body : comparison.kind === "incomparable" ? comparison.reason : c.firstScanBody;
+  const title = failed ? c.failedTitle : score == null ? c.withheldTitle : comparison.kind === "comparable" ? comparison.title : comparison.kind === "incomparable" || comparison.kind === "not_evaluated" ? c.comparisonLabel : c.firstScanTitle;
+  const body = failed ? c.failedBody : score == null ? c.withheldBody : comparison.kind === "comparable" ? comparison.body : comparison.kind === "incomparable" ? comparison.reason : comparison.kind === "not_evaluated" ? d.unavailable : c.firstScanBody;
   const scanDate = report.scannedAt && !Number.isNaN(Date.parse(report.scannedAt)) ? report.scannedAt : null;
   const summary = report.access !== "public" && !report.locked ? report.summary : null;
   return <section className={styles.summary} aria-labelledby="dashboard-title">

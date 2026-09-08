@@ -383,6 +383,11 @@ function makeLoaderDeps(options: {
   publicFindings?: ReturnType<typeof publicFindingsFixture>;
   authorizedJob?: AuthorizedJobData;
   authorizedFindings?: LoadedAuthorizedFinding[];
+  earlierJobs?: PublicReportJob[];
+  authorizedJobsById?: Record<string, AuthorizedJobData>;
+  membershipsByJob?: Record<string, ReportWorkspaceMembership | null>;
+  grantsByJob?: Record<string, ViewerGrantRecord | null>;
+  historyThrows?: boolean;
 } = {}) {
   const publicJob = options.publicJob ?? publicJobFixture();
   const publicFindings = options.publicFindings ?? publicFindingsFixture();
@@ -397,7 +402,12 @@ function makeLoaderDeps(options: {
     findings: publicFindings,
     count: publicFindings.length,
   }));
-  const readAuthorizedJobData = vi.fn(async () => authorizedJob);
+  const readEarlierReportJobs = vi.fn(async () => {
+    if (options.historyThrows) throw new Error("history unavailable");
+    return options.earlierJobs ?? [];
+  });
+  const readAuthorizedJobData = vi.fn(async (jobId: string) =>
+    options.authorizedJobsById?.[jobId] ?? authorizedJob);
   const readAuthorizedFindings = vi.fn(async () => authorizedFindings);
   const readApprovedAgentRuns = vi.fn(async () => []);
   const findViewerGrant = vi.fn(async () => {
@@ -435,14 +445,17 @@ function makeLoaderDeps(options: {
   }));
   const getViewerToken = vi.fn(async () => options.viewerToken ?? null);
   const getStaffUser = vi.fn(async () => options.staffUser ?? null);
-  const getMembership = vi.fn(async () => options.membership ?? null);
+  const getMembership = vi.fn(async (job: { id: string }) => {
+    if (options.membershipsByJob && Object.hasOwn(options.membershipsByJob, job.id)) return options.membershipsByJob[job.id] ?? null;
+    return options.membership ?? null;
+  });
   const scheduleAfter = vi.fn((work: () => Promise<void>) => {
     scheduled.push(work);
   });
 
   const store = {
     readPublicJobBySlug,
-    readEarlierReportJobs: vi.fn(async () => []),
+    readEarlierReportJobs,
     readPublicFindings,
     readAuthorizedJobData,
     readAuthorizedFindings,
@@ -467,7 +480,7 @@ function makeLoaderDeps(options: {
     }),
     getMembership,
     readPublicJobBySlug,
-    readEarlierReportJobs: vi.fn(async () => []),
+    readEarlierReportJobs,
     readPublicFindings,
     readAuthorizedJobData,
     readAuthorizedFindings,
@@ -960,4 +973,86 @@ it("projects search observations only from the authorized stored payload", async
   expect(model).toHaveProperty("scanMetrics.search.0.denominator", 1);
   expect(model).toHaveProperty("scanMetrics.search.0.observations.0.query", "PRIVATE_METRICS_QUERY");
   expect(JSON.stringify(model)).not.toContain("NOT_METRICS_EVIDENCE");
+});
+
+describe("scan comparison authorization integration", () => {
+  const currentJob = () => ({ ...publicJobFixture(), workspace_id: "ws-1", location_id: "loc-1" });
+  const candidateJob = (): PublicReportJob => ({
+    ...currentJob(), id: "job-previous", share_slug: "previous",
+    completed_at: "2026-08-06T01:00:00.000Z",
+  });
+  const currentData = authorizedJobFixture({ raw_data: { ig: { posts: [{ id: "current-1" }, { id: "current-2" }] } } });
+  const previousData = authorizedJobFixture({ raw_data: { ig: { posts: [{ id: "previous-1" }] } } });
+
+  it("authorizes each historical candidate by its own membership before reading private data", async () => {
+    const deps = makeLoaderDeps({
+      publicJob: currentJob(), earlierJobs: [candidateJob()], authorizedJob: currentData,
+      authorizedJobsById: { "job-previous": previousData },
+      membershipsByJob: { "job-1": { workspaceId: "ws-1", role: "manager" }, "job-previous": null },
+    });
+
+    const model = await deps.loader("slug-1", "en");
+
+    expect(model.access).toBe("member");
+    expect(model).toHaveProperty("scanComparison", { kind: "unavailable", reason: "no_accessible_pair" });
+    expect(deps.getMembership).toHaveBeenCalledWith({ id: "job-previous", workspaceId: "ws-1" });
+    expect(deps.readAuthorizedJobData).toHaveBeenCalledWith("job-1");
+    expect(deps.readAuthorizedJobData).not.toHaveBeenCalledWith("job-previous");
+  });
+
+  it("loads a pair when injected membership independently authorizes both jobs", async () => {
+    const membership = { workspaceId: "ws-1", role: "manager" as const };
+    const deps = makeLoaderDeps({
+      publicJob: currentJob(), earlierJobs: [candidateJob()], authorizedJob: currentData,
+      authorizedJobsById: { "job-previous": previousData },
+      membershipsByJob: { "job-1": membership, "job-previous": membership },
+    });
+
+    const model = await deps.loader("slug-1", "en");
+
+    expect(model).toHaveProperty("scanComparison.kind", "available");
+    expect(model).toHaveProperty("scanComparison.changes.ig", { previous: 1, current: 2, delta: 1 });
+    expect(deps.readAuthorizedJobData).toHaveBeenCalledWith("job-previous");
+  });
+
+  it.each([
+    ["current-only viewer token", {}],
+    ["revoked candidate grant", { revoked_at: new Date().toISOString() }],
+    ["expired candidate grant", { expires_at: new Date(Date.now() - 1000).toISOString() }],
+  ])("does not let a %s authorize candidate evidence", async (_case, candidateGrantOverrides) => {
+    const current = createViewerAccessGrant();
+    const candidateGrant = createViewerAccessGrant({
+      id: current.grant.id, job_id: "job-previous", token_hash: current.grant.token_hash,
+      ...candidateGrantOverrides,
+    }).grant;
+    const deps = makeLoaderDeps({
+      viewerToken: current.viewerToken, grant: current.grant, publicJob: currentJob(),
+      earlierJobs: [candidateJob()], authorizedJob: currentData,
+      grantsByJob: { "job-1": current.grant, "job-previous": Object.keys(candidateGrantOverrides).length ? candidateGrant : null },
+    });
+
+    const model = await deps.loader("slug-1", "en");
+
+    expect(model.access).toBe("viewer");
+    expect(model).toHaveProperty("scanComparison", { kind: "unavailable", reason: "no_accessible_pair" });
+    expect(deps.findViewerGrant).toHaveBeenCalledWith("job-previous", current.grant.id);
+    expect(deps.readAuthorizedJobData).not.toHaveBeenCalledWith("job-previous");
+  });
+
+  it("keeps the public early return free of history and comparison data", async () => {
+    const deps = makeLoaderDeps({ publicJob: currentJob(), earlierJobs: [candidateJob()] });
+    const model = await deps.loader("slug-1", "en");
+    expect(model.access).toBe("public");
+    expect(model).not.toHaveProperty("scanComparison");
+    expect(deps.readEarlierReportJobs).not.toHaveBeenCalled();
+  });
+
+  it("contains comparison lookup failure while preserving the authorized current report", async () => {
+    const membership = { workspaceId: "ws-1", role: "manager" as const };
+    const deps = makeLoaderDeps({ publicJob: currentJob(), authorizedJob: currentData, membership, historyThrows: true });
+    const model = await deps.loader("slug-1", "en");
+    expect(model.access).toBe("member");
+    expect(model).toHaveProperty("summary", "CACHED_SUMMARY");
+    expect(model).toHaveProperty("scanComparison", { kind: "unavailable", reason: "lookup_failed" });
+  });
 });

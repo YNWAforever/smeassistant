@@ -32,6 +32,12 @@ describe("dashboard summary", () => {
     expect(root.textContent).toContain(copy.en.funnel.report.viewerNote);
     expect(root.querySelector(".delta-up, .delta-down")).toBeNull();
   });
+  it("uses neutral copy when a real report comparison has not been evaluated", () => {
+    const root = markup(<DashboardSummary report={{ ...report, comparison: { kind: "not_evaluated" } }} />);
+    expect(root.textContent).toContain(copy.en.funnel.report.comparisonLabel);
+    expect(root.textContent).toContain(copy.en.funnel.report.dashboard.unavailable);
+    expect(root.textContent).not.toContain(copy.en.funnel.report.firstScan);
+  });
   it("shows incomparable reasons even when the overall score is withheld", () => {
     const root = markup(<DashboardSummary report={{ ...report, score: null, comparison: { kind: "incomparable", reason: "Scoring versions differ" } }} />);
     expect(root.textContent).toContain("Scoring versions differ");

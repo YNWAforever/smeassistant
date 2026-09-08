@@ -1,4 +1,6 @@
 import { deriveScanMetrics } from "./scan-metrics/derive";
+import { deriveComparisonInput } from "./comparison/derive";
+import { loadScanComparison } from "./comparison/load";
 import { unstable_noStore as noStore } from "next/cache";
 import { after } from "next/server";
 import { cookies } from "next/headers";
@@ -101,18 +103,17 @@ export function createReportLoader(
     const job = await deps.store.readPublicJobBySlug(shareSlug);
     if (!job) notFound();
 
-    const access = await authorizeReport({
-      // Normalise the column before authorizing. authorizeReport lets a caller vouch
-      // for scope when the job row carries no workspace_id at all; the loader always
-      // selects that column (PUBLIC_JOB_COLUMNS), so an unattached job must present
-      // as an explicit null and fail closed instead of trusting the membership.
-      job: { ...job, workspace_id: job.workspace_id ?? null },
-      viewerToken: await deps.getViewerToken(),
-      staffUser: await deps.getStaffUser(),
-      workspaceMembership: await getMembership({ id: job.id, workspaceId: job.workspace_id ?? null }),
-      lookupGrant: (grantId) => deps.store.findViewerGrant(job.id, grantId),
-      markUsed: (grantId) => deps.store.markViewerGrantUsed(job.id, grantId),
+    const viewerToken = await deps.getViewerToken();
+    const staffUser = await deps.getStaffUser();
+    const authorizeJob = async (candidate: PublicReportJob) => authorizeReport({
+      job: { ...candidate, workspace_id: candidate.workspace_id ?? null },
+      viewerToken,
+      staffUser,
+      workspaceMembership: await getMembership({ id: candidate.id, workspaceId: candidate.workspace_id ?? null }),
+      lookupGrant: (grantId) => deps.store.findViewerGrant(candidate.id, grantId),
+      markUsed: (grantId) => deps.store.markViewerGrantUsed(candidate.id, grantId),
     });
+    const access = await authorizeJob(job);
 
     if (access.kind === "public") {
       const publicData = await deps.store.readPublicFindings(job.id);
@@ -148,12 +149,30 @@ export function createReportLoader(
       },
     );
     const modules = moduleResults(job);
-    const scanMetrics = deriveScanMetrics(authorizedJob.raw_data, {
+    const measured = {
       ig: modules.ig?.status === "measured",
       aeo: modules.aeo?.status === "measured",
-    });
+    };
+    const scanMetrics = deriveScanMetrics(authorizedJob.raw_data, measured);
+    const scanComparison = await loadScanComparison(
+      job,
+      deriveComparisonInput(authorizedJob.raw_data, measured, job.completed_at ?? ""),
+      {
+        list: (id, offset) => deps.store.readEarlierReportJobs(id, offset),
+        authorize: async (candidate) => (await authorizeJob(candidate)).kind !== "public",
+        readInput: async (candidate) => {
+          const data = await deps.store.readAuthorizedJobData(candidate.id);
+          const candidateModules = moduleResults(candidate);
+          return deriveComparisonInput(data.raw_data, {
+            ig: candidateModules.ig?.status === "measured",
+            aeo: candidateModules.aeo?.status === "measured",
+          }, candidate.completed_at ?? "");
+        },
+      },
+    );
     const authorized: AuthorizedReportSource = {
       scanMetrics,
+      scanComparison,
       summary,
       proof: sanitizeReportProof(authorizedJob.raw_data, findings),
       evidence,

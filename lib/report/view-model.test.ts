@@ -249,3 +249,35 @@ describe("scan metrics model boundary", () => {
     expect(buildReportProps(model, "en")).toHaveProperty("scanMetrics", scanMetrics);
   });
 });
+
+describe("scan comparison model boundary", () => {
+  const scanComparison = {
+    kind: "available" as const,
+    changes: {
+      previousScannedAt: "2026-08-06T01:00:00.000Z", currentScannedAt: "2026-09-06T01:00:00.000Z",
+      rows: [], counts: { increased: 937471, decreased: 0, unchanged: 0 }, ig: null, unavailableGroups: 0,
+    },
+  };
+  const source = { ...fixture, authorized: { ...fixture.authorized!, scanComparison } };
+
+  it("omits poisoned comparison data from public models and props", () => {
+    const model = buildReportViewModel(source, { kind: "public" });
+    const props = buildReportProps({ ...model, scanComparison } as typeof model, "en");
+    for (const value of [model, props]) {
+      expect(value).not.toHaveProperty("scanComparison");
+      expect(JSON.stringify(value)).not.toContain("937471");
+    }
+  });
+
+  it.each([
+    { kind: "viewer" as const, grantId: "grant-1" },
+    { kind: "member" as const, workspaceId: "ws-1", role: "manager" as const },
+    { kind: "staff" as const, userId: "staff-1", email: "staff@example.test" },
+  ])("carries comparison only through authorized model and props: $kind", (access) => {
+    const model = buildReportViewModel(source, access);
+    expect(model).toHaveProperty("scanComparison", scanComparison);
+    const props = buildReportProps(model, "en");
+    expect(props).toHaveProperty("scanComparison", scanComparison);
+    expect(props.comparison).toEqual({ kind: "not_evaluated" });
+  });
+});
