@@ -28,8 +28,10 @@ export async function GET(request: Request) {
       const exchanged = process.env.SME_TEST_IDENTITY
         ? await (await import("@/test/e2e/composition")).exchangeFixtureVerifier(request)
         : await (await import("@/lib/identity/neon")).getNeonAuth().middleware()(new NextRequest(request));
-      const handoff = cleanCallbackHandoff(request, exchanged);
-      if (handoff) return handoff;
+      if (exchanged) {
+        const handoff = cleanCallbackHandoff(request, exchanged);
+        if (handoff) return handoff;
+      }
       await signOut();
       return NextResponse.redirect(landing(request, flow, requestUrl.searchParams.get("error") === "access_denied" ? "cancelled" : "invalid_code"));
     }

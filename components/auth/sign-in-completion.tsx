@@ -46,7 +46,9 @@ export function SignInCompletion({ flow }: { flow: AuthFlow }) {
   const heading = useRef<HTMLHeadingElement>(null);
   const previousScreen = useRef(screen);
   const method = completionMethod(flow);
-  routerRef.current = router;
+  useEffect(() => {
+    routerRef.current = router;
+  }, [router]);
 
   useEffect(() => {
     if (previousScreen.current !== screen) heading.current?.focus();
