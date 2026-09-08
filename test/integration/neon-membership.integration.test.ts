@@ -75,6 +75,28 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon membership boundaries
   expect(await members.ownedWorkspace(user.id)).toEqual({workspaceId:ws});
   expect(await members.listAccepted(user.id)).toMatchObject([{workspace_id:ws,workspace_slug:"shop",role:"owner"}]);
  });
+ it.each(["owner", "manager", "viewer"])("allows %s sign-in mail before and after invitation acceptance without changing authority", async role => {
+  const user=await resolveApplicationUser(identity()); const ws=await workspace();
+  await runtime.query("INSERT INTO workspace_members(workspace_id,email,role) VALUES($1,$2,$3)",[ws,user.email,role]);
+  expect(await members.hasSignInMembership("MEMBER@example.test")).toBe(true);
+  expect(await members.accepted(user.id,ws)).toBeNull();
+  await members.bindPending(user);
+  expect(await members.hasPendingInvitation(user.email)).toBe(false);
+  const before=await members.team(ws);
+  expect(await members.hasSignInMembership("MEMBER@example.test")).toBe(true);
+  expect(await members.team(ws)).toEqual(before);
+  expect(await members.hasSignInMembership("unknown@example.test")).toBe(false);
+  await members.remove(ws,before[0].id);
+  expect(await members.hasSignInMembership(user.email)).toBe(false);
+ });
+ it("uses the mapped identity's current email rather than a stale accepted invitation address", async () => {
+  const user=await resolveApplicationUser(identity()); const ws=await workspace();
+  await runtime.query("INSERT INTO workspace_members(workspace_id,user_id,email,role,accepted_at) VALUES($1,$2,'stale@example.test','owner',now())",[ws,user.id]);
+  expect(await members.hasSignInMembership("stale@example.test")).toBe(false);
+  expect(await members.hasSignInMembership(user.email)).toBe(true);
+  await runtime.query("DELETE FROM auth_identities WHERE user_id=$1",[user.id]);
+  expect(await members.hasSignInMembership(user.email)).toBe(false);
+ });
  it("pending mail recipients exclude already accepted rows", async () => {
   const ws=await workspace();
   await members.invite({workspaceId:ws,email:"member@example.test",role:"viewer",invitedBy:null});

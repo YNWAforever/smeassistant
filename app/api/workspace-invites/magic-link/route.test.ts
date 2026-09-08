@@ -2,12 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const signInWithOtp = vi.fn(async () => ({ error: null }));
 const from = vi.fn();
+const signInRecipient = vi.fn();
 const rateLimit = vi.fn();
 
 vi.mock("@/lib/identity/neon", () => ({
   getNeonAuth: () => ({ signIn: { magicLink: signInWithOtp } }),
 }));
-vi.mock("@/lib/repositories/membership", () => ({ membershipRepository: { hasPendingInvitation: (email:string) => from(email) } }));
+vi.mock("@/lib/repositories/membership", () => ({ membershipRepository: { hasPendingInvitation: (email:string) => from(email), hasSignInMembership: (email:string) => signInRecipient(email) } }));
 vi.mock("@/lib/security/rate-limit", () => ({
   enforceCompositeIdentifierRateLimit: () => rateLimit(),
   rateLimitUnavailableResponse: () => new Response(JSON.stringify({ error: "unavailable" }), { status: 503 }),
@@ -27,6 +28,7 @@ function pendingRow(exists: boolean) { return Promise.resolve(exists); }
 beforeEach(() => {
   process.env.NEXT_PUBLIC_SITE_URL = "https://app.example.com";
   rateLimit.mockResolvedValue({ allowed: true, unavailable: false });
+  signInRecipient.mockImplementation((email: string) => from(email));
 });
 
 afterEach(() => {
@@ -50,6 +52,14 @@ describe("POST /api/workspace-invites/magic-link", () => {
     );
   });
 
+  it("mails a returning accepted member even after the pending invitation is consumed", async () => {
+    from.mockResolvedValue(false);
+    signInRecipient.mockResolvedValue(true);
+    const res = await post({ email: "MEMBER@example.com" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+    expect(signInWithOtp).toHaveBeenCalledWith({ email: "member@example.com", callbackURL: "https://app.example.com/auth/callback?locale=zh-HK" });
+  });
   // Local additions: locale and returnTo travel on the link; the origin falls
   // back to the request when NEXT_PUBLIC_SITE_URL is unset.
   it("carries the validated locale and returnTo, dropping unsafe values", async () => {

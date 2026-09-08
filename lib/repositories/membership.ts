@@ -46,6 +46,15 @@ export const membershipRepository = {
  async hasPendingInvitation(email: string): Promise<boolean> {
   return Boolean((await getPool().query("SELECT id FROM workspace_members WHERE lower(email)=lower($1) AND accepted_at IS NULL LIMIT 1",[email])).rows.length);
  },
+ /** Mail eligibility only: never grants workspace access or rebinds a membership. */
+ async hasSignInMembership(email: string): Promise<boolean> {
+  return Boolean((await getPool().query(`SELECT m.id FROM workspace_members m
+   LEFT JOIN app_users u ON u.id=m.user_id
+   WHERE (m.user_id IS NULL AND m.accepted_at IS NULL AND lower(m.email)=lower($1))
+      OR (m.accepted_at IS NOT NULL AND lower(u.email)=lower($1)
+          AND EXISTS (SELECT 1 FROM auth_identities i WHERE i.user_id=u.id))
+   LIMIT 1`,[email])).rows.length);
+ },
  async team(workspaceId: string): Promise<MemberRow[]> {
   return (await getPool().query<MemberRow>(`SELECT ${columns} FROM workspace_members WHERE workspace_id=$1 ORDER BY created_at,id`,[workspaceId])).rows;
  },

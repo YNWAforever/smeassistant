@@ -10,17 +10,12 @@ import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
 import { safeReturnPath } from "@/lib/identity/return-path";
 
 /**
- * Sends an invited team member a magic link that returns through
- * /auth/callback (upstream: /auth/owner/callback), which unconditionally binds any pending
- * workspace_members row for the verified email (see bindPendingMembership in
- * lib/workspace/callback-queries.ts).
- *
- * Cannot reuse POST /api/owner/magic-link: that route only mails an address
- * already recorded as a leads.email row tied to a specific report's
- * share_slug, which an invited teammate has no reason to have. This route's
- * equivalent bound is "a pending workspace_members row exists for this
- * email" -- checked before mailing, same anti-enumeration shape (uniform
- * { ok: true } regardless of match).
+ * Sends sign-in mail to pending invitees and returning workspace members.
+ * Pending invitations use their recorded recipient; accepted memberships use
+ * the mapped app user's current email, never a stale invitation address.
+ * /auth/callback independently verifies identity and workspace authorization.
+ * Unknown recipients and provider failures retain the same anti-enumeration
+ * response. Report-only recipients must use the report's claim entry point.
  */
 function safeAppOrigin(raw: string | undefined): string | null {
   const value = raw?.trim();
@@ -66,7 +61,7 @@ export async function POST(req: Request) {
     // validated and the request origin is only the fallback.
     const appOrigin = safeAppOrigin(process.env.NEXT_PUBLIC_SITE_URL) ?? new URL(req.url).origin;
 
-    if (!await membershipRepository.hasPendingInvitation(email)) return NextResponse.json({ ok: true });
+    if (!await membershipRepository.hasSignInMembership(email)) return NextResponse.json({ ok: true });
 
     const redirect = new URL("/auth/callback", appOrigin);
     redirect.searchParams.set("locale", locale);
