@@ -2,6 +2,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { copy } from "@/lib/copy";
+import { comparisonCopy } from "@/lib/report/comparison/copy";
 import type { ReportProps } from "@/lib/funnel/report-props";
 import type { ReportDashboard } from "@/lib/funnel/report-dashboard";
 import { DashboardSummary } from "./dashboard-summary";
@@ -32,11 +33,12 @@ describe("dashboard summary", () => {
     expect(root.textContent).toContain(copy.en.funnel.report.viewerNote);
     expect(root.querySelector(".delta-up, .delta-down")).toBeNull();
   });
-  it("uses neutral copy when a real report comparison has not been evaluated", () => {
-    const root = markup(<DashboardSummary report={{ ...report, comparison: { kind: "not_evaluated" } }} />);
-    expect(root.textContent).toContain(copy.en.funnel.report.comparisonLabel);
-    expect(root.textContent).toContain(copy.en.funnel.report.dashboard.unavailable);
-    expect(root.textContent).not.toContain(copy.en.funnel.report.firstScan);
+  it.each(["en", "zh-HK", "zh-TW"] as const)("uses localized current-report copy when score comparison has not been evaluated in %s", locale => {
+    const root = markup(<DashboardSummary report={{ ...report, locale, comparison: { kind: "not_evaluated" } }} />);
+    expect(root.textContent).toContain(comparisonCopy[locale].currentReportTitle);
+    expect(root.textContent).toContain(comparisonCopy[locale].currentReportBody);
+    expect(root.textContent).not.toContain(copy[locale].funnel.report.firstScan);
+    expect(root.textContent).not.toContain(copy[locale].funnel.report.dashboard.unavailable);
   });
   it("shows incomparable reasons even when the overall score is withheld", () => {
     const root = markup(<DashboardSummary report={{ ...report, score: null, comparison: { kind: "incomparable", reason: "Scoring versions differ" } }} />);

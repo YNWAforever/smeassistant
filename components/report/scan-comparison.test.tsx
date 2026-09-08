@@ -44,10 +44,14 @@ describe("ScanComparisonPanel", () => {
     expect(root.querySelector('details time[dateTime="2026-09-01T02:00:00Z"]')).not.toBeNull();
   });
 
-  it("keeps IG-only changes neutral and says search measurements are absent", () => {
-    const root = markup(report(available({ rows: [], counts: { increased: 0, decreased: 0, unchanged: 0 }, ig: { previous: 3, current: 5, delta: 2 } })));
-    expect(root.textContent).toContain("Sample coverage"); expect(root.textContent).toContain("3"); expect(root.textContent).toContain("5");
-    expect(root.textContent).toContain("No comparable search measurements");
+  it.each([
+    ["en", "Instagram sampled posts", "3 posts", "5 posts", "+2 posts"],
+    ["zh-HK", "Instagram 已抽樣帖文", "3 則帖文", "5 則帖文", "+2 則帖文"],
+    ["zh-TW", "Instagram 已抽樣貼文", "3 則貼文", "5 則貼文", "+2 則貼文"],
+  ] as const)("keeps IG-only changes neutral with post units in %s", (locale, label, previous, current, delta) => {
+    const root = markup(report(available({ rows: [], counts: { increased: 0, decreased: 0, unchanged: 0 }, ig: { previous: 3, current: 5, delta: 2 } }), locale));
+    expect(root.textContent).toContain(label); expect(root.textContent).toContain(previous);
+    expect(root.textContent).toContain(current); expect(root.textContent).toContain(delta);
     expect(root.querySelector('[data-direction="increased"]')).toBeNull();
   });
 

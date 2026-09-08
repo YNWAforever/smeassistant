@@ -46,7 +46,7 @@ export function ScanComparisonPanel({ report }: { report: ReportProps }) {
       {(row.omittedPrevious > 0 || row.omittedCurrent > 0) && <p className={styles.caption}>{interpolate(c.omitted, { n: integer.format(row.omittedPrevious), m: integer.format(row.omittedCurrent) })}</p>}
       <details className={styles.disclosure}><summary>{c.evidence}</summary><Scope row={row} locale={report.locale} /><ul>{row.evidence.map((fact, index) => <li key={index}><p>{fact.query}</p><p>{c.previous}: {fact.previous ? metric.present : metric.absent} · <DateValue value={fact.previousObservedAt} locale={report.locale} /></p><p>{c.current}: {fact.current ? metric.present : metric.absent} · <DateValue value={fact.currentObservedAt} locale={report.locale} /></p></li>)}</ul></details>
     </article>)}</div>
-    {changes.ig && <article className={`${styles.comparisonCard} ${styles.sampleCoverage}`}><h3>{c.sampleCoverage}</h3><p>{c.previous}: <strong>{integer.format(changes.ig.previous)}</strong> · {c.current}: <strong>{integer.format(changes.ig.current)}</strong> · {number.format(changes.ig.delta)}</p></article>}
+    {changes.ig && <article className={`${styles.comparisonCard} ${styles.sampleCoverage}`}><h3>{c.sampleCoverage}</h3><p className={styles.provenance}>{c.instagramSample}</p><p>{c.previous}: <strong>{interpolate(c.posts, { n: integer.format(changes.ig.previous) })}</strong> · {c.current}: <strong>{interpolate(c.posts, { n: integer.format(changes.ig.current) })}</strong> · {interpolate(c.posts, { n: number.format(changes.ig.delta) })}</p></article>}
     {changes.unavailableGroups > 0 && <p className={styles.caption}>{interpolate(c.unavailableGroups, { n: integer.format(changes.unavailableGroups) })}</p>}
   </section>;
 }

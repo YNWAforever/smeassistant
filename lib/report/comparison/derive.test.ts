@@ -123,6 +123,28 @@ describe('deriveComparisonInput', () => {
     expect(deriveComparisonInput({ aeo: { merchant_performance: { runs: evidence } } }, { ig: false, aeo: true }, 'scan').cohorts[0].complete).toBe(false);
   });
 
+
+  it('sanitizes and bounds two stored-run contexts through derivation and comparison', () => {
+    const unsafeLocation = `Hong\u0000 Kong https://secret.example/${'x'.repeat(240)}`;
+    const previous = deriveComparisonInput({ aeo: { merchant_performance: { runs: [
+      run('old-a', { settings: { gl: 'hk', hl: 'en', location: unsafeLocation, device: 'desktop', ll: '22.3,114.2' } }),
+      run('old-b', { settings: { gl: 'hk', hl: 'zh-HK', location: 'Kowloon', device: 'mobile', ll: null } }),
+    ] } } }, { ig: false, aeo: true }, '2026-08-01T00:00:00Z');
+    const current = deriveComparisonInput({ aeo: { merchant_performance: { runs: [
+      run('new-a', { settings: { gl: 'hk', hl: 'en', location: unsafeLocation, device: 'desktop', ll: '22.3,114.2' } }),
+      run('new-b', { settings: { gl: 'hk', hl: 'zh-HK', location: 'Kowloon', device: 'mobile', ll: null } }),
+    ] } } }, { ig: false, aeo: true }, '2026-09-01T00:00:00Z');
+    const changes = compareScanMetrics(previous, current)!;
+    expect(changes.rows).toHaveLength(2);
+    expect(changes.rows.map(row => row.location)).toEqual(expect.arrayContaining(['Hong  Kong [url]', 'Kowloon']));
+    expect(changes.rows.every(row => row.location.length <= 200)).toBe(true);
+    expect(changes.rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({ hl: 'en', device: 'desktop', ll: '22.3,114.2' }),
+      expect.objectContaining({ hl: 'zh-HK', device: 'mobile', ll: null }),
+    ]));
+    expect(JSON.stringify(changes)).not.toContain('secret.example');
+    expect(JSON.stringify(changes)).not.toContain('["google","discovery","hk"');
+  });
   it('keeps historical organic ambiguity unknown', () => {
     const result = deriveComparisonInput({ aeo: { merchant_performance: { runs: [run('organic', {
       engine: 'google', merchant_presence: { organic_rank: null, found: true, confidence: 'high' },
