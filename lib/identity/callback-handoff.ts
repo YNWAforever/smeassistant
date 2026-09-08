@@ -6,6 +6,7 @@
 import { authFlowHref, parseAuthFlow } from "./sign-in-flow";
 
 export function cleanCallbackHandoff(request: Request, exchanged: Response): Response | null {
+  if (exchanged.status < 300 || exchanged.status >= 400) return null;
   const clean = new URL(request.url);
   clean.searchParams.delete("neon_auth_session_verifier");
   if (exchanged.headers.get("location") !== clean.toString()) return null;

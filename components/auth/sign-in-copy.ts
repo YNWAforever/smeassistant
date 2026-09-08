@@ -27,6 +27,11 @@ export type SignInCopy = {
   changeAccountFailed: string;
   processing: string;
   technicalFailure: string;
+  completionFailedGoogle: string;
+  completionFailedEmail: string;
+  restartGoogle: string;
+  restartEmail: string;
+  restartSignIn: string;
   invalidEmail: string;
 };
 
@@ -57,6 +62,11 @@ const en: SignInCopy = {
   changeAccountFailed: "We could not change the account. Please try again.",
   processing: "Checking your workspace access…",
   technicalFailure: "We could not finish sign-in. Start a new sign-in attempt.",
+  completionFailedGoogle: "We could not finish Google sign-in. Start a new Google sign-in attempt.",
+  completionFailedEmail: "We could not finish email sign-in. Start a new email sign-in attempt.",
+  restartGoogle: "Start Google sign-in again",
+  restartEmail: "Start email sign-in again",
+  restartSignIn: "Start sign-in again",
   invalidEmail: "Enter a valid email address.",
 };
 
@@ -87,6 +97,11 @@ const zhHK: SignInCopy = {
   changeAccountFailed: "未能更換帳戶，請再試一次。",
   processing: "正在核實你的工作台存取權…",
   technicalFailure: "未能完成登入，請重新開始登入。",
+  completionFailedGoogle: "未能完成 Google 登入，請重新開始 Google 登入。",
+  completionFailedEmail: "未能完成電郵登入，請重新開始電郵登入。",
+  restartGoogle: "重新開始 Google 登入",
+  restartEmail: "重新開始電郵登入",
+  restartSignIn: "重新開始登入",
   invalidEmail: "請輸入有效的電郵地址。",
 };
 
