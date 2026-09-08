@@ -6,6 +6,12 @@ const mocks = vi.hoisted(() => ({
   exchangeCodeForSession: vi.fn(),
   getUser: vi.fn(),
   signOut: vi.fn(),
+  getIdentity: vi.fn(),
+  resolveApplicationUser: vi.fn(),
+  bindWorkspaceToUser: vi.fn(),
+  findOwnedWorkspace: vi.fn(),
+  claimScan: vi.fn(),
+  middleware: vi.fn(),
   calls: [] as Array<{ table: string; method: string; args: unknown[] }>,
   results: {} as Record<string, unknown>,
 }));
@@ -15,6 +21,26 @@ vi.mock("next/headers", () => ({
 }));
 
 vi.mock("@/lib/auth", () => ({ getUser: mocks.getUser, signOut: mocks.signOut }));
+vi.mock("@/lib/identity/composition", () => ({
+  identityProvider: async () => ({ getIdentity: mocks.getIdentity }),
+}));
+vi.mock("@/lib/identity/users", () => ({ resolveApplicationUser: mocks.resolveApplicationUser }));
+vi.mock("@/lib/identity/neon", () => ({
+  getNeonAuth: () => ({ middleware: () => mocks.middleware }),
+}));
+vi.mock("@/lib/workspace/bind-workspace", () => ({
+  bindWorkspaceToUser: mocks.bindWorkspaceToUser,
+}));
+vi.mock("@/lib/workspace/callback-queries", () => ({
+  bindPendingMembership: async (user: unknown) => {
+    mocks.calls.push({ table: "members", method: "bind", args: [user] });
+    return null;
+  },
+  findOwnedWorkspace: mocks.findOwnedWorkspace,
+  createWorkspaceWithOwner: vi.fn(),
+  attachJobToWorkspace: vi.fn(),
+}));
+vi.mock("@/lib/workspace/claim-scan", () => ({ claimScan: mocks.claimScan }));
 
 vi.mock("@/lib/repositories/membership", () => ({ membershipRepository: {
  bindPending: async (user:unknown) => {mocks.calls.push({table:"members",method:"bind",args:[user]});return null;},
@@ -45,6 +71,19 @@ describe("GET /auth/callback", () => {
     mocks.getUser.mockResolvedValue({
       id: "user-1", email: "Owner@Example.com", verified: true,
     });
+    mocks.getIdentity.mockResolvedValue({
+      provider: "neon", subject: "identity-1", email: "Owner@Example.com", verified: true,
+    });
+    mocks.resolveApplicationUser.mockResolvedValue({
+      id: "user-1", email: "Owner@Example.com", verified: true,
+    });
+    mocks.bindWorkspaceToUser.mockImplementation(async (input: { bindByEmail: () => Promise<string | null> }) => {
+      await input.bindByEmail();
+      return { kind: "none" };
+    });
+    mocks.findOwnedWorkspace.mockResolvedValue({ data: null, error: null });
+    mocks.claimScan.mockResolvedValue({ kind: "requires_verification" });
+    mocks.middleware.mockResolvedValue(new Response(null, { status: 307 }));
     mocks.results = {
       workspace_members: { data: [], error: null },
       audit_jobs: { data: { id: "job-1", workspace_id: null, business_name: "Kam Man House" }, error: null },
@@ -58,7 +97,7 @@ describe("GET /auth/callback", () => {
   });
 
   it("signs out and lands on the locale sign-in page when the code is missing", async () => {
-    mocks.getUser.mockResolvedValue(null);
+    mocks.getIdentity.mockResolvedValue(null);
     const response = await GET(request("claim=abcdef&locale=zh-TW"));
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
@@ -68,20 +107,20 @@ describe("GET /auth/callback", () => {
   });
 
   it("falls back to the default locale when the locale param is unknown", async () => {
-    mocks.getUser.mockResolvedValue(null);
+    mocks.getIdentity.mockResolvedValue(null);
     const response = await GET(request("locale=fr"));
     expect(response.headers.get("location")).toBe("https://app.test/zh-HK/owner/sign-in?error=not_authorized");
   });
 
   it("reports an invalid code without a session", async () => {
-    mocks.getUser.mockResolvedValue(null);
+    mocks.getIdentity.mockResolvedValue(null);
     const response = await GET(request("error=expired_token&locale=en"));
     expect(response.headers.get("location")).toBe("https://app.test/en/owner/sign-in?error=invalid_code");
     expect(mocks.signOut).toHaveBeenCalledWith();
   });
 
   it("refuses an unverified email", async () => {
-    mocks.getUser.mockResolvedValue({ id: "user-1", email: "x@y.com", verified: false });
+    mocks.resolveApplicationUser.mockResolvedValue({ id: "user-1", email: "x@y.com", verified: false });
     const response = await GET(request("code=abc&locale=en"));
     expect(response.headers.get("location")).toBe("https://app.test/en/owner/sign-in?error=not_authorized");
   });
@@ -129,13 +168,13 @@ describe("GET /auth/callback", () => {
   });
 
   it("drops a malformed claim slug before it reaches a path", async () => {
-    mocks.getUser.mockResolvedValue(null);
+    mocks.getIdentity.mockResolvedValue(null);
     const response = await GET(request("claim=..%2F..%2Fen%2Fstaff&locale=en"));
     expect(response.headers.get("location")).toBe("https://app.test/en/owner/sign-in?error=not_authorized");
   });
 
   it("lands on sign-in with auth_unavailable when the auth client throws", async () => {
-    mocks.getUser.mockRejectedValue(new Error("down"));
+    mocks.resolveApplicationUser.mockRejectedValue(new Error("down"));
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const response = await GET(request("code=abc&claim=abcdef&locale=en"));
     expect(response.headers.get("location")).toBe(
@@ -143,4 +182,62 @@ describe("GET /auth/callback", () => {
     );
     errorSpy.mockRestore();
   });
+  it.each([
+    ["verifier_exchange", () => {
+      mocks.middleware.mockRejectedValue(sensitiveFailure());
+      return request("locale=en&neon_auth_session_verifier=fixture");
+    }],
+    ["fresh_session", () => {
+      mocks.getIdentity.mockRejectedValue(sensitiveFailure());
+      return request("locale=en");
+    }],
+    ["identity_mapping", () => {
+      mocks.resolveApplicationUser.mockRejectedValue(sensitiveFailure());
+      return request("locale=en");
+    }],
+    ["invitation_binding", () => {
+      mocks.bindWorkspaceToUser.mockRejectedValue(sensitiveFailure());
+      return request("locale=en");
+    }],
+    ["workspace_lookup", () => {
+      mocks.findOwnedWorkspace.mockRejectedValue(sensitiveFailure());
+      return request("locale=en");
+    }],
+    ["claim_resolution", () => {
+      mocks.claimScan.mockRejectedValue(sensitiveFailure());
+      return request("locale=en&claim=abcdef");
+    }],
+  ] as const)("logs a redacted diagnostic when %s fails", async (stage, run) => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = await GET(run());
+    const publicResponse = response.headers.get("location") ?? "";
+    const logged = JSON.stringify(errorSpy.mock.calls);
+
+    expect(response.status).toBe(307);
+    expect(publicResponse).toContain("error=auth_unavailable");
+    expect(errorSpy).toHaveBeenCalledWith(expect.objectContaining({
+      event: "owner_sign_in_failed",
+      stage,
+      correlationId: expect.any(String),
+    }));
+    for (const privateValue of ["sentinel@example.test", "session_token", "verifier=fixture", "SELECT * FROM app_users"]) {
+      expect(logged).not.toContain(privateValue);
+      expect(publicResponse).not.toContain(privateValue);
+    }
+    errorSpy.mockRestore();
+  });
+
+  it("treats a missing fresh session as unauthorized rather than an outage", async () => {
+    mocks.getIdentity.mockResolvedValue(null);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = await GET(request("locale=en"));
+    expect(response.headers.get("location")).toBe("https://app.test/en/owner/sign-in?error=not_authorized");
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
 });
+
+
+function sensitiveFailure() {
+  return new Error("sentinel@example.test __Secure-neon-auth.session_token=private verifier=fixture SELECT * FROM app_users");
+}

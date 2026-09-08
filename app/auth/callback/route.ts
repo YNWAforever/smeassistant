@@ -1,10 +1,11 @@
 import { NextResponse, NextRequest } from "next/server";
 import { cookies } from "next/headers";
-import { getUser, signOut } from "@/lib/auth";
+import { signOut, type SessionUser } from "@/lib/auth";
 import { reportsRepository } from "@/lib/repositories/reports";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/locale";
 import { claimsRepository } from "@/lib/repositories/claims";
 import { safeReturnPath } from "@/lib/identity/return-path";
+import { authDiagnostic, type AuthStage } from "@/lib/identity/sign-in-diagnostics";
 import { bindWorkspaceToUser } from "@/lib/workspace/bind-workspace";
 import { shouldRecordAccessRequest } from "@/lib/workspace/access-request";
 import { parseViewerGrantCookie, VIEWER_GRANT_COOKIE } from "@/lib/report-access/cookie";
@@ -78,6 +79,9 @@ export async function GET(req: Request) {
     returnTo: safeReturnPath(requestUrl.searchParams.get("returnTo") ?? "", "") || null,
   };
 
+  const correlationId = crypto.randomUUID();
+  let stage: AuthStage = "verifier_exchange";
+
   try {
     // Managed Auth verifies links/OAuth; only fresh app-mapped identity is used here.
     if (requestUrl.searchParams.has("error")) {
@@ -85,6 +89,7 @@ export async function GET(req: Request) {
       return NextResponse.redirect(landing(req, ctx, { error: "invalid_code" }));
     }
     if (requestUrl.searchParams.has("neon_auth_session_verifier")) {
+      stage = "verifier_exchange";
       const { getNeonAuth } = await import("@/lib/identity/neon");
       const exchanged = await getNeonAuth().middleware()(new NextRequest(req));
       const clean = new URL(req.url);
@@ -93,7 +98,17 @@ export async function GET(req: Request) {
       await signOut();
       return NextResponse.redirect(landing(req, ctx, { error: "invalid_code" }));
     }
-    const user = await getUser();
+    stage = "fresh_session";
+    const { identityProvider } = await import("@/lib/identity/composition");
+    const identity = await (await identityProvider()).getIdentity();
+    if (!identity) {
+      await signOut();
+      return NextResponse.redirect(landing(req, ctx, { error: "not_authorized" }));
+    }
+
+    stage = "identity_mapping";
+    const { resolveApplicationUser } = await import("@/lib/identity/users");
+    const user: SessionUser = await resolveApplicationUser(identity);
     if (!user?.id || !user.verified) {
       await signOut();
       return NextResponse.redirect(landing(req, ctx, { error: "not_authorized" }));
@@ -104,6 +119,7 @@ export async function GET(req: Request) {
     // update matches zero rows, making this a cheap no-op; and a merchant who
     // signed in before BD assigned them gets picked up here on their next visit
     // instead of being stuck in a state nothing re-checks.
+    stage = "invitation_binding";
     await bindWorkspaceToUser({
       userId: user.id,
       verifiedEmail: user.email ?? null,
@@ -122,13 +138,12 @@ export async function GET(req: Request) {
     // decision — so degrading to "couldn't confirm, log it, proceed" is
     // correct and matches the access-request block below, which wraps
     // itself in its own try/catch for the same reason.
+    stage = "workspace_lookup";
     const { data: ownedWorkspace, error: ownedWorkspaceError } = await findOwnedWorkspace(
       user.id,
     );
     if (ownedWorkspaceError) {
-      console.error("[owner/callback] owned-workspace lookup failed", {
-        category: "owner_callback_query_failed",
-      });
+      console.error(authDiagnostic("workspace_lookup", correlationId));
     }
 
     if (shouldRecordAccessRequest({ hasWorkspace: Boolean(ownedWorkspace), slug: claimSlug })) {
@@ -151,6 +166,7 @@ export async function GET(req: Request) {
     // to the locale's select-workspace page.
     if (!claimSlug) return NextResponse.redirect(landing(req, ctx, {}));
 
+    stage = "claim_resolution";
     const outcome: ClaimOutcome = await claimScan({
       slug: claimSlug,
       sessionUser: { id: user.id, email: user.email ?? null },
@@ -179,7 +195,7 @@ export async function GET(req: Request) {
     return NextResponse.redirect(landing(req, ctx, { claimed: outcome.kind }));
   } catch {
     // Generic, per house convention: never leak provider text to the client.
-    console.error("Owner auth callback failed", { category: "auth_unavailable" });
+    console.error(authDiagnostic(stage, correlationId));
     await signOut().catch(() => {});
     return NextResponse.redirect(landing(req, ctx, { error: "auth_unavailable" }));
   }
