@@ -84,6 +84,7 @@ interface Observation {
   rawQuery: string;
   cohortKey: string | null;
   cohortLabel: string;
+  cohortScope: { queryType: string; gl: string; hl: string; location: string; device: string; ll: string | null } | null;
 }
 
 function normalize(value: unknown, legacy: boolean, index: number): Observation[] {
@@ -155,6 +156,8 @@ function normalize(value: unknown, legacy: boolean, index: number): Observation[
       cohortKey: hasRequiredContext ? JSON.stringify([engine, run.query_type, settings.gl, settings.hl,
         settings.location, settings.device, settings.ll, surface]) : null,
       cohortLabel: text(settings.location, 200),
+      cohortScope: hasRequiredContext ? { queryType: text(run.query_type, 100), gl: text(settings.gl, 20), hl: text(settings.hl, 35),
+        location: text(settings.location, 200), device: text(settings.device, 35), ll: settings.ll === null ? null : text(settings.ll, 100) } : null,
     };
   });
 }
@@ -167,13 +170,13 @@ export function deriveComparisonSearchCohorts(rawAeo: unknown): QueryCohort[] {
   const input = hasMerchantRuns ? merchant.runs : aeo.serpapi_runs;
   if (!Array.isArray(input)) return [];
   const inputTruncated = input.length > MAX_INPUT_RECORDS;
-  const groups = new Map<string, { engine: string; surface: Surface; label: string;
+  const groups = new Map<string, { engine: string; surface: Surface; label: string; scope: NonNullable<Observation['cohortScope']>;
     facts: Map<string, Array<{ outcome: QueryFact['outcome']; observedAt: string | null }>> }>();
   for (const [index, value] of input.slice(0, MAX_INPUT_RECORDS).entries()) {
     for (const observation of normalize(value, !hasMerchantRuns, index)) {
       if (observation.cohortKey === null) continue;
       const group = groups.get(observation.cohortKey) ?? {
-        engine: observation.engine, surface: observation.surface, label: observation.cohortLabel, facts: new Map(),
+        engine: observation.engine, surface: observation.surface, label: observation.cohortLabel, scope: observation.cohortScope!, facts: new Map(),
       };
       const facts = group.facts.get(observation.rawQuery) ?? [];
       facts.push({ outcome: observation.row.outcome === 'present' || observation.row.outcome === 'absent'
@@ -192,7 +195,7 @@ export function deriveComparisonSearchCohorts(rawAeo: unknown): QueryCohort[] {
       facts.push({ query, outcome: observations[0].outcome,
         observedAt: timestamps.size === 1 ? observations[0].observedAt : null });
     }
-    return { key, engine: group.engine, surface: group.surface, label: group.label, facts,
+    return { key, engine: group.engine, surface: group.surface, label: group.label, ...group.scope, facts,
       complete: !inputTruncated && !groupsTruncated && facts.length <= MAX_EVIDENCE_ROWS };
   });
 }

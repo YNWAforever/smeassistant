@@ -5,7 +5,7 @@ import type { PublicReportJob } from '../store';
 
 const currentInput: ComparisonInput = {
   scannedAt: '2026-09-08T12:00:00.000Z',
-  cohorts: [{ key: 'same', engine: 'google', surface: 'organic', label: 'Google', complete: true,
+  cohorts: [{ key: 'same', engine: 'google', surface: 'organic', label: 'Google', queryType: 'discovery', gl: 'hk', hl: 'en', location: 'Hong Kong', device: 'desktop', ll: null, complete: true,
     facts: [{ query: 'bakery', observedAt: '2026-09-08T12:00:00.000Z', outcome: 'present' }] }],
   ig: null,
 };
@@ -23,7 +23,7 @@ function job(overrides: Partial<PublicReportJob> = {}): PublicReportJob {
 function input(scannedAt: string, key = 'same'): ComparisonInput {
   return {
     scannedAt,
-    cohorts: [{ key, engine: 'google', surface: 'organic', label: 'Google', complete: true,
+    cohorts: [{ key, engine: 'google', surface: 'organic', label: 'Google', queryType: 'discovery', gl: 'hk', hl: 'en', location: 'Hong Kong', device: 'desktop', ll: null, complete: true,
       facts: [{ query: 'bakery', observedAt: scannedAt, outcome: 'absent' }] }],
     ig: null,
   };

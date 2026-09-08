@@ -43,7 +43,20 @@ describe("dashboard summary", () => {
     expect(root.textContent).toContain("Scoring versions differ");
     expect(root.querySelector(".score-dial")).toBeNull();
   });
-  it("shows a comparable delta only with the existing comparable classification", () => {
+  it("mounts metric comparison before current health without sending its delta to the score dial", () => {
+    const scanComparison: NonNullable<ReportProps["scanComparison"]> = { kind: "available", changes: {
+      previousScannedAt: "2026-08-01T00:00:00Z", currentScannedAt: "2026-09-01T00:00:00Z",
+      rows: [{ key: "comparison-1", engine: "google", surface: "organic", queryType: "discovery", gl: "hk", hl: "en", location: "Hong Kong", device: "desktop", ll: null,
+        previous: 1, current: 2, denominator: 2, deltaPercentagePoints: 50, direction: "increased", evidence: [], omittedPrevious: 0, omittedCurrent: 0 }],
+      counts: { increased: 1, decreased: 0, unchanged: 0 }, ig: null, unavailableGroups: 0,
+    } };
+    const root = markup(<DashboardSummary report={{ ...report, scanComparison }} />);
+    const panel = root.querySelector("#scan-comparison-title")!.closest("section")!;
+    const dial = root.querySelector(".score-dial")!;
+    expect(panel.compareDocumentPosition(dial) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(root.querySelector(".delta-up, .delta-down")).toBeNull();
+    expect(root.querySelectorAll("h1")).toHaveLength(1);
+  });  it("shows a comparable delta only with the existing comparable classification", () => {
     const root = markup(<DashboardSummary report={{ ...report, comparison: { kind: "comparable", delta: -4, title: "Comparable scan", body: "Shared measured sources" } }} />);
     expect(root.querySelector(".delta-down")?.textContent).toContain("-4");
     expect(root.textContent).toContain("Shared measured sources");

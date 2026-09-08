@@ -5,6 +5,7 @@ import { copy } from "@/lib/copy";
 import type { ReportProps } from "@/lib/funnel/report-props";
 import { interpolate } from "@/lib/share";
 import styles from "./dashboard.module.css";
+import { ScanComparisonPanel } from "./scan-comparison";
 
 export function DashboardSummary({ report }: { report: ReportProps }) {
   const c = copy[report.locale].funnel.report;
@@ -32,6 +33,7 @@ export function DashboardSummary({ report }: { report: ReportProps }) {
       </div>
       <p className={styles.scanDate}>{d.scanned}<br />{scanDate ? <time dateTime={scanDate}>{scanDate.slice(0, 10)}</time> : d.dateUnavailable}</p>
     </header>
+    <ScanComparisonPanel report={report} />
     <div className={styles.health}>
       <div className={styles.dial}>
         {score == null ? <div className={styles.withheld}><strong>{c.notScored}</strong></div> : <ScoreDial score={score} coverage={report.coverage} {...(comparison.kind === "comparable" ? { delta: comparison.delta } : {})} />}

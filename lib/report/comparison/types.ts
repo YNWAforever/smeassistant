@@ -9,6 +9,12 @@ export interface QueryCohort {
   engine: string;
   surface: 'organic' | 'maps' | 'ai';
   label: string;
+  queryType: string;
+  gl: string;
+  hl: string;
+  location: string;
+  device: string;
+  ll: string | null;
   facts: QueryFact[];
   complete: boolean;
 }
@@ -23,6 +29,12 @@ export interface MetricChange {
   key: string;
   engine: string;
   surface: 'organic' | 'maps' | 'ai';
+  queryType: string;
+  gl: string;
+  hl: string;
+  location: string;
+  device: string;
+  ll: string | null;
   previous: number;
   current: number;
   denominator: number;

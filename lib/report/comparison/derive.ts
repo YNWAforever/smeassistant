@@ -50,6 +50,7 @@ function comparableRow(previous: QueryCohort, current: QueryCohort, rowIndex: nu
   });
   const difference = currentCount - previousCount;
   return { key: `comparison-${rowIndex + 1}`, engine: current.engine, surface: current.surface,
+    queryType: current.queryType, gl: current.gl, hl: current.hl, location: current.location, device: current.device, ll: current.ll,
     previous: previousCount, current: currentCount, denominator: queries.length,
     deltaPercentagePoints: 100 * difference / queries.length,
     direction: difference > 0 ? 'increased' : difference < 0 ? 'decreased' : 'unchanged',

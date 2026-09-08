@@ -8,7 +8,7 @@ const input = (facts: QueryFact[]): ComparisonInput => ({
   scannedAt: '2026-09-08T00:00:00Z', ig: null,
   cohorts: [{ key: JSON.stringify(['google', 'discovery', 'hk', 'en',
     'Hong Kong', 'desktop', null, 'organic']), engine: 'google',
-    surface: 'organic', label: 'Hong Kong', facts, complete: true }],
+    surface: 'organic', label: 'Hong Kong', queryType: 'discovery', gl: 'hk', hl: 'en', location: 'Hong Kong', device: 'desktop', ll: null, facts, complete: true }],
 });
 
 describe('compareScanMetrics', () => {
