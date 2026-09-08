@@ -1,7 +1,7 @@
 # Changes-first two-scan comparison
 
 Date: 2026-09-08
-Status: Design sections approved; written specification awaiting user review. Not implemented.
+Status: Written specification approved by the user on 2026-09-08. Not implemented.
 Baseline: origin/main at be2107d429f2b924f3441765caa24a06a2a1fbac (PR #9 merged).
 
 ## Outcome and scope
@@ -68,4 +68,4 @@ Run focused tests, the normal repository gate, and the relevant fixture E2E suit
 
 ## Review and next step
 
-This document records the approved design sections and is awaiting review as a complete specification. After written-spec approval, prepare a detailed implementation plan with one reviewable slice at a time. Runtime implementation and publication have not begun.
+The user approved this complete specification on 2026-09-08. The implementation plan is docs/superpowers/plans/2026-09-08-two-scan-comparison.md. Execute one reviewable slice at a time after execution selection. Runtime implementation and publication have not begun.
