@@ -120,13 +120,16 @@ export async function GET(req: Request) {
     // signed in before BD assigned them gets picked up here on their next visit
     // instead of being stuck in a state nothing re-checks.
     stage = "invitation_binding";
-    await bindWorkspaceToUser({
+    const invitationBinding = await bindWorkspaceToUser({
       userId: user.id,
       verifiedEmail: user.email ?? null,
       // The concurrency and multi-invite story is documented on
       // bindPendingMembership itself.
       bindByEmail: () => bindPendingMembership(user),
     });
+    if (invitationBinding.kind === "unavailable") {
+      console.error(authDiagnostic("invitation_binding", correlationId));
+    }
 
     // Ownership is read, not inferred. bindWorkspaceToUser returns "none" for an
     // already-bound owner (its conditional update matches zero rows once

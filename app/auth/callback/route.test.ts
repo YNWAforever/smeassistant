@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   signOut: vi.fn(),
   getIdentity: vi.fn(),
   resolveApplicationUser: vi.fn(),
-  bindWorkspaceToUser: vi.fn(),
+  bindPendingMembership: vi.fn(),
   findOwnedWorkspace: vi.fn(),
   claimScan: vi.fn(),
   middleware: vi.fn(),
@@ -28,13 +28,11 @@ vi.mock("@/lib/identity/users", () => ({ resolveApplicationUser: mocks.resolveAp
 vi.mock("@/lib/identity/neon", () => ({
   getNeonAuth: () => ({ middleware: () => mocks.middleware }),
 }));
-vi.mock("@/lib/workspace/bind-workspace", () => ({
-  bindWorkspaceToUser: mocks.bindWorkspaceToUser,
-}));
+
 vi.mock("@/lib/workspace/callback-queries", () => ({
   bindPendingMembership: async (user: unknown) => {
     mocks.calls.push({ table: "members", method: "bind", args: [user] });
-    return null;
+    return mocks.bindPendingMembership(user);
   },
   findOwnedWorkspace: mocks.findOwnedWorkspace,
   createWorkspaceWithOwner: vi.fn(),
@@ -77,10 +75,7 @@ describe("GET /auth/callback", () => {
     mocks.resolveApplicationUser.mockResolvedValue({
       id: "user-1", email: "Owner@Example.com", verified: true,
     });
-    mocks.bindWorkspaceToUser.mockImplementation(async (input: { bindByEmail: () => Promise<string | null> }) => {
-      await input.bindByEmail();
-      return { kind: "none" };
-    });
+    mocks.bindPendingMembership.mockResolvedValue(null);
     mocks.findOwnedWorkspace.mockResolvedValue({ data: null, error: null });
     mocks.claimScan.mockResolvedValue({ kind: "requires_verification" });
     mocks.middleware.mockResolvedValue(new Response(null, { status: 307 }));
@@ -195,10 +190,7 @@ describe("GET /auth/callback", () => {
       mocks.resolveApplicationUser.mockRejectedValue(sensitiveFailure());
       return request("locale=en");
     }],
-    ["invitation_binding", () => {
-      mocks.bindWorkspaceToUser.mockRejectedValue(sensitiveFailure());
-      return request("locale=en");
-    }],
+
     ["workspace_lookup", () => {
       mocks.findOwnedWorkspace.mockRejectedValue(sensitiveFailure());
       return request("locale=en");
@@ -227,6 +219,28 @@ describe("GET /auth/callback", () => {
     errorSpy.mockRestore();
   });
 
+  it("logs a safe invitation-binding diagnostic when the real binder reports an unavailable write", async () => {
+    mocks.bindPendingMembership.mockRejectedValue(sensitiveFailure());
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = await GET(request("locale=en"));
+    const publicResponse = response.headers.get("location") ?? "";
+    const logged = JSON.stringify(errorSpy.mock.calls);
+
+    expect(response.status).toBe(307);
+    expect(publicResponse).toBe("https://app.test/en/owner/select-workspace");
+    expect(mocks.signOut).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(expect.objectContaining({
+      event: "owner_sign_in_failed",
+      stage: "invitation_binding",
+      correlationId: expect.any(String),
+    }));
+    for (const privateValue of ["sentinel@example.test", "session_token", "verifier=fixture", "SELECT * FROM app_users"]) {
+      expect(logged).not.toContain(privateValue);
+      expect(publicResponse).not.toContain(privateValue);
+    }
+    errorSpy.mockRestore();
+  });
   it("treats a missing fresh session as unauthorized rather than an outage", async () => {
     mocks.getIdentity.mockResolvedValue(null);
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
