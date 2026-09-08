@@ -269,6 +269,27 @@ describe("scan comparison model boundary", () => {
     }
   });
 
+  it("serializes empty, all-denied, and capped denied histories identically", () => {
+    const access = { kind: "viewer" as const, grantId: "grant-1" };
+    const empty = buildReportViewModel({ ...fixture, authorized: { ...fixture.authorized!,
+      scanComparison: { kind: "unavailable", reason: "no_accessible_pair" } } }, access);
+    const allDenied = buildReportViewModel({ ...fixture, authorized: { ...fixture.authorized!,
+      scanComparison: { kind: "unavailable", reason: "no_accessible_pair" } } }, access);
+    const cappedDenied = buildReportViewModel({ ...fixture, authorized: { ...fixture.authorized!,
+      scanComparison: { kind: "unavailable", reason: "history_limit" } } }, access);
+
+    const projection = (model: typeof empty) => JSON.stringify({
+      model: "scanComparison" in model ? model.scanComparison : null,
+      props: buildReportProps(model, "en").scanComparison,
+    });
+    expect(projection(cappedDenied)).toBe(projection(empty));
+    expect(projection(allDenied)).toBe(projection(empty));
+    expect(projection(cappedDenied)).not.toContain("history_limit");
+    if (empty.access !== "viewer") throw new Error("expected authorized viewer model");
+    expect(buildReportProps({ ...empty, scanComparison: { kind: "unavailable", reason: "history_limit" } }, "en").scanComparison)
+      .toEqual({ kind: "unavailable", reason: "no_accessible_pair" });
+  });
+
   it.each([
     { kind: "viewer" as const, grantId: "grant-1" },
     { kind: "member" as const, workspaceId: "ws-1", role: "manager" as const },

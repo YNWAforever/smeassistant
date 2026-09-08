@@ -1,5 +1,6 @@
 import type { ScanMetrics } from "@/lib/report/scan-metrics/types";
 import type { ScanComparison } from "@/lib/report/comparison/types";
+import { projectScanComparison } from "@/lib/report/comparison/projection";
 import { getMarketCtas, type Market } from "@sme-scanner/region";
 
 import { copy, type PrototypeLocale } from "@/lib/copy";
@@ -358,7 +359,7 @@ export function buildReportProps(model: ReportViewModelLike, locale: PrototypeLo
         ? { hiddenFindingCount: model.unlock.hiddenFindingCount, unlockHref: model.unlock.href }
         : null,
     ...(full?.scanMetrics ? { scanMetrics: full.scanMetrics } : {}),
-    ...(full?.scanComparison ? { scanComparison: full.scanComparison } : {}),
+    ...(full?.scanComparison ? { scanComparison: projectScanComparison(full.scanComparison) } : {}),
     summary: full?.summary ?? null,
     findingGroups,
     proof: full?.proof ?? null,

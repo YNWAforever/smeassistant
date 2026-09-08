@@ -190,10 +190,9 @@ export function deriveComparisonSearchCohorts(rawAeo: unknown): QueryCohort[] {
     const facts: QueryFact[] = [];
     for (const [query, observations] of group.facts) {
       const outcomes = new Set(observations.map(item => item.outcome));
-      if (outcomes.size !== 1 || outcomes.has('unknown')) continue;
       const timestamps = new Set(observations.map(item => item.observedAt));
-      facts.push({ query, outcome: observations[0].outcome,
-        observedAt: timestamps.size === 1 ? observations[0].observedAt : null });
+      facts.push({ query, outcome: outcomes.size === 1 ? observations[0].outcome : 'unknown',
+        observedAt: outcomes.size === 1 && timestamps.size === 1 ? observations[0].observedAt : null });
     }
     return { key, engine: group.engine, surface: group.surface, label: group.label, ...group.scope, facts,
       complete: !inputTruncated && !groupsTruncated && facts.length <= MAX_EVIDENCE_ROWS };

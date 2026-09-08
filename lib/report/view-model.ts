@@ -1,5 +1,6 @@
 import type { ScanMetrics } from "./scan-metrics/types";
 import type { ScanComparison } from "./comparison/types";
+import { projectScanComparison } from "./comparison/projection";
 import type { ReportAccess, ReportMemberRole } from "@/lib/report-access/authorize-report";
 import type { EvidenceProvider, EvidenceType } from "@sme-scanner/contracts";
 import { selectTopPriorities } from "./top-priorities";
@@ -208,7 +209,7 @@ export function buildReportViewModel(source: ReportViewSource, access: ReportAcc
   const proof = source.authorized?.proof ?? EMPTY_PROOF;
   const evidence = source.authorized?.evidence ?? { items: [] };
   const metrics = source.authorized?.scanMetrics ? { scanMetrics: source.authorized.scanMetrics } : {};
-  const comparison = source.authorized?.scanComparison ? { scanComparison: source.authorized.scanComparison } : {};
+  const comparison = source.authorized?.scanComparison ? { scanComparison: projectScanComparison(source.authorized.scanComparison) } : {};
   if (access.kind === "viewer") return { access: "viewer", preview, fullFindings, summary, proof, evidence, ...metrics, ...comparison };
   if (access.kind === "member") {
     return { access: "member", workspaceId: access.workspaceId, role: access.role, preview, fullFindings, summary, proof, evidence, ...metrics, ...comparison };

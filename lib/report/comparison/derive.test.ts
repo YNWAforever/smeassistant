@@ -104,12 +104,32 @@ describe('deriveComparisonInput', () => {
     expect(result.cohorts[0].facts).toEqual([{ query: 'fixture cafe', outcome: 'absent', observedAt: null }]);
   });
 
-  it('excludes conflicting or unknown repeated queries', () => {
+  it('retains conflicting or unknown repeated queries as unknown facts', () => {
     const result = deriveComparisonInput({ aeo: { merchant_performance: { runs: [
       run('a'), run('b', { merchant_presence: { maps_rank: 1 } }),
       run('c', { query: 'unknown', raw_refs: {} }), run('d', { query: 'unknown' }),
     ] } } }, { ig: false, aeo: true }, 'scan');
-    expect(result.cohorts[0].facts).toEqual([]);
+    expect(result.cohorts[0].facts).toEqual([
+      { query: 'fixture cafe', outcome: 'unknown', observedAt: null },
+      { query: 'unknown', outcome: 'unknown', observedAt: null },
+    ]);
+  });
+
+  it('counts failed and conflicting stored query identities as comparison omissions', () => {
+    const previous = deriveComparisonInput({ aeo: { merchant_performance: { runs: [
+      run('previous-q1', { query: 'q1', merchant_presence: { maps_rank: 1 } }),
+      run('previous-q2', { query: 'q2', serpapi: { status: 'Error', error: 'provider failed' } }),
+    ] } } }, { ig: false, aeo: true }, 'previous');
+    const current = deriveComparisonInput({ aeo: { merchant_performance: { runs: [
+      run('current-q1', { query: 'q1', merchant_presence: { maps_rank: 1 } }),
+      run('current-q2', { query: 'q2' }),
+      run('current-q2', { query: 'q2', merchant_presence: { maps_rank: 1 } }),
+    ] } } }, { ig: false, aeo: true }, 'current');
+
+    expect(compareScanMetrics(previous, current)?.rows[0]).toMatchObject({
+      previous: 1, current: 1, denominator: 1, deltaPercentagePoints: 0,
+      direction: 'unchanged', omittedPrevious: 1, omittedCurrent: 1,
+    });
   });
 
   it('withholds cohorts affected by input, group, or evidence bounds', () => {
@@ -152,6 +172,8 @@ describe('deriveComparisonInput', () => {
       engine: 'google', merchant_presence: { organic_rank: null, found: true, confidence: 'high' },
       raw_refs: { organic_results: [{ title: 'Other' }] },
     })] } } }, { ig: false, aeo: true }, 'scan');
-    expect(result.cohorts.find(group => group.surface === 'organic')?.facts).toEqual([]);
+    expect(result.cohorts.find(group => group.surface === 'organic')?.facts).toEqual([
+      { query: 'fixture cafe', outcome: 'unknown', observedAt: '2026-09-08T00:00:00.000Z' },
+    ]);
   });
 });
