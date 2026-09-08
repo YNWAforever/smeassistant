@@ -8,7 +8,7 @@ import { startNeonDatabaseFixture, type NeonDatabaseFixture } from "../integrati
 import { isolatedEnv } from "./safety";
 import { startLlmServer } from "./llm-server";
 import { startIdentityServer } from "./identity-server";
-export type FixtureCompletionFault = "binding" | "mapping" | "revoked" | "upstream" | null;
+export type FixtureCompletionFault = "binding" | "mapping" | "revoked" | "upstream" | "cancelled" | null;
 export interface AcceptanceEnvironment { app:string; api:string; mail:string; llm:string; db:string; expireLink(link:string):void; selectGoogleAccount(email:string):Promise<void>; setFixtureFault(fault:FixtureCompletionFault):Promise<void>; holdCompletion():Promise<void>; releaseCompletion():Promise<void>; stop():Promise<void> }
 const owned=new Map<string,string>();
 export function sql(db:string,query:string):string {

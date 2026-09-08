@@ -4,7 +4,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { assertLocalOrigin, listen } from './safety';
 
 type Link = { email: string; callbackURL: string; expires: number };
-type FixtureFault = 'binding' | 'mapping' | 'revoked' | 'upstream' | null;
+type FixtureFault = 'binding' | 'mapping' | 'revoked' | 'upstream' | 'cancelled' | null;
 type Session = { email: string; subject: string; fault: FixtureFault };
 type GoogleVerifier = { email: string; callbackURL: string; expires: number; fault: FixtureFault };
 
@@ -50,7 +50,7 @@ export async function startIdentityServer(app: string, secret: string) {
     const verifier = url.searchParams.get('verifier') ?? '';
     const entry = verifiers.get(verifier);
     if (!entry || entry.expires <= Date.now()) return json({ error: 'invalid_verifier' }, 401);
-    if (entry.fault === 'upstream') {
+    if (entry.fault === 'cancelled') {
      const callback = new URL(entry.callbackURL);
      callback.searchParams.set('error', 'access_denied');
      return redirect(callback.href);
@@ -91,7 +91,7 @@ export async function startIdentityServer(app: string, secret: string) {
     const verifier = String(body.verifier ?? '');
     const entry = verifiers.get(verifier);
     verifiers.delete(verifier);
-    if (!entry || entry.expires <= Date.now() || entry.fault === 'upstream') return json({ error: 'invalid_verifier' }, 401);
+    if (!entry || entry.expires <= Date.now() || entry.fault === 'cancelled') return json({ error: 'invalid_verifier' }, 401);
     const token = randomBytes(32).toString('base64url');
     sessions.set(token, { email: entry.email, subject: `fixture:${entry.email}`, fault: entry.fault });
     return json({ token });
@@ -112,7 +112,7 @@ export async function startIdentityServer(app: string, secret: string) {
    }
    if (req.url === '/test/fault') {
     const fault = body.fault;
-    if (fault !== null && !['binding', 'mapping', 'revoked', 'upstream'].includes(String(fault))) return json({ error: 'invalid_fixture_fault' }, 400);
+    if (fault !== null && !['binding', 'mapping', 'revoked', 'upstream', 'cancelled'].includes(String(fault))) return json({ error: 'invalid_fixture_fault' }, 400);
     nextFault = fault as FixtureFault;
     return json({ ok: true });
    }

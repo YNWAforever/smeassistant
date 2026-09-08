@@ -62,10 +62,20 @@ async function finishClaim(user: SessionUser, flow: AuthFlow): Promise<string | 
  * POST boundary; cookies are read from Next's request-scoped cookie jar. */
 export async function createCompletionPorts(_request: Request): Promise<CompletionPorts> {
   const provider = await identityProvider();
+  let fixtureFault: "mapping" | "binding" | null = null;
   return {
-    getIdentity: provider.getIdentity.bind(provider),
-    mapIdentity: resolveApplicationUser,
+    getIdentity: async () => {
+      const identity = await provider.getIdentity();
+      const fault = (identity as { fixtureFault?: unknown } | null)?.fixtureFault;
+      fixtureFault = process.env.SME_TEST_IDENTITY === "owned-local" && (fault === "mapping" || fault === "binding") ? fault : null;
+      return identity;
+    },
+    mapIdentity: async (identity) => {
+      if (fixtureFault === "mapping") throw new Error("fixture_identity_mapping_failed");
+      return resolveApplicationUser(identity);
+    },
     bindInvitations: async (user) => {
+      if (fixtureFault === "binding") throw new Error("fixture_invitation_binding_failed");
       const result = await bindWorkspaceToUser({
         userId: user.id,
         verifiedEmail: user.email ?? null,

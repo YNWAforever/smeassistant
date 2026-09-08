@@ -57,4 +57,15 @@ describe('local identity service contracts',()=>{
   for(const body of [{email:'real@example.com',callbackURL:`${app}/auth/callback`},{email:'owner@acceptance.test',callbackURL:'https://external.example/auth/callback'}])expect((await post('/send',body)).status).toBe(400);
   expect((await(await fetch(`${server.url}/api/v1/messages`)).json()).messages).toEqual([]);
  });
+ it('rejects mismatched and nonlocal origins for every new fixture controller',async()=>{
+  const localApp='http://localhost:3000',localSecret='per-run-fixture-secret';
+  const localServer=await startIdentityServer(localApp,localSecret);
+  const controller=(path:string,origin:string)=>fetch(`${localServer.url}${path}`,{method:'POST',headers:{authorization:`Bearer ${localSecret}`,'content-type':'application/json','x-fixture-origin':origin},body:'{}'});
+  try {
+   for(const path of ['/test/google-account','/test/fault','/test/completion-hold','/test/completion-release']) {
+    expect((await controller(path,'http://localhost:3999')).status).toBe(401);
+    expect((await controller(path,'https://outside.example')).status).toBe(401);
+   }
+  } finally { await localServer.stop(); }
+ });
 });
