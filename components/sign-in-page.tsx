@@ -111,13 +111,13 @@ export function SignInPage({
           <h2>{isChinese ? "店主安全登入" : "Secure owner sign in"}</h2>
           {status === "sent" ? (
             <>
-              <p>{isChinese ? "請查看你的收件箱。如果這個電郵已解鎖報告或已獲邀請，登入連結會在數分鐘內送達。" : "Check your inbox. If this email has unlocked a report or holds an invitation, the sign-in link arrives within a few minutes."}</p>
+              <p>{claim ? (isChinese ? "請查看你的收件箱。如果這個電郵曾解鎖此報告，登入連結會在數分鐘內送達。" : "Check your inbox. If this email unlocked this report, the sign-in link arrives within a few minutes.") : (isChinese ? "請查看你的收件箱。如果這個電郵屬於現有工作台成員或待接受邀請，登入連結會在數分鐘內送達。" : "Check your inbox. If this email belongs to a current workspace member or pending invitation, the sign-in link arrives within a few minutes.")}</p>
               <div className="onboarding-choice"><span className="onboarding-icon"><Check /></span><div><h3>{email.trim().toLowerCase()}</h3><p>{isChinese ? "連結只可使用一次，並會在短時間內失效。" : "The link works once and expires shortly."}</p></div></div>
               <button className="text-action" type="button" onClick={() => setStatus("idle")}>{isChinese ? "使用另一個電郵" : "Use a different email"}</button>
             </>
           ) : (
             <>
-              <p>{isChinese ? "輸入解鎖報告或獲邀請時使用的電郵，我們會寄出一次性的登入連結。工作台成員身份與角色仍由伺服器驗證。" : "Enter the email you used to unlock a report or received an invitation on. We email a one-time sign-in link; workspace membership and role are still verified server-side."}</p>
+              <p>{claim ? (isChinese ? "輸入解鎖此報告時使用的電郵，我們會寄出一次性的登入連結。工作台權限仍需獨立驗證。" : "Enter the email you used to unlock this report. We email a one-time sign-in link; workspace access is still verified separately.") : (isChinese ? "輸入現有工作台成員或待接受邀請所使用的電郵，我們會寄出一次性的登入連結。" : "Enter the email for a current workspace member or pending invitation. We email a one-time sign-in link.")}</p>
               {error && <div className="form-error" role="alert"><CircleAlert /> {errorCopy(error, isChinese)}</div>}
               <form onSubmit={submit} noValidate>
                 <div className="field-stack">
@@ -130,6 +130,7 @@ export function SignInPage({
               <Button type="button" variant="outline" className="w-full" disabled={!hydrated || status === "sending"} onClick={googleSignIn}>{isChinese ? "使用 Google 登入" : "Continue with Google"}</Button>
             </>
           )}
+          {!claim && <p>{isChinese ? "如果你只解鎖了報告，請返回該報告頁登入並認領。" : "If you only unlocked a report, return to that report to sign in and claim it."}</p>}
           <div className="auth-divider"><span>{isChinese ? "尚未認領商戶？" : "Haven’t claimed a business?"}</span></div>
           <Button asChild variant="outline" className="w-full"><Link href={`/${locale}/scan`}><ScanSearch />{isChinese ? "先免費掃描" : "Start with a free scan"}</Link></Button>
           <p className="privacy-note"><LockKeyhole />{isChinese ? "登入只識別目前使用者；工作台授權與每項操作權限仍是獨立安全界線。" : "Sign-in identifies the viewer; workspace authorization and mutation permissions remain separate boundaries."}</p>

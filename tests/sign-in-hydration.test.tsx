@@ -26,3 +26,11 @@ it("blocks native pre-hydration submission then posts email with claim context a
   expect(String(fetch.mock.calls[0][0])).toContain("/api/auth/sign-in/magic-link");
   expect(JSON.parse(fetch.mock.calls[0][1]!.body as string)).toMatchObject({ email: "owner@acceptance.test", callbackURL: "/auth/callback?locale=en&claim=fixture-report&returnTo=%2Fen%2Fowner%2Ffixture" });
 });
+
+it("explains the report entry point on generic sign-in without claiming report-only emails receive mail", () => {
+  const html = renderToString(<SignInPage locale="en" />);
+  expect(html).toContain("current workspace member or pending invitation");
+  expect(html).toContain("If you only unlocked a report, return to that report to sign in and claim it.");
+  const claimHtml = renderToString(<SignInPage locale="en" claim="fixture-report" />);
+  expect(claimHtml).toContain("email you used to unlock this report");
+});
