@@ -76,6 +76,50 @@ describe('loadScanComparison', () => {
     expect(deps.list).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['current metadata', job({ completed_at: '2026-02-31T12:00:00Z' }), { ...currentInput, scannedAt: '2026-03-03T12:00:00Z' }],
+    ['current input', job({ completed_at: '2026-03-03T12:00:00Z' }), { ...currentInput, scannedAt: '2026-02-31T12:00:00Z' }],
+  ] satisfies Array<[string, PublicReportJob, ComparisonInput]>)('rejects impossible calendar dates in %s before history lookup', async (_label, current, suppliedInput) => {
+    const deps = ports([]);
+    expect(await loadScanComparison(current, suppliedInput, deps)).toEqual(
+      { kind: 'unavailable', reason: 'invalid_current_scan' },
+    );
+    expect(deps.list).not.toHaveBeenCalled();
+  });
+
+  it('rejects impossible candidate metadata before authorization', async () => {
+    const impossible = job({ id: 'impossible', completed_at: '2026-02-31T12:00:00Z' });
+    const deps = ports([impossible]);
+    expect(await loadScanComparison(job(), currentInput, deps)).toEqual(
+      { kind: 'unavailable', reason: 'no_accessible_pair' },
+    );
+    expect(deps.authorize).not.toHaveBeenCalled();
+    expect(deps.readInput).not.toHaveBeenCalled();
+  });
+
+  it('rejects an impossible authorized candidate input before comparison', async () => {
+    const candidate = job({ id: 'candidate', completed_at: '2026-03-03T12:00:00Z' });
+    const deps = ports([candidate], undefined, new Map([
+      ['candidate', input('2026-02-31T12:00:00Z')],
+    ]));
+    expect(await loadScanComparison(job(), currentInput, deps)).toEqual(
+      { kind: 'unavailable', reason: 'no_accessible_pair' },
+    );
+    expect(deps.authorize).toHaveBeenCalledWith(candidate);
+    expect(deps.readInput).toHaveBeenCalledWith(candidate);
+  });
+
+  it.each([
+    ['PostgreSQL timestamp text', '2026-09-08 12:00:00.123456+00', '2026-09-07 12:00:00.654321+00'],
+    ['valid leap day', '2028-02-29T12:00:00Z', '2028-02-28T12:00:00Z'],
+    ['ISO timezone offsets', '2026-09-08T20:00:00+08:00', '2026-09-07T20:00:00+08:00'],
+  ])('accepts %s', async (_label, currentTimestamp, previousTimestamp) => {
+    const current = job({ completed_at: currentTimestamp });
+    const suppliedInput = { ...currentInput, scannedAt: currentTimestamp };
+    const candidate = job({ id: 'candidate', completed_at: previousTimestamp });
+    const deps = ports([candidate], undefined, new Map([['candidate', input(previousTimestamp)]]));
+    expect((await loadScanComparison(current, suppliedInput, deps)).kind).toBe('available');
+  });
   it('rechecks injected rows and considers only valid same-location earlier completed candidates', async () => {
     const rows = [
       job({ id: 'cross-location', location_id: 'location-2', completed_at: '2026-09-07T12:00:00Z' }),

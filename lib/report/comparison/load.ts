@@ -12,12 +12,34 @@ export interface ComparisonPorts {
   readInput: (candidate: PublicReportJob) => Promise<ComparisonInput>;
 }
 
+const TIMESTAMP = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d{1,6})?(Z|[+-]\d{2}(?::?\d{2})?)$/;
+
+function parseTimestamp(value: string | null | undefined): number | null {
+  if (typeof value !== 'string') return null;
+  const match = TIMESTAMP.exec(value);
+  if (!match) return null;
+
+  const [year, month, day, hour, minute, second] = match.slice(1, 7).map(Number);
+  const calendar = new Date(Date.UTC(year, month - 1, day));
+  if (calendar.getUTCFullYear() !== year || calendar.getUTCMonth() !== month - 1
+    || calendar.getUTCDate() !== day || hour > 23 || minute > 59 || second > 59) return null;
+
+  const zone = match[7];
+  if (zone !== 'Z') {
+    const zoneParts = /^([+-])(\d{2})(?::?(\d{2}))?$/.exec(zone);
+    if (!zoneParts || Number(zoneParts[2]) > 23 || Number(zoneParts[3] ?? 0) > 59) return null;
+  }
+
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
 function validTimestamp(value: string | null | undefined): value is string {
-  return typeof value === 'string' && Number.isFinite(Date.parse(value));
+  return parseTimestamp(value) !== null;
 }
 
 function sameInstant(left: string, right: string): boolean {
-  return Date.parse(left) === Date.parse(right);
+  return parseTimestamp(left) === parseTimestamp(right);
 }
 
 function validateCurrent(current: PublicReportJob, input: ComparisonInput): ScanComparison | null {
@@ -34,7 +56,7 @@ function validCandidate(candidate: PublicReportJob, current: PublicReportJob, cu
     && candidate.location_id === current.location_id
     && finishedStatuses.has(candidate.status)
     && validTimestamp(candidate.completed_at)
-    && Date.parse(candidate.completed_at) < currentTime;
+    && parseTimestamp(candidate.completed_at)! < currentTime;
 }
 
 export async function loadScanComparison(
@@ -44,7 +66,7 @@ export async function loadScanComparison(
 ): Promise<ScanComparison> {
   const invalid = validateCurrent(current, input);
   if (invalid) return invalid;
-  const currentTime = Date.parse(current.completed_at!);
+  const currentTime = parseTimestamp(current.completed_at!)!;
 
   try {
     for (let offset = 0; offset < MAX_CANDIDATES; offset += PAGE_SIZE) {

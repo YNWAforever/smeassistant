@@ -41,3 +41,18 @@ All Task 2 behaviors and boundaries in the brief are covered. Candidate columns 
 ## Concerns
 
 None.
+
+## Review fix: strict calendar timestamps
+
+Reviewer requested rejection of impossible calendar dates that JavaScript `Date.parse` normalizes. Added boundary regressions for current metadata, current comparison input, candidate metadata before authorization, and authorized candidate input before comparison. Added positive coverage for PostgreSQL `completed_at::text` values with a space delimiter, six fractional digits and `+00`, plus leap days and ISO timezone offsets.
+
+RED: `corepack pnpm exec vitest run lib/report/comparison/load.test.ts` failed on impossible current metadata, current input, and candidate metadata because the loader accepted normalized February 31 values. The candidate-input equivalent-instant regression exercises the same parser after authorization and before comparison.
+
+GREEN:
+
+- `corepack pnpm exec vitest run lib/report/comparison/load.test.ts` — 19/19 passed.
+- `corepack pnpm exec vitest run --config vitest.integration.config.ts test/integration/neon-report-comparison.integration.test.ts` — owned Docker PostgreSQL 2/2 passed, confirming real SQL timestamp text compatibility.
+- `corepack pnpm exec tsc --noEmit` — passed.
+- `corepack pnpm exec eslint lib/report/comparison/load.ts lib/report/comparison/load.test.ts` — passed with no output.
+
+Self-review: parser checks the calendar date, clock ranges and timezone ranges before parsing, accepts required database and ISO forms, and preserves instant-equivalence checks. No other Task 2 behavior changed.
