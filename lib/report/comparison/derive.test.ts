@@ -38,6 +38,37 @@ describe('compareScanMetrics', () => {
       input(Array.from({ length: 51 }, (_, i) => fact(`q${i}`, 'present'))))).toBeNull();
   });
 
+  it('defensively folds direct facts and excludes unknown or conflicting duplicates', () => {
+    const before = input([
+      fact('stable', 'present'), fact('stable', 'present'),
+      fact('unknown', 'unknown'), fact('unknown', 'absent'),
+      fact('conflict', 'present'), fact('conflict', 'absent'),
+    ]);
+    const after = input([
+      fact('stable', 'absent'), fact('stable', 'absent'),
+      fact('unknown', 'absent'), fact('conflict', 'present'),
+    ]);
+    expect(compareScanMetrics(before, after)?.rows[0]).toMatchObject({
+      previous: 1, current: 0, denominator: 1,
+      omittedPrevious: 2, omittedCurrent: 2,
+    });
+  });
+
+  it('counts the union of cohort keys without a comparable row once', () => {
+    const before = input([fact('q', 'present')]);
+    const after = input([fact('q', 'present')]);
+    after.cohorts[0].key = 'changed-context';
+    before.ig = { definition: 'stored-post-sample-v1', posts: 1, complete: true };
+    after.ig = { definition: 'stored-post-sample-v1', posts: 2, complete: true };
+    expect(compareScanMetrics(before, after)).toMatchObject({
+      rows: [], ig: { previous: 1, current: 2, delta: 1 }, unavailableGroups: 2,
+    });
+
+    before.cohorts[0].complete = false;
+    after.cohorts[0].key = before.cohorts[0].key;
+    expect(compareScanMetrics(before, after)?.unavailableGroups).toBe(1);
+  });
+
   it('supports IG-only complete samples without search direction counts', () => {
     const base: ComparisonInput = { scannedAt: 'old', cohorts: [], ig: { definition: 'stored-post-sample-v1', posts: 0, complete: true } };
     const head: ComparisonInput = { scannedAt: 'new', cohorts: [], ig: { definition: 'stored-post-sample-v1', posts: 4, complete: true } };
