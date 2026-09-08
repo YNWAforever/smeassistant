@@ -3,21 +3,51 @@ import { NextResponse } from "next/server";
 import { completeSignIn } from "@/lib/identity/complete-sign-in";
 import { createCompletionPorts } from "@/lib/identity/complete-sign-in-ports";
 import { parseAuthFlow } from "@/lib/identity/sign-in-flow";
+import { authDiagnostic } from "@/lib/identity/sign-in-diagnostics";
 
 const MAX_BODY_BYTES = 4 * 1024;
 const FLOW_KEYS = new Set(["locale", "claim", "returnTo", "method"]);
 
-function response(body: Record<string, string>, status = 200): NextResponse {
-  return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
+function response(
+  body: Record<string, string>,
+  status = 200,
+  headers: HeadersInit = {},
+): NextResponse {
+  return NextResponse.json(body, {
+    status,
+    headers: { ...headers, "Cache-Control": "no-store" },
+  });
+}
+
+function methodNotAllowed(): NextResponse {
+  return response({ error: "method_not_allowed" }, 405, { Allow: "POST" });
+}
+
+/**
+ * Port construction happens immediately before fresh identity retrieval, so a
+ * construction failure is recorded as the fixed `fresh_session` stage.
+ */
+function unavailable(): NextResponse {
+  const correlationId = crypto.randomUUID();
+  try {
+    console.error(authDiagnostic("fresh_session", correlationId));
+  } catch {
+    // Diagnostics must not alter the fixed recovery response.
+  }
+  return response({ kind: "recover", reason: "unavailable" }, 503);
 }
 
 export function sameOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
   if (!origin || origin === "null") return false;
   try {
-    return new URL(origin).origin === new URL(request.url).origin
-      && origin === new URL(origin).origin
-      && !["cross-site", "same-site"].includes(request.headers.get("sec-fetch-site") ?? "");
+    return (
+      new URL(origin).origin === new URL(request.url).origin &&
+      origin === new URL(origin).origin &&
+      !["cross-site", "same-site"].includes(
+        request.headers.get("sec-fetch-site") ?? "",
+      )
+    );
   } catch {
     return false;
   }
@@ -41,18 +71,24 @@ function validFlowInput(input: unknown): URLSearchParams | null {
   }
   return params;
 }
+export function GET(): NextResponse {
+  return methodNotAllowed();
+}
 
 export async function POST(request: Request): Promise<NextResponse> {
   if (!sameOrigin(request)) return response({ error: "invalid_request" }, 400);
   const contentType = request.headers.get("content-type")?.toLowerCase() ?? "";
-  if (contentType.split(";", 1)[0]?.trim() !== "application/json") return response({ error: "invalid_request" }, 400);
+  if (contentType.split(";", 1)[0]?.trim() !== "application/json")
+    return response({ error: "invalid_request" }, 400);
   const length = Number(request.headers.get("content-length"));
-  if (Number.isFinite(length) && length > MAX_BODY_BYTES) return response({ error: "invalid_request" }, 400);
+  if (Number.isFinite(length) && length > MAX_BODY_BYTES)
+    return response({ error: "invalid_request" }, 400);
 
   let input: unknown;
   try {
     const body = await request.text();
-    if (new TextEncoder().encode(body).byteLength > MAX_BODY_BYTES) return response({ error: "invalid_request" }, 400);
+    if (new TextEncoder().encode(body).byteLength > MAX_BODY_BYTES)
+      return response({ error: "invalid_request" }, 400);
     input = JSON.parse(body);
   } catch {
     return response({ error: "invalid_request" }, 400);
@@ -61,11 +97,18 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (!params) return response({ error: "invalid_request" }, 400);
 
   try {
-    const result = await completeSignIn(parseAuthFlow(params), await createCompletionPorts(request));
-    if (result.kind === "redirect") return response({ kind: result.kind, destination: result.destination });
+    const result = await completeSignIn(
+      parseAuthFlow(params),
+      await createCompletionPorts(request),
+    );
+    if (result.kind === "redirect")
+      return response({ kind: result.kind, destination: result.destination });
     if (result.kind === "no_access") return response({ kind: result.kind });
-    return response({ kind: result.kind, reason: result.reason }, result.reason === "invalid_session" ? 401 : 503);
+    return response(
+      { kind: result.kind, reason: result.reason },
+      result.reason === "invalid_session" ? 401 : 503,
+    );
   } catch {
-    return response({ kind: "recover", reason: "unavailable" }, 503);
+    return unavailable();
   }
 }

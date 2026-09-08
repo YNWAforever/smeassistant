@@ -4,17 +4,22 @@ import { isLocale, DEFAULT_LOCALE } from "@/lib/locale";
 
 import type { IdentityProvider } from "./contracts";
 import type { AuthStage } from "./sign-in-diagnostics";
-import type { AuthFlow } from "./sign-in-flow";
-import { safeReturnPath } from "./return-path";
+import { safeAuthFlowReturnPath, type AuthFlow } from "./sign-in-flow";
 
 export type CompletionResult =
   | { kind: "redirect"; destination: string }
   | { kind: "no_access" }
-  | { kind: "recover"; reason: "invalid_session" | "unavailable"; correlationId: string };
+  | {
+      kind: "recover";
+      reason: "invalid_session" | "unavailable";
+      correlationId: string;
+    };
 
 export interface CompletionPorts {
   getIdentity: IdentityProvider["getIdentity"];
-  mapIdentity: (identity: NonNullable<Awaited<ReturnType<IdentityProvider["getIdentity"]>>>) => Promise<SessionUser>;
+  mapIdentity: (
+    identity: NonNullable<Awaited<ReturnType<IdentityProvider["getIdentity"]>>>,
+  ) => Promise<SessionUser>;
   bindInvitations: (user: SessionUser) => Promise<void>;
   hasAcceptedMembership: (userId: string) => Promise<boolean>;
   finishClaim: (user: SessionUser, flow: AuthFlow) => Promise<string | null>;
@@ -31,7 +36,7 @@ function selectorDestination(flow: AuthFlow): string {
 }
 
 function safeDestination(destination: string): string | null {
-  return safeReturnPath(destination, "") || null;
+  return safeAuthFlowReturnPath(destination);
 }
 
 function recover(ports: CompletionPorts, stage: AuthStage): CompletionResult {
@@ -44,13 +49,19 @@ function recover(ports: CompletionPorts, stage: AuthStage): CompletionResult {
   return { kind: "recover", reason: "unavailable", correlationId };
 }
 
-async function invalidSession(ports: CompletionPorts): Promise<CompletionResult> {
+async function invalidSession(
+  ports: CompletionPorts,
+): Promise<CompletionResult> {
   try {
     await ports.clearInvalidSession();
   } catch {
     return recover(ports, "fresh_session");
   }
-  return { kind: "recover", reason: "invalid_session", correlationId: crypto.randomUUID() };
+  return {
+    kind: "recover",
+    reason: "invalid_session",
+    correlationId: crypto.randomUUID(),
+  };
 }
 
 /**
@@ -59,7 +70,10 @@ async function invalidSession(ports: CompletionPorts): Promise<CompletionResult>
  * dependencies, so route validation can reject hostile requests before any
  * identity or database work starts.
  */
-export async function completeSignIn(flow: AuthFlow, ports: CompletionPorts): Promise<CompletionResult> {
+export async function completeSignIn(
+  flow: AuthFlow,
+  ports: CompletionPorts,
+): Promise<CompletionResult> {
   let identity: Awaited<ReturnType<IdentityProvider["getIdentity"]>>;
   try {
     identity = await ports.getIdentity();
@@ -95,10 +109,15 @@ export async function completeSignIn(flow: AuthFlow, ports: CompletionPorts): Pr
   }
 
   try {
-    if (!(await ports.hasAcceptedMembership(user.id))) return { kind: "no_access" };
+    if (!(await ports.hasAcceptedMembership(user.id)))
+      return { kind: "no_access" };
   } catch {
     return recover(ports, "workspace_lookup");
   }
 
-  return { kind: "redirect", destination: safeDestination(flow.returnTo ?? "") ?? selectorDestination(flow) };
+  return {
+    kind: "redirect",
+    destination:
+      safeDestination(flow.returnTo ?? "") ?? selectorDestination(flow),
+  };
 }

@@ -19,7 +19,7 @@ function single(query: URLSearchParams, key: string): string | null {
   return values.length === 1 ? values[0] : null;
 }
 
-function safeFlowReturnPath(value: string | null): string | null {
+export function safeAuthFlowReturnPath(value: string | null): string | null {
   if (!value) return null;
   const path = safeReturnPath(value, "");
   if (!path) return null;
@@ -31,13 +31,19 @@ function safeFlowReturnPath(value: string | null): string | null {
     decoded = next;
   }
   const rawPathname = decoded.split(/[?#]/, 1)[0] ?? "";
-  if (rawPathname.split("/").some((segment) => segment === "." || segment === "..")) return null;
+  if (
+    rawPathname
+      .split("/")
+      .some((segment) => segment === "." || segment === "..")
+  )
+    return null;
 
   const pathname = new URL(decoded, "https://local.invalid").pathname;
   if (
     pathname === "/auth/callback" ||
     /^\/(?:zh-HK|en|zh-TW)\/owner\/sign-in(?:\/complete)?$/.test(pathname)
-  ) return null;
+  )
+    return null;
 
   return path;
 }
@@ -51,8 +57,11 @@ export function parseAuthFlow(query: URLSearchParams): AuthFlow {
   return {
     locale: isLocale(locale) ? locale : DEFAULT_LOCALE,
     claim: claim && CLAIM_RE.test(claim) ? claim : null,
-    returnTo: safeFlowReturnPath(single(query, "returnTo")),
-    method: method && METHODS.has(method as AuthMethod) ? method as AuthMethod : null,
+    returnTo: safeAuthFlowReturnPath(single(query, "returnTo")),
+    method:
+      method && METHODS.has(method as AuthMethod)
+        ? (method as AuthMethod)
+        : null,
   };
 }
 
