@@ -21,6 +21,8 @@ export interface PublicReportJob {
   completed_at: string | null;
   /** `audit_jobs.workspace_id`; null until the job is attached to a workspace. */
   workspace_id?: string | null;
+  /** Server-only location identity used to scope historical candidates. */
+  location_id?: string | null;
 }
 
 export interface AuthorizedJobData {
@@ -64,6 +66,7 @@ export interface LoadedPublicFindings {
 
 export interface ReportStore {
   readPublicJobBySlug(slug: string): Promise<PublicReportJob | null>;
+  readEarlierReportJobs(jobId: string, offset: number): Promise<PublicReportJob[]>;
   readPublicFindings(jobId: string): Promise<LoadedPublicFindings>;
   readAuthorizedJobData(jobId: string): Promise<AuthorizedJobData>;
   readAuthorizedFindings(jobId: string): Promise<LoadedAuthorizedFinding[]>;

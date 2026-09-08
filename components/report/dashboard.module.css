@@ -39,3 +39,17 @@
 .scanMetrics ul { padding-left: 22px; }
 .scanMetrics li { padding-block: 8px; border-top: 1px solid #e6ecf2; }
 .sourceContext { display: flex; flex-wrap: wrap; gap: 6px 16px; color: #51667c; font-size: 13px; }
+
+.scanComparison { margin-top: 28px; padding-top: 24px; border-top: 1px solid #d7e4ee; min-width: 0; overflow-wrap: anywhere; }
+.scanComparison h2 { margin: 0 0 12px; font-size: 22px; }
+.comparisonDates, .comparisonValues { display: flex; flex-wrap: wrap; gap: 8px 24px; color: #51667c; }
+.comparisonCounts, .comparisonGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 12px; }
+.comparisonCounts { margin: 18px 0; }
+.comparisonCounts > div, .comparisonCard { min-width: 0; padding: 16px; border: 1px solid #dbe4ee; border-radius: 12px; background: #fff; overflow-wrap: anywhere; }
+.comparisonCounts dt { color: #51667c; font-size: 12px; }
+.comparisonCounts dd { margin: 4px 0 0; font-size: 22px; font-weight: 700; }
+.comparisonCard h3 { margin: 0 0 10px; font-size: 16px; }
+.comparisonCard[data-direction="increased"] > p > strong { color: #087f5b; }
+.comparisonCard[data-direction="decreased"] > p > strong { color: #b54708; }
+.sampleCoverage { margin-top: 12px; }
+.scanComparison details summary:focus-visible { outline: 3px solid #175cd3; outline-offset: 4px; border-radius: 2px; }

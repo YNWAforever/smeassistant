@@ -6,6 +6,7 @@ import {
   type SearchMetric,
   type SearchObservation,
 } from './types';
+import type { QueryCohort, QueryFact } from '../comparison/types';
 
 type RecordValue = Record<string, unknown>;
 type Surface = SearchMetric['surface'];
@@ -80,6 +81,10 @@ interface Observation {
   context: string;
   surface: Surface;
   row: SearchObservation;
+  rawQuery: string;
+  cohortKey: string | null;
+  cohortLabel: string;
+  cohortScope: { queryType: string; gl: string; hl: string; location: string; device: string; ll: string | null } | null;
 }
 
 function normalize(value: unknown, legacy: boolean, index: number): Observation[] {
@@ -92,6 +97,8 @@ function normalize(value: unknown, legacy: boolean, index: number): Observation[
   const engine = typeof run.engine === 'string' ? run.engine : '';
   const queryType = typeof run.query_type === 'string' ? run.query_type : null;
   const rawQuery = typeof run.query === 'string' ? run.query : '';
+  const hasRequiredContext = nonempty(engine) && nonempty(rawQuery) && nonempty(run.query_type)
+    && CONTEXT_KEYS.every(key => key === 'll' ? (settings[key] === null || nonempty(settings[key])) : nonempty(settings[key]));
   const identity = nonempty(run.id)
     ? JSON.stringify(['id', run.id, contextKey])
     : rawQuery ? JSON.stringify(['query', rawQuery, engine, queryType, contextKey, run.requested_at ?? null])
@@ -145,7 +152,50 @@ function normalize(value: unknown, legacy: boolean, index: number): Observation[
       engine: ENGINES.has(engine) ? engine : nonempty(engine) ? 'unsupported' : 'unknown',
       queryType: queryType === null ? null : text(queryType, 100), context, surface,
       row: { query: text(rawQuery, 500), observedAt: date(run.requested_at), outcome },
+      rawQuery,
+      cohortKey: hasRequiredContext ? JSON.stringify([engine, run.query_type, settings.gl, settings.hl,
+        settings.location, settings.device, settings.ll, surface]) : null,
+      cohortLabel: text(settings.location, 200),
+      cohortScope: hasRequiredContext ? { queryType: text(run.query_type, 100), gl: text(settings.gl, 20), hl: text(settings.hl, 35),
+        location: text(settings.location, 200), device: text(settings.device, 35), ll: settings.ll === null ? null : text(settings.ll, 100) } : null,
     };
+  });
+}
+
+/** Server-only exact query cohorts. Keys and unsliced queries must never enter report props. */
+export function deriveComparisonSearchCohorts(rawAeo: unknown): QueryCohort[] {
+  const aeo = record(rawAeo);
+  const merchant = record(aeo.merchant_performance);
+  const hasMerchantRuns = Object.prototype.hasOwnProperty.call(merchant, 'runs');
+  const input = hasMerchantRuns ? merchant.runs : aeo.serpapi_runs;
+  if (!Array.isArray(input)) return [];
+  const inputTruncated = input.length > MAX_INPUT_RECORDS;
+  const groups = new Map<string, { engine: string; surface: Surface; label: string; scope: NonNullable<Observation['cohortScope']>;
+    facts: Map<string, Array<{ outcome: QueryFact['outcome']; observedAt: string | null }>> }>();
+  for (const [index, value] of input.slice(0, MAX_INPUT_RECORDS).entries()) {
+    for (const observation of normalize(value, !hasMerchantRuns, index)) {
+      if (observation.cohortKey === null) continue;
+      const group = groups.get(observation.cohortKey) ?? {
+        engine: observation.engine, surface: observation.surface, label: observation.cohortLabel, scope: observation.cohortScope!, facts: new Map(),
+      };
+      const facts = group.facts.get(observation.rawQuery) ?? [];
+      facts.push({ outcome: observation.row.outcome === 'present' || observation.row.outcome === 'absent'
+        ? observation.row.outcome : 'unknown', observedAt: observation.row.observedAt });
+      group.facts.set(observation.rawQuery, facts);
+      groups.set(observation.cohortKey, group);
+    }
+  }
+  const groupsTruncated = groups.size > MAX_SEARCH_GROUPS;
+  return [...groups.entries()].slice(0, MAX_SEARCH_GROUPS).map(([key, group]) => {
+    const facts: QueryFact[] = [];
+    for (const [query, observations] of group.facts) {
+      const outcomes = new Set(observations.map(item => item.outcome));
+      const timestamps = new Set(observations.map(item => item.observedAt));
+      facts.push({ query, outcome: outcomes.size === 1 ? observations[0].outcome : 'unknown',
+        observedAt: outcomes.size === 1 && timestamps.size === 1 ? observations[0].observedAt : null });
+    }
+    return { key, engine: group.engine, surface: group.surface, label: group.label, ...group.scope, facts,
+      complete: !inputTruncated && !groupsTruncated && facts.length <= MAX_EVIDENCE_ROWS };
   });
 }
 

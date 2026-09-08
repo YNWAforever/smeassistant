@@ -1,4 +1,6 @@
 import type { ScanMetrics } from "@/lib/report/scan-metrics/types";
+import type { ScanComparison } from "@/lib/report/comparison/types";
+import { projectScanComparison } from "@/lib/report/comparison/projection";
 import { getMarketCtas, type Market } from "@sme-scanner/region";
 
 import { copy, type PrototypeLocale } from "@/lib/copy";
@@ -134,6 +136,7 @@ export type ReportViewModelLike =
       access: "viewer" | "member" | "staff";
       preview: ReportPreviewLike;
       scanMetrics?: ScanMetrics;
+      scanComparison?: ScanComparison;
       fullFindings: ViewerFindingLike[];
       summary: string | null;
       proof: ReportProofData;
@@ -202,6 +205,7 @@ export type ReportEvidenceItem = EvidenceItemLike;
 
 export type ReportComparison =
   | { kind: "first_scan" }
+  | { kind: "not_evaluated" }
   | { kind: "comparable"; delta: number; title: string; body: string }
   | { kind: "incomparable"; reason: string };
 
@@ -213,6 +217,7 @@ export interface ReportCta {
 
 export interface ReportProps {
   scanMetrics?: ScanMetrics;
+  scanComparison?: ScanComparison;
   locale: PrototypeLocale;
   access: ReportAccessKind;
   sample: boolean;
@@ -346,8 +351,7 @@ export function buildReportProps(model: ReportViewModelLike, locale: PrototypeLo
     scannedAt: preview.scannedAt ?? null,
     score: preview.overallScore,
     coverage: preview.coverage.percent,
-    // Phase 3 reads scan_diffs; until then every report is presented as a first scan.
-    comparison: { kind: "first_scan" },
+    comparison: { kind: "not_evaluated" },
     modules,
     priorities,
     locked:
@@ -355,6 +359,7 @@ export function buildReportProps(model: ReportViewModelLike, locale: PrototypeLo
         ? { hiddenFindingCount: model.unlock.hiddenFindingCount, unlockHref: model.unlock.href }
         : null,
     ...(full?.scanMetrics ? { scanMetrics: full.scanMetrics } : {}),
+    ...(full?.scanComparison ? { scanComparison: projectScanComparison(full.scanComparison) } : {}),
     summary: full?.summary ?? null,
     findingGroups,
     proof: full?.proof ?? null,
