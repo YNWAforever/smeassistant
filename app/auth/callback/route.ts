@@ -1,14 +1,10 @@
 import { NextResponse, NextRequest } from "next/server";
-import { cookies } from "next/headers";
 import { signOut, type SessionUser } from "@/lib/auth";
-import { reportsRepository } from "@/lib/repositories/reports";
 import { claimsRepository } from "@/lib/repositories/claims";
 import { authDiagnostic, type AuthStage } from "@/lib/identity/sign-in-diagnostics";
 import { authFlowHref, parseAuthFlow, type AuthFlow } from "@/lib/identity/sign-in-flow";
 import { bindWorkspaceToUser } from "@/lib/workspace/bind-workspace";
 import { shouldRecordAccessRequest } from "@/lib/workspace/access-request";
-import { parseViewerGrantCookie, VIEWER_GRANT_COOKIE } from "@/lib/report-access/cookie";
-import { tokenHashMatches } from "@/lib/report-access/token";
 import { claimScan, type ClaimOutcome } from "@/lib/workspace/claim-scan";
 import {
   attachJobToWorkspace,
@@ -18,6 +14,9 @@ import {
 } from "@/lib/workspace/callback-queries";
 
 
+import { holdsViewerGrant } from "@/lib/identity/claim-viewer-grant";
+import { cleanCallbackHandoff } from "@/lib/identity/callback-handoff";
+export { cleanCallbackHandoff } from "@/lib/identity/callback-handoff";
 type LandingContext = AuthFlow;
 
 /**
@@ -37,24 +36,6 @@ function landing(req: Request, ctx: LandingContext, params: Record<string, strin
   return url;
 }
 
-/**
- * True only if the caller presents the grant cookie actually issued for this job.
- * Mirrors the checks in authorizeReport rather than trusting cookie presence:
- * a cookie for someone else's report must not entitle a claim on this one.
- */
-async function holdsViewerGrant(jobId: string): Promise<boolean> {
-  const raw = (await cookies()).get(VIEWER_GRANT_COOKIE)?.value;
-  const presented = raw ? parseViewerGrantCookie(raw) : null;
-  if (!presented) return false;
-
-  const data = await reportsRepository().findViewerGrant(jobId, presented.grantId);
-
-  if (!data || data.job_id !== jobId || data.revoked_at != null) return false;
-  const expiry = Date.parse(data.expires_at);
-  if (!Number.isFinite(expiry) || expiry <= Date.now()) return false;
-
-  return tokenHashMatches(presented.rawToken, data.token_hash);
-}
 
 export async function GET(req: Request) {
   const requestUrl = new URL(req.url);
@@ -77,9 +58,8 @@ export async function GET(req: Request) {
       stage = "verifier_exchange";
       const { getNeonAuth } = await import("@/lib/identity/neon");
       const exchanged = await getNeonAuth().middleware()(new NextRequest(req));
-      const clean = new URL(req.url);
-      clean.searchParams.delete("neon_auth_session_verifier");
-      if (exchanged.headers.get("location") === clean.toString()) return exchanged;
+      const handoff = cleanCallbackHandoff(req, exchanged);
+      if (handoff) return handoff;
       await signOut();
       return NextResponse.redirect(landing(req, ctx, { error: "invalid_code" }));
     }
