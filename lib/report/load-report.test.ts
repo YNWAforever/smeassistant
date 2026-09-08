@@ -410,11 +410,16 @@ function makeLoaderDeps(options: {
     options.authorizedJobsById?.[jobId] ?? authorizedJob);
   const readAuthorizedFindings = vi.fn(async () => authorizedFindings);
   const readApprovedAgentRuns = vi.fn(async () => []);
-  const findViewerGrant = vi.fn(async () => {
+  const findViewerGrant = vi.fn(async (jobId: string) => {
     if (options.lookupThrows) throw new Error("grant lookup failed");
+    if (options.grantsByJob && Object.hasOwn(options.grantsByJob, jobId)) {
+      return options.grantsByJob[jobId] ?? null;
+    }
     return options.grant ?? null;
   });
-  const markViewerGrantUsed = vi.fn(async () => {
+  const markViewerGrantUsed = vi.fn(async (jobId: string, grantId: string) => {
+    void jobId;
+    void grantId;
     if (options.markUsedThrows) throw new Error("grant usage write failed");
   });
   const cacheSummary = vi.fn(async () => undefined);
@@ -1036,6 +1041,10 @@ describe("scan comparison authorization integration", () => {
     expect(model.access).toBe("viewer");
     expect(model).toHaveProperty("scanComparison", { kind: "unavailable", reason: "no_accessible_pair" });
     expect(deps.findViewerGrant).toHaveBeenCalledWith("job-previous", current.grant.id);
+    const candidateLookup = deps.findViewerGrant.mock.calls.findIndex(([jobId]) => jobId === "job-previous");
+    const expectedCandidateGrant = Object.keys(candidateGrantOverrides).length ? candidateGrant : null;
+    expect(await deps.findViewerGrant.mock.results[candidateLookup]!.value).toBe(expectedCandidateGrant);
+    expect(deps.markViewerGrantUsed).not.toHaveBeenCalledWith("job-previous", current.grant.id);
     expect(deps.readAuthorizedJobData).not.toHaveBeenCalledWith("job-previous");
   });
 
