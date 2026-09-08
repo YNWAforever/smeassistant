@@ -30,6 +30,9 @@ function safeFlowReturnPath(value: string | null): string | null {
     if (next === decoded) break;
     decoded = next;
   }
+  const rawPathname = decoded.split(/[?#]/, 1)[0] ?? "";
+  if (rawPathname.split("/").some((segment) => segment === "." || segment === "..")) return null;
+
   const pathname = new URL(decoded, "https://local.invalid").pathname;
   if (
     pathname === "/auth/callback" ||

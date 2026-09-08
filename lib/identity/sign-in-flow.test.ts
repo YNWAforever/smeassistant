@@ -37,6 +37,14 @@ describe("sign-in flow context", () => {
     },
   );
 
+  it.each(["/%2e%2e/staff", "/%252e%252e/staff"])(
+    "does not retain encoded dot-segment traversal: %s",
+    (returnTo) => {
+      const flow = parseAuthFlow(new URLSearchParams({ returnTo }));
+      expect(flow.returnTo).toBeNull();
+    },
+  );
+
   it("builds callback URLs from only validated flow fields", () => {
     const flow = parseAuthFlow(new URLSearchParams(
       "locale=zh-TW&claim=Ab_cd-12&returnTo=%2Fzh-TW%2Fowner%2Fshop%3Ftab%3Devidence&method=google&token=secret",
