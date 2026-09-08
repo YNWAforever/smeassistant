@@ -1,58 +1,57 @@
 # Guided owner sign-in verification
 
 Date: 2026-09-09
-Tested source SHA: `0851cfb44b5438a83b359f14551d491a8e6283d8`
-Status: Local implementation evidence is incomplete. The branch is not release-ready.
+Tested source SHA: 194662c3d7160bf3ed75e167157293e84e34b0f2
+Source corrections reviewed in this slice: 0851cfb, b79e4fb, 7a5f14a, 194662c.
+Evidence commit originally created at 04dc0b7; this record is updated after the final reruns.
+
+Status: local implementation and the normal fixture gate are complete. The hosted Google callback diagnosis remains unresolved, so the branch is not release-ready pending a separately authorized hosted diagnostic and live verification.
 
 ## Scope and environment
 
-All automation used `SCAN_SOURCES=fixture`, `NEON_INTEGRATION=1`, and `VITEST_MAX_WORKERS=1` where relevant, without a real environment file, live provider, email delivery, shared database migration, deployment, or domain action. Docker reported `linux` (exit 0). The four disposable containers labelled `com.sme-scanner.integration=neon-postgres` created by this worktree were removed. No guided-sign-in Next, Playwright, Vitest, or identity-fixture process remained.
+All automated work used SCAN_SOURCES=fixture, NEON_INTEGRATION=1, and VITEST_MAX_WORKERS=1 where relevant. No real environment file, live provider, email delivery, shared database migration, deployment, or domain action was used. Docker reported linux. The final cleanup check found zero containers with the repository's Neon integration labels and zero owned Next, Playwright, Vitest, or identity-fixture Node processes.
 
-## Current gate evidence
+## Final gate evidence
 
 | Command | Exit/result | Evidence |
 | --- | --- | --- |
-| `corepack pnpm install --frozen-lockfile` | 0 | Lockfile current; dependencies installed. |
-| `corepack pnpm lint` | 0 | Reran after the review correction; ESLint completed. |
-| `corepack pnpm typecheck` | 0 | Reran after the review correction; root and four workspace packages completed. |
-| `corepack pnpm test` | no valid result | The execution watchdog detached the Vitest parent after it began; its runner continued without emitting test totals. It was stopped and recorded as `INTERRUPTED_BY_EXECUTION_WATCHDOG_NO_TEST_RESULT`. This is not a pass. Dependent normal-gate stages were not run. |
-| `corepack pnpm exec vitest run app/auth/callback/route.test.ts components/auth/sign-in-completion.test.tsx` | 0 | 2 files, 15 tests passed after the review correction. |
-| `docker info --format '{{.OSType}}'` | 0 | `linux`. |
-| `git diff --check` | 0 before committing `0851cfb` | No whitespace errors. |
+| corepack pnpm install --frozen-lockfile | 0 | Lockfile current; dependencies installed. |
+| corepack pnpm lint | 0 | Final-head rerun; 0 errors and 30 existing warnings. |
+| corepack pnpm typecheck | 0 | Final-head root and four workspace packages passed. |
+| corepack pnpm test | 0 | Final valid rerun: 218 files and 2,102 root tests passed; safe-media 1 file/62 tests; workspace suites region 23, scoring 183, contracts 20, scan-engine 269. |
+| corepack pnpm test:secret-boundary | 0 | Final build scan passed across 46 public artifacts. |
+| corepack pnpm test:no-supabase | 0 | No forbidden retired transport references. |
+| docker info --format '{{.OSType}}' | 0 | linux. |
+| corepack pnpm db:verify | 0 | 4 migrations applied, replay 0, 34 tables, 403 columns, 151 constraints, 84 indexes, 7 triggers, 13 functions, 0 seeded rows. |
+| corepack pnpm test:integration | 0 | Clean rerun: 25 files and 249 tests passed, with no skips. The earlier clean-state attempt was 247/249 because two analytics cases returned backend_unavailable; after removing a stale labeled fixture container, the rerun passed. |
+| corepack pnpm build | 0 | Final-head Next build and TypeScript passed; 27 static pages generated. |
+| corepack pnpm exec playwright install chromium | 0 | Chromium available for the fixture browser gates. |
+| corepack pnpm e2e | 0 | Final rerun: 31/31 passed. |
+| corepack pnpm e2e:acceptance | 0 | Final rerun: 38/38 passed. |
+| git diff --check | 0 | Final worktree check passed. |
 
-Because the root test command lacks a valid exit, this record does not claim success for `test:secret-boundary`, `test:no-supabase`, `db:verify`, `test:integration`, `build`, Playwright installation, `e2e`, or `e2e:acceptance` as a Task 6 normal gate. They must be run with valid captured exits before a release decision.
+The first final-head unit attempt had one unrelated versions mutation test timeout and was stopped after no aggregate result; the isolated test then passed 11/11, and the required full command was rerun successfully. This record reports the valid rerun, not the interrupted attempt.
 
-## Focused evidence from reviewed slices
+## Corrections made during the gate
 
-- Task 1: callback diagnostics and callback regressions: 19 tests; SDK transport: 4; callback/identity focused suite: 82 tests; owned Neon identity integration: 5 tests, with no relevant skips.
-- Task 2: flow-context, callback, auth proxy, mail-route, and hydration suite: 15 files, 120 tests.
-- Task 3: completion, callback handoff, and identity suite: 16 files, 115 tests; owned Neon completion/identity/membership integrations: 27 tests, with no relevant skips.
-- Task 4: guided UI, hydration, callback, handoff, SDK, completion route, and domain suite: 8 files, 42 tests; TypeScript passed.
-- Task 5: required combined acceptance command passed 24/24 in 2.1 minutes. The locale/viewport matrix passed 6/6 in 34.5 seconds. The isolated returning-viewer rerun passed 1/1 in 17.5 seconds. Its earlier combined attempt had one transient `ECONNRESET`; the recorded rerun is the valid evidence.
+- 0851cfb moves a router ref write out of React render and fails closed when a fixture verifier exchange returns null; focused callback/completion coverage is 15/15.
+- b79e4fb moves the viewer-grant fixture test to the current holdsViewerGrant and completion boundaries. The stale route test reproduced 8/8 failures; the corrected focused test passes 8/8 while retaining exact job/grant binding, invalid and revoked rejection, malformed-cookie no-lookup, and generic SQL-failure recovery.
+- 7a5f14a updates only the owner-shell fixture selectors to the current guided sign-in DOM. The prior full E2E result was 28/31; the final rerun is 31/31.
+- 194662c adds Next's documented data-scroll-behavior attribute to the root html element. The prior acceptance result was 35/38 with three identical missing-data-scroll-behavior diagnostics; the final rerun is 38/38.
+- The initial integration attempt left no running fixture after teardown but exposed a stale labeled disposable container from an earlier run. The labeled container was removed, and the clean integration rerun passed 249/249.
 
-These are focused fixture checks, not substitutes for the unfinished root gate.
+## Independent authorization and privacy review
 
-## Authorization and privacy coverage
+A fresh whole-branch reviewer returned CLEAN after the final source/test corrections. The review inspected callback cookie preservation, same-origin completion POST validation, session-preservation policy, destination validation, account enumeration, identity mapping, invitation/member binding, claim/draft authority, and no-access paths. The reviewer also reran an 8-file focused suite: 50/50 passed in 14.06 seconds, and git diff --check passed.
 
-The reviewed tests cover managed callback cookie preservation only through the exact clean callback handoff; same-origin and Fetch Metadata checks before completion POST parsing; fresh-session invalidation versus service-failure session preservation; validated local destinations and context propagation; non-enumerating email responses; atomic pending-membership binding; claim constraints; and no-access only after successful authorization. Browser fixtures cover controlled Google-style completion, cancellation, unavailable/revoked and mapping/binding recovery, changed account, consumed email link, empty access, cross-origin POST rejection, and the absence of membership or draft-authority mutation on failure.
-
-The current callback diagnosis remains unresolved at the hosted Google boundary. Production evidence showed failure after Google account selection, but did not distinguish verifier exchange, fresh-session lookup, identity mapping, invitation binding, workspace lookup, or claim resolution. Local diagnostics now produce only an allowlisted stage and opaque correlation identifier. Fixture SDK exchange and owned SQL mapping pass, but neither proves the production Google return is fixed.
-
-## Independent review and correction
-
-Tasks 1 through 5 each received an independent slice review recorded as clean before the next task. The post-Task-5 final authorization/test review identified two corrections:
-
-1. Router ref assignment ran during component render. Commit `0851cfb` moves that assignment to an effect without changing the one-request completion behavior.
-2. The owned fixture verifier exchange can return `null`, but the callback passed it to the response-only handoff helper. Commit `0851cfb` now fails closed to the generic invalid-code recovery, with a regression covering the null exchange.
-
-The focused callback and completion suite passed 15/15, and lint and typecheck passed after that correction. A fresh whole-branch independent re-review is still required after `0851cfb`.
+The reviewed implementation preserves managed-auth Set-Cookie headers only through the exact clean callback handoff. Application authorization occurs through the same-origin completion POST. Invalid sessions clear credentials; provider and database failures preserve a valid session while returning recovery. Destinations and claim context are server-validated, and viewer or out-of-scope manager fixtures retain read-only evidence access while draft mutations remain denied.
 
 ## Browser evidence and live limits
 
-The owned browser fixture generated six ignored locale/viewport screenshots and automated keyboard-focus, Enter activation, processing-state, navigation, and overflow assertions. Automated capture completion was inspected through the test results. Manual bitmap inspection was blocked by the host ACL, so no visual conclusion relies on an uninspected image.
+The owned browser fixture covered Google-style start, single-use verifier handoff, processing, cancellation, mapping/binding/upstream/revoked failures, changed account, consumed email link, no-access, cross-origin completion rejection, membership binding, and the locale/viewport keyboard matrix. The final browser gates were 31/31 E2E and 38/38 acceptance. Six ignored screenshots were generated for en, zh-HK, and zh-TW at 375 and 1440 pixels; automated focus, Enter activation, status, navigation, and overflow assertions passed. Manual bitmap inspection remains blocked by the host ACL, so no visual conclusion relies on an uninspected image.
 
-No live Google account completion, live email receipt, provider configuration change, deployment, or production diagnostic release was attempted. A future authorized diagnostic/release step must verify the deployed SHA, collect only safe stage/correlation evidence, and have a user complete the Google flow after account selection. Reaching Google's account picker is insufficient evidence of a completed sign-in.
+The hosted production failure is still only localized to the callback period after Google account selection. Existing production evidence does not distinguish verifier exchange, fresh-session lookup, identity mapping, invitation binding, workspace lookup, or claim resolution. The local diagnostic stages and fixture RED/GREEN coverage do not prove which hosted boundary failed or that a deployed fix resolves it. A future authorized step must verify the deployed SHA, collect only allowlisted stage/correlation evidence, and have the user complete the Google flow after account selection. Reaching the Google account picker is not completion evidence.
 
 ## Release status
 
-Not release-ready. The remaining release conditions are a valid full normal-gate run, a whole-branch independent review after `0851cfb`, and separately authorized hosted diagnostic/live verification. This record grants no deployment authority.
+Local verification is complete and independent review is clean. The branch remains not release-ready because hosted diagnostic/live Google and email verification has not been authorized or performed. This evidence record grants no deployment, provider, email, migration, or domain authority.

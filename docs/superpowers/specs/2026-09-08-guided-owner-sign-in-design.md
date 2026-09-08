@@ -1,7 +1,7 @@
 # Guided owner sign-in and callback recovery
 
 Date: 2026-09-08
-Status: Design approved on 2026-09-08. Local implementation through Tasks 1-5 and a post-review correction at `0851cfb44b5438a83b359f14551d491a8e6283d8` exist; Task 6 evidence is partial because the root test gate was interrupted. Not release-ready pending a valid full gate, whole-branch review, and separately authorized hosted verification.
+Status: Design approved on 2026-09-08. Local implementation through Task 6 is verified at source 194662c3d7160bf3ed75e167157293e84e34b0f2; the final normal gate passed and the independent whole-branch review is CLEAN. The hosted Google callback diagnosis remains unresolved, so this is not release-ready pending separately authorized hosted verification.
 Baseline: main at 30046da86f1c54d40fdbd6d3fff00b6decd26734 (PR #11).
 
 ## Outcome

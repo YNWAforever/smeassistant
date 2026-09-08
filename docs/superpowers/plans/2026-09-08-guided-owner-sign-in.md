@@ -8,7 +8,7 @@
 
 **Tech Stack:** Next.js 16.2.6 App Router, React 19, TypeScript, pinned @neondatabase/auth 0.5.0-beta, PostgreSQL repositories, Vitest, Playwright, owned Docker/Auth/mail fixtures, pnpm 9 via corepack on Windows.
 
-**Execution status (2026-09-09):** Tasks 1-5 are independently reviewed local slices. Task 6 recorded partial gate evidence at `0851cfb44b5438a83b359f14551d491a8e6283d8`: install, lint, typecheck, focused callback/completion tests, and Docker Linux passed; the root `pnpm test` was interrupted before a valid result, so the branch is not release-ready. See `docs/integration/2026-09-08-guided-owner-sign-in-verification.md`.
+**Execution status (2026-09-09):** Tasks 1-6 are independently reviewed local slices. The final local gate at source 194662c3d7160bf3ed75e167157293e84e34b0f2 passed: root/workspace tests, secret-boundary, no-Supabase, Docker Linux, migration verification, Neon integration (249/249), build, E2E (31/31), and acceptance (38/38). The hosted Google callback diagnosis remains unresolved, so the branch is not release-ready pending separately authorized hosted diagnostic/live verification. See docs/integration/2026-09-08-guided-owner-sign-in-verification.md.
 
 ## Global Constraints
 
@@ -230,8 +230,10 @@ Define POST `/test/completion-hold` and POST `/test/completion-release` only on 
 **Files:** Create `docs/integration/2026-09-08-guided-owner-sign-in-verification.md`; update this plan and the design spec status only after evidence exists.
 
 **Interfaces:** Produce a verification record containing tested SHA, commands/exits/counts, reviewer findings, diagnostic outcome, screenshots actually inspected, live limitations, and release status. It is evidence, not authorization.
+**Task 6 outcome (2026-09-09):** Local verification is complete and the independent whole-branch review is CLEAN at source 194662c. The hosted Google callback boundary remains unresolved; no deployment or live-provider verification is authorized by this plan.
 
-- [ ] Run the normal gate in the isolated checkout, using fixture sources and no real env files:
+
+- [x] Run the normal gate in the isolated checkout, using fixture sources and no real env files:
 
 ```powershell
 $env:SCAN_SOURCES='fixture'
@@ -255,10 +257,10 @@ git diff --check
 
 Execute with explicit exit checks per command and preserve logs. Stop dependent stages on failure. Do not concatenate commands and mistake the last exit code for all-pass. The Linux value must be `linux`; fixture database tests must not skip. Fix genuine regressions using systematic debugging. Record pre-existing/environment failures separately rather than deleting tests or widening timeouts without evidence.
 
-- [ ] Request independent final authorization/test review of the whole branch. Resolve blocking issues, then rerun checks affected by the correction. Reviewer must examine callback cookies, same-origin POST, session-preservation policy, destination validation, account enumeration, member binding and all no-access paths.
-- [ ] Confirm zero owned fixture containers/Next processes remain. Preserve all unrelated work. Record exact source and documentation commits; stage explicit paths only.
-- [ ] Mark the production callback diagnosis accurately: proven cause plus RED/GREEN fixture, or unresolved pending live diagnostic evidence. All-local-green alone cannot certify the Google issue is fixed. Real Google account selection and email receipt remain human/authorized live checks.
-- [ ] Commit the verification record as `docs: record guided sign-in verification`. Follow finishing-a-development-branch for integration choice. Before any new release, present exact PR/commit and obtain applicable authorization. After authorized deployment, verify the production SHA and ask the user to complete Google sign-in; do not mark completed login based only on reaching accounts.google.com.
+- [x] Request independent final authorization/test review of the whole branch. Resolve blocking issues, then rerun checks affected by the correction. Reviewer must examine callback cookies, same-origin POST, session-preservation policy, destination validation, account enumeration, member binding and all no-access paths.
+- [x] Confirm zero owned fixture containers/Next processes remain. Preserve all unrelated work. Record exact source and documentation commits; stage explicit paths only.
+- [x] Mark the production callback diagnosis accurately: proven cause plus RED/GREEN fixture, or unresolved pending live diagnostic evidence. All-local-green alone cannot certify the Google issue is fixed. Real Google account selection and email receipt remain human/authorized live checks.
+- [x] Commit the verification record as recorded in the verification document.
 
 ## Self-review coverage
 
