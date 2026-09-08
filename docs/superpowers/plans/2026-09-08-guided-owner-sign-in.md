@@ -8,6 +8,8 @@
 
 **Tech Stack:** Next.js 16.2.6 App Router, React 19, TypeScript, pinned @neondatabase/auth 0.5.0-beta, PostgreSQL repositories, Vitest, Playwright, owned Docker/Auth/mail fixtures, pnpm 9 via corepack on Windows.
 
+**Execution status (2026-09-09):** Tasks 1-5 are independently reviewed local slices. Task 6 recorded partial gate evidence at `0851cfb44b5438a83b359f14551d491a8e6283d8`: install, lint, typecheck, focused callback/completion tests, and Docker Linux passed; the root `pnpm test` was interrupted before a valid result, so the branch is not release-ready. See `docs/integration/2026-09-08-guided-owner-sign-in-verification.md`.
+
 ## Global Constraints
 
 - Approved spec: `docs/superpowers/specs/2026-09-08-guided-owner-sign-in-design.md`.
