@@ -2,10 +2,9 @@ import { NextResponse, NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { signOut, type SessionUser } from "@/lib/auth";
 import { reportsRepository } from "@/lib/repositories/reports";
-import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/locale";
 import { claimsRepository } from "@/lib/repositories/claims";
-import { safeReturnPath } from "@/lib/identity/return-path";
 import { authDiagnostic, type AuthStage } from "@/lib/identity/sign-in-diagnostics";
+import { authFlowHref, parseAuthFlow, type AuthFlow } from "@/lib/identity/sign-in-flow";
 import { bindWorkspaceToUser } from "@/lib/workspace/bind-workspace";
 import { shouldRecordAccessRequest } from "@/lib/workspace/access-request";
 import { parseViewerGrantCookie, VIEWER_GRANT_COOKIE } from "@/lib/report-access/cookie";
@@ -19,13 +18,7 @@ import {
 } from "@/lib/workspace/callback-queries";
 
 
-interface LandingContext {
-  locale: Locale;
-  /** Validated claim slug, or null. */
-  claimSlug: string | null;
-  /** Validated same-origin path, or null. */
-  returnTo: string | null;
-}
+type LandingContext = AuthFlow;
 
 /**
  * Where the browser lands, per the Phase 2 contract:
@@ -35,11 +28,11 @@ interface LandingContext {
  */
 function landing(req: Request, ctx: LandingContext, params: Record<string, string>): URL {
   let path: string;
-  if ("error" in params) path = `/${ctx.locale}/owner/sign-in`;
-  else if (ctx.claimSlug) path = `/${ctx.locale}/owner/onboarding`;
+  if ("error" in params) path = authFlowHref(ctx, "start");
+  else if (ctx.claim) path = `/${ctx.locale}/owner/onboarding`;
   else path = ctx.returnTo ?? `/${ctx.locale}/owner/select-workspace`;
   const url = new URL(path, req.url);
-  if (ctx.claimSlug) url.searchParams.set("claim", ctx.claimSlug);
+  if (ctx.claim && !("error" in params)) url.searchParams.set("claim", ctx.claim);
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
   return url;
 }
@@ -66,18 +59,10 @@ async function holdsViewerGrant(jobId: string): Promise<boolean> {
 export async function GET(req: Request) {
   const requestUrl = new URL(req.url);
 
-  // Validated here, not only where the link is built. Unvalidated, `claim` is
-  // interpolated into a path and `new URL("/r/../../en/staff", base)`
-  // normalizes the /r/ prefix away — an unauthenticated redirect to any in-app
-  // path with attacker-chosen query parameters before authentication.
-  const rawClaim = requestUrl.searchParams.get("claim");
-  const claimSlug = rawClaim && /^[A-Za-z0-9_-]{6,64}$/.test(rawClaim) ? rawClaim : null;
-  const rawLocale = requestUrl.searchParams.get("locale");
-  const ctx: LandingContext = {
-    locale: isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE,
-    claimSlug,
-    returnTo: safeReturnPath(requestUrl.searchParams.get("returnTo") ?? "", "") || null,
-  };
+  // Parse every carried field at the callback boundary. Duplicate or malformed
+  // values are discarded rather than selecting an attacker-controlled first value.
+  const ctx = parseAuthFlow(requestUrl.searchParams);
+  const claimSlug = ctx.claim;
 
   const correlationId = crypto.randomUUID();
   let stage: AuthStage = "verifier_exchange";

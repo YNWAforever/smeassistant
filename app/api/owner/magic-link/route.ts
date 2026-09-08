@@ -6,8 +6,7 @@ import {
   rateLimitUnavailableResponse,
   rateLimitedResponse,
 } from "@/lib/security/rate-limit";
-import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
-import { safeReturnPath } from "@/lib/identity/return-path";
+import { callbackHref, parseAuthFlow } from "@/lib/identity/sign-in-flow";
 
 /**
  * Sends the owner a magic link that returns through /auth/callback
@@ -39,7 +38,7 @@ function safeAppOrigin(raw: string | undefined): string | null {
   }
 }
 
-type MagicLinkBody = { email?: unknown; slug?: unknown; locale?: unknown; returnTo?: unknown };
+type MagicLinkBody = { email?: unknown; slug?: unknown; locale?: unknown; returnTo?: unknown; method?: unknown };
 
 export async function POST(req: Request) {
   let body: MagicLinkBody;
@@ -51,8 +50,12 @@ export async function POST(req: Request) {
 
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const slug = typeof body.slug === "string" ? body.slug.trim() : "";
-  const locale = isLocale(body.locale) ? body.locale : DEFAULT_LOCALE;
-  const returnTo = safeReturnPath(typeof body.returnTo === "string" ? body.returnTo : "", "");
+  const flow = parseAuthFlow(new URLSearchParams({
+    locale: typeof body.locale === "string" ? body.locale : "",
+    claim: slug,
+    returnTo: typeof body.returnTo === "string" ? body.returnTo : "",
+    method: typeof body.method === "string" ? body.method : "",
+  }));
   if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: "invalid_email" }, { status: 400 });
   }
@@ -93,10 +96,7 @@ export async function POST(req: Request) {
     // mailer pointed at arbitrary third parties.
     if (!await claimsRepository.isLeadRecipient(slug, email)) return NextResponse.json({ ok: true });
 
-    const redirect = new URL("/auth/callback", appOrigin);
-    redirect.searchParams.set("claim", slug);
-    redirect.searchParams.set("locale", locale);
-    if (returnTo) redirect.searchParams.set("returnTo", returnTo);
+    const redirect = new URL(callbackHref(flow), appOrigin);
 
     const { error } = await sendMagicLink({
       email,

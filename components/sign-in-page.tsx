@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label"
 import type { PrototypeLocale } from "@/lib/copy"
 
 import { authClient } from "@/lib/identity/client"
-import { safeReturnPath } from "@/lib/identity/return-path"
+import { callbackHref, type AuthMethod } from "@/lib/identity/sign-in-flow"
 
 import type { SignInErrorCode } from "@/lib/funnel/sign-in"
 
@@ -39,12 +39,14 @@ export function SignInPage({
   locale,
   claim,
   returnTo,
+  method,
   plan,
   error,
 }: {
   locale: PrototypeLocale
   claim?: string
   returnTo?: string
+  method?: AuthMethod
   plan?: string
   error?: SignInErrorCode
 }) {
@@ -55,19 +57,21 @@ export function SignInPage({
   const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle")
   const [formError, setFormError] = useState("")
 
-  function callbackURL() {
-    const query = new URLSearchParams({ locale })
-    if (claim) query.set("claim", claim)
-    const target = safeReturnPath(returnTo ?? "", "")
-    if (target) query.set("returnTo", target)
-    return `/auth/callback?${query}`
+  function callbackURL(nextMethod: AuthMethod) {
+    return callbackHref({
+      locale,
+      claim: claim ?? null,
+      returnTo: returnTo ?? null,
+      // The selected method explains recovery copy only. Authorization stays server-side.
+      method: nextMethod,
+    })
   }
 
   async function googleSignIn() {
     setFormError("")
     setStatus("sending")
     try {
-      const result = await authClient.signIn.social({ provider: "google", callbackURL: callbackURL(), errorCallbackURL: callbackURL() })
+      const result = await authClient.signIn.social({ provider: "google", callbackURL: callbackURL("google"), errorCallbackURL: callbackURL("google") })
       if (result.error) throw new Error()
     } catch {
       setFormError(isChinese ? "登入服務暫時未能使用，請稍後再試。" : "Sign-in is temporarily unavailable. Please try again shortly.")
@@ -84,7 +88,7 @@ export function SignInPage({
     setFormError("")
     setStatus("sending")
     try {
-      const { error } = await authClient.signIn.magicLink({ email: trimmed, callbackURL: callbackURL() })
+      const { error } = await authClient.signIn.magicLink({ email: trimmed, callbackURL: callbackURL("email") })
       if (!error) {
         setStatus("sent")
         return

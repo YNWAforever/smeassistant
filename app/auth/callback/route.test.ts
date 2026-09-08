@@ -249,6 +249,19 @@ describe("GET /auth/callback", () => {
     expect(errorSpy).not.toHaveBeenCalled();
     errorSpy.mockRestore();
   });
+  it("retains validated recovery context on callback errors", async () => {
+    mocks.getIdentity.mockResolvedValue(null);
+    const response = await GET(request("locale=en&claim=Ab_cd-12&returnTo=%2Fen%2Fowner%2Fshop%3Ftab%3Devidence&method=google"));
+    expect(response.headers.get("location")).toBe(
+      "https://app.test/en/owner/sign-in?claim=Ab_cd-12&returnTo=%2Fen%2Fowner%2Fshop%3Ftab%3Devidence&method=google&error=not_authorized",
+    );
+  });
+
+  it("drops repeated callback context rather than selecting an attacker value", async () => {
+    mocks.getIdentity.mockResolvedValue(null);
+    const response = await GET(request("locale=en&locale=zh-TW&claim=abcdef&claim=Ab_cd-12&returnTo=%2Fen%2Fowner&returnTo=%2Fzh-TW%2Fowner&method=google&method=email"));
+    expect(response.headers.get("location")).toBe("https://app.test/zh-HK/owner/sign-in?error=not_authorized");
+  });
 });
 
 

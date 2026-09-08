@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { SignInPage } from "@/components/sign-in-page";
 import { isSignInErrorCode } from "@/lib/funnel/sign-in";
 import { copy, normaliseLocale } from "@/lib/copy";
+import { parseAuthFlow } from "@/lib/identity/sign-in-flow";
 
 import { publicMetadata } from "../../_meta";
 import { firstParam } from "../../_params";
@@ -25,17 +26,17 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   };
 }
 
-/** `returnTo` must be an in-app path; anything else is dropped (open-redirect guard shared with the callback). */
-function safeReturnTo(value: string | undefined): string | undefined {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return undefined;
-  return value;
+function flowQuery(query: Record<string, string | string[] | undefined>, locale: string): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const key of ["claim", "returnTo", "method"] as const) {
+    const value = query[key];
+    if (Array.isArray(value)) for (const item of value) params.append(key, item);
+    else if (typeof value === "string") params.append(key, value);
+  }
+  // Locale is selected by the route, never by a query-string hint.
+  params.set("locale", locale);
+  return params;
 }
-
-/** Report slugs are `[a-z0-9-]`; anything else is not forwarded to the magic-link route. */
-function safeClaim(value: string | undefined): string | undefined {
-  return value && /^[a-z0-9-]{1,120}$/i.test(value) ? value : undefined;
-}
-
 export default async function OwnerSignIn({
   params,
   searchParams,
@@ -46,11 +47,13 @@ export default async function OwnerSignIn({
   const locale = normaliseLocale((await params).locale);
   const query = await searchParams;
   const error = firstParam(query.error);
+  const flow = parseAuthFlow(flowQuery(query, locale));
   return (
     <SignInPage
-      locale={locale}
-      claim={safeClaim(firstParam(query.claim))}
-      returnTo={safeReturnTo(firstParam(query.returnTo))}
+      locale={flow.locale}
+      claim={flow.claim ?? undefined}
+      returnTo={flow.returnTo ?? undefined}
+      method={flow.method ?? undefined}
       plan={firstParam(query.plan)}
       error={isSignInErrorCode(error) ? error : undefined}
     />

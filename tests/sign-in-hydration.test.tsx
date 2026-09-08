@@ -24,7 +24,7 @@ it("blocks native pre-hydration submission then posts email with claim context a
   fireEvent.submit(container.querySelector("form")!);
   await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
   expect(String(fetch.mock.calls[0][0])).toContain("/api/auth/sign-in/magic-link");
-  expect(JSON.parse(fetch.mock.calls[0][1]!.body as string)).toMatchObject({ email: "owner@acceptance.test", callbackURL: "/auth/callback?locale=en&claim=fixture-report&returnTo=%2Fen%2Fowner%2Ffixture" });
+  expect(JSON.parse(fetch.mock.calls[0][1]!.body as string)).toMatchObject({ email: "owner@acceptance.test", callbackURL: "/auth/callback?locale=en&claim=fixture-report&returnTo=%2Fen%2Fowner%2Ffixture&method=email" });
 });
 
 it("explains the report entry point on generic sign-in without claiming report-only emails receive mail", () => {
