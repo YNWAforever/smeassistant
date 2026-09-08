@@ -442,6 +442,7 @@ function makeLoaderDeps(options: {
 
   const store = {
     readPublicJobBySlug,
+    readEarlierReportJobs: vi.fn(async () => []),
     readPublicFindings,
     readAuthorizedJobData,
     readAuthorizedFindings,
@@ -466,6 +467,7 @@ function makeLoaderDeps(options: {
     }),
     getMembership,
     readPublicJobBySlug,
+    readEarlierReportJobs: vi.fn(async () => []),
     readPublicFindings,
     readAuthorizedJobData,
     readAuthorizedFindings,

@@ -21,10 +21,30 @@ export function reportsRepository(client?: Pick<Pool, "query">): ReportStore & {
             throw new Error("report_persistence_unavailable");
         }
     }
-    const publicColumns = "id,share_slug,business_name,district,industry,status,overall_score::float8 AS overall_score,module_scores,module_results,score_coverage::float8 AS score_coverage,region,scoring_version,workspace_id,completed_at::text AS completed_at";
+    const publicColumns = "id,share_slug,business_name,district,industry,status,overall_score::float8 AS overall_score,module_scores,module_results,score_coverage::float8 AS score_coverage,region,scoring_version,workspace_id,location_id,completed_at::text AS completed_at";
     const findingColumns = "id,job_id,module,finding_key,severity,score_impact::float8 AS score_impact";
     return {
         async readPublicJobBySlug(slug) { return (await rows<PublicReportJob>(`SELECT ${publicColumns} FROM audit_jobs WHERE share_slug=$1`, [slug]))[0] ?? null; },
+        async readEarlierReportJobs(jobId, offset) {
+            if (!Number.isInteger(offset) || offset < 0)
+                throw new Error("invalid_history_offset");
+            const candidateColumns = publicColumns.split(",").map(column => {
+                const [expression, alias] = column.split(/ AS /i);
+                const qualified = expression.includes("::")
+                    ? expression.replace(/^([a-z_]+)/, "candidate.$1")
+                    : `candidate.${expression}`;
+                return alias ? `${qualified} AS ${alias}` : qualified;
+            }).join(",");
+            return rows<PublicReportJob>(`SELECT ${candidateColumns}
+FROM audit_jobs candidate JOIN audit_jobs current ON current.id=$1
+WHERE current.workspace_id IS NOT NULL AND current.location_id IS NOT NULL
+  AND candidate.workspace_id=current.workspace_id
+  AND candidate.location_id=current.location_id
+  AND candidate.status IN ('done','partial')
+  AND candidate.completed_at < current.completed_at
+ORDER BY candidate.completed_at DESC, candidate.id DESC
+LIMIT 25 OFFSET $2`, [jobId, offset]);
+        },
         async readPublicFindings(jobId) {
             const [findings, count] = await Promise.all([rows<LoadedAuthorizedFinding>(`SELECT ${findingColumns} FROM audit_findings WHERE job_id=$1 ORDER BY score_impact ASC NULLS LAST LIMIT 12`, [jobId]), rows<{
                     count: number;
