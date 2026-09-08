@@ -40,7 +40,7 @@ export default async function RootLayout({
 }>) {
   const lang = resolveHtmlLang((await headers()).get(LOCALE_HEADER));
   return (
-    <html lang={lang}>
+    <html lang={lang} data-scroll-behavior="smooth">
       <body className="antialiased">{children}<Toaster richColors position="top-right" /></body>
     </html>
   );
