@@ -1,7 +1,7 @@
 # Guided owner sign-in and callback recovery
 
 Date: 2026-09-08
-Status: Flow approved in conversation; written spec awaiting user review. Not implemented.
+Status: Written spec approved by the user on 2026-09-08. Implementation plan prepared; not implemented.
 Baseline: main at 30046da86f1c54d40fdbd6d3fff00b6decd26734 (PR #11).
 
 ## Outcome
