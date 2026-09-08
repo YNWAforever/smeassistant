@@ -113,3 +113,8 @@ it("does not send email when the start screen mounts again after a refresh", () 
   render(<SignInFlow flow={flow} initialReason={null} />);
   expect(mocks.magicLink).not.toHaveBeenCalled();
 });
+
+it("links a cancelled Google recovery to the email start screen with retained flow context", () => {
+  render(<SignInFlow flow={{ ...flow, method: "google" }} initialReason="cancelled" />);
+  expect(screen.getByRole("link", { name: /try email instead/i })).toHaveAttribute("href", expect.stringContaining("returnTo=%2Fen%2Fowner%2Fselect-workspace&method=email"));
+});

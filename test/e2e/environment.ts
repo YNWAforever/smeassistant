@@ -8,7 +8,8 @@ import { startNeonDatabaseFixture, type NeonDatabaseFixture } from "../integrati
 import { isolatedEnv } from "./safety";
 import { startLlmServer } from "./llm-server";
 import { startIdentityServer } from "./identity-server";
-export interface AcceptanceEnvironment { app:string; api:string; mail:string; llm:string; db:string; expireLink(link:string):void; stop():Promise<void> }
+export type FixtureCompletionFault = "binding" | "mapping" | "revoked" | "upstream" | null;
+export interface AcceptanceEnvironment { app:string; api:string; mail:string; llm:string; db:string; expireLink(link:string):void; selectGoogleAccount(email:string):Promise<void>; setFixtureFault(fault:FixtureCompletionFault):Promise<void>; holdCompletion():Promise<void>; releaseCompletion():Promise<void>; stop():Promise<void> }
 const owned=new Map<string,string>();
 export function sql(db:string,query:string):string {
  const database=owned.get(db);if(!database) throw new Error("Refusing SQL outside owned acceptance database");
@@ -45,6 +46,14 @@ export async function startEnvironment(requestedPort?:number):Promise<Acceptance
     next=spawn(process.execPath,["node_modules/next/dist/bin/next","dev","--hostname","127.0.0.1","--port",String(appPort)],{env:isolatedEnv({app,api:identity.url,llm:llm.url,databaseUrl:runtime.href,identitySecret:secret}),stdio:["ignore","pipe","pipe"],windowsHide:true,detached:process.platform!=="win32"});
     next.stdout?.pipe(output);next.stderr?.pipe(output);next.once("exit",()=>output.end());
     await healthy(`${app}/en/owner/sign-in`,next);
-    return {app,api:app,mail:identity.url,llm:llm.url,db:fixture.containerName,expireLink:identity.expireLink,stop};
+    const control = async (path: string, body: object) => {
+      const response = await fetch(`${identity!.url}${path}`, { method: "POST", headers: { authorization: `Bearer ${secret}`, "content-type": "application/json", "x-fixture-origin": app }, body: JSON.stringify(body) });
+      if (!response.ok) throw new Error(`fixture_control_failed:${response.status}`);
+    };
+    return { app, api: app, mail: identity.url, llm: llm.url, db: fixture.containerName, expireLink: identity.expireLink,
+      selectGoogleAccount: async (email: string) => control("/test/google-account", { email }),
+      setFixtureFault: async (fault: FixtureCompletionFault) => control("/test/fault", { fault }),
+      holdCompletion: async () => control("/test/completion-hold", {}),
+      releaseCompletion: async () => control("/test/completion-release", {}), stop };
   }catch(error){await stop();throw error;}
 }
