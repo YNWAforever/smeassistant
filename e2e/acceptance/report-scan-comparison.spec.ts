@@ -32,23 +32,28 @@ test('actual share route keeps earlier comparison evidence private and shows una
   insert(otherLocationId, `other-${otherLocationId}`, merchant.otherLocationId, '2026-08-15T00:00:00.000Z', 'PRIVATE_COMPARISON_OTHER_LOCATION');
   insert(currentId, slug, merchant.locationId, currentDate, 'PRIVATE_COMPARISON_CURRENT');
 
-  const assertRscPrivate = async (locale: string, unlocked: boolean) => {
-    const rsc = await page.request.get(`/${locale}/r/${slug}?_rsc=${randomUUID()}`, { headers: { RSC: '1' } });
-    expect(rsc.status()).toBe(200);
-    expect(rsc.headers()['content-type']).toContain('text/x-component');
-    const payload = await rsc.text();
+  const assertHistoricalPrivate = (payload: string) => {
     expect(payload).not.toContain(earlierId);
     expect(payload).not.toContain(otherLocationId);
     expect(payload).not.toContain('PRIVATE_COMPARISON_EARLIER');
     expect(payload).not.toContain('PRIVATE_COMPARISON_OTHER_LOCATION');
     expect(payload).not.toContain(previousDate);
+  };
+  const assertRscPrivate = async (locale: string, unlocked: boolean) => {
+    const rsc = await page.request.get(`/${locale}/r/${slug}?_rsc=${randomUUID()}`, { headers: { RSC: '1' } });
+    expect(rsc.status()).toBe(200);
+    expect(rsc.headers()['content-type']).toContain('text/x-component');
+    const payload = await rsc.text();
+    assertHistoricalPrivate(payload);
     if (!unlocked) expect(payload).not.toMatch(privatePattern);
   };
 
   for (const locale of ['en', 'zh-HK', 'zh-TW']) {
     const response = await page.goto(`/${locale}/r/${slug}`);
     expect(response?.status()).toBe(200);
-    expect(await response!.text()).not.toMatch(privatePattern);
+    const html = await response!.text();
+    assertHistoricalPrivate(html);
+    expect(html).not.toMatch(privatePattern);
     await expect(page.locator('section[aria-labelledby="scan-comparison-title"]')).toHaveCount(0);
     await assertRscPrivate(locale, false);
   }
@@ -66,11 +71,8 @@ test('actual share route keeps earlier comparison evidence private and shows una
     expect(response?.status()).toBe(200);
     const html = await response!.text();
     expect(html).toContain('PRIVATE_COMPARISON_CURRENT');
-    expect(html).not.toContain(earlierId);
-    expect(html).not.toContain(otherLocationId);
-    expect(html).not.toContain('PRIVATE_COMPARISON_EARLIER');
-    expect(html).not.toContain('PRIVATE_COMPARISON_OTHER_LOCATION');
-    expect(html).not.toContain(previousDate);
+    assertHistoricalPrivate(html);
+
     await assertRscPrivate(locale, true);
     const panel = page.locator('section[aria-labelledby="scan-comparison-title"]');
     await expect(panel).toBeVisible();
