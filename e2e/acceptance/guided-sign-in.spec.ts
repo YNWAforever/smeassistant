@@ -75,3 +75,34 @@ test("a consumed local email link cannot change an accepted membership", async (
   await expect(page).toHaveURL(/owner\/sign-in\?error=invalid_token/);
   expect(acceptedMemberships(environment, merchant.workspaceId)).toBe(accepted);
 });
+const visualCases = [
+  { locale: "en", width: 375, google: "Continue with Google", processing: "Checking your workspace access…" },
+  { locale: "en", width: 1440, google: "Continue with Google", processing: "Checking your workspace access…" },
+  { locale: "zh-HK", width: 375, google: "使用 Google 繼續", processing: "正在核實你的工作台存取權…" },
+  { locale: "zh-HK", width: 1440, google: "使用 Google 繼續", processing: "正在核實你的工作台存取權…" },
+  { locale: "zh-TW", width: 375, google: "使用 Google 繼續", processing: "正在核實你的工作台存取權…" },
+  { locale: "zh-TW", width: 1440, google: "使用 Google 繼續", processing: "正在核實你的工作台存取權…" },
+] as const;
+
+for (const visual of visualCases) {
+  test(`owned sign-in start card is keyboard-operable without overflow: ${visual.locale} ${visual.width}`, async ({ page, merchant, environment }) => {
+    await page.setViewportSize({ width: visual.width, height: 900 });
+    await environment.selectGoogleAccount(merchant.emails.owner);
+    await environment.holdCompletion();
+    try {
+      await page.goto(`/${visual.locale}/owner/sign-in?returnTo=${encodeURIComponent(`/${visual.locale}/owner/${merchant.slug}`)}`);
+      const google = page.getByRole("button", { name: visual.google, exact: true });
+      await expect(google).toBeVisible();
+      await expect(google).toBeEnabled();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await page.screenshot({ path: `test-results/task-5-sign-in-${visual.locale}-${visual.width}.png`, fullPage: true });
+      await google.focus();
+      await expect(google).toBeFocused();
+      await page.keyboard.press("Enter");
+      await expect(page.getByRole("status")).toContainText(visual.processing);
+    } finally {
+      await environment.releaseCompletion().catch(() => {});
+    }
+    await expect(page).toHaveURL(new RegExp(`/${visual.locale}/owner/${merchant.slug}$`));
+  });
+}
