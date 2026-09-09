@@ -75,6 +75,25 @@ Confirmed: `neon/migrations/` currently has exactly `0001`–`0004`; next availa
 
 The runtime guard (`lib/identity/complete-sign-in-ports.ts:45`, strict `=== "true"`, defaults closed) was already correct and is extensively documented as forbidden (guardrail 15). What was missing was any build/deploy-time assertion — unlike its sibling flag `WORKSPACE_CLAIM_VIA_OAUTH_ENABLED`, which `scripts/launch-check.mjs` actively probes. Added `scripts/assert-no-self-service-claim.mjs` (fails if the env var is set to anything other than unset/empty/`"false"`), wired as `pnpm test:no-self-service-claim` and a new CI step. Manually verified all three cases (`true`→exit 1, unset→exit 0, `"false"`→exit 0); no dedicated test file, matching the sibling scripts' own convention (verified by direct execution, not a Vitest wrapper).
 
+## 2.7 P1.4 — Root-caused and fixed the live production Google/magic-link sign-in failure
+
+The `verifier_exchange` stage (§1) turned out to be genuinely traceable locally, without needing hosted reproduction. `app/auth/callback/route.ts:40`'s `console.error(authDiagnostic("verifier_exchange", correlationId))` sits in a catch-all wrapping the whole handler, so the stage label alone doesn't pinpoint the failing call — but the handler only does one thing capable of throwing before any application logic runs: `new NextRequest(request)` (the pre-fix line 30).
+
+**Root cause:** Next's compiled production route handler passes each route a `Proxy` wrapper around the native `Request`, not a plain `Request`. On Node 24, constructing `new Request(wrappedRequest, ...)` (a copy-construction) throws `TypeError: Cannot read private member #state from an object whose class did not declare it`, because the wrapper hides Undici's private internal fields from the copy constructor. This is not a hypothesis — it is the **exact same bug class already found and fixed once in this repository**, in the sibling route `app/api/auth/[...path]/route.ts` (commit `b991b7f`, "fix: forward wrapped Auth requests on Node 24," merged 2026-09-07), whose commit message names the identical mechanism. That fix was never applied to `app/auth/callback/route.ts`'s own `new NextRequest(request)` call, which remained vulnerable.
+
+**Local reproduction (before touching any runtime code):**
+```
+node -e "const {NextRequest}=require('next/server'); const original=new Request('https://app.test/auth/callback?neon_auth_session_verifier=abc'); const wrapped=new Proxy(original,{get(t,p){return Reflect.get(t,p,t)}}); new NextRequest(wrapped)"
+→ THROWS: TypeError Cannot read private member #state from an object whose class did not declare it
+```
+This is the same Proxy-wrapping technique `b991b7f`'s own test used to simulate the production route shape, run directly against this worktree's actual `next` install (`v16.2.6`) and Node (`v24.18.0`) — the same versions serving production.
+
+**Fix:** `app/auth/callback/route.ts` — construct `NextRequest` from `request.url` (a plain string) plus explicitly copied headers, matching the pattern `proxy.ts:50` already uses correctly (`new NextRequest(request.url, {headers: validationHeaders})`) and the pattern `b991b7f` established for the sibling route. Verified the fix resolves the exact reproduction above. Confirmed via repo-wide grep that no other `new NextRequest(request)` / `new Request(request, ...)`-shaped copy-construction remains anywhere in the codebase — this was the one remaining unfixed instance.
+
+**Tests:** `app/auth/callback/route.test.ts` — new regression test wraps a request in the same pass-through `Proxy` and calls the real `GET` handler (not just the raw reproduction), asserting it completes and forwards the wrapped request's URL/headers correctly to the (mocked) Auth middleware. 6/6 tests pass.
+
+**What this does and does not establish:** this fixes a real, confirmed, currently-reproducing defect with strong local evidence (an exact TypeError reproduction plus a passing regression test using the production-shaped input). It does **not** constitute the "completed authorized hosted sign-in" the commissioning instructions ask for — that step requires a human (Willy) to interactively complete Google OAuth consent in a real browser, which is outside what this session can or should do (entering credentials / completing OAuth consent is a prohibited action for this agent regardless). Recommended next step: Willy attempts a real sign-in against the current production deployment (or a preview built from this fix) and confirms the callback now completes; if it still fails, the correlation ID and stage from that attempt will show whether a *different* cause is also present.
+
 ## 3. Verification run so far
 
 | Gate | Result |
@@ -93,7 +112,7 @@ The runtime guard (`lib/identity/complete-sign-in-ports.ts:45`, strict `=== "tru
 
 1. **Docker unavailable in this session** → `db:verify` and `test:integration` cannot run, so the new migration (§2.1) and its integration tests are unverified against real PostgreSQL. This is the single most important outstanding verification gap for this phase's security batch.
 2. **Hosted acceptance** (real magic-link delivery, completed Google sign-in, live HK/TW scans, Stripe test events) requires credentials/budget/authorization not available in this session — recorded as blocked per phase, not attempted, per the plan's own instruction not to substitute fixture success for hosted proof.
-3. **The `verifier_exchange` sign-in defect** (§1) has a concrete stage identified from live logs but the code has not yet been read against it to find a root cause — queued as the next P1.4 item.
+3. ~~**The `verifier_exchange` sign-in defect**~~ **Root-caused and fixed** (§2.7) — a Node 24 / Next production-wrapper `Request` copy-construction bug, the same class already fixed once for a sibling route. Confirmed via direct local reproduction and a passing regression test. **Still blocked:** an authorized hosted sign-in completing on the fixed build, which requires a human to complete Google OAuth consent in a real browser (outside what this session can do).
 
 ## 5. Findings from independent investigation of P1.3–P1.7 (not yet fixed)
 
