@@ -18,6 +18,7 @@ import {
 import type { ClaimedScanJob, ScanStage } from "./processor";
 import { scrapeGBP } from "./gbp-collector";
 import type { ProviderResult, ProviderConfidence } from "./provider-result";
+import { fetchWebsiteSafely } from "./safe-website-fetch";
 import { hasUsableAeoEvidence } from "./aeo-evidence";
 import { resolveIgConfidence } from "./ig-confidence";
 import { resolveAeoConfidence } from "./aeo-confidence";
@@ -48,6 +49,9 @@ function instagramStoryPermalink(username: string, storyId: string): string | nu
 export async function collectScanProviders(
   job: ClaimedScanJob,
   setStage: (stage: ScanStage) => Promise<void>,
+  // Test-only: lets a test inject a fake website-check fetch. Production
+  // callers (lib/scan/run.ts, lib/scan/fixtures.ts) never pass this.
+  deps: { fetchWebsite?: typeof fetchWebsiteSafely } = {},
 ) {
   const market = ((job.region as Market) === "tw" ? "tw" : "hk") as Market;
   await setStage("collecting_ig_gbp");
@@ -70,6 +74,7 @@ export async function collectScanProviders(
     job.website_url,
     gbpResult.provider.status === "measured" ? gbpResult.provider.data : { available: false },
     market,
+    deps.fetchWebsite,
   );
 
   const collectedAt = new Date().toISOString();
@@ -587,6 +592,12 @@ async function runSerpAEO(
   websiteUrl: string | null,
   gbp: GBPPayload,
   market: Market,
+  // Test-only injection point: production callers never pass this, so the
+  // real SSRF-safe pinned fetch always runs. Tests that mock the global
+  // `fetch` (as this file's other providers do) cannot reach the website
+  // check any more, because fetchWebsiteSafely deliberately does not use
+  // global fetch for its pinned request -- see that module's comment.
+  fetchWebsite: typeof fetchWebsiteSafely = fetchWebsiteSafely,
 ): Promise<{ payload: AEOPayload; raw: NonNullable<import("@sme-scanner/contracts").RawData["aeo"]> | null }> {
   // fetchSerpApi owns per-request key selection and failover; this only needs to
   // know whether ANY key is configured before doing the work.
@@ -793,16 +804,20 @@ async function runSerpAEO(
   let website: AEOPayload["website"] = { available: false };
   let rawWebsite: NonNullable<import("@sme-scanner/contracts").RawData["aeo"]>["website"] = null;
   if (websiteUrl) {
-    try {
-      const resp = await fetch(websiteUrl, { signal: AbortSignal.timeout(5000) });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const html = await resp.text();
+    // SSRF-safe: fetchWebsiteSafely resolves+pins to a public address and
+    // revalidates every redirect hop, refusing private/loopback/link-local
+    // targets. A blocked/unreachable/oversized/non-HTML result leaves
+    // `website` at `{available:false}` -- an unavailable observation, never
+    // evidence that the page lacks an FAQ, meta description, or H1.
+    const fetched = await fetchWebsite(websiteUrl);
+    if (fetched.ok) {
+      const html = fetched.html;
       const hasFaqSchema = html.includes('"FAQPage"') || html.includes("FAQPage");
       const metaDescLen = (html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)/i)?.[1] || "").length;
       const h1Count = (html.match(/<h1[\/\s>]/gi) || []).length;
       website = { available: true, has_faq_schema: hasFaqSchema, meta_description_len: metaDescLen, h1_count: h1Count };
       rawWebsite = { url: websiteUrl, has_faq_schema: hasFaqSchema, meta_description_len: metaDescLen, h1_count: h1Count };
-    } catch { /* website unreachable */ }
+    }
   }
 
   return {

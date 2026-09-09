@@ -22,7 +22,11 @@ export async function POST(req: Request) {
     req,
     scope: "scan_process",
     identifier: jobId,
-    failClosed: false,
+    // This dispatches paid provider calls (SerpApi/Places/RapidAPI via
+    // collect-providers.ts). If the limiter's own configuration is
+    // unavailable, refuse the spend rather than let it through unbounded --
+    // scan_status (read-only polling) is the route that stays fail-open.
+    failClosed: true,
   });
   if (!limiter.allowed) return rateLimitedResponse(limiter.retryAfterSeconds);
 

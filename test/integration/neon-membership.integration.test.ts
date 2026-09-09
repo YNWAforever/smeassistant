@@ -75,7 +75,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon membership boundaries
   expect(await members.ownedWorkspace(user.id)).toEqual({workspaceId:ws});
   expect(await members.listAccepted(user.id)).toMatchObject([{workspace_id:ws,workspace_slug:"shop",role:"owner"}]);
  });
- it.each(["owner", "manager", "viewer"])("allows %s sign-in mail before and after invitation acceptance without changing authority", async role => {
+ it.each(["manager", "viewer"])("allows %s sign-in mail before and after invitation acceptance without changing authority", async role => {
   const user=await resolveApplicationUser(identity()); const ws=await workspace();
   await runtime.query("INSERT INTO workspace_members(workspace_id,email,role) VALUES($1,$2,$3)",[ws,user.email,role]);
   expect(await members.hasSignInMembership("MEMBER@example.test")).toBe(true);
@@ -88,6 +88,18 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon membership boundaries
   expect(await members.hasSignInMembership("unknown@example.test")).toBe(false);
   await members.remove(ws,before[0].id);
   expect(await members.hasSignInMembership(user.email)).toBe(false);
+ });
+ it("blocks direct removal of the sole owner, including a concurrent double attempt, and preserves the row", async () => {
+  const user=await resolveApplicationUser(identity()); const ws=await workspace();
+  await runtime.query("INSERT INTO workspace_members(workspace_id,user_id,email,role,accepted_at) VALUES($1,$2,$3,'owner',now())",[ws,user.id,user.email]);
+  const ownerId=(await members.team(ws))[0].id;
+  await expect(members.remove(ws,ownerId)).rejects.toMatchObject({code:"23514"});
+  expect(await members.hasSignInMembership(user.email)).toBe(true);
+  expect((await members.team(ws)).map(row=>row.id)).toEqual([ownerId]);
+  const results=await Promise.allSettled([members.remove(ws,ownerId),members.remove(ws,ownerId)]);
+  expect(results.every(result=>result.status==="rejected")).toBe(true);
+  expect((await members.team(ws)).map(row=>row.id)).toEqual([ownerId]);
+  expect((await runtime.query("SELECT id FROM workspaces WHERE id=$1",[ws])).rows).toHaveLength(1);
  });
  it("uses the mapped identity's current email rather than a stale accepted invitation address", async () => {
   const user=await resolveApplicationUser(identity()); const ws=await workspace();

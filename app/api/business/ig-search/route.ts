@@ -125,7 +125,9 @@ export async function POST(req: Request): Promise<Response> {
     req,
     scope: "ig_search",
     identifiers: [body.sessionId],
-    failClosed: false,
+    // Spends RapidAPI provider budget; refuse rather than spend unbounded if
+    // the limiter's own configuration is unavailable.
+    failClosed: true,
   });
   if (!limiter.allowed) {
     return privateJson(

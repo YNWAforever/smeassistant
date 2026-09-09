@@ -16,6 +16,17 @@ vi.mock("next/cache", () => ({
   unstable_cache: (fn: (...args: string[]) => Promise<unknown>) => fn,
 }));
 
+// This route now fails closed (P1.2) when its own rate limiter is
+// unavailable -- and with no real database in this unit test, the real
+// enforceRateLimit's consume_rate_limit RPC always fails, so every test here
+// would otherwise get a uniform 429 regardless of the scenario it names.
+// Mocking it to "allowed" (matching app/api/business/search/route.test.ts's
+// existing convention) restores the tests' ability to exercise their actual
+// scenarios. Rate-limit-specific behavior itself is covered by
+// lib/security/rate-limit.test.ts.
+const rateLimit = vi.hoisted(() => ({ enforceRateLimit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 1 })) }));
+vi.mock("@/lib/security/rate-limit", () => ({ enforceRateLimit: rateLimit.enforceRateLimit }));
+
 // Default posture matches production-before-the-spike: RapidAPI reports it
 // cannot answer, so the chain falls through to SerpApi.
 vi.mock("@/lib/scanner/ig-search/rapidapi", () => ({

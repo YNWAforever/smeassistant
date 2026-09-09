@@ -169,6 +169,17 @@ describe("DELETE /api/workspaces/[workspaceId]/members", () => {
     expect((await del("memberId=member-owner")).status).toBe(403);
   });
 
+  it("409s an owner removing the owner row (self-removal / last-owner) without attempting the delete", async () => {
+    authorizeWorkspaceRequest.mockResolvedValue(auth("owner"));
+    from.mockImplementationOnce(() => targetRow("owner"));
+
+    const res = await del("memberId=member-owner");
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "owner_removal_forbidden" });
+    expect(from).toHaveBeenCalledTimes(1); // only the target-row lookup, never a delete
+  });
+
   it("lets an owner remove a still-pending (not yet accepted) invite", async () => {
     // Regression coverage for the target-row lookup carrying no
     // `.not("accepted_at", "is", null)`: the mock only exposes the bare

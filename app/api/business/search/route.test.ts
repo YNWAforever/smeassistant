@@ -79,7 +79,7 @@ describe("POST /api/business/search", () => {
       req,
       scope: "business_search",
       identifiers: [SESSION_ID],
-      failClosed: false,
+      failClosed: true,
     });
     expect(mocks.searchMerchants).toHaveBeenCalledTimes(1);
     expect(mocks.searchMerchants).toHaveBeenCalledWith(

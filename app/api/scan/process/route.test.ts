@@ -781,23 +781,27 @@ describe("collectScanProviders wires the real per-module confidence graders", ()
           organic_results: [],
         }), { status: 200 });
       }
-      if (url.includes("example.com")) {
-        return new Response(
-          "<html><head><meta name=\"description\" content=\"Demo\"></head><body><h1>Demo</h1></body></html>",
-          { status: 200 },
-        );
-      }
       throw new Error("unexpected fetch: " + url);
     });
     vi.stubGlobal("fetch", fetcher);
+    // fetchWebsiteSafely does its own real DNS resolution + pinned HTTPS
+    // request for SSRF protection, so it never goes through global fetch --
+    // inject it directly instead (collectScanProviders' test-only deps param).
+    const fetchWebsite = vi.fn(async (url: string) =>
+      url === "https://example.com"
+        ? { ok: true as const, html: "<html><head><meta name=\"description\" content=\"Demo\"></head><body><h1>Demo</h1></body></html>" }
+        : { ok: false as const, code: "WEBSITE_FETCH_FAILED" as const },
+    );
 
     try {
       const result = await collectScanProviders(
         { ...baseJob, ig_handle: null, website_url: "https://example.com" },
         async () => undefined,
+        { fetchWebsite },
       );
 
       expect(result.aeo).toMatchObject({ status: "measured", confidence: "high" });
+      expect(fetchWebsite).toHaveBeenCalledWith("https://example.com");
     } finally {
       vi.unstubAllGlobals();
       vi.unstubAllEnvs();
