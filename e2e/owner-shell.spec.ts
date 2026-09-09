@@ -5,17 +5,17 @@ import { expect, test } from "@playwright/test";
 test("/zh-HK/owner/sign-in renders the magic-link form", async ({ page }) => {
   const response = await page.goto("/zh-HK/owner/sign-in");
   expect(response?.status()).toBe(200);
-  await expect(page.locator("main.auth-page")).toBeVisible();
+  await expect(page.locator("main")).toBeVisible();
   await expect(page.locator("#sign-in-email")).toBeVisible();
   await expect(page.locator("form button[type=submit]")).toBeVisible();
   // No Google sign-in and no demo badge on a real auth page.
   await expect(page.getByText(/Continue with (ChatGPT|Google)/)).toHaveCount(0);
-  await expect(page.locator("main.auth-page .demo-badge")).toHaveCount(0);
+  await expect(page.locator("main .demo-badge")).toHaveCount(0);
 });
 
 test("/zh-HK/owner/sign-in?error=invalid_code explains the failed link", async ({ page }) => {
   await page.goto("/zh-HK/owner/sign-in?error=invalid_code&claim=sample-slug");
-  await expect(page.locator(".form-error[role=alert]")).toBeVisible();
+  await expect(page.getByRole("alert")).toBeVisible();
 });
 
 test("/zh-HK/owner/select-workspace without a session redirects to sign-in", async ({ page }) => {
@@ -66,7 +66,7 @@ test("no /owner/kam-man-house/* path renders the prototype any more", async ({ p
   const url = new URL(page.url());
   expect(url.pathname).toBe("/zh-HK/owner/sign-in");
   expect(url.searchParams.get("returnTo")).toBe(path);
-  await expect(page.locator("main.auth-page")).toBeVisible();
+  await expect(page.locator("main")).toBeVisible();
   await expect(page.locator("#sign-in-email")).toBeVisible();
   await expect(page.locator(".prototype-bar")).toHaveCount(0);
   await expect(page.locator("body")).not.toContainText("錦汶館");

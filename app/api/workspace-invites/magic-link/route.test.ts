@@ -114,4 +114,11 @@ describe("POST /api/workspace-invites/magic-link", () => {
     const res = await post({ email: "invited@example.com" });
     expect(res.status).toBe(429);
   });
+  it("keeps the allowlisted email method for SDK callers and remains neutral for older callers", async () => {
+    from.mockReturnValue(pendingRow(true));
+    await post({ email: "invited@example.com", locale: "en", returnTo: "/en/owner/shop", method: "email" });
+    expect(signInWithOtp).toHaveBeenLastCalledWith(expect.objectContaining({
+      callbackURL: "https://app.example.com/auth/callback?locale=en&returnTo=%2Fen%2Fowner%2Fshop&method=email",
+    }));
+  });
 });

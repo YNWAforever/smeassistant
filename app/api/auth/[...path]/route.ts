@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getNeonAuth } from "@/lib/identity/neon";
-import { safeReturnPath } from "@/lib/identity/return-path";
+import { callbackHref, parseAuthFlow } from "@/lib/identity/sign-in-flow";
 import { MANAGED_AUTH_COOKIES, expiredAuthCookie } from "@/lib/identity/cookies";
 
 type Context = { params: Promise<{ path: string[] }> };
@@ -14,9 +14,10 @@ function freshRequest(request: Request) {
   return new Request(request.url, { method: "GET", headers });
 }
 function callback(value: unknown, origin: string): URL | null {
-  if (typeof value !== "string" || !safeReturnPath(value, "")) return null;
+  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) return null;
   const url = new URL(value, origin);
-  return url.pathname === "/auth/callback" ? url : null;
+  if (url.origin !== origin || url.pathname !== "/auth/callback") return null;
+  return new URL(callbackHref(parseAuthFlow(url.searchParams)), origin);
 }
 export async function GET(request: Request, context: Context) {
   try {
@@ -32,8 +33,11 @@ export async function POST(request: Request, context: Context) {
       let body: Record<string, unknown>;
       try { body = await request.clone().json(); }
       catch { return NextResponse.json({ error: "invalid_json" }, { status: 400 }); }
-      const target = callback(body.callbackURL, new URL(request.url).origin);
-      if (!target || [body.errorCallbackURL, body.newUserCallbackURL].some(value => value !== undefined && !callback(value, new URL(request.url).origin))) {
+      const origin = new URL(request.url).origin;
+      const target = callback(body.callbackURL, origin);
+      const errorTarget = body.errorCallbackURL === undefined ? null : callback(body.errorCallbackURL, origin);
+      const newUserTarget = body.newUserCallbackURL === undefined ? null : callback(body.newUserCallbackURL, origin);
+      if (!target || (body.errorCallbackURL !== undefined && !errorTarget) || (body.newUserCallbackURL !== undefined && !newUserTarget)) {
         return NextResponse.json({ error: "invalid_callback" }, { status: 400 });
       }
       if (path === "sign-in/magic-link") {
@@ -45,10 +49,22 @@ export async function POST(request: Request, context: Context) {
           : await import("@/app/api/workspace-invites/magic-link/route");
         return send(new Request(request.url, {
           method: "POST", headers: request.headers,
-          body: JSON.stringify({ email: body.email, slug: claim, locale: target.searchParams.get("locale"), returnTo: target.searchParams.get("returnTo") }),
+          body: JSON.stringify({ email: body.email, slug: claim, locale: target.searchParams.get("locale"), returnTo: target.searchParams.get("returnTo"), method: target.searchParams.get("method") }),
         }));
       }
       if (body.provider !== "google") return NextResponse.json({ error: "invalid_provider" }, { status: 400 });
+      const headers = new Headers(request.headers);
+      headers.delete("content-length");
+      request = new Request(request.url, {
+        method: request.method,
+        headers,
+        body: JSON.stringify({
+          ...body,
+          callbackURL: `${target.pathname}${target.search}`,
+          ...(errorTarget ? { errorCallbackURL: `${errorTarget.pathname}${errorTarget.search}` } : {}),
+          ...(newUserTarget ? { newUserCallbackURL: `${newUserTarget.pathname}${newUserTarget.search}` } : {}),
+        }),
+      });
     } else if (path !== "sign-out") {
       // No password/signup/reset mail surface is exposed by this application.
       return NextResponse.json({ error: "not_found" }, { status: 404 });

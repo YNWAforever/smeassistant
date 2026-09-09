@@ -1,141 +1,19 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { useState, useSyncExternalStore, type FormEvent } from "react"
-import { ArrowRight, Building2, Check, CircleAlert, KeyRound, LockKeyhole, ScanSearch, ShieldCheck } from "lucide-react"
+import { PublicPageFrame } from "@/components/product-ui";
+import type { PrototypeLocale } from "@/lib/copy";
+import type { SignInErrorCode } from "@/lib/funnel/sign-in";
+import type { AuthFlow } from "@/lib/identity/sign-in-flow";
 
-import { PublicPageFrame } from "@/components/product-ui"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import type { PrototypeLocale } from "@/lib/copy"
+import { SignInFlow } from "./auth/sign-in-flow";
 
-import { authClient } from "@/lib/identity/client"
-import { safeReturnPath } from "@/lib/identity/return-path"
-
-import type { SignInErrorCode } from "@/lib/funnel/sign-in"
-
-// Keep native form submission unavailable until React owns the event handlers.
-const subscribeHydration = () => () => {}
-const clientHydrated = () => true
-const serverHydrated = () => false
-
-function errorCopy(code: SignInErrorCode, isChinese: boolean): string {
-  switch (code) {
-    case "missing_code":
-      return isChinese ? "登入連結不完整，請重新申請一封新的登入電郵。" : "That sign-in link was incomplete. Request a fresh one below."
-    case "invalid_code":
-      return isChinese ? "登入連結已失效或已被使用，請重新申請。" : "That sign-in link has expired or was already used. Request a new one."
-    case "not_authorized":
-      return isChinese ? "此電郵未獲任何工作台授權。請先解鎖報告，或等待店主邀請。" : "This email is not authorised for any workspace yet. Unlock a report first, or wait for an owner invitation."
-    case "auth_unavailable":
-      return isChinese ? "登入服務暫時未能使用，請稍後再試。" : "Sign-in is temporarily unavailable. Please try again shortly."
-  }
+function reason(error?: SignInErrorCode | "cancelled"): "cancelled" | "expired" | "unavailable" | null {
+  if (!error) return null;
+  if (error === "cancelled") return "cancelled";
+  return error === "missing_code" || error === "invalid_code" ? "expired" : "unavailable";
 }
 
-/** Managed email-link and Google identity; authorization remains server-side. */
-export function SignInPage({
-  locale,
-  claim,
-  returnTo,
-  plan,
-  error,
-}: {
-  locale: PrototypeLocale
-  claim?: string
-  returnTo?: string
-  plan?: string
-  error?: SignInErrorCode
-}) {
-  const isChinese = locale !== "en"
-  const planLabel = plan === "multi" ? (isChinese ? "多地點工作台" : "Multi-location") : plan === "growth" ? (isChinese ? "增長工作台" : "Growth Workspace") : null
-  const hydrated = useSyncExternalStore(subscribeHydration, clientHydrated, serverHydrated)
-  const [email, setEmail] = useState("")
-  const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle")
-  const [formError, setFormError] = useState("")
-
-  function callbackURL() {
-    const query = new URLSearchParams({ locale })
-    if (claim) query.set("claim", claim)
-    const target = safeReturnPath(returnTo ?? "", "")
-    if (target) query.set("returnTo", target)
-    return `/auth/callback?${query}`
-  }
-
-  async function googleSignIn() {
-    setFormError("")
-    setStatus("sending")
-    try {
-      const result = await authClient.signIn.social({ provider: "google", callbackURL: callbackURL(), errorCallbackURL: callbackURL() })
-      if (result.error) throw new Error()
-    } catch {
-      setFormError(isChinese ? "登入服務暫時未能使用，請稍後再試。" : "Sign-in is temporarily unavailable. Please try again shortly.")
-    } finally { setStatus("idle") }
-  }
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const trimmed = email.trim().toLowerCase()
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setFormError(isChinese ? "請輸入有效的電郵地址。" : "Enter a valid email address.")
-      return
-    }
-    setFormError("")
-    setStatus("sending")
-    try {
-      const { error } = await authClient.signIn.magicLink({ email: trimmed, callbackURL: callbackURL() })
-      if (!error) {
-        setStatus("sent")
-        return
-      }
-      const data = { error: error.code }
-      setStatus("idle")
-      if (error.status === 429) setFormError(isChinese ? "請求太頻密，請稍後再試。" : "Too many requests. Please wait a moment and try again.")
-      else if (data.error === "invalid_email") setFormError(isChinese ? "請輸入有效的電郵地址。" : "Enter a valid email address.")
-      else if (data.error === "invalid_slug") setFormError(isChinese ? "報告連結無效，請由報告頁重新進入。" : "The report reference is invalid. Return from the report page.")
-      else setFormError(isChinese ? "暫時未能發送登入電郵，請稍後再試。" : "We could not send the sign-in email. Please try again shortly.")
-    } catch {
-      setStatus("idle")
-      setFormError(isChinese ? "網絡連線失敗，請檢查後再試。" : "Network error. Check your connection and try again.")
-    }
-  }
-
-  return (
-    <PublicPageFrame locale={locale}>
-      <main className="auth-page">
-        <section className="auth-value"><Badge variant="outline">Visibility Workspace</Badge><h1>{isChinese ? "安全返回需要你決定的業務行動" : "Return securely to the business action that needs you"}</h1><p>{isChinese ? "公開掃描與店主工作台分開。登入後，系統會保留原本的方案、工作台、地點及行動脈絡。" : "Public scanning and the owner workspace stay separate. Sign-in preserves the selected plan, workspace, location and action context."}</p><div className="auth-proof-list"><div><KeyRound /><span><strong>{isChinese ? "以電郵登入連結安全登入" : "Sign in with the magic link we email you"}</strong><small>{isChinese ? "不需要密碼" : "No password to remember"}</small></span></div><div><Building2 /><span><strong>{isChinese ? "工作台與地點範圍" : "Workspace and location scope"}</strong><small>{isChinese ? "每次受保護頁面都重新驗證" : "Re-checked on protected routes"}</small></span></div><div><ShieldCheck /><span><strong>{isChinese ? "按角色限制決定" : "Role-aware decisions"}</strong><small>{isChinese ? "審批與匯出仍需正確權限" : "Approval and export still require the right authority"}</small></span></div></div></section>
-        <section className="auth-card">
-          {planLabel && <Badge variant="outline">{isChinese ? "已選方案" : "Selected plan"} · {planLabel}</Badge>}
-          {claim && <Badge variant="outline">{isChinese ? "認領報告" : "Claiming report"} · {claim}</Badge>}
-          <h2>{isChinese ? "店主安全登入" : "Secure owner sign in"}</h2>
-          {status === "sent" ? (
-            <>
-              <p>{claim ? (isChinese ? "請查看你的收件箱。如果這個電郵曾解鎖此報告，登入連結會在數分鐘內送達。" : "Check your inbox. If this email unlocked this report, the sign-in link arrives within a few minutes.") : (isChinese ? "請查看你的收件箱。如果這個電郵屬於現有工作台成員或待接受邀請，登入連結會在數分鐘內送達。" : "Check your inbox. If this email belongs to a current workspace member or pending invitation, the sign-in link arrives within a few minutes.")}</p>
-              <div className="onboarding-choice"><span className="onboarding-icon"><Check /></span><div><h3>{email.trim().toLowerCase()}</h3><p>{isChinese ? "連結只可使用一次，並會在短時間內失效。" : "The link works once and expires shortly."}</p></div></div>
-              <button className="text-action" type="button" onClick={() => setStatus("idle")}>{isChinese ? "使用另一個電郵" : "Use a different email"}</button>
-            </>
-          ) : (
-            <>
-              <p>{claim ? (isChinese ? "輸入解鎖此報告時使用的電郵，我們會寄出一次性的登入連結。工作台權限仍需獨立驗證。" : "Enter the email you used to unlock this report. We email a one-time sign-in link; workspace access is still verified separately.") : (isChinese ? "輸入現有工作台成員或待接受邀請所使用的電郵，我們會寄出一次性的登入連結。" : "Enter the email for a current workspace member or pending invitation. We email a one-time sign-in link.")}</p>
-              {error && <div className="form-error" role="alert"><CircleAlert /> {errorCopy(error, isChinese)}</div>}
-              <form onSubmit={submit} noValidate>
-                <div className="field-stack">
-                  <Label htmlFor="sign-in-email">{isChinese ? "電郵地址" : "Email address"}</Label>
-                  <Input id="sign-in-email" disabled={!hydrated} name="email" type="email" autoComplete="email" inputMode="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder={isChinese ? "you@example.com" : "you@example.com"} />
-                </div>
-                {formError && <div className="form-error" role="alert"><CircleAlert /> {formError}</div>}
-                <Button type="submit" className="w-full" size="lg" disabled={!hydrated || status === "sending"}><ShieldCheck />{status === "sending" ? (isChinese ? "發送中…" : "Sending…") : (isChinese ? "寄出登入連結" : "Email me a sign-in link")}<ArrowRight /></Button>
-              </form>
-              <Button type="button" variant="outline" className="w-full" disabled={!hydrated || status === "sending"} onClick={googleSignIn}>{isChinese ? "使用 Google 登入" : "Continue with Google"}</Button>
-            </>
-          )}
-          {!claim && <p>{isChinese ? "如果你只解鎖了報告，請返回該報告頁登入並認領。" : "If you only unlocked a report, return to that report to sign in and claim it."}</p>}
-          <div className="auth-divider"><span>{isChinese ? "尚未認領商戶？" : "Haven’t claimed a business?"}</span></div>
-          <Button asChild variant="outline" className="w-full"><Link href={`/${locale}/scan`}><ScanSearch />{isChinese ? "先免費掃描" : "Start with a free scan"}</Link></Button>
-          <p className="privacy-note"><LockKeyhole />{isChinese ? "登入只識別目前使用者；工作台授權與每項操作權限仍是獨立安全界線。" : "Sign-in identifies the viewer; workspace authorization and mutation permissions remain separate boundaries."}</p>
-        </section>
-      </main>
-    </PublicPageFrame>
-  )
+/** Public chrome adapter for the guided client flow. */
+export function SignInPage({ flow, plan, error }: { flow: AuthFlow; plan?: string; error?: SignInErrorCode | "cancelled" }) {
+  return <PublicPageFrame locale={flow.locale as PrototypeLocale}><main><SignInFlow flow={flow} initialReason={reason(error)} plan={plan} /></main></PublicPageFrame>;
 }

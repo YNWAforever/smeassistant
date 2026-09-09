@@ -34,3 +34,13 @@ Full runtime email delivery and completed Google authentication remain unverifie
 - The normal retired-transport check also traversed the preserved nested checkout and reported four historical-path false positives. The unchanged scan function passed against a temporary export of all 910 tracked/untracked active-source files (no exclusions within that checkout); the separate nested worktree was preserved.
 
 - Final secret-boundary build passed across 45 public artifacts (exit 0); existing Node DEP0190 warning retained. Final diff check passed, and zero owned PostgreSQL fixture containers remained. No source or environment secrets were published.
+
+## Task 1 callback-stage diagnostics
+
+- Clean execution HEAD: `f9cf14211866502d57006c3cabdb0e9086b1398e`.
+- Production evidence remains the deployment at `30046da` from PR #11. The Google launch reaches Google account selection; the user reports failure only after selecting an account. Logs recorded two generic owner callback failures at 14:46:00 and 14:46:15 UTC on 2026-09-08.
+- The pinned `@neondatabase/auth` SDK version is `0.5.0-beta`. Fixture transport reproduced a successful verifier exchange and clean callback redirect (4/4), so that precondition succeeds under the owned transport.
+- Owned Docker/Neon SQL mapping exercised opaque provider-subject mapping, update, concurrency, rollback, and invalid identity rejection (5/5). It does not reproduce an external Google callback or prove production provider configuration.
+- The available evidence cannot distinguish verifier exchange, fresh session, identity mapping, invitation binding, workspace lookup, or claim resolution in production. No provider, configuration, or database correction is asserted.
+- The callback now emits only `{ event: "owner_sign_in_failed", stage, correlationId }` for an unexpected callback-stage failure. The correlation identifier is server-generated per request; caught errors, identity values, cookies, verifiers, SQL, and provider text are not logged or returned to the browser. A missing fresh session remains the existing `not_authorized` result rather than an outage.
+- Fixture failure injection covers all six stages and asserts sensitive sentinels are absent from console output and public redirects (19 focused tests total with the diagnostic contract). This patch prepares a separately authorized diagnostic release; it does not claim the hosted Google failure is resolved.

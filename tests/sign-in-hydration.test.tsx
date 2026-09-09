@@ -4,33 +4,24 @@ import { act, fireEvent, waitFor } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { hydrateRoot, type Root } from "react-dom/client";
 import type { ReactNode } from "react";
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }) }));
 vi.mock("@/components/product-ui", () => ({ PublicPageFrame: ({ children }: { children: ReactNode }) => children }));
 import { SignInPage } from "@/components/sign-in-page";
 let root: Root | undefined;
 afterEach(async () => { if (root) await act(async () => root!.unmount()); root = undefined; document.body.innerHTML = ""; vi.unstubAllGlobals(); });
 it("blocks native pre-hydration submission then posts email with claim context after hydration", async () => {
-  const page = <SignInPage locale="en" claim="fixture-report" returnTo="/en/owner/fixture" />;
-  const container = document.createElement("div");
-  container.innerHTML = renderToString(page); document.body.append(container);
-  const input = container.querySelector<HTMLInputElement>("#sign-in-email")!;
-  const submit = container.querySelector<HTMLButtonElement>("button[type=submit]")!;
-  expect(input.disabled).toBe(true);
-  expect(submit.disabled).toBe(true);
+  const flow = { locale: "en" as const, claim: "fixture-report", returnTo: "/en/owner/fixture", method: null };
+  const page = <SignInPage flow={flow} />; const container = document.createElement("div"); container.innerHTML = renderToString(page); document.body.append(container);
+  const input = container.querySelector<HTMLInputElement>("#sign-in-email")!; const submit = container.querySelector<HTMLButtonElement>("button[type=submit]")!;
+  expect(input.disabled).toBe(true); expect(submit.disabled).toBe(true);
   const fetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(async () => Response.json({ ok: true })); vi.stubGlobal("fetch", fetch);
-  await act(async () => { root = hydrateRoot(container, page); });
-  await waitFor(() => expect(input.disabled).toBe(false));
-  expect(submit.disabled).toBe(false);
-  fireEvent.change(input, { target: { value: "owner@acceptance.test" } });
-  fireEvent.submit(container.querySelector("form")!);
+  await act(async () => { root = hydrateRoot(container, page); }); await waitFor(() => expect(input.disabled).toBe(false));
+  fireEvent.change(input, { target: { value: "owner@acceptance.test" } }); fireEvent.submit(container.querySelector("form")!);
   await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
   expect(String(fetch.mock.calls[0][0])).toContain("/api/auth/sign-in/magic-link");
-  expect(JSON.parse(fetch.mock.calls[0][1]!.body as string)).toMatchObject({ email: "owner@acceptance.test", callbackURL: "/auth/callback?locale=en&claim=fixture-report&returnTo=%2Fen%2Fowner%2Ffixture" });
+  expect(JSON.parse(fetch.mock.calls[0][1]!.body as string)).toMatchObject({ email: "owner@acceptance.test", callbackURL: "/auth/callback?locale=en&claim=fixture-report&returnTo=%2Fen%2Fowner%2Ffixture&method=email" });
 });
-
-it("explains the report entry point on generic sign-in without claiming report-only emails receive mail", () => {
-  const html = renderToString(<SignInPage locale="en" />);
-  expect(html).toContain("current workspace member or pending invitation");
-  expect(html).toContain("If you only unlocked a report, return to that report to sign in and claim it.");
-  const claimHtml = renderToString(<SignInPage locale="en" claim="fixture-report" />);
-  expect(claimHtml).toContain("email you used to unlock this report");
+it("uses eligibility-aware generic and claim copy without presenting access as an entitlement", () => {
+  const html = renderToString(<SignInPage flow={{ locale: "en", claim: null, returnTo: null, method: null }} />); expect(html).toContain("current workspace membership or invitation");
+  const claimHtml = renderToString(<SignInPage flow={{ locale: "en", claim: "fixture-report", returnTo: null, method: null }} />); expect(claimHtml).toContain("email that unlocked this report");
 });

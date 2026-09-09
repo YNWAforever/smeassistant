@@ -61,7 +61,7 @@ describe("POST /api/owner/magic-link", () => {
     expect(mocks.signInWithOtp).toHaveBeenCalledWith(
       expect.objectContaining({
         email: "known@example.com",
-        callbackURL: "https://configured.fimmick.com/auth/callback?claim=abcdef&locale=zh-HK",
+        callbackURL: "https://configured.fimmick.com/auth/callback?locale=zh-HK&claim=abcdef",
       }),
     );
   });
@@ -75,7 +75,7 @@ describe("POST /api/owner/magic-link", () => {
     expect(mocks.signInWithOtp).toHaveBeenCalledWith(
       expect.objectContaining({
         callbackURL:
-            "https://configured.fimmick.com/auth/callback?claim=abcdef&locale=en&returnTo=%2Fen%2Fowner%2Fselect-workspace",
+            "https://configured.fimmick.com/auth/callback?locale=en&claim=abcdef&returnTo=%2Fen%2Fowner%2Fselect-workspace",
       }),
     );
   });
@@ -86,7 +86,7 @@ describe("POST /api/owner/magic-link", () => {
 
     expect(mocks.signInWithOtp).toHaveBeenCalledWith(
       expect.objectContaining({
-        callbackURL: "https://configured.fimmick.com/auth/callback?claim=abcdef&locale=zh-HK",
+        callbackURL: "https://configured.fimmick.com/auth/callback?locale=zh-HK&claim=abcdef",
       }),
     );
   });
@@ -98,7 +98,7 @@ describe("POST /api/owner/magic-link", () => {
 
     expect(mocks.signInWithOtp).toHaveBeenCalledWith(
       expect.objectContaining({
-        callbackURL: "https://scanner.test/auth/callback?claim=abcdef&locale=zh-HK",
+        callbackURL: "https://scanner.test/auth/callback?locale=zh-HK&claim=abcdef",
       }),
     );
   });
@@ -113,5 +113,17 @@ describe("POST /api/owner/magic-link", () => {
     const response = await POST(request({ email: "known@example.com" }));
     expect(response.status).toBe(400);
     expect(mocks.from).not.toHaveBeenCalled();
+  });
+  it("carries the allowlisted SDK method and drops a spoofed one", async () => {
+    wireRepositories({ job: { id: "job-1" }, knownLead: true });
+    await POST(request({ slug: "Ab_cd-12", email: "known@example.com", locale: "en", returnTo: "/en/owner/shop", method: "email" }));
+    expect(mocks.signInWithOtp).toHaveBeenLastCalledWith(expect.objectContaining({
+      callbackURL: "https://configured.fimmick.com/auth/callback?locale=en&claim=Ab_cd-12&returnTo=%2Fen%2Fowner%2Fshop&method=email",
+    }));
+
+    await POST(request({ slug: "Ab_cd-12", email: "known@example.com", method: "admin" }));
+    expect(mocks.signInWithOtp).toHaveBeenLastCalledWith(expect.objectContaining({
+      callbackURL: "https://configured.fimmick.com/auth/callback?locale=zh-HK&claim=Ab_cd-12",
+    }));
   });
 });

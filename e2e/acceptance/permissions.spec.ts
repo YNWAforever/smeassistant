@@ -28,7 +28,8 @@ test("unverified identity and invalid callback cannot acquire workspace authorit
   expect(sql(environment.db, `select count(*) from workspace_members where workspace_id='${merchant.workspaceId}' and accepted_at is not null;`)).toBe("0");
   expect((await page.request.post(`/api/actions/${merchant.actionId}/run`, { data: {} })).status()).toBe(401);
   await page.goto("/auth/callback?code=invalid-fixture-code&locale=en");
-  await expect(page).toHaveURL(/owner\/sign-in\?error=not_authorized/);
+  await expect(page).toHaveURL(/owner\/sign-in\/complete/);
+  await expect(page.getByText("We could not finish sign-in. Start a new sign-in attempt.")).toBeVisible();
   expect(sql(environment.db, `select count(*) from workspace_members where workspace_id='${merchant.workspaceId}' and accepted_at is not null;`)).toBe("0");
 });
 

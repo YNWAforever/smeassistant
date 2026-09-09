@@ -57,3 +57,26 @@ it("forwards a framework-wrapped GET with its query and session token, excluding
  expect(forwarded.headers.get("origin")).toBe("https://app.test");
  expect(forwarded.headers.get("cookie")).toBe("__Secure-neon-auth.session_token=fixture");
 });
+
+it("sanitizes spoofed and repeated callback context before delegating a new SDK magic link", async () => {
+ const {POST}=await import("./route");
+ await POST(new Request("https://app.test/api/auth/sign-in/magic-link",{method:"POST",body:JSON.stringify({email:"fixture@example.test",callbackURL:"/auth/callback?locale=en&locale=zh-HK&claim=Ab_cd-12&returnTo=%2Fzh-HK%2Fowner%2Fshop%3Ftab%3Devidence&method=github&token=private"})}),context("sign-in/magic-link"));
+ expect(mocks.owner).toHaveBeenCalledOnce();
+ expect(await mocks.owner.mock.calls[0][0].json()).toEqual({email:"fixture@example.test",slug:"Ab_cd-12",locale:"zh-HK",returnTo:"/zh-HK/owner/shop?tab=evidence",method:null});
+});
+
+it("forwards Google only with its allowlisted callback context", async () => {
+ const {POST}=await import("./route");
+ await POST(new Request("https://app.test/api/auth/sign-in/social",{method:"POST",body:JSON.stringify({provider:"google",callbackURL:"/auth/callback?locale=en&returnTo=%2Fen%2Fowner%2Fshop&method=google&token=private",errorCallbackURL:"/auth/callback?locale=en&returnTo=%2Fen%2Fowner%2Fshop&method=google&code=private"})}),context("sign-in/social"));
+ expect(mocks.POST).toHaveBeenCalledOnce();
+ const body=await mocks.POST.mock.calls[0][0].json();
+ expect(body.callbackURL).toBe("/auth/callback?locale=en&returnTo=%2Fen%2Fowner%2Fshop&method=google");
+ expect(body.errorCallbackURL).toBe("/auth/callback?locale=en&returnTo=%2Fen%2Fowner%2Fshop&method=google");
+});
+
+it("keeps a missing-context SDK callback on the bounded neutral callback path", async () => {
+ const {POST}=await import("./route");
+ await POST(new Request("https://app.test/api/auth/sign-in/social",{method:"POST",body:JSON.stringify({provider:"google",callbackURL:"/auth/callback"})}),context("sign-in/social"));
+ const body=await mocks.POST.mock.calls[0][0].json();
+ expect(body.callbackURL).toBe("/auth/callback?locale=zh-HK");
+});
