@@ -26,12 +26,34 @@ export type ClaimEvidence = {
   websiteUrl: string | null
 }
 
+/**
+ * What the workspace already holds. Present only once the caller owns it, so
+ * step 4 shows the values that were saved rather than re-proposing the scan's
+ * guesses over them.
+ */
+export type SavedSetup = {
+  workspaceName: string | null
+  locationName: string | null
+  locationAddress: string | null
+  voice: string | null
+  /** Newline-joined for the textarea, the same shape the form submits. */
+  approvedClaims: string
+  /** A primary location exists, i.e. `POST /api/workspaces/claim` completed. */
+  hasLocation: boolean
+}
+
 export type OnboardingProps = {
   locale: PrototypeLocale
   claim?: string
   plan?: string
-  /** `?claimed=1`: the OAuth claim callback just attached the job. */
-  claimed?: boolean
+  /**
+   * Derived on the server from persisted state alone -- ownership, and whether
+   * the claim route has created the primary location. Never from a query
+   * parameter: an owner returning to the same URL must not be dropped back to
+   * step 1 with their ownership already proven.
+   */
+  resumeStep?: 1 | 2 | 3 | 4
+  saved?: SavedSetup | null
   /** `WORKSPACE_CLAIM_VIA_OAUTH_ENABLED === "true"` on the server. */
   oauthEnabled: boolean
   evidence: ClaimEvidence | null
@@ -44,6 +66,13 @@ export type OnboardingProps = {
 // Must stay a subset of lib/workspace/brand.ts's BRAND_VOICES -- the server
 // validates against that set, so a value only this file knows about is dropped.
 type BrandVoice = "warm" | "professional" | "playful" | "direct"
+
+const BRAND_VOICE_VALUES: readonly BrandVoice[] = ["warm", "professional", "playful", "direct"]
+
+/** A stored voice this build does not know about must not become a dead Select value. */
+function isBrandVoice(value: string | null | undefined): value is BrandVoice {
+  return typeof value === "string" && (BRAND_VOICE_VALUES as readonly string[]).includes(value)
+}
 
 const STEP_COUNT = 4
 
@@ -66,16 +95,18 @@ async function readError(response: Response, fallback: string): Promise<string> 
  * `POST /api/workspaces/claim`. Steps 3–4 stay locked until the workspace is
  * attached and owned.
  */
-export function OnboardingPage({ locale, claim, plan, claimed = false, oauthEnabled, evidence, ownsWorkspace, gbpConnected }: OnboardingProps) {
+export function OnboardingPage({ locale, claim, plan, resumeStep = 1, saved = null, oauthEnabled, evidence, ownsWorkspace, gbpConnected }: OnboardingProps) {
   const router = useRouter()
   const isChinese = locale !== "en"
   const { market, label: marketName, timezone } = marketLabel(evidence?.region ?? null, isChinese)
-  const [step, setStep] = useState(claimed && ownsWorkspace ? 3 : 1)
-  const [workspaceName, setWorkspaceName] = useState(evidence?.businessName ?? "")
-  const [locationName, setLocationName] = useState(evidence?.businessName ?? "")
-  const [locationAddress, setLocationAddress] = useState(evidence?.district ?? "")
-  const [voice, setVoice] = useState<BrandVoice>("warm")
-  const [approvedClaims, setApprovedClaims] = useState("")
+  const [step, setStep] = useState<number>(resumeStep)
+  // Saved values win over the scan's guesses: once step 4 has been submitted,
+  // these fields must show what the workspace actually holds.
+  const [workspaceName, setWorkspaceName] = useState(saved?.workspaceName ?? evidence?.businessName ?? "")
+  const [locationName, setLocationName] = useState(saved?.locationName ?? evidence?.businessName ?? "")
+  const [locationAddress, setLocationAddress] = useState(saved?.locationAddress ?? evidence?.district ?? "")
+  const [voice, setVoice] = useState<BrandVoice>(isBrandVoice(saved?.voice) ? saved.voice : "warm")
+  const [approvedClaims, setApprovedClaims] = useState(saved?.approvedClaims ?? "")
   const [handle, setHandle] = useState(evidence?.igHandle ?? "")
   const [handleState, setHandleState] = useState<{ kind: "idle" | "saving" | "saved" | "error"; message?: string }>({ kind: "idle" })
   const [submitState, setSubmitState] = useState<{ kind: "idle" | "saving" | "error"; message?: string }>({ kind: "idle" })
@@ -152,7 +183,17 @@ export function OnboardingPage({ locale, claim, plan, claimed = false, oauthEnab
   let body: React.ReactNode
   if (step === 1) {
     body = evidence ? (
-      <div className="onboarding-choice"><span className="onboarding-icon"><BadgeCheck /></span><div><Badge variant="outline">{isChinese ? "認領證據" : "Claim evidence"}</Badge><h2>{isChinese ? `確認${evidence.businessName ?? "商戶"}` : `Confirm ${evidence.businessName ?? "this business"}`}</h2><p>{[evidence.district, marketName].filter(Boolean).join(" · ")}</p><dl><div><dt>{isChinese ? "擁有權" : "Ownership"}</dt><dd>{ownershipLabel}</dd></div><div><dt>{isChinese ? "公開報告" : "Public report"}</dt><dd><Link href={`/${locale}/r/${evidence.shareSlug}`}>{evidence.shareSlug}</Link></dd></div>{evidence.igHandle && <div><dt>Instagram</dt><dd>@{evidence.igHandle}</dd></div>}{evidence.websiteUrl && <div><dt>{isChinese ? "網站" : "Website"}</dt><dd>{evidence.websiteUrl}</dd></div>}</dl></div></div>
+      <div className="onboarding-choice"><span className="onboarding-icon"><BadgeCheck /></span><div><Badge variant="outline">{isChinese ? "認領證據" : "Claim evidence"}</Badge><h2>{isChinese ? `確認${evidence.businessName ?? "商戶"}` : `Confirm ${evidence.businessName ?? "this business"}`}</h2><p>{[evidence.district, marketName].filter(Boolean).join(" · ")}</p><dl><div><dt>{isChinese ? "擁有權" : "Ownership"}</dt><dd>{ownershipLabel}</dd></div><div><dt>{isChinese ? "公開報告" : "Public report"}</dt><dd><Link href={`/${locale}/r/${evidence.shareSlug}`}>{evidence.shareSlug}</Link></dd></div>{evidence.igHandle && <div><dt>Instagram</dt><dd>@{evidence.igHandle}</dd></div>}{evidence.websiteUrl && <div><dt>{isChinese ? "網站" : "Website"}</dt><dd>{evidence.websiteUrl}</dd></div>}</dl>
+        {/* The escape the pre-claim /scan flow has and this one did not. Before
+            anything is attached it is a plain link -- no mutation. Once the
+            report IS attached, detaching is not self-service: ownership is
+            proven, never self-declared, and undoing it the same way would be a
+            hijack primitive. */}
+        {ownsWorkspace ? (
+          <p className="limitation-note"><TriangleAlert /> {isChinese ? "如果這不是你的商戶：報告已附加到這個工作台，我們不會自助解除。請聯絡 Fimmick 團隊並附上報告編號更正。" : "If this is not your business: the report is already attached to this workspace and we do not detach it self-service. Contact the Fimmick team quoting the report reference to correct it."}{` · ${evidence.shareSlug}`}</p>
+        ) : (
+          <p className="limitation-note"><Link href={`/${locale}/scan`}>{isChinese ? "這不是我的商戶 — 改為掃描正確的商戶" : "This is not my business — scan the right one instead"}</Link></p>
+        )}</div></div>
     ) : (
       <div className="onboarding-choice"><span className="onboarding-icon"><ScanSearch /></span><div><Badge variant="outline">{isChinese ? "沒有認領中的報告" : "No report to claim"}</Badge><h2>{isChinese ? "先由一次掃描開始" : "Start from a scan"}</h2><p>{isChinese ? "工作台是由一份掃描報告建立的。先免費掃描你的商戶並解鎖報告，然後從報告頁繼續認領。" : "A workspace starts from a scan report. Run a free scan of your business, unlock the report, then continue the claim from the report page."}</p><Button asChild><Link href={`/${locale}/scan`}><ScanSearch />{isChinese ? "免費掃描" : "Free scan"}<ArrowRight /></Link></Button></div></div>
     )

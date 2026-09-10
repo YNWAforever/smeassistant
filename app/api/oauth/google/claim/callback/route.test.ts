@@ -263,12 +263,14 @@ describe("GET /api/oauth/google/claim/callback", () => {
     const response = await GET(request("?code=abc&state=good"));
 
     // Success continues the onboarding flow for this claim (CONTRACT.md):
-    // `/{locale}/owner/onboarding?claim=<slug>&claimed=1`, never a bare
-    // dashboard the merchant has no link back from.
+    // `/{locale}/owner/onboarding?claim=<slug>`, never a bare dashboard the
+    // merchant has no link back from. No flow-state parameter is passed --
+    // onboarding derives its resume step from the ownership just persisted, so
+    // losing the parameter cannot send the owner back to step 1.
     const location = new URL(response.headers.get("location")!);
     expect(location.pathname).toBe("/en/owner/onboarding");
     expect(location.searchParams.get("claim")).toBe("abc123");
-    expect(location.searchParams.get("claimed")).toBe("1");
+    expect(location.searchParams.get("claimed")).toBeNull();
     expect(mocks.createWorkspaceWithOwner).toHaveBeenCalledWith(
       expect.objectContaining({
         ownerUserId: "user-1",
@@ -389,7 +391,7 @@ describe("GET /api/oauth/google/claim/callback", () => {
 
     const response = await GET(request("?code=abc&state=good"));
     expect(redirectPath(response)).toBe("/en/owner/onboarding");
-    expect(new URL(response.headers.get("location")!).searchParams.get("claimed")).toBe("1");
+    expect(new URL(response.headers.get("location")!).searchParams.get("claim")).toBe("abc123");
   });
 
   it("never leaks the access token in the redirect or the response body", async () => {
