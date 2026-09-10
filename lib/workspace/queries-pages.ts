@@ -137,6 +137,8 @@ export interface MeasurementRow {
   fact_type: FactType;
   window_days: number | null;
   created_at: string;
+  /** The after-snapshot's location; NULL for a workspace-wide action. */
+  location_id: string | null;
 }
 
 /**
@@ -400,9 +402,15 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
   const period = currentPeriod(ctx.workspace.timezone);
   const periodStart = `${period}-01T00:00:00Z`;
   const [measurements, draftVersions, completed, schedules] = await read("home", () => Promise.all([
-    repository.measurements(workspaceId, undefined, 1),
-    repository.draftVersions(workspaceId),
-    repository.completedActions(workspaceId, periodStart),
+    // Scoped to the same location as the rest of the brief. These three were
+    // workspace-wide while the snapshot, diff, open actions and schedule beside
+    // them were location-scoped, so under a location the proof card could show
+    // another shop's outcome and the month counters counted every location.
+    // Under ?location=all `location` is null and every predicate short-circuits,
+    // preserving today's behaviour by construction.
+    repository.measurements(workspaceId, undefined, 1, location?.id ?? null),
+    repository.draftVersions(workspaceId, location?.id ?? null),
+    repository.completedActions(workspaceId, periodStart, location?.id ?? null),
     location?.placeId ? repository.schedules(workspaceId, [location.placeId]) : Promise.resolve([]),
   ]));
   const proofRow = measurements[0] ?? null;

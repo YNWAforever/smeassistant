@@ -112,18 +112,30 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
         "SELECT status, expires_at::text, updated_at::text, connected_at::text AS created_at FROM oauth_connections WHERE workspace_id=$1 AND provider='google_gbp' ORDER BY (status='active') DESC, connected_at DESC LIMIT 1", [workspaceId]);
       return row ?? null;
     },
-    async measurements(workspaceId: string, actionId?: string, limit?: number): Promise<MeasurementRow[]> {
+    // Scoped on the AFTER SNAPSHOT's location rather than the action's:
+    // measurements are written for workspace-wide actions too (their
+    // location_id is NULL), so keying on a.location_id would drop them from
+    // every location view. LEFT JOIN because after_snapshot_id is
+    // `on delete set null`, and a measurement whose snapshot has gone must not
+    // vanish from the workspace-wide view.
+    async measurements(workspaceId: string, actionId?: string, limit?: number, locationId?: string | null): Promise<MeasurementRow[]> {
       return rows<MeasurementRow>(`SELECT m.id, m.action_id, m.metric_key, m.before_value, m.after_value,
-        m.delta, m.fact_type, m.window_days, m.created_at::text
+        m.delta, m.fact_type, m.window_days, m.created_at::text, s.location_id
         FROM action_measurements m JOIN actions a ON a.id=m.action_id AND a.workspace_id=m.workspace_id
+        LEFT JOIN scan_snapshots s ON s.id=m.after_snapshot_id
         WHERE m.workspace_id=$1 AND ($2::uuid IS NULL OR m.action_id=$2)
-        ORDER BY m.created_at DESC LIMIT $3`, [workspaceId, actionId ?? null, limit === undefined ? null : pageLimit(limit)]);
+          AND ($4::uuid IS NULL OR s.location_id=$4 OR s.location_id IS NULL)
+        ORDER BY m.created_at DESC LIMIT $3`, [workspaceId, actionId ?? null, limit === undefined ? null : pageLimit(limit), locationId ?? null]);
     },
-    async draftVersions(workspaceId: string): Promise<Array<{ id: string }>> {
-      return rows<{ id: string }>("SELECT v.id FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id WHERE a.workspace_id=$1 AND v.approval_state='draft'", [workspaceId]);
+    // `location_id IS NULL` means "all locations" (CLAUDE.md 3.3), so a
+    // workspace-wide action must stay counted in a location-scoped total --
+    // exactly as actions() does above. Dropping that arm would make Home's
+    // counters SMALLER than the same location's Actions tab.
+    async draftVersions(workspaceId: string, locationId?: string | null): Promise<Array<{ id: string }>> {
+      return rows<{ id: string }>("SELECT v.id FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id WHERE a.workspace_id=$1 AND v.approval_state='draft' AND ($2::uuid IS NULL OR a.location_id=$2 OR a.location_id IS NULL)", [workspaceId, locationId ?? null]);
     },
-    async completedActions(workspaceId: string, periodStart: string): Promise<Array<{ id: string; measurement_state: string; completed_at: string | null }>> {
-      return rows<{ id: string; measurement_state: string; completed_at: string | null }>("SELECT id, measurement_state, completed_at::text FROM actions WHERE workspace_id=$1 AND action_state='completed' AND completed_at >= $2", [workspaceId, periodStart]);
+    async completedActions(workspaceId: string, periodStart: string, locationId?: string | null): Promise<Array<{ id: string; measurement_state: string; completed_at: string | null }>> {
+      return rows<{ id: string; measurement_state: string; completed_at: string | null }>("SELECT id, measurement_state, completed_at::text FROM actions WHERE workspace_id=$1 AND action_state='completed' AND completed_at >= $2 AND ($3::uuid IS NULL OR location_id=$3 OR location_id IS NULL)", [workspaceId, periodStart, locationId ?? null]);
     },
     /**
      * `anniversary_day`, not `next_run_at`, is what the workspace can honestly
