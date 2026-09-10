@@ -33,6 +33,8 @@ export interface HomeBriefViewProps {
   demo?: boolean
   /** When present, the Fix Pack drafts card (agent_runs) renders after the secondary grid. */
   fixPack?: { workspaceId: string; role: WorkspaceRole }
+  /** Server-resolved; see RescanButton for why it cannot be computed client-side. */
+  consentPolicyVersion: string
   /** The signed-in member's real role; drives the Rescan button (hidden for viewers). Omitted = no rescan control. */
   role?: WorkspaceRole
 }
@@ -43,7 +45,7 @@ function actionHref(locale: PrototypeLocale, slug: string, action: ActionOvervie
   return withLocation(href, location)
 }
 
-export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, fixPack, role }: HomeBriefViewProps) {
+export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, fixPack, role, consentPolicyVersion }: HomeBriefViewProps) {
   const t = copy[locale].home
   const isChinese = locale !== "en"
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -65,7 +67,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         eyebrow={snapshot ? `${isChinese ? "快照" : "Snapshot"} · ${formatDateTime(snapshot.observedAt, locale, timezone)}` : (isChinese ? "尚未有快照" : "No snapshot yet")}
         title={t.title}
         description={t.subtitle}
-        actions={<>{role && <RescanButton locale={locale} workspaceId={workspaceId} workspaceSlug={workspaceSlug} locationId={brief.location?.id ?? null} tier={tier} role={role} />}<LocationSelect locale={locale} value={location} locations={locations} /></>}
+        actions={<>{role && <RescanButton locale={locale} workspaceId={workspaceId} workspaceSlug={workspaceSlug} locationId={brief.location?.id ?? null} tier={tier} role={role} consentPolicyVersion={consentPolicyVersion} />}<LocationSelect locale={locale} value={location} locations={locations} /></>}
       />
 
       <section className="workspace-agent-strip" aria-label={isChinese ? "AI 能見度團隊狀態" : "AI Visibility Team status"}>

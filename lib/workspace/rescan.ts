@@ -111,6 +111,13 @@ export interface EnqueueRescanInput {
   workspaceId: string;
   locationId: string;
   actorId: string;
+  /**
+   * Parsed and version-checked by the route via `parseScanConsent`, exactly as
+   * the scan wizard does. Required rather than optional-with-a-default so the
+   * compiler enumerates every caller: a default is how this became a record of
+   * an agreement nobody was shown.
+   */
+  consent: ScanConsentRecord;
   now?: Date;
   locale?: string | null;
   ipHash?: string | null;
@@ -131,21 +138,18 @@ export async function enqueueRescan(repo: RescanRepository, input: EnqueueRescan
   // come from the authorized membership, never from a request body.
   const row = buildScanJobInsert(scanInput, { workspaceId: input.workspaceId, locationId: input.locationId });
   // A rescan is the second writer of audit_jobs and must not become a consent
-  // hole. It records a FRESH row rather than copying the parent job's: the
-  // owner's "Rescan now" click is the consenting act, and stamping the
-  // currently published version keeps the dispatch gate uniform across both
-  // writers.
-  const consent: ScanConsentRecord = {
-    consentType: SCAN_CONSENT_TYPE,
-    granted: true,
-    policyVersion: currentScanConsentPolicyVersion(),
-    // The requester's current UI locale, because that is the language the policy
-    // text was shown in when they clicked. The parent scan's locale is only a
-    // fallback for a caller that did not send one.
-    locale: input.locale && LOCALES.has(input.locale) ? (input.locale as ScanStartInput["locale"]) : scanInput.locale,
-  };
+  // hole. It records a FRESH row rather than copying the parent job's.
+  //
+  // The consent is SUPPLIED by the caller, never synthesised here. This module
+  // used to build the record itself -- granted:true, stamped with whatever
+  // version was currently published -- which recorded a policy-versioned
+  // agreement the owner had never been shown, and would have kept recording one
+  // after a policy change nobody had accepted. The route now parses it from the
+  // request through the same `parseScanConsent` contract the scan wizard uses,
+  // so a submitted version that no longer matches the published one is refused
+  // rather than silently restamped (guardrail 13).
   let created: { id: string };
-  try { created = await jobsRepository.insert(row, buildScanConsentInsert(consent)); }
+  try { created = await jobsRepository.insert(row, buildScanConsentInsert(input.consent)); }
   catch {
     console.error("[workspace/rescan] job insert failed", { category: "rescan_insert_failed" });
     return { ok: false, reason: "insert_failed" };
@@ -179,7 +183,10 @@ export async function enqueueRescan(repo: RescanRepository, input: EnqueueRescan
     entityId: created.id,
     locale: input.locale ?? null,
     ipHash: input.ipHash ?? null,
-    payload: { policy_version: consent.policyVersion, trigger: "rescan" },
+    // Passed through, never re-resolved: reading the published version again
+    // here could stamp the audit row with a different version from the
+    // consent_records row written moments earlier.
+    payload: { policy_version: input.consent.policyVersion, trigger: "rescan" },
   });
 
   return { ok: true, jobId: created.id, sourceJob };

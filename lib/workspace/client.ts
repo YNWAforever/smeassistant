@@ -197,8 +197,17 @@ function patch<T>(url: string, body: unknown): Promise<ClientResult<T>> {
  * it (the same two-step the scan funnel uses). A failed process call still
  * returns the jobId: the job is queued and the scanning page polls it.
  */
-export async function rescanLocation(workspaceId: string, locationId: string): Promise<ClientResult<RescanResult>> {
-  const queued = await post<RescanResult>(`/api/workspaces/${encodeURIComponent(workspaceId)}/rescan`, { locationId });
+export async function rescanLocation(workspaceId: string, locationId: string, consent: { policyVersion: string; locale?: string }): Promise<ClientResult<RescanResult>> {
+  const queued = await post<RescanResult>(`/api/workspaces/${encodeURIComponent(workspaceId)}/rescan`, {
+    locationId,
+    // The route parses these through the same contract the scan wizard uses.
+    // The version must come from the server (see RescanButton) -- computing it
+    // in the browser silently yields the default, and any deployment with an
+    // override would then 409 forever.
+    public_evidence_consent: true,
+    consent_policy_version: consent.policyVersion,
+    ...(consent.locale ? { locale: consent.locale } : {}),
+  });
   if (!queued.ok) return queued;
   await post("/api/scan/process", { jobId: queued.data.jobId });
   return queued;
