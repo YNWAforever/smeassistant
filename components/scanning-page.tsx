@@ -17,6 +17,7 @@ import {
   REPORT_REDIRECT_DELAY_MS,
   SCAN_STAGE_COUNT,
   collectorPhases,
+  coveragePercent,
   isTerminalStatus,
   nextPollDelay,
   progressPercent,
@@ -31,7 +32,7 @@ const PHASE_PROVIDER_STATE: Record<CollectorPhase, ProviderState> = {
   pending: "pending",
   running: "pending",
   done: "measured",
-  collected: "measured",
+  unavailable: "unavailable",
   failed: "failed",
 }
 
@@ -39,7 +40,7 @@ const PHASE_ICON_CLASS: Record<CollectorPhase, string> = {
   pending: "collector-pending",
   running: "collector-pending",
   done: "collector-measured",
-  collected: "collector-measured",
+  unavailable: "collector-unavailable",
   failed: "collector-unavailable",
 }
 
@@ -113,7 +114,7 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
     return () => clearTimeout(timer)
   }, [reportHref, router, status.status])
 
-  const phases = collectorPhases(status.processingStage, status.status)
+  const phases = collectorPhases(status.processingStage, status.status, status.moduleStates)
   const failed = status.status === "failed"
 
   return (
@@ -141,7 +142,7 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
             return (
               <article key={key}>
                 <span className={`collector-icon ${PHASE_ICON_CLASS[phase]}`}>
-                  {phase === "done" || phase === "collected" ? <Check /> : phase === "failed" ? <CircleAlert /> : <RefreshCw />}
+                  {phase === "done" ? <Check /> : phase === "failed" || phase === "unavailable" ? <CircleAlert /> : <RefreshCw />}
                 </span>
                 <div>
                   <h2>{c.collectors[key]}</h2>
@@ -159,7 +160,7 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
               <FactType type="Observed" />
               <h2>{c.readyTitle}</h2>
               <p>{c.readyBody}</p>
-              {status.coverage != null && <small>{interpolate(c.coverageLine, { coverage: status.coverage })}</small>}
+              {coveragePercent(status.coverage) != null && <small>{interpolate(c.coverageLine, { coverage: coveragePercent(status.coverage)! })}</small>}
             </div>
             <Button asChild>
               <Link href={reportHref}>

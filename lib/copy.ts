@@ -106,7 +106,7 @@ type FunnelCopy = {
     progress: string
     subjectLabel: string
     collectors: { google_business: string; instagram: string; search_ai: string }
-    phase: { pending: string; running: string; done: string; collected: string; failed: string }
+    phase: { pending: string; running: string; done: string; unavailable: string; failed: string }
     seeReport: string
     readyTitle: string
     readyBody: string
@@ -433,8 +433,8 @@ const funnelEn: FunnelCopy = {
     phase: {
       pending: "Waiting for this stage",
       running: "Reading public sources now",
-      done: "Collection finished",
-      collected: "Collection finished · coverage is confirmed in the report",
+      done: "Measured",
+      unavailable: "Not measured",
       failed: "The scan did not complete",
     },
     seeReport: "See report",
@@ -720,8 +720,8 @@ const funnelZhHK: FunnelCopy = {
     phase: {
       pending: "等待此階段開始",
       running: "正在讀取公開來源",
-      done: "收集完成",
-      collected: "收集完成 · 覆蓋率以報告為準",
+      done: "已量度",
+      unavailable: "未能量度",
       failed: "掃描未能完成",
     },
     seeReport: "詳見報告",
@@ -1007,8 +1007,8 @@ const funnelZhTW: FunnelCopy = {
     phase: {
       pending: "等待此階段開始",
       running: "正在讀取公開來源",
-      done: "收集完成",
-      collected: "收集完成 · 涵蓋率以報告為準",
+      done: "已量度",
+      unavailable: "未能量度",
       failed: "掃描未能完成",
     },
     seeReport: "詳見報告",

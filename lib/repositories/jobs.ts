@@ -24,7 +24,7 @@ export const jobsRepository: JobsRepository & {
         return created;
     },
     async readStatus(id) {
-        const { rows } = await getPool().query<ScanStatus>("SELECT id,status,processing_stage,share_slug,score_coverage::float8 AS score_coverage,failure_correlation_id FROM audit_jobs WHERE id=$1", [id]);
+        const { rows } = await getPool().query<ScanStatus>("SELECT id,status,processing_stage,share_slug,score_coverage::float8 AS score_coverage,failure_correlation_id,module_results,module_scores FROM audit_jobs WHERE id=$1", [id]);
         return rows[0] ?? null;
     }
 };
@@ -35,4 +35,6 @@ export interface ScanStatus {
     share_slug: string | null;
     score_coverage: number | null;
     failure_correlation_id: string | null;
+    module_results: unknown;
+    module_scores: unknown;
 }

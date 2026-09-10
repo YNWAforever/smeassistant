@@ -154,7 +154,7 @@ describe("scan progress", () => {
     expect(collectorPhases("collecting_ig_gbp", "collecting")).toEqual({ google_business: "running", instagram: "running", search_ai: "pending" });
     expect(collectorPhases("collecting_aeo", "collecting")).toEqual({ google_business: "done", instagram: "done", search_ai: "running" });
     expect(collectorPhases("persisting", "persisting")).toEqual({ google_business: "done", instagram: "done", search_ai: "done" });
-    expect(collectorPhases("partial", "partial")).toEqual({ google_business: "collected", instagram: "collected", search_ai: "collected" });
+    expect(collectorPhases("partial", "partial")).toEqual({ google_business: "unavailable", instagram: "unavailable", search_ai: "unavailable" });
     expect(collectorPhases("failed", "failed")).toEqual({ google_business: "failed", instagram: "failed", search_ai: "failed" });
   });
 

@@ -12,12 +12,24 @@ export const MAX_POLL_DELAY_MS = 8000;
 export const POLL_BACKOFF_FACTOR = 1.5;
 export const REPORT_REDIRECT_DELAY_MS = 1500;
 
+export type ModuleProviderState = "measured" | "unavailable" | "unsupported" | "failed" | "pending";
+
 export interface ScanStatusResponse {
   status: string;
   shareSlug: string | null;
   processingStage: string | null;
   coverage: number | null;
   failureCorrelationId: string | null;
+  moduleStates?: Record<CollectorKey, ModuleProviderState> | null;
+}
+
+/** 0.7 -> 70, already-a-percentage values pass through. Mirrors
+ * lib/report/view-model.ts's coveragePercent so the scanning page and the
+ * report never disagree about what a coverage fraction renders as. */
+export function coveragePercent(value: number | null): number | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  const percent = value <= 1 ? value * 100 : value;
+  return Math.min(100, Math.max(0, Math.round(percent)));
 }
 
 export type TerminalScanStatus = "done" | "partial" | "failed";
@@ -46,17 +58,37 @@ export type CollectorKey = "google_business" | "instagram" | "search_ai";
 export const COLLECTOR_KEYS: CollectorKey[] = ["google_business", "instagram", "search_ai"];
 
 /**
- * pending   — the stage has not started
- * running   — the provider is being read right now
- * done      — collection finished (a `done` scan measured every module)
- * collected — collection finished on a `partial` scan; the report says which modules measured
- * failed    — the scan failed
+ * pending     — the stage has not started
+ * running     — the provider is being read right now
+ * done        — this module measured
+ * unavailable — the scan reached a terminal state but this module did not measure
+ * failed      — the scan failed outright, or (per-module) this module's collector failed
  */
-export type CollectorPhase = "pending" | "running" | "done" | "collected" | "failed";
+export type CollectorPhase = "pending" | "running" | "done" | "unavailable" | "failed";
 
-export function collectorPhases(processingStage: string | null | undefined, status: string): Record<CollectorKey, CollectorPhase> {
+/**
+ * `moduleStates` (from GET /api/scan/status, only present once terminal) is
+ * the real per-module outcome -- reusing it here is what stops a `partial`
+ * scan from showing "Measured" for a collector that did not actually measure
+ * anything. Without it (still running, or an older response shape), all three
+ * collectors fall back to the coarser stage-based phase below.
+ */
+export function collectorPhases(
+  processingStage: string | null | undefined,
+  status: string,
+  moduleStates?: Record<CollectorKey, ModuleProviderState> | null,
+): Record<CollectorKey, CollectorPhase> {
+  if ((status === "done" || status === "partial" || status === "failed") && moduleStates) {
+    const phaseFor = (state: ModuleProviderState): CollectorPhase =>
+      state === "measured" ? "done" : state === "failed" ? "failed" : state === "pending" ? "pending" : "unavailable";
+    return {
+      google_business: phaseFor(moduleStates.google_business),
+      instagram: phaseFor(moduleStates.instagram),
+      search_ai: phaseFor(moduleStates.search_ai),
+    };
+  }
   if (status === "failed") return { google_business: "failed", instagram: "failed", search_ai: "failed" };
-  if (status === "partial") return { google_business: "collected", instagram: "collected", search_ai: "collected" };
+  if (status === "partial") return { google_business: "unavailable", instagram: "unavailable", search_ai: "unavailable" };
   if (status === "done") return { google_business: "done", instagram: "done", search_ai: "done" };
   const stage = processingStage ?? status;
   switch (stage) {
