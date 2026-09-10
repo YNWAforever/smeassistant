@@ -211,6 +211,12 @@ button:focus-visible {
 }
 
 .header-scan-cta svg { width: 15px; }
+/* Sign-in stays reachable on phones (it used to be `hidden lg:inline-flex`),
+   just tighter so it does not crowd the scan CTA and the menu trigger. The
+   44px min height keeps the touch target within guidance. */
+@media (max-width: 1023px) {
+  .public-header .header-actions .header-sign-in { min-height: 44px; padding-inline: 12px; font-size: 13px; }
+}
 
 .public-menu-trigger { display: none; }
 
