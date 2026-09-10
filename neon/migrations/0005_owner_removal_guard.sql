@@ -9,13 +9,16 @@
 -- table, destroying the whole workspace and its audit/output/billing history with no
 -- recovery path. This closes that at the database boundary, not just in application code.
 --
--- pg_trigger_depth() = 0 restricts the block to a direct DELETE FROM workspace_members
--- statement. A cascade-originated delete (e.g. account erasure deleting app_users, which
--- cascades to workspace_members via ON DELETE CASCADE FROM app_users(id), which in turn
--- lets workspace_members_cleanup_orphan remove the now-memberless workspace -- the exact
--- path neon-schema.integration.test.ts "retains member cleanup ... invariants" already
--- exercises) runs inside the referencing table's own delete-cascade trigger machinery, so
--- pg_trigger_depth() is >= 1 there and this guard does not interfere with it. Ownership
+-- pg_trigger_depth() = 1 restricts the block to a direct DELETE FROM workspace_members
+-- statement. The value is the CURRENT trigger nesting level, and it is 0 only outside
+-- trigger context altogether -- inside this BEFORE DELETE function the outermost case is
+-- already 1, so testing for 0 would make the guard permanently dead. A cascade-originated
+-- delete (e.g. account erasure deleting app_users, which cascades to workspace_members via
+-- ON DELETE CASCADE FROM app_users(id), which in turn lets workspace_members_cleanup_orphan
+-- remove the now-memberless workspace -- the exact path neon-schema.integration.test.ts
+-- "retains member cleanup ... invariants" already exercises) runs inside the referencing
+-- table's own RI trigger, so this function sees depth >= 2 there and does not interfere
+-- with it. neon-membership.integration.test.ts is what proves both halves. Ownership
 -- transfer is intentionally still unbuilt (route.ts comment); removing the sole owner
 -- remains impossible until that ships, not silently permitted through a side door.
 
@@ -25,7 +28,7 @@ CREATE OR REPLACE FUNCTION public.prevent_owner_removal()
  SET search_path TO ''
 AS $function$
 begin
-  if old.role = 'owner' and pg_trigger_depth() = 0 then
+  if old.role = 'owner' and pg_trigger_depth() = 1 then
     raise exception 'owner_removal_forbidden' using errcode = '23514';
   end if;
   return old;

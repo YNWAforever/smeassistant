@@ -45,8 +45,12 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon final action runtime',(
   const unanswered={gbp:{reviews:[{rating:2,text:'Slow service',time:'2026-08-30T00:00:00Z'},{rating:1,text:'Cold food',time:'2026-08-29T00:00:00Z'}]}};
   const f=await setup(undefined,undefined,'2026-09-01',unanswered);
   await db.query('INSERT INTO brand_profiles(workspace_id) VALUES($1)',[f.ws]);
+  // Without an active connection the derivation also emits google-reconnect,
+  // so seed one and assert on the review-response row by template key.
+  await db.query("INSERT INTO oauth_connections(workspace_id,provider,access_token_encrypted,status,connected_at) VALUES($1,'google_gbp','fixture','active',now())",[f.ws]);
   expect((await deriveActionsForSnapshot(db,f.snapshot)).created).toBe(1);
-  const derived=(await db.query('SELECT required_inputs,action_state FROM actions WHERE workspace_id=$1',[f.ws])).rows[0];
+  const review=()=>db.query("SELECT required_inputs,action_state FROM actions WHERE workspace_id=$1 AND template_key='review-response'",[f.ws]).then(r=>r.rows[0]);
+  const derived=await review();
   expect(derived.required_inputs).not.toContain('reviews_without_response');
 
   // The scan stops retaining an unanswered review: the input comes back, and an
@@ -55,14 +59,14 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon final action runtime',(
   await db.query("UPDATE actions SET action_state='recommended' WHERE workspace_id=$1",[f.ws]);
   await db.query("UPDATE audit_jobs SET raw_data=$2 WHERE id=$1",[f.job,JSON.stringify({gbp:{reviews:[{rating:5,text:'Great',time:'2026-08-30T00:00:00Z',owner_response:'Thank you'}]}})]);
   expect(await deriveActionsForSnapshot(db,f.snapshot)).toMatchObject({created:0,updated:1});
-  const again=(await db.query('SELECT required_inputs,action_state FROM actions WHERE workspace_id=$1',[f.ws])).rows[0];
+  const again=await review();
   expect(again.required_inputs).toContain('reviews_without_response');
   expect(again.action_state).toBe('needs_input');
 
   // Owner progress is never clobbered by that rule.
   await db.query("UPDATE actions SET action_state='in_progress' WHERE workspace_id=$1",[f.ws]);
   await deriveActionsForSnapshot(db,f.snapshot);
-  expect((await db.query('SELECT action_state FROM actions WHERE workspace_id=$1',[f.ws])).rows[0].action_state).toBe('in_progress');
+  expect((await review()).action_state).toBe('in_progress');
  });
  it('skips stale exact-location snapshots and rejects corrupted source parent scope',async()=>{
   const f=await setup();const newer=await setup(f.ws,f.loc,'2026-09-02');
