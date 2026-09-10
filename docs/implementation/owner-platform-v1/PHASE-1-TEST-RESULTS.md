@@ -33,6 +33,30 @@ Candidate: branch `claude/sme-assistant-phase-1-e83fdc`, working tree on top of 
 
 `neon/migrations/0005_owner_removal_guard.sql` (new), `app/api/workspaces/[workspaceId]/members/route.ts`, `app/api/workspaces/[workspaceId]/members/route.test.ts`, `scripts/neon/catalog.ts`, `test/integration/neon-membership.integration.test.ts`, `test/integration/neon-schema.integration.test.ts`, `test/integration/neon-catalog.integration.test.ts`, `packages/scan-engine/src/safe-website-fetch.ts` (new), `packages/scan-engine/src/safe-website-fetch.test.ts` (new), `packages/scan-engine/src/collect-providers.ts`, `app/api/scan/process/route.ts`, `app/api/scan/process/route.test.ts`, `app/api/business/search/route.ts`, `app/api/business/search/route.test.ts`, `app/api/business/ig-search/route.ts`, `app/api/business/ig-search/route.test.ts`, `lib/security/rate-limit.test.ts`, `lib/db/config.ts`, `lib/db/config.test.ts`, `scripts/assert-no-self-service-claim.mjs` (new), `package.json`, `.github/workflows/ci.yml`. None of these touch `components/ui/separator.tsx`, `components/ui/sidebar.tsx`, `components/product-ui.tsx`, or any `radix-ui` import — the build blocker in gate 9 is independently confirmed unrelated to this phase's changes.
 
+## The five remaining items — candidate results
+
+Run on Node 24.18.0 with `VITEST_MAX_WORKERS=1` (what CI uses; the default worker pool is unreliable on this machine while other sessions run their own suites).
+
+| Gate | Command | Result |
+|---|---|---|
+| Typecheck | `tsc --noEmit` | passed — clean |
+| Lint | `pnpm lint` | passed — 0 errors, 30 warnings (unchanged baseline) |
+| Full unit + component suite | `vitest run` | passed — **2,314/2,314**, 227 files |
+
+Suite growth across the five items: 2,223 → 2,314 (+91 cases). All new cases passed on their first full run except three, which failed for reasons worth recording:
+
+- `nextPollDelay(16000, SLOW_POLL_AFTER_MS)` — the design document's expected value (20000) was arithmetically wrong; 16000 × 1.5 = 24000, under the 30 s cap. The test was corrected, not the code.
+- `POST /api/actions` for `review-response` — I expected `action_state: 'recommended'` once the review input resolved. It is `needs_input`, correctly: `brand_voice` and `language` deliberately stay owner knowledge. The assertion was corrected and a second case added for the fully-supplied path.
+- The rescan consent row's `locale` — the first implementation stamped the parent scan's locale; the requester's current UI locale is the honest record of which language the policy text was shown in. The code was corrected.
+
+New test files: `lib/repositories/action-run-reaper.test.ts`, `lib/workspace/run-reaper.test.ts`, `lib/workspace/evidence-inputs.test.ts`, `lib/scan/consent.test.ts`, `lib/scan/consent-gate.test.ts`, `components/scanning-page.test.tsx`, `components/unlock-page.test.tsx`. Extended: `lib/funnel/scan-progress.test.ts`, `lib/workspace/{queries-pages,audit,actions,overview,runs,rescan}.test.ts`, `lib/agents/agents.test.ts`, `app/api/scan/{start,process}/route.test.ts`, `app/api/actions/route.test.ts`, `app/api/report-access/unlock/route.test.ts`, `tests/{i18n,funnel-unlock,funnel-scan,scan-start-contract,neon-scan-unavailable}.test.ts`.
+
+One snapshot was intentionally regenerated: `lib/agents/__snapshots__/agents.test.ts.snap`, for the `review_reply` prompt. The diff was inspected before updating and is exactly the `review_sample_provenance` block, the reworded task and the version bump — 10 lines added, 4 removed, no other agent touched.
+
+### Written but not run
+
+Docker is still unavailable on this machine, so every `*.integration.test.ts` case added this phase is written and typechecked but **not executed**: the stranded-run reaping block in `neon-artifact-runtime`, the consent persistence / transaction-atomicity / erasure-cascade / dispatch-gate block in `neon-scan-start`, and the evidence-aware derivation case in `neon-action-derivation`. `db:verify` is blocked for the same reason — though no migration was added, so the frozen catalog is untouched by construction rather than by assertion.
+
 ## What this does and does not establish
 
 - **Established locally, with real evidence:** every changed line typechecks, lints cleanly, and passes its own and the full existing regression suite (2,698 tests) under Node 24.18.0. The two build-time and build-free static-analysis gates that don't need Docker or a production build (`test:no-supabase`, the new `test:no-self-service-claim`) also pass.

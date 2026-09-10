@@ -162,12 +162,51 @@ Six background agents independently investigated every remaining Phase-1 require
 
 **P1.7 (commercial honesty):** the pricing page advertises specific delivery quotas ("12/month", "36 pooled/month") that directly contradict the real entitlement code (`unlimited` for paid tier, confirmed by the billing page's own copy) and a seat cap ("2 users") with zero enforcement anywhere; inviting a team member shows "Invite sent by email" the instant a DB row is inserted, with no actual email dispatch in that code path (the real magic-link sender is a separate, later, invitee-triggered flow); the unlock form's "recovery email" promise is dead — the field is persisted but never read back by anything, while a more honest "recovery unavailable, contact us" message already exists in the locale files, unwired. Stripe webhook signature ordering and duplicate/out-of-order event handling are both solid and correctly implemented.
 
+## 5b. The five remaining Phase 1 items (implemented)
+
+Each was designed and adversarially reviewed first (`PHASE-1-REMAINING-DESIGNS.md`); every one came back `needs-change`, and each item below implements the corrected plan, not the original.
+
+| Item | Commit | Migration |
+|---|---|---|
+| Reap runs stranded by a killed handler | `813ac78` | none |
+| Withdraw the dead recovery-link promise | `634b879` | none |
+| Bound scanning-page polling; honest stalled state | `df8d36e` | none |
+| Persist and validate scan consent server-side | `6da4d97` | none |
+| Stop forcing manual re-entry of collected reviews | `1dd1209` | none |
+
+No migration was written for any of them, and that is a constraint rather than a preference: `scripts/neon/catalog.ts::verifyCatalog` deep-equals the entire table/column/constraint/index catalog against the frozen `legacy-final-catalog.json`, with allowlists for **functions and triggers only**. A new column or table would fail `db:verify`. In each case the existing schema already had what was needed — `action_runs.timed_out` was already legal in its CHECK; `consent_records.consent_type` is bare `text` with a nullable `lead_id`.
+
+### Decisions taken, stated rather than buried
+
+Three of these need Willy's confirmation. They are recorded here because they are product or legal calls, not engineering ones, and because two of them are cheap now and expensive later.
+
+1. **Scan-consent retention.** `consent_records.job_id` carries `ON DELETE CASCADE`, so the proof of lawful public-evidence collection is destroyed whenever a scan is erased. That matches `lib/lifecycle/export-columns.ts`'s DSAR semantics and is what shipped. The alternative — consent outliving an erased scan — needs DDL that the frozen catalog blocks, so it is much cheaper to decide **before rows exist** than after.
+2. **`LEGAL_POLICY_VERSION` was deliberately not bumped** for the `legal.retentionBody` correction. The removed sentence described a mechanism that never existed, so no user right, purpose, retention, sharing or rights clause narrows; bumping would restamp every future `consent_records` row for an accuracy fix and cascade into the three `funnel.trust.policyLink` strings and CLAUDE.md.
+3. **The dispatch gate requires the exact current policy version.** A job queued moments before a policy bump is marked `failed` with `failure_category='consent_policy_stale'` rather than scanned. In practice dispatch follows start by seconds, but a `PUBLISHED_POLICY_VERSIONS` allowlist in `lib/legal/policy.ts` would keep the property "consent was given against text we actually published" without ever stranding a job.
+
+Also worth knowing, and left as designed rather than guessed at:
+
+- **The stalled threshold is 15 minutes** against scans CLAUDE.md describes as ~5–13 minutes, and the late-phase poll drops to 30 s. Both are single named constants, but they are product-visible: a healthy slow scan can now reach the stalled card, and a finished report can appear up to ~30 s later than before.
+- **The stalled copy names the 30-minute reclaim window.** It is honest and sets expectations, but it exposes an internal operational number to merchants.
+- **CLAUDE.md guardrail 13 / Phase 1 step 4** says the step-4 consent is "recorded as a `consent.public_evidence` audit event". This records it in `consent_records` instead, and emits the audit event only on the rescan path — `AuditEventInput.workspaceId` is a required string and an anonymous funnel scan has no workspace. Widening that to reach anonymous scans is a larger change than this item warranted.
+- **`brand_voice` and `language` deliberately do NOT resolve** from `brand_profiles`, even though they look like they should. The agents read them through `inputLine` → `ctx.providedInputs`, so removing them from `required_inputs` would render "Match the brand voice ((not provided))" *and* hide the input form the owner needs to supply them. Resolving them is a separate change that must also inject the values.
+- **Readiness rises from 0 to 10** for actions whose review input now resolves, so `priority_score` rises by 10 and an action sitting between 50 and 59 flips from `high` to `urgent`. Deterministic and exactly what §3.6.3 specifies, but it reorders the actions page and the home brief's top priority.
+- **Actions derived before this change** keep their old `required_inputs` until the next snapshot derivation, so the list can show "1 missing" while the detail page already allows Generate. It self-heals on the next scan; a SQL backfill was rejected because it would duplicate the TypeScript review selector in jsonb predicates.
+
 ## 6. Rollback
 
 Everything in §2 is additive and reversible without data loss:
 - `neon/migrations/0005_owner_removal_guard.sql` can be neutralized by a follow-up migration dropping the trigger (never by editing this file, which is immutable once applied); no data was written or altered by applying it.
 - The three `failClosed` flips, the TLS check, and the `OWNER_SELF_SERVICE_CLAIM` build gate are pure code/config changes with no data migration — reverting the commit fully reverts the behavior.
 - The `safe-website-fetch.ts` change only affects future scan collection calls; it does not touch stored data. Reverting it restores the prior (vulnerable) behavior — not recommended, but mechanically safe.
+
+The five items in §5b are likewise reversible without data loss, and none of them adds, drops or alters a column:
+
+- **Run reaper** (`813ac78`): reverting stops new reaps. Rows already moved to `timed_out` stay there — a legal value in the existing CHECK that the UI already renders, so they degrade to the shared "failed" copy rather than breaking. `run.timed_out` audit rows remain readable; only their label disappears with `AUDIT_EVENT_LABELS`, falling back to the raw event name.
+- **Recovery-email copy** (`634b879`): copy-only plus the deletion of an unreachable message namespace. Reverting restores both, including the false promise. No row is read or written differently — `recovery_email` is still persisted exactly as before.
+- **Bounded polling** (`df8d36e`): entirely client-side. Reverting restores the unbounded loop. The per-job `localStorage` records it leaves behind (`sme.scan.poll.*`) are inert to the old code and expire on their own; nothing server-side is touched.
+- **Scan consent** (`6da4d97`): reverting stops writing and checking `public_evidence` rows. Rows already written stay valid `consent_records` entries and remain in the DSAR export; no other consent type is affected. The one behavioural caveat is worth stating plainly — while this is live, a client that sends no consent gets a 400, so a **partial** rollback (server reverted, browsers still on the new bundle, or vice versa) is fail-closed in one direction and fail-open in the other. Revert server and client together.
+- **Review sampling** (`1dd1209`): reverting restores the manual-entry requirement. Actions whose `required_inputs` were written without `reviews_without_response` keep that list until the next derivation, so they stay generatable — a safe direction. The `promptVersion` bump is recorded per run, so existing `action_runs` rows keep their own version and remain auditable against the prompt they actually used.
 
 ## 7. Next
 
