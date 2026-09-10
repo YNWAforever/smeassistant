@@ -158,7 +158,7 @@ describe("GET /api/oauth/google/claim/start", () => {
     expect(eq).toHaveBeenCalledWith("share_slug", "abc123");
     // The locale rides along in the signed state (smeassistant addition) so
     // the callback can redirect to /{locale}/…; the nonce keeps its default.
-    expect(mocks.signClaimState).toHaveBeenCalledWith("job-1", "ChIJ_test", "abc123", undefined, "en");
+    expect(mocks.signClaimState).toHaveBeenCalledWith("job-1", "ChIJ_test", "abc123", "user-1", undefined, "en");
     // Pins that the redirect target is actually built from signClaimState's
     // return value, not some other in-scope string that also happens to
     // contain "accounts.google.com" -- and that it uses the claim flow's OWN
@@ -178,10 +178,10 @@ describe("GET /api/oauth/google/claim/start", () => {
     mockAuditJobsRow({ id: "job-1", place_id: "ChIJ_test", workspace_id: null });
 
     await GET(request("?slug=abc123"));
-    expect(mocks.signClaimState).toHaveBeenLastCalledWith("job-1", "ChIJ_test", "abc123", undefined, "zh-HK");
+    expect(mocks.signClaimState).toHaveBeenLastCalledWith("job-1", "ChIJ_test", "abc123", "user-1", undefined, "zh-HK");
 
     await GET(request("?slug=abc123&locale=fr"));
-    expect(mocks.signClaimState).toHaveBeenLastCalledWith("job-1", "ChIJ_test", "abc123", undefined, "zh-HK");
+    expect(mocks.signClaimState).toHaveBeenLastCalledWith("job-1", "ChIJ_test", "abc123", "user-1", undefined, "zh-HK");
   });
 
   it("refuses a job with no place_id on it -- there is nothing to verify against", async () => {

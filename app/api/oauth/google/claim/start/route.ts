@@ -67,7 +67,9 @@ export async function GET(req: Request) {
     if (!job.place_id) return NextResponse.json({ error: "no_place_id" }, { status: 422 });
     if (job.workspace_id) return NextResponse.json({ error: "already_claimed" }, { status: 409 });
 
-    const state = signClaimState(job.id, job.place_id, slug, undefined, locale);
+    // Bound to the initiating account, so the callback can refuse a state
+    // redeemed inside someone else's session.
+    const state = signClaimState(job.id, job.place_id, slug, user.id, undefined, locale);
     return NextResponse.redirect(buildConsentUrl(state, process.env.GOOGLE_OAUTH_CLAIM_REDIRECT_URI));
   } catch (error) {
     console.error("[oauth/google/claim/start] failed", error);

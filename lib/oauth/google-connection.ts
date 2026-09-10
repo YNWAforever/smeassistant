@@ -191,6 +191,21 @@ export interface ClaimStatePayload {
    * started from.
    */
   slug: string;
+  /**
+   * The `app_users` id that started this claim. Without it the state proved
+   * only "some Google account attested to this place", not "the person
+   * finishing this flow is the person who began it" -- so a captured
+   * code+state pair opened in a signed-in victim's browser attached the
+   * initiator's job to the VICTIM's workspace and replaced their Google
+   * connection. `attachJob` is write-once with no detach path, so that is not
+   * undoable.
+   *
+   * Required, not optional: an unbound state must fail `isClaimStatePayload`
+   * and be rejected, rather than fall through a `?? skip` and fail open. A
+   * state signed before this field existed therefore stops verifying, which is
+   * the correct direction -- the claim flag is off, so none are in flight.
+   */
+  userId: string;
   nonce: string;
   issuedAt: number;
   /** smeassistant addition; see OAuthStatePayload.locale. */
@@ -210,6 +225,7 @@ function isClaimStatePayload(value: unknown): value is ClaimStatePayload {
     typeof v.jobId === "string" &&
     typeof v.placeId === "string" &&
     typeof v.slug === "string" &&
+    typeof v.userId === "string" &&
     typeof v.nonce === "string" &&
     typeof v.issuedAt === "number" &&
     (v.locale === undefined || typeof v.locale === "string")
@@ -263,11 +279,12 @@ export function signClaimState(
   jobId: string,
   placeId: string,
   slug: string,
+  userId: string,
   nonce: string = randomBytes(16).toString("base64url"),
   locale?: string,
 ): string {
   const body = Buffer.from(
-    JSON.stringify({ jobId, placeId, slug, nonce, issuedAt: Date.now(), ...(locale ? { locale } : {}) }),
+    JSON.stringify({ jobId, placeId, slug, userId, nonce, issuedAt: Date.now(), ...(locale ? { locale } : {}) }),
     "utf8",
   ).toString("base64url");
   return `${body}.${sign(body, "claim")}`;

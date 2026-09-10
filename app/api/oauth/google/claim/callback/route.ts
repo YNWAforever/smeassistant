@@ -85,6 +85,16 @@ export async function GET(req: Request) {
     const user = await getUser();
     if (!user?.id || !user.verified) return back(origin, locale, payload.slug, { claim: "unauthenticated" });
 
+    // The state proves Google attested to the place; it does not prove the
+    // person redeeming it is the person who started the flow. Without this,
+    // a captured code+state opened in a signed-in victim's browser attached
+    // the initiator's job to the VICTIM's workspace and replaced their Google
+    // connection -- and `attachJob` is write-once with no detach path.
+    //
+    // Checked BEFORE exchangeCode so a mismatched redemption never burns the
+    // authorization code or reaches Google at all.
+    if (payload.userId !== user.id) return back(origin, locale, payload.slug, { claim: "session_mismatch" });
+
     const tokens = await exchangeCode(code, process.env.GOOGLE_OAUTH_CLAIM_REDIRECT_URI);
     if (!tokens) return back(origin, locale, payload.slug, { claim: "exchange_failed" });
     if (!tokens.refreshToken) {

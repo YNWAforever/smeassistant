@@ -54,7 +54,9 @@ const TOKENS = {
   scopes: ["https://www.googleapis.com/auth/business.manage"],
 };
 
-const CLAIM_PAYLOAD = { jobId: "job-1", placeId: "place-a", slug: "abc123", nonce: "n", issuedAt: Date.now(), locale: "en" };
+// userId matches the signed-in user these tests mock, i.e. the ordinary case:
+// the person finishing the claim is the person who started it.
+const CLAIM_PAYLOAD = { jobId: "job-1", placeId: "place-a", slug: "abc123", userId: "user-1", nonce: "n", issuedAt: Date.now(), locale: "en" };
 
 interface JobRow {
   id: string;
@@ -180,6 +182,28 @@ describe("GET /api/oauth/google/claim/callback", () => {
     const response = await GET(request("?code=abc&state=good"));
     expect(claimParam(response)).toBe("unauthenticated");
     expect(redirectPath(response)).toBe("/en/owner/select-workspace");
+  });
+
+  it("refuses a state redeemed inside a different user's session, before touching Google", async () => {
+    // The attack this closes: an attacker who genuinely manages a GBP location
+    // starts a claim for their own scan, captures Google's redirect without
+    // following it, and gets a signed-in victim to open the code+state URL.
+    // The state proves Google attested to the place -- it never proved who
+    // began the flow. Redeemed in the victim's session it attached the
+    // attacker's job to the VICTIM's workspace (attachJob is write-once, with
+    // no detach path anywhere) and replaced their Google connection.
+    mocks.verifyClaimState.mockReturnValue({ ...CLAIM_PAYLOAD, userId: "attacker-1" });
+    mocks.getUser.mockResolvedValue({ data: { user: { id: "user-1", email: "victim@example.com" } } });
+
+    const response = await GET(request("?code=abc&state=good"));
+
+    expect(claimParam(response)).toBe("session_mismatch");
+    // Nothing is spent and nothing is written -- the check sits before the
+    // exchange, so the authorization code is not burned either.
+    expect(mocks.exchangeCode).not.toHaveBeenCalled();
+    expect(mocks.createWorkspaceWithOwner).not.toHaveBeenCalled();
+    expect(mocks.attachJobToWorkspace).not.toHaveBeenCalled();
+    expect(mocks.replaceGoogleConnection).not.toHaveBeenCalled();
   });
 
   it("uses the default locale when the state carries an unsupported one", async () => {

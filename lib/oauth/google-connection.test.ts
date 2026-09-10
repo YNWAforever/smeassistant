@@ -224,12 +224,13 @@ describe("needsRefresh", () => {
 describe("signClaimState / verifyClaimState", () => {
   it("round-trips a valid claim state", () => {
     withKey();
-    const state = signClaimState("job-1", "ChIJ_test_place_id", "slug-1", "nonce-1");
+    const state = signClaimState("job-1", "ChIJ_test_place_id", "slug-1", "user-1", "nonce-1");
     const payload = verifyClaimState(state);
     expect(payload).toEqual({
       jobId: "job-1",
       placeId: "ChIJ_test_place_id",
       slug: "slug-1",
+      userId: "user-1",
       nonce: "nonce-1",
       issuedAt: expect.any(Number),
     });
@@ -237,7 +238,7 @@ describe("signClaimState / verifyClaimState", () => {
 
   it("rejects a tampered payload", () => {
     withKey();
-    const state = signClaimState("job-1", "ChIJ_test_place_id", "slug-1");
+    const state = signClaimState("job-1", "ChIJ_test_place_id", "slug-1", "user-1");
     const [body, signature] = state.split(".");
     const tampered = `${body}x.${signature}`;
     expect(verifyClaimState(tampered)).toBeNull();
@@ -245,7 +246,7 @@ describe("signClaimState / verifyClaimState", () => {
 
   it("rejects a tampered signature", () => {
     withKey();
-    const state = signClaimState("job-1", "place-a", "slug-1");
+    const state = signClaimState("job-1", "place-a", "slug-1", "user-1");
     const [body] = state.split(".");
     expect(verifyClaimState(`${body}.not-a-real-signature`)).toBeNull();
   });
@@ -256,7 +257,7 @@ describe("signClaimState / verifyClaimState", () => {
     // jobId -- a state minted for job A's place_id must not verify as valid
     // for job B, even if an attacker could somehow swap only the placeId
     // field in transit.
-    const state = signClaimState("job-1", "place-a", "slug-1");
+    const state = signClaimState("job-1", "place-a", "slug-1", "user-1");
     const [body, signature] = state.split(".");
     const decoded = JSON.parse(Buffer.from(body!, "base64url").toString("utf8"));
     const swapped = Buffer.from(
@@ -271,9 +272,17 @@ describe("signClaimState / verifyClaimState", () => {
     expect(verifyClaimState(signClaimState("job-1", 12345 as unknown as string, "slug-1", "n"))).toBeNull();
   });
 
+  it("carries the initiating user, and rejects a state that binds nobody", () => {
+    withKey();
+    expect(verifyClaimState(signClaimState("job-1", "place-a", "slug-1", "user-1"))).toMatchObject({ userId: "user-1" });
+    // A state signed before the binding existed must FAIL, not fall through:
+    // an unbound state is exactly the one a captured code+state pair carries.
+    expect(verifyClaimState(signClaimState("job-1", "place-a", "slug-1", undefined as unknown as string))).toBeNull();
+  });
+
   it("rejects a claim state whose slug is not a string", () => {
     withKey();
-    expect(verifyClaimState(signClaimState("job-1", "place-a", 12345 as unknown as string))).toBeNull();
+    expect(verifyClaimState(signClaimState("job-1", "place-a", 12345 as unknown as string, "user-1"))).toBeNull();
   });
 
   it("rejects a claim state whose nonce is not a string", () => {
@@ -283,14 +292,14 @@ describe("signClaimState / verifyClaimState", () => {
 
   it("rejects an expired claim state", () => {
     withKey();
-    const state = signClaimState("job-1", "place-a", "slug-1");
+    const state = signClaimState("job-1", "place-a", "slug-1", "user-1");
     const elevenMinutesLater = Date.now() + 11 * 60 * 1000;
     expect(verifyClaimState(state, elevenMinutesLater)).toBeNull();
   });
 
   it("rejects a claim state issued in the future", () => {
     withKey();
-    const state = signClaimState("job-1", "place-a", "slug-1");
+    const state = signClaimState("job-1", "place-a", "slug-1", "user-1");
     // Guards against a clock-skew payload minting an effectively immortal
     // state. Mirrors the connect suite's equivalent test: simulate a future
     // issuedAt by passing verifyClaimState an earlier `now` than the state's
@@ -300,7 +309,7 @@ describe("signClaimState / verifyClaimState", () => {
 
   it("rejects a claim state signed with a different key", () => {
     withKey();
-    const sealed = signClaimState("job-1", "place-a", "slug-1");
+    const sealed = signClaimState("job-1", "place-a", "slug-1", "user-1");
 
     vi.stubEnv("OAUTH_TOKEN_ENCRYPTION_KEY", Buffer.alloc(32, 9).toString("base64"));
     expect(verifyClaimState(sealed)).toBeNull();
@@ -319,7 +328,7 @@ describe("signClaimState / verifyClaimState", () => {
     // raw.split(".") alone would silently ignore anything past the second
     // segment, so "<state>.junk" would otherwise decode identically to
     // "<state>".
-    expect(verifyClaimState(`${signClaimState("job-1", "place-a", "slug-1")}.junk`)).toBeNull();
+    expect(verifyClaimState(`${signClaimState("job-1", "place-a", "slug-1", "user-1")}.junk`)).toBeNull();
   });
 
   it("rejects a claim-shaped payload signed under the connect domain, not just the claim-guard's field check", () => {
@@ -343,17 +352,18 @@ describe("signClaimState / verifyClaimState", () => {
   // smeassistant addition: see the connect-flow locale tests above.
   it("carries the locale through the claim payload when given, and omits it otherwise", () => {
     withKey();
-    expect(verifyClaimState(signClaimState("job-1", "place-a", "slug-1", "n", "en"))).toEqual({
+    expect(verifyClaimState(signClaimState("job-1", "place-a", "slug-1", "user-1", "n", "en"))).toEqual({
       jobId: "job-1",
       placeId: "place-a",
       slug: "slug-1",
+      userId: "user-1",
       nonce: "n",
       issuedAt: expect.any(Number),
       locale: "en",
     });
-    const [body] = signClaimState("job-1", "place-a", "slug-1", "n").split(".");
+    const [body] = signClaimState("job-1", "place-a", "slug-1", "user-1", "n").split(".");
     const decoded = JSON.parse(Buffer.from(body!, "base64url").toString("utf8"));
-    expect(Object.keys(decoded).sort()).toEqual(["issuedAt", "jobId", "nonce", "placeId", "slug"]);
+    expect(Object.keys(decoded).sort()).toEqual(["issuedAt", "jobId", "nonce", "placeId", "slug", "userId"]);
   });
 
   it("rejects a claim payload whose locale is not a string", () => {
