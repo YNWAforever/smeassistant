@@ -90,7 +90,25 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
               <SectionCard key={card.metricKey}><FactType type={card.factType} /><p className="eyebrow">{metricLabel(card.metricKey, locale)}</p><h2>{card.after === null ? "—" : card.after}{card.delta !== null && <small> {signed(card.delta, 1)}</small>}</h2><p>{card.factType === "Observed" ? `${isChinese ? "由" : "From"} ${card.before} · ${formatDay(card.observedAt, locale, timezone)}` : (isChinese ? "沒有可比較的前值" : "No comparable earlier value")}</p></SectionCard>
             ))}
           </div>
-          {model.aeoTrend.surfaces.some((s) => s.points.length > 0) && <SectionCard><p className="eyebrow">{isChinese ? "搜尋及 AI 介面" : "Search and AI surfaces"}</p><h2>{isChinese ? "被引用比率趨勢" : "Presence rate trend"}</h2><ul className="evidence-list">{model.aeoTrend.surfaces.filter((s) => s.points.length > 0).map((surface) => <li key={surface.surface}><Badge variant="outline">{surface.surface}</Badge><span><strong>{Math.round((surface.points.at(-1)?.presenceRate ?? 0) * 100)}%</strong><small>{surface.points.map((p) => `${Math.round(p.presenceRate * 100)}%`).join(" → ")}</small></span></li>)}</ul></SectionCard>}
+          {/* This card used to join every percentage with arrows and nothing
+              else: no date, no denominator, no gap mark, no fact type -- on a
+              page that otherwise badges "No line across evidence gaps". Two
+              concrete misreads it produced: ai_mode flipping 0% -> 50% purely
+              because an ambiguity retry added a second probe that scan, and two
+              points three months apart reading as consecutive because the scan
+              between them errored and was silently dropped. */}
+          {model.aeoTrend.surfaces.some((s) => s.points.length > 0) && <SectionCard><div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "搜尋及 AI 介面" : "Search and AI surfaces"}</p><h2>{isChinese ? "被引用比率" : "Presence rate"}</h2></div><FactType type="Observed" /></div>
+            <ul className="evidence-list">{model.aeoTrend.surfaces.filter((s) => s.points.length > 0).map((surface) => (
+              <li key={surface.surface}>
+                <Badge variant="outline">{surface.surface}</Badge>
+                <span>
+                  <strong>{Math.round((surface.points.at(-1)?.presenceRate ?? 0) * 100)}%</strong>
+                  <small>{surface.points.map((point) => `${formatDay(point.capturedAt, locale, timezone)}: ${point.cited}/${point.total}${point.skippedScans > 0 ? (isChinese ? `（前有 ${point.skippedScans} 次未量度）` : ` (after ${point.skippedScans} unmeasured)`) : ""}`).join(" · ")}</small>
+                </span>
+              </li>
+            ))}</ul>
+            <p className="limitation-note">{isChinese ? "分母是該次掃描實際取得結果的查詢數，並非計劃查詢數；不同掃描可能不同，所以百分比之間未必可直接比較。未量度的掃描不會當作 0%。" : "The denominator is the queries that returned a usable result in that scan, not the queries planned, and it can differ between scans — so the percentages are not always comparable to each other. A scan that measured nothing is never counted as 0%."}</p>
+          </SectionCard>}
           {(model.ledger.resolved.length > 0 || model.ledger.regressed.length > 0 || model.ledger.decayed.length > 0) && <SectionCard className="change-ledger-card"><div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "變化紀錄" : "Change ledger"}</p><h2>{isChinese ? "已解決、退步及時間推移" : "Resolved, regressed and decayed"}</h2></div></div><ul className="evidence-list">{model.ledger.resolved.map((k) => <li key={`r${k}`}><Badge variant="outline">{isChinese ? "已解決" : "Resolved"}</Badge><span><strong>{findingLabel(k)}</strong></span></li>)}{model.ledger.regressed.map((k) => <li key={`g${k}`}><Badge variant="outline">{isChinese ? "退步" : "Regressed"}</Badge><span><strong>{findingLabel(k)}</strong></span></li>)}{model.ledger.decayed.map((k) => <li key={`d${k}`}><Badge variant="outline">{isChinese ? "時間推移" : "Decayed"}</Badge><span><strong>{findingLabel(k)}</strong></span></li>)}</ul></SectionCard>}
         </>
       )}
