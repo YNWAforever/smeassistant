@@ -67,6 +67,22 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon final action runtime',(
   await db.query("UPDATE actions SET action_state='in_progress' WHERE workspace_id=$1",[f.ws]);
   await deriveActionsForSnapshot(db,f.snapshot);
   expect((await review()).action_state).toBe('in_progress');
+
+  // `ready` is the state an owner PATCH produces, and it was the gap in this
+  // very test: the original condition fired whenever the template declared any
+  // input, so a ready action reverted on EVERY scan while its answers sat
+  // intact in provided_inputs -- a "Needs input" badge over an "Inputs ready"
+  // row. Answered keys must survive re-derivation.
+  const setReady=(inputs:Record<string,string>)=>db.query("UPDATE actions SET action_state='ready',provided_inputs=$2 WHERE workspace_id=$1 AND template_key='review-response'",[f.ws,JSON.stringify(inputs)]);
+  await setReady({brand_voice:'warm',language:'zh-HK',reviews_without_response:'2 reviews'});
+  await deriveActionsForSnapshot(db,f.snapshot);
+  expect((await review()).action_state).toBe('ready');
+
+  // An empty answer is still no answer -- the same rule missingInputs applies
+  // in lib/workspace/overview.ts, so the two can never disagree.
+  await setReady({brand_voice:'warm',language:'',reviews_without_response:'2 reviews'});
+  await deriveActionsForSnapshot(db,f.snapshot);
+  expect((await review()).action_state).toBe('needs_input');
  });
  it('skips stale exact-location snapshots and rejects corrupted source parent scope',async()=>{
   const f=await setup();const newer=await setup(f.ws,f.loc,'2026-09-02');

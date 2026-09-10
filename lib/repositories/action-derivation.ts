@@ -80,9 +80,21 @@ export function actionDerivationRepository(db:Pick<Pool,'query'>):ActionDerivati
      -- An action that LOSES its evidence (the scan no longer retains an
      -- unanswered review) gets the input back, so it must also go back to
      -- needs_input -- otherwise the detail page, which gates its input form on
-     -- action_state, shows nothing and Generate burns a model call. Restricted
-     -- to untouched states so owner progress is never clobbered.
-     action_state=CASE WHEN EXCLUDED.required_inputs <> '[]'::jsonb AND actions.action_state IN ('recommended','ready')
+     -- action_state, shows nothing and Generate burns a model call.
+     --
+     -- The test is whether a required key is genuinely UNANSWERED, not whether
+     -- the template declares any. The first version of this asked whether
+     -- EXCLUDED.required_inputs was non-empty, which is true for almost every
+     -- template on every re-derivation -- so an owner who had supplied brand
+     -- voice and language watched a ready action flip back to needs_input after
+     -- each scan, beside a provenance row still reading "Inputs ready". Absent,
+     -- null and empty-string all count as unanswered, mirroring missingInputs
+     -- in lib/workspace/overview.ts exactly: two rules for one question is what
+     -- let the badge and the read model disagree. An empty required list still
+     -- never downgrades, since EXISTS over an empty array is false.
+     action_state=CASE WHEN actions.action_state IN ('recommended','ready')
+       AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(EXCLUDED.required_inputs) AS k(key)
+                   WHERE COALESCE(actions.provided_inputs->>k.key,'')='')
       THEN 'needs_input' ELSE actions.action_state END
     WHERE actions.workspace_id=EXCLUDED.workspace_id AND actions.location_id IS NOT DISTINCT FROM EXCLUDED.location_id AND actions.template_key=EXCLUDED.template_key
     RETURNING (xmax=0) AS created`,[ws,loc,action.templateKey,action.source,action.sourceFindingKeys,snapshotId,JSON.stringify(action.title),JSON.stringify(action.summary),JSON.stringify(action.evidence),action.priority,action.priorityScore,JSON.stringify(action.priorityFactors),action.effortMinutes,JSON.stringify(action.requiredInputs),action.capability,action.dedupeKey,action.requiredInputs.length?'needs_input':'recommended',now])).rows[0];
