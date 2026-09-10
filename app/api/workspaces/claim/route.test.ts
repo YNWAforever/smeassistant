@@ -83,6 +83,17 @@ describe("POST /api/workspaces/claim", () => {
     expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
   });
 
+  it("409s a market that disagrees with the scan, and says which one to send", async () => {
+    // The market is money-bearing: workspaces.market picks the Stripe price.
+    // Refused rather than silently corrected, so a tampered or stale client
+    // cannot quietly land on the wrong price.
+    mocks.getUser.mockResolvedValue(USER);
+    mocks.completeWorkspaceClaim.mockResolvedValue({ kind: "market_mismatch", expected: "hk" });
+    const response = await post({ ...BODY, market: "tw" });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "market_mismatch", expected: "hk" });
+  });
+
   it("400s invalid JSON and an invalid body without touching the limiter or the database", async () => {
     mocks.getUser.mockResolvedValue(USER);
     expect((await post("{not json")).status).toBe(400);

@@ -59,6 +59,12 @@ export async function POST(req: Request) {
         // The job exists but ownership has not been proven yet: the caller
         // must go through the OAuth claim (or ask Fimmick) first.
         return NextResponse.json({ error: "not_attached" }, { status: 409 });
+      case "market_mismatch":
+        // Refused rather than silently corrected: the market is money-bearing
+        // (it selects the Stripe price) and the UI only ever sends the scan's
+        // own region, so a disagreement means the body was tampered with or a
+        // client is out of date. `expected` lets a legitimate client resend.
+        return NextResponse.json({ error: "market_mismatch", expected: result.expected }, { status: 409 });
     }
   } catch (error) {
     console.error("[api/workspaces/claim] failed", error instanceof Error ? error.message : "unknown");

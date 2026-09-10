@@ -133,6 +133,24 @@ describe("completeWorkspaceClaim", () => {
     expect(calls.map((call) => call.table)).toEqual(["audit_jobs"]);
   });
 
+  it("refuses a market that disagrees with the scan, without writing anything", async () => {
+    // workspaces.market selects the Stripe price, and this route is idempotent,
+    // so a trusted body field let an owner re-POST later and move a live HK
+    // workspace to the cheaper TW price.
+    const { db, calls } = fakeDb(happyResponder({ location: null, workspaceSlug: null, events: 0 }));
+
+    expect(await completeWorkspaceClaim(db, { ...INPUT, market: "tw" })).toEqual({ kind: "market_mismatch", expected: "hk" });
+    expect(writes(calls)).toEqual([]);
+  });
+
+  it("writes the scan's own market even when the body agrees", async () => {
+    const { db, calls } = fakeDb(happyResponder({ location: null, workspaceSlug: null, events: 0 }));
+
+    expect((await completeWorkspaceClaim(db, INPUT)).kind).toBe("completed");
+    const update = calls.find((call) => call.table === "workspaces" && call.op === "update");
+    expect(update?.payload).toMatchObject({ market: "hk" });
+  });
+
   it("returns not_found without any write for an unknown slug", async () => {
     const { db, calls } = fakeDb(() => ({ data: null }));
 

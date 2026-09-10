@@ -4,7 +4,9 @@ Produced by a 14-agent audit of the shipped code against the product guardrails 
 
 **Read the caveat first.** 24 of 24 findings came back confirmed and none was refuted. A verification pass that refutes nothing is not evidence that everything is real -- it is equally consistent with weak verification. Treat severities as claims to check, not conclusions. I independently re-verified finding 1 line by line (including why its test never caught it) and it holds exactly as described; the rest carry file:line evidence but have not had that second human pass.
 
-This is raw material for a Phase 2 plan, in the same spirit as the Phase 1 audit register. **Findings 1 and 2 are fixed** (see below); findings 3–24 are not.
+This is raw material for a Phase 2 plan, in the same spirit as the Phase 1 audit register. **Findings 1, 2, 3 and 21 are fixed** (see below); the rest are not.
+
+Findings 3 and 21 turned out to be the same defect, reported independently by the `ownership-consent` and `authorization` auditors at different severities — worth knowing when reading the other 20, since the register does not otherwise de-duplicate across areas.
 
 ### Fixed
 
@@ -14,7 +16,13 @@ This is raw material for a Phase 2 plan, in the same spirit as the Phase 1 audit
 
   **The register's preferred fix was not available, and the reason matters.** It suggested `CREATE OR REPLACE FUNCTION export_output_version` in a new migration so the gate derives the entitlement from the live tier at check time — which genuinely cannot drift. But `scripts/neon/catalog.ts` lists `export_output_version` in `retainedFunctions` and deep-equals its `pg_get_functiondef` against the frozen legacy catalog, so replacing its body fails `db:verify` unless that core approval-ledger function stops being pinned by definition or the frozen oracle is rewritten. Neither is an acceptable trade for this bug. Keeping the column authoritative also preserves a useful invariant: the read model reads the same column the gate enforces, so the billing card can never advertise an allowance the server will refuse — which is exactly the failure being fixed.
 
-  `applyTier` is the only writer of `workspaces.tier` in this app, so the reconciliation is complete here. If a tier ever comes to be written by another path (a staff grant reaching the shared database directly), that path must reconcile too. Covered by a new integration case in `neon-integrations.integration.test.ts` that seeds a spent lite period, upgrades, and asserts the allowance lifts to `NULL` and then returns to `3` on downgrade.
+- **3 (and 21). Client-supplied `market` on workspace claim** — fixed. `completeWorkspaceClaim` now derives the market from the claimed job's stored `region` and writes that, and a body whose `market` disagrees is refused with 409 `market_mismatch` carrying the expected value.
+
+  Refused rather than silently corrected, deliberately. The field is money-bearing — `workspaces.market` is what `checkout-link` resolves the Stripe price from (HK$888 vs NT$2,800) — and the onboarding UI already renders it read-only from the same scan evidence, so a disagreeing body is never a legitimate client. Silently overwriting would hide a tampered request; 409 with `expected` lets an out-of-date client resend correctly. This also closes the "later idempotent re-POST rewrites the column" half of the finding: a re-POST now writes the same server-derived value or is refused.
+
+  Covered by unit cases at both levels — `claim.test.ts` asserts a mismatched market returns `market_mismatch` with **no writes at all**, and that a matching body still persists the scan's own market; `route.test.ts` pins the 409 and its body.
+
+- **2. Mid-period tier change and the delivery allowance** (continued) — `applyTier` is the only writer of `workspaces.tier` in this app, so the reconciliation is complete here. If a tier ever comes to be written by another path (a staff grant reaching the shared database directly), that path must reconcile too. Covered by a new integration case in `neon-integrations.integration.test.ts` that seeds a spent lite period, upgrades, and asserts the allowance lifts to `NULL` and then returns to `3` on downgrade.
 
 ## Area summaries
 

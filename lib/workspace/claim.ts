@@ -38,7 +38,9 @@ export type CompleteWorkspaceClaimResult =
   | { kind: "completed"; workspaceId: string; workspaceSlug: string; locationId: string }
   | { kind: "not_found" }
   | { kind: "not_attached" }
-  | { kind: "forbidden" };
+  | { kind: "forbidden" }
+  /** The body's `market` disagrees with the claimed job's stored region. */
+  | { kind: "market_mismatch"; expected: ClaimMarket };
 
 export interface CompleteWorkspaceClaimHooks {
   /** Builds the `scan_snapshots` row for the claimed job. */
@@ -131,6 +133,16 @@ export async function completeWorkspaceClaim(
   const workspace = await db.workspace(job.workspace_id);
   if (!workspace) return { kind: "not_found" };
 
+  // The market is server-derived from the scan, never taken from the caller.
+  // `workspaces.market` selects the Stripe price (HK$888 vs NT$2,800) and
+  // drives currency, contact channel and market copy, and this route is
+  // deliberately idempotent -- so trusting the body let an owner re-POST at any
+  // time to flip a live HK workspace to TW and check out at the cheaper price.
+  // The onboarding UI already renders this field read-only from the same
+  // evidence, so a disagreeing value is never a legitimate client.
+  const market = job.region === "tw" ? "tw" : "hk";
+  if (input.market !== market) return { kind: "market_mismatch", expected: market };
+
   // --- Idempotent writes. ---
 
   const timezone = isValidTimezone(input.timezone)
@@ -149,7 +161,7 @@ export async function completeWorkspaceClaim(
       : await db.workspaceSlug(slugify(workspaceName));
 
   await db.updateWorkspace(workspace.id, {
-    business_name: workspaceName, timezone, market: input.market,
+    business_name: workspaceName, timezone, market,
     ...(workspace.slug ? {} : { slug: workspaceSlug }),
   });
 
