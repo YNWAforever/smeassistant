@@ -22,6 +22,7 @@ import {
   unlockChannels,
   validateUnlockForm,
   type UnlockChannel,
+  type UnlockFormError,
   type UnlockFormValues,
   type UnlockMarket,
 } from "@/lib/funnel/unlock"
@@ -64,7 +65,15 @@ export function UnlockPage({ locale, slug, market }: { locale: PrototypeLocale; 
   async function submit() {
     const problems = validateUnlockForm(market, values)
     if (problems.length) {
-      setError(problems[0] === "delivery_required" ? c.errors.delivery : problems[0] === "contact_invalid" ? c.errors.invalidContact : c.errors.contact)
+      // Exhaustive by type, so a new UnlockFormError cannot silently render the
+      // contact message.
+      const messages: Record<UnlockFormError, string> = {
+        contact_required: c.errors.contact,
+        contact_invalid: c.errors.invalidContact,
+        recovery_invalid: c.errors.invalidSignInEmail,
+        delivery_required: c.errors.delivery,
+      }
+      setError(messages[problems[0]])
       return
     }
     setSubmitting(true)
@@ -145,7 +154,10 @@ export function UnlockPage({ locale, slug, market }: { locale: PrototypeLocale; 
 
           <div className="field-stack">
             <Label>{c.channelHeading}</Label>
-            <RadioGroup value={values.channel} onValueChange={(value) => update({ channel: value as UnlockChannel, contact: "" })}>
+            {/* recoveryEmail is cleared with the contact: the field below is
+                hidden for the email channel, so a stale value left behind by a
+                switch would otherwise be unreachable to the person editing it. */}
+            <RadioGroup value={values.channel} onValueChange={(value) => update({ channel: value as UnlockChannel, contact: "", recoveryEmail: "" })}>
               {channels.map((channel) => (
                 <Label className="consent-row" key={channel} htmlFor={`unlock-channel-${channel}`}>
                   <RadioGroupItem id={`unlock-channel-${channel}`} value={channel} />
@@ -169,15 +181,17 @@ export function UnlockPage({ locale, slug, market }: { locale: PrototypeLocale; 
 
           {values.channel !== "email" && (
             <div className="field-stack">
-              <Label htmlFor="unlock-recovery">{c.recoveryLabel}</Label>
+              <Label htmlFor="unlock-recovery">{c.signInEmailLabel}</Label>
               <Input
                 id="unlock-recovery"
                 type="email"
+                autoComplete="email"
+                aria-describedby="unlock-recovery-hint"
                 value={values.recoveryEmail}
                 placeholder={c.placeholders.email}
                 onChange={(event) => update({ recoveryEmail: event.target.value })}
               />
-              <small>{c.recoveryHint}</small>
+              <small id="unlock-recovery-hint">{c.signInEmailHint}</small>
             </div>
           )}
 

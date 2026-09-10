@@ -242,8 +242,8 @@ type FunnelCopy = {
     channels: { whatsapp: string; line: string; phone: string; email: string }
     contactLabels: { whatsapp: string; line: string; phone: string; email: string }
     placeholders: { whatsapp: string; line: string; phone: string; email: string }
-    recoveryLabel: string
-    recoveryHint: string
+    signInEmailLabel: string
+    signInEmailHint: string
     deliveryTitle: string
     discussionTitle: string
     discussionBody: string
@@ -251,7 +251,7 @@ type FunnelCopy = {
     marketingBody: string
     submit: string
     submitting: string
-    errors: { contact: string; invalidContact: string; delivery: string; failed: string; network: string }
+    errors: { contact: string; invalidContact: string; invalidSignInEmail: string; delivery: string; failed: string; network: string }
     success: string
     privacyNote: string
     policyLink: string
@@ -574,8 +574,8 @@ const funnelEn: FunnelCopy = {
     channels: { whatsapp: "WhatsApp", line: "LINE", phone: "Phone", email: "Email" },
     contactLabels: { whatsapp: "WhatsApp number", line: "LINE ID", phone: "Phone number", email: "Email" },
     placeholders: { whatsapp: "e.g. +852 9123 4567", line: "e.g. @yourshop", phone: "e.g. +852 9123 4567", email: "owner@business.com" },
-    recoveryLabel: "Recovery email",
-    recoveryHint: "Use this email to reopen your report securely on another device.",
+    signInEmailLabel: "Email for a later sign-in link (optional)",
+    signInEmailHint: "Nothing is emailed now. Later, a sign-in link for this report can be requested with this address if it is still eligible. Workspace access is checked separately.",
     deliveryTitle: "Deliver this report securely",
     discussionTitle: "Discuss the findings with Fimmick",
     discussionBody: "Optional and separate from report delivery.",
@@ -586,6 +586,7 @@ const funnelEn: FunnelCopy = {
     errors: {
       contact: "Enter your contact details.",
       invalidContact: "Enter a valid contact for the chosen channel.",
+      invalidSignInEmail: "Enter a valid email address, or leave this blank.",
       delivery: "Agree to receive the report before continuing.",
       failed: "The report could not be unlocked. Please try again.",
       network: "Network error. Please try again.",
@@ -612,7 +613,7 @@ const funnelEn: FunnelCopy = {
       { label: "Agent inputs and outputs", value: "Drafts, approvals and exports are retained for 24 months for accountability." },
       { label: "Audit events", value: "Append-only events are retained for 24 months." },
       { label: "OAuth tokens", value: "Encrypted at rest and revoked when a connection is removed." },
-      { label: "Report access links", value: "Expire 30 days after issue; recovery links expire after 15 minutes." },
+      { label: "Report access links", value: "Expire 30 days after issue. Signing out of a report also revokes the link used on that device." },
     ],
     policyLink: "Privacy policy and terms · version 2026-07-28",
   },
@@ -864,8 +865,8 @@ const funnelZhHK: FunnelCopy = {
     channels: { whatsapp: "WhatsApp", line: "LINE", phone: "電話", email: "電郵" },
     contactLabels: { whatsapp: "WhatsApp 號碼", line: "LINE ID", phone: "電話號碼", email: "電郵" },
     placeholders: { whatsapp: "例：+852 9123 4567", line: "例：@yourshop", phone: "例：+852 9123 4567", email: "owner@business.com" },
-    recoveryLabel: "復原電郵",
-    recoveryHint: "提供電郵後，你可在其他裝置透過安全連結重新開啟報告。",
+    signInEmailLabel: "日後索取登入連結的電郵（選填）",
+    signInEmailHint: "現在不會發送任何電郵。日後如此電郵仍符合資格，可用它為此報告索取登入連結；工作台存取會另行核實。",
     deliveryTitle: "安全送達此報告",
     discussionTitle: "與 Fimmick 討論發現",
     discussionBody: "選填，並與報告送達分開。",
@@ -876,6 +877,7 @@ const funnelZhHK: FunnelCopy = {
     errors: {
       contact: "請輸入聯絡資料。",
       invalidContact: "請輸入所選渠道的有效聯絡資料。",
+      invalidSignInEmail: "請輸入有效的電郵地址，或留空。",
       delivery: "請先同意接收此報告。",
       failed: "未能解鎖報告，請再試一次。",
       network: "網絡錯誤，請再試一次。",
@@ -902,7 +904,7 @@ const funnelZhHK: FunnelCopy = {
       { label: "Agent 輸入與輸出", value: "草稿、審批及匯出紀錄保留 24 個月，以便追溯責任。" },
       { label: "審計事件", value: "只可追加的事件紀錄保留 24 個月。" },
       { label: "OAuth 代幣", value: "靜態加密儲存；解除連接時即時撤銷。" },
-      { label: "報告存取連結", value: "發出後 30 日失效；復原連結 15 分鐘後失效。" },
+      { label: "報告存取連結", value: "發出後 30 日失效；喺報告登出時，該裝置所用嘅連結亦會撤銷。" },
     ],
     policyLink: "私隱政策及使用條款 · 版本 2026-07-28",
   },
@@ -1154,8 +1156,8 @@ const funnelZhTW: FunnelCopy = {
     channels: { whatsapp: "WhatsApp", line: "LINE", phone: "電話", email: "電子郵件" },
     contactLabels: { whatsapp: "WhatsApp 號碼", line: "LINE ID", phone: "電話號碼", email: "電子郵件" },
     placeholders: { whatsapp: "例：+852 9123 4567", line: "例：@yourshop", phone: "例：0912 345 678", email: "owner@business.com" },
-    recoveryLabel: "復原電子郵件",
-    recoveryHint: "提供電子郵件後，你可以在其他裝置透過安全連結重新開啟報告。",
+    signInEmailLabel: "日後索取登入連結的電子郵件（選填）",
+    signInEmailHint: "現在不會寄出任何郵件。日後如這個電子郵件仍符合資格，可用它為此報告索取登入連結；工作台存取會另行核實。",
     deliveryTitle: "安全送達此報告",
     discussionTitle: "與 Fimmick 討論發現",
     discussionBody: "選填，並與報告送達分開。",
@@ -1166,6 +1168,7 @@ const funnelZhTW: FunnelCopy = {
     errors: {
       contact: "請輸入聯絡資料。",
       invalidContact: "請輸入所選管道的有效聯絡資料。",
+      invalidSignInEmail: "請輸入有效的電子郵件地址，或留空。",
       delivery: "請先同意接收此報告。",
       failed: "無法解鎖報告，請再試一次。",
       network: "網路錯誤，請再試一次。",
@@ -1192,7 +1195,7 @@ const funnelZhTW: FunnelCopy = {
       { label: "Agent 輸入與輸出", value: "草稿、核准與匯出紀錄保留 24 個月，以便追溯責任。" },
       { label: "稽核事件", value: "只能附加的事件紀錄保留 24 個月。" },
       { label: "OAuth 權杖", value: "靜態加密儲存；解除連接時立即撤銷。" },
-      { label: "報告存取連結", value: "發出後 30 天失效；復原連結 15 分鐘後失效。" },
+      { label: "報告存取連結", value: "發出後 30 天失效；於報告登出時，該裝置所使用的連結也會撤銷。" },
     ],
     policyLink: "隱私政策與使用條款 · 版本 2026-07-28",
   },
