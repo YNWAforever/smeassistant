@@ -7,7 +7,7 @@ import type {
 } from "@/lib/repositories/artifacts";
 import type { Membership } from "@/lib/auth";
 import { rowToSnapshot } from "./snapshots";
-import { runAgentForAction } from "./runs";
+import { AGENT_RUN_BUDGET_MS, runAgentForAction } from "./runs";
 const action = {
   id: "act-1",
   workspace_id: "ws-1",
@@ -324,6 +324,36 @@ describe("typed action runtime", () => {
     });
     expect(queue).not.toHaveBeenCalled();
   });
+  it("caps each attempt's timeout by the remaining route budget", async () => {
+    const llm = vi.fn<(prompt: string, options: { timeoutMs: number }) => Promise<LLMResult>>(async () => good());
+    await run({ llm });
+    const options = llm.mock.calls[0][1];
+    // Never more than the agent default, and never more than what is left of
+    // the route budget after reserving finalization time.
+    expect(options.timeoutMs).toBeLessThanOrEqual(45_000);
+    expect(options.timeoutMs).toBeLessThanOrEqual(AGENT_RUN_BUDGET_MS);
+    expect(options.timeoutMs).toBeGreaterThan(0);
+  });
+
+  it("does not start a retry it cannot finish inside the route budget", async () => {
+    // First attempt returns unparseable output after burning nearly the whole
+    // budget. The old fixed two-attempt loop would have started a second 45 s
+    // call inside a 60 s function; now the run ends as a terminal failure.
+    const now = vi.spyOn(Date, "now");
+    const base = 1_000_000;
+    now.mockReturnValueOnce(base) // deadline computed
+      .mockReturnValueOnce(base) // first attempt: full budget remains
+      .mockReturnValue(base + AGENT_RUN_BUDGET_MS - 1_000); // budget nearly gone
+    const llm = vi.fn(async () => ({ text: "not json", usage: { inputTokens: 1, outputTokens: 1 } }));
+    try {
+      const result = await run({ llm });
+      expect(llm).toHaveBeenCalledTimes(1);
+      expect(result).toMatchObject({ state: "failed" });
+    } finally {
+      now.mockRestore();
+    }
+  });
+
   it("refuses a registered agent that is not this action template's own agent", async () => {
     // The gap this closes: isAgentKey() only proves membership of the global
     // agent registry, so any real key used to be accepted on any action --

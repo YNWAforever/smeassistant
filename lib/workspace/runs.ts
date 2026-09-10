@@ -65,6 +65,21 @@ export interface RunAgentResult {
   error?: string;
 }
 
+/**
+ * Inline agent-run budget, reconciled with the calling route's
+ * `export const maxDuration` (60 s for /api/actions/[actionId]/run and
+ * /api/actions). ROUTE_MAX_DURATION_MS is the platform's hard ceiling; the
+ * agent may use everything except a reserve for persisting the terminal state,
+ * because a run that gets killed before persistence.finish() is stranded at
+ * 'running' with no reaper to clear it. MIN_ATTEMPT_MS stops us starting an
+ * attempt so short it could only ever time out.
+ */
+export const ROUTE_MAX_DURATION_MS = 60_000;
+export const FINALIZE_RESERVE_MS = 5_000;
+export const MIN_ATTEMPT_MS = 8_000;
+export const MAX_AGENT_ATTEMPTS = 2;
+export const AGENT_RUN_BUDGET_MS = ROUTE_MAX_DURATION_MS - FINALIZE_RESERVE_MS;
+
 const FRIENDLY_ERROR = localized(
   "The draft could not be generated this time. Your existing draft is unchanged — please try again in a moment.",
   "今次未能產生草稿，現有草稿沒有改動，請稍後再試。",
@@ -328,8 +343,27 @@ export async function runAgentForAction(
     reason: string | undefined;
   try {
     const prompt = agent.buildPrompt(ctx);
-    for (let attempt = 0; attempt < 2 && !output; attempt += 1) {
-      const result = await llm(prompt, AGENT_LLM_OPTIONS);
+    // The route runs this inline under maxDuration=60, so the old fixed
+    // "two attempts, 45 s each" loop could ask for 90 s of model time inside a
+    // 60 s function: the platform killed the handler mid-second-attempt and
+    // persistence.finish() never ran, leaving the action_run stranded at
+    // 'running' forever (nothing writes the 'timed_out' state). Attempts are
+    // now bounded by what is actually left of the budget, and finalization
+    // time is reserved so the terminal state is always recorded.
+    // AGENT_RUN_BUDGET_MS already excludes the finalization reserve.
+    const deadline = Date.now() + AGENT_RUN_BUDGET_MS;
+    for (let attempt = 0; attempt < MAX_AGENT_ATTEMPTS && !output; attempt += 1) {
+      const remaining = deadline - Date.now();
+      if (remaining < MIN_ATTEMPT_MS) {
+        // Out of budget: stop here so the run finishes as a real terminal
+        // failure the owner can retry, rather than being cut off mid-flight.
+        if (!reason) reason = "action_run_timeout";
+        break;
+      }
+      const result = await llm(prompt, {
+        ...AGENT_LLM_OPTIONS,
+        timeoutMs: Math.min(AGENT_LLM_OPTIONS.timeoutMs, remaining),
+      });
       usage = addUsage(usage, result?.usage);
       output = parseAgentOutput(result?.text, agent.outputSchema);
     }
@@ -338,7 +372,9 @@ export async function runAgentForAction(
         ...output,
         warnings: [...output.warnings, ...agent.acceptance(ctx, output)],
       };
-    else reason = "invalid_output";
+    // Keep a budget-exhaustion reason: it is a different, retryable story from
+    // "the model answered but the answer did not validate".
+    else if (!reason) reason = "invalid_output";
   } catch {
     reason = "action_run_failed";
     output = null;

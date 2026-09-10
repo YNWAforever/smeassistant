@@ -18,7 +18,21 @@ export type ApproveVersionResult = { state: "approved"; delivery_state: "export_
 export type DecideVersionResult = { state: "changes_requested" | "rejected" };
 export type ExportVersionResult = { deliveryId: string; counted: boolean; usage: { period: string; approved_deliveries: number; allowance: number | null } };
 export type UpdateActionResult = { action: ActionOverview };
-export type CreateObjectiveActionResult = { actionId: string; runId?: string; versionId?: string };
+/**
+ * POST /api/actions with run:true already reports the run's real outcome --
+ * `state`, `factsNeeded`, or `runError` when the agent could not start. This
+ * type omitted them, so the Create page could only see "HTTP 201" and told the
+ * owner a draft was being prepared even when the run had already failed or
+ * come back needing input.
+ */
+export type CreateObjectiveActionResult = {
+  actionId: string;
+  runId?: string;
+  versionId?: string;
+  state?: "succeeded" | "failed";
+  factsNeeded?: string[];
+  runError?: string;
+};
 export type UploadAssetResult = { assetId: string; signedUrl: string | null };
 export type SetAssetRightsResult = { ok: true; rights_status: "approved" | "rejected"; rights_confirmed_at: string | null };
 

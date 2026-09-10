@@ -8,8 +8,13 @@ import { RunError, runAgentForAction } from "@/lib/workspace/runs";
 
 /**
  * POST /api/actions/[actionId]/run { agentKey?, inputs? } (CLAUDE.md §3.2.3).
- * Runs inline: the agent call is bounded at 45 s by AGENT_LLM_OPTIONS and
- * retried once, so the handler needs a minute.
+ *
+ * Runs inline. The agent loop in lib/workspace/runs.ts is deadline-aware and
+ * sized against this value (ROUTE_MAX_DURATION_MS): it reserves finalization
+ * time and only starts a retry if enough budget remains, so the terminal state
+ * is always persisted. This comment previously claimed two 45 s attempts fit
+ * inside 60 s -- they do not, and the overrun stranded runs at 'running'.
+ * Keep this number and ROUTE_MAX_DURATION_MS in step.
  */
 export const maxDuration = 60;
 
