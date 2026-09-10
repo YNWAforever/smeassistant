@@ -96,7 +96,12 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
     },
     async latestConnection(workspaceId: string): Promise<{ status: IntegrationsModel["google"]["status"]; expires_at: string | null; updated_at: string | null; created_at: string } | null> {
       const [row] = await rows<{ status: IntegrationsModel["google"]["status"]; expires_at: string | null; updated_at: string | null; created_at: string }>(
-        "SELECT status, expires_at::text, updated_at::text, connected_at::text AS created_at FROM oauth_connections WHERE workspace_id=$1 AND provider='google_gbp' ORDER BY connected_at DESC LIMIT 1", [workspaceId]);
+        // An active row wins over a merely newer one. The Integrations page
+        // shows this status, and the Disconnect control keys on it, so ordering
+        // by recency alone could hide the control while a live credential
+        // existed. `oauth_connections_active_provider_key` guarantees at most
+        // one active row per provider, so the tie-break is unambiguous.
+        "SELECT status, expires_at::text, updated_at::text, connected_at::text AS created_at FROM oauth_connections WHERE workspace_id=$1 AND provider='google_gbp' ORDER BY (status='active') DESC, connected_at DESC LIMIT 1", [workspaceId]);
       return row ?? null;
     },
     async measurements(workspaceId: string, actionId?: string, limit?: number): Promise<MeasurementRow[]> {

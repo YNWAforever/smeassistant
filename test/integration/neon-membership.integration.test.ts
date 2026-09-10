@@ -6,6 +6,7 @@ import { resolveApplicationUser } from "../../lib/identity/users";
 import { completeWorkspaceClaim } from "../../lib/workspace/claim";
 import { claimsRepository as claims, claimCompletionStore } from "../../lib/repositories/claims";
 import { membershipRepository as members } from "../../lib/repositories/membership";
+import { workspaceReadRepository } from "../../lib/repositories/workspace-read";
 const ports = vi.hoisted(() => ({ pool: undefined as Pool | undefined }));
 vi.mock("../../lib/db/client", () => ({ getPool: () => ports.pool }));
 const identity = (subject = "member", email = "member@example.test") => ({ provider: "neon" as const, subject, email, verified: true as const });
@@ -214,6 +215,18 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon membership boundaries
   expect(await claims.hasActiveGoogleConnection(ws)).toBe(true);
   // The revoked row is kept as provenance rather than deleted.
   expect((await runtime.query("SELECT count(*)::int n FROM oauth_connections WHERE workspace_id=$1",[ws])).rows[0].n).toBe(2);
+ });
+
+ it("reports the active connection even when a non-active row is newer", async () => {
+  // The Integrations card reads latestConnection, and the Disconnect control
+  // keys on the status it returns. Ordering by connected_at alone would report
+  // a newer revoked row and hide the control while a live credential existed --
+  // the owner could then not withdraw a scope that was still granted.
+  const ws=await workspace();
+  await runtime.query("INSERT INTO oauth_connections(workspace_id,provider,access_token_encrypted,status,connected_at) VALUES($1,'google_gbp','fixture','active',now()-interval '1 day')",[ws]);
+  await runtime.query("INSERT INTO oauth_connections(workspace_id,provider,access_token_encrypted,status,connected_at) VALUES($1,'google_gbp','','revoked',now())",[ws]);
+
+  expect((await workspaceReadRepository().latestConnection(ws))?.status).toBe("active");
  });
 
  it("requires an already attached job and accepted owner before completion writes", async () => {

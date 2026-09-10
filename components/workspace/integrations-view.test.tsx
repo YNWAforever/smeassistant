@@ -49,4 +49,15 @@ describe("IntegrationsView Google disconnect", () => {
     // by mistake needs the way back on the same card.
     expect(render("active").textContent).toContain("Re-authorise");
   });
+
+  it("never claims that scanning depends on this connection", () => {
+    // The scan engine does not read oauth_connections at all -- GBP evidence
+    // comes from Google Places New and SerpApi. Both the lapsed-connection note
+    // and the disconnect dialog used to say evidence reads stop, which would
+    // have scared an owner out of a disconnect that costs them nothing.
+    for (const status of ["active", "expired", "revoked", "error", "not_connected"] as const) {
+      expect(render(status).textContent ?? "").not.toMatch(/evidence reads from Google stop|stops reading Google evidence/i);
+    }
+    expect(render("expired").textContent).toContain("Scans are unaffected");
+  });
 });

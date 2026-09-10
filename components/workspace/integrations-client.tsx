@@ -103,7 +103,11 @@ const COPY = {
     label: "Public Instagram handle", note: "Public evidence only; confirming a handle never grants publishing access.",
     disconnect: "Disconnect", cancel: "Cancel",
     disconnectTitle: "Disconnect Google Business Profile?",
-    disconnectNote: "The stored credential is deleted and this workspace stops reading Google evidence. Your workspace, past scans and reports are unaffected, and you can reconnect at any time.",
+    // NOT "stops reading Google evidence": the scan engine never touches
+    // oauth_connections -- GBP evidence comes from Google Places New and
+    // SerpApi, keyed by GOOGLE_PLACES_KEY / SERPAPI_API_KEY. Saying otherwise
+    // would be the same defect this disconnect was built to fix.
+    disconnectNote: "The stored credential is deleted. Your workspace, ownership, past scans and reports are unaffected, and scans keep running on public sources. You can reconnect at any time.",
     googleAccountNote: "This removes the credential we hold. To remove SME Scanner's access from your Google Account as well:",
     googleAccountLink: "Google Account permissions",
     disconnected: "Google Business Profile disconnected.",
@@ -117,7 +121,7 @@ const COPY = {
     label: "公開 Instagram 帳號", note: "只讀取公開證據；確認帳號不會授予任何發佈權限。",
     disconnect: "解除連接", cancel: "取消",
     disconnectTitle: "解除 Google 商戶檔案連接？",
-    disconnectNote: "已儲存的憑證會被刪除，這個工作台亦會停止讀取 Google 證據。工作台、過往掃描及報告不受影響，你可以隨時重新連接。",
+    disconnectNote: "已儲存的憑證會被刪除。工作台、擁有權、過往掃描及報告不受影響，掃描亦會繼續以公開來源進行。你可以隨時重新連接。",
     googleAccountNote: "這只會刪除我們持有的憑證。如要同時在你的 Google 帳戶移除 SME Scanner 的存取權：",
     googleAccountLink: "Google 帳戶權限設定",
     disconnected: "已解除 Google 商戶檔案連接。",
@@ -131,7 +135,7 @@ const COPY = {
     label: "公開 Instagram 帳號", note: "只讀取公開證據；確認帳號不會授予任何發布權限。",
     disconnect: "解除連接", cancel: "取消",
     disconnectTitle: "解除 Google 商家檔案連接？",
-    disconnectNote: "已儲存的憑證會被刪除，這個工作台也會停止讀取 Google 證據。工作台、過往掃描與報告不受影響，你可以隨時重新連接。",
+    disconnectNote: "已儲存的憑證會被刪除。工作台、擁有權、過往掃描與報告不受影響，掃描也會繼續以公開來源進行。你可以隨時重新連接。",
     googleAccountNote: "這只會刪除我們保存的憑證。若要同時在你的 Google 帳戶移除 SME Scanner 的存取權：",
     googleAccountLink: "Google 帳戶權限設定",
     disconnected: "已解除 Google 商家檔案連接。",
