@@ -92,7 +92,16 @@ Maps every Phase-1 requirement from the commissioning plan (P1.1–P1.7) to its 
 
 ## Verification and blockers
 
-See PHASE-1-TEST-RESULTS.md for the gate-by-gate record. Standing blockers: `db:verify` / `test:integration` (Docker unavailable in this environment) and all hosted acceptance (no authorized credentials, budget, or test identities requested or granted).
+See PHASE-1-TEST-RESULTS.md for the gate-by-gate record.
+
+**CI run [34461794233](https://github.com/YNWAforever/smeassistant/actions/runs/34461794233) (`2fc35aa`) is green on all 18 steps** — the first passing run on this branch, which had been red on *every* commit including `50ecd18`, before this session's work began. That result verifies, on Linux and Node 24, everything this environment could not: `verify migrations` (step 13), the Docker integration suite (14), `build` (15), Playwright e2e (17), the merchant-acceptance gate (18) and `test:secret-boundary` (9). Every integration case written blind this session now has a real run behind it.
+
+Standing blockers are now **local only**, plus hosted acceptance (no authorized credentials, budget or test identities requested or granted):
+
+- `db:verify` / `test:integration` need Docker, which this machine does not have — but CI runs both.
+- **Turbopack cannot resolve `radix-ui`'s sub-packages on this Windows machine, and that is now confirmed Windows-only:** CI's `build` step passes with Turbopack on `ubuntu-latest`. Locally, `next build` fails with 33 `Module not found` errors raised from inside `node_modules/.pnpm/radix-ui@1.6.7_.../dist/index.mjs`, while `createRequire` from that exact file resolves every one of the 55 correctly-symlinked dependencies and `next build --webpack` compiles the tree in ~10 s. Not worked around, because the production bundler should not change to suit one developer machine.
+
+The mis-diagnosis that hid behind it is fixed: three route files exported helpers Next.js forbids, which fails the route-type check it runs *after* bundling. Platform-independent, so it would have failed CI's build the moment the integration step stopped failing first. `tests/route-exports.test.ts` now catches that class in the unit suite.
 
 **The `radix-ui` build blocker was mis-diagnosed and is now partly resolved.** It was two independent problems, and the earlier note ("pre-existing, unrelated") was wrong on the second half:
 

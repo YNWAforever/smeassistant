@@ -53,7 +53,30 @@ New test files: `lib/repositories/action-run-reaper.test.ts`, `lib/workspace/run
 
 One snapshot was intentionally regenerated: `lib/agents/__snapshots__/agents.test.ts.snap`, for the `review_reply` prompt. The diff was inspected before updating and is exactly the `review_sample_provenance` block, the reworded task and the version bump — 10 lines added, 4 removed, no other agent touched.
 
-### Written but not run
+### Hosted CI: every gate now actually run
+
+The "written but not run" caveat below was superseded by evidence. CI run
+[34461794233](https://github.com/YNWAforever/smeassistant/actions/runs/34461794233) (`2fc35aa`, `ubuntu-latest`, Node 24) is **green on all 18 steps**, and it is the first passing run on this branch — CI had been red on every commit, including `50ecd18`, before this session's work.
+
+| Step | Gate | Local status | CI |
+|---|---|---|---|
+| 6–8 | lint, typecheck, unit | passed | passed |
+| 9 | `test:secret-boundary` | blocked (shells out to `next build`) | **passed** |
+| 13 | `db:verify` | blocked (no Docker) | **passed** |
+| 14 | integration (Docker PostgreSQL) | blocked (no Docker) | **passed** |
+| 15 | `build` | fails on Turbopack; passes with `--webpack` | **passed** (Turbopack) |
+| 17 | Playwright e2e | never run here | **passed** |
+| 18 | merchant acceptance (isolated Auth/db/mail/LLM) | never run here | **passed** |
+
+Two things only CI could establish:
+
+1. **The Turbopack `radix-ui` failure is Windows-only.** Step 15 builds with Turbopack on Linux without complaint. The production bundler was therefore deliberately left alone.
+2. **Three genuine defects surfaced in the integration step**, and reading its log is how they were found — this machine cannot run it:
+   - `prevent_owner_removal()` used `pg_trigger_depth() = 0`, which is never true inside a trigger function (the outermost case is 1). The owner-removal guard added earlier this phase had **never fired**; removing the sole owner still destroyed the workspace and its history. Corrected to `= 1`, which is also what distinguishes a direct DELETE from an FK cascade (depth ≥ 2).
+   - `neon-action-derivation`'s new case asserted `created === 1` while the derivation legitimately also emits `google-reconnect`.
+   - `neon-readiness` hardcoded a journal count of 4 that went stale when `0005` was appended; it now counts `neon/migrations/*.sql`.
+
+### Previously written but not run
 
 Docker is still unavailable on this machine, so every `*.integration.test.ts` case added this phase is written and typechecked but **not executed**: the stranded-run reaping block in `neon-artifact-runtime`, the consent persistence / transaction-atomicity / erasure-cascade / dispatch-gate block in `neon-scan-start`, and the evidence-aware derivation case in `neon-action-derivation`. `db:verify` is blocked for the same reason — though no migration was added, so the frozen catalog is untouched by construction rather than by assertion.
 
