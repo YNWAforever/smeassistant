@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { cleanCallbackHandoff } from "@/app/auth/callback/route";
+import { cleanCallbackHandoff } from "@/lib/identity/callback-handoff";
 
 it("keeps SDK cookies only when verifier exchange lands on the exact clean callback and moves to completion", () => {
   const request = new Request("https://app.test/auth/callback?locale=en&neon_auth_session_verifier=fixture");

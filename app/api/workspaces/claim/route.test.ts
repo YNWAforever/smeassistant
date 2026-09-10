@@ -23,7 +23,8 @@ vi.mock("@/lib/workspace/claim", async (importOriginal) => {
   return { ...original, completeWorkspaceClaim: mocks.completeWorkspaceClaim };
 });
 
-import { parseClaimBody, POST } from "./route";
+import { POST } from "./route";
+import { parseClaimBody } from "./parse-body";
 
 const USER = { id: "user-1", email: "owner@example.com", verified: true };
 

@@ -5,8 +5,6 @@ import { cleanCallbackHandoff } from "@/lib/identity/callback-handoff";
 import { authDiagnostic } from "@/lib/identity/sign-in-diagnostics";
 import { authFlowHref, parseAuthFlow, type AuthFlow } from "@/lib/identity/sign-in-flow";
 
-export { cleanCallbackHandoff } from "@/lib/identity/callback-handoff";
-
 function landing(request: Request, flow: AuthFlow, error?: string): URL {
   const url = new URL(authFlowHref(flow, error ? "start" : "complete"), request.url);
   if (error) url.searchParams.set("error", error);

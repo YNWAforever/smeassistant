@@ -92,4 +92,11 @@ Maps every Phase-1 requirement from the commissioning plan (P1.1–P1.7) to its 
 
 ## Verification and blockers
 
-See PHASE-1-TEST-RESULTS.md for the gate-by-gate record. Standing blockers: `db:verify` / `test:integration` (Docker unavailable in this environment), `build` / `e2e` / `test:secret-boundary` (pre-existing, unrelated `radix-ui` module-resolution failure in this worktree), and all hosted acceptance (no authorized credentials, budget, or test identities requested or granted).
+See PHASE-1-TEST-RESULTS.md for the gate-by-gate record. Standing blockers: `db:verify` / `test:integration` (Docker unavailable in this environment) and all hosted acceptance (no authorized credentials, budget, or test identities requested or granted).
+
+**The `radix-ui` build blocker was mis-diagnosed and is now partly resolved.** It was two independent problems, and the earlier note ("pre-existing, unrelated") was wrong on the second half:
+
+1. **Turbopack cannot resolve `radix-ui`'s sub-packages on this Windows machine.** `next build` (Turbopack is Next 16's default) fails with 33 `Module not found` errors for `@radix-ui/react-*` raised from inside `node_modules/.pnpm/radix-ui@1.6.7_.../dist/index.mjs`. This is **not** a broken install: all 55 declared dependencies are correctly symlinked, and `createRequire` from that exact file resolves every one of them. `next build --webpack` compiles the same tree in ~10–29 s. CI runs `ubuntu-latest`, so this may well be Windows-only — **unverified from here**, and deliberately not worked around by switching the production bundler on the strength of a local-only symptom.
+2. **Three route files illegally exported helpers**, which fails the route-type check Next generates and runs *after* bundling — so it was hidden behind (1) locally, but is platform-independent and would fail CI's `build` gate on Linux. `app/api/owner/sign-in/complete/route.ts` exported `sameOrigin` (imported by nothing), `app/api/workspaces/claim/route.ts` exported `parseClaimBody`, and `app/auth/callback/route.ts` re-exported `cleanCallbackHandoff` — the last two purely so tests could import them. Fixed, with `tests/route-exports.test.ts` added so the mistake is caught in the unit suite instead of at the end of a build.
+
+With those fixed, `next build --webpack` completes: compile **and** the TypeScript route-type gate. `test:secret-boundary` remains blocked locally only because it shells out to `next build` (Turbopack).
