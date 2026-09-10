@@ -106,7 +106,16 @@ type FunnelCopy = {
     progress: string
     subjectLabel: string
     collectors: { google_business: string; instagram: string; search_ai: string }
-    phase: { pending: string; running: string; done: string; unavailable: string; failed: string }
+    phase: { pending: string; running: string; done: string; unavailable: string; failed: string; stalled: string }
+    stalledTitle: string
+    stalledBody: string
+    stalledReason: { timeout: string; rateLimited: string; unreachable: string; missing: string }
+    stalledCheck: string
+    stalledChecking: string
+    stalledResume: string
+    stalledResuming: string
+    stalledResumeNote: string
+    elapsedMinutes: string
     seeReport: string
     readyTitle: string
     readyBody: string
@@ -439,7 +448,22 @@ const funnelEn: FunnelCopy = {
       done: "Measured",
       unavailable: "Not measured",
       failed: "The scan did not complete",
+      stalled: "No update since we last checked",
     },
+    stalledTitle: "We stopped checking for updates",
+    stalledBody: "This scan has not reported a new stage for a while. It may still be running on our side — we simply stopped asking, so this page does not keep polling forever. Nothing has been scored and nothing has been marked as failed.",
+    stalledReason: {
+      timeout: "We checked for {minutes} minutes without a change.",
+      rateLimited: "This scan reference has been checked too many times in the last hour. Please wait a few minutes before checking again.",
+      unreachable: "We could not reach the status service. Your scan is unaffected; only this page's updates stopped.",
+      missing: "This scan reference could not be found. Check the link, or start a new scan.",
+    },
+    stalledCheck: "Check again",
+    stalledChecking: "Checking…",
+    stalledResume: "Ask us to resume the scan",
+    stalledResuming: "Asking…",
+    stalledResumeNote: "Resuming never starts a second scan — it can only pick up this same scan. If an attempt is still running, nothing changes; a stopped attempt can be picked up again about {minutes} minutes after it stalled, for up to three attempts.",
+    elapsedMinutes: "Elapsed {minutes}m {seconds}s",
     seeReport: "See report",
     readyTitle: "Your report is ready",
     readyBody: "Opening the report in a moment. Every source shows its own coverage state there.",
@@ -730,7 +754,22 @@ const funnelZhHK: FunnelCopy = {
       done: "已量度",
       unavailable: "未能量度",
       failed: "掃描未能完成",
+      stalled: "自上次檢查後未有更新",
     },
+    stalledTitle: "我們已停止查詢更新",
+    stalledBody: "這次掃描已有一段時間沒有回報新階段。它可能仍在我們的伺服器上進行，我們只是停止不斷查詢，避免此頁無了期等待。系統沒有計算任何評分，亦沒有判定掃描失敗。",
+    stalledReason: {
+      timeout: "我們已查詢 {minutes} 分鐘，期間沒有變化。",
+      rateLimited: "此掃描編號在過去一小時查詢次數過多，請稍候幾分鐘再試。",
+      unreachable: "我們無法連接狀態服務。掃描本身不受影響，只是此頁的更新停止了。",
+      missing: "找不到此掃描編號。請檢查連結，或重新開始掃描。",
+    },
+    stalledCheck: "再檢查一次",
+    stalledChecking: "正在檢查…",
+    stalledResume: "請系統繼續這次掃描",
+    stalledResuming: "正在請求…",
+    stalledResumeNote: "繼續掃描不會開始第二次掃描，只會接手同一次掃描。若仍有執行中的嘗試，此操作不會有任何改變；若嘗試真的已停止，約 {minutes} 分鐘後便可重新接手，最多三次。",
+    elapsedMinutes: "已用時間 {minutes} 分 {seconds} 秒",
     seeReport: "詳見報告",
     readyTitle: "報告已準備好",
     readyBody: "即將開啟報告；每個來源都會在報告內顯示自己的覆蓋狀態。",
@@ -1021,7 +1060,22 @@ const funnelZhTW: FunnelCopy = {
       done: "已量度",
       unavailable: "未能量度",
       failed: "掃描未能完成",
+      stalled: "自上次檢查後沒有更新",
     },
+    stalledTitle: "我們已停止查詢更新",
+    stalledBody: "這次掃描已有一段時間沒有回報新階段。它可能仍在我們的伺服器上進行，我們只是停止持續查詢，避免這個頁面一直等下去。系統沒有計算任何分數，也沒有判定掃描失敗。",
+    stalledReason: {
+      timeout: "我們已查詢 {minutes} 分鐘，期間沒有變化。",
+      rateLimited: "這個掃描編號在過去一小時查詢次數過多，請稍等幾分鐘再試。",
+      unreachable: "我們無法連線到狀態服務。掃描本身不受影響，只是這個頁面的更新停止了。",
+      missing: "找不到這個掃描編號。請檢查連結，或重新開始掃描。",
+    },
+    stalledCheck: "再檢查一次",
+    stalledChecking: "正在檢查…",
+    stalledResume: "請系統繼續這次掃描",
+    stalledResuming: "正在請求…",
+    stalledResumeNote: "繼續掃描不會開始第二次掃描，只會接手同一次掃描。若仍有執行中的嘗試，這個操作不會有任何改變；若嘗試真的已停止，約 {minutes} 分鐘後就能重新接手，最多三次。",
+    elapsedMinutes: "已用時間 {minutes} 分 {seconds} 秒",
     seeReport: "詳見報告",
     readyTitle: "報告已準備好",
     readyBody: "即將開啟報告；每個來源都會在報告中顯示自己的涵蓋狀態。",
