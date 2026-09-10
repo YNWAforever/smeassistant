@@ -11,7 +11,7 @@ import { LocationSelect } from "@/components/workspace/location-select"
 import { RescanButton } from "@/components/workspace/rescan-button"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { resolveText } from "@/lib/domain"
-import { effortLabel, findingLabel, formatDateTime, formatDay, metricLabel, priorityClass, priorityLabel, scorePercent, signed, withLocation } from "@/lib/workspace/format"
+import { comparisonReasonText, effortLabel, findingLabel, formatDateTime, formatDay, metricLabel, priorityClass, priorityLabel, scorePercent, signed, withLocation } from "@/lib/workspace/format"
 import { measuredPrimarySources } from "@/lib/workspace/module-states"
 import type { HomeBrief } from "@/lib/workspace/queries-pages"
 import type { ActionOverview } from "@/lib/workspace/overview"
@@ -57,7 +57,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
     : ["Scout complete", "Priority ready", `${brief.drafts} drafts prepared`, "Awaiting approval"]
   const stepDone = [brief.agentStrip.scout, brief.agentStrip.priority, brief.drafts > 0, false]
   const changedBadge = changed.comparable ? (isChinese ? "可比較" : "Comparable") : (isChinese ? "未能比較" : "Not comparable")
-  const changedReason = changed.reason ? (isChinese ? `原因：${changed.reason}` : `Reason: ${changed.reason}`) : null
+  const changedReason = changed.comparable ? null : comparisonReasonText(changed.reason, isChinese)
 
   return (
     <div className="owner-home-page">
@@ -105,7 +105,12 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
             <div className="aggregate-empty"><CircleAlert /><h2>{isChinese ? "評分暫不顯示 · 已量度證據太少" : "Score withheld · too little measured evidence"}</h2><p>{isChinese ? `覆蓋率 ${scorePercent(snapshot.coverage)}%。缺少的來源會降低覆蓋率，不會當成零分。` : `Coverage ${scorePercent(snapshot.coverage)}%. Missing sources lower coverage; they are never scored as zero.`}</p></div>
           ) : (
             <>
-              <ScoreDial score={Math.round(snapshot.overallScore)} coverage={scorePercent(snapshot.coverage) ?? 0} delta={changed.delta === null ? 0 : Math.round(changed.delta)} />
+              {/* delta is spread, never coerced: a null delta means there is no
+                  comparable scan, and passing 0 made the largest number on the
+                  page assert "unchanged since comparable scan" -- in the
+                  sighted UI and the aria-label -- next to a "Not comparable"
+                  badge. Same pattern the report page already uses. */}
+              <ScoreDial score={Math.round(snapshot.overallScore)} coverage={scorePercent(snapshot.coverage) ?? 0} {...(changed.comparable && changed.delta !== null ? { delta: Math.round(changed.delta) } : {})} />
               <div className="coverage-source-line"><span><Check /> {isChinese ? `${sources?.measured ?? 0} 個來源已量度` : `${sources?.measured ?? 0} measured`}</span><span><CircleAlert /> {isChinese ? `${(sources?.total ?? 4) - (sources?.measured ?? 0)} 個暫時未能取得` : `${(sources?.total ?? 4) - (sources?.measured ?? 0)} unavailable`}</span></div>
               {changedReason && <p className="limitation-note">{changedReason}</p>}
             </>

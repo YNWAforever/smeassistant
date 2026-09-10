@@ -4,7 +4,7 @@ Produced by a 14-agent audit of the shipped code against the product guardrails 
 
 **Read the caveat first.** 24 of 24 findings came back confirmed and none was refuted. A verification pass that refutes nothing is not evidence that everything is real -- it is equally consistent with weak verification. Treat severities as claims to check, not conclusions. I independently re-verified finding 1 line by line (including why its test never caught it) and it holds exactly as described; the rest carry file:line evidence but have not had that second human pass.
 
-This is raw material for a Phase 2 plan, in the same spirit as the Phase 1 audit register. **All five high-severity findings are fixed** — 1, 2, 3, 4, 5, and 21 as a duplicate of 3. The 19 medium and low findings are not.
+This is raw material for a Phase 2 plan, in the same spirit as the Phase 1 audit register. **All five high-severity findings are fixed** — 1, 2, 3, 4, 5, and 21 as a duplicate of 3 — plus medium finding **6**. The remaining 18 are not.
 
 Findings 3 and 21 turned out to be the same defect, reported independently by the `ownership-consent` and `authorization` auditors at different severities — worth knowing when reading the other 20, since the register does not otherwise de-duplicate across areas.
 
@@ -35,6 +35,14 @@ Findings 3 and 21 turned out to be the same defect, reported independently by th
   `LEGAL_POLICY_VERSION` is deliberately **not** bumped, on the same reasoning as the Phase 1 `retentionBody` correction: describing accurately what already happens narrows no user right and changes no purpose, retention, sharing or rights clause. Bumping would restamp every future consent row for an accuracy fix.
 
   Guarded by a new trilingual case in `tests/funnel-unlock.test.ts` asserting no unlock string promises a send, that `deliveryBody` states permission-only and no-automatic-send, and that it is not the same string as `formBody`.
+
+- **6. Home score dial asserted "0 since comparable scan" with no comparison** — fixed, and independently re-verified before fixing (the first medium to get that second pass). `home-brief.tsx` coerced a null delta to `0`, and `ScoreDial` renders any number it is handed — so on every first scan of a new workspace, and on every version mismatch, coverage gap or withheld composite, the largest number on Home claimed the score was unchanged, in the visible UI *and* the `aria-label`, directly beside a "Not comparable" badge.
+
+  The delta prop is now spread only when the comparison is genuinely comparable — the pattern `components/report/dashboard-summary.tsx` already used for the same component, so the two surfaces now agree.
+
+  The second half of the finding is fixed too: Home rendered the raw engine code (`Reason: NO_DIFF`) while Insights had a private translated catalogue. That catalogue moved to `lib/workspace/format.ts` as `comparisonReasonText` and both call it, so they cannot diverge. Its default no longer echoes an unrecognised code — the old Insights fallback was `reason ?? default`, which would have leaked any future engine code straight onto the page.
+
+  Covered by `lib/workspace/format.test.ts` (every code translated in both languages, unknown codes never echoed) and `components/score-dial.test.tsx` (no change claim at all without a delta, in text and in the aria-label; a genuine measured zero still reported). **Honest gap:** the one-line JSX in `home-brief.tsx` is not itself covered — a `HomeBriefView` render test needs a large fixture plus mocks for four child components, which was not worth it for one prop; the component contract it depends on is pinned instead.
 
 - **2. Mid-period tier change and the delivery allowance** (continued) — `applyTier` is the only writer of `workspaces.tier` in this app, so the reconciliation is complete here. If a tier ever comes to be written by another path (a staff grant reaching the shared database directly), that path must reconcile too. Covered by a new integration case in `neon-integrations.integration.test.ts` that seeds a spent lite period, upgrades, and asserts the allowance lifts to `NULL` and then returns to `3` on downgrade.
 

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { LocationSelect } from "@/components/workspace/location-select"
 import type { PrototypeLocale } from "@/lib/copy"
-import { findingLabel, formatDay, metricLabel, scorePercent, signed, withLocation } from "@/lib/workspace/format"
+import { comparisonReasonText, findingLabel, formatDay, metricLabel, scorePercent, signed, withLocation } from "@/lib/workspace/format"
 import type { InsightsModel } from "@/lib/workspace/queries-pages"
 
 export interface InsightsViewProps {
@@ -17,20 +17,8 @@ export interface InsightsViewProps {
   model: InsightsModel
 }
 
-function reasonText(reason: string | null, isChinese: boolean): string {
-  switch (reason) {
-    case "SCORING_VERSION_MISMATCH":
-      return isChinese ? "評分版本不同" : "Scoring version changed"
-    case "SCORING_VERSION_UNKNOWN":
-      return isChinese ? "評分版本未知" : "Scoring version unknown"
-    case "NO_SHARED_MEASURED_MODULE":
-      return isChinese ? "沒有共同已量度來源" : "No shared measured source"
-    case "INSUFFICIENT_INDEPENDENT_CHANNELS":
-      return isChinese ? "獨立來源不足" : "Too few independent channels"
-    default:
-      return reason ?? (isChinese ? "尚無可比較掃描" : "No comparable scan yet")
-  }
-}
+/** Moved to lib/workspace/format.ts so Home renders the same words. */
+const reasonText = comparisonReasonText
 
 /**
  * Series points render as a list plus an accessible table; a point that is
