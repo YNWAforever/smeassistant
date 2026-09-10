@@ -44,8 +44,24 @@ export const claimsRepository = {
  async firstLeadEmail(jobId:string):Promise<string|null> {
   return (await getPool().query<{email:string}>("SELECT email FROM leads WHERE job_id=$1 AND email IS NOT NULL ORDER BY created_at,id LIMIT 1",[jobId])).rows[0]?.email??null;
  },
+ /**
+  * Mail eligibility only: may this address be sent a sign-in link for this
+  * report? It never grants workspace access or ownership -- that stays
+  * Google-verified or staff-assigned (guardrail 15).
+  *
+  * The grant branch exists because POST /api/report-access/unlock only writes
+  * leads.email when the chosen contact channel IS email; a merchant who
+  * unlocked over WhatsApp, LINE or phone has their address on the viewer
+  * grant's email_normalized instead. Matching only leads.email dead-ended
+  * exactly those merchants when they later asked for a sign-in link from
+  * another device -- the request returned the same uniform {ok:true} as an
+  * unknown address, so nothing was ever sent and nothing explained why.
+  */
  async isLeadRecipient(slug:string,email:string):Promise<boolean> {
-  return Boolean((await getPool().query("SELECT l.id FROM leads l JOIN audit_jobs j ON j.id=l.job_id WHERE j.share_slug=$1 AND l.email=$2 LIMIT 1",[slug,email])).rows.length);
+  return Boolean((await getPool().query(`SELECT 1 FROM audit_jobs j WHERE j.share_slug=$1 AND (
+    EXISTS (SELECT 1 FROM leads l WHERE l.job_id=j.id AND lower(l.email)=lower($2))
+    OR EXISTS (SELECT 1 FROM report_access_grants g WHERE g.job_id=j.id AND g.email_normalized IS NOT NULL AND lower(g.email_normalized)=lower($2) AND g.revoked_at IS NULL)
+  ) LIMIT 1`,[slug,email])).rows.length);
  },
  async recordAccessRequest(jobId:string,userId:string):Promise<void> {
   await getPool().query("INSERT INTO workspace_access_requests(job_id,user_id) VALUES($1,$2) ON CONFLICT (job_id,user_id) WHERE resolved_at IS NULL DO NOTHING",[jobId,userId]);

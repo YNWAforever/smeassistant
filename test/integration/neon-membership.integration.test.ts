@@ -152,9 +152,29 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon membership boundaries
   await runtime.query("INSERT INTO leads(job_id,email,created_at) VALUES($1,NULL,'2000-01-01'),($1,'first@example.test','2001-01-01'),($1,'later@example.test','2002-01-01')",[id]);
   expect(await claims.firstLeadEmail(id)).toBe("first@example.test");
   expect(await claims.isLeadRecipient("claim-1","later@example.test")).toBe(true);
+  expect(await claims.isLeadRecipient("claim-1","LATER@Example.test")).toBe(true);
   expect(await claims.isLeadRecipient("claim-1","stranger@example.test")).toBe(false);
   await Promise.all([claims.recordAccessRequest(id,user.id),claims.recordAccessRequest(id,user.id)]);
   expect((await runtime.query("SELECT count(*)::int n FROM workspace_access_requests")).rows[0].n).toBe(1);
+ });
+ it("lets a WhatsApp/LINE unlocker's recovery email receive a sign-in link without granting ownership", async () => {
+  // POST /api/report-access/unlock only writes leads.email for the "email"
+  // channel; a WhatsApp/LINE/phone unlocker's recovery address lands on the
+  // viewer grant instead. Mail eligibility has to see both, or those
+  // merchants silently dead-end on a new device.
+  const id=(await runtime.query("INSERT INTO audit_jobs(business_name,share_slug) VALUES('Shop','claim-wa') RETURNING id")).rows[0].id;
+  await runtime.query("INSERT INTO leads(job_id,email,preferred_contact_channel,contact_identifier) VALUES($1,NULL,'whatsapp','+85290000000')",[id]);
+  await runtime.query("INSERT INTO report_access_grants(job_id,token_hash,idempotency_key,purpose,email_normalized,expires_at) VALUES($1,repeat('a',64),'idem-wa','report_delivery','owner@example.test',now()+interval '30 days')",[id]);
+
+  expect(await claims.isLeadRecipient("claim-wa","owner@example.test")).toBe(true);
+  expect(await claims.isLeadRecipient("claim-wa","OWNER@Example.test")).toBe(true);
+  expect(await claims.isLeadRecipient("claim-wa","stranger@example.test")).toBe(false);
+  // Eligibility is mail-only: it must not have created any membership.
+  expect((await runtime.query("SELECT count(*)::int n FROM workspace_members")).rows[0].n).toBe(0);
+
+  // A revoked grant stops being a mail recipient.
+  await runtime.query("UPDATE report_access_grants SET revoked_at=now() WHERE job_id=$1",[id]);
+  expect(await claims.isLeadRecipient("claim-wa","owner@example.test")).toBe(false);
  });
  it("rolls back OAuth replacement failure and keeps the predecessor active", async () => {
   const ws=await workspace();

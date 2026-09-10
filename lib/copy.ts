@@ -226,6 +226,9 @@ type FunnelCopy = {
     viewerNote: string
     memberNote: string
     sampleNote: string
+    claimTitle: string
+    claimBody: string
+    claimCta: string
   }
   unlock: {
     reportLabel: string
@@ -550,6 +553,9 @@ const funnelEn: FunnelCopy = {
     signOutError: "Could not sign out. Please try again.",
     viewerNote: "Full report unlocked on this device for 30 days.",
     memberNote: "Full report · workspace member",
+    claimTitle: "Is this your business?",
+    claimBody: "Sign in to claim this report into a workspace, where you can prepare and approve replies, posts and page content. Ownership is verified with Google — unlocking a report on this device does not by itself prove you manage the business.",
+    claimCta: "Sign in to claim this business",
     sampleNote: "Demo data: fixed, sanitised Kam Man House evidence.",
   },
   unlock: {
@@ -838,6 +844,9 @@ const funnelZhHK: FunnelCopy = {
     viewerNote: "完整報告已在此裝置解鎖 30 天。",
     memberNote: "完整報告 · 工作台成員",
     sampleNote: "示範資料：固定並已清理的錦汶館證據。",
+    claimTitle: "這是你的商戶嗎？",
+    claimBody: "登入後可將此報告認領至工作台，在那裡草擬並核准回覆、貼文與網頁內容。擁有權須經 Google 驗證：在此裝置解鎖報告本身並不代表你管理該商戶。",
+    claimCta: "登入認領此商戶",
   },
   unlock: {
     reportLabel: "報告",
@@ -1125,6 +1134,9 @@ const funnelZhTW: FunnelCopy = {
     viewerNote: "完整報告已在此裝置解鎖 30 天。",
     memberNote: "完整報告 · 工作台成員",
     sampleNote: "範例資料：固定且已清理的錦汶館證據。",
+    claimTitle: "這是您的店家嗎？",
+    claimBody: "登入後可將此報告認領至工作台，在那裡草擬並核准回覆、貼文與網頁內容。擁有權須經 Google 驗證：在此裝置解鎖報告本身並不代表您管理該店家。",
+    claimCta: "登入認領此店家",
   },
   unlock: {
     reportLabel: "報告",

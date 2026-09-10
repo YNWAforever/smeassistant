@@ -55,5 +55,20 @@ export function DashboardSummary({ report }: { report: ReportProps }) {
       </div>
     </div>
     {summary && (summary.length > 240 ? <details className={styles.disclosure}><summary>{d.summary}</summary><FactType type="Inference" /><p>{summary}</p></details> : <div className={styles.interpretation}><FactType type="Inference" /><p>{summary}</p></div>)}
+    {/* The claim hand-off. An unlocked report proves the reader has this
+        device's viewer grant, not that they manage the business -- so this
+        only offers the sign-in step, where ownership is actually verified
+        (guardrail 15). Members already have a workspace, and the demo/sample
+        surfaces must never link into a real claim. */}
+    {!report.sample && report.access === "viewer" && report.slug && (
+      <aside className={styles.claim}>
+        <FactType type="Unknown" />
+        <div>
+          <h2>{c.claimTitle}</h2>
+          <p>{c.claimBody}</p>
+        </div>
+        <Link href={`/${report.locale}/owner/sign-in?claim=${encodeURIComponent(report.slug)}`}>{c.claimCta} →</Link>
+      </aside>
+    )}
   </section>;
 }

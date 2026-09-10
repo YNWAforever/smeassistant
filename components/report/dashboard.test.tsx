@@ -40,6 +40,18 @@ describe("dashboard summary", () => {
     expect(root.textContent).not.toContain(copy[locale].funnel.report.firstScan);
     expect(root.textContent).not.toContain(copy[locale].funnel.report.dashboard.unavailable);
   });
+  it("offers the claim hand-off to an unlocked viewer, carrying the report slug", () => {
+    const root = markup(<DashboardSummary report={report} />);
+    const link = root.querySelector('a[href*="/owner/sign-in"]');
+    expect(link?.getAttribute("href")).toBe("/en/owner/sign-in?claim=fixture");
+    expect(root.textContent).toContain(copy.en.funnel.report.claimTitle);
+  });
+  it("withholds the claim hand-off from members, sample reports and locked previews", () => {
+    for (const override of [{ access: "member" as const }, { sample: true }, { access: "public" as const }]) {
+      const root = markup(<DashboardSummary report={{ ...report, ...override }} />);
+      expect(root.querySelector('a[href*="/owner/sign-in"]')).toBeNull();
+    }
+  });
   it("shows incomparable reasons even when the overall score is withheld", () => {
     const root = markup(<DashboardSummary report={{ ...report, score: null, comparison: { kind: "incomparable", reason: "Scoring versions differ" } }} />);
     expect(root.textContent).toContain("Scoring versions differ");
