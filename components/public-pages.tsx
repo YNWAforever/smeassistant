@@ -58,8 +58,8 @@ export function PricingPage({ locale, market }: { locale: PrototypeLocale; marke
       price: growthPrice,
       cadence: `／${f.perMonth}`,
       description: "適合希望持續改善能見度、但不想管理多個 AI 工具的小型團隊。",
-      meta: "1 個地點 · 2 位用戶",
-      features: ["每月 12 次核准後交付", "定期可比較重新掃描", "完整 AI 能見度團隊", "草稿版本、店主審批及成效證明"],
+      meta: "1 個地點",
+      features: ["核准後交付，用量在工作台內顯示", "定期可比較重新掃描", "完整 AI 能見度團隊", "草稿版本、店主審批及成效證明"],
       cta: "開始增長工作台",
       href: `/${locale}/owner/sign-in?plan=growth`,
       featured: true,
@@ -72,7 +72,7 @@ export function PricingPage({ locale, market }: { locale: PrototypeLocale; marke
       cadence: "",
       description: "讓多個分店共用一個優先次序、審批流程及能見度改善節奏。",
       meta: "包括 3 個地點",
-      features: ["每月共用 36 次核准後交付", "跨地點優先排序", "分店範圍證據及審批", "合併進度及各地點成效"],
+      features: ["跨地點共用核准後交付", "跨地點優先排序", "分店範圍證據及審批", "合併進度及各地點成效"],
       cta: "管理多個地點",
       href: `/${locale}/owner/sign-in?plan=multi`,
       featured: false,
@@ -95,10 +95,10 @@ export function PricingPage({ locale, market }: { locale: PrototypeLocale; marke
       key: "free", label: "One free scan", title: "SME Scanner", price: "Free", cadence: "", description: "See current visibility, source evidence and the best issue to tackle first.", meta: "No login to start", features: ["One public evidence scan", "Score with coverage", "Three safe priorities", "Methodology, sources and limitations"], cta: "Start free scan", href: `/${locale}/scan`, featured: false,
     },
     {
-      key: "growth", label: "Best for one location", title: "Growth Workspace", price: growthPrice, cadence: ` / ${f.perMonth}`, description: "For a small team that wants recurring improvement without managing a bundle of AI tools.", meta: "1 location · 2 users", features: ["12 approved deliveries per month", "Scheduled comparable rescans", "Complete AI Visibility Team", "Versions, owner approval and proof"], cta: "Start Growth", href: `/${locale}/owner/sign-in?plan=growth`, featured: true,
+      key: "growth", label: "Best for one location", title: "Growth Workspace", price: growthPrice, cadence: ` / ${f.perMonth}`, description: "For a small team that wants recurring improvement without managing a bundle of AI tools.", meta: "1 location", features: ["Approved deliveries, with usage shown in your workspace", "Scheduled comparable rescans", "Complete AI Visibility Team", "Versions, owner approval and proof"], cta: "Start Growth", href: `/${locale}/owner/sign-in?plan=growth`, featured: true,
     },
     {
-      key: "multi", label: "Up to 3 locations", title: "Multi-location", price: f.contactPricing, cadence: "", description: "One priority, approval and improvement rhythm across multiple business locations.", meta: "Includes 3 locations", features: ["36 pooled approved deliveries per month", "Cross-location prioritisation", "Location-scoped evidence and approvals", "Combined and per-location outcomes"], cta: "Manage multiple locations", href: `/${locale}/owner/sign-in?plan=multi`, featured: false,
+      key: "multi", label: "Up to 3 locations", title: "Multi-location", price: f.contactPricing, cadence: "", description: "One priority, approval and improvement rhythm across multiple business locations.", meta: "Includes 3 locations", features: ["Approved deliveries pooled across locations", "Cross-location prioritisation", "Location-scoped evidence and approvals", "Combined and per-location outcomes"], cta: "Manage multiple locations", href: `/${locale}/owner/sign-in?plan=multi`, featured: false,
     },
     {
       key: "managed", label: "Human-managed", title: "Managed Visibility", price: f.contactPricing, cadence: "", description: "Human execution, quality review and outcome support—not unattended auto-publishing.", meta: "3-month minimum", features: ["Consultant review and execution support", "Channel and location delivery plan", "The same workspace and audit trail", "Owner keeps final approval"], cta: "Learn about managed service", href: `/${locale}/trust`, featured: false,

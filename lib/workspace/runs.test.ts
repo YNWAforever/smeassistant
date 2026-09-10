@@ -324,6 +324,20 @@ describe("typed action runtime", () => {
     });
     expect(queue).not.toHaveBeenCalled();
   });
+  it("refuses a registered agent that is not this action template's own agent", async () => {
+    // The gap this closes: isAgentKey() only proves membership of the global
+    // agent registry, so any real key used to be accepted on any action --
+    // e.g. asking for menu_translation on a review-response action.
+    row = { ...action, template_key: "review-response" } as unknown as typeof action;
+    await expect(run({ agentKey: "menu_translation" })).rejects.toMatchObject({
+      code: "agent_unavailable",
+    });
+    expect(queue).not.toHaveBeenCalled();
+  });
+  it("accepts the action template's own agent when the client names it explicitly", async () => {
+    row = { ...action, template_key: "review-response" } as unknown as typeof action;
+    expect(await run({ agentKey: "review_reply", llm: vi.fn(async () => good()) })).toMatchObject({ versionId: "v-1" });
+  });
   it.each([true, false])(
     "throws terminal persistence fault for valid=%s",
     async (valid) => {

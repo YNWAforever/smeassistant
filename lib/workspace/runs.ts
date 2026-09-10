@@ -83,16 +83,23 @@ function asStrings(value: unknown): string[] {
     : [];
 }
 
+/**
+ * The action's own template decides which agent may run on it. A requested
+ * agentKey is only ever accepted as confirmation of that template's agent --
+ * previously any *registered* key was accepted, so a client could ask for,
+ * say, menu_translation on a review-response action and the server would run
+ * it, because isAgentKey() only checks membership of the global registry
+ * (lib/agents/index.ts) and never compares against the template.
+ */
 function resolveAgentKey(
   requested: string | null | undefined,
   templateAgent: string | null,
 ): AgentKey {
-  if (requested !== undefined && requested !== null && requested !== "") {
-    if (!isAgentKey(requested)) throw new RunError("agent_unavailable");
-    return requested;
-  }
   if (!templateAgent || !isAgentKey(templateAgent))
     throw new RunError("agent_unavailable");
+  if (requested !== undefined && requested !== null && requested !== "" && requested !== templateAgent) {
+    throw new RunError("agent_unavailable");
+  }
   return templateAgent;
 }
 
