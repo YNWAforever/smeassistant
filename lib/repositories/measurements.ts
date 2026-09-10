@@ -32,7 +32,9 @@ export function measurementRepository(client?: Pick<Pool,'query'>): MeasurementR
    const row=await snapshotRepository(db()).byId(valid.rows[0].id); return row ? rowToSnapshot(row) : null;
   },
   async headJob(head) { return (await db().query<{created_at:string}>('SELECT created_at::text FROM audit_jobs WHERE id=$1 AND workspace_id=$2 AND location_id IS NOT DISTINCT FROM $3::uuid',[head.jobId,head.workspaceId,head.locationId])).rows[0] ?? null; },
-  async actions(head,states) { return (await db().query<MeasurableActionRow>('SELECT id,template_key,location_id FROM actions WHERE workspace_id=$1 AND (location_id=$2 OR location_id IS NULL) AND action_state=ANY($3::text[])',[head.workspaceId,head.locationId,states])).rows; },
+  // action_state comes back so recordMeasurements can tell an action the owner
+  // actually worked on from one that merely had a metric on both scans.
+  async actions(head,states) { return (await db().query<MeasurableActionRow>('SELECT id,template_key,location_id,action_state FROM actions WHERE workspace_id=$1 AND (location_id=$2 OR location_id IS NULL) AND action_state=ANY($3::text[])',[head.workspaceId,head.locationId,states])).rows; },
   async existing(head,ids) { return (await db().query<{action_id:string;fact_type:MeasurementFactType}>(`SELECT m.action_id,m.fact_type FROM action_measurements m JOIN actions a ON a.id=m.action_id AND a.workspace_id=m.workspace_id
     WHERE m.workspace_id=$1 AND m.after_snapshot_id=$2 AND m.action_id=ANY($3::uuid[]) AND (a.location_id=$4 OR a.location_id IS NULL)`,[head.workspaceId,head.id,ids,head.locationId])).rows; },
   async exports(head,ids) { return (await db().query<ExportedVersionRow>(`SELECT v.action_id,v.first_exported_at::text FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id

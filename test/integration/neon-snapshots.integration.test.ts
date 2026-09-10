@@ -103,6 +103,10 @@ describe.runIf(process.env.NEON_INTEGRATION === '1')('Neon snapshot persistence'
   const head = await buildSnapshot(repo,headJob), diff = await repo.diff(headJob);
   const action = (await runtime.query(`INSERT INTO actions(workspace_id,template_key,title,summary,evidence,priority,priority_score,priority_factors,effort_minutes,capability,dedupe_key)
     VALUES($1,'ig-bio','{}','{}','{}','urgent',1,'[]',10,'Live',gen_random_uuid()::text) RETURNING id`,[ws])).rows[0].id;
+  // Exported before the head scan, so the action genuinely entered the loop --
+  // measurement_state is only written for actions someone worked on. This case
+  // is about the repair and latest-snapshot rules, not about that gate.
+  await runtime.query("INSERT INTO output_versions(workspace_id,action_id,version_no,body,author_type,first_exported_at) VALUES($1,$2,1,'fixture','agent','2026-08-15')",[ws,action]);
   const measurements = measurementRepository(runtime);
   const transaction = await runtime.connect();
   try {

@@ -99,9 +99,11 @@ beforeEach(() => {
     "snap-base": snapshotRow({ id: "snap-base", job_id: "job-base", observed_at: "2026-08-02T10:00:00Z", metrics: { "gbp.response_rate_pct": 20, "ig.days_since_last_post": 14 } }),
   };
   state.headJob = { created_at: "2026-09-01T09:00:00Z" };
+  // Both untouched. a-review is given an export by the tests that need one;
+  // a-social never is, so it is the action nobody worked on.
   state.actions = [
-    { id: "a-review", template_key: "review-response", location_id: "loc-1" },
-    { id: "a-social", template_key: "social-post", location_id: null },
+    { id: "a-review", template_key: "review-response", location_id: "loc-1", action_state: "recommended" },
+    { id: "a-social", template_key: "social-post", location_id: null, action_state: "recommended" },
   ];
   state.measurements = [];
   state.versions = [];
@@ -123,7 +125,7 @@ describe("buildMeasurement / windowDaysBetween", () => {
   it("rounds the window to whole days and the delta to one decimal", () => {
     expect(windowDaysBetween("2026-08-02T10:00:00Z", "2026-09-01T10:00:00Z")).toBe(30);
     const row = buildMeasurement({
-      action: { id: "a", template_key: "review-response", location_id: "loc-1" },
+      action: { id: "a", template_key: "review-response", location_id: "loc-1", action_state: "recommended" },
       base: snapshot({ id: "snap-base", metrics: { "gbp.response_rate_pct": 20.04 } }),
       head: snapshot({ metrics: { "gbp.response_rate_pct": 60.55 } }),
       exportedBeforeHead: false,
@@ -151,8 +153,21 @@ describe("recordMeasurements", () => {
       fact_type: "Attributed",
       window_days: 30,
     });
+    // a-social's measurement row is still recorded -- it is honest Observed
+    // evidence and Insights shows it.
     expect(byAction["a-social"]).toMatchObject({ metric_key: "ig.days_since_last_post", before_value: 14, after_value: 3, delta: -11, fact_type: "Observed" });
-    expect(state.updates).toEqual([{ patch: expect.objectContaining({ measurement_state: "measured" }), ids: ["a-review", "a-social"] }]);
+    // ...but only a-review is LABELLED measured. a-social was never exported and
+    // is not completed, so nobody worked on it; badging it "Measured" claimed
+    // the loop had closed on an action still sitting at "recommended".
+    expect(state.updates).toEqual([{ patch: expect.objectContaining({ measurement_state: "measured" }), ids: ["a-review"] }]);
+  });
+
+  it("labels an action the owner completed without ever exporting", async () => {
+    // Completion is the other way into the loop: PATCH /api/actions/[id] lets an
+    // owner mark an action done with no version at all, and that is real work.
+    state.actions = [{ id: "a-social", template_key: "social-post", location_id: null, action_state: "completed" }];
+    await recordMeasurements(client(), { headSnapshot: snapshot({}), diff });
+    expect(state.updates).toEqual([{ patch: expect.objectContaining({ measurement_state: "measured" }), ids: ["a-social"] }]);
   });
 
   it("an export after the head scan started does not attribute the change", async () => {
@@ -162,7 +177,7 @@ describe("recordMeasurements", () => {
   });
 
   it("is Unknown with a null delta when either value is missing, and marks the action insufficient_coverage", async () => {
-    state.actions = [{ id: "a-review", template_key: "review-response", location_id: "loc-1" }];
+    state.actions = [{ id: "a-review", template_key: "review-response", location_id: "loc-1", action_state: "recommended" }];
     state.versions = [{ action_id: "a-review", first_exported_at: "2026-08-20T00:00:00Z" }];
 
     await recordMeasurements(client(), { headSnapshot: snapshot({ metrics: {} }), diff });
@@ -187,20 +202,23 @@ describe("recordMeasurements", () => {
   });
 
   it("skips templates without a metric", async () => {
-    state.actions = [{ id: "a-reconnect", template_key: "google-reconnect", location_id: "loc-1" }];
+    state.actions = [{ id: "a-reconnect", template_key: "google-reconnect", location_id: "loc-1", action_state: "recommended" }];
     expect(await recordMeasurements(client(), { headSnapshot: snapshot({}), diff })).toEqual({ comparable: true, recorded: 0, skipped: 0 });
   });
 });
 
 
 it("repairs action state after measurements persisted but state update failed", async () => {
+  // The repair path only runs when there is a label to write, so this needs an
+  // action that actually entered the loop.
+  state.versions = [{ action_id: "a-review", first_exported_at: "2026-08-20T00:00:00Z" }];
   state.updateError = true;
   await expect(recordMeasurements(client(), { headSnapshot: snapshot({}), diff })).rejects.toThrow("measurement state update failed");
   expect(state.measurements).toHaveLength(2);
   state.updateError = false;
   expect(await recordMeasurements(client(), { headSnapshot: snapshot({}), diff })).toEqual({ comparable: true, recorded: 0, skipped: 2 });
   expect(state.measurements).toHaveLength(2);
-  expect(state.updates).toEqual([{ patch: expect.objectContaining({ measurement_state: "measured" }), ids: ["a-review", "a-social"] }]);
+  expect(state.updates).toEqual([{ patch: expect.objectContaining({ measurement_state: "measured" }), ids: ["a-review"] }]);
 });
 
 
