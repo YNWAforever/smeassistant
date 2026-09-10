@@ -128,6 +128,13 @@ const PROMISES: readonly Promised[] = [
       "drafted from scan findings",
       "付費方案的掃描完成後，草稿會在這裡出現",
       "由掃描發現生成的回覆及帖文",
+      // Naming a supplier is the same promise one level up. Fimmick's staff
+      // tooling writes the legacy Supabase database; this app's only pool is
+      // Neon (no Supabase client remains, and test:no-supabase enforces that),
+      // and NEON-CUTOVER.md requires an "empty application-data" target -- so
+      // no external actor can deliver a draft here either.
+      "prepared for you by the fimmick team",
+      "由 fimmick 團隊為你準備",
     ],
   },
 ];

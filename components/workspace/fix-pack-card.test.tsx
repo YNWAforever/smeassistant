@@ -5,6 +5,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const listDrafts = vi.fn();
 const reviewDraft = vi.fn();
 
+// The empty state renders CapabilityBadge, which reads usePathname().
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  usePathname: () => "/en/owner/kam-man-house",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 vi.mock("@/lib/owner/fix-pack-card-client", () => ({
   listDrafts: (...args: unknown[]) => listDrafts(...args),
   reviewDraft: (...args: unknown[]) => reviewDraft(...args),
@@ -17,7 +24,9 @@ async function mount(drafts: unknown[]) {
   let result!: ReturnType<typeof render>;
   await act(async () => {
     result = render(
-      <FixPackCard locale="en" workspaceId="ws-1" viewerRole="owner" actionsHref="/en/owner/kam-man-house/actions" />,
+      // The same value home-brief.tsx passes: the owner's own drafts, not the
+      // whole queue.
+      <FixPackCard locale="en" workspaceId="ws-1" viewerRole="owner" actionsHref="/en/owner/kam-man-house/actions?view=drafts" />,
     );
   });
   return result.container;
@@ -38,11 +47,21 @@ describe("FixPackCard empty state", () => {
     expect(text).not.toMatch(/after a paid-tier scan completes|drafted from scan findings/i);
   });
 
-  it("names who actually prepares them, and where the owner's own drafts come from", async () => {
+  it("does not name a supplier who cannot reach this workspace either", async () => {
+    // The first attempt at this fix said the drafts were "prepared for you by
+    // the Fimmick team" -- softer, still unkeepable. That tooling writes the
+    // legacy Supabase database while this app reads Neon, and the cutover
+    // requires an empty application-data target, so no draft can arrive.
+    const text = (await mount([])).textContent ?? "";
+    expect(text).not.toMatch(/prepared for you by the Fimmick team/i);
+    expect(text).toContain("not available in this workspace");
+    expect(text).toContain("not from a scan");
+  });
+
+  it("sends the owner to their own drafts", async () => {
     const container = await mount([]);
-    expect(container.textContent).toContain("a scan does not create them");
-    const link = [...container.querySelectorAll("a")].find((node) => /Open Actions/i.test(node.textContent ?? ""));
-    expect(link?.getAttribute("href")).toBe("/en/owner/kam-man-house/actions");
+    const link = [...container.querySelectorAll("a")].find((node) => /Open drafts/i.test(node.textContent ?? ""));
+    expect(link?.getAttribute("href")).toBe("/en/owner/kam-man-house/actions?view=drafts");
   });
 
   it("still renders drafts and their review controls when any exist", async () => {
@@ -53,6 +72,6 @@ describe("FixPackCard empty state", () => {
     expect(container.textContent).toContain("Thank you for visiting.");
     expect(container.textContent).toContain("Approve");
     // The empty-state explanation belongs only to the empty state.
-    expect(container.textContent).not.toContain("a scan does not create them");
+    expect(container.textContent).not.toContain("not available in this workspace");
   });
 });

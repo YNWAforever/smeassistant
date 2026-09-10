@@ -172,7 +172,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         </SectionCard>
       </div>
 
-      {fixPack && <FixPackCard locale={locale} workspaceId={fixPack.workspaceId} viewerRole={fixPack.role} actionsHref={`${base}/actions`} />}
+      {fixPack && <FixPackCard locale={locale} workspaceId={fixPack.workspaceId} viewerRole={fixPack.role} actionsHref={`${base}/actions?view=drafts`} />}
 
       <SectionCard className="change-ledger-card">
         <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "最近變化紀錄" : "Recent change ledger"}</p><h2>{isChinese ? "先看證據，再看圖表" : "Evidence before charts"}</h2></div><Badge variant="outline">{snapshot ? `${formatDay(snapshot.observedAt, locale, timezone)}${changed.comparable ? (isChinese ? " 可比較掃描" : " comparable scan") : ""}` : (isChinese ? "尚未有掃描" : "No scan yet")}</Badge></div>

@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { Check, Sparkles, X } from "lucide-react"
 
-import { SectionCard } from "@/components/product-ui"
+import { CapabilityBadge, SectionCard } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { PrototypeLocale } from "@/lib/copy"
@@ -71,10 +71,11 @@ export function FixPackCard({ locale, workspaceId, viewerRole, actionsHref }: { 
 
   return (
     <SectionCard className="fix-pack-card">
-      {/* "drafted from scan findings" implied the scan produces them. It does
-          not -- these are prepared by the Fimmick team from findings a scan
-          recorded, which is a different actor. */}
-      <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "Fix Pack 草稿" : "Fix Pack drafts"}</p><h2>{isChinese ? "由 Fimmick 團隊按掃描發現準備的回覆及帖文" : "Replies and posts the Fimmick team prepares from scan findings"}</h2></div><Badge variant="outline"><Sparkles /> {isChinese ? `${pending} 份待審` : `${pending} pending`}</Badge></div>
+      {/* "drafted from scan findings" implied the scan produces them, which it
+          never does. The heading now describes what the surface IS -- a review
+          queue for staff-prepared drafts -- without asserting that anything is
+          currently filling it. */}
+      <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "Fix Pack 草稿" : "Fix Pack drafts"}</p><h2>{isChinese ? "由職員準備、待你審批的回覆及帖文" : "Staff-prepared replies and posts awaiting your review"}</h2></div><Badge variant="outline"><Sparkles /> {isChinese ? `${pending} 份待審` : `${pending} pending`}</Badge></div>
       {drafts === null ? (
         // Covers both "still loading" and "initial load failed" -- rendering
         // the empty-state copy under a load FAILURE would assert something the
@@ -87,11 +88,18 @@ export function FixPackCard({ locale, workspaceId, viewerRole, actionsHref }: { 
         // upstream generator (plan-fix-pack / generate-fix-pack) was never
         // ported, and no INSERT exists outside integration tests. So a scan can
         // never populate this card, and an owner who ran one waited for nothing.
-        // The empty state now says where these actually come from, and points
-        // at the drafting that IS live in this workspace.
+        //
+        // Nor may this name a supplier. The first attempt at this fix said the
+        // drafts were "prepared for you by the Fimmick team" -- softer, and
+        // still unkeepable: that tooling writes the legacy Supabase database,
+        // this app's only pool is Neon, there is no Supabase client left (a
+        // test:no-supabase CI gate enforces it), and NEON-CUTOVER.md requires
+        // an "empty application-data" target. No actor can deliver a draft
+        // here today, so the card says exactly that and points at Actions,
+        // where this workspace's own drafting genuinely is live.
         <>
-          <p>{isChinese ? "暫時沒有待審的 Fix Pack 草稿。這些草稿由 Fimmick 團隊為你準備，掃描本身不會生成。" : "No Fix Pack drafts are waiting. These are prepared for you by the Fimmick team; a scan does not create them."}</p>
-          {actionsHref && <p className="limitation-note">{isChinese ? "你自己的評論回覆及帖文在「行動」生成：" : "Your own review replies and posts are drafted in Actions:"} <Link href={actionsHref}>{isChinese ? "查看行動" : "Open Actions"}</Link></p>}
+          <div className="section-card-heading"><p>{isChinese ? "這個工作台暫時無法取得 Fix Pack 草稿。草稿來自 Fimmick 另一套職員工具，並非由掃描生成。" : "Fix Pack drafts are not available in this workspace. They come from separate Fimmick staff tooling, not from a scan."}</p><CapabilityBadge value="Planned" /></div>
+          {actionsHref && <p className="limitation-note">{isChinese ? "你自己的評論回覆及帖文在「行動」生成：" : "Your own review replies and posts are drafted in Actions:"} <Link href={actionsHref}>{isChinese ? "查看草稿" : "Open drafts"}</Link></p>}
         </>
       ) : (
         <div className="fix-pack-list">
