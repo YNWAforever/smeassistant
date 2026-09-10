@@ -1,7 +1,11 @@
 import type { RescanRepository } from "@/lib/repositories/rescan";
 import { jobsRepository } from "@/lib/repositories/jobs";
 import type { IgMatchProvenance } from "@sme-scanner/contracts";
-import { SCAN_CONSENT_TYPE, currentScanConsentPolicyVersion, type ScanConsentRecord } from "@/lib/scan/consent";
+// Type only. The value imports are deliberately gone: this module must not be
+// able to name a consent type or read the published policy version, because
+// being able to do so is exactly how it came to write a consent record nobody
+// had been asked for.
+import { type ScanConsentRecord } from "@/lib/scan/consent";
 import { buildScanConsentInsert, buildScanJobInsert, type ScanStartInput } from "@/lib/scan/start-job";
 import { buildScheduleInsert, type SchedulableJob, type ScheduleRefusal } from "@/lib/scheduler/create-schedule";
 import { recordNeonEvent } from "@/lib/workspace/audit";
