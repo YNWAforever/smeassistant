@@ -18,6 +18,22 @@ export interface Usage {
   tier: WorkspaceTier;
 }
 
+/**
+ * How many approved deliveries must be used before the owner is warned that
+ * the period's allowance is running out. `null` for an unlimited allowance.
+ *
+ * A plain 80% cannot warn anyone on the lite tier: 0.8 x 3 is 2.4, so the
+ * notice fired at 3 of 3 -- on the export that consumed the last delivery,
+ * when the next one is already refused with `allowance_exceeded`. The warning
+ * has to land while the owner can still act on it, so it is capped at one
+ * delivery before exhaustion and otherwise stays near 80%: 3 warns at 2,
+ * 12 warns at 10. An allowance of 1 can only warn as it is spent.
+ */
+export function allowanceWarnAt(allowance: number | null): number | null {
+  if (allowance === null) return null;
+  return Math.max(1, Math.min(Math.ceil(0.8 * allowance), allowance - 1));
+}
+
 export async function getUsage(
   db: Pick<ReturnType<typeof workspaceReadRepository>, "usage">,
   workspaceId: string,
