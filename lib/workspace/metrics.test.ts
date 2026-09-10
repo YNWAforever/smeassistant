@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { RawData } from "@sme-scanner/contracts";
 import { deriveMetrics, METRIC_KEYS } from "./metrics";
 
 const now = new Date("2026-09-03T00:00:00Z");
@@ -26,12 +27,16 @@ const rawData = {
     reels: [{ id: "v1" }, { id: "v2" }],
     highlights: [{ id: "h1" }, { id: "h2" }, { id: "h3" }, { id: "h4" }],
   },
+  // Typed against the contract on purpose: the previous fixture used the scan
+  // engine's SCORER payload shape (ai_overview_mentioned / ai_mode_mentioned),
+  // which is never persisted, so it agreed with a derivation that read the same
+  // non-existent fields and the pair stayed green while the metric was always 0.
   aeo: {
     serpapi_runs: [
-      { query: "café happy valley", ai_overview_mentioned: true, ai_mode_mentioned: false, brand_organic_rank: 4, competitors_mentioned: ["a", "b"] },
-      { query: "brunch happy valley", ai_overview_mentioned: false, ai_mode_mentioned: false, brand_organic_rank: null, competitors_mentioned: ["a", "b", "c"] },
-      { query: "coffee tin hau", ai_overview_mentioned: false, ai_mode_mentioned: true, brand_organic_rank: 9, competitors_mentioned: [] },
-    ],
+      { query: "café happy valley", engine: "google", ai_overview: { text: "…", brand_mentioned: true, sources: [] }, ai_mode: null, organic_results: [], brand_organic_rank: 4, competitors_mentioned: ["a", "b"] },
+      { query: "brunch happy valley", engine: "google", ai_overview: { text: "…", brand_mentioned: false, sources: [] }, ai_mode: null, organic_results: [], brand_organic_rank: null, competitors_mentioned: ["a", "b", "c"] },
+      { query: "coffee tin hau", engine: "google_ai_mode", ai_overview: null, ai_mode: { text: "…", brand_mentioned: true }, organic_results: [], brand_organic_rank: 9, competitors_mentioned: [] },
+    ] satisfies NonNullable<RawData["aeo"]>["serpapi_runs"],
     website: { url: "https://example.test", has_faq_schema: false, meta_description_len: 138, h1_count: 1 },
   },
 };
@@ -77,6 +82,35 @@ describe("deriveMetrics", () => {
     expect(metrics["website.checks_evaluated"]).toBe(15);
     expect(metrics["website.has_faq_schema"]).toBe(0);
     for (const key of Object.keys(metrics)) expect(METRIC_KEYS).toContain(key);
+  });
+
+  it("counts AI citations from the persisted run shape, not the scorer payload", () => {
+    // The payload names the derivation used to read are never persisted, so a
+    // run carrying only those must count as zero citations rather than one.
+    const payloadShaped = {
+      ...rawData,
+      aeo: { ...rawData.aeo, serpapi_runs: [
+        { query: "a", engine: "google", ai_overview: null, ai_mode: null, organic_results: [], brand_organic_rank: null, competitors_mentioned: [], ai_overview_mentioned: true, ai_mode_mentioned: true },
+      ] },
+    };
+    expect(deriveMetrics({ rawData: payloadShaped, findings: [], aeoRows: [], websiteChecks: null, now })["aeo.ai_citation_count"]).toBe(0);
+  });
+
+  it("excludes unavailable runs and reports no citation count when none is usable", () => {
+    const unusable = {
+      ...rawData,
+      aeo: { ...rawData.aeo, serpapi_runs: [
+        { query: "a", engine: "google", ai_overview: { text: "…", brand_mentioned: true, sources: [] }, ai_mode: null, organic_results: [], brand_organic_rank: 2, competitors_mentioned: [], available: false },
+        { query: "b", engine: "google", ai_overview: null, ai_mode: null, organic_results: [], brand_organic_rank: null, competitors_mentioned: [], available: false },
+      ] satisfies NonNullable<RawData["aeo"]>["serpapi_runs"] },
+    };
+    const metrics = deriveMetrics({ rawData: unusable, findings: [], aeoRows: [], websiteChecks: null, now });
+    expect(metrics["aeo.runs_total"]).toBe(2);
+    expect(metrics["aeo.runs_usable"]).toBe(0);
+    // Absent, never a confident zero: nothing was measurable here.
+    expect(metrics["aeo.ai_citation_count"]).toBeUndefined();
+    // An unusable run's rank must not leak through either.
+    expect(metrics["aeo.best_organic_rank"]).toBeUndefined();
   });
 
   it("omits the response rate when the sample does not cover the population", () => {

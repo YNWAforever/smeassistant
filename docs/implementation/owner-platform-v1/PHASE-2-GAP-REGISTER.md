@@ -4,7 +4,11 @@ Produced by a 14-agent audit of the shipped code against the product guardrails 
 
 **Read the caveat first.** 24 of 24 findings came back confirmed and none was refuted. A verification pass that refutes nothing is not evidence that everything is real -- it is equally consistent with weak verification. Treat severities as claims to check, not conclusions. I independently re-verified finding 1 line by line (including why its test never caught it) and it holds exactly as described; the rest carry file:line evidence but have not had that second human pass.
 
-Nothing here is fixed. This is raw material for a Phase 2 plan, in the same spirit as the Phase 1 audit register.
+This is raw material for a Phase 2 plan, in the same spirit as the Phase 1 audit register. **Finding 1 is fixed** (see below); findings 2–24 are not.
+
+### Fixed
+
+- **1. AI-citation metric** — fixed. `lib/workspace/metrics.ts` now reads the persisted run shape (`ai_overview.brand_mentioned` / `ai_mode.brand_mentioned`, `available !== false`) instead of the scorer-payload names, and omits `aeo.ai_citation_count` entirely when no run is usable rather than emitting a confident zero. The unit fixture was rebuilt against `RawData["aeo"]["serpapi_runs"]` with `satisfies`, so it can no longer drift from the contract — that drift is exactly why the bug survived, since the fixture was wrong in the same way as the code and the two agreed. Verified end to end against the app's own fixtures: `raw.aeo.serpapi_runs` citations go 0 → 1 for kam-man-house and 0 → 2 for tw-cafe, while unavailable-ig correctly stays 0. Note for anyone reading the fixtures: `d.aeo` is the scorer payload and `d.raw.aeo` is what is persisted — confusing the two is the whole bug.
 
 ## Area summaries
 
