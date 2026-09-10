@@ -6,7 +6,8 @@ import { localized } from "@/lib/domain";
 import { llmComplete, llmConfigured } from "@/lib/llm";
 import type { AssistantArtifact, AssistantSurface, DemoAssistantRunResponse, DemoQuestionId, EvidenceReference } from "@/lib/pocket-assistant/contracts";
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
-import { sampledReviewsFromRawData, snapshotEvidence } from "@/lib/workspace/runs";
+import { assetRepository } from "@/lib/repositories/assets";
+import { sampledReviewsFromRawData, snapshotEvidence, socialAssetSatisfied } from "@/lib/workspace/runs";
 import { type ScanDiffRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
 import { buildEvidenceRefs } from "./evidence";
 import { fallbackIntentFor, isTemplateIntent, templateAnswer, type TemplateContext } from "./templates";
@@ -38,6 +39,8 @@ export interface LiveRunInput {
   repository?: LiveAssistantRepository;
   llm?: typeof llmComplete;
   llmReady?: () => boolean;
+  /** Asset rights lookup for the social_post gate; defaults to the Neon repository. */
+  assets?: Pick<ReturnType<typeof assetRepository>, "get">;
 }
 
 type DraftIntent = "draft_review_reply" | "friendlier_review_reply" | "generate_social" | "generate_faq" | "generate_menu";
@@ -276,6 +279,24 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistant
   const ready = (input.llmReady ?? llmConfigured)();
   const fallback = () => completed(fallbackIntentFor(intent), input, ctx, [AI_UNAVAILABLE[input.locale]]);
   if (!ready) return fallback();
+
+  // The same pre-model gate runAgentForAction applies. Without it this path
+  // drafted a caption as if it accompanied an approved, rights-cleared photo
+  // that did not exist -- the prompt asserts "an approved photo is attached"
+  // and inputLine renders its alt text as "(not provided)", so the model was
+  // invited to invent the photo's contents (guardrail 14). The asset-rights
+  // confirmation the Assets page exists to enforce was skipped entirely.
+  if (spec.agent === "social_post") {
+    const satisfied = await socialAssetSatisfied(
+      input.assets ?? assetRepository(),
+      input.context.workspaceId,
+      asRecord(action.row.provided_inputs),
+    );
+    if (!satisfied) {
+      const base = completed(fallbackIntentFor(intent), input, ctx);
+      return { ...base, answer: NEEDS_FACTS[input.locale].replace("{facts}", "asset_or_text_only"), warnings: base.warnings };
+    }
+  }
 
   const agent = AGENTS[spec.agent];
   const agentCtx = await agentContext(db, input, ctx, action, spec.agent, intent);

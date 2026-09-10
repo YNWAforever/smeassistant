@@ -90,9 +90,40 @@ describe("runLiveAssistant", () => {
     await run({ intentId: "friendlier_review_reply", llm });
     expect(llm.mock.calls[0][0]).toContain("warmer, friendlier tone");
     const social = vi.fn<Llm>(async () => ({ ...good, text: JSON.stringify({ title: "Post", body: "Lunch is on.", acceptance_criteria: [], warnings: [], facts_used: [], facts_needed: [] }) }));
-    const result = await run({ intentId: "generate_social", surface: "create", llm: social });
+    state.actions = state.actions.map((a) => (a.template_key === "social-post" ? { ...a, provided_inputs: { asset_id: "asset-1" } } : a));
+    const result = await run({ intentId: "generate_social", surface: "create", llm: social, assets: { get: async () => ({ rights_status: "approved" }) as never } });
     expect(social.mock.calls[0][0]).toContain("Fill the Instagram gap");
     expect(result.output).toMatchObject({ type: "social_post", body: "Lunch is on." });
+  });
+
+  it("refuses a social draft with no approved asset before calling the model", async () => {
+    // The run path already gates this; the assistant drafted anyway, and the
+    // prompt then told the model an approved photo was attached with alt text
+    // "(not provided)" -- inviting it to invent the photo's contents.
+    const social = vi.fn<Llm>(async () => good);
+    const result = await run({ intentId: "generate_social", surface: "create", llm: social, assets: { get: async () => null } });
+    expect(social).not.toHaveBeenCalled();
+    expect(result.output).toBeUndefined();
+    expect(result.answer).toContain("asset_or_text_only");
+    expect(writes()).toEqual([]);
+  });
+
+  it("refuses when the asset exists but its rights are not approved", async () => {
+    const social = vi.fn<Llm>(async () => good);
+    const result = await run({
+      intentId: "generate_social", surface: "create", llm: social,
+      assets: { get: async () => ({ rights_status: "needs_review" }) as never },
+    });
+    expect(social).not.toHaveBeenCalled();
+    expect(result.answer).toContain("asset_or_text_only");
+  });
+
+  it("allows a social draft once the owner has chosen text-only", async () => {
+    const social = vi.fn<Llm>(async () => ({ ...good, text: JSON.stringify({ title: "Post", body: "Text only.", acceptance_criteria: [], warnings: [], facts_used: [], facts_needed: [] }) }));
+    state.actions = state.actions.map((a) => (a.template_key === "social-post" ? { ...a, provided_inputs: { text_only: true } } : a));
+    const result = await run({ intentId: "generate_social", surface: "create", llm: social, assets: { get: async () => null } });
+    expect(social).toHaveBeenCalledOnce();
+    expect(result.output).toMatchObject({ type: "social_post", body: "Text only." });
   });
 
   it("degrades to the template answer with a warning when the model is not configured or returns nothing", async () => {

@@ -4,7 +4,7 @@ Produced by a 14-agent audit of the shipped code against the product guardrails 
 
 **Read the caveat first.** 24 of 24 findings came back confirmed and none was refuted. A verification pass that refutes nothing is not evidence that everything is real -- it is equally consistent with weak verification. Treat severities as claims to check, not conclusions. I independently re-verified finding 1 line by line (including why its test never caught it) and it holds exactly as described; the rest carry file:line evidence but have not had that second human pass.
 
-This is raw material for a Phase 2 plan, in the same spirit as the Phase 1 audit register. **Findings 1, 2, 3 and 21 are fixed** (see below); the rest are not.
+This is raw material for a Phase 2 plan, in the same spirit as the Phase 1 audit register. **Findings 1, 2, 3, 4 and 21 are fixed** (see below); the rest are not.
 
 Findings 3 and 21 turned out to be the same defect, reported independently by the `ownership-consent` and `authorization` auditors at different severities — worth knowing when reading the other 20, since the register does not otherwise de-duplicate across areas.
 
@@ -21,6 +21,12 @@ Findings 3 and 21 turned out to be the same defect, reported independently by th
   Refused rather than silently corrected, deliberately. The field is money-bearing — `workspaces.market` is what `checkout-link` resolves the Stripe price from (HK$888 vs NT$2,800) — and the onboarding UI already renders it read-only from the same scan evidence, so a disagreeing body is never a legitimate client. Silently overwriting would hide a tampered request; 409 with `expected` lets an out-of-date client resend correctly. This also closes the "later idempotent re-POST rewrites the column" half of the finding: a re-POST now writes the same server-derived value or is refused.
 
   Covered by unit cases at both levels — `claim.test.ts` asserts a mismatched market returns `market_mismatch` with **no writes at all**, and that a matching body still persists the scan's own market; `route.test.ts` pins the 409 and its body.
+
+- **4. Live assistant bypassed the approved-asset gate** — fixed. `socialAssetSatisfied` is now exported from `lib/workspace/runs.ts` and applied in the live assistant's `draft()` before any model call, so both paths share one rule rather than a copy. When neither an explicit `text_only` decision nor an `approved` asset is present, the assistant returns the same "still needs: asset_or_text_only" answer the model's own `facts_needed` path produces, and no prompt is sent.
+
+  Sharing the function rather than reimplementing it is the point: the run path and the assistant path are two ways to draft the *same* agent, and a second copy of the rule is what drifts. `LiveRunInput` gains an optional `assets` capability alongside the existing `repository` / `llm` injection points, so tests can drive it without a database.
+
+  **A pre-existing test asserted the bypass** (`live.test.ts` expected a `social_post` artifact from a fixture with `provided_inputs: {}`), so it failed the moment the gate landed — a useful confirmation the finding was real rather than theoretical. It now asserts the gate, with four cases covering the whole rule: no asset, an asset whose rights are `needs_review`, an explicit text-only decision, and an approved asset.
 
 - **2. Mid-period tier change and the delivery allowance** (continued) — `applyTier` is the only writer of `workspaces.tier` in this app, so the reconciliation is complete here. If a tier ever comes to be written by another path (a staff grant reaching the shared database directly), that path must reconcile too. Covered by a new integration case in `neon-integrations.integration.test.ts` that seeds a spent lite period, upgrades, and asserts the allowance lifts to `NULL` and then returns to `3` on downgrade.
 

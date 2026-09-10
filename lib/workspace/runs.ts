@@ -158,8 +158,14 @@ export function snapshotEvidence(
   };
 }
 
-/** `social_post` needs an approved asset or an explicit text-only decision (Phase 4 item 4). */
-async function socialAssetSatisfied(
+/**
+ * `social_post` needs an approved asset or an explicit text-only decision
+ * (Phase 4 item 4). Exported because the live assistant drafts the same agent
+ * down a different path and must apply the identical rule -- when it did not,
+ * the prompt told the model "an approved photo is attached" with alt text
+ * "(not provided)" and invited it to describe a photo that did not exist.
+ */
+export async function socialAssetSatisfied(
   assets: Pick<ReturnType<typeof assetRepository>, "get">,
   workspaceId: string,
   provided: Record<string, unknown>,
