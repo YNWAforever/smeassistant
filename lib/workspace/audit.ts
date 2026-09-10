@@ -10,12 +10,22 @@ import { requestFingerprint } from "@/lib/security/request-fingerprint";
  */
 export const AUDIT_EVENTS = [
   "scan.queued", "scan.completed", "scan.failed", "snapshot.created", "action.derived", "action.updated", "action.dismissed",
-  "run.started", "run.succeeded", "run.failed", "version.created", "version.approved", "version.changes_requested", "version.rejected",
+  "run.started", "run.succeeded", "run.failed", "run.timed_out", "version.created", "version.approved", "version.changes_requested", "version.rejected",
   "delivery.exported", "delivery.copied", "workspace.claimed", "member.invited", "member.role_changed", "integration.updated",
   "brand.updated", "asset.uploaded", "asset.rights_confirmed", "assistant.run", "consent.public_evidence",
 ] as const;
 
 export type AuditEvent = (typeof AUDIT_EVENTS)[number];
+
+/**
+ * The reaper in lib/repositories/action-run-reaper.ts writes its audit row from
+ * raw SQL rather than through `recordNeonEvent`, so the event name would
+ * otherwise be an unchecked string literal inside a template. Exporting it as a
+ * constant and interpolating it into that statement is what actually ties the
+ * SQL to the `AUDIT_EVENTS` tuple: remove the tuple member and this line stops
+ * compiling.
+ */
+export const RUN_TIMED_OUT_EVENT = "run.timed_out" satisfies AuditEvent;
 export type AuditActorType = "user" | "agent" | "system" | "scanner";
 
 export interface AuditEventInput {

@@ -185,6 +185,16 @@ export function actionRunRepository(transaction: RunTransaction = withTransactio
    });
   } catch { throw new Error('artifact_run_operation_failed'); }
  }
+ /**
+  * The state precondition here is the fence for lib/repositories/action-run-reaper.ts,
+  * which has no lease token by design. A worker whose handler was killed and whose
+  * run was later reaped to 'timed_out' cannot come back and overwrite it: the
+  * `row.state !== state` check makes finish() throw `invalid_run_transition`
+  * (surfaced as `artifact_run_operation_failed`), so no output_version is created,
+  * `actions.action_state` is not moved and no audit row is written. Relaxing this
+  * precondition — for example an "upsert the terminal state" refactor — would
+  * silently re-open that overwrite hole.
+  */
  async function loadRun(client: PoolClient, input: RunAttribution, state: string): Promise<PersistedRun> {
   const row=(await client.query<PersistedRun>(`SELECT r.id,r.action_id,r.workspace_id,a.location_id,r.agent_key,r.prompt_version,r.requested_by,r.state
    FROM action_runs r JOIN actions a ON a.id=r.action_id AND a.workspace_id=r.workspace_id

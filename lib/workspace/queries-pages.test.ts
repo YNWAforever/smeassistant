@@ -25,6 +25,8 @@ const repository = vi.hoisted(() => ({
   activity: vi.fn(), notifications: vi.fn(), notificationPreferences: vi.fn(),
 }));
 vi.mock("@/lib/repositories/workspace-read", () => ({ workspaceReadRepository: () => repository }));
+const reaper = vi.hoisted(() => ({ reapStrandedRuns: vi.fn(async () => [] as string[]) }));
+vi.mock("@/lib/workspace/run-reaper", () => ({ reapStrandedRuns: reaper.reapStrandedRuns }));
 
 import { getHomeBrief, getInsights, listActions, getActivity, getIntegrations, getAction, loadActionRows, loadDiffById } from "./queries-pages";
 
@@ -190,5 +192,25 @@ describe("page repository boundaries", () => {
     expect(repository.versions).toHaveBeenCalledWith("ws-1", ["a1"]);
     state.actions = [];
     expect(await getAction(ctx, "missing")).toBeNull();
+  });
+
+  it("reconciles stranded runs once, before anything reads them", async () => {
+    const detail = await getAction(ctx, "a1");
+    expect(reaper.reapStrandedRuns).toHaveBeenCalledTimes(1);
+    expect(reaper.reapStrandedRuns).toHaveBeenCalledWith("ws-1", ["a1"]);
+    // The reaped row has to be visible to both run readers: overviewsFor derives
+    // runState/displayPhaseKey from repository.runs, and the explicit
+    // repository.runs call builds the detail's run history.
+    expect(reaper.reapStrandedRuns.mock.invocationCallOrder[0]).toBeLessThan(repository.runs.mock.invocationCallOrder[0]);
+    // Reconciliation is best-effort: nothing reaped still returns the full detail.
+    expect(detail).toMatchObject({ versions: [], runs: [], measurements: [] });
+  });
+
+  it("never reconciles from the actions list", async () => {
+    // Deliberate scope decision, not an oversight: reaping in listActions would
+    // turn every list render into a multi-row write. The cost is that a stranded
+    // run keeps its "Generating" chip until the owner opens that action.
+    await listActions(ctx, { location: "all" });
+    expect(reaper.reapStrandedRuns).not.toHaveBeenCalled();
   });
 });

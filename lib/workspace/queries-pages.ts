@@ -6,6 +6,7 @@ import type { EvidenceGalleryItem } from "@/lib/report/view-model";
 import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { currentPeriod, type LocationSummary, type WorkspaceContext } from "@/lib/workspace/queries";
+import { reapStrandedRuns } from "@/lib/workspace/run-reaper";
 import { rowToSnapshot, type ScanDiffRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
 import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
 import type { MetricKey } from "@/lib/workspace/metrics";
@@ -428,6 +429,16 @@ export async function getAction(ctx: WorkspaceContext, actionId: string): Promis
   const rows = await loadActionRows(ctx.workspace.id, { ids: [actionId] });
   const row = rows[0];
   if (!row || row.workspace_id !== ctx.workspace.id) return null;
+  // Reconcile runs stranded by a killed handler before anything reads them, so
+  // the detail page never renders a permanently 'running' run and the Generate
+  // button is never disabled forever. Ordering is load-bearing: overviewsFor
+  // derives runState/displayPhaseKey from repository.runs, and the explicit
+  // repository.runs call below must see the post-reap row. Both callers of
+  // getAction are already authorized (loadOwnerPage -> requireMembership, and
+  // authorizeActionMutation), and no minRole gate is added here: a viewer must
+  // still be able to trigger reconciliation, which grants nobody anything.
+  // See lib/workspace/run-reaper.ts.
+  await reapStrandedRuns(ctx.workspace.id, [actionId]);
   const [action] = await overviewsFor(ctx, [row]);
   const repository = workspaceReadRepository();
   const [versions, runs, measurements] = await read("action detail", () => Promise.all([

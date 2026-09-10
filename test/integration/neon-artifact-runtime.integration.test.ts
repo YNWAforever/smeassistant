@@ -629,5 +629,210 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
         ).rows[0].provided_inputs,
       ).toEqual({ brand_voice: "warm", channel: "fixture" });
     });
+
+    describe("stranded action run reaping", () => {
+      /** Seed a run directly so the strand is reproduced without a killed handler. */
+      const strand = async (
+        runState: "running" | "queued",
+        age: string,
+        actionId = action,
+      ) =>
+        (
+          await runtime.query<{ id: string }>(
+            `INSERT INTO action_runs(workspace_id,action_id,agent_key,state,prompt_version,requested_by,created_at,started_at)
+             VALUES($1,$2,'review_reply',$3,'v1',$4, now() - $5::interval, CASE WHEN $3='running' THEN now() - $5::interval ELSE NULL END)
+             RETURNING id`,
+            [workspace, actionId, runState, actor, age],
+          )
+        ).rows[0].id;
+      const runRow = async (id: string) =>
+        (
+          await runtime.query(
+            "SELECT state,finished_at,error FROM action_runs WHERE id=$1",
+            [id],
+          )
+        ).rows[0];
+      const timeoutEvents = async (runId: string) =>
+        (
+          await runtime.query(
+            "SELECT actor_type,actor_id,entity_type,payload FROM audit_events WHERE event='run.timed_out' AND entity_id=$1",
+            [runId],
+          )
+        ).rows;
+
+      it("releases a run abandoned in 'running' and records one system audit row", async () => {
+        const { reapStrandedRuns } = await import(
+          "../../lib/workspace/run-reaper"
+        );
+        const runId = await strand("running", "30 minutes");
+        expect(await reapStrandedRuns(workspace, [action])).toEqual([runId]);
+        const row = await runRow(runId);
+        expect(row.state).toBe("timed_out");
+        expect(row.finished_at).not.toBeNull();
+        // The reaper has no request locale, so it must not invent owner-facing
+        // text; `error` stays NULL and the UI supplies the localized sentence.
+        expect(row.error).toBeNull();
+        const events = await timeoutEvents(runId);
+        expect(events).toHaveLength(1);
+        expect(events[0]).toMatchObject({
+          actor_type: "system",
+          actor_id: null,
+          entity_type: "action_run",
+        });
+        expect(events[0].payload).toMatchObject({
+          previous_state: "running",
+          action_id: action,
+          agent_key: "review_reply",
+          reason: "action_run_reaped",
+          locale: null,
+        });
+      });
+
+      it("leaves a fresh run alone", async () => {
+        const { reapStrandedRuns } = await import(
+          "../../lib/workspace/run-reaper"
+        );
+        const runId = await strand("running", "0 seconds");
+        expect(await reapStrandedRuns(workspace, [action])).toEqual([]);
+        expect((await runRow(runId)).state).toBe("running");
+        expect(await timeoutEvents(runId)).toHaveLength(0);
+      });
+
+      it("covers the kill between queue() and start(), where started_at is still NULL", async () => {
+        const { reapStrandedRuns } = await import(
+          "../../lib/workspace/run-reaper"
+        );
+        const runId = await strand("queued", "30 minutes");
+        expect(await reapStrandedRuns(workspace, [action])).toEqual([runId]);
+        const events = await timeoutEvents(runId);
+        expect(events).toHaveLength(1);
+        expect(events[0].payload).toMatchObject({ previous_state: "queued" });
+      });
+
+      it("lets two concurrent reapers take disjoint rows, so the row is audited once", async () => {
+        const { reapStrandedRuns } = await import(
+          "../../lib/workspace/run-reaper"
+        );
+        const runId = await strand("running", "30 minutes");
+        const results = await Promise.all([
+          reapStrandedRuns(workspace, [action]),
+          reapStrandedRuns(workspace, [action]),
+        ]);
+        expect(results.flat()).toEqual([runId]);
+        expect((await runRow(runId)).state).toBe("timed_out");
+        expect(await timeoutEvents(runId)).toHaveLength(1);
+      });
+
+      it("fences a late worker: finish() on a reaped run writes nothing", async () => {
+        const { actionRunRepository } = await import(
+          "../../lib/repositories/artifacts"
+        );
+        const { reapStrandedRuns } = await import(
+          "../../lib/workspace/run-reaper"
+        );
+        const runId = await strand("running", "30 minutes");
+        await reapStrandedRuns(workspace, [action]);
+        await expect(
+          actionRunRepository().finish({
+            runId,
+            actorId: actor,
+            locale: "en",
+            usage: { inputTokens: 1, outputTokens: 1 },
+            costUsd: 0,
+            output,
+            finishedAt: new Date(),
+          }),
+        ).rejects.toThrow("artifact_run_operation_failed");
+        expect((await runRow(runId)).state).toBe("timed_out");
+        expect(
+          (
+            await runtime.query(
+              "SELECT id FROM output_versions WHERE action_id=$1",
+              [action],
+            )
+          ).rows,
+        ).toHaveLength(0);
+        expect(
+          (
+            await runtime.query(
+              "SELECT id FROM audit_events WHERE event='run.succeeded' AND entity_id=$1",
+              [runId],
+            )
+          ).rows,
+        ).toHaveLength(0);
+      });
+
+      it("never moves the action lifecycle, including from needs_input", async () => {
+        const { reapStrandedRuns } = await import(
+          "../../lib/workspace/run-reaper"
+        );
+        // needs_input is the case the list page cannot show: displayPhaseKey
+        // short-circuits on it before it ever consults runState.
+        await runtime.query(
+          "UPDATE actions SET action_state='needs_input' WHERE id=$1",
+          [action],
+        );
+        const before = (
+          await runtime.query(
+            "SELECT action_state,updated_at FROM actions WHERE id=$1",
+            [action],
+          )
+        ).rows[0];
+        const runId = await strand("running", "30 minutes");
+        expect(await reapStrandedRuns(workspace, [action])).toEqual([runId]);
+        expect(
+          (
+            await runtime.query(
+              "SELECT action_state,updated_at FROM actions WHERE id=$1",
+              [action],
+            )
+          ).rows[0],
+        ).toEqual(before);
+      });
+
+      it("reaps nothing for a workspace that does not own the action", async () => {
+        const { reapStrandedRuns } = await import(
+          "../../lib/workspace/run-reaper"
+        );
+        const other = (
+          await runtime.query(
+            "INSERT INTO workspaces(business_name,market,slug) VALUES('Other','hk',gen_random_uuid()::text) RETURNING id",
+          )
+        ).rows[0].id;
+        const runId = await strand("running", "30 minutes");
+        expect(await reapStrandedRuns(other, [action])).toEqual([]);
+        expect((await runRow(runId)).state).toBe("running");
+        expect(await timeoutEvents(runId)).toHaveLength(0);
+      });
+
+      it("recovers through a fresh explicit run, never an automatic resume", async () => {
+        const { reapStrandedRuns } = await import(
+          "../../lib/workspace/run-reaper"
+        );
+        const runId = await strand("running", "30 minutes");
+        await reapStrandedRuns(workspace, [action]);
+        // Idempotent: a second pass finds nothing and writes no second audit row.
+        expect(await reapStrandedRuns(workspace, [action])).toEqual([]);
+        expect(await timeoutEvents(runId)).toHaveLength(1);
+        const result = await run();
+        expect(result.state).toBe("succeeded");
+        expect(
+          (
+            await runtime.query(
+              "SELECT version_no FROM output_versions WHERE action_id=$1",
+              [action],
+            )
+          ).rows,
+        ).toEqual([{ version_no: 1 }]);
+        expect(
+          (
+            await runtime.query(
+              "SELECT id FROM action_runs WHERE action_id=$1 AND id<>$2",
+              [action, runId],
+            )
+          ).rows,
+        ).toHaveLength(1);
+      });
+    });
   },
 );
