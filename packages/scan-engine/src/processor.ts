@@ -184,12 +184,26 @@ export function createScanProcessor(deps: ScanProcessorDependencies) {
       const allRequestedMeasured = INDEPENDENT_PROVIDERS.every(
         (key) => moduleResults[key].status === "measured" && moduleResults[key].score !== null,
       );
+      // "Collected fine, but the composite is withheld" is not a failure.
+      // The scorer returns overall: null whenever fewer than two independent
+      // channels measured (packages/scoring: INDEPENDENT_CHANNELS), which is a
+      // deliberate honesty rule, not a broken scan. Reporting that as "failed"
+      // made lib/report/view-model.ts's buildPreview() blanket-suppress the
+      // coverage, findings and per-module scores it *did* collect, and pushed
+      // the report UI onto its "the scan did not complete / start again" copy
+      // -- while the purpose-built "score withheld: not enough independent
+      // evidence" copy that already exists (dashboard-summary.tsx's
+      // `score == null` branch) stayed unreachable. A scan that measured at
+      // least one module has inspectable evidence and stays "partial" with a
+      // null overall; only a scan with nothing usable is "failed".
       const status: "done" | "partial" | "failed" =
         scored.overall !== null && measuredProviders >= 2
           ? allRequestedMeasured
             ? "done"
             : "partial"
-          : "failed";
+          : measuredProviders >= 1
+            ? "partial"
+            : "failed";
 
       await setStage("persisting");
       await deps.persist({
