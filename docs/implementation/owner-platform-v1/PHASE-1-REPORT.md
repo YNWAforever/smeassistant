@@ -94,6 +94,17 @@ This is the same Proxy-wrapping technique `b991b7f`'s own test used to simulate 
 
 **What this does and does not establish:** this fixes a real, confirmed, currently-reproducing defect with strong local evidence (an exact TypeError reproduction plus a passing regression test using the production-shaped input). It does **not** constitute the "completed authorized hosted sign-in" the commissioning instructions ask for — that step requires a human (Willy) to interactively complete Google OAuth consent in a real browser, which is outside what this session can or should do (entering credentials / completing OAuth consent is a prohibited action for this agent regardless). Recommended next step: Willy attempts a real sign-in against the current production deployment (or a preview built from this fix) and confirms the callback now completes; if it still fails, the correlation ID and stage from that attempt will show whether a *different* cause is also present.
 
+## 2.8 P1.3 — Scan honesty: coverage percentage and per-module state on the scanning page
+
+Two of the six P1.3 findings fixed (commit `1823035`):
+
+- **Coverage percentage.** `GET /api/scan/status` returns `job.score_coverage` (a 0-1 fraction); the scanning page interpolated it directly into "Coverage {n}%" with no conversion, so real 50% coverage rendered as "Coverage 0.5%." Added `coveragePercent()` to `lib/funnel/scan-progress.ts`, mirroring `lib/report/view-model.ts`'s existing (and correct) conversion, so the scanning page and the report never disagree.
+- **Per-module state.** `collectorPhases()` returned a blanket `"collected"` (→ "Measured" badge) for all three collectors whenever a scan finished `partial`, regardless of which modules actually measured. Extended `GET /api/scan/status` to return real per-module states once the job is terminal (reusing `lib/workspace/module-states.ts`'s `deriveModuleStates` against the same `module_results`/`module_scores` columns the report itself reads — no new data source), and `collectorPhases()` now uses them when present, replacing the dishonest blanket with a real per-module `"unavailable"` phase. The no-data fallback also now defaults to `"unavailable"` rather than the previous always-"measured" claim.
+
+Tests: new `lib/funnel/scan-progress.test.ts` (previously untested — 10 cases), two new `app/api/scan/status/route.test.ts` cases, one pre-existing `tests/funnel-scan.test.ts` assertion updated for the renamed phase value. Full suite passing (2,126 app + 573 package tests), typecheck/lint clean.
+
+**Remaining P1.3 items, not yet fixed:** scan consent persistence (currently pure client-side UI state, zero server validation), bounded polling budget/stalled state, and the partial-report/processor bug (a usable-but-under-threshold scan is marked `status:"failed"` and the view model then suppresses all its evidence, even though honest "score withheld" copy already exists unreachable). The processor bug is the highest-value remaining item in this group.
+
 ## 3. Verification run so far
 
 | Gate | Result |
