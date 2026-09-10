@@ -626,6 +626,46 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
         await repository.usage(workspaceId, "2026-09", null),
       ).toMatchObject({ approved_deliveries: 0, allowance: null });
     });
+    it("lifts and restores the current period's allowance when the tier changes mid-period", async () => {
+      const { billingRepository } = await import("../../lib/repositories/billing");
+      const repository = billingRepository(runtime);
+      const period = (
+        await runtime.query<{ p: string }>(
+          "SELECT to_char(now() at time zone coalesce(timezone,'Asia/Hong_Kong'),'YYYY-MM') AS p FROM workspaces WHERE id=$1",
+          [workspaceId],
+        )
+      ).rows[0].p;
+      const allowanceNow = async () =>
+        (
+          await runtime.query<{ allowance: number | null }>(
+            "SELECT allowance FROM workspace_usage WHERE workspace_id=$1 AND period=$2",
+            [workspaceId, period],
+          )
+        ).rows[0]?.allowance;
+
+      // The owner opens the workspace on lite, which creates the period row --
+      // that always happens before checkout, so every upgrade hits this case.
+      await runtime.query("UPDATE workspaces SET tier='lite' WHERE id=$1", [workspaceId]);
+      await runtime.query(
+        "INSERT INTO workspace_usage(workspace_id,period,approved_deliveries,allowance) VALUES($1,$2,3,3) ON CONFLICT (workspace_id,period) DO UPDATE SET approved_deliveries=3, allowance=3",
+        [workspaceId, period],
+      );
+      expect(await allowanceNow()).toBe(3);
+
+      // Upgrading must lift the cap the export gate actually reads, not just the
+      // tier the billing card advertises.
+      await repository.applyTier(workspaceId, "paid", "evt_upgrade_midperiod");
+      expect(await allowanceNow()).toBeNull();
+
+      // ... and downgrading must restore it, or the workspace keeps unlimited
+      // exports until the period rolls over.
+      await repository.applyTier(workspaceId, "lite", "evt_downgrade_midperiod");
+      expect(await allowanceNow()).toBe(3);
+      // Deliveries already counted are history and must survive both moves.
+      expect(
+        (await runtime.query("SELECT approved_deliveries FROM workspace_usage WHERE workspace_id=$1 AND period=$2", [workspaceId, period])).rows[0].approved_deliveries,
+      ).toBe(3);
+    });
     it("captures analytics once after persistence and fails open without capturing on database failure", async () => {
       const fetchMock = vi
         .spyOn(globalThis, "fetch")

@@ -4,11 +4,17 @@ Produced by a 14-agent audit of the shipped code against the product guardrails 
 
 **Read the caveat first.** 24 of 24 findings came back confirmed and none was refuted. A verification pass that refutes nothing is not evidence that everything is real -- it is equally consistent with weak verification. Treat severities as claims to check, not conclusions. I independently re-verified finding 1 line by line (including why its test never caught it) and it holds exactly as described; the rest carry file:line evidence but have not had that second human pass.
 
-This is raw material for a Phase 2 plan, in the same spirit as the Phase 1 audit register. **Finding 1 is fixed** (see below); findings 2–24 are not.
+This is raw material for a Phase 2 plan, in the same spirit as the Phase 1 audit register. **Findings 1 and 2 are fixed** (see below); findings 3–24 are not.
 
 ### Fixed
 
 - **1. AI-citation metric** — fixed. `lib/workspace/metrics.ts` now reads the persisted run shape (`ai_overview.brand_mentioned` / `ai_mode.brand_mentioned`, `available !== false`) instead of the scorer-payload names, and omits `aeo.ai_citation_count` entirely when no run is usable rather than emitting a confident zero. The unit fixture was rebuilt against `RawData["aeo"]["serpapi_runs"]` with `satisfies`, so it can no longer drift from the contract — that drift is exactly why the bug survived, since the fixture was wrong in the same way as the code and the two agreed. Verified end to end against the app's own fixtures: `raw.aeo.serpapi_runs` citations go 0 → 1 for kam-man-house and 0 → 2 for tw-cafe, while unavailable-ig correctly stays 0. Note for anyone reading the fixtures: `d.aeo` is the scorer payload and `d.raw.aeo` is what is persisted — confusing the two is the whole bug.
+
+- **2. Mid-period tier change and the delivery allowance** — fixed. `billingRepository.applyTier` now reconciles the current period's `workspace_usage.allowance` inside the same transaction (and under the same `FOR UPDATE` lock on the workspace) as the tier write, so an upgrade lifts the cap the export gate actually reads and a downgrade restores it. `approved_deliveries` is untouched, so deliveries already counted survive both moves.
+
+  **The register's preferred fix was not available, and the reason matters.** It suggested `CREATE OR REPLACE FUNCTION export_output_version` in a new migration so the gate derives the entitlement from the live tier at check time — which genuinely cannot drift. But `scripts/neon/catalog.ts` lists `export_output_version` in `retainedFunctions` and deep-equals its `pg_get_functiondef` against the frozen legacy catalog, so replacing its body fails `db:verify` unless that core approval-ledger function stops being pinned by definition or the frozen oracle is rewritten. Neither is an acceptable trade for this bug. Keeping the column authoritative also preserves a useful invariant: the read model reads the same column the gate enforces, so the billing card can never advertise an allowance the server will refuse — which is exactly the failure being fixed.
+
+  `applyTier` is the only writer of `workspaces.tier` in this app, so the reconciliation is complete here. If a tier ever comes to be written by another path (a staff grant reaching the shared database directly), that path must reconcile too. Covered by a new integration case in `neon-integrations.integration.test.ts` that seeds a spent lite period, upgrades, and asserts the allowance lifts to `NULL` and then returns to `3` on downgrade.
 
 ## Area summaries
 
