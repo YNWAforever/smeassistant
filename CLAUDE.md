@@ -108,7 +108,7 @@ prototype copy (`/methodology`, `/trust`, `/pricing`) and are the differentiator
 
 - Package manager: **pnpm 9.12.0 via corepack**. Root `package.json` carries `"packageManager": "pnpm@9.12.0"`;
   run `corepack pnpm <cmd>` (no global pnpm on Willy's machine; `corepack enable` is optional). Node **>= 22.13**
-  (`.nvmrc` = `22`). Do not reintroduce npm lockfiles.
+  (`.nvmrc` = `24`, matching the runtime production serves; `engines.node` stays a `>=22.13.0` floor). Do not reintroduce npm lockfiles.
 - Keep the build green at every commit: `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build`.
 - **Tests never call paid providers** (RapidAPI, Google Places, SerpApi, LLM, Stripe, Resend). Use injected
   dependencies (upstream's `ScanProcessorDependencies`, `GBPCollectorDependencies`) and fixture payloads (§3.2.1).
@@ -276,7 +276,7 @@ open upstream PR #87 "schema-drift check"), not assumed.
 | D8 | **Scorer untouched.** Workspace numbers come from `ScoreResult`/`audit_jobs.module_results`/`score_coverage`; comparability from `scan_diffs`; AI-visibility trend from `aeo_surface_snapshots`. `scan_snapshots` holds only workspace **metrics** and website checks. | Two sources of truth would disagree. |
 | D9 | **Ownership and access reuse upstream:** Supabase magic links, `workspace_members` roles, OAuth-verified claim (`WORKSPACE_CLAIM_VIA_OAUTH_ENABLED`), Google Business connection (`oauth_connections`), Stripe tier `lite\|paid` with copied checkout/portal/webhook routes. Delivery = export/copy only. Google sign-in is out of scope. | Guardrail 15; the flows are live in production already. |
 | D10 | **Demo surfaces keep fixed data**; a seeded `is_demo` workspace (`kam-man-house`) exercises the real code path for QA. | Guardrail 12. |
-| D11 | **Tooling:** Node ≥ 22.13 (`.nvmrc` 22), pnpm 9.12.0 via corepack, Vitest 4 + `@testing-library/react` + jsdom, Playwright 1.61, `eslint-config-next/core-web-vitals` + `/typescript` (with `no-explicit-any` off under `packages/**`), Tailwind 4 (region font stacks moved into `@theme`), no Supabase CLI, `verify-migrations.sh` via Docker on Windows. | Matches the prototype's pins and upstream's gates. |
+| D11 | **Tooling:** Node ≥ 22.13 (`.nvmrc` 24 — CI must test the runtime production serves), pnpm 9.12.0 via corepack, Vitest 4 + `@testing-library/react` + jsdom, Playwright 1.61, `eslint-config-next/core-web-vitals` + `/typescript` (with `no-explicit-any` off under `packages/**`), Tailwind 4 (region font stacks moved into `@theme`), no Supabase CLI, `verify-migrations.sh` via Docker on Windows. | Matches the prototype's pins and upstream's gates. |
 | D12 | **Legacy app coexistence until cut-over.** The staff console, lifecycle tooling, Cloudflare Workers and the TW project stay on the legacy deployment; this app never reads with the anon key and never grants to `authenticated`. Re-pin upstream deliberately (Appendix D). | The two apps share tables, Auth and Storage. |
 
 ### 2.2 Repository layout after integration
@@ -286,7 +286,7 @@ smeassistant/
 ├── CLAUDE.md                      ← this file
 ├── package.json                   ← root Next.js app, packageManager pnpm@9.12.0, workspaces
 ├── pnpm-workspace.yaml            ← packages/*
-├── .nvmrc                         ← 22
+├── .nvmrc                         ← 24 (the runtime production serves)
 ├── next.config.ts                 ← transpilePackages: @sme-scanner/{scoring,region,scan-engine,contracts}; images.remotePatterns (pexels)
 ├── vercel.json                    ← {}  (no crons — Hobby plan; a test asserts it)
 ├── proxy.ts                       ← locale prefix redirect + Supabase session refresh + owner-route gate (Next 16)
