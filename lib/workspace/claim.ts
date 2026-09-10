@@ -29,6 +29,9 @@ export interface CompleteWorkspaceClaimInput {
   timezone?: string | null;
   userId: string;
   locale: string;
+  /** Owner-typed onboarding step 4 values, seeded into brand_profiles on first claim. */
+  brandVoice?: string | null;
+  approvedClaims?: string[] | null;
 }
 
 export type CompleteWorkspaceClaimResult =
@@ -174,7 +177,7 @@ export async function completeWorkspaceClaim(
   }
   await db.attachLocation(job.id, locationId);
   // Conflict-ignore preserves previously edited brand and money-bearing usage.
-  await db.ensureBrand(workspace.id);
+  await db.ensureBrand(workspace.id, { voice: input.brandVoice ?? null, approvedClaims: input.approvedClaims ?? null });
   await db.ensureUsage({ workspace_id: workspace.id, period: claimPeriod(timezone, now()), allowance: deliveryAllowanceForTier(workspace.tier) });
 
   await buildSnapshot(job.id, workspace.id, locationId);

@@ -114,6 +114,8 @@ describe("POST /api/workspaces/claim", () => {
       timezone: "Asia/Hong_Kong",
       locale: "zh-HK",
       userId: "user-1",
+      brandVoice: null,
+      approvedClaims: null,
     }, expect.objectContaining({ buildSnapshot: expect.any(Function), deriveActions: expect.any(Function) }));
     // Rate limited per user (10/h), failing closed.
     expect(mocks.enforceRateLimit).toHaveBeenCalledWith(
@@ -175,8 +177,22 @@ describe("parseClaimBody", () => {
         market: "tw",
         timezone: null,
         locale: "zh-HK",
+        brandVoice: null,
+        approvedClaims: null,
       },
     });
+  });
+
+  it("keeps the owner's onboarding brand basics instead of dropping them", () => {
+    const parsed = parseClaimBody({ ...BODY, brand_voice: "professional", approved_claims: [" Family recipes since 1998 ", "", "Halal certified"] });
+    expect(parsed).toMatchObject({ ok: true, body: { brandVoice: "professional", approvedClaims: ["Family recipes since 1998", "Halal certified"] } });
+  });
+
+  it("ignores a voice the server does not support rather than rejecting the claim", () => {
+    // "concise" was the onboarding UI's own local value and is not in
+    // BRAND_VOICES; an older client must not start failing on it.
+    expect(parseClaimBody({ ...BODY, brand_voice: "concise" })).toMatchObject({ ok: true, body: { brandVoice: null } });
+    expect(parseClaimBody({ ...BODY, approved_claims: "not-an-array" })).toMatchObject({ ok: true, body: { approvedClaims: null } });
   });
 
   it("rejects an over-long name or address", () => {

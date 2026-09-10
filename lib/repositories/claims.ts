@@ -116,7 +116,19 @@ export const claimCompletionStore = {
   return (await getPool().query<{id:string}>("INSERT INTO locations(workspace_id,slug,is_primary,name,address,district,place_id,ig_handle,website_url) VALUES($1,$2,true,$3,$4,$5,$6,$7,$8) RETURNING id",[fields.workspace_id,fields.slug,fields.name,fields.address,fields.district,fields.place_id,fields.ig_handle,fields.website_url])).rows[0];
  },
  async attachLocation(jobId:string,locationId:string):Promise<void> {await getPool().query("UPDATE audit_jobs SET location_id=$2 WHERE id=$1",[jobId,locationId]);},
- async ensureBrand(workspaceId:string):Promise<void> {await getPool().query("INSERT INTO brand_profiles(workspace_id) VALUES($1) ON CONFLICT(workspace_id) DO NOTHING",[workspaceId]);},
+ /**
+  * Seeds the brand profile at claim time. `brand` carries what the owner
+  * actually typed in onboarding step 4 -- previously those fields were POSTed
+  * and silently discarded, leaving an empty default row, so the owner filled in
+  * a voice and approved claims that went nowhere. ON CONFLICT DO NOTHING still
+  * means a re-run never overwrites a brand the owner has since edited.
+  */
+ async ensureBrand(workspaceId:string,brand?:{voice?:string|null;approvedClaims?:string[]|null}):Promise<void> {
+  await getPool().query(
+   "INSERT INTO brand_profiles(workspace_id,voice,approved_claims) VALUES($1,coalesce($2,'warm'),coalesce($3::text[],'{}'::text[])) ON CONFLICT(workspace_id) DO NOTHING",
+   [workspaceId,brand?.voice??null,brand?.approvedClaims?.length?brand.approvedClaims:null],
+  );
+ },
  async ensureUsage(input:{workspace_id:string;period:string;allowance:number|null}):Promise<void> {
   await getPool().query("INSERT INTO workspace_usage(workspace_id,period,allowance) VALUES($1,$2,$3) ON CONFLICT(workspace_id,period) DO NOTHING",[input.workspace_id,input.period,input.allowance]);
  },

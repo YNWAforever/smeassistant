@@ -41,7 +41,9 @@ export type OnboardingProps = {
   gbpConnected: boolean
 }
 
-type BrandVoice = "warm" | "concise" | "playful"
+// Must stay a subset of lib/workspace/brand.ts's BRAND_VOICES -- the server
+// validates against that set, so a value only this file knows about is dropped.
+type BrandVoice = "warm" | "professional" | "playful" | "direct"
 
 const STEP_COUNT = 4
 
@@ -84,8 +86,9 @@ export function OnboardingPage({ locale, claim, plan, claimed = false, oauthEnab
     : (isChinese ? "等待驗證" : "Pending verification")
   const voiceLabels: Record<BrandVoice, string> = {
     warm: isChinese ? "親切、本地、真誠" : "Warm, local and sincere",
-    concise: isChinese ? "簡潔、專業" : "Concise and professional",
+    professional: isChinese ? "簡潔、專業" : "Concise and professional",
     playful: isChinese ? "活潑、有活力" : "Playful and energetic",
+    direct: isChinese ? "直接、務實" : "Direct and matter-of-fact",
   }
   const canContinue = step === 1 ? Boolean(evidence) : step === 2 ? ownsWorkspace : step === 3 ? ownsWorkspace : ownsWorkspace && workspaceName.trim().length > 0 && locationName.trim().length > 0
 

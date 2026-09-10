@@ -5,6 +5,7 @@ import { claimCompletionStore } from "@/lib/repositories/claims";
 import { getUser } from "@/lib/auth";
 import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
+import { BRAND_VOICES } from "@/lib/workspace/brand";
 import { completeWorkspaceClaim, isValidTimezone, type ClaimMarket } from "@/lib/workspace/claim";
 import { buildSnapshot } from "@/lib/workspace/snapshots";
 
@@ -31,6 +32,8 @@ type ParsedBody = {
   market: ClaimMarket;
   timezone: string | null;
   locale: string;
+  brandVoice: string | null;
+  approvedClaims: string[] | null;
 };
 
 function pick(body: Record<string, unknown>, snake: string, camel: string): unknown {
@@ -80,9 +83,25 @@ export function parseClaimBody(raw: unknown): { ok: true; body: ParsedBody } | {
 
   const locale = isLocale(body.locale) ? body.locale : DEFAULT_LOCALE;
 
+  // Onboarding step 4's brand basics. These were already being POSTed and
+  // silently dropped, leaving an empty default brand_profiles row. An
+  // unrecognised voice or a malformed claims list is ignored rather than
+  // rejected, so an older client cannot start 400-ing on a field it has
+  // always sent; validation is against the real BRAND_VOICES set, which the
+  // onboarding UI's own local union did not match.
+  const rawVoice = limitedString(pick(body, "brand_voice", "brandVoice"), 32);
+  const brandVoice = rawVoice && (BRAND_VOICES as readonly string[]).includes(rawVoice) ? rawVoice : null;
+  const rawClaims = pick(body, "approved_claims", "approvedClaims");
+  const approvedClaims = Array.isArray(rawClaims)
+    ? rawClaims.map((claim) => limitedString(claim, 200)).filter((claim): claim is string => Boolean(claim)).slice(0, 20)
+    : null;
+
   return {
     ok: true,
-    body: { claimSlug, workspaceName, primaryLocation: { name: locationName, address }, market, timezone, locale },
+    body: {
+      claimSlug, workspaceName, primaryLocation: { name: locationName, address }, market, timezone, locale,
+      brandVoice, approvedClaims: approvedClaims?.length ? approvedClaims : null,
+    },
   };
 }
 
