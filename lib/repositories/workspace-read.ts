@@ -5,6 +5,7 @@ import type { WorkspaceRow, LocationRow, UsageRow, SnapshotRow } from "../worksp
 
 import type { ActionState } from "../domain";
 import type { ActionRow } from "../workspace/overview";
+import { parseVersionMeta } from "../workspace/version-meta";
 import type { ScanSnapshotRow, ScanDiffRow } from "../workspace/snapshots";
 import type { AeoSnapshotRow } from "../trends/aeo-trend-model";
 import type { RunRow, VersionRow, MeasurementRow, AuditEventRow, NotificationRow, IntegrationsModel } from "../workspace/queries-pages";
@@ -87,12 +88,19 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
         FROM action_runs r JOIN actions a ON a.id=r.action_id AND a.workspace_id=r.workspace_id
         WHERE a.workspace_id=$1 AND r.action_id=ANY($2::uuid[]) ORDER BY r.created_at DESC`, [workspaceId, actionIds]);
     },
+    // `meta` carries the guardrail warnings the agents already compute and
+    // artifacts.ts already persists. It was never selected, so the approval
+    // panel showed a constant "1 reminder" on every draft and a real violation
+    // looked exactly like a clean one. Parsed here rather than shipped raw:
+    // the blob is unconstrained jsonb and has no business reaching the client.
     async versions(workspaceId: string, actionIds: string[]): Promise<VersionRow[]> {
       if (!actionIds.length) return [];
-      return rows<VersionRow>(`SELECT v.id, v.action_id, v.version_no, v.body, v.alt_text, v.author_type,
-        v.author_user_id, v.approval_state, v.delivery_state, v.approved_at::text, v.reviewer_comment, v.created_at::text
+      const raw = await rows<Omit<VersionRow, "origin" | "agentKey" | "checked" | "guardrails" | "agentNotes"> & { meta: unknown }>(
+        `SELECT v.id, v.action_id, v.version_no, v.body, v.alt_text, v.author_type,
+        v.author_user_id, v.approval_state, v.delivery_state, v.approved_at::text, v.reviewer_comment, v.created_at::text, v.meta
         FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id
         WHERE a.workspace_id=$1 AND v.action_id=ANY($2::uuid[]) ORDER BY v.version_no DESC`, [workspaceId, actionIds]);
+      return raw.map(({ meta, ...version }) => ({ ...version, ...parseVersionMeta(meta, version.author_type) }));
     },
     async latestConnection(workspaceId: string): Promise<{ status: IntegrationsModel["google"]["status"]; expires_at: string | null; updated_at: string | null; created_at: string } | null> {
       const [row] = await rows<{ status: IntegrationsModel["google"]["status"]; expires_at: string | null; updated_at: string | null; created_at: string }>(

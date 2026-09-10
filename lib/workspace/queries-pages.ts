@@ -6,6 +6,7 @@ import type { EvidenceGalleryItem } from "@/lib/report/view-model";
 import { inLocationScope, type Membership } from "@/lib/auth";
 import { artifactRepository } from "@/lib/repositories/artifacts";
 import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
+import type { GuardrailFlag, VersionOrigin } from "@/lib/workspace/version-meta";
 import { selectScannedReviews } from "@/lib/workspace/evidence-inputs";
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { currentPeriod, type LocationSummary, type WorkspaceContext } from "@/lib/workspace/queries";
@@ -104,6 +105,16 @@ export interface VersionRow {
   approved_at: string | null;
   reviewer_comment: string | null;
   created_at: string;
+  /**
+   * Parsed from `output_versions.meta` by the repository (see
+   * lib/workspace/version-meta.ts). The raw blob deliberately does not travel:
+   * it is unconstrained jsonb, and the approver only needs the classification.
+   */
+  origin: VersionOrigin;
+  agentKey: string | null;
+  checked: boolean;
+  guardrails: GuardrailFlag[];
+  agentNotes: string[];
 }
 
 export interface RunRow {
