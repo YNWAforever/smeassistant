@@ -6,6 +6,7 @@ import type { PrototypeLocale } from "@/lib/copy";
 import { isDemoQuestionId, type AssistantSurface } from "@/lib/pocket-assistant/contracts";
 import { createDemoAssistantRun } from "@/lib/pocket-assistant/demo";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
+import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
 
 /**
  * POST /api/assistant/run (CLAUDE.md §3.8).
@@ -67,6 +68,26 @@ export async function POST(request: Request) {
       locale: locale as PrototypeLocale,
       context: { workspaceId, locationId: ids.locationId ?? undefined, snapshotId: ids.snapshotId ?? undefined, actionId: ids.actionId ?? undefined, versionId: ids.versionId ?? undefined },
     });
+
+    // `assistant.run` has been in the audit vocabulary since Phase 4 but was
+    // never emitted, so Activity -- sold as an append-only owner audit --
+    // omitted every Visibility Operator run from all four live surfaces. An
+    // owner auditing who did what saw a version appear with no trace that a
+    // model produced the text. recordNeonEvent swallows its own failures, so
+    // this cannot turn a successful run into an error.
+    await recordNeonEvent({
+      workspaceId,
+      locationId: ids.locationId,
+      actorType: "user",
+      actorId: auth.user.id,
+      event: "assistant.run",
+      entityType: ids.actionId ? "action" : null,
+      entityId: ids.actionId,
+      locale,
+      ipHash: ipHashFor(request),
+      payload: { intent: intentId, surface, artifact: Boolean(result.output) },
+    });
+
     return json(result);
   } catch (error) {
     if (error instanceof AssistantAccessError) return json({ error: error.code }, error.status);

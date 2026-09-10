@@ -6,6 +6,16 @@ const mocks = vi.hoisted(() => ({
   enforceRateLimit: vi.fn(),
   runLiveAssistant: vi.fn(),
   llmComplete: vi.fn(),
+  recordNeonEvent: vi.fn(),
+}));
+
+// Mocked rather than left real: it keeps the audit assertions below honest, and
+// it keeps lib/db/client out of this file's module graph -- the first test here
+// is already the slowest in the suite and was tripping the 5s timeout under
+// load before the route imported the audit module at all.
+vi.mock("@/lib/workspace/audit", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/workspace/audit")>()),
+  recordNeonEvent: (...args: unknown[]) => mocks.recordNeonEvent(...args),
 }));
 
 vi.mock("@/lib/auth", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/auth")>()), authorizeWorkspaceRequest: (...args: unknown[]) => mocks.authorizeWorkspaceRequest(...args) }));
@@ -38,6 +48,29 @@ describe("POST /api/assistant/run", () => {
     expect(body.demoBoundary).toContain("Sanitised Kam Man House demo data only");
     expect(mocks.authorizeWorkspaceRequest).not.toHaveBeenCalled();
     expect(mocks.runLiveAssistant).not.toHaveBeenCalled();
+  });
+
+  it("records an assistant.run audit event for a live run, and none for demo", async () => {
+    // `assistant.run` was in the audit vocabulary from Phase 4 but nothing ever
+    // emitted it, so Activity -- sold as an append-only owner audit -- omitted
+    // every Visibility Operator run. An owner saw a version appear with no
+    // trace that a model produced the text.
+    await post({ mode: "live", surface: "home", intentId: "explain_priority", locale: "en", context: { workspaceId: WORKSPACE_ID } });
+
+    expect(mocks.recordNeonEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: WORKSPACE_ID,
+        actorType: "user",
+        event: "assistant.run",
+        locale: "en",
+        payload: expect.objectContaining({ intent: "explain_priority", surface: "home" }),
+      }),
+    );
+
+    // Demo mode returns before any workspace exists to audit.
+    mocks.recordNeonEvent.mockClear();
+    await post({ mode: "demo", surface: "sample", intentId: "explain_priority", locale: "en" });
+    expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
   });
 
   it("live mode requires membership of context.workspaceId", async () => {
