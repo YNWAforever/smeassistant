@@ -112,6 +112,24 @@ const PROMISES: readonly Promised[] = [
       "回覆你收到的報告電郵",
     ],
   },
+  {
+    // Fix Pack drafts are `agent_runs` rows. This app reads them and PATCHes
+    // their status, but never creates one -- CLAUDE.md section 3.7: "do not
+    // write to `agent_runs` from this app's agents (v1)". The upstream
+    // generator (plan-fix-pack / generate-fix-pack) was never ported either, so
+    // no scan can populate the card however long an owner waits.
+    capability: "anything in this app that creates a Fix Pack draft",
+    implemented: () =>
+      backendMatches(/insert\s+into\s+agent_runs/i) ||
+      existsSync(join(repoRoot, "lib", "agents", "generate-fix-pack.ts")) ||
+      existsSync(join(repoRoot, "lib", "agents", "plan-fix-pack.ts")),
+    banned: [
+      "drafts appear here after a paid-tier scan completes",
+      "drafted from scan findings",
+      "付費方案的掃描完成後，草稿會在這裡出現",
+      "由掃描發現生成的回覆及帖文",
+    ],
+  },
 ];
 
 /**
