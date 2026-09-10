@@ -254,6 +254,8 @@ type FunnelCopy = {
     signInEmailLabel: string
     signInEmailHint: string
     deliveryTitle: string
+    /** The delivery consent's own description; must not reuse formBody. */
+    deliveryBody: string
     discussionTitle: string
     discussionBody: string
     marketingTitle: string
@@ -593,7 +595,7 @@ const funnelEn: FunnelCopy = {
       { title: "Ownership comes later", body: "Verified with Google before workspace access" },
     ],
     formTitle: "Secure report delivery",
-    formBody: "We send a secure report link to the contact you choose; ownership is verified with Google before workspace access.",
+    formBody: "Your full report opens here as soon as you unlock it. We keep the contact you choose so Fimmick can follow up about this scan; ownership is verified with Google before workspace access.",
     objectiveHeading: "Your selected goal",
     channelHeading: "How should we deliver the report?",
     channels: { whatsapp: "WhatsApp", line: "LINE", phone: "Phone", email: "Email" },
@@ -601,7 +603,8 @@ const funnelEn: FunnelCopy = {
     placeholders: { whatsapp: "e.g. +852 9123 4567", line: "e.g. @yourshop", phone: "e.g. +852 9123 4567", email: "owner@business.com" },
     signInEmailLabel: "Email for a later sign-in link (optional)",
     signInEmailHint: "Nothing is emailed now. Later, a sign-in link for this report can be requested with this address if it is still eligible. Workspace access is checked separately.",
-    deliveryTitle: "Deliver this report securely",
+    deliveryTitle: "Let Fimmick send this report to that contact",
+    deliveryBody: "Permission only — nothing is sent automatically. The report opens in this browser now; this lets the Fimmick team reach you about it later.",
     discussionTitle: "Discuss the findings with Fimmick",
     discussionBody: "Optional and separate from report delivery.",
     marketingTitle: "Occasional Fimmick updates",
@@ -900,7 +903,7 @@ const funnelZhHK: FunnelCopy = {
       { title: "擁有權稍後驗證", body: "進入工作台前以 Google 驗證" },
     ],
     formTitle: "安全送達報告",
-    formBody: "我們會以安全連結送出報告至你選擇的聯絡方式；進入工作台前會以 Google 驗證擁有權。",
+    formBody: "解鎖後，完整報告會即時在此開啟。我們會保留你選擇的聯絡方式，以便 Fimmick 就這次掃描與你跟進；進入工作台前會以 Google 驗證擁有權。",
     objectiveHeading: "你選擇的目標",
     channelHeading: "以甚麼方式送達報告？",
     channels: { whatsapp: "WhatsApp", line: "LINE", phone: "電話", email: "電郵" },
@@ -908,7 +911,8 @@ const funnelZhHK: FunnelCopy = {
     placeholders: { whatsapp: "例：+852 9123 4567", line: "例：@yourshop", phone: "例：+852 9123 4567", email: "owner@business.com" },
     signInEmailLabel: "日後索取登入連結的電郵（選填）",
     signInEmailHint: "現在不會發送任何電郵。日後如此電郵仍符合資格，可用它為此報告索取登入連結；工作台存取會另行核實。",
-    deliveryTitle: "安全送達此報告",
+    deliveryTitle: "允許 Fimmick 把報告送到該聯絡方式",
+    deliveryBody: "這只是授權，系統不會自動發送。報告現在就會在此瀏覽器開啟；此項讓 Fimmick 團隊日後可就報告與你聯絡。",
     discussionTitle: "與 Fimmick 討論發現",
     discussionBody: "選填，並與報告送達分開。",
     marketingTitle: "偶爾接收 Fimmick 資訊",
@@ -1207,7 +1211,7 @@ const funnelZhTW: FunnelCopy = {
       { title: "擁有權稍後驗證", body: "進入工作台前以 Google 驗證" },
     ],
     formTitle: "安全送達報告",
-    formBody: "我們會以安全連結把報告送到你選擇的聯絡方式；進入工作台前會以 Google 驗證擁有權。",
+    formBody: "解鎖後，完整報告會立即在這裡開啟。我們會保留你選擇的聯絡方式，讓 Fimmick 能就這次掃描與你聯繫；進入工作台前會以 Google 驗證擁有權。",
     objectiveHeading: "你選擇的目標",
     channelHeading: "要用什麼方式送達報告？",
     channels: { whatsapp: "WhatsApp", line: "LINE", phone: "電話", email: "電子郵件" },
@@ -1215,7 +1219,8 @@ const funnelZhTW: FunnelCopy = {
     placeholders: { whatsapp: "例：+852 9123 4567", line: "例：@yourshop", phone: "例：0912 345 678", email: "owner@business.com" },
     signInEmailLabel: "日後索取登入連結的電子郵件（選填）",
     signInEmailHint: "現在不會寄出任何郵件。日後如這個電子郵件仍符合資格，可用它為此報告索取登入連結；工作台存取會另行核實。",
-    deliveryTitle: "安全送達此報告",
+    deliveryTitle: "允許 Fimmick 將報告寄送至該聯絡方式",
+    deliveryBody: "這只是授權，系統不會自動寄送。報告現在就會在這個瀏覽器開啟；此項讓 Fimmick 團隊日後可就報告與你聯繫。",
     discussionTitle: "與 Fimmick 討論發現",
     discussionBody: "選填，並與報告送達分開。",
     marketingTitle: "偶爾接收 Fimmick 資訊",

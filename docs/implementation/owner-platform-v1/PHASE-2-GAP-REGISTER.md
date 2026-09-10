@@ -4,7 +4,7 @@ Produced by a 14-agent audit of the shipped code against the product guardrails 
 
 **Read the caveat first.** 24 of 24 findings came back confirmed and none was refuted. A verification pass that refutes nothing is not evidence that everything is real -- it is equally consistent with weak verification. Treat severities as claims to check, not conclusions. I independently re-verified finding 1 line by line (including why its test never caught it) and it holds exactly as described; the rest carry file:line evidence but have not had that second human pass.
 
-This is raw material for a Phase 2 plan, in the same spirit as the Phase 1 audit register. **Findings 1, 2, 3, 4 and 21 are fixed** (see below); the rest are not.
+This is raw material for a Phase 2 plan, in the same spirit as the Phase 1 audit register. **All five high-severity findings are fixed** — 1, 2, 3, 4, 5, and 21 as a duplicate of 3. The 19 medium and low findings are not.
 
 Findings 3 and 21 turned out to be the same defect, reported independently by the `ownership-consent` and `authorization` auditors at different severities — worth knowing when reading the other 20, since the register does not otherwise de-duplicate across areas.
 
@@ -27,6 +27,14 @@ Findings 3 and 21 turned out to be the same defect, reported independently by th
   Sharing the function rather than reimplementing it is the point: the run path and the assistant path are two ways to draft the *same* agent, and a second copy of the rule is what drifts. `LiveRunInput` gains an optional `assets` capability alongside the existing `repository` / `llm` injection points, so tests can drive it without a database.
 
   **A pre-existing test asserted the bypass** (`live.test.ts` expected a `social_post` artifact from a fixture with `provided_inputs: {}`), so it failed the moment the gate landed — a useful confirmation the finding was real rather than theoretical. It now asserts the gate, with four cases covering the whole rule: no asset, an asset whose rights are `needs_review`, an explicit text-only decision, and an approved asset.
+
+- **5. Unlock form promised a send that never happens** — fixed. `formBody` now says what the route does: the full report opens here on unlock, and the chosen contact is kept so Fimmick can follow up. The delivery consent gets its own `deliveryBody` instead of reusing `formBody` — reusing one string for the form's subtitle and the consent's description is how a single false promise ended up in two places.
+
+  The consent itself is kept, and is now described as what it actually is: **permission** to be contacted at that address, explicitly not an automatic send. That distinction matters for the `consent_records` row, which was being stamped at policy version `2026-07-28` against a delivery that never occurred.
+
+  `LEGAL_POLICY_VERSION` is deliberately **not** bumped, on the same reasoning as the Phase 1 `retentionBody` correction: describing accurately what already happens narrows no user right and changes no purpose, retention, sharing or rights clause. Bumping would restamp every future consent row for an accuracy fix.
+
+  Guarded by a new trilingual case in `tests/funnel-unlock.test.ts` asserting no unlock string promises a send, that `deliveryBody` states permission-only and no-automatic-send, and that it is not the same string as `formBody`.
 
 - **2. Mid-period tier change and the delivery allowance** (continued) — `applyTier` is the only writer of `workspaces.tier` in this app, so the reconciliation is complete here. If a tier ever comes to be written by another path (a staff grant reaching the shared database directly), that path must reconcile too. Covered by a new integration case in `neon-integrations.integration.test.ts` that seeds a spent lite period, upgrades, and asserts the allowance lifts to `NULL` and then returns to `3` on downgrade.
 

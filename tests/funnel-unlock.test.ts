@@ -110,6 +110,21 @@ describe("unlock copy", () => {
     expect(unlock).not.toHaveProperty("recoveryHint");
   });
 
+  it.each(LOCALES)("never claims the report is sent anywhere (%s)", (locale) => {
+    const unlock = copy[locale].funnel.unlock;
+    // Unlocking sets a viewer-grant cookie and opens the report in this
+    // browser. There is no mail or messaging sender in the app at all, so no
+    // string on this form may promise a send.
+    expect(unlock.formBody).not.toMatch(/We send|送出報告|把報告送到|寄送/);
+    expect(unlock.deliveryBody).not.toMatch(/We send|送出報告|把報告送到/);
+    // The consent is permission to be contacted, and says so.
+    expect(unlock.deliveryBody).toMatch(/Permission only|授權/);
+    expect(unlock.deliveryBody).toMatch(/nothing is sent automatically|不會自動/i);
+    // The consent row must not reuse the form subtitle: they describe
+    // different things and reusing one is how the false promise spread.
+    expect(unlock.deliveryBody).not.toBe(unlock.formBody);
+  });
+
   it.each(LOCALES)("states report-access-link lifetime without inventing a recovery link (%s)", (locale) => {
     const rows = copy[locale].funnel.trust.rows;
     expect(rows.map((row) => row.value).join(" ")).not.toMatch(/recovery link|復原連結/i);

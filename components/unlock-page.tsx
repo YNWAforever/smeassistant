@@ -199,7 +199,10 @@ export function UnlockPage({ locale, slug, market }: { locale: PrototypeLocale; 
             <Checkbox id="delivery-consent" checked={values.reportDelivery} onCheckedChange={(value) => update({ reportDelivery: Boolean(value) })} />
             <span>
               <strong>{c.deliveryTitle}</strong>
-              <small>{c.formBody}</small>
+              {/* Its own text, not the form's subtitle: this describes what the
+                  merchant is consenting to, which is permission to be contacted
+                  -- not an automatic send the product does not perform. */}
+              <small>{c.deliveryBody}</small>
             </span>
           </Label>
           <Label className="consent-row" htmlFor="discussion-consent">
