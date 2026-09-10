@@ -59,7 +59,7 @@ export function PricingPage({ locale, market }: { locale: PrototypeLocale; marke
       cadence: `／${f.perMonth}`,
       description: "適合希望持續改善能見度、但不想管理多個 AI 工具的小型團隊。",
       meta: "1 個地點",
-      features: ["核准後交付，用量在工作台內顯示", "定期可比較重新掃描", "完整 AI 能見度團隊", "草稿版本、店主審批及成效證明"],
+      features: ["核准後交付，用量在工作台內顯示", "可隨時自行執行的可比較重新掃描", "完整 AI 能見度團隊", "草稿版本、店主審批及成效證明"],
       cta: "開始增長工作台",
       href: `/${locale}/owner/sign-in?plan=growth`,
       featured: true,
@@ -95,7 +95,7 @@ export function PricingPage({ locale, market }: { locale: PrototypeLocale; marke
       key: "free", label: "One free scan", title: "SME Scanner", price: "Free", cadence: "", description: "See current visibility, source evidence and the best issue to tackle first.", meta: "No login to start", features: ["One public evidence scan", "Score with coverage", "Three safe priorities", "Methodology, sources and limitations"], cta: "Start free scan", href: `/${locale}/scan`, featured: false,
     },
     {
-      key: "growth", label: "Best for one location", title: "Growth Workspace", price: growthPrice, cadence: ` / ${f.perMonth}`, description: "For a small team that wants recurring improvement without managing a bundle of AI tools.", meta: "1 location", features: ["Approved deliveries, with usage shown in your workspace", "Scheduled comparable rescans", "Complete AI Visibility Team", "Versions, owner approval and proof"], cta: "Start Growth", href: `/${locale}/owner/sign-in?plan=growth`, featured: true,
+      key: "growth", label: "Best for one location", title: "Growth Workspace", price: growthPrice, cadence: ` / ${f.perMonth}`, description: "For a small team that wants recurring improvement without managing a bundle of AI tools.", meta: "1 location", features: ["Approved deliveries, with usage shown in your workspace", "Comparable rescans, run whenever you choose", "Complete AI Visibility Team", "Versions, owner approval and proof"], cta: "Start Growth", href: `/${locale}/owner/sign-in?plan=growth`, featured: true,
     },
     {
       key: "multi", label: "Up to 3 locations", title: "Multi-location", price: f.contactPricing, cadence: "", description: "One priority, approval and improvement rhythm across multiple business locations.", meta: "Includes 3 locations", features: ["Approved deliveries pooled across locations", "Cross-location prioritisation", "Location-scoped evidence and approvals", "Combined and per-location outcomes"], cta: "Manage multiple locations", href: `/${locale}/owner/sign-in?plan=multi`, featured: false,

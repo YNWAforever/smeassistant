@@ -50,7 +50,13 @@ export interface HomeBrief {
   openActions: ActionOverview[];
   proof: HomeProof | null;
   month: { resolved: number; regressed: number; awaitingApproval: number; completed: number; measured: number };
-  nextScanAt: string | null;
+  /**
+   * Day of the month the location's monthly rescan cadence falls on, or null
+   * when no cadence is recorded. Deliberately not a date: nothing dispatches a
+   * due `scan_schedules` row and `next_run_at` is never advanced, so a date
+   * would name a run that is not coming.
+   */
+  rescanCadenceDay: number | null;
   drafts: number;
   agentStrip: { scout: boolean; priority: boolean; drafts: number; awaiting: number };
   ledger: { resolved: string[]; regressed: string[]; decayed: string[] };
@@ -209,7 +215,7 @@ export interface IntegrationsModel {
 }
 
 export interface CalendarModel {
-  nextScans: Array<{ locationId: string | null; locationName: string | null; placeId: string; nextRunAt: string | null; cadence: string }>;
+  nextScans: Array<{ locationId: string | null; locationName: string | null; placeId: string; anniversaryDay: number | null; cadence: string }>;
   dueActions: ActionOverview[];
 }
 
@@ -226,6 +232,19 @@ export interface NotificationRow {
 export interface NotificationsModel {
   inApp: NotificationRow[];
   email: { rescanComplete: boolean; regressionAlert: boolean; monthlyDigest: boolean };
+}
+
+/**
+ * The recurring day of the month a monthly cadence falls on. `anniversary_day`
+ * is `smallint NOT NULL` constrained to 1..28, so it is authoritative; the
+ * `next_run_at` fallback covers a row written by something other than this app.
+ * A paused cadence has no day to show.
+ */
+function cadenceDay(schedule: { cadence: string; anniversary_day: number | null; next_run_at: string | null } | null): number | null {
+  if (!schedule || schedule.cadence !== "monthly") return null;
+  if (schedule.anniversary_day && schedule.anniversary_day >= 1 && schedule.anniversary_day <= 28) return schedule.anniversary_day;
+  const parsed = schedule.next_run_at ? new Date(schedule.next_run_at) : null;
+  return parsed && !Number.isNaN(parsed.getTime()) ? parsed.getUTCDate() : null;
 }
 
 const TEMPLATE_CHANNEL = new Map<string, ActionFilters["channel"]>(TEMPLATES.map((t) => [t.key, t.channel]));
@@ -404,7 +423,7 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
       completed: completed.length,
       measured: completed.filter((row) => row.measurement_state === "measured").length,
     },
-    nextScanAt: schedules[0]?.next_run_at ?? null,
+    rescanCadenceDay: cadenceDay(schedules[0] ?? null),
     drafts,
     agentStrip: { scout: Boolean(snapshot), priority: openActions.length > 0, drafts, awaiting: drafts },
     ledger: diff ? { resolved: diff.resolved_findings, regressed: diff.regressed_findings, decayed: diff.decayed_findings } : { resolved: [], regressed: [], decayed: [] },
@@ -630,7 +649,7 @@ export async function getCalendar(ctx: WorkspaceContext): Promise<CalendarModel>
       locationId: byPlace.get(s.place_id)?.id ?? null,
       locationName: byPlace.get(s.place_id)?.name ?? null,
       placeId: s.place_id,
-      nextRunAt: s.next_run_at,
+      anniversaryDay: cadenceDay(s),
       cadence: s.cadence,
     })),
     dueActions: await overviewsFor(ctx, dueRows),

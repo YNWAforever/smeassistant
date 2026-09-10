@@ -4,7 +4,9 @@ Produced by a 14-agent audit of the shipped code against the product guardrails 
 
 **Read the caveat first.** 24 of 24 findings came back confirmed and none was refuted. A verification pass that refutes nothing is not evidence that everything is real -- it is equally consistent with weak verification. Treat severities as claims to check, not conclusions. I independently re-verified finding 1 line by line (including why its test never caught it) and it holds exactly as described; the rest carry file:line evidence but have not had that second human pass.
 
-This is raw material for a Phase 2 plan, in the same spirit as the Phase 1 audit register. **All five high-severity findings are fixed** — 1, 2, 3, 4, 5, and 21 as a duplicate of 3 — plus medium finding **6**. The remaining 18 are not.
+This is raw material for a Phase 2 plan, in the same spirit as the Phase 1 audit register. **All five high-severity findings are fixed** — 1, 2, 3, 4, 5, and 21 as a duplicate of 3 — plus mediums **6, 13, 14 and 15**. The remaining 15 are not.
+
+Findings 5, 13, 14 and 15 are the whole `promises-copy` area, and closing it as a set is what surfaced three more of the same kind that the 14-agent audit missed — recorded below as **P1–P3**. They are **not fixed**; they are outside the four that were asked for.
 
 Findings 3 and 21 turned out to be the same defect, reported independently by the `ownership-consent` and `authorization` auditors at different severities — worth knowing when reading the other 20, since the register does not otherwise de-duplicate across areas.
 
@@ -43,6 +45,24 @@ Findings 3 and 21 turned out to be the same defect, reported independently by th
   The second half of the finding is fixed too: Home rendered the raw engine code (`Reason: NO_DIFF`) while Insights had a private translated catalogue. That catalogue moved to `lib/workspace/format.ts` as `comparisonReasonText` and both call it, so they cannot diverge. Its default no longer echoes an unrecognised code — the old Insights fallback was `reason ?? default`, which would have leaked any future engine code straight onto the page.
 
   Covered by `lib/workspace/format.test.ts` (every code translated in both languages, unknown codes never echoed) and `components/score-dial.test.tsx` (no change claim at all without a delta, in text and in the aria-label; a genuine measured zero still reported). **Honest gap:** the one-line JSX in `home-brief.tsx` is not itself covered — a `HomeBriefView` render test needs a large fixture plus mocks for four child components, which was not worth it for one prop; the component contract it depends on is pinned instead.
+
+- **13. "Scheduled comparable rescans" that nothing dispatches** — fixed as copy, because building the dispatcher is prohibited here. CLAUDE.md §7 says "**Do not** add crons to `vercel.json` … reuse the legacy Cloudflare scheduler", `tests/cron-registration.test.ts` enforces it, and the scheduler it defers to is itself hard-disabled against this database (`lib/scan/dispatch-runtime.ts` returns `"vercel"` and `dispatchToScanWorker` returns `false` unconditionally). `DEPLOY.md` and `NEON-RUNNER-COMPATIBILITY.md` repeat the ban independently. So the copy is the only end that can move.
+
+  Pricing, landing, the paid plan card, Calendar and Home now describe rescans as owner-run, in all three locales; the landing "then schedules a re-scan after export" became "prompts you to re-scan after export".
+
+  **Verifying this turned up something the finding understated, and it changed the fix.** `scan_schedules` is INSERTed once, behind a `scheduleExists` guard, and there is no `UPDATE` of it anywhere in the repo — so `next_run_at` never advances. The stored date is frozen at the first rescan's anniversary and silently drifts into the past, meaning "Next scan · 14 Sep" would still be shown months later. Relabelling the tile was therefore not enough. Home and Calendar now render the **recurring anniversary day** (`Monthly · 14th`), which stays true for as long as the row exists, and `HomeBrief.nextScanAt` is replaced by `rescanCadenceDay`. `anniversary_day` is `smallint NOT NULL` constrained to 1..28, so it is authoritative; `workspace-read.ts` selects it alongside the existing columns — no migration, no schema change.
+
+- **14. Three notification-email switches that send nothing** — fixed as copy. The email card is badged `Planned`, and the card now states that email delivery is not enabled and that in-app notifications are the live channel. The one note that asserted a send ("One email when a scan finishes") now names only the trigger.
+
+  **The switches are deliberately left enabled**, against the register's own suggestion to disable them. The preference is real: the PATCH route, the repository write and the read-back are all live and tested, and the columns are the ones the legacy app reads. Disabling would remove working behaviour to make a point about a different missing capability.
+
+  The verifier proposed re-describing the three rows as in-app notifications instead. That was rejected: `workspace_notifications` rows are written unconditionally by `lib/workspace/notify.ts` and are **not** gated on these toggles, so describing them that way would have replaced one false promise with another. The page's `PageIntro` also advertised "category, location, channel and quiet-hour controls" when only the category switches exist; that is corrected too.
+
+- **15. Onboarding's staff-assignment fallback pointed at an email that is never sent** — fixed. This is the branch nearly every owner meets: `.env.example` ships `WORKSPACE_CLAIM_VIA_OAUTH_ENABLED=false`, so it is the `else` of the ownership ternary. It told them "you will be emailed when it is done" and "Reply to the report email you received" — this app sends neither, and the card offered no href, number or address, so the flow simply stopped.
+
+  It now offers the market's real contact channels, carries the report reference into WhatsApp and email as prefilled text, and says how the wait actually ends ("return to this page and the remaining steps unlock" — true, since `resumeStep` is derived from persisted state).
+
+  **The channels had to be resolved on the server, and that is not incidental.** `getMarketCtas` reads `process.env[name]` through a *computed* key (`packages/region/src/config.ts:24`), and Next only inlines literal `process.env.NEXT_PUBLIC_FOO` references into a client bundle — calling it from this `"use client"` component would have returned `[]` on every deployment however the vars were set, i.e. replaced a dead promise with a dead link. The server page resolves it from the claimed job's `region` (guardrail 11: market from the business, not the interface language) and passes it down. When nothing is configured, no link is rendered at all and the copy falls back to naming the report reference.
 
 - **2. Mid-period tier change and the delivery allowance** (continued) — `applyTier` is the only writer of `workspaces.tier` in this app, so the reconciliation is complete here. If a tier ever comes to be written by another path (a staff grant reaching the shared database directly), that path must reconcile too. Covered by a new integration case in `neon-integrations.integration.test.ts` that seeds a spent lite period, upgrades, and asserts the allowance lifts to `NULL` and then returns to `3` on downgrade.
 
@@ -703,3 +723,43 @@ Add a location predicate to `measurements` and `completedActions` (join `actions
 **Verifier**
 
 The code claim is exactly as stated: lib/workspace/queries-pages.ts:373-375 calls repository.measurements(workspaceId, undefined, 1), draftVersions(workspaceId) and completedActions(workspaceId, periodStart) after resolving `location`, and lib/repositories/workspace-read.ts:102-108 and :112-113 confirm neither query filters on location_id; components/workspace/home-brief.tsx:116-123 renders the proof card with no location name. But the consequence is not reachable in the shipped product, so the severity is inflated. `INSERT INTO locations` has exactly one production call site — lib/repositories/claims.ts:116, reached only from lib/workspace/claim.ts:167-176, which first calls db.primaryLocation(workspace.id) and UPDATEs the existing row instead of inserting when one exists (always is_primary=true). No API route, rescan path, staff-assignment path or onboarding step creates a second location; multi-location fixtures exist only in tests. With exactly one location per workspace the workspace-wide and location-scoped result sets are identical, so today no owner can ever see another shop's proof or a mixed month count. This is a latent scoping inconsistency that will matter when multi-location ships, not a current user-visible or data-integrity defect.
+
+## Found while closing the `promises-copy` area — not fixed
+
+Closing findings 5, 13, 14 and 15 meant asking one question systematically: *which strings assert the product will do something, where no code path does it?* Applied as a sweep rather than to the four known cases, it found three more the 14-agent audit missed. Each was reproduced in the current tree before being written down.
+
+These are **outside the four that were asked for and are not fixed.** They are recorded here so the decision to take them on is a deliberate one.
+
+#### P1. The Fix Pack card promises drafts that nothing can ever produce
+
+**Area:** `promises-copy` · **Guardrail:** the same one as 5/13/14/15 — the interface may not assert an action the code does not perform.
+
+`components/workspace/fix-pack-card.tsx:80` renders, in all three locales: *"No Fix Pack drafts yet. Drafts appear here after a paid-tier scan completes."* That is a forward promise, not a neutral empty state.
+
+There is no `INSERT INTO agent_runs` anywhere in `lib/`, `app/` or `scripts/` — only in two integration tests. The table is read (`lib/repositories/fix-pack.ts:21,26`, `lib/repositories/reports.ts:66`) and status-updated on approve/reject (`fix-pack.ts:29`), never written. The upstream generator that wrote it runs against the legacy Supabase database, which `dispatch-runtime.ts` hard-disables against this one. `lib/workspace/post-process.ts` does not touch it. The card is rendered unconditionally for every owner, tier and role, so the sentence is permanent.
+
+Worth flagging: `IMPLEMENTATION-TRACEABILITY.md:90` records this affordance as "already correct … an honest empty state". That assessment is wrong, and the earlier audit inherited it — which is plausibly why the sweep found it and the audit did not.
+
+**Shape of the fix:** state that Fix Pack drafts are generated by the Fimmick team rather than by a scan, or badge the card `Planned` as the notifications email card now is. Do not promise a scan will produce them.
+
+#### P2. `/trust` publishes a retention schedule nothing enforces
+
+**Area:** `promises-copy` · **Guardrail:** 13 (purpose-limited, and the words a policy is published under must describe what happens).
+
+`lib/copy.ts:640-643` (zh-HK :948-951, zh-TW :1256-1259) publishes four rows: scan evidence retained 12 months "and removed on request", agent inputs/outputs 24 months, audit events 24 months, OAuth tokens "revoked when a connection is removed".
+
+Nothing deletes anything by age: no cron, no `/api/cron` route, no `pg_cron` or scheduled function in migrations 0001–0005, no TTL. The only `DELETE`s are per-job evidence replacement (`lib/repositories/evidence.ts:21`), membership removal, and `lib/repositories/lifecycle.ts` — which has **no caller anywhere outside its own file**, so even the "removed on request" arm has no in-product path.
+
+The app also contradicts itself: `lib/messages/en.json:362`, rendered on `/legal/privacy`, says *"We are finalising a published schedule for how long scan records and contact details are retained"* — while `/trust` publishes exactly such a schedule.
+
+**Note on scope:** this one is a published policy statement, not just product copy. Correcting it is a decision for Willy rather than a code judgement — CLAUDE.md §5 already lists the Trust retention periods as an open question ("confirm with Willy before finalising").
+
+#### P3. "You can disconnect at any time in settings" — there is no disconnect
+
+**Area:** `promises-copy` · **Guardrail:** 6/9 (a connection's scope is the owner's to withdraw).
+
+`components/onboarding-page.tsx` tells the owner, next to the Google verification button, that they can disconnect at any time in settings. `lib/copy.ts:643` adds that OAuth tokens are "revoked when a connection is removed".
+
+No disconnect exists. `app/api/oauth/` contains exactly four routes — `google/start`, `google/callback`, `google/claim/start`, `google/claim/callback` — and there is no `DELETE` or `PATCH` for a connection anywhere under `app/api/oauth` or `app/api/workspaces`. `components/workspace/integrations-view.tsx` offers only "Connect Google" and "Re-authorise", both `GET /api/oauth/google/start`. The sole writer of `status='revoked'` is `lib/repositories/claims.ts:74`, which revokes the *previous* credential while installing a *new* one — so the trust row's condition ("when a connection is removed") cannot occur.
+
+**Shape of the fix:** unlike P1 and P2, this one is worth *building* rather than rewording — a revoke route is small, the column and status vocabulary already exist, and withdrawing a granted scope is a guardrail commitment rather than a marketing claim.

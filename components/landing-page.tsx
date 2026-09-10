@@ -154,7 +154,7 @@ export function LandingPage({ locale, market: initialMarket }: { locale: Prototy
       ["回來查看可比較成效", "下次掃描會分清已觀察變化、可能關聯、估算及未知。"],
     ],
     workspaceTitle: "知道有甚麼改變，先處理下一個問題，再證明改善。",
-    workspaceBody: "一個持續使用的工作台，包含定期重新掃描、優先行動、版本草稿、店主審批、匯出及可比較成效。",
+    workspaceBody: "一個持續使用的工作台，包含隨時自行執行的重新掃描、優先行動、版本草稿、店主審批、匯出及可比較成效。",
     workspacePoints: ["以行動為先的手機簡報", "由證據到審批的完整紀錄", "兼顧覆蓋率的評分歷史"],
     workspaceCta: "查看公開唯讀工作台",
     briefTitle: "今日能見度簡報",
@@ -185,7 +185,7 @@ export function LandingPage({ locale, market: initialMarket }: { locale: Prototy
       ["Return to comparable proof", "A later scan separates observed change, plausible attribution, estimates and unknowns."],
     ],
     workspaceTitle: "Know what changed. Fix the next visibility problem. Prove what improved.",
-    workspaceBody: "One recurring workspace for scheduled rescans, prioritised actions, versioned drafts, owner approvals, exports and comparable outcomes.",
+    workspaceBody: "One recurring workspace for on-demand rescans, prioritised actions, versioned drafts, owner approvals, exports and comparable outcomes.",
     workspacePoints: ["Action-first mobile operating brief", "Evidence-to-approval audit trail", "Coverage-aware score history"],
     workspaceCta: "View the public read-only workspace",
     briefTitle: "Today’s visibility brief",
@@ -204,12 +204,12 @@ export function LandingPage({ locale, market: initialMarket }: { locale: Prototy
     { title: "能見度偵察", english: "Visibility Scout", body: "檢查 Google、地圖、網站及可支援的公開來源，找出可核實的缺口。", output: "已發現：7 則評論未回覆", icon: Eye },
     { title: "優先次序教練", english: "Priority Coach", body: "按影響、急切性、工作量、風險及證據強度，選出最值得先做的一件事。", output: "今日首要行動已排好", icon: ListChecks },
     { title: "行動與品質工作室", english: "Action & Quality Studio", body: "調度評論回覆、社交內容、海報、餐牌翻譯或 SEO 專員，再檢查品牌事實與品質。", output: "7 則評論回覆草稿已備妥", icon: Sparkles },
-    { title: "審批與成效", english: "Approval & Proof", body: "保留版本、權限及審批紀錄；匯出或發佈後安排重新掃描，證明有甚麼改善。", output: "待你審批 · 不會自動發佈", icon: ShieldCheck },
+    { title: "審批與成效", english: "Approval & Proof", body: "保留版本、權限及審批紀錄；匯出或發佈後提示你重新掃描，證明有甚麼改善。", output: "待你審批 · 不會自動發佈", icon: ShieldCheck },
   ] : [
     { title: "Visibility Scout", english: "Evidence discovery", body: "Checks Google, Maps, the website and supported public sources for verifiable gaps.", output: "Found: 7 unanswered reviews", icon: Eye },
     { title: "Priority Coach", english: "Decision support", body: "Ranks the one best next action by impact, urgency, effort, risk and evidence strength.", output: "Today’s priority is ready", icon: ListChecks },
     { title: "Action & Quality Studio", english: "Specialist execution", body: "Routes work to the right specialist, then checks brand facts, quality and safety.", output: "7 review-reply drafts prepared", icon: Sparkles },
-    { title: "Approval & Proof", english: "Owner control", body: "Keeps versions, permissions and approvals, then schedules a re-scan after export or publishing.", output: "Awaiting you · never auto-published", icon: ShieldCheck },
+    { title: "Approval & Proof", english: "Owner control", body: "Keeps versions, permissions and approvals, then prompts you to re-scan after export so the change can be measured.", output: "Awaiting you · never auto-published", icon: ShieldCheck },
   ]
   const comparison = isChinese ? {
     eyebrow: "不是另一個 AI 工具",

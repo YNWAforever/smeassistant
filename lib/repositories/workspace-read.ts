@@ -112,9 +112,16 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
     async completedActions(workspaceId: string, periodStart: string): Promise<Array<{ id: string; measurement_state: string; completed_at: string | null }>> {
       return rows<{ id: string; measurement_state: string; completed_at: string | null }>("SELECT id, measurement_state, completed_at::text FROM actions WHERE workspace_id=$1 AND action_state='completed' AND completed_at >= $2", [workspaceId, periodStart]);
     },
-    async schedules(workspaceId: string, placeIds: string[]): Promise<Array<{ place_id: string; cadence: string; next_run_at: string | null }>> {
+    /**
+     * `anniversary_day`, not `next_run_at`, is what the workspace can honestly
+     * show. A row is INSERTed once (guarded by `scheduleExists`) and never
+     * UPDATEd, so `next_run_at` is frozen at the first rescan's anniversary and
+     * silently drifts into the past -- rendering it as a date promised a run on
+     * a day that had already gone by. The anniversary day recurs and stays true.
+     */
+    async schedules(workspaceId: string, placeIds: string[]): Promise<Array<{ place_id: string; cadence: string; next_run_at: string | null; anniversary_day: number | null }>> {
       if (!placeIds.length) return [];
-      return rows<{ place_id: string; cadence: string; next_run_at: string | null }>("SELECT place_id, cadence, next_run_at::text FROM scan_schedules WHERE workspace_id=$1 AND place_id=ANY($2::text[])", [workspaceId, placeIds]);
+      return rows<{ place_id: string; cadence: string; next_run_at: string | null; anniversary_day: number | null }>("SELECT place_id, cadence, next_run_at::text, anniversary_day FROM scan_schedules WHERE workspace_id=$1 AND place_id=ANY($2::text[])", [workspaceId, placeIds]);
     },
     async aeoSnapshots(workspaceId: string, jobIds: string[]): Promise<AeoSnapshotRow[]> {
       if (!jobIds.length) return [];

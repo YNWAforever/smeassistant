@@ -66,6 +66,44 @@ describe("OnboardingPage resume step", () => {
   });
 });
 
+describe("OnboardingPage staff-assignment fallback", () => {
+  // This is the branch every owner sees by default: .env.example ships
+  // WORKSPACE_CLAIM_VIA_OAUTH_ENABLED=false, so `oauthEnabled` is false.
+  const fallback = { oauthEnabled: false, resumeStep: 2 as const };
+
+  it("never tells the owner to wait for or reply to an email", () => {
+    // It used to promise "you will be emailed when it is done" and "Reply to
+    // the report email you received". This app sends neither, so the owner was
+    // left waiting on mail that could not arrive.
+    const text = render(fallback).textContent ?? "";
+    expect(text).not.toMatch(/be emailed|report email/i);
+  });
+
+  it("offers the market's real contact channel, carrying the report reference", () => {
+    const root = render({
+      ...fallback,
+      contacts: [{ channel: "whatsapp", href: "https://wa.me/85212345678" }],
+    });
+    const link = [...root.querySelectorAll("a")].find((node) => /whatsapp/i.test(node.textContent ?? ""));
+    expect(link?.getAttribute("href")).toContain("https://wa.me/85212345678");
+    expect(decodeURIComponent(link?.getAttribute("href") ?? "")).toContain("abc123");
+    expect(root.textContent).toContain("abc123");
+  });
+
+  it("says what to do instead when no channel is configured", () => {
+    // getMarketCtas returns [] until the NEXT_PUBLIC_* contacts are set, and
+    // offering a dead link would repeat the defect being fixed.
+    const root = render(fallback);
+    expect([...root.querySelectorAll("a")].some((node) => /whatsapp|line|call us|email us/i.test(node.textContent ?? ""))).toBe(false);
+    expect(root.textContent).toContain("Fimmick representative");
+    expect(root.textContent).toContain("abc123");
+  });
+
+  it("tells the owner how the wait ends", () => {
+    expect(render(fallback).textContent).toContain("return to this page");
+  });
+});
+
 describe("OnboardingPage wrong-business escape", () => {
   it("offers a plain scan link while nothing is attached", () => {
     const root = render();

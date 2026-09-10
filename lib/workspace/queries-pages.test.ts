@@ -79,7 +79,7 @@ beforeEach(() => {
 
   state.snapshots = [snapshotRow({})];
   state.diffs = {}; state.actions = [actionRow({}), actionRow({ id: "a2", template_key: "social-post", priority: "high", priority_score: 45, action_state: "recommended", required_inputs: [] })];
-  state.measurements = []; state.versions = []; state.completed = []; state.schedule = { next_run_at: "2026-09-14T00:00:00Z" }; state.connections = [{ status: "active" }]; state.runs = [];
+  state.measurements = []; state.versions = []; state.completed = []; state.schedule = { next_run_at: "2026-09-14T00:00:00Z", cadence: "monthly", anniversary_day: 14 }; state.connections = [{ status: "active" }]; state.runs = [];
 });
 
 describe("getHomeBrief", () => {
@@ -112,7 +112,10 @@ describe("getHomeBrief", () => {
     expect(repository.diff).toHaveBeenCalledWith("d1", "ws-1", "job-1");
     expect(brief.snapshot?.id).toBe("snap-1");
     expect(brief.changed).toMatchObject({ factType: "Unknown", delta: null, reason: "SCORING_VERSION_MISMATCH", comparable: false });
-    expect(brief.nextScanAt).toBe("2026-09-14T00:00:00Z");
+    // A recurring day, never a stored date: `scan_schedules.next_run_at` is
+    // written once and never advanced, so a date would drift into the past
+    // while still being presented as the next scan.
+    expect(brief.rescanCadenceDay).toBe(14);
     expect(brief.priority?.id).toBe("a1");
     state.diffs.d1 = { ...state.diffs.d1, comparable: true, incomparable_reason: null, resolved_findings: ["gbp.rating_low"], regressed_findings: ["gbp.owner_response_low"] };
     const comparable = await getHomeBrief(ctx, "yik-yam");

@@ -56,6 +56,16 @@ export type OnboardingProps = {
   saved?: SavedSetup | null
   /** `WORKSPACE_CLAIM_VIA_OAUTH_ENABLED === "true"` on the server. */
   oauthEnabled: boolean
+  /**
+   * Market contact channels from `getMarketCtas`, resolved on the server.
+   *
+   * That helper reads `process.env[name]` through a computed key, which Next
+   * cannot inline into a client bundle -- calling it from this component would
+   * return an empty list on every deployment, however the vars are set. Empty
+   * also when nothing is configured, and then no channel is offered at all
+   * rather than a dead link.
+   */
+  contacts?: ReadonlyArray<{ channel: "whatsapp" | "line" | "phone" | "email"; href: string }>
   evidence: ClaimEvidence | null
   /** The caller holds an accepted owner membership on the job's workspace. */
   ownsWorkspace: boolean
@@ -81,6 +91,26 @@ function marketLabel(region: string | null, isChinese: boolean) {
   return { market, label: market === "tw" ? (isChinese ? "台灣" : "Taiwan") : (isChinese ? "香港" : "Hong Kong"), timezone: market === "tw" ? "Asia/Taipei" : "Asia/Hong_Kong" }
 }
 
+const CONTACT_LABELS = {
+  whatsapp: { zh: "WhatsApp 聯絡", en: "Contact on WhatsApp" },
+  line: { zh: "LINE 聯絡", en: "Contact on LINE" },
+  phone: { zh: "致電查詢", en: "Call us" },
+  email: { zh: "電郵查詢", en: "Email us" },
+} as const
+
+/**
+ * Carry the report reference into the channel where the channel supports it,
+ * so staff can find the scan without the owner retyping the slug. Phone and
+ * LINE take no prefill, and the reference is printed beside the buttons for
+ * every channel regardless.
+ */
+function contactHref(contact: { channel: keyof typeof CONTACT_LABELS; href: string }, shareSlug: string | undefined): string {
+  if (!shareSlug) return contact.href
+  if (contact.channel === "whatsapp") return `${contact.href}?text=${encodeURIComponent(`Workspace assignment request - report ${shareSlug}`)}`
+  if (contact.channel === "email") return `${contact.href}?subject=${encodeURIComponent(`Workspace assignment request - report ${shareSlug}`)}`
+  return contact.href
+}
+
 async function readError(response: Response, fallback: string): Promise<string> {
   const data = (await response.json().catch(() => ({}))) as { error?: unknown }
   return typeof data.error === "string" && data.error ? data.error : fallback
@@ -95,7 +125,7 @@ async function readError(response: Response, fallback: string): Promise<string> 
  * `POST /api/workspaces/claim`. Steps 3–4 stay locked until the workspace is
  * attached and owned.
  */
-export function OnboardingPage({ locale, claim, plan, resumeStep = 1, saved = null, oauthEnabled, evidence, ownsWorkspace, gbpConnected }: OnboardingProps) {
+export function OnboardingPage({ locale, claim, plan, resumeStep = 1, saved = null, oauthEnabled, contacts = [], evidence, ownsWorkspace, gbpConnected }: OnboardingProps) {
   const router = useRouter()
   const isChinese = locale !== "en"
   const { market, label: marketName, timezone } = marketLabel(evidence?.region ?? null, isChinese)
@@ -203,7 +233,16 @@ export function OnboardingPage({ locale, claim, plan, resumeStep = 1, saved = nu
     ) : oauthEnabled && claim ? (
       <div className="connection-choice"><div><span><Globe2 /></span><div><h3>{isChinese ? "以 Google 驗證擁有權" : "Verify ownership with Google"}</h3><p>{isChinese ? "使用管理這個商戶 Google Business Profile 的 Google 帳戶登入。Google 會證明你管理該檔案，我們才會建立工作台並附加報告。不會啟用直接發佈。" : "Sign in with the Google account that manages this business’s Business Profile. Google attests that you manage it; only then is the workspace created and the report attached. Direct publishing is not enabled."}</p></div><CapabilityBadge value="Live" /></div><Button asChild><a href={`/api/oauth/google/claim/start?slug=${encodeURIComponent(claim)}&locale=${locale}`}><ShieldCheck />{isChinese ? "以 Google 驗證" : "Verify with Google"}<ArrowRight /></a></Button><p className="limitation-note"><TriangleAlert /> {isChinese ? "我們只會讀取商戶檔案，並可隨時在設定中斷開連接。" : "We only read the Business Profile; you can disconnect at any time in settings."}</p></div>
     ) : (
-      <div className="connection-choice"><div><span><UserCheck /></span><div><h3>{isChinese ? "請 Fimmick 指派你的工作台" : "Ask Fimmick to assign your workspace"}</h3><p>{isChinese ? "擁有權必須經過驗證，不能自行聲明，我們亦不會憑電郵配對。Fimmick 團隊核實你與商戶的關係後，會把這份報告指派到你的工作台；完成後你會收到電郵，並可在此繼續。" : "Ownership is proven, never self-declared, and we do not match on email. The Fimmick team verifies your relationship with the business and assigns this report to your workspace; you will be emailed when it is done and can continue here."}</p></div><CapabilityBadge value="Requires connection" /></div><p className="limitation-note"><TriangleAlert /> {isChinese ? "回覆你收到的報告電郵，或聯絡 Fimmick 團隊並附上報告編號。" : "Reply to the report email you received, or contact the Fimmick team quoting the report reference."}{evidence ? ` · ${evidence.shareSlug}` : ""}</p></div>
+      /* This branch renders whenever OAuth claim is off, which is the shipped
+         default (`.env.example` sets WORKSPACE_CLAIM_VIA_OAUTH_ENABLED=false),
+         so it is the path most owners actually see. It used to say "you will
+         be emailed when it is done" and "Reply to the report email you
+         received" -- this app sends neither, leaving the owner with no next
+         move. It now offers the market's real contact channels and says what
+         to do when the assignment lands. */
+      <div className="connection-choice"><div><span><UserCheck /></span><div><h3>{isChinese ? "請 Fimmick 指派你的工作台" : "Ask Fimmick to assign your workspace"}</h3><p>{isChinese ? "擁有權必須經過驗證，不能自行聲明，我們亦不會憑電郵配對。Fimmick 團隊核實你與商戶的關係後，會把這份報告指派到你的工作台。指派完成後回到這一頁，餘下步驟就會解鎖。" : "Ownership is proven, never self-declared, and we do not match on email. The Fimmick team verifies your relationship with the business and assigns this report to your workspace. Once it is assigned, return to this page and the remaining steps unlock."}</p></div><CapabilityBadge value="Requires connection" /></div>
+        {contacts.length > 0 && <div className="plan-actions">{contacts.map((contact) => <Button key={contact.channel} asChild variant="outline"><a href={contactHref(contact, evidence?.shareSlug)} target={contact.channel === "phone" ? undefined : "_blank"} rel={contact.channel === "phone" ? undefined : "noreferrer"}>{CONTACT_LABELS[contact.channel][isChinese ? "zh" : "en"]}</a></Button>)}</div>}
+        <p className="limitation-note"><TriangleAlert /> {contacts.length > 0 ? (isChinese ? "聯絡時請提供下列報告編號。" : "Quote this report reference when you get in touch.") : (isChinese ? "請聯絡你的 Fimmick 對接人並提供下列報告編號。" : "Contact your Fimmick representative and quote this report reference.")}{evidence ? ` · ${evidence.shareSlug}` : ""}</p></div>
     )
   } else if (step === 3) {
     body = (

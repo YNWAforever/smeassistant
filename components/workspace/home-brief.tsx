@@ -11,7 +11,7 @@ import { LocationSelect } from "@/components/workspace/location-select"
 import { RescanButton } from "@/components/workspace/rescan-button"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { resolveText } from "@/lib/domain"
-import { comparisonReasonText, effortLabel, findingLabel, formatDateTime, formatDay, metricLabel, priorityClass, priorityLabel, scorePercent, signed, withLocation } from "@/lib/workspace/format"
+import { comparisonReasonText, effortLabel, findingLabel, formatDateTime, formatDay, metricLabel, ordinal, priorityClass, priorityLabel, scorePercent, signed, withLocation } from "@/lib/workspace/format"
 import { measuredPrimarySources } from "@/lib/workspace/module-states"
 import type { HomeBrief } from "@/lib/workspace/queries-pages"
 import type { ActionOverview } from "@/lib/workspace/overview"
@@ -138,7 +138,11 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
       </section>
 
       <section className="month-brief" aria-labelledby="month-title">
-        <div className="month-brief-heading"><div><p className="eyebrow">{t.month}</p><h2 id="month-title">{isChinese ? "小行動，累積看得見的進展。" : "Small actions, visible momentum."}</h2></div><div className="next-scan"><CalendarClock /><span>{isChinese ? "下次掃描" : "Next scan"}<strong>{brief.nextScanAt ? formatDay(brief.nextScanAt, locale, timezone) : (isChinese ? "未排程" : "Not scheduled")}</strong></span></div></div>
+        <div className="month-brief-heading"><div><p className="eyebrow">{t.month}</p><h2 id="month-title">{isChinese ? "小行動，累積看得見的進展。" : "Small actions, visible momentum."}</h2></div>{/* A cadence you act on, not a booked run: nothing dispatches a due
+    `scan_schedules` row, so "Next scan · <date>" promised a scan that
+    would never happen -- and since `next_run_at` is never advanced, that
+    date silently became one in the past. The recurring day stays true. */}
+<div className="next-scan"><CalendarClock /><span>{isChinese ? "重新掃描節奏" : "Rescan cadence"}<strong>{brief.rescanCadenceDay ? (isChinese ? `每月 ${brief.rescanCadenceDay} 號` : `Monthly · ${ordinal(brief.rescanCadenceDay)}`) : (isChinese ? "未設節奏" : "None yet")}</strong></span></div></div>
         <div className="month-metrics">
           <article><span className="metric-icon resolved"><CheckCircle2 /></span><div><strong>{month.resolved}</strong><span>{isChinese ? "個問題已解決" : "issues resolved"}</span></div><small>{isChinese ? "來自可比較掃描" : "Across comparable scans"}</small></article>
           <article><span className="metric-icon regressed"><TrendingDown /></span><div><strong>{month.regressed}</strong><span>{isChinese ? "項新退步" : month.regressed === 1 ? "new regression" : "new regressions"}</span></div><small>{brief.ledger.regressed[0] ? findingLabel(brief.ledger.regressed[0]) : (isChinese ? "沒有退步" : "None recorded")}</small></article>

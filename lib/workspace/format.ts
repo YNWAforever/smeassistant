@@ -46,6 +46,17 @@ export function formatDay(iso: string | null | undefined, locale: PrototypeLocal
   return formatDateTime(iso, locale, timezone, "date");
 }
 
+/**
+ * English ordinal for a day of the month. Used for a recurring rescan cadence
+ * ("around the 15th"), which stays true, where a stored date would not: nothing
+ * advances `scan_schedules.next_run_at`.
+ */
+export function ordinal(day: number): string {
+  const teen = day % 100 >= 11 && day % 100 <= 13;
+  const suffix = teen ? "th" : day % 10 === 1 ? "st" : day % 10 === 2 ? "nd" : day % 10 === 3 ? "rd" : "th";
+  return `${day}${suffix}`;
+}
+
 export function effortLabel(minutes: number, locale: PrototypeLocale): string {
   return locale === "en" ? `${minutes} minutes` : `${minutes} 分鐘`;
 }

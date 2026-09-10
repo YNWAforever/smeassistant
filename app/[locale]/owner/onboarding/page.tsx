@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getMarketCtas, localeToMarket } from "@sme-scanner/region";
 
 import { OnboardingPage, type ClaimEvidence, type SavedSetup } from "@/components/onboarding-page";
 import { requireUser } from "@/lib/auth";
@@ -139,6 +140,13 @@ export default async function OwnerOnboarding({
   // was dropped at step 1 with their ownership already proven.
   const resumeStep = !owned ? 1 : saved?.hasLocation ? 4 : 3;
 
+  // The market of the business being claimed, not of the interface language
+  // (guardrail 11). Resolved here because `getMarketCtas` reads env through a
+  // computed key, which Next cannot inline into the client bundle -- called
+  // from the client component it would always yield an empty list.
+  const market = evidence?.region?.toLowerCase() === "tw" ? "tw" : evidence?.region ? "hk" : localeToMarket(locale);
+  const contacts = getMarketCtas(market).map(({ channel, href }) => ({ channel, href }));
+
   return (
     <OnboardingPage
       locale={locale}
@@ -147,6 +155,7 @@ export default async function OwnerOnboarding({
       resumeStep={resumeStep}
       saved={saved}
       oauthEnabled={process.env.WORKSPACE_CLAIM_VIA_OAUTH_ENABLED === "true"}
+      contacts={contacts}
       evidence={evidence}
       ownsWorkspace={owned}
       gbpConnected={gbpConnected}
