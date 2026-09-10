@@ -66,6 +66,30 @@ export const claimsRepository = {
  async recordAccessRequest(jobId:string,userId:string):Promise<void> {
   await getPool().query("INSERT INTO workspace_access_requests(job_id,user_id) VALUES($1,$2) ON CONFLICT (job_id,user_id) WHERE resolved_at IS NULL DO NOTHING",[jobId,userId]);
  },
+ /**
+  * Withdraws the workspace's Google Business Profile connection. Returns false
+  * when there was no active one, so a double-click is a no-op rather than an
+  * error.
+  *
+  * Takes the same workspace lock as `replaceGoogleConnection`, so a disconnect
+  * racing a reconnect serialises instead of interleaving -- without it the two
+  * could both believe they hold the `status='active'` slot that
+  * `oauth_connections_active_provider_key` allows only one row to occupy.
+  *
+  * The ciphertext is overwritten rather than nulled because
+  * `access_token_encrypted` is NOT NULL; either way the stored credential is
+  * destroyed, and nothing reads it back (`decryptToken` has no production call
+  * site -- these tokens are write-only today). The row itself is kept, not
+  * deleted: it is the provenance of a connection that once existed, and
+  * `status='revoked'` is what the reconnect prompt keys on.
+  */
+ async disconnectGoogleConnection(workspaceId:string):Promise<boolean> {
+  return withTransaction(async db => {
+   await db.query("SELECT id FROM workspaces WHERE id=$1 FOR UPDATE",[workspaceId]);
+   const result=await db.query("UPDATE oauth_connections SET status='revoked',access_token_encrypted='',refresh_token_encrypted=NULL,updated_at=now() WHERE workspace_id=$1 AND provider='google_gbp' AND status='active'",[workspaceId]);
+   return (result.rowCount??0)>0;
+  });
+ },
  async replaceGoogleConnection(input:GoogleConnectionInput):Promise<string> {
   return withTransaction(async db => {
    // The old credential survives any insert/revoke/promote failure.

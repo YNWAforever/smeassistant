@@ -186,6 +186,36 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon membership boundaries
   expect((await runtime.query("SELECT id,status FROM oauth_connections WHERE workspace_id=$1",[ws])).rows).toEqual([{id:first,status:"active"}]);
  });
 
+ it("disconnects a Google connection, destroys the credential and still allows a reconnect", async () => {
+  // Only a real database proves this SQL is legal: access_token_encrypted is
+  // NOT NULL (so the ciphertext is overwritten, not nulled), 'revoked' has to
+  // satisfy oauth_connections_status_check, and the reconnect afterwards has to
+  // get past oauth_connections_active_provider_key -- the partial unique index
+  // on (workspace_id, provider) WHERE status='active'.
+  const ws=await workspace();
+  const token={workspaceId:ws,accessTokenEncrypted:"fixture-access",refreshTokenEncrypted:"fixture-refresh",scopes:["business.manage"],expiresAt:null};
+  const first=await claims.replaceGoogleConnection(token);
+  expect(await claims.hasActiveGoogleConnection(ws)).toBe(true);
+
+  expect(await claims.disconnectGoogleConnection(ws)).toBe(true);
+  expect(await claims.hasActiveGoogleConnection(ws)).toBe(false);
+  expect((await runtime.query("SELECT status,access_token_encrypted,refresh_token_encrypted FROM oauth_connections WHERE id=$1",[first])).rows[0])
+   .toEqual({status:"revoked",access_token_encrypted:"",refresh_token_encrypted:null});
+
+  // Idempotent: nothing is active, so a second disconnect reports no change.
+  expect(await claims.disconnectGoogleConnection(ws)).toBe(false);
+
+  // Disconnecting must never cost the owner their workspace -- ownership is
+  // workspace_members, never a connection (guardrail 15).
+  expect((await runtime.query("SELECT count(*)::int n FROM workspaces WHERE id=$1",[ws])).rows[0].n).toBe(1);
+
+  const second=await claims.replaceGoogleConnection(token);
+  expect(second).not.toBe(first);
+  expect(await claims.hasActiveGoogleConnection(ws)).toBe(true);
+  // The revoked row is kept as provenance rather than deleted.
+  expect((await runtime.query("SELECT count(*)::int n FROM oauth_connections WHERE workspace_id=$1",[ws])).rows[0].n).toBe(2);
+ });
+
  it("requires an already attached job and accepted owner before completion writes", async () => {
   const user=await resolveApplicationUser(identity()); const ws=await workspace();
   const id=(await runtime.query("INSERT INTO audit_jobs(business_name,share_slug) VALUES('Shop','claim-1') RETURNING id")).rows[0].id;

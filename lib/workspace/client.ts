@@ -227,3 +227,19 @@ export function saveBrand(workspaceId: string, brand: BrandInput): Promise<Clien
 export function confirmInstagramHandle(workspaceId: string, handle: string, locale?: string): Promise<ClientResult<ConfirmInstagramHandleResult>> {
   return post(`/api/workspaces/${encodeURIComponent(workspaceId)}/instagram-handle`, locale ? { handle, locale } : { handle });
 }
+
+/**
+ * Withdraws the Google Business Profile connection. `disconnected` is false
+ * when there was nothing active to withdraw -- a second click, or another tab
+ * that got there first -- which is a success, not an error, so the caller can
+ * refresh either way.
+ */
+export type DisconnectGoogleResult = { ok: true; disconnected: boolean };
+
+export function disconnectGoogleConnection(workspaceId: string, locale?: string): Promise<ClientResult<DisconnectGoogleResult>> {
+  return request(`/api/workspaces/${encodeURIComponent(workspaceId)}/google-connection`, {
+    method: "DELETE",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(locale ? { locale } : {}),
+  });
+}

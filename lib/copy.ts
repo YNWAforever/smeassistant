@@ -640,7 +640,12 @@ const funnelEn: FunnelCopy = {
       { label: "Scan evidence", value: "Public-source evidence and report data are retained for 12 months and removed on request." },
       { label: "Agent inputs and outputs", value: "Drafts, approvals and exports are retained for 24 months for accountability." },
       { label: "Audit events", value: "Append-only events are retained for 24 months." },
-      { label: "OAuth tokens", value: "Encrypted at rest and revoked when a connection is removed." },
+      // "revoked when a connection is removed" described something that could
+      // not happen: no disconnect existed, and the only writer of
+      // status='revoked' was the reconnect path. A disconnect exists now, so
+      // this states what it actually does -- our stored copy is destroyed --
+      // without implying we revoked the grant inside the owner's Google account.
+      { label: "OAuth tokens", value: "Encrypted at rest. Disconnecting an integration deletes the stored credential; access in your own Google Account is removed there." },
       { label: "Report access links", value: "Expire 30 days after issue. Signing out of a report also revokes the link used on that device." },
     ],
     policyLink: "Privacy policy and terms · version 2026-07-28",
@@ -948,7 +953,7 @@ const funnelZhHK: FunnelCopy = {
       { label: "掃描證據", value: "公開來源證據及報告資料保留 12 個月，可按要求刪除。" },
       { label: "Agent 輸入與輸出", value: "草稿、審批及匯出紀錄保留 24 個月，以便追溯責任。" },
       { label: "審計事件", value: "只可追加的事件紀錄保留 24 個月。" },
-      { label: "OAuth 代幣", value: "靜態加密儲存；解除連接時即時撤銷。" },
+      { label: "OAuth 代幣", value: "靜態加密儲存。解除連接時，我們儲存的憑證會被刪除；至於你 Google 帳戶內的存取權，請在該帳戶移除。" },
       { label: "報告存取連結", value: "發出後 30 日失效；喺報告登出時，該裝置所用嘅連結亦會撤銷。" },
     ],
     policyLink: "私隱政策及使用條款 · 版本 2026-07-28",
@@ -1256,7 +1261,7 @@ const funnelZhTW: FunnelCopy = {
       { label: "掃描證據", value: "公開來源證據與報告資料保留 12 個月，可依要求刪除。" },
       { label: "Agent 輸入與輸出", value: "草稿、核准與匯出紀錄保留 24 個月，以便追溯責任。" },
       { label: "稽核事件", value: "只能附加的事件紀錄保留 24 個月。" },
-      { label: "OAuth 權杖", value: "靜態加密儲存；解除連接時立即撤銷。" },
+      { label: "OAuth 權杖", value: "靜態加密儲存。解除連接時，我們儲存的憑證會被刪除；至於你 Google 帳戶內的存取權，請於該帳戶移除。" },
       { label: "報告存取連結", value: "發出後 30 天失效；於報告登出時，該裝置所使用的連結也會撤銷。" },
     ],
     policyLink: "隱私政策與使用條款 · 版本 2026-07-28",

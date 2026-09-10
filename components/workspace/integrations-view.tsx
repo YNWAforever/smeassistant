@@ -4,7 +4,7 @@ import { History, PlugZap, TriangleAlert } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CapabilityBadge, PageIntro, ProviderBadge, SectionCard } from "@/components/product-ui"
-import { InstagramHandleForm } from "@/components/workspace/integrations-client"
+import { GoogleDisconnectButton, InstagramHandleForm } from "@/components/workspace/integrations-client"
 import type { PrototypeLocale } from "@/lib/copy"
 import type { Capability } from "@/lib/domain"
 import { formatDateTime } from "@/lib/workspace/format"
@@ -37,7 +37,10 @@ export function IntegrationsView({ locale, workspaceSlug, workspaceId, timezone,
       capability: googleCapability,
       lastSync: model.google.updatedAt ? formatDateTime(model.google.updatedAt, locale, timezone) : "—",
       scope: isChinese ? "只讀取商戶檔案及評論" : "Read profile and reviews only",
-      action: <>{googleNeedsReauth && <p className="limitation-note" role="status"><TriangleAlert /> {reauthNote}</p>}<Button asChild variant={googleOk ? "outline" : "default"}><a href={`/api/oauth/google/start?workspace=${encodeURIComponent(workspaceSlug)}&locale=${locale}`}>{googleOk || googleNeedsReauth ? (isChinese ? "重新授權" : "Re-authorise") : (isChinese ? "連接 Google" : "Connect Google")}</a></Button></>,
+      // Disconnect is offered only while a connection is actually active:
+      // there is nothing to withdraw from an expired or revoked one, and the
+      // route would answer `disconnected: false` anyway.
+      action: <>{googleNeedsReauth && <p className="limitation-note" role="status"><TriangleAlert /> {reauthNote}</p>}<Button asChild variant={googleOk ? "outline" : "default"}><a href={`/api/oauth/google/start?workspace=${encodeURIComponent(workspaceSlug)}&locale=${locale}`}>{googleOk || googleNeedsReauth ? (isChinese ? "重新授權" : "Re-authorise") : (isChinese ? "連接 Google" : "Connect Google")}</a></Button>{googleOk && <GoogleDisconnectButton locale={locale} workspaceId={workspaceId} />}</>,
       badge: null,
     },
     {

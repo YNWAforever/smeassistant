@@ -114,6 +114,30 @@ const PROMISES: readonly Promised[] = [
   },
 ];
 
+/**
+ * The same rule read the other way. These promises ARE kept, and the check
+ * exists so they stay kept: delete the capability and the copy quietly starts
+ * lying again, which is exactly how "you can disconnect at any time in
+ * settings" survived for so long next to no disconnect at all.
+ */
+const KEPT: ReadonlyArray<{ promise: string; requires: string; exists: () => boolean }> = [
+  {
+    promise: "the owner can disconnect the Google Business Profile connection",
+    requires: "DELETE /api/workspaces/[workspaceId]/google-connection and a repository that revokes it",
+    exists: () =>
+      existsSync(join(repoRoot, "app", "api", "workspaces", "[workspaceId]", "google-connection", "route.ts")) &&
+      /disconnectGoogleConnection/.test(readFileSync(join(repoRoot, "lib", "repositories", "claims.ts"), "utf8")),
+  },
+];
+
+describe("promises the interface keeps", () => {
+  for (const kept of KEPT) {
+    it(`still implements: ${kept.promise}`, () => {
+      expect({ promise: kept.promise, implemented: kept.exists() }).toEqual({ promise: kept.promise, implemented: true });
+    });
+  }
+});
+
 describe("promises the interface makes", () => {
   for (const promise of PROMISES) {
     it(`does not claim ${promise.capability} while none exists`, () => {
