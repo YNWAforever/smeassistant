@@ -1,7 +1,8 @@
 import type { RescanRepository } from "@/lib/repositories/rescan";
 import { jobsRepository } from "@/lib/repositories/jobs";
 import type { IgMatchProvenance } from "@sme-scanner/contracts";
-import { buildScanJobInsert, type ScanStartInput } from "@/lib/scan/start-job";
+import { SCAN_CONSENT_TYPE, currentScanConsentPolicyVersion, type ScanConsentRecord } from "@/lib/scan/consent";
+import { buildScanConsentInsert, buildScanJobInsert, type ScanStartInput } from "@/lib/scan/start-job";
 import { buildScheduleInsert, type SchedulableJob, type ScheduleRefusal } from "@/lib/scheduler/create-schedule";
 import { recordNeonEvent } from "@/lib/workspace/audit";
 
@@ -129,8 +130,22 @@ export async function enqueueRescan(repo: RescanRepository, input: EnqueueRescan
   // Server-side attribution only (CLAUDE.md 3.2.2): workspace_id + location_id
   // come from the authorized membership, never from a request body.
   const row = buildScanJobInsert(scanInput, { workspaceId: input.workspaceId, locationId: input.locationId });
+  // A rescan is the second writer of audit_jobs and must not become a consent
+  // hole. It records a FRESH row rather than copying the parent job's: the
+  // owner's "Rescan now" click is the consenting act, and stamping the
+  // currently published version keeps the dispatch gate uniform across both
+  // writers.
+  const consent: ScanConsentRecord = {
+    consentType: SCAN_CONSENT_TYPE,
+    granted: true,
+    policyVersion: currentScanConsentPolicyVersion(),
+    // The requester's current UI locale, because that is the language the policy
+    // text was shown in when they clicked. The parent scan's locale is only a
+    // fallback for a caller that did not send one.
+    locale: input.locale && LOCALES.has(input.locale) ? (input.locale as ScanStartInput["locale"]) : scanInput.locale,
+  };
   let created: { id: string };
-  try { created = await jobsRepository.insert(row); }
+  try { created = await jobsRepository.insert(row, buildScanConsentInsert(consent)); }
   catch {
     console.error("[workspace/rescan] job insert failed", { category: "rescan_insert_failed" });
     return { ok: false, reason: "insert_failed" };
@@ -147,6 +162,24 @@ export async function enqueueRescan(repo: RescanRepository, input: EnqueueRescan
     locale: input.locale ?? null,
     ipHash: input.ipHash ?? null,
     payload: { parent_job_id: sourceJob.id, trigger: "rescan" },
+  });
+
+  // The public funnel deliberately emits no audit_events row for consent:
+  // AuditEventInput.workspaceId is a required string and an anonymous scan has
+  // no workspace, so consent_records is the record of truth there. On the
+  // rescan path a workspace exists, so the owner sees the consenting act in
+  // their Activity feed.
+  await recordNeonEvent({
+    workspaceId: input.workspaceId,
+    locationId: input.locationId,
+    actorType: "user",
+    actorId: input.actorId,
+    event: "consent.public_evidence",
+    entityType: "audit_job",
+    entityId: created.id,
+    locale: input.locale ?? null,
+    ipHash: input.ipHash ?? null,
+    payload: { policy_version: consent.policyVersion, trigger: "rescan" },
   });
 
   return { ok: true, jobId: created.id, sourceJob };

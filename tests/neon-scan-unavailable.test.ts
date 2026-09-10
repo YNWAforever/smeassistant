@@ -6,6 +6,7 @@ vi.mock("@/lib/db/client", () => db);
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { POST } from "@/app/api/scan/start/route";
 import { buildScanStartPayload, emptyScanDraft } from "@/lib/funnel/scan-start";
+import { LEGAL_POLICY_VERSION } from "@/lib/legal/policy";
 describe("Neon unavailable boundaries", () => {
     afterEach(() => vi.unstubAllEnvs());
     it("keeps fail-closed policy even in tests with no database", async () => {
@@ -14,7 +15,11 @@ describe("Neon unavailable boundaries", () => {
         expect(result).toMatchObject({ allowed: false, unavailable: true });
     });
     it("returns a safe correlated 503 for anonymous scan persistence failures", async () => {
-        const payload = buildScanStartPayload({ ...emptyScanDraft("hk", "Fixture"), manualEntry: true, industry: "fnb", district: "東區" }, "zh-HK");
+        // Consent must be present, or the route now 400s before it ever reaches
+        // the persistence layer this case exists to exercise. After the
+        // jobsRepository change the throw arrives via withTransaction's
+        // getPool(), which the same vi.mock("@/lib/db/client") above stubs.
+        const payload = buildScanStartPayload({ ...emptyScanDraft("hk", "Fixture"), manualEntry: true, industry: "fnb", district: "東區" }, "zh-HK", { granted: true, policyVersion: LEGAL_POLICY_VERSION });
         const result = await POST(new Request("https://fixture.test/api/scan/start", { method: "POST", body: JSON.stringify(payload) }));
         expect(result.status).toBe(503);
         expect(analytics.recordEvent).not.toHaveBeenCalled();

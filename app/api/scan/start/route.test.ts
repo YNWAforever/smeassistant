@@ -18,6 +18,7 @@ vi.mock("@/lib/analytics/record-event", () => ({
   setAnalyticsSessionCookie: vi.fn(),
 }));
 
+import { LEGAL_POLICY_VERSION } from "@/lib/legal/policy";
 import { POST } from "./route";
 
 function request(body: Record<string, unknown>) {
@@ -40,7 +41,31 @@ const validBody = {
   industry: "restaurant",
   district: "Central",
   objective: "more_leads",
+  public_evidence_consent: true,
+  consent_policy_version: LEGAL_POLICY_VERSION,
 };
+
+const consentRow = { consent_type: "public_evidence", granted: true, policy_version: LEGAL_POLICY_VERSION, locale: "en" };
+
+describe("POST /api/scan/start scan consent", () => {
+  it("refuses a direct POST with no consent, before the limiter and before any database work", async () => {
+    const withoutConsent: Record<string, unknown> = { ...validBody };
+    delete withoutConsent.public_evidence_consent;
+    const response = await POST(request(withoutConsent));
+    expect(response.status).toBe(400);
+    expect(mocks.insert).not.toHaveBeenCalled();
+    // Consent is checked during parsing, which runs before the limiter, so a
+    // consent-less POST costs nothing at all.
+    expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+  });
+
+  it("answers 409 with the current version when the tab's policy version is stale", async () => {
+    const response = await POST(request({ ...validBody, consent_policy_version: "2026-07-14" }));
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "consent_policy_stale", policy_version: LEGAL_POLICY_VERSION });
+    expect(mocks.insert).not.toHaveBeenCalled();
+  });
+});
 
 describe("POST /api/scan/start progressive input", () => {
   beforeEach(() => {
@@ -88,7 +113,7 @@ describe("POST /api/scan/start progressive input", () => {
         district: "Central",
         objective: "more_leads",
       },
-    }));
+    }), consentRow);
   });
 
   it("accepts data-id-only SerpApi evidence without overloading the place_id column", async () => {
@@ -122,7 +147,7 @@ describe("POST /api/scan/start progressive input", () => {
         mapsUrl: "https://www.google.com/maps/place/Happy+Cafe",
         facebookUrl: "https://facebook.com/happycafe",
       }),
-    }));
+    }), consentRow);
   });
 
   it("accepts explicit manual entry without provider identifiers", async () => {
@@ -144,7 +169,7 @@ describe("POST /api/scan/start progressive input", () => {
         provider: null,
         manualEntry: true,
       }),
-    }));
+    }), consentRow);
   });
 
   it.each([
@@ -189,7 +214,7 @@ describe("POST /api/scan/start progressive input", () => {
     expect(mocks.insert).toHaveBeenCalledWith(expect.objectContaining({
       region: "tw",
       parent_job_id: parentJobId,
-    }));
+    }), expect.objectContaining({ consent_type: "public_evidence", granted: true }));
   });
 
   it("rejects malformed parent IDs before database work", async () => {

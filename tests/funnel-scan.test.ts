@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { LEGAL_POLICY_VERSION } from "@/lib/legal/policy";
 import {
   buildCandidateSearchRequest,
   buildInstagramSearchRequest,
@@ -41,16 +42,21 @@ const candidate: MerchantCandidate = {
   reviews: 210,
 };
 
+/** Step-4 consent, now part of the wire contract. */
+const CONSENT = { granted: true, policyVersion: LEGAL_POLICY_VERSION };
+
 describe("buildScanStartPayload", () => {
   it("sends the upstream field names for a confirmed SerpApi candidate", () => {
     const draft = { ...emptyScanDraft("hk", "錦汶館"), candidate, industry: "餐飲", district: "天后", instagramHandle: "@kammanhouse", instagramMatchProvenance: "picker_confirmed" as const };
-    expect(buildScanStartPayload(draft, "zh-HK")).toEqual({
+    expect(buildScanStartPayload(draft, "zh-HK", CONSENT)).toEqual({
       business_name: "錦汶館",
       market: "HK",
       locale: "zh-HK",
       industry: "餐飲",
       district: "天后",
       objective: "better_visibility",
+      public_evidence_consent: true,
+      consent_policy_version: LEGAL_POLICY_VERSION,
       place_id: "ChIJ123",
       data_id: "0x1:0x2",
       place_match_confidence: "high",
@@ -65,7 +71,7 @@ describe("buildScanStartPayload", () => {
 
   it("marks manual entry without any provider identity and keeps a pasted maps link", () => {
     const draft = { ...emptyScanDraft("tw", "小南門"), manualEntry: true, industry: "餐飲", district: "台北市", objective: "more_leads" as const, mapsUrl: "https://maps.app.goo.gl/abc", websiteUrl: " https://example.tw " };
-    const payload = buildScanStartPayload(draft, "zh-TW");
+    const payload = buildScanStartPayload(draft, "zh-TW", CONSENT);
     expect(payload).toEqual({
       business_name: "小南門",
       market: "TW",
@@ -73,6 +79,8 @@ describe("buildScanStartPayload", () => {
       industry: "餐飲",
       district: "台北市",
       objective: "more_leads",
+      public_evidence_consent: true,
+      consent_policy_version: LEGAL_POLICY_VERSION,
       manual_entry: true,
       continue_without_place: true,
       website_url: "https://example.tw",
@@ -86,7 +94,7 @@ describe("buildScanStartPayload", () => {
   it("falls back to manual entry when a candidate carries no identity", () => {
     const draft = { ...emptyScanDraft("hk", "X"), candidate: { ...candidate, placeId: undefined, dataId: undefined, dataCid: undefined }, industry: "零售", district: "中西區" };
     expect(canStartScan(draft)).toBe(false);
-    expect(buildScanStartPayload({ ...draft, manualEntry: true }, "en").manual_entry).toBe(true);
+    expect(buildScanStartPayload({ ...draft, manualEntry: true }, "en", CONSENT).manual_entry).toBe(true);
   });
 
   it("requires name, industry, district and a business identity", () => {

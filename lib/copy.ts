@@ -93,7 +93,7 @@ type FunnelCopy = {
     consentTitle: string
     consentBody: string
     privacyNote: string
-    errors: { business: string; place: string; industry: string; district: string; consent: string; submit: string; network: string }
+    errors: { business: string; place: string; industry: string; district: string; consent: string; consentStale: string; submit: string; network: string }
     back: string
     continue: string
     start: string
@@ -427,6 +427,7 @@ const funnelEn: FunnelCopy = {
       industry: "Select an industry.",
       district: "Select a district.",
       consent: "Confirm that we may collect public evidence for this scan.",
+      consentStale: "Our privacy notice changed. Please read and confirm the consent again.",
       submit: "The scan could not be started. Please try again.",
       network: "Network error. Please try again.",
     },
@@ -733,6 +734,7 @@ const funnelZhHK: FunnelCopy = {
       industry: "請選擇行業。",
       district: "請選擇地區。",
       consent: "請確認我們可以為這次掃描收集公開證據。",
+      consentStale: "私隱聲明已更新，請重新閱讀並確認同意。",
       submit: "未能開始掃描，請再試一次。",
       network: "網絡錯誤，請再試一次。",
     },
@@ -1039,6 +1041,7 @@ const funnelZhTW: FunnelCopy = {
       industry: "請選擇產業。",
       district: "請選擇地區。",
       consent: "請確認我們可以為這次掃描收集公開證據。",
+      consentStale: "隱私權聲明已更新，請重新閱讀並確認同意。",
       submit: "無法開始掃描，請再試一次。",
       network: "網路錯誤，請再試一次。",
     },
