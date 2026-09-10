@@ -59,6 +59,24 @@ describe("buildActionOverview", () => {
     expect(overview.displayPhase["zh-HK"]).toBe(copy["zh-HK"].workspace.phases.needs_input);
   });
 
+  it("stops reporting an input the scan already answers, without rewriting the persisted list", () => {
+    // A row derived before the evidence-aware rule: required_inputs still lists
+    // the review key and action_state is still needs_input, but the detail page
+    // resolves the evidence live.
+    const overview = buildActionOverview({ ...row, required_inputs: ["brand_voice", "reviews_without_response"], provided_inputs: {} }, {
+      location: null,
+      latestRun: null,
+      latestVersion: null,
+      scanSatisfiedInputs: ["reviews_without_response"],
+    });
+    expect(overview.missingInputs).toEqual(["brand_voice"]);
+    expect(overview.requiredInputs).toContain("reviews_without_response");
+    expect(overview.evidenceInputs).toEqual(["reviews_without_response"]);
+    // The persisted state is unchanged, so the transitional row still reads as
+    // needs_input until the next derivation rewrites it.
+    expect(overview.displayPhaseKey).toBe("needs_input");
+  });
+
   it("does not read a missing run as generating and defaults location to all", () => {
     const overview = buildActionOverview({ ...row, action_state: "recommended", location_id: null }, { location: null, latestRun: null, latestVersion: null });
     expect(overview.displayPhaseKey).toBe("recommended");

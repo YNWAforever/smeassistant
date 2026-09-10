@@ -3,7 +3,10 @@ import { buildTrendModel, type StoredDiff, type TrendModel } from "@/lib/trends/
 import { CLOSED_ACTION_STATES, localized, type ActionState, type FactType, type LocalizedText } from "@/lib/domain";
 import { loadAuthorizedEvidence } from "@/lib/evidence/load-authorized";
 import type { EvidenceGalleryItem } from "@/lib/report/view-model";
+import { inLocationScope, type Membership } from "@/lib/auth";
+import { artifactRepository } from "@/lib/repositories/artifacts";
 import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
+import { selectScannedReviews } from "@/lib/workspace/evidence-inputs";
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { currentPeriod, type LocationSummary, type WorkspaceContext } from "@/lib/workspace/queries";
 import { reapStrandedRuns } from "@/lib/workspace/run-reaper";
@@ -119,11 +122,34 @@ export interface MeasurementRow {
   created_at: string;
 }
 
+/**
+ * Evidence the scan already collected for an input the template asks for, so
+ * the detail page can show it instead of a blank form. Always `Observed`: these
+ * are the exact excerpts the agent will receive, read from the same
+ * `audit_jobs.raw_data` through the same selector.
+ */
+export interface ScanInputEvidence {
+  key: "reviews_without_response";
+  source: "gbp_reviews";
+  factType: FactType;
+  snapshotId: string | null;
+  jobId: string;
+  observedAt: string;
+  reviews: Array<{ rating: number | null; excerpt: string; time: string | null }>;
+  /** Unanswered reviews the agent will draft from. */
+  available: number;
+  /** Reviews the scan RETAINED (capped at 3), not the 5 metrics inspects. */
+  inspected: number;
+  /** What Google reported in total, when the snapshot measured it. */
+  populationCount: number | null;
+}
+
 export interface ActionDetail {
   action: ActionOverview;
   versions: VersionRow[];
   runs: RunRow[];
   measurements: MeasurementRow[];
+  scanInputs: ScanInputEvidence[];
 }
 
 export interface InsightsSeriesPoint {
@@ -248,7 +274,7 @@ export async function loadActionRows(workspaceId: string, opts: { locationId?: s
   return read("actions", () => workspaceReadRepository().actions(workspaceId, opts));
 }
 
-async function overviewsFor(ctx: WorkspaceContext, rows: ActionRow[]): Promise<ActionOverview[]> {
+async function overviewsFor(ctx: WorkspaceContext, rows: ActionRow[], scanSatisfiedInputs?: readonly string[]): Promise<ActionOverview[]> {
   if (!rows.length) return [];
   const ids = rows.map(row => row.id);
   const repository = workspaceReadRepository();
@@ -265,6 +291,7 @@ async function overviewsFor(ctx: WorkspaceContext, rows: ActionRow[]): Promise<A
     location: row.location_id ? locationText(byLocation.get(row.location_id) ?? null) : null,
     latestRun: latestRun.get(row.id) ?? null,
     latestVersion: latestVersion.get(row.id) ?? null,
+    scanSatisfiedInputs,
   }));
 }
 
@@ -425,6 +452,48 @@ export async function listActions(ctx: WorkspaceContext, filters: ActionFilters)
   return { actions, counts };
 }
 
+/** Non-throwing template lookup: an unknown persisted key must not 500 the page. */
+const TEMPLATE_AGENT = new Map<string, string | null>(TEMPLATES.map((t) => [t.key, t.agentKey ?? null]));
+
+/**
+ * The reviews the draft will actually use, resolved live from stored evidence.
+ *
+ * Mirrors resolveActionRunContext (lib/workspace/runs.ts) exactly, including its
+ * scope refusals: the same snapshot, the same workspace/location checks and the
+ * same membership check. Without them a workspace-wide action pinned to another
+ * location's snapshot would render that location's raw review text to an
+ * out-of-scope manager -- precisely what the run path refuses.
+ */
+export async function loadScanInputEvidence(
+  membership: Membership,
+  workspaceId: string,
+  row: ActionRow,
+): Promise<ScanInputEvidence[]> {
+  if (TEMPLATE_AGENT.get(row.template_key) !== "review_reply") return [];
+  const db = artifactRepository();
+  const snapshot = row.source_snapshot_id
+    ? await db.assistantSnapshot(workspaceId, row.source_snapshot_id)
+    : await db.assistantLatestSnapshot(workspaceId, row.location_id);
+  if (!snapshot) return [];
+  if (snapshot.workspaceId !== workspaceId) return [];
+  if (row.location_id && snapshot.locationId !== row.location_id) return [];
+  if (!inLocationScope(membership, snapshot.locationId)) return [];
+  const selection = selectScannedReviews(await db.assistantReviewData(workspaceId, snapshot.jobId));
+  if (!selection.sampled.length) return [];
+  return [{
+    key: "reviews_without_response",
+    source: "gbp_reviews",
+    factType: "Observed",
+    snapshotId: snapshot.id,
+    jobId: snapshot.jobId,
+    observedAt: snapshot.observedAt,
+    reviews: selection.sampled.map((review) => ({ rating: review.rating, excerpt: review.text, time: review.time })),
+    available: selection.sampled.length,
+    inspected: selection.inspected,
+    populationCount: snapshot.metrics["gbp.reviews_count"] ?? null,
+  }];
+}
+
 export async function getAction(ctx: WorkspaceContext, actionId: string): Promise<ActionDetail | null> {
   const rows = await loadActionRows(ctx.workspace.id, { ids: [actionId] });
   const row = rows[0];
@@ -439,14 +508,17 @@ export async function getAction(ctx: WorkspaceContext, actionId: string): Promis
   // still be able to trigger reconciliation, which grants nobody anything.
   // See lib/workspace/run-reaper.ts.
   await reapStrandedRuns(ctx.workspace.id, [actionId]);
-  const [action] = await overviewsFor(ctx, [row]);
   const repository = workspaceReadRepository();
-  const [versions, runs, measurements] = await read("action detail", () => Promise.all([
+  const [versions, runs, measurements, scanInputs] = await read("action detail", () => Promise.all([
     repository.versions(ctx.workspace.id, [actionId]),
     repository.runs(ctx.workspace.id, [actionId]),
     repository.measurements(ctx.workspace.id, actionId),
+    loadScanInputEvidence(ctx.membership, ctx.workspace.id, row),
   ]));
-  return { action, versions, runs, measurements };
+  // Resolved live, so a row derived before the evidence-aware rule stops
+  // reporting an input the workspace can already answer.
+  const [action] = await overviewsFor(ctx, [row], scanInputs.map((entry) => entry.key));
+  return { action, versions, runs, measurements, scanInputs };
 }
 
 // ---------------------------------------------------------------------------

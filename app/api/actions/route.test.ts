@@ -79,6 +79,49 @@ beforeEach(() => {
   mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("owner"));
 });
 
+describe("POST /api/actions review evidence", () => {
+  const reviewObjective = { ...base, template_key: "review-response", objective: "Reply to reviews" };
+  const withSnapshot = (reviews: unknown[]) => {
+    mocks.db!.assistantLatestSnapshot = async () => ({ id: "snap-1", jobId: "job-1", workspaceId: WORKSPACE_ID, locationId: LOCATION_ID }) as never;
+    mocks.db!.assistantReviewData = async () => ({ gbp: { reviews } }) as never;
+  };
+  const insertedPayload = () =>
+    mocks.db!.calls.find((c) => c.table === "actions" && c.op === "insert")?.payload as Record<string, unknown> | undefined;
+
+  it("does not ask for reviews the scan already collected", async () => {
+    withSnapshot([{ rating: 2, text: "Slow service", time: "2026-08-30T00:00:00Z" }]);
+    expect((await post(reviewObjective)).status).toBe(201);
+    const insert = insertedPayload()!;
+    expect(insert.required_inputs).not.toContain("reviews_without_response");
+    // brand_voice and language stay owner knowledge by design, so this action
+    // is still needs_input -- just no longer for a reason the scan can answer.
+    expect(insert.required_inputs).toContain("brand_voice");
+    expect(insert.action_state).toBe("needs_input");
+  });
+
+  it("becomes directly generatable once the owner has supplied the rest", async () => {
+    withSnapshot([{ rating: 2, text: "Slow service", time: "2026-08-30T00:00:00Z" }]);
+    const res = await post({ ...reviewObjective, inputs: { brand_voice: "warm", language: "zh-HK" } });
+    expect(res.status).toBe(201);
+    expect(insertedPayload()!.action_state).toBe("recommended");
+  });
+
+  it("keeps asking when every retained review already has an owner reply", async () => {
+    withSnapshot([{ rating: 5, text: "Great", time: "2026-08-30T00:00:00Z", owner_response: "Thanks" }]);
+    expect((await post(reviewObjective)).status).toBe(201);
+    const insert = insertedPayload()!;
+    expect(insert.required_inputs).toContain("reviews_without_response");
+    expect(insert.action_state).toBe("needs_input");
+  });
+
+  it("still refuses a caller out of scope for the evidence location", async () => {
+    mocks.db!.assistantLatestSnapshot = async () => ({ id: "snap-1", jobId: "job-1", workspaceId: WORKSPACE_ID, locationId: "99999999-9999-4999-8999-999999999999" }) as never;
+    mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("manager", [LOCATION_ID]));
+    expect((await post(reviewObjective)).status).toBe(403);
+    expect(insertedPayload()).toBeUndefined();
+  });
+});
+
 describe("POST /api/actions", () => {
   it("creates an owner-objective action with Recommended evidence and the objective dedupe key", async () => {
     const res = await post({ ...base, inputs: { menu_items: "叉燒飯" } });

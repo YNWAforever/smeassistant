@@ -178,6 +178,21 @@ describe("typed action runtime", () => {
     );
     expect(start).toHaveBeenCalledOnce();
   });
+  it("never lets owner-typed text become collected evidence", async () => {
+    const typed = "I typed this myself";
+    const llm = vi.fn(async (p: string) => {
+      const evidenceStart = p.indexOf('"sampled_reviews_without_owner_response"');
+      const providedStart = p.indexOf('"provided_inputs"');
+      // The scanned sample is built from stored raw_data only; the owner's text
+      // appears solely under provided_inputs, which the prompt calls a fallback.
+      expect(p.slice(evidenceStart, providedStart)).toContain("Slow service");
+      expect(p.slice(evidenceStart, providedStart)).not.toContain(typed);
+      expect(p).toContain(typed);
+      return good();
+    });
+    await run({ llm, inputs: { reviews_without_response: typed } });
+    expect(llm).toHaveBeenCalledOnce();
+  });
   it("sums both attempts", async () => {
     const llm = vi
       .fn()

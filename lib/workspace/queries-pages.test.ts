@@ -27,6 +27,13 @@ const repository = vi.hoisted(() => ({
 vi.mock("@/lib/repositories/workspace-read", () => ({ workspaceReadRepository: () => repository }));
 const reaper = vi.hoisted(() => ({ reapStrandedRuns: vi.fn(async () => [] as string[]) }));
 vi.mock("@/lib/workspace/run-reaper", () => ({ reapStrandedRuns: reaper.reapStrandedRuns }));
+type FakeSnapshot = { id: string; jobId: string; workspaceId: string; locationId: string | null; observedAt: string; metrics: Record<string, number> };
+const artifacts = vi.hoisted(() => ({
+  assistantSnapshot: vi.fn(async () => null as unknown),
+  assistantLatestSnapshot: vi.fn(async () => null as unknown),
+  assistantReviewData: vi.fn(async () => null as unknown),
+}));
+vi.mock("@/lib/repositories/artifacts", () => ({ artifactRepository: () => artifacts }));
 
 import { getHomeBrief, getInsights, listActions, getActivity, getIntegrations, getAction, loadActionRows, loadDiffById } from "./queries-pages";
 
@@ -188,7 +195,7 @@ describe("page repository boundaries", () => {
   it("keeps actions readable with no optional versions, runs or measurements", async () => {
     const detail = await getAction(ctx, "a1");
     expect(detail?.action.id).toBe("a1");
-    expect(detail).toMatchObject({ versions: [], runs: [], measurements: [] });
+    expect(detail).toMatchObject({ versions: [], runs: [], measurements: [], scanInputs: [] });
     expect(repository.versions).toHaveBeenCalledWith("ws-1", ["a1"]);
     state.actions = [];
     expect(await getAction(ctx, "missing")).toBeNull();
@@ -203,7 +210,67 @@ describe("page repository boundaries", () => {
     // repository.runs call builds the detail's run history.
     expect(reaper.reapStrandedRuns.mock.invocationCallOrder[0]).toBeLessThan(repository.runs.mock.invocationCallOrder[0]);
     // Reconciliation is best-effort: nothing reaped still returns the full detail.
-    expect(detail).toMatchObject({ versions: [], runs: [], measurements: [] });
+    expect(detail).toMatchObject({ versions: [], runs: [], measurements: [], scanInputs: [] });
+  });
+
+  it("shows the reviews the draft will use instead of asking the owner to retype them", async () => {
+    const snapshot: FakeSnapshot = { id: "snap-9", jobId: "job-9", workspaceId: "ws-1", locationId: "loc-1", observedAt: "2026-09-02T00:00:00Z", metrics: { "gbp.reviews_count": 210 } };
+    artifacts.assistantSnapshot.mockResolvedValue(snapshot);
+    artifacts.assistantReviewData.mockResolvedValue({
+      gbp: { reviews: [
+        { rating: 2, text: "Slow service", time: "2026-08-30T00:00:00Z" },
+        { rating: 5, text: "Answered already", time: "2026-08-29T00:00:00Z", owner_response: "Thanks!" },
+      ] },
+    });
+    state.actions = [actionRow({ id: "a1", template_key: "review-response", source_snapshot_id: "snap-9", required_inputs: ["brand_voice", "reviews_without_response"], action_state: "needs_input" })];
+
+    const detail = await getAction(ctx, "a1");
+    // The action's own snapshot, never the location's latest.
+    expect(artifacts.assistantSnapshot).toHaveBeenCalledWith("ws-1", "snap-9");
+    expect(artifacts.assistantLatestSnapshot).not.toHaveBeenCalled();
+    expect(detail?.scanInputs).toHaveLength(1);
+    expect(detail?.scanInputs[0]).toMatchObject({
+      key: "reviews_without_response",
+      factType: "Observed",
+      available: 1,
+      inspected: 2,
+      populationCount: 210,
+      jobId: "job-9",
+    });
+    expect(detail?.scanInputs[0].reviews[0].excerpt).toBe("Slow service");
+    // Resolved live, so a row derived before this rule stops reporting an input
+    // the workspace can already answer -- while the persisted list is unchanged.
+    expect(detail?.action.missingInputs).toEqual(["brand_voice"]);
+    expect(detail?.action.requiredInputs).toEqual(["brand_voice", "reviews_without_response"]);
+    expect(detail?.action.evidenceInputs).toEqual(["reviews_without_response"]);
+  });
+
+  it("reads no review data at all for a template that does not draft replies", async () => {
+    state.actions = [actionRow({ id: "a1", template_key: "social-post" })];
+    const detail = await getAction(ctx, "a1");
+    expect(detail?.scanInputs).toEqual([]);
+    expect(artifacts.assistantReviewData).not.toHaveBeenCalled();
+  });
+
+  it("keeps the input form when the scan retained no unanswered review", async () => {
+    artifacts.assistantSnapshot.mockResolvedValue({ id: "snap-9", jobId: "job-9", workspaceId: "ws-1", locationId: "loc-1", observedAt: "2026-09-02T00:00:00Z", metrics: {} } satisfies FakeSnapshot);
+    artifacts.assistantReviewData.mockResolvedValue({ gbp: { reviews: [{ rating: 5, text: "Answered", time: "2026-08-29T00:00:00Z", owner_response: "Thanks!" }] } });
+    state.actions = [actionRow({ id: "a1", template_key: "review-response", source_snapshot_id: "snap-9", required_inputs: ["reviews_without_response"], action_state: "needs_input" })];
+
+    const detail = await getAction(ctx, "a1");
+    expect(detail?.scanInputs).toEqual([]);
+    expect(detail?.action.missingInputs).toEqual(["reviews_without_response"]);
+  });
+
+  it("refuses to render another location's review text to an out-of-scope manager", async () => {
+    artifacts.assistantSnapshot.mockResolvedValue({ id: "snap-9", jobId: "job-9", workspaceId: "ws-1", locationId: "loc-2", observedAt: "2026-09-02T00:00:00Z", metrics: {} } satisfies FakeSnapshot);
+    artifacts.assistantReviewData.mockResolvedValue({ gbp: { reviews: [{ rating: 2, text: "Slow service", time: "2026-08-30T00:00:00Z" }] } });
+    state.actions = [actionRow({ id: "a1", template_key: "review-response", location_id: null, source_snapshot_id: "snap-9", required_inputs: ["reviews_without_response"] })];
+    const scoped = { ...ctx, membership: { ...ctx.membership, role: "manager" as const, locationScope: ["loc-1"] } };
+
+    const detail = await getAction(scoped, "a1");
+    expect(detail?.scanInputs).toEqual([]);
+    expect(artifacts.assistantReviewData).not.toHaveBeenCalled();
   });
 
   it("never reconciles from the actions list", async () => {

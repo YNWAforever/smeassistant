@@ -85,6 +85,18 @@ describe("AGENTS", () => {
     });
   }
 
+  it("tells the review agent which reviews were scanned and which the owner typed", () => {
+    const prompt = AGENTS.review_reply.buildPrompt(fixedCtx);
+    // The scan already collected these; the prompt must not treat owner-typed
+    // text as if it were collected evidence.
+    expect(prompt).toContain('"source": "scan_evidence"');
+    expect(prompt).toContain("Bounded sample retained by the scan, not the full review population.");
+    expect(prompt).toContain("collected by the scan from the merchant's public Google profile");
+    expect(prompt).toContain("provided_inputs.reviews_without_response is text the owner typed themselves");
+    expect(prompt).toContain("Use it ONLY when sampled_reviews_without_owner_response is empty");
+    expect(prompt).toContain("review_reply@2026-09-10.1");
+  });
+
   it("keeps an instruction-shaped review inside the untrusted fence", () => {
     // A merchant's public reviews are attacker-influenceable text. The fence is
     // a boundary marker, not a guarantee -- schema/prohibited-term validation

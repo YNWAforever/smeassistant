@@ -21,10 +21,10 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon final action runtime',(
   actor=(await db.query("INSERT INTO app_users(email) VALUES('final-runtime@example.test') RETURNING id")).rows[0].id;
  });
  afterAll(async()=>{await Promise.all([db?.end(),owner?.end()]);fixture?.stop();});
- async function setup(workspace?:string,location?:string,observed='2026-09-01') {
+ async function setup(workspace?:string,location?:string,observed='2026-09-01',rawData:unknown=null) {
   const ws=workspace??(await db.query('INSERT INTO workspaces DEFAULT VALUES RETURNING id')).rows[0].id;
   const loc=location??(await db.query("INSERT INTO locations(workspace_id,slug,name) VALUES($1,'fixture','Fixture') RETURNING id",[ws])).rows[0].id;
-  const job=(await db.query("INSERT INTO audit_jobs(workspace_id,location_id,business_name,status,website_url) VALUES($1,$2,'Fixture','done',NULL) RETURNING id",[ws,loc])).rows[0].id;
+  const job=(await db.query("INSERT INTO audit_jobs(workspace_id,location_id,business_name,status,website_url,raw_data) VALUES($1,$2,'Fixture','done',NULL,$3) RETURNING id",[ws,loc,rawData?JSON.stringify(rawData):null])).rows[0].id;
   const snapshot=(await db.query("INSERT INTO scan_snapshots(workspace_id,location_id,job_id,market,observed_at,coverage,module_states,metrics) VALUES($1,$2,$3,'hk',$4,1,'{}','{}') RETURNING id",[ws,loc,job,observed])).rows[0].id;
   await db.query("INSERT INTO audit_findings(job_id,finding_key,module,severity,score_impact) VALUES($1,'gbp.owner_response_low','gbp','warning',-10)",[job]);
   return {ws,loc,job,snapshot};
@@ -40,6 +40,29 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon final action runtime',(
   const after=(await db.query('SELECT * FROM actions WHERE workspace_id=$1',[f.ws])).rows;
   expect(after[0]).toMatchObject({id:before[0].id,action_state:'in_progress',provided_inputs:{tone:'warm'}});
   expect((await db.query("SELECT id FROM audit_events WHERE workspace_id=$1 AND event='action.derived'",[f.ws])).rows).toHaveLength(1);
+ });
+ it('does not ask the owner to retype reviews the scan collected, and asks again when it loses them',async()=>{
+  const unanswered={gbp:{reviews:[{rating:2,text:'Slow service',time:'2026-08-30T00:00:00Z'},{rating:1,text:'Cold food',time:'2026-08-29T00:00:00Z'}]}};
+  const f=await setup(undefined,undefined,'2026-09-01',unanswered);
+  await db.query('INSERT INTO brand_profiles(workspace_id) VALUES($1)',[f.ws]);
+  expect((await deriveActionsForSnapshot(db,f.snapshot)).created).toBe(1);
+  const derived=(await db.query('SELECT required_inputs,action_state FROM actions WHERE workspace_id=$1',[f.ws])).rows[0];
+  expect(derived.required_inputs).not.toContain('reviews_without_response');
+
+  // The scan stops retaining an unanswered review: the input comes back, and an
+  // untouched action must go back to needs_input or the detail page would show
+  // no form at all and Generate would burn a model call.
+  await db.query("UPDATE actions SET action_state='recommended' WHERE workspace_id=$1",[f.ws]);
+  await db.query("UPDATE audit_jobs SET raw_data=$2 WHERE id=$1",[f.job,JSON.stringify({gbp:{reviews:[{rating:5,text:'Great',time:'2026-08-30T00:00:00Z',owner_response:'Thank you'}]}})]);
+  expect(await deriveActionsForSnapshot(db,f.snapshot)).toMatchObject({created:0,updated:1});
+  const again=(await db.query('SELECT required_inputs,action_state FROM actions WHERE workspace_id=$1',[f.ws])).rows[0];
+  expect(again.required_inputs).toContain('reviews_without_response');
+  expect(again.action_state).toBe('needs_input');
+
+  // Owner progress is never clobbered by that rule.
+  await db.query("UPDATE actions SET action_state='in_progress' WHERE workspace_id=$1",[f.ws]);
+  await deriveActionsForSnapshot(db,f.snapshot);
+  expect((await db.query('SELECT action_state FROM actions WHERE workspace_id=$1',[f.ws])).rows[0].action_state).toBe('in_progress');
  });
  it('skips stale exact-location snapshots and rejects corrupted source parent scope',async()=>{
   const f=await setup();const newer=await setup(f.ws,f.loc,'2026-09-02');

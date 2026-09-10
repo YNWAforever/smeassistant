@@ -14,6 +14,7 @@ import {
 import { artifactRepository } from "@/lib/repositories/artifacts";
 import { actionMutationRepository } from "@/lib/repositories/action-mutations";
 import { freshnessText } from "@/lib/workspace/actions";
+import { applyResolvedInputs, resolveEvidenceInputs } from "@/lib/workspace/evidence-inputs";
 import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
 import { runAgentForAction, RunError } from "@/lib/workspace/runs";
 import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
@@ -80,7 +81,14 @@ export async function POST(req: Request) {
     }
   }
 
-  if (body.run === true) {
+  const template = TEMPLATES.find((t) => t.key === templateKey)!;
+  // Gated on the review key alone, not on "has any server-resolvable input":
+  // brand-backed keys need no snapshot, and hoisting the load for them would
+  // drag in the location-scope check below and turn today's 201 into a 403 for
+  // a scoped manager creating a workspace-wide objective.
+  const needsReviewEvidence = template.requiredInputs.includes("reviews_without_response");
+  let resolvedInputs: ReadonlySet<string> = new Set<string>();
+  if (body.run === true || needsReviewEvidence) {
     try {
       const evidence = await db.assistantLatestSnapshot(
         workspaceId,
@@ -88,6 +96,11 @@ export async function POST(req: Request) {
       );
       if (evidence && !inLocationScope(auth.membership, evidence.locationId))
         return json({ error: "forbidden" }, 403);
+      if (needsReviewEvidence && evidence) {
+        resolvedInputs = resolveEvidenceInputs({
+          rawData: await db.assistantReviewData(workspaceId, evidence.jobId),
+        });
+      }
     } catch {
       return json({ error: "unavailable" }, 503);
     }
@@ -100,7 +113,6 @@ export async function POST(req: Request) {
   });
   if (!limit.allowed) return rateLimitedResponse(limit.retryAfterSeconds);
 
-  const template = TEMPLATES.find((t) => t.key === templateKey)!;
   const now = new Date();
   const dedupeKey = objectiveDedupeKey(
     workspaceId,
@@ -108,7 +120,10 @@ export async function POST(req: Request) {
     templateKey,
     objective,
   );
-  const missing = template.requiredInputs.filter(
+  // What the owner must still supply, after the scan answers what it can --
+  // the same rule lib/repositories/action-derivation.ts applies.
+  const requiredInputs = applyResolvedInputs(template.requiredInputs, resolvedInputs);
+  const missing = requiredInputs.filter(
     (key) =>
       inputs[key] === undefined || inputs[key] === null || inputs[key] === "",
   );
@@ -134,7 +149,7 @@ export async function POST(req: Request) {
       priority_score: 50,
       priority_factors: [],
       effort_minutes: template.effortMinutes,
-      required_inputs: template.requiredInputs,
+      required_inputs: requiredInputs,
       provided_inputs: inputs,
       action_state: missing.length ? "needs_input" : "recommended",
       measurement_state: "not_eligible",

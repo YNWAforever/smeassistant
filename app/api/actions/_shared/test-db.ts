@@ -121,6 +121,10 @@ export function makeDb(respond: Responder) {
     },
     assistantLatestSnapshot: async () => null,
     assistantSnapshot: async () => null,
+    // audit_jobs.raw_data. Defaults to null so suites that never opt in are
+    // unaffected; a test overrides it through its own responder.
+    assistantReviewData: async (workspaceId: string, jobId: string) =>
+      read("audit_jobs", { workspace_id: workspaceId, id: jobId }),
     assistantWorkspace: async (id: string) => read("workspaces", { id }),
     assistantLocations: async (workspaceId: string) => {
       const row = await read("locations", { workspace_id: workspaceId });

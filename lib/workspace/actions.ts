@@ -1,4 +1,5 @@
 import { localized, type Capability, type FactType, type LocalizedText, type Priority } from "@/lib/domain";
+import { applyResolvedInputs } from "./evidence-inputs";
 import { scorePriority, type PriorityFactor } from "./priority";
 import { type ScanDiffRow, type SnapshotRecord } from "./snapshots";
 import { isLedgerOnly, templateByKey, templateForFinding, WEBSITE_FAQ_TRIGGER, type ActionTemplate, type TemplateKey } from "./templates";
@@ -9,6 +10,8 @@ import { isLedgerOnly, templateByKey, templateForFinding, WEBSITE_FAQ_TRIGGER, t
  * kept up to date across snapshots instead of duplicated; resolved findings in
  * a comparable diff close their action as measured, vanished ones expire it.
  */
+const EMPTY_RESOLVED: ReadonlySet<string> = new Set<string>();
+
 export interface FindingRow {
   finding_key: string;
   module: string;
@@ -56,6 +59,13 @@ export interface DeriveActionsInput {
   industry: string | null;
   /** Templates that already have a draft output version on their open action. */
   existingDrafts: Set<TemplateKey>;
+  /**
+   * Input keys the scan already answers (lib/workspace/evidence-inputs.ts).
+   * Subtracted from every template's requiredInputs, so the owner is never asked
+   * to retype evidence the workspace has already collected. Defaults to empty,
+   * which reproduces the previous behaviour exactly.
+   */
+  resolvedInputs?: ReadonlySet<string>;
   now?: Date;
 }
 
@@ -122,13 +132,17 @@ function buildAction(
   const moduleState = stateKey ? snapshot.moduleStates[stateKey] : null;
   const regressed = Boolean(input.latestDiff?.comparable && findings.some((f) => input.latestDiff!.regressed_findings.includes(f.finding_key)));
   const ageDays = Math.floor((now.getTime() - Date.parse(snapshot.observedAt)) / 86_400_000);
+  // What the owner must still supply: the template's ask minus whatever the scan
+  // already answers. Used for both the readiness factor and the persisted list,
+  // so priority and the input form can never disagree.
+  const requiredInputs = applyResolvedInputs(template.requiredInputs, input.resolvedInputs ?? EMPTY_RESOLVED);
   const priority = scorePriority({
     scoreImpact: lead ? impactOf(lead) : -5,
     module: lead?.module ?? "gbp",
     severity: lead?.severity ?? "warning",
     regressed,
     evidenceAgeDays: Number.isFinite(ageDays) ? ageDays : null,
-    inputsAvailable: template.requiredInputs.length === 0,
+    inputsAvailable: requiredInputs.length === 0,
     hasDraft: input.existingDrafts.has(template.key),
     effortMinutes: template.effortMinutes,
     externalFacing: template.externalFacing,
@@ -159,7 +173,7 @@ function buildAction(
     priorityScore: priority.score,
     priorityFactors: priority.factors,
     effortMinutes: template.effortMinutes,
-    requiredInputs: template.requiredInputs,
+    requiredInputs,
     capability: template.capability,
     dedupeKey: dedupeKeyFor(snapshot.workspaceId ?? "", snapshot.locationId, template.key),
   };

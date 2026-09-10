@@ -14,11 +14,10 @@ import {
   type AgentContext,
   type AgentKey,
   type AgentOutput,
-  type SampledReview,
 } from "@/lib/agents";
 import { localized } from "@/lib/domain";
 import { llmComplete, type LLMUsage } from "@/lib/llm";
-import { sanitizeReportProof } from "@/lib/report/sanitize-proof";
+import { sampledReviewsFromRawData } from "./evidence-inputs";
 import { buildActionOverview, localeOf } from "./overview";
 import { type SnapshotRecord } from "./snapshots";
 import { templateByKey, type TemplateKey } from "./templates";
@@ -128,18 +127,12 @@ function addUsage(total: LLMUsage, next: LLMUsage | undefined): LLMUsage {
   };
 }
 
-/** Shared excerpt transformation; no persistence or provider transport. */
-export function sampledReviewsFromRawData(rawData: unknown): SampledReview[] {
-  const proof = sanitizeReportProof(rawData, []);
-  return (proof.gbp?.recentReviews ?? [])
-    .filter((review) => !review.ownerResponse && review.text)
-    .sort((a, b) => (b.time || "").localeCompare(a.time || ""))
-    .map((review) => ({
-      rating: review.rating || null,
-      text: review.text.slice(0, 500),
-      time: review.time || null,
-    }));
-}
+/**
+ * Moved to lib/workspace/evidence-inputs.ts so the detail page, the action
+ * derivation and the agent all read the same bytes. Re-exported here because
+ * this is the name existing callers import.
+ */
+export { sampledReviewsFromRawData };
 
 export function snapshotEvidence(
   snapshot: SnapshotRecord | null,

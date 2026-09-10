@@ -33,6 +33,12 @@ export interface ActionOverview {
   effortMinutes: number;
   requiredInputs: string[];
   missingInputs: string[];
+  /**
+   * Required keys the scan already answers, so the UI can show the evidence
+   * instead of an empty form. Optional: only the detail page passes the context
+   * that populates it, and every other caller keeps its current shape.
+   */
+  evidenceInputs?: string[];
   assignee?: { id: string; name: string };
   dueAt?: string;
   actionState: ActionState;
@@ -63,6 +69,8 @@ export interface ActionRow {
   effort_minutes: number;
   required_inputs: unknown;
   provided_inputs: unknown;
+  /** Selected by ACTION_COLUMNS; optional so existing fixtures keep compiling. */
+  source_snapshot_id?: string | null;
   assignee_user_id: string | null;
   due_at: string | null;
   action_state: ActionState;
@@ -77,6 +85,8 @@ export interface ActionOverviewContext {
   latestRun: { state: RunState } | null;
   latestVersion: { id: string; version_no: number; approval_state: ApprovalState; delivery_state: DeliveryState } | null;
   assignee?: { id: string; name: string } | null;
+  /** Required keys the scan already answers for THIS action (detail page only). */
+  scanSatisfiedInputs?: readonly string[];
 }
 
 export function displayPhaseKey(input: {
@@ -127,7 +137,11 @@ export function buildActionOverview(row: ActionRow, ctx: ActionOverviewContext):
   const deliveryState: DeliveryState = ctx.latestVersion?.delivery_state ?? "not_requested";
   const required = Array.isArray(row.required_inputs) ? (row.required_inputs as string[]) : [];
   const provided = row.provided_inputs && typeof row.provided_inputs === "object" ? (row.provided_inputs as Record<string, unknown>) : {};
-  const missing = required.filter((key) => provided[key] === undefined || provided[key] === null || provided[key] === "");
+  // A legacy row derived before the evidence-aware rule can still list a key the
+  // scan answers; the detail page resolves that live, so it drops out of
+  // "missing" without rewriting the persisted list.
+  const satisfied = new Set(ctx.scanSatisfiedInputs ?? []);
+  const missing = required.filter((key) => !satisfied.has(key) && (provided[key] === undefined || provided[key] === null || provided[key] === ""));
   const factors = Array.isArray(row.priority_factors) ? (row.priority_factors as PriorityFactor[]) : [];
   const evidence = (row.evidence && typeof row.evidence === "object" ? row.evidence : {}) as Partial<ActionOverview["evidence"]>;
   const phaseKey = displayPhaseKey({
@@ -158,6 +172,7 @@ export function buildActionOverview(row: ActionRow, ctx: ActionOverviewContext):
     effortMinutes: row.effort_minutes,
     requiredInputs: required,
     missingInputs: missing,
+    evidenceInputs: required.filter((key) => satisfied.has(key)),
     assignee: ctx.assignee ?? undefined,
     dueAt: row.due_at ?? undefined,
     actionState: row.action_state,
