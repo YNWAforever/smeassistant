@@ -31,6 +31,15 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string }> = {
   "assistant.run": { en: "Operator answered", zh: "助理已回應" },
   "consent.public_evidence": { en: "Public evidence consent", zh: "公開證據同意" },
   "fix_pack.reviewed": { en: "Fix Pack draft reviewed", zh: "Fix Pack 草稿已審閱" },
+  "access_request.submitted": { en: "Access request submitted", zh: "已提交存取申請" },
+  "access_request.reviewed": { en: "Access request opened by an operator", zh: "營運人員已開啟申請" },
+  "access_request.information_requested": { en: "More information requested", zh: "已要求補充資料" },
+  "access_request.approved": { en: "Access request approved", zh: "存取申請已批准" },
+  "access_request.rejected": { en: "Access request rejected", zh: "存取申請已拒絕" },
+  // Distinct from workspace.claimed, which is the Google-attested path. Merging
+  // them would make the ledger unable to tell an attested claim from an
+  // operator assignment.
+  "workspace.assigned": { en: "Workspace assigned by an operator", zh: "營運人員已指派工作台" },
 };
 
 export const AUDIT_ACTOR_LABELS: Record<"user" | "agent" | "system" | "scanner", { en: string; zh: string }> = {

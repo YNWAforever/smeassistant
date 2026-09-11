@@ -114,7 +114,8 @@ export const claimsRepository = {
 };
 
 export interface LocationFields {name:string;address:string|null;district:string|null;place_id:string|null;ig_handle:string|null;website_url:string|null}
-export interface ClaimAuditEvent {workspace_id:string;location_id?:string|null;actor_type:string;actor_id?:string|null;event:string;entity_type?:string|null;entity_id?:string|null;payload:Record<string,unknown>}
+/** `workspace_id` is nullable because a pre-assignment access request has no workspace yet; the SQL column always allowed it. */
+export interface ClaimAuditEvent {workspace_id:string|null;location_id?:string|null;actor_type:string;actor_id?:string|null;event:string;entity_type?:string|null;entity_id?:string|null;payload:Record<string,unknown>}
 
 /** Best-effort audit persistence after the business mutation has succeeded. */
 export async function recordClaimAuditEvent(input:ClaimAuditEvent):Promise<void> {

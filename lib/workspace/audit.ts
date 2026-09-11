@@ -14,6 +14,8 @@ export const AUDIT_EVENTS = [
   "delivery.exported", "delivery.copied", "workspace.claimed", "member.invited", "member.role_changed", "integration.updated",
   "brand.updated", "asset.uploaded", "asset.rights_confirmed", "assistant.run", "consent.public_evidence",
   "fix_pack.reviewed",
+  "access_request.submitted", "access_request.reviewed", "access_request.information_requested",
+  "access_request.approved", "access_request.rejected", "workspace.assigned",
 ] as const;
 
 export type AuditEvent = (typeof AUDIT_EVENTS)[number];
@@ -30,7 +32,13 @@ export const RUN_TIMED_OUT_EVENT = "run.timed_out" satisfies AuditEvent;
 export type AuditActorType = "user" | "agent" | "system" | "scanner";
 
 export interface AuditEventInput {
-  workspaceId: string;
+  /**
+   * Null before assignment: a workspace_access_request exists before any
+   * workspace does. The SQL column has always been nullable; only this type
+   * required one. Widening is source-compatible -- every existing caller
+   * passes a string.
+   */
+  workspaceId: string | null;
   locationId?: string | null;
   actorType: AuditActorType;
   actorId?: string | null;
