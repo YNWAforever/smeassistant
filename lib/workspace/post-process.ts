@@ -7,6 +7,7 @@ import { actionDerivationRepository } from "@/lib/repositories/action-derivation
 import { recordMeasurements } from "@/lib/workspace/measurements";
 import { notifyWithRepository } from "@/lib/workspace/notify";
 import { buildSnapshot, loadDiffForHeadJob } from "@/lib/workspace/snapshots";
+import type { WebsiteChecks } from "@/lib/website/checks";
 
 /**
  * Workspace post-processing after a scan persists (CLAUDE.md Phase 3 items 1-2,
@@ -52,7 +53,18 @@ async function workspaceHref(db: PoolClient, workspaceId: string, locationId: st
   }
 }
 
-export async function postProcessWorkspaceScan(db: PoolClient, jobId: string): Promise<PostProcessOutcome> {
+export interface PostProcessOptions {
+  /**
+   * Website checks the caller collected before opening the completion
+   * transaction. This function cannot collect them itself -- it runs inside
+   * that transaction, holding row locks, and recovery is contractually
+   * collector-free. Omitted keeps the earlier behaviour: the snapshot records
+   * the website as not evaluated rather than guessing at it.
+   */
+  websiteChecks?: WebsiteChecks | null;
+}
+
+export async function postProcessWorkspaceScan(db: PoolClient, jobId: string, opts: PostProcessOptions = {}): Promise<PostProcessOutcome> {
   let snapshotId: string | null = null;
   try {
     const job = (await db.query<PostProcessJob>("SELECT id,workspace_id,location_id,status,business_name FROM audit_jobs WHERE id=$1",[jobId])).rows[0];
@@ -73,7 +85,7 @@ export async function postProcessWorkspaceScan(db: PoolClient, jobId: string): P
     }
     if (job.status !== "done" && job.status !== "partial") return { ran: false, snapshotId: null, error: null };
 
-    const snapshot = await buildSnapshot(snapshotRepository(db), jobId, { persistedOnly: true });
+    const snapshot = await buildSnapshot(snapshotRepository(db), jobId, { persistedOnly: true, websiteChecks: opts.websiteChecks ?? null });
     snapshotId = snapshot.id;
     await actionDerivationRepository(db).derive(snapshot.id);
 

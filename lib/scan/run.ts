@@ -1,4 +1,6 @@
 import { completeWorkspaceScan } from "@/lib/workspace/completion";
+import { postProcessWorkspaceScan } from "@/lib/workspace/post-process";
+import { collectWebsiteChecksForJob } from "@/lib/workspace/website-evidence";
 import { waitUntil } from "@vercel/functions";
 import {
   collectScanProviders,
@@ -73,7 +75,14 @@ export async function runScan(
   });
   if (result.status !== "already_claimed") {
     try {
-      const completion=await completeWorkspaceScan(getPool(),jobId);
+      // Collected here, before the completion claim, and handed in: the
+      // snapshot is built inside the completion transaction, which holds row
+      // locks and may not make a network call, and the recovery path stays
+      // collector-free. Without this the website checks ran once at claim time
+      // and never again, so coverage fell to 3 of 4 on the first rescan and the
+      // two website templates could never close the prove-change loop.
+      const websiteChecks=await collectWebsiteChecksForJob(getPool(),jobId);
+      const completion=await completeWorkspaceScan(getPool(),jobId,(db,id)=>postProcessWorkspaceScan(db,id,{websiteChecks}));
       if(completion.status==="retry")console.error("[scan] workspace completion retry",{category:"workspace_completion_retry",jobId});
     }catch{console.error("[scan] workspace completion unavailable",{category:"workspace_completion_unavailable",jobId});}
   }
