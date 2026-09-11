@@ -17,7 +17,7 @@ import {
 } from "@/lib/agents";
 import { localized } from "@/lib/domain";
 import { llmComplete, type LLMUsage } from "@/lib/llm";
-import { sampledReviewsFromRawData } from "./evidence-inputs";
+import { filterSelectedReviews, sampledReviewsFromRawData } from "./evidence-inputs";
 import { buildActionOverview, localeOf } from "./overview";
 import { type SnapshotRecord } from "./snapshots";
 import { templateByKey, type TemplateKey } from "./templates";
@@ -254,10 +254,17 @@ export async function runAgentForAction(
     db.assistantLocations(row.workspace_id),
   ]);
   const location = locations.find((l) => l.id === row.location_id) ?? null;
+  // P2.2 requires "selected-review replies": the owner picks which unanswered
+  // reviews to answer. `provided_inputs.selected_reviews` carries only KEYS --
+  // the review text is still rebuilt from stored evidence here, so the choice
+  // can narrow the sample but never widen or replace it.
   const sampledReviews =
     agentKey === "review_reply" && snapshot
-      ? sampledReviewsFromRawData(
-          await db.assistantReviewData(row.workspace_id, snapshot.jobId),
+      ? filterSelectedReviews(
+          sampledReviewsFromRawData(
+            await db.assistantReviewData(row.workspace_id, snapshot.jobId),
+          ),
+          provided.selected_reviews,
         )
       : undefined;
   const ctx: AgentContext = {

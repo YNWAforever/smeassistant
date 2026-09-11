@@ -59,6 +59,57 @@ export function sampledReviewsFromRawData(rawData: unknown): SampledReview[] {
   return selectScannedReviews(rawData).sampled;
 }
 
+/**
+ * A stable handle for one sampled review, so the owner can choose which reviews
+ * to answer (Master Plan §5 P2.2: "Selected-review replies").
+ *
+ * Content-derived rather than positional. An index would silently re-point at a
+ * different review the moment a new scan reorders the sample, turning the
+ * owner's choice quietly wrong rather than visibly stale. Derived from the
+ * review's own time and text, so the same stored evidence always yields the
+ * same key and a re-derivation still matches.
+ *
+ * It is a lookup handle, not a secret: it travels to the client and back, and
+ * all it can do is select from a list the server rebuilt from
+ * `audit_jobs.raw_data`. That is the point -- see `filterSelectedReviews`.
+ */
+// Takes the whole review but reads only `time` and `text`: the rating is
+// editorial and can be absent, so folding it in would make the key unstable.
+export function scannedReviewKey(review: SampledReview): string {
+  // FNV-1a. Collision resistance is irrelevant here: the worst case is drafting
+  // from one extra review the scan did collect, never from invented text.
+  let hash = 0x811c9dc5;
+  const source = `${review.time ?? ""}|${review.text}`;
+  for (let i = 0; i < source.length; i += 1) {
+    hash ^= source.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0");
+}
+
+/**
+ * Narrow the server-derived sample to the reviews the owner picked.
+ *
+ * The selection is a FILTER, never a source. The client sends keys; the review
+ * text still comes only from stored evidence, so a caller cannot smuggle a
+ * review the scan never collected into the prompt -- the property the module
+ * docstring above exists to protect.
+ *
+ * Absent or empty means "all of them", so every action created before this
+ * feature behaves exactly as it did. A selection matching nothing also falls
+ * back to all: the owner's stored choice has gone stale against a newer scan,
+ * and drafting from every unanswered review is a better answer than drafting
+ * from none -- which would otherwise produce an empty evidence block and invite
+ * the model to invent one.
+ */
+export function filterSelectedReviews(sampled: SampledReview[], selected: unknown): SampledReview[] {
+  if (!Array.isArray(selected) || selected.length === 0) return sampled;
+  const keys = new Set(selected.filter((key): key is string => typeof key === "string"));
+  if (keys.size === 0) return sampled;
+  const picked = sampled.filter((review) => keys.has(scannedReviewKey(review)));
+  return picked.length > 0 ? picked : sampled;
+}
+
 export interface EvidenceInputSources {
   rawData: unknown;
 }
