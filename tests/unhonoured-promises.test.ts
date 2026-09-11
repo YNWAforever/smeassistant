@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, relative } from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 /**
  * Guards a class of defect rather than three individual strings: an interface
@@ -30,23 +30,46 @@ function sourceFiles(dir: string, extensions: readonly string[]): string[] {
   });
 }
 
+/**
+ * The tree is walked and read once, not once per entry.
+ *
+ * Every `PROMISES` entry scans the same sources, so before this each new entry
+ * multiplied a full directory walk plus a full read of every backend file. The
+ * fourth entry pushed the file past vitest's 5 s default under parallel load —
+ * a self-inflicted flake, and one that would have got worse with every promise
+ * this guard learns to catch. Caching keeps the semantics identical: same
+ * files, same patterns, read once.
+ */
+function memo<T>(build: () => T): () => T {
+  let value: T | undefined;
+  return () => (value ??= build());
+}
+
 /** Every surface that can put words in front of an owner. */
-function uiSources(): string[] {
-  return [
+const uiSources = memo(() =>
+  [
     ...sourceFiles(join(repoRoot, "components"), [".ts", ".tsx"]),
     ...sourceFiles(join(repoRoot, "lib", "messages"), [".json"]),
     join(repoRoot, "lib", "copy.ts"),
     join(repoRoot, "lib", "copy-workspace.ts"),
-  ].filter((file) => existsSync(file));
-}
+  ].filter((file) => existsSync(file)),
+);
 
 /** Anything that could implement a promise: routes, repositories, config. */
-function backendSources(): string[] {
-  return [...sourceFiles(join(repoRoot, "app"), [".ts", ".tsx"]), ...sourceFiles(join(repoRoot, "lib"), [".ts"])];
-}
+const backendSources = memo(() => [
+  ...sourceFiles(join(repoRoot, "app"), [".ts", ".tsx"]),
+  ...sourceFiles(join(repoRoot, "lib"), [".ts"]),
+]);
+
+const backendText = memo(() => backendSources().map((file) => readFileSync(file, "utf8")));
+
+/** UI copy with commentary already stripped and lower-cased, read and prepared once. */
+const uiCopy = memo(() =>
+  uiSources().map((file) => ({ file, source: copyOnly(readFileSync(file, "utf8")).toLowerCase() })),
+);
 
 function backendMatches(pattern: RegExp): boolean {
-  return backendSources().some((file) => pattern.test(readFileSync(file, "utf8")));
+  return backendText().some((source) => pattern.test(source));
 }
 
 /** Migrations are where an age-based retention job would have to live to run at all. */
@@ -191,6 +214,19 @@ const KEPT: ReadonlyArray<{ promise: string; requires: string; exists: () => boo
   },
 ];
 
+/**
+ * Read the tree once, here, rather than letting whichever test runs first
+ * absorb it. This guard is a filesystem scan, not a unit of async behaviour, so
+ * its cost scales with the repo and has nothing to do with vitest's 5 s default
+ * for a test. Declaring it as a hook with its own budget keeps every *test*
+ * timeout untouched — the alternative, quietly widening the tests, would hide a
+ * genuine hang behind the same number.
+ */
+beforeAll(() => {
+  uiCopy();
+  backendText();
+}, 60_000);
+
 describe("promises the interface keeps", () => {
   for (const kept of KEPT) {
     it(`still implements: ${kept.promise}`, () => {
@@ -207,8 +243,7 @@ describe("promises the interface makes", () => {
           `${promise.capability} now exists. Revisit the copy this guard bans and delete this entry -- the promise may finally be honest.`,
         );
       }
-      const offenders = uiSources().flatMap((file) => {
-        const source = copyOnly(readFileSync(file, "utf8")).toLowerCase();
+      const offenders = uiCopy().flatMap(({ file, source }) => {
         return promise.banned
           .filter((needle) => source.includes(needle.toLowerCase()))
           .map((needle) => `${relative(repoRoot, file)}: ${needle}`);
