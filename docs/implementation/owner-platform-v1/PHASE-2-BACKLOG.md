@@ -12,7 +12,9 @@ That 3 is the number to keep in mind. An earlier pass at this phase, run before 
 
 ## Progress
 
-**11 of 26 buildable items are done** (items 1, 2, 3, 4, 6, 9, 10, 12, 15, 24, 25); items 6 and 12 are the same defect and landed together. Each carries a **Status** line below with its commit. Fifteen remain buildable: 5, 7, 8, 11, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23, 26. The four blocked items and the three that already existed are unchanged.
+**16 of 26 buildable items are done** (1, 2, 3, 4, 6, 9, 10, 12, 15, **19, 20, 21, 22, 23**, 24, 25); items 6 and 12 are the same defect and landed together, as are 19–23, which shipped as one release. Each carries a **Status** line below with its commit. Ten remain buildable: 5, 7, 8, 11, 13, 14, 16, 17, 18, 26.
+
+**Two of the four blocked items are now unblocked and done: 27 and 28.** Both were `needs_schema_change`, not forbidden — and the P2.4 release settled the storage question with **zero DDL** by carrying decision state on `audit_events` rather than new columns, so the blocker simply went away. Items 29 and 30 remain blocked, on the email port (item 26) rather than on schema.
 
 Every landed item is **locally verified** — `typecheck`, `lint` held at its 30-warning / 0-error baseline, and the unit/component suite. **None is hosted-verified**: no deployment, migration, paid provider call, real email, OAuth consent or Stripe event was attempted, and `db:verify` / `test:integration` still need Docker, which this machine does not have.
 
@@ -196,6 +198,8 @@ lib/funnel/report-labels.ts:67-70 — `export function humaniseLimitationCode(co
 
 **Effort:** `small` · **Start at:** `.env.example:59`
 
+**Status:** done — `70b8a3d`. `ASSISTED_ASSIGNMENT_ENABLED`, exactly "true", checked as the first statement in the decision route and answering 404 before authorization. The queue stays readable with it off, per DEC-06's safe default. The reviewer's method and verifier are operator-entered free text, not a picklist.
+
 **Proof of absence**
 
 `grep -n "STAFF|FIMMICK|CLAIM|OAUTH" .env.example` shows the flag pattern exists only for WORKSPACE_CLAIM_VIA_OAUTH_ENABLED (.env.example:59) and OWNER_SELF_SERVICE_CLAIM (:60); there is no assignment/operator flag. DEC-06 (docs/implementation/owner-platform-v1/BUSINESS-AND-HOSTED-DECISIONS.md:14) still lists 'Named accountable operating role, reviewer access rules, accepted independent verification methods, rejection/transfer policy and retention/access rules' as the pending input, so the enable step cannot be taken in this phase.
@@ -203,6 +207,8 @@ lib/funnel/report-labels.ts:67-70 — `export function humaniseLimitationCode(co
 #### 20. A persistable decision outcome. `workspace_access_requests` cannot express approved vs rejected vs needs-information, an auditable reason, the requester's preferred contact, or verification-evidence references — it has six columns and only a binary resolved/not-resolved signal. Either (a) add columns (status, decision_reason, preferred_contact, contact_identifier, evidence_ref, decided_at) — which is the LOUD schema change, or (b) carry outcome/reason/contact/evidence as `audit_events` rows keyed entity_type='workspace_access_request', entity_id=<request id>, using resolved_at/resolved_by_staff_user_id as the closed flag. Option (b) needs zero DDL but makes current status a derived read and needs-information non-terminal; it ALSO requires widening the typed writers, because both require a non-null workspace id today (lib/workspace/audit.ts:32 `workspaceId: string`, lib/repositories/claims.ts `ClaimAuditEvent.workspace_id:string`) while a pre-assignment request has no workspace — note `audit_events.workspace_id` is already nullable in SQL (neon/migrations/0002_business.sql:114).
 
 **Effort:** `medium` · **Start at:** `neon/migrations/0002_business.sql:417`
+
+**Status:** done — `ff19a5f`. Zero DDL. `resolved_at`/`resolved_by_staff_user_id` stay the closed flag; outcome, reason, contact and verification ride on `audit_events`, with the previously unused `idempotency_key` unique index making a terminal decision exactly-once. Both typed writers were widened to a nullable workspace id -- `tsc` found the second one.
 
 **Proof of absence**
 
@@ -212,6 +218,8 @@ lib/funnel/report-labels.ts:67-70 — `export function humaniseLimitationCode(co
 
 **Effort:** `medium` · **Start at:** `app/api/oauth/google/claim/callback/route.ts:127`
 
+**Status:** done — `84ef171`. `resolveAccessRequest` runs the SAME `createWorkspaceWithOwner` + `attachJob` as verified ownership, on one transaction client. Task 1 made both executor-aware first, because neither could join a caller's transaction. `attachJob` returning false throws `already_claimed` and rolls everything back.
+
 **Proof of absence**
 
 `attachJobToWorkspace` has exactly two consumers — app/api/oauth/google/claim/callback/route.ts:141 and lib/identity/complete-sign-in-ports.ts:56 (through claimScan); no operator or request-approval call site exists. `grep -n "access\|assign" lib/workspace/audit-labels.ts` returns nothing, and the AUDIT_EVENTS tuple at lib/workspace/audit.ts:11-16 contains 26 names, none of which relates to an access request or an assignment (workspace.claimed is the OAuth/self path). `ls -R app/api` lists no requests/, access-requests/ or ops/ directory.
@@ -220,6 +228,8 @@ lib/funnel/report-labels.ts:67-70 — `export function humaniseLimitationCode(co
 
 **Effort:** `medium` · **Start at:** `app/[locale]/owner/select-workspace/page.tsx:38`
 
+**Status:** done — `39fa2cd`. Status is derived, never stored, and scoped `WHERE user_id` = the verified session. Rendered on select-workspace and onboarding step 2. The copy promises no review and no response time, because DEC-06 says not to claim an operating service exists.
+
 **Proof of absence**
 
 `grep -rn "FROM workspace_access_requests|UPDATE workspace_access_requests|workspaceAccessRequests" lib/ app/ components/ scripts/ tests/ e2e/` returns only four declaration lines — lib/db/schema/business.ts:620, lib/db/schema/workspaces.ts:1, lib/db/database.types.ts:32 and :70. No SELECT or UPDATE against the table exists anywhere in the application. app/[locale]/owner/select-workspace/page.tsx:38-47 reads only `listWorkspaceCards(user.id)` and a `denied` query param and renders no request card; app/[locale]/owner/onboarding/page.tsx loads claim evidence, ownership, GBP connection and saved setup (:141-146) and never queries a request.
@@ -227,6 +237,8 @@ lib/funnel/report-labels.ts:67-70 — `export function humaniseLimitationCode(co
 #### 23. A genuinely authenticated, server-authorized operator role and minimal operations queue in this Neon app. Needs: an explicit allowlist (env config, e.g. OPERATOR_EMAILS) resolved against the VERIFIED session email → app_users.id; a `requireOperator()` guard beside requireMembership that fails closed the same way; a queue page and route that reads pending requests (using the existing workspace_access_requests_pending_idx); and audit entries per view/decision. Must NOT flip lib/auth/staff.ts to true and must NOT reconnect the retired Supabase console. Also note app_users has no role column, so the role must live in config, not schema.
 
 **Effort:** `large` · **Start at:** `lib/auth/staff.ts:20`
+
+**Status:** done — `97bf170`. `lib/auth/operator.ts` beside the untouched `staff.ts` stub: an `OPERATOR_EMAILS` allowlist resolved to an `app_users.id`, failing closed five ways. Unlisted `/{locale}/ops` queue and detail pages, English copy by recorded exception, `robots: noindex`.
 
 **Proof of absence**
 
@@ -274,11 +286,15 @@ Not work until the blocker is lifted. Each says why.
 
 **Status:** `needs_schema_change`
 
+**Status:** done — `d41693c`. **Unblocked by this release** -- it was `needs_schema_change`, and this adds no DDL. `POST /api/access-requests` is bound by the Phase 1 `isLeadRecipient` eligibility rule and answers 404 for an ineligible job, so the response never confirms it exists. The form is on onboarding step 2, the manual-entry owner's only route in.
+
 Could not find it. Searches run: (1) enumerated all 44 route handlers via `find app -name route.ts` - no access-request/requests/assignment/assisted route exists; the only name collision is app/api/versions/[versionId]/request-changes/route.ts, which is version review. (2) Server actions - only one "use server" file in the repo, app/[locale]/owner/actions.ts:9, containing signOutAction alone. (3) Case-insensitive repo-wide grep for access.?request|accessRequest|access_request - 25 hits, all docs, the two lib files, schema/types, migrations, or tests of those. (4) Grep for assisted|assistance|ownership_request|owner-request|request-access|requestAccess|help-request|support-request - hits only under docs/implementation/owner-platform-v1/**, never in app/, lib/, or components/. (5) All writers of the table: one, lib/repositories/claims.ts:67. (6) Rate-limit scopes lib/security/rate-limit.ts:8-31 lists all 22 buckets - no access_request/ownership_request bucket; workspace_claim covers only the post-verification completion route. (7) Contact capture (preferred_contact_channel, scan_discussion) exists only in the unlock funnel (lib/funnel/unlock.ts, app/api/report-access/unlock/route.ts), a lead-capture path unrelated to owner assignment. (8) Components - no file matching *request*; components/select-workspace-page.tsx has no contact/request affordance at all. (9) Tests/e2e (e2e/acceptance/*, test/integration/neon-owner-sign-in-completion.integration.test.ts, neon-membership.integration.test.ts) exercise only the implicit sign-in insert, never a POST endpoint. (10) Git history across all branches (git log --all --name-only, plus --diff-filter=D) - no such route was ever added or deleted. (11) SQL layer - no function, no extra columns in 0003/0004/0005; lib/db/schema/business.ts:620-635 mirrors the six-column shape. The project's own plan confirms absence: docs/implementation/owner-platform-v1/MASTER-IMPLEMENTATION-PLAN.md:270 marks P2.4 "NEW", and OWNER-WORKSPACE-GAP-OBSERVATIONS.md:13 lists the operated assisted-ownership route as a gap.
 
 #### 28. Test coverage for the acceptance criteria: a non-operator is refused review/assign; concurrent approvals cannot double-claim (attachJob's `WHERE workspace_id IS NULL` already makes the second lose — it needs a test that asserts the loser sees a visible refusal, not a silent success); a rejected request leaves the requester a non-member; and a manual-entry (no place_id) business completes request → decision → workspace → one task.
 
 **Status:** `needs_schema_change`
+
+**Status:** done — `1c25db9`. **Unblocked by this release.** All four criteria written against a real PostgreSQL; Docker is absent here so CI is the authority. One deviation recorded in the file: assignment does not derive actions -- that happens when the owner completes onboarding through the claim route.
 
 The claim holds. Three of the four named criteria test a feature that does not exist anywhere in this repo, so no test can cover them.
 

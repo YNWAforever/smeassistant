@@ -21,6 +21,26 @@ These are pending decisions/authorizations, not new audit findings. They do not 
 | DEC-13 | 4 | One direct publishing provider and operation. | No activation, publication, external consent or marketing claim. | Provider/account/location, scopes, exact approved-version confirmation, permitted test destination, idempotency/receipt/revocation handling and separate release approval. |
 | DEC-14 | 4 | Delivery units for multi-output promotions/packs or future publishing. | Keep existing per-approved-version export semantics. No bundle counting change. | User-visible delivery unit, commercial decision, SQL enforcement/compatibility tests and example bills/usage. |
 
+## DEC-06 — code now exists, the decision does not
+
+The assisted-verification path (Phase 2 items 19–23, plus 27 and 28) is built
+and merged, and **is off**. It waits on exactly what the DEC-06 row already
+lists: a named accountable operating role, reviewer access rules, accepted
+independent verification methods, and a rejection/transfer policy.
+
+Two variables gate it, both shipping unset:
+
+- `OPERATOR_EMAILS` — unset means nobody can open the operator queue at all.
+- `ASSISTED_ASSIGNMENT_ENABLED` — unset means the decision route answers 404 to
+  everyone, including an allowlisted operator.
+
+The queue is deliberately readable with the flag off, matching this row's
+recorded safe default: build the protected request, status and queue code, and
+withhold only real approvals. The repository asserts no verification policy of
+its own — the reviewer types what they actually checked and who checked it, so
+enabling this requires the procedure to exist outside the code, not merely a
+variable to be set.
+
 ## Configuration inventory — names/presence only
 
 From the supplied verification plan, inspect the candidate deployment for the actual repository names corresponding to:
