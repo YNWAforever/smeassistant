@@ -1,10 +1,31 @@
-# Phase 2 register — Complete owner workspace
+# Owner workspace — observed gaps
+
+> ## This is NOT the Phase 2 scope. It was published as such, and that was wrong.
+>
+> This file was committed as `PHASE-2-OWNER-WORKSPACE-REGISTER.md` claiming to be the scope of the plan's Phase 2, "Complete owner workspace". **It is not.** The real specification is `phase-prompts/02-COMPLETE-OWNER-WORKSPACE.md` and Master Plan §5 (P2.1–P2.5), both of which were sitting untracked in the parent checkout while this survey ran. They are now committed alongside this file.
+>
+> The scope below was *derived* from CLAUDE.md §2.4 and §3.1 because `PHASE-1-REPORT.md` §0 said the kit "does not exist in the repository" — a statement taken as settled for a whole session instead of being checked one directory up. The derivation cost a 75-agent, 13.5M-token survey and produced a list that **substantially disagrees with the actual phase**.
+>
+> **What the real Phase 2 requires that this list missed entirely:**
+> - **P2.1** — simplify navigation to Today / Tasks / Create / Results / More, one primary action per state
+> - **P2.2** — make three workflows genuinely complete: review replies, FAQ + JSON-LD, website basics (with `gbp-profile-fix` staying a checklist and `photo_brief` a written shot list, explicitly *not* AI-substituted)
+> - **P2.3** — reuse stored business context; show a "business details used" summary; stop re-asking known facts
+> - **P2.4** — an operated assisted-ownership route for no-GBP/manual-entry businesses: request → acknowledgement → authorized operator queue in the current Neon app → evidence-based decision → atomic, conflict-aware assignment or visible refusal
+> - **P2.5** — one transactional-email abstraction, a real invitation flow, notification mark-as-read, and the missing host audit events
+>
+> **What this list contains that is *not* Phase 2 at all:** multi-location (absent from the plan), asset downloads, activity paging, Stripe portal edge cases, and most of the medium tier. Several items belong to **Phase 3** (re-scan and proof of change, billing/allowance reconciliation, the single job lifecycle and scheduler) or **Phase 4**.
+>
+> **Roughly three of the 51 overlap with real Phase 2 work** — notification mark-as-read (P2.5), and parts of workflow completeness (P2.2).
+>
+> ## Why it is kept
+>
+> The 51 entries are verified observations with `file:line` evidence, each adversarially checked. They are a legitimate backlog of places the owner journey breaks down — they are simply not this phase's brief. Use them as candidate input to the correct phase, after reconciling each against the real plan. **Do not treat this document as a scope of work.**
+
+---
 
 Produced by a 14-surface survey of the owner workspace against the product loop in CLAUDE.md §2.4 (`Discover → Diagnose → Prioritise → Draft → Approve → Export/Publish → Re-scan → Prove change`) and the route map in §3.1. One read-only agent per surface traced what an owner can actually finish in-product; every claimed gap then went to an adversarial verifier told to refute it by default. No agent could edit a file.
 
 **Read the caveat first.** 61 gaps were claimed and **51 confirmed, 10 refuted** — an 84% confirmation rate. That is high enough to be worth distrusting: a verification pass that refutes little is equally consistent with weak verification. Several entries below also overlap (Insights never reading `action_measurements` was found independently by two surfaces). Treat severities as claims to check, not conclusions.
-
-**Why this register exists.** The commissioning plan names its second phase "Complete owner workspace", but its text was never supplied to this repository — `PHASE-1-REPORT.md` §0 records that only the Start Here document and the four-phase plan were provided directly, and neither is committed here. So the scope below is **derived from the repository's own definition of the owner journey**, not from the plan. If the plan's Phase 2 text is supplied later, it should be reconciled against this list rather than assumed to match it.
 
 **Not repeated here.** The 24 findings of `PHASE-2-GAP-REGISTER.md` (plus P1–P3) are all fixed and CI-verified. That register is about promises the product made and could not keep; this one is about jobs the owner cannot finish.
 
