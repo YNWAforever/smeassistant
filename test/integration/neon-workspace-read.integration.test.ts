@@ -91,14 +91,38 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon workspace read models
     expect(await repository.draftVersions(id)).toEqual([]);
     expect(await repository.versions(other, [actionId])).toEqual([]);
   });
-  it("reads newest connection by actual connected_at regardless of status without credentials", async () => {
+  /**
+   * DELIBERATE CHANGE OF CONTRACT. This asserted the newest row by
+   * `connected_at` "regardless of status", which would return the revoked row
+   * below while a LIVE credential existed -- hiding both the real status and the
+   * Disconnect control, the only thing that can revoke it. The Integrations page
+   * renders exactly this value.
+   *
+   * `oauth_connections_active_provider_key` (0002_business.sql) permits at most
+   * one active row per (workspace, provider), so "prefer the active one" is
+   * unambiguous rather than a coin toss between candidates.
+   *
+   * Recency still decides among rows of equal standing -- pinned below, and
+   * still read from `connected_at` rather than `created_at`/`updated_at`.
+   */
+  it("prefers a live connection over a merely newer one, and returns no credentials", async () => {
     const id = await workspace();
     await runtime.query(`INSERT INTO oauth_connections(workspace_id,provider,access_token_encrypted,status,connected_at)
       VALUES($1,'google_gbp','secret-sentinel','active','2026-08-01'),($1,'google_gbp','secret-sentinel','revoked','2026-09-01')`, [id]);
     const connection = await repository.latestConnection(id);
-    expect(connection?.status).toBe("revoked");
+    expect(connection?.status).toBe("active");
+    expect(connection?.created_at).toContain("2026-08-01");
     expect(Object.keys(connection ?? {}).sort()).toEqual(["created_at", "expires_at", "status", "updated_at"]);
     expect(JSON.stringify(connection)).not.toContain("secret-sentinel");
+  });
+
+  it("falls back to the newest by connected_at when no row is active", async () => {
+    const id = await workspace();
+    await runtime.query(`INSERT INTO oauth_connections(workspace_id,provider,access_token_encrypted,status,connected_at)
+      VALUES($1,'google_gbp','secret-sentinel','revoked','2026-08-01'),($1,'google_gbp','secret-sentinel','expired','2026-09-01')`, [id]);
+    const connection = await repository.latestConnection(id);
+    expect(connection?.status).toBe("expired");
+    expect(connection?.created_at).toContain("2026-09-01");
   });
   it("pages activity at zero, one and beyond row count with strict workspace scope", async () => {
     const id = await workspace();
