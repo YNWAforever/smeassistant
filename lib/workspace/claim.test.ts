@@ -41,6 +41,7 @@ function fakeDb(respond: Responder) {
   workspaceSlug: async (base:string)=>`${base}-2`, locationSlug:async (_ws:string,base:string)=>base,
   updateWorkspace:(id:string,payload:unknown)=>call("workspaces","update",payload,eq("id",id)),
   primaryLocation:(ws:string)=>call("locations","select",undefined,[["eq","workspace_id",ws],["eq","is_primary",true]]),
+  location:(ws:string,id:string)=>call("locations","select",undefined,[["eq","id",id],["eq","workspace_id",ws]]),
   updateLocation:(id:string,payload:unknown)=>call("locations","update",payload,eq("id",id)),
   insertLocation:(payload:unknown)=>call("locations","insert",payload),
   attachLocation:(job:string,id:string)=>call("audit_jobs","update",{location_id:id},eq("id",job)),
@@ -86,16 +87,32 @@ function writes(calls: Call[]): Call[] {
   return calls.filter((call) => call.op !== "select");
 }
 
-/** Scripted reads for the happy path; `state` lets a second call see the first call's rows. */
+interface FakeLocation {
+  id: string;
+  place_id: string | null;
+  is_primary: boolean;
+}
+
+/**
+ * Scripted reads for the happy path; `state` lets a second call see the first
+ * call's rows. It models the two facts the location resolution now depends on:
+ * `attachLocation` writing `audit_jobs.location_id`, and an inserted location
+ * carrying the `place_id` it was created with. Without those, "the same job,
+ * claimed twice" and "a different shop" are indistinguishable -- which is the
+ * confusion the fix exists to remove.
+ */
 function happyResponder(state: {
-  location: { id: string } | null;
+  location: FakeLocation | null;
   workspaceSlug: string | null;
   events: number;
   role?: string;
   job?: Record<string, unknown> | null;
+  jobLocationId?: string | null;
+  added?: FakeLocation[];
 }): Responder {
   return (call) => {
-    if (call.table === "audit_jobs" && call.op === "select") return { data: state.job === undefined ? JOB : state.job };
+    if (call.table === "audit_jobs" && call.op === "select")
+      return { data: state.job === undefined ? { ...JOB, location_id: state.jobLocationId ?? null } : state.job };
     if (call.table === "workspace_members") return { data: state.role === undefined ? { role: "owner" } : state.role ? { role: state.role } : null };
     if (call.table === "workspaces" && call.op === "select") return { data: { ...WORKSPACE, slug: state.workspaceSlug } };
     if (call.table === "workspaces" && call.op === "update") {
@@ -103,10 +120,26 @@ function happyResponder(state: {
       if (slug) state.workspaceSlug = slug;
       return {};
     }
-    if (call.table === "locations" && call.op === "select") return { data: state.location };
+    if (call.table === "locations" && call.op === "select") {
+      const byId = call.filters.find(([, key]) => key === "id")?.[2];
+      if (byId === undefined) return { data: state.location };
+      const rows = [...(state.location ? [state.location] : []), ...(state.added ?? [])];
+      return { data: rows.find((row) => row.id === byId) ?? null };
+    }
     if (call.table === "locations" && call.op === "insert") {
-      state.location = { id: "loc-1" };
-      return { data: { id: "loc-1" } };
+      const payload = call.payload as { place_id: string | null; is_primary: boolean };
+      const row: FakeLocation = {
+        id: payload.is_primary ? "loc-1" : `loc-${(state.added?.length ?? 0) + 2}`,
+        place_id: payload.place_id,
+        is_primary: payload.is_primary,
+      };
+      if (payload.is_primary) state.location = row;
+      else (state.added ??= []).push(row);
+      return { data: { id: row.id } };
+    }
+    if (call.table === "audit_jobs" && call.op === "update") {
+      state.jobLocationId = (call.payload as { location_id: string }).location_id;
+      return {};
     }
     if (call.table === "audit_events" && call.op === "select") return { data: state.events ? [{ id: 1 }] : [] };
     if (call.table === "audit_events" && call.op === "insert") {
@@ -250,7 +283,7 @@ describe("completeWorkspaceClaim", () => {
   });
 
   it("is idempotent: a second call updates the same location, mints no new slug and adds no second audit event", async () => {
-    const state = { location: null as { id: string } | null, workspaceSlug: null as string | null, events: 0 };
+    const state = { location: null as FakeLocation | null, workspaceSlug: null as string | null, events: 0 };
     const first = fakeDb(happyResponder(state));
     const firstResult = await completeWorkspaceClaim(first.db, INPUT);
 
@@ -269,6 +302,112 @@ describe("completeWorkspaceClaim", () => {
 
     expect(second.calls.filter((call) => call.table === "audit_events" && call.op === "insert")).toEqual([]);
     expect(state.events).toBe(1);
+  });
+
+  /**
+   * A merchant's second shop must not overwrite their first. The old code took
+   * whatever primary location existed and rewrote its place_id, ig_handle,
+   * website_url and district from the newly claimed job, so shop A's snapshots,
+   * actions and measurements stayed attached to a row that now identified shop
+   * B -- and "Rescan now" queued a paid scan of the wrong shop, with no
+   * in-product way back.
+   */
+  it("adds a second location for a different listing instead of re-identifying the first", async () => {
+    const state = {
+      location: { id: "loc-1", place_id: "ChIJ_kmh", is_primary: true } as FakeLocation | null,
+      workspaceSlug: "kam-man-house",
+      events: 1,
+      job: { ...JOB, id: "job-2", place_id: "ChIJ_second", business_name: "Kam Man House Central", location_id: null },
+    };
+    const { db, calls } = fakeDb(happyResponder(state));
+
+    const result = await completeWorkspaceClaim(db, INPUT);
+
+    expect(result).toMatchObject({ kind: "completed", locationId: "loc-2" });
+    expect(calls.filter((call) => call.table === "locations" && call.op === "update")).toEqual([]);
+
+    const insert = calls.find((call) => call.table === "locations" && call.op === "insert")!;
+    expect(insert.payload).toEqual(
+      expect.objectContaining({
+        is_primary: false,
+        place_id: "ChIJ_second",
+        // Not "Tin Hau": onboarding resumes at step 4 for a second claim and
+        // re-sends the FIRST shop's prefilled name, so the client's
+        // `primaryLocation` is not an answer about this location at all.
+        name: "Kam Man House Central",
+      }),
+    );
+    expect(calls.find((call) => call.table === "audit_jobs" && call.op === "update")!.payload).toEqual({ location_id: "loc-2" });
+  });
+
+  it("refreshes the primary location when the same Google listing is scanned again", async () => {
+    const state = {
+      location: { id: "loc-1", place_id: "ChIJ_kmh", is_primary: true } as FakeLocation | null,
+      workspaceSlug: "kam-man-house",
+      events: 1,
+      job: { ...JOB, id: "job-2", website_url: "https://moved.example", location_id: null },
+    };
+    const { db, calls } = fakeDb(happyResponder(state));
+
+    expect(await completeWorkspaceClaim(db, INPUT)).toMatchObject({ locationId: "loc-1" });
+    expect(calls.filter((call) => call.table === "locations" && call.op === "insert")).toEqual([]);
+    expect(calls.find((call) => call.table === "locations" && call.op === "update")!.payload).toEqual(
+      expect.objectContaining({ place_id: "ChIJ_kmh", website_url: "https://moved.example", name: "Tin Hau" }),
+    );
+  });
+
+  /**
+   * The trap in the obvious fix: manual-entry scans carry no place_id, so
+   * matching on place_id alone would treat null as equal to null and re-point
+   * one manual-entry shop at another -- the same defect wearing a comparison.
+   */
+  it("never treats two place_id-less scans as the same shop", async () => {
+    const state = {
+      location: { id: "loc-1", place_id: null, is_primary: true } as FakeLocation | null,
+      workspaceSlug: "kam-man-house",
+      events: 1,
+      job: { ...JOB, id: "job-2", place_id: null, business_name: "Second Manual Shop", input_snapshot: {}, location_id: null },
+    };
+    const { db, calls } = fakeDb(happyResponder(state));
+
+    expect(await completeWorkspaceClaim(db, INPUT)).toMatchObject({ locationId: "loc-2" });
+    expect(calls.filter((call) => call.table === "locations" && call.op === "update")).toEqual([]);
+    expect(calls.find((call) => call.table === "locations" && call.op === "insert")!.payload).toEqual(
+      expect.objectContaining({ is_primary: false, place_id: null, name: "Second Manual Shop" }),
+    );
+  });
+
+  it("re-claims an already attached second location without adding another", async () => {
+    const state = {
+      location: { id: "loc-1", place_id: "ChIJ_kmh", is_primary: true } as FakeLocation | null,
+      added: [{ id: "loc-2", place_id: null, is_primary: false }],
+      workspaceSlug: "kam-man-house",
+      events: 1,
+      job: { ...JOB, id: "job-2", place_id: null, business_name: "Second Manual Shop", input_snapshot: {}, location_id: "loc-2" },
+    };
+    const { db, calls } = fakeDb(happyResponder(state));
+
+    expect(await completeWorkspaceClaim(db, INPUT)).toMatchObject({ locationId: "loc-2" });
+    expect(calls.filter((call) => call.table === "locations" && call.op === "insert")).toEqual([]);
+    const update = calls.find((call) => call.table === "locations" && call.op === "update")!;
+    expect(update.filters).toEqual([["eq", "id", "loc-2"]]);
+    // Still the job's own name, never the primary location's prefill.
+    expect(update.payload).toEqual(expect.objectContaining({ name: "Second Manual Shop" }));
+  });
+
+  it("ignores a location_id that belongs to another workspace", async () => {
+    const state = {
+      location: { id: "loc-1", place_id: "ChIJ_kmh", is_primary: true } as FakeLocation | null,
+      workspaceSlug: "kam-man-house",
+      events: 1,
+      job: { ...JOB, id: "job-2", place_id: "ChIJ_second", business_name: "Elsewhere", location_id: "loc-foreign" },
+    };
+    const { db, calls } = fakeDb(happyResponder(state));
+
+    expect(await completeWorkspaceClaim(db, INPUT)).toMatchObject({ locationId: "loc-2" });
+    const lookup = calls.find((call) => call.table === "locations" && call.op === "select" && call.filters.some(([, key]) => key === "id"))!;
+    expect(lookup.filters).toEqual([["eq", "id", "loc-foreign"], ["eq", "workspace_id", "ws-1"]]);
+    expect(calls.filter((call) => call.table === "locations" && call.op === "update")).toEqual([]);
   });
 
   it("prefers the audit_jobs columns over the snapshot and reads legacy snapshot spellings", async () => {

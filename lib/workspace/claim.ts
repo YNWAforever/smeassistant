@@ -166,25 +166,60 @@ export async function completeWorkspaceClaim(
   });
 
   const snapshot = job.input_snapshot;
+  const placeId = optionalString(job.place_id) ?? snapshotString(snapshot, [["placeId"], ["place_id"]]);
+
+  // Which location does this job describe? Getting it wrong is not a display
+  // bug. The previous code took whatever primary location existed and rewrote
+  // its place_id, ig_handle, website_url and district from the newly claimed
+  // job, so a merchant's second shop silently re-identified their first: shop
+  // A's snapshots, actions and measurements stayed attached to a row that now
+  // pointed at shop B, and "Rescan now" queued a paid scan of the wrong shop.
+  // Onboarding refuses self-service detach, so there was no way back
+  // in-product. It also left `insertLocation` unreachable once a workspace had
+  // one location, so the multi-location model could never be entered at all.
+  //
+  // Resolved from proof only, never from resemblance:
+  //  1. the job is already attached to a location of this workspace -- the
+  //     idempotent re-claim, and the rescan path, which carries location_id;
+  //  2. no primary location yet -- the first claim;
+  //  3. the primary location and this job agree on a NON-NULL place_id: the
+  //     same Google listing rescanned, so refresh it;
+  //  4. otherwise a different business: add a location, never rewrite one.
+  //
+  // Case 4 deliberately errs towards a spare row for a manual-entry merchant
+  // who scans the same shop twice, because place_id is null on both sides and
+  // nothing proves they are the same shop. Treating null as equal to null is
+  // precisely the bug being removed here, and a duplicate location is visible
+  // and fixable where a silently re-pointed one is neither.
+  const attached = job.location_id ? await db.location(workspace.id, job.location_id) : null;
+  const primary = await db.primaryLocation(workspace.id);
+  const sameListing = Boolean(primary && primary.place_id && placeId && primary.place_id === placeId);
+  const target = attached ?? (sameListing && primary ? { id: primary.id, is_primary: true } : null);
+  const targetIsPrimary = target ? target.is_primary : primary === null;
+
+  // `input.primaryLocation` is the owner's answer about the PRIMARY location,
+  // and onboarding only asks for it while there is none -- a second claim
+  // resumes at step 4 and re-sends the first shop's prefilled name. So for any
+  // other location the name and address come from the claimed job's own
+  // evidence, which is what this claim is actually about.
   const locationFields = {
-    name: input.primaryLocation.name.trim(),
-    address: optionalString(input.primaryLocation.address) ?? snapshotString(snapshot, [["address"]]),
+    name: (targetIsPrimary ? input.primaryLocation.name.trim() : optionalString(job.business_name)) || input.primaryLocation.name.trim(),
+    address: (targetIsPrimary ? optionalString(input.primaryLocation.address) : null) ?? snapshotString(snapshot, [["address"]]),
     district: optionalString(job.district) ?? snapshotString(snapshot, [["district"]]),
-    place_id: optionalString(job.place_id) ?? snapshotString(snapshot, [["placeId"], ["place_id"]]),
+    place_id: placeId,
     ig_handle: normaliseHandle(
       optionalString(job.ig_handle) ?? snapshotString(snapshot, [["instagramHandle"], ["ig_handle"], ["ig", "handle"]]),
     ),
     website_url: optionalString(job.website_url) ?? snapshotString(snapshot, [["websiteUrl"], ["website_url"]]),
   };
 
-  const existingLocation = await db.primaryLocation(workspace.id);
   let locationId: string;
-  if (existingLocation) {
-    locationId = existingLocation.id;
+  if (target) {
+    locationId = target.id;
     await db.updateLocation(locationId, locationFields);
   } else {
     const slug = await db.locationSlug(workspace.id, slugify(locationFields.name));
-    const created = await db.insertLocation({ workspace_id: workspace.id, slug, is_primary: true, ...locationFields });
+    const created = await db.insertLocation({ workspace_id: workspace.id, slug, is_primary: primary === null, ...locationFields });
     locationId = created.id;
   }
   await db.attachLocation(job.id, locationId);
