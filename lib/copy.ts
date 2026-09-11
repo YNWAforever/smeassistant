@@ -281,6 +281,13 @@ type FunnelCopy = {
     boundaryEyebrow: string
     boundaryTitle: string
     rows: Array<{ label: string; value: string }>
+    /**
+     * The retention schedule's actual status. The rows say what is kept and how
+     * it is protected; this says for how long, and the honest answer today is
+     * "nothing deletes any of it by age". One line rather than a repeat on each
+     * row, and outside `rows` so it cannot be read as another kept thing.
+     */
+    retentionNote: string
     policyLink: string
   }
   legal: { backToScanner: string; version: string }
@@ -635,11 +642,17 @@ const funnelEn: FunnelCopy = {
   trust: {
     intro: "Production controls are enforced by server routes, application-layer authorisation and an append-only audit trail—never by a role label in the interface.",
     boundaryEyebrow: "Data boundary",
-    boundaryTitle: "What is kept, for how long, and how it is protected",
+    // "for how long" left the title with the rows: this page published 12- and
+    // 24-month periods that nothing enforced. No cron, no pg_cron, no TTL and
+    // no scheduled function exists in migrations 0001-0005, and the only
+    // DELETEs in the app are per-job evidence replacement and membership
+    // removal. The periods themselves are Willy's to set; publishing them as
+    // though they were already running was not.
+    boundaryTitle: "What is kept, and how it is protected",
     rows: [
-      { label: "Scan evidence", value: "Public-source evidence and report data are retained for 12 months and removed on request." },
-      { label: "Agent inputs and outputs", value: "Drafts, approvals and exports are retained for 24 months for accountability." },
-      { label: "Audit events", value: "Append-only events are retained for 24 months." },
+      { label: "Scan evidence", value: "Public-source evidence and the report data derived from it." },
+      { label: "Agent inputs and outputs", value: "Drafts, approvals and exports — the accountability record for anything published." },
+      { label: "Audit events", value: "Append-only. Nothing in the product edits or deletes them." },
       // "revoked when a connection is removed" described something that could
       // not happen: no disconnect existed, and the only writer of
       // status='revoked' was the reconnect path. A disconnect exists now, so
@@ -648,6 +661,7 @@ const funnelEn: FunnelCopy = {
       { label: "OAuth tokens", value: "Encrypted at rest. Disconnecting an integration deletes the stored credential; access in your own Google Account is removed there." },
       { label: "Report access links", value: "Expire 30 days after issue. Signing out of a report also revokes the link used on that device." },
     ],
+    retentionNote: "Nothing here is deleted by age yet, and we will not publish a schedule we do not run. One is being finalised; until it is, ask us at the address in the privacy policy and we will tell you what we hold.",
     policyLink: "Privacy policy and terms · version 2026-07-28",
   },
   legal: { backToScanner: "Back to the scanner", version: "Version {version}" },
@@ -948,14 +962,15 @@ const funnelZhHK: FunnelCopy = {
   trust: {
     intro: "正式控制由伺服器路由、應用層授權及只可追加的審計紀錄強制執行，而不是介面上的角色標籤。",
     boundaryEyebrow: "資料界線",
-    boundaryTitle: "保留甚麼、保留多久、如何保護",
+    boundaryTitle: "保留甚麼，以及如何保護",
     rows: [
-      { label: "掃描證據", value: "公開來源證據及報告資料保留 12 個月，可按要求刪除。" },
-      { label: "Agent 輸入與輸出", value: "草稿、審批及匯出紀錄保留 24 個月，以便追溯責任。" },
-      { label: "審計事件", value: "只可追加的事件紀錄保留 24 個月。" },
+      { label: "掃描證據", value: "公開來源證據，以及據此產生的報告資料。" },
+      { label: "Agent 輸入與輸出", value: "草稿、審批及匯出紀錄——任何已發佈內容的問責紀錄。" },
+      { label: "審計事件", value: "只可追加。產品內不會修改或刪除。" },
       { label: "OAuth 代幣", value: "靜態加密儲存。解除連接時，我們儲存的憑證會被刪除；至於你 Google 帳戶內的存取權，請在該帳戶移除。" },
       { label: "報告存取連結", value: "發出後 30 日失效；喺報告登出時，該裝置所用嘅連結亦會撤銷。" },
     ],
+    retentionNote: "以上資料目前不會因年期而自動刪除，我們亦不會公布一個並未實際執行的時間表。保留時間表仍在制定中；在公布之前，請按私隱政策所列地址向我們查詢，我們會告知所持有的資料。",
     policyLink: "私隱政策及使用條款 · 版本 2026-07-28",
   },
   legal: { backToScanner: "返回掃描", version: "版本 {version}" },
@@ -1256,14 +1271,15 @@ const funnelZhTW: FunnelCopy = {
   trust: {
     intro: "正式控制由伺服器路由、應用層授權與只能附加的稽核紀錄強制執行，而不是介面上的角色標籤。",
     boundaryEyebrow: "資料界線",
-    boundaryTitle: "保留什麼、保留多久、如何保護",
+    boundaryTitle: "保留什麼，以及如何保護",
     rows: [
-      { label: "掃描證據", value: "公開來源證據與報告資料保留 12 個月，可依要求刪除。" },
-      { label: "Agent 輸入與輸出", value: "草稿、核准與匯出紀錄保留 24 個月，以便追溯責任。" },
-      { label: "稽核事件", value: "只能附加的事件紀錄保留 24 個月。" },
+      { label: "掃描證據", value: "公開來源證據，以及據此產生的報告資料。" },
+      { label: "Agent 輸入與輸出", value: "草稿、核准與匯出紀錄——任何已發布內容的問責紀錄。" },
+      { label: "稽核事件", value: "僅能附加。產品內不會修改或刪除。" },
       { label: "OAuth 權杖", value: "靜態加密儲存。解除連接時，我們儲存的憑證會被刪除；至於你 Google 帳戶內的存取權，請於該帳戶移除。" },
       { label: "報告存取連結", value: "發出後 30 天失效；於報告登出時，該裝置所使用的連結也會撤銷。" },
     ],
+    retentionNote: "上述資料目前不會依年限自動刪除，我們也不會公布並未實際執行的時間表。保留時間表仍在制定中；在公布之前，請依隱私政策所列地址與我們聯絡，我們會告知所持有的資料。",
     policyLink: "隱私政策與使用條款 · 版本 2026-07-28",
   },
   legal: { backToScanner: "返回掃描", version: "版本 {version}" },

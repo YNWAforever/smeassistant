@@ -49,6 +49,11 @@ function backendMatches(pattern: RegExp): boolean {
   return backendSources().some((file) => pattern.test(readFileSync(file, "utf8")));
 }
 
+/** Migrations are where an age-based retention job would have to live to run at all. */
+function migrationMatches(pattern: RegExp): boolean {
+  return sourceFiles(join(repoRoot, "neon", "migrations"), [".sql"]).some((file) => pattern.test(readFileSync(file, "utf8")));
+}
+
 /**
  * Only what an owner can read counts. A comment explaining which promise was
  * removed -- and quoting it, as the ones next to these fixes do -- must not
@@ -135,6 +140,37 @@ const PROMISES: readonly Promised[] = [
       // no external actor can deliver a draft here either.
       "prepared for you by the fimmick team",
       "由 fimmick 團隊為你準備",
+    ],
+  },
+  {
+    // /trust published a retention schedule -- scan evidence 12 months, agent
+    // inputs/outputs 24, audit events 24 -- that nothing enforced. No cron
+    // route, no pg_cron, no TTL and no scheduled function in migrations
+    // 0001-0005; the only DELETEs in the app are per-job evidence replacement
+    // and membership removal. It also contradicted /legal/privacy, which says
+    // the schedule is still being finalised.
+    //
+    // The periods themselves are Willy's to set (CLAUDE.md section 5 lists them
+    // as an open question). Publishing them as though they already ran was not
+    // a policy decision, which is why this is a code guard and not a choice
+    // made on his behalf.
+    capability: "anything that deletes stored data once it reaches an age",
+    implemented: () =>
+      existsSync(join(repoRoot, "app", "api", "cron")) ||
+      migrationMatches(/pg_cron|cron\.schedule/i) ||
+      backendMatches(/DELETE\s+FROM\s+[\s\S]{0,160}?(now\(\)\s*-\s*interval|older_than|retention_days)/i),
+    // Only the periods are banned, not the question. "How long we keep it" /
+    // 保留多久 is an honest heading on /legal/privacy, whose body says the
+    // schedule is still being finalised -- banning that wording would push the
+    // product towards not raising the subject at all, which is the opposite of
+    // the point. (The first draft of this entry did ban it, and the guard
+    // caught it.)
+    banned: [
+      "retained for 12 months",
+      "retained for 24 months",
+      "removed on request",
+      "保留 12 個月",
+      "保留 24 個月",
     ],
   },
 ];

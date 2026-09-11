@@ -4,7 +4,9 @@ Produced by a 14-agent audit of the shipped code against the product guardrails 
 
 **Read the caveat first.** 24 of 24 findings came back confirmed and none was refuted. A verification pass that refutes nothing is not evidence that everything is real -- it is equally consistent with weak verification. Treat severities as claims to check, not conclusions. I independently re-verified finding 1 line by line (including why its test never caught it) and it holds exactly as described; the rest carry file:line evidence but have not had that second human pass.
 
-This is raw material for a Phase 2 plan, in the same spirit as the Phase 1 audit register. **All 24 findings are now fixed** — the five highs (1, 2, 3, 4, 5, with 21 a duplicate of 3), then 6, 13, 14, 15, then 16, 17, 20, 10, 8, 23, 12, 11, 19+24, 7, 22, 18 and 9. Of the three follow-ups found while closing the `promises-copy` set, **P1 and P3 are fixed and P2 remains open** as a published-policy decision rather than a code judgement.
+This is raw material for a Phase 2 plan, in the same spirit as the Phase 1 audit register. **All 24 findings are now fixed** — the five highs (1, 2, 3, 4, 5, with 21 a duplicate of 3), then 6, 13, 14, 15, then 16, 17, 20, 10, 8, 23, 12, 11, 19+24, 7, 22, 18 and 9 — and so are all three follow-ups found while closing the `promises-copy` set: **P1, P2 and P3**.
+
+P2 needed one distinction spelled out, because it had been held back on the other reading. **Choosing the retention periods is Willy's, and stays open** (CLAUDE.md §5 lists them as a question for him). **Publishing periods the code does not enforce was never a policy decision** — it was the same defect as findings 5, 13, 14, 15 and P1, and removing the claim required no policy input at all.
 
 Every fix is **implemented and locally verified** (unit/component tests, `tsc --noEmit`, and `eslint` held at its 30-warning / 0-error baseline). **None is hosted-verified**: Docker was unavailable for the whole run, so `test:integration` and `db:verify` never executed, and no deployment, migration, paid provider call or real email was attempted. Where a Docker-gated integration test pins behaviour I could not run, the fix was shaped so as not to disturb it, and that constraint is recorded in the entry.
 
@@ -805,6 +807,16 @@ Nothing deletes anything by age: no cron, no `/api/cron` route, no `pg_cron` or 
 The app also contradicts itself: `lib/messages/en.json:362`, rendered on `/legal/privacy`, says *"We are finalising a published schedule for how long scan records and contact details are retained"* — while `/trust` publishes exactly such a schedule.
 
 **Note on scope:** this one is a published policy statement, not just product copy. Correcting it is a decision for Willy rather than a code judgement — CLAUDE.md §5 already lists the Trust retention periods as an open question ("confirm with Willy before finalising").
+
+**Fixed — and the scope note above was half wrong, which is why it sat open.** Two different decisions were being treated as one. *Choosing* 12 or 24 months is Willy's, and is still open. *Publishing* those periods while nothing enforced them was not a policy call at all — it was findings 5/13/14/15/P1 again, and removing the claim needs no input from him.
+
+The three unenforced rows now describe what is kept and drop the periods; the schedule's real status moved to a new `trust.retentionNote`, which says plainly that nothing is deleted by age yet, that we will not publish a schedule we do not run, and that one is being finalised — the last clause matching what `/legal/privacy` has said all along, so the two pages stop contradicting each other. `boundaryTitle` loses "for how long", because after this it no longer answers that.
+
+**One of the four rows had become true while this sat open.** "OAuth tokens … revoked when a connection is removed" was unkeepable when the finding was written — no disconnect existed. P3 built one, and that row was corrected then to state what it actually does. It is left alone here.
+
+**Not touched:** `/legal/privacy`'s own "delete it on request" via `privacy@fimmick.com`. That is a human process answered by staff, not a claim about a code path, and rewriting legal copy is a different kind of change from removing a product promise.
+
+A fourth entry in `tests/unhonoured-promises.test.ts` now bans the period strings, with a detector for real age-based deletion (a cron route, `pg_cron` in the migrations, or a `DELETE … now() - interval` in app code) so the ban self-expires the day a retention job lands. Its first draft also banned `保留多久` — the honest *heading* on `/legal/privacy`, whose body already says the schedule is being finalised — and the guard caught it on its own sources. Banning that would have pushed the product towards not raising retention at all, which is the opposite of the point; only the periods are banned now.
 
 #### P3. "You can disconnect at any time in settings" — there is no disconnect
 
