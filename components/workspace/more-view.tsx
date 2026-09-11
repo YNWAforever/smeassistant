@@ -1,15 +1,25 @@
 import Link from "next/link"
-import { Activity, AlertTriangle, Bell, CheckCircle2, ChevronRight, CircleDashed, Clock3, CreditCard, MapPin, Palette, PlugZap, ShieldAlert, Users, WifiOff } from "lucide-react"
+import { Activity, AlertTriangle, Bell, CalendarDays, CheckCircle2, ChevronRight, CircleDashed, Clock3, CreditCard, Layers3, MapPin, Palette, PlugZap, ShieldAlert, Users, WifiOff } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { PageIntro, SectionCard } from "@/components/product-ui"
 import type { PrototypeLocale } from "@/lib/copy"
+import { withLocation } from "@/lib/workspace/format"
 
-export function MoreView({ locale, workspaceSlug, locationCount }: { locale: PrototypeLocale; workspaceSlug: string; locationCount: number }) {
+export function MoreView({ locale, workspaceSlug, locationCount, locationSlug }: { locale: PrototypeLocale; workspaceSlug: string; locationCount: number; locationSlug: string }) {
   const isChinese = locale !== "en"
   const base = `/${locale}/owner/${workspaceSlug}`
   const links = [
     { en: "Locations", zh: "地點", detailEn: `${locationCount} ${locationCount === 1 ? "location" : "locations"} and comparison`, detailZh: `${locationCount} 個地點及比較`, icon: MapPin, href: `/${locale}/owner/select-workspace` },
+    // Assets and Calendar lived only in the desktop sidebar (product-ui.tsx
+    // :306-307, `hidden md:flex`), and the mobile bottom nav is the four
+    // primary tabs plus More -- so on a phone both routes were unreachable.
+    // That blocked a real job: a social post needs an approved asset or an
+    // explicit text-only choice, and Assets is the only place to grant rights.
+    // Wording and icons come from the destinations themselves, so each row and
+    // the page it opens agree.
+    { en: "Brand assets", zh: "品牌素材", detailEn: "Approved photos, menus and usage rights", detailZh: "已核准相片、餐牌及使用權", icon: Layers3, href: withLocation(`${base}/assets`, locationSlug) },
+    { en: "Calendar", zh: "日曆", detailEn: "Rescan cadence and dated work", detailZh: "重新掃描節奏及有到期日的工作", icon: CalendarDays, href: `${base}/calendar` },
     { en: "Activity", zh: "活動紀錄", detailEn: "Append-only decision history", detailZh: "只增不改的決定紀錄", icon: Activity, href: `${base}/activity` },
     { en: "Brand profile", zh: "品牌資料", detailEn: "Voice, claims and guardrails", detailZh: "語氣、說法及保障規則", icon: Palette, href: `${base}/settings/brand` },
     { en: "Integrations", zh: "連接與整合", detailEn: "Scope, sync and recovery", detailZh: "權限、同步及復原", icon: PlugZap, href: `${base}/settings/integrations` },
@@ -27,7 +37,7 @@ export function MoreView({ locale, workspaceSlug, locationCount }: { locale: Pro
   ]
   return (
     <div className="more-page">
-      <PageIntro eyebrow={isChinese ? "工作台管理" : "Workspace management"} title={isChinese ? "更多" : "More"} description={isChinese ? "次要設定及系統狀態不會擠入五項主要流動版導覽。" : "Secondary settings and system states stay out of the five-item primary mobile navigation."} />
+      <PageIntro eyebrow={isChinese ? "工作台管理" : "Workspace management"} title={isChinese ? "更多" : "More"} description={isChinese ? "支援日常工作的頁面、次要設定及系統狀態，不會擠入五項主要流動版導覽。" : "Supporting surfaces, secondary settings and system states — kept out of the five-item primary mobile navigation."} />
       <div className="more-link-grid">{links.map(({ en, zh, detailEn, detailZh, icon: Icon, href }) => <Link key={en} href={href}><span><Icon /></span><div><h2>{isChinese ? zh : en}</h2><p>{isChinese ? detailZh : detailEn}</p></div><ChevronRight /></Link>)}</div>
       <SectionCard className="state-gallery">
         <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "可審閱的邊界狀態" : "Reviewable edge states"}</p><h2>{isChinese ? "失敗及復原也是產品的一部分" : "Failure and recovery are part of the product"}</h2></div><Badge variant="outline">{isChinese ? "6 個狀態" : "6 states"}</Badge></div>
