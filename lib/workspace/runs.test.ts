@@ -7,7 +7,7 @@ import type {
 } from "@/lib/repositories/artifacts";
 import type { Membership } from "@/lib/auth";
 import { rowToSnapshot } from "./snapshots";
-import { AGENT_RUN_BUDGET_MS, runAgentForAction } from "./runs";
+import { AGENT_RUN_BUDGET_MS, runAgentForAction, snapshotEvidence } from "./runs";
 const action = {
   id: "act-1",
   workspace_id: "ws-1",
@@ -393,4 +393,55 @@ describe("typed action runtime", () => {
       expect(finish).toHaveBeenCalledTimes(1);
     },
   );
+});
+
+describe("snapshotEvidence website checks", () => {
+  // P2.2 item 10: the agent was handed only the failing KEYS, so it could not
+  // write "current -> suggested" or give the next scan item-level outcomes.
+  const withChecks = {
+    ...snapshotRow,
+    website_checks: {
+      evaluated: 15,
+      passed: 12,
+      results: [
+        { key: "https", pass: true, detail: "example.test" },
+        { key: "title", pass: true, detail: "57 chars" },
+        { key: "meta_description_50_160", pass: false, detail: "0 chars" },
+        { key: "single_h1", pass: false, detail: "2 h1" },
+        { key: "canonical", pass: true },
+      ],
+    },
+  };
+
+  function checks(row: typeof withChecks) {
+    const evidence = snapshotEvidence(rowToSnapshot(row as unknown as Parameters<typeof rowToSnapshot>[0]));
+    return (evidence.snapshot as Record<string, unknown>).website_checks as {
+      evaluated: number;
+      passed: number;
+      results: Array<{ key: string; pass: boolean; observed?: string }>;
+    };
+  }
+
+  it("carries what each check observed, not just which ones failed", () => {
+    const result = checks(withChecks);
+    expect(result.results).toEqual([
+      { key: "https", pass: true, observed: "example.test" },
+      { key: "title", pass: true, observed: "57 chars" },
+      { key: "meta_description_50_160", pass: false, observed: "0 chars" },
+      { key: "single_h1", pass: false, observed: "2 h1" },
+      { key: "canonical", pass: true },
+    ]);
+  });
+
+  it("includes passing checks, because the agent rewrites the title either way", () => {
+    const result = checks(withChecks);
+    expect(result.results.filter((r) => r.pass).map((r) => r.key)).toContain("title");
+    expect(result.evaluated).toBe(15);
+    expect(result.passed).toBe(12);
+  });
+
+  it("stays null when no checks were recorded", () => {
+    const evidence = snapshotEvidence(rowToSnapshot(snapshotRow as Parameters<typeof rowToSnapshot>[0]));
+    expect((evidence.snapshot as Record<string, unknown>).website_checks).toBeNull();
+  });
 });

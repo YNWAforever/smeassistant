@@ -199,3 +199,38 @@ describe("computeCostUsd", () => {
     expect(computeCostUsd({ inputTokens: 10, outputTokens: null })).toBeNull();
   });
 });
+
+describe("website_basics acceptance", () => {
+  // The task asks for a " (now: 57 chars)" annotation on each line. That is
+  // commentary about the current page, not title text, so counting it would
+  // flag a compliant title as over-long.
+  const run = (body: string) =>
+    AGENTS.website_basics.acceptance(fixedCtx, {
+      title: "Website basics",
+      body,
+      acceptance_criteria: [],
+      warnings: [],
+      facts_used: [],
+      facts_needed: [],
+    });
+
+  it("measures the title without its observation annotation", () => {
+    const title = "A".repeat(58);
+    expect(run(`Title: ${title} (now: 57 chars)
+Description: x
+H1: y`)).not.toContain("title_over_60_chars");
+  });
+
+  it("still flags a title that is genuinely too long", () => {
+    const title = "A".repeat(61);
+    expect(run(`Title: ${title} (now: missing)
+Description: x
+H1: y`)).toContain("title_over_60_chars");
+  });
+
+  it("still flags a long title with no annotation at all", () => {
+    expect(run(`Title: ${"A".repeat(61)}
+Description: x
+H1: y`)).toContain("title_over_60_chars");
+  });
+});

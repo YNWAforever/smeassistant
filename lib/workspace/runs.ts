@@ -149,9 +149,17 @@ export function snapshotEvidence(
         ? {
             evaluated: snapshot.websiteChecks.evaluated,
             passed: snapshot.websiteChecks.passed,
-            failed: snapshot.websiteChecks.results
-              .filter((r) => !r.pass)
-              .map((r) => r.key),
+            // P2.2 item 10: the failing KEYS alone cannot ground a draft. Each
+            // result already carries what was observed -- "57 chars", "2 h1",
+            // the host -- and that is what lets `website_basics` write
+            // current -> suggested and give the next scan something to
+            // re-check per item. Passing checks travel too: the agent rewrites
+            // the title whether or not a title currently exists.
+            results: snapshot.websiteChecks.results.map((r) =>
+              r.detail === undefined
+                ? { key: r.key, pass: r.pass }
+                : { key: r.key, pass: r.pass, observed: r.detail },
+            ),
           }
         : null,
     },
