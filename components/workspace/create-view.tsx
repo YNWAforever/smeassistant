@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet"
-import { FactType, PageIntro, SectionCard } from "@/components/product-ui"
+import { CapabilityBadge, FactType, PageIntro, SectionCard } from "@/components/product-ui"
 import { LocationSelect } from "@/components/workspace/location-select"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { resolveText } from "@/lib/domain"
@@ -56,6 +56,18 @@ const ICONS: Record<TemplateKey, typeof MessageSquareText> = {
 /** Goals the owner can start from an objective: every template with an agent (system/checklist templates come from evidence only). */
 const GOALS = TEMPLATES.filter((template) => template.agentKey !== null)
 
+/**
+ * P2.1 item 1: Create leads with the three workflows Phase 2 completes end to
+ * end — review reply, FAQ + JSON-LD and website basics. Everything else stays
+ * reachable in the same tab, below them, rather than competing for the same
+ * attention in one flat grid.
+ */
+const LEAD_KEYS: readonly TemplateKey[] = ["review-response", "visibility-content", "website-basics"]
+const LEAD_GOALS = GOALS.filter((goal) => LEAD_KEYS.includes(goal.key))
+const SECONDARY_GOALS = GOALS.filter((goal) => !LEAD_KEYS.includes(goal.key))
+/** Lead-first everywhere, so the recommended tab and the full list agree on order. */
+const ORDERED_GOALS = [...LEAD_GOALS, ...SECONDARY_GOALS]
+
 export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, location, locationId, locations, openActions }: CreateViewProps) {
   const isChinese = locale !== "en"
   const router = useRouter()
@@ -63,15 +75,14 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
   const labels = copy[locale].workspace.templates
   const inputs = copy[locale].workspace.inputs
   const openByTemplate = new Map(openActions.map((a) => [a.templateKey, a]))
-  const recommended = GOALS.filter((goal) => openByTemplate.has(goal.key))
+  const recommended = ORDERED_GOALS.filter((goal) => openByTemplate.has(goal.key))
   const [tab, setTab] = useState(recommended.length ? "recommended" : "all")
-  const [selectedKey, setSelectedKey] = useState<TemplateKey>((recommended[0] ?? GOALS[0]).key)
+  const [selectedKey, setSelectedKey] = useState<TemplateKey>((recommended[0] ?? ORDERED_GOALS[0]).key)
   const [objective, setObjective] = useState("")
   const [stage, setStage] = useState<"idle" | "queued" | "failed">("idle")
   const [failure, setFailure] = useState<string | null>(null)
-  const selected = GOALS.find((goal) => goal.key === selectedKey) ?? GOALS[0]
+  const selected = ORDERED_GOALS.find((goal) => goal.key === selectedKey) ?? ORDERED_GOALS[0]
   const existing = openByTemplate.get(selected.key) ?? null
-  const shownGoals = tab === "recommended" ? recommended : GOALS
   const canCreate = role !== "viewer" && inScope
   const objectiveTooShort = objective.trim().length < 8
 
@@ -109,6 +120,30 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
     router.push(withLocation(`${base}/actions/${actionId}`, location))
   }
 
+  /**
+   * One card renderer for every group, so the lead group and the rest can never
+   * drift into showing different facts about the same template. The capability
+   * badge comes from the template registry, which is the same source
+   * lib/capabilities.ts is tested against — four of these are Beta.
+   */
+  function goalCard(goal: (typeof GOALS)[number]) {
+    const Icon = ICONS[goal.key]
+    const open = openByTemplate.get(goal.key)
+    return (
+      <button key={goal.key} type="button" className={selectedKey === goal.key ? "goal-card is-selected" : "goal-card"} aria-pressed={selectedKey === goal.key} onClick={() => { setSelectedKey(goal.key); setStage("idle") }}>
+        <span><Icon /></span>
+        <div>
+          <Badge variant="outline">{open ? (isChinese ? "證據建議" : "Evidence-led") : (isChinese ? "店主目標" : "Owner objective")}</Badge>
+          <CapabilityBadge value={goal.capability} />
+          <h2>{labels[goal.key].title}</h2>
+          <p>{open ? open.evidence : labels[goal.key].summary}</p>
+          <small>{isChinese ? `店主${effortLabel(goal.effortMinutes, locale)}審閱` : `${effortLabel(goal.effortMinutes, locale)} to review`}</small>
+        </div>
+        <ChevronRight />
+      </button>
+    )
+  }
+
   return (
     <div className="create-page">
       <PageIntro
@@ -121,8 +156,17 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
       <Tabs value={tab} onValueChange={setTab} className="create-tabs">
         <TabsList variant="line"><TabsTrigger value="recommended">{isChinese ? "根據證據建議" : "Recommended from evidence"} <span>{recommended.length}</span></TabsTrigger><TabsTrigger value="all">{isChinese ? "所有成果" : "All outcomes"}</TabsTrigger></TabsList>
         <TabsContent value={tab}>
-          {shownGoals.length === 0 ? <div className="empty-state"><span><CheckCircle2 /></span><h2>{isChinese ? "此地點目前沒有證據建議的目標" : "No evidence-led goals for this location right now"}</h2><p>{isChinese ? "你仍可從「所有成果」以店主目標開始。" : "You can still start from an owner objective under All outcomes."}</p></div> : (
-            <div className="goal-card-grid">{shownGoals.map((goal) => { const Icon = ICONS[goal.key]; const open = openByTemplate.get(goal.key); return <button key={goal.key} type="button" className={selectedKey === goal.key ? "goal-card is-selected" : "goal-card"} aria-pressed={selectedKey === goal.key} onClick={() => { setSelectedKey(goal.key); setStage("idle") }}><span><Icon /></span><div><Badge variant="outline">{open ? (isChinese ? "證據建議" : "Evidence-led") : (isChinese ? "店主目標" : "Owner objective")}</Badge><h2>{labels[goal.key].title}</h2><p>{open ? open.evidence : labels[goal.key].summary}</p><small>{isChinese ? `店主${effortLabel(goal.effortMinutes, locale)}審閱` : `${effortLabel(goal.effortMinutes, locale)} to review`}</small></div><ChevronRight /></button> })}</div>
+          {tab === "recommended" ? (
+            recommended.length === 0 ? <div className="empty-state"><span><CheckCircle2 /></span><h2>{isChinese ? "此地點目前沒有證據建議的目標" : "No evidence-led goals for this location right now"}</h2><p>{isChinese ? "你仍可從「所有成果」以店主目標開始。" : "You can still start from an owner objective under All outcomes."}</p></div> : (
+              <div className="goal-card-grid">{recommended.map(goalCard)}</div>
+            )
+          ) : (
+            <>
+              <p className="eyebrow">{isChinese ? "建議由這裡開始" : "Recommended starting points"}</p>
+              <div className="goal-card-grid">{LEAD_GOALS.map(goalCard)}</div>
+              <p className="eyebrow">{isChinese ? "其他能力" : "Other capabilities"}</p>
+              <div className="goal-card-grid">{SECONDARY_GOALS.map(goalCard)}</div>
+            </>
           )}
         </TabsContent>
       </Tabs>
