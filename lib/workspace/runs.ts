@@ -4,6 +4,7 @@ import {
   type ActionRunRepository,
 } from "@/lib/repositories/artifacts";
 import { assetRepository } from "@/lib/repositories/assets";
+import { assetLocationScope, assetUsableByAction } from "@/lib/workspace/assets";
 import { inLocationScope, roleAtLeast, type Membership } from "@/lib/auth";
 import {
   AGENTS,
@@ -177,12 +178,19 @@ export async function socialAssetSatisfied(
   assets: Pick<ReturnType<typeof assetRepository>, "get">,
   workspaceId: string,
   provided: Record<string, unknown>,
+  scope: { actionLocationId: string | null; locationScope: readonly string[] | null },
 ): Promise<boolean> {
   if (provided.text_only === true) return true;
   const assetId =
     typeof provided.asset_id === "string" ? provided.asset_id : null;
   if (!assetId) return false;
-  return (await assets.get(workspaceId, assetId))?.rights_status === "approved";
+  const asset = await assets.get(workspaceId, assetId);
+  if (asset?.rights_status !== "approved") return false;
+  // Approved is not the whole rule: an id posted straight to the run route
+  // could name another location's photo, or one an out-of-scope manager
+  // cannot see. The picker applies the same predicate, but the picker is not
+  // the authority (guardrail 9).
+  return assetUsableByAction(asset, scope.actionLocationId, scope.locationScope);
 }
 
 /** Resolve persisted scope and evidence before any input, run, or model effect. */
@@ -342,6 +350,7 @@ export async function runAgentForAction(
       input.assets ?? assetRepository(),
       row.workspace_id,
       provided,
+      { actionLocationId: row.location_id, locationScope: assetLocationScope(input.membership) },
     ))
   ) {
     return persistence.finish({

@@ -314,6 +314,46 @@ describe("typed action runtime", () => {
     expect(asset).toHaveBeenCalledWith("ws-1", "foreign");
     expect(llm).not.toHaveBeenCalled();
   });
+  // P2.3 item 15: "approved" was the whole server-side rule, so an asset_id
+  // posted straight to the run route could name another location's photo.
+  it("refuses an approved asset belonging to another location", async () => {
+    row = { ...action, template_key: "social-post", provided_inputs: { asset_id: "other-shop" } } as unknown as typeof action;
+    const llm = vi.fn();
+    expect(
+      await run({ assets: { get: async () => ({ rights_status: "approved", location_id: "loc-2" }) }, llm }),
+    ).toMatchObject({ factsNeeded: ["asset_or_text_only"] });
+    expect(llm).not.toHaveBeenCalled();
+  });
+
+  // The scoped manager never reaches the asset gate: resolveActionRunContext
+  // refuses the whole run first. Asserted here so the stronger guarantee is
+  // pinned -- the scope clause in assetUsableByAction is what stops the PICKER
+  // listing another location's photo, and is defence in depth on this path.
+  it("refuses an out-of-scope manager before the asset is resolved at all", async () => {
+    row = { ...action, template_key: "social-post", provided_inputs: { asset_id: "owned" } } as unknown as typeof action;
+    const llm = vi.fn();
+    const asset = vi.fn(async () => ({ rights_status: "approved", location_id: "loc-1" }));
+    await expect(
+      run({
+        membership: { ...membership, role: "manager", locationScope: ["loc-9"] },
+        assets: { get: asset },
+        llm,
+      }),
+    ).rejects.toThrow("forbidden");
+    expect(asset).not.toHaveBeenCalled();
+    expect(llm).not.toHaveBeenCalled();
+  });
+
+  it("accepts a workspace-wide asset, which belongs to every location", async () => {
+    row = { ...action, template_key: "social-post", provided_inputs: { asset_id: "shared" } } as unknown as typeof action;
+    expect(
+      await run({
+        assets: { get: async () => ({ rights_status: "approved", location_id: null }) },
+        llm: vi.fn(async () => good({ alt_text: "Fixture image" })),
+      }),
+    ).toMatchObject({ versionId: "v-1" });
+  });
+
   it("accepts approved owned asset or explicit text-only social run", async () => {
     row = {
       ...action,
@@ -322,7 +362,7 @@ describe("typed action runtime", () => {
     } as unknown as typeof action;
     expect(
       await run({
-        assets: { get: async () => ({ rights_status: "approved" }) },
+        assets: { get: async () => ({ rights_status: "approved", location_id: "loc-1" }) },
         llm: vi.fn(async () => good({ alt_text: "Fixture image" })),
       }),
     ).toMatchObject({ versionId: "v-1" });

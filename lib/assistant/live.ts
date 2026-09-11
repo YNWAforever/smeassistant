@@ -7,6 +7,7 @@ import { llmComplete, llmConfigured } from "@/lib/llm";
 import type { AssistantArtifact, AssistantSurface, DemoAssistantRunResponse, DemoQuestionId, EvidenceReference } from "@/lib/pocket-assistant/contracts";
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { assetRepository } from "@/lib/repositories/assets";
+import { assetLocationScope } from "@/lib/workspace/assets";
 import { filterSelectedReviews } from "@/lib/workspace/evidence-inputs";
 import { sampledReviewsFromRawData, snapshotEvidence, socialAssetSatisfied } from "@/lib/workspace/runs";
 import { type ScanDiffRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
@@ -326,6 +327,7 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistant
       input.assets ?? assetRepository(),
       input.context.workspaceId,
       asRecord(action.row.provided_inputs),
+      { actionLocationId: action.row.location_id, locationScope: assetLocationScope(input.membership) },
     );
     if (!satisfied) {
       const base = completed(fallbackIntentFor(intent), input, ctx);

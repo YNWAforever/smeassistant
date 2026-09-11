@@ -147,7 +147,7 @@ describe("runLiveAssistant", () => {
     expect(prompt).not.toContain("tone_instruction");
     const social = vi.fn<Llm>(async () => ({ ...good, text: JSON.stringify({ title: "Post", body: "Lunch is on.", acceptance_criteria: [], warnings: [], facts_used: [], facts_needed: [] }) }));
     state.actions = state.actions.map((a) => (a.template_key === "social-post" ? { ...a, provided_inputs: { asset_id: "asset-1" } } : a));
-    const result = await run({ intentId: "generate_social", surface: "create", llm: social, assets: { get: async () => ({ rights_status: "approved" }) as never } });
+    const result = await run({ intentId: "generate_social", surface: "create", llm: social, assets: { get: async () => ({ rights_status: "approved", location_id: LOCATION_ID }) as never } });
     expect(social.mock.calls[0][0]).toContain("Fill the Instagram gap");
     expect(result.output).toMatchObject({ type: "social_post", body: "Lunch is on." });
   });

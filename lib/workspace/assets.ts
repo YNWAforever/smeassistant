@@ -81,6 +81,34 @@ export async function listAssets(
     locationName: row.location_id ? byLocation.get(row.location_id) ?? null : null,
   })));
 }
+/**
+ * Which approved assets an action may attach (P2.3 item 15).
+ *
+ * The convention is the one `components/workspace/assets-view.tsx` already
+ * uses, and getting it backwards is the trap here: `location_id === null`
+ * means the asset belongs to the WHOLE workspace and is usable everywhere --
+ * it is not an unscoped orphan to be filtered out. Only a location-scoped
+ * asset is restricted, and then to its own location.
+ *
+ * An all-locations action (`actionLocationId === null`) therefore gets the
+ * workspace-wide assets only: its output goes everywhere, so one shop's photo
+ * would be wrong on the others.
+ */
+export function assetUsableByAction(
+  asset: { location_id: string | null },
+  actionLocationId: string | null,
+  locationScope: readonly string[] | null,
+): boolean {
+  if (asset.location_id === null) return true;
+  if (asset.location_id !== actionLocationId) return false;
+  return locationScope === null || locationScope.includes(asset.location_id);
+}
+
+/** Only a manager carries a location scope; owners and viewers see the workspace. */
+export function assetLocationScope(membership: { role: string; locationScope?: readonly string[] | null }): readonly string[] | null {
+  return membership.role === "manager" && membership.locationScope ? membership.locationScope : null;
+}
+
 export async function signedUrlFor(storagePath: string): Promise<string | null> {
   try { return await createPrivateBlobStorage().sign(ASSET_BUCKET, storagePath, SIGNED_URL_SECONDS); }
   catch { return null; }
