@@ -50,7 +50,7 @@ export interface ActionDetailClientProps {
   approvedAssets: Array<{ id: string; filename: string }>
 }
 
-type Busy = null | "run" | "save" | "approve" | "decide" | "export" | "copy" | "inputs"
+type Busy = null | "run" | "save" | "approve" | "decide" | "export" | "copy" | "inputs" | "complete"
 type PreviewRole = "owner" | "manager" | "viewer"
 
 // Mutation controls stay disabled until their client event handlers are attached.
@@ -120,6 +120,17 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   const scanInputCopy = copy[locale].workspace.scanInputs
   const inputs = copy[locale].workspace.inputs
   const social = action.templateKey === "social-post"
+  /**
+   * P2.1 item 6 / P2.2 item 12. `gbp-profile-fix` and `ig-highlights` have no
+   * agent, so every control that led to runAction() returned 409
+   * agent_unavailable -- these two templates had no completion path at all.
+   * The owner does the work in the other product and records it here.
+   */
+  const checklistCopy = copy[locale].workspace.checklist
+  const checklistSteps = action.delivery === "checklist" ? copy[locale].workspace.checklistSteps[action.templateKey] ?? null : null
+  /** Only these two delivery modes have an agent behind them. `null` (a row naming a template this build dropped) fails closed. */
+  const agentBacked = action.delivery === "export" || action.delivery === "export_copy"
+  const checklistDone = action.actionState === "completed"
   const hydrated = useSyncExternalStore(subscribeHydration, clientHydrated, serverHydrated)
   const online = useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true)
   const offline = !online
@@ -183,7 +194,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   const runStateKey = latestRun?.state
   const neededKeys = factsNeeded ?? (action.actionState === "needs_input" ? action.missingInputs : [])
   const showInputForm = neededKeys.length > 0 && effectiveRole !== "viewer" && inScope
-  const canGenerate = canEdit && action.capability !== "Requires connection" && runStateKey !== "running" && runStateKey !== "queued"
+  const canGenerate = canEdit && agentBacked && action.capability !== "Requires connection" && runStateKey !== "running" && runStateKey !== "queued"
   const relatedAudit = auditRows.slice(0, 12)
 
   const provenance = [
@@ -269,8 +280,31 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
     const patched = await updateAction(action.id, { provided_inputs: provided })
     setBusy(null)
     if (!patched.ok) return failureToast(patched)
+    // A checklist template has no agent to hand these to. Calling generate()
+    // here is exactly what made the input form dead-end on 409.
+    if (checklistSteps) {
+      toast.success(isChinese ? "已記錄你設定的內容。" : "Saved what you set.")
+      router.refresh()
+      return
+    }
     toast.message(isChinese ? "已記錄店主資料；正在重新生成。" : "Owner inputs recorded; generating again.")
     await generate({ ...provided, ...runInputs })
+  }
+
+  /**
+   * The checklist's completion control. This is the owner's own confirmation,
+   * not an observation -- the copy says so, and the next scan is what verifies
+   * the result. It consumes no delivery allowance and creates no version:
+   * a checklist template has nothing to approve or export.
+   */
+  async function markChecklistDone() {
+    if (!canEdit || checklistDone) return
+    setBusy("complete")
+    const patched = await updateAction(action.id, { action_state: "completed" })
+    setBusy(null)
+    if (!patched.ok) return failureToast(patched)
+    toast.success(checklistCopy.doneState)
+    router.refresh()
   }
 
   /**
@@ -453,9 +487,16 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
         <TabsContent value="draft">
           <div className="draft-layout">
             <SectionCard className="draft-editor-card">
-              <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "生成輸出" : "Generated output"}</p><h2>{copy[locale].workspace.templates[action.templateKey]?.workflow ?? action.templateKey}</h2></div><div><Badge variant="outline">{versionName}</Badge>{selectedVersion && <Badge variant="outline">{originLabel(selectedVersion.origin, isChinese)}</Badge>}</div></div>
+              <div className="section-card-heading"><div><p className="eyebrow">{checklistSteps ? checklistSteps.where : isChinese ? "生成輸出" : "Generated output"}</p><h2>{copy[locale].workspace.templates[action.templateKey]?.workflow ?? action.templateKey}</h2></div><div><Badge variant="outline">{checklistSteps ? stateLabel(action.actionState, locale) : versionName}</Badge>{!checklistSteps && selectedVersion && <Badge variant="outline">{originLabel(selectedVersion.origin, isChinese)}</Badge>}</div></div>
               {social && approvedAssets.length > 0 && <div className="asset-reference"><span><FileImage /></span><div><strong>{approvedAssets[0].filename}</strong><small>{isChinese ? `已核准素材 · 共 ${approvedAssets.length} 項可用` : `Approved asset · ${approvedAssets.length} available`}</small></div><Badge variant="outline">{isChinese ? "已核准" : "Approved"}</Badge></div>}
               <div className="original-context"><FactType type={action.evidence.factType} /><div><strong>{isChinese ? "來源發現" : "Source finding"}</strong><p>{resolveText(action.evidence.detail, locale)}</p><small>{formatDateTime(action.evidence.observedAt, locale, timezone)} · {isChinese ? "原始來源保留作證據" : "Source preserved as evidence"}</small></div></div>
+              {checklistSteps && (
+                <div className="brand-check-panel">
+                  <div className="brand-check-head"><Check /><div><strong>{checklistCopy.heading}</strong><span>{checklistSteps.where}</span></div><Badge variant="outline">{effortLabel(action.effortMinutes, locale)}</Badge></div>
+                  <ol className="evidence-list">{checklistSteps.steps.map((step) => <li key={step}><CheckCircle2 /> <span>{step}</span></li>)}</ol>
+                  <p className="limitation-note"><AlertTriangle /> {checklistCopy.note}</p>
+                </div>
+              )}
               {/* The scan already collected these; showing them is what replaces
                   the blank "retype your reviews" form. Owner-typed text stays a
                   clearly-labelled fallback below, never collected evidence. */}
@@ -542,9 +583,10 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                   ) : (
                     <div key={key} className="field-stack"><Label htmlFor={`input-${key}`}>{inputs[key] ?? key}</Label>{key.startsWith("owner_fact") || key === "menu_items" || key === "reviews_without_response" ? <Textarea id={`input-${key}`} rows={3} value={inputValues[key] ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} /> : <Input id={`input-${key}`} value={inputValues[key] ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} />}</div>
                   ))}
-                  <div className="draft-editor-actions"><Button type="submit" disabled={!canEdit}>{busy === "inputs" || busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {isChinese ? "儲存資料並重新生成" : "Save inputs and generate"}</Button></div>
+                  <div className="draft-editor-actions"><Button type="submit" disabled={!canEdit}>{busy === "inputs" || busy === "run" ? <LoaderCircle className="animate-spin" /> : checklistSteps ? <Save /> : <WandSparkles />} {checklistSteps ? checklistCopy.saveInputs : isChinese ? "儲存資料並重新生成" : "Save inputs and generate"}</Button></div>
                 </form>
               )}
+              {!checklistSteps && (<>
               <div className="field-stack"><Label htmlFor="draft-content">{social ? (isChinese ? "帖文說明" : "Caption") : (isChinese ? "草稿" : "Draft")}</Label><Textarea id="draft-content" value={content} onChange={(event) => setContent(event.target.value)} rows={social ? 8 : 7} disabled={!canEdit} placeholder={selectedVersion ? undefined : (isChinese ? "尚未生成草稿。按「生成草稿」或直接撰寫，儲存後成為第 1 版。" : "No draft yet. Generate one, or write here and save it as version 1.")} /><div className="field-helper-row"><span>{content.length} {isChinese ? "個字元" : "characters"}</span><span>{selectedVersion ? formatDateTime(selectedVersion.created_at, locale, timezone) : ""}</span></div></div>
               {(social || altText) && <div className="field-stack"><Label htmlFor="alt-text">{isChinese ? "圖片替代文字" : "Image alt text"}</Label><Textarea id="alt-text" value={altText} onChange={(event) => setAltText(event.target.value)} rows={3} disabled={!canEdit} /><small>{isChinese ? "無障礙匯出所需；請確認描述與已核准素材相符。" : "Required for accessible export; confirm it matches the approved asset."}</small></div>}
               {/* The agents compute guardrail violations and artifacts.ts
@@ -563,8 +605,28 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
               {lastRunError && <p className="limitation-note" role="alert"><CircleAlert /> {isChinese ? "上次生成失敗：" : "Last generation failed: "}{lastRunError}</p>}
               <div className="draft-editor-actions"><ContextualAssistant locale={locale} surface={social ? "create" : "action"} triggerLabel={isChinese ? "用助理修改並建立新版本" : "Revise with operator as a new version"} mode="live" context={{ workspaceId, locationId: action.location.id ?? undefined, actionId: action.id, versionId: selectedVersion?.id }} onCreateVersion={(run) => void createAssistantVersion(run)} disabled={!canEdit} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? (isChinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version") : (isChinese ? "生成草稿" : "Generate a draft")}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {isChinese ? "儲存手動修改為新版本" : "Save manual edits as a new version"}</Button></div>
               {conflict && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "另一位審閱者已更新輸出" : "Another reviewer changed this output"}</strong><p>{isChinese ? "未儲存文字仍保留在本機。載入最新版本、比較內容，再建立新版本。" : "Unsaved text is preserved locally. Load the latest version, compare, then create a new version."}</p><Button size="sm" onClick={loadLatest}><RefreshCw /> {isChinese ? "安全載入最新狀態" : "Load latest safely"}</Button></div></div>}
+              </>)}
+              {checklistSteps && (
+                <div className="draft-editor-actions">
+                  <Button onClick={() => void markChecklistDone()} disabled={!canEdit || checklistDone}>{busy === "complete" ? <LoaderCircle className="animate-spin" /> : <CheckCircle2 />} {checklistDone ? checklistCopy.doneState : checklistCopy.markDone}</Button>
+                </div>
+              )}
             </SectionCard>
 
+            {checklistSteps ? (
+              <aside className="approval-panel">
+                <SectionCard>
+                  <p className="eyebrow">{isChinese ? "如何完成" : "How this is completed"}</p>
+                  <h2>{isChinese ? "此行動由你完成，不經 Agent" : "You complete this one, not an agent"}</h2>
+                  <p>{checklistCopy.note}</p>
+                  <dl className="state-machine-dl">
+                    <div><dt>{isChinese ? "行動" : "Action"}</dt><dd><Badge variant="outline">{stateLabel(action.actionState, locale)}</Badge></dd></div>
+                    <div><dt>{isChinese ? "量度" : "Measurement"}</dt><dd><Badge variant="outline">{stateLabel(action.measurementState, locale)}</Badge></dd></div>
+                  </dl>
+                  <p className="limitation-note">{isChinese ? "沒有可審批或匯出的版本，也不會扣除核准後交付額。" : "There is no version to approve or export, and no approved delivery is counted."}</p>
+                </SectionCard>
+              </aside>
+            ) : (
             <aside className="approval-panel">
               <SectionCard>
                 <p className="eyebrow">{isChinese ? "審批決定" : "Approval decision"}</p><h2>{isApprovedCurrent ? `${versionName}${isChinese ? "已核准" : " approved"}` : (isChinese ? "一項安全的店主決定" : "One safe owner decision")}</h2><p>{isChinese ? "核准只適用於這個不可變更版本。任何修改都必須另存新版本，再次審批。" : "Approval applies only to this immutable version. Any edit must be saved as a new version and approved again."}</p>
@@ -583,6 +645,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                 <Button className="w-full" variant="ghost" disabled><Send /> {isChinese ? "直接發佈 · 需要連接" : "Publish directly · Connection required"}</Button>
               </SectionCard>
             </aside>
+            )}
           </div>
         </TabsContent>
 

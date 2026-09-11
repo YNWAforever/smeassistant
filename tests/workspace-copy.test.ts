@@ -22,3 +22,31 @@ describe("workspace copy", () => {
     for (const key of DISPLAY_PHASE_KEYS) expect(copy["zh-TW"].workspace.phases[key]).toBeTruthy();
   });
 });
+
+describe("checklist copy", () => {
+  // Guards the condition: a template that becomes delivery "checklist" without
+  // steps would render an empty card where the only completion path lives.
+  const checklistTemplates = TEMPLATES.filter((template) => template.delivery === "checklist");
+
+  it("covers every checklist template in every locale", () => {
+    expect(checklistTemplates.length).toBeGreaterThan(0);
+    for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
+      for (const template of checklistTemplates) {
+        const entry = copy[locale].workspace.checklistSteps[template.key];
+        expect(entry, `${locale} ${template.key}`).toBeTruthy();
+        expect(entry!.where.trim().length).toBeGreaterThan(0);
+        expect(entry!.steps.length).toBeGreaterThan(0);
+        for (const step of entry!.steps) expect(step.trim().length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("carries no steps for a template an agent drafts", () => {
+    for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
+      for (const key of Object.keys(copy[locale].workspace.checklistSteps)) {
+        const template = TEMPLATES.find((t) => t.key === key);
+        expect(template?.delivery, `${locale} ${key}`).toBe("checklist");
+      }
+    }
+  });
+});

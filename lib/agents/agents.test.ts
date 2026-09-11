@@ -8,6 +8,7 @@ const action: ActionOverview = {
   id: "act-1",
   templateKey: "review-response",
   capability: "Live",
+  delivery: "export_copy",
   location: { id: "loc-1", slug: "yik-yam", name: localized("Yik Yam", "益欣") },
   title: localized("Reply to unanswered Google reviews", "回覆未回覆的 Google 評論"),
   summary: localized("Drafts follow your brand voice.", "草稿按品牌語氣。"),
