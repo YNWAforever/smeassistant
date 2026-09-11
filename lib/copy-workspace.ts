@@ -53,6 +53,10 @@ export type WorkspaceCopy = {
     heading: string;
     fromScan: string;
     noOwnerReply: string;
+    /** P2.2 "selected-review replies": the owner chooses which reviews the draft answers. */
+    include: string;
+    selectedNote: string;
+    keepOne: string;
     limitation: string;
     population: string;
     addOwn: string;
@@ -114,6 +118,9 @@ export const workspaceEn: WorkspaceCopy = {
     heading: "Reviews the draft will use",
     fromScan: "Supplied by the scan",
     noOwnerReply: "No owner reply",
+    include: "Reply to this review",
+    selectedNote: "{n} of {total} reviews will be used in the next draft.",
+    keepOne: "Keep at least one review selected.",
     // Says only what the pipeline guarantees: sanitizeReportProof keeps a
     // bounded sample in provider order, so no recency claim is made here.
     limitation: "The scan kept {inspected} reviews; {unanswered} have no owner reply.",
@@ -171,6 +178,9 @@ export const workspaceZhHK: WorkspaceCopy = {
     heading: "草稿會用到的評論",
     fromScan: "由掃描提供",
     noOwnerReply: "未有店主回覆",
+    include: "回覆這則評論",
+    selectedNote: "下次生成將使用 {total} 則評論中的 {n} 則。",
+    keepOne: "請至少保留一則評論。",
     limitation: "掃描保留了 {inspected} 則評論，其中 {unanswered} 則未有店主回覆。",
     population: "Google 顯示評論總數為 {total} 則。",
     addOwn: "補充掃描未收錄的評論（選填）",
