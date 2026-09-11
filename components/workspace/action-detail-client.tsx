@@ -13,6 +13,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -136,6 +137,9 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   const [inputValues, setInputValues] = useState<Record<string, string>>({})
   const [lastRunError, setLastRunError] = useState<string | null>(null)
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)
+  // Seeded from the server-resolved effective selection, so the boxes always
+  // match what the next draft will actually use.
+  const [selectedReviews, setSelectedReviews] = useState<string[]>(reviewEvidence?.selected ?? [])
 
   // Versions arrive from the server; after router.refresh() re-point the editor
   // at the version we just created, or at the newest one if the selected one
@@ -274,6 +278,28 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
    * submitInputs(): that one is all-or-nothing over every missing key, and here
    * nothing is missing -- this is one extra review the scan did not capture.
    */
+  /**
+   * P2.2 "selected-review replies". Only keys travel: the server rebuilds the
+   * review text from stored evidence and re-applies the same filter, so this
+   * can narrow what the agent receives but never introduce anything.
+   *
+   * The last selected review cannot be unchecked. An empty selection means
+   * "all of them" to the server -- correct as a fallback for a stale stored
+   * choice, but as a deliberate act it would silently do the opposite of what
+   * the empty checkboxes appear to say.
+   */
+  async function toggleReview(key: string, include: boolean) {
+    if (!canEdit || !reviewEvidence) return
+    const next = include ? [...selectedReviews, key] : selectedReviews.filter((k) => k !== key)
+    if (next.length === 0) { toast.error(scanInputCopy.keepOne); return }
+    const previous = selectedReviews
+    setSelectedReviews(next)
+    setBusy("inputs")
+    const patched = await updateAction(action.id, { provided_inputs: { selected_reviews: next } })
+    setBusy(null)
+    if (!patched.ok) { setSelectedReviews(previous); return failureToast(patched) }
+  }
+
   async function addOwnerReviewNote() {
     if (!canEdit) return
     const value = (inputValues.reviews_without_response ?? "").trim()
@@ -444,9 +470,16 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                     <Badge variant="outline">{scanInputCopy.fromScan}</Badge>
                   </div>
                   <div className="version-list">
-                    {reviewEvidence.reviews.map((review, index) => (
-                      <div key={`${review.time ?? "unknown"}-${index}`}>
-                        <span><MessageSquare /></span>
+                    {reviewEvidence.reviews.map((review) => (
+                      <div key={review.key}>
+                        <span>{canEdit
+                          ? <Checkbox
+                              checked={selectedReviews.includes(review.key)}
+                              disabled={busy === "inputs"}
+                              aria-label={`${scanInputCopy.include}: ${review.excerpt.slice(0, 60)}`}
+                              onCheckedChange={(checked) => void toggleReview(review.key, checked === true)}
+                            />
+                          : <MessageSquare />}</span>
                         <div>
                           <strong>{review.rating != null ? `★ ${review.rating}` : scanInputCopy.noOwnerReply}</strong>
                           <small>{review.excerpt}</small>
@@ -455,6 +488,11 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                       </div>
                     ))}
                   </div>
+                  <p className="limitation-note">
+                    {scanInputCopy.selectedNote
+                      .replace("{n}", String(selectedReviews.length))
+                      .replace("{total}", String(reviewEvidence.reviews.length))}
+                  </p>
                   <p className="limitation-note">
                     <AlertTriangle />{" "}
                     {scanInputCopy.limitation

@@ -57,8 +57,18 @@ export function ordinal(day: number): string {
   return `${day}${suffix}`;
 }
 
+/**
+ * P2.1: "Display task-duration estimates only as estimates, never measured or
+ * guaranteed completion times."
+ *
+ * `effort_minutes` is a fixed number written by the template table -- nothing
+ * measures how long an owner actually takes -- so a bare "10 minutes" under a
+ * heading like "Owner effort" reads as a measurement. Qualified here rather
+ * than at each render site, because four of the five were unqualified and that
+ * is precisely how the odd one out gets missed.
+ */
 export function effortLabel(minutes: number, locale: PrototypeLocale): string {
-  return locale === "en" ? `${minutes} minutes` : `${minutes} 分鐘`;
+  return locale === "en" ? `about ${minutes} minutes` : `約 ${minutes} 分鐘`;
 }
 
 export function priorityLabel(priority: Priority, locale: PrototypeLocale): string {

@@ -7,7 +7,7 @@ import { inLocationScope, type Membership } from "@/lib/auth";
 import { artifactRepository } from "@/lib/repositories/artifacts";
 import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
 import type { GuardrailFlag, VersionOrigin } from "@/lib/workspace/version-meta";
-import { selectScannedReviews } from "@/lib/workspace/evidence-inputs";
+import { filterSelectedReviews, scannedReviewKey, selectScannedReviews } from "@/lib/workspace/evidence-inputs";
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { currentPeriod, type LocationSummary, type WorkspaceContext } from "@/lib/workspace/queries";
 import { reapStrandedRuns } from "@/lib/workspace/run-reaper";
@@ -154,7 +154,15 @@ export interface ScanInputEvidence {
   snapshotId: string | null;
   jobId: string;
   observedAt: string;
-  reviews: Array<{ rating: number | null; excerpt: string; time: string | null }>;
+  /** `key` is the stable handle the owner's selection is stored against (P2.2, "selected-review replies"). */
+  reviews: Array<{ key: string; rating: number | null; excerpt: string; time: string | null }>;
+  /**
+   * The keys the next draft will actually use, resolved through the same
+   * `filterSelectedReviews` the run path applies -- so the checkboxes cannot
+   * disagree with what the agent receives, including the fallback where a
+   * stored selection has gone stale against a newer scan.
+   */
+  selected: string[];
   /** Unanswered reviews the agent will draft from. */
   available: number;
   /** Reviews the scan RETAINED (capped at 3), not the 5 metrics inspects. */
@@ -525,7 +533,11 @@ export async function loadScanInputEvidence(
     snapshotId: snapshot.id,
     jobId: snapshot.jobId,
     observedAt: snapshot.observedAt,
-    reviews: selection.sampled.map((review) => ({ rating: review.rating, excerpt: review.text, time: review.time })),
+    reviews: selection.sampled.map((review) => ({ key: scannedReviewKey(review), rating: review.rating, excerpt: review.text, time: review.time })),
+    selected: filterSelectedReviews(
+      selection.sampled,
+      (row.provided_inputs && typeof row.provided_inputs === "object" ? (row.provided_inputs as Record<string, unknown>) : {}).selected_reviews,
+    ).map(scannedReviewKey),
     available: selection.sampled.length,
     inspected: selection.inspected,
     populationCount: snapshot.metrics["gbp.reviews_count"] ?? null,

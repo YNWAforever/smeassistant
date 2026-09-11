@@ -246,6 +246,38 @@ describe("page repository boundaries", () => {
     expect(detail?.action.missingInputs).toEqual(["brand_voice"]);
     expect(detail?.action.requiredInputs).toEqual(["brand_voice", "reviews_without_response"]);
     expect(detail?.action.evidenceInputs).toEqual(["reviews_without_response"]);
+    // P2.2 "selected-review replies": with nothing stored the owner has picked
+    // nothing yet, so every unanswered review is in play -- and `selected` is
+    // resolved through the same filter the run path applies, so the checkboxes
+    // cannot promise the agent a review it will not receive.
+    expect(detail?.scanInputs[0].reviews[0].key).toEqual(expect.stringMatching(/^[0-9a-f]{8}$/));
+    expect(detail?.scanInputs[0].selected).toEqual([detail?.scanInputs[0].reviews[0].key]);
+  });
+
+  it("reports only the reviews the owner picked, and falls back when the pick goes stale", async () => {
+    const snapshot: FakeSnapshot = { id: "snap-9", jobId: "job-9", workspaceId: "ws-1", locationId: "loc-1", observedAt: "2026-09-02T00:00:00Z", metrics: {} };
+    artifacts.assistantSnapshot.mockResolvedValue(snapshot);
+    artifacts.assistantReviewData.mockResolvedValue({
+      gbp: { reviews: [
+        { rating: 2, text: "Slow service", time: "2026-08-30T00:00:00Z" },
+        { rating: 1, text: "Cold food", time: "2026-08-28T00:00:00Z" },
+      ] },
+    });
+    const base = { id: "a1", template_key: "review-response", source_snapshot_id: "snap-9", required_inputs: ["reviews_without_response"] } as const;
+
+    state.actions = [actionRow({ ...base })];
+    const all = await getAction(ctx, "a1");
+    const [first, second] = all!.scanInputs[0].reviews;
+    expect(all!.scanInputs[0].selected).toEqual([first.key, second.key]);
+
+    state.actions = [actionRow({ ...base, provided_inputs: { selected_reviews: [second.key] } })];
+    expect((await getAction(ctx, "a1"))!.scanInputs[0].selected).toEqual([second.key]);
+
+    // A newer scan replaced the reviews, so the stored pick matches nothing.
+    // Falling back to all beats showing an empty selection the agent would not
+    // honour anyway.
+    state.actions = [actionRow({ ...base, provided_inputs: { selected_reviews: ["deadbeef"] } })];
+    expect((await getAction(ctx, "a1"))!.scanInputs[0].selected).toEqual([first.key, second.key]);
   });
 
   it("reads no review data at all for a template that does not draft replies", async () => {
