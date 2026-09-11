@@ -10,6 +10,14 @@ That 3 is the number to keep in mind. An earlier pass at this phase, run before 
 
 **Totals:** 26 buildable · 4 blocked · 3 already existed.
 
+## Progress
+
+**11 of 26 buildable items are done** (items 1, 2, 3, 4, 6, 9, 10, 12, 15, 24, 25); items 6 and 12 are the same defect and landed together. Each carries a **Status** line below with its commit. Fifteen remain buildable: 5, 7, 8, 11, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23, 26. The four blocked items and the three that already existed are unchanged.
+
+Every landed item is **locally verified** — `typecheck`, `lint` held at its 30-warning / 0-error baseline, and the unit/component suite. **None is hosted-verified**: no deployment, migration, paid provider call, real email, OAuth consent or Stripe event was attempted, and `db:verify` / `test:integration` still need Docker, which this machine does not have.
+
+Item 5 (owner-facing tab labels) is deliberately not taken yet: it is the lowest-value entry here by its own proof, and `sources/OWNER-EXPERIENCE-BLUEPRINT.md:60-70` warns against forcing it before the join door opens.
+
 ---
 
 ## Buildable
@@ -20,6 +28,8 @@ That 3 is the number to keep in mind. An earlier pass at this phase, run before 
 
 **Effort:** `small` · **Start at:** `components/workspace/create-view.tsx`
 
+**Status:** done — `520cf00`. Create leads with review reply, FAQ and website basics; every card carries its real CapabilityBadge. Headings are advice, not measurement.
+
 **Proof of absence**
 
 components/workspace/create-view.tsx:57 builds one flat list of every agent-backed template in lib/workspace/templates.ts declaration order and renders it as a single equal-weight grid at :125 under two tabs (:122). `grep -c "Capability" components/workspace/create-view.tsx` → 0, so `gbp-photo-pack`, `gbp-post`, `local-seo-brief` and `menu-translation` (capability "Beta" at templates.ts:114, :128, :212, :226) are presented identically to the Live ones.
@@ -27,6 +37,8 @@ components/workspace/create-view.tsx:57 builds one flat list of every agent-back
 #### 2. More must link the supporting routes the item lists — assets is missing, which makes /assets (and /calendar) unreachable on a phone.
 
 **Effort:** `small` · **Start at:** `components/workspace/more-view.tsx`
+
+**Status:** done — `92b2a1a`. More links Assets and Calendar; a directory-walking test fails when any non-primary owner route has no mobile entry point.
 
 **Proof of absence**
 
@@ -36,6 +48,8 @@ components/workspace/create-view.tsx:57 builds one flat list of every agent-back
 
 **Effort:** `small` · **Start at:** `lib/workspace/format.ts`
 
+**Status:** done — `b22dd04`. Durations read as estimates, and Today names the inputs it needs.
+
 **Proof of absence**
 
 lib/workspace/format.ts:60-62 returns a bare `"10 minutes"` / `"10 分鐘"`, rendered unqualified as "10 minutes owner time" on Today (components/workspace/home-brief.tsx:91), as the definite term "Owner effort / 店主所需時間" on Tasks (components/workspace/actions-list-view.tsx:62), in the compact list (home-brief.tsx:161) and in the detail header (action-detail-client.tsx:411). Only Create qualifies it ("About … to review" / "店主約需 …", create-view.tsx:125). For inputs, home-brief.tsx:92 uses `priority.missingInputs.length` solely to switch the button label; the input names (available via `copy[locale].workspace.inputs`, as used at create-view.tsx:134) are never shown on Today.
@@ -43,6 +57,8 @@ lib/workspace/format.ts:60-62 returns a bare `"10 minutes"` / `"10 分鐘"`, ren
 #### 4. Remove the unenforced allowance and seat promises still on the homepage plan cards (P1.7 leftover sitting on a P2.1 screen; the item forbids hiding or misstating charges).
 
 **Effort:** `small` · **Start at:** `components/landing-page.tsx`
+
+**Status:** done — `60dcab6`. The two unenforced homepage plan lines are gone; not replaced with "unlimited".
 
 **Proof of absence**
 
@@ -59,6 +75,8 @@ lib/copy.ts:1299-1303 (en), :1352-1356 (zh-HK) and :1405-1409 (zh-TW) define the
 #### 6. Checklist actions must render as a checklist. `gbp-profile-fix` and `ig-highlights` currently open the same draft editor whose primary control is "Generate a draft", which cannot succeed.
 
 **Effort:** `medium` · **Start at:** `components/workspace/action-detail-client.tsx`
+
+**Status:** done — `92e2a44`. ActionOverview carries the template's `delivery`; a checklist action renders steps and a completion control instead of a Generate button that can only 409. Same commit as item 12.
 
 **Proof of absence**
 
@@ -86,6 +104,8 @@ lib/copy.ts:1299-1303 (en), :1352-1356 (zh-HK) and :1405-1409 (zh-TW) define the
 
 **Effort:** `small` · **Start at:** `lib/agents/agents/faq-jsonld.ts`
 
+**Status:** done — `0631309`. `validateFaqJsonLd` calls the same `jsonLdBlocks` detector the scan uses; `jsonld_invalid` and `jsonld_mismatch` join the guardrail vocabulary. A fenced ```json block is correctly reported as missing, because no scan can see it.
+
 **Proof of absence**
 
 lib/agents/agents/faq-jsonld.ts:17 is the only validation: `if (output.body.trim() && !output.body.includes("FAQPage")) warnings.push("jsonld_missing")` — a substring test. `grep -rn "JSON.parse" lib/agents` returns exactly one hit, lib/agents/schema.ts:109, which parses the model's own envelope, not the JSON-LD. `grep -rn "FAQPage" lib components app` returns only faq-jsonld.ts:14,17 and the registry test. lib/workspace/version-meta.ts:66-79 classify() has no code for an invalid or mismatched JSON-LD block.
@@ -93,6 +113,8 @@ lib/agents/agents/faq-jsonld.ts:17 is the only validation: `if (output.body.trim
 #### 10. Website basics: ground the draft in the actual check results, not just the failing keys. The agent is asked to rewrite the title, meta description and H1 but is never shown the current ones or the site URL, so the output cannot be presented as current → suggested and the export cannot give item-level outcomes the next scan can re-check. The data already exists: each check result carries a detail string ('57 chars', '2 h1', the host).
 
 **Effort:** `small` · **Start at:** `lib/workspace/runs.ts`
+
+**Status:** done — `e466730`. `snapshotEvidence` passes every check result as `{key, pass, observed}` instead of failing keys only. Also fixed: the `https` detail reported the scheme, not the host; and the new "(now: …)" annotation would have broken the agent's own title-length check.
 
 **Proof of absence**
 
@@ -109,6 +131,8 @@ lib/copy-workspace.ts:134 and :192 label the inputs literally 'Owner fact 1/2/3'
 #### 12. Keep gbp-profile-fix (and ig-highlights) visibly a checklist. Right now an agent-less template renders exactly like an agent one: the action detail page offers 'Generate a draft', and pressing it — or submitting the opening_hours/categories input form, which always calls generate() — returns 409 agent_unavailable with the toast 'No agent is available for this action yet.' There is no completion path at all for these two templates. Surface the template's delivery mode to the page, replace Generate with the checklist items and a completion control, and keep the same audit/approval semantics.
 
 **Effort:** `medium` · **Start at:** `components/workspace/action-detail-client.tsx`
+
+**Status:** done — `92e2a44`. Same commit as item 6: the template's delivery mode reaches the page, and the input form records inputs without calling an agent.
 
 **Proof of absence**
 
@@ -135,6 +159,8 @@ components/workspace/action-detail-client.tsx:402-404 builds the download from `
 #### 15. Scope asset selection to the action's location and the manager's location_scope, on both the picker and the server rights check, so a social-post draft cannot attach another location's approved photo and an out-of-scope manager cannot see or use it.
 
 **Effort:** `small` · **Start at:** `app/[locale]/owner/[workspaceSlug]/actions/[actionId]/page.tsx`
+
+**Status:** done — `4d09059`. `assetUsableByAction` is one predicate the picker and the run route share. `location_id === null` means workspace-wide and stays usable everywhere.
 
 **Proof of absence**
 
@@ -212,6 +238,8 @@ lib/funnel/report-labels.ts:67-70 — `export function humaniseLimitationCode(co
 
 **Effort:** `small` · **Start at:** `app/api/workspaces/[workspaceId]/notifications/route.ts`
 
+**Status:** done — `9a749ca`. `PATCH /api/workspaces/[id]/notifications`; the repository predicate pins `user_id` to the verified session, so a member cannot mark another's rows read.
+
 **Proof of absence**
 
 `grep -rn "markRead|markAsRead|mark_read|markNotification" --include=*.ts --include=*.tsx .` over the repo (node_modules excluded) returns ZERO matches. Grep for `read_at` across {lib,app,components,neon,supabase} returns only reads and column definitions - lib/repositories/workspace-read.ts:52 (count WHERE read_at IS NULL), :162 (SELECT read_at::text), components/workspace/notifications-view.tsx:19 and :42 (filter/className), neon/migrations/0002_business.sql:458 (column), lib/db/schema/business.ts:689 (drizzle column) - and NO `UPDATE workspace_notifications` anywhere. `ls app/api/workspaces/[workspaceId]/` lists actions, assets, billing-portal, brand, checkout-link, fix-pack-drafts, google-connection, instagram-handle, members, notification-preferences, rescan, usage - there is no `notifications` directory. components/workspace/notifications-view.tsx (full file, 50 lines) renders the unread count at :37 and contains no button or form that could clear it.
@@ -219,6 +247,8 @@ lib/funnel/report-labels.ts:67-70 — `export function humaniseLimitationCode(co
 #### 25. Audit row on Fix Pack review (second half of F-29). The legacy review path is reachable in this app and approve/reject leaves no trace in the append-only ledger (guardrail 10). Add a review event name to AUDIT_EVENTS + audit-labels and emit it from the PATCH route after a successful repository.review, best-effort like every other route. No schema change and no write to agent_runs beyond the existing review UPDATE.
 
 **Effort:** `small` · **Start at:** `app/api/workspaces/[workspaceId]/fix-pack-drafts/[runId]/route.ts`
+
+**Status:** done — `2a70d4d`. `fix_pack.reviewed` joins AUDIT_EVENTS with its label and is emitted only on a successful review.
 
 **Proof of absence**
 
