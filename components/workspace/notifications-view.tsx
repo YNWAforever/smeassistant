@@ -1,12 +1,9 @@
-import Link from "next/link"
 import { Bell, TriangleAlert } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { CapabilityBadge, PageIntro, SectionCard } from "@/components/product-ui"
-import { NotificationPreferencesForm } from "@/components/workspace/notifications-client"
+import { NotificationList, NotificationPreferencesForm } from "@/components/workspace/notifications-client"
 import type { PrototypeLocale } from "@/lib/copy"
-import { resolveText } from "@/lib/domain"
-import { formatDateTime } from "@/lib/workspace/format"
 import type { NotificationsModel } from "@/lib/workspace/queries-pages"
 
 /**
@@ -35,14 +32,7 @@ export function NotificationsView({ locale, workspaceId, timezone, model }: { lo
         </SectionCard>
         <SectionCard>
           <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "應用內" : "In-app"}</p><h2>{isChinese ? "通知" : "Notifications"}</h2></div><Badge variant="outline"><Bell /> {isChinese ? `${unread} 則未讀` : `${unread} unread`}</Badge></div>
-          {model.inApp.length === 0 ? <p>{isChinese ? "尚未有通知。" : "No notifications yet."}</p> : (
-            <div className="compact-action-list">
-              {model.inApp.map((n) => {
-                const body = <><div><strong>{resolveText(n.title, locale)}</strong><small>{n.body ? resolveText(n.body, locale) : ""} · {formatDateTime(n.created_at, locale, timezone)}</small></div></>
-                return n.href ? <Link key={n.id} href={n.href} className={n.read_at ? "" : "is-unread"}>{body}</Link> : <div key={n.id} className={n.read_at ? "" : "is-unread"}>{body}</div>
-              })}
-            </div>
-          )}
+          <NotificationList locale={locale} workspaceId={workspaceId} timezone={timezone} rows={model.inApp} />
         </SectionCard>
       </div>
     </div>

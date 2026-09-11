@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import Link from "next/link"
 import { Check, LoaderCircle } from "lucide-react"
 import { toast } from "sonner"
 
@@ -9,7 +10,10 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import type { PrototypeLocale } from "@/lib/copy"
-import { saveNotificationPreferences } from "@/lib/workspace/client"
+import { resolveText } from "@/lib/domain"
+import { formatDateTime } from "@/lib/workspace/format"
+import type { NotificationRow } from "@/lib/workspace/queries-pages"
+import { markNotificationsRead, saveNotificationPreferences } from "@/lib/workspace/client"
 
 export type EmailPreferences = { rescanComplete: boolean; regressionAlert: boolean; monthlyDigest: boolean }
 
@@ -66,6 +70,55 @@ export function NotificationPreferencesForm({ locale, workspaceId, initial }: { 
   )
 }
 
+/**
+ * The in-app notification list (P2.5 item 24). `read_at` existed from the
+ * Phase 6 migration and nothing ever wrote it, so the topbar bell's unread dot
+ * could never go out.
+ *
+ * Two affordances, deliberately different in strength:
+ *
+ * - "Mark all as read" awaits the server and refreshes, so the badge going to
+ *   zero reflects a write that actually happened.
+ * - Opening a row fires the mark without blocking the navigation, because
+ *   holding a click to await a PATCH would also break middle-click and
+ *   ctrl-click. If that request fails, nothing is claimed permanently: the row
+ *   is re-read from the server on the next load and comes back unread.
+ */
+export function NotificationList({ locale, workspaceId, timezone, rows }: { locale: PrototypeLocale; workspaceId: string; timezone: string; rows: NotificationRow[] }) {
+  const router = useRouter()
+  const t = COPY[locale]
+  const [busy, setBusy] = useState(false)
+  const unread = rows.filter((row) => !row.read_at).length
+
+  async function markAll() {
+    if (busy || unread === 0) return
+    setBusy(true)
+    const result = await markNotificationsRead(workspaceId)
+    setBusy(false)
+    if (!result.ok) { toast.error(result.error === "offline" || result.error === "network" ? t.network : t.markFailed); return }
+    toast.success(t.marked)
+    router.refresh()
+  }
+
+  if (rows.length === 0) return <p>{t.empty}</p>
+  return (
+    <>
+      <div className="compact-action-list">
+        {rows.map((row) => {
+          const body = <div><strong>{resolveText(row.title, locale)}</strong><small>{row.body ? resolveText(row.body, locale) : ""} · {formatDateTime(row.created_at, locale, timezone)}</small></div>
+          const className = row.read_at ? "" : "is-unread"
+          return row.href
+            ? <Link key={row.id} href={row.href} className={className} onClick={() => { if (!row.read_at) void markNotificationsRead(workspaceId, [row.id]) }}>{body}</Link>
+            : <div key={row.id} className={className}>{body}</div>
+        })}
+      </div>
+      <div className="plan-actions">
+        <Button type="button" variant="outline" onClick={() => void markAll()} disabled={busy || unread === 0}>{busy ? <LoaderCircle className="animate-spin" /> : <Check />} {t.markAll}</Button>
+      </div>
+    </>
+  )
+}
+
 const COPY = {
   en: {
     // "One email when a scan finishes" asserted a send. No mail sender exists,
@@ -76,6 +129,8 @@ const COPY = {
     digest: "Monthly digest", digestNote: "A monthly summary of what changed",
     save: "Save preferences", saved: "Notification preferences saved.",
     network: "The server could not be reached; try again shortly.", failed: "The preferences could not be saved.",
+    markAll: "Mark all as read", marked: "Notifications marked as read.", markFailed: "The notifications could not be marked as read.",
+    empty: "No notifications yet.",
   },
   "zh-HK": {
     rescan: "重新掃描完成", rescanNote: "每次掃描完成時",
@@ -83,6 +138,8 @@ const COPY = {
     digest: "每月摘要", digestNote: "每月一次的成效摘要",
     save: "儲存偏好設定", saved: "通知偏好設定已儲存。",
     network: "無法連接伺服器，請稍後再試。", failed: "未能儲存偏好設定。",
+    markAll: "全部標示為已讀", marked: "通知已標示為已讀。", markFailed: "未能標示通知為已讀。",
+    empty: "尚未有通知。",
   },
   "zh-TW": {
     rescan: "重新掃描完成", rescanNote: "每次掃描完成時",
@@ -90,5 +147,7 @@ const COPY = {
     digest: "每月摘要", digestNote: "每月一次的成效摘要",
     save: "儲存偏好設定", saved: "通知偏好設定已儲存。",
     network: "無法連線至伺服器，請稍後再試。", failed: "無法儲存偏好設定。",
+    markAll: "全部標示為已讀", marked: "通知已標示為已讀。", markFailed: "無法將通知標示為已讀。",
+    empty: "目前沒有通知。",
   },
 } as const satisfies Record<PrototypeLocale, Record<string, string>>

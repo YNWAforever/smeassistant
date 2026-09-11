@@ -17,6 +17,11 @@ export function notificationRepository(
     workspaceId: string,
     updates: NotificationPreferences,
   ): Promise<void>;
+  markRead(
+    workspaceId: string,
+    userId: string,
+    ids: string[] | null,
+  ): Promise<number>;
 } {
   const db = () => client ?? getPool();
   return {
@@ -41,6 +46,30 @@ export function notificationRepository(
       );
       if (!result.rows.length)
         throw new Error("notification_workspace_not_found");
+    },
+    /**
+     * P2.5 item 24. `read_at` existed and nothing ever set it, so the bell's
+     * unread badge could never reach zero.
+     *
+     * The predicate is the authorization: `user_id=$2` is the caller's own id
+     * from the verified session, so this can only ever touch the caller's own
+     * rows in the workspace they were authorized for -- one member cannot mark
+     * another's notifications read, whatever ids they send. `read_at IS NULL`
+     * keeps it idempotent and preserves the original timestamp on a re-send.
+     * `ids` null means "everything unread"; an empty array marks nothing.
+     */
+    async markRead(workspaceId, userId, ids) {
+      try {
+        const result = await db().query(
+          `UPDATE workspace_notifications SET read_at=now()
+    WHERE workspace_id=$1 AND user_id=$2 AND read_at IS NULL
+      AND ($3::uuid[] IS NULL OR id = ANY($3::uuid[])) RETURNING id`,
+          [workspaceId, userId, ids],
+        );
+        return result.rows.length;
+      } catch {
+        throw new Error("notification mark-read failed");
+      }
     },
     async acceptedMemberIds(workspaceId) {
       try {
