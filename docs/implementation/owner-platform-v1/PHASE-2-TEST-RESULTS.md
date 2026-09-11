@@ -2,7 +2,9 @@
 
 Gate-by-gate record for the Phase 2 gap-register work (all 24 findings plus P1 and P3). The Phase 1 counterpart is `PHASE-1-TEST-RESULTS.md`; the decisions behind each fix are in `PHASE-2-GAP-REGISTER.md`.
 
-**Branch** `claude/sme-assistant-phase-1-e83fdc` · **HEAD at time of run** `d514e3d` · Node **24.18.0**, pnpm **9.12.0** via corepack, Windows 11.
+**Branch** `claude/sme-assistant-phase-1-e83fdc` · **HEAD** `7f93c25` · Node **24.18.0**, pnpm **9.12.0** via corepack, Windows 11.
+
+The gate table's counts are from the clean run at `d514e3d` (287 files / 2,929 tests). P2 added one guard case since, so the current totals are **287 files / 2,930 tests**; typecheck, lint (30/0) and the guard were re-run green at `7f93c25`.
 
 **Read this first.** Everything below is **locally verified**. **Nothing here is hosted-verified.** No deployment, migration, paid provider call, real email, OAuth consent or Stripe event was attempted, and nothing was pushed — CLAUDE.md §0.1 makes each of those a separately authorized action. Three gates could not run on this machine at all; they are recorded as blocked, not as passing.
 
@@ -44,6 +46,10 @@ Gate-by-gate record for the Phase 2 gap-register work (all 24 findings plus P1 a
 **2. `safe-media.test.ts` starves when it is not given the machine.** Its first run this session took **138 s and failed**, with `TEST_HUNG` sentinels and 5 s timeouts across the decoder-lease and WebP-decode cases; re-run clean it was **62/62 in 5.65 s**. This is the "timing starvation" already documented in `PHASE-1-TEST-RESULTS.md`, and is why the script runs the file on its own. The file has not been touched since `aac32e6` (Phase 1) and nothing in Phase 2 reaches it.
 
 Neither is a reason to relax a timeout. Both are reasons not to read a single loaded full-suite run as authoritative.
+
+**3. One of them was mine, and it is fixed at the cause.** Adding P2's retention entry to `tests/unhonoured-promises.test.ts` made that file fail under load — three of its cases timing out in one run. Every `PROMISES` entry independently walked the whole source tree *and* read every file under `app/` and `lib/` for its detector, so each new promise the guard learns to catch multiplied the I/O. The walks and reads are now memoized and shared, with the one-off cost moved into a `beforeAll` carrying its own declared 60 s budget. **No test timeout was relaxed** — this guard is a filesystem scan whose cost scales with the repo, and widening the tests would hide a genuine hang behind the same number. Isolated: **4.66 s → 0.43 s**, and the file has not appeared in a failure set since (`7f93c25`).
+
+**How often, honestly.** Across six canonical/raw runs at the end of this session the failure count went 0, 2, 2, 4, 1, 5, 4 — always timeouts, always in repo-walking specs or the documented `approve` case, and **never the same set twice**. The machine had been running heavy suites continuously for hours by then; the one clean `pnpm test` (exit 0, zero FAIL lines) came earliest, when it was freshest. Re-running until green would have proved nothing, so the range is recorded instead. CI, on a fresh Linux runner, is the authority.
 
 ## The Turbopack blocker (gate 4, and therefore gate 7)
 
