@@ -3,9 +3,14 @@ import { buildTrendModel, type StoredDiff, type TrendModel } from "@/lib/trends/
 import { CLOSED_ACTION_STATES, localized, type ActionState, type FactType, type LocalizedText } from "@/lib/domain";
 import { loadAuthorizedEvidence } from "@/lib/evidence/load-authorized";
 import type { EvidenceGalleryItem } from "@/lib/report/view-model";
+import { inLocationScope, type Membership } from "@/lib/auth";
+import { artifactRepository } from "@/lib/repositories/artifacts";
 import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
+import type { GuardrailFlag, VersionOrigin } from "@/lib/workspace/version-meta";
+import { selectScannedReviews } from "@/lib/workspace/evidence-inputs";
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { currentPeriod, type LocationSummary, type WorkspaceContext } from "@/lib/workspace/queries";
+import { reapStrandedRuns } from "@/lib/workspace/run-reaper";
 import { rowToSnapshot, type ScanDiffRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
 import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
 import type { MetricKey } from "@/lib/workspace/metrics";
@@ -46,7 +51,13 @@ export interface HomeBrief {
   openActions: ActionOverview[];
   proof: HomeProof | null;
   month: { resolved: number; regressed: number; awaitingApproval: number; completed: number; measured: number };
-  nextScanAt: string | null;
+  /**
+   * Day of the month the location's monthly rescan cadence falls on, or null
+   * when no cadence is recorded. Deliberately not a date: nothing dispatches a
+   * due `scan_schedules` row and `next_run_at` is never advanced, so a date
+   * would name a run that is not coming.
+   */
+  rescanCadenceDay: number | null;
   drafts: number;
   agentStrip: { scout: boolean; priority: boolean; drafts: number; awaiting: number };
   ledger: { resolved: string[]; regressed: string[]; decayed: string[] };
@@ -94,6 +105,16 @@ export interface VersionRow {
   approved_at: string | null;
   reviewer_comment: string | null;
   created_at: string;
+  /**
+   * Parsed from `output_versions.meta` by the repository (see
+   * lib/workspace/version-meta.ts). The raw blob deliberately does not travel:
+   * it is unconstrained jsonb, and the approver only needs the classification.
+   */
+  origin: VersionOrigin;
+  agentKey: string | null;
+  checked: boolean;
+  guardrails: GuardrailFlag[];
+  agentNotes: string[];
 }
 
 export interface RunRow {
@@ -116,6 +137,30 @@ export interface MeasurementRow {
   fact_type: FactType;
   window_days: number | null;
   created_at: string;
+  /** The after-snapshot's location; NULL for a workspace-wide action. */
+  location_id: string | null;
+}
+
+/**
+ * Evidence the scan already collected for an input the template asks for, so
+ * the detail page can show it instead of a blank form. Always `Observed`: these
+ * are the exact excerpts the agent will receive, read from the same
+ * `audit_jobs.raw_data` through the same selector.
+ */
+export interface ScanInputEvidence {
+  key: "reviews_without_response";
+  source: "gbp_reviews";
+  factType: FactType;
+  snapshotId: string | null;
+  jobId: string;
+  observedAt: string;
+  reviews: Array<{ rating: number | null; excerpt: string; time: string | null }>;
+  /** Unanswered reviews the agent will draft from. */
+  available: number;
+  /** Reviews the scan RETAINED (capped at 3), not the 5 metrics inspects. */
+  inspected: number;
+  /** What Google reported in total, when the snapshot measured it. */
+  populationCount: number | null;
 }
 
 export interface ActionDetail {
@@ -123,6 +168,7 @@ export interface ActionDetail {
   versions: VersionRow[];
   runs: RunRow[];
   measurements: MeasurementRow[];
+  scanInputs: ScanInputEvidence[];
 }
 
 export interface InsightsSeriesPoint {
@@ -182,7 +228,7 @@ export interface IntegrationsModel {
 }
 
 export interface CalendarModel {
-  nextScans: Array<{ locationId: string | null; locationName: string | null; placeId: string; nextRunAt: string | null; cadence: string }>;
+  nextScans: Array<{ locationId: string | null; locationName: string | null; placeId: string; anniversaryDay: number | null; cadence: string }>;
   dueActions: ActionOverview[];
 }
 
@@ -199,6 +245,19 @@ export interface NotificationRow {
 export interface NotificationsModel {
   inApp: NotificationRow[];
   email: { rescanComplete: boolean; regressionAlert: boolean; monthlyDigest: boolean };
+}
+
+/**
+ * The recurring day of the month a monthly cadence falls on. `anniversary_day`
+ * is `smallint NOT NULL` constrained to 1..28, so it is authoritative; the
+ * `next_run_at` fallback covers a row written by something other than this app.
+ * A paused cadence has no day to show.
+ */
+function cadenceDay(schedule: { cadence: string; anniversary_day: number | null; next_run_at: string | null } | null): number | null {
+  if (!schedule || schedule.cadence !== "monthly") return null;
+  if (schedule.anniversary_day && schedule.anniversary_day >= 1 && schedule.anniversary_day <= 28) return schedule.anniversary_day;
+  const parsed = schedule.next_run_at ? new Date(schedule.next_run_at) : null;
+  return parsed && !Number.isNaN(parsed.getTime()) ? parsed.getUTCDate() : null;
 }
 
 const TEMPLATE_CHANNEL = new Map<string, ActionFilters["channel"]>(TEMPLATES.map((t) => [t.key, t.channel]));
@@ -247,7 +306,7 @@ export async function loadActionRows(workspaceId: string, opts: { locationId?: s
   return read("actions", () => workspaceReadRepository().actions(workspaceId, opts));
 }
 
-async function overviewsFor(ctx: WorkspaceContext, rows: ActionRow[]): Promise<ActionOverview[]> {
+async function overviewsFor(ctx: WorkspaceContext, rows: ActionRow[], scanSatisfiedInputs?: readonly string[]): Promise<ActionOverview[]> {
   if (!rows.length) return [];
   const ids = rows.map(row => row.id);
   const repository = workspaceReadRepository();
@@ -264,6 +323,7 @@ async function overviewsFor(ctx: WorkspaceContext, rows: ActionRow[]): Promise<A
     location: row.location_id ? locationText(byLocation.get(row.location_id) ?? null) : null,
     latestRun: latestRun.get(row.id) ?? null,
     latestVersion: latestVersion.get(row.id) ?? null,
+    scanSatisfiedInputs,
   }));
 }
 
@@ -342,9 +402,15 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
   const period = currentPeriod(ctx.workspace.timezone);
   const periodStart = `${period}-01T00:00:00Z`;
   const [measurements, draftVersions, completed, schedules] = await read("home", () => Promise.all([
-    repository.measurements(workspaceId, undefined, 1),
-    repository.draftVersions(workspaceId),
-    repository.completedActions(workspaceId, periodStart),
+    // Scoped to the same location as the rest of the brief. These three were
+    // workspace-wide while the snapshot, diff, open actions and schedule beside
+    // them were location-scoped, so under a location the proof card could show
+    // another shop's outcome and the month counters counted every location.
+    // Under ?location=all `location` is null and every predicate short-circuits,
+    // preserving today's behaviour by construction.
+    repository.measurements(workspaceId, undefined, 1, location?.id ?? null),
+    repository.draftVersions(workspaceId, location?.id ?? null),
+    repository.completedActions(workspaceId, periodStart, location?.id ?? null),
     location?.placeId ? repository.schedules(workspaceId, [location.placeId]) : Promise.resolve([]),
   ]));
   const proofRow = measurements[0] ?? null;
@@ -376,7 +442,7 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
       completed: completed.length,
       measured: completed.filter((row) => row.measurement_state === "measured").length,
     },
-    nextScanAt: schedules[0]?.next_run_at ?? null,
+    rescanCadenceDay: cadenceDay(schedules[0] ?? null),
     drafts,
     agentStrip: { scout: Boolean(snapshot), priority: openActions.length > 0, drafts, awaiting: drafts },
     ledger: diff ? { resolved: diff.resolved_findings, regressed: diff.regressed_findings, decayed: diff.decayed_findings } : { resolved: [], regressed: [], decayed: [] },
@@ -424,18 +490,73 @@ export async function listActions(ctx: WorkspaceContext, filters: ActionFilters)
   return { actions, counts };
 }
 
+/** Non-throwing template lookup: an unknown persisted key must not 500 the page. */
+const TEMPLATE_AGENT = new Map<string, string | null>(TEMPLATES.map((t) => [t.key, t.agentKey ?? null]));
+
+/**
+ * The reviews the draft will actually use, resolved live from stored evidence.
+ *
+ * Mirrors resolveActionRunContext (lib/workspace/runs.ts) exactly, including its
+ * scope refusals: the same snapshot, the same workspace/location checks and the
+ * same membership check. Without them a workspace-wide action pinned to another
+ * location's snapshot would render that location's raw review text to an
+ * out-of-scope manager -- precisely what the run path refuses.
+ */
+export async function loadScanInputEvidence(
+  membership: Membership,
+  workspaceId: string,
+  row: ActionRow,
+): Promise<ScanInputEvidence[]> {
+  if (TEMPLATE_AGENT.get(row.template_key) !== "review_reply") return [];
+  const db = artifactRepository();
+  const snapshot = row.source_snapshot_id
+    ? await db.assistantSnapshot(workspaceId, row.source_snapshot_id)
+    : await db.assistantLatestSnapshot(workspaceId, row.location_id);
+  if (!snapshot) return [];
+  if (snapshot.workspaceId !== workspaceId) return [];
+  if (row.location_id && snapshot.locationId !== row.location_id) return [];
+  if (!inLocationScope(membership, snapshot.locationId)) return [];
+  const selection = selectScannedReviews(await db.assistantReviewData(workspaceId, snapshot.jobId));
+  if (!selection.sampled.length) return [];
+  return [{
+    key: "reviews_without_response",
+    source: "gbp_reviews",
+    factType: "Observed",
+    snapshotId: snapshot.id,
+    jobId: snapshot.jobId,
+    observedAt: snapshot.observedAt,
+    reviews: selection.sampled.map((review) => ({ rating: review.rating, excerpt: review.text, time: review.time })),
+    available: selection.sampled.length,
+    inspected: selection.inspected,
+    populationCount: snapshot.metrics["gbp.reviews_count"] ?? null,
+  }];
+}
+
 export async function getAction(ctx: WorkspaceContext, actionId: string): Promise<ActionDetail | null> {
   const rows = await loadActionRows(ctx.workspace.id, { ids: [actionId] });
   const row = rows[0];
   if (!row || row.workspace_id !== ctx.workspace.id) return null;
-  const [action] = await overviewsFor(ctx, [row]);
+  // Reconcile runs stranded by a killed handler before anything reads them, so
+  // the detail page never renders a permanently 'running' run and the Generate
+  // button is never disabled forever. Ordering is load-bearing: overviewsFor
+  // derives runState/displayPhaseKey from repository.runs, and the explicit
+  // repository.runs call below must see the post-reap row. Both callers of
+  // getAction are already authorized (loadOwnerPage -> requireMembership, and
+  // authorizeActionMutation), and no minRole gate is added here: a viewer must
+  // still be able to trigger reconciliation, which grants nobody anything.
+  // See lib/workspace/run-reaper.ts.
+  await reapStrandedRuns(ctx.workspace.id, [actionId]);
   const repository = workspaceReadRepository();
-  const [versions, runs, measurements] = await read("action detail", () => Promise.all([
+  const [versions, runs, measurements, scanInputs] = await read("action detail", () => Promise.all([
     repository.versions(ctx.workspace.id, [actionId]),
     repository.runs(ctx.workspace.id, [actionId]),
     repository.measurements(ctx.workspace.id, actionId),
+    loadScanInputEvidence(ctx.membership, ctx.workspace.id, row),
   ]));
-  return { action, versions, runs, measurements };
+  // Resolved live, so a row derived before the evidence-aware rule stops
+  // reporting an input the workspace can already answer.
+  const [action] = await overviewsFor(ctx, [row], scanInputs.map((entry) => entry.key));
+  return { action, versions, runs, measurements, scanInputs };
 }
 
 // ---------------------------------------------------------------------------
@@ -547,7 +668,7 @@ export async function getCalendar(ctx: WorkspaceContext): Promise<CalendarModel>
       locationId: byPlace.get(s.place_id)?.id ?? null,
       locationName: byPlace.get(s.place_id)?.name ?? null,
       placeId: s.place_id,
-      nextRunAt: s.next_run_at,
+      anniversaryDay: cadenceDay(s),
       cadence: s.cadence,
     })),
     dueActions: await overviewsFor(ctx, dueRows),

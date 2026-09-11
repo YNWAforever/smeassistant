@@ -130,6 +130,10 @@ describe("POST /api/report-access/unlock", () => {
         eventProperties: { market: "HK", channel: "whatsapp", objective: "other" },
         contactIdentifier: "+85291234567",
         email: null,
+        // The address the sign-in gate reads later: complete_report_unlock puts
+        // it in report_access_grants.email_normalized, and it is the only email
+        // a WhatsApp/LINE unlocker ever has.
+        recoveryEmail: "alternate@example.com",
         reportDeliveryConsent: true,
         scanDiscussionConsent: false,
         marketingConsent: false,
@@ -157,6 +161,9 @@ describe("POST /api/report-access/unlock", () => {
             expect.objectContaining({
         contactIdentifier: "owner@example.com",
         email: "owner@example.com",
+        // route.ts falls back to the contact when the channel IS email, so every
+        // channel persists an address the sign-in gate can match.
+        recoveryEmail: "owner@example.com",
         whatsapp: null,
       }),
     );

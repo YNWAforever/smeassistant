@@ -89,6 +89,23 @@ export interface SnapshotJobRow {
 export interface BuildSnapshotOptions {
   /** Completion/recovery only uses saved evidence; missing website checks remain unavailable. */
   persistedOnly?: boolean;
+  /**
+   * Checks the caller already collected, outside any transaction.
+   *
+   * The completion path must stay `persistedOnly` -- it runs inside the
+   * completion transaction, holding row locks -- so this is the only way a
+   * post-scan snapshot can carry website evidence. Without it the checks ran
+   * once at claim time and never again: every later snapshot recorded the
+   * website as unmeasured forever, coverage silently fell from 4 of 4 to 3 of
+   * 4 on the first rescan, and `website.checks_passed` -- the metric behind
+   * both `website-basics` and `menu-translation` -- never had an after value,
+   * so those two templates could not close the prove-change loop.
+   *
+   * `null` means the caller had nothing to collect (no URL, or not a workspace
+   * job). An `evaluated: 0` value means the caller did fetch and the site
+   * could not be read. Those are different states and both are truthful.
+   */
+  websiteChecks?: WebsiteChecks | null;
   fetchWebsite?: (url: string) => Promise<WebsiteChecks>;
   now?: Date;
 }
@@ -155,6 +172,22 @@ export async function loadDiffForHeadJob(repo: SnapshotRepository, jobId: string
 }
 
 /**
+ * Saved evidence first, then whatever the caller collected before entering its
+ * transaction, then a live fetch -- which only a caller running outside one may
+ * ask for. Recovery stays collector-free by construction: it supplies neither.
+ */
+async function resolveWebsiteChecks(
+  existing: SnapshotRecord | null,
+  websiteUrl: string | null,
+  opts: BuildSnapshotOptions,
+): Promise<WebsiteChecks | null> {
+  if (existing) return existing.websiteChecks;
+  if (opts.websiteChecks !== undefined) return opts.websiteChecks;
+  if (!websiteUrl || opts.persistedOnly) return null;
+  return (opts.fetchWebsite ?? runWebsiteChecks)(websiteUrl);
+}
+
+/**
  * Build the snapshot for one workspace-linked job. Retries preserve evidence
  * and repair missing audit/link records; they do not re-fetch a saved website. Throws `snapshot_requires_workspace` for an unattached job, so a
  * public scan can never grow workspace rows (guardrail 15).
@@ -184,7 +217,7 @@ export async function buildSnapshot(repo: SnapshotRepository, jobId: string, opt
     return existing;
   }
   const websiteUrl = websiteUrlOf(job);
-  const websiteChecks = existing ? existing.websiteChecks : websiteUrl && !opts.persistedOnly ? await (opts.fetchWebsite ?? runWebsiteChecks)(websiteUrl) : null;
+  const websiteChecks = await resolveWebsiteChecks(existing, websiteUrl, opts);
 
   const moduleStates = existing?.moduleStates ?? deriveModuleStates(job, websiteChecks, Boolean(websiteUrl));
   if (!existing && opts.persistedOnly && websiteUrl && !websiteChecks) {

@@ -48,8 +48,8 @@ function back(
   // -- and land on the workspace picker.
   //
   // smeassistant: every route is locale-prefixed, and success continues the
-  // onboarding flow (`/{locale}/owner/onboarding?claim=<slug>&claimed=1`)
-  // instead of upstream's unprefixed /owner dashboard.
+  // onboarding flow (`/{locale}/owner/onboarding?claim=<slug>`) instead of
+  // upstream's unprefixed /owner dashboard.
   const validSlug = slug && SLUG_RE.test(slug) ? slug : null;
   let target: string;
   if (outcome === "success" && validSlug) target = `/${locale}/owner/onboarding`;
@@ -84,6 +84,16 @@ export async function GET(req: Request) {
   try {
     const user = await getUser();
     if (!user?.id || !user.verified) return back(origin, locale, payload.slug, { claim: "unauthenticated" });
+
+    // The state proves Google attested to the place; it does not prove the
+    // person redeeming it is the person who started the flow. Without this,
+    // a captured code+state opened in a signed-in victim's browser attached
+    // the initiator's job to the VICTIM's workspace and replaced their Google
+    // connection -- and `attachJob` is write-once with no detach path.
+    //
+    // Checked BEFORE exchangeCode so a mismatched redemption never burns the
+    // authorization code or reaches Google at all.
+    if (payload.userId !== user.id) return back(origin, locale, payload.slug, { claim: "session_mismatch" });
 
     const tokens = await exchangeCode(code, process.env.GOOGLE_OAUTH_CLAIM_REDIRECT_URI);
     if (!tokens) return back(origin, locale, payload.slug, { claim: "exchange_failed" });
@@ -168,9 +178,11 @@ export async function GET(req: Request) {
       payload: { locale },
     });
 
-    // The merchant now has a workspace attached to this job; onboarding picks
-    // the flow up (`claimed=1`) and POSTs /api/workspaces/claim to complete it.
-    return back(origin, locale, payload.slug, { claimed: "1" }, "success");
+    // The merchant now has a workspace attached to this job. Onboarding derives
+    // its own resume step from that persisted ownership, so no `claimed=1`
+    // hint is passed: a parameter the owner can lose is not a place to keep
+    // flow state.
+    return back(origin, locale, payload.slug, {}, "success");
   } catch (error) {
     console.error("[oauth/google/claim/callback] failed", error);
     return back(origin, locale, payload.slug, { claim: "unavailable" });

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createScanExecutionStore } from "./execution-store";
 import { collectScanProviders, processScan } from "@sme-scanner/scan-engine";
 
@@ -18,6 +18,14 @@ const runtimeMocks = vi.hoisted(() => ({
   insert: vi.fn(),
   capturePostHog: vi.fn(),
 }));
+const websiteMocks = vi.hoisted(() => ({
+  run: vi.fn(async () => ({ evaluated: 15, passed: 9, results: [] })),
+  postProcess: vi.fn(async () => ({ ran: true, snapshotId: "snap", error: null })),
+}));
+vi.mock("@/lib/website/checks", () => ({ runWebsiteChecks: websiteMocks.run }));
+vi.mock("@/lib/workspace/post-process", () => ({
+  postProcessWorkspaceScan: websiteMocks.postProcess,
+}));
 vi.mock("@/lib/db/client", () => ({
   getPool: () => ({ query: runtimeMocks.query }),
 }));
@@ -35,7 +43,9 @@ vi.mock("@/lib/evidence/persist", () => ({
 }));
 
 const completionMock = vi.hoisted(() =>
-  vi.fn(async () => ({ status: "completed" })),
+  vi.fn<
+    (db: unknown, jobId: string, process?: (db: unknown, id: string) => Promise<unknown>) => Promise<{ status: string }>
+  >(async () => ({ status: "completed" })),
 );
 vi.mock("@/lib/workspace/completion", () => ({
   completeWorkspaceScan: completionMock,
@@ -47,6 +57,14 @@ import {
   resolveScanRuntime,
   runScan,
 } from "./run";
+
+// runScan now reads the job once, before the completion claim, to decide
+// whether website checks are worth collecting. Give that lookup an empty
+// default so unrelated cases neither collect nor log about a failed lookup.
+beforeEach(() => {
+  runtimeMocks.query.mockReset();
+  runtimeMocks.query.mockResolvedValue({ rows: [] });
+});
 
 describe("resolveScanSourceMode", () => {
   it("honours an explicit SCAN_SOURCES value", () => {
@@ -209,10 +227,36 @@ describe("runScan", () => {
 });
 
 describe("Neon workspace completion bridge",()=>{
- afterEach(()=>{vi.unstubAllEnvs();completionMock.mockClear();completionMock.mockResolvedValue({status:"completed"});vi.restoreAllMocks();});
- it.each(["true","false"])("completes Neon jobs independent of internal receiver flag=%s",async flag=>{completionMock.mockClear();vi.stubEnv("WORKSPACE_COMPLETION_ENABLED",flag);await expect(runScan("job","session")).resolves.toEqual({status:"done"});expect(completionMock).toHaveBeenCalledWith({query:runtimeMocks.query},"job");});
+ afterEach(()=>{vi.unstubAllEnvs();completionMock.mockClear();completionMock.mockResolvedValue({status:"completed"});websiteMocks.run.mockClear();websiteMocks.postProcess.mockClear();vi.restoreAllMocks();});
+ it.each(["true","false"])("completes Neon jobs independent of internal receiver flag=%s",async flag=>{completionMock.mockClear();vi.stubEnv("WORKSPACE_COMPLETION_ENABLED",flag);await expect(runScan("job","session")).resolves.toEqual({status:"done"});expect(completionMock).toHaveBeenCalledWith({query:runtimeMocks.query},"job",expect.any(Function));});
  it("does not change persisted terminal result when workspace effects need retry",async()=>{completionMock.mockResolvedValueOnce({status:"retry"});const log=vi.spyOn(console,"error").mockImplementation(()=>{});await expect(runScan("job","session")).resolves.toEqual({status:"done"});expect(log).toHaveBeenCalledWith("[scan] workspace completion retry",{category:"workspace_completion_retry",jobId:"job"});});
- it("does not complete work claimed by another runner",async()=>{completionMock.mockClear();vi.mocked(processScan).mockResolvedValueOnce({status:"already_claimed"});await runScan("job","session");expect(completionMock).not.toHaveBeenCalled();});
+ it("does not complete work claimed by another runner",async()=>{completionMock.mockClear();vi.mocked(processScan).mockResolvedValueOnce({status:"already_claimed"});await runScan("job","session");expect(completionMock).not.toHaveBeenCalled();expect(websiteMocks.run).not.toHaveBeenCalled();});
+
+ // The snapshot is built inside the completion transaction, which holds row
+ // locks and must not make a network call, and recovery is contractually
+ // collector-free. Collecting here -- before the claim -- is the only point at
+ // which a post-scan snapshot can carry website evidence at all; without it the
+ // checks ran once at claim time and the website read "not evaluated" forever.
+ it("collects the website checks before the completion claim and hands them to post-processing",async()=>{
+  runtimeMocks.query.mockResolvedValue({rows:[{workspace_id:"ws",status:"done",website_url:"https://shop.example",input_snapshot:null,raw_data:null}]});
+  await runScan("job","session");
+  expect(websiteMocks.run).toHaveBeenCalledWith("https://shop.example");
+  const process=completionMock.mock.calls.at(-1)![2]!;
+  const client={marker:"tx"};
+  await process(client,"job");
+  expect(websiteMocks.postProcess).toHaveBeenCalledWith(client,"job",{websiteChecks:{evaluated:15,passed:9,results:[]}});
+ });
+
+ // A public scan grows no workspace rows (guardrail 15) and must not cost an
+ // outbound request either.
+ it("spends no website fetch on a scan that belongs to no workspace",async()=>{
+  runtimeMocks.query.mockResolvedValue({rows:[{workspace_id:null,status:"done",website_url:"https://shop.example",input_snapshot:null,raw_data:null}]});
+  await runScan("job","session");
+  expect(websiteMocks.run).not.toHaveBeenCalled();
+  const process=completionMock.mock.calls.at(-1)![2]!;
+  await process({},"job");
+  expect(websiteMocks.postProcess).toHaveBeenCalledWith({},"job",{websiteChecks:null});
+ });
 });
 describe("runScan host terminal lifetime", () => {
   afterEach(() => {

@@ -11,7 +11,7 @@ import {
   notifyWithRepository,
   homeHrefWithRepository,
 } from "@/lib/workspace/notify";
-import { getUsage } from "@/lib/workspace/usage";
+import { allowanceWarnAt, getUsage } from "@/lib/workspace/usage";
 import { exportVersion, VersionError } from "@/lib/workspace/versions";
 
 /**
@@ -93,10 +93,8 @@ export async function POST(
         href: home ? `${home}/actions/${auth.scope.actionId}` : null,
       });
     }
-    if (
-      usage.allowance !== null &&
-      usage.approvedDeliveries >= 0.8 * usage.allowance
-    ) {
+    const warnAt = allowanceWarnAt(usage.allowance);
+    if (warnAt !== null && usage.approvedDeliveries >= warnAt) {
       const periodStart = `${usage.period}-01T00:00:00Z`;
       if (
         !(await hasSinceWithRepository(
@@ -113,10 +111,20 @@ export async function POST(
         await notifyWithRepository(notificationRepository(), {
           workspaceId: auth.scope.workspaceId,
           kind: "usage.allowance_80",
-          title: localized(
-            "80% of this period's delivery allowance used",
-            "本期交付額度已使用 80%",
-          ),
+          // The old title said "80%" directly above a body reading "3 of 3",
+          // two contradictory numbers in one notification. Report what is
+          // actually left, which is the number the owner needs.
+          title: (() => {
+            const left = Math.max(0, (usage.allowance ?? 0) - usage.approvedDeliveries);
+            // Two arguments, as everywhere else in this route: 核准後交付 is the
+            // term both Chinese locales already use for an approved delivery,
+            // so an explicit zh-TW form here would imply a variant that does
+            // not exist.
+            return localized(
+              left === 1 ? "1 approved delivery left this period" : `${left} approved deliveries left this period`,
+              `本期尚餘 ${left} 項核准後交付`,
+            );
+          })(),
           body: localized(
             `${usage.approvedDeliveries} of ${usage.allowance} approved deliveries used. Upgrade for unlimited deliveries.`,
             `已用 ${usage.approvedDeliveries} / ${usage.allowance} 項批准交付。升級即可無限交付。`,

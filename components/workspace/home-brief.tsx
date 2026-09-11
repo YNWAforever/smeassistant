@@ -11,7 +11,7 @@ import { LocationSelect } from "@/components/workspace/location-select"
 import { RescanButton } from "@/components/workspace/rescan-button"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { resolveText } from "@/lib/domain"
-import { effortLabel, findingLabel, formatDateTime, formatDay, metricLabel, priorityClass, priorityLabel, scorePercent, signed, withLocation } from "@/lib/workspace/format"
+import { comparisonReasonText, effortLabel, findingLabel, formatDateTime, formatDay, metricLabel, ordinal, priorityClass, priorityLabel, scorePercent, signed, withLocation } from "@/lib/workspace/format"
 import { measuredPrimarySources } from "@/lib/workspace/module-states"
 import type { HomeBrief } from "@/lib/workspace/queries-pages"
 import type { ActionOverview } from "@/lib/workspace/overview"
@@ -33,6 +33,8 @@ export interface HomeBriefViewProps {
   demo?: boolean
   /** When present, the Fix Pack drafts card (agent_runs) renders after the secondary grid. */
   fixPack?: { workspaceId: string; role: WorkspaceRole }
+  /** Server-resolved; see RescanButton for why it cannot be computed client-side. */
+  consentPolicyVersion: string
   /** The signed-in member's real role; drives the Rescan button (hidden for viewers). Omitted = no rescan control. */
   role?: WorkspaceRole
 }
@@ -43,7 +45,7 @@ function actionHref(locale: PrototypeLocale, slug: string, action: ActionOvervie
   return withLocation(href, location)
 }
 
-export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, fixPack, role }: HomeBriefViewProps) {
+export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, fixPack, role, consentPolicyVersion }: HomeBriefViewProps) {
   const t = copy[locale].home
   const isChinese = locale !== "en"
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -57,7 +59,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
     : ["Scout complete", "Priority ready", `${brief.drafts} drafts prepared`, "Awaiting approval"]
   const stepDone = [brief.agentStrip.scout, brief.agentStrip.priority, brief.drafts > 0, false]
   const changedBadge = changed.comparable ? (isChinese ? "可比較" : "Comparable") : (isChinese ? "未能比較" : "Not comparable")
-  const changedReason = changed.reason ? (isChinese ? `原因：${changed.reason}` : `Reason: ${changed.reason}`) : null
+  const changedReason = changed.comparable ? null : comparisonReasonText(changed.reason, isChinese)
 
   return (
     <div className="owner-home-page">
@@ -65,7 +67,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         eyebrow={snapshot ? `${isChinese ? "快照" : "Snapshot"} · ${formatDateTime(snapshot.observedAt, locale, timezone)}` : (isChinese ? "尚未有快照" : "No snapshot yet")}
         title={t.title}
         description={t.subtitle}
-        actions={<>{role && <RescanButton locale={locale} workspaceId={workspaceId} workspaceSlug={workspaceSlug} locationId={brief.location?.id ?? null} tier={tier} role={role} />}<LocationSelect locale={locale} value={location} locations={locations} /></>}
+        actions={<>{role && <RescanButton locale={locale} workspaceId={workspaceId} workspaceSlug={workspaceSlug} locationId={brief.location?.id ?? null} tier={tier} role={role} consentPolicyVersion={consentPolicyVersion} />}<LocationSelect locale={locale} value={location} locations={locations} /></>}
       />
 
       <section className="workspace-agent-strip" aria-label={isChinese ? "AI 能見度團隊狀態" : "AI Visibility Team status"}>
@@ -105,7 +107,12 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
             <div className="aggregate-empty"><CircleAlert /><h2>{isChinese ? "評分暫不顯示 · 已量度證據太少" : "Score withheld · too little measured evidence"}</h2><p>{isChinese ? `覆蓋率 ${scorePercent(snapshot.coverage)}%。缺少的來源會降低覆蓋率，不會當成零分。` : `Coverage ${scorePercent(snapshot.coverage)}%. Missing sources lower coverage; they are never scored as zero.`}</p></div>
           ) : (
             <>
-              <ScoreDial score={Math.round(snapshot.overallScore)} coverage={scorePercent(snapshot.coverage) ?? 0} delta={changed.delta === null ? 0 : Math.round(changed.delta)} />
+              {/* delta is spread, never coerced: a null delta means there is no
+                  comparable scan, and passing 0 made the largest number on the
+                  page assert "unchanged since comparable scan" -- in the
+                  sighted UI and the aria-label -- next to a "Not comparable"
+                  badge. Same pattern the report page already uses. */}
+              <ScoreDial score={Math.round(snapshot.overallScore)} coverage={scorePercent(snapshot.coverage) ?? 0} {...(changed.comparable && changed.delta !== null ? { delta: Math.round(changed.delta) } : {})} />
               <div className="coverage-source-line"><span><Check /> {isChinese ? `${sources?.measured ?? 0} 個來源已量度` : `${sources?.measured ?? 0} measured`}</span><span><CircleAlert /> {isChinese ? `${(sources?.total ?? 4) - (sources?.measured ?? 0)} 個暫時未能取得` : `${(sources?.total ?? 4) - (sources?.measured ?? 0)} unavailable`}</span></div>
               {changedReason && <p className="limitation-note">{changedReason}</p>}
             </>
@@ -133,7 +140,11 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
       </section>
 
       <section className="month-brief" aria-labelledby="month-title">
-        <div className="month-brief-heading"><div><p className="eyebrow">{t.month}</p><h2 id="month-title">{isChinese ? "小行動，累積看得見的進展。" : "Small actions, visible momentum."}</h2></div><div className="next-scan"><CalendarClock /><span>{isChinese ? "下次掃描" : "Next scan"}<strong>{brief.nextScanAt ? formatDay(brief.nextScanAt, locale, timezone) : (isChinese ? "未排程" : "Not scheduled")}</strong></span></div></div>
+        <div className="month-brief-heading"><div><p className="eyebrow">{t.month}</p><h2 id="month-title">{isChinese ? "小行動，累積看得見的進展。" : "Small actions, visible momentum."}</h2></div>{/* A cadence you act on, not a booked run: nothing dispatches a due
+    `scan_schedules` row, so "Next scan · <date>" promised a scan that
+    would never happen -- and since `next_run_at` is never advanced, that
+    date silently became one in the past. The recurring day stays true. */}
+<div className="next-scan"><CalendarClock /><span>{isChinese ? "重新掃描節奏" : "Rescan cadence"}<strong>{brief.rescanCadenceDay ? (isChinese ? `每月 ${brief.rescanCadenceDay} 號` : `Monthly · ${ordinal(brief.rescanCadenceDay)}`) : (isChinese ? "未設節奏" : "None yet")}</strong></span></div></div>
         <div className="month-metrics">
           <article><span className="metric-icon resolved"><CheckCircle2 /></span><div><strong>{month.resolved}</strong><span>{isChinese ? "個問題已解決" : "issues resolved"}</span></div><small>{isChinese ? "來自可比較掃描" : "Across comparable scans"}</small></article>
           <article><span className="metric-icon regressed"><TrendingDown /></span><div><strong>{month.regressed}</strong><span>{isChinese ? "項新退步" : month.regressed === 1 ? "new regression" : "new regressions"}</span></div><small>{brief.ledger.regressed[0] ? findingLabel(brief.ledger.regressed[0]) : (isChinese ? "沒有退步" : "None recorded")}</small></article>
@@ -163,7 +174,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         </SectionCard>
       </div>
 
-      {fixPack && <FixPackCard locale={locale} workspaceId={fixPack.workspaceId} viewerRole={fixPack.role} />}
+      {fixPack && <FixPackCard locale={locale} workspaceId={fixPack.workspaceId} viewerRole={fixPack.role} actionsHref={`${base}/actions?view=drafts`} />}
 
       <SectionCard className="change-ledger-card">
         <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "最近變化紀錄" : "Recent change ledger"}</p><h2>{isChinese ? "先看證據，再看圖表" : "Evidence before charts"}</h2></div><Badge variant="outline">{snapshot ? `${formatDay(snapshot.observedAt, locale, timezone)}${changed.comparable ? (isChinese ? " 可比較掃描" : " comparable scan") : ""}` : (isChinese ? "尚未有掃描" : "No scan yet")}</Badge></div>

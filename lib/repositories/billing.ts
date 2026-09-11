@@ -4,7 +4,7 @@ import { getPool } from "../db/client";
 import { withTransaction } from "../db/transaction";
 import { workspaceReadRepository } from "./workspace-read";
 import type { WorkspaceBillingRow } from "../owner/billing-authorization";
-import type { WorkspaceTier } from "../workspace/entitlement";
+import { deliveryAllowanceForTier, type WorkspaceTier } from "../workspace/entitlement";
 
 /** Explicit billing capabilities. Stripe calls stay outside database transactions. */
 export function billingRepository(pool?: Pool) {
@@ -68,6 +68,30 @@ export function billingRepository(pool?: Pool) {
           workspaceId,
           tier,
         ]);
+        // workspace_usage.allowance is a per-period snapshot taken from the tier
+        // when the row is first created, and export_output_version enforces THAT
+        // column rather than the live tier. Without this, an upgrade paid for
+        // mid-month left the workspace capped at 3 for the rest of the month
+        // while the billing card advertised unlimited -- and a mid-month
+        // downgrade kept unlimited exports until the period rolled over.
+        //
+        // Reconciling here rather than deriving at check time is deliberate: the
+        // gate lives in export_output_version, whose definition
+        // scripts/neon/catalog.ts pins by pg_get_functiondef against the frozen
+        // legacy catalog, so CREATE OR REPLACE on it would fail db:verify unless
+        // that core ledger function stopped being pinned. The column stays
+        // authoritative and the read model keeps reading it, so the card can
+        // never promise an allowance the gate will refuse.
+        //
+        // The period expression matches export_output_version's exactly. No row
+        // yet for this period is fine: it is created later from the live tier.
+        await client.query(
+          `UPDATE workspace_usage u SET allowance = $2
+             FROM workspaces w
+            WHERE w.id = $1 AND u.workspace_id = w.id
+              AND u.period = to_char(now() at time zone coalesce(w.timezone, 'Asia/Hong_Kong'), 'YYYY-MM')`,
+          [workspaceId, deliveryAllowanceForTier(tier)],
+        );
       }, db());
     },
     async saveCustomer(workspaceId: string, customerId: string): Promise<void> {

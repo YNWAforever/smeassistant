@@ -21,10 +21,10 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon final action runtime',(
   actor=(await db.query("INSERT INTO app_users(email) VALUES('final-runtime@example.test') RETURNING id")).rows[0].id;
  });
  afterAll(async()=>{await Promise.all([db?.end(),owner?.end()]);fixture?.stop();});
- async function setup(workspace?:string,location?:string,observed='2026-09-01') {
+ async function setup(workspace?:string,location?:string,observed='2026-09-01',rawData:unknown=null) {
   const ws=workspace??(await db.query('INSERT INTO workspaces DEFAULT VALUES RETURNING id')).rows[0].id;
   const loc=location??(await db.query("INSERT INTO locations(workspace_id,slug,name) VALUES($1,'fixture','Fixture') RETURNING id",[ws])).rows[0].id;
-  const job=(await db.query("INSERT INTO audit_jobs(workspace_id,location_id,business_name,status,website_url) VALUES($1,$2,'Fixture','done',NULL) RETURNING id",[ws,loc])).rows[0].id;
+  const job=(await db.query("INSERT INTO audit_jobs(workspace_id,location_id,business_name,status,website_url,raw_data) VALUES($1,$2,'Fixture','done',NULL,$3) RETURNING id",[ws,loc,rawData?JSON.stringify(rawData):null])).rows[0].id;
   const snapshot=(await db.query("INSERT INTO scan_snapshots(workspace_id,location_id,job_id,market,observed_at,coverage,module_states,metrics) VALUES($1,$2,$3,'hk',$4,1,'{}','{}') RETURNING id",[ws,loc,job,observed])).rows[0].id;
   await db.query("INSERT INTO audit_findings(job_id,finding_key,module,severity,score_impact) VALUES($1,'gbp.owner_response_low','gbp','warning',-10)",[job]);
   return {ws,loc,job,snapshot};
@@ -40,6 +40,49 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon final action runtime',(
   const after=(await db.query('SELECT * FROM actions WHERE workspace_id=$1',[f.ws])).rows;
   expect(after[0]).toMatchObject({id:before[0].id,action_state:'in_progress',provided_inputs:{tone:'warm'}});
   expect((await db.query("SELECT id FROM audit_events WHERE workspace_id=$1 AND event='action.derived'",[f.ws])).rows).toHaveLength(1);
+ });
+ it('does not ask the owner to retype reviews the scan collected, and asks again when it loses them',async()=>{
+  const unanswered={gbp:{reviews:[{rating:2,text:'Slow service',time:'2026-08-30T00:00:00Z'},{rating:1,text:'Cold food',time:'2026-08-29T00:00:00Z'}]}};
+  const f=await setup(undefined,undefined,'2026-09-01',unanswered);
+  await db.query('INSERT INTO brand_profiles(workspace_id) VALUES($1)',[f.ws]);
+  // Without an active connection the derivation also emits google-reconnect,
+  // so seed one and assert on the review-response row by template key.
+  await db.query("INSERT INTO oauth_connections(workspace_id,provider,access_token_encrypted,status,connected_at) VALUES($1,'google_gbp','fixture','active',now())",[f.ws]);
+  expect((await deriveActionsForSnapshot(db,f.snapshot)).created).toBe(1);
+  const review=()=>db.query("SELECT required_inputs,action_state FROM actions WHERE workspace_id=$1 AND template_key='review-response'",[f.ws]).then(r=>r.rows[0]);
+  const derived=await review();
+  expect(derived.required_inputs).not.toContain('reviews_without_response');
+
+  // The scan stops retaining an unanswered review: the input comes back, and an
+  // untouched action must go back to needs_input or the detail page would show
+  // no form at all and Generate would burn a model call.
+  await db.query("UPDATE actions SET action_state='recommended' WHERE workspace_id=$1",[f.ws]);
+  await db.query("UPDATE audit_jobs SET raw_data=$2 WHERE id=$1",[f.job,JSON.stringify({gbp:{reviews:[{rating:5,text:'Great',time:'2026-08-30T00:00:00Z',owner_response:'Thank you'}]}})]);
+  expect(await deriveActionsForSnapshot(db,f.snapshot)).toMatchObject({created:0,updated:1});
+  const again=await review();
+  expect(again.required_inputs).toContain('reviews_without_response');
+  expect(again.action_state).toBe('needs_input');
+
+  // Owner progress is never clobbered by that rule.
+  await db.query("UPDATE actions SET action_state='in_progress' WHERE workspace_id=$1",[f.ws]);
+  await deriveActionsForSnapshot(db,f.snapshot);
+  expect((await review()).action_state).toBe('in_progress');
+
+  // `ready` is the state an owner PATCH produces, and it was the gap in this
+  // very test: the original condition fired whenever the template declared any
+  // input, so a ready action reverted on EVERY scan while its answers sat
+  // intact in provided_inputs -- a "Needs input" badge over an "Inputs ready"
+  // row. Answered keys must survive re-derivation.
+  const setReady=(inputs:Record<string,string>)=>db.query("UPDATE actions SET action_state='ready',provided_inputs=$2 WHERE workspace_id=$1 AND template_key='review-response'",[f.ws,JSON.stringify(inputs)]);
+  await setReady({brand_voice:'warm',language:'zh-HK',reviews_without_response:'2 reviews'});
+  await deriveActionsForSnapshot(db,f.snapshot);
+  expect((await review()).action_state).toBe('ready');
+
+  // An empty answer is still no answer -- the same rule missingInputs applies
+  // in lib/workspace/overview.ts, so the two can never disagree.
+  await setReady({brand_voice:'warm',language:'',reviews_without_response:'2 reviews'});
+  await deriveActionsForSnapshot(db,f.snapshot);
+  expect((await review()).action_state).toBe('needs_input');
  });
  it('skips stale exact-location snapshots and rejects corrupted source parent scope',async()=>{
   const f=await setup();const newer=await setup(f.ws,f.loc,'2026-09-02');

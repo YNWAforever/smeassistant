@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
 import { recordEvent, resolveAnalyticsSession, setAnalyticsSessionCookie } from "@/lib/analytics/record-event";
+import { currentScanConsentPolicyVersion } from "@/lib/scan/consent";
 import { insertScanJob, parseScanStartBody } from "@/lib/scan/start-job";
 
 /**
@@ -18,13 +19,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  // Parsing (including consent) runs before the limiter, so a consent-less POST
+  // costs nothing. A 409 carries the current version so a tab left open across
+  // a policy bump can re-ask against the text we actually publish now.
   const parsed = parseScanStartBody(body);
-  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+  if (!parsed.ok) {
+    return NextResponse.json(
+      parsed.status === 409 ? { error: parsed.error, policy_version: currentScanConsentPolicyVersion() } : { error: parsed.error },
+      { status: parsed.status ?? 400 },
+    );
+  }
 
   const limiter = await enforceRateLimit({ req, scope: "scan_start", failClosed: false });
   if (!limiter.allowed) return rateLimitedResponse(limiter.retryAfterSeconds);
 
-  const created = await insertScanJob(parsed.input);
+  const created = await insertScanJob(parsed.input, parsed.consent);
   if (!created.ok) {
     const correlationId = randomUUID();
     console.error("Scan persistence unavailable", { category: "database_unavailable", correlationId });

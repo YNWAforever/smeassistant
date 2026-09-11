@@ -5,6 +5,7 @@ import type { WorkspaceRow, LocationRow, UsageRow, SnapshotRow } from "../worksp
 
 import type { ActionState } from "../domain";
 import type { ActionRow } from "../workspace/overview";
+import { parseVersionMeta } from "../workspace/version-meta";
 import type { ScanSnapshotRow, ScanDiffRow } from "../workspace/snapshots";
 import type { AeoSnapshotRow } from "../trends/aeo-trend-model";
 import type { RunRow, VersionRow, MeasurementRow, AuditEventRow, NotificationRow, IntegrationsModel } from "../workspace/queries-pages";
@@ -87,34 +88,65 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
         FROM action_runs r JOIN actions a ON a.id=r.action_id AND a.workspace_id=r.workspace_id
         WHERE a.workspace_id=$1 AND r.action_id=ANY($2::uuid[]) ORDER BY r.created_at DESC`, [workspaceId, actionIds]);
     },
+    // `meta` carries the guardrail warnings the agents already compute and
+    // artifacts.ts already persists. It was never selected, so the approval
+    // panel showed a constant "1 reminder" on every draft and a real violation
+    // looked exactly like a clean one. Parsed here rather than shipped raw:
+    // the blob is unconstrained jsonb and has no business reaching the client.
     async versions(workspaceId: string, actionIds: string[]): Promise<VersionRow[]> {
       if (!actionIds.length) return [];
-      return rows<VersionRow>(`SELECT v.id, v.action_id, v.version_no, v.body, v.alt_text, v.author_type,
-        v.author_user_id, v.approval_state, v.delivery_state, v.approved_at::text, v.reviewer_comment, v.created_at::text
+      const raw = await rows<Omit<VersionRow, "origin" | "agentKey" | "checked" | "guardrails" | "agentNotes"> & { meta: unknown }>(
+        `SELECT v.id, v.action_id, v.version_no, v.body, v.alt_text, v.author_type,
+        v.author_user_id, v.approval_state, v.delivery_state, v.approved_at::text, v.reviewer_comment, v.created_at::text, v.meta
         FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id
         WHERE a.workspace_id=$1 AND v.action_id=ANY($2::uuid[]) ORDER BY v.version_no DESC`, [workspaceId, actionIds]);
+      return raw.map(({ meta, ...version }) => ({ ...version, ...parseVersionMeta(meta, version.author_type) }));
     },
     async latestConnection(workspaceId: string): Promise<{ status: IntegrationsModel["google"]["status"]; expires_at: string | null; updated_at: string | null; created_at: string } | null> {
       const [row] = await rows<{ status: IntegrationsModel["google"]["status"]; expires_at: string | null; updated_at: string | null; created_at: string }>(
-        "SELECT status, expires_at::text, updated_at::text, connected_at::text AS created_at FROM oauth_connections WHERE workspace_id=$1 AND provider='google_gbp' ORDER BY connected_at DESC LIMIT 1", [workspaceId]);
+        // An active row wins over a merely newer one. The Integrations page
+        // shows this status, and the Disconnect control keys on it, so ordering
+        // by recency alone could hide the control while a live credential
+        // existed. `oauth_connections_active_provider_key` guarantees at most
+        // one active row per provider, so the tie-break is unambiguous.
+        "SELECT status, expires_at::text, updated_at::text, connected_at::text AS created_at FROM oauth_connections WHERE workspace_id=$1 AND provider='google_gbp' ORDER BY (status='active') DESC, connected_at DESC LIMIT 1", [workspaceId]);
       return row ?? null;
     },
-    async measurements(workspaceId: string, actionId?: string, limit?: number): Promise<MeasurementRow[]> {
+    // Scoped on the AFTER SNAPSHOT's location rather than the action's:
+    // measurements are written for workspace-wide actions too (their
+    // location_id is NULL), so keying on a.location_id would drop them from
+    // every location view. LEFT JOIN because after_snapshot_id is
+    // `on delete set null`, and a measurement whose snapshot has gone must not
+    // vanish from the workspace-wide view.
+    async measurements(workspaceId: string, actionId?: string, limit?: number, locationId?: string | null): Promise<MeasurementRow[]> {
       return rows<MeasurementRow>(`SELECT m.id, m.action_id, m.metric_key, m.before_value, m.after_value,
-        m.delta, m.fact_type, m.window_days, m.created_at::text
+        m.delta, m.fact_type, m.window_days, m.created_at::text, s.location_id
         FROM action_measurements m JOIN actions a ON a.id=m.action_id AND a.workspace_id=m.workspace_id
+        LEFT JOIN scan_snapshots s ON s.id=m.after_snapshot_id
         WHERE m.workspace_id=$1 AND ($2::uuid IS NULL OR m.action_id=$2)
-        ORDER BY m.created_at DESC LIMIT $3`, [workspaceId, actionId ?? null, limit === undefined ? null : pageLimit(limit)]);
+          AND ($4::uuid IS NULL OR s.location_id=$4 OR s.location_id IS NULL)
+        ORDER BY m.created_at DESC LIMIT $3`, [workspaceId, actionId ?? null, limit === undefined ? null : pageLimit(limit), locationId ?? null]);
     },
-    async draftVersions(workspaceId: string): Promise<Array<{ id: string }>> {
-      return rows<{ id: string }>("SELECT v.id FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id WHERE a.workspace_id=$1 AND v.approval_state='draft'", [workspaceId]);
+    // `location_id IS NULL` means "all locations" (CLAUDE.md 3.3), so a
+    // workspace-wide action must stay counted in a location-scoped total --
+    // exactly as actions() does above. Dropping that arm would make Home's
+    // counters SMALLER than the same location's Actions tab.
+    async draftVersions(workspaceId: string, locationId?: string | null): Promise<Array<{ id: string }>> {
+      return rows<{ id: string }>("SELECT v.id FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id WHERE a.workspace_id=$1 AND v.approval_state='draft' AND ($2::uuid IS NULL OR a.location_id=$2 OR a.location_id IS NULL)", [workspaceId, locationId ?? null]);
     },
-    async completedActions(workspaceId: string, periodStart: string): Promise<Array<{ id: string; measurement_state: string; completed_at: string | null }>> {
-      return rows<{ id: string; measurement_state: string; completed_at: string | null }>("SELECT id, measurement_state, completed_at::text FROM actions WHERE workspace_id=$1 AND action_state='completed' AND completed_at >= $2", [workspaceId, periodStart]);
+    async completedActions(workspaceId: string, periodStart: string, locationId?: string | null): Promise<Array<{ id: string; measurement_state: string; completed_at: string | null }>> {
+      return rows<{ id: string; measurement_state: string; completed_at: string | null }>("SELECT id, measurement_state, completed_at::text FROM actions WHERE workspace_id=$1 AND action_state='completed' AND completed_at >= $2 AND ($3::uuid IS NULL OR location_id=$3 OR location_id IS NULL)", [workspaceId, periodStart, locationId ?? null]);
     },
-    async schedules(workspaceId: string, placeIds: string[]): Promise<Array<{ place_id: string; cadence: string; next_run_at: string | null }>> {
+    /**
+     * `anniversary_day`, not `next_run_at`, is what the workspace can honestly
+     * show. A row is INSERTed once (guarded by `scheduleExists`) and never
+     * UPDATEd, so `next_run_at` is frozen at the first rescan's anniversary and
+     * silently drifts into the past -- rendering it as a date promised a run on
+     * a day that had already gone by. The anniversary day recurs and stays true.
+     */
+    async schedules(workspaceId: string, placeIds: string[]): Promise<Array<{ place_id: string; cadence: string; next_run_at: string | null; anniversary_day: number | null }>> {
       if (!placeIds.length) return [];
-      return rows<{ place_id: string; cadence: string; next_run_at: string | null }>("SELECT place_id, cadence, next_run_at::text FROM scan_schedules WHERE workspace_id=$1 AND place_id=ANY($2::text[])", [workspaceId, placeIds]);
+      return rows<{ place_id: string; cadence: string; next_run_at: string | null; anniversary_day: number | null }>("SELECT place_id, cadence, next_run_at::text, anniversary_day FROM scan_schedules WHERE workspace_id=$1 AND place_id=ANY($2::text[])", [workspaceId, placeIds]);
     },
     async aeoSnapshots(workspaceId: string, jobIds: string[]): Promise<AeoSnapshotRow[]> {
       if (!jobIds.length) return [];

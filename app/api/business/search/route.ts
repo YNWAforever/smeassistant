@@ -98,7 +98,9 @@ export async function POST(req: Request): Promise<Response> {
     req,
     scope: "business_search",
     identifiers: [body.sessionId],
-    failClosed: false,
+    // Spends SerpApi provider budget; refuse rather than spend unbounded if
+    // the limiter's own configuration is unavailable.
+    failClosed: true,
   });
   if (!limiter.allowed) {
     return privateJson(

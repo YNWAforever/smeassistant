@@ -90,9 +90,26 @@ describe("GET /api/oauth/google/start", () => {
     expect(response.headers.get("location")).toContain("state=signed-state");
   });
 
+  it("refuses a manager starting the connect flow", async () => {
+    // §3.9's matrix puts integrations under owner only. It matters more here
+    // than it looks: the callback's replaceGoogleConnection revokes whatever
+    // credential the workspace already holds, so a manager connecting would
+    // replace the owner's, and the disconnect route is owner-only so they
+    // could not undo it.
+    mocks.getUser.mockResolvedValue({ data: { user: { id: "user-4", email: "manager@example.com" } } });
+    mocks.from.mockImplementation(() => membershipTable([{ workspace_id: "ws-1", role: "manager", created_at: "2026-01-01" }]).builder);
+
+    const response = await GET(request(""));
+
+    expect(response.status).toBe(403);
+    expect(mocks.signState).not.toHaveBeenCalled();
+  });
+
   it("falls back to the default locale when the requested one is unsupported", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: { id: "user-1", email: "o@example.com" } } });
-    mocks.from.mockImplementation(() => membershipTable([{ workspace_id: "ws-1", role: "manager", created_at: "2026-01-01" }]).builder);
+    // Owner: connecting is an owner setting, so a manager fixture would now be
+    // refused before the locale is ever resolved.
+    mocks.from.mockImplementation(() => membershipTable([{ workspace_id: "ws-1", role: "owner", created_at: "2026-01-01" }]).builder);
 
     await GET(request("?locale=fr"));
 

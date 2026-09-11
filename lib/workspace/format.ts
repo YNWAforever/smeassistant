@@ -3,6 +3,31 @@ import { copy } from "@/lib/copy";
 import type { Priority } from "@/lib/domain";
 import { readableFindingKey } from "@/lib/report/finding-label";
 
+/**
+ * Why two scans could not be compared, in the owner's language.
+ *
+ * Shared so Home and Insights cannot diverge: Home used to render the raw
+ * engine code ("Reason: NO_DIFF") while Insights had a private catalogue. The
+ * default deliberately does NOT echo an unrecognised code -- that is how the
+ * raw value reached the page in the first place.
+ */
+export function comparisonReasonText(reason: string | null | undefined, isChinese: boolean): string {
+  switch (reason) {
+    case "SCORING_VERSION_MISMATCH":
+      return isChinese ? "評分版本不同" : "Scoring version changed";
+    case "SCORING_VERSION_UNKNOWN":
+      return isChinese ? "評分版本未知" : "Scoring version unknown";
+    case "NO_SHARED_MEASURED_MODULE":
+      return isChinese ? "沒有共同已量度來源" : "No shared measured source";
+    case "INSUFFICIENT_INDEPENDENT_CHANNELS":
+      return isChinese ? "獨立來源不足" : "Too few independent channels";
+    case "NO_DIFF":
+      return isChinese ? "尚未有第二次可比較的掃描" : "No second comparable scan yet";
+    default:
+      return isChinese ? "尚無可比較掃描" : "No comparable scan yet";
+  }
+}
+
 /** Presentation helpers shared by the workspace pages (server-safe, no React). */
 export function formatDateTime(iso: string | null | undefined, locale: PrototypeLocale, timezone: string, style: "date" | "datetime" = "datetime"): string {
   if (!iso) return "—";
@@ -19,6 +44,17 @@ export function formatDateTime(iso: string | null | undefined, locale: Prototype
 
 export function formatDay(iso: string | null | undefined, locale: PrototypeLocale, timezone: string): string {
   return formatDateTime(iso, locale, timezone, "date");
+}
+
+/**
+ * English ordinal for a day of the month. Used for a recurring rescan cadence
+ * ("around the 15th"), which stays true, where a stored date would not: nothing
+ * advances `scan_schedules.next_run_at`.
+ */
+export function ordinal(day: number): string {
+  const teen = day % 100 >= 11 && day % 100 <= 13;
+  const suffix = teen ? "th" : day % 10 === 1 ? "st" : day % 10 === 2 ? "nd" : day % 10 === 3 ? "rd" : "th";
+  return `${day}${suffix}`;
 }
 
 export function effortLabel(minutes: number, locale: PrototypeLocale): string {

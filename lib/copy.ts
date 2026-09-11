@@ -93,7 +93,7 @@ type FunnelCopy = {
     consentTitle: string
     consentBody: string
     privacyNote: string
-    errors: { business: string; place: string; industry: string; district: string; consent: string; submit: string; network: string }
+    errors: { business: string; place: string; industry: string; district: string; consent: string; consentStale: string; submit: string; network: string }
     back: string
     continue: string
     start: string
@@ -106,7 +106,16 @@ type FunnelCopy = {
     progress: string
     subjectLabel: string
     collectors: { google_business: string; instagram: string; search_ai: string }
-    phase: { pending: string; running: string; done: string; collected: string; failed: string }
+    phase: { pending: string; running: string; done: string; unavailable: string; failed: string; stalled: string }
+    stalledTitle: string
+    stalledBody: string
+    stalledReason: { timeout: string; rateLimited: string; unreachable: string; missing: string }
+    stalledCheck: string
+    stalledChecking: string
+    stalledResume: string
+    stalledResuming: string
+    stalledResumeNote: string
+    elapsedMinutes: string
     seeReport: string
     readyTitle: string
     readyBody: string
@@ -226,6 +235,9 @@ type FunnelCopy = {
     viewerNote: string
     memberNote: string
     sampleNote: string
+    claimTitle: string
+    claimBody: string
+    claimCta: string
   }
   unlock: {
     reportLabel: string
@@ -239,16 +251,18 @@ type FunnelCopy = {
     channels: { whatsapp: string; line: string; phone: string; email: string }
     contactLabels: { whatsapp: string; line: string; phone: string; email: string }
     placeholders: { whatsapp: string; line: string; phone: string; email: string }
-    recoveryLabel: string
-    recoveryHint: string
+    signInEmailLabel: string
+    signInEmailHint: string
     deliveryTitle: string
+    /** The delivery consent's own description; must not reuse formBody. */
+    deliveryBody: string
     discussionTitle: string
     discussionBody: string
     marketingTitle: string
     marketingBody: string
     submit: string
     submitting: string
-    errors: { contact: string; invalidContact: string; delivery: string; failed: string; network: string }
+    errors: { contact: string; invalidContact: string; invalidSignInEmail: string; delivery: string; failed: string; network: string }
     success: string
     privacyNote: string
     policyLink: string
@@ -267,6 +281,13 @@ type FunnelCopy = {
     boundaryEyebrow: string
     boundaryTitle: string
     rows: Array<{ label: string; value: string }>
+    /**
+     * The retention schedule's actual status. The rows say what is kept and how
+     * it is protected; this says for how long, and the honest answer today is
+     * "nothing deletes any of it by age". One line rather than a repeat on each
+     * row, and outside `rows` so it cannot be read as another kept thing.
+     */
+    retentionNote: string
     policyLink: string
   }
   legal: { backToScanner: string; version: string }
@@ -415,6 +436,7 @@ const funnelEn: FunnelCopy = {
       industry: "Select an industry.",
       district: "Select a district.",
       consent: "Confirm that we may collect public evidence for this scan.",
+      consentStale: "Our privacy notice changed. Please read and confirm the consent again.",
       submit: "The scan could not be started. Please try again.",
       network: "Network error. Please try again.",
     },
@@ -433,10 +455,25 @@ const funnelEn: FunnelCopy = {
     phase: {
       pending: "Waiting for this stage",
       running: "Reading public sources now",
-      done: "Collection finished",
-      collected: "Collection finished · coverage is confirmed in the report",
+      done: "Measured",
+      unavailable: "Not measured",
       failed: "The scan did not complete",
+      stalled: "No update since we last checked",
     },
+    stalledTitle: "We stopped checking for updates",
+    stalledBody: "This scan has not reported a new stage for a while. It may still be running on our side — we simply stopped asking, so this page does not keep polling forever. Nothing has been scored and nothing has been marked as failed.",
+    stalledReason: {
+      timeout: "We checked for {minutes} minutes without a change.",
+      rateLimited: "This scan reference has been checked too many times in the last hour. Please wait a few minutes before checking again.",
+      unreachable: "We could not reach the status service. Your scan is unaffected; only this page's updates stopped.",
+      missing: "This scan reference could not be found. Check the link, or start a new scan.",
+    },
+    stalledCheck: "Check again",
+    stalledChecking: "Checking…",
+    stalledResume: "Ask us to resume the scan",
+    stalledResuming: "Asking…",
+    stalledResumeNote: "Resuming never starts a second scan — it can only pick up this same scan. If an attempt is still running, nothing changes; a stopped attempt can be picked up again about {minutes} minutes after it stalled, for up to three attempts.",
+    elapsedMinutes: "Elapsed {minutes}m {seconds}s",
     seeReport: "See report",
     readyTitle: "Your report is ready",
     readyBody: "Opening the report in a moment. Every source shows its own coverage state there.",
@@ -550,6 +587,9 @@ const funnelEn: FunnelCopy = {
     signOutError: "Could not sign out. Please try again.",
     viewerNote: "Full report unlocked on this device for 30 days.",
     memberNote: "Full report · workspace member",
+    claimTitle: "Is this your business?",
+    claimBody: "Sign in to claim this report into a workspace, where you can prepare and approve replies, posts and page content. Ownership is verified with Google — unlocking a report on this device does not by itself prove you manage the business.",
+    claimCta: "Sign in to claim this business",
     sampleNote: "Demo data: fixed, sanitised Kam Man House evidence.",
   },
   unlock: {
@@ -562,15 +602,16 @@ const funnelEn: FunnelCopy = {
       { title: "Ownership comes later", body: "Verified with Google before workspace access" },
     ],
     formTitle: "Secure report delivery",
-    formBody: "We send a secure report link to the contact you choose; ownership is verified with Google before workspace access.",
+    formBody: "Your full report opens here as soon as you unlock it. We keep the contact you choose so Fimmick can follow up about this scan; ownership is verified with Google before workspace access.",
     objectiveHeading: "Your selected goal",
     channelHeading: "How should we deliver the report?",
     channels: { whatsapp: "WhatsApp", line: "LINE", phone: "Phone", email: "Email" },
     contactLabels: { whatsapp: "WhatsApp number", line: "LINE ID", phone: "Phone number", email: "Email" },
     placeholders: { whatsapp: "e.g. +852 9123 4567", line: "e.g. @yourshop", phone: "e.g. +852 9123 4567", email: "owner@business.com" },
-    recoveryLabel: "Recovery email",
-    recoveryHint: "Use this email to reopen your report securely on another device.",
-    deliveryTitle: "Deliver this report securely",
+    signInEmailLabel: "Email for a later sign-in link (optional)",
+    signInEmailHint: "Nothing is emailed now. Later, a sign-in link for this report can be requested with this address if it is still eligible. Workspace access is checked separately.",
+    deliveryTitle: "Let Fimmick send this report to that contact",
+    deliveryBody: "Permission only — nothing is sent automatically. The report opens in this browser now; this lets the Fimmick team reach you about it later.",
     discussionTitle: "Discuss the findings with Fimmick",
     discussionBody: "Optional and separate from report delivery.",
     marketingTitle: "Occasional Fimmick updates",
@@ -580,6 +621,7 @@ const funnelEn: FunnelCopy = {
     errors: {
       contact: "Enter your contact details.",
       invalidContact: "Enter a valid contact for the chosen channel.",
+      invalidSignInEmail: "Enter a valid email address, or leave this blank.",
       delivery: "Agree to receive the report before continuing.",
       failed: "The report could not be unlocked. Please try again.",
       network: "Network error. Please try again.",
@@ -600,14 +642,26 @@ const funnelEn: FunnelCopy = {
   trust: {
     intro: "Production controls are enforced by server routes, application-layer authorisation and an append-only audit trail—never by a role label in the interface.",
     boundaryEyebrow: "Data boundary",
-    boundaryTitle: "What is kept, for how long, and how it is protected",
+    // "for how long" left the title with the rows: this page published 12- and
+    // 24-month periods that nothing enforced. No cron, no pg_cron, no TTL and
+    // no scheduled function exists in migrations 0001-0005, and the only
+    // DELETEs in the app are per-job evidence replacement and membership
+    // removal. The periods themselves are Willy's to set; publishing them as
+    // though they were already running was not.
+    boundaryTitle: "What is kept, and how it is protected",
     rows: [
-      { label: "Scan evidence", value: "Public-source evidence and report data are retained for 12 months and removed on request." },
-      { label: "Agent inputs and outputs", value: "Drafts, approvals and exports are retained for 24 months for accountability." },
-      { label: "Audit events", value: "Append-only events are retained for 24 months." },
-      { label: "OAuth tokens", value: "Encrypted at rest and revoked when a connection is removed." },
-      { label: "Report access links", value: "Expire 30 days after issue; recovery links expire after 15 minutes." },
+      { label: "Scan evidence", value: "Public-source evidence and the report data derived from it." },
+      { label: "Agent inputs and outputs", value: "Drafts, approvals and exports — the accountability record for anything published." },
+      { label: "Audit events", value: "Append-only. Nothing in the product edits or deletes them." },
+      // "revoked when a connection is removed" described something that could
+      // not happen: no disconnect existed, and the only writer of
+      // status='revoked' was the reconnect path. A disconnect exists now, so
+      // this states what it actually does -- our stored copy is destroyed --
+      // without implying we revoked the grant inside the owner's Google account.
+      { label: "OAuth tokens", value: "Encrypted at rest. Disconnecting an integration deletes the stored credential; access in your own Google Account is removed there." },
+      { label: "Report access links", value: "Expire 30 days after issue. Signing out of a report also revokes the link used on that device." },
     ],
+    retentionNote: "Nothing here is deleted by age yet, and we will not publish a schedule we do not run. One is being finalised; until it is, ask us at the address in the privacy policy and we will tell you what we hold.",
     policyLink: "Privacy policy and terms · version 2026-07-28",
   },
   legal: { backToScanner: "Back to the scanner", version: "Version {version}" },
@@ -702,6 +756,7 @@ const funnelZhHK: FunnelCopy = {
       industry: "請選擇行業。",
       district: "請選擇地區。",
       consent: "請確認我們可以為這次掃描收集公開證據。",
+      consentStale: "私隱聲明已更新，請重新閱讀並確認同意。",
       submit: "未能開始掃描，請再試一次。",
       network: "網絡錯誤，請再試一次。",
     },
@@ -720,10 +775,25 @@ const funnelZhHK: FunnelCopy = {
     phase: {
       pending: "等待此階段開始",
       running: "正在讀取公開來源",
-      done: "收集完成",
-      collected: "收集完成 · 覆蓋率以報告為準",
+      done: "已量度",
+      unavailable: "未能量度",
       failed: "掃描未能完成",
+      stalled: "自上次檢查後未有更新",
     },
+    stalledTitle: "我們已停止查詢更新",
+    stalledBody: "這次掃描已有一段時間沒有回報新階段。它可能仍在我們的伺服器上進行，我們只是停止不斷查詢，避免此頁無了期等待。系統沒有計算任何評分，亦沒有判定掃描失敗。",
+    stalledReason: {
+      timeout: "我們已查詢 {minutes} 分鐘，期間沒有變化。",
+      rateLimited: "此掃描編號在過去一小時查詢次數過多，請稍候幾分鐘再試。",
+      unreachable: "我們無法連接狀態服務。掃描本身不受影響，只是此頁的更新停止了。",
+      missing: "找不到此掃描編號。請檢查連結，或重新開始掃描。",
+    },
+    stalledCheck: "再檢查一次",
+    stalledChecking: "正在檢查…",
+    stalledResume: "請系統繼續這次掃描",
+    stalledResuming: "正在請求…",
+    stalledResumeNote: "繼續掃描不會開始第二次掃描，只會接手同一次掃描。若仍有執行中的嘗試，此操作不會有任何改變；若嘗試真的已停止，約 {minutes} 分鐘後便可重新接手，最多三次。",
+    elapsedMinutes: "已用時間 {minutes} 分 {seconds} 秒",
     seeReport: "詳見報告",
     readyTitle: "報告已準備好",
     readyBody: "即將開啟報告；每個來源都會在報告內顯示自己的覆蓋狀態。",
@@ -838,6 +908,9 @@ const funnelZhHK: FunnelCopy = {
     viewerNote: "完整報告已在此裝置解鎖 30 天。",
     memberNote: "完整報告 · 工作台成員",
     sampleNote: "示範資料：固定並已清理的錦汶館證據。",
+    claimTitle: "這是你的商戶嗎？",
+    claimBody: "登入後可將此報告認領至工作台，在那裡草擬並核准回覆、貼文與網頁內容。擁有權須經 Google 驗證：在此裝置解鎖報告本身並不代表你管理該商戶。",
+    claimCta: "登入認領此商戶",
   },
   unlock: {
     reportLabel: "報告",
@@ -849,15 +922,16 @@ const funnelZhHK: FunnelCopy = {
       { title: "擁有權稍後驗證", body: "進入工作台前以 Google 驗證" },
     ],
     formTitle: "安全送達報告",
-    formBody: "我們會以安全連結送出報告至你選擇的聯絡方式；進入工作台前會以 Google 驗證擁有權。",
+    formBody: "解鎖後，完整報告會即時在此開啟。我們會保留你選擇的聯絡方式，以便 Fimmick 就這次掃描與你跟進；進入工作台前會以 Google 驗證擁有權。",
     objectiveHeading: "你選擇的目標",
     channelHeading: "以甚麼方式送達報告？",
     channels: { whatsapp: "WhatsApp", line: "LINE", phone: "電話", email: "電郵" },
     contactLabels: { whatsapp: "WhatsApp 號碼", line: "LINE ID", phone: "電話號碼", email: "電郵" },
     placeholders: { whatsapp: "例：+852 9123 4567", line: "例：@yourshop", phone: "例：+852 9123 4567", email: "owner@business.com" },
-    recoveryLabel: "復原電郵",
-    recoveryHint: "提供電郵後，你可在其他裝置透過安全連結重新開啟報告。",
-    deliveryTitle: "安全送達此報告",
+    signInEmailLabel: "日後索取登入連結的電郵（選填）",
+    signInEmailHint: "現在不會發送任何電郵。日後如此電郵仍符合資格，可用它為此報告索取登入連結；工作台存取會另行核實。",
+    deliveryTitle: "允許 Fimmick 把報告送到該聯絡方式",
+    deliveryBody: "這只是授權，系統不會自動發送。報告現在就會在此瀏覽器開啟；此項讓 Fimmick 團隊日後可就報告與你聯絡。",
     discussionTitle: "與 Fimmick 討論發現",
     discussionBody: "選填，並與報告送達分開。",
     marketingTitle: "偶爾接收 Fimmick 資訊",
@@ -867,6 +941,7 @@ const funnelZhHK: FunnelCopy = {
     errors: {
       contact: "請輸入聯絡資料。",
       invalidContact: "請輸入所選渠道的有效聯絡資料。",
+      invalidSignInEmail: "請輸入有效的電郵地址，或留空。",
       delivery: "請先同意接收此報告。",
       failed: "未能解鎖報告，請再試一次。",
       network: "網絡錯誤，請再試一次。",
@@ -887,14 +962,15 @@ const funnelZhHK: FunnelCopy = {
   trust: {
     intro: "正式控制由伺服器路由、應用層授權及只可追加的審計紀錄強制執行，而不是介面上的角色標籤。",
     boundaryEyebrow: "資料界線",
-    boundaryTitle: "保留甚麼、保留多久、如何保護",
+    boundaryTitle: "保留甚麼，以及如何保護",
     rows: [
-      { label: "掃描證據", value: "公開來源證據及報告資料保留 12 個月，可按要求刪除。" },
-      { label: "Agent 輸入與輸出", value: "草稿、審批及匯出紀錄保留 24 個月，以便追溯責任。" },
-      { label: "審計事件", value: "只可追加的事件紀錄保留 24 個月。" },
-      { label: "OAuth 代幣", value: "靜態加密儲存；解除連接時即時撤銷。" },
-      { label: "報告存取連結", value: "發出後 30 日失效；復原連結 15 分鐘後失效。" },
+      { label: "掃描證據", value: "公開來源證據，以及據此產生的報告資料。" },
+      { label: "Agent 輸入與輸出", value: "草稿、審批及匯出紀錄——任何已發佈內容的問責紀錄。" },
+      { label: "審計事件", value: "只可追加。產品內不會修改或刪除。" },
+      { label: "OAuth 代幣", value: "靜態加密儲存。解除連接時，我們儲存的憑證會被刪除；至於你 Google 帳戶內的存取權，請在該帳戶移除。" },
+      { label: "報告存取連結", value: "發出後 30 日失效；喺報告登出時，該裝置所用嘅連結亦會撤銷。" },
     ],
+    retentionNote: "以上資料目前不會因年期而自動刪除，我們亦不會公布一個並未實際執行的時間表。保留時間表仍在制定中；在公布之前，請按私隱政策所列地址向我們查詢，我們會告知所持有的資料。",
     policyLink: "私隱政策及使用條款 · 版本 2026-07-28",
   },
   legal: { backToScanner: "返回掃描", version: "版本 {version}" },
@@ -989,6 +1065,7 @@ const funnelZhTW: FunnelCopy = {
       industry: "請選擇產業。",
       district: "請選擇地區。",
       consent: "請確認我們可以為這次掃描收集公開證據。",
+      consentStale: "隱私權聲明已更新，請重新閱讀並確認同意。",
       submit: "無法開始掃描，請再試一次。",
       network: "網路錯誤，請再試一次。",
     },
@@ -1007,10 +1084,25 @@ const funnelZhTW: FunnelCopy = {
     phase: {
       pending: "等待此階段開始",
       running: "正在讀取公開來源",
-      done: "收集完成",
-      collected: "收集完成 · 涵蓋率以報告為準",
+      done: "已量度",
+      unavailable: "未能量度",
       failed: "掃描未能完成",
+      stalled: "自上次檢查後沒有更新",
     },
+    stalledTitle: "我們已停止查詢更新",
+    stalledBody: "這次掃描已有一段時間沒有回報新階段。它可能仍在我們的伺服器上進行，我們只是停止持續查詢，避免這個頁面一直等下去。系統沒有計算任何分數，也沒有判定掃描失敗。",
+    stalledReason: {
+      timeout: "我們已查詢 {minutes} 分鐘，期間沒有變化。",
+      rateLimited: "這個掃描編號在過去一小時查詢次數過多，請稍等幾分鐘再試。",
+      unreachable: "我們無法連線到狀態服務。掃描本身不受影響，只是這個頁面的更新停止了。",
+      missing: "找不到這個掃描編號。請檢查連結，或重新開始掃描。",
+    },
+    stalledCheck: "再檢查一次",
+    stalledChecking: "正在檢查…",
+    stalledResume: "請系統繼續這次掃描",
+    stalledResuming: "正在請求…",
+    stalledResumeNote: "繼續掃描不會開始第二次掃描，只會接手同一次掃描。若仍有執行中的嘗試，這個操作不會有任何改變；若嘗試真的已停止，約 {minutes} 分鐘後就能重新接手，最多三次。",
+    elapsedMinutes: "已用時間 {minutes} 分 {seconds} 秒",
     seeReport: "詳見報告",
     readyTitle: "報告已準備好",
     readyBody: "即將開啟報告；每個來源都會在報告中顯示自己的涵蓋狀態。",
@@ -1125,6 +1217,9 @@ const funnelZhTW: FunnelCopy = {
     viewerNote: "完整報告已在此裝置解鎖 30 天。",
     memberNote: "完整報告 · 工作台成員",
     sampleNote: "範例資料：固定且已清理的錦汶館證據。",
+    claimTitle: "這是您的店家嗎？",
+    claimBody: "登入後可將此報告認領至工作台，在那裡草擬並核准回覆、貼文與網頁內容。擁有權須經 Google 驗證：在此裝置解鎖報告本身並不代表您管理該店家。",
+    claimCta: "登入認領此店家",
   },
   unlock: {
     reportLabel: "報告",
@@ -1136,15 +1231,16 @@ const funnelZhTW: FunnelCopy = {
       { title: "擁有權稍後驗證", body: "進入工作台前以 Google 驗證" },
     ],
     formTitle: "安全送達報告",
-    formBody: "我們會以安全連結把報告送到你選擇的聯絡方式；進入工作台前會以 Google 驗證擁有權。",
+    formBody: "解鎖後，完整報告會立即在這裡開啟。我們會保留你選擇的聯絡方式，讓 Fimmick 能就這次掃描與你聯繫；進入工作台前會以 Google 驗證擁有權。",
     objectiveHeading: "你選擇的目標",
     channelHeading: "要用什麼方式送達報告？",
     channels: { whatsapp: "WhatsApp", line: "LINE", phone: "電話", email: "電子郵件" },
     contactLabels: { whatsapp: "WhatsApp 號碼", line: "LINE ID", phone: "電話號碼", email: "電子郵件" },
     placeholders: { whatsapp: "例：+852 9123 4567", line: "例：@yourshop", phone: "例：0912 345 678", email: "owner@business.com" },
-    recoveryLabel: "復原電子郵件",
-    recoveryHint: "提供電子郵件後，你可以在其他裝置透過安全連結重新開啟報告。",
-    deliveryTitle: "安全送達此報告",
+    signInEmailLabel: "日後索取登入連結的電子郵件（選填）",
+    signInEmailHint: "現在不會寄出任何郵件。日後如這個電子郵件仍符合資格，可用它為此報告索取登入連結；工作台存取會另行核實。",
+    deliveryTitle: "允許 Fimmick 將報告寄送至該聯絡方式",
+    deliveryBody: "這只是授權，系統不會自動寄送。報告現在就會在這個瀏覽器開啟；此項讓 Fimmick 團隊日後可就報告與你聯繫。",
     discussionTitle: "與 Fimmick 討論發現",
     discussionBody: "選填，並與報告送達分開。",
     marketingTitle: "偶爾接收 Fimmick 資訊",
@@ -1154,6 +1250,7 @@ const funnelZhTW: FunnelCopy = {
     errors: {
       contact: "請輸入聯絡資料。",
       invalidContact: "請輸入所選管道的有效聯絡資料。",
+      invalidSignInEmail: "請輸入有效的電子郵件地址，或留空。",
       delivery: "請先同意接收此報告。",
       failed: "無法解鎖報告，請再試一次。",
       network: "網路錯誤，請再試一次。",
@@ -1174,14 +1271,15 @@ const funnelZhTW: FunnelCopy = {
   trust: {
     intro: "正式控制由伺服器路由、應用層授權與只能附加的稽核紀錄強制執行，而不是介面上的角色標籤。",
     boundaryEyebrow: "資料界線",
-    boundaryTitle: "保留什麼、保留多久、如何保護",
+    boundaryTitle: "保留什麼，以及如何保護",
     rows: [
-      { label: "掃描證據", value: "公開來源證據與報告資料保留 12 個月，可依要求刪除。" },
-      { label: "Agent 輸入與輸出", value: "草稿、核准與匯出紀錄保留 24 個月，以便追溯責任。" },
-      { label: "稽核事件", value: "只能附加的事件紀錄保留 24 個月。" },
-      { label: "OAuth 權杖", value: "靜態加密儲存；解除連接時立即撤銷。" },
-      { label: "報告存取連結", value: "發出後 30 天失效；復原連結 15 分鐘後失效。" },
+      { label: "掃描證據", value: "公開來源證據，以及據此產生的報告資料。" },
+      { label: "Agent 輸入與輸出", value: "草稿、核准與匯出紀錄——任何已發布內容的問責紀錄。" },
+      { label: "稽核事件", value: "僅能附加。產品內不會修改或刪除。" },
+      { label: "OAuth 權杖", value: "靜態加密儲存。解除連接時，我們儲存的憑證會被刪除；至於你 Google 帳戶內的存取權，請於該帳戶移除。" },
+      { label: "報告存取連結", value: "發出後 30 天失效；於報告登出時，該裝置所使用的連結也會撤銷。" },
     ],
+    retentionNote: "上述資料目前不會依年限自動刪除，我們也不會公布並未實際執行的時間表。保留時間表仍在制定中；在公布之前，請依隱私政策所列地址與我們聯絡，我們會告知所持有的資料。",
     policyLink: "隱私政策與使用條款 · 版本 2026-07-28",
   },
   legal: { backToScanner: "返回掃描", version: "版本 {version}" },

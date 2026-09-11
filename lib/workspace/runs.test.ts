@@ -7,7 +7,7 @@ import type {
 } from "@/lib/repositories/artifacts";
 import type { Membership } from "@/lib/auth";
 import { rowToSnapshot } from "./snapshots";
-import { runAgentForAction } from "./runs";
+import { AGENT_RUN_BUDGET_MS, runAgentForAction } from "./runs";
 const action = {
   id: "act-1",
   workspace_id: "ws-1",
@@ -178,6 +178,21 @@ describe("typed action runtime", () => {
     );
     expect(start).toHaveBeenCalledOnce();
   });
+  it("never lets owner-typed text become collected evidence", async () => {
+    const typed = "I typed this myself";
+    const llm = vi.fn(async (p: string) => {
+      const evidenceStart = p.indexOf('"sampled_reviews_without_owner_response"');
+      const providedStart = p.indexOf('"provided_inputs"');
+      // The scanned sample is built from stored raw_data only; the owner's text
+      // appears solely under provided_inputs, which the prompt calls a fallback.
+      expect(p.slice(evidenceStart, providedStart)).toContain("Slow service");
+      expect(p.slice(evidenceStart, providedStart)).not.toContain(typed);
+      expect(p).toContain(typed);
+      return good();
+    });
+    await run({ llm, inputs: { reviews_without_response: typed } });
+    expect(llm).toHaveBeenCalledOnce();
+  });
   it("sums both attempts", async () => {
     const llm = vi
       .fn()
@@ -323,6 +338,50 @@ describe("typed action runtime", () => {
       code: "agent_unavailable",
     });
     expect(queue).not.toHaveBeenCalled();
+  });
+  it("caps each attempt's timeout by the remaining route budget", async () => {
+    const llm = vi.fn<(prompt: string, options: { timeoutMs: number }) => Promise<LLMResult>>(async () => good());
+    await run({ llm });
+    const options = llm.mock.calls[0][1];
+    // Never more than the agent default, and never more than what is left of
+    // the route budget after reserving finalization time.
+    expect(options.timeoutMs).toBeLessThanOrEqual(45_000);
+    expect(options.timeoutMs).toBeLessThanOrEqual(AGENT_RUN_BUDGET_MS);
+    expect(options.timeoutMs).toBeGreaterThan(0);
+  });
+
+  it("does not start a retry it cannot finish inside the route budget", async () => {
+    // First attempt returns unparseable output after burning nearly the whole
+    // budget. The old fixed two-attempt loop would have started a second 45 s
+    // call inside a 60 s function; now the run ends as a terminal failure.
+    const now = vi.spyOn(Date, "now");
+    const base = 1_000_000;
+    now.mockReturnValueOnce(base) // deadline computed
+      .mockReturnValueOnce(base) // first attempt: full budget remains
+      .mockReturnValue(base + AGENT_RUN_BUDGET_MS - 1_000); // budget nearly gone
+    const llm = vi.fn(async () => ({ text: "not json", usage: { inputTokens: 1, outputTokens: 1 } }));
+    try {
+      const result = await run({ llm });
+      expect(llm).toHaveBeenCalledTimes(1);
+      expect(result).toMatchObject({ state: "failed" });
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it("refuses a registered agent that is not this action template's own agent", async () => {
+    // The gap this closes: isAgentKey() only proves membership of the global
+    // agent registry, so any real key used to be accepted on any action --
+    // e.g. asking for menu_translation on a review-response action.
+    row = { ...action, template_key: "review-response" } as unknown as typeof action;
+    await expect(run({ agentKey: "menu_translation" })).rejects.toMatchObject({
+      code: "agent_unavailable",
+    });
+    expect(queue).not.toHaveBeenCalled();
+  });
+  it("accepts the action template's own agent when the client names it explicitly", async () => {
+    row = { ...action, template_key: "review-response" } as unknown as typeof action;
+    expect(await run({ agentKey: "review_reply", llm: vi.fn(async () => good()) })).toMatchObject({ versionId: "v-1" });
   });
   it.each([true, false])(
     "throws terminal persistence fault for valid=%s",

@@ -14,11 +14,10 @@ import {
   type AgentContext,
   type AgentKey,
   type AgentOutput,
-  type SampledReview,
 } from "@/lib/agents";
 import { localized } from "@/lib/domain";
 import { llmComplete, type LLMUsage } from "@/lib/llm";
-import { sanitizeReportProof } from "@/lib/report/sanitize-proof";
+import { sampledReviewsFromRawData } from "./evidence-inputs";
 import { buildActionOverview, localeOf } from "./overview";
 import { type SnapshotRecord } from "./snapshots";
 import { templateByKey, type TemplateKey } from "./templates";
@@ -65,6 +64,21 @@ export interface RunAgentResult {
   error?: string;
 }
 
+/**
+ * Inline agent-run budget, reconciled with the calling route's
+ * `export const maxDuration` (60 s for /api/actions/[actionId]/run and
+ * /api/actions). ROUTE_MAX_DURATION_MS is the platform's hard ceiling; the
+ * agent may use everything except a reserve for persisting the terminal state,
+ * because a run that gets killed before persistence.finish() is stranded at
+ * 'running' with no reaper to clear it. MIN_ATTEMPT_MS stops us starting an
+ * attempt so short it could only ever time out.
+ */
+export const ROUTE_MAX_DURATION_MS = 60_000;
+export const FINALIZE_RESERVE_MS = 5_000;
+export const MIN_ATTEMPT_MS = 8_000;
+export const MAX_AGENT_ATTEMPTS = 2;
+export const AGENT_RUN_BUDGET_MS = ROUTE_MAX_DURATION_MS - FINALIZE_RESERVE_MS;
+
 const FRIENDLY_ERROR = localized(
   "The draft could not be generated this time. Your existing draft is unchanged — please try again in a moment.",
   "今次未能產生草稿，現有草稿沒有改動，請稍後再試。",
@@ -83,16 +97,23 @@ function asStrings(value: unknown): string[] {
     : [];
 }
 
+/**
+ * The action's own template decides which agent may run on it. A requested
+ * agentKey is only ever accepted as confirmation of that template's agent --
+ * previously any *registered* key was accepted, so a client could ask for,
+ * say, menu_translation on a review-response action and the server would run
+ * it, because isAgentKey() only checks membership of the global registry
+ * (lib/agents/index.ts) and never compares against the template.
+ */
 function resolveAgentKey(
   requested: string | null | undefined,
   templateAgent: string | null,
 ): AgentKey {
-  if (requested !== undefined && requested !== null && requested !== "") {
-    if (!isAgentKey(requested)) throw new RunError("agent_unavailable");
-    return requested;
-  }
   if (!templateAgent || !isAgentKey(templateAgent))
     throw new RunError("agent_unavailable");
+  if (requested !== undefined && requested !== null && requested !== "" && requested !== templateAgent) {
+    throw new RunError("agent_unavailable");
+  }
   return templateAgent;
 }
 
@@ -106,18 +127,12 @@ function addUsage(total: LLMUsage, next: LLMUsage | undefined): LLMUsage {
   };
 }
 
-/** Shared excerpt transformation; no persistence or provider transport. */
-export function sampledReviewsFromRawData(rawData: unknown): SampledReview[] {
-  const proof = sanitizeReportProof(rawData, []);
-  return (proof.gbp?.recentReviews ?? [])
-    .filter((review) => !review.ownerResponse && review.text)
-    .sort((a, b) => (b.time || "").localeCompare(a.time || ""))
-    .map((review) => ({
-      rating: review.rating || null,
-      text: review.text.slice(0, 500),
-      time: review.time || null,
-    }));
-}
+/**
+ * Moved to lib/workspace/evidence-inputs.ts so the detail page, the action
+ * derivation and the agent all read the same bytes. Re-exported here because
+ * this is the name existing callers import.
+ */
+export { sampledReviewsFromRawData };
 
 export function snapshotEvidence(
   snapshot: SnapshotRecord | null,
@@ -143,8 +158,14 @@ export function snapshotEvidence(
   };
 }
 
-/** `social_post` needs an approved asset or an explicit text-only decision (Phase 4 item 4). */
-async function socialAssetSatisfied(
+/**
+ * `social_post` needs an approved asset or an explicit text-only decision
+ * (Phase 4 item 4). Exported because the live assistant drafts the same agent
+ * down a different path and must apply the identical rule -- when it did not,
+ * the prompt told the model "an approved photo is attached" with alt text
+ * "(not provided)" and invited it to describe a photo that did not exist.
+ */
+export async function socialAssetSatisfied(
   assets: Pick<ReturnType<typeof assetRepository>, "get">,
   workspaceId: string,
   provided: Record<string, unknown>,
@@ -321,8 +342,27 @@ export async function runAgentForAction(
     reason: string | undefined;
   try {
     const prompt = agent.buildPrompt(ctx);
-    for (let attempt = 0; attempt < 2 && !output; attempt += 1) {
-      const result = await llm(prompt, AGENT_LLM_OPTIONS);
+    // The route runs this inline under maxDuration=60, so the old fixed
+    // "two attempts, 45 s each" loop could ask for 90 s of model time inside a
+    // 60 s function: the platform killed the handler mid-second-attempt and
+    // persistence.finish() never ran, leaving the action_run stranded at
+    // 'running' forever (nothing writes the 'timed_out' state). Attempts are
+    // now bounded by what is actually left of the budget, and finalization
+    // time is reserved so the terminal state is always recorded.
+    // AGENT_RUN_BUDGET_MS already excludes the finalization reserve.
+    const deadline = Date.now() + AGENT_RUN_BUDGET_MS;
+    for (let attempt = 0; attempt < MAX_AGENT_ATTEMPTS && !output; attempt += 1) {
+      const remaining = deadline - Date.now();
+      if (remaining < MIN_ATTEMPT_MS) {
+        // Out of budget: stop here so the run finishes as a real terminal
+        // failure the owner can retry, rather than being cut off mid-flight.
+        if (!reason) reason = "action_run_timeout";
+        break;
+      }
+      const result = await llm(prompt, {
+        ...AGENT_LLM_OPTIONS,
+        timeoutMs: Math.min(AGENT_LLM_OPTIONS.timeoutMs, remaining),
+      });
       usage = addUsage(usage, result?.usage);
       output = parseAgentOutput(result?.text, agent.outputSchema);
     }
@@ -331,7 +371,9 @@ export async function runAgentForAction(
         ...output,
         warnings: [...output.warnings, ...agent.acceptance(ctx, output)],
       };
-    else reason = "invalid_output";
+    // Keep a budget-exhaustion reason: it is a different, retryable story from
+    // "the model answered but the answer did not validate".
+    else if (!reason) reason = "invalid_output";
   } catch {
     reason = "action_run_failed";
     output = null;

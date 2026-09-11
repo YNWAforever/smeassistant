@@ -5,6 +5,7 @@ import { withTransaction } from '../db/transaction';
 import { snapshotRepository } from './snapshots';
 import { loadSnapshotById, loadSnapshotForJob, type ScanDiffRow } from '../workspace/snapshots';
 import { deriveActions, type FindingRow } from '../workspace/actions';
+import { resolveEvidenceInputs } from '../workspace/evidence-inputs';
 import { completionId } from '../workspace/completion-id';
 import { WEBSITE_FAQ_TRIGGER, type TemplateKey } from '../workspace/templates';
 import { OPEN_ACTION_STATES } from '../domain';
@@ -62,7 +63,11 @@ export function actionDerivationRepository(db:Pick<Pool,'query'>):ActionDerivati
   const workspace=(await db.query<{industry:string|null}>('SELECT industry FROM workspaces WHERE id=$1',[ws])).rows[0];
   const drafts=(await db.query<{template_key:TemplateKey}>(`SELECT DISTINCT a.template_key FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id
    WHERE a.workspace_id=$1 AND v.workspace_id=$1 AND a.location_id IS NOT DISTINCT FROM $2::uuid AND v.approval_state='draft' AND a.action_state=ANY($3::text[])`,[ws,loc,OPEN_ACTION_STATES])).rows;
-  const derived=deriveActions({snapshot,findings,latestDiff:diff,brandProfileExists:Boolean(brand),googleConnection:google,industry:workspace?.industry??null,existingDrafts:new Set(drafts.map(row=>row.template_key)),now:opts.now});
+  // The scan already collected the merchant's unanswered reviews; asking the
+  // owner to retype them was the bug. `job` is the row this derivation already
+  // loaded, and JOB_COLUMNS includes raw_data, so this costs no extra read.
+  const resolvedInputs=resolveEvidenceInputs({rawData:job.raw_data});
+  const derived=deriveActions({snapshot,findings,latestDiff:diff,brandProfileExists:Boolean(brand),googleConnection:google,industry:workspace?.industry??null,existingDrafts:new Set(drafts.map(row=>row.template_key)),resolvedInputs,now:opts.now});
   const result:DerivationResult={created:0,updated:0,completed:0,expired:0};
   const now=(opts.now??new Date()).toISOString();
   for(const action of derived) {
@@ -71,7 +76,26 @@ export function actionDerivationRepository(db:Pick<Pool,'query'>):ActionDerivati
     ON CONFLICT(dedupe_key) WHERE action_state NOT IN ('completed','dismissed','cancelled','expired') DO UPDATE SET
      source_finding_keys=EXCLUDED.source_finding_keys,source_snapshot_id=EXCLUDED.source_snapshot_id,title=EXCLUDED.title,summary=EXCLUDED.summary,evidence=EXCLUDED.evidence,
      priority=EXCLUDED.priority,priority_score=EXCLUDED.priority_score,priority_factors=EXCLUDED.priority_factors,effort_minutes=EXCLUDED.effort_minutes,
-     required_inputs=EXCLUDED.required_inputs,capability=EXCLUDED.capability,updated_at=EXCLUDED.updated_at
+     required_inputs=EXCLUDED.required_inputs,capability=EXCLUDED.capability,updated_at=EXCLUDED.updated_at,
+     -- An action that LOSES its evidence (the scan no longer retains an
+     -- unanswered review) gets the input back, so it must also go back to
+     -- needs_input -- otherwise the detail page, which gates its input form on
+     -- action_state, shows nothing and Generate burns a model call.
+     --
+     -- The test is whether a required key is genuinely UNANSWERED, not whether
+     -- the template declares any. The first version of this asked whether
+     -- EXCLUDED.required_inputs was non-empty, which is true for almost every
+     -- template on every re-derivation -- so an owner who had supplied brand
+     -- voice and language watched a ready action flip back to needs_input after
+     -- each scan, beside a provenance row still reading "Inputs ready". Absent,
+     -- null and empty-string all count as unanswered, mirroring missingInputs
+     -- in lib/workspace/overview.ts exactly: two rules for one question is what
+     -- let the badge and the read model disagree. An empty required list still
+     -- never downgrades, since EXISTS over an empty array is false.
+     action_state=CASE WHEN actions.action_state IN ('recommended','ready')
+       AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(EXCLUDED.required_inputs) AS k(key)
+                   WHERE COALESCE(actions.provided_inputs->>k.key,'')='')
+      THEN 'needs_input' ELSE actions.action_state END
     WHERE actions.workspace_id=EXCLUDED.workspace_id AND actions.location_id IS NOT DISTINCT FROM EXCLUDED.location_id AND actions.template_key=EXCLUDED.template_key
     RETURNING (xmax=0) AS created`,[ws,loc,action.templateKey,action.source,action.sourceFindingKeys,snapshotId,JSON.stringify(action.title),JSON.stringify(action.summary),JSON.stringify(action.evidence),action.priority,action.priorityScore,JSON.stringify(action.priorityFactors),action.effortMinutes,JSON.stringify(action.requiredInputs),action.capability,action.dedupeKey,action.requiredInputs.length?'needs_input':'recommended',now])).rows[0];
    if(!row)throw new Error('derivation_scope_mismatch');

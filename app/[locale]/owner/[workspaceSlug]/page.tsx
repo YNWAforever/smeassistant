@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { TriangleAlert } from "lucide-react";
 
 import { HomeBriefView } from "@/components/workspace/home-brief";
+import { currentScanConsentPolicyVersion } from "@/lib/scan/consent";
 import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 import { getHomeBrief } from "@/lib/workspace/queries-pages";
 
@@ -29,6 +30,10 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
         workspaceId={page.ctx.workspace.id}
         workspaceName={page.ctx.workspace.name}
         tier={page.ctx.workspace.tier}
+        // Resolved on the server: REPORT_CONSENT_POLICY_VERSION is not
+        // NEXT_PUBLIC_, so a client-side call silently returns the default and
+        // any deployment carrying an override would 409 on every rescan.
+        consentPolicyVersion={currentScanConsentPolicyVersion()}
         timezone={page.ctx.workspace.timezone}
         locations={page.locations}
         brief={brief}

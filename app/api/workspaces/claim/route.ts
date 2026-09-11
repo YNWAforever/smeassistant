@@ -3,10 +3,10 @@ import { snapshotRepository } from "@/lib/repositories/snapshots";
 import { NextResponse } from "next/server";
 import { claimCompletionStore } from "@/lib/repositories/claims";
 import { getUser } from "@/lib/auth";
-import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
-import { completeWorkspaceClaim, isValidTimezone, type ClaimMarket } from "@/lib/workspace/claim";
+import { completeWorkspaceClaim } from "@/lib/workspace/claim";
 import { buildSnapshot } from "@/lib/workspace/snapshots";
+import { parseClaimBody } from "./parse-body";
 
 /**
  * POST /api/workspaces/claim (CLAUDE.md §3.2.3).
@@ -20,72 +20,6 @@ import { buildSnapshot } from "@/lib/workspace/snapshots";
  * a client using the TypeScript input type does not silently 400):
  *   { claim_slug, workspace_name, primary_location: { name, address? }, market, timezone?, locale? }
  */
-const SLUG_RE = /^[A-Za-z0-9_-]{6,64}$/;
-const MAX_NAME = 160;
-const MAX_ADDRESS = 500;
-
-type ParsedBody = {
-  claimSlug: string;
-  workspaceName: string;
-  primaryLocation: { name: string; address: string | null };
-  market: ClaimMarket;
-  timezone: string | null;
-  locale: string;
-};
-
-function pick(body: Record<string, unknown>, snake: string, camel: string): unknown {
-  return body[snake] !== undefined ? body[snake] : body[camel];
-}
-
-function limitedString(value: unknown, max: number): string | null {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return trimmed && trimmed.length <= max ? trimmed : null;
-}
-
-export function parseClaimBody(raw: unknown): { ok: true; body: ParsedBody } | { ok: false; error: string } {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ok: false, error: "body must be an object" };
-  const body = raw as Record<string, unknown>;
-
-  const claimSlug = limitedString(pick(body, "claim_slug", "claimSlug"), 64);
-  if (!claimSlug || !SLUG_RE.test(claimSlug)) return { ok: false, error: "claim_slug is invalid" };
-
-  const workspaceName = limitedString(pick(body, "workspace_name", "workspaceName"), MAX_NAME);
-  if (!workspaceName) return { ok: false, error: "workspace_name is required" };
-
-  const location = pick(body, "primary_location", "primaryLocation");
-  if (!location || typeof location !== "object" || Array.isArray(location)) {
-    return { ok: false, error: "primary_location is required" };
-  }
-  const locationRecord = location as Record<string, unknown>;
-  const locationName = limitedString(locationRecord.name, MAX_NAME);
-  if (!locationName) return { ok: false, error: "primary_location.name is required" };
-  const rawAddress = locationRecord.address;
-  if (rawAddress != null && rawAddress !== "" && typeof rawAddress !== "string") {
-    return { ok: false, error: "primary_location.address is invalid" };
-  }
-  const address = typeof rawAddress === "string" ? limitedString(rawAddress, MAX_ADDRESS) : null;
-  if (typeof rawAddress === "string" && rawAddress.trim() && !address) {
-    return { ok: false, error: "primary_location.address is invalid" };
-  }
-
-  const market = typeof body.market === "string" ? body.market.toLowerCase() : "";
-  if (market !== "hk" && market !== "tw") return { ok: false, error: "market must be hk or tw" };
-
-  const rawTimezone = body.timezone;
-  if (rawTimezone != null && rawTimezone !== "" && !isValidTimezone(rawTimezone)) {
-    return { ok: false, error: "timezone is invalid" };
-  }
-  const timezone = isValidTimezone(rawTimezone) ? rawTimezone : null;
-
-  const locale = isLocale(body.locale) ? body.locale : DEFAULT_LOCALE;
-
-  return {
-    ok: true,
-    body: { claimSlug, workspaceName, primaryLocation: { name: locationName, address }, market, timezone, locale },
-  };
-}
-
 export async function POST(req: Request) {
   const user = await getUser();
   if (!user) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
@@ -125,6 +59,12 @@ export async function POST(req: Request) {
         // The job exists but ownership has not been proven yet: the caller
         // must go through the OAuth claim (or ask Fimmick) first.
         return NextResponse.json({ error: "not_attached" }, { status: 409 });
+      case "market_mismatch":
+        // Refused rather than silently corrected: the market is money-bearing
+        // (it selects the Stripe price) and the UI only ever sends the scan's
+        // own region, so a disagreement means the body was tampered with or a
+        // client is out of date. `expected` lets a legitimate client resend.
+        return NextResponse.json({ error: "market_mismatch", expected: result.expected }, { status: 409 });
     }
   } catch (error) {
     console.error("[api/workspaces/claim] failed", error instanceof Error ? error.message : "unknown");

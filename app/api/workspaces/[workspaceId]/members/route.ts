@@ -90,7 +90,16 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ works
   try {
     const target = await membershipRepository.member(workspaceId, memberId);
     if (!target) return NextResponse.json({error:"not found"},{status:404});
-    if (target.role === "owner" && auth.membership.role !== "owner") return NextResponse.json({error:"Not authorized"},{status:403});
+    if (target.role === "owner") {
+      // Defense in depth: authorizeWorkspaceRequest(minRole:"owner") plus
+      // workspace_members_one_owner_idx mean the only caller who can ever reach
+      // an owner-role target IS that sole owner (self-removal). The 403 branch
+      // stays for a hypothetically loosened role gate; the 409 is the real,
+      // reachable case, matching the DB trigger (0005_owner_removal_guard.sql)
+      // that backstops this even if this check is ever bypassed.
+      if (auth.membership.role !== "owner") return NextResponse.json({error:"Not authorized"},{status:403});
+      return NextResponse.json({error:"owner_removal_forbidden"},{status:409});
+    }
     await membershipRepository.remove(workspaceId,memberId);
   } catch {
     console.error("Workspace member removal failed");

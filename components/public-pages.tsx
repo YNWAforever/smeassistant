@@ -58,8 +58,8 @@ export function PricingPage({ locale, market }: { locale: PrototypeLocale; marke
       price: growthPrice,
       cadence: `／${f.perMonth}`,
       description: "適合希望持續改善能見度、但不想管理多個 AI 工具的小型團隊。",
-      meta: "1 個地點 · 2 位用戶",
-      features: ["每月 12 次核准後交付", "定期可比較重新掃描", "完整 AI 能見度團隊", "草稿版本、店主審批及成效證明"],
+      meta: "1 個地點",
+      features: ["核准後交付，用量在工作台內顯示", "可隨時自行執行的可比較重新掃描", "完整 AI 能見度團隊", "草稿版本、店主審批及成效證明"],
       cta: "開始增長工作台",
       href: `/${locale}/owner/sign-in?plan=growth`,
       featured: true,
@@ -72,7 +72,7 @@ export function PricingPage({ locale, market }: { locale: PrototypeLocale; marke
       cadence: "",
       description: "讓多個分店共用一個優先次序、審批流程及能見度改善節奏。",
       meta: "包括 3 個地點",
-      features: ["每月共用 36 次核准後交付", "跨地點優先排序", "分店範圍證據及審批", "合併進度及各地點成效"],
+      features: ["跨地點共用核准後交付", "跨地點優先排序", "分店範圍證據及審批", "合併進度及各地點成效"],
       cta: "管理多個地點",
       href: `/${locale}/owner/sign-in?plan=multi`,
       featured: false,
@@ -95,10 +95,10 @@ export function PricingPage({ locale, market }: { locale: PrototypeLocale; marke
       key: "free", label: "One free scan", title: "SME Scanner", price: "Free", cadence: "", description: "See current visibility, source evidence and the best issue to tackle first.", meta: "No login to start", features: ["One public evidence scan", "Score with coverage", "Three safe priorities", "Methodology, sources and limitations"], cta: "Start free scan", href: `/${locale}/scan`, featured: false,
     },
     {
-      key: "growth", label: "Best for one location", title: "Growth Workspace", price: growthPrice, cadence: ` / ${f.perMonth}`, description: "For a small team that wants recurring improvement without managing a bundle of AI tools.", meta: "1 location · 2 users", features: ["12 approved deliveries per month", "Scheduled comparable rescans", "Complete AI Visibility Team", "Versions, owner approval and proof"], cta: "Start Growth", href: `/${locale}/owner/sign-in?plan=growth`, featured: true,
+      key: "growth", label: "Best for one location", title: "Growth Workspace", price: growthPrice, cadence: ` / ${f.perMonth}`, description: "For a small team that wants recurring improvement without managing a bundle of AI tools.", meta: "1 location", features: ["Approved deliveries, with usage shown in your workspace", "Comparable rescans, run whenever you choose", "Complete AI Visibility Team", "Versions, owner approval and proof"], cta: "Start Growth", href: `/${locale}/owner/sign-in?plan=growth`, featured: true,
     },
     {
-      key: "multi", label: "Up to 3 locations", title: "Multi-location", price: f.contactPricing, cadence: "", description: "One priority, approval and improvement rhythm across multiple business locations.", meta: "Includes 3 locations", features: ["36 pooled approved deliveries per month", "Cross-location prioritisation", "Location-scoped evidence and approvals", "Combined and per-location outcomes"], cta: "Manage multiple locations", href: `/${locale}/owner/sign-in?plan=multi`, featured: false,
+      key: "multi", label: "Up to 3 locations", title: "Multi-location", price: f.contactPricing, cadence: "", description: "One priority, approval and improvement rhythm across multiple business locations.", meta: "Includes 3 locations", features: ["Approved deliveries pooled across locations", "Cross-location prioritisation", "Location-scoped evidence and approvals", "Combined and per-location outcomes"], cta: "Manage multiple locations", href: `/${locale}/owner/sign-in?plan=multi`, featured: false,
     },
     {
       key: "managed", label: "Human-managed", title: "Managed Visibility", price: f.contactPricing, cadence: "", description: "Human execution, quality review and outcome support—not unattended auto-publishing.", meta: "3-month minimum", features: ["Consultant review and execution support", "Channel and location delivery plan", "The same workspace and audit trail", "Owner keeps final approval"], cta: "Learn about managed service", href: `/${locale}/trust`, featured: false,
@@ -160,7 +160,7 @@ export function TrustPage({ locale }: { locale: PrototypeLocale }) {
       <main className="content-page trust-page">
         <header className="content-page-intro"><Badge variant="outline">{isChinese ? "安全、私隱與人工控制" : "Security, privacy and human control"}</Badge><h1>{isChinese ? "一個身份、一條權限界線、一份審計紀錄" : "One identity, one permission boundary, one audit trail"}</h1><p>{tr.intro}</p></header>
         <div className="trust-pillar-grid">{pillars.map(({ icon: Icon, title, body }) => <article key={title}><span><Icon /></span><h2>{title}</h2><p>{body}</p></article>)}</div>
-        <div className="method-layout"><SectionCard><p className="eyebrow">{isChinese ? "審批合約" : "Approval contract"}</p><h2>{isChinese ? "對外送達是獨立狀態轉換" : "External delivery is a separate transition"}</h2><ol className="number-list"><li><span>1</span><div><strong>{isChinese ? "準備" : "Prepare"}</strong><p>{isChinese ? "輸入按範圍限制，不受信任內容只會當成資料，不會當成指令。" : "Inputs are scoped and untrusted content is treated as data, not instruction."}</p></div></li><li><span>2</span><div><strong>{isChinese ? "審閱一個版本" : "Review a version"}</strong><p>{isChinese ? "編輯已批准版本會建立新草稿並重設審批。" : "Editing an approved version creates a new draft and resets approval."}</p></div></li><li><span>3</span><div><strong>{isChinese ? "確認目標" : "Confirm the target"}</strong><p>{isChinese ? "送達需要獲授權角色、正確連接範圍、冪等處理及可復原失敗路徑。" : "Delivery requires an authorised role, connected scope, idempotency and recoverable failure handling."}</p></div></li></ol></SectionCard><SectionCard><p className="eyebrow">{tr.boundaryEyebrow}</p><h2>{tr.boundaryTitle}</h2><dl className="trust-dl">{tr.rows.map((row) => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}</dl><Link href={`/${locale}/legal/privacy`}>{tr.policyLink}</Link></SectionCard></div>
+        <div className="method-layout"><SectionCard><p className="eyebrow">{isChinese ? "審批合約" : "Approval contract"}</p><h2>{isChinese ? "對外送達是獨立狀態轉換" : "External delivery is a separate transition"}</h2><ol className="number-list"><li><span>1</span><div><strong>{isChinese ? "準備" : "Prepare"}</strong><p>{isChinese ? "輸入按範圍限制，不受信任內容只會當成資料，不會當成指令。" : "Inputs are scoped and untrusted content is treated as data, not instruction."}</p></div></li><li><span>2</span><div><strong>{isChinese ? "審閱一個版本" : "Review a version"}</strong><p>{isChinese ? "編輯已批准版本會建立新草稿並重設審批。" : "Editing an approved version creates a new draft and resets approval."}</p></div></li><li><span>3</span><div><strong>{isChinese ? "確認目標" : "Confirm the target"}</strong><p>{isChinese ? "送達需要獲授權角色、正確連接範圍、冪等處理及可復原失敗路徑。" : "Delivery requires an authorised role, connected scope, idempotency and recoverable failure handling."}</p></div></li></ol></SectionCard><SectionCard><p className="eyebrow">{tr.boundaryEyebrow}</p><h2>{tr.boundaryTitle}</h2><dl className="trust-dl">{tr.rows.map((row) => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}</dl><p className="limitation-note">{tr.retentionNote}</p><Link href={`/${locale}/legal/privacy`}>{tr.policyLink}</Link></SectionCard></div>
         <SectionCard className="retention-summary"><div><ShieldCheck /><div><h2>{isChinese ? "資料保留與刪除仍屬正式產品合約" : "Retention and deletion remain production contracts"}</h2><p>{isChinese ? "掃描證據、Agent 輸入與輸出、素材、審計事件、OAuth 代幣及帳單紀錄需要各自的用途、保留、存取與刪除規則。未有明確合約同意前，客戶資料不會用於模型訓練。" : "Scan evidence, agent inputs and outputs, assets, audit events, OAuth tokens and billing records need separate purpose, retention, access and deletion rules. Customer data is not used for model training without explicit contractual consent."}</p></div></div><Button asChild variant="outline"><Link href={`/${locale}/methodology`}>{isChinese ? "查看量度限制" : "Read measurement limitations"}</Link></Button></SectionCard>
       </main>
     </PublicPageFrame>

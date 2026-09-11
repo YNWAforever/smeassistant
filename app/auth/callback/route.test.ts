@@ -29,6 +29,28 @@ describe("GET /auth/callback", () => {
     const response = await GET(request("locale=zh-TW&claim=fixture-report&method=email&error=access_denied"));
     expect(response.headers.get("location")).toBe("https://app.test/zh-TW/owner/sign-in?claim=fixture-report&method=email&error=cancelled"); expect(mocks.signOut).toHaveBeenCalledOnce();
   });
+  it("exchanges a verifier from a framework-wrapped request on Node 24 (regression for the production verifier_exchange failure)", async () => {
+    // Next's compiled production route handler passes a Proxy wrapper around the
+    // native Request, not the plain Request this file's `request()` helper
+    // builds. On Node 24, `new NextRequest(wrappedRequest)` (a Request copy
+    // construction) throws "Cannot read private member #state from an object
+    // whose class did not declare it" because the wrapper hides Undici's
+    // private fields from the copy constructor -- the same class of bug fixed
+    // for a sibling route in b991b7f. This wraps a real Request in a
+    // pass-through Proxy (matching that commit's own reproduction technique) to
+    // exercise the exact production shape; before the fix, the outer try/catch
+    // in route.ts would swallow the TypeError and redirect to
+    // error=auth_unavailable with an "owner_sign_in_failed" verifier_exchange
+    // log instead of completing.
+    const original = request("locale=en&returnTo=%2Fen%2Fowner%2Ffixture&neon_auth_session_verifier=fixture");
+    const wrapped = new Proxy(original, { get(target, property) { return Reflect.get(target, property, target); } });
+    const response = await GET(wrapped);
+    expect(response.headers.get("location")).toBe("https://app.test/en/owner/sign-in/complete?returnTo=%2Fen%2Fowner%2Ffixture");
+    expect(mocks.middleware).toHaveBeenCalledOnce();
+    const forwarded = mocks.middleware.mock.calls[0][0] as Request;
+    expect(forwarded.url).toBe(original.url);
+  });
+
   it("fails closed when a fixture verifier exchange produces no response", async () => {
     process.env.SME_TEST_IDENTITY = "owned-local";
     mocks.exchangeFixtureVerifier.mockResolvedValue(null);

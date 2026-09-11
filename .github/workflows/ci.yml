@@ -58,6 +58,9 @@ jobs:
       - name: Assert retired transport is absent
         run: pnpm test:no-supabase
 
+      - name: Assert self-service ownership claim stays disabled
+        run: pnpm test:no-self-service-claim
+
       - name: Prepare owned PostgreSQL fixture image
         run: docker pull postgres:16
 

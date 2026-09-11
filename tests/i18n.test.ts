@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 
 import { getMessages, hasMessage, t } from "@/lib/i18n";
 
-const NAMESPACES = ["scanner", "scanning", "unlock", "report", "share", "legal"];
+// "unlock" was removed: nothing called t() with it, and five of its keys
+// described a /api/report-access/recover flow that has no route and no sender.
+const NAMESPACES = ["scanner", "scanning", "report", "share", "legal"];
 
 function readBundle(locale: string): Record<string, unknown> {
   return JSON.parse(readFileSync(fileURLToPath(new URL(`../lib/messages/${locale}.json`, import.meta.url)), "utf8"));
@@ -16,9 +18,17 @@ function keyPaths(value: unknown, prefix = ""): string[] {
 }
 
 describe("lib/messages bundles", () => {
-  it("carry exactly the six upstream namespaces this app reuses", () => {
+  it("carry exactly the five upstream namespaces this app still reuses", () => {
     for (const locale of ["en", "zh-HK", "zh-TW"]) {
       expect(Object.keys(readBundle(locale)).sort()).toEqual([...NAMESPACES].sort());
+    }
+  });
+
+  it("carry no claim about a recovery link that nothing sends", () => {
+    // No recovery route, no configuration reader and no mail sender exists here;
+    // the only outbound mail is the managed sign-in link.
+    for (const locale of ["en", "zh-HK", "zh-TW"]) {
+      expect(JSON.stringify(readBundle(locale))).not.toMatch(/recovery link|復原連結/i);
     }
   });
 

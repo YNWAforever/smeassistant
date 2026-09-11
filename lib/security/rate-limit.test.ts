@@ -168,16 +168,28 @@ describe("atomic rate-limit contract", () => {
     expect(result).toMatchObject({ allowed: false, unavailable: true });
   });
 
-  it("keeps scan processing available when a non-required limiter is unavailable", async () => {
+  it("keeps read-only status polling available when a non-required limiter is unavailable", async () => {
+    process.env.RATE_LIMIT_SECRET = "test-secret-a";
+    const result = await enforceRateLimit({
+      req: new Request("https://scanner.test"),
+      scope: "scan_status",
+      identifiers: ["job-1"],
+      client: { rpc: vi.fn(async () => ({ data: null, error: { message: "down" } })) },
+      failClosed: false,
+    });
+    expect(result).toMatchObject({ allowed: true, unavailable: true });
+  });
+
+  it("fails closed on scan processing when its limiter is unavailable (spends provider budget)", async () => {
     process.env.RATE_LIMIT_SECRET = "test-secret-a";
     const result = await enforceRateLimit({
       req: new Request("https://scanner.test"),
       scope: "scan_process",
       identifiers: ["job-1"],
       client: { rpc: vi.fn(async () => ({ data: null, error: { message: "down" } })) },
-      failClosed: false,
+      failClosed: true,
     });
-    expect(result).toMatchObject({ allowed: true, unavailable: true });
+    expect(result).toMatchObject({ allowed: false, unavailable: true });
   });
 
   it("uses separate business-search buckets for separate validated sessions", async () => {

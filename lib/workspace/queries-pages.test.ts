@@ -25,6 +25,15 @@ const repository = vi.hoisted(() => ({
   activity: vi.fn(), notifications: vi.fn(), notificationPreferences: vi.fn(),
 }));
 vi.mock("@/lib/repositories/workspace-read", () => ({ workspaceReadRepository: () => repository }));
+const reaper = vi.hoisted(() => ({ reapStrandedRuns: vi.fn(async () => [] as string[]) }));
+vi.mock("@/lib/workspace/run-reaper", () => ({ reapStrandedRuns: reaper.reapStrandedRuns }));
+type FakeSnapshot = { id: string; jobId: string; workspaceId: string; locationId: string | null; observedAt: string; metrics: Record<string, number> };
+const artifacts = vi.hoisted(() => ({
+  assistantSnapshot: vi.fn(async () => null as unknown),
+  assistantLatestSnapshot: vi.fn(async () => null as unknown),
+  assistantReviewData: vi.fn(async () => null as unknown),
+}));
+vi.mock("@/lib/repositories/artifacts", () => ({ artifactRepository: () => artifacts }));
 
 import { getHomeBrief, getInsights, listActions, getActivity, getIntegrations, getAction, loadActionRows, loadDiffById } from "./queries-pages";
 
@@ -70,7 +79,7 @@ beforeEach(() => {
 
   state.snapshots = [snapshotRow({})];
   state.diffs = {}; state.actions = [actionRow({}), actionRow({ id: "a2", template_key: "social-post", priority: "high", priority_score: 45, action_state: "recommended", required_inputs: [] })];
-  state.measurements = []; state.versions = []; state.completed = []; state.schedule = { next_run_at: "2026-09-14T00:00:00Z" }; state.connections = [{ status: "active" }]; state.runs = [];
+  state.measurements = []; state.versions = []; state.completed = []; state.schedule = { next_run_at: "2026-09-14T00:00:00Z", cadence: "monthly", anniversary_day: 14 }; state.connections = [{ status: "active" }]; state.runs = [];
 });
 
 describe("getHomeBrief", () => {
@@ -103,7 +112,10 @@ describe("getHomeBrief", () => {
     expect(repository.diff).toHaveBeenCalledWith("d1", "ws-1", "job-1");
     expect(brief.snapshot?.id).toBe("snap-1");
     expect(brief.changed).toMatchObject({ factType: "Unknown", delta: null, reason: "SCORING_VERSION_MISMATCH", comparable: false });
-    expect(brief.nextScanAt).toBe("2026-09-14T00:00:00Z");
+    // A recurring day, never a stored date: `scan_schedules.next_run_at` is
+    // written once and never advanced, so a date would drift into the past
+    // while still being presented as the next scan.
+    expect(brief.rescanCadenceDay).toBe(14);
     expect(brief.priority?.id).toBe("a1");
     state.diffs.d1 = { ...state.diffs.d1, comparable: true, incomparable_reason: null, resolved_findings: ["gbp.rating_low"], regressed_findings: ["gbp.owner_response_low"] };
     const comparable = await getHomeBrief(ctx, "yik-yam");
@@ -186,9 +198,89 @@ describe("page repository boundaries", () => {
   it("keeps actions readable with no optional versions, runs or measurements", async () => {
     const detail = await getAction(ctx, "a1");
     expect(detail?.action.id).toBe("a1");
-    expect(detail).toMatchObject({ versions: [], runs: [], measurements: [] });
+    expect(detail).toMatchObject({ versions: [], runs: [], measurements: [], scanInputs: [] });
     expect(repository.versions).toHaveBeenCalledWith("ws-1", ["a1"]);
     state.actions = [];
     expect(await getAction(ctx, "missing")).toBeNull();
+  });
+
+  it("reconciles stranded runs once, before anything reads them", async () => {
+    const detail = await getAction(ctx, "a1");
+    expect(reaper.reapStrandedRuns).toHaveBeenCalledTimes(1);
+    expect(reaper.reapStrandedRuns).toHaveBeenCalledWith("ws-1", ["a1"]);
+    // The reaped row has to be visible to both run readers: overviewsFor derives
+    // runState/displayPhaseKey from repository.runs, and the explicit
+    // repository.runs call builds the detail's run history.
+    expect(reaper.reapStrandedRuns.mock.invocationCallOrder[0]).toBeLessThan(repository.runs.mock.invocationCallOrder[0]);
+    // Reconciliation is best-effort: nothing reaped still returns the full detail.
+    expect(detail).toMatchObject({ versions: [], runs: [], measurements: [], scanInputs: [] });
+  });
+
+  it("shows the reviews the draft will use instead of asking the owner to retype them", async () => {
+    const snapshot: FakeSnapshot = { id: "snap-9", jobId: "job-9", workspaceId: "ws-1", locationId: "loc-1", observedAt: "2026-09-02T00:00:00Z", metrics: { "gbp.reviews_count": 210 } };
+    artifacts.assistantSnapshot.mockResolvedValue(snapshot);
+    artifacts.assistantReviewData.mockResolvedValue({
+      gbp: { reviews: [
+        { rating: 2, text: "Slow service", time: "2026-08-30T00:00:00Z" },
+        { rating: 5, text: "Answered already", time: "2026-08-29T00:00:00Z", owner_response: "Thanks!" },
+      ] },
+    });
+    state.actions = [actionRow({ id: "a1", template_key: "review-response", source_snapshot_id: "snap-9", required_inputs: ["brand_voice", "reviews_without_response"], action_state: "needs_input" })];
+
+    const detail = await getAction(ctx, "a1");
+    // The action's own snapshot, never the location's latest.
+    expect(artifacts.assistantSnapshot).toHaveBeenCalledWith("ws-1", "snap-9");
+    expect(artifacts.assistantLatestSnapshot).not.toHaveBeenCalled();
+    expect(detail?.scanInputs).toHaveLength(1);
+    expect(detail?.scanInputs[0]).toMatchObject({
+      key: "reviews_without_response",
+      factType: "Observed",
+      available: 1,
+      inspected: 2,
+      populationCount: 210,
+      jobId: "job-9",
+    });
+    expect(detail?.scanInputs[0].reviews[0].excerpt).toBe("Slow service");
+    // Resolved live, so a row derived before this rule stops reporting an input
+    // the workspace can already answer -- while the persisted list is unchanged.
+    expect(detail?.action.missingInputs).toEqual(["brand_voice"]);
+    expect(detail?.action.requiredInputs).toEqual(["brand_voice", "reviews_without_response"]);
+    expect(detail?.action.evidenceInputs).toEqual(["reviews_without_response"]);
+  });
+
+  it("reads no review data at all for a template that does not draft replies", async () => {
+    state.actions = [actionRow({ id: "a1", template_key: "social-post" })];
+    const detail = await getAction(ctx, "a1");
+    expect(detail?.scanInputs).toEqual([]);
+    expect(artifacts.assistantReviewData).not.toHaveBeenCalled();
+  });
+
+  it("keeps the input form when the scan retained no unanswered review", async () => {
+    artifacts.assistantSnapshot.mockResolvedValue({ id: "snap-9", jobId: "job-9", workspaceId: "ws-1", locationId: "loc-1", observedAt: "2026-09-02T00:00:00Z", metrics: {} } satisfies FakeSnapshot);
+    artifacts.assistantReviewData.mockResolvedValue({ gbp: { reviews: [{ rating: 5, text: "Answered", time: "2026-08-29T00:00:00Z", owner_response: "Thanks!" }] } });
+    state.actions = [actionRow({ id: "a1", template_key: "review-response", source_snapshot_id: "snap-9", required_inputs: ["reviews_without_response"], action_state: "needs_input" })];
+
+    const detail = await getAction(ctx, "a1");
+    expect(detail?.scanInputs).toEqual([]);
+    expect(detail?.action.missingInputs).toEqual(["reviews_without_response"]);
+  });
+
+  it("refuses to render another location's review text to an out-of-scope manager", async () => {
+    artifacts.assistantSnapshot.mockResolvedValue({ id: "snap-9", jobId: "job-9", workspaceId: "ws-1", locationId: "loc-2", observedAt: "2026-09-02T00:00:00Z", metrics: {} } satisfies FakeSnapshot);
+    artifacts.assistantReviewData.mockResolvedValue({ gbp: { reviews: [{ rating: 2, text: "Slow service", time: "2026-08-30T00:00:00Z" }] } });
+    state.actions = [actionRow({ id: "a1", template_key: "review-response", location_id: null, source_snapshot_id: "snap-9", required_inputs: ["reviews_without_response"] })];
+    const scoped = { ...ctx, membership: { ...ctx.membership, role: "manager" as const, locationScope: ["loc-1"] } };
+
+    const detail = await getAction(scoped, "a1");
+    expect(detail?.scanInputs).toEqual([]);
+    expect(artifacts.assistantReviewData).not.toHaveBeenCalled();
+  });
+
+  it("never reconciles from the actions list", async () => {
+    // Deliberate scope decision, not an oversight: reaping in listActions would
+    // turn every list render into a multi-row write. The cost is that a stranded
+    // run keeps its "Generating" chip until the owner opens that action.
+    await listActions(ctx, { location: "all" });
+    expect(reaper.reapStrandedRuns).not.toHaveBeenCalled();
   });
 });

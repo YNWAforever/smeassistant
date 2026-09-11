@@ -37,7 +37,9 @@ function unavailable(): NextResponse {
   return response({ kind: "recover", reason: "unavailable" }, 503);
 }
 
-export function sameOrigin(request: Request): boolean {
+// Not exported: Next.js allows a route file to export only the HTTP method
+// handlers and its known config values, and type-checks that at build time.
+function sameOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
   if (!origin || origin === "null") return false;
   try {

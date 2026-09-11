@@ -161,24 +161,30 @@ describe("export idempotency key", () => {
 describe("phase 6 helpers", () => {
   it("rescans: POSTs the rescan route, then the process route with the new jobId", async () => {
     fetchMock.mockResolvedValueOnce(reply(200, { jobId: "job-2" })).mockResolvedValueOnce(reply(202, { ok: true }));
-    const result = await rescanLocation("ws", "loc-1");
+    const result = await rescanLocation("ws", "loc-1", { policyVersion: "2026-07-28" });
     expect(result).toEqual({ ok: true, data: { jobId: "job-2" } });
     const [first, second] = fetchMock.mock.calls as Array<[string, RequestInit]>;
     expect(first[0]).toBe("/api/workspaces/ws/rescan");
-    expect(JSON.parse(String(first[1].body))).toEqual({ locationId: "loc-1" });
+    // The rescan carries the consent the owner gave in the confirm dialog. The
+    // route parses and version-checks it; enqueueRescan no longer invents one.
+    expect(JSON.parse(String(first[1].body))).toEqual({
+      locationId: "loc-1",
+      public_evidence_consent: true,
+      consent_policy_version: "2026-07-28",
+    });
     expect(second[0]).toBe("/api/scan/process");
     expect(JSON.parse(String(second[1].body))).toEqual({ jobId: "job-2" });
   });
 
   it("rescans: surfaces the tier gate without calling the process route", async () => {
     fetchMock.mockResolvedValueOnce(reply(403, { error: "tier_required" }));
-    expect(await rescanLocation("ws", "loc-1")).toEqual({ ok: false, status: 403, error: "tier_required" });
+    expect(await rescanLocation("ws", "loc-1", { policyVersion: "2026-07-28" })).toEqual({ ok: false, status: 403, error: "tier_required" });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("rescans: still returns the jobId when the process call fails (the job stays queued)", async () => {
     fetchMock.mockResolvedValueOnce(reply(200, { jobId: "job-3" })).mockRejectedValueOnce(new TypeError("Failed to fetch"));
-    expect(await rescanLocation("ws", "loc-1")).toEqual({ ok: true, data: { jobId: "job-3" } });
+    expect(await rescanLocation("ws", "loc-1", { policyVersion: "2026-07-28" })).toEqual({ ok: true, data: { jobId: "job-3" } });
   });
 
   it("patches notification preferences with the route's camelCase body", async () => {

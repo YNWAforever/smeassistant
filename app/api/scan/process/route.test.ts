@@ -23,6 +23,10 @@ vi.mock("@/lib/security/rate-limit", () => ({
   enforceCompositeIdentifierRateLimit: limiterMocks.enforceCompositeIdentifierRateLimit,
   rateLimitedResponse: vi.fn(() => new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 })),
 }));
+// Default to a consented job so every existing case keeps exercising the
+// dispatch path; the consent cases below override it per test.
+const gateMocks = vi.hoisted(() => ({ assertScanConsent: vi.fn(async () => ({ ok: true }) as { ok: boolean; code?: string; status?: number; correlationId?: string }) }));
+vi.mock("@/lib/scan/consent-gate", () => ({ assertScanConsent: gateMocks.assertScanConsent }));
 const storeMocks = vi.hoisted(() => ({ createScanExecutionStore: vi.fn(() => ({ marker: "neon-store" })) }));
 vi.mock("@/lib/scan/execution-store", () => ({ createScanExecutionStore: storeMocks.createScanExecutionStore, buildTrendDiffDeps: vi.fn(), buildAeoSnapshotDeps: vi.fn() }));
 
@@ -33,6 +37,48 @@ vi.mock("@/lib/scan/execution-store", () => ({ createScanExecutionStore: storeMo
 // drop a stub but leaves a plain assignment alone.
 process.env.SCAN_SOURCES = "live";
 
+
+describe("scan process consent gate", () => {
+  const JOB = "11111111-1111-4111-8111-111111111111";
+  const post = () => POST(new Request("http://localhost/api/scan/process", {
+    method: "POST",
+    body: JSON.stringify({ jobId: JOB }),
+    headers: { "content-type": "application/json" },
+  }));
+
+  // The suite below asserts call counts on these mocks, so restore the defaults
+  // AND clear the calls this block made.
+  afterEach(() => {
+    gateMocks.assertScanConsent.mockClear();
+    gateMocks.assertScanConsent.mockResolvedValue({ ok: true });
+    limiterMocks.enforceCompositeIdentifierRateLimit.mockClear();
+    limiterMocks.enforceCompositeIdentifierRateLimit.mockResolvedValue({ allowed: true, retryAfterSeconds: 1 });
+  });
+
+  it("spends nothing on a job whose consent is missing", async () => {
+    gateMocks.assertScanConsent.mockResolvedValue({ ok: false, code: "consent_required", status: 403, correlationId: "corr-1" });
+    const response = await post();
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "consent_required", correlationId: "corr-1" });
+    expect(processScan).not.toHaveBeenCalled();
+    expect(storeMocks.createScanExecutionStore).not.toHaveBeenCalled();
+  });
+
+  it("refuses rather than guesses when the consent read is unavailable", async () => {
+    gateMocks.assertScanConsent.mockResolvedValue({ ok: false, code: "unavailable", status: 503 });
+    const response = await post();
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "unavailable" });
+    expect(processScan).not.toHaveBeenCalled();
+  });
+
+  it("runs after the limiter, so abuse of the gate itself is still bounded", async () => {
+    limiterMocks.enforceCompositeIdentifierRateLimit.mockResolvedValue({ allowed: false, retryAfterSeconds: 30 });
+    const response = await post();
+    expect(response.status).toBe(429);
+    expect(gateMocks.assertScanConsent).not.toHaveBeenCalled();
+  });
+});
 
 describe("scan process route", () => {
   it("rejects non-UUID job IDs before invoking the processor", async () => {
@@ -781,23 +827,27 @@ describe("collectScanProviders wires the real per-module confidence graders", ()
           organic_results: [],
         }), { status: 200 });
       }
-      if (url.includes("example.com")) {
-        return new Response(
-          "<html><head><meta name=\"description\" content=\"Demo\"></head><body><h1>Demo</h1></body></html>",
-          { status: 200 },
-        );
-      }
       throw new Error("unexpected fetch: " + url);
     });
     vi.stubGlobal("fetch", fetcher);
+    // fetchWebsiteSafely does its own real DNS resolution + pinned HTTPS
+    // request for SSRF protection, so it never goes through global fetch --
+    // inject it directly instead (collectScanProviders' test-only deps param).
+    const fetchWebsite = vi.fn(async (url: string) =>
+      url === "https://example.com"
+        ? { ok: true as const, html: "<html><head><meta name=\"description\" content=\"Demo\"></head><body><h1>Demo</h1></body></html>" }
+        : { ok: false as const, code: "WEBSITE_FETCH_FAILED" as const },
+    );
 
     try {
       const result = await collectScanProviders(
         { ...baseJob, ig_handle: null, website_url: "https://example.com" },
         async () => undefined,
+        { fetchWebsite },
       );
 
       expect(result.aeo).toMatchObject({ status: "measured", confidence: "high" });
+      expect(fetchWebsite).toHaveBeenCalledWith("https://example.com");
     } finally {
       vi.unstubAllGlobals();
       vi.unstubAllEnvs();

@@ -49,6 +49,16 @@ export type WorkspaceCopy = {
   states: Record<StateLabelKey, string>;
   priority: { urgent: string; high: string; medium: string; low: string };
   freshness: { today: string; days: string };
+  scanInputs: {
+    heading: string;
+    fromScan: string;
+    noOwnerReply: string;
+    limitation: string;
+    population: string;
+    addOwn: string;
+    addOwnNote: string;
+    addOwnSubmit: string;
+  };
   inputs: Record<string, string>;
 };
 
@@ -100,6 +110,18 @@ export const workspaceEn: WorkspaceCopy = {
   },
   priority: { urgent: "Urgent", high: "High", medium: "Medium", low: "Low" },
   freshness: { today: "Updated today", days: "Updated {n} days ago" },
+  scanInputs: {
+    heading: "Reviews the draft will use",
+    fromScan: "Supplied by the scan",
+    noOwnerReply: "No owner reply",
+    // Says only what the pipeline guarantees: sanitizeReportProof keeps a
+    // bounded sample in provider order, so no recency claim is made here.
+    limitation: "The scan kept {inspected} reviews; {unanswered} have no owner reply.",
+    population: " Google reported {total} reviews in total.",
+    addOwn: "Add a review the scan did not capture (optional)",
+    addOwnNote: "Text you type here is recorded as owner-supplied, never as collected evidence.",
+    addOwnSubmit: "Save and generate",
+  },
   inputs: inputs([
     "Brand voice", "Reviews without response", "Language", "Channel (WhatsApp / LINE / QR)", "Opening hours", "Categories", "Approved asset or text only", "Alt text",
     "Approved claim", "CTA link", "Owner fact 1", "Owner fact 2", "Owner fact 3", "Menu items (name, ingredients, allergens, price)", "Google account owner",
@@ -145,6 +167,16 @@ export const workspaceZhHK: WorkspaceCopy = {
   },
   priority: { urgent: "緊急", high: "高", medium: "中", low: "低" },
   freshness: { today: "今日更新", days: "{n} 日前更新" },
+  scanInputs: {
+    heading: "草稿會用到的評論",
+    fromScan: "由掃描提供",
+    noOwnerReply: "未有店主回覆",
+    limitation: "掃描保留了 {inspected} 則評論，其中 {unanswered} 則未有店主回覆。",
+    population: "Google 顯示評論總數為 {total} 則。",
+    addOwn: "補充掃描未收錄的評論（選填）",
+    addOwnNote: "你在此輸入的內容會標示為店主提供，不會當作已收集的證據。",
+    addOwnSubmit: "儲存並生成",
+  },
   inputs: inputs([
     "品牌語氣", "未回覆的評論", "語言", "渠道（WhatsApp / LINE / QR）", "營業時間", "類別", "已批准素材或純文字", "替代文字",
     "已批准的主張", "行動連結", "店主事實 1", "店主事實 2", "店主事實 3", "餐牌項目（名稱、材料、致敏原、價錢）", "Google 帳戶擁有人",

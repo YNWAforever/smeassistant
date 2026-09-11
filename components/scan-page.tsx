@@ -76,10 +76,13 @@ export function ScanPage({
   locale,
   initialMarket,
   initialBusiness,
+  consentPolicyVersion,
 }: {
   locale: PrototypeLocale
   initialMarket: ScanMarket
   initialBusiness?: string
+  /** Resolved on the server so a deployment override reaches the client. */
+  consentPolicyVersion: string
 }) {
   const hydrated = useSyncExternalStore(subscribeHydration, clientHydrated, serverHydrated)
   const c = copy[locale].funnel.scan
@@ -89,6 +92,9 @@ export function ScanPage({
   const [step, setStep] = useState(1)
   const [draft, setDraft] = useState<ScanDraft>(() => emptyScanDraft(initialMarket, initialBusiness?.trim() ?? ""))
   const [consent, setConsent] = useState(false)
+  // Seeded from the prop but held in state: on a 409 the server tells us the
+  // version it publishes now, and posting the stale prop again would loop.
+  const [policyVersion, setPolicyVersion] = useState(consentPolicyVersion)
   const [error, setError] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [marketChanged, setMarketChanged] = useState(false)
@@ -196,11 +202,22 @@ export function ScanPage({
       const response = await fetch("/api/scan/start", {
         method: "POST",
         headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify(buildScanStartPayload(draft, locale)),
+        body: JSON.stringify(buildScanStartPayload(draft, locale, { granted: consent, policyVersion })),
       })
-      const data = (await response.json().catch(() => ({}))) as { jobId?: string; error?: string }
+      const data = (await response.json().catch(() => ({}))) as { jobId?: string; error?: string; policy_version?: string }
       if (response.status === 429) {
         setError(t(locale, "scanner.candidateErrorRateLimited"))
+        return
+      }
+      // The privacy notice changed while this tab was open. Adopt the version
+      // the server publishes now, refresh so step 4 renders the current text,
+      // and ask again -- re-posting the stale version would 409 forever.
+      if (response.status === 409) {
+        if (data.policy_version) setPolicyVersion(data.policy_version)
+        setConsent(false)
+        setStep(4)
+        setError(c.errors.consentStale)
+        router.refresh()
         return
       }
       if (!response.ok || !isJobId(data.jobId)) {

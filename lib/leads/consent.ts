@@ -29,7 +29,14 @@ export function resolveConsentPolicyVersion(override: string | undefined): strin
   return trimmed ? trimmed : CONSENT_POLICY_VERSION;
 }
 
-export type ConsentType = "report_delivery" | "scan_discussion" | "marketing";
+/**
+ * `public_evidence` is the scan-time consent (lib/scan/consent.ts); the other
+ * three are the unlock consents buildConsentRecords writes. `consent_type` is
+ * bare `text NOT NULL` in neon/migrations/0002_business.sql, so widening this
+ * union needs no DDL — which matters, because verifyCatalog deep-equals the
+ * whole catalog against a frozen snapshot with no allowlist for columns.
+ */
+export type ConsentType = "report_delivery" | "scan_discussion" | "marketing" | "public_evidence";
 
 export interface ConsentRecordInput {
   consentType: ConsentType;

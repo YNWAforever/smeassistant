@@ -27,6 +27,7 @@
     "launch:check": "node scripts/launch-check.mjs",
     "neon:readiness": "tsx scripts/neon/readiness.ts",
     "test:no-supabase": "node scripts/assert-no-supabase.mjs",
+    "test:no-self-service-claim": "node scripts/assert-no-self-service-claim.mjs",
     "e2e:neon-auth": "playwright test --config playwright.neon-auth.config.ts"
   },
   "dependencies": {

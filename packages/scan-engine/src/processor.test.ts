@@ -162,6 +162,58 @@ describe("createScanProcessor", () => {
     );
   });
 
+  it("keeps a single-measured-module scan inspectable as partial with a withheld score, not failed", async () => {
+    // The scorer withholds `overall` below two independent channels by design.
+    // That is an honesty rule, not a broken scan: the evidence collected is
+    // still real and must stay inspectable, so the job is "partial" (which the
+    // report renders with its "score withheld" copy) rather than "failed"
+    // (which suppresses coverage, findings and every module score).
+    const persist = vi.fn().mockResolvedValue(undefined);
+    const recordTerminal = vi.fn().mockResolvedValue(undefined);
+    const process = createScanProcessor({
+      claimJob: vi.fn().mockResolvedValue(job),
+      collect: vi.fn().mockResolvedValue({
+        ig: measuredIg,
+        gbp: { status: "unavailable", limitationCode: "GBP_PLACE_NOT_FOUND" },
+        aeo: { status: "unavailable", limitationCode: "AEO_PROVIDER_NOT_CONFIGURED" },
+        trust: { status: "unavailable", limitationCode: "TRUST_NOT_MEASURED" },
+      }),
+      score: scoreAll,
+      persist,
+      fail: vi.fn(),
+      recordTerminal,
+    });
+
+    await expect(process("job-1")).resolves.toEqual({ status: "partial" });
+    const persisted = persist.mock.calls[0][0];
+    expect(persisted.status).toBe("partial");
+    expect(persisted.overall).toBeNull();
+    // The evidence that *was* collected survives -- coverage is non-zero and
+    // the measured module keeps its score.
+    expect(persisted.coverage).toBeGreaterThan(0);
+    expect(persisted.moduleResults.ig).toEqual(expect.objectContaining({ status: "measured" }));
+    expect(recordTerminal).toHaveBeenCalledWith(expect.objectContaining({ jobId: "job-1", status: "partial" }));
+  });
+
+  it("still reports a scan that measured nothing as failed", async () => {
+    const persist = vi.fn().mockResolvedValue(undefined);
+    const process = createScanProcessor({
+      claimJob: vi.fn().mockResolvedValue(job),
+      collect: vi.fn().mockResolvedValue({
+        ig: { status: "unavailable", limitationCode: "IG_HANDLE_NOT_PROVIDED" },
+        gbp: { status: "unavailable", limitationCode: "GBP_PLACE_NOT_FOUND" },
+        aeo: { status: "unavailable", limitationCode: "AEO_PROVIDER_NOT_CONFIGURED" },
+        trust: { status: "unavailable", limitationCode: "TRUST_NOT_MEASURED" },
+      }),
+      score: scoreAll,
+      persist,
+      fail: vi.fn(),
+    });
+
+    await expect(process("job-1")).resolves.toEqual(expect.objectContaining({ status: "failed" }));
+    expect(persist.mock.calls[0][0]).toEqual(expect.objectContaining({ status: "failed", overall: null }));
+  });
+
   it("persists measured GBP and TRUST when SerpApi supplies scoreable GBP facts", async () => {
     const persist = vi.fn().mockResolvedValue(undefined);
     const process = createScanProcessor({

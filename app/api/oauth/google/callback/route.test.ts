@@ -141,7 +141,12 @@ describe("GET /api/oauth/google/callback", () => {
     expect(mocks.exchangeCode).not.toHaveBeenCalled();
   });
 
-  it("allows a manager to complete the Google OAuth consent flow", async () => {
+  it("refuses a manager completing the Google OAuth consent flow", async () => {
+    // This case previously asserted the opposite. Connecting is not additive --
+    // replaceGoogleConnection REVOKES the credential the workspace already
+    // holds -- so admitting managers let an invited contractor swap the
+    // owner's Google credential for their own. Integrations are an owner
+    // setting (CLAUDE.md §3.9), and the disconnect route was already owner-only.
     mocks.verifyState.mockReturnValue(STATE);
     mocks.getUser.mockResolvedValue({ data: { user: { id: "user-4", email: "manager@example.com" } } });
     tables({ role: "manager" });
@@ -149,9 +154,11 @@ describe("GET /api/oauth/google/callback", () => {
 
     const response = await GET(request("?code=abc&state=good-signature"));
 
-    expect(response.status).toBe(307);
-    expect(mocks.exchangeCode).toHaveBeenCalled();
-    expect(location(response).searchParams.get("connected")).toBe("ok");
+    expect(location(response).searchParams.get("connected")).toBe("forbidden");
+    // Refused before the exchange, so no code is burned and no credential is
+    // written over the owner's.
+    expect(mocks.exchangeCode).not.toHaveBeenCalled();
+    expect(mocks.replaceGoogleConnection).not.toHaveBeenCalled();
   });
 
   it("passes encrypted connection fields to the repository, records an audit event and lands on the workspace's integrations page", async () => {

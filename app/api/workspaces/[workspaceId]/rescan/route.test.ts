@@ -33,8 +33,18 @@ function auth(role: "owner" | "manager" | "viewer") {
   };
 }
 
-function post(body: unknown) {
+// The route now requires a parsed, version-checked public-evidence consent.
+// Defaulted here so each case below still describes its own concern (tier,
+// authorization, the limiter) rather than repeating consent; the consent itself
+// has dedicated cases.
+const CONSENT_BODY = { public_evidence_consent: true, consent_policy_version: "2026-07-28" };
+
+function postRaw(body: Record<string, unknown>) {
   return import("./route").then(({ POST }) => POST(new Request(URL_BASE, { method: "POST", body: JSON.stringify(body) }), PARAMS));
+}
+
+function post(body: Record<string, unknown>) {
+  return import("./route").then(({ POST }) => POST(new Request(URL_BASE, { method: "POST", body: JSON.stringify({ ...CONSENT_BODY, ...body }) }), PARAMS));
 }
 
 beforeEach(() => {
@@ -48,10 +58,36 @@ beforeEach(() => {
 afterEach(() => vi.resetAllMocks());
 
 describe("POST /api/workspaces/[workspaceId]/rescan", () => {
+  it("refuses a rescan that carries no consent, before touching the database", async () => {
+    // enqueueRescan used to build the consent itself -- granted:true stamped
+    // with whatever version was published -- so consent_records held a
+    // policy-versioned agreement the owner had never been shown (guardrail 13).
+    const res = await postRaw({ locationId: LOCATION_ID, locale: "en" });
+    expect(res.status).toBe(400);
+    expect(mocks.enqueueRescan).not.toHaveBeenCalled();
+    // Refused with the body, before authorization or the tier read.
+    expect(mocks.authorizeWorkspaceRequest).not.toHaveBeenCalled();
+  });
+
+  it("refuses a consent stamped with a superseded policy version", async () => {
+    // The whole point of recording a version: an owner who agreed to an older
+    // policy has not agreed to the current one, so this must 409 rather than
+    // silently restamp it.
+    const res = await postRaw({ locationId: LOCATION_ID, locale: "en", public_evidence_consent: true, consent_policy_version: "2020-01-01" });
+    expect(res.status).toBe(409);
+    expect(mocks.enqueueRescan).not.toHaveBeenCalled();
+  });
+
   it("enqueues for an owner on a paid workspace: 201 { jobId }, limiter keyed on the workspace id, schedule ensured", async () => {
     mocks.authorizeWorkspaceRequest.mockResolvedValue(auth("owner"));
 
     const res = await post({ locationId: LOCATION_ID, locale: "en" });
+    // The consent recorded is the one the caller submitted, not one this route
+    // invented on their behalf.
+    expect(mocks.enqueueRescan).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ consent: expect.objectContaining({ consentType: "public_evidence", granted: true, policyVersion: "2026-07-28" }) }),
+    );
 
     expect(res.status).toBe(201);
     expect(await res.json()).toEqual({ jobId: "job-new" });

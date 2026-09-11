@@ -29,7 +29,9 @@ describe("EvidenceGallery", () => {
 });
 
 describe("RescanButton", () => {
-  const base = { locale: "en" as const, workspaceId: "ws", workspaceSlug: "shop", locationId: "loc-1" };
+  // Server-resolved and passed down: the rescan now collects a
+  // policy-versioned public-evidence consent instead of the route inventing one.
+  const base = { locale: "en" as const, workspaceId: "ws", workspaceSlug: "shop", locationId: "loc-1", consentPolicyVersion: "2026-07-28" };
   it("is hidden for viewers", () => {
     expect(renderToStaticMarkup(<RescanButton {...base} tier="paid" role="viewer" />)).toBe("");
   });

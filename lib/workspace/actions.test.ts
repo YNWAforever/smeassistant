@@ -62,4 +62,25 @@ describe("deriveActions", () => {
     const withDiff = deriveActions({ ...baseInput, latestDiff: diffRow({ regressed_findings: ["gbp.owner_response_low"] }) }).find((a) => a.templateKey === "review-response")!;
     expect(withDiff.priorityFactors.find((f) => f.key === "urgency")!.points).toBe(15);
   });
+
+  it("does not ask the owner for reviews the scan already collected", () => {
+    const resolved = deriveActions({ ...baseInput, resolvedInputs: new Set(["reviews_without_response"]) }).find((a) => a.templateKey === "review-response")!;
+    expect(resolved.requiredInputs).not.toContain("reviews_without_response");
+    // Readiness follows the same list, so priority and the input form agree.
+    expect(resolved.priorityFactors.find((f) => f.key === "readiness")!.points).toBe(resolved.requiredInputs.length ? 0 : 10);
+  });
+
+  it("keeps the ask when the scan retained no unanswered review", () => {
+    const unresolved = deriveActions({ ...baseInput, resolvedInputs: new Set<string>() }).find((a) => a.templateKey === "review-response")!;
+    expect(unresolved.requiredInputs).toContain("reviews_without_response");
+    expect(unresolved.priorityFactors.find((f) => f.key === "readiness")!.points).toBe(0);
+  });
+
+  it("reproduces today's inputs and scores exactly when no evidence is resolved", () => {
+    const withArgument = deriveActions({ ...baseInput, resolvedInputs: new Set<string>() });
+    const without = deriveActions(baseInput);
+    expect(without.map((a) => [a.templateKey, a.requiredInputs, a.priorityScore])).toEqual(
+      withArgument.map((a) => [a.templateKey, a.requiredInputs, a.priorityScore]),
+    );
+  });
 });

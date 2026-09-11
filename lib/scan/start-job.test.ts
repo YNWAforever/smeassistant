@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { LEGAL_POLICY_VERSION } from "@/lib/legal/policy";
+import { SCAN_CONSENT_TYPE } from "./consent";
 import { buildScanJobInsert, insertScanJob, parseScanStartBody, type ScanStartInput } from "./start-job";
 
 vi.mock("@/lib/db/client", () => ({
@@ -20,7 +22,11 @@ const validBody = {
   industry: "restaurant",
   district: "Central",
   objective: "more_leads",
+  public_evidence_consent: true,
+  consent_policy_version: LEGAL_POLICY_VERSION,
 };
+
+const consent = { consentType: SCAN_CONSENT_TYPE, granted: true, policyVersion: LEGAL_POLICY_VERSION, locale: "en" } as const;
 
 function parsed(overrides: Record<string, unknown> = {}): ScanStartInput {
   const result = parseScanStartBody({ ...validBody, ...overrides });
@@ -119,7 +125,23 @@ describe("buildScanJobInsert", () => {
   });
 });
 
+describe("scan consent",()=>{
+ it("refuses a body with no consent, without disturbing any other error's precedence",()=>{
+  expect(parseScanStartBody({...validBody,public_evidence_consent:undefined})).toEqual({ok:false,error:"public evidence consent is required"});
+  expect(parseScanStartBody({...validBody,consent_policy_version:undefined})).toEqual({ok:false,error:"consent_policy_version is required"});
+  // Consent is checked last, so an earlier problem still reports itself.
+  expect(parseScanStartBody({...validBody,public_evidence_consent:undefined,business_name:""})).toEqual({ok:false,error:"business_name is required"});
+ });
+ it("refuses a version the deployment does not publish",()=>{
+  expect(parseScanStartBody({...validBody,consent_policy_version:"2026-07-14"})).toEqual({ok:false,error:"consent_policy_stale",status:409});
+ });
+ it("returns the server-resolved consent alongside the input",()=>{
+  const result=parseScanStartBody(validBody);
+  expect(result.ok&&result.consent).toEqual({consentType:"public_evidence",granted:true,policyVersion:LEGAL_POLICY_VERSION,locale:"en"});
+ });
+});
+
 describe("insertScanJob",()=>{
- it("inserts through the repository and returns its selected ID",async()=>{const insert=vi.fn().mockResolvedValue({id:"job-1"});expect(await insertScanJob(parsed(),{workspaceId:"ws-1"},{insert})).toEqual({ok:true,jobId:"job-1"});expect(insert).toHaveBeenCalledWith(expect.objectContaining({workspace_id:"ws-1",status:"queued"}));});
- it("sanitizes database failures instead of throwing",async()=>{const insert=vi.fn().mockRejectedValue(Error("postgresql://user:secret@host/db"));expect(await insertScanJob(parsed(),{},{insert})).toEqual({ok:false,error:Error("scan_persistence_unavailable")});});
+ it("inserts the job and its consent through the repository and returns its selected ID",async()=>{const insert=vi.fn().mockResolvedValue({id:"job-1"});expect(await insertScanJob(parsed(),consent,{workspaceId:"ws-1"},{insert})).toEqual({ok:true,jobId:"job-1"});expect(insert).toHaveBeenCalledWith(expect.objectContaining({workspace_id:"ws-1",status:"queued"}),{consent_type:"public_evidence",granted:true,policy_version:LEGAL_POLICY_VERSION,locale:"en"});});
+ it("sanitizes database failures instead of throwing",async()=>{const insert=vi.fn().mockRejectedValue(Error("postgresql://user:secret@host/db"));expect(await insertScanJob(parsed(),consent,{},{insert})).toEqual({ok:false,error:Error("scan_persistence_unavailable")});});
 });

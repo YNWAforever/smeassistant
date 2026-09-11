@@ -75,9 +75,11 @@ export async function GET(req: Request) {
 
     const membership = await membershipRepository.accepted(user.id,payload.workspaceId);
     // The signature proves the state is ours; it does not prove the person
-    // returning still has access. A viewer must not be able to complete a
-    // consent flow they were never allowed to start.
-    if (!membership || membership.role === "viewer") {
+    // returning still has access, so the role is re-checked here rather than
+    // trusted from the start route. Owner only, matching that route and
+    // CLAUDE.md §3.9 -- a role demoted between start and callback must not be
+    // able to finish installing a credential it can no longer be granted.
+    if (!membership || membership.role !== "owner") {
       // Not the workspace's slug: a caller who is not a member must not be
       // redirected into that workspace's pages.
       return back(origin, locale, null, { connected: "forbidden" });

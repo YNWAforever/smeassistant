@@ -161,24 +161,27 @@ export function MemberRoleSelect({ locale, workspaceId, memberId, role }: { loca
 
 const COPY = {
   en: {
-    invite: "Invite member", inviteNote: "We email a magic link; the member joins with the role you choose. Owners are never invited here.",
-    email: "Email", role: "Role", manager: "Manager", viewer: "Viewer", send: "Send invite", invited: "Invite sent by email.",
+    // No mail is dispatched when an invite is created -- the row is written and
+    // the invitee joins by requesting a sign-in link themselves, so this copy
+    // must not claim a send that never happened.
+    invite: "Invite member", inviteNote: "The invite is saved here; the member joins by signing in with this address and gets the role you choose. Owners are never invited here.",
+    email: "Email", role: "Role", manager: "Manager", viewer: "Viewer", send: "Create invite", invited: "Invite created. Ask them to sign in with this address.",
     remove: "Remove", removeTitle: "Remove this member?", removeNote: "Their access ends immediately; audit history is kept.", removed: "Member removed.", cancel: "Cancel",
     allLocations: "All locations", saveScope: "Save scope", scopeSaved: "Location scope saved.", scopeEmpty: "Choose at least one location, or all locations.", roleSaved: "Role updated.",
     invalid: "Enter a valid email address.", duplicate: "This email is already a member or has a pending invite.", forbidden: "Only the owner can manage the team.",
     network: "The server could not be reached; try again shortly.", failed: "The request failed.",
   },
   "zh-HK": {
-    invite: "邀請成員", inviteNote: "我們會寄出登入連結電郵；成員以你選擇的角色加入。店主角色不會在此邀請。",
-    email: "電郵", role: "角色", manager: "經理", viewer: "檢視者", send: "寄出邀請", invited: "邀請電郵已寄出。",
+    invite: "邀請成員", inviteNote: "邀請會在此儲存；成員以此電郵登入即可加入，並取得你選擇的角色。店主角色不會在此邀請。",
+    email: "電郵", role: "角色", manager: "經理", viewer: "檢視者", send: "建立邀請", invited: "邀請已建立，請對方以此電郵登入。",
     remove: "移除", removeTitle: "移除此成員？", removeNote: "其存取權會即時終止；審計紀錄會保留。", removed: "成員已移除。", cancel: "取消",
     allLocations: "所有地點", saveScope: "儲存範圍", scopeSaved: "地點範圍已儲存。", scopeEmpty: "請選擇至少一個地點，或所有地點。", roleSaved: "角色已更新。",
     invalid: "請輸入有效電郵。", duplicate: "此電郵已是成員或已有待接受的邀請。", forbidden: "只有店主可以管理團隊。",
     network: "無法連接伺服器，請稍後再試。", failed: "操作失敗。",
   },
   "zh-TW": {
-    invite: "邀請成員", inviteNote: "我們會寄出登入連結電子郵件；成員以你選擇的角色加入。店家負責人角色不會在此邀請。",
-    email: "電子郵件", role: "角色", manager: "經理", viewer: "檢視者", send: "送出邀請", invited: "邀請郵件已送出。",
+    invite: "邀請成員", inviteNote: "邀請會在此儲存；成員以此電子郵件登入即可加入，並取得你選擇的角色。店家負責人角色不會在此邀請。",
+    email: "電子郵件", role: "角色", manager: "經理", viewer: "檢視者", send: "建立邀請", invited: "邀請已建立，請對方以此電子郵件登入。",
     remove: "移除", removeTitle: "移除此成員？", removeNote: "其存取權會立即終止；稽核紀錄會保留。", removed: "成員已移除。", cancel: "取消",
     allLocations: "所有據點", saveScope: "儲存範圍", scopeSaved: "據點範圍已儲存。", scopeEmpty: "請選擇至少一個據點，或所有據點。", roleSaved: "角色已更新。",
     invalid: "請輸入有效的電子郵件。", duplicate: "此電子郵件已是成員或已有待接受的邀請。", forbidden: "只有店家負責人可以管理團隊。",

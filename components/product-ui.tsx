@@ -253,7 +253,11 @@ export function PublicHeader({ locale }: { locale: PrototypeLocale }) {
         </nav>
         <div className="header-actions">
           <LocaleSelect locale={locale} />
-          <Button asChild variant="outline" className="hidden lg:inline-flex">
+          {/* Returning owners need a sign-in entry point without opening the
+              hamburger menu: this was `hidden lg:inline-flex`, so on any
+              phone-width viewport the only way back into a workspace was the
+              menu. It stays listed in the menu as well. */}
+          <Button asChild variant="outline" className="header-sign-in">
             <Link href={`/${locale}/owner/sign-in`}>{t.nav.signIn}</Link>
           </Button>
           <Button asChild className="header-scan-cta hidden md:inline-flex">
@@ -263,7 +267,7 @@ export function PublicHeader({ locale }: { locale: PrototypeLocale }) {
             <SheetTrigger asChild>
               <Button variant="outline" size="icon" className="public-menu-trigger" aria-label={isChinese ? "開啟選單" : "Open menu"}><Menu /></Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[min(92vw,22rem)]">
+            <SheetContent side="right" className="w-[min(92vw,22rem)]" closeLabel={isChinese ? "關閉選單" : "Close menu"}>
               <SheetHeader>
                 <SheetTitle>SME Scanner</SheetTitle>
                 <SheetDescription>{isChinese ? "以證據為先的能見度管理" : "Evidence-first visibility monitoring"}</SheetDescription>

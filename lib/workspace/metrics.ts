@@ -176,9 +176,23 @@ export function deriveMetrics(input: DeriveMetricsInput): SnapshotMetrics {
   const runs = aeo ? list(aeo.serpapi_runs) : [];
   if (runs.length > 0) {
     set(metrics, "aeo.runs_total", runs.length);
-    const usable = runs.filter((r) => r.error === undefined || r.error === null);
+    // Read the PERSISTED run shape (RawData["aeo"]["serpapi_runs"]), not the
+    // scorer payload. `ai_overview_mentioned` / `ai_mode_mentioned` and a bare
+    // `error` key exist only on the payload the scan engine hands the scorer;
+    // what reaches audit_jobs.raw_data nests the flags under ai_overview /
+    // ai_mode and marks unusable runs with `available: false`. Reading the
+    // payload names here made every workspace's AI-citation count a stand-in
+    // zero and made runs_usable always equal runs_total -- wrong precisely when
+    // the evidence gap was worst. lib/report/sanitize-proof.ts reads the same
+    // rows correctly and is the reference for this shape.
+    const usable = runs.filter((r) => r.available !== false);
     set(metrics, "aeo.runs_usable", usable.length);
-    set(metrics, "aeo.ai_citation_count", usable.filter((r) => r.ai_overview_mentioned === true || r.ai_mode_mentioned === true).length);
+    // Absent, not zero, when nothing was usable: an unmeasurable surface must
+    // reduce coverage rather than report a confident nil (guardrail 2, and this
+    // module's own "never a stand-in zero" contract).
+    if (usable.length > 0) {
+      set(metrics, "aeo.ai_citation_count", usable.filter((r) => dict(r.ai_overview)?.brand_mentioned === true || dict(r.ai_mode)?.brand_mentioned === true).length);
+    }
     const organicRanks = usable.map((r) => num(r.brand_organic_rank)).filter((r): r is number => r !== null && r > 0);
     if (organicRanks.length) set(metrics, "aeo.best_organic_rank", Math.min(...organicRanks));
     const mapsRanks = usable.map((r) => num(r.brand_maps_rank ?? r.maps_rank)).filter((r): r is number => r !== null && r > 0);

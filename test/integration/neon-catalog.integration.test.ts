@@ -22,13 +22,13 @@ describe("catalog comparison across checkout line endings", () => {
   afterAll(async () => { try { await owner?.end(); } finally { fixture?.stop(); } });
 
   it("accepts LF migration output against the independently captured mixed-ending legacy catalog", async () => {
-    await expect(verifyCatalog(owner)).resolves.toMatchObject({ functions: 13, seededRows: 0 });
+    await expect(verifyCatalog(owner)).resolves.toMatchObject({ functions: 14, seededRows: 0 });
   });
 
   it("accepts CRLF function bodies without changing the catalog contract", async () => {
     try {
       for (const row of definitions) await owner.query(row.definition.replaceAll("\n", "\r\n"));
-      await expect(verifyCatalog(owner)).resolves.toMatchObject({ functions: 13, seededRows: 0 });
+      await expect(verifyCatalog(owner)).resolves.toMatchObject({ functions: 14, seededRows: 0 });
     } finally {
       for (const row of definitions) await owner.query(row.definition);
     }

@@ -1,5 +1,6 @@
 import { randomBytes } from "crypto";
 import { jobsRepository, type JobsRepository } from "@/lib/repositories/jobs";
+import { SCAN_CONSENT_TYPE, parseScanConsent, type ScanConsentRecord } from "./consent";
 import type { IgMatchProvenance } from "@sme-scanner/contracts";
 
 
@@ -39,7 +40,13 @@ export interface ScanStartInput {
   userRole: string | null;
 }
 
-export type ScanStartParse = { ok: true; input: ScanStartInput } | { ok: false; error: string };
+/**
+ * `status` is present only on the stale-policy branch, so every existing
+ * failure assertion keeps matching exactly; the route defaults to 400.
+ */
+export type ScanStartParse =
+  | { ok: true; input: ScanStartInput; consent: ScanConsentRecord }
+  | { ok: false; error: string; status?: 400 | 409 };
 
 const IG_MATCH_PROVENANCE = new Set<string>(["manual_typed", "picker_confirmed", "gbp_cross_referenced"]);
 const LOCALES = new Set<string>(["en", "zh-HK", "zh-TW"]);
@@ -150,8 +157,18 @@ export function parseScanStartBody(raw: unknown): ScanStartParse {
   }
   if (parentJobId && !UUID_RE.test(parentJobId)) return { ok: false, error: "parent_job_id is invalid" };
 
+  // Consent is checked last so every existing error string keeps its precedence
+  // -- and so a consent-less POST is still rejected before any database work.
+  // The two 400 branches return the bare shape the existing exact-equality
+  // assertions expect; only the stale branch carries a status.
+  const consent = parseScanConsent(body, locale as ScanLocale);
+  if (!consent.ok) {
+    return consent.status === 409 ? { ok: false, error: consent.error, status: 409 } : { ok: false, error: consent.error };
+  }
+
   return {
     ok: true,
+    consent: consent.consent,
     input: {
       businessName,
       instagramHandle,
@@ -235,15 +252,33 @@ export function buildScanJobInsert(input: ScanStartInput, attribution: ScanJobAt
   };
 }
 
+/**
+ * The consent row's `job_id` is supplied by the repository inside the
+ * transaction. Consent is deliberately NOT part of `input_snapshot`: that
+ * envelope is merchant identity, replayed by scanInputFromSnapshot on a rescan,
+ * and a rescan records its own fresh consent instead.
+ */
+export function buildScanConsentInsert(consent: ScanConsentRecord) {
+  return {
+    consent_type: SCAN_CONSENT_TYPE,
+    granted: consent.granted,
+    policy_version: consent.policyVersion,
+    locale: consent.locale,
+  };
+}
+
 export type ScanJobInsertResult = { ok: true; jobId: string } | { ok: false; error: unknown };
 
 export async function insertScanJob(
  input: ScanStartInput,
+ consent: ScanConsentRecord,
  attribution: ScanJobAttribution = {},
  repository: JobsRepository = jobsRepository,
 ): Promise<ScanJobInsertResult> {
  try {
-  const row=await repository.insert(buildScanJobInsert(input,attribution));
+  // A rolled-back transaction is indistinguishable from any other persistence
+  // failure at this boundary, by design.
+  const row=await repository.insert(buildScanJobInsert(input,attribution),buildScanConsentInsert(consent));
   return {ok:true,jobId:row.id};
  } catch { return {ok:false,error:new Error("scan_persistence_unavailable")}; }
 }

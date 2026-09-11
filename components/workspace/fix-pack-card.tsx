@@ -1,9 +1,10 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useState } from "react"
 import { Check, Sparkles, X } from "lucide-react"
 
-import { SectionCard } from "@/components/product-ui"
+import { CapabilityBadge, SectionCard } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { PrototypeLocale } from "@/lib/copy"
@@ -24,7 +25,7 @@ import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
  * Ported from upstream's components/owner/fix-pack-card.tsx onto the
  * prototype's SectionCard / compact-action-list styling.
  */
-export function FixPackCard({ locale, workspaceId, viewerRole }: { locale: PrototypeLocale; workspaceId: string; viewerRole: WorkspaceRole }) {
+export function FixPackCard({ locale, workspaceId, viewerRole, actionsHref }: { locale: PrototypeLocale; workspaceId: string; viewerRole: WorkspaceRole; actionsHref?: string }) {
   const isChinese = locale !== "en"
   const [drafts, setDrafts] = useState<OwnerFixPackDraft[] | null>(null)
   const [error, setError] = useState(false)
@@ -70,14 +71,36 @@ export function FixPackCard({ locale, workspaceId, viewerRole }: { locale: Proto
 
   return (
     <SectionCard className="fix-pack-card">
-      <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "Fix Pack 草稿" : "Fix Pack drafts"}</p><h2>{isChinese ? "由掃描發現生成的回覆及帖文" : "Replies and posts drafted from scan findings"}</h2></div><Badge variant="outline"><Sparkles /> {isChinese ? `${pending} 份待審` : `${pending} pending`}</Badge></div>
+      {/* "drafted from scan findings" implied the scan produces them, which it
+          never does. The heading now describes what the surface IS -- a review
+          queue for staff-prepared drafts -- without asserting that anything is
+          currently filling it. */}
+      <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "Fix Pack 草稿" : "Fix Pack drafts"}</p><h2>{isChinese ? "由職員準備、待你審批的回覆及帖文" : "Staff-prepared replies and posts awaiting your review"}</h2></div><Badge variant="outline"><Sparkles /> {isChinese ? `${pending} 份待審` : `${pending} pending`}</Badge></div>
       {drafts === null ? (
         // Covers both "still loading" and "initial load failed" -- rendering
         // the empty-state copy under a load FAILURE would assert something the
         // card doesn't know.
         !error && <p>{isChinese ? "載入中…" : "Loading…"}</p>
       ) : drafts.length === 0 ? (
-        <p>{isChinese ? "暫時沒有 Fix Pack 草稿。付費方案的掃描完成後，草稿會在這裡出現。" : "No Fix Pack drafts yet. Drafts appear here after a paid-tier scan completes."}</p>
+        // "Drafts appear here after a paid-tier scan completes" was a promise
+        // nothing keeps: this app never writes agent_runs -- CLAUDE.md 3.7 says
+        // "do not write to `agent_runs` from this app's agents (v1)", the
+        // upstream generator (plan-fix-pack / generate-fix-pack) was never
+        // ported, and no INSERT exists outside integration tests. So a scan can
+        // never populate this card, and an owner who ran one waited for nothing.
+        //
+        // Nor may this name a supplier. The first attempt at this fix said the
+        // drafts were "prepared for you by the Fimmick team" -- softer, and
+        // still unkeepable: that tooling writes the legacy Supabase database,
+        // this app's only pool is Neon, there is no Supabase client left (a
+        // test:no-supabase CI gate enforces it), and NEON-CUTOVER.md requires
+        // an "empty application-data" target. No actor can deliver a draft
+        // here today, so the card says exactly that and points at Actions,
+        // where this workspace's own drafting genuinely is live.
+        <>
+          <div className="section-card-heading"><p>{isChinese ? "這個工作台暫時無法取得 Fix Pack 草稿。草稿來自 Fimmick 另一套職員工具，並非由掃描生成。" : "Fix Pack drafts are not available in this workspace. They come from separate Fimmick staff tooling, not from a scan."}</p><CapabilityBadge value="Planned" /></div>
+          {actionsHref && <p className="limitation-note">{isChinese ? "你自己的評論回覆及帖文在「行動」生成：" : "Your own review replies and posts are drafted in Actions:"} <Link href={actionsHref}>{isChinese ? "查看草稿" : "Open drafts"}</Link></p>}
+        </>
       ) : (
         <div className="fix-pack-list">
           {drafts.map((draft) => (

@@ -26,14 +26,46 @@ export type ClaimEvidence = {
   websiteUrl: string | null
 }
 
+/**
+ * What the workspace already holds. Present only once the caller owns it, so
+ * step 4 shows the values that were saved rather than re-proposing the scan's
+ * guesses over them.
+ */
+export type SavedSetup = {
+  workspaceName: string | null
+  locationName: string | null
+  locationAddress: string | null
+  voice: string | null
+  /** Newline-joined for the textarea, the same shape the form submits. */
+  approvedClaims: string
+  /** A primary location exists, i.e. `POST /api/workspaces/claim` completed. */
+  hasLocation: boolean
+}
+
 export type OnboardingProps = {
   locale: PrototypeLocale
   claim?: string
   plan?: string
-  /** `?claimed=1`: the OAuth claim callback just attached the job. */
-  claimed?: boolean
+  /**
+   * Derived on the server from persisted state alone -- ownership, and whether
+   * the claim route has created the primary location. Never from a query
+   * parameter: an owner returning to the same URL must not be dropped back to
+   * step 1 with their ownership already proven.
+   */
+  resumeStep?: 1 | 2 | 3 | 4
+  saved?: SavedSetup | null
   /** `WORKSPACE_CLAIM_VIA_OAUTH_ENABLED === "true"` on the server. */
   oauthEnabled: boolean
+  /**
+   * Market contact channels from `getMarketCtas`, resolved on the server.
+   *
+   * That helper reads `process.env[name]` through a computed key, which Next
+   * cannot inline into a client bundle -- calling it from this component would
+   * return an empty list on every deployment, however the vars are set. Empty
+   * also when nothing is configured, and then no channel is offered at all
+   * rather than a dead link.
+   */
+  contacts?: ReadonlyArray<{ channel: "whatsapp" | "line" | "phone" | "email"; href: string }>
   evidence: ClaimEvidence | null
   /** The caller holds an accepted owner membership on the job's workspace. */
   ownsWorkspace: boolean
@@ -41,13 +73,42 @@ export type OnboardingProps = {
   gbpConnected: boolean
 }
 
-type BrandVoice = "warm" | "concise" | "playful"
+// Must stay a subset of lib/workspace/brand.ts's BRAND_VOICES -- the server
+// validates against that set, so a value only this file knows about is dropped.
+type BrandVoice = "warm" | "professional" | "playful" | "direct"
+
+const BRAND_VOICE_VALUES: readonly BrandVoice[] = ["warm", "professional", "playful", "direct"]
+
+/** A stored voice this build does not know about must not become a dead Select value. */
+function isBrandVoice(value: string | null | undefined): value is BrandVoice {
+  return typeof value === "string" && (BRAND_VOICE_VALUES as readonly string[]).includes(value)
+}
 
 const STEP_COUNT = 4
 
 function marketLabel(region: string | null, isChinese: boolean) {
   const market = region?.toLowerCase() === "tw" ? "tw" : "hk"
   return { market, label: market === "tw" ? (isChinese ? "台灣" : "Taiwan") : (isChinese ? "香港" : "Hong Kong"), timezone: market === "tw" ? "Asia/Taipei" : "Asia/Hong_Kong" }
+}
+
+const CONTACT_LABELS = {
+  whatsapp: { zh: "WhatsApp 聯絡", en: "Contact on WhatsApp" },
+  line: { zh: "LINE 聯絡", en: "Contact on LINE" },
+  phone: { zh: "致電查詢", en: "Call us" },
+  email: { zh: "電郵查詢", en: "Email us" },
+} as const
+
+/**
+ * Carry the report reference into the channel where the channel supports it,
+ * so staff can find the scan without the owner retyping the slug. Phone and
+ * LINE take no prefill, and the reference is printed beside the buttons for
+ * every channel regardless.
+ */
+function contactHref(contact: { channel: keyof typeof CONTACT_LABELS; href: string }, shareSlug: string | undefined): string {
+  if (!shareSlug) return contact.href
+  if (contact.channel === "whatsapp") return `${contact.href}?text=${encodeURIComponent(`Workspace assignment request - report ${shareSlug}`)}`
+  if (contact.channel === "email") return `${contact.href}?subject=${encodeURIComponent(`Workspace assignment request - report ${shareSlug}`)}`
+  return contact.href
 }
 
 async function readError(response: Response, fallback: string): Promise<string> {
@@ -64,16 +125,18 @@ async function readError(response: Response, fallback: string): Promise<string> 
  * `POST /api/workspaces/claim`. Steps 3–4 stay locked until the workspace is
  * attached and owned.
  */
-export function OnboardingPage({ locale, claim, plan, claimed = false, oauthEnabled, evidence, ownsWorkspace, gbpConnected }: OnboardingProps) {
+export function OnboardingPage({ locale, claim, plan, resumeStep = 1, saved = null, oauthEnabled, contacts = [], evidence, ownsWorkspace, gbpConnected }: OnboardingProps) {
   const router = useRouter()
   const isChinese = locale !== "en"
   const { market, label: marketName, timezone } = marketLabel(evidence?.region ?? null, isChinese)
-  const [step, setStep] = useState(claimed && ownsWorkspace ? 3 : 1)
-  const [workspaceName, setWorkspaceName] = useState(evidence?.businessName ?? "")
-  const [locationName, setLocationName] = useState(evidence?.businessName ?? "")
-  const [locationAddress, setLocationAddress] = useState(evidence?.district ?? "")
-  const [voice, setVoice] = useState<BrandVoice>("warm")
-  const [approvedClaims, setApprovedClaims] = useState("")
+  const [step, setStep] = useState<number>(resumeStep)
+  // Saved values win over the scan's guesses: once step 4 has been submitted,
+  // these fields must show what the workspace actually holds.
+  const [workspaceName, setWorkspaceName] = useState(saved?.workspaceName ?? evidence?.businessName ?? "")
+  const [locationName, setLocationName] = useState(saved?.locationName ?? evidence?.businessName ?? "")
+  const [locationAddress, setLocationAddress] = useState(saved?.locationAddress ?? evidence?.district ?? "")
+  const [voice, setVoice] = useState<BrandVoice>(isBrandVoice(saved?.voice) ? saved.voice : "warm")
+  const [approvedClaims, setApprovedClaims] = useState(saved?.approvedClaims ?? "")
   const [handle, setHandle] = useState(evidence?.igHandle ?? "")
   const [handleState, setHandleState] = useState<{ kind: "idle" | "saving" | "saved" | "error"; message?: string }>({ kind: "idle" })
   const [submitState, setSubmitState] = useState<{ kind: "idle" | "saving" | "error"; message?: string }>({ kind: "idle" })
@@ -84,8 +147,9 @@ export function OnboardingPage({ locale, claim, plan, claimed = false, oauthEnab
     : (isChinese ? "等待驗證" : "Pending verification")
   const voiceLabels: Record<BrandVoice, string> = {
     warm: isChinese ? "親切、本地、真誠" : "Warm, local and sincere",
-    concise: isChinese ? "簡潔、專業" : "Concise and professional",
+    professional: isChinese ? "簡潔、專業" : "Concise and professional",
     playful: isChinese ? "活潑、有活力" : "Playful and energetic",
+    direct: isChinese ? "直接、務實" : "Direct and matter-of-fact",
   }
   const canContinue = step === 1 ? Boolean(evidence) : step === 2 ? ownsWorkspace : step === 3 ? ownsWorkspace : ownsWorkspace && workspaceName.trim().length > 0 && locationName.trim().length > 0
 
@@ -149,7 +213,17 @@ export function OnboardingPage({ locale, claim, plan, claimed = false, oauthEnab
   let body: React.ReactNode
   if (step === 1) {
     body = evidence ? (
-      <div className="onboarding-choice"><span className="onboarding-icon"><BadgeCheck /></span><div><Badge variant="outline">{isChinese ? "認領證據" : "Claim evidence"}</Badge><h2>{isChinese ? `確認${evidence.businessName ?? "商戶"}` : `Confirm ${evidence.businessName ?? "this business"}`}</h2><p>{[evidence.district, marketName].filter(Boolean).join(" · ")}</p><dl><div><dt>{isChinese ? "擁有權" : "Ownership"}</dt><dd>{ownershipLabel}</dd></div><div><dt>{isChinese ? "公開報告" : "Public report"}</dt><dd><Link href={`/${locale}/r/${evidence.shareSlug}`}>{evidence.shareSlug}</Link></dd></div>{evidence.igHandle && <div><dt>Instagram</dt><dd>@{evidence.igHandle}</dd></div>}{evidence.websiteUrl && <div><dt>{isChinese ? "網站" : "Website"}</dt><dd>{evidence.websiteUrl}</dd></div>}</dl></div></div>
+      <div className="onboarding-choice"><span className="onboarding-icon"><BadgeCheck /></span><div><Badge variant="outline">{isChinese ? "認領證據" : "Claim evidence"}</Badge><h2>{isChinese ? `確認${evidence.businessName ?? "商戶"}` : `Confirm ${evidence.businessName ?? "this business"}`}</h2><p>{[evidence.district, marketName].filter(Boolean).join(" · ")}</p><dl><div><dt>{isChinese ? "擁有權" : "Ownership"}</dt><dd>{ownershipLabel}</dd></div><div><dt>{isChinese ? "公開報告" : "Public report"}</dt><dd><Link href={`/${locale}/r/${evidence.shareSlug}`}>{evidence.shareSlug}</Link></dd></div>{evidence.igHandle && <div><dt>Instagram</dt><dd>@{evidence.igHandle}</dd></div>}{evidence.websiteUrl && <div><dt>{isChinese ? "網站" : "Website"}</dt><dd>{evidence.websiteUrl}</dd></div>}</dl>
+        {/* The escape the pre-claim /scan flow has and this one did not. Before
+            anything is attached it is a plain link -- no mutation. Once the
+            report IS attached, detaching is not self-service: ownership is
+            proven, never self-declared, and undoing it the same way would be a
+            hijack primitive. */}
+        {ownsWorkspace ? (
+          <p className="limitation-note"><TriangleAlert /> {isChinese ? "如果這不是你的商戶：報告已附加到這個工作台，我們不會自助解除。請聯絡 Fimmick 團隊並附上報告編號更正。" : "If this is not your business: the report is already attached to this workspace and we do not detach it self-service. Contact the Fimmick team quoting the report reference to correct it."}{` · ${evidence.shareSlug}`}</p>
+        ) : (
+          <p className="limitation-note"><Link href={`/${locale}/scan`}>{isChinese ? "這不是我的商戶 — 改為掃描正確的商戶" : "This is not my business — scan the right one instead"}</Link></p>
+        )}</div></div>
     ) : (
       <div className="onboarding-choice"><span className="onboarding-icon"><ScanSearch /></span><div><Badge variant="outline">{isChinese ? "沒有認領中的報告" : "No report to claim"}</Badge><h2>{isChinese ? "先由一次掃描開始" : "Start from a scan"}</h2><p>{isChinese ? "工作台是由一份掃描報告建立的。先免費掃描你的商戶並解鎖報告，然後從報告頁繼續認領。" : "A workspace starts from a scan report. Run a free scan of your business, unlock the report, then continue the claim from the report page."}</p><Button asChild><Link href={`/${locale}/scan`}><ScanSearch />{isChinese ? "免費掃描" : "Free scan"}<ArrowRight /></Link></Button></div></div>
     )
@@ -157,9 +231,21 @@ export function OnboardingPage({ locale, claim, plan, claimed = false, oauthEnab
     body = ownsWorkspace ? (
       <div className="onboarding-choice"><span className="onboarding-icon"><ShieldCheck /></span><div><Badge variant="outline">{ownershipLabel}</Badge><h2>{isChinese ? "擁有權已確認" : "Ownership confirmed"}</h2><p>{isChinese ? "這份報告已附加到你擁有的工作台。你可以繼續設定連接與品牌資料。" : "This report is attached to a workspace you own. Continue to connections and brand basics."}</p></div></div>
     ) : oauthEnabled && claim ? (
-      <div className="connection-choice"><div><span><Globe2 /></span><div><h3>{isChinese ? "以 Google 驗證擁有權" : "Verify ownership with Google"}</h3><p>{isChinese ? "使用管理這個商戶 Google Business Profile 的 Google 帳戶登入。Google 會證明你管理該檔案，我們才會建立工作台並附加報告。不會啟用直接發佈。" : "Sign in with the Google account that manages this business’s Business Profile. Google attests that you manage it; only then is the workspace created and the report attached. Direct publishing is not enabled."}</p></div><CapabilityBadge value="Live" /></div><Button asChild><a href={`/api/oauth/google/claim/start?slug=${encodeURIComponent(claim)}&locale=${locale}`}><ShieldCheck />{isChinese ? "以 Google 驗證" : "Verify with Google"}<ArrowRight /></a></Button><p className="limitation-note"><TriangleAlert /> {isChinese ? "我們只會讀取商戶檔案，並可隨時在設定中斷開連接。" : "We only read the Business Profile; you can disconnect at any time in settings."}</p></div>
+      <div className="connection-choice"><div><span><Globe2 /></span><div><h3>{isChinese ? "以 Google 驗證擁有權" : "Verify ownership with Google"}</h3><p>{isChinese ? "使用管理這個商戶 Google Business Profile 的 Google 帳戶登入。Google 會證明你管理該檔案，我們才會建立工作台並附加報告。不會啟用直接發佈。" : "Sign in with the Google account that manages this business’s Business Profile. Google attests that you manage it; only then is the workspace created and the report attached. Direct publishing is not enabled."}</p></div><CapabilityBadge value="Live" /></div><Button asChild><a href={`/api/oauth/google/claim/start?slug=${encodeURIComponent(claim)}&locale=${locale}`}><ShieldCheck />{isChinese ? "以 Google 驗證" : "Verify with Google"}<ArrowRight /></a></Button><p className="limitation-note"><TriangleAlert /> {/* This promised a control that did not exist. It does now --
+    Settings > Integrations > Disconnect -- so the sentence names
+    where it is instead of gesturing at "settings". */}
+{isChinese ? "我們只會讀取商戶檔案。你可以隨時在「設定 › 連接與整合」解除連接，我們儲存的憑證會被刪除。" : "We only read the Business Profile. You can disconnect at any time under Settings › Integrations, which deletes the credential we store."}</p></div>
     ) : (
-      <div className="connection-choice"><div><span><UserCheck /></span><div><h3>{isChinese ? "請 Fimmick 指派你的工作台" : "Ask Fimmick to assign your workspace"}</h3><p>{isChinese ? "擁有權必須經過驗證，不能自行聲明，我們亦不會憑電郵配對。Fimmick 團隊核實你與商戶的關係後，會把這份報告指派到你的工作台；完成後你會收到電郵，並可在此繼續。" : "Ownership is proven, never self-declared, and we do not match on email. The Fimmick team verifies your relationship with the business and assigns this report to your workspace; you will be emailed when it is done and can continue here."}</p></div><CapabilityBadge value="Requires connection" /></div><p className="limitation-note"><TriangleAlert /> {isChinese ? "回覆你收到的報告電郵，或聯絡 Fimmick 團隊並附上報告編號。" : "Reply to the report email you received, or contact the Fimmick team quoting the report reference."}{evidence ? ` · ${evidence.shareSlug}` : ""}</p></div>
+      /* This branch renders whenever OAuth claim is off, which is the shipped
+         default (`.env.example` sets WORKSPACE_CLAIM_VIA_OAUTH_ENABLED=false),
+         so it is the path most owners actually see. It used to say "you will
+         be emailed when it is done" and "Reply to the report email you
+         received" -- this app sends neither, leaving the owner with no next
+         move. It now offers the market's real contact channels and says what
+         to do when the assignment lands. */
+      <div className="connection-choice"><div><span><UserCheck /></span><div><h3>{isChinese ? "請 Fimmick 指派你的工作台" : "Ask Fimmick to assign your workspace"}</h3><p>{isChinese ? "擁有權必須經過驗證，不能自行聲明，我們亦不會憑電郵配對。Fimmick 團隊核實你與商戶的關係後，會把這份報告指派到你的工作台。指派完成後回到這一頁，餘下步驟就會解鎖。" : "Ownership is proven, never self-declared, and we do not match on email. The Fimmick team verifies your relationship with the business and assigns this report to your workspace. Once it is assigned, return to this page and the remaining steps unlock."}</p></div><CapabilityBadge value="Requires connection" /></div>
+        {contacts.length > 0 && <div className="plan-actions">{contacts.map((contact) => <Button key={contact.channel} asChild variant="outline"><a href={contactHref(contact, evidence?.shareSlug)} target={contact.channel === "phone" ? undefined : "_blank"} rel={contact.channel === "phone" ? undefined : "noreferrer"}>{CONTACT_LABELS[contact.channel][isChinese ? "zh" : "en"]}</a></Button>)}</div>}
+        <p className="limitation-note"><TriangleAlert /> {contacts.length > 0 ? (isChinese ? "聯絡時請提供下列報告編號。" : "Quote this report reference when you get in touch.") : (isChinese ? "請聯絡你的 Fimmick 對接人並提供下列報告編號。" : "Contact your Fimmick representative and quote this report reference.")}{evidence ? ` · ${evidence.shareSlug}` : ""}</p></div>
     )
   } else if (step === 3) {
     body = (

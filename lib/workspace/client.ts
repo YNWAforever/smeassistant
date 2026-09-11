@@ -18,7 +18,21 @@ export type ApproveVersionResult = { state: "approved"; delivery_state: "export_
 export type DecideVersionResult = { state: "changes_requested" | "rejected" };
 export type ExportVersionResult = { deliveryId: string; counted: boolean; usage: { period: string; approved_deliveries: number; allowance: number | null } };
 export type UpdateActionResult = { action: ActionOverview };
-export type CreateObjectiveActionResult = { actionId: string; runId?: string; versionId?: string };
+/**
+ * POST /api/actions with run:true already reports the run's real outcome --
+ * `state`, `factsNeeded`, or `runError` when the agent could not start. This
+ * type omitted them, so the Create page could only see "HTTP 201" and told the
+ * owner a draft was being prepared even when the run had already failed or
+ * come back needing input.
+ */
+export type CreateObjectiveActionResult = {
+  actionId: string;
+  runId?: string;
+  versionId?: string;
+  state?: "succeeded" | "failed";
+  factsNeeded?: string[];
+  runError?: string;
+};
 export type UploadAssetResult = { assetId: string; signedUrl: string | null };
 export type SetAssetRightsResult = { ok: true; rights_status: "approved" | "rejected"; rights_confirmed_at: string | null };
 
@@ -61,6 +75,16 @@ export function runAction(actionId: string, body: { agentKey?: WorkspaceAgentKey
 }
 
 export function saveVersion(actionId: string, body: { body: string; alt_text?: string; base_version_id?: string }): Promise<ClientResult<SaveVersionResult>> {
+  return post(`/api/actions/${encodeURIComponent(actionId)}/versions`, body);
+}
+
+/**
+ * Redeem a Visibility Operator draft the server is holding. Deliberately has no
+ * `body` parameter: the text is read from `action_runs.output`, so the version
+ * is recorded as agent-authored and linked to the run that costs it. Sending
+ * the text from here is what made a model's words read as a member's.
+ */
+export function saveAssistantVersion(actionId: string, body: { assistant_run_id: string; base_version_id?: string }): Promise<ClientResult<SaveVersionResult>> {
   return post(`/api/actions/${encodeURIComponent(actionId)}/versions`, body);
 }
 
@@ -183,8 +207,17 @@ function patch<T>(url: string, body: unknown): Promise<ClientResult<T>> {
  * it (the same two-step the scan funnel uses). A failed process call still
  * returns the jobId: the job is queued and the scanning page polls it.
  */
-export async function rescanLocation(workspaceId: string, locationId: string): Promise<ClientResult<RescanResult>> {
-  const queued = await post<RescanResult>(`/api/workspaces/${encodeURIComponent(workspaceId)}/rescan`, { locationId });
+export async function rescanLocation(workspaceId: string, locationId: string, consent: { policyVersion: string; locale?: string }): Promise<ClientResult<RescanResult>> {
+  const queued = await post<RescanResult>(`/api/workspaces/${encodeURIComponent(workspaceId)}/rescan`, {
+    locationId,
+    // The route parses these through the same contract the scan wizard uses.
+    // The version must come from the server (see RescanButton) -- computing it
+    // in the browser silently yields the default, and any deployment with an
+    // override would then 409 forever.
+    public_evidence_consent: true,
+    consent_policy_version: consent.policyVersion,
+    ...(consent.locale ? { locale: consent.locale } : {}),
+  });
   if (!queued.ok) return queued;
   await post("/api/scan/process", { jobId: queued.data.jobId });
   return queued;
@@ -212,4 +245,20 @@ export function saveBrand(workspaceId: string, brand: BrandInput): Promise<Clien
 
 export function confirmInstagramHandle(workspaceId: string, handle: string, locale?: string): Promise<ClientResult<ConfirmInstagramHandleResult>> {
   return post(`/api/workspaces/${encodeURIComponent(workspaceId)}/instagram-handle`, locale ? { handle, locale } : { handle });
+}
+
+/**
+ * Withdraws the Google Business Profile connection. `disconnected` is false
+ * when there was nothing active to withdraw -- a second click, or another tab
+ * that got there first -- which is a success, not an error, so the caller can
+ * refresh either way.
+ */
+export type DisconnectGoogleResult = { ok: true; disconnected: boolean };
+
+export function disconnectGoogleConnection(workspaceId: string, locale?: string): Promise<ClientResult<DisconnectGoogleResult>> {
+  return request(`/api/workspaces/${encodeURIComponent(workspaceId)}/google-connection`, {
+    method: "DELETE",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(locale ? { locale } : {}),
+  });
 }

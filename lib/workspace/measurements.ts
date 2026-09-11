@@ -72,6 +72,7 @@ export interface MeasurableActionRow {
   id: string;
   template_key: string;
   location_id: string | null;
+  action_state: string;
 }
 
 export interface ExportedVersionRow {
@@ -168,8 +169,23 @@ export async function recordMeasurements(repo: MeasurementRepository, input: Rec
   if (latest.id !== head.id) return { comparable: true, recorded, skipped };
 
   const nowIso = now.toISOString();
-  const measured = allMeasurements.filter((row) => row.fact_type !== "Unknown").map((row) => row.action_id);
-  const insufficient = allMeasurements.filter((row) => row.fact_type === "Unknown").map((row) => row.action_id);
+
+  // Only an action the owner actually entered into the loop can be labelled
+  // measured. A metric existing on both snapshots is not evidence that anyone
+  // did anything: without this, an untouched `recommended` action whose finding
+  // is still open was badged "Measured" -- the loop's terminal success state --
+  // on the second comparable scan, next to an Approval step still pending.
+  // ig-highlights was the clearest case: 0 highlights before, 0 after, and the
+  // product telling the owner the work was measured.
+  //
+  // Every measurement row is still INSERTED, so Insights keeps the honest
+  // Observed evidence; it is only the mutable label that is gated. `Attributed`
+  // already means "exported before head", so the two agree by construction.
+  const entered = new Set(
+    actions.filter((action) => action.action_state === "completed" || exportedBeforeHead.has(action.id)).map((action) => action.id),
+  );
+  const measured = allMeasurements.filter((row) => row.fact_type !== "Unknown" && entered.has(row.action_id)).map((row) => row.action_id);
+  const insufficient = allMeasurements.filter((row) => row.fact_type === "Unknown" && entered.has(row.action_id)).map((row) => row.action_id);
   if (measured.length) {
     await repo.updateState(head, measured, "measured", nowIso);
   }

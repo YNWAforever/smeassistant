@@ -91,14 +91,38 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon workspace read models
     expect(await repository.draftVersions(id)).toEqual([]);
     expect(await repository.versions(other, [actionId])).toEqual([]);
   });
-  it("reads newest connection by actual connected_at regardless of status without credentials", async () => {
+  /**
+   * DELIBERATE CHANGE OF CONTRACT. This asserted the newest row by
+   * `connected_at` "regardless of status", which would return the revoked row
+   * below while a LIVE credential existed -- hiding both the real status and the
+   * Disconnect control, the only thing that can revoke it. The Integrations page
+   * renders exactly this value.
+   *
+   * `oauth_connections_active_provider_key` (0002_business.sql) permits at most
+   * one active row per (workspace, provider), so "prefer the active one" is
+   * unambiguous rather than a coin toss between candidates.
+   *
+   * Recency still decides among rows of equal standing -- pinned below, and
+   * still read from `connected_at` rather than `created_at`/`updated_at`.
+   */
+  it("prefers a live connection over a merely newer one, and returns no credentials", async () => {
     const id = await workspace();
     await runtime.query(`INSERT INTO oauth_connections(workspace_id,provider,access_token_encrypted,status,connected_at)
       VALUES($1,'google_gbp','secret-sentinel','active','2026-08-01'),($1,'google_gbp','secret-sentinel','revoked','2026-09-01')`, [id]);
     const connection = await repository.latestConnection(id);
-    expect(connection?.status).toBe("revoked");
+    expect(connection?.status).toBe("active");
+    expect(connection?.created_at).toContain("2026-08-01");
     expect(Object.keys(connection ?? {}).sort()).toEqual(["created_at", "expires_at", "status", "updated_at"]);
     expect(JSON.stringify(connection)).not.toContain("secret-sentinel");
+  });
+
+  it("falls back to the newest by connected_at when no row is active", async () => {
+    const id = await workspace();
+    await runtime.query(`INSERT INTO oauth_connections(workspace_id,provider,access_token_encrypted,status,connected_at)
+      VALUES($1,'google_gbp','secret-sentinel','revoked','2026-08-01'),($1,'google_gbp','secret-sentinel','expired','2026-09-01')`, [id]);
+    const connection = await repository.latestConnection(id);
+    expect(connection?.status).toBe("expired");
+    expect(connection?.created_at).toContain("2026-09-01");
   });
   it("pages activity at zero, one and beyond row count with strict workspace scope", async () => {
     const id = await workspace();
@@ -158,6 +182,39 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon workspace read models
     const id = "00000000-0000-4000-8000-000000000001";
     await expect(workspaceReadRepository(unavailable).diff(id, id, id)).rejects.toThrow("workspace_read_unavailable");
   });
+  it("scopes Home's counters to a location while keeping workspace-wide actions counted", async () => {
+    // The trap in this fix: a bare `location_id=$n` looks tighter and passes
+    // any fixture without workspace-wide rows, but actions.location_id IS NULL
+    // means "all locations" (CLAUDE.md 3.3). Drop the IS NULL arm and Home's
+    // counters become SMALLER than the same location's Actions tab.
+    const id = await workspace();
+    const loc = (await runtime.query("INSERT INTO locations(workspace_id,slug,name) VALUES($1,'main','Main') RETURNING id", [id])).rows[0].id;
+    const other = (await runtime.query("INSERT INTO locations(workspace_id,slug,name) VALUES($1,'other','Other') RETURNING id", [id])).rows[0].id;
+    const action = async (locationId: string | null, state: string) =>
+      (await runtime.query(
+        `INSERT INTO actions(workspace_id,location_id,template_key,title,summary,evidence,priority,priority_score,priority_factors,effort_minutes,capability,dedupe_key,action_state,completed_at)
+         VALUES($1,$2,'ig-bio','{}','{}','{}','urgent',1,'[]',10,'Live',gen_random_uuid()::text,$3,'2026-09-05') RETURNING id`,
+        [id, locationId, state],
+      )).rows[0].id;
+
+    await action(loc, "completed");
+    await action(null, "completed");
+    await action(other, "completed");
+
+    // This location plus the workspace-wide one -- never the other location's.
+    expect((await repository.completedActions(id, "2026-09-01", loc)).length).toBe(2);
+    // Unscoped (?location=all) still sees everything, exactly as before.
+    expect((await repository.completedActions(id, "2026-09-01")).length).toBe(3);
+
+    const scoped = await action(loc, "in_progress");
+    const workspaceWide = await action(null, "in_progress");
+    for (const target of [scoped, workspaceWide, await action(other, "in_progress")]) {
+      await runtime.query("INSERT INTO output_versions(workspace_id,action_id,version_no,body,author_type) VALUES($1,$2,1,'draft','user')", [id, target]);
+    }
+    expect((await repository.draftVersions(id, loc)).length).toBe(2);
+    expect((await repository.draftVersions(id)).length).toBe(3);
+  });
+
   it("executes remaining empty optional reads without hiding query failures", async () => {
     const id = await workspace();
     expect(await repository.schedules(id, ["missing-place"])).toEqual([]);

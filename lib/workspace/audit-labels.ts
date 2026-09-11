@@ -14,6 +14,7 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string }> = {
   "run.started": { en: "Draft generation started", zh: "草稿生成已開始" },
   "run.succeeded": { en: "Draft prepared", zh: "草稿已準備" },
   "run.failed": { en: "Draft generation failed", zh: "草稿生成失敗" },
+  "run.timed_out": { en: "Draft generation timed out", zh: "草稿生成逾時" },
   "version.created": { en: "Version saved", zh: "已儲存新版本" },
   "version.approved": { en: "Version approved", zh: "版本已核准" },
   "version.changes_requested": { en: "Changes requested", zh: "已要求修改" },

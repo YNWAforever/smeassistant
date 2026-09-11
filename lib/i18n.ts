@@ -7,9 +7,12 @@ import { interpolate } from "@/lib/share";
 export { interpolate };
 
 /**
- * The upstream message namespaces this app reuses (scanner, scanning, unlock,
- * report, share, legal), copied verbatim into lib/messages/*.json. The three
- * files share one key set (tests/i18n.test.ts pins it), so English is the type.
+ * The upstream message namespaces this app reuses (scanner, scanning, report,
+ * share, legal), copied verbatim into lib/messages/*.json. The three files share
+ * one key set (tests/i18n.test.ts pins it), so English is the type. The
+ * `unlock` namespace was removed: no t() call reached it, and five of its keys
+ * described a /api/report-access/recover flow that does not exist in this app —
+ * no route, no configuration reader and no mail sender.
  */
 export type Messages = typeof en;
 

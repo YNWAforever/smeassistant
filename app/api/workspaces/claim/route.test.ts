@@ -23,7 +23,8 @@ vi.mock("@/lib/workspace/claim", async (importOriginal) => {
   return { ...original, completeWorkspaceClaim: mocks.completeWorkspaceClaim };
 });
 
-import { parseClaimBody, POST } from "./route";
+import { POST } from "./route";
+import { parseClaimBody } from "./parse-body";
 
 const USER = { id: "user-1", email: "owner@example.com", verified: true };
 
@@ -82,6 +83,17 @@ describe("POST /api/workspaces/claim", () => {
     expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
   });
 
+  it("409s a market that disagrees with the scan, and says which one to send", async () => {
+    // The market is money-bearing: workspaces.market picks the Stripe price.
+    // Refused rather than silently corrected, so a tampered or stale client
+    // cannot quietly land on the wrong price.
+    mocks.getUser.mockResolvedValue(USER);
+    mocks.completeWorkspaceClaim.mockResolvedValue({ kind: "market_mismatch", expected: "hk" });
+    const response = await post({ ...BODY, market: "tw" });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "market_mismatch", expected: "hk" });
+  });
+
   it("400s invalid JSON and an invalid body without touching the limiter or the database", async () => {
     mocks.getUser.mockResolvedValue(USER);
     expect((await post("{not json")).status).toBe(400);
@@ -114,6 +126,8 @@ describe("POST /api/workspaces/claim", () => {
       timezone: "Asia/Hong_Kong",
       locale: "zh-HK",
       userId: "user-1",
+      brandVoice: null,
+      approvedClaims: null,
     }, expect.objectContaining({ buildSnapshot: expect.any(Function), deriveActions: expect.any(Function) }));
     // Rate limited per user (10/h), failing closed.
     expect(mocks.enforceRateLimit).toHaveBeenCalledWith(
@@ -175,8 +189,22 @@ describe("parseClaimBody", () => {
         market: "tw",
         timezone: null,
         locale: "zh-HK",
+        brandVoice: null,
+        approvedClaims: null,
       },
     });
+  });
+
+  it("keeps the owner's onboarding brand basics instead of dropping them", () => {
+    const parsed = parseClaimBody({ ...BODY, brand_voice: "professional", approved_claims: [" Family recipes since 1998 ", "", "Halal certified"] });
+    expect(parsed).toMatchObject({ ok: true, body: { brandVoice: "professional", approvedClaims: ["Family recipes since 1998", "Halal certified"] } });
+  });
+
+  it("ignores a voice the server does not support rather than rejecting the claim", () => {
+    // "concise" was the onboarding UI's own local value and is not in
+    // BRAND_VOICES; an older client must not start failing on it.
+    expect(parseClaimBody({ ...BODY, brand_voice: "concise" })).toMatchObject({ ok: true, body: { brandVoice: null } });
+    expect(parseClaimBody({ ...BODY, approved_claims: "not-an-array" })).toMatchObject({ ok: true, body: { approvedClaims: null } });
   });
 
   it("rejects an over-long name or address", () => {

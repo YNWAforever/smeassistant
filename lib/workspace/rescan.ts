@@ -1,7 +1,12 @@
 import type { RescanRepository } from "@/lib/repositories/rescan";
 import { jobsRepository } from "@/lib/repositories/jobs";
 import type { IgMatchProvenance } from "@sme-scanner/contracts";
-import { buildScanJobInsert, type ScanStartInput } from "@/lib/scan/start-job";
+// Type only. The value imports are deliberately gone: this module must not be
+// able to name a consent type or read the published policy version, because
+// being able to do so is exactly how it came to write a consent record nobody
+// had been asked for.
+import { type ScanConsentRecord } from "@/lib/scan/consent";
+import { buildScanConsentInsert, buildScanJobInsert, type ScanStartInput } from "@/lib/scan/start-job";
 import { buildScheduleInsert, type SchedulableJob, type ScheduleRefusal } from "@/lib/scheduler/create-schedule";
 import { recordNeonEvent } from "@/lib/workspace/audit";
 
@@ -110,6 +115,13 @@ export interface EnqueueRescanInput {
   workspaceId: string;
   locationId: string;
   actorId: string;
+  /**
+   * Parsed and version-checked by the route via `parseScanConsent`, exactly as
+   * the scan wizard does. Required rather than optional-with-a-default so the
+   * compiler enumerates every caller: a default is how this became a record of
+   * an agreement nobody was shown.
+   */
+  consent: ScanConsentRecord;
   now?: Date;
   locale?: string | null;
   ipHash?: string | null;
@@ -129,8 +141,19 @@ export async function enqueueRescan(repo: RescanRepository, input: EnqueueRescan
   // Server-side attribution only (CLAUDE.md 3.2.2): workspace_id + location_id
   // come from the authorized membership, never from a request body.
   const row = buildScanJobInsert(scanInput, { workspaceId: input.workspaceId, locationId: input.locationId });
+  // A rescan is the second writer of audit_jobs and must not become a consent
+  // hole. It records a FRESH row rather than copying the parent job's.
+  //
+  // The consent is SUPPLIED by the caller, never synthesised here. This module
+  // used to build the record itself -- granted:true, stamped with whatever
+  // version was currently published -- which recorded a policy-versioned
+  // agreement the owner had never been shown, and would have kept recording one
+  // after a policy change nobody had accepted. The route now parses it from the
+  // request through the same `parseScanConsent` contract the scan wizard uses,
+  // so a submitted version that no longer matches the published one is refused
+  // rather than silently restamped (guardrail 13).
   let created: { id: string };
-  try { created = await jobsRepository.insert(row); }
+  try { created = await jobsRepository.insert(row, buildScanConsentInsert(input.consent)); }
   catch {
     console.error("[workspace/rescan] job insert failed", { category: "rescan_insert_failed" });
     return { ok: false, reason: "insert_failed" };
@@ -147,6 +170,27 @@ export async function enqueueRescan(repo: RescanRepository, input: EnqueueRescan
     locale: input.locale ?? null,
     ipHash: input.ipHash ?? null,
     payload: { parent_job_id: sourceJob.id, trigger: "rescan" },
+  });
+
+  // The public funnel deliberately emits no audit_events row for consent:
+  // AuditEventInput.workspaceId is a required string and an anonymous scan has
+  // no workspace, so consent_records is the record of truth there. On the
+  // rescan path a workspace exists, so the owner sees the consenting act in
+  // their Activity feed.
+  await recordNeonEvent({
+    workspaceId: input.workspaceId,
+    locationId: input.locationId,
+    actorType: "user",
+    actorId: input.actorId,
+    event: "consent.public_evidence",
+    entityType: "audit_job",
+    entityId: created.id,
+    locale: input.locale ?? null,
+    ipHash: input.ipHash ?? null,
+    // Passed through, never re-resolved: reading the published version again
+    // here could stamp the audit row with a different version from the
+    // consent_records row written moments earlier.
+    payload: { policy_version: input.consent.policyVersion, trigger: "rescan" },
   });
 
   return { ok: true, jobId: created.id, sourceJob };

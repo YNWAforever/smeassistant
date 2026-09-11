@@ -9,6 +9,8 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { applyMigrations } from "../../scripts/neon/migrations";
 import { startNeonDatabaseFixture, type NeonDatabaseFixture } from "./neon-database";
 import { buildScanStartPayload, emptyScanDraft } from "../../lib/funnel/scan-start";
+import { LEGAL_POLICY_VERSION } from "../../lib/legal/policy";
+import { assertScanConsent } from "../../lib/scan/consent-gate";
 import { parseScanStartBody, insertScanJob } from "../../lib/scan/start-job";
 const ports = vi.hoisted(() => ({ pool: undefined as Pool | undefined }));
 vi.mock("../../lib/db/client", () => ({ getPool: () => ports.pool, getDatabase: () => drizzle(ports.pool!) }));
@@ -33,12 +35,12 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan persistence", ()
     });
     afterAll(async () => { await Promise.all([owner?.end(), runtime?.end()]); fixture?.stop(); });
     it.each(["hk", "tw"] as const)("persists anonymous %s manual scans without trusting client attribution", async (market) => {
-        const payload = buildScanStartPayload({ ...emptyScanDraft(market, "Fixture shop"), manualEntry: true, industry: "fnb", district: market === "hk" ? "東區" : "臺北市" }, market === "hk" ? "zh-HK" : "zh-TW");
+        const payload = buildScanStartPayload({ ...emptyScanDraft(market, "Fixture shop"), manualEntry: true, industry: "fnb", district: market === "hk" ? "東區" : "臺北市" }, market === "hk" ? "zh-HK" : "zh-TW", { granted: true, policyVersion: LEGAL_POLICY_VERSION });
         const parsed = parseScanStartBody({ ...payload, workspace_id: "00000000-0000-4000-8000-000000000001", location_id: "00000000-0000-4000-8000-000000000002" });
         expect(parsed.ok).toBe(true);
         if (!parsed.ok)
             throw Error("invalid fixture");
-        const result = await insertScanJob(parsed.input);
+        const result = await insertScanJob(parsed.input, parsed.consent);
         expect(result.ok).toBe(true);
         if (!result.ok)
             throw Error("insert failed");
@@ -63,18 +65,18 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan persistence", ()
         const ws = (await runtime.query("INSERT INTO workspaces(slug) VALUES($1) RETURNING id", [key])).rows[0].id;
         const loc = (await runtime.query("INSERT INTO locations(workspace_id,slug,name) VALUES($1,'shop','Fixture') RETURNING id", [ws])).rows[0].id;
         const parent = (await runtime.query("INSERT INTO audit_jobs(business_name) VALUES('Parent') RETURNING id")).rows[0].id;
-        const parsed = parseScanStartBody({ business_name: "Selected shop", market: "TW", locale: "zh-TW", industry: "fnb", district: "臺北市", objective: "more_leads", [key]: "identity", place_match_confidence: "high", provider: "serpapi", parent_job_id: parent, ig_handle: "fixture", ig_match_provenance: "picker_confirmed", alternate_names: ["Alternative"], maps_url: "https://maps.google.com/", facebook_url: "https://facebook.com/fixture" });
+        const parsed = parseScanStartBody({ business_name: "Selected shop", market: "TW", locale: "zh-TW", industry: "fnb", district: "臺北市", objective: "more_leads", [key]: "identity", place_match_confidence: "high", provider: "serpapi", parent_job_id: parent, ig_handle: "fixture", ig_match_provenance: "picker_confirmed", alternate_names: ["Alternative"], maps_url: "https://maps.google.com/", facebook_url: "https://facebook.com/fixture", public_evidence_consent: true, consent_policy_version: LEGAL_POLICY_VERSION });
         expect(parsed.ok).toBe(true);
         if (!parsed.ok)
             throw Error(parsed.error);
-        const result = await insertScanJob(parsed.input, { workspaceId: ws, locationId: loc });
+        const result = await insertScanJob(parsed.input, parsed.consent, { workspaceId: ws, locationId: loc });
         expect(result.ok).toBe(true);
         if (!result.ok)
             throw Error("insert failed");
         const row = (await runtime.query("SELECT * FROM audit_jobs WHERE id=$1", [result.jobId])).rows[0];
         expect(row).toMatchObject({ workspace_id: ws, location_id: loc, parent_job_id: parent, region: "tw", place_id: key === "place_id" ? "identity" : null, place_match_confidence: key === "place_id" ? "high" : null });
         expect(row.input_snapshot).toMatchObject({ version: 2, locale: "zh-TW", market: "TW", instagramMatchProvenance: "picker_confirmed", alternateNames: ["Alternative"], provider: "serpapi", manualEntry: false });
-        const again = await insertScanJob(parsed.input);
+        const again = await insertScanJob(parsed.input, parsed.consent);
         expect(again.ok).toBe(true);
         if (!again.ok)
             throw Error("insert failed");
@@ -138,5 +140,59 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan persistence", ()
   expect(await store.readApprovedAgentRuns(id)).toEqual([{findingKey:"finding-2",agentKey:"review_reply_agent",output:{draft:"approved"}}]);
   for(const column of ["summary_en","summary_zh","summary_tw"] as const)await store.cacheSummary(id,column,column);
   expect(await store.readAuthorizedJobData(id)).toMatchObject({summary_en:"summary_en",summary_zh:"summary_zh",summary_tw:"summary_tw"});
+ });
+
+ describe("scan-time consent", () => {
+  const consentedInput = () => {
+   const payload = buildScanStartPayload({ ...emptyScanDraft("hk", "Consent shop"), manualEntry: true, industry: "fnb", district: "東區" }, "zh-HK", { granted: true, policyVersion: LEGAL_POLICY_VERSION });
+   const parsed = parseScanStartBody(payload);
+   if (!parsed.ok) throw Error(parsed.error);
+   return parsed;
+  };
+
+  it("writes exactly one consent row, with no lead, alongside the job", async () => {
+   const parsed = consentedInput();
+   const result = await insertScanJob(parsed.input, parsed.consent);
+   if (!result.ok) throw Error("insert failed");
+   const rows = (await runtime.query("SELECT consent_type,granted,policy_version,locale,lead_id FROM consent_records WHERE job_id=$1", [result.jobId])).rows;
+   expect(rows).toEqual([{ consent_type: "public_evidence", granted: true, policy_version: LEGAL_POLICY_VERSION, locale: "zh-HK", lead_id: null }]);
+  });
+
+  it("rolls the job back when the consent row cannot be written", async () => {
+   const parsed = consentedInput();
+   const row = { ...parsed.input };
+   await expect(
+    jobsRepository.insert(
+     // buildScanJobInsert's shape, reached through insertScanJob's own builder.
+     (await import("../../lib/scan/start-job")).buildScanJobInsert(row),
+     { consent_type: "public_evidence", granted: true, policy_version: LEGAL_POLICY_VERSION, locale: null as never },
+    ),
+   ).rejects.toThrow();
+   // No unconsented queued scan is left behind.
+   expect((await runtime.query("SELECT count(*)::int AS n FROM audit_jobs WHERE business_name='Consent shop' AND NOT EXISTS (SELECT 1 FROM consent_records c WHERE c.job_id=audit_jobs.id)")).rows[0].n).toBe(0);
+  });
+
+  it("removes the consent row when the scan is erased", async () => {
+   const parsed = consentedInput();
+   const result = await insertScanJob(parsed.input, parsed.consent);
+   if (!result.ok) throw Error("insert failed");
+   await runtime.query("DELETE FROM audit_jobs WHERE id=$1", [result.jobId]);
+   expect((await runtime.query("SELECT count(*)::int AS n FROM consent_records WHERE job_id=$1", [result.jobId])).rows[0].n).toBe(0);
+  });
+
+  it("fails a queued job that reaches dispatch with no consent, and leaves a claimed one alone", async () => {
+   const orphan = (await runtime.query("INSERT INTO audit_jobs(business_name,status) VALUES('Orphan','queued') RETURNING id")).rows[0].id;
+   const gate = await assertScanConsent(orphan);
+   expect(gate).toMatchObject({ ok: false, code: "consent_required", status: 403 });
+   const failed = (await runtime.query("SELECT status,failure_category,failure_correlation_id FROM audit_jobs WHERE id=$1", [orphan])).rows[0];
+   expect(failed.status).toBe("failed");
+   expect(failed.failure_category).toBe("consent_missing");
+   expect(failed.failure_correlation_id).not.toBeNull();
+
+   // The `AND status='queued'` guard means the gate can never race the executor.
+   const claimed = (await runtime.query("INSERT INTO audit_jobs(business_name,status) VALUES('Claimed','collecting') RETURNING id")).rows[0].id;
+   await assertScanConsent(claimed);
+   expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [claimed])).rows[0].status).toBe("collecting");
+  });
  });
 });

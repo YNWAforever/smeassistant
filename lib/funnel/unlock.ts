@@ -34,18 +34,39 @@ export function generateIdempotencyKey(getRandomValues: (bytes: Uint8Array) => U
 export interface UnlockFormValues {
   channel: UnlockChannel;
   contact: string;
+  /**
+   * Not a recovery address, despite the wire name. Nothing is emailed at unlock
+   * time and no recovery route exists in this app. The value is persisted to
+   * `report_access_grants.email_normalized` by `complete_report_unlock`, and the
+   * only reader is `claimsRepository.isLeadRecipient()`, which decides whether
+   * `POST /api/owner/magic-link` may send a sign-in link for this report. It is
+   * never a delivery address and never ownership — that stays Google-verified or
+   * staff-assigned. The key name is upstream's contract (`recovery_email` on the
+   * wire, `p_recovery_email` in the RPC) and is deliberately not renamed.
+   */
   recoveryEmail: string;
   reportDelivery: boolean;
   scanDiscussion: boolean;
   marketing: boolean;
 }
 
-export type UnlockFormError = "contact_required" | "contact_invalid" | "delivery_required";
+export type UnlockFormError = "contact_required" | "contact_invalid" | "recovery_invalid" | "delivery_required";
 
 export function validateUnlockForm(market: UnlockMarket, values: UnlockFormValues): UnlockFormError[] {
   const errors: UnlockFormError[] = [];
   if (!values.contact.trim()) errors.push("contact_required");
   else if (!normalizeMarketContact({ market: contactMarket(market), channel: values.channel, identifier: values.contact })) errors.push("contact_invalid");
+  // Gated exactly as the field is rendered (components/unlock-page.tsx shows it
+  // only when the channel is not email). Otherwise a stale value typed under
+  // WhatsApp and left behind after switching to Email would block submission on
+  // an off-screen field -- and buildUnlockPayload discards it for that channel
+  // anyway, so the server would have accepted it. Reusing normalizeMarketContact
+  // rather than a fresh regex keeps client acceptance byte-identical to the
+  // route's, so a typo can never surface as the generic "could not be unlocked".
+  if (values.channel !== "email") {
+    const recovery = values.recoveryEmail.trim();
+    if (recovery && !normalizeMarketContact({ market: contactMarket(market), channel: "email", identifier: recovery })) errors.push("recovery_invalid");
+  }
   if (!values.reportDelivery) errors.push("delivery_required");
   return errors;
 }

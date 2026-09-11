@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { ScanPage } from "@/components/public-pages";
 import { normaliseLocale } from "@/lib/copy";
+import { currentScanConsentPolicyVersion } from "@/lib/scan/consent";
 
 import { publicPageMetadata } from "../_meta";
 import { firstParam, resolveMarketParam } from "../_params";
@@ -28,6 +29,11 @@ export default async function Scan({
       locale={locale}
       initialMarket={resolveMarketParam(query.market, locale)}
       initialBusiness={firstParam(query.business)}
+      // Resolved here, not in the client: a deployment that sets
+      // REPORT_CONSENT_POLICY_VERSION would otherwise make every browser send
+      // LEGAL_POLICY_VERSION and 409 on every scan. The route is
+      // force-dynamic, so router.refresh() serves a bumped version.
+      consentPolicyVersion={currentScanConsentPolicyVersion()}
     />
   );
 }

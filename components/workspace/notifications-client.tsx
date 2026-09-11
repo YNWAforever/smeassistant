@@ -68,21 +68,24 @@ export function NotificationPreferencesForm({ locale, workspaceId, initial }: { 
 
 const COPY = {
   en: {
-    rescan: "Rescan complete", rescanNote: "One email when a scan finishes",
+    // "One email when a scan finishes" asserted a send. No mail sender exists,
+    // so each note now names the trigger only; the card states that email
+    // delivery is not enabled yet.
+    rescan: "Rescan complete", rescanNote: "When a scan finishes",
     regression: "Regression alert", regressionNote: "When a comparable scan regresses",
     digest: "Monthly digest", digestNote: "A monthly summary of what changed",
     save: "Save preferences", saved: "Notification preferences saved.",
     network: "The server could not be reached; try again shortly.", failed: "The preferences could not be saved.",
   },
   "zh-HK": {
-    rescan: "重新掃描完成", rescanNote: "每次掃描完成後一封電郵",
+    rescan: "重新掃描完成", rescanNote: "每次掃描完成時",
     regression: "退步提示", regressionNote: "可比較掃描出現退步時",
     digest: "每月摘要", digestNote: "每月一次的成效摘要",
     save: "儲存偏好設定", saved: "通知偏好設定已儲存。",
     network: "無法連接伺服器，請稍後再試。", failed: "未能儲存偏好設定。",
   },
   "zh-TW": {
-    rescan: "重新掃描完成", rescanNote: "每次掃描完成後一封電子郵件",
+    rescan: "重新掃描完成", rescanNote: "每次掃描完成時",
     regression: "退步提醒", regressionNote: "可比較掃描出現退步時",
     digest: "每月摘要", digestNote: "每月一次的成效摘要",
     save: "儲存偏好設定", saved: "通知偏好設定已儲存。",

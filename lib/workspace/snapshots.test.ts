@@ -153,6 +153,31 @@ describe("buildSnapshot", () => {
     expect(snapshot.moduleStates.website.status).toBe("unsupported");
     expect(snapshot.websiteChecks).toBeNull();
   });
+
+  // The completion path holds row locks and may not fetch, so checks the caller
+  // collected beforehand are the only website evidence a post-scan snapshot can
+  // carry. Before this, every snapshot after the claim recorded the website as
+  // unmeasured forever and `website.checks_passed` never had an after value.
+  it("accepts website checks the caller already collected, without fetching, even in persisted-evidence mode", async () => {
+    const website = vi.fn(fetchWebsite);
+    const collected = { evaluated: 15, passed: 12, results: [{ key: "faq_schema" as const, pass: true }] };
+    const snapshot = await buildSnapshot(client(), "job-head", { persistedOnly: true, websiteChecks: collected, fetchWebsite: website });
+    expect(website).not.toHaveBeenCalled();
+    expect(snapshot.websiteChecks).toEqual(collected);
+    expect(snapshot.moduleStates.website).toMatchObject({ status: "measured", limitationCode: null });
+    expect(snapshot.metrics["website.checks_passed"]).toBe(12);
+    expect(snapshot.metrics["website.has_faq_schema"]).toBe(1);
+  });
+
+  it("separates a site we could not read from one we never looked at", async () => {
+    const unreadable = await buildSnapshot(client(), "job-head", { persistedOnly: true, websiteChecks: { evaluated: 0, passed: 0, results: [] } });
+    expect(unreadable.moduleStates.website).toMatchObject({ status: "unavailable", limitationCode: "WEBSITE_UNREACHABLE" });
+    state.snapshotsByJob = {};
+    state.upserts = [];
+    const unlooked = await buildSnapshot(client(), "job-head", { persistedOnly: true, websiteChecks: null });
+    expect(unlooked.moduleStates.website).toMatchObject({ status: "unavailable", limitationCode: "WEBSITE_CHECKS_NOT_RECORDED" });
+    expect(unlooked.metrics["website.checks_passed"]).toBeUndefined();
+  });
 });
 
 describe("rowToSnapshot / websiteUrlOf", () => {

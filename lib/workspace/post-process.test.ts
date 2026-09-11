@@ -149,4 +149,18 @@ it("does not announce a comparable scan whose measurement base is not ready", as
   spy.mockRestore();
 });
 
-it("uses persisted evidence only at completion composition",async()=>{mocks.build.mockResolvedValue({id:"snap"});await postProcessWorkspaceScan(db,"job");expect(mocks.build).toHaveBeenCalledWith(expect.anything(),"job",{persistedOnly:true});});
+it("uses persisted evidence only at completion composition",async()=>{mocks.build.mockResolvedValue({id:"snap"});await postProcessWorkspaceScan(db,"job");expect(mocks.build).toHaveBeenCalledWith(expect.anything(),"job",{persistedOnly:true,websiteChecks:null});});
+
+// The completion transaction holds row locks, so this function can never fetch
+// the website itself. Checks the caller gathered beforehand are the only way a
+// post-scan snapshot carries website evidence; supplying none must keep meaning
+// "not evaluated" rather than quietly becoming "unreachable".
+it("hands the caller's website checks to the snapshot, and null when it collected none", async () => {
+  mocks.build.mockResolvedValue({ id: "snap" });
+  const checks = { evaluated: 15, passed: 11, results: [{ key: "faq_schema" as const, pass: true }] };
+  await postProcessWorkspaceScan(db, "job", { websiteChecks: checks });
+  expect(mocks.build).toHaveBeenCalledWith(expect.anything(), "job", { persistedOnly: true, websiteChecks: checks });
+  mocks.build.mockClear();
+  await postProcessWorkspaceScan(db, "job", { websiteChecks: null });
+  expect(mocks.build).toHaveBeenCalledWith(expect.anything(), "job", { persistedOnly: true, websiteChecks: null });
+});

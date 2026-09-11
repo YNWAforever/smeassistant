@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { enforceCompositeIdentifierRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
 import { resolveAnalyticsSession, setAnalyticsSessionCookie } from "@/lib/analytics/record-event";
+import { assertScanConsent } from "@/lib/scan/consent-gate";
 import { dispatchToScanWorker, resolveScanExecutionRuntime, runScan } from "@/lib/scan/run";
 
 // Phase 2 lengthens the synchronous path, and an unset maxDuration lets the
@@ -22,9 +23,26 @@ export async function POST(req: Request) {
     req,
     scope: "scan_process",
     identifier: jobId,
-    failClosed: false,
+    // This dispatches paid provider calls (SerpApi/Places/RapidAPI via
+    // collect-providers.ts). If the limiter's own configuration is
+    // unavailable, refuse the spend rather than let it through unbounded --
+    // scan_status (read-only polling) is the route that stays fail-open.
+    failClosed: true,
   });
   if (!limiter.allowed) return rateLimitedResponse(limiter.retryAfterSeconds);
+
+  // After the limiter (so abuse of the gate itself is still bounded) and before
+  // any provider call, worker dispatch or analytics session. This is where a
+  // direct POST /api/scan/start bypass, or any hand-inserted queued row, stops:
+  // the job is marked failed and the scanning page's existing failure card
+  // surfaces it with the correlation id.
+  const consent = await assertScanConsent(jobId);
+  if (!consent.ok) {
+    return NextResponse.json(
+      consent.status === 503 ? { error: "unavailable" } : { error: consent.code, correlationId: consent.correlationId },
+      { status: consent.status },
+    );
+  }
 
   const session = resolveAnalyticsSession(req);
 

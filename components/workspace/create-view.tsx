@@ -91,8 +91,22 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
       else if (result.status === 429) toast.error(isChinese ? "請求過於頻繁，請稍後再試。" : "Too many requests; try again shortly.")
       return
     }
-    toast.success(isChinese ? "已建立行動；正在生成第一份草稿。" : "Action created; the first draft is being prepared.")
-    router.push(withLocation(`${base}/actions/${result.data.actionId}`, location))
+    // A 201 only means the action row exists. The run's own outcome comes back
+    // in the same response, so report what actually happened rather than
+    // promising a draft that may already have failed or be waiting on input.
+    const { actionId, versionId, state, factsNeeded, runError } = result.data
+    if (runError) {
+      toast.error(isChinese ? "行動已建立，但未能開始生成草稿。" : "Action created, but the draft could not be started.")
+    } else if (factsNeeded?.length) {
+      toast.message(isChinese ? "行動已建立；需要補充資料才能生成草稿。" : "Action created; a few details are needed before a draft can be written.")
+    } else if (state === "failed") {
+      toast.error(isChinese ? "行動已建立，但今次未能產生草稿，請在行動頁重試。" : "Action created, but the draft could not be generated this time — retry from the action page.")
+    } else if (versionId) {
+      toast.success(isChinese ? "已建立行動，第一份草稿已儲存。" : "Action created and the first draft is saved.")
+    } else {
+      toast.success(isChinese ? "已建立行動。" : "Action created.")
+    }
+    router.push(withLocation(`${base}/actions/${actionId}`, location))
   }
 
   return (

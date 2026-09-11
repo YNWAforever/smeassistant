@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { AUDIT_EVENTS, ipHashFor, recordNeonEvent } from "./audit";
+import { AUDIT_EVENT_LABELS } from "./audit-labels";
 
 const insert = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/repositories/claims', () => ({recordClaimAuditEvent:insert}));
@@ -44,6 +45,11 @@ describe("recordNeonEvent", () => {
     expect(new Set(AUDIT_EVENTS).size).toBe(AUDIT_EVENTS.length);
     expect(AUDIT_EVENTS).toContain("delivery.copied");
     expect(AUDIT_EVENTS).toContain("consent.public_evidence");
+    expect(AUDIT_EVENTS).toContain("run.timed_out");
+  });
+
+  it("gives every event a label, so no Activity row can fall back to a raw event string", () => {
+    for (const event of AUDIT_EVENTS) expect(AUDIT_EVENT_LABELS[event]).toBeDefined();
   });
 });
 

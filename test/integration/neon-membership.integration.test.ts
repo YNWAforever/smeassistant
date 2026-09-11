@@ -6,6 +6,7 @@ import { resolveApplicationUser } from "../../lib/identity/users";
 import { completeWorkspaceClaim } from "../../lib/workspace/claim";
 import { claimsRepository as claims, claimCompletionStore } from "../../lib/repositories/claims";
 import { membershipRepository as members } from "../../lib/repositories/membership";
+import { workspaceReadRepository } from "../../lib/repositories/workspace-read";
 const ports = vi.hoisted(() => ({ pool: undefined as Pool | undefined }));
 vi.mock("../../lib/db/client", () => ({ getPool: () => ports.pool }));
 const identity = (subject = "member", email = "member@example.test") => ({ provider: "neon" as const, subject, email, verified: true as const });
@@ -75,7 +76,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon membership boundaries
   expect(await members.ownedWorkspace(user.id)).toEqual({workspaceId:ws});
   expect(await members.listAccepted(user.id)).toMatchObject([{workspace_id:ws,workspace_slug:"shop",role:"owner"}]);
  });
- it.each(["owner", "manager", "viewer"])("allows %s sign-in mail before and after invitation acceptance without changing authority", async role => {
+ it.each(["manager", "viewer"])("allows %s sign-in mail before and after invitation acceptance without changing authority", async role => {
   const user=await resolveApplicationUser(identity()); const ws=await workspace();
   await runtime.query("INSERT INTO workspace_members(workspace_id,email,role) VALUES($1,$2,$3)",[ws,user.email,role]);
   expect(await members.hasSignInMembership("MEMBER@example.test")).toBe(true);
@@ -88,6 +89,18 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon membership boundaries
   expect(await members.hasSignInMembership("unknown@example.test")).toBe(false);
   await members.remove(ws,before[0].id);
   expect(await members.hasSignInMembership(user.email)).toBe(false);
+ });
+ it("blocks direct removal of the sole owner, including a concurrent double attempt, and preserves the row", async () => {
+  const user=await resolveApplicationUser(identity()); const ws=await workspace();
+  await runtime.query("INSERT INTO workspace_members(workspace_id,user_id,email,role,accepted_at) VALUES($1,$2,$3,'owner',now())",[ws,user.id,user.email]);
+  const ownerId=(await members.team(ws))[0].id;
+  await expect(members.remove(ws,ownerId)).rejects.toMatchObject({code:"23514"});
+  expect(await members.hasSignInMembership(user.email)).toBe(true);
+  expect((await members.team(ws)).map(row=>row.id)).toEqual([ownerId]);
+  const results=await Promise.allSettled([members.remove(ws,ownerId),members.remove(ws,ownerId)]);
+  expect(results.every(result=>result.status==="rejected")).toBe(true);
+  expect((await members.team(ws)).map(row=>row.id)).toEqual([ownerId]);
+  expect((await runtime.query("SELECT id FROM workspaces WHERE id=$1",[ws])).rows).toHaveLength(1);
  });
  it("uses the mapped identity's current email rather than a stale accepted invitation address", async () => {
   const user=await resolveApplicationUser(identity()); const ws=await workspace();
@@ -140,9 +153,29 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon membership boundaries
   await runtime.query("INSERT INTO leads(job_id,email,created_at) VALUES($1,NULL,'2000-01-01'),($1,'first@example.test','2001-01-01'),($1,'later@example.test','2002-01-01')",[id]);
   expect(await claims.firstLeadEmail(id)).toBe("first@example.test");
   expect(await claims.isLeadRecipient("claim-1","later@example.test")).toBe(true);
+  expect(await claims.isLeadRecipient("claim-1","LATER@Example.test")).toBe(true);
   expect(await claims.isLeadRecipient("claim-1","stranger@example.test")).toBe(false);
   await Promise.all([claims.recordAccessRequest(id,user.id),claims.recordAccessRequest(id,user.id)]);
   expect((await runtime.query("SELECT count(*)::int n FROM workspace_access_requests")).rows[0].n).toBe(1);
+ });
+ it("lets a WhatsApp/LINE unlocker's recovery email receive a sign-in link without granting ownership", async () => {
+  // POST /api/report-access/unlock only writes leads.email for the "email"
+  // channel; a WhatsApp/LINE/phone unlocker's recovery address lands on the
+  // viewer grant instead. Mail eligibility has to see both, or those
+  // merchants silently dead-end on a new device.
+  const id=(await runtime.query("INSERT INTO audit_jobs(business_name,share_slug) VALUES('Shop','claim-wa') RETURNING id")).rows[0].id;
+  await runtime.query("INSERT INTO leads(job_id,email,preferred_contact_channel,contact_identifier) VALUES($1,NULL,'whatsapp','+85290000000')",[id]);
+  await runtime.query("INSERT INTO report_access_grants(job_id,token_hash,idempotency_key,purpose,email_normalized,expires_at) VALUES($1,repeat('a',64),'idem-wa','report_delivery','owner@example.test',now()+interval '30 days')",[id]);
+
+  expect(await claims.isLeadRecipient("claim-wa","owner@example.test")).toBe(true);
+  expect(await claims.isLeadRecipient("claim-wa","OWNER@Example.test")).toBe(true);
+  expect(await claims.isLeadRecipient("claim-wa","stranger@example.test")).toBe(false);
+  // Eligibility is mail-only: it must not have created any membership.
+  expect((await runtime.query("SELECT count(*)::int n FROM workspace_members")).rows[0].n).toBe(0);
+
+  // A revoked grant stops being a mail recipient.
+  await runtime.query("UPDATE report_access_grants SET revoked_at=now() WHERE job_id=$1",[id]);
+  expect(await claims.isLeadRecipient("claim-wa","owner@example.test")).toBe(false);
  });
  it("rolls back OAuth replacement failure and keeps the predecessor active", async () => {
   const ws=await workspace();
@@ -152,6 +185,48 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon membership boundaries
   try {await expect(claims.replaceGoogleConnection(token)).rejects.toThrow();}
   finally {await owner.query("DROP TRIGGER fixture_reject_connection ON oauth_connections; DROP FUNCTION public.fixture_reject_connection()");}
   expect((await runtime.query("SELECT id,status FROM oauth_connections WHERE workspace_id=$1",[ws])).rows).toEqual([{id:first,status:"active"}]);
+ });
+
+ it("disconnects a Google connection, destroys the credential and still allows a reconnect", async () => {
+  // Only a real database proves this SQL is legal: access_token_encrypted is
+  // NOT NULL (so the ciphertext is overwritten, not nulled), 'revoked' has to
+  // satisfy oauth_connections_status_check, and the reconnect afterwards has to
+  // get past oauth_connections_active_provider_key -- the partial unique index
+  // on (workspace_id, provider) WHERE status='active'.
+  const ws=await workspace();
+  const token={workspaceId:ws,accessTokenEncrypted:"fixture-access",refreshTokenEncrypted:"fixture-refresh",scopes:["business.manage"],expiresAt:null};
+  const first=await claims.replaceGoogleConnection(token);
+  expect(await claims.hasActiveGoogleConnection(ws)).toBe(true);
+
+  expect(await claims.disconnectGoogleConnection(ws)).toBe(true);
+  expect(await claims.hasActiveGoogleConnection(ws)).toBe(false);
+  expect((await runtime.query("SELECT status,access_token_encrypted,refresh_token_encrypted FROM oauth_connections WHERE id=$1",[first])).rows[0])
+   .toEqual({status:"revoked",access_token_encrypted:"",refresh_token_encrypted:null});
+
+  // Idempotent: nothing is active, so a second disconnect reports no change.
+  expect(await claims.disconnectGoogleConnection(ws)).toBe(false);
+
+  // Disconnecting must never cost the owner their workspace -- ownership is
+  // workspace_members, never a connection (guardrail 15).
+  expect((await runtime.query("SELECT count(*)::int n FROM workspaces WHERE id=$1",[ws])).rows[0].n).toBe(1);
+
+  const second=await claims.replaceGoogleConnection(token);
+  expect(second).not.toBe(first);
+  expect(await claims.hasActiveGoogleConnection(ws)).toBe(true);
+  // The revoked row is kept as provenance rather than deleted.
+  expect((await runtime.query("SELECT count(*)::int n FROM oauth_connections WHERE workspace_id=$1",[ws])).rows[0].n).toBe(2);
+ });
+
+ it("reports the active connection even when a non-active row is newer", async () => {
+  // The Integrations card reads latestConnection, and the Disconnect control
+  // keys on the status it returns. Ordering by connected_at alone would report
+  // a newer revoked row and hide the control while a live credential existed --
+  // the owner could then not withdraw a scope that was still granted.
+  const ws=await workspace();
+  await runtime.query("INSERT INTO oauth_connections(workspace_id,provider,access_token_encrypted,status,connected_at) VALUES($1,'google_gbp','fixture','active',now()-interval '1 day')",[ws]);
+  await runtime.query("INSERT INTO oauth_connections(workspace_id,provider,access_token_encrypted,status,connected_at) VALUES($1,'google_gbp','','revoked',now())",[ws]);
+
+  expect((await workspaceReadRepository().latestConnection(ws))?.status).toBe("active");
  });
 
  it("requires an already attached job and accepted owner before completion writes", async () => {

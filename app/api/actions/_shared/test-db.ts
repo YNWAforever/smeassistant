@@ -121,6 +121,20 @@ export function makeDb(respond: Responder) {
     },
     assistantLatestSnapshot: async () => null,
     assistantSnapshot: async () => null,
+    // The server's copy of an operator draft. Scoped by all three ids on
+    // purpose: redeeming one is how model-written text becomes an
+    // agent-authored version, so a run from another action or workspace has to
+    // read as absent rather than as someone else's draft.
+    assistantDraft: async (runId: string, actionId: string, workspaceId: string) =>
+      read("action_runs", {
+        id: runId,
+        action_id: actionId,
+        workspace_id: workspaceId,
+      }),
+    // audit_jobs.raw_data. Defaults to null so suites that never opt in are
+    // unaffected; a test overrides it through its own responder.
+    assistantReviewData: async (workspaceId: string, jobId: string) =>
+      read("audit_jobs", { workspace_id: workspaceId, id: jobId }),
     assistantWorkspace: async (id: string) => read("workspaces", { id }),
     assistantLocations: async (workspaceId: string) => {
       const row = await read("locations", { workspace_id: workspaceId });

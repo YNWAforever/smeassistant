@@ -6,6 +6,12 @@ import type { Pool } from "pg";
 export const retainedFunctions = ["approve_output_version","claim_audit_job","claim_workspace_completion","complete_report_unlock","consume_rate_limit","create_output_version","decide_output_version","delete_orphaned_workspace","export_output_version","fence_workspace_completion_write","finish_workspace_completion","pending_workspace_completions","touch_actions_updated_at"];
 export const deferredFunctions: string[] = [];
 export const deferredTriggers: string[] = [];
+// Functions/triggers added by migrations after 0004 that have no legacy counterpart to
+// replay-compare against. verifyCatalog excludes these from the legacy deepEqual and
+// instead asserts their bare presence; their actual behavior is proven by dedicated tests
+// (e.g. test/integration/neon-membership.integration.test.ts for prevent_owner_removal).
+export const additionalFunctions: string[] = ["prevent_owner_removal"];
+export const additionalTriggers: string[] = ["workspace_members_prevent_owner_removal"];
 export const catalogQueries = {
   tables: `select c.relname as name,c.relrowsecurity as rls from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' order by c.relname`,
   columns: `select table_name,column_name,ordinal_position,data_type,udt_name,is_nullable,column_default from information_schema.columns where table_schema='public' order by table_name,ordinal_position`,
@@ -42,9 +48,13 @@ export async function verifyCatalog(pool: Pool) {
   assert.deepEqual(columns(business(actual.columns)), columns(legacy.columns), "all business columns/types/nullability/defaults");
   assert.deepEqual(business(actual.constraints), legacy.constraints.map(row => ({...row, definition:String(row.definition).replaceAll("auth.users", "app_users")})), "constraints and deletion semantics");
   assert.deepEqual(business(actual.indexes), legacy.indexes, "all final indexes and predicates");
-  assert.deepEqual(actual.triggers, legacy.triggers.filter(row => !deferredTriggers.includes(String(row.name))), "ordinary invariant triggers");
+  const isAdditionalTrigger = (row: Row) => additionalTriggers.includes(String(row.name));
+  const isAdditionalFunction = (row: Row) => additionalFunctions.includes(String(row.name));
+  assert.deepEqual(actual.triggers.filter(row => !isAdditionalTrigger(row)), legacy.triggers.filter(row => !deferredTriggers.includes(String(row.name))), "ordinary invariant triggers");
+  for (const name of additionalTriggers) assert.ok(actual.triggers.some(row => row.name === name), `additional trigger ${name} present`);
   const expectedFunctions = normalizeFunctionLineEndings(legacy.functions).filter(row => retainedFunctions.includes(String(row.name))).map(row => row.name === "delete_orphaned_workspace" ? {...row,config:['search_path=""'],definition:String(row.definition).replace(" LANGUAGE plpgsql\nAS", " LANGUAGE plpgsql\n SET search_path TO ''\nAS")} : row.name === "touch_actions_updated_at" ? row : {...row, security_definer:false, definition:translateLegacyWorkflow(String(row.definition))});
-  assert.deepEqual(normalizeFunctionLineEndings(actual.functions), expectedFunctions, "retained function definitions with constrained search_path");
+  assert.deepEqual(normalizeFunctionLineEndings(actual.functions.filter(row => !isAdditionalFunction(row))), expectedFunctions, "retained function definitions with constrained search_path");
+  for (const name of additionalFunctions) assert.ok(actual.functions.some(row => row.name === name), `additional function ${name} present`);
   assert.deepEqual(actual.enums, legacy.enums, "enum catalog");
   const policy = (await pool.query("SELECT tablename,roles::text[] AS roles,cmd,qual,with_check FROM pg_policies WHERE schemaname='public' ORDER BY tablename")).rows;
   assert.equal(policy.length, legacy.tables.length + 2);

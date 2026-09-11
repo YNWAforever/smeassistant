@@ -12,12 +12,30 @@ export interface AeoTrendPoint {
   capturedAt: string;
   /** 0-1. The fraction of this scan's tracked queries for this surface that cited the brand. */
   presenceRate: number;
+  /** The numerator, kept explicitly rather than recovered from a rounded percentage. */
+  cited: number;
+  /**
+   * The denominator: rows persisted for this surface in this scan, i.e. probes
+   * that returned a usable result -- NOT the number of queries planned. It
+   * varies between scans (an ai_mode ambiguity retry adds a second probe), so
+   * "0% -> 50%" can mean nothing changed except that a retry ran. The view has
+   * to show it or the percentages are not comparable to each other.
+   */
+  total: number;
+  /**
+   * Scans between this point and the previous emitted one that measured nothing
+   * for this surface. 0 means the two points are adjacent scans; anything more
+   * is a gap the view must mark rather than draw across (CLAUDE.md 7).
+   */
+  skippedScans: number;
 }
 
 export interface AeoSurfaceTrend {
   surface: AeoSurface;
   /** Ascending by capturedAt, capped to the most recent MAX_POINTS. */
   points: AeoTrendPoint[];
+  /** True when MAX_POINTS dropped older points, so the view can say so. */
+  truncated: boolean;
 }
 
 export interface AeoTrendModel {
@@ -61,12 +79,28 @@ export function buildAeoTrendModel(rows: AeoSnapshotRow[]): AeoTrendModel {
 
   const surfaces: AeoSurfaceTrend[] = SURFACE_ORDER.map((surface) => {
     const points: AeoTrendPoint[] = [];
+    // The skip stays -- a scan that measured nothing for this surface must not
+    // be recorded as a measured zero (guardrail 2). What changes is that the
+    // model stops DISCARDING the fact that it skipped: the view needs to mark
+    // the gap instead of joining two non-adjacent scans with an arrow.
+    let skipped = 0;
     for (const job of jobsAscending) {
       const stat = job.bySurface.get(surface);
-      if (!stat || stat.total === 0) continue;
-      points.push({ capturedAt: job.capturedAt, presenceRate: stat.cited / stat.total });
+      if (!stat || stat.total === 0) {
+        skipped += 1;
+        continue;
+      }
+      points.push({
+        capturedAt: job.capturedAt,
+        presenceRate: stat.cited / stat.total,
+        cited: stat.cited,
+        total: stat.total,
+        skippedScans: skipped,
+      });
+      skipped = 0;
     }
-    return { surface, points: points.slice(-MAX_POINTS) };
+    const capped = points.slice(-MAX_POINTS);
+    return { surface, points: capped, truncated: capped.length < points.length };
   });
 
   return { surfaces };

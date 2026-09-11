@@ -59,10 +59,17 @@ export async function GET(req: Request) {
       sessionUser: { id: user.id, email: user.email ?? null },
     });
     // Staff must not be able to bind their own Google account to a merchant's
-    // workspace, so this is member-only rather than "not none". A viewer must
-    // not be able to bind it either — connecting/managing OAuth is an
-    // owner/manager capability.
-    if (access.kind !== "member" || access.role === "viewer") {
+    // workspace, so this is member-only rather than "not none".
+    //
+    // Owner only, not owner-or-manager: integrations are an owner setting
+    // (CLAUDE.md §3.9, "Brand, integrations, team, billing settings | owner ✓ |
+    // manager ✗"). Connecting is not an additive act -- the callback's
+    // `replaceGoogleConnection` REVOKES whatever credential the workspace
+    // already holds and installs the consenting account's tokens in its place.
+    // Admitting managers let an invited contractor silently replace the
+    // owner's Google credential with their own, while the owner-only
+    // disconnect route meant the owner could remove it but a manager could not.
+    if (access.kind !== "member" || access.role !== "owner") {
       return NextResponse.json({ error: "no_workspace" }, { status: 403 });
     }
 

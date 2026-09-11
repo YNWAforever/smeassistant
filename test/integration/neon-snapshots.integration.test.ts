@@ -101,8 +101,16 @@ describe.runIf(process.env.NEON_INTEGRATION === '1')('Neon snapshot persistence'
   await buildSnapshot(repo,baseJob);
   await runtime.query('INSERT INTO scan_diffs(base_job_id,head_job_id,comparable) VALUES($1,$2,true)', [baseJob,headJob]);
   const head = await buildSnapshot(repo,headJob), diff = await repo.diff(headJob);
-  const action = (await runtime.query(`INSERT INTO actions(workspace_id,template_key,title,summary,evidence,priority,priority_score,priority_factors,effort_minutes,capability,dedupe_key)
-    VALUES($1,'ig-bio','{}','{}','{}','urgent',1,'[]',10,'Live',gen_random_uuid()::text) RETURNING id`,[ws])).rows[0].id;
+  // Completed by the owner, so the action genuinely entered the loop --
+  // measurement_state is only written for actions someone worked on, and this
+  // case is about the repair and latest-snapshot rules rather than that gate.
+  //
+  // Completed rather than exported-before-head ON PURPOSE. The other arm of the
+  // same gate also makes the fact type `Attributed`, and this case asserts an
+  // `Observed` measurement: the metric moved and nobody claimed credit for it.
+  // Satisfying the gate with an export row is exactly what broke this test.
+  const action = (await runtime.query(`INSERT INTO actions(workspace_id,template_key,title,summary,evidence,priority,priority_score,priority_factors,effort_minutes,capability,dedupe_key,action_state)
+    VALUES($1,'ig-bio','{}','{}','{}','urgent',1,'[]',10,'Live',gen_random_uuid()::text,'completed') RETURNING id`,[ws])).rows[0].id;
   const measurements = measurementRepository(runtime);
   const transaction = await runtime.connect();
   try {

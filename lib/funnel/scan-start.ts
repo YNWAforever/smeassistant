@@ -71,6 +71,14 @@ export interface ScanStartPayload {
   industry: string;
   district: string;
   objective: ScanObjective;
+  /**
+   * Step-4 consent, now mandatory on the wire: the server records it in
+   * consent_records and refuses the scan without it. The version is echoed back
+   * so the server can prove the merchant agreed to the text it actually
+   * published, and is only ever compared -- never stored from the client.
+   */
+  public_evidence_consent: true;
+  consent_policy_version: string;
   place_id?: string;
   data_id?: string;
   data_cid?: string;
@@ -90,7 +98,16 @@ export function normaliseInstagramHandle(value: string): string {
   return value.trim().replace(/^@+/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/\/.*$/, "");
 }
 
-export function buildScanStartPayload(draft: ScanDraft, locale: string): ScanStartPayload {
+/**
+ * Consent is a separate argument rather than part of `ScanDraft`: the draft
+ * models merchant identity and is replayed on a rescan, whereas consent is an
+ * act performed once, against a specific published policy version.
+ */
+export function buildScanStartPayload(
+  draft: ScanDraft,
+  locale: string,
+  consent: { granted: boolean; policyVersion: string },
+): ScanStartPayload {
   const payload: ScanStartPayload = {
     business_name: draft.businessName.trim(),
     market: draft.market === "tw" ? "TW" : "HK",
@@ -98,6 +115,8 @@ export function buildScanStartPayload(draft: ScanDraft, locale: string): ScanSta
     industry: draft.industry,
     district: draft.district,
     objective: draft.objective,
+    public_evidence_consent: consent.granted as true,
+    consent_policy_version: consent.policyVersion,
   };
 
   const candidate = draft.candidate;

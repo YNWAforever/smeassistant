@@ -1,4 +1,6 @@
 import { execFileSync } from "node:child_process";
+import { readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { beforeAll, afterAll, it, expect } from "vitest";
 import { Pool } from "pg";
 import {
@@ -96,10 +98,15 @@ it("verifies an owned migrated schema without modifying its journal", async () =
       /^(SELECT|BEGIN READ ONLY|ROLLBACK)/.test(sql.trim()),
     ),
   ).toBe(true);
+  // Counted from the corpus rather than hardcoded: a hardcoded number went
+  // stale the moment 0005 was appended, and nothing could catch it locally.
   expect(
     (await db.query("SELECT count(*)::int AS n FROM neon_migrations.journal"))
       .rows[0].n,
-  ).toBe(4);
+  ).toBe(
+    readdirSync(fileURLToPath(new URL("../../neon/migrations", import.meta.url)))
+      .filter((name) => name.endsWith(".sql")).length,
+  );
 });
 it("refuses a different expected target before transport", async () =>
   expect(

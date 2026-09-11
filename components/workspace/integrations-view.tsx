@@ -4,7 +4,7 @@ import { History, PlugZap, TriangleAlert } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CapabilityBadge, PageIntro, ProviderBadge, SectionCard } from "@/components/product-ui"
-import { InstagramHandleForm } from "@/components/workspace/integrations-client"
+import { GoogleDisconnectButton, InstagramHandleForm } from "@/components/workspace/integrations-client"
 import type { PrototypeLocale } from "@/lib/copy"
 import type { Capability } from "@/lib/domain"
 import { formatDateTime } from "@/lib/workspace/format"
@@ -22,7 +22,12 @@ export function IntegrationsView({ locale, workspaceSlug, workspaceId, timezone,
   const base = `/${locale}/owner/${workspaceSlug}`
   const googleOk = model.google.status === "active"
   const googleNeedsReauth = model.google.status === "expired" || model.google.status === "revoked" || model.google.status === "error"
-  const reauthNote = locale === "en" ? "Requires re-authorisation: evidence reads from Google stop until the owner reconnects." : locale === "zh-TW" ? "需要重新授權：在店家負責人重新連接前，Google 證據讀取會暫停。" : "需要重新授權：在店主重新連接前，Google 證據讀取會暫停。"
+  // "evidence reads from Google stop until the owner reconnects" was false: the
+  // scan engine never reads oauth_connections. GBP evidence comes from Google
+  // Places New and SerpApi, keyed by GOOGLE_PLACES_KEY / SERPAPI_API_KEY, so
+  // nothing about collection changes when this connection lapses. Now that a
+  // Disconnect button sits beside it, an owner would have acted on that.
+  const reauthNote = locale === "en" ? "Requires re-authorisation before this connection can be used again. Scans are unaffected: evidence comes from public sources, not from this connection." : locale === "zh-TW" ? "需要重新授權後，這個連接才能再次使用。掃描不受影響：證據來自公開來源，而非這個連接。" : "需要重新授權後，這個連接先可以再次使用。掃描不受影響：證據來自公開來源，而唔係這個連接。"
   const googleCapability: Capability = googleOk ? "Live" : "Requires connection"
   const googleStatus = isChinese
     ? { active: "已連接", expired: "連接已過期", revoked: "權限已撤銷", error: "連接錯誤", not_connected: "尚未連接" }[model.google.status]
@@ -37,7 +42,10 @@ export function IntegrationsView({ locale, workspaceSlug, workspaceId, timezone,
       capability: googleCapability,
       lastSync: model.google.updatedAt ? formatDateTime(model.google.updatedAt, locale, timezone) : "—",
       scope: isChinese ? "只讀取商戶檔案及評論" : "Read profile and reviews only",
-      action: <>{googleNeedsReauth && <p className="limitation-note" role="status"><TriangleAlert /> {reauthNote}</p>}<Button asChild variant={googleOk ? "outline" : "default"}><a href={`/api/oauth/google/start?workspace=${encodeURIComponent(workspaceSlug)}&locale=${locale}`}>{googleOk || googleNeedsReauth ? (isChinese ? "重新授權" : "Re-authorise") : (isChinese ? "連接 Google" : "Connect Google")}</a></Button></>,
+      // Disconnect is offered only while a connection is actually active:
+      // there is nothing to withdraw from an expired or revoked one, and the
+      // route would answer `disconnected: false` anyway.
+      action: <>{googleNeedsReauth && <p className="limitation-note" role="status"><TriangleAlert /> {reauthNote}</p>}<Button asChild variant={googleOk ? "outline" : "default"}><a href={`/api/oauth/google/start?workspace=${encodeURIComponent(workspaceSlug)}&locale=${locale}`}>{googleOk || googleNeedsReauth ? (isChinese ? "重新授權" : "Re-authorise") : (isChinese ? "連接 Google" : "Connect Google")}</a></Button>{googleOk && <GoogleDisconnectButton locale={locale} workspaceId={workspaceId} />}</>,
       badge: null,
     },
     {

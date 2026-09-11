@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { copy, type PrototypeLocale } from "@/lib/copy";
 import {
   buildUnlockPayload,
   defaultUnlockChannel,
@@ -8,6 +9,8 @@ import {
   unlockChannels,
   validateUnlockForm,
 } from "@/lib/funnel/unlock";
+
+const LOCALES: PrototypeLocale[] = ["en", "zh-HK", "zh-TW"];
 
 describe("unlock helpers", () => {
   it("offers market-valid channels", () => {
@@ -74,5 +77,58 @@ describe("unlock helpers", () => {
     expect(phone.recovery_email).toBe("me@example.com");
     expect(phone.anonymous_session_id).toBe("session");
     expect(buildUnlockPayload({ ...{ slug: "a", market: "hk" as const, objective: "o", locale: "en", idempotencyKey: "k" }, values: { channel: "phone", contact: "91234567", recoveryEmail: "", reportDelivery: true, scanDiscussion: false, marketing: false } })).not.toHaveProperty("recovery_email");
+  });
+
+  it("rejects a malformed sign-in email client-side so a server 400 never surfaces as a generic failure", () => {
+    const base = { reportDelivery: true, scanDiscussion: false, marketing: false } as const;
+    expect(validateUnlockForm("hk", { channel: "whatsapp", contact: "9123 4567", recoveryEmail: "not-an-email", ...base })).toEqual(["recovery_invalid"]);
+    expect(validateUnlockForm("hk", { channel: "whatsapp", contact: "9123 4567", recoveryEmail: "", ...base })).toEqual([]);
+    expect(validateUnlockForm("hk", { channel: "whatsapp", contact: "9123 4567", recoveryEmail: " Owner@Example.com ", ...base })).toEqual([]);
+    // Email is a valid channel in both markets, so the shared normalizer applies.
+    expect(validateUnlockForm("tw", { channel: "line", contact: "@shop", recoveryEmail: "not-an-email", ...base })).toEqual(["recovery_invalid"]);
+  });
+
+  it("ignores a stale sign-in email once the report is delivered to an email address", () => {
+    // The field is hidden for the email channel and buildUnlockPayload discards
+    // it, so a leftover value must never block a submission the server accepts.
+    expect(validateUnlockForm("hk", {
+      channel: "email", contact: "owner@example.com", recoveryEmail: "not-an-email",
+      reportDelivery: true, scanDiscussion: false, marketing: false,
+    })).toEqual([]);
+  });
+});
+
+describe("unlock copy", () => {
+  it.each(LOCALES)("describes the optional email as sign-in eligibility, not automatic report recovery (%s)", (locale) => {
+    const unlock = copy[locale].funnel.unlock;
+    expect(unlock.signInEmailLabel.length).toBeGreaterThan(0);
+    expect(unlock.signInEmailHint.length).toBeGreaterThan(0);
+    // Nothing is emailed at unlock time and no recovery route exists.
+    expect(unlock.signInEmailHint).not.toMatch(/reopen|resend|重新開啟|補寄/);
+    expect(unlock.signInEmailHint).toMatch(/sign-in|登入/);
+    expect(unlock).not.toHaveProperty("recoveryLabel");
+    expect(unlock).not.toHaveProperty("recoveryHint");
+  });
+
+  it.each(LOCALES)("never claims the report is sent anywhere (%s)", (locale) => {
+    const unlock = copy[locale].funnel.unlock;
+    // Unlocking sets a viewer-grant cookie and opens the report in this
+    // browser. There is no mail or messaging sender in the app at all, so no
+    // string on this form may promise a send.
+    expect(unlock.formBody).not.toMatch(/We send|送出報告|把報告送到|寄送/);
+    expect(unlock.deliveryBody).not.toMatch(/We send|送出報告|把報告送到/);
+    // The consent is permission to be contacted, and says so.
+    expect(unlock.deliveryBody).toMatch(/Permission only|授權/);
+    expect(unlock.deliveryBody).toMatch(/nothing is sent automatically|不會自動/i);
+    // The consent row must not reuse the form subtitle: they describe
+    // different things and reusing one is how the false promise spread.
+    expect(unlock.deliveryBody).not.toBe(unlock.formBody);
+  });
+
+  it.each(LOCALES)("states report-access-link lifetime without inventing a recovery link (%s)", (locale) => {
+    const rows = copy[locale].funnel.trust.rows;
+    expect(rows.map((row) => row.value).join(" ")).not.toMatch(/recovery link|復原連結/i);
+    const accessLink = rows.find((row) => /Report access links|報告存取連結/.test(row.label));
+    expect(accessLink?.value).toMatch(/30/);
   });
 });
