@@ -30,6 +30,7 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string }> = {
   "asset.rights_confirmed": { en: "Asset rights confirmed", zh: "素材權利已確認" },
   "assistant.run": { en: "Operator answered", zh: "助理已回應" },
   "consent.public_evidence": { en: "Public evidence consent", zh: "公開證據同意" },
+  "fix_pack.reviewed": { en: "Fix Pack draft reviewed", zh: "Fix Pack 草稿已審閱" },
 };
 
 export const AUDIT_ACTOR_LABELS: Record<"user" | "agent" | "system" | "scanner", { en: string; zh: string }> = {

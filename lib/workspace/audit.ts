@@ -13,6 +13,7 @@ export const AUDIT_EVENTS = [
   "run.started", "run.succeeded", "run.failed", "run.timed_out", "version.created", "version.approved", "version.changes_requested", "version.rejected",
   "delivery.exported", "delivery.copied", "workspace.claimed", "member.invited", "member.role_changed", "integration.updated",
   "brand.updated", "asset.uploaded", "asset.rights_confirmed", "assistant.run", "consent.public_evidence",
+  "fix_pack.reviewed",
 ] as const;
 
 export type AuditEvent = (typeof AUDIT_EVENTS)[number];

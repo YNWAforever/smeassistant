@@ -6,6 +6,11 @@ const review = vi.fn();
 
 vi.mock("@/lib/auth", () => ({ authorizeWorkspaceRequest: (...args: unknown[]) => authorizeWorkspaceRequest(...args) }));
 vi.mock("@/lib/repositories/fix-pack", () => ({ fixPackRepository: () => ({ scope, review }) }));
+const recordNeonEvent = vi.fn();
+vi.mock("@/lib/workspace/audit", () => ({
+  recordNeonEvent: (...args: unknown[]) => recordNeonEvent(...args),
+  ipHashFor: () => "hash",
+}));
 
 const WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";
 const RUN_ID = "22222222-2222-4222-8222-222222222222";
@@ -92,4 +97,41 @@ it.each([{status:'approved'}, {status:'approved',locationId:'allowed',workspaceI
  const allowed=auth('manager'); allowed.membership.locationScope=['allowed'] as never;
  authorizeWorkspaceRequest.mockResolvedValue(allowed); runsTable({runWorkspaceId:WORKSPACE_ID});
  expect((await patch(body)).status).toBe(403); expect(review).not.toHaveBeenCalled();
+});
+
+describe("Fix Pack review audit trail", () => {
+  // Guardrail 10: the legacy review path is reachable here and left no trace in
+  // the append-only ledger, so Activity omitted every decision an owner made
+  // on this workspace's own drafts.
+  it.each(["approved", "rejected"] as const)("records a %s decision", async (status) => {
+    authorizeWorkspaceRequest.mockResolvedValue(auth("owner"));
+    runsTable({ runWorkspaceId: WORKSPACE_ID });
+    const response = await patch({ status });
+    expect(response.status).toBe(200);
+    expect(recordNeonEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: WORKSPACE_ID,
+        locationId: "actual-location",
+        actorType: "user",
+        actorId: "user-1",
+        event: "fix_pack.reviewed",
+        entityType: "agent_run",
+        entityId: RUN_ID,
+        payload: { status },
+      }),
+    );
+  });
+
+  it("records nothing when the draft was already reviewed", async () => {
+    authorizeWorkspaceRequest.mockResolvedValue(auth("owner"));
+    runsTable({ runWorkspaceId: WORKSPACE_ID, updatedRows: [] });
+    expect((await patch({ status: "approved" })).status).toBe(409);
+    expect(recordNeonEvent).not.toHaveBeenCalled();
+  });
+
+  it("records nothing when the caller is not authorized", async () => {
+    authorizeWorkspaceRequest.mockResolvedValue({ ok: false, status: 403, code: "forbidden" });
+    expect((await patch({ status: "approved" })).status).toBe(403);
+    expect(recordNeonEvent).not.toHaveBeenCalled();
+  });
 });
