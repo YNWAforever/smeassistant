@@ -78,6 +78,16 @@ export function saveVersion(actionId: string, body: { body: string; alt_text?: s
   return post(`/api/actions/${encodeURIComponent(actionId)}/versions`, body);
 }
 
+/**
+ * Redeem a Visibility Operator draft the server is holding. Deliberately has no
+ * `body` parameter: the text is read from `action_runs.output`, so the version
+ * is recorded as agent-authored and linked to the run that costs it. Sending
+ * the text from here is what made a model's words read as a member's.
+ */
+export function saveAssistantVersion(actionId: string, body: { assistant_run_id: string; base_version_id?: string }): Promise<ClientResult<SaveVersionResult>> {
+  return post(`/api/actions/${encodeURIComponent(actionId)}/versions`, body);
+}
+
 export function approveVersion(versionId: string, comment?: string): Promise<ClientResult<ApproveVersionResult>> {
   return post(`/api/versions/${encodeURIComponent(versionId)}/approve`, comment ? { comment } : {});
 }

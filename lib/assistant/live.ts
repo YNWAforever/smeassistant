@@ -1,5 +1,5 @@
-import { artifactRepository, type LiveAssistantRepository } from "@/lib/repositories/artifacts";
-import { AGENTS, AGENT_LLM_OPTIONS, parseAgentOutput, type AgentContext, type AgentKey } from "@/lib/agents";
+import { artifactRepository, type LiveAssistantRepository, type RecordAssistantDraftInput } from "@/lib/repositories/artifacts";
+import { AGENTS, AGENT_LLM_OPTIONS, computeCostUsd, parseAgentOutput, type AgentContext, type AgentKey } from "@/lib/agents";
 import { inLocationScope, roleAtLeast, type Membership } from "@/lib/auth";
 import type { PrototypeLocale } from "@/lib/copy";
 import { localized } from "@/lib/domain";
@@ -17,8 +17,15 @@ import { fallbackIntentFor, isTemplateIntent, templateAnswer, type TemplateConte
  * route's job for membership; this module enforces draft scope on resolved
  * actions and evidence, answers template
  * intents deterministically and runs the matching agent once for the draft
- * intents. It never writes: no action_runs, no versions, no audit rows — a
- * draft only becomes a version when the owner clicks "Create a new version".
+ * intents.
+ *
+ * It creates no version and changes no action state: a draft only becomes a
+ * version when the owner clicks "Create a new version". It does record one
+ * thing -- a terminal `action_runs` row holding the text the model produced.
+ * That is not the assistant taking authority; it is the server keeping custody
+ * of its own output. Handing the body to the browser and trusting it back was
+ * how model-written text came to be recorded as member-written, with no run
+ * row and nothing costed against it.
  */
 export interface LiveRunContext {
   workspaceId: string;
@@ -41,6 +48,13 @@ export interface LiveRunInput {
   llmReady?: () => boolean;
   /** Asset rights lookup for the social_post gate; defaults to the Neon repository. */
   assets?: Pick<ReturnType<typeof assetRepository>, "get">;
+  /**
+   * Custody of the draft text. Kept off `LiveAssistantRepository` on purpose:
+   * that capability stays read-only, and the one write this module makes is an
+   * explicit, separately injected dependency.
+   */
+  persistDraft?: (input: RecordAssistantDraftInput) => Promise<string>;
+  now?: () => Date;
 }
 
 type DraftIntent = "draft_review_reply" | "friendlier_review_reply" | "generate_social" | "generate_faq" | "generate_menu";
@@ -73,6 +87,13 @@ const DRAFT_NEXT = localized(
   "檢查語氣及事實，建立新版本，再核准指定版本；不會自動發佈。",
 );
 const NEEDS_FACTS = localized("The agent still needs: {facts}.", "Agent 仍需要：{facts}。");
+// Shown when the draft could not be kept server-side. Saying so is the honest
+// option: a version built from a body only the browser holds cannot be
+// attributed to the model that wrote it, so the offer is withdrawn, not faked.
+const DRAFT_NOT_SAVED = localized(
+  "This draft could not be saved for approval; copy the text or ask again.",
+  "此草稿未能儲存以供審批；請複製文字或再問一次。",
+);
 
 interface WorkspaceRow { business_name: string | null; market: string | null; timezone: string | null }
 interface LocationRow { id: string; slug: string; name: string; address: string | null; district: string | null; is_primary: boolean | null }
@@ -318,12 +339,47 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistant
     const base = completed(fallbackIntentFor(intent), input, ctx);
     return { ...base, answer: NEEDS_FACTS[input.locale].replace("{facts}", output.facts_needed.join(", ")), warnings: [...warnings, ...base.warnings] };
   }
+  // Keep the body server-side before offering it. The owner's "Create a new
+  // version" then sends only this id, so the version records the text the model
+  // actually wrote, attributed to the agent that wrote it, linked to the run
+  // that costs it. Best-effort: a persistence failure still answers the
+  // question, it just cannot offer a version the log could vouch for.
+  let draftRunId: string | undefined;
+  try {
+    const persist = input.persistDraft ?? ((draftInput: RecordAssistantDraftInput) => artifactRepository().recordAssistantDraft(draftInput));
+    draftRunId = await persist({
+      actionId: action.row.id,
+      workspaceId: input.context.workspaceId,
+      actorId: input.membership.userId,
+      agentKey: spec.agent,
+      promptVersion: agent.promptVersion,
+      intentId: intent,
+      surface: input.surface,
+      locale: input.locale,
+      model: process.env.LLM_MODEL || null,
+      output: {
+        title: output.title || title,
+        body: output.body,
+        alt_text: output.alt_text ?? null,
+        acceptance_criteria: output.acceptance_criteria,
+        warnings,
+        facts_used: output.facts_used,
+      },
+      usage: result?.usage ?? { inputTokens: null, outputTokens: null },
+      costUsd: computeCostUsd(result?.usage ?? { inputTokens: null, outputTokens: null }),
+      finishedAt: (input.now ?? (() => new Date()))().toISOString(),
+    });
+  } catch {
+    console.error("[assistant/live] draft not persisted", { category: "assistant_draft_not_persisted" });
+  }
+
   return {
     runId: `live_run_${crypto.randomUUID()}`,
     state: "needs_approval",
     answer: DRAFT_ANSWER[input.locale].replace("{title}", title),
     nextAction: DRAFT_NEXT[input.locale],
     evidenceRefs: ctx.evidenceRefs,
+    ...(draftRunId ? { draftRunId } : {}),
     output: {
       type: spec.type,
       artifactId: `art_${crypto.randomUUID()}`,
@@ -332,7 +388,7 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistant
       body: output.body,
       acceptanceCriteria: output.acceptance_criteria,
     },
-    warnings,
+    warnings: draftRunId ? warnings : [...warnings, DRAFT_NOT_SAVED[input.locale]],
     requiresApproval: true,
     demoBoundary: LIVE_BOUNDARY[input.locale],
   };

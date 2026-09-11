@@ -22,13 +22,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet"
+import type { DemoAssistantRunResponse } from "@/lib/pocket-assistant/contracts"
 import { CapabilityBadge, FactType, SectionCard } from "@/components/product-ui"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { resolveText } from "@/lib/domain"
 import { copyToClipboard, downloadText } from "@/lib/download"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import { auditActorLabel, auditEventLabel } from "@/lib/workspace/audit-labels"
-import { approveVersion, decideVersion, exportVersion, runAction, saveVersion, updateAction, type ClientResult } from "@/lib/workspace/client"
+import { approveVersion, decideVersion, exportVersion, runAction, saveAssistantVersion, saveVersion, updateAction, type ClientResult } from "@/lib/workspace/client"
 import { effortLabel, formatDateTime, metricLabel, priorityClass, priorityLabel, signed, stateLabel, withLocation } from "@/lib/workspace/format"
 import type { ActionDetail, AuditEventRow, VersionRow } from "@/lib/workspace/queries-pages"
 import type { GuardrailFlag } from "@/lib/workspace/version-meta"
@@ -307,14 +308,17 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
    * never writes; the artifact body goes through the same versions route as a
    * manual save, based on the selected version, then the server tree refreshes.
    */
-  async function createAssistantVersion(body: string) {
+  async function createAssistantVersion(run: DemoAssistantRunResponse) {
     if (!canEdit) {
       toast.error(isChinese ? "目前角色或連線狀態不允許建立版本。" : "Your current role or connection state cannot create a version.")
       return
     }
-    if (!body.trim()) { toast.error(isChinese ? "版本內容不能為空。" : "A version cannot be empty."); return }
+    // Only the run id travels. The body is read from the run the server
+    // persisted, so the version is recorded as agent-authored rather than
+    // arriving here as text this component would have posted as the member's.
+    if (!run.draftRunId) { toast.error(isChinese ? "此草稿未能儲存，無法建立版本。" : "This draft was not saved and cannot become a version."); return }
     setBusy("save")
-    const result = await saveVersion(action.id, { body, base_version_id: selectedVersion?.id })
+    const result = await saveAssistantVersion(action.id, { assistant_run_id: run.draftRunId, base_version_id: selectedVersion?.id })
     setBusy(null)
     if (!result.ok) {
       if (result.status === 409 && result.error === "version_conflict") { setConflict(true); return }
@@ -519,7 +523,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                 {(selectedVersion?.agentNotes ?? []).map((note) => <p key={note} className="limitation-note"><AlertTriangle /> {note}</p>)}
                 <p className="limitation-note">{isChinese ? "除非店主已確認，否則不要加入食材、致敏原、價格或優惠日期。" : "Do not add ingredients, allergens, pricing or offer dates unless the owner confirmed them."}</p></div>
               {lastRunError && <p className="limitation-note" role="alert"><CircleAlert /> {isChinese ? "上次生成失敗：" : "Last generation failed: "}{lastRunError}</p>}
-              <div className="draft-editor-actions"><ContextualAssistant locale={locale} surface={social ? "create" : "action"} triggerLabel={isChinese ? "用助理修改並建立新版本" : "Revise with operator as a new version"} mode="live" context={{ workspaceId, locationId: action.location.id ?? undefined, actionId: action.id, versionId: selectedVersion?.id }} onCreateVersion={(body) => void createAssistantVersion(body)} disabled={!canEdit} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? (isChinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version") : (isChinese ? "生成草稿" : "Generate a draft")}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {isChinese ? "儲存手動修改為新版本" : "Save manual edits as a new version"}</Button></div>
+              <div className="draft-editor-actions"><ContextualAssistant locale={locale} surface={social ? "create" : "action"} triggerLabel={isChinese ? "用助理修改並建立新版本" : "Revise with operator as a new version"} mode="live" context={{ workspaceId, locationId: action.location.id ?? undefined, actionId: action.id, versionId: selectedVersion?.id }} onCreateVersion={(run) => void createAssistantVersion(run)} disabled={!canEdit} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? (isChinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version") : (isChinese ? "生成草稿" : "Generate a draft")}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {isChinese ? "儲存手動修改為新版本" : "Save manual edits as a new version"}</Button></div>
               {conflict && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "另一位審閱者已更新輸出" : "Another reviewer changed this output"}</strong><p>{isChinese ? "未儲存文字仍保留在本機。載入最新版本、比較內容，再建立新版本。" : "Unsaved text is preserved locally. Load the latest version, compare, then create a new version."}</p><Button size="sm" onClick={loadLatest}><RefreshCw /> {isChinese ? "安全載入最新狀態" : "Load latest safely"}</Button></div></div>}
             </SectionCard>
 

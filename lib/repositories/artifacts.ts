@@ -32,6 +32,41 @@ async function operation<T>(run: () => Promise<T>): Promise<T> {
  }
 }
 
+/** What the assistant produced, stored verbatim so the version is built from the server's copy. */
+export interface AssistantDraftOutput {
+ title: string;
+ body: string;
+ alt_text: string | null;
+ acceptance_criteria: string[];
+ warnings: string[];
+ facts_used: string[];
+}
+
+export interface RecordAssistantDraftInput {
+ actionId: string;
+ workspaceId: string;
+ actorId: string;
+ agentKey: string;
+ promptVersion: string;
+ intentId: string;
+ surface: string;
+ locale: string;
+ model: string | null;
+ output: AssistantDraftOutput;
+ usage: LLMUsage;
+ /** Null when the gateway reported no usage; never a guessed zero. */
+ costUsd: number | null;
+ /** ISO-8601; the run is recorded already finished because it is. */
+ finishedAt: string;
+}
+
+export interface AssistantDraftRow {
+ output: unknown;
+ agent_key: string;
+ prompt_version: string | null;
+ input: unknown;
+}
+
 /**
  * Artifact persistence uses the original atomic SQL operations. A supplied
  * transaction client is used for every scope check and workflow call.
@@ -95,6 +130,44 @@ export function artifactRepository(client?: Executor) {
   assistantReviewData(workspaceId: string, jobId: string) {
    return operation(async ()=>(await db().query<{raw_data:unknown}>(`SELECT raw_data FROM audit_jobs j WHERE id=$1 AND workspace_id=$2
     AND (location_id IS NULL OR EXISTS(SELECT 1 FROM locations l WHERE l.id=j.location_id AND l.workspace_id=j.workspace_id))`,[jobId,workspaceId])).rows[0]?.raw_data ?? null);
+  },
+  /**
+   * Persist a finished assistant draft as a terminal `action_runs` row and
+   * return its id.
+   *
+   * The point is custody of the TEXT. Before this, the operator sheet handed
+   * the model's body to the browser and the browser posted it back to
+   * `/versions`, where `author_type` was hard-coded `'user'`: the append-only
+   * log then asserted a member wrote what a model produced, no `action_runs`
+   * row existed so `output_versions.action_run_id` was null, and the
+   * `llmComplete` usage was never costed. A marker travelling beside the body
+   * could not have fixed that -- anything the client carries, the client can
+   * drop or swap. Only a body the server already holds can be attributed.
+   *
+   * The action row itself is untouched: the assistant is read-only in
+   * authority (CLAUDE.md §3.8), so this records that a model ran, never that
+   * the owner acted on it.
+   */
+  recordAssistantDraft(input: RecordAssistantDraftInput) {
+   return operation(async () => {
+    const scope=await actionScope(input.actionId);
+    if(!scope || scope.workspaceId!==input.workspaceId) throw new Error('artifact_scope_mismatch');
+    const row=(await db().query<{id:string}>(`INSERT INTO action_runs(workspace_id,action_id,agent_key,state,input,output,model,prompt_version,input_tokens,output_tokens,cost_usd,requested_by,started_at,finished_at)
+     VALUES($1,$2,$3,'succeeded',$4,$5,$6,$7,$8,$9,$10,$11,$12::timestamptz,$12::timestamptz) RETURNING id`,
+     [scope.workspaceId,input.actionId,input.agentKey,JSON.stringify({source:'assistant',intent:input.intentId,surface:input.surface,locale:input.locale}),
+      JSON.stringify(input.output),input.model,input.promptVersion,input.usage.inputTokens,input.usage.outputTokens,input.costUsd,input.actorId,input.finishedAt])).rows[0];
+    return row.id;
+   });
+  },
+  /**
+   * The server's own copy of an assistant draft, for redeeming into a version.
+   * `input->>'source'` keeps this to assistant drafts: an ordinary agent run
+   * already produced its version through `finish()` and must not be redeemable
+   * a second time by id.
+   */
+  assistantDraft(runId: string, actionId: string, workspaceId: string) {
+   return operation(async ()=>(await db().query<AssistantDraftRow>(`SELECT output,agent_key,prompt_version,input FROM action_runs
+    WHERE id=$1 AND action_id=$2 AND workspace_id=$3 AND state='succeeded' AND input->>'source'='assistant'`,[runId,actionId,workspaceId])).rows[0] ?? null);
   },
   createOutputVersion(input: CreateOutputVersionInput) {
    return operation(async () => {

@@ -112,7 +112,12 @@ export function ContextualAssistant({
   surface: AssistantSurface
   triggerLabel?: string
   trigger?: ReactNode
-  onCreateVersion?: (body: string, run: DemoAssistantRunResponse) => void
+  /**
+   * Receives the run, never the body. The text stays on the server under
+   * `run.draftRunId`; carrying it through the browser is how a model's words
+   * came to be recorded as a member's.
+   */
+  onCreateVersion?: (run: DemoAssistantRunResponse) => void
   disabled?: boolean
   /** `live` answers from this workspace's evidence (requires `context`); default `demo` keeps the fixed sample (§3.8). */
   mode?: AssistantMode
@@ -148,8 +153,8 @@ export function ContextualAssistant({
   }
 
   function createVersion() {
-    if (!run?.output || !onCreateVersion) return
-    onCreateVersion(run.output.body, run)
+    if (!run?.draftRunId || !onCreateVersion) return
+    onCreateVersion(run)
     setVersionCreated(true)
   }
 
@@ -208,7 +213,7 @@ export function ContextualAssistant({
 
             {run.warnings.length > 0 && <div className="assistant-warning"><ShieldCheck aria-hidden="true" /><div><strong>{isChinese ? "限制" : "Limit"}</strong>{run.warnings.map((warning) => <p key={warning}>{warning}</p>)}</div></div>}
 
-            {run.output && onCreateVersion && <Button className="w-full" onClick={createVersion} disabled={versionCreated}><FilePlus2 aria-hidden="true" />{versionCreated ? (isChinese ? "已建立新版本" : "New version created") : (isChinese ? "建立新版本（不覆蓋現有內容）" : "Create a new version without overwriting")}</Button>}
+            {run.draftRunId && onCreateVersion && <Button className="w-full" onClick={createVersion} disabled={versionCreated}><FilePlus2 aria-hidden="true" />{versionCreated ? (isChinese ? "已建立新版本" : "New version created") : (isChinese ? "建立新版本（不覆蓋現有內容）" : "Create a new version without overwriting")}</Button>}
 
             <div className="assistant-approval-boundary"><ShieldCheck aria-hidden="true" /><span>{run.requiresApproval ? (isChinese ? "此輸出需要獲授權人士核准指定版本；目前未發佈，也未扣除交付額。" : "An authorised person must approve the exact version. It is not published and no delivery is consumed.") : (isChinese ? "這是解釋與建議，不會改變掃描分數、審批狀態或用量。" : "This explanation changes no score, approval state or usage.")}</span></div>
           </div>}

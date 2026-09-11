@@ -43,6 +43,15 @@ export type DemoAssistantRunRequest = {
 
 export type DemoAssistantRunResponse = {
   runId: string
+  /**
+   * Live drafts only: the `action_runs` row where the server kept this body.
+   * "Create a new version" sends this id and no text, so the version records
+   * what the model wrote, attributed to the model. Absent in demo mode, on
+   * template answers, and when the draft could not be persisted -- in each of
+   * those cases there is nothing the log could vouch for, so no version is
+   * offered.
+   */
+  draftRunId?: string
   state: "needs_approval" | "completed"
   answer: string
   nextAction: string

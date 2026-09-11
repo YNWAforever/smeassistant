@@ -3,8 +3,9 @@ import { auth } from "@/app/api/actions/_shared/test-db";
 import { ACTION_ID, LOCATION_ID, SNAPSHOT_ID, WORKSPACE_ID, actionRow, base, diff, socialRow, snapshot } from "./__fixtures__";
 import { LIVE_BOUNDARY, runLiveAssistant } from "./live";
 
-const repository = vi.hoisted(() => ({ actionScope:vi.fn(),assistantWorkspace:vi.fn(),assistantLocations:vi.fn(),assistantActions:vi.fn(),assistantSnapshot:vi.fn(),assistantLatestSnapshot:vi.fn(),assistantDiff:vi.fn(),assistantBrand:vi.fn(),assistantReviewData:vi.fn(),versionScope:vi.fn(),createOutputVersion:vi.fn() }));
+const repository = vi.hoisted(() => ({ actionScope:vi.fn(),assistantWorkspace:vi.fn(),assistantLocations:vi.fn(),assistantActions:vi.fn(),assistantSnapshot:vi.fn(),assistantLatestSnapshot:vi.fn(),assistantDiff:vi.fn(),assistantBrand:vi.fn(),assistantReviewData:vi.fn(),versionScope:vi.fn(),createOutputVersion:vi.fn(),recordAssistantDraft:vi.fn() }));
 vi.mock("@/lib/repositories/artifacts",()=>({artifactRepository:()=>repository}));
+const DRAFT_RUN_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 
 type Llm = (prompt: string, opts?: unknown) => Promise<typeof good | null>;
 const LOCATION_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -28,6 +29,7 @@ beforeEach(() => {
   repository.assistantBrand.mockResolvedValue({voice:"warm",approved_claims:["Family-run since 1988"],prohibited_terms:["best in Hong Kong"],languages:["zh-HK"],facts:{}});
   repository.assistantReviewData.mockResolvedValue({gbp:{reviews:[{rating:3,text:"Waited 25 minutes on Friday",time:"2026-08-22",owner_response:null}]}});
   repository.versionScope.mockResolvedValue(null);
+  repository.recordAssistantDraft.mockResolvedValue(DRAFT_RUN_ID);
   repository.assistantDiff.mockImplementation(async (id) => id === diff.id ? diff : null);
   repository.assistantActions.mockImplementation(async (workspaceId, opts = {}) => state.actions.filter(a =>
     a.workspace_id === workspaceId && (!opts.locationId || a.location_id === opts.locationId || a.location_id === null) &&
@@ -83,6 +85,52 @@ describe("runLiveAssistant", () => {
     expect(result.answer).toContain("「回覆未回覆的 Google 評論」的草稿已準備好");
     expect(writes()).toEqual([]);
     expect(repository.createOutputVersion).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The body must stay in the server's custody. It used to be handed to the
+   * browser and posted back to /versions, which hard-codes author_type 'user',
+   * so the append-only log recorded a member as the author of text a model
+   * wrote -- with no action_runs row and the llmComplete usage never costed.
+   */
+  it("keeps the draft server-side as a terminal run and returns only its id", async () => {
+    const llm = vi.fn<Llm>(async () => good);
+    const result = await run({ intentId: "draft_review_reply", surface: "action", locale: "en", context: { workspaceId: WORKSPACE_ID, actionId: ACTION_ID }, llm, now: () => new Date("2026-09-11T02:00:00Z") });
+
+    expect(result.draftRunId).toBe(DRAFT_RUN_ID);
+    expect(repository.recordAssistantDraft).toHaveBeenCalledTimes(1);
+    expect(repository.recordAssistantDraft.mock.calls[0][0]).toMatchObject({
+      actionId: ACTION_ID,
+      workspaceId: WORKSPACE_ID,
+      actorId: auth("owner").membership.userId,
+      agentKey: "review_reply",
+      intentId: "draft_review_reply",
+      surface: "action",
+      locale: "en",
+      // The two things the old path could not record at all.
+      usage: { inputTokens: 10, outputTokens: 5 },
+      finishedAt: "2026-09-11T02:00:00.000Z",
+      output: { body: result.output!.body, title: "Reply draft" },
+    });
+    // Still no version and no action state change: the assistant answers, the
+    // owner decides (§3.8).
+    expect(repository.createOutputVersion).not.toHaveBeenCalled();
+  });
+
+  it("still answers when the draft cannot be kept, but withdraws the version offer and says so", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      repository.recordAssistantDraft.mockRejectedValue(new Error("artifact_operation_failed"));
+      const llm = vi.fn<Llm>(async () => good);
+      const result = await run({ intentId: "draft_review_reply", surface: "action", locale: "en", context: { workspaceId: WORKSPACE_ID, actionId: ACTION_ID }, llm });
+
+      expect(result.draftRunId).toBeUndefined();
+      expect(result.output!.body).toContain("adding a host");
+      expect(result.warnings).toContain("This draft could not be saved for approval; copy the text or ask again.");
+      expect(log).toHaveBeenCalledWith("[assistant/live] draft not persisted", { category: "assistant_draft_not_persisted" });
+    } finally {
+      log.mockRestore();
+    }
   });
 
   it("adds the warmer instruction for friendlier_review_reply and picks the matching open action when none is focused", async () => {
