@@ -99,6 +99,10 @@ function guardrailText(flag: GuardrailFlag, isChinese: boolean): string {
       return isChinese ? "主題標籤過多。" : "Too many hashtags."
     case "jsonld_missing":
       return isChinese ? "缺少 JSON-LD 結構化資料。" : "The JSON-LD block is missing."
+    case "jsonld_invalid":
+      return isChinese ? "JSON-LD 結構無效，下次掃描將無法讀取。" : "The JSON-LD is not valid, so the next scan will not read it."
+    case "jsonld_mismatch":
+      return isChinese ? "JSON-LD 的問答與上方文字不一致。" : "The JSON-LD questions and answers do not match the text above them."
     case "title_too_long":
       return isChinese ? `標題超過 ${flag.detail ?? ""} 字元。` : `Title is longer than ${flag.detail ?? ""} characters.`
     case "bio_too_long":

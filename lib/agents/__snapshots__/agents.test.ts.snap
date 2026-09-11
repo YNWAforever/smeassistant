@@ -86,13 +86,14 @@ Write three FAQ entries answering the questions search and AI surfaces could not
 2. (not provided)
 3. (not provided)
 Each answer is two or three plain sentences a customer could act on. If any fact is missing, list its key (owner_fact_1/2/3) in facts_needed and leave body empty.
-Body: first the three Q&A pairs as readable text, then a fenced block containing a valid schema.org FAQPage JSON-LD object (@context, @type "FAQPage", mainEntity with Question/Answer) the owner can paste into the page head. Never invent prices, hours, capacity or policies not in the facts.
+Body: first the three Q&A pairs as readable text, then the SAME three pairs as schema.org FAQPage JSON-LD (@context, @type "FAQPage", mainEntity with Question/acceptedAnswer) inside a <script type="application/ld+json"> element the owner can paste into the page head. A fenced code block is not acceptable: the next scan only reads the script element. Each Question "name" and acceptedAnswer "text" must be character-identical to the Q&A written above it.
+Never invent prices, hours, capacity or policies not in the facts.
 
 OUTPUT: respond with JSON only, no prose, no markdown fences, exactly these keys:
 { "title", "body", "alt_text"?, "acceptance_criteria": string[], "warnings": string[], "facts_used": string[], "facts_needed": string[] }
 facts_used lists the brand facts or evidence you relied on; facts_needed lists inputs the owner must supply before this can be finished.
 
-(prompt faq_jsonld@2026-09-03.1)"
+(prompt faq_jsonld@2026-09-12.1)"
 `;
 
 exports[`AGENTS > gbp_post prompt matches its snapshot and carries the shared guardrails 1`] = `

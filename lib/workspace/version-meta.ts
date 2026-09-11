@@ -24,6 +24,8 @@ export type GuardrailCode =
   | "alt_text_missing"
   | "too_many_hashtags"
   | "jsonld_missing"
+  | "jsonld_invalid"
+  | "jsonld_mismatch"
   | "title_too_long"
   | "bio_too_long";
 
@@ -71,6 +73,8 @@ function classify(warning: string): GuardrailFlag | null {
   if (warning === "alt_text_missing") return { code: "alt_text_missing" };
   if (warning === "too_many_hashtags") return { code: "too_many_hashtags" };
   if (warning === "jsonld_missing") return { code: "jsonld_missing" };
+  if (warning === "jsonld_invalid") return { code: "jsonld_invalid" };
+  if (warning === "jsonld_mismatch") return { code: "jsonld_mismatch" };
   const over = /^(body|title|bio)_over_(\d+)_chars$/.exec(warning);
   if (over) {
     const code: GuardrailCode = over[1] === "title" ? "title_too_long" : over[1] === "bio" ? "bio_too_long" : "length";

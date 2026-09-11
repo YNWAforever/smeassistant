@@ -73,7 +73,13 @@ function linkHref(html: string, rel: string): string | null {
   return null;
 }
 
-function jsonLdBlocks(html: string): string[] {
+/**
+ * The only JSON-LD the scan can see: a `<script type="application/ld+json">`
+ * element. Exported so the FAQ agent's acceptance check validates against the
+ * same detector that will re-check the page, rather than a second definition
+ * that could bless a block this function cannot find.
+ */
+export function jsonLdBlocks(html: string): string[] {
   const blocks: string[] = [];
   const re = /<script\b[^>]*type\s*=\s*["']?application\/ld\+json["']?[^>]*>([\s\S]*?)<\/script>/gi;
   let match: RegExpExecArray | null;
