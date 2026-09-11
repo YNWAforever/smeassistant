@@ -58,16 +58,24 @@ const EVENTS_SQL = `SELECT event, payload, actor_id, created_at::text AS created
       WHERE entity_type='workspace_access_request' AND entity_id = $1
       ORDER BY created_at ASC, id ASC`;
 
-export function accessRequestRepository(db: Pick<Pool, "query"> = getPool()) {
+/**
+ * `client` is resolved lazily, the same way notificationRepository does it.
+ * An eager `= getPool()` default throws database_configuration_missing at
+ * CONSTRUCTION, which no caller can catch around the call it actually awaits --
+ * constructing a repository must not require a configured database.
+ */
+export function accessRequestRepository(client?: Pick<Pool, "query">) {
+  const db = () => client ?? getPool();
+
   async function eventsFor(requestId: string): Promise<AccessRequestEvent[]> {
-    return (await db.query<AccessRequestEvent>(EVENTS_SQL, [requestId])).rows;
+    return (await db().query<AccessRequestEvent>(EVENTS_SQL, [requestId])).rows;
   }
 
   return {
     /** Uses workspace_access_requests_pending_idx ON (requested_at DESC) WHERE resolved_at IS NULL. */
     async listPending(limit: number): Promise<PendingAccessRequest[]> {
       return (
-        await db.query<PendingAccessRequest>(
+        await db().query<PendingAccessRequest>(
           `SELECT ${SELECT_COLUMNS}
        FROM workspace_access_requests r
        JOIN audit_jobs j ON j.id = r.job_id
@@ -82,7 +90,7 @@ export function accessRequestRepository(db: Pick<Pool, "query"> = getPool()) {
 
     async get(requestId: string): Promise<{ request: AccessRequestRow; events: AccessRequestEvent[] } | null> {
       const request = (
-        await db.query<AccessRequestRow>(
+        await db().query<AccessRequestRow>(
           `SELECT ${SELECT_COLUMNS}
        FROM workspace_access_requests r
        JOIN audit_jobs j ON j.id = r.job_id
@@ -103,7 +111,7 @@ export function accessRequestRepository(db: Pick<Pool, "query"> = getPool()) {
      */
     async openRequestFor(jobId: string, userId: string): Promise<{ id: string } | null> {
       return (
-        await db.query<{ id: string }>(
+        await db().query<{ id: string }>(
           "SELECT id FROM workspace_access_requests WHERE job_id=$1 AND user_id=$2 AND resolved_at IS NULL",
           [jobId, userId],
         )
@@ -116,7 +124,7 @@ export function accessRequestRepository(db: Pick<Pool, "query"> = getPool()) {
      */
     async latestForUser(userId: string): Promise<{ request: AccessRequestRow; events: AccessRequestEvent[] } | null> {
       const request = (
-        await db.query<AccessRequestRow>(
+        await db().query<AccessRequestRow>(
           `SELECT ${SELECT_COLUMNS}
        FROM workspace_access_requests r
        JOIN audit_jobs j ON j.id = r.job_id

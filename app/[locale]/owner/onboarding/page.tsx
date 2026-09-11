@@ -2,12 +2,16 @@ import type { Metadata } from "next";
 import { getMarketCtas, localeToMarket } from "@sme-scanner/region";
 
 import { OnboardingPage, type ClaimEvidence, type SavedSetup } from "@/components/onboarding-page";
+import { AccessRequestForm } from "@/components/workspace/access-request-form";
+import { AccessRequestStatus } from "@/components/workspace/access-request-status";
 import { requireUser } from "@/lib/auth";
 import { copy, normaliseLocale } from "@/lib/copy";
 import { brandRepository } from "@/lib/repositories/brand";
 import { membershipRepository } from "@/lib/repositories/membership";
 import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
 import { claimsRepository, type ClaimJob } from "@/lib/repositories/claims";
+import { accessRequestRepository } from "@/lib/repositories/access-requests";
+import { deriveRequestStatus } from "@/lib/workspace/my-access-request";
 
 import { publicMetadata } from "../../_meta";
 import { firstParam } from "../../_params";
@@ -147,8 +151,31 @@ export default async function OwnerOnboarding({
   const market = evidence?.region?.toLowerCase() === "tw" ? "tw" : evidence?.region ? "hk" : localeToMarket(locale);
   const contacts = getMarketCtas(market).map(({ channel, href }) => ({ channel, href }));
 
+  // The caller's own request, scoped by the verified session id (P2.4 item 22).
+  // Shown as status when one exists, and otherwise as the form that files one --
+  // which is the only route in for a manual-entry owner, who reaches this page
+  // with no claim slug and so has never had a request filed for them at all.
+  // Non-fatal, like the ownership lookup above it: this is a status panel, and
+  // failing to read it must not stop an owner completing onboarding.
+  const myRequest = await accessRequestRepository()
+    .latestForUser(user.id)
+    .catch(() => {
+      console.error("[onboarding] access request lookup failed", { category: "workspace_query_failed" });
+      return null;
+    });
+  const accessRequest = myRequest ? (
+    <AccessRequestStatus
+      status={deriveRequestStatus(myRequest.request, myRequest.events)}
+      isChinese={locale !== "en"}
+      businessName={myRequest.request.business_name ?? myRequest.request.share_slug}
+    />
+  ) : evidence ? (
+    <AccessRequestForm slug={evidence.shareSlug} market={market} isChinese={locale !== "en"} />
+  ) : undefined;
+
   return (
     <OnboardingPage
+      accessRequest={accessRequest}
       locale={locale}
       claim={claim}
       plan={plan}
