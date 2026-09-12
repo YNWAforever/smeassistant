@@ -12,7 +12,7 @@ That 3 is the number to keep in mind. An earlier pass at this phase, run before 
 
 ## Progress
 
-**24 of 26 buildable items are done** (1, 2, 3, 4, 6, 7, 9, 10, 11, 12, 13, 14, 15, 16, **19, 20, 21, 22, 23**, 17, 18, 24, 25, 26); items 6 and 12 are the same defect and landed together, as are 19–23, which shipped as one release. Each carries a **Status** line below with its commit. Two remain: 5 (deliberately deferred -- see below) and 8, the only one left to actually build.
+**25 of 26 buildable items are done** (1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, **19, 20, 21, 22, 23**, 17, 18, 24, 25, 26); items 6 and 12 are the same defect and landed together, as are 19–23, which shipped as one release. Each carries a **Status** line below with its commit. Only item 5 remains, and it stays deliberately deferred -- see below -- so there is nothing left in this backlog actually waiting to be built.
 
 **Two of the four blocked items are now unblocked and done: 27 and 28.** Both were `needs_schema_change`, not forbidden — and the P2.4 release settled the storage question with **zero DDL** by carrying decision state on `audit_events` rather than new columns, so the blocker simply went away. Items 29 and 30's stated blocker -- the email port not existing -- is gone as of `268bae9` (item 26, below); what remains for each is its own route/logic plus DEC-07 authorization to actually send, so they stay recorded under Blocked with an update note rather than moved.
 
@@ -97,6 +97,8 @@ lib/copy.ts:1299-1303 (en), :1352-1356 (zh-HK) and :1405-1409 (zh-TW) define the
 #### 8. Carry allowlisted outcome intent end to end: three outcome examples on the homepage (review replies / FAQ / Google-profile basics) linking into the existing scan with an `intent`, that intent surviving scan → sign-in → claim, and a compatible action being selected afterwards.
 
 **Effort:** `large` · **Start at:** `components/landing-page.tsx`
+
+**Status:** done — `75dd922`. Three landing cards (real `copy[locale].workspace.templates` title/summary, never new marketing copy) link to `/scan?intent=`, validated against real template keys and carried silently through `ScanDraft` -> `input_snapshot.intent` -> re-read by `POST /api/workspaces/claim` after a successful claim via `lib/workspace/intent-match.ts::findMatchedIntentAction` (scoped to the claimed location, open states only) -> `matchedActionId` in the response -> onboarding routes straight there instead of the workspace home. Best-effort: a lookup failure or "the scan found nothing matching" both still complete the claim, with a null match rather than an error. Verified the landing section with an SSR test in all three locales (jsdom); the dev server itself currently fails to compile any `components/ui/select.tsx`-importing page with a pre-existing, unrelated `@radix-ui/react-*` module-resolution error, confirmed to predate this change and to not reproduce under vitest's resolver.
 
 **Proof of absence**
 
