@@ -16,8 +16,9 @@ import {
   type AgentKey,
   type AgentOutput,
 } from "@/lib/agents";
-import { localized } from "@/lib/domain";
+import { localized, resolveText } from "@/lib/domain";
 import { llmComplete, type LLMUsage } from "@/lib/llm";
+import { deriveFaqQuestions } from "./faq-questions";
 import { filterSelectedReviews, resolveBrandProvidedInputs, sampledReviewsFromRawData } from "./evidence-inputs";
 import { buildActionOverview, localeOf } from "./overview";
 import { type SnapshotRecord } from "./snapshots";
@@ -268,11 +269,31 @@ export async function runAgentForAction(
     db.assistantBrand(row.workspace_id),
     db.assistantLocations(row.workspace_id),
   ]);
+  // P2.3 item 11: the FAQ + JSON-LD template asks for three owner_fact_*
+  // inputs, but a blank "Owner fact N" box told neither the owner nor the
+  // model which customer question was actually unanswered. Derived from the
+  // same evidence that created the action (failing website checks, un-cited
+  // AEO queries); a brand fact already on file for one of these questions
+  // prefills it, so the owner is not asked to retype what they already saved.
+  const faqQuestions =
+    agentKey === "faq_jsonld" && snapshot
+      ? deriveFaqQuestions({
+          failingWebsiteChecks: (snapshot.websiteChecks?.results ?? []).filter((r) => !r.pass).map((r) => r.key),
+          aeoQueries: await db.assistantAeoQueries(row.workspace_id, snapshot.jobId),
+        })
+      : [];
+  const brandFacts = asRecord(brand?.facts);
+  const faqPrefill: Record<string, string> = {};
+  for (const question of faqQuestions) {
+    const stored = question.brandFactKey ? brandFacts[question.brandFactKey] : undefined;
+    if (typeof stored === "string" && stored.trim()) faqPrefill[question.key] = stored;
+  }
   // Server-resolved brand facts (brand_voice, language, approved_claim -- P2.3
-  // item 16) fill in first; the owner's own stored answers and anything
-  // submitted this run always take precedence over them.
+  // item 16) and any FAQ prefill fill in first; the owner's own stored
+  // answers and anything submitted this run always take precedence over them.
   const provided = {
     ...resolveBrandProvidedInputs({ voice: brand?.voice ?? "warm", languages: asStrings(brand?.languages), approvedClaims: asStrings(brand?.approved_claims) }),
+    ...faqPrefill,
     ...asRecord(row.provided_inputs),
     ...input.inputs,
   };
@@ -319,7 +340,13 @@ export async function runAgentForAction(
         latestVersion: null,
       },
     ),
-    evidence: snapshotEvidence(snapshot),
+    evidence: {
+      ...snapshotEvidence(snapshot),
+      // Read by the faq_jsonld agent so its task text can pair each
+      // owner_fact_N answer with the actual question it answers, instead of
+      // asking the model to invent one to fit an unlabelled fact.
+      ...(faqQuestions.length ? { faq_questions: faqQuestions.map((q) => ({ key: q.key, question: resolveText(q.question, locale) })) } : {}),
+    },
     providedInputs: provided,
     sampledReviews,
   };

@@ -36,6 +36,7 @@ const artifacts = vi.hoisted(() => ({
   assistantSnapshot: vi.fn(async () => null as unknown),
   assistantLatestSnapshot: vi.fn(async () => null as unknown),
   assistantReviewData: vi.fn(async () => null as unknown),
+  assistantAeoQueries: vi.fn(async () => [] as string[]),
 }));
 vi.mock("@/lib/repositories/artifacts", () => ({ artifactRepository: () => artifacts }));
 const brandMock = vi.hoisted(() => ({ getBrand: vi.fn(async () => state.brand) }));
@@ -279,6 +280,41 @@ describe("page repository boundaries", () => {
     const detail = await getAction(ctx, "a2");
     const assetRow = detail?.businessContext.find((row) => row.key === "asset_rights");
     expect(assetRow?.value.en).toBe("Text-only post; no asset attached");
+  });
+
+  describe("faqQuestions (P2.3 item 11)", () => {
+    it("derives real questions from the referenced snapshot's failing checks and un-cited AEO queries, prefilling from a matching brand fact", async () => {
+      state.actions = [actionRow({ id: "a3", template_key: "visibility-content", source_snapshot_id: "snap-9", required_inputs: ["owner_fact_1", "owner_fact_2", "owner_fact_3"] })];
+      state.brand = { workspaceId: "ws-1", voice: "warm", approvedClaims: [], prohibitedTerms: [], languages: ["zh-HK"], facts: { opening_hours: "11:00-21:00 daily" }, updatedAt: null };
+      artifacts.assistantSnapshot.mockResolvedValueOnce({
+        id: "snap-9", jobId: "job-9", workspaceId: "ws-1", locationId: "loc-1",
+        websiteChecks: { evaluated: 15, passed: 13, results: [{ key: "opening_hours_text", pass: false }, { key: "https", pass: false }] },
+      });
+      artifacts.assistantAeoQueries.mockResolvedValueOnce(["best dim sum tin hau"]);
+      const detail = await getAction(ctx, "a3");
+      expect(artifacts.assistantSnapshot).toHaveBeenCalledWith("ws-1", "snap-9");
+      expect(artifacts.assistantAeoQueries).toHaveBeenCalledWith("ws-1", "job-9");
+      expect(detail?.faqQuestions).toHaveLength(3);
+      expect(detail?.faqQuestions[0].question.en).toContain("best dim sum tin hau");
+      expect(detail?.faqQuestions[0].prefill).toBeNull();
+      expect(detail?.faqQuestions[1].question.en).toBe("What are your opening hours?");
+      expect(detail?.faqQuestions[1].prefill).toBe("11:00-21:00 daily");
+      // https is a purely technical check -- never a fact an owner can answer.
+      expect(detail?.faqQuestions.some((q) => q.question.en.includes("https"))).toBe(false);
+    });
+
+    it("stays empty, with no extra reads at all, for a template that is not the FAQ workflow", async () => {
+      const detail = await getAction(ctx, "a1");
+      expect(detail?.faqQuestions).toEqual([]);
+      expect(artifacts.assistantAeoQueries).not.toHaveBeenCalled();
+    });
+
+    it("stays empty when the action has no source snapshot yet", async () => {
+      state.actions = [actionRow({ id: "a3", template_key: "visibility-content", source_snapshot_id: null })];
+      const detail = await getAction(ctx, "a3");
+      expect(detail?.faqQuestions).toEqual([]);
+      expect(artifacts.assistantSnapshot).not.toHaveBeenCalled();
+    });
   });
 
   it("reconciles stranded runs once, before anything reads them", async () => {

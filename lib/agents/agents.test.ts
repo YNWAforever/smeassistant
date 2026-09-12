@@ -234,3 +234,35 @@ Description: x
 H1: y`)).toContain("title_over_60_chars");
   });
 });
+
+describe("faq_jsonld questions (P2.3 item 11)", () => {
+  const withQuestions: AgentContext = {
+    ...fixedCtx,
+    evidence: {
+      ...fixedCtx.evidence,
+      faq_questions: [
+        { key: "owner_fact_1", question: "What are your opening hours?" },
+        { key: "owner_fact_2", question: 'What should customers searching "roast goose tin hau" find on your site?' },
+        { key: "owner_fact_3", question: "What is your contact phone number?" },
+      ],
+    },
+    providedInputs: { ...fixedCtx.providedInputs, owner_fact_2: "We are the top-rated roast goose in Yau Ma Tei", owner_fact_3: "" },
+  };
+
+  it("pairs each numbered fact with the question it answers, instead of listing bare facts", () => {
+    const prompt = AGENTS.faq_jsonld.buildPrompt(withQuestions);
+    expect(prompt).toContain("What are your opening hours? — Private room seats 12");
+    expect(prompt).toContain('What should customers searching "roast goose tin hau" find on your site? — We are the top-rated roast goose in Yau Ma Tei');
+  });
+
+  it("still shows a missing fact as missing, question and all", () => {
+    const prompt = AGENTS.faq_jsonld.buildPrompt(withQuestions);
+    expect(prompt).toContain("What is your contact phone number? — (not provided)");
+  });
+
+  it("falls back to the bare fact, unpaired, when no question was derived (e.g. an older run, or a live-mode call)", () => {
+    const prompt = AGENTS.faq_jsonld.buildPrompt(fixedCtx);
+    expect(prompt).toContain("1. Private room seats 12");
+    expect(prompt).not.toContain(" — Private room seats 12");
+  });
+});

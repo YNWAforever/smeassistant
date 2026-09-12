@@ -6,7 +6,8 @@ import type { EvidenceGalleryItem } from "@/lib/report/view-model";
 import { inLocationScope, type Membership } from "@/lib/auth";
 import { artifactRepository } from "@/lib/repositories/artifacts";
 import { assetRepository } from "@/lib/repositories/assets";
-import { getBrand } from "@/lib/workspace/brand";
+import { getBrand, type BrandProfile } from "@/lib/workspace/brand";
+import { deriveFaqQuestions } from "@/lib/workspace/faq-questions";
 import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
 import type { GuardrailFlag, VersionOrigin } from "@/lib/workspace/version-meta";
 import { filterSelectedReviews, scannedReviewKey, selectScannedReviews } from "@/lib/workspace/evidence-inputs";
@@ -198,6 +199,17 @@ export interface BusinessContextRow {
 
 export type BusinessContextSummary = BusinessContextRow[];
 
+/**
+ * P2.3 item 11: the FAQ + JSON-LD template's three owner_fact_* inputs used
+ * to render as unlabelled blank boxes. Empty for every other template.
+ */
+export interface FaqQuestionField {
+  key: "owner_fact_1" | "owner_fact_2" | "owner_fact_3";
+  question: LocalizedText;
+  /** From brand_profiles.facts, when the brand already has an answer -- so the owner is not asked to retype it. */
+  prefill: string | null;
+}
+
 export interface ActionDetail {
   action: ActionOverview;
   versions: VersionRow[];
@@ -205,6 +217,7 @@ export interface ActionDetail {
   measurements: MeasurementRow[];
   scanInputs: ScanInputEvidence[];
   businessContext: BusinessContextSummary;
+  faqQuestions: FaqQuestionField[];
 }
 
 export interface InsightsSeriesPoint {
@@ -327,9 +340,8 @@ const ASSET_RIGHTS_LABEL: Record<string, LocalizedText> = {
 };
 
 /** P2.3 item 17. Reads the same brand profile and asset the agent prompt itself will use, so this can never show a different value than what generation actually grounds on. */
-async function buildBusinessContext(ctx: WorkspaceContext, row: ActionRow, action: ActionOverview): Promise<BusinessContextSummary> {
+async function buildBusinessContext(ctx: WorkspaceContext, row: ActionRow, action: ActionOverview, brand: BrandProfile): Promise<BusinessContextSummary> {
   const location = ctx.locations.find((l) => l.id === row.location_id) ?? null;
-  const brand = await getBrand(ctx.workspace.id);
   const marketLabel = ctx.workspace.market === "tw" ? localized("Taiwan (TWD)", "台灣（新台幣）", "台灣（新台幣）") : localized("Hong Kong (HKD)", "香港（港元）", "香港（港元）");
   const rows: BusinessContextRow[] = [
     { key: "workspace", label: localized("Workspace", "工作台", "工作台"), value: localized(ctx.workspace.name, ctx.workspace.name), origin: FROM_WORKSPACE_RECORD },
@@ -390,6 +402,31 @@ async function buildBusinessContext(ctx: WorkspaceContext, row: ActionRow, actio
   }
   return rows;
 }
+
+/**
+ * P2.3 item 11. Derives the same three questions runAgentForAction derives
+ * for the prompt (lib/workspace/runs.ts), reading the referenced snapshot's
+ * website checks and un-cited AEO queries through the same artifactRepository
+ * methods, so the detail page's labels and prefills can never disagree with
+ * what generation actually grounds on.
+ */
+async function buildFaqQuestions(ctx: WorkspaceContext, row: ActionRow, brand: BrandProfile): Promise<FaqQuestionField[]> {
+  if (row.template_key !== "visibility-content" || !row.source_snapshot_id) return [];
+  const artifacts = artifactRepository();
+  const snapshot = await artifacts.assistantSnapshot(ctx.workspace.id, row.source_snapshot_id);
+  if (!snapshot) return [];
+  const aeoQueries = await artifacts.assistantAeoQueries(ctx.workspace.id, snapshot.jobId);
+  const questions = deriveFaqQuestions({
+    failingWebsiteChecks: (snapshot.websiteChecks?.results ?? []).filter((r) => !r.pass).map((r) => r.key),
+    aeoQueries,
+  });
+  return questions.map((q) => ({
+    key: q.key,
+    question: q.question,
+    prefill: q.brandFactKey ? brand.facts[q.brandFactKey] ?? null : null,
+  }));
+}
+
 const OPEN_STATES: ActionState[] = ["recommended", "needs_input", "ready", "in_progress"];
 const METRIC_CARD_KEYS: MetricKey[] = ["gbp.response_rate_pct", "gbp.rating", "ig.days_since_last_post", "aeo.ai_citation_count", "website.checks_passed"];
 
@@ -689,8 +726,12 @@ export async function getAction(ctx: WorkspaceContext, actionId: string): Promis
   // Resolved live, so a row derived before the evidence-aware rule stops
   // reporting an input the workspace can already answer.
   const [action] = await overviewsFor(ctx, [row], scanInputs.map((entry) => entry.key));
-  const businessContext = await buildBusinessContext(ctx, row, action);
-  return { action, versions, runs, measurements, scanInputs, businessContext };
+  const brand = await getBrand(ctx.workspace.id);
+  const [businessContext, faqQuestions] = await Promise.all([
+    buildBusinessContext(ctx, row, action, brand),
+    buildFaqQuestions(ctx, row, brand),
+  ]);
+  return { action, versions, runs, measurements, scanInputs, businessContext, faqQuestions };
 }
 
 // ---------------------------------------------------------------------------

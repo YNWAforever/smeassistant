@@ -116,13 +116,17 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   const isChinese = locale !== "en"
   const router = useRouter()
   const base = `/${locale}/owner/${workspaceSlug}`
-  const { action, versions, runs, measurements, scanInputs, businessContext } = detail
+  const { action, versions, runs, measurements, scanInputs, businessContext, faqQuestions } = detail
   // The reviews the draft will actually use, resolved from the same stored
   // evidence the agent reads. When this is set the owner is shown the reviews
   // rather than a blank textarea asking them to retype what was collected.
   const reviewEvidence = scanInputs.find((entry) => entry.key === "reviews_without_response") ?? null
   const scanInputCopy = copy[locale].workspace.scanInputs
   const inputs = copy[locale].workspace.inputs
+  // P2.3 item 11: replaces the generic "Owner fact N" label with the actual
+  // customer question this fact answers, and prefills a brand fact already on
+  // file so the owner is not asked to retype it.
+  const faqQuestionByKey = new Map<string, (typeof faqQuestions)[number]>(faqQuestions.map((q) => [q.key, q]))
   const social = action.templateKey === "social-post"
   /**
    * P2.1 item 6 / P2.2 item 12. `gbp-profile-fix` and `ig-highlights` have no
@@ -602,7 +606,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                       {approvedAssets.length === 0 && <small>{isChinese ? "尚未有已核准素材；可先上載並確認使用權，或選擇純文字。" : "No approved assets yet; upload and confirm rights first, or choose text only."} <Link href={`${base}/assets`}>{isChinese ? "前往素材" : "Go to assets"}</Link></small>}
                     </div>
                   ) : (
-                    <div key={key} className="field-stack"><Label htmlFor={`input-${key}`}>{inputs[key] ?? key}</Label>{key.startsWith("owner_fact") || key === "menu_items" || key === "reviews_without_response" ? <Textarea id={`input-${key}`} rows={3} value={inputValues[key] ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} /> : <Input id={`input-${key}`} value={inputValues[key] ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} />}</div>
+                    <div key={key} className="field-stack"><Label htmlFor={`input-${key}`}>{faqQuestionByKey.get(key) ? resolveText(faqQuestionByKey.get(key)!.question, locale) : (inputs[key] ?? key)}</Label>{key.startsWith("owner_fact") || key === "menu_items" || key === "reviews_without_response" ? <Textarea id={`input-${key}`} rows={3} value={inputValues[key] ?? faqQuestionByKey.get(key)?.prefill ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} /> : <Input id={`input-${key}`} value={inputValues[key] ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} />}{faqQuestionByKey.get(key)?.prefill && <small>{isChinese ? "已按品牌設定中已儲存的資料預填，可自行修改。" : "Prefilled from a fact already saved in Brand settings; edit as needed."}</small>}</div>
                   ))}
                   <div className="draft-editor-actions"><Button type="submit" disabled={!canEdit}>{busy === "inputs" || busy === "run" ? <LoaderCircle className="animate-spin" /> : checklistSteps ? <Save /> : <WandSparkles />} {checklistSteps ? checklistCopy.saveInputs : isChinese ? "儲存資料並重新生成" : "Save inputs and generate"}</Button></div>
                 </form>
