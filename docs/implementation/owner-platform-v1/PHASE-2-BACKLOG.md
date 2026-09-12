@@ -12,7 +12,7 @@ That 3 is the number to keep in mind. An earlier pass at this phase, run before 
 
 ## Progress
 
-**19 of 26 buildable items are done** (1, 2, 3, 4, 6, 9, 10, 12, 15, 16, **19, 20, 21, 22, 23**, 17, 24, 25, 26); items 6 and 12 are the same defect and landed together, as are 19–23, which shipped as one release. Each carries a **Status** line below with its commit. Seven remain buildable, six of them untouched: 5, 7, 8, 11, 13, 14, 18 (item 5 is deliberately deferred -- see below -- so 7, 8, 11, 13, 14 and 18 are the ones actually next).
+**20 of 26 buildable items are done** (1, 2, 3, 4, 6, 7, 9, 10, 12, 15, 16, **19, 20, 21, 22, 23**, 17, 24, 25, 26); items 6 and 12 are the same defect and landed together, as are 19–23, which shipped as one release. Each carries a **Status** line below with its commit. Six remain buildable: 8, 11, 13, 14, 18 (item 5 is deliberately deferred -- see below).
 
 **Two of the four blocked items are now unblocked and done: 27 and 28.** Both were `needs_schema_change`, not forbidden — and the P2.4 release settled the storage question with **zero DDL** by carrying decision state on `audit_events` rather than new columns, so the blocker simply went away. Items 29 and 30's stated blocker -- the email port not existing -- is gone as of `268bae9` (item 26, below); what remains for each is its own route/logic plus DEC-07 authorization to actually send, so they stay recorded under Blocked with an update note rather than moved.
 
@@ -87,6 +87,8 @@ lib/copy.ts:1299-1303 (en), :1352-1356 (zh-HK) and :1405-1409 (zh-TW) define the
 #### 7. Results must show the approved/exported work, not only scores and observed checks.
 
 **Effort:** `medium` · **Start at:** `lib/workspace/queries-pages.ts`
+
+**Status:** done — `57d2f54`. `InsightsModel.deliveries` (new) reads `deliveries JOIN output_versions JOIN actions`, filtered to `counted=true` (guardrail 7's real deliveries, never a repeat copy) and scoped to the location. Rendered as a table on the per-location Insights view, before the change ledger. `location=all` gets none, matching every other per-location field on that page.
 
 **Proof of absence**
 
