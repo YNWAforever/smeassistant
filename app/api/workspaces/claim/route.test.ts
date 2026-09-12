@@ -8,11 +8,15 @@ const mocks = vi.hoisted(() => ({
   buildSnapshot: vi.fn(async () => undefined),
   completeWorkspaceClaim: vi.fn(),
   enforceRateLimit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 1 })),
+  claimJob: vi.fn(async () => null as { input_snapshot: Record<string, unknown> | null } | null),
+  findMatchedIntentAction: vi.fn(async () => null as string | null),
 }));
 
 vi.mock("@/lib/repositories/action-derivation", () => ({ deriveActionsForClaim: mocks.derive }));
 vi.mock("@/lib/repositories/snapshots", () => ({ snapshotRepository: () => mocks.snapshotRepo }));
 vi.mock("@/lib/workspace/snapshots", () => ({ buildSnapshot: mocks.buildSnapshot, loadSnapshotForJob: vi.fn(async () => null) }));
+vi.mock("@/lib/workspace/intent-match", () => ({ findMatchedIntentAction: mocks.findMatchedIntentAction }));
+vi.mock("@/lib/repositories/claims", () => ({ claimCompletionStore: { job: mocks.claimJob } }));
 vi.mock("@/lib/auth", () => ({ getUser: mocks.getUser }));
 vi.mock("@/lib/security/rate-limit", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/security/rate-limit")>();
@@ -51,6 +55,8 @@ describe("POST /api/workspaces/claim", () => {
     vi.clearAllMocks();
     mocks.legacy.mockReset();
     mocks.enforceRateLimit.mockResolvedValue({ allowed: true, retryAfterSeconds: 1 });
+    mocks.claimJob.mockResolvedValue(null);
+    mocks.findMatchedIntentAction.mockResolvedValue(null);
   });
 
   it("checks Neon claim eligibility before initializing deferred snapshot stores", async () => {
@@ -117,7 +123,7 @@ describe("POST /api/workspaces/claim", () => {
     const res = await post(BODY);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true, workspaceSlug: "kam-man-house", locationId: "loc-1" });
+    expect(await res.json()).toEqual({ ok: true, workspaceSlug: "kam-man-house", locationId: "loc-1", matchedActionId: null });
     expect(mocks.completeWorkspaceClaim).toHaveBeenCalledWith(expect.anything(), {
       claimSlug: "abc123",
       workspaceName: "Kam Man House",
@@ -133,6 +139,43 @@ describe("POST /api/workspaces/claim", () => {
     expect(mocks.enforceRateLimit).toHaveBeenCalledWith(
       expect.objectContaining({ scope: "workspace_claim", identifiers: ["user-1"], failClosed: true }),
     );
+  });
+
+  it("returns the matched action id when the job's recorded intent matches an open action (item 8)", async () => {
+    mocks.getUser.mockResolvedValue(USER);
+    mocks.completeWorkspaceClaim.mockResolvedValue({
+      kind: "completed",
+      workspaceId: "ws-1",
+      workspaceSlug: "kam-man-house",
+      locationId: "loc-1",
+    });
+    mocks.claimJob.mockResolvedValue({ input_snapshot: { intent: "review-response" } });
+    mocks.findMatchedIntentAction.mockResolvedValue("action-1");
+
+    const res = await post(BODY);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ matchedActionId: "action-1" });
+    expect(mocks.claimJob).toHaveBeenCalledWith("abc123");
+    expect(mocks.findMatchedIntentAction).toHaveBeenCalledWith("ws-1", "loc-1", "review-response");
+  });
+
+  it("still completes the claim, with a null matched action, when the intent lookup itself fails", async () => {
+    mocks.getUser.mockResolvedValue(USER);
+    mocks.completeWorkspaceClaim.mockResolvedValue({
+      kind: "completed",
+      workspaceId: "ws-1",
+      workspaceSlug: "kam-man-house",
+      locationId: "loc-1",
+    });
+    mocks.claimJob.mockRejectedValue(new Error("db unavailable"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await post(BODY);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true, matchedActionId: null });
+    consoleError.mockRestore();
   });
 
   it("maps the outcome kinds to 404 / 403 / 409", async () => {

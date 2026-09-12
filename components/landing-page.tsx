@@ -481,6 +481,37 @@ export function LandingPage({ locale, market: initialMarket }: { locale: Prototy
           </div>
         </section>
 
+        {/* Item 8: three outcome examples, each linking into the scan with an
+            `intent` that survives claim -- so the owner lands on this exact
+            action afterwards, if the scan actually produces one. Copy is the
+            real template title/summary an owner sees inside the workspace
+            (copy[locale].workspace.templates), never invented marketing text,
+            so the promise here is never ahead of what the product does. */}
+        <section className="outcome-examples-section" aria-labelledby="outcome-examples-title">
+          <div className="sample-case-copy">
+            <p className="eyebrow">{isChinese ? "先揀一個想見到嘅成果" : "Pick an outcome to see first"}</p>
+            <h2 id="outcome-examples-title">{isChinese ? "免費掃描會為以下範疇準備草稿" : "Your free scan can draft any of these"}</h2>
+            <p>{isChinese ? "揀一個開始掃描；如果證據支持，你嘅工作台會直接打開呢項行動。" : "Pick one to start your scan; if the evidence supports it, your workspace opens straight into that action."}</p>
+          </div>
+          <div className="agent-role-grid">
+            {(["review-response", "visibility-content", "gbp-profile-fix"] as const).map((key, index) => {
+              const template = t.workspace.templates[key]
+              return (
+                <article key={key}>
+                  <div className="agent-role-top"><span className="agent-role-index">0{index + 1}</span></div>
+                  <h3>{template.title}</h3>
+                  <p>{template.summary}</p>
+                  <Button asChild variant="outline">
+                    <Link href={`/${locale}/scan?${new URLSearchParams({ market, intent: key }).toString()}`}>
+                      {isChinese ? "由呢個開始" : "Start with this"}<ArrowRight />
+                    </Link>
+                  </Button>
+                </article>
+              )
+            })}
+          </div>
+        </section>
+
         <section className="home-plan-section" aria-labelledby="home-plan-title">
           <div className="section-heading-inline"><div><p className="eyebrow">{isChinese ? "由證據開始，按業務步伐升級" : "Start with evidence, scale with the business"}</p><h2 id="home-plan-title">{isChinese ? "先免費看清問題，再選擇合適的執行節奏。" : "See the issue for free, then choose the right operating rhythm."}</h2></div><Button asChild variant="outline"><Link href={`/${locale}/pricing`}>{isChinese ? "比較所有方案" : "Compare all plans"}<ArrowRight /></Link></Button></div>
           <div className="free-plan-banner"><div><Badge variant="outline">{isChinese ? "一次免費掃描" : "One free scan"}</Badge><h3>{isChinese ? "SME Scanner · 免費" : "SME Scanner · Free"}</h3><p>{isChinese ? "查看能見度快照、證據來源及最值得先處理的問題，毋須登入開始。" : "See a visibility snapshot, source evidence and the best next issue to tackle—no login required."}</p></div><Button asChild><Link href={`/${locale}/scan`}>{isChinese ? "免費掃描" : "Start free scan"}<ArrowRight /></Link></Button></div>

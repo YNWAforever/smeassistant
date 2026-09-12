@@ -6,6 +6,7 @@ import { getUser } from "@/lib/auth";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
 import { completeWorkspaceClaim } from "@/lib/workspace/claim";
 import { buildSnapshot } from "@/lib/workspace/snapshots";
+import { findMatchedIntentAction } from "@/lib/workspace/intent-match";
 import { parseClaimBody } from "./parse-body";
 
 /**
@@ -49,8 +50,20 @@ export async function POST(req: Request) {
       deriveActions: deriveActionsForClaim,
     });
     switch (result.kind) {
-      case "completed":
-        return NextResponse.json({ ok: true, workspaceSlug: result.workspaceSlug, locationId: result.locationId });
+      case "completed": {
+        // Item 8: "a compatible action being selected afterwards". Best-effort
+        // -- a lookup failure here must not turn a completed claim into an
+        // error response; the owner still lands on their workspace, just not
+        // pre-routed to a specific action.
+        let matchedActionId: string | null = null;
+        try {
+          const job = await claimCompletionStore.job(parsed.body.claimSlug);
+          matchedActionId = await findMatchedIntentAction(result.workspaceId, result.locationId, job?.input_snapshot?.intent);
+        } catch (error) {
+          console.error("[api/workspaces/claim] intent match skipped", error instanceof Error ? error.message : "unknown");
+        }
+        return NextResponse.json({ ok: true, workspaceSlug: result.workspaceSlug, locationId: result.locationId, matchedActionId });
+      }
       case "not_found":
         return NextResponse.json({ error: "not_found" }, { status: 404 });
       case "forbidden":

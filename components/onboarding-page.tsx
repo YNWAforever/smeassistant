@@ -204,13 +204,21 @@ export function OnboardingPage({ locale, claim, plan, resumeStep = 1, saved = nu
           approved_claims: approvedClaims.split("\n").map((line) => line.trim()).filter(Boolean),
         }),
       })
-      const data = (await response.json().catch(() => ({}))) as { slug?: string; workspaceSlug?: string; workspace?: { slug?: string }; error?: string }
+      const data = (await response.json().catch(() => ({}))) as { slug?: string; workspaceSlug?: string; workspace?: { slug?: string }; matchedActionId?: string | null; error?: string }
       if (!response.ok) {
         setSubmitState({ kind: "error", message: response.status === 403 ? (isChinese ? "只有已驗證的店主可以完成這個工作台。" : "Only the verified owner can complete this workspace.") : (isChinese ? "暫時未能完成設定，請稍後再試。" : "Could not complete the workspace right now. Try again shortly.") })
         return
       }
       const slug = data.slug ?? data.workspaceSlug ?? data.workspace?.slug
-      router.push(slug ? `/${locale}/owner/${slug}` : `/${locale}/owner/select-workspace`)
+      // Item 8: land the owner directly on the action their landing-page pick
+      // promised, when the scan actually produced one -- rather than the
+      // generic workspace home they would otherwise have to find it from.
+      const destination = slug
+        ? data.matchedActionId
+          ? `/${locale}/owner/${slug}/actions/${data.matchedActionId}`
+          : `/${locale}/owner/${slug}`
+        : `/${locale}/owner/select-workspace`
+      router.push(destination)
     } catch {
       setSubmitState({ kind: "error", message: isChinese ? "網絡連線失敗，請檢查後再試。" : "Network error. Check your connection and try again." })
     }

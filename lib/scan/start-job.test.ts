@@ -58,7 +58,15 @@ describe("parseScanStartBody", () => {
       facebookUrl: "",
       parentJobId: null,
       userRole: null,
+      intent: null,
     });
+  });
+
+  it("accepts a known template key as intent and drops an unrecognised one (item 8)", () => {
+    expect(parsed({ intent: "review-response" }).intent).toBe("review-response");
+    expect(parsed({ intent: "not-a-real-template" }).intent).toBeNull();
+    expect(parsed({ intent: 123 }).intent).toBeNull();
+    expect(parsed().intent).toBeNull();
   });
 
   it.each([
@@ -112,6 +120,12 @@ describe("buildScanJobInsert", () => {
     expect(row.place_id).toBeNull();
     expect(row.place_match_confidence).toBeNull();
     expect((row.input_snapshot as Record<string, unknown>).placeMatchConfidence).toBe("medium");
+  });
+
+  it("carries the picked outcome intent into input_snapshot for the claim route to read back (item 8)", () => {
+    const row = buildScanJobInsert(parsed({ intent: "visibility-content" }));
+    expect((row.input_snapshot as Record<string, unknown>).intent).toBe("visibility-content");
+    expect((buildScanJobInsert(parsed()).input_snapshot as Record<string, unknown>).intent).toBeNull();
   });
 
   it("adds server-side attribution only when it is supplied", () => {

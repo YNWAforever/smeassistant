@@ -54,6 +54,7 @@ import {
   type ScanMarket,
   type ScanObjective,
 } from "@/lib/funnel/scan-start"
+import type { TemplateKey } from "@/lib/workspace/templates"
 import { t } from "@/lib/i18n"
 import { interpolate } from "@/lib/share"
 import { DISTRICTS_HK, DISTRICTS_TW, INDUSTRIES_HK, INDUSTRIES_TW } from "@sme-scanner/region"
@@ -76,11 +77,14 @@ export function ScanPage({
   locale,
   initialMarket,
   initialBusiness,
+  initialIntent,
   consentPolicyVersion,
 }: {
   locale: PrototypeLocale
   initialMarket: ScanMarket
   initialBusiness?: string
+  /** Item 8: the outcome the visitor picked on a landing-page link, already validated against known template keys server-side. Carried silently -- there is no step in this form that shows or edits it. */
+  initialIntent?: TemplateKey | null
   /** Resolved on the server so a deployment override reaches the client. */
   consentPolicyVersion: string
 }) {
@@ -90,7 +94,7 @@ export function ScanPage({
   const router = useRouter()
 
   const [step, setStep] = useState(1)
-  const [draft, setDraft] = useState<ScanDraft>(() => emptyScanDraft(initialMarket, initialBusiness?.trim() ?? ""))
+  const [draft, setDraft] = useState<ScanDraft>(() => emptyScanDraft(initialMarket, initialBusiness?.trim() ?? "", initialIntent ?? null))
   const [consent, setConsent] = useState(false)
   // Seeded from the prop but held in state: on a 409 the server tells us the
   // version it publishes now, and posting the stale prop again would loop.
