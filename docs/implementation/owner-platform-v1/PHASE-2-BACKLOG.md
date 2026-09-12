@@ -12,7 +12,7 @@ That 3 is the number to keep in mind. An earlier pass at this phase, run before 
 
 ## Progress
 
-**20 of 26 buildable items are done** (1, 2, 3, 4, 6, 7, 9, 10, 12, 15, 16, **19, 20, 21, 22, 23**, 17, 24, 25, 26); items 6 and 12 are the same defect and landed together, as are 19–23, which shipped as one release. Each carries a **Status** line below with its commit. Six remain buildable: 8, 11, 13, 14, 18 (item 5 is deliberately deferred -- see below).
+**21 of 26 buildable items are done** (1, 2, 3, 4, 6, 7, 9, 10, 12, 15, 16, **19, 20, 21, 22, 23**, 17, 18, 24, 25, 26); items 6 and 12 are the same defect and landed together, as are 19–23, which shipped as one release. Each carries a **Status** line below with its commit. Five remain buildable: 8, 11, 13, 14 (item 5 is deliberately deferred -- see below).
 
 **Two of the four blocked items are now unblocked and done: 27 and 28.** Both were `needs_schema_change`, not forbidden — and the P2.4 release settled the storage question with **zero DDL** by carrying decision state on `audit_events` rather than new columns, so the blocker simply went away. Items 29 and 30's stated blocker -- the email port not existing -- is gone as of `268bae9` (item 26, below); what remains for each is its own route/logic plus DEC-07 authorization to actually send, so they stay recorded under Blocked with an update note rather than moved.
 
@@ -193,6 +193,8 @@ No such data reaches any generation surface. lib/workspace/queries-pages.ts:174-
 #### 18. Localize human-readable evidence limitations in zh-HK, zh-TW and en without altering scoring meaning — a code->message map with an untranslated raw-code fallback, replacing the English-only humaniser and the three raw-code render sites.
 
 **Effort:** `medium` · **Start at:** `lib/funnel/report-labels.ts`
+
+**Status:** done — `4407fb5`. `limitationLabel(locale, code)` mirrors `findingLabel`'s existing pattern: a computed `report.limitation<Pascal>` key, localized when it exists, falling back to the untouched `humaniseLimitationCode` otherwise. ~30 codes actually produced by `module-states.ts`, `load-report.ts` and scan-engine got real en/zh-HK/zh-TW entries in `lib/messages/*.json`. All three render sites now go through it, including the Instagram integrations card that loaded `limitationCode` but never showed it.
 
 **Proof of absence**
 
