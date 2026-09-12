@@ -69,4 +69,14 @@ describe("parseVersionMeta", () => {
     expect(parseVersionMeta({ agent_key: "" }, "agent").agentKey).toBeNull();
     expect(parseVersionMeta({}, "user").agentKey).toBeNull();
   });
+
+  it("carries the agent's own acceptance_criteria through (item 13's export checklist)", () => {
+    expect(parseVersionMeta({ acceptance_criteria: ["Paste into <head>", "Confirm phone number matches"] }, "agent").acceptanceCriteria).toEqual([
+      "Paste into <head>",
+      "Confirm phone number matches",
+    ]);
+    expect(parseVersionMeta({}, "agent").acceptanceCriteria).toEqual([]);
+    expect(parseVersionMeta({ acceptance_criteria: "not-an-array" }, "agent").acceptanceCriteria).toEqual([]);
+    expect(parseVersionMeta({ acceptance_criteria: [1, null, "keep this one"] }, "agent").acceptanceCriteria).toEqual(["keep this one"]);
+  });
 });

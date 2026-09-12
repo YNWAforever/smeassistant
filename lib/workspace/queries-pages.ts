@@ -118,6 +118,7 @@ export interface VersionRow {
   checked: boolean;
   guardrails: GuardrailFlag[];
   agentNotes: string[];
+  acceptanceCriteria: string[];
 }
 
 export interface RunRow {

@@ -31,7 +31,7 @@ import { copyToClipboard, downloadText } from "@/lib/download"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import { auditActorLabel, auditEventLabel } from "@/lib/workspace/audit-labels"
 import { approveVersion, decideVersion, exportVersion, runAction, saveAssistantVersion, saveVersion, updateAction, type ClientResult } from "@/lib/workspace/client"
-import { effortLabel, formatDateTime, metricLabel, priorityClass, priorityLabel, signed, stateLabel, withLocation } from "@/lib/workspace/format"
+import { buildExportText, effortLabel, formatDateTime, metricLabel, priorityClass, priorityLabel, signed, stateLabel, withLocation } from "@/lib/workspace/format"
 import type { ActionDetail, AuditEventRow, VersionRow } from "@/lib/workspace/queries-pages"
 import type { GuardrailFlag } from "@/lib/workspace/version-meta"
 
@@ -441,8 +441,19 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
       return
     }
     setAllowanceBlocked(null)
-    const text = selectedVersion.alt_text ? `${selectedVersion.body}\n\n---\n${isChinese ? "圖片替代文字" : "Alt text"}: ${selectedVersion.alt_text}\n` : selectedVersion.body
+    // P2.2/item 13: the FAQ and website-basics exports must carry implementation
+    // instructions and an explicit "not applied" statement -- exporting a draft
+    // is not a claim the website changed. buildExportText appends them (from
+    // the agent's own acceptance_criteria, already persisted, never read back
+    // before this) only for the two templates that need them.
     if (mode === "export") {
+      const text = buildExportText({
+        body: selectedVersion.body,
+        altText: selectedVersion.alt_text,
+        templateKey: action.templateKey,
+        acceptanceCriteria: selectedVersion.acceptanceCriteria,
+        locale,
+      })
       downloadText(`${action.templateKey}-v${selectedVersion.version_no}.md`, text, "text/markdown;charset=utf-8")
     } else {
       const copied = await copyToClipboard(selectedVersion.body)

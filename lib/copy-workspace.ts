@@ -79,6 +79,19 @@ export type WorkspaceCopy = {
     saveInputs: string;
   };
   checklistSteps: Partial<Record<TemplateKey, { where: string; steps: string[] }>>;
+  /**
+   * P2.2/item 13: the FAQ export must carry instructions for the owner's
+   * website editor, and the website-basics export must read as an approved
+   * checklist for implementation, NOT a claim the website was updated.
+   * Keyed by template because the two website templates need different
+   * "where does this go" instructions; the disclaimer is shared.
+   */
+  websiteExport: {
+    heading: string;
+    criteriaHeading: string;
+    disclaimer: string;
+    instructions: Partial<Record<TemplateKey, string>>;
+  };
 };
 
 const INPUT_KEYS = [
@@ -175,6 +188,15 @@ export const workspaceEn: WorkspaceCopy = {
       ],
     },
   },
+  websiteExport: {
+    heading: "How to apply this",
+    criteriaHeading: "Checklist",
+    disclaimer: "This is a draft for your website editor, not a claim that your website has changed. Approving and exporting it does not publish anything -- nothing on your website is different until you (or whoever manages it) applies it. The next scan will show whether it was applied.",
+    instructions: {
+      "visibility-content": 'Paste the <script type="application/ld+json"> block into your website\'s <head>, and add the Q&A text to a visible FAQ section on the page it concerns.',
+      "website-basics": "Apply the title, meta description and H1 to the relevant page through your website editor or CMS.",
+    },
+  },
 };
 
 export const workspaceZhHK: WorkspaceCopy = {
@@ -260,6 +282,15 @@ export const workspaceZhHK: WorkspaceCopy = {
       ],
     },
   },
+  websiteExport: {
+    heading: "如何套用",
+    criteriaHeading: "檢查清單",
+    disclaimer: "呢個係比你網站編輯用嘅草稿，唔係話你個網站已經改咗。核准同匯出唔會自動發佈任何嘢——喺你（或負責網站嘅人）套用之前，網站上乜都未變。下次掃描會顯示係咪已經套用。",
+    instructions: {
+      "visibility-content": "將 <script type=\"application/ld+json\"> 區塊貼入你網站嘅 <head>，並將問答文字加入相關頁面一個公開可見嘅 FAQ 部分。",
+      "website-basics": "透過你嘅網站編輯器或 CMS，將標題、描述同 H1 套用到相關頁面。",
+    },
+  },
 };
 
 export const workspaceZhTW: WorkspaceCopy = {
@@ -285,6 +316,15 @@ export const workspaceZhTW: WorkspaceCopy = {
         "為每個精選動態設定封面圖片及簡短名稱。",
         "確認精選動態已在公開個人檔案的簡介下方顯示。",
       ],
+    },
+  },
+  websiteExport: {
+    heading: "如何套用",
+    criteriaHeading: "檢查清單",
+    disclaimer: "這是給您網站編輯者使用的草稿，不代表您的網站已經更新。核准並匯出不會自動發布任何內容——在您（或負責網站的人）套用之前，網站上什麼都沒有改變。下次掃描會顯示是否已經套用。",
+    instructions: {
+      "visibility-content": "將 <script type=\"application/ld+json\"> 區塊貼到您網站的 <head>，並將問答文字加到相關頁面一個公開可見的 FAQ 區塊。",
+      "website-basics": "透過您的網站編輯器或 CMS，將標題、描述和 H1 套用到相關頁面。",
     },
   },
 };
