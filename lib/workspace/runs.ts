@@ -18,7 +18,7 @@ import {
 } from "@/lib/agents";
 import { localized } from "@/lib/domain";
 import { llmComplete, type LLMUsage } from "@/lib/llm";
-import { filterSelectedReviews, sampledReviewsFromRawData } from "./evidence-inputs";
+import { filterSelectedReviews, resolveBrandProvidedInputs, sampledReviewsFromRawData } from "./evidence-inputs";
 import { buildActionOverview, localeOf } from "./overview";
 import { type SnapshotRecord } from "./snapshots";
 import { templateByKey, type TemplateKey } from "./templates";
@@ -263,12 +263,19 @@ export async function runAgentForAction(
   }
   const agentKey = resolveAgentKey(input.agentKey, template.agentKey),
     agent = AGENTS[agentKey];
-  const provided = { ...asRecord(row.provided_inputs), ...input.inputs };
   const [workspace, brand, locations] = await Promise.all([
     db.assistantWorkspace(row.workspace_id),
     db.assistantBrand(row.workspace_id),
     db.assistantLocations(row.workspace_id),
   ]);
+  // Server-resolved brand facts (brand_voice, language, approved_claim -- P2.3
+  // item 16) fill in first; the owner's own stored answers and anything
+  // submitted this run always take precedence over them.
+  const provided = {
+    ...resolveBrandProvidedInputs({ voice: brand?.voice ?? "warm", languages: asStrings(brand?.languages), approvedClaims: asStrings(brand?.approved_claims) }),
+    ...asRecord(row.provided_inputs),
+    ...input.inputs,
+  };
   const location = locations.find((l) => l.id === row.location_id) ?? null;
   // P2.2 requires "selected-review replies": the owner picks which unanswered
   // reviews to answer. `provided_inputs.selected_reviews` carries only KEYS --

@@ -1,3 +1,4 @@
+import { LOCALE_LABELS } from "@sme-scanner/region";
 import type { SampledReview } from "@/lib/agents";
 import { sanitizeReportProof } from "@/lib/report/sanitize-proof";
 
@@ -11,21 +12,32 @@ import { sanitizeReportProof } from "@/lib/report/sanitize-proof";
  * in `needs_input` until they did.
  *
  * This module is the single place that decides what counts as already-supplied.
- * It reads STORED EVIDENCE ONLY and never accepts client input: owner-typed text
- * stays in `provided_inputs`, and `ctx.sampledReviews` is still built solely from
- * `audit_jobs.raw_data`.
+ * It reads STORED EVIDENCE and the brand profile only, never client input:
+ * owner-typed text stays in `provided_inputs`, and `ctx.sampledReviews` is still
+ * built solely from `audit_jobs.raw_data`.
  *
- * Deliberately narrow. `brand_voice` and `language` look resolvable from
- * `brand_profiles`, but the agents read them through `inputLine(ctx, key)` ->
- * `ctx.providedInputs`, so removing them from `required_inputs` would silently
- * render "Match the brand voice ((not provided))" AND lock the owner out of ever
- * supplying them (the detail page's input form is driven by what is missing).
- * Resolving those is a separate change that must also inject the values into
- * `providedInputs`. Everything else -- approved_claim, cta_link, channel,
- * owner_fact_*, menu_items, opening_hours, categories, asset_or_text_only,
- * alt_text, google_account_owner -- is genuinely owner knowledge.
+ * `brand_voice`, `language` and `approved_claim` are resolved from
+ * `brand_profiles` (P2.3 item 16), but the agents read them through
+ * `inputLine(ctx, key)` -> `ctx.providedInputs`, so removing them from
+ * `required_inputs` alone would silently render "Match the brand voice ((not
+ * provided))". Two call sites therefore both need updating, not one:
+ * `resolveEvidenceInputs` (below) decides whether the *required input* is
+ * satisfied, and `resolveBrandProvidedInputs` (below) supplies the actual
+ * *value* a caller must merge into `providedInputs` before building the prompt.
+ * Everything else -- cta_link, channel, owner_fact_*, menu_items,
+ * opening_hours, categories, asset_or_text_only, alt_text,
+ * google_account_owner -- is genuinely owner knowledge and stays out of scope.
  */
 export const SERVER_RESOLVABLE_INPUT_KEYS = ["reviews_without_response"] as const;
+
+/** The three brand-derived keys P2.3 item 16 resolves. See the module doc above. */
+export const BRAND_RESOLVABLE_INPUT_KEYS = ["brand_voice", "language", "approved_claim"] as const;
+
+export interface ResolvableBrandFacts {
+  voice: string;
+  languages: readonly string[];
+  approvedClaims: readonly string[];
+}
 
 export interface ScannedReviewSelection {
   sampled: SampledReview[];
@@ -112,11 +124,43 @@ export function filterSelectedReviews(sampled: SampledReview[], selected: unknow
 
 export interface EvidenceInputSources {
   rawData: unknown;
+  /**
+   * Only when an actual `brand_profiles` row exists. An unsaved workspace still
+   * has usable defaults (voice "warm", one served language) -- `getBrand()`
+   * returns them everywhere else the brand is read -- but treating those
+   * defaults as a satisfied required_input here would silently draft
+   * external-facing content in a voice the owner never confirmed. Runtime
+   * generation (`resolveBrandProvidedInputs`) is not this conservative: by the
+   * time a run actually executes, a real value belongs in the prompt
+   * regardless of whether the owner ever visited Brand settings.
+   */
+  brand?: ResolvableBrandFacts | null;
 }
 
 export function resolveEvidenceInputs(sources: EvidenceInputSources): Set<string> {
   const resolved = new Set<string>();
   if (selectScannedReviews(sources.rawData).sampled.length > 0) resolved.add("reviews_without_response");
+  if (sources.brand) {
+    resolved.add("brand_voice");
+    if (sources.brand.languages.length > 0) resolved.add("language");
+    if (sources.brand.approvedClaims.length > 0) resolved.add("approved_claim");
+  }
+  return resolved;
+}
+
+/**
+ * The actual values a caller must merge into `providedInputs` before building
+ * an agent prompt, so `inputLine(ctx, "brand_voice")` etc. never falls back to
+ * "(not provided)". `brand_voice` and `language` always resolve -- the
+ * workspace always has a current value, even the unsaved default -- while
+ * `approved_claim` resolves only when the brand actually has one; there is no
+ * sensible default claim to invent.
+ */
+export function resolveBrandProvidedInputs(brand: ResolvableBrandFacts): Record<string, string> {
+  const resolved: Record<string, string> = { brand_voice: brand.voice };
+  const primaryLanguage = brand.languages[0];
+  if (primaryLanguage) resolved.language = (LOCALE_LABELS as Record<string, string>)[primaryLanguage] ?? primaryLanguage;
+  if (brand.approvedClaims.length > 0) resolved.approved_claim = brand.approvedClaims[0]!;
   return resolved;
 }
 
