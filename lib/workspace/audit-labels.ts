@@ -40,6 +40,7 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string }> = {
   // them would make the ledger unable to tell an attested claim from an
   // operator assignment.
   "workspace.assigned": { en: "Workspace assigned by an operator", zh: "營運人員已指派工作台" },
+  "mail.attempted": { en: "Email attempted", zh: "已嘗試發送電郵" },
 };
 
 export const AUDIT_ACTOR_LABELS: Record<"user" | "agent" | "system" | "scanner", { en: string; zh: string }> = {

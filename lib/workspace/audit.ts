@@ -16,6 +16,7 @@ export const AUDIT_EVENTS = [
   "fix_pack.reviewed",
   "access_request.submitted", "access_request.reviewed", "access_request.information_requested",
   "access_request.approved", "access_request.rejected", "workspace.assigned",
+  "mail.attempted",
 ] as const;
 
 export type AuditEvent = (typeof AUDIT_EVENTS)[number];
