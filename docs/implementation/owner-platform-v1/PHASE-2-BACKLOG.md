@@ -12,7 +12,7 @@ That 3 is the number to keep in mind. An earlier pass at this phase, run before 
 
 ## Progress
 
-**22 of 26 buildable items are done** (1, 2, 3, 4, 6, 7, 9, 10, 11, 12, 15, 16, **19, 20, 21, 22, 23**, 17, 18, 24, 25, 26); items 6 and 12 are the same defect and landed together, as are 19–23, which shipped as one release. Each carries a **Status** line below with its commit. Four remain buildable: 5, 8, 13, 14 (item 5 is deliberately deferred -- see below, so 8, 13 and 14 are the ones actually next).
+**23 of 26 buildable items are done** (1, 2, 3, 4, 6, 7, 9, 10, 11, 12, 13, 15, 16, **19, 20, 21, 22, 23**, 17, 18, 24, 25, 26); items 6 and 12 are the same defect and landed together, as are 19–23, which shipped as one release. Each carries a **Status** line below with its commit. Three remain buildable: 5, 8, 14 (item 5 is deliberately deferred -- see below, so 8 and 14 are the ones actually next).
 
 **Two of the four blocked items are now unblocked and done: 27 and 28.** Both were `needs_schema_change`, not forbidden — and the P2.4 release settled the storage question with **zero DDL** by carrying decision state on `audit_events` rather than new columns, so the blocker simply went away. Items 29 and 30's stated blocker -- the email port not existing -- is gone as of `268bae9` (item 26, below); what remains for each is its own route/logic plus DEC-07 authorization to actually send, so they stay recorded under Blocked with an update note rather than moved.
 
@@ -147,6 +147,8 @@ lib/copy-workspace.ts:134 and :192 label the inputs literally 'Owner fact 1/2/3'
 #### 13. Export the two website workflows with implementation instructions and an explicit 'not applied' statement. P2.2 requires the FAQ export to carry 'instructions for the owner's website editor' and the website-basics export to be 'an approved export/checklist for implementation, NOT a claim that the website was updated'. The exported file is the raw model body only. The agents' own acceptance_criteria are already persisted and would make the checklist, but are never read back.
 
 **Effort:** `medium` · **Start at:** `components/workspace/action-detail-client.tsx`
+
+**Status:** done — `0881ed5`. `version-meta.ts` now also parses `acceptance_criteria` into `VersionRow.acceptanceCriteria`. `lib/workspace/format.ts::buildExportText` (pure, unit-tested) appends instructions + a numbered checklist + the not-applied disclaimer for exactly `visibility-content` and `website-basics`; every other template's export is byte-for-byte unchanged.
 
 **Proof of absence**
 
