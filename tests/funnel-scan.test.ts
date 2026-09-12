@@ -10,7 +10,7 @@ import {
   type MerchantCandidate,
 } from "@/lib/funnel/business-search";
 import { formatMarketPrice, resolveMarketParam } from "@/lib/funnel/pricing";
-import { findingLabel, findingMessageKey, formatWeightedImpact, humaniseLimitationCode, readableFindingKey } from "@/lib/funnel/report-labels";
+import { findingLabel, findingMessageKey, formatWeightedImpact, humaniseLimitationCode, limitationLabel, limitationMessageKey, readableFindingKey } from "@/lib/funnel/report-labels";
 import {
   collectorPhases,
   nextPollDelay,
@@ -193,6 +193,23 @@ describe("report labels", () => {
     expect(findingLabel("en", "gbp.reviews_volume_low")).not.toContain("finding");
     expect(findingLabel("zh-HK", "made.up_key")).toBe("up key");
     expect(humaniseLimitationCode("IG_HANDLE_NOT_PROVIDED")).toBe("IG handle not provided");
+  });
+
+  it("localizes a known evidence limitation code without altering what it means to scoring (item 18)", () => {
+    expect(limitationMessageKey("IG_HANDLE_NOT_PROVIDED")).toBe("limitationIgHandleNotProvided");
+    expect(limitationLabel("en", "IG_HANDLE_NOT_PROVIDED")).toBe("Instagram handle not provided");
+    expect(limitationLabel("zh-HK", "IG_HANDLE_NOT_PROVIDED")).toBe("未提供 Instagram 帳號");
+    expect(limitationLabel("zh-TW", "IG_HANDLE_NOT_PROVIDED")).toBe("尚未提供 Instagram 帳號");
+    // The same code, still just a code -- only its display changed.
+    expect(limitationLabel("en", "GBP_NOT_MEASURED")).toBe("Google Business not measured");
+    expect(limitationLabel("zh-HK", "WEBSITE_UNREACHABLE")).toBe("網站未能連接");
+  });
+
+  it("falls back to the untranslated word-split form for a code with no report.limitation* entry, in every locale", () => {
+    const madeUp = "SOME_NEW_SCAN_ENGINE_CODE";
+    for (const locale of ["en", "zh-HK", "zh-TW"]) {
+      expect(limitationLabel(locale, madeUp)).toBe(humaniseLimitationCode(madeUp));
+    }
   });
 
   it("formats the weighted impact like upstream", () => {

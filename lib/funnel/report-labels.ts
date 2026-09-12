@@ -63,8 +63,31 @@ export function overallImpactLabel(locale: string, scoreImpact: number, module: 
   return t(locale, "report.scoreImpactOverall", { value: formatWeightedImpact(scoreImpact, module) });
 }
 
-/** "IG_HANDLE_NOT_PROVIDED" → "IG handle not provided". */
+/** "IG_HANDLE_NOT_PROVIDED" → "IG handle not provided". Untranslated fallback for a code with no report.limitation* entry (below); never itself locale-aware, on purpose -- item 18's own scope. */
 export function humaniseLimitationCode(code: string): string {
   const [module, ...words] = code.split("_");
   return `${module.toUpperCase()} ${words.map((word) => word.toLowerCase()).join(" ")}`.trim();
+}
+
+/** "IG_HANDLE_NOT_PROVIDED" → "limitationIgHandleNotProvided" (the `report.*` message key). */
+export function limitationMessageKey(code: string): string {
+  const pascal = code
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("");
+  return `limitation${pascal}`;
+}
+
+/**
+ * Human-readable evidence limitation (P2.3 item 18), localized in en/zh-HK/zh-TW
+ * when a translation exists. Never changes what the limitation code MEANS to
+ * scoring -- this only chooses how to display the same code an owner already
+ * sees today, with an untranslated word-split fallback (humaniseLimitationCode)
+ * for a code this map does not yet cover, so a new scan-engine code never
+ * renders blank while waiting for a translation.
+ */
+export function limitationLabel(locale: string, code: string): string {
+  const key = `report.${limitationMessageKey(code)}`;
+  return hasMessage(locale, key) || hasMessage("en", key) ? t(locale, key) : humaniseLimitationCode(code);
 }

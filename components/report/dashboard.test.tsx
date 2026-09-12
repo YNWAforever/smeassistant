@@ -97,7 +97,10 @@ describe("dashboard metrics", () => {
     expect(root.querySelectorAll("meter")).toHaveLength(1);
     expect(root.querySelector("meter")?.getAttribute("value")).toBe("0");
     expect(root.querySelector("meter")?.getAttribute("max")).toBe("100");
-    expect(Array.from(root.querySelectorAll("details")).some(detail => detail.textContent?.includes("PROVIDER_TIMEOUT"))).toBe(true);
+    // P2.3 item 18: a limitation code with no report.limitation* translation
+    // still renders (the untranslated word-split fallback), never the raw
+    // underscored code verbatim.
+    expect(Array.from(root.querySelectorAll("details")).some(detail => detail.textContent?.includes("PROVIDER timeout"))).toBe(true);
   });
   it("renders group-specific review scales, rating units and observation context", () => {
     const group = { query: "nearby cafes", engine: "google_maps", source: "Google Maps", observedAt: "2026-09-06T12:00:00Z", sampleSize: 2, rows: [{ name: "Fixture Cafe", value: 0, currentBusiness: true }, { name: "Fixture Other", value: 1200, currentBusiness: false }] };

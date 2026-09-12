@@ -7,6 +7,7 @@ import { CapabilityBadge, PageIntro, ProviderBadge, SectionCard } from "@/compon
 import { GoogleDisconnectButton, InstagramHandleForm } from "@/components/workspace/integrations-client"
 import type { PrototypeLocale } from "@/lib/copy"
 import type { Capability } from "@/lib/domain"
+import { limitationLabel } from "@/lib/funnel/report-labels"
 import { formatDateTime } from "@/lib/workspace/format"
 import type { IntegrationsModel } from "@/lib/workspace/queries-pages"
 
@@ -55,7 +56,9 @@ export function IntegrationsView({ locale, workspaceSlug, workspaceId, timezone,
       capability: "Beta" as Capability,
       lastSync: model.website.observedAt ? formatDateTime(model.website.observedAt, locale, timezone) : "—",
       scope: isChinese ? "公開證據；不會發佈" : "Public evidence; no publishing",
-      action: <InstagramHandleForm locale={locale} workspaceId={workspaceId} handle={model.instagram.handle} />,
+      // Item 18: this was loaded and never shown, so an owner had no way to
+      // learn why Instagram was not measured -- only that it was not.
+      action: <>{model.instagram.state !== "measured" && model.instagram.limitationCode && <p className="limitation-note" role="status"><TriangleAlert /> {limitationLabel(locale, model.instagram.limitationCode)}</p>}<InstagramHandleForm locale={locale} workspaceId={workspaceId} handle={model.instagram.handle} /></>,
       badge: <ProviderBadge state={igState} locale={locale} />,
     },
     {

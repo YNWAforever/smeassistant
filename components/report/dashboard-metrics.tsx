@@ -1,6 +1,7 @@
 import { FactType, ProviderBadge } from "@/components/product-ui";
 import { ScanMetricsPanel } from "./scan-metrics";
 import { copy, scanMetricsCopy } from "@/lib/copy";
+import { limitationLabel } from "@/lib/funnel/report-labels";
 import type { DashboardMetric, ReportDashboard } from "@/lib/funnel/report-dashboard";
 import type { ReportProps } from "@/lib/funnel/report-props";
 import styles from "./dashboard.module.css";
@@ -41,7 +42,7 @@ export function DashboardMetrics({ report, dashboard }: { report: ReportProps; d
           <p className={styles.provenance}><ObservationDate value={module.observedAt} fallback={d.dateUnavailable} /></p>
           {module.state !== "measured" && <p className={styles.caption}>{d.unavailableReason}</p>}
           {module.state === "measured" && module.detail && <p className={styles.caption}>{module.detail}</p>}
-          {((module.state !== "measured" && module.detail) || module.limitationCode) && <details className={styles.disclosure}><summary>{d.details}</summary>{module.detail && <p>{module.detail}</p>}{module.limitationCode && <p>{module.limitationCode}</p>}</details>}
+          {((module.state !== "measured" && module.detail) || module.limitationCode) && <details className={styles.disclosure}><summary>{d.details}</summary>{module.detail && <p>{module.detail}</p>}{module.limitationCode && <p>{limitationLabel(report.locale, module.limitationCode)}</p>}</details>}
         </article>)}
       </section>
       <section className={styles.panel} aria-labelledby="dashboard-comparisons">
