@@ -54,7 +54,7 @@ function overview(templateKey: TemplateKey): ActionOverview {
 }
 
 function detail(templateKey: TemplateKey): ActionDetail {
-  return { action: overview(templateKey), versions: [], runs: [], measurements: [], scanInputs: [] };
+  return { action: overview(templateKey), versions: [], runs: [], measurements: [], scanInputs: [], businessContext: [] };
 }
 
 function render(templateKey: TemplateKey) {

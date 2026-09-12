@@ -116,7 +116,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   const isChinese = locale !== "en"
   const router = useRouter()
   const base = `/${locale}/owner/${workspaceSlug}`
-  const { action, versions, runs, measurements, scanInputs } = detail
+  const { action, versions, runs, measurements, scanInputs, businessContext } = detail
   // The reviews the draft will actually use, resolved from the same stored
   // evidence the agent reads. When this is set the owner is shown the reviews
   // rather than a blank textarea asking them to retype what was collected.
@@ -494,6 +494,23 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
               <div className="section-card-heading"><div><p className="eyebrow">{checklistSteps ? checklistSteps.where : isChinese ? "生成輸出" : "Generated output"}</p><h2>{copy[locale].workspace.templates[action.templateKey]?.workflow ?? action.templateKey}</h2></div><div><Badge variant="outline">{checklistSteps ? stateLabel(action.actionState, locale) : versionName}</Badge>{!checklistSteps && selectedVersion && <Badge variant="outline">{originLabel(selectedVersion.origin, isChinese)}</Badge>}</div></div>
               {social && approvedAssets.length > 0 && <div className="asset-reference"><span><FileImage /></span><div><strong>{approvedAssets[0].filename}</strong><small>{isChinese ? `已核准素材 · 共 ${approvedAssets.length} 項可用` : `Approved asset · ${approvedAssets.length} available`}</small></div><Badge variant="outline">{isChinese ? "已核准" : "Approved"}</Badge></div>}
               <div className="original-context"><FactType type={action.evidence.factType} /><div><strong>{isChinese ? "來源發現" : "Source finding"}</strong><p>{resolveText(action.evidence.detail, locale)}</p><small>{formatDateTime(action.evidence.observedAt, locale, timezone)} · {isChinese ? "原始來源保留作證據" : "Source preserved as evidence"}</small></div></div>
+              {/* P2.3 item 17: what the NEXT draft will be grounded in, shown
+                  before generation -- not only the guardrail badge that judges
+                  a draft after the fact. Collapsed by default to stay compact. */}
+              {businessContext.length > 0 && (
+                <details className="brand-check-panel">
+                  <summary><strong>{isChinese ? "生成所用的商戶資料" : "Business details used"}</strong> <span>{isChinese ? "查看即將用於生成的資料" : "See what the next draft will use"}</span></summary>
+                  <dl className="asset-meta">
+                    {businessContext.map((row) => (
+                      <div key={row.key}>
+                        <dt>{resolveText(row.label, locale)}</dt>
+                        <dd>{resolveText(row.value, locale)} <small>({resolveText(row.origin, locale)})</small></dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <p className="limitation-note"><Link href={`${base}/settings/brand`}>{isChinese ? "在品牌設定中修改" : "Edit in Brand settings"}</Link></p>
+                </details>
+              )}
               {checklistSteps && (
                 <div className="brand-check-panel">
                   <div className="brand-check-head"><Check /><div><strong>{checklistCopy.heading}</strong><span>{checklistSteps.where}</span></div><Badge variant="outline">{effortLabel(action.effortMinutes, locale)}</Badge></div>

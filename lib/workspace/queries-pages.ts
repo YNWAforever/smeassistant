@@ -5,6 +5,8 @@ import { loadAuthorizedEvidence } from "@/lib/evidence/load-authorized";
 import type { EvidenceGalleryItem } from "@/lib/report/view-model";
 import { inLocationScope, type Membership } from "@/lib/auth";
 import { artifactRepository } from "@/lib/repositories/artifacts";
+import { assetRepository } from "@/lib/repositories/assets";
+import { getBrand } from "@/lib/workspace/brand";
 import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
 import type { GuardrailFlag, VersionOrigin } from "@/lib/workspace/version-meta";
 import { filterSelectedReviews, scannedReviewKey, selectScannedReviews } from "@/lib/workspace/evidence-inputs";
@@ -171,12 +173,38 @@ export interface ScanInputEvidence {
   populationCount: number | null;
 }
 
+/**
+ * P2.3 item 17: a compact "business details used" summary shown before
+ * generation, so an owner can see -- and, via a link to Brand settings, fix
+ * -- exactly what the next draft will be grounded in, instead of finding out
+ * only from the post-generation brand-check-panel badge.
+ */
+export interface BusinessContextRow {
+  key:
+    | "workspace"
+    | "location"
+    | "market"
+    | "brand_voice"
+    | "approved_claims"
+    | "prohibited_terms"
+    | "languages"
+    | "asset_rights"
+    | "snapshot_observed_at";
+  label: LocalizedText;
+  value: LocalizedText;
+  /** Where this row's value comes from, so a stale or wrong value points the owner at the right place to fix it. */
+  origin: LocalizedText;
+}
+
+export type BusinessContextSummary = BusinessContextRow[];
+
 export interface ActionDetail {
   action: ActionOverview;
   versions: VersionRow[];
   runs: RunRow[];
   measurements: MeasurementRow[];
   scanInputs: ScanInputEvidence[];
+  businessContext: BusinessContextSummary;
 }
 
 export interface InsightsSeriesPoint {
@@ -269,6 +297,82 @@ function cadenceDay(schedule: { cadence: string; anniversary_day: number | null;
 }
 
 const TEMPLATE_CHANNEL = new Map<string, ActionFilters["channel"]>(TEMPLATES.map((t) => [t.key, t.channel]));
+const TEMPLATE_REQUIRES_ASSET = new Set<string>(TEMPLATES.filter((t) => t.requiredInputs.includes("asset_or_text_only")).map((t) => t.key));
+const NONE_SAVED = localized("None saved", "尚未儲存", "尚未儲存");
+const FROM_BRAND_SETTINGS = localized("From Brand settings", "來自品牌設定", "來自品牌設定");
+const FROM_WORKSPACE_RECORD = localized("From the workspace record", "來自工作台記錄", "來自工作台紀錄");
+const FROM_LATEST_SCAN = localized("From the latest scan", "來自最新掃描", "來自最新掃描");
+const FROM_ASSETS = localized("From Assets", "來自素材", "來自素材");
+const ASSET_RIGHTS_LABEL: Record<string, LocalizedText> = {
+  approved: localized("Approved", "已核准", "已核准"),
+  needs_review: localized("Needs review", "需要審閱", "需要審閱"),
+  rejected: localized("Rejected", "已拒絕", "已拒絕"),
+};
+
+/** P2.3 item 17. Reads the same brand profile and asset the agent prompt itself will use, so this can never show a different value than what generation actually grounds on. */
+async function buildBusinessContext(ctx: WorkspaceContext, row: ActionRow, action: ActionOverview): Promise<BusinessContextSummary> {
+  const location = ctx.locations.find((l) => l.id === row.location_id) ?? null;
+  const brand = await getBrand(ctx.workspace.id);
+  const marketLabel = ctx.workspace.market === "tw" ? localized("Taiwan (TWD)", "台灣（新台幣）", "台灣（新台幣）") : localized("Hong Kong (HKD)", "香港（港元）", "香港（港元）");
+  const rows: BusinessContextRow[] = [
+    { key: "workspace", label: localized("Workspace", "工作台", "工作台"), value: localized(ctx.workspace.name, ctx.workspace.name), origin: FROM_WORKSPACE_RECORD },
+    {
+      key: "location",
+      label: localized("Location", "地點", "據點"),
+      value: location ? localized(location.name, location.name) : localized("All locations", "所有地點", "所有據點"),
+      origin: FROM_WORKSPACE_RECORD,
+    },
+    { key: "market", label: localized("Market", "市場", "市場"), value: marketLabel, origin: FROM_WORKSPACE_RECORD },
+    { key: "brand_voice", label: localized("Brand voice", "品牌語氣", "品牌語氣"), value: localized(brand.voice, brand.voice), origin: FROM_BRAND_SETTINGS },
+    {
+      key: "approved_claims",
+      label: localized("Approved claims", "已核准聲稱", "已核准聲明"),
+      value: brand.approvedClaims.length ? localized(brand.approvedClaims.join(" · "), brand.approvedClaims.join(" · ")) : NONE_SAVED,
+      origin: FROM_BRAND_SETTINGS,
+    },
+    {
+      key: "prohibited_terms",
+      label: localized("Prohibited terms", "禁用字詞", "禁用字詞"),
+      value: brand.prohibitedTerms.length ? localized(brand.prohibitedTerms.join(" · "), brand.prohibitedTerms.join(" · ")) : NONE_SAVED,
+      origin: FROM_BRAND_SETTINGS,
+    },
+    {
+      key: "languages",
+      label: localized("Languages", "語言", "語言"),
+      value: brand.languages.length ? localized(brand.languages.join(", "), brand.languages.join(", ")) : NONE_SAVED,
+      origin: FROM_BRAND_SETTINGS,
+    },
+    {
+      key: "snapshot_observed_at",
+      label: localized("Evidence observed", "證據觀察時間", "證據觀察時間"),
+      value: localized(action.evidence.observedAt, action.evidence.observedAt),
+      origin: FROM_LATEST_SCAN,
+    },
+  ];
+  if (TEMPLATE_REQUIRES_ASSET.has(row.template_key)) {
+    const provided = row.provided_inputs && typeof row.provided_inputs === "object" ? (row.provided_inputs as Record<string, unknown>) : {};
+    if (provided.text_only === true) {
+      rows.push({
+        key: "asset_rights",
+        label: localized("Asset", "素材", "素材"),
+        value: localized("Text-only post; no asset attached", "純文字貼文，未附素材", "純文字貼文，未附素材"),
+        origin: FROM_ASSETS,
+      });
+    } else {
+      const assetId = typeof provided.asset_id === "string" ? provided.asset_id : null;
+      const asset = assetId ? await assetRepository().get(ctx.workspace.id, assetId) : null;
+      rows.push({
+        key: "asset_rights",
+        label: localized("Asset rights", "素材版權", "素材版權"),
+        value: asset
+          ? { en: `${asset.filename} · ${ASSET_RIGHTS_LABEL[asset.rights_status]?.en ?? asset.rights_status}`, "zh-HK": `${asset.filename} · ${ASSET_RIGHTS_LABEL[asset.rights_status]?.["zh-HK"] ?? asset.rights_status}`, "zh-TW": `${asset.filename} · ${ASSET_RIGHTS_LABEL[asset.rights_status]?.["zh-TW"] ?? asset.rights_status}` }
+          : localized("No asset selected yet", "尚未選擇素材", "尚未選擇素材"),
+        origin: FROM_ASSETS,
+      });
+    }
+  }
+  return rows;
+}
 const OPEN_STATES: ActionState[] = ["recommended", "needs_input", "ready", "in_progress"];
 const METRIC_CARD_KEYS: MetricKey[] = ["gbp.response_rate_pct", "gbp.rating", "ig.days_since_last_post", "aeo.ai_citation_count", "website.checks_passed"];
 
@@ -568,7 +672,8 @@ export async function getAction(ctx: WorkspaceContext, actionId: string): Promis
   // Resolved live, so a row derived before the evidence-aware rule stops
   // reporting an input the workspace can already answer.
   const [action] = await overviewsFor(ctx, [row], scanInputs.map((entry) => entry.key));
-  return { action, versions, runs, measurements, scanInputs };
+  const businessContext = await buildBusinessContext(ctx, row, action);
+  return { action, versions, runs, measurements, scanInputs, businessContext };
 }
 
 // ---------------------------------------------------------------------------

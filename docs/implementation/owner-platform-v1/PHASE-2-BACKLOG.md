@@ -12,7 +12,7 @@ That 3 is the number to keep in mind. An earlier pass at this phase, run before 
 
 ## Progress
 
-**17 of 26 buildable items are done** (1, 2, 3, 4, 6, 9, 10, 12, 15, **19, 20, 21, 22, 23**, 24, 25, 26); items 6 and 12 are the same defect and landed together, as are 19–23, which shipped as one release. Each carries a **Status** line below with its commit. Nine remain buildable: 5, 7, 8, 11, 13, 14, 16, 17, 18.
+**19 of 26 buildable items are done** (1, 2, 3, 4, 6, 9, 10, 12, 15, 16, **19, 20, 21, 22, 23**, 17, 24, 25, 26); items 6 and 12 are the same defect and landed together, as are 19–23, which shipped as one release. Each carries a **Status** line below with its commit. Seven remain buildable, six of them untouched: 5, 7, 8, 11, 13, 14, 18 (item 5 is deliberately deferred -- see below -- so 7, 8, 11, 13, 14 and 18 are the ones actually next).
 
 **Two of the four blocked items are now unblocked and done: 27 and 28.** Both were `needs_schema_change`, not forbidden — and the P2.4 release settled the storage question with **zero DDL** by carrying decision state on `audit_events` rather than new columns, so the blocker simply went away. Items 29 and 30's stated blocker -- the email port not existing -- is gone as of `268bae9` (item 26, below); what remains for each is its own route/logic plus DEC-07 authorization to actually send, so they stay recorded under Blocked with an update note rather than moved.
 
@@ -172,6 +172,8 @@ app/[locale]/owner/[workspaceSlug]/actions/[actionId]/page.tsx:30-33 — `listAs
 
 **Effort:** `medium` · **Start at:** `lib/workspace/evidence-inputs.ts`
 
+**Status:** done — `352cf77`. `resolveEvidenceInputs` now accepts an optional `brand` and resolves `brand_voice` (always, once a real `brand_profiles` row exists), `language` (once it has one) and `approved_claim` (only once it has a non-empty one) — kept conservative at derivation time, in `lib/repositories/action-derivation.ts`, which now reads `voice,languages,approved_claims` instead of only checking the row's existence. Separately, `resolveBrandProvidedInputs` (new) supplies the actual values `lib/workspace/runs.ts` merges into `providedInputs` before building every prompt — unconditionally, since a real value belongs in the prompt by generation time regardless of whether a row was ever saved; the owner's own stored answers and this run's submitted inputs still win over the resolved default. `language` maps through `@sme-scanner/region`'s `LOCALE_LABELS` to a human-readable value.
+
 **Proof of absence**
 
 lib/workspace/evidence-inputs.ts:28 — `export const SERVER_RESOLVABLE_INPUT_KEYS = ["reviews_without_response"] as const;` is the ONLY resolvable key, and resolveEvidenceInputs (lines 117-121) adds nothing else. Its own doc comment at lines 18-27 states the deferral verbatim: 'brand_voice and language look resolvable from brand_profiles, but the agents read them through inputLine(ctx,key) -> ctx.providedInputs ... Resolving those is a separate change that must also inject the values into providedInputs.' lib/workspace/actions.ts:138 applies only that set; brandProfileExists (line 149) feeds scorePriority only, never applyResolvedInputs. Consequence: lib/repositories/action-derivation.ts:100 inserts `action.requiredInputs.length?'needs_input':'recommended'`, so review-response, review-request, gbp-post and ig-bio (lib/workspace/templates.ts:74,88,130,158) always demand brand_voice even though brand_profiles.voice is non-null and already reaches the prompt at lib/workspace/runs.ts:253,270-276. grep -rn "brand_voice" lib components returns no reader of brand_profiles.voice for input resolution.
@@ -179,6 +181,8 @@ lib/workspace/evidence-inputs.ts:28 — `export const SERVER_RESOLVABLE_INPUT_KE
 #### 17. Show a compact 'business details used' summary before generation (workspace/location identity, market, brand voice, approved claims, prohibited terms, languages, asset rights basis, snapshot observed_at), with each row labelled by origin and a deep-link to the authorized brand save.
 
 **Effort:** `medium` · **Start at:** `lib/workspace/queries-pages.ts`
+
+**Status:** done. `ActionDetail.businessContext` (new) carries workspace/location identity, market, brand voice, approved claims, prohibited terms, languages, snapshot `observed_at`, and -- only for a template that actually requires one -- asset rights, each row labelled by origin (Brand settings / the workspace record / the latest scan / Assets). Rendered as a collapsed-by-default panel on the draft tab, before the Generate control, with a link to Brand settings. Reads through the same mockable `workspaceReadRepository`-adjacent surface (`getBrand`, `assetRepository`) the rest of this file already uses, so it can never show a different value than what generation itself grounds on -- and the asset lookup mirrors `socialAssetSatisfied`'s own read exactly.
 
 **Proof of absence**
 

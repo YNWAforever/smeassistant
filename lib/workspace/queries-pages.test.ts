@@ -13,6 +13,8 @@ const state = vi.hoisted(() => ({
   schedule: null as Row | null,
   connections: [] as Row[],
   runs: [] as Row[],
+  brand: { workspaceId: "ws-1", voice: "warm", approvedClaims: [] as string[], prohibitedTerms: [] as string[], languages: ["zh-HK"] as string[], facts: {} as Record<string, string>, updatedAt: null as string | null },
+  asset: null as Row | null,
 }));
 
 vi.mock("server-only", () => ({}));
@@ -34,6 +36,10 @@ const artifacts = vi.hoisted(() => ({
   assistantReviewData: vi.fn(async () => null as unknown),
 }));
 vi.mock("@/lib/repositories/artifacts", () => ({ artifactRepository: () => artifacts }));
+const brandMock = vi.hoisted(() => ({ getBrand: vi.fn(async () => state.brand) }));
+vi.mock("@/lib/workspace/brand", () => ({ getBrand: brandMock.getBrand }));
+const assetsMock = vi.hoisted(() => ({ get: vi.fn(async () => state.asset) }));
+vi.mock("@/lib/repositories/assets", () => ({ assetRepository: () => assetsMock }));
 
 import { getHomeBrief, getInsights, listActions, getActivity, getIntegrations, getAction, loadActionRows, loadDiffById } from "./queries-pages";
 
@@ -76,10 +82,14 @@ beforeEach(() => {
   repository.activity.mockResolvedValue([]);
   repository.notifications.mockResolvedValue([]);
   repository.notificationPreferences.mockResolvedValue(null);
+  brandMock.getBrand.mockImplementation(async () => state.brand);
+  assetsMock.get.mockImplementation(async () => state.asset);
 
   state.snapshots = [snapshotRow({})];
   state.diffs = {}; state.actions = [actionRow({}), actionRow({ id: "a2", template_key: "social-post", priority: "high", priority_score: 45, action_state: "recommended", required_inputs: [] })];
   state.measurements = []; state.versions = []; state.completed = []; state.schedule = { next_run_at: "2026-09-14T00:00:00Z", cadence: "monthly", anniversary_day: 14 }; state.connections = [{ status: "active" }]; state.runs = [];
+  state.brand = { workspaceId: "ws-1", voice: "warm", approvedClaims: [], prohibitedTerms: [], languages: ["zh-HK"], facts: {}, updatedAt: null };
+  state.asset = null;
 });
 
 describe("getHomeBrief", () => {
@@ -202,6 +212,53 @@ describe("page repository boundaries", () => {
     expect(repository.versions).toHaveBeenCalledWith("ws-1", ["a1"]);
     state.actions = [];
     expect(await getAction(ctx, "missing")).toBeNull();
+  });
+
+  it("shows the business details the next draft will actually use, sourced from the brand profile and the workspace record (P2.3 item 17)", async () => {
+    state.brand = { workspaceId: "ws-1", voice: "professional", approvedClaims: ["Family-run since 1998"], prohibitedTerms: ["cheapest"], languages: ["zh-HK", "en"], facts: {}, updatedAt: "2026-09-01T00:00:00Z" };
+    const detail = await getAction(ctx, "a1");
+    const byKey = Object.fromEntries((detail?.businessContext ?? []).map((row) => [row.key, row]));
+    expect(byKey.workspace.value.en).toBe("Kam Man House");
+    expect(byKey.location.value.en).toBe("Yik Yam Street");
+    expect(byKey.market.value.en).toContain("Hong Kong");
+    expect(byKey.brand_voice.value.en).toBe("professional");
+    expect(byKey.approved_claims.value.en).toBe("Family-run since 1998");
+    expect(byKey.prohibited_terms.value.en).toBe("cheapest");
+    expect(byKey.languages.value.en).toBe("zh-HK, en");
+    expect(byKey.snapshot_observed_at).toBeDefined();
+    // review-response has no asset requirement, so no asset_rights row at all.
+    expect(byKey.asset_rights).toBeUndefined();
+  });
+
+  it("shows 'None saved' rather than an empty value for unset brand facts", async () => {
+    state.brand = { workspaceId: "ws-1", voice: "warm", approvedClaims: [], prohibitedTerms: [], languages: ["zh-HK"], facts: {}, updatedAt: null };
+    const detail = await getAction(ctx, "a1");
+    const byKey = Object.fromEntries((detail?.businessContext ?? []).map((row) => [row.key, row]));
+    expect(byKey.approved_claims.value.en).toBe("None saved");
+    expect(byKey.prohibited_terms.value.en).toBe("None saved");
+  });
+
+  it("shows the selected asset's rights status for an asset-requiring template, sourced from the same row socialAssetSatisfied checks", async () => {
+    state.actions = [actionRow({ id: "a2", template_key: "social-post", provided_inputs: { asset_id: "asset-1" } })];
+    state.asset = { filename: "storefront.jpg", rights_status: "approved" };
+    const detail = await getAction(ctx, "a2");
+    const assetRow = detail?.businessContext.find((row) => row.key === "asset_rights");
+    expect(assetsMock.get).toHaveBeenCalledWith("ws-1", "asset-1");
+    expect(assetRow?.value.en).toBe("storefront.jpg · Approved");
+  });
+
+  it("says no asset is selected yet rather than silently omitting the row", async () => {
+    state.actions = [actionRow({ id: "a2", template_key: "social-post" })];
+    const detail = await getAction(ctx, "a2");
+    const assetRow = detail?.businessContext.find((row) => row.key === "asset_rights");
+    expect(assetRow?.value.en).toBe("No asset selected yet");
+  });
+
+  it("reports a text-only post distinctly from a missing asset", async () => {
+    state.actions = [actionRow({ id: "a2", template_key: "social-post", provided_inputs: { text_only: true } })];
+    const detail = await getAction(ctx, "a2");
+    const assetRow = detail?.businessContext.find((row) => row.key === "asset_rights");
+    expect(assetRow?.value.en).toBe("Text-only post; no asset attached");
   });
 
   it("reconciles stranded runs once, before anything reads them", async () => {
