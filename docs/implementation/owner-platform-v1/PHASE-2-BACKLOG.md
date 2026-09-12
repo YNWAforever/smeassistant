@@ -12,7 +12,7 @@ That 3 is the number to keep in mind. An earlier pass at this phase, run before 
 
 ## Progress
 
-**23 of 26 buildable items are done** (1, 2, 3, 4, 6, 7, 9, 10, 11, 12, 13, 15, 16, **19, 20, 21, 22, 23**, 17, 18, 24, 25, 26); items 6 and 12 are the same defect and landed together, as are 19–23, which shipped as one release. Each carries a **Status** line below with its commit. Three remain buildable: 5, 8, 14 (item 5 is deliberately deferred -- see below, so 8 and 14 are the ones actually next).
+**24 of 26 buildable items are done** (1, 2, 3, 4, 6, 7, 9, 10, 11, 12, 13, 14, 15, 16, **19, 20, 21, 22, 23**, 17, 18, 24, 25, 26); items 6 and 12 are the same defect and landed together, as are 19–23, which shipped as one release. Each carries a **Status** line below with its commit. Two remain: 5 (deliberately deferred -- see below) and 8, the only one left to actually build.
 
 **Two of the four blocked items are now unblocked and done: 27 and 28.** Both were `needs_schema_change`, not forbidden — and the P2.4 release settled the storage question with **zero DDL** by carrying decision state on `audit_events` rather than new columns, so the blocker simply went away. Items 29 and 30's stated blocker -- the email port not existing -- is gone as of `268bae9` (item 26, below); what remains for each is its own route/logic plus DEC-07 authorization to actually send, so they stay recorded under Blocked with an update note rather than moved.
 
@@ -157,6 +157,8 @@ components/workspace/action-detail-client.tsx:402-404 builds the download from `
 #### 14. Test coverage for workflows 2 and 3, and for the new review picker. The Phase 2 gate requires all three workflows to pass happy and negative paths, but only review-response is ever exercised. Needed: a faq_jsonld run asserting facts_needed → needs_input with no version (A5) and a valid JSON-LD on the happy path; a website_basics run asserting the draft cites the failed checks and creates v1; and a picker test proving the checkbox selection narrows what the agent receives and can never widen it.
 
 **Effort:** `medium` · **Start at:** `lib/agents/agents.test.ts`
+
+**Status:** done — `f0b728e`. `lib/workspace/runs.test.ts`: a faq_jsonld run blocking on facts_needed with no version (A5) and its happy path (JSON-LD validates against the prose above it); a website_basics run proving the prompt is grounded in each failing check's observed detail, plus its happy path; two picker tests proving `selected_reviews` narrows to the exact pick and falls back to every unanswered review (never fewer, never an invented one) on a stale/fabricated selection.
 
 **Proof of absence**
 
