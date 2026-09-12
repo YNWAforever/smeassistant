@@ -110,6 +110,28 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
             <p className="limitation-note">{isChinese ? "分母是該次掃描實際取得結果的查詢數，並非計劃查詢數；不同掃描可能不同，所以百分比之間未必可直接比較。未量度的掃描不會當作 0%。" : "The denominator is the queries that returned a usable result in that scan, not the queries planned, and it can differ between scans — so the percentages are not always comparable to each other. A scan that measured nothing is never counted as 0%."}</p>
           </SectionCard>}
           {(model.ledger.resolved.length > 0 || model.ledger.regressed.length > 0 || model.ledger.decayed.length > 0) && <SectionCard className="change-ledger-card"><div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "變化紀錄" : "Change ledger"}</p><h2>{isChinese ? "已解決、退步及時間推移" : "Resolved, regressed and decayed"}</h2></div></div><ul className="evidence-list">{model.ledger.resolved.map((k) => <li key={`r${k}`}><Badge variant="outline">{isChinese ? "已解決" : "Resolved"}</Badge><span><strong>{findingLabel(k)}</strong></span></li>)}{model.ledger.regressed.map((k) => <li key={`g${k}`}><Badge variant="outline">{isChinese ? "退步" : "Regressed"}</Badge><span><strong>{findingLabel(k)}</strong></span></li>)}{model.ledger.decayed.map((k) => <li key={`d${k}`}><Badge variant="outline">{isChinese ? "時間推移" : "Decayed"}</Badge><span><strong>{findingLabel(k)}</strong></span></li>)}</ul></SectionCard>}
+          {/* P2.1 item 7: the approved/exported WORK itself, not only the
+              scores and checks it produced -- deliveries was never read
+              anywhere before this. */}
+          {model.deliveries.length > 0 && (
+            <SectionCard className="delivered-work-card">
+              <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "已核准並送出的工作" : "Approved and exported work"}</p><h2>{isChinese ? "最近送出的內容" : "Recently delivered"}</h2></div></div>
+              <Table>
+                <TableCaption className="sr-only">{isChinese ? "已核准並送出的內容列表" : "Approved and exported content"}</TableCaption>
+                <TableHeader><TableRow><TableHead>{isChinese ? "行動" : "Action"}</TableHead><TableHead>{isChinese ? "版本" : "Version"}</TableHead><TableHead>{isChinese ? "方式" : "Mode"}</TableHead><TableHead>{isChinese ? "送出時間" : "Delivered"}</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {model.deliveries.map((row) => (
+                    <TableRow key={`${row.action_id}-${row.version_no}`}>
+                      <TableCell><Link href={withLocation(`${base}/actions/${row.action_id}`, model.locationSlug)}>{isChinese ? row.title["zh-HK"] : row.title.en}</Link></TableCell>
+                      <TableCell>{isChinese ? `第 ${row.version_no} 版` : `v${row.version_no}`}</TableCell>
+                      <TableCell>{row.mode === "export" ? (isChinese ? "匯出" : "Export") : row.mode === "copy" ? (isChinese ? "複製" : "Copy") : (isChinese ? "發佈" : "Publish")}{row.channel ? ` · ${row.channel}` : ""}</TableCell>
+                      <TableCell>{formatDay(row.delivered_at, locale, timezone)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </SectionCard>
+          )}
         </>
       )}
     </div>

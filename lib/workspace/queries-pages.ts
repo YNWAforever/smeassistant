@@ -225,6 +225,22 @@ export interface MetricCard {
   observedAt: string;
 }
 
+/**
+ * P2.1 item 7: the approved/exported work itself, not only the scores and
+ * checks it produced. `counted` deliveries only -- exactly the ones guardrail
+ * 7 ("approved deliveries, not tokens") treats as real, so a repeat copy of
+ * an already-exported version never shows twice.
+ */
+export interface DeliveredWorkRow {
+  action_id: string;
+  template_key: TemplateKey;
+  title: LocalizedText;
+  version_no: number;
+  mode: "export" | "copy" | "publish";
+  channel: string | null;
+  delivered_at: string;
+}
+
 export interface InsightsLocationSummary {
   location: LocationSummary;
   score: number | null;
@@ -242,6 +258,7 @@ export interface InsightsModel {
   metricCards: MetricCard[];
   ledger: { resolved: string[]; regressed: string[]; decayed: string[] };
   perLocation: InsightsLocationSummary[];
+  deliveries: DeliveredWorkRow[];
 }
 
 export interface AuditEventRow {
@@ -726,6 +743,7 @@ export async function getInsights(ctx: WorkspaceContext, scope: LocationScope): 
       metricCards: [],
       ledger: { resolved: [], regressed: [], decayed: [] },
       perLocation,
+      deliveries: [],
     };
   }
 
@@ -749,7 +767,10 @@ export async function getInsights(ctx: WorkspaceContext, scope: LocationScope): 
 
   const repository = workspaceReadRepository();
   const jobIds = snapshots.map((s) => s.jobId);
-  const aeoRows = await read("aeo rows", () => repository.aeoSnapshots(ctx.workspace.id, jobIds));
+  const [aeoRows, deliveries] = await Promise.all([
+    read("aeo rows", () => repository.aeoSnapshots(ctx.workspace.id, jobIds)),
+    read("deliveries", () => repository.deliveries(ctx.workspace.id, location.id, 20)),
+  ]);
 
   return {
     locationSlug: location.slug,
@@ -760,6 +781,7 @@ export async function getInsights(ctx: WorkspaceContext, scope: LocationScope): 
     metricCards: metricCards(head, base, Boolean(headDiff?.comparable)),
     ledger: headDiff ? { resolved: headDiff.resolved_findings, regressed: headDiff.regressed_findings, decayed: headDiff.decayed_findings } : { resolved: [], regressed: [], decayed: [] },
     perLocation,
+    deliveries,
   };
 }
 

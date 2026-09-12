@@ -8,7 +8,7 @@ import type { ActionRow } from "../workspace/overview";
 import { parseVersionMeta } from "../workspace/version-meta";
 import type { ScanSnapshotRow, ScanDiffRow } from "../workspace/snapshots";
 import type { AeoSnapshotRow } from "../trends/aeo-trend-model";
-import type { RunRow, VersionRow, MeasurementRow, AuditEventRow, NotificationRow, IntegrationsModel } from "../workspace/queries-pages";
+import type { RunRow, VersionRow, MeasurementRow, AuditEventRow, NotificationRow, IntegrationsModel, DeliveredWorkRow } from "../workspace/queries-pages";
 
 export const SNAPSHOT_COLUMNS = "id, job_id, workspace_id, location_id, market, observed_at::text, scoring_version, overall_score, coverage, module_states, metrics, website_checks, comparable_to, diff_id, created_at::text";
 export const DIFF_COLUMNS = "id, base_job_id, head_job_id, comparable, incomparable_reason, composite_withheld_reason, intersection_modules, composite_base, composite_head, composite_delta, resolved_findings, regressed_findings, decayed_findings, lost_coverage, gained_coverage, created_at::text";
@@ -87,6 +87,17 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
       return rows<RunRow>(`SELECT r.id, r.action_id, r.agent_key, r.state, r.error, r.created_at::text, r.finished_at::text
         FROM action_runs r JOIN actions a ON a.id=r.action_id AND a.workspace_id=r.workspace_id
         WHERE a.workspace_id=$1 AND r.action_id=ANY($2::uuid[]) ORDER BY r.created_at DESC`, [workspaceId, actionIds]);
+    },
+    // P2.1 item 7. `counted=true` only: exactly the deliveries guardrail 7
+    // treats as real (the first export/publish of an approved version), so a
+    // repeat copy of the same version never appears twice.
+    async deliveries(workspaceId: string, locationId: string | null, limit: number): Promise<DeliveredWorkRow[]> {
+      return rows<DeliveredWorkRow>(`SELECT a.id AS action_id, a.template_key, a.title, v.version_no, d.mode, d.channel, d.created_at::text AS delivered_at
+        FROM deliveries d
+        JOIN output_versions v ON v.id=d.version_id AND v.workspace_id=d.workspace_id
+        JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id
+        WHERE d.workspace_id=$1 AND d.counted=true AND ($2::uuid IS NULL OR a.location_id=$2)
+        ORDER BY d.created_at DESC LIMIT $3`, [workspaceId, locationId, pageLimit(limit)]);
     },
     // `meta` carries the guardrail warnings the agents already compute and
     // artifacts.ts already persists. It was never selected, so the approval

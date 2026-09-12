@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
   runs: [] as Row[],
   brand: { workspaceId: "ws-1", voice: "warm", approvedClaims: [] as string[], prohibitedTerms: [] as string[], languages: ["zh-HK"] as string[], facts: {} as Record<string, string>, updatedAt: null as string | null },
   asset: null as Row | null,
+  deliveries: [] as Row[],
 }));
 
 vi.mock("server-only", () => ({}));
@@ -25,6 +26,7 @@ const repository = vi.hoisted(() => ({
   latestConnection: vi.fn(), measurements: vi.fn(), draftVersions: vi.fn(),
   completedActions: vi.fn(), schedules: vi.fn(), aeoSnapshots: vi.fn(),
   activity: vi.fn(), notifications: vi.fn(), notificationPreferences: vi.fn(),
+  deliveries: vi.fn(),
 }));
 vi.mock("@/lib/repositories/workspace-read", () => ({ workspaceReadRepository: () => repository }));
 const reaper = vi.hoisted(() => ({ reapStrandedRuns: vi.fn(async () => [] as string[]) }));
@@ -82,6 +84,7 @@ beforeEach(() => {
   repository.activity.mockResolvedValue([]);
   repository.notifications.mockResolvedValue([]);
   repository.notificationPreferences.mockResolvedValue(null);
+  repository.deliveries.mockImplementation(async () => state.deliveries);
   brandMock.getBrand.mockImplementation(async () => state.brand);
   assetsMock.get.mockImplementation(async () => state.asset);
 
@@ -90,6 +93,7 @@ beforeEach(() => {
   state.measurements = []; state.versions = []; state.completed = []; state.schedule = { next_run_at: "2026-09-14T00:00:00Z", cadence: "monthly", anniversary_day: 14 }; state.connections = [{ status: "active" }]; state.runs = [];
   state.brand = { workspaceId: "ws-1", voice: "warm", approvedClaims: [], prohibitedTerms: [], languages: ["zh-HK"], facts: {}, updatedAt: null };
   state.asset = null;
+  state.deliveries = [];
 });
 
 describe("getHomeBrief", () => {
@@ -166,6 +170,22 @@ describe("getInsights", () => {
     const one = await getInsights(ctx, "yik-yam");
     expect(one.series).toHaveLength(1);
     expect(one.metricCards.find((c) => c.metricKey === "gbp.rating")).toMatchObject({ after: 4.2, factType: "Unknown", delta: null });
+  });
+
+  it("shows the approved/exported work itself, not only scores and checks (P2.1 item 7)", async () => {
+    state.deliveries = [
+      { action_id: "a1", template_key: "review-response", title: { en: "Reply to reviews", "zh-HK": "回覆評論", "zh-TW": "回覆評論" }, version_no: 2, mode: "export", channel: null, delivered_at: "2026-09-05T00:00:00Z" },
+    ];
+    const one = await getInsights(ctx, "yik-yam");
+    expect(repository.deliveries).toHaveBeenCalledWith("ws-1", "loc-1", 20);
+    expect(one.deliveries).toEqual(state.deliveries);
+  });
+
+  it("never aggregates deliveries across locations for location=all, matching every other per-location field here", async () => {
+    state.deliveries = [{ action_id: "a1", template_key: "review-response", title: { en: "x", "zh-HK": "x", "zh-TW": "x" }, version_no: 1, mode: "copy", channel: null, delivered_at: "2026-09-05T00:00:00Z" }];
+    const all = await getInsights(ctx, "all");
+    expect(all.deliveries).toEqual([]);
+    expect(repository.deliveries).not.toHaveBeenCalled();
   });
 });
 
