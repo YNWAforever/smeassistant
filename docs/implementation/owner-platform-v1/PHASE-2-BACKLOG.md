@@ -12,7 +12,7 @@ That 3 is the number to keep in mind. An earlier pass at this phase, run before 
 
 ## Progress
 
-**21 of 26 buildable items are done** (1, 2, 3, 4, 6, 7, 9, 10, 12, 15, 16, **19, 20, 21, 22, 23**, 17, 18, 24, 25, 26); items 6 and 12 are the same defect and landed together, as are 19–23, which shipped as one release. Each carries a **Status** line below with its commit. Five remain buildable: 8, 11, 13, 14 (item 5 is deliberately deferred -- see below).
+**22 of 26 buildable items are done** (1, 2, 3, 4, 6, 7, 9, 10, 11, 12, 15, 16, **19, 20, 21, 22, 23**, 17, 18, 24, 25, 26); items 6 and 12 are the same defect and landed together, as are 19–23, which shipped as one release. Each carries a **Status** line below with its commit. Four remain buildable: 5, 8, 13, 14 (item 5 is deliberately deferred -- see below, so 8, 13 and 14 are the ones actually next).
 
 **Two of the four blocked items are now unblocked and done: 27 and 28.** Both were `needs_schema_change`, not forbidden — and the P2.4 release settled the storage question with **zero DDL** by carrying decision state on `audit_events` rather than new columns, so the blocker simply went away. Items 29 and 30's stated blocker -- the email port not existing -- is gone as of `268bae9` (item 26, below); what remains for each is its own route/logic plus DEC-07 authorization to actually send, so they stay recorded under Blocked with an update note rather than moved.
 
@@ -127,6 +127,8 @@ lib/workspace/runs.ts:148-156 maps websiteChecks to `{ evaluated, passed, failed
 #### 11. FAQ + JSON-LD: request the three facts as actual questions, and give the agent the questions it is supposed to answer. Today the workflow stalls at needs_input because the owner is shown three blank boxes and neither the owner nor the model knows which customer questions are unanswered. Derive the three asks from the evidence that created the action (failing website checks plus the AEO queries already stored as aeo_surface_snapshots.query_text), label the inputs with those questions, and prefill/offer reuse of brand_profiles.facts ('reusing approved stored facts where suitable').
 
 **Effort:** `medium` · **Start at:** `lib/workspace/runs.ts`
+
+**Status:** done — `cac3704`. `lib/workspace/faq-questions.ts::deriveFaqQuestions` derives up to three questions from un-cited `aeo_surface_snapshots.query_text` (new `assistantAeoQueries` read) first, then failing content-relevant website checks, padded with generic fallbacks. `runs.ts` injects them into `ctx.evidence.faq_questions` (the agent pairs each fact with its question) and prefills `provided_inputs` from a matching `brand_profiles.facts` key; `queries-pages.ts` derives the identical questions, reading through the same repository methods, for the detail page's labels and prefills.
 
 **Proof of absence**
 
