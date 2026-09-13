@@ -25,6 +25,11 @@ export interface SchedulerRepository {
 export function schedulerRepository(client?: Pick<Pool, "query">): SchedulerRepository {
   const db = () => client ?? getPool();
   return {
+    // FOR UPDATE OF s SKIP LOCKED only closes the concurrent-tick race
+    // (two overlapping cron ticks double-notifying the same schedule) when
+    // the caller runs this and the matching advanceSchedule() in one shared
+    // transaction -- the lock is released the moment this call's own
+    // transaction ends, not held across separate calls.
     async dueSchedules(nowIso) {
       try {
         return (
