@@ -341,14 +341,15 @@ This is the piece with real decision logic (tier/preference gating, always-advan
 Create `lib/scan/notify-due-schedules.test.ts`:
 
 ```ts
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { notifyDueSchedules } from "./notify-due-schedules";
 
-const { notifyWithRepository, workspaceHref, dueSchedules, advanceSchedule } = vi.hoisted(() => ({
+const { notifyWithRepository, workspaceHref, dueSchedules, advanceSchedule, clientQuery } = vi.hoisted(() => ({
   notifyWithRepository: vi.fn(),
   workspaceHref: vi.fn(),
   dueSchedules: vi.fn(),
   advanceSchedule: vi.fn().mockResolvedValue(undefined),
+  clientQuery: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/workspace/notify", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/workspace/notify")>()),
@@ -357,13 +358,25 @@ vi.mock("@/lib/workspace/notify", async (importOriginal) => ({
 vi.mock("@/lib/workspace/post-process", () => ({ workspaceHref }));
 vi.mock("@/lib/repositories/scheduler", () => ({ schedulerRepository: () => ({ dueSchedules, advanceSchedule, claimableJobIds: vi.fn() }) }));
 vi.mock("@/lib/repositories/notifications", () => ({ notificationRepository: () => ({}) }));
-vi.mock("@/lib/db/transaction", () => ({ withTransaction: (run: (client: unknown) => Promise<unknown>) => run({}) }));
+// The mocked client needs a `query` method now: notifyDueSchedules issues
+// real SAVEPOINT/RELEASE/ROLLBACK TO SAVEPOINT calls on it per schedule.
+vi.mock("@/lib/db/transaction", () => ({ withTransaction: (run: (client: unknown) => Promise<unknown>) => run({ query: clientQuery }) }));
 
 function schedule(overrides: Partial<{ id: string; workspaceId: string | null; anniversaryDay: number; tier: string | null; notifyMonthlyDigest: boolean | null }> = {}) {
   return { id: "sched-1", workspaceId: "ws-1", anniversaryDay: 15, tier: "paid", notifyMonthlyDigest: true, ...overrides };
 }
 
 describe("notifyDueSchedules", () => {
+  // vi.hoisted mocks aren't cleared between cases by this project's vitest
+  // config, and several assertions below check `not.toHaveBeenCalled()` --
+  // without this, an earlier case's calls accumulate and falsely fail a
+  // later case (matches the existing pattern in lib/workspace/claim.test.ts).
+  beforeEach(() => {
+    vi.clearAllMocks();
+    advanceSchedule.mockResolvedValue(undefined);
+    clientQuery.mockResolvedValue(undefined);
+  });
+
   it("advances the schedule and notifies a paid, opted-in workspace", async () => {
     dueSchedules.mockResolvedValue([schedule()]);
     workspaceHref.mockResolvedValue("/owner/kam-man-house");
@@ -395,6 +408,7 @@ describe("notifyDueSchedules", () => {
     const result = await notifyDueSchedules("2026-09-13T00:00:00.000Z");
 
     expect(result).toEqual({ due: 1, notified: 0 });
+    expect(advanceSchedule).toHaveBeenCalledWith("sched-1", expect.any(String));
     expect(notifyWithRepository).not.toHaveBeenCalled();
   });
 
@@ -424,6 +438,35 @@ describe("notifyDueSchedules", () => {
     expect(await notifyDueSchedules("2026-09-13T00:00:00.000Z")).toEqual({ due: 0, notified: 0 });
     expect(advanceSchedule).not.toHaveBeenCalled();
   });
+
+  it("aggregates due/notified correctly across more than one schedule in the same tick", async () => {
+    dueSchedules.mockResolvedValue([schedule({ id: "sched-1" }), schedule({ id: "sched-2", tier: "lite" })]);
+    workspaceHref.mockResolvedValue("/owner/kam-man-house");
+    notifyWithRepository.mockResolvedValue({ inserted: 1, error: null });
+
+    const result = await notifyDueSchedules("2026-09-13T00:00:00.000Z");
+
+    expect(result).toEqual({ due: 2, notified: 1 });
+    expect(advanceSchedule).toHaveBeenCalledWith("sched-1", expect.any(String));
+    expect(advanceSchedule).toHaveBeenCalledWith("sched-2", expect.any(String));
+    expect(notifyWithRepository).toHaveBeenCalledTimes(1);
+  });
+
+  it("rolls back only the failing schedule's savepoint and still processes the next one", async () => {
+    dueSchedules.mockResolvedValue([schedule({ id: "sched-1" }), schedule({ id: "sched-2" })]);
+    advanceSchedule.mockRejectedValueOnce(new Error("transient db error")).mockResolvedValueOnce(undefined);
+    workspaceHref.mockResolvedValue("/owner/kam-man-house");
+    notifyWithRepository.mockResolvedValue({ inserted: 1, error: null });
+
+    const result = await notifyDueSchedules("2026-09-13T00:00:00.000Z");
+
+    // sched-1 failed before its notify step ran; sched-2 still succeeds fully.
+    expect(result).toEqual({ due: 2, notified: 1 });
+    expect(advanceSchedule).toHaveBeenCalledTimes(2);
+    expect(notifyWithRepository).toHaveBeenCalledTimes(1);
+    expect(notifyWithRepository).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ workspaceId: "ws-1" }));
+    expect(clientQuery).toHaveBeenCalledWith("ROLLBACK TO SAVEPOINT notify_due_schedule");
+  });
 });
 ```
 
@@ -437,7 +480,7 @@ Expected: FAIL — `./notify-due-schedules` does not exist yet.
 
 - [ ] **Step 3: Write the implementation**
 
-Create `lib/scan/notify-due-schedules.ts`. This runs inside one transaction: `notifyWithRepository` already swallows its own errors rather than throwing, so one workspace's failed notify insert cannot roll back another schedule's already-applied advance.
+Create `lib/scan/notify-due-schedules.ts`. This runs inside one transaction, and each schedule is isolated with a SAVEPOINT — a plain try/catch alone is not enough here: once any statement inside a Postgres transaction fails, Postgres marks the *entire* transaction aborted and rejects every further statement until a rollback, regardless of whether the JS exception was caught. Without a savepoint, one schedule's failure would silently block every other due schedule sharing this tick's transaction, indefinitely if the failure recurs. Rolling back to a savepoint clears just that schedule's work and lets the loop continue cleanly.
 
 ```ts
 import "server-only";
@@ -455,6 +498,8 @@ export interface NotifyDueSchedulesResult {
   notified: number;
 }
 
+const SAVEPOINT = "notify_due_schedule";
+
 /**
  * One workspace-scoped notification row per due schedule (never per member --
  * `notifyWithRepository` itself fans out to every accepted member). Advancing
@@ -462,11 +507,18 @@ export interface NotifyDueSchedulesResult {
  * must never be re-evaluated as due on every 5-minute tick for a month just
  * because a workspace downgraded or turned digests off. This never calls
  * `enqueueRescan` -- the owner still clicks "Rescan now" through the
- * unmodified consent flow (design doc: "Auto-consent").
+ * unmodified consent flow (the consent gate cannot be satisfied by a
+ * machine; see the design doc's "Constraints this design is shaped by").
  *
- * Runs inside one transaction: `notifyWithRepository` already swallows its
- * own errors rather than throwing, so one workspace's failed notify insert
- * cannot roll back another schedule's already-applied advance.
+ * Runs inside one transaction. Each schedule is wrapped in its own
+ * SAVEPOINT/ROLLBACK TO SAVEPOINT: a schedule that fails (e.g. a transient
+ * DB error in advanceSchedule) is rolled back to before its own work only,
+ * and the loop continues with the next schedule -- one bad row never blocks
+ * every other due schedule's advance/notification for the whole tick.
+ * `notifyWithRepository` already swallows its own errors rather than
+ * throwing, so a failed notify insert alone never triggers this path; it's
+ * here for the rarer case of `advanceSchedule` or `nextRunAfter` itself
+ * failing.
  */
 export async function notifyDueSchedules(nowIso: string): Promise<NotifyDueSchedulesResult> {
   return withTransaction(async (client) => {
@@ -475,8 +527,19 @@ export async function notifyDueSchedules(nowIso: string): Promise<NotifyDueSched
     let notified = 0;
 
     for (const schedule of due) {
-      await repo.advanceSchedule(schedule.id, nextRunAfter(nowIso, schedule.anniversaryDay));
-      if (await notifyOneDueSchedule(client, schedule)) notified += 1;
+      try {
+        await client.query(`SAVEPOINT ${SAVEPOINT}`);
+        await repo.advanceSchedule(schedule.id, nextRunAfter(nowIso, schedule.anniversaryDay));
+        if (await notifyOneDueSchedule(client, schedule)) notified += 1;
+        await client.query(`RELEASE SAVEPOINT ${SAVEPOINT}`);
+      } catch (cause) {
+        await client.query(`ROLLBACK TO SAVEPOINT ${SAVEPOINT}`).catch(() => {});
+        console.error("[scan/notify-due-schedules] schedule processing failed", {
+          category: "notify_due_schedule_failed",
+          scheduleId: schedule.id,
+          message: cause instanceof Error ? cause.message : "unknown",
+        });
+      }
     }
 
     return { due: due.length, notified };
