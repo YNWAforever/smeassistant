@@ -33,7 +33,8 @@ export function schedulerRepository(client?: Pick<Pool, "query">): SchedulerRepo
                     w.tier, w.notify_monthly_digest AS "notifyMonthlyDigest"
              FROM scan_schedules s
              LEFT JOIN workspaces w ON w.id = s.workspace_id
-             WHERE s.cadence = 'monthly' AND s.next_run_at <= $1`,
+             WHERE s.cadence = 'monthly' AND s.next_run_at <= $1
+             FOR UPDATE OF s SKIP LOCKED`,
             [nowIso],
           )
         ).rows;
