@@ -570,7 +570,7 @@ async function notifyOneDueSchedule(client: PoolClient, schedule: DueSchedule): 
 corepack pnpm vitest run lib/scan/notify-due-schedules.test.ts
 ```
 
-Expected: PASS, all 6 cases.
+Expected: PASS, all 8 cases.
 
 - [ ] **Step 5: Typecheck**
 
