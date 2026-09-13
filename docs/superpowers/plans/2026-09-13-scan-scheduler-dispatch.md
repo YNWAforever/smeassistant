@@ -234,6 +234,8 @@ git commit -m "feat: add schedule.due notification kind and export workspaceHref
 - Create: `lib/repositories/scheduler.ts`
 - No dedicated unit test — this repo follows the existing convention (`lib/repositories/rescan.ts`, `lib/repositories/notifications.ts` have none either); its two queries are verified by Task 7's Docker-Postgres integration test, which is the pattern this codebase already uses for thin SQL wrappers.
 
+`dueSchedules`'s SELECT carries `FOR UPDATE OF s SKIP LOCKED`, the same idiom `lib/repositories/action-run-reaper.ts` already uses for exactly this reason: two overlapping cron ticks (a slow tick still running when the next one starts) must take disjoint schedule rows, not the same one twice. Without it, both ticks could read the same due schedule before either advances its `next_run_at`, producing a duplicate "your rescan is ready" notification. `FOR UPDATE OF s` scopes the lock to the `scan_schedules` row only — the joined `workspaces` row stays unlocked, since only the schedule's own advance-state needs protecting. This only works because Task 4 (not this one) runs `dueSchedules` and `advanceSchedule` inside one `withTransaction` — the lock is held only as long as that transaction is open.
+
 - [ ] **Step 1: Create the repository**
 
 ```ts
@@ -272,7 +274,8 @@ export function schedulerRepository(client?: Pick<Pool, "query">): SchedulerRepo
                     w.tier, w.notify_monthly_digest AS "notifyMonthlyDigest"
              FROM scan_schedules s
              LEFT JOIN workspaces w ON w.id = s.workspace_id
-             WHERE s.cadence = 'monthly' AND s.next_run_at <= $1`,
+             WHERE s.cadence = 'monthly' AND s.next_run_at <= $1
+             FOR UPDATE OF s SKIP LOCKED`,
             [nowIso],
           )
         ).rows;
