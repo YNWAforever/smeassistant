@@ -45,10 +45,22 @@ export async function notifyDueSchedules(nowIso: string): Promise<NotifyDueSched
       try {
         await client.query(`SAVEPOINT ${SAVEPOINT}`);
         await repo.advanceSchedule(schedule.id, nextRunAfter(nowIso, schedule.anniversaryDay));
-        if (await notifyOneDueSchedule(client, schedule)) notified += 1;
+        const wasNotified = await notifyOneDueSchedule(client, schedule);
         await client.query(`RELEASE SAVEPOINT ${SAVEPOINT}`);
+        // Only counted once the release confirms this schedule's work is
+        // actually kept -- incrementing before RELEASE would overcount a
+        // schedule whose release itself fails and rolls back below.
+        if (wasNotified) notified += 1;
       } catch (cause) {
-        await client.query(`ROLLBACK TO SAVEPOINT ${SAVEPOINT}`).catch(() => {});
+        try {
+          await client.query(`ROLLBACK TO SAVEPOINT ${SAVEPOINT}`);
+        } catch (rollbackCause) {
+          console.error("[scan/notify-due-schedules] rollback to savepoint itself failed -- connection likely dead, remaining schedules this tick will also fail", {
+            category: "notify_due_schedule_rollback_failed",
+            scheduleId: schedule.id,
+            message: rollbackCause instanceof Error ? rollbackCause.message : "unknown",
+          });
+        }
         console.error("[scan/notify-due-schedules] schedule processing failed", {
           category: "notify_due_schedule_failed",
           scheduleId: schedule.id,
