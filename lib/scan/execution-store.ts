@@ -13,6 +13,7 @@ import { getPool } from "../db/client";
 import { withTransaction } from "../db/transaction";
 import { eventRepository } from "../repositories/events";
 import { capturePostHog } from "../analytics/posthog";
+import { CLAIMABLE_JOB_CONDITION_SQL } from "./claimable";
 
 type ExecutionPool = Pick<Pool, "query" | "connect">;
 export function createScanExecutionStore(
@@ -35,7 +36,7 @@ export function createScanExecutionStore(
       try {
         const result = await pool().query(
           `UPDATE audit_jobs SET status='collecting',processing_stage='collecting',attempt_count=attempt_count+1,last_attempt_at=now()
-     WHERE id=$1 AND (status='queued' OR (status IN ('collecting','scoring','persisting') AND attempt_count<3 AND last_attempt_at IS NOT NULL AND last_attempt_at<now()-interval '30 minutes')) RETURNING *`,
+     WHERE id=$1 AND ${CLAIMABLE_JOB_CONDITION_SQL} RETURNING *`,
           [jobId],
         );
         return asClaimedJob(result.rows);
