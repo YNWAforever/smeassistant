@@ -13,6 +13,8 @@ export interface NotifyDueSchedulesResult {
   notified: number;
 }
 
+const SAVEPOINT = "notify_due_schedule";
+
 /**
  * One workspace-scoped notification row per due schedule (never per member --
  * `notifyWithRepository` itself fans out to every accepted member). Advancing
@@ -20,11 +22,18 @@ export interface NotifyDueSchedulesResult {
  * must never be re-evaluated as due on every 5-minute tick for a month just
  * because a workspace downgraded or turned digests off. This never calls
  * `enqueueRescan` -- the owner still clicks "Rescan now" through the
- * unmodified consent flow (design doc: "Auto-consent").
+ * unmodified consent flow (the consent gate cannot be satisfied by a
+ * machine; see the design doc's "Constraints this design is shaped by").
  *
- * Runs inside one transaction: `notifyWithRepository` already swallows its
- * own errors rather than throwing, so one workspace's failed notify insert
- * cannot roll back another schedule's already-applied advance.
+ * Runs inside one transaction. Each schedule is wrapped in its own
+ * SAVEPOINT/ROLLBACK TO SAVEPOINT: a schedule that fails (e.g. a transient
+ * DB error in advanceSchedule) is rolled back to before its own work only,
+ * and the loop continues with the next schedule -- one bad row never blocks
+ * every other due schedule's advance/notification for the whole tick.
+ * `notifyWithRepository` already swallows its own errors rather than
+ * throwing, so a failed notify insert alone never triggers this path; it's
+ * here for the rarer case of `advanceSchedule` or `nextRunAfter` itself
+ * failing.
  */
 export async function notifyDueSchedules(nowIso: string): Promise<NotifyDueSchedulesResult> {
   return withTransaction(async (client) => {
@@ -33,8 +42,19 @@ export async function notifyDueSchedules(nowIso: string): Promise<NotifyDueSched
     let notified = 0;
 
     for (const schedule of due) {
-      await repo.advanceSchedule(schedule.id, nextRunAfter(nowIso, schedule.anniversaryDay));
-      if (await notifyOneDueSchedule(client, schedule)) notified += 1;
+      try {
+        await client.query(`SAVEPOINT ${SAVEPOINT}`);
+        await repo.advanceSchedule(schedule.id, nextRunAfter(nowIso, schedule.anniversaryDay));
+        if (await notifyOneDueSchedule(client, schedule)) notified += 1;
+        await client.query(`RELEASE SAVEPOINT ${SAVEPOINT}`);
+      } catch (cause) {
+        await client.query(`ROLLBACK TO SAVEPOINT ${SAVEPOINT}`).catch(() => {});
+        console.error("[scan/notify-due-schedules] schedule processing failed", {
+          category: "notify_due_schedule_failed",
+          scheduleId: schedule.id,
+          message: cause instanceof Error ? cause.message : "unknown",
+        });
+      }
     }
 
     return { due: due.length, notified };
