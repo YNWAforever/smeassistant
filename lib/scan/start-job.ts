@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import { jobsRepository, type JobsRepository } from "@/lib/repositories/jobs";
 import { SCAN_CONSENT_TYPE, parseScanConsent, type ScanConsentRecord } from "./consent";
+import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
 import type { IgMatchProvenance } from "@sme-scanner/contracts";
 
 
@@ -38,6 +39,14 @@ export interface ScanStartInput {
   facebookUrl: string;
   parentJobId: string | null;
   userRole: string | null;
+  /**
+   * P2.5 item 8: which outcome the visitor picked on the landing page
+   * (matches an `actions.template_key`), carried through to `input_snapshot`
+   * so a compatible action can be found and surfaced after claim. Not part of
+   * upstream's contract -- app-specific, additive, and silently dropped when
+   * unrecognised rather than rejected (same treatment as `ig_match_provenance`).
+   */
+  intent: TemplateKey | null;
 }
 
 /**
@@ -49,6 +58,7 @@ export type ScanStartParse =
   | { ok: false; error: string; status?: 400 | 409 };
 
 const IG_MATCH_PROVENANCE = new Set<string>(["manual_typed", "picker_confirmed", "gbp_cross_referenced"]);
+const TEMPLATE_KEYS = new Set<string>(TEMPLATES.map((t) => t.key));
 const LOCALES = new Set<string>(["en", "zh-HK", "zh-TW"]);
 const OBJECTIVES = new Set<string>(["more_leads", "better_visibility", "improve_trust", "understand_performance"]);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -130,6 +140,9 @@ export function parseScanStartBody(raw: unknown): ScanStartParse {
   const userRole = typeof body.user_role === "string" && body.user_role
     ? body.user_role
     : null;
+  const intent = typeof body.intent === "string" && TEMPLATE_KEYS.has(body.intent)
+    ? (body.intent as TemplateKey)
+    : null;
 
   if (!businessName) return { ok: false, error: "business_name is required" };
   if (market !== "HK" && market !== "TW") return { ok: false, error: "market must be HK or TW" };
@@ -191,6 +204,7 @@ export function parseScanStartBody(raw: unknown): ScanStartParse {
       facebookUrl,
       parentJobId,
       userRole,
+      intent,
     },
   };
 }
@@ -230,6 +244,7 @@ export function buildScanJobInsert(input: ScanStartInput, attribution: ScanJobAt
     industry: input.industry,
     district: input.district,
     objective: input.objective,
+    intent: input.intent,
   };
 
   return {

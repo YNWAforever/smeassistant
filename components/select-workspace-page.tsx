@@ -32,12 +32,21 @@ export function SelectWorkspacePage({
   email,
   denied,
   signOutAction,
+  accessRequest,
 }: {
   locale: PrototypeLocale
   cards: WorkspaceCard[]
   email: string
   denied?: string
   signOutAction: () => Promise<void>
+  /**
+   * The caller's own ownership-request status, when they have one (P2.4 item
+   * 22). Passed as a node so this component stays unaware of how the status is
+   * derived, and optional so every existing call site is unaffected. This is
+   * where a memberless signed-in user lands, which is exactly who has a request
+   * outstanding.
+   */
+  accessRequest?: React.ReactNode
 }) {
   const isChinese = locale !== "en"
   return (
@@ -45,6 +54,7 @@ export function SelectWorkspacePage({
       <main className="select-workspace-page">
         <header><Badge variant="outline">{isChinese ? `已登入 · ${email}` : `Signed in as ${email}`}</Badge><h1>{isChinese ? "選擇工作台或地點" : "Choose a workspace or location"}</h1><p>{isChinese ? "選擇後會再次檢查你的角色及地點範圍。" : "Your role and location scope are re-checked after selection."}</p></header>
         {denied && <div className="permission-note" role="alert"><TriangleAlert /><span>{isChinese ? `你不是「${denied}」工作台的成員，或成員資格已被撤銷。請從下方選擇你有權限的工作台。` : `You are not a member of the “${denied}” workspace, or the membership was revoked. Choose one you have access to below.`}</span></div>}
+        {accessRequest}
         {cards.length === 0 ? (
           <div className="empty-state">
             <span><Building2 /></span>

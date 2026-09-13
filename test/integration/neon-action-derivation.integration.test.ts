@@ -52,6 +52,11 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon final action runtime',(
   const review=()=>db.query("SELECT required_inputs,action_state FROM actions WHERE workspace_id=$1 AND template_key='review-response'",[f.ws]).then(r=>r.rows[0]);
   const derived=await review();
   expect(derived.required_inputs).not.toContain('reviews_without_response');
+  // P2.3 item 16: a real brand_profiles row (inserted above, defaults only)
+  // resolves brand_voice and language too -- they leave required_inputs
+  // entirely now, not just get satisfied via provided_inputs.
+  expect(derived.required_inputs).not.toContain('brand_voice');
+  expect(derived.required_inputs).not.toContain('language');
 
   // The scan stops retaining an unanswered review: the input comes back, and an
   // untouched action must go back to needs_input or the detail page would show
@@ -73,14 +78,20 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon final action runtime',(
   // input, so a ready action reverted on EVERY scan while its answers sat
   // intact in provided_inputs -- a "Needs input" badge over an "Inputs ready"
   // row. Answered keys must survive re-derivation.
+  //
+  // brand_voice/language are omitted here on purpose: since item 16, a real
+  // brand_profiles row (seeded above) resolves both, so neither is in
+  // required_inputs at all any more -- reviews_without_response is the one
+  // input left on this template that still depends on what the owner (or the
+  // scan) actually supplied, so it is what exercises the invariant below.
   const setReady=(inputs:Record<string,string>)=>db.query("UPDATE actions SET action_state='ready',provided_inputs=$2 WHERE workspace_id=$1 AND template_key='review-response'",[f.ws,JSON.stringify(inputs)]);
-  await setReady({brand_voice:'warm',language:'zh-HK',reviews_without_response:'2 reviews'});
+  await setReady({reviews_without_response:'2 reviews'});
   await deriveActionsForSnapshot(db,f.snapshot);
   expect((await review()).action_state).toBe('ready');
 
   // An empty answer is still no answer -- the same rule missingInputs applies
   // in lib/workspace/overview.ts, so the two can never disagree.
-  await setReady({brand_voice:'warm',language:'',reviews_without_response:'2 reviews'});
+  await setReady({reviews_without_response:''});
   await deriveActionsForSnapshot(db,f.snapshot);
   expect((await review()).action_state).toBe('needs_input');
  });

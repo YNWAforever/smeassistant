@@ -1,3 +1,4 @@
+import type { Pool } from "pg";
 import type { SessionUser } from "@/lib/auth";
 import { membershipRepository } from "@/lib/repositories/membership";
 import { claimsRepository, type OwnerWorkspaceInput } from "@/lib/repositories/claims";
@@ -16,11 +17,13 @@ export async function findOwnedWorkspace(userId: string): Promise<{
 }
 
 /** Workspace and accepted owner are inserted atomically after merchant proof. */
-export async function createWorkspaceWithOwner(input:OwnerWorkspaceInput): Promise<{id:string;slug:string}> {
- return claimsRepository.createWorkspaceWithOwner(input);
+export async function createWorkspaceWithOwner(input:OwnerWorkspaceInput,db?:Pick<Pool,"query">): Promise<{id:string;slug:string}> {
+ // Forwarded only when supplied, so a caller that passes no executor delegates
+ // with exactly the arguments it always did -- an existing test pins that shape.
+ return db ? claimsRepository.createWorkspaceWithOwner(input,db) : claimsRepository.createWorkspaceWithOwner(input);
 }
 
 /** False is a lost claim race; database failures remain errors. */
-export async function attachJobToWorkspace(jobId:string,workspaceId:string): Promise<boolean> {
- return claimsRepository.attachJob(jobId,workspaceId);
+export async function attachJobToWorkspace(jobId:string,workspaceId:string,db?:Pick<Pool,"query">): Promise<boolean> {
+ return db ? claimsRepository.attachJob(jobId,workspaceId,db) : claimsRepository.attachJob(jobId,workspaceId);
 }

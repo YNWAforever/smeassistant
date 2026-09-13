@@ -10,6 +10,8 @@ import { completionId } from '../workspace/completion-id';
 import { WEBSITE_FAQ_TRIGGER, type TemplateKey } from '../workspace/templates';
 import { OPEN_ACTION_STATES } from '../domain';
 
+function asStrings(value:unknown):string[]{return Array.isArray(value)?value.filter((v):v is string=>typeof v==='string'):[];}
+
 export interface DerivationResult {created:number;updated:number;completed:number;expired:number}
 export interface ActionDerivationRepository {
  derive(snapshotId:string,opts?:{now?:Date;rejectStale?:boolean}):Promise<DerivationResult>;
@@ -58,7 +60,7 @@ export function actionDerivationRepository(db:Pick<Pool,'query'>):ActionDerivati
     WHERE s.id=a.source_snapshot_id AND s.workspace_id=a.workspace_id AND s.location_id IS NOT DISTINCT FROM a.location_id) FOR UPDATE OF a`,[ws,loc,OPEN_ACTION_STATES])).rows;
   if(invalidActions.length)throw new Error('derivation_scope_mismatch');
   const findings=(await db.query<FindingRow>(`SELECT finding_key,module,severity,score_impact,owner_message_zh,owner_message_en,owner_action_zh,owner_action_en,evidence FROM audit_findings WHERE job_id=$1`,[snapshot.jobId])).rows;
-  const brand=(await db.query('SELECT workspace_id FROM brand_profiles WHERE workspace_id=$1',[ws])).rows[0];
+  const brand=(await db.query<{voice:string|null;languages:unknown;approved_claims:unknown}>('SELECT voice,languages,approved_claims FROM brand_profiles WHERE workspace_id=$1',[ws])).rows[0];
   const google=(await db.query<{status:string}>("SELECT status FROM oauth_connections WHERE workspace_id=$1 AND provider='google_gbp' ORDER BY connected_at DESC,id DESC LIMIT 1",[ws])).rows[0]??null;
   const workspace=(await db.query<{industry:string|null}>('SELECT industry FROM workspaces WHERE id=$1',[ws])).rows[0];
   const drafts=(await db.query<{template_key:TemplateKey}>(`SELECT DISTINCT a.template_key FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id
@@ -66,7 +68,10 @@ export function actionDerivationRepository(db:Pick<Pool,'query'>):ActionDerivati
   // The scan already collected the merchant's unanswered reviews; asking the
   // owner to retype them was the bug. `job` is the row this derivation already
   // loaded, and JOB_COLUMNS includes raw_data, so this costs no extra read.
-  const resolvedInputs=resolveEvidenceInputs({rawData:job.raw_data});
+  // A real brand_profiles row makes brand_voice/language/approved_claim
+  // resolved required_inputs too (P2.3 item 16) -- an unsaved default is not
+  // enough here, though runtime generation always has a usable value regardless.
+  const resolvedInputs=resolveEvidenceInputs({rawData:job.raw_data,brand:brand?{voice:brand.voice??'warm',languages:asStrings(brand.languages),approvedClaims:asStrings(brand.approved_claims)}:null});
   const derived=deriveActions({snapshot,findings,latestDiff:diff,brandProfileExists:Boolean(brand),googleConnection:google,industry:workspace?.industry??null,existingDrafts:new Set(drafts.map(row=>row.template_key)),resolvedInputs,now:opts.now});
   const result:DerivationResult={created:0,updated:0,completed:0,expired:0};
   const now=(opts.now??new Date()).toISOString();

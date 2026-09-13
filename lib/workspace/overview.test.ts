@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { copy } from "@/lib/copy";
 import { buildActionOverview, displayPhaseKey, type ActionRow } from "./overview";
+import { TEMPLATES } from "./templates";
 
 const lt = (s: string) => ({ en: s, "zh-HK": s, "zh-TW": s });
 
@@ -82,5 +83,31 @@ describe("buildActionOverview", () => {
     expect(overview.displayPhaseKey).toBe("recommended");
     expect(overview.runState).toBe("queued");
     expect(overview.location.slug).toBe("all");
+  });
+});
+
+const EMPTY_CTX = { location: null, latestRun: null, latestVersion: null };
+
+describe("delivery mode on the overview", () => {
+  // P2.1 item 6 / P2.2 item 12: the page decides whether an agent can draft
+  // this action from `delivery`. A wrong value here is what put a "Generate a
+  // draft" button on a template whose only possible answer is 409.
+  it.each(TEMPLATES.map((t) => [t.key, t.delivery] as const))("surfaces %s as %s", (key, delivery) => {
+    const overview = buildActionOverview({ ...row, template_key: key }, EMPTY_CTX);
+    expect(overview.delivery).toBe(delivery);
+  });
+
+  it("reports null for a template this build no longer declares", () => {
+    // Fails closed: the detail page treats a null delivery as "no agent", so a
+    // legacy row renders without a control that cannot succeed.
+    const overview = buildActionOverview({ ...row, template_key: "retired-template" }, EMPTY_CTX);
+    expect(overview.delivery).toBeNull();
+  });
+
+  it("agrees with the template registry on which templates have an agent", () => {
+    for (const template of TEMPLATES) {
+      const agentBacked = template.delivery === "export" || template.delivery === "export_copy";
+      expect(agentBacked, `${template.key} delivery=${template.delivery}`).toBe(template.agentKey !== null);
+    }
   });
 });

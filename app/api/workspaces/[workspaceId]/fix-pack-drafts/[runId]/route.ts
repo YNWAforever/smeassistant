@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
 import { fixPackRepository } from "@/lib/repositories/fix-pack";
+import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
 
 /**
  * Owner/manager approve or reject a pending Fix Pack draft -- the "may
@@ -63,6 +64,21 @@ export async function PATCH(
     if (!await repository.review(runId, workspaceId, scope.locationId, status, auth.user.id)) {
       return NextResponse.json({error:"already reviewed"},{status:409});
     }
+    // Guardrail 10: approving or rejecting a draft is a decision, and the
+    // append-only ledger recorded nothing for it -- Activity showed the owner
+    // reviewing this workspace's own drafts as a gap. Best-effort, like every
+    // other route: a failed audit insert never undoes the review it describes.
+    await recordNeonEvent({
+      workspaceId,
+      locationId: scope.locationId,
+      actorType: "user",
+      actorId: auth.user.id,
+      event: "fix_pack.reviewed",
+      entityType: "agent_run",
+      entityId: runId,
+      ipHash: ipHashFor(req),
+      payload: { status },
+    });
   } catch {
     console.error("[owner/fix-pack-drafts] review failed", {category:"fix_pack_review_failed"});
     return NextResponse.json({error:"unavailable"},{status:500});

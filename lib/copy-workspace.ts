@@ -53,6 +53,10 @@ export type WorkspaceCopy = {
     heading: string;
     fromScan: string;
     noOwnerReply: string;
+    /** P2.2 "selected-review replies": the owner chooses which reviews the draft answers. */
+    include: string;
+    selectedNote: string;
+    keepOne: string;
     limitation: string;
     population: string;
     addOwn: string;
@@ -60,6 +64,34 @@ export type WorkspaceCopy = {
     addOwnSubmit: string;
   };
   inputs: Record<string, string>;
+  /**
+   * P2.1 item 6 / P2.2 item 12. Templates whose `delivery` is "checklist" have
+   * no agent: the owner does the work in Google Business Profile or Instagram.
+   * Keyed partially on purpose -- a test asserts every checklist template has
+   * steps in every locale, so a new one fails the suite instead of rendering an
+   * empty card.
+   */
+  checklist: {
+    heading: string;
+    note: string;
+    markDone: string;
+    doneState: string;
+    saveInputs: string;
+  };
+  checklistSteps: Partial<Record<TemplateKey, { where: string; steps: string[] }>>;
+  /**
+   * P2.2/item 13: the FAQ export must carry instructions for the owner's
+   * website editor, and the website-basics export must read as an approved
+   * checklist for implementation, NOT a claim the website was updated.
+   * Keyed by template because the two website templates need different
+   * "where does this go" instructions; the disclaimer is shared.
+   */
+  websiteExport: {
+    heading: string;
+    criteriaHeading: string;
+    disclaimer: string;
+    instructions: Partial<Record<TemplateKey, string>>;
+  };
 };
 
 const INPUT_KEYS = [
@@ -114,6 +146,9 @@ export const workspaceEn: WorkspaceCopy = {
     heading: "Reviews the draft will use",
     fromScan: "Supplied by the scan",
     noOwnerReply: "No owner reply",
+    include: "Reply to this review",
+    selectedNote: "{n} of {total} reviews will be used in the next draft.",
+    keepOne: "Keep at least one review selected.",
     // Says only what the pipeline guarantees: sanitizeReportProof keeps a
     // bounded sample in provider order, so no recency claim is made here.
     limitation: "The scan kept {inspected} reviews; {unanswered} have no owner reply.",
@@ -126,6 +161,42 @@ export const workspaceEn: WorkspaceCopy = {
     "Brand voice", "Reviews without response", "Language", "Channel (WhatsApp / LINE / QR)", "Opening hours", "Categories", "Approved asset or text only", "Alt text",
     "Approved claim", "CTA link", "Owner fact 1", "Owner fact 2", "Owner fact 3", "Menu items (name, ingredients, allergens, price)", "Google account owner",
   ]),
+  checklist: {
+    heading: "Steps to complete",
+    note: "These steps happen in the other product, not here. Marking them done records your own confirmation — the next scan is what checks the result.",
+    markDone: "Mark these steps as done",
+    doneState: "You marked these steps done",
+    saveInputs: "Save what you set",
+  },
+  checklistSteps: {
+    "gbp-profile-fix": {
+      where: "Do this in Google Business Profile",
+      steps: [
+        "Open your Google Business Profile and choose Edit profile → Hours.",
+        "Set hours for every day you trade, and mark the days you are closed.",
+        "Under Edit profile → Business category, confirm the primary category and add any secondary ones that apply.",
+        "Save in Google, then record the hours and categories below so this action keeps what you set.",
+      ],
+    },
+    "ig-highlights": {
+      where: "Do this in the Instagram app",
+      steps: [
+        "Open your Instagram profile and tap New under the bio to start a highlight.",
+        "Make one highlight for each thing customers ask about most.",
+        "Give each highlight a cover image and a short name.",
+        "Check that the highlights appear under your bio on the public profile.",
+      ],
+    },
+  },
+  websiteExport: {
+    heading: "How to apply this",
+    criteriaHeading: "Checklist",
+    disclaimer: "This is a draft for your website editor, not a claim that your website has changed. Approving and exporting it does not publish anything -- nothing on your website is different until you (or whoever manages it) applies it. The next scan will show whether it was applied.",
+    instructions: {
+      "visibility-content": 'Paste the <script type="application/ld+json"> block into your website\'s <head>, and add the Q&A text to a visible FAQ section on the page it concerns.',
+      "website-basics": "Apply the title, meta description and H1 to the relevant page through your website editor or CMS.",
+    },
+  },
 };
 
 export const workspaceZhHK: WorkspaceCopy = {
@@ -171,6 +242,9 @@ export const workspaceZhHK: WorkspaceCopy = {
     heading: "草稿會用到的評論",
     fromScan: "由掃描提供",
     noOwnerReply: "未有店主回覆",
+    include: "回覆這則評論",
+    selectedNote: "下次生成將使用 {total} 則評論中的 {n} 則。",
+    keepOne: "請至少保留一則評論。",
     limitation: "掃描保留了 {inspected} 則評論，其中 {unanswered} 則未有店主回覆。",
     population: "Google 顯示評論總數為 {total} 則。",
     addOwn: "補充掃描未收錄的評論（選填）",
@@ -181,6 +255,42 @@ export const workspaceZhHK: WorkspaceCopy = {
     "品牌語氣", "未回覆的評論", "語言", "渠道（WhatsApp / LINE / QR）", "營業時間", "類別", "已批准素材或純文字", "替代文字",
     "已批准的主張", "行動連結", "店主事實 1", "店主事實 2", "店主事實 3", "餐牌項目（名稱、材料、致敏原、價錢）", "Google 帳戶擁有人",
   ]),
+  checklist: {
+    heading: "完成步驟",
+    note: "這些步驟需在其他平台完成，不在此工作台進行。標示完成只是記錄你的確認；實際結果由下次掃描核實。",
+    markDone: "標示這些步驟已完成",
+    doneState: "你已標示完成",
+    saveInputs: "記錄你所設定的內容",
+  },
+  checklistSteps: {
+    "gbp-profile-fix": {
+      where: "請在 Google 商家檔案完成",
+      steps: [
+        "開啟 Google 商家檔案，選擇「編輯檔案」→「營業時間」。",
+        "為每個營業日填寫時間，並標明休息日。",
+        "在「編輯檔案」→「商家類別」確認主要類別，並加入適用的次要類別。",
+        "在 Google 儲存後，於下方記錄你設定的營業時間及類別，令此行動保留你的設定。",
+      ],
+    },
+    "ig-highlights": {
+      where: "請在 Instagram 應用程式完成",
+      steps: [
+        "開啟 Instagram 個人檔案，在簡介下方按「新增」建立限時動態精選。",
+        "為顧客最常查詢的每個主題各建立一個精選。",
+        "為每個精選設定封面圖片及簡短名稱。",
+        "確認精選已在公開個人檔案的簡介下方顯示。",
+      ],
+    },
+  },
+  websiteExport: {
+    heading: "如何套用",
+    criteriaHeading: "檢查清單",
+    disclaimer: "呢個係比你網站編輯用嘅草稿，唔係話你個網站已經改咗。核准同匯出唔會自動發佈任何嘢——喺你（或負責網站嘅人）套用之前，網站上乜都未變。下次掃描會顯示係咪已經套用。",
+    instructions: {
+      "visibility-content": "將 <script type=\"application/ld+json\"> 區塊貼入你網站嘅 <head>，並將問答文字加入相關頁面一個公開可見嘅 FAQ 部分。",
+      "website-basics": "透過你嘅網站編輯器或 CMS，將標題、描述同 H1 套用到相關頁面。",
+    },
+  },
 };
 
 export const workspaceZhTW: WorkspaceCopy = {
@@ -195,4 +305,26 @@ export const workspaceZhTW: WorkspaceCopy = {
   },
   states: { ...workspaceZhHK.states, unavailable: "無法取得", publishing: "發布中", published: "已發布" },
   freshness: { today: "今天更新", days: "{n} 天前更新" },
+  checklistSteps: {
+    ...workspaceZhHK.checklistSteps,
+    // Instagram ships these as "精選動態" in zh-TW.
+    "ig-highlights": {
+      where: "請在 Instagram 應用程式完成",
+      steps: [
+        "開啟 Instagram 個人檔案，在簡介下方點選「新增」建立精選動態。",
+        "為顧客最常詢問的每個主題各建立一個精選動態。",
+        "為每個精選動態設定封面圖片及簡短名稱。",
+        "確認精選動態已在公開個人檔案的簡介下方顯示。",
+      ],
+    },
+  },
+  websiteExport: {
+    heading: "如何套用",
+    criteriaHeading: "檢查清單",
+    disclaimer: "這是給您網站編輯者使用的草稿，不代表您的網站已經更新。核准並匯出不會自動發布任何內容——在您（或負責網站的人）套用之前，網站上什麼都沒有改變。下次掃描會顯示是否已經套用。",
+    instructions: {
+      "visibility-content": "將 <script type=\"application/ld+json\"> 區塊貼到您網站的 <head>，並將問答文字加到相關頁面一個公開可見的 FAQ 區塊。",
+      "website-basics": "透過您的網站編輯器或 CMS，將標題、描述和 H1 套用到相關頁面。",
+    },
+  },
 };

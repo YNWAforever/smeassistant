@@ -1,4 +1,5 @@
 import type { IgMatchProvenance, MatchConfidence, MerchantCandidate } from "./business-search";
+import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
 
 export type ScanMarket = "hk" | "tw";
 
@@ -14,6 +15,18 @@ export function normaliseMarketParam(value: string | null | undefined, locale: s
   const lower = value?.trim().toLowerCase();
   if (lower === "hk" || lower === "tw") return lower;
   return locale === "zh-TW" ? "tw" : "hk";
+}
+
+const TEMPLATE_KEYS = new Set<string>(TEMPLATES.map((t) => t.key));
+
+/**
+ * `?intent=` from a landing-page outcome-example link (item 8): which action
+ * template the visitor was promised, carried silently through the scan draft
+ * so a compatible action can be surfaced after claim. An unrecognised value is
+ * dropped rather than kept -- there is nothing after claim it could match.
+ */
+export function normaliseIntentParam(value: string | null | undefined): TemplateKey | null {
+  return value && TEMPLATE_KEYS.has(value) ? (value as TemplateKey) : null;
 }
 
 /** Everything the four scan steps collect before POST /api/scan/start. */
@@ -32,9 +45,11 @@ export interface ScanDraft {
   websiteUrl: string;
   instagramHandle: string;
   instagramMatchProvenance: IgMatchProvenance | null;
+  /** Item 8: the outcome the visitor picked on the landing page, if any. */
+  intent: TemplateKey | null;
 }
 
-export function emptyScanDraft(market: ScanMarket, businessName = ""): ScanDraft {
+export function emptyScanDraft(market: ScanMarket, businessName = "", intent: TemplateKey | null = null): ScanDraft {
   return {
     market,
     businessName,
@@ -47,6 +62,7 @@ export function emptyScanDraft(market: ScanMarket, businessName = ""): ScanDraft
     websiteUrl: "",
     instagramHandle: "",
     instagramMatchProvenance: null,
+    intent,
   };
 }
 
@@ -92,6 +108,7 @@ export interface ScanStartPayload {
   address?: string;
   maps_url?: string;
   alternate_names?: string[];
+  intent?: TemplateKey;
 }
 
 export function normaliseInstagramHandle(value: string): string {
@@ -145,6 +162,8 @@ export function buildScanStartPayload(
 
   const mapsUrl = draft.mapsUrl.trim();
   if (mapsUrl) payload.maps_url = mapsUrl;
+
+  if (draft.intent) payload.intent = draft.intent;
 
   return payload;
 }

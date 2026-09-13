@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ActionDetailView } from "@/components/workspace/action-detail-view";
-import { listAssets } from "@/lib/workspace/assets";
+import { assetLocationScope, assetUsableByAction, listAssets } from "@/lib/workspace/assets";
 import { inScopeFor, loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 import { getAction, getActivity } from "@/lib/workspace/queries-pages";
 
@@ -30,7 +30,16 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
     listAssets(page.ctx.workspace.id, page.ctx.locations, { signedUrls: false }).catch(() => []),
   ]);
   const auditRows = activity.filter((row) => row.entity_id !== null && entityIds.has(row.entity_id));
-  const approvedAssets = assets.filter((asset) => asset.rights_status === "approved" && asset.kind === "image").map((asset) => ({ id: asset.id, filename: asset.filename }));
+  // P2.3 item 15: the picker offered every approved image in the workspace, so
+  // a social post for one shop could attach another shop's photo, and a manager
+  // scoped to one location could see and use assets outside it. Same predicate
+  // the run route enforces -- the server is the authority, this keeps the list
+  // from offering what it would refuse.
+  const scope = assetLocationScope(page.membership);
+  const approvedAssets = assets
+    .filter((asset) => asset.rights_status === "approved" && asset.kind === "image")
+    .filter((asset) => assetUsableByAction(asset, detail.action.location.id, scope))
+    .map((asset) => ({ id: asset.id, filename: asset.filename }));
 
   return (
     <ActionDetailView

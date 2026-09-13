@@ -112,8 +112,25 @@ describe("POST /api/scan/start progressive input", () => {
         industry: "restaurant",
         district: "Central",
         objective: "more_leads",
+        intent: null,
       },
     }), consentRow);
+  });
+
+  it("carries a landing-page outcome intent into input_snapshot for the claim route to read back (item 8)", async () => {
+    await POST(request({ ...validBody, intent: "review-response" }));
+    expect(mocks.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ input_snapshot: expect.objectContaining({ intent: "review-response" }) }),
+      consentRow,
+    );
+  });
+
+  it("drops an intent that does not name a real action template", async () => {
+    await POST(request({ ...validBody, intent: "definitely-not-a-template" }));
+    expect(mocks.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ input_snapshot: expect.objectContaining({ intent: null }) }),
+      consentRow,
+    );
   });
 
   it("accepts data-id-only SerpApi evidence without overloading the place_id column", async () => {

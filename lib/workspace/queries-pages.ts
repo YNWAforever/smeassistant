@@ -5,9 +5,12 @@ import { loadAuthorizedEvidence } from "@/lib/evidence/load-authorized";
 import type { EvidenceGalleryItem } from "@/lib/report/view-model";
 import { inLocationScope, type Membership } from "@/lib/auth";
 import { artifactRepository } from "@/lib/repositories/artifacts";
+import { assetRepository } from "@/lib/repositories/assets";
+import { getBrand, type BrandProfile } from "@/lib/workspace/brand";
+import { deriveFaqQuestions } from "@/lib/workspace/faq-questions";
 import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
 import type { GuardrailFlag, VersionOrigin } from "@/lib/workspace/version-meta";
-import { selectScannedReviews } from "@/lib/workspace/evidence-inputs";
+import { filterSelectedReviews, scannedReviewKey, selectScannedReviews } from "@/lib/workspace/evidence-inputs";
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { currentPeriod, type LocationSummary, type WorkspaceContext } from "@/lib/workspace/queries";
 import { reapStrandedRuns } from "@/lib/workspace/run-reaper";
@@ -115,6 +118,7 @@ export interface VersionRow {
   checked: boolean;
   guardrails: GuardrailFlag[];
   agentNotes: string[];
+  acceptanceCriteria: string[];
 }
 
 export interface RunRow {
@@ -154,7 +158,15 @@ export interface ScanInputEvidence {
   snapshotId: string | null;
   jobId: string;
   observedAt: string;
-  reviews: Array<{ rating: number | null; excerpt: string; time: string | null }>;
+  /** `key` is the stable handle the owner's selection is stored against (P2.2, "selected-review replies"). */
+  reviews: Array<{ key: string; rating: number | null; excerpt: string; time: string | null }>;
+  /**
+   * The keys the next draft will actually use, resolved through the same
+   * `filterSelectedReviews` the run path applies -- so the checkboxes cannot
+   * disagree with what the agent receives, including the fallback where a
+   * stored selection has gone stale against a newer scan.
+   */
+  selected: string[];
   /** Unanswered reviews the agent will draft from. */
   available: number;
   /** Reviews the scan RETAINED (capped at 3), not the 5 metrics inspects. */
@@ -163,12 +175,50 @@ export interface ScanInputEvidence {
   populationCount: number | null;
 }
 
+/**
+ * P2.3 item 17: a compact "business details used" summary shown before
+ * generation, so an owner can see -- and, via a link to Brand settings, fix
+ * -- exactly what the next draft will be grounded in, instead of finding out
+ * only from the post-generation brand-check-panel badge.
+ */
+export interface BusinessContextRow {
+  key:
+    | "workspace"
+    | "location"
+    | "market"
+    | "brand_voice"
+    | "approved_claims"
+    | "prohibited_terms"
+    | "languages"
+    | "asset_rights"
+    | "snapshot_observed_at";
+  label: LocalizedText;
+  value: LocalizedText;
+  /** Where this row's value comes from, so a stale or wrong value points the owner at the right place to fix it. */
+  origin: LocalizedText;
+}
+
+export type BusinessContextSummary = BusinessContextRow[];
+
+/**
+ * P2.3 item 11: the FAQ + JSON-LD template's three owner_fact_* inputs used
+ * to render as unlabelled blank boxes. Empty for every other template.
+ */
+export interface FaqQuestionField {
+  key: "owner_fact_1" | "owner_fact_2" | "owner_fact_3";
+  question: LocalizedText;
+  /** From brand_profiles.facts, when the brand already has an answer -- so the owner is not asked to retype it. */
+  prefill: string | null;
+}
+
 export interface ActionDetail {
   action: ActionOverview;
   versions: VersionRow[];
   runs: RunRow[];
   measurements: MeasurementRow[];
   scanInputs: ScanInputEvidence[];
+  businessContext: BusinessContextSummary;
+  faqQuestions: FaqQuestionField[];
 }
 
 export interface InsightsSeriesPoint {
@@ -189,6 +239,22 @@ export interface MetricCard {
   observedAt: string;
 }
 
+/**
+ * P2.1 item 7: the approved/exported work itself, not only the scores and
+ * checks it produced. `counted` deliveries only -- exactly the ones guardrail
+ * 7 ("approved deliveries, not tokens") treats as real, so a repeat copy of
+ * an already-exported version never shows twice.
+ */
+export interface DeliveredWorkRow {
+  action_id: string;
+  template_key: TemplateKey;
+  title: LocalizedText;
+  version_no: number;
+  mode: "export" | "copy" | "publish";
+  channel: string | null;
+  delivered_at: string;
+}
+
 export interface InsightsLocationSummary {
   location: LocationSummary;
   score: number | null;
@@ -206,6 +272,7 @@ export interface InsightsModel {
   metricCards: MetricCard[];
   ledger: { resolved: string[]; regressed: string[]; decayed: string[] };
   perLocation: InsightsLocationSummary[];
+  deliveries: DeliveredWorkRow[];
 }
 
 export interface AuditEventRow {
@@ -261,6 +328,106 @@ function cadenceDay(schedule: { cadence: string; anniversary_day: number | null;
 }
 
 const TEMPLATE_CHANNEL = new Map<string, ActionFilters["channel"]>(TEMPLATES.map((t) => [t.key, t.channel]));
+const TEMPLATE_REQUIRES_ASSET = new Set<string>(TEMPLATES.filter((t) => t.requiredInputs.includes("asset_or_text_only")).map((t) => t.key));
+const NONE_SAVED = localized("None saved", "尚未儲存", "尚未儲存");
+const FROM_BRAND_SETTINGS = localized("From Brand settings", "來自品牌設定", "來自品牌設定");
+const FROM_WORKSPACE_RECORD = localized("From the workspace record", "來自工作台記錄", "來自工作台紀錄");
+const FROM_LATEST_SCAN = localized("From the latest scan", "來自最新掃描", "來自最新掃描");
+const FROM_ASSETS = localized("From Assets", "來自素材", "來自素材");
+const ASSET_RIGHTS_LABEL: Record<string, LocalizedText> = {
+  approved: localized("Approved", "已核准", "已核准"),
+  needs_review: localized("Needs review", "需要審閱", "需要審閱"),
+  rejected: localized("Rejected", "已拒絕", "已拒絕"),
+};
+
+/** P2.3 item 17. Reads the same brand profile and asset the agent prompt itself will use, so this can never show a different value than what generation actually grounds on. */
+async function buildBusinessContext(ctx: WorkspaceContext, row: ActionRow, action: ActionOverview, brand: BrandProfile): Promise<BusinessContextSummary> {
+  const location = ctx.locations.find((l) => l.id === row.location_id) ?? null;
+  const marketLabel = ctx.workspace.market === "tw" ? localized("Taiwan (TWD)", "台灣（新台幣）", "台灣（新台幣）") : localized("Hong Kong (HKD)", "香港（港元）", "香港（港元）");
+  const rows: BusinessContextRow[] = [
+    { key: "workspace", label: localized("Workspace", "工作台", "工作台"), value: localized(ctx.workspace.name, ctx.workspace.name), origin: FROM_WORKSPACE_RECORD },
+    {
+      key: "location",
+      label: localized("Location", "地點", "據點"),
+      value: location ? localized(location.name, location.name) : localized("All locations", "所有地點", "所有據點"),
+      origin: FROM_WORKSPACE_RECORD,
+    },
+    { key: "market", label: localized("Market", "市場", "市場"), value: marketLabel, origin: FROM_WORKSPACE_RECORD },
+    { key: "brand_voice", label: localized("Brand voice", "品牌語氣", "品牌語氣"), value: localized(brand.voice, brand.voice), origin: FROM_BRAND_SETTINGS },
+    {
+      key: "approved_claims",
+      label: localized("Approved claims", "已核准聲稱", "已核准聲明"),
+      value: brand.approvedClaims.length ? localized(brand.approvedClaims.join(" · "), brand.approvedClaims.join(" · ")) : NONE_SAVED,
+      origin: FROM_BRAND_SETTINGS,
+    },
+    {
+      key: "prohibited_terms",
+      label: localized("Prohibited terms", "禁用字詞", "禁用字詞"),
+      value: brand.prohibitedTerms.length ? localized(brand.prohibitedTerms.join(" · "), brand.prohibitedTerms.join(" · ")) : NONE_SAVED,
+      origin: FROM_BRAND_SETTINGS,
+    },
+    {
+      key: "languages",
+      label: localized("Languages", "語言", "語言"),
+      value: brand.languages.length ? localized(brand.languages.join(", "), brand.languages.join(", ")) : NONE_SAVED,
+      origin: FROM_BRAND_SETTINGS,
+    },
+    {
+      key: "snapshot_observed_at",
+      label: localized("Evidence observed", "證據觀察時間", "證據觀察時間"),
+      value: localized(action.evidence.observedAt, action.evidence.observedAt),
+      origin: FROM_LATEST_SCAN,
+    },
+  ];
+  if (TEMPLATE_REQUIRES_ASSET.has(row.template_key)) {
+    const provided = row.provided_inputs && typeof row.provided_inputs === "object" ? (row.provided_inputs as Record<string, unknown>) : {};
+    if (provided.text_only === true) {
+      rows.push({
+        key: "asset_rights",
+        label: localized("Asset", "素材", "素材"),
+        value: localized("Text-only post; no asset attached", "純文字貼文，未附素材", "純文字貼文，未附素材"),
+        origin: FROM_ASSETS,
+      });
+    } else {
+      const assetId = typeof provided.asset_id === "string" ? provided.asset_id : null;
+      const asset = assetId ? await assetRepository().get(ctx.workspace.id, assetId) : null;
+      rows.push({
+        key: "asset_rights",
+        label: localized("Asset rights", "素材版權", "素材版權"),
+        value: asset
+          ? { en: `${asset.filename} · ${ASSET_RIGHTS_LABEL[asset.rights_status]?.en ?? asset.rights_status}`, "zh-HK": `${asset.filename} · ${ASSET_RIGHTS_LABEL[asset.rights_status]?.["zh-HK"] ?? asset.rights_status}`, "zh-TW": `${asset.filename} · ${ASSET_RIGHTS_LABEL[asset.rights_status]?.["zh-TW"] ?? asset.rights_status}` }
+          : localized("No asset selected yet", "尚未選擇素材", "尚未選擇素材"),
+        origin: FROM_ASSETS,
+      });
+    }
+  }
+  return rows;
+}
+
+/**
+ * P2.3 item 11. Derives the same three questions runAgentForAction derives
+ * for the prompt (lib/workspace/runs.ts), reading the referenced snapshot's
+ * website checks and un-cited AEO queries through the same artifactRepository
+ * methods, so the detail page's labels and prefills can never disagree with
+ * what generation actually grounds on.
+ */
+async function buildFaqQuestions(ctx: WorkspaceContext, row: ActionRow, brand: BrandProfile): Promise<FaqQuestionField[]> {
+  if (row.template_key !== "visibility-content" || !row.source_snapshot_id) return [];
+  const artifacts = artifactRepository();
+  const snapshot = await artifacts.assistantSnapshot(ctx.workspace.id, row.source_snapshot_id);
+  if (!snapshot) return [];
+  const aeoQueries = await artifacts.assistantAeoQueries(ctx.workspace.id, snapshot.jobId);
+  const questions = deriveFaqQuestions({
+    failingWebsiteChecks: (snapshot.websiteChecks?.results ?? []).filter((r) => !r.pass).map((r) => r.key),
+    aeoQueries,
+  });
+  return questions.map((q) => ({
+    key: q.key,
+    question: q.question,
+    prefill: q.brandFactKey ? brand.facts[q.brandFactKey] ?? null : null,
+  }));
+}
+
 const OPEN_STATES: ActionState[] = ["recommended", "needs_input", "ready", "in_progress"];
 const METRIC_CARD_KEYS: MetricKey[] = ["gbp.response_rate_pct", "gbp.rating", "ig.days_since_last_post", "aeo.ai_citation_count", "website.checks_passed"];
 
@@ -525,7 +692,11 @@ export async function loadScanInputEvidence(
     snapshotId: snapshot.id,
     jobId: snapshot.jobId,
     observedAt: snapshot.observedAt,
-    reviews: selection.sampled.map((review) => ({ rating: review.rating, excerpt: review.text, time: review.time })),
+    reviews: selection.sampled.map((review) => ({ key: scannedReviewKey(review), rating: review.rating, excerpt: review.text, time: review.time })),
+    selected: filterSelectedReviews(
+      selection.sampled,
+      (row.provided_inputs && typeof row.provided_inputs === "object" ? (row.provided_inputs as Record<string, unknown>) : {}).selected_reviews,
+    ).map(scannedReviewKey),
     available: selection.sampled.length,
     inspected: selection.inspected,
     populationCount: snapshot.metrics["gbp.reviews_count"] ?? null,
@@ -556,7 +727,12 @@ export async function getAction(ctx: WorkspaceContext, actionId: string): Promis
   // Resolved live, so a row derived before the evidence-aware rule stops
   // reporting an input the workspace can already answer.
   const [action] = await overviewsFor(ctx, [row], scanInputs.map((entry) => entry.key));
-  return { action, versions, runs, measurements, scanInputs };
+  const brand = await getBrand(ctx.workspace.id);
+  const [businessContext, faqQuestions] = await Promise.all([
+    buildBusinessContext(ctx, row, action, brand),
+    buildFaqQuestions(ctx, row, brand),
+  ]);
+  return { action, versions, runs, measurements, scanInputs, businessContext, faqQuestions };
 }
 
 // ---------------------------------------------------------------------------
@@ -609,6 +785,7 @@ export async function getInsights(ctx: WorkspaceContext, scope: LocationScope): 
       metricCards: [],
       ledger: { resolved: [], regressed: [], decayed: [] },
       perLocation,
+      deliveries: [],
     };
   }
 
@@ -632,7 +809,10 @@ export async function getInsights(ctx: WorkspaceContext, scope: LocationScope): 
 
   const repository = workspaceReadRepository();
   const jobIds = snapshots.map((s) => s.jobId);
-  const aeoRows = await read("aeo rows", () => repository.aeoSnapshots(ctx.workspace.id, jobIds));
+  const [aeoRows, deliveries] = await Promise.all([
+    read("aeo rows", () => repository.aeoSnapshots(ctx.workspace.id, jobIds)),
+    read("deliveries", () => repository.deliveries(ctx.workspace.id, location.id, 20)),
+  ]);
 
   return {
     locationSlug: location.slug,
@@ -643,6 +823,7 @@ export async function getInsights(ctx: WorkspaceContext, scope: LocationScope): 
     metricCards: metricCards(head, base, Boolean(headDiff?.comparable)),
     ledger: headDiff ? { resolved: headDiff.resolved_findings, regressed: headDiff.regressed_findings, decayed: headDiff.decayed_findings } : { resolved: [], regressed: [], decayed: [] },
     perLocation,
+    deliveries,
   };
 }
 

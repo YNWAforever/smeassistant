@@ -66,3 +66,146 @@ Neither is a reason to relax a timeout. Both are reasons not to read a single lo
 ## Schema
 
 No migration was added by any Phase 2 fix. Every column written — `action_runs.*` for the operator-draft custody, `locations.is_primary` / `place_id` for the second-claim fix, `scan_snapshots.website_checks` for the website-evidence fix — already exists. `scripts/neon/catalog.ts` deep-equals the frozen catalog, so this is worth stating rather than assuming: a Phase 2 fix that needed a schema change would have failed `db:verify`, which cannot run here.
+
+---
+
+# Phase 2 "Complete owner workspace" — gate results (2026-09-12)
+
+A second body of work under the same phase number, and worth separating from
+everything above: the sections before this record the **gap-register** run (24
+audit findings). This one records the commissioning plan's Phase 2 proper —
+`phase-prompts/02-COMPLETE-OWNER-WORKSPACE.md` and Master Plan §5, tracked in
+`PHASE-2-BACKLOG.md`.
+
+**Branch** `claude/development-continuation-b3cbc1` · **HEAD** `9a749ca` · Node **24.18.0**, pnpm **9.12.0** via corepack, Windows 11.
+
+Base: `main` at `11033fb` (PR #13) merged with the eight unpushed commits from
+`claude/sme-assistant-phase-1-e83fdc`, which carried the audit kit and backlog
+items 2, 3 and 4. Eight further backlog items landed here (1, 6, 9, 10, 12, 15,
+24, 25 — 6 and 12 are one defect).
+
+**Everything below is locally verified. Nothing is hosted-verified.** No
+deployment, migration, paid provider call, real email, OAuth consent or Stripe
+event was attempted, and nothing was pushed.
+
+## Gates
+
+| # | Gate | Result |
+|---|---|---|
+| 1 | `corepack pnpm typecheck` | **passed** — exit 0 (`tsc --noEmit` + `pnpm -r typecheck`). |
+| 2 | `corepack pnpm lint` | **passed** — **30 warnings, 0 errors**, the unchanged baseline. |
+| 3 | `corepack pnpm test` | **passed** — exit 0, **293 files / 3,037 tests**. Breakdown below. |
+| 4 | `corepack pnpm build` | **not run** — the Windows-only Turbopack blocker on `radix-ui` is unchanged; see the section above. |
+| 5 | `corepack pnpm test:no-supabase` | **passed** — "No forbidden retired transport references; only the approved pinned Neon transitive library is permitted". |
+| 6 | `corepack pnpm test:no-self-service-claim` | **passed** — "OWNER_SELF_SERVICE_CLAIM is not enabled." |
+| 7 | `corepack pnpm test:secret-boundary` | **blocked locally** — shells out to `next build`, so it inherits the Turbopack blocker. |
+| 8 | `corepack pnpm db:verify` | **blocked** — needs Docker, absent from this machine. No migration was added, so no new schema object needs it. |
+| 9 | `corepack pnpm test:integration` | **blocked** — needs Docker. |
+| 10 | `corepack pnpm e2e` | **not run** — needs a production build plus a served origin. |
+
+### Test breakdown (gate 3)
+
+| Suite | Files | Tests |
+|---|---|---|
+| app (`vitest run --exclude lib/evidence/safe-media.test.ts`) | 242 | 2,450 |
+| `lib/evidence/safe-media.test.ts` (run alone, by design) | 1 | 62 |
+| `packages/region` | 3 | 23 |
+| `packages/scoring` | 16 | 183 |
+| `packages/contracts` | 3 | 20 |
+| `packages/scan-engine` | 28 | 299 |
+| **Total** | **293** | **3,037** |
+
+Against the gap-register run's 287 / 2,929 that is six new test files and ~107
+new cases: `create-view`, `action-detail-client`, `agents/jsonld`,
+`notifications` route, `notifications-list` (this session) and `more-view` (the
+merged predecessor commits).
+
+## A measurement mistake worth recording
+
+An earlier reading of this gate said the suite failed with "4 files / 5 tests".
+It was run as `corepack pnpm test 2>&1 | tail -12`, and **a pipeline's exit
+status is `tail`'s**, so the harness reported exit 0 for a run that had
+actually failed — and the failing file names were outside the twelve lines
+kept. Re-run with the output redirected to a file rather than piped, the same
+command exits 0 with 242/242 and 2,450/2,450.
+
+The failures in that loaded run are the starvation flakiness already documented
+above: `lib/identity/identity-sdk.test.ts` was one of them, and it passes 7/7 in
+isolation. Its cause is now identified rather than just observed — the test
+builds a session-cache JWT with a 60-second `exp`, so a starved run lets the
+fixture expire mid-test and the SDK falls back to the network, breaking
+`expect(transport).not.toHaveBeenCalled()`. Fixing that is filed separately; no
+commit here touches `lib/identity/` or `proxy.ts`.
+
+## Schema
+
+No migration was added by any item in this run. Every column written —
+`workspace_notifications.read_at`, `actions.action_state` / `provided_inputs`,
+`audit_events.*` — already exists.
+
+---
+
+# P2.4 — operated assisted ownership assignment (2026-09-12)
+
+The third body of work under this phase number. The first section records the
+gap-register run; the second, the first batch of backlog items; this one records
+**P2.4 — items 19–23, which also unblocked 27 and 28**.
+
+**Branch** `claude/development-continuation-b3cbc1` · **HEAD** `1c25db9` · Node **24.18.0**, pnpm **9.12.0** via corepack, Windows 11.
+
+Built from `docs/superpowers/plans/2026-09-12-assisted-ownership-assignment.md`
+(15 tasks, TDD throughout), against the design in
+`docs/superpowers/specs/2026-09-12-assisted-ownership-assignment-design.md`.
+
+**Locally verified. Not hosted-verified.** No deployment, migration, paid
+provider call, real email, OAuth consent or Stripe event was attempted, and
+nothing was pushed. **Both new variables ship unset, so merging this changes no
+behaviour** until someone deliberately sets `OPERATOR_EMAILS` and
+`ASSISTED_ASSIGNMENT_ENABLED`.
+
+## Gates
+
+| # | Gate | Result |
+|---|---|---|
+| 1 | `corepack pnpm typecheck` | **passed** — exit 0. |
+| 2 | `corepack pnpm lint` | **passed** — exit 0, **30 warnings, 0 errors**, the unchanged baseline. |
+| 3 | `corepack pnpm test` | **254 files / 2,540 tests; 2,539 passed, 1 failed under load.** The one failure is `lib/identity/identity-sdk.test.ts`, which passes **7/7 in isolation** — see below. |
+| 4 | `corepack pnpm build` | **blocked** — the Windows-only Turbopack `radix-ui` blocker, unchanged. |
+| 5 | `corepack pnpm test:no-supabase` | **passed**. |
+| 6 | `corepack pnpm test:no-self-service-claim` | **passed** — "OWNER_SELF_SERVICE_CLAIM is not enabled." |
+| 7 | `corepack pnpm test:secret-boundary` | **blocked locally** — shells out to `next build`. |
+| 8 | `corepack pnpm db:verify` | **blocked** — needs Docker. **No migration was added**, so nothing new depends on it. |
+| 9 | `corepack pnpm test:integration` | **blocked** — needs Docker; the run hangs waiting for it. The four new acceptance cases were written against that constraint and first run in CI. |
+| 10 | `corepack pnpm e2e` | **not run**. |
+
+## The one failing test
+
+`lib/identity/identity-sdk.test.ts` fails only under full parallel load and
+passes 7/7 alone. **No commit in this release touches `lib/identity/` or
+`proxy.ts`.**
+
+Its cause is identified rather than merely observed: the test builds a
+session-cache JWT with `exp: now + 60`, so a starved run lets the fixture expire
+mid-test, the SDK falls back to the network, and
+`expect(transport).not.toHaveBeenCalled()` fails. Filed as separate work; it is
+a wall-clock defect in the fixture, not a regression here.
+
+## Schema
+
+**No migration.** Every column written already existed:
+`workspace_access_requests(resolved_at, resolved_by_staff_user_id)` and
+`audit_events(workspace_id, entity_type, entity_id, payload, idempotency_key)`.
+The `idempotency_key` unique index had no writer before this release and is what
+now makes a terminal decision exactly-once.
+
+Two typed writers were widened to accept a null workspace id — `AuditEventInput`
+and `ClaimAuditEvent`. The SQL column was always nullable; only TypeScript
+required one. The compiler found the second writer after the first was changed.
+
+## What is deliberately still off
+
+DEC-06 remains pending. `OPERATOR_EMAILS` unset means nobody can open the queue;
+`ASSISTED_ASSIGNMENT_ENABLED` unset means the decision route answers 404 to
+everyone, including an allowlisted operator. The queue pages are readable with
+the flag off by design, because DEC-06's recorded safe default is to build the
+protected request, status and queue code and withhold only real approvals.

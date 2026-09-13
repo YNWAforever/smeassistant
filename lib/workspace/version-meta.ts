@@ -24,6 +24,8 @@ export type GuardrailCode =
   | "alt_text_missing"
   | "too_many_hashtags"
   | "jsonld_missing"
+  | "jsonld_invalid"
+  | "jsonld_mismatch"
   | "title_too_long"
   | "bio_too_long";
 
@@ -47,6 +49,14 @@ export interface VersionMeta {
   guardrails: GuardrailFlag[];
   /** Warnings the model itself raised, i.e. anything not a known guardrail code. */
   agentNotes: string[];
+  /**
+   * The agent's own acceptance_criteria (lib/repositories/artifacts.ts persists
+   * output.acceptance_criteria into meta on every agent-authored version).
+   * P2.2/item 13: this is what turns a website export into an implementation
+   * checklist rather than a bare body of text. Empty for a manual edit -- there
+   * is no agent output to have criteria in the first place.
+   */
+  acceptanceCriteria: string[];
 }
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -71,6 +81,8 @@ function classify(warning: string): GuardrailFlag | null {
   if (warning === "alt_text_missing") return { code: "alt_text_missing" };
   if (warning === "too_many_hashtags") return { code: "too_many_hashtags" };
   if (warning === "jsonld_missing") return { code: "jsonld_missing" };
+  if (warning === "jsonld_invalid") return { code: "jsonld_invalid" };
+  if (warning === "jsonld_mismatch") return { code: "jsonld_mismatch" };
   const over = /^(body|title|bio)_over_(\d+)_chars$/.exec(warning);
   if (over) {
     const code: GuardrailCode = over[1] === "title" ? "title_too_long" : over[1] === "bio" ? "bio_too_long" : "length";
@@ -94,6 +106,10 @@ export function parseVersionMeta(meta: unknown, authorType: "user" | "agent"): V
   }
 
   const agentKeyRaw = source?.agent_key;
+  const rawAcceptanceCriteria = source?.acceptance_criteria;
+  const acceptanceCriteria = Array.isArray(rawAcceptanceCriteria)
+    ? rawAcceptanceCriteria.filter((entry): entry is string => typeof entry === "string")
+    : [];
   return {
     // Rows written before `origin` existed fall back to the author type, so an
     // older agent version still reads as agent-generated rather than manual.
@@ -102,5 +118,6 @@ export function parseVersionMeta(meta: unknown, authorType: "user" | "agent"): V
     checked,
     guardrails,
     agentNotes,
+    acceptanceCriteria,
   };
 }

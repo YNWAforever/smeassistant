@@ -115,6 +115,11 @@ export function uploadAsset(workspaceId: string, input: { file: File | Blob; kin
   return request(`/api/workspaces/${encodeURIComponent(workspaceId)}/assets`, { method: "POST", body: form });
 }
 
+/** P2.5 item 24: omit `ids` to mark every unread notification of the caller's read. */
+export function markNotificationsRead(workspaceId: string, ids?: string[]): Promise<ClientResult<{ ok: true; marked: number }>> {
+  return request(`/api/workspaces/${encodeURIComponent(workspaceId)}/notifications`, { method: "PATCH", headers: JSON_HEADERS, body: JSON.stringify(ids ? { ids } : {}) });
+}
+
 export function setAssetRights(workspaceId: string, assetId: string, body: { rights_status: "approved" | "rejected"; alt_text?: string }): Promise<ClientResult<SetAssetRightsResult>> {
   return request(`/api/workspaces/${encodeURIComponent(workspaceId)}/assets/${encodeURIComponent(assetId)}`, { method: "PATCH", headers: JSON_HEADERS, body: JSON.stringify(body) });
 }

@@ -2,6 +2,7 @@ import { ImageOff } from "lucide-react"
 
 import { SectionCard } from "@/components/product-ui"
 import { copy, type PrototypeLocale } from "@/lib/copy"
+import { limitationLabel } from "@/lib/funnel/report-labels"
 import type { EvidenceGalleryItem } from "@/lib/report/view-model"
 import { interpolate } from "@/lib/share"
 
@@ -37,7 +38,7 @@ export function EvidenceGallery({ locale, items }: { locale: PrototypeLocale; it
             </div>
             <div className="evidence-passport-value">
               <strong>{item.status === "stored" ? c.measuredLabel : item.status === "metadata_only" ? c.evidenceMetadataOnly : c.evidenceFailed}</strong>
-              {item.limitationCode && <small>{item.limitationCode}</small>}
+              {item.limitationCode && <small>{limitationLabel(locale, item.limitationCode)}</small>}
             </div>
           </article>
         ))}

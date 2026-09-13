@@ -7,6 +7,8 @@ import { llmComplete, llmConfigured } from "@/lib/llm";
 import type { AssistantArtifact, AssistantSurface, DemoAssistantRunResponse, DemoQuestionId, EvidenceReference } from "@/lib/pocket-assistant/contracts";
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { assetRepository } from "@/lib/repositories/assets";
+import { assetLocationScope } from "@/lib/workspace/assets";
+import { filterSelectedReviews } from "@/lib/workspace/evidence-inputs";
 import { sampledReviewsFromRawData, snapshotEvidence, socialAssetSatisfied } from "@/lib/workspace/runs";
 import { type ScanDiffRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
 import { buildEvidenceRefs } from "./evidence";
@@ -279,7 +281,12 @@ async function agentContext(db: LiveAssistantRepository, input: LiveRunInput, ct
   // which the task renders as a trusted line. provided_inputs now carries only
   // genuinely owner-typed input, which is what the fence is there to contain.
   const provided = asRecord(action.row.provided_inputs);
-  const sampledReviews = agentKey === "review_reply" && ctx.snapshot ? sampledReviewsFromRawData(await db.assistantReviewData(input.context.workspaceId, ctx.snapshot.jobId)) : undefined;
+  // The same selection the run path honours. The operator drafts the SAME agent
+  // against the same action, so a review the owner deselected must not reappear
+  // here. Only keys travel; the text is rebuilt from stored evidence.
+  const sampledReviews = agentKey === "review_reply" && ctx.snapshot
+    ? filterSelectedReviews(sampledReviewsFromRawData(await db.assistantReviewData(input.context.workspaceId, ctx.snapshot.jobId)), provided.selected_reviews)
+    : undefined;
   return {
     locale: input.locale,
     market: ctx.workspace?.market?.toLowerCase() === "tw" ? "tw" : "hk",
@@ -320,6 +327,7 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistant
       input.assets ?? assetRepository(),
       input.context.workspaceId,
       asRecord(action.row.provided_inputs),
+      { actionLocationId: action.row.location_id, locationScope: assetLocationScope(input.membership) },
     );
     if (!satisfied) {
       const base = completed(fallbackIntentFor(intent), input, ctx);

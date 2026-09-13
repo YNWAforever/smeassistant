@@ -131,6 +131,14 @@ export function artifactRepository(client?: Executor) {
    return operation(async ()=>(await db().query<{raw_data:unknown}>(`SELECT raw_data FROM audit_jobs j WHERE id=$1 AND workspace_id=$2
     AND (location_id IS NULL OR EXISTS(SELECT 1 FROM locations l WHERE l.id=j.location_id AND l.workspace_id=j.workspace_id))`,[jobId,workspaceId])).rows[0]?.raw_data ?? null);
   },
+  // P2.3 item 11: query_text was written at scan time and never read back
+  // anywhere. Un-cited only -- a query the business WAS cited for is not
+  // "search could not find you", so it does not belong in an FAQ prompt.
+  assistantAeoQueries(workspaceId: string, jobId: string) {
+   return operation(async ()=>(await db().query<{query_text:string}>(`SELECT DISTINCT s.query_text FROM aeo_surface_snapshots s
+    JOIN audit_jobs j ON j.id=s.job_id AND j.workspace_id=$2
+    WHERE s.job_id=$1 AND s.cited=false`,[jobId,workspaceId])).rows.map(r=>r.query_text));
+  },
   /**
    * Persist a finished assistant draft as a terminal `action_runs` row and
    * return its id.

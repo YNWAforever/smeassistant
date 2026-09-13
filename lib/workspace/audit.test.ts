@@ -60,3 +60,11 @@ describe("ipHashFor", () => {
     expect(hash).not.toContain("203.0.113.9");
   });
 });
+
+describe("pre-assignment events", () => {
+  it("accepts a null workspace id, because a request has no workspace yet", async () => {
+    await expect(
+      recordNeonEvent({ workspaceId: null, actorType: "user", event: "action.updated" }),
+    ).resolves.toBeUndefined();
+  });
+});

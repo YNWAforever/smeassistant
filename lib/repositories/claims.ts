@@ -1,4 +1,5 @@
 import "server-only";
+import type { Pool } from "pg";
 import { getPool } from "../db/client";
 import { withTransaction } from "../db/transaction";
 import { slugify, uniqueWorkspaceSlug, uniqueLocationSlug } from "../workspace/slug";
@@ -27,19 +28,29 @@ export const claimsRepository = {
   try {await getPool().query("INSERT INTO workspace_claim_events(job_id,workspace_id,matched_location_id,claimed_by_user_id) VALUES($1,$2,$3,$4)",[input.job_id,input.workspace_id,input.matched_location_id,input.claimed_by_user_id]);}
   catch {console.error("[workspace/claim] claim event not recorded",{category:"claim_event_failed"});}
  },
- async createWorkspaceWithOwner(input:OwnerWorkspaceInput):Promise<{id:string;slug:string}> {
-  return withTransaction(async db => {
+ /**
+  * `db` lets a caller run this inside its own transaction (the operator
+  * assignment path). Omitted, it opens its own, which is what the OAuth claim
+  * callback and the sign-in completion port have always done.
+  *
+  * Nesting is safe and slightly stronger: pg_advisory_xact_lock is scoped to
+  * the surrounding transaction, so when a caller supplies one the slug lock is
+  * held until THEIR commit rather than released early.
+  */
+ async createWorkspaceWithOwner(input:OwnerWorkspaceInput,db?:Pick<Pool,"query">):Promise<{id:string;slug:string}> {
+  const run = async (client:Pick<Pool,"query">) => {
    const base=slugify(input.businessName??"workspace");
    // Serialize the slug namespace; the persisted unique index is the final guard.
-   await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`workspace-slug:${base}`]);
-   const slug=await uniqueWorkspaceSlug(db,base);
-   const row=(await db.query<{id:string;slug:string}>("INSERT INTO workspaces(business_name,industry,district,market,slug) VALUES($1,$2,$3,$4,$5) RETURNING id,slug",[input.businessName,input.industry,input.district,input.market==="tw"?"tw":"hk",slug])).rows[0];
-   await db.query("INSERT INTO workspace_members(workspace_id,user_id,email,role,accepted_at) VALUES($1,$2,$3,'owner',now())",[row.id,input.ownerUserId,input.ownerEmail]);
+   await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`workspace-slug:${base}`]);
+   const slug=await uniqueWorkspaceSlug(client,base);
+   const row=(await client.query<{id:string;slug:string}>("INSERT INTO workspaces(business_name,industry,district,market,slug) VALUES($1,$2,$3,$4,$5) RETURNING id,slug",[input.businessName,input.industry,input.district,input.market==="tw"?"tw":"hk",slug])).rows[0];
+   await client.query("INSERT INTO workspace_members(workspace_id,user_id,email,role,accepted_at) VALUES($1,$2,$3,'owner',now())",[row.id,input.ownerUserId,input.ownerEmail]);
    return row;
-  });
+  };
+  return db ? run(db) : withTransaction(run);
  },
- async attachJob(jobId:string,workspaceId:string):Promise<boolean> {
-  return Boolean((await getPool().query("UPDATE audit_jobs SET workspace_id=$2 WHERE id=$1 AND workspace_id IS NULL RETURNING id",[jobId,workspaceId])).rows.length);
+ async attachJob(jobId:string,workspaceId:string,db:Pick<Pool,"query">=getPool()):Promise<boolean> {
+  return Boolean((await db.query("UPDATE audit_jobs SET workspace_id=$2 WHERE id=$1 AND workspace_id IS NULL RETURNING id",[jobId,workspaceId])).rows.length);
  },
  async firstLeadEmail(jobId:string):Promise<string|null> {
   return (await getPool().query<{email:string}>("SELECT email FROM leads WHERE job_id=$1 AND email IS NOT NULL ORDER BY created_at,id LIMIT 1",[jobId])).rows[0]?.email??null;
@@ -103,7 +114,8 @@ export const claimsRepository = {
 };
 
 export interface LocationFields {name:string;address:string|null;district:string|null;place_id:string|null;ig_handle:string|null;website_url:string|null}
-export interface ClaimAuditEvent {workspace_id:string;location_id?:string|null;actor_type:string;actor_id?:string|null;event:string;entity_type?:string|null;entity_id?:string|null;payload:Record<string,unknown>}
+/** `workspace_id` is nullable because a pre-assignment access request has no workspace yet; the SQL column always allowed it. */
+export interface ClaimAuditEvent {workspace_id:string|null;location_id?:string|null;actor_type:string;actor_id?:string|null;event:string;entity_type?:string|null;entity_id?:string|null;payload:Record<string,unknown>}
 
 /** Best-effort audit persistence after the business mutation has succeeded. */
 export async function recordClaimAuditEvent(input:ClaimAuditEvent):Promise<void> {

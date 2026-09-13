@@ -13,6 +13,9 @@ const state = vi.hoisted(() => ({
   schedule: null as Row | null,
   connections: [] as Row[],
   runs: [] as Row[],
+  brand: { workspaceId: "ws-1", voice: "warm", approvedClaims: [] as string[], prohibitedTerms: [] as string[], languages: ["zh-HK"] as string[], facts: {} as Record<string, string>, updatedAt: null as string | null },
+  asset: null as Row | null,
+  deliveries: [] as Row[],
 }));
 
 vi.mock("server-only", () => ({}));
@@ -23,6 +26,7 @@ const repository = vi.hoisted(() => ({
   latestConnection: vi.fn(), measurements: vi.fn(), draftVersions: vi.fn(),
   completedActions: vi.fn(), schedules: vi.fn(), aeoSnapshots: vi.fn(),
   activity: vi.fn(), notifications: vi.fn(), notificationPreferences: vi.fn(),
+  deliveries: vi.fn(),
 }));
 vi.mock("@/lib/repositories/workspace-read", () => ({ workspaceReadRepository: () => repository }));
 const reaper = vi.hoisted(() => ({ reapStrandedRuns: vi.fn(async () => [] as string[]) }));
@@ -32,8 +36,13 @@ const artifacts = vi.hoisted(() => ({
   assistantSnapshot: vi.fn(async () => null as unknown),
   assistantLatestSnapshot: vi.fn(async () => null as unknown),
   assistantReviewData: vi.fn(async () => null as unknown),
+  assistantAeoQueries: vi.fn(async () => [] as string[]),
 }));
 vi.mock("@/lib/repositories/artifacts", () => ({ artifactRepository: () => artifacts }));
+const brandMock = vi.hoisted(() => ({ getBrand: vi.fn(async () => state.brand) }));
+vi.mock("@/lib/workspace/brand", () => ({ getBrand: brandMock.getBrand }));
+const assetsMock = vi.hoisted(() => ({ get: vi.fn(async () => state.asset) }));
+vi.mock("@/lib/repositories/assets", () => ({ assetRepository: () => assetsMock }));
 
 import { getHomeBrief, getInsights, listActions, getActivity, getIntegrations, getAction, loadActionRows, loadDiffById } from "./queries-pages";
 
@@ -76,10 +85,16 @@ beforeEach(() => {
   repository.activity.mockResolvedValue([]);
   repository.notifications.mockResolvedValue([]);
   repository.notificationPreferences.mockResolvedValue(null);
+  repository.deliveries.mockImplementation(async () => state.deliveries);
+  brandMock.getBrand.mockImplementation(async () => state.brand);
+  assetsMock.get.mockImplementation(async () => state.asset);
 
   state.snapshots = [snapshotRow({})];
   state.diffs = {}; state.actions = [actionRow({}), actionRow({ id: "a2", template_key: "social-post", priority: "high", priority_score: 45, action_state: "recommended", required_inputs: [] })];
   state.measurements = []; state.versions = []; state.completed = []; state.schedule = { next_run_at: "2026-09-14T00:00:00Z", cadence: "monthly", anniversary_day: 14 }; state.connections = [{ status: "active" }]; state.runs = [];
+  state.brand = { workspaceId: "ws-1", voice: "warm", approvedClaims: [], prohibitedTerms: [], languages: ["zh-HK"], facts: {}, updatedAt: null };
+  state.asset = null;
+  state.deliveries = [];
 });
 
 describe("getHomeBrief", () => {
@@ -157,6 +172,22 @@ describe("getInsights", () => {
     expect(one.series).toHaveLength(1);
     expect(one.metricCards.find((c) => c.metricKey === "gbp.rating")).toMatchObject({ after: 4.2, factType: "Unknown", delta: null });
   });
+
+  it("shows the approved/exported work itself, not only scores and checks (P2.1 item 7)", async () => {
+    state.deliveries = [
+      { action_id: "a1", template_key: "review-response", title: { en: "Reply to reviews", "zh-HK": "回覆評論", "zh-TW": "回覆評論" }, version_no: 2, mode: "export", channel: null, delivered_at: "2026-09-05T00:00:00Z" },
+    ];
+    const one = await getInsights(ctx, "yik-yam");
+    expect(repository.deliveries).toHaveBeenCalledWith("ws-1", "loc-1", 20);
+    expect(one.deliveries).toEqual(state.deliveries);
+  });
+
+  it("never aggregates deliveries across locations for location=all, matching every other per-location field here", async () => {
+    state.deliveries = [{ action_id: "a1", template_key: "review-response", title: { en: "x", "zh-HK": "x", "zh-TW": "x" }, version_no: 1, mode: "copy", channel: null, delivered_at: "2026-09-05T00:00:00Z" }];
+    const all = await getInsights(ctx, "all");
+    expect(all.deliveries).toEqual([]);
+    expect(repository.deliveries).not.toHaveBeenCalled();
+  });
 });
 
 
@@ -204,6 +235,88 @@ describe("page repository boundaries", () => {
     expect(await getAction(ctx, "missing")).toBeNull();
   });
 
+  it("shows the business details the next draft will actually use, sourced from the brand profile and the workspace record (P2.3 item 17)", async () => {
+    state.brand = { workspaceId: "ws-1", voice: "professional", approvedClaims: ["Family-run since 1998"], prohibitedTerms: ["cheapest"], languages: ["zh-HK", "en"], facts: {}, updatedAt: "2026-09-01T00:00:00Z" };
+    const detail = await getAction(ctx, "a1");
+    const byKey = Object.fromEntries((detail?.businessContext ?? []).map((row) => [row.key, row]));
+    expect(byKey.workspace.value.en).toBe("Kam Man House");
+    expect(byKey.location.value.en).toBe("Yik Yam Street");
+    expect(byKey.market.value.en).toContain("Hong Kong");
+    expect(byKey.brand_voice.value.en).toBe("professional");
+    expect(byKey.approved_claims.value.en).toBe("Family-run since 1998");
+    expect(byKey.prohibited_terms.value.en).toBe("cheapest");
+    expect(byKey.languages.value.en).toBe("zh-HK, en");
+    expect(byKey.snapshot_observed_at).toBeDefined();
+    // review-response has no asset requirement, so no asset_rights row at all.
+    expect(byKey.asset_rights).toBeUndefined();
+  });
+
+  it("shows 'None saved' rather than an empty value for unset brand facts", async () => {
+    state.brand = { workspaceId: "ws-1", voice: "warm", approvedClaims: [], prohibitedTerms: [], languages: ["zh-HK"], facts: {}, updatedAt: null };
+    const detail = await getAction(ctx, "a1");
+    const byKey = Object.fromEntries((detail?.businessContext ?? []).map((row) => [row.key, row]));
+    expect(byKey.approved_claims.value.en).toBe("None saved");
+    expect(byKey.prohibited_terms.value.en).toBe("None saved");
+  });
+
+  it("shows the selected asset's rights status for an asset-requiring template, sourced from the same row socialAssetSatisfied checks", async () => {
+    state.actions = [actionRow({ id: "a2", template_key: "social-post", provided_inputs: { asset_id: "asset-1" } })];
+    state.asset = { filename: "storefront.jpg", rights_status: "approved" };
+    const detail = await getAction(ctx, "a2");
+    const assetRow = detail?.businessContext.find((row) => row.key === "asset_rights");
+    expect(assetsMock.get).toHaveBeenCalledWith("ws-1", "asset-1");
+    expect(assetRow?.value.en).toBe("storefront.jpg · Approved");
+  });
+
+  it("says no asset is selected yet rather than silently omitting the row", async () => {
+    state.actions = [actionRow({ id: "a2", template_key: "social-post" })];
+    const detail = await getAction(ctx, "a2");
+    const assetRow = detail?.businessContext.find((row) => row.key === "asset_rights");
+    expect(assetRow?.value.en).toBe("No asset selected yet");
+  });
+
+  it("reports a text-only post distinctly from a missing asset", async () => {
+    state.actions = [actionRow({ id: "a2", template_key: "social-post", provided_inputs: { text_only: true } })];
+    const detail = await getAction(ctx, "a2");
+    const assetRow = detail?.businessContext.find((row) => row.key === "asset_rights");
+    expect(assetRow?.value.en).toBe("Text-only post; no asset attached");
+  });
+
+  describe("faqQuestions (P2.3 item 11)", () => {
+    it("derives real questions from the referenced snapshot's failing checks and un-cited AEO queries, prefilling from a matching brand fact", async () => {
+      state.actions = [actionRow({ id: "a3", template_key: "visibility-content", source_snapshot_id: "snap-9", required_inputs: ["owner_fact_1", "owner_fact_2", "owner_fact_3"] })];
+      state.brand = { workspaceId: "ws-1", voice: "warm", approvedClaims: [], prohibitedTerms: [], languages: ["zh-HK"], facts: { opening_hours: "11:00-21:00 daily" }, updatedAt: null };
+      artifacts.assistantSnapshot.mockResolvedValueOnce({
+        id: "snap-9", jobId: "job-9", workspaceId: "ws-1", locationId: "loc-1",
+        websiteChecks: { evaluated: 15, passed: 13, results: [{ key: "opening_hours_text", pass: false }, { key: "https", pass: false }] },
+      });
+      artifacts.assistantAeoQueries.mockResolvedValueOnce(["best dim sum tin hau"]);
+      const detail = await getAction(ctx, "a3");
+      expect(artifacts.assistantSnapshot).toHaveBeenCalledWith("ws-1", "snap-9");
+      expect(artifacts.assistantAeoQueries).toHaveBeenCalledWith("ws-1", "job-9");
+      expect(detail?.faqQuestions).toHaveLength(3);
+      expect(detail?.faqQuestions[0].question.en).toContain("best dim sum tin hau");
+      expect(detail?.faqQuestions[0].prefill).toBeNull();
+      expect(detail?.faqQuestions[1].question.en).toBe("What are your opening hours?");
+      expect(detail?.faqQuestions[1].prefill).toBe("11:00-21:00 daily");
+      // https is a purely technical check -- never a fact an owner can answer.
+      expect(detail?.faqQuestions.some((q) => q.question.en.includes("https"))).toBe(false);
+    });
+
+    it("stays empty, with no extra reads at all, for a template that is not the FAQ workflow", async () => {
+      const detail = await getAction(ctx, "a1");
+      expect(detail?.faqQuestions).toEqual([]);
+      expect(artifacts.assistantAeoQueries).not.toHaveBeenCalled();
+    });
+
+    it("stays empty when the action has no source snapshot yet", async () => {
+      state.actions = [actionRow({ id: "a3", template_key: "visibility-content", source_snapshot_id: null })];
+      const detail = await getAction(ctx, "a3");
+      expect(detail?.faqQuestions).toEqual([]);
+      expect(artifacts.assistantSnapshot).not.toHaveBeenCalled();
+    });
+  });
+
   it("reconciles stranded runs once, before anything reads them", async () => {
     const detail = await getAction(ctx, "a1");
     expect(reaper.reapStrandedRuns).toHaveBeenCalledTimes(1);
@@ -246,6 +359,38 @@ describe("page repository boundaries", () => {
     expect(detail?.action.missingInputs).toEqual(["brand_voice"]);
     expect(detail?.action.requiredInputs).toEqual(["brand_voice", "reviews_without_response"]);
     expect(detail?.action.evidenceInputs).toEqual(["reviews_without_response"]);
+    // P2.2 "selected-review replies": with nothing stored the owner has picked
+    // nothing yet, so every unanswered review is in play -- and `selected` is
+    // resolved through the same filter the run path applies, so the checkboxes
+    // cannot promise the agent a review it will not receive.
+    expect(detail?.scanInputs[0].reviews[0].key).toEqual(expect.stringMatching(/^[0-9a-f]{8}$/));
+    expect(detail?.scanInputs[0].selected).toEqual([detail?.scanInputs[0].reviews[0].key]);
+  });
+
+  it("reports only the reviews the owner picked, and falls back when the pick goes stale", async () => {
+    const snapshot: FakeSnapshot = { id: "snap-9", jobId: "job-9", workspaceId: "ws-1", locationId: "loc-1", observedAt: "2026-09-02T00:00:00Z", metrics: {} };
+    artifacts.assistantSnapshot.mockResolvedValue(snapshot);
+    artifacts.assistantReviewData.mockResolvedValue({
+      gbp: { reviews: [
+        { rating: 2, text: "Slow service", time: "2026-08-30T00:00:00Z" },
+        { rating: 1, text: "Cold food", time: "2026-08-28T00:00:00Z" },
+      ] },
+    });
+    const base = { id: "a1", template_key: "review-response", source_snapshot_id: "snap-9", required_inputs: ["reviews_without_response"] } as const;
+
+    state.actions = [actionRow({ ...base })];
+    const all = await getAction(ctx, "a1");
+    const [first, second] = all!.scanInputs[0].reviews;
+    expect(all!.scanInputs[0].selected).toEqual([first.key, second.key]);
+
+    state.actions = [actionRow({ ...base, provided_inputs: { selected_reviews: [second.key] } })];
+    expect((await getAction(ctx, "a1"))!.scanInputs[0].selected).toEqual([second.key]);
+
+    // A newer scan replaced the reviews, so the stored pick matches nothing.
+    // Falling back to all beats showing an empty selection the agent would not
+    // honour anyway.
+    state.actions = [actionRow({ ...base, provided_inputs: { selected_reviews: ["deadbeef"] } })];
+    expect((await getAction(ctx, "a1"))!.scanInputs[0].selected).toEqual([first.key, second.key]);
   });
 
   it("reads no review data at all for a template that does not draft replies", async () => {

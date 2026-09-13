@@ -2,6 +2,7 @@ import type { PrototypeLocale } from "@/lib/copy";
 import { copy } from "@/lib/copy";
 import type { Priority } from "@/lib/domain";
 import { readableFindingKey } from "@/lib/report/finding-label";
+import type { TemplateKey } from "@/lib/workspace/templates";
 
 /**
  * Why two scans could not be compared, in the owner's language.
@@ -57,8 +58,18 @@ export function ordinal(day: number): string {
   return `${day}${suffix}`;
 }
 
+/**
+ * P2.1: "Display task-duration estimates only as estimates, never measured or
+ * guaranteed completion times."
+ *
+ * `effort_minutes` is a fixed number written by the template table -- nothing
+ * measures how long an owner actually takes -- so a bare "10 minutes" under a
+ * heading like "Owner effort" reads as a measurement. Qualified here rather
+ * than at each render site, because four of the five were unqualified and that
+ * is precisely how the odd one out gets missed.
+ */
 export function effortLabel(minutes: number, locale: PrototypeLocale): string {
-  return locale === "en" ? `${minutes} minutes` : `${minutes} 分鐘`;
+  return locale === "en" ? `about ${minutes} minutes` : `約 ${minutes} 分鐘`;
 }
 
 export function priorityLabel(priority: Priority, locale: PrototypeLocale): string {
@@ -97,4 +108,31 @@ export function stateLabel(key: string, locale: PrototypeLocale): string {
 export function withLocation(href: string, location: string | null | undefined): string {
   if (!location) return href;
   return `${href}${href.includes("?") ? "&" : "?"}location=${encodeURIComponent(location)}`;
+}
+
+/**
+ * P2.2/item 13: an exported FAQ or website-basics draft used to leave with
+ * only the model's body -- no instructions for the owner's website editor, and
+ * no statement that the website itself had not changed. Appends both, plus
+ * the agent's own acceptance_criteria as a numbered checklist, for exactly the
+ * two templates that need them; every other template's export is unchanged.
+ */
+export function buildExportText(input: {
+  body: string;
+  altText: string | null;
+  templateKey: TemplateKey;
+  acceptanceCriteria: readonly string[];
+  locale: PrototypeLocale;
+}): string {
+  const isChinese = input.locale !== "en";
+  let text = input.altText ? `${input.body}\n\n---\n${isChinese ? "圖片替代文字" : "Alt text"}: ${input.altText}\n` : input.body;
+  const websiteExport = copy[input.locale].workspace.websiteExport;
+  const instructions = websiteExport.instructions[input.templateKey];
+  if (!instructions) return text;
+  text += `\n\n---\n${websiteExport.heading}\n${instructions}\n`;
+  if (input.acceptanceCriteria.length) {
+    text += `\n${websiteExport.criteriaHeading}:\n${input.acceptanceCriteria.map((item, index) => `${index + 1}. ${item}`).join("\n")}\n`;
+  }
+  text += `\n${websiteExport.disclaimer}\n`;
+  return text;
 }

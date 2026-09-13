@@ -196,6 +196,30 @@ const PROMISES: readonly Promised[] = [
       "保留 24 個月",
     ],
   },
+  {
+    // P1.7 removed the delivery quotas and seat caps from the pricing page and
+    // MISSED the homepage, where the Growth card still sold "12 approved
+    // deliveries/month · 2 users" and Multi-location sold "36 pooled" -- while
+    // `deliveryAllowanceForTier` gives paid unlimited and lite 3, and nothing
+    // anywhere counts members. The in-product billing page already said
+    // "unlimited", so the homepage contradicted the code AND the product.
+    //
+    // This entry exists because the guard was already here and did not catch
+    // it: the earlier entries ban phrases, and a quota is a NUMBER. Banning the
+    // specific numbers is still phrase-shaped, so the detector is what makes it
+    // expire honestly -- the day a seat or pooled quota is genuinely enforced,
+    // this fails and the copy can come back.
+    capability: "an enforced seat cap or a numeric monthly delivery quota",
+    implemented: () => backendMatches(/seat[_ ]?limit|max_?members|member_?limit|pooled_?allowance|seats_?included/i),
+    banned: [
+      "12 approved deliveries",
+      "36 pooled approved deliveries",
+      "2 users",
+      "12 次核准後交付",
+      "36 次核准後交付",
+      "2 位用戶",
+    ],
+  },
 ];
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { comparisonReasonText, ordinal } from "./format";
+import { buildExportText, comparisonReasonText, ordinal } from "./format";
 
 describe("ordinal", () => {
   it("covers every day a monthly cadence can fall on", () => {
@@ -40,5 +40,47 @@ describe("comparisonReasonText", () => {
   it("handles a missing reason", () => {
     expect(comparisonReasonText(null, false)).toBe("No comparable scan yet");
     expect(comparisonReasonText(undefined, true)).toBe("尚無可比較掃描");
+  });
+});
+
+describe("buildExportText", () => {
+  const base = { body: "The FAQ body.", altText: null, acceptanceCriteria: [] as string[], locale: "en" as const };
+
+  it("leaves a non-website template's export exactly as it was", () => {
+    expect(buildExportText({ ...base, templateKey: "review-response" })).toBe("The FAQ body.");
+  });
+
+  it("appends instructions, a numbered checklist and the not-applied disclaimer for the FAQ template", () => {
+    const text = buildExportText({ ...base, templateKey: "visibility-content", acceptanceCriteria: ["JSON-LD parses", "Q&A text matches the script"] });
+    expect(text).toContain("The FAQ body.");
+    expect(text).toContain('<script type="application/ld+json">');
+    expect(text).toContain("1. JSON-LD parses");
+    expect(text).toContain("2. Q&A text matches the script");
+    expect(text).toContain("does not publish anything");
+  });
+
+  it("does the same for website-basics, with its own instructions", () => {
+    const text = buildExportText({ ...base, templateKey: "website-basics", body: "Title: x", acceptanceCriteria: ["Title under 60 chars"] });
+    expect(text).toContain("website editor or CMS");
+    expect(text).toContain("1. Title under 60 chars");
+    expect(text).toContain("not a claim that your website has changed");
+  });
+
+  it("omits the checklist heading entirely when the agent recorded no acceptance_criteria", () => {
+    const text = buildExportText({ ...base, templateKey: "visibility-content" });
+    expect(text).not.toContain("Checklist");
+  });
+
+  it("still appends alt text before the instructions block", () => {
+    const text = buildExportText({ ...base, templateKey: "visibility-content", altText: "A plate of char siu." });
+    const altIndex = text.indexOf("Alt text");
+    const instructionsIndex = text.indexOf("How to apply this");
+    expect(altIndex).toBeGreaterThan(-1);
+    expect(instructionsIndex).toBeGreaterThan(altIndex);
+  });
+
+  it("localizes the instructions and disclaimer in zh-HK and zh-TW", () => {
+    expect(buildExportText({ ...base, templateKey: "website-basics", locale: "zh-HK" })).toContain("網站編輯器");
+    expect(buildExportText({ ...base, templateKey: "website-basics", locale: "zh-TW" })).toContain("網站編輯器");
   });
 });

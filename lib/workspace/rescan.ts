@@ -101,8 +101,11 @@ export function scanInputFromSnapshot(raw: unknown, parentJobId: string): ScanSt
     mapsUrl: optionalString(snapshot, "mapsUrl") ?? "",
     facebookUrl: optionalString(snapshot, "facebookUrl") ?? "",
     parentJobId,
-    // A rescan is a workspace action, not a funnel answer.
+    // A rescan is a workspace action, not a funnel answer, and the workspace
+    // is already claimed -- there is no "compatible action after claim" step
+    // left for an intent to drive.
     userRole: null,
+    intent: null,
   };
 }
 

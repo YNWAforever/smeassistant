@@ -57,6 +57,12 @@ export type OnboardingProps = {
   /** `WORKSPACE_CLAIM_VIA_OAUTH_ENABLED === "true"` on the server. */
   oauthEnabled: boolean
   /**
+   * The caller's own ownership-request status, or the form to file one (P2.4
+   * items 22 and 27). A node, so this component stays unaware of how status is
+   * derived; optional, so every existing call site is unaffected.
+   */
+  accessRequest?: React.ReactNode
+  /**
    * Market contact channels from `getMarketCtas`, resolved on the server.
    *
    * That helper reads `process.env[name]` through a computed key, which Next
@@ -125,7 +131,7 @@ async function readError(response: Response, fallback: string): Promise<string> 
  * `POST /api/workspaces/claim`. Steps 3–4 stay locked until the workspace is
  * attached and owned.
  */
-export function OnboardingPage({ locale, claim, plan, resumeStep = 1, saved = null, oauthEnabled, contacts = [], evidence, ownsWorkspace, gbpConnected }: OnboardingProps) {
+export function OnboardingPage({ locale, claim, plan, resumeStep = 1, saved = null, oauthEnabled, contacts = [], evidence, ownsWorkspace, gbpConnected, accessRequest }: OnboardingProps) {
   const router = useRouter()
   const isChinese = locale !== "en"
   const { market, label: marketName, timezone } = marketLabel(evidence?.region ?? null, isChinese)
@@ -198,13 +204,21 @@ export function OnboardingPage({ locale, claim, plan, resumeStep = 1, saved = nu
           approved_claims: approvedClaims.split("\n").map((line) => line.trim()).filter(Boolean),
         }),
       })
-      const data = (await response.json().catch(() => ({}))) as { slug?: string; workspaceSlug?: string; workspace?: { slug?: string }; error?: string }
+      const data = (await response.json().catch(() => ({}))) as { slug?: string; workspaceSlug?: string; workspace?: { slug?: string }; matchedActionId?: string | null; error?: string }
       if (!response.ok) {
         setSubmitState({ kind: "error", message: response.status === 403 ? (isChinese ? "只有已驗證的店主可以完成這個工作台。" : "Only the verified owner can complete this workspace.") : (isChinese ? "暫時未能完成設定，請稍後再試。" : "Could not complete the workspace right now. Try again shortly.") })
         return
       }
       const slug = data.slug ?? data.workspaceSlug ?? data.workspace?.slug
-      router.push(slug ? `/${locale}/owner/${slug}` : `/${locale}/owner/select-workspace`)
+      // Item 8: land the owner directly on the action their landing-page pick
+      // promised, when the scan actually produced one -- rather than the
+      // generic workspace home they would otherwise have to find it from.
+      const destination = slug
+        ? data.matchedActionId
+          ? `/${locale}/owner/${slug}/actions/${data.matchedActionId}`
+          : `/${locale}/owner/${slug}`
+        : `/${locale}/owner/select-workspace`
+      router.push(destination)
     } catch {
       setSubmitState({ kind: "error", message: isChinese ? "網絡連線失敗，請檢查後再試。" : "Network error. Check your connection and try again." })
     }
@@ -245,7 +259,11 @@ export function OnboardingPage({ locale, claim, plan, resumeStep = 1, saved = nu
          to do when the assignment lands. */
       <div className="connection-choice"><div><span><UserCheck /></span><div><h3>{isChinese ? "請 Fimmick 指派你的工作台" : "Ask Fimmick to assign your workspace"}</h3><p>{isChinese ? "擁有權必須經過驗證，不能自行聲明，我們亦不會憑電郵配對。Fimmick 團隊核實你與商戶的關係後，會把這份報告指派到你的工作台。指派完成後回到這一頁，餘下步驟就會解鎖。" : "Ownership is proven, never self-declared, and we do not match on email. The Fimmick team verifies your relationship with the business and assigns this report to your workspace. Once it is assigned, return to this page and the remaining steps unlock."}</p></div><CapabilityBadge value="Requires connection" /></div>
         {contacts.length > 0 && <div className="plan-actions">{contacts.map((contact) => <Button key={contact.channel} asChild variant="outline"><a href={contactHref(contact, evidence?.shareSlug)} target={contact.channel === "phone" ? undefined : "_blank"} rel={contact.channel === "phone" ? undefined : "noreferrer"}>{CONTACT_LABELS[contact.channel][isChinese ? "zh" : "en"]}</a></Button>)}</div>}
-        <p className="limitation-note"><TriangleAlert /> {contacts.length > 0 ? (isChinese ? "聯絡時請提供下列報告編號。" : "Quote this report reference when you get in touch.") : (isChinese ? "請聯絡你的 Fimmick 對接人並提供下列報告編號。" : "Contact your Fimmick representative and quote this report reference.")}{evidence ? ` · ${evidence.shareSlug}` : ""}</p></div>
+        <p className="limitation-note"><TriangleAlert /> {contacts.length > 0 ? (isChinese ? "聯絡時請提供下列報告編號。" : "Quote this report reference when you get in touch.") : (isChinese ? "請聯絡你的 Fimmick 對接人並提供下列報告編號。" : "Contact your Fimmick representative and quote this report reference.")}{evidence ? ` · ${evidence.shareSlug}` : ""}</p>
+        {/* P2.4 items 22 and 27: the status of the caller's own request, or the
+            form to file one. Before this, an owner without a Google-verifiable
+            listing could only be told to get in touch out of band. */}
+        {accessRequest}</div>
     )
   } else if (step === 3) {
     body = (

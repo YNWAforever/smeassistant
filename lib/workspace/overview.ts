@@ -14,7 +14,7 @@ import {
   type RunState,
 } from "@/lib/domain";
 import type { PriorityFactor } from "./priority";
-import type { TemplateKey } from "./templates";
+import { findTemplate, type TemplateDelivery, type TemplateKey } from "./templates";
 
 export { DISPLAY_PHASE_KEYS };
 export type { DisplayPhaseKey };
@@ -24,6 +24,14 @@ export interface ActionOverview {
   id: string;
   templateKey: TemplateKey;
   capability: Capability;
+  /**
+   * How this template is finished (P2.1 item 6 / P2.2 item 12). `checklist` and
+   * `system` templates have no agent, so a page that offers "Generate a draft"
+   * for them can only ever 409. `null` means the persisted row names a template
+   * this build no longer declares -- treated as "no agent" everywhere, which
+   * fails closed rather than offering a control that cannot succeed.
+   */
+  delivery: TemplateDelivery | null;
   location: { id: string | null; slug: string; name: LocalizedText };
   title: LocalizedText;
   summary: LocalizedText;
@@ -156,6 +164,7 @@ export function buildActionOverview(row: ActionRow, ctx: ActionOverviewContext):
     id: row.id,
     templateKey: row.template_key as TemplateKey,
     capability: row.capability,
+    delivery: findTemplate(row.template_key)?.delivery ?? null,
     location: ctx.location ?? { id: row.location_id, slug: "all", name: ALL_LOCATIONS },
     title: text(row.title, localized(row.template_key, row.template_key)),
     summary: text(row.summary, localized("", "")),

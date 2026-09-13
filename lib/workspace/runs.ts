@@ -4,6 +4,7 @@ import {
   type ActionRunRepository,
 } from "@/lib/repositories/artifacts";
 import { assetRepository } from "@/lib/repositories/assets";
+import { assetLocationScope, assetUsableByAction } from "@/lib/workspace/assets";
 import { inLocationScope, roleAtLeast, type Membership } from "@/lib/auth";
 import {
   AGENTS,
@@ -15,9 +16,10 @@ import {
   type AgentKey,
   type AgentOutput,
 } from "@/lib/agents";
-import { localized } from "@/lib/domain";
+import { localized, resolveText } from "@/lib/domain";
 import { llmComplete, type LLMUsage } from "@/lib/llm";
-import { sampledReviewsFromRawData } from "./evidence-inputs";
+import { deriveFaqQuestions } from "./faq-questions";
+import { filterSelectedReviews, resolveBrandProvidedInputs, sampledReviewsFromRawData } from "./evidence-inputs";
 import { buildActionOverview, localeOf } from "./overview";
 import { type SnapshotRecord } from "./snapshots";
 import { templateByKey, type TemplateKey } from "./templates";
@@ -149,9 +151,17 @@ export function snapshotEvidence(
         ? {
             evaluated: snapshot.websiteChecks.evaluated,
             passed: snapshot.websiteChecks.passed,
-            failed: snapshot.websiteChecks.results
-              .filter((r) => !r.pass)
-              .map((r) => r.key),
+            // P2.2 item 10: the failing KEYS alone cannot ground a draft. Each
+            // result already carries what was observed -- "57 chars", "2 h1",
+            // the host -- and that is what lets `website_basics` write
+            // current -> suggested and give the next scan something to
+            // re-check per item. Passing checks travel too: the agent rewrites
+            // the title whether or not a title currently exists.
+            results: snapshot.websiteChecks.results.map((r) =>
+              r.detail === undefined
+                ? { key: r.key, pass: r.pass }
+                : { key: r.key, pass: r.pass, observed: r.detail },
+            ),
           }
         : null,
     },
@@ -169,12 +179,19 @@ export async function socialAssetSatisfied(
   assets: Pick<ReturnType<typeof assetRepository>, "get">,
   workspaceId: string,
   provided: Record<string, unknown>,
+  scope: { actionLocationId: string | null; locationScope: readonly string[] | null },
 ): Promise<boolean> {
   if (provided.text_only === true) return true;
   const assetId =
     typeof provided.asset_id === "string" ? provided.asset_id : null;
   if (!assetId) return false;
-  return (await assets.get(workspaceId, assetId))?.rights_status === "approved";
+  const asset = await assets.get(workspaceId, assetId);
+  if (asset?.rights_status !== "approved") return false;
+  // Approved is not the whole rule: an id posted straight to the run route
+  // could name another location's photo, or one an out-of-scope manager
+  // cannot see. The picker applies the same predicate, but the picker is not
+  // the authority (guardrail 9).
+  return assetUsableByAction(asset, scope.actionLocationId, scope.locationScope);
 }
 
 /** Resolve persisted scope and evidence before any input, run, or model effect. */
@@ -247,17 +264,51 @@ export async function runAgentForAction(
   }
   const agentKey = resolveAgentKey(input.agentKey, template.agentKey),
     agent = AGENTS[agentKey];
-  const provided = { ...asRecord(row.provided_inputs), ...input.inputs };
   const [workspace, brand, locations] = await Promise.all([
     db.assistantWorkspace(row.workspace_id),
     db.assistantBrand(row.workspace_id),
     db.assistantLocations(row.workspace_id),
   ]);
+  // P2.3 item 11: the FAQ + JSON-LD template asks for three owner_fact_*
+  // inputs, but a blank "Owner fact N" box told neither the owner nor the
+  // model which customer question was actually unanswered. Derived from the
+  // same evidence that created the action (failing website checks, un-cited
+  // AEO queries); a brand fact already on file for one of these questions
+  // prefills it, so the owner is not asked to retype what they already saved.
+  const faqQuestions =
+    agentKey === "faq_jsonld" && snapshot
+      ? deriveFaqQuestions({
+          failingWebsiteChecks: (snapshot.websiteChecks?.results ?? []).filter((r) => !r.pass).map((r) => r.key),
+          aeoQueries: await db.assistantAeoQueries(row.workspace_id, snapshot.jobId),
+        })
+      : [];
+  const brandFacts = asRecord(brand?.facts);
+  const faqPrefill: Record<string, string> = {};
+  for (const question of faqQuestions) {
+    const stored = question.brandFactKey ? brandFacts[question.brandFactKey] : undefined;
+    if (typeof stored === "string" && stored.trim()) faqPrefill[question.key] = stored;
+  }
+  // Server-resolved brand facts (brand_voice, language, approved_claim -- P2.3
+  // item 16) and any FAQ prefill fill in first; the owner's own stored
+  // answers and anything submitted this run always take precedence over them.
+  const provided = {
+    ...resolveBrandProvidedInputs({ voice: brand?.voice ?? "warm", languages: asStrings(brand?.languages), approvedClaims: asStrings(brand?.approved_claims) }),
+    ...faqPrefill,
+    ...asRecord(row.provided_inputs),
+    ...input.inputs,
+  };
   const location = locations.find((l) => l.id === row.location_id) ?? null;
+  // P2.2 requires "selected-review replies": the owner picks which unanswered
+  // reviews to answer. `provided_inputs.selected_reviews` carries only KEYS --
+  // the review text is still rebuilt from stored evidence here, so the choice
+  // can narrow the sample but never widen or replace it.
   const sampledReviews =
     agentKey === "review_reply" && snapshot
-      ? sampledReviewsFromRawData(
-          await db.assistantReviewData(row.workspace_id, snapshot.jobId),
+      ? filterSelectedReviews(
+          sampledReviewsFromRawData(
+            await db.assistantReviewData(row.workspace_id, snapshot.jobId),
+          ),
+          provided.selected_reviews,
         )
       : undefined;
   const ctx: AgentContext = {
@@ -289,7 +340,13 @@ export async function runAgentForAction(
         latestVersion: null,
       },
     ),
-    evidence: snapshotEvidence(snapshot),
+    evidence: {
+      ...snapshotEvidence(snapshot),
+      // Read by the faq_jsonld agent so its task text can pair each
+      // owner_fact_N answer with the actual question it answers, instead of
+      // asking the model to invent one to fit an unlabelled fact.
+      ...(faqQuestions.length ? { faq_questions: faqQuestions.map((q) => ({ key: q.key, question: resolveText(q.question, locale) })) } : {}),
+    },
     providedInputs: provided,
     sampledReviews,
   };
@@ -327,6 +384,7 @@ export async function runAgentForAction(
       input.assets ?? assetRepository(),
       row.workspace_id,
       provided,
+      { actionLocationId: row.location_id, locationScope: assetLocationScope(input.membership) },
     ))
   ) {
     return persistence.finish({

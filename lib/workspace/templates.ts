@@ -268,6 +268,15 @@ export function templateByKey(key: TemplateKey): ActionTemplate {
   return template;
 }
 
+/**
+ * Non-throwing lookup for read paths that map persisted rows. A row written by
+ * an older derivation can name a template this build no longer declares, and a
+ * list page must still render it rather than throw.
+ */
+export function findTemplate(key: string): ActionTemplate | null {
+  return TEMPLATES.find((t) => t.key === key) ?? null;
+}
+
 export function isLedgerOnly(findingKey: string): boolean {
   return LEDGER_ONLY_KEYS.includes(findingKey);
 }

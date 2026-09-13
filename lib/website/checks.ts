@@ -73,7 +73,13 @@ function linkHref(html: string, rel: string): string | null {
   return null;
 }
 
-function jsonLdBlocks(html: string): string[] {
+/**
+ * The only JSON-LD the scan can see: a `<script type="application/ld+json">`
+ * element. Exported so the FAQ agent's acceptance check validates against the
+ * same detector that will re-check the page, rather than a second definition
+ * that could bless a block this function cannot find.
+ */
+export function jsonLdBlocks(html: string): string[] {
   const blocks: string[] = [];
   const re = /<script\b[^>]*type\s*=\s*["']?application\/ld\+json["']?[^>]*>([\s\S]*?)<\/script>/gi;
   let match: RegExpExecArray | null;
@@ -97,6 +103,14 @@ function stripTags(html: string): string {
     .replace(/\s+/g, " ");
 }
 
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
 /** Pure inspection of already-fetched HTML; exported so tests need no network. */
 export function inspectHtml(html: string, finalUrl: string): WebsiteCheckResult[] {
   const text = stripTags(html);
@@ -105,7 +119,9 @@ export function inspectHtml(html: string, finalUrl: string): WebsiteCheckResult[
     results.push(detail ? { key, pass, detail } : { key, pass });
 
   push("reachable", true);
-  push("https", /^https:/i.test(finalUrl), finalUrl.split("/")[0]);
+  // `finalUrl.split("/")[0]` was "https:", the scheme -- not the host it was
+  // meant to report. The host is what makes this detail usable as evidence.
+  push("https", /^https:/i.test(finalUrl), hostOf(finalUrl));
 
   const title = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() ?? "";
   push("title", title.length > 0, title ? `${title.length} chars` : "missing");

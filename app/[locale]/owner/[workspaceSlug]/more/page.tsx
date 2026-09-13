@@ -11,5 +11,5 @@ export async function generateMetadata(props: OwnerPageProps): Promise<Metadata>
 
 export default async function MoreRoute(props: OwnerPageProps) {
   const page = await loadOwnerPage(props);
-  return <MoreView locale={page.locale} workspaceSlug={page.workspaceSlug} locationCount={page.ctx.locations.length} />;
+  return <MoreView locale={page.locale} workspaceSlug={page.workspaceSlug} locationCount={page.ctx.locations.length} locationSlug={page.locationSlug} />;
 }
