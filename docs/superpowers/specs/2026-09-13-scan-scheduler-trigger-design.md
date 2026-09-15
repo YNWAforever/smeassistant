@@ -28,7 +28,7 @@ One new route, one new Vercel Cron entry, three concerns run in sequence — not
 
 ```mermaid
 flowchart TD
-    Cron["Vercel Cron: */5 * * * *"] --> Route["POST /api/cron/tick\n(authorizeCronRequest, CRON_SECRET)"]
+    Cron["Vercel Cron: */5 * * * *"] --> Route["POST /api/cron/dispatch\n(authorizeCronRequest, CRON_SECRET)"]
     Route --> A["1. Notify due schedules"]
     Route --> B["2. Reclaim abandoned scans"]
     Route --> C["3. Reconcile stuck completions"]
@@ -45,7 +45,7 @@ Each concern is wrapped in its own try/catch so a failure in one doesn't block t
 SELECT * FROM scan_schedules WHERE cadence = 'monthly' AND next_run_at <= now()
 ```
 
-For each due row, load its workspace. If `workspaces.tier = 'paid'` **and** `notify_monthly_digest = true`, insert a `workspace_notifications` row (`kind: 'schedule.due'`, bilingual title/body from `lib/copy.ts`, `href` to the location's rescan action) and attempt a best-effort email via the existing `createMailTransport()` (safely no-ops today; Resend isn't configured until DEC-07 is resolved). Regardless of tier or preference — even when the notification is skipped entirely because the workspace is lite-tier or has digests off — **always** advance `next_run_at` to the next anniversary via the existing `nextRunAfter()` helper, in the same transaction. Otherwise a lite-tier or digest-off workspace would be re-evaluated as "due" on every 5-minute tick for a month instead of just once; skipping the notification must never mean skipping the schedule's own advance.
+For each due row, load its workspace. If `workspaces.tier = 'paid'` **and** `notify_monthly_digest = true`, insert a `workspace_notifications` row (`kind: 'schedule.due'`, bilingual title/body, `href` to the location's rescan action). In-app only, matching the existing convention: no notification kind in this codebase sends real email yet (`scan.completed`/`scan.failed` don't either), and doing so is gated on an unresolved business decision (DEC-07) — adding a first email-send here would be new, undiscussed scope, not a continuation of an existing pattern. Regardless of tier or preference — even when the notification is skipped entirely because the workspace is lite-tier or has digests off — **always** advance `next_run_at` to the next anniversary via the existing `nextRunAfter()` helper, in the same transaction. Otherwise a lite-tier or digest-off workspace would be re-evaluated as "due" on every 5-minute tick for a month instead of just once; skipping the notification must never mean skipping the schedule's own advance.
 
 This never calls `enqueueRescan`. The owner still clicks "Rescan now" themselves, which still goes through the unchanged, unmodified consent flow. Automating the reminder is the whole of what "recurring" means here; automating the consent is explicitly not attempted.
 
@@ -72,7 +72,7 @@ The route imports and calls `reconcileWorkspaceScans(db)` directly from `lib/wor
 
 ## Config and the cron-registration test
 
-**New route:** `app/api/cron/tick/route.ts`, `maxDuration = 60` (matching the existing completion route).
+**New route:** `app/api/cron/dispatch/route.ts`, `maxDuration = 60` (matching the existing completion route).
 
 **Auth:** reuses `authorizeCronRequest` / `cronUnauthorizedResponse` from `lib/security/cron-auth.ts` as-is — already fully built, currently dead code (nothing calls it yet). `CRON_SECRET` is already a documented `.env.example` variable; it needs an actual value set at deploy time, which is a hosted-acceptance task, not a code task.
 
@@ -81,7 +81,7 @@ The route imports and calls `reconcileWorkspaceScans(db)` directly from `lib/wor
 ```json
 {
   "git": { "deploymentEnabled": { "codex/merchant-acceptance-completion": false, "codex/neon-migration": false } },
-  "crons": [{ "path": "/api/cron/tick", "schedule": "*/5 * * * *" }]
+  "crons": [{ "path": "/api/cron/dispatch", "schedule": "*/5 * * * *" }]
 }
 ```
 
@@ -93,7 +93,7 @@ Hosted deployment is still NOT CHOSEN, so this cannot be proven by watching a re
 
 What's verified locally:
 
-- **Route tests** for `app/api/cron/tick`: 401 without a valid `CRON_SECRET` bearer; given fixture due schedules, the notify/advance/tier-gating behavior above; given fixture stuck jobs, the reclaim trigger fires (mocked dependency, no real network call).
+- **Route tests** for `app/api/cron/dispatch`: 401 without a valid `CRON_SECRET` bearer; given fixture due schedules, the notify/advance/tier-gating behavior above; given fixture stuck jobs, the reclaim trigger fires (mocked dependency, no real network call).
 - **Integration test** (Docker Postgres, `test/integration/`): seed a due schedule and a stuck job, hit the route, assert the DB state actually changed (notification row, advanced `next_run_at`).
 - **Reused, not re-tested:** `reconcileWorkspaceScans`'s own internals already have coverage from the existing completion route's tests; this slice only confirms the cron calls it.
 
