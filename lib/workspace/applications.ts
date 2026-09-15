@@ -29,21 +29,34 @@ export interface ApplicationRecord {
  * claim about the world even though it is unverified, so it outranks the
  * export. Only an independent check outranks the owner.
  *
- * `headStartedAt` is the same gate `first_exported_at` already passes: evidence
- * dated after the head scan started cannot explain that scan's numbers, and
- * honouring it would be precisely the "causal claim from timing alone" the
- * plan forbids.
+ * `options.headStartedAtMs` is the same gate `first_exported_at` already
+ * passes: evidence dated after the head scan started cannot explain that
+ * scan's numbers, and honouring it would be precisely the "causal claim from
+ * timing alone" the plan forbids.
  */
+export interface StrongestBasisOptions {
+  /** Whether the action had an export whose `first_exported_at` precedes the head scan. */
+  exportedBeforeHead: boolean;
+  /**
+   * The head scan's START time, epoch milliseconds -- not its completion.
+   * Using completion time here would silently admit evidence recorded during
+   * the scan as if it preceded it; using seconds instead of milliseconds
+   * would silently admit evidence that in fact came after. Callers should
+   * pass the head job's `created_at` (see `lib/workspace/measurements.ts`).
+   */
+  headStartedAtMs: number;
+}
+
 export function strongestBasis(
   applications: readonly ApplicationRecord[],
-  exportedBeforeHead: boolean,
-  headStartedAt: number,
+  options: StrongestBasisOptions,
 ): AttributionBasis | null {
+  const { exportedBeforeHead, headStartedAtMs } = options;
   let owner = false;
   for (const row of applications) {
     if (row.retracted_at) continue;
     const at = Date.parse(row.asserted_at);
-    if (!Number.isFinite(at) || at >= headStartedAt) continue;
+    if (!Number.isFinite(at) || at >= headStartedAtMs) continue;
     if (row.source === "verified") return "verified";
     owner = true;
   }
