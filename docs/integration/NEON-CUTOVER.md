@@ -18,7 +18,7 @@ Prepared locally on 2026-09-07. **Hosted execution: NOT READY / NOT RUN.** The u
 | Acceptance identities | Authorized mail recipient, Google test account, HK/TW business identities NOT CHOSEN; keep private contact details in the approved restricted record |
 | Recovery deployment / maintenance control / observation window | NOT CHOSEN. Record exact compatible build ID, switch mechanism, write-drain procedure and responsible operator before accepting writes |
 
-Keep `vercel.json` branch deployment guards unchanged, including `codex/neon-migration: false`. No new cron. Preserve the old Supabase resources, legacy staff application and domain. Old upstream catalog/migration evidence is historical compatibility context, not instructions to migrate a shared Supabase database.
+Keep `vercel.json` branch deployment guards unchanged, including `codex/neon-migration: false`. No new cron -- except `app/api/cron/dispatch`, a `CRON_SECRET`-gated Vercel Cron authorized 2026-09-13 once the project confirmed Vercel Pro (`docs/superpowers/specs/2026-09-13-scan-scheduler-trigger-design.md`); it only notifies owners and reaps abandoned scan work, and provisions, migrates or promotes nothing this gate governs. Preserve the old Supabase resources, legacy staff application and domain. Old upstream catalog/migration evidence is historical compatibility context, not instructions to migrate a shared Supabase database.
 
 ## Configuration source and scope map
 

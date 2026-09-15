@@ -3,11 +3,13 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * The Vercel project is now on the Pro plan (confirmed 2026-09-13), and the
- * legacy Cloudflare scheduler this rule used to defer to no longer exists --
- * the Neon migration cut that relationship (docs/integration/NEON-RUNNER-COMPATIBILITY.md).
- * `app/api/cron/dispatch` is now the one retained, authorized scheduler
- * (design doc: docs/superpowers/specs/2026-09-13-scan-scheduler-trigger-design.md).
+ * The Vercel project is now on the Pro plan (confirmed 2026-09-13), and this
+ * app's own runtime resolver hard-blocks the `scheduled`/`cloudflare` modes
+ * that would reach the legacy Cloudflare scheduler -- nothing in this app
+ * defers to it anymore, whether or not it still runs elsewhere
+ * (docs/integration/NEON-RUNNER-COMPATIBILITY.md). `app/api/cron/dispatch` is
+ * now this app's own retained, authorized scheduler (design doc:
+ * docs/superpowers/specs/2026-09-13-scan-scheduler-trigger-design.md).
  * This test still guards the "one scheduler" principle: it fails loudly if a
  * second cron is ever added, rather than silently allowing an unbounded list.
  */

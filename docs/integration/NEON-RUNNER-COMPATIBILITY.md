@@ -10,6 +10,8 @@ No hosted Neon project, branch or application origin has been selected. No exter
 
 Both runtime resolver and direct dispatch refuse external execution. SCAN_WORKER_URL and SCAN_EXECUTION_RUNTIME cannot bypass this restriction; neither a URL nor a claimed environment label proves database parity. No secrets or credential-bearing URLs are logged. Enabling external modes requires a separately reviewed source change and authorization; this checkout does not edit or deploy external runner source.
 
+The `vercel` row's "Retained authorized scheduler only" is now concrete: `app/api/cron/dispatch`, a `CRON_SECRET`-gated internal Vercel Cron authorized 2026-09-13 once the project confirmed Vercel Pro (`docs/superpowers/specs/2026-09-13-scan-scheduler-trigger-design.md`). It calls this application's own routes on a schedule; it is not an external runner and does not touch the `scheduled`/`cloudflare` rows above, which remain hard-blocked exactly as this table already describes.
+
 ## Contract artifact for the external runner owner
 
 1. Instantiate the exported ScanExecutionStore contract using the exact producer Neon database identity. Preserve atomic thirty-minute scan claims with fewer than three attempts, terminal persistence, findings/result transaction, event lifetime and provider boundaries. Never read a same-looking job ID from Supabase.
