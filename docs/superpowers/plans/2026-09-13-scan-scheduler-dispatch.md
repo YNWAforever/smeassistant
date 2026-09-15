@@ -1090,8 +1090,9 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon cron dispatch: due sc
 
   it("finds a due schedule, notifies its paid opted-in workspace, and advances next_run_at", async () => {
     const ws = await workspace();
-    await member(ws);
+    const ownerId = await member(ws);
     const scheduleId = await schedule(ws, "2026-09-01T00:00:00Z");
+    const { rows: [{ slug }] } = await runtime.query("SELECT slug FROM workspaces WHERE id=$1", [ws]);
 
     const result = await notifyDueSchedules("2026-09-13T00:00:00Z");
 
@@ -1102,9 +1103,43 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon cron dispatch: due sc
     expect((await runtime.query("SELECT next_run_at FROM scan_schedules WHERE id=$1", [scheduleId])).rows[0].next_run_at.toISOString()).toBe(
       "2026-09-15T00:00:00.000Z",
     );
-    expect((await runtime.query("SELECT kind,workspace_id FROM workspace_notifications WHERE workspace_id=$1", [ws])).rows).toEqual([
-      { kind: "schedule.due", workspace_id: ws },
+    // Asserting user_id and href too (not just kind/workspace_id) proves the
+    // real acceptedMemberIds fan-out and the real workspaceHref lookup both
+    // ran against this row, not just that some row landed.
+    expect((await runtime.query("SELECT kind,workspace_id,user_id,href FROM workspace_notifications WHERE workspace_id=$1", [ws])).rows).toEqual([
+      { kind: "schedule.due", workspace_id: ws, user_id: ownerId, href: `/owner/${slug}` },
     ]);
+  });
+
+  it("locks a due schedule so a concurrent tick's dueSchedules call excludes it, per FOR UPDATE OF s SKIP LOCKED", async () => {
+    const ws = await workspace();
+    await member(ws);
+    await schedule(ws, "2026-09-01T00:00:00Z");
+    const nowIso = "2026-09-13T00:00:00Z";
+
+    // Two separate physical connections, simulating two overlapping cron
+    // ticks. clientA opens a real transaction and locks the due row via
+    // dueSchedules' own FOR UPDATE OF s -- without committing or rolling
+    // back, so the lock stays held exactly like it would mid-tick.
+    const clientA = await runtime.connect();
+    const clientB = await runtime.connect();
+    try {
+      await clientA.query("BEGIN");
+      const firstTick = await schedulerRepository(clientA).dueSchedules(nowIso);
+      expect(firstTick).toHaveLength(1);
+
+      // clientB's identical query, from its own transaction, must SKIP the
+      // row clientA is still holding -- not block, not error, not see it.
+      await clientB.query("BEGIN");
+      const secondTick = await schedulerRepository(clientB).dueSchedules(nowIso);
+      expect(secondTick).toEqual([]);
+
+      await clientB.query("ROLLBACK");
+      await clientA.query("ROLLBACK");
+    } finally {
+      clientA.release();
+      clientB.release();
+    }
   });
 
   it("advances a lite-tier workspace's schedule without creating a notification", async () => {
@@ -1127,7 +1162,6 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon cron dispatch: due sc
   });
 
   it("finds a fresh queued job and a stale mid-collection job, but not a fresh in-flight one", async () => {
-    const ws = await workspace();
     const queued = (await runtime.query("INSERT INTO audit_jobs(business_name,status) VALUES('Queued','queued') RETURNING id")).rows[0].id;
     const stale = (
       await runtime.query(
@@ -1140,7 +1174,6 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon cron dispatch: due sc
     await runtime.query(
       "INSERT INTO audit_jobs(business_name,status,attempt_count,last_attempt_at) VALUES('Exhausted','collecting',3,now()-interval '31 minutes')",
     );
-    void ws;
 
     const ids = await schedulerRepository(runtime).claimableJobIds(20);
 
@@ -1155,7 +1188,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon cron dispatch: due sc
 corepack pnpm vitest run --config vitest.integration.config.ts test/integration/neon-cron-dispatch.integration.test.ts
 ```
 
-Expected: PASS, all 4 cases. If a case fails, read the actual error before changing assertions -- in particular, double check the exact column list `INSERT INTO workspace_members` accepts by reading `neon/migrations/0002_business.sql`'s `workspace_members` definition; do not guess a column name.
+Expected: PASS, all 5 cases. If a case fails, read the actual error before changing assertions -- in particular, double check the exact column list `INSERT INTO workspace_members` accepts by reading `neon/migrations/0002_business.sql`'s `workspace_members` definition; do not guess a column name.
 
 - [ ] **Step 4: Run the full integration suite to confirm no cross-test interference**
 
