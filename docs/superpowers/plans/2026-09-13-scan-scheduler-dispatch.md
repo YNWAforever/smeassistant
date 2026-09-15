@@ -663,15 +663,19 @@ describe("POST /api/cron/dispatch", () => {
     expect(response.status).toBe(401);
   });
 
-  it("runs all three concerns and summarizes the result", async () => {
+  it("runs all three concerns and summarizes the result, with reconciled broken down by status", async () => {
     notifyDueSchedules.mockResolvedValue({ due: 2, notified: 1 });
     claimableJobIds.mockResolvedValue(["job-1", "job-2"]);
-    reconcileWorkspaceScans.mockResolvedValue([{ status: "completed" }]);
+    reconcileWorkspaceScans.mockResolvedValue([{ status: "completed" }, { status: "completed" }, { status: "retry" }]);
 
     const response = await POST(request());
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ notified: { due: 2, notified: 1 }, reclaimed: 2, reconciled: 1 });
+    expect(await response.json()).toEqual({
+      notified: { due: 2, notified: 1 },
+      reclaimCandidates: 2,
+      reconciled: { completed: 2, retry: 1 },
+    });
   });
 
   it("fires an unawaited, kept-alive scan/process call per claimable job", async () => {
@@ -692,7 +696,8 @@ describe("POST /api/cron/dispatch", () => {
     );
   });
 
-  it("skips dispatching reclaim requests when APP_ORIGIN is not configured, but still reports the count", async () => {
+  it("skips dispatching reclaim requests when APP_ORIGIN is not configured, but still reports the candidate count and logs why", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     vi.stubEnv("APP_ORIGIN", "");
     claimableJobIds.mockResolvedValue(["job-1"]);
 
@@ -700,7 +705,39 @@ describe("POST /api/cron/dispatch", () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(waitUntilMock).not.toHaveBeenCalled();
-    expect((await response.json()).reclaimed).toBe(1);
+    expect((await response.json()).reclaimCandidates).toBe(1);
+    expect(errorSpy).toHaveBeenCalledWith(
+      "[cron/dispatch] reclaim_abandoned_scans failed",
+      expect.objectContaining({ message: expect.stringContaining("APP_ORIGIN not configured") }),
+    );
+    errorSpy.mockRestore();
+  });
+
+  it("does not log an APP_ORIGIN warning when there was nothing to reclaim anyway", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubEnv("APP_ORIGIN", "");
+    claimableJobIds.mockResolvedValue([]);
+
+    await POST(request());
+
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
+  it("still notifies and reconciles when finding claimable jobs throws", async () => {
+    notifyDueSchedules.mockResolvedValue({ due: 1, notified: 1 });
+    claimableJobIds.mockRejectedValue(new Error("boom"));
+    reconcileWorkspaceScans.mockResolvedValue([{ status: "completed" }]);
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      notified: { due: 1, notified: 1 },
+      reclaimCandidates: 0,
+      reconciled: { completed: 1 },
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("still reconciles and reclaims when notifying due schedules throws", async () => {
@@ -712,8 +749,8 @@ describe("POST /api/cron/dispatch", () => {
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.reclaimed).toBe(1);
-    expect(body.reconciled).toBe(1);
+    expect(body.reclaimCandidates).toBe(1);
+    expect(body.reconciled).toEqual({ retry: 1 });
   });
 
   it("still notifies and reclaims when reconciling throws", async () => {
@@ -723,7 +760,7 @@ describe("POST /api/cron/dispatch", () => {
     const response = await POST(request());
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ notified: { due: 1, notified: 1 }, reclaimed: 0, reconciled: 0 });
+    expect(await response.json()).toEqual({ notified: { due: 1, notified: 1 }, reclaimCandidates: 0, reconciled: {} });
   });
 });
 ```
@@ -738,7 +775,7 @@ Expected: FAIL — `./route` does not exist yet.
 
 - [ ] **Step 3: Write the implementation**
 
-Create `app/api/cron/dispatch/route.ts`:
+Create `app/api/cron/dispatch/route.ts`. Three refinements versus the very first draft, added after code review of this exact route: `reclaimed` is renamed `reclaimCandidates` because it counts jobs *found* eligible, not jobs actually dispatched or completed -- with the field's old name, an operator reading a log line could reasonably misread it as "N scans successfully restarted." `reconciled` becomes a status breakdown instead of a flat count, since `reconcileWorkspaceScans` already returns a real per-item `status` (`completed | busy | skipped | retry`) that a flat length was discarding -- `{reconciled: 5}` used to read identically whether all 5 actually completed or all 5 came back `retry`, exactly the ambiguity an on-call engineer can't afford during an incident. And a missing/misconfigured `APP_ORIGIN` now logs once (only when there was actually something to reclaim), because previously that misconfiguration silently and permanently disabled reclaim with zero log signal -- on a route that exists specifically to catch scans nothing else will retry.
 
 ```ts
 import { NextResponse } from "next/server";
@@ -761,6 +798,14 @@ function logFailure(step: string, cause: unknown) {
   });
 }
 
+function summarizeByStatus(results: { status: string }[]): Record<string, number> {
+  const summary: Record<string, number> = {};
+  for (const result of results) {
+    summary[result.status] = (summary[result.status] ?? 0) + 1;
+  }
+  return summary;
+}
+
 /**
  * The one retained scheduler (design doc: docs/superpowers/specs/2026-09-13-scan-scheduler-trigger-design.md).
  * Every 5 minutes: notify due schedules (never auto-dispatch -- the owner
@@ -778,10 +823,10 @@ export async function POST(request: Request): Promise<Response> {
     logFailure("notify_due_schedules", cause);
   }
 
-  let reclaimed = 0;
+  let reclaimCandidates = 0;
   try {
     const jobIds = await schedulerRepository().claimableJobIds(RECLAIM_BATCH_LIMIT);
-    reclaimed = jobIds.length;
+    reclaimCandidates = jobIds.length;
     const origin = process.env.APP_ORIGIN;
     if (origin) {
       for (const jobId of jobIds) {
@@ -793,19 +838,21 @@ export async function POST(request: Request): Promise<Response> {
           }).catch((cause) => logFailure(`reclaim_dispatch:${jobId}`, cause)),
         );
       }
+    } else if (jobIds.length > 0) {
+      logFailure("reclaim_abandoned_scans", new Error("APP_ORIGIN not configured -- found eligible jobs but could not dispatch any"));
     }
   } catch (cause) {
     logFailure("reclaim_abandoned_scans", cause);
   }
 
-  let reconciled = 0;
+  let reconciled: Record<string, number> = {};
   try {
-    reconciled = (await reconcileWorkspaceScans(getPool())).length;
+    reconciled = summarizeByStatus(await reconcileWorkspaceScans(getPool()));
   } catch (cause) {
     logFailure("reconcile_stuck_completions", cause);
   }
 
-  return NextResponse.json({ notified, reclaimed, reconciled }, { status: 200, headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ notified, reclaimCandidates, reconciled }, { status: 200, headers: { "Cache-Control": "no-store" } });
 }
 ```
 
@@ -815,7 +862,7 @@ export async function POST(request: Request): Promise<Response> {
 corepack pnpm vitest run app/api/cron/dispatch/route.test.ts
 ```
 
-Expected: PASS, all 7 cases.
+Expected: PASS, all 9 cases.
 
 - [ ] **Step 5: Typecheck and lint**
 
