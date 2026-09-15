@@ -84,7 +84,16 @@ CREATE INDEX IF NOT EXISTS action_applications_action_idx
   ON public.action_applications (action_id, asserted_at DESC)
   WHERE retracted_at IS NULL;
 
+-- The four-statement block every table in this schema carries; see
+-- 0003_workflows.sql, which does exactly this for all 34 existing tables.
+-- The policy is scoped TO sme_app_runtime (a NOLOGIN role the app connects
+-- through), never to anon/authenticated -- granting to those is forbidden.
+-- All four must be here: 0003 is immutable and cannot be extended, and the
+-- verifier asserts a global policy count that a missing policy would fail.
+ALTER TABLE public.action_applications ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.action_applications FROM PUBLIC;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.action_applications TO sme_app_runtime;
+CREATE POLICY server_application ON public.action_applications FOR ALL TO sme_app_runtime USING (true) WITH CHECK (true);
 
 -- Nullable and deliberately NOT backfilled: every existing row predates this
 -- and there is no honest value to write. A backfill would invent a claim about
@@ -104,6 +113,8 @@ ALTER TABLE public.action_measurements
 Run: `corepack pnpm db:verify`
 
 Expected: exit 0. The verifier applies the whole corpus against disposable Docker Postgres three times over (so `IF NOT EXISTS` / `DROP CONSTRAINT IF EXISTS` re-runnability is proven), and checks that every FK states an explicit `ON DELETE`. If it reports a missing `ON DELETE` rule, one of the five FKs above lost its clause.
+
+`test/integration/fixtures/legacy-final-catalog.json` is the verifier's replay-comparison baseline and must be **extended** with the new table's rows in `tables`, `columns`, `constraints` and `indexes`, plus the new `action_measurements.attribution_basis` column and its check constraint. Extend it only — the diff must be insertions with zero deletions. Weakening or removing an existing baseline entry to make the verifier pass would disable the protection this fixture exists to provide.
 
 - [ ] **Step 3: Commit**
 
