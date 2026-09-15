@@ -58,4 +58,17 @@ describe("strongestBasis", () => {
       ),
     ).toBe("verified");
   });
+
+  it("falls through to owner_asserted when the only verified row is retracted", () => {
+    expect(
+      strongestBasis(
+        [
+          application({ id: "app-1", source: "verified", retracted_at: "2026-09-05T00:00:00Z" }),
+          application({ id: "app-2", source: "owner_asserted" }),
+        ],
+        false,
+        HEAD_STARTED,
+      ),
+    ).toBe("owner_asserted");
+  });
 });
