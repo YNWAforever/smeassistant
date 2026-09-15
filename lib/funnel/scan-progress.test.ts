@@ -280,7 +280,11 @@ describe("formatElapsed", () => {
 
 describe("reclaim window honesty", () => {
   it("keeps the minutes the stalled copy quotes in step with the claim SQL", () => {
-    const source = readFileSync(fileURLToPath(new URL("../scan/execution-store.ts", import.meta.url)), "utf8");
+    // The claim lease's interval literal used to live inline in
+    // execution-store.ts; it moved to claimable.ts (CLAIMABLE_JOB_CONDITION_SQL)
+    // so a reclaim query can share the exact same predicate without drifting
+    // from it. This guard follows the literal to wherever it actually lives.
+    const source = readFileSync(fileURLToPath(new URL("../scan/claimable.ts", import.meta.url)), "utf8");
     expect(source).toContain(`interval '${SCAN_RECLAIM_WINDOW_MINUTES} minutes'`);
   });
 });
