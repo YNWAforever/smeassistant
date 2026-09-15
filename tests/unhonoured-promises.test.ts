@@ -99,15 +99,25 @@ interface Promised {
 
 const PROMISES: readonly Promised[] = [
   {
-    // `scan_schedules` rows are written by the rescan route and read only for
-    // display. Nothing selects due rows, and CLAUDE.md forbids adding a second
-    // scheduler here ("Do not ... add a second scheduler", "No ... automatic
-    // re-scan promises"), so the copy is what has to match the code.
-    capability: "a dispatcher that runs due scan_schedules rows",
+    // The scan-scheduler-dispatch feature (docs/superpowers/plans/2026-09-13-scan-scheduler-dispatch.md)
+    // added a real cron dispatcher that reads due `scan_schedules` rows --
+    // but only to remind the owner; it deliberately never auto-starts a scan
+    // ("Cron notifies, owner clicks", chosen because the consent gate cannot
+    // be satisfied by a machine -- see that plan's design doc). Reading due
+    // rows to notify is not the promise this entry bans; automatically
+    // *starting* a rescan is. `enqueueRescan` is the one function that
+    // actually creates a new scan job from a schedule, so this capability
+    // lands only once something calls it from outside the existing,
+    // owner-triggered rescan route -- e.g. from the cron path itself.
+    capability: "a dispatcher that automatically starts a rescan from a due scan_schedules row",
     implemented: () => {
-      const vercelConfig = join(repoRoot, "vercel.json");
-      const crons = existsSync(vercelConfig) && "crons" in (JSON.parse(readFileSync(vercelConfig, "utf8")) as Record<string, unknown>);
-      return crons || existsSync(join(repoRoot, "app", "api", "cron")) || backendMatches(/next_run_at\s*<|selectNextRunnable|enqueueScheduledScans/);
+      const knownHumanTriggeredCallers = new Set([
+        join(repoRoot, "lib", "workspace", "rescan.ts"), // defines enqueueRescan
+        join(repoRoot, "app", "api", "workspaces", "[workspaceId]", "rescan", "route.ts"), // owner clicks "Rescan now"
+      ]);
+      return backendSources().some(
+        (file) => !knownHumanTriggeredCallers.has(file) && /enqueueRescan\(/.test(readFileSync(file, "utf8")),
+      );
     },
     banned: [
       "scheduled comparable rescans",
@@ -177,9 +187,18 @@ const PROMISES: readonly Promised[] = [
     // as an open question). Publishing them as though they already ran was not
     // a policy decision, which is why this is a code guard and not a choice
     // made on his behalf.
+    //
+    // `existsSync(app/api/cron)` used to stand in for "no cron infrastructure
+    // exists at all, so nothing could run a retention sweep" -- a fair proxy
+    // back when no cron existed for any reason. The scan-scheduler-dispatch
+    // feature (docs/superpowers/plans/2026-09-13-scan-scheduler-dispatch.md)
+    // made that proxy stale: `app/api/cron/dispatch` is real now, but exists
+    // only to notify owners of due rescans and reap abandoned scans -- it
+    // deletes nothing. The proxy was removed rather than widened, so this
+    // entry again tests only the thing it actually promises: an age-based
+    // DELETE or a real pg_cron schedule, neither of which this feature added.
     capability: "anything that deletes stored data once it reaches an age",
     implemented: () =>
-      existsSync(join(repoRoot, "app", "api", "cron")) ||
       migrationMatches(/pg_cron|cron\.schedule/i) ||
       backendMatches(/DELETE\s+FROM\s+[\s\S]{0,160}?(now\(\)\s*-\s*interval|older_than|retention_days)/i),
     // Only the periods are banned, not the question. "How long we keep it" /
