@@ -2,6 +2,10 @@
   "source": "d578739 original 33 migrations on owned Docker fixture; schema only, no business data",
   "tables": [
     {
+      "name": "action_applications",
+      "rls": true
+    },
+    {
       "name": "action_measurements",
       "rls": true
     },
@@ -140,6 +144,114 @@
   ],
   "columns": [
     {
+      "table_name": "action_applications",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "action_applications",
+      "column_name": "workspace_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "action_applications",
+      "column_name": "action_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "action_applications",
+      "column_name": "output_version_id",
+      "ordinal_position": 4,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_applications",
+      "column_name": "source",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "action_applications",
+      "column_name": "asserted_by",
+      "ordinal_position": 6,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_applications",
+      "column_name": "asserted_at",
+      "ordinal_position": 7,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "action_applications",
+      "column_name": "evidence",
+      "ordinal_position": 8,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_applications",
+      "column_name": "note",
+      "ordinal_position": 9,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_applications",
+      "column_name": "retracted_at",
+      "ordinal_position": 10,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_applications",
+      "column_name": "retracted_by",
+      "ordinal_position": 11,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "action_applications",
+      "column_name": "created_at",
+      "ordinal_position": 12,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
       "table_name": "action_measurements",
       "column_name": "id",
       "ordinal_position": 1,
@@ -246,6 +358,15 @@
       "udt_name": "timestamptz",
       "is_nullable": "NO",
       "column_default": "now()"
+    },
+    {
+      "table_name": "action_measurements",
+      "column_name": "attribution_basis",
+      "ordinal_position": 13,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
     },
     {
       "table_name": "action_runs",
@@ -3769,6 +3890,48 @@
   ],
   "constraints": [
     {
+      "table_name": "action_applications",
+      "name": "action_applications_action_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (action_id) REFERENCES actions(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "action_applications",
+      "name": "action_applications_asserted_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (asserted_by) REFERENCES app_users(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "action_applications",
+      "name": "action_applications_output_version_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (output_version_id) REFERENCES output_versions(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "action_applications",
+      "name": "action_applications_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "action_applications",
+      "name": "action_applications_retracted_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (retracted_by) REFERENCES app_users(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "action_applications",
+      "name": "action_applications_source_check",
+      "type": "c",
+      "definition": "CHECK ((source = ANY (ARRAY['owner_asserted'::text, 'verified'::text])))"
+    },
+    {
+      "table_name": "action_applications",
+      "name": "action_applications_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
       "table_name": "action_measurements",
       "name": "action_measurements_action_id_fkey",
       "type": "f",
@@ -3779,6 +3942,12 @@
       "name": "action_measurements_after_snapshot_id_fkey",
       "type": "f",
       "definition": "FOREIGN KEY (after_snapshot_id) REFERENCES scan_snapshots(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "action_measurements",
+      "name": "action_measurements_attribution_basis_check",
+      "type": "c",
+      "definition": "CHECK (((attribution_basis IS NULL) OR (attribution_basis = ANY (ARRAY['exported'::text, 'owner_asserted'::text, 'verified'::text]))))"
     },
     {
       "table_name": "action_measurements",
@@ -4676,6 +4845,16 @@
     }
   ],
   "indexes": [
+    {
+      "tablename": "action_applications",
+      "indexname": "action_applications_action_idx",
+      "indexdef": "CREATE INDEX action_applications_action_idx ON public.action_applications USING btree (action_id, asserted_at DESC) WHERE (retracted_at IS NULL)"
+    },
+    {
+      "tablename": "action_applications",
+      "indexname": "action_applications_pkey",
+      "indexdef": "CREATE UNIQUE INDEX action_applications_pkey ON public.action_applications USING btree (id)"
+    },
     {
       "tablename": "action_measurements",
       "indexname": "action_measurements_pkey",
