@@ -152,33 +152,33 @@ function application(overrides: Partial<ApplicationRecord> = {}): ApplicationRec
 
 describe("strongestBasis", () => {
   it("returns null when nothing applies", () => {
-    expect(strongestBasis([], false, HEAD_STARTED)).toBeNull();
+    expect(strongestBasis([], { exportedBeforeHead: false, headStartedAtMs: HEAD_STARTED })).toBeNull();
   });
 
   it("returns exported when only the export precedes the head scan", () => {
-    expect(strongestBasis([], true, HEAD_STARTED)).toBe("exported");
+    expect(strongestBasis([], { exportedBeforeHead: true, headStartedAtMs: HEAD_STARTED })).toBe("exported");
   });
 
   it("prefers owner_asserted over exported, because export is not publication", () => {
-    expect(strongestBasis([application()], true, HEAD_STARTED)).toBe("owner_asserted");
+    expect(strongestBasis([application()], { exportedBeforeHead: true, headStartedAtMs: HEAD_STARTED })).toBe("owner_asserted");
   });
 
   it("prefers verified over owner_asserted", () => {
     expect(
-      strongestBasis([application(), application({ id: "app-2", source: "verified" })], true, HEAD_STARTED),
+      strongestBasis([application(), application({ id: "app-2", source: "verified" })], { exportedBeforeHead: true, headStartedAtMs: HEAD_STARTED }),
     ).toBe("verified");
   });
 
   it("ignores a retracted application", () => {
-    expect(strongestBasis([application({ retracted_at: "2026-09-05T00:00:00Z" })], false, HEAD_STARTED)).toBeNull();
+    expect(strongestBasis([application({ retracted_at: "2026-09-05T00:00:00Z" })], { exportedBeforeHead: false, headStartedAtMs: HEAD_STARTED })).toBeNull();
   });
 
   it("ignores an application asserted after the head scan started", () => {
-    expect(strongestBasis([application({ asserted_at: "2026-09-11T00:00:00Z" })], false, HEAD_STARTED)).toBeNull();
+    expect(strongestBasis([application({ asserted_at: "2026-09-11T00:00:00Z" })], { exportedBeforeHead: false, headStartedAtMs: HEAD_STARTED })).toBeNull();
   });
 
   it("ignores an application with an unparseable timestamp", () => {
-    expect(strongestBasis([application({ asserted_at: "not-a-date" })], false, HEAD_STARTED)).toBeNull();
+    expect(strongestBasis([application({ asserted_at: "not-a-date" })], { exportedBeforeHead: false, headStartedAtMs: HEAD_STARTED })).toBeNull();
   });
 });
 ```
@@ -228,21 +228,26 @@ export interface ApplicationRecord {
  * honouring it would be precisely the "causal claim from timing alone" the
  * plan forbids.
  */
+export interface BasisOptions {
+  exportedBeforeHead: boolean;
+  /** The head scan's START, epoch milliseconds -- not its completion. */
+  headStartedAtMs: number;
+}
+
 export function strongestBasis(
   applications: readonly ApplicationRecord[],
-  exportedBeforeHead: boolean,
-  headStartedAt: number,
+  options: BasisOptions,
 ): AttributionBasis | null {
   let owner = false;
   for (const row of applications) {
     if (row.retracted_at) continue;
     const at = Date.parse(row.asserted_at);
-    if (!Number.isFinite(at) || at >= headStartedAt) continue;
+    if (!Number.isFinite(at) || at >= options.headStartedAtMs) continue;
     if (row.source === "verified") return "verified";
     owner = true;
   }
   if (owner) return "owner_asserted";
-  return exportedBeforeHead ? "exported" : null;
+  return options.exportedBeforeHead ? "exported" : null;
 }
 
 export interface RecordApplicationInput {
@@ -537,7 +542,12 @@ Add an `applications` port call after `exports`, and build the basis per action.
   const basisFor = new Map<string, AttributionBasis | null>(
     actions.map((action) => [
       action.id,
-      strongestBasis(byAction.get(action.id) ?? [], exportedBeforeHead.has(action.id), headStartedAt),
+      strongestBasis(byAction.get(action.id) ?? [], {
+        exportedBeforeHead: exportedBeforeHead.has(action.id),
+        // The head scan's START, not its completion: evidence dated after the
+        // scan began cannot explain that scan's numbers.
+        headStartedAtMs: headStartedAt,
+      }),
     ]),
   );
 
