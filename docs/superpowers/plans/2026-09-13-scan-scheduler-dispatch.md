@@ -1072,10 +1072,18 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon cron dispatch: due sc
   }
 
   async function schedule(workspaceId: string | null, nextRunAt: string) {
+    // created_by only has to satisfy scan_schedules_created_by_fkey, which
+    // references app_users(id) directly (neon/migrations/0002_business.sql:636)
+    // -- it is never a workspace_members row. Routing it through member()
+    // would insert a *second* role='owner' row for a workspace that already
+    // has one from an explicit member(ws) call in the tests below, violating
+    // the real unique index workspace_members_one_owner_idx
+    // (0002_business.sql:696). Always create its own standalone app_users row.
+    const creator = (await runtime.query("INSERT INTO app_users(email) VALUES($1) RETURNING id", [`${crypto.randomUUID()}@example.test`])).rows[0].id;
     return (
       await runtime.query(
         "INSERT INTO scan_schedules(place_id,input_snapshot,cadence,anniversary_day,next_run_at,created_by,workspace_id) VALUES($1,'{}'::jsonb,'monthly',15,$2,$3,$4) RETURNING id",
-        [`place-${crypto.randomUUID()}`, nextRunAt, workspaceId ? await member(workspaceId) : (await runtime.query("INSERT INTO app_users(email) VALUES($1) RETURNING id", [`${crypto.randomUUID()}@example.test`])).rows[0].id, workspaceId],
+        [`place-${crypto.randomUUID()}`, nextRunAt, creator, workspaceId],
       )
     ).rows[0].id;
   }
@@ -1088,8 +1096,11 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon cron dispatch: due sc
     const result = await notifyDueSchedules("2026-09-13T00:00:00Z");
 
     expect(result).toEqual({ due: 1, notified: 1 });
+    // nextRunAfter returns *this* month's anniversary when it's still ahead of
+    // now (lib/scheduler/next-run.ts) -- the 15th has not passed yet relative
+    // to "now" = the 13th, so this advances to 2026-09-15, not October.
     expect((await runtime.query("SELECT next_run_at FROM scan_schedules WHERE id=$1", [scheduleId])).rows[0].next_run_at.toISOString()).toBe(
-      "2026-10-15T00:00:00.000Z",
+      "2026-09-15T00:00:00.000Z",
     );
     expect((await runtime.query("SELECT kind,workspace_id FROM workspace_notifications WHERE workspace_id=$1", [ws])).rows).toEqual([
       { kind: "schedule.due", workspace_id: ws },
