@@ -37,7 +37,7 @@ flowchart TD
     C --> C1["reconcileWorkspaceScans(db) -- direct import,\nno HTTP hop, no secret needed"]
 ```
 
-Each concern is wrapped in its own try/catch so a failure in one doesn't block the others. The route returns 200 with a small summary (counts notified/reclaimed/reconciled) unless the request itself is unauthenticated.
+Each concern is wrapped in its own try/catch so a failure in one doesn't block the others. The route returns 200 with a small summary (`notified` counts, `reclaimCandidates` -- how many were found, not necessarily dispatched or completed -- and `reconciled` broken down by outcome status) unless the request itself is unauthenticated.
 
 ### 1. Notify due schedules
 
