@@ -4848,7 +4848,7 @@
     {
       "tablename": "action_applications",
       "indexname": "action_applications_action_idx",
-      "indexdef": "CREATE INDEX action_applications_action_idx ON public.action_applications USING btree (action_id, asserted_at DESC) WHERE (retracted_at IS NULL)"
+      "indexdef": "CREATE INDEX action_applications_action_idx ON public.action_applications USING btree (action_id, source, asserted_at DESC) WHERE (retracted_at IS NULL)"
     },
     {
       "tablename": "action_applications",

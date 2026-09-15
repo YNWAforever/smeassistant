@@ -23,15 +23,36 @@ CREATE TABLE IF NOT EXISTS public.action_applications (
   source            text NOT NULL CHECK (source IN ('owner_asserted', 'verified')),
   asserted_by       uuid REFERENCES public.app_users(id) ON DELETE SET NULL,
   asserted_at       timestamptz NOT NULL DEFAULT now(),
+  -- The future verifier's proof payload (photo, screenshot metadata, provider
+  -- callback body, ...). Unused today -- no writer sets it yet -- but the
+  -- verifier seam Task 2 defines (lib/workspace/applications.ts) is typed in
+  -- terms of this column, so it is carried now rather than added later.
   evidence          jsonb,
   note              text,
+  -- No CHECK tying retracted_at to retracted_by (e.g. requiring both null or
+  -- both set): retracted_by references app_users ON DELETE SET NULL, and a
+  -- deleted user's row is reached by an UPDATE that Postgres re-checks against
+  -- every CHECK constraint. Verified empirically against the disposable
+  -- Docker Postgres fixture: adding that CHECK and then deleting the
+  -- app_users row behind an already-retracted application fails the DELETE
+  -- with a 23514 check violation ("violates check constraint"), i.e. it would
+  -- make account deletion / erasure fail whenever the retracting user is
+  -- later removed. A retraction with a since-deleted actor (retracted_at set,
+  -- retracted_by null) must stay representable.
   retracted_at      timestamptz,
   retracted_by      uuid REFERENCES public.app_users(id) ON DELETE SET NULL,
   created_at        timestamptz NOT NULL DEFAULT now()
 );
 
+-- `source` leads the second key position (not `workspace_id`): action_id
+-- already determines the workspace (an action belongs to exactly one), so a
+-- leading workspace_id would be a defensive scope assertion, not a
+-- selectivity filter, and would sit ahead of the actually selective column.
+-- This composite serves Task 3's "newest non-retracted row of one source for
+-- one action" query (filters action_id + source + retracted_at, orders by
+-- asserted_at desc) without a recheck over all of the action's rows.
 CREATE INDEX IF NOT EXISTS action_applications_action_idx
-  ON public.action_applications (action_id, asserted_at DESC)
+  ON public.action_applications (action_id, source, asserted_at DESC)
   WHERE retracted_at IS NULL;
 
 ALTER TABLE public.action_applications ENABLE ROW LEVEL SECURITY;
