@@ -21,16 +21,52 @@ export interface ApplicationRepository {
   latestOwnerAssertion(workspaceId: string, actionId: string): Promise<(ApplicationRecord & { output_version_id: string | null }) | null>;
   /** True when the version exists, belongs to this action, and is approved. */
   approvedVersion(workspaceId: string, actionId: string, versionId: string): Promise<boolean>;
+  /**
+   * The verifier path: records an observation about the world. Deliberately
+   * has no closed-action guard (unlike assertApplied) — an owner dismissing
+   * an action does not make what a verifier observed untrue, so a closed
+   * action can still receive a 'verified' row. Only 'owner_asserted' rows
+   * are a workflow act gated on the action being open; see assertApplied.
+   */
   insert(row: ApplicationInsert): Promise<{ id: string } | null>;
-  /** Insert + complete the action in one transaction. Returns null if the action is closed. */
+  /**
+   * Insert + complete the action in one transaction. Returns null if the
+   * action is closed, or if a live (non-retracted) owner_asserted row
+   * already exists for the same output_version_id (including the null/
+   * checklist case) — that is a duplicate submit, not a new claim.
+   */
   assertApplied(row: ApplicationInsert, nowIso: string): Promise<{ id: string } | null>;
-  /** Stamp the newest non-retracted assertion and reopen the action. Returns null if there is none. */
-  retract(workspaceId: string, actionId: string, actorId: string, nowIso: string): Promise<{ id: string } | null>;
+  /**
+   * Stamps EVERY live (non-retracted) owner_asserted row for this action —
+   * not just the newest — and reopens the action. "I did not apply this"
+   * must leave no standing owner claim; leaving an older live row would let
+   * strongestBasis keep returning 'owner_asserted' after the owner withdrew
+   * it, which is the exact overclaiming this table exists to prevent.
+   * 'verified' rows are untouched: an owner withdrawing their own claim does
+   * not invalidate an independent check. Returns the count of rows stamped
+   * (0 when there was nothing live to retract).
+   */
+  retract(workspaceId: string, actionId: string, actorId: string, nowIso: string): Promise<{ retracted: number }>;
 }
 
 const CLOSED_STATES = ['dismissed', 'cancelled', 'expired'];
 
-export function applicationRepository(client?: Pick<Pool, 'query'>): ApplicationRepository {
+/**
+ * Resolves the connection the transactional methods should use. Throws
+ * rather than silently falling back to the ambient pool when a query-only
+ * client was injected: a silent fallback would mean an injected test/scoped
+ * client is ignored and a real write lands on the ambient database, which is
+ * far worse than a loud, immediate failure.
+ */
+function transactor(client?: Pick<Pool, 'query'> & Partial<Pick<Pool, 'connect'>>): Pick<Pool, 'connect'> {
+  if (!client) return getPool();
+  if (typeof client.connect !== 'function') {
+    throw new Error('applicationRepository: a query-only client cannot run assertApplied/retract; inject a Pool');
+  }
+  return client as Pick<Pool, 'connect'>;
+}
+
+export function applicationRepository(client?: Pick<Pool, 'query'> & Partial<Pick<Pool, 'connect'>>): ApplicationRepository {
   const db = () => client ?? getPool();
   return {
     async forActions(workspaceId, actionIds) {
@@ -76,6 +112,12 @@ export function applicationRepository(client?: Pick<Pool, 'query'>): Application
           `INSERT INTO action_applications(workspace_id, action_id, output_version_id, source, asserted_by, note, evidence)
            SELECT $1, $2, $3, $4, $5, $6, $7
            WHERE EXISTS(SELECT 1 FROM actions WHERE id = $2 AND workspace_id = $1 AND action_state <> ALL($8::text[]))
+           AND NOT EXISTS (
+             SELECT 1 FROM action_applications
+             WHERE workspace_id = $1 AND action_id = $2 AND source = 'owner_asserted'
+               AND retracted_at IS NULL
+               AND output_version_id IS NOT DISTINCT FROM $3
+           )
            RETURNING id`,
           [row.workspace_id, row.action_id, row.output_version_id, row.source, row.asserted_by, row.note, row.evidence, CLOSED_STATES],
         );
@@ -86,19 +128,17 @@ export function applicationRepository(client?: Pick<Pool, 'query'>): Application
           [row.workspace_id, row.action_id, nowIso],
         );
         return inserted.rows[0];
-      });
+      }, transactor(client));
     },
     async retract(workspaceId, actionId, actorId, nowIso) {
       return withTransaction(async (conn) => {
-        const stamped = await conn.query<{ id: string }>(
+        const stamped = await conn.query(
           `UPDATE action_applications SET retracted_at = $4, retracted_by = $3
-           WHERE id = (SELECT id FROM action_applications
-             WHERE workspace_id = $1 AND action_id = $2 AND source = 'owner_asserted' AND retracted_at IS NULL
-             ORDER BY asserted_at DESC, id DESC LIMIT 1)
+           WHERE workspace_id = $1 AND action_id = $2 AND source = 'owner_asserted' AND retracted_at IS NULL
            RETURNING id`,
           [workspaceId, actionId, actorId, nowIso],
         );
-        if (!stamped.rows[0]) return null;
+        if (!stamped.rows.length) return { retracted: 0 };
         // in_progress, not the action's prior state: it is valid in the CHECK,
         // it is honest (engaged, not done), and re-deriving the original state
         // would reimplement the derivation rules in a second place.
@@ -107,8 +147,8 @@ export function applicationRepository(client?: Pick<Pool, 'query'>): Application
            WHERE id = $2 AND workspace_id = $1`,
           [workspaceId, actionId, nowIso],
         );
-        return stamped.rows[0];
-      });
+        return { retracted: stamped.rows.length };
+      }, transactor(client));
     },
   };
 }
