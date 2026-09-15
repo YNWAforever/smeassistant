@@ -100,6 +100,11 @@ describe("recordApplication", () => {
         captured = row;
         return { id: "inserted-1" };
       },
+      forActions: async () => [],
+      latestOwnerAssertion: async () => null,
+      approvedVersion: async () => false,
+      assertApplied: async () => null,
+      retract: async () => null,
     };
     return { repo, getCaptured: () => captured };
   }
