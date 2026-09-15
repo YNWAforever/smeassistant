@@ -313,6 +313,7 @@ Every query is scoped by `workspace_id` as well as by id, matching the defensive
 import 'server-only';
 import type { Pool } from 'pg';
 import { getPool } from '../db/client';
+import { withTransaction } from '../db/transaction';
 import type { ApplicationRecord, ApplicationSource } from '../workspace/applications';
 
 export interface ApplicationInsert {
@@ -380,9 +381,13 @@ export function applicationRepository(client?: Pick<Pool, 'query'>): Application
       )).rows[0] ?? null;
     },
     async assertApplied(row, nowIso) {
-      const conn = db();
-      await conn.query('BEGIN');
-      try {
+      // withTransaction checks out ONE client via pool.connect() and runs
+      // BEGIN/COMMIT/ROLLBACK on it. Issuing BEGIN on db() directly would not
+      // work: db() defaults to the Pool, and each pool.query() can be served by
+      // a different connection, so the INSERT and the UPDATE below could land
+      // outside any transaction and commit independently -- destroying exactly
+      // the atomicity this method exists to provide.
+      return withTransaction(async (conn) => {
         const inserted = await conn.query<{ id: string }>(
           `INSERT INTO action_applications(workspace_id, action_id, output_version_id, source, asserted_by, note, evidence)
            SELECT $1, $2, $3, $4, $5, $6, $7
@@ -390,20 +395,17 @@ export function applicationRepository(client?: Pick<Pool, 'query'>): Application
            RETURNING id`,
           [row.workspace_id, row.action_id, row.output_version_id, row.source, row.asserted_by, row.note, row.evidence, CLOSED_STATES],
         );
-        if (!inserted.rows[0]) { await conn.query('ROLLBACK'); return null; }
+        if (!inserted.rows[0]) return null;
         await conn.query(
           `UPDATE actions SET action_state = 'completed', completed_at = $3, updated_at = $3
            WHERE id = $2 AND workspace_id = $1`,
           [row.workspace_id, row.action_id, nowIso],
         );
-        await conn.query('COMMIT');
         return inserted.rows[0];
-      } catch (error) { await conn.query('ROLLBACK'); throw error; }
+      });
     },
     async retract(workspaceId, actionId, actorId, nowIso) {
-      const conn = db();
-      await conn.query('BEGIN');
-      try {
+      return withTransaction(async (conn) => {
         const stamped = await conn.query<{ id: string }>(
           `UPDATE action_applications SET retracted_at = $4, retracted_by = $3
            WHERE id = (SELECT id FROM action_applications
@@ -412,7 +414,7 @@ export function applicationRepository(client?: Pick<Pool, 'query'>): Application
            RETURNING id`,
           [workspaceId, actionId, actorId, nowIso],
         );
-        if (!stamped.rows[0]) { await conn.query('ROLLBACK'); return null; }
+        if (!stamped.rows[0]) return null;
         // in_progress, not the action's prior state: it is valid in the CHECK,
         // it is honest (engaged, not done), and re-deriving the original state
         // would reimplement the derivation rules in a second place.
@@ -421,9 +423,8 @@ export function applicationRepository(client?: Pick<Pool, 'query'>): Application
            WHERE id = $2 AND workspace_id = $1`,
           [workspaceId, actionId, nowIso],
         );
-        await conn.query('COMMIT');
         return stamped.rows[0];
-      } catch (error) { await conn.query('ROLLBACK'); throw error; }
+      });
     },
   };
 }
@@ -1104,7 +1105,9 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("action applications", () =
 
 Run: `corepack pnpm exec vitest run --config vitest.integration.config.ts test/integration/neon-action-applications.integration.test.ts`
 
-Expected: PASS, 5 tests. (`NEON_INTEGRATION=1` is set by `vitest.integration.config.ts`; Docker must be running.)
+Expected: PASS, 5 tests.
+
+NOTE: `assertApplied` and `retract` go through `withTransaction`, which needs `pool.connect()`. They must be exercised through a real `Pool`, not a `{ query }`-only stub — a stub cannot `connect()`, so a test that injects one would not be testing the transaction at all. (`NEON_INTEGRATION=1` is set by `vitest.integration.config.ts`; Docker must be running.)
 
 - [ ] **Step 3: Commit**
 
