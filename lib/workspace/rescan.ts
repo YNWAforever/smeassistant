@@ -15,9 +15,13 @@ import { recordNeonEvent } from "@/lib/workspace/audit";
  * `audit_jobs` row from the location's last finished scan, attributed to the
  * workspace and location, with `parent_job_id` pointing at that scan so
  * scan-engine's diff step compares the pair. The client then POSTs
- * `/api/scan/process { jobId }` exactly as the public funnel does — no cron
- * in this repo; the monthly cadence is a `scan_schedules` row the legacy
- * scheduler dispatches.
+ * `/api/scan/process { jobId }` exactly as the public funnel does. This is
+ * still the only path that ever calls this function: `app/api/cron/dispatch`
+ * (docs/superpowers/specs/2026-09-13-scan-scheduler-trigger-design.md) reads
+ * the monthly `scan_schedules` cadence and reminds the owner it's due, but
+ * deliberately never calls `enqueueRescan` itself -- the consent gate this
+ * route satisfies cannot be satisfied by a machine, so the owner still has to
+ * click the button.
  *
  * The rebuilt input mirrors upstream's lib/scheduler/enqueue.ts: only the v2
  * `input_snapshot` envelope carries a confirmed identity, so a v1 snapshot is

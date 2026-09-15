@@ -28,3 +28,23 @@ it("uses explicit notification repository with shared recipient dedupe", async (
     ),
   ).toBe(false);
 });
+
+it("accepts the schedule.due kind", async () => {
+  const insert = vi.fn().mockResolvedValue(1);
+  const repo = {
+    acceptedMemberIds: vi.fn().mockResolvedValue(["user-1"]),
+    insert,
+    hasSince: vi.fn(),
+    workspaceSlug: vi.fn(),
+  };
+  const outcome = await notifications.notifyWithRepository(repo, {
+    workspaceId: "ws-1",
+    kind: "schedule.due",
+    title: { en: "Ready", "zh-HK": "已就緒", "zh-TW": "已就緒" },
+  });
+  expect(outcome.error).toBeNull();
+  expect(insert).toHaveBeenCalledWith(
+    [expect.objectContaining({ kind: "schedule.due", workspace_id: "ws-1", user_id: "user-1" })],
+    false,
+  );
+});

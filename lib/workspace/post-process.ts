@@ -38,7 +38,7 @@ interface PostProcessJob {
   business_name: string | null;
 }
 
-async function workspaceHref(db: PoolClient, workspaceId: string, locationId: string | null): Promise<string | null> {
+export async function workspaceHref(db: PoolClient, workspaceId: string, locationId: string | null): Promise<string | null> {
   try {
     const data = (await db.query<{slug:string|null}>("SELECT slug FROM workspaces WHERE id=$1",[workspaceId])).rows[0];
     if (!data?.slug) return null;

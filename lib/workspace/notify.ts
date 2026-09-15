@@ -17,6 +17,7 @@ export const NOTIFICATION_KINDS = [
   "version.approved",
   "delivery.exported",
   "usage.allowance_80",
+  "schedule.due",
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
