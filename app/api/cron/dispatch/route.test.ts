@@ -49,15 +49,19 @@ describe("POST /api/cron/dispatch", () => {
     expect(response.status).toBe(401);
   });
 
-  it("runs all three concerns and summarizes the result", async () => {
+  it("runs all three concerns and summarizes the result, with reconciled broken down by status", async () => {
     notifyDueSchedules.mockResolvedValue({ due: 2, notified: 1 });
     claimableJobIds.mockResolvedValue(["job-1", "job-2"]);
-    reconcileWorkspaceScans.mockResolvedValue([{ status: "completed" }]);
+    reconcileWorkspaceScans.mockResolvedValue([{ status: "completed" }, { status: "completed" }, { status: "retry" }]);
 
     const response = await POST(request());
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ notified: { due: 2, notified: 1 }, reclaimed: 2, reconciled: 1 });
+    expect(await response.json()).toEqual({
+      notified: { due: 2, notified: 1 },
+      reclaimCandidates: 2,
+      reconciled: { completed: 2, retry: 1 },
+    });
   });
 
   it("fires an unawaited, kept-alive scan/process call per claimable job", async () => {
@@ -78,7 +82,8 @@ describe("POST /api/cron/dispatch", () => {
     );
   });
 
-  it("skips dispatching reclaim requests when APP_ORIGIN is not configured, but still reports the count", async () => {
+  it("skips dispatching reclaim requests when APP_ORIGIN is not configured, but still reports the candidate count and logs why", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     vi.stubEnv("APP_ORIGIN", "");
     claimableJobIds.mockResolvedValue(["job-1"]);
 
@@ -86,7 +91,39 @@ describe("POST /api/cron/dispatch", () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(waitUntilMock).not.toHaveBeenCalled();
-    expect((await response.json()).reclaimed).toBe(1);
+    expect((await response.json()).reclaimCandidates).toBe(1);
+    expect(errorSpy).toHaveBeenCalledWith(
+      "[cron/dispatch] reclaim_abandoned_scans failed",
+      expect.objectContaining({ message: expect.stringContaining("APP_ORIGIN not configured") }),
+    );
+    errorSpy.mockRestore();
+  });
+
+  it("does not log an APP_ORIGIN warning when there was nothing to reclaim anyway", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubEnv("APP_ORIGIN", "");
+    claimableJobIds.mockResolvedValue([]);
+
+    await POST(request());
+
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
+  it("still notifies and reconciles when finding claimable jobs throws", async () => {
+    notifyDueSchedules.mockResolvedValue({ due: 1, notified: 1 });
+    claimableJobIds.mockRejectedValue(new Error("boom"));
+    reconcileWorkspaceScans.mockResolvedValue([{ status: "completed" }]);
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      notified: { due: 1, notified: 1 },
+      reclaimCandidates: 0,
+      reconciled: { completed: 1 },
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("still reconciles and reclaims when notifying due schedules throws", async () => {
@@ -98,8 +135,8 @@ describe("POST /api/cron/dispatch", () => {
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.reclaimed).toBe(1);
-    expect(body.reconciled).toBe(1);
+    expect(body.reclaimCandidates).toBe(1);
+    expect(body.reconciled).toEqual({ retry: 1 });
   });
 
   it("still notifies and reclaims when reconciling throws", async () => {
@@ -109,6 +146,6 @@ describe("POST /api/cron/dispatch", () => {
     const response = await POST(request());
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ notified: { due: 1, notified: 1 }, reclaimed: 0, reconciled: 0 });
+    expect(await response.json()).toEqual({ notified: { due: 1, notified: 1 }, reclaimCandidates: 0, reconciled: {} });
   });
 });

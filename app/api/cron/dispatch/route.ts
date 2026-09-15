@@ -18,6 +18,14 @@ function logFailure(step: string, cause: unknown) {
   });
 }
 
+function summarizeByStatus(results: { status: string }[]): Record<string, number> {
+  const summary: Record<string, number> = {};
+  for (const result of results) {
+    summary[result.status] = (summary[result.status] ?? 0) + 1;
+  }
+  return summary;
+}
+
 /**
  * The one retained scheduler (design doc: docs/superpowers/specs/2026-09-13-scan-scheduler-trigger-design.md).
  * Every 5 minutes: notify due schedules (never auto-dispatch -- the owner
@@ -35,10 +43,10 @@ export async function POST(request: Request): Promise<Response> {
     logFailure("notify_due_schedules", cause);
   }
 
-  let reclaimed = 0;
+  let reclaimCandidates = 0;
   try {
     const jobIds = await schedulerRepository().claimableJobIds(RECLAIM_BATCH_LIMIT);
-    reclaimed = jobIds.length;
+    reclaimCandidates = jobIds.length;
     const origin = process.env.APP_ORIGIN;
     if (origin) {
       for (const jobId of jobIds) {
@@ -50,17 +58,19 @@ export async function POST(request: Request): Promise<Response> {
           }).catch((cause) => logFailure(`reclaim_dispatch:${jobId}`, cause)),
         );
       }
+    } else if (jobIds.length > 0) {
+      logFailure("reclaim_abandoned_scans", new Error("APP_ORIGIN not configured -- found eligible jobs but could not dispatch any"));
     }
   } catch (cause) {
     logFailure("reclaim_abandoned_scans", cause);
   }
 
-  let reconciled = 0;
+  let reconciled: Record<string, number> = {};
   try {
-    reconciled = (await reconcileWorkspaceScans(getPool())).length;
+    reconciled = summarizeByStatus(await reconcileWorkspaceScans(getPool()));
   } catch (cause) {
     logFailure("reconcile_stuck_completions", cause);
   }
 
-  return NextResponse.json({ notified, reclaimed, reconciled }, { status: 200, headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ notified, reclaimCandidates, reconciled }, { status: 200, headers: { "Cache-Control": "no-store" } });
 }
