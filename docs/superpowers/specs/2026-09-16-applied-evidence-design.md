@@ -122,7 +122,7 @@ Then one transaction:
 
 `in_progress` is chosen over re-deriving the action's prior state: it is valid in the existing CHECK constraint, it is honest (the owner has engaged with this and it is not done), and re-deriving would mean reimplementing the derivation rules in a second place where they could drift from the first.
 
-**Rate limit:** scope `applied`, keyed on `workspaceId`, fail-closed like the other workspace mutations. These are cheap authenticated writes by an already-authorized member, so the limit exists to bound abuse rather than to ration a feature: 60/hour/workspace is the starting figure, adjustable in the implementation plan, and deliberately far above any legitimate rate of marking work applied.
+**Rate limit: reuse the existing `action_mutation` scope** (120/hour, keyed per session user plus the source-IP HMAC). Planning revised this from a new `applied` scope: `authorizeActionMutation` in `app/api/actions/_shared/mutation.ts` already performs the whole front half of this route — UUID check, action-scope load, `minRole: "manager"` with the action's location, then the limiter, fail-closed — and `action_mutation` is described in `lib/security/rate-limit.ts` as a runaway-write guard for exactly this class of cheap authenticated write. A new scope would duplicate that with no behavioural difference.
 
 **The verifier seam** is a typed function, not a route:
 
