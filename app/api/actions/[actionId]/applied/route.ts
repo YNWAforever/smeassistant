@@ -49,8 +49,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ actionI
   // guard (below): a pre-check here would just be a second implementation of
   // the same rule that a hand-kept-in-sync copy could drift from, paid for
   // on every assertion to save a round-trip on the rare double-click.
-  // latestOwnerAssertion stays on the repository for Task 8's "you marked
-  // this applied on {date}" display -- it is just not called from this route.
   let outcome: Awaited<ReturnType<typeof repo.assertApplied>>;
   try {
     outcome = await repo.assertApplied(

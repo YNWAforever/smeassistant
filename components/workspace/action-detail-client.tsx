@@ -325,7 +325,13 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   async function markApplied() {
     if (!canEdit || applied) return
     setBusy("applied")
-    const latestApproved = action.latestVersion?.approvalState === "approved" ? action.latestVersion.id : null
+    // `versions` is ordered newest-first (v.version_no DESC), so the first
+    // approved entry is the latest approved version -- not necessarily
+    // action.latestVersion, which is whatever version is newest overall and
+    // may be a later unapproved draft. Asserting about that draft would send
+    // a version nobody approved, which the route already refuses (409
+    // version_not_applicable); this picks the one that is actually eligible.
+    const latestApproved = versions.find((v) => v.approval_state === "approved")?.id ?? null
     const result = await markAppliedRequest(action.id, latestApproved ? { output_version_id: latestApproved } : {})
     setBusy(null)
     if (!result.ok) return failureToast(result)

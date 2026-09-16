@@ -76,6 +76,27 @@ function detail(templateKey: TemplateKey, measurements: ActionDetail["measuremen
   return { action: overview(templateKey), versions: [], runs: [], measurements, scanInputs: [], businessContext: [], faqQuestions: [] };
 }
 
+function versionRow(overrides: Partial<ActionDetail["versions"][number]> & { id: string; version_no: number; approval_state: ActionDetail["versions"][number]["approval_state"] }): ActionDetail["versions"][number] {
+  return {
+    action_id: "act-1",
+    body: "draft body",
+    alt_text: null,
+    author_type: "agent",
+    author_user_id: null,
+    delivery_state: "not_requested",
+    approved_at: null,
+    reviewer_comment: null,
+    created_at: "2026-09-01T10:00:00Z",
+    origin: "agent_run",
+    agentKey: null,
+    checked: false,
+    guardrails: [],
+    agentNotes: [],
+    acceptanceCriteria: [],
+    ...overrides,
+  };
+}
+
 function render(templateKey: TemplateKey, measurements: ActionDetail["measurements"] = []) {
   const root = document.createElement("div");
   root.innerHTML = renderToStaticMarkup(
@@ -172,6 +193,7 @@ describe("the owner's applied assertion", () => {
   it("names the approved version a drafted action published", () => {
     mount(DRAFTED_KEY, (value) => {
       value.action.latestVersion = { id: "ver-1", versionNo: 2, approvalState: "approved", deliveryState: "exported" };
+      value.versions = [versionRow({ id: "ver-1", version_no: 2, approval_state: "approved", delivery_state: "exported" })];
     });
     fireEvent.click(markButton());
     expect(clientMocks.markApplied).toHaveBeenCalledWith("act-1", { output_version_id: "ver-1" });
@@ -183,9 +205,26 @@ describe("the owner's applied assertion", () => {
     // cannot say which approved draft it was.
     mount(DRAFTED_KEY, (value) => {
       value.action.latestVersion = { id: "ver-1", versionNo: 1, approvalState: "draft", deliveryState: "not_requested" };
+      value.versions = [versionRow({ id: "ver-1", version_no: 1, approval_state: "draft" })];
     });
     fireEvent.click(markButton());
     expect(clientMocks.markApplied).toHaveBeenCalledWith("act-1", {});
+  });
+
+  it("names the latest approved version, not the latest version, when a newer draft exists", () => {
+    // Owner approved v1 and published it, then generated a v2 draft that is
+    // still unapproved. action.latestVersion (newest overall) would be the
+    // draft; the assertion must still name v1, the version actually eligible
+    // to be asserted about.
+    mount(DRAFTED_KEY, (value) => {
+      value.action.latestVersion = { id: "ver-2", versionNo: 2, approvalState: "draft", deliveryState: "not_requested" };
+      value.versions = [
+        versionRow({ id: "ver-2", version_no: 2, approval_state: "draft" }),
+        versionRow({ id: "ver-1", version_no: 1, approval_state: "approved", delivery_state: "exported" }),
+      ];
+    });
+    fireEvent.click(markButton());
+    expect(clientMocks.markApplied).toHaveBeenCalledWith("act-1", { output_version_id: "ver-1" });
   });
 
   it("shows the date and says nothing verified it, with a way back", () => {

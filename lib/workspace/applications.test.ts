@@ -101,7 +101,6 @@ describe("recordApplication", () => {
         return { id: "inserted-1" };
       },
       forActions: async () => [],
-      latestOwnerAssertion: async () => null,
       approvedVersion: async () => false,
       assertApplied: async () => ({ ok: false, reason: "closed" }),
       retract: async () => ({ retracted: 0 }),

@@ -6,7 +6,6 @@ const ports = vi.hoisted(() => ({
     approvedVersion: vi.fn(),
     assertApplied: vi.fn(),
     retract: vi.fn(),
-    latestOwnerAssertion: vi.fn(),
   },
 }));
 
@@ -34,7 +33,6 @@ beforeEach(() => {
   ports.repo.approvedVersion.mockResolvedValue(true);
   ports.repo.assertApplied.mockResolvedValue({ ok: true, id: "app-1" });
   ports.repo.retract.mockResolvedValue({ retracted: 1 });
-  ports.repo.latestOwnerAssertion.mockResolvedValue(null);
   vi.clearAllMocks();
 });
 

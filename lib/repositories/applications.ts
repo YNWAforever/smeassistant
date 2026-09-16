@@ -31,8 +31,6 @@ export type AssertOutcome =
 export interface ApplicationRepository {
   /** Non-retracted rows for these actions, newest first. */
   forActions(workspaceId: string, actionIds: string[]): Promise<ApplicationRecord[]>;
-  /** The newest non-retracted owner assertion for one action, or null. */
-  latestOwnerAssertion(workspaceId: string, actionId: string): Promise<(ApplicationRecord & { output_version_id: string | null }) | null>;
   /** True when the version exists, belongs to this action, and is approved. */
   approvedVersion(workspaceId: string, actionId: string, versionId: string): Promise<boolean>;
   /**
@@ -108,18 +106,6 @@ export function applicationRepository(client?: Pick<Pool, 'query'> & Partial<Pic
          ORDER BY p.asserted_at DESC`,
         [workspaceId, actionIds],
       )).rows;
-    },
-    async latestOwnerAssertion(workspaceId, actionId) {
-      return (await db().query<ApplicationRecord & { output_version_id: string | null }>(
-        `SELECT id, action_id, source,
-                ${ISO_UTC('asserted_at')} AS asserted_at,
-                ${ISO_UTC('retracted_at')} AS retracted_at,
-                output_version_id
-         FROM action_applications
-         WHERE workspace_id = $1 AND action_id = $2 AND source = 'owner_asserted' AND retracted_at IS NULL
-         ORDER BY asserted_at DESC, id DESC LIMIT 1`,
-        [workspaceId, actionId],
-      )).rows[0] ?? null;
     },
     async approvedVersion(workspaceId, actionId, versionId) {
       return (await db().query(
