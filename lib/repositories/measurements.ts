@@ -4,6 +4,8 @@ import { getPool } from '../db/client';
 import { completionId } from '../workspace/completion-id';
 import { rowToSnapshot, type SnapshotRecord, type ScanDiffRow } from '../workspace/snapshots';
 import type { MeasurableActionRow, ExportedVersionRow, MeasurementInsert, MeasurementFactType } from '../workspace/measurements';
+import type { ApplicationRecord } from '../workspace/applications';
+import { applicationRepository } from './applications';
 import { snapshotRepository } from './snapshots';
 export interface MeasurementRepository {
  base(head: SnapshotRecord, diff: ScanDiffRow): Promise<SnapshotRecord | null>;
@@ -11,6 +13,8 @@ export interface MeasurementRepository {
  actions(head: SnapshotRecord, states: string[]): Promise<MeasurableActionRow[]>;
  existing(head: SnapshotRecord, ids: string[]): Promise<Array<{action_id:string;fact_type:MeasurementFactType}>>;
  exports(head: SnapshotRecord, ids: string[]): Promise<ExportedVersionRow[]>;
+ /** Live (non-retracted) application evidence; `strongestBasis` applies the timing gate. */
+ applications(head: SnapshotRecord, ids: string[]): Promise<ApplicationRecord[]>;
  insert(rows: MeasurementInsert[], head: SnapshotRecord): Promise<number>;
  latest(head: SnapshotRecord): Promise<{id:string} | null>;
  updateState(head: SnapshotRecord, ids: string[], state: 'measured' | 'insufficient_coverage', now: string): Promise<void>;
@@ -39,18 +43,26 @@ export function measurementRepository(client?: Pick<Pool,'query'>): MeasurementR
     WHERE m.workspace_id=$1 AND m.after_snapshot_id=$2 AND m.action_id=ANY($3::uuid[]) AND (a.location_id=$4 OR a.location_id IS NULL)`,[head.workspaceId,head.id,ids,head.locationId])).rows; },
   async exports(head,ids) { return (await db().query<ExportedVersionRow>(`SELECT v.action_id,v.first_exported_at::text FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id
     WHERE v.workspace_id=$1 AND v.action_id=ANY($2::uuid[]) AND v.first_exported_at IS NOT NULL AND (a.location_id=$3 OR a.location_id IS NULL)`,[head.workspaceId,ids,head.locationId])).rows; },
+  // The assertion is safe by construction: recordMeasurements returns early on
+  // `!head.workspaceId` before any port is called, so this never runs with a
+  // null workspace. Scoping is still enforced inside forActions, which joins
+  // actions on the same workspace_id rather than trusting the id list.
+  async applications(head,ids) { return applicationRepository(db()).forActions(head.workspaceId!, ids); },
   async insert(rows,head) {
    let count=0;
    for(const row of rows) {
-    const result=await db().query(`INSERT INTO action_measurements(id,workspace_id,action_id,before_snapshot_id,after_snapshot_id,metric_key,before_value,after_value,delta,fact_type,window_days)
-      SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
+    const result=await db().query(`INSERT INTO action_measurements(id,workspace_id,action_id,before_snapshot_id,after_snapshot_id,metric_key,before_value,after_value,delta,fact_type,window_days,attribution_basis)
+      -- $14 is appended rather than renumbered on purpose: $12/$13 are the head
+      -- job and location bound inside the WHERE EXISTS scope guard below, and
+      -- renumbering them would break cross-tenant scoping silently.
+      SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$14
       WHERE EXISTS(SELECT 1 FROM actions a JOIN scan_snapshots h ON h.id=$5 AND h.workspace_id=a.workspace_id
        JOIN scan_snapshots b ON b.id=$4 AND b.workspace_id=h.workspace_id AND b.location_id IS NOT DISTINCT FROM h.location_id
        JOIN scan_diffs d ON d.id=h.diff_id AND d.head_job_id=h.job_id AND d.base_job_id=b.job_id AND d.comparable
        JOIN audit_jobs hj ON hj.id=h.job_id AND hj.workspace_id=h.workspace_id AND hj.location_id IS NOT DISTINCT FROM h.location_id
        JOIN audit_jobs bj ON bj.id=b.job_id AND bj.workspace_id=h.workspace_id AND bj.location_id IS NOT DISTINCT FROM h.location_id
        WHERE a.id=$3 AND a.workspace_id=$2 AND h.comparable_to=b.id AND h.job_id=$12 AND h.location_id IS NOT DISTINCT FROM $13::uuid AND (a.location_id=h.location_id OR a.location_id IS NULL))
-      ON CONFLICT(id) DO NOTHING RETURNING id`,[completionId('measurement',row.action_id,head.id),row.workspace_id,row.action_id,row.before_snapshot_id,row.after_snapshot_id,row.metric_key,row.before_value,row.after_value,row.delta,row.fact_type,row.window_days,head.jobId,head.locationId]);
+      ON CONFLICT(id) DO NOTHING RETURNING id`,[completionId('measurement',row.action_id,head.id),row.workspace_id,row.action_id,row.before_snapshot_id,row.after_snapshot_id,row.metric_key,row.before_value,row.after_value,row.delta,row.fact_type,row.window_days,head.jobId,head.locationId,row.attribution_basis]);
     count+=result.rows.length;
    }
    return count;

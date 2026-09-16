@@ -14,6 +14,7 @@ const state = vi.hoisted(() => ({
   actions: [] as Row[],
   measurements: [] as Row[],
   versions: [] as Row[],
+  applications: [] as Row[],
   inserted: [] as Row[],
   updateError: false,
   latestSnapshotId: "snap-head",
@@ -27,6 +28,7 @@ function client(): MeasurementRepository {
   async actions(){return state.actions as unknown as Awaited<ReturnType<MeasurementRepository['actions']>>;},
   async existing(head){return state.measurements.filter(m=>m.after_snapshot_id===head.id) as unknown as Awaited<ReturnType<MeasurementRepository['existing']>>;},
   async exports(){return state.versions.filter(v=>v.first_exported_at) as unknown as Awaited<ReturnType<MeasurementRepository['exports']>>;},
+  async applications(){return state.applications.filter(row=>!row.retracted_at) as unknown as Awaited<ReturnType<MeasurementRepository['applications']>>;},
   async insert(rows,head){const fresh=rows.map(row=>({...row,id:completionId('measurement',row.action_id,head.id)})).filter(row=>!state.measurements.some(existing=>existing.id===row.id));state.inserted.push(...fresh);state.measurements.push(...fresh);return fresh.length;},
   async latest(){return {id:state.latestSnapshotId};},
   async updateState(_head,ids,value,now){if(state.updateError)throw new Error('measurement state update failed');state.updates.push({patch:{measurement_state:value,updated_at:now},ids});},
@@ -107,6 +109,7 @@ beforeEach(() => {
   ];
   state.measurements = [];
   state.versions = [];
+  state.applications = [];
   state.inserted = [];
   state.updates = [];
 });
@@ -128,7 +131,7 @@ describe("buildMeasurement / windowDaysBetween", () => {
       action: { id: "a", template_key: "review-response", location_id: "loc-1", action_state: "recommended" },
       base: snapshot({ id: "snap-base", metrics: { "gbp.response_rate_pct": 20.04 } }),
       head: snapshot({ metrics: { "gbp.response_rate_pct": 60.55 } }),
-      exportedBeforeHead: false,
+      basis: null,
     });
     expect(row).toMatchObject({ before_value: 20.04, after_value: 60.55, delta: 40.5, fact_type: "Observed" });
   });
@@ -230,4 +233,82 @@ it("records historical measurements without overwriting newer action measurement
   await recordMeasurements(client(), { headSnapshot: snapshot({}), diff });
   expect(state.measurements).toHaveLength(2);
   expect(state.updates).toEqual([]);
+});
+
+
+describe("buildMeasurement attribution basis", () => {
+  const base = snapshot({ id: "snap-base", observedAt: "2026-09-01T00:00:00Z", metrics: { "ig.followers": 100 } });
+  const head = snapshot({ id: "snap-head", observedAt: "2026-09-10T00:00:00Z", metrics: { "ig.followers": 140 } });
+  const action = { id: "action-1", template_key: "ig-bio", location_id: "loc-1", action_state: "recommended" };
+
+  it("records owner_asserted and reaches Attributed without any export", () => {
+    const row = buildMeasurement({ action, base, head, basis: "owner_asserted" })!;
+    expect(row.fact_type).toBe("Attributed");
+    expect(row.attribution_basis).toBe("owner_asserted");
+  });
+
+  it("stays Observed with no basis at all", () => {
+    const row = buildMeasurement({ action, base, head, basis: null })!;
+    expect(row.fact_type).toBe("Observed");
+    expect(row.attribution_basis).toBeNull();
+  });
+
+  it("stays Unknown when a metric is missing, whatever the basis", () => {
+    const thin = snapshot({ id: "snap-head", observedAt: "2026-09-10T00:00:00Z", metrics: {} });
+    const row = buildMeasurement({ action, base, head: thin, basis: "verified" })!;
+    expect(row.fact_type).toBe("Unknown");
+    expect(row.attribution_basis).toBe("verified");
+  });
+});
+
+describe("recordMeasurements attribution basis", () => {
+  it("attributes and labels an owner-asserted action that was never exported", async () => {
+    state.applications = [{ id: "app-1", action_id: "a-social", source: "owner_asserted", asserted_at: "2026-08-25T00:00:00Z", retracted_at: null }];
+
+    await recordMeasurements(client(), { headSnapshot: snapshot({}), diff });
+
+    const row = state.inserted.find((r) => r.action_id === "a-social");
+    expect(row).toMatchObject({ fact_type: "Attributed", attribution_basis: "owner_asserted" });
+    expect(state.updates).toEqual([{ patch: expect.objectContaining({ measurement_state: "measured" }), ids: ["a-social"] }]);
+  });
+
+  it("lets a verified row outrank an export on the same action", async () => {
+    state.versions = [{ action_id: "a-review", first_exported_at: "2026-08-20T00:00:00Z" }];
+    state.applications = [{ id: "app-1", action_id: "a-review", source: "verified", asserted_at: "2026-08-26T00:00:00Z", retracted_at: null }];
+
+    await recordMeasurements(client(), { headSnapshot: snapshot({}), diff });
+
+    expect(state.inserted.find((r) => r.action_id === "a-review")).toMatchObject({ fact_type: "Attributed", attribution_basis: "verified" });
+  });
+
+  it("ignores an assertion made after the head scan started", async () => {
+    state.applications = [{ id: "app-1", action_id: "a-social", source: "owner_asserted", asserted_at: "2026-09-01T09:30:00Z", retracted_at: null }];
+
+    await recordMeasurements(client(), { headSnapshot: snapshot({}), diff });
+
+    expect(state.inserted.find((r) => r.action_id === "a-social")).toMatchObject({ fact_type: "Observed", attribution_basis: null });
+    // Nothing entered the loop, so nothing is labelled.
+    expect(state.updates).toEqual([]);
+  });
+
+  it("keeps attribution_basis exported for the export-only path", async () => {
+    state.versions = [{ action_id: "a-review", first_exported_at: "2026-08-20T00:00:00Z" }];
+
+    await recordMeasurements(client(), { headSnapshot: snapshot({}), diff });
+
+    expect(state.inserted.find((r) => r.action_id === "a-review")).toMatchObject({ fact_type: "Attributed", attribution_basis: "exported" });
+  });
+
+  it("does not rewrite a stored basis when a later replay sees a retraction", async () => {
+    state.applications = [{ id: "app-1", action_id: "a-social", source: "owner_asserted", asserted_at: "2026-08-25T00:00:00Z", retracted_at: null }];
+    await recordMeasurements(client(), { headSnapshot: snapshot({}), diff });
+    const stored = { ...state.inserted.find((r) => r.action_id === "a-social") };
+
+    // The owner withdraws the claim; history must stand.
+    state.applications = [{ ...state.applications[0], retracted_at: "2026-09-05T00:00:00Z" }];
+    state.inserted = [];
+    expect(await recordMeasurements(client(), { headSnapshot: snapshot({}), diff })).toEqual({ comparable: true, recorded: 0, skipped: 2 });
+    expect(state.inserted).toEqual([]);
+    expect(state.measurements.find((r) => r.action_id === "a-social")).toMatchObject({ attribution_basis: stored.attribution_basis, fact_type: "Attributed" });
+  });
 });

@@ -1,4 +1,5 @@
 import type { MeasurementRepository } from "@/lib/repositories/measurements";
+import { strongestBasis, type ApplicationRecord, type AttributionBasis } from "@/lib/workspace/applications";
 import type { MetricKey } from "@/lib/workspace/metrics";
 import type { ScanDiffRow, SnapshotRecord } from "@/lib/workspace/snapshots";
 import type { TemplateKey } from "@/lib/workspace/templates";
@@ -11,10 +12,13 @@ import type { TemplateKey } from "@/lib/workspace/templates";
  *
  * The fact type is the whole point (guardrail 2 — never a fabricated
  * aggregate, never an implied causation):
- * - `Attributed` only when the action had an output exported *before* the
- *   head scan started (`output_versions.first_exported_at < head job
- *   created_at`), so the change could plausibly follow the merchant's work;
- * - `Observed` when both values exist but nothing was exported — the metric
+ * - `Attributed` when some attribution basis applied *before the head scan
+ *   started* — a provider verification, an owner assertion, or an export, in
+ *   that order of strength (`strongestBasis`) — so the change could plausibly
+ *   follow the merchant's work. The winning signal is stored in
+ *   `attribution_basis` and travels with the row to every display, so an
+ *   owner's self-report is never presented as a confirmation;
+ * - `Observed` when both values exist but no basis applied — the metric
  *   moved, and we say so, without claiming credit;
  * - `Unknown` when either snapshot lacks the metric (delta null, and the
  *   action is marked `insufficient_coverage`).
@@ -49,6 +53,8 @@ export interface MeasurementInsert {
   after_value: number | null;
   delta: number | null;
   fact_type: MeasurementFactType;
+  /** Which signal earned `Attributed`; null when nothing is attributed. Written once, never recomputed. */
+  attribution_basis: AttributionBasis | null;
   window_days: number;
 }
 
@@ -99,14 +105,14 @@ export function buildMeasurement(input: {
   action: MeasurableActionRow;
   base: SnapshotRecord;
   head: SnapshotRecord;
-  exportedBeforeHead: boolean;
+  basis: AttributionBasis | null;
 }): MeasurementInsert | null {
   const metricKey = TEMPLATE_METRIC[input.action.template_key as TemplateKey];
   if (!metricKey) return null;
   const before = metricValue(input.base, metricKey);
   const after = metricValue(input.head, metricKey);
   const known = before !== null && after !== null;
-  const factType: MeasurementFactType = !known ? "Unknown" : input.exportedBeforeHead ? "Attributed" : "Observed";
+  const factType: MeasurementFactType = !known ? "Unknown" : input.basis ? "Attributed" : "Observed";
   return {
     workspace_id: input.head.workspaceId ?? input.base.workspaceId ?? "",
     action_id: input.action.id,
@@ -117,6 +123,7 @@ export function buildMeasurement(input: {
     after_value: after,
     delta: known ? round1(after - before) : null,
     fact_type: factType,
+    attribution_basis: input.basis,
     window_days: windowDaysBetween(input.base.observedAt, input.head.observedAt),
   };
 }
@@ -142,6 +149,24 @@ export async function recordMeasurements(repo: MeasurementRepository, input: Rec
     const exportedAt = row.first_exported_at ? Date.parse(row.first_exported_at) : Number.NaN;
     if (Number.isFinite(exportedAt) && exportedAt < headStartedAt) exportedBeforeHead.add(row.action_id);
   }
+  const applications = await repo.applications(head, ids);
+  const byAction = new Map<string, ApplicationRecord[]>();
+  for (const row of applications) {
+    const list = byAction.get(row.action_id);
+    if (list) list.push(row);
+    else byAction.set(row.action_id, [row]);
+  }
+  const basisFor = new Map<string, AttributionBasis | null>(
+    actions.map((action) => [
+      action.id,
+      strongestBasis(byAction.get(action.id) ?? [], {
+        exportedBeforeHead: exportedBeforeHead.has(action.id),
+        // The head scan's START, not its completion: evidence dated after the
+        // scan began cannot explain that scan's numbers.
+        headStartedAtMs: headStartedAt,
+      }),
+    ]),
+  );
 
   const inserts: MeasurementInsert[] = [];
   let skipped = 0;
@@ -150,7 +175,7 @@ export async function recordMeasurements(repo: MeasurementRepository, input: Rec
       skipped += 1;
       continue;
     }
-    const row = buildMeasurement({ action, base, head, exportedBeforeHead: exportedBeforeHead.has(action.id) });
+    const row = buildMeasurement({ action, base, head, basis: basisFor.get(action.id) ?? null });
     if (row) inserts.push(row);
   }
   let recorded = 0;
@@ -180,9 +205,21 @@ export async function recordMeasurements(repo: MeasurementRepository, input: Rec
   //
   // Every measurement row is still INSERTED, so Insights keeps the honest
   // Observed evidence; it is only the mutable label that is gated. `Attributed`
-  // already means "exported before head", so the two agree by construction.
+  // means "some basis applied before head", so the two agree by construction.
+  //
+  // Until 0006 this used `action_state === 'completed'` as a stand-in for "the
+  // owner says they applied it", because no such record existed. It does now:
+  // an owner assertion is the real signal, and POST .../applied writes the
+  // assertion and sets 'completed' in one transaction.
+  //
+  // DATED FALLBACK: the `action_state === 'completed'` test remains ONLY for
+  // actions completed before 0006, which have no application row and would
+  // otherwise silently lose their `measured` label. Remove it once no
+  // pre-0006 completed actions remain.
   const entered = new Set(
-    actions.filter((action) => action.action_state === "completed" || exportedBeforeHead.has(action.id)).map((action) => action.id),
+    actions
+      .filter((action) => basisFor.get(action.id) !== null || action.action_state === "completed")
+      .map((action) => action.id),
   );
   const measured = allMeasurements.filter((row) => row.fact_type !== "Unknown" && entered.has(row.action_id)).map((row) => row.action_id);
   const insufficient = allMeasurements.filter((row) => row.fact_type === "Unknown" && entered.has(row.action_id)).map((row) => row.action_id);
