@@ -129,6 +129,8 @@ Found during Task 7: `db:verify` and its catalog fixture are not the only things
 
 2. **`test/integration/neon-schema.integration.test.ts`.** Add the new migration to the applied-migrations list, bump the journal-count assertions (two places), update the catalog baseline, and bump the Drizzle schema-module count.
 
+Note what actually guards Drizzle/migration fidelity, established by Task 7's review: the schema test's "exposes all final columns and constraints through typed Drizzle tables" case diffs every Drizzle table's columns, nullability and constraint names against `test/integration/fixtures/legacy-final-catalog.json` — an independently generated oracle. That column-level diff is the primary guard; the numeric catalog census is a second, coarser tripwire on top of it. Both need updating, but if you must reason about which one would catch a real divergence, it is the oracle diff.
+
 For the catalog baseline, **predict each delta from the migration before running anything**, then confirm the observed numbers match. Pasting whatever a failing run reports converts a baseline guard into a description of current reality, which is how this class of test stops protecting anything. For 0006 the prediction was tables +1, columns +13, constraints +8, indexes +2, triggers/functions/seededRows unchanged — and observation matched exactly. If your prediction and observation disagree, stop: something landed that neither you nor the plan expects, which is what the assertion exists to catch.
 
 Rename any synthetic probe migrations in that file that collide with the new number.

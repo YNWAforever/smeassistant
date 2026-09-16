@@ -1,5 +1,5 @@
 import { Pool } from "pg";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { applyMigrations } from "../../scripts/neon/migrations";
 import { startNeonDatabaseFixture, type NeonDatabaseFixture } from "./neon-database";
 import { applicationRepository } from "../../lib/repositories/applications";
@@ -24,6 +24,12 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("action applications", () =
     vi.stubGlobal("fetch", () => { throw new Error("transport forbidden"); });
     await runtime.query("DELETE FROM action_applications; DELETE FROM actions; DELETE FROM workspaces; DELETE FROM app_users");
   });
+
+  // Matches neon-cron-dispatch.integration.test.ts. Harmless today because the
+  // stub is idempotent and vitest isolates test files, but without it a future
+  // case here that legitimately needs fetch would silently inherit the
+  // forbidding stub with no visible cleanup contract.
+  afterEach(() => vi.unstubAllGlobals());
 
   afterAll(async () => {
     await Promise.all([owner?.end(), runtime?.end()]);
