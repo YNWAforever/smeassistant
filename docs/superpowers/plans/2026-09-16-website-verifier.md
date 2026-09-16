@@ -77,6 +77,8 @@ ALTER TABLE public.actions
 1. **`lib/db/schema/business.ts`** — add `verificationCheckedAt` to the existing `actions` table definition, following the conventions of the neighbouring nullable timestamp columns.
 2. **`test/integration/neon-schema.integration.test.ts`** — add `"0007_action_verification.sql"` to the applied-migrations list, bump the journal-count assertions (two places), and update the catalog baseline.
 
+   **Do NOT touch the `tables.length` assertion.** It is hardcoded (`expect(tables.length).toBe(37)`), but it counts Drizzle table *modules*, and `0007` adds a column to an existing table rather than a new table. It changes only when a migration creates a table — as `0006` did, taking it 36 → 37. Changing it here would make the assertion agree with a schema that has not changed.
+
 **Predict the delta from the migration before running anything**, then confirm observation matches. For `0007` it is: **columns +1**, and tables / constraints / indexes / triggers / functions / seededRows all unchanged. If observation disagrees with that prediction, STOP — something landed that neither the plan nor you expects, which is exactly what the assertion exists to catch. Pasting the observed numbers converts a baseline guard into a description of current reality.
 
 Note the Drizzle/migration fidelity guard that actually matters is the schema test's "exposes all final columns and constraints through typed Drizzle tables" case, which diffs against `test/integration/fixtures/legacy-final-catalog.json`. Extend that fixture too — insertions only, zero deletions.
