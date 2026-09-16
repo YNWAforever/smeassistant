@@ -14,3 +14,11 @@
 -- accumulates further sweep state, that is the signal to move it out.
 ALTER TABLE public.actions
   ADD COLUMN IF NOT EXISTS verification_checked_at timestamptz;
+
+-- The sweep's two selection queries (lib/repositories/verification.ts) both
+-- filter `actions` by template_key plus the verification_checked_at throttle
+-- on every cron tick, and dueLocations additionally GROUPs BY over the same
+-- filtered set. Added now rather than deferred (as Task 1 originally left
+-- it) because the sweep's actual query and selectivity now exist.
+CREATE INDEX IF NOT EXISTS actions_verification_sweep_idx
+  ON public.actions (template_key, verification_checked_at);

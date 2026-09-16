@@ -4885,6 +4885,11 @@
       "indexdef": "CREATE UNIQUE INDEX actions_pkey ON public.actions USING btree (id)"
     },
     {
+      "tablename": "actions",
+      "indexname": "actions_verification_sweep_idx",
+      "indexdef": "CREATE INDEX actions_verification_sweep_idx ON public.actions USING btree (template_key, verification_checked_at)"
+    },
+    {
       "tablename": "aeo_surface_snapshots",
       "indexname": "aeo_surface_snapshots_job_id_surface_query_text_key",
       "indexdef": "CREATE UNIQUE INDEX aeo_surface_snapshots_job_id_surface_query_text_key ON public.aeo_surface_snapshots USING btree (job_id, surface, query_text)"

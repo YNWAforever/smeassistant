@@ -24,7 +24,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("fresh application schema",
 
   it("applies all final business objects to empty PostgreSQL with no business seeds", async () => {
     expect(await applyMigrations(owner)).toEqual(["0001_identity.sql", "0002_business.sql", "0003_workflows.sql", "0004_atomic_operations.sql", "0005_owner_removal_guard.sql", "0006_action_applications.sql", "0007_action_verification.sql"]);
-    expect(await verifyCatalog(owner)).toMatchObject({ tables: 35, columns: 417, constraints: 159, indexes: 86, triggers: 8, functions: 14, seededRows: 0 });
+    expect(await verifyCatalog(owner)).toMatchObject({ tables: 35, columns: 417, constraints: 159, indexes: 87, triggers: 8, functions: 14, seededRows: 0 });
     expect((await owner.query("SELECT nspname FROM pg_namespace WHERE nspname IN ('auth','storage','neon_auth')")).rows).toEqual([]);
   });
   it("replays as a no-op and rejects changed, missing, and reordered history", async () => {
