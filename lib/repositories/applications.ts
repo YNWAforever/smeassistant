@@ -161,8 +161,13 @@ export function applicationRepository(client?: Pick<Pool, 'query'> & Partial<Pic
         const { duplicate_id, action_open } = diagnosis.rows[0] ?? { duplicate_id: null, action_open: false };
         if (duplicate_id) return { ok: false, reason: 'duplicate', existingId: duplicate_id };
         // action_open === true here would mean neither guard clause explains
-        // the empty insert, which the SQL above says cannot happen; treated
-        // as closed defensively rather than left unhandled.
+        // the empty insert. The insert and this diagnostic are two separate
+        // statements, and under READ COMMITTED each takes its own snapshot,
+        // so a concurrent commit landing in the gap between them (e.g. the
+        // action closing after the insert's snapshot but before this one)
+        // can make this look inconsistent without anything being wrong --
+        // this is a narrow non-atomic window, not a guarantee violation.
+        // 'closed' is the safe default either way.
         void action_open;
         return { ok: false, reason: 'closed' };
       }, transactor(client));

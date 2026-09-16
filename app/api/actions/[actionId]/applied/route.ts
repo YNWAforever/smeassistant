@@ -45,15 +45,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ actionI
     if (!approved) return json({ error: "version_not_applicable" }, 409);
   }
 
-  // A double-clicked button must not become two assertions.
-  try {
-    const existing = await repo.latestOwnerAssertion(workspaceId, actionId);
-    if (existing && existing.output_version_id === versionId)
-      return json({ applicationId: existing.id, alreadyRecorded: true }, 200);
-  } catch {
-    return json({ error: "unavailable" }, 503);
-  }
-
+  // Duplicate detection lives entirely in assertApplied's own in-transaction
+  // guard (below): a pre-check here would just be a second implementation of
+  // the same rule that a hand-kept-in-sync copy could drift from, paid for
+  // on every assertion to save a round-trip on the rare double-click.
+  // latestOwnerAssertion stays on the repository for Task 8's "you marked
+  // this applied on {date}" display -- it is just not called from this route.
   let outcome: Awaited<ReturnType<typeof repo.assertApplied>>;
   try {
     outcome = await repo.assertApplied(
@@ -74,9 +71,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ actionI
   // The insert's guard runs inside the same transaction, so a zero-row result
   // means the write already didn't happen -- assertApplied's own diagnostic
   // query (still inside that transaction) tells us why. A duplicate submit
-  // is not an error: it gets the same 200 the up-front idempotency check
-  // above returns, because reporting "this action is closed" for a
-  // double-clicked button would be false -- the action is open and the
+  // is not an error: it gets the same 200 an up-front idempotency check would
+  // return, because reporting "this action is closed" for a double-clicked
+  // button would be false -- the action is open (per this guard's definition
+  // of closed, CLOSED_STATES in lib/repositories/applications.ts --
+  // dismissed/cancelled/expired; completed counts as open here) and the
   // other request's assertion is what's on record.
   if (!outcome.ok) {
     if (outcome.reason === "duplicate")

@@ -64,11 +64,14 @@ describe("POST /api/actions/[actionId]/applied", () => {
     expect(ports.repo.approvedVersion).not.toHaveBeenCalled();
   });
 
-  it("is idempotent: an existing assertion for the same version returns 200, not a second row", async () => {
-    ports.repo.latestOwnerAssertion.mockResolvedValue({ id: "app-1", output_version_id: null });
+  it("is idempotent: a duplicate outcome from assertApplied returns 200, not a second row", async () => {
+    ports.repo.assertApplied.mockResolvedValue({ ok: false, reason: "duplicate", existingId: "app-1" });
     const res = await POST(req({}), params);
     expect(res.status).toBe(200);
-    expect(ports.repo.assertApplied).not.toHaveBeenCalled();
+    expect(await res.json()).toEqual({ applicationId: "app-1", alreadyRecorded: true });
+    // assertApplied's own in-transaction guard is the single source of truth
+    // for duplicate detection (there is no separate pre-check to bypass it).
+    expect(ports.repo.assertApplied).toHaveBeenCalledTimes(1);
   });
 
   it("returns 409 when the action is closed", async () => {
@@ -76,23 +79,37 @@ describe("POST /api/actions/[actionId]/applied", () => {
     expect((await POST(req({}), params)).status).toBe(409);
   });
 
-  it("returns 200 (not 409) when assertApplied finds a concurrent duplicate submit", async () => {
-    ports.repo.assertApplied.mockResolvedValue({ ok: false, reason: "duplicate", existingId: "app-existing" });
-    const res = await POST(req({}), params);
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ applicationId: "app-existing", alreadyRecorded: true });
-  });
 });
 
 describe("DELETE /api/actions/[actionId]/applied", () => {
+  const del = () => DELETE(new Request("http://x/applied", { method: "DELETE" }), params);
+
+  it("refuses an unauthorized caller with the shared helper's own response", async () => {
+    ports.auth = { ok: false, response: new Response(JSON.stringify({ error: "forbidden" }), { status: 403 }) };
+    expect((await del()).status).toBe(403);
+    expect(ports.repo.retract).not.toHaveBeenCalled();
+  });
+
   it("retracts the newest assertion", async () => {
-    const res = await DELETE(new Request("http://x/applied", { method: "DELETE" }), params);
+    const res = await del();
     expect(res.status).toBe(200);
     expect(ports.repo.retract).toHaveBeenCalled();
   });
 
   it("returns 404 when there is nothing to retract", async () => {
     ports.repo.retract.mockResolvedValue({ retracted: 0 });
-    expect((await DELETE(new Request("http://x/applied", { method: "DELETE" }), params)).status).toBe(404);
+    expect((await del()).status).toBe(404);
+  });
+
+  it("returns 503 when retract throws", async () => {
+    ports.repo.retract.mockRejectedValue(new Error("connection lost"));
+    expect((await del()).status).toBe(503);
+  });
+
+  it("surfaces the real stamped count for a multi-row retraction, not a hardcoded 1", async () => {
+    ports.repo.retract.mockResolvedValue({ retracted: 3 });
+    const res = await del();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ retracted: 3 });
   });
 });
