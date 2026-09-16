@@ -23,8 +23,8 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("fresh application schema",
   afterAll(async () => { await Promise.all([owner?.end(), runtime?.end(), denied?.end()]); fixture?.stop(); });
 
   it("applies all final business objects to empty PostgreSQL with no business seeds", async () => {
-    expect(await applyMigrations(owner)).toEqual(["0001_identity.sql", "0002_business.sql", "0003_workflows.sql", "0004_atomic_operations.sql", "0005_owner_removal_guard.sql", "0006_action_applications.sql"]);
-    expect(await verifyCatalog(owner)).toMatchObject({ tables: 35, columns: 416, constraints: 159, indexes: 86, triggers: 8, functions: 14, seededRows: 0 });
+    expect(await applyMigrations(owner)).toEqual(["0001_identity.sql", "0002_business.sql", "0003_workflows.sql", "0004_atomic_operations.sql", "0005_owner_removal_guard.sql", "0006_action_applications.sql", "0007_action_verification.sql"]);
+    expect(await verifyCatalog(owner)).toMatchObject({ tables: 35, columns: 417, constraints: 159, indexes: 86, triggers: 8, functions: 14, seededRows: 0 });
     expect((await owner.query("SELECT nspname FROM pg_namespace WHERE nspname IN ('auth','storage','neon_auth')")).rows).toEqual([]);
   });
   it("replays as a no-op and rejects changed, missing, and reordered history", async () => {
@@ -33,13 +33,13 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("fresh application schema",
     await expect(applyMigrations(owner, [{ ...migrations[0], sql: migrations[0].sql + "\n-- changed" }, ...migrations.slice(1)])).rejects.toThrow("migration_checksum_mismatch");
     await expect(applyMigrations(owner, migrations.slice(0, 2))).rejects.toThrow("migration_history_mismatch");
     await expect(applyMigrations(owner, [...migrations].reverse())).rejects.toThrow("migration_order_invalid");
-    expect((await owner.query("SELECT count(*)::int AS n FROM neon_migrations.journal")).rows[0].n).toBe(6);
+    expect((await owner.query("SELECT count(*)::int AS n FROM neon_migrations.journal")).rows[0].n).toBe(7);
   });
   it("rolls back interrupted DDL and journal together, then permits retry", async () => {
     const migrations = await loadMigrations();
     await expect(applyMigrations(owner, [...migrations, { name: "0099_probe.sql", sql: "CREATE TABLE public.interruption_probe(id integer); SELECT 1/0;" }])).rejects.toThrow();
     expect((await owner.query("SELECT to_regclass('public.interruption_probe') AS relation")).rows[0].relation).toBeNull();
-    expect((await owner.query("SELECT count(*)::int AS n FROM neon_migrations.journal")).rows[0].n).toBe(6);
+    expect((await owner.query("SELECT count(*)::int AS n FROM neon_migrations.journal")).rows[0].n).toBe(7);
     expect(await applyMigrations(owner)).toEqual([]);
   });
   it("rolls back a cancelled in-flight migration before a clean retry", async () => {

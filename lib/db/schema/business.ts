@@ -106,6 +106,7 @@ export const actions = pgTable("actions", {
  createdAt: timestamp("created_at", {withTimezone:true, mode:"string"}).notNull().default(sql.raw("now()")),
  updatedAt: timestamp("updated_at", {withTimezone:true, mode:"string"}).notNull().default(sql.raw("now()")),
  completedAt: timestamp("completed_at", {withTimezone:true, mode:"string"}),
+ verificationCheckedAt: timestamp("verification_checked_at", {withTimezone:true, mode:"string"}),
 }, t => [
  check("actions_action_state_check", sql.raw("(action_state = ANY (ARRAY['recommended'::text, 'needs_input'::text, 'ready'::text, 'in_progress'::text, 'completed'::text, 'dismissed'::text, 'cancelled'::text, 'expired'::text]))")),
  foreignKey({name:"actions_assignee_user_id_fkey",columns:[t.assigneeUserId],foreignColumns:[((): AnyPgColumn => appUsers.id)()]}).onDelete("set null"),

@@ -747,6 +747,15 @@
       "column_default": null
     },
     {
+      "table_name": "actions",
+      "column_name": "verification_checked_at",
+      "ordinal_position": 26,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
       "table_name": "aeo_surface_snapshots",
       "column_name": "id",
       "ordinal_position": 1,
