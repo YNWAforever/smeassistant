@@ -1487,9 +1487,12 @@ git commit -m "feat(P3.2): replace the checklist-done control with an applied as
 ### Task 9: Show the basis wherever the fact type shows
 
 **Files:**
-- Modify: `components/workspace/insights-view.tsx`
-- Modify: `components/workspace/home-brief.tsx`
-- Modify: `lib/copy-workspace.ts`
+- Modify: `components/workspace/home-brief.tsx` (the proof card)
+- Modify: `components/workspace/action-detail-client.tsx` (the "Before and after" measurement card — the product's most detailed measurement display)
+- Modify: `lib/copy-workspace.ts`, `lib/workspace/format.ts` (the `basisLabel` helper)
+- Modify: `lib/repositories/workspace-read.ts`, `lib/workspace/queries-pages.ts` — `attribution_basis` has to be SELECTed and threaded, or the basis can never render as anything but "not recorded"
+
+NOT `components/workspace/insights-view.tsx`. An earlier draft of this plan named it, but its `metricCards()` is a pure snapshot-to-snapshot comparison that literal-assigns `"Observed"` or `"Unknown"` and never reads `action_measurements` — so no measurement with a basis renders there and there is nothing to append. Verified by tracing `metricCards()` in `lib/workspace/queries-pages.ts`.
 
 - [ ] **Step 1: Add the basis copy**
 
