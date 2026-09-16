@@ -620,6 +620,13 @@ Replace the `entered` set and the comment above it:
   // actions completed before 0006, which have no application row and would
   // otherwise silently lose their `measured` label. Remove it once no
   // pre-0006 completed actions remain.
+  //
+  // After Task 8 Step 4b the only other writer of 'completed' is
+  // closeResolvedActions, which sets measurement_state='measured' itself and
+  // only when every source finding appears in a comparable diff's
+  // resolved_findings -- a real observation, so the fallback is not laundering
+  // a self-report into a badge there. The owner-facing PATCH path that could
+  // have done exactly that is removed in that step.
   const entered = new Set(
     actions
       .filter((action) => basisFor.get(action.id) !== null || action.action_state === "completed")
@@ -1246,6 +1253,35 @@ Replace the function at `components/workspace/action-detail-client.tsx:302-316` 
 Import as `markApplied as markAppliedRequest, retractApplied as retractAppliedRequest` from `@/lib/workspace/client` to avoid shadowing the local handlers. Replace the JSX that rendered the checklist-done button with a control calling `markApplied`, labelled `isChinese ? "標記為已套用" : "Mark as applied"` with the sub-label `isChinese ? "我們只記錄您告訴我們的內容；下次掃描才會檢查。" : "We record what you tell us; the next scan is what checks it."`. When `applied` is true, render `isChinese ? \`您在 \${appliedOn} 標記為已套用 · 未經獨立核實\` : \`You marked this applied on \${appliedOn} · not independently verified\`` with a retract link calling `retractApplied`.
 
 `applied` and `appliedOn` come from the `ActionOverview` fields added in Task 6.
+
+- [ ] **Step 4b: Close the second completion path**
+
+Found during Task 4's review. `PATCH /api/actions/[actionId]` still accepts `action_state: "completed"`, so an owner can reach `completed` — the loop's terminal state, and via the dated fallback in `measurements.ts` a `measured` badge — with no `action_applications` row at all. That is the exact state this slice exists to eliminate, and it contradicts the approved design decision that the assertion IS the record and `completed` is merely its consequence.
+
+Its only caller is the `markChecklistDone` line you just replaced, so remove the path now:
+
+In `app/api/actions/[actionId]/route.ts`, change the guard from accepting `dismissed` or `completed` to accepting `dismissed` only:
+
+```ts
+  if (body.action_state !== undefined) {
+    // `completed` is deliberately NOT accepted here. Completion is a
+    // consequence of an owner assertion, written by POST .../applied in the
+    // same transaction as the action_applications row -- see
+    // docs/superpowers/specs/2026-09-16-applied-evidence-design.md. Allowing a
+    // bare PATCH to set it would let an action reach the loop's terminal state
+    // with no evidence of what the owner actually did.
+    if (body.action_state !== "dismissed")
+      return json({ error: "action_state must be dismissed" }, 400);
+    patch.action_state = body.action_state;
+    changes.action_state = body.action_state;
+  }
+```
+
+Delete the `if (body.action_state === "completed") patch.completed_at = ...` line that follows it.
+
+Update `app/api/actions/[actionId]/route.test.ts`: the two existing cases that PATCH `{ action_state: "completed" }` expecting 403 are authorization tests and still pass (authorization runs first), but add one case asserting an authorized caller now gets 400 for `completed`. Narrow `ActionPatch` in `lib/workspace/client.ts` so `action_state` is `"dismissed"` only.
+
+After this, `closeResolvedActions` (`lib/repositories/action-derivation.ts`) is the only other writer of `completed`. That one is legitimate and needs no change: it sets `measurement_state='measured'` itself in the same UPDATE, and only when every source finding appears in a comparable diff's `resolved_findings` — a real observation, not a self-report.
 
 - [ ] **Step 5: Run to verify it passes**
 
