@@ -29,6 +29,8 @@ const repository = vi.hoisted(() => ({
   deliveries: vi.fn(),
 }));
 vi.mock("@/lib/repositories/workspace-read", () => ({ workspaceReadRepository: () => repository }));
+const applications = vi.hoisted(() => ({ forActions: vi.fn(async () => [] as Array<{ action_id: string; asserted_at: string }>) }));
+vi.mock("@/lib/repositories/applications", () => ({ applicationRepository: () => applications }));
 const reaper = vi.hoisted(() => ({ reapStrandedRuns: vi.fn(async () => [] as string[]) }));
 vi.mock("@/lib/workspace/run-reaper", () => ({ reapStrandedRuns: reaper.reapStrandedRuns }));
 type FakeSnapshot = { id: string; jobId: string; workspaceId: string; locationId: string | null; observedAt: string; metrics: Record<string, number> };

@@ -8,6 +8,7 @@ import { artifactRepository } from "@/lib/repositories/artifacts";
 import { assetRepository } from "@/lib/repositories/assets";
 import { getBrand, type BrandProfile } from "@/lib/workspace/brand";
 import { deriveFaqQuestions } from "@/lib/workspace/faq-questions";
+import { applicationRepository } from "@/lib/repositories/applications";
 import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
 import type { GuardrailFlag, VersionOrigin } from "@/lib/workspace/version-meta";
 import { filterSelectedReviews, scannedReviewKey, selectScannedReviews } from "@/lib/workspace/evidence-inputs";
@@ -477,19 +478,26 @@ async function overviewsFor(ctx: WorkspaceContext, rows: ActionRow[], scanSatisf
   if (!rows.length) return [];
   const ids = rows.map(row => row.id);
   const repository = workspaceReadRepository();
-  const [runs, versions] = await Promise.all([
+  const [runs, versions, applications] = await Promise.all([
     read("runs", () => repository.runs(ctx.workspace.id, ids)),
     read("versions", () => repository.versions(ctx.workspace.id, ids)),
+    read("applications", () => applicationRepository().forActions(ctx.workspace.id, ids)),
   ]);
   const latestRun = new Map<string, RunRow>();
   for (const run of runs) if (!latestRun.has(run.action_id)) latestRun.set(run.action_id, run);
   const latestVersion = new Map<string, VersionRow>();
   for (const version of versions) if (!latestVersion.has(version.action_id)) latestVersion.set(version.action_id, version);
+  const appliedAt = new Map<string, string>();
+  // forActions returns newest-first and excludes retracted rows, so the first
+  // row seen for an action is the one to show.
+  for (const row of applications) if (!appliedAt.has(row.action_id)) appliedAt.set(row.action_id, row.asserted_at);
   const byLocation = new Map(ctx.locations.map(location => [location.id, location]));
   return rows.map(row => buildActionOverview(row, {
     location: row.location_id ? locationText(byLocation.get(row.location_id) ?? null) : null,
     latestRun: latestRun.get(row.id) ?? null,
     latestVersion: latestVersion.get(row.id) ?? null,
+    applied: appliedAt.has(row.id),
+    appliedOn: appliedAt.get(row.id) ?? null,
     scanSatisfiedInputs,
   }));
 }

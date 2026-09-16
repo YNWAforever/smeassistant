@@ -16,6 +16,7 @@ export type DisplayPhaseKey =
   | "changes_requested"
   | "approved_export_ready"
   | "exported"
+  | "applied"
   | "awaiting_comparable_scan"
   | "measured"
   | "recommended";
@@ -28,6 +29,7 @@ export const DISPLAY_PHASE_KEYS: DisplayPhaseKey[] = [
   "changes_requested",
   "approved_export_ready",
   "exported",
+  "applied",
   "awaiting_comparable_scan",
   "measured",
   "recommended",
@@ -130,7 +132,7 @@ export const workspaceEn: WorkspaceCopy = {
   },
   phases: {
     requires_connection: "Requires connection", needs_input: "Needs input", generating: "Generating", draft_ready: "Draft ready", changes_requested: "Changes requested",
-    approved_export_ready: "Approved · export ready", exported: "Exported", awaiting_comparable_scan: "Awaiting comparable scan", measured: "Measured", recommended: "Recommended",
+    approved_export_ready: "Approved · export ready", exported: "Exported", applied: "Applied (reported)", awaiting_comparable_scan: "Awaiting comparable scan", measured: "Measured", recommended: "Recommended",
   },
   states: {
     measured: "Measured", unavailable: "Unavailable", unsupported: "Unsupported", failed: "Failed", pending: "Pending",
@@ -226,7 +228,7 @@ export const workspaceZhHK: WorkspaceCopy = {
   },
   phases: {
     requires_connection: "需要連接", needs_input: "需要輸入", generating: "生成中", draft_ready: "草稿已備妥", changes_requested: "要求修改",
-    approved_export_ready: "已核准 · 可匯出", exported: "已匯出", awaiting_comparable_scan: "等待可比較掃描", measured: "已量度", recommended: "建議",
+    approved_export_ready: "已核准 · 可匯出", exported: "已匯出", applied: "已套用（店主回報）", awaiting_comparable_scan: "等待可比較掃描", measured: "已量度", recommended: "建議",
   },
   states: {
     measured: "已量度", unavailable: "未能取得", unsupported: "未支援", failed: "失敗", pending: "處理中",

@@ -54,6 +54,10 @@ export interface ActionOverview {
   approvalState: ApprovalState;
   deliveryState: DeliveryState;
   measurementState: MeasurementState;
+  /** A non-retracted owner assertion exists for this action. */
+  applied: boolean;
+  /** ISO timestamp of that assertion, for the "you marked this applied on {date}" line. */
+  appliedOn: string | null;
   displayPhase: LocalizedText;
   displayPhaseKey: DisplayPhaseKey;
   latestVersion?: { id: string; versionNo: number; approvalState: ApprovalState; deliveryState: DeliveryState };
@@ -95,6 +99,9 @@ export interface ActionOverviewContext {
   assignee?: { id: string; name: string } | null;
   /** Required keys the scan already answers for THIS action (detail page only). */
   scanSatisfiedInputs?: readonly string[];
+  /** A live (non-retracted) owner assertion exists; absent callers mean "none known". */
+  applied?: boolean;
+  appliedOn?: string | null;
 }
 
 export function displayPhaseKey(input: {
@@ -104,6 +111,7 @@ export function displayPhaseKey(input: {
   approvalState: ApprovalState | null;
   deliveryState: DeliveryState;
   measurementState: MeasurementState;
+  applied: boolean;
 }): DisplayPhaseKey {
   if (input.capability === "Requires connection") return "requires_connection";
   if (input.actionState === "needs_input") return "needs_input";
@@ -112,6 +120,12 @@ export function displayPhaseKey(input: {
   if (input.approvalState === "changes_requested") return "changes_requested";
   if (input.approvalState === "approved" && input.deliveryState === "export_ready") return "approved_export_ready";
   if (input.deliveryState === "exported") return "exported";
+  // The owner says this is live and no comparable scan has judged it yet --
+  // a real place in the loop that previously had no label. It sits after
+  // `exported` because a delivery that was never asserted is still just
+  // exported, and before the measurement states because those are the scan's
+  // verdict, which outranks a self-report once it exists.
+  if (input.applied && input.measurementState !== "measured") return "applied";
   if (input.measurementState === "awaiting_comparable_scan") return "awaiting_comparable_scan";
   if (input.measurementState === "measured") return "measured";
   return "recommended";
@@ -159,6 +173,7 @@ export function buildActionOverview(row: ActionRow, ctx: ActionOverviewContext):
     approvalState,
     deliveryState,
     measurementState: row.measurement_state,
+    applied: ctx.applied ?? false,
   });
   return {
     id: row.id,
@@ -189,6 +204,8 @@ export function buildActionOverview(row: ActionRow, ctx: ActionOverviewContext):
     approvalState: approvalState ?? "draft",
     deliveryState,
     measurementState: row.measurement_state,
+    applied: ctx.applied ?? false,
+    appliedOn: ctx.appliedOn ?? null,
     displayPhase: displayPhaseText(phaseKey),
     displayPhaseKey: phaseKey,
     latestVersion: ctx.latestVersion
