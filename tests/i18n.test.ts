@@ -4,12 +4,18 @@ import { describe, expect, it } from "vitest";
 
 import { getMessages, hasMessage, t } from "@/lib/i18n";
 
-// "unlock" was removed: nothing called t() with it, and five of its keys
-// described a /api/report-access/recover flow that has no route and no sender.
-// "applied" is this app's own namespace (P3.2), not an upstream one: the owner
-// assertion strings need a different register in zh-HK than zh-TW, which the
-// inline `isChinese ? … : …` ternaries elsewhere cannot express.
-const NAMESPACES = ["scanner", "scanning", "report", "share", "legal", "applied"];
+// Split by provenance so the upstream boundary stays machine-checked rather
+// than remembered: a new namespace has to declare which list it belongs to.
+//
+// "unlock" was removed from UPSTREAM: nothing called t() with it, and five of
+// its keys described a /api/report-access/recover flow that has no route and
+// no sender.
+const UPSTREAM_NAMESPACES = ["scanner", "scanning", "report", "share", "legal"];
+// This app's own copy. "applied" (P3.2) is here because the owner-assertion
+// strings need a different register in zh-HK than zh-TW, which the inline
+// `isChinese ? … : …` ternaries used elsewhere in this codebase cannot express.
+const APP_NAMESPACES = ["applied"];
+const NAMESPACES = [...UPSTREAM_NAMESPACES, ...APP_NAMESPACES];
 
 function readBundle(locale: string): Record<string, unknown> {
   return JSON.parse(readFileSync(fileURLToPath(new URL(`../lib/messages/${locale}.json`, import.meta.url)), "utf8"));
@@ -24,6 +30,17 @@ describe("lib/messages bundles", () => {
   it("carry exactly the upstream namespaces this app still reuses, plus its own", () => {
     for (const locale of ["en", "zh-HK", "zh-TW"]) {
       expect(Object.keys(readBundle(locale)).sort()).toEqual([...NAMESPACES].sort());
+    }
+  });
+
+  it("keep app-authored namespaces distinct from the reused upstream ones", () => {
+    // Guards the boundary itself: an app namespace silently added to the
+    // upstream list would make the bundle look inherited when it is authored
+    // here, which is the distinction this repo cares about elsewhere too.
+    expect(UPSTREAM_NAMESPACES.filter((name) => APP_NAMESPACES.includes(name))).toEqual([]);
+    for (const locale of ["en", "zh-HK", "zh-TW"]) {
+      const keys = Object.keys(readBundle(locale));
+      for (const name of APP_NAMESPACES) expect(keys).toContain(name);
     }
   });
 
