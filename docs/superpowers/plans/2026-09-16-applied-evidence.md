@@ -1215,6 +1215,58 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("action applications", () =
     ).resolves.not.toBeNull();
   });
 
+  // Added after Task 5's review. assertApplied's INSERT guard and its
+  // diagnostic query carry near-identical predicates that must stay in
+  // lockstep: if a future edit changes one and not the other, a duplicate
+  // submit gets reported as "this action is closed" (or the reverse) while
+  // every unit test still passes, because they all mock the repository. Only a
+  // real Postgres run can catch that drift.
+  it("tells a duplicate submit apart from a closed action", async () => {
+    const { ws, user, action } = await seed();
+    const repo = applicationRepository(runtime);
+    const row = { workspace_id: ws, action_id: action, output_version_id: null, source: "owner_asserted" as const, asserted_by: user, note: null, evidence: null };
+
+    const first = await repo.assertApplied(row, new Date().toISOString());
+    expect(first.ok).toBe(true);
+
+    // Same action, same (null) version, still live -> duplicate, not closed.
+    const second = await repo.assertApplied(row, new Date().toISOString());
+    expect(second).toMatchObject({ ok: false, reason: "duplicate" });
+    expect(second.ok === false && second.existingId).toBe(first.ok === true && first.id);
+
+    // Exactly one row, so the guard prevented the write rather than merely
+    // reporting on it afterwards.
+    expect((await runtime.query("SELECT id FROM action_applications WHERE action_id=$1", [action])).rows).toHaveLength(1);
+  });
+
+  it("reports a genuinely closed action as closed, not duplicate", async () => {
+    const { ws, user, action } = await seed("dismissed");
+    const outcome = await applicationRepository(runtime).assertApplied(
+      { workspace_id: ws, action_id: action, output_version_id: null, source: "owner_asserted", asserted_by: user, note: null, evidence: null },
+      new Date().toISOString(),
+    );
+    expect(outcome).toEqual({ ok: false, reason: "closed" });
+  });
+
+  it("retraction stamps EVERY live owner assertion, not just the newest", async () => {
+    // The bug this prevents: retract the newest only, an older live assertion
+    // survives, strongestBasis keeps returning owner_asserted, and the product
+    // goes on crediting work the owner explicitly withdrew.
+    const { ws, user, action } = await seed();
+    const repo = applicationRepository(runtime);
+    // Two live assertions require two DIFFERENT versions -- the same-version
+    // guard from the test above is what stops a same-version duplicate.
+    const v1 = await approvedVersion(ws, action);
+    const v2 = await approvedVersion(ws, action);
+    const base = { workspace_id: ws, action_id: action, source: "owner_asserted" as const, asserted_by: user, note: null, evidence: null };
+    expect((await repo.assertApplied({ ...base, output_version_id: v1 }, new Date().toISOString())).ok).toBe(true);
+    expect((await repo.assertApplied({ ...base, output_version_id: v2 }, new Date().toISOString())).ok).toBe(true);
+
+    expect(await repo.retract(ws, action, user, new Date().toISOString())).toEqual({ retracted: 2 });
+    expect(await repo.forActions(ws, [action])).toEqual([]);
+    expect((await runtime.query("SELECT retracted_at FROM action_applications WHERE action_id=$1", [action])).rows.every((r) => r.retracted_at !== null)).toBe(true);
+  });
+
   it("the sme_app_runtime grant from 0006 actually took", async () => {
     // 0003 holds the grants for existing tables and is immutable, so a 0006
     // that forgot its own GRANT would leave this table unreachable at runtime
