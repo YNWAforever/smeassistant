@@ -16,6 +16,7 @@ export type DisplayPhaseKey =
   | "draft_ready"
   | "changes_requested"
   | "approved_export_ready"
+  | "verified"
   | "applied"
   | "exported"
   | "awaiting_comparable_scan"
@@ -29,6 +30,7 @@ export const DISPLAY_PHASE_KEYS: DisplayPhaseKey[] = [
   "draft_ready",
   "changes_requested",
   "approved_export_ready",
+  "verified",
   "applied",
   "exported",
   "awaiting_comparable_scan",
@@ -139,7 +141,7 @@ export const workspaceEn: WorkspaceCopy = {
   },
   phases: {
     requires_connection: "Requires connection", needs_input: "Needs input", generating: "Generating", draft_ready: "Draft ready", changes_requested: "Changes requested",
-    approved_export_ready: "Approved · export ready", exported: "Exported", applied: "Applied (reported)", awaiting_comparable_scan: "Awaiting comparable scan", measured: "Measured", recommended: "Recommended",
+    approved_export_ready: "Approved · export ready", verified: "Confirmed on site", exported: "Exported", applied: "Applied (reported)", awaiting_comparable_scan: "Awaiting comparable scan", measured: "Measured", recommended: "Recommended",
   },
   basis: {
     exported: "exported",
@@ -239,7 +241,7 @@ export const workspaceZhHK: WorkspaceCopy = {
   },
   phases: {
     requires_connection: "需要連接", needs_input: "需要輸入", generating: "生成中", draft_ready: "草稿已備妥", changes_requested: "要求修改",
-    approved_export_ready: "已核准 · 可匯出", exported: "已匯出", applied: "已套用（店主回報）", awaiting_comparable_scan: "等待可比較掃描", measured: "已量度", recommended: "建議",
+    approved_export_ready: "已核准 · 可匯出", verified: "已在網站核實", exported: "已匯出", applied: "已套用（店主回報）", awaiting_comparable_scan: "等待可比較掃描", measured: "已量度", recommended: "建議",
   },
   basis: {
     exported: "已匯出",
@@ -329,6 +331,10 @@ export const workspaceZhTW: WorkspaceCopy = {
     owner_asserted: "您回報已套用",
     verified: "已在網站查證",
   } satisfies Record<AttributionBasis | "unknown", string>,
+  // Same 核實/查證 split as `basis.verified` above -- inheritance from
+  // zh-HK is NOT safe for this verb (that is exactly the inversion the
+  // previous slice shipped), so this key needs its own override here.
+  phases: { ...workspaceZhHK.phases, verified: "已在網站查證" },
   states: { ...workspaceZhHK.states, unavailable: "無法取得", publishing: "發布中", published: "已發布" },
   freshness: { today: "今天更新", days: "{n} 天前更新" },
   checklistSteps: {

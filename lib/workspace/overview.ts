@@ -58,6 +58,10 @@ export interface ActionOverview {
   applied: boolean;
   /** ISO timestamp of that assertion, for the "you marked this applied on {date}" line. */
   appliedOn: string | null;
+  /** An independent (`source: 'verified'`) check confirmed this action on the live site. Never derived from an owner assertion. */
+  verified: boolean;
+  /** ISO timestamp of that verification. */
+  verifiedOn: string | null;
   displayPhase: LocalizedText;
   displayPhaseKey: DisplayPhaseKey;
   latestVersion?: { id: string; versionNo: number; approvalState: ApprovalState; deliveryState: DeliveryState };
@@ -111,6 +115,9 @@ export interface ActionOverviewContext {
    */
   applied?: boolean;
   appliedOn?: string | null;
+  /** Same "not looked up" caveat as `applied` above, for the independent `verified` source. */
+  verified?: boolean;
+  verifiedOn?: string | null;
 }
 
 export function displayPhaseKey(input: {
@@ -121,6 +128,7 @@ export function displayPhaseKey(input: {
   deliveryState: DeliveryState;
   measurementState: MeasurementState;
   applied: boolean;
+  verified: boolean;
 }): DisplayPhaseKey {
   if (input.capability === "Requires connection") return "requires_connection";
   if (input.actionState === "needs_input") return "needs_input";
@@ -135,6 +143,10 @@ export function displayPhaseKey(input: {
   // invisible on exactly the drafted-action path that carries a version
   // reference. Applied is further along the loop than exported, and the
   // `!== "measured"` guard still defers to the scan's own verdict.
+  // Above `applied`: an independent check beats the owner's own report, the
+  // same order strongestBasis uses for attribution. Still below `measured`,
+  // which is the scan's verdict on the effect rather than on the change.
+  if (input.verified && input.measurementState !== "measured") return "verified";
   if (input.applied && input.measurementState !== "measured") return "applied";
   if (input.deliveryState === "exported") return "exported";
   if (input.measurementState === "awaiting_comparable_scan") return "awaiting_comparable_scan";
@@ -185,6 +197,7 @@ export function buildActionOverview(row: ActionRow, ctx: ActionOverviewContext):
     deliveryState,
     measurementState: row.measurement_state,
     applied: ctx.applied ?? false,
+    verified: ctx.verified ?? false,
   });
   return {
     id: row.id,
@@ -217,6 +230,8 @@ export function buildActionOverview(row: ActionRow, ctx: ActionOverviewContext):
     measurementState: row.measurement_state,
     applied: ctx.applied ?? false,
     appliedOn: ctx.appliedOn ?? null,
+    verified: ctx.verified ?? false,
+    verifiedOn: ctx.verifiedOn ?? null,
     displayPhase: displayPhaseText(phaseKey),
     displayPhaseKey: phaseKey,
     latestVersion: ctx.latestVersion
