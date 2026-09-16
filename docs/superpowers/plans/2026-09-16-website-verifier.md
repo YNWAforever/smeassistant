@@ -268,6 +268,15 @@ describe("decideVerification", () => {
     // not "it is fixed".
     expect(decideVerification(["faq_schema"], checks({ faq_schema: false }), { evaluated: 0, passed: 0, results: [] })).toBe("not_yet");
   });
+
+  it("is not_yet when the fresh fetch evaluated only some of the relevant checks", () => {
+    // A partial fetch is not a partial verification. This is the case a
+    // refactor that special-cased `evaluated === 0` would break while every
+    // other test stayed green -- the rule must stay a per-key lookup.
+    const prior = checks({ title: false, meta_description_50_160: true, single_h1: false });
+    const fresh = checks({ title: true });
+    expect(decideVerification(THREE, prior, fresh)).toBe("not_yet");
+  });
 });
 ```
 
@@ -319,6 +328,11 @@ export function decideVerification(
     // failing, so we must not later claim it was fixed.
     if (before === false) relevant.push(key);
   }
+  // Load-bearing, NOT an early-exit optimisation. Without it an empty
+  // `relevant` makes the loop below vacuous and execution falls through to
+  // `return "verified"` -- so a website nobody could reach would read as
+  // confirmed. Removing this as redundant is the worst bug this function can
+  // have.
   if (!relevant.length) return "not_applicable";
 
   for (const key of relevant) {
@@ -333,7 +347,7 @@ export function decideVerification(
 - [ ] **Step 4: Run to verify it passes**
 
 Run: `corepack pnpm exec vitest run lib/verify/decide.test.ts`
-Expected: PASS, 9 tests.
+Expected: PASS, 10 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -854,7 +868,7 @@ Write the fixtures with the same helper style as the applications integration te
 - [ ] **Step 2: Run it**
 
 Run: `corepack pnpm exec vitest run --config vitest.integration.config.ts test/integration/neon-website-verification.integration.test.ts`
-Expected: PASS, 9 tests. Docker must be running.
+Expected: PASS, 10 tests. Docker must be running.
 
 Run: `corepack pnpm test:integration`
 Expected: PASS, one file and nine tests more than the current 28 / 285.
