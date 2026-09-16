@@ -631,6 +631,23 @@ export interface VerificationSweepResult {
 const VERIFIABLE_KEYS = TEMPLATES.filter((t) => t.verifyChecks?.length).map((t) => t.key);
 
 /**
+ * `scan_snapshots.website_checks` is jsonb, so the repository's
+ * `WebsiteChecks | null` is a claim Postgres cannot enforce -- a legacy row or
+ * a future writer bug could return any shape. `decideVerification` reads
+ * `.results.find(...)`, which would throw on a malformed value and take down
+ * the whole verification concern for the tick rather than one action.
+ *
+ * An unreadable prior state means we cannot establish what was failing, which
+ * is exactly `not_verifiable`. Coercing to null says that honestly instead of
+ * guessing or crashing.
+ */
+function asChecks(value: unknown): WebsiteChecks | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Partial<WebsiteChecks>;
+  return Array.isArray(candidate.results) ? (candidate as WebsiteChecks) : null;
+}
+
+/**
  * Confirm that website work an owner exported or marked applied is now live
  * (docs/superpowers/specs/2026-09-16-website-verifier-design.md).
  *
@@ -667,7 +684,7 @@ export async function runWebsiteVerification(
   for (const action of actions) {
     const template = findTemplate(action.template_key as TemplateKey);
     const fresh = checksByLocation.get(action.location_id) ?? { evaluated: 0, passed: 0, results: [] };
-    const decision = decideVerification(template?.verifyChecks ?? [], { prior: action.prior_checks, fresh });
+    const decision = decideVerification(template?.verifyChecks ?? [], { prior: asChecks(action.prior_checks), fresh });
     if (decision !== "verified") continue;
     await deps.record({
       workspaceId: action.workspace_id,
