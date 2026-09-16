@@ -141,7 +141,7 @@ export const workspaceEn: WorkspaceCopy = {
     approved_export_ready: "Approved · export ready", exported: "Exported", applied: "Applied (reported)", awaiting_comparable_scan: "Awaiting comparable scan", measured: "Measured", recommended: "Recommended",
   },
   basis: {
-    exported: "exported {date}",
+    exported: "exported",
     owner_asserted: "you reported applying this",
     verified: "verified on site",
     unknown: "basis not recorded",
@@ -241,7 +241,7 @@ export const workspaceZhHK: WorkspaceCopy = {
     approved_export_ready: "已核准 · 可匯出", exported: "已匯出", applied: "已套用（店主回報）", awaiting_comparable_scan: "等待可比較掃描", measured: "已量度", recommended: "建議",
   },
   basis: {
-    exported: "於 {date} 匯出",
+    exported: "已匯出",
     owner_asserted: "您回報已套用",
     verified: "已在網站核實",
     unknown: "未記錄依據",

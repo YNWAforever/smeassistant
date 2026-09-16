@@ -107,18 +107,15 @@ export function stateLabel(key: string, locale: PrototypeLocale): string {
 
 /**
  * P3.2 task 9: the basis suffix beside an `Attributed` measurement's fact
- * type. `basis === null` covers rows written before migration 0006 -- it
- * must render as "not recorded", never a guessed basis. `date` fills the
- * `exported` string's `{date}` placeholder when the caller has one; neither
- * current caller (Insights, Home) has an export date at hand, so the
- * placeholder is stripped rather than left literal or rendered "undefined".
+ * type, naming which signal justified the attribution.
+ *
+ * `basis === null` covers rows written before migration 0006. It renders
+ * "basis not recorded", never a guessed basis: the column was deliberately
+ * left un-backfilled because there is no honest value to write for work done
+ * before the product recorded what the owner did.
  */
-export function basisLabel(basis: "exported" | "owner_asserted" | "verified" | null, locale: PrototypeLocale, date?: string | null): string {
-  const table = copy[locale].workspace.basis;
-  const key = basis ?? "unknown";
-  const text = table[key];
-  if (key !== "exported") return text;
-  return date ? text.replace("{date}", date) : text.replace(/\s*\{date\}/, "");
+export function basisLabel(basis: "exported" | "owner_asserted" | "verified" | null, locale: PrototypeLocale): string {
+  return copy[locale].workspace.basis[basis ?? "unknown"];
 }
 
 export function withLocation(href: string, location: string | null | undefined): string {
