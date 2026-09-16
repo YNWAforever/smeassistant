@@ -75,10 +75,12 @@ create index if not exists action_applications_action_idx
   on public.action_applications (action_id, asserted_at desc)
   where retracted_at is null;
 
-> **Amendment (commit `742e961`).** The index shipped as `(action_id, source, asserted_at DESC)`, not the two-column form above. `latestOwnerAssertion` filters on `source = 'owner_asserted'`, and without `source` in the index that lookup has to recheck every application row for the action instead of using the index to narrow straight to the relevant ones. This doc's SQL is left as originally approved; the index actually applied is in `neon/migrations/0006_action_applications.sql`.
-
 grant select, insert, update, delete on table public.action_applications to sme_app_runtime;
 ```
+
+> **Amendment (commit `742e961`).** The index shipped as `(action_id, source, asserted_at DESC)`, not the two-column form above. Three live queries filter on `source = 'owner_asserted'` — `assertApplied`'s duplicate guard, its diagnostic query, and `retract` — and without `source` in the index each has to recheck every application row for the action rather than narrowing straight to the relevant ones. `workspace_id` is deliberately NOT a leading column: `action_id` already determines the workspace, so it would sit ahead of the actually selective column as a scope assertion rather than a filter. This doc's SQL is left as originally approved; what was applied is in `neon/migrations/0006_action_applications.sql`.
+>
+> The migration also carries the four-statement RLS block (`ENABLE ROW LEVEL SECURITY`, `REVOKE`, `GRANT`, `CREATE POLICY ... TO sme_app_runtime`) that every table in this schema has and this snippet omitted — `0003_workflows.sql` holds it for the existing 34 tables and is immutable, so a new table must carry its own.
 
 Reasoning behind the non-obvious choices:
 
