@@ -53,7 +53,11 @@ describe("verifyChecks", () => {
 
   it("names only real website check keys", () => {
     // A typo here would make an action permanently unverifiable while
-    // compiling and passing every other test.
+    // compiling and passing every other test. Guard against this test itself
+    // going vacuous (e.g. if a future change stopped populating verifyChecks
+    // anywhere): assert there is at least one declared key before checking them.
+    const allDeclaredKeys = TEMPLATES.flatMap((t) => t.verifyChecks ?? []);
+    expect(allDeclaredKeys.length).toBeGreaterThan(0);
     for (const template of TEMPLATES) {
       for (const key of template.verifyChecks ?? []) {
         expect(WEBSITE_CHECK_KEYS).toContain(key);

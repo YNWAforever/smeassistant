@@ -216,6 +216,13 @@ export const TEMPLATES: ActionTemplate[] = [
     delivery: "export",
     externalFacing: true,
     channel: "website",
+    // "title" has no scanner-side trigger here -- aeo.website_content_weak and
+    // aeo.website_meta_weak both fire on meta_description_len, and
+    // aeo.website_h1_weak on h1_count; none inspects <title>. It is included
+    // because the decision rule verifies against the recorded website_checks
+    // state, not against which finding fired, and a failing title is squarely
+    // within this template's own remit ("title, description and heading
+    // copy"). Deliberate, not an assumed mirror of triggerFindingKeys.
     verifyChecks: ["title", "meta_description_50_160", "single_h1"],
     title: localized("Fix the website basics", "修正網站基本資料"),
     summary: localized("Title, description and heading copy that describes the business plainly.", "以清楚描述業務的標題、簡介及標題文字。"),
