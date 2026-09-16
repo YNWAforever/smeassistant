@@ -379,6 +379,13 @@ export interface ApplicationRepository {
 const CLOSED_STATES = ['dismissed', 'cancelled', 'expired'];
 
 /**
+ * Renders a timestamptz as strict UTC ISO 8601. `to_char` of NULL is NULL, so
+ * a never-retracted row still reports `retracted_at: null` rather than a
+ * string, which the ApplicationRecord contract and every caller rely on.
+ */
+const ISO_UTC = (column: string) => `to_char(${column} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`;
+
+/**
  * Resolves the connection the transactional methods should use. Throws
  * rather than silently falling back to the ambient pool when a query-only
  * client was injected: a silent fallback would mean an injected test/scoped
@@ -398,8 +405,16 @@ export function applicationRepository(client?: Pick<Pool, 'query'> & Partial<Pic
   return {
     async forActions(workspaceId, actionIds) {
       if (!actionIds.length) return [];
+      // Timestamps are rendered as strict UTC ISO 8601 rather than left to
+      // `::text`: that rendering depends on the session's DateStyle, and only
+      // the strict ISO subset is spec-guaranteed to Date.parse. strongestBasis
+      // parses asserted_at to decide whether evidence precedes a scan, and a
+      // misparse there does not throw -- it silently changes which evidence
+      // counts, the exact failure this table exists to prevent.
       return (await db().query<ApplicationRecord>(
-        `SELECT p.id, p.action_id, p.source, p.asserted_at::text, p.retracted_at::text
+        `SELECT p.id, p.action_id, p.source,
+                ${ISO_UTC('p.asserted_at')} AS asserted_at,
+                ${ISO_UTC('p.retracted_at')} AS retracted_at
          FROM action_applications p JOIN actions a ON a.id = p.action_id AND a.workspace_id = p.workspace_id
          WHERE p.workspace_id = $1 AND p.action_id = ANY($2::uuid[]) AND p.retracted_at IS NULL
          ORDER BY p.asserted_at DESC`,
@@ -408,7 +423,10 @@ export function applicationRepository(client?: Pick<Pool, 'query'> & Partial<Pic
     },
     async latestOwnerAssertion(workspaceId, actionId) {
       return (await db().query<ApplicationRecord & { output_version_id: string | null }>(
-        `SELECT id, action_id, source, asserted_at::text, retracted_at::text, output_version_id
+        `SELECT id, action_id, source,
+                ${ISO_UTC('asserted_at')} AS asserted_at,
+                ${ISO_UTC('retracted_at')} AS retracted_at,
+                output_version_id
          FROM action_applications
          WHERE workspace_id = $1 AND action_id = $2 AND source = 'owner_asserted' AND retracted_at IS NULL
          ORDER BY asserted_at DESC, id DESC LIMIT 1`,
@@ -1094,6 +1112,10 @@ Add one batched lookup alongside it:
 const applications = await applicationRepository().forActions(workspaceId, actionIds);
 const appliedAt = new Map<string, string>();
 for (const row of applications) {
+  // owner_asserted only: `applied`/`appliedOn` drive the owner-facing "you
+  // marked this applied on {date}" line, so a verifier's row must never be
+  // rendered as something the owner said. forActions returns BOTH sources.
+  if (row.source !== "owner_asserted") continue;
   // forActions returns newest-first and excludes retracted rows, so the first
   // row seen for an action is the one to show.
   if (!appliedAt.has(row.action_id)) appliedAt.set(row.action_id, row.asserted_at);
