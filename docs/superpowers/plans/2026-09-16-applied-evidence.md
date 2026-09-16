@@ -1500,25 +1500,40 @@ In `lib/copy-workspace.ts`, add a `basis` block to `workspaceEn` beside `phases`
 
 ```ts
   basis: {
-    exported: "exported {date}",
+    exported: "exported",
     owner_asserted: "you reported applying this",
     verified: "verified on site",
     unknown: "basis not recorded",
-  },
+  } satisfies Record<AttributionBasis | "unknown", string>,
 ```
 
 and to `workspaceZhHK`:
 
 ```ts
   basis: {
-    exported: "於 {date} 匯出",
-    owner_asserted: "您回報已套用",
+    exported: "已匯出",
+    owner_asserted: "你回報已套用",
     verified: "已在網站核實",
     unknown: "未記錄依據",
-  },
+  } satisfies Record<AttributionBasis | "unknown", string>,
 ```
 
-Add the matching `basis` field to the `WorkspaceCopy` interface. `workspaceZhTW` inherits by spread.
+**`workspaceZhTW` needs its own `basis` override — it must NOT simply inherit.** Task 8 set this feature's register split in the `applied` message namespace (zh-HK 你 + 核實, zh-TW 您 + 查證), and inheriting here silently gives Taiwan the HK verb. Override the two register-bearing keys and inherit the rest:
+
+```ts
+  // Mirrors the 你/您 and 核實/查證 split Task 8 set in the `applied` namespace
+  // of lib/messages/*.json, so the two cannot drift apart.
+  basis: { ...workspaceZhHK.basis, owner_asserted: "您回報已套用", verified: "已在網站查證" },
+```
+
+`exported` (已匯出) and `unknown` (未記錄依據) carry neither a pronoun nor the 核實/查證 verb, so they inherit correctly.
+
+Two notes learned in review:
+
+- **No `{date}` placeholder.** An earlier draft had `exported {date}`, but no caller has an export date at that point — `action_measurements` stores none. A placeholder nothing fills needs stripping logic that exists only to hide it. `Attributed · exported` reads fine.
+- **Type the parameter, do not re-declare the union.** `basisLabel` takes `AttributionBasis | null` imported from `lib/workspace/applications.ts`, not an inline literal union. With `satisfies` on each locale block, adding a basis member becomes a compile error instead of silently rendering "unknown" at runtime.
+
+Add the matching `basis` field to the `WorkspaceCopy` interface.
 
 - [ ] **Step 2: Render it**
 
