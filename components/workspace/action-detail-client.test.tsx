@@ -72,11 +72,11 @@ function overview(templateKey: TemplateKey): ActionOverview {
   };
 }
 
-function detail(templateKey: TemplateKey): ActionDetail {
-  return { action: overview(templateKey), versions: [], runs: [], measurements: [], scanInputs: [], businessContext: [], faqQuestions: [] };
+function detail(templateKey: TemplateKey, measurements: ActionDetail["measurements"] = []): ActionDetail {
+  return { action: overview(templateKey), versions: [], runs: [], measurements, scanInputs: [], businessContext: [], faqQuestions: [] };
 }
 
-function render(templateKey: TemplateKey) {
+function render(templateKey: TemplateKey, measurements: ActionDetail["measurements"] = []) {
   const root = document.createElement("div");
   root.innerHTML = renderToStaticMarkup(
     <ActionDetailClient
@@ -87,7 +87,7 @@ function render(templateKey: TemplateKey) {
       role="owner"
       inScope
       location="yik-yam"
-      detail={detail(templateKey)}
+      detail={detail(templateKey, measurements)}
       auditRows={[]}
       locations={[{ slug: "yik-yam", name: "Yik Yam" }]}
       approvedAssets={[]}
@@ -216,5 +216,68 @@ describe("agent-backed templates keep the draft workflow", () => {
     // applied by publishing its approved version, which the product has no
     // way to observe until the next comparable scan.
     expect(text).toContain(appliedCopy.markButton);
+  });
+});
+
+describe("the Before and after measurement card", () => {
+  // The shared fixture hard-codes measurements: [], so this Attributed
+  // branch never rendered in any test before this. It is the honesty-critical
+  // path: a NULL basis must read as "basis not recorded", never a guessed one.
+  // Radix only mounts the active tab's content, so this needs the live
+  // (@testing-library/react) harness with a click into the Evidence tab, not
+  // the static-markup render() helper the other describe blocks use.
+  const TEMPLATE_KEY = AGENT_TEMPLATES[0].key;
+  const baseMeasurement = {
+    id: "meas-1",
+    action_id: "act-1",
+    metric_key: "gbp.response_rate_pct",
+    before_value: 18,
+    after_value: 42,
+    delta: 24,
+    window_days: 30,
+    created_at: "2026-09-10T00:00:00Z",
+    location_id: "loc-1",
+  };
+
+  beforeEach(() => {
+    if (!window.matchMedia)
+      window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia;
+  });
+
+  afterEach(() => cleanup());
+
+  function mountOnEvidenceTab(measurements: ActionDetail["measurements"]) {
+    const value = detail(TEMPLATE_KEY, measurements);
+    renderLive(
+      <ActionDetailClient
+        locale="en"
+        workspaceSlug="kam-man-house"
+        workspaceId="ws-1"
+        timezone="Asia/Hong_Kong"
+        role="owner"
+        inScope
+        location="yik-yam"
+        detail={value}
+        auditRows={[]}
+        locations={[{ slug: "yik-yam", name: "Yik Yam" }]}
+        approvedAssets={[]}
+      />,
+    );
+    const evidenceTab = screen.getByRole("tab", { name: "Source evidence" });
+    fireEvent.mouseDown(evidenceTab, { button: 0, ctrlKey: false });
+  }
+
+  it("renders 'basis not recorded' for a null attribution_basis and no other basis string", () => {
+    mountOnEvidenceTab([{ ...baseMeasurement, fact_type: "Attributed", attribution_basis: null }]);
+    expect(screen.getByText(/basis not recorded/)).toBeInTheDocument();
+    expect(screen.queryByText(/verified on site/)).toBeNull();
+    expect(screen.queryByText(/you reported applying this/)).toBeNull();
+    expect(document.body.textContent ?? "").not.toMatch(/·\s*exported\b/);
+  });
+
+  it("renders the recorded basis for a non-null attribution_basis", () => {
+    mountOnEvidenceTab([{ ...baseMeasurement, fact_type: "Attributed", attribution_basis: "verified" }]);
+    expect(screen.getByText(/verified on site/)).toBeInTheDocument();
+    expect(screen.queryByText(/basis not recorded/)).toBeNull();
   });
 });

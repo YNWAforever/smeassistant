@@ -2,6 +2,7 @@ import type { PrototypeLocale } from "@/lib/copy";
 import { copy } from "@/lib/copy";
 import type { Priority } from "@/lib/domain";
 import { readableFindingKey } from "@/lib/report/finding-label";
+import type { AttributionBasis } from "@/lib/workspace/applications";
 import type { TemplateKey } from "@/lib/workspace/templates";
 
 /**
@@ -114,7 +115,7 @@ export function stateLabel(key: string, locale: PrototypeLocale): string {
  * left un-backfilled because there is no honest value to write for work done
  * before the product recorded what the owner did.
  */
-export function basisLabel(basis: "exported" | "owner_asserted" | "verified" | null, locale: PrototypeLocale): string {
+export function basisLabel(basis: AttributionBasis | null, locale: PrototypeLocale): string {
   return copy[locale].workspace.basis[basis ?? "unknown"];
 }
 

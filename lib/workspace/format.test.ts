@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildExportText, comparisonReasonText, ordinal } from "./format";
+import { basisLabel, buildExportText, comparisonReasonText, ordinal } from "./format";
 
 describe("ordinal", () => {
   it("covers every day a monthly cadence can fall on", () => {
@@ -40,6 +40,36 @@ describe("comparisonReasonText", () => {
   it("handles a missing reason", () => {
     expect(comparisonReasonText(null, false)).toBe("No comparable scan yet");
     expect(comparisonReasonText(undefined, true)).toBe("尚無可比較掃描");
+  });
+});
+
+describe("basisLabel", () => {
+  // The honesty-critical path: a NULL basis must render as "not recorded" in
+  // every locale, never as a guessed basis. This is the case most likely to
+  // regress unnoticed -- a dropped SELECT, a lost thread, a typo'd key all
+  // produce exactly this string, so the assertion checks the literal text.
+  it("renders 'basis not recorded' for a null basis in every locale", () => {
+    expect(basisLabel(null, "en")).toBe("basis not recorded");
+    expect(basisLabel(null, "zh-HK")).toBe("未記錄依據");
+    expect(basisLabel(null, "zh-TW")).toBe("未記錄依據");
+  });
+
+  it("renders 'exported' in every locale", () => {
+    expect(basisLabel("exported", "en")).toBe("exported");
+    expect(basisLabel("exported", "zh-HK")).toBe("已匯出");
+    expect(basisLabel("exported", "zh-TW")).toBe("已匯出");
+  });
+
+  it("renders 'owner_asserted' with the register Task 8 set for the applied banner (你/您)", () => {
+    expect(basisLabel("owner_asserted", "en")).toBe("you reported applying this");
+    expect(basisLabel("owner_asserted", "zh-HK")).toBe("你回報已套用");
+    expect(basisLabel("owner_asserted", "zh-TW")).toBe("您回報已套用");
+  });
+
+  it("renders 'verified' with the verb Task 8 set for the applied banner (核實/查證)", () => {
+    expect(basisLabel("verified", "en")).toBe("verified on site");
+    expect(basisLabel("verified", "zh-HK")).toBe("已在網站核實");
+    expect(basisLabel("verified", "zh-TW")).toBe("已在網站查證");
   });
 });
 

@@ -1,6 +1,7 @@
 import type { PriorityFactorKey } from "@/lib/workspace/priority";
 import type { TemplateKey } from "@/lib/workspace/templates";
 import type { MetricKey } from "@/lib/workspace/metrics";
+import type { AttributionBasis } from "@/lib/workspace/applications";
 
 /**
  * Workspace copy (`copy[locale].workspace`, CLAUDE.md Phase 3 item 5): labels
@@ -145,7 +146,7 @@ export const workspaceEn: WorkspaceCopy = {
     owner_asserted: "you reported applying this",
     verified: "verified on site",
     unknown: "basis not recorded",
-  },
+  } satisfies Record<AttributionBasis | "unknown", string>,
   states: {
     measured: "Measured", unavailable: "Unavailable", unsupported: "Unsupported", failed: "Failed", pending: "Pending",
     recommended: "Recommended", needs_input: "Needs input", ready: "Ready", in_progress: "In progress", completed: "Completed", dismissed: "Dismissed", cancelled: "Cancelled", expired: "Expired",
@@ -242,10 +243,10 @@ export const workspaceZhHK: WorkspaceCopy = {
   },
   basis: {
     exported: "已匯出",
-    owner_asserted: "您回報已套用",
+    owner_asserted: "你回報已套用",
     verified: "已在網站核實",
     unknown: "未記錄依據",
-  },
+  } satisfies Record<AttributionBasis | "unknown", string>,
   states: {
     measured: "已量度", unavailable: "未能取得", unsupported: "未支援", failed: "失敗", pending: "處理中",
     recommended: "建議", needs_input: "需要輸入", ready: "準備就緒", in_progress: "進行中", completed: "已完成", dismissed: "已略過", cancelled: "已取消", expired: "已過期",
@@ -319,6 +320,15 @@ export const workspaceZhTW: WorkspaceCopy = {
     "menu-translation": { title: "審閱英文菜單翻譯", summary: "先確認菜色資料，再完成其餘英文標籤。", workflow: "菜單翻譯流程" },
     "google-reconnect": { title: "重新連接 Google 商家權限", summary: "恢復連接後，才可安全取得非公開營運資料。", workflow: "連線恢復" },
   },
+  // Mirrors the 核實/查證 verb and 你/您 pronoun split Task 8 set in the
+  // `applied` message namespace (lib/messages/{zh-HK,zh-TW}.json:
+  // assertedOn) -- keep the two in sync if either changes. `exported` and
+  // `unknown` carry no verb or pronoun, so they stay inherited from zh-HK.
+  basis: {
+    ...workspaceZhHK.basis,
+    owner_asserted: "您回報已套用",
+    verified: "已在網站查證",
+  } satisfies Record<AttributionBasis | "unknown", string>,
   states: { ...workspaceZhHK.states, unavailable: "無法取得", publishing: "發布中", published: "已發布" },
   freshness: { today: "今天更新", days: "{n} 天前更新" },
   checklistSteps: {
