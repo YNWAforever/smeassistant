@@ -15,8 +15,8 @@ export type DisplayPhaseKey =
   | "draft_ready"
   | "changes_requested"
   | "approved_export_ready"
-  | "exported"
   | "applied"
+  | "exported"
   | "awaiting_comparable_scan"
   | "measured"
   | "recommended";
@@ -28,8 +28,8 @@ export const DISPLAY_PHASE_KEYS: DisplayPhaseKey[] = [
   "draft_ready",
   "changes_requested",
   "approved_export_ready",
-  "exported",
   "applied",
+  "exported",
   "awaiting_comparable_scan",
   "measured",
   "recommended",

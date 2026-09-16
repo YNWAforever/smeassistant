@@ -65,6 +65,10 @@ describe("displayPhaseKey applied", () => {
     expect(displayPhaseKey({ ...baseInput, measurementState: "measured" })).toBe("measured");
   });
 
+  it("beats exported: an exported draft the owner then asserted reads applied", () => {
+    expect(displayPhaseKey({ ...baseInput, deliveryState: "exported" })).toBe("applied");
+  });
+
   it("is exported, not applied, when nothing was asserted", () => {
     expect(displayPhaseKey({ ...baseInput, applied: false, deliveryState: "exported" })).toBe("exported");
   });

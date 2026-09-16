@@ -119,13 +119,15 @@ export function displayPhaseKey(input: {
   if (input.approvalState === "draft") return "draft_ready";
   if (input.approvalState === "changes_requested") return "changes_requested";
   if (input.approvalState === "approved" && input.deliveryState === "export_ready") return "approved_export_ready";
-  if (input.deliveryState === "exported") return "exported";
   // The owner says this is live and no comparable scan has judged it yet --
-  // a real place in the loop that previously had no label. It sits after
-  // `exported` because a delivery that was never asserted is still just
-  // exported, and before the measurement states because those are the scan's
-  // verdict, which outranks a self-report once it exists.
+  // a real place in the loop that previously had no label. Above `exported`
+  // deliberately: deliveryState stays 'exported' forever once a draft is
+  // exported, so placing this after it would make the owner's assertion
+  // invisible on exactly the drafted-action path that carries a version
+  // reference. Applied is further along the loop than exported, and the
+  // `!== "measured"` guard still defers to the scan's own verdict.
   if (input.applied && input.measurementState !== "measured") return "applied";
+  if (input.deliveryState === "exported") return "exported";
   if (input.measurementState === "awaiting_comparable_scan") return "awaiting_comparable_scan";
   if (input.measurementState === "measured") return "measured";
   return "recommended";
