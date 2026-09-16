@@ -75,6 +75,8 @@ create index if not exists action_applications_action_idx
   on public.action_applications (action_id, asserted_at desc)
   where retracted_at is null;
 
+> **Amendment (commit `742e961`).** The index shipped as `(action_id, source, asserted_at DESC)`, not the two-column form above. `latestOwnerAssertion` filters on `source = 'owner_asserted'`, and without `source` in the index that lookup has to recheck every application row for the action instead of using the index to narrow straight to the relevant ones. This doc's SQL is left as originally approved; the index actually applied is in `neon/migrations/0006_action_applications.sql`.
+
 grant select, insert, update, delete on table public.action_applications to sme_app_runtime;
 ```
 
@@ -119,6 +121,8 @@ Then one transaction:
 **Idempotency:** if a non-retracted `owner_asserted` row already exists for this action with the same `output_version_id`, return 200 with the existing row instead of inserting. A double-clicked button must not become two assertions.
 
 **`DELETE /api/actions/[actionId]/applied`** stamps `retracted_at` / `retracted_by` on the newest non-retracted assertion, returns the action to `action_state='in_progress'`, clears `completed_at`, and emits `action.application_retracted`.
+
+> **Amendment (commit `846c04c`).** The shipped route stamps EVERY live (non-retracted) `owner_asserted` row for the action, not only the newest. With two live assertions, stamping just the newest left an older one live, `strongestBasis` kept returning `owner_asserted` from it, and the product would have gone on crediting work the owner had explicitly withdrawn. `lib/repositories/applications.ts::retract` returns the count stamped; the route's behaviour, not this paragraph, is current.
 
 `in_progress` is chosen over re-deriving the action's prior state: it is valid in the existing CHECK constraint, it is honest (the owner has engaged with this and it is not done), and re-deriving would mean reimplementing the derivation rules in a second place where they could drift from the first.
 
@@ -169,6 +173,8 @@ Four places, with one constraint throughout: a self-report must never be dressed
 This is close to what `action-detail-client.tsx` already says in its own comment about the checklist control ("This is the owner's own confirmation, not an observation"). The design makes the data model honest about something the copy already had right.
 
 **Actions list.** `displayPhaseKey` in `lib/workspace/overview.ts` gains one phase, `applied`, slotted after `exported` and before `awaiting_comparable_scan`. It means "the owner says this is live and no comparable scan has judged it yet" — a distinct place in the loop that currently has no label.
+
+> **Amendment (commit `f1498f7`).** The shipped ordering places `applied` ABOVE `exported`, not below it. `deliveryState` stays `'exported'` for a version once it has been exported, so checking `exported` first would have made the `applied` label invisible on exactly the drafted-action path that carries a version reference — it would only ever have surfaced on checklists, close to the opposite of the intent. `lib/workspace/overview.ts` is current; this paragraph records the original decision and why it was corrected.
 
 **Measurement display (Home "previous action outcome", and the action detail page's "Before and after" card).** Wherever a *measurement's* `fact_type` appears, the basis appears with it. Note Insights is not one of these surfaces: its metric cards compare snapshot to snapshot and are always `Observed` or `Unknown`, never `Attributed`, so they carry no basis. `Attributed · you reported applying this` reads very differently from `Attributed · exported 12 Sep` or a future `Attributed · verified on site`, and that difference is the whole point of the four-event requirement. A null basis on pre-migration rows renders as `Attributed · basis not recorded`, never as a guess.
 

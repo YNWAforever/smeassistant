@@ -84,7 +84,7 @@ This slice therefore covered the one genuinely missing part: the plan's central 
 
 ### What changed
 
-Full diff across the P3.2 range (`84bae0b..dea6785`, design doc through the final Task 9 review fix): **37 files changed, 3,749 insertions, 71 deletions**, across 41 commits.
+Full diff across the P3.2 range (`84bae0b..dea6785`, design doc through the final Task 9 review fix): **37 files changed, 3,749 insertions, 71 deletions**, across 40 commits.
 
 | Area | Files | What it does |
 |---|---|---|
