@@ -5,10 +5,22 @@ import { authorizeCronRequest, cronUnauthorizedResponse } from "@/lib/security/c
 import { notifyDueSchedules } from "@/lib/scan/notify-due-schedules";
 import { schedulerRepository } from "@/lib/repositories/scheduler";
 import { reconcileWorkspaceScans } from "@/lib/workspace/completion";
+import { applicationRepository } from "@/lib/repositories/applications";
+import { verificationRepository } from "@/lib/repositories/verification";
+import { recordApplication } from "@/lib/workspace/applications";
+import { recordNeonEvent } from "@/lib/workspace/audit";
+import { runWebsiteVerification } from "@/lib/verify/website-sweep";
 
 export const maxDuration = 60;
 
 const RECLAIM_BATCH_LIMIT = 20;
+/**
+ * Bounds ONE tick rather than rationing throughput: this is the only concern
+ * here that fetches customer infrastructure, and the five fetches run in
+ * parallel under runWebsiteChecks' 5s timeout, so the cap is about not
+ * spending the route's 60s budget, not about how much work gets done per day.
+ */
+const VERIFY_LOCATION_LIMIT = 5;
 
 function logFailure(step: string, cause: unknown) {
   console.error(`[cron/dispatch] ${step} failed`, {
@@ -72,5 +84,28 @@ export async function POST(request: Request): Promise<Response> {
     logFailure("reconcile_stuck_completions", cause);
   }
 
-  return NextResponse.json({ notified, reclaimCandidates, reconciled }, { status: 200, headers: { "Cache-Control": "no-store" } });
+  let verified = { locationsChecked: 0, actionsVerified: 0 };
+  try {
+    verified = await runWebsiteVerification(
+      verificationRepository(),
+      {
+        record: async (row) => {
+          await recordApplication(applicationRepository(), row);
+          await recordNeonEvent({
+            workspaceId: row.workspaceId,
+            actorType: "system",
+            event: "action.verified",
+            entityType: "action",
+            entityId: row.actionId,
+            payload: { checks: row.evidence.checks },
+          });
+        },
+      },
+      { now: new Date(), limit: VERIFY_LOCATION_LIMIT },
+    );
+  } catch (cause) {
+    logFailure("verify_website_actions", cause);
+  }
+
+  return NextResponse.json({ notified, reclaimCandidates, reconciled, verified }, { status: 200, headers: { "Cache-Control": "no-store" } });
 }

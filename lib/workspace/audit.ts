@@ -10,7 +10,7 @@ import { requestFingerprint } from "@/lib/security/request-fingerprint";
  */
 export const AUDIT_EVENTS = [
   "scan.queued", "scan.completed", "scan.failed", "snapshot.created", "action.derived", "action.updated", "action.dismissed",
-  "action.applied", "action.application_retracted",
+  "action.applied", "action.application_retracted", "action.verified",
   "run.started", "run.succeeded", "run.failed", "run.timed_out", "version.created", "version.approved", "version.changes_requested", "version.rejected",
   "delivery.exported", "delivery.copied", "workspace.claimed", "member.invited", "member.role_changed", "integration.updated",
   "brand.updated", "asset.uploaded", "asset.rights_confirmed", "assistant.run", "consent.public_evidence",
