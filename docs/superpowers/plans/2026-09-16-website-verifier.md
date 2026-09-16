@@ -896,6 +896,8 @@ Match the structure and precision of the existing P3.1 and P3.2 sections. Cover 
 2. Two templates are verifiable, not thirteen. GBP and Instagram verifiers need provider quota and a separate authorization (DEC-04).
 3. Nothing is hosted verified. The sweep runs inside the cron that still needs `CRON_SECRET` set in a real environment and a deploy — the same outstanding step P3.1 recorded.
 
+Also record this observation, found while reviewing Task 2 and deliberately not acted on: in `packages/scoring`, the findings `aeo.website_content_weak` and `aeo.website_meta_weak` fire on byte-identical conditions (`meta_description_len < 50`), so one is redundant. That package is vendored verbatim from upstream and CLAUDE.md forbids changing its semantics here, so it is reported rather than fixed. It matters to this slice only in that `website-basics` appears to have three independent triggers when it effectively has two.
+
 Use **passed / failed / blocked / not run** accurately, and keep *implemented*, *locally verified* and *hosted verified* distinct.
 
 - [ ] **Step 3: Commit**
