@@ -650,16 +650,20 @@ Expected: FAIL — cannot resolve `./website-sweep`.
 - [ ] **Step 4: Write the sweep**
 
 ```ts
-import { recordApplication } from "@/lib/workspace/applications";
 import type { VerificationRepository } from "@/lib/repositories/verification";
-import { findTemplate, TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
-import { runWebsiteChecks, type WebsiteChecks } from "@/lib/website/checks";
+import { TEMPLATES, findTemplate } from "@/lib/workspace/templates";
+import { EMPTY_WEBSITE_CHECKS, runWebsiteChecks, type WebsiteChecks } from "@/lib/website/checks";
 import { decideVerification } from "./decide";
 
 export interface VerificationSweepDeps {
   fetch?: typeof fetch;
   /** Injected so tests assert what was written without a database. */
-  record: (row: { workspaceId: string; actionId: string; source: "verified"; evidence: Record<string, unknown> }) => Promise<void>;
+  record: (row: {
+    workspaceId: string;
+    actionId: string;
+    source: "verified";
+    evidence: Record<string, unknown>;
+  }) => Promise<void>;
 }
 
 export interface VerificationSweepResult {
@@ -704,7 +708,10 @@ export async function runWebsiteVerification(
   const locations = await repo.dueLocations(opts.limit, VERIFIABLE_KEYS);
   if (!locations.length) return { locationsChecked: 0, actionsVerified: 0 };
 
-  const actions = await repo.actionsForLocations(locations.map((l) => l.location_id), VERIFIABLE_KEYS);
+  const actions = await repo.actionsForLocations(
+    locations.map((l) => l.location_id),
+    VERIFIABLE_KEYS,
+  );
   if (!actions.length) return { locationsChecked: locations.length, actionsVerified: 0 };
 
   // One fetch per location, in parallel. A rejected fetch becomes an empty
@@ -713,38 +720,60 @@ export async function runWebsiteVerification(
   const fetched = await Promise.allSettled(
     locations.map((location) => runWebsiteChecks(location.website_url, { fetch: deps.fetch })),
   );
-  const checksByLocation = new Map<string, WebsiteChecks>();
+  // Keyed by location id, never by position: actionsForLocations returns rows
+  // in the database's order, not dueLocations', so a positional pairing would
+  // silently judge an action against another location's website.
+  const byLocation = new Map<string, { url: string; checks: WebsiteChecks }>();
   locations.forEach((location, index) => {
     const settled = fetched[index];
-    checksByLocation.set(location.location_id, settled.status === "fulfilled" ? settled.value : { evaluated: 0, passed: 0, results: [] });
+    byLocation.set(location.location_id, {
+      url: location.website_url,
+      checks: settled.status === "fulfilled" ? settled.value : EMPTY_WEBSITE_CHECKS,
+    });
   });
 
   const nowIso = opts.now.toISOString();
-  let actionsVerified = 0;
-  for (const action of actions) {
-    const template = findTemplate(action.template_key as TemplateKey);
-    const fresh = checksByLocation.get(action.location_id) ?? { evaluated: 0, passed: 0, results: [] };
-    const decision = decideVerification(template?.verifyChecks ?? [], { prior: asChecks(action.prior_checks), fresh });
-    if (decision !== "verified") continue;
-    await deps.record({
-      workspaceId: action.workspace_id,
-      actionId: action.id,
-      source: "verified",
-      evidence: {
-        checked_at: nowIso,
-        checks: template?.verifyChecks ?? [],
-        url: locations.find((l) => l.location_id === action.location_id)?.website_url ?? null,
-      },
-    });
-    actionsVerified += 1;
+  // Stamped for every action looked at, verified or not, and in a finally so a
+  // failing write still records the attempt: the stamp records the attempt, not
+  // the outcome. An action fetched but not stamped is retried in five minutes
+  // instead of a day -- that is the hammering failure mode.
+  try {
+    let actionsVerified = 0;
+    for (const action of actions) {
+      const template = findTemplate(action.template_key);
+      const site = byLocation.get(action.location_id);
+      const prior = asChecks(action.prior_checks);
+      const decision = decideVerification(template?.verifyChecks ?? [], {
+        prior,
+        fresh: site?.checks ?? EMPTY_WEBSITE_CHECKS,
+      });
+      if (decision !== "verified") continue;
+      await deps.record({
+        workspaceId: action.workspace_id,
+        actionId: action.id,
+        source: "verified",
+        evidence: {
+          checked_at: nowIso,
+          checks: template?.verifyChecks ?? [],
+          url: site?.url ?? null,
+          prior_results: (template?.verifyChecks ?? []).map((key) => ({
+            key,
+            pass: prior?.results.find((result) => result.key === key)?.pass ?? null,
+          })),
+        },
+      });
+      actionsVerified += 1;
+    }
+    return { locationsChecked: locations.length, actionsVerified };
+  } finally {
+    await repo.markChecked(
+      actions.map((action) => ({ id: action.id, workspace_id: action.workspace_id })),
+      nowIso,
+    );
   }
-
-  // Stamped for every action looked at, verified or not: the stamp records the
-  // attempt, not the outcome.
-  await repo.markChecked(actions.map((action) => action.id), nowIso);
-  return { locationsChecked: locations.length, actionsVerified };
 }
 ```
+
 
 If `findTemplate` or `TEMPLATES` are named differently in `lib/workspace/templates.ts`, read the file and use the real names.
 
