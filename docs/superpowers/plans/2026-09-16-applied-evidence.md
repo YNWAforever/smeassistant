@@ -1022,6 +1022,13 @@ describe("displayPhaseKey applied", () => {
   it("is exported, not applied, when nothing was asserted", () => {
     expect(displayPhaseKey({ ...baseInput, applied: false, deliveryState: "exported" })).toBe("exported");
   });
+
+  it("is applied, not exported, once an exported draft is asserted", () => {
+    // The reason `applied` sits above `exported`: deliveryState stays
+    // 'exported' forever, so the later position made the assertion invisible
+    // on exactly the drafted-action path Task 8's control targets.
+    expect(displayPhaseKey({ ...baseInput, deliveryState: "exported" })).toBe("applied");
+  });
 });
 ```
 
@@ -1033,7 +1040,7 @@ Expected: FAIL — `displayPhaseKey` does not accept `applied`.
 
 - [ ] **Step 3: Add the phase key and copy**
 
-In `lib/copy-workspace.ts`, add `| "applied"` to the `DisplayPhaseKey` union after `"exported"`, and `"applied",` to `DISPLAY_PHASE_KEYS` in the same position.
+In `lib/copy-workspace.ts`, add `| "applied"` to the `DisplayPhaseKey` union immediately BEFORE `"exported"`, and `"applied",` to `DISPLAY_PHASE_KEYS` in the same position, so the declared order matches the evaluation order.
 
 In `workspaceEn.phases` (line ~133), add: `applied: "Applied (reported)",`
 In `workspaceZhHK.phases` (line ~229), add: `applied: "已套用（店主回報）",`
@@ -1063,13 +1070,15 @@ Populate them in the same object literal that already builds `displayPhase` (~li
 In `lib/workspace/overview.ts`, add `applied: boolean;` to the `displayPhaseKey` input type and insert one branch between the `exported` and `awaiting_comparable_scan` branches:
 
 ```ts
-  if (input.deliveryState === "exported") return "exported";
-  // The owner says this is live and no comparable scan has judged it yet --
-  // a real place in the loop that previously had no label. It sits after
-  // `exported` because a delivery that was never asserted is still just
-  // exported, and before the measurement states because those are the scan's
+  // Above `exported` deliberately: deliveryState stays 'exported' forever once
+  // a draft is exported, so placing this after it would make the owner's
+  // assertion invisible on exactly the drafted-action path that carries a
+  // version reference -- the label would show up mainly on checklists, which
+  // is close to the opposite of the intent. Applied is further along the loop
+  // than exported. The `!== "measured"` guard still defers to the scan's own
   // verdict, which outranks a self-report once it exists.
   if (input.applied && input.measurementState !== "measured") return "applied";
+  if (input.deliveryState === "exported") return "exported";
   if (input.measurementState === "awaiting_comparable_scan") return "awaiting_comparable_scan";
 ```
 
