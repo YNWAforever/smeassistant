@@ -6,7 +6,10 @@ import { getMessages, hasMessage, t } from "@/lib/i18n";
 
 // "unlock" was removed: nothing called t() with it, and five of its keys
 // described a /api/report-access/recover flow that has no route and no sender.
-const NAMESPACES = ["scanner", "scanning", "report", "share", "legal"];
+// "applied" is this app's own namespace (P3.2), not an upstream one: the owner
+// assertion strings need a different register in zh-HK than zh-TW, which the
+// inline `isChinese ? … : …` ternaries elsewhere cannot express.
+const NAMESPACES = ["scanner", "scanning", "report", "share", "legal", "applied"];
 
 function readBundle(locale: string): Record<string, unknown> {
   return JSON.parse(readFileSync(fileURLToPath(new URL(`../lib/messages/${locale}.json`, import.meta.url)), "utf8"));
@@ -18,7 +21,7 @@ function keyPaths(value: unknown, prefix = ""): string[] {
 }
 
 describe("lib/messages bundles", () => {
-  it("carry exactly the five upstream namespaces this app still reuses", () => {
+  it("carry exactly the upstream namespaces this app still reuses, plus its own", () => {
     for (const locale of ["en", "zh-HK", "zh-TW"]) {
       expect(Object.keys(readBundle(locale)).sort()).toEqual([...NAMESPACES].sort());
     }

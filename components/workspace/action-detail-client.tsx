@@ -30,7 +30,8 @@ import { resolveText } from "@/lib/domain"
 import { copyToClipboard, downloadText } from "@/lib/download"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import { auditActorLabel, auditEventLabel } from "@/lib/workspace/audit-labels"
-import { approveVersion, decideVersion, exportVersion, runAction, saveAssistantVersion, saveVersion, updateAction, type ClientResult } from "@/lib/workspace/client"
+import { approveVersion, decideVersion, exportVersion, markApplied as markAppliedRequest, retractApplied as retractAppliedRequest, runAction, saveAssistantVersion, saveVersion, updateAction, type ClientResult } from "@/lib/workspace/client"
+import { t } from "@/lib/i18n"
 import { buildExportText, effortLabel, formatDateTime, metricLabel, priorityClass, priorityLabel, signed, stateLabel, withLocation } from "@/lib/workspace/format"
 import type { ActionDetail, AuditEventRow, VersionRow } from "@/lib/workspace/queries-pages"
 import type { GuardrailFlag } from "@/lib/workspace/version-meta"
@@ -50,7 +51,7 @@ export interface ActionDetailClientProps {
   approvedAssets: Array<{ id: string; filename: string }>
 }
 
-type Busy = null | "run" | "save" | "approve" | "decide" | "export" | "copy" | "inputs" | "complete"
+type Busy = null | "run" | "save" | "approve" | "decide" | "export" | "copy" | "inputs" | "applied"
 type PreviewRole = "owner" | "manager" | "viewer"
 
 // Mutation controls stay disabled until their client event handlers are attached.
@@ -138,7 +139,14 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   const checklistSteps = action.delivery === "checklist" ? copy[locale].workspace.checklistSteps[action.templateKey] ?? null : null
   /** Only these two delivery modes have an agent behind them. `null` (a row naming a template this build dropped) fails closed. */
   const agentBacked = action.delivery === "export" || action.delivery === "export_copy"
-  const checklistDone = action.actionState === "completed"
+  /**
+   * A live owner assertion that this action is out in the world. It is not
+   * `actionState === "completed"`: completion is the consequence the assertion
+   * route writes, and reading it back as the control's state would light the
+   * button up for a `completed` row that carries no assertion at all.
+   */
+  const applied = action.applied
+  const appliedOn = formatDateTime(action.appliedOn, locale, timezone, "date")
   const hydrated = useSyncExternalStore(subscribeHydration, clientHydrated, serverHydrated)
   const online = useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true)
   const offline = !online
@@ -194,6 +202,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   const versionLabel = (no: number) => (isChinese ? `第 ${no} 版` : `Version ${no}`)
   const versionName = selectedVersion ? versionLabel(selectedVersion.version_no) : (isChinese ? "尚未有版本" : "No version yet")
   const approvalText = (state: VersionRow["approval_state"] | null) => (state ? stateLabel(state, locale) : (isChinese ? "尚未有版本" : "No version yet"))
+  const canAssert = inScope && effectiveRole !== "viewer"
   const canEdit = hydrated && !offline && inScope && effectiveRole !== "viewer" && busy === null
   const canApprove = hydrated && !offline && inScope && effectiveRole !== "viewer" && busy === null && selectedVersion !== null
   const isApprovedCurrent = approval === "approved" && !dirty
@@ -300,18 +309,37 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   }
 
   /**
-   * The checklist's completion control. This is the owner's own confirmation,
-   * not an observation -- the copy says so, and the next scan is what verifies
-   * the result. It consumes no delivery allowance and creates no version:
-   * a checklist template has nothing to approve or export.
+   * The owner's assertion that this action is live in the world. This is a
+   * self-report and the product says so: nothing here verifies it, and the
+   * next comparable scan is what observes the result. It consumes no delivery
+   * allowance and creates no version.
+   *
+   * It replaces the old checklist-only `markChecklistDone`, which patched
+   * action_state='completed' directly. That state is now a consequence of the
+   * assertion, set by the route in the same transaction, so there is exactly
+   * one owner control and one record of what was claimed. The control is
+   * offered for drafted actions too, where it carries the approved version the
+   * owner published -- an unapproved draft is never sent, because the route
+   * rejects it with 409 version_not_applicable.
    */
-  async function markChecklistDone() {
-    if (!canEdit || checklistDone) return
-    setBusy("complete")
-    const patched = await updateAction(action.id, { action_state: "completed" })
+  async function markApplied() {
+    if (!canEdit || applied) return
+    setBusy("applied")
+    const latestApproved = action.latestVersion?.approvalState === "approved" ? action.latestVersion.id : null
+    const result = await markAppliedRequest(action.id, latestApproved ? { output_version_id: latestApproved } : {})
     setBusy(null)
-    if (!patched.ok) return failureToast(patched)
-    toast.success(checklistCopy.doneState)
+    if (!result.ok) return failureToast(result)
+    toast.success(t(locale, "applied.markedToast"))
+    router.refresh()
+  }
+
+  async function retractApplied() {
+    if (!canEdit || !applied) return
+    setBusy("applied")
+    const result = await retractAppliedRequest(action.id)
+    setBusy(null)
+    if (!result.ok) return failureToast(result)
+    toast.success(t(locale, "applied.retractedToast"))
     router.refresh()
   }
 
@@ -642,9 +670,27 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
               <div className="draft-editor-actions"><ContextualAssistant locale={locale} surface={social ? "create" : "action"} triggerLabel={isChinese ? "用助理修改並建立新版本" : "Revise with operator as a new version"} mode="live" context={{ workspaceId, locationId: action.location.id ?? undefined, actionId: action.id, versionId: selectedVersion?.id }} onCreateVersion={(run) => void createAssistantVersion(run)} disabled={!canEdit} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? (isChinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version") : (isChinese ? "生成草稿" : "Generate a draft")}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {isChinese ? "儲存手動修改為新版本" : "Save manual edits as a new version"}</Button></div>
               {conflict && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "另一位審閱者已更新輸出" : "Another reviewer changed this output"}</strong><p>{isChinese ? "未儲存文字仍保留在本機。載入最新版本、比較內容，再建立新版本。" : "Unsaved text is preserved locally. Load the latest version, compare, then create a new version."}</p><Button size="sm" onClick={loadLatest}><RefreshCw /> {isChinese ? "安全載入最新狀態" : "Load latest safely"}</Button></div></div>}
               </>)}
-              {checklistSteps && (
+              {/* The assertion control, offered for checklist and drafted
+                  actions alike. Before: an offer to record what the owner tells
+                  us. After: the date they said it, and that nobody verified it. */}
+              {/* Visibility is role-and-scope only, deliberately not `canEdit`:
+                  that also carries hydration and busy state, so gating the
+                  markup on it would make the control vanish server-side and
+                  mid-request. A viewer has nothing to assert, so they get no
+                  control at all rather than a disabled one. */}
+              {!canAssert ? null : applied ? (
+                <div className="approved-state">
+                  <CheckCircle2 />
+                  <div>
+                    <strong>{t(locale, "applied.assertedOn", { date: appliedOn })}</strong>
+                    <span>{t(locale, "applied.retractHint")}</span>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => void retractApplied()} disabled={!canEdit}>{busy === "applied" ? <LoaderCircle className="animate-spin" /> : <RefreshCw />} {t(locale, "applied.retract")}</Button>
+                </div>
+              ) : (
                 <div className="draft-editor-actions">
-                  <Button onClick={() => void markChecklistDone()} disabled={!canEdit || checklistDone}>{busy === "complete" ? <LoaderCircle className="animate-spin" /> : <CheckCircle2 />} {checklistDone ? checklistCopy.doneState : checklistCopy.markDone}</Button>
+                  <Button onClick={() => void markApplied()} disabled={!canEdit}>{busy === "applied" ? <LoaderCircle className="animate-spin" /> : <CheckCircle2 />} {t(locale, "applied.markButton")}</Button>
+                  <p className="limitation-note">{t(locale, "applied.markHint")}</p>
                 </div>
               )}
             </SectionCard>

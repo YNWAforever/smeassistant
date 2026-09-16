@@ -137,6 +137,20 @@ describe("PATCH /api/actions/[actionId]", () => {
     expect(mocks.db!.calls.filter((c) => c.op === "update")).toEqual([]);
   });
 
+  it("400s `completed` for an authorized caller and writes nothing", async () => {
+    // The second completion path this slice closes: `completed` is a
+    // consequence of an owner assertion (POST .../applied), never something a
+    // bare PATCH can set, or an action would reach the loop's terminal state
+    // with no action_applications row recording what was claimed. The two 403
+    // cases above still pass because authorization precedes validation.
+    const res = await patch({ action_state: "completed" });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: "action_state must be dismissed",
+    });
+    expect(mocks.db!.calls.filter((c) => c.op === "update")).toEqual([]);
+  });
+
   it("400s an unsupported state, a bad date and an empty patch", async () => {
     expect((await patch({ action_state: "recommended" })).status).toBe(400);
     expect((await patch({ due_at: "next tuesday" })).status).toBe(400);
