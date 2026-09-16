@@ -141,7 +141,7 @@ export const workspaceEn: WorkspaceCopy = {
   },
   phases: {
     requires_connection: "Requires connection", needs_input: "Needs input", generating: "Generating", draft_ready: "Draft ready", changes_requested: "Changes requested",
-    approved_export_ready: "Approved · export ready", verified: "Confirmed on site", exported: "Exported", applied: "Applied (reported)", awaiting_comparable_scan: "Awaiting comparable scan", measured: "Measured", recommended: "Recommended",
+    approved_export_ready: "Approved · export ready", verified: "Verified on site", exported: "Exported", applied: "Applied (reported)", awaiting_comparable_scan: "Awaiting comparable scan", measured: "Measured", recommended: "Recommended",
   },
   basis: {
     exported: "exported",

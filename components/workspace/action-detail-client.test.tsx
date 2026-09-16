@@ -249,6 +249,49 @@ describe("the owner's applied assertion", () => {
   });
 });
 
+describe("the independent verification line", () => {
+  const CHECKLIST_KEY = CHECKLIST_TEMPLATES[0].key;
+
+  function mount(templateKey: TemplateKey, mutate: (value: ActionDetail) => void = () => {}) {
+    const value = detail(templateKey);
+    mutate(value);
+    renderLive(
+      <ActionDetailClient
+        locale="en"
+        workspaceSlug="kam-man-house"
+        workspaceId="ws-1"
+        timezone="Asia/Hong_Kong"
+        role="owner"
+        inScope
+        location="yik-yam"
+        detail={value}
+        auditRows={[]}
+        locations={[{ slug: "yik-yam", name: "Yik Yam" }]}
+        approvedAssets={[]}
+      />,
+    );
+  }
+  afterEach(cleanup);
+
+  it("renders the date, and the caveat that we checked the page not who changed it", () => {
+    mount(CHECKLIST_KEY, (value) => {
+      value.action.verified = true;
+      value.action.verifiedOn = "2026-09-13T00:00:00.000Z";
+    });
+    expect(screen.getByText(/Verified on your site on 13 Sept 2026 · we checked the page, not who changed it/)).toBeInTheDocument();
+    // Text only -- no control to retract a system-written check.
+    expect(screen.queryByRole("button", { name: /verifi/i })).toBeNull();
+  });
+
+  it("does not render when verified is false", () => {
+    mount(CHECKLIST_KEY, (value) => {
+      value.action.verified = false;
+      value.action.verifiedOn = null;
+    });
+    expect(screen.queryByText(/we checked the page, not who changed it/)).toBeNull();
+  });
+});
+
 describe("agent-backed templates keep the draft workflow", () => {
   it.each(AGENT_TEMPLATES.map((t) => [t.key] as const))("%s still offers Generate", (key) => {
     const text = render(key).textContent ?? "";

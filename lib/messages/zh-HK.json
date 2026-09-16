@@ -8,6 +8,9 @@
     "markedToast": "已記錄：你表示此行動已套用。下次掃描會觀察結果。",
     "retractedToast": "已撤回「已套用」標記。"
   },
+  "verified": {
+    "confirmedOn": "已在 {date} 於你的網站核實 · 我們檢查的是頁面本身，並非何人作出改動"
+  },
   "scanner": {
     "title": "免費 Scan 我嘅生意",
     "subtitle": "填寫以下資料，30 秒即收 audit 報告",

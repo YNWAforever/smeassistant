@@ -14,7 +14,9 @@ const UPSTREAM_NAMESPACES = ["scanner", "scanning", "report", "share", "legal"];
 // This app's own copy. "applied" (P3.2) is here because the owner-assertion
 // strings need a different register in zh-HK than zh-TW, which the inline
 // `isChinese ? … : …` ternaries used elsewhere in this codebase cannot express.
-const APP_NAMESPACES = ["applied"];
+// "verified" (website-verifier Task 6) carries the same register split for
+// the independent, system-written check.
+const APP_NAMESPACES = ["applied", "verified"];
 const NAMESPACES = [...UPSTREAM_NAMESPACES, ...APP_NAMESPACES];
 
 function readBundle(locale: string): Record<string, unknown> {

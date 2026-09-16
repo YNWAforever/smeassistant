@@ -112,10 +112,25 @@ export interface ActionOverviewContext {
    * consumer that reads `applied` off an overview built outside
    * `overviewsFor` must supply it here first, or it will trust a confident
    * `false` that was never checked.
+   *
+   * `lib/assistant/live.ts` and `lib/workspace/runs.ts` both build overviews
+   * without this field, so both silently produce `applied: false`. For
+   * `applied` that reads as "we did not ask the owner" -- a safe understatement.
    */
   applied?: boolean;
   appliedOn?: string | null;
-  /** Same "not looked up" caveat as `applied` above, for the independent `verified` source. */
+  /**
+   * Same "not looked up" caveat as `applied` above, for the independent
+   * `verified` source -- but worse here: `lib/assistant/live.ts` and
+   * `lib/workspace/runs.ts` build overviews without this field too, so they
+   * also silently produce `verified: false`. For `applied` the silent
+   * default is a safe understatement ("we did not ask"); for `verified` the
+   * same silent `false` downgrades an independent, stronger claim to "not
+   * yet confirmed" -- an overstated absence, not an understated one. Any
+   * future consumer reading `verified` off an overview built outside
+   * `overviewsFor` must supply it here first, or it will trust a confident
+   * `false` that was never checked.
+   */
   verified?: boolean;
   verifiedOn?: string | null;
 }
