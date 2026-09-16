@@ -1,6 +1,11 @@
 import type { VerificationRepository } from "@/lib/repositories/verification";
 import { TEMPLATES, findTemplate } from "@/lib/workspace/templates";
-import { EMPTY_WEBSITE_CHECKS, runWebsiteChecks, type WebsiteChecks } from "@/lib/website/checks";
+import {
+  EMPTY_WEBSITE_CHECKS,
+  runWebsiteChecksWithUrl,
+  sameSiteHost,
+  type WebsiteChecks,
+} from "@/lib/website/checks";
 import { decideVerification } from "./decide";
 
 export interface VerificationSweepDeps {
@@ -71,17 +76,28 @@ export async function runWebsiteVerification(
   // result, which decideVerification reads as "we could not look" -- never as
   // "it is fixed".
   const fetched = await Promise.allSettled(
-    locations.map((location) => runWebsiteChecks(location.website_url, { fetch: deps.fetch })),
+    locations.map((location) => runWebsiteChecksWithUrl(location.website_url, { fetch: deps.fetch })),
   );
   // Keyed by location id, never by position: actionsForLocations returns rows
   // in the database's order, not dueLocations', so a positional pairing would
   // silently judge an action against another location's website.
-  const byLocation = new Map<string, { url: string; checks: WebsiteChecks }>();
+  const byLocation = new Map<string, { url: string; finalUrl: string | null; checks: WebsiteChecks }>();
   locations.forEach((location, index) => {
     const settled = fetched[index];
+    const result = settled.status === "fulfilled" ? settled.value : { checks: EMPTY_WEBSITE_CHECKS, finalUrl: null };
+    // OFF-SITE LANDING IS NOT EVIDENCE. `!response.ok` is not the only way to
+    // reach a page that is not the owner's: a parked "domain for sale" page or
+    // a registrar's soft-404 answers 200, and typically carries a <title> and
+    // exactly one <h1> -- precisely the checks a `website-basics` action is
+    // most often verified on. A `verified` row outranks the owner's own
+    // testimony, so landing on a different host must yield no result at all
+    // rather than a full one. `www.` is ignored on both sides; a same-host
+    // redirect (http->https, a path change) is still the owner's site.
+    const offSite = result.finalUrl !== null && !sameSiteHost(result.finalUrl, location.website_url);
     byLocation.set(location.location_id, {
       url: location.website_url,
-      checks: settled.status === "fulfilled" ? settled.value : EMPTY_WEBSITE_CHECKS,
+      finalUrl: offSite ? null : result.finalUrl,
+      checks: offSite ? EMPTY_WEBSITE_CHECKS : result.checks,
     });
   });
 
@@ -117,17 +133,30 @@ export async function runWebsiteVerification(
         // own database is unhealthy.
         evaluated.push({ id: action.id, workspace_id: action.workspace_id });
         if (decision !== "verified") continue;
+        const declared = template?.verifyChecks ?? [];
+        const priorPass = (key: string) => prior?.results.find((result) => result.key === key)?.pass ?? null;
+        // `checks` is what the decision actually turned on -- the declared
+        // checks that were FAILING in the prior snapshot -- not every declared
+        // key. A check that was already passing justified nothing, and listing
+        // it overstates what was confirmed. The fresh results are recorded
+        // beside the prior ones because the verdict is a comparison of the
+        // two: without the fresh half, the row asserts a conclusion whose
+        // evidence cannot be re-derived from it.
+        const decisive = declared.filter((key) => priorPass(key) === false);
         await deps.record({
           workspaceId: action.workspace_id,
           actionId: action.id,
           source: "verified",
           evidence: {
             checked_at: nowIso,
-            checks: template?.verifyChecks ?? [],
+            checks: decisive,
+            declared_checks: declared,
             url: site?.url ?? null,
-            prior_results: (template?.verifyChecks ?? []).map((key) => ({
+            final_url: site?.finalUrl ?? null,
+            prior_results: declared.map((key) => ({ key, pass: priorPass(key) })),
+            fresh_results: declared.map((key) => ({
               key,
-              pass: prior?.results.find((result) => result.key === key)?.pass ?? null,
+              pass: site?.checks.results.find((result) => result.key === key)?.pass ?? null,
             })),
           },
         });

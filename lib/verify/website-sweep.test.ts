@@ -267,4 +267,83 @@ describe("runWebsiteVerification", () => {
     expect(recorded).toEqual([]);
     expect(r.markChecked).toHaveBeenCalled();
   });
+
+  // --- Off-site landings: the one path that could claim unearned credit ----
+
+  /** A fetch that answers 200 but reports landing on `landedOn`. */
+  const landing = (landedOn: string, body: string) => ({
+    fetch: (async (url: string) => {
+      fetchCalls.push(String(url));
+      const response = new Response(html(body), { status: 200, headers: { "content-type": "text/html" } });
+      Object.defineProperty(response, "url", { value: landedOn });
+      return response;
+    }) as unknown as typeof fetch,
+    record: async (row: Record<string, unknown>) => {
+      recorded.push(row);
+    },
+  });
+
+  it("does not verify when the fetch lands on a different host (parked page / soft 404)", async () => {
+    const r = repo();
+    const result = await runWebsiteVerification(r as never, landing("https://parked.example-registrar.test/for-sale", FAQ) as never, {
+      now: new Date(),
+      limit: 5,
+    });
+    expect(result.actionsVerified).toBe(0);
+    expect(recorded).toEqual([]);
+    expect(r.markChecked).toHaveBeenCalled();
+  });
+
+  it("still verifies when only a leading www. differs", async () => {
+    const r = repo();
+    const result = await runWebsiteVerification(r as never, landing("https://www.example.test/", FAQ) as never, {
+      now: new Date(),
+      limit: 5,
+    });
+    expect(result.actionsVerified).toBe(1);
+    expect(recorded).toHaveLength(1);
+  });
+
+  it("still verifies on a same-host redirect (http to https, or a path change)", async () => {
+    const r = repo();
+    const result = await runWebsiteVerification(r as never, landing("https://example.test/home?x=1", FAQ) as never, {
+      now: new Date(),
+      limit: 5,
+    });
+    expect(result.actionsVerified).toBe(1);
+    expect(recorded[0]).toMatchObject({ evidence: { final_url: "https://example.test/home?x=1" } });
+  });
+
+  it("records the fresh results and only the decisive checks", async () => {
+    const r = repo({
+      actionsForLocations: vi.fn().mockResolvedValue([
+        {
+          id: "act-1",
+          workspace_id: "ws-1",
+          location_id: "loc-1",
+          template_key: "website-basics",
+          prior_checks: {
+            evaluated: 3,
+            passed: 2,
+            // Only single_h1 was failing, so only single_h1 is what the
+            // verdict turned on -- the other two justified nothing.
+            results: [
+              { key: "title", pass: true },
+              { key: "meta_description_50_160", pass: true },
+              { key: "single_h1", pass: false },
+            ],
+          },
+        },
+      ]),
+    });
+    await runWebsiteVerification(r as never, deps("") as never, { now: new Date(), limit: 5 });
+    expect(recorded).toHaveLength(1);
+    const evidence = recorded[0].evidence as Record<string, unknown>;
+    expect(evidence.checks).toEqual(["single_h1"]);
+    expect(evidence.fresh_results).toEqual([
+      { key: "title", pass: true },
+      { key: "meta_description_50_160", pass: true },
+      { key: "single_h1", pass: true },
+    ]);
+  });
 });

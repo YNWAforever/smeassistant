@@ -122,7 +122,7 @@ Eligibility requires owner engagement because the four-event model's third event
 
 **Every attempt stamps `verification_checked_at`**, including failures — an unreachable site, a timeout or a 500 stamps and moves on, so a permanently broken site is retried daily rather than every five minutes. Nothing is written to `action_applications` unless the decision is `verified`: a failed fetch is not evidence and must not become a row.
 
-The route's response summary gains `verified: { locationsChecked, actionsVerified }`, reporting counts rather than claiming success — matching how the existing three concerns report.
+The route's response summary gains `verified: { locationsChecked, actionsConsidered, actionsVerified, actionsFailed }`, reporting counts rather than claiming success — matching how the existing three concerns report. (The shipped shape carries four fields, not the two this paragraph originally listed: `actionsConsidered` is what the loop actually reached a decision on, and `actionsFailed` counts decisions whose write then failed — without both, a tick where every write failed would be indistinguishable from a tick where nothing was due.)
 
 ### 4. What it writes, and where it surfaces
 
@@ -164,6 +164,7 @@ Stated here so the phase report does not have to discover it:
 
 - **It does not prove the owner applied our draft.** It proves the check the scanner recorded as failing now passes. Their developer may have fixed it independently, a CMS template update may have added the markup, and no fetch can distinguish those. The copy says "verified on site", which is true, and deliberately not "verified you applied our draft".
 - **It verifies two templates, not thirteen.** GBP and Instagram templates stay unverifiable until a provider-backed verifier is separately designed and authorized.
+- **A `not_verifiable` action stays eligible forever, and so does a closed one.** Eligibility does not filter `action_state`: an action that was exported and then completed, dismissed or expired without ever being verified remains selectable indefinitely and consumes one of the per-tick slots. Bounded today (roughly two such actions per location), but this is the mechanism by which the per-tick cap starts to bite — the fix, when it matters, is to record the permanence rather than re-derive it.
 - **Nothing here is hosted verified.** The cron that runs the sweep still requires `CRON_SECRET` set in a real environment and a deploy — the same outstanding step P3.1 recorded.
 
 Report artifacts append to `docs/implementation/owner-platform-v1/PHASE-3-REPORT.md` and `PHASE-3-TEST-RESULTS.md`.

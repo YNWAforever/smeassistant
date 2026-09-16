@@ -97,7 +97,14 @@ export async function POST(request: Request): Promise<Response> {
             event: "action.verified",
             entityType: "action",
             entityId: row.actionId,
-            payload: { checks: row.evidence.checks },
+            // `checks` is the decisive set (the declared checks that were
+            // failing before), and the fresh results are what makes the event
+            // re-derivable on its own rather than a bare claim.
+            payload: {
+              checks: row.evidence.checks,
+              fresh_results: row.evidence.fresh_results,
+              url: row.evidence.final_url ?? row.evidence.url,
+            },
           });
         },
       },

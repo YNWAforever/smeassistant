@@ -5,7 +5,6 @@ import type { WebsiteChecks } from '../website/checks';
 
 export interface VerifiableLocation {
   location_id: string;
-  workspace_id: string;
   website_url: string;
 }
 
@@ -95,10 +94,10 @@ export function verificationRepository(client?: Pick<Pool, 'query'>): Verificati
     async dueLocations(limit, templateKeys) {
       if (!templateKeys.length) return [];
       return (await db().query<VerifiableLocation>(
-        `SELECT a.location_id, a.workspace_id, l.website_url
+        `SELECT a.location_id, l.website_url
          FROM actions a JOIN locations l ON l.id = a.location_id AND l.workspace_id = a.workspace_id
          WHERE ${ELIGIBLE}
-         GROUP BY a.location_id, a.workspace_id, l.website_url
+         GROUP BY a.location_id, l.website_url
          ORDER BY bool_or(a.verification_checked_at IS NULL) DESC,
                   min(a.verification_checked_at) ASC NULLS FIRST,
                   a.location_id

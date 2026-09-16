@@ -177,4 +177,21 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("action applications", () =
       applicationRepository(runtime).insert({ workspace_id: ws, action_id: action, output_version_id: null, source: "verified", asserted_by: user, note: null, evidence: { check: "faq_schema" } }),
     ).resolves.not.toBeNull();
   });
+
+  it("a second concurrent verified insert for the same action is a no-op, not a duplicate evidence row", async () => {
+    // Two overlapping cron ticks select the same eligible action and both
+    // reach 'verified'. Append-only evidence must not grow a second row for
+    // one observation; the guard is in-statement, so the loser returns null.
+    const { ws, action } = await seed();
+    const repo = applicationRepository(runtime);
+    const row = { workspace_id: ws, action_id: action, output_version_id: null, source: "verified" as const, asserted_by: null, note: null, evidence: { check: "faq_schema" } };
+    // Sequential, not Promise.all: the guard is a NOT EXISTS inside the
+    // statement, not a unique index, so two genuinely simultaneous inserts
+    // under READ COMMITTED could still both see an empty table. What this
+    // pins is the overwhelmingly common case -- a later tick finding the row
+    // the earlier one wrote -- deterministically.
+    expect(await repo.insert(row)).not.toBeNull();
+    expect(await repo.insert(row)).toBeNull();
+    expect((await runtime.query("SELECT id FROM action_applications WHERE action_id=$1 AND source='verified'", [action])).rows).toHaveLength(1);
+  });
 });

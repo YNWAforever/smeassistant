@@ -39,6 +39,12 @@ export interface ApplicationRepository {
    * an action does not make what a verifier observed untrue, so a closed
    * action can still receive a 'verified' row. Only 'owner_asserted' rows
    * are a workflow act gated on the action being open; see assertApplied.
+   *
+   * It DOES carry a uniqueness guard, in-statement like assertApplied's: two
+   * overlapping cron ticks select the same eligible actions and would both
+   * append a 'verified' row for the same action. Returns null for the loser.
+   * This deduplicates the ROW, not the fetch -- both ticks still fetch the
+   * site; the 24-hour stamp is what bounds that.
    */
   insert(row: ApplicationInsert): Promise<{ id: string } | null>;
   /**
@@ -119,6 +125,12 @@ export function applicationRepository(client?: Pick<Pool, 'query'> & Partial<Pic
         `INSERT INTO action_applications(workspace_id, action_id, output_version_id, source, asserted_by, note, evidence)
          SELECT $1, $2, $3, $4, $5, $6, $7
          WHERE EXISTS(SELECT 1 FROM actions WHERE id = $2 AND workspace_id = $1)
+         AND NOT EXISTS (
+           SELECT 1 FROM action_applications
+           WHERE workspace_id = $1 AND action_id = $2 AND source = $4
+             AND retracted_at IS NULL
+             AND output_version_id IS NOT DISTINCT FROM $3
+         )
          RETURNING id`,
         [row.workspace_id, row.action_id, row.output_version_id, row.source, row.asserted_by, row.note, row.evidence],
       )).rows[0] ?? null;
