@@ -116,6 +116,18 @@ Expected: exit 0. The verifier applies the whole corpus against disposable Docke
 
 `test/integration/fixtures/legacy-final-catalog.json` is the verifier's replay-comparison baseline and must be **extended** with the new table's rows in `tables`, `columns`, `constraints` and `indexes`, plus the new `action_measurements.attribution_basis` column and its check constraint. Extend it only — the diff must be insertions with zero deletions. Weakening or removing an existing baseline entry to make the verifier pass would disable the protection this fixture exists to provide.
 
+- [ ] **Step 2b: Update the OTHER two places that encode this schema**
+
+Found during Task 7: `db:verify` and its catalog fixture are not the only things that know the schema, and a migration that updates only those leaves the integration suite red.
+
+1. **`lib/db/schema/` — the Drizzle definitions.** Add `action_applications` to `lib/db/schema/business.ts` (where `actions` and `action_measurements` live), matching the migration exactly: every column, nullability, each FK with its `ON DELETE` rule, the `source` CHECK, and the partial index. Add the `attribution_basis` column and its CHECK to the existing `action_measurements` definition. `db:types` generates from this directory, so a missing definition means generated types silently omit a real table.
+
+2. **`test/integration/neon-schema.integration.test.ts`.** Add the new migration to the applied-migrations list, bump the journal-count assertions (two places), update the catalog baseline, and bump the Drizzle schema-module count.
+
+For the catalog baseline, **predict each delta from the migration before running anything**, then confirm the observed numbers match. Pasting whatever a failing run reports converts a baseline guard into a description of current reality, which is how this class of test stops protecting anything. For 0006 the prediction was tables +1, columns +13, constraints +8, indexes +2, triggers/functions/seededRows unchanged — and observation matched exactly. If your prediction and observation disagree, stop: something landed that neither you nor the plan expects, which is what the assertion exists to catch.
+
+Rename any synthetic probe migrations in that file that collide with the new number.
+
 - [ ] **Step 3: Commit**
 
 ```bash
