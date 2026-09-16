@@ -207,6 +207,43 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("website verification eligi
     expect(await repo.actionsForLocations([loc], [TEMPLATE_KEY])).toEqual([]);
   });
 
+  it("does NOT return a location whose website_url is null or the empty string, otherwise fully eligible", async () => {
+    const ws = await workspace();
+    const locNull = await location(ws, null);
+    const locEmpty = await location(ws, "");
+    const jobNull = await job(ws, locNull);
+    const jobEmpty = await job(ws, locEmpty);
+    const snapNull = await snapshot(ws, jobNull, locNull);
+    const snapEmpty = await snapshot(ws, jobEmpty, locEmpty);
+    const actNull = await action(ws, locNull, snapNull);
+    const actEmpty = await action(ws, locEmpty, snapEmpty);
+    await assertion(ws, actNull, "owner_asserted");
+    await assertion(ws, actEmpty, "owner_asserted");
+
+    const repo = verificationRepository(runtime);
+    expect(await repo.dueLocations(10, [TEMPLATE_KEY])).toEqual([]);
+  });
+
+  it("does NOT return a location whose action has no source_snapshot_id, otherwise fully eligible -- and actionsForLocations independently gives back nothing for it", async () => {
+    const ws = await workspace();
+    const loc = await location(ws);
+    await job(ws, loc);
+    // No snapshot: the action's source_snapshot_id is left null.
+    const act = await action(ws, loc, null);
+    await assertion(ws, act, "owner_asserted");
+
+    const repo = verificationRepository(runtime);
+    expect(await repo.dueLocations(10, [TEMPLATE_KEY])).toEqual([]);
+    // Pin the asymmetry: actionsForLocations INNER JOINs scan_snapshots, so
+    // even if dueLocations' own filter were dropped and this location were
+    // (wrongly) selected, the second query would still yield nothing for it --
+    // the sweep would then fetch this location's website for no reason, every
+    // tick, forever. This must not be "fixed" by deleting the IS NOT NULL
+    // check from ELIGIBLE on the grounds that the join already handles it:
+    // dueLocations has no such join and needs its own guard.
+    expect(await repo.actionsForLocations([loc], [TEMPLATE_KEY])).toEqual([]);
+  });
+
   // --- Case 5: the 24h throttle -------------------------------------------
 
   it("excludes an action checked 1 hour ago and includes one checked 25 hours ago", async () => {
