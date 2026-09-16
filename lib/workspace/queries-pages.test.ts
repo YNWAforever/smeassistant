@@ -29,7 +29,7 @@ const repository = vi.hoisted(() => ({
   deliveries: vi.fn(),
 }));
 vi.mock("@/lib/repositories/workspace-read", () => ({ workspaceReadRepository: () => repository }));
-const applications = vi.hoisted(() => ({ forActions: vi.fn(async () => [] as Array<{ action_id: string; asserted_at: string }>) }));
+const applications = vi.hoisted(() => ({ forActions: vi.fn(async () => [] as Array<{ action_id: string; source: string; asserted_at: string }>) }));
 vi.mock("@/lib/repositories/applications", () => ({ applicationRepository: () => applications }));
 const reaper = vi.hoisted(() => ({ reapStrandedRuns: vi.fn(async () => [] as string[]) }));
 vi.mock("@/lib/workspace/run-reaper", () => ({ reapStrandedRuns: reaper.reapStrandedRuns }));
@@ -150,6 +150,19 @@ describe("listActions", () => {
     expect(needsInput.actions.map((a) => a.id)).toEqual(["a1"]);
     const instagram = await listActions(ctx, { location: "all", channel: "instagram" });
     expect(instagram.actions.map((a) => a.id)).toEqual(["a2"]);
+  });
+
+  it("reports the owner's own assertion, and never a verifier's, as applied", async () => {
+    applications.forActions.mockResolvedValueOnce([
+      { action_id: "a1", source: "verified", asserted_at: "2026-09-13T00:00:00.000Z" },
+      { action_id: "a2", source: "owner_asserted", asserted_at: "2026-09-12T00:00:00.000Z" },
+    ]);
+    const listed = await listActions(ctx, { location: "all" });
+    const byId = new Map(listed.actions.map((action) => [action.id, action]));
+    // Dormant until a verifier ships, but this is the case that would render a
+    // verifier's timestamp as "you marked this applied on {date}".
+    expect(byId.get("a1")).toMatchObject({ applied: false, appliedOn: null });
+    expect(byId.get("a2")).toMatchObject({ applied: true, appliedOn: "2026-09-12T00:00:00.000Z" });
   });
 });
 

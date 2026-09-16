@@ -99,7 +99,16 @@ export interface ActionOverviewContext {
   assignee?: { id: string; name: string } | null;
   /** Required keys the scan already answers for THIS action (detail page only). */
   scanSatisfiedInputs?: readonly string[];
-  /** A live (non-retracted) owner assertion exists; absent callers mean "none known". */
+  /**
+   * A live (non-retracted) owner assertion, if the caller looked one up.
+   * Optional because only the page builders (`overviewsFor`) query
+   * action_applications; the assistant and run paths do not, and adding the
+   * query there would cost a round trip no current consumer reads. So the
+   * `?? false` default means "not looked up", NOT "not applied" -- any future
+   * consumer that reads `applied` off an overview built outside
+   * `overviewsFor` must supply it here first, or it will trust a confident
+   * `false` that was never checked.
+   */
   applied?: boolean;
   appliedOn?: string | null;
 }
@@ -121,8 +130,8 @@ export function displayPhaseKey(input: {
   if (input.approvalState === "approved" && input.deliveryState === "export_ready") return "approved_export_ready";
   // The owner says this is live and no comparable scan has judged it yet --
   // a real place in the loop that previously had no label. Above `exported`
-  // deliberately: deliveryState stays 'exported' forever once a draft is
-  // exported, so placing this after it would make the owner's assertion
+  // deliberately: deliveryState stays 'exported' for that version once a
+  // draft is exported, so placing this after it would make the owner's assertion
   // invisible on exactly the drafted-action path that carries a version
   // reference. Applied is further along the loop than exported, and the
   // `!== "measured"` guard still defers to the scan's own verdict.

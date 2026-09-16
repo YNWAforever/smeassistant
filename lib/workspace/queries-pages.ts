@@ -488,9 +488,16 @@ async function overviewsFor(ctx: WorkspaceContext, rows: ActionRow[], scanSatisf
   const latestVersion = new Map<string, VersionRow>();
   for (const version of versions) if (!latestVersion.has(version.action_id)) latestVersion.set(version.action_id, version);
   const appliedAt = new Map<string, string>();
-  // forActions returns newest-first and excludes retracted rows, so the first
-  // row seen for an action is the one to show.
-  for (const row of applications) if (!appliedAt.has(row.action_id)) appliedAt.set(row.action_id, row.asserted_at);
+  for (const row of applications) {
+    // owner_asserted only: `applied`/`appliedOn` drive the owner-facing "you
+    // marked this applied on {date}" line, so a verifier's row must never be
+    // rendered as something the owner said. strongestBasis keeps the same
+    // distinction for attribution.
+    if (row.source !== "owner_asserted") continue;
+    // forActions returns newest-first and excludes retracted rows, so the first
+    // row seen for an action is the one to show.
+    if (!appliedAt.has(row.action_id)) appliedAt.set(row.action_id, row.asserted_at);
+  }
   const byLocation = new Map(ctx.locations.map(location => [location.id, location]));
   return rows.map(row => buildActionOverview(row, {
     location: row.location_id ? locationText(byLocation.get(row.location_id) ?? null) : null,
