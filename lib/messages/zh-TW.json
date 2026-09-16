@@ -1,4 +1,13 @@
 {
+  "applied": {
+    "markButton": "標記為已套用",
+    "markHint": "我們只記錄您告訴我們的內容；下次掃描才會查核。",
+    "assertedOn": "您在 {date} 標記為已套用 · 未經獨立查證",
+    "retract": "撤回此標記",
+    "retractHint": "撤回只是收回這項聲明；相關紀錄仍會保留在活動紀錄中。",
+    "markedToast": "已記錄：您表示此行動已套用。下次掃描會觀察結果。",
+    "retractedToast": "已撤回「已套用」標記。"
+  },
   "scanner": {
     "title": "免費掃描我的生意",
     "subtitle": "填寫以下資料，30 秒立即收到 audit 報告",

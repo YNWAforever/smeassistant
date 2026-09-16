@@ -65,3 +65,63 @@ Two things remain, both explicitly out of this plan's scope and requiring a huma
 2. **Confirming the cron actually fires post-deploy.** Registering `{"path": "/api/cron/dispatch", "schedule": "*/5 * * * *"}` in `vercel.json` only takes effect once this branch is deployed to a Vercel project on a plan that honors it (confirmed Pro, per the design doc) — nothing in this session deployed anything or observed a live invocation. The manual step is: after deploy, watch the route's own logs (or Vercel's Cron Jobs dashboard) for an invocation within 5 minutes, and confirm its response summary (`notified`, `reclaimCandidates`, `reconciled`) reflects real due schedules and stuck jobs rather than an all-zero no-op.
 
 Neither of these is a code gap — both are the same category of action CLAUDE.md §0.1 reserves for Willy ("Never apply a remote migration, run a live paid scan, deploy... unless Willy explicitly asks"), and neither was attempted here.
+
+---
+
+## P3.2 — applied evidence (owner-asserted application and the verifier seam)
+
+**Branch** `worktree-p32-rescan-reachability` · **HEAD** `dea6785` · Base: `main` at `84bae0b` (PR #15, merged — P3.1). Node `v24.18.0`, pnpm `9.12.0` via corepack, Windows 11, Docker Server `29.7.2`.
+
+Built from `docs/superpowers/plans/2026-09-16-applied-evidence.md` (10 tasks), against the approved design in `docs/superpowers/specs/2026-09-16-applied-evidence-design.md`.
+
+**Implemented and locally verified. Nothing here is hosted-verified.** No deployment, no remote migration, no paid provider call, no push. Migration `0006` was applied only to disposable Docker Postgres, by `db:verify` and by the integration harness.
+
+### What this closes, and what was already done
+
+P3.2 reads in the Master Plan as a large repair, but the design doc's opening table records that **four of its six requirement bullets were already satisfied** at the baseline, by the `2026-09-08-two-scan-comparison` work and by Phase 2: membership resolution through `loadReport` with both scans authorized independently; re-scan reachable only under an approved entitlement policy (`isWorkspacePaid` fail-closed in `app/api/workspaces/[workspaceId]/rescan/route.ts`); time decay distinguished from regression (`DECAY_FINDING_KEYS` in `packages/scoring`); and the `Attributed` / `Observed` / `Unknown` semantics in `lib/workspace/measurements.ts`.
+
+This slice therefore covered the one genuinely missing part: the plan's central requirement that **four events stay separate — approved/exported, owner says applied, provider verifies applied, later observed metric change**. Only the first and last existed. There was no owner-asserted application record anywhere in the baseline — no `applied_at`, `marked_applied`, or equivalent column, table or route — and `action_state='completed'` ("the owner is done with this task") was standing in for "the action entered the loop" inside the `entered` set of `lib/workspace/measurements.ts`. That proxy is now gone.
+
+### What changed
+
+Full diff across the P3.2 range (`84bae0b..dea6785`, design doc through the final Task 9 review fix): **37 files changed, 3,749 insertions, 71 deletions**, across 40 commits.
+
+| Area | Files | What it does |
+|---|---|---|
+| Migration | `neon/migrations/0006_action_applications.sql` | New append-only `action_applications` table (five FKs, each stating an explicit `ON DELETE`; `source` CHECK `owner_asserted \| verified`; partial index on live rows) carrying its own four-statement RLS / REVOKE / GRANT / POLICY block scoped to `sme_app_runtime` — `0003_workflows.sql` holds the existing tables' grants and is immutable. Also adds the nullable `attribution_basis` column and its CHECK to `action_measurements`, deliberately **not** backfilled: no honest value exists for pre-`0006` rows, and a backfill would invent a claim about what an owner did. |
+| Pure domain | `lib/workspace/applications.ts` (+ `applications.test.ts`) | `ApplicationRecord`, `strongestBasis()` implementing the precedence `verified` > `owner_asserted` > `exported`, and `recordApplication()` — the verifier seam, a function contract only. Kept separate from SQL and from HTTP so the precedence rule (the part most likely to be got wrong) is testable with no database at all. |
+| Repository | `lib/repositories/applications.ts` | Scope-defensive SQL adapter in the style of `lib/repositories/measurements.ts`: assertion (writing the row and completing the action in one transaction), retraction (stamping **every** live owner assertion, not only the newest), and the duplicate-submit vs closed-action distinction. |
+| Measurement rule | `lib/workspace/measurements.ts`, `lib/repositories/measurements.ts` | Attribution is now decided by basis rather than by a completed-state proxy; an assertion dated after the head scan started never yields `Attributed`; retracted rows are ignored. `attribution_basis` is carried through `insert`, and an `applications()` port was added. |
+| Route | `app/api/actions/[actionId]/applied/route.ts` (+ `route.test.ts`) | POST asserts, DELETE retracts. Membership and location scope are checked before any data read (viewers and out-of-scope managers get 403); an unapproved or foreign version is refused with 409 `version_not_applicable`; a double POST yields one row, not two; retraction reopens the action to `in_progress` and clears `completed_at`. |
+| Display phase | `lib/workspace/overview.ts`, `lib/copy-workspace.ts` | A new `applied` display phase, placed **above** `exported` so an owner's assertion is not shadowed by a delivery state that stays `exported` for that version forever, and still deferring to the scan's own verdict through the `measurementState !== "measured"` guard. |
+| Display surfaces | `components/workspace/action-detail-client.tsx`, `components/workspace/home-brief.tsx`, `lib/workspace/format.ts`, `lib/workspace/queries-pages.ts`, `lib/repositories/workspace-read.ts` | The checklist-done control is replaced by the applied-assertion control. The basis renders beside the fact type on the home proof card and on the action-detail "Before and after" card, with a `null` basis rendering "basis not recorded" and never a guess. `attribution_basis` had to be SELECTed and threaded, or the basis could never render as anything but unknown. `insights-view.tsx` was deliberately *not* touched: its `metricCards()` is a pure snapshot-to-snapshot comparison that never reads `action_measurements`. |
+| Drizzle / schema fixtures | `lib/db/schema/business.ts`, `test/integration/fixtures/legacy-final-catalog.json`, `test/integration/neon-schema.integration.test.ts` | The `action_applications` Drizzle definition and the catalog baseline the schema test deep-equals — two locations Task 1 initially missed and a later commit (`32d3027`) corrected. |
+| i18n | `lib/messages/{en,zh-HK,zh-TW}.json`, `tests/i18n.test.ts` | Trilingual `applied` and `basis` copy. zh-TW carries its own override rather than inheriting zh-HK: the register split (你/您, 核實/查證) would otherwise silently give Taiwan the Hong Kong verb. A review round caught and corrected an inversion of exactly that pair (`2f573e0`, `dea6785`). |
+| Integration | `test/integration/neon-action-applications.integration.test.ts` | 8 cases against real Postgres, including proof that an ordinary assertion does not trip `fence_workspace_completion_write`, and that `0006`'s `sme_app_runtime` grant actually took. |
+
+### Verification
+
+Full detail is in `PHASE-3-TEST-RESULTS.md`. Summary:
+
+| Command | Result |
+|---|---|
+| `corepack pnpm typecheck` | passed — exit 0 |
+| `corepack pnpm lint` | passed — exit 0, 30 warnings / 0 errors (unchanged baseline; no new warning from this work) |
+| `corepack pnpm test` | passed — exit 0, **316 files / 3,264 tests**, zero failures (P3.1 baseline 313 / 3,213 → +3 files, +51 tests) |
+| `corepack pnpm build` | **blocked on this Windows machine** — the standing Turbopack/`radix-ui` module-resolution blocker documented in `PHASE-1-TEST-RESULTS.md`, `PHASE-2-TEST-RESULTS.md` and P3.1 above. Not worked around. Separately, `npx next build --webpack` compiles clean (exit 0) with the new `/api/actions/[actionId]/applied` route in the manifest |
+| `corepack pnpm test:integration` | passed — exit 0, **28 files / 285 tests** (136.33s), including the new `neon-action-applications.integration.test.ts` (8/8) |
+| `corepack pnpm db:verify` | passed — exit 0; `0006_action_applications.sql` applied as part of the corpus (35 tables, 416 columns, 159 constraints, 86 indexes) |
+
+### What this slice does NOT prove
+
+Restated from the design doc's "What this design cannot prove", plus the two items scoped out there:
+
+1. **No verifier exists.** `source='verified'` is exercised as an insert-path unit test and through `strongestBasis()` precedence tests, and nothing end-to-end. `recordApplication()` is a function contract, not a working feature. Nothing writes `source='verified'`; no verifier is registered, scheduled, or reachable over HTTP. Building one means a per-template check (refetch the website to confirm FAQ JSON-LD landed; confirm a specific review now carries an owner reply) and, for the GBP and Instagram templates, provider quota — its own piece of work with its own design.
+2. **The plan's browser acceptance artifact is not produced.** A real comparable pair proven in a browser, plus negative authorization examples, needs hosted access and explicit authorization from the repo owner. It remains a documented manual step — the same category as P3.1's unset `CRON_SECRET`, and the same category of action CLAUDE.md §0.1 reserves for Willy.
+3. **The `ScanComparison` state-splitting remains an open P3.2 gap.** `no_accessible_pair` still fires for three distinct situations the Master Plan names separately: no earlier scan exists; an earlier scan exists but authorization denied it; an authorized earlier scan shares no comparable cohort. The design doc scoped this out as a deliberate, contained follow-up. It was not started here.
+
+### Observations worth recording
+
+- **A dated fallback remains in `lib/workspace/measurements.ts`.** `action_state === 'completed'` still counts an action toward the `entered` set, but **only** to cover actions completed before `0006`, which have no application row and would otherwise silently lose their `measured` label. The code carries, in a comment, the SQL to run to decide when it can be retired (when the count of completed actions with no live application row reaches zero). This is a deliberate, documented, dated compromise, not an oversight.
+- **A pre-existing oddity this work deliberately did not change.** In `displayPhaseKey`, the `exported` branch sits above `measured`, so an exported action that is later measured still displays "Exported". That ordering predates this slice. The new `applied` phase was inserted above `exported` (and guarded by `measurementState !== "measured"`) without disturbing it, because reordering the existing branches is a separate product decision.
+- **`closeResolvedActions` remains a legitimate second writer of `action_state='completed'`.** It is not the proxy that was removed: it sets `measurement_state='measured'` itself, and only from a comparable diff's `resolved_findings`. It is called out in a comment beside the dated fallback so the two are not confused.

@@ -1,4 +1,13 @@
 {
+  "applied": {
+    "markButton": "Mark as applied",
+    "markHint": "We record what you tell us; the next scan is what checks it.",
+    "assertedOn": "You marked this applied on {date} · not independently verified",
+    "retract": "Withdraw this mark",
+    "retractHint": "Withdrawing takes back the claim. The record of it stays in activity.",
+    "markedToast": "Recorded: you reported this as applied. The next scan will observe the result.",
+    "retractedToast": "Applied mark withdrawn."
+  },
   "scanner": {
     "title": "Scan My Business for Free",
     "subtitle": "Fill in the details below — get your audit report in 30 seconds",

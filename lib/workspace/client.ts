@@ -36,7 +36,15 @@ export type CreateObjectiveActionResult = {
 export type UploadAssetResult = { assetId: string; signedUrl: string | null };
 export type SetAssetRightsResult = { ok: true; rights_status: "approved" | "rejected"; rights_confirmed_at: string | null };
 
-export type ActionPatch = { action_state?: "dismissed" | "completed"; assignee_user_id?: string | null; due_at?: string | null; provided_inputs?: Record<string, unknown> };
+/**
+ * `completed` is deliberately absent. Completion is a consequence of an owner
+ * assertion, written by POST /api/actions/[id]/applied in the same transaction
+ * as the action_applications row -- see
+ * docs/superpowers/specs/2026-09-16-applied-evidence-design.md. A bare PATCH
+ * that set it would put an action in the loop's terminal state with no record
+ * of what the owner actually did; the route now rejects it with 400.
+ */
+export type ActionPatch = { action_state?: "dismissed"; assignee_user_id?: string | null; due_at?: string | null; provided_inputs?: Record<string, unknown> };
 export type ExportMode = "export" | "copy";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
@@ -99,6 +107,24 @@ export function decideVersion(versionId: string, decision: "changes_requested" |
 
 export function updateAction(actionId: string, patch: ActionPatch): Promise<ClientResult<UpdateActionResult>> {
   return request(`/api/actions/${encodeURIComponent(actionId)}`, { method: "PATCH", headers: JSON_HEADERS, body: JSON.stringify(patch) });
+}
+
+export type MarkAppliedResult = { applicationId: string; alreadyRecorded?: boolean };
+export type RetractAppliedResult = { retracted: number };
+
+/**
+ * The owner's assertion that this action is live in the world. `output_version_id`
+ * names the approved version they published, so the record says which draft was
+ * applied; it is omitted for a checklist action, which has no version. The route
+ * rejects a version that is not approved with 409 `version_not_applicable`.
+ */
+export function markApplied(actionId: string, body: { output_version_id?: string | null; note?: string } = {}): Promise<ClientResult<MarkAppliedResult>> {
+  return post(`/api/actions/${encodeURIComponent(actionId)}/applied`, body);
+}
+
+/** Withdraws the claim. The assertion row is stamped, never deleted, so the history survives. */
+export function retractApplied(actionId: string): Promise<ClientResult<RetractAppliedResult>> {
+  return request(`/api/actions/${encodeURIComponent(actionId)}/applied`, { method: "DELETE", headers: JSON_HEADERS });
 }
 
 export function createObjectiveAction(body: { workspace_id: string; template_key: TemplateKey; location_id?: string | null; objective: string; inputs?: Record<string, unknown>; run?: boolean }): Promise<ClientResult<CreateObjectiveActionResult>> {

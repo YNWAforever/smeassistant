@@ -54,6 +54,10 @@ export interface ActionOverview {
   approvalState: ApprovalState;
   deliveryState: DeliveryState;
   measurementState: MeasurementState;
+  /** A non-retracted owner assertion exists for this action. */
+  applied: boolean;
+  /** ISO timestamp of that assertion, for the "you marked this applied on {date}" line. */
+  appliedOn: string | null;
   displayPhase: LocalizedText;
   displayPhaseKey: DisplayPhaseKey;
   latestVersion?: { id: string; versionNo: number; approvalState: ApprovalState; deliveryState: DeliveryState };
@@ -95,6 +99,18 @@ export interface ActionOverviewContext {
   assignee?: { id: string; name: string } | null;
   /** Required keys the scan already answers for THIS action (detail page only). */
   scanSatisfiedInputs?: readonly string[];
+  /**
+   * A live (non-retracted) owner assertion, if the caller looked one up.
+   * Optional because only the page builders (`overviewsFor`) query
+   * action_applications; the assistant and run paths do not, and adding the
+   * query there would cost a round trip no current consumer reads. So the
+   * `?? false` default means "not looked up", NOT "not applied" -- any future
+   * consumer that reads `applied` off an overview built outside
+   * `overviewsFor` must supply it here first, or it will trust a confident
+   * `false` that was never checked.
+   */
+  applied?: boolean;
+  appliedOn?: string | null;
 }
 
 export function displayPhaseKey(input: {
@@ -104,6 +120,7 @@ export function displayPhaseKey(input: {
   approvalState: ApprovalState | null;
   deliveryState: DeliveryState;
   measurementState: MeasurementState;
+  applied: boolean;
 }): DisplayPhaseKey {
   if (input.capability === "Requires connection") return "requires_connection";
   if (input.actionState === "needs_input") return "needs_input";
@@ -111,6 +128,14 @@ export function displayPhaseKey(input: {
   if (input.approvalState === "draft") return "draft_ready";
   if (input.approvalState === "changes_requested") return "changes_requested";
   if (input.approvalState === "approved" && input.deliveryState === "export_ready") return "approved_export_ready";
+  // The owner says this is live and no comparable scan has judged it yet --
+  // a real place in the loop that previously had no label. Above `exported`
+  // deliberately: deliveryState stays 'exported' for that version once a
+  // draft is exported, so placing this after it would make the owner's assertion
+  // invisible on exactly the drafted-action path that carries a version
+  // reference. Applied is further along the loop than exported, and the
+  // `!== "measured"` guard still defers to the scan's own verdict.
+  if (input.applied && input.measurementState !== "measured") return "applied";
   if (input.deliveryState === "exported") return "exported";
   if (input.measurementState === "awaiting_comparable_scan") return "awaiting_comparable_scan";
   if (input.measurementState === "measured") return "measured";
@@ -159,6 +184,7 @@ export function buildActionOverview(row: ActionRow, ctx: ActionOverviewContext):
     approvalState,
     deliveryState,
     measurementState: row.measurement_state,
+    applied: ctx.applied ?? false,
   });
   return {
     id: row.id,
@@ -189,6 +215,8 @@ export function buildActionOverview(row: ActionRow, ctx: ActionOverviewContext):
     approvalState: approvalState ?? "draft",
     deliveryState,
     measurementState: row.measurement_state,
+    applied: ctx.applied ?? false,
+    appliedOn: ctx.appliedOn ?? null,
     displayPhase: displayPhaseText(phaseKey),
     displayPhaseKey: phaseKey,
     latestVersion: ctx.latestVersion

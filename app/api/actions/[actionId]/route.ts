@@ -11,7 +11,7 @@ import { loadWorkspaceContext } from "@/lib/workspace/queries";
 import { getAction } from "@/lib/workspace/queries-pages";
 
 /**
- * PATCH /api/actions/[actionId] { action_state?: 'dismissed'|'completed', assignee_user_id?, due_at?, provided_inputs? }
+ * PATCH /api/actions/[actionId] { action_state?: 'dismissed', assignee_user_id?, due_at?, provided_inputs? }
  * → 200 { action: ActionOverview }. Provided inputs are merged, not replaced,
  * so the needs_input form can submit one field at a time.
  */
@@ -29,14 +29,15 @@ export async function PATCH(
   const patch: Record<string, unknown> = {};
   const changes: Record<string, unknown> = {};
   if (body.action_state !== undefined) {
-    if (body.action_state !== "dismissed" && body.action_state !== "completed")
-      return json(
-        { error: "action_state must be dismissed or completed" },
-        400,
-      );
+    // `completed` is deliberately NOT accepted here. Completion is a
+    // consequence of an owner assertion, written by POST .../applied in the
+    // same transaction as the action_applications row -- see
+    // docs/superpowers/specs/2026-09-16-applied-evidence-design.md. Allowing a
+    // bare PATCH to set it would let an action reach the loop's terminal state
+    // with no evidence of what the owner actually did.
+    if (body.action_state !== "dismissed")
+      return json({ error: "action_state must be dismissed" }, 400);
     patch.action_state = body.action_state;
-    if (body.action_state === "completed")
-      patch.completed_at = new Date().toISOString();
     changes.action_state = body.action_state;
   }
   if (body.assignee_user_id !== undefined) {

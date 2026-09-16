@@ -131,7 +131,7 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
     // vanish from the workspace-wide view.
     async measurements(workspaceId: string, actionId?: string, limit?: number, locationId?: string | null): Promise<MeasurementRow[]> {
       return rows<MeasurementRow>(`SELECT m.id, m.action_id, m.metric_key, m.before_value, m.after_value,
-        m.delta, m.fact_type, m.window_days, m.created_at::text, s.location_id
+        m.delta, m.fact_type, m.attribution_basis, m.window_days, m.created_at::text, s.location_id
         FROM action_measurements m JOIN actions a ON a.id=m.action_id AND a.workspace_id=m.workspace_id
         LEFT JOIN scan_snapshots s ON s.id=m.after_snapshot_id
         WHERE m.workspace_id=$1 AND ($2::uuid IS NULL OR m.action_id=$2)

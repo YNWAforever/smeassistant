@@ -2,6 +2,7 @@ import type { PrototypeLocale } from "@/lib/copy";
 import { copy } from "@/lib/copy";
 import type { Priority } from "@/lib/domain";
 import { readableFindingKey } from "@/lib/report/finding-label";
+import type { AttributionBasis } from "@/lib/workspace/applications";
 import type { TemplateKey } from "@/lib/workspace/templates";
 
 /**
@@ -103,6 +104,19 @@ export function findingLabel(key: string): string {
 export function stateLabel(key: string, locale: PrototypeLocale): string {
   const table = copy[locale].workspace.states as Record<string, string>;
   return table[key] ?? key;
+}
+
+/**
+ * P3.2 task 9: the basis suffix beside an `Attributed` measurement's fact
+ * type, naming which signal justified the attribution.
+ *
+ * `basis === null` covers rows written before migration 0006. It renders
+ * "basis not recorded", never a guessed basis: the column was deliberately
+ * left un-backfilled because there is no honest value to write for work done
+ * before the product recorded what the owner did.
+ */
+export function basisLabel(basis: AttributionBasis | null, locale: PrototypeLocale): string {
+  return copy[locale].workspace.basis[basis ?? "unknown"];
 }
 
 export function withLocation(href: string, location: string | null | undefined): string {

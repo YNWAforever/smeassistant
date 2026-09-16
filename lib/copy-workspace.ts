@@ -1,6 +1,7 @@
 import type { PriorityFactorKey } from "@/lib/workspace/priority";
 import type { TemplateKey } from "@/lib/workspace/templates";
 import type { MetricKey } from "@/lib/workspace/metrics";
+import type { AttributionBasis } from "@/lib/workspace/applications";
 
 /**
  * Workspace copy (`copy[locale].workspace`, CLAUDE.md Phase 3 item 5): labels
@@ -15,6 +16,7 @@ export type DisplayPhaseKey =
   | "draft_ready"
   | "changes_requested"
   | "approved_export_ready"
+  | "applied"
   | "exported"
   | "awaiting_comparable_scan"
   | "measured"
@@ -27,6 +29,7 @@ export const DISPLAY_PHASE_KEYS: DisplayPhaseKey[] = [
   "draft_ready",
   "changes_requested",
   "approved_export_ready",
+  "applied",
   "exported",
   "awaiting_comparable_scan",
   "measured",
@@ -46,6 +49,14 @@ export type WorkspaceCopy = {
   factors: Record<PriorityFactorKey, string>;
   metrics: Record<MetricKey, string>;
   phases: Record<DisplayPhaseKey, string>;
+  /**
+   * P3.2 task 9: the signal that justified an `Attributed` measurement, shown
+   * as a suffix beside the fact type so a self-report is never displayed as
+   * though the product confirmed it (design doc §4 "Read surface").
+   * `unknown` covers a `null` attribution_basis -- pre-migration-0006 rows --
+   * and must render as "not recorded", never as a guessed basis.
+   */
+  basis: { exported: string; owner_asserted: string; verified: string; unknown: string };
   states: Record<StateLabelKey, string>;
   priority: { urgent: string; high: string; medium: string; low: string };
   freshness: { today: string; days: string };
@@ -74,8 +85,6 @@ export type WorkspaceCopy = {
   checklist: {
     heading: string;
     note: string;
-    markDone: string;
-    doneState: string;
     saveInputs: string;
   };
   checklistSteps: Partial<Record<TemplateKey, { where: string; steps: string[] }>>;
@@ -130,8 +139,14 @@ export const workspaceEn: WorkspaceCopy = {
   },
   phases: {
     requires_connection: "Requires connection", needs_input: "Needs input", generating: "Generating", draft_ready: "Draft ready", changes_requested: "Changes requested",
-    approved_export_ready: "Approved · export ready", exported: "Exported", awaiting_comparable_scan: "Awaiting comparable scan", measured: "Measured", recommended: "Recommended",
+    approved_export_ready: "Approved · export ready", exported: "Exported", applied: "Applied (reported)", awaiting_comparable_scan: "Awaiting comparable scan", measured: "Measured", recommended: "Recommended",
   },
+  basis: {
+    exported: "exported",
+    owner_asserted: "you reported applying this",
+    verified: "verified on site",
+    unknown: "basis not recorded",
+  } satisfies Record<AttributionBasis | "unknown", string>,
   states: {
     measured: "Measured", unavailable: "Unavailable", unsupported: "Unsupported", failed: "Failed", pending: "Pending",
     recommended: "Recommended", needs_input: "Needs input", ready: "Ready", in_progress: "In progress", completed: "Completed", dismissed: "Dismissed", cancelled: "Cancelled", expired: "Expired",
@@ -164,8 +179,6 @@ export const workspaceEn: WorkspaceCopy = {
   checklist: {
     heading: "Steps to complete",
     note: "These steps happen in the other product, not here. Marking them done records your own confirmation — the next scan is what checks the result.",
-    markDone: "Mark these steps as done",
-    doneState: "You marked these steps done",
     saveInputs: "Save what you set",
   },
   checklistSteps: {
@@ -226,8 +239,14 @@ export const workspaceZhHK: WorkspaceCopy = {
   },
   phases: {
     requires_connection: "需要連接", needs_input: "需要輸入", generating: "生成中", draft_ready: "草稿已備妥", changes_requested: "要求修改",
-    approved_export_ready: "已核准 · 可匯出", exported: "已匯出", awaiting_comparable_scan: "等待可比較掃描", measured: "已量度", recommended: "建議",
+    approved_export_ready: "已核准 · 可匯出", exported: "已匯出", applied: "已套用（店主回報）", awaiting_comparable_scan: "等待可比較掃描", measured: "已量度", recommended: "建議",
   },
+  basis: {
+    exported: "已匯出",
+    owner_asserted: "你回報已套用",
+    verified: "已在網站核實",
+    unknown: "未記錄依據",
+  } satisfies Record<AttributionBasis | "unknown", string>,
   states: {
     measured: "已量度", unavailable: "未能取得", unsupported: "未支援", failed: "失敗", pending: "處理中",
     recommended: "建議", needs_input: "需要輸入", ready: "準備就緒", in_progress: "進行中", completed: "已完成", dismissed: "已略過", cancelled: "已取消", expired: "已過期",
@@ -258,8 +277,6 @@ export const workspaceZhHK: WorkspaceCopy = {
   checklist: {
     heading: "完成步驟",
     note: "這些步驟需在其他平台完成，不在此工作台進行。標示完成只是記錄你的確認；實際結果由下次掃描核實。",
-    markDone: "標示這些步驟已完成",
-    doneState: "你已標示完成",
     saveInputs: "記錄你所設定的內容",
   },
   checklistSteps: {
@@ -303,6 +320,15 @@ export const workspaceZhTW: WorkspaceCopy = {
     "menu-translation": { title: "審閱英文菜單翻譯", summary: "先確認菜色資料，再完成其餘英文標籤。", workflow: "菜單翻譯流程" },
     "google-reconnect": { title: "重新連接 Google 商家權限", summary: "恢復連接後，才可安全取得非公開營運資料。", workflow: "連線恢復" },
   },
+  // Mirrors the 核實/查證 verb and 你/您 pronoun split Task 8 set in the
+  // `applied` message namespace (lib/messages/{zh-HK,zh-TW}.json:
+  // assertedOn) -- keep the two in sync if either changes. `exported` and
+  // `unknown` carry no verb or pronoun, so they stay inherited from zh-HK.
+  basis: {
+    ...workspaceZhHK.basis,
+    owner_asserted: "您回報已套用",
+    verified: "已在網站查證",
+  } satisfies Record<AttributionBasis | "unknown", string>,
   states: { ...workspaceZhHK.states, unavailable: "無法取得", publishing: "發布中", published: "已發布" },
   freshness: { today: "今天更新", days: "{n} 天前更新" },
   checklistSteps: {

@@ -31,7 +31,7 @@ const row: ActionRow = {
 };
 
 describe("displayPhaseKey", () => {
-  const b = { capability: "Live" as const, actionState: "recommended" as const, runState: null, approvalState: null, deliveryState: "not_requested" as const, measurementState: "not_eligible" as const };
+  const b = { capability: "Live" as const, actionState: "recommended" as const, runState: null, approvalState: null, deliveryState: "not_requested" as const, measurementState: "not_eligible" as const, applied: false };
   it("follows the 3.4 order", () => {
     expect(displayPhaseKey({ ...b, capability: "Requires connection" })).toBe("requires_connection");
     expect(displayPhaseKey({ ...b, actionState: "needs_input", runState: "running" })).toBe("needs_input");
@@ -43,6 +43,34 @@ describe("displayPhaseKey", () => {
     expect(displayPhaseKey({ ...b, measurementState: "awaiting_comparable_scan" })).toBe("awaiting_comparable_scan");
     expect(displayPhaseKey({ ...b, measurementState: "measured" })).toBe("measured");
     expect(displayPhaseKey(b)).toBe("recommended");
+  });
+});
+
+describe("displayPhaseKey applied", () => {
+  const baseInput = {
+    capability: "Live" as const,
+    actionState: "completed" as const,
+    runState: null,
+    approvalState: null,
+    deliveryState: "not_requested" as const,
+    measurementState: "not_eligible" as const,
+    applied: true,
+  };
+
+  it("is applied when the owner asserted and no comparable scan has judged it", () => {
+    expect(displayPhaseKey(baseInput)).toBe("applied");
+  });
+
+  it("measured still wins once a comparable scan has judged it", () => {
+    expect(displayPhaseKey({ ...baseInput, measurementState: "measured" })).toBe("measured");
+  });
+
+  it("beats exported: an exported draft the owner then asserted reads applied", () => {
+    expect(displayPhaseKey({ ...baseInput, deliveryState: "exported" })).toBe("applied");
+  });
+
+  it("is exported, not applied, when nothing was asserted", () => {
+    expect(displayPhaseKey({ ...baseInput, applied: false, deliveryState: "exported" })).toBe("exported");
   });
 });
 
