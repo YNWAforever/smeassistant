@@ -48,6 +48,14 @@ export type WorkspaceCopy = {
   factors: Record<PriorityFactorKey, string>;
   metrics: Record<MetricKey, string>;
   phases: Record<DisplayPhaseKey, string>;
+  /**
+   * P3.2 task 9: the signal that justified an `Attributed` measurement, shown
+   * as a suffix beside the fact type so a self-report is never displayed as
+   * though the product confirmed it (design doc §4 "Read surface").
+   * `unknown` covers a `null` attribution_basis -- pre-migration-0006 rows --
+   * and must render as "not recorded", never as a guessed basis.
+   */
+  basis: { exported: string; owner_asserted: string; verified: string; unknown: string };
   states: Record<StateLabelKey, string>;
   priority: { urgent: string; high: string; medium: string; low: string };
   freshness: { today: string; days: string };
@@ -131,6 +139,12 @@ export const workspaceEn: WorkspaceCopy = {
   phases: {
     requires_connection: "Requires connection", needs_input: "Needs input", generating: "Generating", draft_ready: "Draft ready", changes_requested: "Changes requested",
     approved_export_ready: "Approved · export ready", exported: "Exported", applied: "Applied (reported)", awaiting_comparable_scan: "Awaiting comparable scan", measured: "Measured", recommended: "Recommended",
+  },
+  basis: {
+    exported: "exported {date}",
+    owner_asserted: "you reported applying this",
+    verified: "verified on site",
+    unknown: "basis not recorded",
   },
   states: {
     measured: "Measured", unavailable: "Unavailable", unsupported: "Unsupported", failed: "Failed", pending: "Pending",
@@ -225,6 +239,12 @@ export const workspaceZhHK: WorkspaceCopy = {
   phases: {
     requires_connection: "需要連接", needs_input: "需要輸入", generating: "生成中", draft_ready: "草稿已備妥", changes_requested: "要求修改",
     approved_export_ready: "已核准 · 可匯出", exported: "已匯出", applied: "已套用（店主回報）", awaiting_comparable_scan: "等待可比較掃描", measured: "已量度", recommended: "建議",
+  },
+  basis: {
+    exported: "於 {date} 匯出",
+    owner_asserted: "您回報已套用",
+    verified: "已在網站核實",
+    unknown: "未記錄依據",
   },
   states: {
     measured: "已量度", unavailable: "未能取得", unsupported: "未支援", failed: "失敗", pending: "處理中",

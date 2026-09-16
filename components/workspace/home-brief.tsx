@@ -11,7 +11,7 @@ import { LocationSelect } from "@/components/workspace/location-select"
 import { RescanButton } from "@/components/workspace/rescan-button"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { resolveText } from "@/lib/domain"
-import { comparisonReasonText, effortLabel, findingLabel, formatDateTime, formatDay, metricLabel, ordinal, priorityClass, priorityLabel, scorePercent, signed, withLocation } from "@/lib/workspace/format"
+import { basisLabel, comparisonReasonText, effortLabel, findingLabel, formatDateTime, formatDay, metricLabel, ordinal, priorityClass, priorityLabel, scorePercent, signed, withLocation } from "@/lib/workspace/format"
 import { measuredPrimarySources } from "@/lib/workspace/module-states"
 import type { HomeBrief } from "@/lib/workspace/queries-pages"
 import type { ActionOverview } from "@/lib/workspace/overview"
@@ -127,7 +127,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
               <div className="proof-value">{proof.delta !== null && proof.delta < 0 ? <TrendingDown /> : <TrendingUp />}<strong>{signed(proof.delta, 1)}<span> {isChinese ? "變化" : "change"}</span></strong></div>
               <h2>{metricLabel(proof.metricKey, locale)}</h2>
               <p>{isChinese ? `${proof.before ?? "—"} → ${proof.after ?? "—"}，於 ${formatDay(proof.observedAt, locale, timezone)} 量度` : `${proof.before ?? "—"} → ${proof.after ?? "—"}, measured ${formatDay(proof.observedAt, locale, timezone)}`}{proof.windowDays ? (isChinese ? ` · ${proof.windowDays} 日內` : ` · ${proof.windowDays}-day window`) : ""}</p>
-              <div className="proof-caveat"><FactType type={proof.factType} /><span>{proof.factType === "Attributed" ? (isChinese ? "只顯示時間上的可能關聯；不宣稱帶來收入或預訂因果。" : "Temporal association only; no revenue or booking causation is claimed.") : (isChinese ? "兩次可比較快照之間的已觀察差異。" : "Observed difference between two comparable snapshots.")}</span></div>
+              <div className="proof-caveat"><FactType type={proof.factType} /><span>{proof.factType === "Attributed" ? `${basisLabel(proof.attributionBasis, locale)} · ${isChinese ? "只顯示時間上的可能關聯；不宣稱帶來收入或預訂因果。" : "Temporal association only; no revenue or booking causation is claimed."}` : (isChinese ? "兩次可比較快照之間的已觀察差異。" : "Observed difference between two comparable snapshots.")}</span></div>
             </>
           ) : (
             <>

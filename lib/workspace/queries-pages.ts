@@ -11,6 +11,7 @@ import { deriveFaqQuestions } from "@/lib/workspace/faq-questions";
 import { applicationRepository } from "@/lib/repositories/applications";
 import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
 import type { GuardrailFlag, VersionOrigin } from "@/lib/workspace/version-meta";
+import type { AttributionBasis } from "@/lib/workspace/applications";
 import { filterSelectedReviews, scannedReviewKey, selectScannedReviews } from "@/lib/workspace/evidence-inputs";
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { currentPeriod, type LocationSummary, type WorkspaceContext } from "@/lib/workspace/queries";
@@ -38,6 +39,8 @@ export interface HomeChanged {
 
 export interface HomeProof {
   factType: FactType;
+  /** Which signal earned `Attributed`; null when unattributed or predating migration 0006. */
+  attributionBasis: AttributionBasis | null;
   metricKey: string;
   before: number | null;
   after: number | null;
@@ -140,6 +143,8 @@ export interface MeasurementRow {
   after_value: number | string | null;
   delta: number | string | null;
   fact_type: FactType;
+  /** Which signal earned `Attributed`; null on rows predating migration 0006. */
+  attribution_basis: AttributionBasis | null;
   window_days: number | null;
   created_at: string;
   /** The after-snapshot's location; NULL for a workspace-wide action. */
@@ -609,6 +614,7 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
     proof: proofRow
       ? {
           factType: proofRow.fact_type,
+          attributionBasis: proofRow.attribution_basis,
           metricKey: proofRow.metric_key,
           before: num(proofRow.before_value),
           after: num(proofRow.after_value),
