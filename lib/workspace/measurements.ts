@@ -214,8 +214,16 @@ export async function recordMeasurements(repo: MeasurementRepository, input: Rec
   //
   // DATED FALLBACK: the `action_state === 'completed'` test remains ONLY for
   // actions completed before 0006, which have no application row and would
-  // otherwise silently lose their `measured` label. Remove it once no
-  // pre-0006 completed actions remain.
+  // otherwise silently lose their `measured` label.
+  //
+  // To retire it, confirm this returns zero rows, then delete the disjunct:
+  //   SELECT a.id FROM actions a
+  //   WHERE a.action_state = 'completed'
+  //     AND NOT EXISTS (SELECT 1 FROM action_applications p
+  //                     WHERE p.action_id = a.id AND p.retracted_at IS NULL);
+  // Note closeResolvedActions also writes 'completed', but sets
+  // measurement_state='measured' itself in the same UPDATE, so those rows do
+  // not depend on this fallback.
   const entered = new Set(
     actions
       .filter((action) => basisFor.get(action.id) !== null || action.action_state === "completed")
