@@ -14,6 +14,20 @@ export interface ApplicationInsert {
   evidence: Record<string, unknown> | null;
 }
 
+/**
+ * Result of an owner-assertion insert attempt. `assertApplied`'s guard runs
+ * inside the same transaction as the insert, so by the time it returns, the
+ * write already did or didn't happen -- this only explains why not, it never
+ * decides whether to write. Distinguishing the two zero-row causes matters
+ * because they call for different responses: 'duplicate' is a double-clicked
+ * button and should look exactly like the up-front idempotency path (200,
+ * pointing at the row that exists); 'closed' is the only case that is
+ * actually false to report as anything but a refusal.
+ */
+export type AssertOutcome =
+  | { ok: true; id: string }
+  | { ok: false; reason: 'closed' | 'duplicate'; existingId?: string };
+
 export interface ApplicationRepository {
   /** Non-retracted rows for these actions, newest first. */
   forActions(workspaceId: string, actionIds: string[]): Promise<ApplicationRecord[]>;
@@ -30,12 +44,13 @@ export interface ApplicationRepository {
    */
   insert(row: ApplicationInsert): Promise<{ id: string } | null>;
   /**
-   * Insert + complete the action in one transaction. Returns null if the
-   * action is closed, or if a live (non-retracted) owner_asserted row
-   * already exists for the same output_version_id (including the null/
-   * checklist case) — that is a duplicate submit, not a new claim.
+   * Insert + complete the action in one transaction. A zero-row insert is
+   * diagnosed, still inside the transaction, to tell a duplicate submit
+   * (a live owner_asserted row already exists for the same
+   * output_version_id, including the null/checklist case) from a genuinely
+   * closed action — see AssertOutcome.
    */
-  assertApplied(row: ApplicationInsert, nowIso: string): Promise<{ id: string } | null>;
+  assertApplied(row: ApplicationInsert, nowIso: string): Promise<AssertOutcome>;
   /**
    * Stamps EVERY live (non-retracted) owner_asserted row for this action —
    * not just the newest — and reopens the action. "I did not apply this"
@@ -121,13 +136,35 @@ export function applicationRepository(client?: Pick<Pool, 'query'> & Partial<Pic
            RETURNING id`,
           [row.workspace_id, row.action_id, row.output_version_id, row.source, row.asserted_by, row.note, row.evidence, CLOSED_STATES],
         );
-        if (!inserted.rows[0]) return null;
-        await conn.query(
-          `UPDATE actions SET action_state = 'completed', completed_at = $3, updated_at = $3
-           WHERE id = $2 AND workspace_id = $1`,
-          [row.workspace_id, row.action_id, nowIso],
+        if (inserted.rows[0]) {
+          await conn.query(
+            `UPDATE actions SET action_state = 'completed', completed_at = $3, updated_at = $3
+             WHERE id = $2 AND workspace_id = $1`,
+            [row.workspace_id, row.action_id, nowIso],
+          );
+          return { ok: true, id: inserted.rows[0].id };
+        }
+        // Zero rows: the insert's WHERE refused for one of two reasons that
+        // look identical from the caller's side of that query. Diagnose which,
+        // still inside this transaction -- there is no window to lose here,
+        // the write already didn't happen; this only explains why.
+        const diagnosis = await conn.query<{ duplicate_id: string | null; action_open: boolean }>(
+          `SELECT
+             (SELECT id FROM action_applications
+               WHERE workspace_id = $1 AND action_id = $2 AND source = 'owner_asserted'
+                 AND retracted_at IS NULL AND output_version_id IS NOT DISTINCT FROM $3
+               ORDER BY asserted_at DESC, id DESC LIMIT 1) AS duplicate_id,
+             EXISTS(SELECT 1 FROM actions
+               WHERE id = $2 AND workspace_id = $1 AND action_state <> ALL($4::text[])) AS action_open`,
+          [row.workspace_id, row.action_id, row.output_version_id, CLOSED_STATES],
         );
-        return inserted.rows[0];
+        const { duplicate_id, action_open } = diagnosis.rows[0] ?? { duplicate_id: null, action_open: false };
+        if (duplicate_id) return { ok: false, reason: 'duplicate', existingId: duplicate_id };
+        // action_open === true here would mean neither guard clause explains
+        // the empty insert, which the SQL above says cannot happen; treated
+        // as closed defensively rather than left unhandled.
+        void action_open;
+        return { ok: false, reason: 'closed' };
       }, transactor(client));
     },
     async retract(workspaceId, actionId, actorId, nowIso) {

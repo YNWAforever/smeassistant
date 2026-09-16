@@ -103,7 +103,7 @@ describe("recordApplication", () => {
       forActions: async () => [],
       latestOwnerAssertion: async () => null,
       approvedVersion: async () => false,
-      assertApplied: async () => null,
+      assertApplied: async () => ({ ok: false, reason: "closed" }),
       retract: async () => ({ retracted: 0 }),
     };
     return { repo, getCaptured: () => captured };

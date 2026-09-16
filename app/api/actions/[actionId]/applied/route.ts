@@ -54,9 +54,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ actionI
     return json({ error: "unavailable" }, 503);
   }
 
-  let created: { id: string } | null;
+  let outcome: Awaited<ReturnType<typeof repo.assertApplied>>;
   try {
-    created = await repo.assertApplied(
+    outcome = await repo.assertApplied(
       {
         workspace_id: workspaceId,
         action_id: actionId,
@@ -71,17 +71,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ actionI
   } catch {
     return json({ error: "unavailable" }, 503);
   }
-  // Null here means the in-transaction guard refused the insert. It cannot
-  // distinguish "the action is closed" from "a concurrent request already
-  // recorded this exact assertion" -- both leave nothing to insert. We chose
-  // to report action_closed for both because the alternative (a fresh SELECT
-  // to tell them apart) is a third round-trip racing the same window the
-  // guard exists to close, and the caller-visible outcome is the same either
-  // way: no new assertion was created, and the closed-action reading is the
-  // one worth surfacing since it is actionable (the action needs reopening),
-  // whereas the duplicate-submit reading is not (the assertion already
-  // exists, harmlessly).
-  if (!created) return json({ error: "action_closed" }, 409);
+  // The insert's guard runs inside the same transaction, so a zero-row result
+  // means the write already didn't happen -- assertApplied's own diagnostic
+  // query (still inside that transaction) tells us why. A duplicate submit
+  // is not an error: it gets the same 200 the up-front idempotency check
+  // above returns, because reporting "this action is closed" for a
+  // double-clicked button would be false -- the action is open and the
+  // other request's assertion is what's on record.
+  if (!outcome.ok) {
+    if (outcome.reason === "duplicate")
+      return json({ applicationId: outcome.existingId, alreadyRecorded: true }, 200);
+    return json({ error: "action_closed" }, 409);
+  }
 
   await recordNeonEvent({
     workspaceId,
@@ -93,10 +94,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ actionI
     entityId: actionId,
     locale: localeFrom(req, body),
     ipHash: auth.ipHash,
-    payload: { application_id: created.id, output_version_id: versionId },
+    payload: { application_id: outcome.id, output_version_id: versionId },
   });
 
-  return json({ applicationId: created.id }, 201);
+  return json({ applicationId: outcome.id }, 201);
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ actionId: string }> }) {
@@ -110,13 +111,13 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ actio
   // newest, and returns how many. Retraction means "I did not apply this", so
   // it must leave no standing claim -- a buried older assertion would keep
   // strongestBasis returning owner_asserted for work the owner just withdrew.
-  let outcome: { retracted: number } | null;
+  let retraction: { retracted: number };
   try {
-    outcome = await repo.retract(workspaceId, actionId, auth.user.id, new Date().toISOString());
+    retraction = await repo.retract(workspaceId, actionId, auth.user.id, new Date().toISOString());
   } catch {
     return json({ error: "unavailable" }, 503);
   }
-  if (!outcome || outcome.retracted === 0) return json({ error: "not_found" }, 404);
+  if (retraction.retracted === 0) return json({ error: "not_found" }, 404);
 
   await recordNeonEvent({
     workspaceId,
@@ -128,8 +129,8 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ actio
     entityId: actionId,
     locale: localeFrom(req, null),
     ipHash: auth.ipHash,
-    payload: { retracted_count: outcome.retracted },
+    payload: { retracted_count: retraction.retracted },
   });
 
-  return json({ retracted: outcome.retracted }, 200);
+  return json({ retracted: retraction.retracted }, 200);
 }

@@ -32,8 +32,8 @@ const req = (body: unknown) => new Request("http://x/applied", { method: "POST",
 beforeEach(() => {
   ports.auth = OK_AUTH;
   ports.repo.approvedVersion.mockResolvedValue(true);
-  ports.repo.assertApplied.mockResolvedValue({ id: "app-1" });
-  ports.repo.retract.mockResolvedValue({ id: "app-1" });
+  ports.repo.assertApplied.mockResolvedValue({ ok: true, id: "app-1" });
+  ports.repo.retract.mockResolvedValue({ retracted: 1 });
   ports.repo.latestOwnerAssertion.mockResolvedValue(null);
   vi.clearAllMocks();
 });
@@ -72,8 +72,15 @@ describe("POST /api/actions/[actionId]/applied", () => {
   });
 
   it("returns 409 when the action is closed", async () => {
-    ports.repo.assertApplied.mockResolvedValue(null);
+    ports.repo.assertApplied.mockResolvedValue({ ok: false, reason: "closed" });
     expect((await POST(req({}), params)).status).toBe(409);
+  });
+
+  it("returns 200 (not 409) when assertApplied finds a concurrent duplicate submit", async () => {
+    ports.repo.assertApplied.mockResolvedValue({ ok: false, reason: "duplicate", existingId: "app-existing" });
+    const res = await POST(req({}), params);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ applicationId: "app-existing", alreadyRecorded: true });
   });
 });
 
@@ -85,7 +92,7 @@ describe("DELETE /api/actions/[actionId]/applied", () => {
   });
 
   it("returns 404 when there is nothing to retract", async () => {
-    ports.repo.retract.mockResolvedValue(null);
+    ports.repo.retract.mockResolvedValue({ retracted: 0 });
     expect((await DELETE(new Request("http://x/applied", { method: "DELETE" }), params)).status).toBe(404);
   });
 });
