@@ -24,6 +24,10 @@ export function decideVerification(
   prior: WebsiteChecks | null,
   fresh: WebsiteChecks,
 ): VerificationDecision {
+  // Not an early-exit optimisation. With no declared keys `relevant` below is
+  // empty too, so this is belt-and-braces for the same hazard the guard after
+  // the loop's input guards against: an empty relevant set must never reach the
+  // loop, or a site nobody could reach falls through to "verified".
   if (!verifyChecks.length || !prior) return "not_applicable";
 
   // Only the checks that were actually broken. A template declares every check
@@ -38,11 +42,18 @@ export function decideVerification(
     // failing, so we must not later claim it was fixed.
     if (before === false) relevant.push(key);
   }
+  // Load-bearing, despite reading like a redundant early exit. It is what keeps
+  // the loop below non-vacuous: remove it and an action with nothing to verify
+  // runs a zero-iteration loop and falls straight through to "verified", so a
+  // website we never even fetched would be reported to the merchant as
+  // confirmed live. That is the worst thing this function can do.
   if (!relevant.length) return "not_applicable";
 
   for (const key of relevant) {
-    // A fresh fetch that failed yields evaluated: 0 and no results, so every
-    // lookup is null -- "we could not look", not "it is fixed".
+    // Per-key, never a check on `fresh.evaluated`: a fetch that returned only
+    // some of the checks must not verify the ones it never looked at. A fetch
+    // that failed outright yields evaluated: 0 and no results, so every lookup
+    // is null -- "we could not look", not "it is fixed".
     if (resultFor(fresh, key) !== true) return "not_yet";
   }
   return "verified";
