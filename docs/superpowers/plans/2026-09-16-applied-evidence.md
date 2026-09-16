@@ -80,8 +80,13 @@ CREATE TABLE IF NOT EXISTS public.action_applications (
   created_at        timestamptz NOT NULL DEFAULT now()
 );
 
+-- `source` is in the key because latestOwnerAssertion filters on it; without
+-- it that lookup rechecks every application row for the action. workspace_id
+-- is deliberately NOT a leading column: action_id already determines the
+-- workspace, so it would be a scope assertion rather than a selectivity
+-- filter sitting ahead of the actually selective column.
 CREATE INDEX IF NOT EXISTS action_applications_action_idx
-  ON public.action_applications (action_id, asserted_at DESC)
+  ON public.action_applications (action_id, source, asserted_at DESC)
   WHERE retracted_at IS NULL;
 
 -- The four-statement block every table in this schema carries; see
@@ -993,7 +998,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ actio
 
 Run: `corepack pnpm exec vitest run "app/api/actions/[actionId]/applied/route.test.ts"`
 
-Expected: PASS, 8 tests.
+Expected: PASS, 11 tests (the original eight plus the duplicate-submit case and two DELETE cases added in review).
 
 - [ ] **Step 5: Register the audit event labels**
 
@@ -1331,7 +1336,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("action applications", () =
 
 Run: `corepack pnpm exec vitest run --config vitest.integration.config.ts test/integration/neon-action-applications.integration.test.ts`
 
-Expected: PASS, 5 tests.
+Expected: PASS, 8 tests (the five original cases plus the three added after Task 5's review).
 
 NOTE: `assertApplied` and `retract` go through `withTransaction`, which needs `pool.connect()`. They must be exercised through a real `Pool`, not a `{ query }`-only stub — a stub cannot `connect()`, so a test that injects one would not be testing the transaction at all. (`NEON_INTEGRATION=1` is set by `vitest.integration.config.ts`; Docker must be running.)
 
