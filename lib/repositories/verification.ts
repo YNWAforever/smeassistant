@@ -71,7 +71,7 @@ export interface VerificationRepository {
  */
 const ELIGIBLE = `
   a.template_key = ANY($1::text[])
-  AND l.website_url IS NOT NULL AND l.website_url <> ''
+  AND l.website_url IS NOT NULL AND btrim(l.website_url) <> ''
   AND a.source_snapshot_id IS NOT NULL
   AND (a.verification_checked_at IS NULL OR a.verification_checked_at < now() - interval '24 hours')
   AND NOT EXISTS (

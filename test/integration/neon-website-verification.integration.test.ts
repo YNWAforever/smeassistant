@@ -7,11 +7,12 @@ import { applicationRepository } from "../../lib/repositories/applications";
 import { measurementRepository } from "../../lib/repositories/measurements";
 import { recordApplication } from "../../lib/workspace/applications";
 import { recordMeasurements } from "../../lib/workspace/measurements";
-import { rowToSnapshot, type ScanDiffRow } from "../../lib/workspace/snapshots";
+import { rowToSnapshot, type ScanDiffRow, type ScanSnapshotRow, type SnapshotRecord } from "../../lib/workspace/snapshots";
 
 // The template used throughout: it declares `verifyChecks: ["faq_schema"]`
 // (lib/workspace/templates.ts) and maps to metric "aeo.ai_citation_count"
-// (lib/workspace/measurements.ts TEMPLATE_METRIC), which case 9 needs.
+// (lib/workspace/measurements.ts TEMPLATE_METRIC), which the loop-closing
+// cases need.
 const TEMPLATE_KEY = "visibility-content";
 
 describe.runIf(process.env.NEON_INTEGRATION === "1")("website verification eligibility and attribution", () => {
@@ -52,10 +53,6 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("website verification eligi
 
   async function workspace(): Promise<string> {
     return (await runtime.query("INSERT INTO workspaces(slug,market) VALUES($1,'hk') RETURNING id", [`ws-${crypto.randomUUID()}`])).rows[0].id;
-  }
-
-  async function user(): Promise<string> {
-    return (await runtime.query("INSERT INTO app_users(email) VALUES($1) RETURNING id", [`${crypto.randomUUID()}@example.test`])).rows[0].id;
   }
 
   async function location(ws: string, websiteUrl: string | null = "https://example.test"): Promise<string> {
@@ -145,7 +142,76 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("website verification eligi
     ).rows[0].id;
   }
 
-  // --- Cases 1-4: the engagement + exclusion conditions -----------------
+  /** Converts a raw `scan_snapshots` row (Date objects, driver-native jsonb) into the shape `rowToSnapshot` expects. */
+  function toSnapshotRow(row: Record<string, unknown>): ScanSnapshotRow {
+    return {
+      id: row.id as string,
+      job_id: row.job_id as string,
+      workspace_id: row.workspace_id as string | null,
+      location_id: row.location_id as string | null,
+      market: row.market as string,
+      observed_at: (row.observed_at as Date).toISOString?.() ?? (row.observed_at as string),
+      scoring_version: row.scoring_version as string | null,
+      overall_score: row.overall_score as number | string | null,
+      coverage: row.coverage as number | string,
+      module_states: row.module_states,
+      metrics: row.metrics,
+      website_checks: row.website_checks,
+      comparable_to: row.comparable_to as string | null,
+      diff_id: row.diff_id as string | null,
+      created_at: (row.created_at as Date).toISOString?.() ?? (row.created_at as string),
+    };
+  }
+
+  async function loadSnapshotRecord(id: string): Promise<SnapshotRecord> {
+    const row = (await runtime.query("SELECT * FROM scan_snapshots WHERE id=$1", [id])).rows[0];
+    return rowToSnapshot(toSnapshotRow(row));
+  }
+
+  async function loadDiffRecord(id: string): Promise<ScanDiffRow> {
+    const row = (await runtime.query("SELECT * FROM scan_diffs WHERE id=$1", [id])).rows[0];
+    return {
+      id: row.id,
+      base_job_id: row.base_job_id,
+      head_job_id: row.head_job_id,
+      comparable: row.comparable,
+      incomparable_reason: row.incomparable_reason,
+      composite_withheld_reason: row.composite_withheld_reason,
+      intersection_modules: row.intersection_modules,
+      composite_base: row.composite_base,
+      composite_head: row.composite_head,
+      composite_delta: row.composite_delta,
+      resolved_findings: row.resolved_findings,
+      regressed_findings: row.regressed_findings,
+      decayed_findings: row.decayed_findings,
+      lost_coverage: row.lost_coverage,
+      gained_coverage: row.gained_coverage,
+      created_at: row.created_at.toISOString?.() ?? row.created_at,
+    };
+  }
+
+  /**
+   * A comparable base/head snapshot pair for one location, with the head job
+   * "starting" at 2026-09-01 -- the timestamp the attribution timing gate
+   * measures assertions against. `aeo.ai_citation_count` moves 0 -> 2.
+   */
+  async function comparablePair(ws: string, loc: string): Promise<{ headSnapId: string; diffId: string }> {
+    const baseJob = await job(ws, loc, "2026-08-01");
+    const headJob = await job(ws, loc, "2026-09-01");
+    const baseSnap = await snapshot(ws, baseJob, loc, { metrics: { "aeo.ai_citation_count": 0 }, observedAt: "2026-08-01" });
+    const diffId = (
+      await runtime.query("INSERT INTO scan_diffs(base_job_id,head_job_id,comparable) VALUES($1,$2,true) RETURNING id", [baseJob, headJob])
+    ).rows[0].id;
+    const headSnapId = await snapshot(ws, headJob, loc, {
+      metrics: { "aeo.ai_citation_count": 2 },
+      observedAt: "2026-09-01",
+      comparableTo: baseSnap,
+      diffId,
+    });
+    return { headSnapId, diffId };
+  }
+
+  // --- Engagement (owner_asserted / exported) and permanent exclusion (verified) ---
 
   it("returns an action with a live owner_asserted application", async () => {
     const ws = await workspace();
@@ -207,18 +273,56 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("website verification eligi
     expect(await repo.actionsForLocations([loc], [TEMPLATE_KEY])).toEqual([]);
   });
 
-  it("does NOT return a location whose website_url is null or the empty string, otherwise fully eligible", async () => {
+  it("a retracted owner_asserted application does not count as engagement", async () => {
+    const ws = await workspace();
+    const loc = await location(ws);
+    const jobId = await job(ws, loc);
+    const snap = await snapshot(ws, jobId, loc);
+    const act = await action(ws, loc, snap);
+    // The ONLY application on this action is retracted, so there is no live
+    // engagement signal left -- the location must not be due.
+    await assertion(ws, act, "owner_asserted", { retractedAt: new Date().toISOString() });
+
+    const repo = verificationRepository(runtime);
+    expect(await repo.dueLocations(10, [TEMPLATE_KEY])).toEqual([]);
+    expect(await repo.actionsForLocations([loc], [TEMPLATE_KEY])).toEqual([]);
+  });
+
+  it("a retracted verified row does NOT exclude an otherwise-eligible action", async () => {
+    const ws = await workspace();
+    const loc = await location(ws);
+    const jobId = await job(ws, loc);
+    const snap = await snapshot(ws, jobId, loc);
+    const act = await action(ws, loc, snap);
+    await assertion(ws, act, "owner_asserted"); // live engagement
+    // A verified row exists but is retracted: it must not stand as a permanent
+    // exclusion. This is the more consequential of the two retracted_at gaps --
+    // the verified exclusion has no throttle behind it, so a retracted row that
+    // still counted would hide the action from verification forever.
+    await assertion(ws, act, "verified", { retractedAt: new Date().toISOString() });
+
+    const repo = verificationRepository(runtime);
+    expect((await repo.dueLocations(10, [TEMPLATE_KEY])).map((d) => d.location_id)).toEqual([loc]);
+    expect((await repo.actionsForLocations([loc], [TEMPLATE_KEY])).map((a) => a.id)).toEqual([act]);
+  });
+
+  it("does NOT return a location whose website_url is null, the empty string, or whitespace-only, otherwise fully eligible", async () => {
     const ws = await workspace();
     const locNull = await location(ws, null);
     const locEmpty = await location(ws, "");
+    const locBlank = await location(ws, "   ");
     const jobNull = await job(ws, locNull);
     const jobEmpty = await job(ws, locEmpty);
+    const jobBlank = await job(ws, locBlank);
     const snapNull = await snapshot(ws, jobNull, locNull);
     const snapEmpty = await snapshot(ws, jobEmpty, locEmpty);
+    const snapBlank = await snapshot(ws, jobBlank, locBlank);
     const actNull = await action(ws, locNull, snapNull);
     const actEmpty = await action(ws, locEmpty, snapEmpty);
+    const actBlank = await action(ws, locBlank, snapBlank);
     await assertion(ws, actNull, "owner_asserted");
     await assertion(ws, actEmpty, "owner_asserted");
+    await assertion(ws, actBlank, "owner_asserted");
 
     const repo = verificationRepository(runtime);
     expect(await repo.dueLocations(10, [TEMPLATE_KEY])).toEqual([]);
@@ -244,7 +348,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("website verification eligi
     expect(await repo.actionsForLocations([loc], [TEMPLATE_KEY])).toEqual([]);
   });
 
-  // --- Case 5: the 24h throttle -------------------------------------------
+  // --- The 24h throttle ---------------------------------------------------
 
   it("excludes an action checked 1 hour ago and includes one checked 25 hours ago", async () => {
     const ws = await workspace();
@@ -269,9 +373,9 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("website verification eligi
     expect(actions.map((a) => a.id)).toEqual([actStale]);
   });
 
-  // --- Case 6: markChecked stamps only the ids passed, and is tenant-paired ---
+  // --- markChecked ---------------------------------------------------------
 
-  it("markChecked stamps only the ids passed, paired with the right workspace_id", async () => {
+  it("markChecked stamps only the ids passed, with the exact value given, paired with the right workspace_id", async () => {
     const ws = await workspace();
     const otherWs = await workspace();
     const loc = await location(ws);
@@ -286,24 +390,42 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("website verification eligi
     const before = await repo.actionsForLocations([loc], [TEMPLATE_KEY]);
     expect(before.map((a) => a.id).sort()).toEqual([act1, act2, act3].sort());
 
-    // A mismatched workspace_id must not stamp the action.
-    await repo.markChecked([{ id: act3, workspace_id: otherWs }], new Date().toISOString());
-    expect((await runtime.query("SELECT verification_checked_at FROM actions WHERE id=$1", [act3])).rows[0].verification_checked_at).toBeNull();
+    // Pre-stamp act3 with a sentinel distinct from both "never ran" (null, the
+    // column default) and any value this test's own markChecked calls would
+    // write -- only a sentinel lets "correctly skipped" be told apart from
+    // "nothing ran", which asserting null cannot do.
+    const sentinel = "2020-01-01T00:00:00.000Z";
+    await runtime.query("UPDATE actions SET verification_checked_at=$1 WHERE id=$2", [sentinel, act3]);
 
-    // Only act1 and act2 passed with the correct pairing.
+    // A mismatched workspace_id must not stamp the action: the sentinel must
+    // survive untouched.
+    await repo.markChecked([{ id: act3, workspace_id: otherWs }], new Date().toISOString());
+    const unchanged = (await runtime.query("SELECT verification_checked_at FROM actions WHERE id=$1", [act3])).rows[0].verification_checked_at;
+    expect(new Date(unchanged).toISOString()).toBe(sentinel);
+
+    // Only act1 and act2 passed with the correct pairing, and must be stamped
+    // with EXACTLY the value passed in -- not a value the SQL reads
+    // independently via its own now() (which is also what the 24h throttle
+    // reads against; the write clock and the read clock must be the same
+    // value here, not merely both non-null).
+    const nowIso = new Date().toISOString();
     await repo.markChecked(
       [
         { id: act1, workspace_id: ws },
         { id: act2, workspace_id: ws },
       ],
-      new Date().toISOString(),
+      nowIso,
     );
     const rows = (await runtime.query("SELECT id,verification_checked_at FROM actions WHERE id = ANY($1::uuid[])", [[act1, act2, act3]])).rows;
-    const stamped = new Set(rows.filter((r) => r.verification_checked_at !== null).map((r) => r.id));
-    expect(stamped).toEqual(new Set([act1, act2]));
+    const stampedIds = new Set(rows.filter((r) => r.id !== act3).map((r) => r.id));
+    expect(stampedIds).toEqual(new Set([act1, act2]));
+    for (const row of rows) {
+      if (row.id === act3) continue;
+      expect(new Date(row.verification_checked_at).toISOString()).toBe(nowIso);
+    }
   });
 
-  // --- Case 7: one location, two actions --------------------------------
+  // --- Fan-out: one location, several actions -----------------------------
 
   it("produces one location row from dueLocations and two action rows from actionsForLocations", async () => {
     const ws = await workspace();
@@ -321,9 +443,9 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("website verification eligi
     expect(actions.map((a) => a.id).sort()).toEqual([act1, act2].sort());
   });
 
-  // --- Case 8: recordApplication with source: 'verified' -----------------
+  // --- The verifier seam: recordApplication({ source: 'verified' }) -------
 
-  it("recordApplication with source 'verified' lands a row that forActions returns", async () => {
+  it("recordApplication with source 'verified' lands a row that forActions returns, with its evidence intact", async () => {
     const ws = await workspace();
     const loc = await location(ws);
     const jobId = await job(ws, loc);
@@ -341,18 +463,39 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("website verification eligi
     const rows = await applicationRepository(runtime).forActions(ws, [act]);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ action_id: act, source: "verified" });
+
+    // forActions does not project evidence (ApplicationRecord has no such
+    // field) -- read it back directly to prove recordApplication did not
+    // silently drop the payload. Carrying evidence through is the entire
+    // point of the verifier seam, and this is its only exercise.
+    const stored = (await runtime.query("SELECT evidence FROM action_applications WHERE id=$1", [created!.id])).rows[0].evidence;
+    expect(stored).toEqual({ check: "faq_schema" });
   });
 
-  // --- The ordering case: mix wins over fully-checked, regardless of age ---
+  // --- Ordering: never-checked beats mixed beats fully-checked -------------
 
-  it("a location with a mix of never-checked and already-checked actions sorts ahead of a fully-checked location with an older oldest-check", async () => {
+  it("a never-checked location sorts ahead of a mixed location, which sorts ahead of a fully-checked location with an older oldest-check", async () => {
     const ws = await workspace();
+    const locNeverChecked = await location(ws);
     const locMixed = await location(ws);
     const locFullyChecked = await location(ws);
+    const jobNever = await job(ws, locNeverChecked);
     const jobMixed = await job(ws, locMixed);
     const jobChecked = await job(ws, locFullyChecked);
+    const snapNever = await snapshot(ws, jobNever, locNeverChecked);
     const snapMixed = await snapshot(ws, jobMixed, locMixed);
     const snapChecked = await snapshot(ws, jobChecked, locFullyChecked);
+
+    // locNeverChecked: both actions' verification_checked_at stay null. This
+    // is the within-group tiebreaker the doc comment promises: bool_or(...)
+    // ties with locMixed (both have at least one never-checked action), so
+    // min(...) ASC NULLS FIRST must decide, and a location whose min is NULL
+    // (nothing checked at all) sorts ahead of one whose min is a real,
+    // however-recent timestamp.
+    const neverA = await action(ws, locNeverChecked, snapNever);
+    const neverB = await action(ws, locNeverChecked, snapNever);
+    await assertion(ws, neverA, "owner_asserted");
+    await assertion(ws, neverB, "owner_asserted");
 
     // locMixed: one action never checked, one checked recently.
     const mixedUnchecked = await action(ws, locMixed, snapMixed);
@@ -363,77 +506,30 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("website verification eligi
 
     // locFullyChecked: every eligible action checked, and its oldest check is
     // OLDER than locMixed's checked action -- a naive `min(...) ASC NULLS
-    // FIRST` would put this location first. bool_or(...) DESC must not.
+    // FIRST` alone (without the bool_or(...) DESC leading key) would put this
+    // location ahead of locMixed. It must not.
     const fullyChecked = await action(ws, locFullyChecked, snapChecked);
     await assertion(ws, fullyChecked, "owner_asserted");
     await runtime.query("UPDATE actions SET verification_checked_at = now() - interval '100 hours' WHERE id = $1", [fullyChecked]);
 
     const repo = verificationRepository(runtime);
     const due = await repo.dueLocations(10, [TEMPLATE_KEY]);
-    expect(due.map((d) => d.location_id)).toEqual([locMixed, locFullyChecked]);
+    expect(due.map((d) => d.location_id)).toEqual([locNeverChecked, locMixed, locFullyChecked]);
   });
 
-  // --- Case 9: the loop-closing case ---------------------------------------
+  // --- The loop-closing case: verified attribution, and its negative twin ---
 
-  it("records an Attributed measurement with attribution_basis 'verified' when a verified row precedes a comparable head scan", async () => {
+  it("records an Attributed measurement with attribution_basis 'verified' when the verified row precedes the head job's start", async () => {
     const ws = await workspace();
     const loc = await location(ws);
-    const baseJob = await job(ws, loc, "2026-08-01");
-    const headJob = await job(ws, loc, "2026-09-01");
-    const baseSnap = await snapshot(ws, baseJob, loc, { metrics: { "aeo.ai_citation_count": 0 }, observedAt: "2026-08-01" });
-    const diffId = (
-      await runtime.query("INSERT INTO scan_diffs(base_job_id,head_job_id,comparable) VALUES($1,$2,true) RETURNING id", [baseJob, headJob])
-    ).rows[0].id;
-    const headSnapId = await snapshot(ws, headJob, loc, {
-      metrics: { "aeo.ai_citation_count": 2 },
-      observedAt: "2026-09-01",
-      comparableTo: baseSnap,
-      diffId,
-    });
-
+    const { headSnapId, diffId } = await comparablePair(ws, loc);
     const act = await action(ws, loc, headSnapId, { actionState: "in_progress" });
     // Verified BEFORE the head job's created_at ('2026-09-01'), so it precedes
     // the scan whose numbers it is meant to explain.
     await assertion(ws, act, "verified", { assertedAt: "2026-08-15T00:00:00Z" });
 
-    const headSnapRow = (await runtime.query("SELECT * FROM scan_snapshots WHERE id=$1", [headSnapId])).rows[0];
-    const head = rowToSnapshot({
-      id: headSnapRow.id,
-      job_id: headSnapRow.job_id,
-      workspace_id: headSnapRow.workspace_id,
-      location_id: headSnapRow.location_id,
-      market: headSnapRow.market,
-      observed_at: headSnapRow.observed_at.toISOString?.() ?? headSnapRow.observed_at,
-      scoring_version: headSnapRow.scoring_version,
-      overall_score: headSnapRow.overall_score,
-      coverage: headSnapRow.coverage,
-      module_states: headSnapRow.module_states,
-      metrics: headSnapRow.metrics,
-      website_checks: headSnapRow.website_checks,
-      comparable_to: headSnapRow.comparable_to,
-      diff_id: headSnapRow.diff_id,
-      created_at: headSnapRow.created_at.toISOString?.() ?? headSnapRow.created_at,
-    });
-    const diffRow = (await runtime.query("SELECT * FROM scan_diffs WHERE id=$1", [diffId])).rows[0];
-    const diff: ScanDiffRow = {
-      id: diffRow.id,
-      base_job_id: diffRow.base_job_id,
-      head_job_id: diffRow.head_job_id,
-      comparable: diffRow.comparable,
-      incomparable_reason: diffRow.incomparable_reason,
-      composite_withheld_reason: diffRow.composite_withheld_reason,
-      intersection_modules: diffRow.intersection_modules,
-      composite_base: diffRow.composite_base,
-      composite_head: diffRow.composite_head,
-      composite_delta: diffRow.composite_delta,
-      resolved_findings: diffRow.resolved_findings,
-      regressed_findings: diffRow.regressed_findings,
-      decayed_findings: diffRow.decayed_findings,
-      lost_coverage: diffRow.lost_coverage,
-      gained_coverage: diffRow.gained_coverage,
-      created_at: diffRow.created_at.toISOString?.() ?? diffRow.created_at,
-    };
-
+    const head = await loadSnapshotRecord(headSnapId);
+    const diff = await loadDiffRecord(diffId);
     const outcome = await recordMeasurements(measurementRepository(runtime), { headSnapshot: head, diff });
     expect(outcome).toEqual({ comparable: true, recorded: 1, skipped: 0 });
 
@@ -441,5 +537,33 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("website verification eligi
       await runtime.query("SELECT fact_type,attribution_basis,before_value::float,after_value::float FROM action_measurements WHERE action_id=$1", [act])
     ).rows[0];
     expect(measurement).toEqual({ fact_type: "Attributed", attribution_basis: "verified", before_value: 0, after_value: 2 });
+  });
+
+  // Negative twin of the case above. Without it, deleting the
+  // `at >= headStartedAtMs` timing gate in strongestBasis
+  // (lib/workspace/applications.ts) leaves every case in this file green --
+  // the positive case only proves a verified row propagates to `Attributed`,
+  // never that a LATE one is rejected. This is also the gate that fails open:
+  // dropping the check means any verified row counts regardless of when it
+  // was recorded relative to the scan it would be explaining.
+  it("records an Observed measurement with no attribution when the verified row is dated AFTER the head job's start", async () => {
+    const ws = await workspace();
+    const loc = await location(ws);
+    const { headSnapId, diffId } = await comparablePair(ws, loc);
+    const act = await action(ws, loc, headSnapId, { actionState: "in_progress" });
+    // The head job's created_at is '2026-09-01'; this assertion comes after
+    // it, so it cannot explain that scan's numbers (Master Plan: no causal
+    // claim from timing alone).
+    await assertion(ws, act, "verified", { assertedAt: "2026-09-15T00:00:00Z" });
+
+    const head = await loadSnapshotRecord(headSnapId);
+    const diff = await loadDiffRecord(diffId);
+    const outcome = await recordMeasurements(measurementRepository(runtime), { headSnapshot: head, diff });
+    expect(outcome).toEqual({ comparable: true, recorded: 1, skipped: 0 });
+
+    const measurement = (
+      await runtime.query("SELECT fact_type,attribution_basis,before_value::float,after_value::float FROM action_measurements WHERE action_id=$1", [act])
+    ).rows[0];
+    expect(measurement).toEqual({ fact_type: "Observed", attribution_basis: null, before_value: 0, after_value: 2 });
   });
 });
