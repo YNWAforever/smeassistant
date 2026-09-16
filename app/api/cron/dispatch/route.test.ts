@@ -40,7 +40,7 @@ beforeEach(() => {
   notifyDueSchedules.mockResolvedValue({ due: 0, notified: 0 });
   claimableJobIds.mockResolvedValue([]);
   reconcileWorkspaceScans.mockResolvedValue([]);
-  runWebsiteVerification.mockResolvedValue({ locationsChecked: 0, actionsVerified: 0 });
+  runWebsiteVerification.mockResolvedValue({ locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 });
 });
 
 describe("POST /api/cron/dispatch", () => {
@@ -68,7 +68,7 @@ describe("POST /api/cron/dispatch", () => {
       notified: { due: 2, notified: 1 },
       reclaimCandidates: 2,
       reconciled: { completed: 2, retry: 1 },
-      verified: { locationsChecked: 0, actionsVerified: 0 },
+      verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 },
     });
   });
 
@@ -130,7 +130,7 @@ describe("POST /api/cron/dispatch", () => {
       notified: { due: 1, notified: 1 },
       reclaimCandidates: 0,
       reconciled: { completed: 1 },
-      verified: { locationsChecked: 0, actionsVerified: 0 },
+      verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 },
     });
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -155,15 +155,15 @@ describe("POST /api/cron/dispatch", () => {
     const response = await POST(request());
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ notified: { due: 1, notified: 1 }, reclaimCandidates: 0, reconciled: {}, verified: { locationsChecked: 0, actionsVerified: 0 } });
+    expect(await response.json()).toEqual({ notified: { due: 1, notified: 1 }, reclaimCandidates: 0, reconciled: {}, verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 } });
   });
 
   it("reports what the website verifier checked", async () => {
-    runWebsiteVerification.mockResolvedValue({ locationsChecked: 3, actionsVerified: 1 });
+    runWebsiteVerification.mockResolvedValue({ locationsChecked: 3, actionsConsidered: 4, actionsVerified: 1, actionsFailed: 1 });
 
     const response = await POST(request());
 
-    expect((await response.json()).verified).toEqual({ locationsChecked: 3, actionsVerified: 1 });
+    expect((await response.json()).verified).toEqual({ locationsChecked: 3, actionsConsidered: 4, actionsVerified: 1, actionsFailed: 1 });
   });
 
   it("still reports the other three concerns when the verifier throws", async () => {
@@ -180,7 +180,7 @@ describe("POST /api/cron/dispatch", () => {
       notified: { due: 1, notified: 1 },
       reclaimCandidates: 1,
       reconciled: { completed: 1 },
-      verified: { locationsChecked: 0, actionsVerified: 0 },
+      verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 },
     });
     expect(errorSpy).toHaveBeenCalledWith("[cron/dispatch] verify_website_actions failed", expect.objectContaining({ message: "boom" }));
     errorSpy.mockRestore();

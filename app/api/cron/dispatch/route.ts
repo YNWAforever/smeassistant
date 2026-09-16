@@ -84,7 +84,7 @@ export async function POST(request: Request): Promise<Response> {
     logFailure("reconcile_stuck_completions", cause);
   }
 
-  let verified = { locationsChecked: 0, actionsVerified: 0 };
+  let verified = { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 };
   try {
     verified = await runWebsiteVerification(
       verificationRepository(),

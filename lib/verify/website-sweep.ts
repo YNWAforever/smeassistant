@@ -16,7 +16,11 @@ export interface VerificationSweepDeps {
 
 export interface VerificationSweepResult {
   locationsChecked: number;
+  /** Actions the sweep actually reached a decision on. */
+  actionsConsidered: number;
   actionsVerified: number;
+  /** Actions whose write failed after a `verified` decision. */
+  actionsFailed: number;
 }
 
 /** Template keys that declare verifyChecks, computed once. */
@@ -53,14 +57,15 @@ export async function runWebsiteVerification(
   deps: VerificationSweepDeps,
   opts: { now: Date; limit: number },
 ): Promise<VerificationSweepResult> {
+  const empty = { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 };
   const locations = await repo.dueLocations(opts.limit, VERIFIABLE_KEYS);
-  if (!locations.length) return { locationsChecked: 0, actionsVerified: 0 };
+  if (!locations.length) return empty;
 
   const actions = await repo.actionsForLocations(
     locations.map((l) => l.location_id),
     VERIFIABLE_KEYS,
   );
-  if (!actions.length) return { locationsChecked: locations.length, actionsVerified: 0 };
+  if (!actions.length) return { ...empty, locationsChecked: locations.length };
 
   // One fetch per location, in parallel. A rejected fetch becomes an empty
   // result, which decideVerification reads as "we could not look" -- never as
@@ -81,42 +86,63 @@ export async function runWebsiteVerification(
   });
 
   const nowIso = opts.now.toISOString();
-  // Stamped for every action looked at, verified or not, and in a finally so a
-  // failing write still records the attempt: the stamp records the attempt, not
-  // the outcome. An action fetched but not stamped is retried in five minutes
-  // instead of a day -- that is the hammering failure mode.
+  // Only what the loop actually reached a decision on -- NOT the full `actions`
+  // list. Stamping an action nobody looked at would hide it behind the 24-hour
+  // throttle for a day, withholding a confirmation the owner has earned because
+  // some unrelated action failed.
+  const evaluated: Array<{ id: string; workspace_id: string }> = [];
+  let actionsVerified = 0;
+  let actionsFailed = 0;
+  // The stamp is applied in a finally so that an escaping error still records
+  // what was in fact attempted. With the per-action catch below nothing should
+  // escape, but the property is worth keeping for free.
   try {
-    let actionsVerified = 0;
     for (const action of actions) {
-      const template = findTemplate(action.template_key);
-      const site = byLocation.get(action.location_id);
-      const prior = asChecks(action.prior_checks);
-      const decision = decideVerification(template?.verifyChecks ?? [], {
-        prior,
-        fresh: site?.checks ?? EMPTY_WEBSITE_CHECKS,
-      });
-      if (decision !== "verified") continue;
-      await deps.record({
-        workspaceId: action.workspace_id,
-        actionId: action.id,
-        source: "verified",
-        evidence: {
-          checked_at: nowIso,
-          checks: template?.verifyChecks ?? [],
-          url: site?.url ?? null,
-          prior_results: (template?.verifyChecks ?? []).map((key) => ({
-            key,
-            pass: prior?.results.find((result) => result.key === key)?.pass ?? null,
-          })),
-        },
-      });
-      actionsVerified += 1;
+      // Isolated per action, like the reclaim concern isolates per job: one
+      // action's failed write must not stop the rest of the batch from being
+      // looked at, and must not abort a loop whose remaining members would
+      // then be stamped without having been evaluated.
+      try {
+        const template = findTemplate(action.template_key);
+        const site = byLocation.get(action.location_id);
+        const prior = asChecks(action.prior_checks);
+        const decision = decideVerification(template?.verifyChecks ?? [], {
+          prior,
+          fresh: site?.checks ?? EMPTY_WEBSITE_CHECKS,
+        });
+        // Pushed BEFORE the write is attempted: we fetched this site and
+        // reached a decision, so the attempt happened. If the write then fails,
+        // not stamping would make the location due again on the next tick and
+        // we would refetch a customer's website every five minutes because our
+        // own database is unhealthy.
+        evaluated.push({ id: action.id, workspace_id: action.workspace_id });
+        if (decision !== "verified") continue;
+        await deps.record({
+          workspaceId: action.workspace_id,
+          actionId: action.id,
+          source: "verified",
+          evidence: {
+            checked_at: nowIso,
+            checks: template?.verifyChecks ?? [],
+            url: site?.url ?? null,
+            prior_results: (template?.verifyChecks ?? []).map((key) => ({
+              key,
+              pass: prior?.results.find((result) => result.key === key)?.pass ?? null,
+            })),
+          },
+        });
+        actionsVerified += 1;
+      } catch (cause) {
+        actionsFailed += 1;
+        console.error("[verify/website-sweep] action not recorded", {
+          category: "website_verification_action_failed",
+          actionId: action.id,
+          message: cause instanceof Error ? cause.message : "unknown",
+        });
+      }
     }
-    return { locationsChecked: locations.length, actionsVerified };
+    return { locationsChecked: locations.length, actionsConsidered: evaluated.length, actionsVerified, actionsFailed };
   } finally {
-    await repo.markChecked(
-      actions.map((action) => ({ id: action.id, workspace_id: action.workspace_id })),
-      nowIso,
-    );
+    await repo.markChecked(evaluated, nowIso);
   }
 }

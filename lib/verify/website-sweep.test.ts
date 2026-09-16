@@ -49,7 +49,7 @@ describe("runWebsiteVerification", () => {
       now: new Date("2026-09-16T00:00:00Z"),
       limit: 5,
     });
-    expect(result).toEqual({ locationsChecked: 1, actionsVerified: 1 });
+    expect(result).toEqual({ locationsChecked: 1, actionsConsidered: 1, actionsVerified: 1, actionsFailed: 0 });
     expect(recorded).toHaveLength(1);
     expect(recorded[0]).toMatchObject({ source: "verified", actionId: "act-1", workspaceId: "ws-1" });
     expect(recorded[0].evidence).toMatchObject({
@@ -83,18 +83,90 @@ describe("runWebsiteVerification", () => {
     expect(r.markChecked).toHaveBeenCalled();
   });
 
-  it("stamps even when recording a verified row throws", async () => {
-    const r = repo();
-    const exploding = {
+  it("stamps, reports and keeps going when recording a verified row throws", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const r = repo({
+      actionsForLocations: vi.fn().mockResolvedValue([
+        {
+          id: "act-1",
+          workspace_id: "ws-1",
+          location_id: "loc-1",
+          template_key: "visibility-content",
+          prior_checks: { evaluated: 1, passed: 0, results: [{ key: "faq_schema", pass: false }] },
+        },
+        {
+          id: "act-2",
+          workspace_id: "ws-1",
+          location_id: "loc-1",
+          template_key: "visibility-content",
+          prior_checks: { evaluated: 1, passed: 0, results: [{ key: "faq_schema", pass: false }] },
+        },
+      ]),
+    });
+    const flaky = {
       ...deps(FAQ),
-      record: async () => {
-        throw new Error("insert failed");
+      record: async (row: Record<string, unknown>) => {
+        if (row.actionId === "act-1") throw new Error("insert failed");
+        recorded.push(row);
       },
     };
-    await expect(
-      runWebsiteVerification(r as never, exploding as never, { now: new Date(), limit: 5 }),
-    ).rejects.toThrow("insert failed");
-    expect(r.markChecked).toHaveBeenCalledWith([{ id: "act-1", workspace_id: "ws-1" }], expect.any(String));
+    const result = await runWebsiteVerification(r as never, flaky as never, { now: new Date(), limit: 5 });
+
+    // One bad write must not cost the rest of the batch their confirmation.
+    expect(result).toEqual({ locationsChecked: 1, actionsConsidered: 2, actionsVerified: 1, actionsFailed: 1 });
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0]).toMatchObject({ actionId: "act-2" });
+    // The failing action WAS evaluated, so it is stamped: refetching a
+    // customer's site every five minutes because our database is unhealthy is
+    // the same hammering failure arriving by a different door.
+    expect(r.markChecked).toHaveBeenCalledWith(
+      [
+        { id: "act-1", workspace_id: "ws-1" },
+        { id: "act-2", workspace_id: "ws-1" },
+      ],
+      expect.any(String),
+    );
+    expect(errorSpy).toHaveBeenCalledWith(
+      "[verify/website-sweep] action not recorded",
+      expect.objectContaining({ actionId: "act-1", message: "insert failed" }),
+    );
+    errorSpy.mockRestore();
+  });
+
+  it("stamps the actions it evaluated, each with its own workspace", async () => {
+    // The sweep stamps an accumulator built inside the loop, not the selected
+    // batch mapped up front. With the per-action catch nothing can escape the
+    // loop, so "the loop stopped early and left actions unevaluated" is no
+    // longer reachable from outside -- this asserts the accumulator's contents
+    // and its (id, workspace_id) pairing instead.
+    const r = repo({
+      actionsForLocations: vi.fn().mockResolvedValue([
+        {
+          id: "act-1",
+          workspace_id: "ws-1",
+          location_id: "loc-1",
+          template_key: "visibility-content",
+          prior_checks: { evaluated: 1, passed: 0, results: [{ key: "faq_schema", pass: false }] },
+        },
+        {
+          id: "act-2",
+          workspace_id: "ws-2",
+          location_id: "loc-1",
+          template_key: "visibility-content",
+          prior_checks: { evaluated: 1, passed: 0, results: [{ key: "faq_schema", pass: false }] },
+        },
+      ]),
+    });
+    const result = await runWebsiteVerification(r as never, deps(FAQ) as never, { now: new Date(), limit: 5 });
+
+    expect(result.actionsConsidered).toBe(2);
+    expect(r.markChecked).toHaveBeenCalledWith(
+      [
+        { id: "act-1", workspace_id: "ws-1" },
+        { id: "act-2", workspace_id: "ws-2" },
+      ],
+      expect.any(String),
+    );
   });
 
   it("fetches a location once even when it has several eligible actions", async () => {
@@ -159,7 +231,7 @@ describe("runWebsiteVerification", () => {
       },
     };
     const result = await runWebsiteVerification(r as never, perSite as never, { now: new Date(), limit: 5 });
-    expect(result).toEqual({ locationsChecked: 2, actionsVerified: 1 });
+    expect(result).toEqual({ locationsChecked: 2, actionsConsidered: 2, actionsVerified: 1, actionsFailed: 0 });
     expect(recorded).toHaveLength(1);
     expect(recorded[0]).toMatchObject({ actionId: "act-1", evidence: { url: "https://with-faq.test" } });
   });
@@ -173,7 +245,7 @@ describe("runWebsiteVerification", () => {
   it("does nothing and fetches nothing when no location is due", async () => {
     const r = repo({ dueLocations: vi.fn().mockResolvedValue([]) });
     const result = await runWebsiteVerification(r as never, deps(FAQ) as never, { now: new Date(), limit: 5 });
-    expect(result).toEqual({ locationsChecked: 0, actionsVerified: 0 });
+    expect(result).toEqual({ locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 });
     expect(fetchCalls).toEqual([]);
     expect(r.markChecked).not.toHaveBeenCalled();
   });
