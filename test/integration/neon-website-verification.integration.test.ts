@@ -55,12 +55,13 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("website verification eligi
     return (await runtime.query("INSERT INTO workspaces(slug,market) VALUES($1,'hk') RETURNING id", [`ws-${crypto.randomUUID()}`])).rows[0].id;
   }
 
-  async function location(ws: string, websiteUrl: string | null = "https://example.test"): Promise<string> {
+  async function location(ws: string, websiteUrl: string | null = "https://example.test", id?: string): Promise<string> {
     return (
-      await runtime.query("INSERT INTO locations(workspace_id,slug,name,website_url) VALUES($1,$2,'Fixture',$3) RETURNING id", [
+      await runtime.query("INSERT INTO locations(id,workspace_id,slug,name,website_url) VALUES(COALESCE($4,gen_random_uuid()),$1,$2,'Fixture',$3) RETURNING id", [
         ws,
         `loc-${crypto.randomUUID()}`,
         websiteUrl,
+        id ?? null,
       ])
     ).rows[0].id;
   }
@@ -476,9 +477,16 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("website verification eligi
 
   it("a never-checked location sorts ahead of a mixed location, which sorts ahead of a fully-checked location with an older oldest-check", async () => {
     const ws = await workspace();
-    const locNeverChecked = await location(ws);
-    const locMixed = await location(ws);
-    const locFullyChecked = await location(ws);
+    // Explicit ids, ascending opposite to the expected result order
+    // (fullyChecked < mixed < neverChecked): with the min(...) tiebreaker
+    // removed, ORDER BY falls through to `a.location_id` ascending, so a
+    // random-uuid fixture would only fail this assertion by chance (observed
+    // ~4/5 runs). Pinning the ids makes the mutation fail deterministically,
+    // every run, because the fallback order is then guaranteed to be exactly
+    // backwards from what is asserted.
+    const locFullyChecked = await location(ws, undefined, "00000000-0000-0000-0000-000000000001");
+    const locMixed = await location(ws, undefined, "00000000-0000-0000-0000-000000000002");
+    const locNeverChecked = await location(ws, undefined, "00000000-0000-0000-0000-000000000003");
     const jobNever = await job(ws, locNeverChecked);
     const jobMixed = await job(ws, locMixed);
     const jobChecked = await job(ws, locFullyChecked);
