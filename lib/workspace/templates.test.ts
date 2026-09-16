@@ -1,6 +1,7 @@
 import { FINDING_KEYS } from "@sme-scanner/scoring";
 import { describe, expect, it } from "vitest";
 import { COVERED_FINDING_KEYS, isLedgerOnly, LEDGER_ONLY_KEYS, TEMPLATES, templateByKey, templateForFinding, WEBSITE_FAQ_TRIGGER } from "./templates";
+import { WEBSITE_CHECK_KEYS } from "@/lib/website/checks";
 
 describe("action templates", () => {
   it("declares the thirteen templates from CLAUDE.md 3.6.1", () => {
@@ -41,5 +42,34 @@ describe("action templates", () => {
     }
     expect(templateByKey("google-reconnect").capability).toBe("Requires connection");
     expect(() => templateByKey("nope" as never)).toThrow();
+  });
+});
+
+describe("verifyChecks", () => {
+  it("is declared by exactly the two website-backed templates", () => {
+    const declared = TEMPLATES.filter((t) => t.verifyChecks?.length).map((t) => t.key).sort();
+    expect(declared).toEqual(["visibility-content", "website-basics"]);
+  });
+
+  it("names only real website check keys", () => {
+    // A typo here would make an action permanently unverifiable while
+    // compiling and passing every other test.
+    for (const template of TEMPLATES) {
+      for (const key of template.verifyChecks ?? []) {
+        expect(WEBSITE_CHECK_KEYS).toContain(key);
+      }
+    }
+  });
+
+  it("maps visibility-content to the FAQ schema check", () => {
+    expect(TEMPLATES.find((t) => t.key === "visibility-content")?.verifyChecks).toEqual(["faq_schema"]);
+  });
+
+  it("maps website-basics to the three basics checks", () => {
+    expect(TEMPLATES.find((t) => t.key === "website-basics")?.verifyChecks).toEqual([
+      "title",
+      "meta_description_50_160",
+      "single_h1",
+    ]);
   });
 });
