@@ -68,6 +68,13 @@ Migrations `0001`–`0006` are immutable. This one needs no RLS block: `actions`
 -- accumulates further sweep state, that is the signal to move it out.
 ALTER TABLE public.actions
   ADD COLUMN IF NOT EXISTS verification_checked_at timestamptz;
+
+-- The sweep's selection scans `actions` filtered by template and throttle on
+-- every cron tick, and groups over the same set. Added once the query existed
+-- rather than speculatively: Task 1's review deferred it deliberately, and
+-- Task 4's review found the deferral condition met.
+CREATE INDEX IF NOT EXISTS actions_verification_sweep_idx
+  ON public.actions (template_key, verification_checked_at);
 ```
 
 - [ ] **Step 2: Update the other two places that encode this schema**
@@ -79,14 +86,14 @@ ALTER TABLE public.actions
 
    **Do NOT touch the `tables.length` assertion.** It is hardcoded (`expect(tables.length).toBe(37)`), but it counts Drizzle table *modules*, and `0007` adds a column to an existing table rather than a new table. It changes only when a migration creates a table — as `0006` did, taking it 36 → 37. Changing it here would make the assertion agree with a schema that has not changed.
 
-**Predict the delta from the migration before running anything**, then confirm observation matches. For `0007` it is: **columns +1**, and tables / constraints / indexes / triggers / functions / seededRows all unchanged. If observation disagrees with that prediction, STOP — something landed that neither the plan nor you expects, which is exactly what the assertion exists to catch. Pasting the observed numbers converts a baseline guard into a description of current reality.
+**Predict the delta from the migration before running anything**, then confirm observation matches. For `0007` it is: **columns +1 and indexes +1**, with tables / constraints / triggers / functions / seededRows all unchanged. If observation disagrees with that prediction, STOP — something landed that neither the plan nor you expects, which is exactly what the assertion exists to catch. Pasting the observed numbers converts a baseline guard into a description of current reality.
 
 Note the Drizzle/migration fidelity guard that actually matters is the schema test's "exposes all final columns and constraints through typed Drizzle tables" case, which diffs against `test/integration/fixtures/legacy-final-catalog.json`. Extend that fixture too — insertions only, zero deletions.
 
 - [ ] **Step 3: Verify**
 
 Run: `corepack pnpm db:verify`
-Expected: exit 0, `0007_action_verification.sql` in the applied list, `replay: []`, columns 417.
+Expected: exit 0, `0007_action_verification.sql` in the applied list, `replay: []`, columns 417, indexes 87.
 
 Run: `corepack pnpm exec vitest run --config vitest.integration.config.ts test/integration/neon-schema.integration.test.ts`
 Expected: PASS.
@@ -397,16 +404,35 @@ export interface VerifiableAction {
 
 export interface VerificationRepository {
   /**
-   * Distinct locations with at least one eligible action, oldest-checked
-   * first. `templateKeys` is the set that declares `verifyChecks`, passed in
-   * by the caller: keeping domain tables out of the SQL layer is why
+   * Distinct locations with at least one eligible action, ordered so that
+   * a location with any never-checked eligible action always wins over one
+   * where every eligible action has already been checked -- regardless of
+   * how recently the checked ones were checked. Within each of those two
+   * groups, oldest-checked (or all-null) first, so nothing starves.
+   *
+   * This is NOT simply `min(verification_checked_at) ASC NULLS FIRST`: SQL
+   * aggregates ignore NULL inputs, so `min()` over a location with one
+   * never-checked action and one checked action returns the checked
+   * timestamp, not NULL -- the NULLS FIRST clause never fires for that row,
+   * and it can sort behind a fully-checked location whose oldest check is
+   * older still. `bool_or(verification_checked_at IS NULL)` is what actually
+   * detects "this location still has unchecked work"; `min()` is only the
+   * tiebreaker once that is decided.
+   *
+   * `templateKeys` is the set that declares `verifyChecks`, passed in by the
+   * caller: keeping domain tables out of the SQL layer is why
    * applications.ts reads the way it does.
    */
   dueLocations(limit: number, templateKeys: string[]): Promise<VerifiableLocation[]>;
   /** Every eligible action for these locations, with its source snapshot's checks. */
   actionsForLocations(locationIds: string[], templateKeys: string[]): Promise<VerifiableAction[]>;
-  /** Stamp the attempt, whatever its outcome. */
-  markChecked(actionIds: string[], nowIso: string): Promise<void>;
+  /**
+   * Stamp the attempt, whatever its outcome. Takes (id, workspace_id) pairs,
+   * not bare ids: this file's neighbour applications.ts never trusts an id
+   * alone to imply a tenant, and here the pairing also guards against a
+   * caller accidentally handing back an id from a different sweep pass.
+   */
+  markChecked(actions: Array<{ id: string; workspace_id: string }>, nowIso: string): Promise<void>;
 }
 
 /**
@@ -421,6 +447,12 @@ export interface VerificationRepository {
  *   change to the site would be recorded as the owner's applied work.
  * - it is not already verified (append-only evidence, not a site monitor)
  * - the 24h throttle has expired
+ *
+ * Positional contract: this fragment references `$1` for `templateKeys`.
+ * Any query that embeds it must bind `templateKeys` as its first parameter
+ * -- `actionsForLocations` binds location ids as `$2` for exactly this
+ * reason, rather than the more natural `$1`, so both callers can share this
+ * text unmodified.
  */
 const ELIGIBLE = `
   a.template_key = ANY($1::text[])
@@ -452,7 +484,9 @@ export function verificationRepository(client?: Pick<Pool, 'query'>): Verificati
          FROM actions a JOIN locations l ON l.id = a.location_id AND l.workspace_id = a.workspace_id
          WHERE ${ELIGIBLE}
          GROUP BY a.location_id, a.workspace_id, l.website_url
-         ORDER BY min(a.verification_checked_at) ASC NULLS FIRST, a.location_id
+         ORDER BY bool_or(a.verification_checked_at IS NULL) DESC,
+                  min(a.verification_checked_at) ASC NULLS FIRST,
+                  a.location_id
          LIMIT $2`,
         [templateKeys, limit],
       )).rows;
@@ -468,16 +502,22 @@ export function verificationRepository(client?: Pick<Pool, 'query'>): Verificati
         [templateKeys, locationIds],
       )).rows;
     },
-    async markChecked(actionIds, nowIso) {
-      if (!actionIds.length) return;
+    async markChecked(actions, nowIso) {
+      if (!actions.length) return;
+      // A join against a VALUES list, not `id = ANY($1)`: an id alone does
+      // not imply a tenant in this codebase, so the workspace_id the caller
+      // read the action under must match the row being stamped.
       await db().query(
-        `UPDATE actions SET verification_checked_at = $2 WHERE id = ANY($1::uuid[])`,
-        [actionIds, nowIso],
+        `UPDATE actions a SET verification_checked_at = $2
+         FROM (SELECT * FROM unnest($1::uuid[], $3::uuid[]) AS t(id, workspace_id)) pairs
+         WHERE a.id = pairs.id AND a.workspace_id = pairs.workspace_id`,
+        [actions.map((a) => a.id), nowIso, actions.map((a) => a.workspace_id)],
       );
     },
   };
 }
 ```
+
 
 Two notes on the SQL:
 
