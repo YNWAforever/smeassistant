@@ -909,7 +909,7 @@ In `lib/copy-workspace.ts`: add `| "verified"` to `DisplayPhaseKey` immediately 
 
 Copy — **and note zh-TW needs its own override here.** Task 9 of the P3.2 plan shipped a locale inversion by assuming inheritance was safe for a string carrying the 核實/查證 verb. The same trap is live:
 
-- `workspaceEn.phases`: `verified: "Confirmed on site"`
+- `workspaceEn.phases`: `verified: "Verified on site"` — **use the wording the codebase already chose.** `basis.verified` in the same file says "verified on site". An earlier draft of this plan said "Confirmed on site", which is a second, stronger English verb for the same fact: "confirmed" reads as "we confirmed you did this", which no HTTP fetch can establish. Only English had drifted; the zh strings already matched `basis`.
 - `workspaceZhHK.phases`: `verified: "已在網站核實"`
 - `workspaceZhTW.phases` — add a `phases` override block (it currently has none) spreading zh-HK and overriding this one key: `verified: "已在網站查證"`
 
@@ -924,6 +924,16 @@ In `lib/workspace/overview.ts`: add `verified: boolean;` to the `displayPhaseKey
 ```
 
 Add `verified: boolean` and `verifiedOn: string | null` to `ActionOverview` beside `applied` / `appliedOn`, plus `verified?: boolean; verifiedOn?: string | null` on the context type, populated as `ctx.verified ?? false` and `ctx.verifiedOn ?? null`.
+
+Document the hazard on BOTH optional context fields, at their own sites rather than by cross-reference. `lib/assistant/live.ts` and `lib/workspace/runs.ts` build overviews without either, so both silently default to `false`. The two are not equally harmless: for `applied` that means "we did not ask the owner", but for `verified` it downgrades an independent, stronger claim to "not yet confirmed".
+
+**Render `verifiedOn`, do not just store it.** This step's heading is "where it surfaces", and a phase chip does not tell an owner *when*. Add a read-only line to `components/workspace/action-detail-client.tsx` beside the applied assertion — text only, no control, because a verified row is system-written and an owner withdrawing their own claim does not invalidate an independent check. Copy goes in `lib/messages/*.json` following the `applied` namespace's 你/您 and 核實/查證 split:
+
+- en: `Verified on your site on {date} · we checked the page, not who changed it`
+
+That trailing clause is the point of the line. It is the one place the UI can state plainly what the check does and does not establish: the sweep proves the check that created this action now passes, not that the owner applied our draft — a different developer's independent fix is indistinguishable.
+
+Adding a new message namespace also means declaring it in `tests/i18n.test.ts`'s `APP_NAMESPACES`, which keeps app-authored copy from silently joining the reused-upstream list.
 
 - [ ] **Step 4: Populate from the existing query**
 
