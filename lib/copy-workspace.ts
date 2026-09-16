@@ -76,8 +76,6 @@ export type WorkspaceCopy = {
   checklist: {
     heading: string;
     note: string;
-    markDone: string;
-    doneState: string;
     saveInputs: string;
   };
   checklistSteps: Partial<Record<TemplateKey, { where: string; steps: string[] }>>;
@@ -166,8 +164,6 @@ export const workspaceEn: WorkspaceCopy = {
   checklist: {
     heading: "Steps to complete",
     note: "These steps happen in the other product, not here. Marking them done records your own confirmation — the next scan is what checks the result.",
-    markDone: "Mark these steps as done",
-    doneState: "You marked these steps done",
     saveInputs: "Save what you set",
   },
   checklistSteps: {
@@ -260,8 +256,6 @@ export const workspaceZhHK: WorkspaceCopy = {
   checklist: {
     heading: "完成步驟",
     note: "這些步驟需在其他平台完成，不在此工作台進行。標示完成只是記錄你的確認；實際結果由下次掃描核實。",
-    markDone: "標示這些步驟已完成",
-    doneState: "你已標示完成",
     saveInputs: "記錄你所設定的內容",
   },
   checklistSteps: {

@@ -1,5 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// Two render harnesses live in this file, deliberately:
+//   render()     -- renderToStaticMarkup, for asserting server-rendered markup.
+//                   Cannot fire events.
+//   mount()      -- @testing-library/react, for interaction tests that click.
+// Extend the one that matches what you are asserting; reaching for render()
+// and then wanting fireEvent is the mistake this note exists to prevent.
 import { renderToStaticMarkup } from "react-dom/server";
 import { cleanup, fireEvent, render as renderLive, screen } from "@testing-library/react";
 
