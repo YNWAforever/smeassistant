@@ -218,33 +218,33 @@ function checks(entries: Record<string, boolean>): WebsiteChecks {
 const THREE = ["title", "meta_description_50_160", "single_h1"] as const;
 
 describe("decideVerification", () => {
-  it("is not_applicable when the template declares nothing", () => {
-    expect(decideVerification([], checks({ faq_schema: false }), checks({ faq_schema: true }))).toBe("not_applicable");
+  it("is not_verifiable when the template declares nothing", () => {
+    expect(decideVerification([], { prior: checks({ faq_schema: false }), fresh: checks({ faq_schema: true }) })).toBe("not_verifiable");
   });
 
-  it("is not_applicable when there is no prior result at all", () => {
-    expect(decideVerification(["faq_schema"], null, checks({ faq_schema: true }))).toBe("not_applicable");
+  it("is not_verifiable when there is no prior result at all", () => {
+    expect(decideVerification(["faq_schema"], { prior: null, fresh: checks({ faq_schema: true }) })).toBe("not_verifiable");
   });
 
-  it("is not_applicable when the prior snapshot never evaluated the key", () => {
+  it("is not_verifiable when the prior snapshot never evaluated the key", () => {
     // Evaluated other checks but not this one -- we cannot say it was failing,
     // so we must not later claim it was fixed.
-    expect(decideVerification(["faq_schema"], checks({ title: true }), checks({ faq_schema: true }))).toBe("not_applicable");
+    expect(decideVerification(["faq_schema"], { prior: checks({ title: true }), fresh: checks({ faq_schema: true }) })).toBe("not_verifiable");
   });
 
-  it("is not_applicable when nothing was wrong to begin with", () => {
+  it("is not_verifiable when nothing was wrong to begin with", () => {
     // Every declared check already passed, so there is nothing to confirm.
     // Without this, a site that always had FAQ schema would produce a
     // `verified` row for work nobody did.
-    expect(decideVerification(["faq_schema"], checks({ faq_schema: true }), checks({ faq_schema: true }))).toBe("not_applicable");
+    expect(decideVerification(["faq_schema"], { prior: checks({ faq_schema: true }), fresh: checks({ faq_schema: true }) })).toBe("not_verifiable");
   });
 
   it("is verified when the one failing check now passes", () => {
-    expect(decideVerification(["faq_schema"], checks({ faq_schema: false }), checks({ faq_schema: true }))).toBe("verified");
+    expect(decideVerification(["faq_schema"], { prior: checks({ faq_schema: false }), fresh: checks({ faq_schema: true }) })).toBe("verified");
   });
 
   it("is not_yet when the failing check still fails", () => {
-    expect(decideVerification(["faq_schema"], checks({ faq_schema: false }), checks({ faq_schema: false }))).toBe("not_yet");
+    expect(decideVerification(["faq_schema"], { prior: checks({ faq_schema: false }), fresh: checks({ faq_schema: false }) })).toBe("not_yet");
   });
 
   it("verifies on the relevant subset, ignoring checks that were never broken", () => {
@@ -254,19 +254,19 @@ describe("decideVerification", () => {
     // withhold verification over a check that was never the problem.
     const prior = checks({ title: true, meta_description_50_160: false, single_h1: true });
     const fresh = checks({ title: true, meta_description_50_160: true, single_h1: true });
-    expect(decideVerification(THREE, prior, fresh)).toBe("verified");
+    expect(decideVerification(THREE, { prior: prior, fresh: fresh })).toBe("verified");
   });
 
   it("is not_yet when only some of the relevant checks are fixed", () => {
     const prior = checks({ title: false, meta_description_50_160: false, single_h1: true });
     const fresh = checks({ title: true, meta_description_50_160: false, single_h1: true });
-    expect(decideVerification(THREE, prior, fresh)).toBe("not_yet");
+    expect(decideVerification(THREE, { prior: prior, fresh: fresh })).toBe("not_yet");
   });
 
   it("is not_yet when the fresh fetch never evaluated a relevant check", () => {
     // An unreachable site yields evaluated: 0. That is "we could not look",
     // not "it is fixed".
-    expect(decideVerification(["faq_schema"], checks({ faq_schema: false }), { evaluated: 0, passed: 0, results: [] })).toBe("not_yet");
+    expect(decideVerification(["faq_schema"], { prior: checks({ faq_schema: false }), fresh: { evaluated: 0, passed: 0, results: [] } })).toBe("not_yet");
   });
 
   it("is not_yet when the fresh fetch evaluated only some of the relevant checks", () => {
@@ -275,7 +275,7 @@ describe("decideVerification", () => {
     // other test stayed green -- the rule must stay a per-key lookup.
     const prior = checks({ title: false, meta_description_50_160: true, single_h1: false });
     const fresh = checks({ title: true });
-    expect(decideVerification(THREE, prior, fresh)).toBe("not_yet");
+    expect(decideVerification(THREE, { prior: prior, fresh: fresh })).toBe("not_yet");
   });
 });
 ```
@@ -300,9 +300,9 @@ import type { WebsiteCheckKey, WebsiteChecks } from "@/lib/website/checks";
  * - `verified`       every check that was FAILING at the action's source
  *                    snapshot now passes.
  * - `not_yet`        try again tomorrow.
- * - `not_applicable` can never change for this action; the sweep stops asking.
+ * - `not_verifiable` can never change for this action; the sweep stops asking.
  */
-export type VerificationDecision = "verified" | "not_yet" | "not_applicable";
+export type VerificationDecision = "verified" | "not_yet" | "not_verifiable";
 
 function resultFor(checks: WebsiteChecks | null, key: WebsiteCheckKey): boolean | null {
   const hit = checks?.results.find((result) => result.key === key);
@@ -311,10 +311,11 @@ function resultFor(checks: WebsiteChecks | null, key: WebsiteCheckKey): boolean 
 
 export function decideVerification(
   verifyChecks: readonly WebsiteCheckKey[],
-  prior: WebsiteChecks | null,
-  fresh: WebsiteChecks,
+  // Named rather than positional: both are WebsiteChecks, so a transposition
+  // would compile and silently invert every decision.
+  { prior, fresh }: { prior: WebsiteChecks | null; fresh: WebsiteChecks },
 ): VerificationDecision {
-  if (!verifyChecks.length || !prior) return "not_applicable";
+  if (!verifyChecks.length || !prior) return "not_verifiable";
 
   // Only the checks that were actually broken. A template declares every check
   // that could evidence it, but an action usually exists because one of them
@@ -333,14 +334,17 @@ export function decideVerification(
   // `return "verified"` -- so a website nobody could reach would read as
   // confirmed. Removing this as redundant is the worst bug this function can
   // have.
-  if (!relevant.length) return "not_applicable";
+
 
   for (const key of relevant) {
     // A fresh fetch that failed yields evaluated: 0 and no results, so every
     // lookup is null -- "we could not look", not "it is fixed".
     if (resultFor(fresh, key) !== true) return "not_yet";
   }
-  return "verified";
+  // The length check lives HERE, not before the loop: a vacuous loop must not
+  // fall through to success, and folding it into this return makes "empty
+  // relevant set" and "verified" unable to co-occur by construction.
+  return relevant.length ? "verified" : "not_verifiable";
 }
 ```
 
@@ -663,7 +667,7 @@ export async function runWebsiteVerification(
   for (const action of actions) {
     const template = findTemplate(action.template_key as TemplateKey);
     const fresh = checksByLocation.get(action.location_id) ?? { evaluated: 0, passed: 0, results: [] };
-    const decision = decideVerification(template?.verifyChecks ?? [], action.prior_checks, fresh);
+    const decision = decideVerification(template?.verifyChecks ?? [], { prior: action.prior_checks, fresh });
     if (decision !== "verified") continue;
     await deps.record({
       workspaceId: action.workspace_id,
@@ -926,7 +930,7 @@ git commit -m "docs(verifier): record the website verifier phase report"
 ## Verification Checklist
 
 - [ ] `decideVerification` judges only the checks that were failing, so a template's un-broken checks neither withhold nor manufacture a verification
-- [ ] A prior snapshot that never evaluated a key yields `not_applicable`, never `not_yet`
+- [ ] A prior snapshot that never evaluated a key yields `not_verifiable`, never `not_yet`
 - [ ] An unreachable site yields `not_yet` and writes no row
 - [ ] Every attempt stamps `verification_checked_at`, so a broken site is retried daily rather than every tick
 - [ ] One fetch per location per tick, whatever the action count

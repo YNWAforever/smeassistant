@@ -34,10 +34,10 @@ flowchart TD
     Cron["/api/cron/dispatch (*/5)"] --> S["4. Verify applied website actions"]
     S --> Q["eligible actions, grouped by location\n(engaged, unverified, throttle expired, template verifiable)"]
     Q --> F["runWebsiteChecks(location.website_url)\n1 fetch per location, parallel, capped"]
-    F --> D["decideVerification(verifyChecks, priorChecks, freshChecks)\npure"]
+    F --> D["decideVerification(verifyChecks, { prior, fresh })\npure"]
     D -->|verified| W["recordApplication source='verified'\n+ audit action.verified"]
     D -->|not_yet| T["stamp verification_checked_at, retry tomorrow"]
-    D -->|not_applicable| X["stamp; excluded from future selection"]
+    D -->|not_verifiable| X["stamp; re-evaluated next cycle (see amendment)"]
 ```
 
 ### 1. What gets declared and stored
@@ -75,14 +75,14 @@ It **does** need the two things P3.2 learned late (see that plan's Task 1 Step 2
 Pure, no I/O:
 
 ```
-decideVerification(verifyChecks, priorChecks, freshChecks)
-  -> "verified" | "not_yet" | "not_applicable"
+decideVerification(verifyChecks, { prior, fresh })
+  -> "verified" | "not_yet" | "not_verifiable"
 ```
 
 ```
 relevant        = verifyChecks that FAILED in priorChecks
 
-not_applicable  verifyChecks empty
+not_verifiable  verifyChecks empty
                 | no source snapshot
                 | source snapshot's website_checks never evaluated those keys
                 | relevant is empty (nothing was wrong, so nothing to confirm)
@@ -96,7 +96,9 @@ verified        every relevant check passes in freshChecks
 
 **Why the prior state is consulted at all.** "Passes now" alone would confirm a site that always passed: a `visibility-content` action can be triggered by `aeo.ai_overview_missing` while `faq_schema` was passing throughout, and verifying it would assert work nobody did. Reading the source snapshot is the cheapest correct guard, and it is more precise than mapping finding keys to check keys because it tests the check's actual recorded state rather than inferring from which finding fired.
 
-**`not_applicable` is permanent and distinct from `not_yet`.** The first three conditions can never change for a given action, so such rows are excluded from selection rather than re-evaluated forever. `not_yet` means try again tomorrow.
+**`not_verifiable` is permanent and distinct from `not_yet`.** The first three conditions can never change for a given action. `not_yet` means try again tomorrow.
+
+> **Amendment (commit `297f48a`).** This paragraph originally claimed such rows are "excluded from selection rather than re-evaluated forever". That is false and was never implemented. The repository query can exclude the no-`verifyChecks` and no-source-snapshot cases, but not "every declared check was already passing at the source snapshot" — that needs the template table and JSON inspection inside the SQL. So a `not_verifiable` action is stamped and re-selected on the next cycle indefinitely. The decision is permanent; the asking is not. Acceptable at present scale because the fetch is shared per location and the batch is capped, so the cost is a slot rather than a request. If it ever matters, the fix is to record the permanence rather than re-derive it. The outcome was also renamed from `not_applicable`, which reads in most contexts as "not right now" — the opposite of what it means.
 
 A partial pass of the relevant set is `not_yet`, never `verified`: if two of the three `website-basics` checks were failing and only one is now fixed, the work is not done.
 
@@ -142,11 +144,11 @@ That needs one new phase string in `workspaceEn` and `workspaceZhHK`, **plus a `
 
 **The pure rule carries the weight.** All three outcomes, plus the boundaries where it would be easiest to get wrong:
 
-- a check missing from the prior snapshot returns `not_applicable`, never `not_yet`
-- a template whose declared checks were **all passing** at the source snapshot returns `not_applicable` — there was nothing to fix, so there is nothing to confirm
+- a check missing from the prior snapshot returns `not_verifiable`, never `not_yet`
+- a template whose declared checks were **all passing** at the source snapshot returns `not_verifiable` — there was nothing to fix, so there is nothing to confirm
 - only *one* of `website-basics`' three checks failing, and that one now passing, returns `verified` — the two that were never broken must not withhold it
 - two relevant checks failing and only one now fixed returns `not_yet`
-- empty `verifyChecks` returns `not_applicable`
+- empty `verifyChecks` returns `not_verifiable`
 
 **The sweep must not reach the network.** `runWebsiteChecks`'s injectable `fetch` is the seam; a stub returns fixture HTML. Cases: a now-passing site writes exactly one `verified` row; a still-failing site writes none but does stamp `verification_checked_at`; a timeout behaves as a failure; two actions on one location produce one fetch; the batch cap holds.
 
