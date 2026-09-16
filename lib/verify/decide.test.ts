@@ -10,33 +10,39 @@ function checks(entries: Record<string, boolean>): WebsiteChecks {
 const THREE = ["title", "meta_description_50_160", "single_h1"] as const;
 
 describe("decideVerification", () => {
-  it("is not_applicable when the template declares nothing", () => {
-    expect(decideVerification([], checks({ faq_schema: false }), checks({ faq_schema: true }))).toBe("not_applicable");
+  it("is not_verifiable when the template declares nothing", () => {
+    const decision = decideVerification([], { prior: checks({ faq_schema: false }), fresh: checks({ faq_schema: true }) });
+    expect(decision).toBe("not_verifiable");
   });
 
-  it("is not_applicable when there is no prior result at all", () => {
-    expect(decideVerification(["faq_schema"], null, checks({ faq_schema: true }))).toBe("not_applicable");
+  it("is not_verifiable when there is no prior result at all", () => {
+    const decision = decideVerification(["faq_schema"], { prior: null, fresh: checks({ faq_schema: true }) });
+    expect(decision).toBe("not_verifiable");
   });
 
-  it("is not_applicable when the prior snapshot never evaluated the key", () => {
+  it("is not_verifiable when the prior snapshot never evaluated the key", () => {
     // Evaluated other checks but not this one -- we cannot say it was failing,
     // so we must not later claim it was fixed.
-    expect(decideVerification(["faq_schema"], checks({ title: true }), checks({ faq_schema: true }))).toBe("not_applicable");
+    const decision = decideVerification(["faq_schema"], { prior: checks({ title: true }), fresh: checks({ faq_schema: true }) });
+    expect(decision).toBe("not_verifiable");
   });
 
-  it("is not_applicable when nothing was wrong to begin with", () => {
+  it("is not_verifiable when nothing was wrong to begin with", () => {
     // Every declared check already passed, so there is nothing to confirm.
     // Without this, a site that always had FAQ schema would produce a
     // `verified` row for work nobody did.
-    expect(decideVerification(["faq_schema"], checks({ faq_schema: true }), checks({ faq_schema: true }))).toBe("not_applicable");
+    const decision = decideVerification(["faq_schema"], { prior: checks({ faq_schema: true }), fresh: checks({ faq_schema: true }) });
+    expect(decision).toBe("not_verifiable");
   });
 
   it("is verified when the one failing check now passes", () => {
-    expect(decideVerification(["faq_schema"], checks({ faq_schema: false }), checks({ faq_schema: true }))).toBe("verified");
+    const decision = decideVerification(["faq_schema"], { prior: checks({ faq_schema: false }), fresh: checks({ faq_schema: true }) });
+    expect(decision).toBe("verified");
   });
 
   it("is not_yet when the failing check still fails", () => {
-    expect(decideVerification(["faq_schema"], checks({ faq_schema: false }), checks({ faq_schema: false }))).toBe("not_yet");
+    const decision = decideVerification(["faq_schema"], { prior: checks({ faq_schema: false }), fresh: checks({ faq_schema: false }) });
+    expect(decision).toBe("not_yet");
   });
 
   it("verifies on the relevant subset, ignoring checks that were never broken", () => {
@@ -46,13 +52,13 @@ describe("decideVerification", () => {
     // withhold verification over a check that was never the problem.
     const prior = checks({ title: true, meta_description_50_160: false, single_h1: true });
     const fresh = checks({ title: true, meta_description_50_160: true, single_h1: true });
-    expect(decideVerification(THREE, prior, fresh)).toBe("verified");
+    expect(decideVerification(THREE, { prior, fresh })).toBe("verified");
   });
 
   it("is not_yet when only some of the relevant checks are fixed", () => {
     const prior = checks({ title: false, meta_description_50_160: false, single_h1: true });
     const fresh = checks({ title: true, meta_description_50_160: false, single_h1: true });
-    expect(decideVerification(THREE, prior, fresh)).toBe("not_yet");
+    expect(decideVerification(THREE, { prior, fresh })).toBe("not_yet");
   });
 
   it("is not_yet when the fresh fetch evaluated only some of the relevant checks", () => {
@@ -61,12 +67,13 @@ describe("decideVerification", () => {
     // other test stayed green -- the rule must stay a per-key lookup.
     const prior = checks({ title: false, meta_description_50_160: true, single_h1: false });
     const fresh = checks({ title: true });
-    expect(decideVerification(THREE, prior, fresh)).toBe("not_yet");
+    expect(decideVerification(THREE, { prior, fresh })).toBe("not_yet");
   });
 
   it("is not_yet when the fresh fetch never evaluated a relevant check", () => {
     // An unreachable site yields evaluated: 0. That is "we could not look",
     // not "it is fixed".
-    expect(decideVerification(["faq_schema"], checks({ faq_schema: false }), { evaluated: 0, passed: 0, results: [] })).toBe("not_yet");
+    const decision = decideVerification(["faq_schema"], { prior: checks({ faq_schema: false }), fresh: { evaluated: 0, passed: 0, results: [] } });
+    expect(decision).toBe("not_yet");
   });
 });
