@@ -3,6 +3,31 @@ import { sql } from "drizzle-orm";
 import { pgTable, uuid, text, timestamp, boolean, integer, smallint, bigserial, numeric, jsonb, primaryKey, unique, foreignKey, check, index, uniqueIndex, pgPolicy, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { appUsers } from "./identity";
 
+export const actionApplications = pgTable("action_applications", {
+ id: uuid("id").notNull().default(sql.raw("gen_random_uuid()")),
+ workspaceId: uuid("workspace_id").notNull(),
+ actionId: uuid("action_id").notNull(),
+ outputVersionId: uuid("output_version_id"),
+ source: text("source").notNull(),
+ assertedBy: uuid("asserted_by"),
+ assertedAt: timestamp("asserted_at", {withTimezone:true, mode:"string"}).notNull().default(sql.raw("now()")),
+ evidence: jsonb("evidence"),
+ note: text("note"),
+ retractedAt: timestamp("retracted_at", {withTimezone:true, mode:"string"}),
+ retractedBy: uuid("retracted_by"),
+ createdAt: timestamp("created_at", {withTimezone:true, mode:"string"}).notNull().default(sql.raw("now()")),
+}, t => [
+ foreignKey({name:"action_applications_action_id_fkey",columns:[t.actionId],foreignColumns:[((): AnyPgColumn => actions.id)()]}).onDelete("cascade"),
+ index("action_applications_action_idx").using("btree", sql.raw("action_id, source, asserted_at DESC")).where(sql.raw("(retracted_at IS NULL)")),
+ foreignKey({name:"action_applications_asserted_by_fkey",columns:[t.assertedBy],foreignColumns:[((): AnyPgColumn => appUsers.id)()]}).onDelete("set null"),
+ foreignKey({name:"action_applications_output_version_id_fkey",columns:[t.outputVersionId],foreignColumns:[((): AnyPgColumn => outputVersions.id)()]}).onDelete("set null"),
+ primaryKey({name:"action_applications_pkey",columns:[t.id]}),
+ foreignKey({name:"action_applications_retracted_by_fkey",columns:[t.retractedBy],foreignColumns:[((): AnyPgColumn => appUsers.id)()]}).onDelete("set null"),
+ check("action_applications_source_check", sql.raw("(source = ANY (ARRAY['owner_asserted'::text, 'verified'::text]))")),
+ foreignKey({name:"action_applications_workspace_id_fkey",columns:[t.workspaceId],foreignColumns:[((): AnyPgColumn => workspaces.id)()]}).onDelete("cascade"),
+ pgPolicy("server_application", {for:"all", to:"sme_app_runtime", using:sql`true`, withCheck:sql`true`}),
+]).enableRLS();
+
 export const actionMeasurements = pgTable("action_measurements", {
  id: uuid("id").notNull().default(sql.raw("gen_random_uuid()")),
  workspaceId: uuid("workspace_id").notNull(),
@@ -16,9 +41,11 @@ export const actionMeasurements = pgTable("action_measurements", {
  factType: text("fact_type").notNull(),
  windowDays: integer("window_days"),
  createdAt: timestamp("created_at", {withTimezone:true, mode:"string"}).notNull().default(sql.raw("now()")),
+ attributionBasis: text("attribution_basis"),
 }, t => [
  foreignKey({name:"action_measurements_action_id_fkey",columns:[t.actionId],foreignColumns:[((): AnyPgColumn => actions.id)()]}).onDelete("cascade"),
  foreignKey({name:"action_measurements_after_snapshot_id_fkey",columns:[t.afterSnapshotId],foreignColumns:[((): AnyPgColumn => scanSnapshots.id)()]}).onDelete("set null"),
+ check("action_measurements_attribution_basis_check", sql.raw("((attribution_basis IS NULL) OR (attribution_basis = ANY (ARRAY['exported'::text, 'owner_asserted'::text, 'verified'::text])))")),
  foreignKey({name:"action_measurements_before_snapshot_id_fkey",columns:[t.beforeSnapshotId],foreignColumns:[((): AnyPgColumn => scanSnapshots.id)()]}).onDelete("set null"),
  check("action_measurements_fact_type_check", sql.raw("(fact_type = ANY (ARRAY['Observed'::text, 'Attributed'::text, 'Unknown'::text]))")),
  primaryKey({name:"action_measurements_pkey",columns:[t.id]}),
