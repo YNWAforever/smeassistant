@@ -118,3 +118,27 @@ it("links a cancelled Google recovery to the email start screen with retained fl
   render(<SignInFlow flow={{ ...flow, method: "google" }} initialReason="cancelled" />);
   expect(screen.getByRole("link", { name: /try email instead/i })).toHaveAttribute("href", expect.stringContaining("returnTo=%2Fen%2Fowner%2Fselect-workspace&method=email"));
 });
+
+// Both mail routes answer uniformly ({ok:true}) whether or not a link was
+// actually sent, so this screen can never know. It must therefore name the
+// precondition and offer the other entry point, rather than leaving someone
+// who will never receive a link waiting on an inbox that stays empty.
+it("tells a visitor who will never receive a link what to do next", async () => {
+  mocks.magicLink.mockResolvedValue({ error: null });
+  render(<SignInFlow flow={flow} initialReason={null} />);
+  enterFixtureEmail();
+  await screen.findByText(/check your inbox/i);
+  expect(screen.getByText(/already a workspace member or has a pending invitation/i)).toBeTruthy();
+  expect(screen.getByText(/started from a report/i)).toBeTruthy();
+});
+
+it("gives the claim door its own next step, about the unlocking address rather than membership", async () => {
+  mocks.magicLink.mockResolvedValue({ error: null });
+  render(<SignInFlow flow={{ ...flow, claim: "fixture-report" }} initialReason={null} />);
+  enterFixtureEmail();
+  await screen.findByText(/check your inbox/i);
+  expect(screen.getByText(/unlock the report again/i)).toBeTruthy();
+  // Membership guidance would be wrong here: a claiming visitor has no
+  // membership by definition, which is why they are claiming.
+  expect(screen.queryByText(/pending invitation/i)).toBeNull();
+});

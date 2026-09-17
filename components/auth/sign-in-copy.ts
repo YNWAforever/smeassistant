@@ -13,6 +13,15 @@ export type SignInCopy = {
   claimEmailIntro: string;
   inbox: string;
   claimInbox: string;
+  /**
+   * Shown beneath the inbox status. Both mail routes answer uniformly whether
+   * or not a link was sent, so the page cannot report eligibility -- it can
+   * only state the precondition and point at the other entry point. Naming the
+   * rule is safe; naming whether THIS address met it would be the enumeration
+   * leak the uniform response exists to prevent.
+   */
+  noLinkHelp: string;
+  claimNoLinkHelp: string;
   changeEmail: string;
   resend: string;
   resendIn: (seconds: number) => string;
@@ -48,6 +57,8 @@ const en: SignInCopy = {
   claimEmailIntro: "Use the email that unlocked this report. Workspace access is still checked separately.",
   inbox: "Check your inbox. If the address is eligible, a one-time sign-in link will arrive shortly.",
   claimInbox: "Check your inbox. If this address unlocked the report, a one-time sign-in link will arrive shortly.",
+  noLinkHelp: "No link? Sign-in links only reach an address that is already a workspace member or has a pending invitation. If you started from a report, open that report and use the sign-in link there instead.",
+  claimNoLinkHelp: "No link? Sign-in links only reach the address that unlocked this report. If you used a different address, unlock the report again with the one you want to sign in with.",
   changeEmail: "Use a different email",
   resend: "Send another link",
   resendIn: (seconds) => `Send another link in ${seconds}s`,
@@ -83,6 +94,8 @@ const zhHK: SignInCopy = {
   claimEmailIntro: "使用解鎖此報告時的電郵；工作台存取仍會獨立核實。",
   inbox: "請查看收件箱。如該地址符合資格，一次性登入連結會在短時間內送達。",
   claimInbox: "請查看收件箱。如該地址曾解鎖此報告，一次性登入連結會在短時間內送達。",
+  noLinkHelp: "收不到連結？登入連結只會寄給已是工作台成員或已獲邀請的電郵地址。如果你是從報告開始的，請開啟該報告，改用報告中的登入連結。",
+  claimNoLinkHelp: "收不到連結？登入連結只會寄給曾解鎖此報告的電郵地址。如果你當時用了另一個地址，請用你想登入的地址再解鎖一次報告。",
   changeEmail: "使用另一個電郵",
   resend: "再寄一次連結",
   resendIn: (seconds) => `${seconds} 秒後可再寄一次連結`,
