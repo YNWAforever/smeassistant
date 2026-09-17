@@ -170,14 +170,55 @@ export function summarise(results: WebsiteCheckResult[]): WebsiteChecks {
   return { evaluated: results.length, passed: results.filter((r) => r.pass).length, results };
 }
 
-export async function runWebsiteChecks(url: string, opts: RunWebsiteChecksOptions = {}): Promise<WebsiteChecks> {
+/**
+ * Two hosts are the same site when they differ only by a leading `www.`.
+ * Exported so the verifier and any future caller share one definition rather
+ * than each inventing its own normalisation.
+ */
+export function sameSiteHost(a: string | null | undefined, b: string | null | undefined): boolean {
+  const norm = (value: string | null | undefined) => {
+    if (!value) return null;
+    let host: string;
+    try {
+      host = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`).host.toLowerCase();
+    } catch {
+      return null;
+    }
+    return host.replace(/^www\./, "") || null;
+  };
+  const left = norm(a);
+  const right = norm(b);
+  return left !== null && right !== null && left === right;
+}
+
+export interface WebsiteChecksFetch {
+  checks: WebsiteChecks;
+  /**
+   * The URL the fetch actually landed on after redirects, or null when nothing
+   * was fetched (invalid URL, non-ok response, network failure).
+   */
+  finalUrl: string | null;
+}
+
+/**
+ * The check run, plus where it landed. Separate from `runWebsiteChecks` on
+ * purpose: `WebsiteChecks` is persisted verbatim into
+ * `scan_snapshots.website_checks`, so widening that shape would change what
+ * the scan path records. The verifier needs the landing URL to refuse a
+ * parked-domain or soft-404 redirect; the scan path keeps the exact value it
+ * has always written.
+ */
+export async function runWebsiteChecksWithUrl(
+  url: string,
+  opts: RunWebsiteChecksOptions = {},
+): Promise<WebsiteChecksFetch> {
   const doFetch = opts.fetch ?? globalThis.fetch;
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   let target: URL;
   try {
     target = new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`);
   } catch {
-    return EMPTY_WEBSITE_CHECKS;
+    return { checks: EMPTY_WEBSITE_CHECKS, finalUrl: null };
   }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -187,14 +228,20 @@ export async function runWebsiteChecks(url: string, opts: RunWebsiteChecksOption
       redirect: "follow",
       headers: { "user-agent": "SMEScannerWorkspace/1.0 (+website-checks)", accept: "text/html,application/xhtml+xml" },
     });
-    if (!response.ok) return EMPTY_WEBSITE_CHECKS;
+    if (!response.ok) return { checks: EMPTY_WEBSITE_CHECKS, finalUrl: null };
     const html = (await response.text()).slice(0, MAX_BYTES);
-    return summarise(inspectHtml(html, response.url || target.toString()));
+    const finalUrl = response.url || target.toString();
+    return { checks: summarise(inspectHtml(html, finalUrl)), finalUrl };
   } catch {
     // Unreachable, timed out, TLS failure: website state becomes `unavailable`
     // (evaluated = 0). Never guess a partial result.
-    return EMPTY_WEBSITE_CHECKS;
+    return { checks: EMPTY_WEBSITE_CHECKS, finalUrl: null };
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Byte-identical behaviour to before: the scan path's entry point. */
+export async function runWebsiteChecks(url: string, opts: RunWebsiteChecksOptions = {}): Promise<WebsiteChecks> {
+  return (await runWebsiteChecksWithUrl(url, opts)).checks;
 }

@@ -25,6 +25,8 @@ const action: ActionOverview = {
   measurementState: "not_eligible",
   applied: false,
   appliedOn: null,
+  verified: false,
+  verifiedOn: null,
   displayPhase: localized("Recommended", "建議"),
   displayPhaseKey: "recommended",
   createdAt: "2026-09-01T10:00:00Z",

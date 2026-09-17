@@ -1,18 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { notifyDueSchedules, claimableJobIds, reconcileWorkspaceScans, getPool, waitUntilMock, fetchMock } = vi.hoisted(() => ({
+const { notifyDueSchedules, claimableJobIds, reconcileWorkspaceScans, getPool, waitUntilMock, fetchMock, runWebsiteVerification } = vi.hoisted(() => ({
   notifyDueSchedules: vi.fn(),
   claimableJobIds: vi.fn(),
   reconcileWorkspaceScans: vi.fn(),
   getPool: vi.fn(() => ({})),
   waitUntilMock: vi.fn(),
   fetchMock: vi.fn(),
+  runWebsiteVerification: vi.fn(),
 }));
 vi.mock("@/lib/db/client", () => ({ getPool }));
 vi.mock("@/lib/scan/notify-due-schedules", () => ({ notifyDueSchedules }));
 vi.mock("@/lib/repositories/scheduler", () => ({ schedulerRepository: () => ({ claimableJobIds }) }));
 vi.mock("@/lib/workspace/completion", () => ({ reconcileWorkspaceScans }));
 vi.mock("@vercel/functions", () => ({ waitUntil: waitUntilMock }));
+vi.mock("@/lib/verify/website-sweep", () => ({ runWebsiteVerification }));
+vi.mock("@/lib/repositories/verification", () => ({ verificationRepository: () => ({}) }));
+vi.mock("@/lib/repositories/applications", () => ({ applicationRepository: () => ({}) }));
+vi.mock("@/lib/workspace/applications", () => ({ recordApplication: vi.fn() }));
+vi.mock("@/lib/workspace/audit", () => ({ recordNeonEvent: vi.fn() }));
 
 import { POST } from "./route";
 
@@ -34,6 +40,7 @@ beforeEach(() => {
   notifyDueSchedules.mockResolvedValue({ due: 0, notified: 0 });
   claimableJobIds.mockResolvedValue([]);
   reconcileWorkspaceScans.mockResolvedValue([]);
+  runWebsiteVerification.mockResolvedValue({ locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 });
 });
 
 describe("POST /api/cron/dispatch", () => {
@@ -61,6 +68,7 @@ describe("POST /api/cron/dispatch", () => {
       notified: { due: 2, notified: 1 },
       reclaimCandidates: 2,
       reconciled: { completed: 2, retry: 1 },
+      verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 },
     });
   });
 
@@ -122,6 +130,7 @@ describe("POST /api/cron/dispatch", () => {
       notified: { due: 1, notified: 1 },
       reclaimCandidates: 0,
       reconciled: { completed: 1 },
+      verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 },
     });
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -146,6 +155,34 @@ describe("POST /api/cron/dispatch", () => {
     const response = await POST(request());
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ notified: { due: 1, notified: 1 }, reclaimCandidates: 0, reconciled: {} });
+    expect(await response.json()).toEqual({ notified: { due: 1, notified: 1 }, reclaimCandidates: 0, reconciled: {}, verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 } });
+  });
+
+  it("reports what the website verifier checked", async () => {
+    runWebsiteVerification.mockResolvedValue({ locationsChecked: 3, actionsConsidered: 4, actionsVerified: 1, actionsFailed: 1 });
+
+    const response = await POST(request());
+
+    expect((await response.json()).verified).toEqual({ locationsChecked: 3, actionsConsidered: 4, actionsVerified: 1, actionsFailed: 1 });
+  });
+
+  it("still reports the other three concerns when the verifier throws", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    notifyDueSchedules.mockResolvedValue({ due: 1, notified: 1 });
+    claimableJobIds.mockResolvedValue(["job-1"]);
+    reconcileWorkspaceScans.mockResolvedValue([{ status: "completed" }]);
+    runWebsiteVerification.mockRejectedValue(new Error("boom"));
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      notified: { due: 1, notified: 1 },
+      reclaimCandidates: 1,
+      reconciled: { completed: 1 },
+      verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 },
+    });
+    expect(errorSpy).toHaveBeenCalledWith("[cron/dispatch] verify_website_actions failed", expect.objectContaining({ message: "boom" }));
+    errorSpy.mockRestore();
   });
 });

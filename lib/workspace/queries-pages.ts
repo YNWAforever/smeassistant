@@ -503,6 +503,14 @@ async function overviewsFor(ctx: WorkspaceContext, rows: ActionRow[], scanSatisf
     // row seen for an action is the one to show.
     if (!appliedAt.has(row.action_id)) appliedAt.set(row.action_id, row.asserted_at);
   }
+  // A separate map from the SAME rows for the independent verifier source.
+  // Kept apart from appliedAt above -- an owner assertion must never populate
+  // `verified`, and a verifier row must never populate `applied`.
+  const verifiedAt = new Map<string, string>();
+  for (const row of applications) {
+    if (row.source !== "verified") continue;
+    if (!verifiedAt.has(row.action_id)) verifiedAt.set(row.action_id, row.asserted_at);
+  }
   const byLocation = new Map(ctx.locations.map(location => [location.id, location]));
   return rows.map(row => buildActionOverview(row, {
     location: row.location_id ? locationText(byLocation.get(row.location_id) ?? null) : null,
@@ -510,6 +518,8 @@ async function overviewsFor(ctx: WorkspaceContext, rows: ActionRow[], scanSatisf
     latestVersion: latestVersion.get(row.id) ?? null,
     applied: appliedAt.has(row.id),
     appliedOn: appliedAt.get(row.id) ?? null,
+    verified: verifiedAt.has(row.id),
+    verifiedOn: verifiedAt.get(row.id) ?? null,
     scanSatisfiedInputs,
   }));
 }

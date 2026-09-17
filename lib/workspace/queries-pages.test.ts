@@ -164,6 +164,25 @@ describe("listActions", () => {
     expect(byId.get("a1")).toMatchObject({ applied: false, appliedOn: null });
     expect(byId.get("a2")).toMatchObject({ applied: true, appliedOn: "2026-09-12T00:00:00.000Z" });
   });
+
+  it("keeps verified and applied as separate maps from the same forActions rows", async () => {
+    applications.forActions.mockResolvedValueOnce([
+      { action_id: "a1", source: "verified", asserted_at: "2026-09-13T00:00:00.000Z" },
+      { action_id: "a2", source: "owner_asserted", asserted_at: "2026-09-12T00:00:00.000Z" },
+    ]);
+    const listed = await listActions(ctx, { location: "all" });
+    const byId = new Map(listed.actions.map((action) => [action.id, action]));
+    // a1 has ONLY a verified row: verified true, applied false.
+    expect(byId.get("a1")).toMatchObject({
+      verified: true, verifiedOn: "2026-09-13T00:00:00.000Z",
+      applied: false, appliedOn: null,
+    });
+    // a2 has ONLY an owner_asserted row: applied true, verified false.
+    expect(byId.get("a2")).toMatchObject({
+      applied: true, appliedOn: "2026-09-12T00:00:00.000Z",
+      verified: false, verifiedOn: null,
+    });
+  });
 });
 
 describe("getInsights", () => {

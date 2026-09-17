@@ -1,5 +1,6 @@
 import { FINDING_KEYS } from "@sme-scanner/scoring";
 import { localized, type Capability, type LocalizedText } from "@/lib/domain";
+import type { WebsiteCheckKey } from "@/lib/website/checks";
 
 /**
  * Action template table (CLAUDE.md §3.6.1). One open action per
@@ -47,6 +48,18 @@ export interface ActionTemplate {
   externalFacing: boolean;
   /** Which channel the actions page filters this template under. */
   channel: "google" | "instagram" | "website" | "search_ai";
+  /**
+   * Website checks whose passing would evidence this template's work, for the
+   * verifier sweep (docs/superpowers/specs/2026-09-16-website-verifier-design.md).
+   *
+   * Optional because most templates are not website-backed and never will be --
+   * a GBP photo pack has nothing an HTTP fetch could confirm. Absent means "not
+   * verifiable", which is a permanent and correct answer, not a gap.
+   *
+   * Declared here rather than in the verifier so the same row says what creates
+   * an action and what would prove it is done.
+   */
+  verifyChecks?: readonly WebsiteCheckKey[];
   title: LocalizedText;
   summary: LocalizedText;
   workflow: LocalizedText;
@@ -188,6 +201,7 @@ export const TEMPLATES: ActionTemplate[] = [
     delivery: "export",
     externalFacing: true,
     channel: "website",
+    verifyChecks: ["faq_schema"],
     title: localized("Add clear FAQ answers for search and AI", "新增清晰的常見問題，供搜尋及 AI 引用"),
     summary: localized("Answer the three questions search and AI surfaces could not find on your site.", "解答搜尋及 AI 介面在你網站找不到的三項問題。"),
     workflow: localized("FAQ and JSON-LD workflow", "常見問題及 JSON-LD 流程"),
@@ -202,6 +216,14 @@ export const TEMPLATES: ActionTemplate[] = [
     delivery: "export",
     externalFacing: true,
     channel: "website",
+    // "title" has no scanner-side trigger here -- aeo.website_content_weak and
+    // aeo.website_meta_weak both fire on meta_description_len, and
+    // aeo.website_h1_weak on h1_count; none inspects <title>. It is included
+    // because the decision rule verifies against the recorded website_checks
+    // state, not against which finding fired, and a failing title is squarely
+    // within this template's own remit ("title, description and heading
+    // copy"). Deliberate, not an assumed mirror of triggerFindingKeys.
+    verifyChecks: ["title", "meta_description_50_160", "single_h1"],
     title: localized("Fix the website basics", "修正網站基本資料"),
     summary: localized("Title, description and heading copy that describes the business plainly.", "以清楚描述業務的標題、簡介及標題文字。"),
     workflow: localized("Website basics workflow", "網站基本資料流程"),

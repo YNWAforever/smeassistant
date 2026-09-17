@@ -31,7 +31,7 @@ const row: ActionRow = {
 };
 
 describe("displayPhaseKey", () => {
-  const b = { capability: "Live" as const, actionState: "recommended" as const, runState: null, approvalState: null, deliveryState: "not_requested" as const, measurementState: "not_eligible" as const, applied: false };
+  const b = { capability: "Live" as const, actionState: "recommended" as const, runState: null, approvalState: null, deliveryState: "not_requested" as const, measurementState: "not_eligible" as const, applied: false, verified: false };
   it("follows the 3.4 order", () => {
     expect(displayPhaseKey({ ...b, capability: "Requires connection" })).toBe("requires_connection");
     expect(displayPhaseKey({ ...b, actionState: "needs_input", runState: "running" })).toBe("needs_input");
@@ -55,6 +55,7 @@ describe("displayPhaseKey applied", () => {
     deliveryState: "not_requested" as const,
     measurementState: "not_eligible" as const,
     applied: true,
+    verified: false,
   };
 
   it("is applied when the owner asserted and no comparable scan has judged it", () => {
@@ -71,6 +72,30 @@ describe("displayPhaseKey applied", () => {
 
   it("is exported, not applied, when nothing was asserted", () => {
     expect(displayPhaseKey({ ...baseInput, applied: false, deliveryState: "exported" })).toBe("exported");
+  });
+});
+
+describe("displayPhaseKey verified", () => {
+  const base = {
+    capability: "Live" as const, actionState: "completed" as const, runState: null,
+    approvalState: null, deliveryState: "not_requested" as const,
+    measurementState: "not_eligible" as const, applied: false, verified: true,
+  };
+
+  it("is verified when the site confirmed it and no scan has judged it", () => {
+    expect(displayPhaseKey(base)).toBe("verified");
+  });
+
+  it("outranks applied, because a check beats a self-report", () => {
+    expect(displayPhaseKey({ ...base, applied: true })).toBe("verified");
+  });
+
+  it("outranks exported", () => {
+    expect(displayPhaseKey({ ...base, deliveryState: "exported" })).toBe("verified");
+  });
+
+  it("still defers to the scan's own verdict", () => {
+    expect(displayPhaseKey({ ...base, measurementState: "measured" })).toBe("measured");
   });
 });
 

@@ -8,6 +8,9 @@
     "markedToast": "Recorded: you reported this as applied. The next scan will observe the result.",
     "retractedToast": "Applied mark withdrawn."
   },
+  "verified": {
+    "confirmedOn": "Verified on your site on {date} · we checked the page, not who changed it"
+  },
   "scanner": {
     "title": "Scan My Business for Free",
     "subtitle": "Fill in the details below — get your audit report in 30 seconds",

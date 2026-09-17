@@ -147,6 +147,8 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
    */
   const applied = action.applied
   const appliedOn = formatDateTime(action.appliedOn, locale, timezone, "date")
+  const verified = action.verified
+  const verifiedOn = formatDateTime(action.verifiedOn, locale, timezone, "date")
   const hydrated = useSyncExternalStore(subscribeHydration, clientHydrated, serverHydrated)
   const online = useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true)
   const offline = !online
@@ -698,6 +700,13 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                   <Button onClick={() => void markApplied()} disabled={!canEdit}>{busy === "applied" ? <LoaderCircle className="animate-spin" /> : <CheckCircle2 />} {t(locale, "applied.markButton")}</Button>
                   <p className="limitation-note">{t(locale, "applied.markHint")}</p>
                 </div>
+              )}
+              {/* System-written, not the owner's claim -- so unlike the
+                  applied control above there is nothing here to retract. Text
+                  only, with the trailing clause stating exactly what a fetch
+                  can and cannot establish. */}
+              {verified && (
+                <p className="limitation-note">{t(locale, "verified.confirmedOn", { date: verifiedOn })}</p>
               )}
             </SectionCard>
 
