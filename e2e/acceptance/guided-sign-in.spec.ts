@@ -80,8 +80,13 @@ const visualCases = [
   { locale: "en", width: 1440, google: "Continue with Google", processing: "Checking your workspace access…" },
   { locale: "zh-HK", width: 375, google: "使用 Google 繼續", processing: "正在核實你的工作台存取權…" },
   { locale: "zh-HK", width: 1440, google: "使用 Google 繼續", processing: "正在核實你的工作台存取權…" },
-  { locale: "zh-TW", width: 375, google: "使用 Google 繼續", processing: "正在核實你的工作台存取權…" },
-  { locale: "zh-TW", width: 1440, google: "使用 Google 繼續", processing: "正在核實你的工作台存取權…" },
+  // zh-TW deliberately differs from zh-HK above: 查證/您 rather than 核實/你.
+  // These stay literal rather than imported from signInCopy -- an independent
+  // statement of what each locale must render is what catches an inversion,
+  // and deriving them from the copy module would make any inversion agree with
+  // itself and pass. Keep in step with components/auth/sign-in-copy.ts.
+  { locale: "zh-TW", width: 375, google: "使用 Google 繼續", processing: "正在查證您的工作台存取權…" },
+  { locale: "zh-TW", width: 1440, google: "使用 Google 繼續", processing: "正在查證您的工作台存取權…" },
 ] as const;
 
 for (const visual of visualCases) {
