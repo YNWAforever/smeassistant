@@ -13,6 +13,15 @@ export type SignInCopy = {
   claimEmailIntro: string;
   inbox: string;
   claimInbox: string;
+  /**
+   * Shown beneath the inbox status. Both mail routes answer uniformly whether
+   * or not a link was sent, so the page cannot report eligibility -- it can
+   * only state the precondition and point at the other entry point. Naming the
+   * rule is safe; naming whether THIS address met it would be the enumeration
+   * leak the uniform response exists to prevent.
+   */
+  noLinkHelp: string;
+  claimNoLinkHelp: string;
   changeEmail: string;
   resend: string;
   resendIn: (seconds: number) => string;
@@ -48,6 +57,8 @@ const en: SignInCopy = {
   claimEmailIntro: "Use the email that unlocked this report. Workspace access is still checked separately.",
   inbox: "Check your inbox. If the address is eligible, a one-time sign-in link will arrive shortly.",
   claimInbox: "Check your inbox. If this address unlocked the report, a one-time sign-in link will arrive shortly.",
+  noLinkHelp: "No link? Sign-in links only reach an address that is already a workspace member or has a pending invitation. If you started from a report, open that report and use the sign-in link there instead.",
+  claimNoLinkHelp: "No link? Sign-in links only reach the address that unlocked this report. If you used a different address, unlock the report again with the one you want to sign in with.",
   changeEmail: "Use a different email",
   resend: "Send another link",
   resendIn: (seconds) => `Send another link in ${seconds}s`,
@@ -83,6 +94,8 @@ const zhHK: SignInCopy = {
   claimEmailIntro: "使用解鎖此報告時的電郵；工作台存取仍會獨立核實。",
   inbox: "請查看收件箱。如該地址符合資格，一次性登入連結會在短時間內送達。",
   claimInbox: "請查看收件箱。如該地址曾解鎖此報告，一次性登入連結會在短時間內送達。",
+  noLinkHelp: "收不到連結？登入連結只會寄給已是工作台成員或已獲邀請的電郵地址。如果你是從報告開始的，請開啟該報告，改用報告中的登入連結。",
+  claimNoLinkHelp: "收不到連結？登入連結只會寄給曾解鎖此報告的電郵地址。如果你當時用了另一個地址，請用你想登入的地址再解鎖一次報告。",
   changeEmail: "使用另一個電郵",
   resend: "再寄一次連結",
   resendIn: (seconds) => `${seconds} 秒後可再寄一次連結`,
@@ -105,7 +118,50 @@ const zhHK: SignInCopy = {
   invalidEmail: "請輸入有效的電郵地址。",
 };
 
-const zhTW: SignInCopy = { ...zhHK };
+/**
+ * Written out in full rather than spread from zh-HK. This locale was
+ * `{ ...zhHK }`, which silently shipped Hong Kong register to every Taiwan
+ * reader on this surface -- and a spread makes that the default outcome for any
+ * key added later, which is exactly how it happened. Taiwan register per
+ * CLAUDE.md §5 and the split already pinned in lib/copy-workspace.ts:
+ * 您 not 你, 查證 not 核實, 電子郵件 not 電郵, 收件匣 not 收件箱, 無法 not 未能.
+ */
+const zhTW: SignInCopy = {
+  title: "登入您的工作台",
+  privacy: "登入只用於識別您；工作台存取和每項操作仍會獨立查證。",
+  google: "使用 Google 繼續",
+  openingGoogle: "正在開啟 Google…",
+  emailAlternative: "或改用電子郵件",
+  emailLabel: "電子郵件地址",
+  emailAction: "寄送登入連結",
+  sendingEmail: "正在寄送登入連結…",
+  emailIntro: "請使用現有工作台成員身分或邀請所使用的電子郵件。",
+  claimEmailIntro: "請使用解鎖此報告時的電子郵件；工作台存取仍會獨立查證。",
+  inbox: "請查看收件匣。如該地址符合資格，一次性登入連結會在短時間內送達。",
+  claimInbox: "請查看收件匣。如該地址曾解鎖此報告，一次性登入連結會在短時間內送達。",
+  noLinkHelp: "收不到連結？登入連結只會寄給已是工作台成員或已獲邀請的電子郵件地址。如果您是從報告開始的，請開啟該報告，改用報告中的登入連結。",
+  claimNoLinkHelp: "收不到連結？登入連結只會寄給曾解鎖此報告的電子郵件地址。如果您當時使用了另一個地址，請用您想登入的地址再解鎖一次報告。",
+  changeEmail: "使用其他電子郵件",
+  resend: "再寄一次連結",
+  resendIn: (seconds) => `${seconds} 秒後可再寄一次連結`,
+  cancelled: "已取消 Google 登入。",
+  expired: "登入連結已過期或已被使用。",
+  unavailable: "登入服務暫時無法使用，請稍後再試。",
+  retryGoogle: "再試一次 Google",
+  retryEmail: "改用電子郵件",
+  noAccess: "此帳號目前沒有工作台存取權。",
+  changeAccount: "更換帳號",
+  changingAccount: "正在更換帳號…",
+  changeAccountFailed: "無法更換帳號，請再試一次。",
+  processing: "正在查證您的工作台存取權…",
+  technicalFailure: "無法完成登入，請重新開始登入。",
+  completionFailedGoogle: "無法完成 Google 登入，請重新開始 Google 登入。",
+  completionFailedEmail: "無法完成電子郵件登入，請重新開始電子郵件登入。",
+  restartGoogle: "重新開始 Google 登入",
+  restartEmail: "重新開始電子郵件登入",
+  restartSignIn: "重新開始登入",
+  invalidEmail: "請輸入有效的電子郵件地址。",
+};
 
 export const signInCopy: Record<Locale, SignInCopy> = {
   en,
