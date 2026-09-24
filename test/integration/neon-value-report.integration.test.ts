@@ -77,8 +77,8 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("value report", () => {
     await runtime.query("INSERT INTO action_runs(workspace_id,action_id,agent_key,state,created_at) VALUES($1,$2,'review_reply','failed',$3),($1,$2,'review_reply','succeeded',$3)", [e2, run, IN]);
 
     // Scans started in W38: done+both events, partial+started only,
-    // failed+none, queued+started. Plus one attached to the internal workspace
-    // and one outside the week.
+    // failed+none, queued+started. Plus one attached to each of the internal and
+    // demo workspaces, and one outside the week.
     const done = await scan("done", IN);
     await event(done, "scan_started");
     // A duplicate from a second session: reconciliation counts distinct jobs,
@@ -89,6 +89,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("value report", () => {
     await scan("failed", IN);
     await event(await scan("queued", IN), "scan_started");
     await scan("done", IN, internal);
+    await scan("done", IN, demo);
     await scan("done", BEFORE);
 
     const user = (await one<{ id: string }>("INSERT INTO app_users(email,created_at) VALUES('a@example.test',$1) RETURNING id", [IN])).id;
@@ -135,12 +136,12 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("value report", () => {
     });
   });
 
-  it("reads scans from audit_jobs, excluding scans claimed by an internal workspace", async () => {
+  it("reads scans from audit_jobs, excluding scans claimed by an internal or demo workspace", async () => {
     expect((await report()).scans).toEqual({ started: 4, completedFull: 1, completedPartial: 1, failed: 1, inProgress: 1 });
   });
 
-  it("reconciles every job against scan_events, internal included", async () => {
-    expect((await report()).reconciliation).toEqual({ jobsStarted: 5, startedEvents: 3, jobsTerminal: 4, completedEvents: 1 });
+  it("reconciles every job against scan_events, internal and demo included", async () => {
+    expect((await report()).reconciliation).toEqual({ jobsStarted: 6, startedEvents: 3, jobsTerminal: 5, completedEvents: 1 });
   });
 
   it("splits supported and assisted claims and excludes internal ones", async () => {
