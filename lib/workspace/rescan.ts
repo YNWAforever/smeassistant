@@ -9,6 +9,7 @@ import { type ScanConsentRecord } from "@/lib/scan/consent";
 import { buildScanConsentInsert, buildScanJobInsert, type ScanStartInput } from "@/lib/scan/start-job";
 import { buildScheduleInsert, type SchedulableJob, type ScheduleRefusal } from "@/lib/scheduler/create-schedule";
 import { recordNeonEvent } from "@/lib/workspace/audit";
+import { scanStartedEvent } from "@/lib/analytics/scan-events";
 
 /**
  * Owner "Rescan now" (CLAUDE.md §3.2.3, Phase 6 item 1): queue a new
@@ -123,6 +124,12 @@ export interface EnqueueRescanInput {
   locationId: string;
   actorId: string;
   /**
+   * The caller's analytics session. scan_started is written with the job, so a
+   * rescan needs one too -- otherwise every rescan would show in the
+   * reconciliation as a lost event that was never going to exist.
+   */
+  anonymousSessionId: string;
+  /**
    * Parsed and version-checked by the route via `parseScanConsent`, exactly as
    * the scan wizard does. Required rather than optional-with-a-default so the
    * compiler enumerates every caller: a default is how this became a record of
@@ -160,7 +167,12 @@ export async function enqueueRescan(repo: RescanRepository, input: EnqueueRescan
   // so a submitted version that no longer matches the published one is refused
   // rather than silently restamped (guardrail 13).
   let created: { id: string };
-  try { created = await jobsRepository.insert(row, buildScanConsentInsert(input.consent)); }
+  try {
+    created = await jobsRepository.insert(row, buildScanConsentInsert(input.consent), {
+      anonymousSessionId: input.anonymousSessionId,
+      event: scanStartedEvent(scanInput.market, scanInput.locale),
+    });
+  }
   catch {
     console.error("[workspace/rescan] job insert failed", { category: "rescan_insert_failed" });
     return { ok: false, reason: "insert_failed" };
