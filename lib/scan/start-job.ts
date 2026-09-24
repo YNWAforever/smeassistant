@@ -3,6 +3,8 @@ import { jobsRepository, type JobsRepository } from "@/lib/repositories/jobs";
 import { SCAN_CONSENT_TYPE, parseScanConsent, type ScanConsentRecord } from "./consent";
 import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
 import type { IgMatchProvenance } from "@sme-scanner/contracts";
+import type { ScanEvent } from "@sme-scanner/scan-engine";
+import { scanStartedEvent } from "@/lib/analytics/scan-events";
 
 
 /**
@@ -282,18 +284,30 @@ export function buildScanConsentInsert(consent: ScanConsentRecord) {
   };
 }
 
-export type ScanJobInsertResult = { ok: true; jobId: string } | { ok: false; error: unknown };
+export type ScanJobInsertResult =
+ | { ok: true; jobId: string; startedEvent: ScanEvent }
+ | { ok: false; error: unknown };
 
 export async function insertScanJob(
  input: ScanStartInput,
  consent: ScanConsentRecord,
+ analytics: { anonymousSessionId: string },
  attribution: ScanJobAttribution = {},
  repository: JobsRepository = jobsRepository,
 ): Promise<ScanJobInsertResult> {
+ // Validated before the transaction opens, so a malformed event is refused
+ // here instead of rolling back a scan that was otherwise fine.
+ let startedEvent: ScanEvent;
+ try { startedEvent = scanStartedEvent(input.market, input.locale); }
+ catch { return { ok: false, error: new Error("scan_event_invalid") }; }
  try {
   // A rolled-back transaction is indistinguishable from any other persistence
   // failure at this boundary, by design.
-  const row=await repository.insert(buildScanJobInsert(input,attribution),buildScanConsentInsert(consent));
-  return {ok:true,jobId:row.id};
- } catch { return {ok:false,error:new Error("scan_persistence_unavailable")}; }
+  const row = await repository.insert(
+   buildScanJobInsert(input, attribution),
+   buildScanConsentInsert(consent),
+   { anonymousSessionId: analytics.anonymousSessionId, event: startedEvent },
+  );
+  return { ok: true, jobId: row.id, startedEvent };
+ } catch { return { ok: false, error: new Error("scan_persistence_unavailable") }; }
 }

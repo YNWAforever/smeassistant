@@ -1,15 +1,17 @@
 import { randomUUID } from "node:crypto";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
-import { recordEvent, resolveAnalyticsSession, setAnalyticsSessionCookie } from "@/lib/analytics/record-event";
+import { forwardEventToPostHog, resolveAnalyticsSession, setAnalyticsSessionCookie } from "@/lib/analytics/record-event";
 import { currentScanConsentPolicyVersion } from "@/lib/scan/consent";
 import { insertScanJob, parseScanStartBody } from "@/lib/scan/start-job";
 
 /**
  * Upstream's contract, unchanged (CLAUDE.md 3.2.2): validation, the scan_start
- * rate limit, the audit_jobs insert and the scan_started analytics event all
- * live in lib/scan/start-job.ts. Any `workspace_id` / `location_id` in the
- * client body is deliberately never read -- attribution is server-side only.
+ * rate limit and the audit_jobs insert live in lib/scan/start-job.ts; the
+ * audit_jobs insert and its scan_started event are one transaction in
+ * lib/repositories/jobs.ts; only PostHog forwarding runs after the response.
+ * Any `workspace_id` / `location_id` in the client body is deliberately never
+ * read -- attribution is server-side only.
  */
 export async function POST(req: Request) {
   let body: unknown;
@@ -33,20 +35,27 @@ export async function POST(req: Request) {
   const limiter = await enforceRateLimit({ req, scope: "scan_start", failClosed: false });
   if (!limiter.allowed) return rateLimitedResponse(limiter.retryAfterSeconds);
 
-  const created = await insertScanJob(parsed.input, parsed.consent);
+  // Resolved before the insert: scan_started is now written inside the job's
+  // own transaction, which needs the session id.
+  const session = resolveAnalyticsSession(req);
+  const created = await insertScanJob(parsed.input, parsed.consent, { anonymousSessionId: session.id });
   if (!created.ok) {
     const correlationId = randomUUID();
     console.error("Scan persistence unavailable", { category: "database_unavailable", correlationId });
     return NextResponse.json({ error: "Failed to create scan job", correlationId }, { status: 503 });
   }
 
-  const session = resolveAnalyticsSession(req);
-  void recordEvent(
-    { name: "scan_started", properties: { market: parsed.input.market, locale: parsed.input.locale } },
-    { jobId: created.jobId, anonymousSessionId: session.id },
-  ).catch(() => {
-    console.error("[analytics] event_record_failed", { category: "transition_record_failed" });
-  });
+  // The durable row already committed with the job. Only PostHog transport is
+  // left, and after() keeps it alive past the response: a bare `void` promise
+  // may never run once a Vercel function freezes. It must not go through
+  // recordEvent, which would insert first, hit the dedupe conflict, and return
+  // before forwarding.
+  const { startedEvent } = created;
+  after(() =>
+    forwardEventToPostHog(startedEvent, session.id).catch(() => {
+      console.error("[analytics] event_record_failed", { category: "transition_record_failed" });
+    }),
+  );
   const response = NextResponse.json({ jobId: created.jobId });
   setAnalyticsSessionCookie(response, session);
   return response;

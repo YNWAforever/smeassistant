@@ -4,8 +4,13 @@ import { getPool } from "../db/client";
 import { withTransaction } from "../db/transaction";
 import { auditJobs } from "../db/schema/jobs";
 import type { buildScanConsentInsert, buildScanJobInsert } from "../scan/start-job";
+import { insertScanEvent, SCAN_STARTED_DEDUPE_KEY, type ScanStartedWrite } from "../analytics/scan-events";
 export interface JobsRepository {
-    insert(row: ReturnType<typeof buildScanJobInsert>, consent: ReturnType<typeof buildScanConsentInsert>): Promise<{
+    insert(
+        row: ReturnType<typeof buildScanJobInsert>,
+        consent: ReturnType<typeof buildScanConsentInsert>,
+        started: ScanStartedWrite,
+    ): Promise<{
         id: string;
     }>;
 }
@@ -15,12 +20,18 @@ export const jobsRepository: JobsRepository & {
     failQueued(jobId: string, category: string, correlationId: string): Promise<boolean>;
 } = {
     /**
-     * The job and its scan-time consent are one transaction: consent_records.job_id
-     * is NOT NULL, so the consent row can only be written after the job exists, and
-     * writing them separately would leave a window where a queued job has no
-     * consent. A failure in either statement rolls both back.
+     * The job, its scan-time consent and its scan_started event are one
+     * transaction: consent_records.job_id is NOT NULL, so the consent row can
+     * only be written after the job exists, and writing them separately would
+     * leave a window where a queued job has no consent. A failure in any
+     * statement rolls all three back.
+     *
+     * scan_started is written here rather than fire-and-forget afterwards
+     * because the old path lost it (F-34): a 250 ms budget around a fresh
+     * connect, and a bare promise Vercel may freeze after the response. Here
+     * the event exists exactly when the job does.
      */
-    async insert(row, consent) {
+    async insert(row, consent, started) {
         return withTransaction(async (client) => {
             const values: typeof auditJobs.$inferInsert = {
                 businessName: row.business_name, igHandle: row.ig_handle, websiteUrl: row.website_url,
@@ -38,6 +49,12 @@ export const jobsRepository: JobsRepository & {
                 "INSERT INTO consent_records(job_id,lead_id,consent_type,granted,policy_version,locale) VALUES($1,NULL,$2,$3,$4,$5)",
                 [created.id, consent.consent_type, consent.granted, consent.policy_version, consent.locale],
             );
+            await insertScanEvent(client, {
+                jobId: created.id,
+                anonymousSessionId: started.anonymousSessionId,
+                event: started.event,
+                dedupeKey: SCAN_STARTED_DEDUPE_KEY,
+            });
             return created;
         });
     },

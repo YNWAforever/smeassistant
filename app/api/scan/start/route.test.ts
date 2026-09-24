@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   enforceRateLimit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 1 })),
   insert: vi.fn(),
-  recordEvent: vi.fn(async () => ({ recorded: true })),
+  forwardEventToPostHog: vi.fn(async () => {}),
+  // after() throws outside a Next request scope, so run the task inline.
+  after: vi.fn((task: () => unknown) => { void task(); }),
 }));
 
 vi.mock("@/lib/security/rate-limit", () => ({
@@ -11,12 +13,22 @@ vi.mock("@/lib/security/rate-limit", () => ({
   rateLimitedResponse: vi.fn(() => new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 })),
 }));
 vi.mock("@/lib/repositories/jobs", () => ({ jobsRepository: { insert: mocks.insert } }));
+// Spread the original: the route still needs the real NextResponse.
+vi.mock("next/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/server")>()),
+  after: mocks.after,
+}));
 
 vi.mock("@/lib/analytics/record-event", () => ({
-  recordEvent: mocks.recordEvent,
+  forwardEventToPostHog: mocks.forwardEventToPostHog,
   resolveAnalyticsSession: () => ({ id: "anonymous-session", created: false }),
   setAnalyticsSessionCookie: vi.fn(),
 }));
+
+const STARTED = {
+  anonymousSessionId: "anonymous-session",
+  event: { name: "scan_started", properties: { market: "HK", locale: "en" } },
+};
 
 import { LEGAL_POLICY_VERSION } from "@/lib/legal/policy";
 import { POST } from "./route";
@@ -77,10 +89,7 @@ describe("POST /api/scan/start progressive input", () => {
   it("allows optional Instagram and website and persists the exact normalized snapshot", async () => {
     const response = await POST(request(validBody));
     expect(response.status).toBe(200);
-    expect(mocks.recordEvent).toHaveBeenCalledWith(
-      { name: "scan_started", properties: { market: "HK", locale: "en" } },
-      { jobId: "job-1", anonymousSessionId: "anonymous-session" },
-    );
+    expect(mocks.forwardEventToPostHog).toHaveBeenCalledWith(STARTED.event, "anonymous-session");
     expect(mocks.insert).toHaveBeenCalledWith(expect.objectContaining({
       business_name: "Happy Cafe",
       ig_handle: null,
@@ -114,7 +123,7 @@ describe("POST /api/scan/start progressive input", () => {
         objective: "more_leads",
         intent: null,
       },
-    }), consentRow);
+    }), consentRow, STARTED);
   });
 
   it("carries a landing-page outcome intent into input_snapshot for the claim route to read back (item 8)", async () => {
@@ -122,6 +131,7 @@ describe("POST /api/scan/start progressive input", () => {
     expect(mocks.insert).toHaveBeenCalledWith(
       expect.objectContaining({ input_snapshot: expect.objectContaining({ intent: "review-response" }) }),
       consentRow,
+      expect.objectContaining({ anonymousSessionId: "anonymous-session" }),
     );
   });
 
@@ -130,6 +140,7 @@ describe("POST /api/scan/start progressive input", () => {
     expect(mocks.insert).toHaveBeenCalledWith(
       expect.objectContaining({ input_snapshot: expect.objectContaining({ intent: null }) }),
       consentRow,
+      expect.objectContaining({ anonymousSessionId: "anonymous-session" }),
     );
   });
 
@@ -164,7 +175,7 @@ describe("POST /api/scan/start progressive input", () => {
         mapsUrl: "https://www.google.com/maps/place/Happy+Cafe",
         facebookUrl: "https://facebook.com/happycafe",
       }),
-    }), consentRow);
+    }), consentRow, expect.objectContaining({ anonymousSessionId: "anonymous-session" }));
   });
 
   it("accepts explicit manual entry without provider identifiers", async () => {
@@ -186,7 +197,7 @@ describe("POST /api/scan/start progressive input", () => {
         provider: null,
         manualEntry: true,
       }),
-    }), consentRow);
+    }), consentRow, expect.objectContaining({ anonymousSessionId: "anonymous-session" }));
   });
 
   it.each([
@@ -231,7 +242,7 @@ describe("POST /api/scan/start progressive input", () => {
     expect(mocks.insert).toHaveBeenCalledWith(expect.objectContaining({
       region: "tw",
       parent_job_id: parentJobId,
-    }), expect.objectContaining({ consent_type: "public_evidence", granted: true }));
+    }), expect.objectContaining({ consent_type: "public_evidence", granted: true }), expect.objectContaining({ anonymousSessionId: "anonymous-session" }));
   });
 
   it("rejects malformed parent IDs before database work", async () => {
@@ -271,8 +282,8 @@ describe("POST /api/scan/start analytics isolation", () => {
     mocks.insert.mockResolvedValue({ id: "job-1" });
   });
 
-  it("returns the committed job when analytics never settles", async () => {
-    mocks.recordEvent.mockImplementationOnce(() => new Promise(() => {}));
+  it("returns the committed job when PostHog forwarding never settles", async () => {
+    mocks.forwardEventToPostHog.mockImplementationOnce(() => new Promise(() => {}));
 
     const result = await Promise.race([
       POST(request(validBody)),
@@ -281,6 +292,19 @@ describe("POST /api/scan/start analytics isolation", () => {
 
     expect(result).not.toBe("test_timeout");
     expect((result as Response).status).toBe(200);
+  });
+
+  it("hands PostHog forwarding to after() instead of a bare promise", async () => {
+    await POST(request(validBody));
+    expect(mocks.after).toHaveBeenCalledTimes(1);
+  });
+
+  it("forwards nothing when the job could not be created", async () => {
+    mocks.insert.mockRejectedValueOnce(new Error("down"));
+    const response = await POST(request(validBody));
+    expect(response.status).toBe(503);
+    expect(mocks.after).not.toHaveBeenCalled();
+    expect(mocks.forwardEventToPostHog).not.toHaveBeenCalled();
   });
 
   describe("ig_match_provenance", () => {
