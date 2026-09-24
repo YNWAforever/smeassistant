@@ -32,7 +32,7 @@ The owner chose this over keeping the neutral message for viewers or hiding the 
 | `no_earlier_scan` *(new)* | No valid earlier candidate exists: same workspace, same location, `done` or `partial`, valid completion time strictly before the current scan's. | members, staff |
 | `insufficient_evidence` *(new)* | Earlier candidates exist, but evidence is missing or incomplete on one side, so nothing overlapping could be compared. | members, staff |
 | `not_comparable` *(new)* | Earlier candidates have usable evidence, but none shares a query cohort or a compatible Instagram sample with the current scan. | members, staff |
-| `no_accessible_pair` *(kept)* | Valid earlier candidates exist but none was authorized. This is a defensive fallback that members and staff are not expected to reach. It is also the outward projection of the internal `history_limit`. | anyone |
+| `no_accessible_pair` *(kept)* | Valid earlier candidates exist but none was authorized with readable input. An authorized candidate whose stored input fails the timestamp check counts as unreadable, not as evidence. This is a defensive fallback that members and staff are not expected to reach. It is also the outward projection of the internal `history_limit`. | anyone |
 | `missing_location`, `invalid_current_scan`, `lookup_failed`, `history_limit` | Unchanged. | as today |
 
 ### Selection order (`loadScanComparison`)
