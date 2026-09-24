@@ -99,6 +99,12 @@ describe('compareScanMetrics', () => {
     expect(compareScanMetrics(before, after)).toEqual({ kind: 'insufficient_evidence' });
   });
 
+  it('is insufficient evidence when both have an Instagram sample, one incomplete, and their searches differ', () => {
+    const before: ComparisonInput = { ...input([fact('q', 'present')]), ig: { definition: 'stored-post-sample-v1', posts: 3, complete: true } };
+    const after: ComparisonInput = { ...input([fact('other', 'present')]), ig: { definition: 'stored-post-sample-v1', posts: 4, complete: false } };
+    expect(compareScanMetrics(before, after)).toEqual({ kind: 'insufficient_evidence' });
+  });
+
   it('is insufficient evidence when either scan has no usable evidence at all', () => {
     const empty: ComparisonInput = { scannedAt: '2026-09-08T00:00:00Z', cohorts: [], ig: null };
     expect(compareScanMetrics(empty, input([fact('q', 'present')]))).toEqual({ kind: 'insufficient_evidence' });

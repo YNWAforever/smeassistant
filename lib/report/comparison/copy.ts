@@ -16,7 +16,7 @@ export const comparisonCopy = {
     noSearch: "沒有可比較的搜尋量度", evidence: "證據及觀察日期", previous: "上次", current: "目前",
     percentagePoints: "個百分點", omitted: "上次掃描省略了 {n} 項查詢量度，目前掃描省略了 {m} 項。",
     unavailableGroups: "有 {n} 組搜尋不可比較，已予保留。",
-    unavailable: { no_history_access: "與較早的掃描比較需要工作台權限。請以商戶負責人身分登入，查看隨時間的變化。", no_earlier_scan: "此地點暫時未有較早而已完成的掃描可供比較。", insufficient_evidence: "已有較早的掃描，但其中一次未有收集到足夠完整的證據作比較。覆蓋較全面的重新掃描或可進行比較。", not_comparable: "較早的掃描檢查了不同的搜尋、設定或來源，因此無法作同等比較。", no_accessible_pair: "目前沒有已獲授權的可比較掃描。", missing_location: "掃描地點未有記錄，因此無法比較。", invalid_current_scan: "目前掃描未能安全比較。", lookup_failed: "暫時無法提供比較。", history_limit: "在有限的歷史記錄內找不到可比較掃描。" },
+    unavailable: { no_history_access: "與較早的掃描比較需要工作台權限。請以商戶負責人身份登入，查看隨時間的變化。", no_earlier_scan: "此地點暫時未有較早而已完成的掃描可供比較。", insufficient_evidence: "已有較早的掃描，但其中一次未有收集到足夠完整的證據作比較。覆蓋較全面的重新掃描或可進行比較。", not_comparable: "較早的掃描檢查了不同的搜尋、設定或來源，因此無法作同等比較。", no_accessible_pair: "目前沒有已獲授權的可比較掃描。", missing_location: "掃描地點未有記錄，因此無法比較。", invalid_current_scan: "目前掃描未能安全比較。", lookup_failed: "暫時無法提供比較。", history_limit: "在有限的歷史記錄內找不到可比較掃描。" },
   },
   "zh-TW": {
     title: "與上次可比較掃描的變化", currentReportTitle: "目前掃描結果", currentReportBody: "此摘要說明目前掃描結果；可比較的評分變化尚未評估。", previousScan: "上次掃描", currentScan: "目前掃描",
