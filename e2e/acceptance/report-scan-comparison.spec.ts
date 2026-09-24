@@ -18,7 +18,7 @@ const run = (id: string, observedAt: string): MerchantPerformanceEvidenceRun => 
 });
 const raw = (id: string, observedAt: string) => ({ aeo: { merchant_performance: { generated_at: observedAt, runs: [run(id, observedAt)] } } });
 
-test('actual share route keeps earlier comparison evidence private and shows the access state after current-only unlock', async ({ page, merchant, environment }) => {
+test('actual share route keeps earlier comparison evidence private and shows the access state after current-only unlock, then the member state once signed in', async ({ page, merchant, environment }) => {
   const diagnostics: string[] = [];
   page.on('pageerror', error => diagnostics.push('pageerror: ' + error.message));
   page.on('console', message => { if (['warning', 'error'].includes(message.type())) diagnostics.push(message.type() + ': ' + message.text()); });
@@ -58,7 +58,8 @@ test('actual share route keeps earlier comparison evidence private and shows the
     await assertRscPrivate(locale, false);
   }
 
-  await signIn(page, environment, merchant, 'viewer');
+  // Unlock signed out, as a link-holder does: the report grant is the reader's only access.
+  // Signing in first would make an accepted workspace member the reader instead (member = full).
   const unlocked = await page.request.post('/api/report-access/unlock', { data: {
     slug, market: 'hk', locale: 'en', objective: 'understand_performance', preferred_contact_channel: 'whatsapp',
     contact_identifier: '+85255555555', recovery_email: merchant.emails.viewer, report_delivery: true,
@@ -84,6 +85,18 @@ test('actual share route keeps earlier comparison evidence private and shows the
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       await page.screenshot({ path: `.superpowers/sdd/comparison/screenshots/actual-route-unavailable-${locale}-${width}.png`, fullPage: true });
     }
+  }
+
+  // An accepted workspace member on the same route is recognised as a member and gets a member-only state.
+  // The earlier scan measured a different query in the same cohort, so the pair is not comparable.
+  await signIn(page, environment, merchant, 'viewer');
+  for (const locale of ['en', 'zh-HK', 'zh-TW'] as const) {
+    const response = await page.goto(`/${locale}/r/${slug}`);
+    expect(response?.status()).toBe(200);
+    const panel = page.locator('section[aria-labelledby="scan-comparison-title"]');
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText(comparisonCopy[locale].unavailable.not_comparable);
+    await expect(panel).not.toContainText(comparisonCopy[locale].unavailable.no_history_access);
   }
   writeFileSync('.superpowers/sdd/comparison/task-5-owned-browser-diagnostics.log', diagnostics.join('\n'));
   expect(diagnostics).toEqual([]);
