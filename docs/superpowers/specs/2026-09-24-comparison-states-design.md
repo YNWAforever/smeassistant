@@ -92,7 +92,11 @@ type PairComparison =
 | `no_history_access` | Comparing with earlier scans needs workspace access. Sign in as the business owner to see changes over time. | 與較早的掃描比較需要工作台權限。請以商戶負責人身分登入，查看隨時間的變化。 | 與較早的掃描比較需要工作台權限。請以店家負責人身分登入，查看隨時間的變化。 |
 | `no_earlier_scan` | There is no earlier finished scan of this location to compare with yet. | 此地點暫時未有較早而已完成的掃描可供比較。 | 此據點目前還沒有較早且已完成的掃描可供比較。 |
 | `insufficient_evidence` | An earlier scan exists, but one of the two didn't collect enough complete evidence to compare. A rescan with fuller coverage may make a comparison possible. | 已有較早的掃描，但其中一次未有收集到足夠完整的證據作比較。覆蓋較全面的重新掃描或可進行比較。 | 已有較早的掃描，但其中一次沒有收集到足夠完整的證據來比較。涵蓋更完整的重新掃描或許能進行比較。 |
-| `not_comparable` | Earlier scans checked different searches or settings, so a like-for-like comparison isn't possible. | 較早的掃描檢查了不同的搜尋或設定，因此無法作同等比較。 | 較早的掃描檢查的是不同的搜尋或設定，因此無法進行同基準比較。 |
+| `not_comparable` | Earlier scans checked different searches, settings or sources, so a like-for-like comparison isn't possible. | 較早的掃描檢查了不同的搜尋、設定或來源，因此無法作同等比較。 | 較早的掃描檢查的是不同的搜尋、設定或來源，因此無法進行同基準比較。 |
+
+*Amended during planning (2026-09-24):* `not_comparable` also covers an earlier scan that measured only search against a current scan that measured only Instagram, or the reverse. Both have usable evidence and they share nothing. The approved text said "different searches or settings", which does not describe that case, so "or sources" was added in all three locales.
+
+The unavailable copy is typed as one entry per reason (`Record<UnavailableReason, string>`, replacing `Record<string, string>`). A reason without a translation is then a type error, not a blank line in the panel.
 
 None of the copy says "first scan". `no_earlier_scan` claims only what the loader checked: no earlier *finished* scan of this location.
 
@@ -142,7 +146,7 @@ None of the copy says "first scan". `no_earlier_scan` claims only what the loade
 
 **End-to-end** (`e2e/acceptance/report-scan-comparison.spec.ts`): the current-only-unlocked viewer case now expects `comparisonCopy[locale].unavailable.no_history_access`. Its privacy assertions are unchanged.
 
-**Gates:** `typecheck`, `lint`, `test`, `test:integration`, `e2e` and `e2e:acceptance`. `build` is expected to stay blocked by the standing Windows Turbopack/radix-ui issue, with `next build --webpack` run as a labelled diagnostic.
+**Gates:** `typecheck`, `lint`, `test` and `test:integration`, run locally. `build` is expected to stay blocked by the standing Windows Turbopack/radix-ui issue, with `next build --webpack` run as a labelled diagnostic. `e2e` and `e2e:acceptance` need a production build, which this machine cannot produce, so they are **not run locally**, as in every earlier Phase 3 record. The updated acceptance expectation is proven only where CI runs it.
 
 ## What this does not prove
 
