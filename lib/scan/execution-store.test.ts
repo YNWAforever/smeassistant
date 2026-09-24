@@ -2,19 +2,16 @@ import { describe, expect, it, vi } from "vitest";
 import { createScanExecutionStore } from "./execution-store";
 import { createScanExecution, asClaimedJob } from "@sme-scanner/scan-engine";
 describe("terminal analytics lifetime", () => {
-  it("tracks the whole pending insertion and the later PostHog tail on a failed scan", async () => {
-    let insertDone!: () => void;
+  it("tracks the PostHog tail on a failed scan and never inserts from recordTerminal", async () => {
     let captureDone!: () => void;
-    const insert = new Promise<void>((resolve) => {
-      insertDone = resolve;
-    });
     const capture = new Promise<void>((resolve) => {
       captureDone = resolve;
     });
+    const insert = vi.fn(async () => ({ inserted: true }));
     const waited: Promise<unknown>[] = [];
     const store = createScanExecutionStore("session", {
       analytics: {
-        insert: () => insert,
+        insert,
         capturePostHog: () => capture,
         reportError: vi.fn(),
       },
@@ -41,6 +38,10 @@ describe("terminal analytics lifetime", () => {
         persistEvidence: async () => {},
       })("job"),
     ).toEqual({ status: "failed", failurePersistence: "persisted" });
+    // persist() is stubbed here, so this cannot prove where the row is
+    // written. What it proves: recordTerminal registers exactly one host
+    // lifetime promise, that promise is the PostHog tail, and recordTerminal
+    // never calls analytics.insert.
     expect(waited).toHaveLength(1);
     let settled = false;
     void waited[0].then(() => {
@@ -48,29 +49,20 @@ describe("terminal analytics lifetime", () => {
     });
     await Promise.resolve();
     expect(settled).toBe(false);
-    insertDone();
-    await waited[0];
-    expect(waited).toHaveLength(2);
-    let captured = false;
-    void waited[1].then(() => {
-      captured = true;
-    });
-    await Promise.resolve();
-    expect(captured).toBe(false);
     captureDone();
-    await waited[1];
-    expect(captured).toBe(true);
+    await waited[0];
+    expect(insert).not.toHaveBeenCalled();
   });
-  it("keeps registered lifetime promises resolved on database failure", async () => {
+  it("keeps the registered lifetime promise resolved when PostHog fails", async () => {
     const waited: Promise<unknown>[] = [];
-    const capture = vi.fn();
     const report = vi.fn();
+    const insert = vi.fn();
     const store = createScanExecutionStore("session", {
       analytics: {
-        insert: async () => {
+        insert,
+        capturePostHog: async () => {
           throw new Error("down");
         },
-        capturePostHog: capture,
         reportError: report,
       },
       waitUntil: (p) => {
@@ -79,7 +71,7 @@ describe("terminal analytics lifetime", () => {
     });
     await store.recordTerminal({ jobId: "job", status: "failed", coverage: 0 });
     await expect(waited[0]).resolves.toBeUndefined();
-    expect(capture).not.toHaveBeenCalled();
-    expect(report).toHaveBeenCalledWith("backend_unavailable");
+    expect(report).toHaveBeenCalledWith("provider_unavailable");
+    expect(insert).not.toHaveBeenCalled();
   });
 });

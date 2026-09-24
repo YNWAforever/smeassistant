@@ -8,7 +8,7 @@ import type { ScanConsentRecord } from "@/lib/scan/consent";
 // actually collected a consent.
 const CONSENT: ScanConsentRecord = { consentType: "public_evidence", granted: true, policyVersion: "2026-07-28", locale: "en" };
 vi.mock("@/lib/workspace/audit", () => ({ recordNeonEvent: vi.fn(async (input) => { state.inserted.audit_events.push({ workspace_id: input.workspaceId, location_id: input.locationId, actor_type: input.actorType, actor_id: input.actorId, event: input.event, entity_id: input.entityId, payload: { locale: input.locale ?? null, ...input.payload } }); }) }));
-vi.mock("@/lib/repositories/jobs", () => ({ jobsRepository: { insert: vi.fn(async (row, consent) => { if(state.jobInsertError) throw state.jobInsertError; const saved={id: `job-${state.inserted.audit_jobs.length+1}`, ...row}; state.inserted.audit_jobs.push(saved); state.inserted.consent_records.push({ job_id: saved.id, ...consent }); return {id:saved.id}; }) } }));
+vi.mock("@/lib/repositories/jobs", () => ({ jobsRepository: { insert: vi.fn(async (row, consent, started) => { if(state.jobInsertError) throw state.jobInsertError; const saved={id: `job-${state.inserted.audit_jobs.length+1}`, ...row}; state.inserted.audit_jobs.push(saved); state.inserted.consent_records.push({ job_id: saved.id, ...consent }); state.inserted.scan_events.push({ job_id: saved.id, ...started }); return {id:saved.id}; }) } }));
 import { LEGAL_POLICY_VERSION } from "@/lib/legal/policy";
 import { enqueueRescan, ensureMonthlySchedule, scanInputFromSnapshot } from "./rescan";
 
@@ -19,7 +19,7 @@ const state = vi.hoisted(() => ({
   jobInsertError: null as { message: string } | null,
   schedules: [] as Row[],
   scheduleInsertError: null as { code?: string } | null,
-  inserted: { audit_jobs: [] as Row[], scan_schedules: [] as Row[], audit_events: [] as Row[], consent_records: [] as Row[] } as Record<string, Row[]>,
+  inserted: { audit_jobs: [] as Row[], scan_schedules: [] as Row[], audit_events: [] as Row[], consent_records: [] as Row[], scan_events: [] as Row[] } as Record<string, Row[]>,
 }));
 
 function client(): RescanRepository {
@@ -70,7 +70,7 @@ beforeEach(() => {
   state.jobInsertError = null;
   state.schedules = [];
   state.scheduleInsertError = null;
-  state.inserted = { audit_jobs: [], scan_schedules: [], audit_events: [], consent_records: [] };
+  state.inserted = { audit_jobs: [], scan_schedules: [], audit_events: [], consent_records: [], scan_events: [] };
 });
 
 describe("scanInputFromSnapshot", () => {
@@ -107,7 +107,7 @@ describe("scanInputFromSnapshot", () => {
 
 describe("enqueueRescan", () => {
   it("inserts a queued job attributed to the workspace and location with parent_job_id = the last finished job", async () => {
-    const result = await enqueueRescan(client(), { workspaceId: "ws-1", locationId: "loc-1", actorId: "user-1", locale: "en", consent: CONSENT });
+    const result = await enqueueRescan(client(), { workspaceId: "ws-1", locationId: "loc-1", actorId: "user-1", anonymousSessionId: "session-1", locale: "en", consent: CONSENT });
     expect(result).toMatchObject({ ok: true, jobId: "job-1" });
     const inserted = state.inserted.audit_jobs[0]!;
     expect(inserted).toMatchObject({
@@ -138,6 +138,12 @@ describe("enqueueRescan", () => {
     expect(state.inserted.consent_records).toEqual([
       { job_id: "job-1", consent_type: "public_evidence", granted: true, policy_version: LEGAL_POLICY_VERSION, locale: "en" },
     ]);
+    // The event's market and locale come from the SOURCE JOB's snapshot
+    // (SNAPSHOT: market "HK", locale "zh-HK"), not from the request's "en",
+    // which only labels the consent and the audit row.
+    expect(state.inserted.scan_events).toEqual([
+      { job_id: "job-1", anonymousSessionId: "session-1", event: { name: "scan_started", properties: { market: "HK", locale: "zh-HK" } } },
+    ]);
     expect(state.inserted.audit_events[1]).toMatchObject({
       event: "consent.public_evidence",
       entity_id: "job-1",
@@ -147,24 +153,24 @@ describe("enqueueRescan", () => {
 
   it("404s (no_finished_job) when the location has never finished a scan", async () => {
     state.jobs = [];
-    expect(await enqueueRescan(client(), { workspaceId: "ws-1", locationId: "loc-1", actorId: "user-1", consent: CONSENT })).toEqual({ ok: false, reason: "no_finished_job" });
+    expect(await enqueueRescan(client(), { workspaceId: "ws-1", locationId: "loc-1", actorId: "user-1", anonymousSessionId: "session-1", consent: CONSENT })).toEqual({ ok: false, reason: "no_finished_job" });
     expect(state.inserted.audit_jobs).toEqual([]);
   });
 
   it("never reads across workspaces: a job on another workspace's location is invisible", async () => {
     state.jobs = [{ ...sourceJob, workspace_id: "ws-2" }];
-    expect(await enqueueRescan(client(), { workspaceId: "ws-1", locationId: "loc-1", actorId: "user-1", consent: CONSENT })).toEqual({ ok: false, reason: "no_finished_job" });
+    expect(await enqueueRescan(client(), { workspaceId: "ws-1", locationId: "loc-1", actorId: "user-1", anonymousSessionId: "session-1", consent: CONSENT })).toEqual({ ok: false, reason: "no_finished_job" });
   });
 
   it("refuses a v1 snapshot rather than re-scanning an unconfirmed identity", async () => {
     state.jobs = [{ ...sourceJob, input_snapshot: { version: 1 } }];
-    expect(await enqueueRescan(client(), { workspaceId: "ws-1", locationId: "loc-1", actorId: "user-1", consent: CONSENT })).toEqual({ ok: false, reason: "snapshot_not_v2" });
+    expect(await enqueueRescan(client(), { workspaceId: "ws-1", locationId: "loc-1", actorId: "user-1", anonymousSessionId: "session-1", consent: CONSENT })).toEqual({ ok: false, reason: "snapshot_not_v2" });
   });
 
   it("reports an insert failure without an audit event", async () => {
     state.jobInsertError = { message: "boom" };
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(await enqueueRescan(client(), { workspaceId: "ws-1", locationId: "loc-1", actorId: "user-1", consent: CONSENT })).toEqual({ ok: false, reason: "insert_failed" });
+    expect(await enqueueRescan(client(), { workspaceId: "ws-1", locationId: "loc-1", actorId: "user-1", anonymousSessionId: "session-1", consent: CONSENT })).toEqual({ ok: false, reason: "insert_failed" });
     expect(state.inserted.audit_events).toEqual([]);
     spy.mockRestore();
   });

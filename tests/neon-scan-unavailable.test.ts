@@ -1,5 +1,5 @@
-const analytics = vi.hoisted(() => ({ recordEvent: vi.fn() }));
-vi.mock("@/lib/analytics/record-event", () => ({ recordEvent: analytics.recordEvent, resolveAnalyticsSession: vi.fn(), setAnalyticsSessionCookie: vi.fn() }));
+const analytics = vi.hoisted(() => ({ forwardEventToPostHog: vi.fn(async () => {}) }));
+vi.mock("@/lib/analytics/record-event", () => ({ forwardEventToPostHog: analytics.forwardEventToPostHog, resolveAnalyticsSession: vi.fn(() => ({ id: "anonymous-session", created: false })), setAnalyticsSessionCookie: vi.fn() }));
 import { describe, it, expect, vi, afterEach } from "vitest";
 const db = vi.hoisted(() => ({ getPool: vi.fn(() => { throw Error("postgresql://secret:password@host/db"); }), getDatabase: vi.fn(() => { throw Error("database_configuration_missing"); }) }));
 vi.mock("@/lib/db/client", () => db);
@@ -22,7 +22,9 @@ describe("Neon unavailable boundaries", () => {
         const payload = buildScanStartPayload({ ...emptyScanDraft("hk", "Fixture"), manualEntry: true, industry: "fnb", district: "東區" }, "zh-HK", { granted: true, policyVersion: LEGAL_POLICY_VERSION });
         const result = await POST(new Request("https://fixture.test/api/scan/start", { method: "POST", body: JSON.stringify(payload) }));
         expect(result.status).toBe(503);
-        expect(analytics.recordEvent).not.toHaveBeenCalled();
+        // No job, so nothing to forward: scan_started only reaches PostHog
+        // after the job's transaction commits.
+        expect(analytics.forwardEventToPostHog).not.toHaveBeenCalled();
         const body = await result.json();
         expect(body.correlationId).toMatch(/^[0-9a-f-]{36}$/);
         expect(JSON.stringify(body)).not.toContain("password");

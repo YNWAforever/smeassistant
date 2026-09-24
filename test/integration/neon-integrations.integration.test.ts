@@ -16,7 +16,6 @@ import {
   type NeonDatabaseFixture,
 } from "./neon-database";
 import { POST } from "../../app/api/webhooks/stripe/route";
-import { recordEvent } from "../../lib/analytics/record-event";
 import { notifyWithRepository } from "../../lib/workspace/notify";
 import { notificationRepository } from "../../lib/repositories/notifications";
 const state = vi.hoisted(() => ({
@@ -214,113 +213,6 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
           ])
         ).rows[0].tier,
       ).toBe("lite");
-    });
-    it("cancels locked analytics, frees its connection and never inserts after unlock", async () => {
-      const locker = await owner.connect();
-      const session = randomUUID();
-      const initial = runtime.totalCount;
-      const capture = vi.fn();
-      const reportError = vi.fn();
-      await locker.query(
-        "BEGIN; LOCK TABLE scan_events IN ACCESS EXCLUSIVE MODE",
-      );
-      try {
-        const started = Date.now();
-        const { eventRepository } =
-          await import("../../lib/repositories/events");
-        const pending = recordEvent(
-          { name: "full_report_viewed", properties: { access: "viewer" } },
-          { anonymousSessionId: session, timeoutMs: 500 },
-          {
-            insert: eventRepository(runtime).insert,
-            capturePostHog: capture,
-            reportError,
-          },
-        );
-        await expect
-          .poll(
-            async () =>
-              Number(
-                (
-                  await owner.query(
-                    "SELECT count(*) FROM pg_stat_activity WHERE usename='fixture_runtime' AND wait_event_type='Lock' AND query LIKE '%INSERT INTO scan_events%'",
-                  )
-                ).rows[0].count,
-              ),
-            { timeout: 400, interval: 10 },
-          )
-          .toBe(1);
-        expect(await pending).toEqual({
-          recorded: false,
-          category: "backend_unavailable",
-        });
-        expect(Date.now() - started).toBeLessThan(750);
-        await expect
-          .poll(() => runtime.totalCount - runtime.idleCount, { timeout: 750 })
-          .toBe(0);
-        await expect
-          .poll(
-            async () =>
-              Number(
-                (
-                  await owner.query(
-                    "SELECT count(*) FROM pg_stat_activity WHERE usename='fixture_runtime' AND state <> 'idle' AND query LIKE '%INSERT INTO scan_events%'",
-                  )
-                ).rows[0].count,
-              ),
-            { timeout: 2000 },
-          )
-          .toBe(0);
-        expect(runtime.totalCount).toBeLessThanOrEqual(initial);
-        expect(capture).not.toHaveBeenCalled();
-      } finally {
-        await locker.query("ROLLBACK");
-        locker.release();
-      }
-      expect(
-        (
-          await runtime.query(
-            "SELECT id FROM scan_events WHERE anonymous_session_id=$1",
-            [session],
-          )
-        ).rows,
-      ).toHaveLength(0);
-      expect(
-        await recordEvent(
-          { name: "full_report_viewed", properties: { access: "viewer" } },
-          { anonymousSessionId: session },
-        ),
-      ).toEqual({ recorded: true });
-    });
-    it("records analytics through Neon and suppresses duplicate provider effects", async () => {
-      const job = (
-        await runtime.query(
-          "INSERT INTO audit_jobs(business_name,status) VALUES('fixture','done') RETURNING id",
-        )
-      ).rows[0].id;
-      const input = {
-        name: "full_report_viewed",
-        properties: { access: "viewer" },
-      };
-      const context = {
-        jobId: job,
-        anonymousSessionId: randomUUID(),
-        dedupeKey: "view",
-      };
-      expect(await recordEvent(input, context)).toMatchObject({
-        recorded: true,
-      });
-      expect(await recordEvent(input, context)).toEqual({
-        recorded: false,
-        deduplicated: true,
-      });
-      expect(
-        (
-          await runtime.query("SELECT id FROM scan_events WHERE job_id=$1", [
-            job,
-          ])
-        ).rows,
-      ).toHaveLength(1);
     });
     it("retains shared notification dedupe on retried completion without any email transport", async () => {
       const user = (
@@ -665,42 +557,6 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
       expect(
         (await runtime.query("SELECT approved_deliveries FROM workspace_usage WHERE workspace_id=$1 AND period=$2", [workspaceId, period])).rows[0].approved_deliveries,
       ).toBe(3);
-    });
-    it("captures analytics once after persistence and fails open without capturing on database failure", async () => {
-      const fetchMock = vi
-        .spyOn(globalThis, "fetch")
-        .mockResolvedValue(new Response("{}"));
-      vi.stubEnv("POSTHOG_KEY", "fixture-only");
-      try {
-        const job = (
-          await runtime.query(
-            "INSERT INTO audit_jobs(business_name,status) VALUES('analytics','done') RETURNING id",
-          )
-        ).rows[0].id;
-        const input = {
-          name: "full_report_viewed",
-          properties: { access: "viewer" },
-        };
-        const context = {
-          jobId: job,
-          anonymousSessionId: randomUUID(),
-          dedupeKey: "capture",
-        };
-        expect(await recordEvent(input, context)).toEqual({ recorded: true });
-        expect(await recordEvent(input, context)).toEqual({
-          recorded: false,
-          deduplicated: true,
-        });
-        expect(fetchMock).toHaveBeenCalledTimes(1);
-        state.pool = null;
-        expect(
-          await recordEvent(input, { ...context, dedupeKey: "failure" }),
-        ).toEqual({ recorded: false, category: "backend_unavailable" });
-        expect(fetchMock).toHaveBeenCalledTimes(1);
-      } finally {
-        state.pool = runtime;
-        fetchMock.mockRestore();
-      }
     });
   },
 );

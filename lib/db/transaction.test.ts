@@ -44,6 +44,22 @@ describe("withTransaction", () => {
     expect(release).toHaveBeenCalledWith();
   });
 
+  // COMMIT on an aborted transaction resolves with the tag ROLLBACK instead of
+  // raising. withTransaction must treat that as the failure it is.
+  it("rejects when COMMIT reports that the transaction was rolled back", async () => {
+    const suppliedQuery = vi.fn(async (sql: string) =>
+      sql === "COMMIT" ? { command: "ROLLBACK", rows: [] } : { command: sql, rows: [] },
+    );
+    const suppliedPool = { connect: vi.fn().mockResolvedValue({ query: suppliedQuery, release: vi.fn() }) };
+    await expect(withTransaction(async () => "value", suppliedPool as never)).rejects.toThrow("transaction_rolled_back");
+  });
+
+  it("returns the value when COMMIT reports a commit", async () => {
+    const suppliedQuery = vi.fn(async (sql: string) => ({ command: sql, rows: [] }));
+    const suppliedPool = { connect: vi.fn().mockResolvedValue({ query: suppliedQuery, release: vi.fn() }) };
+    await expect(withTransaction(async () => "value", suppliedPool as never)).resolves.toBe("value");
+  });
+
   it("preserves the callback failure and destroys the client when rollback fails", async () => {
     const primaryError = new Error("callback_failed");
     query.mockResolvedValueOnce({ rows: [] }).mockRejectedValueOnce(new Error("rollback_failed"));

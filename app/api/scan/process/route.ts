@@ -31,20 +31,29 @@ export async function POST(req: Request) {
   });
   if (!limiter.allowed) return rateLimitedResponse(limiter.retryAfterSeconds);
 
+  // Resolved before the gate: it only reads the cookie or mints an id, with no
+  // side effect, and a refused job is terminal, so the gate writes its
+  // scan_completed under this session.
+  const session = resolveAnalyticsSession(req);
+
   // After the limiter (so abuse of the gate itself is still bounded) and before
-  // any provider call, worker dispatch or analytics session. This is where a
-  // direct POST /api/scan/start bypass, or any hand-inserted queued row, stops:
-  // the job is marked failed and the scanning page's existing failure card
+  // any provider call or worker dispatch. This is where a direct
+  // POST /api/scan/start bypass, or any hand-inserted queued row, stops: the
+  // job is marked failed and the scanning page's existing failure card
   // surfaces it with the correlation id.
-  const consent = await assertScanConsent(jobId);
+  const consent = await assertScanConsent(jobId, session.id);
   if (!consent.ok) {
-    return NextResponse.json(
+    const response = NextResponse.json(
       consent.status === 503 ? { error: "unavailable" } : { error: consent.code, correlationId: consent.correlationId },
       { status: consent.status },
     );
+    // A refusal writes scan_completed under this session when it is the call
+    // that moved the job to failed (a reload after a refusal finds the job no
+    // longer queued and writes nothing). Either way the browser should keep
+    // this session. A 503 wrote nothing and needs no cookie.
+    if (consent.status === 403) setAnalyticsSessionCookie(response, session);
+    return response;
   }
-
-  const session = resolveAnalyticsSession(req);
 
   if (resolveScanExecutionRuntime("client") === "cloudflare") {
     const accepted = await dispatchToScanWorker(jobId);

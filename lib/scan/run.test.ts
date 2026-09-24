@@ -15,7 +15,6 @@ vi.mock("./execution-store", () => ({
 }));
 const runtimeMocks = vi.hoisted(() => ({
   query: vi.fn(),
-  insert: vi.fn(),
   capturePostHog: vi.fn(),
 }));
 const websiteMocks = vi.hoisted(() => ({
@@ -26,11 +25,13 @@ vi.mock("@/lib/website/checks", () => ({ runWebsiteChecks: websiteMocks.run }));
 vi.mock("@/lib/workspace/post-process", () => ({
   postProcessWorkspaceScan: websiteMocks.postProcess,
 }));
+// fail() now runs on a transaction client, so the pool also connects; the
+// client shares the same query mock so every statement is observable.
 vi.mock("@/lib/db/client", () => ({
-  getPool: () => ({ query: runtimeMocks.query }),
-}));
-vi.mock("@/lib/repositories/events", () => ({
-  eventRepository: () => ({ insert: runtimeMocks.insert }),
+  getPool: () => ({
+    query: runtimeMocks.query,
+    connect: async () => ({ query: runtimeMocks.query, release: () => {} }),
+  }),
 }));
 vi.mock("@/lib/analytics/posthog", () => ({
   capturePostHog: runtimeMocks.capturePostHog,
@@ -228,7 +229,7 @@ describe("runScan", () => {
 
 describe("Neon workspace completion bridge",()=>{
  afterEach(()=>{vi.unstubAllEnvs();completionMock.mockClear();completionMock.mockResolvedValue({status:"completed"});websiteMocks.run.mockClear();websiteMocks.postProcess.mockClear();vi.restoreAllMocks();});
- it.each(["true","false"])("completes Neon jobs independent of internal receiver flag=%s",async flag=>{completionMock.mockClear();vi.stubEnv("WORKSPACE_COMPLETION_ENABLED",flag);await expect(runScan("job","session")).resolves.toEqual({status:"done"});expect(completionMock).toHaveBeenCalledWith({query:runtimeMocks.query},"job",expect.any(Function));});
+ it.each(["true","false"])("completes Neon jobs independent of internal receiver flag=%s",async flag=>{completionMock.mockClear();vi.stubEnv("WORKSPACE_COMPLETION_ENABLED",flag);await expect(runScan("job","session")).resolves.toEqual({status:"done"});expect(completionMock).toHaveBeenCalledWith(expect.objectContaining({query:runtimeMocks.query}),"job",expect.any(Function));});
  it("does not change persisted terminal result when workspace effects need retry",async()=>{completionMock.mockResolvedValueOnce({status:"retry"});const log=vi.spyOn(console,"error").mockImplementation(()=>{});await expect(runScan("job","session")).resolves.toEqual({status:"done"});expect(log).toHaveBeenCalledWith("[scan] workspace completion retry",{category:"workspace_completion_retry",jobId:"job"});});
  it("does not complete work claimed by another runner",async()=>{completionMock.mockClear();vi.mocked(processScan).mockResolvedValueOnce({status:"already_claimed"});await runScan("job","session");expect(completionMock).not.toHaveBeenCalled();expect(websiteMocks.run).not.toHaveBeenCalled();});
 
@@ -266,7 +267,7 @@ describe("runScan host terminal lifetime", () => {
     vi.clearAllMocks();
   });
 
-  it("registers pending insertion and delayed capture with the actual Vercel lifetime API", async () => {
+  it("writes scan_completed inside fail() and registers only the delayed capture with the actual Vercel lifetime API", async () => {
     const engine = await vi.importActual<
       typeof import("@sme-scanner/scan-engine")
     >("@sme-scanner/scan-engine");
@@ -296,19 +297,14 @@ describe("runScan host terminal lifetime", () => {
           };
         // Run the real fixture collector, then fail at the scoring stage so no
         // successful-scan postprocessing can accidentally keep analytics alive.
-        if (values[1] === "scoring") throw new Error("fixture stage failure");
+        if (values?.[1] === "scoring") throw new Error("fixture stage failure");
         return { rows: [{ id: "job" }] };
       },
     );
-    let finishInsert!: () => void;
     let finishCapture!: () => void;
-    const insertion = new Promise<void>((resolve) => {
-      finishInsert = resolve;
-    });
     const capture = new Promise<void>((resolve) => {
       finishCapture = resolve;
     });
-    runtimeMocks.insert.mockReturnValue(insertion);
     runtimeMocks.capturePostHog.mockReturnValue(capture);
     try {
       await expect(runScan("job", "session")).resolves.toMatchObject({
@@ -320,30 +316,60 @@ describe("runScan host terminal lifetime", () => {
         "collecting_aeo",
         "collecting",
       ]);
-      expect(runtimeMocks.insert).toHaveBeenCalledTimes(1);
+      // The durable scan_completed row is written inside fail()'s own
+      // transaction, after the guarded UPDATE matched, inside a savepoint;
+      // recordTerminal never inserts.
+      const statements = runtimeMocks.query.mock.calls.map(
+        ([sql]) => sql as string,
+      );
+      const begin = statements.lastIndexOf("BEGIN");
+      const failed = statements.findIndex(
+        (sql, i) => i > begin && sql.includes("SET status='failed'"),
+      );
+      const savepoint = statements.indexOf("SAVEPOINT scan_event", failed);
+      const insert = statements.findIndex(
+        (sql, i) => i > savepoint && sql.includes("INSERT INTO scan_events"),
+      );
+      const release = statements.indexOf("RELEASE SAVEPOINT scan_event", insert);
+      const commit = statements.indexOf("COMMIT", release);
+      expect([begin, failed, savepoint, insert, release, commit].every((i) => i >= 0)).toBe(true);
+      expect(begin < failed && failed < savepoint && savepoint < insert && insert < release && release < commit).toBe(true);
+      expect(runtimeMocks.query.mock.calls[insert]![1]).toEqual([
+        "job",
+        "session",
+        "scan_completed",
+        JSON.stringify({ outcome: "failed", coverage: 0 }),
+        "terminal",
+      ]);
+      // No second write through any other path: the pool and the transaction
+      // client share this query mock, so every scan_events insert is visible
+      // here, and exactly one exists.
+      expect(
+        statements.filter((sql) => /insert\s+into\s+scan_events/i.test(sql)),
+      ).toHaveLength(1);
+      // A regression that routed recordTerminal through the engine's
+      // recordEvent would hit the store's throwing insert stub, which the
+      // engine swallows and reports as backend_unavailable instead of
+      // writing SQL. The statement count above cannot see that; this can.
+      expect(console.error).not.toHaveBeenCalledWith(
+        "[analytics] event_record_failed",
+        expect.objectContaining({ category: "backend_unavailable" }),
+      );
+      // Only the PostHog transport is left to keep alive.
       expect(waited).toHaveLength(1);
-      let inserted = false;
-      void waited[0].then(() => {
-        inserted = true;
-      });
       await Promise.resolve();
-      expect(inserted).toBe(false);
-      expect(runtimeMocks.capturePostHog).not.toHaveBeenCalled();
-      finishInsert();
-      await waited[0];
-      expect(waited).toHaveLength(2);
       expect(runtimeMocks.capturePostHog).toHaveBeenCalledTimes(1);
       let captured = false;
-      void waited[1].then(() => {
+      void waited[0].then(() => {
         captured = true;
       });
       await Promise.resolve();
       expect(captured).toBe(false);
       finishCapture();
-      await waited[1];
+      await waited[0];
       expect(captured).toBe(true);
+      expect(waited).toHaveLength(1);
     } finally {
-      finishInsert();
       finishCapture();
       await Promise.all(waited);
     }

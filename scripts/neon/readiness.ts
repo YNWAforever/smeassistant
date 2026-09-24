@@ -6,6 +6,7 @@ import { PgTable } from "drizzle-orm/pg-core";
 import * as schema from "../../lib/db/schema";
 import { loadMigrations } from "./migrations";
 import { retainedFunctions } from "./catalog";
+import { assertDatabaseUrl, assertTarget } from "./target";
 type Env = Record<string, string | undefined>;
 type Connection = {
   query(
@@ -25,7 +26,6 @@ export type Readiness = {
     | "ready";
   target?: { host: string; database: string };
 };
-const safeName = (value: string) => /^[a-zA-Z0-9_.-]+$/.test(value);
 function configuration(env: Env) {
   const required = [
     "DATABASE_URL",
@@ -42,27 +42,7 @@ function configuration(env: Env) {
   const app = new URL(env.DATABASE_URL!),
     direct = new URL(env.DATABASE_URL_UNPOOLED!),
     auth = new URL(env.NEON_AUTH_BASE_URL!);
-  for (const db of [app, direct])
-    if (
-      !["postgres:", "postgresql:"].includes(db.protocol) ||
-      !db.username ||
-      !db.password ||
-      !db.hostname ||
-      !db.pathname.slice(1) ||
-      db.hash
-    )
-      throw new Error("configuration");
-  for (const db of [app, direct])
-    for (const [name, value] of db.searchParams) {
-      if (
-        name === "sslmode" &&
-        ["require", "verify-ca", "verify-full"].includes(value)
-      )
-        continue;
-      if (name === "channel_binding" && ["require", "prefer"].includes(value))
-        continue;
-      throw new Error("configuration");
-    }
+  for (const db of [app, direct]) assertDatabaseUrl(db);
   if (
     auth.protocol !== "https:" ||
     auth.username ||
@@ -89,17 +69,7 @@ function configuration(env: Env) {
     throw new Error("configuration");
   const host = env.NEON_READINESS_HOST!,
     database = env.NEON_READINESS_DATABASE!;
-  if (!safeName(host) || !safeName(database)) throw new Error("configuration");
-  // A pooled endpoint differs only by the Neon -pooler suffix.
-  const canonical = (host: string) => host.replace(/-pooler(?=\.)/, "");
-  if (
-    (app.port || "5432") !== (direct.port || "5432") ||
-    canonical(app.hostname) !== canonical(host) ||
-    canonical(direct.hostname) !== canonical(host) ||
-    decodeURIComponent(app.pathname.slice(1)) !== database ||
-    decodeURIComponent(direct.pathname.slice(1)) !== database
-  )
-    throw new Error("target");
+  assertTarget([app, direct], host, database);
   return {
     url: direct.href,
     appUrl: env.DATABASE_URL!,

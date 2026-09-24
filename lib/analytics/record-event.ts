@@ -1,39 +1,37 @@
 import { capturePostHog } from "./posthog";
 import { randomUUID } from "crypto";
-import { eventRepository } from "@/lib/repositories/events";
 import {
-  recordEvent as recordEventCore,
   forwardEventToPostHog as forwardEventToPostHogCore,
   type AnalyticsDependencies,
-  type RecordEventContext,
 } from "@sme-scanner/scan-engine";
 
 export {
   AnalyticsValidationError,
   parseScanEvent,
 } from "@sme-scanner/scan-engine";
-export type {
-  AnalyticsDependencies,
-  AnalyticsEventRow,
-  RecordEventContext,
-} from "@sme-scanner/scan-engine";
+export type { AnalyticsDependencies } from "@sme-scanner/scan-engine";
 
-/** Keep the engine validation/failure contract and app-owned PostHog transport. */
+/**
+ * PostHog transport only. scan_events rows are written in exactly one place,
+ * lib/analytics/scan-events.ts, inside the transaction of the business write
+ * they describe. There is deliberately no recordEvent here: the engine's
+ * recordEvent inserts on a fresh connection under a 250 ms budget with a NULL
+ * dedupe key by default, which silently lost events and never deduplicated
+ * them (F-34). insert exists only because AnalyticsDependencies requires it;
+ * forwardEventToPostHog never calls it, and it throws so that wiring these
+ * dependencies into the engine's recordEvent cannot write a row.
+ */
 function defaultDependencies(): AnalyticsDependencies {
   return {
-    insert: (row, signal) => eventRepository().insert(row, signal),
+    insert: async () => {
+      throw new Error(
+        "scan_events rows are written only through lib/analytics/scan-events.ts, not analytics.insert",
+      );
+    },
     capturePostHog,
     reportError: (category) =>
       console.error("[analytics] event_record_failed", { category }),
   };
-}
-
-export async function recordEvent(
-  input: unknown,
-  context: RecordEventContext,
-  dependencies: AnalyticsDependencies = defaultDependencies(),
-): ReturnType<typeof recordEventCore> {
-  return recordEventCore(input, context, dependencies);
 }
 
 export async function forwardEventToPostHog(

@@ -20,8 +20,15 @@ export type ScanConsentGate =
 
 type ConsentGateDeps = Pick<typeof jobsRepository, "readScanConsent" | "failQueued">;
 
+/**
+ * `anonymousSessionId` is required: a refused job is terminal, so failQueued
+ * writes its scan_completed, and that row needs the caller's real analytics
+ * session. A NULL session would never conflict in the dedupe index, exactly
+ * the way a NULL dedupe key did not.
+ */
 export async function assertScanConsent(
   jobId: string,
+  anonymousSessionId: string,
   deps: ConsentGateDeps = jobsRepository,
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<ScanConsentGate> {
@@ -35,12 +42,12 @@ export async function assertScanConsent(
   }
   if (!row || !row.granted) {
     const correlationId = randomUUID();
-    await deps.failQueued(jobId, "consent_missing", correlationId);
+    await deps.failQueued(jobId, "consent_missing", correlationId, anonymousSessionId);
     return { ok: false, code: "consent_required", status: 403, correlationId };
   }
   if (row.policy_version !== currentScanConsentPolicyVersion(env)) {
     const correlationId = randomUUID();
-    await deps.failQueued(jobId, "consent_policy_stale", correlationId);
+    await deps.failQueued(jobId, "consent_policy_stale", correlationId, anonymousSessionId);
     return { ok: false, code: "consent_policy_stale", status: 403, correlationId };
   }
   return { ok: true };

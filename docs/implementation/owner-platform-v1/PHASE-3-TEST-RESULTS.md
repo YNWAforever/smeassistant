@@ -259,3 +259,219 @@ The last two are the pair that needed a real database: they prove the P3.2 timin
 - **`runWebsiteVerification` and `decideVerification` at the integration level.** The integration file exercises the repository's selection queries, `markChecked`, and the measurement/attribution path against real Postgres, but never calls the sweep or the decision rule. Both are covered by unit tests only (`lib/verify/website-sweep.test.ts`, `lib/verify/decide.test.ts`), with an injected `fetch` and an injected `record`. **Not run at that level** — a deliberate seam, recorded so nobody reads the 15 green integration cases as end-to-end proof of the sweep.
 - Any real outbound fetch of a customer website. **Not run**, by design.
 - Any hosted check: no deploy, no `CRON_SECRET` in a real environment, no observed live cron invocation of the new concern. **Not run**, the same outstanding step P3.1 recorded.
+
+---
+
+# P3.4 reliable events and the value metric — test results
+
+Candidate: branch `p34-reliable-events` at `d734dd7`, 19 commits on top of `main` at `ed23418` (PR #18, merged). Environment: Windows 11, Node `v24.18.0`, pnpm `9.12.0` via corepack, worktree `C:\Users\laich\Documents\smeassistant\.claude\worktrees\p34-reliable-events`. Docker Server `29.7.2`.
+
+**Read this first.** Everything below is **locally verified**. **Nothing here is hosted-verified.** Migration `0008` was applied only to disposable Docker Postgres by `db:verify` and by the integration harness, never to a hosted database. `report:value` was run only on its refusal path, with no database configured. Nothing was deployed or pushed, and no paid provider was called. See the P3.4 section of `PHASE-3-REPORT.md` for the runbook and what remains a manual step.
+
+## Gate results (Task 10, full verification)
+
+Run one at a time, in this order, from the worktree root.
+
+| # | Command | Result |
+|---|---|---|
+| 1 | `corepack pnpm typecheck` | **passed**: exit 0. Root `tsc --noEmit` plus `pnpm -r typecheck` across all 4 workspace packages (`region`, `scoring`, `contracts`, `scan-engine`), each reporting `Done`. |
+| 2 | `corepack pnpm lint` | **passed**: exit 0, **30 warnings, 0 errors**. Compared against `origin/main` in this task (see "Baseline" below): the same 18 files and the same 30 messages. The only difference is a line number: `app/api/scan/process/route.test.ts` `'_input' is defined but never used` moved from 914 to 945 because P3.4 added 31 lines above it. No new warning. *Correction to earlier sections:* the 30 warnings are not all under `packages/**`. Six of the 18 files are; the other twelve are app files (for example `lib/auth/staff.ts`, `lib/security/rate-limit.test.ts`). |
+| 3 | `corepack pnpm test` | **passed**: exit 0, zero FAIL lines, **323 files / 3,413 tests**. Breakdown and baseline below. |
+| 4 | `corepack pnpm build` (`next build`, Turbopack, the literal gate command) | **blocked**: exit 1, `Error: Turbopack build failed with 32 errors`. See "The build gate" below. Not worked around: no flag was substituted into the gate command, nothing was reinstalled or patched, no code changed to route around it. |
+| 5 | `corepack pnpm test:integration` | **passed**: exit 0, **30 files / 324 tests**, 130.04s. Breakdown and baseline below. |
+| 6 | `corepack pnpm db:verify` | **passed**: exit 0, `columns: 418`. Detail below. |
+| — | `npx next build --webpack` (diagnostic, **not** the gate) | **passed**: exit 0. See "The build gate". |
+| — | `corepack pnpm report:value` with `DATABASE_URL`, `VALUE_REPORT_HOST` and `VALUE_REPORT_DATABASE` unset (the plan's Task 9 Step 6 refusal check) | exit 1, stderr exactly `report:value failed: configuration`. No database was contacted. |
+
+No run failed, so nothing was re-run. No flake was observed in this pass.
+
+### Baseline, measured rather than taken from the plan
+
+The plan cites pre-P3.4 baselines of **319 files / 3,311 tests** (unit) and **29 files / 301 tests** (integration). To find out what those numbers count, both suites were run at `origin/main` (`ed23418`) in a temporary worktree (`git worktree add` into the session scratchpad, `corepack pnpm install --frozen-lockfile`, then `corepack pnpm test` and `corepack pnpm test:integration`). The worktree was removed afterwards.
+
+| Suite | `origin/main` `ed23418` | P3.4 `d734dd7` | Delta |
+|---|---|---|---|
+| app (`vitest run --exclude lib/evidence/safe-media.test.ts`) | 268 / 2,724 | 272 / 2,826 | +4 / +102 |
+| `lib/evidence/safe-media.test.ts` (run alone, by design) | 1 / 62 | 1 / 62 | 0 |
+| `packages/region` | 3 / 23 | 3 / 23 | 0 |
+| `packages/scoring` | 16 / 183 | 16 / 183 | 0 |
+| `packages/contracts` | 3 / 20 | 3 / 20 | 0 |
+| `packages/scan-engine` | 28 / 299 | 28 / 299 | 0 |
+| **`corepack pnpm test` total** | **319 / 3,311** | **323 / 3,413** | **+4 / +102** |
+| **`corepack pnpm test:integration`** | **29 / 301** | **30 / 324** | **+1 / +23** |
+
+Both plan baselines reproduce exactly, and they count the same six sub-runs the earlier sections of this file count. (The website-verifier section above recorded 318 / 3,298. The extra 1 file and 13 tests landed on `main` after that section was written and before P3.4 began. They were not attributed file by file here.)
+
+The per-file delta comes from `vitest list --json` in both trees, grouped by file.
+
+**Unit (+4 files, +102 tests):**
+
+| File | Before → after | What it covers |
+|---|---|---|
+| `tests/neon-target.test.ts` | new, 50 | every branch of `safeName`, `canonicalHost`, `assertDatabaseUrl` and `assertTarget`, including the `4e82805` first-label and lowercase rules |
+| `tests/value-report-cli.test.ts` | new, 20 | `configure` refusals, `formatText` columns and wording, `runReport` read-only ordering, database mismatch, failure categories and cleanup |
+| `lib/analytics/scan-events.test.ts` | new, 12 | event builders, fixed dedupe keys, `insertScanEvent` on the caller's client, `writeScanEventSafely` savepoint, lock timeout and logging |
+| `tests/value-report-week.test.ts` | new, 11 | ISO weeks in Hong Kong time, half-open boundaries, week 53, a 2024–2028 self-consistency walk |
+| `app/api/scan/process/route.test.ts` | 24 → 27 | the consent gate gets the resolved analytics session; the cookie on a 403 and not on a 503 |
+| `app/api/scan/start/route.test.ts` | 23 → 26 | forwarding goes through `after()`, not a bare promise; the job is still returned when forwarding never settles or `after()` throws; nothing is forwarded when the job was not created |
+| `lib/db/transaction.test.ts` | 3 → 5 | `COMMIT` returning `ROLLBACK` rejects with `transaction_rolled_back`; a real commit returns the value |
+| `lib/scan/start-job.test.ts` | 22 → 23 | an invalid event is refused before the transaction opens |
+
+Five more unit files were rewritten with their test counts unchanged: `lib/scan/execution-store.test.ts`, `lib/scan/run.test.ts` (tests renamed from "pending insertion" to "never inserts from recordTerminal"), `lib/workspace/rescan.test.ts`, `lib/scan/consent-gate.test.ts` and `tests/neon-scan-unavailable.test.ts`.
+
+**Integration (+1 file, +23 tests):**
+
+| File | Before → after |
+|---|---|
+| `test/integration/neon-value-report.integration.test.ts` | new, 10 |
+| `test/integration/neon-execution.integration.test.ts` | 7 → 15 |
+| `test/integration/neon-scan-start.integration.test.ts` | 14 → 19 |
+
+`neon-rescan` (4 tests) gained a `scan_started` assertion inside an existing test, and `neon-schema` updated its baselines. Neither changed its count. Subtracting the value-report file gives 324 − 10 = **314**. That is the integration count before Task 8, and it matches the 314 seen in a mid-phase run. The plan expected 9 value-report tests. There are 10, because the cross-tenant case was added in `173e287`.
+
+### The build gate (gate 4)
+
+`next build` (Turbopack, the actual `package.json` `build` script) fails on this Windows machine with **`Error: Turbopack build failed with 32 errors`**, exit 1. It is the same cascade of `Module not found: Can't resolve '@radix-ui/react-*'` inside `radix-ui`'s own barrel export (`node_modules/.pnpm/radix-ui@1.6.7.../node_modules/radix-ui/dist/index.mjs`). This run it was traced through `components/ui/alert-dialog.tsx` → `components/workspace/rescan-button.tsx` → `components/workspace/home-brief.tsx` → `app/[locale]/owner/[workspaceSlug]/page.tsx`. The unresolved modules were `react-roving-focus` (10), `react-dismissable-layer` (7), `react-visually-hidden` (4), `react-toggle-group` (3), and one each of `react-accessible-icon`, `-alert-dialog`, `-aspect-ratio`, `-context-menu`, `-dropdown-menu`, `-navigation-menu`, `-one-time-password-field` and `-password-toggle-field`.
+
+This is **the same standing, pre-existing, Windows-only blocker** recorded in `PHASE-1-TEST-RESULTS.md` (gate 9), `PHASE-2-TEST-RESULTS.md` (gate 4), P3.1, P3.2 and the website verifier above. The error count varies between runs (33, 37, 72, now 32) because it is a resolution cascade through a barrel file. Two checks confirm it is unrelated to P3.4:
+
+1. **No P3.4 commit touches the failure's chain.** The 43-file diff `ed23418..d734dd7` contains no `pnpm-lock.yaml`, no `next.config.ts`, no `radix-ui` import and no file under `components/`. It touches `package.json` by exactly one line, the new `"report:value": "tsx scripts/report/value.ts"` script entry. No dependency was added or changed.
+2. **The webpack fallback compiles clean.** `npx next build --webpack` → exit 0, `✓ Compiled successfully in 27.2s`, `Finished TypeScript in 13.4s`, `✓ Generating static pages using 11 workers (29/29)`, and the full route manifest, including the two routes this phase changed (`ƒ /api/scan/start`, `ƒ /api/scan/process`), with zero errors.
+
+Recorded **blocked**, matching this repo's convention of leaving the gate honestly blocked on this machine rather than substituting a different bundler into the gate itself. (An attempt to run the gate at `origin/main` for comparison, inside the temporary baseline worktree, failed for a different reason: Turbopack could not infer the workspace root from a directory under `%TEMP%`. It is not evidence either way and is not counted.)
+
+### Migration verification (gate 6)
+
+`corepack pnpm db:verify`: exit 0. Final catalog:
+
+```
+applied:      0001_identity.sql, 0002_business.sql, 0003_workflows.sql,
+              0004_atomic_operations.sql, 0005_owner_removal_guard.sql,
+              0006_action_applications.sql, 0007_action_verification.sql,
+              0008_workspace_internal.sql
+replay:       []
+tables 35 · columns 418 · constraints 159 · indexes 87 · triggers 8 · functions 14
+seededRows 0 · deferredFunctions [] · deferredTriggers []
+```
+
+The delta against the verifier's catalog (35 / 417 / 159 / 87) is **+1 column** (`workspaces.is_internal`) and nothing else. That is exactly the delta the design predicted before running it: "+1 column, +0 indexes". `0008` is the only new migration, and `0001`–`0007` were not edited. This proves the migration applies and re-applies cleanly against a disposable database. It says nothing about any hosted database, because none was contacted.
+
+### Integration suite detail (gate 5)
+
+The four integration files P3.4 touches, run together with `--reporter=verbose` (`4 passed (4)`, `48 passed (48)`). The new or changed event cases:
+
+```
+neon-execution
+✓ persist writes exactly one scan_completed for done inside its transaction          17ms
+✓ persist writes exactly one scan_completed for partial inside its transaction       17ms
+✓ persist writes exactly one scan_completed for failed inside its transaction        16ms
+✓ a retried persist leaves one scan_completed, because the dedupe key now conflicts  25ms
+✓ recordTerminal still reaches PostHog and never writes a second row                 18ms
+✓ persist still commits the scan when its event cannot be written                    26ms
+✓ fail() writes one failed scan_completed only when its status guard matched         23ms
+✓ persist does not wait on a blocked scan_events insert                             556ms
+✓ fail() still marks the job failed when its event cannot be written                 30ms
+
+neon-scan-start (scan-time consent)
+✓ writes exactly one scan_started inside the job's own transaction                   11ms
+✓ writes no scan_started when the job transaction fails before reaching it            6ms
+✓ still creates the job when its scan_started cannot be written                      22ms
+✓ failQueued fails a queued job with exactly one scan_completed, and leaves a
+  non-queued one untouched
+✓ failQueued still fails a queued job when its event cannot be written               22ms
+
+neon-rescan
+✓ enqueues actual TW jobs and server-attributed audit, then monthly schedule once    61ms
+
+neon-value-report
+✓ counts distinct locations with a counted delivery, excluding demo and internal     17ms
+✓ states how many workspaces were excluded                                           14ms
+✓ separates first, repeat and draft steps per location                               14ms
+✓ reads scans from audit_jobs, excluding scans claimed by an internal workspace      14ms
+✓ reconciles every job against scan_events, internal included                        14ms
+✓ splits supported and assisted claims and excludes internal ones                    14ms
+✓ counts first sign-ins, task failures and current missing input                     14ms
+✓ never reports paid conversion as a number                                          13ms
+✓ does not count a delivery whose version or action belongs to another workspace     21ms
+✓ runs under a read-only transaction that Postgres enforces                           4ms
+```
+
+"persist does not wait on a blocked scan_events insert" took **556 ms** in this run. A second connection holds `ACCESS EXCLUSIVE` on `scan_events`, and `persist()` gives up after the 500 ms `lock_timeout` (SQLSTATE `55P03`, logged with the job id), then commits the job as `done`. The test's own ceiling is 5 s.
+
+### Mutation checks performed in Task 10
+
+Each mutation was applied by a scratch script, the named file was run on its own, and the original text was written back before the next one. `git status` was clean afterwards (apart from the two line-ending-only snapshot files, restored before the commit). Integration mutations ran against disposable Docker Postgres.
+
+| # | Mutation | File run | Observed |
+|---|---|---|---|
+| E1 | `insertScanEvent` passes `null` instead of the dedupe key | `neon-execution` | **killed**, 5/15 failed, including "a retried persist leaves one scan_completed…": `expected [ …, … ] to have a length of 1 but got 2` |
+| E2 | `recordTerminal` goes back to the engine's `recordEvent` | `neon-execution` | **killed**, 1/15: "recordTerminal still reaches PostHog and never writes a second row" |
+| E3 | `fail()` writes the event whether or not its `UPDATE` matched | `neon-execution` | **killed**, 2/15: "fail() writes one failed scan_completed only when its status guard matched" (`expected true to be false` on the already-`done` job), plus "rolls back findings when result persistence fails…" |
+| E4 | `SAVEPOINT` / `ROLLBACK TO` / `RELEASE` removed from `writeScanEventSafely` | `neon-execution` | **killed**, 3/15: "persist still commits the scan when its event cannot be written", "persist does not wait on a blocked scan_events insert", "fail() still marks the job failed when its event cannot be written" |
+| S1 | the same savepoint removal | `neon-scan-start` | **killed**, 2/19: "still creates the job when its scan_started cannot be written", "failQueued still fails a queued job when its event cannot be written" |
+| E5 | `SET LOCAL lock_timeout` removed | `neon-execution` | **killed**, 1/15: "persist does not wait on a blocked scan_events insert" |
+| U1 | `withTransaction`'s `COMMIT`-tag guard removed | `lib/db/transaction.test.ts` | **killed**, 1/5: "rejects when COMMIT reports that the transaction was rolled back" |
+| U2 | `after(() => …)` in `scan/start` replaced by an immediately invoked bare promise | `app/api/scan/start/route.test.ts` | **killed**, 1/26: "hands PostHog forwarding to after() instead of a bare promise" |
+| V1 | `ELIGIBLE` drops `is_internal` | `neon-value-report` | **killed**, 4/10, including "counts distinct locations with a counted delivery, excluding demo and internal" |
+| V2 | `ELIGIBLE` drops `is_demo` | `neon-value-report` | **killed**, 3/10, including the same primary-metric test |
+| V3 | primary query ignores `d.counted` | `neon-value-report` | **killed**, 2/10, including the primary-metric test |
+| V4 | `first_export` keeps NULL-location deliveries | `neon-value-report` | **killed**, 2/10, including "separates first, repeat and draft steps per location" |
+| V5 | `started_events` counts `count(*)` instead of `count(DISTINCT e.job_id)` (the seed keeps a duplicate since `5e81fdf`) | `neon-value-report` | **killed**, 1/10: "reconciles every job against scan_events, internal included" |
+| V6 | delivery → version tenant match removed from `DELIVERY_JOIN` | `neon-value-report` | **killed**, 1/10: "does not count a delivery whose version or action belongs to another workspace" |
+| V7 | version → action tenant match removed from `DELIVERY_JOIN` | `neon-value-report` | **killed**, 1/10: the same cross-tenant test |
+| V8 | the scans line drops `is_internal` | `neon-value-report` | **killed**, 1/10: "reads scans from audit_jobs, excluding scans claimed by an internal workspace" |
+| V9 | the scans line drops `is_demo` | `neon-value-report` | **survived** at `d734dd7`, 0/10 failed, because the seed attached no scan to the demo workspace. **Closed in `65b6546`** (see the follow-up below): now **killed**, 1/10. |
+| C1 | `BEGIN TRANSACTION READ ONLY` → `BEGIN` | `tests/value-report-cli.test.ts` | **killed**, 2/20: "opens a read-only transaction, checks the database, reports, then rolls back and closes", "stops at a different database before any report query" |
+| C2 | the `current_database()` check removed | `tests/value-report-cli.test.ts` | **killed**, 1/20: "stops at a different database before any report query" |
+| C3 | `assertTarget` removed from `configure` | `tests/value-report-cli.test.ts` | **killed**, 1/20: "refuses a DATABASE_URL pointing somewhere other than the named target" |
+| C4 | an unparseable `DATABASE_URL` attached as `cause` | `tests/value-report-cli.test.ts` | **killed**, 1/20: "never attaches the unparseable URL as a cause, because it would carry the password" |
+| C5 | the plan's original `line()` (`padEnd(26)` / `padEnd(28)`, no gap) | `tests/value-report-cli.test.ts` | **killed**, 3/20: "separates the longest label from its value", "keeps label, value and note in separate columns on every row", "keeps a value wider than its column apart from the note" |
+| T1 | `canonicalHost` restored to its pre-`4e82805` form | `tests/neon-target.test.ts` | **killed**, 2/50: "strips -pooler from the first label only", "lowercases, because postgres: URLs keep the host's case and DNS ignores it" |
+
+The commits record two earlier mutation checks. `5e81fdf` made the duplicate `scan_started` a permanent part of the seed. Task 8 had checked V5 with a temporary duplicate and then removed it, which left the suite unable to detect the mutation. `d404f04` renamed the scan-start rollback test after finding that it cannot exercise "written, then rolled back". The other mutation checks the plan asked for at Tasks 3, 5 and 8 left no recorded observations in the commits. The table above is what Task 10 observed itself.
+
+### Follow-up after Task 10: V9 closed (`65b6546`)
+
+The review of Task 10 closed V9 rather than leave it open. The change touches only the test.
+
+- **Seed.** `neon-value-report` seeds one `done` scan in W38 attached to the demo workspace, next to the one attached to the internal workspace.
+- **Scans.** The expectation is unchanged at `{started: 4, completedFull: 1, completedPartial: 1, failed: 1, inProgress: 1}`, because the demo scan is excluded. The test is renamed "reads scans from audit_jobs, excluding scans claimed by an internal or demo workspace".
+- **Reconciliation.** This check covers every job, internal and demo included, so it re-derives from `{5, 3, 4, 1}` to `{jobsStarted: 6, startedEvents: 3, jobsTerminal: 5, completedEvents: 1}`. The demo scan is one more started job and one more terminal job, with no events. The test is renamed "reconciles every job against scan_events, internal and demo included".
+- **Observed.**
+  - The file passes 10/10.
+  - V9 reapplied (`coalesce(w.is_demo OR w.is_internal, false)` → `coalesce(w.is_internal, false)`) fails 1/10, on the renamed scans test. The query was then restored.
+  - `corepack pnpm test:integration` exits 0 with **30 files / 324 tests**, the same count as in Task 10.
+
+The test names in the Task 10 output and mutation table above are the names at `d734dd7`.
+
+### After the whole-branch review (`f4c4613`, `5b8cc9d`)
+
+A final review of the whole branch found one Important and four Minor findings. `PHASE-3-REPORT.md` covers them. These are the test changes and the observations:
+
+- **`f4c4613`: the dead F-34 writer was removed.**
+  - Deleted `lib/analytics/events-repository.test.ts`, along with the file it tested.
+  - Removed three `neon-integrations` tests that exercised only `recordEvent` + `eventRepository`:
+    - "cancels locked analytics, frees its connection and never inserts after unlock";
+    - "records analytics through Neon and suppresses duplicate provider effects";
+    - "captures analytics once after persistence and fails open without capturing on database failure".
+  - Added `tests/scan-events-single-writer.test.ts`. A planted `insert\n INTO scan_events` string in `lib/analytics/posthog.ts` failed it and named that file. The string was then restored.
+  - `lib/scan/run.test.ts` replaced a vacuous "insert mock not called" assertion. It now asserts exactly one `scan_events` insert statement and no `backend_unavailable` report. Pointing `recordTerminal` at the engine's `recordEvent` failed it. That change was then restored.
+- **`5b8cc9d`: the location hops are now tenant-matched.** It adds two rolled-back cross-tenant tests to `neon-value-report`:
+  - **(a)** A demo workspace's counted W37 delivery on an action pointing at L1. `repeatWeeklyExport` must stay 1. With the EXISTS workspace match reverted, it became 2.
+  - **(b)** Counted W38 deliveries on actions pointing at a demo location: one in E1, and one in a fresh eligible workspace E3, whose only delivery it is. Locations must stay 2 and workspaces 2, with eligibleWorkspaces 3. With `LOCATION_MATCHED` reverted, locations and workspaces both became 3.
+  - The other 10 tests kept their expectations.
+
+| Suite at `5b8cc9d` | Files / tests | vs `d734dd7` |
+|---|---|---|
+| `corepack pnpm test` (all six sub-runs) | **323 / 3,414**, exit 0 | +0 files / +1 test. The added guard file and the deleted repository test file net to zero files. The test count is the net of tests added and removed across those two files and `run.test.ts`. |
+| `corepack pnpm test:integration` | **30 / 323**, exit 0 | −1 test: 3 removed from `neon-integrations`, 2 added to `neon-value-report` (which now has 12) |
+| `corepack pnpm typecheck` | exit 0 | — |
+| `corepack pnpm lint` | 30 warnings / 0 errors | unchanged |
+
+## What Task 10 did not run
+
+- `corepack pnpm e2e` / `e2e:acceptance`: need a production build, which gate 4 cannot produce on this machine. **Not run.**
+- `corepack pnpm test:secret-boundary`: shells out to `next build` internally and inherits gate 4's blocker. **Not run.**
+- `corepack pnpm report:value` against any real database. Only the refusal path was run. **Not run**, by design: it needs `0008` applied (DEC-11) and an explicit target.
+- `corepack pnpm neon:readiness` against any target. Its unit suite (`tests/neon-readiness.test.ts`, unchanged by P3.4) passes inside gate 3. **Not run** against a database.
+- Any hosted check: no deploy, no migration applied anywhere real, no observed reconciliation gap on real traffic. **Not run.**

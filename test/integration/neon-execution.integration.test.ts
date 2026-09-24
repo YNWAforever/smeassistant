@@ -132,32 +132,149 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
         client.release();
       }
     });
-    it("records terminal events through the real event repository", async () => {
-      const id = await job("done");
-      const waited: Promise<unknown>[] = [];
+    const persisted = (jobId: string, status: ScanPersistence["status"]): ScanPersistence => ({
+      jobId,
+      status,
+      overall: status === "failed" ? null : 70,
+      coverage: 0.5,
+      scoringVersion: "2026-08-16",
+      moduleResults: {} as ScanPersistence["moduleResults"],
+      findings: [],
+    });
+    const completedRows = async (id: string) =>
+      (await runtime.query("SELECT anonymous_session_id,event_name,properties,dedupe_key FROM scan_events WHERE job_id=$1", [id])).rows;
+
+    // persist() carries failed too: a scan that measured nothing is scored
+    // "failed" and persisted normally (processor.ts). fail() is only for scans
+    // that threw.
+    it.each(["done", "partial", "failed"] as const)("persist writes exactly one scan_completed for %s inside its transaction", async (status) => {
+      const id = await job("persisting");
       const session = randomUUID();
-      const storage = createScanExecutionStore(session, {
+      const storage = createScanExecutionStore(session, { pool: runtime });
+      await storage.persist(persisted(id, status));
+      expect(await completedRows(id)).toEqual([
+        { anonymous_session_id: session, event_name: "scan_completed", properties: { outcome: status, coverage: 0.5 }, dedupe_key: "terminal" },
+      ]);
+    });
+
+    // Production does not run this sequence: a committed terminal status ends
+    // the job's claimability, so no second process reaches persist() for it,
+    // and a different process would carry a different session anyway. It
+    // still earns its place because it catches a NULL-key regression: with a
+    // NULL dedupe key the second insert would never conflict and this would
+    // read two rows.
+    it("a retried persist leaves one scan_completed, because the dedupe key now conflicts", async () => {
+      const id = await job("persisting");
+      const storage = createScanExecutionStore(randomUUID(), { pool: runtime });
+      await storage.persist(persisted(id, "done"));
+      await storage.persist(persisted(id, "done"));
+      expect(await completedRows(id)).toHaveLength(1);
+    });
+
+    // The trap: with the row already written in-transaction, routing
+    // recordTerminal through recordEvent would insert again -- its default
+    // NULL dedupe key never conflicts -- writing a duplicate row.
+    // recordTerminal must forward only.
+    it("recordTerminal still reaches PostHog and never writes a second row", async () => {
+      const id = await job("persisting");
+      const capture = vi.fn(async () => {});
+      const insert = vi.fn(async () => { throw new Error("recordTerminal must not insert"); });
+      const storage = createScanExecutionStore(randomUUID(), {
         pool: runtime,
-        waitUntil: (p) => {
-          waited.push(p);
+        analytics: {
+          insert,
+          capturePostHog: capture,
+          reportError: () => {},
         },
       });
-      await storage.recordTerminal({ jobId: id, status: "done", coverage: 1 });
-      await Promise.all(waited);
-      expect(
-        (
-          await runtime.query(
-            "SELECT anonymous_session_id,event_name,properties FROM scan_events WHERE job_id=$1",
-            [id],
-          )
-        ).rows,
-      ).toEqual([
-        {
-          anonymous_session_id: session,
-          event_name: "scan_completed",
-          properties: { outcome: "done", coverage: 1 },
-        },
+      await storage.persist(persisted(id, "done"));
+      await storage.recordTerminal({ jobId: id, status: "done", coverage: 0.5 });
+      // Asserted first: a throwing insert is swallowed inside recordEvent, so
+      // the row count below cannot catch an insert on its own.
+      expect(insert).not.toHaveBeenCalled();
+      expect(capture).toHaveBeenCalledTimes(1);
+      expect(await completedRows(id)).toHaveLength(1);
+    });
+
+    // The scan always completes: the event write is in a SAVEPOINT, so a
+    // failed insert rolls back only itself and the scored scan still commits.
+    // Without the savepoint PostgreSQL would abort the transaction and turn
+    // COMMIT into a rollback, stranding the job in persisting.
+    it("persist still commits the scan when its event cannot be written", async () => {
+      const id = await job("persisting");
+      const log = vi.spyOn(console, "error").mockImplementation(() => {});
+      await owner.query('REVOKE INSERT ON TABLE public."scan_events" FROM sme_app_runtime');
+      try {
+        await expect(createScanExecutionStore(randomUUID(), { pool: runtime }).persist(persisted(id, "done"))).resolves.toBeUndefined();
+      } finally {
+        await owner.query('GRANT INSERT ON TABLE public."scan_events" TO sme_app_runtime');
+        log.mockRestore();
+      }
+      expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [id])).rows[0].status).toBe("done");
+      expect((await runtime.query("SELECT count(*)::int AS n FROM scan_events WHERE job_id=$1 AND event_name='scan_completed'", [id])).rows[0].n).toBe(0);
+    });
+
+    it("fail() writes one failed scan_completed only when its status guard matched", async () => {
+      const session = randomUUID();
+      const storage = createScanExecutionStore(session, { pool: runtime });
+      const running = await job("collecting");
+      expect(await storage.fail({ jobId: running, category: "PROCESSOR_FAILED", correlationId: randomUUID() })).toBe(true);
+      expect(await completedRows(running)).toEqual([
+        { anonymous_session_id: session, event_name: "scan_completed", properties: { outcome: "failed", coverage: 0 }, dedupe_key: "terminal" },
       ]);
+      const finished = await job("done");
+      expect(await storage.fail({ jobId: finished, category: "PROCESSOR_FAILED", correlationId: randomUUID() })).toBe(false);
+      expect(await completedRows(finished)).toEqual([]);
+    });
+
+    // The savepoint protects the scan from an insert that errors, not one that
+    // waits. DDL or maintenance on scan_events (ALTER TABLE, REINDEX, VACUUM
+    // FULL, LOCK TABLE) queued behind a long reader makes every new INSERT
+    // wait; without lock_timeout the scan transaction, and its audit_jobs row
+    // lock, would be held until the platform killed the request. persist() is
+    // raced against a timer so that an unbounded wait fails this test cleanly
+    // instead of hanging it, and the finally always releases the lock.
+    it("persist does not wait on a blocked scan_events insert", async () => {
+      const id = await job("persisting");
+      const log = vi.spyOn(console, "error").mockImplementation(() => {});
+      const locker = await owner.connect();
+      await locker.query("BEGIN");
+      await locker.query('LOCK TABLE public."scan_events" IN ACCESS EXCLUSIVE MODE');
+      const started = Date.now();
+      const pending = createScanExecutionStore(randomUUID(), { pool: runtime }).persist(persisted(id, "done"));
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const outcome = await Promise.race([
+          pending.then(() => "resolved" as const),
+          new Promise<"blocked">((resolve) => { timer = setTimeout(() => resolve("blocked"), 5000); }),
+        ]);
+        expect(outcome).toBe("resolved");
+        expect(Date.now() - started).toBeLessThan(5000);
+        // 55P03 lock_not_available: the bounded insert gave up, logged with the job.
+        expect(log).toHaveBeenCalledWith("[analytics] event_record_failed", expect.objectContaining({ jobId: id, code: "55P03" }));
+      } finally {
+        clearTimeout(timer);
+        await locker.query("ROLLBACK");
+        locker.release();
+        await pending.catch(() => {});
+        log.mockRestore();
+      }
+      expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [id])).rows[0].status).toBe("done");
+      expect((await runtime.query("SELECT count(*)::int AS n FROM scan_events WHERE job_id=$1 AND event_name='scan_completed'", [id])).rows[0].n).toBe(0);
+    }, 20000);
+
+    it("fail() still marks the job failed when its event cannot be written", async () => {
+      const id = await job("collecting");
+      const log = vi.spyOn(console, "error").mockImplementation(() => {});
+      await owner.query('REVOKE INSERT ON TABLE public."scan_events" FROM sme_app_runtime');
+      try {
+        await expect(createScanExecutionStore(randomUUID(), { pool: runtime }).fail({ jobId: id, category: "PROCESSOR_FAILED", correlationId: randomUUID() })).resolves.toBe(true);
+      } finally {
+        await owner.query('GRANT INSERT ON TABLE public."scan_events" TO sme_app_runtime');
+        log.mockRestore();
+      }
+      expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [id])).rows[0].status).toBe("failed");
+      expect((await runtime.query("SELECT count(*)::int AS n FROM scan_events WHERE job_id=$1", [id])).rows[0].n).toBe(0);
     });
     it("runs real fixture collection/scoring and idempotently persists findings without holding collection transactions", async () => {
       const id = await job();

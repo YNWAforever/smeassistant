@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { jobsRepository } from "../../lib/repositories/jobs";
 import { enforceRateLimit } from "../../lib/security/rate-limit";
 import { POST as unlock } from "../../app/api/report-access/unlock/route";
@@ -40,7 +41,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan persistence", ()
         expect(parsed.ok).toBe(true);
         if (!parsed.ok)
             throw Error("invalid fixture");
-        const result = await insertScanJob(parsed.input, parsed.consent);
+        const result = await insertScanJob(parsed.input, parsed.consent, { anonymousSessionId: randomUUID() });
         expect(result.ok).toBe(true);
         if (!result.ok)
             throw Error("insert failed");
@@ -69,14 +70,14 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan persistence", ()
         expect(parsed.ok).toBe(true);
         if (!parsed.ok)
             throw Error(parsed.error);
-        const result = await insertScanJob(parsed.input, parsed.consent, { workspaceId: ws, locationId: loc });
+        const result = await insertScanJob(parsed.input, parsed.consent, { anonymousSessionId: randomUUID() }, { workspaceId: ws, locationId: loc });
         expect(result.ok).toBe(true);
         if (!result.ok)
             throw Error("insert failed");
         const row = (await runtime.query("SELECT * FROM audit_jobs WHERE id=$1", [result.jobId])).rows[0];
         expect(row).toMatchObject({ workspace_id: ws, location_id: loc, parent_job_id: parent, region: "tw", place_id: key === "place_id" ? "identity" : null, place_match_confidence: key === "place_id" ? "high" : null });
         expect(row.input_snapshot).toMatchObject({ version: 2, locale: "zh-TW", market: "TW", instagramMatchProvenance: "picker_confirmed", alternateNames: ["Alternative"], provider: "serpapi", manualEntry: false });
-        const again = await insertScanJob(parsed.input, parsed.consent);
+        const again = await insertScanJob(parsed.input, parsed.consent, { anonymousSessionId: randomUUID() });
         expect(again.ok).toBe(true);
         if (!again.ok)
             throw Error("insert failed");
@@ -152,7 +153,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan persistence", ()
 
   it("writes exactly one consent row, with no lead, alongside the job", async () => {
    const parsed = consentedInput();
-   const result = await insertScanJob(parsed.input, parsed.consent);
+   const result = await insertScanJob(parsed.input, parsed.consent, { anonymousSessionId: randomUUID() });
    if (!result.ok) throw Error("insert failed");
    const rows = (await runtime.query("SELECT consent_type,granted,policy_version,locale,lead_id FROM consent_records WHERE job_id=$1", [result.jobId])).rows;
    expect(rows).toEqual([{ consent_type: "public_evidence", granted: true, policy_version: LEGAL_POLICY_VERSION, locale: "zh-HK", lead_id: null }]);
@@ -166,15 +167,73 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan persistence", ()
      // buildScanJobInsert's shape, reached through insertScanJob's own builder.
      (await import("../../lib/scan/start-job")).buildScanJobInsert(row),
      { consent_type: "public_evidence", granted: true, policy_version: LEGAL_POLICY_VERSION, locale: null as never },
+     { anonymousSessionId: randomUUID(), event: (await import("../../lib/analytics/scan-events")).scanStartedEvent(row.market, row.locale) },
     ),
    ).rejects.toThrow();
    // No unconsented queued scan is left behind.
    expect((await runtime.query("SELECT count(*)::int AS n FROM audit_jobs WHERE business_name='Consent shop' AND NOT EXISTS (SELECT 1 FROM consent_records c WHERE c.job_id=audit_jobs.id)")).rows[0].n).toBe(0);
   });
 
+  it("writes exactly one scan_started inside the job's own transaction", async () => {
+   const parsed = consentedInput();
+   const session = randomUUID();
+   const result = await insertScanJob(parsed.input, parsed.consent, { anonymousSessionId: session });
+   if (!result.ok) throw Error("insert failed");
+   const rows = (await runtime.query("SELECT job_id,anonymous_session_id,event_name,properties,dedupe_key FROM scan_events WHERE anonymous_session_id=$1", [session])).rows;
+   expect(rows).toEqual([{ job_id: result.jobId, anonymous_session_id: session, event_name: "scan_started", properties: { market: parsed.input.market, locale: parsed.input.locale }, dedupe_key: "started" }]);
+  });
+
+  it("writes no scan_started when the job transaction fails before reaching it", async () => {
+   const parsed = consentedInput();
+   const session = randomUUID();
+   const { buildScanJobInsert } = await import("../../lib/scan/start-job");
+   const { scanStartedEvent } = await import("../../lib/analytics/scan-events");
+   await expect(
+    jobsRepository.insert(
+     buildScanJobInsert(parsed.input),
+     // NULL locale violates consent_records.locale NOT NULL, so the transaction
+     // fails at the consent insert -- before scan_started is reached. This does
+     // not exercise "written, then rolled back": the event is the transaction's
+     // last statement, so nothing after it can fail and undo it, which holds by
+     // construction rather than by test. What this DOES catch is the event being
+     // written outside and ahead of the transaction, where it would survive.
+     { consent_type: "public_evidence", granted: true, policy_version: LEGAL_POLICY_VERSION, locale: null as never },
+     { anonymousSessionId: session, event: scanStartedEvent(parsed.input.market, parsed.input.locale) },
+    ),
+   ).rejects.toThrow();
+   expect((await runtime.query("SELECT count(*)::int AS n FROM scan_events WHERE anonymous_session_id=$1", [session])).rows[0].n).toBe(0);
+  });
+
+  // The owner's decision: the scan always completes. The event write sits in a
+  // SAVEPOINT, so a failed scan_started rolls back only itself; the job and its
+  // consent still commit, and the missing event is a counted reconciliation gap.
+  it("still creates the job when its scan_started cannot be written", async () => {
+   const parsed = consentedInput();
+   const name = `No event shop ${randomUUID()}`;
+   const log = vi.spyOn(console, "error").mockImplementation(() => {});
+   await owner.query('REVOKE INSERT ON TABLE public."scan_events" FROM sme_app_runtime');
+   let result: Awaited<ReturnType<typeof insertScanJob>>;
+   try {
+    // ScanStartInput is camelCase: `business_name` here would be silently
+    // ignored and the job would be named "Consent shop", so the lookups below
+    // would not find it. The unique name finds exactly this job.
+    result = await insertScanJob({ ...parsed.input, businessName: name }, parsed.consent, { anonymousSessionId: randomUUID() });
+   } finally {
+    // Restores exactly what was revoked: 0003 grants SELECT, INSERT, UPDATE, DELETE.
+    await owner.query('GRANT INSERT ON TABLE public."scan_events" TO sme_app_runtime');
+    log.mockRestore();
+   }
+   expect(result.ok).toBe(true);
+   const jobs = (await runtime.query("SELECT id FROM audit_jobs WHERE business_name=$1", [name])).rows;
+   expect(jobs).toHaveLength(1);
+   if (result.ok) expect(jobs[0].id).toBe(result.jobId);
+   expect((await runtime.query("SELECT count(*)::int AS n FROM consent_records WHERE job_id=$1", [jobs[0].id])).rows[0].n).toBe(1);
+   expect((await runtime.query("SELECT count(*)::int AS n FROM scan_events WHERE job_id=$1", [jobs[0].id])).rows[0].n).toBe(0);
+  });
+
   it("removes the consent row when the scan is erased", async () => {
    const parsed = consentedInput();
-   const result = await insertScanJob(parsed.input, parsed.consent);
+   const result = await insertScanJob(parsed.input, parsed.consent, { anonymousSessionId: randomUUID() });
    if (!result.ok) throw Error("insert failed");
    await runtime.query("DELETE FROM audit_jobs WHERE id=$1", [result.jobId]);
    expect((await runtime.query("SELECT count(*)::int AS n FROM consent_records WHERE job_id=$1", [result.jobId])).rows[0].n).toBe(0);
@@ -182,7 +241,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan persistence", ()
 
   it("fails a queued job that reaches dispatch with no consent, and leaves a claimed one alone", async () => {
    const orphan = (await runtime.query("INSERT INTO audit_jobs(business_name,status) VALUES('Orphan','queued') RETURNING id")).rows[0].id;
-   const gate = await assertScanConsent(orphan);
+   const gate = await assertScanConsent(orphan, randomUUID());
    expect(gate).toMatchObject({ ok: false, code: "consent_required", status: 403 });
    const failed = (await runtime.query("SELECT status,failure_category,failure_correlation_id FROM audit_jobs WHERE id=$1", [orphan])).rows[0];
    expect(failed.status).toBe("failed");
@@ -191,8 +250,43 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan persistence", ()
 
    // The `AND status='queued'` guard means the gate can never race the executor.
    const claimed = (await runtime.query("INSERT INTO audit_jobs(business_name,status) VALUES('Claimed','collecting') RETURNING id")).rows[0].id;
-   await assertScanConsent(claimed);
+   await assertScanConsent(claimed, randomUUID());
    expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [claimed])).rows[0].status).toBe("collecting");
+  });
+
+  // failQueued is the third terminal writer (after persist and fail): a
+  // consent-refused scan gets its scan_completed so it is not a permanent
+  // reconciliation gap, and only the job the guard actually moved gets one.
+  it("failQueued fails a queued job with exactly one scan_completed, and leaves a non-queued one untouched", async () => {
+   const eventRows = async (id: string) =>
+    (await runtime.query("SELECT anonymous_session_id,event_name,properties,dedupe_key FROM scan_events WHERE job_id=$1", [id])).rows;
+   const session = randomUUID();
+   const queued = (await runtime.query("INSERT INTO audit_jobs(business_name,status) VALUES('Refused','queued') RETURNING id")).rows[0].id;
+   expect(await jobsRepository.failQueued(queued, "consent_missing", randomUUID(), session)).toBe(true);
+   expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [queued])).rows[0].status).toBe("failed");
+   expect(await eventRows(queued)).toEqual([
+    { anonymous_session_id: session, event_name: "scan_completed", properties: { outcome: "failed", coverage: 0 }, dedupe_key: "terminal" },
+   ]);
+
+   const running = (await runtime.query("INSERT INTO audit_jobs(business_name,status) VALUES('Running','collecting') RETURNING id")).rows[0].id;
+   expect(await jobsRepository.failQueued(running, "consent_missing", randomUUID(), session)).toBe(false);
+   expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [running])).rows[0].status).toBe("collecting");
+   expect(await eventRows(running)).toEqual([]);
+  });
+
+  it("failQueued still fails a queued job when its event cannot be written", async () => {
+   const queued = (await runtime.query("INSERT INTO audit_jobs(business_name,status) VALUES('Refused no event','queued') RETURNING id")).rows[0].id;
+   const log = vi.spyOn(console, "error").mockImplementation(() => {});
+   await owner.query('REVOKE INSERT ON TABLE public."scan_events" FROM sme_app_runtime');
+   try {
+    expect(await jobsRepository.failQueued(queued, "consent_missing", randomUUID(), randomUUID())).toBe(true);
+   } finally {
+    // Restores exactly what was revoked: 0003 grants SELECT, INSERT, UPDATE, DELETE.
+    await owner.query('GRANT INSERT ON TABLE public."scan_events" TO sme_app_runtime');
+    log.mockRestore();
+   }
+   expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [queued])).rows[0].status).toBe("failed");
+   expect((await runtime.query("SELECT count(*)::int AS n FROM scan_events WHERE job_id=$1", [queued])).rows[0].n).toBe(0);
   });
  });
 });

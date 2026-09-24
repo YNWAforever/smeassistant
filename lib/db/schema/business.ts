@@ -788,6 +788,7 @@ export const workspaces = pgTable("workspaces", {
  slug: text("slug"),
  timezone: text("timezone").notNull().default(sql.raw("'Asia/Hong_Kong'::text")),
  isDemo: boolean("is_demo").notNull().default(sql.raw("false")),
+ isInternal: boolean("is_internal").notNull().default(sql.raw("false")),
 }, t => [
  check("workspaces_market_check", sql.raw("(market = ANY (ARRAY['hk'::text, 'tw'::text]))")),
  primaryKey({name:"workspaces_pkey",columns:[t.id]}),

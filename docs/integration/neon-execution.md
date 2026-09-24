@@ -4,7 +4,7 @@ Task12 changes `processScan(jobId, runtime)` to require `runtime.store: ScanExec
 
 The Next app constructs the SQL store in `lib/scan/execution-store.ts`. Claim is one atomic UPDATE using the final historical lease semantics: queued jobs, or collecting/scoring/persisting jobs with fewer than three attempts whose non-null last attempt is strictly older than thirty minutes. Findings and terminal report data commit in one transaction after collection. The app supplies diff/AEO ports and the sharp-dependent evidence adapter explicitly.
 
-Analytics storage and HTTP credentials belong to the app. Hosts that end work when a request returns must supply `waitUntil` to the app store (or an equivalent implementation of `recordTerminal`), registering both the entire event insertion promise and the later PostHog tail. The engine never waits for terminal analytics. Best-effort diff/AEO failures remain bounded at ten seconds and cannot change the scan result.
+Analytics storage and HTTP credentials belong to the app. The durable `scan_completed` row is written inside the store's own transaction (`persist()`/`fail()`), in a savepoint so a failed event write never costs the scan. Hosts that end work when a request returns must supply `waitUntil` to the app store (or an equivalent implementation of `recordTerminal`) to register the later PostHog tail, which is the only analytics work left after the transaction commits. The engine never waits for terminal analytics. Best-effort diff/AEO failures remain bounded at ten seconds and cannot change the scan result.
 
 Intermediate release restrictions:
 

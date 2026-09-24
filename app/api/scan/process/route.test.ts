@@ -72,6 +72,37 @@ describe("scan process consent gate", () => {
     expect(processScan).not.toHaveBeenCalled();
   });
 
+  it("hands the gate the resolved analytics session", async () => {
+    const SESSION = "22222222-2222-4222-8222-222222222222";
+    // Refused, so the request stops at the gate: only its arguments matter here.
+    gateMocks.assertScanConsent.mockResolvedValue({ ok: false, code: "unavailable", status: 503 });
+    await POST(new Request("http://localhost/api/scan/process", {
+      method: "POST",
+      body: JSON.stringify({ jobId: JOB }),
+      headers: { "content-type": "application/json", cookie: `sme_analytics_session=${SESSION}` },
+    }));
+    expect(gateMocks.assertScanConsent).toHaveBeenCalledWith(JOB, SESSION);
+  });
+
+  // A refusal is terminal and writes scan_completed under the session, so the
+  // browser must keep that session. A cookieless request gets a minted one.
+  it("sets the analytics cookie on a 403 refusal when the request had none", async () => {
+    gateMocks.assertScanConsent.mockResolvedValue({ ok: false, code: "consent_required", status: 403, correlationId: "corr-1" });
+    const response = await post();
+    expect(response.status).toBe(403);
+    const cookie = response.headers.get("set-cookie") ?? "";
+    expect(cookie).toMatch(/^sme_analytics_session=[0-9a-f-]{36};/);
+    const [, minted] = cookie.match(/^sme_analytics_session=([0-9a-f-]{36});/)!;
+    expect(gateMocks.assertScanConsent).toHaveBeenCalledWith(JOB, minted);
+  });
+
+  it("sets no analytics cookie on a 503", async () => {
+    gateMocks.assertScanConsent.mockResolvedValue({ ok: false, code: "unavailable", status: 503 });
+    const response = await post();
+    expect(response.status).toBe(503);
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
+
   it("runs after the limiter, so abuse of the gate itself is still bounded", async () => {
     limiterMocks.enforceCompositeIdentifierRateLimit.mockResolvedValue({ allowed: false, retryAfterSeconds: 30 });
     const response = await post();

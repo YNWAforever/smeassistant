@@ -7,6 +7,7 @@ import { ipHashFor } from "@/lib/workspace/audit";
 import { isWorkspacePaid } from "@/lib/workspace/entitlement";
 import { parseScanConsent } from "@/lib/scan/consent";
 import { enqueueRescan, ensureMonthlySchedule } from "@/lib/workspace/rescan";
+import { resolveAnalyticsSession } from "@/lib/analytics/record-event";
 
 /**
  * POST /api/workspaces/[workspaceId]/rescan { locationId } → 201 { jobId }
@@ -72,7 +73,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ workspa
 
   let result: Awaited<ReturnType<typeof enqueueRescan>>;
   try {
-    result = await enqueueRescan(repo, { workspaceId, locationId, actorId: auth.user.id, consent: consent.consent, now, locale, ipHash: ipHashFor(req) });
+    result = await enqueueRescan(repo, { workspaceId, locationId, actorId: auth.user.id, anonymousSessionId: resolveAnalyticsSession(req).id, consent: consent.consent, now, locale, ipHash: ipHashFor(req) });
   } catch {
     console.error("[api/workspaces/rescan] failed", { category: "rescan_failed" });
     return NextResponse.json({ error: "unavailable" }, { status: 503 });
