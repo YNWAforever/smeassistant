@@ -56,7 +56,8 @@ test('owned stored metrics stay private and render separate samples across local
     expect(payload).not.toContain('scan-metrics-title');
   };
   for (const locale of ['en', 'zh-HK', 'zh-TW']) await assertPrivateResponse(locale);
-  await signIn(page, environment, merchant, 'viewer');
+  // Unlock signed out, as a link-holder does: the report grant is the reader's only access, so revoking it
+  // below must hide the private metrics again. A signed-in accepted member would read the report as a member.
   const unlocked = await page.request.post('/api/report-access/unlock', { data: {
     slug, market: 'hk', locale: 'en', objective: 'understand_performance', preferred_contact_channel: 'whatsapp',
     contact_identifier: '+85255555555', recovery_email: merchant.emails.viewer, report_delivery: true,
@@ -107,6 +108,15 @@ test('owned stored metrics stay private and render separate samples across local
   // Revoke only this owned grant; retained viewer cookies must not recover private data.
   expect(sql(environment.db, `update report_access_grants set revoked_at=now() where job_id='${id}' and revoked_at is null returning id;`)).not.toBe('');
   for (const locale of ['en', 'zh-HK', 'zh-TW']) await assertPrivateResponse(locale);
+
+  // Membership is independent of the revoked grant: an accepted workspace member reads the full report (§3.2.2).
+  await signIn(page, environment, merchant, 'viewer');
+  for (const locale of ['en', 'zh-HK', 'zh-TW'] as const) {
+    const response = await page.goto(`/${locale}/r/${slug}`);
+    expect(response?.status()).toBe(200);
+    expect(await response!.text()).toContain('PRIVATE_METRIC_QUERY');
+    await expect(panel).toBeVisible();
+  }
   await page.waitForLoadState('networkidle');
   writeFileSync('.superpowers/sdd/metrics/task-5-owned-browser-diagnostics.log', diagnostics.join('\n'));
   await expect(page.getByRole('button', { name: /issue/i })).toHaveCount(0);

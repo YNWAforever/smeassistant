@@ -2,7 +2,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { ReportProps } from "@/lib/funnel/report-props";
-import type { MetricChange, ScanComparison } from "@/lib/report/comparison/types";
+import { comparisonCopy } from "@/lib/report/comparison/copy";
+import { UNAVAILABLE_REASONS, type MetricChange, type ScanComparison } from "@/lib/report/comparison/types";
 import { ScanComparisonPanel } from "./scan-comparison";
 
 const row = (overrides: Partial<MetricChange> = {}): MetricChange => ({
@@ -61,6 +62,24 @@ describe("ScanComparisonPanel", () => {
     expect(unavailable.textContent).not.toMatch(/first scan/i);
     const partial = markup(report(available({ unavailableGroups: 2 })));
     expect(partial.textContent).toContain("2"); expect(partial.textContent).toContain("not comparable");
+  });
+
+  it.each(["en", "zh-HK", "zh-TW"] as const)("renders every unavailable reason in %s, never claiming a first scan", (locale) => {
+    for (const reason of UNAVAILABLE_REASONS) {
+      const text = markup(report({ kind: "unavailable", reason }, locale)).querySelector("p")?.textContent ?? "";
+      expect(text, `${locale} ${reason}`).toBe(comparisonCopy[locale].unavailable[reason]);
+      expect(text.trim().length, `${locale} ${reason}`).toBeGreaterThan(0);
+      expect(text, `${locale} ${reason}`).not.toMatch(/first scan|首次|第一次/i);
+    }
+  });
+
+  it("tells a viewer how to get history, and the others why there is none", () => {
+    const text = (reason: (typeof UNAVAILABLE_REASONS)[number]) =>
+      markup(report({ kind: "unavailable", reason })).querySelector("p")?.textContent ?? "";
+    expect(text("no_history_access")).toContain("Sign in as the business owner");
+    expect(text("no_earlier_scan")).toContain("no earlier finished scan");
+    expect(text("insufficient_evidence")).toContain("enough complete evidence");
+    expect(text("not_comparable")).toContain("different searches, settings or sources");
   });
 
   it("distinguishes identical sources with different safe contexts without exposing raw keys", () => {

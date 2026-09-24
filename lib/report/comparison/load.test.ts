@@ -46,7 +46,7 @@ describe('loadScanComparison', () => {
     const accepted = job({ id: 'accepted', completed_at: '2026-09-06T12:00:00.000Z' });
     const deps = ports([denied, accepted], new Set(['accepted']));
 
-    const result = await loadScanComparison(job(), currentInput, deps);
+    const result = await loadScanComparison(job(), currentInput, deps, 'member');
 
     expect(result).toMatchObject({ kind: 'available', changes: {
       previousScannedAt: '2026-09-06T12:00:00.000Z',
@@ -59,7 +59,7 @@ describe('loadScanComparison', () => {
 
   it('returns no accessible pair when all candidates are denied', async () => {
     const candidates = [job({ id: 'a', completed_at: '2026-09-07T12:00:00Z' })];
-    expect(await loadScanComparison(job(), currentInput, ports(candidates, new Set()))).toEqual(
+    expect(await loadScanComparison(job(), currentInput, ports(candidates, new Set()), 'member')).toEqual(
       { kind: 'unavailable', reason: 'no_accessible_pair' },
     );
   });
@@ -72,7 +72,7 @@ describe('loadScanComparison', () => {
     ['incomplete current input', job(), 'invalid_current_scan', { ...currentInput, scannedAt: 'invalid' }],
   ] satisfies Array<[string, PublicReportJob, string, ComparisonInput?]>)('rejects %s before listing history', async (_label, current, reason, suppliedInput = currentInput) => {
     const deps = ports([]);
-    expect(await loadScanComparison(current, suppliedInput, deps)).toEqual({ kind: 'unavailable', reason });
+    expect(await loadScanComparison(current, suppliedInput, deps, 'member')).toEqual({ kind: 'unavailable', reason });
     expect(deps.list).not.toHaveBeenCalled();
   });
 
@@ -81,17 +81,17 @@ describe('loadScanComparison', () => {
     ['current input', job({ completed_at: '2026-03-03T12:00:00Z' }), { ...currentInput, scannedAt: '2026-02-31T12:00:00Z' }],
   ] satisfies Array<[string, PublicReportJob, ComparisonInput]>)('rejects impossible calendar dates in %s before history lookup', async (_label, current, suppliedInput) => {
     const deps = ports([]);
-    expect(await loadScanComparison(current, suppliedInput, deps)).toEqual(
+    expect(await loadScanComparison(current, suppliedInput, deps, 'member')).toEqual(
       { kind: 'unavailable', reason: 'invalid_current_scan' },
     );
     expect(deps.list).not.toHaveBeenCalled();
   });
 
-  it('rejects impossible candidate metadata before authorization', async () => {
+  it('treats impossible candidate metadata as no earlier scan, before authorization', async () => {
     const impossible = job({ id: 'impossible', completed_at: '2026-02-31T12:00:00Z' });
     const deps = ports([impossible]);
-    expect(await loadScanComparison(job(), currentInput, deps)).toEqual(
-      { kind: 'unavailable', reason: 'no_accessible_pair' },
+    expect(await loadScanComparison(job(), currentInput, deps, 'member')).toEqual(
+      { kind: 'unavailable', reason: 'no_earlier_scan' },
     );
     expect(deps.authorize).not.toHaveBeenCalled();
     expect(deps.readInput).not.toHaveBeenCalled();
@@ -102,7 +102,7 @@ describe('loadScanComparison', () => {
     const deps = ports([candidate], undefined, new Map([
       ['candidate', input('2026-02-31T12:00:00Z')],
     ]));
-    expect(await loadScanComparison(job(), currentInput, deps)).toEqual(
+    expect(await loadScanComparison(job(), currentInput, deps, 'member')).toEqual(
       { kind: 'unavailable', reason: 'no_accessible_pair' },
     );
     expect(deps.authorize).toHaveBeenCalledWith(candidate);
@@ -118,7 +118,7 @@ describe('loadScanComparison', () => {
     const suppliedInput = { ...currentInput, scannedAt: currentTimestamp };
     const candidate = job({ id: 'candidate', completed_at: previousTimestamp });
     const deps = ports([candidate], undefined, new Map([['candidate', input(previousTimestamp)]]));
-    expect((await loadScanComparison(current, suppliedInput, deps)).kind).toBe('available');
+    expect((await loadScanComparison(current, suppliedInput, deps, 'member')).kind).toBe('available');
   });
   it('rechecks injected rows and considers only valid same-location earlier completed candidates', async () => {
     const rows = [
@@ -129,7 +129,7 @@ describe('loadScanComparison', () => {
       job({ id: 'valid', completed_at: '2026-09-04T12:00:00Z' }),
     ];
     const deps = ports(rows);
-    const result = await loadScanComparison(job(), currentInput, deps);
+    const result = await loadScanComparison(job(), currentInput, deps, 'member');
     expect(result.kind).toBe('available');
     expect(deps.authorize).toHaveBeenCalledTimes(1);
     expect(deps.authorize).toHaveBeenCalledWith(rows[4]);
@@ -142,7 +142,7 @@ describe('loadScanComparison', () => {
       ['first', input(first.completed_at!, 'different')],
       ['second', input(second.completed_at!)],
     ]));
-    const result = await loadScanComparison(job(), currentInput, deps);
+    const result = await loadScanComparison(job(), currentInput, deps, 'member');
     expect(result).toMatchObject({ kind: 'available', changes: { previousScannedAt: second.completed_at } });
     expect(deps.readInput).toHaveBeenCalledTimes(2);
   });
@@ -150,14 +150,14 @@ describe('loadScanComparison', () => {
   it('contains thrown failures as lookup_failed', async () => {
     const deps = ports([]);
     deps.list.mockRejectedValueOnce(new Error('secret database message'));
-    expect(await loadScanComparison(job(), currentInput, deps)).toEqual({ kind: 'unavailable', reason: 'lookup_failed' });
+    expect(await loadScanComparison(job(), currentInput, deps, 'member')).toEqual({ kind: 'unavailable', reason: 'lookup_failed' });
   });
 
   it('stops at 1000 candidates and uses one metadata-only page to report history_limit', async () => {
     const candidates = Array.from({ length: 1001 }, (_, index) =>
       job({ id: `candidate-${index}`, completed_at: new Date(Date.parse(currentInput.scannedAt) - (index + 1) * 1000).toISOString() }));
     const deps = ports(candidates, new Set());
-    expect(await loadScanComparison(job(), currentInput, deps)).toEqual({ kind: 'unavailable', reason: 'history_limit' });
+    expect(await loadScanComparison(job(), currentInput, deps, 'member')).toEqual({ kind: 'unavailable', reason: 'history_limit' });
     expect(deps.list).toHaveBeenLastCalledWith('current', 1000);
     expect(deps.authorize).toHaveBeenCalledTimes(1000);
     expect(deps.readInput).not.toHaveBeenCalled();
@@ -167,7 +167,95 @@ describe('loadScanComparison', () => {
     const candidates = Array.from({ length: 1000 }, (_, index) =>
       job({ id: `candidate-${index}`, completed_at: new Date(Date.parse(currentInput.scannedAt) - (index + 1) * 1000).toISOString() }));
     const deps = ports(candidates, new Set());
-    expect(await loadScanComparison(job(), currentInput, deps)).toEqual({ kind: 'unavailable', reason: 'no_accessible_pair' });
+    expect(await loadScanComparison(job(), currentInput, deps, 'member')).toEqual({ kind: 'unavailable', reason: 'no_accessible_pair' });
     expect(deps.list).toHaveBeenLastCalledWith('current', 1000);
+  });
+});
+
+describe('loadScanComparison states', () => {
+  const at = (hoursBefore: number) =>
+    new Date(Date.parse(currentInput.scannedAt) - hoursBefore * 3_600_000).toISOString();
+  const incomplete = (scannedAt: string): ComparisonInput => {
+    const value = input(scannedAt);
+    value.cohorts[0].complete = false;
+    return value;
+  };
+  const unavailable = (reason: string) => ({ kind: 'unavailable', reason });
+
+  it('gives a viewer the access state without touching history', async () => {
+    const comparable = job({ id: 'comparable', completed_at: at(24) });
+    const deps = ports([comparable]);
+    expect(await loadScanComparison(job(), currentInput, deps, 'viewer')).toEqual(unavailable('no_history_access'));
+    expect(deps.list).not.toHaveBeenCalled();
+    expect(deps.authorize).not.toHaveBeenCalled();
+    expect(deps.readInput).not.toHaveBeenCalled();
+  });
+
+  it('gives a viewer the identical state when no history exists', async () => {
+    expect(await loadScanComparison(job(), currentInput, ports([]), 'viewer')).toEqual(unavailable('no_history_access'));
+  });
+
+  it.each([
+    ['no history', []],
+    ['only another location and unfinished scans', [
+      job({ id: 'other-location', location_id: 'location-2', completed_at: '2026-09-07T12:00:00.000Z' }),
+      job({ id: 'unfinished', status: 'collecting', completed_at: '2026-09-06T12:00:00.000Z' }),
+    ]],
+  ] satisfies Array<[string, PublicReportJob[]]>)('reports no earlier scan to a member with %s', async (_label, candidates) => {
+    const deps = ports(candidates);
+    expect(await loadScanComparison(job(), currentInput, deps, 'member')).toEqual(unavailable('no_earlier_scan'));
+    expect(deps.authorize).not.toHaveBeenCalled();
+  });
+
+  it('treats staff like members, not viewers', async () => {
+    expect(await loadScanComparison(job(), currentInput, ports([]), 'staff')).toEqual(unavailable('no_earlier_scan'));
+  });
+
+  it('reports not comparable when every authorized earlier scan measured different searches', async () => {
+    const earlier = job({ id: 'earlier', completed_at: at(24) });
+    const deps = ports([earlier], undefined, new Map([['earlier', input(earlier.completed_at!, 'different')]]));
+    expect(await loadScanComparison(job(), currentInput, deps, 'member')).toEqual(unavailable('not_comparable'));
+  });
+
+  it('reports insufficient evidence when an authorized earlier scan overlaps but is incomplete', async () => {
+    const earlier = job({ id: 'earlier', completed_at: at(24) });
+    const deps = ports([earlier], undefined, new Map([['earlier', incomplete(earlier.completed_at!)]]));
+    expect(await loadScanComparison(job(), currentInput, deps, 'member')).toEqual(unavailable('insufficient_evidence'));
+  });
+
+  it.each([
+    ['newer', 'incomplete', 'different'],
+    ['older', 'different', 'incomplete'],
+  ] as const)('prefers insufficient evidence over not comparable when the incomplete scan is the %s one', async (_label, newer, older) => {
+    const first = job({ id: 'first', completed_at: at(24) });
+    const second = job({ id: 'second', completed_at: at(48) });
+    const make = (kind: 'incomplete' | 'different', scannedAt: string) =>
+      kind === 'incomplete' ? incomplete(scannedAt) : input(scannedAt, 'different');
+    const deps = ports([first, second], undefined, new Map([
+      ['first', make(newer, first.completed_at!)],
+      ['second', make(older, second.completed_at!)],
+    ]));
+    expect(await loadScanComparison(job(), currentInput, deps, 'member')).toEqual(unavailable('insufficient_evidence'));
+    expect(deps.readInput).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports insufficient evidence for a current scan without usable evidence, reading no earlier scan', async () => {
+    const earlier = job({ id: 'earlier', completed_at: at(24) });
+    const deps = ports([earlier]);
+    const bare: ComparisonInput = { ...currentInput, cohorts: [] };
+    expect(await loadScanComparison(job(), bare, deps, 'member')).toEqual(unavailable('insufficient_evidence'));
+    expect(deps.authorize).toHaveBeenCalledWith(earlier);
+    expect(deps.readInput).not.toHaveBeenCalled();
+  });
+
+  it('still reports no earlier scan for a current scan without usable evidence and no history', async () => {
+    const bare: ComparisonInput = { ...currentInput, cohorts: [] };
+    expect(await loadScanComparison(job(), bare, ports([]), 'member')).toEqual(unavailable('no_earlier_scan'));
+  });
+
+  it('keeps no accessible pair when a current scan without usable evidence has only denied history', async () => {
+    const denied = job({ id: 'denied', completed_at: at(24) });
+    const bare: ComparisonInput = { ...currentInput, cohorts: [] };
+    expect(await loadScanComparison(job(), bare, ports([denied], new Set()), 'member')).toEqual(unavailable('no_accessible_pair'));
   });
 });

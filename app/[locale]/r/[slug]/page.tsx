@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ReportPage } from "@/components/public-pages";
+import { reportMembershipResolver } from "@/lib/auth";
 import { normaliseLocale } from "@/lib/copy";
 import { buildReportProps, type ReportViewModelLike } from "@/lib/funnel/report-props";
 import { t } from "@/lib/i18n";
@@ -30,6 +31,6 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
 export default async function Report({ params }: { params: Promise<{ locale: string; slug: string }> }) {
   const { locale, slug } = await params;
-  const model = await loadReport(slug, locale);
+  const model = await loadReport(slug, locale, { getMembership: reportMembershipResolver() });
   return <ReportPage {...buildReportProps(model satisfies ReportViewModelLike, normaliseLocale(locale))} />;
 }

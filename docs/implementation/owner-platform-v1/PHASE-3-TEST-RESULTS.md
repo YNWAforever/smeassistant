@@ -475,3 +475,161 @@ A final review of the whole branch found one Important and four Minor findings. 
 - `corepack pnpm report:value` against any real database. Only the refusal path was run. **Not run**, by design: it needs `0008` applied (DEC-11) and an explicit target.
 - `corepack pnpm neon:readiness` against any target. Its unit suite (`tests/neon-readiness.test.ts`, unchanged by P3.4) passes inside gate 3. **Not run** against a database.
 - Any hosted check: no deploy, no migration applied anywhere real, no observed reconciliation gap on real traffic. **Not run.**
+
+---
+
+# P3.2c honest comparison states — test results
+
+## P3.2c — honest comparison states
+
+Candidate: branch `p32-comparison-states` at `f78174d`, 10 commits on top of `main` at `073c4ae` (PR #19, merged; `origin/main` still points there). The Task 5 results below were taken at `ede55de` (5 commits). The Task 8 results, taken at `f78174d` after the whole-branch review and Tasks 6–7, follow them. Design: [`docs/superpowers/specs/2026-09-24-comparison-states-design.md`](../../superpowers/specs/2026-09-24-comparison-states-design.md). Environment: Windows 11, Node `v24.18.0`, pnpm `9.12.0` via corepack, worktree `C:\Users\laich\Documents\smeassistant\.claude\worktrees\p32-comparison-states`. Docker Server `29.7.2`.
+
+**Read this first.** Everything below is **locally verified**. **Nothing here is hosted-verified.** No migration was added. Nothing was deployed or pushed, and no paid provider was called. The acceptance route that carries the changed viewer expectation was **not run** locally, and no member sign-in was exercised in a browser. See the P3.2c section of `PHASE-3-REPORT.md` for the states, the privacy argument, the review, the membership wiring and the checklist.
+
+### Gate results (Task 5, full verification)
+
+Run one at a time, in this order, from the worktree root.
+
+| # | Command | Result |
+|---|---|---|
+| 0 | `git diff --stat origin/main -- lib/report/comparison/projection.ts components/report/scan-comparison.tsx lib/funnel/report-props.ts lib/report/view-model.ts packages neon/migrations` | empty output (0 bytes), as the plan expects |
+| 1 | `corepack pnpm typecheck` | **passed**: exit 0. Root `tsc --noEmit` plus `pnpm -r typecheck` across all 4 workspace packages, each reporting `Done`. |
+| 2 | `corepack pnpm lint` | **passed**: exit 0, **30 warnings, 0 errors**, across 18 files. The same counts as P3.4. None of the 18 files is touched by this branch. |
+| 3 | `corepack pnpm test` | **passed**: exit 0, zero failures, **323 files / 3,439 tests**. Breakdown below. |
+| 4 | `corepack pnpm test:integration` | **passed**: exit 0, **30 files / 323 tests**, 126.75s. Unchanged from P3.4's final count, as expected for a slice with no repository or SQL change. |
+| 5 | `corepack pnpm build` (`next build`, Turbopack, the literal gate command) | **blocked**: exit 1, `Error: Turbopack build failed with 45 errors`. See "The build gate" below. Not worked around. |
+| — | `npx next build --webpack` (diagnostic, **not** the gate) | **passed**: exit 0. See "The build gate". |
+
+No run failed, so nothing was re-run. No flake was observed in this pass.
+
+### Test breakdown (gate 3)
+
+| Suite | P3.4 final (`5b8cc9d`) | P3.2c (`ede55de`) | Delta |
+|---|---|---|---|
+| app (`vitest run --exclude lib/evidence/safe-media.test.ts`) | 272 / 2,827 | 272 / 2,852 | 0 / +25 |
+| `lib/evidence/safe-media.test.ts` (run alone, by design) | 1 / 62 | 1 / 62 | 0 |
+| `packages/region` | 3 / 23 | 3 / 23 | 0 |
+| `packages/scoring` | 16 / 183 | 16 / 183 | 0 |
+| `packages/contracts` | 3 / 20 | 3 / 20 | 0 |
+| `packages/scan-engine` | 28 / 299 | 28 / 299 | 0 |
+| **Total** | **323 / 3,414** | **323 / 3,439** | **0 / +25** |
+
+The per-file delta comes from `vitest list --json` on the four changed test files, at HEAD and with those files and their sources checked out at `origin/main`. They were restored from HEAD afterwards and `git status` was clean.
+
+| File | Before → after | What was added |
+|---|---|---|
+| `lib/report/comparison/load.test.ts` | 19 → 31 (+12) | the `loadScanComparison states` block: two viewer tests, two `no_earlier_scan` cases, staff, `not_comparable`, `insufficient_evidence`, two precedence cases, the unusable-current-scan trio |
+| `lib/report/comparison/derive.test.ts` | 13 → 21 (+8) | 3 `compareScanMetrics` cases (different sources, unknown shared query, no usable evidence) and 5 `hasUsableEvidence` cases |
+| `components/report/scan-comparison.test.tsx` | 10 → 14 (+4) | "renders every unavailable reason in %s…" (3 locales) and "tells a viewer how to get history…" |
+| `lib/report/load-report.test.ts` | 38 → 39 (+1) | "tells a member there is no earlier scan when the location has none" |
+| **Total** | **+25** | |
+
+No test file was added or removed, so the file count is unchanged. The acceptance spec is a Playwright file and is not in this count. The integration suite has no file for this slice.
+
+### The build gate (gate 5)
+
+`next build` fails on this Windows machine with **`Error: Turbopack build failed with 45 errors`**, exit 1. It is the same cascade of `Module not found: Can't resolve '@radix-ui/react-*'` inside `radix-ui`'s own barrel export (`node_modules/.pnpm/radix-ui@1.6.7.../node_modules/radix-ui/dist/index.mjs`). This run it was traced mainly through `components/ui/radio-group.tsx` → `components/unlock-page.tsx` → `app/[locale]/unlock/[slug]/page.tsx`. The unresolved modules were `react-roving-focus` (8), `react-dismissable-layer` (6), `react-collection` (6), `react-visually-hidden` (4), `react-focus-scope` (4), `react-toggle-group` (3), `react-collapsible` (3), and one each of `-accessible-icon`, `-alert-dialog`, `-aspect-ratio`, `-context-menu`, `-dropdown-menu`, `-hover-card`, `-navigation-menu`, `-one-time-password-field`, `-password-toggle-field`, `-radio-group` and `-scroll-area`.
+
+This is **the same standing, pre-existing, Windows-only blocker** recorded in `PHASE-1-TEST-RESULTS.md`, `PHASE-2-TEST-RESULTS.md`, P3.1, P3.2, the website verifier and P3.4 above. The error count varies between runs (33, 37, 72, 32, now 45). Two checks confirm it is unrelated to this slice:
+
+1. **No commit in this slice touches the failure's chain.** `git diff --stat origin/main..HEAD -- package.json pnpm-lock.yaml next.config.ts components/ui components/unlock-page.tsx` is empty. No file this branch changed appears in any import trace in the build output.
+2. **The webpack fallback compiles clean.** `npx next build --webpack` → exit 0, `✓ Compiled successfully in 26.0s`, `Finished TypeScript in 13.1s`, `✓ Generating static pages using 11 workers (29/29)`, and the full route manifest, including `ƒ /[locale]/r/[slug]`, the route whose loader this slice changed, with zero errors.
+
+Recorded **blocked**, matching this repo's convention of leaving the gate honestly blocked on this machine rather than substituting a different bundler into the gate itself.
+
+### Mutation checks, re-run in Task 5
+
+The implementers of Tasks 1–3 reported 11 mutation checks. Task 5 re-ran all 11 rather than take them on report. A scratch script applied each mutation by exact pattern (refusing to proceed unless the pattern matched exactly once), ran the named test files with Vitest's JSON reporter, wrote the original bytes back, and compared them. Every file was restored **byte-identical**, and `git status` was clean afterwards. T3.1 was run by hand, because it needs `tsc`.
+
+| # | Mutation | Files run | Observed in Task 5 |
+|---|---|---|---|
+| T1.1 | drop the `hasUsableEvidence` guard from `compareScanMetrics`' fallback (keep only `overlaps`) | `derive.test.ts` | **killed**, 1/21: "is insufficient evidence when either scan has no usable evidence at all" |
+| T1.2 | `overlaps` returns `false` | `derive.test.ts` | **killed**, 2/21: "is insufficient evidence when the only shared query is unknown on one side", and "reports changed context as not comparable, and incomplete or oversized cohorts as insufficient evidence" |
+| T1.3 | drop `cohort.complete` from `hasUsableEvidence` | `derive.test.ts` | **killed**, 1/21: "hasUsableEvidence rejects an incomplete cohort" |
+| T1.4 | drop `ig.complete` from `hasUsableEvidence` | `derive.test.ts` | **killed**, 1/21: "accepts a complete Instagram sample and rejects an incomplete one" |
+| T2.1 | delete the `reader === 'viewer'` shortcut | `load.test.ts`, `load-report.test.ts` | **killed**, 5/70: the two loader viewer tests and all three load-report viewer cases |
+| T2.2 | `load-report.ts` passes `'member'` instead of `access.kind` | `load-report.test.ts` | **killed**, 3/39: the three load-report viewer cases |
+| T2.3 | swap the `sawInsufficient` branch in `exhausted()` | `load.test.ts`, `load-report.test.ts` | **killed**, 4/70: both "prefers insufficient evidence over not comparable…" cases, "reports not comparable when every authorized earlier scan measured different searches", and "reports insufficient evidence when an authorized earlier scan overlaps but is incomplete" |
+| T2.4 | delete the `if (!currentUsable) return …` line | `load.test.ts`, `load-report.test.ts` | **killed**, 1/70: "reports insufficient evidence for a current scan without usable evidence, reading no earlier scan", on its `readInput` assertion (`expected "vi.fn()" to not be called at all, but actually been called 1 times`) |
+| T2.5 | move `sawValid = true` after the `authorize` check | `load.test.ts`, `load-report.test.ts` | **killed**, 4/70: "returns no accessible pair when all candidates are denied", "reports exhaustion after exactly 1000 denied candidates", "keeps no accessible pair when a current scan without usable evidence has only denied history", and the load-report member-denied test "authorizes each historical candidate by its own membership before reading private data" |
+| T3.1 | delete the zh-TW `not_comparable` entry | `npx tsc --noEmit`, `scan-comparison.test.tsx` | **killed**: `tsc` exit 2, `lib/report/comparison/copy.ts(27,5): error TS2741: Property 'not_comparable' is missing…`; Vitest 1/14: "renders every unavailable reason in zh-TW, never claiming a first scan" |
+| T3.2 | en `no_earlier_scan` → "This is the first scan of this location." | `scan-comparison.test.tsx` | **killed**, 2/14: "renders every unavailable reason in en, never claiming a first scan", "tells a viewer how to get history, and the others why there is none" |
+
+Every observation matches what the implementers reported. The only difference is detail: T1.2 also fails a second, renamed test that the implementer's report did not name.
+
+### The plan defect, re-checked
+
+`PHASE-3-REPORT.md` records why Tasks 2 and 3 landed together in `a7aa56d`. Re-checked here: with `lib/report/comparison/copy.ts` checked out at `origin/main` and everything else at HEAD, `npx tsc --noEmit` exits 2 with `components/report/scan-comparison.tsx(31,79): error TS7053`, the same error in `scan-comparison.test.tsx(70,48)`, and `TS2339` in `e2e/acceptance/report-scan-comparison.spec.ts(79,74)`. `copy.ts` was restored from HEAD.
+
+## What Task 5 did not run
+
+- `corepack pnpm e2e` / `e2e:acceptance`: need a production build, which gate 5 cannot produce on this machine. **Not run.** CI runs both: `.github/workflows/ci.yml` runs `pnpm e2e`, then `pnpm e2e:acceptance`, and `playwright.acceptance.config.ts` points at `./e2e/acceptance`. The changed expectation in `e2e/acceptance/report-scan-comparison.spec.ts` (`no_history_access` for the current-only-unlocked viewer), and its unchanged HTML and RSC privacy assertions, are proven only where CI runs them.
+- `corepack pnpm test:secret-boundary`: shells out to `next build` internally and inherits gate 5's blocker. **Not run.**
+- `corepack pnpm db:verify`: no migration was added (`git diff origin/main -- neon/migrations` is empty). **Not run.**
+- Any hosted check, including the successful-pair browser artifact. **Not run**: it needs hosted access and the repository owner's authorization.
+
+### Gate results (Task 8, after the whole-branch review, at `f78174d`)
+
+Run one at a time, in this order, from the worktree root, on 2026-09-25. `git rev-parse HEAD` = `f78174dcfc11bea26185f7258c8a9a2122e4205a`.
+
+| # | Command | Result |
+|---|---|---|
+| 0 | `git diff --stat origin/main -- lib/report/comparison/projection.ts components/report/scan-comparison.tsx lib/funnel/report-props.ts lib/report/view-model.ts packages neon/migrations` | empty output (0 bytes) |
+| 1 | `corepack pnpm typecheck` | **passed**: exit 0. Root `tsc --noEmit` plus `pnpm -r typecheck` across all 4 workspace packages, each reporting `Done`. |
+| 2 | `corepack pnpm lint` | **passed**: exit 0, `✖ 30 problems (0 errors, 30 warnings)`, across 18 files. None of the 18 is among the 14 non-doc files this branch changes. |
+| 3 | `corepack pnpm test` | **passed**: exit 0, zero failures, **324 files / 3,450 tests**. Breakdown below. |
+| 4 | `corepack pnpm test:integration` | **passed**: exit 0, **30 files / 323 tests**, 158.70s. Unchanged from P3.4 and from Task 5. |
+| 5 | `corepack pnpm build` (`next build`, Turbopack, the literal gate command) | **blocked**: exit 1, `Error: Turbopack build failed with 45 errors`. The same `Module not found: Can't resolve '@radix-ui/react-*'` cascade inside `radix-ui`'s barrel, with the same per-module counts as Task 5 (`react-roving-focus` 8, `react-dismissable-layer` 6, `react-collection` 6, …). The traces run mainly through `components/unlock-page.tsx`, `components/ui/radio-group.tsx` and `app/[locale]/unlock/[slug]/page.tsx`. `git diff --stat origin/main..HEAD -- package.json pnpm-lock.yaml next.config.ts components/ui components/unlock-page.tsx` is empty. Not worked around. |
+| — | `npx next build --webpack` (diagnostic, **not** the gate) | **passed**: exit 0, `✓ Compiled successfully in 12.4s`, `Finished TypeScript in 18.0s`, `✓ Generating static pages using 11 workers (29/29)`, and `ƒ /[locale]/r/[slug]` in the route manifest. That is the page Task 6 changed. |
+
+No run failed, so nothing was re-run. No flake was observed.
+
+After gate 3, the two tracked snapshot files (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) showed as modified. `git diff --ignore-cr-at-eol --stat` was empty, so the change was line endings only, and both were restored with `git restore`. One working-tree mishap is also recorded here: a per-file count attempted after gate 3 with `vitest list --json lib/auth.test.ts …` treated `lib/auth.test.ts` as the JSON output path and overwrote it. It was restored with `git restore lib/auth.test.ts` (back to 400 lines), and the counts below were then taken with `vitest run --reporter=json --outputFile=<scratch file>`. Gate 3 had already run on the committed file. `git status` was clean before the documentation edits.
+
+#### Test breakdown (gate 3)
+
+| Suite | P3.4 final (`5b8cc9d`) | Task 5 (`ede55de`) | Task 8 (`f78174d`) | Delta vs P3.4 |
+|---|---|---|---|---|
+| app (`vitest run --exclude lib/evidence/safe-media.test.ts`) | 272 / 2,827 | 272 / 2,852 | 273 / 2,863 | +1 / +36 |
+| `lib/evidence/safe-media.test.ts` (run alone, by design) | 1 / 62 | 1 / 62 | 1 / 62 | 0 |
+| `packages/region` | 3 / 23 | 3 / 23 | 3 / 23 | 0 |
+| `packages/scoring` | 16 / 183 | 16 / 183 | 16 / 183 | 0 |
+| `packages/contracts` | 3 / 20 | 3 / 20 | 3 / 20 | 0 |
+| `packages/scan-engine` | 28 / 299 | 28 / 299 | 28 / 299 | 0 |
+| **Total** | **323 / 3,414** | **323 / 3,439** | **324 / 3,450** | **+1 / +36** |
+
+File by file against P3.4's 323 / 3,414. The Task 5 rows repeat the counts measured in Task 5. The Task 6–7 rows were measured in Task 8 with `vitest run --reporter=json`, at HEAD and with `lib/auth.test.ts` and `derive.test.ts` checked out at `ede55de` (restored from HEAD afterwards; `git status` clean). `lib/auth.test.ts` has no change in `073c4ae..ede55de`, so its `ede55de` count is also its P3.4 count.
+
+| File | Before → after | Commit | What was added |
+|---|---|---|---|
+| `lib/report/comparison/load.test.ts` | 19 → 31 (+12) | `a7aa56d` | the `loadScanComparison states` block (Task 5 table above) |
+| `lib/report/comparison/derive.test.ts` | 13 → 22 (+9) | `5238a7b` (+8), `f78174d` (+1) | 3 `compareScanMetrics` and 5 `hasUsableEvidence` cases, then the Instagram-overlap case (21 → 22) |
+| `components/report/scan-comparison.test.tsx` | 10 → 14 (+4) | `a7aa56d` | the per-locale reason test (3) and the viewer test |
+| `lib/report/load-report.test.ts` | 38 → 39 (+1) | `a7aa56d` | "tells a member there is no earlier scan when the location has none" |
+| `lib/auth.test.ts` | 23 → 31 (+8) | `f5fdf84` | the `reportMembershipResolver` block: 5 `it` plus one `it.each` over owner, manager and viewer |
+| `app/[locale]/r/[slug]/page.test.tsx` | new file, 0 → 2 (+2; +1 file) | `f5fdf84` | the resolver wiring test and the fresh-resolver-per-render test |
+| **Total** | **+36 tests, +1 file** | | |
+
+The integration suite has no file for this slice, and no integration test references `reportMembershipResolver`.
+
+#### Mutation checks, re-run in Task 8 (Tasks 6–7)
+
+The Task 6 and Task 7 implementers reported 5 mutation checks. Task 8 re-ran all 5 with a scratch script that applied each mutation by exact pattern (refusing to proceed unless every pattern matched exactly once), ran the named test file with Vitest's JSON reporter, wrote the original bytes back and compared them. Every file was restored **byte-identical**, and `git status` was clean afterwards.
+
+| # | Mutation | Files run | Observed in Task 8 |
+|---|---|---|---|
+| M6.1 | key the memo by `job.id` (`byWorkspace.get(job.id)`, `byWorkspace.set(job.id, lookup)`) | `lib/auth.test.ts` | **killed**, 1/31: "reportMembershipResolver answers every job of one workspace identically, with one user lookup and one query" |
+| M6.2 | replace the `catch { console.error(…); return null; }` with `finally {}`, so failures propagate | `lib/auth.test.ts` | **killed**, 1/31: "reportMembershipResolver fails closed to no membership, with a fixed log line, when identity or the query fails" |
+| M6.3 | delete `if (!job.workspaceId) return null;` | `lib/auth.test.ts` | **killed**, 1/31: "reportMembershipResolver returns nothing for a job attached to no workspace, without asking who is signed in" |
+| M6.4 | revert `page.tsx` to `loadReport(slug, locale)` | the Vitest filter `slug`, which selects `app/[locale]/r/[slug]/page.test.tsx` (2) and `lib/workspace/slug.test.ts` (12) | **killed**, 2/14: "loads the report with the session layer's workspace membership resolver" and "builds a fresh resolver for every render, so no membership outlives its request". The other 12 are `lib/workspace/slug.test.ts`, unrelated, and they passed. |
+| M7.1 | delete the Instagram line at the top of `overlaps` (`derive.ts:50`) | `derive.test.ts` | **killed**, 1/22: "compareScanMetrics is insufficient evidence when both have an Instagram sample, one incomplete, and their searches differ" |
+
+Every observation matches what the implementers reported. The first attempt at M6.4 passed a bracketed path filter through a shell, which matched no file (0/0 tests). That run proves nothing and is not counted. It was repeated with the filter `slug`, as recorded above. The RED-first observations of Task 6 (8 failing resolver tests with `reportMembershipResolver is not a function`, then 2 failing page tests with the resolver called 0 times) are the implementer's and were not repeated.
+
+## What Task 8 did not run
+
+- `corepack pnpm e2e` / `e2e:acceptance`: need a production build, which gate 5 cannot produce on this machine. **Not run.** CI runs both.
+- `corepack pnpm test:secret-boundary`: inherits gate 5's blocker. **Not run.**
+- `corepack pnpm db:verify`: no migration was added. **Not run.**
+- A member sign-in on `/r/[slug]` in a browser, against any Auth target. **Not run**: hosted Auth is not chosen, and nothing here was deployed. The member path is proven at the unit layer only.
+- Any hosted check, including the successful-pair browser artifact. **Not run.**

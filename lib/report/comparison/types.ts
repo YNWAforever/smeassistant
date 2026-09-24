@@ -55,7 +55,19 @@ export interface PairChanges {
   unavailableGroups: number;
 }
 
+/** Why a pair produced (or did not produce) a comparison. */
+export type PairComparison =
+  | { kind: 'changes'; changes: PairChanges }
+  | { kind: 'insufficient_evidence' }
+  | { kind: 'not_comparable' };
+
+/** Every reason a comparison can be unavailable. Copy is keyed by exactly these. */
+export const UNAVAILABLE_REASONS = [
+  'no_history_access', 'no_earlier_scan', 'insufficient_evidence', 'not_comparable',
+  'no_accessible_pair', 'missing_location', 'invalid_current_scan', 'lookup_failed', 'history_limit',
+] as const;
+export type UnavailableReason = typeof UNAVAILABLE_REASONS[number];
+
 export type ScanComparison =
   | { kind: 'available'; changes: PairChanges }
-  | { kind: 'unavailable'; reason: 'no_accessible_pair' | 'missing_location'
-      | 'invalid_current_scan' | 'lookup_failed' | 'history_limit' };
+  | { kind: 'unavailable'; reason: UnavailableReason };
