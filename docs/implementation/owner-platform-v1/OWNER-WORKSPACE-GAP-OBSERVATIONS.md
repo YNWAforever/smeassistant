@@ -298,6 +298,10 @@ Member access is genuinely built at the library level — authorize-report.ts:19
 
 Not refutable on the other grounds: no CLAUDE.md provision and no code comment documents the omission (the report page's only comment at :16-22 is about noindex for competitor-scanned businesses, not owner linking); the nearby already-fixed markers in these files concern the ScoreDial delta spread, the rescan cadence wording and the AEO denominators, none of them this; and the fix is buildable under the hard constraints — share_slug already exists on audit_jobs so no migration is needed, and nothing here touches crons, agent_runs, publishing, self-service claim, or a paid provider.
 
+> **Update (2026-09-25, P3.2c, branch `p32-comparison-states`, not yet merged).** The verifier's correction (1) is now wired. `f5fdf84` makes `app/[locale]/r/[slug]/page.tsx` call `loadReport(slug, locale, { getMembership: reportMembershipResolver() })`. The resolver in `lib/auth.ts` resolves the signed-in user's accepted `workspace_members` row for the job's workspace. So an accepted member who opens a report URL of their workspace now gets the `member` model (the full report), not the public preview. This is proven at the unit layer only (`app/[locale]/r/[slug]/page.test.tsx`, `lib/auth.test.ts`), not in a hosted browser session. See the P3.2c section of `PHASE-3-REPORT.md`.
+>
+> **This finding is still open.** No owner surface links from the workspace to `/r/[slug]`: `SnapshotRecord` still carries no share slug, and `latestWorkspaceReport` still has no caller. The first of the two wiring steps named above is done; the owner-surface link is not.
+
 #### 14. The proof card claims an Attributed change but never names or links the action it is attributed to
 
 **Surface:** Owner Home · **Type:** `missing_control`
