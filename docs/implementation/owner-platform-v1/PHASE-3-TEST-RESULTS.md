@@ -420,7 +420,7 @@ Each mutation was applied by a scratch script, the named file was run on its own
 | V6 | delivery → version tenant match removed from `DELIVERY_JOIN` | `neon-value-report` | **killed**, 1/10: "does not count a delivery whose version or action belongs to another workspace" |
 | V7 | version → action tenant match removed from `DELIVERY_JOIN` | `neon-value-report` | **killed**, 1/10: the same cross-tenant test |
 | V8 | the scans line drops `is_internal` | `neon-value-report` | **killed**, 1/10: "reads scans from audit_jobs, excluding scans claimed by an internal workspace" |
-| V9 | the scans line drops `is_demo` | `neon-value-report` | **survived**, 0/10 failed. The seed attaches no scan to the demo workspace, so nothing tests this exclusion. Recorded as an open gap, not fixed in Task 10. |
+| V9 | the scans line drops `is_demo` | `neon-value-report` | **survived** at `d734dd7`, 0/10 failed, because the seed attached no scan to the demo workspace. **Closed in `65b6546`** (see the follow-up below): now **killed**, 1/10. |
 | C1 | `BEGIN TRANSACTION READ ONLY` → `BEGIN` | `tests/value-report-cli.test.ts` | **killed**, 2/20: "opens a read-only transaction, checks the database, reports, then rolls back and closes", "stops at a different database before any report query" |
 | C2 | the `current_database()` check removed | `tests/value-report-cli.test.ts` | **killed**, 1/20: "stops at a different database before any report query" |
 | C3 | `assertTarget` removed from `configure` | `tests/value-report-cli.test.ts` | **killed**, 1/20: "refuses a DATABASE_URL pointing somewhere other than the named target" |
@@ -428,7 +428,21 @@ Each mutation was applied by a scratch script, the named file was run on its own
 | C5 | the plan's original `line()` (`padEnd(26)` / `padEnd(28)`, no gap) | `tests/value-report-cli.test.ts` | **killed**, 3/20: "separates the longest label from its value", "keeps label, value and note in separate columns on every row", "keeps a value wider than its column apart from the note" |
 | T1 | `canonicalHost` restored to its pre-`4e82805` form | `tests/neon-target.test.ts` | **killed**, 2/50: "strips -pooler from the first label only", "lowercases, because postgres: URLs keep the host's case and DNS ignores it" |
 
-The commits record two earlier mutation checks. `5e81fdf` added the duplicate `scan_started` to the seed because V5 had survived without it. `d404f04` renamed the scan-start rollback test after finding that it cannot exercise "written, then rolled back". The other mutation checks the plan asked for at Tasks 3, 5 and 8 left no recorded observations in the commits. The table above is what Task 10 observed itself.
+The commits record two earlier mutation checks. `5e81fdf` made the duplicate `scan_started` a permanent part of the seed. Task 8 had checked V5 with a temporary duplicate and then removed it, which left the suite unable to detect the mutation. `d404f04` renamed the scan-start rollback test after finding that it cannot exercise "written, then rolled back". The other mutation checks the plan asked for at Tasks 3, 5 and 8 left no recorded observations in the commits. The table above is what Task 10 observed itself.
+
+### Follow-up after Task 10: V9 closed (`65b6546`)
+
+The review of Task 10 closed V9 rather than leave it open. The change touches only the test.
+
+- **Seed.** `neon-value-report` seeds one `done` scan in W38 attached to the demo workspace, next to the one attached to the internal workspace.
+- **Scans.** The expectation is unchanged at `{started: 4, completedFull: 1, completedPartial: 1, failed: 1, inProgress: 1}`, because the demo scan is excluded. The test is renamed "reads scans from audit_jobs, excluding scans claimed by an internal or demo workspace".
+- **Reconciliation.** This check covers every job, internal and demo included, so it re-derives from `{5, 3, 4, 1}` to `{jobsStarted: 6, startedEvents: 3, jobsTerminal: 5, completedEvents: 1}`. The demo scan is one more started job and one more terminal job, with no events. The test is renamed "reconciles every job against scan_events, internal and demo included".
+- **Observed.**
+  - The file passes 10/10.
+  - V9 reapplied (`coalesce(w.is_demo OR w.is_internal, false)` → `coalesce(w.is_internal, false)`) fails 1/10, on the renamed scans test. The query was then restored.
+  - `corepack pnpm test:integration` exits 0 with **30 files / 324 tests**, the same count as in Task 10.
+
+The test names in the Task 10 output and mutation table above are the names at `d734dd7`.
 
 ## What Task 10 did not run
 
