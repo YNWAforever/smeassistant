@@ -132,32 +132,97 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
         client.release();
       }
     });
-    it("records terminal events through the real event repository", async () => {
-      const id = await job("done");
-      const waited: Promise<unknown>[] = [];
+    const persisted = (jobId: string, status: ScanPersistence["status"]): ScanPersistence => ({
+      jobId,
+      status,
+      overall: status === "failed" ? null : 70,
+      coverage: 0.5,
+      scoringVersion: "2026-08-16",
+      moduleResults: {} as ScanPersistence["moduleResults"],
+      findings: [],
+    });
+    const completedRows = async (id: string) =>
+      (await runtime.query("SELECT anonymous_session_id,event_name,properties,dedupe_key FROM scan_events WHERE job_id=$1", [id])).rows;
+
+    // persist() carries failed too: a scan that measured nothing is scored
+    // "failed" and persisted normally (processor.ts). fail() is only for scans
+    // that threw.
+    it.each(["done", "partial", "failed"] as const)("persist writes exactly one scan_completed for %s inside its transaction", async (status) => {
+      const id = await job("persisting");
       const session = randomUUID();
-      const storage = createScanExecutionStore(session, {
+      const storage = createScanExecutionStore(session, { pool: runtime });
+      await storage.persist(persisted(id, status));
+      expect(await completedRows(id)).toEqual([
+        { anonymous_session_id: session, event_name: "scan_completed", properties: { outcome: status, coverage: 0.5 }, dedupe_key: "terminal" },
+      ]);
+    });
+
+    it("a retried persist leaves one scan_completed, because the dedupe key now conflicts", async () => {
+      const id = await job("persisting");
+      const storage = createScanExecutionStore(randomUUID(), { pool: runtime });
+      await storage.persist(persisted(id, "done"));
+      await storage.persist(persisted(id, "done"));
+      expect(await completedRows(id)).toHaveLength(1);
+    });
+
+    // The trap: with the row already written in-transaction, routing
+    // recordTerminal through recordEvent would insert again -- its default
+    // NULL dedupe key never conflicts -- writing a duplicate row.
+    // recordTerminal must forward only.
+    it("recordTerminal still reaches PostHog and never writes a second row", async () => {
+      const id = await job("persisting");
+      const capture = vi.fn(async () => {});
+      const insert = vi.fn(async () => { throw new Error("recordTerminal must not insert"); });
+      const storage = createScanExecutionStore(randomUUID(), {
         pool: runtime,
-        waitUntil: (p) => {
-          waited.push(p);
+        analytics: {
+          insert,
+          capturePostHog: capture,
+          reportError: () => {},
         },
       });
-      await storage.recordTerminal({ jobId: id, status: "done", coverage: 1 });
-      await Promise.all(waited);
-      expect(
-        (
-          await runtime.query(
-            "SELECT anonymous_session_id,event_name,properties FROM scan_events WHERE job_id=$1",
-            [id],
-          )
-        ).rows,
-      ).toEqual([
-        {
-          anonymous_session_id: session,
-          event_name: "scan_completed",
-          properties: { outcome: "done", coverage: 1 },
-        },
+      await storage.persist(persisted(id, "done"));
+      await storage.recordTerminal({ jobId: id, status: "done", coverage: 0.5 });
+      // Asserted first: a throwing insert is swallowed inside recordEvent, so
+      // the row count below cannot catch an insert on its own.
+      expect(insert).not.toHaveBeenCalled();
+      expect(capture).toHaveBeenCalledTimes(1);
+      expect(await completedRows(id)).toHaveLength(1);
+    });
+
+    it("the terminal status and its event commit together", async () => {
+      const id = await job("persisting");
+      await owner.query('REVOKE INSERT ON TABLE public."scan_events" FROM sme_app_runtime');
+      try {
+        await expect(createScanExecutionStore(randomUUID(), { pool: runtime }).persist(persisted(id, "done"))).rejects.toThrow();
+      } finally {
+        await owner.query('GRANT INSERT ON TABLE public."scan_events" TO sme_app_runtime');
+      }
+      expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [id])).rows[0].status).toBe("persisting");
+    });
+
+    it("fail() writes one failed scan_completed only when its status guard matched", async () => {
+      const session = randomUUID();
+      const storage = createScanExecutionStore(session, { pool: runtime });
+      const running = await job("collecting");
+      expect(await storage.fail({ jobId: running, category: "PROCESSOR_FAILED", correlationId: randomUUID() })).toBe(true);
+      expect(await completedRows(running)).toEqual([
+        { anonymous_session_id: session, event_name: "scan_completed", properties: { outcome: "failed", coverage: 0 }, dedupe_key: "terminal" },
       ]);
+      const finished = await job("done");
+      expect(await storage.fail({ jobId: finished, category: "PROCESSOR_FAILED", correlationId: randomUUID() })).toBe(false);
+      expect(await completedRows(finished)).toEqual([]);
+    });
+
+    it("fail() leaves the job running when its event cannot be written", async () => {
+      const id = await job("collecting");
+      await owner.query('REVOKE INSERT ON TABLE public."scan_events" FROM sme_app_runtime');
+      try {
+        await expect(createScanExecutionStore(randomUUID(), { pool: runtime }).fail({ jobId: id, category: "PROCESSOR_FAILED", correlationId: randomUUID() })).rejects.toThrow();
+      } finally {
+        await owner.query('GRANT INSERT ON TABLE public."scan_events" TO sme_app_runtime');
+      }
+      expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [id])).rows[0].status).toBe("collecting");
     });
     it("runs real fixture collection/scoring and idempotently persists findings without holding collection transactions", async () => {
       const id = await job();

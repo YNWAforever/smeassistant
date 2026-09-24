@@ -266,7 +266,7 @@ describe("runScan host terminal lifetime", () => {
     vi.clearAllMocks();
   });
 
-  it("registers pending insertion and delayed capture with the actual Vercel lifetime API", async () => {
+  it("writes scan_completed inside fail() and registers only the delayed capture with the actual Vercel lifetime API", async () => {
     const engine = await vi.importActual<
       typeof import("@sme-scanner/scan-engine")
     >("@sme-scanner/scan-engine");
@@ -300,15 +300,10 @@ describe("runScan host terminal lifetime", () => {
         return { rows: [{ id: "job" }] };
       },
     );
-    let finishInsert!: () => void;
     let finishCapture!: () => void;
-    const insertion = new Promise<void>((resolve) => {
-      finishInsert = resolve;
-    });
     const capture = new Promise<void>((resolve) => {
       finishCapture = resolve;
     });
-    runtimeMocks.insert.mockReturnValue(insertion);
     runtimeMocks.capturePostHog.mockReturnValue(capture);
     try {
       await expect(runScan("job", "session")).resolves.toMatchObject({
@@ -320,30 +315,34 @@ describe("runScan host terminal lifetime", () => {
         "collecting_aeo",
         "collecting",
       ]);
-      expect(runtimeMocks.insert).toHaveBeenCalledTimes(1);
+      // The durable scan_completed row is part of fail()'s own statement,
+      // guarded by the UPDATE's RETURNING; recordTerminal never inserts.
+      expect(runtimeMocks.query).toHaveBeenCalledWith(
+        expect.stringContaining("INSERT INTO scan_events"),
+        expect.arrayContaining([
+          "job",
+          "session",
+          "scan_completed",
+          JSON.stringify({ outcome: "failed", coverage: 0 }),
+          "terminal",
+        ]),
+      );
+      expect(runtimeMocks.insert).not.toHaveBeenCalled();
+      // Only the PostHog transport is left to keep alive.
       expect(waited).toHaveLength(1);
-      let inserted = false;
-      void waited[0].then(() => {
-        inserted = true;
-      });
       await Promise.resolve();
-      expect(inserted).toBe(false);
-      expect(runtimeMocks.capturePostHog).not.toHaveBeenCalled();
-      finishInsert();
-      await waited[0];
-      expect(waited).toHaveLength(2);
       expect(runtimeMocks.capturePostHog).toHaveBeenCalledTimes(1);
       let captured = false;
-      void waited[1].then(() => {
+      void waited[0].then(() => {
         captured = true;
       });
       await Promise.resolve();
       expect(captured).toBe(false);
       finishCapture();
-      await waited[1];
+      await waited[0];
       expect(captured).toBe(true);
+      expect(waited).toHaveLength(1);
     } finally {
-      finishInsert();
       finishCapture();
       await Promise.all(waited);
     }
