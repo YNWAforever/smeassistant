@@ -6,8 +6,12 @@
  */
 export const safeName = (value: string) => /^[a-zA-Z0-9_.-]+$/.test(value);
 
-/** A pooled Neon endpoint differs from the direct one only by -pooler. */
-export const canonicalHost = (host: string) => host.replace(/-pooler(?=\.)/, "");
+/**
+ * A pooled Neon endpoint differs from the direct one only by -pooler at the end
+ * of the first label. Lowercased because WHATWG URL keeps the host's case for
+ * postgres: URLs (it lowercases only special schemes) and DNS ignores it.
+ */
+export const canonicalHost = (host: string) => host.toLowerCase().replace(/^([^.]+)-pooler(?=\.)/, "$1");
 
 /** Throws "configuration" unless `db` is a credentialed postgres URL with only accepted TLS parameters. */
 export function assertDatabaseUrl(db: URL): void {
