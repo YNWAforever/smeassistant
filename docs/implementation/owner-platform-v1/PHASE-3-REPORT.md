@@ -294,9 +294,40 @@ Walked item by item against the code at `d734dd7`.
 4. **Sign-in and claim *started* remain unmeasured.** Scan totals include staff test scans, because a public-funnel scan cannot be classified internal until it is claimed. Paid conversion is not measurable.
 5. **Phase 3's hosted acceptance gate** is still blocked by the unresolved production `home lookup failed` 500.
 
+### After Task 10: the whole-branch review and its fixes
+
+The sections above describe the Task 10 candidate `d734dd7`. After Task 10, `65b6546` / `94c2e26` closed V9 (see the checklist). A final review of the whole diff against `origin/main` then found nothing Critical, one Important finding and four Minor ones.
+
+| Finding | Resolution |
+|---|---|
+| **I1.** `lib/analytics/record-event.ts` still exported `recordEvent`, with a default `insert` through `lib/repositories/events.ts`. That was the F-34 path: a 250 ms budget around a fresh connection, and a NULL `dedupe_key`. Nothing live called it, but it was the obvious import for the next event. | **Fixed in `f4c4613`.** `recordEvent`, `lib/repositories/events.ts` and their tests are removed. `defaultDependencies().insert` now throws, mirroring the execution store's stub, and `forwardEventToPostHog` never calls it. Three integration tests that only exercised the removed path are removed. Their live equivalents already exist in `neon-execution`. `tests/scan-events-single-writer.test.ts` fails if any non-test source under `lib/`, `app/` or `scripts/` other than `lib/analytics/scan-events.ts` contains `INSERT INTO scan_events`. Mutation-checked: a planted insert string fails it and names the file. `lib/scan/run.test.ts` now asserts that exactly one `scan_events` insert runs and that `backend_unavailable` is never reported. Pointing `recordTerminal` back at the engine's `recordEvent` fails it. |
+| **M1.** The value report's `repeat_export` EXISTS did not match `a2.workspace_id`. No location-keyed count checked that the location belongs to the action's workspace. `actions.location_id` is a single-column FK, so nothing enforces that. | **Fixed in `5b8cc9d`.** The EXISTS now matches the workspace. A new `LOCATION_MATCHED` condition applies to `primary`, `first_draft`, `first_export` and `repeat_export`. A row whose action points at another tenant's location is excluded from every count, as a mismatched version or action already was. Location-less deliveries are unaffected. Two new rolled-back cross-tenant tests each fail when their own half of the fix is reverted. |
+| **M2.** Consent-refused scans get `scan_completed` in the database but are not forwarded to PostHog. | **Recorded, not changed** (`c20f9b0`). See the residuals below. |
+| **M3.** The runbook's command omitted `DATABASE_URL` and the runtime-role requirement. | **Fixed in `c20f9b0`.** |
+| **M4.** These headers describe `d734dd7`. | **This section.** |
+
+**Branch as offered:** `p34-reliable-events` at `5b8cc9d` plus this documentation commit. That is 25 commits on `ed23418`. At `5b8cc9d` the diff against `origin/main` is 50 files, 5,032 insertions and 491 deletions. The deletions grew because of the removed writer and its tests. `git diff origin/main -- packages` is still empty, and migrations 0001–0007 are unchanged.
+
+**Gates at `5b8cc9d`**, run sequentially:
+
+| Gate | Result |
+|---|---|
+| `corepack pnpm typecheck` | passed, exit 0 |
+| `corepack pnpm lint` | passed, 30 warnings / 0 errors |
+| `corepack pnpm test` | passed, exit 0. **323 files / 3,414 tests** (app 272 / 2,827, safe-media 1 / 62, region 3 / 23, scoring 16 / 183, contracts 3 / 20, scan-engine 28 / 299) |
+| `corepack pnpm test:integration` | passed, exit 0. **30 files / 323 tests**, which is 324 − 3 removed + 2 added |
+| `build`, `db:verify` | not re-run. No commit after `d734dd7` touches `package.json`, the lockfile, `components/`, or `neon/migrations`. |
+
+The whole-branch review's other checks all came back clean:
+- Every terminal-status writer (`persist`, `fail`, `failQueued`) and every job creator writes its event through the safe path, once.
+- No `withTransaction` caller is broken by the new COMMIT-tag guard. Every caller that can now see `transaction_rolled_back` handles it.
+- No CLI path prints the password.
+- The spot-checked claims in this record hold.
+
 ### Known residuals, not fixed
 
 - **Rescans mint an analytics session without setting a cookie.** `app/api/workspaces/[workspaceId]/rescan/route.ts` passes `resolveAnalyticsSession(req).id` into `enqueueRescan` but never calls `setAnalyticsSessionCookie`. A request with no cookie therefore gets a fresh session that the browser never keeps. The later process request for the same job may carry a different session, so one job can have events from two sessions. Counts are unaffected, because reconciliation counts `DISTINCT` jobs. Per-session joins break. Rescans are also not forwarded to PostHog. That is unchanged from before P3.4, by design, since adding it would change that dataset without a requirement.
 - **Consent-refused scans reach the database but not PostHog.** `failQueued` (`lib/repositories/jobs.ts`) now writes `scan_completed(failed)` to `scan_events` when the consent gate refuses a queued scan. The 403 branch of `app/api/scan/process/route.ts` never reaches the engine's `recordTerminal`, so nothing is forwarded to PostHog. PostHog's started → completed funnel therefore counts these scans as never finishing, while the durable table counts them as failed. Before P3.4, neither dataset had this event, so PostHog's numbers are unchanged. The mismatch is deliberate: forwarding it would change the PostHog dataset without a requirement, the same reasoning as for rescans. The report reads only the durable table.
+- **`recordTerminal` forwards to PostHog even when its event write failed.** This is by design: PostHog is best-effort and independent of the durable table. However, since `f4c4613` removed the old writer's tests, no test asserts the behaviour either way.
 - **A rescan event-validation failure would log `rescan_insert_failed`.** `scanStartedEvent(...)` is built inside `enqueueRescan`'s insert `try`, so a validation throw would be reported as an insert failure. By then the snapshot has passed `scanInputFromSnapshot`, which already requires market `HK`/`TW` and a known locale. That is everything `parseScanEvent` checks for `scan_started`, so the path is unreachable as the code stands. Noted and left unfixed.
 - **The production 500 `home lookup failed` on `/zh-HK/owner/nadagogo` is unresolved.** The working hypothesis is that production is missing migrations `0006` / `0007` (`action_measurements.attribution_basis`). The read-only diagnostic SQL has **not** been run. According to the operator's reading of Vercel logs, there were 3 occurrences, all at 2026-09-18 07:29, and none since. Task 10 did not re-check those logs. The quiet period is not proof of a fix, because no cause was confirmed and nothing was changed to address it.

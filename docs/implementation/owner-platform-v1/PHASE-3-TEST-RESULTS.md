@@ -444,6 +444,30 @@ The review of Task 10 closed V9 rather than leave it open. The change touches on
 
 The test names in the Task 10 output and mutation table above are the names at `d734dd7`.
 
+### After the whole-branch review (`f4c4613`, `5b8cc9d`)
+
+A final review of the whole branch found one Important and four Minor findings. `PHASE-3-REPORT.md` covers them. These are the test changes and the observations:
+
+- **`f4c4613`: the dead F-34 writer was removed.**
+  - Deleted `lib/analytics/events-repository.test.ts`, along with the file it tested.
+  - Removed three `neon-integrations` tests that exercised only `recordEvent` + `eventRepository`:
+    - "cancels locked analytics, frees its connection and never inserts after unlock";
+    - "records analytics through Neon and suppresses duplicate provider effects";
+    - "captures analytics once after persistence and fails open without capturing on database failure".
+  - Added `tests/scan-events-single-writer.test.ts`. A planted `insert\n INTO scan_events` string in `lib/analytics/posthog.ts` failed it and named that file. The string was then restored.
+  - `lib/scan/run.test.ts` replaced a vacuous "insert mock not called" assertion. It now asserts exactly one `scan_events` insert statement and no `backend_unavailable` report. Pointing `recordTerminal` at the engine's `recordEvent` failed it. That change was then restored.
+- **`5b8cc9d`: the location hops are now tenant-matched.** It adds two rolled-back cross-tenant tests to `neon-value-report`:
+  - **(a)** A demo workspace's counted W37 delivery on an action pointing at L1. `repeatWeeklyExport` must stay 1. With the EXISTS workspace match reverted, it became 2.
+  - **(b)** Counted W38 deliveries on actions pointing at a demo location: one in E1, and one in a fresh eligible workspace E3, whose only delivery it is. Locations must stay 2 and workspaces 2, with eligibleWorkspaces 3. With `LOCATION_MATCHED` reverted, locations and workspaces both became 3.
+  - The other 10 tests kept their expectations.
+
+| Suite at `5b8cc9d` | Files / tests | vs `d734dd7` |
+|---|---|---|
+| `corepack pnpm test` (all six sub-runs) | **323 / 3,414**, exit 0 | +0 files / +1 test. The added guard file and the deleted repository test file net to zero files. The test count is the net of tests added and removed across those two files and `run.test.ts`. |
+| `corepack pnpm test:integration` | **30 / 323**, exit 0 | −1 test: 3 removed from `neon-integrations`, 2 added to `neon-value-report` (which now has 12) |
+| `corepack pnpm typecheck` | exit 0 | — |
+| `corepack pnpm lint` | 30 warnings / 0 errors | unchanged |
+
 ## What Task 10 did not run
 
 - `corepack pnpm e2e` / `e2e:acceptance`: need a production build, which gate 4 cannot produce on this machine. **Not run.**
