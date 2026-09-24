@@ -3895,6 +3895,15 @@
       "udt_name": "bool",
       "is_nullable": "NO",
       "column_default": "false"
+    },
+    {
+      "table_name": "workspaces",
+      "column_name": "is_internal",
+      "ordinal_position": 20,
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "NO",
+      "column_default": "false"
     }
   ],
   "constraints": [
