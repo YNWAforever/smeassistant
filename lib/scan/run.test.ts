@@ -15,7 +15,6 @@ vi.mock("./execution-store", () => ({
 }));
 const runtimeMocks = vi.hoisted(() => ({
   query: vi.fn(),
-  insert: vi.fn(),
   capturePostHog: vi.fn(),
 }));
 const websiteMocks = vi.hoisted(() => ({
@@ -33,9 +32,6 @@ vi.mock("@/lib/db/client", () => ({
     query: runtimeMocks.query,
     connect: async () => ({ query: runtimeMocks.query, release: () => {} }),
   }),
-}));
-vi.mock("@/lib/repositories/events", () => ({
-  eventRepository: () => ({ insert: runtimeMocks.insert }),
 }));
 vi.mock("@/lib/analytics/posthog", () => ({
   capturePostHog: runtimeMocks.capturePostHog,
@@ -345,7 +341,20 @@ describe("runScan host terminal lifetime", () => {
         JSON.stringify({ outcome: "failed", coverage: 0 }),
         "terminal",
       ]);
-      expect(runtimeMocks.insert).not.toHaveBeenCalled();
+      // No second write through any other path: the pool and the transaction
+      // client share this query mock, so every scan_events insert is visible
+      // here, and exactly one exists.
+      expect(
+        statements.filter((sql) => /insert\s+into\s+scan_events/i.test(sql)),
+      ).toHaveLength(1);
+      // A regression that routed recordTerminal through the engine's
+      // recordEvent would hit the store's throwing insert stub, which the
+      // engine swallows and reports as backend_unavailable instead of
+      // writing SQL. The statement count above cannot see that; this can.
+      expect(console.error).not.toHaveBeenCalledWith(
+        "[analytics] event_record_failed",
+        expect.objectContaining({ category: "backend_unavailable" }),
+      );
       // Only the PostHog transport is left to keep alive.
       expect(waited).toHaveLength(1);
       await Promise.resolve();
