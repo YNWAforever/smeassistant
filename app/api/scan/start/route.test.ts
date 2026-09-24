@@ -4,8 +4,10 @@ const mocks = vi.hoisted(() => ({
   enforceRateLimit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 1 })),
   insert: vi.fn(),
   forwardEventToPostHog: vi.fn(async () => {}),
-  // after() throws outside a Next request scope, so run the task inline.
-  after: vi.fn((task: () => unknown) => { void task(); }),
+  // Captured, not run: a test must run them explicitly, so forwarding outside
+  // after() (a bare promise) is observable as a call before the tasks run.
+  afterTasks: [] as Array<() => unknown>,
+  after: vi.fn((task: () => unknown) => { mocks.afterTasks.push(task); }),
 }));
 
 vi.mock("@/lib/security/rate-limit", () => ({
@@ -82,6 +84,7 @@ describe("POST /api/scan/start scan consent", () => {
 describe("POST /api/scan/start progressive input", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.afterTasks.length = 0;
     mocks.enforceRateLimit.mockResolvedValue({ allowed: true, retryAfterSeconds: 1 });
     mocks.insert.mockResolvedValue({ id: "job-1" });
   });
@@ -89,6 +92,7 @@ describe("POST /api/scan/start progressive input", () => {
   it("allows optional Instagram and website and persists the exact normalized snapshot", async () => {
     const response = await POST(request(validBody));
     expect(response.status).toBe(200);
+    await Promise.all(mocks.afterTasks.map((task) => task()));
     expect(mocks.forwardEventToPostHog).toHaveBeenCalledWith(STARTED.event, "anonymous-session");
     expect(mocks.insert).toHaveBeenCalledWith(expect.objectContaining({
       business_name: "Happy Cafe",
@@ -278,6 +282,7 @@ describe("POST /api/scan/start progressive input", () => {
 describe("POST /api/scan/start analytics isolation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.afterTasks.length = 0;
     mocks.enforceRateLimit.mockResolvedValue({ allowed: true, retryAfterSeconds: 1 });
     mocks.insert.mockResolvedValue({ id: "job-1" });
   });
@@ -297,6 +302,18 @@ describe("POST /api/scan/start analytics isolation", () => {
   it("hands PostHog forwarding to after() instead of a bare promise", async () => {
     await POST(request(validBody));
     expect(mocks.after).toHaveBeenCalledTimes(1);
+    // Nothing is forwarded until the after() task runs.
+    expect(mocks.forwardEventToPostHog).not.toHaveBeenCalled();
+    await Promise.all(mocks.afterTasks.map((task) => task()));
+    expect(mocks.forwardEventToPostHog).toHaveBeenCalledTimes(1);
+    expect(mocks.forwardEventToPostHog).toHaveBeenCalledWith(STARTED.event, "anonymous-session");
+  });
+
+  it("still returns the committed job when after() itself throws", async () => {
+    mocks.after.mockImplementationOnce(() => { throw new Error("after() needs waitUntil"); });
+    const response = await POST(request(validBody));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ jobId: "job-1" });
   });
 
   it("forwards nothing when the job could not be created", async () => {

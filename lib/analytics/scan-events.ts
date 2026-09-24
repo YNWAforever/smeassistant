@@ -5,9 +5,17 @@ import { parseScanEvent, type ScanEvent } from "@sme-scanner/scan-engine";
 /**
  * Fixed dedupe keys. scan_events_dedupe_identity_unique_idx covers
  * (job_id, anonymous_session_id, event_name, dedupe_key) with no
- * NULLS NOT DISTINCT, and until this module every row was written with a NULL
- * key -- so ON CONFLICT DO NOTHING never matched and any retry would have
- * appended a duplicate. A non-null key makes a retried write idempotent.
+ * NULLS NOT DISTINCT. scan_started and scan_completed used to be written with
+ * a NULL key, which never conflicts, so ON CONFLICT DO NOTHING could not
+ * deduplicate them. (complete_report_unlock already writes its own sha256
+ * key; this is about the two scan events only.)
+ *
+ * - scan_completed: a retried persist() targets the same job, so the fixed
+ *   key really does make the retried write idempotent.
+ * - scan_started: the job id is minted inside the same transaction that
+ *   writes the event, so a retry creates a new job and the conflict cannot
+ *   occur on that path. The key only guards against a future writer
+ *   recording scan_started a second time for the same job.
  */
 export const SCAN_STARTED_DEDUPE_KEY = "started";
 export const SCAN_TERMINAL_DEDUPE_KEY = "terminal";

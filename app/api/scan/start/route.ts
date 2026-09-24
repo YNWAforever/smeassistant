@@ -41,21 +41,31 @@ export async function POST(req: Request) {
   const created = await insertScanJob(parsed.input, parsed.consent, { anonymousSessionId: session.id });
   if (!created.ok) {
     const correlationId = randomUUID();
-    console.error("Scan persistence unavailable", { category: "database_unavailable", correlationId });
+    // An invalid event cannot follow a successful parse today, but the cause is
+    // logged as what it is rather than folded into database_unavailable.
+    const category = created.error instanceof Error && created.error.message === "scan_event_invalid" ? "scan_event_invalid" : "database_unavailable";
+    console.error("Scan persistence unavailable", { category, correlationId });
     return NextResponse.json({ error: "Failed to create scan job", correlationId }, { status: 503 });
   }
 
   // The durable row already committed with the job. Only PostHog transport is
   // left, and after() keeps it alive past the response: a bare `void` promise
   // may never run once a Vercel function freezes. It must not go through
-  // recordEvent, which would insert first, hit the dedupe conflict, and return
-  // before forwarding.
+  // recordEvent: with its default NULL dedupe key it would never conflict, so
+  // it would insert a second, duplicate scan_started row and then forward it.
   const { startedEvent } = created;
-  after(() =>
-    forwardEventToPostHog(startedEvent, session.id).catch(() => {
-      console.error("[analytics] event_record_failed", { category: "transition_record_failed" });
-    }),
-  );
+  try {
+    after(() =>
+      forwardEventToPostHog(startedEvent, session.id).catch(() => {
+        console.error("[analytics] event_record_failed", { category: "transition_record_failed" });
+      }),
+    );
+  } catch {
+    // after() throws synchronously when no waitUntil is available. The job is
+    // already committed, so a 500 here would make the client retry and create
+    // a duplicate job. Losing one PostHog forward is the lesser failure.
+    console.error("[analytics] event_record_failed", { category: "transition_record_failed" });
+  }
   const response = NextResponse.json({ jobId: created.jobId });
   setAnalyticsSessionCookie(response, session);
   return response;
