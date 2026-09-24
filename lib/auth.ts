@@ -150,6 +150,54 @@ export async function authorizeWorkspaceRequest(
   return { ok: true, user, membership: decision.membership };
 }
 
+type AcceptedMembershipRow = { workspace_id: string; role: WorkspaceRole };
+type ReportMembership = { workspaceId: string; role: WorkspaceRole };
+
+/**
+ * The report page's membership resolver, for loadReport's `getMembership`
+ * option (CLAUDE.md §3.2.2: an accepted member sees the full report).
+ *
+ * Keyed by workspace, never by job: every job of one workspace gets the same
+ * answer. The scan comparison's privacy argument depends on that. A per-job
+ * answer would let "no accessible pair" versus "no earlier scan" reveal a scan
+ * the reader cannot open (docs/superpowers/specs/2026-09-24-comparison-states-design.md).
+ *
+ * No location-scope check: every member may read evidence (§3.9).
+ * authorizeReport still rejects a membership naming a different workspace.
+ *
+ * The page is public, so any identity or database failure degrades to "no
+ * membership" (the public or viewer view), never to an error or more access.
+ * One user lookup per render and one query per workspace, however many earlier
+ * scans the comparison walks.
+ */
+export function reportMembershipResolver(deps: {
+  getUser?: () => Promise<SessionUser | null>;
+  accepted?: (userId: string, workspaceId: string) => Promise<AcceptedMembershipRow | null>;
+} = {}): (job: { id: string; workspaceId: string | null }) => Promise<ReportMembership | null> {
+  const resolveUser = deps.getUser ?? getUser;
+  const accepted = deps.accepted ?? loadAcceptedMembership;
+  let user: Promise<SessionUser | null> | undefined;
+  const byWorkspace = new Map<string, Promise<ReportMembership | null>>();
+  return async (job) => {
+    if (!job.workspaceId) return null;
+    const workspaceId = job.workspaceId;
+    try {
+      user ??= resolveUser();
+      const current = await user;
+      if (!current) return null;
+      let lookup = byWorkspace.get(workspaceId);
+      if (!lookup) {
+        lookup = accepted(current.id, workspaceId).then(row => row ? { workspaceId: row.workspace_id, role: row.role } : null);
+        byWorkspace.set(workspaceId, lookup);
+      }
+      return await lookup;
+    } catch {
+      console.error("[report] membership_unavailable", { category: "report_membership_unavailable" });
+      return null;
+    }
+  };
+}
+
 /** Accepted memberships joined to workspaces.slug, oldest first. */
 export async function listMemberships(userId: string): Promise<Membership[]> {
  return (await membershipRepository.listAccepted(userId)).map(row => ({

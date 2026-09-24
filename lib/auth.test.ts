@@ -75,6 +75,7 @@ import {
   authorizeWorkspaceRequest,
   getUser,
   inLocationScope,
+  reportMembershipResolver,
   requireMembership,
   requireUser,
   roleAtLeast,
@@ -338,5 +339,62 @@ describe("signOut", () => {
     expect(state.signOut).toHaveBeenCalledWith();
     state.authThrows = true;
     await expect(signOut()).rejects.toThrow("identity_signout_failed");
+  });
+});
+
+describe("reportMembershipResolver", () => {
+  const user = { id: "user-1", email: "owner@example.test", verified: true };
+  const row = (role: "owner" | "manager" | "viewer") => ({ workspace_id: "ws-1", role });
+
+  it("returns nothing for a job attached to no workspace, without asking who is signed in", async () => {
+    const getUser = vi.fn(async () => user);
+    const accepted = vi.fn(async () => row("owner"));
+    const resolve = reportMembershipResolver({ getUser, accepted });
+    expect(await resolve({ id: "job-1", workspaceId: null })).toBeNull();
+    expect(getUser).not.toHaveBeenCalled();
+    expect(accepted).not.toHaveBeenCalled();
+  });
+
+  it("returns nothing when nobody is signed in", async () => {
+    const accepted = vi.fn(async () => row("owner"));
+    const resolve = reportMembershipResolver({ getUser: async () => null, accepted });
+    expect(await resolve({ id: "job-1", workspaceId: "ws-1" })).toBeNull();
+    expect(accepted).not.toHaveBeenCalled();
+  });
+
+  it("returns nothing for a signed-in user without an accepted membership", async () => {
+    const resolve = reportMembershipResolver({ getUser: async () => user, accepted: async () => null });
+    expect(await resolve({ id: "job-1", workspaceId: "ws-1" })).toBeNull();
+  });
+
+  it.each(["owner", "manager", "viewer"] as const)("returns an accepted %s membership for the job's workspace", async (role) => {
+    const accepted = vi.fn(async () => row(role));
+    const resolve = reportMembershipResolver({ getUser: async () => user, accepted });
+    expect(await resolve({ id: "job-1", workspaceId: "ws-1" })).toEqual({ workspaceId: "ws-1", role });
+    expect(accepted).toHaveBeenCalledWith("user-1", "ws-1");
+  });
+
+  it("answers every job of one workspace identically, with one user lookup and one query", async () => {
+    const getUser = vi.fn(async () => user);
+    const accepted = vi.fn(async () => row("manager"));
+    const resolve = reportMembershipResolver({ getUser, accepted });
+    const answers = await Promise.all(["job-1", "job-2", "job-3"].map(id => resolve({ id, workspaceId: "ws-1" })));
+    expect(answers).toEqual([1, 2, 3].map(() => ({ workspaceId: "ws-1", role: "manager" })));
+    expect(getUser).toHaveBeenCalledTimes(1);
+    expect(accepted).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed to no membership, with a fixed log line, when identity or the query fails", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const identityDown = reportMembershipResolver({ getUser: async () => { throw new Error("identity secret detail"); }, accepted: async () => row("owner") });
+      expect(await identityDown({ id: "job-1", workspaceId: "ws-1" })).toBeNull();
+      const queryDown = reportMembershipResolver({ getUser: async () => user, accepted: async () => { throw new Error("db secret detail"); } });
+      expect(await queryDown({ id: "job-1", workspaceId: "ws-1" })).toBeNull();
+      expect(error).toHaveBeenCalledWith("[report] membership_unavailable", { category: "report_membership_unavailable" });
+      expect(JSON.stringify(error.mock.calls)).not.toContain("secret detail");
+    } finally {
+      error.mockRestore();
+    }
   });
 });
