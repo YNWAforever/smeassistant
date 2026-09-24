@@ -3098,7 +3098,7 @@ const APP_NAMESPACES = ["applied", "verified", "budget"];
 
 ```ts
 describe("ScanningPage at capacity", () => {
-  it.each(["en", "zh-HK", "zh-TW"] as const)("says in %s that a refused resume will continue later", async (locale) => {
+  it.each(["en", "zh-HK", "zh-TW"] as const)("says in %s that a refused resume is saved and can be resumed later", async (locale) => {
     const copyFor = copy[locale].funnel.scanning;
     render(<ScanningPage locale={locale} jobId={JOB} />);
     await advance(MAX_POLL_DURATION_MS + 60_000);
@@ -3288,7 +3288,7 @@ with:
 
 ```ts
     stalledResumeNote: "Resuming never starts a second scan — it can only pick up this same scan. If an attempt is still running, nothing changes; a stopped attempt can be picked up again about {minutes} minutes after it stalled, for up to three attempts.",
-    atCapacity: "Scanning is at capacity right now, so this scan will continue later. You can close this page.",
+    atCapacity: "Scanning is at capacity right now. This scan is saved; press Resume again in a few hours.",
 ```
 
 3. Replace:
@@ -3301,7 +3301,7 @@ with:
 
 ```ts
     stalledResumeNote: "繼續掃描不會開始第二次掃描，只會接手同一次掃描。若仍有執行中的嘗試，此操作不會有任何改變；若嘗試真的已停止，約 {minutes} 分鐘後便可重新接手，最多三次。",
-    atCapacity: "掃描服務暫時已滿額，這次掃描稍後會繼續進行，你可以關閉此頁。",
+    atCapacity: "掃描服務暫時已滿額。這次掃描已保存，請於數小時後再按「繼續掃描」。",
 ```
 
 4. Replace:
@@ -3314,7 +3314,7 @@ with:
 
 ```ts
     stalledResumeNote: "繼續掃描不會開始第二次掃描，只會接手同一次掃描。若仍有執行中的嘗試，這個操作不會有任何改變；若嘗試真的已停止，約 {minutes} 分鐘後就能重新接手，最多三次。",
-    atCapacity: "掃描服務目前已達上限，這次掃描稍後會繼續進行，你可以關閉這個頁面。",
+    atCapacity: "掃描服務目前已達上限。這次掃描已保存，請於幾個小時後再按「繼續掃描」。",
 ```
 
 In `components/scanning-page.tsx`:
@@ -3461,7 +3461,7 @@ Run the Step 2 command. Expected: PASS. Then run the full `corepack pnpm test`, 
 
 1. Delete the zh-TW `aiLimit` entry. "share one key set across en, zh-HK and zh-TW" in `tests/i18n.test.ts` must fail, and so must `messages.test.ts`'s per-locale case for zh-TW.
 2. In `scanStartRefusal`, change `error === "at_capacity"` to `error !== undefined`. "leaves every other failure to its existing message" must fail on the `503 unavailable` case.
-3. In `scanning-page.tsx`, delete `if (body?.error === "at_capacity") setAtCapacity(true)`. All three "says in %s that a refused resume will continue later" cases must fail.
+3. In `scanning-page.tsx`, delete `if (body?.error === "at_capacity") setAtCapacity(true)`. All three "says in %s that a refused resume is saved and can be resumed later" cases must fail.
 4. In `rescanFailureMessage`, move the `result.status === 429` line above the `workspace_scan_budget_reached` line. "names the workspace limit and global capacity separately in %s" must fail for all three locales.
 
 - [ ] **Step 10: Commit**
@@ -3928,7 +3928,7 @@ Add a `## P3.5a — spend budgets` section to `PHASE-3-REPORT.md`, after the P3.
    - AI runs with no recorded cost count as zero.
    - Report summaries (`lib/llm-summary.ts`) are not metered.
    - Provider-level fallbacks inside one attempt are not counted separately.
-   - "This scan will continue later" relies on the cron reclaim (`app/api/cron/dispatch`) being scheduled in production.
+   - The scanning page promises only that the refused scan is saved and can be resumed. Whether the cron reclaim (`app/api/cron/dispatch`) picks it up automatically depends on `CRON_SECRET` being set in production, which P3.1 recorded as not done.
    - The AI pre-check can overshoot by one run per concurrent request.
    - The Chinese copy was not reviewed by a native speaker. It follows the repository register rules: 香港書面中文 for zh-HK, 台灣用語 for zh-TW, 工作台 as the workspace term.
    - The rescan at-capacity wording is an assumption awaiting the owner.

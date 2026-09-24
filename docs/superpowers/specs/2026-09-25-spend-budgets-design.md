@@ -142,6 +142,20 @@ The zh-HK and zh-TW copy follows the repository register rules: 香港書面中�
 
 Failed assistant drafts record their cost. When `live.ts`'s `draft()` fails after an LLM call (a parse failure, or missing facts), it persists an `action_runs` row with `state = 'failed'` and the measured `cost_usd`, so the AI budget sees the spend.
 
+## Amendments made during planning (2026-09-25)
+
+Reading the code changed the design in these places. Each is resolved in `docs/superpowers/plans/2026-09-25-spend-budgets.md`.
+
+1. **The advisory lock is the first statement of its transaction.** It is not inside the claim statement. Under READ COMMITTED a statement's snapshot is taken when it starts, so a lock acquired mid-statement would count from a snapshot older than the lock. The claim's UPDATE and attempt INSERT remain one data-modifying CTE.
+2. **The budget refusal is carried host-side.** The vendored `processScan` treats any null claim as `already_claimed`. So the store reports a budget refusal through a callback, and `runScan` maps `already_claimed` to `at_capacity` when that callback fired. `packages/**` is unchanged.
+3. **A SQL error inside the claim statement stays `claim_failed` (500).** The budget count is part of that one statement, so its errors cannot be told apart from other claim errors. An invalid budget configuration at claim time refuses retries and still claims first attempts. Refusals that come from a check failure, not from being over the limit, log `console.error("[budget] check_failed", { entry, reason })`.
+4. **Create receives a 201.** `POST /api/actions` creates the action before running the agent, and already reports agent failures as `201 { runError }`. The Create page shows the AI-limit copy for `runError: "ai_budget_reached"`, and the action row remains.
+5. **New copy lives in a `budget` namespace in `lib/messages`.** Action detail, Create and the assistant sheet use one Chinese string for both locales today, which cannot keep zh-HK and zh-TW distinct.
+6. **The budget lines in `.env.example` are commented out.** An empty value is invalid, so blank lines copied into `.env.local` would refuse every scan and draft.
+7. **The copy on the scanning page and the rescan button says only what is true.**
+   - **Scanning page, after a refused Resume:** "Scanning is at capacity right now. This scan is saved; press Resume again in a few hours." It does not promise automatic continuation, because that depends on the cron reclaim being scheduled in production (`CRON_SECRET`, recorded as unset by P3.1).
+   - **Rescan button, at global capacity:** "Scanning is at capacity right now. Please try again in a few hours." Not the public "Free scans" text.
+
 ## What does not change
 
 - The delivery allowance (`workspace_usage`, `export_output_version`) and the rate limits.
