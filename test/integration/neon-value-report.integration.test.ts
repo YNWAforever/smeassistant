@@ -19,7 +19,10 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("value report", () => {
   // Hoisted so the cross-tenant case can reuse the seeded tenants.
   let e1: string;
   let e2: string;
+  let demo: string;
+  let l1: string;
   let l3: string;
+  let demoLocation: string;
 
   const one = async <T = Record<string, unknown>>(sql: string, values: unknown[] = []) =>
     (await runtime.query(sql, values)).rows[0] as T;
@@ -57,9 +60,9 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("value report", () => {
     // Two external workspaces, one demo, one internal.
     e1 = await workspace();
     e2 = await workspace();
-    const demo = await workspace({ demo: true });
+    demo = await workspace({ demo: true });
     const internal = await workspace({ internal: true });
-    const l1 = await location(e1);
+    l1 = await location(e1);
     const l2 = await location(e1);
     l3 = await location(e2);
 
@@ -68,7 +71,8 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("value report", () => {
     await exported(e1, l2, IN);                 // ... and again in W38: a repeat
     await exported(e2, l3, IN, false);          // uncounted: not a delivery
     await exported(e2, null, IN);               // workspace-wide action: no location
-    await exported(demo, await location(demo), IN);
+    demoLocation = await location(demo);
+    await exported(demo, demoLocation, IN);
     await exported(internal, await location(internal), IN);
 
     await action(e1, l1, "needs_input");
@@ -186,6 +190,62 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("value report", () => {
       await client.query("ROLLBACK");
       client.release();
     }
+  });
+
+  // actions.location_id is a single-column FK too, so an action can point at
+  // another tenant's location. Such a row is excluded from every count, as a
+  // mismatched version or action is. Seeded in a rolled-back transaction.
+  describe("location hops are tenant-matched", () => {
+    const seededReport = async (seed: (client: PoolClient) => Promise<void>) => {
+      const client = await runtime.connect();
+      try {
+        await client.query("BEGIN");
+        await seed(client);
+        return await collectValueReport(client, WEEK);
+      } finally {
+        await client.query("ROLLBACK");
+        client.release();
+      }
+    };
+    // One action (in ws, pointing at loc), one approved version and one
+    // counted delivery, all at `at`, all tenant-consistent except the location.
+    const exportOn = async (client: PoolClient, ws: string, loc: string, at: string) => {
+      const act = (await client.query<{ id: string }>(
+        `INSERT INTO actions(workspace_id,location_id,template_key,title,summary,evidence,priority,priority_score,priority_factors,effort_minutes,capability,dedupe_key)
+         VALUES($1,$2,'review-response','{}','{}','{}','low',1,'[]',5,'Live',gen_random_uuid()::text) RETURNING id`, [ws, loc])).rows[0]!.id;
+      const ver = (await client.query<{ id: string }>(
+        "INSERT INTO output_versions(workspace_id,action_id,version_no,body,author_type,approval_state,created_at) VALUES($1,$2,1,'Fixture','user','approved',$3) RETURNING id", [ws, act, at])).rows[0]!.id;
+      await client.query(
+        "INSERT INTO deliveries(workspace_id,version_id,mode,state,counted,idempotency_key,created_at) VALUES($1,$2,'export','exported',true,gen_random_uuid()::text,$3)", [ws, ver, at]);
+    };
+
+    // Case (a): a demo workspace's W37 delivery, on an action pointing at E1's
+    // L1, must not make L1's first-ever export this week a repeat.
+    it("does not treat another workspace's earlier delivery on the same location as a repeat", async () => {
+      const result = await seededReport((client) => exportOn(client, demo, l1, BEFORE));
+      expect(result.deliveryFunnel).toMatchObject({ firstApprovedExport: 1, repeatWeeklyExport: 1 });
+    });
+
+    // Case (b): an E1 action pointing at the demo workspace's location. The row
+    // is excluded outright: not a location, not a first draft or export, and
+    // not a "no location" delivery. A fresh eligible workspace whose only
+    // delivery is of this kind shows the workspace count excludes it too.
+    it("does not count another tenant's location, or the row, for an eligible workspace", async () => {
+      const result = await seededReport(async (client) => {
+        await exportOn(client, e1, demoLocation, IN);
+        const e3 = (await client.query<{ id: string }>(
+          "INSERT INTO workspaces(slug,market) VALUES($1,'hk') RETURNING id", [`ws-${randomUUID()}`])).rows[0]!.id;
+        await exportOn(client, e3, demoLocation, IN);
+      });
+      expect(result.primary).toEqual({
+        locations: 2,
+        eligibleLocations: 3,
+        workspaces: 2,             // E1 and E2 as before; E3 is not added
+        eligibleWorkspaces: 3,     // E3 is eligible, it just has no valid delivery
+        deliveriesWithoutLocation: 1,
+      });
+      expect(result.deliveryFunnel).toEqual({ firstDraft: 2, firstApprovedExport: 1, repeatWeeklyExport: 1 });
+    });
   });
 
   it("runs under a read-only transaction that Postgres enforces", async () => {

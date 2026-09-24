@@ -34,12 +34,26 @@ type Client = Pick<PoolClient, "query">;
 /** Workspace eligibility, for a join aliased `w`. */
 const ELIGIBLE = "NOT w.is_demo AND NOT w.is_internal";
 
-/** deliveries → output_versions → actions, tenant-matched at every hop. */
+/**
+ * deliveries → output_versions → actions, tenant-matched at every hop. The
+ * location hop is LOCATION_MATCHED, added wherever a query reads location_id.
+ */
 const DELIVERY_JOIN = `
   FROM deliveries d
   JOIN output_versions v ON v.id = d.version_id AND v.workspace_id = d.workspace_id
   JOIN actions a ON a.id = v.action_id AND a.workspace_id = v.workspace_id
   JOIN workspaces w ON w.id = d.workspace_id`;
+
+/**
+ * The location hop, for a join aliased `a`. actions.location_id is a
+ * single-column FK, so nothing stops an action pointing at another tenant's
+ * location. Such a row is excluded from every count, exactly as a mismatched
+ * version or action already is: its location attribution cannot be trusted,
+ * and it is not a workspace-wide action either, so it belongs on neither the
+ * location count nor the "no location" line. A NULL location is kept.
+ */
+const LOCATION_MATCHED = `(a.location_id IS NULL OR EXISTS (
+    SELECT 1 FROM locations l WHERE l.id = a.location_id AND l.workspace_id = a.workspace_id))`;
 
 async function row(client: Client, sql: string, values: unknown[] = []): Promise<Row> {
   return ((await client.query(sql, values)).rows[0] ?? {}) as Row;
@@ -60,7 +74,7 @@ export async function collectValueReport(client: Client, week: ReportWeek): Prom
            count(DISTINCT d.workspace_id)::int AS workspaces,
            count(*) FILTER (WHERE a.location_id IS NULL)::int AS without_location
     ${DELIVERY_JOIN}
-    WHERE d.counted AND d.created_at >= $1 AND d.created_at < $2 AND ${ELIGIBLE}`, window);
+    WHERE d.counted AND d.created_at >= $1 AND d.created_at < $2 AND ${ELIGIBLE} AND ${LOCATION_MATCHED}`, window);
 
   const eligible = await row(client, `
     SELECT (SELECT count(*)::int FROM workspaces w WHERE ${ELIGIBLE}) AS workspaces,
@@ -96,24 +110,27 @@ export async function collectValueReport(client: Client, week: ReportWeek): Prom
          FROM output_versions v
          JOIN actions a ON a.id = v.action_id AND a.workspace_id = v.workspace_id
          JOIN workspaces w ON w.id = v.workspace_id
-         WHERE a.location_id IS NOT NULL AND ${ELIGIBLE}
+         WHERE a.location_id IS NOT NULL AND ${ELIGIBLE} AND ${LOCATION_MATCHED}
          GROUP BY a.location_id) f
        WHERE f.first_at >= $1 AND f.first_at < $2) AS first_draft,
       (SELECT count(*)::int FROM (
          SELECT min(d.created_at) AS first_at
          ${DELIVERY_JOIN}
-         WHERE d.counted AND a.location_id IS NOT NULL AND ${ELIGIBLE}
+         WHERE d.counted AND a.location_id IS NOT NULL AND ${ELIGIBLE} AND ${LOCATION_MATCHED}
          GROUP BY a.location_id) f
        WHERE f.first_at >= $1 AND f.first_at < $2) AS first_export,
       (SELECT count(DISTINCT a.location_id)::int
          ${DELIVERY_JOIN}
          WHERE d.counted AND d.created_at >= $1 AND d.created_at < $2
-           AND a.location_id IS NOT NULL AND ${ELIGIBLE}
+           AND a.location_id IS NOT NULL AND ${ELIGIBLE} AND ${LOCATION_MATCHED}
            AND EXISTS (
              SELECT 1 FROM deliveries d2
              JOIN output_versions v2 ON v2.id = d2.version_id AND v2.workspace_id = d2.workspace_id
              JOIN actions a2 ON a2.id = v2.action_id AND a2.workspace_id = v2.workspace_id
-             WHERE d2.counted AND a2.location_id = a.location_id AND d2.created_at < $1)) AS repeat_export`, window);
+             -- Same workspace as well as the same location: another tenant's
+             -- earlier delivery on an action pointing here is not a repeat.
+             WHERE d2.counted AND a2.workspace_id = a.workspace_id
+               AND a2.location_id = a.location_id AND d2.created_at < $1)) AS repeat_export`, window);
 
   const tasks = await row(client, `
     SELECT
