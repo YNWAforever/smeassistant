@@ -65,7 +65,9 @@ export async function runScan(
   anonymousSessionId: string,
 ): Promise<ScanProcessResult> {
   const result = await processScan(jobId, {
-    // Keep terminal insertion and its later capture owned by this Vercel request.
+    // The durable scan_completed row is written inside the store's own
+    // transaction; only the later PostHog tail needs this Vercel request's
+    // lifetime, via waitUntil.
     store: createScanExecutionStore(anonymousSessionId, { waitUntil }),
     collect: resolveScanCollector(),
     persistEvidence: persistEvidenceSnapshots,

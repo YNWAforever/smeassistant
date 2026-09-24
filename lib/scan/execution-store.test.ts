@@ -38,8 +38,10 @@ describe("terminal analytics lifetime", () => {
         persistEvidence: async () => {},
       })("job"),
     ).toEqual({ status: "failed", failurePersistence: "persisted" });
-    // One registration now: the database write moved into persist(), so only
-    // the PostHog transport remains.
+    // persist() is stubbed here, so this cannot prove where the row is
+    // written. What it proves: recordTerminal registers exactly one host
+    // lifetime promise, that promise is the PostHog tail, and recordTerminal
+    // never calls analytics.insert.
     expect(waited).toHaveLength(1);
     let settled = false;
     void waited[0].then(() => {

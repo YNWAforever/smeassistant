@@ -26,8 +26,13 @@ vi.mock("@/lib/website/checks", () => ({ runWebsiteChecks: websiteMocks.run }));
 vi.mock("@/lib/workspace/post-process", () => ({
   postProcessWorkspaceScan: websiteMocks.postProcess,
 }));
+// fail() now runs on a transaction client, so the pool also connects; the
+// client shares the same query mock so every statement is observable.
 vi.mock("@/lib/db/client", () => ({
-  getPool: () => ({ query: runtimeMocks.query }),
+  getPool: () => ({
+    query: runtimeMocks.query,
+    connect: async () => ({ query: runtimeMocks.query, release: () => {} }),
+  }),
 }));
 vi.mock("@/lib/repositories/events", () => ({
   eventRepository: () => ({ insert: runtimeMocks.insert }),
@@ -228,7 +233,7 @@ describe("runScan", () => {
 
 describe("Neon workspace completion bridge",()=>{
  afterEach(()=>{vi.unstubAllEnvs();completionMock.mockClear();completionMock.mockResolvedValue({status:"completed"});websiteMocks.run.mockClear();websiteMocks.postProcess.mockClear();vi.restoreAllMocks();});
- it.each(["true","false"])("completes Neon jobs independent of internal receiver flag=%s",async flag=>{completionMock.mockClear();vi.stubEnv("WORKSPACE_COMPLETION_ENABLED",flag);await expect(runScan("job","session")).resolves.toEqual({status:"done"});expect(completionMock).toHaveBeenCalledWith({query:runtimeMocks.query},"job",expect.any(Function));});
+ it.each(["true","false"])("completes Neon jobs independent of internal receiver flag=%s",async flag=>{completionMock.mockClear();vi.stubEnv("WORKSPACE_COMPLETION_ENABLED",flag);await expect(runScan("job","session")).resolves.toEqual({status:"done"});expect(completionMock).toHaveBeenCalledWith(expect.objectContaining({query:runtimeMocks.query}),"job",expect.any(Function));});
  it("does not change persisted terminal result when workspace effects need retry",async()=>{completionMock.mockResolvedValueOnce({status:"retry"});const log=vi.spyOn(console,"error").mockImplementation(()=>{});await expect(runScan("job","session")).resolves.toEqual({status:"done"});expect(log).toHaveBeenCalledWith("[scan] workspace completion retry",{category:"workspace_completion_retry",jobId:"job"});});
  it("does not complete work claimed by another runner",async()=>{completionMock.mockClear();vi.mocked(processScan).mockResolvedValueOnce({status:"already_claimed"});await runScan("job","session");expect(completionMock).not.toHaveBeenCalled();expect(websiteMocks.run).not.toHaveBeenCalled();});
 
@@ -296,7 +301,7 @@ describe("runScan host terminal lifetime", () => {
           };
         // Run the real fixture collector, then fail at the scoring stage so no
         // successful-scan postprocessing can accidentally keep analytics alive.
-        if (values[1] === "scoring") throw new Error("fixture stage failure");
+        if (values?.[1] === "scoring") throw new Error("fixture stage failure");
         return { rows: [{ id: "job" }] };
       },
     );
@@ -315,18 +320,31 @@ describe("runScan host terminal lifetime", () => {
         "collecting_aeo",
         "collecting",
       ]);
-      // The durable scan_completed row is part of fail()'s own statement,
-      // guarded by the UPDATE's RETURNING; recordTerminal never inserts.
-      expect(runtimeMocks.query).toHaveBeenCalledWith(
-        expect.stringContaining("INSERT INTO scan_events"),
-        expect.arrayContaining([
-          "job",
-          "session",
-          "scan_completed",
-          JSON.stringify({ outcome: "failed", coverage: 0 }),
-          "terminal",
-        ]),
+      // The durable scan_completed row is written inside fail()'s own
+      // transaction, after the guarded UPDATE matched, inside a savepoint;
+      // recordTerminal never inserts.
+      const statements = runtimeMocks.query.mock.calls.map(
+        ([sql]) => sql as string,
       );
+      const begin = statements.lastIndexOf("BEGIN");
+      const failed = statements.findIndex(
+        (sql, i) => i > begin && sql.includes("SET status='failed'"),
+      );
+      const savepoint = statements.indexOf("SAVEPOINT scan_event", failed);
+      const insert = statements.findIndex(
+        (sql, i) => i > savepoint && sql.includes("INSERT INTO scan_events"),
+      );
+      const release = statements.indexOf("RELEASE SAVEPOINT scan_event", insert);
+      const commit = statements.indexOf("COMMIT", release);
+      expect([begin, failed, savepoint, insert, release, commit].every((i) => i >= 0)).toBe(true);
+      expect(begin < failed && failed < savepoint && savepoint < insert && insert < release && release < commit).toBe(true);
+      expect(runtimeMocks.query.mock.calls[insert]![1]).toEqual([
+        "job",
+        "session",
+        "scan_completed",
+        JSON.stringify({ outcome: "failed", coverage: 0 }),
+        "terminal",
+      ]);
       expect(runtimeMocks.insert).not.toHaveBeenCalled();
       // Only the PostHog transport is left to keep alive.
       expect(waited).toHaveLength(1);

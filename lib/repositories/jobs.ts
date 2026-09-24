@@ -4,7 +4,13 @@ import { getPool } from "../db/client";
 import { withTransaction } from "../db/transaction";
 import { auditJobs } from "../db/schema/jobs";
 import type { buildScanConsentInsert, buildScanJobInsert } from "../scan/start-job";
-import { insertScanEvent, SCAN_STARTED_DEDUPE_KEY, type ScanStartedWrite } from "../analytics/scan-events";
+import {
+    scanCompletedEvent,
+    writeScanEventSafely,
+    SCAN_STARTED_DEDUPE_KEY,
+    SCAN_TERMINAL_DEDUPE_KEY,
+    type ScanStartedWrite,
+} from "../analytics/scan-events";
 export interface JobsRepository {
     insert(
         row: ReturnType<typeof buildScanJobInsert>,
@@ -17,19 +23,21 @@ export interface JobsRepository {
 export const jobsRepository: JobsRepository & {
     readStatus(id: string): Promise<ScanStatus | null>;
     readScanConsent(jobId: string): Promise<{ granted: boolean; policy_version: string } | null>;
-    failQueued(jobId: string, category: string, correlationId: string): Promise<boolean>;
+    failQueued(jobId: string, category: string, correlationId: string, anonymousSessionId: string): Promise<boolean>;
 } = {
     /**
-     * The job, its scan-time consent and its scan_started event are one
-     * transaction: consent_records.job_id is NOT NULL, so the consent row can
-     * only be written after the job exists, and writing them separately would
-     * leave a window where a queued job has no consent. A failure in any
-     * statement rolls all three back.
+     * The job and its scan-time consent are atomic: consent_records.job_id is
+     * NOT NULL, so the consent row can only be written after the job exists,
+     * and writing them separately would leave a window where a queued job has
+     * no consent. A failure in either statement rolls both back.
      *
-     * scan_started is written here rather than fire-and-forget afterwards
-     * because the old path lost it (F-34): a 250 ms budget around a fresh
-     * connect, and a bare promise Vercel may freeze after the response. Here
-     * the event exists exactly when the job does.
+     * scan_started is written in the same transaction, on the same connection,
+     * rather than fire-and-forget afterwards, because the old path lost it
+     * (F-34): a 250 ms budget around a fresh connect, and a bare promise Vercel
+     * may freeze after the response. It is best-effort inside that transaction:
+     * writeScanEventSafely puts it in a SAVEPOINT, so a failed event write
+     * rolls back only the event, is logged, and the job and consent still
+     * commit. The missing event is then a counted gap in reconciliation.
      */
     async insert(row, consent, started) {
         return withTransaction(async (client) => {
@@ -49,7 +57,7 @@ export const jobsRepository: JobsRepository & {
                 "INSERT INTO consent_records(job_id,lead_id,consent_type,granted,policy_version,locale) VALUES($1,NULL,$2,$3,$4,$5)",
                 [created.id, consent.consent_type, consent.granted, consent.policy_version, consent.locale],
             );
-            await insertScanEvent(client, {
+            await writeScanEventSafely(client, {
                 jobId: created.id,
                 anonymousSessionId: started.anonymousSessionId,
                 event: started.event,
@@ -70,13 +78,30 @@ export const jobsRepository: JobsRepository & {
      * Guarded to `queued` so it can never race a job the executor has already
      * claimed. A queued job with no consent row is terminally failed on its first
      * dispatch attempt -- the intended fail-closed behaviour.
+     *
+     * This is a terminal writer like the store's fail(), so it records the
+     * job's scan_completed (outcome failed, coverage 0) in the same
+     * transaction; without it every consent-refused scan would be a permanent
+     * reconciliation gap for an event that was never going to exist. Only a
+     * job this call actually moved to failed gets the event, and the write is
+     * in a SAVEPOINT, so a failed event write never keeps the job queued.
      */
-    async failQueued(jobId, category, correlationId) {
-        const { rows } = await getPool().query<{ id: string }>(
-            "UPDATE audit_jobs SET status='failed',processing_stage='failed',failure_category=$2,failure_correlation_id=$3,completed_at=now() WHERE id=$1 AND status='queued' RETURNING id",
-            [jobId, category, correlationId],
-        );
-        return rows.length > 0;
+    async failQueued(jobId, category, correlationId, anonymousSessionId) {
+        const completed = scanCompletedEvent("failed", 0);
+        return withTransaction(async (client) => {
+            const { rows } = await client.query<{ id: string }>(
+                "UPDATE audit_jobs SET status='failed',processing_stage='failed',failure_category=$2,failure_correlation_id=$3,completed_at=now() WHERE id=$1 AND status='queued' RETURNING id",
+                [jobId, category, correlationId],
+            );
+            if (!rows.length) return false;
+            await writeScanEventSafely(client, {
+                jobId,
+                anonymousSessionId,
+                event: completed,
+                dedupeKey: SCAN_TERMINAL_DEDUPE_KEY,
+            });
+            return true;
+        });
     },
     async readStatus(id) {
         const { rows } = await getPool().query<ScanStatus>("SELECT id,status,processing_stage,share_slug,score_coverage::float8 AS score_coverage,failure_correlation_id,module_results,module_scores FROM audit_jobs WHERE id=$1", [id]);

@@ -123,6 +123,37 @@ scan from persisting. Each event is therefore validated with the engine's
 `parseScanEvent` **before** the transaction opens. Inside it, the insert can
 only fail in the ways any other statement in that transaction could.
 
+**Amended 2026-09-24.** A review found that "an event-insert failure fails
+the transaction" stranded scans. The sequence was: (1) the `scan_completed`
+insert throws inside `persist()`, which rolls back the scored findings and the
+status `UPDATE`; (2) the engine then falls back to `fail()`, whose statement
+carried the same insert, so the fallback failed too; (3) the job stays in
+`persisting`. This repo has no reaper. A reclaim needs a fresh process `POST`
+30+ minutes later, it re-runs **paid** collection, and after 3 attempts the
+job never becomes terminal. Job creation had the same shape: a failed
+`scan_started` insert made `scan/start` return 503.
+
+The owner chose **"the scan always completes."** The event is still written
+inside the same transaction, on the same connection, with no timeout, so F-34
+stays fixed. But the write goes inside a `SAVEPOINT` (`writeScanEventSafely` in
+`lib/analytics/scan-events.ts`). If it fails, only the savepoint is rolled
+back, the failure is logged, and the scan's own writes commit. `fail()` became
+a transaction (guarded `UPDATE`, then the savepointed event only when a row
+matched) in place of the single-statement CTE, and `failQueued()` (the consent
+gate's terminal writer) now writes `scan_completed` the same way.
+
+A JavaScript `try/catch` alone would not have worked. Once a statement fails,
+PostgreSQL aborts the whole transaction and refuses every later statement
+("current transaction is aborted, commands ignored until end of transaction
+block"). `COMMIT` on an aborted transaction does not raise an error. It
+returns the tag `ROLLBACK`, so the driver resolves and the caller believes the
+scan committed when it did not. `ROLLBACK TO SAVEPOINT` is what makes "commit
+anyway" true.
+
+A missing event is not silent. It is logged
+(`event_record_failed` / `event_write_failed`), and it shows up as a counted
+gap in the value report's reconciliation (§3).
+
 ### The vendored package is not edited
 
 `insert` is host-supplied storage by design (the engine's own comment: "Host

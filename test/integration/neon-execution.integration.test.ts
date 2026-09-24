@@ -157,6 +157,12 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
       ]);
     });
 
+    // Production does not run this sequence: a committed terminal status ends
+    // the job's claimability, so no second process reaches persist() for it,
+    // and a different process would carry a different session anyway. It
+    // still earns its place because it catches a NULL-key regression: with a
+    // NULL dedupe key the second insert would never conflict and this would
+    // read two rows.
     it("a retried persist leaves one scan_completed, because the dedupe key now conflicts", async () => {
       const id = await job("persisting");
       const storage = createScanExecutionStore(randomUUID(), { pool: runtime });
@@ -190,15 +196,22 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
       expect(await completedRows(id)).toHaveLength(1);
     });
 
-    it("the terminal status and its event commit together", async () => {
+    // The scan always completes: the event write is in a SAVEPOINT, so a
+    // failed insert rolls back only itself and the scored scan still commits.
+    // Without the savepoint PostgreSQL would abort the transaction and turn
+    // COMMIT into a rollback, stranding the job in persisting.
+    it("persist still commits the scan when its event cannot be written", async () => {
       const id = await job("persisting");
+      const log = vi.spyOn(console, "error").mockImplementation(() => {});
       await owner.query('REVOKE INSERT ON TABLE public."scan_events" FROM sme_app_runtime');
       try {
-        await expect(createScanExecutionStore(randomUUID(), { pool: runtime }).persist(persisted(id, "done"))).rejects.toThrow();
+        await expect(createScanExecutionStore(randomUUID(), { pool: runtime }).persist(persisted(id, "done"))).resolves.toBeUndefined();
       } finally {
         await owner.query('GRANT INSERT ON TABLE public."scan_events" TO sme_app_runtime');
+        log.mockRestore();
       }
-      expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [id])).rows[0].status).toBe("persisting");
+      expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [id])).rows[0].status).toBe("done");
+      expect((await runtime.query("SELECT count(*)::int AS n FROM scan_events WHERE job_id=$1 AND event_name='scan_completed'", [id])).rows[0].n).toBe(0);
     });
 
     it("fail() writes one failed scan_completed only when its status guard matched", async () => {
@@ -214,15 +227,18 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
       expect(await completedRows(finished)).toEqual([]);
     });
 
-    it("fail() leaves the job running when its event cannot be written", async () => {
+    it("fail() still marks the job failed when its event cannot be written", async () => {
       const id = await job("collecting");
+      const log = vi.spyOn(console, "error").mockImplementation(() => {});
       await owner.query('REVOKE INSERT ON TABLE public."scan_events" FROM sme_app_runtime');
       try {
-        await expect(createScanExecutionStore(randomUUID(), { pool: runtime }).fail({ jobId: id, category: "PROCESSOR_FAILED", correlationId: randomUUID() })).rejects.toThrow();
+        await expect(createScanExecutionStore(randomUUID(), { pool: runtime }).fail({ jobId: id, category: "PROCESSOR_FAILED", correlationId: randomUUID() })).resolves.toBe(true);
       } finally {
         await owner.query('GRANT INSERT ON TABLE public."scan_events" TO sme_app_runtime');
+        log.mockRestore();
       }
-      expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [id])).rows[0].status).toBe("collecting");
+      expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [id])).rows[0].status).toBe("failed");
+      expect((await runtime.query("SELECT count(*)::int AS n FROM scan_events WHERE job_id=$1", [id])).rows[0].n).toBe(0);
     });
     it("runs real fixture collection/scoring and idempotently persists findings without holding collection transactions", async () => {
       const id = await job();

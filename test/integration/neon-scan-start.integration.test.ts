@@ -204,21 +204,31 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan persistence", ()
    expect((await runtime.query("SELECT count(*)::int AS n FROM scan_events WHERE anonymous_session_id=$1", [session])).rows[0].n).toBe(0);
   });
 
-  it("does not create the job when its scan_started cannot be written", async () => {
+  // The owner's decision: the scan always completes. The event write sits in a
+  // SAVEPOINT, so a failed scan_started rolls back only itself; the job and its
+  // consent still commit, and the missing event is a counted reconciliation gap.
+  it("still creates the job when its scan_started cannot be written", async () => {
    const parsed = consentedInput();
    const name = `No event shop ${randomUUID()}`;
+   const log = vi.spyOn(console, "error").mockImplementation(() => {});
    await owner.query('REVOKE INSERT ON TABLE public."scan_events" FROM sme_app_runtime');
+   let result: Awaited<ReturnType<typeof insertScanJob>>;
    try {
     // ScanStartInput is camelCase: `business_name` here would be silently
-    // ignored, the job would be named "Consent shop", and the count below would
-    // read 0 whether or not the job was created -- an assertion that cannot fail.
-    const result = await insertScanJob({ ...parsed.input, businessName: name }, parsed.consent, { anonymousSessionId: randomUUID() });
-    expect(result.ok).toBe(false);
+    // ignored and the job would be named "Consent shop", so the lookups below
+    // would not find it. The unique name finds exactly this job.
+    result = await insertScanJob({ ...parsed.input, businessName: name }, parsed.consent, { anonymousSessionId: randomUUID() });
    } finally {
     // Restores exactly what was revoked: 0003 grants SELECT, INSERT, UPDATE, DELETE.
     await owner.query('GRANT INSERT ON TABLE public."scan_events" TO sme_app_runtime');
+    log.mockRestore();
    }
-   expect((await runtime.query("SELECT count(*)::int AS n FROM audit_jobs WHERE business_name=$1", [name])).rows[0].n).toBe(0);
+   expect(result.ok).toBe(true);
+   const jobs = (await runtime.query("SELECT id FROM audit_jobs WHERE business_name=$1", [name])).rows;
+   expect(jobs).toHaveLength(1);
+   if (result.ok) expect(jobs[0].id).toBe(result.jobId);
+   expect((await runtime.query("SELECT count(*)::int AS n FROM consent_records WHERE job_id=$1", [jobs[0].id])).rows[0].n).toBe(1);
+   expect((await runtime.query("SELECT count(*)::int AS n FROM scan_events WHERE job_id=$1", [jobs[0].id])).rows[0].n).toBe(0);
   });
 
   it("removes the consent row when the scan is erased", async () => {
@@ -231,7 +241,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan persistence", ()
 
   it("fails a queued job that reaches dispatch with no consent, and leaves a claimed one alone", async () => {
    const orphan = (await runtime.query("INSERT INTO audit_jobs(business_name,status) VALUES('Orphan','queued') RETURNING id")).rows[0].id;
-   const gate = await assertScanConsent(orphan);
+   const gate = await assertScanConsent(orphan, randomUUID());
    expect(gate).toMatchObject({ ok: false, code: "consent_required", status: 403 });
    const failed = (await runtime.query("SELECT status,failure_category,failure_correlation_id FROM audit_jobs WHERE id=$1", [orphan])).rows[0];
    expect(failed.status).toBe("failed");
@@ -240,8 +250,28 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan persistence", ()
 
    // The `AND status='queued'` guard means the gate can never race the executor.
    const claimed = (await runtime.query("INSERT INTO audit_jobs(business_name,status) VALUES('Claimed','collecting') RETURNING id")).rows[0].id;
-   await assertScanConsent(claimed);
+   await assertScanConsent(claimed, randomUUID());
    expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [claimed])).rows[0].status).toBe("collecting");
+  });
+
+  // failQueued is the third terminal writer (after persist and fail): a
+  // consent-refused scan gets its scan_completed so it is not a permanent
+  // reconciliation gap, and only the job the guard actually moved gets one.
+  it("failQueued fails a queued job with exactly one scan_completed, and leaves a non-queued one untouched", async () => {
+   const eventRows = async (id: string) =>
+    (await runtime.query("SELECT anonymous_session_id,event_name,properties,dedupe_key FROM scan_events WHERE job_id=$1", [id])).rows;
+   const session = randomUUID();
+   const queued = (await runtime.query("INSERT INTO audit_jobs(business_name,status) VALUES('Refused','queued') RETURNING id")).rows[0].id;
+   expect(await jobsRepository.failQueued(queued, "consent_missing", randomUUID(), session)).toBe(true);
+   expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [queued])).rows[0].status).toBe("failed");
+   expect(await eventRows(queued)).toEqual([
+    { anonymous_session_id: session, event_name: "scan_completed", properties: { outcome: "failed", coverage: 0 }, dedupe_key: "terminal" },
+   ]);
+
+   const running = (await runtime.query("INSERT INTO audit_jobs(business_name,status) VALUES('Running','collecting') RETURNING id")).rows[0].id;
+   expect(await jobsRepository.failQueued(running, "consent_missing", randomUUID(), session)).toBe(false);
+   expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [running])).rows[0].status).toBe("collecting");
+   expect(await eventRows(running)).toEqual([]);
   });
  });
 });

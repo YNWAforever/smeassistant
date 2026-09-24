@@ -5,6 +5,7 @@ import {
   insertScanEvent,
   scanCompletedEvent,
   scanStartedEvent,
+  writeScanEventSafely,
 } from "./scan-events";
 
 describe("scan event builders", () => {
@@ -27,7 +28,9 @@ describe("scan event builders", () => {
 
 describe("dedupe keys", () => {
   // scan_events_dedupe_identity_unique_idx has no NULLS NOT DISTINCT, so a NULL
-  // key never conflicts. A fixed non-null key is what makes a retry idempotent.
+  // key never conflicts. A fixed non-null key makes a same-session repeat
+  // idempotent; the session is part of the index, so it does nothing across
+  // sessions.
   it("are fixed and distinct per event", () => {
     expect(SCAN_STARTED_DEDUPE_KEY).toBe("started");
     expect(SCAN_TERMINAL_DEDUPE_KEY).toBe("terminal");
@@ -48,5 +51,46 @@ describe("insertScanEvent", () => {
     expect(sql).toMatch(/INSERT INTO scan_events/);
     expect(sql).toMatch(/ON CONFLICT\(job_id,anonymous_session_id,event_name,dedupe_key\) DO NOTHING/);
     expect(values).toEqual(["job-1", "session-1", "scan_started", JSON.stringify({ market: "TW", locale: "zh-TW" }), "started"]);
+  });
+});
+
+describe("writeScanEventSafely", () => {
+  const write = {
+    jobId: "job-1",
+    anonymousSessionId: "session-1",
+    event: scanCompletedEvent("done", 0.5),
+    dedupeKey: SCAN_TERMINAL_DEDUPE_KEY,
+  };
+
+  it("wraps the insert in a savepoint and releases it on success", async () => {
+    const query = vi.fn<(sql: string) => Promise<{ rows: never[] }>>(async () => ({ rows: [] }));
+    expect(await writeScanEventSafely({ query } as never, write)).toBe(true);
+    const statements = query.mock.calls.map(([sql]) => sql);
+    expect(statements[0]).toBe("SAVEPOINT scan_event");
+    expect(statements[1]).toMatch(/INSERT INTO scan_events/);
+    expect(statements[2]).toBe("RELEASE SAVEPOINT scan_event");
+  });
+
+  it("rolls back only to the savepoint, logs, and reports false when the insert fails", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes("INSERT INTO scan_events")) throw new Error("permission denied");
+      return { rows: [] };
+    });
+    try {
+      expect(await writeScanEventSafely({ query } as never, write)).toBe(false);
+      expect(query.mock.calls.map(([sql]) => sql).at(-1)).toBe("ROLLBACK TO SAVEPOINT scan_event");
+      expect(log).toHaveBeenCalledWith("[analytics] event_record_failed", { category: "event_write_failed", event: "scan_completed" });
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("propagates a failure of the savepoint statement itself", async () => {
+    const query = vi.fn(async (sql: string) => {
+      if (sql === "SAVEPOINT scan_event") throw new Error("connection lost");
+      return { rows: [] };
+    });
+    await expect(writeScanEventSafely({ query } as never, write)).rejects.toThrow("connection lost");
   });
 });

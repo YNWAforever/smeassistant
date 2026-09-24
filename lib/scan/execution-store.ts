@@ -11,9 +11,8 @@ import {
 } from "@sme-scanner/scan-engine";
 import { getPool } from "../db/client";
 import { withTransaction } from "../db/transaction";
-import { eventRepository } from "../repositories/events";
 import { capturePostHog } from "../analytics/posthog";
-import { insertScanEvent, scanCompletedEvent, SCAN_TERMINAL_DEDUPE_KEY } from "../analytics/scan-events";
+import { writeScanEventSafely, scanCompletedEvent, SCAN_TERMINAL_DEDUPE_KEY } from "../analytics/scan-events";
 import { CLAIMABLE_JOB_CONDITION_SQL } from "./claimable";
 
 type ExecutionPool = Pick<Pool, "query" | "connect">;
@@ -27,10 +26,14 @@ export function createScanExecutionStore(
 ): ScanExecutionStore {
   const pool = () => options.pool ?? getPool();
   // The store never calls analytics.insert: scan_completed is written inside
-  // persist()/fail(). insert remains only because AnalyticsDependencies
-  // requires it and forwardEventToPostHog takes that type.
+  // persist()/fail(). insert exists only because AnalyticsDependencies
+  // requires it and forwardEventToPostHog takes that type. It throws so a
+  // regression back to recordEvent fails loudly instead of quietly writing a
+  // NULL-key duplicate scan_completed row.
   const analytics: AnalyticsDependencies = options.analytics ?? {
-    insert: (row, signal) => eventRepository(pool()).insert(row, signal),
+    insert: async () => {
+      throw new Error("scan_events are written by the store, not analytics.insert");
+    },
     capturePostHog,
     reportError: (category) =>
       console.error("[analytics] event_record_failed", { category }),
@@ -113,46 +116,36 @@ export function createScanExecutionStore(
         } catch {
           throw new Error("persist_job_failed");
         }
-        try {
-          await insertScanEvent(client, {
-            jobId: result.jobId,
-            anonymousSessionId,
-            event: completed,
-            dedupeKey: SCAN_TERMINAL_DEDUPE_KEY,
-          });
-        } catch {
-          throw new Error("persist_event_failed");
-        }
+        // Best-effort inside this transaction: a failed event write rolls back
+        // only its savepoint, so the scored scan above still commits.
+        await writeScanEventSafely(client, {
+          jobId: result.jobId,
+          anonymousSessionId,
+          event: completed,
+          dedupeKey: SCAN_TERMINAL_DEDUPE_KEY,
+        });
       }, pool());
     },
     async fail(failure) {
       const completed = scanCompletedEvent("failed", 0);
       try {
-        // One statement, so one implicit transaction: the event row exists
-        // only if the guarded UPDATE matched, because it selects from the
-        // UPDATE's RETURNING. A job that was already terminal gets no second
-        // event.
-        const result = await pool().query(
-          `WITH failed AS (
-             UPDATE audit_jobs SET status='failed',processing_stage='failed',failure_category=$2,failure_correlation_id=$3,completed_at=now()
-             WHERE id=$1 AND status IN ('collecting','scoring','persisting') RETURNING id
-           ), terminal_event AS (
-             INSERT INTO scan_events(job_id,anonymous_session_id,event_name,properties,dedupe_key)
-             SELECT id,$4,$5,$6::jsonb,$7 FROM failed
-             ON CONFLICT(job_id,anonymous_session_id,event_name,dedupe_key) DO NOTHING
-           )
-           SELECT id FROM failed`,
-          [
-            failure.jobId,
-            failure.category,
-            failure.correlationId,
+        return await withTransaction(async (client) => {
+          const result = await client.query(
+            `UPDATE audit_jobs SET status='failed',processing_stage='failed',failure_category=$2,failure_correlation_id=$3,completed_at=now()
+             WHERE id=$1 AND status IN ('collecting','scoring','persisting') RETURNING id`,
+            [failure.jobId, failure.category, failure.correlationId],
+          );
+          // Only a job this call actually moved to failed gets the event; one
+          // that was already terminal gets nothing.
+          if (!result.rows.length) return false;
+          await writeScanEventSafely(client, {
+            jobId: failure.jobId,
             anonymousSessionId,
-            completed.name,
-            JSON.stringify(completed.properties),
-            SCAN_TERMINAL_DEDUPE_KEY,
-          ],
-        );
-        return result.rows.length > 0;
+            event: completed,
+            dedupeKey: SCAN_TERMINAL_DEDUPE_KEY,
+          });
+          return true;
+        }, pool());
       } catch {
         throw new Error("failure_persistence_failed");
       }
