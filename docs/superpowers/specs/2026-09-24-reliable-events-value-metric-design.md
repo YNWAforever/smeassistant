@@ -65,9 +65,21 @@ measurement).
 
 | Event | Written inside | How |
 |---|---|---|
-| `scan_started` | `jobsRepository.insert` (`lib/repositories/jobs.ts`), already `withTransaction` | one `INSERT` beside the `audit_jobs` and consent rows |
-| `scan_completed` (done / partial) | `persist()` in `lib/scan/execution-store.ts`, already `withTransaction` | one `INSERT` after the status `UPDATE` |
-| `scan_completed` (failed) | `fail()` in the same file, today a single autocommit `UPDATE` | a CTE: `WITH u AS (UPDATE … RETURNING id) INSERT INTO scan_events … SELECT … FROM u` |
+| `scan_started` | `jobsRepository.insert` (`lib/repositories/jobs.ts`), already `withTransaction` | one `INSERT` beside the `audit_jobs` and consent rows — for **both** creation paths, the public funnel and rescans |
+| `scan_completed` (any outcome) | `persist()` in `lib/scan/execution-store.ts`, already `withTransaction` | one `INSERT` after the status `UPDATE`, with `outcome = result.status` |
+| `scan_completed` (`failed`, thrown) | `fail()` in the same file, today a single autocommit `UPDATE` | a CTE: `WITH u AS (UPDATE … RETURNING id) INSERT INTO scan_events … SELECT … FROM u` |
+
+`persist()` is not limited to done/partial. The engine's processor scores a
+scan that measured nothing as `failed` and persists it through `persist()`
+like any other; `fail()` handles only scans whose processing **threw**. Both
+paths can therefore emit `outcome: "failed"`, and `persist()` writes
+`result.status` as given rather than assuming a successful outcome.
+
+`scan_started` is written for rescans too. `lib/workspace/rescan.ts` calls
+`jobsRepository.insert` directly, so if only the public funnel wrote the
+event, every rescan would appear in the reconciliation as a lost event that
+was never going to exist. Rescans still send nothing to PostHog — they never
+did, and adding it would change that dataset without a requirement.
 
 The `fail()` CTE matters: its `UPDATE` is guarded by
 `status IN ('collecting','scoring','persisting')`. Because the insert selects
