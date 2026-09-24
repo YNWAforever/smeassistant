@@ -18,7 +18,7 @@ const run = (id: string, observedAt: string): MerchantPerformanceEvidenceRun => 
 });
 const raw = (id: string, observedAt: string) => ({ aeo: { merchant_performance: { generated_at: observedAt, runs: [run(id, observedAt)] } } });
 
-test('actual share route keeps earlier comparison evidence private and shows unavailable after current-only unlock', async ({ page, merchant, environment }) => {
+test('actual share route keeps earlier comparison evidence private and shows the access state after current-only unlock', async ({ page, merchant, environment }) => {
   const diagnostics: string[] = [];
   page.on('pageerror', error => diagnostics.push('pageerror: ' + error.message));
   page.on('console', message => { if (['warning', 'error'].includes(message.type())) diagnostics.push(message.type() + ': ' + message.text()); });
@@ -76,7 +76,7 @@ test('actual share route keeps earlier comparison evidence private and shows una
     await assertRscPrivate(locale, true);
     const panel = page.locator('section[aria-labelledby="scan-comparison-title"]');
     await expect(panel).toBeVisible();
-    await expect(panel).toContainText(comparisonCopy[locale].unavailable.no_accessible_pair);
+    await expect(panel).toContainText(comparisonCopy[locale].unavailable.no_history_access);
     await expect(page.getByText('PRIVATE_COMPARISON_CURRENT', { exact: false }).first()).toBeVisible();
     await expect(panel.locator('details')).toHaveCount(0);
     for (const width of [375, 1440]) {
