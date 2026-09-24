@@ -42,7 +42,7 @@ The owner chose this over keeping the neutral message for viewers or hiding the 
 3. Walk candidates newest-first exactly as today: the same pagination, validity check, independent authorization and timestamp check. The first `changes` result → `available`. If the current scan has no usable evidence, the first valid and authorized candidate → `insufficient_evidence`, without reading that candidate's input.
 4. If the walk ends without a comparison:
    - no valid candidate was seen → `no_earlier_scan`;
-   - valid candidates were seen, but none was authorized → `no_accessible_pair`;
+   - valid candidates were seen, but none was authorized with readable input → `no_accessible_pair`;
    - **any** authorized candidate returned `insufficient_evidence` → `insufficient_evidence`;
    - otherwise → `not_comparable`.
 5. A thrown error → `lookup_failed`. Candidate-cap exhaustion → `history_limit`. Both unchanged.
@@ -147,6 +147,38 @@ None of the copy says "first scan". `no_earlier_scan` claims only what the loade
 **End-to-end** (`e2e/acceptance/report-scan-comparison.spec.ts`): the current-only-unlocked viewer case now expects `comparisonCopy[locale].unavailable.no_history_access`. Its privacy assertions are unchanged.
 
 **Gates:** `typecheck`, `lint`, `test` and `test:integration`, run locally. `build` is expected to stay blocked by the standing Windows Turbopack/radix-ui issue, with `next build --webpack` run as a labelled diagnostic. `e2e` and `e2e:acceptance` need a production build, which this machine cannot produce, so they are **not run locally**, as in every earlier Phase 3 record. The updated acceptance expectation is proven only where CI runs it.
+
+## Amendment (2026-09-25): wiring membership into the report page
+
+The whole-branch review found that the member and staff states were unreachable in production.
+- `app/[locale]/r/[slug]/page.tsx:33` called `loadReport(slug, locale)` without the `getMembership` option, and `load-report.ts` defaults that option to "no membership".
+- Staff identity is stubbed off (`lib/auth/staff.ts`).
+
+So the only reader who ever reached the comparison panel was a viewer. The viewer's new copy ("Sign in as the business owner to see changes over time") promised something signing in could not deliver. The P3.2 record had counted "membership resolution through `loadReport`" as already satisfied. It was not: the loader accepted a resolver, and the page never supplied one. `OWNER-WORKSPACE-GAP-OBSERVATIONS.md` had recorded the missing page wiring separately. The owner approved closing it on this branch.
+
+**Resolver.** `reportMembershipResolver()` lives in `lib/auth.ts` and returns the `getMembership` function `loadReport` already accepts. For a job:
+- a job with no workspace → `null`;
+- `getUser()` returns nobody → `null`;
+- otherwise `membershipRepository.accepted(user.id, workspaceId)`: an accepted row → `{ workspaceId, role }`, no row → `null`.
+
+**Keyed by workspace, never by job.** Every job of one workspace gets the same answer. The comparison's privacy argument depends on this invariant. Without it, `no_accessible_pair` versus `no_earlier_scan` could reveal a scan the reader is denied. The resolver's doc comment states the invariant, and a test pins it.
+
+**Memoised per request.** One `getUser()` call per page render, and at most one membership query per workspace, however many candidates the comparison walks.
+
+**Fails closed.** The page is public, so an identity or database error becomes `null` and logs the fixed category `report_membership_unavailable`. The reader gets the public or viewer view, never an error page and never more access.
+
+**No location-scope check.** §3.9 lets every member read evidence, including out-of-scope managers and workspace viewers. `authorizeReport` still fails closed when the membership's workspace differs from the job's.
+
+**Page.** `loadReport(slug, locale, { getMembership: reportMembershipResolver() })`.
+
+**Effect in production.** A signed-in, accepted member of the job's workspace now receives the full report on `/r/[slug]` (CLAUDE.md §3.2.2 "member = full"), including the member-only comparison states. Viewers, public readers and staff see what they saw before.
+
+**Also closed on this branch, from the same review:**
+- a test for the Instagram branch of `overlaps`;
+- the stale "none was authorized" wording in "Selection order";
+- zh-HK 身份 in `no_history_access`, matching `lib/copy.ts`.
+
+**Accepted limitation.** An overlap larger than `MAX_EVIDENCE_ROWS` (50 shared queries) is reported as `insufficient_evidence`, and its copy mentions a fuller rescan. That wording fits missing evidence, not an oversized overlap. It is accepted because no current scan approaches 50 shared queries in one cohort. Revisit it if query counts grow.
 
 ## What this does not prove
 

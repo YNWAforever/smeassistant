@@ -829,6 +829,266 @@ Commit message: `docs(P3.2): record the honest comparison states slice`
 
 ---
 
+## Added 2026-09-25: Tasks 6–8, from the whole-branch review
+
+The review found that the report page never resolved membership. The member-only states were therefore unreachable in production, and the viewer copy's "sign in" promise could not be kept. The owner approved wiring membership in on this branch. Read the spec's "Amendment (2026-09-25)" section first.
+
+### Task 6: The report page resolves workspace membership
+
+**Files:**
+- Modify: `lib/auth.ts` (add `reportMembershipResolver` after `authorizeWorkspaceRequest`)
+- Test: `lib/auth.test.ts` (new `describe` block)
+- Modify: `app/[locale]/r/[slug]/page.tsx:33`
+- Create: `app/[locale]/r/[slug]/page.test.tsx`
+
+- [ ] **Step 1: Write the failing resolver tests**
+
+Append to `lib/auth.test.ts`. First read its existing mocks (`vi.mock("@/lib/repositories/membership", …)`, `@/lib/identity/*`) and reuse them where they fit. The resolver takes injectable dependencies, so these tests pass fakes directly and do not depend on those mocks.
+
+```ts
+describe("reportMembershipResolver", () => {
+  const user = { id: "user-1", email: "owner@example.test" };
+  const row = (role: "owner" | "manager" | "viewer") => ({ workspace_id: "ws-1", role });
+
+  it("returns nothing for a job attached to no workspace, without asking who is signed in", async () => {
+    const getUser = vi.fn(async () => user);
+    const accepted = vi.fn(async () => row("owner"));
+    const resolve = reportMembershipResolver({ getUser, accepted });
+    expect(await resolve({ id: "job-1", workspaceId: null })).toBeNull();
+    expect(getUser).not.toHaveBeenCalled();
+    expect(accepted).not.toHaveBeenCalled();
+  });
+
+  it("returns nothing when nobody is signed in", async () => {
+    const accepted = vi.fn(async () => row("owner"));
+    const resolve = reportMembershipResolver({ getUser: async () => null, accepted });
+    expect(await resolve({ id: "job-1", workspaceId: "ws-1" })).toBeNull();
+    expect(accepted).not.toHaveBeenCalled();
+  });
+
+  it("returns nothing for a signed-in user without an accepted membership", async () => {
+    const resolve = reportMembershipResolver({ getUser: async () => user, accepted: async () => null });
+    expect(await resolve({ id: "job-1", workspaceId: "ws-1" })).toBeNull();
+  });
+
+  it.each(["owner", "manager", "viewer"] as const)("returns an accepted %s membership for the job's workspace", async (role) => {
+    const accepted = vi.fn(async () => row(role));
+    const resolve = reportMembershipResolver({ getUser: async () => user, accepted });
+    expect(await resolve({ id: "job-1", workspaceId: "ws-1" })).toEqual({ workspaceId: "ws-1", role });
+    expect(accepted).toHaveBeenCalledWith("user-1", "ws-1");
+  });
+
+  it("answers every job of one workspace identically, with one user lookup and one query", async () => {
+    const getUser = vi.fn(async () => user);
+    const accepted = vi.fn(async () => row("manager"));
+    const resolve = reportMembershipResolver({ getUser, accepted });
+    const answers = await Promise.all(["job-1", "job-2", "job-3"].map(id => resolve({ id, workspaceId: "ws-1" })));
+    expect(answers).toEqual([1, 2, 3].map(() => ({ workspaceId: "ws-1", role: "manager" })));
+    expect(getUser).toHaveBeenCalledTimes(1);
+    expect(accepted).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed to no membership, with a fixed log line, when identity or the query fails", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const identityDown = reportMembershipResolver({ getUser: async () => { throw new Error("identity secret detail"); }, accepted: async () => row("owner") });
+      expect(await identityDown({ id: "job-1", workspaceId: "ws-1" })).toBeNull();
+      const queryDown = reportMembershipResolver({ getUser: async () => user, accepted: async () => { throw new Error("db secret detail"); } });
+      expect(await queryDown({ id: "job-1", workspaceId: "ws-1" })).toBeNull();
+      expect(error).toHaveBeenCalledWith("[report] membership_unavailable", { category: "report_membership_unavailable" });
+      expect(JSON.stringify(error.mock.calls)).not.toContain("secret detail");
+    } finally {
+      error.mockRestore();
+    }
+  });
+});
+```
+
+Add `reportMembershipResolver` to the file's existing import from `./auth` (or `@/lib/auth`, whichever the file uses).
+
+- [ ] **Step 2: Run to verify it fails**
+
+Run: `corepack pnpm exec vitest run lib/auth.test.ts`
+
+Expected: FAIL, because `reportMembershipResolver` is not exported.
+
+- [ ] **Step 3: Implement the resolver**
+
+In `lib/auth.ts`, directly after `authorizeWorkspaceRequest`, add:
+
+```ts
+type AcceptedMembershipRow = { workspace_id: string; role: WorkspaceRole };
+type ReportMembership = { workspaceId: string; role: WorkspaceRole };
+
+/**
+ * The report page's membership resolver, for loadReport's `getMembership`
+ * option (CLAUDE.md §3.2.2: an accepted member sees the full report).
+ *
+ * Keyed by workspace, never by job: every job of one workspace gets the same
+ * answer. The scan comparison's privacy argument depends on that. A per-job
+ * answer would let "no accessible pair" versus "no earlier scan" reveal a scan
+ * the reader cannot open (docs/superpowers/specs/2026-09-24-comparison-states-design.md).
+ *
+ * No location-scope check: every member may read evidence (§3.9).
+ * authorizeReport still rejects a membership naming a different workspace.
+ *
+ * The page is public, so any identity or database failure degrades to "no
+ * membership" (the public or viewer view), never to an error or more access.
+ * One user lookup per render and one query per workspace, however many earlier
+ * scans the comparison walks.
+ */
+export function reportMembershipResolver(deps: {
+  getUser?: () => Promise<SessionUser | null>;
+  accepted?: (userId: string, workspaceId: string) => Promise<AcceptedMembershipRow | null>;
+} = {}): (job: { id: string; workspaceId: string | null }) => Promise<ReportMembership | null> {
+  const resolveUser = deps.getUser ?? getUser;
+  const accepted = deps.accepted ?? loadAcceptedMembership;
+  let user: Promise<SessionUser | null> | undefined;
+  const byWorkspace = new Map<string, Promise<ReportMembership | null>>();
+  return async (job) => {
+    if (!job.workspaceId) return null;
+    const workspaceId = job.workspaceId;
+    try {
+      user ??= resolveUser();
+      const current = await user;
+      if (!current) return null;
+      let lookup = byWorkspace.get(workspaceId);
+      if (!lookup) {
+        lookup = accepted(current.id, workspaceId).then(row => row ? { workspaceId: row.workspace_id, role: row.role } : null);
+        byWorkspace.set(workspaceId, lookup);
+      }
+      return await lookup;
+    } catch {
+      console.error("[report] membership_unavailable", { category: "report_membership_unavailable" });
+      return null;
+    }
+  };
+}
+```
+
+`SessionUser`, `WorkspaceRole`, `getUser` and `loadAcceptedMembership` already exist in this file. If `loadAcceptedMembership`'s row type is not assignable to `AcceptedMembershipRow`, stop and report the actual type; do not cast. Once a rejected promise is memoised, every later call for that workspace also returns `null`, which keeps the answer the same across jobs.
+
+- [ ] **Step 4: Run to verify it passes**
+
+Run: `corepack pnpm exec vitest run lib/auth.test.ts`
+
+Expected: PASS.
+
+- [ ] **Step 5: Wire the page, test-first**
+
+1. Read `app/[locale]/r/[slug]/page.tsx` in full.
+2. Create `app/[locale]/r/[slug]/page.test.tsx`. It must prove that the page calls `loadReport(slug, locale, { getMembership })` with a function supplied by `reportMembershipResolver`. Do it this way:
+   - `vi.mock("@/lib/report/load-report")` with a `loadReport` spy.
+   - `vi.mock("@/lib/auth")` so that `reportMembershipResolver` returns a known sentinel function.
+   - Mock whatever else the page imports that would otherwise touch the network or `next/headers`, following the patterns in nearby page tests (`grep -rl "page.test" app`).
+   - Invoke the page's default export with `params` and `searchParams` as it expects.
+   - Assert `expect(loadReport).toHaveBeenCalledWith("the-slug", <normalised locale>, { getMembership: sentinel })`.
+   The test must fail before the page change.
+3. Change `page.tsx:33` to:
+
+```ts
+  const model = await loadReport(slug, locale, { getMembership: reportMembershipResolver() });
+```
+
+   and add `import { reportMembershipResolver } from "@/lib/auth";`. The page is a server component and `lib/auth.ts` is server-side; if Next or the lint rules object to the import, stop and report it.
+
+- [ ] **Step 6: Run the tests, then the full gates**
+
+Run: `corepack pnpm exec vitest run lib/auth.test.ts "app/[locale]/r/[slug]/page.test.tsx"`. Expected: PASS.
+
+Then run the full `corepack pnpm test`, `corepack pnpm typecheck`, `corepack pnpm lint` (30 warnings / 0 errors) and `corepack pnpm test:integration`. Integration is required here because this touches the session path.
+
+- [ ] **Step 7: Mutation checks**
+
+1. Key the memo by `job.id` instead of `workspaceId` → "answers every job of one workspace identically, with one user lookup and one query" must fail.
+2. Remove the `try`/`catch` → "fails closed to no membership…" must fail.
+3. Drop `if (!job.workspaceId) return null;` → "returns nothing for a job attached to no workspace…" must fail.
+4. Revert `page.tsx:33` to `loadReport(slug, locale)` → the page test must fail.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add lib/auth.ts lib/auth.test.ts "app/[locale]/r/[slug]/page.tsx" "app/[locale]/r/[slug]/page.test.tsx"
+```
+
+Commit message: `feat(P3.2): the report page recognises accepted workspace members`
+
+---
+
+### Task 7: Review follow-ups
+
+**Files:**
+- Test: `lib/report/comparison/derive.test.ts`
+- Modify: `lib/report/comparison/copy.ts` (zh-HK `no_history_access` only)
+
+- [ ] **Step 1: Test the Instagram branch of `overlaps`**
+
+In `derive.test.ts`, inside `describe('compareScanMetrics', …)`, add:
+
+```ts
+  it('is insufficient evidence when both have an Instagram sample, one incomplete, and their searches differ', () => {
+    const before: ComparisonInput = { ...input([fact('q', 'present')]), ig: { definition: 'stored-post-sample-v1', posts: 3, complete: true } };
+    const after: ComparisonInput = { ...input([fact('other', 'present')]), ig: { definition: 'stored-post-sample-v1', posts: 4, complete: false } };
+    expect(compareScanMetrics(before, after)).toEqual({ kind: 'insufficient_evidence' });
+  });
+```
+
+Here the search cohorts share a key but no query, so only the Instagram samples overlap. **Mutation check:** delete the IG line at the top of `overlaps` in `derive.ts` and confirm that this test fails (with `not_comparable`). Then restore.
+
+- [ ] **Step 2: zh-HK spelling**
+
+In `copy.ts`, zh-HK `no_history_access`, change `身分` to `身份`. `lib/copy.ts` uses 身份 for zh-HK. Leave zh-TW's `身分` as it is, because 身分 is the Taiwan form. Run the panel test.
+
+- [ ] **Step 3: Gates and commit**
+
+Run the full `corepack pnpm test` and `corepack pnpm typecheck`.
+
+```bash
+git add lib/report/comparison/derive.test.ts lib/report/comparison/copy.ts
+```
+
+Commit message: `test(P3.2): cover the Instagram overlap branch; zh-HK 身份`
+
+---
+
+### Task 8: Correct the phase record
+
+**Files:**
+- Modify: `docs/implementation/owner-platform-v1/PHASE-3-REPORT.md`, `PHASE-3-TEST-RESULTS.md` (the P3.2c sections, plus the P3.2 note on the membership-resolution bullet)
+
+- [ ] **Step 1: Re-run the gates**
+
+Re-run every gate at the new HEAD, one at a time: `typecheck`, `lint`, `test`, `test:integration`, `build` (blocked, plus the `--webpack` diagnostic).
+
+- [ ] **Step 2: Amend the P3.2c sections**
+
+1. Add a "Whole-branch review and membership wiring" subsection. Cover:
+   - the review's finding: page.tsx never passed `getMembership`, so the member states were unreachable and the viewer copy overpromised;
+   - the owner's decision to wire membership in;
+   - the resolver's design: keyed by workspace, memoised, fails closed;
+   - its tests and mutation checks.
+2. Correct the "Reachable by" wording: members reach the states **once signed in on `/r/[slug]`, as of Task 6**.
+3. Fix the header: HEAD, commit list and counts.
+4. Fix the "A precise definition, as built" note, since the spec now says "authorized with readable input".
+5. In the P3.2 section, correct the claim that "membership resolution through `loadReport`" was already satisfied: the loader accepted a resolver, but the page never supplied one. Keep the original text visible and add a dated correction note, as the P3.4 section does.
+6. In `OWNER-WORKSPACE-GAP-OBSERVATIONS.md`, next to the finding that notes the missing `getMembership` page wiring, add a short dated note that P3.2c wired the resolver. The owner-surface link to `/r/[slug]` remains open.
+7. Record the accepted limitation (oversized overlap copy) and the M1 invariant.
+8. **What this does not prove:**
+   - a member sign-in and full report in a browser (hosted auth is needed);
+   - the successful-pair browser artifact;
+   - the acceptance route (CI only);
+   - a native-speaker review of the copy.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add docs/implementation/owner-platform-v1
+```
+
+Commit message: `docs(P3.2): record membership wiring and the whole-branch review`
+
+---
+
 ## Verification checklist
 
 - [ ] A viewer gets `no_history_access`, and no history port (list, authorize, read) is called: proven in `load.test.ts` and `load-report.test.ts`.
@@ -841,3 +1101,6 @@ Commit message: `docs(P3.2): record the honest comparison states slice`
 - [ ] Public and locked reports still carry no comparison data (existing tests unchanged and green).
 - [ ] `packages/**`, the migrations, the projection and the panel component are unchanged.
 - [ ] Every mutation check failed its named test.
+- [ ] `/r/[slug]` passes a membership resolver; a signed-in accepted member gets member access (Task 6 page and resolver tests).
+- [ ] The resolver answers per workspace, memoised, and fails closed to `null` with a fixed log line.
+- [ ] The Instagram branch of `overlaps` has a test that fails without it (Task 7).
