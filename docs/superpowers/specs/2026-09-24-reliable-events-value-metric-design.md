@@ -154,6 +154,49 @@ A missing event is not silent. It is logged
 (`event_record_failed` / `event_write_failed`), and it shows up as a counted
 gap in the value report's reconciliation (§3).
 
+**Amended again 2026-09-24 (code-quality review).** The note above says the
+event is written "with no timeout, so F-34 stays fixed". That reasoning was
+wrong, and it left a gap. A savepoint protects the scan from an insert that
+**errors**, not from one that **waits**. Nothing set `lock_timeout` or
+`statement_timeout` (`lib/db/client.ts` sets neither, and PostgreSQL defaults
+both to 0). A blocked insert would therefore hold the whole scan transaction
+open, including the `audit_jobs` row lock from the `UPDATE` just before it.
+The realistic trigger is DDL or maintenance on `scan_events` (`ALTER TABLE`, a
+non-concurrent `CREATE INDEX`, `REINDEX`, `VACUUM FULL`, `LOCK TABLE`) queued
+behind a long reader: every new `INSERT` then queues behind the DDL. The
+reviewer reproduced a 10 s stall in a throwaway PostgreSQL container, and with
+a longer reader there is no limit. On Vercel that ends at the 300 s kill, with
+the job stranded in `persisting`, which is the outcome this change set out to
+prevent.
+
+The fix: `writeScanEventSafely` runs
+`SET LOCAL lock_timeout = '500ms'` (`SCAN_EVENT_LOCK_TIMEOUT`) inside the
+savepoint, before the insert. A blocked insert now fails with `55P03`
+(`lock_not_available`), the savepoint rolls it back (which also undoes the
+`SET LOCAL`), and the scan commits. On success the setting lasts until
+`COMMIT`. That is harmless, because the event is the last statement before
+`COMMIT` in all four callers (`jobsRepository.insert`, `failQueued`, `persist`,
+`fail`). The integration test "persist does not wait on a blocked scan_events
+insert" holds an `ACCESS EXCLUSIVE` lock on `scan_events` from a second
+connection and requires `persist()` to finish in under 5 s. Without the
+`SET LOCAL` it blocks.
+
+This does not bring F-34 back. F-34 was a 250 ms budget around opening a
+**fresh** connection, outside the transaction that records the fact, where a
+cold connect routinely exceeded the budget. The lock timeout applies on the
+**same** connection the scan already holds, and it bounds only lock waiting,
+not connection setup. It is also safe only because of the savepoint: a timeout
+without one would have aborted the scan's transaction.
+
+Two related hardenings landed in the same change:
+
+- `withTransaction` now rejects with `transaction_rolled_back` when `COMMIT`
+  returns the tag `ROLLBACK`, so no caller can silently lose its writes to a
+  caught statement error.
+- The log line now carries the job id and the SQLSTATE (never the message or
+  the SQL). The reconciliation counts lost events per week without naming
+  them, and the log line is what identifies which job lost its event.
+
 ### The vendored package is not edited
 
 `insert` is host-supplied storage by design (the engine's own comment: "Host

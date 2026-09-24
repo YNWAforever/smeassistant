@@ -28,8 +28,11 @@ export function createScanExecutionStore(
   // The store never calls analytics.insert: scan_completed is written inside
   // persist()/fail(). insert exists only because AnalyticsDependencies
   // requires it and forwardEventToPostHog takes that type. It throws so a
-  // regression back to recordEvent fails loudly instead of quietly writing a
-  // NULL-key duplicate scan_completed row.
+  // regression back to recordEvent cannot write a duplicate NULL-key
+  // scan_completed row. It does not fail loudly: the engine's recordEvent
+  // catches the throw, reports backend_unavailable and skips forwarding, so a
+  // regression would show up as backend_unavailable logs and missing PostHog
+  // events.
   const analytics: AnalyticsDependencies = options.analytics ?? {
     insert: async () => {
       throw new Error("scan_events are written by the store, not analytics.insert");

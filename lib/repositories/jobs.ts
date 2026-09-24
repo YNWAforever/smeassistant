@@ -37,7 +37,9 @@ export const jobsRepository: JobsRepository & {
      * may freeze after the response. It is best-effort inside that transaction:
      * writeScanEventSafely puts it in a SAVEPOINT, so a failed event write
      * rolls back only the event, is logged, and the job and consent still
-     * commit. The missing event is then a counted gap in reconciliation.
+     * commit. The missing event is then a counted gap in the value report's
+     * reconciliation, which counts lost events per week without naming them;
+     * the event_record_failed log line (job id, SQLSTATE) identifies the job.
      */
     async insert(row, consent, started) {
         return withTransaction(async (client) => {
@@ -84,7 +86,9 @@ export const jobsRepository: JobsRepository & {
      * transaction; without it every consent-refused scan would be a permanent
      * reconciliation gap for an event that was never going to exist. Only a
      * job this call actually moved to failed gets the event, and the write is
-     * in a SAVEPOINT, so a failed event write never keeps the job queued.
+     * in a SAVEPOINT, so a failed event write never keeps the job queued. A
+     * write that does fail is a counted (unnamed) gap in reconciliation and
+     * is identified by the event_record_failed log line.
      */
     async failQueued(jobId, category, correlationId, anonymousSessionId) {
         const completed = scanCompletedEvent("failed", 0);

@@ -67,16 +67,30 @@ export async function insertScanEvent(
 }
 
 /**
+ * How long the event insert may wait for a lock before it gives up. A lost
+ * event costs one analytics row; a waiting one holds the whole scan
+ * transaction open, including the audit_jobs row lock taken just before it.
+ */
+export const SCAN_EVENT_LOCK_TIMEOUT = "500ms";
+
+/**
  * Writes a scan event inside a SAVEPOINT on the caller's transaction, so a
  * failure to record analytics can never cost the scan it describes.
  *
  * A try/catch alone would not be enough: once a statement fails, PostgreSQL
  * aborts the whole transaction and refuses every later statement, COMMIT
  * included. Rolling back to the savepoint is what lets the caller's own
- * writes commit. The lost event is not silent: it is logged here, and it
- * shows up as a counted gap in the value report's reconciliation.
+ * writes commit.
  *
- * If SAVEPOINT or ROLLBACK TO SAVEPOINT itself fails, that is a
+ * The lost event is not silent. It is logged here with the job id and the
+ * SQLSTATE, which is what identifies the job. It also shows up as a counted
+ * gap in the value report's reconciliation, which counts lost events per week
+ * without naming them.
+ *
+ * Every caller (jobsRepository.insert, failQueued, persist, fail) makes this
+ * its last statement before COMMIT. The SET LOCAL below relies on that.
+ *
+ * If SAVEPOINT, ROLLBACK TO SAVEPOINT or RELEASE itself fails, that is a
  * connection-level failure of the same class as COMMIT failing, and it
  * propagates to the caller's transaction.
  *
@@ -88,12 +102,27 @@ export async function writeScanEventSafely(
 ): Promise<boolean> {
   await client.query("SAVEPOINT scan_event");
   try {
+    // Bounded: a savepoint only protects the scan from an insert that errors,
+    // not one that waits. Without this, DDL or maintenance on scan_events
+    // queued behind any long reader would hold the scan's transaction open
+    // indefinitely. SET LOCAL is undone by ROLLBACK TO SAVEPOINT; on success
+    // it lasts to COMMIT, which is harmless because the event is always the
+    // caller's last statement.
+    await client.query(`SET LOCAL lock_timeout = '${SCAN_EVENT_LOCK_TIMEOUT}'`);
     await insertScanEvent(client, write);
     await client.query("RELEASE SAVEPOINT scan_event");
     return true;
-  } catch {
+  } catch (error) {
     await client.query("ROLLBACK TO SAVEPOINT scan_event");
-    console.error("[analytics] event_record_failed", { category: "event_write_failed", event: write.event.name });
+    await client.query("RELEASE SAVEPOINT scan_event");
+    // The SQLSTATE only: never the message or the SQL, which can carry data.
+    const code = (error as { code?: unknown } | null)?.code;
+    console.error("[analytics] event_record_failed", {
+      category: "event_write_failed",
+      event: write.event.name,
+      jobId: write.jobId,
+      code: typeof code === "string" ? code : undefined,
+    });
     return false;
   }
 }

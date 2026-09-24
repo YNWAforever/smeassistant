@@ -227,6 +227,42 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
       expect(await completedRows(finished)).toEqual([]);
     });
 
+    // The savepoint protects the scan from an insert that errors, not one that
+    // waits. DDL or maintenance on scan_events (ALTER TABLE, REINDEX, VACUUM
+    // FULL, LOCK TABLE) queued behind a long reader makes every new INSERT
+    // wait; without lock_timeout the scan transaction, and its audit_jobs row
+    // lock, would be held until the platform killed the request. persist() is
+    // raced against a timer so that an unbounded wait fails this test cleanly
+    // instead of hanging it, and the finally always releases the lock.
+    it("persist does not wait on a blocked scan_events insert", async () => {
+      const id = await job("persisting");
+      const log = vi.spyOn(console, "error").mockImplementation(() => {});
+      const locker = await owner.connect();
+      await locker.query("BEGIN");
+      await locker.query('LOCK TABLE public."scan_events" IN ACCESS EXCLUSIVE MODE');
+      const started = Date.now();
+      const pending = createScanExecutionStore(randomUUID(), { pool: runtime }).persist(persisted(id, "done"));
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const outcome = await Promise.race([
+          pending.then(() => "resolved" as const),
+          new Promise<"blocked">((resolve) => { timer = setTimeout(() => resolve("blocked"), 5000); }),
+        ]);
+        expect(outcome).toBe("resolved");
+        expect(Date.now() - started).toBeLessThan(5000);
+        // 55P03 lock_not_available: the bounded insert gave up, logged with the job.
+        expect(log).toHaveBeenCalledWith("[analytics] event_record_failed", expect.objectContaining({ jobId: id, code: "55P03" }));
+      } finally {
+        clearTimeout(timer);
+        await locker.query("ROLLBACK");
+        locker.release();
+        await pending.catch(() => {});
+        log.mockRestore();
+      }
+      expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [id])).rows[0].status).toBe("done");
+      expect((await runtime.query("SELECT count(*)::int AS n FROM scan_events WHERE job_id=$1 AND event_name='scan_completed'", [id])).rows[0].n).toBe(0);
+    }, 20000);
+
     it("fail() still marks the job failed when its event cannot be written", async () => {
       const id = await job("collecting");
       const log = vi.spyOn(console, "error").mockImplementation(() => {});

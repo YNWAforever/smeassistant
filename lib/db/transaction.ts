@@ -10,7 +10,11 @@ export async function withTransaction<T>(run: (client: PoolClient) => Promise<T>
   try {
     await client.query("BEGIN");
     const value = await run(client);
-    await client.query("COMMIT");
+    const committed = await client.query("COMMIT");
+    // COMMIT on an aborted transaction does not raise: it returns the tag
+    // ROLLBACK, and node-pg resolves. Treat that as the failure it is, so a
+    // caught statement error can never silently discard the caller's writes.
+    if (committed?.command === "ROLLBACK") throw new Error("transaction_rolled_back");
     return value;
   } catch (error) {
     try {

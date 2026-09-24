@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  SCAN_EVENT_LOCK_TIMEOUT,
   SCAN_STARTED_DEDUPE_KEY,
   SCAN_TERMINAL_DEDUPE_KEY,
   insertScanEvent,
@@ -62,25 +63,58 @@ describe("writeScanEventSafely", () => {
     dedupeKey: SCAN_TERMINAL_DEDUPE_KEY,
   };
 
-  it("wraps the insert in a savepoint and releases it on success", async () => {
+  it("bounds the insert with a lock timeout inside a savepoint and releases it on success", async () => {
     const query = vi.fn<(sql: string) => Promise<{ rows: never[] }>>(async () => ({ rows: [] }));
     expect(await writeScanEventSafely({ query } as never, write)).toBe(true);
     const statements = query.mock.calls.map(([sql]) => sql);
+    expect(SCAN_EVENT_LOCK_TIMEOUT).toBe("500ms");
     expect(statements[0]).toBe("SAVEPOINT scan_event");
-    expect(statements[1]).toMatch(/INSERT INTO scan_events/);
-    expect(statements[2]).toBe("RELEASE SAVEPOINT scan_event");
+    expect(statements[1]).toBe("SET LOCAL lock_timeout = '500ms'");
+    expect(statements[2]).toMatch(/INSERT INTO scan_events/);
+    expect(statements[3]).toBe("RELEASE SAVEPOINT scan_event");
+    expect(statements).toHaveLength(4);
   });
 
-  it("rolls back only to the savepoint, logs, and reports false when the insert fails", async () => {
+  it("rolls back to and releases the savepoint, logs the job and SQLSTATE only, and reports false", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     const query = vi.fn(async (sql: string) => {
-      if (sql.includes("INSERT INTO scan_events")) throw new Error("permission denied");
+      if (sql.includes("INSERT INTO scan_events")) {
+        throw Object.assign(new Error("permission denied for table scan_events"), { code: "42501" });
+      }
       return { rows: [] };
     });
     try {
       expect(await writeScanEventSafely({ query } as never, write)).toBe(false);
-      expect(query.mock.calls.map(([sql]) => sql).at(-1)).toBe("ROLLBACK TO SAVEPOINT scan_event");
-      expect(log).toHaveBeenCalledWith("[analytics] event_record_failed", { category: "event_write_failed", event: "scan_completed" });
+      expect(query.mock.calls.map(([sql]) => sql).slice(-2)).toEqual([
+        "ROLLBACK TO SAVEPOINT scan_event",
+        "RELEASE SAVEPOINT scan_event",
+      ]);
+      // Exactly these fields: no error message, no SQL.
+      expect(log).toHaveBeenCalledWith("[analytics] event_record_failed", {
+        category: "event_write_failed",
+        event: "scan_completed",
+        jobId: "job-1",
+        code: "42501",
+      });
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("logs no code when the failure carries no SQLSTATE", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes("INSERT INTO scan_events")) throw new Error("socket closed");
+      return { rows: [] };
+    });
+    try {
+      expect(await writeScanEventSafely({ query } as never, write)).toBe(false);
+      expect(log).toHaveBeenCalledWith("[analytics] event_record_failed", {
+        category: "event_write_failed",
+        event: "scan_completed",
+        jobId: "job-1",
+        code: undefined,
+      });
     } finally {
       log.mockRestore();
     }

@@ -273,5 +273,20 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan persistence", ()
    expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [running])).rows[0].status).toBe("collecting");
    expect(await eventRows(running)).toEqual([]);
   });
+
+  it("failQueued still fails a queued job when its event cannot be written", async () => {
+   const queued = (await runtime.query("INSERT INTO audit_jobs(business_name,status) VALUES('Refused no event','queued') RETURNING id")).rows[0].id;
+   const log = vi.spyOn(console, "error").mockImplementation(() => {});
+   await owner.query('REVOKE INSERT ON TABLE public."scan_events" FROM sme_app_runtime');
+   try {
+    expect(await jobsRepository.failQueued(queued, "consent_missing", randomUUID(), randomUUID())).toBe(true);
+   } finally {
+    // Restores exactly what was revoked: 0003 grants SELECT, INSERT, UPDATE, DELETE.
+    await owner.query('GRANT INSERT ON TABLE public."scan_events" TO sme_app_runtime');
+    log.mockRestore();
+   }
+   expect((await runtime.query("SELECT status FROM audit_jobs WHERE id=$1", [queued])).rows[0].status).toBe("failed");
+   expect((await runtime.query("SELECT count(*)::int AS n FROM scan_events WHERE job_id=$1", [queued])).rows[0].n).toBe(0);
+  });
  });
 });

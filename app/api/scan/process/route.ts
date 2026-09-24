@@ -47,8 +47,10 @@ export async function POST(req: Request) {
       consent.status === 503 ? { error: "unavailable" } : { error: consent.code, correlationId: consent.correlationId },
       { status: consent.status },
     );
-    // A refusal wrote scan_completed under this session; keep the browser on
-    // it. A 503 wrote nothing and needs no cookie.
+    // A refusal writes scan_completed under this session when it is the call
+    // that moved the job to failed (a reload after a refusal finds the job no
+    // longer queued and writes nothing). Either way the browser should keep
+    // this session. A 503 wrote nothing and needs no cookie.
     if (consent.status === 403) setAnalyticsSessionCookie(response, session);
     return response;
   }
