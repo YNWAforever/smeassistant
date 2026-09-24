@@ -169,6 +169,7 @@ export function createReportLoader(
           }, candidate.completed_at ?? "");
         },
       },
+      access.kind,
     );
     const authorized: AuthorizedReportSource = {
       scanMetrics,

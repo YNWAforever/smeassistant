@@ -1020,11 +1020,24 @@ describe("scan comparison authorization integration", () => {
     expect(deps.readAuthorizedJobData).toHaveBeenCalledWith("job-previous");
   });
 
+  it("tells a member there is no earlier scan when the location has none", async () => {
+    const membership = { workspaceId: "ws-1", role: "manager" as const };
+    const deps = makeLoaderDeps({
+      publicJob: currentJob(), earlierJobs: [], authorizedJob: currentData,
+      membershipsByJob: { "job-1": membership },
+    });
+
+    const model = await deps.loader("slug-1", "en");
+
+    expect(model.access).toBe("member");
+    expect(model).toHaveProperty("scanComparison", { kind: "unavailable", reason: "no_earlier_scan" });
+  });
+
   it.each([
     ["current-only viewer token", {}],
     ["revoked candidate grant", { revoked_at: new Date().toISOString() }],
     ["expired candidate grant", { expires_at: new Date(Date.now() - 1000).toISOString() }],
-  ])("does not let a %s authorize candidate evidence", async (_case, candidateGrantOverrides) => {
+  ])("gives a %s the access state without looking up any earlier scan", async (_case, candidateGrantOverrides) => {
     const current = createViewerAccessGrant();
     const candidateGrant = createViewerAccessGrant({
       id: current.grant.id, job_id: "job-previous", token_hash: current.grant.token_hash,
@@ -1039,12 +1052,10 @@ describe("scan comparison authorization integration", () => {
     const model = await deps.loader("slug-1", "en");
 
     expect(model.access).toBe("viewer");
-    expect(model).toHaveProperty("scanComparison", { kind: "unavailable", reason: "no_accessible_pair" });
-    expect(deps.findViewerGrant).toHaveBeenCalledWith("job-previous", current.grant.id);
-    const candidateLookup = deps.findViewerGrant.mock.calls.findIndex(([jobId]) => jobId === "job-previous");
-    const expectedCandidateGrant = Object.keys(candidateGrantOverrides).length ? candidateGrant : null;
-    expect(await deps.findViewerGrant.mock.results[candidateLookup]!.value).toBe(expectedCandidateGrant);
-    expect(deps.markViewerGrantUsed).not.toHaveBeenCalledWith("job-previous", current.grant.id);
+    expect(model).toHaveProperty("scanComparison", { kind: "unavailable", reason: "no_history_access" });
+    expect(deps.readEarlierReportJobs).not.toHaveBeenCalled();
+    expect(deps.findViewerGrant).not.toHaveBeenCalledWith("job-previous", expect.anything());
+    expect(deps.markViewerGrantUsed).not.toHaveBeenCalledWith("job-previous", expect.anything());
     expect(deps.readAuthorizedJobData).not.toHaveBeenCalledWith("job-previous");
   });
 
