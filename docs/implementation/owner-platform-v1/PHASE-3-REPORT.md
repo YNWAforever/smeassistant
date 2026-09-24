@@ -118,7 +118,7 @@ Restated from the design doc's "What this design cannot prove", plus the two ite
 
 1. **No verifier exists.** `source='verified'` is exercised as an insert-path unit test and through `strongestBasis()` precedence tests, and nothing end-to-end. `recordApplication()` is a function contract, not a working feature. Nothing writes `source='verified'`; no verifier is registered, scheduled, or reachable over HTTP. Building one means a per-template check (refetch the website to confirm FAQ JSON-LD landed; confirm a specific review now carries an owner reply) and, for the GBP and Instagram templates, provider quota — its own piece of work with its own design.
 2. **The plan's browser acceptance artifact is not produced.** A real comparable pair proven in a browser, plus negative authorization examples, needs hosted access and explicit authorization from the repo owner. It remains a documented manual step — the same category as P3.1's unset `CRON_SECRET`, and the same category of action CLAUDE.md §0.1 reserves for Willy.
-3. **The `ScanComparison` state-splitting remains an open P3.2 gap.** `no_accessible_pair` still fires for three distinct situations the Master Plan names separately: no earlier scan exists; an earlier scan exists but authorization denied it; an authorized earlier scan shares no comparable cohort. The design doc scoped this out as a deliberate, contained follow-up. It was not started here.
+3. **The `ScanComparison` state-splitting remains an open P3.2 gap.** `no_accessible_pair` still fires for three distinct situations the Master Plan names separately: no earlier scan exists; an earlier scan exists but authorization denied it; an authorized earlier scan shares no comparable cohort. The design doc scoped this out as a deliberate, contained follow-up. It was not started here. *(Closed by P3.2c, `5238a7b`–`ede55de`: see [P3.2c — honest comparison states](#p32c--honest-comparison-states) below. The three situations now report `no_earlier_scan`, `no_accessible_pair`, and `not_comparable` or `insufficient_evidence` respectively. A viewer gets `no_history_access` before any history is looked up. The browser artifact in item 2 is still not produced.)*
 
 ### Observations worth recording
 
@@ -331,3 +331,110 @@ The whole-branch review's other checks all came back clean:
 - **`recordTerminal` forwards to PostHog even when its event write failed.** This is by design: PostHog is best-effort and independent of the durable table. However, since `f4c4613` removed the old writer's tests, no test asserts the behaviour either way.
 - **A rescan event-validation failure would log `rescan_insert_failed`.** `scanStartedEvent(...)` is built inside `enqueueRescan`'s insert `try`, so a validation throw would be reported as an insert failure. By then the snapshot has passed `scanInputFromSnapshot`, which already requires market `HK`/`TW` and a known locale. That is everything `parseScanEvent` checks for `scan_started`, so the path is unreachable as the code stands. Noted and left unfixed.
 - **The production 500 `home lookup failed` on `/zh-HK/owner/nadagogo` is unresolved.** The working hypothesis is that production is missing migrations `0006` / `0007` (`action_measurements.attribution_basis`). The read-only diagnostic SQL has **not** been run. According to the operator's reading of Vercel logs, there were 3 occurrences, all at 2026-09-18 07:29, and none since. Task 10 did not re-check those logs. The quiet period is not proof of a fix, because no cause was confirmed and nothing was changed to address it.
+
+---
+
+## P3.2c — honest comparison states
+
+**Branch** `p32-comparison-states` · **HEAD** `ede55de` (the last code commit) plus this documentation commit · Base: `main` at `073c4ae` (PR #19, merged, P3.4). Node `v24.18.0`, pnpm `9.12.0` via corepack, Windows 11, Docker Server `29.7.2`.
+
+Built from `docs/superpowers/plans/2026-09-24-comparison-states.md` (Tasks 1–5), against the design in [`docs/superpowers/specs/2026-09-24-comparison-states-design.md`](../../superpowers/specs/2026-09-24-comparison-states-design.md).
+
+**Implemented and locally verified. Nothing here is hosted-verified.** No deployment, no migration, no paid provider call, no push. The acceptance route was not run locally (see Verification).
+
+### What this closes
+
+The P3.2 section above records, as its third "does NOT prove" item, that `ScanComparison`'s `no_accessible_pair` fired for three situations the Master Plan names separately: no earlier scan exists; an earlier scan exists but authorization denied it; an authorized earlier scan shares no comparable cohort. The Master Plan's P3.2 asks the report to "show no-access, no-pair, non-comparable and insufficient-evidence states separately from a successful comparison".
+
+This slice separates them. It keeps the rule from the 2026-09-08 two-scan comparison design: never disclose inaccessible candidates, their existence, dates, counts or evidence. It does that by deciding a viewer's state from **who is reading**, not from **what history exists**.
+
+### What changed, by task
+
+Full diff `073c4ae..ede55de`: **12 files changed, 1,306 insertions, 67 deletions**, across 5 commits. Excluding `docs/`: 10 files, 309 insertions, 67 deletions. No migration, and no file under `packages/` changed. `git diff --stat origin/main -- lib/report/comparison/projection.ts components/report/scan-comparison.tsx lib/funnel/report-props.ts lib/report/view-model.ts packages neon/migrations` prints nothing.
+
+| Task | Commit(s) | What it did |
+|---|---|---|
+| Design and plan | `35cba4a`, `0700ed8` | The design, then the plan. `0700ed8` also amends the design in three places, all dated 2026-09-24: "or sources" in the `not_comparable` copy, the copy typed per reason, and e2e recorded as CI-only. |
+| 1. Derivation | `5238a7b` | `compareScanMetrics` (`lib/report/comparison/derive.ts`) returns `PairComparison` (`changes \| insufficient_evidence \| not_comparable`) instead of `PairChanges \| null`. A `changes` result is exactly the old non-null result. New `hasUsableEvidence` (a complete cohort with at least one known folded outcome, or a complete `stored-post-sample-v1` Instagram sample) and a private `overlaps` (a shared cohort key with at least one shared query identity, or an Instagram sample of that definition on both sides). |
+| 2 + 3. Loader states and typed copy | `a7aa56d` | `loadScanComparison` (`lib/report/comparison/load.ts`) takes a fourth argument, `reader: 'viewer' \| 'member' \| 'staff'`. `lib/report/load-report.ts` passes `access.kind`, a one-line change. `lib/report/comparison/types.ts` adds `UNAVAILABLE_REASONS` and `UnavailableReason`. `lib/report/comparison/copy.ts` types `unavailable` as `Record<UnavailableReason, string>` and adds the four new reasons in en, zh-HK and zh-TW. The two tasks landed together; see the plan defect below. |
+| 4. Acceptance route | `ede55de` | `e2e/acceptance/report-scan-comparison.spec.ts`: the current-only-unlocked viewer now expects `comparisonCopy[locale].unavailable.no_history_access`, and the test is renamed "…shows the access state after current-only unlock". Its privacy assertions are unchanged. |
+| 5. Gates and this record | *(this commit)* | Gates, an independent re-run of every mutation check, and the checklist below. |
+
+### The states as built
+
+| Reason | When `loadScanComparison` returns it | Reachable by |
+|---|---|---|
+| `no_history_access` *(new)* | The reader is a viewer. Returned on the first line, before the current scan is even validated. No port is called. | viewers |
+| `missing_location`, `invalid_current_scan` | The current scan is not comparable at all. Unchanged. | members, staff |
+| `insufficient_evidence` *(new)* | (a) The current scan has no usable evidence, and the walk reaches the first valid **and** authorized candidate. It returns there, without calling `readInput` for it. (b) The walk ends, and at least one authorized, readable candidate returned `insufficient_evidence` from `compareScanMetrics`. | members, staff |
+| `not_comparable` *(new)* | The walk ends, at least one authorized, readable candidate was compared, and none returned `insufficient_evidence`. | members, staff |
+| `no_earlier_scan` *(new)* | The walk ends and no candidate passed `validCandidate`: same location, `done` or `partial`, a valid completion time strictly before the current scan's. | members, staff |
+| `no_accessible_pair` *(kept)* | The walk ends, valid candidates were seen, and none was both authorized and readable with a matching timestamp. Also the outward projection of `history_limit` (`projection.ts`, unchanged). | members and staff (defensive fallback) |
+| `history_limit`, `lookup_failed` | Candidate cap exhausted with more remaining; a thrown error. Unchanged. | members, staff |
+
+`insufficient_evidence` outranks `not_comparable` whichever candidate is newer, because a fuller rescan could still produce a comparison.
+
+*A precise definition, as built:* `sawAuthorized` is set only after `readInput` returns an input whose `scannedAt` matches the candidate's `completed_at`. So an authorized candidate with unreadable or mismatched input counts toward `no_accessible_pair`, not `no_earlier_scan`. The spec's table says "none was authorized". The plan says "none was authorized with readable input", and the code and "rejects an impossible authorized candidate input before comparison" follow the plan.
+
+**The privacy argument.** A viewer holds a single-report grant (`sme_report_grant`), which never covers another scan, so a viewer can never obtain a comparison. The loader therefore answers a viewer before looking at history, and nothing about hidden history can change a viewer's answer. Two tests prove it at the two layers:
+
+- `lib/report/comparison/load.test.ts`, "gives a viewer the access state without touching history": with a comparable earlier scan present, the result is `no_history_access` and `list`, `authorize` and `readInput` are **never called**. Its companion, "gives a viewer the identical state when no history exists", gets the same result with no history.
+- `lib/report/load-report.test.ts`, the viewer `it.each` "gives a %s the access state without looking up any earlier scan" (current-only viewer token, revoked candidate grant, expired candidate grant): through the real `createReportLoader`, the result is `no_history_access`, `readEarlierReportJobs` is never called, and `findViewerGrant`, `markViewerGrantUsed` and `readAuthorizedJobData` are never called for the earlier job.
+
+Members and staff already open every scan of their workspace's locations, so the history-based reasons reveal nothing they cannot already see. Every candidate is still authorized one by one, as before.
+
+### Plan defect found in execution: Tasks 2 and 3 could not land separately
+
+The plan treated the copy's `unavailable` object as `Record<string, string>`, so Task 2 could widen the reason type before Task 3 added the copy. But `comparisonCopy` is checked with `satisfies`, which keeps the object's own literal keys. Widening `ScanComparison['reason']` therefore made `comparisonCopy[locale].unavailable[reason]` in `components/report/scan-comparison.tsx` a TS7053 until the four new keys existed. The Task 2 implementer stopped rather than add a cast. Tasks 2 and 3 landed as one commit, `a7aa56d`. Task 3's RED step was still observed first: Vitest does not typecheck, so the new panel tests failed at runtime on the missing copy before it was added.
+
+Re-checked in Task 5: with `copy.ts` restored to its `origin/main` text and everything else at HEAD, `npx tsc --noEmit` exits 2 with `components/report/scan-comparison.tsx(31,79): error TS7053`, plus the same error in the panel test and a TS2339 in the acceptance spec. The plan was not retro-edited.
+
+### Tests changed, and why
+
+- **`lib/report/comparison/load.test.ts`.** All 12 existing `loadScanComparison(` calls pass `'member'`. One expectation changed. "rejects impossible candidate metadata before authorization" became "treats impossible candidate metadata as no earlier scan, before authorization" and expects `no_earlier_scan`, because an impossible completion date fails `validCandidate` and cannot establish an earlier scan. Two `no_accessible_pair` expectations were examined and kept: "returns no accessible pair when all candidates are denied" (a valid candidate, denied) and "rejects an impossible authorized candidate input before comparison" (authorized, but its input timestamp is impossible). A new `describe('loadScanComparison states')` adds 12 tests.
+- **`lib/report/load-report.test.ts`**, the only file that goes through `createReportLoader`. Its two `no_accessible_pair` expectations were audited:
+  - Line ~1002, "authorizes each historical candidate by its own membership before reading private data": a member reader, and one valid candidate denied by membership. It **stays** `no_accessible_pair`, the correct fallback.
+  - Line ~1042, the viewer `it.each`: it **changed** to `no_history_access`. The old assertions that `findViewerGrant` *was* called for `job-previous` were replaced by assertions that `readEarlierReportJobs` is never called and that `findViewerGrant` and `markViewerGrantUsed` are never called for the earlier job.
+  - Added: "tells a member there is no earlier scan when the location has none".
+- **`lib/report/comparison/derive.test.ts`.** Existing `changes` assertions go through a `changes()` helper that fails loudly on any other kind. Five `toBeNull()` expectations became `not_comparable` (disjoint cohorts, changed context) or `insufficient_evidence` (incomplete cohort, oversized cohort, incomplete Instagram sample). Two tests were renamed to say so. Added: 3 `compareScanMetrics` cases and 5 `hasUsableEvidence` cases.
+- **`components/report/scan-comparison.test.tsx`.** Added "renders every unavailable reason in %s, never claiming a first scan" (en, zh-HK, zh-TW, each checking every reason against `/first scan|首次|第一次/i`) and "tells a viewer how to get history, and the others why there is none".
+- **Unchanged:** `lib/report/view-model.test.ts` (projection pass-through, including `history_limit` → `no_accessible_pair`), `tests/funnel-report-props.test.ts` and every public and locked privacy test.
+
+### Verification
+
+Full detail is in `PHASE-3-TEST-RESULTS.md`. Summary:
+
+| Command | Result |
+|---|---|
+| `corepack pnpm typecheck` | passed: exit 0 |
+| `corepack pnpm lint` | passed: exit 0, 30 warnings / 0 errors across 18 files, the same counts as the standing baseline. None is in a file this branch touches. |
+| `corepack pnpm test` | passed: exit 0, **323 files / 3,439 tests**, zero failures. P3.4's final record was 323 / 3,414, so **+0 files, +25 tests**, all in the app suite |
+| `corepack pnpm test:integration` | passed: exit 0, **30 files / 323 tests** (126.75s), unchanged from P3.4 |
+| `corepack pnpm build` | **blocked on this Windows machine**: exit 1, `Error: Turbopack build failed with 45 errors`, the standing `radix-ui` barrel cascade. Not worked around. Separately, `npx next build --webpack` compiles clean (exit 0, 29/29 static pages, `ƒ /[locale]/r/[slug]` in the manifest) |
+| `corepack pnpm e2e`, `corepack pnpm e2e:acceptance` | **not run**: both need a production build, which this machine cannot produce. CI runs both (`.github/workflows/ci.yml`: `pnpm e2e`, then `pnpm e2e:acceptance`). The changed acceptance expectation is proven only where CI runs it. |
+| `corepack pnpm db:verify` | **not run**: no migration was added |
+
+**Mutation checks.** The implementers reported 11 mutation checks across Tasks 1–3. Task 5 re-ran all 11 independently, one at a time, restoring each file byte-identically before the next. **All 11 were killed**, each by the test the implementer named. The per-mutation table is in `PHASE-3-TEST-RESULTS.md`.
+
+### Verification checklist
+
+Walked item by item against the code at `ede55de`.
+
+| Item | Status | Evidence |
+|---|---|---|
+| A viewer gets `no_history_access`, and no history port (list, authorize, read) is called | **Holds** | Loader: "gives a viewer the access state without touching history" (`list`, `authorize`, `readInput` never called). Report: the viewer `it.each` (`readEarlierReportJobs` never called; `findViewerGrant`, `markViewerGrantUsed`, `readAuthorizedJobData` never called for `job-previous`). Mutation T2.1 fails all five. |
+| A viewer's result is identical with and without earlier scans | **Holds** | "gives a viewer the identical state when no history exists" (no history) against "gives a viewer the access state without touching history" (a comparable earlier scan). Both return `{kind:'unavailable', reason:'no_history_access'}`. By construction the viewer branch is the function's first statement. |
+| A member gets `no_earlier_scan`, `insufficient_evidence` and `not_comparable`, each in the situation the spec defines | **Holds** | `no_earlier_scan`: "reports no earlier scan to a member with %s" (no history; only another location and unfinished scans), "treats staff like members, not viewers", and, through the report loader, "tells a member there is no earlier scan when the location has none". `insufficient_evidence`: "reports insufficient evidence when an authorized earlier scan overlaps but is incomplete". `not_comparable`: "reports not comparable when every authorized earlier scan measured different searches". The derivation rules behind them are in `derive.test.ts`, listed above. |
+| `insufficient_evidence` outranks `not_comparable` whichever candidate is newer | **Holds** | "prefers insufficient evidence over not comparable when the incomplete scan is the %s one" (newer, older), both asserting `readInput` was called twice. Mutation T2.3 fails both. |
+| A current scan without usable evidence reads no earlier scan's input | **Holds** | "reports insufficient evidence for a current scan without usable evidence, reading no earlier scan" (`readInput` never called). Mutation T2.4 fails it on exactly that assertion, because the reason alone would still come out `insufficient_evidence` through `compareScanMetrics`. "still reports no earlier scan for a current scan without usable evidence and no history" covers the no-history case. |
+| All-denied history still gives `no_accessible_pair`; `history_limit` and `lookup_failed` are unchanged | **Holds** | "returns no accessible pair when all candidates are denied", "reports exhaustion after exactly 1000 denied candidates", "keeps no accessible pair when a current scan without usable evidence has only denied history", and the report-loader member-denied test at line ~1002. "stops at 1000 candidates and uses one metadata-only page to report history_limit" and "contains thrown failures as lookup_failed" keep their expectations, with only the `'member'` argument added. |
+| Every reason has copy in en, zh-HK and zh-TW, enforced by the type, and none claims a first scan | **Holds** | `Record<UnavailableReason, string>` in `copy.ts`: mutation T3.1 (delete zh-TW `not_comparable`) fails `tsc` with `copy.ts(27,5) TS2741`. "renders every unavailable reason in %s, never claiming a first scan" asserts, for every reason in every locale, the exact copy, a non-empty string and no match for `/first scan\|首次\|第一次/i`. |
+| Public and locked reports still carry no comparison data | **Holds for the unit layer; the RSC layer runs in CI only** | Unchanged and green: "keeps the public early return free of history and comparison data" (`load-report.test.ts`), "omits poisoned comparison data from public models and props" (`view-model.test.ts`), and "maps a public model to a locked preview" (`tests/funnel-report-props.test.ts`, `not.toHaveProperty("scanComparison")`). The acceptance spec's HTML and RSC payload assertions are unchanged but were **not run** locally. |
+| `packages/**`, the migrations, the projection and the panel component are unchanged | **Holds** | The Step 1 `git diff --stat origin/main -- …` prints nothing. Package test counts are identical to P3.4's. |
+| Every mutation check failed its named test | **Holds** | 11 of 11 killed in the Task 5 re-run. See `PHASE-3-TEST-RESULTS.md`. |
+
+### What this slice does NOT prove
+
+1. **The successful-pair browser artifact still does not exist.** A comparable pair in a real browser, plus negative authorization examples, needs hosted access and the repository owner's authorization. That has been recorded since 2026-09-08 and is unchanged.
+2. **The acceptance route was not run locally.** `e2e/acceptance/report-scan-comparison.spec.ts` now expects `no_history_access`. It is typechecked here (it is in the `tsc` project, and TS2339 fires on it when the key is missing), but it runs only in CI.
+3. **The Chinese copy has not been reviewed by a native speaker.** It follows the repository register rules: 香港書面中文 for zh-HK (商戶, 地點), 台灣用語 for zh-TW (店家, 據點), and 工作台 as the workspace term in both.
