@@ -76,8 +76,8 @@ export async function loadScanComparison(
         if (!await ports.authorize(candidate)) continue;
         const previous = await ports.readInput(candidate);
         if (!validTimestamp(previous.scannedAt) || !sameInstant(previous.scannedAt, candidate.completed_at!)) continue;
-        const changes = compareScanMetrics(previous, input);
-        if (changes) return { kind: 'available', changes };
+        const result = compareScanMetrics(previous, input);
+        if (result.kind === 'changes') return { kind: 'available', changes: result.changes };
       }
       if (candidates.length < PAGE_SIZE) return { kind: 'unavailable', reason: 'no_accessible_pair' };
     }

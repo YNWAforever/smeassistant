@@ -1,7 +1,7 @@
 import { deriveInstagramSample } from '../scan-metrics/instagram';
 import { deriveComparisonSearchCohorts } from '../scan-metrics/search';
 import { MAX_EVIDENCE_ROWS } from '../scan-metrics/types';
-import type { ComparisonInput, MetricChange, PairChanges, QueryCohort, QueryFact } from './types';
+import type { ComparisonInput, MetricChange, PairComparison, QueryCohort, QueryFact } from './types';
 
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -33,6 +33,30 @@ function foldFacts(cohort: QueryCohort): { facts: Map<string, QueryFact>; total:
   return { facts, total: grouped.size };
 }
 
+const IG_DEFINITION = 'stored-post-sample-v1';
+
+/** A scan has something comparable: a complete cohort with a known outcome, or a complete IG sample. */
+export function hasUsableEvidence(input: ComparisonInput): boolean {
+  if (input.ig?.definition === IG_DEFINITION && input.ig.complete) return true;
+  return input.cohorts.some(cohort => cohort.complete && foldFacts(cohort).facts.size > 0);
+}
+
+/**
+ * The two scans measured something in common: a cohort present on both sides
+ * sharing at least one query identity (whatever its outcome), or an IG sample
+ * of the same definition on both sides.
+ */
+function overlaps(previous: ComparisonInput, current: ComparisonInput): boolean {
+  if (previous.ig?.definition === IG_DEFINITION && current.ig?.definition === IG_DEFINITION) return true;
+  const earlier = new Map(previous.cohorts.map(cohort => [cohort.key, cohort]));
+  return current.cohorts.some(cohort => {
+    const before = earlier.get(cohort.key);
+    if (!before) return false;
+    const queries = new Set(before.facts.map(fact => fact.query));
+    return cohort.facts.some(fact => queries.has(fact.query));
+  });
+}
+
 function comparableRow(previous: QueryCohort, current: QueryCohort, rowIndex: number): MetricChange | null {
   if (!previous.complete || !current.complete) return null;
   const before = foldFacts(previous);
@@ -56,7 +80,7 @@ function comparableRow(previous: QueryCohort, current: QueryCohort, rowIndex: nu
     direction: difference > 0 ? 'increased' : difference < 0 ? 'decreased' : 'unchanged',
     evidence, omittedPrevious: before.total - queries.length, omittedCurrent: after.total - queries.length };
 }
-export function compareScanMetrics(previous: ComparisonInput, current: ComparisonInput): PairChanges | null {
+export function compareScanMetrics(previous: ComparisonInput, current: ComparisonInput): PairComparison {
   const previousGroups = new Map(previous.cohorts.map(group => [group.key, group]));
   const currentGroups = new Map(current.cohorts.map(group => [group.key, group]));
   const cohortKeys = new Set([...previousGroups.keys(), ...currentGroups.keys()]);
@@ -72,12 +96,16 @@ export function compareScanMetrics(previous: ComparisonInput, current: Compariso
     }
   }
   const unavailableGroups = cohortKeys.size - comparableKeys.size;
-  const ig = previous.ig?.definition === 'stored-post-sample-v1' && current.ig?.definition === 'stored-post-sample-v1'
+  const ig = previous.ig?.definition === IG_DEFINITION && current.ig?.definition === IG_DEFINITION
     && previous.ig.complete && current.ig.complete
     ? { previous: previous.ig.posts, current: current.ig.posts, delta: current.ig.posts - previous.ig.posts } : null;
-  if (rows.length === 0 && ig === null) return null;
-  return { previousScannedAt: previous.scannedAt, currentScannedAt: current.scannedAt, rows,
+  if (rows.length === 0 && ig === null) {
+    return !hasUsableEvidence(previous) || !hasUsableEvidence(current) || overlaps(previous, current)
+      ? { kind: 'insufficient_evidence' }
+      : { kind: 'not_comparable' };
+  }
+  return { kind: 'changes', changes: { previousScannedAt: previous.scannedAt, currentScannedAt: current.scannedAt, rows,
     counts: { increased: rows.filter(row => row.direction === 'increased').length,
       decreased: rows.filter(row => row.direction === 'decreased').length,
-      unchanged: rows.filter(row => row.direction === 'unchanged').length }, ig, unavailableGroups };
+      unchanged: rows.filter(row => row.direction === 'unchanged').length }, ig, unavailableGroups } };
 }

@@ -55,6 +55,12 @@ export interface PairChanges {
   unavailableGroups: number;
 }
 
+/** Why a pair produced (or did not produce) a comparison. */
+export type PairComparison =
+  | { kind: 'changes'; changes: PairChanges }
+  | { kind: 'insufficient_evidence' }
+  | { kind: 'not_comparable' };
+
 export type ScanComparison =
   | { kind: 'available'; changes: PairChanges }
   | { kind: 'unavailable'; reason: 'no_accessible_pair' | 'missing_location'
