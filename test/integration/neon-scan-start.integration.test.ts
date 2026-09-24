@@ -183,7 +183,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan persistence", ()
    expect(rows).toEqual([{ job_id: result.jobId, anonymous_session_id: session, event_name: "scan_started", properties: { market: parsed.input.market, locale: parsed.input.locale }, dedupe_key: "started" }]);
   });
 
-  it("leaves no scan_started behind when the job transaction rolls back", async () => {
+  it("writes no scan_started when the job transaction fails before reaching it", async () => {
    const parsed = consentedInput();
    const session = randomUUID();
    const { buildScanJobInsert } = await import("../../lib/scan/start-job");
@@ -191,8 +191,12 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan persistence", ()
    await expect(
     jobsRepository.insert(
      buildScanJobInsert(parsed.input),
-     // NULL locale violates consent_records.locale NOT NULL, the same trigger
-     // the consent rollback test above uses.
+     // NULL locale violates consent_records.locale NOT NULL, so the transaction
+     // fails at the consent insert -- before scan_started is reached. This does
+     // not exercise "written, then rolled back": the event is the transaction's
+     // last statement, so nothing after it can fail and undo it, which holds by
+     // construction rather than by test. What this DOES catch is the event being
+     // written outside and ahead of the transaction, where it would survive.
      { consent_type: "public_evidence", granted: true, policy_version: LEGAL_POLICY_VERSION, locale: null as never },
      { anonymousSessionId: session, event: scanStartedEvent(parsed.input.market, parsed.input.locale) },
     ),
