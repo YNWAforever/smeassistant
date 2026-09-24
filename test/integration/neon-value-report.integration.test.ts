@@ -81,6 +81,9 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("value report", () => {
     // and one outside the week.
     const done = await scan("done", IN);
     await event(done, "scan_started");
+    // A duplicate from a second session: reconciliation counts distinct jobs,
+    // so one job's extra copy cannot hide another job's missing event.
+    await event(done, "scan_started");
     await event(done, "scan_completed");
     await event(await scan("partial", IN), "scan_started");
     await scan("failed", IN);
