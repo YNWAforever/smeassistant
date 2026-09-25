@@ -168,4 +168,30 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon cron dispatch: due sc
 
     expect(new Set(ids)).toEqual(new Set([queued, stale]));
   });
+
+  it("offers first attempts before retries, oldest first, so refused retries cannot fill the batch", async () => {
+    // The order the batch must come back in: the queued first attempt, then
+    // retries by attempt_count and then age (oldest first).
+    const retries = Array.from({ length: 21 }, (_, i) => ({ attempts: i < 10 ? 1 : 2, hoursOld: 30 - i }));
+    // Inserted in exactly the reverse of that order, so heap order without
+    // an ORDER BY can never match it.
+    const ids = new Map<number, string>();
+    for (let i = retries.length - 1; i >= 0; i--) {
+      ids.set(
+        i,
+        (
+          await runtime.query(
+            "INSERT INTO audit_jobs(business_name,status,attempt_count,last_attempt_at,created_at) VALUES('Refused retry','collecting',$1,now()-interval '31 minutes',now()-make_interval(hours=>$2)) RETURNING id",
+            [retries[i].attempts, retries[i].hoursOld],
+          )
+        ).rows[0].id,
+      );
+    }
+    const queued = (await runtime.query("INSERT INTO audit_jobs(business_name,status) VALUES('Admitted','queued') RETURNING id")).rows[0].id;
+
+    const batch = await schedulerRepository(runtime).claimableJobIds(20);
+
+    expect(batch).toContain(queued);
+    expect(batch).toEqual([queued, ...Array.from({ length: 19 }, (_, i) => ids.get(i))]);
+  });
 });
