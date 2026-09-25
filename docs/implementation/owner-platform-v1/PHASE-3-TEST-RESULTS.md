@@ -866,3 +866,95 @@ After each `corepack pnpm test` the two tracked snapshot files again showed as m
 | `corepack pnpm lint` | exit 0, 30 warnings / 0 errors | unchanged |
 | `corepack pnpm test` | exit 0, **330 files / 3,560 tests** (app 279 / 2,973; safe-media 1 / 62; region 3 / 23; scoring 16 / 183; contracts 3 / 20; scan-engine 28 / 299) | +1 file / +8 tests: the new guard file (4), `action-detail-client.test.tsx` (3), `scan.test.ts` (1) |
 | `corepack pnpm test:integration` | exit 0, **33 files / 350 tests**, 226.29s | +0 files / +4 tests: `neon-scan-claim-budget` 9 → 11, `neon-cron-dispatch` 5 → 6, `neon-value-report` 12 → 13 |
+
+## P3.5b — failure and retry view
+
+Candidate: branch `p35b-failure-view`, 15 commits on `main` at `8aad9a9` (stacked on `p35a-spend-budgets`, PR #21, not yet merged), plus this Task 13 documentation commit. Design: [`docs/superpowers/specs/2026-09-25-failure-retry-view-design.md`](../../superpowers/specs/2026-09-25-failure-retry-view-design.md). Plan: `docs/superpowers/plans/2026-09-25-failure-retry-view.md`. Environment: Windows 11, Node `v24.18.0`, pnpm `9.12.0` via corepack, worktree `C:\Users\laich\Documents\smeassistant\.claude\worktrees\p35b-failure-view`, Docker Server `29.7.2`. Run on 2026-09-26.
+
+**Read this first.** Everything below is **locally verified**. **Nothing here is hosted-verified.** No migration exists in this branch. Nothing was deployed or pushed, and no paid provider or model was called. See the P3.5b section of `PHASE-3-REPORT.md` for the decisions, the deviations, the review-driven changes, the consent boundary, the owner actions and the known limits.
+
+### Gate results (Task 13, full verification), run sequentially
+
+| # | Command | Result |
+|---|---|---|
+| 1 | `corepack pnpm typecheck` | **passed**: exit 0. Root `tsc --noEmit`, then `pnpm -r typecheck` across `packages/{region,scoring,contracts,scan-engine}`, each `Done`. |
+| 2 | `corepack pnpm lint` | **passed**: exit 0, `✖ 30 problems (0 errors, 30 warnings)`, across 18 files — identical counts and files to P3.5a's `a10a7d8` record. No file this branch touches carries a warning. |
+| 3 | `corepack pnpm test` | **passed on the first run**: exit 0, zero failures, **340 files / 3,627 tests**. App suite `vitest run --exclude lib/evidence/safe-media.test.ts`: 289 files / 3,040 tests. `lib/evidence/safe-media.test.ts` run alone: 1 / 62. Packages: `region` 3 / 23, `scoring` 16 / 183, `contracts` 3 / 20, `scan-engine` 28 / 299. The known-intermittent `app/api/versions/[versionId]/versions.test.ts` did **not** fail this run; no re-run of that file alone was needed. |
+| 4 | `NEON_INTEGRATION=1 corepack pnpm test:integration` | **passed**: exit 0, **36 files / 374 tests**, 244.70s. |
+| 5 | `corepack pnpm db:verify` | **passed**: exit 0. JSON below — unchanged from P3.5a's `a10a7d8` record, because this branch adds no migration. |
+| 6 | `corepack pnpm build` (`next build`, Turbopack, the literal gate command) | **blocked**: exit 1, `Error: Turbopack build failed with 5 errors`, the same standing `radix-ui` cascade recorded at every prior phase (`@radix-ui/react-dismissable-layer` ×3, `@radix-ui/react-visually-hidden` ×2), traced through `components/ui/{tooltip,sidebar}.tsx` → `components/product-ui.tsx` → `app/[locale]/owner/[workspaceSlug]/layout.tsx`. No file this branch changes appears in the import trace. |
+| — | `corepack pnpm exec next build --webpack` (diagnostic, **not** the gate) | **passed**: exit 0, `✓ Compiled successfully`, `Finished TypeScript`. The route manifest includes `ƒ /[locale]/ops/failures` and `ƒ /api/ops/failures/scans/[jobId]/release`, two of the routes this slice adds. |
+
+After the gate-3 run, the two tracked snapshot files (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) showed as modified. `git diff --ignore-cr-at-eol --stat` was empty, confirming line-ending-only changes, and both were restored with `git checkout --`. `git status --short` was clean before and after, apart from this task's own documentation edits.
+
+### Migration verification (gate 5)
+
+```json
+{
+  "applied": ["0001_identity.sql", "0002_business.sql", "0003_workflows.sql", "0004_atomic_operations.sql",
+    "0005_owner_removal_guard.sql", "0006_action_applications.sql", "0007_action_verification.sql",
+    "0008_workspace_internal.sql", "0009_scan_attempts.sql"],
+  "replay": [],
+  "tables": 36, "columns": 422, "constraints": 162, "indexes": 92, "triggers": 8, "functions": 14,
+  "seededRows": 0, "deferredFunctions": [], "deferredTriggers": []
+}
+```
+
+Identical to P3.5a's record. This branch's file map (`docs/superpowers/plans/2026-09-25-failure-retry-view.md` lines 38-62) touches no file under `neon/migrations/` or `lib/db/schema/`, and the spec's §6 says so explicitly ("No migration. If implementation finds one is needed, stop and ask before adding it.") — no such stop occurred.
+
+### Integration suite detail (gate 4)
+
+Per file, from the full run (36 files / 374 tests):
+
+| File | Tests | What it covers |
+|---|---|---|
+| `neon-dead-letter-condition.integration.test.ts` *(new, Task 1)* | 1 | every stale in-flight job is in exactly one of claimable and dead-lettered |
+| `neon-dead-letter.integration.test.ts` *(new, Task 5)* | 11 | `closeExhausted` (24h grace, not at 23h, exactly one `scan_completed` + `scan.auto_closed`, never a claimable job, batch limit); `release` (grants one attempt, refuses when not dead-lettered, exactly one of two concurrent releases wins, makes the job claimable through the budgeted claim which logs one attempt, the grace window restarts from a released job's new attempt rather than its original stall, a release inside the grace window stops the auto-close) |
+| `neon-failures.integration.test.ts` *(new, Tasks 3, 11)* | 13 | every source's rules (below) plus filtering, personal-field allowlist, health summary and the scoped-manager case |
+
+Files this branch modified rather than created were not independently re-measured against a pre-branch baseline; the full-suite counts above are the record.
+
+### Claims table — spec behaviour → named test → mutation check
+
+Every test name below was found by `grep -n "it(" <file>` and quoted verbatim (occasional light punctuation collapsing aside). "Mutation check" reports what was done and observed; where the plan's Step number is named, that is where the check is written in the plan.
+
+| Behaviour | Test file / test name | Mutation check |
+|---|---|---|
+| Dead-lettered = the exact complement of claimable (Task 1) | `lib/scan/claimable.test.ts` — "keeps the claimable condition byte-identical to the lease contract", "states dead-lettered as in flight, three or more attempts, and stale"; `test/integration/neon-dead-letter-condition.integration.test.ts` — "puts every stale in-flight job in exactly one of claimable and dead-lettered, and nothing else in dead-lettered" | `attempt_count>=3` → `attempt_count>=2` in `DEAD_LETTERED_JOB_CONDITION_SQL`: both the unit pin and the integration guard fail |
+| `scan_failed`: category + correlation id, 30-day window | `test/integration/neon-failures.integration.test.ts` — "lists failed scans within 30 days, with the category and correlation id" | swapping `j.failure_correlation_id::text AS correlation_id` for `j.failure_category AS correlation_id` fails this test (Task 3 Step 5.3) |
+| `scan_dead_lettered`: listed with the release action, claimable jobs excluded | `neon-failures.integration.test.ts` — "lists dead-lettered scans with the release action, and not claimable ones" | covered by the shared dead-letter condition mutation above |
+| `draft_failed`: one item per action, newest reason, assistant drafts excluded, drops after a later success | `neon-failures.integration.test.ts` — "lists one failed draft per action with its audit reason, drops it after a later success, and ignores assistant drafts", "falls back to action_run_failed when a failed run has no audit reason" | removing `AND coalesce(r.input->>'source', '') <> 'assistant'` fails the ignores-assistant-drafts assertion (Task 3 Step 5.1) |
+| **Fix: a later successful assistant run does not count as recovery** | `neon-failures.integration.test.ts` — "keeps a failed draft failed when only a later assistant run recovers it" | this test was RED (the item disappeared) before the `NOT EXISTS` recovery check excluded assistant-sourced successes, GREEN after |
+| **Fix: search runs after `DISTINCT ON`, so an older superseded row can't surface** | `neon-failures.integration.test.ts` — "does not let a search on an older, superseded draft failure bypass the newest-wins rule", "does not let a search on an older, superseded Google connection bypass the newest-wins rule" | both were RED when the id filter sat inside the `DISTINCT ON` subquery (a stale row could survive as its group's only remaining row and match); GREEN once the filter moved to the outer query |
+| `google_connection`: only `expired`/`error`, only the newest row, only without an active connection | `neon-failures.integration.test.ts` — "lists a broken Google connection only when it is the newest non-active row and no active one exists" | removing the outer `WHERE g.reason IN ('expired','error')` fails this test (Task 3 Step 5.2) |
+| `workspace_processing`: retry state, `attempts >= 3` | `neon-failures.integration.test.ts` — "lists post-processing stuck in retry after three attempts" | covered by the source's own `WHERE c.state='retry' AND c.attempts>=3` clause |
+| Filtering: workspace, kind, reference prefix, full id or correlation id | `neon-failures.integration.test.ts` — "filters by workspace, by kind, by reference prefix and by full id or correlation id" | — |
+| Privacy: no personal fields in operator output | `neon-failures.integration.test.ts` — "never returns personal fields" | adding `r.error AS business_name` to `draft_failed` instead of `w.business_name` fails this test (Task 3 Step 5.4) |
+| Operator health: 24h/7d counts, categories | `neon-failures.integration.test.ts` — "summarizes health: recent counts, open counts and failed scans by category" | — |
+| Owner-action matrix: role × tier × scope, including the null-location rule | `lib/ops/owner-actions.test.ts` — "hides post-processing from everyone and other locations from a scoped manager", "keeps workspace-wide items on every location page, and everything on 'all'", "builds problems with the contact link only for contact_support"; `describe("ownerActionFor", …)` block for the tier/role matrix itself | collapsing `return ctx.tier === "paid" && item.locationId ? "rescan" : "contact_support";` to `return "rescan";` fails the lite-tier and no-location cases (Task 4 Step 10) |
+| Owner-action matrix, scoped manager, through the real reader (Task 11) | `test/integration/neon-failures.integration.test.ts` — "never shows a scoped manager another location's problems, through the real reader" | `visibleTo`'s `return inScope(ctx, item.locationId);` → `return true;`: **RED reproduced this session** — `problems` gained the other location's `scan_failed` item, `expected […2 items] to equal […1 item]`; reverted and reconfirmed GREEN, 13/13 |
+| Problem copy: every reason code labeled in every locale, generic fallback, dead-letter next-step wording | `lib/ops/problem-copy.test.ts` — "labels every known reason code in every locale, never echoing the code", "falls back to the generic line for an unknown or unsafe code", "titles each owner-visible kind", "uses the dead-letter line for a stuck scan whatever the action" | — |
+| Reference formatting | `lib/ops/references.test.ts` — "formats run and connection references like the scan reference", "returns null for an empty or missing query", "maps a reference to its kinds and a lower-case hex prefix", "matches a full id across every kind", "rejects anything else" | — |
+| Auto-close: 24h grace, not at 23h, never a claimable job, batch limit | `test/integration/neon-dead-letter.integration.test.ts` — "closes a scan stuck for over 24 hours as ATTEMPTS_EXHAUSTED, but not one at 23 hours", "never closes a claimable job, and respects the batch limit" | `interval '24 hours'` → `'22 hours'` in `AUTO_CLOSE_GRACE_SQL` fails the 23-hour case (Task 5 Step 6.1) |
+| Auto-close writes exactly one `scan_completed` (failed, coverage 0) + one `scan.auto_closed`, even with no `scan_started` session | `neon-dead-letter.integration.test.ts` — "writes exactly one scan_completed under the scan's own session and one scan.auto_closed", "still records scan_completed when the scan has no scan_started session" | removing the `writeScanEventSafely` call fails "writes exactly one scan_completed…" (Task 5 Step 6.4) |
+| Release: exactly one more attempt, refuses when not dead-lettered, exactly one of two concurrent releases wins | `neon-dead-letter.integration.test.ts` — "grants exactly one more attempt on the same job and records who released it", "refuses a job that is not dead-lettered", "lets exactly one of two concurrent releases win" | removing `AND ${DEAD_LETTERED_JOB_CONDITION_SQL}` from the release CTE fails "refuses a job that is not dead-lettered" (Step 6.2); setting the release to `attempt_count=3` instead of `2` fails "grants exactly one more attempt…" and "makes the job claimable once…" (Step 6.3) |
+| Release makes the job claimable exactly once, through the budgeted claim, which logs one `scan_attempts` row | `neon-dead-letter.integration.test.ts` — "makes the job claimable once, through the budgeted claim, which logs one attempt" | — |
+| Grace window: restart after release; a release inside the window stops the auto-close | `neon-dead-letter.integration.test.ts` — "stops the auto-close from closing a job released inside the grace window", "restarts the grace window from a released job's new attempt, rather than its original stall" | — |
+| Cron isolation: the auto-close step is bounded, isolated, and reported in the summary | `app/api/cron/dispatch/route.test.ts` — "closes exhausted scans in batches of 20 and reports how many", "keeps the other steps running when the auto-close step fails" | — |
+| Cron treats a budget-refused retry as skip-and-retry, unrelated to this branch's own change but re-verified | `app/api/cron/dispatch/route.test.ts` — "treats 503 at_capacity from scan/process as skip-and-retry: nothing logged, the job offered again next tick" | — |
+| Release route codes: 404 non-operator, 404 bad id, 409 not-dead-lettered, 200 with dispatch attempted, 503 on failure | `app/api/ops/failures/scans/[jobId]/release/route.test.ts` — "answers 404 to a non-operator before touching the job", "answers 404 for an id that is not a uuid", "answers 409 not_dead_lettered when the guarded update matched nothing", "releases as the operator, dispatches, and says whether dispatch was attempted", "answers 503 without detail when the release itself fails" | — |
+| Status route: `deadLettered` true/false | `app/api/scan/status/route.test.ts` — "reports a dead-lettered job", "reports deadLettered false otherwise" | — |
+| Scanning page: stops polling for a dead-lettered scan, no Resume, shows the stuck card and a new-scan link | `components/scanning-page.test.tsx` — "shows the stuck card with a new-scan link, no Resume button, and stops polling" (describe block "ScanningPage dead-lettered state"); `components/scan-stuck-card.test.tsx` — "explains the stuck scan, gives the reference, and links to a new scan instead of Resume", "is localized" | **Fix mutation, Task 8:** removing the early `deadLettered` return from the polling loop made "shows the stuck card…" fail before the fix was written — it kept polling and offered Resume; fixed, then GREEN |
+| Operator failures page: gated, shows health/row/reason/release, filter and search, explicit error (never an empty queue) | `app/[locale]/ops/failures/page.test.tsx` — "is operator-only", "shows health, the row, its reason meaning and the release control", "passes the kind filter and a parsed reference search to the reader", "explains an invalid search instead of querying", "shows an explicit error, never an empty queue, when the reader fails" | — |
+| Owner loader degrades to `null` and logs on failure, never a false empty state | `lib/workspace/problems.test.ts` — "reads only owner kinds for this workspace and resolves actions", "returns null and logs, never an empty list, when the read fails" | — |
+| Owner surfaces: Home card hidden with none, right button per role, no raw reason code | `components/workspace/problems.test.tsx` — "renders nothing without problems", "shows at most two problems and links to Activity", "renders the rescan control for rescan", "links to the action for open_action", "links to Google re-authorisation for reauthorise", "links to the contact channel for contact_support, and shows text only without one", "shows no button for none, and always shows the reference", "never shows a raw unknown reason code", "says there are no open problems only when it was given an empty list" | — |
+| **Fix: Home renders the card after its `<h1>`, and its two reads run in parallel** | `components/workspace/home-brief.test.tsx` — "renders the problems slot after the page's `<h1>`, never before it", "renders nothing extra when problems is omitted" | source review: `app/[locale]/owner/[workspaceSlug]/page.tsx` awaits `getHomeBrief` and `loadWorkspaceProblems` inside one `Promise.all([...])`, confirmed by reading the file |
+| Scanning page's `deadLettered` flag: terminal truth outranks it, absence keeps today's states | `tests/funnel-scan.test.ts` — "shows the dead-letter state for a stuck in-flight scan, over stalled", "lets a terminal status win over a stale dead-letter flag", "keeps today's states when the flag is absent" | — |
+| No raw error code in the action-detail fallback toast (Task 12) | `components/workspace/action-detail-client.test.tsx` — describe "the fallback failure toast", `it.each` "in %s shows a friendly message with no raw error code" (en, zh-HK); asserts `JSON.stringify(...).not.toContain("weird_internal_code")` | reverting the fix (letting the raw `error` string reach the toast) reproduces the bug this test was written against; the test's own assertion is the guard |
+
+### Not run
+
+- **`corepack pnpm e2e` / `e2e:acceptance`**: need a production build, which gate 6 cannot produce on this machine. CI runs both.
+- **Hosted verification of any kind**: no `neon:readiness`, no deployed request, no production Neon query. This branch has no migration to apply, but nothing else was checked hosted either — not authorized in this task.
+- **Native review of the zh-HK/zh-TW copy** added in the `problems` namespace. It follows the repository's register rules (香港書面中文 / 台灣用語) by construction, as P3.5a's Chinese copy did, but has not been read by a native speaker.
+- **`corepack pnpm test:secret-boundary`**: shells out to `next build` and inherits gate 6's Turbopack blocker on this machine, the same as every prior phase.
