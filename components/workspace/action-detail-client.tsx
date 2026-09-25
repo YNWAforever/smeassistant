@@ -32,6 +32,7 @@ import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import { auditActorLabel, auditEventLabel } from "@/lib/workspace/audit-labels"
 import { approveVersion, decideVersion, exportVersion, markApplied as markAppliedRequest, retractApplied as retractAppliedRequest, runAction, saveAssistantVersion, saveVersion, updateAction, type ClientResult } from "@/lib/workspace/client"
 import { t } from "@/lib/i18n"
+import { aiBudgetRefusal } from "@/lib/budgets/messages"
 import { basisLabel, buildExportText, effortLabel, formatDateTime, metricLabel, priorityClass, priorityLabel, signed, stateLabel, withLocation } from "@/lib/workspace/format"
 import type { ActionDetail, AuditEventRow, VersionRow } from "@/lib/workspace/queries-pages"
 import type { GuardrailFlag } from "@/lib/workspace/version-meta"
@@ -247,7 +248,10 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   }
 
   function failureToast<T>(result: Extract<ClientResult<T>, { ok: false }>) {
+    // P3.5a: named before the generic 429, which means "too many requests".
+    const budgetRefusal = aiBudgetRefusal(locale, result.status, result.error)
     if (result.error === "offline" || result.error === "network") toast.error(isChinese ? "無法連接伺服器；文字已保留在此裝置。" : "The server could not be reached; your text is kept on this device.")
+    else if (budgetRefusal) toast.error(budgetRefusal)
     else if (result.status === 403) toast.error(isChinese ? "你的角色或地點範圍不允許此操作。" : "Your role or location scope does not allow this action.")
     else if (result.status === 429) toast.error(isChinese ? "請求過於頻繁，請稍後再試。" : "Too many requests; try again shortly.")
     else if (result.error === "agent_unavailable") toast.error(isChinese ? "此行動目前沒有可用的 Agent。" : "No agent is available for this action yet.")

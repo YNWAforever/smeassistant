@@ -23,6 +23,7 @@ import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import { createObjectiveAction } from "@/lib/workspace/client"
 import { effortLabel, withLocation } from "@/lib/workspace/format"
 import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates"
+import { t } from "@/lib/i18n"
 
 export interface CreateViewProps {
   locale: PrototypeLocale
@@ -106,7 +107,10 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
     // in the same response, so report what actually happened rather than
     // promising a draft that may already have failed or be waiting on input.
     const { actionId, versionId, state, factsNeeded, runError } = result.data
-    if (runError) {
+    if (runError === "ai_budget_reached") {
+      // P3.5a: the action exists; only the draft was refused, before any model call.
+      toast.error(t(locale, "budget.aiLimit"))
+    } else if (runError) {
       toast.error(isChinese ? "行動已建立，但未能開始生成草稿。" : "Action created, but the draft could not be started.")
     } else if (factsNeeded?.length) {
       toast.message(isChinese ? "行動已建立；需要補充資料才能生成草稿。" : "Action created; a few details are needed before a draft can be written.")

@@ -8,15 +8,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // Extend the one that matches what you are asserting; reaching for render()
 // and then wanting fireEvent is the mistake this note exists to prevent.
 import { renderToStaticMarkup } from "react-dom/server";
-import { cleanup, fireEvent, render as renderLive, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render as renderLive, screen } from "@testing-library/react";
 
-const clientMocks = vi.hoisted(() => ({ markApplied: vi.fn(), retractApplied: vi.fn() }));
+const clientMocks = vi.hoisted(() => ({ markApplied: vi.fn(), retractApplied: vi.fn(), runAction: vi.fn() }));
+const toastMocks = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn(), message: vi.fn() }));
 
 vi.mock("@/lib/workspace/client", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   markApplied: clientMocks.markApplied,
   retractApplied: clientMocks.retractApplied,
+  runAction: clientMocks.runAction,
 }));
+vi.mock("sonner", () => ({ toast: toastMocks }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -363,5 +366,44 @@ describe("the Before and after measurement card", () => {
     mountOnEvidenceTab([{ ...baseMeasurement, fact_type: "Attributed", attribution_basis: "verified" }]);
     expect(screen.getByText(/verified on site/)).toBeInTheDocument();
     expect(screen.queryByText(/basis not recorded/)).toBeNull();
+  });
+});
+
+describe("the AI drafting limit", () => {
+  const DRAFTED_KEY = AGENT_TEMPLATES[0].key;
+
+  beforeEach(() => {
+    if (!window.matchMedia)
+      window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia;
+    clientMocks.runAction.mockReset().mockResolvedValue({ ok: false, status: 429, error: "ai_budget_reached" });
+    toastMocks.error.mockReset();
+  });
+  afterEach(cleanup);
+
+  it.each([
+    ["en", "Generate a draft"],
+    ["zh-HK", "生成草稿"],
+    ["zh-TW", "生成草稿"],
+  ] as const)("says in %s that today's drafting limit was reached", async (locale, label) => {
+    renderLive(
+      <ActionDetailClient
+        locale={locale}
+        workspaceSlug="kam-man-house"
+        workspaceId="ws-1"
+        timezone="Asia/Hong_Kong"
+        role="owner"
+        inScope
+        location="yik-yam"
+        detail={detail(DRAFTED_KEY)}
+        auditRows={[]}
+        locations={[{ slug: "yik-yam", name: "Yik Yam" }]}
+        approvedAssets={[]}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: new RegExp(label) }));
+    });
+    expect(clientMocks.runAction).toHaveBeenCalledWith("act-1", {});
+    expect(toastMocks.error).toHaveBeenCalledWith(getMessages(locale).budget.aiLimit);
   });
 });
