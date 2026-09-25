@@ -22,29 +22,20 @@ export async function generateMetadata(props: OwnerPageProps): Promise<Metadata>
  */
 export default async function WorkspaceHome(props: OwnerPageProps) {
   const page = await loadOwnerPage(props);
-  const brief = await getHomeBrief(page.ctx, page.locationSlug);
-  const problems = await loadWorkspaceProblems({
-    workspaceId: page.ctx.workspace.id,
-    market: page.ctx.workspace.market,
-    membership: page.membership,
-    tier: page.ctx.workspace.tier,
-  });
+  const [brief, problems] = await Promise.all([
+    getHomeBrief(page.ctx, page.locationSlug),
+    loadWorkspaceProblems({
+      workspaceId: page.ctx.workspace.id,
+      market: page.ctx.workspace.market,
+      membership: page.membership,
+      tier: page.ctx.workspace.tier,
+    }),
+  ]);
   const locationId = page.locationSlug === "all" ? "all" : page.ctx.locations.find((l) => l.slug === page.locationSlug)?.id ?? "all";
   const forbidden = page.query.forbidden === "1";
   return (
     <>
       {forbidden && <div className="permission-note" role="alert"><TriangleAlert /><span>{page.isChinese ? "你的角色或地點範圍不允許該操作，已返回工作台首頁。" : "Your role or location scope does not allow that action; you have been returned to the workspace home."}</span></div>}
-      {problems && (
-        <NeedsAttentionCard
-          locale={page.locale}
-          workspaceSlug={page.workspaceSlug}
-          workspaceId={page.ctx.workspace.id}
-          tier={page.ctx.workspace.tier}
-          role={page.membership.role}
-          consentPolicyVersion={currentScanConsentPolicyVersion()}
-          problems={filterToLocation(problems, locationId)}
-        />
-      )}
       <HomeBriefView
         locale={page.locale}
         workspaceSlug={page.workspaceSlug}
@@ -61,6 +52,17 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
         demo={page.ctx.workspace.isDemo}
         fixPack={{ workspaceId: page.ctx.workspace.id, role: page.membership.role }}
         role={page.membership.role}
+        problems={problems && (
+          <NeedsAttentionCard
+            locale={page.locale}
+            workspaceSlug={page.workspaceSlug}
+            workspaceId={page.ctx.workspace.id}
+            tier={page.ctx.workspace.tier}
+            role={page.membership.role}
+            consentPolicyVersion={currentScanConsentPolicyVersion()}
+            problems={filterToLocation(problems, locationId)}
+          />
+        )}
       />
     </>
   );
