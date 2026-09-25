@@ -25,7 +25,8 @@ export function createScanExecutionStore(
     /** Budget variables; defaults to process.env (tests pass their own). */
     env?: Record<string, string | undefined>;
     /**
-     * Called when a retry's claim was refused on budget. processScan knows
+     * Called when a metered claim (a retry, or a first attempt whose
+     * reservation has expired) was refused on budget. processScan knows
      * only "a claimed job or null" and reports null as already_claimed, so the
      * host (lib/scan/run.ts) learns the reason here. packages/scan-engine is
      * unchanged.

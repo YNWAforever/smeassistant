@@ -28,8 +28,15 @@ export const SCAN_BUDGET_LOCK_SQL = "SELECT pg_advisory_xact_lock(hashtextextend
 
 const WINDOW_SQL = "now() - interval '24 hours'";
 
+/**
+ * A job's reserved attempt lives for one window from its creation. The pending
+ * count and the claim's first-attempt exemption both use this, so a job stops
+ * being exempt at exactly the moment it stops being counted.
+ */
+const reservationLiveSql = (createdAt: string) => `${createdAt} > ${WINDOW_SQL}`;
+
 /** Admitted but never claimed: one reserved attempt each. */
-export const PENDING_JOB_CONDITION_SQL = `status IN ('queued','collecting','scoring','persisting') AND attempt_count = 0 AND created_at > ${WINDOW_SQL}`;
+export const PENDING_JOB_CONDITION_SQL = `status IN ('queued','collecting','scoring','persisting') AND attempt_count = 0 AND ${reservationLiveSql("created_at")}`;
 
 /** Attempts in the window plus pending jobs, optionally for one workspace (given as a SQL expression). */
 function usedSql(workspace: string | null): string {
@@ -44,24 +51,28 @@ export const ADMISSION_USAGE_SQL = `SELECT ${usedSql(null)} AS global_used, ${us
  * The production claim: one data-modifying statement. $1 = job id, $2 = the
  * global limit or NULL (off), $3 = the workspace limit or NULL (off).
  *
- * A first attempt (attempt_count = 0) was admitted at start or rescan and is
- * never checked again, so admitted work finishes. A retry is claimed only
- * while used < limit, with used counted exactly as at admission. `claimed`
+ * A first attempt (attempt_count = 0) whose reservation is live was admitted
+ * at start or rescan and is counted as pending, so it is not checked again and
+ * admitted work finishes. Every other claim is metered: a retry, and a first
+ * attempt whose reservation has expired (a queued job stays claimable forever,
+ * but stops being counted after one window, so exempting it would let old
+ * admitted jobs be claimed together past the limit). A metered claim goes
+ * ahead only while used < limit, with used counted exactly as at admission. `claimed`
  * re-applies the claimable condition, so a concurrent claim still loses.
  * `attempt` writes the job's scan_attempts row from the same statement, so a
  * claim and its row cannot exist without each other.
  *
  * Zero rows: the job is not claimable. One row with budget_allowed false: a
- * retry refused on budget. One row with an id: claimed.
+ * metered claim refused on budget. One row with an id: claimed.
  */
 export const BUDGETED_CLAIM_SQL = `WITH target AS (
-  SELECT id AS target_id, workspace_id AS target_workspace_id, attempt_count AS target_attempts
+  SELECT id AS target_id, workspace_id AS target_workspace_id, attempt_count AS target_attempts, created_at AS target_created_at
   FROM audit_jobs WHERE id = $1 AND ${CLAIMABLE_JOB_CONDITION_SQL}
 ), counts AS (
   SELECT ${usedSql(null)} AS global_used, ${usedSql("(SELECT target_workspace_id FROM target)")} AS workspace_used
 ), decision AS (
   SELECT target_id, target_workspace_id, target_attempts, global_used, workspace_used,
-    (target_attempts = 0
+    ((target_attempts = 0 AND ${reservationLiveSql("target_created_at")})
       OR (($2::int IS NULL OR global_used < $2::int)
         AND ($3::int IS NULL OR target_workspace_id IS NULL OR workspace_used < $3::int))) AS allowed
   FROM target CROSS JOIN counts
@@ -143,9 +154,9 @@ export type ClaimOutcome =
 /**
  * The claim, on the caller's transaction client (lib/scan/execution-store.ts
  * gives it one). SQL errors propagate, so the store keeps reporting
- * claim_failed. An invalid budget configuration claims first attempts and
- * refuses every retry (a global limit of 0 for this statement), so a bad
- * variable never lets retries through unmetered.
+ * claim_failed. An invalid budget configuration claims first attempts with a
+ * live reservation and refuses every metered claim (a global limit of 0 for
+ * this statement), so a bad variable never lets retries through unmetered.
  */
 export async function claimScanJob(client: Queryable, jobId: string, env: Env = process.env): Promise<ClaimOutcome> {
   let limits: { global: number | null; workspace: number | null };

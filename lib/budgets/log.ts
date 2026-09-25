@@ -3,6 +3,11 @@
  * names, emails or ids.
  */
 export type BudgetScope = "scan_global" | "scan_workspace" | "ai_global" | "ai_workspace";
+/**
+ * Where the check ran. `retry_claim` is the claim-time gate: it meters every
+ * claim that is not an admitted first attempt with a live reservation, so it
+ * covers retries and first attempts whose reservation has expired alike.
+ */
 export type BudgetEntry = "scan_start" | "rescan" | "retry_claim" | "ai_run" | "assistant_draft";
 
 /** The one line every over-limit refusal writes. */

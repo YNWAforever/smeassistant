@@ -59,10 +59,10 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon budgeted scan claim",
       }),
     };
   };
-  const job = async (opts: { status?: string; attempts?: number; age?: string; workspaceId?: string | null } = {}) =>
+  const job = async (opts: { status?: string; attempts?: number; age?: string; createdAge?: string; workspaceId?: string | null } = {}) =>
     (await runtime.query(
-      "INSERT INTO audit_jobs(business_name,status,attempt_count,last_attempt_at,workspace_id) VALUES('Fixture',$1,$2,now()-$3::interval,$4) RETURNING id",
-      [opts.status ?? "queued", opts.attempts ?? 0, opts.age ?? "0 minutes", opts.workspaceId ?? null],
+      "INSERT INTO audit_jobs(business_name,status,attempt_count,last_attempt_at,workspace_id,created_at) VALUES('Fixture',$1,$2,now()-$3::interval,$4,now()-$5::interval) RETURNING id",
+      [opts.status ?? "queued", opts.attempts ?? 0, opts.age ?? "0 minutes", opts.workspaceId ?? null, opts.createdAge ?? "0 minutes"],
     )).rows[0].id as string;
   /** A stalled first attempt, reclaimable now: its claim is a retry. */
   const retry = (workspaceId: string | null = null) => job({ status: "collecting", attempts: 1, age: "31 minutes", workspaceId });
@@ -114,6 +114,27 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon budgeted scan claim",
     await pastAttempt(null);
     const id = await job();
     const { store: s, onBudgetRefused } = store({ BUDGET_SCAN_ATTEMPTS_GLOBAL_24H: "1" });
+    expect(await s.claimJob(id)).not.toBeNull();
+    expect(onBudgetRefused).not.toHaveBeenCalled();
+    expect(await attemptRows(id)).toHaveLength(1);
+  });
+
+  it("meters a first attempt whose reservation has expired, like a retry", async () => {
+    await pastAttempt(null);
+    // Admitted 25 hours ago and never claimed: it no longer holds a reserved attempt.
+    const id = await job({ createdAge: "25 hours" });
+    const { store: s, onBudgetRefused } = store({ BUDGET_SCAN_ATTEMPTS_GLOBAL_24H: "1" });
+    expect(await s.claimJob(id)).toBeNull();
+    expect(onBudgetRefused).toHaveBeenCalledWith("scan_global");
+    expect(console.warn).toHaveBeenCalledWith("[budget] refused", { scope: "scan_global", entry: "retry_claim", used: 1, limit: 1 });
+    expect((await runtime.query("SELECT status,attempt_count FROM audit_jobs WHERE id=$1", [id])).rows[0]).toEqual({ status: "queued", attempt_count: 0 });
+    expect(await attemptRows(id)).toEqual([]);
+  });
+
+  it("claims an expired first attempt while the budget has room", async () => {
+    await pastAttempt(null);
+    const id = await job({ createdAge: "25 hours" });
+    const { store: s, onBudgetRefused } = store({ BUDGET_SCAN_ATTEMPTS_GLOBAL_24H: "2" });
     expect(await s.claimJob(id)).not.toBeNull();
     expect(onBudgetRefused).not.toHaveBeenCalled();
     expect(await attemptRows(id)).toHaveLength(1);

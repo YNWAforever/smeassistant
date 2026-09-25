@@ -153,4 +153,9 @@ describe("one definition of used", () => {
     }
     expect(BUDGETED_CLAIM_SQL).toContain("INSERT INTO scan_attempts (job_id, workspace_id) SELECT id, workspace_id FROM claimed");
   });
+
+  it("exempts a first attempt at the claim only while its reservation is counted as pending", () => {
+    expect(BUDGETED_CLAIM_SQL).toContain("created_at AS target_created_at");
+    expect(BUDGETED_CLAIM_SQL).toContain("(target_attempts = 0 AND target_created_at > now() - interval '24 hours')");
+  });
 });
