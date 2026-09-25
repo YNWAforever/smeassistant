@@ -6,6 +6,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { applyMigrations } from "../../scripts/neon/migrations";
 import { startNeonDatabaseFixture, type NeonDatabaseFixture } from "./neon-database";
 import { failuresRepository, type FailureQuery } from "../../lib/repositories/failures";
+import { OWNER_FAILURE_KINDS } from "../../lib/ops/failure-types";
+import { buildOwnerProblems } from "../../lib/ops/owner-actions";
 
 const ports = vi.hoisted(() => ({ pool: undefined as Pool | undefined }));
 vi.mock("../../lib/db/client", () => ({ getPool: () => ports.pool, getDatabase: () => drizzle(ports.pool!) }));
@@ -210,5 +212,20 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon failures read model",
     expect(health.recent).toEqual({ scan_failed: { day: 2, week: 3 }, draft_failed: { day: 1, week: 1 } });
     expect(health.open).toEqual({ scan_dead_lettered: 1, google_connection: 1, workspace_processing: 0 });
     expect(health.categories).toEqual([{ category: "COLLECTION_FAILED", day: 1, week: 2 }, { category: "SCORING_FAILED", day: 1, week: 1 }]);
+  });
+
+  it("never shows a scoped manager another location's problems, through the real reader", async () => {
+    const ws = await workspace();
+    const mine = await location(ws, "tin-hau");
+    const theirs = await location(ws, "yik-yam");
+    await job({ status: "failed", completed: "1 hour", category: "COLLECTION_FAILED", ws, loc: mine });
+    await job({ status: "failed", completed: "1 hour", category: "COLLECTION_FAILED", ws, loc: theirs });
+    await connection(ws, "error");
+    const items = await repo().list({ ...ALL, workspaceId: ws, kinds: OWNER_FAILURE_KINDS });
+    const problems = buildOwnerProblems(items, { role: "manager", locationScope: [mine], tier: "paid" }, null);
+    expect(problems.map((p) => [p.kind, p.locationId, p.ownerAction]).sort()).toEqual([
+      ["google_connection", null, "ask_owner"],
+      ["scan_failed", mine, "rescan"],
+    ]);
   });
 });
