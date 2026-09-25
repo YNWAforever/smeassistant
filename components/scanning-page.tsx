@@ -250,7 +250,9 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
   // connection for minutes, so it is fire-and-forget with a busy flag; polling
   // stays the source of truth. The one response it reads is the quick
   // 503 at_capacity of a retry refused on the spend budget (P3.5a): the job
-  // stays claimable and the cron reclaim continues it later.
+  // stays claimable, so a later Resume can claim it once the window allows.
+  // Whether the cron reclaim picks it up by itself depends on CRON_SECRET
+  // being set in production, so the page does not promise that.
   const resume = useCallback(() => {
     setResuming(true)
     setAtCapacity(false)

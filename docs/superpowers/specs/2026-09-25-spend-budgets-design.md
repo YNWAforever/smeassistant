@@ -153,7 +153,7 @@ Reading the code changed the design in these places. Each is resolved in `docs/s
 5. **New copy lives in a `budget` namespace in `lib/messages`.** Action detail, Create and the assistant sheet use one Chinese string for both locales today, which cannot keep zh-HK and zh-TW distinct.
 6. **The budget lines in `.env.example` are commented out.** An empty value is invalid, so blank lines copied into `.env.local` would refuse every scan and draft.
 7. **The copy on the scanning page and the rescan button says only what is true.**
-   - **Scanning page, after a refused Resume:** "Scanning is at capacity right now. This scan is saved; press Resume again in a few hours." It does not promise automatic continuation, because that depends on the cron reclaim being scheduled in production (`CRON_SECRET`, recorded as unset by P3.1).
+   - **Scanning page, after a refused Resume:** "Scanning is at capacity right now. This scan is saved; try resuming it again in a few hours." (It deliberately names no button, because the button is labelled "Ask us to resume the scan".) It does not promise automatic continuation, because that depends on the cron reclaim being scheduled in production (`CRON_SECRET`, recorded as unset by P3.1).
    - **Rescan button, at global capacity:** "Scanning is at capacity right now. Please try again in a few hours." Not the public "Free scans" text.
 
 ## What does not change
