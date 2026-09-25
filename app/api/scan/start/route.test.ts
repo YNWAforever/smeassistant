@@ -33,6 +33,7 @@ const STARTED = {
 };
 
 import { LEGAL_POLICY_VERSION } from "@/lib/legal/policy";
+import { ScanBudgetRefusal } from "@/lib/budgets/scan";
 import { POST } from "./route";
 
 function request(body: Record<string, unknown>) {
@@ -359,4 +360,21 @@ describe("POST /api/scan/start analytics isolation", () => {
     });
   });
 
+});
+
+describe("POST /api/scan/start spend budget", () => {
+  it("answers 503 at_capacity, forwards nothing and logs no persistence failure, when admission refuses", async () => {
+    mocks.after.mockClear();
+    mocks.insert.mockRejectedValueOnce(new ScanBudgetRefusal("scan_global"));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const response = await POST(request(validBody));
+      expect(response.status).toBe(503);
+      expect(await response.json()).toEqual({ error: "at_capacity" });
+      expect(mocks.after).not.toHaveBeenCalled();
+      expect(error).not.toHaveBeenCalledWith("Scan persistence unavailable", expect.anything());
+    } finally {
+      error.mockRestore();
+    }
+  });
 });

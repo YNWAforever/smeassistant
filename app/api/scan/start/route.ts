@@ -4,6 +4,7 @@ import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit
 import { forwardEventToPostHog, resolveAnalyticsSession, setAnalyticsSessionCookie } from "@/lib/analytics/record-event";
 import { currentScanConsentPolicyVersion } from "@/lib/scan/consent";
 import { insertScanJob, parseScanStartBody } from "@/lib/scan/start-job";
+import { ScanBudgetRefusal } from "@/lib/budgets/scan";
 
 /**
  * Upstream's contract, unchanged (CLAUDE.md 3.2.2): validation, the scan_start
@@ -40,6 +41,11 @@ export async function POST(req: Request) {
   const session = resolveAnalyticsSession(req);
   const created = await insertScanJob(parsed.input, parsed.consent, { anonymousSessionId: session.id });
   if (!created.ok) {
+    // Already logged as "[budget] refused" (or "[budget] check_failed") by the
+    // admission check, which ran before anything was written.
+    if (created.error instanceof ScanBudgetRefusal) {
+      return NextResponse.json({ error: "at_capacity" }, { status: 503 });
+    }
     const correlationId = randomUUID();
     // An invalid event cannot follow a successful parse today, but the cause is
     // logged as what it is rather than folded into database_unavailable.

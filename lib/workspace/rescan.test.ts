@@ -10,6 +10,7 @@ const CONSENT: ScanConsentRecord = { consentType: "public_evidence", granted: tr
 vi.mock("@/lib/workspace/audit", () => ({ recordNeonEvent: vi.fn(async (input) => { state.inserted.audit_events.push({ workspace_id: input.workspaceId, location_id: input.locationId, actor_type: input.actorType, actor_id: input.actorId, event: input.event, entity_id: input.entityId, payload: { locale: input.locale ?? null, ...input.payload } }); }) }));
 vi.mock("@/lib/repositories/jobs", () => ({ jobsRepository: { insert: vi.fn(async (row, consent, started) => { if(state.jobInsertError) throw state.jobInsertError; const saved={id: `job-${state.inserted.audit_jobs.length+1}`, ...row}; state.inserted.audit_jobs.push(saved); state.inserted.consent_records.push({ job_id: saved.id, ...consent }); state.inserted.scan_events.push({ job_id: saved.id, ...started }); return {id:saved.id}; }) } }));
 import { LEGAL_POLICY_VERSION } from "@/lib/legal/policy";
+import { ScanBudgetRefusal } from "@/lib/budgets/scan";
 import { enqueueRescan, ensureMonthlySchedule, scanInputFromSnapshot } from "./rescan";
 
 type Row = Record<string, unknown>;
@@ -172,6 +173,18 @@ describe("enqueueRescan", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     expect(await enqueueRescan(client(), { workspaceId: "ws-1", locationId: "loc-1", actorId: "user-1", anonymousSessionId: "session-1", consent: CONSENT })).toEqual({ ok: false, reason: "insert_failed" });
     expect(state.inserted.audit_events).toEqual([]);
+    spy.mockRestore();
+  });
+
+  it.each([
+    ["scan_global", "at_capacity"],
+    ["scan_workspace", "workspace_scan_budget_reached"],
+  ] as const)("reports a %s budget refusal as %s, with no audit event and no failure log", async (scope, reason) => {
+    state.jobInsertError = new ScanBudgetRefusal(scope);
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await enqueueRescan(client(), { workspaceId: "ws-1", locationId: "loc-1", actorId: "user-1", anonymousSessionId: "session-1", consent: CONSENT })).toEqual({ ok: false, reason });
+    expect(state.inserted.audit_events).toEqual([]);
+    expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
   });
 });
