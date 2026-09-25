@@ -18,7 +18,9 @@ const UPSTREAM_NAMESPACES = ["scanner", "scanning", "report", "share", "legal"];
 // the independent, system-written check.
 // "budget" (P3.5a) carries the spend-budget refusals, which need the same
 // zh-HK / zh-TW register split.
-const APP_NAMESPACES = ["applied", "verified", "budget"];
+// "draftFailure" (P3.5a) labels a failed assistant draft's stored reason code
+// in the owner's run history, with the same register split.
+const APP_NAMESPACES = ["applied", "verified", "budget", "draftFailure"];
 const NAMESPACES = [...UPSTREAM_NAMESPACES, ...APP_NAMESPACES];
 
 function readBundle(locale: string): Record<string, unknown> {

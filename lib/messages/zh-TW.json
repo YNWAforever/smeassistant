@@ -15,6 +15,11 @@
     "scanAtCapacity": "免費掃描目前已達上限，請於幾個小時後再試。",
     "aiLimit": "今天的 AI 草稿生成額度已用完，請稍後再試。"
   },
+  "draftFailure": {
+    "factsNeeded": "需要更多資訊",
+    "invalidOutput": "無法讀取草稿",
+    "noModelOutput": "AI 草稿生成目前無法使用"
+  },
   "scanner": {
     "title": "免費掃描我的生意",
     "subtitle": "填寫以下資料，30 秒立即收到 audit 報告",

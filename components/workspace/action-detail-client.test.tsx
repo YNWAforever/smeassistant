@@ -407,3 +407,51 @@ describe("the AI drafting limit", () => {
     expect(toastMocks.error).toHaveBeenCalledWith(getMessages(locale).budget.aiLimit);
   });
 });
+
+describe("failed assistant drafts in the run history", () => {
+  // recordAssistantDraftFailure stores a reason code in action_runs.error;
+  // the workflow tab must show owners a label, never the code.
+  const DRAFTED_KEY = AGENT_TEMPLATES[0].key;
+  const LABELS = {
+    en: { facts_needed: "Needed more facts", invalid_output: "Draft could not be read", no_model_output: "AI drafting unavailable", tab: "Workflow states" },
+    "zh-HK": { facts_needed: "需要更多資料", invalid_output: "未能讀取草稿", no_model_output: "AI 草稿生成暫時未能使用", tab: "流程狀態" },
+    "zh-TW": { facts_needed: "需要更多資訊", invalid_output: "無法讀取草稿", no_model_output: "AI 草稿生成目前無法使用", tab: "流程狀態" },
+  } as const;
+  const CODES = ["facts_needed", "invalid_output", "no_model_output"] as const;
+
+  beforeEach(() => {
+    if (!window.matchMedia)
+      window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia;
+  });
+  afterEach(cleanup);
+
+  it.each(Object.keys(LABELS) as Array<keyof typeof LABELS>)("labels every reason code in %s and leaves other errors as they are", (locale) => {
+    const value = detail(DRAFTED_KEY);
+    value.runs = [
+      ...CODES.map((code, i) => ({ id: `run-${code}`, action_id: "act-1", agent_key: "faq_jsonld", state: "failed" as const, error: code, created_at: `2026-09-0${3 - i}T10:00:00Z`, finished_at: null })),
+      { id: "run-task", action_id: "act-1", agent_key: "faq_jsonld", state: "failed", error: "The model timed out.", created_at: "2026-08-30T10:00:00Z", finished_at: null },
+    ];
+    renderLive(
+      <ActionDetailClient
+        locale={locale}
+        workspaceSlug="kam-man-house"
+        workspaceId="ws-1"
+        timezone="Asia/Hong_Kong"
+        role="owner"
+        inScope
+        location="yik-yam"
+        detail={value}
+        auditRows={[]}
+        locations={[{ slug: "yik-yam", name: "Yik Yam" }]}
+        approvedAssets={[]}
+      />,
+    );
+    fireEvent.mouseDown(screen.getByRole("tab", { name: LABELS[locale].tab }), { button: 0, ctrlKey: false });
+    const text = document.body.textContent ?? "";
+    for (const code of CODES) {
+      expect(text).toContain(LABELS[locale][code]);
+      expect(text).not.toContain(code);
+    }
+    expect(text).toContain("The model timed out.");
+  });
+});

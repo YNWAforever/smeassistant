@@ -15,6 +15,11 @@
     "scanAtCapacity": "Free scans are at capacity right now. Please try again in a few hours.",
     "aiLimit": "Today's AI drafting limit has been reached. Try again later."
   },
+  "draftFailure": {
+    "factsNeeded": "Needed more facts",
+    "invalidOutput": "Draft could not be read",
+    "noModelOutput": "AI drafting unavailable"
+  },
   "scanner": {
     "title": "Scan My Business for Free",
     "subtitle": "Fill in the details below — get your audit report in 30 seconds",
