@@ -256,7 +256,8 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
     else if (result.status === 403) toast.error(isChinese ? "你的角色或地點範圍不允許此操作。" : "Your role or location scope does not allow this action.")
     else if (result.status === 429) toast.error(isChinese ? "請求過於頻繁，請稍後再試。" : "Too many requests; try again shortly.")
     else if (result.error === "agent_unavailable") toast.error(isChinese ? "此行動目前沒有可用的 Agent。" : "No agent is available for this action yet.")
-    else toast.error(isChinese ? `操作失敗（${result.error}）。` : `The request failed (${result.error}).`)
+    // P3.5b: never a raw error code in front of an owner.
+    else toast.error(isChinese ? "操作失敗，請再試一次；如持續出現，請聯絡 Fimmick。" : "The request failed. Try again, or contact Fimmick if it keeps happening.")
   }
 
   async function generate(extraInputs?: Record<string, unknown>) {
