@@ -846,3 +846,23 @@ Afterwards `docker ps -a --filter name=p35a` listed nothing. No other container 
 - `corepack pnpm test:secret-boundary`: shells out to `next build` and inherits gate 6's blocker. **Not run.**
 - `apply-0009.sql` against any Neon branch, `neon:readiness` against any hosted target, and any deployed request. **Not run**: no hosted action is authorized by this task.
 - A test for the `social_post`-without-asset refusal under a spent AI budget. **Not written**; recorded in the report's "does NOT prove".
+
+### After the whole-branch review (`5971d55`, `b600e77`, `838888e`, `a10a7d8`)
+
+A final review of the whole branch found one Critical and seven Minor findings. `PHASE-3-REPORT.md` ("Whole-branch review and its fixes") covers them and the four accepted residuals (M2, M5, M6, M7). **Correction to the section above:** at `90ef323` the global scan limit was not a hard bound, because the claim exempted every first attempt, however old its reservation (C1). It is a bound from `5971d55`. Each fix below was test-first: RED seen for the stated reason, GREEN after the fix, then the fix reverted to confirm the new test fails, and restored.
+
+| Commit | Finding | Tests added or changed | RED | Mutation (fix reverted) |
+|---|---|---|---|---|
+| `5971d55` | C1: an expired reservation claimed unchecked | `neon-scan-claim-budget` +2: "meters a first attempt whose reservation has expired, like a retry", "claims an expired first attempt while the budget has room". The `job()` helper gained a `createdAge` option. `lib/budgets/scan.test.ts` +1: "exempts a first attempt at the claim only while its reservation is counted as pending". | the 25-hour-old job was claimed: `expected { business_name: 'Fixture', … } to be null` | `((target_attempts = 0 AND target_created_at > …)` → `(target_attempts = 0`: **killed**, 1/11, the expired-job test |
+| `b600e77` | M1: reclaim order | `neon-cron-dispatch` +1: "offers first attempts before retries, oldest first, so refused retries cannot fill the batch" | the queued first attempt was not among the 20 returned (heap order) | delete `ORDER BY attempt_count, created_at, id`: **killed**, 1/6, on each of 3 consecutive runs |
+| `838888e` | M3: raw reason codes; assistant drafts in "Task runs failed" | `action-detail-client.test.tsx` +3: "labels every reason code in en / zh-HK / zh-TW and leaves other errors as they are". `neon-value-report` +1: "leaves assistant drafts, failed or succeeded, out of the task-run counts" (rolled back). `tests/i18n.test.ts`: `draftFailure` added to `APP_NAMESPACES`, count unchanged. | the three labels missing in every locale; the report read `{ runs: 4, failed: 2 }` | component: both `runErrorLabel` calls removed → **killed**, 3/3. Report: `TASK_RUN` removed from `failed` only → **killed** (`failed: 2`); from `runs` only → **killed** (`runs: 4`) |
+| `a10a7d8` | M4: the unmetered claim method | `tests/scan-claim-single-path.test.ts` (new, 4): the guard, the wrapper's own location, and self-tests of what does and does not match | n/a: a guard over the current tree, which passes | planted `repo.claimAuditJob("x")` in `lib/scan/claimable.ts` → **killed**; planted `"SELECT * FROM public.claim_audit_job($1)"` → **killed**; each removed |
+
+After each `corepack pnpm test` the two tracked snapshot files again showed as modified with an empty `git diff --ignore-cr-at-eol --stat`, and were restored with `git restore`. They are in no commit.
+
+| Gate, at `a10a7d8` | Result | vs `90ef323` |
+|---|---|---|
+| `corepack pnpm typecheck` | exit 0 | — |
+| `corepack pnpm lint` | exit 0, 30 warnings / 0 errors | unchanged |
+| `corepack pnpm test` | exit 0, **330 files / 3,560 tests** (app 279 / 2,973; safe-media 1 / 62; region 3 / 23; scoring 16 / 183; contracts 3 / 20; scan-engine 28 / 299) | +1 file / +8 tests: the new guard file (4), `action-detail-client.test.tsx` (3), `scan.test.ts` (1) |
+| `corepack pnpm test:integration` | exit 0, **33 files / 350 tests**, 226.29s | +0 files / +4 tests: `neon-scan-claim-budget` 9 → 11, `neon-cron-dispatch` 5 → 6, `neon-value-report` 12 → 13 |
