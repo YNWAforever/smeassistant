@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { AssistantAccessError, isDraftIntent, runLiveAssistant } from "@/lib/assistant/live";
+import { AiBudgetRefusal } from "@/lib/budgets/ai";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
 import { isLocale } from "@/lib/locale";
 import type { PrototypeLocale } from "@/lib/copy";
@@ -91,6 +92,8 @@ export async function POST(request: Request) {
     return json(result);
   } catch (error) {
     if (error instanceof AssistantAccessError) return json({ error: error.code }, error.status);
+    // Already logged as "[budget] refused" (or "[budget] check_failed"); nothing reached the model.
+    if (error instanceof AiBudgetRefusal) return json({ error: "ai_budget_reached" }, 429);
     console.error("[api/assistant/run] failed", { category: "assistant_run_failed" });
     return json({ error: "unavailable" }, 503);
   }
