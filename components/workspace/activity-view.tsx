@@ -1,3 +1,5 @@
+import type { ReactNode } from "react"
+
 import { PageIntro, SectionCard } from "@/components/product-ui"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import type { PrototypeLocale } from "@/lib/copy"
@@ -16,11 +18,12 @@ function detail(row: AuditEventRow, isChinese: boolean): string {
   return parts.join(" · ")
 }
 
-export function ActivityView({ locale, timezone, events }: { locale: PrototypeLocale; timezone: string; events: AuditEventRow[] }) {
+export function ActivityView({ locale, timezone, events, problems }: { locale: PrototypeLocale; timezone: string; events: AuditEventRow[]; problems?: ReactNode }) {
   const isChinese = locale !== "en"
   return (
     <div className="activity-page">
       <PageIntro eyebrow={isChinese ? "只增不改的店主審計紀錄" : "Append-only owner audit"} title={isChinese ? "活動紀錄" : "Activity"} description={isChinese ? "記錄來源、版本、角色、審批及交付；最新事件在上，原始內容不會藏在分析事件內。" : "Source, version, role, approval and delivery events are recorded latest-first without putting raw content in analytics."} />
+      {problems}
       <SectionCard>
         <Table>
           <TableCaption>{isChinese ? "工作台事件，按時間由新至舊排列" : "Workspace events, latest first"}</TableCaption>

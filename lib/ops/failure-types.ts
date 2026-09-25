@@ -14,6 +14,11 @@ export function isFailureKind(value: unknown): value is FailureKind {
   return typeof value === "string" && (FAILURE_KINDS as readonly string[]).includes(value);
 }
 
+/** Narrows a FailureItem/OwnerProblem's `kind` for owner-facing copy (problemTitle takes only OwnerFailureKind). */
+export function isOwnerFailureKind(kind: FailureKind): kind is OwnerFailureKind {
+  return (OWNER_FAILURE_KINDS as readonly FailureKind[]).includes(kind);
+}
+
 export interface FailureItem {
   kind: FailureKind;
   /** Source row id: the job id, run id or connection id. */
