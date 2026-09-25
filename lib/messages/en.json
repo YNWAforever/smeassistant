@@ -20,6 +20,56 @@
     "invalidOutput": "Draft could not be read",
     "noModelOutput": "AI drafting unavailable"
   },
+  "problems": {
+    "homeTitle": "Needs attention",
+    "homeMore": "See every problem in Activity",
+    "activityTitle": "Problems & recovery",
+    "activityEmpty": "No open problems.",
+    "reference": "Reference {reference}",
+    "kind": {
+      "scan_failed": "A scan did not finish",
+      "scan_dead_lettered": "A scan stopped responding",
+      "draft_failed": "A draft could not be generated",
+      "google_connection": "The Google connection needs attention"
+    },
+    "next": {
+      "rescan": "Run a new scan for this location.",
+      "contact_support": "Contact Fimmick and quote the reference below.",
+      "open_action": "Open the action and try the draft again.",
+      "reauthorise": "Re-authorise Google to restore the connection.",
+      "ask_owner": "Ask the workspace owner to reconnect Google.",
+      "dead_lettered": "It closes automatically within 24 hours; you can then rescan.",
+      "none": "An owner, or a manager for this location, can act on this."
+    },
+    "button": {
+      "open_action": "Open action",
+      "reauthorise": "Re-authorise",
+      "contact_support": "Contact Fimmick"
+    },
+    "reason": {
+      "ATTEMPTS_EXHAUSTED": "The scan stopped responding after three attempts.",
+      "COLLECTION_FAILED": "Collecting public evidence failed.",
+      "SCORING_FAILED": "Scoring the evidence failed.",
+      "PERSIST_FAILED": "Saving the results failed.",
+      "PROCESSOR_FAILED": "The scan could not be processed.",
+      "CLAIM_FAILED": "The scan could not be started.",
+      "consent_missing": "The scan had no recorded consent.",
+      "consent_policy_stale": "The consent was given under an older policy.",
+      "action_run_timeout": "Drafting ran out of time.",
+      "action_run_reaped": "Drafting stopped responding.",
+      "invalid_output": "The draft could not be read.",
+      "action_run_failed": "Drafting failed.",
+      "expired": "The Google authorisation expired.",
+      "error": "Google reported a connection error.",
+      "workspace_post_process_failed": "Updating the workspace after the scan failed.",
+      "generic": "Something went wrong."
+    },
+    "scanStuck": {
+      "title": "This scan stopped responding",
+      "body": "It will close automatically within 24 hours. You can start a new scan any time.",
+      "button": "Start a new scan"
+    }
+  },
   "scanner": {
     "title": "Scan My Business for Free",
     "subtitle": "Fill in the details below — get your audit report in 30 seconds",

@@ -20,6 +20,56 @@
     "invalidOutput": "無法讀取草稿",
     "noModelOutput": "AI 草稿生成目前無法使用"
   },
+  "problems": {
+    "homeTitle": "需要處理",
+    "homeMore": "在活動紀錄查看所有問題",
+    "activityTitle": "問題與復原",
+    "activityEmpty": "目前沒有待處理的問題。",
+    "reference": "參考編號 {reference}",
+    "kind": {
+      "scan_failed": "一次掃描未能完成",
+      "scan_dead_lettered": "一次掃描停止回應",
+      "draft_failed": "草稿無法生成",
+      "google_connection": "Google 連結需要處理"
+    },
+    "next": {
+      "rescan": "為這個據點重新掃描。",
+      "contact_support": "請聯絡 Fimmick，並提供下方參考編號。",
+      "open_action": "開啟行動，再次嘗試生成草稿。",
+      "reauthorise": "重新授權 Google 以恢復連結。",
+      "ask_owner": "請工作台擁有者重新連結 Google。",
+      "dead_lettered": "系統會在 24 小時內自動結束這次掃描，之後你可以重新掃描。",
+      "none": "擁有者或負責此據點的經理可以處理。"
+    },
+    "button": {
+      "open_action": "開啟行動",
+      "reauthorise": "重新授權",
+      "contact_support": "聯絡 Fimmick"
+    },
+    "reason": {
+      "ATTEMPTS_EXHAUSTED": "掃描嘗試三次後仍停止回應。",
+      "COLLECTION_FAILED": "收集公開證據失敗。",
+      "SCORING_FAILED": "評分失敗。",
+      "PERSIST_FAILED": "儲存結果失敗。",
+      "PROCESSOR_FAILED": "無法處理這次掃描。",
+      "CLAIM_FAILED": "無法開始這次掃描。",
+      "consent_missing": "這次掃描沒有已記錄的同意。",
+      "consent_policy_stale": "同意是依舊版政策提供的。",
+      "action_run_timeout": "生成草稿逾時。",
+      "action_run_reaped": "生成草稿停止回應。",
+      "invalid_output": "無法讀取草稿。",
+      "action_run_failed": "生成草稿失敗。",
+      "expired": "Google 授權已過期。",
+      "error": "Google 回報連結錯誤。",
+      "workspace_post_process_failed": "掃描後更新工作台失敗。",
+      "generic": "發生問題。"
+    },
+    "scanStuck": {
+      "title": "這次掃描停止回應",
+      "body": "系統會在 24 小時內自動結束這次掃描。你可以隨時開始新的掃描。",
+      "button": "開始新的掃描"
+    }
+  },
   "scanner": {
     "title": "免費掃描我的生意",
     "subtitle": "填寫以下資料，30 秒立即收到 audit 報告",
