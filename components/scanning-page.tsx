@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { ArrowRight, Check, CircleAlert, Link2, RefreshCw, ScanSearch } from "lucide-react"
 
 import { FactType, ProviderBadge, PublicPageFrame, SectionCard } from "@/components/product-ui"
+import { ScanStuckCard } from "@/components/scan-stuck-card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -166,6 +167,15 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
           setStatus(data)
           setIndex((furthest) => Math.max(furthest, stageIndex(data.processingStage, data.status)))
           if (isTerminalStatus(data.status)) clearPollRecord(jobId, pollStorage())
+          // P3.5b: the lease will not claim this job again, so polling can
+          // only ever repeat the same answer. Stop, and let the stuck card
+          // say what happens next.
+          if (data.deadLettered) {
+            setChecking(false)
+            setResuming(false)
+            setStalled(null)
+            return
+          }
         } else {
           outcome = { kind: "http", httpStatus: response.status }
         }
@@ -275,9 +285,9 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
     return () => clearTimeout(timer)
   }, [reportHref, router, status.status])
 
-  const view = scanViewState({ status: status.status, stalledReason: stalled })
+  const view = scanViewState({ status: status.status, stalledReason: stalled, deadLettered: status.deadLettered === true })
   const base = collectorPhases(status.processingStage, status.status, status.moduleStates)
-  const phases = view === "stalled" ? stallCollectorPhases(base) : base
+  const phases = view === "stalled" || view === "dead_lettered" ? stallCollectorPhases(base) : base
 
   return (
     <PublicPageFrame locale={locale}>
@@ -366,6 +376,8 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
             </div>
           </div>
         )}
+
+        {view === "dead_lettered" && <ScanStuckCard locale={locale} reference={scanReference(jobId)} />}
 
         {atCapacity && (
           <div className="partial-result-card" role="status">

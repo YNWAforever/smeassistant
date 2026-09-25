@@ -42,5 +42,5 @@ export async function GET(req: Request) {
             return { google_business: states.google_business.status, instagram: states.instagram.status, search_ai: states.search_ai.status };
         })()
         : null;
-    return NextResponse.json({ status: job.status, shareSlug: job.share_slug, processingStage: job.processing_stage, coverage: job.score_coverage, failureCorrelationId: job.failure_correlation_id, moduleStates });
+    return NextResponse.json({ status: job.status, shareSlug: job.share_slug, processingStage: job.processing_stage, coverage: job.score_coverage, failureCorrelationId: job.failure_correlation_id, deadLettered: job.dead_lettered === true, moduleStates });
 }

@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { getPool } from "../db/client";
 import { withTransaction } from "../db/transaction";
 import { admitScanJob } from "../budgets/scan";
+import { DEAD_LETTERED_JOB_CONDITION_SQL } from "../scan/claimable";
 import { auditJobs } from "../db/schema/jobs";
 import type { buildScanConsentInsert, buildScanJobInsert } from "../scan/start-job";
 import {
@@ -119,7 +120,7 @@ export const jobsRepository: JobsRepository & {
         });
     },
     async readStatus(id) {
-        const { rows } = await getPool().query<ScanStatus>("SELECT id,status,processing_stage,share_slug,score_coverage::float8 AS score_coverage,failure_correlation_id,module_results,module_scores FROM audit_jobs WHERE id=$1", [id]);
+        const { rows } = await getPool().query<ScanStatus>(`SELECT id,status,processing_stage,share_slug,score_coverage::float8 AS score_coverage,failure_correlation_id,module_results,module_scores,${DEAD_LETTERED_JOB_CONDITION_SQL} AS dead_lettered FROM audit_jobs WHERE id=$1`, [id]);
         return rows[0] ?? null;
     }
 };
@@ -132,4 +133,5 @@ export interface ScanStatus {
     failure_correlation_id: string | null;
     module_results: unknown;
     module_scores: unknown;
+    dead_lettered: boolean;
 }

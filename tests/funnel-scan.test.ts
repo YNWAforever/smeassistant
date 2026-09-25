@@ -16,6 +16,7 @@ import {
   nextPollDelay,
   progressPercent,
   scanReference,
+  scanViewState,
   stageIndex,
 } from "@/lib/funnel/scan-progress";
 import {
@@ -218,5 +219,22 @@ describe("report labels", () => {
     expect(formatWeightedImpact(-15, "aeo")).toBe("-3.8");
     expect(formatWeightedImpact(0, "trust")).toBe("0");
     expect(formatWeightedImpact(-8, "unknown")).toBe("0");
+  });
+});
+
+describe("scanViewState dead-lettered (P3.5b)", () => {
+  it("shows the dead-letter state for a stuck in-flight scan, over stalled", () => {
+    expect(scanViewState({ status: "collecting", stalledReason: null, deadLettered: true })).toBe("dead_lettered");
+    expect(scanViewState({ status: "collecting", stalledReason: "timeout", deadLettered: true })).toBe("dead_lettered");
+  });
+
+  it("lets a terminal status win over a stale dead-letter flag", () => {
+    expect(scanViewState({ status: "failed", stalledReason: null, deadLettered: true })).toBe("failed");
+    expect(scanViewState({ status: "done", stalledReason: null, deadLettered: true })).toBe("ready");
+  });
+
+  it("keeps today's states when the flag is absent", () => {
+    expect(scanViewState({ status: "collecting", stalledReason: "timeout" })).toBe("stalled");
+    expect(scanViewState({ status: "collecting", stalledReason: null })).toBe("running");
   });
 });
