@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { waitUntil } from "@vercel/functions";
 import { getPool } from "@/lib/db/client";
 import { authorizeCronRequest, cronUnauthorizedResponse } from "@/lib/security/cron-auth";
 import { notifyDueSchedules } from "@/lib/scan/notify-due-schedules";
@@ -10,10 +9,14 @@ import { verificationRepository } from "@/lib/repositories/verification";
 import { recordApplication } from "@/lib/workspace/applications";
 import { recordNeonEvent } from "@/lib/workspace/audit";
 import { runWebsiteVerification } from "@/lib/verify/website-sweep";
+import { dispatchScanProcess } from "@/lib/scan/dispatch-process";
+import { deadLetterRepository } from "@/lib/repositories/dead-letter";
 
 export const maxDuration = 60;
 
 const RECLAIM_BATCH_LIMIT = 20;
+/** Bounds one tick's auto-close work (P3.5b), like the reclaim batch. */
+const AUTO_CLOSE_BATCH_LIMIT = 20;
 /**
  * Bounds ONE tick rather than rationing throughput: this is the only concern
  * here that fetches customer infrastructure, and the five fetches run in
@@ -41,7 +44,8 @@ function summarizeByStatus(results: { status: string }[]): Record<string, number
 /**
  * The one retained scheduler (design doc: docs/superpowers/specs/2026-09-13-scan-scheduler-trigger-design.md).
  * Every 5 minutes: notify due schedules (never auto-dispatch -- the owner
- * still clicks "Rescan now"), kick off reprocessing for abandoned scans, and
+ * still clicks "Rescan now"), kick off reprocessing for abandoned scans,
+ * close scans stuck after three attempts past the 24-hour release window, and
  * reconcile workspace-completion effects that never ran. Each concern is
  * isolated so one failing does not block the others.
  */
@@ -61,20 +65,23 @@ export async function POST(request: Request): Promise<Response> {
     reclaimCandidates = jobIds.length;
     const origin = process.env.APP_ORIGIN;
     if (origin) {
-      for (const jobId of jobIds) {
-        waitUntil(
-          fetch(`${origin}/api/scan/process`, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ jobId }),
-          }).catch((cause) => logFailure(`reclaim_dispatch:${jobId}`, cause)),
-        );
-      }
+      for (const jobId of jobIds) dispatchScanProcess(jobId, (cause) => logFailure(`reclaim_dispatch:${jobId}`, cause));
     } else if (jobIds.length > 0) {
       logFailure("reclaim_abandoned_scans", new Error("APP_ORIGIN not configured -- found eligible jobs but could not dispatch any"));
     }
   } catch (cause) {
     logFailure("reclaim_abandoned_scans", cause);
+  }
+
+  // P3.5b: scans that used all three attempts and sat past the 24-hour
+  // release window are closed as failed, so no owner watches a spinner
+  // forever. Before reconcile, so a workspace job closed here gets its
+  // scan.failed notification in this same tick.
+  let autoClosed = 0;
+  try {
+    autoClosed = (await deadLetterRepository(getPool()).closeExhausted(AUTO_CLOSE_BATCH_LIMIT)).length;
+  } catch (cause) {
+    logFailure("close_exhausted_scans", cause);
   }
 
   let reconciled: Record<string, number> = {};
@@ -114,5 +121,5 @@ export async function POST(request: Request): Promise<Response> {
     logFailure("verify_website_actions", cause);
   }
 
-  return NextResponse.json({ notified, reclaimCandidates, reconciled, verified }, { status: 200, headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ notified, reclaimCandidates, autoClosed, reconciled, verified }, { status: 200, headers: { "Cache-Control": "no-store" } });
 }
