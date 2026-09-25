@@ -16,7 +16,11 @@ const UPSTREAM_NAMESPACES = ["scanner", "scanning", "report", "share", "legal"];
 // `isChinese ? … : …` ternaries used elsewhere in this codebase cannot express.
 // "verified" (website-verifier Task 6) carries the same register split for
 // the independent, system-written check.
-const APP_NAMESPACES = ["applied", "verified"];
+// "budget" (P3.5a) carries the spend-budget refusals, which need the same
+// zh-HK / zh-TW register split.
+// "draftFailure" (P3.5a) labels a failed assistant draft's stored reason code
+// in the owner's run history, with the same register split.
+const APP_NAMESPACES = ["applied", "verified", "budget", "draftFailure"];
 const NAMESPACES = [...UPSTREAM_NAMESPACES, ...APP_NAMESPACES];
 
 function readBundle(locale: string): Record<string, unknown> {

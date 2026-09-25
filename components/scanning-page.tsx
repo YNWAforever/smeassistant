@@ -100,6 +100,7 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
   const [stalled, setStalled] = useState<StalledReason | null>(null)
   const [checking, setChecking] = useState(false)
   const [resuming, setResuming] = useState(false)
+  const [atCapacity, setAtCapacity] = useState(false)
   const lastPollAtRef = useRef(0)
   const processPostedRef = useRef(false)
   // The poll record lives in a ref rather than state: reading it is an
@@ -247,10 +248,21 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
 
   // The POST runs the scan inline (maxDuration = 300) and can hold the
   // connection for minutes, so it is fire-and-forget with a busy flag; polling
-  // stays the source of truth and the response body is never read.
+  // stays the source of truth. The one response it reads is the quick
+  // 503 at_capacity of a retry refused on the spend budget (P3.5a): the job
+  // stays claimable, so a later Resume can claim it once the window allows.
+  // Whether the cron reclaim picks it up by itself depends on CRON_SECRET
+  // being set in production, so the page does not promise that.
   const resume = useCallback(() => {
     setResuming(true)
-    void postProcess().finally(() => setResuming(false))
+    setAtCapacity(false)
+    void postProcess()
+      .then(async (response) => {
+        if (response?.status !== 503) return
+        const body = (await response.json().catch(() => null)) as { error?: unknown } | null
+        if (body?.error === "at_capacity") setAtCapacity(true)
+      })
+      .finally(() => setResuming(false))
     restart({ process: true })
   }, [postProcess, restart])
 
@@ -351,6 +363,14 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
                   {resuming ? c.stalledResuming : c.stalledResume}
                 </Button>
               )}
+            </div>
+          </div>
+        )}
+
+        {atCapacity && (
+          <div className="partial-result-card" role="status">
+            <div>
+              <p>{c.atCapacity}</p>
             </div>
           </div>
         )}

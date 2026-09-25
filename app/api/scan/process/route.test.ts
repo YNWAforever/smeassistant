@@ -960,3 +960,30 @@ describe("collectScanProviders when the merchant supplied no Instagram handle", 
     }
   });
 });
+
+describe("scan process budget refusal", () => {
+  const JOB = "11111111-1111-4111-8111-111111111111";
+  const post = () => POST(new Request("http://localhost/api/scan/process", {
+    method: "POST",
+    body: JSON.stringify({ jobId: JOB }),
+    headers: { "content-type": "application/json" },
+  }));
+
+  it("answers 503 at_capacity when the store refused a retry on budget", async () => {
+    storeMocks.createScanExecutionStore.mockImplementationOnce((...args: unknown[]) => {
+      (args[1] as { onBudgetRefused?: (scope: string) => void }).onBudgetRefused?.("scan_global");
+      return { marker: "neon-store" };
+    });
+    vi.mocked(processScan).mockResolvedValueOnce({ status: "already_claimed" });
+    const response = await post();
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "at_capacity" });
+  });
+
+  it("keeps already_claimed a 200 when nothing was refused", async () => {
+    vi.mocked(processScan).mockResolvedValueOnce({ status: "already_claimed" });
+    const response = await post();
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: "already_claimed" });
+  });
+});

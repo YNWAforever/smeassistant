@@ -48,7 +48,7 @@ export function RescanButton({ locale, workspaceId, workspaceSlug, locationId, t
     setBusy(true)
     const result = await rescanLocation(workspaceId, locationId, { policyVersion: consentPolicyVersion, locale })
     setBusy(false)
-    if (!result.ok) { toast.error(failureMessage(result, t)); return }
+    if (!result.ok) { toast.error(rescanFailureMessage(result, locale)); return }
     toast.success(t.queued)
     router.push(`/${locale}/scanning/${encodeURIComponent(result.data.jobId)}`)
   }
@@ -87,9 +87,17 @@ export function RescanButton({ locale, workspaceId, workspaceSlug, locationId, t
   )
 }
 
-function failureMessage(result: Extract<ClientResult<unknown>, { ok: false }>, t: (typeof COPY)[PrototypeLocale]): string {
+/**
+ * Exported for tests. The spend-budget refusals (P3.5a) are named before the
+ * status mapping, because a workspace budget refusal and the per-workspace
+ * rate limit are both 429s and mean different things.
+ */
+export function rescanFailureMessage(result: Extract<ClientResult<unknown>, { ok: false }>, locale: PrototypeLocale): string {
+  const t = COPY[locale]
   if (result.error === "offline" || result.error === "network") return t.network
   if (result.error === "tier_required") return t.tier
+  if (result.error === "workspace_scan_budget_reached") return t.workspaceBudget
+  if (result.error === "at_capacity") return t.atCapacity
   if (result.status === 403) return t.forbidden
   if (result.status === 404) return t.noScan
   if (result.status === 429) return t.limit
@@ -108,6 +116,8 @@ const COPY = {
     noScan: "This location has no finished scan to rescan yet.",
     limit: "Rescan limit reached for today (3 per workspace); try again tomorrow.",
     failed: "The rescan could not be queued.",
+    workspaceBudget: "This workspace has reached today's scan limit. Try again tomorrow.",
+    atCapacity: "Scanning is at capacity right now. Please try again in a few hours.",
     cancel: "Cancel",
     consentTitle: "Collect fresh public evidence for this location?",
     consentBody: "A rescan re-reads the same public sources as the original scan — your Google Business Profile, public Instagram and website. It collects public evidence only, and nothing is published on your behalf. Confirming records your consent against the published policy version.",
@@ -125,6 +135,8 @@ const COPY = {
     noScan: "此地點尚未有已完成的掃描可供重新掃描。",
     limit: "今日的重新掃描次數已達上限（每個工作台 3 次），請明天再試。",
     failed: "未能排隊重新掃描。",
+    workspaceBudget: "此工作台今日的掃描次數已達上限，請明天再試。",
+    atCapacity: "掃描服務暫時已滿額，請於數小時後再試。",
     cancel: "取消",
     consentTitle: "為這個地點重新收集公開證據？",
     consentBody: "重新掃描會再次讀取與首次掃描相同的公開來源：你的 Google 商戶檔案、公開 Instagram 及網站。只收集公開證據，不會代你發佈任何內容。確認即表示你就下列政策版本給予同意。",
@@ -142,6 +154,8 @@ const COPY = {
     noScan: "此據點尚未有已完成的掃描可供重新掃描。",
     limit: "今日的重新掃描次數已達上限（每個工作台 3 次），請明天再試。",
     failed: "無法排入重新掃描。",
+    workspaceBudget: "此工作台今日的掃描次數已達上限，請明天再試。",
+    atCapacity: "掃描服務目前已達上限，請於幾個小時後再試。",
     cancel: "取消",
     consentTitle: "為這個據點重新收集公開證據？",
     consentBody: "重新掃描會再次讀取與首次掃描相同的公開來源：你的 Google 商家檔案、公開 Instagram 與網站。只收集公開證據，不會代你發布任何內容。確認即表示你就下列政策版本給予同意。",

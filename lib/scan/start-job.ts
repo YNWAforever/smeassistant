@@ -5,6 +5,7 @@ import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
 import type { IgMatchProvenance } from "@sme-scanner/contracts";
 import type { ScanEvent } from "@sme-scanner/scan-engine";
 import { scanStartedEvent } from "@/lib/analytics/scan-events";
+import { ScanBudgetRefusal } from "@/lib/budgets/scan";
 
 
 /**
@@ -309,5 +310,9 @@ export async function insertScanJob(
    { anonymousSessionId: analytics.anonymousSessionId, event: startedEvent },
   );
   return { ok: true, jobId: row.id, startedEvent };
- } catch { return { ok: false, error: new Error("scan_persistence_unavailable") }; }
+ } catch (error) {
+  // A budget refusal is an answer, not a persistence failure: the caller maps it.
+  if (error instanceof ScanBudgetRefusal) return { ok: false, error };
+  return { ok: false, error: new Error("scan_persistence_unavailable") };
+ }
 }

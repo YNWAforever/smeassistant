@@ -2,6 +2,7 @@ import "server-only";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { getPool } from "../db/client";
 import { withTransaction } from "../db/transaction";
+import { admitScanJob } from "../budgets/scan";
 import { auditJobs } from "../db/schema/jobs";
 import type { buildScanConsentInsert, buildScanJobInsert } from "../scan/start-job";
 import {
@@ -43,6 +44,16 @@ export const jobsRepository: JobsRepository & {
      */
     async insert(row, consent, started) {
         return withTransaction(async (client) => {
+            // P3.5a: the spend budget, first, on this transaction's client and
+            // under the budget lock, so the pending count it reads and the job
+            // it admits commit together. A refusal throws ScanBudgetRefusal
+            // before anything is written. Only the rescan path attributes a
+            // workspace (the public route never forwards one), so the row's
+            // workspace names the entry.
+            await admitScanJob(client, {
+                workspaceId: row.workspace_id ?? null,
+                entry: row.workspace_id ? "rescan" : "scan_start",
+            });
             const values: typeof auditJobs.$inferInsert = {
                 businessName: row.business_name, igHandle: row.ig_handle, websiteUrl: row.website_url,
                 industry: row.industry, district: row.district, userRole: row.user_role, status: row.status,

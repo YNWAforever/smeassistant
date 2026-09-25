@@ -1,4 +1,5 @@
-import { artifactRepository, type LiveAssistantRepository, type RecordAssistantDraftInput } from "@/lib/repositories/artifacts";
+import { artifactRepository, type LiveAssistantRepository, type RecordAssistantDraftFailureInput, type RecordAssistantDraftInput } from "@/lib/repositories/artifacts";
+import { AiBudgetRefusal, checkAiBudget } from "@/lib/budgets/ai";
 import { AGENTS, AGENT_LLM_OPTIONS, computeCostUsd, parseAgentOutput, type AgentContext, type AgentKey } from "@/lib/agents";
 import { inLocationScope, roleAtLeast, type Membership } from "@/lib/auth";
 import type { PrototypeLocale } from "@/lib/copy";
@@ -56,6 +57,13 @@ export interface LiveRunInput {
    * explicit, separately injected dependency.
    */
   persistDraft?: (input: RecordAssistantDraftInput) => Promise<string>;
+  /**
+   * Records a draft that failed after the model ran, so its cost counts
+   * against the AI budget (P3.5a). Injected separately, like persistDraft.
+   */
+  persistDraftFailure?: (input: RecordAssistantDraftFailureInput) => Promise<string>;
+  /** Budget variables; defaults to process.env (tests pass their own). */
+  budgetEnv?: Record<string, string | undefined>;
   now?: () => Date;
 }
 
@@ -307,6 +315,33 @@ async function agentContext(db: LiveAssistantRepository, input: LiveRunInput, ct
   };
 }
 
+/**
+ * P3.5a: a draft that failed after the model ran used to leave no row, so its
+ * spend was invisible to the AI budget. It is now a failed run, with the cost
+ * the gateway reported. Best-effort: a write failure is logged, and the owner
+ * still gets the fallback answer.
+ */
+async function recordFailedDraft(
+  input: LiveRunInput,
+  failure: Pick<RecordAssistantDraftFailureInput, "actionId" | "agentKey" | "promptVersion" | "intentId" | "reason" | "factsNeeded" | "usage">,
+): Promise<void> {
+  try {
+    const persist = input.persistDraftFailure ?? ((row: RecordAssistantDraftFailureInput) => artifactRepository().recordAssistantDraftFailure(row));
+    await persist({
+      ...failure,
+      workspaceId: input.context.workspaceId,
+      actorId: input.membership.userId,
+      surface: input.surface,
+      locale: input.locale,
+      model: process.env.LLM_MODEL || null,
+      costUsd: computeCostUsd(failure.usage),
+      finishedAt: (input.now ?? (() => new Date()))().toISOString(),
+    });
+  } catch {
+    console.error("[assistant/live] failed draft not recorded", { category: "assistant_draft_failure_not_recorded" });
+  }
+}
+
 async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistantRepository, ctx: ResolvedContext): Promise<DemoAssistantRunResponse> {
   const spec = DRAFT_AGENTS[intent];
   const action = ctx.focused; // Already selected and authorized with its evidence.
@@ -337,13 +372,22 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistant
 
   const agent = AGENTS[spec.agent];
   const agentCtx = await agentContext(db, input, ctx, action, spec.agent, intent);
+  // P3.5a: the AI spend budget, immediately before the model call.
+  const budget = await checkAiBudget(() => db.aiSpend24h(input.context.workspaceId), { entry: "assistant_draft" }, input.budgetEnv);
+  if (!budget.allowed) throw new AiBudgetRefusal(budget.scope);
   const result = await (input.llm ?? llmComplete)(agent.buildPrompt(agentCtx), AGENT_LLM_OPTIONS);
+  const usage = result?.usage ?? { inputTokens: null, outputTokens: null };
+  const failure = { actionId: action.row.id, agentKey: spec.agent, promptVersion: agent.promptVersion, intentId: intent, usage };
   const output = parseAgentOutput(result?.text, agent.outputSchema);
-  if (!output) return fallback();
+  if (!output) {
+    await recordFailedDraft(input, { ...failure, reason: result ? "invalid_output" : "no_model_output", factsNeeded: [] });
+    return fallback();
+  }
 
   const warnings = [...output.warnings, ...agent.acceptance(agentCtx, output)];
   const title = action.overview.title[input.locale];
   if (output.facts_needed.length > 0) {
+    await recordFailedDraft(input, { ...failure, reason: "facts_needed", factsNeeded: output.facts_needed });
     const base = completed(fallbackIntentFor(intent), input, ctx);
     return { ...base, answer: NEEDS_FACTS[input.locale].replace("{facts}", output.facts_needed.join(", ")), warnings: [...warnings, ...base.warnings] };
   }
@@ -373,8 +417,8 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistant
         warnings,
         facts_used: output.facts_used,
       },
-      usage: result?.usage ?? { inputTokens: null, outputTokens: null },
-      costUsd: computeCostUsd(result?.usage ?? { inputTokens: null, outputTokens: null }),
+      usage,
+      costUsd: computeCostUsd(usage),
       finishedAt: (input.now ?? (() => new Date()))().toISOString(),
     });
   } catch {

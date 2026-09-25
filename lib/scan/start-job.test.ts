@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { LEGAL_POLICY_VERSION } from "@/lib/legal/policy";
 import { SCAN_CONSENT_TYPE } from "./consent";
 import { buildScanJobInsert, insertScanJob, parseScanStartBody, type ScanStartInput } from "./start-job";
+import { ScanBudgetRefusal } from "@/lib/budgets/scan";
 
 vi.mock("@/lib/db/client", () => ({
   getPool: () => {
@@ -159,4 +160,5 @@ describe("insertScanJob",()=>{
  it("inserts the job, its consent and its scan_started through the repository",async()=>{const insert=vi.fn().mockResolvedValue({id:"job-1"});const started={name:"scan_started",properties:{market:parsed().market,locale:parsed().locale}};expect(await insertScanJob(parsed(),consent,{anonymousSessionId:"session-1"},{workspaceId:"ws-1"},{insert})).toEqual({ok:true,jobId:"job-1",startedEvent:started});expect(insert).toHaveBeenCalledWith(expect.objectContaining({workspace_id:"ws-1",status:"queued"}),{consent_type:"public_evidence",granted:true,policy_version:LEGAL_POLICY_VERSION,locale:"en"},{anonymousSessionId:"session-1",event:started});});
  it("sanitizes database failures instead of throwing",async()=>{const insert=vi.fn().mockRejectedValue(Error("postgresql://user:secret@host/db"));expect(await insertScanJob(parsed(),consent,{anonymousSessionId:"session-1"},{},{insert})).toEqual({ok:false,error:Error("scan_persistence_unavailable")});});
  it("refuses an event the engine would reject before touching the repository",async()=>{const insert=vi.fn();expect(await insertScanJob({...parsed(),market:"hk" as never},consent,{anonymousSessionId:"session-1"},{},{insert})).toEqual({ok:false,error:Error("scan_event_invalid")});expect(insert).not.toHaveBeenCalled();});
+ it("passes a budget refusal through as itself, not as a persistence failure",async()=>{const refusal=new ScanBudgetRefusal("scan_global");const insert=vi.fn().mockRejectedValue(refusal);const result=await insertScanJob(parsed(),consent,{anonymousSessionId:"session-1"},{},{insert});expect(result.ok).toBe(false);if(!result.ok)expect(result.error).toBe(refusal);});
 });

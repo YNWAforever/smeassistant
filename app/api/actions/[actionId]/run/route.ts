@@ -50,6 +50,7 @@ export async function POST(
   } catch (error) {
     if (error instanceof RunError) {
       if (error.code === "forbidden") return json({ error: "forbidden" }, 403);
+      if (error.code === "ai_budget_reached") return json({ error: "ai_budget_reached" }, 429);
       return json(
         {
           error:

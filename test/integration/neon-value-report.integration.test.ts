@@ -158,6 +158,28 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("value report", () => {
     expect(result.tasks).toEqual({ runs: 2, failed: 1, missingInputNow: 1 });
   });
 
+  // Assistant drafts are action_runs rows too (input.source = 'assistant'),
+  // and since P3.5a a failed one is recorded as state 'failed'. "Task runs
+  // failed" keeps its P3.4 meaning: agent task runs only, on both sides of
+  // "failed of runs". Seeded in a rolled-back transaction.
+  it("leaves assistant drafts, failed or succeeded, out of the task-run counts", async () => {
+    const client = await runtime.connect();
+    try {
+      await client.query("BEGIN");
+      const act = (await client.query<{ id: string }>(
+        `INSERT INTO actions(workspace_id,location_id,template_key,title,summary,evidence,priority,priority_score,priority_factors,effort_minutes,capability,dedupe_key)
+         VALUES($1,$2,'review-response','{}','{}','{}','low',1,'[]',5,'Live',gen_random_uuid()::text) RETURNING id`, [e2, l3])).rows[0]!.id;
+      await client.query(
+        `INSERT INTO action_runs(workspace_id,action_id,agent_key,state,input,error,created_at) VALUES
+         ($1,$2,'faq_jsonld','failed','{"source":"assistant","intent":"draft_faq"}','facts_needed',$3),
+         ($1,$2,'faq_jsonld','succeeded','{"source":"assistant","intent":"draft_faq"}',NULL,$3)`, [e2, act, IN]);
+      expect((await collectValueReport(client, WEEK)).tasks).toEqual({ runs: 2, failed: 1, missingInputNow: 1 });
+    } finally {
+      await client.query("ROLLBACK");
+      client.release();
+    }
+  });
+
   it("never reports paid conversion as a number", async () => {
     expect((await report()).paidConversion).toEqual({ measurable: false, reason: "billing unavailable (DEC-09)" });
   });

@@ -11,6 +11,15 @@
   "verified": {
     "confirmedOn": "已在 {date} 於你的網站核實 · 我們檢查的是頁面本身，並非何人作出改動"
   },
+  "budget": {
+    "scanAtCapacity": "免費掃描名額暫時已滿，請於數小時後再試。",
+    "aiLimit": "今日的 AI 草稿生成額度已用完，請稍後再試。"
+  },
+  "draftFailure": {
+    "factsNeeded": "需要更多資料",
+    "invalidOutput": "未能讀取草稿",
+    "noModelOutput": "AI 草稿生成暫時未能使用"
+  },
   "scanner": {
     "title": "免費 Scan 我嘅生意",
     "subtitle": "填寫以下資料，30 秒即收 audit 報告",

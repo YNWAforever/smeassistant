@@ -186,3 +186,21 @@ describe("POST /api/cron/dispatch", () => {
     errorSpy.mockRestore();
   });
 });
+
+describe("POST /api/cron/dispatch and a budget refusal", () => {
+  it("treats 503 at_capacity from scan/process as skip-and-retry: nothing logged, the job offered again next tick", async () => {
+    claimableJobIds.mockResolvedValue(["job-1"]);
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ error: "at_capacity" }), { status: 503 }));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await POST(request());
+      await Promise.all(waitUntilMock.mock.calls.map(([pending]) => pending));
+      await POST(request());
+      await Promise.all(waitUntilMock.mock.calls.map(([pending]) => pending));
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(error).not.toHaveBeenCalled();
+    } finally {
+      error.mockRestore();
+    }
+  });
+});

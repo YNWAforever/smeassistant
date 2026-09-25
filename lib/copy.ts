@@ -115,6 +115,7 @@ type FunnelCopy = {
     stalledResume: string
     stalledResuming: string
     stalledResumeNote: string
+    atCapacity: string
     elapsedMinutes: string
     seeReport: string
     readyTitle: string
@@ -473,6 +474,7 @@ const funnelEn: FunnelCopy = {
     stalledResume: "Ask us to resume the scan",
     stalledResuming: "Asking…",
     stalledResumeNote: "Resuming never starts a second scan — it can only pick up this same scan. If an attempt is still running, nothing changes; a stopped attempt can be picked up again about {minutes} minutes after it stalled, for up to three attempts.",
+    atCapacity: "Scanning is at capacity right now. This scan is saved; try resuming it again in a few hours.",
     elapsedMinutes: "Elapsed {minutes}m {seconds}s",
     seeReport: "See report",
     readyTitle: "Your report is ready",
@@ -793,6 +795,7 @@ const funnelZhHK: FunnelCopy = {
     stalledResume: "請系統繼續這次掃描",
     stalledResuming: "正在請求…",
     stalledResumeNote: "繼續掃描不會開始第二次掃描，只會接手同一次掃描。若仍有執行中的嘗試，此操作不會有任何改變；若嘗試真的已停止，約 {minutes} 分鐘後便可重新接手，最多三次。",
+    atCapacity: "掃描服務暫時已滿額。這次掃描已儲存，請於數小時後再嘗試繼續掃描。",
     elapsedMinutes: "已用時間 {minutes} 分 {seconds} 秒",
     seeReport: "詳見報告",
     readyTitle: "報告已準備好",
@@ -1102,6 +1105,7 @@ const funnelZhTW: FunnelCopy = {
     stalledResume: "請系統繼續這次掃描",
     stalledResuming: "正在請求…",
     stalledResumeNote: "繼續掃描不會開始第二次掃描，只會接手同一次掃描。若仍有執行中的嘗試，這個操作不會有任何改變；若嘗試真的已停止，約 {minutes} 分鐘後就能重新接手，最多三次。",
+    atCapacity: "掃描服務目前已達上限。這次掃描已儲存，請於幾個小時後再試著繼續掃描。",
     elapsedMinutes: "已用時間 {minutes} 分 {seconds} 秒",
     seeReport: "詳見報告",
     readyTitle: "報告已準備好",

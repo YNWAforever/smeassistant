@@ -35,6 +35,14 @@ type Client = Pick<PoolClient, "query">;
 const ELIGIBLE = "NOT w.is_demo AND NOT w.is_internal";
 
 /**
+ * Agent task runs only, for action_runs aliased `r`. Assistant drafts are
+ * action_runs rows too, marked input.source = 'assistant' by
+ * lib/repositories/artifacts.ts, and since P3.5a a failed one is recorded as
+ * state 'failed'. Task runs have no source key (or a NULL input).
+ */
+const TASK_RUN = "(r.input->>'source') IS DISTINCT FROM 'assistant'";
+
+/**
  * deliveries → output_versions → actions, tenant-matched at every hop. The
  * location hop is LOCATION_MATCHED, added wherever a query reads location_id.
  */
@@ -135,9 +143,9 @@ export async function collectValueReport(client: Client, week: ReportWeek): Prom
   const tasks = await row(client, `
     SELECT
       (SELECT count(*)::int FROM action_runs r JOIN workspaces w ON w.id = r.workspace_id
-        WHERE r.created_at >= $1 AND r.created_at < $2 AND ${ELIGIBLE}) AS runs,
+        WHERE r.created_at >= $1 AND r.created_at < $2 AND ${ELIGIBLE} AND ${TASK_RUN}) AS runs,
       (SELECT count(*)::int FROM action_runs r JOIN workspaces w ON w.id = r.workspace_id
-        WHERE r.state IN ('failed','timed_out') AND r.created_at >= $1 AND r.created_at < $2 AND ${ELIGIBLE}) AS failed,
+        WHERE r.state IN ('failed','timed_out') AND r.created_at >= $1 AND r.created_at < $2 AND ${ELIGIBLE} AND ${TASK_RUN}) AS failed,
       (SELECT count(*)::int FROM actions a JOIN workspaces w ON w.id = a.workspace_id
         WHERE a.action_state = 'needs_input' AND ${ELIGIBLE}) AS missing_input`, window);
 

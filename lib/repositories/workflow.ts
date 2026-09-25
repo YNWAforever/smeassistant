@@ -116,6 +116,10 @@ export function workflowRepository(client: Executor = getPool()) {
         approveOutputVersion: (id: string, actor: string | null, comment: string | null) => value<VersionResult>("SELECT public.approve_output_version($1,$2,$3) AS value", [id, actor, comment]),
         decideOutputVersion: (id: string, actor: string | null, decision: string, comment: string | null) => value<VersionResult>("SELECT public.decide_output_version($1,$2,$3,$4) AS value", [id, actor, decision, comment]),
         exportOutputVersion: (id: string, actor: string | null, mode: string, key: string) => value<ExportResult>("SELECT public.export_output_version($1,$2,$3,$4) AS value", [id, actor, mode, key]),
+        // Unmetered: it writes no scan_attempts row. Kept for the integration
+        // test of migration 0004's function only; production claims go through
+        // lib/budgets/scan.ts, and tests/scan-claim-single-path.test.ts fails
+        // if any production source calls this.
         async claimAuditJob(id: string): Promise<AuditJobRow | null> {
             const { rows } = await client.query<AuditJobRow>("SELECT * FROM public.claim_audit_job($1)", [id]);
             if (rows.length > 1)

@@ -8,15 +8,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // Extend the one that matches what you are asserting; reaching for render()
 // and then wanting fireEvent is the mistake this note exists to prevent.
 import { renderToStaticMarkup } from "react-dom/server";
-import { cleanup, fireEvent, render as renderLive, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render as renderLive, screen } from "@testing-library/react";
 
-const clientMocks = vi.hoisted(() => ({ markApplied: vi.fn(), retractApplied: vi.fn() }));
+const clientMocks = vi.hoisted(() => ({ markApplied: vi.fn(), retractApplied: vi.fn(), runAction: vi.fn() }));
+const toastMocks = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn(), message: vi.fn() }));
 
 vi.mock("@/lib/workspace/client", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   markApplied: clientMocks.markApplied,
   retractApplied: clientMocks.retractApplied,
+  runAction: clientMocks.runAction,
 }));
+vi.mock("sonner", () => ({ toast: toastMocks }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -363,5 +366,92 @@ describe("the Before and after measurement card", () => {
     mountOnEvidenceTab([{ ...baseMeasurement, fact_type: "Attributed", attribution_basis: "verified" }]);
     expect(screen.getByText(/verified on site/)).toBeInTheDocument();
     expect(screen.queryByText(/basis not recorded/)).toBeNull();
+  });
+});
+
+describe("the AI drafting limit", () => {
+  const DRAFTED_KEY = AGENT_TEMPLATES[0].key;
+
+  beforeEach(() => {
+    if (!window.matchMedia)
+      window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia;
+    clientMocks.runAction.mockReset().mockResolvedValue({ ok: false, status: 429, error: "ai_budget_reached" });
+    toastMocks.error.mockReset();
+  });
+  afterEach(cleanup);
+
+  it.each([
+    ["en", "Generate a draft"],
+    ["zh-HK", "生成草稿"],
+    ["zh-TW", "生成草稿"],
+  ] as const)("says in %s that today's drafting limit was reached", async (locale, label) => {
+    renderLive(
+      <ActionDetailClient
+        locale={locale}
+        workspaceSlug="kam-man-house"
+        workspaceId="ws-1"
+        timezone="Asia/Hong_Kong"
+        role="owner"
+        inScope
+        location="yik-yam"
+        detail={detail(DRAFTED_KEY)}
+        auditRows={[]}
+        locations={[{ slug: "yik-yam", name: "Yik Yam" }]}
+        approvedAssets={[]}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: new RegExp(label) }));
+    });
+    expect(clientMocks.runAction).toHaveBeenCalledWith("act-1", {});
+    expect(toastMocks.error).toHaveBeenCalledWith(getMessages(locale).budget.aiLimit);
+  });
+});
+
+describe("failed assistant drafts in the run history", () => {
+  // recordAssistantDraftFailure stores a reason code in action_runs.error;
+  // the workflow tab must show owners a label, never the code.
+  const DRAFTED_KEY = AGENT_TEMPLATES[0].key;
+  const LABELS = {
+    en: { facts_needed: "Needed more facts", invalid_output: "Draft could not be read", no_model_output: "AI drafting unavailable", tab: "Workflow states" },
+    "zh-HK": { facts_needed: "需要更多資料", invalid_output: "未能讀取草稿", no_model_output: "AI 草稿生成暫時未能使用", tab: "流程狀態" },
+    "zh-TW": { facts_needed: "需要更多資訊", invalid_output: "無法讀取草稿", no_model_output: "AI 草稿生成目前無法使用", tab: "流程狀態" },
+  } as const;
+  const CODES = ["facts_needed", "invalid_output", "no_model_output"] as const;
+
+  beforeEach(() => {
+    if (!window.matchMedia)
+      window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia;
+  });
+  afterEach(cleanup);
+
+  it.each(Object.keys(LABELS) as Array<keyof typeof LABELS>)("labels every reason code in %s and leaves other errors as they are", (locale) => {
+    const value = detail(DRAFTED_KEY);
+    value.runs = [
+      ...CODES.map((code, i) => ({ id: `run-${code}`, action_id: "act-1", agent_key: "faq_jsonld", state: "failed" as const, error: code, created_at: `2026-09-0${3 - i}T10:00:00Z`, finished_at: null })),
+      { id: "run-task", action_id: "act-1", agent_key: "faq_jsonld", state: "failed", error: "The model timed out.", created_at: "2026-08-30T10:00:00Z", finished_at: null },
+    ];
+    renderLive(
+      <ActionDetailClient
+        locale={locale}
+        workspaceSlug="kam-man-house"
+        workspaceId="ws-1"
+        timezone="Asia/Hong_Kong"
+        role="owner"
+        inScope
+        location="yik-yam"
+        detail={value}
+        auditRows={[]}
+        locations={[{ slug: "yik-yam", name: "Yik Yam" }]}
+        approvedAssets={[]}
+      />,
+    );
+    fireEvent.mouseDown(screen.getByRole("tab", { name: LABELS[locale].tab }), { button: 0, ctrlKey: false });
+    const text = document.body.textContent ?? "";
+    for (const code of CODES) {
+      expect(text).toContain(LABELS[locale][code]);
+      expect(text).not.toContain(code);
+    }
+    expect(text).toContain("The model timed out.");
   });
 });

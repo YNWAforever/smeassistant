@@ -34,6 +34,7 @@ import type {
   DemoQuestionId,
 } from "@/lib/pocket-assistant/contracts"
 import { ASSISTANT_RUN_ENDPOINT, buildAssistantRequest } from "@/lib/pocket-assistant/request"
+import { aiBudgetRefusal } from "@/lib/budgets/messages"
 
 /** `AssistantSurface` now lives in contracts.ts (§3.8); re-exported for existing importers. */
 export type { AssistantSurface } from "@/lib/pocket-assistant/contracts"
@@ -130,12 +131,14 @@ export function ContextualAssistant({
   const [selected, setSelected] = useState<DemoQuestionId | null>(null)
   const [run, setRun] = useState<DemoAssistantRunResponse | null>(null)
   const [versionCreated, setVersionCreated] = useState(false)
+  const [refusal, setRefusal] = useState<string | null>(null)
   const questions = surfaceQuestions[surface]
 
   async function ask(questionId: DemoQuestionId) {
     setSelected(questionId)
     setRun(null)
     setVersionCreated(false)
+    setRefusal(null)
     setState("running")
     try {
       const response = await fetch(ASSISTANT_RUN_ENDPOINT, {
@@ -143,7 +146,17 @@ export function ContextualAssistant({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(buildAssistantRequest(mode, surface, questionId, locale, context)),
       })
-      if (!response.ok) throw new Error("assistant_run_failed")
+      if (!response.ok) {
+        // P3.5a: a spend-budget refusal is an answer, not a broken run.
+        const body = (await response.json().catch(() => null)) as { error?: unknown } | null
+        const refused = aiBudgetRefusal(locale, response.status, body?.error)
+        if (refused) {
+          setRefusal(refused)
+          setState("idle")
+          return
+        }
+        throw new Error("assistant_run_failed")
+      }
       const result = await response.json() as DemoAssistantRunResponse
       setRun(result)
       setState("idle")
@@ -192,6 +205,8 @@ export function ContextualAssistant({
           </section>
 
           <AssistantRunStatus state={state} isChinese={isChinese} mode={mode} />
+
+          {refusal && <div className="assistant-warning" role="alert"><ShieldCheck aria-hidden="true" /><div><p>{refusal}</p></div></div>}
 
           {run && <div className="assistant-result" aria-live="polite">
             <section className="assistant-answer-card">

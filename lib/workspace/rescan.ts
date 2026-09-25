@@ -10,6 +10,7 @@ import { buildScanConsentInsert, buildScanJobInsert, type ScanStartInput } from 
 import { buildScheduleInsert, type SchedulableJob, type ScheduleRefusal } from "@/lib/scheduler/create-schedule";
 import { recordNeonEvent } from "@/lib/workspace/audit";
 import { scanStartedEvent } from "@/lib/analytics/scan-events";
+import { ScanBudgetRefusal } from "@/lib/budgets/scan";
 
 /**
  * Owner "Rescan now" (CLAUDE.md §3.2.3, Phase 6 item 1): queue a new
@@ -39,7 +40,7 @@ export interface RescanSourceJob extends SchedulableJob {
   location_id: string | null;
 }
 
-export type RescanRefusal = "no_finished_job" | "snapshot_not_v2" | "insert_failed";
+export type RescanRefusal = "no_finished_job" | "snapshot_not_v2" | "insert_failed" | "at_capacity" | "workspace_scan_budget_reached";
 
 export type EnqueueRescanResult =
   | { ok: true; jobId: string; sourceJob: RescanSourceJob }
@@ -173,7 +174,12 @@ export async function enqueueRescan(repo: RescanRepository, input: EnqueueRescan
       event: scanStartedEvent(scanInput.market, scanInput.locale),
     });
   }
-  catch {
+  catch (error) {
+    // P3.5a: refused before anything was written, and already logged by the
+    // admission check, so it is neither a failure nor worth a second log line.
+    if (error instanceof ScanBudgetRefusal) {
+      return { ok: false, reason: error.scope === "scan_workspace" ? "workspace_scan_budget_reached" : "at_capacity" };
+    }
     console.error("[workspace/rescan] job insert failed", { category: "rescan_insert_failed" });
     return { ok: false, reason: "insert_failed" };
   }

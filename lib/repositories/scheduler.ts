@@ -54,11 +54,14 @@ export function schedulerRepository(client?: Pick<Pool, "query">): SchedulerRepo
         throw new Error("schedule_advance_failed");
       }
     },
+    // First attempts before retries, then oldest first (id breaks ties). A
+    // retry refused on the spend budget stays claimable (P3.5a), so without an
+    // order the same refusals could fill every batch and starve admitted jobs.
     async claimableJobIds(limit) {
       try {
         return (
           await db().query<{ id: string }>(
-            `SELECT id FROM audit_jobs WHERE ${CLAIMABLE_JOB_CONDITION_SQL} LIMIT $1`,
+            `SELECT id FROM audit_jobs WHERE ${CLAIMABLE_JOB_CONDITION_SQL} ORDER BY attempt_count, created_at, id LIMIT $1`,
             [limit],
           )
         ).rows.map((row) => row.id);

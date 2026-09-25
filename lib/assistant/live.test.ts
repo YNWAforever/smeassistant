@@ -2,8 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { auth } from "@/app/api/actions/_shared/test-db";
 import { ACTION_ID, LOCATION_ID, SNAPSHOT_ID, WORKSPACE_ID, actionRow, base, diff, socialRow, snapshot } from "./__fixtures__";
 import { LIVE_BOUNDARY, runLiveAssistant } from "./live";
+import { AiBudgetRefusal } from "@/lib/budgets/ai";
 
-const repository = vi.hoisted(() => ({ actionScope:vi.fn(),assistantWorkspace:vi.fn(),assistantLocations:vi.fn(),assistantActions:vi.fn(),assistantSnapshot:vi.fn(),assistantLatestSnapshot:vi.fn(),assistantDiff:vi.fn(),assistantBrand:vi.fn(),assistantReviewData:vi.fn(),versionScope:vi.fn(),createOutputVersion:vi.fn(),recordAssistantDraft:vi.fn() }));
+const repository = vi.hoisted(() => ({ actionScope:vi.fn(),assistantWorkspace:vi.fn(),assistantLocations:vi.fn(),assistantActions:vi.fn(),assistantSnapshot:vi.fn(),assistantLatestSnapshot:vi.fn(),assistantDiff:vi.fn(),assistantBrand:vi.fn(),assistantReviewData:vi.fn(),versionScope:vi.fn(),createOutputVersion:vi.fn(),recordAssistantDraft:vi.fn(),recordAssistantDraftFailure:vi.fn(),aiSpend24h:vi.fn() }));
 vi.mock("@/lib/repositories/artifacts",()=>({artifactRepository:()=>repository}));
 const DRAFT_RUN_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 
@@ -30,6 +31,8 @@ beforeEach(() => {
   repository.assistantReviewData.mockResolvedValue({gbp:{reviews:[{rating:3,text:"Waited 25 minutes on Friday",time:"2026-08-22",owner_response:null}]}});
   repository.versionScope.mockResolvedValue(null);
   repository.recordAssistantDraft.mockResolvedValue(DRAFT_RUN_ID);
+  repository.recordAssistantDraftFailure.mockResolvedValue("failed-run-id");
+  repository.aiSpend24h.mockResolvedValue({ globalUsd: 0, workspaceUsd: 0 });
   repository.assistantDiff.mockImplementation(async (id) => id === diff.id ? diff : null);
   repository.assistantActions.mockImplementation(async (workspaceId, opts = {}) => state.actions.filter(a =>
     a.workspace_id === workspaceId && (!opts.locationId || a.location_id === opts.locationId || a.location_id === null) &&
@@ -368,4 +371,75 @@ it.each(["en", "zh-HK", "zh-TW"] as const)("withholds a nonempty draft when requ
   expect(llm).toHaveBeenCalledTimes(1);
   expect(writes()).toEqual([]);
   expect(repository.createOutputVersion).not.toHaveBeenCalled();
+});
+
+describe("assistant drafts and the AI budget", () => {
+  const draftContext = { workspaceId: WORKSPACE_ID, actionId: ACTION_ID };
+
+  it("refuses a draft before the model when the recorded spend reaches the limit", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    repository.aiSpend24h.mockResolvedValueOnce({ globalUsd: 20, workspaceUsd: 0 });
+    const llm = vi.fn<Llm>(async () => good);
+    const refusal = await run({ intentId: "draft_review_reply", surface: "action", context: draftContext, llm }).catch((error: unknown) => error);
+    expect(refusal).toBeInstanceOf(AiBudgetRefusal);
+    expect(llm).not.toHaveBeenCalled();
+    expect(repository.aiSpend24h).toHaveBeenCalledWith(WORKSPACE_ID);
+    expect(repository.recordAssistantDraftFailure).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it("never checks the budget for a template answer", async () => {
+    await run({ intentId: "explain_priority" });
+    expect(repository.aiSpend24h).not.toHaveBeenCalled();
+  });
+
+  it("records a parse failure as a failed run with its measured cost, then degrades", async () => {
+    const llm = vi.fn<Llm>(async () => ({ text: "not json", usage: { inputTokens: 1000, outputTokens: 1000 } }));
+    const result = await run({ intentId: "draft_review_reply", surface: "action", locale: "en", context: draftContext, llm, now: () => new Date("2026-09-25T01:00:00Z") });
+    expect(result.output).toBeUndefined();
+    expect(repository.recordAssistantDraftFailure).toHaveBeenCalledWith({
+      actionId: ACTION_ID,
+      agentKey: "review_reply",
+      promptVersion: expect.any(String),
+      intentId: "draft_review_reply",
+      reason: "invalid_output",
+      factsNeeded: [],
+      usage: { inputTokens: 1000, outputTokens: 1000 },
+      workspaceId: WORKSPACE_ID,
+      actorId: auth("owner").membership.userId,
+      surface: "action",
+      locale: "en",
+      model: process.env.LLM_MODEL || null,
+      costUsd: 0.001,
+      finishedAt: "2026-09-25T01:00:00.000Z",
+    });
+    expect(repository.recordAssistantDraft).not.toHaveBeenCalled();
+  });
+
+  it("records a request for missing facts as a failed run too", async () => {
+    // The same intent and context as "relays facts_needed instead of an empty draft" above.
+    const llm = vi.fn<Llm>(async () => ({ ...good, text: JSON.stringify({ title: "", body: "", acceptance_criteria: [], warnings: [], facts_used: [], facts_needed: ["capacity"] }) }));
+    const result = await run({ intentId: "generate_faq", llm });
+    expect(result.output).toBeUndefined();
+    expect(repository.recordAssistantDraftFailure).toHaveBeenCalledWith(expect.objectContaining({ agentKey: "faq_jsonld", reason: "facts_needed", factsNeeded: ["capacity"], costUsd: 0.000006 }));
+  });
+
+  it("records a draft whose model returned nothing as no_model_output with a null cost", async () => {
+    const llm = vi.fn<Llm>(async () => null);
+    const result = await run({ intentId: "draft_review_reply", surface: "action", context: draftContext, llm });
+    expect(result.output).toBeUndefined();
+    expect(result.warnings).toContain("AI drafting unavailable right now");
+    expect(repository.recordAssistantDraftFailure).toHaveBeenCalledTimes(1);
+    expect(repository.recordAssistantDraftFailure).toHaveBeenCalledWith(expect.objectContaining({ reason: "no_model_output", factsNeeded: [], usage: { inputTokens: null, outputTokens: null }, costUsd: null }));
+  });
+
+  it("still answers when the failed run cannot be recorded", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    repository.recordAssistantDraftFailure.mockRejectedValueOnce(new Error("artifact_operation_failed"));
+    const llm = vi.fn<Llm>(async () => ({ text: "not json", usage: { inputTokens: 1, outputTokens: 1 } }));
+    const result = await run({ intentId: "draft_review_reply", surface: "action", context: draftContext, llm });
+    expect(result.output).toBeUndefined();
+    expect(error).toHaveBeenCalledWith("[assistant/live] failed draft not recorded", { category: "assistant_draft_failure_not_recorded" });
+    error.mockRestore();
+  });
 });

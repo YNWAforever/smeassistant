@@ -7,6 +7,7 @@ import {
   type Query,
 } from "@/app/api/actions/_shared/test-db";
 import { objectiveDedupeKey } from "@/app/api/actions/_shared/mutation";
+import { RunError } from "@/lib/workspace/runs";
 
 const mocks = vi.hoisted(() => ({
   authorizeWorkspaceRequest: vi.fn(),
@@ -195,6 +196,13 @@ describe("POST /api/actions", () => {
         locale: "zh-HK",
       }),
     );
+  });
+
+  it("keeps the created action and reports an AI budget refusal as its run error", async () => {
+    mocks.runAgentForAction.mockRejectedValue(new RunError("ai_budget_reached"));
+    const res = await post({ ...base, run: true });
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({ actionId: "act-new", runError: "ai_budget_reached" });
   });
 
   it("returns the existing open action on a duplicate objective", async () => {

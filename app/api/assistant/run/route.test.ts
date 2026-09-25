@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { auth, authorizeLike, WORKSPACE_ID } from "@/app/api/actions/_shared/test-db";
+import { AiBudgetRefusal } from "@/lib/budgets/ai";
 
 const mocks = vi.hoisted(() => ({
   authorizeWorkspaceRequest: vi.fn(),
@@ -178,4 +179,15 @@ it("canonicalizes UUID context before authorization and forwarding", async () =>
   expect(res.status).toBe(200);
   expect(mocks.authorizeWorkspaceRequest).toHaveBeenCalledWith({ id: workspaceId });
   expect(mocks.runLiveAssistant).toHaveBeenCalledWith(expect.objectContaining({ context: { workspaceId, locationId, actionId, snapshotId, versionId } }));
+});
+
+describe("POST /api/assistant/run AI budget", () => {
+  it("answers 429 ai_budget_reached when the live draft was refused, and records no run event", async () => {
+    mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("owner"));
+    mocks.runLiveAssistant.mockRejectedValueOnce(new AiBudgetRefusal("ai_global"));
+    const res = await post({ mode: "live", surface: "action", intentId: "draft_review_reply", locale: "en", context: { workspaceId: WORKSPACE_ID } });
+    expect(res.status).toBe(429);
+    expect(await res.json()).toEqual({ error: "ai_budget_reached" });
+    expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
+  });
 });

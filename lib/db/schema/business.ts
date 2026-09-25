@@ -77,6 +77,8 @@ export const actionRuns = pgTable("action_runs", {
  foreignKey({name:"action_runs_requested_by_fkey",columns:[t.requestedBy],foreignColumns:[((): AnyPgColumn => appUsers.id)()]}).onDelete("set null"),
  check("action_runs_state_check", sql.raw("(state = ANY (ARRAY['queued'::text, 'running'::text, 'succeeded'::text, 'failed'::text, 'cancelled'::text, 'timed_out'::text]))")),
  foreignKey({name:"action_runs_workspace_id_fkey",columns:[t.workspaceId],foreignColumns:[((): AnyPgColumn => workspaces.id)()]}).onDelete("cascade"),
+ index("action_runs_created_idx").using("btree", sql.raw("created_at")),
+ index("action_runs_workspace_created_idx").using("btree", sql.raw("workspace_id, created_at")),
  pgPolicy("server_application", {for:"all", to:"sme_app_runtime", using:sql`true`, withCheck:sql`true`}),
 ]).enableRLS();
 
@@ -532,6 +534,20 @@ export const reportEvidence = pgTable("report_evidence", {
  check("report_evidence_provider_check", sql.raw("(provider = ANY (ARRAY['instagram'::text, 'google_maps'::text]))")),
  check("report_evidence_width_check", sql.raw("((width IS NULL) OR ((width >= 1) AND (width <= 4800)))")),
  index("report_evidence_job_captured_idx").using("btree", sql.raw("job_id, captured_at DESC")),
+ pgPolicy("server_application", {for:"all", to:"sme_app_runtime", using:sql`true`, withCheck:sql`true`}),
+]).enableRLS();
+
+export const scanAttempts = pgTable("scan_attempts", {
+ id: uuid("id").notNull().default(sql.raw("gen_random_uuid()")),
+ jobId: uuid("job_id").notNull(),
+ workspaceId: uuid("workspace_id"),
+ attemptedAt: timestamp("attempted_at", {withTimezone:true, mode:"string"}).notNull().default(sql.raw("now()")),
+}, t => [
+ index("scan_attempts_attempted_idx").using("btree", sql.raw("attempted_at")),
+ foreignKey({name:"scan_attempts_job_id_fkey",columns:[t.jobId],foreignColumns:[((): AnyPgColumn => auditJobs.id)()]}).onDelete("cascade"),
+ primaryKey({name:"scan_attempts_pkey",columns:[t.id]}),
+ index("scan_attempts_workspace_idx").using("btree", sql.raw("workspace_id, attempted_at")),
+ foreignKey({name:"scan_attempts_workspace_id_fkey",columns:[t.workspaceId],foreignColumns:[((): AnyPgColumn => workspaces.id)()]}).onDelete("set null"),
  pgPolicy("server_application", {for:"all", to:"sme_app_runtime", using:sql`true`, withCheck:sql`true`}),
 ]).enableRLS();
 

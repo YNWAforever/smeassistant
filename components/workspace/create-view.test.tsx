@@ -1,6 +1,15 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { act, cleanup, fireEvent, render as renderLive, screen } from "@testing-library/react";
+
+const clientMocks = vi.hoisted(() => ({ createObjectiveAction: vi.fn() }));
+const toastMocks = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn(), message: vi.fn() }));
+vi.mock("@/lib/workspace/client", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  createObjectiveAction: clientMocks.createObjectiveAction,
+}));
+vi.mock("sonner", () => ({ toast: toastMocks }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -11,6 +20,7 @@ vi.mock("next/navigation", () => ({
 import { CreateView, type CreateViewProps } from "@/components/workspace/create-view";
 import { copy } from "@/lib/copy";
 import { TEMPLATES } from "@/lib/workspace/templates";
+import { getMessages } from "@/lib/i18n";
 
 /** The registry is the source of truth for both the split and the badges. */
 const AGENT_TEMPLATES = TEMPLATES.filter((template) => template.agentKey !== null);
@@ -89,5 +99,41 @@ describe("CreateView capability labelling", () => {
     const expected = AGENT_TEMPLATES.filter((t) => t.capability === "Beta").map((t) => labels[t.key].title);
     expect(betaTitles.slice().sort()).toEqual(expected.slice().sort());
     expect(expected.length).toBeGreaterThan(0);
+  });
+});
+
+describe("CreateView and the AI drafting limit", () => {
+  beforeEach(() => {
+    if (!window.matchMedia)
+      window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia;
+    clientMocks.createObjectiveAction.mockReset().mockResolvedValue({ ok: true, data: { actionId: "act-new", runError: "ai_budget_reached" } });
+    toastMocks.error.mockReset();
+  });
+  afterEach(cleanup);
+
+  it.each([
+    ["en", "What do you want to achieve?", "Create the action and draft"],
+    ["zh-HK", "你想達成甚麼？", "建立行動並生成草稿"],
+    ["zh-TW", "你想達成甚麼？", "建立行動並生成草稿"],
+  ] as const)("says in %s that the action exists but today's drafting limit was reached", async (locale, field, button) => {
+    renderLive(
+      <CreateView
+        locale={locale}
+        workspaceSlug="kam-man-house"
+        workspaceId="ws-1"
+        role="owner"
+        inScope
+        location="yik-yam"
+        locationId="loc-1"
+        locations={[{ slug: "yik-yam", name: "Yik Yam" }]}
+        openActions={[]}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(field), { target: { value: "Promote this week's lunch set warmly" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: new RegExp(button) }));
+    });
+    expect(clientMocks.createObjectiveAction).toHaveBeenCalledOnce();
+    expect(toastMocks.error).toHaveBeenCalledWith(getMessages(locale).budget.aiLimit);
   });
 });

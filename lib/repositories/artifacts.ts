@@ -60,6 +60,31 @@ export interface RecordAssistantDraftInput {
  finishedAt: string;
 }
 
+/**
+ * An assistant draft that failed after the model ran (P3.5a): the output did
+ * not parse, or the model asked for facts. Recorded so its measured cost
+ * counts against the AI budget.
+ */
+export interface RecordAssistantDraftFailureInput {
+ actionId: string;
+ workspaceId: string;
+ actorId: string;
+ agentKey: string;
+ promptVersion: string;
+ intentId: string;
+ surface: string;
+ locale: string;
+ model: string | null;
+ /** no_model_output: llmComplete returned nothing; invalid_output: it returned text that did not parse. */
+ reason: 'no_model_output' | 'invalid_output' | 'facts_needed';
+ factsNeeded: string[];
+ usage: LLMUsage;
+ /** Null when the gateway reported no usage; never a guessed zero. */
+ costUsd: number | null;
+ /** ISO-8601. */
+ finishedAt: string;
+}
+
 export interface AssistantDraftRow {
  output: unknown;
  agent_key: string;
@@ -140,6 +165,20 @@ export function artifactRepository(client?: Executor) {
     WHERE s.job_id=$1 AND s.cited=false`,[jobId,workspaceId])).rows.map(r=>r.query_text));
   },
   /**
+   * Recorded AI spend in the last 24 hours (P3.5a), globally and for one
+   * workspace, in one read over action_runs_created_idx. A run with no
+   * recorded cost adds nothing: computeCostUsd returns null when the gateway
+   * omits token usage.
+   */
+  aiSpend24h(workspaceId: string) {
+   return operation(async () => {
+    const row=(await db().query<{global_usd:number;workspace_usd:number}>(`SELECT coalesce(sum(cost_usd),0)::float8 AS global_usd,
+     coalesce(sum(cost_usd) FILTER (WHERE workspace_id=$1),0)::float8 AS workspace_usd
+     FROM action_runs WHERE created_at > now() - interval '24 hours'`,[workspaceId])).rows[0];
+    return {globalUsd:Number(row.global_usd),workspaceUsd:Number(row.workspace_usd)};
+   });
+  },
+  /**
    * Persist a finished assistant draft as a terminal `action_runs` row and
    * return its id.
    *
@@ -164,6 +203,23 @@ export function artifactRepository(client?: Executor) {
      VALUES($1,$2,$3,'succeeded',$4,$5,$6,$7,$8,$9,$10,$11,$12::timestamptz,$12::timestamptz) RETURNING id`,
      [scope.workspaceId,input.actionId,input.agentKey,JSON.stringify({source:'assistant',intent:input.intentId,surface:input.surface,locale:input.locale}),
       JSON.stringify(input.output),input.model,input.promptVersion,input.usage.inputTokens,input.usage.outputTokens,input.costUsd,input.actorId,input.finishedAt])).rows[0];
+    return row.id;
+   });
+  },
+  /**
+   * A failed assistant draft as a terminal `failed` run. It can never be
+   * redeemed into a version, because assistantDraft reads only
+   * state='succeeded'. The action row is untouched.
+   */
+  recordAssistantDraftFailure(input: RecordAssistantDraftFailureInput) {
+   return operation(async () => {
+    const scope=await actionScope(input.actionId);
+    if(!scope || scope.workspaceId!==input.workspaceId) throw new Error('artifact_scope_mismatch');
+    const row=(await db().query<{id:string}>(`INSERT INTO action_runs(workspace_id,action_id,agent_key,state,input,output,model,prompt_version,error,input_tokens,output_tokens,cost_usd,requested_by,started_at,finished_at)
+     VALUES($1,$2,$3,'failed',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::timestamptz,$13::timestamptz) RETURNING id`,
+     [scope.workspaceId,input.actionId,input.agentKey,JSON.stringify({source:'assistant',intent:input.intentId,surface:input.surface,locale:input.locale}),
+      input.reason==='facts_needed'?JSON.stringify({facts_needed:input.factsNeeded}):null,input.model,input.promptVersion,input.reason,
+      input.usage.inputTokens,input.usage.outputTokens,input.costUsd,input.actorId,input.finishedAt])).rows[0];
     return row.id;
    });
   },
@@ -213,7 +269,7 @@ export function artifactRepository(client?: Executor) {
 export type ArtifactRepository = ReturnType<typeof artifactRepository>;
 
 /** Live drafting has a read-only repository capability; saving is an explicit separate action. */
-export type LiveAssistantRepository = Pick<ArtifactRepository,'actionScope'|'assistantWorkspace'|'assistantLocations'|'assistantActions'|'assistantSnapshot'|'assistantLatestSnapshot'|'assistantDiff'|'assistantBrand'|'assistantReviewData'|'versionScope'>;
+export type LiveAssistantRepository = Pick<ArtifactRepository,'actionScope'|'assistantWorkspace'|'assistantLocations'|'assistantActions'|'assistantSnapshot'|'assistantLatestSnapshot'|'assistantDiff'|'assistantBrand'|'assistantReviewData'|'versionScope'|'aiSpend24h'>;
 
 
 export interface QueueActionRunInput {

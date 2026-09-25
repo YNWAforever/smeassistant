@@ -222,3 +222,16 @@ describe("POST /api/actions/[actionId]/run", () => {
     expect((await post()).status).toBe(429);
   });
 });
+
+describe("POST /api/actions/[actionId]/run AI budget", () => {
+  it("answers 429 ai_budget_reached before any run row or model call", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    mocks.db!.aiSpend24h = async () => ({ globalUsd: 20, workspaceUsd: 0 });
+    const res = await post();
+    expect(res.status).toBe(429);
+    expect(await res.json()).toEqual({ error: "ai_budget_reached" });
+    expect(mocks.llmComplete).not.toHaveBeenCalled();
+    expect(mocks.db!.calls.filter((c) => c.table === "action_runs")).toEqual([]);
+    warn.mockRestore();
+  });
+});

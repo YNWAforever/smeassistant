@@ -182,3 +182,17 @@ it.each([["snapshot_not_v2",409,"snapshot_not_rescannable"],["insert_failed",503
  mocks.authorizeWorkspaceRequest.mockResolvedValue(auth("owner"));mocks.enqueueRescan.mockResolvedValue({ok:false,reason});
  const res=await post({locationId:LOCATION_ID});expect(res.status).toBe(status);expect(await res.json()).toEqual({error});expect(mocks.ensureMonthlySchedule).not.toHaveBeenCalled();
 });
+
+describe("POST /api/workspaces/[workspaceId]/rescan spend budget", () => {
+  it.each([
+    ["at_capacity", 503],
+    ["workspace_scan_budget_reached", 429],
+  ] as const)("maps the %s refusal to %i with that error code, and creates no schedule", async (reason, status) => {
+    mocks.authorizeWorkspaceRequest.mockResolvedValue(auth("owner"));
+    mocks.enqueueRescan.mockResolvedValue({ ok: false, reason });
+    const res = await post({ locationId: LOCATION_ID, locale: "en" });
+    expect(res.status).toBe(status);
+    expect(await res.json()).toEqual({ error: reason });
+    expect(mocks.ensureMonthlySchedule).not.toHaveBeenCalled();
+  });
+});

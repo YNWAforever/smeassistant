@@ -1,2 +1,5 @@
 # Migration checksums must be identical on Windows and Linux checkouts.
 neon/migrations/*.sql text eol=lf
+
+# The generated rollout statement embeds a migration byte for byte.
+docs/implementation/owner-platform-v1/rollout/*.sql text eol=lf
