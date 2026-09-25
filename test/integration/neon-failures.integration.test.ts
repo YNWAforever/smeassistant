@@ -6,7 +6,6 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { applyMigrations } from "../../scripts/neon/migrations";
 import { startNeonDatabaseFixture, type NeonDatabaseFixture } from "./neon-database";
 import { failuresRepository, type FailureQuery } from "../../lib/repositories/failures";
-import { OWNER_FAILURE_KINDS } from "../../lib/ops/failure-types";
 
 const ports = vi.hoisted(() => ({ pool: undefined as Pool | undefined }));
 vi.mock("../../lib/db/client", () => ({ getPool: () => ports.pool, getDatabase: () => drizzle(ports.pool!) }));
@@ -59,16 +58,20 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon failures read model",
     )).rows[0].id as string;
   const runEvent = (ws: string, runId: string, event: string, reason: string) =>
     runtime.query("INSERT INTO audit_events(workspace_id,actor_type,event,entity_type,entity_id,payload) VALUES($1,'system',$2,'action_run',$3,$4)", [ws, event, runId, JSON.stringify({ reason })]);
-  const connection = (ws: string, status: string, age = "1 hour") =>
-    runtime.query("INSERT INTO oauth_connections(workspace_id,provider,access_token_encrypted,status,updated_at) VALUES($1,'google_gbp','x',$2,now()-$3::interval)", [ws, status, age]);
+  const connection = async (ws: string, status: string, age = "1 hour") =>
+    (await runtime.query(
+      "INSERT INTO oauth_connections(workspace_id,provider,access_token_encrypted,status,updated_at) VALUES($1,'google_gbp','x',$2,now()-$3::interval) RETURNING id",
+      [ws, status, age],
+    )).rows[0].id as string;
   const kinds = async (query: Partial<FailureQuery> = {}) => (await repo().list({ ...ALL, ...query })).map((item) => item.kind).sort();
 
   it("lists failed scans within 30 days, with the category and correlation id", async () => {
     const recent = await job({ status: "failed", completed: "2 days", category: "COLLECTION_FAILED" });
+    const nearBoundary = await job({ status: "failed", completed: "29 days", category: "COLLECTION_FAILED" });
     await job({ status: "failed", completed: "31 days", category: "COLLECTION_FAILED" });
     await job({ status: "done", completed: "1 day" });
     const items = await repo().list(ALL);
-    expect(items).toHaveLength(1);
+    expect(items.map((item) => item.id)).toEqual([recent, nearBoundary]);
     expect(items[0]).toMatchObject({ kind: "scan_failed", id: recent, reason: "COLLECTION_FAILED", businessName: "Kam Man House", operatorAction: "none" });
     expect(items[0].reference).toMatch(/^SCAN-[0-9A-F]{6}$/);
     expect(items[0].correlationId).toMatch(/^[0-9a-f-]{36}$/);
@@ -94,10 +97,15 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon failures read model",
     await run(ws, recovered, "succeeded", "1 hour");
     const assistant = await action(ws);
     await run(ws, assistant, "failed", "1 hour", { source: "assistant" }, "invalid_output");
+    const nearBoundaryAction = await action(ws);
+    const nearBoundaryRun = await run(ws, nearBoundaryAction, "failed", "13 days");
     const old = await action(ws);
     await run(ws, old, "failed", "15 days");
     const items = await repo().list(ALL);
-    expect(items).toEqual([expect.objectContaining({ kind: "draft_failed", id: newest, actionId: failing, locationId: loc, reason: "action_run_reaped" })]);
+    expect(items).toEqual([
+      expect.objectContaining({ kind: "draft_failed", id: newest, actionId: failing, locationId: loc, reason: "action_run_reaped" }),
+      expect.objectContaining({ kind: "draft_failed", id: nearBoundaryRun, actionId: nearBoundaryAction, reason: "action_run_failed" }),
+    ]);
     expect(items[0].reference).toMatch(/^RUN-/);
   });
 
@@ -105,6 +113,26 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon failures read model",
     const ws = await workspace();
     await run(ws, await action(ws), "failed");
     expect((await repo().list(ALL))[0].reason).toBe("action_run_failed");
+  });
+
+  it("keeps a failed draft failed when only a later assistant run recovers it", async () => {
+    const ws = await workspace();
+    const act = await action(ws);
+    await run(ws, act, "failed", "3 hours");
+    const failing = await run(ws, act, "failed", "2 hours");
+    await run(ws, act, "succeeded", "1 hour", { source: "assistant" });
+    const items = await repo().list(ALL);
+    expect(items).toEqual([expect.objectContaining({ kind: "draft_failed", id: failing, actionId: act })]);
+  });
+
+  it("does not let a search on an older, superseded draft failure bypass the newest-wins rule", async () => {
+    const ws = await workspace();
+    const act = await action(ws);
+    const older = await run(ws, act, "failed", "3 hours");
+    const newer = await run(ws, act, "failed", "2 hours");
+    expect(await repo().list({ ...ALL, uuid: older })).toEqual([]);
+    const byNewer = await repo().list({ ...ALL, uuid: newer });
+    expect(byNewer).toEqual([expect.objectContaining({ kind: "draft_failed", id: newer, actionId: act })]);
   });
 
   it("lists a broken Google connection only when it is the newest non-active row and no active one exists", async () => {
@@ -119,6 +147,15 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon failures read model",
     const items = await repo().list(ALL);
     expect(items).toEqual([expect.objectContaining({ kind: "google_connection", reason: "error", businessName: "Broken", locationId: null })]);
     expect(items[0].workspace).toMatchObject({ id: broken, name: "Broken" });
+  });
+
+  it("does not let a search on an older, superseded Google connection bypass the newest-wins rule", async () => {
+    const ws = await workspace();
+    const olderError = await connection(ws, "error", "2 hours");
+    await connection(ws, "revoked", "1 hour");
+    expect(await repo().list({ ...ALL, uuid: olderError })).toEqual([]);
+    const prefix = olderError.replace(/-/g, "").slice(0, 6);
+    expect(await repo().list({ ...ALL, hexPrefix: prefix })).toEqual([]);
   });
 
   it("lists post-processing stuck in retry after three attempts", async () => {
@@ -148,10 +185,17 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon failures read model",
     const ws = await workspace();
     await runtime.query("INSERT INTO app_users(email) VALUES('secret-owner@example.test')");
     await runtime.query("INSERT INTO workspace_members(workspace_id,email,role) VALUES($1,'secret-member@example.test','owner')", [ws]);
-    await run(ws, await action(ws), "failed", "1 hour", { prompt: "SECRET-REVIEW-TEXT" }, "SECRET-ERROR-TEXT");
-    await job({ status: "failed", completed: "1 hour", category: "COLLECTION_FAILED", ws });
+    const failedRun = await run(ws, await action(ws), "failed", "1 hour", { prompt: "SECRET-REVIEW-TEXT" }, "SECRET-ERROR-TEXT");
+    await runtime.query("UPDATE action_runs SET output=$2 WHERE id=$1", [failedRun, JSON.stringify({ draft: "SECRET-OUTPUT" })]);
+    await runtime.query(
+      "INSERT INTO audit_events(workspace_id,actor_type,event,entity_type,entity_id,payload) VALUES($1,'system','run.failed','action_run',$2,$3)",
+      [ws, failedRun, JSON.stringify({ reason: "action_run_failed", secret_note: "SECRET-AUDIT-PAYLOAD" })],
+    );
+    const failedJob = await job({ status: "failed", completed: "1 hour", category: "COLLECTION_FAILED", ws });
+    await runtime.query("UPDATE audit_jobs SET raw_data=$2 WHERE id=$1", [failedJob, JSON.stringify({ review: "SECRET-RAW-REVIEW" })]);
     const serialized = JSON.stringify(await repo().list(ALL));
-    for (const secret of ["secret-owner", "secret-member", "SECRET-REVIEW-TEXT", "SECRET-ERROR-TEXT"]) expect(serialized).not.toContain(secret);
+    for (const secret of ["secret-owner", "secret-member", "SECRET-REVIEW-TEXT", "SECRET-ERROR-TEXT", "SECRET-AUDIT-PAYLOAD", "SECRET-RAW-REVIEW", "SECRET-OUTPUT"])
+      expect(serialized).not.toContain(secret);
   });
 
   it("summarizes health: recent counts, open counts and failed scans by category", async () => {

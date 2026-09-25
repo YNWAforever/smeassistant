@@ -33,14 +33,33 @@ interface FailureRow {
 }
 
 /**
- * $1 workspace id, $2 hex prefix, $3 full id, $4 limit. `idColumn` is the
- * row's own id; `correlationColumn` is also matched by a full id (scans).
+ * $1 workspace id. Safe to apply before a DISTINCT ON: scoping out whole
+ * workspaces cannot change which row is newest within any surviving group.
  */
-function filters(workspaceColumn: string, idColumn: string, correlationColumn?: string): string {
+function workspaceFilter(workspaceColumn: string): string {
+  return `($1::uuid IS NULL OR ${workspaceColumn} = $1::uuid)`;
+}
+
+/**
+ * $2 hex prefix (first six hex characters of the id, exact match — never a
+ * LIKE wildcard), $3 full id. `correlationColumn` (scans only) is also
+ * matched by $3. For a DISTINCT ON source (draft_failed, google_connection)
+ * this MUST run in the outer query, against the id DISTINCT ON already
+ * picked — never inside the subquery. Filtering by id before DISTINCT ON can
+ * make an older, superseded row within a group match, survive as that
+ * group's only remaining row, and get surfaced under a stale id even though
+ * the group's real newest row is a different one (and might not even pass
+ * the reason filter).
+ */
+function idFilter(idColumn: string, correlationColumn?: string): string {
   const uuidMatch = correlationColumn ? `(${idColumn} = $3::uuid OR ${correlationColumn} = $3::uuid)` : `${idColumn} = $3::uuid`;
-  return `($1::uuid IS NULL OR ${workspaceColumn} = $1::uuid)
-    AND ($2::text IS NULL OR replace(${idColumn}::text,'-','') LIKE $2::text || '%')
+  return `($2::text IS NULL OR left(replace(${idColumn}::text,'-',''), 6) = $2::text)
     AND ($3::uuid IS NULL OR ${uuidMatch})`;
+}
+
+/** Non-grouped sources: both filters combine into one WHERE clause. */
+function filters(workspaceColumn: string, idColumn: string, correlationColumn?: string): string {
+  return `${workspaceFilter(workspaceColumn)} AND ${idFilter(idColumn, correlationColumn)}`;
 }
 
 const SOURCES: Record<FailureKind, string> = {
@@ -77,10 +96,14 @@ const SOURCES: Record<FailureKind, string> = {
       WHERE r.state IN ('failed','timed_out')
         AND coalesce(r.finished_at, r.created_at) > now() - interval '14 days'
         AND coalesce(r.input->>'source', '') <> 'assistant'
-        AND NOT EXISTS (SELECT 1 FROM action_runs s WHERE s.action_id = r.action_id AND s.state = 'succeeded' AND s.created_at > r.created_at)
-        AND ${filters("r.workspace_id", "r.id")}
+        AND NOT EXISTS (
+          SELECT 1 FROM action_runs s
+          WHERE s.action_id = r.action_id AND s.state = 'succeeded' AND s.created_at > r.created_at
+            AND coalesce(s.input->>'source', '') <> 'assistant'
+        )
+        AND ${workspaceFilter("r.workspace_id")}
       ORDER BY r.action_id, r.created_at DESC
-    ) d ORDER BY occurred_at DESC LIMIT $4`,
+    ) d WHERE ${idFilter("d.id")} ORDER BY occurred_at DESC LIMIT $4`,
   google_connection: `
     SELECT * FROM (
       SELECT DISTINCT ON (c.workspace_id)
@@ -90,9 +113,9 @@ const SOURCES: Record<FailureKind, string> = {
       FROM oauth_connections c JOIN workspaces w ON w.id = c.workspace_id
       WHERE c.provider = 'google_gbp' AND c.status IN ('expired','revoked','error')
         AND NOT EXISTS (SELECT 1 FROM oauth_connections a WHERE a.workspace_id = c.workspace_id AND a.provider = 'google_gbp' AND a.status = 'active')
-        AND ${filters("c.workspace_id", "c.id")}
-      ORDER BY c.workspace_id, c.updated_at DESC
-    ) g WHERE g.reason IN ('expired','error') ORDER BY occurred_at DESC LIMIT $4`,
+        AND ${workspaceFilter("c.workspace_id")}
+      ORDER BY c.workspace_id, c.updated_at DESC, c.id DESC
+    ) g WHERE g.reason IN ('expired','error') AND ${idFilter("g.id")} ORDER BY occurred_at DESC LIMIT $4`,
   workspace_processing: `
     SELECT c.job_id AS id, NULL::text AS correlation_id, c.updated_at AS occurred_at,
            c.workspace_id, w.slug AS workspace_slug, w.business_name AS workspace_name, j.location_id, NULL::uuid AS action_id,
@@ -131,46 +154,50 @@ function toFailureItem(kind: FailureKind, row: FailureRow): FailureItem {
  */
 export function failuresRepository(client?: Db) {
   const db = () => client ?? getPool();
-  return {
-    async list(query: FailureQuery): Promise<FailureItem[]> {
-      const kinds = FAILURE_KINDS.filter((kind) => !query.kinds || query.kinds.includes(kind));
-      const params = [query.workspaceId, query.hexPrefix, query.uuid, query.limit];
-      const results = await Promise.all(
-        kinds.map(async (kind) => (await db().query<FailureRow>(SOURCES[kind], params)).rows.map((row) => toFailureItem(kind, row))),
-      );
-      return results
-        .flat()
-        .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt) || a.id.localeCompare(b.id))
-        .slice(0, query.limit);
-    },
 
-    async health(): Promise<OperatorHealth> {
-      const counts = (
-        await db().query<{ scan_day: number; scan_week: number; draft_day: number; draft_week: number; dead: number; processing: number }>(
-          `SELECT
-             (SELECT count(*) FROM audit_jobs WHERE status='failed' AND coalesce(completed_at,created_at) > now()-interval '24 hours')::int AS scan_day,
-             (SELECT count(*) FROM audit_jobs WHERE status='failed' AND coalesce(completed_at,created_at) > now()-interval '7 days')::int AS scan_week,
-             (SELECT count(*) FROM action_runs WHERE state IN ('failed','timed_out') AND coalesce(input->>'source','') <> 'assistant' AND coalesce(finished_at,created_at) > now()-interval '24 hours')::int AS draft_day,
-             (SELECT count(*) FROM action_runs WHERE state IN ('failed','timed_out') AND coalesce(input->>'source','') <> 'assistant' AND coalesce(finished_at,created_at) > now()-interval '7 days')::int AS draft_week,
-             (SELECT count(*) FROM audit_jobs WHERE ${DEAD_LETTERED_JOB_CONDITION_SQL})::int AS dead,
-             (SELECT count(*) FROM workspace_scan_completions WHERE state='retry' AND attempts >= 3)::int AS processing`,
-        )
-      ).rows[0];
-      const categories = (
-        await db().query<{ category: string; day: number; week: number }>(
-          `SELECT coalesce(failure_category,'unknown') AS category,
-                  count(*) FILTER (WHERE coalesce(completed_at,created_at) > now()-interval '24 hours')::int AS day,
-                  count(*)::int AS week
-           FROM audit_jobs WHERE status='failed' AND coalesce(completed_at,created_at) > now()-interval '7 days'
-           GROUP BY 1 ORDER BY week DESC, category`,
-        )
-      ).rows;
-      const google = await this.list({ kinds: ["google_connection"], hexPrefix: null, uuid: null, workspaceId: null, limit: 200 });
-      return {
-        recent: { scan_failed: { day: counts.scan_day, week: counts.scan_week }, draft_failed: { day: counts.draft_day, week: counts.draft_week } },
-        open: { scan_dead_lettered: counts.dead, google_connection: google.length, workspace_processing: counts.processing },
-        categories,
-      };
-    },
+  const list = async (query: FailureQuery): Promise<FailureItem[]> => {
+    const limit = Math.min(Math.max(query.limit, 1), 200);
+    const kinds = FAILURE_KINDS.filter((kind) => !query.kinds || query.kinds.includes(kind));
+    const params = [query.workspaceId, query.hexPrefix, query.uuid, limit];
+    const results = await Promise.all(
+      kinds.map(async (kind) => (await db().query<FailureRow>(SOURCES[kind], params)).rows.map((row) => toFailureItem(kind, row))),
+    );
+    return results
+      .flat()
+      .sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : a.occurredAt > b.occurredAt ? -1 : a.id.localeCompare(b.id)))
+      .slice(0, limit);
   };
+
+  const health = async (): Promise<OperatorHealth> => {
+    const counts = (
+      await db().query<{ scan_day: number; scan_week: number; draft_day: number; draft_week: number; dead: number; processing: number }>(
+        `SELECT
+           (SELECT count(*) FROM audit_jobs WHERE status='failed' AND coalesce(completed_at,created_at) > now()-interval '24 hours')::int AS scan_day,
+           (SELECT count(*) FROM audit_jobs WHERE status='failed' AND coalesce(completed_at,created_at) > now()-interval '7 days')::int AS scan_week,
+           (SELECT count(*) FROM action_runs WHERE state IN ('failed','timed_out') AND coalesce(input->>'source','') <> 'assistant' AND coalesce(finished_at,created_at) > now()-interval '24 hours')::int AS draft_day,
+           (SELECT count(*) FROM action_runs WHERE state IN ('failed','timed_out') AND coalesce(input->>'source','') <> 'assistant' AND coalesce(finished_at,created_at) > now()-interval '7 days')::int AS draft_week,
+           (SELECT count(*) FROM audit_jobs WHERE ${DEAD_LETTERED_JOB_CONDITION_SQL})::int AS dead,
+           (SELECT count(*) FROM workspace_scan_completions WHERE state='retry' AND attempts >= 3)::int AS processing`,
+      )
+    ).rows[0];
+    const categories = (
+      await db().query<{ category: string; day: number; week: number }>(
+        `SELECT coalesce(failure_category,'unknown') AS category,
+                count(*) FILTER (WHERE coalesce(completed_at,created_at) > now()-interval '24 hours')::int AS day,
+                count(*)::int AS week
+         FROM audit_jobs WHERE status='failed' AND coalesce(completed_at,created_at) > now()-interval '7 days'
+         GROUP BY 1 ORDER BY week DESC, category`,
+      )
+    ).rows;
+    const google = (
+      await db().query<{ n: number }>(`SELECT count(*)::int AS n FROM (${SOURCES.google_connection}) x`, [null, null, null, 2147483647])
+    ).rows[0].n;
+    return {
+      recent: { scan_failed: { day: counts.scan_day, week: counts.scan_week }, draft_failed: { day: counts.draft_day, week: counts.draft_week } },
+      open: { scan_dead_lettered: counts.dead, google_connection: google, workspace_processing: counts.processing },
+      categories,
+    };
+  };
+
+  return { list, health };
 }
