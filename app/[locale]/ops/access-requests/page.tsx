@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { OpsNav } from "@/components/ops/ops-nav";
 import { requireOperator } from "@/lib/auth/operator";
 import { accessRequestRepository } from "@/lib/repositories/access-requests";
 import { assistedAssignmentEnabled } from "@/lib/workspace/assignment-flag";
@@ -28,6 +29,7 @@ export default async function OpsAccessRequestsPage({ params }: { params: Promis
 
   return (
     <div className="settings-page">
+      <OpsNav locale={locale} current="access-requests" />
       <h1>Access requests</h1>
       <p>
         Pending requests to be assigned a workspace, newest first. Filing a request is not proof of ownership; verify
