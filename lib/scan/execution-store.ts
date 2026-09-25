@@ -13,7 +13,7 @@ import { getPool } from "../db/client";
 import { withTransaction } from "../db/transaction";
 import { capturePostHog } from "../analytics/posthog";
 import { writeScanEventSafely, scanCompletedEvent, SCAN_TERMINAL_DEDUPE_KEY } from "../analytics/scan-events";
-import { CLAIMABLE_JOB_CONDITION_SQL } from "./claimable";
+import { claimScanJob, type ClaimOutcome, type ScanBudgetScope } from "../budgets/scan";
 
 type ExecutionPool = Pick<Pool, "query" | "connect">;
 export function createScanExecutionStore(
@@ -22,6 +22,15 @@ export function createScanExecutionStore(
     pool?: ExecutionPool;
     analytics?: AnalyticsDependencies;
     waitUntil?: (promise: Promise<unknown>) => void;
+    /** Budget variables; defaults to process.env (tests pass their own). */
+    env?: Record<string, string | undefined>;
+    /**
+     * Called when a retry's claim was refused on budget. processScan knows
+     * only "a claimed job or null" and reports null as already_claimed, so the
+     * host (lib/scan/run.ts) learns the reason here. packages/scan-engine is
+     * unchanged.
+     */
+    onBudgetRefused?: (scope: ScanBudgetScope) => void;
   } = {},
 ): ScanExecutionStore {
   const pool = () => options.pool ?? getPool();
@@ -43,16 +52,21 @@ export function createScanExecutionStore(
   };
   return {
     async claimJob(jobId) {
+      // P3.5a: its own short transaction. The budget lock, then one statement
+      // that claims and writes the job's scan_attempts row together
+      // (lib/budgets/scan.ts). It commits before collection starts, so no
+      // transaction is held open across provider calls.
+      let outcome: ClaimOutcome;
       try {
-        const result = await pool().query(
-          `UPDATE audit_jobs SET status='collecting',processing_stage='collecting',attempt_count=attempt_count+1,last_attempt_at=now()
-     WHERE id=$1 AND ${CLAIMABLE_JOB_CONDITION_SQL} RETURNING *`,
-          [jobId],
-        );
-        return asClaimedJob(result.rows);
+        outcome = await withTransaction((client) => claimScanJob(client, jobId, options.env), pool());
       } catch {
         throw new Error("claim_failed");
       }
+      if (outcome.kind === "at_capacity") {
+        options.onBudgetRefused?.(outcome.scope);
+        return null;
+      }
+      return outcome.kind === "claimed" ? asClaimedJob(outcome.row) : null;
     },
     async setStage(jobId, stage) {
       const status =

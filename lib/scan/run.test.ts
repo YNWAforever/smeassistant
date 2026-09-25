@@ -375,3 +375,26 @@ describe("runScan host terminal lifetime", () => {
     }
   });
 });
+
+describe("runScan budget refusal", () => {
+  afterEach(() => {
+    vi.mocked(processScan).mockClear();
+    completionMock.mockClear();
+  });
+
+  it("reports at_capacity when the store refused the claim on budget, and completes nothing", async () => {
+    vi.mocked(createScanExecutionStore).mockImplementationOnce(((...args: unknown[]) => {
+      (args[1] as { onBudgetRefused?: (scope: "scan_global" | "scan_workspace") => void }).onBudgetRefused?.("scan_global");
+      return storeMock;
+    }) as never);
+    vi.mocked(processScan).mockResolvedValueOnce({ status: "already_claimed" });
+    await expect(runScan("job", "session")).resolves.toEqual({ status: "at_capacity" });
+    expect(completionMock).not.toHaveBeenCalled();
+  });
+
+  it("still reports already_claimed when nothing was refused", async () => {
+    vi.mocked(processScan).mockResolvedValueOnce({ status: "already_claimed" });
+    await expect(runScan("job", "session")).resolves.toEqual({ status: "already_claimed" });
+    expect(completionMock).not.toHaveBeenCalled();
+  });
+});

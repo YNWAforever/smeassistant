@@ -26,6 +26,7 @@ import {
   buildTrendDiffDeps,
   buildAeoSnapshotDeps,
 } from "../../lib/scan/execution-store";
+import { claimScanJob } from "../../lib/budgets/scan";
 describe.runIf(process.env.NEON_INTEGRATION === "1")(
   "Neon scan execution",
   () => {
@@ -120,13 +121,10 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
           "UPDATE audit_jobs SET last_attempt_at=now()-interval '30 minutes' WHERE id=$1",
           [id],
         );
-        const storage = createScanExecutionStore(randomUUID(), {
-          pool: {
-            query: client.query.bind(client),
-            connect: runtime.connect.bind(runtime),
-          },
-        });
-        expect(await storage.claimJob(id)).toBeNull();
+        // The claim now runs in a transaction of its own (the budget lock,
+        // then one statement), so it is called on this transaction's client,
+        // where now() is frozen at exactly thirty minutes after the attempt.
+        expect(await claimScanJob(client, id, {})).toEqual({ kind: "not_claimable" });
         await client.query("ROLLBACK");
       } finally {
         client.release();

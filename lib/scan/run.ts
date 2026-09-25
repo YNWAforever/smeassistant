@@ -59,22 +59,34 @@ export function resolveScanCollector(env: NodeJS.ProcessEnv = process.env): Scan
     : collectScanProviders;
 }
 
+/** processScan's outcomes, plus a claim refused on the spend budget (P3.5a). */
+export type RunScanResult = ScanProcessResult | { status: "at_capacity" };
+
 /** Execute with application-owned SQL and explicit media persistence. */
 export async function runScan(
   jobId: string,
   anonymousSessionId: string,
-): Promise<ScanProcessResult> {
+): Promise<RunScanResult> {
+  // The engine reports any unclaimed job as already_claimed. The store tells
+  // us, here, when the reason was the budget.
+  let refusedOnBudget = false;
   const result = await processScan(jobId, {
     // The durable scan_completed row is written inside the store's own
     // transaction; only the later PostHog tail needs this Vercel request's
     // lifetime, via waitUntil.
-    store: createScanExecutionStore(anonymousSessionId, { waitUntil }),
+    store: createScanExecutionStore(anonymousSessionId, {
+      waitUntil,
+      onBudgetRefused: () => {
+        refusedOnBudget = true;
+      },
+    }),
     collect: resolveScanCollector(),
     persistEvidence: persistEvidenceSnapshots,
     persistDiff: (id) => persistScanDiff(id, buildTrendDiffDeps(getPool(), id)),
     persistAeoSnapshots: (id) =>
       persistAeoSnapshots(id, buildAeoSnapshotDeps(getPool())),
   });
+  if (result.status === "already_claimed" && refusedOnBudget) return { status: "at_capacity" };
   if (result.status !== "already_claimed") {
     try {
       // Collected here, before the completion claim, and handed in: the

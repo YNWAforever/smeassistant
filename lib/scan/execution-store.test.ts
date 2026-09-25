@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createScanExecutionStore } from "./execution-store";
 import { createScanExecution, asClaimedJob } from "@sme-scanner/scan-engine";
+import { BUDGETED_CLAIM_SQL, SCAN_BUDGET_LOCK_SQL } from "@/lib/budgets/scan";
 describe("terminal analytics lifetime", () => {
   it("tracks the PostHog tail on a failed scan and never inserts from recordTerminal", async () => {
     let captureDone!: () => void;
@@ -73,5 +74,44 @@ describe("terminal analytics lifetime", () => {
     await expect(waited[0]).resolves.toBeUndefined();
     expect(report).toHaveBeenCalledWith("provider_unavailable");
     expect(insert).not.toHaveBeenCalled();
+  });
+});
+
+describe("budgeted claim", () => {
+  function pool(respond: (sql: string) => { rows: unknown[] } | Error) {
+    const statements: string[] = [];
+    const query = vi.fn(async (sql: string) => {
+      statements.push(sql);
+      const answer = respond(sql);
+      if (answer instanceof Error) throw answer;
+      return answer;
+    });
+    return { statements, value: { query, connect: async () => ({ query, release: () => {} }) } as never };
+  }
+
+  it("claims in its own transaction: BEGIN, the budget lock, one claim statement, COMMIT", async () => {
+    const p = pool((sql) => (sql === BUDGETED_CLAIM_SQL ? { rows: [{ budget_allowed: true, budget_global_used: 0, budget_workspace_used: 0, id: "job", business_name: "Fixture" }] } : { rows: [] }));
+    const store = createScanExecutionStore("session", { pool: p.value, env: {} });
+    expect(await store.claimJob("job")).toMatchObject({ id: "job", business_name: "Fixture" });
+    expect(p.statements).toEqual(["BEGIN", SCAN_BUDGET_LOCK_SQL, BUDGETED_CLAIM_SQL, "COMMIT"]);
+  });
+
+  it("tells the host that a retry was refused on budget, and returns no job", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const onBudgetRefused = vi.fn();
+    const p = pool((sql) => (sql === BUDGETED_CLAIM_SQL ? { rows: [{ budget_allowed: false, budget_global_used: 200, budget_workspace_used: 0, id: null }] } : { rows: [] }));
+    const store = createScanExecutionStore("session", { pool: p.value, env: {}, onBudgetRefused });
+    expect(await store.claimJob("job")).toBeNull();
+    expect(onBudgetRefused).toHaveBeenCalledWith("scan_global");
+    vi.restoreAllMocks();
+  });
+
+  it("keeps claim_failed, and reports no budget refusal, when the claim statement fails", async () => {
+    const onBudgetRefused = vi.fn();
+    const p = pool((sql) => (sql === BUDGETED_CLAIM_SQL ? new Error("db down") : { rows: [] }));
+    const store = createScanExecutionStore("session", { pool: p.value, env: {}, onBudgetRefused });
+    await expect(store.claimJob("job")).rejects.toThrow("claim_failed");
+    expect(onBudgetRefused).not.toHaveBeenCalled();
+    expect(p.statements).toContain("ROLLBACK");
   });
 });

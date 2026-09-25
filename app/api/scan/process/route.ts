@@ -68,6 +68,13 @@ export async function POST(req: Request) {
   // lib/scan/run.ts picks the live collector or the fixture collector by
   // SCAN_SOURCES; everything else is upstream's processScan, unchanged.
   const result = await runScan(jobId, session.id);
+  // P3.5a: a retry refused on the spend budget. The job stays claimable, so
+  // the cron reclaim offers it again on a later tick.
+  if (result.status === "at_capacity") {
+    const refused = NextResponse.json({ error: "at_capacity" }, { status: 503 });
+    setAnalyticsSessionCookie(refused, session);
+    return refused;
+  }
   const response = NextResponse.json(result, { status: result.status === "failed" ? 500 : 200 });
   setAnalyticsSessionCookie(response, session);
   return response;
