@@ -633,3 +633,216 @@ Every observation matches what the implementers reported. The first attempt at M
 - `corepack pnpm db:verify`: no migration was added. **Not run.**
 - A member sign-in on `/r/[slug]` in a browser, against any Auth target. **Not run**: hosted Auth is not chosen, and nothing here was deployed. The member path is proven at the unit layer only.
 - Any hosted check, including the successful-pair browser artifact. **Not run.**
+
+---
+
+## P3.5a — spend budgets
+
+Candidate: branch `p35a-spend-budgets` at `90ef323`, 14 commits on top of `main` at `96519fc` (PR #20, merged; `origin/main` still points there), plus the Task 10 documentation commit. Design: [`docs/superpowers/specs/2026-09-25-spend-budgets-design.md`](../../superpowers/specs/2026-09-25-spend-budgets-design.md). Plan: `docs/superpowers/plans/2026-09-25-spend-budgets.md`. Environment: Windows 11, Node `v24.18.0`, pnpm `9.12.0` via corepack, worktree `C:\Users\laich\Documents\smeassistant\.claude\worktrees\p35a-spend-budgets`, Docker Server `29.7.2`.
+
+**Read this first.** Everything below is **locally verified**. **Nothing here is hosted-verified.** Migration `0009` was applied only to disposable Docker Postgres, by `db:verify`, by the integration harness and by the rollout rehearsal. Nothing was deployed or pushed, and no paid provider or model was called. `e2e` and `e2e:acceptance` were **not run** locally. See the P3.5a section of `PHASE-3-REPORT.md` for the decisions, the design as built, the checklist, the rollout statement and the runbook.
+
+### Gate results (Task 10, full verification)
+
+Run one at a time, in this order, from the worktree root, on 2026-09-25, at `90ef323`.
+
+| # | Command | Result |
+|---|---|---|
+| 0 | `git diff --stat origin/main -- packages neon/migrations/0001_identity.sql neon/migrations/0002_business.sql neon/migrations/0003_workflows.sql neon/migrations/0004_atomic_operations.sql neon/migrations/0005_owner_removal_guard.sql neon/migrations/0006_action_applications.sql neon/migrations/0007_action_verification.sql neon/migrations/0008_workspace_internal.sql app/api/cron/dispatch/route.ts lib/repositories/scheduler.ts` | empty output (0 bytes), as the plan expects |
+| 1 | `corepack pnpm typecheck` | **passed**: exit 0. Root `tsc --noEmit`, then `pnpm -r typecheck` across all 4 workspace packages, each reporting `Done`. |
+| 2 | `corepack pnpm lint` | **passed**: exit 0, `✖ 30 problems (0 errors, 30 warnings)`, across 18 files, the same counts as the baseline. One of the 18, `app/api/scan/process/route.test.ts`, is touched by this branch (Task 5 appended tests). Its only warning, `945:34 '_input' is defined but never used`, was reproduced by linting the `origin/main` copy of that file: same line, same message. |
+| 3 | `corepack pnpm test` (first run) | **failed**: exit 1, 1 failed / 2,964 passed in the app suite. The failure is `app/api/versions/[versionId]/versions.test.ts` > "POST /api/versions/[versionId]/approve > approves this exact version and reports idempotent on a repeat": `Error: Test timed out in 5000ms`, then `AssertionError: expected 503 to be 200`. It is the file's first test, and the file took 10.5 s. No commit on this branch touches `app/api/versions/**` or `lib/workspace/versions.ts`. |
+| 3 | `corepack pnpm test` (re-run, once, as the plan allows) | **passed**: exit 0, zero failures, **329 files / 3,552 tests**. Breakdown below. |
+| 4 | `corepack pnpm test:integration` | **passed**: exit 0, **33 files / 346 tests**, 232.79s. |
+| 5 | `corepack pnpm db:verify` | **passed**: exit 0. JSON below. |
+| 6 | `corepack pnpm build` (`next build`, Turbopack, the literal gate command) | **blocked**: exit 1, `Error: Turbopack build failed with 5 errors`. See "The build gate". Not worked around. |
+| — | `npx next build --webpack` (diagnostic, **not** the gate) | **passed**: exit 0. See "The build gate". |
+
+After each `test` run, the two tracked snapshot files (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) showed as modified. `git diff --ignore-cr-at-eol --stat` was empty each time, so the changes were line endings only, and both files were restored with `git restore`. `git status` was clean apart from this task's files before the documentation edits. After the documentation edits, with `apply-0009.sql` and the `.gitattributes` line in the tree, `corepack pnpm test` was run once more: exit 0, 329 files / 3,552 tests, zero failures.
+
+### Baseline, measured rather than taken from the plan
+
+`origin/main` (`96519fc`) was checked out in a scratch worktree under the session scratchpad, with `node_modules` joined by directory junctions to this worktree's, and measured with Vitest's JSON reporter:
+
+- app suite (`vitest run --exclude lib/evidence/safe-media.test.ts --reporter=json`): **273 files / 2,863 tests**, 0 failed;
+- integration suite (`vitest run --config vitest.integration.config.ts --reporter=json`): **30 files / 323 tests**, 0 failed;
+- `tsx scripts/neon/verify-migrations.ts`: 35 tables, 418 columns, 159 constraints, 87 indexes, 8 triggers, 14 functions, replay empty.
+
+The package suites were not re-measured at `origin/main`: `git diff origin/main -- packages` is empty, and their counts at HEAD equal P3.2c's record. The scratch worktree was removed afterwards.
+
+### Test breakdown (gate 3, re-run)
+
+| Suite | `origin/main` (`96519fc`) | P3.5a (`90ef323`) | Delta |
+|---|---|---|---|
+| app (`vitest run --exclude lib/evidence/safe-media.test.ts`) | 273 / 2,863 | 278 / 2,965 | +5 / +102 |
+| `lib/evidence/safe-media.test.ts` (run alone, by design) | 1 / 62 | 1 / 62 | 0 |
+| `packages/region` | 3 / 23 | 3 / 23 | 0 |
+| `packages/scoring` | 16 / 183 | 16 / 183 | 0 |
+| `packages/contracts` | 3 / 20 | 3 / 20 | 0 |
+| `packages/scan-engine` | 28 / 299 | 28 / 299 | 0 |
+| **Total** | **324 / 3,450** | **329 / 3,552** | **+5 / +102** |
+
+File by file, from the two JSON reports. Every other file has the same count on both sides.
+
+| File | Before → after | Commit | What was added |
+|---|---|---|---|
+| `lib/budgets/config.test.ts` | new, 0 → 24 | `8b05abc` | defaults, `off`, valid values, 20 invalid-value cases, the variable list |
+| `lib/budgets/scan.test.ts` | new, 0 → 18 | `18a1b14` | `admitScanJob` (10), `claimScanJob` (7), the shared "used" definition (1) |
+| `lib/budgets/ai.test.ts` | new, 0 → 10 | `a02994f` | `checkAiBudget` (9), `AiBudgetRefusal` (1) |
+| `lib/budgets/messages.test.ts` | new, 0 → 6 | `fa1416e` | English words, one string per locale (3), register separation, pass-through of other failures |
+| `components/pocket-assistant/assistant-sheet.test.tsx` | new, 0 → 4 | `2c7328b` | the limit message in three locales, and any other failure still a failed run |
+| `lib/assistant/live.test.ts` | 45 → 51 (+6) | `fe08cf8` | the `assistant drafts and the AI budget` block |
+| `components/scanning-page.test.tsx` | 9 → 13 (+4) | `fa1416e` | the `at capacity` block (3 locales, and silence when the resume was accepted) |
+| `tests/phase6-ui.test.tsx` | 7 → 11 (+4) | `fa1416e` | `rescanFailureMessage budget refusals` (3 locales, and the rate limit still reported as such) |
+| `components/workspace/action-detail-client.test.tsx` | 25 → 28 (+3) | `2c7328b` | the AI drafting limit, 3 locales |
+| `components/workspace/create-view.test.tsx` | 14 → 17 (+3) | `2c7328b` | the AI drafting limit, 3 locales |
+| `lib/scan/execution-store.test.ts` | 2 → 5 (+3) | `7e23dd7` | the `budgeted claim` block |
+| `lib/workspace/runs.test.ts` | 32 → 35 (+3) | `a02994f` | the `AI spend budget` block |
+| `lib/scan/run.test.ts` | 17 → 19 (+2) | `7e23dd7` | `runScan budget refusal` (2) |
+| `lib/workspace/rescan.test.ts` | 11 → 13 (+2) | `4b61855` | the two refusal mappings |
+| `app/api/scan/process/route.test.ts` | 27 → 29 (+2) | `7e23dd7` | `scan process budget refusal` (2) |
+| `app/api/workspaces/[workspaceId]/rescan/route.test.ts` | 13 → 15 (+2) | `4b61855` | the 503 and 429 mappings |
+| `lib/scan/start-job.test.ts` | 23 → 24 (+1) | `4b61855` | the refusal pass-through |
+| `app/api/scan/start/route.test.ts` | 26 → 27 (+1) | `4b61855` | the 503 answer |
+| `app/api/actions/route.test.ts` | 8 → 9 (+1) | `a02994f` | the `201 { runError }` answer |
+| `app/api/actions/[actionId]/run/route.test.ts` | 4 → 5 (+1) | `a02994f` | the 429 answer |
+| `app/api/assistant/run/route.test.ts` | 17 → 18 (+1) | `fe08cf8` | the 429 answer |
+| `app/api/cron/dispatch/route.test.ts` | 11 → 12 (+1) | `7e23dd7` | the skip-and-retry characterisation |
+| **Total** | **+102 tests, +5 files** | | |
+
+`tests/i18n.test.ts` changed (`budget` in `APP_NAMESPACES`) but its test count did not.
+
+### The build gate (gate 6)
+
+`next build` fails on this Windows machine with **`Error: Turbopack build failed with 5 errors`**, exit 1. It is the standing `Module not found: Can't resolve '@radix-ui/react-*'` cascade inside `radix-ui`'s barrel: `@radix-ui/react-dismissable-layer` (3) and `@radix-ui/react-visually-hidden` (2). The import traces run through `components/ui/{tooltip,sidebar,sheet,select}.tsx`, `components/product-ui.tsx`, `components/sign-in-page.tsx`, `components/public-pages.tsx`, `app/[locale]/owner/[workspaceSlug]/layout.tsx`, `app/[locale]/owner/sign-in/page.tsx` and `app/[locale]/trust/page.tsx`. The error count varies between runs, as recorded in every earlier section (33, 37, 72, 32, 45, now 5). Two checks confirm it is unrelated to this slice:
+
+1. **No file this branch changes appears in any import trace**, and `git diff --stat origin/main..HEAD -- package.json pnpm-lock.yaml next.config.ts components/ui` is empty.
+2. **The webpack fallback compiles clean.** `npx next build --webpack` → exit 0, `✓ Compiled successfully in 49s`, `Finished TypeScript in 38.8s`, `✓ Generating static pages using 11 workers (29/29)`, and a route manifest that includes `ƒ /[locale]/scanning/[jobId]`, `ƒ /api/scan/process` and `ƒ /api/assistant/run`, three of the routes this slice changes.
+
+Recorded **blocked**, as this repository records it on this machine.
+
+### Migration verification (gate 5)
+
+```json
+{
+  "applied": ["0001_identity.sql", "0002_business.sql", "0003_workflows.sql", "0004_atomic_operations.sql",
+    "0005_owner_removal_guard.sql", "0006_action_applications.sql", "0007_action_verification.sql",
+    "0008_workspace_internal.sql", "0009_scan_attempts.sql"],
+  "replay": [],
+  "tables": 36, "columns": 422, "constraints": 162, "indexes": 92, "triggers": 8, "functions": 14,
+  "seededRows": 0, "deferredFunctions": [], "deferredTriggers": []
+}
+```
+
+Task 2 predicted 36 / 422 / 162 / 92 / 8 / 14, journal 9. Every number matches. Against `origin/main` (35 / 418 / 159 / 87 / 8 / 14): +1 table (`scan_attempts`), +4 columns (`id`, `job_id`, `workspace_id`, `attempted_at`), +3 constraints (the primary key and two foreign keys), +5 indexes (`scan_attempts_pkey`, `scan_attempts_attempted_idx`, `scan_attempts_workspace_idx`, `action_runs_created_idx`, `action_runs_workspace_created_idx`).
+
+### Integration suite detail (gate 4)
+
++3 files and +23 tests against `origin/main`'s 30 / 323. Per file, measured with the JSON reporter on the six files involved (at HEAD, 6 files / 79 tests, 0 failed):
+
+| File | Before → after | What it covers |
+|---|---|---|
+| `neon-scan-admission.integration.test.ts` *(new)* | 0 → 6 | the 24-hour window; pending jobs reserved, old ones not; workspace scoping; two requests racing for the last slot (exactly one admitted); a burst of eight at three free slots; refusal with no job, consent or `scan_started` row when the count cannot be read |
+| `neon-scan-claim-budget.integration.test.ts` *(new)* | 0 → 9 | one attempt row per claim with the job's workspace; concurrent claims of one job, with and without the lock; no row for an unclaimed job; an admitted first attempt runs over budget; an over-limit retry left unclaimed; pending first attempts counted against a retry; workspace scoping; retries racing for the last slot; invalid configuration |
+| `neon-ai-spend.integration.test.ts` *(new)* | 0 → 3 | the two sums in the window; zero rather than nothing; a failed read throws |
+| `neon-assistant-live.integration.test.ts` | 34 → 38 (+4) | failed drafts (parse failure, facts needed) as exactly one failed run each that `aiSpend24h` counts; a null model result as `no_model_output` with a null cost; recorded failed-draft spend refusing the next draft before the model |
+| `neon-schema.integration.test.ts` | 7 → 8 (+1) | "lets the runtime role log scan attempts, cascading with the job and outliving the workspace" |
+| `neon-execution.integration.test.ts` | 15 → 15 | count unchanged; one test changed (below) |
+
+**The two changed tests** (plan, "Where this plan departs from the spec", item 10):
+
+- `neon-execution` "does not reclaim a lease exactly thirty minutes old". Same name, same expectation. It used to freeze `now()` by running the store's single `UPDATE` inside the test's own transaction. The claim now opens a transaction of its own, so the test calls `claimScanJob` on its transaction's client. Passed.
+- `neon-assistant-live` "withholds nonempty facts-needed output and performs no artifact persistence" became "withholds nonempty facts-needed output, creates no artifact, and records the failed run with its cost". It used to assert that no `action_runs` row exists; it now expects exactly one `failed` run with its cost, and still no version and no audit event. Passed. It needed the Task 7 fixture fix (a real `app_users` row as the membership's `userId`), because `action_runs.requested_by` is a uuid FK to `app_users`.
+
+### Mutation checks, re-run in Task 10
+
+The implementers of Tasks 1–9 reported the mutation checks the plan names. Task 10 re-ran every one rather than take them on report. A scratch script applied each mutation by exact pattern, refusing to proceed unless every pattern matched exactly once (line-ending aware, because the working copies mix LF and CRLF). It ran the named test file(s) with Vitest's JSON reporter (`--config vitest.integration.config.ts` for integration files), wrote the original bytes back, and compared them. **All 48 runs killed; every file restored byte-identical; `git status` clean afterwards.** Where a mutation fails more tests than the plan names, all are listed.
+
+| # | Mutation | Files run | Observed in Task 10 |
+|---|---|---|---|
+| T1.1 | `DEFAULT_SCAN_ATTEMPTS_GLOBAL_24H` 200 → 100 | `lib/budgets/config.test.ts` | **killed**, 1/24: "applies the conservative global defaults and leaves per-workspace limits off" |
+| T1.2 | `POSITIVE_INTEGER` → `/^[0-9]+$/` | `config.test.ts` | **killed**, 2/24: the two `="0"` scan cases |
+| T1.3 | drop `\|\| value <= 0` in the decimal branch | `config.test.ts` | **killed**, 3/24: `BUDGET_AI_USD_GLOBAL_24H="0"` and `="0.00"`, `BUDGET_AI_USD_WORKSPACE_24H="0"` |
+| T1.4 | `if (raw === "off" \|\| raw === "") return null;` | `config.test.ts` | **killed**, 3/24: every `=""` case (scan global, scan workspace, AI global) |
+| T2.1 | delete `scan_attempts_workspace_idx` from 0009 | `neon-schema` | **killed**, 1/8: "applies all final business objects…", on "all final indexes and predicates" |
+| T2.2 | delete `ENABLE ROW LEVEL SECURITY` | `neon-schema` | **killed**, 1/8: the same test, on "business tables and RLS" |
+| T2.3 | `workspace_id` `ON DELETE SET NULL` → `CASCADE` | `neon-schema` | **killed**, 2/8: the same test, on "constraints and deletion semantics", and "lets the runtime role log scan attempts, cascading with the job and outliving the workspace" |
+| T3.1 | `admitScanJob`: delete the lock statement | `lib/budgets/scan.test.ts` | **killed**, 1/18: "takes the budget lock, then counts with one statement" |
+| T3.2 | `admitScanJob`: `>=` → `>` | `scan.test.ts` | **killed**, 2/18: "refuses at the global limit with the fixed log line", "reports the global limit first when both are reached" |
+| T3.3 | `admitScanJob`: `catch` sets `used` to zero | `scan.test.ts` | **killed**, 3/18: the three "refuses, with the check_failed line, when …" cases |
+| T3.4 | `claimScanJob`: invalid configuration → both limits `null` | `scan.test.ts` | **killed**, 1/18: "refuses every retry, but not a first attempt, when the configuration is invalid" |
+| T3.5 | delete the `attempt AS (…)` CTE | `scan.test.ts` | **killed**, 1/18: "one definition of used counts the same attempts and pending jobs at admission and at the claim" |
+| T4.1 | `admitScanJob`: delete the lock statement | `neon-scan-admission` | **killed**, 2/6: "admits exactly one of two requests racing for the last slot" (`expected null to be 'scan_global'`), "lets a burst of eight admit exactly the three free slots" (`length of 3 but got 4`) |
+| T4.2 | `usedSql`: pending subquery → `0` | `neon-scan-admission` | **killed**, 4/6: "admits under the limit and refuses at it…", "counts pending jobs as reserved attempts…", the race, and the burst (`length of 3 but got 8`) |
+| T4.3 | `const scope = "";` (the plan's literal form) | `neon-scan-admission` | **killed**, 5/6, but mostly for a query error: `$1::uuid` is no longer in the SQL, so the count fails and admission refuses (`check_failed`). Failures include "refuses a rescan on its workspace limit…" (`expected 'scan_global' to be 'scan_workspace'`), a `ScanBudgetRefusal: at_capacity` and `current transaction is aborted` |
+| T4.3v | `const scope = workspace ? \`${workspace} IS NOT NULL AND \` : "";` (valid-query variant: keeps the parameter, counts every workspace) | `neon-scan-admission` | **killed**, 1/6: exactly "refuses a rescan on its workspace limit, not another workspace's or a public scan" |
+| T4.4 | `WINDOW_SQL` `'24 hours'` → `'48 hours'` | `neon-scan-admission` | **killed**, 2/6: "admits under the limit and refuses at it, counting attempts in the last 24 hours only", "counts pending jobs as reserved attempts, but not pending jobs older than the window" |
+| T4.5 | `jobs.ts`: delete the `admitScanJob` call | `neon-scan-admission` | **killed**, 6/6: every refusal case |
+| T4.6 | `start-job.ts`: delete the `ScanBudgetRefusal` pass-through | `lib/scan/start-job.test.ts` | **killed**, 1/24: "passes a budget refusal through as itself, not as a persistence failure" |
+| T5.1 | `claimScanJob`: delete the lock statement | `neon-scan-claim-budget` | **killed**, 1/9: "serializes retries racing for the last slot" (`expected { …(9) } to be null`) |
+| T5.2 | `(target_attempts = 0` → `(false` | `neon-scan-claim-budget` | **killed**, 2/9: "still runs an admitted first attempt when the budget is already spent", "claims first attempts but refuses retries when the configuration is invalid" |
+| T5.3 | `usedSql`: pending subquery → `0` | `neon-scan-claim-budget` | **killed**, 1/9: "counts pending first attempts against a retry" |
+| T5.4 | delete the `attempt AS (…)` CTE | `neon-scan-claim-budget` | **killed**, 4/9: "writes exactly one attempt row per claim…", "concurrent claims of one job write exactly one attempt row…", "still runs an admitted first attempt…", "serializes retries racing for the last slot" |
+| T5.5 | claim counts: `usedSql("(SELECT target_workspace_id FROM target)")` → `usedSql(null)` | `neon-scan-claim-budget` | **killed**, 1/9: "applies the workspace limit only to that workspace's retries" (the `quiet` retry, `expected null not to be null`) |
+| T5.6 | `execution-store.ts`: delete `options.onBudgetRefused?.(outcome.scope);` | `lib/scan/execution-store.test.ts` | **killed**, 1/5: "tells the host that a retry was refused on budget, and returns no job" |
+| T5.7 | `run.ts`: delete the `at_capacity` line | `lib/scan/run.test.ts`, `app/api/scan/process/route.test.ts` | **killed**, 2/48: "reports at_capacity when the store refused the claim on budget, and completes nothing"; the process route's "answers 503 at_capacity when the store refused a retry on budget" |
+| T5.8 | cron route: `.then` that logs a non-ok reclaim response | `app/api/cron/dispatch/route.test.ts` | **killed**, 1/12: "treats 503 at_capacity from scan/process as skip-and-retry: nothing logged, the job offered again next tick". The route was restored byte for byte. |
+| T6.1 | `runs.ts`: move the budget check after `persistence.start` | `lib/workspace/runs.test.ts` | **killed**, 1/35: "refuses before any run row or model call once the global spend reaches the limit" |
+| T6.2 | `aiSpend24h`: delete `FILTER (WHERE workspace_id=$1)` (the plan's literal form) | `neon-ai-spend` | **killed**, 2/3, for a query error: `$1` is unused, so both reads throw `artifact_operation_failed` ("sums recorded cost…", "reads zero, not nothing…") |
+| T6.2v | `FILTER (WHERE $1::uuid IS NOT NULL)` (valid-query variant: keeps the parameter, filters nothing) | `neon-ai-spend` | **killed**, 1/3: "sums recorded cost in the last 24 hours, globally and for one workspace", with `{ globalUsd: 8, workspaceUsd: 8 }` against the expected `{ globalUsd: 8, workspaceUsd: 5 }`, the `workspaceUsd: 8` the plan predicts |
+| T6.3 | `aiSpend24h`: delete the 24-hour `WHERE` | `neon-ai-spend` | **killed**, 1/3: the same test, with `{ globalUsd: 108, workspaceUsd: 105 }`, the `globalUsd: 108` the plan predicts |
+| T6.4 | `checkAiBudget`: `>=` → `>` | `lib/budgets/ai.test.ts` | **killed**, 2/10: "refuses at the global limit with the fixed log line", "reports the global limit first when both are reached" |
+| T6.5 | `checkAiBudget`: the spend-read `catch` allows | `ai.test.ts` | **killed**, 3/10: the three "refuses, with the check_failed line, when …" cases |
+| T6.6 | run route: delete the `ai_budget_reached` line | `app/api/actions/[actionId]/run/route.test.ts` | **killed**, 1/5: "answers 429 ai_budget_reached before any run row or model call" |
+| T7.1 | `draft()`: delete the two budget lines | `lib/assistant/live.test.ts` | **killed**, 1/51: "refuses a draft before the model when the recorded spend reaches the limit" |
+| T7.2 | `draft()`: delete the `invalid_output` / `no_model_output` recording | `live.test.ts` | **killed**, 3/51: "records a parse failure as a failed run with its measured cost, then degrades", "records a draft whose model returned nothing as no_model_output with a null cost", "still answers when the failed run cannot be recorded" |
+| T7.3 | `draft()`: delete the `facts_needed` recording | `live.test.ts` | **killed**, 1/51: "records a request for missing facts as a failed run too" |
+| T7.3i | the same deletion | `neon-assistant-live` | **killed**, 2/38: "withholds nonempty facts-needed output, creates no artifact, and records the failed run with its cost", "records a facts_needed draft as exactly one failed run that aiSpend24h counts" |
+| T7.4 | `recordFailedDraft`: remove the `try`/`catch` | `live.test.ts` | **killed**, 1/51: "still answers when the failed run cannot be recorded" |
+| T7.5 | assistant route: delete the `AiBudgetRefusal` line | `app/api/assistant/run/route.test.ts` | **killed**, 1/18: "answers 429 ai_budget_reached when the live draft was refused, and records no run event" |
+| T8.1 | delete the zh-TW `aiLimit` entry | `tests/i18n.test.ts`, `lib/budgets/messages.test.ts` | **killed**, 3/14: "share one key set across en, zh-HK and zh-TW", "maps each refusal to its own zh-TW string", "keeps zh-HK and zh-TW in their own registers" |
+| T8.2 | `scanStartRefusal`: `error === "at_capacity"` → `error !== undefined` | `messages.test.ts` | **killed**, 1/6: "leaves every other failure to its existing message" |
+| T8.3 | scanning page: delete `if (body?.error === "at_capacity") setAtCapacity(true)` | `components/scanning-page.test.tsx` | **killed**, 3/13: "says in en / zh-HK / zh-TW that a refused resume is saved and can be resumed later" |
+| T8.4 | `rescanFailureMessage`: the `429` line moved above the workspace-budget line | `tests/phase6-ui.test.tsx` | **killed**, 3/11: "names the workspace limit and global capacity separately in en / zh-HK / zh-TW" |
+| T9.1 | action detail: delete `else if (budgetRefusal) toast.error(budgetRefusal)` | `components/workspace/action-detail-client.test.tsx` | **killed**, 3/28: "says in en / zh-HK / zh-TW that today's drafting limit was reached" |
+| T9.2 | Create: `runError === "ai_budget_reached"` → `"ai_budget"` | `components/workspace/create-view.test.tsx` | **killed**, 3/17: "says in en / zh-HK / zh-TW that the action exists but today's drafting limit was reached" |
+| T9.3 | assistant sheet: delete the `if (refused) { … }` block | `components/pocket-assistant/assistant-sheet.test.tsx` | **killed**, 3/4: "shows the en / zh-HK / zh-TW limit message instead of a generic failure" |
+| T9.4 | zh-HK `aiLimit` set to the zh-TW text | `messages.test.ts` | **killed**, 1/6: "keeps zh-HK and zh-TW in their own registers" |
+
+Every observation matches the plan's named test. The two differences are T4.3 and T6.2, whose literal forms fail on a query error before reaching the behaviour they target. Their valid-query variants, T4.3v and T6.2v, fail exactly the named test on its assertion.
+
+### Rollout rehearsal of `apply-0009.sql`
+
+The statement was generated from the files on disk by a scratch script. It uses `loadMigrations()`, asserts the runner's lock key, refuses if the dollar tags occur in 0009, and self-checks that the embedded text hashes to the recorded checksum. After generation, every checksum was re-derived from the file bytes and found exactly once in the journal check, and the embedded 0009 text was confirmed byte-identical to `neon/migrations/0009_scan_attempts.sql`:
+
+| Ordinal | File | sha256 |
+|---|---|---|
+| 1 | `0001_identity.sql` | `f2e65e08e94c6514735db9a7eb6b0dcc5ec522732e2fb3e573b02b62aedb60fa` |
+| 2 | `0002_business.sql` | `34c46b53bc08e12d7c76d365c177877890ebadec27fbf4d7836e253d901021a1` |
+| 3 | `0003_workflows.sql` | `b8f80980ab7758ae068bcab9dfea4ae0fcc6cc78b2ed49b6410c92b103a12ab1` |
+| 4 | `0004_atomic_operations.sql` | `b24f2cbba79881d1f97118e05a5d7990a847fdaed6ecd5461682f404af076069` |
+| 5 | `0005_owner_removal_guard.sql` | `c4349d2ba9a24a595b37ed547574e8231ee5ff0eb717ef8ffa5fad1fa093c26b` |
+| 6 | `0006_action_applications.sql` | `ea0f7471c0b469a5e99b884557224b542b920a0aadc7f1f49223697334a4be47` |
+| 7 | `0007_action_verification.sql` | `e9f8132aa98021c7f2861b9e3fdc2e0f3847445b91ee955683ce696770f43d11` |
+| 8 | `0008_workspace_internal.sql` | `f9f03d6c1d70231871e2e683c9318c98f55afbd0fd125a43e712d328f019d678` |
+| 9 | `0009_scan_attempts.sql` | `3c35ab9965be1d4821e885a2e43676c743e62f25435e4d59bd46d2c34a3d1768` |
+
+The rehearsal ran on a disposable `postgres:16` container (server `16.15`), named `p35a-rehearsal-0009` and labelled `com.sme-scanner.rehearsal=0009`. It ran twice with identical results, the second time after the work was interrupted and resumed. Setup: `neondb_owner` LOGIN CREATEROLE owning `neondb`; `neondb_owner` created `smeassistant_migrator` NOLOGIN and `sme_app_runtime` NOLOGIN, and granted the migrator CREATE on the database and on schema `public`. 0001–0008 were applied as the migrator (a superuser session started with `-c role=smeassistant_migrator`, because the role cannot log in) through `applyMigrations(pool, migrations.slice(0, 8))`. The file was sent as one query from a `neondb_owner` connection. "Unchanged" compares a snapshot of every journal row and every relation (name, kind, owner) in `public` and `neon_migrations`, before and after.
+
+| # | Check | Result |
+|---|---|---|
+| 5 | before the grant | `42501 permission denied to set role "smeassistant_migrator"`; 8 journal rows; `to_regclass('public.scan_attempts')` null; unchanged |
+| — | `GRANT smeassistant_migrator TO neondb_owner WITH SET TRUE`, as `neondb_owner` | succeeded; `pg_auth_members` shows `set_option = true`, grantor `neondb_owner` |
+| 1 | first run | success; the two notices; journal rows 1–9, row 9 `0009_scan_attempts.sql 3c35ab99…1768` |
+| 2 | `applyMigrations(pool, all nine)` | `[]` |
+| 3 | ownership and access | six relations (`scan_attempts`, `scan_attempts_pkey`, `scan_attempts_attempted_idx`, `scan_attempts_workspace_idx`, `action_runs_created_idx`, `action_runs_workspace_created_idx`) owned by `smeassistant_migrator`; `relrowsecurity` true; policy `server_application`; `has_table_privilege('sme_app_runtime', …)` SELECT true, INSERT true; under `SET LOCAL ROLE sme_app_runtime`, a workspace, a job and one attempt row inserted and read back (`current_user` `sme_app_runtime`, 1 row), then rolled back |
+| 4 | second run | `P0001 apply-0009 refused: neon_migrations.journal is not exactly 0001-0008 with the expected checksums (it has 9 rows)`; 9 journal rows; unchanged |
+
+Afterwards `docker ps -a --filter name=p35a` listed nothing. No other container was touched.
+
+### What this did not run
+
+- `corepack pnpm e2e` / `e2e:acceptance`: need a production build, which gate 6 cannot produce on this machine. **Not run.** CI runs both.
+- `corepack pnpm test:secret-boundary`: shells out to `next build` and inherits gate 6's blocker. **Not run.**
+- `apply-0009.sql` against any Neon branch, `neon:readiness` against any hosted target, and any deployed request. **Not run**: no hosted action is authorized by this task.
+- A test for the `social_post`-without-asset refusal under a spent AI budget. **Not written**; recorded in the report's "does NOT prove".
