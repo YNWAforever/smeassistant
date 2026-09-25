@@ -67,14 +67,21 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan admission budget
     await runtime.query("INSERT INTO scan_attempts(job_id,workspace_id,attempted_at) VALUES($1,$2,now()-$3::interval)", [job, workspaceId, age]);
   };
   const queued = async () => (await runtime.query("SELECT count(*)::int AS n FROM audit_jobs WHERE status='queued'")).rows[0].n as number;
+  /** Every row an admitted scan writes: the job, its consent, its scan_started event. A refusal must leave all three unchanged. */
+  const written = async () => (await runtime.query(`SELECT
+      (SELECT count(*)::int FROM audit_jobs WHERE status='queued') AS jobs,
+      (SELECT count(*)::int FROM consent_records) AS consents,
+      (SELECT count(*)::int FROM scan_events WHERE event_name='scan_started') AS started`)).rows[0] as { jobs: number; consents: number; started: number };
 
   it("admits under the limit and refuses at it, counting attempts in the last 24 hours only", async () => {
     vi.stubEnv("BUDGET_SCAN_ATTEMPTS_GLOBAL_24H", "2");
     await pastAttempt(null, "25 hours");
     await pastAttempt(null);
     expect((await start()).ok).toBe(true);
+    const afterAdmitted = await written();
+    expect(afterAdmitted).toEqual({ jobs: 1, consents: 1, started: 1 });
     expect(refusedScope(await start())).toBe("scan_global");
-    expect(await queued()).toBe(1);
+    expect(await written()).toEqual(afterAdmitted);
     expect(console.warn).toHaveBeenCalledWith("[budget] refused", { scope: "scan_global", entry: "scan_start", used: 2, limit: 2 });
   });
 
@@ -92,7 +99,9 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan admission budget
     const busy = await workspace();
     const quiet = await workspace();
     await pastAttempt(busy);
+    const before = await written();
     expect(refusedScope(await start({ workspaceId: busy }))).toBe("scan_workspace");
+    expect(await written()).toEqual(before);
     expect(console.warn).toHaveBeenCalledWith("[budget] refused", { scope: "scan_workspace", entry: "rescan", used: 1, limit: 1 });
     expect((await start({ workspaceId: quiet })).ok).toBe(true);
     expect((await start()).ok).toBe(true);
@@ -132,7 +141,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon scan admission budget
     try {
       expect(refusedScope(await start())).toBe("scan_global");
       expect(console.error).toHaveBeenCalledWith("[budget] check_failed", { entry: "scan_start", reason: "query" });
-      expect(await queued()).toBe(0);
+      expect(await written()).toEqual({ jobs: 0, consents: 0, started: 0 });
     } finally {
       await owner.query("GRANT SELECT ON public.scan_attempts TO sme_app_runtime");
     }
