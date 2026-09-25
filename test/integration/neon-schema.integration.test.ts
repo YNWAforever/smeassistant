@@ -23,8 +23,8 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("fresh application schema",
   afterAll(async () => { await Promise.all([owner?.end(), runtime?.end(), denied?.end()]); fixture?.stop(); });
 
   it("applies all final business objects to empty PostgreSQL with no business seeds", async () => {
-    expect(await applyMigrations(owner)).toEqual(["0001_identity.sql", "0002_business.sql", "0003_workflows.sql", "0004_atomic_operations.sql", "0005_owner_removal_guard.sql", "0006_action_applications.sql", "0007_action_verification.sql", "0008_workspace_internal.sql"]);
-    expect(await verifyCatalog(owner)).toMatchObject({ tables: 35, columns: 418, constraints: 159, indexes: 87, triggers: 8, functions: 14, seededRows: 0 });
+    expect(await applyMigrations(owner)).toEqual(["0001_identity.sql", "0002_business.sql", "0003_workflows.sql", "0004_atomic_operations.sql", "0005_owner_removal_guard.sql", "0006_action_applications.sql", "0007_action_verification.sql", "0008_workspace_internal.sql", "0009_scan_attempts.sql"]);
+    expect(await verifyCatalog(owner)).toMatchObject({ tables: 36, columns: 422, constraints: 162, indexes: 92, triggers: 8, functions: 14, seededRows: 0 });
     expect((await owner.query("SELECT nspname FROM pg_namespace WHERE nspname IN ('auth','storage','neon_auth')")).rows).toEqual([]);
   });
   it("replays as a no-op and rejects changed, missing, and reordered history", async () => {
@@ -33,13 +33,13 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("fresh application schema",
     await expect(applyMigrations(owner, [{ ...migrations[0], sql: migrations[0].sql + "\n-- changed" }, ...migrations.slice(1)])).rejects.toThrow("migration_checksum_mismatch");
     await expect(applyMigrations(owner, migrations.slice(0, 2))).rejects.toThrow("migration_history_mismatch");
     await expect(applyMigrations(owner, [...migrations].reverse())).rejects.toThrow("migration_order_invalid");
-    expect((await owner.query("SELECT count(*)::int AS n FROM neon_migrations.journal")).rows[0].n).toBe(8);
+    expect((await owner.query("SELECT count(*)::int AS n FROM neon_migrations.journal")).rows[0].n).toBe(9);
   });
   it("rolls back interrupted DDL and journal together, then permits retry", async () => {
     const migrations = await loadMigrations();
     await expect(applyMigrations(owner, [...migrations, { name: "0099_probe.sql", sql: "CREATE TABLE public.interruption_probe(id integer); SELECT 1/0;" }])).rejects.toThrow();
     expect((await owner.query("SELECT to_regclass('public.interruption_probe') AS relation")).rows[0].relation).toBeNull();
-    expect((await owner.query("SELECT count(*)::int AS n FROM neon_migrations.journal")).rows[0].n).toBe(8);
+    expect((await owner.query("SELECT count(*)::int AS n FROM neon_migrations.journal")).rows[0].n).toBe(9);
     expect(await applyMigrations(owner)).toEqual([]);
   });
   it("rolls back a cancelled in-flight migration before a clean retry", async () => {
@@ -61,7 +61,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("fresh application schema",
   it("exposes all final columns and constraints through typed Drizzle tables", async () => {
     const oracle = JSON.parse(await readFile(new URL("./fixtures/legacy-final-catalog.json", import.meta.url), "utf8"));
     const tables = Object.values(schema).map(table => getTableConfig(table));
-    expect(tables.length).toBe(37);
+    expect(tables.length).toBe(38);
     for (const expected of oracle.tables as Array<{name:string}>) {
       const table = tables.find(table => table.name === expected.name)!;
       expect(table, expected.name).toBeDefined();
@@ -109,5 +109,18 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("fresh application schema",
     await expect(runtime.query("UPDATE workspaces SET tier='undeclared' WHERE id=$1", [workspace])).rejects.toMatchObject({code:"23514"});
     await runtime.query("DELETE FROM app_users WHERE id=$1", [user]);
     expect((await runtime.query("SELECT id FROM workspaces WHERE id=$1", [workspace])).rows).toEqual([]);
+  });
+  it("lets the runtime role log scan attempts, cascading with the job and outliving the workspace", async () => {
+    const workspace = (await runtime.query("INSERT INTO workspaces DEFAULT VALUES RETURNING id")).rows[0].id;
+    const job = (await runtime.query("INSERT INTO audit_jobs(workspace_id,business_name,status) VALUES($1,'Fixture','queued') RETURNING id", [workspace])).rows[0].id;
+    const kept = (await runtime.query("INSERT INTO audit_jobs(workspace_id,business_name,status) VALUES($1,'Fixture','queued') RETURNING id", [workspace])).rows[0].id;
+    await runtime.query("INSERT INTO scan_attempts(job_id,workspace_id) VALUES($1,$3),($2,$3)", [job, kept, workspace]);
+    expect((await runtime.query("SELECT count(*)::int AS n FROM scan_attempts WHERE workspace_id=$1", [workspace])).rows[0].n).toBe(2);
+    await runtime.query("DELETE FROM audit_jobs WHERE id=$1", [job]);
+    expect((await runtime.query("SELECT job_id FROM scan_attempts")).rows).toEqual([{ job_id: kept }]);
+    await runtime.query("DELETE FROM workspaces WHERE id=$1", [workspace]);
+    expect((await runtime.query("SELECT job_id,workspace_id FROM scan_attempts")).rows).toEqual([{ job_id: kept, workspace_id: null }]);
+    await runtime.query("DELETE FROM audit_jobs WHERE id=$1", [kept]);
+    expect((await runtime.query("SELECT count(*)::int AS n FROM scan_attempts")).rows[0].n).toBe(0);
   });
 });

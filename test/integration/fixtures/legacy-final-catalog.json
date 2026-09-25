@@ -90,6 +90,10 @@
       "rls": true
     },
     {
+      "name": "scan_attempts",
+      "rls": true
+    },
+    {
       "name": "scan_diffs",
       "rls": true
     },
@@ -2772,6 +2776,42 @@
       "column_default": "now()"
     },
     {
+      "table_name": "scan_attempts",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "scan_attempts",
+      "column_name": "job_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_attempts",
+      "column_name": "workspace_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "scan_attempts",
+      "column_name": "attempted_at",
+      "ordinal_position": 4,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
       "table_name": "scan_diffs",
       "column_name": "id",
       "ordinal_position": 1,
@@ -4550,6 +4590,24 @@
       "definition": "CHECK (((width IS NULL) OR ((width >= 1) AND (width <= 4800))))"
     },
     {
+      "table_name": "scan_attempts",
+      "name": "scan_attempts_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (job_id) REFERENCES audit_jobs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "scan_attempts",
+      "name": "scan_attempts_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "scan_attempts",
+      "name": "scan_attempts_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE SET NULL"
+    },
+    {
       "table_name": "scan_diffs",
       "name": "scan_diffs_base_job_id_fkey",
       "type": "f",
@@ -4880,8 +4938,18 @@
     },
     {
       "tablename": "action_runs",
+      "indexname": "action_runs_created_idx",
+      "indexdef": "CREATE INDEX action_runs_created_idx ON public.action_runs USING btree (created_at)"
+    },
+    {
+      "tablename": "action_runs",
       "indexname": "action_runs_pkey",
       "indexdef": "CREATE UNIQUE INDEX action_runs_pkey ON public.action_runs USING btree (id)"
+    },
+    {
+      "tablename": "action_runs",
+      "indexname": "action_runs_workspace_created_idx",
+      "indexdef": "CREATE INDEX action_runs_workspace_created_idx ON public.action_runs USING btree (workspace_id, created_at)"
     },
     {
       "tablename": "actions",
@@ -5122,6 +5190,21 @@
       "tablename": "report_evidence",
       "indexname": "report_evidence_pkey",
       "indexdef": "CREATE UNIQUE INDEX report_evidence_pkey ON public.report_evidence USING btree (id)"
+    },
+    {
+      "tablename": "scan_attempts",
+      "indexname": "scan_attempts_attempted_idx",
+      "indexdef": "CREATE INDEX scan_attempts_attempted_idx ON public.scan_attempts USING btree (attempted_at)"
+    },
+    {
+      "tablename": "scan_attempts",
+      "indexname": "scan_attempts_pkey",
+      "indexdef": "CREATE UNIQUE INDEX scan_attempts_pkey ON public.scan_attempts USING btree (id)"
+    },
+    {
+      "tablename": "scan_attempts",
+      "indexname": "scan_attempts_workspace_idx",
+      "indexdef": "CREATE INDEX scan_attempts_workspace_idx ON public.scan_attempts USING btree (workspace_id, attempted_at)"
     },
     {
       "tablename": "scan_diffs",
