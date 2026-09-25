@@ -11,6 +11,10 @@
   "verified": {
     "confirmedOn": "Verified on your site on {date} · we checked the page, not who changed it"
   },
+  "budget": {
+    "scanAtCapacity": "Free scans are at capacity right now. Please try again in a few hours.",
+    "aiLimit": "Today's AI drafting limit has been reached. Try again later."
+  },
   "scanner": {
     "title": "Scan My Business for Free",
     "subtitle": "Fill in the details below — get your audit report in 30 seconds",

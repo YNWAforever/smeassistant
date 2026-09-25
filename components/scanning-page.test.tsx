@@ -181,3 +181,30 @@ describe("ScanningPage bounded polling", () => {
 it("keeps the poll record key namespaced per job", () => {
   expect(pollRecordKey(JOB)).toBe(`sme.scan.poll.${JOB}`);
 });
+
+describe("ScanningPage at capacity", () => {
+  it.each(["en", "zh-HK", "zh-TW"] as const)("says in %s that a refused resume is saved and can be resumed later", async (locale) => {
+    const copyFor = copy[locale].funnel.scanning;
+    render(<ScanningPage locale={locale} jobId={JOB} />);
+    await advance(MAX_POLL_DURATION_MS + 60_000);
+    fetchSpy.mockImplementation(async (input: RequestInfo | URL) => {
+      if (String(input).includes("/api/scan/process")) return { ok: false, status: 503, json: async () => ({ error: "at_capacity" }) } as unknown as Response;
+      return { ok: RUNNING.ok, status: RUNNING.status, json: async () => RUNNING.body } as unknown as Response;
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText(copyFor.stalledResume));
+    });
+    await advance(0);
+    expect(screen.getByText(copyFor.atCapacity)).toBeTruthy();
+  });
+
+  it("says nothing about capacity when the resume was accepted", async () => {
+    render(<ScanningPage locale="en" jobId={JOB} />);
+    await advance(MAX_POLL_DURATION_MS + 60_000);
+    await act(async () => {
+      fireEvent.click(screen.getByText(c.stalledResume));
+    });
+    await advance(0);
+    expect(screen.queryByText(c.atCapacity)).toBeNull();
+  });
+});

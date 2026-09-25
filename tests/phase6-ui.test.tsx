@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { BrandView } from "@/components/workspace/brand-view";
 import { EvidenceGallery } from "@/components/workspace/evidence-gallery";
-import { RescanButton } from "@/components/workspace/rescan-button";
+import { RescanButton, rescanFailureMessage } from "@/components/workspace/rescan-button";
 import { TeamView } from "@/components/workspace/team-view";
 import type { EvidenceGalleryItem } from "@/lib/report/view-model";
 import type { BrandProfile } from "@/lib/workspace/brand";
@@ -96,5 +96,22 @@ describe("BrandView", () => {
     expect(viewer).not.toContain('type="submit"');
     expect(viewer).toContain("permission-banner");
     expect(viewer).toContain('readOnly=""');
+  });
+});
+
+describe("rescanFailureMessage budget refusals", () => {
+  const EXPECTED = {
+    en: { workspace: "This workspace has reached today's scan limit. Try again tomorrow.", capacity: "Scanning is at capacity right now. Please try again in a few hours." },
+    "zh-HK": { workspace: "此工作台今日的掃描次數已達上限，請明天再試。", capacity: "掃描服務暫時已滿額，請於數小時後再試。" },
+    "zh-TW": { workspace: "此工作台今日的掃描次數已達上限，請明天再試。", capacity: "掃描服務目前已達上限，請於幾個小時後再試。" },
+  } as const;
+
+  it.each(["en", "zh-HK", "zh-TW"] as const)("names the workspace limit and global capacity separately in %s", (locale) => {
+    expect(rescanFailureMessage({ ok: false, status: 429, error: "workspace_scan_budget_reached" }, locale)).toBe(EXPECTED[locale].workspace);
+    expect(rescanFailureMessage({ ok: false, status: 503, error: "at_capacity" }, locale)).toBe(EXPECTED[locale].capacity);
+  });
+
+  it("still reports the per-workspace rate limit as the rate limit", () => {
+    expect(rescanFailureMessage({ ok: false, status: 429, error: "rate_limited" }, "en")).toBe("Rescan limit reached for today (3 per workspace); try again tomorrow.");
   });
 });

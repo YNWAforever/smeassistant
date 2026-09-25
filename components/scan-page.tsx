@@ -56,6 +56,7 @@ import {
 } from "@/lib/funnel/scan-start"
 import type { TemplateKey } from "@/lib/workspace/templates"
 import { t } from "@/lib/i18n"
+import { scanStartRefusal } from "@/lib/budgets/messages"
 import { interpolate } from "@/lib/share"
 import { DISTRICTS_HK, DISTRICTS_TW, INDUSTRIES_HK, INDUSTRIES_TW } from "@sme-scanner/region"
 
@@ -211,6 +212,12 @@ export function ScanPage({
       const data = (await response.json().catch(() => ({}))) as { jobId?: string; error?: string; policy_version?: string }
       if (response.status === 429) {
         setError(t(locale, "scanner.candidateErrorRateLimited"))
+        return
+      }
+      // P3.5a: the global scan budget, instead of the server's raw error string.
+      const refusal = scanStartRefusal(locale, response.status, data.error)
+      if (refusal) {
+        setError(refusal)
         return
       }
       // The privacy notice changed while this tab was open. Adopt the version
