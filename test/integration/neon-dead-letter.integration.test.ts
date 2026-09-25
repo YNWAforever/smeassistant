@@ -137,5 +137,32 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon dead-letter handling"
       expect(await repo().closeExhausted(20)).toEqual([]);
       expect((await jobRow(id)).status).toBe("collecting");
     });
+
+    it("restarts the grace window from a released job's new attempt, rather than its original stall", async () => {
+      vi.stubEnv("BUDGET_SCAN_ATTEMPTS_GLOBAL_24H", "off");
+      const id = await stuck("25 hours");
+      await repo().release(id, await operator());
+      const store = createScanExecutionStore(randomUUID(), {
+        pool: runtime,
+        env: { BUDGET_SCAN_ATTEMPTS_GLOBAL_24H: "off" },
+        onBudgetRefused: vi.fn(),
+        analytics: { insert: async () => {}, capturePostHog: async () => {}, reportError: () => {} },
+      });
+      expect(await store.claimJob(id)).not.toBeNull();
+      expect((await jobRow(id)).attempt_count).toBe(3);
+
+      // Stalled again, but only 2 hours into this (third) attempt: still
+      // within the grace window measured from last_attempt_at, not from the
+      // original stall the release already forgave.
+      await runtime.query("UPDATE audit_jobs SET last_attempt_at = now() - interval '2 hours' WHERE id=$1", [id]);
+      expect(await repo().closeExhausted(20)).toEqual([]);
+      expect((await jobRow(id)).status).toBe("collecting");
+
+      // Now 25 hours into the same attempt: past the grace window again, so
+      // it closes.
+      await runtime.query("UPDATE audit_jobs SET last_attempt_at = now() - interval '25 hours' WHERE id=$1", [id]);
+      expect(await repo().closeExhausted(20)).toEqual([id]);
+      expect((await jobRow(id)).status).toBe("failed");
+    });
   });
 });

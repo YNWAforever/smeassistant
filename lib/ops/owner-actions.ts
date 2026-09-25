@@ -17,14 +17,14 @@ function scoped(ctx: OwnerContext): boolean {
 }
 
 function inScope(ctx: OwnerContext, locationId: string | null): boolean {
+  if (locationId === null) return true;
   if (!scoped(ctx)) return true;
-  return locationId !== null && ctx.locationScope!.includes(locationId);
+  return ctx.locationScope!.includes(locationId);
 }
 
 /** Workspace-wide items (no location) are visible to every member; post-processing to none. */
 export function visibleTo(item: FailureItem, ctx: OwnerContext): boolean {
   if (item.kind === "workspace_processing") return false;
-  if (item.locationId === null) return true;
   return inScope(ctx, item.locationId);
 }
 

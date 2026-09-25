@@ -1,5 +1,5 @@
 import { hasMessage, t } from "@/lib/i18n";
-import type { FailureKind, OwnerProblem } from "./failure-types";
+import type { OwnerFailureKind, OwnerProblem } from "./failure-types";
 
 /** Every code the model can emit today. Tests prove each has a label in every locale. */
 export const KNOWN_REASON_CODES = [
@@ -17,7 +17,7 @@ export function problemReasonLabel(locale: string, code: string): string {
   return SAFE_CODE.test(code) && hasMessage(locale, key) ? t(locale, key) : t(locale, "problems.reason.generic");
 }
 
-export function problemTitle(locale: string, kind: FailureKind): string {
+export function problemTitle(locale: string, kind: OwnerFailureKind): string {
   return t(locale, `problems.kind.${kind}`);
 }
 

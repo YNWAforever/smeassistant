@@ -33,6 +33,11 @@ async function closeOne(client: PoolClient, jobId: string): Promise<boolean> {
   );
   const row = rows[0];
   if (!row) return false;
+  // Unlike recordNeonEvent's best-effort contract, this insert is in the same
+  // transaction as the UPDATE above, on purpose: closing a scan is a
+  // privileged change, and one recorded with no audit row would be
+  // unaccountable. If the insert fails, the whole transaction rolls back
+  // (same precedent as lib/repositories/action-run-reaper.ts).
   await client.query(
     `INSERT INTO audit_events(workspace_id,location_id,actor_type,actor_id,event,entity_type,entity_id,payload)
      VALUES($1,$2,'system',NULL,'${SCAN_AUTO_CLOSED_EVENT}','audit_job',$3,$4)`,
@@ -92,6 +97,11 @@ export function deadLetterRepository(pool: Db = getPool()) {
         );
         const row = rows[0];
         if (!row) return { released: false } as const;
+        // Same reasoning as closeOne: this insert stays in the release
+        // transaction rather than going through recordNeonEvent's best-effort
+        // path, because a release without its audit row would be an
+        // unaccountable privileged change (an operator granting an extra
+        // attempt). An audit failure rolls the release back.
         await client.query(
           `INSERT INTO audit_events(workspace_id,location_id,actor_type,actor_id,event,entity_type,entity_id,payload)
            VALUES($1,$2,'user',$3,'${SCAN_RELEASED_EVENT}','audit_job',$4,$5)`,

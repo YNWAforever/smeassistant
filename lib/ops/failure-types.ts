@@ -6,7 +6,9 @@ export const FAILURE_KINDS = ["scan_failed", "scan_dead_lettered", "draft_failed
 export type FailureKind = (typeof FAILURE_KINDS)[number];
 
 /** Owners never see workspace_processing: nothing about it is theirs to do. */
-export const OWNER_FAILURE_KINDS: readonly FailureKind[] = ["scan_failed", "scan_dead_lettered", "draft_failed", "google_connection"];
+export type OwnerFailureKind = Exclude<FailureKind, "workspace_processing">;
+
+export const OWNER_FAILURE_KINDS: readonly OwnerFailureKind[] = ["scan_failed", "scan_dead_lettered", "draft_failed", "google_connection"];
 
 export function isFailureKind(value: unknown): value is FailureKind {
   return typeof value === "string" && (FAILURE_KINDS as readonly string[]).includes(value);
