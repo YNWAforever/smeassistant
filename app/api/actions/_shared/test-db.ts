@@ -82,6 +82,9 @@ export function makeDb(respond: Responder) {
       return row ? [{ ...row, source_snapshot_id: null }] : [];
     },
     assistantBrand: async () => null,
+    // Recorded AI spend in the last 24 hours (P3.5a). Zero unless a test
+    // overrides it, so existing suites stay under every budget.
+    aiSpend24h: async () => ({ globalUsd: 0, workspaceUsd: 0 }),
     queue: async (i: QueueActionRunInput) => {
       if (i.providedInputs)
         await write("actions", "update", { provided_inputs: i.providedInputs });

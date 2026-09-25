@@ -140,6 +140,20 @@ export function artifactRepository(client?: Executor) {
     WHERE s.job_id=$1 AND s.cited=false`,[jobId,workspaceId])).rows.map(r=>r.query_text));
   },
   /**
+   * Recorded AI spend in the last 24 hours (P3.5a), globally and for one
+   * workspace, in one read over action_runs_created_idx. A run with no
+   * recorded cost adds nothing: computeCostUsd returns null when the gateway
+   * omits token usage.
+   */
+  aiSpend24h(workspaceId: string) {
+   return operation(async () => {
+    const row=(await db().query<{global_usd:number;workspace_usd:number}>(`SELECT coalesce(sum(cost_usd),0)::float8 AS global_usd,
+     coalesce(sum(cost_usd) FILTER (WHERE workspace_id=$1),0)::float8 AS workspace_usd
+     FROM action_runs WHERE created_at > now() - interval '24 hours'`,[workspaceId])).rows[0];
+    return {globalUsd:Number(row.global_usd),workspaceUsd:Number(row.workspace_usd)};
+   });
+  },
+  /**
    * Persist a finished assistant draft as a terminal `action_runs` row and
    * return its id.
    *

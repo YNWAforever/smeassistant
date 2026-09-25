@@ -18,6 +18,7 @@ import {
 } from "@/lib/agents";
 import { localized, resolveText } from "@/lib/domain";
 import { llmComplete, type LLMUsage } from "@/lib/llm";
+import { checkAiBudget } from "@/lib/budgets/ai";
 import { deriveFaqQuestions } from "./faq-questions";
 import { filterSelectedReviews, resolveBrandProvidedInputs, sampledReviewsFromRawData } from "./evidence-inputs";
 import { buildActionOverview, localeOf } from "./overview";
@@ -34,7 +35,7 @@ import { templateByKey, type TemplateKey } from "./templates";
  * never overwrites an existing draft (a version is only created on success).
  */
 export type RunErrorCode =
-  "action_not_found" | "agent_unavailable" | "forbidden";
+  "action_not_found" | "agent_unavailable" | "forbidden" | "ai_budget_reached";
 
 export class RunError extends Error {
   constructor(public readonly code: RunErrorCode) {
@@ -55,6 +56,8 @@ export interface RunAgentInput {
   llm?: typeof llmComplete;
   now?: Date;
   ipHash?: string | null;
+  /** Budget variables; defaults to process.env (tests pass their own). */
+  budgetEnv?: Record<string, string | undefined>;
 }
 
 export interface RunAgentResult {
@@ -264,6 +267,10 @@ export async function runAgentForAction(
   }
   const agentKey = resolveAgentKey(input.agentKey, template.agentKey),
     agent = AGENTS[agentKey];
+  // P3.5a: the AI spend budget, before any evidence read, run row or model
+  // call. A refusal leaves nothing behind, so no queued run can strand.
+  const budget = await checkAiBudget(() => db.aiSpend24h(row.workspace_id), { entry: "ai_run" }, input.budgetEnv);
+  if (!budget.allowed) throw new RunError("ai_budget_reached");
   const [workspace, brand, locations] = await Promise.all([
     db.assistantWorkspace(row.workspace_id),
     db.assistantBrand(row.workspace_id),
