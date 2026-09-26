@@ -883,6 +883,8 @@ Full detail is in `PHASE-3-TEST-RESULTS.md`. Summary, one gate at a time, run se
 
 After the unit-test run, the two tracked snapshot files (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) showed as modified; `git diff --ignore-cr-at-eol --stat` was empty, confirming line-ending-only changes, and both were restored. `git status --short` was otherwise clean before this documentation commit.
 
+After the two final-review fixes (`a9a1a41`, `7f12dfc`) the unit suite was re-run at the new tip: 292 app files / 3,094 tests with one failure, `lib/identity/identity-sdk.test.ts` "rejects a replayed valid cached identity when upstream revoked its session" — a file this branch does not touch (empty diff from `c919624`), which then passed 7/7 in three isolated re-runs. It joins `versions.test.ts` and `safe-media.test.ts` as intermittent under full parallel load. The integration suite, `db:verify` and the webpack build were not re-run after these two fixes: they change route ordering and copy only, and the touched unit files (157 tests), typecheck and lint were re-run and pass.
+
 ## P3.3 — commercial contract on safe defaults
 
 **Branch** `claude/commercial-contract-design-3b8561` (same content line as `p33-commercial-contract`), 9 commits (`0010a33`..`1eb6a50`) on top of `aeb8513` (P3.5d's tip; stacked on `p35d-incident-runbook`, PR #23, not yet merged) · Task 6 (this record) adds a 10th. Worktree `C:\Users\laich\Documents\smeassistant\.claude\worktrees\commercial-contract-design-3b8561`. Node `v24.18.0`, pnpm `9.12.0` via corepack, Windows 11, Docker Server `29.7.2`.
@@ -960,6 +962,15 @@ Full diff `aeb8513..1eb6a50`: **33 files changed, 1,281 insertions, 72 deletions
 - **The landing page's availability is fixed at build time** (see "Owner actions" above — a config change needs a redeploy, not just a reload).
 - **P3.5d (PR #23) was merged into `p35b-failure-view` after that branch reached `main`, so neither P3.5d nor this branch is on `main` yet.**
 
+**Known, not changed** (deferred minor findings from this task's own review of Tasks 1–5, not acted on in this slice):
+
+- `lib/commercial/contract.ts`'s doc comments are verbose relative to their content.
+- `app/api/webhooks/stripe/route.ts`'s doc comment is a paragraph rather than the one sentence the plan called for.
+- No direct test of `publicBilling()`'s own wiring: an hk/tw price or contact-channel swap inside that function would go undetected by the existing suite, which only exercises it through the pages that call it.
+- The "not open" label plus its contact-anchor rendering (link when a channel is configured, plain text otherwise) is duplicated across `components/public-pages.tsx`, `components/landing-page.tsx` and `components/workspace/billing-view.tsx`, rather than shared in one place.
+- The en copy "Unlimited approved deliveries a month" is capitalised mid-bullet on the landing page's Growth card.
+- `components/workspace/billing-view.test.tsx`'s first case is named for tier history ("... but still sees usage and tier history") but does not itself assert the tier-history row is rendered.
+
 ### Verification
 
 Full detail is in `PHASE-3-TEST-RESULTS.md`. Summary, one gate at a time, run on 2026-09-26. `typecheck`/`lint`/`test`/`db:verify`/both builds ran at `0bf71c5` (Task 5's tip); `1eb6a50` only touches one file matched by `**/*.integration.test.ts`, which is outside every one of those gates' globs, so those results stand unchanged at the branch's actual `HEAD`. `test:integration` is shown at both HEADs, since that is the gate the fix addresses:
@@ -983,5 +994,3 @@ Full detail is in `PHASE-3-TEST-RESULTS.md`. Summary, one gate at a time, run on
 - **(d)** `components/public-pages.tsx`: the Growth card's `!billing.open` condition replaced with `false`. **Killed**: `pricing-page.test.tsx` 6/16 failed — the closed-state cases now find the Subscribe CTA present, and the "not open" label/contact-link assertions fail because that branch never renders.
 
 After the unit-test run, the two tracked snapshot files (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) showed as modified; `git diff --ignore-cr-at-eol --stat` was empty, confirming line-ending-only changes, and both were restored with `git checkout --`. `git status --short` was otherwise clean before this documentation commit.
-
-After the two final-review fixes (`a9a1a41`, `7f12dfc`) the unit suite was re-run at the new tip: 292 app files / 3,094 tests with one failure, `lib/identity/identity-sdk.test.ts` "rejects a replayed valid cached identity when upstream revoked its session" — a file this branch does not touch (empty diff from `c919624`), which then passed 7/7 in three isolated re-runs. It joins `versions.test.ts` and `safe-media.test.ts` as intermittent under full parallel load. The integration suite, `db:verify` and the webpack build were not re-run after these two fixes: they change route ordering and copy only, and the touched unit files (157 tests), typecheck and lint were re-run and pass.

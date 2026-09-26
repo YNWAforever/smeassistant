@@ -1130,6 +1130,17 @@ The base commit `aeb8513` (P3.5d's tip) already stood at **38 files / 378 tests*
 | Existing entitlement, billing and rescan tests pass unchanged | `lib/workspace/entitlement.test.ts`, `app/api/workspaces/[workspaceId]/rescan/route.test.ts` — not in this branch's diff | — |
 | `applyTier` still writes the contract allowance, lite→paid mid-period | `test/integration/neon-integrations.integration.test.ts` — the `applyTier` cases (lines ~517–563), unchanged assertions | — |
 
+### Known, not changed
+
+Deferred minor findings from this task's own review of Tasks 1–5, not acted on in this slice (see the P3.3 section of `PHASE-3-REPORT.md` for the same list alongside the spec's known limits):
+
+- `lib/commercial/contract.ts`'s doc comments are verbose relative to their content.
+- `app/api/webhooks/stripe/route.ts`'s doc comment is a paragraph rather than the one sentence the plan called for.
+- No direct test of `publicBilling()`'s own wiring: an hk/tw price or contact-channel swap inside that function would go undetected by the existing suite, which only exercises it through the pages that call it.
+- The "not open" label plus its contact-anchor rendering (link when a channel is configured, plain text otherwise) is duplicated across `components/public-pages.tsx`, `components/landing-page.tsx` and `components/workspace/billing-view.tsx`, rather than shared in one place.
+- The en copy "Unlimited approved deliveries a month" is capitalised mid-bullet on the landing page's Growth card.
+- `components/workspace/billing-view.test.tsx`'s first case is named for tier history ("... but still sees usage and tier history") but does not itself assert the tier-history row is rendered.
+
 ### Not run
 
 - **`corepack pnpm build` (Turbopack)**: the task instructions name this a known, standing local blocker (`radix-ui` cascade) unrelated to this branch and direct running `next build --webpack` instead as the practical local gate, leaving CI as the real build gate.
