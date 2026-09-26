@@ -234,4 +234,16 @@ describe("POST /api/actions/[actionId]/run AI budget", () => {
     expect(mocks.db!.calls.filter((c) => c.table === "action_runs")).toEqual([]);
     warn.mockRestore();
   });
+
+  it("answers 503 ai_paused before any run row or model call, while AI drafts are paused", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubEnv("AI_DRAFTS_PAUSED", "true");
+    const res = await post();
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "ai_paused" });
+    expect(mocks.llmComplete).not.toHaveBeenCalled();
+    expect(mocks.db!.calls.filter((c) => c.table === "action_runs")).toEqual([]);
+    vi.unstubAllEnvs();
+    warn.mockRestore();
+  });
 });

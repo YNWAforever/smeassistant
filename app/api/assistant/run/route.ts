@@ -93,7 +93,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof AssistantAccessError) return json({ error: error.code }, error.status);
     // Already logged as "[budget] refused" (or "[budget] check_failed"); nothing reached the model.
-    if (error instanceof AiBudgetRefusal) return json({ error: "ai_budget_reached" }, 429);
+    if (error instanceof AiBudgetRefusal) return json({ error: error.code }, error.code === "ai_paused" ? 503 : 429);
     console.error("[api/assistant/run] failed", { category: "assistant_run_failed" });
     return json({ error: "unavailable" }, 503);
   }

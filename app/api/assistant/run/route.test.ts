@@ -190,4 +190,13 @@ describe("POST /api/assistant/run AI budget", () => {
     expect(await res.json()).toEqual({ error: "ai_budget_reached" });
     expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
   });
+
+  it("answers 503 ai_paused when the live draft was refused because AI is paused, and records no run event", async () => {
+    mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("owner"));
+    mocks.runLiveAssistant.mockRejectedValueOnce(new AiBudgetRefusal("ai_paused"));
+    const res = await post({ mode: "live", surface: "action", intentId: "draft_review_reply", locale: "en", context: { workspaceId: WORKSPACE_ID } });
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "ai_paused" });
+    expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
+  });
 });
