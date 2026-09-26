@@ -802,3 +802,81 @@ Full detail is in `PHASE-3-TEST-RESULTS.md`. Summary, one gate at a time, run se
 After the unit-test run, the two tracked snapshot files (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) showed as modified; `git diff --ignore-cr-at-eol --stat` was empty, confirming line-ending-only changes, and both were restored with `git checkout --`. `git status --short` was otherwise clean before this documentation commit.
 
 **Mutation checks.** Performed during Tasks 1–12 (not re-run independently in Task 13, unlike P3.5a's whole-branch re-run): Task 1 (`attempt_count>=3` → `attempt_count>=2` in `DEAD_LETTERED_JOB_CONDITION_SQL`, killed by both the unit test and the integration complement test); Task 3, four mutations (removing the assistant-source filter, removing the outer Google `reason IN (...)` filter, swapping the correlation column for `failure_category`, and adding `r.error AS business_name` to `draft_failed` — each killed by its named test, the last by "never returns personal fields"); Task 4 (collapsing the tier/location rescan ternary to an unconditional `"rescan"`, killed by the lite-tier and no-location cases in `owner-actions.test.ts`); Task 5, four mutations (`interval '24 hours'` → `'22 hours'` in the grace window, killed by the 23-hours-not-closed case; removing the dead-letter condition from the release CTE, killed by "refuses a job that is not dead-lettered"; setting the release to `attempt_count=3` instead of `2`, killed by the "grants exactly one more attempt" and "makes the job claimable once" cases; removing the `writeScanEventSafely` call, killed by "writes exactly one scan_completed"); Task 8's fix (removing the early `deadLettered` return from the scanning-page polling loop, which made "shows the stuck card with a new-scan link, no Resume button, and stops polling" fail before the fix was written); Task 11 (`visibleTo`'s `return inScope(ctx, item.locationId);` → `return true;`, killed by "never shows a scoped manager another location's problems, through the real reader" — this one run by the controlling session as part of Task 13's verification). The Task 3-fix and Task 4/5-fix tests (the search-after-`DISTINCT ON` case, the assistant-recovery case, the tier/location matrix cases, the grace-window and release-guard cases) were each seen RED before their fix and GREEN after, in the same test-first sequence P3.5a used.
+
+## P3.5d — incident runbook and kill switches
+
+**Branch** `p35d-incident-runbook`, 9 commits (`de24a73`..`3d4e26b`) on top of `923bc88` (stacked on `p35b-failure-view`, PR #22, not yet merged) · Task 9 (this record) is the 10th. Worktree `C:\Users\laich\Documents\smeassistant\.claude\worktrees\p35d-incident-runbook`. Node `v24.18.0`, pnpm `9.12.0` via corepack, Windows 11, Docker Server `29.7.2`.
+
+Built from `docs/superpowers/plans/2026-09-26-incident-runbook.md` (Tasks 1–9), against the design in [`docs/superpowers/specs/2026-09-26-incident-runbook-design.md`](../../superpowers/specs/2026-09-26-incident-runbook-design.md).
+
+**Implemented and locally verified. Nothing here is hosted-verified.** No migration, no deployment, no remote CRON, no paid provider call, no push.
+
+### What this answers
+
+The Master Plan's P3.5 last bullet asks for "an incident/runbook path for disabled providers, expired OAuth, paused scheduling, failed billing synchronization and a rollback that preserves approval/billing history". Before this slice there was no way to stop provider or AI spend quickly (a budget of `0` is rejected as invalid by design, `SCAN_SOURCES=fixture` is forced to `live` in production), pausing a schedule needed hand-written SQL, and rollback existed only as prose scattered across `docs/integration/DEPLOY.md` and each slice's own mini-runbook. This slice adds two environment kill switches and one incident runbook covering all five scenarios, with the runbook's own SQL executed by an integration test rather than trusted as prose.
+
+### Decisions (user, 2026-09-26)
+
+| Question | Decision |
+|---|---|
+| Scope | Runbook + two kill switches: one incident runbook for all five scenarios, plus `SCANS_PAUSED` and `AI_DRAFTS_PAUSED`. Schedule pause stays documented SQL, not a third switch. |
+| Mechanism | Environment variables + redeploy (no migration, no new database state). |
+| Scan pause reach | All provider spend: new scans, rescans **and** claims of queued jobs and retries; queued work is preserved, never lost. |
+| Owner message | Distinct "paused for maintenance" copy, not "at capacity" — an owner must not think they hit their own limit. |
+
+### What changed, by task
+
+Full diff `923bc88..HEAD`: **57 files changed, 1,138 insertions, 42 deletions**, across 9 commits.
+
+| Task | Commit(s) | What it did |
+|---|---|---|
+| 1. Pause configuration | `de24a73` | `lib/budgets/pause.ts` (new): `PAUSE_VARIABLES`, `readPauseConfig` (unset/empty → `false`, exactly `"true"` → `true`, anything else throws `PauseConfigurationError` naming the variable), `pauseState()` (fail-closed wrapper: a configuration error pauses both switches and logs `[pause] configuration_invalid` once), `logPauseRefusal(entry)` (fixed `[pause] refused` line). `.env.example` documents both variables, commented out. |
+| 2. Scan pause in the budget functions | `8e99d5c` | `lib/budgets/scan.ts`: `admitScanJob` and `claimScanJob` check the pause **first**, before the advisory lock and any counting, via a new `ScanBudgetScope` value `scan_paused` and a new `ClaimOutcome` value `paused`; `lib/budgets/log.ts` gains the scope; `lib/scan/execution-store.ts` passes the paused claim outcome through untouched (no `scan_attempts` row, no `attempt_count`/`last_attempt_at` change). |
+| 3. Scan pause at the routes and the cron | `fbdad65` | `app/api/scan/start/route.ts`, `app/api/scan/process/route.ts` (via `lib/scan/run.ts`), `app/api/workspaces/[workspaceId]/rescan/route.ts` (via `lib/workspace/rescan.ts`) map `scan_paused`/`paused` to **503 `{ error: "paused" }`**; `app/api/cron/dispatch/route.ts` checks the pause and skips only the reclaim-dispatch step, logging one line, while auto-close, reconcile and website verification still run. |
+| 4. AI pause | `092307c` | `lib/budgets/ai.ts`: `checkAiBudget` checks the pause first with a new `AiBudgetScope`/`AiBudgetRefusal` code `ai_paused`, before any run row exists; `lib/workspace/runs.ts`, `app/api/actions/[actionId]/run/route.ts`, `app/api/assistant/run/route.ts` map it to **503 `{ error: "ai_paused" }`**; `app/api/actions/route.ts` (Create) surfaces it inside its existing `201 { runError: "ai_paused" }`; `lib/llm.ts`'s `llmComplete` returns `null` while AI is paused, before any network call, as a backstop for every other caller (report summaries, translation). |
+| 5. Owner copy for pauses | `2986b93` | New `pause` namespace (`pause.scans`, `pause.ai`) in `lib/messages/{en,zh-HK,zh-TW}.json`, listed in `tests/i18n.test.ts`'s `APP_NAMESPACES`; `lib/budgets/messages.ts` maps `paused`/`ai_paused` to that copy, checked **ahead of** `at_capacity`/`ai_budget_reached`; `components/workspace/rescan-button.tsx`, `components/workspace/create-view.tsx`, `components/scanning-page.tsx` (a new `paused` resume state, rendered next to, never instead of, the at-capacity card) wire it in. `action-detail-client.tsx` and `assistant-sheet.tsx` needed no code change — they already call the shared mapper — so each only gained a test. |
+| 6. Operator pause banner | `02b90c8` | `app/[locale]/ops/failures/page.tsx` reads `pauseState()` and shows a banner under the page title naming which switch is on and pointing at the runbook; no banner when nothing is paused. |
+| Review-driven: scan pause also stops business search | `b7a018a` | `app/api/business/search/route.ts` (SerpApi), `app/api/business/ig-search/route.ts` (RapidAPI/SerpApi) check `pauseState().scans` immediately after body validation, **before** the rate limiter or any provider call, answering **503 `{ error: "paused" }`**; `components/scan-page.tsx` shows `pause.scans` there instead of the generic "search service unavailable" text; both route tests, and the new `components/scan-page.test.tsx`, failed against the unpatched routes before the fix. See "Review-driven change" below. |
+| 7. Runbook SQL and its test | `8eff883` | `docs/implementation/owner-platform-v1/rollout/incident-queries.sql` (new): named blocks (`-- name:` / `-- mode:`) — reads `scan_backlog`, `dead_lettered_scans`, `failed_scans_by_category_24h`, `spend_24h`, `google_connection_states`, `schedule_states`, `recent_tier_events`; a write pair `pause_all_schedules` / `resume_schedules`. `lib/ops/incident-queries.ts` (new): `parseIncidentQueries` enforces one statement per block, a mode, and no duplicate names. Integration test runs every read block inside `BEGIN READ ONLY` and round-trips the schedule pause/resume pair; the runtime role already had `UPDATE` on `scan_schedules` from migration `0003`, so no grant change was needed. |
+| 8. The runbook | `a4a2a4b` | `docs/implementation/owner-platform-v1/INCIDENT-RUNBOOK.md` (new): purpose/ownership, first five minutes, the two kill switches, five scenarios each as Detect → Contain → Recover → Verify → Record, how to record an incident, and an appendix of every query. Every SQL reference is `` `query:<name>` ``, cross-checked against the SQL file by the parser test's third case. |
+| Docs fix: runbook accuracy | `3d4e26b` | Corrected the runbook's cron section (unsetting `CRON_SECRET` stops reclaim, auto-close **and** reconcile together, not just the schedule notifications it was originally described as stopping), added the `event_write_failed` log tag to the first-five-minutes table, and corrected the pause-refusal log frequency (once per request, not once per job in a batch). |
+| 9. Record, full verification | *(this commit)* | Gates; this section and the matching `PHASE-3-TEST-RESULTS.md` section. |
+
+### Review-driven change: `SCANS_PAUSED` also stops business search
+
+The design's promise is that `SCANS_PAUSED` stops **all** provider spend for scans. The original Tasks 1–3 covered `POST /api/scan/start`, rescan and the process-route claim, but missed that step 1 of `/scan` — `POST /api/business/search` (SerpApi) and `POST /api/business/ig-search` (RapidAPI/SerpApi) — had no pause check at all: an operator containing a SerpApi outage with `SCANS_PAUSED` would still be billed by the merchant-search step. Both routes now check `pauseState().scans` immediately after body validation, **before** the rate limiter or any provider call, and answer `503 { error: "paused" }`, logged via `logPauseRefusal("scan_start")`. The `/scan` page (`components/scan-page.tsx`) shows the `pause.scans` copy there instead of the generic provider-error text. The review that found this checked every runtime mode and the vendored packages and confirmed there is no remaining path in this app that still calls those providers while the switch is on (see the Containment note in `INCIDENT-RUNBOOK.md` §3).
+
+### Owner actions
+
+**Nothing is required to deploy this slice.** No migration, no new required environment variable — both kill switches are optional and documented; unset, they behave exactly as before this branch.
+
+- **Read `docs/implementation/owner-platform-v1/INCIDENT-RUNBOOK.md` once**, before an incident, not during one. It states there is no named accountable incident owner yet (DEC-06).
+- To use a kill switch: set `SCANS_PAUSED=true` and/or `AI_DRAFTS_PAUSED=true` in Vercel (Production) and redeploy or re-promote — an environment variable change takes effect on the *next* deployment, not the running one. Confirm via the `/ops/failures` banner. Unset (never leave a stray `false`) and redeploy to lift.
+- **This branch is stacked on `p35b-failure-view` (PR #22) and must merge after it.** It was built and gated on top of that branch's tip (`923bc88`), not on `origin/main`.
+
+### Known limits (spec §5, plus this session's findings)
+
+- A pause needs a redeploy (about 1–2 minutes) to take effect.
+- No per-provider pause beyond removing that provider's key from the environment.
+- No operator UI for pausing schedules — documented SQL only (`query:pause_all_schedules` / `query:resume_schedules`).
+- No billing reconciliation script while billing is off (DEC-08/09).
+- No named incident owner or on-call rota (DEC-06).
+- Nothing is rehearsed on hosted infrastructure.
+- No migration; none was needed or added.
+- **A scanning page already open when scans are paused shows no pause message until Resume.** The page's automatic first `/api/scan/process` call on load discards the response it gets back, so a `503 paused` from that call is silent; only the explicit Resume button surfaces the `pause.scans` copy.
+- **An invalid pause value pauses BOTH switches and logs on every request.** `readPauseConfig`/`pauseState` fail closed by design (an operator who mistyped the value must not believe spend is still flowing), but this means a single typo silences AI drafting as a side effect of a scan-only incident, and `[pause] configuration_invalid` is logged once per request it affects, not once — noisy under load, though never wrong.
+
+### Verification
+
+Full detail is in `PHASE-3-TEST-RESULTS.md`. Summary, one gate at a time, run sequentially on 2026-09-26 at the branch tip:
+
+| Command | Result |
+|---|---|
+| `corepack pnpm typecheck` | **passed**: exit 0. Root `tsc --noEmit`, then all 4 workspace packages (`region`, `scoring`, `contracts`, `scan-engine`) report `Done`. |
+| `corepack pnpm lint` | **passed**: exit 0, `✖ 30 problems (0 errors, 30 warnings)` across 18 files — identical counts and files to the P3.5b record. No file this branch touches carries a warning. |
+| `corepack pnpm test` | **passed**: exit 0 overall. First run: `app/api/versions/[versionId]/versions.test.ts` failed one test (a 5000ms timeout on an idempotent-approve case) under full parallel load — this is the known intermittent failure named in this task's instructions, confirmed pre-existing (empty diff for that file and for `lib/evidence/safe-media.test.ts` between `923bc88` and `HEAD`); re-run alone, it passed 11/11. `lib/evidence/safe-media.test.ts` also passed cleanly alone (62/62) this run. Effective totals: app suite 293 files / 3,150 tests (292/3,088 excluding safe-media + 1/62 safe-media); packages `region` 3/23, `scoring` 16/183, `contracts` 3/20, `scan-engine` 28/299 — **343 files / 3,675 tests**, zero failures once the one intermittent file is counted from its isolated re-run. |
+| `NEON_INTEGRATION=1 corepack pnpm test:integration` | **passed**: exit 0, **38 files / 378 tests**, 536.05s. |
+| `corepack pnpm db:verify` | **passed**: exit 0, 0001–0009 applied, replay empty, **36 tables / 422 columns / 162 constraints / 92 indexes**, journal 9 — unchanged from P3.5b, because this branch adds no migration. |
+| `corepack pnpm exec next build --webpack` | **passed**: exit 0, `✓ Compiled successfully in 13.8s`, including the new `/[locale]/ops/failures` banner path and all P3.5d API routes in the route manifest. (`corepack pnpm build`, the Turbopack gate, was not re-attempted here — it is the standing, unrelated `radix-ui` blocker recorded at every prior phase on this machine; the task instructions direct using the webpack build as the real local gate, with CI as the actual build gate.) |
+
+After the unit-test run, the two tracked snapshot files (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) showed as modified; `git diff --ignore-cr-at-eol --stat` was empty, confirming line-ending-only changes, and both were restored. `git status --short` was otherwise clean before this documentation commit.
