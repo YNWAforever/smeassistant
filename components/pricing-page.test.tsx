@@ -11,6 +11,7 @@ vi.mock("next/navigation", () => ({
 
 import { PricingPage } from "@/components/public-pages"
 import { allowanceText, type PublicBilling } from "@/lib/commercial/presentation"
+import { copy } from "@/lib/copy"
 import { formatMarketPrice } from "@/lib/funnel/pricing"
 import { t } from "@/lib/i18n"
 
@@ -73,6 +74,28 @@ describe("PricingPage allowances", () => {
       const root = markup(locale, "hk", OPEN)
       expect(root.textContent).toContain(allowanceText(locale, "lite"))
       expect(root.textContent).toContain(allowanceText(locale, "paid"))
+    })
+  }
+})
+
+/**
+ * Fix round 1: the closing FAQ answer used to describe a Stripe subscription
+ * ("How do I subscribe?") regardless of `billing.open`, contradicting the
+ * Growth card's own closed state. It must not claim a subscription is
+ * possible while billing is closed.
+ */
+describe("PricingPage FAQ matches the billing state", () => {
+  for (const locale of ["en", "zh-HK"] as const) {
+    it(`does not describe a subscription while closed, and shows the not-open label in ${locale}`, () => {
+      const root = markup(locale, "hk", CLOSED_NO_CONTACT)
+      expect(root.textContent).not.toContain(copy[locale].funnel.pricing.faqFinalBody)
+      const faq = root.querySelector(".pricing-faq")
+      expect(faq?.textContent).toContain(t(locale, "commercial.notOpen"))
+    })
+
+    it(`describes the real subscription answer when open in ${locale}`, () => {
+      const root = markup(locale, "hk", OPEN)
+      expect(root.textContent).toContain(copy[locale].funnel.pricing.faqFinalBody)
     })
   }
 })

@@ -43,6 +43,10 @@ export function PricingPage({ locale, market, billing }: { locale: PrototypeLoca
   const paidAllowance = allowanceText(locale, "paid")
   const notOpenLabel = t(locale, "commercial.notOpen")
   const contactHref = billing.contactHref[market]
+  // Shared by the Growth card's CTA and the closing FAQ answer: the same
+  // "not open yet" label, anchored to the market's contact channel when one
+  // is configured, plain text otherwise (Review Focus 5).
+  const notOpenNode = contactHref ? <a href={contactHref}>{notOpenLabel}</a> : notOpenLabel
   const plans = isChinese ? [
     {
       key: "free",
@@ -122,7 +126,7 @@ export function PricingPage({ locale, market, billing }: { locale: PrototypeLoca
             <strong className="plan-meta">{plan.meta}</strong>
             <ul className="check-list">{plan.features.map((feature) => <li key={feature}><Check /> {feature}</li>)}</ul>
             {plan.key === "growth" && !billing.open ? (
-              <p className="limitation-note">{contactHref ? <a href={contactHref}>{notOpenLabel}</a> : notOpenLabel}</p>
+              <p className="limitation-note">{notOpenNode}</p>
             ) : (
               <Button asChild variant={plan.featured ? "default" : "outline"} className="w-full"><Link href={plan.href}>{plan.cta}</Link></Button>
             )}
@@ -130,7 +134,7 @@ export function PricingPage({ locale, market, billing }: { locale: PrototypeLoca
         </div>
         <p className="plan-test-note">{billing.open ? p.planNote : f.planNote}</p>
         <SectionCard className="pricing-usage-banner"><FileCheck2 /><div><p className="eyebrow">{isChinese ? "核准後交付，不是代幣" : "Approved deliveries, not tokens"}</p><h2>{isChinese ? "只有指定版本獲核准並首次成功匯出或發佈，才計 1 次交付。" : "One delivery is counted only after an exact version is approved and first exported or published."}</h2><p>{isChinese ? "查看證據、優先排序、重新掃描、生成、修改、退回、拒絕或執行失敗都不扣除用量。所有 Workspace 方案都包括安全檢查、店主審批、活動紀錄及可還原路徑。" : "Evidence, prioritisation, rescans, generation, revisions, returns, rejections and failed runs use no allowance. Safety checks, owner approval, activity history and recovery are included in every Workspace plan."}</p></div></SectionCard>
-        <SectionCard className="pricing-faq"><div><p className="eyebrow">{isChinese ? "簡單選擇" : "Simple choices"}</p><h2>{isChinese ? "我應選哪個方案？" : "Which plan fits?"}</h2><p>{isChinese ? "先免費掃描。單一地點可由增長工作台開始；第 2 或第 3 個地點出現時才考慮多地點。需要專人推進時，再選專人服務。" : "Start free. Choose Growth for one location, Multi-location when a second or third location appears, and Managed when you need human execution."}</p></div><div><h3>{isChinese ? "內容會自動發佈嗎？" : "Will content auto-publish?"}</h3><p>{isChinese ? "不會。每次匯出或發佈前都需要正確權限及明確店主審批；專人服務亦不例外。" : "No. Every export or publish step requires the right permission and an explicit owner approval, including Managed Visibility."}</p></div><div><h3>{p.faqFinalTitle}</h3><p>{p.faqFinalBody}</p></div></SectionCard>
+        <SectionCard className="pricing-faq"><div><p className="eyebrow">{isChinese ? "簡單選擇" : "Simple choices"}</p><h2>{isChinese ? "我應選哪個方案？" : "Which plan fits?"}</h2><p>{isChinese ? "先免費掃描。單一地點可由增長工作台開始；第 2 或第 3 個地點出現時才考慮多地點。需要專人推進時，再選專人服務。" : "Start free. Choose Growth for one location, Multi-location when a second or third location appears, and Managed when you need human execution."}</p></div><div><h3>{isChinese ? "內容會自動發佈嗎？" : "Will content auto-publish?"}</h3><p>{isChinese ? "不會。每次匯出或發佈前都需要正確權限及明確店主審批；專人服務亦不例外。" : "No. Every export or publish step requires the right permission and an explicit owner approval, including Managed Visibility."}</p></div><div><h3>{p.faqFinalTitle}</h3><p>{billing.open ? p.faqFinalBody : notOpenNode}</p></div></SectionCard>
       </main>
     </PublicPageFrame>
   )
