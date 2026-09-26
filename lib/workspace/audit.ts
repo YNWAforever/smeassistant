@@ -18,6 +18,7 @@ export const AUDIT_EVENTS = [
   "access_request.submitted", "access_request.reviewed", "access_request.information_requested",
   "access_request.approved", "access_request.rejected", "workspace.assigned",
   "mail.attempted",
+  "scan.auto_closed", "ops.scan.released",
 ] as const;
 
 export type AuditEvent = (typeof AUDIT_EVENTS)[number];
@@ -31,6 +32,9 @@ export type AuditEvent = (typeof AUDIT_EVENTS)[number];
  * compiling.
  */
 export const RUN_TIMED_OUT_EVENT = "run.timed_out" satisfies AuditEvent;
+/** Written from raw SQL in lib/repositories/dead-letter.ts; the constants tie that SQL to the tuple. */
+export const SCAN_AUTO_CLOSED_EVENT = "scan.auto_closed" satisfies AuditEvent;
+export const SCAN_RELEASED_EVENT = "ops.scan.released" satisfies AuditEvent;
 export type AuditActorType = "user" | "agent" | "system" | "scanner";
 
 export interface AuditEventInput {

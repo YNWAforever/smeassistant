@@ -44,6 +44,8 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string }> = {
   // operator assignment.
   "workspace.assigned": { en: "Workspace assigned by an operator", zh: "營運人員已指派工作台" },
   "mail.attempted": { en: "Email attempted", zh: "已嘗試發送電郵" },
+  "scan.auto_closed": { en: "Stuck scan closed", zh: "已結束停止回應的掃描" },
+  "ops.scan.released": { en: "Scan resumed by Fimmick", zh: "Fimmick 已恢復掃描" },
 };
 
 export const AUDIT_ACTOR_LABELS: Record<"user" | "agent" | "system" | "scanner", { en: string; zh: string }> = {

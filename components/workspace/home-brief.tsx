@@ -1,4 +1,5 @@
 import Link from "next/link"
+import type { ReactNode } from "react"
 import { ArrowRight, CalendarClock, Check, CheckCircle2, CircleAlert, CircleCheck, Clock3, FileClock, Globe2, ShieldCheck, Sparkles, TrendingDown, TrendingUp } from "lucide-react"
 
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet"
@@ -37,6 +38,8 @@ export interface HomeBriefViewProps {
   consentPolicyVersion: string
   /** The signed-in member's real role; drives the Rescan button (hidden for viewers). Omitted = no rescan control. */
   role?: WorkspaceRole
+  /** NeedsAttentionCard, rendered directly after the PageIntro so its <h2> never precedes this page's <h1>. */
+  problems?: ReactNode
 }
 
 function actionHref(locale: PrototypeLocale, slug: string, action: ActionOverview, location: string): string {
@@ -45,7 +48,7 @@ function actionHref(locale: PrototypeLocale, slug: string, action: ActionOvervie
   return withLocation(href, location)
 }
 
-export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, fixPack, role, consentPolicyVersion }: HomeBriefViewProps) {
+export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, fixPack, role, consentPolicyVersion, problems }: HomeBriefViewProps) {
   const t = copy[locale].home
   const isChinese = locale !== "en"
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -69,6 +72,8 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         description={t.subtitle}
         actions={<>{role && <RescanButton locale={locale} workspaceId={workspaceId} workspaceSlug={workspaceSlug} locationId={brief.location?.id ?? null} tier={tier} role={role} consentPolicyVersion={consentPolicyVersion} />}<LocationSelect locale={locale} value={location} locations={locations} /></>}
       />
+
+      {problems}
 
       <section className="workspace-agent-strip" aria-label={isChinese ? "AI 能見度團隊狀態" : "AI Visibility Team status"}>
         <div className="workspace-agent-summary"><span><Sparkles /></span><div><Badge variant="outline">{tierLabel}{demo ? (isChinese ? " · 示範" : " · Demo") : ""}</Badge><h2>{isChinese ? `AI 能見度團隊已完成分析 · ${decisions} 項待你決定` : `AI Visibility Team finished the analysis · ${decisions} ${decisions === 1 ? "decision" : "decisions"} for you`}</h2><p>{isChinese ? "各專員只在背後協作；你只需審閱一項首要行動。" : "Specialists coordinate backstage; you review one priority action."}</p></div></div>

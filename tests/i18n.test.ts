@@ -20,7 +20,9 @@ const UPSTREAM_NAMESPACES = ["scanner", "scanning", "report", "share", "legal"];
 // zh-HK / zh-TW register split.
 // "draftFailure" (P3.5a) labels a failed assistant draft's stored reason code
 // in the owner's run history, with the same register split.
-const APP_NAMESPACES = ["applied", "verified", "budget", "draftFailure"];
+// "problems" (P3.5b) labels the owner-facing failure and retry view: problem
+// titles, next-step copy and allowlisted reason codes, with the same register split.
+const APP_NAMESPACES = ["applied", "verified", "budget", "draftFailure", "problems"];
 const NAMESPACES = [...UPSTREAM_NAMESPACES, ...APP_NAMESPACES];
 
 function readBundle(locale: string): Record<string, unknown> {

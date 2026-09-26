@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { notifyDueSchedules, claimableJobIds, reconcileWorkspaceScans, getPool, waitUntilMock, fetchMock, runWebsiteVerification } = vi.hoisted(() => ({
+const { notifyDueSchedules, claimableJobIds, reconcileWorkspaceScans, getPool, waitUntilMock, fetchMock, runWebsiteVerification, closeExhausted } = vi.hoisted(() => ({
   notifyDueSchedules: vi.fn(),
   claimableJobIds: vi.fn(),
   reconcileWorkspaceScans: vi.fn(),
@@ -8,6 +8,7 @@ const { notifyDueSchedules, claimableJobIds, reconcileWorkspaceScans, getPool, w
   waitUntilMock: vi.fn(),
   fetchMock: vi.fn(),
   runWebsiteVerification: vi.fn(),
+  closeExhausted: vi.fn(),
 }));
 vi.mock("@/lib/db/client", () => ({ getPool }));
 vi.mock("@/lib/scan/notify-due-schedules", () => ({ notifyDueSchedules }));
@@ -19,6 +20,7 @@ vi.mock("@/lib/repositories/verification", () => ({ verificationRepository: () =
 vi.mock("@/lib/repositories/applications", () => ({ applicationRepository: () => ({}) }));
 vi.mock("@/lib/workspace/applications", () => ({ recordApplication: vi.fn() }));
 vi.mock("@/lib/workspace/audit", () => ({ recordNeonEvent: vi.fn() }));
+vi.mock("@/lib/repositories/dead-letter", () => ({ deadLetterRepository: () => ({ closeExhausted }) }));
 
 import { POST } from "./route";
 
@@ -41,6 +43,7 @@ beforeEach(() => {
   claimableJobIds.mockResolvedValue([]);
   reconcileWorkspaceScans.mockResolvedValue([]);
   runWebsiteVerification.mockResolvedValue({ locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 });
+  closeExhausted.mockResolvedValue([]);
 });
 
 describe("POST /api/cron/dispatch", () => {
@@ -67,6 +70,7 @@ describe("POST /api/cron/dispatch", () => {
     expect(await response.json()).toEqual({
       notified: { due: 2, notified: 1 },
       reclaimCandidates: 2,
+      autoClosed: 0,
       reconciled: { completed: 2, retry: 1 },
       verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 },
     });
@@ -129,6 +133,7 @@ describe("POST /api/cron/dispatch", () => {
     expect(await response.json()).toEqual({
       notified: { due: 1, notified: 1 },
       reclaimCandidates: 0,
+      autoClosed: 0,
       reconciled: { completed: 1 },
       verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 },
     });
@@ -155,7 +160,7 @@ describe("POST /api/cron/dispatch", () => {
     const response = await POST(request());
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ notified: { due: 1, notified: 1 }, reclaimCandidates: 0, reconciled: {}, verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 } });
+    expect(await response.json()).toEqual({ notified: { due: 1, notified: 1 }, reclaimCandidates: 0, autoClosed: 0, reconciled: {}, verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 } });
   });
 
   it("reports what the website verifier checked", async () => {
@@ -179,11 +184,31 @@ describe("POST /api/cron/dispatch", () => {
     expect(await response.json()).toEqual({
       notified: { due: 1, notified: 1 },
       reclaimCandidates: 1,
+      autoClosed: 0,
       reconciled: { completed: 1 },
       verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 },
     });
     expect(errorSpy).toHaveBeenCalledWith("[cron/dispatch] verify_website_actions failed", expect.objectContaining({ message: "boom" }));
     errorSpy.mockRestore();
+  });
+
+  it("closes exhausted scans in batches of 20 and reports how many", async () => {
+    closeExhausted.mockResolvedValue(["job-1", "job-2"]);
+    const response = await POST(request());
+    expect(closeExhausted).toHaveBeenCalledWith(20);
+    expect((await response.json()).autoClosed).toBe(2);
+  });
+
+  it("keeps the other steps running when the auto-close step fails", async () => {
+    closeExhausted.mockRejectedValue(new Error("boom"));
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    claimableJobIds.mockResolvedValue(["job-9"]);
+    const response = await POST(request());
+    expect(response.status).toBe(200);
+    expect((await response.json()).autoClosed).toBe(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(reconcileWorkspaceScans).toHaveBeenCalled();
+    expect(errors).toHaveBeenCalledWith("[cron/dispatch] close_exhausted_scans failed", expect.objectContaining({ category: "cron_dispatch_step_failed", step: "close_exhausted_scans" }));
   });
 });
 

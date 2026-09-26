@@ -408,6 +408,49 @@ describe("the AI drafting limit", () => {
   });
 });
 
+describe("the fallback failure toast", () => {
+  // P3.5b Task 12: an owner must never see a raw provider/internal error code
+  // in front of them. A failure that isn't offline/network, a budget refusal,
+  // 403, 429 or agent_unavailable falls through to the generic branch, which
+  // used to interpolate the raw code straight into the toast.
+  const DRAFTED_KEY = AGENT_TEMPLATES[0].key;
+
+  beforeEach(() => {
+    if (!window.matchMedia)
+      window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia;
+    clientMocks.runAction.mockReset().mockResolvedValue({ ok: false, status: 500, error: "weird_internal_code" });
+    toastMocks.error.mockReset();
+  });
+  afterEach(cleanup);
+
+  it.each([
+    ["en", "Generate a draft", "The request failed. Try again, or contact Fimmick if it keeps happening."],
+    ["zh-HK", "生成草稿", "操作失敗，請再試一次；如持續出現，請聯絡 Fimmick。"],
+  ] as const)("in %s shows a friendly message with no raw error code", async (locale, label, expected) => {
+    renderLive(
+      <ActionDetailClient
+        locale={locale}
+        workspaceSlug="kam-man-house"
+        workspaceId="ws-1"
+        timezone="Asia/Hong_Kong"
+        role="owner"
+        inScope
+        location="yik-yam"
+        detail={detail(DRAFTED_KEY)}
+        auditRows={[]}
+        locations={[{ slug: "yik-yam", name: "Yik Yam" }]}
+        approvedAssets={[]}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: new RegExp(label) }));
+    });
+    expect(clientMocks.runAction).toHaveBeenCalledWith("act-1", {});
+    expect(toastMocks.error).toHaveBeenCalledWith(expected);
+    expect(JSON.stringify(vi.mocked(toastMocks.error).mock.calls)).not.toContain("weird_internal_code");
+  });
+});
+
 describe("failed assistant drafts in the run history", () => {
   // recordAssistantDraftFailure stores a reason code in action_runs.error;
   // the workflow tab must show owners a label, never the code.

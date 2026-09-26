@@ -208,3 +208,24 @@ describe("ScanningPage at capacity", () => {
     expect(screen.queryByText(c.atCapacity)).toBeNull();
   });
 });
+
+describe("ScanningPage dead-lettered state", () => {
+  it("shows the stuck card with a new-scan link, no Resume button, and stops polling", async () => {
+    statusReplies = [{
+      ok: true,
+      status: 200,
+      body: { status: "collecting", processingStage: "collecting_aeo", shareSlug: null, coverage: null, failureCorrelationId: null, deadLettered: true },
+    }];
+    render(<ScanningPage locale="en" jobId={JOB} />);
+    await advance(1_000);
+
+    expect(screen.getByText("This scan stopped responding")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Start a new scan/ }).getAttribute("href")).toBe("/en/scan");
+    expect(screen.queryByText(c.stalledResume)).toBeNull();
+    expect(screen.queryByText(c.stalledCheck)).toBeNull();
+
+    const spent = statusCalls();
+    await advance(MAX_POLL_DURATION_MS + 60_000);
+    expect(statusCalls()).toBe(spent);
+  });
+});

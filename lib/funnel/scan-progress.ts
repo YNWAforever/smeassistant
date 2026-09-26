@@ -27,6 +27,8 @@ export interface ScanStatusResponse {
   coverage: number | null;
   failureCorrelationId: string | null;
   moduleStates?: Record<CollectorKey, ModuleProviderState> | null;
+  /** P3.5b: in flight but past its three attempts; the lease will not claim it again. */
+  deadLettered?: boolean;
 }
 
 /** 0.7 -> 70, already-a-percentage values pass through. Mirrors
@@ -163,7 +165,7 @@ export const CLOCK_SKEW_TOLERANCE_MS = 60_000;
 export const SCAN_RECLAIM_WINDOW_MINUTES = 30;
 
 export type StalledReason = "timeout" | "rateLimited" | "unreachable" | "missing";
-export type ScanViewState = "running" | "ready" | "failed" | "stalled";
+export type ScanViewState = "running" | "ready" | "failed" | "stalled" | "dead_lettered";
 
 export function isPollBudgetExhausted(attempt: number, elapsedMs: number): boolean {
   return attempt >= MAX_POLL_ATTEMPTS || elapsedMs >= MAX_POLL_DURATION_MS;
@@ -240,10 +242,11 @@ export function shouldCatchUp(state: PollLoopState): boolean {
   return !state.terminal && state.stalledReason !== "missing" && state.stalledReason !== "rateLimited";
 }
 
-/** Terminal truth always outranks a stalled verdict. */
-export function scanViewState(input: { status: string; stalledReason: StalledReason | null }): ScanViewState {
+/** Terminal truth always outranks a stalled verdict or a stale dead-letter flag. */
+export function scanViewState(input: { status: string; stalledReason: StalledReason | null; deadLettered?: boolean }): ScanViewState {
   if (input.status === "failed") return "failed";
   if (isTerminalStatus(input.status)) return "ready";
+  if (input.deadLettered) return "dead_lettered";
   if (input.stalledReason) return "stalled";
   return "running";
 }

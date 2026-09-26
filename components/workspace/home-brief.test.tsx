@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import type { ReactNode } from "react";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -41,7 +42,7 @@ function baseBrief(proof: HomeBrief["proof"]): HomeBrief {
   };
 }
 
-function render(proof: HomeBrief["proof"]) {
+function render(proof: HomeBrief["proof"], problems?: ReactNode) {
   const root = document.createElement("div");
   root.innerHTML = renderToStaticMarkup(
     <HomeBriefView
@@ -54,6 +55,7 @@ function render(proof: HomeBrief["proof"]) {
       locations={[{ slug: "yik-yam", name: "Yik Yam" }]}
       brief={baseBrief(proof)}
       consentPolicyVersion="2026-07-28"
+      problems={problems}
     />,
   );
   return root;
@@ -93,5 +95,20 @@ describe("HomeBriefView proof card", () => {
   it("shows the empty state when there is nothing measured yet", () => {
     const text = render(null).textContent ?? "";
     expect(text).toContain("Proof appears after an action is completed and a comparable scan lands");
+  });
+});
+
+describe("HomeBriefView problems slot", () => {
+  it("renders the problems slot after the page's <h1>, never before it", () => {
+    const html = render(null, <div data-testid="problems-marker"><h2>Needs attention</h2></div>).innerHTML;
+    const h1Index = html.indexOf("<h1>");
+    const markerIndex = html.indexOf('data-testid="problems-marker"');
+    expect(h1Index).toBeGreaterThanOrEqual(0);
+    expect(markerIndex).toBeGreaterThan(h1Index);
+  });
+
+  it("renders nothing extra when problems is omitted", () => {
+    const root = render(null);
+    expect(root.querySelector('[data-testid="problems-marker"]')).toBeNull();
   });
 });

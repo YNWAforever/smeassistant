@@ -693,3 +693,112 @@ The sections above describe the Task 10 candidate `90ef323` and its record `6bdd
 - **M5: a rare deadlock between a claim and a concurrent workspace delete.** The claim holds the budget lock, then locks the job row and inserts a `scan_attempts` row whose foreign key checks the workspace row. A concurrent delete of that workspace locks the workspace row and then updates its jobs (`ON DELETE SET NULL`). Postgres detects the cycle and aborts one side. If the claim is aborted, its transaction rolls back, the store reports `claim_failed` as for any claim error, and the job stays claimable for a later attempt. No test provokes it.
 - **M6: the budget starts from zero at rollout.** Attempts before 0009, and claims made by the old deployment between applying 0009 and deploying, are not in `scan_attempts`, so the first 24 hours after the deploy undercount. Runbook step 5.
 - **M7: the pending count scans `audit_jobs` sequentially, under the global lock.** Every admission and every metered claim counts pending jobs with no supporting partial index, and it does so while holding the single budget lock, so a large `audit_jobs` would lengthen every budget decision and serialize them. The index is deferred: 0009 is frozen by `apply-0009.sql`, which embeds its exact bytes and checksum, so an index needs a new migration of its own.
+
+## P3.5b — failure and retry view
+
+**Branch** `p35b-failure-view`, 15 commits on `main` at `8aad9a9` (stacked on `p35a-spend-budgets`, PR #21, not yet merged) · Task 13 (this record) is the 16th. Worktree `C:\Users\laich\Documents\smeassistant\.claude\worktrees\p35b-failure-view`. Node `v24.18.0`, pnpm `9.12.0` via corepack, Windows 11, Docker Server `29.7.2`.
+
+Built from `docs/superpowers/plans/2026-09-25-failure-retry-view.md` (Tasks 1–12), against the design in [`docs/superpowers/specs/2026-09-25-failure-retry-view-design.md`](../../superpowers/specs/2026-09-25-failure-retry-view-design.md).
+
+**Implemented and locally verified. Nothing here is hosted-verified.** No migration, no deployment, no remote CRON, no paid provider call, no push.
+
+### What this closes
+
+The Master Plan's P3.5 asks for "integration-health and actionable failure notices visible to operators; useful, localized owner next steps without secrets or stack traces" and "authorized dead-letter/retry controls, correlation IDs and a support view that respects tenant/location access". §P1 (line 188) asks for "a terminal failure/retry state instead of orphaned `running` work".
+
+Before this slice a scan that exhausted its 3 claim attempts stayed `collecting|scoring|persisting` forever: nothing showed it, nothing closed it, and the owner's Resume button was a dead end (`claim` returns `already_claimed`). Scan failures, draft-run failures, Google connection problems and post-processing retries each existed only in their own table or in `audit_events` payloads, invisible to anyone without a database console. The one operator role (`OPERATOR_EMAILS`, `lib/auth/operator.ts`) gated only the access-request queue.
+
+### Decisions (user, 2026-09-25)
+
+| Question | Decision |
+|---|---|
+| Who it serves | Operator + owner: an operator failure queue and owner-side failure notices |
+| Failure kinds | Scans (failed + dead-lettered), AI draft runs, Google connection, workspace post-processing |
+| Dead-lettered scans | Auto-close + release: the cron tick closes them after a 24-hour grace period; before that an operator can release one more attempt on the same job |
+| Owner surface | Home "Needs attention" card + Activity "Problems & recovery" section |
+| Approach | A — read model over existing tables (no new table; derived from the rows that are the actual state) |
+
+Out of scope, by the same decisions: mail (P3.5c), budget/rate-limit refusals and cron step failures (log-only), operator alerting, acknowledge/assign state.
+
+**Six planning deviations** (decided while writing the plan, before any code):
+
+1. **Revoked Google connections are not problems.** `status='revoked'` is written only by the owner's deliberate disconnect or by replacement. Only `expired` and `error` count, judged on the workspace's newest non-active row, and only while no `active` row exists.
+2. **Assistant drafts are excluded from `draft_failed`** (`input->>'source'='assistant'`): they have no action button to retry and are conversational.
+3. **One `draft_failed` item per action** (the newest failed run), so three failures of one action show once.
+4. **`workspace_processing` uses the `SCAN-` reference** of its job (it is a job-keyed row); there is no `JOB-` prefix.
+5. **`ops.scan.released` carries no operator email.** The owner Activity page prints every scalar payload value, so an email there would leak staff identity to merchants. `actor_id` identifies the operator instead.
+6. **All new owner strings, including the scanning-page stuck card, live in the `problems` namespace of `lib/messages/*.json`**, read with `t()` from `lib/i18n.ts`, not split between that and `lib/copy.ts`.
+
+**Review-driven changes** (found and fixed while implementing Tasks 1–12, before this record):
+
+- Search filters run **after** `DISTINCT ON` in `lib/repositories/failures.ts` (`draft_failed`, `google_connection`), so an older, superseded row can never be surfaced by a reference/id search — filtering by id before the grouping could make a stale row survive as its group's only remaining row.
+- A later **successful** assistant run does not count as recovery for a `draft_failed` item: the `NOT EXISTS` recovery check excludes assistant-sourced successes (`coalesce(s.input->>'source','') <> 'assistant'`), matching the same exclusion already applied to the failure itself.
+- The **owner-action location rule** treats a `null` location as in scope for every member (`visibleTo`/`ownerActionFor` in `lib/ops/owner-actions.ts`), mirroring `lib/auth.ts::inLocationScope`'s `if (locationId === null) return true;`.
+- `problemTitle` (`lib/ops/problem-copy.ts`) is typed to `OwnerFailureKind`, not the full `FailureKind`, so a `workspace_processing` item (owner-invisible) cannot compile as an argument.
+- Audit rows for close and release are written in the **same transaction** as their guarded `UPDATE`, deliberately unlike the best-effort `recordNeonEvent` path elsewhere: closing a scan or granting an extra attempt is a privileged change, and one recorded with no audit row would be unaccountable. An audit-insert failure rolls the whole action back.
+- The operator health "Failed draft runs" line (`operatorHealth()` in `lib/repositories/failures.ts`) counts **failed run events** in the 24h/7d windows, not open items — a `draft_failed` list item collapses to one per action, but the health strip counts every failure, matching how often drafting actually failed.
+- `HomeBriefView` renders the "Needs attention" card **after** the page's `<h1>`, not before it (`components/workspace/home-brief.tsx`).
+- Home's two reads (`getHomeBrief` and `loadWorkspaceProblems`) run in `Promise.all(...)`, not sequentially, in `app/[locale]/owner/[workspaceSlug]/page.tsx`.
+
+### Consent boundary — why operators cannot retry failed scans or drafts
+
+A new scan needs the owner's own fresh consent (`lib/workspace/rescan.ts:159-172`: consent is supplied by the caller, never synthesised). An operator therefore cannot create a replacement scan. Failed scans and failed drafts stay the owner's to retry; Google reconnection needs the owner's own OAuth; post-processing already retries every 5 minutes on its own. The **only** operator control is releasing a **dead-lettered** job — one more attempt on the same job, which already carries its own consent, share slug and budget accounting. That is why the owner-action matrix (`lib/ops/owner-actions.ts`) maps `scan_dead_lettered` to `"none"` for every role: there is nothing for the owner to click; the notice explains that it closes automatically.
+
+### What changed, by task
+
+Full diff `8aad9a9..HEAD`: **53 files changed, 2,286 insertions, 31 deletions**, across 15 commits.
+
+| Task | Commit(s) | What it did |
+|---|---|---|
+| 1. Dead-letter condition | `c3cfd87` | `DEAD_LETTERED_JOB_CONDITION_SQL` in `lib/scan/claimable.ts`, the exact complement of the claimable in-flight branch; a unit test pinning both SQL strings; an integration guard proving every stale in-flight job is in exactly one of the two. |
+| 2. Failure types and references | `5844086` | `lib/ops/failure-types.ts` (`FailureKind`, `FailureItem`, `OwnerAction`, `OwnerProblem`, `OperatorHealth`), `lib/ops/references.ts` (`runReference`, `connectionReference`, `referenceFor`, `parseFailureSearch`). |
+| 3. Failures repository | `0a9efcd`, fixed by `89ead3c` | `lib/repositories/failures.ts`: five allowlisted-column SELECTs (`scan_failed`, `scan_dead_lettered`, `draft_failed`, `google_connection`, `workspace_processing`), `list()` and `health()`. The fix commit moved the search filters outside the `DISTINCT ON` subqueries and excluded assistant successes from the recovery check. |
+| 4. Owner problem copy and matrix | `8e97cb3` | `problems` namespace in `lib/messages/{en,zh-HK,zh-TW}.json`; `lib/ops/problem-copy.ts` (`problemReasonLabel`, `problemTitle`, `nextStepText`); `lib/ops/owner-actions.ts` (`visibleTo`, `ownerActionFor`, `filterToLocation`, `buildOwnerProblems`). |
+| 5. Dead-letter repository | `ba96282`, fixed by `02a429d` | `lib/repositories/dead-letter.ts`: `closeExhausted(limit)` (guarded UPDATE, one `scan_completed` event via `writeScanEventSafely` plus `scan.auto_closed`, per job, best-effort across the batch) and `release(jobId, operatorUserId)` (guarded UPDATE to `attempt_count=2`, `ops.scan.released`). `AUDIT_EVENTS` and `audit-labels.ts` gained both names. |
+| 6. Cron auto-close step | `fade559` | `lib/scan/dispatch-process.ts` (`dispatchScanProcess`, shared by cron and release); `app/api/cron/dispatch/route.ts` gained the `closeExhausted(20)` step before reconcile, isolated like the other three concerns, and the summary's `autoClosed` field. |
+| 7. Operator release route | `7548a52` | `app/api/ops/failures/scans/[jobId]/release/route.ts`: `resolveOperator()` gate (404), UUID validation (404), the guarded release (409 `not_dead_lettered` on no match), best-effort dispatch under `waitUntil`. |
+| 8. Scanning page dead-letter state | `881d9b4`, fixed by `6ef09c3` | `deadLettered` on `ScanStatusResponse`/`ScanViewState` (`lib/funnel/scan-progress.ts`), `app/api/scan/status/route.ts`; `components/scan-stuck-card.tsx` (new) and `components/scanning-page.tsx` show it instead of the dead-end Resume button and stop polling. |
+| 9. Operator failures page | `5e32abb` | `app/[locale]/ops/failures/page.tsx` (health strip, kind filter, reference search, release button on dead-lettered rows, explicit error state), `components/ops/{ops-nav,release-button}.tsx`; `access-requests/page.tsx` gained the nav link. |
+| 10. Owner notices | `005beae`, fixed by `6ef09c3` | `lib/workspace/problems.ts` (`loadWorkspaceProblems`, degrades to `null` and logs on failure); `components/workspace/{needs-attention-card,problems-list,problem-item}.tsx`; wired into Home and Activity, with the Home reads parallelised and the card moved after the `<h1>` in the fix commit. |
+| 11. Scope integration test | `a57e55f` | One more test in `test/integration/neon-failures.integration.test.ts` proving a scoped manager sees only their own location's items through the real reader (not just the pure function). |
+| 12. No raw error code | `57f85ee` | `components/workspace/action-detail-client.tsx`'s fallback toast branch shows a generic friendly line instead of interpolating the raw run error. |
+| 13. Record, full verification | *(this commit)* | Gates; this section and the matching `PHASE-3-TEST-RESULTS.md` section. |
+
+### Owner actions
+
+**Nothing is required to deploy this slice.** No migration, no new required environment variable.
+
+- **Optional: set `OPERATOR_EMAILS`** to use `/ops/failures` (same variable already gates `/ops/access-requests`; the two pages share `resolveOperator()`).
+- **Auto-close depends on the cron tick**, which needs `CRON_SECRET` set in production — the same dependency P3.1 recorded for reclaim. Without it, dead-lettered scans are visible to operators and releasable, but never auto-close.
+- **This branch is stacked on `p35a-spend-budgets` (PR #21) and must merge after it.** It was built and gated on top of that branch's tip (`8aad9a9`), not on `origin/main`.
+
+### Known limits (spec §6, plus this session's findings)
+
+- No operator alerting (email/pager): operators must open the queue. Waits for the P3.5c outbox.
+- No acknowledge/assign state; the queue empties as problems resolve, not as they are looked at.
+- No per-job release cap; the P3.5a spend budget is what bounds the cost of a released job's next attempt.
+- Budget/rate-limit refusals and cron step failures stay log-only, not surfaced as failure items.
+- Auto-close depends on the cron tick, which needs `CRON_SECRET` in production (same dependency as reclaim).
+- The failed-scan window query (`status='failed'` scan over `audit_jobs`) has no dedicated index; acceptable at pilot volume, the same class as P3.5a's M7.
+- The draft-reason subquery (one correlated `audit_events` lookup per failed action) and the `NOT EXISTS` recovery check in `draft_failed` have no dedicated index either — same class, same acceptance.
+- **The `google_connection` kind is effectively dormant today.** No production code path commits an `expired` or `error` `oauth_connections` row: `expired` is only a transient in-transaction state inside `lib/repositories/claims.ts`, and `revoked` (the one status a real disconnect writes) is excluded by design (deviation 1). An empty Google list in the operator queue or on a workspace's problems is therefore not evidence of healthy connections — it may simply mean nothing has ever written a matching status.
+- **A foregrounded owner scanning tab stays on the stuck card after an operator release.** The scanning page's polling has already stopped for a `deadLettered` status; a release changes the job in the database but the open tab does not learn of it until the owner refocuses the tab (`visibilitychange` catch-up) or reloads.
+- No migration. None was needed.
+
+### Verification
+
+Full detail is in `PHASE-3-TEST-RESULTS.md`. Summary, one gate at a time, run sequentially on 2026-09-26 at the branch tip:
+
+| Command | Result |
+|---|---|
+| `corepack pnpm typecheck` | **passed**: exit 0. Root `tsc --noEmit`, then all 4 workspace packages report `Done`. |
+| `corepack pnpm lint` | **passed**: exit 0, `✖ 30 problems (0 errors, 30 warnings)` across 18 files — the same counts recorded at P3.5a's `90ef323`. No file this branch touches appears among them. |
+| `corepack pnpm test` | **passed**: exit 0, zero failures on the first run. **340 files / 3,627 tests** (app 289 / 3,040; `lib/evidence/safe-media.test.ts` run alone 1 / 62; `packages/region` 3 / 23; `packages/scoring` 16 / 183; `packages/contracts` 3 / 20; `packages/scan-engine` 28 / 299). |
+| `NEON_INTEGRATION=1 corepack pnpm test:integration` | **passed**: exit 0, **36 files / 374 tests**, 244.70s. |
+| `corepack pnpm db:verify` | **passed**: exit 0, 0001–0009 applied, replay empty, **36 tables / 422 columns / 162 constraints / 92 indexes**, journal 9 — unchanged from P3.5a, because this branch adds no migration. |
+| `corepack pnpm build` (Turbopack) | **blocked**, as at every prior phase on this machine: `Error: Turbopack build failed with 5 errors`, the standing `radix-ui` cascade (`@radix-ui/react-dismissable-layer`, `@radix-ui/react-visually-hidden`), unrelated to this branch's files. Not worked around; CI is the real build gate. |
+| `corepack pnpm exec next build --webpack` | **passed**: exit 0, `✓ Compiled successfully`, including the new routes `/[locale]/ops/failures` and `/api/ops/failures/scans/[jobId]/release` in the route manifest. |
+
+After the unit-test run, the two tracked snapshot files (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) showed as modified; `git diff --ignore-cr-at-eol --stat` was empty, confirming line-ending-only changes, and both were restored with `git checkout --`. `git status --short` was otherwise clean before this documentation commit.
+
+**Mutation checks.** Performed during Tasks 1–12 (not re-run independently in Task 13, unlike P3.5a's whole-branch re-run): Task 1 (`attempt_count>=3` → `attempt_count>=2` in `DEAD_LETTERED_JOB_CONDITION_SQL`, killed by both the unit test and the integration complement test); Task 3, four mutations (removing the assistant-source filter, removing the outer Google `reason IN (...)` filter, swapping the correlation column for `failure_category`, and adding `r.error AS business_name` to `draft_failed` — each killed by its named test, the last by "never returns personal fields"); Task 4 (collapsing the tier/location rescan ternary to an unconditional `"rescan"`, killed by the lite-tier and no-location cases in `owner-actions.test.ts`); Task 5, four mutations (`interval '24 hours'` → `'22 hours'` in the grace window, killed by the 23-hours-not-closed case; removing the dead-letter condition from the release CTE, killed by "refuses a job that is not dead-lettered"; setting the release to `attempt_count=3` instead of `2`, killed by the "grants exactly one more attempt" and "makes the job claimable once" cases; removing the `writeScanEventSafely` call, killed by "writes exactly one scan_completed"); Task 8's fix (removing the early `deadLettered` return from the scanning-page polling loop, which made "shows the stuck card with a new-scan link, no Resume button, and stops polling" fail before the fix was written); Task 11 (`visibleTo`'s `return inScope(ctx, item.locationId);` → `return true;`, killed by "never shows a scoped manager another location's problems, through the real reader" — this one run by the controlling session as part of Task 13's verification). The Task 3-fix and Task 4/5-fix tests (the search-after-`DISTINCT ON` case, the assistant-recovery case, the tier/location matrix cases, the grace-window and release-guard cases) were each seen RED before their fix and GREEN after, in the same test-first sequence P3.5a used.

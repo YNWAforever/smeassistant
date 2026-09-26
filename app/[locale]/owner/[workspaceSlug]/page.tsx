@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import { TriangleAlert } from "lucide-react";
 
 import { HomeBriefView } from "@/components/workspace/home-brief";
+import { NeedsAttentionCard } from "@/components/workspace/needs-attention-card";
+import { filterToLocation } from "@/lib/ops/owner-actions";
 import { currentScanConsentPolicyVersion } from "@/lib/scan/consent";
 import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
+import { loadWorkspaceProblems } from "@/lib/workspace/problems";
 import { getHomeBrief } from "@/lib/workspace/queries-pages";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +22,16 @@ export async function generateMetadata(props: OwnerPageProps): Promise<Metadata>
  */
 export default async function WorkspaceHome(props: OwnerPageProps) {
   const page = await loadOwnerPage(props);
-  const brief = await getHomeBrief(page.ctx, page.locationSlug);
+  const [brief, problems] = await Promise.all([
+    getHomeBrief(page.ctx, page.locationSlug),
+    loadWorkspaceProblems({
+      workspaceId: page.ctx.workspace.id,
+      market: page.ctx.workspace.market,
+      membership: page.membership,
+      tier: page.ctx.workspace.tier,
+    }),
+  ]);
+  const locationId = page.locationSlug === "all" ? "all" : page.ctx.locations.find((l) => l.slug === page.locationSlug)?.id ?? "all";
   const forbidden = page.query.forbidden === "1";
   return (
     <>
@@ -40,6 +52,17 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
         demo={page.ctx.workspace.isDemo}
         fixPack={{ workspaceId: page.ctx.workspace.id, role: page.membership.role }}
         role={page.membership.role}
+        problems={problems && (
+          <NeedsAttentionCard
+            locale={page.locale}
+            workspaceSlug={page.workspaceSlug}
+            workspaceId={page.ctx.workspace.id}
+            tier={page.ctx.workspace.tier}
+            role={page.membership.role}
+            consentPolicyVersion={currentScanConsentPolicyVersion()}
+            problems={filterToLocation(problems, locationId)}
+          />
+        )}
       />
     </>
   );

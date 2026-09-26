@@ -58,4 +58,27 @@ describe("scan status rate-limit boundary", () => {
     const body = await response.json();
     expect(body.moduleStates).toBeNull();
   });
+
+  it("reports a dead-lettered job", async () => {
+    const jobId = "00000000-0000-4000-8000-000000000001";
+    mocks.from.mockResolvedValue({
+      id: jobId, status: "collecting", processing_stage: "collecting_aeo", share_slug: "slug", score_coverage: null,
+      failure_correlation_id: null, module_results: null, module_scores: null, dead_lettered: true,
+    });
+    const response = await GET(new Request("https://scanner.test/api/scan/status?jobId=" + jobId));
+    const body = await response.json();
+    expect(body.deadLettered).toBe(true);
+    expect(body.status).toBe("collecting");
+  });
+
+  it("reports deadLettered false otherwise", async () => {
+    const jobId = "00000000-0000-4000-8000-000000000001";
+    mocks.from.mockResolvedValue({
+      id: jobId, status: "collecting", processing_stage: "collecting_aeo", share_slug: "slug", score_coverage: null,
+      failure_correlation_id: null, module_results: null, module_scores: null, dead_lettered: false,
+    });
+    const response = await GET(new Request("https://scanner.test/api/scan/status?jobId=" + jobId));
+    const body = await response.json();
+    expect(body.deadLettered).toBe(false);
+  });
 });
