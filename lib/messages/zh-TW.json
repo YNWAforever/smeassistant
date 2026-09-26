@@ -70,6 +70,12 @@
       "button": "開始新的掃描"
     }
   },
+  "commercial": {
+    "notOpen": "訂閱尚未開放 — 請聯絡 Fimmick",
+    "contactFimmick": "聯絡 Fimmick",
+    "allowanceLine": "免費工作台：每月 {count} 次核准後交付",
+    "unlimitedLine": "每月不限核准後交付次數"
+  },
   "pause": {
     "scans": "掃描暫停維護中。你的掃描已儲存，請稍後再試。",
     "scansNotStarted": "掃描暫停維護中。尚未開始任何掃描，請稍後再試。",

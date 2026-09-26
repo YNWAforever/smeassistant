@@ -24,7 +24,10 @@ const UPSTREAM_NAMESPACES = ["scanner", "scanning", "report", "share", "legal"];
 // titles, next-step copy and allowlisted reason codes, with the same register split.
 // "pause" (P3.5d) labels the incident kill-switch refusals shown to owners,
 // with the same register split.
-const APP_NAMESPACES = ["applied", "verified", "budget", "draftFailure", "problems", "pause"];
+// "commercial" (P3.3) labels the public pricing/allowance strings that read
+// the one commercial contract, including the "subscriptions are not open
+// yet" label shown while billing is closed.
+const APP_NAMESPACES = ["applied", "verified", "budget", "draftFailure", "problems", "pause", "commercial"];
 const NAMESPACES = [...UPSTREAM_NAMESPACES, ...APP_NAMESPACES];
 
 function readBundle(locale: string): Record<string, unknown> {

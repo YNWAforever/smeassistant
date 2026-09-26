@@ -16,8 +16,10 @@ import {
 import { DemoBadge, FactType, ProviderBadge, PublicPageFrame, SectionCard } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { allowanceText, type PublicBilling } from "@/lib/commercial/presentation"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { formatMarketPrice, marketPricing } from "@/lib/funnel/pricing"
+import { t } from "@/lib/i18n"
 import { interpolate } from "@/lib/share"
 import { getMarketConfig, type Market } from "@sme-scanner/region"
 import type { ScoreResult } from "@sme-scanner/scoring"
@@ -31,12 +33,16 @@ export { UnlockPage } from "@/components/unlock-page"
 /** Pinned to the scorer both apps run (CLAUDE.md guardrail 16); a bump upstream breaks this line. */
 const SCORING_VERSION: ScoreResult["scoringVersion"] = "2026-08-16"
 
-export function PricingPage({ locale, market }: { locale: PrototypeLocale; market: Market }) {
+export function PricingPage({ locale, market, billing }: { locale: PrototypeLocale; market: Market; billing: PublicBilling }) {
   const isChinese = locale !== "en"
   const p = copy[locale].funnel.pricing
   const f = copy[locale].funnel.landing
   const pricing = marketPricing(market)
   const growthPrice = formatMarketPrice(pricing)
+  const liteAllowance = allowanceText(locale, "lite")
+  const paidAllowance = allowanceText(locale, "paid")
+  const notOpenLabel = t(locale, "commercial.notOpen")
+  const contactHref = billing.contactHref[market]
   const plans = isChinese ? [
     {
       key: "free",
@@ -46,7 +52,7 @@ export function PricingPage({ locale, market }: { locale: PrototypeLocale; marke
       cadence: "",
       description: "先看清目前的能見度、證據來源及最值得處理的問題。",
       meta: "無需登入開始",
-      features: ["1 次公開證據掃描", "評分連同覆蓋率", "3 項安全優先建議", "方法、來源及限制"],
+      features: ["1 次公開證據掃描", "評分連同覆蓋率", "3 項安全優先建議", "方法、來源及限制", liteAllowance],
       cta: "免費掃描",
       href: `/${locale}/scan`,
       featured: false,
@@ -59,7 +65,7 @@ export function PricingPage({ locale, market }: { locale: PrototypeLocale; marke
       cadence: `／${f.perMonth}`,
       description: "適合希望持續改善能見度、但不想管理多個 AI 工具的小型團隊。",
       meta: "1 個地點",
-      features: ["核准後交付，用量在工作台內顯示", "可隨時自行執行的可比較重新掃描", "完整 AI 能見度團隊", "草稿版本、店主審批及成效證明"],
+      features: [paidAllowance, "可隨時自行執行的可比較重新掃描", "完整 AI 能見度團隊", "草稿版本、店主審批及成效證明"],
       cta: "開始增長工作台",
       href: `/${locale}/owner/sign-in?plan=growth`,
       featured: true,
@@ -92,10 +98,10 @@ export function PricingPage({ locale, market }: { locale: PrototypeLocale; marke
     },
   ] : [
     {
-      key: "free", label: "One free scan", title: "SME Scanner", price: "Free", cadence: "", description: "See current visibility, source evidence and the best issue to tackle first.", meta: "No login to start", features: ["One public evidence scan", "Score with coverage", "Three safe priorities", "Methodology, sources and limitations"], cta: "Start free scan", href: `/${locale}/scan`, featured: false,
+      key: "free", label: "One free scan", title: "SME Scanner", price: "Free", cadence: "", description: "See current visibility, source evidence and the best issue to tackle first.", meta: "No login to start", features: ["One public evidence scan", "Score with coverage", "Three safe priorities", "Methodology, sources and limitations", liteAllowance], cta: "Start free scan", href: `/${locale}/scan`, featured: false,
     },
     {
-      key: "growth", label: "Best for one location", title: "Growth Workspace", price: growthPrice, cadence: ` / ${f.perMonth}`, description: "For a small team that wants recurring improvement without managing a bundle of AI tools.", meta: "1 location", features: ["Approved deliveries, with usage shown in your workspace", "Comparable rescans, run whenever you choose", "Complete AI Visibility Team", "Versions, owner approval and proof"], cta: "Start Growth", href: `/${locale}/owner/sign-in?plan=growth`, featured: true,
+      key: "growth", label: "Best for one location", title: "Growth Workspace", price: growthPrice, cadence: ` / ${f.perMonth}`, description: "For a small team that wants recurring improvement without managing a bundle of AI tools.", meta: "1 location", features: [paidAllowance, "Comparable rescans, run whenever you choose", "Complete AI Visibility Team", "Versions, owner approval and proof"], cta: "Start Growth", href: `/${locale}/owner/sign-in?plan=growth`, featured: true,
     },
     {
       key: "multi", label: "Up to 3 locations", title: "Multi-location", price: f.contactPricing, cadence: "", description: "One priority, approval and improvement rhythm across multiple business locations.", meta: "Includes 3 locations", features: ["Approved deliveries pooled across locations", "Cross-location prioritisation", "Location-scoped evidence and approvals", "Combined and per-location outcomes"], cta: "Manage multiple locations", href: `/${locale}/owner/sign-in?plan=multi`, featured: false,
@@ -115,10 +121,14 @@ export function PricingPage({ locale, market }: { locale: PrototypeLocale; marke
             <p>{plan.description}</p>
             <strong className="plan-meta">{plan.meta}</strong>
             <ul className="check-list">{plan.features.map((feature) => <li key={feature}><Check /> {feature}</li>)}</ul>
-            <Button asChild variant={plan.featured ? "default" : "outline"} className="w-full"><Link href={plan.href}>{plan.cta}</Link></Button>
+            {plan.key === "growth" && !billing.open ? (
+              <p className="limitation-note">{contactHref ? <a href={contactHref}>{notOpenLabel}</a> : notOpenLabel}</p>
+            ) : (
+              <Button asChild variant={plan.featured ? "default" : "outline"} className="w-full"><Link href={plan.href}>{plan.cta}</Link></Button>
+            )}
           </SectionCard>)}
         </div>
-        <p className="plan-test-note">{p.planNote}</p>
+        <p className="plan-test-note">{billing.open ? p.planNote : f.planNote}</p>
         <SectionCard className="pricing-usage-banner"><FileCheck2 /><div><p className="eyebrow">{isChinese ? "核准後交付，不是代幣" : "Approved deliveries, not tokens"}</p><h2>{isChinese ? "只有指定版本獲核准並首次成功匯出或發佈，才計 1 次交付。" : "One delivery is counted only after an exact version is approved and first exported or published."}</h2><p>{isChinese ? "查看證據、優先排序、重新掃描、生成、修改、退回、拒絕或執行失敗都不扣除用量。所有 Workspace 方案都包括安全檢查、店主審批、活動紀錄及可還原路徑。" : "Evidence, prioritisation, rescans, generation, revisions, returns, rejections and failed runs use no allowance. Safety checks, owner approval, activity history and recovery are included in every Workspace plan."}</p></div></SectionCard>
         <SectionCard className="pricing-faq"><div><p className="eyebrow">{isChinese ? "簡單選擇" : "Simple choices"}</p><h2>{isChinese ? "我應選哪個方案？" : "Which plan fits?"}</h2><p>{isChinese ? "先免費掃描。單一地點可由增長工作台開始；第 2 或第 3 個地點出現時才考慮多地點。需要專人推進時，再選專人服務。" : "Start free. Choose Growth for one location, Multi-location when a second or third location appears, and Managed when you need human execution."}</p></div><div><h3>{isChinese ? "內容會自動發佈嗎？" : "Will content auto-publish?"}</h3><p>{isChinese ? "不會。每次匯出或發佈前都需要正確權限及明確店主審批；專人服務亦不例外。" : "No. Every export or publish step requires the right permission and an explicit owner approval, including Managed Visibility."}</p></div><div><h3>{p.faqFinalTitle}</h3><p>{p.faqFinalBody}</p></div></SectionCard>
       </main>
