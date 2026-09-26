@@ -26,7 +26,7 @@
 
 This section supersedes historical database/Auth setup and deployment instructions below. Older phases remain design and migration evidence, not instructions to reconnect the legacy database. Hosted branch, staging origin and Auth target are NOT CHOSEN; hosted acceptance and deployment are NOT RUN.
 
-- Use `db:verify` for an owned disposable PostgreSQL migration/catalog/replay check; immutable Neon migrations 0001–0004 must not be edited.
+- Use `db:verify` for an owned disposable PostgreSQL migration/catalog/replay check. Never edit a committed file in `neon/migrations/`; add the next numbered migration instead, because applied migrations must replay identically.
 - Use `db:types` to generate actual row and insert type mappings from `lib/db/schema/`; no hosted introspection or CLI credentials are needed.
 - `seed:demo --owned-test` creates, seeds, verifies and destroys its own labeled fixture; no arbitrary or ambient target is accepted.
 - `neon:readiness` validates usable values, canonical origins and explicit expected host/database before read-only journal and schema metadata queries. It does not test personal/business rows or send Auth requests. A READY result is schema/configuration readiness, not hosted Auth delivery acceptance.
@@ -36,15 +36,8 @@ This section supersedes historical database/Auth setup and deployment instructio
 
 ## How to use this file
 
-```text
-# Kick-off (run from the smeassistant repo root, with the upstream checkout next to it)
-claude
-> Read CLAUDE.md. Run the Phase 0 discovery checklist, report findings, then execute Phase 0.
-> After each phase: run the phase's verification block, commit, and stop for review.
-```
-
-- Work **one phase at a time**, in order. Each phase ends with a green verification block and a commit on
-  branch `feat/visibility-workspace-integration`.
+- The integration playbook (Part B, Phases 0–7) is complete; its reports are `docs/integration/PHASE-0..7-REPORT.md`.
+  Part B stays here as design evidence for why the code is shaped the way it is, not as a to-do list.
 - `SME_SCANNER_SRC` = path to the upstream checkout. Default `../sme-scanner-upstream`
   (Willy's machine: `C:\Users\laich\Documents\sme-scanner-upstream`, a clone of `origin/main`). It must be at the
   pinned SHA (Phase 0.1 checks this). **Never modify that repo; only read/copy from it.**
@@ -114,8 +107,8 @@ prototype copy (`/methodology`, `/trust`, `/pricing`) and are the differentiator
   dependencies (upstream's `ScanProcessorDependencies`, `GBPCollectorDependencies`) and fixture payloads (§3.2.1).
 - **Never** apply a remote migration, run a live paid scan, deploy, `git push`, or open a PR unless Willy
   explicitly asks for that action in the current session. Prepare the command and stop.
-- **Migrations are hand-applied** through the Supabase dashboard after `supabase/verify-migrations.sh` passes
-  (§1.3.6). There is no Supabase CLI workflow and no `supabase db push`.
+- **Migrations are hand-applied** to Neon after `corepack pnpm db:verify` passes on a disposable PostgreSQL
+  (see the Neon operating contract at the top of this file). `supabase/migrations/` is historical evidence only.
 - Never commit secrets. `.env*.local` stays ignored. Keep `.env.example` complete (Appendix A).
 - Preserve the visual design: reuse `app/globals.css`, `app/ramp-refresh.css`, `app/responsive.css`,
   the shadcn components in `components/ui/*` and the existing class names. Change layout/content per §5,
@@ -125,10 +118,11 @@ prototype copy (`/methodology`, `/trust`, `/pricing`) and are the differentiator
   `@typescript-eslint/no-explicit-any` off for `packages/**` only (upstream's SerpApi/RapidAPI/Places JSON boundary).
 - Vendored packages are copied **verbatim** at the pinned SHA. Local changes to them are recorded in
   `packages/<name>/VENDOR.md` (source SHA, file list, diffs) so re-pinning is mechanical.
-- Commit per task with conventional messages (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`, `test:`).
-  Branch: `feat/visibility-workspace-integration`.
-- When a phase ends, write `docs/integration/PHASE-<n>-REPORT.md` (what changed, decisions, open questions,
-  exact verification output).
+- Commit per task with conventional messages (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`, `test:`)
+  on a short-lived feature branch off `main`; work lands on `main` through a PR.
+- When a phase of the active implementation plan ends, write its report beside that plan (currently
+  `docs/implementation/owner-platform-v1/PHASE-<n>-REPORT.md`): what changed, decisions, open questions,
+  exact verification output.
 
 ---
 
@@ -1329,8 +1323,8 @@ legacy app's two callbacks. Storage buckets: `report-evidence` (exists), `worksp
 corepack pnpm install                     # workspace install (pnpm 9.12.0 pinned)
 corepack pnpm dev                         # http://localhost:3000 → /zh-HK
 corepack pnpm typecheck | lint | test | build | e2e | test:integration | test:secret-boundary
-corepack pnpm db:verify                   # supabase/verify-migrations.sh (Docker postgres:16 on Windows) — never applies remotely
-corepack pnpm seed:demo                   # local demo workspace against the Docker Postgres + PostgREST harness
+corepack pnpm db:verify                   # scripts/neon/verify-migrations.ts on an owned disposable PostgreSQL — never applies remotely
+corepack pnpm seed:demo --owned-test      # creates, seeds, verifies and destroys its own labelled fixture
 ```
 
 ## Appendix C — Glossary (prototype term → data)
