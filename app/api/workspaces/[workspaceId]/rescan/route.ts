@@ -3,9 +3,9 @@ import { authorizeWorkspaceRequest } from "@/lib/auth";
 import { logPauseRefusal, pauseState } from "@/lib/budgets/pause";
 import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
+import { tierAllows } from "@/lib/commercial/contract";
 import { rescanRepository } from "@/lib/repositories/rescan";
 import { ipHashFor } from "@/lib/workspace/audit";
-import { isWorkspacePaid } from "@/lib/workspace/entitlement";
 import { parseScanConsent } from "@/lib/scan/consent";
 import { enqueueRescan, ensureMonthlySchedule } from "@/lib/workspace/rescan";
 import { resolveAnalyticsSession } from "@/lib/analytics/record-event";
@@ -74,7 +74,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ workspa
   let tier: string | null;
   try { tier = await repo.tier(workspaceId); }
   catch { return NextResponse.json({ error: "unavailable" }, { status: 503 }); }
-  if (!isWorkspacePaid(tier)) return NextResponse.json({ error: "tier_required" }, { status: 403 });
+  if (!tierAllows(tier, "rescans")) return NextResponse.json({ error: "tier_required" }, { status: 403 });
 
   const decision = await enforceRateLimit({ req, scope: "rescan", identifiers: [workspaceId], failClosed: true });
   if (!decision.allowed) return rateLimitedResponse(decision.retryAfterSeconds);
