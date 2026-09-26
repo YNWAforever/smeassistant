@@ -6,12 +6,13 @@
  * Environment only, never the database, so a pause cannot fail on an outage.
  * Client-safe: no server imports.
  */
-export const PAUSE_VARIABLES = ["SCANS_PAUSED", "AI_DRAFTS_PAUSED"] as const;
+export const PAUSE_VARIABLES = ["SCANS_PAUSED", "AI_DRAFTS_PAUSED", "MAIL_PAUSED"] as const;
 export type PauseVariable = (typeof PAUSE_VARIABLES)[number];
 
 export interface PauseConfig {
   scans: boolean;
   ai: boolean;
+  mail: boolean;
 }
 
 export class PauseConfigurationError extends Error {
@@ -31,21 +32,32 @@ function flag(env: Env, variable: PauseVariable): boolean {
 }
 
 export function readPauseConfig(env: Env): PauseConfig {
-  return { scans: flag(env, "SCANS_PAUSED"), ai: flag(env, "AI_DRAFTS_PAUSED") };
+  return {
+    scans: flag(env, "SCANS_PAUSED"),
+    ai: flag(env, "AI_DRAFTS_PAUSED"),
+    mail: flag(env, "MAIL_PAUSED"),
+  };
 }
 
-/** What every entry point uses. An invalid value pauses both: never spend through a typo. */
+/** What every entry point uses. An invalid value pauses every switch: never spend through a typo. */
 export function pauseState(env: Env = process.env): PauseConfig {
   try {
     return readPauseConfig(env);
   } catch (error) {
     const variable = error instanceof PauseConfigurationError ? error.variable : "unknown";
     console.error("[pause] configuration_invalid", { variable });
-    return { scans: true, ai: true };
+    return { scans: true, ai: true, mail: true };
   }
 }
 
-export type PauseEntry = "scan_start" | "rescan" | "retry_claim" | "ai_run" | "assistant_draft" | "llm";
+export type PauseEntry =
+  | "scan_start"
+  | "rescan"
+  | "retry_claim"
+  | "ai_run"
+  | "assistant_draft"
+  | "llm"
+  | "mail_send";
 
 /** The one line every paused refusal writes. Fixed text only. */
 export function logPauseRefusal(entry: PauseEntry): void {
