@@ -14,6 +14,7 @@ export type BillingAvailability =
 
 const STRIPE_ENV_KEYS = [
   "STRIPE_SECRET_KEY",
+  "STRIPE_WEBHOOK_SECRET",
   "STRIPE_HK_TIER_PRICE_ID",
   "STRIPE_TW_TIER_PRICE_ID",
   "APP_ORIGIN",

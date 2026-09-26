@@ -41,6 +41,7 @@ beforeEach(() => {
   vi.stubEnv("APP_ORIGIN", "http://localhost");
   vi.stubEnv("COMMERCIAL_CONTRACT_APPROVED", "2026-09-baseline");
   vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_fixture");
+  vi.stubEnv("STRIPE_WEBHOOK_SECRET", "whsec_fixture");
   vi.stubEnv("STRIPE_HK_TIER_PRICE_ID", "price_hk");
   vi.stubEnv("STRIPE_TW_TIER_PRICE_ID", "price_tw");
   state.load.mockResolvedValue({

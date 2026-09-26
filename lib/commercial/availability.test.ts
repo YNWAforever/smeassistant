@@ -5,6 +5,7 @@ import { billingAvailability } from "./availability";
 const FULL_ENV = {
   COMMERCIAL_CONTRACT_APPROVED: "2026-09-baseline",
   STRIPE_SECRET_KEY: "sk_test_fixture",
+  STRIPE_WEBHOOK_SECRET: "whsec_fixture",
   STRIPE_HK_TIER_PRICE_ID: "price_hk",
   STRIPE_TW_TIER_PRICE_ID: "price_tw",
   APP_ORIGIN: "http://localhost",
@@ -58,7 +59,13 @@ describe("billingAvailability", () => {
     ).toEqual({ open: false, reason: "provider_unconfigured" });
   });
 
-  it.each(["STRIPE_SECRET_KEY", "STRIPE_HK_TIER_PRICE_ID", "STRIPE_TW_TIER_PRICE_ID", "APP_ORIGIN"])(
+  it.each([
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "STRIPE_HK_TIER_PRICE_ID",
+    "STRIPE_TW_TIER_PRICE_ID",
+    "APP_ORIGIN",
+  ])(
     "is provider_unconfigured when %s is whitespace-only",
     (key) => {
       expect(

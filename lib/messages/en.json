@@ -72,7 +72,6 @@
   },
   "commercial": {
     "notOpen": "Subscriptions are not open yet — contact Fimmick",
-    "contactFimmick": "Contact Fimmick",
     "allowanceLine": "Free workspace: {count} approved deliveries a month",
     "unlimitedLine": "Unlimited approved deliveries a month"
   },

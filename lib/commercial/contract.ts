@@ -7,9 +7,18 @@ import type { WorkspaceTier } from "@/lib/workspace/entitlement";
 
 /**
  * The one versioned commercial contract (Master Plan §6 P3.3; design spec
- * §1). Every place that used to hard-code an allowance, a rescan gate or a
- * price now reads it instead, so there is exactly one place to change terms
- * and exactly one version to bump when they change.
+ * §1). Every application-code place that used to hard-code an allowance, a
+ * rescan gate or a price now reads it instead, so there is exactly one place
+ * to change those terms and exactly one version to bump when they change.
+ *
+ * One exception: `neon/migrations/0004_atomic_operations.sql`'s
+ * `export_output_version` function carries its own copy of the lite
+ * allowance (`case when ws_tier = 'paid' then null else 3 end`) for the
+ * `workspace_usage` row it lazily creates on first export. Migrations are
+ * immutable once shipped, so that literal cannot read this module at
+ * runtime; `lib/commercial/contract-migration-drift.test.ts` statically reads
+ * the migration file and fails if that literal and this contract's
+ * `tiers.lite.deliveryAllowance` ever disagree.
  *
  * `seats: null` means no cap on workspace membership exists or is enforced --
  * do not add one here without also building the enforcement; an unenforced

@@ -887,7 +887,7 @@ After the two final-review fixes (`a9a1a41`, `7f12dfc`) the unit suite was re-ru
 
 ## P3.3 — commercial contract on safe defaults
 
-**Branch** `claude/commercial-contract-design-3b8561` (same content line as `p33-commercial-contract`), 9 commits (`0010a33`..`1eb6a50`) on top of `aeb8513` (P3.5d's tip; stacked on `p35d-incident-runbook`, PR #23, not yet merged) · Task 6 (this record) adds a 10th. Worktree `C:\Users\laich\Documents\smeassistant\.claude\worktrees\commercial-contract-design-3b8561`. Node `v24.18.0`, pnpm `9.12.0` via corepack, Windows 11, Docker Server `29.7.2`.
+**Branch** `claude/commercial-contract-design-3b8561` (same content line as `p33-commercial-contract`), 9 commits (`0010a33`..`1eb6a50`) on top of `aeb8513` (P3.5d's tip; stacked on `p35d-incident-runbook`, PR #23, not yet merged) · Task 6 landed as two documentation commits (`ca3f24b`, `387414f`), bringing the branch to 11 · a whole-branch final-review fix pass adds a 12th (this commit). Worktree `C:\Users\laich\Documents\smeassistant\.claude\worktrees\commercial-contract-design-3b8561`. Node `v24.18.0`, pnpm `9.12.0` via corepack, Windows 11, Docker Server `29.7.2`.
 
 Built from `docs/superpowers/plans/2026-09-26-commercial-contract.md` (Tasks 1–6), against the design in [`docs/superpowers/specs/2026-09-26-commercial-contract-design.md`](../../superpowers/specs/2026-09-26-commercial-contract-design.md).
 
@@ -913,6 +913,7 @@ Before this slice, commercial facts lived in three places (`lib/workspace/entitl
 2. **The checkout route test opens billing in `beforeEach`** by stubbing the approval and Stripe env; without that every existing case would get `503`. Assertions unchanged.
 3. **Pricing footnote.** `funnel.pricing.planNote` says "Growth Workspace is billed via Stripe" — an unsupported claim while closed. When closed the pricing page shows `funnel.landing.planNote` instead (existing string, no new copy).
 4. **"Free's allowance line"** is added as a feature line on the pricing page's Free card, worded as the free *workspace* allowance (`commercial.allowanceLine`: "Free workspace: {count} approved deliveries a month"), since that card is the free scan.
+5. **Billing also requires `STRIPE_WEBHOOK_SECRET`** (final-review fix, tightens spec §2): without it, checkout could take payments the webhook never records, because entitlement is only ever applied from a verified webhook event. `STRIPE_ENV_KEYS` in `lib/commercial/availability.ts` now includes it alongside `STRIPE_SECRET_KEY`, `STRIPE_HK_TIER_PRICE_ID`, `STRIPE_TW_TIER_PRICE_ID` and `APP_ORIGIN`.
 
 ### Gate-found regression: the integration webhook mock missed the new signature helpers
 
@@ -936,18 +937,20 @@ Full diff `aeb8513..1eb6a50`: **33 files changed, 1,281 insertions, 72 deletions
 |---|---|---|
 | Design and plan | `0010a33`, `2a6d3b2` | The design; the plan, written against the code. |
 | 1. The contract and the server policy that reads it | `504087b` | `lib/commercial/contract.ts` (`COMMERCIAL_CONTRACT`, `tierAllows`, which fails closed for anything other than a declared tier key via an own-property check that cannot be fooled by `__proto__`/`toString`); `deliveryAllowanceForTier` now reads the contract; the rescan route uses `tierAllows(tier, "rescans")` instead of `isWorkspacePaid` directly (identical behaviour today). |
-| 2. Billing availability, and closed checkout/portal routes | `c7b87b8` | `lib/commercial/availability.ts` (`billingAvailability`: `contract_unapproved` when unset/blank/mismatched — warns only on a mismatch, never on unset; `provider_unconfigured` when any of `STRIPE_SECRET_KEY`/`STRIPE_HK_TIER_PRICE_ID`/`STRIPE_TW_TIER_PRICE_ID`/`APP_ORIGIN` is blank); `checkout-link`/`billing-portal` routes answer `503 billing_unavailable` before any Stripe call when closed, after auth/role checks run first; `.env.example` documents `COMMERCIAL_CONTRACT_APPROVED` (commented out). |
+| 2. Billing availability, and closed checkout/portal routes | `c7b87b8`, tightened by the final-review fix pass | `lib/commercial/availability.ts` (`billingAvailability`: `contract_unapproved` when unset/blank/mismatched — warns only on a mismatch, never on unset; `provider_unconfigured` when any of `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_HK_TIER_PRICE_ID`/`STRIPE_TW_TIER_PRICE_ID`/`APP_ORIGIN` is blank); `checkout-link`/`billing-portal` routes answer `503 billing_unavailable` before any Stripe call when closed, after auth/role checks run first; `.env.example` documents `COMMERCIAL_CONTRACT_APPROVED` (commented out). |
 | 3. The webhook verifies the signature first | `14ec69c` | `lib/stripe.ts` gained `constructWebhookEvent` (the static `Stripe.webhooks.constructEvent`, needs no API key) and `isWellFormedStripeSignature`; `app/api/webhooks/stripe/route.ts` now verifies the signature before any `stripeConfigured()` check, so a missing or malformed header is `400` regardless of configuration and only a well-formed-but-unverifiable header reaches the `500` "not configured" answer; the unit test's own mock moved `constructEvent`/`retrieveSubscription` into `vi.hoisted` and became an `importOriginal` factory (departure #1 above). |
 | Gate-found: the integration webhook mock missed the new helpers | `1eb6a50` | See "Gate-found regression" above. |
 | 4. Copy namespace and the public price surfaces | `4b75b6c`, fixed by `039e119` | New `commercial` namespace in `lib/messages/{en,zh-HK,zh-TW}.json` (`notOpen`, `contactFimmick`, `allowanceLine`, `unlimitedLine`), listed in `tests/i18n.test.ts`; the pricing page and landing plans show the Growth card's price by market (never by locale), with the "not open yet" label and the market's contact channel (plain text when none is configured) while closed, and the ordinary sign-up CTA when open; Free's allowance line reads the contract. The fix commit corrected the pricing FAQ's "How do I subscribe?" answer, which was still an unsupported claim while billing was closed (departures #3, #4). |
 | 5. Workspace billing page shows buttons only when billing is open | `0bf71c5` | `components/workspace/billing-view.tsx` and its settings page resolve `billingAvailability()` server-side and pass it as a prop; Subscribe/Manage buttons render only when open; the same "not open yet" note and contact link render when closed, alongside today's tier, usage and tier history. |
-| 6. Gates, mutation checks and the phase record | *(this commit)* | Gates, including the `test:integration` run that found the regression above; four mutation checks, all killed; this section and the matching `PHASE-3-TEST-RESULTS.md` section. |
+| 6. Gates, mutation checks and the phase record | `ca3f24b`, `387414f` | Gates, including the `test:integration` run that found the regression above; four mutation checks, all killed; this section and the matching `PHASE-3-TEST-RESULTS.md` section. |
+| 7. Final-review fixes | *(this commit)* | Webhook secret gates billing (`STRIPE_WEBHOOK_SECRET` added to `STRIPE_ENV_KEYS`); an allowance drift guard against `neon/migrations/0004_atomic_operations.sql`'s own hard-coded lite allowance; `lib/funnel/pricing.ts::marketPricing` reads `COMMERCIAL_CONTRACT.prices`; the unused `commercial.contactFimmick` key removed from all three message bundles; the billing view's free-plan line omits "unlimited once subscribed" while closed; a tier-history assertion added to its test; the webhook doc comment corrected to say it never checks contract approval; zh-TW added to the pricing page's Growth-card/footnote test cases; and this record. |
 
 ### Owner actions
 
 **Nothing is required to deploy this slice.** No migration, no new required environment variable — `COMMERCIAL_CONTRACT_APPROVED` and the Stripe variables are all optional and already documented in `.env.example`; unset, billing now honestly answers "closed" (previously it looked open — Subscribe rendered — with no working backend behind it).
 
-- **To open billing:** set `COMMERCIAL_CONTRACT_APPROVED=2026-09-baseline` (must equal `COMMERCIAL_CONTRACT.version` exactly, after trimming) and a full Stripe configuration (`STRIPE_SECRET_KEY`, `STRIPE_HK_TIER_PRICE_ID`, `STRIPE_TW_TIER_PRICE_ID`, `APP_ORIGIN`), then redeploy — an environment variable change takes effect on the next deployment, not the running one.
+- **To open billing:** set `COMMERCIAL_CONTRACT_APPROVED=2026-09-baseline` (must equal `COMMERCIAL_CONTRACT.version` exactly, after trimming) and a full Stripe configuration (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_HK_TIER_PRICE_ID`, `STRIPE_TW_TIER_PRICE_ID`, `APP_ORIGIN`), then redeploy — an environment variable change takes effect on the next deployment, not the running one.
+- **Re-approve promptly after any contract version bump.** A version bump closes billing until `COMMERCIAL_CONTRACT_APPROVED` is updated to match; during that window an existing paid subscriber's "Manage billing" button is gone (the portal route answers `503`) and they see the not-open note instead. This is a known limit, not a bug — see below.
 - **The landing page's availability is fixed at build time**, like every other server-resolved prop on that route; a later change to the approval variable or the Stripe configuration needs the same redeploy as opening billing itself, not just a page reload or a running-instance restart.
 - **This branch is stacked on `p35d-incident-runbook` (PR #23) and must merge after it.** It was built and gated on top of that branch's tip (`aeb8513`), not on `origin/main`. **P3.5d (PR #23) was itself merged into `p35b-failure-view` after that branch reached `main`, so neither P3.5d nor this branch is on `main` yet** — merging this branch requires the same chain to land first.
 
@@ -957,19 +960,25 @@ Full diff `aeb8513..1eb6a50`: **33 files changed, 1,281 insertions, 72 deletions
 - No trial/pilot, upgrade, downgrade, rollover, top-up or over-limit rules beyond today's behaviour — they wait for DEC-08.
 - No Stripe test-mode run — waits for DEC-09.
 - Paid tier arrives only through the Stripe webhook; this app has no staff grant.
-- Opening billing requires both the approval variable and a full Stripe configuration, then a redeploy.
+- Opening billing requires both the approval variable and a full Stripe configuration (now including `STRIPE_WEBHOOK_SECRET`), then a redeploy.
 - No migration. None was needed or added.
 - **The landing page's availability is fixed at build time** (see "Owner actions" above — a config change needs a redeploy, not just a reload).
 - **P3.5d (PR #23) was merged into `p35b-failure-view` after that branch reached `main`, so neither P3.5d nor this branch is on `main` yet.**
+- **A contract version bump closes billing until re-approved; existing paid subscribers cannot open the Stripe portal (503) during that window and see the not-open note instead of "Manage billing" — re-approve promptly after any version bump.**
+- **Changing an allowance needs a new migration that replaces the `export_output_version` function in `neon/migrations/0004_atomic_operations.sql`**, because that function carries its own hard-coded lite allowance (`case when ws_tier = 'paid' then null else 3 end`) for the row it lazily creates on first export, independent of `COMMERCIAL_CONTRACT`. `lib/commercial/contract-migration-drift.test.ts` reads that literal out of the migration file and fails until a replacement migration and this contract agree — see Task 7 below.
+- **`contactFimmick` dropped** from the `commercial` message namespace in all three locales — nothing referenced it; the "not open" label already names Fimmick.
 
 **Known, not changed** (deferred minor findings from this task's own review of Tasks 1–5, not acted on in this slice):
 
-- `lib/commercial/contract.ts`'s doc comments are verbose relative to their content.
-- `app/api/webhooks/stripe/route.ts`'s doc comment is a paragraph rather than the one sentence the plan called for.
+- `lib/commercial/contract.ts`'s doc comments are verbose relative to their content; the final-review fix pass corrected only the one claim that was wrong (every allowance reads the contract), not the general verbosity.
 - No direct test of `publicBilling()`'s own wiring: an hk/tw price or contact-channel swap inside that function would go undetected by the existing suite, which only exercises it through the pages that call it.
 - The "not open" label plus its contact-anchor rendering (link when a channel is configured, plain text otherwise) is duplicated across `components/public-pages.tsx`, `components/landing-page.tsx` and `components/workspace/billing-view.tsx`, rather than shared in one place.
 - The en copy "Unlimited approved deliveries a month" is capitalised mid-bullet on the landing page's Growth card.
-- `components/workspace/billing-view.test.tsx`'s first case is named for tier history ("... but still sees usage and tier history") but does not itself assert the tier-history row is rendered.
+
+**Fixed by the final-review pass (Task 7):**
+
+- `app/api/webhooks/stripe/route.ts`'s doc comment claimed the webhook never runs "before any configuration or contract-approval check" — reworded: it checks the signature before configuration, and it never checks contract approval at all (it isn't gated by `billingAvailability()`).
+- `components/workspace/billing-view.test.tsx`'s first case is named for tier history ("... but still sees usage and tier history") but did not itself assert the tier-history row is rendered — it now asserts the fixture's `staff_grant` source label text.
 
 ### Verification
 

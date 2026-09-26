@@ -27,7 +27,9 @@ import {
  * configured"; a well-formed header that fails verification -> 400; only a
  * genuinely signed event reaches the `!stripeConfigured()` 500 and the event
  * handling below -- an unsigned or malformed probe is rejected before any
- * configuration or contract-approval check runs.
+ * configuration check runs. This route never checks contract approval
+ * (`billingAvailability()`): it is the only place entitlement is written,
+ * and must keep applying Stripe's events even while checkout is closed.
  */
 
 interface StripeWebhookEvent {

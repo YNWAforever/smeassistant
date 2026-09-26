@@ -72,7 +72,6 @@
   },
   "commercial": {
     "notOpen": "訂閱暫未開放 — 請聯絡 Fimmick",
-    "contactFimmick": "聯絡 Fimmick",
     "allowanceLine": "免費工作台：每月 {count} 次核准後交付",
     "unlimitedLine": "每月不限核准後交付次數"
   },

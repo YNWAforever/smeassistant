@@ -57,6 +57,8 @@ describe("BillingView while billing is closed", () => {
     expect(root.textContent).toContain(t("en", "commercial.notOpen"));
     expect(root.textContent).toContain("1 / 3");
     expect(root.textContent).not.toContain("Subscribe to unlock the Growth Workspace");
+    expect(root.textContent).not.toContain("unlimited once subscribed");
+    expect(root.textContent).toContain("Fimmick staff grant");
   });
 
   it("manager sees no Subscribe/Manage buttons, enabled or disabled, only the label", () => {
@@ -88,6 +90,7 @@ describe("BillingView while billing is open", () => {
     const root = render({ role: "owner", billingOpen: true, contactHref: null });
     expect(root.textContent).toContain("Subscribe via Stripe");
     expect(root.textContent).not.toContain(t("en", "commercial.notOpen"));
+    expect(root.textContent).toContain("unlimited once subscribed");
   });
 
   it("owner on paid with a Stripe customer sees Manage billing", () => {

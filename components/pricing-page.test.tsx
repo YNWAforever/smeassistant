@@ -18,7 +18,7 @@ import { t } from "@/lib/i18n"
 const CLOSED_NO_CONTACT: PublicBilling = { open: false, contactHref: { hk: null, tw: null } }
 const OPEN: PublicBilling = { open: true, contactHref: { hk: null, tw: null } }
 
-function markup(locale: "en" | "zh-HK", market: Market, billing: PublicBilling) {
+function markup(locale: "en" | "zh-HK" | "zh-TW", market: Market, billing: PublicBilling) {
   const root = document.createElement("div")
   root.innerHTML = renderToStaticMarkup(<PricingPage locale={locale} market={market} billing={billing} />)
   return root
@@ -26,7 +26,7 @@ function markup(locale: "en" | "zh-HK", market: Market, billing: PublicBilling) 
 
 describe("PricingPage while billing is closed", () => {
   for (const market of ["hk", "tw"] as const) {
-    for (const locale of ["en", "zh-HK"] as const) {
+    for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
       it(`shows the ${market} market price and the not-open label in ${locale}, with no sign-up link`, () => {
         const root = markup(locale, market, CLOSED_NO_CONTACT)
         expect(root.textContent).toContain(formatMarketPrice(MARKETS[market].pricing))
@@ -57,7 +57,7 @@ describe("PricingPage while billing is closed", () => {
 
 describe("PricingPage while billing is open", () => {
   for (const market of ["hk", "tw"] as const) {
-    for (const locale of ["en", "zh-HK"] as const) {
+    for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
       it(`shows the Growth sign-up link and no not-open label in ${locale}`, () => {
         const root = markup(locale, market, OPEN)
         const links = Array.from(root.querySelectorAll("a")).map((a) => a.getAttribute("href"))

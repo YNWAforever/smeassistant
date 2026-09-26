@@ -1048,7 +1048,7 @@ Every test name below was found by `grep -n "it("` on the named file (or, for `i
 
 ## P3.3 — commercial contract on safe defaults
 
-Candidate: branch `claude/commercial-contract-design-3b8561` (same content line as `p33-commercial-contract`), 9 commits (`0010a33`..`1eb6a50`) on top of `aeb8513` (stacked on `p35d-incident-runbook`, PR #23, not yet merged), plus this Task 6 documentation commit. Design: [`docs/superpowers/specs/2026-09-26-commercial-contract-design.md`](../../superpowers/specs/2026-09-26-commercial-contract-design.md). Plan: `docs/superpowers/plans/2026-09-26-commercial-contract.md`. Environment: Windows 11, Node `v24.18.0`, pnpm `9.12.0` via corepack, worktree `C:\Users\laich\Documents\smeassistant\.claude\worktrees\commercial-contract-design-3b8561`, Docker Server `29.7.2`. Run on 2026-09-26.
+Candidate: branch `claude/commercial-contract-design-3b8561` (same content line as `p33-commercial-contract`), 9 commits (`0010a33`..`1eb6a50`) on top of `aeb8513` (stacked on `p35d-incident-runbook`, PR #23, not yet merged), plus Task 6's two documentation commits (`ca3f24b`, `387414f`, 11 total) and this Task 7 final-review-fix commit (12th). Design: [`docs/superpowers/specs/2026-09-26-commercial-contract-design.md`](../../superpowers/specs/2026-09-26-commercial-contract-design.md). Plan: `docs/superpowers/plans/2026-09-26-commercial-contract.md`. Environment: Windows 11, Node `v24.18.0`, pnpm `9.12.0` via corepack, worktree `C:\Users\laich\Documents\smeassistant\.claude\worktrees\commercial-contract-design-3b8561`, Docker Server `29.7.2`. Run on 2026-09-26.
 
 **Read this first.** Everything below is **locally verified**. **Nothing here is hosted-verified.** No migration exists in this branch. Nothing was deployed or pushed, and no paid provider or model was called. See the P3.3 section of `PHASE-3-REPORT.md` for the decisions, the plan's departures from the spec, the gate-found regression and its fix, the commits table, the owner actions and the known limits.
 
@@ -1130,16 +1130,22 @@ The base commit `aeb8513` (P3.5d's tip) already stood at **38 files / 378 tests*
 | Existing entitlement, billing and rescan tests pass unchanged | `lib/workspace/entitlement.test.ts`, `app/api/workspaces/[workspaceId]/rescan/route.test.ts` — not in this branch's diff | — |
 | `applyTier` still writes the contract allowance, lite→paid mid-period | `test/integration/neon-integrations.integration.test.ts` — the `applyTier` cases (lines ~517–563), unchanged assertions | — |
 
+### Known limits (whole-branch final-review fix pass, Task 7)
+
+- **Billing also requires `STRIPE_WEBHOOK_SECRET`** (tightens spec §2: without it checkout could take payments the webhook never records). `lib/commercial/availability.ts`'s `STRIPE_ENV_KEYS` now includes it; every fixture that opens billing in a test (`lib/commercial/availability.test.ts`, `checkout-link/route.test.ts`, `billing-portal/route.test.ts`) stubs it.
+- **A contract version bump closes billing until re-approved**; during that window existing paid subscribers cannot open the Stripe portal (`503`) and see the not-open note instead of "Manage billing" — re-approve promptly after any version bump.
+- **Changing an allowance needs a new migration that replaces the `export_output_version` function** in `neon/migrations/0004_atomic_operations.sql` (its own hard-coded `case when ws_tier = 'paid' then null else 3 end`, independent of `COMMERCIAL_CONTRACT`); the new `lib/commercial/contract-migration-drift.test.ts` fails closed until that migration and the contract agree.
+
 ### Known, not changed
 
 Deferred minor findings from this task's own review of Tasks 1–5, not acted on in this slice (see the P3.3 section of `PHASE-3-REPORT.md` for the same list alongside the spec's known limits):
 
-- `lib/commercial/contract.ts`'s doc comments are verbose relative to their content.
-- `app/api/webhooks/stripe/route.ts`'s doc comment is a paragraph rather than the one sentence the plan called for.
+- `lib/commercial/contract.ts`'s doc comments are verbose relative to their content; the final-review pass corrected only the one claim that was wrong (every allowance reads the contract).
 - No direct test of `publicBilling()`'s own wiring: an hk/tw price or contact-channel swap inside that function would go undetected by the existing suite, which only exercises it through the pages that call it.
 - The "not open" label plus its contact-anchor rendering (link when a channel is configured, plain text otherwise) is duplicated across `components/public-pages.tsx`, `components/landing-page.tsx` and `components/workspace/billing-view.tsx`, rather than shared in one place.
 - The en copy "Unlimited approved deliveries a month" is capitalised mid-bullet on the landing page's Growth card.
-- `components/workspace/billing-view.test.tsx`'s first case is named for tier history ("... but still sees usage and tier history") but does not itself assert the tier-history row is rendered.
+
+**Fixed by the final-review pass (Task 7):** `app/api/webhooks/stripe/route.ts`'s doc comment wrongly claimed a check "before any configuration or contract-approval check" — reworded to say it checks the signature before configuration and never checks contract approval at all. `components/workspace/billing-view.test.tsx`'s first case (named for tier history) now asserts the fixture's `staff_grant` source label text renders.
 
 ### Not run
 
