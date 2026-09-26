@@ -7,6 +7,7 @@ import {
 import { billingRepository } from "@/lib/repositories/billing";
 import { loadWorkspaceBillingContext } from "@/lib/owner/billing-authorization";
 import { isWorkspacePaid } from "@/lib/workspace/entitlement";
+import { billingAvailability } from "@/lib/commercial/availability";
 
 const WORKSPACE_ID_RE = /^[0-9a-f-]{36}$/i;
 const LOCALES = new Set(["en", "zh-HK", "zh-TW"]);
@@ -55,6 +56,9 @@ export async function POST(
     return NextResponse.json({ error: access.code }, { status: access.status });
   if (!workspace) {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+  }
+  if (!billingAvailability().open) {
+    return NextResponse.json({ error: "billing_unavailable" }, { status: 503 });
   }
   const billingPath = `/${locale}/owner/${workspace.slug ?? access.membership.workspaceSlug}/settings/billing`;
 

@@ -39,6 +39,10 @@ const request = () =>
 beforeEach(() => {
   vi.resetAllMocks();
   vi.stubEnv("APP_ORIGIN", "http://localhost");
+  vi.stubEnv("COMMERCIAL_CONTRACT_APPROVED", "2026-09-baseline");
+  vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_fixture");
+  vi.stubEnv("STRIPE_HK_TIER_PRICE_ID", "price_hk");
+  vi.stubEnv("STRIPE_TW_TIER_PRICE_ID", "price_tw");
   state.load.mockResolvedValue({
     access: { ok: true },
     workspace: { ...workspace },
@@ -94,5 +98,28 @@ describe("checkout repository boundary", () => {
     expect((await request()).status).toBe(403);
     expect(state.customer).not.toHaveBeenCalled();
     expect(state.save).not.toHaveBeenCalled();
+  });
+});
+
+describe("billing availability gate", () => {
+  it("returns 503 billing_unavailable and never reaches Stripe when the contract is unapproved", async () => {
+    vi.stubEnv("COMMERCIAL_CONTRACT_APPROVED", "");
+    const response = await request();
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "billing_unavailable" });
+    expect(state.customer).not.toHaveBeenCalled();
+    expect(state.checkout).not.toHaveBeenCalled();
+  });
+
+  it("still returns the auth error, not 503, when billing is closed and access is denied", async () => {
+    vi.stubEnv("COMMERCIAL_CONTRACT_APPROVED", "");
+    state.load.mockResolvedValue({
+      access: { ok: false, code: "forbidden", status: 403 },
+      workspace: null,
+    });
+    const response = await request();
+    expect(response.status).toBe(403);
+    expect(state.customer).not.toHaveBeenCalled();
+    expect(state.checkout).not.toHaveBeenCalled();
   });
 });
