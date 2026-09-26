@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { getStripeClient, stripeConfigured } from "@/lib/stripe";
+import {
+  constructWebhookEvent,
+  getStripeClient,
+  isWellFormedStripeSignature,
+  stripeConfigured,
+} from "@/lib/stripe";
 import { billingRepository } from "@/lib/repositories/billing";
 import {
   workspaceTierForStripeSubscriptionStatus,
@@ -16,6 +21,15 @@ import {
  * delivery order, and a completed Checkout Session can still point at a
  * subscription whose initial payment is incomplete; the current Subscription
  * object is the entitlement source of truth in both cases.
+ *
+ * Verification order: missing signature header -> 400; blank
+ * STRIPE_WEBHOOK_SECRET with a malformed header -> 400, else 500 "not
+ * configured"; a well-formed header that fails verification -> 400; only a
+ * genuinely signed event reaches the `!stripeConfigured()` 500 and the event
+ * handling below -- an unsigned or malformed probe is rejected before any
+ * configuration check runs. This route never checks contract approval
+ * (`billingAvailability()`): it is the only place entitlement is written,
+ * and must keep applying Stripe's events even while checkout is closed.
  */
 
 interface StripeWebhookEvent {
@@ -119,20 +133,6 @@ function requiredTierForSubscription(
 }
 
 export async function POST(req: Request) {
-  if (!stripeConfigured()) {
-    return NextResponse.json(
-      { error: "Stripe is not configured" },
-      { status: 500 },
-    );
-  }
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
-  if (!webhookSecret) {
-    return NextResponse.json(
-      { error: "STRIPE_WEBHOOK_SECRET is not configured" },
-      { status: 500 },
-    );
-  }
-
   const signature = req.headers.get("stripe-signature");
   if (!signature) {
     return NextResponse.json(
@@ -141,20 +141,41 @@ export async function POST(req: Request) {
     );
   }
 
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
+  if (!webhookSecret) {
+    if (!isWellFormedStripeSignature(signature)) {
+      return NextResponse.json(
+        { error: "Invalid signature" },
+        { status: 400 },
+      );
+    }
+    return NextResponse.json(
+      { error: "STRIPE_WEBHOOK_SECRET is not configured" },
+      { status: 500 },
+    );
+  }
+
   const rawBody = await req.text();
-  const stripe = getStripeClient();
   let event: StripeWebhookEvent;
   try {
-    event = stripe.webhooks.constructEvent(
+    event = constructWebhookEvent(
       rawBody,
       signature,
       webhookSecret,
-    ) as unknown as StripeWebhookEvent;
+    ) as StripeWebhookEvent;
   } catch (err) {
     console.error("Stripe webhook signature verification failed", err);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
+  if (!stripeConfigured()) {
+    return NextResponse.json(
+      { error: "Stripe is not configured" },
+      { status: 500 },
+    );
+  }
+
+  const stripe = getStripeClient();
   const repository = billingRepository();
 
   try {

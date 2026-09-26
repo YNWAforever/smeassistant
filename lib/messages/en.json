@@ -70,6 +70,16 @@
       "button": "Start a new scan"
     }
   },
+  "commercial": {
+    "notOpen": "Subscriptions are not open yet — contact Fimmick",
+    "allowanceLine": "Free workspace: {count} approved deliveries a month",
+    "unlimitedLine": "Unlimited approved deliveries a month"
+  },
+  "pause": {
+    "scans": "Scanning is paused for maintenance. Your scan is saved; try again later.",
+    "scansNotStarted": "Scanning is paused for maintenance. Nothing was started; please try again later.",
+    "ai": "AI drafting is paused for maintenance. Nothing was counted; try again later."
+  },
   "scanner": {
     "title": "Scan My Business for Free",
     "subtitle": "Fill in the details below — get your audit report in 30 seconds",

@@ -1,3 +1,5 @@
+import { logPauseRefusal, pauseState } from "./budgets/pause";
+
 // Centralized LLM gateway client.
 //
 // Defaults to OpenCode Go (https://opencode.ai/zen/go/v1), an OpenAI-compatible
@@ -94,6 +96,12 @@ function readUsage(data: unknown): LLMUsage {
  * response — so callers keep their single "no completion" branch.
  */
 export async function llmComplete(prompt: string, opts: LLMOptions = {}): Promise<LLMResult | null> {
+  // P3.5d backstop: every caller already handles null, so an AI pause stops
+  // report summaries and translations too, before any network call.
+  if (pauseState().ai) {
+    logPauseRefusal("llm");
+    return null;
+  }
   const { apiKey, baseUrl, model, configured } = resolveLLMConfig();
 
   if (!configured || !apiKey) {

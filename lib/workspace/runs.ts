@@ -35,7 +35,7 @@ import { templateByKey, type TemplateKey } from "./templates";
  * never overwrites an existing draft (a version is only created on success).
  */
 export type RunErrorCode =
-  "action_not_found" | "agent_unavailable" | "forbidden" | "ai_budget_reached";
+  "action_not_found" | "agent_unavailable" | "forbidden" | "ai_budget_reached" | "ai_paused";
 
 export class RunError extends Error {
   constructor(public readonly code: RunErrorCode) {
@@ -270,7 +270,7 @@ export async function runAgentForAction(
   // P3.5a: the AI spend budget, before any evidence read, run row or model
   // call. A refusal leaves nothing behind, so no queued run can strand.
   const budget = await checkAiBudget(() => db.aiSpend24h(row.workspace_id), { entry: "ai_run" }, input.budgetEnv);
-  if (!budget.allowed) throw new RunError("ai_budget_reached");
+  if (!budget.allowed) throw new RunError(budget.scope === "ai_paused" ? "ai_paused" : "ai_budget_reached");
   const [workspace, brand, locations] = await Promise.all([
     db.assistantWorkspace(row.workspace_id),
     db.assistantBrand(row.workspace_id),

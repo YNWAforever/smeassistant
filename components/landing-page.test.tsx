@@ -9,10 +9,14 @@ vi.mock("next/navigation", () => ({
 }))
 
 import { LandingPage } from "@/components/landing-page"
+import type { PublicBilling } from "@/lib/commercial/presentation"
+import { t } from "@/lib/i18n"
 
-function markup(locale: "en" | "zh-HK" | "zh-TW" = "en") {
+const CLOSED: PublicBilling = { open: false, contactHref: { hk: null, tw: null } }
+
+function markup(locale: "en" | "zh-HK" | "zh-TW" = "en", billing: PublicBilling = CLOSED) {
   const root = document.createElement("div")
-  root.innerHTML = renderToStaticMarkup(<LandingPage locale={locale} market="hk" />)
+  root.innerHTML = renderToStaticMarkup(<LandingPage locale={locale} market="hk" billing={billing} />)
   return root
 }
 
@@ -41,5 +45,26 @@ describe("LandingPage outcome examples (item 8)", () => {
     expect(zhHK.querySelector(".outcome-examples-section")?.textContent).toContain("回覆未回覆的 Google 評論")
     const zhTW = markup("zh-TW")
     expect(zhTW.querySelector(".outcome-examples-section")?.textContent).toContain("回覆未回覆的 Google 評論")
+  })
+})
+
+/**
+ * P3.3 task 4: the Growth plan preview reads its allowance from the contract
+ * and, while billing is closed, says so instead of implying a subscription
+ * is available.
+ */
+describe("LandingPage Growth plan card (P3.3)", () => {
+  it("shows the not-open label and the unlimited-allowance line when billing is closed", () => {
+    const root = markup("en", CLOSED)
+    const growth = root.querySelector(".is-featured")
+    expect(growth?.textContent).toContain(t("en", "commercial.notOpen"))
+    expect(growth?.textContent).toContain(t("en", "commercial.unlimitedLine"))
+  })
+
+  it("omits the not-open label, but keeps the allowance line, when billing is open", () => {
+    const root = markup("en", { open: true, contactHref: { hk: null, tw: null } })
+    const growth = root.querySelector(".is-featured")
+    expect(growth?.textContent).not.toContain(t("en", "commercial.notOpen"))
+    expect(growth?.textContent).toContain(t("en", "commercial.unlimitedLine"))
   })
 })

@@ -159,3 +159,35 @@ describe("one definition of used", () => {
     expect(BUDGETED_CLAIM_SQL).toContain("(target_attempts = 0 AND target_created_at > now() - interval '24 hours')");
   });
 });
+
+describe("scan pause (P3.5d)", () => {
+  it("refuses admission with scan_paused before locking or counting", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const fake = client([{ global_used: 0, workspace_used: 0 }]);
+    const refusal = await admitScanJob(fake.db, { workspaceId: null, entry: "scan_start" }, { SCANS_PAUSED: "true" }).catch((e) => e);
+    expect(refusal).toBeInstanceOf(ScanBudgetRefusal);
+    expect(refusal.scope).toBe("scan_paused");
+    expect(refusal.message).toBe("paused");
+    expect(fake.statements()).toEqual([]);
+    expect(warn).toHaveBeenCalledWith("[pause] refused", { entry: "scan_start" });
+  });
+
+  it("refuses admission when the pause value is invalid (fail closed)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const refusal = await admitScanJob(client([]).db, { workspaceId: "ws", entry: "rescan" }, { SCANS_PAUSED: "yes" }).catch((e) => e);
+    expect(refusal.scope).toBe("scan_paused");
+  });
+
+  it("reports a paused claim without running any statement", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const fake = client([{ budget_allowed: true, id: "job-1" }]);
+    expect(await claimScanJob(fake.db, "job-1", { SCANS_PAUSED: "true" })).toEqual({ kind: "paused" });
+    expect(fake.statements()).toEqual([]);
+  });
+
+  it("is not affected by the AI switch", async () => {
+    const fake = client([{ budget_allowed: true, budget_global_used: 0, budget_workspace_used: 0, id: "job-1" }]);
+    expect((await claimScanJob(fake.db, "job-1", { AI_DRAFTS_PAUSED: "true" })).kind).toBe("claimed");
+  });
+});

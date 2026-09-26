@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 const mocks = vi.hoisted(() => ({ requireOperator: vi.fn(), list: vi.fn(), health: vi.fn() }));
@@ -33,6 +33,10 @@ beforeEach(() => {
   mocks.requireOperator.mockResolvedValue({ userId: "op", email: "ada@fimmick.com" });
   mocks.list.mockResolvedValue([DEAD]);
   mocks.health.mockResolvedValue(HEALTH);
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe("/ops/failures", () => {
@@ -69,5 +73,18 @@ describe("/ops/failures", () => {
     const root = await render();
     expect(root.textContent).toContain("The failure queue could not be loaded.");
     expect(root.textContent).not.toContain("No open failures");
+  });
+
+  it("shows which kill switches are on", async () => {
+    vi.stubEnv("SCANS_PAUSED", "true");
+    const root = await render();
+    expect(root.textContent).toContain("Scans are paused (SCANS_PAUSED)");
+    expect(root.textContent).not.toContain("AI drafting is paused");
+    vi.unstubAllEnvs();
+  });
+
+  it("shows no banner when nothing is paused", async () => {
+    const root = await render();
+    expect(root.textContent).not.toContain("paused (");
   });
 });

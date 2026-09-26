@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { BillingActions } from "@/components/workspace/billing-actions"
+import { t } from "@/lib/i18n"
 import type { PrototypeLocale } from "@/lib/copy"
 import type { BillingModel } from "@/lib/workspace/billing"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
@@ -26,6 +27,10 @@ export interface BillingViewProps {
   timezone: string
   model: BillingModel
   checkout?: string
+  /** Whether billing (Stripe checkout/portal) is currently open (lib/commercial/availability.ts). */
+  billingOpen: boolean
+  /** The workspace market's first configured contact channel, or null when none is set. */
+  contactHref: string | null
 }
 
 function formatPrice(price: BillingModel["marketPrice"]): string {
@@ -33,7 +38,7 @@ function formatPrice(price: BillingModel["marketPrice"]): string {
   return `${prefix}${price.amount.toLocaleString("en-US")}`
 }
 
-export function BillingView({ locale, workspaceId, role, timezone, model, checkout }: BillingViewProps) {
+export function BillingView({ locale, workspaceId, role, timezone, model, checkout, billingOpen, contactHref }: BillingViewProps) {
   const isChinese = locale !== "en"
   const paid = model.tier === "paid"
   const { usage } = model
@@ -42,6 +47,11 @@ export function BillingView({ locale, workspaceId, role, timezone, model, checko
   const progress = unlimited ? 0 : Math.min(100, Math.round((usage.approvedDeliveries / Math.max(1, usage.allowance ?? 1)) * 100))
   const planName = paid ? (isChinese ? "增長工作台" : "Growth Workspace") : (isChinese ? "免費方案" : "Free plan")
   const allowanceLabel = unlimited ? (isChinese ? "不限" : "unlimited") : String(usage.allowance)
+  const notOpenLabel = t(locale, "commercial.notOpen")
+  // Same anchor/plain-text rule as the public pricing page (Task 4): a
+  // configured contact channel wraps the label in a link, otherwise it is
+  // plain text with no empty href (Review Focus 5).
+  const notOpenNode = contactHref ? <a href={contactHref}>{notOpenLabel}</a> : notOpenLabel
 
   return (
     <div className="settings-page billing-page">
@@ -51,15 +61,21 @@ export function BillingView({ locale, workspaceId, role, timezone, model, checko
       {checkout === "cancelled" && <div className="context-banner" role="status"><CircleDashed /><div><strong>{isChinese ? "已取消結帳" : "Checkout cancelled"}</strong><span>{isChinese ? "沒有任何費用；你可隨時再次訂閱。" : "Nothing was charged; you can subscribe again at any time."}</span></div></div>}
       <section className="billing-overview">
         <SectionCard className="plan-card">
-          <div className="plan-card-head"><div><Badge>{planName}</Badge><h2>{formatPrice(model.marketPrice)} <span>{isChinese ? "／月" : "/ month"}</span></h2><p>{paid ? (isChinese ? "1 個工作台 · 每月不限核准後交付 · 可隨時自行重新掃描" : "1 workspace · unlimited approved deliveries/month · rescan whenever you need") : (isChinese ? `目前為免費方案 · 每月 ${allowanceLabel} 次核准後交付 · 訂閱後不限` : `Currently free · ${allowanceLabel} approved deliveries/month · unlimited once subscribed`)}</p></div><Badge variant="outline">{paid ? (isChinese ? "訂閱生效中" : "Subscription active") : (isChinese ? "尚未訂閱" : "Not subscribed")}</Badge></div>
+          <div className="plan-card-head"><div><Badge>{planName}</Badge><h2>{formatPrice(model.marketPrice)} <span>{isChinese ? "／月" : "/ month"}</span></h2><p>{paid ? (isChinese ? "1 個工作台 · 每月不限核准後交付 · 可隨時自行重新掃描" : "1 workspace · unlimited approved deliveries/month · rescan whenever you need") : billingOpen ? (isChinese ? `目前為免費方案 · 每月 ${allowanceLabel} 次核准後交付 · 訂閱後不限` : `Currently free · ${allowanceLabel} approved deliveries/month · unlimited once subscribed`) : (isChinese ? `目前為免費方案 · 每月 ${allowanceLabel} 次核准後交付` : `Currently free · ${allowanceLabel} approved deliveries/month`)}</p></div><Badge variant="outline">{paid ? (isChinese ? "訂閱生效中" : "Subscription active") : (isChinese ? "尚未訂閱" : "Not subscribed")}</Badge></div>
           <div className="usage-large"><div><span>{isChinese ? "本月核准後交付" : "Approved deliveries this month"}</span><strong>{usage.approvedDeliveries} / {allowanceLabel}</strong></div><Progress value={progress} /><small>{unlimited ? (isChinese ? `${usage.period} · 不設上限` : `${usage.period} · no cap`) : (isChinese ? `尚餘 ${remaining} 次 · ${usage.period} 期間` : `${remaining} remain · period ${usage.period}`)}</small></div>
           <div className="limitation-note"><CircleDashed /> {isChinese ? "生成、修改及拒絕不扣除額度；只有首次核准後匯出或複製才計 1 次。" : "Generation, revisions and rejection use no allowance; only the first approved export or copy counts as one."}</div>
-          {role === "owner" ? <BillingActions locale={locale} workspaceId={workspaceId} paid={paid && model.stripeCustomer} /> : <div className="plan-actions"><Button disabled>{paid ? (isChinese ? "管理帳單" : "Manage billing") : (isChinese ? "透過 Stripe 訂閱" : "Subscribe via Stripe")}</Button><Button variant="outline" disabled>{isChinese ? "加購用量 · 規劃中" : "Top-up · Planned"}</Button></div>}
+          {!billingOpen ? (
+            <p className="limitation-note">{notOpenNode}</p>
+          ) : role === "owner" ? (
+            <BillingActions locale={locale} workspaceId={workspaceId} paid={paid && model.stripeCustomer} />
+          ) : (
+            <div className="plan-actions"><Button disabled>{paid ? (isChinese ? "管理帳單" : "Manage billing") : (isChinese ? "透過 Stripe 訂閱" : "Subscribe via Stripe")}</Button><Button variant="outline" disabled>{isChinese ? "加購用量 · 規劃中" : "Top-up · Planned"}</Button></div>
+          )}
         </SectionCard>
         <SectionCard className="payment-retry-card">
           <div className="payment-retry-icon"><CreditCard /></div>
           <Badge variant="outline">{isChinese ? "付款週期" : "Payment lifecycle"}</Badge>
-          <h2>{paid ? (isChinese ? "訂閱由 Stripe 管理" : "Your subscription is managed by Stripe") : (isChinese ? "訂閱後即時解鎖增長工作台" : "Subscribe to unlock the Growth Workspace")}</h2>
+          <h2>{paid ? (isChinese ? "訂閱由 Stripe 管理" : "Your subscription is managed by Stripe") : !billingOpen ? notOpenLabel : (isChinese ? "訂閱後即時解鎖增長工作台" : "Subscribe to unlock the Growth Workspace")}</h2>
           <p>{isChinese ? "寬限期內工作台仍可使用；權益以目前訂閱狀態核對，不依賴 webhook 到達次序。" : "The workspace remains available during grace; entitlement is reconciled from subscription state, not webhook order."}</p>
           <p className="limitation-note"><ShieldCheck /> {isChinese ? "方案變更只會經 Stripe webhook 或 Fimmick 職員授權寫入；此頁面不會自行更改權益。" : "Tier changes arrive only through the Stripe webhook or a Fimmick staff grant; this page never edits entitlements itself."}</p>
         </SectionCard>
