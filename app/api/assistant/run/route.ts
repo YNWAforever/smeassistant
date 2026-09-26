@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { AssistantAccessError, isDraftIntent, runLiveAssistant } from "@/lib/assistant/live";
 import { AiBudgetRefusal } from "@/lib/budgets/ai";
+import { logPauseRefusal, pauseState } from "@/lib/budgets/pause";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
 import { isLocale } from "@/lib/locale";
 import type { PrototypeLocale } from "@/lib/copy";
@@ -58,6 +59,16 @@ export async function POST(request: Request) {
     ? await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager" })
     : await authorizeWorkspaceRequest({ id: workspaceId });
   if (!auth.ok) return json({ error: auth.code }, auth.status);
+
+  // P3.5d: checked ahead of the limiter, so a paused draft request never
+  // burns the assistant_run rate limit. Explain/compare intents make no LLM
+  // call and must keep working while AI is paused. runLiveAssistant's own
+  // checkAiBudget still checks this too -- defence in depth.
+  if (isDraftIntent(intentId) && pauseState().ai) {
+    logPauseRefusal("assistant_draft");
+    return json({ error: "ai_paused" }, 503);
+  }
+
   const decision = await enforceRateLimit({ req: request, scope: "assistant_run", identifiers: [auth.user.id], failClosed: true });
   if (!decision.allowed) return rateLimitedResponse(decision.retryAfterSeconds);
 

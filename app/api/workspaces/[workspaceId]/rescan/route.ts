@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
+import { logPauseRefusal, pauseState } from "@/lib/budgets/pause";
 import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
 import { rescanRepository } from "@/lib/repositories/rescan";
@@ -59,6 +60,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ workspa
 
   const auth = await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager", locationId });
   if (!auth.ok) return NextResponse.json({ error: auth.code }, { status: auth.status });
+
+  // P3.5d: checked ahead of the tier read and the limiter, so a paused request
+  // never burns the workspace's daily rescan budget. enqueueRescan (via
+  // admitScanJob) still checks this too -- defence in depth against a call
+  // reached another way.
+  if (pauseState().scans) {
+    logPauseRefusal("rescan");
+    return NextResponse.json({ error: "paused" }, { status: 503 });
+  }
 
   const repo = rescanRepository();
   let tier: string | null;

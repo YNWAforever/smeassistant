@@ -196,4 +196,22 @@ describe("POST /api/workspaces/[workspaceId]/rescan spend budget", () => {
     expect(await res.json()).toEqual({ error: reason });
     expect(mocks.ensureMonthlySchedule).not.toHaveBeenCalled();
   });
+
+  it("answers 503 paused before the limiter, so a paused request never burns the workspace's 3/day rescan budget (P3.5d)", async () => {
+    mocks.authorizeWorkspaceRequest.mockResolvedValue(auth("owner"));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubEnv("SCANS_PAUSED", "true");
+    try {
+      const res = await post({ locationId: LOCATION_ID, locale: "en" });
+      expect(res.status).toBe(503);
+      expect(await res.json()).toEqual({ error: "paused" });
+      expect(mocks.readTier).not.toHaveBeenCalled();
+      expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+      expect(mocks.enqueueRescan).not.toHaveBeenCalled();
+      expect(mocks.ensureMonthlySchedule).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+      warn.mockRestore();
+    }
+  });
 });

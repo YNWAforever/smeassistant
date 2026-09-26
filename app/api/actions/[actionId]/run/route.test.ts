@@ -246,4 +246,21 @@ describe("POST /api/actions/[actionId]/run AI budget", () => {
     vi.unstubAllEnvs();
     warn.mockRestore();
   });
+
+  it("answers 503 ai_paused before the limiter, so a paused request never burns the action_run rate limit (P3.5d)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubEnv("AI_DRAFTS_PAUSED", "true");
+    try {
+      const res = await post();
+      expect(res.status).toBe(503);
+      expect(await res.json()).toEqual({ error: "ai_paused" });
+      expect(mocks.authorizeWorkspaceRequest).not.toHaveBeenCalled();
+      expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+      expect(mocks.llmComplete).not.toHaveBeenCalled();
+      expect(mocks.db!.calls).toEqual([]);
+    } finally {
+      vi.unstubAllEnvs();
+      warn.mockRestore();
+    }
+  });
 });

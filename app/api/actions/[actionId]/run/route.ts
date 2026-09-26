@@ -4,6 +4,7 @@ import {
   localeFrom,
   readJson,
 } from "@/app/api/actions/_shared/mutation";
+import { logPauseRefusal, pauseState } from "@/lib/budgets/pause";
 import { RunError, runAgentForAction } from "@/lib/workspace/runs";
 
 /**
@@ -23,6 +24,16 @@ export async function POST(
   { params }: { params: Promise<{ actionId: string }> },
 ) {
   const { actionId } = await params;
+
+  // P3.5d: checked ahead of authorizeActionMutation, which is what consumes
+  // the action_run rate limit -- a paused request must never burn it.
+  // runAgentForAction's own checkAiBudget still checks this too -- defence
+  // in depth against a call reached another way.
+  if (pauseState().ai) {
+    logPauseRefusal("ai_run");
+    return json({ error: "ai_paused" }, 503);
+  }
+
   const auth = await authorizeActionMutation(req, actionId, "action_run");
   if (!auth.ok) return auth.response;
 
