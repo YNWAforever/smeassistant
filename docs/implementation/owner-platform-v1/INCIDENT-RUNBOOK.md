@@ -35,7 +35,7 @@ one.
    | `[pause] refused` | A kill switch (§3) is on and refused this request. |
    | `[pause] configuration_invalid` | A pause variable holds something other than `true` or unset/empty — treated as paused, on both switches, until fixed. |
    | `cron_dispatch_step_failed` | One step of the 5-minute cron tick failed; the tag's `step` field says which (`reclaim_abandoned_scans`, `close_exhausted_scans`, `reconcile_stuck_completions`, `verify_website_actions`, `notify_due_schedules`). |
-   | `event_write_failed` | An audit or notification event failed to record; the underlying action still happened. |
+   | `event_write_failed` | A scan analytics event (`scan_started` / `scan_completed`) failed to record; the scan itself still committed. It shows up as a counted gap in the weekly value report's reconciliation. |
 
 3. Run `neon:readiness` (read-only, target-guarded — it only inspects the
    configured target, it never writes).
@@ -47,8 +47,8 @@ one.
 Two environment variables stop provider and AI spend without a migration and
 without losing queued work. `readPauseConfig` (`lib/budgets/pause.ts`) treats
 unset or empty as off, exactly `"true"` as on, and **any other value as
-paused** (`yes`, `1`, `TRUE`, `false` all included) — logged once as
-`[pause] configuration_invalid`. An operator who mistypes the value must not
+paused** (`yes`, `1`, `TRUE`, `false` all included) — logged as
+`[pause] configuration_invalid` on every request it affects, until fixed. An operator who mistypes the value must not
 believe spend is still flowing, so a typo pauses rather than passes through.
 
 | Variable | Effect when `true` | Keeps working |
@@ -59,9 +59,19 @@ believe spend is still flowing, so a typo pauses rather than passes through.
 **Containment note.** `SCANS_PAUSED` stops the paid business-search routes as
 well as scan start/rescan/claim, so it fully contains an incident whose
 source is SerpApi, RapidAPI or Google Places — there is no remaining path in
-this app that still calls those providers while it is on. `AI_DRAFTS_PAUSED`
-equally fully contains an LLM gateway incident: every `llmComplete` call path
-is gated, with no exception.
+this app that still calls those providers while it is on (the review for
+P3.5d checked every runtime mode and the vendored packages). `AI_DRAFTS_PAUSED`
+equally contains an LLM gateway incident: every call goes through
+`llmComplete`, which is gated, and the vendored packages make no LLM calls of
+their own.
+
+**The cron.** `vercel.json` runs `POST /api/cron/dispatch` every 5 minutes. It
+answers 401 unless `CRON_SECRET` is set, so without that secret none of its
+steps run. Unsetting `CRON_SECRET` (and redeploying) stops all of them together:
+the reclaim of queued and abandoned scans, auto-close of stuck scans, the
+workspace-completion reconcile, website verification and schedule
+notifications. That is a bigger hammer than `SCANS_PAUSED`, which only skips
+the reclaim.
 
 **How to apply one.** Set the variable in Vercel (Production environment)
 and redeploy, or re-promote the current deployment — environment variable
@@ -81,9 +91,9 @@ it once they interact with the page.
 
 **How to lift.** Unset the variable (or set it back to unset/empty — do not
 leave a stray `false`, which is itself an invalid value and pauses) and
-redeploy the same way. Queued scans resume via the cron reclaim (needs
-`CRON_SECRET` configured, §"Kill switches" table above and `query:scan_backlog`)
-or an owner's Resume click; queued AI work has no equivalent backlog — an
+redeploy the same way. Queued scans resume via the cron reclaim (which needs
+`CRON_SECRET`; see "The cron" above — watch `query:scan_backlog` drain) or an
+owner's Resume click; queued AI work has no equivalent backlog — an
 owner simply retries the draft.
 
 ## 4. Scenario 1: provider disabled or failing
@@ -103,7 +113,8 @@ Providers: SerpApi, RapidAPI (Instagram), Google Places, the LLM gateway.
 - **Recover.** Restore the key or unset the pause variable, redeploy. Check
   `query:dead_lettered_scans` for jobs stuck past three attempts and 30
   minutes; release any from `/ops/failures`. Queued jobs resume through the
-  cron reclaim (needs `CRON_SECRET` — see §7) or the owner's own Resume.
+  cron reclaim (needs `CRON_SECRET` — see "The cron" in §3) or the owner's own
+  Resume.
 - **Verify.** `query:scan_backlog` drains back toward zero in the non-terminal
   statuses over the following cron ticks.
 - **Record.** See §9.
@@ -138,7 +149,7 @@ nothing more.
   `__SCHEDULE_IDS__` as a Postgres array literal (`{id1,id2}`).
 - **Distinguish from stopping the cron.** Unsetting `CRON_SECRET` also stops
   the schedule notifications, but it stops far more at the same time: reclaim,
-  auto-close and reconcile all stop too (§7). Pausing schedules here is a
+  auto-close and reconcile all stop too ("The cron" in §3). Pausing schedules here is a
   narrower action than that.
 
 ## 7. Scenario 4: failed billing synchronisation
