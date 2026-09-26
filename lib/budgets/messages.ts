@@ -8,7 +8,11 @@ import { t } from "@/lib/i18n";
  */
 export function scanStartRefusal(locale: string, status: number, error: unknown): string | null {
   if (status !== 503) return null;
-  if (error === "paused") return t(locale, "pause.scans");
+  // "Not started", not "your scan is saved": every caller of this helper
+  // (scan start, business search, IG search) is refused before anything is
+  // created. "pause.scans" (Your scan is saved) is reserved for the scanning
+  // page's own Resume path, which never calls this helper.
+  if (error === "paused") return t(locale, "pause.scansNotStarted");
   return error === "at_capacity" ? t(locale, "budget.scanAtCapacity") : null;
 }
 

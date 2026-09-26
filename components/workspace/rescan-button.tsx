@@ -97,7 +97,9 @@ export function rescanFailureMessage(result: Extract<ClientResult<unknown>, { ok
   const t = COPY[locale]
   if (result.error === "offline" || result.error === "network") return t.network
   if (result.error === "tier_required") return t.tier
-  if (result.error === "paused") return translate(locale, "pause.scans")
+  // A rescan refusal never created a job, so this is "nothing was started",
+  // not the scanning page's own Resume path ("your scan is saved").
+  if (result.error === "paused") return translate(locale, "pause.scansNotStarted")
   if (result.error === "workspace_scan_budget_reached") return t.workspaceBudget
   if (result.error === "at_capacity") return t.atCapacity
   if (result.status === 403) return t.forbidden

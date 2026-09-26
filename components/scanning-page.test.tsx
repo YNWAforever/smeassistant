@@ -222,7 +222,12 @@ describe("ScanningPage while scans are paused (P3.5d)", () => {
       fireEvent.click(screen.getByText(c.stalledResume));
     });
     await advance(0);
+    // The Resume path saved the job before this refusal (it already exists,
+    // claimable again once the pause lifts), so it keeps "Your scan is
+    // saved" -- never the "nothing was started" copy used where a paused
+    // refusal happens before anything is created (P3.5d).
     expect(screen.getByText(getMessages("en").pause.scans)).toBeTruthy();
+    expect(screen.queryByText(getMessages("en").pause.scansNotStarted)).toBeNull();
     expect(screen.queryByText(c.atCapacity)).toBeNull();
   });
 });

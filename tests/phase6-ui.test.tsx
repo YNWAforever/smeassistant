@@ -116,7 +116,9 @@ describe("rescanFailureMessage budget refusals", () => {
     expect(rescanFailureMessage({ ok: false, status: 429, error: "rate_limited" }, "en")).toBe("Rescan limit reached for today (3 per workspace); try again tomorrow.");
   });
 
-  it.each(["en", "zh-HK", "zh-TW"] as const)("shows the paused-scans copy (P3.5d) in %s, ahead of the capacity refusal", (locale) => {
-    expect(rescanFailureMessage({ ok: false, status: 503, error: "paused" }, locale)).toBe(getMessages(locale).pause.scans);
+  it.each(["en", "zh-HK", "zh-TW"] as const)("shows the paused, nothing-started copy (P3.5d) in %s, ahead of the capacity refusal", (locale) => {
+    // A rescan refusal never created a job, so this is "nothing was started",
+    // not the scanning page's "your scan is saved" (which is only true there).
+    expect(rescanFailureMessage({ ok: false, status: 503, error: "paused" }, locale)).toBe(getMessages(locale).pause.scansNotStarted);
   });
 });

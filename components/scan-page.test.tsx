@@ -29,7 +29,7 @@ afterEach(() => {
 });
 
 describe("ScanPage step 1 search while scans are paused (P3.5d)", () => {
-  it("shows the pause.scans text instead of a generic provider-error message", async () => {
+  it("shows the pause.scansNotStarted text instead of a generic provider-error message", async () => {
     fetchSpy.mockImplementation(async (input: RequestInfo | URL) => {
       if (String(input).includes("/api/business/search")) {
         return { ok: false, status: 503, json: async () => ({ error: "paused" }) } as unknown as Response;
@@ -43,7 +43,7 @@ describe("ScanPage step 1 search while scans are paused (P3.5d)", () => {
       fireEvent.click(screen.getByText(c.searchButton));
     });
 
-    expect(await screen.findByText(getMessages("en").pause.scans)).toBeInTheDocument();
+    expect(await screen.findByText(getMessages("en").pause.scansNotStarted)).toBeInTheDocument();
     expect(screen.queryByText(getMessages("en").scanner.candidateErrorProvider)).toBeNull();
   });
 });

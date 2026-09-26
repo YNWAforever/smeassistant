@@ -146,7 +146,9 @@ nothing more.
   paused now" (a schedule an owner paused themselves must not be woken up by
   your resume).
 - **Resume.** Run `query:resume_schedules`, substituting the kept ids for
-  `__SCHEDULE_IDS__` as a Postgres array literal (`{id1,id2}`).
+  `__SCHEDULE_IDS__` as a Postgres array literal (`{id1,id2}`). If the
+  placeholder is pasted unreplaced, Postgres rejects the statement (invalid
+  uuid[] literal) and nothing changes.
 - **Distinguish from stopping the cron.** Unsetting `CRON_SECRET` also stops
   the schedule notifications, but it stops far more at the same time: reclaim,
   auto-close and reconcile all stop too ("The cron" in §3). Pausing schedules here is a
