@@ -66,6 +66,10 @@
       "rls": true
     },
     {
+      "name": "mail_outbox",
+      "rls": true
+    },
+    {
       "name": "notification_events",
       "rls": true
     },
@@ -2137,6 +2141,177 @@
       "column_default": "now()"
     },
     {
+      "table_name": "mail_outbox",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "mail_outbox",
+      "column_name": "workspace_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "mail_outbox",
+      "column_name": "user_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "mail_outbox",
+      "column_name": "job_id",
+      "ordinal_position": 4,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "mail_outbox",
+      "column_name": "kind",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "mail_outbox",
+      "column_name": "to_address",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "mail_outbox",
+      "column_name": "locale",
+      "ordinal_position": 7,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "mail_outbox",
+      "column_name": "state",
+      "ordinal_position": 8,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'queued'::text"
+    },
+    {
+      "table_name": "mail_outbox",
+      "column_name": "hold_reason",
+      "ordinal_position": 9,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "mail_outbox",
+      "column_name": "payload",
+      "ordinal_position": 10,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "mail_outbox",
+      "column_name": "attempts",
+      "ordinal_position": 11,
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": "0"
+    },
+    {
+      "table_name": "mail_outbox",
+      "column_name": "lease_token",
+      "ordinal_position": 12,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "mail_outbox",
+      "column_name": "lease_until",
+      "ordinal_position": 13,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "mail_outbox",
+      "column_name": "next_attempt_at",
+      "ordinal_position": 14,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "mail_outbox",
+      "column_name": "provider_message_id",
+      "ordinal_position": 15,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "mail_outbox",
+      "column_name": "last_error",
+      "ordinal_position": 16,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "mail_outbox",
+      "column_name": "created_at",
+      "ordinal_position": 17,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "mail_outbox",
+      "column_name": "updated_at",
+      "ordinal_position": 18,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "mail_outbox",
+      "column_name": "sent_at",
+      "ordinal_position": 19,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
       "table_name": "notification_events",
       "column_name": "id",
       "ordinal_position": 1,
@@ -3532,6 +3707,33 @@
       "column_default": null
     },
     {
+      "table_name": "workspace_members",
+      "column_name": "mail_rescan_complete",
+      "ordinal_position": 11,
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "NO",
+      "column_default": "false"
+    },
+    {
+      "table_name": "workspace_members",
+      "column_name": "mail_regression_alert",
+      "ordinal_position": 12,
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "NO",
+      "column_default": "false"
+    },
+    {
+      "table_name": "workspace_members",
+      "column_name": "mail_locale",
+      "ordinal_position": 13,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
       "table_name": "workspace_notifications",
       "column_name": "id",
       "ordinal_position": 1,
@@ -4386,6 +4588,60 @@
       "definition": "UNIQUE (workspace_id, slug)"
     },
     {
+      "table_name": "mail_outbox",
+      "name": "mail_outbox_hold_reason_check",
+      "type": "c",
+      "definition": "CHECK (((hold_reason IS NULL) OR (hold_reason = ANY (ARRAY['mail_unapproved'::text, 'kind_disabled'::text, 'opted_out'::text, 'no_address'::text, 'not_allowlisted'::text, 'not_member'::text]))))"
+    },
+    {
+      "table_name": "mail_outbox",
+      "name": "mail_outbox_hold_reason_state_check",
+      "type": "c",
+      "definition": "CHECK (((state = 'held'::text) = (hold_reason IS NOT NULL)))"
+    },
+    {
+      "table_name": "mail_outbox",
+      "name": "mail_outbox_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (job_id) REFERENCES audit_jobs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "mail_outbox",
+      "name": "mail_outbox_kind_check",
+      "type": "c",
+      "definition": "CHECK ((kind = ANY (ARRAY['rescan_complete'::text, 'regression_alert'::text])))"
+    },
+    {
+      "table_name": "mail_outbox",
+      "name": "mail_outbox_locale_check",
+      "type": "c",
+      "definition": "CHECK ((locale = ANY (ARRAY['en'::text, 'zh-HK'::text, 'zh-TW'::text])))"
+    },
+    {
+      "table_name": "mail_outbox",
+      "name": "mail_outbox_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "mail_outbox",
+      "name": "mail_outbox_state_check",
+      "type": "c",
+      "definition": "CHECK ((state = ANY (ARRAY['queued'::text, 'sending'::text, 'sent'::text, 'retry'::text, 'held'::text, 'dead'::text, 'expired'::text])))"
+    },
+    {
+      "table_name": "mail_outbox",
+      "name": "mail_outbox_user_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES app_users(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "mail_outbox",
+      "name": "mail_outbox_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
       "table_name": "notification_events",
       "name": "notification_events_job_id_fkey",
       "type": "f",
@@ -4795,6 +5051,12 @@
     },
     {
       "table_name": "workspace_members",
+      "name": "workspace_members_mail_locale_check",
+      "type": "c",
+      "definition": "CHECK (((mail_locale IS NULL) OR (mail_locale = ANY (ARRAY['en'::text, 'zh-HK'::text, 'zh-TW'::text]))))"
+    },
+    {
+      "table_name": "workspace_members",
       "name": "workspace_members_pkey",
       "type": "p",
       "definition": "PRIMARY KEY (id)"
@@ -5105,6 +5367,21 @@
       "tablename": "locations",
       "indexname": "locations_workspace_id_slug_key",
       "indexdef": "CREATE UNIQUE INDEX locations_workspace_id_slug_key ON public.locations USING btree (workspace_id, slug)"
+    },
+    {
+      "tablename": "mail_outbox",
+      "indexname": "mail_outbox_due_idx",
+      "indexdef": "CREATE INDEX mail_outbox_due_idx ON public.mail_outbox USING btree (state, next_attempt_at)"
+    },
+    {
+      "tablename": "mail_outbox",
+      "indexname": "mail_outbox_pkey",
+      "indexdef": "CREATE UNIQUE INDEX mail_outbox_pkey ON public.mail_outbox USING btree (id)"
+    },
+    {
+      "tablename": "mail_outbox",
+      "indexname": "mail_outbox_workspace_idx",
+      "indexdef": "CREATE INDEX mail_outbox_workspace_idx ON public.mail_outbox USING btree (workspace_id, created_at DESC)"
     },
     {
       "tablename": "notification_events",
