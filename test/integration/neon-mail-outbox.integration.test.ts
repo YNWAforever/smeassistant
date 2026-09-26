@@ -120,6 +120,13 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
     const ids = [randomUUID(), randomUUID(), randomUUID()];
     await repo().insert(ids.map((id) => outboxRow({ id, workspace_id: ws, user_id: u, job_id: j })));
 
+    // Pre-establish 8 physical connections so the pool never serializes
+    // connection setup in front of the race below -- without this, `pool.connect()`
+    // latency for later callers can make the 8 claims land nearly sequentially,
+    // which would pass even without SKIP LOCKED and prove nothing about it.
+    const warm = await Promise.all(Array.from({ length: 8 }, () => runtime.connect()));
+    await Promise.all(warm.map((c) => c.release()));
+
     const now = new Date();
     const results = await Promise.all(Array.from({ length: 8 }, () => mailOutboxRepository(runtime).claimDue(now, 10)));
     const claimedIds = results.flatMap((r) => r.map((c) => c.id));
@@ -128,6 +135,46 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
     expect(new Set(claimedIds)).toEqual(new Set(ids));
     for (const id of ids) {
       expect(await row(id)).toMatchObject({ state: "sending", attempts: 1 });
+    }
+  });
+
+  it("SKIP LOCKED lets a concurrent claimer skip a row held by an open transaction instead of blocking on it (would fail without SKIP LOCKED)", async () => {
+    const ws = await workspace();
+    const u = await user();
+    const j = await job(ws);
+    const id = randomUUID();
+    await repo().insert([outboxRow({ id, workspace_id: ws, user_id: u, job_id: j })]);
+
+    const a = await runtime.connect();
+    const b = await runtime.connect();
+    try {
+      await a.query("BEGIN");
+      // A claims and holds the row lock open inside its uncommitted transaction.
+      const claimedByA = await mailOutboxRepository(a).claimDue(new Date(), 10);
+      expect(claimedByA.map((r) => r.id)).toEqual([id]);
+
+      // Without SKIP LOCKED, B's SELECT ... FOR UPDATE would block waiting for
+      // A's lock and, with lock_timeout set, error out after ~1s. With SKIP
+      // LOCKED it must simply omit the locked row and return promptly.
+      await b.query("SET lock_timeout = '1s'");
+      const startedAt = Date.now();
+      const claimedByB = await mailOutboxRepository(b).claimDue(new Date(), 10);
+      const elapsedMs = Date.now() - startedAt;
+      expect(claimedByB).toEqual([]);
+      expect(elapsedMs).toBeLessThan(900);
+
+      await a.query("COMMIT");
+
+      // The row is now `sending` with a fresh, unexpired lease from A's commit --
+      // not due, so B's next claim (no open competing transaction now) still
+      // finds nothing to take.
+      const claimedByBAfterCommit = await mailOutboxRepository(b).claimDue(new Date(), 10);
+      expect(claimedByBAfterCommit).toEqual([]);
+      expect(await row(id)).toMatchObject({ state: "sending", attempts: 1 });
+    } finally {
+      await a.query("ROLLBACK").catch(() => {});
+      a.release();
+      b.release();
     }
   });
 
@@ -216,6 +263,29 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
     const ws = await workspace();
     const u = await user();
     expect(await repo().optOut(u, ws, "rescan_complete")).toEqual({ member: false });
+  });
+
+  it("optOut is atomic through a checked-out client with no surrounding BEGIN", async () => {
+    const ws = await workspace();
+    const u = await user();
+    const j = await job(ws);
+    await member(ws, u, { mailRescanComplete: true });
+    const queuedId = randomUUID();
+    await repo().insert([outboxRow({ id: queuedId, workspace_id: ws, user_id: u, job_id: j })]);
+
+    const client = await runtime.connect();
+    try {
+      // No BEGIN here: a plain checked-out connection, exactly as risky as a
+      // bare Pool for a caller that forgets to wrap two statements in a
+      // transaction. optOut must still be atomic on its own.
+      expect(await mailOutboxRepository(client).optOut(u, ws, "rescan_complete")).toEqual({ member: true });
+    } finally {
+      client.release();
+    }
+    expect(
+      (await runtime.query("SELECT mail_rescan_complete FROM workspace_members WHERE workspace_id=$1 AND user_id=$2", [ws, u])).rows[0],
+    ).toEqual({ mail_rescan_complete: false });
+    expect(await row(queuedId)).toMatchObject({ state: "held", hold_reason: "opted_out" });
   });
 
   it("recipients reads gate, switch, address and locale correctly", async () => {

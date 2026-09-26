@@ -1,15 +1,8 @@
 import "server-only";
 import type { Pool, PoolClient } from "pg";
-import { withTransaction } from "../db/transaction";
 import { LEASE_MINUTES, type HoldReason, type MailKind, type RecipientFacts } from "../mail/decide";
 
-type Executor = Pick<Pool | PoolClient, "query">;
 type Locale = "en" | "zh-HK" | "zh-TW";
-
-/** Only `Pool` lacks `.release` -- a `PoolClient` (from `pool.connect()` or `withTransaction`) always has one. */
-function isPoolClient(client: Pool | PoolClient): client is PoolClient {
-  return typeof (client as PoolClient).release === "function";
-}
 
 function notifyColumn(kind: MailKind): "notify_rescan_complete" | "notify_regression_alert" {
   return kind === "rescan_complete" ? "notify_rescan_complete" : "notify_regression_alert";
@@ -264,31 +257,39 @@ export function mailOutboxRepository(client: Pool | PoolClient) {
     },
 
     /**
-     * One transaction: flips the member's switch off (only for an accepted
-     * member -- a removed/pending member changes nothing and reports
-     * `member: false`) and holds that member's still-actionable rows of this
-     * kind. When `client` is already a `PoolClient` it is presumed to be
-     * inside a caller's own transaction (e.g. the unsubscribe route's single
-     * connection); a bare `Pool` opens its own via `withTransaction`.
+     * Flips the member's switch off (only for an accepted member -- a
+     * removed/pending member changes nothing and reports `member: false`)
+     * and holds that member's still-actionable rows of this kind. Written as
+     * one data-modifying CTE rather than two statements wrapped in
+     * BEGIN/COMMIT: a single statement is atomic on whatever executor it
+     * runs on -- a bare `Pool` (no ambient transaction), a `PoolClient`
+     * checked out but never BEGINed, or a `PoolClient` already inside a
+     * caller's own transaction -- with no branching on which one this is.
+     *
+     * `h`'s `EXISTS (SELECT 1 FROM m)` gates the hold on `m` having actually
+     * matched a row: CTEs in one WITH clause all read the pre-statement
+     * snapshot, so `h` cannot see `m`'s write directly, only whether `m`
+     * produced a row at all. When `m` matches nothing (no accepted member),
+     * `h` updates nothing either, and the final SELECT's count is 0 --
+     * `member: false`, and the outbox is untouched.
      */
     async optOut(userId: string, workspaceId: string, kind: MailKind): Promise<{ member: boolean }> {
       const memberCol = memberColumn(kind);
-      const run = async (db: Executor): Promise<{ member: boolean }> => {
-        const member = await db.query<{ id: string }>(
-          `UPDATE workspace_members SET ${memberCol}=false
+      const result = await client.query<{ members: number }>(
+        `WITH m AS (
+           UPDATE workspace_members SET ${memberCol}=false
            WHERE workspace_id=$1 AND user_id=$2 AND accepted_at IS NOT NULL
-           RETURNING id`,
-          [workspaceId, userId],
-        );
-        if (!member.rows.length) return { member: false };
-        await db.query(
-          `UPDATE mail_outbox SET state='held', hold_reason='opted_out', updated_at=now()
-           WHERE workspace_id=$1 AND user_id=$2 AND kind=$3 AND state IN ('queued','retry')`,
-          [workspaceId, userId, kind],
-        );
-        return { member: true };
-      };
-      return isPoolClient(client) ? run(client) : withTransaction(run, client);
+           RETURNING user_id
+         ), h AS (
+           UPDATE mail_outbox SET state='held', hold_reason='opted_out', lease_token=NULL, lease_until=NULL, updated_at=now()
+           WHERE workspace_id=$1 AND user_id=$2 AND kind=$3 AND state IN ('queued','retry')
+             AND EXISTS (SELECT 1 FROM m)
+           RETURNING id
+         )
+         SELECT (SELECT count(*)::int FROM m) AS members`,
+        [workspaceId, userId, kind],
+      );
+      return { member: (result.rows[0]?.members ?? 0) > 0 };
     },
 
     /** Updates only the provided switches; `locale` is always written (null clears it back to the market default). */
