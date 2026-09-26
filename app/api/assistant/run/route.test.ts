@@ -190,4 +190,42 @@ describe("POST /api/assistant/run AI budget", () => {
     expect(await res.json()).toEqual({ error: "ai_budget_reached" });
     expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
   });
+
+  it("answers 503 ai_paused when the live draft was refused because AI is paused, and records no run event", async () => {
+    mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("owner"));
+    mocks.runLiveAssistant.mockRejectedValueOnce(new AiBudgetRefusal("ai_paused"));
+    const res = await post({ mode: "live", surface: "action", intentId: "draft_review_reply", locale: "en", context: { workspaceId: WORKSPACE_ID } });
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "ai_paused" });
+    expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
+  });
+
+  it("answers 503 ai_paused before the limiter for a draft intent, so a paused request never burns the assistant_run rate limit (P3.5d)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("owner"));
+    vi.stubEnv("AI_DRAFTS_PAUSED", "true");
+    try {
+      const res = await post({ mode: "live", surface: "action", intentId: "draft_review_reply", locale: "en", context: { workspaceId: WORKSPACE_ID } });
+      expect(res.status).toBe(503);
+      expect(await res.json()).toEqual({ error: "ai_paused" });
+      expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+      expect(mocks.runLiveAssistant).not.toHaveBeenCalled();
+      expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+      warn.mockRestore();
+    }
+  });
+
+  it("still runs an explain intent (no LLM call) while AI drafting is paused (P3.5d)", async () => {
+    mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("viewer"));
+    vi.stubEnv("AI_DRAFTS_PAUSED", "true");
+    try {
+      const res = await post({ mode: "live", surface: "home", intentId: "explain_priority", locale: "en", context: { workspaceId: WORKSPACE_ID } });
+      expect(res.status).toBe(200);
+      expect(mocks.runLiveAssistant).toHaveBeenCalledOnce();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
 });

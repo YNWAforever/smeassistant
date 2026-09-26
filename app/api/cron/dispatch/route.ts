@@ -11,6 +11,7 @@ import { recordNeonEvent } from "@/lib/workspace/audit";
 import { runWebsiteVerification } from "@/lib/verify/website-sweep";
 import { dispatchScanProcess } from "@/lib/scan/dispatch-process";
 import { deadLetterRepository } from "@/lib/repositories/dead-letter";
+import { pauseState, logPauseRefusal } from "@/lib/budgets/pause";
 
 export const maxDuration = 60;
 
@@ -60,17 +61,23 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   let reclaimCandidates = 0;
-  try {
-    const jobIds = await schedulerRepository().claimableJobIds(RECLAIM_BATCH_LIMIT);
-    reclaimCandidates = jobIds.length;
-    const origin = process.env.APP_ORIGIN;
-    if (origin) {
-      for (const jobId of jobIds) dispatchScanProcess(jobId, (cause) => logFailure(`reclaim_dispatch:${jobId}`, cause));
-    } else if (jobIds.length > 0) {
-      logFailure("reclaim_abandoned_scans", new Error("APP_ORIGIN not configured -- found eligible jobs but could not dispatch any"));
+  if (pauseState().scans) {
+    // P3.5d: claims would all be refused while paused; do not spend 20
+    // function calls finding that out. Auto-close and reconcile still run.
+    logPauseRefusal("retry_claim");
+  } else {
+    try {
+      const jobIds = await schedulerRepository().claimableJobIds(RECLAIM_BATCH_LIMIT);
+      reclaimCandidates = jobIds.length;
+      const origin = process.env.APP_ORIGIN;
+      if (origin) {
+        for (const jobId of jobIds) dispatchScanProcess(jobId, (cause) => logFailure(`reclaim_dispatch:${jobId}`, cause));
+      } else if (jobIds.length > 0) {
+        logFailure("reclaim_abandoned_scans", new Error("APP_ORIGIN not configured -- found eligible jobs but could not dispatch any"));
+      }
+    } catch (cause) {
+      logFailure("reclaim_abandoned_scans", cause);
     }
-  } catch (cause) {
-    logFailure("reclaim_abandoned_scans", cause);
   }
 
   // P3.5b: scans that used all three attempts and sat past the 24-hour

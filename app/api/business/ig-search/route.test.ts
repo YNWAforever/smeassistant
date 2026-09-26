@@ -148,4 +148,17 @@ describe("POST /api/business/ig-search", () => {
     } as never);
     expect((await POST(post(valid))).status).toBe(504);
   });
+
+  it("answers 503 paused before the limiter or any RapidAPI/SerpApi spend, while scans are paused (P3.5d)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubEnv("SCANS_PAUSED", "true");
+    const response = await POST(post(valid));
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "paused" });
+    expect(rateLimit.enforceRateLimit).not.toHaveBeenCalled();
+    expect(searchInstagramRapidApi).not.toHaveBeenCalled();
+    expect(searchInstagramSerpApi).not.toHaveBeenCalled();
+    vi.unstubAllEnvs();
+    warn.mockRestore();
+  });
 });

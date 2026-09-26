@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { notifyDueSchedules, claimableJobIds, reconcileWorkspaceScans, getPool, waitUntilMock, fetchMock, runWebsiteVerification, closeExhausted } = vi.hoisted(() => ({
   notifyDueSchedules: vi.fn(),
@@ -227,5 +227,23 @@ describe("POST /api/cron/dispatch and a budget refusal", () => {
     } finally {
       error.mockRestore();
     }
+  });
+});
+
+describe("POST /api/cron/dispatch and the incident pause", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("skips the reclaim dispatch while scans are paused, but still closes and reconciles", async () => {
+    vi.stubEnv("SCANS_PAUSED", "true");
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    claimableJobIds.mockResolvedValue(["job-1"]);
+    const response = await POST(request());
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(claimableJobIds).not.toHaveBeenCalled();
+    expect(closeExhausted).toHaveBeenCalled();
+    expect(reconcileWorkspaceScans).toHaveBeenCalled();
+    expect((await response.json()).reclaimCandidates).toBe(0);
   });
 });

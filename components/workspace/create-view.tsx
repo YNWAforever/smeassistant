@@ -110,6 +110,9 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
     if (runError === "ai_budget_reached") {
       // P3.5a: the action exists; only the draft was refused, before any model call.
       toast.error(t(locale, "budget.aiLimit"))
+    } else if (runError === "ai_paused") {
+      // P3.5d: the action exists; AI drafting is paused for maintenance.
+      toast.error(t(locale, "pause.ai"))
     } else if (runError) {
       toast.error(isChinese ? "行動已建立，但未能開始生成草稿。" : "Action created, but the draft could not be started.")
     } else if (factsNeeded?.length) {

@@ -2,7 +2,7 @@
  * Spend-budget log lines (P3.5a). Fixed text and numbers only: no business
  * names, emails or ids.
  */
-export type BudgetScope = "scan_global" | "scan_workspace" | "ai_global" | "ai_workspace";
+export type BudgetScope = "scan_global" | "scan_workspace" | "scan_paused" | "ai_global" | "ai_workspace" | "ai_paused";
 /**
  * Where the check ran. `retry_claim` is the claim-time gate: it meters every
  * claim that is not an admitted first attempt with a live reservation, so it

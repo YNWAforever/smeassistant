@@ -397,4 +397,14 @@ describe("runScan budget refusal", () => {
     await expect(runScan("job", "session")).resolves.toEqual({ status: "already_claimed" });
     expect(completionMock).not.toHaveBeenCalled();
   });
+
+  it("reports paused when the store refused the claim on the incident pause, and completes nothing", async () => {
+    vi.mocked(createScanExecutionStore).mockImplementationOnce(((...args: unknown[]) => {
+      (args[1] as { onBudgetRefused?: (scope: "scan_paused") => void }).onBudgetRefused?.("scan_paused");
+      return storeMock;
+    }) as never);
+    vi.mocked(processScan).mockResolvedValueOnce({ status: "already_claimed" });
+    await expect(runScan("job", "session")).resolves.toEqual({ status: "paused" });
+    expect(completionMock).not.toHaveBeenCalled();
+  });
 });

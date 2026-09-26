@@ -5,6 +5,7 @@ import { BrandView } from "@/components/workspace/brand-view";
 import { EvidenceGallery } from "@/components/workspace/evidence-gallery";
 import { RescanButton, rescanFailureMessage } from "@/components/workspace/rescan-button";
 import { TeamView } from "@/components/workspace/team-view";
+import { getMessages } from "@/lib/i18n";
 import type { EvidenceGalleryItem } from "@/lib/report/view-model";
 import type { BrandProfile } from "@/lib/workspace/brand";
 import type { TeamModel } from "@/lib/workspace/team";
@@ -113,5 +114,11 @@ describe("rescanFailureMessage budget refusals", () => {
 
   it("still reports the per-workspace rate limit as the rate limit", () => {
     expect(rescanFailureMessage({ ok: false, status: 429, error: "rate_limited" }, "en")).toBe("Rescan limit reached for today (3 per workspace); try again tomorrow.");
+  });
+
+  it.each(["en", "zh-HK", "zh-TW"] as const)("shows the paused, nothing-started copy (P3.5d) in %s, ahead of the capacity refusal", (locale) => {
+    // A rescan refusal never created a job, so this is "nothing was started",
+    // not the scanning page's "your scan is saved" (which is only true there).
+    expect(rescanFailureMessage({ ok: false, status: 503, error: "paused" }, locale)).toBe(getMessages(locale).pause.scansNotStarted);
   });
 });
