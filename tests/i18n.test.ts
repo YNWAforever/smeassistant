@@ -22,7 +22,9 @@ const UPSTREAM_NAMESPACES = ["scanner", "scanning", "report", "share", "legal"];
 // in the owner's run history, with the same register split.
 // "problems" (P3.5b) labels the owner-facing failure and retry view: problem
 // titles, next-step copy and allowlisted reason codes, with the same register split.
-const APP_NAMESPACES = ["applied", "verified", "budget", "draftFailure", "problems"];
+// "pause" (P3.5d) labels the incident kill-switch refusals shown to owners,
+// with the same register split.
+const APP_NAMESPACES = ["applied", "verified", "budget", "draftFailure", "problems", "pause"];
 const NAMESPACES = [...UPSTREAM_NAMESPACES, ...APP_NAMESPACES];
 
 function readBundle(locale: string): Record<string, unknown> {

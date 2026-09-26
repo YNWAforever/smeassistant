@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import type { PrototypeLocale } from "@/lib/copy"
+import { t as translate } from "@/lib/i18n"
 import { rescanLocation, type ClientResult } from "@/lib/workspace/client"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 
@@ -96,6 +97,7 @@ export function rescanFailureMessage(result: Extract<ClientResult<unknown>, { ok
   const t = COPY[locale]
   if (result.error === "offline" || result.error === "network") return t.network
   if (result.error === "tier_required") return t.tier
+  if (result.error === "paused") return translate(locale, "pause.scans")
   if (result.error === "workspace_scan_budget_reached") return t.workspaceBudget
   if (result.error === "at_capacity") return t.atCapacity
   if (result.status === 403) return t.forbidden

@@ -408,6 +408,45 @@ describe("the AI drafting limit", () => {
   });
 });
 
+describe("AI drafting paused for maintenance (P3.5d)", () => {
+  const DRAFTED_KEY = AGENT_TEMPLATES[0].key;
+
+  beforeEach(() => {
+    if (!window.matchMedia)
+      window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia;
+    clientMocks.runAction.mockReset().mockResolvedValue({ ok: false, status: 503, error: "ai_paused" });
+    toastMocks.error.mockReset();
+  });
+  afterEach(cleanup);
+
+  it.each([
+    ["en", "Generate a draft"],
+    ["zh-HK", "生成草稿"],
+    ["zh-TW", "生成草稿"],
+  ] as const)("says in %s that AI drafting is paused", async (locale, label) => {
+    renderLive(
+      <ActionDetailClient
+        locale={locale}
+        workspaceSlug="kam-man-house"
+        workspaceId="ws-1"
+        timezone="Asia/Hong_Kong"
+        role="owner"
+        inScope
+        location="yik-yam"
+        detail={detail(DRAFTED_KEY)}
+        auditRows={[]}
+        locations={[{ slug: "yik-yam", name: "Yik Yam" }]}
+        approvedAssets={[]}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: new RegExp(label) }));
+    });
+    expect(clientMocks.runAction).toHaveBeenCalledWith("act-1", {});
+    expect(toastMocks.error).toHaveBeenCalledWith(getMessages(locale).pause.ai);
+  });
+});
+
 describe("the fallback failure toast", () => {
   // P3.5b Task 12: an owner must never see a raw provider/internal error code
   // in front of them. A failure that isn't offline/network, a budget refusal,
