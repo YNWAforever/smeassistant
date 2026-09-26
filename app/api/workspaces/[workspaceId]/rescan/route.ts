@@ -82,6 +82,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ workspa
     if (result.reason === "no_finished_job") return NextResponse.json({ error: "no_finished_scan" }, { status: 404 });
     if (result.reason === "snapshot_not_v2") return NextResponse.json({ error: "snapshot_not_rescannable" }, { status: 409 });
     if (result.reason === "at_capacity") return NextResponse.json({ error: "at_capacity" }, { status: 503 });
+    if (result.reason === "paused") return NextResponse.json({ error: "paused" }, { status: 503 });
     if (result.reason === "workspace_scan_budget_reached") return NextResponse.json({ error: "workspace_scan_budget_reached" }, { status: 429 });
     return NextResponse.json({ error: "unavailable" }, { status: 503 });
   }

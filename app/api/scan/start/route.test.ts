@@ -377,4 +377,19 @@ describe("POST /api/scan/start spend budget", () => {
       error.mockRestore();
     }
   });
+
+  it("answers 503 paused, forwards nothing and logs no persistence failure, when admission refuses on the incident pause", async () => {
+    mocks.after.mockClear();
+    mocks.insert.mockRejectedValueOnce(new ScanBudgetRefusal("scan_paused"));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const response = await POST(request(validBody));
+      expect(response.status).toBe(503);
+      expect(await response.json()).toEqual({ error: "paused" });
+      expect(mocks.after).not.toHaveBeenCalled();
+      expect(error).not.toHaveBeenCalledWith("Scan persistence unavailable", expect.anything());
+    } finally {
+      error.mockRestore();
+    }
+  });
 });

@@ -42,9 +42,10 @@ export async function POST(req: Request) {
   const created = await insertScanJob(parsed.input, parsed.consent, { anonymousSessionId: session.id });
   if (!created.ok) {
     // Already logged as "[budget] refused" (or "[budget] check_failed") by the
-    // admission check, which ran before anything was written.
+    // admission check, which ran before anything was written. P3.5d: a paused
+    // refusal is reported the same way, distinguished by its scope.
     if (created.error instanceof ScanBudgetRefusal) {
-      return NextResponse.json({ error: "at_capacity" }, { status: 503 });
+      return NextResponse.json({ error: created.error.scope === "scan_paused" ? "paused" : "at_capacity" }, { status: 503 });
     }
     const correlationId = randomUUID();
     // An invalid event cannot follow a successful parse today, but the cause is

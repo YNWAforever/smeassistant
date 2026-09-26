@@ -40,7 +40,7 @@ export interface RescanSourceJob extends SchedulableJob {
   location_id: string | null;
 }
 
-export type RescanRefusal = "no_finished_job" | "snapshot_not_v2" | "insert_failed" | "at_capacity" | "workspace_scan_budget_reached";
+export type RescanRefusal = "no_finished_job" | "snapshot_not_v2" | "insert_failed" | "at_capacity" | "workspace_scan_budget_reached" | "paused";
 
 export type EnqueueRescanResult =
   | { ok: true; jobId: string; sourceJob: RescanSourceJob }
@@ -177,8 +177,12 @@ export async function enqueueRescan(repo: RescanRepository, input: EnqueueRescan
   catch (error) {
     // P3.5a: refused before anything was written, and already logged by the
     // admission check, so it is neither a failure nor worth a second log line.
+    // P3.5d: the incident pause is reported the same way, distinguished by scope.
     if (error instanceof ScanBudgetRefusal) {
-      return { ok: false, reason: error.scope === "scan_workspace" ? "workspace_scan_budget_reached" : "at_capacity" };
+      return {
+        ok: false,
+        reason: error.scope === "scan_paused" ? "paused" : error.scope === "scan_workspace" ? "workspace_scan_budget_reached" : "at_capacity",
+      };
     }
     console.error("[workspace/rescan] job insert failed", { category: "rescan_insert_failed" });
     return { ok: false, reason: "insert_failed" };

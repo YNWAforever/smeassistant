@@ -76,6 +76,14 @@ export async function POST(req: Request) {
     setAnalyticsSessionCookie(refused, session);
     return refused;
   }
+  // P3.5d: the incident pause. The job stays exactly as it was (queued or
+  // claimable, no attempt row) and the cron reclaim offers it again once the
+  // pause lifts.
+  if (result.status === "paused") {
+    const refused = NextResponse.json({ error: "paused" }, { status: 503 });
+    setAnalyticsSessionCookie(refused, session);
+    return refused;
+  }
   const response = NextResponse.json(result, { status: result.status === "failed" ? 500 : 200 });
   setAnalyticsSessionCookie(response, session);
   return response;

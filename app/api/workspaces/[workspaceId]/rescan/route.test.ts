@@ -187,6 +187,7 @@ describe("POST /api/workspaces/[workspaceId]/rescan spend budget", () => {
   it.each([
     ["at_capacity", 503],
     ["workspace_scan_budget_reached", 429],
+    ["paused", 503],
   ] as const)("maps the %s refusal to %i with that error code, and creates no schedule", async (reason, status) => {
     mocks.authorizeWorkspaceRequest.mockResolvedValue(auth("owner"));
     mocks.enqueueRescan.mockResolvedValue({ ok: false, reason });

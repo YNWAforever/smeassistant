@@ -986,4 +986,16 @@ describe("scan process budget refusal", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ status: "already_claimed" });
   });
+
+  it("answers 503 paused, with the analytics cookie set, when the store refused a retry on the incident pause", async () => {
+    storeMocks.createScanExecutionStore.mockImplementationOnce((...args: unknown[]) => {
+      (args[1] as { onBudgetRefused?: (scope: string) => void }).onBudgetRefused?.("scan_paused");
+      return { marker: "neon-store" };
+    });
+    vi.mocked(processScan).mockResolvedValueOnce({ status: "already_claimed" });
+    const response = await post();
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "paused" });
+    expect(response.headers.get("set-cookie")).toBeTruthy();
+  });
 });
