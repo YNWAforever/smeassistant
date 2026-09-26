@@ -883,4 +883,105 @@ Full detail is in `PHASE-3-TEST-RESULTS.md`. Summary, one gate at a time, run se
 
 After the unit-test run, the two tracked snapshot files (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) showed as modified; `git diff --ignore-cr-at-eol --stat` was empty, confirming line-ending-only changes, and both were restored. `git status --short` was otherwise clean before this documentation commit.
 
+## P3.3 — commercial contract on safe defaults
+
+**Branch** `claude/commercial-contract-design-3b8561` (same content line as `p33-commercial-contract`), 9 commits (`0010a33`..`1eb6a50`) on top of `aeb8513` (P3.5d's tip; stacked on `p35d-incident-runbook`, PR #23, not yet merged) · Task 6 (this record) adds a 10th. Worktree `C:\Users\laich\Documents\smeassistant\.claude\worktrees\commercial-contract-design-3b8561`. Node `v24.18.0`, pnpm `9.12.0` via corepack, Windows 11, Docker Server `29.7.2`.
+
+Built from `docs/superpowers/plans/2026-09-26-commercial-contract.md` (Tasks 1–6), against the design in [`docs/superpowers/specs/2026-09-26-commercial-contract-design.md`](../../superpowers/specs/2026-09-26-commercial-contract-design.md).
+
+**Implemented and locally verified. Nothing here is hosted-verified.** No migration, no deployment, no remote CRON, no paid provider call, no push.
+
+### What this closes
+
+The Master Plan's §6 P3.3 ("Reconcile billing, allowance and seats atomically") asks for "one versioned commercial contract read by server policy and presentation … Avoid a third hard-coded pricing copy table", allowance updates on tier change that are safe against concurrent exports and duplicate billing events, seat limits only if the approved plan has them, and "Keep unconfigured billing unavailable, not falsely successful. Test the unsigned negative boundary and duplicate valid events separately."
+
+Before this slice, commercial facts lived in three places (`lib/workspace/entitlement.ts`, `packages/region/src/config.ts`, and hand-written plan copy in `components/public-pages.tsx`/`lib/copy.ts`); the workspace billing page always showed "Subscribe via Stripe" even with Stripe unconfigured (a working button in front of a `500`); and the Stripe webhook checked provider configuration **before** the signature, so an unsigned probe on an unconfigured deployment answered `500` instead of the required `400` — untested, because the unit test stubbed Stripe as configured.
+
+### Decisions (user, 2026-09-26)
+
+| Question | Decision |
+|---|---|
+| How to continue Phase 3 | Build P3.3 and P3.5c on safe defaults; decisions configurable, off |
+| Public Growth price while billing is closed | Keep the baseline price, labelled "Subscriptions are not open yet — contact Fimmick"; no Subscribe button anywhere until approved |
+| Approach | A — typed contract in code + approval env var (`COMMERCIAL_CONTRACT_APPROVED` must equal the contract version) |
+
+**Where this plan departs from the spec** (decided while writing the plan, before any code):
+
+1. **Two existing webhook tests change.** The mock of `@/lib/stripe` gains `constructWebhookEvent` (verification moves off the API-key client so it can run when Stripe is unconfigured), and "refuses to run without STRIPE_WEBHOOK_SECRET" sends a well-formed header (`t=1,v1=abc123`), because the spec makes a malformed header `400`. Assertions are otherwise unchanged.
+2. **The checkout route test opens billing in `beforeEach`** by stubbing the approval and Stripe env; without that every existing case would get `503`. Assertions unchanged.
+3. **Pricing footnote.** `funnel.pricing.planNote` says "Growth Workspace is billed via Stripe" — an unsupported claim while closed. When closed the pricing page shows `funnel.landing.planNote` instead (existing string, no new copy).
+4. **"Free's allowance line"** is added as a feature line on the pricing page's Free card, worded as the free *workspace* allowance (`commercial.allowanceLine`: "Free workspace: {count} approved deliveries a month"), since that card is the free scan.
+
+### Gate-found regression: the integration webhook mock missed the new signature helpers
+
+Task 6's own `test:integration` gate run — the first time this branch's full integration suite ran; no single task's own required gate (`typecheck && lint && test`) includes it — failed 3 of 378 tests, all in `test/integration/neon-integrations.integration.test.ts`:
+
+- `"applies signed concurrent replay exactly once and re-reads authoritative out-of-order state"` — expected `[200, 200]`, got `[400, 400]`.
+- `"rolls event insertion back with a failed tier write and permits clean retry"` — expected `500`, got `400`.
+- `"never resolves unknown legacy customers using email and rejects unknown checkout targets"` — expected `200`, got `400`.
+
+**Root cause.** This file's own `vi.mock("../../lib/stripe", () => ({ stripeConfigured: () => true, getStripeClient: () => {...} }))` replaced the *whole* `lib/stripe` module with a factory exporting only those two names. Task 3 (`14ec69c`) added two more exports to that module — `constructWebhookEvent`, `isWellFormedStripeSignature` — and made the webhook route call them before any configuration check. Under this integration test's mock both were `undefined`; calling `constructWebhookEvent(...)` threw `TypeError: constructWebhookEvent is not a function`, and the route's own `catch` block turned every request — signed or not, valid or not — into a `400 "Invalid signature"`. The plan's departure #1 above had already applied the equivalent fix to the **unit** test's own, separate mock in `app/api/webhooks/stripe/route.test.ts`; this integration test carries its own independent mock and was missed.
+
+**Confirmed genuine, not the load-flake class named in this task's brief:** reproducible 3/3 on repeat; the file is untouched by any P3.3 implementation commit (`git diff --name-only aeb8513..0bf71c5` excludes it); and it passes 12/12 run against the base commit `aeb8513` unmodified.
+
+**Fixed in `1eb6a50`** ("test(P3.3): the integration webhook mock exposes the new signature helpers"): the mock now spreads the real module via `importOriginal()` and overrides only `stripeConfigured`/`getStripeClient`, the same pattern the unit test's mock already used — `constructWebhookEvent` and `isWellFormedStripeSignature` are the real implementations, so this suite's requests are verified with genuine Stripe signature checking, including real tamper detection. Re-reviewed and re-run: `test:integration` passes 38/38 files, 378/378 tests, exit 0 (see Verification). No product code changed; the fix is confined to one test file, and no other file's behaviour is affected.
+
+### What changed, by task
+
+Full diff `aeb8513..1eb6a50`: **33 files changed, 1,281 insertions, 72 deletions**, across 9 commits (2 docs, 6 implementation, 1 gate-found test fix).
+
+| Task | Commit(s) | What it did |
+|---|---|---|
+| Design and plan | `0010a33`, `2a6d3b2` | The design; the plan, written against the code. |
+| 1. The contract and the server policy that reads it | `504087b` | `lib/commercial/contract.ts` (`COMMERCIAL_CONTRACT`, `tierAllows`, which fails closed for anything other than a declared tier key via an own-property check that cannot be fooled by `__proto__`/`toString`); `deliveryAllowanceForTier` now reads the contract; the rescan route uses `tierAllows(tier, "rescans")` instead of `isWorkspacePaid` directly (identical behaviour today). |
+| 2. Billing availability, and closed checkout/portal routes | `c7b87b8` | `lib/commercial/availability.ts` (`billingAvailability`: `contract_unapproved` when unset/blank/mismatched — warns only on a mismatch, never on unset; `provider_unconfigured` when any of `STRIPE_SECRET_KEY`/`STRIPE_HK_TIER_PRICE_ID`/`STRIPE_TW_TIER_PRICE_ID`/`APP_ORIGIN` is blank); `checkout-link`/`billing-portal` routes answer `503 billing_unavailable` before any Stripe call when closed, after auth/role checks run first; `.env.example` documents `COMMERCIAL_CONTRACT_APPROVED` (commented out). |
+| 3. The webhook verifies the signature first | `14ec69c` | `lib/stripe.ts` gained `constructWebhookEvent` (the static `Stripe.webhooks.constructEvent`, needs no API key) and `isWellFormedStripeSignature`; `app/api/webhooks/stripe/route.ts` now verifies the signature before any `stripeConfigured()` check, so a missing or malformed header is `400` regardless of configuration and only a well-formed-but-unverifiable header reaches the `500` "not configured" answer; the unit test's own mock moved `constructEvent`/`retrieveSubscription` into `vi.hoisted` and became an `importOriginal` factory (departure #1 above). |
+| Gate-found: the integration webhook mock missed the new helpers | `1eb6a50` | See "Gate-found regression" above. |
+| 4. Copy namespace and the public price surfaces | `4b75b6c`, fixed by `039e119` | New `commercial` namespace in `lib/messages/{en,zh-HK,zh-TW}.json` (`notOpen`, `contactFimmick`, `allowanceLine`, `unlimitedLine`), listed in `tests/i18n.test.ts`; the pricing page and landing plans show the Growth card's price by market (never by locale), with the "not open yet" label and the market's contact channel (plain text when none is configured) while closed, and the ordinary sign-up CTA when open; Free's allowance line reads the contract. The fix commit corrected the pricing FAQ's "How do I subscribe?" answer, which was still an unsupported claim while billing was closed (departures #3, #4). |
+| 5. Workspace billing page shows buttons only when billing is open | `0bf71c5` | `components/workspace/billing-view.tsx` and its settings page resolve `billingAvailability()` server-side and pass it as a prop; Subscribe/Manage buttons render only when open; the same "not open yet" note and contact link render when closed, alongside today's tier, usage and tier history. |
+| 6. Gates, mutation checks and the phase record | *(this commit)* | Gates, including the `test:integration` run that found the regression above; four mutation checks, all killed; this section and the matching `PHASE-3-TEST-RESULTS.md` section. |
+
+### Owner actions
+
+**Nothing is required to deploy this slice.** No migration, no new required environment variable — `COMMERCIAL_CONTRACT_APPROVED` and the Stripe variables are all optional and already documented in `.env.example`; unset, billing now honestly answers "closed" (previously it looked open — Subscribe rendered — with no working backend behind it).
+
+- **To open billing:** set `COMMERCIAL_CONTRACT_APPROVED=2026-09-baseline` (must equal `COMMERCIAL_CONTRACT.version` exactly, after trimming) and a full Stripe configuration (`STRIPE_SECRET_KEY`, `STRIPE_HK_TIER_PRICE_ID`, `STRIPE_TW_TIER_PRICE_ID`, `APP_ORIGIN`), then redeploy — an environment variable change takes effect on the next deployment, not the running one.
+- **The landing page's availability is fixed at build time**, like every other server-resolved prop on that route; a later change to the approval variable or the Stripe configuration needs the same redeploy as opening billing itself, not just a page reload or a running-instance restart.
+- **This branch is stacked on `p35d-incident-runbook` (PR #23) and must merge after it.** It was built and gated on top of that branch's tip (`aeb8513`), not on `origin/main`. **P3.5d (PR #23) was itself merged into `p35b-failure-view` after that branch reached `main`, so neither P3.5d nor this branch is on `main` yet** — merging this branch requires the same chain to land first.
+
+### Known limits (spec §6, plus this session's findings)
+
+- No seat limits (none exist or are claimed).
+- No trial/pilot, upgrade, downgrade, rollover, top-up or over-limit rules beyond today's behaviour — they wait for DEC-08.
+- No Stripe test-mode run — waits for DEC-09.
+- Paid tier arrives only through the Stripe webhook; this app has no staff grant.
+- Opening billing requires both the approval variable and a full Stripe configuration, then a redeploy.
+- No migration. None was needed or added.
+- **The landing page's availability is fixed at build time** (see "Owner actions" above — a config change needs a redeploy, not just a reload).
+- **P3.5d (PR #23) was merged into `p35b-failure-view` after that branch reached `main`, so neither P3.5d nor this branch is on `main` yet.**
+
+### Verification
+
+Full detail is in `PHASE-3-TEST-RESULTS.md`. Summary, one gate at a time, run on 2026-09-26. `typecheck`/`lint`/`test`/`db:verify`/both builds ran at `0bf71c5` (Task 5's tip); `1eb6a50` only touches one file matched by `**/*.integration.test.ts`, which is outside every one of those gates' globs, so those results stand unchanged at the branch's actual `HEAD`. `test:integration` is shown at both HEADs, since that is the gate the fix addresses:
+
+| Command | HEAD | Result |
+|---|---|---|
+| `corepack pnpm typecheck` | `0bf71c5` | **passed**: exit 0. Root `tsc --noEmit`, then all 4 workspace packages report `Done`. |
+| `corepack pnpm lint` | `0bf71c5` | **passed**: exit 0, `✖ 30 problems (0 errors, 30 warnings)` across 18 files — identical counts and files to the P3.5d record. No file this branch touches appears among them. |
+| `corepack pnpm test` | `0bf71c5` | **passed**: exit 0 once the one known-intermittent file (`app/api/versions/[versionId]/versions.test.ts`, empty diff against `aeb8513`, re-run 11/11) is counted from its isolated re-run. **350 files / 3,741 tests** total: app suite excl. safe-media 299 files/3,154 tests, `lib/evidence/safe-media.test.ts` 1/62, packages `region` 3/23, `scoring` 16/183, `contracts` 3/20, `scan-engine` 28/299. |
+| `NEON_INTEGRATION=1 corepack pnpm test:integration` | `0bf71c5` | **FAILED**: exit 1, 3 of 378 tests failed in one file. See "Gate-found regression" above. |
+| `NEON_INTEGRATION=1 corepack pnpm test:integration` | `1eb6a50` | **passed** (after the fix): exit 0, **38 files / 378 tests**, 441.48s — the same file/test count as the base commit (`aeb8513`); no integration test file was added or removed by this branch. |
+| `corepack pnpm db:verify` | `0bf71c5` | **passed**: exit 0, 0001–0009 applied, replay empty, 36 tables / 422 columns / 162 constraints / 92 indexes — unchanged from P3.5d, because this branch adds no migration. |
+| `corepack pnpm build` (Turbopack) | `0bf71c5` | **blocked**, as at every prior phase on this machine: the standing `radix-ui` cascade (`@radix-ui/react-visually-hidden`), traced through `components/ui/alert-dialog.tsx` → `components/workspace/rescan-button.tsx` → `components/workspace/{problem-item,problems-list}.tsx` → `app/[locale]/owner/[workspaceSlug]/activity/page.tsx`. No file this branch touches appears in the import trace. |
+| `npx next build --webpack` | `0bf71c5` | **passed**: exit 0, `✓ Compiled successfully in 10.4s`, full route manifest including every P3.3-touched route (`/api/webhooks/stripe`, `/api/workspaces/[workspaceId]/{checkout-link,billing-portal,rescan}`, and the rest of the existing manifest). |
+
+**Mutation checks.** All performed at `0bf71c5` (each mutation applied by an exact pattern required to match exactly once, tested, then restored and confirmed byte-identical with `git diff --quiet`):
+
+- **(a)** `lib/commercial/availability.ts`: both approval guards (`if (!approved)` and `if (approved !== COMMERCIAL_CONTRACT.version)`) replaced with `if (false)`, so the contract reads as approved regardless of the env value. **Killed**: `lib/commercial/availability.test.ts` 3/11 failed (the empty-value, whitespace and mismatch-warning cases); `checkout-link/route.test.ts` and `billing-portal/route.test.ts`'s own "returns 503 … when the contract is unapproved" cases also failed (`expected 200 to be 503`), exactly as the plan's Testing section anticipated.
+- **(b)** `app/api/webhooks/stripe/route.ts`: the `stripeConfigured()` 500 check moved to run before the missing/malformed-header checks. **Killed**: `route.unconfigured.test.ts` 6/12 failed (the two 400 cases now answer 500; the well-formed-but-unverifiable case answers the wrong 500 message).
+- **(c)** `lib/commercial/contract.ts`: `tierAllows`'s body replaced with `return true;`. **Killed**: `contract.test.ts`'s "tierAllows fails closed" failed — every bad input (`null`, `undefined`, `""`, `"growth"`, `"PAID"`, `"toString"`, `"__proto__"`) now reads `true`.
+- **(d)** `components/public-pages.tsx`: the Growth card's `!billing.open` condition replaced with `false`. **Killed**: `pricing-page.test.tsx` 6/16 failed — the closed-state cases now find the Subscribe CTA present, and the "not open" label/contact-link assertions fail because that branch never renders.
+
+After the unit-test run, the two tracked snapshot files (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) showed as modified; `git diff --ignore-cr-at-eol --stat` was empty, confirming line-ending-only changes, and both were restored with `git checkout --`. `git status --short` was otherwise clean before this documentation commit.
+
 After the two final-review fixes (`a9a1a41`, `7f12dfc`) the unit suite was re-run at the new tip: 292 app files / 3,094 tests with one failure, `lib/identity/identity-sdk.test.ts` "rejects a replayed valid cached identity when upstream revoked its session" — a file this branch does not touch (empty diff from `c919624`), which then passed 7/7 in three isolated re-runs. It joins `versions.test.ts` and `safe-media.test.ts` as intermittent under full parallel load. The integration suite, `db:verify` and the webpack build were not re-run after these two fixes: they change route ordering and copy only, and the touched unit files (157 tests), typecheck and lint were re-run and pass.
