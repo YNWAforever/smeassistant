@@ -5,6 +5,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { applyMigrations } from "../../scripts/neon/migrations";
 import { mailOutboxRepository, type OutboxInsert } from "../../lib/repositories/mail-outbox";
 import { LEASE_MINUTES } from "../../lib/mail/decide";
+import { enqueueScanMail } from "../../lib/mail/enqueue";
+import { MAIL_TEMPLATES_VERSION } from "../../lib/mail/availability";
 import { startNeonDatabaseFixture, type NeonDatabaseFixture } from "./neon-database";
 
 describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repository", () => {
@@ -398,4 +400,75 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
     const u = await user();
     expect(await repo().memberSwitches(ws, u)).toBeNull();
   });
+
+  const OPEN_MAIL_ENV = {
+    APPLICATION_MAIL_APPROVED: MAIL_TEMPLATES_VERSION,
+    RESEND_API_KEY: "re_fixture",
+    REPORT_EMAIL_FROM: "notify@example.test",
+    APP_ORIGIN: "http://localhost",
+    MAIL_UNSUBSCRIBE_SECRET: "a".repeat(32),
+  };
+
+  it(
+    "enqueueScanMail run twice in separate transactions for the same job inserts each member/kind row exactly once, and never resets a row a completed run finished (Task 5, Review Focus 3)",
+    async () => {
+      const ws = await workspace({ notifyRescanComplete: true, notifyRegressionAlert: true });
+      const j = await job(ws);
+      const u1 = await user("member-a@example.test");
+      const u2 = await user("member-b@example.test");
+      await member(ws, u1, { mailRescanComplete: true, mailRegressionAlert: true, email: "member-a@example.test" });
+      await member(ws, u2, { mailRescanComplete: true, mailRegressionAlert: true, email: "member-b@example.test" });
+
+      const input = {
+        workspaceId: ws,
+        jobId: j,
+        status: "done",
+        businessName: "Fixture",
+        market: "hk" as const,
+        workspacePath: "/owner/fixture",
+        diff: { comparable: true, regressed_findings: ["gbp.rating_low"] },
+      };
+
+      // First completion attempt: two members x two mail kinds = 4 rows.
+      const clientA = await runtime.connect();
+      try {
+        await clientA.query("BEGIN");
+        expect(await enqueueScanMail(mailOutboxRepository(clientA), input, OPEN_MAIL_ENV)).toBe(4);
+        await clientA.query("COMMIT");
+      } finally {
+        clientA.release();
+      }
+
+      const rows = (await runtime.query<{ id: string; user_id: string; kind: string }>(
+        "SELECT id,user_id,kind FROM mail_outbox WHERE job_id=$1",
+        [j],
+      )).rows;
+      expect(rows).toHaveLength(4);
+      const sentTarget = rows.find((r) => r.user_id === u1 && r.kind === "rescan_complete")!;
+      const heldTarget = rows.find((r) => r.user_id === u2 && r.kind === "regression_alert")!;
+      expect(sentTarget).toBeDefined();
+      expect(heldTarget).toBeDefined();
+
+      // Between the two completion attempts, the delivery tick already sent
+      // one row, and a member opted out of another -- exactly the two
+      // "already moved on" outcomes Review Focus 3 says a retry must leave alone.
+      await runtime.query("UPDATE mail_outbox SET state='sent', sent_at=now(), provider_message_id='msg_1' WHERE id=$1", [sentTarget.id]);
+      await runtime.query("UPDATE mail_outbox SET state='held', hold_reason='opted_out' WHERE id=$1", [heldTarget.id]);
+
+      // A retried completion (e.g. the ledger re-running this job after a
+      // later step failed) calls enqueueScanMail again with identical input.
+      const clientB = await runtime.connect();
+      try {
+        await clientB.query("BEGIN");
+        expect(await enqueueScanMail(mailOutboxRepository(clientB), input, OPEN_MAIL_ENV)).toBe(0);
+        await clientB.query("COMMIT");
+      } finally {
+        clientB.release();
+      }
+
+      expect((await runtime.query("SELECT count(*)::int AS n FROM mail_outbox WHERE job_id=$1", [j])).rows[0].n).toBe(4);
+      expect(await row(sentTarget.id)).toMatchObject({ state: "sent", provider_message_id: "msg_1" });
+      expect(await row(heldTarget.id)).toMatchObject({ state: "held", hold_reason: "opted_out" });
+    },
+  );
 });
