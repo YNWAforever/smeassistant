@@ -144,3 +144,11 @@ export async function POST(request: Request): Promise<Response> {
 
   return NextResponse.json({ notified, reclaimCandidates, autoClosed, reconciled, verified, mail }, { status: 200, headers: { "Cache-Control": "no-store" } });
 }
+
+/**
+ * Vercel Cron invokes the path registered in vercel.json with HTTP GET (and
+ * `Authorization: Bearer $CRON_SECRET`), so GET is the identical,
+ * bearer-authorized handler. Without it every scheduled tick answers 405 and
+ * nothing above runs.
+ */
+export const GET = POST;

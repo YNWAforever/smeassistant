@@ -40,14 +40,14 @@ vi.mock("@/lib/mail/deliver", () => ({ deliverMail }));
 vi.mock("@/lib/repositories/mail-outbox", () => ({ mailOutboxRepository: mailOutboxRepositoryMock }));
 vi.mock("@/lib/mail/transport", () => ({ createMailTransport: createMailTransportMock }));
 
-import { POST } from "./route";
+import { GET, POST } from "./route";
 
 const SECRET = "a".repeat(32);
 const DEFAULT_MAIL_SUMMARY = { sent: 0, retried: 0, held: 0, dead: 0, expired: 0, paused: false };
 
-function request(token = SECRET) {
+function request(token = SECRET, method: "GET" | "POST" = "POST") {
   return new Request("http://localhost/api/cron/dispatch", {
-    method: "POST",
+    method,
     headers: token ? { authorization: `Bearer ${token}` } : {},
   });
 }
@@ -273,6 +273,46 @@ describe("POST /api/cron/dispatch", () => {
       expect.objectContaining({ category: "cron_dispatch_step_failed", step: "deliver_mail", message: "boom" }),
     );
     errorSpy.mockRestore();
+  });
+});
+
+// Vercel Cron invokes the registered path with HTTP GET (and the bearer
+// secret), so GET must be the very same authorized handler as POST.
+describe("GET /api/cron/dispatch (how Vercel Cron calls it)", () => {
+  it("runs every step and returns the same summary with the right bearer", async () => {
+    notifyDueSchedules.mockResolvedValue({ due: 1, notified: 1 });
+    reconcileWorkspaceScans.mockResolvedValue([{ status: "completed" }]);
+
+    const response = await GET(request(SECRET, "GET"));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      notified: { due: 1, notified: 1 },
+      reclaimCandidates: 0,
+      autoClosed: 0,
+      reconciled: { completed: 1 },
+      verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 },
+      mail: DEFAULT_MAIL_SUMMARY,
+    });
+    expect(notifyDueSchedules).toHaveBeenCalled();
+    expect(claimableJobIds).toHaveBeenCalled();
+    expect(closeExhausted).toHaveBeenCalled();
+    expect(runWebsiteVerification).toHaveBeenCalled();
+    expect(deliverMail).toHaveBeenCalled();
+  });
+
+  it.each([
+    ["no bearer", ""],
+    ["the wrong bearer", "b".repeat(32)],
+  ])("refuses %s exactly like POST, before touching anything", async (_label, token) => {
+    const viaGet = await GET(request(token, "GET"));
+    const viaPost = await POST(request(token, "POST"));
+
+    expect(viaGet.status).toBe(401);
+    expect(await viaGet.json()).toEqual(await viaPost.json());
+    expect(notifyDueSchedules).not.toHaveBeenCalled();
+    expect(getPool).not.toHaveBeenCalled();
+    expect(deliverMail).not.toHaveBeenCalled();
   });
 });
 
