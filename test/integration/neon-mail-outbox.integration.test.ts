@@ -6,6 +6,7 @@ import { applyMigrations } from "../../scripts/neon/migrations";
 import { mailOutboxRepository, type OutboxInsert } from "../../lib/repositories/mail-outbox";
 import { LEASE_MINUTES } from "../../lib/mail/decide";
 import { enqueueScanMail } from "../../lib/mail/enqueue";
+import { deliverMail } from "../../lib/mail/deliver";
 import { MAIL_TEMPLATES_VERSION } from "../../lib/mail/availability";
 import { startNeonDatabaseFixture, type NeonDatabaseFixture } from "./neon-database";
 
@@ -469,6 +470,41 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
       expect((await runtime.query("SELECT count(*)::int AS n FROM mail_outbox WHERE job_id=$1", [j])).rows[0].n).toBe(4);
       expect(await row(sentTarget.id)).toMatchObject({ state: "sent", provider_message_id: "msg_1" });
       expect(await row(heldTarget.id)).toMatchObject({ state: "held", hold_reason: "opted_out" });
+    },
+  );
+
+  it(
+    "a member who unsubscribes between enqueue and the tick ends held/opted_out, and the transport is never called (Task 6, Review Focus 1)",
+    async () => {
+      const ws = await workspace();
+      const u = await user();
+      const j = await job(ws);
+      await member(ws, u, { mailRescanComplete: true });
+      const id = randomUUID();
+      await repo().insert([outboxRow({ id, workspace_id: ws, user_id: u, job_id: j, kind: "rescan_complete" })]);
+
+      // The member opts out (e.g. via the unsubscribe link) after the row was
+      // queued but before the delivery tick ever claims it -- optOut itself
+      // holds a still-queued row immediately, so deliverMail's own claim
+      // finds nothing due for this id and never reaches the transport.
+      expect(await repo().optOut(u, ws, "rescan_complete")).toEqual({ member: true });
+
+      let sendCalled = false;
+      const summary = await deliverMail({
+        repo: repo(),
+        transport: {
+          async send() {
+            sendCalled = true;
+            return { status: "accepted_by_provider" as const, providerMessageId: "should-not-happen" };
+          },
+        },
+        env: OPEN_MAIL_ENV,
+        now: () => new Date(),
+      });
+
+      expect(sendCalled).toBe(false);
+      expect(summary).toEqual({ sent: 0, retried: 0, held: 0, dead: 0, expired: 0, paused: false });
+      expect(await row(id)).toMatchObject({ state: "held", hold_reason: "opted_out" });
     },
   );
 });
