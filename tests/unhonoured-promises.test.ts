@@ -130,25 +130,26 @@ const PROMISES: readonly Promised[] = [
     ],
   },
   {
-    // No mail library is even installed, and `notification_events` -- the
-    // per-job email log -- has no writer. The three notify_* switches persist a
-    // preference and nothing else.
-    capability: "an outbound notification email sender",
+    // What is left of the old "an outbound notification email sender" entry
+    // once the P3.5c outbox made event mail real. That outbox sends only the
+    // workspace event kinds (rescan_complete, regression_alert) to members;
+    // nothing mails a report link to the person who unlocked a report -- the
+    // unlock route sets a grant cookie and returns the URL in the response.
+    // So telling that person to "reply to the report email" still points at
+    // an email that never arrives. The detector trips once a mail kind is
+    // about reports, or any code that can send mail also builds a report link.
+    capability: "a report-delivery email (any code path that mails a report link)",
     implemented: () => {
-      const manifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")) as { dependencies?: Record<string, string> };
-      const installed = Object.keys(manifest.dependencies ?? {}).some((name) => /^(resend|nodemailer|postmark|@aws-sdk\/client-ses)$/.test(name));
-      return installed || backendMatches(/from "resend"|require\("resend"\)|nodemailer|postmark/);
+      const kinds = /MAIL_KINDS\s*=\s*\[([^\]]*)\]/.exec(readFileSync(join(repoRoot, "lib", "mail", "decide.ts"), "utf8"))?.[1] ?? "";
+      return (
+        /report/i.test(kinds) ||
+        backendText().some(
+          (source) =>
+            /createMailTransport|transport\.send\(/.test(source) && /reportPath\(|absoluteReportUrl\(|\/r\/\$\{/.test(source),
+        )
+      );
     },
-    banned: [
-      "emails are sent only for the events you choose",
-      "one email when a scan finishes",
-      "you will be emailed",
-      "reply to the report email",
-      "電郵只在你選擇的事件發生時寄出",
-      "每次掃描完成後一封電郵",
-      "你會收到電郵",
-      "回覆你收到的報告電郵",
-    ],
+    banned: ["reply to the report email", "回覆你收到的報告電郵"],
   },
   {
     // Fix Pack drafts are `agent_runs` rows. This app reads them and PATCHes
@@ -254,6 +255,26 @@ const KEPT: ReadonlyArray<{ promise: string; requires: string; exists: () => boo
     exists: () =>
       existsSync(join(repoRoot, "app", "api", "workspaces", "[workspaceId]", "google-connection", "route.ts")) &&
       /disconnectGoogleConnection/.test(readFileSync(join(repoRoot, "lib", "repositories", "claims.ts"), "utf8")),
+  },
+  {
+    // Replaces the removed "an outbound notification email sender" PROMISES
+    // entry above: the mail outbox (docs/superpowers/specs/2026-09-27-mail-
+    // outbox-design.md) makes that promise real, so the "We'll email you at
+    // {address}" copy on the Notifications page (mail.openNote) is only
+    // honest gated on whether this member's mail would actually go out: the
+    // one effective state lib/workspace/queries-pages.ts computes
+    // (memberMailState) being "open" -- mail open, not paused, an address the
+    // allowlist lets through, and at least one kind both allowed by the
+    // workspace and switched on. Gating on mail being open alone was not
+    // enough: it promised mail to a member whose every kind the owner had
+    // disallowed, or who had switched nothing on. Comments are stripped
+    // first, so a note *about* the gate cannot stand in for the gate.
+    promise: "outbound mail is a real sender, and \"we'll email you\" copy only renders when this member's mail would actually go out",
+    requires: "lib/mail/deliver.ts calls createMailTransport, lib/workspace/queries-pages.ts computes mailState with memberMailState, and components/workspace/notifications-view.tsx renders mail.openNote only when model.mailState === \"open\"",
+    exists: () =>
+      /createMailTransport/.test(readFileSync(join(repoRoot, "lib", "mail", "deliver.ts"), "utf8")) &&
+      /mailState:\s*memberMailState\(/.test(readFileSync(join(repoRoot, "lib", "workspace", "queries-pages.ts"), "utf8")) &&
+      /mailState\s*===\s*"open"[\s\S]{0,200}mail\.openNote/.test(copyOnly(readFileSync(join(repoRoot, "components", "workspace", "notifications-view.tsx"), "utf8"))),
   },
 ];
 

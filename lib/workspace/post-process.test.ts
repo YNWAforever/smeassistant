@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   diff: vi.fn(),
   measure: vi.fn(),
   notify: vi.fn(),
+  enqueue: vi.fn(),
   job: null as Record<string, unknown> | null,
   lookupError: null as { message: string } | null,
 }));
@@ -19,6 +20,8 @@ vi.mock("@/lib/workspace/snapshots", () => ({ buildSnapshot: mocks.build, loadDi
 vi.mock("@/lib/repositories/action-derivation", () => ({ actionDerivationRepository: () => ({derive:mocks.derive}) }));
 vi.mock("@/lib/workspace/measurements", () => ({ recordMeasurements: mocks.measure }));
 vi.mock("@/lib/workspace/notify", () => ({ notifyWithRepository: mocks.notify }));
+vi.mock("@/lib/repositories/mail-outbox", () => ({ mailOutboxRepository: () => ({}) }));
+vi.mock("@/lib/mail/enqueue", () => ({ enqueueScanMail: mocks.enqueue }));
 
 import { postProcessWorkspaceScan } from "./post-process";
 
@@ -33,6 +36,7 @@ beforeEach(() => {
   mocks.diff.mockReset().mockResolvedValue(null);
   mocks.measure.mockReset().mockResolvedValue({ comparable: true, recorded: 1, skipped: 0 });
   mocks.notify.mockReset().mockResolvedValue({ inserted: 1, error: null });
+  mocks.enqueue.mockReset().mockResolvedValue(0);
   mocks.job = { id: "job", workspace_id: "ws", location_id: "loc-1", status: "done", business_name: "Kam Man House" };
 });
 
@@ -81,6 +85,41 @@ describe("postProcessWorkspaceScan", () => {
     expect(mocks.notify).not.toHaveBeenCalled();
     mocks.measure.mockResolvedValue({ comparable: true, recorded: 1, skipped: 0 });
     expect(await postProcessWorkspaceScan(db, "job")).toEqual({ ran: true, snapshotId: "snap", error: null });
+    expect(mocks.notify).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+
+  it("enqueues scan mail after the in-app notification succeeds, using the loaded diff and the notification's workspacePath", async () => {
+    mocks.build.mockResolvedValue({ id: "snap", market: "hk" });
+    mocks.derive.mockResolvedValue({});
+    const diff = { id: "diff-1", comparable: true, regressed_findings: ["gbp.rating_low"] };
+    mocks.diff.mockResolvedValue(diff);
+    expect(await postProcessWorkspaceScan(db, "job")).toEqual({ ran: true, snapshotId: "snap", error: null });
+    expect(mocks.enqueue).toHaveBeenCalledWith(expect.anything(), {
+      workspaceId: "ws",
+      jobId: "job",
+      status: "done",
+      businessName: "Kam Man House",
+      market: "hk",
+      workspacePath: "/owner/kam-man-house?location=yik-yam",
+      diff,
+    });
+    // enqueueScanMail runs only after the in-app notification is recorded.
+    expect(mocks.notify.mock.invocationCallOrder[0]).toBeLessThan(mocks.enqueue.mock.invocationCallOrder[0]);
+  });
+
+  it("never calls enqueueScanMail for a failed scan", async () => {
+    mocks.job = { id: "job", workspace_id: "ws", location_id: null, status: "failed", business_name: null };
+    await postProcessWorkspaceScan(db, "job");
+    expect(mocks.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("a thrown enqueue failure surfaces as the outcome's error", async () => {
+    mocks.build.mockResolvedValue({ id: "snap", market: "hk" });
+    mocks.derive.mockResolvedValue({});
+    mocks.enqueue.mockRejectedValue(new Error("mail enqueue failed"));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await postProcessWorkspaceScan(db, "job")).toEqual({ ran: true, snapshotId: "snap", error: "mail enqueue failed" });
     expect(mocks.notify).toHaveBeenCalledTimes(1);
     spy.mockRestore();
   });

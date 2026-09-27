@@ -16,13 +16,14 @@ describe("sendViaResend", () => {
     vi.useRealTimers();
   });
 
-  it("sends from/to/subject/text as configured, with auth in the header rather than the body", async () => {
+  it("sends from/to/subject/text as configured, with auth and the idempotency key in the headers rather than the body", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "msg-1" }), { status: 200 }));
     global.fetch = fetchMock;
     await sendViaResend(CONFIG, MESSAGE);
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("https://api.resend.com/emails");
     expect(init.headers.Authorization).toBe("Bearer key-1");
+    expect(init.headers["Idempotency-Key"]).toBe(MESSAGE.dedupeKey);
     expect(JSON.parse(init.body as string)).toEqual({
       from: CONFIG.from,
       to: MESSAGE.to,
@@ -31,14 +32,28 @@ describe("sendViaResend", () => {
     });
   });
 
+  it("stamps dedupeKey as the Idempotency-Key header and passes message headers through in the JSON body", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "msg-1" }), { status: 200 }));
+    global.fetch = fetchMock;
+    const withHeaders = {
+      ...MESSAGE,
+      dedupeKey: "outbox-row-42",
+      headers: { "List-Unsubscribe": "<https://app.example.test/api/mail/unsubscribe?token=abc>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
+    };
+    await sendViaResend(CONFIG, withHeaders);
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers["Idempotency-Key"]).toBe("outbox-row-42");
+    expect(JSON.parse(init.body as string).headers).toEqual(withHeaders.headers);
+  });
+
   it("reports accepted_by_provider with the provider message id on a 2xx response", async () => {
     global.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "msg-123" }), { status: 200 }));
     expect(await sendViaResend(CONFIG, MESSAGE)).toEqual({ status: "accepted_by_provider", providerMessageId: "msg-123" });
   });
 
-  it("reports failed with the provider's own message on a non-2xx response, never accepted", async () => {
-    global.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ message: "invalid `from` field" }), { status: 422 }));
-    expect(await sendViaResend(CONFIG, MESSAGE)).toEqual({ status: "failed", error: "invalid `from` field" });
+  it("reports failed with a status-coded category on a non-2xx response, never the provider's own message text", async () => {
+    global.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ message: "invalid `from` field for owner@example.test" }), { status: 422 }));
+    expect(await sendViaResend(CONFIG, MESSAGE)).toEqual({ status: "failed", error: "provider_http_422" });
   });
 
   it("reports failed with a status-coded reason when a non-2xx body doesn't parse", async () => {

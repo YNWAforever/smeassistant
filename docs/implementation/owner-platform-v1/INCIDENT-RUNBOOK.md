@@ -23,9 +23,11 @@ one.
 
 1. Open `/ops/failures` (the operator page). Read the health strip: a spike in
    `COLLECTION_FAILED` scans usually means a provider outage; a run of failed
-   draft runs usually means the LLM gateway; note the open counts for both.
-   If either kill switch (§3) is already on, the page shows a banner naming
-   it — read that before you assume nothing has been done yet.
+   draft runs usually means the LLM gateway; a growing `queued`/`dead` mail
+   count usually means the mail provider or its configuration; note the open
+   counts for all three. If any kill switch (§3) is already on, the page
+   shows a banner naming it — read that before you assume nothing has been
+   done yet.
 2. Search Vercel logs for these tags:
 
    | Tag | What it means |
@@ -44,8 +46,9 @@ one.
 
 ## 3. Kill switches
 
-Two environment variables stop provider and AI spend without a migration and
-without losing queued work. `readPauseConfig` (`lib/budgets/pause.ts`) treats
+Three environment variables stop provider spend, AI spend, or outgoing mail
+without a migration and without losing queued work. `readPauseConfig`
+(`lib/budgets/pause.ts`) treats
 unset or empty as off, exactly `"true"` as on, and **any other value as
 paused** (`yes`, `1`, `TRUE`, `false` all included) — logged as
 `[pause] configuration_invalid` on every request it affects, until fixed. An operator who mistypes the value must not
@@ -55,6 +58,7 @@ believe spend is still flowing, so a typo pauses rather than passes through.
 |---|---|---|
 | `SCANS_PAUSED` | Refuses `POST /api/scan/start` and rescan (`503 { error: "paused" }`), refuses claiming a queued job at `POST /api/scan/process` (`503 paused`), refuses the paid business-search steps `POST /api/business/search` and `POST /api/business/ig-search` (`503 paused`), and the cron tick skips the reclaim dispatch (logs `[pause] refused` with `entry: "retry_claim"`, one line, not per job). | Report reading, approvals, exports, the operator page. The cron's auto-close, reconcile and website verification steps still run — none of them spends provider money. Queued jobs are untouched: no `attempt_count` or `scan_attempts` row changes, so nothing is lost. |
 | `AI_DRAFTS_PAUSED` | Refuses an owner draft run (`503 { error: "ai_paused" }`, surfaced by Create as `201 { runError: "ai_paused" }`) and an assistant draft, both before any model call or run row exists. `llmComplete` (`lib/llm.ts`) itself returns `null` while paused, as a backstop for every other caller (report summaries, translation) — those already degrade on `null`. | Everything that does not call the LLM: reading, approving and exporting existing drafts. |
+| `MAIL_PAUSED` | The delivery tick's claim step (§7) skips claiming any `mail_outbox` row, so nothing is sent while it is on — logged as `[pause] refused` with `entry: "mail_send"`. | Enqueueing mail at scan completion (rows are still written as `queued`/`held`, just never claimed), reading and unsubscribing. |
 
 **Containment note.** `SCANS_PAUSED` stops the paid business-search routes as
 well as scan start/rescan/claim, so it fully contains an incident whose
@@ -69,9 +73,9 @@ their own.
 answers 401 unless `CRON_SECRET` is set, so without that secret none of its
 steps run. Unsetting `CRON_SECRET` (and redeploying) stops all of them together:
 the reclaim of queued and abandoned scans, auto-close of stuck scans, the
-workspace-completion reconcile, website verification and schedule
-notifications. That is a bigger hammer than `SCANS_PAUSED`, which only skips
-the reclaim.
+workspace-completion reconcile, website verification, schedule notifications
+and mail delivery. That is a bigger hammer than `SCANS_PAUSED` (which only
+skips the reclaim) or `MAIL_PAUSED` (which only skips mail delivery).
 
 **How to apply one.** Set the variable in Vercel (Production environment)
 and redeploy, or re-promote the current deployment — environment variable
@@ -117,7 +121,7 @@ Providers: SerpApi, RapidAPI (Instagram), Google Places, the LLM gateway.
   Resume.
 - **Verify.** `query:scan_backlog` drains back toward zero in the non-terminal
   statuses over the following cron ticks.
-- **Record.** See §9.
+- **Record.** See §10.
 
 ## 5. Scenario 2: Google authorisation expired or revoked
 
@@ -197,7 +201,77 @@ branch — never restored back over the live database. The default response to
 a bad change is a forward fix (a new, reviewed commit), not a rollback of data;
 any correction is a new row, never an edit of an old one.
 
-## 9. Recording an incident
+## 9. Scenario 6: Email paused or failing (`MAIL_PAUSED`)
+
+Application mail (rescan-complete and regression-alert notices to workspace
+members) is a separate outbox (`mail_outbox`), delivered by its own step in
+the 5-minute cron tick (`deliverMail`, run from `POST /api/cron/dispatch`
+after the completion reconcile). It is off by default: mail only leaves the
+outbox once `APPLICATION_MAIL_APPROVED` matches the deployed templates
+version, the provider, sender, origin and unsubscribe secret are all
+configured, and this switch is not set. Nothing here ever risks a scan or a
+draft — a mail failure cannot fail a completion.
+
+**`sent` means accepted by the provider, not delivered.** A row that reaches
+`sent` only means Resend accepted the request; there is no bounce or
+complaint webhook wired up, so a hard bounce or a spam-folder drop is
+invisible here. Never read `sent` as "the member received it", and never
+write "delivered" about a mail row in a report or a follow-up — that is the
+one wording rule this section exists to enforce.
+
+- **Detect.** `query:mail_outbox_by_state` for a count by state. A backlog
+  stuck in `queued`/`retry` that never shrinks over a few cron ticks, or a
+  run of `dead` rows, is the signal; the `/ops/failures` health strip shows
+  the same two numbers (queued and dead) plus held-by-reason, refreshed on
+  every load. If `MAIL_PAUSED` is already on, the page's banner names it —
+  read that before assuming nothing has been done yet (§2).
+- **Pause.** Set `MAIL_PAUSED=true` in Vercel (Production environment) and
+  redeploy or re-promote, exactly like the other kill switches (§3, "How to
+  apply one."). Once live, the cron tick's mail step (`deliverMail`) returns
+  before it claims anything — logged once as `[pause] refused` with
+  `entry: "mail_send"`, not per row — so nothing is sent and nothing is
+  claimed. Rows already `queued` or `retry` are left exactly as they are: no
+  `attempt_count` or lease changes, so nothing already in the outbox is lost
+  by pausing. Enqueueing at scan completion is unaffected — new rows keep
+  being written as `queued` or `held` — only the send step stops. Confirm
+  the change took effect by reloading `/ops/failures` and reading the
+  banner, the same way the other switches are confirmed.
+- **What stays queued, and what does not.** Because a paused tick never
+  claims a row at all, nothing expires *during* the pause — expiry is only
+  ever decided against a claimed row. Once claiming resumes, rows queued
+  more than 24 hours earlier expire instead of sending — a long pause does
+  not release a burst of stale mail. A held row (see below) or a `sent` row
+  never changes state again, paused or not.
+- **Where dead rows show.** A row that failed its fifth attempt is `dead`
+  and appears on `/ops/failures` under kind "Dead mail message"
+  (`MAIL-XXXXXX` references, the first six hex characters of the row id —
+  never the address). `query:mail_outbox_dead` lists the same rows directly
+  (workspace id, mail kind, attempts, the allowlisted `last_error` category,
+  and when the row was queued) for a quick read without the operator UI.
+  There is no release action for a dead mail row (unlike a dead-lettered
+  scan): the outbox has no retry-from-here operation today.
+- **Reading hold reasons.** `query:mail_outbox_hold_reasons` (and the
+  `/ops/failures` health strip's "held" breakdown) counts currently held
+  rows by reason: `mail_unapproved` (mail was closed at enqueue time),
+  `not_member`, `kind_disabled` (the workspace switch is off),
+  `opted_out` (the member's own switch is off, or they unsubscribed),
+  `no_address`, `not_allowlisted` (`MAIL_RECIPIENT_ALLOWLIST` is set and
+  this address is not on it). A held row is terminal: it is never
+  automatically requeued by a later switch flip or unsubscribe reversal — a
+  member who opts back in only gets mail from the *next* scan that produces
+  it, not the one that was held.
+- **Recover.** Unset `MAIL_PAUSED` (or set it back to unset/empty — never a
+  stray `false`, which is itself invalid and pauses, exactly like the other
+  switches) and redeploy the same way. The cron tick's next run resumes
+  claiming; `query:mail_outbox_by_state` should show the `queued`/`retry`
+  count draining over the following ticks, the same signal used to detect
+  the incident.
+- **Verify.** `query:mail_outbox_by_state` trends toward fewer `queued`/
+  `retry` rows and no new `dead` rows appearing; the `/ops/failures` health
+  strip's mail counts confirm the same picture without a SQL Editor.
+- **Record.** See §10.
+
+## 10. Recording an incident
 
 Write down, as it happens or immediately after:
 
@@ -212,7 +286,7 @@ Append a dated section to `PHASE-3-TEST-RESULTS.md` until this app has a
 dedicated incident log. Do not just say "handled" — write enough that someone
 else could reconstruct what happened from your notes alone.
 
-## 10. Appendix — every query
+## 11. Appendix — every query
 
 | Block | What it does |
 |---|---|
@@ -223,5 +297,8 @@ else could reconstruct what happened from your notes alone.
 | `query:google_connection_states` | Counts Google Business Profile connections by status. |
 | `query:schedule_states` | Counts `scan_schedules` by cadence, with the earliest next-due. |
 | `query:recent_tier_events` | The last 7 days of `workspace_tier_events`, newest first. |
+| `query:mail_outbox_by_state` | Counts every `mail_outbox` row by state (`queued`, `sending`, `sent`, `retry`, `held`, `dead`, `expired`). |
+| `query:mail_outbox_dead` | Lists dead mail rows: id, workspace, mail kind, attempts, last error category and when queued — never the address. |
+| `query:mail_outbox_hold_reasons` | Counts currently held mail rows by hold reason. |
 | `query:pause_all_schedules` | **Write.** Sets every `monthly` schedule to `paused`; returns the affected ids — keep them. |
 | `query:resume_schedules` | **Write.** Sets exactly the given ids back to `monthly` from `paused`. |

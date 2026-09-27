@@ -4,6 +4,7 @@ import { getPool } from "../db/client";
 import { DEAD_LETTERED_JOB_CONDITION_SQL } from "../scan/claimable";
 import { FAILURE_KINDS, type FailureItem, type FailureKind, type OperatorHealth } from "../ops/failure-types";
 import { referenceFor } from "../ops/references";
+import { mailOutboxRepository } from "./mail-outbox";
 
 type Db = Pick<Pool, "query">;
 
@@ -127,6 +128,14 @@ const SOURCES: Record<FailureKind, string> = {
     WHERE c.state = 'retry' AND c.attempts >= 3
       AND ${filters("c.workspace_id", "c.job_id")}
     ORDER BY occurred_at DESC LIMIT $4`,
+  mail_dead: `
+    SELECT o.id, NULL::text AS correlation_id, o.updated_at AS occurred_at,
+           o.workspace_id, w.slug AS workspace_slug, w.business_name AS workspace_name, NULL::uuid AS location_id, NULL::uuid AS action_id,
+           w.business_name, coalesce(o.last_error, 'mail_send_failed') AS reason, o.attempts
+    FROM mail_outbox o JOIN workspaces w ON w.id = o.workspace_id
+    WHERE o.state = 'dead'
+      AND ${filters("o.workspace_id", "o.id")}
+    ORDER BY occurred_at DESC LIMIT $4`,
 };
 
 function toFailureItem(kind: FailureKind, row: FailureRow): FailureItem {
@@ -170,7 +179,14 @@ export function failuresRepository(client?: Db) {
 
   const health = async (): Promise<OperatorHealth> => {
     const counts = (
-      await db().query<{ scan_day: number; scan_week: number; draft_day: number; draft_week: number; dead: number; processing: number }>(
+      await db().query<{
+        scan_day: number;
+        scan_week: number;
+        draft_day: number;
+        draft_week: number;
+        dead: number;
+        processing: number;
+      }>(
         `SELECT
            (SELECT count(*) FROM audit_jobs WHERE status='failed' AND coalesce(completed_at,created_at) > now()-interval '24 hours')::int AS scan_day,
            (SELECT count(*) FROM audit_jobs WHERE status='failed' AND coalesce(completed_at,created_at) > now()-interval '7 days')::int AS scan_week,
@@ -192,10 +208,16 @@ export function failuresRepository(client?: Db) {
     const google = (
       await db().query<{ n: number }>(`SELECT count(*)::int AS n FROM (${SOURCES.google_connection}) x`, [null, null, null, 2147483647])
     ).rows[0].n;
+    // The mail outbox's own repository already computes these counts
+    // (integration-tested there): no reason to re-derive the same SQL here.
+    // `getPool()` (not `db()`, whose narrower `Pick<Pool,"query">` type isn't
+    // assignable to `Pool | PoolClient`) so this needs no cast.
+    const mail = await mailOutboxRepository(getPool()).operatorCounts();
     return {
       recent: { scan_failed: { day: counts.scan_day, week: counts.scan_week }, draft_failed: { day: counts.draft_day, week: counts.draft_week } },
-      open: { scan_dead_lettered: counts.dead, google_connection: google, workspace_processing: counts.processing },
+      open: { scan_dead_lettered: counts.dead, google_connection: google, workspace_processing: counts.processing, mail_dead: mail.deadTotal },
       categories,
+      mail: { queued: mail.queued24h, held: mail.held24h },
     };
   };
 

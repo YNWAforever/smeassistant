@@ -22,9 +22,9 @@ function inScope(ctx: OwnerContext, locationId: string | null): boolean {
   return ctx.locationScope!.includes(locationId);
 }
 
-/** Workspace-wide items (no location) are visible to every member; post-processing to none. */
+/** Workspace-wide items (no location) are visible to every member; post-processing and dead mail to none. */
 export function visibleTo(item: FailureItem, ctx: OwnerContext): boolean {
-  if (item.kind === "workspace_processing") return false;
+  if (item.kind === "workspace_processing" || item.kind === "mail_dead") return false;
   return inScope(ctx, item.locationId);
 }
 
@@ -40,6 +40,7 @@ export function ownerActionFor(item: FailureItem, ctx: OwnerContext): OwnerActio
       return ctx.role === "owner" ? "reauthorise" : ctx.role === "manager" ? "ask_owner" : "none";
     case "scan_dead_lettered":
     case "workspace_processing":
+    case "mail_dead":
       return "none";
   }
 }

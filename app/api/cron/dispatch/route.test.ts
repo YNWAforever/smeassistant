@@ -1,6 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { notifyDueSchedules, claimableJobIds, reconcileWorkspaceScans, getPool, waitUntilMock, fetchMock, runWebsiteVerification, closeExhausted } = vi.hoisted(() => ({
+const {
+  notifyDueSchedules,
+  claimableJobIds,
+  reconcileWorkspaceScans,
+  getPool,
+  waitUntilMock,
+  fetchMock,
+  runWebsiteVerification,
+  closeExhausted,
+  deliverMail,
+  mailOutboxRepositoryMock,
+  createMailTransportMock,
+} = vi.hoisted(() => ({
   notifyDueSchedules: vi.fn(),
   claimableJobIds: vi.fn(),
   reconcileWorkspaceScans: vi.fn(),
@@ -9,6 +21,9 @@ const { notifyDueSchedules, claimableJobIds, reconcileWorkspaceScans, getPool, w
   fetchMock: vi.fn(),
   runWebsiteVerification: vi.fn(),
   closeExhausted: vi.fn(),
+  deliverMail: vi.fn(),
+  mailOutboxRepositoryMock: vi.fn(() => ({})),
+  createMailTransportMock: vi.fn(() => ({})),
 }));
 vi.mock("@/lib/db/client", () => ({ getPool }));
 vi.mock("@/lib/scan/notify-due-schedules", () => ({ notifyDueSchedules }));
@@ -21,14 +36,18 @@ vi.mock("@/lib/repositories/applications", () => ({ applicationRepository: () =>
 vi.mock("@/lib/workspace/applications", () => ({ recordApplication: vi.fn() }));
 vi.mock("@/lib/workspace/audit", () => ({ recordNeonEvent: vi.fn() }));
 vi.mock("@/lib/repositories/dead-letter", () => ({ deadLetterRepository: () => ({ closeExhausted }) }));
+vi.mock("@/lib/mail/deliver", () => ({ deliverMail }));
+vi.mock("@/lib/repositories/mail-outbox", () => ({ mailOutboxRepository: mailOutboxRepositoryMock }));
+vi.mock("@/lib/mail/transport", () => ({ createMailTransport: createMailTransportMock }));
 
-import { POST } from "./route";
+import { GET, POST } from "./route";
 
 const SECRET = "a".repeat(32);
+const DEFAULT_MAIL_SUMMARY = { sent: 0, retried: 0, held: 0, dead: 0, expired: 0, paused: false };
 
-function request(token = SECRET) {
+function request(token = SECRET, method: "GET" | "POST" = "POST") {
   return new Request("http://localhost/api/cron/dispatch", {
-    method: "POST",
+    method,
     headers: token ? { authorization: `Bearer ${token}` } : {},
   });
 }
@@ -44,6 +63,7 @@ beforeEach(() => {
   reconcileWorkspaceScans.mockResolvedValue([]);
   runWebsiteVerification.mockResolvedValue({ locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 });
   closeExhausted.mockResolvedValue([]);
+  deliverMail.mockResolvedValue(DEFAULT_MAIL_SUMMARY);
 });
 
 describe("POST /api/cron/dispatch", () => {
@@ -73,6 +93,7 @@ describe("POST /api/cron/dispatch", () => {
       autoClosed: 0,
       reconciled: { completed: 2, retry: 1 },
       verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 },
+      mail: DEFAULT_MAIL_SUMMARY,
     });
   });
 
@@ -136,6 +157,7 @@ describe("POST /api/cron/dispatch", () => {
       autoClosed: 0,
       reconciled: { completed: 1 },
       verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 },
+      mail: DEFAULT_MAIL_SUMMARY,
     });
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -160,7 +182,14 @@ describe("POST /api/cron/dispatch", () => {
     const response = await POST(request());
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ notified: { due: 1, notified: 1 }, reclaimCandidates: 0, autoClosed: 0, reconciled: {}, verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 } });
+    expect(await response.json()).toEqual({
+      notified: { due: 1, notified: 1 },
+      reclaimCandidates: 0,
+      autoClosed: 0,
+      reconciled: {},
+      verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 },
+      mail: DEFAULT_MAIL_SUMMARY,
+    });
   });
 
   it("reports what the website verifier checked", async () => {
@@ -187,6 +216,7 @@ describe("POST /api/cron/dispatch", () => {
       autoClosed: 0,
       reconciled: { completed: 1 },
       verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 },
+      mail: DEFAULT_MAIL_SUMMARY,
     });
     expect(errorSpy).toHaveBeenCalledWith("[cron/dispatch] verify_website_actions failed", expect.objectContaining({ message: "boom" }));
     errorSpy.mockRestore();
@@ -209,6 +239,80 @@ describe("POST /api/cron/dispatch", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(reconcileWorkspaceScans).toHaveBeenCalled();
     expect(errors).toHaveBeenCalledWith("[cron/dispatch] close_exhausted_scans failed", expect.objectContaining({ category: "cron_dispatch_step_failed", step: "close_exhausted_scans" }));
+  });
+
+  it("delivers mail after reconcile, from the same pool and a fresh transport, and includes its summary in the response", async () => {
+    const summary = { sent: 2, retried: 1, held: 3, dead: 0, expired: 1, paused: false };
+    deliverMail.mockResolvedValue(summary);
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).mail).toEqual(summary);
+    expect(mailOutboxRepositoryMock).toHaveBeenCalledWith(getPool());
+    expect(createMailTransportMock).toHaveBeenCalled();
+    expect(deliverMail).toHaveBeenCalledWith({ repo: expect.anything(), transport: expect.anything() });
+    // Runs after reconcile_stuck_completions, not interleaved with it.
+    expect(deliverMail.mock.invocationCallOrder[0]).toBeGreaterThan(reconcileWorkspaceScans.mock.invocationCallOrder[0]);
+  });
+
+  it("logs deliver_mail failures without failing the other steps", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    notifyDueSchedules.mockResolvedValue({ due: 1, notified: 1 });
+    reconcileWorkspaceScans.mockResolvedValue([{ status: "completed" }]);
+    deliverMail.mockRejectedValue(new Error("boom"));
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.mail).toBeNull();
+    expect(body.reconciled).toEqual({ completed: 1 });
+    expect(errorSpy).toHaveBeenCalledWith(
+      "[cron/dispatch] deliver_mail failed",
+      expect.objectContaining({ category: "cron_dispatch_step_failed", step: "deliver_mail", message: "boom" }),
+    );
+    errorSpy.mockRestore();
+  });
+});
+
+// Vercel Cron invokes the registered path with HTTP GET (and the bearer
+// secret), so GET must be the very same authorized handler as POST.
+describe("GET /api/cron/dispatch (how Vercel Cron calls it)", () => {
+  it("runs every step and returns the same summary with the right bearer", async () => {
+    notifyDueSchedules.mockResolvedValue({ due: 1, notified: 1 });
+    reconcileWorkspaceScans.mockResolvedValue([{ status: "completed" }]);
+
+    const response = await GET(request(SECRET, "GET"));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      notified: { due: 1, notified: 1 },
+      reclaimCandidates: 0,
+      autoClosed: 0,
+      reconciled: { completed: 1 },
+      verified: { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 },
+      mail: DEFAULT_MAIL_SUMMARY,
+    });
+    expect(notifyDueSchedules).toHaveBeenCalled();
+    expect(claimableJobIds).toHaveBeenCalled();
+    expect(closeExhausted).toHaveBeenCalled();
+    expect(runWebsiteVerification).toHaveBeenCalled();
+    expect(deliverMail).toHaveBeenCalled();
+  });
+
+  it.each([
+    ["no bearer", ""],
+    ["the wrong bearer", "b".repeat(32)],
+  ])("refuses %s exactly like POST, before touching anything", async (_label, token) => {
+    const viaGet = await GET(request(token, "GET"));
+    const viaPost = await POST(request(token, "POST"));
+
+    expect(viaGet.status).toBe(401);
+    expect(await viaGet.json()).toEqual(await viaPost.json());
+    expect(notifyDueSchedules).not.toHaveBeenCalled();
+    expect(getPool).not.toHaveBeenCalled();
+    expect(deliverMail).not.toHaveBeenCalled();
   });
 });
 

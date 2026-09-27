@@ -80,6 +80,26 @@
     "scansNotStarted": "掃描正暫停維護。未有開始任何掃描，請稍後再試。",
     "ai": "AI 草稿生成正暫停維護。沒有計算任何用量，請稍後再試。"
   },
+  "mail": {
+    "allowTitle": "允許此工作台發送以下電郵",
+    "myEmailsTitle": "我的電郵",
+    "rescanComplete": "重新掃描完成",
+    "regressionAlert": "發現新問題（退步提示）",
+    "monthlyDigest": "每月摘要 · 規劃中",
+    "closedNote": "電郵功能尚未開啟。你的選擇已儲存，開啟後生效。",
+    "openNote": "發生以下情況時，我們會電郵至 {address}。",
+    "noAddress": "你的帳戶尚未有電郵地址。",
+    "ownerOnly": "只有工作台擁有人可以更改。",
+    "pausedNote": "電郵暫時停止發送。你的選擇已儲存。",
+    "limitedNote": "電郵目前只發送給測試收件人，你暫時不會收到。",
+    "offNote": "開啟下方的電郵，即可在 {address} 收到。",
+    "gateNote": "工作台擁有人尚未允許這些電郵。",
+    "kindBlocked": "此工作台尚未允許",
+    "unsubscribeTitle": "停止接收這些電郵",
+    "unsubscribeConfirm": "取消訂閱",
+    "unsubscribeDone": "已取消訂閱。你可在工作台設定中重新開啟。",
+    "unsubscribeInvalid": "此連結已失效 — 請在工作台設定中管理電郵。"
+  },
   "scanner": {
     "title": "免費 Scan 我嘅生意",
     "subtitle": "填寫以下資料，30 秒即收 audit 報告",

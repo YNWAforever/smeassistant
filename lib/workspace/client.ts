@@ -224,6 +224,7 @@ export function exportVersion(versionId: string, mode: ExportMode): Promise<Clie
 
 export type RescanResult = { jobId: string };
 export type NotificationPreferences = { notifyRescanComplete?: boolean; notifyRegressionAlert?: boolean; notifyMonthlyDigest?: boolean };
+export type MyMailPreferences = { rescanComplete?: boolean; regressionAlert?: boolean; locale: string };
 export type InviteMemberResult = { memberId: string };
 export type MemberPatch = { role?: "manager" | "viewer"; location_scope?: string[] | null };
 export type BrandInput = { voice: string; approved_claims: string[]; prohibited_terms: string[]; languages: string[]; facts: Record<string, string> };
@@ -256,6 +257,11 @@ export async function rescanLocation(workspaceId: string, locationId: string, co
 
 export function saveNotificationPreferences(workspaceId: string, prefs: NotificationPreferences): Promise<ClientResult<{ ok: true }>> {
   return patch(`/api/workspaces/${encodeURIComponent(workspaceId)}/notification-preferences`, prefs);
+}
+
+/** Any member's own two mail switches (../notification-preferences is the owner-only workspace gate). `locale` is always sent. */
+export function saveMyMailPreferences(workspaceId: string, prefs: MyMailPreferences): Promise<ClientResult<{ ok: true }>> {
+  return patch(`/api/workspaces/${encodeURIComponent(workspaceId)}/my-mail-preferences`, prefs);
 }
 
 export function inviteMember(workspaceId: string, body: { email: string; role: "manager" | "viewer"; locale?: string }): Promise<ClientResult<InviteMemberResult>> {

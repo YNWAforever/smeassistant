@@ -28,6 +28,11 @@ export async function sendViaResend(
       headers: {
         Authorization: `Bearer ${config.apiKey}`,
         "Content-Type": "application/json",
+        // Resend's own idempotency key, keyed on the ledger's dedupe key: a
+        // retried send of the *same logical attempt* (e.g. a client-side
+        // retry after a timeout whose response never arrived) cannot create
+        // a second provider-side message.
+        "Idempotency-Key": message.dedupeKey,
       },
       body: JSON.stringify({
         from: config.from,
@@ -35,6 +40,7 @@ export async function sendViaResend(
         subject: message.subject,
         text: message.text,
         ...(message.html ? { html: message.html } : {}),
+        ...(message.headers ? { headers: message.headers } : {}),
       }),
       signal: controller.signal,
     });
@@ -50,12 +56,12 @@ export async function sendViaResend(
   } catch {
     body = null;
   }
+  // Category code only, never the provider's free-text message: last_error
+  // is stored in mail_outbox and surfaced on operator failure lists, and
+  // global-constraints.md forbids logging or persisting provider response
+  // text (it can carry the recipient's address back verbatim).
   if (!response.ok) {
-    const message =
-      body && typeof body === "object" && "message" in body && typeof body.message === "string"
-        ? body.message
-        : `provider_http_${response.status}`;
-    return { status: "failed", error: message };
+    return { status: "failed", error: `provider_http_${response.status}` };
   }
   const providerMessageId =
     body && typeof body === "object" && "id" in body && typeof body.id === "string" ? body.id : undefined;

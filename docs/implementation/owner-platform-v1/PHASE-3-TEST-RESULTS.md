@@ -1154,3 +1154,118 @@ Deferred minor findings from this task's own review of Tasks 1–5, not acted on
 - **Hosted verification of any kind**: no `neon:readiness`, no deployed request, no production Neon query. This branch has no migration to apply, but nothing else was checked hosted either — not authorized in this task.
 - **Native review of the zh-HK/zh-TW copy** added in the `commercial` namespace (`notOpen`, `contactFimmick`, `allowanceLine`, `unlimitedLine`). It follows the repository's register rules (香港書面中文 / 台灣用語) by construction, as every prior phase's Chinese copy did, but has not been read by a native speaker.
 - **`corepack pnpm test:secret-boundary`**: shells out to `next build` and inherits gate 6's Turbopack blocker on this machine, the same as every prior phase.
+
+## P3.5c — application-email outbox
+
+Candidate: branch `p35c-mail-outbox`, 16 commits (`3ad42c7`..`aab7aa4`) on top of `0190030` (P3.3's tip; stacked on `claude/commercial-contract-design-3b8561`, PR #25, not yet merged). Spec: [`docs/superpowers/specs/2026-09-27-mail-outbox-design.md`](../../superpowers/specs/2026-09-27-mail-outbox-design.md). Plan: `docs/superpowers/plans/2026-09-27-mail-outbox.md`. Environment: Windows 11 Pro 10.0.26200, Node `v24.18.0`, pnpm `9.12.0` via corepack, worktree `C:\Users\laich\Documents\smeassistant\.claude\worktrees\commercial-contract-design-3b8561`, Docker Server `29.7.2`. Run on 2026-09-27.
+
+**Read this first.** Everything below is **locally verified**. **Nothing here is hosted-verified.** No migration was applied to any hosted database. Nothing was deployed or pushed, and no paid provider was called — every mail test injects a fake transport; nothing calls Resend. See the P3.5c section of `PHASE-3-REPORT.md` for the decisions, the plan's departures from the spec, the commits table, the owner actions and the known limits.
+
+### Gate results (Task 10, full verification), run sequentially
+
+| # | Command | Result |
+|---|---|---|
+| 0 | `git diff --stat 0190030 -- packages neon/migrations/0001_identity.sql neon/migrations/0002_business.sql neon/migrations/0003_workflows.sql neon/migrations/0004_atomic_operations.sql neon/migrations/0005_owner_removal_guard.sql neon/migrations/0006_action_applications.sql neon/migrations/0007_action_verification.sql neon/migrations/0008_workspace_internal.sql neon/migrations/0009_scan_attempts.sql` | **empty**, as required — this branch touches no immutable migration and no vendored package. |
+| 1 | `corepack pnpm typecheck` | **passed**: exit 0. Root `tsc --noEmit`, then `pnpm -r typecheck` across `packages/{region,scoring,contracts,scan-engine}`, each `Done`. |
+| 2 | `corepack pnpm lint` | **passed**: exit 0, `✖ 30 problems (0 errors, 30 warnings)`, across 18 files — identical counts and files to the P3.3 record. No file this branch touches carries a warning. |
+| 3 | `corepack pnpm test` | **first run**: exit 1 — 5 files failed, every one with `Error: Test timed out in 5000ms` (`lib/identity/identity-sdk.test.ts`, `app/api/versions/[versionId]/versions.test.ts`, `tests/scan-events-single-writer.test.ts`, `tests/scan-claim-single-path.test.ts`, `lib/report/competitor-invariance.test.ts`). Confirmed not in this branch's diff: `git diff --stat 0190030 -- <all five paths>` is empty. Re-run each alone: all five **passed** (7/7, 11/11, 3/3, 4/4, 2/2 respectively), each in 1.6–6.6s, nowhere near the 5s budget — the standing load-induced flake class named in this task's own instructions. `corepack pnpm exec vitest run lib/evidence/safe-media.test.ts` (excluded from the main run) → **passed, 62/62**. `corepack pnpm -r test` (packages): `region` 3 files/23 tests, `scoring` 16/183, `contracts` 3/20, `scan-engine` 28/299, all `Done`. **Combined effective result: zero failures, 362 files / 3,885 tests** (app 311 files/3,298 tests excl. safe-media + safe-media 1/62 + packages 50/525). |
+| 4 | `NEON_INTEGRATION=1 corepack pnpm test:integration` | **first run**: exit 1, 3 of 39 files failed (`test/integration/neon-fixture.integration.test.ts`, `test/integration/neon-recovery.integration.test.ts`, `test/integration/neon-scan-admission.integration.test.ts`), **36 passed \| 3 failed (39)** files, **395 passed \| 3 failed (398)** tests. Confirmed not in this branch's diff (`git diff --stat 0190030 -- <all three paths>` empty). Re-run each alone: `neon-fixture` **passed 2/2** first try; `neon-recovery` failed once more in isolation (`Error: Test timed out in 30000ms`, at 32.06s of its own 30s budget, with its own log line showing the underlying database-restart rehearsal had already succeeded — `"userReportSurvived":true` — before the harness's outer timeout fired) and **passed 1/1** on a second isolated attempt (29.70s); `neon-scan-admission` **passed 6/6** on one retry. All three are timing-sensitive under this machine's load, not logic failures. **Combined effective result: zero failures, 39 files / 398 tests**, up from the P3.3 baseline's 38 files/378 tests — this branch adds exactly one new integration file (`test/integration/neon-mail-outbox.integration.test.ts`, 19 tests: +1 file, +20 tests). |
+| 5 | `corepack pnpm db:verify` | **passed**: exit 0. JSON below. |
+| 6 | `corepack pnpm db:types` | **passed**: exit 0, "Generated Neon schema row and insert types."; `git status --short lib/db/database.types.ts` empty afterward — the committed file already reflects migration 0010. |
+| 7 | `corepack pnpm build` (`next build`, Turbopack, the literal gate command) | **blocked**: exit 1, `Module not found: Can't resolve '@radix-ui/react-tooltip'` / `'@radix-ui/react-visually-hidden'`, the same standing `radix-ui` cascade recorded at every prior phase, traced through `components/ui/alert-dialog.tsx` → `components/workspace/rescan-button.tsx` → `components/workspace/{problem-item,problems-list}.tsx` → `app/[locale]/owner/[workspaceSlug]/activity/page.tsx`. No file this branch changes appears in the import trace. |
+| — | `npx next build --webpack` (diagnostic, **not** the gate) | **passed**: exit 0, `✓ Compiled successfully in 47s`. The route manifest includes every P3.5c-touched route (`/[locale]/unsubscribe`, `/api/mail/unsubscribe`, `/api/workspaces/[workspaceId]/my-mail-preferences`, `/api/workspaces/[workspaceId]/notification-preferences`) alongside the rest of the existing manifest. |
+
+After gate 3's runs and the mutation checks below, the two tracked snapshot files (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) showed as modified at points; `git diff --ignore-cr-at-eol --stat` was empty each time, confirming line-ending-only changes, and both were restored with `git checkout --`. `git status --short` was clean before and after, apart from this task's own documentation edits.
+
+### Migration verification (gate 5)
+
+```json
+{
+  "applied": ["0001_identity.sql", "0002_business.sql", "0003_workflows.sql", "0004_atomic_operations.sql",
+    "0005_owner_removal_guard.sql", "0006_action_applications.sql", "0007_action_verification.sql",
+    "0008_workspace_internal.sql", "0009_scan_attempts.sql", "0010_mail_outbox.sql"],
+  "replay": [],
+  "tables": 37, "columns": 444, "constraints": 172, "indexes": 95, "triggers": 8, "functions": 14,
+  "seededRows": 0, "deferredFunctions": [], "deferredTriggers": []
+}
+```
+
+Delta from P3.3's record (36/422/162/92/8/14): `+1` table (`mail_outbox`), `+22` columns (`mail_outbox`'s 19 + `workspace_members`' 3), `+10` constraints (`mail_outbox`'s pkey + 3 fkeys + 5 checks, plus `workspace_members`' new `mail_locale` check), `+3` indexes (`mail_outbox`'s pkey, `mail_outbox_due_idx`, `mail_outbox_workspace_idx`), triggers and functions unchanged — matching Task 1's own committed arithmetic exactly.
+
+### Unit-test delta vs. the P3.3 baseline (gate 3)
+
+| Measure | P3.3 baseline (`0190030`) | This branch (`aab7aa4`) | Δ |
+|---|---|---|---|
+| App, excl. safe-media | 299 files / 3,154 tests | 311 files / 3,298 tests | **+12 files / +144 tests** |
+| `lib/evidence/safe-media.test.ts` | 1 / 62 | 1 / 62 | 0 |
+| `packages/region` | 3 / 23 | 3 / 23 | 0 |
+| `packages/scoring` | 16 / 183 | 16 / 183 | 0 |
+| `packages/contracts` | 3 / 20 | 3 / 20 | 0 |
+| `packages/scan-engine` | 28 / 299 | 28 / 299 | 0 |
+| **Total** | **350 files / 3,741 tests** | **362 files / 3,885 tests** | **+12 files / +144 tests** |
+
+All four vendored packages are byte-unchanged by this branch (`git diff --stat 0190030 -- packages` is empty, per gate 0), so their test counts are identical by construction, not independently re-measured file by file. The eleven new app test files this branch adds (`lib/mail/{availability,decide,deliver,enqueue,templates,unsubscribe-token}.test.ts`, `app/[locale]/unsubscribe/page.test.tsx`, `app/api/mail/unsubscribe/route.test.ts`, `app/api/workspaces/[workspaceId]/my-mail-preferences/route.test.ts`, `components/workspace/notifications-view.test.tsx`, `lib/repositories/failures.test.ts`) together hold 141 tests (16+16+21+10+9+10+5+12+11+7+3 — confirmed by running them together: `corepack pnpm exec vitest run <the eight not already counted above> ` → 83, plus availability 16, deliver 21, page.test.tsx 5, already measured individually above = 125; the remaining delta comes from existing files this branch also modified, each gaining a small number of new cases — `notification-preferences/route.test.ts` (owner-only departure 2), `cron/dispatch/route.test.ts` (the new mail step), `post-process.test.ts` (the enqueue call site), `pause.test.ts` (`MAIL_PAUSED`), `resend-driver.test.ts` (headers/`Idempotency-Key`), `queries-pages.test.ts`, `owner-actions.test.ts`, `references.test.ts`, `ops/failures/page.test.tsx`, `i18n.test.ts` and `unhonoured-promises.test.ts`. Not independently re-measured case-by-case for every modified file; the full-suite counts in the table above are the record.
+
+### Integration suite detail (gate 4)
+
+`test/integration/neon-mail-outbox.integration.test.ts` is the only new integration file this branch adds: 19 tests covering duplicate-insert idempotency (Review Focus 3), 8-way concurrent `claimDue` partitioning, the dedicated `SKIP LOCKED` case, lease-expiry reclaim with a stale-token no-op (Review Focus 4), `optOut` (including atomicity through a checked-out client with no surrounding `BEGIN`, and the removed/no-member cases), `recipients`/`sendFacts`/`operatorCounts`/`deadRows`/`setMemberSwitches`/`memberSwitches`, and two `deliverMail`-level Review Focus 1 re-check cases (opted-out and removed since enqueue). `neon-schema.integration.test.ts` (modified, not new) passed with the extended 0010 baseline in every run of gate 4.
+
+The base commit `0190030` (P3.3's tip) already stood at **38 files / 378 tests** for this gate. This branch adds exactly one new file (`neon-mail-outbox.integration.test.ts`, 19 tests) and modifies two existing files without changing their case counts except one: `neon-schema.integration.test.ts` (Task 1's baseline update replaces assertions, no case added or removed) and `neon-failures.integration.test.ts` (Task 9 adds one new case, "lists a dead mail row with a MAIL- reference, the workspace slug, and occurred_at from updated_at (not created_at)", alongside renaming an existing case to mention the mail outbox's own counts). Arithmetic: 378 + 19 (new file) + 1 (new case in `neon-failures`) = **398**, matching the full-suite run exactly. Total: **39 files / 398 tests**. The other 37 files / 378 tests (378 baseline − the one renamed-not-added case's file, i.e. every file besides the two above) are unchanged from that baseline (not independently re-measured file by file; the full-suite count is the record).
+
+### Mutation checks — behaviour → test file/test name
+
+| # | Mutation | File | Test file / test name | Result |
+|---|---|---|---|---|
+| a | Both approval guards replaced with `if (false)` | `lib/mail/availability.ts::mailAvailability` | `lib/mail/availability.test.ts` — the full `describe("mailAvailability", …)` block | **Killed**: 4/16 failed (empty-env case, both `it.each` blank/whitespace-approval cases, mismatch-warning case) |
+| b | `sendFacts` re-check replaced with a hard-coded always-eligible `RecipientFacts` | `lib/mail/deliver.ts::deliverOne` | `lib/mail/deliver.test.ts` — "holds a row whose member unsubscribed since enqueue (Review Focus 1)", "holds a row whose member was removed since enqueue (Review Focus 1)", and 6 other cases sharing the same code path | **Killed**: 8/21 failed |
+| c | Added an `optOut` call on token verification | `app/[locale]/unsubscribe/page.tsx` | `app/[locale]/unsubscribe/page.test.tsx` — "renders the confirm button for a valid token and never touches the outbox repository" | **Killed**: 1/5 failed |
+| d | `FOR UPDATE SKIP LOCKED` → `FOR UPDATE` | `lib/repositories/mail-outbox.ts::claimDue` | `test/integration/neon-mail-outbox.integration.test.ts` — "SKIP LOCKED lets a concurrent claimer skip a row held by an open transaction instead of blocking on it (would fail without SKIP LOCKED)" | **Killed**: 1/19 failed (lock-timeout error, confirming the claimer blocked instead of skipping) |
+| e | Dropped the `AND lease_token = $2` guard | `lib/repositories/mail-outbox.ts::finish` | `test/integration/neon-mail-outbox.integration.test.ts` — "reclaims an expired sending lease with a fresh token; finishing with the stale token changes nothing (Review Focus 4)" | **Killed**: 3/19 failed (the targeted case, plus two `deliverMail` re-check cases sharing the same `finish` call, now surfacing a Postgres parameter-type error instead of a clean guarded update) |
+
+Every mutation was applied by an exact pattern required to match exactly once in its file, tested, then restored and confirmed byte-identical with `git diff --quiet -- <file>`. No test in this branch calls Resend or any network at any point during these checks.
+
+### Final-review fix wave (on top of `870d7d5`), run sequentially
+
+Eight controller-ruled findings fixed in `ed16057`, `4035391`, `8366ba6`, `d31cd37`, `5642f9b` and the documentation commit that adds `rollout/apply-0010.sql`; what each fixed is tabled under "Final-review fix wave" in the P3.5c section of `PHASE-3-REPORT.md`. Every code fix was written test-first: each new or changed case below was run against the unfixed code and failed as expected before the fix.
+
+| # | Command | Result |
+|---|---|---|
+| 1 | Focused unit tests, per item | `lib/mail/availability.test.ts` 21/21 (RED first: 4 failed, the four malformed `APP_ORIGIN` values read `open`); `lib/mail/deliver.test.ts` 21/21 (RED: 3 failed, workspace URL without the locale); `lib/mail/enqueue.test.ts` 11/11 (RED: 4 failed, held rows carried the address); `app/api/cron/dispatch/route.test.ts` + `tests/route-exports.test.ts` + `tests/cron-registration.test.ts` 23/23 (RED: 3 failed, `GET is not a function`); `lib/workspace/queries-pages.test.ts` 42/42 (RED: 10 failed, no `mailState`); `components/workspace/notifications-view.test.tsx` 14/14 (RED: 8 failed); `tests/unhonoured-promises.test.ts` + `tests/i18n.test.ts` 17/17 (the old KEPT regex, which looked for `mailOpen`, failed against the new view; the updated entry passes on the `mailState === "open"` gate) |
+| 2 | `NEON_INTEGRATION=1 corepack pnpm test:integration` for `neon-mail-outbox`, `neon-failures`, `neon-cron-dispatch`, `neon-schema` | **passed**: 4 files, 48/48. The new `neon-mail-outbox` case "enqueueScanMail stores the address only on queued rows; a held row's to_address is null" was also run with the old `to_address: facts.address` line restored: it failed (`to_address` was `"member-off@example.test"`), then passed again with the fix. `neon-mail-outbox` now has 20 tests (+1). |
+| 3 | `corepack pnpm db:verify` | **passed**: 0001–0010 applied, replay empty, 37 tables / 444 columns / 172 constraints / 95 indexes / 8 triggers / 14 functions, unchanged from gate 5 above (no migration edited). |
+| 4 | `corepack pnpm typecheck` | **passed**: root `tsc --noEmit`, then all four workspace packages `Done`. |
+| 5 | `corepack pnpm lint` | **passed**: `✖ 30 problems (0 errors, 30 warnings)`, the same pre-existing warnings; none in a file this wave touched. |
+| 6 | `corepack pnpm exec vitest run lib app tests components` (once) | **first run**: 9 files / 10 tests failed, all `Error: Test timed out in 5000ms` or an assertion after that timeout's retry, in files this wave does not touch (`git diff --stat 870d7d5 --` on all nine is empty): `app/api/actions/[actionId]/versions/route.test.ts`, `app/api/assistant/run/route.test.ts`, `app/api/versions/[versionId]/versions.test.ts`, `lib/identity/{client,identity-sdk,logout}.test.ts`, `lib/report/competitor-invariance.test.ts`, `tests/scan-claim-single-path.test.ts`, `tests/scan-events-single-writer.test.ts`; 295 files / 3,325 tests passed. **Each re-run alone**: 8/8, 21/21, 1/1, 7/7, 2/2, 2/2, 4/4, 3/3 passed; `versions.test.ts` failed once more alone (the known-intermittent approve case) and then passed 11/11 on two further isolated runs. **Effective result: zero failures, 304 files / 3,335 tests.** |
+| 7 | `rollout/apply-0010.sql` rehearsal on disposable Docker `postgres:16` (16.15), production role layout | **as expected, twice**: refused without the SET grant (`42501`); refused on a 0001–0008 journal and on a 0001–0009 journal with row 9's checksum altered (`P0001 … (it has 8 rows)` / `(it has 9 rows)`), snapshot unchanged; first run applied with three notices and journal rows 1–10; `applyMigrations` with all ten returned `[]`; migrator owns `mail_outbox` and its indexes, runtime role can use it; second run refused (`… (it has 10 rows)`), snapshot unchanged. Full table under "Runbook — `apply-0010.sql`" in `PHASE-3-REPORT.md`. |
+
+The two tracked snapshot files showed as modified after gate 6; `git diff --ignore-cr-at-eol --stat` was empty and both were restored with `git checkout --`.
+
+### Known limits
+
+See the P3.5c section of `PHASE-3-REPORT.md` for the full list (spec §10, plus this session's findings).
+
+**Known, not changed** (deferred minor findings from this session's own task-by-task reviews, not acted on in this slice — see `.superpowers/sdd/2026-09-27-mail-outbox/progress.md` for the full ledger; same list as the P3.5c section of `PHASE-3-REPORT.md`):
+
+- The `db:types` regeneration also picked up pre-existing `action_applications`/`scan_attempts` types that the generated file had been missing (stale before this branch); Task 1's own report understated this as part of its diff (Task 1).
+- The provider-env blank-value tests use `"  "` (whitespace) only, never `""` (empty string); there is no test at a multi-byte character boundary for the 32-byte secret-length check (Task 2).
+- No test for a differently-sized/tampered token signature beyond the cases already covered, and no single-quote-escaping test for the template renderer (Task 3); the code itself guards both.
+- `claimDue` and `finish` mix an app-supplied `now: Date` with the database's own `now()` elsewhere in the repository; `ClaimedRow.state` is typed as `string` rather than the state union; `OutboxInsert.payload` is typed `Record<string, unknown>` rather than the payload shape; `finish`'s own query result is untyped; `setMemberSwitches` returns `void`; `claimDue` does not validate `limit` (Task 4).
+- No test covers an accepted member with a null `user_id` reaching `recipients`; the stale-token `finish` test doesn't assert that `sent_at`/`provider_message_id` stay null on the untouched row; there is no test of `finish` called against an already-terminal (not `sending`) row (Task 4).
+- The lease-reclaim test still compares a JS `new Date()` against `lease_until = now() - 1 minute`, rather than reading the database clock like the claim tests do after the Task 4 fix rounds — benign only because more than a minute of host/container skew would be needed to flip it (Task 4).
+- ~~A doc comment in `lib/workspace/post-process.ts` (around the `enqueueScanMail` call) slightly misstates what `mailKindsForScan` is called with (Task 5).~~ **Fixed in the final-review fix wave**: it now says `mailKindsForScan` returns `[]` for a failed job.
+- Lease-lost handling (`logLeaseLost`) is duplicated across every outcome branch in `deliverOne`/`recoverFromException` rather than shared once; only the `sent` branch's lease-loss path has a dedicated test (Task 6).
+- ~~`mailAvailability` only checks that `APP_ORIGIN` is non-blank, not that it parses as `http(s)` (Task 6).~~ **Fixed in the final-review fix wave**: `APP_ORIGIN` must parse with `new URL()` as an `http:`/`https:` URL with a real origin, or mail is `provider_unconfigured` and every row holds `mail_unapproved`.
+- A crashed send's address can change between an accepted-but-timed-out provider attempt and its retry (the address is re-read from `app_users.email` each attempt) — a narrow window that could in principle cause a provider-side `409` on retry rather than a clean replay; not observed in testing (Task 6).
+- The 32-byte secret-length floor is duplicated between `lib/mail/unsubscribe-token.ts` and `lib/mail/availability.ts`; there is no test proving a query-string token wins over a differing JSON-body token in the unsubscribe route, only that each alone works (Task 7).
+- `CapabilityBadge` was dropped from the settings view in favour of folding "Planned" into the monthly-digest copy directly; the `my-mail-preferences` route's `503` path (a database failure while saving, logged as `my_mail_preferences_save_failed`; the earlier wording "secret unset" was wrong) is untested; the task brief's file list named one settings-page file this task did not need to touch (Task 8).
+- `mailOutboxRepository().deadRows()` selects and returns `created_at` but orders by `updated_at` (Task 9).
+
+### Not run
+
+- **`corepack pnpm build` (Turbopack)**: the standing local `radix-ui` cascade blocks it, as at every prior phase; `next build --webpack` is run instead as the practical local diagnostic, leaving CI as the real build gate.
+- **`corepack pnpm e2e` / `e2e:acceptance`**: need a production build, which the Turbopack gate cannot produce on this machine. CI runs both.
+- **`corepack pnpm test:secret-boundary`**: shells out to `next build` and inherits the same Turbopack blocker.
+- **Hosted verification of any kind**: no `neon:readiness`, no deployed request, no production Neon query, no migration applied to any hosted database. This branch's migration 0010 is verified locally by `db:verify` (gate 5), and its production statement `rollout/apply-0010.sql` is rehearsed on disposable Docker Postgres only (fix-wave gate 7); it has never been run against any Neon database. See "Owner actions" in `PHASE-3-REPORT.md` for the procedure still required before deployment.
+- **Real mail of any kind**: every mail test (unit and integration) injects a fake `MailTransport`; nothing in this branch calls Resend or any other network endpoint.
+- **Vercel Cron against the deployed route**: the GET fix (`d31cd37`) is covered by unit tests only. Confirm on the first deploy that the Vercel Cron dashboard (or the runtime logs) shows `200` for `/api/cron/dispatch` with `CRON_SECRET` set.
+- **Native review of the zh-HK/zh-TW copy** added in the new `mail` namespace (`allowTitle`, `myEmailsTitle`, `rescanComplete`, `regressionAlert`, `monthlyDigest`, `closedNote`, `openNote`, `ownerOnly`, `unsubscribeTitle`, `unsubscribeConfirm`, `unsubscribeDone`, `unsubscribeInvalid`, plus the mailed-copy templates in `lib/mail/templates.ts`). It follows the repository's register rules (香港書面中文 / 台灣用語) by construction, as every prior phase's Chinese copy did, but has not been read by a native speaker.

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceContext } from "@/lib/workspace/queries";
 
 type Row = Record<string, unknown>;
@@ -45,8 +45,13 @@ const brandMock = vi.hoisted(() => ({ getBrand: vi.fn(async () => state.brand) }
 vi.mock("@/lib/workspace/brand", () => ({ getBrand: brandMock.getBrand }));
 const assetsMock = vi.hoisted(() => ({ get: vi.fn(async () => state.asset) }));
 vi.mock("@/lib/repositories/assets", () => ({ assetRepository: () => assetsMock }));
+const mailOutboxMock = vi.hoisted(() => ({ memberSwitches: vi.fn() }));
+vi.mock("@/lib/repositories/mail-outbox", () => ({ mailOutboxRepository: () => mailOutboxMock }));
+vi.mock("@/lib/db/client", () => ({ getPool: () => ({}) }));
+const mailAvailabilityMock = vi.hoisted(() => ({ mailAvailability: vi.fn() }));
+vi.mock("@/lib/mail/availability", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/mail/availability")>()), mailAvailability: mailAvailabilityMock.mailAvailability }));
 
-import { getHomeBrief, getInsights, listActions, getActivity, getIntegrations, getAction, loadActionRows, loadDiffById } from "./queries-pages";
+import { getHomeBrief, getInsights, listActions, getActivity, getIntegrations, getAction, loadActionRows, loadDiffById, getNotifications } from "./queries-pages";
 
 const ctx: WorkspaceContext = {
   workspace: { id: "ws-1", slug: "kam-man-house", name: "Kam Man House", market: "hk", tier: "paid", timezone: "Asia/Hong_Kong", isDemo: false, instagramHandle: null, industry: "fnb", district: null },
@@ -90,6 +95,8 @@ beforeEach(() => {
   repository.deliveries.mockImplementation(async () => state.deliveries);
   brandMock.getBrand.mockImplementation(async () => state.brand);
   assetsMock.get.mockImplementation(async () => state.asset);
+  mailOutboxMock.memberSwitches.mockResolvedValue(null);
+  mailAvailabilityMock.mailAvailability.mockReturnValue({ open: true });
 
   state.snapshots = [snapshotRow({})];
   state.diffs = {}; state.actions = [actionRow({}), actionRow({ id: "a2", template_key: "social-post", priority: "high", priority_score: 45, action_state: "recommended", required_inputs: [] })];
@@ -461,5 +468,111 @@ describe("page repository boundaries", () => {
     // run keeps its "Generating" chip until the owner opens that action.
     await listActions(ctx, { location: "all" });
     expect(reaper.reapStrandedRuns).not.toHaveBeenCalled();
+  });
+});
+
+describe("getNotifications", () => {
+  // Review finding: myAddress must be the address the outbox actually sends
+  // to (app_users.email, read via mailOutboxRepository().memberSwitches),
+  // never ctx.account.email -- that field is workspace_members.email (the
+  // invite address), which can differ from the account's real sign-in
+  // address and which the outbox never reads.
+  it("resolves myAddress from the mail-outbox repository, not from ctx.account.email", async () => {
+    mailOutboxMock.memberSwitches.mockResolvedValue({ rescanComplete: true, regressionAlert: false, locale: "en", address: "real-signin@example.test" });
+    const invited = { ...ctx, account: { name: "o", email: "invite-address@example.test" } };
+
+    const model = await getNotifications(invited);
+
+    expect(model.myAddress).toBe("real-signin@example.test");
+    expect(model.myEmails).toEqual({ rescanComplete: true, regressionAlert: false });
+    expect(mailOutboxMock.memberSwitches).toHaveBeenCalledWith("ws-1", "u1");
+  });
+
+  it("myAddress is null when the repository has no address on file, even while mail is open", async () => {
+    mailOutboxMock.memberSwitches.mockResolvedValue({ rescanComplete: false, regressionAlert: false, locale: null, address: null });
+    mailAvailabilityMock.mailAvailability.mockReturnValue({ open: true });
+
+    const model = await getNotifications(ctx);
+
+    expect(model.myAddress).toBeNull();
+    expect(model.mailState).toBe("no_address");
+  });
+
+  it("defaults myEmails and myAddress honestly when the caller has no switches row", async () => {
+    mailOutboxMock.memberSwitches.mockResolvedValue(null);
+
+    const model = await getNotifications(ctx);
+
+    expect(model.myEmails).toEqual({ rescanComplete: false, regressionAlert: false });
+    expect(model.myAddress).toBeNull();
+    expect(model.role).toBe("owner");
+  });
+});
+
+/**
+ * Final-review fix 2: the settings note is rendered from ONE effective
+ * member mail state, computed here, in this order: closed -> paused ->
+ * no_address -> not_allowlisted -> none_on -> blocked -> open. Only "open"
+ * (at least one kind both allowed by the workspace and switched on by the
+ * member) may render "We'll email you at {address}".
+ */
+describe("getNotifications mailState", () => {
+  const ALL_ON = { rescanComplete: true, regressionAlert: true, locale: "en", address: "member@example.test" };
+  const GATES = (rescan: boolean, regression: boolean) => ({ notify_rescan_complete: rescan, notify_regression_alert: regression, notify_monthly_digest: true });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("is closed when mail is not open, whatever else is true", async () => {
+    mailAvailabilityMock.mailAvailability.mockReturnValue({ open: false, reason: "mail_unapproved" });
+    vi.stubEnv("MAIL_PAUSED", "true");
+    mailOutboxMock.memberSwitches.mockResolvedValue(ALL_ON);
+    expect((await getNotifications(ctx)).mailState).toBe("closed");
+  });
+
+  it("is paused when mail is open but MAIL_PAUSED is on", async () => {
+    vi.stubEnv("MAIL_PAUSED", "true");
+    mailOutboxMock.memberSwitches.mockResolvedValue({ ...ALL_ON, address: null });
+    expect((await getNotifications(ctx)).mailState).toBe("paused");
+  });
+
+  it("is no_address when open and unpaused but no address is on file", async () => {
+    mailOutboxMock.memberSwitches.mockResolvedValue({ ...ALL_ON, address: null });
+    expect((await getNotifications(ctx)).mailState).toBe("no_address");
+  });
+
+  it("is not_allowlisted when the allowlist is set and excludes the address (compared trimmed and lower-cased)", async () => {
+    vi.stubEnv("MAIL_RECIPIENT_ALLOWLIST", " Someone@Example.test , ,");
+    mailOutboxMock.memberSwitches.mockResolvedValue(ALL_ON);
+    expect((await getNotifications(ctx)).mailState).toBe("not_allowlisted");
+  });
+
+  it("an allowlisted address in different case is not held back", async () => {
+    vi.stubEnv("MAIL_RECIPIENT_ALLOWLIST", " MEMBER@Example.test ,x@y.hk");
+    mailOutboxMock.memberSwitches.mockResolvedValue(ALL_ON);
+    expect((await getNotifications(ctx)).mailState).toBe("open");
+  });
+
+  it("is none_on when the member has neither switch on", async () => {
+    mailOutboxMock.memberSwitches.mockResolvedValue({ ...ALL_ON, rescanComplete: false, regressionAlert: false });
+    expect((await getNotifications(ctx)).mailState).toBe("none_on");
+  });
+
+  it("is blocked when every kind the member turned on is disallowed by the workspace gate", async () => {
+    repository.notificationPreferences.mockResolvedValue(GATES(false, true));
+    mailOutboxMock.memberSwitches.mockResolvedValue({ ...ALL_ON, regressionAlert: false });
+    expect((await getNotifications(ctx)).mailState).toBe("blocked");
+  });
+
+  it("is open when at least one kind is both allowed and switched on", async () => {
+    repository.notificationPreferences.mockResolvedValue(GATES(false, true));
+    mailOutboxMock.memberSwitches.mockResolvedValue(ALL_ON);
+    expect((await getNotifications(ctx)).mailState).toBe("open");
+  });
+
+  it("is no_address (never open) for a caller with no switches row", async () => {
+    mailOutboxMock.memberSwitches.mockResolvedValue(null);
+    expect((await getNotifications(ctx)).mailState).toBe("no_address");
   });
 });

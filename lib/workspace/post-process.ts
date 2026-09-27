@@ -2,11 +2,13 @@ import { measurementRepository } from "@/lib/repositories/measurements";
 import { snapshotRepository } from "@/lib/repositories/snapshots";
 import type { PoolClient } from "pg";
 import { notificationRepository } from "@/lib/repositories/notifications";
+import { mailOutboxRepository } from "@/lib/repositories/mail-outbox";
 import { localized } from "@/lib/domain";
 import { actionDerivationRepository } from "@/lib/repositories/action-derivation";
 import { recordMeasurements } from "@/lib/workspace/measurements";
 import { notifyWithRepository } from "@/lib/workspace/notify";
 import { buildSnapshot, loadDiffForHeadJob } from "@/lib/workspace/snapshots";
+import { enqueueScanMail } from "@/lib/mail/enqueue";
 import type { WebsiteChecks } from "@/lib/website/checks";
 
 /**
@@ -72,6 +74,9 @@ export async function postProcessWorkspaceScan(db: PoolClient, jobId: string, op
     const name = job.business_name?.trim() || "";
 
     if (job.status === "failed") {
+      // No enqueueScanMail call here: mailKindsForScan returns [] for a
+      // failed job regardless of input, so a call would only spend a workspaceHref
+      // query and a recipients read to insert nothing.
       const notification = await notifyWithRepository(notificationRepository(db), {
         workspaceId: job.workspace_id,
         completionJobId: job.id,
@@ -98,6 +103,7 @@ export async function postProcessWorkspaceScan(db: PoolClient, jobId: string, op
       if (!measurements.comparable) throw new Error("measurement base snapshot not ready");
     }
 
+    const href = await workspaceHref(db, job.workspace_id, job.location_id);
     const notification = await notifyWithRepository(notificationRepository(db), {
       workspaceId: job.workspace_id,
       completionJobId: job.id,
@@ -106,9 +112,24 @@ export async function postProcessWorkspaceScan(db: PoolClient, jobId: string, op
       body: job.status === "partial"
         ? localized("Some sources could not be read; the report shows what was measured.", "部分來源無法讀取；報告只顯示已量度的部分。")
         : localized("Your workspace has fresh evidence and refreshed actions.", "工作區已有最新證據及更新後的行動。"),
-      href: await workspaceHref(db, job.workspace_id, job.location_id),
+      href,
     });
     if (notification.error) throw new Error(notification.error);
+
+    // Enqueued after the in-app notification succeeds, on this same
+    // transaction: the completion is not "done" until members who asked for
+    // mail have their rows queued too. A throw here propagates to the catch
+    // below so completion.ts's ledger retries the whole hook, not just mail.
+    await enqueueScanMail(mailOutboxRepository(db), {
+      workspaceId: job.workspace_id,
+      jobId: job.id,
+      status: job.status,
+      businessName: name,
+      market: snapshot.market,
+      workspacePath: href,
+      diff,
+    });
+
     return { ran: true, snapshotId: snapshot.id, error: null };
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : "unknown";

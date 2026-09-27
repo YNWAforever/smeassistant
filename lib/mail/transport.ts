@@ -24,6 +24,15 @@ export interface MailMessage {
   html?: string;
   /** Stable across retries of the same logical send; the ledger's dedupe key. */
   dedupeKey: string;
+  /**
+   * Extra provider headers (docs/superpowers/specs/2026-09-27-mail-outbox-
+   * design.md §4): `List-Unsubscribe` + `List-Unsubscribe-Post` for the
+   * one-click unsubscribe flow. The driver decides where each header goes on
+   * the wire (Resend's driver puts these in the JSON body's own `headers`
+   * field, and separately stamps `dedupeKey` as an `Idempotency-Key` HTTP
+   * header) -- this type only carries the values.
+   */
+  headers?: Record<string, string>;
 }
 
 export interface MailSendResult {

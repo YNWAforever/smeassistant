@@ -12,6 +12,9 @@ import { runWebsiteVerification } from "@/lib/verify/website-sweep";
 import { dispatchScanProcess } from "@/lib/scan/dispatch-process";
 import { deadLetterRepository } from "@/lib/repositories/dead-letter";
 import { pauseState, logPauseRefusal } from "@/lib/budgets/pause";
+import { mailOutboxRepository } from "@/lib/repositories/mail-outbox";
+import { deliverMail, type DeliverMailSummary } from "@/lib/mail/deliver";
+import { createMailTransport } from "@/lib/mail/transport";
 
 export const maxDuration = 60;
 
@@ -128,5 +131,24 @@ export async function POST(request: Request): Promise<Response> {
     logFailure("verify_website_actions", cause);
   }
 
-  return NextResponse.json({ notified, reclaimCandidates, autoClosed, reconciled, verified }, { status: 200, headers: { "Cache-Control": "no-store" } });
+  // P3.5c: delivers the mail_outbox after the completion reconcile, so a
+  // workspace-completion effect written earlier in this same tick (or a
+  // stuck one just reconciled) can be mailed in the same pass. Its own
+  // failure never fails the other steps.
+  let mail: DeliverMailSummary | null = null;
+  try {
+    mail = await deliverMail({ repo: mailOutboxRepository(getPool()), transport: createMailTransport() });
+  } catch (cause) {
+    logFailure("deliver_mail", cause);
+  }
+
+  return NextResponse.json({ notified, reclaimCandidates, autoClosed, reconciled, verified, mail }, { status: 200, headers: { "Cache-Control": "no-store" } });
 }
+
+/**
+ * Vercel Cron invokes the path registered in vercel.json with HTTP GET (and
+ * `Authorization: Bearer $CRON_SECRET`), so GET is the identical,
+ * bearer-authorized handler. Without it every scheduled tick answers 405 and
+ * nothing above runs.
+ */
+export const GET = POST;

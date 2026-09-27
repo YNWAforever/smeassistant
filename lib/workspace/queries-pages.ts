@@ -4,12 +4,17 @@ import { CLOSED_ACTION_STATES, localized, type ActionState, type FactType, type 
 import { loadAuthorizedEvidence } from "@/lib/evidence/load-authorized";
 import type { EvidenceGalleryItem } from "@/lib/report/view-model";
 import { inLocationScope, type Membership } from "@/lib/auth";
+import { getPool } from "@/lib/db/client";
+import { pauseState } from "@/lib/budgets/pause";
+import { mailAvailability, parseRecipientAllowlist } from "@/lib/mail/availability";
 import { artifactRepository } from "@/lib/repositories/artifacts";
 import { assetRepository } from "@/lib/repositories/assets";
+import { mailOutboxRepository } from "@/lib/repositories/mail-outbox";
 import { getBrand, type BrandProfile } from "@/lib/workspace/brand";
 import { deriveFaqQuestions } from "@/lib/workspace/faq-questions";
 import { applicationRepository } from "@/lib/repositories/applications";
 import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
+import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace";
 import type { GuardrailFlag, VersionOrigin } from "@/lib/workspace/version-meta";
 import type { AttributionBasis } from "@/lib/workspace/applications";
 import { filterSelectedReviews, scannedReviewKey, selectScannedReviews } from "@/lib/workspace/evidence-inputs";
@@ -317,7 +322,52 @@ export interface NotificationRow {
 
 export interface NotificationsModel {
   inApp: NotificationRow[];
+  /** The workspace's "allow these emails" gates -- owner-only to change (global-constraints.md departure 2). */
   email: { rescanComplete: boolean; regressionAlert: boolean; monthlyDigest: boolean };
+  /** The caller's own role, so the view can disable the owner-only card without a second round trip. */
+  role: WorkspaceRole;
+  /**
+   * The caller's one effective mail state (memberMailState) -- the only
+   * thing the settings note is rendered from. Only "open" may say "we'll
+   * email you".
+   */
+  mailState: MemberMailState;
+  /** The caller's own two mail opt-ins (`workspace_members.mail_*`), always editable regardless of role. */
+  myEmails: { rescanComplete: boolean; regressionAlert: boolean };
+  /** The address mail would go to (the caller's own account email); null only if the session has none. */
+  myAddress: string | null;
+}
+
+/**
+ * Whether the signed-in member would actually get event mail, as one value
+ * (final-review fix 2). Checked in this order, first match wins:
+ * - `closed`: mail itself is not open (mailAvailability).
+ * - `paused`: the MAIL_PAUSED incident switch is on.
+ * - `no_address`: no app_users.email to send to.
+ * - `not_allowlisted`: MAIL_RECIPIENT_ALLOWLIST is set and excludes the
+ *   address (same trimmed, lower-cased compare as decideRecipient).
+ * - `none_on`: the member has neither of their own switches on.
+ * - `blocked`: every kind the member switched on is disallowed by the
+ *   workspace gate.
+ * - `open`: at least one kind is both allowed and switched on.
+ */
+export type MemberMailState = "closed" | "paused" | "no_address" | "not_allowlisted" | "none_on" | "blocked" | "open";
+
+function memberMailState(input: {
+  open: boolean;
+  paused: boolean;
+  address: string | null;
+  allowlist: Set<string> | null;
+  gates: { rescanComplete: boolean; regressionAlert: boolean };
+  mine: { rescanComplete: boolean; regressionAlert: boolean };
+}): MemberMailState {
+  if (!input.open) return "closed";
+  if (input.paused) return "paused";
+  if (!input.address) return "no_address";
+  if (input.allowlist && !input.allowlist.has(input.address.trim().toLowerCase())) return "not_allowlisted";
+  if (!input.mine.rescanComplete && !input.mine.regressionAlert) return "none_on";
+  const deliverable = (input.mine.rescanComplete && input.gates.rescanComplete) || (input.mine.regressionAlert && input.gates.regressionAlert);
+  return deliverable ? "open" : "blocked";
 }
 
 /**
@@ -889,17 +939,40 @@ export async function getCalendar(ctx: WorkspaceContext): Promise<CalendarModel>
 
 export async function getNotifications(ctx: WorkspaceContext): Promise<NotificationsModel> {
   const repository = workspaceReadRepository();
-  const [inApp, prefs] = await read("notifications", () => Promise.all([
+  const [inApp, prefs, mySwitches] = await read("notifications", () => Promise.all([
     repository.notifications(ctx.workspace.id, ctx.membership.userId),
     repository.notificationPreferences(ctx.workspace.id),
+    mailOutboxRepository(getPool()).memberSwitches(ctx.workspace.id, ctx.membership.userId),
   ]));
+  const email = {
+    rescanComplete: prefs?.notify_rescan_complete ?? true,
+    regressionAlert: prefs?.notify_regression_alert ?? true,
+    monthlyDigest: prefs?.notify_monthly_digest ?? true,
+  };
+  const myEmails = {
+    rescanComplete: mySwitches?.rescanComplete ?? false,
+    regressionAlert: mySwitches?.regressionAlert ?? false,
+  };
+  // The address mail is actually sent to (app_users.email via
+  // memberSwitches), never ctx.account.email -- that is
+  // workspace_members.email (the invite address, e.g. `row.email` in
+  // lib/auth.ts's decideMembership), which the outbox never reads and can
+  // differ from the address the member signs in and receives mail with.
+  const myAddress = mySwitches?.address || null;
   return {
     inApp,
-    email: {
-      rescanComplete: prefs?.notify_rescan_complete ?? true,
-      regressionAlert: prefs?.notify_regression_alert ?? true,
-      monthlyDigest: prefs?.notify_monthly_digest ?? true,
-    },
+    email,
+    role: ctx.membership.role,
+    mailState: memberMailState({
+      open: mailAvailability().open,
+      paused: pauseState().mail,
+      address: myAddress,
+      allowlist: parseRecipientAllowlist(process.env.MAIL_RECIPIENT_ALLOWLIST),
+      gates: email,
+      mine: myEmails,
+    }),
+    myEmails,
+    myAddress,
   };
 }
 

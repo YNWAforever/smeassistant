@@ -8,10 +8,12 @@ function shortReference(prefix: string, id: string): string {
 
 export const runReference = (id: string) => shortReference("RUN", id);
 export const connectionReference = (id: string) => shortReference("CONN", id);
+export const mailReference = (id: string) => shortReference("MAIL", id);
 
 export function referenceFor(kind: FailureKind, id: string): string {
   if (kind === "draft_failed") return runReference(id);
   if (kind === "google_connection") return connectionReference(id);
+  if (kind === "mail_dead") return mailReference(id);
   return scanReference(id);
 }
 
@@ -25,11 +27,12 @@ export interface FailureSearch {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const REFERENCE_RE = /^(SCAN|RUN|CONN)-([0-9A-F]{6})$/i;
+const REFERENCE_RE = /^(SCAN|RUN|CONN|MAIL)-([0-9A-F]{6})$/i;
 const PREFIX_KINDS: Record<string, FailureKind[]> = {
   SCAN: ["scan_failed", "scan_dead_lettered", "workspace_processing"],
   RUN: ["draft_failed"],
   CONN: ["google_connection"],
+  MAIL: ["mail_dead"],
 };
 
 /** Operator search: a reference, a full id, or nothing. Anything else is "invalid", never passed to SQL. */
