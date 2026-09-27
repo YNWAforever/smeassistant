@@ -88,6 +88,7 @@
     "monthlyDigest": "每月摘要 · 規劃中",
     "closedNote": "電子郵件功能尚未開啟。你的選擇已儲存，開啟後生效。",
     "openNote": "發生以下情況時，我們會寄送電子郵件至 {address}。",
+    "noAddress": "你的帳號尚未有電子郵件地址。",
     "ownerOnly": "只有工作台擁有者可以變更。",
     "unsubscribeTitle": "停止接收這些電子郵件",
     "unsubscribeConfirm": "取消訂閱",

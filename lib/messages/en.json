@@ -88,6 +88,7 @@
     "monthlyDigest": "Monthly digest · Planned",
     "closedNote": "Email is not switched on yet. Your choices are saved and take effect once it is.",
     "openNote": "We'll email you at {address} when these happen.",
+    "noAddress": "We don't have an email address for your account yet.",
     "ownerOnly": "Only the workspace owner can change these.",
     "unsubscribeTitle": "Stop these emails",
     "unsubscribeConfirm": "Unsubscribe",

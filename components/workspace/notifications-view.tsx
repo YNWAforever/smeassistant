@@ -22,8 +22,15 @@ export function NotificationsView({ locale, workspaceId, timezone, model }: { lo
   const isChinese = locale !== "en"
   const unread = model.inApp.filter((n) => !n.read_at).length
   const isOwner = model.role === "owner"
+  // Closed -> the honest "not switched on yet" note. Open with no address on
+  // file -> mail.noAddress, never mail.openNote naming an address the outbox
+  // cannot send to (the review that added this: myAddress must come from
+  // app_users.email, and a member can genuinely have none resolved yet).
+  // Open with an address -> mail.openNote, the only branch that names one.
   const mailNote = model.mailOpen
-    ? <p className="limitation-note">{t(locale, "mail.openNote", { address: model.myAddress ?? "" })}</p>
+    ? (model.myAddress
+        ? <p className="limitation-note">{t(locale, "mail.openNote", { address: model.myAddress })}</p>
+        : <p className="limitation-note"><TriangleAlert /> {t(locale, "mail.noAddress")}</p>)
     : <p className="limitation-note"><TriangleAlert /> {t(locale, "mail.closedNote")}</p>
   return (
     <div className="settings-page notifications-page">

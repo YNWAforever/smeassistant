@@ -386,14 +386,31 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
 
   it("setMemberSwitches updates only provided keys and always writes locale", async () => {
     const ws = await workspace();
-    const u = await user();
-    await member(ws, u, { mailRescanComplete: false, mailRegressionAlert: false });
+    const u = await user("real-signin@example.test");
+    await member(ws, u, { mailRescanComplete: false, mailRegressionAlert: false, email: "invite-address@example.test" });
 
     await repo().setMemberSwitches(ws, u, { rescanComplete: true, locale: "zh-TW" });
-    expect(await repo().memberSwitches(ws, u)).toEqual({ rescanComplete: true, regressionAlert: false, locale: "zh-TW" });
+    expect(await repo().memberSwitches(ws, u)).toEqual({ rescanComplete: true, regressionAlert: false, locale: "zh-TW", address: "real-signin@example.test" });
 
     await repo().setMemberSwitches(ws, u, { regressionAlert: true, locale: null });
-    expect(await repo().memberSwitches(ws, u)).toEqual({ rescanComplete: true, regressionAlert: true, locale: null });
+    expect(await repo().memberSwitches(ws, u)).toEqual({ rescanComplete: true, regressionAlert: true, locale: null, address: "real-signin@example.test" });
+  });
+
+  // Review finding: the settings page must name the address mail is actually
+  // sent to. recipients()/sendFacts() resolve mail through app_users.email
+  // for the member's user_id; workspace_members.email is only the invite
+  // address and can differ (an owner invites someone@old-domain, the invitee
+  // signs in with a different address on the same Neon Auth account).
+  // memberSwitches must resolve the same way, not the invite address.
+  it("memberSwitches resolves the address from app_users.email, not workspace_members.email", async () => {
+    const ws = await workspace();
+    const u = await user("app-users-address@example.test");
+    await member(ws, u, { email: "workspace-members-invite-address@example.test" });
+
+    const switches = await repo().memberSwitches(ws, u);
+
+    expect(switches?.address).toBe("app-users-address@example.test");
+    expect(switches?.address).not.toBe("workspace-members-invite-address@example.test");
   });
 
   it("memberSwitches is null for a caller with no accepted membership", async () => {

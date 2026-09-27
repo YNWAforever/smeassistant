@@ -61,6 +61,19 @@ describe("NotificationsView", () => {
     expect(root.textContent).not.toContain(t("en", "mail.closedNote"));
   });
 
+  // Review finding: myAddress must come from app_users.email (what the
+  // outbox actually sends to), which can genuinely be unresolved for a
+  // member even while mail is open -- the page must never name an address
+  // in that case.
+  it("shows mail.noAddress, never mail.openNote, when mail is open but no address is on file", () => {
+    const root = render(model({ mailOpen: true, myAddress: null }));
+    expect(root.textContent).toContain(t("en", "mail.noAddress"));
+    expect(root.textContent).not.toContain("{address}");
+    for (const address of ["owner@example.com", "member@example.com"]) {
+      expect(root.textContent).not.toContain(t("en", "mail.openNote", { address }));
+    }
+  });
+
   it("disables the workspace Allow switches and shows the owner-only note for a non-owner", () => {
     const root = render(model({ role: "manager" }));
     expect(root.textContent).toContain(t("en", "mail.ownerOnly"));

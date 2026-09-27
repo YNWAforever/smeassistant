@@ -61,6 +61,8 @@ export interface MemberMailSwitches {
   rescanComplete: boolean;
   regressionAlert: boolean;
   locale: Locale | null;
+  /** `app_users.email` for this member's `user_id` -- the address mail is actually sent to (never `workspace_members.email`, the invite address). */
+  address: string | null;
 }
 
 export interface MailOutboxCounts {
@@ -304,16 +306,24 @@ export function mailOutboxRepository(client: Pool | PoolClient) {
       );
     },
 
-    /** Null when the caller has no accepted membership in this workspace. */
+    /**
+     * Null when the caller has no accepted membership in this workspace.
+     * `address` is joined from `app_users.email` -- the same source
+     * `recipients`/`sendFacts` resolve mail to -- never `workspace_members.
+     * email` (the invite address, which can differ from the address the
+     * member actually signs in and receives mail with).
+     */
     async memberSwitches(workspaceId: string, userId: string): Promise<MemberMailSwitches | null> {
-      const result = await client.query<{ mail_rescan_complete: boolean; mail_regression_alert: boolean; mail_locale: Locale | null }>(
-        `SELECT mail_rescan_complete, mail_regression_alert, mail_locale
-         FROM workspace_members WHERE workspace_id=$1 AND user_id=$2 AND accepted_at IS NOT NULL`,
+      const result = await client.query<{ mail_rescan_complete: boolean; mail_regression_alert: boolean; mail_locale: Locale | null; address: string | null }>(
+        `SELECT m.mail_rescan_complete, m.mail_regression_alert, m.mail_locale, u.email AS address
+         FROM workspace_members m
+         LEFT JOIN app_users u ON u.id = m.user_id
+         WHERE m.workspace_id=$1 AND m.user_id=$2 AND m.accepted_at IS NOT NULL`,
         [workspaceId, userId],
       );
       const row = result.rows[0];
       if (!row) return null;
-      return { rescanComplete: row.mail_rescan_complete, regressionAlert: row.mail_regression_alert, locale: row.mail_locale };
+      return { rescanComplete: row.mail_rescan_complete, regressionAlert: row.mail_regression_alert, locale: row.mail_locale, address: row.address };
     },
 
     /** Ops health strip: backlog, dead-lettered and held-by-reason counts since `since`. */

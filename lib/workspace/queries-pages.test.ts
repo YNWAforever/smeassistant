@@ -45,8 +45,13 @@ const brandMock = vi.hoisted(() => ({ getBrand: vi.fn(async () => state.brand) }
 vi.mock("@/lib/workspace/brand", () => ({ getBrand: brandMock.getBrand }));
 const assetsMock = vi.hoisted(() => ({ get: vi.fn(async () => state.asset) }));
 vi.mock("@/lib/repositories/assets", () => ({ assetRepository: () => assetsMock }));
+const mailOutboxMock = vi.hoisted(() => ({ memberSwitches: vi.fn() }));
+vi.mock("@/lib/repositories/mail-outbox", () => ({ mailOutboxRepository: () => mailOutboxMock }));
+vi.mock("@/lib/db/client", () => ({ getPool: () => ({}) }));
+const mailAvailabilityMock = vi.hoisted(() => ({ mailAvailability: vi.fn() }));
+vi.mock("@/lib/mail/availability", () => ({ mailAvailability: mailAvailabilityMock.mailAvailability }));
 
-import { getHomeBrief, getInsights, listActions, getActivity, getIntegrations, getAction, loadActionRows, loadDiffById } from "./queries-pages";
+import { getHomeBrief, getInsights, listActions, getActivity, getIntegrations, getAction, loadActionRows, loadDiffById, getNotifications } from "./queries-pages";
 
 const ctx: WorkspaceContext = {
   workspace: { id: "ws-1", slug: "kam-man-house", name: "Kam Man House", market: "hk", tier: "paid", timezone: "Asia/Hong_Kong", isDemo: false, instagramHandle: null, industry: "fnb", district: null },
@@ -90,6 +95,8 @@ beforeEach(() => {
   repository.deliveries.mockImplementation(async () => state.deliveries);
   brandMock.getBrand.mockImplementation(async () => state.brand);
   assetsMock.get.mockImplementation(async () => state.asset);
+  mailOutboxMock.memberSwitches.mockResolvedValue(null);
+  mailAvailabilityMock.mailAvailability.mockReturnValue({ open: true });
 
   state.snapshots = [snapshotRow({})];
   state.diffs = {}; state.actions = [actionRow({}), actionRow({ id: "a2", template_key: "social-post", priority: "high", priority_score: 45, action_state: "recommended", required_inputs: [] })];
@@ -461,5 +468,43 @@ describe("page repository boundaries", () => {
     // run keeps its "Generating" chip until the owner opens that action.
     await listActions(ctx, { location: "all" });
     expect(reaper.reapStrandedRuns).not.toHaveBeenCalled();
+  });
+});
+
+describe("getNotifications", () => {
+  // Review finding: myAddress must be the address the outbox actually sends
+  // to (app_users.email, read via mailOutboxRepository().memberSwitches),
+  // never ctx.account.email -- that field is workspace_members.email (the
+  // invite address), which can differ from the account's real sign-in
+  // address and which the outbox never reads.
+  it("resolves myAddress from the mail-outbox repository, not from ctx.account.email", async () => {
+    mailOutboxMock.memberSwitches.mockResolvedValue({ rescanComplete: true, regressionAlert: false, locale: "en", address: "real-signin@example.test" });
+    const invited = { ...ctx, account: { name: "o", email: "invite-address@example.test" } };
+
+    const model = await getNotifications(invited);
+
+    expect(model.myAddress).toBe("real-signin@example.test");
+    expect(model.myEmails).toEqual({ rescanComplete: true, regressionAlert: false });
+    expect(mailOutboxMock.memberSwitches).toHaveBeenCalledWith("ws-1", "u1");
+  });
+
+  it("myAddress is null when the repository has no address on file, even while mail is open", async () => {
+    mailOutboxMock.memberSwitches.mockResolvedValue({ rescanComplete: false, regressionAlert: false, locale: null, address: null });
+    mailAvailabilityMock.mailAvailability.mockReturnValue({ open: true });
+
+    const model = await getNotifications(ctx);
+
+    expect(model.myAddress).toBeNull();
+    expect(model.mailOpen).toBe(true);
+  });
+
+  it("defaults myEmails and myAddress honestly when the caller has no switches row", async () => {
+    mailOutboxMock.memberSwitches.mockResolvedValue(null);
+
+    const model = await getNotifications(ctx);
+
+    expect(model.myEmails).toEqual({ rescanComplete: false, regressionAlert: false });
+    expect(model.myAddress).toBeNull();
+    expect(model.role).toBe("owner");
   });
 });

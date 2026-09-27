@@ -920,7 +920,12 @@ export async function getNotifications(ctx: WorkspaceContext): Promise<Notificat
       rescanComplete: mySwitches?.rescanComplete ?? false,
       regressionAlert: mySwitches?.regressionAlert ?? false,
     },
-    myAddress: ctx.account.email || null,
+    // The address mail is actually sent to (app_users.email via
+    // memberSwitches), never ctx.account.email -- that is
+    // workspace_members.email (the invite address, e.g. `row.email` in
+    // lib/auth.ts's decideMembership), which the outbox never reads and can
+    // differ from the address the member signs in and receives mail with.
+    myAddress: mySwitches?.address || null,
   };
 }
 
