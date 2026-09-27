@@ -16,8 +16,11 @@ import { UNSUBSCRIBE_TTL_MS, signUnsubscribeToken } from "./unsubscribe-token";
  * every fact that could have changed since enqueue (Review Focus 1: a member
  * who unsubscribed or was removed between enqueue and this tick must never
  * be sent to), and sends what is still eligible through the injected
- * transport. Never throws for an individual row's own outcome -- a bad send
- * finishes that row `retry`/`dead`/`held`, it does not fail the tick.
+ * transport. One row's own outcome -- a normal held/sent/retry/dead result,
+ * or an unexpected exception thrown while processing it (a rejected
+ * `sendFacts`/`finish`/`transport.send`) -- never fails the tick or the rows
+ * after it: an exception is caught per row and finishes that row `retry` or
+ * `dead` just like an ordinary send failure would.
  */
 export interface DeliverMailDeps {
   repo: MailOutboxRepository;
@@ -109,11 +112,21 @@ async function deliverOne(
   // mailAvailability(env).open is guaranteed true here (decideRecipient would
   // otherwise have held mail_unapproved above), so APP_ORIGIN and
   // MAIL_UNSUBSCRIBE_SECRET are both non-blank and the secret is long enough.
-  const appOrigin = env.APP_ORIGIN!.trim();
+  // `.origin` (never the raw trimmed string) drops any trailing slash or path
+  // a misconfigured APP_ORIGIN might carry, so every mailed URL below is
+  // built from a bare `scheme://host[:port]` and never doubles a slash.
+  const appOrigin = new URL(env.APP_ORIGIN!.trim()).origin;
   const payload = payloadOf(row);
-  const token = signUnsubscribeToken(
-    { userId: row.user_id, workspaceId: row.workspace_id, kind: row.kind, expiresAt: now.getTime() + UNSUBSCRIBE_TTL_MS },
-    env.MAIL_UNSUBSCRIBE_SECRET!.trim(),
+  // Derived from the row's own created_at, not the current send time: the
+  // token (and therefore the whole message -- see dedupeKey below) must stay
+  // byte-identical across every attempt at this row, or a provider-side
+  // Idempotency-Key replay check sees the same key with a different body and
+  // rejects the retry instead of returning the first attempt's result.
+  const token = encodeURIComponent(
+    signUnsubscribeToken(
+      { userId: row.user_id, workspaceId: row.workspace_id, kind: row.kind, expiresAt: row.created_at.getTime() + UNSUBSCRIBE_TTL_MS },
+      env.MAIL_UNSUBSCRIBE_SECRET!.trim(),
+    ),
   );
   const workspaceUrl = payload.workspacePath ? `${appOrigin}${payload.workspacePath}` : appOrigin;
   const unsubscribeUrl = `${appOrigin}/${row.locale}/unsubscribe?token=${token}`;
@@ -125,6 +138,10 @@ async function deliverOne(
     unsubscribeUrl,
   });
 
+  // Every field here is a pure function of the row (payload, locale, kind,
+  // created_at) and env -- nothing here reads `now` -- so two attempts at
+  // the same row before it moves off `sending` produce an identical message,
+  // and therefore a safe replay of the same Idempotency-Key.
   const message: MailMessage = {
     to: address,
     subject: rendered.subject,
@@ -179,6 +196,41 @@ async function deliverOne(
   else logLeaseLost(row.id);
 }
 
+/**
+ * Recovers from an exception thrown while processing one row (a rejected
+ * `sendFacts`/`finish`/`transport.send` -- not an ordinary send failure,
+ * which `deliverOne` already turns into a normal `retry`/`dead` outcome).
+ * Treated exactly like a `failed` transport result: retried by the usual
+ * backoff schedule, or dead once attempts are exhausted. If even this
+ * recovery finish throws (e.g. the same outage that caused the original
+ * exception), the row is left as `sending` for a later tick's lease reclaim
+ * to pick up -- this function never lets a row's own trouble escape and
+ * abort the rest of the batch.
+ */
+async function recoverFromException(
+  row: ClaimedRow,
+  ctx: { repo: MailOutboxRepository; now: Date },
+  summary: DeliverMailSummary,
+): Promise<void> {
+  console.error("[mail] deliver_exception", { category: "mail_deliver_exception", id: row.id });
+  const error = "deliver_exception";
+  try {
+    const delayMinutes = retryDelayMinutes(row.attempts);
+    if (delayMinutes === null) {
+      const finished = await ctx.repo.finish(row.id, row.lease_token, { state: "dead", error });
+      if (finished) summary.dead += 1;
+      else logLeaseLost(row.id);
+      return;
+    }
+    const nextAttemptAt = new Date(ctx.now.getTime() + delayMinutes * 60_000);
+    const finished = await ctx.repo.finish(row.id, row.lease_token, { state: "retry", nextAttemptAt, error });
+    if (finished) summary.retried += 1;
+    else logLeaseLost(row.id);
+  } catch {
+    // The lease will simply expire and be reclaimed by a later tick.
+  }
+}
+
 export async function deliverMail(deps: DeliverMailDeps): Promise<DeliverMailSummary> {
   const env = deps.env ?? process.env;
   const summary: DeliverMailSummary = { sent: 0, retried: 0, held: 0, dead: 0, expired: 0, paused: false };
@@ -192,7 +244,11 @@ export async function deliverMail(deps: DeliverMailDeps): Promise<DeliverMailSum
   const now = (deps.now ?? (() => new Date()))();
   const rows = await deps.repo.claimDue(now, BATCH_SIZE);
   for (const row of rows) {
-    await deliverOne(row, { repo: deps.repo, transport: deps.transport, env, now }, summary);
+    try {
+      await deliverOne(row, { repo: deps.repo, transport: deps.transport, env, now }, summary);
+    } catch {
+      await recoverFromException(row, { repo: deps.repo, now }, summary);
+    }
   }
   return summary;
 }

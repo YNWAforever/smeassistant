@@ -474,7 +474,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
   );
 
   it(
-    "a member who unsubscribes between enqueue and the tick ends held/opted_out, and the transport is never called (Task 6, Review Focus 1)",
+    "deliverMail itself re-checks and holds opted_out when the member's switch is flipped off after enqueue, leaving the row queued (Task 6, Review Focus 1)",
     async () => {
       const ws = await workspace();
       const u = await user();
@@ -483,13 +483,15 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
       const id = randomUUID();
       await repo().insert([outboxRow({ id, workspace_id: ws, user_id: u, job_id: j, kind: "rescan_complete" })]);
 
-      // The member opts out (e.g. via the unsubscribe link) after the row was
-      // queued but before the delivery tick ever claims it -- optOut itself
-      // holds a still-queued row immediately, so deliverMail's own claim
-      // finds nothing due for this id and never reaches the transport.
-      expect(await repo().optOut(u, ws, "rescan_complete")).toEqual({ member: true });
+      // Flip the switch directly (not through optOut, which would hold the
+      // row itself and leave deliverMail's own send-time re-check untested --
+      // see the controller ruling on this test). The row stays queued so
+      // deliverMail has to claim it and decide for itself.
+      await repo().setMemberSwitches(ws, u, { rescanComplete: false, locale: null });
+      expect(await row(id)).toMatchObject({ state: "queued", hold_reason: null });
 
       let sendCalled = false;
+      const deliverNow = await dbNow();
       const summary = await deliverMail({
         repo: repo(),
         transport: {
@@ -499,12 +501,57 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
           },
         },
         env: OPEN_MAIL_ENV,
-        now: () => new Date(),
+        now: () => deliverNow,
       });
 
       expect(sendCalled).toBe(false);
-      expect(summary).toEqual({ sent: 0, retried: 0, held: 0, dead: 0, expired: 0, paused: false });
+      expect(summary).toEqual({ sent: 0, retried: 0, held: 1, dead: 0, expired: 0, paused: false });
       expect(await row(id)).toMatchObject({ state: "held", hold_reason: "opted_out" });
+    },
+  );
+
+  it(
+    "deliverMail itself re-checks and holds not_member when the member's membership is removed after enqueue, leaving the row queued (Task 6, Review Focus 1)",
+    async () => {
+      const ws = await workspace();
+      const u = await user();
+      const j = await job(ws);
+      await member(ws, u, { mailRescanComplete: true });
+      // A second, owner member so the workspace survives removing `u` below
+      // -- workspace_members' trigger deletes the whole workspace (and, by
+      // cascade, this row's mail_outbox row) once its *last* member row goes,
+      // which would make this test pass vacuously for the wrong reason.
+      const owner = await user("owner-keeps-workspace-alive@example.test");
+      await runtime.query(
+        `INSERT INTO workspace_members(workspace_id,user_id,email,role,accepted_at) VALUES($1,$2,$3,'owner',now())`,
+        [ws, owner, "owner-keeps-workspace-alive@example.test"],
+      );
+      const id = randomUUID();
+      await repo().insert([outboxRow({ id, workspace_id: ws, user_id: u, job_id: j, kind: "rescan_complete" })]);
+
+      // Removed outright (the accepted membership row is gone), not merely
+      // opted out -- the row stays queued so deliverMail's own sendFacts
+      // re-read has to discover the membership no longer exists.
+      await runtime.query("DELETE FROM workspace_members WHERE workspace_id=$1 AND user_id=$2", [ws, u]);
+      expect(await row(id)).toMatchObject({ state: "queued", hold_reason: null });
+
+      let sendCalled = false;
+      const deliverNow = await dbNow();
+      const summary = await deliverMail({
+        repo: repo(),
+        transport: {
+          async send() {
+            sendCalled = true;
+            return { status: "accepted_by_provider" as const, providerMessageId: "should-not-happen" };
+          },
+        },
+        env: OPEN_MAIL_ENV,
+        now: () => deliverNow,
+      });
+
+      expect(sendCalled).toBe(false);
+      expect(summary).toEqual({ sent: 0, retried: 0, held: 1, dead: 0, expired: 0, paused: false });
+      expect(await row(id)).toMatchObject({ state: "held", hold_reason: "not_member" });
     },
   );
 });

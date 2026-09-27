@@ -292,4 +292,105 @@ describe("deliverMail", () => {
 
     expect(summary).toEqual({ sent: 1, retried: 0, held: 1, dead: 0, expired: 0, paused: false });
   });
+
+  it("signs the same unsubscribe expiry (and therefore an identical MailMessage) across two attempts at the same row, regardless of how much later the retry runs", async () => {
+    // An hour before NOW (not the default `created_at: NOW`), so the
+    // assertion actually distinguishes "derived from created_at" from
+    // "derived from now" -- while staying well inside the 24h expiry window
+    // for both of this test's two attempts.
+    const row = claimedRow({ attempts: 1, created_at: new Date(NOW.getTime() - 60 * 60 * 1000) });
+    const repo = fakeRepo({ rows: [row] });
+    const transport = fakeTransport({ status: "failed", error: "provider_http_500" });
+
+    // Attempt 1, then a retry an hour later -- a real Idempotency-Key replay
+    // at the provider only returns the first attempt's result when the body
+    // is byte-identical; a payload that drifts with `now` (e.g. a
+    // send-time-derived unsubscribe expiry) would make Resend see the same
+    // key with a different body and reject the retry with a 409 instead.
+    await deliverMail({ repo, transport, env: OPEN_ENV, now: () => NOW });
+    await deliverMail({ repo, transport, env: OPEN_ENV, now: () => new Date(NOW.getTime() + 60 * 60_000) });
+
+    const expectedExpiresAt = row.created_at.getTime() + 90 * 24 * 60 * 60 * 1000;
+    expect(signUnsubscribeToken).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ expiresAt: expectedExpiresAt }),
+      OPEN_ENV.MAIL_UNSUBSCRIBE_SECRET,
+    );
+    expect(signUnsubscribeToken).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ expiresAt: expectedExpiresAt }),
+      OPEN_ENV.MAIL_UNSUBSCRIBE_SECRET,
+    );
+
+    expect(transport.send).toHaveBeenCalledTimes(2);
+    const [firstMessage] = transport.send.mock.calls[0];
+    const [secondMessage] = transport.send.mock.calls[1];
+    expect(secondMessage).toEqual(firstMessage);
+  });
+
+  it("normalises a trailing slash in APP_ORIGIN so no mailed URL or header ever doubles a slash", async () => {
+    const row = claimedRow({ payload: { businessName: "Kam Man House", regressedCount: null, workspacePath: "/owner/kam-man-house" } });
+    const repo = fakeRepo({ rows: [row] });
+    const transport = fakeTransport({ status: "accepted_by_provider", providerMessageId: "msg_1" });
+
+    await deliverMail({ repo, transport, env: { ...OPEN_ENV, APP_ORIGIN: "https://app.example.test/" }, now: () => NOW });
+
+    const renderInput = vi.mocked(renderScanMail).mock.calls[0][2];
+    expect(renderInput.workspaceUrl).toBe("https://app.example.test/owner/kam-man-house");
+    expect(renderInput.unsubscribeUrl).toBe("https://app.example.test/en/unsubscribe?token=TOKEN123");
+    const message = transport.send.mock.calls[0][0];
+    expect(message.headers).toEqual({
+      "List-Unsubscribe": "<https://app.example.test/api/mail/unsubscribe?token=TOKEN123>",
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    });
+    for (const url of [renderInput.workspaceUrl, renderInput.unsubscribeUrl, message.headers!["List-Unsubscribe"]]) {
+      // A slash not immediately preceded by the scheme's trailing colon would
+      // be a doubled slash left over from a trailing-slash APP_ORIGIN.
+      expect(url).not.toMatch(/[^:]\/\//);
+    }
+  });
+
+  it("isolates one row's exception: a later row still sends when an earlier row's sendFacts rejects, and the failed row is finished retry", async () => {
+    const rowA = claimedRow({ id: "row-a", attempts: 1 });
+    const rowB = claimedRow({ id: "row-b", attempts: 1 });
+    const finish = vi.fn(async () => true);
+    const sendFacts = vi.fn().mockRejectedValueOnce(new Error("boom")).mockResolvedValueOnce(QUEUEABLE_FACTS);
+    const claimDue = vi.fn(async () => [rowA, rowB]);
+    const repo = { claimDue, sendFacts, finish } as unknown as MailOutboxRepository;
+    const transport = fakeTransport({ status: "accepted_by_provider", providerMessageId: "msg_1" });
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const summary = await deliverMail({ repo, transport, env: OPEN_ENV, now: () => NOW });
+
+    expect(summary).toEqual({ sent: 1, retried: 1, held: 0, dead: 0, expired: 0, paused: false });
+    expect(transport.send).toHaveBeenCalledTimes(1);
+    expect(finish).toHaveBeenCalledWith(rowA.id, rowA.lease_token, {
+      state: "retry",
+      nextAttemptAt: new Date(NOW.getTime() + 5 * 60_000),
+      error: "deliver_exception",
+    });
+    expect(finish).toHaveBeenCalledWith(rowB.id, rowB.lease_token, {
+      state: "sent",
+      providerMessageId: "msg_1",
+      toAddress: "member@example.test",
+    });
+    expect(errorSpy).toHaveBeenCalledWith("[mail] deliver_exception", { category: "mail_deliver_exception", id: rowA.id });
+    errorSpy.mockRestore();
+  });
+
+  it("goes dead (rather than retry) when a row's exception happens on the 5th attempt", async () => {
+    const row = claimedRow({ attempts: 5 });
+    const finish = vi.fn(async () => true);
+    const sendFacts = vi.fn().mockRejectedValue(new Error("boom"));
+    const claimDue = vi.fn(async () => [row]);
+    const repo = { claimDue, sendFacts, finish } as unknown as MailOutboxRepository;
+    const transport = fakeTransport({ status: "accepted_by_provider", providerMessageId: "msg_1" });
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const summary = await deliverMail({ repo, transport, env: OPEN_ENV, now: () => NOW });
+
+    expect(summary).toEqual({ sent: 0, retried: 0, held: 0, dead: 1, expired: 0, paused: false });
+    expect(finish).toHaveBeenCalledWith(row.id, row.lease_token, { state: "dead", error: "deliver_exception" });
+    errorSpy.mockRestore();
+  });
 });
