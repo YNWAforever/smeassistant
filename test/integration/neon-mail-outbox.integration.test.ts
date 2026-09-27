@@ -97,6 +97,20 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
 
   const row = async (id: string) => (await runtime.query("SELECT * FROM mail_outbox WHERE id=$1", [id])).rows[0];
 
+  /**
+   * `claimDue`'s `now` and `mail_outbox.next_attempt_at`'s `now()` default
+   * must agree on whose clock is authoritative -- the container's, not the
+   * test process's. A JS `Date.now()` (host clock, millisecond truncation)
+   * can land a hair before the DB's `now()` (container clock, microsecond
+   * precision) at insert time, which makes a just-inserted row look not yet
+   * due and a claim silently return `[]`. `offsetSeconds` shifts the reading
+   * (positive = comfortably past any row's `next_attempt_at`; negative = a
+   * point safely in the past for a `since` filter), all still read from the
+   * one clock that actually stamped the rows.
+   */
+  const dbNow = async (offsetSeconds = 1): Promise<Date> =>
+    (await runtime.query<{ t: Date }>("SELECT clock_timestamp() + make_interval(secs => $1) AS t", [offsetSeconds])).rows[0].t;
+
   it("does not resurrect or reset a row on a duplicate insert (Review Focus 3)", async () => {
     const ws = await workspace();
     const u = await user();
@@ -127,7 +141,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
     const warm = await Promise.all(Array.from({ length: 8 }, () => runtime.connect()));
     await Promise.all(warm.map((c) => c.release()));
 
-    const now = new Date();
+    const now = await dbNow();
     const results = await Promise.all(Array.from({ length: 8 }, () => mailOutboxRepository(runtime).claimDue(now, 10)));
     const claimedIds = results.flatMap((r) => r.map((c) => c.id));
     expect(claimedIds).toHaveLength(3);
@@ -148,31 +162,33 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
     const a = await runtime.connect();
     const b = await runtime.connect();
     try {
+      const claimTime = await dbNow();
       await a.query("BEGIN");
       // A claims and holds the row lock open inside its uncommitted transaction.
-      const claimedByA = await mailOutboxRepository(a).claimDue(new Date(), 10);
+      const claimedByA = await mailOutboxRepository(a).claimDue(claimTime, 10);
       expect(claimedByA.map((r) => r.id)).toEqual([id]);
 
       // Without SKIP LOCKED, B's SELECT ... FOR UPDATE would block waiting for
-      // A's lock and, with lock_timeout set, error out after ~1s. With SKIP
-      // LOCKED it must simply omit the locked row and return promptly.
+      // A's lock and, with lock_timeout set, error out after ~1s instead of
+      // resolving to []. With SKIP LOCKED it must simply omit the locked row.
+      // `lock_timeout` is session-level on a pooled connection, so it is
+      // explicitly RESET before this connection goes back to the pool.
       await b.query("SET lock_timeout = '1s'");
-      const startedAt = Date.now();
-      const claimedByB = await mailOutboxRepository(b).claimDue(new Date(), 10);
-      const elapsedMs = Date.now() - startedAt;
+      const claimedByB = await mailOutboxRepository(b).claimDue(claimTime, 10);
       expect(claimedByB).toEqual([]);
-      expect(elapsedMs).toBeLessThan(900);
 
       await a.query("COMMIT");
 
-      // The row is now `sending` with a fresh, unexpired lease from A's commit --
-      // not due, so B's next claim (no open competing transaction now) still
-      // finds nothing to take.
-      const claimedByBAfterCommit = await mailOutboxRepository(b).claimDue(new Date(), 10);
+      // The row is now `sending` with a fresh, unexpired lease from A's commit
+      // -- not due, so B's next claim (no open competing transaction now,
+      // `now` at or after `claimTime` but still well inside the 5-minute
+      // lease) still finds nothing to take.
+      const claimedByBAfterCommit = await mailOutboxRepository(b).claimDue(await dbNow(), 10);
       expect(claimedByBAfterCommit).toEqual([]);
       expect(await row(id)).toMatchObject({ state: "sending", attempts: 1 });
     } finally {
       await a.query("ROLLBACK").catch(() => {});
+      await b.query("RESET lock_timeout").catch(() => {});
       a.release();
       b.release();
     }
@@ -215,7 +231,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
     const j = await job(ws);
     const id = randomUUID();
     await repo().insert([outboxRow({ id, workspace_id: ws, user_id: u, job_id: j })]);
-    const now = new Date();
+    const now = await dbNow();
     const [claimed] = await repo().claimDue(now, 10);
     const minutes = (new Date(claimed.lease_until).getTime() - now.getTime()) / 60_000;
     expect(minutes).toBeGreaterThan(LEASE_MINUTES - 0.5);
@@ -316,7 +332,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
     const id = randomUUID();
     await member(ws, u, { mailRescanComplete: true });
     await repo().insert([outboxRow({ id, workspace_id: ws, user_id: u, job_id: j })]);
-    const [claimed] = await repo().claimDue(new Date(), 10);
+    const [claimed] = await repo().claimDue(await dbNow(), 10);
     await runtime.query("DELETE FROM workspace_members WHERE workspace_id=$1 AND user_id=$2", [ws, u]);
 
     const facts = await repo().sendFacts(claimed);
@@ -327,7 +343,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
     const ws = await workspace();
     const u = await user();
     const j = await job(ws);
-    const since = new Date(Date.now() - 60_000);
+    const since = await dbNow(-60);
     await repo().insert([
       outboxRow({ id: randomUUID(), workspace_id: ws, user_id: u, job_id: j, state: "queued" }),
       outboxRow({ id: randomUUID(), workspace_id: ws, user_id: u, job_id: j, state: "queued" }),
