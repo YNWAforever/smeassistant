@@ -129,7 +129,12 @@ async function deliverOne(
       env.MAIL_UNSUBSCRIBE_SECRET!.trim(),
     ),
   );
-  const workspaceUrl = payload.workspacePath ? `${appOrigin}${payload.workspacePath}` : appOrigin;
+  // Every page route is locale-prefixed, and workspacePath (workspaceHref)
+  // is not, so the row's own locale goes in front -- the same locale the
+  // message is rendered in and the unsubscribe page uses.
+  const workspaceUrl = payload.workspacePath
+    ? `${appOrigin}/${row.locale}${payload.workspacePath}`
+    : `${appOrigin}/${row.locale}`;
   const unsubscribeUrl = `${appOrigin}/${row.locale}/unsubscribe?token=${token}`;
 
   const rendered = renderScanMail(row.kind, row.locale as Locale, {

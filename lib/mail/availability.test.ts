@@ -64,6 +64,22 @@ describe("mailAvailability", () => {
     },
   );
 
+  it.each(["localhost:3000", "app.example.com:443", "ftp://x.test", "not a url"])(
+    "is provider_unconfigured when APP_ORIGIN=%j is not an http(s) origin",
+    (origin) => {
+      expect(mailAvailability({ ...FULL_ENV, APP_ORIGIN: origin })).toEqual({
+        open: false,
+        reason: "provider_unconfigured",
+      });
+    },
+  );
+
+  it("is open when APP_ORIGIN is an https URL with a trailing slash", () => {
+    expect(mailAvailability({ ...FULL_ENV, APP_ORIGIN: "https://app.example.test/" })).toEqual({
+      open: true,
+    });
+  });
+
   it("is provider_unconfigured when the unsubscribe secret is 31 bytes", () => {
     expect(
       mailAvailability({ ...FULL_ENV, MAIL_UNSUBSCRIBE_SECRET: "a".repeat(31) }),

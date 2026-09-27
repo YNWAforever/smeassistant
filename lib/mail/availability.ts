@@ -38,7 +38,8 @@ export function mailAvailability(
     return { open: false, reason: "mail_unapproved" };
   }
 
-  const providerConfigured = MAIL_ENV_KEYS.every((key) => Boolean(env[key]?.trim()));
+  const providerConfigured =
+    MAIL_ENV_KEYS.every((key) => Boolean(env[key]?.trim())) && isHttpOrigin(env.APP_ORIGIN?.trim() ?? "");
   const secret = env.MAIL_UNSUBSCRIBE_SECRET?.trim();
   const secretLongEnough = Boolean(secret) && Buffer.byteLength(secret ?? "", "utf8") >= MIN_UNSUBSCRIBE_SECRET_BYTES;
   if (!providerConfigured || !secretLongEnough) {
@@ -46,6 +47,22 @@ export function mailAvailability(
   }
 
   return { open: true };
+}
+
+/**
+ * Every mailed link is built from `APP_ORIGIN`, so a value that is not an
+ * absolute http(s) URL ("localhost:3000", a bare host, "ftp://...") would
+ * send links that go nowhere. `new URL("localhost:3000")` parses with the
+ * protocol "localhost:", hence the explicit protocol check.
+ */
+function isHttpOrigin(value: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  return (url.protocol === "http:" || url.protocol === "https:") && url.origin !== "null";
 }
 
 /**

@@ -150,7 +150,7 @@ describe("deliverMail", () => {
     expect(renderScanMail).toHaveBeenCalledWith(row.kind, "zh-HK", {
       businessName: "Kam Man House",
       regressedCount: 2,
-      workspaceUrl: "https://app.example.test/owner/kam-man-house",
+      workspaceUrl: "https://app.example.test/zh-HK/owner/kam-man-house",
       unsubscribeUrl: "https://app.example.test/zh-HK/unsubscribe?token=TOKEN123",
     });
     const message = transport.send.mock.calls[0][0];
@@ -165,7 +165,7 @@ describe("deliverMail", () => {
     });
   });
 
-  it("falls back to the bare APP_ORIGIN for workspaceUrl when workspacePath is null", async () => {
+  it("falls back to the locale root of APP_ORIGIN for workspaceUrl when workspacePath is null", async () => {
     const row = claimedRow({ payload: { businessName: "Kam Man House", regressedCount: null, workspacePath: null } });
     const repo = fakeRepo({ rows: [row] });
     const transport = fakeTransport({ status: "accepted_by_provider", providerMessageId: "msg_1" });
@@ -175,7 +175,7 @@ describe("deliverMail", () => {
     expect(renderScanMail).toHaveBeenCalledWith(
       row.kind,
       "en",
-      expect.objectContaining({ workspaceUrl: "https://app.example.test" }),
+      expect.objectContaining({ workspaceUrl: "https://app.example.test/en" }),
     );
   });
 
@@ -336,7 +336,7 @@ describe("deliverMail", () => {
     await deliverMail({ repo, transport, env: { ...OPEN_ENV, APP_ORIGIN: "https://app.example.test/" }, now: () => NOW });
 
     const renderInput = vi.mocked(renderScanMail).mock.calls[0][2];
-    expect(renderInput.workspaceUrl).toBe("https://app.example.test/owner/kam-man-house");
+    expect(renderInput.workspaceUrl).toBe("https://app.example.test/en/owner/kam-man-house");
     expect(renderInput.unsubscribeUrl).toBe("https://app.example.test/en/unsubscribe?token=TOKEN123");
     const message = transport.send.mock.calls[0][0];
     expect(message.headers).toEqual({
