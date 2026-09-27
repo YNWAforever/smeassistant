@@ -19,6 +19,7 @@ const KIND_LABELS: Record<FailureKind, string> = {
   draft_failed: "Failed draft",
   google_connection: "Google connection",
   workspace_processing: "Workspace post-processing",
+  mail_dead: "Dead mail message",
 };
 
 function first(value: string | string[] | undefined): string | undefined {
@@ -64,9 +65,16 @@ export default async function OpsFailuresPage({ params, searchParams }: { params
     <div className="settings-page">
       <OpsNav locale={locale} current="failures" />
       <h1>Failures</h1>
-      {(paused.scans || paused.ai) && (
+      {(paused.scans || paused.ai || paused.mail) && (
         <p className="limitation-note" role="status">
-          {[paused.scans && "Scans are paused (SCANS_PAUSED).", paused.ai && "AI drafting is paused (AI_DRAFTS_PAUSED)."].filter(Boolean).join(" ")} See the incident runbook.
+          {[
+            paused.scans && "Scans are paused (SCANS_PAUSED).",
+            paused.ai && "AI drafting is paused (AI_DRAFTS_PAUSED).",
+            paused.mail && "Email is paused (MAIL_PAUSED).",
+          ]
+            .filter(Boolean)
+            .join(" ")}{" "}
+          See the incident runbook.
         </p>
       )}
       <p>Open problems across every workspace, newest first. Owners retry their own scans and drafts; the only operator control is releasing a stuck scan.</p>
@@ -76,11 +84,11 @@ export default async function OpsFailuresPage({ params, searchParams }: { params
           <option value="">All kinds</option>
           {FAILURE_KINDS.map((k) => <option key={k} value={k}>{KIND_LABELS[k]}</option>)}
         </select>
-        <input name="q" defaultValue={q} placeholder="SCAN-…, RUN-…, CONN-… or a full id" aria-label="Reference or id" />
+        <input name="q" defaultValue={q} placeholder="SCAN-…, RUN-…, CONN-…, MAIL-… or a full id" aria-label="Reference or id" />
         <button type="submit">Filter</button>
       </form>
 
-      {search === "invalid" && <p className="limitation-note" role="status">Search by a SCAN-, RUN- or CONN- reference, or a full id.</p>}
+      {search === "invalid" && <p className="limitation-note" role="status">Search by a SCAN-, RUN-, CONN- or MAIL- reference, or a full id.</p>}
       {failed && <p className="limitation-note" role="alert">The failure queue could not be loaded. Nothing below is a sign that there are no failures.</p>}
 
       {data && (
@@ -90,7 +98,19 @@ export default async function OpsFailuresPage({ params, searchParams }: { params
             <ul>
               <li>Failed scans: {data.health.recent.scan_failed.day} in 24 h · {data.health.recent.scan_failed.week} in 7 days</li>
               <li>Failed draft runs: {data.health.recent.draft_failed.day} in 24 h · {data.health.recent.draft_failed.week} in 7 days</li>
-              <li>Open now: {data.health.open.scan_dead_lettered} stuck scans · {data.health.open.google_connection} Google connections · {data.health.open.workspace_processing} post-processing</li>
+              <li>
+                Open now: {data.health.open.scan_dead_lettered} stuck scans · {data.health.open.google_connection} Google connections ·{" "}
+                {data.health.open.workspace_processing} post-processing · {data.health.open.mail_dead} dead mail messages
+              </li>
+              <li>
+                Mail (24 h): {data.health.mail.queued} queued
+                {Object.entries(data.health.mail.held).filter(([, n]) => n > 0).length > 0 && (
+                  <>
+                    {" "}
+                    · held: {Object.entries(data.health.mail.held).filter(([, n]) => n > 0).map(([reason, n]) => `${reason}: ${n}`).join(", ")}
+                  </>
+                )}
+              </li>
             </ul>
             {data.health.categories.length > 0 && (
               <table>

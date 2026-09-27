@@ -41,6 +41,19 @@ SELECT cadence, count(*)::int AS schedules, min(next_run_at) AS next_due FROM sc
 SELECT workspace_id, tier, source, stripe_event_id, created_at
 FROM workspace_tier_events WHERE created_at > now() - interval '7 days' ORDER BY created_at DESC LIMIT 100;
 
+-- name: mail_outbox_by_state
+-- mode: read
+SELECT state, count(*)::int AS rows FROM mail_outbox GROUP BY state ORDER BY state;
+
+-- name: mail_outbox_dead
+-- mode: read
+SELECT id, workspace_id, kind, attempts, last_error, created_at
+FROM mail_outbox WHERE state = 'dead' ORDER BY updated_at DESC LIMIT 50;
+
+-- name: mail_outbox_hold_reasons
+-- mode: read
+SELECT hold_reason, count(*)::int AS rows FROM mail_outbox WHERE state = 'held' GROUP BY hold_reason ORDER BY hold_reason;
+
 -- name: pause_all_schedules
 -- mode: write
 -- Keep the returned ids: resume_schedules needs exactly these.

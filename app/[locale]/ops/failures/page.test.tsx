@@ -12,8 +12,9 @@ import type { FailureItem, OperatorHealth } from "@/lib/ops/failure-types";
 
 const HEALTH: OperatorHealth = {
   recent: { scan_failed: { day: 2, week: 5 }, draft_failed: { day: 0, week: 1 } },
-  open: { scan_dead_lettered: 1, google_connection: 0, workspace_processing: 0 },
+  open: { scan_dead_lettered: 1, google_connection: 0, workspace_processing: 0, mail_dead: 4 },
   categories: [{ category: "COLLECTION_FAILED", day: 2, week: 4 }],
+  mail: { queued: 7, held: { mail_unapproved: 0, kind_disabled: 0, opted_out: 3, no_address: 1, not_allowlisted: 0, not_member: 0 } },
 };
 const DEAD: FailureItem = {
   kind: "scan_dead_lettered", id: "3fa85f64-5717-4562-b3fc-2c963f66afa6", reference: "SCAN-3FA85F", correlationId: null,
@@ -56,6 +57,14 @@ describe("/ops/failures", () => {
     expect(root.querySelector('a[href*="/owner/"]')).toBeNull();
   });
 
+  it("shows the mail counts: dead messages open, and queued/held in the last 24 hours", async () => {
+    const root = await render();
+    expect(root.textContent).toContain("4 dead mail messages");
+    expect(root.textContent).toContain("7 queued");
+    expect(root.textContent).toContain("opted_out: 3");
+    expect(root.textContent).toContain("no_address: 1");
+  });
+
   it("passes the kind filter and a parsed reference search to the reader", async () => {
     await render({ kind: "scan_failed", q: "SCAN-3FA85F" });
     expect(mocks.list).toHaveBeenCalledWith({ kinds: ["scan_failed"], hexPrefix: "3fa85f", uuid: null, workspaceId: null, limit: 200 });
@@ -64,7 +73,7 @@ describe("/ops/failures", () => {
   it("explains an invalid search instead of querying", async () => {
     const root = await render({ q: "hello" });
     expect(mocks.list).not.toHaveBeenCalled();
-    expect(root.textContent).toContain("Search by a SCAN-, RUN- or CONN- reference, or a full id.");
+    expect(root.textContent).toContain("Search by a SCAN-, RUN-, CONN- or MAIL- reference, or a full id.");
   });
 
   it("shows an explicit error, never an empty queue, when the reader fails", async () => {
@@ -80,6 +89,14 @@ describe("/ops/failures", () => {
     const root = await render();
     expect(root.textContent).toContain("Scans are paused (SCANS_PAUSED)");
     expect(root.textContent).not.toContain("AI drafting is paused");
+    expect(root.textContent).not.toContain("Email is paused");
+    vi.unstubAllEnvs();
+  });
+
+  it("shows the mail kill switch alongside the others", async () => {
+    vi.stubEnv("MAIL_PAUSED", "true");
+    const root = await render();
+    expect(root.textContent).toContain("Email is paused (MAIL_PAUSED)");
     vi.unstubAllEnvs();
   });
 

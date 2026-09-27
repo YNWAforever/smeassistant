@@ -33,6 +33,7 @@ describe("ownerActionFor", () => {
     ["google, owner", item("google_connection", null), owner, "reauthorise"],
     ["google, manager", item("google_connection", null), scopedManager, "ask_owner"],
     ["google, viewer", item("google_connection", null), viewer, "none"],
+    ["dead mail, owner", item("mail_dead"), owner, "none"],
   ];
   it.each(cases)("%s", (_name, failure, ctx, expected) => {
     expect(ownerActionFor(failure, ctx)).toBe(expected);
@@ -40,8 +41,9 @@ describe("ownerActionFor", () => {
 });
 
 describe("visibility and location", () => {
-  it("hides post-processing from everyone and other locations from a scoped manager", () => {
+  it("hides post-processing and dead mail from everyone and other locations from a scoped manager", () => {
     expect(visibleTo(item("workspace_processing"), owner)).toBe(false);
+    expect(visibleTo(item("mail_dead"), owner)).toBe(false);
     expect(visibleTo(item("scan_failed", LOC_B), scopedManager)).toBe(false);
     expect(visibleTo(item("scan_failed", LOC_A), scopedManager)).toBe(true);
     expect(visibleTo(item("google_connection", null), scopedManager)).toBe(true);
