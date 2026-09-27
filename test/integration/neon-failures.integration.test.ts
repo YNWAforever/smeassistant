@@ -168,6 +168,29 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon failures read model",
     expect(await repo().list(ALL)).toEqual([expect.objectContaining({ kind: "workspace_processing", id: stuck, attempts: 3, reason: "workspace_post_process_failed" })]);
   });
 
+  it("lists a dead mail row with a MAIL- reference, the workspace slug, and occurred_at from updated_at (not created_at)", async () => {
+    const ws = await workspace("Kam Man House");
+    const mailJob = await job({ status: "done", ws });
+    const mailUser = (await runtime.query("INSERT INTO app_users(email) VALUES($1) RETURNING id", [`mail-${randomUUID().slice(0, 8)}@example.test`]))
+      .rows[0].id as string;
+    const id = randomUUID();
+    await runtime.query(
+      `INSERT INTO mail_outbox(id,workspace_id,user_id,job_id,kind,locale,state,payload,last_error,attempts,created_at,updated_at)
+       VALUES($1,$2,$3,$4,'rescan_complete','en','dead','{}'::jsonb,'provider_error',5,now()-interval '2 days',now()-interval '1 hour')`,
+      [id, ws, mailUser, mailJob],
+    );
+    const items = await repo().list({ ...ALL, kinds: ["mail_dead"] });
+    expect(items).toEqual([
+      expect.objectContaining({ kind: "mail_dead", id, reason: "provider_error", attempts: 5, locationId: null, actionId: null, operatorAction: "none" }),
+    ]);
+    expect(items[0].reference).toMatch(/^MAIL-[0-9A-F]{6}$/);
+    expect(items[0].workspace).toMatchObject({ id: ws, slug: expect.any(String), name: "Kam Man House" });
+    // updated_at (~1 hour ago), not created_at (~2 days ago).
+    const ageMinutes = (Date.now() - new Date(items[0].occurredAt).getTime()) / 60_000;
+    expect(ageMinutes).toBeGreaterThan(30);
+    expect(ageMinutes).toBeLessThan(90);
+  });
+
   it("filters by workspace, by kind, by reference prefix and by full id or correlation id", async () => {
     const mine = await workspace("Mine");
     const other = await workspace("Other");
@@ -195,12 +218,28 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon failures read model",
     );
     const failedJob = await job({ status: "failed", completed: "1 hour", category: "COLLECTION_FAILED", ws });
     await runtime.query("UPDATE audit_jobs SET raw_data=$2 WHERE id=$1", [failedJob, JSON.stringify({ review: "SECRET-RAW-REVIEW" })]);
+    const mailUser = (await runtime.query("INSERT INTO app_users(email) VALUES('secret-mail-recipient@example.test') RETURNING id")).rows[0].id as string;
+    await runtime.query(
+      `INSERT INTO mail_outbox(id,workspace_id,user_id,job_id,kind,to_address,locale,state,payload,last_error)
+       VALUES(gen_random_uuid(),$1,$2,$3,'rescan_complete','secret-mail-recipient@example.test','en','dead','{"businessName":"SECRET-PAYLOAD"}'::jsonb,'provider_error')`,
+      [ws, mailUser, failedJob],
+    );
     const serialized = JSON.stringify(await repo().list(ALL));
-    for (const secret of ["secret-owner", "secret-member", "SECRET-REVIEW-TEXT", "SECRET-ERROR-TEXT", "SECRET-AUDIT-PAYLOAD", "SECRET-RAW-REVIEW", "SECRET-OUTPUT"])
+    for (const secret of [
+      "secret-owner",
+      "secret-member",
+      "SECRET-REVIEW-TEXT",
+      "SECRET-ERROR-TEXT",
+      "SECRET-AUDIT-PAYLOAD",
+      "SECRET-RAW-REVIEW",
+      "SECRET-OUTPUT",
+      "secret-mail-recipient",
+      "SECRET-PAYLOAD",
+    ])
       expect(serialized).not.toContain(secret);
   });
 
-  it("summarizes health: recent counts, open counts and failed scans by category", async () => {
+  it("summarizes health: recent counts, open counts, failed scans by category, and the mail outbox's own counts", async () => {
     const ws = await workspace();
     await job({ status: "failed", completed: "1 hour", category: "COLLECTION_FAILED" });
     await job({ status: "failed", completed: "3 days", category: "COLLECTION_FAILED" });
@@ -208,10 +247,34 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon failures read model",
     await job({ status: "collecting", attempts: 3, lastAttempt: "2 hours" });
     await connection(ws, "error");
     await run(ws, await action(ws), "failed", "1 hour");
+
+    const mailJob = await job({ status: "done", ws });
+    const mailUser = (await runtime.query("INSERT INTO app_users(email) VALUES($1) RETURNING id", [`mail-${randomUUID().slice(0, 8)}@example.test`]))
+      .rows[0].id as string;
+    await runtime.query(
+      `INSERT INTO mail_outbox(id,workspace_id,user_id,job_id,kind,locale,state,payload,last_error,attempts)
+       VALUES(gen_random_uuid(),$1,$2,$3,'rescan_complete','en','dead','{}'::jsonb,'provider_error',5)`,
+      [ws, mailUser, mailJob],
+    );
+    await runtime.query(
+      `INSERT INTO mail_outbox(id,workspace_id,user_id,job_id,kind,locale,state,payload)
+       VALUES(gen_random_uuid(),$1,$2,$3,'regression_alert','en','queued','{}'::jsonb)`,
+      [ws, mailUser, mailJob],
+    );
+    await runtime.query(
+      `INSERT INTO mail_outbox(id,workspace_id,user_id,job_id,kind,locale,state,hold_reason,payload)
+       VALUES(gen_random_uuid(),$1,$2,$3,'rescan_complete','en','held','opted_out','{}'::jsonb)`,
+      [ws, mailUser, mailJob],
+    );
+
     const health = await repo().health();
     expect(health.recent).toEqual({ scan_failed: { day: 2, week: 3 }, draft_failed: { day: 1, week: 1 } });
-    expect(health.open).toEqual({ scan_dead_lettered: 1, google_connection: 1, workspace_processing: 0 });
+    expect(health.open).toEqual({ scan_dead_lettered: 1, google_connection: 1, workspace_processing: 0, mail_dead: 1 });
     expect(health.categories).toEqual([{ category: "COLLECTION_FAILED", day: 1, week: 2 }, { category: "SCORING_FAILED", day: 1, week: 1 }]);
+    expect(health.mail).toEqual({
+      queued: 1,
+      held: { mail_unapproved: 0, kind_disabled: 0, opted_out: 1, no_address: 0, not_allowlisted: 0, not_member: 0 },
+    });
   });
 
   it("never shows a scoped manager another location's problems, through the real reader", async () => {

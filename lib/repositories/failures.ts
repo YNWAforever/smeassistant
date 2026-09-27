@@ -4,9 +4,7 @@ import { getPool } from "../db/client";
 import { DEAD_LETTERED_JOB_CONDITION_SQL } from "../scan/claimable";
 import { FAILURE_KINDS, type FailureItem, type FailureKind, type OperatorHealth } from "../ops/failure-types";
 import { referenceFor } from "../ops/references";
-import { HOLD_REASONS, type HoldReason } from "../mail/decide";
-
-const EMPTY_HELD: Record<HoldReason, number> = Object.fromEntries(HOLD_REASONS.map((reason) => [reason, 0])) as Record<HoldReason, number>;
+import { mailOutboxRepository } from "./mail-outbox";
 
 type Db = Pick<Pool, "query">;
 
@@ -131,7 +129,7 @@ const SOURCES: Record<FailureKind, string> = {
       AND ${filters("c.workspace_id", "c.job_id")}
     ORDER BY occurred_at DESC LIMIT $4`,
   mail_dead: `
-    SELECT o.id, NULL::text AS correlation_id, o.created_at AS occurred_at,
+    SELECT o.id, NULL::text AS correlation_id, o.updated_at AS occurred_at,
            o.workspace_id, w.slug AS workspace_slug, w.business_name AS workspace_name, NULL::uuid AS location_id, NULL::uuid AS action_id,
            w.business_name, coalesce(o.last_error, 'mail_send_failed') AS reason, o.attempts
     FROM mail_outbox o JOIN workspaces w ON w.id = o.workspace_id
@@ -188,8 +186,6 @@ export function failuresRepository(client?: Db) {
         draft_week: number;
         dead: number;
         processing: number;
-        mail_dead: number;
-        mail_queued: number;
       }>(
         `SELECT
            (SELECT count(*) FROM audit_jobs WHERE status='failed' AND coalesce(completed_at,created_at) > now()-interval '24 hours')::int AS scan_day,
@@ -197,9 +193,7 @@ export function failuresRepository(client?: Db) {
            (SELECT count(*) FROM action_runs WHERE state IN ('failed','timed_out') AND coalesce(input->>'source','') <> 'assistant' AND coalesce(finished_at,created_at) > now()-interval '24 hours')::int AS draft_day,
            (SELECT count(*) FROM action_runs WHERE state IN ('failed','timed_out') AND coalesce(input->>'source','') <> 'assistant' AND coalesce(finished_at,created_at) > now()-interval '7 days')::int AS draft_week,
            (SELECT count(*) FROM audit_jobs WHERE ${DEAD_LETTERED_JOB_CONDITION_SQL})::int AS dead,
-           (SELECT count(*) FROM workspace_scan_completions WHERE state='retry' AND attempts >= 3)::int AS processing,
-           (SELECT count(*) FROM mail_outbox WHERE state='dead')::int AS mail_dead,
-           (SELECT count(*) FROM mail_outbox WHERE state='queued' AND created_at > now()-interval '24 hours')::int AS mail_queued`,
+           (SELECT count(*) FROM workspace_scan_completions WHERE state='retry' AND attempts >= 3)::int AS processing`,
       )
     ).rows[0];
     const categories = (
@@ -214,24 +208,16 @@ export function failuresRepository(client?: Db) {
     const google = (
       await db().query<{ n: number }>(`SELECT count(*)::int AS n FROM (${SOURCES.google_connection}) x`, [null, null, null, 2147483647])
     ).rows[0].n;
-    // Held-by-reason needs its own grouped query (like categories above); the
-    // 24h boundary is Postgres's own `now()`, never a JS Date, so this stays
-    // aligned with every other window in this function regardless of any
-    // clock skew between the app server and the database.
-    const heldRows = (
-      await db().query<{ hold_reason: HoldReason; n: number }>(
-        `SELECT hold_reason, count(*)::int AS n FROM mail_outbox
-         WHERE state='held' AND created_at > now() - interval '24 hours'
-         GROUP BY hold_reason`,
-      )
-    ).rows;
-    const held: Record<HoldReason, number> = { ...EMPTY_HELD };
-    for (const row of heldRows) held[row.hold_reason] = row.n;
+    // The mail outbox's own repository already computes these counts
+    // (integration-tested there): no reason to re-derive the same SQL here.
+    // `getPool()` (not `db()`, whose narrower `Pick<Pool,"query">` type isn't
+    // assignable to `Pool | PoolClient`) so this needs no cast.
+    const mail = await mailOutboxRepository(getPool()).operatorCounts();
     return {
       recent: { scan_failed: { day: counts.scan_day, week: counts.scan_week }, draft_failed: { day: counts.draft_day, week: counts.draft_week } },
-      open: { scan_dead_lettered: counts.dead, google_connection: google, workspace_processing: counts.processing, mail_dead: counts.mail_dead },
+      open: { scan_dead_lettered: counts.dead, google_connection: google, workspace_processing: counts.processing, mail_dead: mail.deadTotal },
       categories,
-      mail: { queued: counts.mail_queued, held },
+      mail: { queued: mail.queued24h, held: mail.held24h },
     };
   };
 

@@ -227,20 +227,21 @@ one wording rule this section exists to enforce.
   read that before assuming nothing has been done yet (§2).
 - **Pause.** Set `MAIL_PAUSED=true` in Vercel (Production environment) and
   redeploy or re-promote, exactly like the other kill switches (§3, "How to
-  apply one."). Once live, the cron tick's claim step skips every due row —
-  logged once as `[pause] refused` with `entry: "mail_send"`, not per row —
-  and nothing is sent. Rows already `queued` or `retry` are left exactly as
-  they are: no `attempt_count` or lease changes, so nothing already in the
-  outbox is lost by pausing. Enqueueing at scan completion is unaffected —
-  new rows keep being written as `queued` or `held` — only the send step
-  stops. Confirm the change took effect by reloading `/ops/failures` and
-  reading the banner, the same way the other switches are confirmed.
-- **What stays queued, and what does not.** A row created more than 24 hours
-  before a send attempt is finished `expired` instead of being sent or
-  retried, regardless of whether `MAIL_PAUSED` is on — a pause that runs
-  longer than a day does not queue up a backlog that suddenly sends once
-  lifted; the oldest rows simply expire in place. A held row (see below) or
-  a `sent` row never changes state again while paused or otherwise.
+  apply one."). Once live, the cron tick's mail step (`deliverMail`) returns
+  before it claims anything — logged once as `[pause] refused` with
+  `entry: "mail_send"`, not per row — so nothing is sent and nothing is
+  claimed. Rows already `queued` or `retry` are left exactly as they are: no
+  `attempt_count` or lease changes, so nothing already in the outbox is lost
+  by pausing. Enqueueing at scan completion is unaffected — new rows keep
+  being written as `queued` or `held` — only the send step stops. Confirm
+  the change took effect by reloading `/ops/failures` and reading the
+  banner, the same way the other switches are confirmed.
+- **What stays queued, and what does not.** Because a paused tick never
+  claims a row at all, nothing expires *during* the pause — expiry is only
+  ever decided against a claimed row. Once claiming resumes, rows queued
+  more than 24 hours earlier expire instead of sending — a long pause does
+  not release a burst of stale mail. A held row (see below) or a `sent` row
+  never changes state again, paused or not.
 - **Where dead rows show.** A row that failed its fifth attempt is `dead`
   and appears on `/ops/failures` under kind "Dead mail message"
   (`MAIL-XXXXXX` references, the first six hex characters of the row id —

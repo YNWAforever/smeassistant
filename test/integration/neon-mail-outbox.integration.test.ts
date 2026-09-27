@@ -342,11 +342,10 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
     expect(facts.accepted).toBe(false);
   });
 
-  it("counts groups held reasons and counts queued/dead", async () => {
+  it("operatorCounts totals dead rows unscoped, and groups queued/held by the last 24 hours (DB clock)", async () => {
     const ws = await workspace();
     const u = await user();
     const j = await job(ws);
-    const since = await dbNow(-60);
     await repo().insert([
       outboxRow({ id: randomUUID(), workspace_id: ws, user_id: u, job_id: j, state: "queued" }),
       outboxRow({ id: randomUUID(), workspace_id: ws, user_id: u, job_id: j, state: "queued" }),
@@ -359,13 +358,27 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
        VALUES($1,$2,$3,$4,'rescan_complete','en','dead','{}'::jsonb,'provider_error')`,
       [randomUUID(), ws, u, j],
     );
+    // A dead row from 2 days ago: deadTotal must still count it (unscoped,
+    // matching the other operator "open" counts) even though it falls
+    // outside the 24h window used for queued24h/held24h.
+    await runtime.query(
+      `INSERT INTO mail_outbox(id,workspace_id,user_id,job_id,kind,locale,state,payload,last_error,created_at,updated_at)
+       VALUES($1,$2,$3,$4,'rescan_complete','en','dead','{}'::jsonb,'provider_error',now()-interval '2 days',now()-interval '2 days')`,
+      [randomUUID(), ws, u, j],
+    );
+    // A queued row from 2 days ago must not count toward queued24h.
+    await runtime.query(
+      `INSERT INTO mail_outbox(id,workspace_id,user_id,job_id,kind,locale,state,payload,created_at)
+       VALUES($1,$2,$3,$4,'rescan_complete','en','queued','{}'::jsonb,now()-interval '2 days')`,
+      [randomUUID(), ws, u, j],
+    );
 
-    const counts = await repo().counts(since);
-    expect(counts.queued).toBe(2);
-    expect(counts.dead).toBe(1);
-    expect(counts.held.opted_out).toBe(1);
-    expect(counts.held.no_address).toBe(2);
-    expect(counts.held.kind_disabled).toBe(0);
+    const counts = await repo().operatorCounts();
+    expect(counts.deadTotal).toBe(2);
+    expect(counts.queued24h).toBe(2);
+    expect(counts.held24h.opted_out).toBe(1);
+    expect(counts.held24h.no_address).toBe(2);
+    expect(counts.held24h.kind_disabled).toBe(0);
   });
 
   it("deadRows lists dead rows without addresses", async () => {

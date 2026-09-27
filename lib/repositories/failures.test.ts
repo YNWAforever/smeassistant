@@ -45,25 +45,26 @@ describe("failuresRepository: mail_dead", () => {
     expect(serialized).not.toMatch(/[\w.-]+@[\w.-]+/);
   });
 
-  it("scopes the query by workspace, hex prefix and full id like every other kind", async () => {
+  it("scopes the query by workspace, hex prefix and full id like every other kind, and reads occurred_at from updated_at", async () => {
     poolQuery.mockResolvedValue({ rows: [], rowCount: 0 });
     await failuresRepository().list({ kinds: ["mail_dead"], hexPrefix: "3fa85f", uuid: null, workspaceId: "ws-1", limit: 50 });
     const [sql, params] = poolQuery.mock.calls[0];
     expect(sql).toContain("FROM mail_outbox o JOIN workspaces w ON w.id = o.workspace_id");
     expect(sql).toContain("o.state = 'dead'");
+    // Matches every other kind's "last activity" convention (e.g. google_connection's
+    // c.updated_at): when the row went dead, not when it was first queued.
+    expect(sql).toContain("o.updated_at AS occurred_at");
     expect(params).toEqual(["ws-1", "3fa85f", null, 50]);
   });
 });
 
 describe("failuresRepository.health: mail", () => {
-  it("includes mail_dead in open counts and the last-24h queued/held mail counts", async () => {
+  it("includes mail_dead in open counts and delegates the last-24h queued/held mail counts to the outbox repository, no re-derived SQL", async () => {
     poolQuery
-      .mockResolvedValueOnce({
-        rows: [{ scan_day: 0, scan_week: 0, draft_day: 0, draft_week: 0, dead: 0, processing: 0, mail_dead: 2, mail_queued: 3 }],
-        rowCount: 1,
-      })
+      .mockResolvedValueOnce({ rows: [{ scan_day: 0, scan_week: 0, draft_day: 0, draft_week: 0, dead: 0, processing: 0 }], rowCount: 1 })
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })
       .mockResolvedValueOnce({ rows: [{ n: 0 }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{ dead_total: 2, queued_24h: 3 }], rowCount: 1 })
       .mockResolvedValueOnce({
         rows: [
           { hold_reason: "opted_out", n: 2 },
@@ -77,7 +78,11 @@ describe("failuresRepository.health: mail", () => {
       queued: 3,
       held: { mail_unapproved: 0, kind_disabled: 0, opted_out: 2, no_address: 1, not_allowlisted: 0, not_member: 0 },
     });
-    const [heldSql] = poolQuery.mock.calls[3];
+    // The 4th/5th queries are operatorCounts()'s own SQL (lib/repositories/mail-outbox.ts),
+    // not a copy re-derived here -- both use the DB clock, never a JS Date.
+    const [deadQueuedSql] = poolQuery.mock.calls[3];
+    expect(deadQueuedSql).toContain("now() - interval '24 hours'");
+    const [heldSql] = poolQuery.mock.calls[4];
     expect(heldSql).toContain("now() - interval '24 hours'");
     expect(heldSql).not.toContain("$1");
   });

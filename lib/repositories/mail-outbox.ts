@@ -65,10 +65,13 @@ export interface MemberMailSwitches {
   address: string | null;
 }
 
-export interface MailOutboxCounts {
-  queued: number;
-  dead: number;
-  held: Record<HoldReason, number>;
+export interface OperatorMailCounts {
+  /** All-time count of `dead` rows -- not time-scoped, matching the other operator "open" counts. */
+  deadTotal: number;
+  /** `queued` rows created in the last 24 hours (DB clock). */
+  queued24h: number;
+  /** Currently `held` rows created in the last 24 hours (DB clock), grouped by reason. */
+  held24h: Record<HoldReason, number>;
 }
 
 export interface MailDeadRow {
@@ -326,22 +329,33 @@ export function mailOutboxRepository(client: Pool | PoolClient) {
       return { rescanComplete: row.mail_rescan_complete, regressionAlert: row.mail_regression_alert, locale: row.mail_locale, address: row.address };
     },
 
-    /** Ops health strip: backlog, dead-lettered and held-by-reason counts since `since`. */
-    async counts(since: Date): Promise<MailOutboxCounts> {
-      const result = await client.query<{ state: string; hold_reason: HoldReason | null; n: string }>(
-        `SELECT state, hold_reason, count(*)::text AS n FROM mail_outbox WHERE created_at >= $1 GROUP BY state, hold_reason`,
-        [since],
-      );
-      const held: Record<HoldReason, number> = { ...EMPTY_HELD_COUNTS };
-      let queued = 0;
-      let dead = 0;
-      for (const row of result.rows) {
-        const n = Number(row.n);
-        if (row.state === "queued") queued += n;
-        else if (row.state === "dead") dead += n;
-        else if (row.state === "held" && row.hold_reason) held[row.hold_reason] += n;
-      }
-      return { queued, dead, held };
+    /**
+     * Ops health strip (lib/repositories/failures.ts::health()): `deadTotal`
+     * is every dead row, unscoped by time -- matching the other "open" counts
+     * that read like a current backlog, not a rolling window. `queued24h`/
+     * `held24h` are the last 24 hours, computed with Postgres's own `now()`
+     * rather than a JS `Date` passed in as a parameter, so this stays aligned
+     * with the rest of that function's windows regardless of any clock skew
+     * between the app server and the database.
+     */
+    async operatorCounts(): Promise<OperatorMailCounts> {
+      const counts = (
+        await client.query<{ dead_total: number; queued_24h: number }>(
+          `SELECT
+             (SELECT count(*) FROM mail_outbox WHERE state='dead')::int AS dead_total,
+             (SELECT count(*) FROM mail_outbox WHERE state='queued' AND created_at > now() - interval '24 hours')::int AS queued_24h`,
+        )
+      ).rows[0];
+      const heldRows = (
+        await client.query<{ hold_reason: HoldReason; n: number }>(
+          `SELECT hold_reason, count(*)::int AS n FROM mail_outbox
+           WHERE state='held' AND created_at > now() - interval '24 hours'
+           GROUP BY hold_reason`,
+        )
+      ).rows;
+      const held24h: Record<HoldReason, number> = { ...EMPTY_HELD_COUNTS };
+      for (const row of heldRows) held24h[row.hold_reason] = row.n;
+      return { deadTotal: counts.dead_total, queued24h: counts.queued_24h, held24h };
     },
 
     /** Dead rows for the operator failure list. Never selects `to_address` or `payload` -- no address ever leaves this query. */
