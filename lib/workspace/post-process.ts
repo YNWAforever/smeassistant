@@ -74,8 +74,8 @@ export async function postProcessWorkspaceScan(db: PoolClient, jobId: string, op
     const name = job.business_name?.trim() || "";
 
     if (job.status === "failed") {
-      // No enqueueScanMail call here: mailKindsForScan([]) for a failed job
-      // regardless of input, so a call would only spend a workspaceHref
+      // No enqueueScanMail call here: mailKindsForScan returns [] for a
+      // failed job regardless of input, so a call would only spend a workspaceHref
       // query and a recipients read to insert nothing.
       const notification = await notifyWithRepository(notificationRepository(db), {
         workspaceId: job.workspace_id,

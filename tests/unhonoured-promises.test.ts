@@ -130,6 +130,28 @@ const PROMISES: readonly Promised[] = [
     ],
   },
   {
+    // What is left of the old "an outbound notification email sender" entry
+    // once the P3.5c outbox made event mail real. That outbox sends only the
+    // workspace event kinds (rescan_complete, regression_alert) to members;
+    // nothing mails a report link to the person who unlocked a report -- the
+    // unlock route sets a grant cookie and returns the URL in the response.
+    // So telling that person to "reply to the report email" still points at
+    // an email that never arrives. The detector trips once a mail kind is
+    // about reports, or any code that can send mail also builds a report link.
+    capability: "a report-delivery email (any code path that mails a report link)",
+    implemented: () => {
+      const kinds = /MAIL_KINDS\s*=\s*\[([^\]]*)\]/.exec(readFileSync(join(repoRoot, "lib", "mail", "decide.ts"), "utf8"))?.[1] ?? "";
+      return (
+        /report/i.test(kinds) ||
+        backendText().some(
+          (source) =>
+            /createMailTransport|transport\.send\(/.test(source) && /reportPath\(|absoluteReportUrl\(|\/r\/\$\{/.test(source),
+        )
+      );
+    },
+    banned: ["reply to the report email", "回覆你收到的報告電郵"],
+  },
+  {
     // Fix Pack drafts are `agent_runs` rows. This app reads them and PATCHes
     // their status, but never creates one -- CLAUDE.md section 3.7: "do not
     // write to `agent_runs` from this app's agents (v1)". The upstream
@@ -239,14 +261,20 @@ const KEPT: ReadonlyArray<{ promise: string; requires: string; exists: () => boo
     // entry above: the mail outbox (docs/superpowers/specs/2026-09-27-mail-
     // outbox-design.md) makes that promise real, so the "We'll email you at
     // {address}" copy on the Notifications page (mail.openNote) is only
-    // honest gated on whether mail is actually open -- never shown
-    // unconditionally, or this reverts to the same lie the removed entry
-    // banned.
-    promise: "outbound mail is a real sender, and \"we'll email you\" copy only renders while mail is open",
-    requires: "lib/mail/deliver.ts calls createMailTransport, and components/workspace/notifications-view.tsx renders mail.openNote only under mailOpen",
+    // honest gated on whether this member's mail would actually go out: the
+    // one effective state lib/workspace/queries-pages.ts computes
+    // (memberMailState) being "open" -- mail open, not paused, an address the
+    // allowlist lets through, and at least one kind both allowed by the
+    // workspace and switched on. Gating on mail being open alone was not
+    // enough: it promised mail to a member whose every kind the owner had
+    // disallowed, or who had switched nothing on. Comments are stripped
+    // first, so a note *about* the gate cannot stand in for the gate.
+    promise: "outbound mail is a real sender, and \"we'll email you\" copy only renders when this member's mail would actually go out",
+    requires: "lib/mail/deliver.ts calls createMailTransport, lib/workspace/queries-pages.ts computes mailState with memberMailState, and components/workspace/notifications-view.tsx renders mail.openNote only when model.mailState === \"open\"",
     exists: () =>
       /createMailTransport/.test(readFileSync(join(repoRoot, "lib", "mail", "deliver.ts"), "utf8")) &&
-      /mailOpen[\s\S]{0,200}mail\.openNote/.test(readFileSync(join(repoRoot, "components", "workspace", "notifications-view.tsx"), "utf8")),
+      /mailState:\s*memberMailState\(/.test(readFileSync(join(repoRoot, "lib", "workspace", "queries-pages.ts"), "utf8")) &&
+      /mailState\s*===\s*"open"[\s\S]{0,200}mail\.openNote/.test(copyOnly(readFileSync(join(repoRoot, "components", "workspace", "notifications-view.tsx"), "utf8"))),
   },
 ];
 

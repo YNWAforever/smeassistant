@@ -24,7 +24,7 @@ function model(overrides: Partial<NotificationsModel> = {}): NotificationsModel 
     inApp: [],
     email: { rescanComplete: true, regressionAlert: true, monthlyDigest: true },
     role: "owner",
-    mailOpen: false,
+    mailState: "closed",
     myEmails: { rescanComplete: false, regressionAlert: false },
     myAddress: "owner@example.com",
     ...overrides,
@@ -45,33 +45,56 @@ function cardFor(root: HTMLElement, heading: string): Element | null {
 }
 
 describe("NotificationsView", () => {
-  it("shows the closed note on both mail cards, never the open note, while mail is closed", () => {
-    const root = render(model({ mailOpen: false }));
-    const closedNote = t("en", "mail.closedNote");
-    const occurrences = (root.textContent ?? "").split(closedNote).length - 1;
-    expect(occurrences).toBe(2);
-    expect(root.textContent).not.toContain(t("en", "mail.openNote", { address: "owner@example.com" }));
-  });
+  const ADDRESS = "owner@example.com";
+  const openNote = t("en", "mail.openNote", { address: ADDRESS });
 
-  it("shows the open note with the address on both mail cards while mail is open", () => {
-    const root = render(model({ mailOpen: true, myAddress: "owner@example.com" }));
-    const openNote = t("en", "mail.openNote", { address: "owner@example.com" });
-    const occurrences = (root.textContent ?? "").split(openNote).length - 1;
+  // Final-review fix 2: one note per effective state, and the "we'll email
+  // you" note only when the state is "open".
+  it.each([
+    ["closed", t("en", "mail.closedNote")],
+    ["paused", t("en", "mail.pausedNote")],
+    ["no_address", t("en", "mail.noAddress")],
+    ["not_allowlisted", t("en", "mail.limitedNote")],
+    ["none_on", t("en", "mail.offNote", { address: ADDRESS })],
+    ["blocked", t("en", "mail.gateNote")],
+    ["open", openNote],
+  ] as const)("renders the %s note on both mail cards", (mailState, note) => {
+    const root = render(model({ mailState, myAddress: mailState === "no_address" ? null : ADDRESS }));
+    const occurrences = (root.textContent ?? "").split(note).length - 1;
     expect(occurrences).toBe(2);
-    expect(root.textContent).not.toContain(t("en", "mail.closedNote"));
-  });
-
-  // Review finding: myAddress must come from app_users.email (what the
-  // outbox actually sends to), which can genuinely be unresolved for a
-  // member even while mail is open -- the page must never name an address
-  // in that case.
-  it("shows mail.noAddress, never mail.openNote, when mail is open but no address is on file", () => {
-    const root = render(model({ mailOpen: true, myAddress: null }));
-    expect(root.textContent).toContain(t("en", "mail.noAddress"));
     expect(root.textContent).not.toContain("{address}");
-    for (const address of ["owner@example.com", "member@example.com"]) {
-      expect(root.textContent).not.toContain(t("en", "mail.openNote", { address }));
-    }
+    if (mailState !== "open") expect(root.textContent).not.toContain(openNote);
+  });
+
+  it("renders mail.openNote only for the open state", () => {
+    const states = ["closed", "paused", "no_address", "not_allowlisted", "none_on", "blocked", "open"] as const;
+    const showing = states.filter((mailState) => (render(model({ mailState })).textContent ?? "").includes(openNote));
+    expect(showing).toEqual(["open"]);
+  });
+
+  it("marks each of my switches that is on while the workspace gate for it is off", () => {
+    const root = render(model({
+      mailState: "open",
+      email: { rescanComplete: false, regressionAlert: true, monthlyDigest: true },
+      myEmails: { rescanComplete: true, regressionAlert: true },
+    }));
+    const card = cardFor(root, t("en", "mail.myEmailsTitle"));
+    const blocked = t("en", "mail.kindBlocked");
+    const rows = card ? Array.from(card.querySelectorAll("label")) : [];
+    const rescan = rows.find((row) => row.textContent?.includes(t("en", "mail.rescanComplete")));
+    const regression = rows.find((row) => row.textContent?.includes(t("en", "mail.regressionAlert")));
+    expect(rescan?.textContent).toContain(blocked);
+    expect(regression?.textContent).not.toContain(blocked);
+    expect((root.textContent ?? "").split(blocked).length - 1).toBe(1);
+  });
+
+  it("does not mark a switch that is off, even when its workspace gate is off", () => {
+    const root = render(model({
+      mailState: "none_on",
+      email: { rescanComplete: false, regressionAlert: false, monthlyDigest: true },
+      myEmails: { rescanComplete: false, regressionAlert: false },
+    }));
+    expect(root.textContent).not.toContain(t("en", "mail.kindBlocked"));
   });
 
   it("disables the workspace Allow switches and shows the owner-only note for a non-owner", () => {

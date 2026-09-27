@@ -81,9 +81,11 @@ export function WorkspaceMailSwitchesForm({ locale, workspaceId, initial, disabl
  * mail-outbox-design.md §6): PATCHes /my-mail-preferences with the current
  * page locale on every save, whatever role the caller holds -- the workspace
  * gate above decides whether the *kind* may be mailed at all; this decides
- * whether *this member* wants it.
+ * whether *this member* wants it. `workspaceGates` is that gate as last
+ * read from the server; a switch the member has on while its gate is off is
+ * marked `mail.kindBlocked`, so "on" never reads as "will be mailed".
  */
-export function MyMailPreferencesForm({ locale, workspaceId, initial }: { locale: PrototypeLocale; workspaceId: string; initial: MyEmailPreferences }) {
+export function MyMailPreferencesForm({ locale, workspaceId, initial, workspaceGates }: { locale: PrototypeLocale; workspaceId: string; initial: MyEmailPreferences; workspaceGates: MyEmailPreferences }) {
   const router = useRouter()
   const c = COPY[locale]
   const [prefs, setPrefs] = useState(initial)
@@ -117,7 +119,7 @@ export function MyMailPreferencesForm({ locale, workspaceId, initial }: { locale
         {rows.map((row) => (
           <Label key={row.id} htmlFor={row.id}>
             <Switch id={row.id} checked={prefs[row.key]} disabled={busy} onCheckedChange={(checked) => setPrefs((current) => ({ ...current, [row.key]: checked }))} />
-            <span><strong>{row.title}</strong></span>
+            <span><strong>{row.title}</strong>{prefs[row.key] && !workspaceGates[row.key] && <small>{t(locale, "mail.kindBlocked")}</small>}</span>
           </Label>
         ))}
       </div>
