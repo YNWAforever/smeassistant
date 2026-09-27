@@ -27,7 +27,9 @@ const UPSTREAM_NAMESPACES = ["scanner", "scanning", "report", "share", "legal"];
 // "commercial" (P3.3) labels the public pricing/allowance strings that read
 // the one commercial contract, including the "subscriptions are not open
 // yet" label shown while billing is closed.
-const APP_NAMESPACES = ["applied", "verified", "budget", "draftFailure", "problems", "pause", "commercial"];
+// "mail" (P3.5c) labels the one-click unsubscribe page: the title, the
+// confirm button, and the done/invalid outcomes.
+const APP_NAMESPACES = ["applied", "verified", "budget", "draftFailure", "problems", "pause", "commercial", "mail"];
 const NAMESPACES = [...UPSTREAM_NAMESPACES, ...APP_NAMESPACES];
 
 function readBundle(locale: string): Record<string, unknown> {

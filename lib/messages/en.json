@@ -80,6 +80,12 @@
     "scansNotStarted": "Scanning is paused for maintenance. Nothing was started; please try again later.",
     "ai": "AI drafting is paused for maintenance. Nothing was counted; try again later."
   },
+  "mail": {
+    "unsubscribeTitle": "Stop these emails",
+    "unsubscribeConfirm": "Unsubscribe",
+    "unsubscribeDone": "You're unsubscribed. You can turn these emails back on in your workspace settings.",
+    "unsubscribeInvalid": "This link is no longer valid — manage emails in your workspace settings."
+  },
   "scanner": {
     "title": "Scan My Business for Free",
     "subtitle": "Fill in the details below — get your audit report in 30 seconds",

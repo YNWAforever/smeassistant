@@ -80,6 +80,12 @@
     "scansNotStarted": "掃描暫停維護中。尚未開始任何掃描，請稍後再試。",
     "ai": "AI 草稿生成暫停維護中。沒有計算任何用量，請稍後再試。"
   },
+  "mail": {
+    "unsubscribeTitle": "停止接收這些電子郵件",
+    "unsubscribeConfirm": "取消訂閱",
+    "unsubscribeDone": "已取消訂閱。你可以在工作台設定中重新開啟。",
+    "unsubscribeInvalid": "這個連結已失效 — 請在工作台設定中管理電子郵件。"
+  },
   "scanner": {
     "title": "免費掃描我的生意",
     "subtitle": "填寫以下資料，30 秒立即收到 audit 報告",

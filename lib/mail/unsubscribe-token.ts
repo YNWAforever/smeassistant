@@ -15,6 +15,22 @@ import { MAIL_KINDS, type MailKind } from "./decide";
 
 export const UNSUBSCRIBE_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
+const MIN_SECRET_BYTES = 32;
+
+/**
+ * The same floor lib/mail/availability.ts requires before mail can send, read
+ * independently here: a member must be able to leave a mailing even while
+ * sending itself is closed for an unrelated reason (mail_unapproved, a
+ * missing RESEND_API_KEY, ...), but a secret that is missing or too short
+ * cannot safely verify anything, so callers refuse rather than accept an
+ * unverifiable token. Returns the trimmed secret, or null when it is unusable.
+ */
+export function resolveUnsubscribeSecret(env: Record<string, string | undefined> = process.env): string | null {
+  const trimmed = env.MAIL_UNSUBSCRIBE_SECRET?.trim();
+  if (!trimmed || Buffer.byteLength(trimmed, "utf8") < MIN_SECRET_BYTES) return null;
+  return trimmed;
+}
+
 export interface UnsubscribePayload {
   userId: string;
   workspaceId: string;

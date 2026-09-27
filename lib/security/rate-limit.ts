@@ -29,7 +29,8 @@ export type RateLimitScope =
   | "asset_upload"
   | "assistant_run"
   | "rescan"
-  | "brand_update";
+  | "brand_update"
+  | "mail_unsubscribe";
 
 export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> = {
   scan_start: { limit: 10, windowSeconds: 60 * 60 },
@@ -119,6 +120,13 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   // per session user. A runaway-write guard for a stuck settings form, not an
   // abuse boundary.
   brand_update: { limit: 30, windowSeconds: 60 * 60 },
+  // POST /api/mail/unsubscribe (docs/superpowers/specs/2026-09-27-mail-
+  // outbox-design.md §5): unauthenticated, keyed only on the source-IP HMAC
+  // (no session, no workspace to key on -- that is the whole point of a
+  // one-click link). failClosed: false (global-constraints.md departure 3):
+  // the HMAC token already prevents guessing who it belongs to, so a limiter
+  // outage must not be the reason someone can't leave a mailing.
+  mail_unsubscribe: { limit: 30, windowSeconds: 60 * 60 },
 };
 
 export interface RateLimitDecision {
