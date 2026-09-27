@@ -7,7 +7,7 @@ import type { ClaimedRow, MailOutboxRepository } from "@/lib/repositories/mail-o
 import { mailAvailability, parseRecipientAllowlist } from "./availability";
 import { BATCH_SIZE, EXPIRY_HOURS, decideRecipient, retryDelayMinutes } from "./decide";
 import { renderScanMail } from "./templates";
-import type { MailMessage, MailTransport } from "./transport";
+import { createMailTransport, type MailMessage, type MailTransport } from "./transport";
 import { UNSUBSCRIBE_TTL_MS, signUnsubscribeToken } from "./unsubscribe-token";
 
 /**
@@ -24,7 +24,8 @@ import { UNSUBSCRIBE_TTL_MS, signUnsubscribeToken } from "./unsubscribe-token";
  */
 export interface DeliverMailDeps {
   repo: MailOutboxRepository;
-  transport: MailTransport;
+  /** Defaults to `createMailTransport(env)` -- tests always inject their own fake, never the real driver. */
+  transport?: MailTransport;
   env?: Record<string, string | undefined>;
   now?: () => Date;
 }
@@ -242,10 +243,11 @@ export async function deliverMail(deps: DeliverMailDeps): Promise<DeliverMailSum
   }
 
   const now = (deps.now ?? (() => new Date()))();
+  const transport = deps.transport ?? createMailTransport(env);
   const rows = await deps.repo.claimDue(now, BATCH_SIZE);
   for (const row of rows) {
     try {
-      await deliverOne(row, { repo: deps.repo, transport: deps.transport, env, now }, summary);
+      await deliverOne(row, { repo: deps.repo, transport, env, now }, summary);
     } catch {
       await recoverFromException(row, { repo: deps.repo, now }, summary);
     }

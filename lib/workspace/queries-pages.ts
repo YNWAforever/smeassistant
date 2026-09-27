@@ -4,12 +4,16 @@ import { CLOSED_ACTION_STATES, localized, type ActionState, type FactType, type 
 import { loadAuthorizedEvidence } from "@/lib/evidence/load-authorized";
 import type { EvidenceGalleryItem } from "@/lib/report/view-model";
 import { inLocationScope, type Membership } from "@/lib/auth";
+import { getPool } from "@/lib/db/client";
+import { mailAvailability } from "@/lib/mail/availability";
 import { artifactRepository } from "@/lib/repositories/artifacts";
 import { assetRepository } from "@/lib/repositories/assets";
+import { mailOutboxRepository } from "@/lib/repositories/mail-outbox";
 import { getBrand, type BrandProfile } from "@/lib/workspace/brand";
 import { deriveFaqQuestions } from "@/lib/workspace/faq-questions";
 import { applicationRepository } from "@/lib/repositories/applications";
 import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
+import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace";
 import type { GuardrailFlag, VersionOrigin } from "@/lib/workspace/version-meta";
 import type { AttributionBasis } from "@/lib/workspace/applications";
 import { filterSelectedReviews, scannedReviewKey, selectScannedReviews } from "@/lib/workspace/evidence-inputs";
@@ -317,7 +321,16 @@ export interface NotificationRow {
 
 export interface NotificationsModel {
   inApp: NotificationRow[];
+  /** The workspace's "allow these emails" gates -- owner-only to change (global-constraints.md departure 2). */
   email: { rescanComplete: boolean; regressionAlert: boolean; monthlyDigest: boolean };
+  /** The caller's own role, so the view can disable the owner-only card without a second round trip. */
+  role: WorkspaceRole;
+  /** `mailAvailability().open` -- gates whether either card's "we'll email you" note may render at all. */
+  mailOpen: boolean;
+  /** The caller's own two mail opt-ins (`workspace_members.mail_*`), always editable regardless of role. */
+  myEmails: { rescanComplete: boolean; regressionAlert: boolean };
+  /** The address mail would go to (the caller's own account email); null only if the session has none. */
+  myAddress: string | null;
 }
 
 /**
@@ -889,9 +902,10 @@ export async function getCalendar(ctx: WorkspaceContext): Promise<CalendarModel>
 
 export async function getNotifications(ctx: WorkspaceContext): Promise<NotificationsModel> {
   const repository = workspaceReadRepository();
-  const [inApp, prefs] = await read("notifications", () => Promise.all([
+  const [inApp, prefs, mySwitches] = await read("notifications", () => Promise.all([
     repository.notifications(ctx.workspace.id, ctx.membership.userId),
     repository.notificationPreferences(ctx.workspace.id),
+    mailOutboxRepository(getPool()).memberSwitches(ctx.workspace.id, ctx.membership.userId),
   ]));
   return {
     inApp,
@@ -900,6 +914,13 @@ export async function getNotifications(ctx: WorkspaceContext): Promise<Notificat
       regressionAlert: prefs?.notify_regression_alert ?? true,
       monthlyDigest: prefs?.notify_monthly_digest ?? true,
     },
+    role: ctx.membership.role,
+    mailOpen: mailAvailability().open,
+    myEmails: {
+      rescanComplete: mySwitches?.rescanComplete ?? false,
+      regressionAlert: mySwitches?.regressionAlert ?? false,
+    },
+    myAddress: ctx.account.email || null,
   };
 }
 

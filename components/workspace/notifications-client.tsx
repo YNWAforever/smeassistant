@@ -11,22 +11,26 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import type { PrototypeLocale } from "@/lib/copy"
 import { resolveText } from "@/lib/domain"
+import { t } from "@/lib/i18n"
 import { formatDateTime } from "@/lib/workspace/format"
 import type { NotificationRow } from "@/lib/workspace/queries-pages"
-import { markNotificationsRead, saveNotificationPreferences } from "@/lib/workspace/client"
+import { markNotificationsRead, saveMyMailPreferences, saveNotificationPreferences } from "@/lib/workspace/client"
 
 export type EmailPreferences = { rescanComplete: boolean; regressionAlert: boolean; monthlyDigest: boolean }
+export type MyEmailPreferences = { rescanComplete: boolean; regressionAlert: boolean }
 
 /**
- * The three email switches of the notifications page, live since Phase 6:
- * the prototype's "Save preferences" button PATCHes the copied
- * notification-preferences route (any accepted member, CLAUDE.md §3.1) and
- * toasts on save. Only changed switches are sent, so two members editing
- * different toggles never overwrite each other.
+ * The workspace's "allow these emails" gates (docs/superpowers/specs/2026-
+ * 09-27-mail-outbox-design.md §6): PATCHes the owner-only notification-
+ * preferences route and toasts on save. Only changed switches are sent, so
+ * two owners editing different toggles never overwrite each other.
+ * `disabled` (a non-owner, per global-constraints.md departure 2) turns
+ * every switch read-only and removes the Save action -- there is nothing
+ * here for a manager or viewer to submit.
  */
-export function NotificationPreferencesForm({ locale, workspaceId, initial }: { locale: PrototypeLocale; workspaceId: string; initial: EmailPreferences }) {
+export function WorkspaceMailSwitchesForm({ locale, workspaceId, initial, disabled }: { locale: PrototypeLocale; workspaceId: string; initial: EmailPreferences; disabled: boolean }) {
   const router = useRouter()
-  const t = COPY[locale]
+  const c = COPY[locale]
   const [prefs, setPrefs] = useState(initial)
   const [saved, setSaved] = useState(initial)
   const [busy, setBusy] = useState(false)
@@ -34,7 +38,7 @@ export function NotificationPreferencesForm({ locale, workspaceId, initial }: { 
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!dirty || busy) return
+    if (disabled || !dirty || busy) return
     setBusy(true)
     const result = await saveNotificationPreferences(workspaceId, {
       ...(prefs.rescanComplete !== saved.rescanComplete ? { notifyRescanComplete: prefs.rescanComplete } : {}),
@@ -42,16 +46,70 @@ export function NotificationPreferencesForm({ locale, workspaceId, initial }: { 
       ...(prefs.monthlyDigest !== saved.monthlyDigest ? { notifyMonthlyDigest: prefs.monthlyDigest } : {}),
     })
     setBusy(false)
-    if (!result.ok) { toast.error(result.error === "offline" || result.error === "network" ? t.network : t.failed); return }
+    if (!result.ok) { toast.error(result.error === "offline" || result.error === "network" ? c.network : c.failed); return }
     setSaved(prefs)
-    toast.success(t.saved)
+    toast.success(c.saved)
     router.refresh()
   }
 
-  const rows: Array<{ key: keyof EmailPreferences; id: string; title: string; note: string }> = [
-    { key: "rescanComplete", id: "rescan-alert", title: t.rescan, note: t.rescanNote },
-    { key: "regressionAlert", id: "regression-alert", title: t.regression, note: t.regressionNote },
-    { key: "monthlyDigest", id: "monthly-digest", title: t.digest, note: t.digestNote },
+  const rows: Array<{ key: keyof EmailPreferences; id: string; title: string }> = [
+    { key: "rescanComplete", id: "workspace-rescan-alert", title: t(locale, "mail.rescanComplete") },
+    { key: "regressionAlert", id: "workspace-regression-alert", title: t(locale, "mail.regressionAlert") },
+    { key: "monthlyDigest", id: "workspace-monthly-digest", title: t(locale, "mail.monthlyDigest") },
+  ]
+  return (
+    <form onSubmit={(event) => void submit(event)}>
+      <div className="switch-list">
+        {rows.map((row) => (
+          <Label key={row.id} htmlFor={row.id}>
+            <Switch id={row.id} checked={prefs[row.key]} disabled={disabled || busy} onCheckedChange={(checked) => setPrefs((current) => ({ ...current, [row.key]: checked }))} />
+            <span><strong>{row.title}</strong></span>
+          </Label>
+        ))}
+      </div>
+      {!disabled && (
+        <div className="plan-actions">
+          <Button type="submit" disabled={!dirty || busy}>{busy ? <LoaderCircle className="animate-spin" /> : <Check />} {c.save}</Button>
+        </div>
+      )}
+    </form>
+  )
+}
+
+/**
+ * Any member's own two mail opt-ins (docs/superpowers/specs/2026-09-27-
+ * mail-outbox-design.md §6): PATCHes /my-mail-preferences with the current
+ * page locale on every save, whatever role the caller holds -- the workspace
+ * gate above decides whether the *kind* may be mailed at all; this decides
+ * whether *this member* wants it.
+ */
+export function MyMailPreferencesForm({ locale, workspaceId, initial }: { locale: PrototypeLocale; workspaceId: string; initial: MyEmailPreferences }) {
+  const router = useRouter()
+  const c = COPY[locale]
+  const [prefs, setPrefs] = useState(initial)
+  const [saved, setSaved] = useState(initial)
+  const [busy, setBusy] = useState(false)
+  const dirty = prefs.rescanComplete !== saved.rescanComplete || prefs.regressionAlert !== saved.regressionAlert
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!dirty || busy) return
+    setBusy(true)
+    const result = await saveMyMailPreferences(workspaceId, {
+      ...(prefs.rescanComplete !== saved.rescanComplete ? { rescanComplete: prefs.rescanComplete } : {}),
+      ...(prefs.regressionAlert !== saved.regressionAlert ? { regressionAlert: prefs.regressionAlert } : {}),
+      locale,
+    })
+    setBusy(false)
+    if (!result.ok) { toast.error(result.error === "offline" || result.error === "network" ? c.network : c.failed); return }
+    setSaved(prefs)
+    toast.success(c.saved)
+    router.refresh()
+  }
+
+  const rows: Array<{ key: keyof MyEmailPreferences; id: string; title: string }> = [
+    { key: "rescanComplete", id: "my-rescan-alert", title: t(locale, "mail.rescanComplete") },
+    { key: "regressionAlert", id: "my-regression-alert", title: t(locale, "mail.regressionAlert") },
   ]
   return (
     <form onSubmit={(event) => void submit(event)}>
@@ -59,12 +117,12 @@ export function NotificationPreferencesForm({ locale, workspaceId, initial }: { 
         {rows.map((row) => (
           <Label key={row.id} htmlFor={row.id}>
             <Switch id={row.id} checked={prefs[row.key]} disabled={busy} onCheckedChange={(checked) => setPrefs((current) => ({ ...current, [row.key]: checked }))} />
-            <span><strong>{row.title}</strong><small>{row.note}</small></span>
+            <span><strong>{row.title}</strong></span>
           </Label>
         ))}
       </div>
       <div className="plan-actions">
-        <Button type="submit" disabled={!dirty || busy}>{busy ? <LoaderCircle className="animate-spin" /> : <Check />} {t.save}</Button>
+        <Button type="submit" disabled={!dirty || busy}>{busy ? <LoaderCircle className="animate-spin" /> : <Check />} {c.save}</Button>
       </div>
     </form>
   )
@@ -86,7 +144,7 @@ export function NotificationPreferencesForm({ locale, workspaceId, initial }: { 
  */
 export function NotificationList({ locale, workspaceId, timezone, rows }: { locale: PrototypeLocale; workspaceId: string; timezone: string; rows: NotificationRow[] }) {
   const router = useRouter()
-  const t = COPY[locale]
+  const c = COPY[locale]
   const [busy, setBusy] = useState(false)
   const unread = rows.filter((row) => !row.read_at).length
 
@@ -95,12 +153,12 @@ export function NotificationList({ locale, workspaceId, timezone, rows }: { loca
     setBusy(true)
     const result = await markNotificationsRead(workspaceId)
     setBusy(false)
-    if (!result.ok) { toast.error(result.error === "offline" || result.error === "network" ? t.network : t.markFailed); return }
-    toast.success(t.marked)
+    if (!result.ok) { toast.error(result.error === "offline" || result.error === "network" ? c.network : c.markFailed); return }
+    toast.success(c.marked)
     router.refresh()
   }
 
-  if (rows.length === 0) return <p>{t.empty}</p>
+  if (rows.length === 0) return <p>{c.empty}</p>
   return (
     <>
       <div className="compact-action-list">
@@ -113,7 +171,7 @@ export function NotificationList({ locale, workspaceId, timezone, rows }: { loca
         })}
       </div>
       <div className="plan-actions">
-        <Button type="button" variant="outline" onClick={() => void markAll()} disabled={busy || unread === 0}>{busy ? <LoaderCircle className="animate-spin" /> : <Check />} {t.markAll}</Button>
+        <Button type="button" variant="outline" onClick={() => void markAll()} disabled={busy || unread === 0}>{busy ? <LoaderCircle className="animate-spin" /> : <Check />} {c.markAll}</Button>
       </div>
     </>
   )
@@ -121,30 +179,18 @@ export function NotificationList({ locale, workspaceId, timezone, rows }: { loca
 
 const COPY = {
   en: {
-    // "One email when a scan finishes" asserted a send. No mail sender exists,
-    // so each note now names the trigger only; the card states that email
-    // delivery is not enabled yet.
-    rescan: "Rescan complete", rescanNote: "When a scan finishes",
-    regression: "Regression alert", regressionNote: "When a comparable scan regresses",
-    digest: "Monthly digest", digestNote: "A monthly summary of what changed",
     save: "Save preferences", saved: "Notification preferences saved.",
     network: "The server could not be reached; try again shortly.", failed: "The preferences could not be saved.",
     markAll: "Mark all as read", marked: "Notifications marked as read.", markFailed: "The notifications could not be marked as read.",
     empty: "No notifications yet.",
   },
   "zh-HK": {
-    rescan: "重新掃描完成", rescanNote: "每次掃描完成時",
-    regression: "退步提示", regressionNote: "可比較掃描出現退步時",
-    digest: "每月摘要", digestNote: "每月一次的成效摘要",
     save: "儲存偏好設定", saved: "通知偏好設定已儲存。",
     network: "無法連接伺服器，請稍後再試。", failed: "未能儲存偏好設定。",
     markAll: "全部標示為已讀", marked: "通知已標示為已讀。", markFailed: "未能標示通知為已讀。",
     empty: "尚未有通知。",
   },
   "zh-TW": {
-    rescan: "重新掃描完成", rescanNote: "每次掃描完成時",
-    regression: "退步提醒", regressionNote: "可比較掃描出現退步時",
-    digest: "每月摘要", digestNote: "每月一次的成效摘要",
     save: "儲存偏好設定", saved: "通知偏好設定已儲存。",
     network: "無法連線至伺服器，請稍後再試。", failed: "無法儲存偏好設定。",
     markAll: "全部標示為已讀", marked: "通知已標示為已讀。", markFailed: "無法將通知標示為已讀。",

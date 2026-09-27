@@ -81,6 +81,14 @@
     "ai": "AI drafting is paused for maintenance. Nothing was counted; try again later."
   },
   "mail": {
+    "allowTitle": "Allow these emails in this workspace",
+    "myEmailsTitle": "My emails",
+    "rescanComplete": "Rescan complete",
+    "regressionAlert": "New issues found (regression alert)",
+    "monthlyDigest": "Monthly digest · Planned",
+    "closedNote": "Email is not switched on yet. Your choices are saved and take effect once it is.",
+    "openNote": "We'll email you at {address} when these happen.",
+    "ownerOnly": "Only the workspace owner can change these.",
     "unsubscribeTitle": "Stop these emails",
     "unsubscribeConfirm": "Unsubscribe",
     "unsubscribeDone": "You're unsubscribed. You can turn these emails back on in your workspace settings.",

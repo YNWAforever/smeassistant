@@ -81,6 +81,14 @@
     "ai": "AI 草稿生成暫停維護中。沒有計算任何用量，請稍後再試。"
   },
   "mail": {
+    "allowTitle": "允許這個工作台寄送以下電子郵件",
+    "myEmailsTitle": "我的電子郵件",
+    "rescanComplete": "重新掃描完成",
+    "regressionAlert": "發現新問題（退步提醒）",
+    "monthlyDigest": "每月摘要 · 規劃中",
+    "closedNote": "電子郵件功能尚未開啟。你的選擇已儲存，開啟後生效。",
+    "openNote": "發生以下情況時，我們會寄送電子郵件至 {address}。",
+    "ownerOnly": "只有工作台擁有者可以變更。",
     "unsubscribeTitle": "停止接收這些電子郵件",
     "unsubscribeConfirm": "取消訂閱",
     "unsubscribeDone": "已取消訂閱。你可以在工作台設定中重新開啟。",

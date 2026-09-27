@@ -6,13 +6,18 @@ import {
 } from "@/lib/repositories/notifications";
 
 /**
- * Lets a workspace member toggle their workspace's notification preferences.
+ * Lets the workspace owner toggle the workspace's email-allow switches.
  *
  * Ported from upstream's /api/owner/workspaces/[workspaceId]/notification-
- * preferences. Upstream required owner/manager; here the notifications page
- * is a member page (CLAUDE.md §3.1 route map), so any accepted member may
- * PATCH -- authorizeWorkspaceRequest with no minRole. Staff sessions are
- * never accepted. The write itself is unchanged.
+ * preferences. Originally any accepted member could PATCH here (CLAUDE.md
+ * §3.1 marked notifications a member page), but the mail outbox
+ * (docs/superpowers/specs/2026-09-27-mail-outbox-design.md §6) makes these
+ * three switches an owner-only gate on what the workspace may email at all
+ * -- "Allow these emails in this workspace" -- so this is now minRole:
+ * "owner" (global-constraints.md departure 2). A member's own opt-in for
+ * mail they are allowed to receive is the separate, any-member
+ * my-mail-preferences route. Staff sessions are never accepted. The write
+ * itself is unchanged.
  */
 export async function PATCH(
   req: Request,
@@ -26,7 +31,10 @@ export async function PATCH(
     );
   }
 
-  const auth = await authorizeWorkspaceRequest({ id: workspaceId });
+  const auth = await authorizeWorkspaceRequest(
+    { id: workspaceId },
+    { minRole: "owner" },
+  );
   if (!auth.ok)
     return NextResponse.json({ error: auth.code }, { status: auth.status });
 

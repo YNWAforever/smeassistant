@@ -130,27 +130,6 @@ const PROMISES: readonly Promised[] = [
     ],
   },
   {
-    // No mail library is even installed, and `notification_events` -- the
-    // per-job email log -- has no writer. The three notify_* switches persist a
-    // preference and nothing else.
-    capability: "an outbound notification email sender",
-    implemented: () => {
-      const manifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")) as { dependencies?: Record<string, string> };
-      const installed = Object.keys(manifest.dependencies ?? {}).some((name) => /^(resend|nodemailer|postmark|@aws-sdk\/client-ses)$/.test(name));
-      return installed || backendMatches(/from "resend"|require\("resend"\)|nodemailer|postmark/);
-    },
-    banned: [
-      "emails are sent only for the events you choose",
-      "one email when a scan finishes",
-      "you will be emailed",
-      "reply to the report email",
-      "電郵只在你選擇的事件發生時寄出",
-      "每次掃描完成後一封電郵",
-      "你會收到電郵",
-      "回覆你收到的報告電郵",
-    ],
-  },
-  {
     // Fix Pack drafts are `agent_runs` rows. This app reads them and PATCHes
     // their status, but never creates one -- CLAUDE.md section 3.7: "do not
     // write to `agent_runs` from this app's agents (v1)". The upstream
@@ -254,6 +233,20 @@ const KEPT: ReadonlyArray<{ promise: string; requires: string; exists: () => boo
     exists: () =>
       existsSync(join(repoRoot, "app", "api", "workspaces", "[workspaceId]", "google-connection", "route.ts")) &&
       /disconnectGoogleConnection/.test(readFileSync(join(repoRoot, "lib", "repositories", "claims.ts"), "utf8")),
+  },
+  {
+    // Replaces the removed "an outbound notification email sender" PROMISES
+    // entry above: the mail outbox (docs/superpowers/specs/2026-09-27-mail-
+    // outbox-design.md) makes that promise real, so the "We'll email you at
+    // {address}" copy on the Notifications page (mail.openNote) is only
+    // honest gated on whether mail is actually open -- never shown
+    // unconditionally, or this reverts to the same lie the removed entry
+    // banned.
+    promise: "outbound mail is a real sender, and \"we'll email you\" copy only renders while mail is open",
+    requires: "lib/mail/deliver.ts calls createMailTransport, and components/workspace/notifications-view.tsx renders mail.openNote only under mailOpen",
+    exists: () =>
+      /createMailTransport/.test(readFileSync(join(repoRoot, "lib", "mail", "deliver.ts"), "utf8")) &&
+      /mailOpen[\s\S]{0,200}mail\.openNote/.test(readFileSync(join(repoRoot, "components", "workspace", "notifications-view.tsx"), "utf8")),
   },
 ];
 
