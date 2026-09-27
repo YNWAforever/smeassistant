@@ -57,7 +57,9 @@ export async function enqueueScanMail(
         user_id: userId,
         job_id: input.jobId,
         kind,
-        to_address: facts.address,
+        // A held row never sends, so it keeps no copy of the address; the
+        // tick re-reads the current address at send time for queued rows.
+        to_address: decision.state === "queued" ? facts.address : null,
         locale: locale ?? localeFallback,
         state: decision.state,
         hold_reason: decision.state === "held" ? decision.reason : null,

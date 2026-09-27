@@ -51,20 +51,20 @@ describe("enqueueScanMail", () => {
     expect(inserted).toHaveLength(0);
   });
 
-  it("holds every member mail_unapproved when mail is closed, regardless of their own facts", async () => {
+  it("holds every member mail_unapproved (storing no address) when mail is closed, regardless of their own facts", async () => {
     const { repo, inserted } = fakeRepo({
       rescan_complete: [{ userId: "u1", facts: GOOD_FACTS, locale: "en" }],
     });
     await enqueueScanMail(repo, BASE_INPUT, CLOSED_ENV);
     expect(inserted).toHaveLength(1);
-    expect(inserted[0]).toMatchObject({ state: "held", hold_reason: "mail_unapproved" });
+    expect(inserted[0]).toMatchObject({ state: "held", hold_reason: "mail_unapproved", to_address: null });
   });
 
   it("holds kind_disabled when mail is open but the workspace kind toggle is off", async () => {
     const facts: RecipientFacts = { ...GOOD_FACTS, kindAllowed: false };
     const { repo, inserted } = fakeRepo({ rescan_complete: [{ userId: "u1", facts, locale: "en" }] });
     await enqueueScanMail(repo, BASE_INPUT, OPEN_ENV);
-    expect(inserted[0]).toMatchObject({ state: "held", hold_reason: "kind_disabled" });
+    expect(inserted[0]).toMatchObject({ state: "held", hold_reason: "kind_disabled", to_address: null });
   });
 
   it("holds no_address and writes to_address null when the member has no address on file", async () => {
@@ -72,6 +72,19 @@ describe("enqueueScanMail", () => {
     const { repo, inserted } = fakeRepo({ rescan_complete: [{ userId: "u1", facts, locale: "en" }] });
     await enqueueScanMail(repo, BASE_INPUT, OPEN_ENV);
     expect(inserted[0]).toMatchObject({ state: "held", hold_reason: "no_address", to_address: null });
+  });
+
+  it("stores no address on a held row that had one -- only a queued row carries to_address", async () => {
+    const optedOut: RecipientFacts = { ...GOOD_FACTS, optedIn: false };
+    const { repo, inserted } = fakeRepo({
+      rescan_complete: [
+        { userId: "u1", facts: GOOD_FACTS, locale: "en" },
+        { userId: "u2", facts: optedOut, locale: "en" },
+      ],
+    });
+    await enqueueScanMail(repo, BASE_INPUT, OPEN_ENV);
+    expect(inserted.find((r) => r.user_id === "u1")).toMatchObject({ state: "queued", to_address: "member@example.test" });
+    expect(inserted.find((r) => r.user_id === "u2")).toMatchObject({ state: "held", hold_reason: "opted_out", to_address: null });
   });
 
   it("queues an allowlisted address and holds not_allowlisted for one excluded", async () => {
@@ -85,7 +98,7 @@ describe("enqueueScanMail", () => {
     });
     await enqueueScanMail(repo, BASE_INPUT, { ...OPEN_ENV, MAIL_RECIPIENT_ALLOWLIST: "allowed@example.test" });
     expect(inserted.find((r) => r.user_id === "u1")).toMatchObject({ state: "queued", to_address: "allowed@example.test" });
-    expect(inserted.find((r) => r.user_id === "u2")).toMatchObject({ state: "held", hold_reason: "not_allowlisted" });
+    expect(inserted.find((r) => r.user_id === "u2")).toMatchObject({ state: "held", hold_reason: "not_allowlisted", to_address: null });
   });
 
   it("falls back to the market default locale when the member has none set", async () => {

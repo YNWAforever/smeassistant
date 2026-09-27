@@ -503,6 +503,36 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
     },
   );
 
+  it("enqueueScanMail stores the address only on queued rows; a held row's to_address is null", async () => {
+    const ws = await workspace({ notifyRescanComplete: true, notifyRegressionAlert: true });
+    const j = await job(ws);
+    const on = await user("member-on@example.test");
+    const off = await user("member-off@example.test");
+    await member(ws, on, { mailRescanComplete: true, email: "member-on@example.test" });
+    await member(ws, off, { mailRescanComplete: false, email: "member-off@example.test" });
+
+    const input = {
+      workspaceId: ws,
+      jobId: j,
+      status: "done",
+      businessName: "Fixture",
+      market: "hk" as const,
+      workspacePath: "/owner/fixture",
+      // A comparable diff with nothing regressed: rescan_complete only.
+      diff: { comparable: true, regressed_findings: [] },
+    };
+    expect(await enqueueScanMail(repo(), input, OPEN_MAIL_ENV)).toBe(2);
+
+    const rows = (
+      await runtime.query<{ user_id: string; state: string; hold_reason: string | null; to_address: string | null }>(
+        "SELECT user_id,state,hold_reason,to_address FROM mail_outbox WHERE job_id=$1",
+        [j],
+      )
+    ).rows;
+    expect(rows.find((r) => r.user_id === on)).toMatchObject({ state: "queued", to_address: "member-on@example.test" });
+    expect(rows.find((r) => r.user_id === off)).toMatchObject({ state: "held", hold_reason: "opted_out", to_address: null });
+  });
+
   it(
     "deliverMail itself re-checks and holds opted_out when the member's switch is flipped off after enqueue, leaving the row queued (Task 6, Review Focus 1)",
     async () => {
