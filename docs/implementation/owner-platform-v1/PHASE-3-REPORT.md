@@ -1003,3 +1003,112 @@ Full detail is in `PHASE-3-TEST-RESULTS.md`. Summary, one gate at a time, run on
 - **(d)** `components/public-pages.tsx`: the Growth card's `!billing.open` condition replaced with `false`. **Killed**: `pricing-page.test.tsx` 6/16 failed — the closed-state cases now find the Subscribe CTA present, and the "not open" label/contact-link assertions fail because that branch never renders.
 
 After the unit-test run, the two tracked snapshot files (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) showed as modified; `git diff --ignore-cr-at-eol --stat` was empty, confirming line-ending-only changes, and both were restored with `git checkout --`. `git status --short` was otherwise clean before this documentation commit.
+
+## P3.5c — application-email outbox
+
+**Branch** `p35c-mail-outbox`, 16 commits (`3ad42c7`..`aab7aa4`) on top of `0190030` (P3.3's tip; stacked on `claude/commercial-contract-design-3b8561`, PR #25, not yet merged), plus this Task 10 documentation commit (17th). Worktree `C:\Users\laich\Documents\smeassistant\.claude\worktrees\commercial-contract-design-3b8561`. Node `v24.18.0`, pnpm `9.12.0` via corepack, Windows 11 Pro 10.0.26200, Docker Server `29.7.2`. Gates run 2026-09-27.
+
+Built from `docs/superpowers/plans/2026-09-27-mail-outbox.md` (Tasks 1–10), against the design in [`docs/superpowers/specs/2026-09-27-mail-outbox-design.md`](../../superpowers/specs/2026-09-27-mail-outbox-design.md).
+
+**Implemented and locally verified. Nothing here is hosted-verified.** No migration applied to any hosted database, no deployment, no remote CRON, no real mail sent (every test injects a fake transport; nothing calls Resend), no push.
+
+### What this closes
+
+Master Plan §6 P3.5: "Application-email outbox/reconciliation where needed for reliable recurring notifications. Do not send weekly reminders unless recipients/channel and opt-out behavior are configured and authorized." DEC-05 (authorized recipients, delivery-testing budget) and DEC-07 (application-email channel) stay open, so their safe defaults apply here: a `MAIL_RECIPIENT_ALLOWLIST` test-recipient gate (DEC-05), no real mail sent by any test, no inbox-delivery promise (`sent` means accepted by the provider), and in-app `workspace_notifications` remain the authoritative status — mail is additive, never the record of truth.
+
+Before this slice: `workspaces.notify_rescan_complete`/`notify_regression_alert`/`notify_monthly_digest` were saved by any member and did nothing (the Notifications page said so honestly); `lib/mail/transport.ts` + `lib/mail/resend-driver.ts` were a dormant Resend driver with no caller; there was no outbox, no per-member opt-out, no stored member locale, and no signed unsubscribe path.
+
+### Decisions (user, 2026-09-27)
+
+| Question | Decision |
+|---|---|
+| Which mail | Event mail only: rescan-complete and regression-alert. No monthly digest or other recurring reminder (waits on DEC-05/07). |
+| Opt-out | Per member, opt-in (default off), with a signed one-click unsubscribe link. Workspace switches become owner-only "allow this kind" gates. |
+| While mail is closed | Record rows as `held` with a terminal reason; held rows are never sent later. |
+| Approach | Transactional outbox written in the completion transaction, delivered by a new step of the existing cron tick. |
+
+**Where this plan departs from the spec** (decided while writing the plan, before any code):
+
+1. **`mail_outbox.payload jsonb not null`** (`{ businessName, regressedCount, workspacePath }`) is added — the spec's table has nothing the template can render at send time; recomputing from the job and diff later could drift.
+2. **The existing `notification-preferences` PATCH becomes owner-only** (`minRole: "owner"`), since the spec makes the workspace switches owner gates. Its pre-existing manager/viewer PATCH tests now expect `403`.
+3. **Unsubscribe rate limiting uses `failClosed: false`**: a limiter outage must not stop someone leaving a mailing; the HMAC token already prevents guessing.
+4. **`MailMessage` gains `headers?: Record<string, string>`**; the Resend driver passes `dedupeKey` as the `Idempotency-Key` HTTP header and `headers` in the JSON body.
+
+Three further decisions were made while implementing, all recorded in the SDD ledger (`.superpowers/sdd/2026-09-27-mail-outbox/progress.md`) and folded into the task that found them rather than left open:
+
+5. **`optOut` is one data-modifying CTE**, not two statements wrapped in `BEGIN`/`COMMIT` — atomic on whatever executor it runs on (bare `Pool`, a checked-out `PoolClient`, or one already inside a caller's transaction) with no branching on which one it is (Task 4).
+6. **Integration tests read `now` from the database clock** (`dbNow()`), after a host-vs-container clock skew made `claimDue` concurrency/reclaim tests nondeterministic against a JS `new Date()` (Task 4). The production interface still takes `now: Date` from the caller; in production the skew only delays a send by one tick.
+7. **The unsubscribe token's expiry is derived from the row's `created_at`**, not the send time, so the whole `MailMessage` (and therefore the provider `Idempotency-Key`) stays byte-identical across every attempt at one row; `APP_ORIGIN` is normalised with `new URL(...).origin` so a trailing slash never doubles a slash in a mailed URL; one row's exception is isolated so it never aborts the rest of the delivery batch; the Resend driver returns `provider_http_<status>` instead of provider response text (Task 6).
+
+### What changed, by task
+
+Full diff `0190030..aab7aa4`: **64 files changed, 5,044 insertions, 154 deletions**, across 16 commits.
+
+| Task | Commit(s) | What it did |
+|---|---|---|
+| Design and plan | `3ad42c7`, `81cbdc3` | The design; the plan, written against the code. |
+| 1. Migration 0010 and every schema baseline | `b9365d0` | `neon/migrations/0010_mail_outbox.sql` (table `mail_outbox`, 19 columns, 2 indexes; `workspace_members` +3 columns), matching Drizzle schema, regenerated `lib/db/database.types.ts`, extended catalog fixture and `neon-schema.integration.test.ts` baseline. |
+| 2. Mail availability, allowlist and the mail pause switch | `dba1c9c` | `lib/mail/availability.ts` (`mailAvailability`, `MAIL_TEMPLATES_VERSION`, `parseRecipientAllowlist`); `MAIL_PAUSED` joins `PAUSE_VARIABLES`/`PauseConfig`/`PauseEntry` in `lib/budgets/pause.ts`; `.env.example` documents the new variables. |
+| 3. Decisions, unsubscribe tokens and templates | `2b08b51` | `lib/mail/decide.ts` (`mailKindsForScan`, `decideRecipient`, retry constants), `lib/mail/unsubscribe-token.ts` (sign/verify, HMAC-SHA256, 90-day expiry), `lib/mail/templates.ts` (`renderScanMail`, trilingual copy, HTML-escaped). |
+| 4. The outbox repository | `d5bce85`, fixed by `7cec125`, `f59a5a7` | `lib/repositories/mail-outbox.ts` (`recipients`, `insert`, `claimDue` with `FOR UPDATE SKIP LOCKED`, `sendFacts`, `finish` guarded by `id+lease_token+state`, `optOut`, `setMemberSwitches`/`memberSwitches`, `operatorCounts`/`deadRows`); `test/integration/neon-mail-outbox.integration.test.ts`. The fix commits replaced JS-clock-derived expectations with `dbNow()` after a host/container clock skew made claim tests nondeterministic. |
+| 5. Enqueue inside the completion transaction | `c8832bc` | `lib/mail/enqueue.ts::enqueueScanMail`; wired into `lib/workspace/post-process.ts` after the in-app `scan.completed` notification, on the same transaction, using the diff already loaded. |
+| 6. Delivery, driver headers and the cron step | `ae71e56`, fixed by `8ffc1f9` | `lib/mail/deliver.ts::deliverMail` (send-time re-check, lease-guarded finish, backoff/dead/expiry); `MailMessage.headers`, `Idempotency-Key` + `List-Unsubscribe`/`List-Unsubscribe-Post` in `lib/mail/transport.ts`/`resend-driver.ts`; a sixth independent cron step in `app/api/cron/dispatch/route.ts`. The fix commit made the message byte-stable per row, normalised `APP_ORIGIN`, and isolated per-row exceptions. |
+| 7. Unsubscribe page and route | `3547f77` | `app/[locale]/unsubscribe/page.tsx` (server-verifies only, never mutates), `components/mail/unsubscribe-client.tsx` (the only thing that POSTs), `app/api/mail/unsubscribe/route.ts` (one-click + JSON body, `failClosed: false` rate limit), `mail.unsubscribe*` messages, `RATE_LIMITS.mail_unsubscribe`. |
+| 8. Settings — owner gates, member switches, honest copy | `da29a3a`, fixed by `1a1dd04` | `PATCH /api/workspaces/[id]/my-mail-preferences` (any accepted member, own switches only); `notification-preferences` PATCH becomes owner-only; `notifications-view.tsx` gets an owner "Allow these emails" card and a member "My emails" card; `mail.*` copy in all three locales. The fix commit resolved a controller-confirmed gap: the settings note's address now comes from `app_users.email` (the same source mail is actually sent to), not `workspace_members.email` (the invite address, which can differ). |
+| 9. Operator visibility and the runbook | `28e00cf`, fixed by `aab7aa4` | `FAILURE_KINDS` gains `mail_dead`; `mailReference`; ops failures page and health strip show mail counts and hold reasons, never an address; `INCIDENT-RUNBOOK.md` §9 ("Email paused or failing") and three new named blocks in `rollout/incident-queries.sql` (`mail_outbox_by_state`, `mail_outbox_dead`, `mail_outbox_hold_reasons`). The fix commit moved operator mail counts onto a new `mailOutboxRepository().operatorCounts()` (removing a duplicate inline re-derivation in `lib/repositories/failures.ts`) and fixed one integration assertion the new `mail_dead` kind had made stale. |
+| 10. Gates, mutation checks and the phase record | *(this commit)* | Full gate run, 5 mutation checks (all killed), this section and the matching `PHASE-3-TEST-RESULTS.md` section. |
+
+### Owner actions
+
+**A migration must be applied before this can be deployed.** `neon/migrations/0010_mail_outbox.sql` needs the same rehearsed hand-apply procedure used for `0009_scan_attempts.sql` — see the Neon migration operating contract at the top of this repo's `CLAUDE.md`.
+
+- **To open mail:** set `APPLICATION_MAIL_APPROVED=2026-09-event-mail-v1` (must equal `MAIL_TEMPLATES_VERSION` exactly, after trimming), `RESEND_API_KEY`, `REPORT_EMAIL_FROM`, `APP_ORIGIN`, and a `MAIL_UNSUBSCRIBE_SECRET` of at least 32 bytes; optionally `MAIL_RECIPIENT_ALLOWLIST` (comma-separated test recipients, DEC-05); then redeploy — an environment variable change takes effect on the next deployment, not the running one.
+- **`MAIL_PAUSED=true` stops sending without losing queued rows.** The cron tick's delivery step simply skips claiming; rows already `queued`/`retry` stay that way (a row created before the pause still expires 24 hours after its own `created_at`, whether or not the pause is on — pausing does not extend that window).
+- **This branch is stacked on `claude/commercial-contract-design-3b8561` (PR #25) and must merge after it.** It was built and gated on top of that branch's tip (`0190030`), not on `origin/main`; merging this branch requires PR #25 to land first.
+- **Held rows are terminal.** Switching mail on does not retroactively send anything that was held while it was closed — a held row from before approval, before configuration, or from a member who was opted out at the time stays held.
+
+### Known limits (spec §10, plus this session's findings)
+
+- No monthly digest or any other recurring reminder — waits for DEC-05/07.
+- No real mail sent or inbox delivery verified anywhere in this branch; `sent` means "accepted by the provider", never "delivered" (enforced by convention, not by a lint rule).
+- No bounce/complaint webhook; a hard bounce is never fed back into a member's opt-out state.
+- Opening mail needs the approval variable, a full provider configuration, a 32-byte secret and a redeploy — see "Owner actions".
+- Held rows are terminal (see "Owner actions").
+- `mailAvailability` only checks that `APP_ORIGIN` is non-blank, not that it parses as `http(s)` — a scheme-less or malformed value would make every send-time attempt fail as `deliver_exception` (still safe: it retries and eventually goes `dead`, never silently mis-sends) rather than holding cleanly as a configuration error.
+- A crashed send's address can change between an accepted-but-timed-out provider attempt and its retry (the address is re-read from `app_users.email` each attempt) — a narrow window that could in principle cause a provider-side `409` on retry rather than a clean replay; not observed in testing.
+- Delivery has no explicit time budget inside one cron invocation; ten claimed rows each retrying against a slow provider could in principle approach the route's own `maxDuration`. Not seen in testing (every test injects a fake transport).
+
+**Known, not changed** (deferred minor findings from this session's own task-by-task reviews, not acted on in this slice — see `.superpowers/sdd/2026-09-27-mail-outbox/progress.md` for the full ledger):
+
+- No test for a differently-sized/tampered token signature beyond the cases already covered, and no single-quote-escaping test for the template renderer (Task 3); the code itself guards both.
+- `claimDue` and `finish` mix an app-supplied `now: Date` with the database's own `now()` elsewhere in the repository; `ClaimedRow.state` is typed as `string` rather than the state union; `setMemberSwitches` returns `void`; `claimDue` does not validate `limit` (Task 4).
+- A doc comment in `lib/workspace/post-process.ts` (around the `enqueueScanMail` call) slightly misstates what `mailKindsForScan` is called with (Task 5).
+- Lease-lost handling (`logLeaseLost`) is duplicated across every outcome branch in `deliverOne`/`recoverFromException` rather than shared once; only the `sent` branch's lease-loss path has a dedicated test (Task 6).
+- The 32-byte secret-length floor is duplicated between `lib/mail/unsubscribe-token.ts` and `lib/mail/availability.ts`; there is no test proving a query-string token wins over a differing JSON-body token in the unsubscribe route, only that each alone works (Task 7).
+- `CapabilityBadge` was dropped from the settings view in favour of folding "Planned" into the monthly-digest copy directly; the `my-mail-preferences` route's `503` path (secret unset) is untested; the task brief's file list named one settings-page file this task did not need to touch (Task 8).
+- `mailOutboxRepository().deadRows()` selects and returns `created_at` but orders by `updated_at` (Task 9).
+
+### Verification
+
+Full detail is in `PHASE-3-TEST-RESULTS.md`. Summary, one gate at a time, run on 2026-09-27 at `aab7aa4`:
+
+| Command | Result |
+|---|---|
+| `corepack pnpm typecheck` | **passed**: exit 0. Root `tsc --noEmit`, then all 4 workspace packages report `Done`. |
+| `corepack pnpm lint` | **passed**: exit 0, `✖ 30 problems (0 errors, 30 warnings)` across 18 files — identical count and files to the P3.3 record; no file this branch touches carries a warning. |
+| `corepack pnpm test` | **passed** once 5 load-induced timeouts (all in files this branch does not touch) are counted from their isolated re-runs — see "Unit-test delta" below. |
+| `NEON_INTEGRATION=1 corepack pnpm test:integration` | **passed** once 3 load-induced failures (all in files this branch does not touch) are counted from their isolated re-runs — see "Integration suite detail" below. |
+| `corepack pnpm db:verify` | **passed**: exit 0, 0001–0010 applied, replay empty, 37 tables / 444 columns / 172 constraints / 95 indexes / 8 triggers / 14 functions — matches Task 1's committed arithmetic (36+1 tables, 422+19+3 columns, 162+9+1 constraints, 92+3 indexes). |
+| `corepack pnpm db:types` | **passed**: regenerated `lib/db/database.types.ts` is byte-identical to the committed file (`git status --short` empty afterward). |
+| `corepack pnpm build` (Turbopack) | **blocked**, as at every prior phase on this machine: the standing `radix-ui` cascade (`@radix-ui/react-visually-hidden`, `@radix-ui/react-tooltip`), traced through `components/ui/alert-dialog.tsx` → `components/workspace/rescan-button.tsx` → `components/workspace/{problem-item,problems-list}.tsx` → `app/[locale]/owner/[workspaceSlug]/activity/page.tsx`. No file this branch touches appears in the import trace. |
+| `npx next build --webpack` (labelled diagnostic, **not** the gate) | **passed**: exit 0, `✓ Compiled successfully in 47s`, full route manifest including every P3.5c-touched route (`/[locale]/unsubscribe`, `/api/mail/unsubscribe`, `/api/workspaces/[workspaceId]/my-mail-preferences`, `/api/workspaces/[workspaceId]/notification-preferences`) alongside the rest of the existing manifest. |
+
+**Mutation checks.** All 5 performed at `aab7aa4` (each mutation applied by an exact pattern required to match exactly once, tested, then restored and confirmed byte-identical with `git diff --quiet`):
+
+- **(a)** `lib/mail/availability.ts`: both approval guards (`if (!approved)` and `if (approved !== MAIL_TEMPLATES_VERSION)`) replaced with `if (false)`, so availability reads past the approval check regardless of the env value. **Killed**: `lib/mail/availability.test.ts` 4/16 failed (the empty-env, both `it.each` blank/whitespace-approval cases, and the mismatch-warning case — each now reports `provider_unconfigured` instead of `mail_unapproved`, or the expected warning never fires).
+- **(b)** `lib/mail/deliver.ts`: the `const facts = await repo.sendFacts(row)` re-check replaced with a hard-coded always-eligible `RecipientFacts` built from the claimed row alone. **Killed**: `lib/mail/deliver.test.ts` 8/21 failed, including both Review Focus 1 cases named in the plan ("holds a row whose member unsubscribed since enqueue" and "... was removed since enqueue" now send instead of holding).
+- **(c)** `app/[locale]/unsubscribe/page.tsx`: added a call to `mailOutboxRepository().optOut(...)` when the token verifies, violating the page's "never mutates on GET" contract. **Killed**: `app/[locale]/unsubscribe/page.test.tsx` 1/5 failed — "renders the confirm button for a valid token and never touches the outbox repository" now sees the mock called once.
+- **(d)** `lib/repositories/mail-outbox.ts::claimDue`: `FOR UPDATE SKIP LOCKED` replaced with `FOR UPDATE`. **Killed**: `test/integration/neon-mail-outbox.integration.test.ts` 1/19 failed — the dedicated "SKIP LOCKED lets a concurrent claimer skip a row held by an open transaction instead of blocking on it" case now hits a lock-timeout error instead of skipping the locked row.
+- **(e)** `lib/repositories/mail-outbox.ts::finish`: the `AND lease_token = $2` guard clause dropped. **Killed**: `test/integration/neon-mail-outbox.integration.test.ts` 3/19 failed, including the targeted "reclaims an expired sending lease with a fresh token; finishing with the stale token changes nothing" case (plus two `deliverMail` re-check cases that share the same `finish` call and now surface a Postgres "could not determine data type of parameter" error instead of a clean guarded update).
+
+After the mutation checks and the unit-test gate run, the two tracked snapshot files (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) showed as modified at one point; `git diff --ignore-cr-at-eol --stat` was empty, confirming line-ending-only changes, and both were restored with `git checkout --`. `git status --short` was clean before this documentation commit.
