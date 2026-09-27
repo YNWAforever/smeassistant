@@ -1226,7 +1226,23 @@ Every mutation was applied by an exact pattern required to match exactly once in
 
 ### Known limits
 
-See the P3.5c section of `PHASE-3-REPORT.md` for the full list (spec §10, plus this session's findings, plus the "Known, not changed" deferred-minors list carried from the SDD ledger).
+See the P3.5c section of `PHASE-3-REPORT.md` for the full list (spec §10, plus this session's findings).
+
+**Known, not changed** (deferred minor findings from this session's own task-by-task reviews, not acted on in this slice — see `.superpowers/sdd/2026-09-27-mail-outbox/progress.md` for the full ledger; same list as the P3.5c section of `PHASE-3-REPORT.md`):
+
+- The `db:types` regeneration also picked up pre-existing `action_applications`/`scan_attempts` types that the generated file had been missing (stale before this branch); Task 1's own report understated this as part of its diff (Task 1).
+- The provider-env blank-value tests use `"  "` (whitespace) only, never `""` (empty string); there is no test at a multi-byte character boundary for the 32-byte secret-length check (Task 2).
+- No test for a differently-sized/tampered token signature beyond the cases already covered, and no single-quote-escaping test for the template renderer (Task 3); the code itself guards both.
+- `claimDue` and `finish` mix an app-supplied `now: Date` with the database's own `now()` elsewhere in the repository; `ClaimedRow.state` is typed as `string` rather than the state union; `OutboxInsert.payload` is typed `Record<string, unknown>` rather than the payload shape; `finish`'s own query result is untyped; `setMemberSwitches` returns `void`; `claimDue` does not validate `limit` (Task 4).
+- No test covers an accepted member with a null `user_id` reaching `recipients`; the stale-token `finish` test doesn't assert that `sent_at`/`provider_message_id` stay null on the untouched row; there is no test of `finish` called against an already-terminal (not `sending`) row (Task 4).
+- The lease-reclaim test still compares a JS `new Date()` against `lease_until = now() - 1 minute`, rather than reading the database clock like the claim tests do after the Task 4 fix rounds — benign only because more than a minute of host/container skew would be needed to flip it (Task 4).
+- A doc comment in `lib/workspace/post-process.ts` (around the `enqueueScanMail` call) slightly misstates what `mailKindsForScan` is called with (Task 5).
+- Lease-lost handling (`logLeaseLost`) is duplicated across every outcome branch in `deliverOne`/`recoverFromException` rather than shared once; only the `sent` branch's lease-loss path has a dedicated test (Task 6).
+- `mailAvailability` only checks that `APP_ORIGIN` is non-blank, not that it parses as `http(s)` — a scheme-less or malformed value would make every send-time attempt fail as `deliver_exception` (still safe: it retries and eventually goes `dead`, never silently mis-sends) rather than holding cleanly as a configuration error (Task 6).
+- A crashed send's address can change between an accepted-but-timed-out provider attempt and its retry (the address is re-read from `app_users.email` each attempt) — a narrow window that could in principle cause a provider-side `409` on retry rather than a clean replay; not observed in testing (Task 6).
+- The 32-byte secret-length floor is duplicated between `lib/mail/unsubscribe-token.ts` and `lib/mail/availability.ts`; there is no test proving a query-string token wins over a differing JSON-body token in the unsubscribe route, only that each alone works (Task 7).
+- `CapabilityBadge` was dropped from the settings view in favour of folding "Planned" into the monthly-digest copy directly; the `my-mail-preferences` route's `503` path (secret unset) is untested; the task brief's file list named one settings-page file this task did not need to touch (Task 8).
+- `mailOutboxRepository().deadRows()` selects and returns `created_at` but orders by `updated_at` (Task 9).
 
 ### Not run
 
