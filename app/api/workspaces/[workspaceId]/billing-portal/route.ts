@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getStripeClient, stripeConfigured } from "@/lib/stripe";
 import { loadWorkspaceBillingContext } from "@/lib/owner/billing-authorization";
+import { billingAvailability } from "@/lib/commercial/availability";
 
 const WORKSPACE_ID_RE = /^[0-9a-f-]{36}$/i;
 const LOCALES = new Set(["en", "zh-HK", "zh-TW"]);
@@ -37,6 +38,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ workspa
   if (!access.ok) return NextResponse.json({ error: access.code }, { status: access.status });
   if (!workspace) {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+  }
+  if (!billingAvailability().open) {
+    return NextResponse.json({ error: "billing_unavailable" }, { status: 503 });
   }
 
   if (!stripeConfigured()) {

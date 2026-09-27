@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { PricingPage } from "@/components/public-pages";
+import { publicBilling } from "@/lib/commercial/presentation";
 import { normaliseLocale } from "@/lib/copy";
 
 import { publicPageMetadata } from "../_meta";
@@ -23,5 +24,5 @@ export default async function Pricing({
 }) {
   const locale = normaliseLocale((await params).locale);
   const query = await searchParams;
-  return <PricingPage locale={locale} market={resolveMarketParam(query.market, locale)} />;
+  return <PricingPage locale={locale} market={resolveMarketParam(query.market, locale)} billing={publicBilling()} />;
 }

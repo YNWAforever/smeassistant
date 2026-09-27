@@ -29,4 +29,21 @@ describe("budget refusal copy", () => {
     expect(aiBudgetRefusal("en", 429, "rate_limited")).toBeNull();
     expect(aiBudgetRefusal("en", 503, "ai_budget_reached")).toBeNull();
   });
+
+  it("maps the paused kill switches (P3.5d) ahead of the capacity/limit refusals", () => {
+    // Nothing was created when a start/search request is refused here, so the
+    // copy says "not started", not "your scan is saved" (that is only true of
+    // the scanning page's own Resume path, which never goes through this helper).
+    expect(scanStartRefusal("en", 503, "paused")).toBe(getMessages("en").pause.scansNotStarted);
+    expect(aiBudgetRefusal("zh-HK", 503, "ai_paused")).toBe(getMessages("zh-HK").pause.ai);
+  });
+
+  it.each(LOCALES)("maps the pause refusals to their own %s string", (locale) => {
+    expect(scanStartRefusal(locale, 503, "paused")).toBe(getMessages(locale).pause.scansNotStarted);
+    expect(aiBudgetRefusal(locale, 503, "ai_paused")).toBe(getMessages(locale).pause.ai);
+  });
+
+  it("still returns null for an unrecognised 503 error", () => {
+    expect(scanStartRefusal("en", 503, "other")).toBeNull();
+  });
 });

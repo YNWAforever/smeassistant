@@ -14,6 +14,7 @@ import { persistEvidenceSnapshots } from "@/lib/evidence/persist";
 import { getPool } from "@/lib/db/client";
 import { createScanExecutionStore, buildTrendDiffDeps, buildAeoSnapshotDeps } from "./execution-store";
 import { createFixtureCollector, isScanFixtureName, type ScanFixtureName } from "./fixtures";
+import type { ScanBudgetScope } from "@/lib/budgets/scan";
 
 export {
   dispatchToScanWorker,
@@ -59,8 +60,8 @@ export function resolveScanCollector(env: NodeJS.ProcessEnv = process.env): Scan
     : collectScanProviders;
 }
 
-/** processScan's outcomes, plus a claim refused on the spend budget (P3.5a). */
-export type RunScanResult = ScanProcessResult | { status: "at_capacity" };
+/** processScan's outcomes, plus a claim refused on the spend budget (P3.5a) or the incident pause (P3.5d). */
+export type RunScanResult = ScanProcessResult | { status: "at_capacity" } | { status: "paused" };
 
 /** Execute with application-owned SQL and explicit media persistence. */
 export async function runScan(
@@ -68,16 +69,16 @@ export async function runScan(
   anonymousSessionId: string,
 ): Promise<RunScanResult> {
   // The engine reports any unclaimed job as already_claimed. The store tells
-  // us, here, when the reason was the budget.
-  let refusedOnBudget = false;
+  // us, here, when the reason was the budget (or the incident pause).
+  let refusal: ScanBudgetScope | null = null;
   const result = await processScan(jobId, {
     // The durable scan_completed row is written inside the store's own
     // transaction; only the later PostHog tail needs this Vercel request's
     // lifetime, via waitUntil.
     store: createScanExecutionStore(anonymousSessionId, {
       waitUntil,
-      onBudgetRefused: () => {
-        refusedOnBudget = true;
+      onBudgetRefused: (scope) => {
+        refusal = scope;
       },
     }),
     collect: resolveScanCollector(),
@@ -86,7 +87,9 @@ export async function runScan(
     persistAeoSnapshots: (id) =>
       persistAeoSnapshots(id, buildAeoSnapshotDeps(getPool())),
   });
-  if (result.status === "already_claimed" && refusedOnBudget) return { status: "at_capacity" };
+  if (result.status === "already_claimed" && refusal !== null) {
+    return { status: refusal === "scan_paused" ? "paused" : "at_capacity" };
+  }
   if (result.status !== "already_claimed") {
     try {
       // Collected here, before the completion claim, and handed in: the

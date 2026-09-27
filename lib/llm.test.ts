@@ -139,4 +139,15 @@ describe("llm config resolution", () => {
       }),
     );
   });
+
+  it("returns null without any network call while AI is paused", async () => {
+    vi.stubEnv("AI_DRAFTS_PAUSED", "true");
+    vi.stubEnv("OPENCODE_API_KEY", "test-key");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { llmComplete } = await loadLLM();
+    expect(await llmComplete("prompt")).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

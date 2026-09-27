@@ -179,6 +179,7 @@ describe("enqueueRescan", () => {
   it.each([
     ["scan_global", "at_capacity"],
     ["scan_workspace", "workspace_scan_budget_reached"],
+    ["scan_paused", "paused"],
   ] as const)("reports a %s budget refusal as %s, with no audit event and no failure log", async (scope, reason) => {
     state.jobInsertError = new ScanBudgetRefusal(scope);
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});

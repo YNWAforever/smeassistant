@@ -144,4 +144,16 @@ describe("POST /api/business/search", () => {
     const response = await route.POST(request({ query: "Cafe", market: "HK", sessionId: SESSION_ID }));
     expect(mocks.setAnalyticsSessionCookie).toHaveBeenCalledWith(response, expect.objectContaining({ created: true }));
   });
+
+  it("answers 503 paused before the limiter or any SerpApi spend, while scans are paused (P3.5d)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubEnv("SCANS_PAUSED", "true");
+    const response = await route.POST(request({ query: "Cafe", market: "HK", sessionId: SESSION_ID }));
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "paused" });
+    expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+    expect(mocks.searchMerchants).not.toHaveBeenCalled();
+    vi.unstubAllEnvs();
+    warn.mockRestore();
+  });
 });

@@ -137,3 +137,39 @@ describe("CreateView and the AI drafting limit", () => {
     expect(toastMocks.error).toHaveBeenCalledWith(getMessages(locale).budget.aiLimit);
   });
 });
+
+describe("CreateView while AI drafting is paused (P3.5d)", () => {
+  beforeEach(() => {
+    if (!window.matchMedia)
+      window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia;
+    clientMocks.createObjectiveAction.mockReset().mockResolvedValue({ ok: true, data: { actionId: "act-new", runError: "ai_paused" } });
+    toastMocks.error.mockReset();
+  });
+  afterEach(cleanup);
+
+  it.each([
+    ["en", "What do you want to achieve?", "Create the action and draft"],
+    ["zh-HK", "你想達成甚麼？", "建立行動並生成草稿"],
+    ["zh-TW", "你想達成甚麼？", "建立行動並生成草稿"],
+  ] as const)("says in %s that the action exists but AI drafting is paused", async (locale, field, button) => {
+    renderLive(
+      <CreateView
+        locale={locale}
+        workspaceSlug="kam-man-house"
+        workspaceId="ws-1"
+        role="owner"
+        inScope
+        location="yik-yam"
+        locationId="loc-1"
+        locations={[{ slug: "yik-yam", name: "Yik Yam" }]}
+        openActions={[]}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(field), { target: { value: "Promote this week's lunch set warmly" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: new RegExp(button) }));
+    });
+    expect(clientMocks.createObjectiveAction).toHaveBeenCalledOnce();
+    expect(toastMocks.error).toHaveBeenCalledWith(getMessages(locale).pause.ai);
+  });
+});

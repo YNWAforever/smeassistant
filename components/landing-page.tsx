@@ -46,8 +46,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { allowanceText, type PublicBilling } from "@/lib/commercial/presentation"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { formatMarketPrice, marketPricing } from "@/lib/funnel/pricing"
+import { t } from "@/lib/i18n"
 import type { Market } from "@sme-scanner/region"
 
 const supportedSources = [
@@ -57,15 +59,18 @@ const supportedSources = [
   { name: "Instagram & website", detail: "Supported public evidence, with honest coverage states", icon: Globe2 },
 ]
 
-export function LandingPage({ locale, market: initialMarket }: { locale: PrototypeLocale; market: Market }) {
-  const t = copy[locale]
-  const f = t.funnel.landing
+export function LandingPage({ locale, market: initialMarket, billing }: { locale: PrototypeLocale; market: Market; billing: PublicBilling }) {
+  const copyT = copy[locale]
+  const f = copyT.funnel.landing
   const router = useRouter()
   const [query, setQuery] = useState("")
   // The hero radio is the market the visitor scans in; plan prices follow it
   // (guardrail 11: market is explicit, the UI language never changes it).
   const [market, setMarket] = useState<Market>(initialMarket)
   const price = formatMarketPrice(marketPricing(market))
+  const paidAllowance = allowanceText(locale, "paid")
+  const notOpenLabel = t(locale, "commercial.notOpen")
+  const contactHref = billing.contactHref[market]
   const [error, setError] = useState("")
   const queryInputRef = useRef<HTMLInputElement>(null)
   const ownerStory = locale === "zh-HK"
@@ -292,11 +297,11 @@ export function LandingPage({ locale, market: initialMarket }: { locale: Prototy
       <main>
         <section className="landing-hero">
           <div className="landing-hero-copy">
-            <Badge variant="outline" className="hero-eyebrow"><ScanSearch /> {t.landing.eyebrow}</Badge>
-            <h1>{t.landing.title}</h1>
-            <p className="hero-lead">{t.landing.body}</p>
-            <div className="trust-row" aria-label={t.landing.trust}>
-              <ShieldCheck aria-hidden="true" /><span>{t.landing.trust}</span>
+            <Badge variant="outline" className="hero-eyebrow"><ScanSearch /> {copyT.landing.eyebrow}</Badge>
+            <h1>{copyT.landing.title}</h1>
+            <p className="hero-lead">{copyT.landing.body}</p>
+            <div className="trust-row" aria-label={copyT.landing.trust}>
+              <ShieldCheck aria-hidden="true" /><span>{copyT.landing.trust}</span>
             </div>
             <div className="hero-links">
               <Link href={`/${locale}/sample-report`}>{landingUi.sampleLink} <ArrowRight /></Link>
@@ -322,23 +327,23 @@ export function LandingPage({ locale, market: initialMarket }: { locale: Prototy
           <form className="business-search-card" onSubmit={startSearch} noValidate>
             <div className="search-card-heading">
               <span className="step-kicker">{landingUi.scannerStep}</span>
-              <h2>{t.landing.searchLabel}</h2>
+              <h2>{copyT.landing.searchLabel}</h2>
               <p>{landingUi.scannerBody}</p>
             </div>
             {error && <div id="business-search-error" className="form-error" role="alert"><CircleAlert /> {error}</div>}
             <div className="field-stack">
-              <Label htmlFor="business-search">{t.landing.searchLabel}</Label>
-              <div className="input-with-icon"><Search /><Input ref={queryInputRef} id="business-search" value={query} onChange={(event) => { setQuery(event.target.value); setError("") }} placeholder={t.landing.searchPlaceholder} aria-invalid={Boolean(error)} aria-describedby={error ? "business-search-error" : undefined} /></div>
+              <Label htmlFor="business-search">{copyT.landing.searchLabel}</Label>
+              <div className="input-with-icon"><Search /><Input ref={queryInputRef} id="business-search" value={query} onChange={(event) => { setQuery(event.target.value); setError("") }} placeholder={copyT.landing.searchPlaceholder} aria-invalid={Boolean(error)} aria-describedby={error ? "business-search-error" : undefined} /></div>
             </div>
             <fieldset className="field-stack">
-              <legend>{t.landing.marketLabel}</legend>
+              <legend>{copyT.landing.marketLabel}</legend>
               <RadioGroup className="market-choice-grid" value={market} onValueChange={(value) => setMarket(value as Market)}>
                 <Label className="market-choice" htmlFor="market-hk"><RadioGroupItem id="market-hk" value="hk" /><span><strong>{landingUi.hkName}</strong><small>{landingUi.hkMeta}</small></span></Label>
                 <Label className="market-choice" htmlFor="market-tw"><RadioGroupItem id="market-tw" value="tw" /><span><strong>{landingUi.twName}</strong><small>{landingUi.twMeta}</small></span></Label>
               </RadioGroup>
             </fieldset>
-            <div className="locale-market-note"><Languages /><span><strong>{t.language}</strong> · {landingUi.localeNote}</span></div>
-            <Button size="lg" className="primary-action" type="submit">{t.landing.start}<ArrowRight /></Button>
+            <div className="locale-market-note"><Languages /><span><strong>{copyT.language}</strong> · {landingUi.localeNote}</span></div>
+            <Button size="lg" className="primary-action" type="submit">{copyT.landing.start}<ArrowRight /></Button>
             <p className="timing-note"><Clock3 /> {f.timing}</p>
           </form>
         </section>
@@ -391,7 +396,7 @@ export function LandingPage({ locale, market: initialMarket }: { locale: Prototy
         </section>
 
         <section className="supported-strip" aria-labelledby="supported-title">
-          <div className="section-heading-inline"><div><p className="eyebrow">{landingUi.supportedEyebrow}</p><h2 id="supported-title">{t.landing.checked}</h2></div><Link href={`/${locale}/methodology`}>{landingUi.coverageRules} <ArrowRight /></Link></div>
+          <div className="section-heading-inline"><div><p className="eyebrow">{landingUi.supportedEyebrow}</p><h2 id="supported-title">{copyT.landing.checked}</h2></div><Link href={`/${locale}/methodology`}>{landingUi.coverageRules} <ArrowRight /></Link></div>
           <div className="source-grid">
             {displaySources.map(({ name, detail, icon: Icon }) => <article key={name}><span className="source-icon"><Icon /></span><div><h3>{name}</h3><p>{detail}</p></div><Badge variant="outline">{landingUi.supportBadge}</Badge></article>)}
           </div>
@@ -495,7 +500,7 @@ export function LandingPage({ locale, market: initialMarket }: { locale: Prototy
           </div>
           <div className="agent-role-grid">
             {(["review-response", "visibility-content", "gbp-profile-fix"] as const).map((key, index) => {
-              const template = t.workspace.templates[key]
+              const template = copyT.workspace.templates[key]
               return (
                 <article key={key}>
                   <div className="agent-role-top"><span className="agent-role-index">0{index + 1}</span></div>
@@ -516,7 +521,7 @@ export function LandingPage({ locale, market: initialMarket }: { locale: Prototy
           <div className="section-heading-inline"><div><p className="eyebrow">{isChinese ? "由證據開始，按業務步伐升級" : "Start with evidence, scale with the business"}</p><h2 id="home-plan-title">{isChinese ? "先免費看清問題，再選擇合適的執行節奏。" : "See the issue for free, then choose the right operating rhythm."}</h2></div><Button asChild variant="outline"><Link href={`/${locale}/pricing`}>{isChinese ? "比較所有方案" : "Compare all plans"}<ArrowRight /></Link></Button></div>
           <div className="free-plan-banner"><div><Badge variant="outline">{isChinese ? "一次免費掃描" : "One free scan"}</Badge><h3>{isChinese ? "SME Scanner · 免費" : "SME Scanner · Free"}</h3><p>{isChinese ? "查看能見度快照、證據來源及最值得先處理的問題，毋須登入開始。" : "See a visibility snapshot, source evidence and the best next issue to tackle—no login required."}</p></div><Button asChild><Link href={`/${locale}/scan`}>{isChinese ? "免費掃描" : "Start free scan"}<ArrowRight /></Link></Button></div>
           <div className="paid-plan-preview-grid">
-            <article className="is-featured"><Badge>{isChinese ? "最適合單一地點" : "Best for one location"}</Badge><h3>{isChinese ? "增長工作台" : "Growth Workspace"}</h3><strong>{price}<small>/{f.perMonth}</small></strong><p>{isChinese ? "1 個地點 · 不限核准後交付次數 · 團隊成員及角色權限" : "1 location · unlimited approved deliveries · team members with roles"}</p></article>
+            <article className="is-featured"><Badge>{isChinese ? "最適合單一地點" : "Best for one location"}</Badge><h3>{isChinese ? "增長工作台" : "Growth Workspace"}</h3><strong>{price}<small>/{f.perMonth}</small></strong><p>{isChinese ? `1 個地點 · ${paidAllowance} · 團隊成員及角色權限` : `1 location · ${paidAllowance} · team members with roles`}</p>{!billing.open && <p className="limitation-note">{contactHref ? <a href={contactHref}>{notOpenLabel}</a> : notOpenLabel}</p>}</article>
             <article><Badge variant="outline">{isChinese ? "最多 3 個地點" : "Up to 3 locations"}</Badge><h3>{isChinese ? "多地點工作台" : "Multi-location"}</h3><strong>{f.contactPricing}</strong><p>{isChinese ? "最多 3 個地點 · 由 Fimmick 團隊開通" : "Up to 3 locations · activated by the Fimmick team"}</p></article>
             <article><Badge variant="outline">{isChinese ? "專人協作" : "Human-managed"}</Badge><h3>{isChinese ? "專人能見度服務" : "Managed Visibility"}</h3><strong>{f.contactPricing}</strong><p>{isChinese ? "專人協助執行與檢視 · 最短 3 個月" : "Human execution and review · 3-month minimum"}</p></article>
           </div>

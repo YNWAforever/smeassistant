@@ -15,6 +15,7 @@ vi.mock("@/components/product-ui", () => ({
 
 import { copy } from "@/lib/copy";
 import { MAX_POLL_DURATION_MS, pollRecordKey } from "@/lib/funnel/scan-progress";
+import { getMessages } from "@/lib/i18n";
 import { ScanningPage } from "@/components/scanning-page";
 
 const c = copy.en.funnel.scanning;
@@ -205,6 +206,28 @@ describe("ScanningPage at capacity", () => {
       fireEvent.click(screen.getByText(c.stalledResume));
     });
     await advance(0);
+    expect(screen.queryByText(c.atCapacity)).toBeNull();
+  });
+});
+
+describe("ScanningPage while scans are paused (P3.5d)", () => {
+  it("shows the pause.scans text, and not the at-capacity text, when a resume is refused as paused", async () => {
+    render(<ScanningPage locale="en" jobId={JOB} />);
+    await advance(MAX_POLL_DURATION_MS + 60_000);
+    fetchSpy.mockImplementation(async (input: RequestInfo | URL) => {
+      if (String(input).includes("/api/scan/process")) return { ok: false, status: 503, json: async () => ({ error: "paused" }) } as unknown as Response;
+      return { ok: RUNNING.ok, status: RUNNING.status, json: async () => RUNNING.body } as unknown as Response;
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText(c.stalledResume));
+    });
+    await advance(0);
+    // The Resume path saved the job before this refusal (it already exists,
+    // claimable again once the pause lifts), so it keeps "Your scan is
+    // saved" -- never the "nothing was started" copy used where a paused
+    // refusal happens before anything is created (P3.5d).
+    expect(screen.getByText(getMessages("en").pause.scans)).toBeTruthy();
+    expect(screen.queryByText(getMessages("en").pause.scansNotStarted)).toBeNull();
     expect(screen.queryByText(c.atCapacity)).toBeNull();
   });
 });

@@ -23,16 +23,25 @@ const state = vi.hoisted(() => ({
   subscription: {} as Record<string, unknown>,
 }));
 vi.mock("../../lib/db/client", () => ({ getPool: () => state.pool }));
-vi.mock("../../lib/stripe", () => ({
-  stripeConfigured: () => true,
-  getStripeClient: () => {
-    const stripe = new Stripe("sk_test_fixture");
-    stripe.subscriptions.retrieve = vi.fn(
-      async () => state.subscription,
-    ) as never;
-    return stripe;
-  },
-}));
+vi.mock("../../lib/stripe", async (importOriginal) => {
+  // constructWebhookEvent and isWellFormedStripeSignature stay the real
+  // implementations: this suite signs requests with the real Stripe.webhooks
+  // helper (see request() below) and relies on real signature verification
+  // (including real tamper detection) -- only configuration and subscription
+  // retrieval are stubbed.
+  const actual = await importOriginal<typeof import("../../lib/stripe")>();
+  return {
+    ...actual,
+    stripeConfigured: () => true,
+    getStripeClient: () => {
+      const stripe = new Stripe("sk_test_fixture");
+      stripe.subscriptions.retrieve = vi.fn(
+        async () => state.subscription,
+      ) as never;
+      return stripe;
+    },
+  };
+});
 const secret = "whsec_local_fixture_only";
 function request(
   id: string,

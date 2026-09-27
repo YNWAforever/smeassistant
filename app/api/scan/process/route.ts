@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { enforceCompositeIdentifierRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
 import { resolveAnalyticsSession, setAnalyticsSessionCookie } from "@/lib/analytics/record-event";
+import { logPauseRefusal, pauseState } from "@/lib/budgets/pause";
 import { assertScanConsent } from "@/lib/scan/consent-gate";
 import { dispatchToScanWorker, resolveScanExecutionRuntime, runScan } from "@/lib/scan/run";
 
@@ -17,6 +18,14 @@ export async function POST(req: Request) {
   const jobId = body && typeof body === "object" ? (body as Record<string, unknown>).jobId : null;
   if (typeof jobId !== "string" || !UUID_RE.test(jobId)) {
     return NextResponse.json({ error: "invalid_request" }, { status: 400 });
+  }
+
+  // P3.5d: checked ahead of the limiter, so a paused retry never burns the
+  // scan_process rate limit. claimScanJob (inside runScan/the execution store)
+  // still checks this too -- defence in depth against a claim reached another way.
+  if (pauseState().scans) {
+    logPauseRefusal("retry_claim");
+    return NextResponse.json({ error: "paused" }, { status: 503 });
   }
 
   const limiter = await enforceCompositeIdentifierRateLimit({
@@ -73,6 +82,14 @@ export async function POST(req: Request) {
   // the cron reclaim offers it again on a later tick.
   if (result.status === "at_capacity") {
     const refused = NextResponse.json({ error: "at_capacity" }, { status: 503 });
+    setAnalyticsSessionCookie(refused, session);
+    return refused;
+  }
+  // P3.5d: the incident pause. The job stays exactly as it was (queued or
+  // claimable, no attempt row) and the cron reclaim offers it again once the
+  // pause lifts.
+  if (result.status === "paused") {
+    const refused = NextResponse.json({ error: "paused" }, { status: 503 });
     setAnalyticsSessionCookie(refused, session);
     return refused;
   }

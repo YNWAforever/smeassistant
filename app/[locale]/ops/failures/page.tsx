@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { OpsNav } from "@/components/ops/ops-nav";
 import { ReleaseButton } from "@/components/ops/release-button";
 import { requireOperator } from "@/lib/auth/operator";
+import { pauseState } from "@/lib/budgets/pause";
 import { FAILURE_KINDS, isFailureKind, type FailureItem, type FailureKind, type OperatorHealth } from "@/lib/ops/failure-types";
 import { problemReasonLabel } from "@/lib/ops/problem-copy";
 import { parseFailureSearch } from "@/lib/ops/references";
@@ -33,6 +34,7 @@ function first(value: string | string[] | undefined): string | undefined {
  */
 export default async function OpsFailuresPage({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   await requireOperator();
+  const paused = pauseState();
   const { locale } = await params;
   const query = searchParams ? await searchParams : {};
   const kindParam = first(query.kind);
@@ -62,6 +64,11 @@ export default async function OpsFailuresPage({ params, searchParams }: { params
     <div className="settings-page">
       <OpsNav locale={locale} current="failures" />
       <h1>Failures</h1>
+      {(paused.scans || paused.ai) && (
+        <p className="limitation-note" role="status">
+          {[paused.scans && "Scans are paused (SCANS_PAUSED).", paused.ai && "AI drafting is paused (AI_DRAFTS_PAUSED)."].filter(Boolean).join(" ")} See the incident runbook.
+        </p>
+      )}
       <p>Open problems across every workspace, newest first. Owners retry their own scans and drafts; the only operator control is releasing a stuck scan.</p>
 
       <form method="get" className="flex flex-wrap gap-3" role="search">

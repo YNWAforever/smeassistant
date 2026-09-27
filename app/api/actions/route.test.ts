@@ -205,6 +205,13 @@ describe("POST /api/actions", () => {
     expect(await res.json()).toEqual({ actionId: "act-new", runError: "ai_budget_reached" });
   });
 
+  it("keeps the created action and reports an AI pause as its run error", async () => {
+    mocks.runAgentForAction.mockRejectedValue(new RunError("ai_paused"));
+    const res = await post({ ...base, run: true });
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({ actionId: "act-new", runError: "ai_paused" });
+  });
+
   it("returns the existing open action on a duplicate objective", async () => {
     insertResult = { data: null, error: { code: "23505" } };
     const res = await post(base);

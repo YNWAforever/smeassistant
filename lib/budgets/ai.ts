@@ -1,5 +1,6 @@
 import { readBudgetConfig, type BudgetConfig } from "./config";
 import { logBudgetCheckFailed, logBudgetRefusal } from "./log";
+import { logPauseRefusal, pauseState } from "./pause";
 
 /**
  * AI spend budget (P3.5a). The unit is the US$ cost_usd already recorded on
@@ -15,14 +16,16 @@ export interface AiSpend {
   workspaceUsd: number;
 }
 
-export type AiBudgetScope = "ai_global" | "ai_workspace";
+export type AiBudgetScope = "ai_global" | "ai_workspace" | "ai_paused";
 export type AiBudgetDecision = { allowed: true } | { allowed: false; scope: AiBudgetScope };
 
 /** Thrown by the assistant's draft path; the message is the route's error code. */
 export class AiBudgetRefusal extends Error {
-  readonly code = "ai_budget_reached";
+  readonly code: "ai_budget_reached" | "ai_paused";
   constructor(readonly scope: AiBudgetScope) {
-    super("ai_budget_reached");
+    const code = scope === "ai_paused" ? "ai_paused" : "ai_budget_reached";
+    super(code);
+    this.code = code;
     this.name = "AiBudgetRefusal";
   }
 }
@@ -33,6 +36,11 @@ export async function checkAiBudget(
   input: { entry: "ai_run" | "assistant_draft" },
   env: Record<string, string | undefined> = process.env,
 ): Promise<AiBudgetDecision> {
+  // P3.5d: the incident pause first, before reading spend.
+  if (pauseState(env).ai) {
+    logPauseRefusal(input.entry);
+    return { allowed: false, scope: "ai_paused" };
+  }
   let config: BudgetConfig;
   try {
     config = readBudgetConfig(env);

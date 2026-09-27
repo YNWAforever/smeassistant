@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { after, NextResponse } from "next/server";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
 import { forwardEventToPostHog, resolveAnalyticsSession, setAnalyticsSessionCookie } from "@/lib/analytics/record-event";
+import { logPauseRefusal, pauseState } from "@/lib/budgets/pause";
 import { currentScanConsentPolicyVersion } from "@/lib/scan/consent";
 import { insertScanJob, parseScanStartBody } from "@/lib/scan/start-job";
 import { ScanBudgetRefusal } from "@/lib/budgets/scan";
@@ -33,6 +34,14 @@ export async function POST(req: Request) {
     );
   }
 
+  // P3.5d: checked ahead of the limiter, so a paused request never burns the
+  // scan_start rate limit. admitScanJob (inside insertScanJob) still checks
+  // this too -- defence in depth against a job created by another path.
+  if (pauseState().scans) {
+    logPauseRefusal("scan_start");
+    return NextResponse.json({ error: "paused" }, { status: 503 });
+  }
+
   const limiter = await enforceRateLimit({ req, scope: "scan_start", failClosed: false });
   if (!limiter.allowed) return rateLimitedResponse(limiter.retryAfterSeconds);
 
@@ -42,9 +51,10 @@ export async function POST(req: Request) {
   const created = await insertScanJob(parsed.input, parsed.consent, { anonymousSessionId: session.id });
   if (!created.ok) {
     // Already logged as "[budget] refused" (or "[budget] check_failed") by the
-    // admission check, which ran before anything was written.
+    // admission check, which ran before anything was written. P3.5d: a paused
+    // refusal is reported the same way, distinguished by its scope.
     if (created.error instanceof ScanBudgetRefusal) {
-      return NextResponse.json({ error: "at_capacity" }, { status: 503 });
+      return NextResponse.json({ error: created.error.scope === "scan_paused" ? "paused" : "at_capacity" }, { status: 503 });
     }
     const correlationId = randomUUID();
     // An invalid event cannot follow a successful parse today, but the cause is

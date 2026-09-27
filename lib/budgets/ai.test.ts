@@ -63,3 +63,18 @@ describe("AiBudgetRefusal", () => {
     expect(refusal.scope).toBe("ai_workspace");
   });
 });
+
+describe("AI pause (P3.5d)", () => {
+  it("refuses with ai_paused before reading spend", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const readSpend = vi.fn();
+    expect(await checkAiBudget(readSpend, { entry: "ai_run" }, { AI_DRAFTS_PAUSED: "true" })).toEqual({ allowed: false, scope: "ai_paused" });
+    expect(readSpend).not.toHaveBeenCalled();
+  });
+
+  it("an AiBudgetRefusal for the pause carries the ai_paused code", () => {
+    const refusal = new AiBudgetRefusal("ai_paused");
+    expect(refusal.code).toBe("ai_paused");
+    expect(refusal.message).toBe("ai_paused");
+  });
+});

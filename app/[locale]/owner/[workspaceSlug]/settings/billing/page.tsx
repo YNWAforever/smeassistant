@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 
 import { BillingView } from "@/components/workspace/billing-view";
+import { billingAvailability } from "@/lib/commercial/availability";
+import { contactHrefFor } from "@/lib/commercial/presentation";
 import { getBilling } from "@/lib/workspace/billing";
 import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 
@@ -18,6 +20,8 @@ export async function generateMetadata(props: OwnerPageProps): Promise<Metadata>
 export default async function BillingRoute(props: OwnerPageProps) {
   const page = await loadOwnerPage(props);
   const model = await getBilling(page.ctx);
+  const market = page.ctx.workspace.market;
+  const contactHref = market === "hk" || market === "tw" ? contactHrefFor(market) : null;
   return (
     <BillingView
       locale={page.locale}
@@ -26,6 +30,8 @@ export default async function BillingRoute(props: OwnerPageProps) {
       timezone={page.ctx.workspace.timezone}
       model={model}
       checkout={page.query.checkout}
+      billingOpen={billingAvailability().open}
+      contactHref={contactHref}
     />
   );
 }

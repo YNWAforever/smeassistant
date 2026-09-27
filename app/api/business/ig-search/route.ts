@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { resolveAnalyticsSession, setAnalyticsSessionCookie, type AnalyticsSession } from "@/lib/analytics/record-event";
+import { logPauseRefusal, pauseState } from "@/lib/budgets/pause";
 import { searchInstagramRapidApi } from "@/lib/scanner/ig-search/rapidapi";
 import { searchInstagramSerpApi } from "@/lib/scanner/ig-search/serpapi";
 import { buildIgSearchAttempt, searchInstagramCandidates, type IgSource } from "@/lib/scanner/ig-search/service";
@@ -119,6 +120,14 @@ export async function POST(req: Request): Promise<Response> {
   }
   const body = parseBody(rawBody);
   if (!body) return privateJson({ error: "INVALID_REQUEST", correlationId }, 400);
+
+  // P3.5d: the scan pause stops every paid provider call on the scan path,
+  // search included. Before the limiter, so a paused request does not burn
+  // the caller's quota.
+  if (pauseState().scans) {
+    logPauseRefusal("scan_start");
+    return privateJson({ error: "paused" }, 503);
+  }
 
   const analyticsSession = resolveAnalyticsSession(req);
   const limiter = await enforceRateLimit({

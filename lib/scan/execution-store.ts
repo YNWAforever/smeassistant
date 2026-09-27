@@ -67,6 +67,10 @@ export function createScanExecutionStore(
         options.onBudgetRefused?.(outcome.scope);
         return null;
       }
+      if (outcome.kind === "paused") {
+        options.onBudgetRefused?.("scan_paused");
+        return null;
+      }
       return outcome.kind === "claimed" ? asClaimedJob(outcome.row) : null;
     },
     async setStage(jobId, stage) {

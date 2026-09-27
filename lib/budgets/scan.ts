@@ -3,6 +3,7 @@ import type { PoolClient } from "pg";
 import { CLAIMABLE_JOB_CONDITION_SQL } from "../scan/claimable";
 import { readBudgetConfig, type BudgetConfig } from "./config";
 import { logBudgetCheckFailed, logBudgetRefusal, type BudgetEntry, type BudgetScope } from "./log";
+import { logPauseRefusal, pauseState } from "./pause";
 
 /**
  * Scan spend budgets (P3.5a, docs/superpowers/specs/2026-09-25-spend-budgets-design.md).
@@ -87,12 +88,12 @@ SELECT decision.allowed AS budget_allowed, decision.global_used AS budget_global
   decision.workspace_used AS budget_workspace_used, claimed.*
 FROM decision LEFT JOIN claimed ON true`;
 
-export type ScanBudgetScope = Extract<BudgetScope, "scan_global" | "scan_workspace">;
+export type ScanBudgetScope = Extract<BudgetScope, "scan_global" | "scan_workspace" | "scan_paused">;
 
 /** Thrown by admission. The message is the route's error code. */
 export class ScanBudgetRefusal extends Error {
   constructor(readonly scope: ScanBudgetScope) {
-    super(scope === "scan_workspace" ? "workspace_scan_budget_reached" : "at_capacity");
+    super(scope === "scan_workspace" ? "workspace_scan_budget_reached" : scope === "scan_paused" ? "paused" : "at_capacity");
     this.name = "ScanBudgetRefusal";
   }
 }
@@ -117,6 +118,11 @@ export async function admitScanJob(
   input: { workspaceId: string | null; entry: "scan_start" | "rescan" },
   env: Env = process.env,
 ): Promise<void> {
+  // P3.5d: the incident pause first, before the lock, counting or any write.
+  if (pauseState(env).scans) {
+    logPauseRefusal(input.entry);
+    throw new ScanBudgetRefusal("scan_paused");
+  }
   const config = readScanConfig(env, input.entry);
   const workspaceLimit = input.workspaceId === null ? null : config.scanAttemptsWorkspace24h;
   if (config.scanAttemptsGlobal24h === null && workspaceLimit === null) return;
@@ -149,7 +155,8 @@ type ClaimRow = Record<string, unknown> & {
 export type ClaimOutcome =
   | { kind: "claimed"; row: Record<string, unknown> }
   | { kind: "not_claimable" }
-  | { kind: "at_capacity"; scope: ScanBudgetScope };
+  | { kind: "at_capacity"; scope: ScanBudgetScope }
+  | { kind: "paused" };
 
 /**
  * The claim, on the caller's transaction client (lib/scan/execution-store.ts
@@ -159,6 +166,12 @@ export type ClaimOutcome =
  * this statement), so a bad variable never lets retries through unmetered.
  */
 export async function claimScanJob(client: Queryable, jobId: string, env: Env = process.env): Promise<ClaimOutcome> {
+  // P3.5d: a paused claim touches nothing, so the job stays exactly as it was
+  // (queued or claimable, no attempt row) and resumes when the pause lifts.
+  if (pauseState(env).scans) {
+    logPauseRefusal("retry_claim");
+    return { kind: "paused" };
+  }
   let limits: { global: number | null; workspace: number | null };
   let configurationFailed = false;
   try {

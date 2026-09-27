@@ -132,7 +132,9 @@ export function ScanPage({
         const data = (await response.json().catch(() => ({}))) as MerchantSearchResponse
         if (id !== requestId.current) return
         if (isSearchFailure(response.status, data)) {
-          setSearch({ status: "done", candidates: [], message: t(locale, CANDIDATE_ERROR_KEYS[parseSearchError(response.status, data)]) })
+          // P3.5d: a paused-scans refusal is not a generic provider failure.
+          const paused = scanStartRefusal(locale, response.status, data.error)
+          setSearch({ status: "done", candidates: [], message: paused ?? t(locale, CANDIDATE_ERROR_KEYS[parseSearchError(response.status, data)]) })
           return
         }
         const candidates = (data.candidates ?? []).slice(0, MAX_CANDIDATES_SHOWN)
@@ -173,7 +175,9 @@ export function ScanPage({
       const response = await fetch(url, init)
       const data = (await response.json().catch(() => ({}))) as { outcome?: string; error?: string; candidates?: InstagramCandidate[] }
       if (isSearchFailure(response.status, data)) {
-        setIgSearch({ status: "done", candidates: [], message: t(locale, CANDIDATE_ERROR_KEYS[parseSearchError(response.status, data)]) })
+        // P3.5d: a paused-scans refusal is not a generic provider failure.
+        const paused = scanStartRefusal(locale, response.status, data.error)
+        setIgSearch({ status: "done", candidates: [], message: paused ?? t(locale, CANDIDATE_ERROR_KEYS[parseSearchError(response.status, data)]) })
         return
       }
       const candidates = (data.candidates ?? []).slice(0, MAX_CANDIDATES_SHOWN)

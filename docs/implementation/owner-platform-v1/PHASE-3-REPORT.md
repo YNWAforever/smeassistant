@@ -802,3 +802,204 @@ Full detail is in `PHASE-3-TEST-RESULTS.md`. Summary, one gate at a time, run se
 After the unit-test run, the two tracked snapshot files (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) showed as modified; `git diff --ignore-cr-at-eol --stat` was empty, confirming line-ending-only changes, and both were restored with `git checkout --`. `git status --short` was otherwise clean before this documentation commit.
 
 **Mutation checks.** Performed during Tasks 1–12 (not re-run independently in Task 13, unlike P3.5a's whole-branch re-run): Task 1 (`attempt_count>=3` → `attempt_count>=2` in `DEAD_LETTERED_JOB_CONDITION_SQL`, killed by both the unit test and the integration complement test); Task 3, four mutations (removing the assistant-source filter, removing the outer Google `reason IN (...)` filter, swapping the correlation column for `failure_category`, and adding `r.error AS business_name` to `draft_failed` — each killed by its named test, the last by "never returns personal fields"); Task 4 (collapsing the tier/location rescan ternary to an unconditional `"rescan"`, killed by the lite-tier and no-location cases in `owner-actions.test.ts`); Task 5, four mutations (`interval '24 hours'` → `'22 hours'` in the grace window, killed by the 23-hours-not-closed case; removing the dead-letter condition from the release CTE, killed by "refuses a job that is not dead-lettered"; setting the release to `attempt_count=3` instead of `2`, killed by the "grants exactly one more attempt" and "makes the job claimable once" cases; removing the `writeScanEventSafely` call, killed by "writes exactly one scan_completed"); Task 8's fix (removing the early `deadLettered` return from the scanning-page polling loop, which made "shows the stuck card with a new-scan link, no Resume button, and stops polling" fail before the fix was written); Task 11 (`visibleTo`'s `return inScope(ctx, item.locationId);` → `return true;`, killed by "never shows a scoped manager another location's problems, through the real reader" — this one run by the controlling session as part of Task 13's verification). The Task 3-fix and Task 4/5-fix tests (the search-after-`DISTINCT ON` case, the assistant-recovery case, the tier/location matrix cases, the grace-window and release-guard cases) were each seen RED before their fix and GREEN after, in the same test-first sequence P3.5a used.
+
+## P3.5d — incident runbook and kill switches
+
+**Branch** `p35d-incident-runbook`, 9 commits (`de24a73`..`3d4e26b`) on top of `923bc88` (stacked on `p35b-failure-view`, PR #22, not yet merged) · Task 9 (this record) is the 10th. Worktree `C:\Users\laich\Documents\smeassistant\.claude\worktrees\p35d-incident-runbook`. Node `v24.18.0`, pnpm `9.12.0` via corepack, Windows 11, Docker Server `29.7.2`.
+
+Built from `docs/superpowers/plans/2026-09-26-incident-runbook.md` (Tasks 1–9), against the design in [`docs/superpowers/specs/2026-09-26-incident-runbook-design.md`](../../superpowers/specs/2026-09-26-incident-runbook-design.md).
+
+**Implemented and locally verified. Nothing here is hosted-verified.** No migration, no deployment, no remote CRON, no paid provider call, no push.
+
+### What this answers
+
+The Master Plan's P3.5 last bullet asks for "an incident/runbook path for disabled providers, expired OAuth, paused scheduling, failed billing synchronization and a rollback that preserves approval/billing history". Before this slice there was no way to stop provider or AI spend quickly (a budget of `0` is rejected as invalid by design, `SCAN_SOURCES=fixture` is forced to `live` in production), pausing a schedule needed hand-written SQL, and rollback existed only as prose scattered across `docs/integration/DEPLOY.md` and each slice's own mini-runbook. This slice adds two environment kill switches and one incident runbook covering all five scenarios, with the runbook's own SQL executed by an integration test rather than trusted as prose.
+
+### Decisions (user, 2026-09-26)
+
+| Question | Decision |
+|---|---|
+| Scope | Runbook + two kill switches: one incident runbook for all five scenarios, plus `SCANS_PAUSED` and `AI_DRAFTS_PAUSED`. Schedule pause stays documented SQL, not a third switch. |
+| Mechanism | Environment variables + redeploy (no migration, no new database state). |
+| Scan pause reach | All provider spend: new scans, rescans **and** claims of queued jobs and retries; queued work is preserved, never lost. |
+| Owner message | Distinct "paused for maintenance" copy, not "at capacity" — an owner must not think they hit their own limit. |
+
+### What changed, by task
+
+Full diff `923bc88..HEAD`: **57 files changed, 1,138 insertions, 42 deletions**, across 9 commits.
+
+| Task | Commit(s) | What it did |
+|---|---|---|
+| 1. Pause configuration | `de24a73` | `lib/budgets/pause.ts` (new): `PAUSE_VARIABLES`, `readPauseConfig` (unset/empty → `false`, exactly `"true"` → `true`, anything else throws `PauseConfigurationError` naming the variable), `pauseState()` (fail-closed wrapper: a configuration error pauses both switches and logs `[pause] configuration_invalid` once), `logPauseRefusal(entry)` (fixed `[pause] refused` line). `.env.example` documents both variables, commented out. |
+| 2. Scan pause in the budget functions | `8e99d5c` | `lib/budgets/scan.ts`: `admitScanJob` and `claimScanJob` check the pause **first**, before the advisory lock and any counting, via a new `ScanBudgetScope` value `scan_paused` and a new `ClaimOutcome` value `paused`; `lib/budgets/log.ts` gains the scope; `lib/scan/execution-store.ts` passes the paused claim outcome through untouched (no `scan_attempts` row, no `attempt_count`/`last_attempt_at` change). |
+| 3. Scan pause at the routes and the cron | `fbdad65` | `app/api/scan/start/route.ts`, `app/api/scan/process/route.ts` (via `lib/scan/run.ts`), `app/api/workspaces/[workspaceId]/rescan/route.ts` (via `lib/workspace/rescan.ts`) map `scan_paused`/`paused` to **503 `{ error: "paused" }`**; `app/api/cron/dispatch/route.ts` checks the pause and skips only the reclaim-dispatch step, logging one line, while auto-close, reconcile and website verification still run. |
+| 4. AI pause | `092307c` | `lib/budgets/ai.ts`: `checkAiBudget` checks the pause first with a new `AiBudgetScope`/`AiBudgetRefusal` code `ai_paused`, before any run row exists; `lib/workspace/runs.ts`, `app/api/actions/[actionId]/run/route.ts`, `app/api/assistant/run/route.ts` map it to **503 `{ error: "ai_paused" }`**; `app/api/actions/route.ts` (Create) surfaces it inside its existing `201 { runError: "ai_paused" }`; `lib/llm.ts`'s `llmComplete` returns `null` while AI is paused, before any network call, as a backstop for every other caller (report summaries, translation). |
+| 5. Owner copy for pauses | `2986b93` | New `pause` namespace (`pause.scans`, `pause.ai`) in `lib/messages/{en,zh-HK,zh-TW}.json`, listed in `tests/i18n.test.ts`'s `APP_NAMESPACES`; `lib/budgets/messages.ts` maps `paused`/`ai_paused` to that copy, checked **ahead of** `at_capacity`/`ai_budget_reached`; `components/workspace/rescan-button.tsx`, `components/workspace/create-view.tsx`, `components/scanning-page.tsx` (a new `paused` resume state, rendered next to, never instead of, the at-capacity card) wire it in. `action-detail-client.tsx` and `assistant-sheet.tsx` needed no code change — they already call the shared mapper — so each only gained a test. |
+| 6. Operator pause banner | `02b90c8` | `app/[locale]/ops/failures/page.tsx` reads `pauseState()` and shows a banner under the page title naming which switch is on and pointing at the runbook; no banner when nothing is paused. |
+| Review-driven: scan pause also stops business search | `b7a018a` | `app/api/business/search/route.ts` (SerpApi), `app/api/business/ig-search/route.ts` (RapidAPI/SerpApi) check `pauseState().scans` immediately after body validation, **before** the rate limiter or any provider call, answering **503 `{ error: "paused" }`**; `components/scan-page.tsx` shows `pause.scans` there instead of the generic "search service unavailable" text; both route tests, and the new `components/scan-page.test.tsx`, failed against the unpatched routes before the fix. See "Review-driven change" below. |
+| 7. Runbook SQL and its test | `8eff883` | `docs/implementation/owner-platform-v1/rollout/incident-queries.sql` (new): named blocks (`-- name:` / `-- mode:`) — reads `scan_backlog`, `dead_lettered_scans`, `failed_scans_by_category_24h`, `spend_24h`, `google_connection_states`, `schedule_states`, `recent_tier_events`; a write pair `pause_all_schedules` / `resume_schedules`. `lib/ops/incident-queries.ts` (new): `parseIncidentQueries` enforces one statement per block, a mode, and no duplicate names. Integration test runs every read block inside `BEGIN READ ONLY` and round-trips the schedule pause/resume pair; the runtime role already had `UPDATE` on `scan_schedules` from migration `0003`, so no grant change was needed. |
+| 8. The runbook | `a4a2a4b` | `docs/implementation/owner-platform-v1/INCIDENT-RUNBOOK.md` (new): purpose/ownership, first five minutes, the two kill switches, five scenarios each as Detect → Contain → Recover → Verify → Record, how to record an incident, and an appendix of every query. Every SQL reference is `` `query:<name>` ``, cross-checked against the SQL file by the parser test's third case. |
+| Docs fix: runbook accuracy | `3d4e26b` | Added a "The cron" subsection (the `vercel.json` 5-minute cron, the 401 without `CRON_SECRET`, and that unsetting it stops reclaim, auto-close, reconcile, verification and schedule notifications together) and pointed the scenarios' cross-references at it (they wrongly cited the billing section); corrected what `event_write_failed` means (a scan analytics event, not an audit event); corrected the `[pause] configuration_invalid` frequency (every affected request, not once). |
+| 9. Record, full verification | `91285b6` | Gates; this section and the matching `PHASE-3-TEST-RESULTS.md` section. |
+| Final-review fix: paused requests do not consume rate limits | `a9a1a41` | Scan start, scan process, rescan (3/day per workspace), the assistant's draft intents and the owner draft run now check the pause **before** their rate limiter (and, for rescan, before the tier read), so a refused request never spends an owner's quota. The inner checks stay as defence in depth. Each route's new test failed before the fix and asserts the limiter is never called; an assistant explain intent still answers while AI is paused. |
+| Final-review fix: copy matches what happened | `7f12dfc` | New `pause.scansNotStarted` ("…Nothing was started; please try again later.") for refusals that happen before anything is created: the `/scan` start submit, both business-search steps, and the rescan button. `pause.scans` ("…Your scan is saved…") is kept only for the scanning page's Resume, where the job does exist. The runbook's schedule-resume step now notes that an unreplaced placeholder is rejected by Postgres and changes nothing. |
+
+### Review-driven change: `SCANS_PAUSED` also stops business search
+
+The design's promise is that `SCANS_PAUSED` stops **all** provider spend for scans. The original Tasks 1–3 covered `POST /api/scan/start`, rescan and the process-route claim, but missed that step 1 of `/scan` — `POST /api/business/search` (SerpApi) and `POST /api/business/ig-search` (RapidAPI/SerpApi) — had no pause check at all: an operator containing a SerpApi outage with `SCANS_PAUSED` would still be billed by the merchant-search step. Both routes now check `pauseState().scans` immediately after body validation, **before** the rate limiter or any provider call, and answer `503 { error: "paused" }`, logged via `logPauseRefusal("scan_start")`. The `/scan` page (`components/scan-page.tsx`) shows the pause copy there (now `pause.scansNotStarted`, see the final-review fix) instead of the generic provider-error text. The review that found this checked every runtime mode and the vendored packages and confirmed there is no remaining path in this app that still calls those providers while the switch is on (see the Containment note in `INCIDENT-RUNBOOK.md` §3).
+
+### Owner actions
+
+**Nothing is required to deploy this slice.** No migration, no new required environment variable — both kill switches are optional and documented; unset, they behave exactly as before this branch.
+
+- **Read `docs/implementation/owner-platform-v1/INCIDENT-RUNBOOK.md` once**, before an incident, not during one. It states there is no named accountable incident owner yet (DEC-06).
+- To use a kill switch: set `SCANS_PAUSED=true` and/or `AI_DRAFTS_PAUSED=true` in Vercel (Production) and redeploy or re-promote — an environment variable change takes effect on the *next* deployment, not the running one. Confirm via the `/ops/failures` banner. Unset (never leave a stray `false`) and redeploy to lift.
+- **This branch is stacked on `p35b-failure-view` (PR #22) and must merge after it.** It was built and gated on top of that branch's tip (`c919624`), not on `origin/main`.
+
+### Known limits (spec §5, plus this session's findings)
+
+- A pause needs a redeploy (about 1–2 minutes) to take effect.
+- No per-provider pause beyond removing that provider's key from the environment.
+- No operator UI for pausing schedules — documented SQL only (`query:pause_all_schedules` / `query:resume_schedules`).
+- No billing reconciliation script while billing is off (DEC-08/09).
+- No named incident owner or on-call rota (DEC-06).
+- Nothing is rehearsed on hosted infrastructure.
+- No migration; none was needed or added.
+- **A scanning page already open when scans are paused shows no pause message until Resume.** The page's automatic first `/api/scan/process` call on load discards the response it gets back, so a `503 paused` from that call is silent; only the explicit Resume button surfaces the `pause.scans` copy.
+- **An invalid pause value pauses BOTH switches and logs on every request.** `readPauseConfig`/`pauseState` fail closed by design (an operator who mistyped the value must not believe spend is still flowing), but this means a single typo silences AI drafting as a side effect of a scan-only incident, and `[pause] configuration_invalid` is logged once per request it affects, not once — noisy under load, though never wrong.
+
+### Verification
+
+Full detail is in `PHASE-3-TEST-RESULTS.md`. Summary, one gate at a time, run sequentially on 2026-09-26 at the branch tip:
+
+| Command | Result |
+|---|---|
+| `corepack pnpm typecheck` | **passed**: exit 0. Root `tsc --noEmit`, then all 4 workspace packages (`region`, `scoring`, `contracts`, `scan-engine`) report `Done`. |
+| `corepack pnpm lint` | **passed**: exit 0, `✖ 30 problems (0 errors, 30 warnings)` across 18 files — identical counts and files to the P3.5b record. No file this branch touches carries a warning. |
+| `corepack pnpm test` | **passed**: exit 0 overall. First run: `app/api/versions/[versionId]/versions.test.ts` failed one test (a 5000ms timeout on an idempotent-approve case) under full parallel load — this is the known intermittent failure named in this task's instructions, confirmed pre-existing (empty diff for that file and for `lib/evidence/safe-media.test.ts` between `923bc88` and `HEAD`); re-run alone, it passed 11/11. `lib/evidence/safe-media.test.ts` also passed cleanly alone (62/62) this run. Effective totals: app suite 293 files / 3,150 tests (292/3,088 excluding safe-media + 1/62 safe-media); packages `region` 3/23, `scoring` 16/183, `contracts` 3/20, `scan-engine` 28/299 — **343 files / 3,675 tests**, zero failures once the one intermittent file is counted from its isolated re-run. |
+| `NEON_INTEGRATION=1 corepack pnpm test:integration` | **passed**: exit 0, **38 files / 378 tests**, 536.05s. |
+| `corepack pnpm db:verify` | **passed**: exit 0, 0001–0009 applied, replay empty, **36 tables / 422 columns / 162 constraints / 92 indexes**, journal 9 — unchanged from P3.5b, because this branch adds no migration. |
+| `corepack pnpm exec next build --webpack` | **passed**: exit 0, `✓ Compiled successfully in 13.8s`, including the new `/[locale]/ops/failures` banner path and all P3.5d API routes in the route manifest. (`corepack pnpm build`, the Turbopack gate, was not re-attempted here — it is the standing, unrelated `radix-ui` blocker recorded at every prior phase on this machine; the task instructions direct using the webpack build as the real local gate, with CI as the actual build gate.) |
+
+After the unit-test run, the two tracked snapshot files (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) showed as modified; `git diff --ignore-cr-at-eol --stat` was empty, confirming line-ending-only changes, and both were restored. `git status --short` was otherwise clean before this documentation commit.
+
+After the two final-review fixes (`a9a1a41`, `7f12dfc`) the unit suite was re-run at the new tip: 292 app files / 3,094 tests with one failure, `lib/identity/identity-sdk.test.ts` "rejects a replayed valid cached identity when upstream revoked its session" — a file this branch does not touch (empty diff from `c919624`), which then passed 7/7 in three isolated re-runs. It joins `versions.test.ts` and `safe-media.test.ts` as intermittent under full parallel load. The integration suite, `db:verify` and the webpack build were not re-run after these two fixes: they change route ordering and copy only, and the touched unit files (157 tests), typecheck and lint were re-run and pass.
+
+## P3.3 — commercial contract on safe defaults
+
+**Branch** `claude/commercial-contract-design-3b8561` (same content line as `p33-commercial-contract`), 9 commits (`0010a33`..`1eb6a50`) on top of `aeb8513` (P3.5d's tip; stacked on `p35d-incident-runbook`, PR #23, not yet merged) · Task 6 landed as two documentation commits (`ca3f24b`, `387414f`), bringing the branch to 11 · a whole-branch final-review fix pass adds a 12th (this commit). Worktree `C:\Users\laich\Documents\smeassistant\.claude\worktrees\commercial-contract-design-3b8561`. Node `v24.18.0`, pnpm `9.12.0` via corepack, Windows 11, Docker Server `29.7.2`.
+
+Built from `docs/superpowers/plans/2026-09-26-commercial-contract.md` (Tasks 1–6), against the design in [`docs/superpowers/specs/2026-09-26-commercial-contract-design.md`](../../superpowers/specs/2026-09-26-commercial-contract-design.md).
+
+**Implemented and locally verified. Nothing here is hosted-verified.** No migration, no deployment, no remote CRON, no paid provider call, no push.
+
+### What this closes
+
+The Master Plan's §6 P3.3 ("Reconcile billing, allowance and seats atomically") asks for "one versioned commercial contract read by server policy and presentation … Avoid a third hard-coded pricing copy table", allowance updates on tier change that are safe against concurrent exports and duplicate billing events, seat limits only if the approved plan has them, and "Keep unconfigured billing unavailable, not falsely successful. Test the unsigned negative boundary and duplicate valid events separately."
+
+Before this slice, commercial facts lived in three places (`lib/workspace/entitlement.ts`, `packages/region/src/config.ts`, and hand-written plan copy in `components/public-pages.tsx`/`lib/copy.ts`); the workspace billing page always showed "Subscribe via Stripe" even with Stripe unconfigured (a working button in front of a `500`); and the Stripe webhook checked provider configuration **before** the signature, so an unsigned probe on an unconfigured deployment answered `500` instead of the required `400` — untested, because the unit test stubbed Stripe as configured.
+
+### Decisions (user, 2026-09-26)
+
+| Question | Decision |
+|---|---|
+| How to continue Phase 3 | Build P3.3 and P3.5c on safe defaults; decisions configurable, off |
+| Public Growth price while billing is closed | Keep the baseline price, labelled "Subscriptions are not open yet — contact Fimmick"; no Subscribe button anywhere until approved |
+| Approach | A — typed contract in code + approval env var (`COMMERCIAL_CONTRACT_APPROVED` must equal the contract version) |
+
+**Where this plan departs from the spec** (decided while writing the plan, before any code):
+
+1. **Two existing webhook tests change.** The mock of `@/lib/stripe` gains `constructWebhookEvent` (verification moves off the API-key client so it can run when Stripe is unconfigured), and "refuses to run without STRIPE_WEBHOOK_SECRET" sends a well-formed header (`t=1,v1=abc123`), because the spec makes a malformed header `400`. Assertions are otherwise unchanged.
+2. **The checkout route test opens billing in `beforeEach`** by stubbing the approval and Stripe env; without that every existing case would get `503`. Assertions unchanged.
+3. **Pricing footnote.** `funnel.pricing.planNote` says "Growth Workspace is billed via Stripe" — an unsupported claim while closed. When closed the pricing page shows `funnel.landing.planNote` instead (existing string, no new copy).
+4. **"Free's allowance line"** is added as a feature line on the pricing page's Free card, worded as the free *workspace* allowance (`commercial.allowanceLine`: "Free workspace: {count} approved deliveries a month"), since that card is the free scan.
+5. **Billing also requires `STRIPE_WEBHOOK_SECRET`** (final-review fix, tightens spec §2): without it, checkout could take payments the webhook never records, because entitlement is only ever applied from a verified webhook event. `STRIPE_ENV_KEYS` in `lib/commercial/availability.ts` now includes it alongside `STRIPE_SECRET_KEY`, `STRIPE_HK_TIER_PRICE_ID`, `STRIPE_TW_TIER_PRICE_ID` and `APP_ORIGIN`.
+
+### Gate-found regression: the integration webhook mock missed the new signature helpers
+
+Task 6's own `test:integration` gate run — the first time this branch's full integration suite ran; no single task's own required gate (`typecheck && lint && test`) includes it — failed 3 of 378 tests, all in `test/integration/neon-integrations.integration.test.ts`:
+
+- `"applies signed concurrent replay exactly once and re-reads authoritative out-of-order state"` — expected `[200, 200]`, got `[400, 400]`.
+- `"rolls event insertion back with a failed tier write and permits clean retry"` — expected `500`, got `400`.
+- `"never resolves unknown legacy customers using email and rejects unknown checkout targets"` — expected `200`, got `400`.
+
+**Root cause.** This file's own `vi.mock("../../lib/stripe", () => ({ stripeConfigured: () => true, getStripeClient: () => {...} }))` replaced the *whole* `lib/stripe` module with a factory exporting only those two names. Task 3 (`14ec69c`) added two more exports to that module — `constructWebhookEvent`, `isWellFormedStripeSignature` — and made the webhook route call them before any configuration check. Under this integration test's mock both were `undefined`; calling `constructWebhookEvent(...)` threw `TypeError: constructWebhookEvent is not a function`, and the route's own `catch` block turned every request — signed or not, valid or not — into a `400 "Invalid signature"`. The plan's departure #1 above had already applied the equivalent fix to the **unit** test's own, separate mock in `app/api/webhooks/stripe/route.test.ts`; this integration test carries its own independent mock and was missed.
+
+**Confirmed genuine, not the load-flake class named in this task's brief:** reproducible 3/3 on repeat; the file is untouched by any P3.3 implementation commit (`git diff --name-only aeb8513..0bf71c5` excludes it); and it passes 12/12 run against the base commit `aeb8513` unmodified.
+
+**Fixed in `1eb6a50`** ("test(P3.3): the integration webhook mock exposes the new signature helpers"): the mock now spreads the real module via `importOriginal()` and overrides only `stripeConfigured`/`getStripeClient`, the same pattern the unit test's mock already used — `constructWebhookEvent` and `isWellFormedStripeSignature` are the real implementations, so this suite's requests are verified with genuine Stripe signature checking, including real tamper detection. Re-reviewed and re-run: `test:integration` passes 38/38 files, 378/378 tests, exit 0 (see Verification). No product code changed; the fix is confined to one test file, and no other file's behaviour is affected.
+
+### What changed, by task
+
+Full diff `aeb8513..1eb6a50`: **33 files changed, 1,281 insertions, 72 deletions**, across 9 commits (2 docs, 6 implementation, 1 gate-found test fix).
+
+| Task | Commit(s) | What it did |
+|---|---|---|
+| Design and plan | `0010a33`, `2a6d3b2` | The design; the plan, written against the code. |
+| 1. The contract and the server policy that reads it | `504087b` | `lib/commercial/contract.ts` (`COMMERCIAL_CONTRACT`, `tierAllows`, which fails closed for anything other than a declared tier key via an own-property check that cannot be fooled by `__proto__`/`toString`); `deliveryAllowanceForTier` now reads the contract; the rescan route uses `tierAllows(tier, "rescans")` instead of `isWorkspacePaid` directly (identical behaviour today). |
+| 2. Billing availability, and closed checkout/portal routes | `c7b87b8`, tightened by the final-review fix pass | `lib/commercial/availability.ts` (`billingAvailability`: `contract_unapproved` when unset/blank/mismatched — warns only on a mismatch, never on unset; `provider_unconfigured` when any of `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_HK_TIER_PRICE_ID`/`STRIPE_TW_TIER_PRICE_ID`/`APP_ORIGIN` is blank); `checkout-link`/`billing-portal` routes answer `503 billing_unavailable` before any Stripe call when closed, after auth/role checks run first; `.env.example` documents `COMMERCIAL_CONTRACT_APPROVED` (commented out). |
+| 3. The webhook verifies the signature first | `14ec69c` | `lib/stripe.ts` gained `constructWebhookEvent` (the static `Stripe.webhooks.constructEvent`, needs no API key) and `isWellFormedStripeSignature`; `app/api/webhooks/stripe/route.ts` now verifies the signature before any `stripeConfigured()` check, so a missing or malformed header is `400` regardless of configuration and only a well-formed-but-unverifiable header reaches the `500` "not configured" answer; the unit test's own mock moved `constructEvent`/`retrieveSubscription` into `vi.hoisted` and became an `importOriginal` factory (departure #1 above). |
+| Gate-found: the integration webhook mock missed the new helpers | `1eb6a50` | See "Gate-found regression" above. |
+| 4. Copy namespace and the public price surfaces | `4b75b6c`, fixed by `039e119` | New `commercial` namespace in `lib/messages/{en,zh-HK,zh-TW}.json` (`notOpen`, `contactFimmick`, `allowanceLine`, `unlimitedLine`), listed in `tests/i18n.test.ts`; the pricing page and landing plans show the Growth card's price by market (never by locale), with the "not open yet" label and the market's contact channel (plain text when none is configured) while closed, and the ordinary sign-up CTA when open; Free's allowance line reads the contract. The fix commit corrected the pricing FAQ's "How do I subscribe?" answer, which was still an unsupported claim while billing was closed (departures #3, #4). |
+| 5. Workspace billing page shows buttons only when billing is open | `0bf71c5` | `components/workspace/billing-view.tsx` and its settings page resolve `billingAvailability()` server-side and pass it as a prop; Subscribe/Manage buttons render only when open; the same "not open yet" note and contact link render when closed, alongside today's tier, usage and tier history. |
+| 6. Gates, mutation checks and the phase record | `ca3f24b`, `387414f` | Gates, including the `test:integration` run that found the regression above; four mutation checks, all killed; this section and the matching `PHASE-3-TEST-RESULTS.md` section. |
+| 7. Final-review fixes | *(this commit)* | Webhook secret gates billing (`STRIPE_WEBHOOK_SECRET` added to `STRIPE_ENV_KEYS`); an allowance drift guard against `neon/migrations/0004_atomic_operations.sql`'s own hard-coded lite allowance; `lib/funnel/pricing.ts::marketPricing` reads `COMMERCIAL_CONTRACT.prices`; the unused `commercial.contactFimmick` key removed from all three message bundles; the billing view's free-plan line omits "unlimited once subscribed" while closed; a tier-history assertion added to its test; the webhook doc comment corrected to say it never checks contract approval; zh-TW added to the pricing page's Growth-card/footnote test cases; and this record. |
+
+### Owner actions
+
+**Nothing is required to deploy this slice.** No migration, no new required environment variable — `COMMERCIAL_CONTRACT_APPROVED` and the Stripe variables are all optional and already documented in `.env.example`; unset, billing now honestly answers "closed" (previously it looked open — Subscribe rendered — with no working backend behind it).
+
+- **To open billing:** set `COMMERCIAL_CONTRACT_APPROVED=2026-09-baseline` (must equal `COMMERCIAL_CONTRACT.version` exactly, after trimming) and a full Stripe configuration (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_HK_TIER_PRICE_ID`, `STRIPE_TW_TIER_PRICE_ID`, `APP_ORIGIN`), then redeploy — an environment variable change takes effect on the next deployment, not the running one.
+- **Re-approve promptly after any contract version bump.** A version bump closes billing until `COMMERCIAL_CONTRACT_APPROVED` is updated to match; during that window an existing paid subscriber's "Manage billing" button is gone (the portal route answers `503`) and they see the not-open note instead. This is a known limit, not a bug — see below.
+- **The landing page's availability is fixed at build time**, like every other server-resolved prop on that route; a later change to the approval variable or the Stripe configuration needs the same redeploy as opening billing itself, not just a page reload or a running-instance restart.
+- **This branch is stacked on `p35d-incident-runbook` (PR #23) and must merge after it.** It was built and gated on top of that branch's tip (`aeb8513`), not on `origin/main`. **P3.5d (PR #23) was itself merged into `p35b-failure-view` after that branch reached `main`, so neither P3.5d nor this branch is on `main` yet** — merging this branch requires the same chain to land first.
+
+### Known limits (spec §6, plus this session's findings)
+
+- No seat limits (none exist or are claimed).
+- No trial/pilot, upgrade, downgrade, rollover, top-up or over-limit rules beyond today's behaviour — they wait for DEC-08.
+- No Stripe test-mode run — waits for DEC-09.
+- Paid tier arrives only through the Stripe webhook; this app has no staff grant.
+- Opening billing requires both the approval variable and a full Stripe configuration (now including `STRIPE_WEBHOOK_SECRET`), then a redeploy.
+- No migration. None was needed or added.
+- **The landing page's availability is fixed at build time** (see "Owner actions" above — a config change needs a redeploy, not just a reload).
+- **P3.5d (PR #23) was merged into `p35b-failure-view` after that branch reached `main`, so neither P3.5d nor this branch is on `main` yet.**
+- **A contract version bump closes billing until re-approved; existing paid subscribers cannot open the Stripe portal (503) during that window and see the not-open note instead of "Manage billing" — re-approve promptly after any version bump.**
+- **Changing an allowance needs a new migration that replaces the `export_output_version` function in `neon/migrations/0004_atomic_operations.sql`**, because that function carries its own hard-coded lite allowance (`case when ws_tier = 'paid' then null else 3 end`) for the row it lazily creates on first export, independent of `COMMERCIAL_CONTRACT`. `lib/commercial/contract-migration-drift.test.ts` reads that literal out of the migration file and fails until a replacement migration and this contract agree — see Task 7 below.
+- **`contactFimmick` dropped** from the `commercial` message namespace in all three locales — nothing referenced it; the "not open" label already names Fimmick.
+
+**Known, not changed** (deferred minor findings from this task's own review of Tasks 1–5, not acted on in this slice):
+
+- `lib/commercial/contract.ts`'s doc comments are verbose relative to their content; the final-review fix pass corrected only the one claim that was wrong (every allowance reads the contract), not the general verbosity.
+- No direct test of `publicBilling()`'s own wiring: an hk/tw price or contact-channel swap inside that function would go undetected by the existing suite, which only exercises it through the pages that call it.
+- The "not open" label plus its contact-anchor rendering (link when a channel is configured, plain text otherwise) is duplicated across `components/public-pages.tsx`, `components/landing-page.tsx` and `components/workspace/billing-view.tsx`, rather than shared in one place.
+- The en copy "Unlimited approved deliveries a month" is capitalised mid-bullet on the landing page's Growth card.
+
+**Fixed by the final-review pass (Task 7):**
+
+- `app/api/webhooks/stripe/route.ts`'s doc comment claimed the webhook never runs "before any configuration or contract-approval check" — reworded: it checks the signature before configuration, and it never checks contract approval at all (it isn't gated by `billingAvailability()`).
+- `components/workspace/billing-view.test.tsx`'s first case is named for tier history ("... but still sees usage and tier history") but did not itself assert the tier-history row is rendered — it now asserts the fixture's `staff_grant` source label text.
+
+### Verification
+
+Full detail is in `PHASE-3-TEST-RESULTS.md`. Summary, one gate at a time, run on 2026-09-26. `typecheck`/`lint`/`test`/`db:verify`/both builds ran at `0bf71c5` (Task 5's tip); `1eb6a50` only touches one file matched by `**/*.integration.test.ts`, which is outside every one of those gates' globs, so those results stand unchanged at the branch's actual `HEAD`. `test:integration` is shown at both HEADs, since that is the gate the fix addresses:
+
+| Command | HEAD | Result |
+|---|---|---|
+| `corepack pnpm typecheck` | `0bf71c5` | **passed**: exit 0. Root `tsc --noEmit`, then all 4 workspace packages report `Done`. |
+| `corepack pnpm lint` | `0bf71c5` | **passed**: exit 0, `✖ 30 problems (0 errors, 30 warnings)` across 18 files — identical counts and files to the P3.5d record. No file this branch touches appears among them. |
+| `corepack pnpm test` | `0bf71c5` | **passed**: exit 0 once the one known-intermittent file (`app/api/versions/[versionId]/versions.test.ts`, empty diff against `aeb8513`, re-run 11/11) is counted from its isolated re-run. **350 files / 3,741 tests** total: app suite excl. safe-media 299 files/3,154 tests, `lib/evidence/safe-media.test.ts` 1/62, packages `region` 3/23, `scoring` 16/183, `contracts` 3/20, `scan-engine` 28/299. |
+| `NEON_INTEGRATION=1 corepack pnpm test:integration` | `0bf71c5` | **FAILED**: exit 1, 3 of 378 tests failed in one file. See "Gate-found regression" above. |
+| `NEON_INTEGRATION=1 corepack pnpm test:integration` | `1eb6a50` | **passed** (after the fix): exit 0, **38 files / 378 tests**, 441.48s — the same file/test count as the base commit (`aeb8513`); no integration test file was added or removed by this branch. |
+| `corepack pnpm db:verify` | `0bf71c5` | **passed**: exit 0, 0001–0009 applied, replay empty, 36 tables / 422 columns / 162 constraints / 92 indexes — unchanged from P3.5d, because this branch adds no migration. |
+| `corepack pnpm build` (Turbopack) | `0bf71c5` | **blocked**, as at every prior phase on this machine: the standing `radix-ui` cascade (`@radix-ui/react-visually-hidden`), traced through `components/ui/alert-dialog.tsx` → `components/workspace/rescan-button.tsx` → `components/workspace/{problem-item,problems-list}.tsx` → `app/[locale]/owner/[workspaceSlug]/activity/page.tsx`. No file this branch touches appears in the import trace. |
+| `npx next build --webpack` | `0bf71c5` | **passed**: exit 0, `✓ Compiled successfully in 10.4s`, full route manifest including every P3.3-touched route (`/api/webhooks/stripe`, `/api/workspaces/[workspaceId]/{checkout-link,billing-portal,rescan}`, and the rest of the existing manifest). |
+
+**Mutation checks.** All performed at `0bf71c5` (each mutation applied by an exact pattern required to match exactly once, tested, then restored and confirmed byte-identical with `git diff --quiet`):
+
+- **(a)** `lib/commercial/availability.ts`: both approval guards (`if (!approved)` and `if (approved !== COMMERCIAL_CONTRACT.version)`) replaced with `if (false)`, so the contract reads as approved regardless of the env value. **Killed**: `lib/commercial/availability.test.ts` 3/11 failed (the empty-value, whitespace and mismatch-warning cases); `checkout-link/route.test.ts` and `billing-portal/route.test.ts`'s own "returns 503 … when the contract is unapproved" cases also failed (`expected 200 to be 503`), exactly as the plan's Testing section anticipated.
+- **(b)** `app/api/webhooks/stripe/route.ts`: the `stripeConfigured()` 500 check moved to run before the missing/malformed-header checks. **Killed**: `route.unconfigured.test.ts` 6/12 failed (the two 400 cases now answer 500; the well-formed-but-unverifiable case answers the wrong 500 message).
+- **(c)** `lib/commercial/contract.ts`: `tierAllows`'s body replaced with `return true;`. **Killed**: `contract.test.ts`'s "tierAllows fails closed" failed — every bad input (`null`, `undefined`, `""`, `"growth"`, `"PAID"`, `"toString"`, `"__proto__"`) now reads `true`.
+- **(d)** `components/public-pages.tsx`: the Growth card's `!billing.open` condition replaced with `false`. **Killed**: `pricing-page.test.tsx` 6/16 failed — the closed-state cases now find the Subscribe CTA present, and the "not open" label/contact-link assertions fail because that branch never renders.
+
+After the unit-test run, the two tracked snapshot files (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) showed as modified; `git diff --ignore-cr-at-eol --stat` was empty, confirming line-ending-only changes, and both were restored with `git checkout --`. `git status --short` was otherwise clean before this documentation commit.

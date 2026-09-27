@@ -44,3 +44,14 @@ describe("ContextualAssistant and the AI drafting limit", () => {
     expect(screen.queryByText(getMessages("en").budget.aiLimit)).toBeNull();
   });
 });
+
+describe("ContextualAssistant while AI drafting is paused (P3.5d)", () => {
+  it.each(["en", "zh-HK", "zh-TW"] as const)("shows the %s pause message instead of a generic failure", async (locale) => {
+    const fetchSpy = vi.fn(async () => ({ ok: false, status: 503, json: async () => ({ error: "ai_paused" }) }) as unknown as Response);
+    vi.stubGlobal("fetch", fetchSpy);
+    await ask(locale);
+    expect(await screen.findByText(getMessages(locale).pause.ai)).toBeInTheDocument();
+    expect(screen.queryByText(locale === "en" ? "The run could not complete" : "暫時未能完成")).toBeNull();
+    expect(fetchSpy).toHaveBeenCalledOnce();
+  });
+});

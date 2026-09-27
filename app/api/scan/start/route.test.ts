@@ -377,4 +377,36 @@ describe("POST /api/scan/start spend budget", () => {
       error.mockRestore();
     }
   });
+
+  it("answers 503 paused, forwards nothing and logs no persistence failure, when admission refuses on the incident pause", async () => {
+    mocks.after.mockClear();
+    mocks.insert.mockRejectedValueOnce(new ScanBudgetRefusal("scan_paused"));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const response = await POST(request(validBody));
+      expect(response.status).toBe(503);
+      expect(await response.json()).toEqual({ error: "paused" });
+      expect(mocks.after).not.toHaveBeenCalled();
+      expect(error).not.toHaveBeenCalledWith("Scan persistence unavailable", expect.anything());
+    } finally {
+      error.mockRestore();
+    }
+  });
+
+  it("answers 503 paused before the limiter, so a paused request never burns the scan_start rate limit (P3.5d)", async () => {
+    mocks.enforceRateLimit.mockClear();
+    mocks.insert.mockClear();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubEnv("SCANS_PAUSED", "true");
+    try {
+      const response = await POST(request(validBody));
+      expect(response.status).toBe(503);
+      expect(await response.json()).toEqual({ error: "paused" });
+      expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+      expect(mocks.insert).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+      warn.mockRestore();
+    }
+  });
 });

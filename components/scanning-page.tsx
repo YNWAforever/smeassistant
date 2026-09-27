@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import type { ProviderState } from "@/lib/demo-data"
+import { t } from "@/lib/i18n"
 import {
   CATCH_UP_MIN_INTERVAL_MS,
   COLLECTOR_KEYS,
@@ -102,6 +103,7 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
   const [checking, setChecking] = useState(false)
   const [resuming, setResuming] = useState(false)
   const [atCapacity, setAtCapacity] = useState(false)
+  const [paused, setPaused] = useState(false)
   const lastPollAtRef = useRef(0)
   const processPostedRef = useRef(false)
   // The poll record lives in a ref rather than state: reading it is an
@@ -266,11 +268,13 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
   const resume = useCallback(() => {
     setResuming(true)
     setAtCapacity(false)
+    setPaused(false)
     void postProcess()
       .then(async (response) => {
         if (response?.status !== 503) return
         const body = (await response.json().catch(() => null)) as { error?: unknown } | null
-        if (body?.error === "at_capacity") setAtCapacity(true)
+        if (body?.error === "paused") setPaused(true)
+        else if (body?.error === "at_capacity") setAtCapacity(true)
       })
       .finally(() => setResuming(false))
     restart({ process: true })
@@ -378,6 +382,14 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
         )}
 
         {view === "dead_lettered" && <ScanStuckCard locale={locale} reference={scanReference(jobId)} />}
+
+        {paused && (
+          <div className="partial-result-card" role="status">
+            <div>
+              <p>{t(locale, "pause.scans")}</p>
+            </div>
+          </div>
+        )}
 
         {atCapacity && (
           <div className="partial-result-card" role="status">

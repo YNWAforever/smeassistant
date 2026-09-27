@@ -1,4 +1,6 @@
-import { getMarketConfig, type Market, type MarketPricing } from "@sme-scanner/region";
+import type { Market, MarketPricing } from "@sme-scanner/region";
+
+import { COMMERCIAL_CONTRACT } from "@/lib/commercial/contract";
 
 /** `?market=` (hk|tw, any case) else the locale's home market — never the UI language alone (guardrail 11). */
 export function resolveMarketParam(value: string | null | undefined, locale: string): Market {
@@ -7,8 +9,9 @@ export function resolveMarketParam(value: string | null | undefined, locale: str
   return locale === "zh-TW" ? "tw" : "hk";
 }
 
+/** The one versioned commercial contract's price for this market (lib/commercial/contract.ts). */
 export function marketPricing(market: Market): MarketPricing {
-  return getMarketConfig(market).pricing;
+  return COMMERCIAL_CONTRACT.prices[market];
 }
 
 /** HK$888 / NT$2,800 — the plan price shown on landing and pricing, bound to MARKETS[market].pricing. */

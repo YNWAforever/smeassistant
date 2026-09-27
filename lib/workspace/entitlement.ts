@@ -1,3 +1,5 @@
+import { COMMERCIAL_CONTRACT } from "@/lib/commercial/contract";
+
 export const WORKSPACE_TIERS = ["lite", "paid"] as const;
 export type WorkspaceTier = (typeof WORKSPACE_TIERS)[number];
 
@@ -49,9 +51,10 @@ export function isWorkspacePaid(tier: string | null | undefined): boolean {
 
 /**
  * Local addition (CLAUDE.md §3.10): approved-delivery allowance per period,
- * copied onto `workspace_usage.allowance` when the row is created.
- * `lite` → 3, `paid` → null (unlimited).
+ * copied onto `workspace_usage.allowance` when the row is created. Reads the
+ * one versioned commercial contract (`lib/commercial/contract.ts`) instead of
+ * hard-coding the numbers a second time here.
  */
 export function deliveryAllowanceForTier(tier: WorkspaceTier): number | null {
-  return tier === "paid" ? null : 3;
+  return COMMERCIAL_CONTRACT.tiers[tier].deliveryAllowance;
 }

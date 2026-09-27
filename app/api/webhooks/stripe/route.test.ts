@@ -5,15 +5,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * (actual SQL proof lives in neon-integrations): signature handling plus the
  * checkout and lifecycle branches against the explicit billing repository.
  */
-const constructEvent = vi.fn();
-const retrieveSubscription = vi.fn();
-vi.mock("@/lib/stripe", () => ({
-  stripeConfigured: () => true,
-  getStripeClient: () => ({
-    webhooks: { constructEvent },
-    subscriptions: { retrieve: retrieveSubscription },
-  }),
+const { constructEvent, retrieveSubscription } = vi.hoisted(() => ({
+  constructEvent: vi.fn(),
+  retrieveSubscription: vi.fn(),
 }));
+vi.mock("@/lib/stripe", async (importOriginal) => {
+  // isWellFormedStripeSignature is the real, pure regex check (unit-tested
+  // directly in route.unconfigured.test.ts) -- only the parts that reach
+  // Stripe or its API key are stubbed here.
+  const actual = await importOriginal<typeof import("@/lib/stripe")>();
+  return {
+    ...actual,
+    stripeConfigured: () => true,
+    constructWebhookEvent: constructEvent,
+    getStripeClient: () => ({
+      webhooks: { constructEvent },
+      subscriptions: { retrieve: retrieveSubscription },
+    }),
+  };
+});
 
 const db = vi.hoisted(() => ({
   workspaces: new Map<
@@ -135,7 +145,7 @@ describe("POST /api/webhooks/stripe", () => {
 
   it("refuses to run without STRIPE_WEBHOOK_SECRET", async () => {
     vi.stubEnv("STRIPE_WEBHOOK_SECRET", "");
-    expect((await POST(webhookRequest())).status).toBe(500);
+    expect((await POST(webhookRequest("t=1,v1=abc123"))).status).toBe(500);
   });
 
   it("sets tier to paid on checkout.session.completed only after confirming current subscription status", async () => {
