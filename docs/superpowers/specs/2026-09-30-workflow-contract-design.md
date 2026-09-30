@@ -37,7 +37,6 @@ Fields added:
 |---|---|---|
 | `outcome` | `LocalizedText` | One line on what the owner gets, e.g. "Replies you can paste into Google, one per selected review". It is distinct from `summary`, which describes the problem. Copy is en and zh-HK; zh-TW falls back through `localized()` as elsewhere in the table. |
 | `inputs` | `readonly WorkflowInput[]` | `{ key: string; kind: "confirmed_fact" \| "evidence" \| "preference" }`. It is classified per template, not per key, because `approved_claim` is a hard fact for `ig-bio` and only a preference for `website-basics`. |
-| `anyOf` | `readonly (readonly string[])[]` (optional) | Groups of `confirmed_fact` keys where at least one key per group satisfies the requirement. The group members are then not individually required. |
 | `deliveryUnit` | `"approved_version"` | The billable unit (DEC-14 safe default). |
 | `measurement` | `MetricKey \| null` | This moves `TEMPLATE_METRIC` here. `measurements.ts` keeps exporting `TEMPLATE_METRIC`, derived from `TEMPLATES`, so its callers do not change. |
 | `failure` | `{ retries: 1; onMissingFacts: "needs_input" }` | The current behaviour stated as data: one retry on invalid or empty output, and missing facts leave the action in `needs_input`. It is literal-typed so it cannot drift silently. |
@@ -46,23 +45,23 @@ Fields added:
 
 ### Input classification
 
-| Template | Agent | Inputs (kind) | `anyOf` |
-|---|---|---|---|
-| review-response | review_reply | brand_voice (preference), reviews_without_response (evidence), language (preference) | — |
-| review-request | review_request | brand_voice (preference), channel (preference) | — |
-| gbp-profile-fix | — (checklist) | opening_hours (confirmed_fact), categories (confirmed_fact) | — |
-| gbp-photo-pack | photo_brief | — | — |
-| gbp-post | gbp_post | brand_voice (preference) | — |
-| social-post | social_post | asset_or_text_only (confirmed_fact), alt_text (preference) | — |
-| ig-bio | ig_bio | brand_voice (preference), approved_claim (confirmed_fact), cta_link (confirmed_fact) | — |
-| ig-highlights | — (checklist) | — | — |
-| visibility-content | faq_jsonld | owner_fact_1, owner_fact_2, owner_fact_3 (confirmed_fact) | `[[owner_fact_1, owner_fact_2, owner_fact_3]]` |
-| website-basics | website_basics | approved_claim (preference; the prompt uses it "only if it fits naturally") | — |
-| local-seo-brief | local_seo_brief | — | — |
-| menu-translation | menu_translation | menu_items (confirmed_fact) | — |
-| google-reconnect | — (system) | google_account_owner (confirmed_fact) | — |
+| Template | Agent | Inputs (kind) |
+|---|---|---|
+| review-response | review_reply | brand_voice (preference), reviews_without_response (evidence), language (preference) |
+| review-request | review_request | brand_voice (preference), channel (preference) |
+| gbp-profile-fix | — (checklist) | opening_hours (confirmed_fact), categories (confirmed_fact) |
+| gbp-photo-pack | photo_brief | — |
+| gbp-post | gbp_post | brand_voice (preference) |
+| social-post | social_post | asset_or_text_only (confirmed_fact), alt_text (preference) |
+| ig-bio | ig_bio | brand_voice (preference), approved_claim (confirmed_fact), cta_link (confirmed_fact) |
+| ig-highlights | — (checklist) | — |
+| visibility-content | faq_jsonld | owner_fact_1, owner_fact_2, owner_fact_3 (confirmed_fact) |
+| website-basics | website_basics | approved_claim (preference; the prompt uses it "only if it fits naturally") |
+| local-seo-brief | local_seo_brief | — |
+| menu-translation | menu_translation | menu_items (confirmed_fact) |
+| google-reconnect | — (system) | google_account_owner (confirmed_fact) |
 
-**FAQ answers the owner did not give are left out, never invented.** The prompt already shows an unanswered question as "(not provided)" (`agents.test.ts` "still shows a missing fact as missing"). A `faq_jsonld` acceptance check is added: output that answers a question whose fact is missing gets the warning `unanswered_fact_answered`.
+**FAQ needs all three owner facts.** The FAQ prompt (`lib/agents/agents/faq-jsonld.ts`) writes exactly three entries and tells the model to return `facts_needed` and an empty body when any fact is missing. A gate satisfied by fewer than three facts would therefore still pay for a model call that ends in `needs_input`. Letting the owner answer only some questions would need a prompt change, which this slice rules out, so every owner fact is an individual `confirmed_fact`. *(Revised during planning, 2026-09-30: an earlier draft had an `anyOf` group and an `unanswered_fact_answered` check. Both are dropped as inconsistent with the unchanged prompt.)*
 
 **The checklist and system gates only affect display.** Those templates have no agent, so the run gate never reaches them. Their `confirmed_fact` tags only drive what the overview shows as missing.
 
@@ -90,7 +89,7 @@ export function missingConfirmedInputs(
 ): string[]
 ```
 
-It returns the `confirmed_fact` and `evidence` keys that are neither in `satisfied` nor present in `provided`. Present means not `undefined`, not `null`, and not a string that is empty after trimming. For each `anyOf` group that has no member present, it returns the group's first missing key, so the owner sees one prompt for the group rather than three. `preference` keys are never returned. The function uses no I/O and reads no clock.
+It returns the `confirmed_fact` and `evidence` keys that are neither in `satisfied` nor present in `provided`. Present means not `undefined`, not `null`, and not a string that is empty after trimming. `preference` keys are never returned. The function uses no I/O and reads no clock.
 
 `buildActionOverview` (`lib/workspace/overview.ts:204`) keeps its current `missingInputs` computation, which lists every required key for display. It gains one field:
 
@@ -138,7 +137,6 @@ For every entry in `TEMPLATES`:
 2. **No publishing:** `delivery` is one of `export_copy | export | checklist | system`. A type-level assertion (`// @ts-expect-error` on a `"publish"` literal) plus a runtime check stop anyone widening the union without failing this test.
 3. **Inputs:**
    - `requiredInputs` deep-equals `inputs.map(i => i.key)`, and keys are unique;
-   - every `anyOf` member is a `confirmed_fact` input of the same workflow;
    - every `evidence` key is one `resolveEvidenceInputs` can produce;
    - every `confirmed_fact` key has an owner entry point: an input field label in the action-detail inputs copy (`lib/copy-workspace.ts`), a brand field, or a custom satisfier.
 4. **Triggers:** every `triggerFindingKeys` entry is in `FINDING_KEYS` or is `WEBSITE_FAQ_TRIGGER`. The existing "all 38 keys mapped" test is kept.
@@ -154,11 +152,12 @@ Gate unit tests go in `lib/workspace/workflow-inputs.test.ts`:
 
 - a `preference` never blocks;
 - blank strings count as missing;
-- the `anyOf` group is satisfied by one member;
 - scan-satisfied `evidence` passes;
 - the output is ordered by `inputs` order.
 
-`runs.test.ts` and `live.test.ts` each get a case proving that a blocked run or draft makes **zero** `llmComplete` calls and zero budget reads, and that a `preference`-only gap still calls the model.
+`runs.test.ts` and `live.test.ts` each get a case proving two things. A blocked run or draft makes **zero** `llmComplete` calls and records zero cost. A `preference`-only gap still calls the model.
+
+In `runAgentForAction` the P3.5a budget check stays where it is, before any evidence read, so a blocked run still reads the spend total once. That is a read, not a charge, and the gate needs the evidence that the check deliberately precedes. In the assistant path the gate runs before `checkAiBudget`.
 
 ## 4. Regression corpus — `test/corpus/workflows/`
 
@@ -211,7 +210,7 @@ The script is excluded from `test` and from CI. The phase report records it as *
 
 ## 7. Testing and gates
 
-- **New:** `templates.contract.test.ts`, `workflow-inputs.test.ts`, `test/corpus/workflows/corpus.test.ts` and its coverage test, the new cases in `runs.test.ts` and `live.test.ts`, and the new acceptance checks (`unanswered_fact_answered`, `unconfirmed_claim`, `unexpected_link`) in `agents.test.ts`. All three are warnings, not blocks.
+- **New:** `templates.contract.test.ts`, `workflow-inputs.test.ts`, `test/corpus/workflows/corpus.test.ts` and its coverage test, the new cases in `runs.test.ts` and `live.test.ts`, and the new acceptance checks (`unconfirmed_claim`, `unexpected_link`) in `agents.test.ts`. Both are warnings, not blocks.
 - **Prompt snapshots** (`lib/agents/__snapshots__/agents.test.ts.snap`) must not change, because this slice changes no prompt text. A snapshot diff is a regression.
 - **E2E:** `e2e/` specs that run a draft with fixture inputs are checked for reliance on the model being called while a `confirmed_fact` is missing. Any such spec is updated to provide the fact, and the change is recorded in the report.
 - **Full offline gate inventory on the final candidate:** `typecheck`, `lint`, `test`, `build` (the known Windows Turbopack blocker; `next build --webpack` as the recorded fallback), `test:integration`, `test:secret-boundary`, `db:verify` (no migration expected, run to prove the corpus is unchanged) and `e2e`.
