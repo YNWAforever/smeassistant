@@ -105,13 +105,13 @@ export type WorkspaceCopy = {
   };
 };
 
-const INPUT_KEYS = [
+export const ACTION_INPUT_KEYS = [
   "brand_voice", "reviews_without_response", "language", "channel", "opening_hours", "categories", "asset_or_text_only", "alt_text",
   "approved_claim", "cta_link", "owner_fact_1", "owner_fact_2", "owner_fact_3", "menu_items", "google_account_owner",
 ] as const;
 
 function inputs(labels: string[]): Record<string, string> {
-  return Object.fromEntries(INPUT_KEYS.map((key, index) => [key, labels[index]]));
+  return Object.fromEntries(ACTION_INPUT_KEYS.map((key, index) => [key, labels[index]]));
 }
 
 export const workspaceEn: WorkspaceCopy = {

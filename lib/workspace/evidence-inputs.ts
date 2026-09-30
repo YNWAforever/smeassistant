@@ -30,6 +30,13 @@ import { sanitizeReportProof } from "@/lib/report/sanitize-proof";
  */
 export const SERVER_RESOLVABLE_INPUT_KEYS = ["reviews_without_response"] as const;
 
+/**
+ * Required inputs the server answers from stored scan evidence, as opposed to the
+ * brand-derived ones below. The workflow contract test checks every `evidence`
+ * input against this list.
+ */
+export const EVIDENCE_INPUT_KEYS: readonly string[] = SERVER_RESOLVABLE_INPUT_KEYS;
+
 /** The three brand-derived keys P2.3 item 16 resolves. See the module doc above. */
 export const BRAND_RESOLVABLE_INPUT_KEYS = ["brand_voice", "language", "approved_claim"] as const;
 
