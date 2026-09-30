@@ -1,4 +1,4 @@
-import { LOCALE_LABELS } from "@sme-scanner/region";
+import { LOCALE_LABELS } from "@sme-scanner/region/src/config";
 import type { SampledReview } from "@/lib/agents";
 import { sanitizeReportProof } from "@/lib/report/sanitize-proof";
 

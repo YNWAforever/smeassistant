@@ -1,4 +1,4 @@
-import { FINDING_KEYS } from "@sme-scanner/scoring";
+import { FINDING_KEYS } from "@sme-scanner/scoring/src/types";
 import { localized, type Capability, type LocalizedText } from "@/lib/domain";
 import type { MetricKey } from "@/lib/workspace/metrics";
 import type { WebsiteCheckKey } from "@/lib/website/checks";

@@ -1,4 +1,4 @@
-import { isSensitiveQueryName } from "@sme-scanner/scan-engine";
+import { isSensitiveQueryName } from "@sme-scanner/scan-engine/src/sensitive-name";
 import type { ReportProofModel, TrustProofModel } from "./view-model";
 
 type UnknownRecord = Record<string, unknown>;

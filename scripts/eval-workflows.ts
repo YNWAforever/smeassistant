@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { AGENT_LLM_OPTIONS, computeCostUsd } from "@/lib/agents";
+import { AGENTS, AGENT_LLM_OPTIONS, computeCostUsd } from "@/lib/agents";
 import type { llmComplete } from "@/lib/llm";
 import type { CorpusCase } from "@/test/corpus/workflows/harness";
 
@@ -43,6 +43,8 @@ export interface EvalReport {
   model: string | null;
   baseUrlHost: string | null;
   options: typeof AGENT_LLM_OPTIONS;
+  /** Agent key to promptVersion, so a result file says which prompts were judged. */
+  promptVersions: Record<string, string>;
   date: string;
   totalCostUsd: number;
   stoppedForBudget: boolean;
@@ -72,37 +74,45 @@ export async function runEval(deps: EvalDeps): Promise<EvalReport> {
   const { runCorpusCase } = await import("@/test/corpus/workflows/harness");
   const env = deps.env ?? process.env;
   let total = 0;
-  // The dearest call seen so far: the next call is assumed to cost at least this much,
-  // so the run stops before the budget is passed rather than one call after.
+  // The dearest call seen so far. Every call is also pre-flighted against a worst-case estimate
+  // (characters >= tokens, so this over-estimates), which guards the very first call too.
   let dearestCall = 0;
   let refused = false;
   let unpriced = false;
+  let halted = false;
   let stoppedForBudget = false;
-  const wouldPassBudget = () => total + dearestCall >= deps.budgetUsd;
+  const overBudget = (estimate: number) => total + Math.max(dearestCall, estimate) > deps.budgetUsd;
 
   const budgetedLlm = (async (prompt, options) => {
-    if (wouldPassBudget()) {
+    const estimate =
+      computeCostUsd({ inputTokens: prompt.length, outputTokens: options?.maxTokens ?? AGENT_LLM_OPTIONS.maxTokens }) ?? 0;
+    // An unknown cost means the budget can no longer be enforced: fail closed.
+    if (halted) return null;
+    if (overBudget(estimate)) {
       refused = true;
       return null;
     }
     const result = await deps.llm(prompt, options);
     if (result) {
       const cost = computeCostUsd(result.usage);
-      if (cost === null) unpriced = true;
-      total += cost ?? 0;
-      dearestCall = Math.max(dearestCall, cost ?? 0);
+      if (cost === null) {
+        unpriced = true;
+        halted = true;
+      } else {
+        total += cost;
+        dearestCall = Math.max(dearestCall, cost);
+      }
     }
     return result;
   }) as typeof llmComplete;
 
   const results: EvalResult[] = [];
   for (const c of deps.cases) {
-    if (wouldPassBudget()) {
+    if (halted || overBudget(0)) {
       stoppedForBudget = true;
       break;
     }
     refused = false;
-    unpriced = false;
     const notes: string[] = [];
     // missing_facts cases are blocked by the gate before any model call, so they are a gate result, not a model result.
     if (c.category === "missing_facts") notes.push("gate");
@@ -125,7 +135,10 @@ export async function runEval(deps: EvalDeps): Promise<EvalReport> {
       stoppedForBudget = true;
       notes.push("budget_refused");
     }
-    if (unpriced) notes.push("cost_unknown");
+    if (unpriced) {
+      stoppedForBudget = true;
+      notes.push("cost_unknown");
+    }
     results.push({ id: c.id, pass, notes });
     if (stoppedForBudget) break;
   }
@@ -134,6 +147,7 @@ export async function runEval(deps: EvalDeps): Promise<EvalReport> {
     model: env.LLM_MODEL?.trim() || null,
     baseUrlHost: hostOf(env.LLM_BASE_URL),
     options: AGENT_LLM_OPTIONS,
+    promptVersions: Object.fromEntries(Object.values(AGENTS).map((agent) => [agent.key, agent.promptVersion])),
     date: deps.now().toISOString().slice(0, 10),
     totalCostUsd: Math.round(total * 1e6) / 1e6,
     stoppedForBudget,
@@ -155,7 +169,16 @@ function summaryLine(report: EvalReport): string {
 }
 
 async function main(): Promise<void> {
-  const args = parseEvalArgs(process.argv.slice(2), process.env);
+  const argv = process.argv.slice(2);
+  // --check-load proves the live path's imports resolve. It bypasses the gates
+  // because it never calls a model, and it needs no key.
+  if (argv.includes("--check-load")) {
+    const { loadCorpus } = await import("@/test/corpus/workflows/harness");
+    await import("@/lib/llm");
+    console.log(`load ok: ${loadCorpus().length} cases`);
+    return;
+  }
+  const args = parseEvalArgs(argv, process.env);
   if (!args.ok) {
     console.error(`eval:workflows refused: ${args.reason}`);
     process.exit(2);

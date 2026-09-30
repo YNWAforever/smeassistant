@@ -130,3 +130,45 @@ describe("runEval", () => {
     expect(report.results[0].pass).toBe(false);
   });
 });
+
+describe("runEval fail-closed budget", () => {
+  const now = () => new Date("2026-10-01T03:04:05.000Z");
+
+  it("refuses the very first call when the budget cannot cover a worst-case call, with zero spend", async () => {
+    const c = modelCase();
+    const { llm, calls } = costingLlm(0.0001);
+    const report = await runEval({ cases: [c, { ...c, id: "second" }], llm, budgetUsd: 1e-9, now });
+    expect(calls).not.toHaveBeenCalled();
+    expect(report.totalCostUsd).toBe(0);
+    expect(report.stoppedForBudget).toBe(true);
+    expect(report.results).toHaveLength(1);
+    expect(report.results[0]).toMatchObject({ pass: false });
+    expect(report.results[0].notes).toContain("budget_refused");
+  });
+
+  it("stops the run on the first result whose cost is unknown", async () => {
+    const c = modelCase();
+    const calls = vi.fn(async () => ({ text: VALID_OUTPUT, usage: { inputTokens: null, outputTokens: null } }) satisfies LLMResult);
+    const report = await runEval({
+      cases: [c, { ...c, id: "second" }, { ...c, id: "third" }],
+      llm: calls as unknown as typeof llmComplete,
+      budgetUsd: 1000,
+      now,
+    });
+    expect(report.stoppedForBudget).toBe(true);
+    expect(report.results.map((r) => r.id)).toEqual([c.id]);
+    expect(report.results[0].notes).toContain("cost_unknown");
+    // No second call, not even a retry inside the same case.
+    expect(calls.mock.calls.length).toBe(1);
+  });
+
+  it("records the prompt version of every agent", async () => {
+    const { AGENTS } = await import("@/lib/agents");
+    const report = await runEval({ cases: [], llm: cannedLlm([]), budgetUsd: 1, now });
+    expect(Object.keys(report.promptVersions).sort()).toEqual(Object.keys(AGENTS).sort());
+    for (const [key, version] of Object.entries(report.promptVersions)) {
+      expect(version, key).toBe(AGENTS[key as keyof typeof AGENTS].promptVersion);
+      expect(version.length).toBeGreaterThan(0);
+    }
+  });
+});

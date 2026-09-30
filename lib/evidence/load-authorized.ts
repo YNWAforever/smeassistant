@@ -5,7 +5,7 @@ import type {
   EvidenceGalleryItem,
   EvidenceGalleryModel,
 } from "@/lib/report/view-model";
-import { isSensitiveQueryName } from "@sme-scanner/scan-engine";
+import { isSensitiveQueryName } from "@sme-scanner/scan-engine/src/sensitive-name";
 import type { EvidenceProvider, EvidenceType } from "./types";
 
 const EVIDENCE_BUCKET = "report-evidence";
