@@ -24,6 +24,7 @@
     "db:verify": "tsx scripts/neon/verify-migrations.ts",
     "db:types": "tsx scripts/gen-types.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
+    "eval:workflows": "tsx scripts/eval-workflows.ts",
     "launch:check": "node scripts/launch-check.mjs",
     "neon:readiness": "tsx scripts/neon/readiness.ts",
     "report:value": "tsx scripts/report/value.ts",
