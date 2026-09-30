@@ -1,0 +1,17 @@
+{
+  "locale": "en",
+  "market": "hk",
+  "provided": {},
+  "brand": {},
+  "id": "uncertain-evidence-no-scanned-reviews",
+  "category": "uncertain_evidence",
+  "workflow": "review-response",
+  "cannedOutputs": [],
+  "expect": {
+    "llmCalls": 0,
+    "version": false,
+    "factsNeeded": [
+      "reviews_without_response"
+    ]
+  }
+}

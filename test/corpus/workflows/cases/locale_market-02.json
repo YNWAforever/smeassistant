@@ -1,0 +1,22 @@
+{
+  "locale": "en",
+  "market": "tw",
+  "provided": {},
+  "brand": {},
+  "id": "locale-market-en-on-tw",
+  "category": "locale_market",
+  "workflow": "gbp-post",
+  "cannedOutputs": [
+    "{\"title\":\"Draft\",\"body\":\"Fresh bakes are out of the oven this morning. Drop by and say hello.\",\"acceptance_criteria\":[\"Owner checks the facts\"],\"warnings\":[],\"facts_used\":[],\"facts_needed\":[]}"
+  ],
+  "expect": {
+    "llmCalls": 1,
+    "version": true,
+    "promptIncludes": [
+      "for a small business in Taiwan"
+    ],
+    "promptExcludes": [
+      "for a small business in Hong Kong"
+    ]
+  }
+}

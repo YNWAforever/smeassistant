@@ -1,0 +1,23 @@
+{
+  "locale": "en",
+  "market": "hk",
+  "provided": {
+    "approved_claim": "Family-run since 1998",
+    "cta_link": "https://corpus.example/book"
+  },
+  "brand": {},
+  "id": "fabricated-claim-confirmed-link",
+  "category": "fabricated_claim",
+  "workflow": "ig-bio",
+  "cannedOutputs": [
+    "{\"title\":\"Draft\",\"body\":\"Family-run since 1998, Yau Ma Tei\\nBook: https://corpus.example/book\",\"acceptance_criteria\":[\"Owner checks the facts\"],\"warnings\":[],\"facts_used\":[],\"facts_needed\":[]}"
+  ],
+  "expect": {
+    "llmCalls": 1,
+    "version": true,
+    "warningsExclude": [
+      "unexpected_link",
+      "unconfirmed_claim"
+    ]
+  }
+}

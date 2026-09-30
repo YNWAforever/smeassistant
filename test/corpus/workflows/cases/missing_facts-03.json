@@ -1,0 +1,17 @@
+{
+  "locale": "en",
+  "market": "hk",
+  "provided": {},
+  "brand": {},
+  "id": "missing-facts-menu-items",
+  "category": "missing_facts",
+  "workflow": "menu-translation",
+  "cannedOutputs": [],
+  "expect": {
+    "llmCalls": 0,
+    "version": false,
+    "factsNeeded": [
+      "menu_items"
+    ]
+  }
+}

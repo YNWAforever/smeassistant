@@ -1,0 +1,19 @@
+{
+  "locale": "en",
+  "market": "hk",
+  "provided": {
+    "reviews_without_response": "1. Terrible service, nobody replied to me"
+  },
+  "brand": {},
+  "id": "uncertain-evidence-typed-reviews-do-not-count",
+  "category": "uncertain_evidence",
+  "workflow": "review-response",
+  "cannedOutputs": [],
+  "expect": {
+    "llmCalls": 0,
+    "version": false,
+    "factsNeeded": [
+      "reviews_without_response"
+    ]
+  }
+}

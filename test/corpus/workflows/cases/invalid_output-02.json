@@ -1,0 +1,18 @@
+{
+  "locale": "en",
+  "market": "hk",
+  "provided": {},
+  "brand": {},
+  "id": "invalid-output-empty-body",
+  "category": "invalid_output",
+  "workflow": "review-request",
+  "cannedOutputs": [
+    "{\"title\":\"x\",\"body\":\"\",\"facts_needed\":[]}",
+    "{\"title\":\"x\",\"body\":\"\",\"facts_needed\":[]}"
+  ],
+  "expect": {
+    "llmCalls": 2,
+    "state": "failed",
+    "version": false
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "locale": "en",
+  "market": "hk",
+  "provided": {},
+  "brand": {},
+  "id": "uncertain-evidence-one-unanswered-review",
+  "category": "uncertain_evidence",
+  "workflow": "review-response",
+  "reviews": [
+    {
+      "rating": 2,
+      "text": "The soup arrived lukewarm",
+      "time": "2026-08-30"
+    },
+    {
+      "rating": 5,
+      "text": "ANSWERED-SENTINEL wonderful evening",
+      "time": "2026-08-31",
+      "owner_response": "Thank you!"
+    }
+  ],
+  "cannedOutputs": [
+    "{\"title\":\"Draft\",\"body\":\"Thank you for telling us. We are sorry the food arrived cold and will check our serving temperature. We hope to see you again.\",\"acceptance_criteria\":[\"Owner checks the facts\"],\"warnings\":[],\"facts_used\":[],\"facts_needed\":[]}"
+  ],
+  "expect": {
+    "llmCalls": 1,
+    "version": true,
+    "promptIncludes": [
+      "The soup arrived lukewarm"
+    ],
+    "promptExcludes": [
+      "ANSWERED-SENTINEL"
+    ]
+  }
+}
