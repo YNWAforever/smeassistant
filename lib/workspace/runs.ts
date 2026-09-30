@@ -24,7 +24,7 @@ import { filterSelectedReviews, resolveBrandProvidedInputs, sampledReviewsFromRa
 import { buildActionOverview, localeOf } from "./overview";
 import { type SnapshotRecord } from "./snapshots";
 import { templateByKey, type TemplateKey } from "./templates";
-import { missingConfirmedInputs } from "./workflow-inputs";
+import { gateBlockingInputs } from "./workflow-inputs";
 
 /**
  * One agent run for one action (CLAUDE.md §3.7 runtime, §3.2.3 POST
@@ -383,13 +383,6 @@ export async function runAgentForAction(
   // still gated. Inputs that have a server satisfier (the approved-asset rule,
   // the scanned reviews) are satisfier-authoritative: an owner-typed or
   // persisted value for them never counts, only the server's own check does.
-  const gateProvided = Object.fromEntries(
-    Object.entries(provided).filter(
-      ([key]) =>
-        key !== "asset_or_text_only" &&
-        !template.inputs.some((i) => i.key === key && i.kind === "evidence"),
-    ),
-  );
   const satisfied = await satisfiedInputs(
     ctx,
     template.inputs.some((i) => i.key === "asset_or_text_only")
@@ -402,7 +395,7 @@ export async function runAgentForAction(
         }
       : {},
   );
-  const blocking = missingConfirmedInputs(template, gateProvided, satisfied);
+  const blocking = gateBlockingInputs(template, provided, satisfied);
 
   const persistence = input.persistence ?? actionRunRepository();
   const runId = await persistence.queue({

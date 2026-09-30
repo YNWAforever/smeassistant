@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { templateByKey } from "./templates";
-import { isPresent, missingConfirmedInputs } from "./workflow-inputs";
+import { gateBlockingInputs, isPresent, missingConfirmedInputs } from "./workflow-inputs";
 
 const none: ReadonlySet<string> = new Set();
 
@@ -59,5 +59,24 @@ describe("isPresent", () => {
     expect(isPresent(0)).toBe(true);
     expect(isPresent(false)).toBe(true);
     expect(isPresent([])).toBe(true);
+  });
+});
+
+describe("gateBlockingInputs", () => {
+  const social = templateByKey("social-post");
+  const reviews = templateByKey("review-response");
+
+  it("ignores a persisted asset_or_text_only marker; only the server satisfier counts", () => {
+    expect(gateBlockingInputs(social, { asset_or_text_only: "asset" }, none)).toEqual(["asset_or_text_only"]);
+    expect(gateBlockingInputs(social, { asset_or_text_only: "asset" }, new Set(["asset_or_text_only"]))).toEqual([]);
+  });
+
+  it("ignores an owner-typed value for an evidence input", () => {
+    expect(gateBlockingInputs(reviews, { reviews_without_response: "typed" }, none)).toEqual(["reviews_without_response"]);
+    expect(gateBlockingInputs(reviews, { reviews_without_response: "typed" }, new Set(["reviews_without_response"]))).toEqual([]);
+  });
+
+  it("still honours an owner-provided confirmed fact", () => {
+    expect(gateBlockingInputs(templateByKey("ig-bio"), { approved_claim: "x", cta_link: "y" }, none)).toEqual([]);
   });
 });

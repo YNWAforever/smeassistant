@@ -28,3 +28,29 @@ export function missingConfirmedInputs(
     .filter((input) => !satisfied.has(input.key) && !isPresent(provided[input.key]))
     .map((input) => input.key);
 }
+
+/**
+ * Inputs whose only authority is a server check, never an owner-typed or
+ * persisted value: the approved-asset rule answers `asset_or_text_only`. An
+ * evidence-kind input (the scanned reviews) is server-satisfied the same way.
+ */
+export const SERVER_SATISFIED_INPUT_KEYS: ReadonlySet<string> = new Set(["asset_or_text_only"]);
+
+/**
+ * The gate every surface applies before a model call: {@link missingConfirmedInputs}
+ * over `provided` with the server-satisfied keys removed, so a persisted
+ * `asset_or_text_only` marker or a typed `reviews_without_response` can never
+ * stand in for the asset-rights check or the scanned reviews. Only `satisfied`
+ * (the server's own answer) can clear them.
+ */
+export function gateBlockingInputs(
+  workflow: Pick<WorkflowDefinition, "inputs">,
+  provided: Readonly<Record<string, unknown>>,
+  satisfied: ReadonlySet<string>,
+): string[] {
+  const evidenceKeys = new Set(workflow.inputs.filter((input) => input.kind === "evidence").map((input) => input.key));
+  const filtered = Object.fromEntries(
+    Object.entries(provided).filter(([key]) => !SERVER_SATISFIED_INPUT_KEYS.has(key) && !evidenceKeys.has(key)),
+  );
+  return missingConfirmedInputs(workflow, filtered, satisfied);
+}

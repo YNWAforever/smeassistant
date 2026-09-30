@@ -15,7 +15,7 @@ import {
 } from "@/lib/domain";
 import type { PriorityFactor } from "./priority";
 import { findTemplate, type TemplateDelivery, type TemplateKey } from "./templates";
-import { missingConfirmedInputs } from "./workflow-inputs";
+import { gateBlockingInputs } from "./workflow-inputs";
 
 export { DISPLAY_PHASE_KEYS };
 export type { DisplayPhaseKey };
@@ -210,7 +210,7 @@ export function buildActionOverview(row: ActionRow, ctx: ActionOverviewContext):
   const satisfied = new Set(ctx.scanSatisfiedInputs ?? []);
   const missing = required.filter((key) => !satisfied.has(key) && (provided[key] === undefined || provided[key] === null || provided[key] === ""));
   const template = findTemplate(row.template_key);
-  const blockingInputs = template ? missingConfirmedInputs(template, provided, satisfied) : [];
+  const blockingInputs = template ? gateBlockingInputs(template, provided, satisfied) : [];
   const factors = Array.isArray(row.priority_factors) ? (row.priority_factors as PriorityFactor[]) : [];
   const evidence = (row.evidence && typeof row.evidence === "object" ? row.evidence : {}) as Partial<ActionOverview["evidence"]>;
   const phaseKey = displayPhaseKey({
