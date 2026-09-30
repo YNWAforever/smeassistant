@@ -10,7 +10,9 @@ import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/
 import { assetRepository } from "@/lib/repositories/assets";
 import { assetLocationScope } from "@/lib/workspace/assets";
 import { filterSelectedReviews } from "@/lib/workspace/evidence-inputs";
-import { sampledReviewsFromRawData, snapshotEvidence, socialAssetSatisfied } from "@/lib/workspace/runs";
+import { sampledReviewsFromRawData, satisfiedInputs, snapshotEvidence, socialAssetSatisfied } from "@/lib/workspace/runs";
+import { findTemplate } from "@/lib/workspace/templates";
+import { gateBlockingInputs } from "@/lib/workspace/workflow-inputs";
 import { type ScanDiffRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
 import { buildEvidenceRefs } from "./evidence";
 import { fallbackIntentFor, isTemplateIntent, templateAnswer, type TemplateContext } from "./templates";
@@ -351,27 +353,36 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistant
   const fallback = () => completed(fallbackIntentFor(intent), input, ctx, [AI_UNAVAILABLE[input.locale]]);
   if (!ready) return fallback();
 
-  // The same pre-model gate runAgentForAction applies. Without it this path
-  // drafted a caption as if it accompanied an approved, rights-cleared photo
-  // that did not exist -- the prompt asserts "an approved photo is attached"
-  // and inputLine renders its alt text as "(not provided)", so the model was
-  // invited to invent the photo's contents (guardrail 14). The asset-rights
-  // confirmation the Assets page exists to enforce was skipped entirely.
-  if (spec.agent === "social_post") {
-    const satisfied = await socialAssetSatisfied(
-      input.assets ?? assetRepository(),
-      input.context.workspaceId,
-      asRecord(action.row.provided_inputs),
-      { actionLocationId: action.row.location_id, locationScope: assetLocationScope(input.membership) },
-    );
-    if (!satisfied) {
-      const base = completed(fallbackIntentFor(intent), input, ctx);
-      return { ...base, answer: NEEDS_FACTS[input.locale].replace("{facts}", "asset_or_text_only"), warnings: base.warnings };
-    }
-  }
-
   const agent = AGENTS[spec.agent];
   const agentCtx = await agentContext(db, input, ctx, action, spec.agent, intent);
+
+  // The same pre-model gate runAgentForAction applies (P4.4), decided before
+  // the budget read and the model so a blocked draft costs nothing and writes
+  // no run row. It reads the agent's own template inputs, so a caption is never
+  // drafted as if it accompanied an approved, rights-cleared photo that does
+  // not exist, and a FAQ or menu is never drafted over facts the owner has not
+  // confirmed (guardrail 14). Only the action's saved provided_inputs count --
+  // unlike the run path there is no brand-fact prefill here. The asset rule and
+  // the scanned reviews are satisfier-authoritative: a persisted
+  // asset_or_text_only marker never stands in for the rights check.
+  const template = findTemplate(spec.templates[0]);
+  const satisfied = await satisfiedInputs(
+    agentCtx,
+    spec.agent === "social_post"
+      ? {
+          asset: () =>
+            socialAssetSatisfied(input.assets ?? assetRepository(), input.context.workspaceId, asRecord(action.row.provided_inputs), {
+              actionLocationId: action.row.location_id,
+              locationScope: assetLocationScope(input.membership),
+            }),
+        }
+      : {},
+  );
+  const blocking = template ? gateBlockingInputs(template, agentCtx.providedInputs, satisfied) : [];
+  if (blocking.length) {
+    const base = completed(fallbackIntentFor(intent), input, ctx);
+    return { ...base, answer: NEEDS_FACTS[input.locale].replace("{facts}", blocking.join(", ")), warnings: base.warnings };
+  }
   // P3.5a: the AI spend budget, immediately before the model call.
   const budget = await checkAiBudget(() => db.aiSpend24h(input.context.workspaceId), { entry: "assistant_draft" }, input.budgetEnv);
   if (!budget.allowed) throw new AiBudgetRefusal(budget.scope);

@@ -6,6 +6,8 @@ import { artifactRepository } from '../../lib/repositories/artifacts';
 import type { llmComplete } from '../../lib/llm';
 import { runLiveAssistant } from '../../lib/assistant/live';
 import { auth } from '../../app/api/actions/_shared/test-db';
+// A scanned review without an owner response: the P4.4 pre-model gate treats reviews_without_response as server-satisfied only when the job's raw_data carries one.
+const rawWithReview=JSON.stringify({gbp:{reviews:[{rating:3,text:'Waited 25 minutes on Friday',time:'2026-08-22',owner_response:null}]}});
 const output={title:'Fixture reply',body:'Thank you for telling us.',acceptance_criteria:[],warnings:[],facts_used:[],facts_needed:[]};
 describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon live assistant authority',()=>{
  let actor:string,fixture:NeonDatabaseFixture,owner:Pool,runtime:Pool,workspace:string,foreign:string,locA:string,locB:string,snapshot:string,job:string,wide:string,scoped:string;
@@ -20,7 +22,7 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon live assistant authorit
   foreign=(await runtime.query('INSERT INTO workspaces DEFAULT VALUES RETURNING id')).rows[0].id;
   locA=(await runtime.query("INSERT INTO locations(workspace_id,slug,name,is_primary) VALUES($1,'a','Location A',true) RETURNING id",[workspace])).rows[0].id;
   locB=(await runtime.query("INSERT INTO locations(workspace_id,slug,name) VALUES($1,'b','Location B') RETURNING id",[workspace])).rows[0].id;
-  job=(await runtime.query("INSERT INTO audit_jobs(workspace_id,location_id,business_name,status,raw_data) VALUES($1,$2,'Fixture','done','{}') RETURNING id",[workspace,locB])).rows[0].id;
+  job=(await runtime.query("INSERT INTO audit_jobs(workspace_id,location_id,business_name,status,raw_data) VALUES($1,$2,'Fixture','done',$3) RETURNING id",[workspace,locB,rawWithReview])).rows[0].id;
   snapshot=(await runtime.query("INSERT INTO scan_snapshots(workspace_id,location_id,job_id,market,observed_at,coverage,module_states,metrics) VALUES($1,$2,$3,'hk',now(),1,'{}','{}') RETURNING id",[workspace,locB,job])).rows[0].id;
   const action=async(location:string|null,key:string)=>(await runtime.query("INSERT INTO actions(workspace_id,location_id,source_snapshot_id,template_key,title,summary,evidence,priority,priority_score,priority_factors,effort_minutes,capability,dedupe_key) VALUES($1,$2,$3,'review-response','{\"en\":\"Reply\",\"zh-HK\":\"Reply\",\"zh-TW\":\"Reply\"}','{}','{}','high',50,'[]',5,'Live',$4) RETURNING id",[workspace,location,snapshot,workspace+key])).rows[0].id as string;
   // A real app_users row: failed drafts now write action_runs.requested_by (a uuid FK), which the "user-1" fixture id cannot satisfy.
@@ -126,7 +128,7 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon live assistant authorit
  });
 
  it.each(['action','action_location','version','version_location'])('denies valid A snapshot override of B source via %s before model or writes',async(kind)=>{
-  const selectedJob=(await runtime.query("INSERT INTO audit_jobs(workspace_id,location_id,business_name,status) VALUES($1,$2,'Selected A','done') RETURNING id",[workspace,locA])).rows[0].id;
+  const selectedJob=(await runtime.query("INSERT INTO audit_jobs(workspace_id,location_id,business_name,status,raw_data) VALUES($1,$2,'Selected A','done',$3) RETURNING id",[workspace,locA,rawWithReview])).rows[0].id;
   const selected=(await runtime.query("INSERT INTO scan_snapshots(workspace_id,location_id,job_id,market,observed_at,coverage,module_states,metrics) VALUES($1,$2,$3,'hk',now(),1,'{}','{}') RETURNING id",[workspace,locA,selectedJob])).rows[0].id;
   const version=kind.startsWith('version')?(await runtime.query("INSERT INTO output_versions(workspace_id,action_id,version_no,body,author_type) VALUES($1,$2,1,'Version fixture','user') RETURNING id",[workspace,wide])).rows[0].id:undefined;
   const context={workspaceId:workspace,snapshotId:selected,...(version?{versionId:version}:{actionId:wide}),...(kind.endsWith('location')?{locationId:locA}:{})};
