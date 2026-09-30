@@ -323,6 +323,48 @@ describe("shared acceptance (P4.4)", () => {
     expect(warnings.filter((w) => w === "unconfirmed_claim")).toHaveLength(1);
   });
 
+  it.each([
+    "We are #1 in Hong Kong",
+    "ranked #1",
+    "ranked No. 1",
+    "number one roast goose",
+    "award-winning chef",
+    "全港最好嘅燒鵝",
+  ])("flags the superlative %j", (body) => {
+    expect(run(bare, body)).toContain("unconfirmed_claim");
+  });
+
+  it("accepts an approved #1 claim", () => {
+    const approved = { ...bare, brand: { ...bare.brand, approvedClaims: ["#1 in Hong Kong"] } };
+    expect(run(approved, "We are #1 in Hong Kong")).not.toContain("unconfirmed_claim");
+  });
+
+  it.each(["NT$120", "80元", "八折只需 80 蚊"])("flags the unconfirmed price %j and accepts it once a fact confirms it", (body) => {
+    expect(run(bare, `今日特價 ${body}`)).toContain("unconfirmed_claim");
+    const confirmed = { ...bare, brand: { ...bare.brand, facts: { price: "NT$120 / 80元 / 80 蚊" } } };
+    expect(run(confirmed, `今日特價 ${body}`)).not.toContain("unconfirmed_claim");
+  });
+
+  it.each([
+    "請到 https://kmh.test/book，歡迎光臨",
+    "預訂：https://kmh.test/book。",
+    "見www.kmh.test/book或致電",
+  ])("does not swallow CJK text after the owner's own link in %j", (body) => {
+    const ctx = { ...bare, providedInputs: { cta_link: "https://kmh.test/book www.kmh.test/book" } };
+    expect(run(ctx, body)).not.toContain("unexpected_link");
+    expect(run(bare, body)).toContain("unexpected_link");
+  });
+
+  it("still flags a look-alike host that merely starts with schema.org", () => {
+    expect(run(bare, "see https://schema.org.evil.test/x")).toContain("unexpected_link");
+  });
+
+  it("confirms digits from non-string provided inputs such as structured menu items", () => {
+    const ctx = { ...bare, providedInputs: { menu_items: [{ name: "燒鵝飯", price: "HK$68" }], set_price: 98 } };
+    expect(run(ctx, "燒鵝飯 HK$68, set HK$98")).not.toContain("unconfirmed_claim");
+    expect(run(ctx, "燒鵝飯 HK$69")).toContain("unconfirmed_claim");
+  });
+
   it("every Live and Beta agent runs the shared checks", () => {
     for (const agent of Object.values(AGENTS)) {
       const warnings = agent.acceptance(bare, out("https://evil.test"));

@@ -96,7 +96,7 @@ export function bodyLength(output: AgentOutput, max: number): string[] {
 function confirmedText(ctx: AgentContext): string {
   const asText = (value: unknown): string => (typeof value === "string" ? value : value == null ? "" : JSON.stringify(value));
   return [
-    ...Object.values(ctx.providedInputs).filter((value): value is string => typeof value === "string"),
+    ...Object.values(ctx.providedInputs).map(asText),
     ...Object.values(ctx.brand.facts ?? {}).map(asText),
     ...ctx.brand.approvedClaims,
   ]
@@ -108,9 +108,11 @@ function draftText(output: AgentOutput): string {
   return `${output.title}\n${output.body}\n${output.alt_text ?? ""}`;
 }
 
-const LINK = /\bhttps?:\/\/[^\s"'<>)]+|\bwww\.[^\s"'<>)]+/gi;
+// CJK ideographs and CJK/full-width punctuation end a link: in zh drafts the URL is followed directly by text (https://x.test/book，歡迎光臨).
+const LINK = /\bhttps?:\/\/[^\s"'<>)　-〿一-鿿＀-￯]+|\bwww\.[^\s"'<>)　-〿一-鿿＀-￯]+/gi;
 const PRICE = /(?:HK\$|NT\$|US\$|\$|HKD\s?|TWD\s?)\s?\d[\d,.]*|\d[\d,.]*\s?(?:元|蚊)/gi;
-const SUPERLATIVE = /\b(?:best|top[- ]rated|no\.?\s?1|#1|number one|award[- ]winning)\b[^.!?\n]{0,40}|最好|最佳|第一|首選|得獎/gi;
+// "#1" sits outside the \b group: \b never matches between a space and "#".
+const SUPERLATIVE = /(?:\b(?:best|top[- ]rated|no\.?\s?1|number one|award[- ]winning)\b|#1\b)[^.!?\n]{0,40}|最好|最佳|第一|首選|得獎/gi;
 
 /** The JSON-LD namespace every FAQ draft carries; it is not a destination for customers. */
 const SCHEMA_NAMESPACE = /^https?:\/\/schema\.org\/?$/;
