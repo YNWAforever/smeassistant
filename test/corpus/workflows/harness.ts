@@ -84,15 +84,24 @@ export type CorpusCase = z.infer<typeof corpusCaseSchema>;
 
 const CASES_DIR = fileURLToPath(new URL("./cases/", import.meta.url));
 
+/** Parses one case file; both JSON syntax and schema failures throw an error that names the file. */
+export function parseCorpusCase(name: string, text: string): CorpusCase {
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch (error) {
+    throw new Error(`Invalid corpus case ${name}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  const parsed = corpusCaseSchema.safeParse(json);
+  if (!parsed.success) throw new Error(`Invalid corpus case ${name}: ${parsed.error.message}`);
+  return parsed.data;
+}
+
 export function loadCorpus(): CorpusCase[] {
   return readdirSync(CASES_DIR)
     .filter((name) => name.endsWith(".json"))
     .sort()
-    .map((name) => {
-      const parsed = corpusCaseSchema.safeParse(JSON.parse(readFileSync(CASES_DIR + name, "utf8")));
-      if (!parsed.success) throw new Error(`Invalid corpus case ${name}: ${parsed.error.message}`);
-      return parsed.data;
-    });
+    .map((name) => parseCorpusCase(name, readFileSync(CASES_DIR + name, "utf8")));
 }
 
 export interface CorpusRun {

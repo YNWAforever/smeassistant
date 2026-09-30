@@ -3,7 +3,7 @@
   "market": "hk",
   "provided": {},
   "brand": {},
-  "id": "uncertain-evidence-gbp-post-no-reviews",
+  "id": "uncertain-evidence-gbp-post-ignores-review-text",
   "category": "uncertain_evidence",
   "workflow": "gbp-post",
   "cannedOutputs": [
@@ -14,7 +14,16 @@
     "state": "succeeded",
     "version": true,
     "promptExcludes": [
+      "GBP-POST-REVIEW-SENTINEL",
       "sampled_reviews_without_owner_response"
     ]
-  }
+  },
+  "reviews": [
+    {
+      "rating": 2,
+      "text": "GBP-POST-REVIEW-SENTINEL the soup was cold",
+      "time": "2026-08-30",
+      "owner_response": null
+    }
+  ]
 }

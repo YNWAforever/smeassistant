@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TEMPLATES } from "@/lib/workspace/templates";
-import { CATEGORY_MINIMUMS, cannedLlm, loadCorpus, runCorpusCase } from "./harness";
+import { CATEGORY_MINIMUMS, cannedLlm, loadCorpus, parseCorpusCase, runCorpusCase } from "./harness";
 
 /**
  * Canned outputs prove the pipeline handles each behaviour; they do not prove
@@ -19,6 +19,13 @@ describe("workflow regression corpus", () => {
     const covered = new Set(corpus.map((c) => c.workflow));
     const uncovered = TEMPLATES.filter((t) => t.capability === "Live" && t.agentKey && !covered.has(t.key)).map((t) => t.key);
     expect(uncovered).toEqual([]);
+  });
+
+  it("a malformed or schema-invalid case file throws an error naming the file", () => {
+    expect(() => parseCorpusCase("broken-01.json", "{ not json")).toThrow(/Invalid corpus case broken-01\.json: /);
+    expect(() => parseCorpusCase("wrong-02.json", JSON.stringify({ id: "x" }))).toThrow(/Invalid corpus case wrong-02\.json: /);
+    const valid = corpus[0];
+    expect(parseCorpusCase("ok.json", JSON.stringify(valid))).toEqual(valid);
   });
 
   it("case ids are unique", () => {
