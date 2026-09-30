@@ -242,6 +242,7 @@ describe("typed action runtime", () => {
     });
     expect(finish.mock.calls[0][0].output?.warnings).toEqual([
       "prohibited_term:best in Hong Kong",
+      "unconfirmed_claim",
       "compensation_promise",
     ]);
   });

@@ -1,4 +1,4 @@
-import { bodyLength, prohibitedTermHits } from "../guardrails";
+import { bodyLength } from "../guardrails";
 import { defineAgent, inputLine } from "../prompt";
 
 export const socialPost = defineAgent({
@@ -14,7 +14,7 @@ export const socialPost = defineAgent({
 ${ctx.providedInputs.text_only === true ? "This is a text-only post: do not describe a photo." : `An approved photo is attached (alt text: ${inputLine(ctx, "alt_text")}). Describe only what the alt text says is in it and return alt_text — a plain, factual description under 125 characters.`}
 Body: the caption. acceptance_criteria: what the owner must confirm (asset rights, facts) before posting.`,
   acceptance: (ctx, output) => {
-    const warnings = [...prohibitedTermHits(ctx, output), ...bodyLength(output, 2500)];
+    const warnings = [...bodyLength(output, 2500)];
     if (ctx.providedInputs.text_only !== true && !output.alt_text) warnings.push("alt_text_missing");
     if ((output.body.match(/#/g) ?? []).length > 5) warnings.push("too_many_hashtags");
     return warnings;

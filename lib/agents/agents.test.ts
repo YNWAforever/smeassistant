@@ -174,7 +174,7 @@ describe("acceptance", () => {
   const base = { title: "t", acceptance_criteria: [], warnings: [], facts_used: [], facts_needed: [] };
   it("flags prohibited terms and compensation promises in review replies", () => {
     const warnings = AGENTS.review_reply.acceptance(fixedCtx, { ...base, body: "We are the best in Hong Kong and will refund your meal." });
-    expect(warnings).toEqual(["prohibited_term:best in Hong Kong", "compensation_promise"]);
+    expect(warnings).toEqual(["prohibited_term:best in Hong Kong", "unconfirmed_claim", "compensation_promise"]);
   });
   it("flags an over-long bio and a missing social alt text", () => {
     expect(AGENTS.ig_bio.acceptance(fixedCtx, { ...base, body: "x".repeat(151) })).toEqual(["bio_over_150_chars"]);
@@ -269,5 +269,65 @@ describe("faq_jsonld questions (P2.3 item 11)", () => {
     const prompt = AGENTS.faq_jsonld.buildPrompt(fixedCtx);
     expect(prompt).toContain("1. Private room seats 12");
     expect(prompt).not.toContain(" — Private room seats 12");
+  });
+});
+
+describe("shared acceptance (P4.4)", () => {
+  const out = (body: string) => ({ title: "t", body, acceptance_criteria: [], warnings: [], facts_used: [], facts_needed: [] });
+  const bare: AgentContext = { ...fixedCtx, brand: { ...fixedCtx.brand, approvedClaims: [], prohibitedTerms: [], facts: {} }, providedInputs: {} };
+  const run = (ctx: AgentContext, body: string) => AGENTS.gbp_post.acceptance(ctx, out(body));
+
+  it("flags a link the owner never supplied", () => {
+    expect(run(bare, "Book at https://evil.test/x")).toContain("unexpected_link");
+  });
+
+  it("allows the owner's own link", () => {
+    const ctx = { ...bare, providedInputs: { cta_link: "https://kmh.test/book" } };
+    expect(run(ctx, "Book at https://kmh.test/book.")).not.toContain("unexpected_link");
+  });
+
+  it("a www. link counts as a link", () => {
+    expect(run(bare, "see www.evil.test")).toContain("unexpected_link");
+  });
+
+  it("does not treat the schema.org JSON-LD context as a link", () => {
+    expect(run(bare, '{"@context":"https://schema.org","@type":"FAQPage"}')).not.toContain("unexpected_link");
+  });
+
+  it("flags a price absent from confirmed facts", () => {
+    expect(run(bare, "Set lunch only HK$88")).toContain("unconfirmed_claim");
+    const confirmed = { ...bare, brand: { ...bare.brand, facts: { lunch_price: "HK$88" } } };
+    expect(run(confirmed, "Set lunch only HK$88")).not.toContain("unconfirmed_claim");
+  });
+
+  it("accepts an owner-provided price written with a different currency prefix or thousands separator", () => {
+    const ctx = { ...bare, providedInputs: { price: "HK$1200" } };
+    expect(run(ctx, "Banquet from HK$1,200.")).not.toContain("unconfirmed_claim");
+  });
+
+  it("flags a superlative absent from approved claims", () => {
+    expect(run(bare, "the best roast goose in town")).toContain("unconfirmed_claim");
+    const approved = { ...bare, brand: { ...bare.brand, approvedClaims: ["the best roast goose in town"] } };
+    expect(run(approved, "the best roast goose in town")).not.toContain("unconfirmed_claim");
+  });
+
+  it("does not warn on ordinary copy with no link, price or superlative", () => {
+    expect(run(bare, "Thank you for visiting. Come back for lunch on Friday.")).toEqual([]);
+  });
+
+  it("reports each shared check exactly once", () => {
+    const ctx = { ...bare, brand: { ...bare.brand, prohibitedTerms: ["michelin"] } };
+    const warnings = run(ctx, "Michelin best roast goose HK$88 https://evil.test and again best goose HK$99 www.evil.test");
+    expect(warnings.filter((w) => w === "prohibited_term:michelin")).toHaveLength(1);
+    expect(warnings.filter((w) => w === "unexpected_link")).toHaveLength(1);
+    expect(warnings.filter((w) => w === "unconfirmed_claim")).toHaveLength(1);
+  });
+
+  it("every Live and Beta agent runs the shared checks", () => {
+    for (const agent of Object.values(AGENTS)) {
+      const warnings = agent.acceptance(bare, out("https://evil.test"));
+      expect(warnings, agent.key).toContain("unexpected_link");
+      expect(warnings.filter((w) => w === "unexpected_link"), agent.key).toHaveLength(1);
+    }
   });
 });

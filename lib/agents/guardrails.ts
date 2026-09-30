@@ -88,6 +88,65 @@ export function bodyLength(output: AgentOutput, max: number): string[] {
   return output.body.length > max ? [`body_over_${max}_chars`] : [];
 }
 
+/**
+ * Everything the owner has confirmed, lowercased: typed inputs, brand facts and
+ * approved claims. A link, price or superlative in a draft is only trusted when
+ * it already appears here.
+ */
+function confirmedText(ctx: AgentContext): string {
+  const asText = (value: unknown): string => (typeof value === "string" ? value : value == null ? "" : JSON.stringify(value));
+  return [
+    ...Object.values(ctx.providedInputs).filter((value): value is string => typeof value === "string"),
+    ...Object.values(ctx.brand.facts ?? {}).map(asText),
+    ...ctx.brand.approvedClaims,
+  ]
+    .join("\n")
+    .toLowerCase();
+}
+
+function draftText(output: AgentOutput): string {
+  return `${output.title}\n${output.body}\n${output.alt_text ?? ""}`;
+}
+
+const LINK = /\bhttps?:\/\/[^\s"'<>)]+|\bwww\.[^\s"'<>)]+/gi;
+const PRICE = /(?:HK\$|NT\$|US\$|\$|HKD\s?|TWD\s?)\s?\d[\d,.]*|\d[\d,.]*\s?(?:元|蚊)/gi;
+const SUPERLATIVE = /\b(?:best|top[- ]rated|no\.?\s?1|#1|number one|award[- ]winning)\b[^.!?\n]{0,40}|最好|最佳|第一|首選|得獎/gi;
+
+/** The JSON-LD namespace every FAQ draft carries; it is not a destination for customers. */
+const SCHEMA_NAMESPACE = /^https?:\/\/schema\.org\/?$/;
+
+export function unexpectedLinks(ctx: AgentContext, output: AgentOutput): string[] {
+  const confirmed = confirmedText(ctx);
+  const hit = (draftText(output).match(LINK) ?? [])
+    .map((link) => link.toLowerCase().replace(/[.,;:!?]+$/, ""))
+    .filter((link) => !SCHEMA_NAMESPACE.test(link))
+    .some((link) => !confirmed.includes(link));
+  return hit ? ["unexpected_link"] : [];
+}
+
+export function unconfirmedClaims(ctx: AgentContext, output: AgentOutput): string[] {
+  const text = draftText(output);
+  const confirmed = confirmedText(ctx);
+  // A price is confirmed when its digit run is (a comma-grouped 1,200 matches 1200).
+  const confirmedDigits = confirmed.replace(/,/g, "");
+  const price = (text.match(PRICE) ?? []).some((match) => {
+    const digits = /\d[\d,.]*/.exec(match)?.[0].replace(/,/g, "").replace(/\.+$/, "");
+    return digits ? !confirmedDigits.includes(digits) : false;
+  });
+  // The superlative regex reads up to 40 characters past its keyword; cut at the
+  // first clause break so an approved claim followed by ", and more" still matches.
+  const superlative = (text.match(SUPERLATIVE) ?? []).some((match) => {
+    const phrase = match.split(/[,;，；。]/)[0].trim().toLowerCase();
+    return phrase ? !confirmed.includes(phrase) : false;
+  });
+  return price || superlative ? ["unconfirmed_claim"] : [];
+}
+
+/** The checks every agent runs, whatever its own acceptance adds (composed in `defineAgent`). */
+export function sharedAcceptance(ctx: AgentContext, output: AgentOutput): string[] {
+  return [...prohibitedTermHits(ctx, output), ...unexpectedLinks(ctx, output), ...unconfirmedClaims(ctx, output)];
+}
+
 export function baseAcceptance(ctx: AgentContext, output: AgentOutput): string[] {
-  return prohibitedTermHits(ctx, output);
+  return sharedAcceptance(ctx, output);
 }

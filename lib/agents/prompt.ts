@@ -1,4 +1,4 @@
-import { brandBlock, guardrailBlock, outputBlock, roleBlock } from "./guardrails";
+import { brandBlock, guardrailBlock, outputBlock, roleBlock, sharedAcceptance } from "./guardrails";
 import { agentOutputSchema, type AgentContext, type AgentDefinition, type AgentKey, type AgentOutput } from "./schema";
 
 /**
@@ -71,7 +71,9 @@ export function defineAgent(spec: AgentSpec): AgentDefinition {
     promptVersion: spec.promptVersion,
     buildPrompt: (ctx) => composePrompt(spec, ctx),
     outputSchema: agentOutputSchema,
-    acceptance: (ctx, output) => (spec.acceptance ? spec.acceptance(ctx, output) : []),
+    // The shared checks run for every agent, so none can opt out by omitting
+    // them; the Set keeps a check warning once however many places raise it.
+    acceptance: (ctx, output) => [...new Set([...sharedAcceptance(ctx, output), ...(spec.acceptance?.(ctx, output) ?? [])])],
   };
 }
 

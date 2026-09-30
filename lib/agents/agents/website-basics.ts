@@ -1,4 +1,4 @@
-import { bodyLength, prohibitedTermHits } from "../guardrails";
+import { bodyLength } from "../guardrails";
 import { defineAgent, inputLine } from "../prompt";
 
 export const websiteBasics = defineAgent({
@@ -12,7 +12,7 @@ Body: three labelled lines — Title:, Description:, H1: — each followed on th
 acceptance_criteria: one entry per line you wrote, naming the check it should make pass (title, meta_description_50_160, single_h1), so the next scan can confirm each one separately.
 Do not describe the current wording, and do not claim the page already says anything: the checks report counts, not text. Do not invent services, prices or awards; use only brand facts.`,
   acceptance: (ctx, output) => {
-    const warnings = [...prohibitedTermHits(ctx, output), ...bodyLength(output, 3000)];
+    const warnings = [...bodyLength(output, 3000)];
     // The Title line now ends with the " (now: 57 chars)" annotation the task
     // asks for. That is commentary about the current page, not title text --
     // counting it would flag a compliant title as over-long.
