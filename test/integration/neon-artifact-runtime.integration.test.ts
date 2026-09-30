@@ -121,8 +121,10 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
       ).rows[0].id;
       job = (
         await runtime.query(
-          "INSERT INTO audit_jobs(workspace_id,location_id,business_name,status,raw_data) VALUES($1,$2,'Fixture','done','{}') RETURNING id",
-          [workspace, locB],
+          "INSERT INTO audit_jobs(workspace_id,location_id,business_name,status,raw_data) VALUES($1,$2,'Fixture','done',$3) RETURNING id",
+          // The run gate needs at least one scanned review with no owner
+          // response for review-response; owner-typed text does not count.
+          [workspace, locB, JSON.stringify({ gbp: { reviews: [{ rating: 2, text: "Slow service", time: "2026-08-30", owner_response: null }] } })],
         )
       ).rows[0].id;
       snapshot = (

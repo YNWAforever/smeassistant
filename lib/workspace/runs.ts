@@ -261,6 +261,8 @@ export async function resolveActionRunContext(
   return { row, snapshot, scope };
 }
 
+const NO_USAGE: LLMUsage = { inputTokens: null, outputTokens: null };
+
 export async function runAgentForAction(
   db: ArtifactRepository,
   input: RunAgentInput,
@@ -373,6 +375,35 @@ export async function runAgentForAction(
     sampledReviews,
   };
 
+  // The pre-model gate (P4.4), decided before the run row exists so a failing
+  // satisfier read cannot strand a queued run. A confirmed fact or evidence
+  // input the template needs ends the run as needs_input before any model call.
+  // It reads the template's typed inputs, not the row's persisted
+  // required_inputs, so an action created before a template gained an input is
+  // still gated. Inputs that have a server satisfier (the approved-asset rule,
+  // the scanned reviews) are satisfier-authoritative: an owner-typed or
+  // persisted value for them never counts, only the server's own check does.
+  const gateProvided = Object.fromEntries(
+    Object.entries(provided).filter(
+      ([key]) =>
+        key !== "asset_or_text_only" &&
+        !template.inputs.some((i) => i.key === key && i.kind === "evidence"),
+    ),
+  );
+  const satisfied = await satisfiedInputs(
+    ctx,
+    template.inputs.some((i) => i.key === "asset_or_text_only")
+      ? {
+          asset: () =>
+            socialAssetSatisfied(input.assets ?? assetRepository(), row.workspace_id, provided, {
+              actionLocationId: row.location_id,
+              locationScope: assetLocationScope(input.membership),
+            }),
+        }
+      : {},
+  );
+  const blocking = missingConfirmedInputs(template, gateProvided, satisfied);
+
   const persistence = input.persistence ?? actionRunRepository();
   const runId = await persistence.queue({
     actionId: row.id,
@@ -399,35 +430,17 @@ export async function runAgentForAction(
     ipHash: input.ipHash,
   };
   await persistence.start(attribution);
-  const usage0: LLMUsage = { inputTokens: null, outputTokens: null };
-  // The pre-model gate (P4.4): a confirmed fact or unresolved evidence the
-  // template needs ends the run as needs_input before any model call. It reads
-  // the template's typed inputs, not the row's persisted required_inputs, so an
-  // action created before a template gained an input is still gated.
-  const satisfied = await satisfiedInputs(
-    ctx,
-    template.inputs.some((i) => i.key === "asset_or_text_only")
-      ? {
-          asset: () =>
-            socialAssetSatisfied(input.assets ?? assetRepository(), row.workspace_id, provided, {
-              actionLocationId: row.location_id,
-              locationScope: assetLocationScope(input.membership),
-            }),
-        }
-      : {},
-  );
-  const blocking = missingConfirmedInputs(template, provided, satisfied);
   if (blocking.length) {
     return persistence.finish({
       ...attribution,
-      usage: usage0,
-      costUsd: computeCostUsd(usage0),
+      usage: NO_USAGE,
+      costUsd: computeCostUsd(NO_USAGE),
       output: null,
       factsNeeded: blocking,
       finishedAt: new Date(),
     });
   }
-  let usage: LLMUsage = usage0;
+  let usage: LLMUsage = NO_USAGE;
   let output: AgentOutput | null = null,
     reason: string | undefined;
   try {

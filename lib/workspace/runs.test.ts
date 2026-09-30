@@ -515,6 +515,42 @@ describe("pre-model workflow gate", () => {
     expect(llm).toHaveBeenCalledOnce();
   });
 
+  it.each([
+    ["no asset row", async () => null],
+    ["a rejected asset", async () => ({ rights_status: "rejected", location_id: "loc-1" })],
+  ])("a persisted asset_or_text_only marker cannot stand in for the approved-asset rule (%s)", async (_name, get) => {
+    // The UI PATCHes this marker next to asset_id, and the run route accepts
+    // arbitrary inputs, so only the server's own asset check may satisfy it.
+    row = { ...action, template_key: "social-post", provided_inputs: { asset_or_text_only: "asset", asset_id: "foreign" } } as unknown as typeof action;
+    const llm = vi.fn();
+    expect(await run({ assets: { get }, llm })).toMatchObject({ factsNeeded: ["asset_or_text_only"] });
+    expect(llm).not.toHaveBeenCalled();
+  });
+
+  it("owner-typed reviews_without_response text cannot stand in for scanned reviews", async () => {
+    reviewData = { gbp: { reviews: [] } };
+    row = { ...action, provided_inputs: { brand_voice: "warm", reviews_without_response: "typed by owner" } } as unknown as typeof action;
+    const llm = vi.fn();
+    expect(await run({ llm })).toMatchObject({ factsNeeded: ["reviews_without_response"] });
+    expect(llm).not.toHaveBeenCalled();
+  });
+
+  it("refuses before any run row exists when a satisfier read throws", async () => {
+    row = { ...action, template_key: "social-post", provided_inputs: { asset_id: "owned" } } as unknown as typeof action;
+    const llm = vi.fn();
+    await expect(run({ assets: { get: async () => { throw new Error("assets_unavailable"); } }, llm })).rejects.toThrow("assets_unavailable");
+    expect(queue).not.toHaveBeenCalled();
+    expect(start).not.toHaveBeenCalled();
+    expect(llm).not.toHaveBeenCalled();
+  });
+
+  it("does not read assets for a template that has no asset input", async () => {
+    row = igBio({ provided_inputs: { brand_voice: "warm", approved_claim: "x", cta_link: "https://example.test" } });
+    const get = vi.fn(async () => null);
+    expect(await run({ assets: { get }, llm: vi.fn(async () => good()) })).toMatchObject({ versionId: "v-1" });
+    expect(get).not.toHaveBeenCalled();
+  });
+
   it("social_post without asset or text_only still blocks through the gate", async () => {
     row = { ...action, template_key: "social-post", provided_inputs: {} } as unknown as typeof action;
     const llm = vi.fn();
@@ -586,8 +622,9 @@ describe("snapshotEvidence website checks", () => {
 describe("faq_jsonld run", () => {
   it("blocks on facts_needed with no version created (A5)", async () => {
     row = { ...action, template_key: "visibility-content", required_inputs: ["owner_fact_1", "owner_fact_2", "owner_fact_3"], provided_inputs: {} } as unknown as typeof action;
-    const llm = vi.fn(async () => good({ body: "", facts_needed: ["owner_fact_1", "owner_fact_2", "owner_fact_3"] }));
+    const llm = vi.fn();
     const result = await run({ llm });
+    expect(finish).toHaveBeenCalledWith(expect.objectContaining({ output: null }));
     // The pre-model gate lists every missing owner fact in inputs order and
     // never reaches the model.
     expect(llm).not.toHaveBeenCalled();
