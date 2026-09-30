@@ -18,6 +18,7 @@ const action: ActionOverview = {
   effortMinutes: 10,
   requiredInputs: ["brand_voice", "reviews_without_response", "language"],
   missingInputs: [],
+  blockingInputs: [],
   actionState: "recommended",
   runState: "queued",
   approvalState: "draft",

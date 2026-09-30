@@ -15,6 +15,7 @@ import {
 } from "@/lib/domain";
 import type { PriorityFactor } from "./priority";
 import { findTemplate, type TemplateDelivery, type TemplateKey } from "./templates";
+import { missingConfirmedInputs } from "./workflow-inputs";
 
 export { DISPLAY_PHASE_KEYS };
 export type { DisplayPhaseKey };
@@ -41,6 +42,12 @@ export interface ActionOverview {
   effortMinutes: number;
   requiredInputs: string[];
   missingInputs: string[];
+  /**
+   * The subset of missing inputs a run cannot proceed without: confirmed facts and
+   * evidence, read from the workflow contract (not the persisted row). Preferences
+   * are never blocking.
+   */
+  blockingInputs: string[];
   /**
    * Required keys the scan already answers, so the UI can show the evidence
    * instead of an empty form. Optional: only the detail page passes the context
@@ -202,6 +209,8 @@ export function buildActionOverview(row: ActionRow, ctx: ActionOverviewContext):
   // "missing" without rewriting the persisted list.
   const satisfied = new Set(ctx.scanSatisfiedInputs ?? []);
   const missing = required.filter((key) => !satisfied.has(key) && (provided[key] === undefined || provided[key] === null || provided[key] === ""));
+  const template = findTemplate(row.template_key);
+  const blockingInputs = template ? missingConfirmedInputs(template, provided, satisfied) : [];
   const factors = Array.isArray(row.priority_factors) ? (row.priority_factors as PriorityFactor[]) : [];
   const evidence = (row.evidence && typeof row.evidence === "object" ? row.evidence : {}) as Partial<ActionOverview["evidence"]>;
   const phaseKey = displayPhaseKey({
@@ -218,7 +227,7 @@ export function buildActionOverview(row: ActionRow, ctx: ActionOverviewContext):
     id: row.id,
     templateKey: row.template_key as TemplateKey,
     capability: row.capability,
-    delivery: findTemplate(row.template_key)?.delivery ?? null,
+    delivery: template?.delivery ?? null,
     location: ctx.location ?? { id: row.location_id, slug: "all", name: ALL_LOCATIONS },
     title: text(row.title, localized(row.template_key, row.template_key)),
     summary: text(row.summary, localized("", "")),
@@ -235,6 +244,7 @@ export function buildActionOverview(row: ActionRow, ctx: ActionOverviewContext):
     effortMinutes: row.effort_minutes,
     requiredInputs: required,
     missingInputs: missing,
+    blockingInputs,
     evidenceInputs: required.filter((key) => satisfied.has(key)),
     assignee: ctx.assignee ?? undefined,
     dueAt: row.due_at ?? undefined,

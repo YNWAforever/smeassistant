@@ -131,6 +131,15 @@ describe("buildActionOverview", () => {
     expect(overview.displayPhaseKey).toBe("needs_input");
   });
 
+  it("blockingInputs lists only confirmed facts", () => {
+    const overview = buildActionOverview(
+      { ...row, template_key: "ig-bio", required_inputs: ["brand_voice", "approved_claim", "cta_link"], provided_inputs: {} },
+      { location: null, latestRun: null, latestVersion: null },
+    );
+    expect(overview.missingInputs).toEqual(["brand_voice", "approved_claim", "cta_link"]);
+    expect(overview.blockingInputs).toEqual(["approved_claim", "cta_link"]);
+  });
+
   it("does not read a missing run as generating and defaults location to all", () => {
     const overview = buildActionOverview({ ...row, action_state: "recommended", location_id: null }, { location: null, latestRun: null, latestVersion: null });
     expect(overview.displayPhaseKey).toBe("recommended");

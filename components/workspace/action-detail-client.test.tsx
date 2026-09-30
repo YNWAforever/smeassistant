@@ -61,6 +61,7 @@ function overview(templateKey: TemplateKey): ActionOverview {
     effortMinutes: template.effortMinutes,
     requiredInputs: template.requiredInputs,
     missingInputs: [],
+    blockingInputs: [],
     actionState: "recommended",
     runState: "queued",
     approvalState: "draft",
