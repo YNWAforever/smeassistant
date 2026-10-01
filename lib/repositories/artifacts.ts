@@ -11,6 +11,8 @@ import { workspaceReadRepository, SNAPSHOT_COLUMNS, DIFF_COLUMNS } from './works
 import { rowToSnapshot, type ScanSnapshotRow, type ScanDiffRow } from '../workspace/snapshots';
 import type { ActionState } from '../domain';
 import type { ActionScope, VersionScope } from '../workspace/versions';
+import { OFFER_COLUMNS } from './offers';
+import type { OfferRow } from '../offers/types';
 
 type Executor = Pick<Pool | PoolClient, 'query'>;
 const EXPECTED_ERRORS = new Set(['version_conflict','not_approved','allowance_exceeded','version_closed','version_not_found','invalid_decision','invalid_mode','artifact_scope_mismatch']);
@@ -148,6 +150,10 @@ export function artifactRepository(client?: Executor) {
       AND (h.location_id IS NULL OR EXISTS(SELECT 1 FROM locations l WHERE l.id=h.location_id AND l.workspace_id=h.workspace_id)))`,[id,workspaceId,headJobId])).rows[0];
    return row ?? null;
    });
+  },
+  /** P4.1: the offer an offer action drafts from, scoped by workspace in SQL. */
+  assistantOffer(workspaceId: string, offerId: string) {
+   return operation(async ()=>(await db().query<OfferRow>(`SELECT ${OFFER_COLUMNS} FROM offers WHERE workspace_id=$1 AND id=$2`,[workspaceId,offerId])).rows[0] ?? null);
   },
   assistantBrand(workspaceId: string) {
    return operation(async ()=>(await db().query<{voice:string|null;approved_claims:unknown;prohibited_terms:unknown;languages:unknown;facts:unknown}>('SELECT voice,approved_claims,prohibited_terms,languages,facts FROM brand_profiles WHERE workspace_id=$1',[workspaceId])).rows[0] ?? null);
@@ -291,6 +297,11 @@ export interface FinishActionRunInput extends RunAttribution {
  error?: string;
  reason?: string;
  finishedAt: Date;
+ /**
+  * Extra version meta (P4.1: `{ offer: { id, revision } }`). Merged under the
+  * fixed keys, so it can never replace warnings, agent_key or prompt_version.
+  */
+ versionMeta?: Record<string, unknown>;
 }
 export type ActionRunCompletion = {runId:string;state:'succeeded';versionId?:string;versionNo?:number;factsNeeded?:string[]}
  | {runId:string;state:'failed';error:string};
@@ -373,7 +384,7 @@ export function actionRunRepository(transaction: RunTransaction = withTransactio
     if(!input.error && !factsNeeded.length && input.output) {
      const output=input.output;
      version=await artifactRepository(client).createOutputVersion({actionId:row.action_id,actor:input.actorId,authorType:'agent',actionRunId:row.id,
-      body:output.body,alt:output.alt_text ?? null,meta:{title:output.title,acceptance_criteria:output.acceptance_criteria,warnings:output.warnings,facts_used:output.facts_used,agent_key:row.agent_key,prompt_version:row.prompt_version} as Json,baseVersionId:null});
+      body:output.body,alt:output.alt_text ?? null,meta:{...input.versionMeta,title:output.title,acceptance_criteria:output.acceptance_criteria,warnings:output.warnings,facts_used:output.facts_used,agent_key:row.agent_key,prompt_version:row.prompt_version} as Json,baseVersionId:null});
     }
     const state=input.error?'failed':'succeeded';
     await client.query('UPDATE action_runs SET state=$2,output=$3,error=$4,input_tokens=$5,output_tokens=$6,cost_usd=$7,finished_at=$8 WHERE id=$1',

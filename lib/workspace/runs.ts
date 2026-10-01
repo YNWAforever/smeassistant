@@ -25,6 +25,11 @@ import { buildActionOverview, localeOf } from "./overview";
 import { type SnapshotRecord } from "./snapshots";
 import { templateByKey, type TemplateKey } from "./templates";
 import { gateBlockingInputs } from "./workflow-inputs";
+import { offerChannel } from "@/lib/offers/channels";
+import { localDate } from "@/lib/offers/dates";
+import { offerPromptFacts } from "@/lib/offers/prompt-facts";
+import { offerUsability } from "@/lib/offers/usability";
+import { isOfferWorkflow, type OfferTemplateKey } from "@/lib/offers/workflow";
 
 /**
  * One agent run for one action (CLAUDE.md §3.7 runtime, §3.2.3 POST
@@ -204,11 +209,13 @@ export async function socialAssetSatisfied(
  */
 export async function satisfiedInputs(
   ctx: Pick<AgentContext, "sampledReviews">,
-  extra: { asset?: () => Promise<boolean> },
+  extra: { asset?: () => Promise<boolean>; offer?: () => Promise<boolean> },
 ): Promise<Set<string>> {
   const satisfied = new Set<string>();
   if (ctx.sampledReviews?.length) satisfied.add("reviews_without_response");
   if (extra.asset && (await extra.asset())) satisfied.add("asset_or_text_only");
+  // P4.1: only the server's usability check answers offer_confirmed.
+  if (extra.offer && (await extra.offer())) satisfied.add("offer_confirmed");
   return satisfied;
 }
 
@@ -322,6 +329,31 @@ export async function runAgentForAction(
     ...input.inputs,
   };
   const location = locations.find((l) => l.id === row.location_id) ?? null;
+  const market: "hk" | "tw" = workspace?.market?.toLowerCase() === "tw" ? "tw" : "hk";
+  // P4.1: an offer action drafts from exactly one confirmed offer. The read is
+  // workspace-scoped in SQL and happens before any run row, so a failing read
+  // strands nothing. Only a usable offer reaches the prompt; anything else
+  // (missing, draft, ended, archived, another location, another market's
+  // currency) blocks the run at the gate with offer_confirmed.
+  const offerWorkflow = isOfferWorkflow(template);
+  const offer = offerWorkflow && row.offer_id ? await db.assistantOffer(row.workspace_id, row.offer_id) : null;
+  const offerUsable =
+    offerWorkflow &&
+    offerUsability(offer, {
+      workspaceId: row.workspace_id,
+      actionLocationId: row.location_id,
+      market,
+      today: localDate(workspace?.timezone || "Asia/Hong_Kong", now),
+    }) === "usable";
+  const offerFacts =
+    offer && offerUsable
+      ? offerPromptFacts(offer, {
+          locale,
+          channel: offerChannel(template.key as OfferTemplateKey, market),
+          hasAsset: provided.text_only !== true && typeof provided.asset_id === "string",
+        })
+      : undefined;
+  const prohibitedTerms = asStrings(brand?.prohibited_terms);
   // P2.2 requires "selected-review replies": the owner picks which unanswered
   // reviews to answer. `provided_inputs.selected_reviews` carries only KEYS --
   // the review text is still rebuilt from stored evidence here, so the choice
@@ -337,11 +369,13 @@ export async function runAgentForAction(
       : undefined;
   const ctx: AgentContext = {
     locale,
-    market: workspace?.market?.toLowerCase() === "tw" ? "tw" : "hk",
+    market,
     brand: {
       voice: brand?.voice ?? "warm",
       approvedClaims: asStrings(brand?.approved_claims),
-      prohibitedTerms: asStrings(brand?.prohibited_terms),
+      // The offer's own wording to avoid joins the brand's, so the prompt lists
+      // it and prohibitedTermHits flags it with no offer-specific code.
+      prohibitedTerms: offerFacts && offer ? [...new Set([...prohibitedTerms, ...offer.prohibited_wording])] : prohibitedTerms,
       languages: asStrings(brand?.languages),
       facts: asRecord(brand?.facts),
     },
@@ -373,6 +407,7 @@ export async function runAgentForAction(
     },
     providedInputs: provided,
     sampledReviews,
+    ...(offerFacts ? { offer: offerFacts } : {}),
   };
 
   // The pre-model gate (P4.4), decided before the run row exists so a failing
@@ -384,9 +419,8 @@ export async function runAgentForAction(
   // persisted asset_or_text_only value never counts, only the server's own
   // check does. Evidence (reviews_without_response) is answered by the scanned
   // sample or by owner-typed text, which the prompt labels owner-supplied.
-  const satisfied = await satisfiedInputs(
-    ctx,
-    template.inputs.some((i) => i.key === "asset_or_text_only")
+  const satisfied = await satisfiedInputs(ctx, {
+    ...(template.inputs.some((i) => i.key === "asset_or_text_only")
       ? {
           asset: () =>
             socialAssetSatisfied(input.assets ?? assetRepository(), row.workspace_id, provided, {
@@ -394,8 +428,9 @@ export async function runAgentForAction(
               locationScope: assetLocationScope(input.membership),
             }),
         }
-      : {},
-  );
+      : {}),
+    ...(offerWorkflow ? { offer: async () => offerUsable } : {}),
+  });
   const blocking = gateBlockingInputs(template, provided, satisfied);
 
   const persistence = input.persistence ?? actionRunRepository();
@@ -409,6 +444,10 @@ export async function runAgentForAction(
       snapshot_id: snapshot?.id ?? null,
       prompt_version: agent.promptVersion,
       locale,
+      // P4.1: which offer revision this run read, and the exact facts it was
+      // given, so the action page can show what a version was written from even
+      // after the offer changes. Only offer actions carry the key.
+      ...(offer ? { offer: { id: offer.id, revision: offer.revision, ...(offerFacts ? { facts: offerFacts } : {}) } } : {}),
     },
     promptVersion: agent.promptVersion,
     model: process.env.LLM_MODEL || null,
@@ -483,6 +522,8 @@ export async function runAgentForAction(
     costUsd: computeCostUsd(usage),
     output,
     ...(reason ? { error: FRIENDLY_ERROR[locale], reason } : {}),
+    // The immutable binding: a version records the offer revision it was written from.
+    ...(offerFacts ? { versionMeta: { offer: { id: offerFacts.id, revision: offerFacts.revision } } } : {}),
     finishedAt: new Date(),
   });
 }

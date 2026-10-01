@@ -726,6 +726,30 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
         expect(await timeoutEvents(runId)).toHaveLength(1);
       });
 
+      it("merges versionMeta under the fixed meta keys (P4.1 offer binding)", async () => {
+        const { actionRunRepository } = await import(
+          "../../lib/repositories/artifacts"
+        );
+        const runId = await strand("running", "1 minute");
+        const result = await actionRunRepository().finish({
+          runId,
+          actorId: actor,
+          locale: "en",
+          usage: { inputTokens: 1, outputTokens: 1 },
+          costUsd: 0,
+          output: { ...output, warnings: ["own_warning"] },
+          versionMeta: { offer: { id: "00000000-0000-4000-8000-0000000000a1", revision: 2 }, warnings: ["injected"], agent_key: "other" },
+          finishedAt: new Date(),
+        });
+        expect(result).toMatchObject({ state: "succeeded" });
+        const meta = (
+          await runtime.query("SELECT meta FROM output_versions WHERE action_run_id=$1", [runId])
+        ).rows[0].meta;
+        expect(meta.offer).toEqual({ id: "00000000-0000-4000-8000-0000000000a1", revision: 2 });
+        expect(meta.warnings).toEqual(["own_warning"]);
+        expect(meta.agent_key).toBe("review_reply");
+      });
+
       it("fences a late worker: finish() on a reaped run writes nothing", async () => {
         const { actionRunRepository } = await import(
           "../../lib/repositories/artifacts"

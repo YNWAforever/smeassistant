@@ -782,3 +782,119 @@ describe("AI spend budget", () => {
     error.mockRestore();
   });
 });
+
+describe("offer actions (P4.1)", () => {
+  const OFFER_ID = "00000000-0000-4000-8000-0000000000a1";
+  const offerRowFor = (over: Record<string, unknown> = {}) => ({
+    id: OFFER_ID, workspace_id: "ws-1", location_id: "loc-1", title: "Weekday lunch set", details: "Soup, main and drink", terms: "Mon–Fri",
+    price_amount: "88.00", currency: "HKD", starts_on: "2026-10-05", ends_on: "2026-10-31", open_ended: false,
+    approved_claims: [], prohibited_wording: ["最平"], asset_ids: [], source: "owner_form", status: "confirmed", revision: 3,
+    confirmed_by: "user-1", confirmed_at: "2026-10-01T00:00:00Z", created_by: "user-1", created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z", archived_at: null,
+    ...over,
+  });
+  let offer: Record<string, unknown> | null = null;
+  const assistantOffer = vi.fn(async () => offer);
+  const offerRun = (over: Record<string, unknown> = {}) =>
+    runAgentForAction({ ...repository(), assistantOffer } as unknown as ArtifactRepository, {
+      actionId: "act-1", actorId: "user-1", locale: "en", membership, persistence, assets: { get: asset }, now: new Date("2026-10-10T02:00:00Z"), ...over,
+    });
+  const offerDraft = (body = "Weekday lunch set, HK$88. Mon–Fri. Visit us.") => good({ title: "Offer", body });
+
+  beforeEach(() => {
+    row = { ...action, template_key: "offer-gbp-post", source: "owner_objective", source_finding_keys: [], provided_inputs: { brand_voice: "warm" }, offer_id: OFFER_ID } as typeof action;
+    offer = offerRowFor();
+    assistantOffer.mockClear();
+  });
+
+  it.each([
+    ["unconfirmed", { status: "draft", confirmed_at: null }],
+    ["archived", { status: "archived", archived_at: "2026-10-02T00:00:00Z" }],
+    ["ended", { ends_on: "2026-10-09" }],
+    ["wrong-location", { location_id: "loc-2" }],
+    ["wrong-currency", { currency: "TWD" }],
+  ])("a %s offer blocks before the model with zero cost", async (_name, over) => {
+    offer = offerRowFor(over);
+    const llm = vi.fn(async () => offerDraft());
+    expect(await offerRun({ llm })).toMatchObject({ factsNeeded: ["offer_confirmed"] });
+    expect(llm).not.toHaveBeenCalled();
+    expect(finish).toHaveBeenCalledWith(expect.objectContaining({ output: null, factsNeeded: ["offer_confirmed"], costUsd: computeCostUsd({ inputTokens: null, outputTokens: null }) }));
+    expect(finish.mock.calls[0][0]).not.toHaveProperty("versionMeta");
+  });
+
+  it("an ended offer is judged in the workspace timezone", async () => {
+    offer = offerRowFor({ ends_on: "2026-09-30" });
+    const llm = vi.fn(async () => offerDraft());
+    // 2026-09-30T15:30Z is 23:30 on 30 September in Hong Kong: still running.
+    await offerRun({ llm, now: new Date("2026-09-30T15:30:00Z") });
+    expect(llm).toHaveBeenCalledOnce();
+    llm.mockClear();
+    // 2026-09-30T16:05Z is 00:05 on 1 October in Hong Kong: ended.
+    await offerRun({ llm, now: new Date("2026-09-30T16:05:00Z") });
+    expect(llm).not.toHaveBeenCalled();
+  });
+
+  it("blocks an offer action whose offer is gone or never linked", async () => {
+    const llm = vi.fn(async () => offerDraft());
+    offer = null;
+    expect(await offerRun({ llm })).toMatchObject({ factsNeeded: ["offer_confirmed"] });
+    row = { ...row, offer_id: null } as typeof row;
+    expect(await offerRun({ llm })).toMatchObject({ factsNeeded: ["offer_confirmed"] });
+    expect(llm).not.toHaveBeenCalled();
+  });
+
+  it("a persisted offer_confirmed value does not satisfy the gate", async () => {
+    offer = offerRowFor({ status: "draft", confirmed_at: null });
+    row = { ...row, provided_inputs: { brand_voice: "warm", offer_confirmed: true } } as typeof row;
+    const llm = vi.fn(async () => offerDraft());
+    expect(await offerRun({ llm, inputs: { offer_confirmed: "yes" } })).toMatchObject({ factsNeeded: ["offer_confirmed"] });
+    expect(llm).not.toHaveBeenCalled();
+  });
+
+  it("a usable offer reaches the model once with the formatted price, and the version is bound to its revision", async () => {
+    const llm = vi.fn(async (prompt: string) => {
+      expect(prompt).toContain("HK$88");
+      expect(prompt).toContain("Weekday lunch set");
+      expect(prompt).toContain("offer_copy@");
+      return offerDraft();
+    });
+    expect(await offerRun({ llm })).toMatchObject({ versionId: "v-1" });
+    expect(llm).toHaveBeenCalledOnce();
+    expect(finish).toHaveBeenCalledWith(expect.objectContaining({ versionMeta: { offer: { id: OFFER_ID, revision: 3 } } }));
+    const queued = (queue.mock.calls[0] as unknown as [{ input: Record<string, unknown> }])[0].input;
+    expect(queued.offer).toMatchObject({ id: OFFER_ID, revision: 3, facts: { priceDisplay: "HK$88", validityDisplay: "2026-10-05 – 2026-10-31" } });
+  });
+
+  it("offer prohibited wording joins the brand's prohibited terms", async () => {
+    const llm = vi.fn(async (prompt: string) => {
+      const list = prompt.slice(prompt.indexOf("Prohibited terms"), prompt.indexOf("Other confirmed facts"));
+      expect(list).toContain("best in Hong Kong");
+      expect(list).toContain("最平");
+      return offerDraft("全港最平午市 HK$88");
+    });
+    await offerRun({ llm });
+    expect(finish.mock.calls[0][0].output?.warnings).toContain("prohibited_term:最平");
+  });
+
+  it("an offer read failure surfaces before any run row", async () => {
+    assistantOffer.mockRejectedValueOnce(new Error("db down"));
+    await expect(offerRun({ llm: vi.fn() })).rejects.toThrow();
+    expect(queue).not.toHaveBeenCalled();
+  });
+
+  it("the budget check still runs first", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    aiSpend24h.mockResolvedValueOnce({ globalUsd: 20, workspaceUsd: 20 });
+    await expect(offerRun({ llm: vi.fn() })).rejects.toMatchObject({ code: "ai_budget_reached" });
+    expect(assistantOffer).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("non-offer runs neither read an offer nor carry an offer key", async () => {
+    row = { ...action };
+    await run({ llm: vi.fn(async () => good()) });
+    expect(assistantOffer).not.toHaveBeenCalled();
+    const queued = (queue.mock.calls[0] as unknown as [{ input: Record<string, unknown> }])[0].input;
+    expect(Object.keys(queued).sort()).toEqual(["agent_key", "locale", "prompt_version", "provided_inputs", "snapshot_id"]);
+    expect(finish.mock.calls[0][0]).not.toHaveProperty("versionMeta");
+  });
+});

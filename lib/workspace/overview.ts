@@ -94,6 +94,8 @@ export interface ActionRow {
   provided_inputs: unknown;
   /** Selected by ACTION_COLUMNS; optional so existing fixtures keep compiling. */
   source_snapshot_id?: string | null;
+  /** P4.1: the confirmed offer this action drafts from (prepareOfferDrafts); null otherwise. */
+  offer_id?: string | null;
   assignee_user_id: string | null;
   due_at: string | null;
   action_state: ActionState;
