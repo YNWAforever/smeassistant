@@ -22,6 +22,7 @@ export type DatabaseRows = {
   "mail_outbox": typeof schema.mailOutbox.$inferSelect;
   "notification_events": typeof schema.notificationEvents.$inferSelect;
   "oauth_connections": typeof schema.oauthConnections.$inferSelect;
+  "offers": typeof schema.offers.$inferSelect;
   "output_versions": typeof schema.outputVersions.$inferSelect;
   "rate_limit_buckets": typeof schema.rateLimitBuckets.$inferSelect;
   "report_access_grants": typeof schema.reportAccessGrants.$inferSelect;
@@ -63,6 +64,7 @@ export type DatabaseInserts = {
   "mail_outbox": typeof schema.mailOutbox.$inferInsert;
   "notification_events": typeof schema.notificationEvents.$inferInsert;
   "oauth_connections": typeof schema.oauthConnections.$inferInsert;
+  "offers": typeof schema.offers.$inferInsert;
   "output_versions": typeof schema.outputVersions.$inferInsert;
   "rate_limit_buckets": typeof schema.rateLimitBuckets.$inferInsert;
   "report_access_grants": typeof schema.reportAccessGrants.$inferInsert;

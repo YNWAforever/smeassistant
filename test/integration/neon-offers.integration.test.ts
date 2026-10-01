@@ -1,0 +1,285 @@
+import { randomUUID } from "node:crypto";
+import { Pool } from "pg";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+
+import { applyMigrations, loadMigrations } from "../../scripts/neon/migrations";
+import { startNeonDatabaseFixture, type NeonDatabaseFixture } from "./neon-database";
+
+// P4.1 migration 0011 (docs/superpowers/specs/2026-10-01-offers-promotion-copy-design.md 1.1, 1.2, 1.4):
+// the offers table, actions.offer_id, offer_is_expired, confirm_offer and archive_offer.
+describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon offers schema and functions", () => {
+  let fixture: NeonDatabaseFixture;
+  let owner: Pool;
+  let runtime: Pool;
+
+  beforeAll(async () => {
+    fixture = await startNeonDatabaseFixture("test");
+    owner = new Pool({ connectionString: fixture.databaseUrl });
+    await owner.query(
+      "CREATE ROLE sme_app_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; CREATE ROLE fixture_runtime LOGIN PASSWORD 'fixture-only' IN ROLE sme_app_runtime",
+    );
+    const url = new URL(fixture.databaseUrl);
+    url.username = "fixture_runtime";
+    url.password = "fixture-only";
+    runtime = new Pool({ connectionString: url.href, max: 5 });
+  });
+
+  beforeEach(async () => {
+    // Nothing exists until the first test has applied the migrations.
+    if ((await owner.query("SELECT to_regclass('public.offers') AS r")).rows[0].r) {
+      await runtime.query("DELETE FROM workspaces; DELETE FROM app_users");
+    }
+  });
+
+  afterAll(async () => {
+    await Promise.all([runtime?.end(), owner?.end()]);
+    fixture?.stop();
+  });
+
+  it("migration applies after 0010 and a second applyMigrations returns []", async () => {
+    const migrations = await loadMigrations();
+    const before = migrations.filter((m) => m.name < "0011_offers.sql");
+    expect(before.at(-1)?.name).toBe("0010_mail_outbox.sql");
+    expect(await applyMigrations(owner, before)).toHaveLength(10);
+    expect(await applyMigrations(owner)).toEqual(["0011_offers.sql"]);
+    expect(await applyMigrations(owner)).toEqual([]);
+  });
+
+  async function workspace(market: "hk" | "tw" | null = "hk", timezone = "Asia/Hong_Kong"): Promise<string> {
+    return (
+      await runtime.query("INSERT INTO workspaces(slug,market,timezone) VALUES($1,$2,$3) RETURNING id", [
+        `ws-${randomUUID().slice(0, 8)}`,
+        market,
+        timezone,
+      ])
+    ).rows[0].id as string;
+  }
+
+  async function user(): Promise<string> {
+    return (
+      await runtime.query("INSERT INTO app_users(email) VALUES($1) RETURNING id", [`u-${randomUUID().slice(0, 8)}@example.test`])
+    ).rows[0].id as string;
+  }
+
+  interface OfferOverrides {
+    title?: string;
+    details?: string;
+    price?: number | null;
+    currency?: string | null;
+    validFrom?: string;
+    validUntil?: string;
+    status?: string;
+    confirmedAt?: string | null;
+  }
+
+  // Dates are DB-side offsets from CURRENT_DATE; +/-30 days keeps every case far from the
+  // session/workspace time zone boundary.
+  async function insertOffer(workspaceId: string, o: OfferOverrides = {}): Promise<string> {
+    return (
+      await runtime.query(
+        `INSERT INTO offers(workspace_id,title,details,price_amount,currency,valid_from,valid_until,status,confirmed_at)
+         VALUES($1,$2,$3,$4,$5,${o.validFrom ?? "CURRENT_DATE"},${o.validUntil ?? "CURRENT_DATE + 30"},$6,$7) RETURNING id`,
+        [
+          workspaceId,
+          o.title ?? "Lunch set",
+          o.details ?? "Soup and a main course",
+          o.price === undefined ? null : o.price,
+          o.currency === undefined ? null : o.currency,
+          o.status ?? "draft",
+          o.confirmedAt ?? null,
+        ],
+      )
+    ).rows[0].id as string;
+  }
+
+  async function insertAction(workspaceId: string, offerId: string | null, state: string): Promise<string> {
+    return (
+      await runtime.query(
+        `INSERT INTO actions(workspace_id,template_key,title,summary,evidence,priority,priority_score,priority_factors,effort_minutes,capability,dedupe_key,action_state,offer_id)
+         VALUES($1,'offer-instagram-post','{}','{}','{}','low',0,'[]',5,'Beta',$2,$3,$4) RETURNING id`,
+        [workspaceId, `dk-${randomUUID()}`, state, offerId],
+      )
+    ).rows[0].id as string;
+  }
+
+  const confirm = (offerId: string, actor: string, revision = 1) =>
+    runtime.query("SELECT public.confirm_offer($1,$2,$3) AS r", [offerId, actor, revision]);
+
+  const auditRows = async (offerId: string, event: string) =>
+    (await runtime.query("SELECT payload FROM audit_events WHERE entity_id=$1 AND event=$2", [offerId, event])).rows;
+
+  it("offers rejects a price without a currency, an unknown currency, valid_until before valid_from, and confirmed without confirmed_at", async () => {
+    const ws = await workspace();
+    await expect(insertOffer(ws, { price: 12, currency: null })).rejects.toMatchObject({ code: "23514" });
+    await expect(insertOffer(ws, { price: null, currency: "HKD" })).rejects.toMatchObject({ code: "23514" });
+    await expect(insertOffer(ws, { price: 12, currency: "USD" })).rejects.toMatchObject({ code: "23514" });
+    await expect(insertOffer(ws, { validFrom: "CURRENT_DATE + 5", validUntil: "CURRENT_DATE + 4" })).rejects.toMatchObject({
+      code: "23514",
+    });
+    await expect(insertOffer(ws, { status: "confirmed", confirmedAt: null })).rejects.toMatchObject({ code: "23514" });
+    await expect(insertOffer(ws, { title: "" })).rejects.toMatchObject({ code: "23514" });
+    await expect(insertOffer(ws, { price: -1, currency: "HKD" })).rejects.toMatchObject({ code: "23514" });
+    // A valid row still inserts, so the failures above are the constraints and not the helper.
+    await expect(insertOffer(ws, { price: 12, currency: "HKD" })).resolves.toBeTruthy();
+  });
+
+  it("confirm_offer confirms the expected revision and writes offer.confirmed", async () => {
+    const ws = await workspace();
+    const actor = await user();
+    const offer = await insertOffer(ws);
+    const result = (await confirm(offer, actor)).rows[0].r;
+    expect(result).toEqual({ kind: "confirmed", offer_id: offer, revision: 1 });
+    const row = (await runtime.query("SELECT status,confirmed_at,confirmed_by FROM offers WHERE id=$1", [offer])).rows[0];
+    expect(row.status).toBe("confirmed");
+    expect(row.confirmed_at).not.toBeNull();
+    expect(row.confirmed_by).toBe(actor);
+    const audit = await auditRows(offer, "offer.confirmed");
+    expect(audit).toHaveLength(1);
+    expect(audit[0].payload).toEqual({ revision: 1 });
+    expect(
+      (await runtime.query("SELECT entity_type,actor_id,workspace_id FROM audit_events WHERE entity_id=$1", [offer])).rows[0],
+    ).toEqual({ entity_type: "offer", actor_id: actor, workspace_id: ws });
+  });
+
+  it("confirm_offer refuses a stale revision", async () => {
+    const ws = await workspace();
+    const offer = await insertOffer(ws);
+    await runtime.query("UPDATE offers SET revision = 2 WHERE id=$1", [offer]);
+    await expect(confirm(offer, await user(), 1)).rejects.toMatchObject({ code: "P0001", message: "offer_revision_changed" });
+    expect((await runtime.query("SELECT status FROM offers WHERE id=$1", [offer])).rows[0].status).toBe("draft");
+    expect(await auditRows(offer, "offer.confirmed")).toHaveLength(0);
+  });
+
+  it("confirm_offer refuses an unknown offer and a blank title or details", async () => {
+    const actor = await user();
+    await expect(confirm(randomUUID(), actor)).rejects.toMatchObject({ code: "P0001", message: "offer_not_found" });
+    const ws = await workspace();
+    // The table CHECK only requires one character, so whitespace is the function's job.
+    const blankTitle = await insertOffer(ws, { title: "   " });
+    await expect(confirm(blankTitle, actor)).rejects.toMatchObject({ code: "P0001", message: "offer_incomplete" });
+    const blankDetails = await insertOffer(ws, { details: " \t " });
+    await expect(confirm(blankDetails, actor)).rejects.toMatchObject({ code: "P0001", message: "offer_incomplete" });
+  });
+
+  it("confirm_offer refuses a TWD offer in an hk workspace, an HKD offer in a tw workspace, and accepts a price-less offer in either", async () => {
+    const actor = await user();
+    const hk = await workspace("hk");
+    const tw = await workspace("tw", "Asia/Taipei");
+    const twdInHk = await insertOffer(hk, { price: 100, currency: "TWD" });
+    await expect(confirm(twdInHk, actor)).rejects.toMatchObject({ code: "P0001", message: "offer_currency_market" });
+    const hkdInTw = await insertOffer(tw, { price: 100, currency: "HKD" });
+    await expect(confirm(hkdInTw, actor)).rejects.toMatchObject({ code: "P0001", message: "offer_currency_market" });
+    // A matching currency is accepted.
+    const hkdInHk = await insertOffer(hk, { price: 100, currency: "HKD" });
+    expect((await confirm(hkdInHk, actor)).rows[0].r.kind).toBe("confirmed");
+    const twdInTw = await insertOffer(tw, { price: 100, currency: "TWD" });
+    expect((await confirm(twdInTw, actor)).rows[0].r.kind).toBe("confirmed");
+    // A price-less offer has no currency to disagree with, in either market.
+    expect((await confirm(await insertOffer(hk), actor)).rows[0].r.kind).toBe("confirmed");
+    expect((await confirm(await insertOffer(tw), actor)).rows[0].r.kind).toBe("confirmed");
+    // A workspace with no market cannot match any currency.
+    const noMarket = await workspace(null);
+    await expect(confirm(await insertOffer(noMarket, { price: 1, currency: "HKD" }), actor)).rejects.toMatchObject({
+      message: "offer_currency_market",
+    });
+  });
+
+  it("confirm_offer refuses an archived offer and an expired offer", async () => {
+    const ws = await workspace();
+    const actor = await user();
+    const archived = await insertOffer(ws, { status: "archived" });
+    await expect(confirm(archived, actor)).rejects.toMatchObject({ code: "P0001", message: "offer_archived" });
+    const expired = await insertOffer(ws, { validFrom: "CURRENT_DATE - 60", validUntil: "CURRENT_DATE - 30" });
+    await expect(confirm(expired, actor)).rejects.toMatchObject({ code: "P0001", message: "offer_expired" });
+    // An offer that has not started yet is usable: promoting ahead is the point.
+    const future = await insertOffer(ws, { validFrom: "CURRENT_DATE + 10", validUntil: "CURRENT_DATE + 20" });
+    expect((await confirm(future, actor)).rows[0].r.kind).toBe("confirmed");
+  });
+
+  it("confirm_offer on an already-confirmed revision returns already-confirmed and writes no second audit row", async () => {
+    const ws = await workspace();
+    const actor = await user();
+    const offer = await insertOffer(ws);
+    expect((await confirm(offer, actor)).rows[0].r.kind).toBe("confirmed");
+    const confirmedAt = (await runtime.query("SELECT confirmed_at FROM offers WHERE id=$1", [offer])).rows[0].confirmed_at;
+    expect((await confirm(offer, await user())).rows[0].r).toEqual({ kind: "already-confirmed", offer_id: offer, revision: 1 });
+    expect(await auditRows(offer, "offer.confirmed")).toHaveLength(1);
+    const after = (await runtime.query("SELECT confirmed_at,confirmed_by FROM offers WHERE id=$1", [offer])).rows[0];
+    expect(after.confirmed_at).toEqual(confirmedAt);
+    expect(after.confirmed_by).toBe(actor);
+  });
+
+  it("offer_is_expired reads the workspace timezone", async () => {
+    const east = await workspace("hk", "Pacific/Kiritimati");
+    const west = await workspace("hk", "Pacific/Pago_Pago");
+    const expired = async (date: string, ws: string) =>
+      (await runtime.query("SELECT public.offer_is_expired($1::date,$2) AS e", [date, ws])).rows[0].e as boolean;
+    const t = (await runtime.query("SELECT ((now() AT TIME ZONE 'Pacific/Kiritimati')::date - 1)::text AS t")).rows[0].t as string;
+    expect(await expired(t, east)).toBe(true);
+    expect(await expired(t, west)).toBe(false);
+    for (const [tz, ws] of [["Pacific/Kiritimati", east], ["Pacific/Pago_Pago", west]] as const) {
+      const today = (await runtime.query("SELECT (now() AT TIME ZONE $1)::date::text AS d", [tz])).rows[0].d as string;
+      expect(await expired(today, ws)).toBe(false);
+    }
+    // An unknown workspace fails closed.
+    expect(await expired(t, randomUUID())).toBe(true);
+  });
+
+  it("archive_offer cancels only open actions of that offer", async () => {
+    const ws = await workspace();
+    const actor = await user();
+    const offer = await insertOffer(ws);
+    const recommended = await insertAction(ws, offer, "recommended");
+    const inProgress = await insertAction(ws, offer, "in_progress");
+    const completed = await insertAction(ws, offer, "completed");
+    const unrelated = await insertAction(ws, null, "recommended");
+    const state = async (id: string) => (await runtime.query("SELECT action_state FROM actions WHERE id=$1", [id])).rows[0].action_state;
+
+    const result = (await runtime.query("SELECT public.archive_offer($1,$2) AS r", [offer, actor])).rows[0].r;
+    expect(result).toEqual({ kind: "archived", offer_id: offer, cancelled_actions: 2 });
+    expect((await runtime.query("SELECT status FROM offers WHERE id=$1", [offer])).rows[0].status).toBe("archived");
+    expect(await state(recommended)).toBe("cancelled");
+    expect(await state(inProgress)).toBe("cancelled");
+    expect(await state(completed)).toBe("completed");
+    expect(await state(unrelated)).toBe("recommended");
+    const audit = await auditRows(offer, "offer.archived");
+    expect(audit).toHaveLength(1);
+    expect(audit[0].payload).toEqual({ cancelled_actions: 2 });
+
+    const again = (await runtime.query("SELECT public.archive_offer($1,$2) AS r", [offer, actor])).rows[0].r;
+    expect(again.kind).toBe("already-archived");
+    expect(await auditRows(offer, "offer.archived")).toHaveLength(1);
+    await expect(runtime.query("SELECT public.archive_offer($1,$2)", [randomUUID(), actor])).rejects.toMatchObject({
+      code: "P0001",
+      message: "offer_not_found",
+    });
+  });
+
+  it("deleting an offer referenced by an action fails, deleting the workspace cascades through both", async () => {
+    const ws = await workspace();
+    const offer = await insertOffer(ws);
+    await insertAction(ws, offer, "recommended");
+    await expect(runtime.query("DELETE FROM offers WHERE id=$1", [offer])).rejects.toMatchObject({ code: "23503" });
+    await runtime.query("DELETE FROM workspaces WHERE id=$1", [ws]);
+    expect((await runtime.query("SELECT count(*)::int AS n FROM offers WHERE id=$1", [offer])).rows[0].n).toBe(0);
+    expect((await runtime.query("SELECT count(*)::int AS n FROM actions WHERE workspace_id=$1", [ws])).rows[0].n).toBe(0);
+  });
+
+  it("runtime-only privileges: the functions are not executable by PUBLIC and the policy matches the other tables", async () => {
+    const names = ["offer_is_expired", "confirm_offer", "archive_offer"];
+    const rows = (
+      await owner.query(
+        `SELECT p.proname, p.prosecdef, p.proconfig, has_function_privilege('sme_app_runtime', p.oid, 'EXECUTE') AS runtime_exec,
+                (SELECT count(*)::int FROM aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a WHERE a.grantee = 0) AS public_grants
+           FROM pg_proc p WHERE p.pronamespace='public'::regnamespace AND p.proname = ANY($1) ORDER BY p.proname`,
+        [names],
+      )
+    ).rows;
+    expect(rows.map((r) => r.proname)).toEqual([...names].sort());
+    for (const r of rows) {
+      expect(r).toMatchObject({ prosecdef: false, proconfig: ['search_path=""'], runtime_exec: true, public_grants: 0 });
+    }
+    const policy = (await owner.query("SELECT roles::text[] AS roles, cmd, qual, with_check FROM pg_policies WHERE tablename='offers'")).rows;
+    expect(policy).toEqual([{ roles: ["sme_app_runtime"], cmd: "ALL", qual: "true", with_check: "true" }]);
+  });
+});

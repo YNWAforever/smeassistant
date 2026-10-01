@@ -1,6 +1,6 @@
 // Complete final business catalog. SQL migrations are authoritative for functions and grants.
 import { sql } from "drizzle-orm";
-import { pgTable, uuid, text, timestamp, boolean, integer, smallint, bigserial, numeric, jsonb, primaryKey, unique, foreignKey, check, index, uniqueIndex, pgPolicy, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, boolean, integer, smallint, bigserial, numeric, date, jsonb, primaryKey, unique, foreignKey, check, index, uniqueIndex, pgPolicy, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { appUsers } from "./identity";
 
 export const actionApplications = pgTable("action_applications", {
@@ -109,17 +109,20 @@ export const actions = pgTable("actions", {
  updatedAt: timestamp("updated_at", {withTimezone:true, mode:"string"}).notNull().default(sql.raw("now()")),
  completedAt: timestamp("completed_at", {withTimezone:true, mode:"string"}),
  verificationCheckedAt: timestamp("verification_checked_at", {withTimezone:true, mode:"string"}),
+ offerId: uuid("offer_id"),
 }, t => [
  check("actions_action_state_check", sql.raw("(action_state = ANY (ARRAY['recommended'::text, 'needs_input'::text, 'ready'::text, 'in_progress'::text, 'completed'::text, 'dismissed'::text, 'cancelled'::text, 'expired'::text]))")),
  foreignKey({name:"actions_assignee_user_id_fkey",columns:[t.assigneeUserId],foreignColumns:[((): AnyPgColumn => appUsers.id)()]}).onDelete("set null"),
  check("actions_capability_check", sql.raw("(capability = ANY (ARRAY['Live'::text, 'Beta'::text, 'Demo'::text, 'Requires connection'::text, 'Planned'::text]))")),
  foreignKey({name:"actions_location_id_fkey",columns:[t.locationId],foreignColumns:[((): AnyPgColumn => locations.id)()]}).onDelete("set null"),
+ foreignKey({name:"actions_offer_id_fkey",columns:[t.offerId],foreignColumns:[((): AnyPgColumn => offers.id)()]}),
  check("actions_measurement_state_check", sql.raw("(measurement_state = ANY (ARRAY['not_eligible'::text, 'awaiting_comparable_scan'::text, 'measured'::text, 'insufficient_coverage'::text]))")),
  primaryKey({name:"actions_pkey",columns:[t.id]}),
  check("actions_priority_check", sql.raw("(priority = ANY (ARRAY['urgent'::text, 'high'::text, 'medium'::text, 'low'::text]))")),
  check("actions_source_check", sql.raw("(source = ANY (ARRAY['finding'::text, 'owner_objective'::text, 'system'::text]))")),
  foreignKey({name:"actions_source_snapshot_id_fkey",columns:[t.sourceSnapshotId],foreignColumns:[((): AnyPgColumn => scanSnapshots.id)()]}).onDelete("set null"),
  foreignKey({name:"actions_workspace_id_fkey",columns:[t.workspaceId],foreignColumns:[((): AnyPgColumn => workspaces.id)()]}).onDelete("cascade"),
+ index("actions_offer_idx").using("btree", sql.raw("offer_id")),
  uniqueIndex("actions_open_dedupe_idx").using("btree", sql.raw("dedupe_key")).where(sql.raw("(action_state <> ALL (ARRAY['completed'::text, 'dismissed'::text, 'cancelled'::text, 'expired'::text]))")),
  pgPolicy("server_application", {for:"all", to:"sme_app_runtime", using:sql`true`, withCheck:sql`true`}),
 ]).enableRLS();
@@ -463,6 +466,47 @@ export const oauthConnections = pgTable("oauth_connections", {
  foreignKey({name:"oauth_connections_workspace_id_fkey",columns:[t.workspaceId],foreignColumns:[((): AnyPgColumn => workspaces.id)()]}).onDelete("cascade"),
  uniqueIndex("oauth_connections_active_provider_key").using("btree", sql.raw("workspace_id, provider")).where(sql.raw("(status = 'active'::text)")),
  index("oauth_connections_workspace_idx").using("btree", sql.raw("workspace_id")),
+ pgPolicy("server_application", {for:"all", to:"sme_app_runtime", using:sql`true`, withCheck:sql`true`}),
+]).enableRLS();
+
+export const offers = pgTable("offers", {
+ id: uuid("id").notNull().default(sql.raw("gen_random_uuid()")),
+ workspaceId: uuid("workspace_id").notNull(),
+ locationId: uuid("location_id"),
+ title: text("title").notNull(),
+ details: text("details").notNull(),
+ terms: text("terms").notNull().default(sql.raw("''::text")),
+ priceAmount: numeric("price_amount", {precision:12, scale:2}),
+ currency: text("currency"),
+ validFrom: date("valid_from", {mode:"string"}).notNull(),
+ validUntil: date("valid_until", {mode:"string"}).notNull(),
+ claims: text("claims").array().notNull().default(sql.raw("'{}'::text[]")),
+ prohibitedTerms: text("prohibited_terms").array().notNull().default(sql.raw("'{}'::text[]")),
+ assetId: uuid("asset_id"),
+ status: text("status").notNull().default(sql.raw("'draft'::text")),
+ revision: integer("revision").notNull().default(sql.raw("1")),
+ confirmedAt: timestamp("confirmed_at", {withTimezone:true, mode:"string"}),
+ confirmedBy: uuid("confirmed_by"),
+ createdBy: uuid("created_by"),
+ createdAt: timestamp("created_at", {withTimezone:true, mode:"string"}).notNull().default(sql.raw("now()")),
+ updatedAt: timestamp("updated_at", {withTimezone:true, mode:"string"}).notNull().default(sql.raw("now()")),
+}, t => [
+ foreignKey({name:"offers_asset_id_fkey",columns:[t.assetId],foreignColumns:[((): AnyPgColumn => assets.id)()]}).onDelete("set null"),
+ foreignKey({name:"offers_confirmed_by_fkey",columns:[t.confirmedBy],foreignColumns:[((): AnyPgColumn => appUsers.id)()]}).onDelete("set null"),
+ check("offers_confirmed_check", sql.raw("((status = 'confirmed'::text) = (confirmed_at IS NOT NULL))")),
+ foreignKey({name:"offers_created_by_fkey",columns:[t.createdBy],foreignColumns:[((): AnyPgColumn => appUsers.id)()]}).onDelete("set null"),
+ check("offers_currency_check", sql.raw("((currency IS NULL) OR (currency = ANY (ARRAY['HKD'::text, 'TWD'::text])))")),
+ check("offers_dates_check", sql.raw("(valid_until >= valid_from)")),
+ check("offers_details_check", sql.raw("((char_length(details) >= 1) AND (char_length(details) <= 1000))")),
+ foreignKey({name:"offers_location_id_fkey",columns:[t.locationId],foreignColumns:[((): AnyPgColumn => locations.id)()]}).onDelete("cascade"),
+ primaryKey({name:"offers_pkey",columns:[t.id]}),
+ check("offers_price_check", sql.raw("((price_amount IS NULL) OR (price_amount >= (0)::numeric))")),
+ check("offers_price_currency_check", sql.raw("((price_amount IS NULL) = (currency IS NULL))")),
+ check("offers_status_check", sql.raw("(status = ANY (ARRAY['draft'::text, 'confirmed'::text, 'archived'::text]))")),
+ check("offers_terms_check", sql.raw("(char_length(terms) <= 1000)")),
+ check("offers_title_check", sql.raw("((char_length(title) >= 1) AND (char_length(title) <= 120))")),
+ foreignKey({name:"offers_workspace_id_fkey",columns:[t.workspaceId],foreignColumns:[((): AnyPgColumn => workspaces.id)()]}).onDelete("cascade"),
+ index("offers_workspace_idx").using("btree", sql.raw("workspace_id, status, valid_until")),
  pgPolicy("server_application", {for:"all", to:"sme_app_runtime", using:sql`true`, withCheck:sql`true`}),
 ]).enableRLS();
 
