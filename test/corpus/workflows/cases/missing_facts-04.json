@@ -1,0 +1,19 @@
+{
+  "locale": "en",
+  "market": "hk",
+  "provided": {},
+  "brand": {},
+  "id": "missing-facts-faq-owner-facts",
+  "category": "missing_facts",
+  "workflow": "visibility-content",
+  "cannedOutputs": [],
+  "expect": {
+    "llmCalls": 0,
+    "version": false,
+    "factsNeeded": [
+      "owner_fact_1",
+      "owner_fact_2",
+      "owner_fact_3"
+    ]
+  }
+}

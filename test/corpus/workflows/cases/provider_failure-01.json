@@ -1,0 +1,18 @@
+{
+  "locale": "en",
+  "market": "hk",
+  "provided": {},
+  "brand": {},
+  "id": "provider-failure-both-attempts-null",
+  "category": "provider_failure",
+  "workflow": "gbp-post",
+  "cannedOutputs": [
+    null,
+    null
+  ],
+  "expect": {
+    "llmCalls": 2,
+    "state": "failed",
+    "version": false
+  }
+}

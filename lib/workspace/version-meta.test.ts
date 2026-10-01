@@ -32,6 +32,15 @@ describe("parseVersionMeta", () => {
     expect(parsed.agentNotes).toEqual([]);
   });
 
+  it("classifies the P4.4 shared checks as guardrail findings, never agent notes", () => {
+    // Before this, unexpected_link / unconfirmed_claim fell through to
+    // agentNotes, so the panel said "checked, nothing was flagged" and then
+    // printed a raw English code underneath -- in zh-HK too.
+    const parsed = parseVersionMeta({ warnings: ["unexpected_link", "unconfirmed_claim"] }, "agent");
+    expect(parsed.guardrails).toEqual([{ code: "unexpected_link" }, { code: "unconfirmed_claim" }]);
+    expect(parsed.agentNotes).toEqual([]);
+  });
+
   it("keeps an unrecognised warning visible instead of discarding it", () => {
     // A new agent code must degrade to something the approver can read.
     const parsed = parseVersionMeta({ warnings: ["some_future_code", "compensation_promise"] }, "agent");

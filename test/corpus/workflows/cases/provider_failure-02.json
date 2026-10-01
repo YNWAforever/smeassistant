@@ -1,0 +1,18 @@
+{
+  "locale": "en",
+  "market": "hk",
+  "provided": {},
+  "brand": {},
+  "id": "provider-failure-retry-recovers",
+  "category": "provider_failure",
+  "workflow": "gbp-post",
+  "cannedOutputs": [
+    null,
+    "{\"title\":\"Draft\",\"body\":\"Fresh bakes are out of the oven this morning. Drop by and say hello.\",\"acceptance_criteria\":[\"Owner checks the facts\"],\"warnings\":[],\"facts_used\":[],\"facts_needed\":[]}"
+  ],
+  "expect": {
+    "llmCalls": 2,
+    "state": "succeeded",
+    "version": true
+  }
+}

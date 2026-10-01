@@ -49,3 +49,6 @@ next-env.d.ts
 
 # isolated implementation worktrees
 /.worktrees/
+
+# opt-in real-model evaluation output (P4.4)
+eval-results/

@@ -1,0 +1,21 @@
+{
+  "locale": "en",
+  "market": "hk",
+  "provided": {
+    "text_only": true
+  },
+  "brand": {},
+  "id": "fabricated-claim-invented-award",
+  "category": "fabricated_claim",
+  "workflow": "social-post",
+  "cannedOutputs": [
+    "{\"title\":\"Draft\",\"body\":\"Our award-winning pastries are back today! #bakery\",\"acceptance_criteria\":[\"Owner checks the facts\"],\"warnings\":[],\"facts_used\":[],\"facts_needed\":[]}"
+  ],
+  "expect": {
+    "llmCalls": 1,
+    "version": true,
+    "warningsInclude": [
+      "unconfirmed_claim"
+    ]
+  }
+}

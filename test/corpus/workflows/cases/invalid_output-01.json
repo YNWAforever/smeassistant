@@ -1,0 +1,18 @@
+{
+  "locale": "en",
+  "market": "hk",
+  "provided": {},
+  "brand": {},
+  "id": "invalid-output-not-json",
+  "category": "invalid_output",
+  "workflow": "website-basics",
+  "cannedOutputs": [
+    "not json",
+    "not json"
+  ],
+  "expect": {
+    "llmCalls": 2,
+    "state": "failed",
+    "version": false
+  }
+}

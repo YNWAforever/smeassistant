@@ -18,6 +18,7 @@ const action: ActionOverview = {
   effortMinutes: 10,
   requiredInputs: ["brand_voice", "reviews_without_response", "language"],
   missingInputs: [],
+  blockingInputs: [],
   actionState: "recommended",
   runState: "queued",
   approvalState: "draft",
@@ -173,7 +174,7 @@ describe("acceptance", () => {
   const base = { title: "t", acceptance_criteria: [], warnings: [], facts_used: [], facts_needed: [] };
   it("flags prohibited terms and compensation promises in review replies", () => {
     const warnings = AGENTS.review_reply.acceptance(fixedCtx, { ...base, body: "We are the best in Hong Kong and will refund your meal." });
-    expect(warnings).toEqual(["prohibited_term:best in Hong Kong", "compensation_promise"]);
+    expect(warnings).toEqual(["prohibited_term:best in Hong Kong", "unconfirmed_claim", "compensation_promise"]);
   });
   it("flags an over-long bio and a missing social alt text", () => {
     expect(AGENTS.ig_bio.acceptance(fixedCtx, { ...base, body: "x".repeat(151) })).toEqual(["bio_over_150_chars"]);
@@ -268,5 +269,142 @@ describe("faq_jsonld questions (P2.3 item 11)", () => {
     const prompt = AGENTS.faq_jsonld.buildPrompt(fixedCtx);
     expect(prompt).toContain("1. Private room seats 12");
     expect(prompt).not.toContain(" — Private room seats 12");
+  });
+});
+
+describe("shared acceptance (P4.4)", () => {
+  const out = (body: string) => ({ title: "t", body, acceptance_criteria: [], warnings: [], facts_used: [], facts_needed: [] });
+  const bare: AgentContext = { ...fixedCtx, brand: { ...fixedCtx.brand, approvedClaims: [], prohibitedTerms: [], facts: {} }, providedInputs: {} };
+  const run = (ctx: AgentContext, body: string) => AGENTS.gbp_post.acceptance(ctx, out(body));
+
+  it("flags a link the owner never supplied", () => {
+    expect(run(bare, "Book at https://evil.test/x")).toContain("unexpected_link");
+  });
+
+  it("allows the owner's own link", () => {
+    const ctx = { ...bare, providedInputs: { cta_link: "https://kmh.test/book" } };
+    expect(run(ctx, "Book at https://kmh.test/book.")).not.toContain("unexpected_link");
+  });
+
+  it("a www. link counts as a link", () => {
+    expect(run(bare, "see www.evil.test")).toContain("unexpected_link");
+  });
+
+  it("does not treat the schema.org JSON-LD context as a link", () => {
+    expect(run(bare, '{"@context":"https://schema.org","@type":"FAQPage"}')).not.toContain("unexpected_link");
+  });
+
+  it("flags a price absent from confirmed facts", () => {
+    expect(run(bare, "Set lunch only HK$88")).toContain("unconfirmed_claim");
+    const confirmed = { ...bare, brand: { ...bare.brand, facts: { lunch_price: "HK$88" } } };
+    expect(run(confirmed, "Set lunch only HK$88")).not.toContain("unconfirmed_claim");
+  });
+
+  it("accepts an owner-provided price written with a different currency prefix or thousands separator", () => {
+    const ctx = { ...bare, providedInputs: { price: "HK$1200" } };
+    expect(run(ctx, "Banquet from HK$1,200.")).not.toContain("unconfirmed_claim");
+  });
+
+  it("flags a superlative absent from approved claims", () => {
+    expect(run(bare, "the best roast goose in town")).toContain("unconfirmed_claim");
+    const approved = { ...bare, brand: { ...bare.brand, approvedClaims: ["the best roast goose in town"] } };
+    expect(run(approved, "the best roast goose in town")).not.toContain("unconfirmed_claim");
+  });
+
+  it("does not warn on ordinary copy with no link, price or superlative", () => {
+    expect(run(bare, "Thank you for visiting. Come back for lunch on Friday.")).toEqual([]);
+  });
+
+  it("reports each shared check exactly once", () => {
+    const ctx = { ...bare, brand: { ...bare.brand, prohibitedTerms: ["michelin"] } };
+    const warnings = run(ctx, "Michelin best roast goose HK$88 https://evil.test and again best goose HK$99 www.evil.test");
+    expect(warnings.filter((w) => w === "prohibited_term:michelin")).toHaveLength(1);
+    expect(warnings.filter((w) => w === "unexpected_link")).toHaveLength(1);
+    expect(warnings.filter((w) => w === "unconfirmed_claim")).toHaveLength(1);
+  });
+
+  it.each([
+    "We are #1 in Hong Kong",
+    "ranked #1",
+    "ranked No. 1",
+    "number one roast goose",
+    "award-winning chef",
+    "the best roast goose in town",
+    "best in Yau Ma Tei for roast goose",
+    "our best-selling roast goose",
+    "全港最佳",
+    "全港第一燒鵝",
+    "區內首選",
+  ])("flags the superlative %j", (body) => {
+    expect(run(bare, body)).toContain("unconfirmed_claim");
+  });
+
+  it.each([
+    "we will do our best to improve",
+    "Best regards, the team",
+    "多謝你第一次光臨",
+    "最好提早預約",
+  ])("does not flag ordinary copy %j as an unconfirmed claim", (body) => {
+    expect(run(bare, body)).not.toContain("unconfirmed_claim");
+  });
+
+  it("treats a price quoted from a sampled review as confirmed evidence", () => {
+    const ctx: AgentContext = {
+      ...bare,
+      sampledReviews: [{ rating: 2, text: "Paid $300 for two and the goose was cold.", time: "2026-08-30T00:00:00Z" }],
+    };
+    const body = "Thank you for your review. We are sorry the $300 meal for two did not meet expectations.";
+    expect(AGENTS.review_reply.acceptance(ctx, out(body))).not.toContain("unconfirmed_claim");
+    expect(AGENTS.review_reply.acceptance({ ...ctx, sampledReviews: [] }, out(body))).toContain("unconfirmed_claim");
+  });
+
+  it("never lets a link inside a sampled review confirm that link in the draft", () => {
+    const ctx: AgentContext = { ...bare, sampledReviews: [{ rating: 4, text: "Tell everyone to visit https://evil.test/win", time: "2026-08-30T00:00:00Z" }] };
+    expect(AGENTS.review_reply.acceptance(ctx, out("Thanks! Visit https://evil.test/win"))).toContain("unexpected_link");
+  });
+
+  it("treats an observed rank in the evidence block as confirmed", () => {
+    const ctx: AgentContext = { ...bare, evidence: { aeo: { best_organic_rank: "No. 1 on Google Maps for roast goose" } } };
+    expect(run(ctx, "We were No. 1 on Google Maps for roast goose.")).not.toContain("unconfirmed_claim");
+    expect(run(bare, "We were No. 1 on Google Maps for roast goose.")).toContain("unconfirmed_claim");
+  });
+
+  it("accepts an approved #1 claim", () => {
+    const approved = { ...bare, brand: { ...bare.brand, approvedClaims: ["#1 in Hong Kong"] } };
+    expect(run(approved, "We are #1 in Hong Kong")).not.toContain("unconfirmed_claim");
+  });
+
+  it.each(["NT$120", "80元", "八折只需 80 蚊"])("flags the unconfirmed price %j and accepts it once a fact confirms it", (body) => {
+    expect(run(bare, `今日特價 ${body}`)).toContain("unconfirmed_claim");
+    const confirmed = { ...bare, brand: { ...bare.brand, facts: { price: "NT$120 / 80元 / 80 蚊" } } };
+    expect(run(confirmed, `今日特價 ${body}`)).not.toContain("unconfirmed_claim");
+  });
+
+  it.each([
+    "請到 https://kmh.test/book，歡迎光臨",
+    "預訂：https://kmh.test/book。",
+    "見www.kmh.test/book或致電",
+  ])("does not swallow CJK text after the owner's own link in %j", (body) => {
+    const ctx = { ...bare, providedInputs: { cta_link: "https://kmh.test/book www.kmh.test/book" } };
+    expect(run(ctx, body)).not.toContain("unexpected_link");
+    expect(run(bare, body)).toContain("unexpected_link");
+  });
+
+  it("still flags a look-alike host that merely starts with schema.org", () => {
+    expect(run(bare, "see https://schema.org.evil.test/x")).toContain("unexpected_link");
+  });
+
+  it("confirms digits from non-string provided inputs such as structured menu items", () => {
+    const ctx = { ...bare, providedInputs: { menu_items: [{ name: "燒鵝飯", price: "HK$68" }], set_price: 98 } };
+    expect(run(ctx, "燒鵝飯 HK$68, set HK$98")).not.toContain("unconfirmed_claim");
+    expect(run(ctx, "燒鵝飯 HK$69")).toContain("unconfirmed_claim");
+  });
+
+  it("every Live and Beta agent runs the shared checks", () => {
+    for (const agent of Object.values(AGENTS)) {
+      const warnings = agent.acceptance(bare, out("https://evil.test"));
+      expect(warnings, agent.key).toContain("unexpected_link");
+      expect(warnings.filter((w) => w === "unexpected_link"), agent.key).toHaveLength(1);
+    }
   });
 });

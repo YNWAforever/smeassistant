@@ -5,7 +5,11 @@ import type {
   EvidenceGalleryItem,
   EvidenceGalleryModel,
 } from "@/lib/report/view-model";
-import { isSensitiveQueryName } from "@sme-scanner/scan-engine";
+// Deep import on purpose (P4.4): under tsx (scripts/eval-workflows.ts) a static
+// named import from the vendored package's CJS barrel does not resolve; the
+// defining source file does. Do not move it back to the barrel on a re-pin
+// unless `eval:workflows --check-load` still loads afterwards.
+import { isSensitiveQueryName } from "@sme-scanner/scan-engine/src/sensitive-name";
 import type { EvidenceProvider, EvidenceType } from "./types";
 
 const EVIDENCE_BUCKET = "report-evidence";

@@ -1,0 +1,19 @@
+{
+  "locale": "en",
+  "market": "hk",
+  "provided": {},
+  "brand": {},
+  "id": "fabricated-claim-invented-price",
+  "category": "fabricated_claim",
+  "workflow": "website-basics",
+  "cannedOutputs": [
+    "{\"title\":\"Draft\",\"body\":\"Title: Corpus Cafe lunch from HK$88 (now: 57 chars)\\nDescription: Lunch sets in Yau Ma Tei. (now: missing)\\nH1: A neighbourhood cafe (now: 2 h1)\",\"acceptance_criteria\":[\"Owner checks the facts\"],\"warnings\":[],\"facts_used\":[],\"facts_needed\":[]}"
+  ],
+  "expect": {
+    "llmCalls": 1,
+    "version": true,
+    "warningsInclude": [
+      "unconfirmed_claim"
+    ]
+  }
+}

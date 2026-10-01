@@ -2,7 +2,7 @@ import type { ArtifactRepository } from "@/lib/repositories/artifacts";
 import type { Json } from "@/lib/repositories/workflow";
 
 /**
- * Thin wrappers over the atomic RPCs in 20260903000001_workspace_rpcs.sql.
+ * Thin wrappers over the atomic RPCs in neon/migrations/0004_atomic_operations.sql.
  * The RPCs own the state machine, the usage count and their audit rows; this
  * module only names the arguments and maps the raised `message` to a typed
  * error the routes turn into 409s.

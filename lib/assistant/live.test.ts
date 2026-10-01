@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { auth } from "@/app/api/actions/_shared/test-db";
 import { ACTION_ID, LOCATION_ID, SNAPSHOT_ID, WORKSPACE_ID, actionRow, base, diff, socialRow, snapshot } from "./__fixtures__";
-import { LIVE_BOUNDARY, runLiveAssistant } from "./live";
+import { DRAFT_AGENTS, LIVE_BOUNDARY, runLiveAssistant } from "./live";
 import { AiBudgetRefusal } from "@/lib/budgets/ai";
+import { templateByKey } from "@/lib/workspace/templates";
+
+const asProvided = (row: { provided_inputs: unknown }) => (row.provided_inputs ?? {}) as Record<string, unknown>;
 
 const repository = vi.hoisted(() => ({ actionScope:vi.fn(),assistantWorkspace:vi.fn(),assistantLocations:vi.fn(),assistantActions:vi.fn(),assistantSnapshot:vi.fn(),assistantLatestSnapshot:vi.fn(),assistantDiff:vi.fn(),assistantBrand:vi.fn(),assistantReviewData:vi.fn(),versionScope:vi.fn(),createOutputVersion:vi.fn(),recordAssistantDraft:vi.fn(),recordAssistantDraftFailure:vi.fn(),aiSpend24h:vi.fn() }));
 vi.mock("@/lib/repositories/artifacts",()=>({artifactRepository:()=>repository}));
@@ -12,6 +15,9 @@ type Llm = (prompt: string, opts?: unknown) => Promise<typeof good | null>;
 const LOCATION_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const ACTION_B = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const SNAPSHOT_B = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+const FAQ_FACTS = { owner_fact_1: "Seats 40", owner_fact_2: "Book by WhatsApp", owner_fact_3: "Vegetarian options daily" };
+const faqRow: typeof actionRow = { ...actionRow, id: "55555555-5555-4555-8555-555555555555", template_key: "visibility-content", required_inputs: ["owner_fact_1", "owner_fact_2", "owner_fact_3"], provided_inputs: {} };
+const menuRow: typeof actionRow = { ...actionRow, id: "66666666-6666-4666-8666-666666666666", template_key: "menu-translation", required_inputs: ["menu_items"], provided_inputs: {} };
 const state = { actions: [actionRow, socialRow] as Array<typeof actionRow>, snapshots: [snapshot, base] as Array<typeof snapshot> };
 
 
@@ -185,6 +191,96 @@ describe("runLiveAssistant", () => {
     expect(result.output).toMatchObject({ type: "social_post", body: "Text only." });
   });
 
+  describe("pre-model confirmed-facts gate", () => {
+    const faqJson = JSON.stringify({ title: "FAQ", body: "Q1 A1", acceptance_criteria: [], warnings: [], facts_used: ["owner_fact_1"], facts_needed: [] });
+
+    it("faq draft without facts answers NEEDS_FACTS with no model call", async () => {
+      state.actions = [faqRow];
+      const llm = vi.fn<Llm>(async () => good);
+      const result = await run({ intentId: "generate_faq", llm });
+      expect(llm).not.toHaveBeenCalled();
+      expect(repository.aiSpend24h).not.toHaveBeenCalled();
+      expect(repository.recordAssistantDraftFailure).not.toHaveBeenCalled();
+      expect(repository.recordAssistantDraft).not.toHaveBeenCalled();
+      expect(result.answer).toContain("owner_fact_1, owner_fact_2, owner_fact_3");
+      expect(result.output).toBeUndefined();
+      expect(result.requiresApproval).toBe(false);
+    });
+
+    it("faq draft with saved owner facts reaches the model", async () => {
+      state.actions = [{ ...faqRow, provided_inputs: FAQ_FACTS }];
+      const llm = vi.fn<Llm>(async () => ({ ...good, text: faqJson }));
+      const result = await run({ intentId: "generate_faq", llm });
+      expect(llm).toHaveBeenCalledOnce();
+      expect(result.output).toMatchObject({ type: "faq" });
+    });
+
+    it("faq draft with whitespace-only facts is still blocked", async () => {
+      state.actions = [{ ...faqRow, provided_inputs: { ...FAQ_FACTS, owner_fact_2: "   " } }];
+      const llm = vi.fn<Llm>(async () => good);
+      const result = await run({ intentId: "generate_faq", llm });
+      expect(llm).not.toHaveBeenCalled();
+      expect(result.answer).toContain("owner_fact_2");
+      expect(result.answer).not.toContain("owner_fact_1");
+    });
+
+    it("menu draft without menu_items answers NEEDS_FACTS", async () => {
+      state.actions = [menuRow];
+      const llm = vi.fn<Llm>(async () => good);
+      const result = await run({ intentId: "generate_menu", llm });
+      expect(llm).not.toHaveBeenCalled();
+      expect(repository.aiSpend24h).not.toHaveBeenCalled();
+      expect(repository.recordAssistantDraftFailure).not.toHaveBeenCalled();
+      expect(result.answer).toContain("menu_items");
+      expect(result.output).toBeUndefined();
+    });
+
+    it("menu draft with an empty menu_items list is still blocked", async () => {
+      state.actions = [{ ...menuRow, provided_inputs: { menu_items: [] } }];
+      const llm = vi.fn<Llm>(async () => good);
+      const result = await run({ intentId: "generate_menu", llm });
+      expect(llm).not.toHaveBeenCalled();
+      expect(result.answer).toContain("menu_items");
+    });
+
+    it("review reply with no scanned unanswered review and no typed text answers NEEDS_FACTS with no model call", async () => {
+      repository.assistantReviewData.mockResolvedValue({ gbp: { reviews: [] } });
+      const llm = vi.fn<Llm>(async () => good);
+      const result = await run({ intentId: "draft_review_reply", surface: "action", context: { workspaceId: WORKSPACE_ID, actionId: ACTION_ID }, llm });
+      expect(llm).not.toHaveBeenCalled();
+      expect(repository.aiSpend24h).not.toHaveBeenCalled();
+      expect(repository.recordAssistantDraftFailure).not.toHaveBeenCalled();
+      expect(result.answer).toContain("reviews_without_response");
+      expect(result.output).toBeUndefined();
+    });
+
+    it("review reply with owner-typed review text and no scanned review reaches the model once", async () => {
+      repository.assistantReviewData.mockResolvedValue({ gbp: { reviews: [] } });
+      state.actions = state.actions.map((a) => (a.id === ACTION_ID ? { ...a, provided_inputs: { ...asProvided(a), reviews_without_response: "1. Waited 25 minutes on Friday" } } : a));
+      const llm = vi.fn<Llm>(async () => good);
+      const result = await run({ intentId: "draft_review_reply", surface: "action", context: { workspaceId: WORKSPACE_ID, actionId: ACTION_ID }, llm });
+      expect(llm).toHaveBeenCalledOnce();
+      expect(llm.mock.calls[0][0]).toContain("1. Waited 25 minutes on Friday");
+      expect(result.output).toMatchObject({ type: "review_reply" });
+    });
+
+    it("every draft intent's template key resolves to a real template", () => {
+      for (const [intent, spec] of Object.entries(DRAFT_AGENTS)) {
+        for (const key of spec.templates) expect(() => templateByKey(key), `${intent} → ${key}`).not.toThrow();
+      }
+    });
+
+    it("a persisted asset_or_text_only marker cannot stand in for the approved-asset check", async () => {
+      state.actions = state.actions.map((a) => (a.template_key === "social-post" ? { ...a, provided_inputs: { asset_or_text_only: "asset", asset_id: "foreign" } } : a));
+      const llm = vi.fn<Llm>(async () => good);
+      const result = await run({ intentId: "generate_social", surface: "create", llm, assets: { get: async () => null } });
+      expect(llm).not.toHaveBeenCalled();
+      expect(repository.aiSpend24h).not.toHaveBeenCalled();
+      expect(result.answer).toContain("asset_or_text_only");
+      expect(result.output).toBeUndefined();
+    });
+  });
+
   it("degrades to the template answer with a warning when the model is not configured or returns nothing", async () => {
     const llm = vi.fn(async () => null);
     const notConfigured = await run({ intentId: "draft_review_reply", llm, llmReady: () => false });
@@ -194,6 +290,7 @@ describe("runLiveAssistant", () => {
     expect(notConfigured.warnings[0]).toBe("AI drafting unavailable right now");
     expect(notConfigured.answer).toContain("is the top priority");
 
+    state.actions = [{ ...menuRow, provided_inputs: { menu_items: "Char siu, HK$68" } }];
     const empty = await run({ intentId: "generate_menu", locale: "zh-TW", llm });
     expect(llm).toHaveBeenCalledTimes(1);
     expect(empty.output).toBeUndefined();
@@ -211,6 +308,7 @@ describe("runLiveAssistant", () => {
   });
 
   it("relays facts_needed instead of an empty draft", async () => {
+    state.actions = [{ ...faqRow, provided_inputs: FAQ_FACTS }];
     const llm = vi.fn(async () => ({ ...good, text: JSON.stringify({ title: "", body: "", acceptance_criteria: [], warnings: [], facts_used: [], facts_needed: ["capacity", "lead_time"] }) }));
     const result = await run({ intentId: "generate_faq", llm });
     expect(result.output).toBeUndefined();
@@ -418,6 +516,7 @@ describe("assistant drafts and the AI budget", () => {
 
   it("records a request for missing facts as a failed run too", async () => {
     // The same intent and context as "relays facts_needed instead of an empty draft" above.
+    state.actions = [{ ...faqRow, provided_inputs: FAQ_FACTS }];
     const llm = vi.fn<Llm>(async () => ({ ...good, text: JSON.stringify({ title: "", body: "", acceptance_criteria: [], warnings: [], facts_used: [], facts_needed: ["capacity"] }) }));
     const result = await run({ intentId: "generate_faq", llm });
     expect(result.output).toBeUndefined();

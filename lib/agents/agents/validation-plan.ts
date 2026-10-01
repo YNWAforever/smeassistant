@@ -1,4 +1,4 @@
-import { bodyLength, prohibitedTermHits } from "../guardrails";
+import { bodyLength } from "../guardrails";
 import { defineAgent } from "../prompt";
 
 /**
@@ -13,5 +13,5 @@ export const validationPlan = defineAgent({
   role: "a measurement analyst writing the validation plan for one recommended action",
   task: () => `Write a short validation plan for the action in the evidence. Name the single metric from the snapshot metrics that this action should move, the current observed value, the direction of change that would count as success, the comparison window (the next comparable monthly scan; say so explicitly), and what would make the comparison invalid (coverage loss, scoring version change, module unavailable).
 Never predict a number or promise an outcome; every "before" value must come from the evidence and be labelled Observed. Body: the plan in five short labelled lines — Metric:, Before:, Success:, Window:, Invalid if:.`,
-  acceptance: (ctx, output) => [...prohibitedTermHits(ctx, output), ...bodyLength(output, 2000)],
+  acceptance: (ctx, output) => [...bodyLength(output, 2000)],
 });

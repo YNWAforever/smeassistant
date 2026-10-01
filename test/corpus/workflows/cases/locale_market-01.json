@@ -1,0 +1,22 @@
+{
+  "locale": "zh-TW",
+  "market": "hk",
+  "provided": {},
+  "brand": {},
+  "id": "locale-market-zh-tw-on-hk",
+  "category": "locale_market",
+  "workflow": "review-request",
+  "cannedOutputs": [
+    "{\"title\":\"Draft\",\"body\":\"感謝光臨，歡迎把用餐感受留低，幫助更多街坊。\",\"acceptance_criteria\":[\"Owner checks the facts\"],\"warnings\":[],\"facts_used\":[],\"facts_needed\":[]}"
+  ],
+  "expect": {
+    "llmCalls": 1,
+    "version": true,
+    "promptIncludes": [
+      "for a small business in Hong Kong"
+    ],
+    "promptExcludes": [
+      "for a small business in Taiwan"
+    ]
+  }
+}

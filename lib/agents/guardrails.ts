@@ -88,6 +88,84 @@ export function bodyLength(output: AgentOutput, max: number): string[] {
   return output.body.length > max ? [`body_over_${max}_chars`] : [];
 }
 
+const asText = (value: unknown): string => (typeof value === "string" ? value : value == null ? "" : JSON.stringify(value));
+
+/**
+ * Everything the owner has confirmed, lowercased: typed inputs, brand facts and
+ * approved claims. A link in a draft is only trusted when it already appears
+ * here -- never because a review contained it, since a review is untrusted
+ * text and a link it carries is exactly the injection unexpected_link exists
+ * to catch.
+ */
+function confirmedText(ctx: AgentContext): string {
+  return [
+    ...Object.values(ctx.providedInputs).map(asText),
+    ...Object.values(ctx.brand.facts ?? {}).map(asText),
+    ...ctx.brand.approvedClaims,
+  ]
+    .join("\n")
+    .toLowerCase();
+}
+
+/**
+ * The confirmed text plus what the scan observed: the sampled review text and
+ * the evidence block. A price or superlative in a draft is trusted when it
+ * appears here, so a reply quoting a reviewer's "$300" or an observed rank does
+ * not raise unconfirmed_claim.
+ */
+function confirmedOrObservedText(ctx: AgentContext): string {
+  return [confirmedText(ctx), ...(ctx.sampledReviews ?? []).map((review) => review.text), asText(ctx.evidence)]
+    .join("\n")
+    .toLowerCase();
+}
+
+function draftText(output: AgentOutput): string {
+  return `${output.title}\n${output.body}\n${output.alt_text ?? ""}`;
+}
+
+// CJK ideographs and CJK/full-width punctuation end a link: in zh drafts the URL is followed directly by text (https://x.test/book，歡迎光臨).
+const LINK = /\bhttps?:\/\/[^\s"'<>)　-〿一-鿿＀-￯]+|\bwww\.[^\s"'<>)　-〿一-鿿＀-￯]+/gi;
+const PRICE = /(?:HK\$|NT\$|US\$|\$|HKD\s?|TWD\s?)\s?\d[\d,.]*|\d[\d,.]*\s?(?:元|蚊)/gi;
+// "#1" sits outside the \b group: \b never matches between a space and "#".
+// Bare "best" is not a claim ("do our best", "Best regards"), so only superlative
+// phrases count. 第一次 ("first time") and 最好 ("had better") are ordinary copy.
+const SUPERLATIVE = /(?:\b(?:the best|best[- ]selling|best in|top[- ]rated|no\.?\s?1|number one|award[- ]winning)\b|#1\b)[^.!?\n]{0,40}|最佳|首選|得獎|第一(?!次)/gi;
+
+/** The JSON-LD namespace every FAQ draft carries; it is not a destination for customers. */
+const SCHEMA_NAMESPACE = /^https?:\/\/schema\.org\/?$/;
+
+export function unexpectedLinks(ctx: AgentContext, output: AgentOutput): string[] {
+  const confirmed = confirmedText(ctx);
+  const hit = (draftText(output).match(LINK) ?? [])
+    .map((link) => link.toLowerCase().replace(/[.,;:!?]+$/, ""))
+    .filter((link) => !SCHEMA_NAMESPACE.test(link))
+    .some((link) => !confirmed.includes(link));
+  return hit ? ["unexpected_link"] : [];
+}
+
+export function unconfirmedClaims(ctx: AgentContext, output: AgentOutput): string[] {
+  const text = draftText(output);
+  const confirmed = confirmedOrObservedText(ctx);
+  // A price is confirmed when its digit run is (a comma-grouped 1,200 matches 1200).
+  const confirmedDigits = confirmed.replace(/,/g, "");
+  const price = (text.match(PRICE) ?? []).some((match) => {
+    const digits = /\d[\d,.]*/.exec(match)?.[0].replace(/,/g, "").replace(/\.+$/, "");
+    return digits ? !confirmedDigits.includes(digits) : false;
+  });
+  // The superlative regex reads up to 40 characters past its keyword; cut at the
+  // first clause break so an approved claim followed by ", and more" still matches.
+  const superlative = (text.match(SUPERLATIVE) ?? []).some((match) => {
+    const phrase = match.split(/[,;，；。]/)[0].trim().toLowerCase();
+    return phrase ? !confirmed.includes(phrase) : false;
+  });
+  return price || superlative ? ["unconfirmed_claim"] : [];
+}
+
+/** The checks every agent runs, whatever its own acceptance adds (composed in `defineAgent`). */
+export function sharedAcceptance(ctx: AgentContext, output: AgentOutput): string[] {
+  return [...prohibitedTermHits(ctx, output), ...unexpectedLinks(ctx, output), ...unconfirmedClaims(ctx, output)];
+}
+
 export function baseAcceptance(ctx: AgentContext, output: AgentOutput): string[] {
-  return prohibitedTermHits(ctx, output);
+  return sharedAcceptance(ctx, output);
 }

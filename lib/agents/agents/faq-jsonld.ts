@@ -1,5 +1,5 @@
 import type { AgentContext } from "../schema";
-import { bodyLength, prohibitedTermHits } from "../guardrails";
+import { bodyLength } from "../guardrails";
 import { validateFaqJsonLd } from "../jsonld";
 import { defineAgent, inputLine } from "../prompt";
 
@@ -36,7 +36,7 @@ Each answer is two or three plain sentences a customer could act on. If any fact
 Body: first the three Q&A pairs as readable text, then the SAME three pairs as schema.org FAQPage JSON-LD (@context, @type "FAQPage", mainEntity with Question/acceptedAnswer) inside a <script type="application/ld+json"> element the owner can paste into the page head. A fenced code block is not acceptable: the next scan only reads the script element. Each Question "name" and acceptedAnswer "text" must be character-identical to the Q&A written above it.
 Never invent prices, hours, capacity or policies not in the facts.`,
   acceptance: (ctx, output) => {
-    const warnings = [...prohibitedTermHits(ctx, output), ...bodyLength(output, 8000)];
+    const warnings = [...bodyLength(output, 8000)];
     // `includes("FAQPage")` passed on the word appearing anywhere in prose, and
     // said nothing about whether the next scan could read the block at all.
     if (output.body.trim()) warnings.push(...validateFaqJsonLd(output.body));

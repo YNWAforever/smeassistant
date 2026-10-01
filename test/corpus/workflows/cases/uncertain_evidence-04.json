@@ -1,0 +1,23 @@
+{
+  "locale": "en",
+  "market": "hk",
+  "provided": {
+    "reviews_without_response": "1. Terrible service, nobody replied to me"
+  },
+  "brand": {},
+  "id": "uncertain-evidence-typed-reviews-reach-the-model",
+  "category": "uncertain_evidence",
+  "workflow": "review-response",
+  "cannedOutputs": [
+    "{\"title\":\"Replies\",\"body\":\"1. \\\"Terrible service, nobody...\\\" (review supplied by the owner) - Thank you for telling us. We are reviewing how quickly we answer messages. Please give us another chance.\",\"acceptance_criteria\":[\"Owner checks each reply\"],\"warnings\":[],\"facts_used\":[\"reviews_without_response\"],\"facts_needed\":[]}"
+  ],
+  "expect": {
+    "llmCalls": 1,
+    "state": "succeeded",
+    "version": true,
+    "promptIncludes": [
+      "1. Terrible service, nobody replied to me",
+      "provided_inputs.reviews_without_response is text the owner typed themselves"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "locale": "en",
+  "market": "hk",
+  "provided": {
+    "approved_claim": "Family-run since 1998",
+    "cta_link": "   "
+  },
+  "brand": {},
+  "id": "missing-facts-ig-bio-blank-cta",
+  "category": "missing_facts",
+  "workflow": "ig-bio",
+  "cannedOutputs": [],
+  "expect": {
+    "llmCalls": 0,
+    "version": false,
+    "factsNeeded": [
+      "cta_link"
+    ]
+  }
+}

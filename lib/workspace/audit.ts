@@ -5,7 +5,7 @@ import { requestFingerprint } from "@/lib/security/request-fingerprint";
  * Audit events (CLAUDE.md §3.11). One writer for every route and job so the
  * payload always carries `{ locale, ip_hash? }` and an unknown event name is
  * a type error rather than a typo in the Activity page. The RPCs in
- * 20260903000001_workspace_rpcs.sql write their own rows (version.*,
+ * neon/migrations/0004_atomic_operations.sql write their own rows (version.*,
  * delivery.*); routes only record what happens outside them.
  */
 export const AUDIT_EVENTS = [

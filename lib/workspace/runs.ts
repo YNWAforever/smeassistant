@@ -24,6 +24,7 @@ import { filterSelectedReviews, resolveBrandProvidedInputs, sampledReviewsFromRa
 import { buildActionOverview, localeOf } from "./overview";
 import { type SnapshotRecord } from "./snapshots";
 import { templateByKey, type TemplateKey } from "./templates";
+import { gateBlockingInputs } from "./workflow-inputs";
 
 /**
  * One agent run for one action (CLAUDE.md §3.7 runtime, §3.2.3 POST
@@ -197,6 +198,20 @@ export async function socialAssetSatisfied(
   return assetUsableByAction(asset, scope.actionLocationId, scope.locationScope);
 }
 
+/**
+ * Inputs the scan or the workspace already answers, so the owner is not asked
+ * for them. The live assistant applies the same rule down its own path.
+ */
+export async function satisfiedInputs(
+  ctx: Pick<AgentContext, "sampledReviews">,
+  extra: { asset?: () => Promise<boolean> },
+): Promise<Set<string>> {
+  const satisfied = new Set<string>();
+  if (ctx.sampledReviews?.length) satisfied.add("reviews_without_response");
+  if (extra.asset && (await extra.asset())) satisfied.add("asset_or_text_only");
+  return satisfied;
+}
+
 /** Resolve persisted scope and evidence before any input, run, or model effect. */
 export async function resolveActionRunContext(
   db: ArtifactRepository,
@@ -245,6 +260,8 @@ export async function resolveActionRunContext(
     throw new RunError("forbidden");
   return { row, snapshot, scope };
 }
+
+const NO_USAGE: LLMUsage = { inputTokens: null, outputTokens: null };
 
 export async function runAgentForAction(
   db: ArtifactRepository,
@@ -358,6 +375,29 @@ export async function runAgentForAction(
     sampledReviews,
   };
 
+  // The pre-model gate (P4.4), decided before the run row exists so a failing
+  // satisfier read cannot strand a queued run. A confirmed fact or evidence
+  // input the template needs ends the run as needs_input before any model call.
+  // It reads the template's typed inputs, not the row's persisted
+  // required_inputs, so an action created before a template gained an input is
+  // still gated. The approved-asset rule is satisfier-authoritative: a
+  // persisted asset_or_text_only value never counts, only the server's own
+  // check does. Evidence (reviews_without_response) is answered by the scanned
+  // sample or by owner-typed text, which the prompt labels owner-supplied.
+  const satisfied = await satisfiedInputs(
+    ctx,
+    template.inputs.some((i) => i.key === "asset_or_text_only")
+      ? {
+          asset: () =>
+            socialAssetSatisfied(input.assets ?? assetRepository(), row.workspace_id, provided, {
+              actionLocationId: row.location_id,
+              locationScope: assetLocationScope(input.membership),
+            }),
+        }
+      : {},
+  );
+  const blocking = gateBlockingInputs(template, provided, satisfied);
+
   const persistence = input.persistence ?? actionRunRepository();
   const runId = await persistence.queue({
     actionId: row.id,
@@ -384,25 +424,17 @@ export async function runAgentForAction(
     ipHash: input.ipHash,
   };
   await persistence.start(attribution);
-  let usage: LLMUsage = { inputTokens: null, outputTokens: null };
-  if (
-    agentKey === "social_post" &&
-    !(await socialAssetSatisfied(
-      input.assets ?? assetRepository(),
-      row.workspace_id,
-      provided,
-      { actionLocationId: row.location_id, locationScope: assetLocationScope(input.membership) },
-    ))
-  ) {
+  if (blocking.length) {
     return persistence.finish({
       ...attribution,
-      usage,
-      costUsd: computeCostUsd(usage),
+      usage: NO_USAGE,
+      costUsd: computeCostUsd(NO_USAGE),
       output: null,
-      factsNeeded: ["asset_or_text_only"],
+      factsNeeded: blocking,
       finishedAt: new Date(),
     });
   }
+  let usage: LLMUsage = NO_USAGE;
   let output: AgentOutput | null = null,
     reason: string | undefined;
   try {

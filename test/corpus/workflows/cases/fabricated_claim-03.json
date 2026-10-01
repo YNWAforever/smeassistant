@@ -1,0 +1,22 @@
+{
+  "locale": "en",
+  "market": "hk",
+  "provided": {
+    "text_only": true
+  },
+  "brand": {},
+  "id": "fabricated-claim-clean-social-post",
+  "category": "fabricated_claim",
+  "workflow": "social-post",
+  "cannedOutputs": [
+    "{\"title\":\"Draft\",\"body\":\"Fresh pastries are back today. Come and have a look. #bakery\",\"acceptance_criteria\":[\"Owner checks the facts\"],\"warnings\":[],\"facts_used\":[],\"facts_needed\":[]}"
+  ],
+  "expect": {
+    "llmCalls": 1,
+    "version": true,
+    "warningsExclude": [
+      "unconfirmed_claim",
+      "unexpected_link"
+    ]
+  }
+}

@@ -1,4 +1,8 @@
-import { LOCALE_LABELS } from "@sme-scanner/region";
+// Deep import on purpose (P4.4): under tsx (scripts/eval-workflows.ts) a static
+// named import from the vendored package's CJS barrel does not resolve; the
+// defining source file does. Do not move it back to the barrel on a re-pin
+// unless `eval:workflows --check-load` still loads afterwards.
+import { LOCALE_LABELS } from "@sme-scanner/region/src/config";
 import type { SampledReview } from "@/lib/agents";
 import { sanitizeReportProof } from "@/lib/report/sanitize-proof";
 
@@ -29,6 +33,13 @@ import { sanitizeReportProof } from "@/lib/report/sanitize-proof";
  * google_account_owner -- is genuinely owner knowledge and stays out of scope.
  */
 export const SERVER_RESOLVABLE_INPUT_KEYS = ["reviews_without_response"] as const;
+
+/**
+ * Required inputs the server answers from stored scan evidence, as opposed to the
+ * brand-derived ones below. The workflow contract test checks every `evidence`
+ * input against this list.
+ */
+export const EVIDENCE_INPUT_KEYS: readonly string[] = SERVER_RESOLVABLE_INPUT_KEYS;
 
 /** The three brand-derived keys P2.3 item 16 resolves. See the module doc above. */
 export const BRAND_RESOLVABLE_INPUT_KEYS = ["brand_voice", "language", "approved_claim"] as const;

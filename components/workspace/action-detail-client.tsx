@@ -89,9 +89,38 @@ function originLabel(origin: VersionRow["origin"], isChinese: boolean): string {
   return isChinese ? "手動編輯" : "Edited by a member"
 }
 
+/**
+ * What the input form PATCHes into provided_inputs, and the run-only extras.
+ * Choosing "text only" persists `text_only: true` beside the
+ * `asset_or_text_only: "text_only"` marker: the marker alone never satisfies
+ * the server's asset rule (only `text_only === true` or an approved asset id
+ * does), so without the flag a later regenerate or assistant draft would be
+ * blocked again on a decision the owner already made.
+ */
+export function ownerInputPatch(
+  neededKeys: readonly string[],
+  inputValues: Readonly<Record<string, string>>,
+): { provided: Record<string, unknown>; runInputs: Record<string, unknown> } {
+  const provided: Record<string, unknown> = {}
+  const runInputs: Record<string, unknown> = {}
+  for (const key of neededKeys) {
+    const value = inputValues[key] ?? ""
+    if (key === "asset_or_text_only") {
+      if (value === "text_only") { provided[key] = "text_only"; provided.text_only = true }
+      else if (value) { provided[key] = "asset"; provided.asset_id = value; runInputs.asset_id = value }
+    } else if (value.trim()) provided[key] = value.trim()
+  }
+  return { provided, runInputs }
+}
+
 /** The agents' warning vocabulary, in words an approver can act on. */
-function guardrailText(flag: GuardrailFlag, isChinese: boolean): string {
+function guardrailText(flag: GuardrailFlag, locale: PrototypeLocale): string {
+  const isChinese = locale !== "en"
   switch (flag.code) {
+    case "unexpected_link":
+      return locale === "zh-HK" ? "含有你沒有提供的連結，審批前請先檢查。" : locale === "zh-TW" ? "包含你沒有提供的連結，核准前請先確認。" : "Contains a link you did not supply — check it before approving."
+    case "unconfirmed_claim":
+      return locale === "zh-HK" ? "提及你未確認的價錢或誇大字眼，審批前請先檢查。" : locale === "zh-TW" ? "提到你未確認的價格或誇大用語，核准前請先確認。" : "Mentions a price or superlative that is not in your confirmed facts — check it before approving."
     case "prohibited_term":
       return isChinese ? `含品牌禁用詞：${flag.detail ?? ""}` : `Contains a prohibited brand term: ${flag.detail ?? ""}`
     case "compensation_promise":
@@ -287,15 +316,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
 
   async function submitInputs() {
     if (!canEdit) return
-    const provided: Record<string, unknown> = {}
-    const runInputs: Record<string, unknown> = {}
-    for (const key of neededKeys) {
-      const value = inputValues[key] ?? ""
-      if (key === "asset_or_text_only") {
-        if (value === "text_only") { provided[key] = "text_only"; runInputs.text_only = true }
-        else if (value) { provided[key] = "asset"; provided.asset_id = value; runInputs.asset_id = value }
-      } else if (value.trim()) provided[key] = value.trim()
-    }
+    const { provided, runInputs } = ownerInputPatch(neededKeys, inputValues)
     const missing = neededKeys.filter((key) => provided[key] === undefined)
     if (missing.length) {
       toast.error(isChinese ? "請先填妥所有所需資料。" : "Fill in every required input first.")
@@ -674,7 +695,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                   looked exactly like a clean one to the person approving it. */}
               <div className="brand-check-panel"><div className="brand-check-head"><ShieldCheck /><div><strong>{isChinese ? "品牌保障檢查" : "Brand guardrail check"}</strong><span>{isChinese ? "生成內容只使用店主確認的事實。" : "Generated content uses owner-confirmed facts only."}</span></div><Badge variant="outline">{guardrailBadge}</Badge></div>
                 {guardrailFlags.length > 0
-                  ? <ul className="evidence-list">{guardrailFlags.map((flag, index) => <li key={`${flag.code}-${index}`}><AlertTriangle /> <span>{guardrailText(flag, isChinese)}</span></li>)}</ul>
+                  ? <ul className="evidence-list">{guardrailFlags.map((flag, index) => <li key={`${flag.code}-${index}`}><AlertTriangle /> <span>{guardrailText(flag, locale)}</span></li>)}</ul>
                   : <p><ShieldCheck /> {selectedVersion?.checked
                       ? (isChinese ? "已檢查這個版本，未發現違規。仍需你審批後才可匯出。" : "This version was checked and nothing was flagged. It still needs your approval before export.")
                       : (isChinese ? "這個版本沒有經過 Agent 檢查（手動編輯）。" : "This version was not agent-checked (edited by hand).")}</p>}

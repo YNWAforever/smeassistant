@@ -2,7 +2,7 @@ import type { MeasurementRepository } from "@/lib/repositories/measurements";
 import { strongestBasis, type ApplicationRecord, type AttributionBasis } from "@/lib/workspace/applications";
 import type { MetricKey } from "@/lib/workspace/metrics";
 import type { ScanDiffRow, SnapshotRecord } from "@/lib/workspace/snapshots";
-import type { TemplateKey } from "@/lib/workspace/templates";
+import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
 
 /**
  * Action outcome measurements (CLAUDE.md Phase 6 item 2, §3.5.4). After a scan
@@ -26,20 +26,9 @@ import type { TemplateKey } from "@/lib/workspace/templates";
  * Idempotent per (action, head snapshot): a rebuilt snapshot never doubles a
  * row. Values are copied from `scan_snapshots.metrics`, never recomputed.
  */
-export const TEMPLATE_METRIC: Partial<Record<TemplateKey, MetricKey>> = {
-  "review-response": "gbp.response_rate_pct",
-  "review-request": "gbp.reviews_count",
-  "gbp-profile-fix": "gbp.hours_complete",
-  "gbp-photo-pack": "gbp.photos_count",
-  "gbp-post": "gbp.days_since_last_review",
-  "social-post": "ig.days_since_last_post",
-  "ig-bio": "ig.followers",
-  "ig-highlights": "ig.highlights_count",
-  "visibility-content": "aeo.ai_citation_count",
-  "website-basics": "website.checks_passed",
-  "local-seo-brief": "aeo.best_organic_rank",
-  "menu-translation": "website.checks_passed",
-};
+export const TEMPLATE_METRIC = Object.fromEntries(
+  TEMPLATES.filter((t) => t.measurement).map((t) => [t.key, t.measurement]),
+) as Partial<Record<TemplateKey, MetricKey>>;
 
 export type MeasurementFactType = "Observed" | "Attributed" | "Unknown";
 

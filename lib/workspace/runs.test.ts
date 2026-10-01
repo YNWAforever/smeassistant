@@ -8,6 +8,7 @@ import type {
 import type { Membership } from "@/lib/auth";
 import { rowToSnapshot } from "./snapshots";
 import { scannedReviewKey } from "./evidence-inputs";
+import { computeCostUsd } from "@/lib/agents";
 import { AGENT_RUN_BUDGET_MS, runAgentForAction, snapshotEvidence } from "./runs";
 const action = {
   id: "act-1",
@@ -241,6 +242,7 @@ describe("typed action runtime", () => {
     });
     expect(finish.mock.calls[0][0].output?.warnings).toEqual([
       "prohibited_term:best in Hong Kong",
+      "unconfirmed_claim",
       "compensation_promise",
     ]);
   });
@@ -440,6 +442,137 @@ describe("typed action runtime", () => {
   );
 });
 
+describe("pre-model workflow gate", () => {
+  const igBio = (over: Record<string, unknown> = {}) =>
+    ({ ...action, template_key: "ig-bio", required_inputs: ["brand_voice", "approved_claim", "cta_link"], provided_inputs: { brand_voice: "warm", approved_claim: "x" }, ...over }) as unknown as typeof action;
+
+  it("ig-bio without cta_link finishes needs_input with no model call", async () => {
+    row = igBio();
+    const llm = vi.fn();
+    const result = await run({ llm });
+    expect(llm).not.toHaveBeenCalled();
+    expect(finish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        output: null,
+        factsNeeded: ["cta_link"],
+        costUsd: computeCostUsd({ inputTokens: null, outputTokens: null }),
+      }),
+    );
+    expect(queue).toHaveBeenCalledOnce();
+    expect(start).toHaveBeenCalledOnce();
+    expect(result).toMatchObject({ factsNeeded: ["cta_link"] });
+    expect(result.versionId).toBeUndefined();
+  });
+
+  it("gates on the template's inputs, not the row's persisted required_inputs", async () => {
+    row = igBio({ required_inputs: [] });
+    const llm = vi.fn();
+    expect(await run({ llm })).toMatchObject({ factsNeeded: ["cta_link"] });
+    expect(llm).not.toHaveBeenCalled();
+  });
+
+  it("treats a whitespace-only owner fact as missing", async () => {
+    row = igBio({ provided_inputs: { brand_voice: "warm", approved_claim: "x", cta_link: "   " } });
+    const llm = vi.fn();
+    expect(await run({ llm })).toMatchObject({ factsNeeded: ["cta_link"] });
+    expect(llm).not.toHaveBeenCalled();
+  });
+
+  it("a brand approved claim satisfies ig-bio's approved_claim", async () => {
+    row = igBio({ provided_inputs: { cta_link: "https://example.test/book" } });
+    const brandRepo = repository() as unknown as Record<string, unknown>;
+    brandRepo.assistantBrand = async () => ({
+      voice: "warm",
+      approved_claims: ["Family-run since 1998"],
+      prohibited_terms: [],
+      languages: [],
+      facts: {},
+    });
+    const llm = vi.fn(async () => good());
+    await runAgentForAction(brandRepo as unknown as ArtifactRepository, {
+      actionId: "act-1",
+      actorId: "user-1",
+      locale: "en",
+      membership,
+      persistence,
+      assets: { get: asset },
+      llm,
+    });
+    expect(llm).toHaveBeenCalledOnce();
+  });
+
+  it("review-response with no unanswered reviews blocks on evidence", async () => {
+    reviewData = { gbp: { reviews: [] } };
+    row = { ...action, provided_inputs: { brand_voice: "warm" } } as unknown as typeof action;
+    const llm = vi.fn();
+    expect(await run({ llm })).toMatchObject({ factsNeeded: ["reviews_without_response"] });
+    expect(llm).not.toHaveBeenCalled();
+  });
+
+  it("a preference-only gap still calls the model", async () => {
+    row = { ...action, template_key: "review-request", required_inputs: [], provided_inputs: {} } as unknown as typeof action;
+    const llm = vi.fn(async () => good());
+    expect(await run({ llm })).toMatchObject({ versionId: "v-1" });
+    expect(llm).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["no asset row", async () => null],
+    ["a rejected asset", async () => ({ rights_status: "rejected", location_id: "loc-1" })],
+  ])("a persisted asset_or_text_only marker cannot stand in for the approved-asset rule (%s)", async (_name, get) => {
+    // The UI PATCHes this marker next to asset_id, and the run route accepts
+    // arbitrary inputs, so only the server's own asset check may satisfy it.
+    row = { ...action, template_key: "social-post", provided_inputs: { asset_or_text_only: "asset", asset_id: "foreign" } } as unknown as typeof action;
+    const llm = vi.fn();
+    expect(await run({ assets: { get }, llm })).toMatchObject({ factsNeeded: ["asset_or_text_only"] });
+    expect(llm).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["an empty list", []],
+    ["an empty object", {}],
+  ])("a POST /run with menu_items as %s blocks before the model", async (_name, menuItems) => {
+    row = { ...action, template_key: "menu-translation", required_inputs: ["menu_items"], provided_inputs: {} } as unknown as typeof action;
+    const llm = vi.fn();
+    expect(await run({ llm, inputs: { menu_items: menuItems } })).toMatchObject({ factsNeeded: ["menu_items"] });
+    expect(llm).not.toHaveBeenCalled();
+  });
+
+  it("owner-typed reviews_without_response text passes the gate when the scan retains no unanswered review", async () => {
+    // Spec §2: an evidence key present in provided is not missing. The prompt
+    // uses owner-typed reviews only when the scanned sample is empty and labels
+    // them owner-supplied, so this is the supported base flow, not a bypass.
+    reviewData = { gbp: { reviews: [] } };
+    row = { ...action, provided_inputs: { brand_voice: "warm", reviews_without_response: "typed by owner" } } as unknown as typeof action;
+    const llm = vi.fn(async () => good());
+    expect(await run({ llm })).toMatchObject({ versionId: "v-1" });
+    expect(llm).toHaveBeenCalledOnce();
+  });
+
+  it("refuses before any run row exists when a satisfier read throws", async () => {
+    row = { ...action, template_key: "social-post", provided_inputs: { asset_id: "owned" } } as unknown as typeof action;
+    const llm = vi.fn();
+    await expect(run({ assets: { get: async () => { throw new Error("assets_unavailable"); } }, llm })).rejects.toThrow("assets_unavailable");
+    expect(queue).not.toHaveBeenCalled();
+    expect(start).not.toHaveBeenCalled();
+    expect(llm).not.toHaveBeenCalled();
+  });
+
+  it("does not read assets for a template that has no asset input", async () => {
+    row = igBio({ provided_inputs: { brand_voice: "warm", approved_claim: "x", cta_link: "https://example.test" } });
+    const get = vi.fn(async () => null);
+    expect(await run({ assets: { get }, llm: vi.fn(async () => good()) })).toMatchObject({ versionId: "v-1" });
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it("social_post without asset or text_only still blocks through the gate", async () => {
+    row = { ...action, template_key: "social-post", provided_inputs: {} } as unknown as typeof action;
+    const llm = vi.fn();
+    expect(await run({ llm })).toMatchObject({ factsNeeded: ["asset_or_text_only"] });
+    expect(llm).not.toHaveBeenCalled();
+  });
+});
+
 describe("snapshotEvidence website checks", () => {
   // P2.2 item 10: the agent was handed only the failing KEYS, so it could not
   // write "current -> suggested" or give the next scan item-level outcomes.
@@ -503,8 +636,12 @@ describe("snapshotEvidence website checks", () => {
 describe("faq_jsonld run", () => {
   it("blocks on facts_needed with no version created (A5)", async () => {
     row = { ...action, template_key: "visibility-content", required_inputs: ["owner_fact_1", "owner_fact_2", "owner_fact_3"], provided_inputs: {} } as unknown as typeof action;
-    const llm = vi.fn(async () => good({ body: "", facts_needed: ["owner_fact_1", "owner_fact_2", "owner_fact_3"] }));
+    const llm = vi.fn();
     const result = await run({ llm });
+    expect(finish).toHaveBeenCalledWith(expect.objectContaining({ output: null }));
+    // The pre-model gate lists every missing owner fact in inputs order and
+    // never reaches the model.
+    expect(llm).not.toHaveBeenCalled();
     expect(result).toMatchObject({ state: "succeeded", factsNeeded: ["owner_fact_1", "owner_fact_2", "owner_fact_3"] });
     expect(result.versionId).toBeUndefined();
   });
