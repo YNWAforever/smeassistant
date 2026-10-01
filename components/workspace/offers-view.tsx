@@ -89,7 +89,10 @@ export function OffersView({ locale, workspaceId, market, role, canManage, canUs
   const canCreateAny = Object.values(canManage).some(Boolean)
   const actionsHref = workspaceSlug ? `/${locale}/owner/${workspaceSlug}/actions` : undefined
 
-  const [editor, setEditor] = useState<{ offer: Offer | null } | null>(null)
+  // Only the id is kept: the offer itself is read from the `offers` prop on every render, so after a
+  // router.refresh() the form saves against the refreshed revision while its typed fields stay put.
+  const [editor, setEditor] = useState<{ id: string | null } | null>(null)
+  const editingOffer = editor?.id ? offers.find((candidate) => candidate.id === editor.id) ?? null : null
   const [confirming, setConfirming] = useState<string | null>(null)
   const [archiving, setArchiving] = useState<string | null>(null)
   const [promoFor, setPromoFor] = useState<string | null>(null)
@@ -148,19 +151,19 @@ export function OffersView({ locale, workspaceId, market, role, canManage, canUs
         eyebrow={text.page.eyebrow}
         title={text.page.title}
         description={text.page.description}
-        actions={canCreateAny ? <Button onClick={() => setEditor({ offer: null })} disabled={editor !== null}><Plus /> {text.actions.newOffer}</Button> : undefined}
+        actions={canCreateAny ? <Button onClick={() => setEditor({ id: null })} disabled={editor !== null}><Plus /> {text.actions.newOffer}</Button> : undefined}
       />
       {role === "viewer" && (
         <div className="permission-banner"><ShieldAlert /><div><strong>{text.viewer.title}</strong><span>{text.viewer.body}</span></div></div>
       )}
 
-      {editor && (
+      {editor && (editor.id === null || editingOffer) && (
         <OfferForm
-          key={editor.offer?.id ?? "new"}
+          key={editor.id ?? "new"}
           locale={locale}
           workspaceId={workspaceId}
           currency={currency}
-          offer={editor.offer}
+          offer={editingOffer}
           canManage={canManage}
           locations={locations}
           assets={assets}
@@ -229,7 +232,7 @@ export function OffersView({ locale, workspaceId, market, role, canManage, canUs
 
                 {(manage || use) && confirming !== offer.id && archiving !== offer.id && (
                   <div className="draft-editor-actions">
-                    {manage && <Button variant="outline" onClick={() => setEditor({ offer })} disabled={editor !== null}>{text.actions.edit}</Button>}
+                    {manage && <Button variant="outline" onClick={() => setEditor({ id: offer.id })} disabled={editor !== null}>{text.actions.edit}</Button>}
                     {manage && offer.status === "draft" && <Button variant="outline" onClick={() => { setCardMessage(null); setConfirming(offer.id) }}><BadgeCheck /> {text.actions.confirm}</Button>}
                     {manage && <Button variant="outline" onClick={() => { setCardMessage(null); setArchiving(offer.id) }}>{text.actions.archive}</Button>}
                     {use && <Button onClick={() => void openPromotions(offer)}><WandSparkles /> {text.actions.createDrafts}</Button>}

@@ -154,6 +154,24 @@ describe("OffersView", () => {
     expect(screen.getByLabelText(text.fields.title)).toHaveValue("My long edited title");
   });
 
+  it("saves against the refreshed revision after a conflict and a reload, keeping the typed fields", async () => {
+    clientMocks.updateOffer.mockResolvedValueOnce({ ok: false, status: 409, error: "offer_revision_changed" });
+    const props = { locale: "en" as const, workspaceId: "ws-1", market: "hk" as const, role: "owner" as const, canManage: ALL, canUse: ALL, locations: LOCATIONS, assets: [], workspaceSlug: "kam-man-house" };
+    const view = render(<OffersView {...props} offers={[offer()]} />);
+    fireEvent.click(button(text.actions.edit));
+    fireEvent.change(screen.getByLabelText(text.fields.title), { target: { value: "My long edited title" } });
+    await act(async () => { fireEvent.click(button(text.actions.saveChanges)); });
+    expect(clientMocks.updateOffer).toHaveBeenLastCalledWith("offer-1", 3, expect.anything());
+    fireEvent.click(button(text.actions.reload));
+    // router.refresh() re-renders the page with the offer someone else changed: revision 4.
+    view.rerender(<OffersView {...props} offers={[offer({ revision: 4, details: "Changed elsewhere" })]} />);
+    expect(screen.getByLabelText(text.fields.title)).toHaveValue("My long edited title");
+    clientMocks.updateOffer.mockResolvedValueOnce({ ok: true, data: { offer: offer({ revision: 5 }) } });
+    await act(async () => { fireEvent.click(button(text.actions.saveChanges)); });
+    expect(clientMocks.updateOffer).toHaveBeenLastCalledWith("offer-1", 4, expect.objectContaining({ title: "My long edited title" }));
+    expect(toastMocks.success).toHaveBeenCalledWith(text.toasts.updated);
+  });
+
   it("states what confirming means before it confirms, against the revision it was shown", async () => {
     clientMocks.confirmOffer.mockResolvedValue({ ok: true, data: { kind: "confirmed", revision: 3 } });
     mount({ offers: [offer()] });
