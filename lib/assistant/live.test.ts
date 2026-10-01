@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { auth } from "@/app/api/actions/_shared/test-db";
 import { ACTION_ID, LOCATION_ID, SNAPSHOT_ID, WORKSPACE_ID, actionRow, base, diff, socialRow, snapshot } from "./__fixtures__";
-import { LIVE_BOUNDARY, runLiveAssistant } from "./live";
+import { DRAFT_AGENTS, LIVE_BOUNDARY, runLiveAssistant } from "./live";
 import { AiBudgetRefusal } from "@/lib/budgets/ai";
+import { templateByKey } from "@/lib/workspace/templates";
+
+const asProvided = (row: { provided_inputs: unknown }) => (row.provided_inputs ?? {}) as Record<string, unknown>;
 
 const repository = vi.hoisted(() => ({ actionScope:vi.fn(),assistantWorkspace:vi.fn(),assistantLocations:vi.fn(),assistantActions:vi.fn(),assistantSnapshot:vi.fn(),assistantLatestSnapshot:vi.fn(),assistantDiff:vi.fn(),assistantBrand:vi.fn(),assistantReviewData:vi.fn(),versionScope:vi.fn(),createOutputVersion:vi.fn(),recordAssistantDraft:vi.fn(),recordAssistantDraftFailure:vi.fn(),aiSpend24h:vi.fn() }));
 vi.mock("@/lib/repositories/artifacts",()=>({artifactRepository:()=>repository}));
@@ -230,6 +233,41 @@ describe("runLiveAssistant", () => {
       expect(repository.recordAssistantDraftFailure).not.toHaveBeenCalled();
       expect(result.answer).toContain("menu_items");
       expect(result.output).toBeUndefined();
+    });
+
+    it("menu draft with an empty menu_items list is still blocked", async () => {
+      state.actions = [{ ...menuRow, provided_inputs: { menu_items: [] } }];
+      const llm = vi.fn<Llm>(async () => good);
+      const result = await run({ intentId: "generate_menu", llm });
+      expect(llm).not.toHaveBeenCalled();
+      expect(result.answer).toContain("menu_items");
+    });
+
+    it("review reply with no scanned unanswered review and no typed text answers NEEDS_FACTS with no model call", async () => {
+      repository.assistantReviewData.mockResolvedValue({ gbp: { reviews: [] } });
+      const llm = vi.fn<Llm>(async () => good);
+      const result = await run({ intentId: "draft_review_reply", surface: "action", context: { workspaceId: WORKSPACE_ID, actionId: ACTION_ID }, llm });
+      expect(llm).not.toHaveBeenCalled();
+      expect(repository.aiSpend24h).not.toHaveBeenCalled();
+      expect(repository.recordAssistantDraftFailure).not.toHaveBeenCalled();
+      expect(result.answer).toContain("reviews_without_response");
+      expect(result.output).toBeUndefined();
+    });
+
+    it("review reply with owner-typed review text and no scanned review reaches the model once", async () => {
+      repository.assistantReviewData.mockResolvedValue({ gbp: { reviews: [] } });
+      state.actions = state.actions.map((a) => (a.id === ACTION_ID ? { ...a, provided_inputs: { ...asProvided(a), reviews_without_response: "1. Waited 25 minutes on Friday" } } : a));
+      const llm = vi.fn<Llm>(async () => good);
+      const result = await run({ intentId: "draft_review_reply", surface: "action", context: { workspaceId: WORKSPACE_ID, actionId: ACTION_ID }, llm });
+      expect(llm).toHaveBeenCalledOnce();
+      expect(llm.mock.calls[0][0]).toContain("1. Waited 25 minutes on Friday");
+      expect(result.output).toMatchObject({ type: "review_reply" });
+    });
+
+    it("every draft intent's template key resolves to a real template", () => {
+      for (const [intent, spec] of Object.entries(DRAFT_AGENTS)) {
+        for (const key of spec.templates) expect(() => templateByKey(key), `${intent} → ${key}`).not.toThrow();
+      }
     });
 
     it("a persisted asset_or_text_only marker cannot stand in for the approved-asset check", async () => {

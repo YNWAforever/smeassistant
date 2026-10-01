@@ -11,7 +11,7 @@ import { assetRepository } from "@/lib/repositories/assets";
 import { assetLocationScope } from "@/lib/workspace/assets";
 import { filterSelectedReviews } from "@/lib/workspace/evidence-inputs";
 import { sampledReviewsFromRawData, satisfiedInputs, snapshotEvidence, socialAssetSatisfied } from "@/lib/workspace/runs";
-import { findTemplate } from "@/lib/workspace/templates";
+import { templateByKey, type TemplateKey } from "@/lib/workspace/templates";
 import { gateBlockingInputs } from "@/lib/workspace/workflow-inputs";
 import { type ScanDiffRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
 import { buildEvidenceRefs } from "./evidence";
@@ -71,7 +71,8 @@ export interface LiveRunInput {
 
 type DraftIntent = "draft_review_reply" | "friendlier_review_reply" | "generate_social" | "generate_faq" | "generate_menu";
 
-const DRAFT_AGENTS: Record<DraftIntent, { agent: AgentKey; type: AssistantArtifact["type"]; templates: string[] }> = {
+/** Exported for the contract test that every template key resolves. */
+export const DRAFT_AGENTS: Record<DraftIntent, { agent: AgentKey; type: AssistantArtifact["type"]; templates: TemplateKey[] }> = {
   draft_review_reply: { agent: "review_reply", type: "review_reply", templates: ["review-response"] },
   friendlier_review_reply: { agent: "review_reply", type: "review_reply", templates: ["review-response"] },
   generate_social: { agent: "social_post", type: "social_post", templates: ["social-post"] },
@@ -177,7 +178,7 @@ async function resolveContext(db: LiveAssistantRepository, input: LiveRunInput):
       const selectionLocation = input.context.locationId ?? locations.find((l) => l.is_primary)?.id ?? locations[0]?.id ?? null;
       const candidates = await db.assistantActions(workspaceId, { locationId: selectionLocation, states: ["recommended", "needs_input", "ready", "in_progress"] });
       const spec = DRAFT_AGENTS[input.intentId as DraftIntent];
-      focusedRow = candidates.find((a) => spec.templates.includes(a.template_key)) ?? candidates[0] ?? null;
+      focusedRow = candidates.find((a) => (spec.templates as string[]).includes(a.template_key)) ?? candidates[0] ?? null;
     }
     if (focusedRow) {
       const scope = await db.actionScope(focusedRow.id);
@@ -362,10 +363,13 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistant
   // drafted as if it accompanied an approved, rights-cleared photo that does
   // not exist, and a FAQ or menu is never drafted over facts the owner has not
   // confirmed (guardrail 14). Only the action's saved provided_inputs count --
-  // unlike the run path there is no brand-fact prefill here. The asset rule and
-  // the scanned reviews are satisfier-authoritative: a persisted
-  // asset_or_text_only marker never stands in for the rights check.
-  const template = findTemplate(spec.templates[0]);
+  // unlike the run path there is no brand-fact prefill here. The asset rule is
+  // satisfier-authoritative: a persisted asset_or_text_only marker never stands
+  // in for the rights check. Owner-typed reviews_without_response counts, as on
+  // the run path (spec §2).
+  // templateByKey throws on an unknown key, so a mistyped DRAFT_AGENTS entry
+  // fails loudly instead of silently skipping the gate.
+  const template = templateByKey(spec.templates[0]);
   const satisfied = await satisfiedInputs(
     agentCtx,
     spec.agent === "social_post"
@@ -378,7 +382,7 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistant
         }
       : {},
   );
-  const blocking = template ? gateBlockingInputs(template, agentCtx.providedInputs, satisfied) : [];
+  const blocking = gateBlockingInputs(template, agentCtx.providedInputs, satisfied);
   if (blocking.length) {
     const base = completed(fallbackIntentFor(intent), input, ctx);
     return { ...base, answer: NEEDS_FACTS[input.locale].replace("{facts}", blocking.join(", ")), warnings: base.warnings };

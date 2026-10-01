@@ -380,9 +380,10 @@ export async function runAgentForAction(
   // input the template needs ends the run as needs_input before any model call.
   // It reads the template's typed inputs, not the row's persisted
   // required_inputs, so an action created before a template gained an input is
-  // still gated. Inputs that have a server satisfier (the approved-asset rule,
-  // the scanned reviews) are satisfier-authoritative: an owner-typed or
-  // persisted value for them never counts, only the server's own check does.
+  // still gated. The approved-asset rule is satisfier-authoritative: a
+  // persisted asset_or_text_only value never counts, only the server's own
+  // check does. Evidence (reviews_without_response) is answered by the scanned
+  // sample or by owner-typed text, which the prompt labels owner-supplied.
   const satisfied = await satisfiedInputs(
     ctx,
     template.inputs.some((i) => i.key === "asset_or_text_only")

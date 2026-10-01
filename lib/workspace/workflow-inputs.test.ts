@@ -39,6 +39,13 @@ describe("missingConfirmedInputs", () => {
     expect(missingConfirmedInputs(workflow, { text_only: true, selected_reviews: ["k"], n: 0 }, none)).toEqual([]);
   });
 
+  it("treats an empty array and an empty plain object as missing", () => {
+    const menu = templateByKey("menu-translation");
+    expect(missingConfirmedInputs(menu, { menu_items: [] }, none)).toEqual(["menu_items"]);
+    expect(missingConfirmedInputs(menu, { menu_items: {} }, none)).toEqual(["menu_items"]);
+    expect(missingConfirmedInputs(menu, { menu_items: [{ name: "Roast goose" }] }, none)).toEqual([]);
+  });
+
   it("a satisfied key passes even when not provided", () => {
     const workflow = { inputs: [{ key: "reviews_without_response", kind: "evidence" as const }] };
     expect(missingConfirmedInputs(workflow, {}, new Set(["reviews_without_response"]))).toEqual([]);
@@ -50,15 +57,19 @@ describe("missingConfirmedInputs", () => {
 });
 
 describe("isPresent", () => {
-  it("is false only for undefined, null and blank strings", () => {
+  it("is false only for undefined, null, blank strings, empty arrays and empty plain objects", () => {
     expect(isPresent(undefined)).toBe(false);
     expect(isPresent(null)).toBe(false);
     expect(isPresent("")).toBe(false);
     expect(isPresent("  \n")).toBe(false);
+    expect(isPresent([])).toBe(false);
+    expect(isPresent({})).toBe(false);
     expect(isPresent("x")).toBe(true);
     expect(isPresent(0)).toBe(true);
     expect(isPresent(false)).toBe(true);
-    expect(isPresent([])).toBe(true);
+    expect(isPresent([""])).toBe(true);
+    expect(isPresent({ name: "x" })).toBe(true);
+    expect(isPresent(new Date(0))).toBe(true);
   });
 });
 
@@ -71,9 +82,14 @@ describe("gateBlockingInputs", () => {
     expect(gateBlockingInputs(social, { asset_or_text_only: "asset" }, new Set(["asset_or_text_only"]))).toEqual([]);
   });
 
-  it("ignores an owner-typed value for an evidence input", () => {
-    expect(gateBlockingInputs(reviews, { reviews_without_response: "typed" }, none)).toEqual(["reviews_without_response"]);
+  it("accepts owner-typed review text for the evidence input (spec 2: present in provided)", () => {
+    expect(gateBlockingInputs(reviews, { reviews_without_response: "typed" }, none)).toEqual([]);
     expect(gateBlockingInputs(reviews, { reviews_without_response: "typed" }, new Set(["reviews_without_response"]))).toEqual([]);
+  });
+
+  it("blocks the evidence input when neither typed text nor scanned reviews exist", () => {
+    expect(gateBlockingInputs(reviews, {}, none)).toEqual(["reviews_without_response"]);
+    expect(gateBlockingInputs(reviews, { reviews_without_response: "   " }, none)).toEqual(["reviews_without_response"]);
   });
 
   it("still honours an owner-provided confirmed fact", () => {

@@ -528,12 +528,25 @@ describe("pre-model workflow gate", () => {
     expect(llm).not.toHaveBeenCalled();
   });
 
-  it("owner-typed reviews_without_response text cannot stand in for scanned reviews", async () => {
+  it.each([
+    ["an empty list", []],
+    ["an empty object", {}],
+  ])("a POST /run with menu_items as %s blocks before the model", async (_name, menuItems) => {
+    row = { ...action, template_key: "menu-translation", required_inputs: ["menu_items"], provided_inputs: {} } as unknown as typeof action;
+    const llm = vi.fn();
+    expect(await run({ llm, inputs: { menu_items: menuItems } })).toMatchObject({ factsNeeded: ["menu_items"] });
+    expect(llm).not.toHaveBeenCalled();
+  });
+
+  it("owner-typed reviews_without_response text passes the gate when the scan retains no unanswered review", async () => {
+    // Spec §2: an evidence key present in provided is not missing. The prompt
+    // uses owner-typed reviews only when the scanned sample is empty and labels
+    // them owner-supplied, so this is the supported base flow, not a bypass.
     reviewData = { gbp: { reviews: [] } };
     row = { ...action, provided_inputs: { brand_voice: "warm", reviews_without_response: "typed by owner" } } as unknown as typeof action;
-    const llm = vi.fn();
-    expect(await run({ llm })).toMatchObject({ factsNeeded: ["reviews_without_response"] });
-    expect(llm).not.toHaveBeenCalled();
+    const llm = vi.fn(async () => good());
+    expect(await run({ llm })).toMatchObject({ versionId: "v-1" });
+    expect(llm).toHaveBeenCalledOnce();
   });
 
   it("refuses before any run row exists when a satisfier read throws", async () => {

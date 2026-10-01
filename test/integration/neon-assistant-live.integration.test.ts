@@ -6,7 +6,7 @@ import { artifactRepository } from '../../lib/repositories/artifacts';
 import type { llmComplete } from '../../lib/llm';
 import { runLiveAssistant } from '../../lib/assistant/live';
 import { auth } from '../../app/api/actions/_shared/test-db';
-// A scanned review without an owner response: the P4.4 pre-model gate treats reviews_without_response as server-satisfied only when the job's raw_data carries one.
+// A scanned review without an owner response: the P4.4 pre-model gate needs a review source (this, or owner-typed reviews_without_response) and these actions carry no typed text.
 const rawWithReview=JSON.stringify({gbp:{reviews:[{rating:3,text:'Waited 25 minutes on Friday',time:'2026-08-22',owner_response:null}]}});
 const output={title:'Fixture reply',body:'Thank you for telling us.',acceptance_criteria:[],warnings:[],facts_used:[],facts_needed:[]};
 describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon live assistant authority',()=>{
