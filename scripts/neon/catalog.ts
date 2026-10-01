@@ -10,7 +10,12 @@ export const deferredTriggers: string[] = [];
 // replay-compare against. verifyCatalog excludes these from the legacy deepEqual and
 // instead asserts their bare presence; their actual behavior is proven by dedicated tests
 // (e.g. test/integration/neon-membership.integration.test.ts for prevent_owner_removal).
-export const additionalFunctions: string[] = ["prevent_owner_removal","offer_is_expired","confirm_offer","archive_offer"];
+export const additionalFunctions: string[] = ["prevent_owner_removal","offer_is_expired","confirm_offer","archive_offer","offer_current_for_version"];
+// Retained legacy functions that a later migration re-created on purpose (0011 adds one
+// offer-freshness guard line to each). verifyCatalog drops them from the legacy deepEqual and
+// asserts their presence; lib/workspace/offer-sql.test.ts pins their text as 0004 plus that one
+// line. They stay in retainedFunctions, so neon:readiness still requires them.
+export const changedFunctions: string[] = ["approve_output_version","export_output_version"];
 export const additionalTriggers: string[] = ["workspace_members_prevent_owner_removal"];
 export const catalogQueries = {
   tables: `select c.relname as name,c.relrowsecurity as rls from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' order by c.relname`,
@@ -49,12 +54,13 @@ export async function verifyCatalog(pool: Pool) {
   assert.deepEqual(business(actual.constraints), legacy.constraints.map(row => ({...row, definition:String(row.definition).replaceAll("auth.users", "app_users")})), "constraints and deletion semantics");
   assert.deepEqual(business(actual.indexes), legacy.indexes, "all final indexes and predicates");
   const isAdditionalTrigger = (row: Row) => additionalTriggers.includes(String(row.name));
-  const isAdditionalFunction = (row: Row) => additionalFunctions.includes(String(row.name));
+  const isAdditionalFunction = (row: Row) => additionalFunctions.includes(String(row.name)) || changedFunctions.includes(String(row.name));
   assert.deepEqual(actual.triggers.filter(row => !isAdditionalTrigger(row)), legacy.triggers.filter(row => !deferredTriggers.includes(String(row.name))), "ordinary invariant triggers");
   for (const name of additionalTriggers) assert.ok(actual.triggers.some(row => row.name === name), `additional trigger ${name} present`);
-  const expectedFunctions = normalizeFunctionLineEndings(legacy.functions).filter(row => retainedFunctions.includes(String(row.name))).map(row => row.name === "delete_orphaned_workspace" ? {...row,config:['search_path=""'],definition:String(row.definition).replace(" LANGUAGE plpgsql\nAS", " LANGUAGE plpgsql\n SET search_path TO ''\nAS")} : row.name === "touch_actions_updated_at" ? row : {...row, security_definer:false, definition:translateLegacyWorkflow(String(row.definition))});
+  const expectedFunctions = normalizeFunctionLineEndings(legacy.functions).filter(row => retainedFunctions.includes(String(row.name)) && !changedFunctions.includes(String(row.name))).map(row => row.name === "delete_orphaned_workspace" ? {...row,config:['search_path=""'],definition:String(row.definition).replace(" LANGUAGE plpgsql\nAS", " LANGUAGE plpgsql\n SET search_path TO ''\nAS")} : row.name === "touch_actions_updated_at" ? row : {...row, security_definer:false, definition:translateLegacyWorkflow(String(row.definition))});
   assert.deepEqual(normalizeFunctionLineEndings(actual.functions.filter(row => !isAdditionalFunction(row))), expectedFunctions, "retained function definitions with constrained search_path");
   for (const name of additionalFunctions) assert.ok(actual.functions.some(row => row.name === name), `additional function ${name} present`);
+  for (const name of changedFunctions) assert.ok(actual.functions.some(row => row.name === name), `changed function ${name} present`);
   assert.deepEqual(actual.enums, legacy.enums, "enum catalog");
   const policy = (await pool.query("SELECT tablename,roles::text[] AS roles,cmd,qual,with_check FROM pg_policies WHERE schemaname='public' ORDER BY tablename")).rows;
   assert.equal(policy.length, legacy.tables.length + 2);
