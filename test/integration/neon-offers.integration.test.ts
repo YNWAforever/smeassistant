@@ -4,6 +4,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { applyMigrations } from "../../scripts/neon/migrations";
 import { offerRepository } from "../../lib/repositories/offers";
+import { actionMutationRepository } from "../../lib/repositories/action-mutations";
+import { prepareOfferDrafts } from "../../lib/offers/service";
 import type { OfferInput } from "../../lib/offers/types";
 import { startNeonDatabaseFixture, type NeonDatabaseFixture } from "./neon-database";
 
@@ -98,5 +100,32 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon offers repository (P4
     const ids = (await repo.list(ws, { locationIds: [l1] })).map((o) => o.id).sort();
     expect(ids).toEqual([wide.id, atL1.id].sort());
     expect(await repo.list(ws)).toHaveLength(3);
+  });
+
+  it("concurrent prepareOfferDrafts yields one action per channel", async () => {
+    const { ws, user } = await workspace();
+    const repo = offerRepository(runtime);
+    const created = (await repo.create({ ...input({ starts_on: "2026-09-01", ends_on: null, open_ended: true }), workspaceId: ws, createdBy: user }))!;
+    await repo.confirm(ws, created.id, 1, user);
+    const deps = {
+      repo,
+      assets: { get: async () => null },
+      audit: async () => {},
+      actions: actionMutationRepository(runtime),
+      membership: { workspaceId: ws, workspaceSlug: "w", userId: user, email: "o@example.test", role: "owner" as const, locationScope: null },
+      workspace: { id: ws, market: "hk" as const, timezone: "Asia/Hong_Kong" },
+      now: new Date("2026-10-01T04:00:00Z"),
+      locale: "en",
+      ipHash: null,
+    };
+    const keys = ["offer-gbp-post", "offer-social-post", "offer-chat-message"];
+    const results = await Promise.all(Array.from({ length: 5 }, () => prepareOfferDrafts(deps, created.id, keys)));
+    expect(results.every((r) => r.ok)).toBe(true);
+    const rows = (await runtime.query("SELECT template_key,offer_id,action_state FROM actions WHERE workspace_id=$1 ORDER BY template_key", [ws])).rows;
+    expect(rows.map((r) => r.template_key)).toEqual(["offer-chat-message", "offer-gbp-post", "offer-social-post"]);
+    expect(rows.every((r) => r.offer_id === created.id)).toBe(true);
+    expect(rows.find((r) => r.template_key === "offer-social-post")?.action_state).toBe("needs_input");
+    const ids = new Set(results.flatMap((r) => (r.ok ? r.actions.map((a) => a.actionId) : [])));
+    expect(ids.size).toBe(3);
   });
 });

@@ -43,59 +43,72 @@ export function actionMutationRepository(client?: Pick<Pool, "query">) {
         throw new Error("action_update_failed");
       }
     },
-    async createObjective(
-      row: Record<string, unknown>,
-    ): Promise<{ id: string; created: boolean }> {
-      const keys = [
-        "workspace_id",
-        "location_id",
-        "template_key",
-        "source",
-        "source_finding_keys",
-        "title",
-        "summary",
-        "evidence",
-        "priority",
-        "priority_score",
-        "priority_factors",
-        "effort_minutes",
-        "required_inputs",
-        "provided_inputs",
-        "action_state",
-        "measurement_state",
-        "capability",
-        "dedupe_key",
-      ];
-      const json = new Set([
-        "title",
-        "summary",
-        "evidence",
-        "priority_factors",
-        "required_inputs",
-        "provided_inputs",
-      ]);
-      // Keep the immutable actions_open_dedupe_idx predicate exactly equivalent.
-      // required_inputs is JSONB; source_finding_keys is a PostgreSQL text array.
-      try {
-        const created = await db().query<{ id: string }>(
-          `INSERT INTO actions(${keys.join(",")}) SELECT ${keys.map((_, i) => `$${i + 1}`).join(",")} WHERE $2::uuid IS NULL OR EXISTS(SELECT 1 FROM locations WHERE id=$2 AND workspace_id=$1)
-      ON CONFLICT (dedupe_key) WHERE action_state NOT IN ('completed','dismissed','cancelled','expired') DO NOTHING RETURNING id`,
-          keys.map((key) =>
-            json.has(key) ? JSON.stringify(row[key]) : row[key],
-          ),
-        );
-        if (created.rows[0]) return { id: created.rows[0].id, created: true };
-        const existing = (
-          await db().query<{ id: string }>(
-            "SELECT id FROM actions WHERE workspace_id=$1 AND dedupe_key=$2 AND action_state IN ('recommended','needs_input','ready','in_progress') LIMIT 1",
-            [row.workspace_id, row.dedupe_key],
-          )
-        ).rows[0];
-        if (!existing) throw new Error("action_create_failed");
-        return { id: existing.id, created: false };
-      } catch {
-        throw new Error("action_create_failed");
-      }
+    createObjective(row: Record<string, unknown>): Promise<{ id: string; created: boolean }> {
+      return insertOpenAction(row, []);
+    },
+    /**
+     * P4.1: one open action per (offer, channel). Same dedupe upsert as an
+     * objective, plus the offer link and an optional due date (an offer that
+     * starts later shows on the Calendar from its first day).
+     */
+    createOfferAction(row: Record<string, unknown>): Promise<{ id: string; created: boolean }> {
+      return insertOpenAction(row, ["offer_id", "due_at"]);
     },
   };
+  async function insertOpenAction(
+    row: Record<string, unknown>,
+    extraKeys: readonly string[],
+  ): Promise<{ id: string; created: boolean }> {
+    const keys = [
+      "workspace_id",
+      "location_id",
+      "template_key",
+      "source",
+      "source_finding_keys",
+      "title",
+      "summary",
+      "evidence",
+      "priority",
+      "priority_score",
+      "priority_factors",
+      "effort_minutes",
+      "required_inputs",
+      "provided_inputs",
+      "action_state",
+      "measurement_state",
+      "capability",
+      "dedupe_key",
+      ...extraKeys,
+    ];
+    const json = new Set([
+      "title",
+      "summary",
+      "evidence",
+      "priority_factors",
+      "required_inputs",
+      "provided_inputs",
+    ]);
+    // Keep the immutable actions_open_dedupe_idx predicate exactly equivalent.
+    // required_inputs is JSONB; source_finding_keys is a PostgreSQL text array.
+    try {
+      const created = await db().query<{ id: string }>(
+        `INSERT INTO actions(${keys.join(",")}) SELECT ${keys.map((_, i) => `$${i + 1}`).join(",")} WHERE $2::uuid IS NULL OR EXISTS(SELECT 1 FROM locations WHERE id=$2 AND workspace_id=$1)
+    ON CONFLICT (dedupe_key) WHERE action_state NOT IN ('completed','dismissed','cancelled','expired') DO NOTHING RETURNING id`,
+        keys.map((key) =>
+          json.has(key) ? JSON.stringify(row[key]) : row[key],
+        ),
+      );
+      if (created.rows[0]) return { id: created.rows[0].id, created: true };
+      const existing = (
+        await db().query<{ id: string }>(
+          "SELECT id FROM actions WHERE workspace_id=$1 AND dedupe_key=$2 AND action_state IN ('recommended','needs_input','ready','in_progress') LIMIT 1",
+          [row.workspace_id, row.dedupe_key],
+        )
+      ).rows[0];
+      if (!existing) throw new Error("action_create_failed");
+      return { id: existing.id, created: false };
+    } catch {
+      throw new Error("action_create_failed");
+    }
+  }
 }

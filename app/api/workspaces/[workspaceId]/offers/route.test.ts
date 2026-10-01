@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   repo: { list: vi.fn(), get: vi.fn(), create: vi.fn(), update: vi.fn(), confirm: vi.fn(), archive: vi.fn(), draftCounts: vi.fn() },
   assetGet: vi.fn(),
   audit: vi.fn(),
+  createOfferAction: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", async (importOriginal) => {
@@ -21,6 +22,7 @@ vi.mock("@/lib/security/rate-limit", async (importOriginal) => {
 vi.mock("@/lib/repositories/workspace-read", () => ({ workspaceReadRepository: () => ({ workspaces: mocks.workspaces }) }));
 vi.mock("@/lib/repositories/offers", () => ({ offerRepository: () => mocks.repo }));
 vi.mock("@/lib/repositories/assets", () => ({ assetRepository: () => ({ get: mocks.assetGet }) }));
+vi.mock("@/lib/repositories/action-mutations", () => ({ actionMutationRepository: () => ({ createOfferAction: mocks.createOfferAction }) }));
 vi.mock("@/lib/workspace/audit", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/workspace/audit")>();
   return { ...actual, recordNeonEvent: (...args: unknown[]) => mocks.audit(...args), ipHashFor: () => "hash" };
@@ -41,6 +43,7 @@ const confirmRoute = () => import("./[offerId]/confirm/route");
 const post = (body: unknown) => listRoute().then(({ POST }) => POST(new Request(base, { method: "POST", body: JSON.stringify(body) }), { params: Promise.resolve({ workspaceId: WS }) }));
 const get = (query = "") => listRoute().then(({ GET }) => GET(new Request(`${base}${query}`), { params: Promise.resolve({ workspaceId: WS }) }));
 const patch = (body: unknown, offerId = OFFER) => itemRoute().then(({ PATCH }) => PATCH(new Request(`${base}/${offerId}`, { method: "PATCH", body: JSON.stringify(body) }), { params: Promise.resolve({ workspaceId: WS, offerId }) }));
+const drafts = (body: unknown) => import("./[offerId]/drafts/route").then(({ POST }) => POST(new Request(`${base}/${OFFER}/drafts`, { method: "POST", body: JSON.stringify(body) }), { params: Promise.resolve({ workspaceId: WS, offerId: OFFER }) }));
 const confirm = (body: unknown) => confirmRoute().then(({ POST }) => POST(new Request(`${base}/${OFFER}/confirm`, { method: "POST", body: JSON.stringify(body) }), { params: Promise.resolve({ workspaceId: WS, offerId: OFFER }) }));
 
 const body = { title: "Lunch set", details: "Soup and main", price_amount: 88, starts_on: "2026-10-05", ends_on: "2026-10-31", locale: "en" };
@@ -122,5 +125,25 @@ describe("offer routes", () => {
     expect(res.status).toBe(503);
     expect(error).toHaveBeenCalledWith(expect.any(String), { category: "offer_create_failed" });
     expect(JSON.stringify(error.mock.calls)).not.toContain("Lunch set");
+  });
+
+  it("prepare drafts: flag off 404, viewer 403, retry returns the same ids", async () => {
+    mocks.repo.get.mockResolvedValue(offerRow({ workspace_id: WS, starts_on: "2000-01-01", ends_on: null, open_ended: true }));
+    const ids = new Map<string, string>();
+    mocks.createOfferAction.mockImplementation(async (row: { dedupe_key: string }) => {
+      const existing = ids.get(row.dedupe_key);
+      if (existing) return { id: existing, created: false };
+      ids.set(row.dedupe_key, `act-${ids.size + 1}`);
+      return { id: `act-${ids.size}`, created: true };
+    });
+    const first = await drafts({ template_keys: ["offer-gbp-post", "offer-chat-message"] });
+    expect(first.status).toBe(200);
+    expect((await first.json()).actions.map((a: { created: boolean }) => a.created)).toEqual([true, true]);
+    const retry = await drafts({ template_keys: ["offer-gbp-post", "offer-chat-message"] });
+    expect((await retry.json()).actions).toEqual([{ templateKey: "offer-gbp-post", actionId: "act-1", created: false }, { templateKey: "offer-chat-message", actionId: "act-2", created: false }]);
+    mocks.authorizeWorkspaceRequest.mockResolvedValue(auth("viewer"));
+    expect((await drafts({ template_keys: ["offer-gbp-post"] })).status).toBe(403);
+    vi.stubEnv("OFFERS_ENABLED", "");
+    expect((await drafts({ template_keys: ["offer-gbp-post"] })).status).toBe(404);
   });
 });

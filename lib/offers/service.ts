@@ -1,4 +1,12 @@
 import { roleAtLeast, type Membership } from "@/lib/auth";
+import { localized } from "@/lib/domain";
+import { freshnessText } from "@/lib/workspace/actions";
+import { templateByKey } from "@/lib/workspace/templates";
+import { gateBlockingInputs } from "@/lib/workspace/workflow-inputs";
+import { notStarted } from "./dates";
+import { offerPriceDisplay } from "./format";
+import { offerUsability } from "./usability";
+import { isOfferTemplateKey, type OfferTemplateKey } from "./workflow";
 import type { OfferRepository } from "@/lib/repositories/offers";
 import { assetLocationScope, assetUsableByAction } from "@/lib/workspace/assets";
 import type { AuditEventInput } from "@/lib/workspace/audit";
@@ -14,7 +22,7 @@ import type { OfferInput, OfferRow } from "./types";
  */
 export interface OfferServiceDeps {
   repo: OfferRepository;
-  assets: { get(workspaceId: string, id: string): Promise<{ id: string; location_id: string | null; rights_status: string } | null> };
+  assets: { get(workspaceId: string, id: string): Promise<{ id: string; location_id: string | null; rights_status: string; alt_text?: string | null } | null> };
   audit: (input: AuditEventInput) => Promise<void>;
   membership: NonNullable<Membership>;
   workspace: { id: string; market: "hk" | "tw"; timezone: string };
@@ -126,4 +134,106 @@ export async function archiveOffer(deps: OfferServiceDeps, offerId: string): Pro
   if (!result) return NOT_FOUND;
   await audit(deps, "offer.archived", result);
   return { ok: true, offer: result };
+}
+
+export interface PrepareDraftsDeps extends OfferServiceDeps {
+  actions: { createOfferAction(row: Record<string, unknown>): Promise<{ id: string; created: boolean }> };
+}
+
+export type PrepareDraftsResult =
+  | { ok: true; actions: Array<{ templateKey: OfferTemplateKey; actionId: string; created: boolean }> }
+  | { ok: false; status: 400 | 403 | 404 | 409; error: string };
+
+/** One open action per (offer, channel), so a retry or a second tab reuses it. */
+export function offerDedupeKey(workspaceId: string, locationId: string | null, templateKey: OfferTemplateKey, offerId: string): string {
+  return `${workspaceId}:${locationId ?? "all"}:${templateKey}:offer:${offerId}`;
+}
+
+/**
+ * Spec §5.2: creates (or reuses) one ordinary action per chosen channel for a
+ * confirmed, current offer. It never calls the model -- the client runs each
+ * action through the existing POST /api/actions/[id]/run, one at a time -- so
+ * a failed channel is retried alone and finished ones are never recounted.
+ */
+export async function prepareOfferDrafts(deps: PrepareDraftsDeps, offerId: string, templateKeys: unknown): Promise<PrepareDraftsResult> {
+  if (!Array.isArray(templateKeys) || templateKeys.length === 0 || !templateKeys.every(isOfferTemplateKey)) {
+    return { ok: false, status: 400, error: "template_keys is invalid" };
+  }
+  const keys = [...new Set(templateKeys)];
+  const offer = await deps.repo.get(deps.workspace.id, offerId);
+  if (!offer) return NOT_FOUND;
+  if (!canManageOfferAt(deps.membership, offer.location_id)) return FORBIDDEN;
+  const today = localDate(deps.workspace.timezone, deps.now);
+  const usability = offerUsability(offer, { workspaceId: deps.workspace.id, actionLocationId: offer.location_id, market: deps.workspace.market, today });
+  if (usability !== "usable") return { ok: false, status: 409, error: usability };
+
+  // The first of the offer's photos that is still approved and usable at its
+  // location pre-fills the Instagram draft; otherwise that action waits for
+  // the asset picker or the text-only choice.
+  const scope = assetLocationScope(deps.membership);
+  let photo: { asset_id: string; alt_text: string } | null = null;
+  for (const id of offer.asset_ids) {
+    const asset = await deps.assets.get(deps.workspace.id, id);
+    if (asset && asset.rights_status === "approved" && assetUsableByAction(asset, offer.location_id, scope)) {
+      photo = { asset_id: asset.id, alt_text: asset.alt_text ?? "" };
+      break;
+    }
+  }
+
+  const observedAt = offer.confirmed_at ?? deps.now.toISOString();
+  const results: Array<{ templateKey: OfferTemplateKey; actionId: string; created: boolean }> = [];
+  for (const templateKey of keys) {
+    const template = templateByKey(templateKey);
+    const provided: Record<string, unknown> = templateKey === "offer-social-post" && photo ? { ...photo } : {};
+    // The gate as the run will see it: offer_confirmed is satisfied (checked
+    // above), and an Instagram draft without a usable photo needs one or the
+    // text-only choice first.
+    const satisfied = new Set(["offer_confirmed", ...(provided.asset_id ? ["asset_or_text_only"] : [])]);
+    const blocking = gateBlockingInputs(template, provided, satisfied);
+    const created = await deps.actions.createOfferAction({
+      workspace_id: deps.workspace.id,
+      location_id: offer.location_id,
+      template_key: templateKey,
+      source: "owner_objective",
+      source_finding_keys: [],
+      title: template.title,
+      summary: template.summary,
+      evidence: {
+        factType: "Recommended",
+        source: "Owner-confirmed offer",
+        value: offerPriceDisplay(offer) ?? "",
+        detail: localized(offer.title, offer.title),
+        observedAt,
+        freshness: freshnessText(observedAt, deps.now),
+      },
+      priority: "medium",
+      priority_score: 50,
+      priority_factors: [],
+      effort_minutes: template.effortMinutes,
+      required_inputs: template.requiredInputs,
+      provided_inputs: provided,
+      action_state: blocking.length ? "needs_input" : "recommended",
+      measurement_state: "not_eligible",
+      capability: template.capability,
+      dedupe_key: offerDedupeKey(deps.workspace.id, offer.location_id, templateKey, offer.id),
+      offer_id: offer.id,
+      due_at: notStarted(offer, today) ? `${offer.starts_on}T00:00:00.000Z` : null,
+    });
+    if (created.created) {
+      await deps.audit({
+        workspaceId: deps.workspace.id,
+        locationId: offer.location_id,
+        actorType: "user",
+        actorId: deps.membership.userId,
+        event: "action.updated",
+        entityType: "action",
+        entityId: created.id,
+        locale: deps.locale,
+        ipHash: deps.ipHash,
+        payload: { change: "created", source: "offer", template_key: templateKey, offer_id: offer.id },
+      });
+    }
+    results.push({ templateKey, actionId: created.id, created: created.created });
+  }
+  return { ok: true, actions: results };
 }

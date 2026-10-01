@@ -3,7 +3,7 @@ import type { Membership } from "@/lib/auth";
 import type { OfferRepository } from "@/lib/repositories/offers";
 import type { AuditEventInput } from "@/lib/workspace/audit";
 import { offerRow } from "./fixtures.test-helpers";
-import { archiveOffer, canManageOfferAt, confirmOffer, createOffer, updateOffer, type OfferServiceDeps } from "./service";
+import { archiveOffer, canManageOfferAt, confirmOffer, createOffer, prepareOfferDrafts, updateOffer, type OfferServiceDeps } from "./service";
 import type { OfferRow } from "./types";
 
 const L1 = "00000000-0000-4000-8000-0000000000c1";
@@ -168,5 +168,81 @@ describe("updateOffer and archiveOffer", () => {
   });
   it("is 404 for an unknown offer", async () => {
     expect(await archiveOffer(deps().d, "missing")).toMatchObject({ status: 404 });
+  });
+});
+
+describe("prepareOfferDrafts", () => {
+  function prepDeps(offer: OfferRow | null, over: Partial<OfferServiceDeps> = {}, assets: Record<string, { id: string; location_id: string | null; rights_status: string; alt_text?: string | null }> = {}) {
+    const { d, events } = deps({ repo: fakeRepo(offer), now: new Date("2026-10-01T04:00:00Z"), ...over }, assets);
+    const rows: Record<string, unknown>[] = [];
+    const seen = new Map<string, string>();
+    const createOfferAction = vi.fn(async (row: Record<string, unknown>) => {
+      rows.push(row);
+      const key = String(row.dedupe_key);
+      const existing = seen.get(key);
+      if (existing) return { id: existing, created: false };
+      const id = `act-${seen.size + 1}`;
+      seen.set(key, id);
+      return { id, created: true };
+    });
+    return { d: { ...d, actions: { createOfferAction } }, events, rows, createOfferAction };
+  }
+  const confirmed = offerRow({ starts_on: "2026-09-25" });
+
+  it("creates one owner_objective action per chosen channel and audits each new one", async () => {
+    const { d, rows, events } = prepDeps(confirmed);
+    const result = await prepareOfferDrafts(d, confirmed.id, ["offer-gbp-post", "offer-chat-message"]);
+    expect(result).toEqual({ ok: true, actions: [{ templateKey: "offer-gbp-post", actionId: "act-1", created: true }, { templateKey: "offer-chat-message", actionId: "act-2", created: true }] });
+    expect(rows[0]).toMatchObject({
+      template_key: "offer-gbp-post", source: "owner_objective", offer_id: confirmed.id, location_id: null, capability: "Beta", effort_minutes: 8,
+      evidence: expect.objectContaining({ factType: "Recommended", source: "Owner-confirmed offer", value: "HK$88" }),
+      required_inputs: ["offer_confirmed", "brand_voice"], action_state: "recommended", due_at: null,
+      dedupe_key: `W1:all:offer-gbp-post:offer:${confirmed.id}`,
+    });
+    expect(events.map((e) => [e.event, e.payload?.source])).toEqual([["action.updated", "offer"], ["action.updated", "offer"]]);
+  });
+
+  it("is idempotent: a retry returns the same ids and audits nothing new", async () => {
+    const { d, events } = prepDeps(confirmed);
+    await prepareOfferDrafts(d, confirmed.id, ["offer-gbp-post"]);
+    const again = await prepareOfferDrafts(d, confirmed.id, ["offer-gbp-post"]);
+    expect(again).toEqual({ ok: true, actions: [{ templateKey: "offer-gbp-post", actionId: "act-1", created: false }] });
+    expect(events).toHaveLength(1);
+  });
+
+  it("refuses an offer that cannot be drafted from, with its usability code", async () => {
+    expect(await prepareOfferDrafts(prepDeps(offerRow({ status: "draft", confirmed_at: null })).d, confirmed.id, ["offer-gbp-post"])).toEqual({ ok: false, status: 409, error: "unconfirmed" });
+    expect(await prepareOfferDrafts(prepDeps(offerRow({ starts_on: "2026-09-01", ends_on: "2026-09-30" })).d, confirmed.id, ["offer-gbp-post"])).toEqual({ ok: false, status: 409, error: "ended" });
+  });
+
+  it("refuses unknown or empty channel lists", async () => {
+    for (const keys of [["gbp-post"], [], "offer-gbp-post", undefined]) {
+      expect(await prepareOfferDrafts(prepDeps(confirmed).d, confirmed.id, keys)).toMatchObject({ ok: false, status: 400 });
+    }
+  });
+
+  it("pre-fills the Instagram draft with a usable approved photo, or waits for one", async () => {
+    const withPhoto = offerRow({ starts_on: "2026-09-25", asset_ids: [ASSET] });
+    const ok = prepDeps(withPhoto, {}, { [ASSET]: { id: ASSET, location_id: null, rights_status: "approved", alt_text: "A bowl of soup" } });
+    await prepareOfferDrafts(ok.d, withPhoto.id, ["offer-social-post"]);
+    expect(ok.rows[0]).toMatchObject({ provided_inputs: { asset_id: ASSET, alt_text: "A bowl of soup" }, action_state: "recommended" });
+    const revoked = prepDeps(withPhoto, {}, { [ASSET]: { id: ASSET, location_id: null, rights_status: "rejected" } });
+    await prepareOfferDrafts(revoked.d, withPhoto.id, ["offer-social-post"]);
+    expect(revoked.rows[0]).toMatchObject({ provided_inputs: {}, action_state: "needs_input" });
+  });
+
+  it("dates the action only when the offer starts later", async () => {
+    const later = prepDeps(offerRow());
+    await prepareOfferDrafts(later.d, confirmed.id, ["offer-chat-message"]);
+    expect(later.rows[0].due_at).toBe("2026-10-05T00:00:00.000Z");
+    const running = prepDeps(confirmed);
+    await prepareOfferDrafts(running.d, confirmed.id, ["offer-chat-message"]);
+    expect(running.rows[0].due_at).toBeNull();
+  });
+
+  it("keeps a scoped manager off another location's offer", async () => {
+    const elsewhere = offerRow({ starts_on: "2026-09-25", location_id: L2 });
+    expect(await prepareOfferDrafts(prepDeps(elsewhere, { membership: scopedManager }).d, elsewhere.id, ["offer-gbp-post"])).toMatchObject({ status: 403 });
+    expect(await prepareOfferDrafts(prepDeps(confirmed, { membership: viewer }).d, confirmed.id, ["offer-gbp-post"])).toMatchObject({ status: 403 });
   });
 });
