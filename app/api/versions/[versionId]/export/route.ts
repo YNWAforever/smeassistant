@@ -13,6 +13,7 @@ import {
 } from "@/lib/workspace/notify";
 import { allowanceWarnAt, getUsage } from "@/lib/workspace/usage";
 import { exportVersion, VersionError } from "@/lib/workspace/versions";
+import { assertOfferBinding } from "@/lib/offers/binding-guard";
 
 /**
  * POST /api/versions/[versionId]/export { mode:'export'|'copy', idempotency_key }
@@ -46,6 +47,16 @@ export async function POST(
       : null;
   if (!idempotencyKey)
     return json({ error: "idempotency_key is invalid" }, 400);
+
+  // P4.1: only the FIRST export of a stale offer draft is refused; copying an
+  // already-exported version again is allowed and counts nothing, as today.
+  try {
+    const refusal = await assertOfferBinding(auth.repository, versionId, { firstExportOnly: true, now: new Date() });
+    if (refusal) return json({ error: refusal.error }, refusal.status);
+  } catch {
+    console.error("[api/versions/export] failed", { category: "offer_binding_check_failed" });
+    return json({ error: "unavailable" }, 503);
+  }
 
   try {
     const delivery = await exportVersion(auth.repository, {

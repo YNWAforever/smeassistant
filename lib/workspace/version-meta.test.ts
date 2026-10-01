@@ -95,4 +95,14 @@ describe("parseVersionMeta", () => {
     expect(parsed.guardrails).toEqual(codes.map((code) => ({ code })));
     expect(parsed.agentNotes).toEqual([]);
   });
+
+  it("reads the P4.1 offer binding, and a malformed one as none", () => {
+    const id = "00000000-0000-4000-8000-0000000000a1";
+    expect(parseVersionMeta({ offer: { id, revision: 2 } }, "agent").offer).toEqual({ id, revision: 2 });
+    expect(parseVersionMeta({}, "user").offer).toBeNull();
+    for (const offer of [{ id: "nope", revision: 1 }, { id, revision: 0 }, { id, revision: 1.5 }, { id }, "x"]) {
+      expect(parseVersionMeta({ offer }, "agent").offer).toBeNull();
+    }
+  });
 });
+

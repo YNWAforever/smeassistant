@@ -151,6 +151,19 @@ export function artifactRepository(client?: Executor) {
    return row ?? null;
    });
   },
+  /**
+   * P4.1 binding guard: what approve/export and owner edits need to judge a
+   * version's offer binding, in one read. Null when the version is unknown.
+   */
+  versionBindingContext(versionId: string) {
+   return operation(async ()=>(await db().query<{meta:unknown;first_exported_at:string|null;action_id:string;template_key:string;offer_id:string|null;workspace_id:string;location_id:string|null;timezone:string|null;market:string|null}>(`SELECT v.meta,v.first_exported_at::text,a.id AS action_id,a.template_key,a.offer_id,a.workspace_id,a.location_id,w.timezone,w.market
+    FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id JOIN workspaces w ON w.id=a.workspace_id WHERE v.id=$1`,[versionId])).rows[0] ?? null);
+  },
+  /** P4.1: an action's offer link and its workspace's clock and market. */
+  actionOfferContext(actionId: string) {
+   return operation(async ()=>(await db().query<{template_key:string;offer_id:string|null;workspace_id:string;location_id:string|null;timezone:string|null;market:string|null}>(`SELECT a.template_key,a.offer_id,a.workspace_id,a.location_id,w.timezone,w.market
+    FROM actions a JOIN workspaces w ON w.id=a.workspace_id WHERE a.id=$1`,[actionId])).rows[0] ?? null);
+  },
   /** P4.1: the offer an offer action drafts from, scoped by workspace in SQL. */
   assistantOffer(workspaceId: string, offerId: string) {
    return operation(async ()=>(await db().query<OfferRow>(`SELECT ${OFFER_COLUMNS} FROM offers WHERE workspace_id=$1 AND id=$2`,[workspaceId,offerId])).rows[0] ?? null);

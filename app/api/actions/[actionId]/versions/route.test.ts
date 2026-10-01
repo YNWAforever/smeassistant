@@ -222,3 +222,50 @@ describe("POST /api/actions/[actionId]/versions (operator draft)", () => {
     expect(mocks.db!.calls.some((call) => call.table === "action_runs")).toBe(false);
   });
 });
+
+describe("offer binding on owner edits (P4.1)", () => {
+  const OFFER_ID = "00000000-0000-4000-8000-0000000000a1";
+  const BASE = "55555555-5555-4555-8555-555555555555";
+  const offer = (revision: number, status = "confirmed") => ({
+    id: OFFER_ID, workspace_id: WORKSPACE_ID, location_id: LOCATION_ID, title: "t", details: "d", terms: null, price_amount: null, currency: null,
+    starts_on: "2026-01-01", ends_on: null, open_ended: true, approved_claims: [], prohibited_wording: [], asset_ids: [], source: "owner_form",
+    status, revision, confirmed_by: null, confirmed_at: status === "confirmed" ? "2026-01-01T00:00:00Z" : null, created_by: null,
+    created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", archived_at: null,
+  });
+  function offerDb(current: ReturnType<typeof offer>) {
+    mocks.db = makeDb((q) => {
+      if (q.table === "actions") return { id: ACTION_ID, workspace_id: WORKSPACE_ID, location_id: LOCATION_ID };
+      if (q.table === "action_offer") return { template_key: "offer-gbp-post", offer_id: OFFER_ID, workspace_id: WORKSPACE_ID, location_id: LOCATION_ID, timezone: "Asia/Hong_Kong", market: "hk" };
+      if (q.table === "version_binding") return { meta: { offer: { id: OFFER_ID, revision: 1 } }, first_exported_at: null, template_key: "offer-gbp-post", offer_id: OFFER_ID, workspace_id: WORKSPACE_ID };
+      if (q.table === "offers") return current;
+      return null;
+    });
+    mocks.db!.rpc.mockResolvedValue({ data: { kind: "created", version_id: "v-2", version_no: 2 }, error: null });
+  }
+  const meta = () => (mocks.db!.rpc.mock.calls.find((c) => c[0] === "create_output_version")?.[1] as { p_meta: unknown }).p_meta;
+
+  it("an owner edit inherits the base version's binding, even after the offer moved on", async () => {
+    offerDb(offer(2));
+    expect((await post({ body: "Edited", base_version_id: BASE })).status).toBe(201);
+    expect(meta()).toEqual({ offer: { id: OFFER_ID, revision: 1 } });
+  });
+
+  it("without a base, binds to the usable offer's current revision", async () => {
+    offerDb(offer(3));
+    await post({ body: "Fresh" });
+    expect(meta()).toEqual({ offer: { id: OFFER_ID, revision: 3 } });
+  });
+
+  it("on an unusable offer, saves with no binding", async () => {
+    offerDb(offer(3, "draft"));
+    await post({ body: "Fresh" });
+    expect(meta()).toEqual({});
+  });
+
+  it("a client body containing meta is ignored", async () => {
+    offerDb(offer(2));
+    await post({ body: "Edited", base_version_id: BASE, meta: { offer: { id: OFFER_ID, revision: 2 } } });
+    expect(meta()).toEqual({ offer: { id: OFFER_ID, revision: 1 } });
+  });
+});
+

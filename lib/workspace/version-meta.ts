@@ -15,6 +15,8 @@
  * database.
  */
 
+import type { OfferBinding } from "@/lib/offers/types";
+
 export type VersionOrigin = "manual" | "agent_run" | "assistant";
 
 export type GuardrailCode =
@@ -47,6 +49,8 @@ export interface GuardrailFlag {
 
 export interface VersionMeta {
   origin: VersionOrigin;
+  /** P4.1: the offer revision an offer draft was written from; null for every other version. */
+  offer: OfferBinding | null;
   agentKey: string | null;
   /**
    * True when the stored meta actually carried a `warnings` array -- i.e. an
@@ -106,6 +110,18 @@ function classify(warning: string): GuardrailFlag | null {
   return null;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** meta.offer as written by runs.ts or the versions route; anything malformed reads as no binding. */
+export function parseOfferBinding(meta: unknown): OfferBinding | null {
+  const offer = record(record(meta)?.offer);
+  const id = offer?.id;
+  const revision = offer?.revision;
+  if (typeof id !== "string" || !UUID_RE.test(id)) return null;
+  if (typeof revision !== "number" || !Number.isInteger(revision) || revision < 1) return null;
+  return { id, revision };
+}
+
 export function parseVersionMeta(meta: unknown, authorType: "user" | "agent"): VersionMeta {
   const source = record(meta);
   const rawWarnings = source?.warnings;
@@ -129,6 +145,7 @@ export function parseVersionMeta(meta: unknown, authorType: "user" | "agent"): V
     // Rows written before `origin` existed fall back to the author type, so an
     // older agent version still reads as agent-generated rather than manual.
     origin: isOrigin(source?.origin) ? source.origin : authorType === "agent" ? "agent_run" : "manual",
+    offer: parseOfferBinding(source),
     agentKey: typeof agentKeyRaw === "string" && agentKeyRaw ? agentKeyRaw : null,
     checked,
     guardrails,

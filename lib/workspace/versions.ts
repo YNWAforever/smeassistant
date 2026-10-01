@@ -101,6 +101,8 @@ export async function createAssistantVersion(
     actorId: string;
     runId: string;
     baseVersionId?: string | null;
+    /** Server-decided meta (P4.1 offer binding); the fixed keys below always win. */
+    extraMeta?: Record<string, unknown>;
   },
 ): Promise<{ versionId: string; versionNo: number }> {
   let draft;
@@ -129,6 +131,7 @@ export async function createAssistantVersion(
     body,
     altText: typeof output?.alt_text === "string" ? output.alt_text : null,
     meta: {
+      ...input.extraMeta,
       // Read back by parseVersionMeta, which already understood "assistant"
       // and had no writer: the detail panel shipped a "Drafted by the operator"
       // label that nothing could ever produce.

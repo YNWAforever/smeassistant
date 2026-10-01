@@ -48,8 +48,24 @@ let usageRow: Record<string, unknown> | null = {
   allowance: 3,
 };
 
+// P4.1: null = a non-offer version, the default every existing case relies on.
+const OFFER_ID = "00000000-0000-4000-8000-0000000000a1";
+let binding: { meta: unknown; first_exported_at: string | null } | null = null;
+let offerRevision = 1;
+
 function respond(q: Query): unknown {
   switch (q.table) {
+    case "version_binding":
+      return binding
+        ? { ...binding, action_id: "act-1", template_key: "offer-chat-message", offer_id: OFFER_ID, workspace_id: WORKSPACE_ID, location_id: LOCATION_ID, timezone: "Asia/Hong_Kong", market: "hk" }
+        : null;
+    case "offers":
+      return {
+        id: OFFER_ID, workspace_id: WORKSPACE_ID, location_id: LOCATION_ID, title: "t", details: "d", terms: null, price_amount: null, currency: null,
+        starts_on: "2026-01-01", ends_on: null, open_ended: true, approved_claims: [], prohibited_wording: [], asset_ids: [], source: "owner_form",
+        status: "confirmed", revision: offerRevision, confirmed_by: null, confirmed_at: "2026-01-01T00:00:00Z", created_by: null,
+        created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", archived_at: null,
+      };
     case "actions":
       return {
         id: "act-1",
@@ -99,6 +115,8 @@ const exportBody = { mode: "export", idempotency_key: "abcdefghijklmnop_-01" };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  binding = null;
+  offerRevision = 1;
   usageRow = { period: "2026-09", approved_deliveries: 1, allowance: 3 };
   mocks.db = makeDb(respond);
   mocks.enforceRateLimit.mockResolvedValue({
@@ -310,3 +328,43 @@ describe("authorization on every version mutation", () => {
     },
   );
 });
+
+describe("offer binding guard (P4.1)", () => {
+  const exported = { kind: "existing", delivery_id: "d-1", version_id: VERSION_ID, counted: false };
+  beforeEach(() => vi.spyOn(console, "warn").mockImplementation(() => {}));
+
+  it("approve refuses a changed offer before the RPC", async () => {
+    binding = { meta: { offer: { id: OFFER_ID, revision: 1 } }, first_exported_at: null };
+    offerRevision = 2;
+    const res = await post("approve");
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "offer_changed" });
+    expect(mocks.db!.rpc).not.toHaveBeenCalled();
+  });
+
+  it("approve lets a current binding through", async () => {
+    binding = { meta: { offer: { id: OFFER_ID, revision: 1 } }, first_exported_at: null };
+    mocks.db!.rpc.mockResolvedValueOnce({ data: { kind: "approved", version_id: VERSION_ID, version_no: 1 }, error: null });
+    expect((await post("approve")).status).toBe(200);
+  });
+
+  it("first export after an offer edit is refused", async () => {
+    binding = { meta: { offer: { id: OFFER_ID, revision: 1 } }, first_exported_at: null };
+    offerRevision = 2;
+    const res = await post("export", exportBody);
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "offer_changed" });
+    expect(mocks.db!.rpc).not.toHaveBeenCalled();
+  });
+
+  it("re-copy of an exported version after an offer edit is allowed and not counted", async () => {
+    binding = { meta: { offer: { id: OFFER_ID, revision: 1 } }, first_exported_at: "2026-09-20T00:00:00Z" };
+    offerRevision = 2;
+    mocks.db!.rpc.mockResolvedValue({ data: exported, error: null });
+    const res = await post("export", { mode: "copy", idempotency_key: "qrstuvwxyz0123456789" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ counted: false });
+    expect(mocks.db!.rpc).toHaveBeenCalledWith("export_output_version", expect.objectContaining({ p_mode: "copy" }));
+  });
+});
+

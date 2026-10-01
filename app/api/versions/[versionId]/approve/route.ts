@@ -11,6 +11,7 @@ import {
   homeHrefWithRepository,
 } from "@/lib/workspace/notify";
 import { approveVersion, VersionError } from "@/lib/workspace/versions";
+import { assertOfferBinding } from "@/lib/offers/binding-guard";
 
 /**
  * POST /api/versions/[versionId]/approve { comment? } → 200 { state:'approved',
@@ -31,6 +32,15 @@ export async function POST(
   if (!auth.ok) return auth.response;
 
   const comment = optionalComment(await readJson(req));
+  // P4.1: a draft of an offer that has since changed, ended or been archived
+  // is refused before the RPC (spec §5.4; the known limit is in binding-guard.ts).
+  try {
+    const refusal = await assertOfferBinding(auth.repository, versionId, { firstExportOnly: false, now: new Date() });
+    if (refusal) return json({ error: refusal.error }, refusal.status);
+  } catch {
+    console.error("[api/versions/approve] failed", { category: "offer_binding_check_failed" });
+    return json({ error: "unavailable" }, 503);
+  }
   try {
     const result = await approveVersion(auth.repository, {
       versionId,

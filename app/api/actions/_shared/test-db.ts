@@ -82,6 +82,11 @@ export function makeDb(respond: Responder) {
       return row ? [{ ...row, source_snapshot_id: null }] : [];
     },
     assistantBrand: async () => null,
+    // P4.1 offer binding reads. Null unless a test's responder opts in, so
+    // every non-offer suite sees "not an offer action".
+    versionBindingContext: async (id: string) => read("version_binding", { id }),
+    actionOfferContext: async (id: string) => read("action_offer", { id }),
+    assistantOffer: async (workspaceId: string, id: string) => read("offers", { workspace_id: workspaceId, id }),
     // Recorded AI spend in the last 24 hours (P3.5a). Zero unless a test
     // overrides it, so existing suites stay under every budget.
     aiSpend24h: async () => ({ globalUsd: 0, workspaceUsd: 0 }),

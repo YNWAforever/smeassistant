@@ -9,6 +9,7 @@ import {
   createVersion,
   VersionError,
 } from "@/lib/workspace/versions";
+import { offerBindingForEdit } from "@/lib/offers/binding-guard";
 
 /**
  * POST /api/actions/[actionId]/versions
@@ -55,6 +56,17 @@ export async function POST(
   if (baseVersionId && !UUID_RE.test(baseVersionId))
     return json({ error: "base_version_id is invalid" }, 400);
 
+  // P4.1: an offer action's new version records the offer revision it is
+  // bound to, decided here and never read from the client (a `meta` field in
+  // the body is ignored). Editing on a base version inherits its binding.
+  let offerMeta: Record<string, unknown> | null;
+  try {
+    offerMeta = await offerBindingForEdit(auth.repository, actionId, baseVersionId, new Date());
+  } catch {
+    console.error("[api/actions/versions] failed", { category: "offer_binding_check_failed" });
+    return json({ error: "unavailable" }, 503);
+  }
+
   try {
     // `alt_text` is deliberately ignored on the assistant path: the draft
     // carries its own, and taking the client's would reintroduce exactly the
@@ -66,6 +78,7 @@ export async function POST(
           actorId: auth.user.id,
           runId: assistantRunId,
           baseVersionId,
+          ...(offerMeta ? { extraMeta: offerMeta } : {}),
         })
       : await createVersion(auth.repository, {
           actionId,
@@ -74,6 +87,7 @@ export async function POST(
           body,
           altText,
           baseVersionId,
+          ...(offerMeta ? { meta: offerMeta } : {}),
         });
     return json(version, 201);
   } catch (error) {
