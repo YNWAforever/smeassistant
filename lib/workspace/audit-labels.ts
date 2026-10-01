@@ -46,6 +46,10 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string }> = {
   "mail.attempted": { en: "Email attempted", zh: "已嘗試發送電郵" },
   "scan.auto_closed": { en: "Stuck scan closed", zh: "已結束停止回應的掃描" },
   "ops.scan.released": { en: "Scan resumed by Fimmick", zh: "Fimmick 已恢復掃描" },
+  "offer.created": { en: "Offer created", zh: "已建立優惠" },
+  "offer.updated": { en: "Offer edited", zh: "優惠已修改" },
+  "offer.confirmed": { en: "Offer confirmed", zh: "優惠已確認" },
+  "offer.archived": { en: "Offer archived", zh: "優惠已封存" },
 };
 
 export const AUDIT_ACTOR_LABELS: Record<"user" | "agent" | "system" | "scanner", { en: string; zh: string }> = {
