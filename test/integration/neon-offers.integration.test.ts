@@ -127,5 +127,11 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon offers repository (P4
     expect(rows.find((r) => r.template_key === "offer-social-post")?.action_state).toBe("needs_input");
     const ids = new Set(results.flatMap((r) => (r.ok ? r.actions.map((a) => a.actionId) : [])));
     expect(ids.size).toBe(3);
+    // A second offer in the same scope gets its own drafts, never the first offer's.
+    const second = (await repo.create({ ...input({ title: "Second offer", starts_on: "2026-09-01", ends_on: null, open_ended: true }), workspaceId: ws, createdBy: user }))!;
+    await repo.confirm(ws, second.id, 1, user);
+    const again = await prepareOfferDrafts(deps, second.id, keys);
+    expect(again.ok && again.actions.every((a) => a.created && !ids.has(a.actionId))).toBe(true);
+    expect((await runtime.query("SELECT count(*)::int AS n FROM actions WHERE offer_id=$1", [second.id])).rows[0].n).toBe(3);
   });
 });
