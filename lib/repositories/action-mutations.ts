@@ -65,6 +65,7 @@ export function actionMutationRepository(client?: Pick<Pool, "query">) {
         "measurement_state",
         "capability",
         "dedupe_key",
+        "offer_id",
       ];
       const json = new Set([
         "title",

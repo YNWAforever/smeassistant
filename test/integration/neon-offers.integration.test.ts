@@ -3,6 +3,7 @@ import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { applyMigrations, loadMigrations } from "../../scripts/neon/migrations";
+import { actionMutationRepository } from "../../lib/repositories/action-mutations";
 import { offerRepository } from "../../lib/repositories/offers";
 import type { OfferInput } from "../../lib/workspace/offers";
 import { startNeonDatabaseFixture, type NeonDatabaseFixture } from "./neon-database";
@@ -445,6 +446,55 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon offers schema and fun
       await repo.create(other, actor, input({ title: "Elsewhere" }));
       expect((await repo.list(ws)).map((o) => o.id)).toEqual([third.id, second.id, first.id]);
       expect(await repo.list(randomUUID())).toEqual([]);
+    });
+  });
+
+  describe("createObjective for an offer (P4.1 task 8)", () => {
+    const promotionRow = (workspaceId: string, offerId: string) => ({
+      workspace_id: workspaceId,
+      location_id: null,
+      template_key: "offer-instagram-post",
+      source: "owner_objective",
+      source_finding_keys: [],
+      title: { en: "Promote your offer on Instagram", "zh-HK": "在 Instagram 宣傳你的優惠", "zh-TW": "在 Instagram 宣傳你的優惠" },
+      summary: { en: "A caption", "zh-HK": "文案", "zh-TW": "文案" },
+      evidence: { factType: "Recommended", source: "Owner offer", value: "", detail: { en: "Lunch set", "zh-HK": "Lunch set", "zh-TW": "Lunch set" }, observedAt: "2026-10-01T00:00:00.000Z" },
+      priority: "medium",
+      priority_score: 50,
+      priority_factors: [],
+      effort_minutes: 8,
+      required_inputs: ["brand_voice"],
+      provided_inputs: {},
+      action_state: "recommended",
+      measurement_state: "not_eligible",
+      capability: "Beta",
+      dedupe_key: `offer:${offerId}:offer-instagram-post`,
+      offer_id: offerId,
+    });
+
+    it("concurrent calls with the same offer dedupe key create one row and both return its id", async () => {
+      const ws = await workspace();
+      const offer = await insertOffer(ws);
+      const repo = actionMutationRepository(runtime);
+      const results = await Promise.all(Array.from({ length: 6 }, () => repo.createObjective(promotionRow(ws, offer))));
+      expect(new Set(results.map((r) => r.id)).size).toBe(1);
+      expect(results.filter((r) => r.created)).toHaveLength(1);
+      const rows = (await runtime.query("SELECT id, offer_id FROM actions WHERE workspace_id=$1", [ws])).rows;
+      expect(rows).toEqual([{ id: results[0].id, offer_id: offer }]);
+    });
+
+    it("after archive_offer cancels the action, a new call creates a fresh one", async () => {
+      const ws = await workspace();
+      const actor = await user();
+      const offer = await insertOffer(ws);
+      const repo = actionMutationRepository(runtime);
+      const first = await repo.createObjective(promotionRow(ws, offer));
+      expect(first.created).toBe(true);
+      await offerRepository(runtime).archive(offer, actor);
+      expect((await runtime.query("SELECT action_state FROM actions WHERE id=$1", [first.id])).rows[0].action_state).toBe("cancelled");
+      const second = await repo.createObjective(promotionRow(ws, offer));
+      expect(second.created).toBe(true);
+      expect(second.id).not.toBe(first.id);
     });
   });
 });

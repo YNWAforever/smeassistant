@@ -19,11 +19,14 @@ vi.mock("next/navigation", () => ({
 
 import { CreateView, type CreateViewProps } from "@/components/workspace/create-view";
 import { copy } from "@/lib/copy";
-import { TEMPLATES } from "@/lib/workspace/templates";
+import { isOfferTemplate, TEMPLATES } from "@/lib/workspace/templates";
 import { getMessages } from "@/lib/i18n";
 
-/** The registry is the source of truth for both the split and the badges. */
-const AGENT_TEMPLATES = TEMPLATES.filter((template) => template.agentKey !== null);
+/**
+ * The registry is the source of truth for both the split and the badges.
+ * Offer-backed templates are reached from Offers, not from an objective (R11).
+ */
+const AGENT_TEMPLATES = TEMPLATES.filter((template) => template.agentKey !== null && !isOfferTemplate(template));
 const LEAD_KEYS = ["review-response", "visibility-content", "website-basics"] as const;
 
 function render(overrides: Partial<CreateViewProps> = {}) {
@@ -56,12 +59,20 @@ describe("CreateView goal ordering", () => {
     expect(titles.slice(0, LEAD_KEYS.length)).toEqual(LEAD_KEYS.map((key) => labels[key].title));
   });
 
-  it("keeps every agent-backed capability reachable, exactly once", () => {
+  it("keeps every agent-backed capability except offer-backed ones (reached from Offers) reachable, exactly once", () => {
     const titles = cardTitles(render());
     const labels = copy.en.workspace.templates;
     const expected = AGENT_TEMPLATES.map((template) => labels[template.key].title);
     expect(titles.slice().sort()).toEqual(expected.slice().sort());
     expect(new Set(titles).size).toBe(titles.length);
+  });
+
+  it("offers neither offer template: offer actions are created only from an offer", () => {
+    const titles = cardTitles(render());
+    const labels = copy.en.workspace.templates;
+    expect(titles).not.toContain(labels["offer-instagram-post"].title);
+    expect(titles).not.toContain(labels["offer-google-post"].title);
+    expect(TEMPLATES.filter(isOfferTemplate).map((t) => t.key)).toEqual(["offer-instagram-post", "offer-google-post"]);
   });
 
   it("renders a second group so the remaining capabilities are demoted, not hidden", () => {

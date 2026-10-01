@@ -30,6 +30,9 @@ export type TemplateKey =
   | "offer-google-post"
   | "google-reconnect";
 
+/** The templates written from a confirmed offer; `isOfferTemplate` is the runtime test for the same set. */
+export type OfferTemplateKey = "offer-instagram-post" | "offer-google-post";
+
 export type WorkspaceAgentKey =
   | "review_reply"
   | "review_request"
@@ -480,6 +483,15 @@ export function templateByKey(key: TemplateKey): ActionTemplate {
  */
 export function findTemplate(key: string): ActionTemplate | null {
   return TEMPLATES.find((t) => t.key === key) ?? null;
+}
+
+/**
+ * A workflow written from an owner-confirmed offer. These are created only by
+ * POST /api/offers/[offerId]/promotions: an objective, the Create page and
+ * POST /api/actions have no offer to bind, so they must never offer or accept one.
+ */
+export function isOfferTemplate(template: Pick<WorkflowDefinition, "inputs">): boolean {
+  return template.inputs.some((input) => input.key === "offer_id");
 }
 
 export function isLedgerOnly(findingKey: string): boolean {

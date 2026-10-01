@@ -22,7 +22,7 @@ import { resolveText } from "@/lib/domain"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import { createObjectiveAction } from "@/lib/workspace/client"
 import { effortLabel, withLocation } from "@/lib/workspace/format"
-import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates"
+import { isOfferTemplate, TEMPLATES, type OfferTemplateKey, type TemplateKey } from "@/lib/workspace/templates"
 import { t } from "@/lib/i18n"
 
 export interface CreateViewProps {
@@ -38,7 +38,7 @@ export interface CreateViewProps {
   openActions: Array<{ id: string; templateKey: TemplateKey; evidence: string; freshness: string }>
 }
 
-const ICONS: Record<TemplateKey, typeof MessageSquareText> = {
+const ICONS: Record<Exclude<TemplateKey, OfferTemplateKey>, typeof MessageSquareText> = {
   "review-response": MessageSquareText,
   "review-request": Star,
   "gbp-profile-fix": MapPinned,
@@ -51,13 +51,18 @@ const ICONS: Record<TemplateKey, typeof MessageSquareText> = {
   "website-basics": Globe,
   "local-seo-brief": Search,
   "menu-translation": Languages,
-  "offer-instagram-post": FileImage,
-  "offer-google-post": Newspaper,
   "google-reconnect": Globe,
 }
 
-/** Goals the owner can start from an objective: every template with an agent (system/checklist templates come from evidence only). */
-const GOALS = TEMPLATES.filter((template) => template.agentKey !== null)
+/**
+ * Goals the owner can start from an objective: every template with an agent
+ * (system/checklist templates come from evidence only). Offer-backed templates
+ * are excluded: they need a confirmed offer and are created from Offers.
+ */
+const GOALS = TEMPLATES.filter(
+  (template): template is typeof template & { key: Exclude<TemplateKey, OfferTemplateKey> } =>
+    template.agentKey !== null && !isOfferTemplate(template),
+)
 
 /**
  * P2.1 item 1: Create leads with the three workflows Phase 2 completes end to
