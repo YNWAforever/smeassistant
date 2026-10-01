@@ -1,3 +1,7 @@
+// Deep import on purpose (P4.4): under tsx (scripts/eval-workflows.ts) a static
+// named import from the vendored package's CJS barrel does not resolve; the
+// defining source file does. Do not move it back to the barrel on a re-pin
+// unless `eval:workflows --check-load` still loads afterwards.
 import { LOCALE_LABELS } from "@sme-scanner/region/src/config";
 import type { SampledReview } from "@/lib/agents";
 import { sanitizeReportProof } from "@/lib/report/sanitize-proof";
