@@ -27,7 +27,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-import { ActionDetailClient } from "@/components/workspace/action-detail-client";
+import { ActionDetailClient, ownerInputPatch } from "@/components/workspace/action-detail-client";
 import { copy } from "@/lib/copy";
 import { getMessages } from "@/lib/i18n";
 import { localized } from "@/lib/domain";
@@ -536,5 +536,59 @@ describe("failed assistant drafts in the run history", () => {
       expect(text).not.toContain(code);
     }
     expect(text).toContain("The model timed out.");
+  });
+});
+
+describe("the brand guardrail panel names the P4.4 shared checks", () => {
+  // Before: unexpected_link / unconfirmed_claim were agentNotes, so the panel
+  // said "checked, nothing was flagged" and then printed the raw English code,
+  // in every locale.
+  const EXPECTED = {
+    en: ["Contains a link you did not supply — check it before approving.", "Mentions a price or superlative that is not in your confirmed facts — check it before approving.", "2 flagged"],
+    "zh-HK": ["含有你沒有提供的連結，審批前請先檢查。", "提及你未確認的價錢或誇大字眼，審批前請先檢查。", "2 項違規"],
+    "zh-TW": ["包含你沒有提供的連結，核准前請先確認。", "提到你未確認的價格或誇大用語，核准前請先確認。", "2 項違規"],
+  } as const;
+
+  it.each(Object.keys(EXPECTED) as Array<keyof typeof EXPECTED>)("renders both codes as guardrail findings in %s", (locale) => {
+    const value = detail(AGENT_TEMPLATES[0].key);
+    value.versions = [versionRow({ id: "ver-1", version_no: 1, approval_state: "draft", checked: true, guardrails: [{ code: "unexpected_link" }, { code: "unconfirmed_claim" }] })];
+    const root = document.createElement("div");
+    root.innerHTML = renderToStaticMarkup(
+      <ActionDetailClient
+        locale={locale}
+        workspaceSlug="kam-man-house"
+        workspaceId="ws-1"
+        timezone="Asia/Hong_Kong"
+        role="owner"
+        inScope
+        location="yik-yam"
+        detail={value}
+        auditRows={[]}
+        locations={[{ slug: "yik-yam", name: "Yik Yam" }]}
+        approvedAssets={[]}
+      />,
+    );
+    const text = root.textContent ?? "";
+    for (const expected of EXPECTED[locale]) expect(text).toContain(expected);
+    expect(text).not.toContain("unexpected_link");
+    expect(text).not.toContain("unconfirmed_claim");
+    expect(text).not.toContain("nothing was flagged");
+    expect(text).not.toContain("未發現違規");
+  });
+});
+
+describe("ownerInputPatch", () => {
+  it("persists text_only: true next to the text-only marker so later runs and assistant drafts are not blocked", () => {
+    expect(ownerInputPatch(["asset_or_text_only"], { asset_or_text_only: "text_only" })).toEqual({
+      provided: { asset_or_text_only: "text_only", text_only: true },
+      runInputs: {},
+    });
+  });
+
+  it("keeps an asset choice as the asset id, never as text_only", () => {
+    expect(ownerInputPatch(["asset_or_text_only", "alt_text"], { asset_or_text_only: "asset-9", alt_text: " A plate " })).toEqual({
+      provided: { asset_or_text_only: "asset", asset_id: "asset-9", alt_text: "A plate" },
+      runInputs: { asset_id: "asset-9" },
+    });
   });
 });

@@ -27,7 +27,11 @@ export type GuardrailCode =
   | "jsonld_invalid"
   | "jsonld_mismatch"
   | "title_too_long"
-  | "bio_too_long";
+  | "bio_too_long"
+  /** P4.4 shared check: a link the owner never supplied. */
+  | "unexpected_link"
+  /** P4.4 shared check: a price or superlative absent from confirmed facts. */
+  | "unconfirmed_claim";
 
 export interface GuardrailFlag {
   code: GuardrailCode;
@@ -83,6 +87,8 @@ function classify(warning: string): GuardrailFlag | null {
   if (warning === "jsonld_missing") return { code: "jsonld_missing" };
   if (warning === "jsonld_invalid") return { code: "jsonld_invalid" };
   if (warning === "jsonld_mismatch") return { code: "jsonld_mismatch" };
+  if (warning === "unexpected_link") return { code: "unexpected_link" };
+  if (warning === "unconfirmed_claim") return { code: "unconfirmed_claim" };
   const over = /^(body|title|bio)_over_(\d+)_chars$/.exec(warning);
   if (over) {
     const code: GuardrailCode = over[1] === "title" ? "title_too_long" : over[1] === "bio" ? "bio_too_long" : "length";
