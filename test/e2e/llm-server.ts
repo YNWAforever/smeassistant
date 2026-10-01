@@ -11,9 +11,13 @@ export async function startLlmServer() {
       mode = requested; res.end("ok"); return;
     }
     if (req.url !== "/v1/chat/completions" || req.method !== "POST") { res.writeHead(404).end(); return; }
-    for await (const _chunk of req) { void _chunk; }
+    const chunks: Buffer[] = []; for await (const chunk of req) chunks.push(Buffer.from(chunk));
     if (mode === "unavailable") { res.writeHead(503).end(); return; }
-    const output = { title: "Fixture review reply", body: "Thank you for your review. We appreciate your feedback.", acceptance_criteria: [], warnings: [], facts_used: [], facts_needed: mode === "missing" ? ["capacity"] : [] };
+    // P4.1: an offer_copy prompt gets a fixed promotion draft (alt text included for the Instagram caption).
+    const offer = Buffer.concat(chunks).toString().includes("offer_copy@");
+    const output = offer
+      ? { title: "Fixture offer draft", body: "Our weekday lunch set is on now. Visit us this week.", alt_text: "A lunch set on a wooden table", acceptance_criteria: ["Price matches the offer"], warnings: [], facts_used: [], facts_needed: mode === "missing" ? ["capacity"] : [] }
+      : { title: "Fixture review reply", body: "Thank you for your review. We appreciate your feedback.", acceptance_criteria: [], warnings: [], facts_used: [], facts_needed: mode === "missing" ? ["capacity"] : [] };
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify({ choices: [{ message: { content: mode === "invalid" ? "invalid-json" : JSON.stringify(output) } }], usage: { prompt_tokens: 10, completion_tokens: 10 } }));
   });
