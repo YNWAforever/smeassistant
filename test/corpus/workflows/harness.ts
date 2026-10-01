@@ -67,6 +67,25 @@ export const corpusCaseSchema = z.object({
       }),
     )
     .optional(),
+  // P4.1: the offer an offer workflow drafts from. Omitted fields take safe
+  // defaults (confirmed, revision 1, the market's currency when priced,
+  // running from the harness date for 30 days); see offerFixture.
+  offer: z
+    .object({
+      title: z.string().optional(),
+      details: z.string().optional(),
+      terms: z.string().nullable().optional(),
+      price_amount: z.union([z.string(), z.number()]).nullable().optional(),
+      currency: z.enum(["HKD", "TWD"]).nullable().optional(),
+      starts_on: z.string().optional(),
+      ends_on: z.string().nullable().optional(),
+      open_ended: z.boolean().optional(),
+      approved_claims: z.array(z.string()).optional(),
+      prohibited_wording: z.array(z.string()).optional(),
+      status: z.enum(["draft", "confirmed", "archived"]).optional(),
+      revision: z.number().int().min(1).optional(),
+    })
+    .optional(),
   // A string is the model's text, null is llmComplete's "no answer", and
   // { throws } makes that call reject (a timeout or transport error).
   cannedOutputs: z.array(z.union([z.string(), z.null(), z.object({ throws: z.string().min(1) })])),
@@ -124,6 +143,45 @@ const membership: Membership = {
   locationScope: null,
 };
 
+/** The harness clock: every case runs "now" at this instant, so offer dates are deterministic. */
+export const HARNESS_NOW = new Date("2026-10-10T04:00:00Z");
+const HARNESS_TODAY = "2026-10-10";
+const OFFER_ID = "00000000-0000-4000-8000-00000000c0f1";
+
+/** A full offer row from a case's partial fixture, with the defaults above. */
+export function offerFixture(c: CorpusCase): Record<string, unknown> | null {
+  if (!c.offer) return null;
+  const o = c.offer;
+  const priced = o.price_amount !== undefined && o.price_amount !== null;
+  const status = o.status ?? "confirmed";
+  const openEnded = o.open_ended ?? false;
+  return {
+    id: OFFER_ID,
+    workspace_id: "ws-corpus",
+    location_id: "loc-corpus",
+    title: o.title ?? "Weekday lunch set",
+    details: o.details ?? "Soup, main and a drink",
+    terms: o.terms ?? null,
+    price_amount: priced ? Number(o.price_amount).toFixed(2) : null,
+    currency: priced ? (o.currency ?? (c.market === "tw" ? "TWD" : "HKD")) : null,
+    starts_on: o.starts_on ?? HARNESS_TODAY,
+    ends_on: openEnded ? null : (o.ends_on === undefined ? "2026-11-09" : o.ends_on),
+    open_ended: openEnded,
+    approved_claims: o.approved_claims ?? [],
+    prohibited_wording: o.prohibited_wording ?? [],
+    asset_ids: [],
+    source: "owner_form",
+    status,
+    revision: o.revision ?? 1,
+    confirmed_by: status === "confirmed" ? "user-corpus" : null,
+    confirmed_at: status === "confirmed" ? "2026-10-01T00:00:00Z" : null,
+    created_by: "user-corpus",
+    created_at: "2026-10-01T00:00:00Z",
+    updated_at: "2026-10-01T00:00:00Z",
+    archived_at: status === "archived" ? "2026-10-02T00:00:00Z" : null,
+  };
+}
+
 /** Runs one case through the real run pipeline against an in-memory repository. */
 export async function runCorpusCase(c: CorpusCase, llm: typeof llmComplete): Promise<CorpusRun> {
   const template = templateByKey(c.workflow);
@@ -151,7 +209,9 @@ export async function runCorpusCase(c: CorpusCase, llm: typeof llmComplete): Pro
     capability: template.capability,
     created_at: "2026-09-01T00:00:00Z",
     updated_at: "2026-09-01T00:00:00Z",
+    ...(c.offer ? { source: "owner_objective", source_finding_keys: [], offer_id: OFFER_ID } : {}),
   };
+  const offer = offerFixture(c);
   const snapshot = rowToSnapshot({
     id: "snap-corpus",
     job_id: "job-corpus",
@@ -197,6 +257,7 @@ export async function runCorpusCase(c: CorpusCase, llm: typeof llmComplete): Pro
       facts: c.brand?.facts ?? {},
     }),
     assistantReviewData: async () => rawData,
+    assistantOffer: async () => offer,
     aiSpend24h: async () => ({ globalUsd: 0, workspaceUsd: 0 }),
   } as unknown as ArtifactRepository;
 
@@ -230,6 +291,7 @@ export async function runCorpusCase(c: CorpusCase, llm: typeof llmComplete): Pro
     assets: { get: async () => null },
     llm: recording,
     budgetEnv: {},
+    now: HARNESS_NOW,
   });
   if (!finishInput) throw new Error(`Case ${c.id}: persistence.finish was never called`);
   return { result, prompts, finishInput, llmCalls: prompts.length };

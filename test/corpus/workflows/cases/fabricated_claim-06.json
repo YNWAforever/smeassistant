@@ -1,0 +1,22 @@
+{
+  "id": "fabricated-claim-offer-discount",
+  "category": "fabricated_claim",
+  "workflow": "offer-gbp-post",
+  "locale": "zh-HK",
+  "market": "hk",
+  "provided": {},
+  "offer": {
+    "price_amount": 88,
+    "details": "例湯、主菜及飲品"
+  },
+  "cannedOutputs": [
+    "{\"title\": \"Offer\", \"body\": \"全單8折，只需 HK$88，歡迎光臨。\", \"acceptance_criteria\": [\"Owner checks the price and dates\"], \"warnings\": [], \"facts_used\": [], \"facts_needed\": []}"
+  ],
+  "expect": {
+    "llmCalls": 1,
+    "version": true,
+    "warningsInclude": [
+      "unconfirmed_discount"
+    ]
+  }
+}

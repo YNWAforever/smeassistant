@@ -1,0 +1,22 @@
+{
+  "id": "missing-facts-unconfirmed-offer",
+  "category": "missing_facts",
+  "workflow": "offer-chat-message",
+  "locale": "zh-HK",
+  "market": "hk",
+  "provided": {},
+  "offer": {
+    "status": "draft",
+    "price_amount": 88
+  },
+  "cannedOutputs": [
+    "{\"title\": \"Offer\", \"body\": \"午市套餐 HK$88\", \"acceptance_criteria\": [\"Owner checks the price and dates\"], \"warnings\": [], \"facts_used\": [], \"facts_needed\": []}"
+  ],
+  "expect": {
+    "llmCalls": 0,
+    "factsNeeded": [
+      "offer_confirmed"
+    ],
+    "version": false
+  }
+}

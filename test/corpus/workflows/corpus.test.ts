@@ -5,6 +5,11 @@ import { CATEGORY_MINIMUMS, cannedLlm, loadCorpus, parseCorpusCase, runCorpusCas
 /**
  * Canned outputs prove the pipeline handles each behaviour; they do not prove
  * any model behaves. Every case runs the real run pipeline with a fake model.
+ *
+ * P4.1 offer cases have no injection case on purpose: offer details are typed
+ * and confirmed by the owner, so confirmedText deliberately trusts them, and a
+ * link or claim there is the owner's own. Untrusted text (reviews, scraped
+ * pages) never reaches an offer prompt.
  */
 const corpus = loadCorpus();
 

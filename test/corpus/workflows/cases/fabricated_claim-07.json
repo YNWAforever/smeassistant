@@ -1,0 +1,21 @@
+{
+  "id": "fabricated-claim-offer-wrong-currency",
+  "category": "fabricated_claim",
+  "workflow": "offer-chat-message",
+  "locale": "zh-HK",
+  "market": "hk",
+  "provided": {},
+  "offer": {
+    "price_amount": 88
+  },
+  "cannedOutputs": [
+    "{\"title\": \"Offer\", \"body\": \"平日午市套餐只需 NT$88，歡迎預訂。\", \"acceptance_criteria\": [\"Owner checks the price and dates\"], \"warnings\": [], \"facts_used\": [], \"facts_needed\": []}"
+  ],
+  "expect": {
+    "llmCalls": 1,
+    "version": true,
+    "warningsInclude": [
+      "wrong_market_currency"
+    ]
+  }
+}

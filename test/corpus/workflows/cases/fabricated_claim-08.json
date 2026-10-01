@@ -1,0 +1,22 @@
+{
+  "id": "fabricated-claim-offer-urgency",
+  "category": "fabricated_claim",
+  "workflow": "offer-gbp-post",
+  "locale": "zh-TW",
+  "market": "tw",
+  "provided": {},
+  "offer": {
+    "open_ended": true,
+    "terms": null
+  },
+  "cannedOutputs": [
+    "{\"title\": \"Offer\", \"body\": \"限時優惠，快來店裡\", \"acceptance_criteria\": [\"Owner checks the price and dates\"], \"warnings\": [], \"facts_used\": [], \"facts_needed\": []}"
+  ],
+  "expect": {
+    "llmCalls": 1,
+    "version": true,
+    "warningsInclude": [
+      "urgency_claim"
+    ]
+  }
+}

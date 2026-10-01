@@ -1,0 +1,28 @@
+{
+  "id": "locale-market-offer-en-on-tw",
+  "category": "locale_market",
+  "workflow": "offer-social-post",
+  "locale": "en",
+  "market": "tw",
+  "provided": {
+    "text_only": true
+  },
+  "offer": {
+    "price_amount": 350
+  },
+  "cannedOutputs": [
+    "{\"title\": \"Offer\", \"body\": \"Weekday lunch set, NT$350.\", \"acceptance_criteria\": [\"Owner checks the price and dates\"], \"warnings\": [], \"facts_used\": [], \"facts_needed\": []}"
+  ],
+  "expect": {
+    "llmCalls": 1,
+    "version": true,
+    "promptIncludes": [
+      "Taiwan",
+      "NT$350"
+    ],
+    "promptExcludes": [
+      "HK$",
+      "WhatsApp"
+    ]
+  }
+}
