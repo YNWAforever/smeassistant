@@ -78,6 +78,10 @@
       "rls": true
     },
     {
+      "name": "offers",
+      "rls": true
+    },
+    {
       "name": "output_versions",
       "rls": true
     },
@@ -760,6 +764,15 @@
       "ordinal_position": 26,
       "data_type": "timestamp with time zone",
       "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "actions",
+      "column_name": "offer_id",
+      "ordinal_position": 27,
+      "data_type": "uuid",
+      "udt_name": "uuid",
       "is_nullable": "YES",
       "column_default": null
     },
@@ -2463,6 +2476,213 @@
       "udt_name": "timestamptz",
       "is_nullable": "NO",
       "column_default": "now()"
+    },
+    {
+      "table_name": "offers",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "offers",
+      "column_name": "workspace_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "offers",
+      "column_name": "location_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "offers",
+      "column_name": "title",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "offers",
+      "column_name": "details",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "offers",
+      "column_name": "terms",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "offers",
+      "column_name": "price_amount",
+      "ordinal_position": 7,
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "offers",
+      "column_name": "currency",
+      "ordinal_position": 8,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "offers",
+      "column_name": "starts_on",
+      "ordinal_position": 9,
+      "data_type": "date",
+      "udt_name": "date",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "offers",
+      "column_name": "ends_on",
+      "ordinal_position": 10,
+      "data_type": "date",
+      "udt_name": "date",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "offers",
+      "column_name": "open_ended",
+      "ordinal_position": 11,
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "NO",
+      "column_default": "false"
+    },
+    {
+      "table_name": "offers",
+      "column_name": "approved_claims",
+      "ordinal_position": 12,
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "NO",
+      "column_default": "'{}'::text[]"
+    },
+    {
+      "table_name": "offers",
+      "column_name": "prohibited_wording",
+      "ordinal_position": 13,
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "NO",
+      "column_default": "'{}'::text[]"
+    },
+    {
+      "table_name": "offers",
+      "column_name": "asset_ids",
+      "ordinal_position": 14,
+      "data_type": "ARRAY",
+      "udt_name": "_uuid",
+      "is_nullable": "NO",
+      "column_default": "'{}'::uuid[]"
+    },
+    {
+      "table_name": "offers",
+      "column_name": "source",
+      "ordinal_position": 15,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'owner_form'::text"
+    },
+    {
+      "table_name": "offers",
+      "column_name": "status",
+      "ordinal_position": 16,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'draft'::text"
+    },
+    {
+      "table_name": "offers",
+      "column_name": "revision",
+      "ordinal_position": 17,
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": "1"
+    },
+    {
+      "table_name": "offers",
+      "column_name": "confirmed_by",
+      "ordinal_position": 18,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "offers",
+      "column_name": "confirmed_at",
+      "ordinal_position": 19,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "offers",
+      "column_name": "created_by",
+      "ordinal_position": 20,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "offers",
+      "column_name": "created_at",
+      "ordinal_position": 21,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "offers",
+      "column_name": "updated_at",
+      "ordinal_position": 22,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "offers",
+      "column_name": "archived_at",
+      "ordinal_position": 23,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
     },
     {
       "table_name": "output_versions",
@@ -4295,6 +4515,12 @@
     },
     {
       "table_name": "actions",
+      "name": "actions_offer_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (offer_id) REFERENCES offers(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "actions",
       "name": "actions_pkey",
       "type": "p",
       "definition": "PRIMARY KEY (id)"
@@ -4680,6 +4906,96 @@
     {
       "table_name": "oauth_connections",
       "name": "oauth_connections_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "offers",
+      "name": "offers_archived_check",
+      "type": "c",
+      "definition": "CHECK (((status = 'archived'::text) = (archived_at IS NOT NULL)))"
+    },
+    {
+      "table_name": "offers",
+      "name": "offers_confirmed_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (confirmed_by) REFERENCES app_users(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "offers",
+      "name": "offers_confirmed_check",
+      "type": "c",
+      "definition": "CHECK (((status <> 'confirmed'::text) OR ((confirmed_at IS NOT NULL) AND ((ends_on IS NOT NULL) OR open_ended))))"
+    },
+    {
+      "table_name": "offers",
+      "name": "offers_created_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (created_by) REFERENCES app_users(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "offers",
+      "name": "offers_currency_check",
+      "type": "c",
+      "definition": "CHECK (((currency IS NULL) OR (currency = ANY (ARRAY['HKD'::text, 'TWD'::text]))))"
+    },
+    {
+      "table_name": "offers",
+      "name": "offers_dates_check",
+      "type": "c",
+      "definition": "CHECK (((ends_on IS NULL) OR (ends_on >= starts_on)))"
+    },
+    {
+      "table_name": "offers",
+      "name": "offers_location_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "offers",
+      "name": "offers_open_ended_check",
+      "type": "c",
+      "definition": "CHECK ((NOT (open_ended AND (ends_on IS NOT NULL))))"
+    },
+    {
+      "table_name": "offers",
+      "name": "offers_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "offers",
+      "name": "offers_price_currency_check",
+      "type": "c",
+      "definition": "CHECK (((price_amount IS NULL) = (currency IS NULL)))"
+    },
+    {
+      "table_name": "offers",
+      "name": "offers_price_nonnegative_check",
+      "type": "c",
+      "definition": "CHECK (((price_amount IS NULL) OR (price_amount >= (0)::numeric)))"
+    },
+    {
+      "table_name": "offers",
+      "name": "offers_revision_check",
+      "type": "c",
+      "definition": "CHECK ((revision >= 1))"
+    },
+    {
+      "table_name": "offers",
+      "name": "offers_source_check",
+      "type": "c",
+      "definition": "CHECK ((source = 'owner_form'::text))"
+    },
+    {
+      "table_name": "offers",
+      "name": "offers_status_check",
+      "type": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['draft'::text, 'confirmed'::text, 'archived'::text])))"
+    },
+    {
+      "table_name": "offers",
+      "name": "offers_workspace_id_fkey",
       "type": "f",
       "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
     },
@@ -5215,6 +5531,11 @@
     },
     {
       "tablename": "actions",
+      "indexname": "actions_offer_idx",
+      "indexdef": "CREATE INDEX actions_offer_idx ON public.actions USING btree (offer_id) WHERE (offer_id IS NOT NULL)"
+    },
+    {
+      "tablename": "actions",
       "indexname": "actions_open_dedupe_idx",
       "indexdef": "CREATE UNIQUE INDEX actions_open_dedupe_idx ON public.actions USING btree (dedupe_key) WHERE (action_state <> ALL (ARRAY['completed'::text, 'dismissed'::text, 'cancelled'::text, 'expired'::text]))"
     },
@@ -5412,6 +5733,16 @@
       "tablename": "oauth_connections",
       "indexname": "oauth_connections_workspace_idx",
       "indexdef": "CREATE INDEX oauth_connections_workspace_idx ON public.oauth_connections USING btree (workspace_id)"
+    },
+    {
+      "tablename": "offers",
+      "indexname": "offers_pkey",
+      "indexdef": "CREATE UNIQUE INDEX offers_pkey ON public.offers USING btree (id)"
+    },
+    {
+      "tablename": "offers",
+      "indexname": "offers_workspace_idx",
+      "indexdef": "CREATE INDEX offers_workspace_idx ON public.offers USING btree (workspace_id, status, starts_on DESC)"
     },
     {
       "tablename": "output_versions",
