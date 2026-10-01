@@ -120,6 +120,15 @@ export function offerRepository(client?: Pick<Pool, "query">) {
       return rows[0] ? toOffer(rows[0]) : null;
     },
 
+    /** The offer's workspace and location, by id alone: what a route needs to authorize before it touches the row. */
+    async scope(offerId: string): Promise<{ offerId: string; workspaceId: string; locationId: string | null } | null> {
+      const { rows } = await db().query<{ id: string; workspace_id: string; location_id: string | null }>(
+        `SELECT id, workspace_id, location_id FROM offers WHERE id=$1`,
+        [offerId],
+      );
+      return rows[0] ? { offerId: rows[0].id, workspaceId: rows[0].workspace_id, locationId: rows[0].location_id } : null;
+    },
+
     async create(workspaceId: string, actorId: string, input: OfferInput): Promise<Offer> {
       const { rows } = await db().query<OfferRow>(
         `INSERT INTO offers(workspace_id,created_by,location_id,title,details,terms,price_amount,currency,valid_from,valid_until,claims,prohibited_terms,asset_id)

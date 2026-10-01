@@ -420,6 +420,20 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon offers schema and fun
       expect(await repo.archive(created.id, actor)).toEqual({ kind: "archived", cancelledActions: 1 });
     });
 
+    it("scope returns the stored workspace and location by offer id alone, and null for an unknown id", async () => {
+      const ws = await workspace();
+      const actor = await user();
+      const repo = offerRepository(runtime);
+      const location = (
+        await runtime.query("INSERT INTO locations(workspace_id,slug,name) VALUES($1,'main','Main') RETURNING id", [ws])
+      ).rows[0].id as string;
+      const wide = await repo.create(ws, actor, input());
+      const local = await repo.create(ws, actor, input({ location_id: location }));
+      expect(await repo.scope(wide.id)).toEqual({ offerId: wide.id, workspaceId: ws, locationId: null });
+      expect(await repo.scope(local.id)).toEqual({ offerId: local.id, workspaceId: ws, locationId: location });
+      expect(await repo.scope(randomUUID())).toBeNull();
+    });
+
     it("list returns newest first and only the workspace's rows", async () => {
       const ws = await workspace();
       const other = await workspace();
