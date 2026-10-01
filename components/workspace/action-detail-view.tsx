@@ -2,6 +2,7 @@ import { ActionDetailClient } from "@/components/workspace/action-detail-client"
 import type { PrototypeLocale } from "@/lib/copy"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import type { ActionDetail, AuditEventRow } from "@/lib/workspace/queries-pages"
+import type { ActionOfferPanel } from "@/lib/offers/pages"
 
 export interface ActionDetailViewProps {
   locale: PrototypeLocale
@@ -15,6 +16,7 @@ export interface ActionDetailViewProps {
   auditRows: AuditEventRow[]
   locations: Array<{ slug: string; name: string }>
   approvedAssets: Array<{ id: string; filename: string }>
+  offer?: ActionOfferPanel | null
 }
 
 /**

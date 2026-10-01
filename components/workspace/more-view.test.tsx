@@ -48,7 +48,9 @@ describe("MoreView", () => {
    * mobile entry point -- the condition, not the instance.
    */
   it("leaves no owner route reachable only from the desktop sidebar", () => {
-    const html = renderToStaticMarkup(<MoreView {...props} />);
+    // Offers (P4.1) is flag-gated: with OFFERS_ENABLED off the route 404s, so
+    // the link is checked with the flag on.
+    const html = renderToStaticMarkup(<MoreView {...props} offersEnabled />);
     const orphaned = ownerRoutes().filter((route) => !html.includes(`/owner/kam-man-house/${route}`));
     expect(orphaned).toEqual([]);
   });
@@ -59,5 +61,12 @@ describe("MoreView", () => {
     // "日曆"), so a row never renames the page it opens.
     expect(html).toContain("品牌素材");
     expect(html).toContain("日曆");
+  });
+
+  it("links Offers only while the offers flag is on", () => {
+    expect(renderToStaticMarkup(<MoreView {...props} />)).not.toContain("/owner/kam-man-house/offers");
+    const html = renderToStaticMarkup(<MoreView {...props} offersEnabled />);
+    expect(html).toContain('href="/en/owner/kam-man-house/offers"');
+    expect(renderToStaticMarkup(<MoreView {...props} locale="zh-HK" offersEnabled />)).toContain("已確認優惠及推廣草稿");
   });
 });

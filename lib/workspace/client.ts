@@ -74,6 +74,9 @@ async function request<T>(url: string, init: RequestInit): Promise<ClientResult<
   return { ok: true, data: body as T };
 }
 
+/** The same never-throwing transport, for feature client modules (lib/offers/client.ts). */
+export { request as clientRequest };
+
 function post<T>(url: string, body: unknown): Promise<ClientResult<T>> {
   return request<T>(url, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body ?? {}) });
 }

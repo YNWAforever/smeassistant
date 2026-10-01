@@ -507,5 +507,142 @@
     "liabilityBody": "在法律允許的範圍內，Fimmick 對任何因依據報告所作決定而導致的損失概不負責。本條款不排除法律上不可排除的責任。",
     "governingLawHeading": "適用法律",
     "governingLawBody": "本條款受中華人民共和國香港特別行政區法律管轄。"
+  },
+  "offers": {
+    "title": "優惠",
+    "description": "先確認一次優惠資料，再為每個渠道準備獨立草稿。系統不會代你發布或傳送任何內容。",
+    "betaNote": "Beta：草稿只有文字。每份已核准草稿由你自行複製，再自行發布或傳送。",
+    "new": "新增優惠",
+    "empty": "目前沒有優惠。建立一個，就能用你確認的資料準備推廣草稿。",
+    "groups": {
+      "running": "進行中",
+      "upcoming": "即將開始",
+      "draft": "草稿",
+      "ended": "已結束或已封存"
+    },
+    "row": {
+      "drafts": "{n} 份渠道草稿",
+      "allLocations": "所有地點",
+      "noPrice": "未列明價格",
+      "open": "打開"
+    },
+    "form": {
+      "heading": "優惠資料",
+      "note": "我們只會使用你在這裡輸入的內容。不會從照片讀取資料，也絕不會猜測價格、日期、庫存、食材或過敏原。",
+      "title": "優惠名稱",
+      "details": "包含哪些內容",
+      "price": "價格（選填）",
+      "startsOn": "開始日期",
+      "endsOn": "結束日期",
+      "openEnded": "未設結束日期",
+      "terms": "條款及細則（選填）",
+      "claims": "你核准這個優惠使用的說法（每行一項）",
+      "wording": "要避免的字眼（每行一項）",
+      "photos": "已確認使用權的照片",
+      "photosNone": "這個據點目前沒有已核准照片。",
+      "photosLink": "前往素材",
+      "location": "據點",
+      "allLocations": "所有據點",
+      "save": "儲存為草稿",
+      "saveEdit": "儲存修改",
+      "cancel": "取消"
+    },
+    "detail": {
+      "back": "所有優惠",
+      "edit": "編輯",
+      "editWarning": "編輯後優惠會變回草稿。依目前版本寫成的草稿將無法再核准或匯出。",
+      "archive": "封存優惠",
+      "archiveHint": "已封存的優惠無法再編輯，也不能用來準備新草稿；紀錄會保留。",
+      "startNew": "以這個優惠為基礎建立新優惠",
+      "readOnly": "你可以查看這個優惠。只有店主或負責這個據點的經理可以修改。"
+    },
+    "confirm": {
+      "heading": "草稿可以寫的內容",
+      "checkbox": "以上資料正確，我可以推廣",
+      "button": "確認優惠",
+      "done": "優惠已確認"
+    },
+    "facts": {
+      "price": "價格",
+      "validity": "有效期",
+      "terms": "條款",
+      "claims": "已核准說法",
+      "wording": "要避免的字眼",
+      "status": "狀態"
+    },
+    "status": {
+      "draft": "草稿",
+      "confirmed": "已確認",
+      "archived": "已封存"
+    },
+    "prepare": {
+      "heading": "準備草稿",
+      "notice": "將準備 {n} 份獨立草稿，不會發布或傳送任何內容。每份經你核准並匯出的草稿計為一項核准後交付，最多 {n} 項。再次複製同一個已核准版本不會重複計算。本月已用 {used} / {allowance} 項。",
+      "noticePaid": "將準備 {n} 份獨立草稿，不會發布或傳送任何內容。每份經你核准並匯出的草稿計為一項核准後交付，最多 {n} 項。再次複製同一個已核准版本不會重複計算。本月已用 {used} 項核准後交付，你的方案不設上限。",
+      "button": "準備草稿",
+      "exists": "已有草稿，開啟",
+      "notReady": "請先確認優惠。只有已確認且未結束的優惠才能準備草稿。",
+      "photoBrief": "由你或員工拍攝的照片簡報（不會產生任何圖片）"
+    },
+    "channels": {
+      "google_post": "Google 商家貼文",
+      "instagram_post": "Instagram 文案",
+      "whatsapp_message": "WhatsApp 訊息",
+      "line_message": "LINE 訊息"
+    },
+    "run": {
+      "drafting": "撰寫中",
+      "ready": "可以審閱",
+      "needsInput": "需要資料：{keys}",
+      "failed": "未能完成",
+      "budget": "已達 AI 用量上限",
+      "tryAgain": "再試一次"
+    },
+    "errors": {
+      "title_invalid": "請輸入不超過 120 字的名稱。",
+      "details_invalid": "請描述包括甚麼（不超過 1,000 字）。",
+      "terms_invalid": "條款不可超過 1,000 字。",
+      "price_invalid": "價格最多只能有兩位小數。",
+      "currency_market_mismatch": "價格必須使用這個工作台的幣別。",
+      "dates_invalid": "請檢查日期：結束日期不可早於開始日期。",
+      "claims_invalid": "最多 10 項說法，每項不超過 200 字。",
+      "wording_invalid": "最多 20 個要避免的字眼。",
+      "assets_invalid": "只能使用這個據點已確認使用權的照片。",
+      "location_invalid": "請選擇這個工作台的據點。",
+      "end_date_required": "確認前請選擇結束日期或「未設結束日期」。",
+      "offer_ended": "這個優惠已經結束。",
+      "offer_conflict": "有人修改了這個優惠，請重新載入查看最新版本。",
+      "offer_archived": "這個優惠已封存。",
+      "forbidden": "你沒有權限修改這個優惠。",
+      "generic": "未能完成，請再試一次。"
+    },
+    "binding": {
+      "heading": "這份草稿依據的優惠",
+      "changed": "這份草稿是依較早版本的優惠寫成。請重新準備草稿後再核准。",
+      "ended": "這個優惠已於 {date} 結束。",
+      "unconfirmed": "優惠已變回草稿，請再次確認後才核准草稿。",
+      "archived": "優惠已封存，這份草稿無法再核准或匯出。",
+      "unbound": "這個版本沒有連結已確認的優惠，因此無法核准。",
+      "exportedNote": "這個版本已經匯出，你仍可再次複製，不會重複計算用量。",
+      "openOffer": "開啟優惠"
+    },
+    "checklist": {
+      "heading": "核准前請檢查",
+      "facts": "請依你的優惠核對價格、日期與條件。",
+      "notSent": "系統沒有發布或傳送任何內容。",
+      "chat": "只傳送給同意接收資訊的顧客；對方要求停止時就停止。",
+      "chatHk": "《個人資料（私隱）條例》的直接促銷規定適用。",
+      "chatTw": "台灣《個人資料保護法》適用於顧客聯絡名單。",
+      "google": "Google 可能拒絕不符合其內容政策的貼文。"
+    },
+    "input": {
+      "confirmLink": "到優惠頁面確認優惠"
+    },
+    "entry": {
+      "moreTitle": "優惠",
+      "moreDetail": "已確認優惠及推廣草稿",
+      "createTitle": "推廣優惠",
+      "createDetail": "先確認一次資料，再準備 Google、Instagram 與訊息草稿。"
+    }
   }
 }

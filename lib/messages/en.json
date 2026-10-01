@@ -507,5 +507,142 @@
     "liabilityBody": "To the extent permitted by law, Fimmick is not liable for any loss arising from decisions made on the basis of a report. Nothing here excludes liability that cannot lawfully be excluded.",
     "governingLawHeading": "Governing law",
     "governingLawBody": "These terms are governed by the laws of the Hong Kong Special Administrative Region."
+  },
+  "offers": {
+    "title": "Offers",
+    "description": "Confirm an offer's facts once, then prepare separate drafts for each channel. Nothing is posted or sent for you.",
+    "betaNote": "Beta: drafts are text only. You copy each approved draft and post or send it yourself.",
+    "new": "New offer",
+    "empty": "No offers yet. Create one to prepare promotion drafts from facts you confirm.",
+    "groups": {
+      "running": "Running",
+      "upcoming": "Upcoming",
+      "draft": "Drafts",
+      "ended": "Ended or archived"
+    },
+    "row": {
+      "drafts": "{n} channel drafts",
+      "allLocations": "All locations",
+      "noPrice": "No price stated",
+      "open": "Open"
+    },
+    "form": {
+      "heading": "Offer facts",
+      "note": "We only use what you type here. Nothing is read from photos, and prices, dates, stock, ingredients or allergens are never guessed.",
+      "title": "Offer title",
+      "details": "What's included",
+      "price": "Price (optional)",
+      "startsOn": "Starts on",
+      "endsOn": "Ends on",
+      "openEnded": "No fixed end date",
+      "terms": "Terms and conditions (optional)",
+      "claims": "Claims you approve for this offer (one per line)",
+      "wording": "Words to avoid (one per line)",
+      "photos": "Photos with confirmed rights",
+      "photosNone": "No approved photos at this location yet.",
+      "photosLink": "Go to assets",
+      "location": "Location",
+      "allLocations": "All locations",
+      "save": "Save as draft",
+      "saveEdit": "Save changes",
+      "cancel": "Cancel"
+    },
+    "detail": {
+      "back": "All offers",
+      "edit": "Edit",
+      "editWarning": "Editing returns this offer to draft. Drafts written from the current version can no longer be approved or exported.",
+      "archive": "Archive offer",
+      "archiveHint": "Archived offers cannot be edited or used for new drafts. Their history stays.",
+      "startNew": "Start a new offer from this one",
+      "readOnly": "You can view this offer. Only an owner or a manager for this location can change it."
+    },
+    "confirm": {
+      "heading": "This is what drafts may say",
+      "checkbox": "These facts are correct and I may promote them",
+      "button": "Confirm offer",
+      "done": "Offer confirmed"
+    },
+    "facts": {
+      "price": "Price",
+      "validity": "Valid",
+      "terms": "Terms",
+      "claims": "Approved claims",
+      "wording": "Words to avoid",
+      "status": "Status"
+    },
+    "status": {
+      "draft": "Draft",
+      "confirmed": "Confirmed",
+      "archived": "Archived"
+    },
+    "prepare": {
+      "heading": "Prepare drafts",
+      "notice": "This prepares {n} separate drafts. Nothing is posted or sent. Each draft you approve and export counts as one approved delivery, up to {n}. Copying the same approved version again never counts again. This month: {used} of {allowance} used.",
+      "noticePaid": "This prepares {n} separate drafts. Nothing is posted or sent. Each draft you approve and export counts as one approved delivery, up to {n}. Copying the same approved version again never counts again. This month: {used} approved deliveries, no limit on your plan.",
+      "button": "Prepare drafts",
+      "exists": "Draft exists — open it",
+      "notReady": "Confirm the offer first. Drafts can only be prepared from a confirmed offer that has not ended.",
+      "photoBrief": "Photo brief for you or your staff to shoot (nothing is generated)"
+    },
+    "channels": {
+      "google_post": "Google Business post",
+      "instagram_post": "Instagram caption",
+      "whatsapp_message": "WhatsApp message",
+      "line_message": "LINE message"
+    },
+    "run": {
+      "drafting": "Drafting",
+      "ready": "Ready to review",
+      "needsInput": "Needs input: {keys}",
+      "failed": "Failed",
+      "budget": "AI budget reached",
+      "tryAgain": "Try again"
+    },
+    "errors": {
+      "title_invalid": "Add a title of up to 120 characters.",
+      "details_invalid": "Describe what is included (up to 1,000 characters).",
+      "terms_invalid": "Terms can be up to 1,000 characters.",
+      "price_invalid": "Enter a price with at most two decimals.",
+      "currency_market_mismatch": "The price must be in this workspace's currency.",
+      "dates_invalid": "Check the dates: the end date cannot be before the start date.",
+      "claims_invalid": "Use up to 10 claims of up to 200 characters each.",
+      "wording_invalid": "Use up to 20 words or phrases to avoid.",
+      "assets_invalid": "Only photos with confirmed rights at this location can be used.",
+      "location_invalid": "Choose one of this workspace's locations.",
+      "end_date_required": "Choose an end date or \"No fixed end date\" before confirming.",
+      "offer_ended": "This offer has already ended.",
+      "offer_conflict": "Someone else changed this offer. Reload to see the latest version.",
+      "offer_archived": "This offer is archived.",
+      "forbidden": "You do not have permission to change this offer.",
+      "generic": "That did not work. Please try again."
+    },
+    "binding": {
+      "heading": "Offer this draft was written from",
+      "changed": "This draft was written from an earlier version of the offer. Prepare a new draft to approve it.",
+      "ended": "This offer ended on {date}.",
+      "unconfirmed": "The offer is back in draft. Confirm it again before approving drafts.",
+      "archived": "The offer is archived. This draft can no longer be approved or exported.",
+      "unbound": "This version is not linked to a confirmed offer, so it cannot be approved.",
+      "exportedNote": "This version was already exported, so you can still copy it again. That counts nothing.",
+      "openOffer": "Open the offer"
+    },
+    "checklist": {
+      "heading": "Before you approve",
+      "facts": "Check the price, dates and conditions against your offer.",
+      "notSent": "Nothing has been posted or sent.",
+      "chat": "Send only to customers who agreed to hear from you, and stop when they ask.",
+      "chatHk": "The Personal Data (Privacy) Ordinance direct-marketing rules apply.",
+      "chatTw": "Taiwan's Personal Data Protection Act applies to customer contact lists.",
+      "google": "Google may reject posts that break its content policies."
+    },
+    "input": {
+      "confirmLink": "Confirm the offer on its page"
+    },
+    "entry": {
+      "moreTitle": "Offers",
+      "moreDetail": "Confirmed offers and promotion drafts",
+      "createTitle": "Promote an offer",
+      "createDetail": "Confirm the facts once, then prepare Google, Instagram and message drafts."
+    }
   }
 }

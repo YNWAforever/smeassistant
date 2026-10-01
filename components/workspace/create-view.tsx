@@ -37,6 +37,8 @@ export interface CreateViewProps {
   locations: Array<{ slug: string; name: string }>
   /** Open actions in the scoped location: template → { id, evidence detail }. Marks a goal "evidence-led". */
   openActions: Array<{ id: string; templateKey: TemplateKey; evidence: string; freshness: string }>
+  /** P4.1: shows the "Promote an offer" card when OFFERS_ENABLED is on. */
+  offersEnabled?: boolean
 }
 
 const ICONS: Record<TemplateKey, typeof MessageSquareText> = {
@@ -77,7 +79,7 @@ const SECONDARY_GOALS = GOALS.filter((goal) => !LEAD_KEYS.includes(goal.key))
 /** Lead-first everywhere, so the recommended tab and the full list agree on order. */
 const ORDERED_GOALS = [...LEAD_GOALS, ...SECONDARY_GOALS]
 
-export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, location, locationId, locations, openActions }: CreateViewProps) {
+export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, location, locationId, locations, openActions, offersEnabled = false }: CreateViewProps) {
   const isChinese = locale !== "en"
   const router = useRouter()
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -168,6 +170,13 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
         actions={<><ContextualAssistant locale={locale} surface="create" mode="live" context={{ workspaceId, locationId: locationId ?? undefined }} /><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /><Button asChild variant="outline"><Link href={withLocation(`${base}/actions`, location)}>{isChinese ? "開啟行動清單" : "Open action queue"}<ArrowRight /></Link></Button></>}
       />
       {!canCreate && <div className="permission-banner"><AlertTriangle /><div><strong>{isChinese ? "此角色或地點範圍只可查看" : "Read only for this role or location scope"}</strong><span>{isChinese ? "建立行動需要店主或負責此地點的經理。" : "Creating an action needs an owner or a manager in scope for this location."}</span></div><Badge variant="outline">{isChinese ? "只讀" : "Read only"}</Badge></div>}
+      {offersEnabled && (
+        <SectionCard className="offer-entry-card">
+          <div className="section-card-heading"><div><p className="eyebrow">{t(locale, "offers.entry.createTitle")}</p><h2>{t(locale, "offers.entry.createTitle")}</h2></div><CapabilityBadge value="Beta" /></div>
+          <p>{t(locale, "offers.entry.createDetail")}</p>
+          <Button asChild variant="outline"><Link href={`${base}/offers`}>{t(locale, "offers.title")}<ArrowRight /></Link></Button>
+        </SectionCard>
+      )}
       <Tabs value={tab} onValueChange={setTab} className="create-tabs">
         <TabsList variant="line"><TabsTrigger value="recommended">{isChinese ? "根據證據建議" : "Recommended from evidence"} <span>{recommended.length}</span></TabsTrigger><TabsTrigger value="all">{isChinese ? "所有成果" : "All outcomes"}</TabsTrigger></TabsList>
         <TabsContent value={tab}>

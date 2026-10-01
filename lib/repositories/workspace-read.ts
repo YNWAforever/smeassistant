@@ -106,9 +106,9 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
     // the blob is unconstrained jsonb and has no business reaching the client.
     async versions(workspaceId: string, actionIds: string[]): Promise<VersionRow[]> {
       if (!actionIds.length) return [];
-      const raw = await rows<Omit<VersionRow, "origin" | "agentKey" | "checked" | "guardrails" | "agentNotes" | "acceptanceCriteria"> & { meta: unknown }>(
+      const raw = await rows<Omit<VersionRow, "origin" | "agentKey" | "checked" | "guardrails" | "agentNotes" | "acceptanceCriteria" | "offer"> & { meta: unknown }>(
         `SELECT v.id, v.action_id, v.version_no, v.body, v.alt_text, v.author_type,
-        v.author_user_id, v.approval_state, v.delivery_state, v.approved_at::text, v.reviewer_comment, v.created_at::text, v.meta
+        v.author_user_id, v.approval_state, v.delivery_state, v.approved_at::text, v.reviewer_comment, v.created_at::text, v.first_exported_at::text, v.meta
         FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id
         WHERE a.workspace_id=$1 AND v.action_id=ANY($2::uuid[]) ORDER BY v.version_no DESC`, [workspaceId, actionIds]);
       return raw.map(({ meta, ...version }) => ({ ...version, ...parseVersionMeta(meta, version.author_type) }));

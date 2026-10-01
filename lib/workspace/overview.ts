@@ -33,6 +33,8 @@ export interface ActionOverview {
    * fails closed rather than offering a control that cannot succeed.
    */
   delivery: TemplateDelivery | null;
+  /** P4.1: the confirmed offer an offer action drafts from; absent for every other action. */
+  offerId?: string;
   location: { id: string | null; slug: string; name: LocalizedText };
   title: LocalizedText;
   summary: LocalizedText;
@@ -230,6 +232,7 @@ export function buildActionOverview(row: ActionRow, ctx: ActionOverviewContext):
     templateKey: row.template_key as TemplateKey,
     capability: row.capability,
     delivery: template?.delivery ?? null,
+    ...(row.offer_id ? { offerId: row.offer_id } : {}),
     location: ctx.location ?? { id: row.location_id, slug: "all", name: ALL_LOCATIONS },
     title: text(row.title, localized(row.template_key, row.template_key)),
     summary: text(row.summary, localized("", "")),

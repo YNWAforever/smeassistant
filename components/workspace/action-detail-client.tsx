@@ -37,6 +37,7 @@ import { runErrorLabel } from "@/lib/assistant/draft-failure"
 import { basisLabel, buildExportText, effortLabel, formatDateTime, metricLabel, priorityClass, priorityLabel, signed, stateLabel, withLocation } from "@/lib/workspace/format"
 import type { ActionDetail, AuditEventRow, VersionRow } from "@/lib/workspace/queries-pages"
 import type { GuardrailFlag } from "@/lib/workspace/version-meta"
+import type { ActionOfferPanel } from "@/lib/offers/pages"
 
 export interface ActionDetailClientProps {
   locale: PrototypeLocale
@@ -51,6 +52,8 @@ export interface ActionDetailClientProps {
   locations: Array<{ slug: string; name: string }>
   /** Approved image assets, offered when a social post needs an asset or explicit text-only (§3.7). */
   approvedAssets: Array<{ id: string; filename: string }>
+  /** P4.1: the offer card and per-version binding for an offer action; absent for every other action. */
+  offer?: ActionOfferPanel | null
 }
 
 type Busy = null | "run" | "save" | "approve" | "decide" | "export" | "copy" | "inputs" | "applied"
@@ -154,7 +157,31 @@ function guardrailText(flag: GuardrailFlag, locale: PrototypeLocale): string {
   }
 }
 
-export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets }: ActionDetailClientProps) {
+/** P4.1: what the draft was written from, its binding status and the fixed compliance checklist (never model-written). */
+function OfferCard({ locale, base, offer, binding, templateKey }: { locale: PrototypeLocale; base: string; offer: ActionOfferPanel; binding: ActionOfferPanel["versions"][string] | null; templateKey: string }) {
+  const facts = binding?.facts ?? null
+  const status = binding?.status ?? null
+  const banner = status && status !== "current" ? t(locale, `offers.binding.${status}`, { date: offer.endsOn ?? "" }) : null
+  const chat = templateKey === "offer-chat-message"
+  return (
+    <SectionCard className="offer-card">
+      <div className="section-card-heading"><div><p className="eyebrow">{t(locale, "offers.binding.heading")}</p>{facts && <h2>{facts.title}</h2>}</div><CapabilityBadge value="Beta" /></div>
+      {banner && <div className="conflict-state" role="alert" data-binding={status}><ShieldAlert /><div><strong>{banner}</strong>{binding?.exported && <p>{t(locale, "offers.binding.exportedNote")}</p>}</div></div>}
+      {facts && <dl className="trust-dl"><div><dt>{t(locale, "offers.facts.price")}</dt><dd>{facts.priceDisplay ?? t(locale, "offers.row.noPrice")}</dd></div><div><dt>{t(locale, "offers.facts.validity")}</dt><dd>{facts.validityDisplay}</dd></div>{facts.terms && <div><dt>{t(locale, "offers.facts.terms")}</dt><dd>{facts.terms}</dd></div>}</dl>}
+      {offer.offerId && <p><Link href={`${base}/offers/${offer.offerId}`}>{t(locale, "offers.binding.openOffer")}</Link></p>}
+      <p className="eyebrow">{t(locale, "offers.checklist.heading")}</p>
+      <ul className="evidence-list" data-testid="offer-checklist">
+        <li>{t(locale, "offers.checklist.facts")}</li>
+        <li>{t(locale, "offers.checklist.notSent")}</li>
+        {chat && <li>{t(locale, "offers.checklist.chat")}</li>}
+        {chat && <li>{t(locale, offer.market === "tw" ? "offers.checklist.chatTw" : "offers.checklist.chatHk")}</li>}
+        {templateKey === "offer-gbp-post" && <li>{t(locale, "offers.checklist.google")}</li>}
+      </ul>
+    </SectionCard>
+  )
+}
+
+export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null }: ActionDetailClientProps) {
   const isChinese = locale !== "en"
   const router = useRouter()
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -249,7 +276,13 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   const canEdit = hydrated && !offline && inScope && effectiveRole !== "viewer" && busy === null
   const canApprove = hydrated && !offline && inScope && effectiveRole !== "viewer" && busy === null && selectedVersion !== null
   const isApprovedCurrent = approval === "approved" && !dirty
-  const canApproveCurrent = canApprove && !dirty && approval !== "rejected" && approval !== "superseded" && approval !== "approved"
+  // P4.1 (spec §5.4): a draft whose offer changed, ended or was archived can no
+  // longer be approved or first-exported; an already-exported one may still be
+  // copied again. The server refuses the same (lib/offers/binding-guard.ts).
+  const offerBinding = offer && selectedVersion ? offer.versions[selectedVersion.id] ?? { status: "unbound" as const, exported: false, facts: null } : null
+  const offerBlocksApprove = offerBinding !== null && offerBinding.status !== "current"
+  const offerBlocksExport = offerBlocksApprove && !offerBinding?.exported
+  const canApproveCurrent = canApprove && !offerBlocksApprove && !dirty && approval !== "rejected" && approval !== "superseded" && approval !== "approved"
   const latestRun = runs[0]
   const runStateKey = latestRun?.state
   const neededKeys = factsNeeded ?? (action.actionState === "needs_input" ? action.missingInputs : [])
@@ -681,7 +714,9 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
               {showInputForm && (
                 <form className="field-stack input-form" onSubmit={(event) => { event.preventDefault(); void submitInputs() }} aria-label={isChinese ? "所需資料" : "Required inputs"}>
                   <p className="limitation-note"><AlertTriangle /> {isChinese ? "Agent 不會猜測事實。請提供以下資料，再重新生成。" : "The agent never guesses facts. Provide the inputs below, then generate again."}</p>
-                  {neededKeys.map((key) => key === "asset_or_text_only" ? (
+                  {neededKeys.map((key) => key === "offer_confirmed" ? (
+                    <div key={key} className="field-stack"><Label>{inputs[key] ?? key}</Label><Link href={offer?.offerId ? `${base}/offers/${offer.offerId}` : `${base}/offers`}>{t(locale, "offers.input.confirmLink")}</Link></div>
+                  ) : key === "asset_or_text_only" ? (
                     <div key={key} className="field-stack"><Label htmlFor={`input-${key}`}>{inputs[key] ?? key}</Label>
                       <Select disabled={!hydrated} value={inputValues[key] ?? ""} onValueChange={(value) => setInputValues((prev) => ({ ...prev, [key]: value }))}>
                         <SelectTrigger id={`input-${key}`} aria-label={inputs[key] ?? key}><SelectValue placeholder={isChinese ? "選擇已核准素材或純文字" : "Choose an approved asset or text only"} /></SelectTrigger>
@@ -772,10 +807,11 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                   <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" className="text-destructive" disabled={!canApprove || dirty || approval === "rejected"}><X /> {isChinese ? "拒絕草稿" : "Reject draft"}</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{isChinese ? "拒絕這個版本？" : "Reject this version?"}</AlertDialogTitle><AlertDialogDescription>{isChinese ? "版本會保留在審計紀錄，但不能匯出；其後可另存新版本。" : "The version remains in history but cannot be exported; a new version can be saved later."}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>{isChinese ? "取消" : "Cancel"}</AlertDialogCancel><AlertDialogAction onClick={() => void setDecision("rejected")}>{isChinese ? "拒絕此版本" : "Reject version"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
                 </div>}
               </SectionCard>
+              {offer && <OfferCard locale={locale} base={base} offer={offer} binding={offerBinding} templateKey={action.templateKey} />}
               <SectionCard className="delivery-card"><div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "送出" : "Delivery"}</p><h2>{social ? (isChinese ? "匯出至 Instagram" : "Export for Instagram") : (isChinese ? "匯出已核准版本" : "Export the approved version")}</h2></div><CapabilityBadge value="Requires connection" /></div><p>{isChinese ? "目前沒有已驗證的直接發佈連接器。只有指定版本獲核准並完成匯出，才計 1 次核准後交付。" : "No verified direct-publishing connector is present. One approved delivery is counted only after exact-version approval and export."}</p>
                 {allowanceBlocked && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "本月核准後交付額已用完" : "This month's approved-delivery allowance is used up"}</strong><p>{isChinese ? "版本仍已核准並保留；升級方案或等待下月額度後即可匯出。" : "The version stays approved; upgrade the plan or wait for next month's allowance to export it."}</p><Button asChild size="sm" variant="outline"><Link href={`${base}/settings/billing`}>{isChinese ? "查看帳單與方案" : "View billing and plans"}</Link></Button></div></div>}
-                <Button className="w-full" variant={isApprovedCurrent ? "default" : "outline"} disabled={!isApprovedCurrent || !canApprove} onClick={() => void deliver("export")}>{busy === "export" ? <LoaderCircle className="animate-spin" /> : delivery === "exported" ? <Check /> : <Download />} {delivery === "exported" ? (isChinese ? "再次匯出（不重複計算）" : "Export again (not counted twice)") : (isChinese ? "匯出已核准版本" : "Export approved version")}</Button>
-                <Button className="w-full" variant="outline" disabled={!isApprovedCurrent || !canApprove} onClick={() => void deliver("copy")}>{busy === "copy" ? <LoaderCircle className="animate-spin" /> : <Copy />} {isChinese ? "複製文字" : "Copy text"}</Button>
+                <Button className="w-full" variant={isApprovedCurrent ? "default" : "outline"} disabled={!isApprovedCurrent || !canApprove || offerBlocksExport} onClick={() => void deliver("export")}>{busy === "export" ? <LoaderCircle className="animate-spin" /> : delivery === "exported" ? <Check /> : <Download />} {delivery === "exported" ? (isChinese ? "再次匯出（不重複計算）" : "Export again (not counted twice)") : (isChinese ? "匯出已核准版本" : "Export approved version")}</Button>
+                <Button className="w-full" variant="outline" disabled={!isApprovedCurrent || !canApprove || offerBlocksExport} onClick={() => void deliver("copy")}>{busy === "copy" ? <LoaderCircle className="animate-spin" /> : <Copy />} {isChinese ? "複製文字" : "Copy text"}</Button>
                 <Button className="w-full" variant="ghost" disabled><Send /> {isChinese ? "直接發佈 · 需要連接" : "Publish directly · Connection required"}</Button>
               </SectionCard>
             </aside>
@@ -815,7 +851,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
         </TabsContent>
       </Tabs>
 
-      <div className="sticky-approval-bar"><div><span className="sticky-status"><FileClock /></span><span><strong>{versionName} · {dirty ? (isChinese ? "未儲存" : "Unsaved") : approvalText(approval)}</strong><small>{effectiveRole === "viewer" ? (isChinese ? "檢視者只讀" : "Viewer access is read only") : (isChinese ? "核准不會自動發佈；匯出後才計用量" : "Approval does not publish; usage counts after export")}</small></span></div><div><Button variant="outline" onClick={() => void saveDraft()} disabled={!canEdit || !dirty}><Save /> {isChinese ? "儲存" : "Save"}</Button><Button onClick={() => void (isApprovedCurrent ? deliver("export") : approveDraft())} disabled={isApprovedCurrent ? !canApprove : !canApproveCurrent}>{isApprovedCurrent ? <><Download /> {isChinese ? "匯出" : "Export"}</> : <><BadgeCheck /> {isChinese ? "核准" : "Approve"}</>}</Button></div></div>
+      <div className="sticky-approval-bar"><div><span className="sticky-status"><FileClock /></span><span><strong>{versionName} · {dirty ? (isChinese ? "未儲存" : "Unsaved") : approvalText(approval)}</strong><small>{effectiveRole === "viewer" ? (isChinese ? "檢視者只讀" : "Viewer access is read only") : (isChinese ? "核准不會自動發佈；匯出後才計用量" : "Approval does not publish; usage counts after export")}</small></span></div><div><Button variant="outline" onClick={() => void saveDraft()} disabled={!canEdit || !dirty}><Save /> {isChinese ? "儲存" : "Save"}</Button><Button onClick={() => void (isApprovedCurrent ? deliver("export") : approveDraft())} disabled={isApprovedCurrent ? !canApprove || offerBlocksExport : !canApproveCurrent}>{isApprovedCurrent ? <><Download /> {isChinese ? "匯出" : "Export"}</> : <><BadgeCheck /> {isChinese ? "核准" : "Approve"}</>}</Button></div></div>
     </div>
   )
 }

@@ -52,6 +52,8 @@ function fakeRepo(initial: OfferRow | null = null): OfferRepository & { rows: Ma
       return next;
     },
     draftCounts: async () => new Map(),
+    offerActions: async () => [],
+    runOfferFacts: async () => [],
   };
 }
 

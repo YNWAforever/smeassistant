@@ -17,6 +17,20 @@ export interface OfferRepository {
   archive(workspaceId: string, id: string): Promise<OfferRow | null>;
   /** Open draft actions per offer, for the list page. */
   draftCounts(workspaceId: string): Promise<Map<string, number>>;
+  /** Open offer actions with their latest run and version state, for the offer page. */
+  offerActions(workspaceId: string, offerId: string): Promise<OfferActionRow[]>;
+  /** The offer facts each run of an action was given, by offer revision (runs.ts records them). */
+  runOfferFacts(workspaceId: string, actionId: string): Promise<Array<{ revision: number; facts: unknown }>>;
+}
+
+export interface OfferActionRow {
+  id: string;
+  template_key: string;
+  action_state: string;
+  run_state: string | null;
+  latest_version_id: string | null;
+  approval_state: string | null;
+  delivery_state: string | null;
 }
 
 export function offerRepository(client?: Pick<Pool, "query">): OfferRepository {
@@ -81,6 +95,26 @@ export function offerRepository(client?: Pick<Pool, "query">): OfferRepository {
         [workspaceId],
       )).rows;
       return new Map(rows.map((row) => [row.offer_id, row.n]));
+    },
+    async offerActions(workspaceId, offerId) {
+      return (await db().query<OfferActionRow>(
+        `SELECT a.id,a.template_key,a.action_state,
+           (SELECT r.state FROM action_runs r WHERE r.action_id=a.id ORDER BY r.created_at DESC LIMIT 1) AS run_state,
+           v.id AS latest_version_id,v.approval_state,v.delivery_state
+         FROM actions a
+         LEFT JOIN LATERAL (SELECT id,approval_state,delivery_state FROM output_versions WHERE action_id=a.id ORDER BY version_no DESC LIMIT 1) v ON true
+         WHERE a.workspace_id=$1 AND a.offer_id=$2 AND a.action_state NOT IN ('completed','dismissed','cancelled','expired')
+         ORDER BY a.created_at`,
+        [workspaceId, offerId],
+      )).rows;
+    },
+    async runOfferFacts(workspaceId, actionId) {
+      return (await db().query<{ revision: number; facts: unknown }>(
+        `SELECT DISTINCT ON ((input->'offer'->>'revision')::int) (input->'offer'->>'revision')::int AS revision,input->'offer'->'facts' AS facts
+         FROM action_runs WHERE workspace_id=$1 AND action_id=$2 AND input->'offer'->'facts' IS NOT NULL
+         ORDER BY (input->'offer'->>'revision')::int, created_at DESC`,
+        [workspaceId, actionId],
+      )).rows;
     },
   };
 }

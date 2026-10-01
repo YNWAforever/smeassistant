@@ -5,6 +5,7 @@ import { ActionDetailView } from "@/components/workspace/action-detail-view";
 import { assetLocationScope, assetUsableByAction, listAssets } from "@/lib/workspace/assets";
 import { inScopeFor, loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 import { getAction, getActivity } from "@/lib/workspace/queries-pages";
+import { actionOfferPanel } from "@/lib/offers/pages";
 
 export const dynamic = "force-dynamic";
 
@@ -25,9 +26,12 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
   if (!detail) notFound();
 
   const entityIds = new Set<string>([actionId, ...detail.versions.map((v) => v.id), ...detail.runs.map((r) => r.id)]);
-  const [activity, assets] = await Promise.all([
+  const [activity, assets, offer] = await Promise.all([
     getActivity(page.ctx, { limit: 200 }),
     listAssets(page.ctx.workspace.id, page.ctx.locations, { signedUrls: false }).catch(() => []),
+    // P4.1: independent of OFFERS_ENABLED -- turning the flag off hides the
+    // offer pages, never the binding state of an offer action already open.
+    actionOfferPanel(page.ctx, detail),
   ]);
   const auditRows = activity.filter((row) => row.entity_id !== null && entityIds.has(row.entity_id));
   // P2.3 item 15: the picker offered every approved image in the workspace, so
@@ -54,6 +58,7 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
       detail={detail}
       auditRows={auditRows}
       approvedAssets={approvedAssets}
+      offer={offer}
     />
   );
 }

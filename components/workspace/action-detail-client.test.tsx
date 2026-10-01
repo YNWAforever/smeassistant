@@ -592,3 +592,68 @@ describe("ownerInputPatch", () => {
     });
   });
 });
+
+describe("offer actions (P4.1)", () => {
+  afterEach(() => cleanup());
+  const OFFER_ID = "00000000-0000-4000-8000-0000000000a1";
+  const facts = { id: OFFER_ID, revision: 1, title: "Weekday lunch set", details: "Soup and main", terms: null, priceDisplay: "HK$88", validityDisplay: "2026-10-05 – 2026-10-31", endsOn: "2026-10-31", openEnded: false, approvedClaims: [], channel: "whatsapp_message" as const, hasAsset: false };
+  type Panel = NonNullable<Parameters<typeof ActionDetailClient>[0]["offer"]>;
+  function mountOffer(templateKey: TemplateKey, opts: { status: Panel["versions"][string]["status"]; exported?: boolean; approval?: "draft" | "approved"; market?: "hk" | "tw"; mutate?: (value: ActionDetail) => void }) {
+    const value = detail(templateKey);
+    value.action.offerId = OFFER_ID;
+    value.versions = [versionRow({ id: "ver-1", version_no: 1, approval_state: opts.approval ?? "draft", delivery_state: opts.exported ? "exported" : opts.approval === "approved" ? "export_ready" : "not_requested" })];
+    opts.mutate?.(value);
+    const offer: Panel = { offerId: OFFER_ID, channel: "whatsapp_message", market: opts.market ?? "hk", endsOn: "2026-10-31", versions: { "ver-1": { status: opts.status, exported: opts.exported ?? false, facts } } };
+    renderLive(
+      <ActionDetailClient locale="en" workspaceSlug="kam-man-house" workspaceId="ws-1" timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam"
+        detail={value} auditRows={[]} locations={[{ slug: "yik-yam", name: "Yik Yam" }]} approvedAssets={[]} offer={offer} />,
+    );
+  }
+  const offers = getMessages("en").offers;
+
+  it("shows the changed banner and disables Approve for a stale draft", () => {
+    mountOffer("offer-chat-message", { status: "changed" });
+    expect(screen.getAllByText(offers.binding.changed).length).toBeGreaterThan(0);
+    for (const button of screen.getAllByRole("button", { name: /^Approve/ })) expect(button).toHaveProperty("disabled", true);
+  });
+
+  it("keeps Copy enabled for an already-exported version of a changed offer", () => {
+    mountOffer("offer-chat-message", { status: "changed", approval: "approved", exported: true });
+    expect(screen.getByText(offers.binding.exportedNote)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Copy text/ })).toHaveProperty("disabled", false);
+  });
+
+  it("disables first export of an approved version whose offer has ended", () => {
+    mountOffer("offer-chat-message", { status: "ended", approval: "approved" });
+    expect(screen.getByRole("button", { name: /Copy text/ })).toHaveProperty("disabled", true);
+  });
+
+  it("shows the facts the draft was written from, and the market's privacy note for chat drafts only", () => {
+    mountOffer("offer-chat-message", { status: "current" });
+    expect(screen.getAllByText("HK$88").length).toBeGreaterThan(0);
+    const checklist = screen.getByTestId("offer-checklist").textContent ?? "";
+    expect(checklist).toContain(offers.checklist.chatHk);
+    expect(checklist).not.toContain(offers.checklist.chatTw);
+    cleanup();
+    mountOffer("offer-chat-message", { status: "current", market: "tw" });
+    expect(screen.getByTestId("offer-checklist").textContent).toContain(offers.checklist.chatTw);
+    cleanup();
+    mountOffer("offer-gbp-post", { status: "current" });
+    const gbp = screen.getByTestId("offer-checklist").textContent ?? "";
+    expect(gbp).toContain(offers.checklist.google);
+    expect(gbp).not.toContain(offers.checklist.chatHk);
+  });
+
+  it("links to the offer instead of a text box when the offer must be confirmed", () => {
+    mountOffer("offer-gbp-post", { status: "unconfirmed", mutate: (value) => { value.action.actionState = "needs_input"; value.action.missingInputs = ["offer_confirmed"]; } });
+    const link = screen.getByRole("link", { name: offers.input.confirmLink });
+    expect(link.getAttribute("href")).toBe(`/en/owner/kam-man-house/offers/${OFFER_ID}`);
+    expect(document.getElementById("input-offer_confirmed")).toBeNull();
+  });
+
+  it("renders the offer guardrail codes as text", () => {
+    mountOffer("offer-chat-message", { status: "current", mutate: (value) => { value.versions[0] = { ...value.versions[0], checked: true, guardrails: [{ code: "wrong_market_currency" }, { code: "urgency_claim" }] }; } });
+    expect(screen.getByText(/other market's currency/)).toBeTruthy();
+    expect(screen.getByText(/no end date/)).toBeTruthy();
+  });
+});

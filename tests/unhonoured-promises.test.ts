@@ -99,6 +99,27 @@ interface Promised {
 
 const PROMISES: readonly Promised[] = [
   {
+    // P4.1 offer drafts are text the owner copies (delivery export_copy; the
+    // workflow contract test forbids publishing). There is no WhatsApp, LINE,
+    // Google post or Instagram sender, so copy must never say an offer was
+    // sent or posted for the owner. The detector trips once backend code calls
+    // a messaging or posting API.
+    capability: "a sender that posts or messages an offer (WhatsApp, LINE, Google or Instagram write API)",
+    implemented: () => backendMatches(/graph\.facebook\.com\/[^"'`\s]*\/messages|api\.line\.me\/v2\/bot\/message|localPosts|graph\.facebook\.com\/[^"'`\s]*\/media_publish/i),
+    banned: [
+      "we'll send it to your customers",
+      "we will send it to your customers",
+      "sent on whatsapp",
+      "sent on line",
+      "posted to google",
+      "posted to instagram",
+      "已發送到 whatsapp",
+      "已傳送到 line",
+      "已發佈到 google",
+      "已發布到 google",
+    ],
+  },
+  {
     // The scan-scheduler-dispatch feature (docs/superpowers/plans/2026-09-13-scan-scheduler-dispatch.md)
     // added a real cron dispatcher that reads due `scan_schedules` rows --
     // but only to remind the owner; it deliberately never auto-starts a scan

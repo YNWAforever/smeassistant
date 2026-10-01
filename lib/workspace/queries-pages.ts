@@ -24,6 +24,7 @@ import { reapStrandedRuns } from "@/lib/workspace/run-reaper";
 import { rowToSnapshot, type ScanDiffRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
 import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
 import type { MetricKey } from "@/lib/workspace/metrics";
+import type { OfferBinding } from "@/lib/offers/types";
 
 /**
  * Page read models for the workspace (CLAUDE.md Phase 3 item 3, §3.5.5).
@@ -128,6 +129,10 @@ export interface VersionRow {
   guardrails: GuardrailFlag[];
   agentNotes: string[];
   acceptanceCriteria: string[];
+  /** P4.1: the offer revision this version was written from (meta.offer); optional so existing fixtures keep compiling. */
+  offer?: OfferBinding | null;
+  /** Selected with the version; optional so existing fixtures keep compiling. */
+  first_exported_at?: string | null;
 }
 
 export interface RunRow {

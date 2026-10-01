@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { CreateView } from "@/components/workspace/create-view";
+import { offersEnabled } from "@/lib/offers/flag";
 import { resolveText } from "@/lib/domain";
 import { inScopeFor, loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 import { listActions } from "@/lib/workspace/queries-pages";
@@ -38,6 +39,7 @@ export default async function CreateRoute(props: OwnerPageProps) {
       locationId={location?.id ?? null}
       locations={page.locations}
       openActions={openActions}
+      offersEnabled={offersEnabled()}
     />
   );
 }

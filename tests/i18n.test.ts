@@ -29,7 +29,9 @@ const UPSTREAM_NAMESPACES = ["scanner", "scanning", "report", "share", "legal"];
 // yet" label shown while billing is closed.
 // "mail" (P3.5c) labels the one-click unsubscribe page: the title, the
 // confirm button, and the done/invalid outcomes.
-const APP_NAMESPACES = ["applied", "verified", "budget", "draftFailure", "problems", "pause", "commercial", "mail"];
+// "offers" (P4.1) carries the offer pages, delivery notice and offer-draft
+// banners, with the same zh-HK / zh-TW register split (批准/核准, 相片/照片).
+const APP_NAMESPACES = ["applied", "verified", "budget", "draftFailure", "problems", "pause", "commercial", "mail", "offers"];
 const NAMESPACES = [...UPSTREAM_NAMESPACES, ...APP_NAMESPACES];
 
 function readBundle(locale: string): Record<string, unknown> {
