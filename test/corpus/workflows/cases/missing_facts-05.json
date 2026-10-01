@@ -1,0 +1,31 @@
+{
+  "locale": "en",
+  "market": "hk",
+  "provided": {},
+  "brand": {},
+  "id": "missing-facts-offer-draft",
+  "category": "missing_facts",
+  "workflow": "offer-instagram-post",
+  "offer": {
+    "title": "Lunch set",
+    "details": "Two-course lunch set with a drink.",
+    "terms": "Weekdays only.",
+    "price_amount": 1280,
+    "currency": "HKD",
+    "valid_from": "2026-10-01",
+    "valid_until": "2026-10-31",
+    "claims": [],
+    "prohibited_terms": [],
+    "status": "draft",
+    "expired": false,
+    "revision": 1
+  },
+  "cannedOutputs": [],
+  "expect": {
+    "llmCalls": 0,
+    "version": false,
+    "factsNeeded": [
+      "offer_id"
+    ]
+  }
+}

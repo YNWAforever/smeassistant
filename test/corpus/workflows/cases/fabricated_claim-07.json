@@ -1,0 +1,33 @@
+{
+  "locale": "en",
+  "market": "hk",
+  "provided": {},
+  "brand": {},
+  "id": "fabricated-claim-offer-dates",
+  "category": "fabricated_claim",
+  "workflow": "offer-google-post",
+  "offer": {
+    "title": "Lunch set",
+    "details": "Two-course lunch set with a drink.",
+    "terms": "Weekdays only.",
+    "price_amount": 1280,
+    "currency": "HKD",
+    "valid_from": "2026-10-01",
+    "valid_until": "2026-10-31",
+    "claims": [],
+    "prohibited_terms": [],
+    "status": "confirmed",
+    "expired": false,
+    "revision": 1
+  },
+  "cannedOutputs": [
+    "{\"title\": \"Draft\", \"body\": \"Lunch set for HK$1,280 with a drink. Weekdays only. Visit us today.\", \"acceptance_criteria\": [\"Owner checks the price, dates and terms\"], \"warnings\": [], \"facts_used\": [], \"facts_needed\": []}"
+  ],
+  "expect": {
+    "llmCalls": 1,
+    "version": true,
+    "warningsInclude": [
+      "offer_dates_missing"
+    ]
+  }
+}

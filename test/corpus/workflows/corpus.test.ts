@@ -15,9 +15,11 @@ describe("workflow regression corpus", () => {
     }
   });
 
-  it("every Live workflow with an agent has a case", () => {
+  it("every Live workflow with an agent, and both offer workflows, has a case", () => {
     const covered = new Set(corpus.map((c) => c.workflow));
-    const uncovered = TEMPLATES.filter((t) => t.capability === "Live" && t.agentKey && !covered.has(t.key)).map((t) => t.key);
+    const uncovered = TEMPLATES.filter(
+      (t) => ((t.capability === "Live" && t.agentKey) || t.key.startsWith("offer-")) && !covered.has(t.key),
+    ).map((t) => t.key);
     expect(uncovered).toEqual([]);
   });
 

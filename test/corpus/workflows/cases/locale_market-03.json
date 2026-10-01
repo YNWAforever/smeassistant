@@ -1,0 +1,33 @@
+{
+  "locale": "zh-TW",
+  "market": "tw",
+  "provided": {},
+  "brand": {},
+  "id": "locale-market-offer-tw-twd",
+  "category": "locale_market",
+  "workflow": "offer-instagram-post",
+  "offer": {
+    "title": "午間套餐",
+    "details": "兩道菜午間套餐，附飲品。",
+    "terms": "僅限平日。",
+    "price_amount": 2800,
+    "currency": "TWD",
+    "valid_from": "2026-10-01",
+    "valid_until": "2026-10-31",
+    "claims": [],
+    "prohibited_terms": [],
+    "status": "confirmed",
+    "expired": false,
+    "revision": 1
+  },
+  "cannedOutputs": [
+    "{\"title\": \"草稿\", \"body\": \"午間套餐 NT$2,800，優惠期間 2026-10-01 至 2026-10-31，僅限平日。\", \"acceptance_criteria\": [\"Owner checks the price, dates and terms\"], \"warnings\": [], \"facts_used\": [], \"facts_needed\": []}"
+  ],
+  "expect": {
+    "llmCalls": 1,
+    "version": true,
+    "promptIncludes": [
+      "\"currency\": \"TWD\""
+    ]
+  }
+}
