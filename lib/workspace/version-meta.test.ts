@@ -88,4 +88,11 @@ describe("parseVersionMeta", () => {
     expect(parseVersionMeta({ acceptance_criteria: "not-an-array" }, "agent").acceptanceCriteria).toEqual([]);
     expect(parseVersionMeta({ acceptance_criteria: [1, null, "keep this one"] }, "agent").acceptanceCriteria).toEqual(["keep this one"]);
   });
+
+  it("classifies the P4.1 offer checks as guardrails, not agent notes", () => {
+    const codes = ["wrong_market_currency", "unconfirmed_discount", "urgency_claim", "health_claim", "hashtags_present"];
+    const parsed = parseVersionMeta({ warnings: codes }, "agent");
+    expect(parsed.guardrails).toEqual(codes.map((code) => ({ code })));
+    expect(parsed.agentNotes).toEqual([]);
+  });
 });

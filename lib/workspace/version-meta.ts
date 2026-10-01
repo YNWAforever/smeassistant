@@ -31,7 +31,13 @@ export type GuardrailCode =
   /** P4.4 shared check: a link the owner never supplied. */
   | "unexpected_link"
   /** P4.4 shared check: a price or superlative absent from confirmed facts. */
-  | "unconfirmed_claim";
+  | "unconfirmed_claim"
+  /** P4.1 offer checks (lib/agents/guardrails.ts). */
+  | "wrong_market_currency"
+  | "unconfirmed_discount"
+  | "urgency_claim"
+  | "health_claim"
+  | "hashtags_present";
 
 export interface GuardrailFlag {
   code: GuardrailCode;
@@ -89,6 +95,9 @@ function classify(warning: string): GuardrailFlag | null {
   if (warning === "jsonld_mismatch") return { code: "jsonld_mismatch" };
   if (warning === "unexpected_link") return { code: "unexpected_link" };
   if (warning === "unconfirmed_claim") return { code: "unconfirmed_claim" };
+  if (warning === "wrong_market_currency" || warning === "unconfirmed_discount" || warning === "urgency_claim" || warning === "health_claim" || warning === "hashtags_present") {
+    return { code: warning };
+  }
   const over = /^(body|title|bio)_over_(\d+)_chars$/.exec(warning);
   if (over) {
     const code: GuardrailCode = over[1] === "title" ? "title_too_long" : over[1] === "bio" ? "bio_too_long" : "length";

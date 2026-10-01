@@ -102,9 +102,18 @@ function confirmedText(ctx: AgentContext): string {
     ...Object.values(ctx.providedInputs).map(asText),
     ...Object.values(ctx.brand.facts ?? {}).map(asText),
     ...ctx.brand.approvedClaims,
+    // P4.1: the owner confirmed these offer facts, so the offer's own price,
+    // dates, claims and link are not "unconfirmed". Absent for every other agent.
+    ...offerConfirmedText(ctx),
   ]
     .join("\n")
     .toLowerCase();
+}
+
+function offerConfirmedText(ctx: AgentContext): string[] {
+  const offer = ctx.offer;
+  if (!offer) return [];
+  return [offer.title, offer.details, offer.terms ?? "", offer.priceDisplay ?? "", offer.validityDisplay, ...offer.approvedClaims];
 }
 
 /**
@@ -164,6 +173,62 @@ export function unconfirmedClaims(ctx: AgentContext, output: AgentOutput): strin
 /** The checks every agent runs, whatever its own acceptance adds (composed in `defineAgent`). */
 export function sharedAcceptance(ctx: AgentContext, output: AgentOutput): string[] {
   return [...prohibitedTermHits(ctx, output), ...unexpectedLinks(ctx, output), ...unconfirmedClaims(ctx, output)];
+}
+
+// ---------------------------------------------------------------------------
+// P4.1 offer checks (docs/superpowers/specs/2026-10-01-offer-promotion-copy-design.md §4).
+// Warnings for the approver, never blocks: the owner's review is the control,
+// and each list below is finite.
+// ---------------------------------------------------------------------------
+
+const OTHER_MARKET_CURRENCY: Record<AgentContext["market"], RegExp> = {
+  // 元 after a digit is Taiwan usage; Hong Kong copy writes HK$ or 蚊.
+  hk: /NT\$|\bTWD\b|新台幣|台幣|\d\s?元/i,
+  tw: /HK\$|\bHKD\b|港幣|港元|\d\s?蚊/i,
+};
+
+/** A price written in the other market's currency. */
+export function wrongMarketCurrency(ctx: AgentContext, output: AgentOutput): string[] {
+  return OTHER_MARKET_CURRENCY[ctx.market].test(draftText(output)) ? ["wrong_market_currency"] : [];
+}
+
+function offerOwnText(ctx: AgentContext): string {
+  return `${ctx.offer?.details ?? ""}\n${ctx.offer?.terms ?? ""}`.toLowerCase();
+}
+
+const DISCOUNT = /\d+(?:\.\d+)?\s?%(?:\s?off\b)?|\d+(?:\.\d)?\s?折|半價|half[- ]price|\bsave\s+(?:HK\$|NT\$|\$)?\s?\d[\d,.]*|(?:HK\$|NT\$|\$)\s?\d[\d,.]*\s+off\b|\d+\s+off\b|買一送一|buy one,? get one|\bfree\b|免費/gi;
+
+/** A discount, saving or free item the offer's own details and terms never state. */
+export function unconfirmedDiscount(ctx: AgentContext, output: AgentOutput): string[] {
+  const own = offerOwnText(ctx);
+  const hit = (draftText(output).match(DISCOUNT) ?? []).some((match) => !own.includes(match.toLowerCase()));
+  return hit ? ["unconfirmed_discount"] : [];
+}
+
+const URGENCY = /limited[- ]time|last chance|while (?:stocks?|supplies) last|hurry|ends soon|don't miss out|限時|最後機會|售完即止|賣完即止|數量有限|先到先得|快將結束|即將結束|錯過不再/gi;
+
+/** Urgency or scarcity wording on an offer the owner said has no end date (spec D7). */
+export function urgencyClaim(ctx: AgentContext, output: AgentOutput): string[] {
+  if (!ctx.offer?.openEnded) return [];
+  const terms = (ctx.offer.terms ?? "").toLowerCase();
+  const hit = (draftText(output).match(URGENCY) ?? []).some((match) => !terms.includes(match.toLowerCase()));
+  return hit ? ["urgency_claim"] : [];
+}
+
+// Health and efficacy wording is the highest-risk promotion copy in both
+// markets (HK Cap. 231; TW 食品安全衛生管理法 Art. 28). A reminder, not legal advice.
+const HEALTH = /治療|療效|減肥|瘦身|排毒|預防|抗癌|\bcures?\b|\btreats?\b|\bdetox\w*|weight[- ]loss|slimming/gi;
+
+/** A health or efficacy claim that is not in the offer or brand facts. */
+export function healthClaim(ctx: AgentContext, output: AgentOutput): string[] {
+  const confirmed = confirmedText(ctx);
+  const hit = (draftText(output).match(HEALTH) ?? []).some((match) => !confirmed.includes(match.toLowerCase()));
+  return hit ? ["health_claim"] : [];
+}
+
+/** Hashtags in a channel that does not use them (a Google post, a chat message). */
+export function hashtagsPresent(output: AgentOutput): string[] {
+  return /#[\p{L}\p{N}_]/u.test(output.body) ? ["hashtags_present"] : [];
 }
 
 export function baseAcceptance(ctx: AgentContext, output: AgentOutput): string[] {

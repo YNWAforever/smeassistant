@@ -408,3 +408,136 @@ describe("shared acceptance (P4.4)", () => {
     }
   });
 });
+
+describe("offer_copy (P4.1)", () => {
+  const offerAction: ActionOverview = { ...action, templateKey: "offer-chat-message", capability: "Beta", requiredInputs: ["offer_confirmed", "brand_voice"] };
+  const hkOffer: AgentContext = {
+    ...fixedCtx,
+    action: offerAction,
+    offer: {
+      id: "00000000-0000-4000-8000-0000000000a1",
+      revision: 1,
+      title: "平日午市套餐",
+      details: "例湯、主菜及飲品",
+      terms: "星期一至五 12:00–15:00",
+      priceDisplay: "HK$88",
+      validityDisplay: "2026-10-05 – 2026-10-31",
+      endsOn: "2026-10-31",
+      openEnded: false,
+      approvedClaims: ["自家製例湯"],
+      channel: "whatsapp_message",
+      hasAsset: false,
+    },
+  };
+  // A Taiwan workspace's own facts: fixedCtx's are Hong Kong's (a WhatsApp booking line).
+  const twOffer: AgentContext = {
+    ...fixedCtx,
+    locale: "zh-TW",
+    market: "tw",
+    brand: { ...fixedCtx.brand, facts: { opening_hours: "11:00–21:00 daily" } },
+    providedInputs: { brand_voice: "warm, direct" },
+    action: offerAction,
+    offer: {
+      id: "00000000-0000-4000-8000-0000000000a2",
+      revision: 2,
+      title: "下午茶組合",
+      details: "蛋糕與咖啡",
+      terms: null,
+      priceDisplay: null,
+      validityDisplay: "自 2026-10-05 起，未設結束日期",
+      endsOn: null,
+      openEnded: true,
+      approvedClaims: [],
+      channel: "line_message",
+      hasAsset: false,
+    },
+  };
+  const draft = (body: string, extra: Partial<Parameters<typeof AGENTS.offer_copy.acceptance>[1]> = {}) => ({ title: "", body, acceptance_criteria: [], warnings: [], facts_used: [], facts_needed: [], ...extra });
+  const check = (ctx: AgentContext, body: string, extra = {}) => AGENTS.offer_copy.acceptance(ctx, draft(body, extra));
+  const withOffer = (ctx: AgentContext, patch: Partial<NonNullable<AgentContext["offer"]>>): AgentContext => ({ ...ctx, offer: { ...ctx.offer!, ...patch } });
+
+  it("hk zh-HK priced offer prompt matches its snapshot", () => {
+    expect(AGENTS.offer_copy.buildPrompt(hkOffer)).toMatchSnapshot();
+  });
+  it("tw zh-TW open-ended LINE prompt matches its snapshot", () => {
+    expect(AGENTS.offer_copy.buildPrompt(twOffer)).toMatchSnapshot();
+  });
+
+  it("names the market currency and chat channel", () => {
+    const hk = AGENTS.offer_copy.buildPrompt(hkOffer);
+    expect(hk).toContain("HK$88");
+    expect(hk).toContain("WhatsApp");
+    expect(hk).not.toContain("NT$");
+    expect(hk).not.toContain("LINE");
+    const tw = AGENTS.offer_copy.buildPrompt(twOffer);
+    expect(tw).toContain("LINE");
+    expect(tw).toContain("Taiwan");
+    expect(tw).not.toContain("WhatsApp");
+    expect(tw).not.toContain("HK$");
+  });
+
+  it("keeps the offer text inside the untrusted fence", () => {
+    const prompt = AGENTS.offer_copy.buildPrompt(hkOffer);
+    const start = prompt.indexOf("-----BEGIN UNTRUSTED EVIDENCE-----");
+    const end = prompt.indexOf("-----END UNTRUSTED EVIDENCE-----");
+    const details = prompt.indexOf("例湯、主菜及飲品");
+    expect(details).toBeGreaterThan(start);
+    expect(details).toBeLessThan(end);
+  });
+
+  it("forbids urgency wording only for an open-ended offer", () => {
+    expect(AGENTS.offer_copy.buildPrompt(twOffer)).toContain("The offer has no end date");
+    expect(AGENTS.offer_copy.buildPrompt(hkOffer)).not.toContain("The offer has no end date");
+  });
+
+  it("asks for the offer when none is in context", () => {
+    expect(AGENTS.offer_copy.buildPrompt({ ...fixedCtx, action: offerAction })).toContain('facts_needed: ["offer_confirmed"]');
+  });
+
+  it("flags the other market's currency", () => {
+    expect(check(hkOffer, "只需 NT$88")).toContain("wrong_market_currency");
+    expect(check(hkOffer, "只需 HK$88")).not.toContain("wrong_market_currency");
+    expect(check(hkOffer, "350元")).toContain("wrong_market_currency");
+    expect(check(twOffer, "只要 HK$88")).toContain("wrong_market_currency");
+    expect(check(twOffer, "350元")).not.toContain("wrong_market_currency");
+  });
+
+  it("flags a discount the offer does not state", () => {
+    expect(check(hkOffer, "8折優惠")).toContain("unconfirmed_discount");
+    expect(check(withOffer(hkOffer, { details: "全單8折" }), "8折優惠")).not.toContain("unconfirmed_discount");
+    expect(check(hkOffer, "20% off this week")).toContain("unconfirmed_discount");
+    expect(check(hkOffer, "買一送一")).toContain("unconfirmed_discount");
+    expect(check(hkOffer, "午市套餐 HK$88")).not.toContain("unconfirmed_discount");
+  });
+
+  it("flags urgency on an open-ended offer only", () => {
+    expect(check(twOffer, "限時優惠")).toContain("urgency_claim");
+    expect(check(withOffer(twOffer, { openEnded: false, endsOn: "2026-10-31" }), "限時優惠")).not.toContain("urgency_claim");
+    expect(check(withOffer(twOffer, { terms: "售完即止" }), "售完即止")).not.toContain("urgency_claim");
+  });
+
+  it("flags health and efficacy claims absent from the facts", () => {
+    expect(check(hkOffer, "排毒養顏")).toContain("health_claim");
+    expect(check(hkOffer, "a detox lunch")).toContain("health_claim");
+    expect(check(withOffer(hkOffer, { details: "detox juice and soup" }), "a detox lunch")).not.toContain("health_claim");
+  });
+
+  it("applies each channel's hashtag and length rules", () => {
+    expect(check(hkOffer, "#優惠 午市")).toContain("hashtags_present");
+    expect(check(withOffer(hkOffer, { channel: "google_post" }), "x".repeat(1501))).toContain("body_over_1500_chars");
+    expect(check(withOffer(hkOffer, { channel: "google_post" }), "#lunch")).toContain("hashtags_present");
+    const ig = withOffer(hkOffer, { channel: "instagram_post" });
+    expect(check(ig, "#a #b #c")).not.toContain("hashtags_present");
+    expect(check(ig, "#a #b #c #d #e #f")).toContain("too_many_hashtags");
+    expect(check(ig, "x".repeat(2201))).toContain("body_over_2200_chars");
+    expect(check(withOffer(ig, { hasAsset: true }), "lunch")).toContain("alt_text_missing");
+    expect(check(withOffer(ig, { hasAsset: true }), "lunch", { alt_text: "A bowl of soup" })).not.toContain("alt_text_missing");
+    expect(check(hkOffer, "x".repeat(501))).toContain("body_over_500_chars");
+  });
+
+  it("treats the offer's own price and claims as confirmed", () => {
+    expect(check(hkOffer, "午市套餐 HK$88，自家製例湯")).not.toContain("unconfirmed_claim");
+    const noOffer = { ...hkOffer, offer: undefined };
+    expect(AGENTS.review_reply.acceptance(noOffer, draft("午市套餐 HK$88"))).toContain("unconfirmed_claim");
+  });
+});

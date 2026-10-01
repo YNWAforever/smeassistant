@@ -121,6 +121,16 @@ function guardrailText(flag: GuardrailFlag, locale: PrototypeLocale): string {
       return locale === "zh-HK" ? "含有你沒有提供的連結，審批前請先檢查。" : locale === "zh-TW" ? "包含你沒有提供的連結，核准前請先確認。" : "Contains a link you did not supply — check it before approving."
     case "unconfirmed_claim":
       return locale === "zh-HK" ? "提及你未確認的價錢或誇大字眼，審批前請先檢查。" : locale === "zh-TW" ? "提到你未確認的價格或誇大用語，核准前請先確認。" : "Mentions a price or superlative that is not in your confirmed facts — check it before approving."
+    case "wrong_market_currency":
+      return locale === "zh-HK" ? "價錢用了另一個市場的貨幣，審批前請先檢查。" : locale === "zh-TW" ? "價格使用了另一個市場的幣別，核准前請先確認。" : "The price is in the other market's currency — check it before approving."
+    case "unconfirmed_discount":
+      return locale === "zh-HK" ? "提及你的優惠資料沒有寫明的折扣、節省金額或免費項目。" : locale === "zh-TW" ? "提到你的優惠資料沒有寫明的折扣、省下金額或免費項目。" : "Mentions a discount, saving or free item your offer does not state."
+    case "urgency_claim":
+      return locale === "zh-HK" ? "這個優惠未設結束日期，但草稿用了限時或售完即止等字眼。" : locale === "zh-TW" ? "這個優惠未設結束日期，但草稿用了限時或售完為止等字眼。" : "Uses limited-time or scarcity wording, but this offer has no end date."
+    case "health_claim":
+      return locale === "zh-HK" ? "含有健康或功效聲稱，兩地法規均有限制，審批前請先檢查。" : locale === "zh-TW" ? "含有健康或功效宣稱，法規有所限制，核准前請先確認。" : "Contains a health or efficacy claim, which is regulated — check it before approving."
+    case "hashtags_present":
+      return isChinese ? "這個渠道不用主題標籤。" : "This channel does not use hashtags."
     case "prohibited_term":
       return isChinese ? `含品牌禁用詞：${flag.detail ?? ""}` : `Contains a prohibited brand term: ${flag.detail ?? ""}`
     case "compensation_promise":
