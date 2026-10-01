@@ -255,6 +255,22 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon offers schema and fun
     });
   });
 
+  it("archive_offer archives a confirmed offer and clears its confirmation", async () => {
+    const ws = await workspace();
+    const actor = await user();
+    const offer = await insertOffer(ws);
+    expect((await confirm(offer, actor)).rows[0].r.kind).toBe("confirmed");
+    const result = (await runtime.query("SELECT public.archive_offer($1,$2) AS r", [offer, actor])).rows[0].r;
+    expect(result).toEqual({ kind: "archived", offer_id: offer, cancelled_actions: 0 });
+    // confirmed_at is non-null exactly when status = 'confirmed'; the offer.confirmed audit row keeps the actor.
+    expect((await runtime.query("SELECT status,confirmed_at,confirmed_by FROM offers WHERE id=$1", [offer])).rows[0]).toEqual({
+      status: "archived",
+      confirmed_at: null,
+      confirmed_by: null,
+    });
+    expect(await auditRows(offer, "offer.confirmed")).toHaveLength(1);
+  });
+
   it("deleting an offer referenced by an action fails, deleting the workspace cascades through both", async () => {
     const ws = await workspace();
     const offer = await insertOffer(ws);

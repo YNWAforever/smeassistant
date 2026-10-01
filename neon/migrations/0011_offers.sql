@@ -153,8 +153,11 @@ begin
     return jsonb_build_object('kind', 'already-archived', 'offer_id', o.id, 'cancelled_actions', 0);
   end if;
 
+  -- offers_confirmed_check: confirmed_at is non-null exactly while confirmed.
   update public.offers
   set status = 'archived',
+      confirmed_at = null,
+      confirmed_by = null,
       updated_at = now()
   where id = o.id;
 
