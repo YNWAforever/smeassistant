@@ -13,6 +13,11 @@ export interface CreateOutputVersionInput {
     alt: string | null;
     meta: Json;
     baseVersionId: string | null;
+    /**
+     * The offer revision an agent run read (P4.1). Consumed by
+     * artifactRepository.createOutputVersion's offer binding, never sent to SQL.
+     */
+    offerRevision?: number | null;
 }
 export interface VersionResult {
     kind: "created" | "approved" | "already-approved" | "decided" | "already-decided";

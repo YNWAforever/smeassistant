@@ -9,7 +9,8 @@ import type { Membership } from "@/lib/auth";
 import { rowToSnapshot } from "./snapshots";
 import { scannedReviewKey } from "./evidence-inputs";
 import { computeCostUsd } from "@/lib/agents";
-import { AGENT_RUN_BUDGET_MS, runAgentForAction, snapshotEvidence } from "./runs";
+import { AGENT_RUN_BUDGET_MS, offerSatisfied, runAgentForAction, snapshotEvidence } from "./runs";
+import type { Offer } from "./offers";
 const action = {
   id: "act-1",
   workspace_id: "ws-1",
@@ -780,5 +781,192 @@ describe("AI spend budget", () => {
     expect(llm).not.toHaveBeenCalled();
     expect(error).toHaveBeenCalledWith("[budget] check_failed", { entry: "ai_run", reason: "query" });
     error.mockRestore();
+  });
+});
+
+describe("offer-backed promotion runs (spec §2.2)", () => {
+  const confirmed: Offer = {
+    id: "offer-1",
+    workspaceId: "ws-1",
+    locationId: "loc-1",
+    title: "Autumn set dinner",
+    details: "A tasting menu for two",
+    terms: "Dine in only.",
+    priceAmount: 1280,
+    currency: "HKD",
+    validFrom: "2026-10-05",
+    validUntil: "2026-10-19",
+    claims: ["Book at https://kam.test/autumn", "Award-winning crab"],
+    prohibitedTerms: ["cheapest"],
+    assetId: null,
+    status: "confirmed",
+    revision: 3,
+    confirmedAt: "2026-10-01T00:00:00.000Z",
+    expired: false,
+    createdAt: "2026-09-30T00:00:00.000Z",
+    updatedAt: "2026-10-01T00:00:00.000Z",
+  };
+  const offerRow = (over: Record<string, unknown> = {}) =>
+    ({ ...action, template_key: "offer-instagram-post", required_inputs: ["brand_voice"], provided_inputs: {}, offer_id: "offer-1", ...over }) as unknown as typeof action;
+  const promo = (body = "Autumn set dinner for two, HK$1,280. Valid 2026-10-05 to 2026-10-19.") =>
+    good({ title: "Autumn set dinner", body });
+  const offersOf = (offer: Offer | null) => ({ get: vi.fn(async () => offer) });
+
+  it.each([
+    ["a draft offer", { ...confirmed, status: "draft" as const, confirmedAt: null }],
+    ["an archived offer", { ...confirmed, status: "archived" as const, confirmedAt: null }],
+    ["an expired offer", { ...confirmed, expired: true }],
+    ["an offer from another location", { ...confirmed, locationId: "loc-2" }],
+    ["a workspace-wide offer on a location action", { ...confirmed, locationId: null }],
+    ["a missing offer", null],
+  ])("blocks %s before the model", async (_name, offer) => {
+    row = offerRow();
+    const llm = vi.fn();
+    const offers = offersOf(offer);
+    const result = await run({ llm, offers });
+    expect(offers.get).toHaveBeenCalledWith("ws-1", "offer-1");
+    expect(llm).not.toHaveBeenCalled();
+    expect(finish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        output: null,
+        factsNeeded: ["offer_id"],
+        usage: { inputTokens: null, outputTokens: null },
+        costUsd: computeCostUsd({ inputTokens: null, outputTokens: null }),
+      }),
+    );
+    expect(result).toMatchObject({ factsNeeded: ["offer_id"] });
+  });
+
+  it("blocks an action whose offer_id column is null without reading any offer", async () => {
+    row = offerRow({ offer_id: null });
+    const llm = vi.fn();
+    const offers = offersOf(confirmed);
+    expect(await run({ llm, offers })).toMatchObject({ factsNeeded: ["offer_id"] });
+    expect(offers.get).not.toHaveBeenCalled();
+    expect(llm).not.toHaveBeenCalled();
+  });
+
+  it("never lets provided_inputs.offer_id stand in for the action's offer_id column", async () => {
+    row = offerRow({ offer_id: null, provided_inputs: { offer_id: "offer-1" } });
+    const llm = vi.fn();
+    const offers = offersOf(confirmed);
+    expect(await run({ llm, offers, inputs: { offer_id: "offer-1" } })).toMatchObject({ factsNeeded: ["offer_id"] });
+    expect(offers.get).not.toHaveBeenCalled();
+    expect(llm).not.toHaveBeenCalled();
+  });
+
+  it("offerSatisfied refuses an offer a scoped manager is out of scope for", async () => {
+    // A run cannot reach this: resolveActionRunContext already refuses the
+    // out-of-scope manager for the action's location. The satisfier checks
+    // canUseOffer itself because it is exported for reuse.
+    const offer = { ...confirmed, locationId: "loc-2" };
+    const offers = offersOf(offer);
+    const target = { workspace_id: "ws-1", location_id: "loc-2", offer_id: "offer-1" };
+    const scoped: Membership = { ...membership, role: "manager", locationScope: ["loc-1"] };
+    expect(await offerSatisfied(offers, target, scoped)).toBeNull();
+    expect(await offerSatisfied(offers, target, { ...membership, role: "viewer" })).toBeNull();
+    expect(await offerSatisfied(offers, target, { ...scoped, locationScope: ["loc-2"] })).toEqual(offer);
+  });
+
+  it("runs a confirmed offer, prompts with it and binds the revision it read", async () => {
+    row = offerRow();
+    const llm = vi.fn(async (prompt: string) => {
+      expect(prompt).toContain("Autumn set dinner");
+      expect(prompt).toContain('"amount": 1280');
+      expect(prompt).toContain('"currency": "HKD"');
+      expect(prompt).toContain('"valid_until": "2026-10-19"');
+      return promo();
+    });
+    expect(await run({ llm, offers: offersOf(confirmed) })).toMatchObject({ versionId: "v-1" });
+    expect(llm).toHaveBeenCalledOnce();
+    expect(finish.mock.calls[0][0].offerRevision).toBe(3);
+    expect(queue).toHaveBeenCalledWith(
+      expect.objectContaining({ input: expect.objectContaining({ offer_id: "offer-1", offer_revision: 3 }) }),
+    );
+  });
+
+  it("reads the offer once, so an edit during generation leaves the run on the revision it read", async () => {
+    row = offerRow();
+    const get = vi.fn().mockResolvedValueOnce({ ...confirmed, revision: 1 }).mockResolvedValue({ ...confirmed, revision: 2 });
+    await run({ llm: vi.fn(async () => promo()), offers: { get } });
+    expect(get).toHaveBeenCalledOnce();
+    expect(finish.mock.calls[0][0].offerRevision).toBe(1);
+  });
+
+  it("merges the offer's claims and prohibited terms into the brand lists for this run", async () => {
+    row = offerRow();
+    const llm = vi.fn(async (prompt: string) => {
+      const brand = prompt.slice(prompt.indexOf("BRAND FACTS"), prompt.indexOf("GUARDRAILS:"));
+      expect(brand).toContain("Award-winning crab");
+      expect(brand).toContain("cheapest");
+      expect(brand).toContain("best in Hong Kong");
+      return promo(
+        "Award-winning crab, the cheapest treat this autumn: set dinner for two, HK$1,280. Valid 2026-10-05 to 2026-10-19. Book at https://kam.test/autumn",
+      );
+    });
+    await run({ llm, offers: offersOf(confirmed) });
+    const warnings = finish.mock.calls[0][0].output?.warnings ?? [];
+    expect(warnings).toContain("offer_prohibited_term");
+    expect(warnings).toContain("prohibited_term:cheapest");
+    expect(warnings).not.toContain("unconfirmed_claim");
+    expect(warnings).not.toContain("unexpected_link");
+  });
+
+  it("keeps the merge to this run: a non-offer action never sees an offer's terms", async () => {
+    row = { ...action };
+    await run({ llm: vi.fn(async () => good({ body: "Thank you, cheapest prices. Please come back." })), offers: offersOf(confirmed) });
+    expect(finish.mock.calls[0][0].output?.warnings ?? []).not.toContain("prohibited_term:cheapest");
+  });
+
+  const assetCases: Array<[string, Record<string, unknown> | null, string | null]> = [
+    ["a rights-approved asset at the action's location", { rights_status: "approved", location_id: "loc-1", alt_text: "Crab on a plate" }, "Crab on a plate"],
+    ["a rights-approved workspace-wide asset", { rights_status: "approved", location_id: null, alt_text: "Crab on a plate" }, "Crab on a plate"],
+    ["an asset awaiting rights review", { rights_status: "needs_review", location_id: "loc-1", alt_text: "Crab on a plate" }, null],
+    ["a rejected asset", { rights_status: "rejected", location_id: "loc-1", alt_text: "Crab on a plate" }, null],
+    ["another location's asset", { rights_status: "approved", location_id: "loc-2", alt_text: "Crab on a plate" }, null],
+    ["a missing asset", null, null],
+  ];
+  it.each(assetCases)("photo_alt_text for %s", async (_name, assetRow, expected) => {
+    row = offerRow();
+    const get = vi.fn(async () => assetRow);
+    let prompt = "";
+    await run({
+      llm: vi.fn(async (p: string) => {
+        prompt = p;
+        return promo();
+      }),
+      offers: offersOf({ ...confirmed, assetId: "asset-1" }),
+      assets: { get },
+    });
+    expect(get).toHaveBeenCalledWith("ws-1", "asset-1");
+    expect(prompt).toContain(`"photo_alt_text": ${JSON.stringify(expected)}`);
+  });
+
+  it("an offer with no linked asset reads no asset", async () => {
+    row = offerRow();
+    const get = vi.fn(async () => null);
+    let prompt = "";
+    await run({
+      llm: vi.fn(async (p: string) => {
+        prompt = p;
+        return promo();
+      }),
+      offers: offersOf(confirmed),
+      assets: { get },
+    });
+    expect(get).not.toHaveBeenCalled();
+    expect(prompt).toContain('"photo_alt_text": null');
+  });
+
+  it("never reads an offer for a template without an offer input", async () => {
+    row = { ...action };
+    const offers = {
+      get: vi.fn(async (): Promise<Offer | null> => {
+        throw new Error("offers must not be read");
+      }),
+    };
+    expect(await run({ llm: vi.fn(async () => good()), offers })).toMatchObject({ versionId: "v-1" });
+    expect(offers.get).not.toHaveBeenCalled();
+    expect(finish.mock.calls[0][0].offerRevision).toBeUndefined();
   });
 });

@@ -11,9 +11,10 @@ import { workspaceReadRepository, SNAPSHOT_COLUMNS, DIFF_COLUMNS } from './works
 import { rowToSnapshot, type ScanSnapshotRow, type ScanDiffRow } from '../workspace/snapshots';
 import type { ActionState } from '../domain';
 import type { ActionScope, VersionScope } from '../workspace/versions';
+import { bindOfferMeta } from '../workspace/offer-binding';
 
 type Executor = Pick<Pool | PoolClient, 'query'>;
-const EXPECTED_ERRORS = new Set(['version_conflict','not_approved','allowance_exceeded','version_closed','version_not_found','invalid_decision','invalid_mode','artifact_scope_mismatch']);
+const EXPECTED_ERRORS = new Set(['version_conflict','not_approved','allowance_exceeded','version_closed','version_not_found','invalid_decision','invalid_mode','artifact_scope_mismatch','offer_changed','offer_inactive','offer_expired']);
 // Fixed SQL fragment for the actions alias `a`, shared by both scope entry points.
 // A workspace-wide action can use location evidence; callers must separately
 // authorize the evidence's persisted location before drafting.
@@ -23,6 +24,9 @@ const ACTION_SCOPE_PREDICATE = `(a.location_id IS NULL OR EXISTS(SELECT 1 FROM l
   AND (a.location_id IS NULL OR s.location_id=a.location_id)
   AND j.location_id IS NOT DISTINCT FROM s.location_id
   AND (s.location_id IS NULL OR EXISTS(SELECT 1 FROM locations evidence_location WHERE evidence_location.id=s.location_id AND evidence_location.workspace_id=a.workspace_id))))`;
+function asRecord(value: unknown): Record<string, unknown> {
+ return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
 /** Preserve domain failures without exposing driver messages, SQL or connection details. */
 async function operation<T>(run: () => Promise<T>): Promise<T> {
  try { return await run(); }
@@ -233,20 +237,32 @@ export function artifactRepository(client?: Executor) {
    return operation(async ()=>(await db().query<AssistantDraftRow>(`SELECT output,agent_key,prompt_version,input FROM action_runs
     WHERE id=$1 AND action_id=$2 AND workspace_id=$3 AND state='succeeded' AND input->>'source'='assistant'`,[runId,actionId,workspaceId])).rows[0] ?? null);
   },
+  /**
+   * The one gateway every version passes through: an owner edit and an
+   * assistant redemption (lib/workspace/versions.ts) and an agent run's
+   * finish() below. It applies the offer binding (spec §1.3,
+   * lib/workspace/offer-binding.ts) from the action's offer_id column and the
+   * base version's meta, read on the same client, so no caller can name an
+   * offer revision through meta.
+   */
   createOutputVersion(input: CreateOutputVersionInput) {
    return operation(async () => {
     const scope=await actionScope(input.actionId);
     if (!scope) throw new Error('artifact_scope_mismatch');
+    let baseMeta: Record<string, unknown> | null = null;
     if (input.baseVersionId) {
-     const base=(await db().query<{action_id:string}>('SELECT action_id FROM output_versions WHERE id=$1',[input.baseVersionId])).rows[0];
+     const base=(await db().query<{action_id:string;meta:unknown}>('SELECT action_id,meta FROM output_versions WHERE id=$1',[input.baseVersionId])).rows[0];
      // Missing/foreign-action/stale bases keep the atomic function's conflict result.
      if (base?.action_id === input.actionId && !await versionScope(input.baseVersionId)) throw new Error('artifact_scope_mismatch');
+     if (base?.action_id === input.actionId) baseMeta = asRecord(base.meta);
     }
     if(input.actionRunId) {
      const run=await db().query('SELECT id FROM action_runs WHERE id=$1 AND action_id=$2 AND workspace_id=$3',[input.actionRunId,input.actionId,scope.workspaceId]);
      if(!run.rows.length) throw new Error('artifact_scope_mismatch');
     }
-    return workflowRepository(db()).createOutputVersion(input);
+    const actionOfferId=(await db().query<{offer_id:string|null}>('SELECT offer_id FROM actions WHERE id=$1',[input.actionId])).rows[0]?.offer_id ?? null;
+    const meta=bindOfferMeta(asRecord(input.meta),{actionOfferId,offerRevision:input.offerRevision,baseMeta});
+    return workflowRepository(db()).createOutputVersion({...input,meta:meta as Json});
    });
   },
   approveOutputVersion(versionId: string, actor: string, comment: string | null) {
@@ -291,6 +307,8 @@ export interface FinishActionRunInput extends RunAttribution {
  error?: string;
  reason?: string;
  finishedAt: Date;
+ /** The offer revision the run read (P4.1); bound onto the version by createOutputVersion. */
+ offerRevision?: number;
 }
 export type ActionRunCompletion = {runId:string;state:'succeeded';versionId?:string;versionNo?:number;factsNeeded?:string[]}
  | {runId:string;state:'failed';error:string};
@@ -373,7 +391,7 @@ export function actionRunRepository(transaction: RunTransaction = withTransactio
     if(!input.error && !factsNeeded.length && input.output) {
      const output=input.output;
      version=await artifactRepository(client).createOutputVersion({actionId:row.action_id,actor:input.actorId,authorType:'agent',actionRunId:row.id,
-      body:output.body,alt:output.alt_text ?? null,meta:{title:output.title,acceptance_criteria:output.acceptance_criteria,warnings:output.warnings,facts_used:output.facts_used,agent_key:row.agent_key,prompt_version:row.prompt_version} as Json,baseVersionId:null});
+      body:output.body,alt:output.alt_text ?? null,meta:{title:output.title,acceptance_criteria:output.acceptance_criteria,warnings:output.warnings,facts_used:output.facts_used,agent_key:row.agent_key,prompt_version:row.prompt_version} as Json,baseVersionId:null,offerRevision:input.offerRevision ?? null});
     }
     const state=input.error?'failed':'succeeded';
     await client.query('UPDATE action_runs SET state=$2,output=$3,error=$4,input_tokens=$5,output_tokens=$6,cost_usd=$7,finished_at=$8 WHERE id=$1',

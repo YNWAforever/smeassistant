@@ -12,7 +12,7 @@ import type { RunRow, VersionRow, MeasurementRow, AuditEventRow, NotificationRow
 
 export const SNAPSHOT_COLUMNS = "id, job_id, workspace_id, location_id, market, observed_at::text, scoring_version, overall_score, coverage, module_states, metrics, website_checks, comparable_to, diff_id, created_at::text";
 export const DIFF_COLUMNS = "id, base_job_id, head_job_id, comparable, incomparable_reason, composite_withheld_reason, intersection_modules, composite_base, composite_head, composite_delta, resolved_findings, regressed_findings, decayed_findings, lost_coverage, gained_coverage, created_at::text";
-const ACTION_COLUMNS = "id, source_snapshot_id, workspace_id, location_id, template_key, source, source_finding_keys, title, summary, evidence, priority, priority_score, priority_factors, effort_minutes, required_inputs, provided_inputs, assignee_user_id, due_at::text, action_state, measurement_state, capability, created_at::text, updated_at::text";
+const ACTION_COLUMNS = "id, source_snapshot_id, workspace_id, location_id, template_key, source, source_finding_keys, title, summary, evidence, priority, priority_score, priority_factors, effort_minutes, required_inputs, provided_inputs, assignee_user_id, due_at::text, action_state, measurement_state, capability, offer_id, created_at::text, updated_at::text";
 
 function pageLimit(value: number): number {
   if (!Number.isSafeInteger(value) || value < 0) throw new Error("invalid_page_limit");

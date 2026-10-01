@@ -153,6 +153,13 @@ describe("POST /api/versions/[versionId]/approve", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error: "version_closed" });
   });
+
+  it.each(["offer_changed", "offer_inactive", "offer_expired"])("409s a version whose offer is no longer current (%s)", async (code) => {
+    mocks.db!.rpc.mockResolvedValue({ data: null, error: { message: code } });
+    const res = await post("approve");
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: code });
+  });
 });
 
 describe("request-changes / reject", () => {

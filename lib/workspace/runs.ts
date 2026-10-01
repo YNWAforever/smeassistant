@@ -4,6 +4,8 @@ import {
   type ActionRunRepository,
 } from "@/lib/repositories/artifacts";
 import { assetRepository } from "@/lib/repositories/assets";
+import { offerRepository, type OfferRepository } from "@/lib/repositories/offers";
+import type { OfferEvidence } from "@/lib/agents/offer-checks";
 import { assetLocationScope, assetUsableByAction } from "@/lib/workspace/assets";
 import { inLocationScope, roleAtLeast, type Membership } from "@/lib/auth";
 import {
@@ -21,6 +23,7 @@ import { llmComplete, type LLMUsage } from "@/lib/llm";
 import { checkAiBudget } from "@/lib/budgets/ai";
 import { deriveFaqQuestions } from "./faq-questions";
 import { filterSelectedReviews, resolveBrandProvidedInputs, sampledReviewsFromRawData } from "./evidence-inputs";
+import { canUseOffer, type Offer } from "./offers";
 import { buildActionOverview, localeOf } from "./overview";
 import { type SnapshotRecord } from "./snapshots";
 import { templateByKey, type TemplateKey } from "./templates";
@@ -51,6 +54,8 @@ export interface RunAgentInput {
   membership: Membership;
   persistence?: ActionRunRepository;
   assets?: Pick<ReturnType<typeof assetRepository>, "get">;
+  /** Offer reads for offer-* templates (P4.1); defaults to offerRepository(). */
+  offers?: Pick<OfferRepository, "get">;
   agentKey?: string | null;
   inputs?: Record<string, unknown> | null;
   locale: string;
@@ -199,6 +204,63 @@ export async function socialAssetSatisfied(
 }
 
 /**
+ * The confirmed offer an offer-* action may be drafted from (spec §2.2), or
+ * null. It is looked up by the action's `offer_id` COLUMN, never by
+ * `provided_inputs`, and only within the action's workspace. It is returned
+ * only when the offer is confirmed, unexpired (`expired` is computed in SQL
+ * on the workspace's own date), belongs to the action's location, and the
+ * caller may use it there. Exported beside socialAssetSatisfied for reuse.
+ */
+export async function offerSatisfied(
+  offers: Pick<OfferRepository, "get">,
+  row: { workspace_id: string; location_id: string | null; offer_id: string | null },
+  membership: Membership,
+): Promise<Offer | null> {
+  if (!row.offer_id) return null;
+  const offer = await offers.get(row.workspace_id, row.offer_id);
+  if (!offer || offer.workspaceId !== row.workspace_id) return null;
+  if (offer.status !== "confirmed" || offer.expired) return null;
+  if (offer.locationId !== row.location_id) return null;
+  return canUseOffer(membership, offer.locationId) ? offer : null;
+}
+
+/**
+ * The `offer` evidence block the promotion_copy agent reads (spec §2.3). The
+ * photo alt text is passed in only when the linked asset is rights-approved
+ * and usable by the action; the caller decides that.
+ */
+export function offerEvidence(offer: Offer, photoAltText: string | null): OfferEvidence {
+  return {
+    title: offer.title,
+    details: offer.details,
+    terms: offer.terms,
+    price: offer.priceAmount !== null && offer.currency !== null ? { amount: offer.priceAmount, currency: offer.currency } : null,
+    valid_from: offer.validFrom,
+    valid_until: offer.validUntil,
+    claims: offer.claims,
+    photo_alt_text: photoAltText,
+  };
+}
+
+/** The linked asset's alt text, only when it is rights-approved and usable by the action. */
+async function offerPhotoAltText(
+  assets: Pick<ReturnType<typeof assetRepository>, "get">,
+  offer: Offer,
+  actionLocationId: string | null,
+  membership: Membership,
+): Promise<string | null> {
+  if (!offer.assetId) return null;
+  const asset = await assets.get(offer.workspaceId, offer.assetId);
+  if (asset?.rights_status !== "approved") return null;
+  if (!assetUsableByAction(asset, actionLocationId, assetLocationScope(membership))) return null;
+  return asset.alt_text?.trim() ? asset.alt_text : null;
+}
+
+function mergeLists(...lists: string[][]): string[] {
+  return [...new Set(lists.flat())];
+}
+
+/**
  * Inputs the scan or the workspace already answers, so the owner is not asked
  * for them. The live assistant applies the same rule down its own path.
  */
@@ -322,6 +384,20 @@ export async function runAgentForAction(
     ...input.inputs,
   };
   const location = locations.find((l) => l.id === row.location_id) ?? null;
+  // P4.1: an offer-* template reads its offer ONCE, here, and uses that one
+  // object for the prompt, the gate and the version binding. If the owner edits
+  // the offer while the draft is generating, the version still records the
+  // revision this run read, so approval answers offer_changed.
+  const offerTemplate = template.inputs.some((i) => i.key === "offer_id");
+  const assets = input.assets ?? assetRepository();
+  const offer = offerTemplate
+    ? await offerSatisfied(
+        input.offers ?? offerRepository(),
+        { workspace_id: row.workspace_id, location_id: row.location_id, offer_id: row.offer_id ?? null },
+        input.membership,
+      )
+    : null;
+  const offerBlock = offer ? offerEvidence(offer, await offerPhotoAltText(assets, offer, row.location_id, input.membership)) : null;
   // P2.2 requires "selected-review replies": the owner picks which unanswered
   // reviews to answer. `provided_inputs.selected_reviews` carries only KEYS --
   // the review text is still rebuilt from stored evidence here, so the choice
@@ -340,8 +416,11 @@ export async function runAgentForAction(
     market: workspace?.market?.toLowerCase() === "tw" ? "tw" : "hk",
     brand: {
       voice: brand?.voice ?? "warm",
-      approvedClaims: asStrings(brand?.approved_claims),
-      prohibitedTerms: asStrings(brand?.prohibited_terms),
+      // An offer's claims and prohibited terms count for this run only (spec
+      // §2.3), so the shared unconfirmed_claim / unexpected_link checks accept
+      // the offer's own claims and the prohibited-term checks see its terms.
+      approvedClaims: mergeLists(asStrings(brand?.approved_claims), offer?.claims ?? []),
+      prohibitedTerms: mergeLists(asStrings(brand?.prohibited_terms), offer?.prohibitedTerms ?? []),
       languages: asStrings(brand?.languages),
       facts: asRecord(brand?.facts),
     },
@@ -370,6 +449,7 @@ export async function runAgentForAction(
       // owner_fact_N answer with the actual question it answers, instead of
       // asking the model to invent one to fit an unlabelled fact.
       ...(faqQuestions.length ? { faq_questions: faqQuestions.map((q) => ({ key: q.key, question: resolveText(q.question, locale) })) } : {}),
+      ...(offerBlock ? { offer: offerBlock } : {}),
     },
     providedInputs: provided,
     sampledReviews,
@@ -389,13 +469,14 @@ export async function runAgentForAction(
     template.inputs.some((i) => i.key === "asset_or_text_only")
       ? {
           asset: () =>
-            socialAssetSatisfied(input.assets ?? assetRepository(), row.workspace_id, provided, {
+            socialAssetSatisfied(assets, row.workspace_id, provided, {
               actionLocationId: row.location_id,
               locationScope: assetLocationScope(input.membership),
             }),
         }
       : {},
   );
+  if (offer) satisfied.add("offer_id");
   const blocking = gateBlockingInputs(template, provided, satisfied);
 
   const persistence = input.persistence ?? actionRunRepository();
@@ -409,6 +490,7 @@ export async function runAgentForAction(
       snapshot_id: snapshot?.id ?? null,
       prompt_version: agent.promptVersion,
       locale,
+      ...(offer ? { offer_id: offer.id, offer_revision: offer.revision } : {}),
     },
     promptVersion: agent.promptVersion,
     model: process.env.LLM_MODEL || null,
@@ -483,6 +565,7 @@ export async function runAgentForAction(
     costUsd: computeCostUsd(usage),
     output,
     ...(reason ? { error: FRIENDLY_ERROR[locale], reason } : {}),
+    ...(offer ? { offerRevision: offer.revision } : {}),
     finishedAt: new Date(),
   });
 }

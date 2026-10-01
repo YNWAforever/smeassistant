@@ -34,18 +34,22 @@ export function missingConfirmedInputs(
 
 /**
  * Inputs whose only authority is a server check, never an owner-typed or
- * persisted value: the approved-asset rule answers `asset_or_text_only`.
+ * persisted value: the approved-asset rule answers `asset_or_text_only`, and
+ * `offerSatisfied` (lib/workspace/runs.ts) answers `offer_id` from the action's
+ * `offer_id` COLUMN -- a confirmed, unexpired offer usable at the action's
+ * location -- so a typed or persisted `provided_inputs.offer_id` never counts.
  * Evidence-kind inputs are deliberately NOT here: spec §2 counts an evidence key
  * present in `provided` as answered, and the review_reply prompt uses
  * owner-typed `reviews_without_response` (labelled owner-supplied) only when the
  * scan retained no unanswered review.
  */
-export const SERVER_SATISFIED_INPUT_KEYS: ReadonlySet<string> = new Set(["asset_or_text_only"]);
+export const SERVER_SATISFIED_INPUT_KEYS: ReadonlySet<string> = new Set(["asset_or_text_only", "offer_id"]);
 
 /**
  * The gate every surface applies before a model call: {@link missingConfirmedInputs}
  * over `provided` with the server-satisfied keys removed, so a persisted
- * `asset_or_text_only` marker can never stand in for the asset-rights check.
+ * `asset_or_text_only` marker can never stand in for the asset-rights check,
+ * nor a persisted `offer_id` for the offer check.
  * Only `satisfied` (the server's own answer) can clear it. Every other key,
  * including an evidence key such as owner-typed `reviews_without_response`, is
  * answered by a present `provided` value or by `satisfied`.

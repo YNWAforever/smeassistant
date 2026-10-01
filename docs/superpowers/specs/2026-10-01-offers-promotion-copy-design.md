@@ -91,7 +91,7 @@ The column is nullable, and every existing row stays null. `offer_id` is indexed
 
 ### 1.3 Offer binding on versions
 
-A version of an offer action records the offer revision it was written from, in `output_versions.meta`: `{ "offer_id": "<uuid>", "offer_revision": <int> }`. `createVersion` in `lib/workspace/versions.ts` is the only writer, and applies one rule:
+A version of an offer action records the offer revision it was written from, in `output_versions.meta`: `{ "offer_id": "<uuid>", "offer_revision": <int> }`. `artifactRepository.createOutputVersion` (the gateway both `createVersion` and the run's `finish` call) applies one rule:
 
 - **A version from an agent run** records the revision the run actually read; the run path passes it in.
 - **Every other version** (an owner edit, an assistant rewrite) records the **base version's** revision. A version with no base on an offer action records none.

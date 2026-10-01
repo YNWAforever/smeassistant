@@ -2,6 +2,9 @@ import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { withTransaction } from "../../lib/db/transaction";
+import { actionRunRepository, artifactRepository } from "../../lib/repositories/artifacts";
+import { createAssistantVersion, createVersion } from "../../lib/workspace/versions";
 import { applyMigrations } from "../../scripts/neon/migrations";
 import { startNeonDatabaseFixture, type NeonDatabaseFixture } from "./neon-database";
 
@@ -317,5 +320,103 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon offer freshness on ap
     }
     expect(await deliveries(ver)).toEqual([]);
     expect(await usage(ws)).toBe(0);
+  });
+
+  // P4.1 Task 6: artifactRepository.createOutputVersion is the one gateway every version passes
+  // through (an owner edit, the assistant, and a run's finish), and it binds the offer revision.
+  describe("the version gateway binds the offer revision (spec 1.3)", () => {
+    const storedMeta = async (versionId: string) =>
+      (await runtime.query("SELECT meta FROM output_versions WHERE id=$1", [versionId])).rows[0].meta as Record<string, unknown>;
+
+    it("an owner edit inherits the base's revision, never a forged one, and approves", async () => {
+      const { offer, act, ver } = await offerVersion();
+      const repo = artifactRepository(runtime);
+      const edit = await createVersion(repo, {
+        actionId: act,
+        actorId: actor,
+        authorType: "user",
+        body: "Owner edit",
+        meta: { offer_revision: 99, offer_id: randomUUID() },
+        baseVersionId: ver,
+      });
+      expect(await storedMeta(edit.versionId)).toEqual({ offer_id: offer, offer_revision: 1 });
+      expect((await repo.approveOutputVersion(edit.versionId, actor, null)).kind).toBe("approved");
+    });
+
+    it("a hand edit cannot make a stale draft current, and the refusal surfaces as offer_changed", async () => {
+      const { offer, act, ver } = await offerVersion();
+      await editAndReconfirm(offer);
+      const repo = artifactRepository(runtime);
+      const edit = await createVersion(repo, { actionId: act, actorId: actor, authorType: "user", body: "Edit", meta: { offer_revision: 2 }, baseVersionId: ver });
+      expect(await storedMeta(edit.versionId)).toEqual({ offer_id: offer, offer_revision: 1 });
+      await expect(repo.approveOutputVersion(edit.versionId, actor, null)).rejects.toThrow("offer_changed");
+    });
+
+    it("a version with no base on an offer action records no revision", async () => {
+      const ws = await workspace();
+      const offer = await confirmedOffer(ws);
+      const act = await action(ws, offer);
+      const repo = artifactRepository(runtime);
+      const first = await createVersion(repo, { actionId: act, actorId: actor, authorType: "user", body: "First", meta: { offer_id: offer, offer_revision: 1 } });
+      expect(await storedMeta(first.versionId)).toEqual({});
+      await expect(repo.approveOutputVersion(first.versionId, actor, null)).rejects.toThrow("offer_changed");
+    });
+
+    it("strips a forged revision on a non-offer action", async () => {
+      const ws = await workspace();
+      const act = await action(ws, null);
+      const v = await createVersion(artifactRepository(runtime), {
+        actionId: act,
+        actorId: actor,
+        authorType: "user",
+        body: "Plain",
+        meta: { note: "kept", offer_revision: 9, offer_id: randomUUID() },
+      });
+      expect(await storedMeta(v.versionId)).toEqual({ note: "kept" });
+    });
+
+    it("a run's finish stores the revision the run read", async () => {
+      const ws = await workspace();
+      const offer = await confirmedOffer(ws);
+      const act = await action(ws, offer);
+      const runs = actionRunRepository((run) => withTransaction(run, runtime));
+      const runId = await runs.queue({ actionId: act, actorId: actor, agentKey: "promotion_copy", input: {}, promptVersion: "fixture", model: null, now: new Date() });
+      await runs.start({ runId, actorId: actor, locale: "en" });
+      const done = await runs.finish({
+        runId,
+        actorId: actor,
+        locale: "en",
+        usage: { inputTokens: 1, outputTokens: 1 },
+        costUsd: 0,
+        output: { title: "Promo", body: "Set dinner HK$1,280", warnings: [], facts_used: [], facts_needed: [], acceptance_criteria: [] },
+        offerRevision: 4,
+        finishedAt: new Date(),
+      });
+      expect(done).toMatchObject({ state: "succeeded", versionNo: 1 });
+      if (done.state !== "succeeded" || !done.versionId) throw new Error("expected a version");
+      expect(await storedMeta(done.versionId)).toMatchObject({ title: "Promo", agent_key: "promotion_copy", offer_id: offer, offer_revision: 4 });
+    });
+
+    it("an assistant-redeemed version inherits its base's revision", async () => {
+      const { ws, offer, act, ver } = await offerVersion();
+      const repo = artifactRepository(runtime);
+      const runId = await repo.recordAssistantDraft({
+        actionId: act,
+        workspaceId: ws,
+        actorId: actor,
+        agentKey: "promotion_copy",
+        promptVersion: "fixture",
+        intentId: "rewrite",
+        surface: "action",
+        locale: "en",
+        model: null,
+        output: { title: "Rewrite", body: "Rewritten promo", alt_text: null, acceptance_criteria: [], warnings: [], facts_used: [] },
+        usage: { inputTokens: 1, outputTokens: 1 },
+        costUsd: 0,
+        finishedAt: new Date().toISOString(),
+      });
+      const redeemed = await createAssistantVersion(repo, { actionId: act, workspaceId: ws, actorId: actor, runId, baseVersionId: ver });
+      expect(await storedMeta(redeemed.versionId)).toMatchObject({ origin: "assistant", offer_id: offer, offer_revision: 1 });
+    });
   });
 });
