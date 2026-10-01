@@ -1,6 +1,6 @@
 # Phase 4 report
 
-Phase 4 of the owner-platform plan (Master Plan §7). One slice is built so far: P4.4. P4.1, P4.2 and P4.3 have not been started, and P4.5 and P4.6 are deliberately not built.
+Phase 4 of the owner-platform plan (Master Plan §7). P4.4 and P4.1 are built. P4.2 and P4.3 have not been started, and P4.5 and P4.6 are deliberately not built.
 
 ## P4.4 — reusable workflow contract
 
@@ -161,3 +161,107 @@ The final whole-branch review (`c042b20..1c24773`) returned one critical, two im
 | Invariants | — | prompt snapshot byte-identical to `c042b20` (vitest rewrote line endings only; restored with `git checkout --`); no migration; no `packages/**` edit. |
 
 Not re-run in this wave: `build`, `test:secret-boundary`, `test:no-supabase`, `test:no-self-service-claim` and the literal `e2e` (not in the wave's gate list; the earlier Task 8 records stand for them). No real model was called and `EVAL_LIVE` was never set.
+
+## P4.1 — confirmed offers and promotion copy
+
+**Branch** `p4-1-offers`, HEAD = the documentation commit on top of `18cd4ff`: 15 commits (`cbce70d`..HEAD) on top of base `dc55e02` (`origin/main`, PR #27, which carries P4.4). Spec: [`docs/superpowers/specs/2026-10-01-offer-promotion-copy-design.md`](../../superpowers/specs/2026-10-01-offer-promotion-copy-design.md) (approved by Willy on 2026-10-01). Plan: `docs/superpowers/plans/2026-10-01-offer-promotion-copy.md` (Tasks 1–13). Environment: a Linux cloud sandbox (kernel 6.18), Node `v22.22.0`, pnpm `9.12.0` via corepack, **no Docker daemon**: every gate that needs PostgreSQL ran against a **local PostgreSQL 16 stand-in, not Docker** (a sandbox-only `docker` shim that starts a throwaway local PostgreSQL 16 cluster per "container"; never committed). Gates run 2026-10-01, one at a time.
+
+**Implemented and locally verified. Nothing here is hosted-verified.** Migration `0011_offers.sql` is new and was applied only to disposable local databases. Nothing was applied to a hosted database or deployed, and no paid provider was called. The branch was pushed to `origin/p4-1-offers` at Willy's request; no pull request was opened.
+
+### What this closes
+
+Master Plan §7 P4.1, bullet by bullet:
+
+| Master Plan bullet | Where it is proved |
+|---|---|
+| An `offers` model with workspace/location scope, confirmed title/details, price/currency, validity, terms, approved claims, prohibited wording, source/confirmation status and optional rights-cleared asset references (inspected first: no earlier offer model existed) | `0011_offers.sql` and its checks (`offers_status`, `_currency`, `_price_currency`, `_dates`, `_open_ended`, `_confirmed`, `_archived`, `_revision`); `test/integration/neon-schema.integration.test.ts` (0011, 38 tables / 468 columns); `test/integration/neon-offers.integration.test.ts` (7 tests); `lib/offers/validate.test.ts`. |
+| Offer facts kept distinct from generated variants; nothing inferred from an image or an incomplete description | Offers live in their own table, never in `brand_profiles` or `provided_inputs` (D1). Confirmation requires an end date or an explicit "no fixed end date" (D7, `confirmable` in `validate.test.ts`). The `offer_copy` task forbids stating anything absent from the offer or brand facts; corpus `missing_facts-05`, `fabricated_claim-06/07/08`. |
+| Reuse the authorized action/run/version model; capability labels do not prove a publishing API | Three `WorkflowDefinition` rows (`offer-gbp-post`, `offer-social-post`, `offer-chat-message`), Beta, `export_copy` only (`templates.contract.test.ts`). Drafts are ordinary actions, runs and versions; `approve_output_version` and `export_output_version` are unchanged. A new `offer_copy` agent was added instead of changing the `gbp_post` / `social_post` prompts (D2; those prompts forbid prices and offer dates). |
+| Channel-specific **text drafts** from one confirmed offer and brand context; rights-cleared owner assets or a labelled human photo brief | Per-channel task text and limits (`lib/agents/agents.test.ts`, the `offer_copy` cases and snapshot). Instagram is pre-filled with the offer's first approved photo, otherwise it waits on the photo/text-only choice (`lib/offers/service.test.ts`). The offer page links a photo brief "for you or your staff to shoot (nothing is generated)". |
+| The delivery unit shown before generation and export; no campaign bundling; no double charge for re-exporting one version | D4: the notice above "Prepare drafts" states the number of drafts, that each approved and exported draft counts once, and this period's usage (`components/workspace/offer-detail.test.tsx`). The acceptance journey asserts `3` and `0 of 3` before preparing, `1 of 3` after one export, and still `1 of 3` after copying the same version twice. |
+| Tests for expired/unconfirmed offers, wrong-market currency, prohibited claims, location access, changed offer facts and a reused historical approved output; a changed offer never mutates a prior output | Run gate: `lib/workspace/runs.test.ts` (missing, unconfirmed, archived, ended in the workspace timezone, wrong location, wrong currency: zero model calls). Output checks: `wrongMarketCurrency`, `unconfirmedDiscount`, `urgencyClaim`, `healthClaim`, prohibited wording merged into the brand terms (`agents.test.ts`, corpus `locale_market-03`). Location access: `canManageOfferAt` (`service.test.ts`, `route.test.ts`). Changed facts: `lib/offers/binding-guard.test.ts`, `app/api/versions/[versionId]/versions.test.ts`, and acceptance step 10 (409 `offer_changed`, Approve disabled). Historical output: versions keep `meta.offer = {id, revision}`; an already-exported version may be copied again and counts nothing. |
+
+### Decisions
+
+Willy approved the spec as written on 2026-10-01, so D1–D10 stand as written in the spec (offers table and `actions.offer_id`; a new Beta `offer_copy` agent; three channels with WhatsApp in `hk` and LINE in `tw`; one approved version = one delivery; stale drafts refused at approval and first export; `draft → confirmed → archived` with a revision bump on every edit; an end date or an explicit open end; owners and in-scope managers manage, scoped managers never workspace-wide; no tier gating; `OFFERS_ENABLED === "true"`, default off). Q1–Q3 were not answered separately, so their stated defaults apply: a new agent (Q1), a hard refusal for stale offer drafts (Q2), and per-approved-version counting under DEC-14's safe default (Q3).
+
+### Commits
+
+| Commit | Task | What |
+|---|---|---|
+| `cbce70d` | — | Spec and plan. |
+| `3bed13c` | 1 | Migration `0011_offers.sql` (offers, `actions.offer_id` with `ON DELETE SET NULL`), Drizzle mirror, regenerated types, catalog baseline. |
+| `68781e0` | 2 | Pure modules: validation, dates in the workspace timezone, price and validity formatting, usability. |
+| `4b0d46f` | 3 | Offer repository, service and the four `offer.*` audit events (ids, revision and location only). |
+| `0b3d9a3` | 4 | Owner routes behind `OFFERS_ENABLED` (404 when off). |
+| `c1a5ecc` | 5 | Three workflow definitions; `offer_confirmed` is server-satisfied; offer workflows refused by `POST /api/actions`. |
+| `85d0491` | 6 | `offer_copy` agent and the market-currency, discount, urgency, health and hashtag checks. |
+| `935bddb` | 7 | Runs read the confirmed offer, gate on it before any run row, and bind the version to its revision. |
+| `d2881d7` | 8 | One idempotent action per offer channel (dedupe key includes the offer id). |
+| `601bdbc` | 9 | Stale offer drafts cannot be approved or first-exported; manual edits inherit the base version's binding. |
+| `eed714f` | 10 | Offer screens, the delivery notice and the offer-aware action detail. |
+| `e844169` | 11 | Corpus cases (`missing_facts-05`, `fabricated_claim-06/07/08`, `locale_market-03`). |
+| `0ae6621` | 12 | Acceptance journey. |
+| `18cd4ff` | 13 | Integration test: a second offer in the same scope gets its own drafts (added after mutation (e) first survived). |
+| this commit | 13 | Phase record. |
+
+### Departures from the plan
+
+- **Environment.** The plan assumed Willy's Windows machine with Docker. This run used a Linux sandbox with no Docker daemon; PostgreSQL gates used a local PostgreSQL 16 stand-in. On Linux the Windows-only Turbopack `radix-ui` cascade did not occur, so the literal `build` and `test:secret-boundary` ran and passed.
+- **Playwright browser.** The pinned Playwright wants `chromium_headless_shell-1228`; the sandbox ships an older Chromium build and downloading is not allowed. The literal `e2e` / `e2e:acceptance` commands therefore stop at browser launch here (**blocked**). Both suites were run with an untracked config that only adds `executablePath` for the preinstalled Chromium (deleted afterwards, never committed). Those runs are diagnostics, not passes of the literal commands.
+- **Acceptance seed.** The journey inserts one approved photo row for the offer's location, so the Instagram draft is pre-filled and all three rows reach "Ready to review" as Task 12 step 6 requires. Without a photo, the Instagram row correctly waits on the photo/text-only choice (unit-tested).
+- **Acceptance step 11.** The review-reply check is inline in the same test (generate one version on the seeded `review-response` action) rather than a shared helper; `merchant-loop.spec.ts` itself also ran in the full suite.
+- **Fake LLM.** `test/e2e/llm-server.ts` returns a fixed offer draft when the prompt carries `offer_copy@`, as the plan allowed.
+- **Mutation (f).** "`wrongMarketCurrency` checks only `HK$`" would break the `hk` case, not the `tw` one. To test what the plan meant (the `tw` `HK$88` case), the mutation removed `HK$` from the `tw` pattern instead.
+- **Known limit.** The binding check and the approval/export RPC are separate statements, so an offer edit committed between them is not seen by that request. This is documented in `lib/offers/binding-guard.ts`; closing it would need an SQL change this slice rules out.
+
+### Verification
+
+Run 2026-10-01, one gate at a time, at `0ae6621` (the integration file was re-run alone at `18cd4ff`). Full detail is in `PHASE-4-TEST-RESULTS.md`.
+
+| Command | Result |
+|---|---|
+| Unchanged checks | `git diff --stat dc55e02 -- packages neon/migrations/0001…0010` empty; the only `task:` line added under `lib/agents/agents/` is in `offer-copy.ts`; `lib/agents/__snapshots__/agents.test.ts.snap` has 295 added lines and none removed. |
+| `corepack pnpm typecheck` | **passed**, exit 0. |
+| `corepack pnpm lint` | **passed**, `0 errors, 30 warnings`, the same 30 as P4.4. |
+| `corepack pnpm test` | **passed**: 380 files / 4,303 tests (P4.4: 366 / 4,127), first run, no timeouts. |
+| `corepack pnpm build` | **passed** (literal Turbopack build; the Windows `radix-ui` cascade does not occur on Linux). |
+| `corepack pnpm test:secret-boundary` | **passed**, 60 public artifacts. |
+| `test:no-supabase` / `test:no-self-service-claim` | **passed** / **passed**. |
+| `corepack pnpm db:verify` | **passed** (stand-in PostgreSQL 16): 0001–0011 applied, replay `[]`, 38 tables / 468 columns / 188 constraints / 98 indexes. |
+| `NEON_INTEGRATION=1 corepack pnpm test:integration` | **failed: 405 / 407** (38 / 40 files). The two failures are `neon-fixture.integration.test.ts` (network-none relay) and `neon-recovery.integration.test.ts` (database restart). Both test Docker container behaviour (a network-none relay and a container restart) that the stand-in cannot provide. This branch does not change either file or the database fixture they use, but they were not run on the base branch in this sandbox, so it is inferred, not confirmed, that they are unrelated. All P4.1 integration tests passed (`neon-offers` 7 / 7, `neon-schema`, `neon-artifact-runtime`). Docker CI is the real gate. |
+| `corepack pnpm e2e` | **blocked** at browser launch (Playwright browser revision missing); diagnostic with the preinstalled Chromium: **31 / 31 passed**. |
+| `corepack pnpm e2e:acceptance` | **blocked** the same way; diagnostic: **39 / 39 passed** (6.0 min), including `offer-promotion.spec.ts` and `merchant-loop.spec.ts`. |
+| `eval:workflows -- --check-load` / `-- --budget-usd 1` | `load ok: 29 cases`, exit 0 / refused `not_enabled`, exit 2. |
+
+### Mutation checks
+
+Scratch script outside the repo; each change applied exactly once, the named tests run, the original bytes restored; `git diff --quiet` afterwards.
+
+| Mutation | Result |
+|---|---|
+| (a) `offer_confirmed` removed from `SERVER_SATISFIED_INPUT_KEYS` | **killed**: `a persisted offer_confirmed value does not satisfy the gate` (`runs.test.ts`) and the contract test `offer_confirmed is server-satisfied`. |
+| (b) `offerUsability` ignores `hasEnded` | **killed**: `offerUsability names why it cannot be used`, `an ended offer blocks before the model with zero cost`, `an ended offer is judged in the workspace timezone`. The `confirmable` tests did **not** fail: `confirmable` checks the end date itself and does not go through `offerUsability`. The plan expected them to fail. |
+| (c) `firstExportOnly` condition dropped in `assertOfferBinding` | **killed**: the binding-guard re-copy test and `re-copy of an exported version after an offer edit is allowed and not counted`. |
+| (d) Versions route reads `meta` from the client body | **killed**: `a client body containing meta is ignored`. |
+| (e) `offer_id` removed from the dedupe key | **survived at first.** The concurrent test used a single offer, so the key never had to tell two offers apart. `18cd4ff` adds a second confirmed offer in the same scope and requires three new actions for it. Re-run: **killed**. Without the fix, the second offer's "Prepare drafts" would have returned the first offer's drafts. |
+| (f) `tw` currency pattern no longer matches `HK$` (see Departures) | **killed**: `offer_copy flags the other market's currency`. |
+
+### Not run / blocked
+
+- **Real-model evaluation: not run** (DEC-04). The five new corpus cases prove the pipeline with canned outputs, not how any model writes offer copy.
+- **Hosted migration: not applied** (DEC-11). `0011_offers.sql` has been applied only to disposable local databases.
+- **Docker-specific integration tests** (`neon-fixture`, `neon-recovery`): failed under the stand-in; see Verification.
+- **Literal `e2e` / `e2e:acceptance`**: blocked by the sandbox's Playwright browser revision; diagnostics passed.
+- **P4.2 and P4.3: not started. P4.5 / P4.6: not built** (DEC-12, DEC-13).
+
+### Open questions
+
+- **Q1** (new agent vs reusing `gbp_post` / `social_post`): default taken, a new `offer_copy` agent.
+- **Q2** (stale offer drafts): default taken, a hard 409 at approval and first export; re-copying an already-exported version stays allowed and counts nothing.
+- **Q3** (delivery unit for a three-channel offer): default taken, one delivery per approved, exported version (DEC-14 safe default). DEC-14 is unchanged in `BUSINESS-AND-HOSTED-DECISIONS.md`.
+
+### Owner actions
+
+1. Apply migration `0011_offers.sql` to the hosted database **before** deploying this code, using the same rehearsed procedure as 0010 (`db:verify` first).
+2. Then set `OFFERS_ENABLED=true` to show the Offers page, the More and Create entries and the offer routes. Unsetting it hides them again without losing any data.

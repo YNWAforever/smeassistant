@@ -112,7 +112,7 @@ With those fixed, `next build --webpack` completes: compile **and** the TypeScri
 
 ## Phase 4
 
-State vocabulary (`fixed this phase`, `already correct (verified)`, `built, not run`, `open`, `blocked`) and the evidence column follow the Phase 1 rows above; this section sits after Phase 3 in phase order, and "fixed this phase" means fixed on this branch, locally verified, not hosted. Commits are on branch `p4-growth-platform` (base `c042b20`). Only P4.4 is built; P4.1–P4.3 are not started, and P4.5/P4.6 are deliberately not built. Gate-by-gate record: `PHASE-4-TEST-RESULTS.md`; decisions, rulings and limits: `PHASE-4-REPORT.md`.
+State vocabulary (`fixed this phase`, `already correct (verified)`, `built, not run`, `open`, `blocked`) and the evidence column follow the Phase 1 rows above; this section sits after Phase 3 in phase order, and "fixed this phase" means fixed on this branch, locally verified, not hosted. Commits are on branch `p4-growth-platform` (base `c042b20`). P4.4 and P4.1 are built (P4.1 on branch `p4-1-offers`, base `dc55e02`); P4.2–P4.3 are not started, and P4.5/P4.6 are deliberately not built. Gate-by-gate record: `PHASE-4-TEST-RESULTS.md`; decisions, rulings and limits: `PHASE-4-REPORT.md`.
 
 ### P4.4 — reusable workflow contract
 
@@ -131,5 +131,6 @@ State vocabulary (`fixed this phase`, `already correct (verified)`, `built, not 
 | `review-request.channel` as a `preference` | open | One-row reclassification if the owner wants the channel to be a hard choice. |
 | Owner-visible change: a run or assistant draft missing a confirmed fact or scanned evidence stops before the model and costs nothing | fixed this phase | Behaviour change section of `PHASE-4-REPORT.md`; covered by `runs.test.ts`, `live.test.ts`, the corpus, and the Neon integration fixtures (passed 39/399). |
 | Literal `build`, `test:secret-boundary` and `e2e` gates on a Windows machine | blocked (local only) | Turbopack `radix-ui` cascade as at every prior phase. `--webpack` build passed; `--webpack` secret-boundary diagnostic passed (139 artifacts); `--webpack` e2e diagnostics: `e2e` 30/31 (the one failure, `owner-shell.spec.ts:16`, was observed only under the diagnostic server: `getByRole("alert")` resolves to the page's `<p role="alert">` and `#__next-route-announcer__`; its files are byte-identical to `c042b20`, but it was never run on `c042b20`, so independence from this branch is inferred, not confirmed), `e2e:acceptance` 38/38. CI on `ubuntu-latest` is the real gate. |
-| P4.1 offers/promotion copy, P4.2 work packs, P4.3 contextual assistant | open | Not started; they follow on this contract. |
+| P4.1 confirmed offers and promotion copy | fixed this phase | Branch `p4-1-offers` (`cbce70d`..`18cd4ff` + docs): migration `0011_offers.sql`, `lib/offers/*`, the `offer_copy` agent, three offer workflows, the stale-offer guard on approval and first export, and the offer screens behind `OFFERS_ENABLED`. Locally verified, not hosted; migration 0011 not applied anywhere hosted. Evidence and the six-bullet mapping: `PHASE-4-REPORT.md` § P4.1; gates and mutations: `PHASE-4-TEST-RESULTS.md` § P4.1. Real-model evaluation built, not run (DEC-04). |
+| P4.2 work packs, P4.3 contextual assistant | open | Not started; they follow on this contract. |
 | P4.5 preview, P4.6 publishing | blocked | Not built; DEC-12 and DEC-13 are not authorized. |

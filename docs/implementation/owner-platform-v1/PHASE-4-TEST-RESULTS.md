@@ -1,6 +1,6 @@
 # Phase 4 test results
 
-Gate-by-gate record for Phase 4. Each slice has its own section. Only P4.4 exists so far.
+Gate-by-gate record for Phase 4. Each slice has its own section: P4.4, then P4.1.
 
 ## P4.4 — reusable workflow contract
 
@@ -103,3 +103,39 @@ Findings, rulings (including the reversed evidence-input ruling) and commits are
 | Invariants | — | prompt snapshot byte-identical to `c042b20` (vitest rewrote line endings only; restored with `git checkout --`); no migration; no `packages/**` edit. |
 
 Not re-run in this wave: `build`, `test:secret-boundary`, `test:no-supabase`, `test:no-self-service-claim` and the literal `e2e` (not in the wave's gate list; the earlier Task 8 records stand for them). No real model was called and `EVAL_LIVE` was never set.
+
+## P4.1 — confirmed offers and promotion copy
+
+Candidate: branch `p4-1-offers`, gates at `0ae6621` (13 commits `cbce70d`..`0ae6621` on base `dc55e02`, `origin/main` with PR #27); `18cd4ff` adds one integration assertion, and that file was re-run alone. Spec: [`docs/superpowers/specs/2026-10-01-offer-promotion-copy-design.md`](../../superpowers/specs/2026-10-01-offer-promotion-copy-design.md). Plan: `docs/superpowers/plans/2026-10-01-offer-promotion-copy.md`. Environment: Linux cloud sandbox, Node `v22.22.0`, pnpm `9.12.0` via corepack, **no Docker daemon**: PostgreSQL-backed gates ran on a **local PostgreSQL 16 stand-in, not Docker** (a sandbox-only `docker` shim, never committed). Run 2026-10-01, every gate sequentially.
+
+**Read this first.** Everything below is **locally verified**. **Nothing here is hosted-verified.** Migration 0011 was applied only to disposable local databases; nothing was deployed and no paid provider was called (fake LLM everywhere; the evaluation script refused).
+
+| # | Command | Exit | Result |
+|---|---|---|---|
+| 0 | Unchanged checks against `dc55e02` | — | `packages/**` and migrations 0001–0010: empty diff. Only `offer-copy.ts` adds a `task:` line. Snapshot: +295 lines, 0 removed. |
+| 1 | `corepack pnpm typecheck` | 0 | **passed** (root and four packages). |
+| 2 | `corepack pnpm lint` | 0 | **passed**, `0 errors, 30 warnings` (P4.4: 30). |
+| 3 | `corepack pnpm test` | 0 | **passed**, first run: app 329 / 3,716, safe-media 1 / 62, `region` 3 / 23, `scoring` 16 / 183, `contracts` 3 / 20, `scan-engine` 28 / 299. **380 files / 4,303 tests** (P4.4: 366 / 4,127). |
+| 4 | `corepack pnpm build` | 0 | **passed**, literal Turbopack build (no `radix-ui` cascade on Linux). |
+| 5 | `corepack pnpm test:secret-boundary` | 0 | **passed**: `Secret boundary passed across 60 public artifacts.` |
+| 6 | `corepack pnpm test:no-supabase` | 0 | **passed**. |
+| 7 | `corepack pnpm test:no-self-service-claim` | 0 | **passed**. |
+| 8 | `corepack pnpm db:verify` | 0 | **passed**: applied 0001–0011, replay `[]`, 38 tables / 468 columns / 188 constraints / 98 indexes, `seededRows` 0. |
+| 9 | `NEON_INTEGRATION=1 corepack pnpm test:integration` | 1 | **failed, 405 / 407** (38 / 40 files): `neon-fixture.integration.test.ts` "owned network-none relay supports distinct SQL clients and closes on cleanup" and `neon-recovery.integration.test.ts` "preserves a new application user … across drained access and an owned database restart". Both need real Docker container behaviour. Their files and fixture are unchanged on this branch; not run on base here, so being unrelated is inferred. `neon-offers.integration.test.ts` 7 / 7 at `18cd4ff`. |
+| 10 | `corepack pnpm e2e` | — | **blocked**: Playwright 1.61 needs `chromium_headless_shell-1228`, the sandbox has an older build and no download. Diagnostic with an untracked config adding `executablePath` for the preinstalled Chromium (deleted afterwards): **31 / 31 passed** (59 s). |
+| 11 | `corepack pnpm e2e:acceptance` | — | **blocked**, same cause. Diagnostic the same way: **39 / 39 passed** (6.0 min), including `offer-promotion.spec.ts` (1.4 min alone). |
+| 12 | `corepack pnpm eval:workflows -- --check-load` | 0 | `load ok: 29 cases`. `-- --budget-usd 1`: exit **2**, `refused: not_enabled`. |
+
+### Mutation checks
+
+| Mutation | Tests run | Result |
+|---|---|---|
+| (a) drop `offer_confirmed` from `SERVER_SATISFIED_INPUT_KEYS` | `runs`, `service`, `templates.contract` | **killed** (2 tests). |
+| (b) `offerUsability` ignores `hasEnded` | `runs`, `usability`, `validate` | **killed** (3 tests); the `confirmable` tests did not fail, since `confirmable` does not use `offerUsability`. |
+| (c) drop the `firstExportOnly` condition | `binding-guard`, `app/api/versions` | **killed** (2 tests). |
+| (d) versions route takes `meta` from the body | versions route test | **killed** (1 test). |
+| (e) drop `offer_id` from the dedupe key | `neon-offers` integration | **survived**, then **killed** after `18cd4ff` added a second-offer assertion. |
+| (f) `tw` pattern no longer matches `HK$` | `agents` | **killed** (1 test). |
+
+`git diff --quiet` was clean after each restore.
+
