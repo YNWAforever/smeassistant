@@ -58,6 +58,8 @@ export interface EvalDeps {
   now: () => Date;
   /** Only used to record which model and host were configured. Defaults to process.env. */
   env?: Env;
+  /** The cost model; defaults to lib/agents' computeCostUsd. Injected so a null (unpriced) estimate is testable. */
+  costUsd?: typeof computeCostUsd;
 }
 
 function hostOf(url: string | undefined): string | null {
@@ -73,28 +75,38 @@ export async function runEval(deps: EvalDeps): Promise<EvalReport> {
   // Loaded on demand so a refused invocation never pulls in the run pipeline.
   const { runCorpusCase } = await import("@/test/corpus/workflows/harness");
   const env = deps.env ?? process.env;
+  const costUsd = deps.costUsd ?? computeCostUsd;
   let total = 0;
   // The dearest call seen so far. Every call is also pre-flighted against a worst-case estimate
   // (characters >= tokens, so this over-estimates), which guards the very first call too.
   let dearestCall = 0;
   let refused = false;
   let unpriced = false;
+  // Set when a case's first call was refused because its estimate was unknown.
+  let refusedUnpriced = false;
   let halted = false;
   let stoppedForBudget = false;
   const overBudget = (estimate: number) => total + Math.max(dearestCall, estimate) > deps.budgetUsd;
 
   const budgetedLlm = (async (prompt, options) => {
-    const estimate =
-      computeCostUsd({ inputTokens: prompt.length, outputTokens: options?.maxTokens ?? AGENT_LLM_OPTIONS.maxTokens }) ?? 0;
     // An unknown cost means the budget can no longer be enforced: fail closed.
     if (halted) return null;
+    const estimate = costUsd({ inputTokens: prompt.length, outputTokens: options?.maxTokens ?? AGENT_LLM_OPTIONS.maxTokens });
+    // No pre-flight estimate (pricing unconfigured): the budget cannot be
+    // checked before spending, so refuse this call and every later one.
+    if (estimate === null) {
+      unpriced = true;
+      refusedUnpriced = true;
+      halted = true;
+      return null;
+    }
     if (overBudget(estimate)) {
       refused = true;
       return null;
     }
     const result = await deps.llm(prompt, options);
     if (result) {
-      const cost = computeCostUsd(result.usage);
+      const cost = costUsd(result.usage);
       if (cost === null) {
         unpriced = true;
         halted = true;
@@ -113,6 +125,7 @@ export async function runEval(deps: EvalDeps): Promise<EvalReport> {
       break;
     }
     refused = false;
+    refusedUnpriced = false;
     const notes: string[] = [];
     // missing_facts cases are blocked by the gate before any model call, so they are a gate result, not a model result.
     if (c.category === "missing_facts") notes.push("gate");
@@ -136,6 +149,8 @@ export async function runEval(deps: EvalDeps): Promise<EvalReport> {
       notes.push("budget_refused");
     }
     if (unpriced) {
+      // A case whose model was never called cannot pass.
+      if (refusedUnpriced) pass = false;
       stoppedForBudget = true;
       notes.push("cost_unknown");
     }

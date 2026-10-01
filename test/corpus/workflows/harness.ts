@@ -67,7 +67,9 @@ export const corpusCaseSchema = z.object({
       }),
     )
     .optional(),
-  cannedOutputs: z.array(z.string().nullable()),
+  // A string is the model's text, null is llmComplete's "no answer", and
+  // { throws } makes that call reject (a timeout or transport error).
+  cannedOutputs: z.array(z.union([z.string(), z.null(), z.object({ throws: z.string().min(1) })])),
   expect: z.object({
     llmCalls: z.number().int().min(0),
     factsNeeded: z.array(z.string()).optional(),
@@ -77,6 +79,8 @@ export const corpusCaseSchema = z.object({
     warningsExclude: z.array(z.string()).optional(),
     promptIncludes: z.array(z.string()).optional(),
     promptExcludes: z.array(z.string()).optional(),
+    /** The failure reason the run finished with (e.g. action_run_failed). */
+    reason: z.string().optional(),
   }),
 });
 
@@ -231,12 +235,16 @@ export async function runCorpusCase(c: CorpusCase, llm: typeof llmComplete): Pro
   return { result, prompts, finishInput, llmCalls: prompts.length };
 }
 
-/** A fake model returning the canned outputs in order; null when canned null or once exhausted. */
-export function cannedLlm(outputs: ReadonlyArray<string | null>): typeof llmComplete {
+/**
+ * A fake model returning the canned outputs in order; null when canned null or
+ * once exhausted, and a rejected call for a `{ throws }` entry.
+ */
+export function cannedLlm(outputs: ReadonlyArray<CorpusCase["cannedOutputs"][number]>): typeof llmComplete {
   let next = 0;
   return (async () => {
-    const text = outputs[next++];
-    if (text === undefined || text === null) return null;
-    return { text, usage: { inputTokens: 100, outputTokens: 50 } } satisfies LLMResult;
+    const canned = outputs[next++];
+    if (canned === undefined || canned === null) return null;
+    if (typeof canned !== "string") throw new Error(canned.throws);
+    return { text: canned, usage: { inputTokens: 100, outputTokens: 50 } } satisfies LLMResult;
   }) as typeof llmComplete;
 }

@@ -39,6 +39,7 @@ describe("workflow regression corpus", () => {
       expect(llmCalls).toBe(want.llmCalls);
       if (want.factsNeeded) expect(result.factsNeeded).toEqual(want.factsNeeded);
       if (want.state) expect(result.state).toBe(want.state);
+      if (want.reason) expect(finishInput.reason).toBe(want.reason);
       if (want.version !== undefined) {
         expect(result.versionId !== undefined).toBe(want.version);
         expect(finishInput.output !== null).toBe(want.version);

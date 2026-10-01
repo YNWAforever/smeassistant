@@ -68,6 +68,37 @@ describe.each(TEMPLATES)("workflow contract: $key", (t) => {
   });
 });
 
+/**
+ * The spec's "Input classification" table, literally. A row whose kinds drift
+ * (e.g. ig-bio's cta_link re-tagged from confirmed_fact to preference, which
+ * would silently stop the run gate asking for it) fails here, not in review.
+ */
+const SPEC_INPUT_KINDS: Record<string, Record<string, "confirmed_fact" | "evidence" | "preference">> = {
+  "review-response": { brand_voice: "preference", reviews_without_response: "evidence", language: "preference" },
+  "review-request": { brand_voice: "preference", channel: "preference" },
+  "gbp-profile-fix": { opening_hours: "confirmed_fact", categories: "confirmed_fact" },
+  "gbp-photo-pack": {},
+  "gbp-post": { brand_voice: "preference" },
+  "social-post": { asset_or_text_only: "confirmed_fact", alt_text: "preference" },
+  "ig-bio": { brand_voice: "preference", approved_claim: "confirmed_fact", cta_link: "confirmed_fact" },
+  "ig-highlights": {},
+  "visibility-content": { owner_fact_1: "confirmed_fact", owner_fact_2: "confirmed_fact", owner_fact_3: "confirmed_fact" },
+  "website-basics": { approved_claim: "preference" },
+  "local-seo-brief": {},
+  "menu-translation": { menu_items: "confirmed_fact" },
+  "google-reconnect": { google_account_owner: "confirmed_fact" },
+};
+
+describe("input classification matches the spec table", () => {
+  it("covers every template and no others", () => {
+    expect(TEMPLATES.map((t) => t.key).sort()).toEqual(Object.keys(SPEC_INPUT_KINDS).sort());
+  });
+
+  it.each(TEMPLATES.map((t) => [t.key, t] as const))("%s tags each input with the spec's kind", (key, t) => {
+    expect(Object.fromEntries(t.inputs.map((i) => [i.key, i.kind]))).toEqual(SPEC_INPUT_KINDS[key]);
+  });
+});
+
 describe("workflow registry", () => {
   it("derives TEMPLATE_METRIC from the template table", () => {
     const derived = Object.fromEntries(TEMPLATES.filter((t) => t.measurement).map((t) => [t.key, t.measurement]));

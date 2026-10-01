@@ -162,6 +162,18 @@ describe("runEval fail-closed budget", () => {
     expect(calls.mock.calls.length).toBe(1);
   });
 
+  it("refuses the call up front when the pre-flight estimate is unknown (pricing unconfigured), noting cost_unknown", async () => {
+    const c = modelCase();
+    const { llm, calls } = costingLlm(0.0001);
+    const report = await runEval({ cases: [c, { ...c, id: "second" }], llm, budgetUsd: 1000, now, costUsd: () => null });
+    expect(calls).not.toHaveBeenCalled();
+    expect(report.totalCostUsd).toBe(0);
+    expect(report.stoppedForBudget).toBe(true);
+    expect(report.results).toHaveLength(1);
+    expect(report.results[0]).toMatchObject({ id: c.id, pass: false });
+    expect(report.results[0].notes).toContain("cost_unknown");
+  });
+
   it("records the prompt version of every agent", async () => {
     const { AGENTS } = await import("@/lib/agents");
     const report = await runEval({ cases: [], llm: cannedLlm([]), budgetUsd: 1, now });

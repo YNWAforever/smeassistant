@@ -1,0 +1,18 @@
+{
+  "locale": "en",
+  "market": "hk",
+  "provided": {},
+  "brand": {},
+  "id": "provider-failure-model-call-rejects-timeout",
+  "category": "provider_failure",
+  "workflow": "gbp-post",
+  "cannedOutputs": [
+    { "throws": "The operation was aborted due to timeout" }
+  ],
+  "expect": {
+    "llmCalls": 1,
+    "state": "failed",
+    "version": false,
+    "reason": "action_run_failed"
+  }
+}
