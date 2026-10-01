@@ -1,4 +1,10 @@
 import { inLocationScope, roleAtLeast, type Membership } from "@/lib/auth";
+import { marketCurrency, type OfferCurrency } from "@/lib/workspace/offer-format";
+
+// Client components render offers too, so the currency rule and its type live in
+// a module with no server imports; they are re-exported so existing importers keep working.
+export { marketCurrency };
+export type { OfferCurrency };
 
 /**
  * Offer domain rules (docs/superpowers/specs/2026-10-01-offers-promotion-copy-design.md
@@ -9,7 +15,6 @@ import { inLocationScope, roleAtLeast, type Membership } from "@/lib/auth";
  * "Expired" is never computed here: it comes only from SQL
  * `public.offer_is_expired`, so the workspace-local date is the single clock.
  */
-export type OfferCurrency = "HKD" | "TWD";
 export type OfferStatus = "draft" | "confirmed" | "archived";
 
 export interface Offer {
@@ -71,10 +76,6 @@ const MAX_TERMS = 1000;
 const MAX_LIST_ITEMS = 20;
 const MAX_ITEM_LENGTH = 200;
 const MAX_PRICE = 9_999_999_999.99;
-
-export function marketCurrency(market: "hk" | "tw"): OfferCurrency {
-  return market === "tw" ? "TWD" : "HKD";
-}
 
 function text(value: unknown, field: string, min: number, max: number): { ok: true; value: string } | { ok: false; error: string } {
   if (value == null && min === 0) return { ok: true, value: "" };

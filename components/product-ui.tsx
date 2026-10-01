@@ -26,6 +26,7 @@ import {
   Settings2,
   ShieldCheck,
   Sparkles,
+  Tag,
   Users,
   WandSparkles,
   X,
@@ -92,6 +93,8 @@ export type ShellWorkspace = {
   urgentActions?: number
   /** Real workspaces only: the topbar assistant runs in live mode against these ids (§3.8). Absent on demo/prototype shells. */
   assistant?: { workspaceId: string; locationId?: string }
+  /** P4.1: the Offers nav entry renders only when OFFER_PROMOTIONS_ENABLED is on (non-demo workspaces); absent means hidden. */
+  offersEnabled?: boolean
 }
 
 /**
@@ -312,6 +315,10 @@ const secondaryWorkspaceNav = [
   { label: "Plan & billing", icon: BadgeCheck, suffix: "/settings/billing" },
 ] as const
 
+/** Inserted after Assets when the offers feature is on; the label comes from copy, not the zh map below. */
+type SecondaryNavItem = { readonly label: string; readonly icon: typeof Home; readonly suffix: string }
+const offersNavItem: SecondaryNavItem = { label: "Offers", icon: Tag, suffix: "/offers" }
+
 const englishSmallNumbers = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
 
 function unreadLabel(count: number, isChinese: boolean) {
@@ -344,17 +351,22 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
             ? (isChinese ? "工作台設定" : "Workspace settings")
             : pathname.endsWith("/assets")
               ? (isChinese ? "素材" : "Assets")
-              : pathname.endsWith("/calendar")
-                ? (isChinese ? "日曆" : "Calendar")
-                : pathname.endsWith("/activity")
-                  ? (isChinese ? "活動紀錄" : "Activity")
-                  : (isChinese ? "今日焦點" : "Today")
+              : pathname.endsWith("/offers")
+                ? t.workspace.offers.nav
+                : pathname.endsWith("/calendar")
+                  ? (isChinese ? "日曆" : "Calendar")
+                  : pathname.endsWith("/activity")
+                    ? (isChinese ? "活動紀錄" : "Activity")
+                    : (isChinese ? "今日焦點" : "Today")
   const labelMap: Record<string, string> = {
     Home: t.nav.home,
     Actions: t.nav.actions,
     Create: t.nav.create,
     Insights: t.nav.insights,
   }
+  const secondaryNav: ReadonlyArray<SecondaryNavItem> = workspace.offersEnabled
+    ? secondaryWorkspaceNav.flatMap<SecondaryNavItem>((item) => (item.suffix === "/assets" ? [item, offersNavItem] : [item]))
+    : secondaryWorkspaceNav
   const secondaryLabelMap: Record<string, string> = isChinese ? {
     Assets: "素材",
     Calendar: "日曆",
@@ -415,12 +427,12 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
             <SidebarGroupLabel>{isChinese ? "管理" : "Manage"}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {secondaryWorkspaceNav.map(({ label, icon: Icon, suffix }) => {
+                {secondaryNav.map(({ label, icon: Icon, suffix }) => {
                   const href = scopedHref(`${base}${suffix}`)
                   return (
                     <SidebarMenuItem key={label}>
                       <SidebarMenuButton asChild isActive={pathname === href}>
-                        <Link href={href}><Icon /><span>{secondaryLabelMap[label] ?? label}</span></Link>
+                        <Link href={href}><Icon /><span>{label === "Offers" ? t.workspace.offers.nav : secondaryLabelMap[label] ?? label}</span></Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )

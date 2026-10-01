@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useState, useSyncExternalStore } from "react"
 import {
   AlertTriangle, ArrowLeft, BadgeCheck, Check, CheckCircle2, CircleAlert, Clock3, CloudOff, Copy, Download, FileClock, FileImage,
-  History, LoaderCircle, MapPin, MessageSquare, PencilLine, RefreshCw, Save, Send, ShieldAlert, ShieldCheck, Sparkles, UserRound, WandSparkles, X,
+  History, LoaderCircle, MapPin, MessageSquare, PencilLine, RefreshCw, Save, Send, ShieldAlert, ShieldCheck, Sparkles, Tag, UserRound, WandSparkles, X,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -34,6 +34,7 @@ import { approveVersion, decideVersion, exportVersion, markApplied as markApplie
 import { t } from "@/lib/i18n"
 import { aiBudgetRefusal } from "@/lib/budgets/messages"
 import { runErrorLabel } from "@/lib/assistant/draft-failure"
+import { formatOfferDate, isOfferStaleCode, offerStaleKind, type OfferStaleKind } from "@/lib/workspace/offer-format"
 import { basisLabel, buildExportText, effortLabel, formatDateTime, metricLabel, priorityClass, priorityLabel, signed, stateLabel, withLocation } from "@/lib/workspace/format"
 import type { ActionDetail, AuditEventRow, VersionRow } from "@/lib/workspace/queries-pages"
 import type { GuardrailFlag } from "@/lib/workspace/version-meta"
@@ -51,6 +52,25 @@ export interface ActionDetailClientProps {
   locations: Array<{ slug: string; name: string }>
   /** Approved image assets, offered when a social post needs an asset or explicit text-only (§3.7). */
   approvedAssets: Array<{ id: string; filename: string }>
+  /**
+   * P4.1: the confirmed offer an offer-promotion action is written from, with the
+   * price already formatted by the server. Absent for every other action.
+   */
+  offer?: OfferCardData | null
+  /** The revision the latest version recorded (version meta `offer_revision`); null when none was recorded. */
+  latestVersionOfferRevision?: number | null
+  /** Show the link to the Offers page (the page 404s while the flag is off). */
+  offersEnabled?: boolean
+}
+
+export interface OfferCardData {
+  title: string
+  priceText: string | null
+  validFrom: string
+  validUntil: string
+  revision: number
+  status: "draft" | "confirmed" | "archived"
+  expired: boolean
 }
 
 type Busy = null | "run" | "save" | "approve" | "decide" | "export" | "copy" | "inputs" | "applied"
@@ -144,7 +164,7 @@ function guardrailText(flag: GuardrailFlag, locale: PrototypeLocale): string {
   }
 }
 
-export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets }: ActionDetailClientProps) {
+export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false }: ActionDetailClientProps) {
   const isChinese = locale !== "en"
   const router = useRouter()
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -196,6 +216,8 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   const [factsNeeded, setFactsNeeded] = useState<string[] | null>(null)
   const [inputValues, setInputValues] = useState<Record<string, string>>({})
   const [lastRunError, setLastRunError] = useState<string | null>(null)
+  // A 409 from approve/export names the reason the moment it happens; the derived reason below catches it on load.
+  const [offerRefusal, setOfferRefusal] = useState<OfferStaleKind | null>(null)
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)
   // Seeded from the server-resolved effective selection, so the boxes always
   // match what the next draft will actually use.
@@ -219,6 +241,16 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
     }
   }
 
+  // A refusal read off a 409 describes the offer and drafts as they were when it happened. Once either
+  // changes (a new draft, or the offer edited, confirmed, extended or archived) it is out of date, and
+  // the derived reason takes over.
+  const offerKey = `${versionsKey}|${offer ? `${offer.revision}|${offer.status}|${offer.expired}` : ""}`
+  const [seenOfferKey, setSeenOfferKey] = useState(offerKey)
+  if (seenOfferKey !== offerKey) {
+    setSeenOfferKey(offerKey)
+    if (offerRefusal) setOfferRefusal(null)
+  }
+
   const selectedVersion: VersionRow | null = versions.find((item) => item.id === versionId) ?? null
   const guardrailFlags = selectedVersion?.guardrails ?? []
   // "Not checked" and "checked, clean" are different facts and must not share a
@@ -229,6 +261,8 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
     : selectedVersion?.checked
       ? (isChinese ? "已檢查" : "Checked")
       : (isChinese ? "未經檢查" : "Not checked")
+  const offersCopy = copy[locale].workspace.offers
+  const offerStale: OfferStaleKind | null = offerRefusal ?? (offer ? offerStaleKind(offer, { hasVersion: versions.length > 0, recordedRevision: latestVersionOfferRevision }) : null)
   const approval = selectedVersion?.approval_state ?? null
   const delivery = selectedVersion?.delivery_state ?? "not_requested"
   const dirty = selectedVersion ? content !== selectedVersion.body || altText !== (selectedVersion.alt_text ?? "") : content.trim().length > 0
@@ -242,7 +276,8 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   const canApproveCurrent = canApprove && !dirty && approval !== "rejected" && approval !== "superseded" && approval !== "approved"
   const latestRun = runs[0]
   const runStateKey = latestRun?.state
-  const neededKeys = factsNeeded ?? (action.actionState === "needs_input" ? action.missingInputs : [])
+  // R3: the offer is bound by the action's offer_id column, so the owner is never asked for it.
+  const neededKeys = (factsNeeded ?? (action.actionState === "needs_input" ? action.missingInputs : [])).filter((key) => key !== "offer_id")
   const showInputForm = neededKeys.length > 0 && effectiveRole !== "viewer" && inScope
   const canGenerate = canEdit && agentBacked && action.capability !== "Requires connection" && runStateKey !== "running" && runStateKey !== "queued"
   const relatedAudit = auditRows.slice(0, 12)
@@ -280,7 +315,9 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   function failureToast<T>(result: Extract<ClientResult<T>, { ok: false }>) {
     // P3.5a: named before the generic 429, which means "too many requests".
     const budgetRefusal = aiBudgetRefusal(locale, result.status, result.error)
-    if (result.error === "offline" || result.error === "network") toast.error(isChinese ? "無法連接伺服器；文字已保留在此裝置。" : "The server could not be reached; your text is kept on this device.")
+    // P4.1: approve/export refuse a draft whose offer changed, ended or was archived. Plain copy, never the code.
+    if (result.status === 409 && isOfferStaleCode(result.error)) { setOfferRefusal(result.error); toast.error(offersCopy.stale[result.error]) }
+    else if (result.error === "offline" || result.error === "network") toast.error(isChinese ? "無法連接伺服器；文字已保留在此裝置。" : "The server could not be reached; your text is kept on this device.")
     else if (budgetRefusal) toast.error(budgetRefusal)
     else if (result.status === 403) toast.error(isChinese ? "你的角色或地點範圍不允許此操作。" : "Your role or location scope does not allow this action.")
     else if (result.status === 429) toast.error(isChinese ? "請求過於頻繁，請稍後再試。" : "Too many requests; try again shortly.")
@@ -559,6 +596,14 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
       {effectiveRole === "viewer" && <div className="permission-banner"><ShieldAlert /><div><strong>{isChinese ? "檢視者權限" : "Viewer access"}</strong><span>{isChinese ? "可查看證據及紀錄；編輯、生成、審批及匯出會安全拒絕。" : "Evidence and history are visible; editing, generation, approval and export fail closed."}</span></div><Badge variant="outline">{isChinese ? "只讀" : "Read only"}</Badge></div>}
       {role === "manager" && !inScope && <div className="permission-banner"><ShieldAlert /><div><strong>{isChinese ? "超出你的地點權限範圍" : "Outside your location scope"}</strong><span>{isChinese ? "你可查看此行動，但另一地點或所有地點的編輯、審批及送出仍會被拒絕。" : "You may inspect this action, but editing, approval and delivery remain blocked for another location or all-location work."}</span></div><Badge variant="outline">{isChinese ? "拒絕操作" : "Fail closed"}</Badge></div>}
 
+      {offerStale && (
+        <div className="permission-banner" role="alert" data-testid="offer-stale-banner">
+          <AlertTriangle />
+          <div><strong>{offersCopy.stale[offerStale]}</strong></div>
+          {offersEnabled && <Link href={withLocation(`${base}/offers`, location)}>{offersCopy.card.viewOffers}</Link>}
+        </div>
+      )}
+
       <ol className="provenance-chain" aria-label={isChinese ? "行動來源及生命週期" : "Action provenance and lifecycle"}>
         {provenance.map((item, index) => <li key={item.label} className={`is-${item.state}`}><span className="provenance-node">{item.state === "complete" ? <Check /> : index + 1}</span><div><strong>{item.label}</strong><small>{item.detail}</small></div></li>)}
       </ol>
@@ -572,6 +617,20 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
               <div className="section-card-heading"><div><p className="eyebrow">{checklistSteps ? checklistSteps.where : isChinese ? "生成輸出" : "Generated output"}</p><h2>{copy[locale].workspace.templates[action.templateKey]?.workflow ?? action.templateKey}</h2></div><div><Badge variant="outline">{checklistSteps ? stateLabel(action.actionState, locale) : versionName}</Badge>{!checklistSteps && selectedVersion && <Badge variant="outline">{originLabel(selectedVersion.origin, isChinese)}</Badge>}</div></div>
               {social && approvedAssets.length > 0 && <div className="asset-reference"><span><FileImage /></span><div><strong>{approvedAssets[0].filename}</strong><small>{isChinese ? `已核准素材 · 共 ${approvedAssets.length} 項可用` : `Approved asset · ${approvedAssets.length} available`}</small></div><Badge variant="outline">{isChinese ? "已核准" : "Approved"}</Badge></div>}
               <div className="original-context"><FactType type={action.evidence.factType} /><div><strong>{isChinese ? "來源發現" : "Source finding"}</strong><p>{resolveText(action.evidence.detail, locale)}</p><small>{formatDateTime(action.evidence.observedAt, locale, timezone)} · {isChinese ? "原始來源保留作證據" : "Source preserved as evidence"}</small></div></div>
+              {offer && (
+                <div className="brand-check-panel" data-testid="offer-card">
+                  <div className="brand-check-head">
+                    <Tag />
+                    <div><strong>{offersCopy.card.heading}</strong><span>{offer.title}</span></div>
+                    <Badge variant="outline">{offer.expired ? offersCopy.status.expired : offersCopy.status[offer.status]}</Badge>
+                  </div>
+                  <dl className="asset-meta">
+                    <div><dt>{offersCopy.meta.price}</dt><dd>{offer.priceText ?? offersCopy.meta.noPrice}</dd></div>
+                    <div><dt>{offersCopy.meta.valid}</dt><dd>{offersCopy.meta.range.replace("{from}", formatOfferDate(offer.validFrom, locale)).replace("{until}", formatOfferDate(offer.validUntil, locale))}</dd></div>
+                    <div><dt>{offersCopy.meta.revision}</dt><dd>{offer.revision}</dd></div>
+                  </dl>
+                </div>
+              )}
               {/* P2.3 item 17: what the NEXT draft will be grounded in, shown
                   before generation -- not only the guardrail badge that judges
                   a draft after the fact. Collapsed by default to stay compact. */}

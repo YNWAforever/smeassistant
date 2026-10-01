@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ActionDetailView } from "@/components/workspace/action-detail-view";
+import { offerRepository } from "@/lib/repositories/offers";
 import { assetLocationScope, assetUsableByAction, listAssets } from "@/lib/workspace/assets";
+import { formatOfferPrice } from "@/lib/workspace/offer-format";
+import { offerPromotionsEnabled } from "@/lib/workspace/offers-flag";
 import { inScopeFor, loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 import { getAction, getActivity } from "@/lib/workspace/queries-pages";
 
@@ -23,6 +26,11 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
   if (!actionId) notFound();
   const detail = await getAction(page.ctx, actionId);
   if (!detail) notFound();
+
+  // P4.1: an offer promotion action is written from one offer; the card and the stale
+  // banner read it live, so an edit, an end date or an archive shows before the owner clicks.
+  // A read failure only hides the card; approve/export enforce the same rules server-side.
+  const offer = detail.offerId ? await offerRepository().get(page.ctx.workspace.id, detail.offerId).catch(() => null) : null;
 
   const entityIds = new Set<string>([actionId, ...detail.versions.map((v) => v.id), ...detail.runs.map((r) => r.id)]);
   const [activity, assets] = await Promise.all([
@@ -54,6 +62,17 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
       detail={detail}
       auditRows={auditRows}
       approvedAssets={approvedAssets}
+      offer={offer ? {
+        title: offer.title,
+        priceText: formatOfferPrice(offer.priceAmount, offer.currency, page.locale),
+        validFrom: offer.validFrom,
+        validUntil: offer.validUntil,
+        revision: offer.revision,
+        status: offer.status,
+        expired: offer.expired,
+      } : null}
+      latestVersionOfferRevision={detail.versions[0]?.offerRevision ?? null}
+      offersEnabled={offerPromotionsEnabled()}
     />
   );
 }

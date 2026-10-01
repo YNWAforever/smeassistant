@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, cleanup, fireEvent, render as renderLive, screen } from "@testing-library/react";
 
-const clientMocks = vi.hoisted(() => ({ markApplied: vi.fn(), retractApplied: vi.fn(), runAction: vi.fn() }));
+const clientMocks = vi.hoisted(() => ({ markApplied: vi.fn(), retractApplied: vi.fn(), runAction: vi.fn(), approveVersion: vi.fn(), exportVersion: vi.fn() }));
 const toastMocks = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn(), message: vi.fn() }));
 
 vi.mock("@/lib/workspace/client", async (importOriginal) => ({
@@ -18,6 +18,8 @@ vi.mock("@/lib/workspace/client", async (importOriginal) => ({
   markApplied: clientMocks.markApplied,
   retractApplied: clientMocks.retractApplied,
   runAction: clientMocks.runAction,
+  approveVersion: clientMocks.approveVersion,
+  exportVersion: clientMocks.exportVersion,
 }));
 vi.mock("sonner", () => ({ toast: toastMocks }));
 
@@ -27,7 +29,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-import { ActionDetailClient, ownerInputPatch } from "@/components/workspace/action-detail-client";
+import { ActionDetailClient, ownerInputPatch, type OfferCardData } from "@/components/workspace/action-detail-client";
 import { copy } from "@/lib/copy";
 import { getMessages } from "@/lib/i18n";
 import { localized } from "@/lib/domain";
@@ -79,7 +81,7 @@ function overview(templateKey: TemplateKey): ActionOverview {
 }
 
 function detail(templateKey: TemplateKey, measurements: ActionDetail["measurements"] = []): ActionDetail {
-  return { action: overview(templateKey), versions: [], runs: [], measurements, scanInputs: [], businessContext: [], faqQuestions: [] };
+  return { action: overview(templateKey), offerId: null, versions: [], runs: [], measurements, scanInputs: [], businessContext: [], faqQuestions: [] };
 }
 
 function versionRow(overrides: Partial<ActionDetail["versions"][number]> & { id: string; version_no: number; approval_state: ActionDetail["versions"][number]["approval_state"] }): ActionDetail["versions"][number] {
@@ -99,6 +101,7 @@ function versionRow(overrides: Partial<ActionDetail["versions"][number]> & { id:
     guardrails: [],
     agentNotes: [],
     acceptanceCriteria: [],
+    offerRevision: null,
     ...overrides,
   };
 }
@@ -590,5 +593,133 @@ describe("ownerInputPatch", () => {
       provided: { asset_or_text_only: "asset", asset_id: "asset-9", alt_text: "A plate" },
       runInputs: { asset_id: "asset-9" },
     });
+  });
+});
+
+describe("offer promotion actions (P4.1)", () => {
+  const OFFER_KEY = "offer-instagram-post" as TemplateKey;
+  const offerCopy = copy.en.workspace.offers;
+  const offer: OfferCardData = { title: "Autumn set menu", priceText: "HK$1,280", validFrom: "2026-10-01", validUntil: "2026-10-31", revision: 2, status: "confirmed", expired: false };
+
+  function mountOffer(props: { offer?: typeof offer | null; latestVersionOfferRevision?: number | null; versions?: ActionDetail["versions"]; locale?: "en" | "zh-HK" | "zh-TW" }) {
+    const value = detail(OFFER_KEY);
+    value.offerId = "offer-1";
+    value.versions = props.versions ?? [versionRow({ id: "ver-1", version_no: 1, approval_state: "draft", offerRevision: 1 })];
+    renderLive(
+      <ActionDetailClient
+        locale={props.locale ?? "en"}
+        workspaceSlug="kam-man-house"
+        workspaceId="ws-1"
+        timezone="Asia/Hong_Kong"
+        role="owner"
+        inScope
+        location="yik-yam"
+        detail={value}
+        auditRows={[]}
+        locations={[{ slug: "yik-yam", name: "Yik Yam" }]}
+        approvedAssets={[]}
+        offer={props.offer === undefined ? offer : props.offer}
+        latestVersionOfferRevision={props.latestVersionOfferRevision === undefined ? 1 : props.latestVersionOfferRevision}
+        offersEnabled
+      />,
+    );
+  }
+  beforeEach(() => { clientMocks.approveVersion.mockReset(); toastMocks.error.mockReset(); });
+  afterEach(cleanup);
+
+  it("shows the offer card beside the evidence: title, price, validity and revision", () => {
+    mountOffer({ latestVersionOfferRevision: 2, versions: [versionRow({ id: "ver-1", version_no: 1, approval_state: "draft", offerRevision: 2 })] });
+    const card = screen.getByTestId("offer-card");
+    expect(card).toHaveTextContent("Autumn set menu");
+    expect(card).toHaveTextContent("HK$1,280");
+    expect(card).toHaveTextContent("1 Oct 2026 to 31 Oct 2026");
+    expect(card).toHaveTextContent("Revision2");
+  });
+
+  it("shows the stale banner when the latest version recorded an older revision than the offer's", () => {
+    mountOffer({ latestVersionOfferRevision: 1 });
+    expect(screen.getByTestId("offer-stale-banner")).toHaveTextContent(offerCopy.stale.offer_changed);
+  });
+
+  it("shows no banner when the draft was written from the current revision", () => {
+    mountOffer({ latestVersionOfferRevision: 2, versions: [versionRow({ id: "ver-1", version_no: 1, approval_state: "draft", offerRevision: 2 })] });
+    expect(screen.queryByTestId("offer-stale-banner")).toBeNull();
+  });
+
+  it("shows no banner before any draft exists", () => {
+    mountOffer({ latestVersionOfferRevision: null, versions: [] });
+    expect(screen.queryByTestId("offer-stale-banner")).toBeNull();
+  });
+
+  it("says the offer has ended, or is not confirmed, in plain words", () => {
+    mountOffer({ offer: { ...offer, expired: true }, latestVersionOfferRevision: 2, versions: [versionRow({ id: "ver-1", version_no: 1, approval_state: "draft", offerRevision: 2 })] });
+    expect(screen.getByTestId("offer-stale-banner")).toHaveTextContent(offerCopy.stale.offer_expired);
+    cleanup();
+    mountOffer({ offer: { ...offer, status: "archived" }, latestVersionOfferRevision: 2, versions: [versionRow({ id: "ver-1", version_no: 1, approval_state: "draft", offerRevision: 2 })] });
+    expect(screen.getByTestId("offer-stale-banner")).toHaveTextContent(offerCopy.stale.offer_inactive);
+  });
+
+  it("maps an approve answering 409 offer_changed to the owner copy, never the code", async () => {
+    clientMocks.approveVersion.mockResolvedValue({ ok: false, status: 409, error: "offer_changed" });
+    mountOffer({ latestVersionOfferRevision: 2, versions: [versionRow({ id: "ver-1", version_no: 1, approval_state: "draft", offerRevision: 2 })] });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Approve" })); });
+    expect(clientMocks.approveVersion).toHaveBeenCalledWith("ver-1", undefined);
+    expect(toastMocks.error).toHaveBeenCalledWith(offerCopy.stale.offer_changed);
+    expect(screen.getByTestId("offer-stale-banner")).toHaveTextContent(offerCopy.stale.offer_changed);
+    expect(document.body.textContent ?? "").not.toContain("offer_changed");
+  });
+
+  it.each(["offer_expired", "offer_inactive"] as const)("maps 409 %s in every locale", async (code) => {
+    for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
+      clientMocks.approveVersion.mockResolvedValue({ ok: false, status: 409, error: code });
+      toastMocks.error.mockReset();
+      mountOffer({ locale, latestVersionOfferRevision: 2, versions: [versionRow({ id: "ver-1", version_no: 1, approval_state: "draft", offerRevision: 2 })] });
+      const approve = locale === "en" ? "Approve" : "核准";
+      await act(async () => { fireEvent.click(screen.getByRole("button", { name: approve })); });
+      expect(toastMocks.error).toHaveBeenCalledWith(copy[locale].workspace.offers.stale[code]);
+      expect(document.body.textContent ?? "").not.toContain(code);
+      cleanup();
+    }
+  });
+
+  it("drops a refusal banner once a new draft exists, so it never outlives the state it described", async () => {
+    clientMocks.approveVersion.mockResolvedValue({ ok: false, status: 409, error: "offer_changed" });
+    const current = (versions: ActionDetail["versions"], revision: number | null) => {
+      const value = detail(OFFER_KEY);
+      value.offerId = "offer-1";
+      value.versions = versions;
+      return (
+        <ActionDetailClient locale="en" workspaceSlug="kam-man-house" workspaceId="ws-1" timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={value} auditRows={[]} locations={[{ slug: "yik-yam", name: "Yik Yam" }]} approvedAssets={[]} offer={offer} latestVersionOfferRevision={revision} />
+      );
+    };
+    const v1 = versionRow({ id: "ver-1", version_no: 1, approval_state: "draft", offerRevision: 2 });
+    const view = renderLive(current([v1], 2));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Approve" })); });
+    expect(screen.getByTestId("offer-stale-banner")).toBeInTheDocument();
+    // A new draft is generated from the current offer: the page re-renders with it.
+    view.rerender(current([versionRow({ id: "ver-2", version_no: 2, approval_state: "draft", offerRevision: 2 }), v1], 2));
+    expect(screen.queryByTestId("offer-stale-banner")).toBeNull();
+  });
+
+  it("never offers an input for offer_id, even when the run reports it as missing", () => {
+    const value = detail(OFFER_KEY);
+    value.offerId = "offer-1";
+    value.action.actionState = "needs_input";
+    value.action.missingInputs = ["offer_id", "brand_voice"];
+    renderLive(
+      <ActionDetailClient locale="en" workspaceSlug="kam-man-house" workspaceId="ws-1" timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={value} auditRows={[]} locations={[{ slug: "yik-yam", name: "Yik Yam" }]} approvedAssets={[]} offer={offer} latestVersionOfferRevision={null} />,
+    );
+    expect(document.querySelector("#input-offer_id")).toBeNull();
+    expect(document.querySelector("#input-brand_voice")).not.toBeNull();
+    expect(screen.queryByLabelText(copy.en.workspace.inputs.offer_id)).toBeNull();
+  });
+
+  it("renders no offer card or banner for an ordinary action", () => {
+    const value = detail(AGENT_TEMPLATES[0].key);
+    renderLive(
+      <ActionDetailClient locale="en" workspaceSlug="kam-man-house" workspaceId="ws-1" timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={value} auditRows={[]} locations={[{ slug: "yik-yam", name: "Yik Yam" }]} approvedAssets={[]} />,
+    );
+    expect(screen.queryByTestId("offer-card")).toBeNull();
+    expect(screen.queryByTestId("offer-stale-banner")).toBeNull();
   });
 });

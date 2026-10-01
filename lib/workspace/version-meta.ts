@@ -61,6 +61,13 @@ export interface VersionMeta {
    * is no agent output to have criteria in the first place.
    */
   acceptanceCriteria: string[];
+  /**
+   * The offer revision this version was written against (P4.1, written only by
+   * lib/workspace/offer-binding.ts). An integer, or null for every version of a
+   * non-offer action and for one that recorded none, which approve/export treat
+   * as stale. Read here so the detail page can say so before the owner clicks.
+   */
+  offerRevision: number | null;
 }
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -125,5 +132,6 @@ export function parseVersionMeta(meta: unknown, authorType: "user" | "agent"): V
     guardrails,
     agentNotes,
     acceptanceCriteria,
+    offerRevision: Number.isInteger(source?.offer_revision) ? (source!.offer_revision as number) : null,
   };
 }

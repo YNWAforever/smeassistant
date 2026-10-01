@@ -46,6 +46,50 @@ export type StateLabelKey =
   | "not_requested" | "export_ready" | "exported" | "scheduled" | "publishing" | "published"
   | "not_eligible" | "awaiting_comparable_scan" | "insufficient_coverage";
 
+/**
+ * P4.1 confirmed offers and promotion drafts (design 3.2). Every string the
+ * Offers page, the promotion panel and the action detail's offer card show.
+ * Interpolated strings use {name} placeholders. A raw error code never reaches
+ * an owner: every code the routes answer is mapped to a sentence here.
+ */
+export type OffersCopy = {
+  nav: string;
+  page: { eyebrow: string; title: string; description: string };
+  list: { empty: string; emptyBody: string };
+  viewer: { title: string; body: string };
+  actions: { newOffer: string; edit: string; confirm: string; archive: string; createDrafts: string; cancel: string; save: string; saveChanges: string; reload: string };
+  status: { draft: string; confirmed: string; archived: string; expired: string };
+  scope: { all: string };
+  fields: { location: string; title: string; details: string; terms: string; price: string; currency: string; validFrom: string; validUntil: string; claims: string; prohibitedTerms: string; asset: string };
+  hints: { price: string; currency: string; claims: string; prohibitedTerms: string; asset: string };
+  noAsset: string;
+  meta: { price: string; noPrice: string; valid: string; range: string; location: string; revision: string; terms: string; claims: string };
+  confirm: { statement: string; action: string };
+  archiveStep: { statement: string; action: string };
+  errors: { required: string; dates: string; price: string; invalid: string; forbidden: string; network: string; rate: string; revisionChanged: string; archived: string; incomplete: string; currency: string; generic: string };
+  toasts: { created: string; updated: string; confirmed: string; archived: string };
+  promotion: {
+    title: string;
+    disclosure: string;
+    usage: string;
+    channels: { instagram: string; google: string };
+    listSeparator: string;
+    create: string;
+    creating: string;
+    states: { waiting: string; generating: string; ready: string; needs_input: string; failed: string };
+    retry: string;
+    open: string;
+    needsInput: string;
+    needsInputGeneric: string;
+    failed: string;
+    createFailed: string;
+    noPermission: string;
+    checkingUsage: string;
+  };
+  stale: { offer_changed: string; offer_expired: string; offer_inactive: string };
+  card: { heading: string; viewOffers: string };
+};
+
 export type WorkspaceCopy = {
   templates: Record<TemplateKey, { title: string; summary: string; workflow: string }>;
   factors: Record<PriorityFactorKey, string>;
@@ -77,6 +121,7 @@ export type WorkspaceCopy = {
     addOwnSubmit: string;
   };
   inputs: Record<string, string>;
+  offers: OffersCopy;
   /**
    * P2.1 item 6 / P2.2 item 12. Templates whose `delivery` is "checklist" have
    * no agent: the owner does the work in Google Business Profile or Instagram.
@@ -115,6 +160,106 @@ function inputs(labels: string[]): Record<string, string> {
 }
 
 export const workspaceEn: WorkspaceCopy = {
+  offers: {
+    nav: "Offers",
+    page: {
+      eyebrow: "Confirmed facts for promotions",
+      title: "Offers",
+      description: "Record an offer once, confirm it, then create promotion drafts from exactly those details. Nothing is published or sent.",
+    },
+    list: { empty: "No offers yet", emptyBody: "Add an offer with its price, dates and terms. Drafts only ever use what you confirm here." },
+    viewer: { title: "Viewer access", body: "You can read offers here. Creating, confirming and archiving need an owner or a manager." },
+    actions: {
+      newOffer: "New offer",
+      edit: "Edit",
+      confirm: "Confirm",
+      archive: "Archive",
+      createDrafts: "Create promotion drafts",
+      cancel: "Cancel",
+      save: "Save offer",
+      saveChanges: "Save changes",
+      reload: "Reload",
+    },
+    status: { draft: "Draft", confirmed: "Confirmed", archived: "Archived", expired: "Expired" },
+    scope: { all: "All locations" },
+    fields: {
+      location: "Location",
+      title: "Offer name",
+      details: "What the offer includes",
+      terms: "Terms and limits",
+      price: "Price",
+      currency: "Currency",
+      validFrom: "Starts",
+      validUntil: "Ends",
+      claims: "Statements you confirm are true",
+      prohibitedTerms: "Words never to use",
+      asset: "Photo",
+    },
+    hints: {
+      price: "Optional. Leave empty when there is no fixed price.",
+      currency: "Fixed to your market.",
+      claims: "One per line. Drafts may only state these.",
+      prohibitedTerms: "One per line. Drafts will avoid these words.",
+      asset: "Optional. Only photos with confirmed rights are listed.",
+    },
+    noAsset: "No photo",
+    meta: {
+      price: "Price",
+      noPrice: "No fixed price",
+      valid: "Valid",
+      range: "{from} to {until}",
+      location: "Location",
+      revision: "Revision",
+      terms: "Terms",
+      claims: "Confirmed statements",
+    },
+    confirm: { statement: "These details are correct and may be used in drafts.", action: "Confirm these details" },
+    archiveStep: { statement: "Archive this offer? Its open promotion drafts are cancelled and it can no longer be used.", action: "Archive offer" },
+    errors: {
+      required: "A name and the offer details are required.",
+      dates: "Enter both dates; the end date cannot be before the start date.",
+      price: "Enter a price of 0 or more with at most 2 decimals, or leave it empty.",
+      invalid: "Some details are not valid. Check the offer and try again.",
+      forbidden: "Your role or location scope does not allow this.",
+      network: "The server could not be reached; what you typed is kept.",
+      rate: "Too many requests; try again shortly.",
+      revisionChanged: "This offer was changed elsewhere. Reload to see the latest version; what you typed is kept below.",
+      archived: "This offer is archived and can no longer be changed.",
+      incomplete: "This offer is missing details needed to confirm it. Fill them in and save first.",
+      currency: "The price currency does not match your market. Save the offer again to fix it.",
+      generic: "The request failed. Try again, or contact Fimmick if it keeps happening.",
+    },
+    toasts: {
+      created: "Offer saved as a draft. Confirm it before it can be used.",
+      updated: "Offer updated and returned to draft. Confirm it again to use it.",
+      confirmed: "Offer confirmed.",
+      archived: "Offer archived.",
+    },
+    promotion: {
+      title: "Promotion drafts",
+      disclosure: "Creates {n} drafts ({channels}). Nothing is counted until you approve and export a draft; each one you export counts as 1 delivery.",
+      usage: " This month: {used} of {allowance} used.",
+      channels: { instagram: "Instagram", google: "Google" },
+      listSeparator: ", ",
+      create: "Create drafts",
+      creating: "Creating drafts",
+      states: { waiting: "Waiting", generating: "Generating", ready: "Draft ready", needs_input: "Needs details", failed: "Failed" },
+      retry: "Retry",
+      open: "Open draft",
+      needsInput: "More details are needed before this draft can be written: {facts}.",
+      needsInputGeneric: "More details are needed before this draft can be written. Open the draft to add them.",
+      failed: "This draft could not be written this time and nothing was counted. Try again, or open the draft.",
+      createFailed: "The drafts could not be created. Try again shortly.",
+      noPermission: "Your role or location scope cannot create drafts for this offer.",
+      checkingUsage: "Checking this month's usage",
+    },
+    stale: {
+      offer_changed: "The offer changed after this draft was written. Generate a new draft from the current offer.",
+      offer_expired: "This offer has ended. Extend its dates and confirm it again to use it.",
+      offer_inactive: "This offer is not confirmed or has been archived.",
+    },
+    card: { heading: "Offer behind this draft", viewOffers: "Open offers" },
+  },
   templates: {
     "review-response": { title: "Reply to unanswered Google reviews", summary: "Drafts follow your brand voice and each review's content, ready for one review pass.", workflow: "Review reply workflow" },
     "review-request": { title: "Ask recent customers for a Google review", summary: "A short, polite request for WhatsApp, LINE or a QR card, matched to your brand voice.", workflow: "Review request workflow" },
@@ -217,6 +362,78 @@ export const workspaceEn: WorkspaceCopy = {
 };
 
 export const workspaceZhHK: WorkspaceCopy = {
+  offers: {
+    nav: "優惠",
+    page: { eyebrow: "已確認的推廣資料", title: "優惠", description: "只需記錄優惠一次並確認，之後便可按這些資料建立推廣草稿。系統不會自動發佈或發送任何內容。" },
+    list: { empty: "尚未有優惠", emptyBody: "加入優惠的價錢、日期及條款。草稿只會使用你在這裡確認的資料。" },
+    viewer: { title: "檢視者權限", body: "你可以查看優惠；建立、確認及封存需要店主或經理。" },
+    actions: {
+      newOffer: "新增優惠",
+      edit: "編輯",
+      confirm: "確認",
+      archive: "封存",
+      createDrafts: "建立推廣草稿",
+      cancel: "取消",
+      save: "儲存優惠",
+      saveChanges: "儲存修改",
+      reload: "重新載入",
+    },
+    status: { draft: "草稿", confirmed: "已確認", archived: "已封存", expired: "已過期" },
+    scope: { all: "所有地點" },
+    fields: {
+      location: "地點",
+      title: "優惠名稱",
+      details: "優惠內容",
+      terms: "條款及限制",
+      price: "價錢",
+      currency: "貨幣",
+      validFrom: "開始日期",
+      validUntil: "結束日期",
+      claims: "你確認屬實的說法",
+      prohibitedTerms: "不可使用的字詞",
+      asset: "相片",
+    },
+    hints: { price: "可不填。沒有固定價錢時請留空。", currency: "按你的市場固定。", claims: "每行一項。草稿只可使用這些說法。", prohibitedTerms: "每行一項。草稿會避免使用這些字詞。", asset: "可不選。只列出已確認使用權的相片。" },
+    noAsset: "不使用相片",
+    meta: { price: "價錢", noPrice: "沒有固定價錢", valid: "有效期", range: "{from} 至 {until}", location: "地點", revision: "修訂版本", terms: "條款", claims: "已確認的說法" },
+    confirm: { statement: "這些資料正確，並可用於草稿。", action: "確認這些資料" },
+    archiveStep: { statement: "要封存此優惠嗎？其進行中的推廣草稿會被取消，優惠亦不能再使用。", action: "封存優惠" },
+    errors: {
+      required: "必須填寫優惠名稱及內容。",
+      dates: "請填寫兩個日期，結束日期不可早於開始日期。",
+      price: "價錢須為 0 或以上，最多兩位小數；或留空。",
+      invalid: "部分資料無效，請檢查優惠後再試。",
+      forbidden: "你的角色或地點範圍不允許此操作。",
+      network: "無法連接伺服器；你輸入的內容已保留。",
+      rate: "請求過於頻繁，請稍後再試。",
+      revisionChanged: "此優惠已在其他地方被修改。請重新載入查看最新版本；你輸入的內容會保留在下方。",
+      archived: "此優惠已封存，不能再修改。",
+      incomplete: "此優惠欠缺確認所需的資料。請先補上並儲存。",
+      currency: "價錢貨幣與你的市場不符。請重新儲存優惠以更正。",
+      generic: "操作失敗，請再試一次；如持續出現，請聯絡 Fimmick。",
+    },
+    toasts: { created: "優惠已儲存為草稿。確認後才可使用。", updated: "優惠已更新並回復為草稿。請重新確認才可使用。", confirmed: "優惠已確認。", archived: "優惠已封存。" },
+    promotion: {
+      title: "推廣草稿",
+      disclosure: "會建立 {n} 份草稿（{channels}）。核准並匯出草稿前不會計算用量；每份匯出的草稿計為 1 次交付。",
+      usage: "本月已使用 {used} / {allowance} 次。",
+      channels: { instagram: "Instagram", google: "Google" },
+      listSeparator: "、",
+      create: "建立草稿",
+      creating: "正在建立草稿",
+      states: { waiting: "等待中", generating: "生成中", ready: "草稿已備妥", needs_input: "需要補充資料", failed: "失敗" },
+      retry: "重試",
+      open: "開啟草稿",
+      needsInput: "撰寫這份草稿前需要補充資料：{facts}。",
+      needsInputGeneric: "撰寫這份草稿前需要補充資料。請開啟草稿並提供。",
+      failed: "今次未能撰寫這份草稿，亦沒有計算用量。請重試，或開啟草稿。",
+      createFailed: "未能建立草稿，請稍後再試。",
+      noPermission: "你的角色或地點範圍不可為此優惠建立草稿。",
+      checkingUsage: "正在查看本月用量",
+    },
+    stale: { offer_changed: "優惠在這份草稿撰寫後已更改。請按目前的優惠重新生成草稿。", offer_expired: "此優惠已結束。請延長日期並重新確認後才可使用。", offer_inactive: "此優惠尚未確認或已封存。" },
+    card: { heading: "這份草稿所依據的優惠", viewOffers: "前往優惠" },
+  },
   templates: {
     "review-response": { title: "回覆未回覆的 Google 評論", summary: "草稿已按品牌語氣及評論內容準備好，等你一次過審閱。", workflow: "評論回覆流程" },
     "review-request": { title: "邀請近期顧客留下 Google 評論", summary: "一段簡短有禮的邀請，適用於 WhatsApp、LINE 或 QR 卡，並配合品牌語氣。", workflow: "評論邀請流程" },
@@ -318,6 +535,78 @@ export const workspaceZhHK: WorkspaceCopy = {
 
 export const workspaceZhTW: WorkspaceCopy = {
   ...workspaceZhHK,
+  offers: {
+    nav: "優惠",
+    page: { eyebrow: "已確認的推廣資訊", title: "優惠", description: "只要記錄優惠一次並確認，就能依這些資訊建立推廣草稿。系統不會自動發布或傳送任何內容。" },
+    list: { empty: "還沒有優惠", emptyBody: "新增優惠的價格、日期與條款。草稿只會使用您在這裡確認的資訊。" },
+    viewer: { title: "檢視者權限", body: "您可以查看優惠；建立、確認與封存需要店主或經理。" },
+    actions: {
+      newOffer: "新增優惠",
+      edit: "編輯",
+      confirm: "確認",
+      archive: "封存",
+      createDrafts: "建立推廣草稿",
+      cancel: "取消",
+      save: "儲存優惠",
+      saveChanges: "儲存變更",
+      reload: "重新載入",
+    },
+    status: { draft: "草稿", confirmed: "已確認", archived: "已封存", expired: "已過期" },
+    scope: { all: "所有據點" },
+    fields: {
+      location: "據點",
+      title: "優惠名稱",
+      details: "優惠內容",
+      terms: "條款與限制",
+      price: "價格",
+      currency: "幣別",
+      validFrom: "開始日期",
+      validUntil: "結束日期",
+      claims: "您確認屬實的說法",
+      prohibitedTerms: "不可使用的字詞",
+      asset: "照片",
+    },
+    hints: { price: "可不填。沒有固定價格時請留空。", currency: "依您的市場固定。", claims: "每行一項。草稿只能使用這些說法。", prohibitedTerms: "每行一項。草稿會避免使用這些字詞。", asset: "可不選。只列出已確認使用權的照片。" },
+    noAsset: "不使用照片",
+    meta: { price: "價格", noPrice: "沒有固定價格", valid: "有效期間", range: "{from} 至 {until}", location: "據點", revision: "修訂版本", terms: "條款", claims: "已確認的說法" },
+    confirm: { statement: "這些資訊正確，並可用於草稿。", action: "確認這些資訊" },
+    archiveStep: { statement: "要封存此優惠嗎？其進行中的推廣草稿會被取消，優惠也不能再使用。", action: "封存優惠" },
+    errors: {
+      required: "必須填寫優惠名稱與內容。",
+      dates: "請填寫兩個日期，結束日期不能早於開始日期。",
+      price: "價格須為 0 以上，最多兩位小數；或留空。",
+      invalid: "部分資訊無效，請檢查優惠後再試一次。",
+      forbidden: "您的角色或據點範圍不允許此操作。",
+      network: "無法連線至伺服器；您輸入的內容已保留。",
+      rate: "請求過於頻繁，請稍後再試。",
+      revisionChanged: "此優惠已在其他地方被修改。請重新載入以查看最新版本；您輸入的內容會保留在下方。",
+      archived: "此優惠已封存，無法再修改。",
+      incomplete: "此優惠缺少確認所需的資訊。請先補齊並儲存。",
+      currency: "價格幣別與您的市場不符。請重新儲存優惠以修正。",
+      generic: "操作失敗，請再試一次；如果持續發生，請聯絡 Fimmick。",
+    },
+    toasts: { created: "優惠已儲存為草稿。確認後才能使用。", updated: "優惠已更新並回到草稿。請重新確認才能使用。", confirmed: "優惠已確認。", archived: "優惠已封存。" },
+    promotion: {
+      title: "推廣草稿",
+      disclosure: "會建立 {n} 份草稿（{channels}）。在您核准並匯出草稿之前不會計算用量；每份匯出的草稿計為 1 次交付。",
+      usage: "本月已使用 {used} / {allowance} 次。",
+      channels: { instagram: "Instagram", google: "Google" },
+      listSeparator: "、",
+      create: "建立草稿",
+      creating: "正在建立草稿",
+      states: { waiting: "等待中", generating: "產生中", ready: "草稿已備妥", needs_input: "需要補充資訊", failed: "失敗" },
+      retry: "重試",
+      open: "開啟草稿",
+      needsInput: "撰寫這份草稿前需要補充資訊：{facts}。",
+      needsInputGeneric: "撰寫這份草稿前需要補充資訊。請開啟草稿並提供。",
+      failed: "這次無法撰寫這份草稿，也沒有計算用量。請重試，或開啟草稿。",
+      createFailed: "無法建立草稿，請稍後再試。",
+      noPermission: "您的角色或據點範圍無法為此優惠建立草稿。",
+      checkingUsage: "正在查看本月用量",
+    },
+    stale: { offer_changed: "優惠在這份草稿撰寫後已變更。請依目前的優惠重新產生草稿。", offer_expired: "此優惠已結束。請延長日期並重新確認後才能使用。", offer_inactive: "此優惠尚未確認或已封存。" },
+    card: { heading: "這份草稿所依據的優惠", viewOffers: "前往優惠" },
+  },
   templates: {
     ...workspaceZhHK.templates,
     "review-response": { title: "回覆未回覆的 Google 評論", summary: "草稿已依品牌語氣與評論內容準備好，等你一次審閱。", workflow: "評論回覆流程" },

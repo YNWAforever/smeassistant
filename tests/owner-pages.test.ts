@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { WorkspaceContext } from "@/lib/workspace/queries";
 import {
@@ -96,6 +96,24 @@ describe("buildShellWorkspace", () => {
       demo: false,
       urgentActions: 2,
       assistant: { workspaceId: "ws-1", locationId: "loc-1" },
+    });
+  });
+
+  describe("offersEnabled (P4.1)", () => {
+    afterEach(() => { vi.unstubAllEnvs(); });
+
+    it("is omitted while OFFER_PROMOTIONS_ENABLED is off or not exactly \"true\"", () => {
+      for (const value of [undefined, "", "TRUE", "1", "false"]) {
+        vi.stubEnv("OFFER_PROMOTIONS_ENABLED", value as string);
+        expect("offersEnabled" in buildShellWorkspace(context, "en")).toBe(false);
+      }
+    });
+
+    it("is true for a real workspace once the flag is exactly \"true\", and never for a demo workspace", () => {
+      vi.stubEnv("OFFER_PROMOTIONS_ENABLED", "true");
+      expect(buildShellWorkspace(context, "en").offersEnabled).toBe(true);
+      const demo = { ...context, workspace: { ...context.workspace, isDemo: true } };
+      expect("offersEnabled" in buildShellWorkspace(demo, "en")).toBe(false);
     });
   });
 
