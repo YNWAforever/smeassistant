@@ -23,6 +23,7 @@ import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import { createObjectiveAction } from "@/lib/workspace/client"
 import { effortLabel, withLocation } from "@/lib/workspace/format"
 import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates"
+import { isOfferWorkflow } from "@/lib/offers/workflow"
 import { t } from "@/lib/i18n"
 
 export interface CreateViewProps {
@@ -52,10 +53,17 @@ const ICONS: Record<TemplateKey, typeof MessageSquareText> = {
   "local-seo-brief": Search,
   "menu-translation": Languages,
   "google-reconnect": Globe,
+  "offer-gbp-post": Newspaper,
+  "offer-social-post": FileImage,
+  "offer-chat-message": MessageSquareText,
 }
 
-/** Goals the owner can start from an objective: every template with an agent (system/checklist templates come from evidence only). */
-const GOALS = TEMPLATES.filter((template) => template.agentKey !== null)
+/**
+ * Goals the owner can start from an objective: every template with an agent
+ * (system/checklist templates come from evidence only). Offer workflows are
+ * excluded: they start from one confirmed offer, never from an objective.
+ */
+const GOALS = TEMPLATES.filter((template) => template.agentKey !== null && !isOfferWorkflow(template))
 
 /**
  * P2.1 item 1: Create leads with the three workflows Phase 2 completes end to

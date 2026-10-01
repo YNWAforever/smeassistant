@@ -7,6 +7,7 @@ import {
 } from "@/app/api/actions/_shared/mutation";
 import { authorizeWorkspaceRequest, inLocationScope } from "@/lib/auth";
 import { localized } from "@/lib/domain";
+import { isOfferWorkflow } from "@/lib/offers/workflow";
 import {
   enforceRateLimit,
   rateLimitedResponse,
@@ -29,7 +30,8 @@ import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
  */
 export const maxDuration = 60;
 
-const TEMPLATE_KEYS = new Set<string>(TEMPLATES.map((t) => t.key));
+// Offer workflows are created only from a confirmed offer (prepareOfferDrafts), never as an objective.
+const TEMPLATE_KEYS = new Set<string>(TEMPLATES.filter((t) => !isOfferWorkflow(t)).map((t) => t.key));
 
 export async function POST(req: Request) {
   const body = await readJson(req);

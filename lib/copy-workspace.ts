@@ -108,6 +108,7 @@ export type WorkspaceCopy = {
 export const ACTION_INPUT_KEYS = [
   "brand_voice", "reviews_without_response", "language", "channel", "opening_hours", "categories", "asset_or_text_only", "alt_text",
   "approved_claim", "cta_link", "owner_fact_1", "owner_fact_2", "owner_fact_3", "menu_items", "google_account_owner",
+  "offer_confirmed",
 ] as const;
 
 function inputs(labels: string[]): Record<string, string> {
@@ -129,6 +130,9 @@ export const workspaceEn: WorkspaceCopy = {
     "local-seo-brief": { title: "Local search brief", summary: "Where competitors appear above you and what evidence explains the gap.", workflow: "Local SEO brief" },
     "menu-translation": { title: "Review the English menu translation", summary: "Confirm the dish facts first, then finish the remaining English labels.", workflow: "Menu translation workflow" },
     "google-reconnect": { title: "Restore Google Business access", summary: "Reconnect the account before non-public profile data can be read safely.", workflow: "Connection recovery" },
+    "offer-gbp-post": { title: "Promote your offer on Google", summary: "A post built only from the offer facts you confirmed.", workflow: "Offer post for Google" },
+    "offer-social-post": { title: "Promote your offer on Instagram", summary: "A caption built only from the offer facts you confirmed.", workflow: "Offer post for Instagram" },
+    "offer-chat-message": { title: "Write an offer message for your customers", summary: "A short message you copy and send yourself; nothing is sent for you.", workflow: "Offer chat message" },
   },
   factors: { impact: "Score impact", severity: "Severity", urgency: "Urgency", readiness: "Readiness", effort: "Effort", risk: "Brand risk", evidence: "Evidence confidence" },
   metrics: {
@@ -177,6 +181,7 @@ export const workspaceEn: WorkspaceCopy = {
   inputs: inputs([
     "Brand voice", "Reviews without response", "Language", "Channel (WhatsApp / LINE / QR)", "Opening hours", "Categories", "Approved asset or text only", "Alt text",
     "Approved claim", "CTA link", "Owner fact 1", "Owner fact 2", "Owner fact 3", "Menu items (name, ingredients, allergens, price)", "Google account owner",
+    "Confirmed offer",
   ]),
   checklist: {
     heading: "Steps to complete",
@@ -229,6 +234,9 @@ export const workspaceZhHK: WorkspaceCopy = {
     "local-seo-brief": { title: "本地搜尋簡報", summary: "競爭對手在哪些搜尋中排在你之上，以及證據如何解釋差距。", workflow: "本地 SEO 簡報" },
     "menu-translation": { title: "審閱英文餐牌翻譯", summary: "先確認菜式資料，再完成餘下英文標籤。", workflow: "餐牌翻譯流程" },
     "google-reconnect": { title: "重新連接 Google 商戶權限", summary: "恢復連接後，才可安全取得非公開營運資料。", workflow: "連接恢復" },
+    "offer-gbp-post": { title: "在 Google 推廣你的優惠", summary: "一則只用你已確認優惠資料寫成的帖文。", workflow: "Google 優惠帖文" },
+    "offer-social-post": { title: "在 Instagram 推廣你的優惠", summary: "一段只用你已確認優惠資料寫成的文案。", workflow: "Instagram 優惠帖文" },
+    "offer-chat-message": { title: "為顧客寫一段優惠訊息", summary: "一段由你自行複製發送的短訊息；系統不會代你發送。", workflow: "優惠訊息" },
   },
   factors: { impact: "評分影響", severity: "嚴重程度", urgency: "急切程度", readiness: "準備程度", effort: "所需時間", risk: "品牌風險", evidence: "證據可信度" },
   metrics: {
@@ -275,6 +283,7 @@ export const workspaceZhHK: WorkspaceCopy = {
   inputs: inputs([
     "品牌語氣", "未回覆的評論", "語言", "渠道（WhatsApp / LINE / QR）", "營業時間", "類別", "已批准素材或純文字", "替代文字",
     "已批准的主張", "行動連結", "店主事實 1", "店主事實 2", "店主事實 3", "餐牌項目（名稱、材料、致敏原、價錢）", "Google 帳戶擁有人",
+    "已確認優惠",
   ]),
   checklist: {
     heading: "完成步驟",
@@ -321,6 +330,9 @@ export const workspaceZhTW: WorkspaceCopy = {
     "gbp-post": { title: "發布一則 Google 商家貼文", summary: "檔案近期沒有貼文；一則簡短更新可維持在地搜尋的活躍度。", workflow: "Google 貼文流程" },
     "menu-translation": { title: "審閱英文菜單翻譯", summary: "先確認菜色資料，再完成其餘英文標籤。", workflow: "菜單翻譯流程" },
     "google-reconnect": { title: "重新連接 Google 商家權限", summary: "恢復連接後，才可安全取得非公開營運資料。", workflow: "連線恢復" },
+    "offer-gbp-post": { title: "在 Google 推廣你的優惠", summary: "一則只用你已確認優惠資料寫成的貼文。", workflow: "Google 優惠貼文" },
+    "offer-social-post": { title: "在 Instagram 推廣你的優惠", summary: "一段只用你已確認優惠資料寫成的文案。", workflow: "Instagram 優惠貼文" },
+    "offer-chat-message": { title: "為顧客寫一段優惠訊息", summary: "一段由你自行複製傳送的短訊息；系統不會代你傳送。", workflow: "優惠訊息" },
   },
   // Mirrors the 核實/查證 verb and 你/您 pronoun split Task 8 set in the
   // `applied` message namespace (lib/messages/{zh-HK,zh-TW}.json:

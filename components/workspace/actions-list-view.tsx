@@ -75,6 +75,7 @@ export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, 
     { value: "instagram", label: "Instagram" },
     { value: "website", label: isChinese ? "網站" : "Website" },
     { value: "search_ai", label: isChinese ? "搜尋及 AI" : "Search & AI" },
+    { value: "messaging", label: isChinese ? "訊息" : "Messaging" },
   ]
   const statuses = ["recommended", "needs_input", "ready", "in_progress", "completed", "dismissed", "expired"].map((value) => ({ value, label: (copy[locale].workspace.states as Record<string, string>)[value] ?? value }))
   return (

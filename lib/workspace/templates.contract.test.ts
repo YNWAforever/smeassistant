@@ -6,7 +6,9 @@ import { ACTION_INPUT_KEYS } from "@/lib/copy-workspace";
 import { EVIDENCE_INPUT_KEYS } from "@/lib/workspace/evidence-inputs";
 import { TEMPLATE_METRIC } from "@/lib/workspace/measurements";
 import { METRIC_KEYS } from "@/lib/workspace/metrics";
-import { TEMPLATES, WEBSITE_FAQ_TRIGGER, type TemplateDelivery } from "@/lib/workspace/templates";
+import { OFFER_TEMPLATE_KEYS, isOfferWorkflow } from "@/lib/offers/workflow";
+import { TEMPLATES, WEBSITE_FAQ_TRIGGER, templateByKey, type TemplateDelivery } from "@/lib/workspace/templates";
+import { gateBlockingInputs } from "@/lib/workspace/workflow-inputs";
 
 /**
  * The workflow contract (docs/superpowers/specs/2026-09-30-workflow-contract-design.md).
@@ -87,6 +89,9 @@ const SPEC_INPUT_KINDS: Record<string, Record<string, "confirmed_fact" | "eviden
   "local-seo-brief": {},
   "menu-translation": { menu_items: "confirmed_fact" },
   "google-reconnect": { google_account_owner: "confirmed_fact" },
+  "offer-gbp-post": { offer_confirmed: "confirmed_fact", brand_voice: "preference" },
+  "offer-social-post": { offer_confirmed: "confirmed_fact", asset_or_text_only: "confirmed_fact", alt_text: "preference", brand_voice: "preference" },
+  "offer-chat-message": { offer_confirmed: "confirmed_fact", brand_voice: "preference" },
 };
 
 describe("input classification matches the spec table", () => {
@@ -111,5 +116,31 @@ describe("workflow registry", () => {
     const used = new Set(TEMPLATES.map((t) => t.agentKey).filter((k) => k !== null));
     const unused = Object.keys(AGENTS).filter((key) => key !== "validation_plan" && !used.has(key as never));
     expect(unused).toEqual([]);
+  });
+});
+
+/**
+ * P4.1 offer workflows (docs/superpowers/specs/2026-10-01-offer-promotion-copy-design.md §3):
+ * created only from a confirmed offer, written by offer_copy, copied by the
+ * owner, and gated first on the server's own offer check.
+ */
+describe("offer workflows", () => {
+  const offerRows = TEMPLATES.filter(isOfferWorkflow);
+
+  it("are exactly the three offer template keys", () => {
+    expect(offerRows.map((t) => t.key).sort()).toEqual([...OFFER_TEMPLATE_KEYS].sort());
+  });
+
+  it.each(offerRows.map((t) => [t.key, t] as const))("%s is never triggered by a finding and starts from the confirmed offer", (_key, t) => {
+    expect(t.triggerFindingKeys).toEqual([]);
+    expect(t.agentKey).toBe("offer_copy");
+    expect(t.delivery).toBe("export_copy");
+    expect(t.capability).toBe("Beta");
+    expect(t.inputs[0]).toEqual({ key: "offer_confirmed", kind: "confirmed_fact" });
+  });
+
+  it("offer_confirmed is server-satisfied: a provided value never clears it", () => {
+    expect(gateBlockingInputs(templateByKey("offer-gbp-post"), { offer_confirmed: true }, new Set())).toEqual(["offer_confirmed"]);
+    expect(gateBlockingInputs(templateByKey("offer-gbp-post"), {}, new Set(["offer_confirmed"]))).toEqual([]);
   });
 });

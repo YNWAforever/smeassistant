@@ -34,13 +34,14 @@ export function missingConfirmedInputs(
 
 /**
  * Inputs whose only authority is a server check, never an owner-typed or
- * persisted value: the approved-asset rule answers `asset_or_text_only`.
+ * persisted value: the approved-asset rule answers `asset_or_text_only`, and
+ * the offer usability check (lib/offers/usability.ts) answers `offer_confirmed`.
  * Evidence-kind inputs are deliberately NOT here: spec §2 counts an evidence key
  * present in `provided` as answered, and the review_reply prompt uses
  * owner-typed `reviews_without_response` (labelled owner-supplied) only when the
  * scan retained no unanswered review.
  */
-export const SERVER_SATISFIED_INPUT_KEYS: ReadonlySet<string> = new Set(["asset_or_text_only"]);
+export const SERVER_SATISFIED_INPUT_KEYS: ReadonlySet<string> = new Set(["asset_or_text_only", "offer_confirmed"]);
 
 /**
  * The gate every surface applies before a model call: {@link missingConfirmedInputs}

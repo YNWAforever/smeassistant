@@ -26,7 +26,10 @@ export type TemplateKey =
   | "website-basics"
   | "local-seo-brief"
   | "menu-translation"
-  | "google-reconnect";
+  | "google-reconnect"
+  | "offer-gbp-post"
+  | "offer-social-post"
+  | "offer-chat-message";
 
 export type WorkspaceAgentKey =
   | "review_reply"
@@ -38,7 +41,8 @@ export type WorkspaceAgentKey =
   | "faq_jsonld"
   | "website_basics"
   | "local_seo_brief"
-  | "menu_translation";
+  | "menu_translation"
+  | "offer_copy";
 
 export type TemplateDelivery = "export_copy" | "export" | "checklist" | "system";
 
@@ -84,7 +88,7 @@ export interface WorkflowDefinition {
   failure: { retries: 1; onMissingFacts: "needs_input" };
   externalFacing: boolean;
   /** Which channel the actions page filters this template under. */
-  channel: "google" | "instagram" | "website" | "search_ai";
+  channel: "google" | "instagram" | "website" | "search_ai" | "messaging";
   /**
    * Website checks whose passing would evidence this template's work, for the
    * verifier sweep (docs/superpowers/specs/2026-09-16-website-verifier-design.md).
@@ -405,6 +409,81 @@ export const TEMPLATES: ActionTemplate[] = [
     title: localized("Restore Google Business access", "重新連接 Google 商戶權限"),
     summary: localized("Reconnect the account before non-public profile data can be read safely.", "恢復連接後，才可安全取得非公開營運資料。"),
     workflow: localized("Connection recovery", "連接恢復"),
+  },
+  // P4.1 promotion copy (docs/superpowers/specs/2026-10-01-offer-promotion-copy-design.md §3).
+  // Never triggered by a finding or an objective: prepareOfferDrafts creates
+  // them from one confirmed offer, and offer_confirmed is answered only by the
+  // server's own usability check (SERVER_SATISFIED_INPUT_KEYS).
+  {
+    key: "offer-gbp-post",
+    triggerFindingKeys: [],
+    capability: "Beta",
+    agentKey: "offer_copy",
+    requiredInputs: ["offer_confirmed", "brand_voice"],
+    inputs: [
+      { key: "offer_confirmed", kind: "confirmed_fact" },
+      { key: "brand_voice", kind: "preference" },
+    ],
+    effortMinutes: 8,
+    delivery: "export_copy",
+    deliveryUnit: "approved_version",
+    // A post moves no metric the scan measures (the same open question as gbp-post).
+    measurement: null,
+    failure: DEFAULT_FAILURE,
+    externalFacing: true,
+    channel: "google",
+    outcome: localized("A Google Business post about your offer, ready to copy", "一則介紹你優惠的 Google 商戶帖文，可直接複製", "一則介紹你優惠的 Google 商家貼文，可直接複製"),
+    title: localized("Promote your offer on Google", "在 Google 推廣你的優惠"),
+    summary: localized("A post built only from the offer facts you confirmed.", "一則只用你已確認優惠資料寫成的帖文。", "一則只用你已確認優惠資料寫成的貼文。"),
+    workflow: localized("Offer post for Google", "Google 優惠帖文", "Google 優惠貼文"),
+  },
+  {
+    key: "offer-social-post",
+    triggerFindingKeys: [],
+    capability: "Beta",
+    agentKey: "offer_copy",
+    requiredInputs: ["offer_confirmed", "asset_or_text_only", "alt_text", "brand_voice"],
+    inputs: [
+      { key: "offer_confirmed", kind: "confirmed_fact" },
+      { key: "asset_or_text_only", kind: "confirmed_fact" },
+      { key: "alt_text", kind: "preference" },
+      { key: "brand_voice", kind: "preference" },
+    ],
+    effortMinutes: 8,
+    delivery: "export_copy",
+    deliveryUnit: "approved_version",
+    // Posting activity, the same metric as social-post -- never the offer's success.
+    measurement: "ig.days_since_last_post",
+    failure: DEFAULT_FAILURE,
+    externalFacing: true,
+    channel: "instagram",
+    outcome: localized("An Instagram caption about your offer, with alt text when a photo is attached", "一段介紹你優惠的 Instagram 文案，附相片時連替代文字", "一段介紹你優惠的 Instagram 文案，附照片時連替代文字"),
+    title: localized("Promote your offer on Instagram", "在 Instagram 推廣你的優惠"),
+    summary: localized("A caption built only from the offer facts you confirmed.", "一段只用你已確認優惠資料寫成的文案。"),
+    workflow: localized("Offer post for Instagram", "Instagram 優惠帖文", "Instagram 優惠貼文"),
+  },
+  {
+    key: "offer-chat-message",
+    triggerFindingKeys: [],
+    capability: "Beta",
+    agentKey: "offer_copy",
+    requiredInputs: ["offer_confirmed", "brand_voice"],
+    inputs: [
+      { key: "offer_confirmed", kind: "confirmed_fact" },
+      { key: "brand_voice", kind: "preference" },
+    ],
+    effortMinutes: 5,
+    delivery: "export_copy",
+    deliveryUnit: "approved_version",
+    // A private channel the scan cannot observe.
+    measurement: null,
+    failure: DEFAULT_FAILURE,
+    externalFacing: true,
+    channel: "messaging",
+    outcome: localized("A short offer message you can paste into WhatsApp or LINE yourself", "一段可自行貼到 WhatsApp 或 LINE 的優惠訊息"),
+    title: localized("Write an offer message for your customers", "為顧客寫一段優惠訊息"),
+    summary: localized("A short message you copy and send yourself; nothing is sent for you.", "一段由你自行複製發送的短訊息；系統不會代你發送。", "一段由你自行複製傳送的短訊息；系統不會代你傳送。"),
+    workflow: localized("Offer chat message", "優惠訊息"),
   },
 ];
 

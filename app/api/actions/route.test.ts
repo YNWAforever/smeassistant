@@ -80,6 +80,14 @@ beforeEach(() => {
   mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("owner"));
 });
 
+describe("POST /api/actions refuses offer workflows (P4.1)", () => {
+  it.each(["offer-gbp-post", "offer-social-post", "offer-chat-message"])("%s is not an objective template", async (key) => {
+    const res = await post({ ...base, template_key: key });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "template_key is invalid" });
+  });
+});
+
 describe("POST /api/actions review evidence", () => {
   const reviewObjective = { ...base, template_key: "review-response", objective: "Reply to reviews" };
   const withSnapshot = (reviews: unknown[]) => {

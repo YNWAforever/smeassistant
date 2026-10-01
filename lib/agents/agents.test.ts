@@ -58,11 +58,11 @@ export const fixedCtx: AgentContext = {
 };
 
 describe("AGENTS", () => {
-  it("registers the seven Live and four Beta agents", () => {
+  it("registers the seven Live and five Beta agents", () => {
     const live = Object.values(AGENTS).filter((a) => a.capability === "Live").map((a) => a.key).sort();
     const beta = Object.values(AGENTS).filter((a) => a.capability === "Beta").map((a) => a.key).sort();
     expect(live).toEqual(["faq_jsonld", "ig_bio", "review_reply", "review_request", "social_post", "validation_plan", "website_basics"]);
-    expect(beta).toEqual(["gbp_post", "local_seo_brief", "menu_translation", "photo_brief"]);
+    expect(beta).toEqual(["gbp_post", "local_seo_brief", "menu_translation", "offer_copy", "photo_brief"]);
     expect(isAgentKey("review_reply")).toBe(true);
     expect(isAgentKey("review_reply_agent")).toBe(false);
     expect(AGENT_LLM_OPTIONS).toEqual({ jsonMode: true, temperature: 0.4, maxTokens: 1200, timeoutMs: 45_000 });

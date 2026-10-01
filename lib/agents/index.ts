@@ -3,6 +3,7 @@ import { gbpPost } from "./agents/gbp-post";
 import { igBio } from "./agents/ig-bio";
 import { localSeoBrief } from "./agents/local-seo-brief";
 import { menuTranslation } from "./agents/menu-translation";
+import { offerCopy } from "./agents/offer-copy";
 import { photoBrief } from "./agents/photo-brief";
 import { reviewReply } from "./agents/review-reply";
 import { reviewRequest } from "./agents/review-request";
@@ -17,7 +18,7 @@ export type { AgentContext, AgentDefinition, AgentKey, AgentOutput, SampledRevie
 export { GUARDRAILS, OUTPUT_KEYS } from "./guardrails";
 export { computeCostUsd } from "./cost-model";
 
-/** CLAUDE.md §3.7 / Phase 4 item 1: Live agents and Beta agents, keyed as templates name them. */
+/** CLAUDE.md §3.7 / Phase 4 item 1 (+ P4.1 offer_copy): Live agents and Beta agents, keyed as templates name them. */
 export const AGENTS: Record<AgentKey, AgentDefinition> = {
   review_reply: reviewReply,
   review_request: reviewRequest,
@@ -30,6 +31,7 @@ export const AGENTS: Record<AgentKey, AgentDefinition> = {
   photo_brief: photoBrief,
   local_seo_brief: localSeoBrief,
   menu_translation: menuTranslation,
+  offer_copy: offerCopy,
 };
 
 export function isAgentKey(value: unknown): value is AgentKey {

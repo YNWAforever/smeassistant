@@ -4,10 +4,11 @@ import { COVERED_FINDING_KEYS, isLedgerOnly, LEDGER_ONLY_KEYS, TEMPLATES, templa
 import { WEBSITE_CHECK_KEYS } from "@/lib/website/checks";
 
 describe("action templates", () => {
-  it("declares the thirteen templates from CLAUDE.md 3.6.1", () => {
+  it("declares the thirteen templates from CLAUDE.md 3.6.1, then the three P4.1 offer workflows", () => {
     expect(TEMPLATES.map((t) => t.key)).toEqual([
       "review-response", "review-request", "gbp-profile-fix", "gbp-photo-pack", "gbp-post", "social-post", "ig-bio", "ig-highlights",
       "visibility-content", "website-basics", "local-seo-brief", "menu-translation", "google-reconnect",
+      "offer-gbp-post", "offer-social-post", "offer-chat-message",
     ]);
   });
 

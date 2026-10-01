@@ -10,7 +10,7 @@ import { listActions, type ActionFilters } from "@/lib/workspace/queries-pages";
  * rather than leaking a query error.
  */
 const VIEWS = new Set(["all", "needs_input", "drafts", "awaiting_approval", "completed"]);
-const CHANNELS = new Set(["google", "instagram", "website", "search_ai"]);
+const CHANNELS = new Set(["google", "instagram", "website", "search_ai", "messaging"]);
 const STATUSES = new Set(["recommended", "needs_input", "ready", "in_progress", "completed", "dismissed", "cancelled", "expired"]);
 
 export async function GET(req: Request, context: { params: Promise<{ workspaceId: string }> }) {

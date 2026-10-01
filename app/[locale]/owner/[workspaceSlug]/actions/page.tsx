@@ -8,7 +8,7 @@ import { listActions, type ActionFilters } from "@/lib/workspace/queries-pages";
 export const dynamic = "force-dynamic";
 
 const VIEWS = new Set(["all", "needs_input", "drafts", "awaiting_approval", "completed"]);
-const CHANNELS = new Set(["google", "instagram", "website", "search_ai"]);
+const CHANNELS = new Set(["google", "instagram", "website", "search_ai", "messaging"]);
 const STATUSES = new Set(["recommended", "needs_input", "ready", "in_progress", "completed", "dismissed", "cancelled", "expired"]);
 
 export async function generateMetadata(props: OwnerPageProps): Promise<Metadata> {

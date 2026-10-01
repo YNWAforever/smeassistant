@@ -21,9 +21,10 @@ import { CreateView, type CreateViewProps } from "@/components/workspace/create-
 import { copy } from "@/lib/copy";
 import { TEMPLATES } from "@/lib/workspace/templates";
 import { getMessages } from "@/lib/i18n";
+import { OFFER_TEMPLATE_KEYS, isOfferWorkflow } from "@/lib/offers/workflow";
 
-/** The registry is the source of truth for both the split and the badges. */
-const AGENT_TEMPLATES = TEMPLATES.filter((template) => template.agentKey !== null);
+/** The registry is the source of truth for both the split and the badges. Offer workflows start from an offer, not here. */
+const AGENT_TEMPLATES = TEMPLATES.filter((template) => template.agentKey !== null && !isOfferWorkflow(template));
 const LEAD_KEYS = ["review-response", "visibility-content", "website-basics"] as const;
 
 function render(overrides: Partial<CreateViewProps> = {}) {
@@ -71,6 +72,13 @@ describe("CreateView goal ordering", () => {
     expect(headings).toContain("Other capabilities");
     // Demoted means below the lead group, not removed.
     expect(cardTitles(root).length).toBe(AGENT_TEMPLATES.length);
+  });
+});
+
+describe("CreateView and offer workflows (P4.1)", () => {
+  it("renders no goal card for an offer template", () => {
+    const titles = cardTitles(render());
+    for (const key of OFFER_TEMPLATE_KEYS) expect(titles).not.toContain(copy.en.workspace.templates[key].title);
   });
 });
 

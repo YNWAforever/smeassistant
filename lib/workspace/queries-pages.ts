@@ -95,7 +95,7 @@ export async function loadHomeEvidence(jobId: string | null): Promise<EvidenceGa
 export interface ActionFilters {
   location?: LocationScope;
   view?: "all" | "needs_input" | "drafts" | "awaiting_approval" | "completed";
-  channel?: "google" | "instagram" | "website" | "search_ai";
+  channel?: "google" | "instagram" | "website" | "search_ai" | "messaging";
   status?: ActionState;
 }
 
