@@ -87,6 +87,8 @@ const SPEC_INPUT_KINDS: Record<string, Record<string, "confirmed_fact" | "eviden
   "local-seo-brief": {},
   "menu-translation": { menu_items: "confirmed_fact" },
   "google-reconnect": { google_account_owner: "confirmed_fact" },
+  "offer-instagram-post": { offer_id: "confirmed_fact", brand_voice: "preference" },
+  "offer-google-post": { offer_id: "confirmed_fact", brand_voice: "preference" },
 };
 
 describe("input classification matches the spec table", () => {
@@ -96,6 +98,31 @@ describe("input classification matches the spec table", () => {
 
   it.each(TEMPLATES.map((t) => [t.key, t] as const))("%s tags each input with the spec's kind", (key, t) => {
     expect(Object.fromEntries(t.inputs.map((i) => [i.key, i.kind]))).toEqual(SPEC_INPUT_KINDS[key]);
+  });
+});
+
+describe("offer promotion rows (P4.1)", () => {
+  const offerRows = TEMPLATES.filter((t) => t.key === "offer-instagram-post" || t.key === "offer-google-post");
+
+  it("offer rows are owner-initiated, gate on a confirmed offer and use promotion_copy", () => {
+    expect(offerRows.map((t) => t.key).sort()).toEqual(["offer-google-post", "offer-instagram-post"]);
+    for (const t of offerRows) {
+      expect(t.triggerFindingKeys).toEqual([]);
+      expect(t.inputs.find((i) => i.key === "offer_id")?.kind).toBe("confirmed_fact");
+      expect(t.agentKey).toBe("promotion_copy");
+      expect(t.capability).toBe("Beta");
+      expect(t.delivery).toBe("export_copy");
+      expect(t.externalFacing).toBe(true);
+    }
+    expect(CAPABILITIES.promotion_copy).toBe("Beta");
+  });
+
+  it("measures Instagram freshness and leaves Google posts unmeasured", () => {
+    const byKey = (key: string) => offerRows.find((t) => t.key === key);
+    expect(byKey("offer-instagram-post")?.measurement).toBe("ig.days_since_last_post");
+    expect(byKey("offer-google-post")?.measurement).toBeNull();
+    expect(byKey("offer-instagram-post")?.channel).toBe("instagram");
+    expect(byKey("offer-google-post")?.channel).toBe("google");
   });
 });
 

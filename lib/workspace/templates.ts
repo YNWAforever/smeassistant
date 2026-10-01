@@ -26,6 +26,8 @@ export type TemplateKey =
   | "website-basics"
   | "local-seo-brief"
   | "menu-translation"
+  | "offer-instagram-post"
+  | "offer-google-post"
   | "google-reconnect";
 
 export type WorkspaceAgentKey =
@@ -38,7 +40,8 @@ export type WorkspaceAgentKey =
   | "faq_jsonld"
   | "website_basics"
   | "local_seo_brief"
-  | "menu_translation";
+  | "menu_translation"
+  | "promotion_copy";
 
 export type TemplateDelivery = "export_copy" | "export" | "checklist" | "system";
 
@@ -384,6 +387,50 @@ export const TEMPLATES: ActionTemplate[] = [
     title: localized("Review the English menu translation", "審閱英文餐牌翻譯"),
     summary: localized("Confirm the dish facts first, then finish the remaining English labels.", "先確認菜式資料，再完成餘下英文標籤。"),
     workflow: localized("Menu translation workflow", "餐牌翻譯流程"),
+  },
+  {
+    key: "offer-instagram-post",
+    triggerFindingKeys: [],
+    capability: "Beta",
+    agentKey: "promotion_copy",
+    requiredInputs: ["offer_id", "brand_voice"],
+    inputs: [
+      { key: "offer_id", kind: "confirmed_fact" },
+      { key: "brand_voice", kind: "preference" },
+    ],
+    effortMinutes: 8,
+    delivery: "export_copy",
+    deliveryUnit: "approved_version",
+    measurement: "ig.days_since_last_post",
+    failure: DEFAULT_FAILURE,
+    externalFacing: true,
+    channel: "instagram",
+    outcome: localized("An Instagram caption for your confirmed offer, ready to copy", "一則為你已確認優惠而寫、可直接複製的 Instagram 文案"),
+    title: localized("Promote your offer on Instagram", "在 Instagram 宣傳你的優惠"),
+    summary: localized("A caption that states the offer's price, dates and terms exactly as you confirmed them.", "一則按你已確認的價錢、日期及條款撰寫的文案。"),
+    workflow: localized("Offer Instagram post workflow", "優惠 Instagram 帖文流程"),
+  },
+  {
+    key: "offer-google-post",
+    triggerFindingKeys: [],
+    capability: "Beta",
+    agentKey: "promotion_copy",
+    requiredInputs: ["offer_id", "brand_voice"],
+    inputs: [
+      { key: "offer_id", kind: "confirmed_fact" },
+      { key: "brand_voice", kind: "preference" },
+    ],
+    effortMinutes: 8,
+    delivery: "export_copy",
+    deliveryUnit: "approved_version",
+    measurement: null,
+    failure: DEFAULT_FAILURE,
+    externalFacing: true,
+    channel: "google",
+    outcome: localized("A Google Business post for your confirmed offer, ready to copy", "一則為你已確認優惠而寫、可直接複製的 Google 商戶帖文"),
+    title: localized("Promote your offer on Google", "在 Google 宣傳你的優惠"),
+    summary: localized("A short post that states the offer's price, dates and terms exactly as you confirmed them.", "一則按你已確認的價錢、日期及條款撰寫的簡短帖文。"),
+    workflow: localized("Offer Google post workflow", "優惠 Google 帖文流程"),
   },
   {
     key: "google-reconnect",

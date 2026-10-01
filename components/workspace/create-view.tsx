@@ -51,6 +51,8 @@ const ICONS: Record<TemplateKey, typeof MessageSquareText> = {
   "website-basics": Globe,
   "local-seo-brief": Search,
   "menu-translation": Languages,
+  "offer-instagram-post": FileImage,
+  "offer-google-post": Newspaper,
   "google-reconnect": Globe,
 }
 

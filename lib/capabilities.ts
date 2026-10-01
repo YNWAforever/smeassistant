@@ -17,6 +17,7 @@ export const CAPABILITIES = {
   photo_brief: "Beta",
   local_seo_brief: "Beta",
   menu_translation: "Beta",
+  promotion_copy: "Beta",
   google_business_connect: "Live",
   google_business_publish: "Requires connection",
   instagram_publish: "Planned",
