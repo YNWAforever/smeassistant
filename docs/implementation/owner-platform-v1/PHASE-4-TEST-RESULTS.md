@@ -4,7 +4,7 @@ Gate-by-gate record for Phase 4. Each slice has its own section. Only P4.4 exist
 
 ## P4.4 — reusable workflow contract
 
-Candidate: branch `p4-growth-platform`, HEAD `a5a2211` (14 commits `dc457ec`..`a5a2211` on top of base `c042b20` = `origin/main`, PR #26). Spec: [`docs/superpowers/specs/2026-09-30-workflow-contract-design.md`](../../superpowers/specs/2026-09-30-workflow-contract-design.md). Plan: `docs/superpowers/plans/2026-09-30-workflow-contract.md`. Environment: Windows 11 Pro 10.0.26200, Node `v24.18.0`, pnpm `9.12.0` via corepack, Docker Server `29.7.2`. Run on 2026-10-01, every heavy gate sequentially.
+Candidate: branch `p4-growth-platform`. The Task 8 record below is at HEAD `a5a2211` (14 commits `dc457ec`..`a5a2211`); the final-review fix wave (five code commits `4c58de7`..`0debe06` plus a documentation commit, 22 commits in all) re-ran its gates in "Final-review fix wave" at the end. Base `c042b20` (`origin/main`, PR #26). Spec: [`docs/superpowers/specs/2026-09-30-workflow-contract-design.md`](../../superpowers/specs/2026-09-30-workflow-contract-design.md). Plan: `docs/superpowers/plans/2026-09-30-workflow-contract.md`. Environment: Windows 11 Pro 10.0.26200, Node `v24.18.0`, pnpm `9.12.0` via corepack, Docker Server `29.7.2`. Run on 2026-10-01, every heavy gate sequentially.
 
 **Read this first.** Everything below is **locally verified**. **Nothing here is hosted-verified.** No migration exists in this slice (journal still 0001–0010), nothing was applied to any hosted database, nothing was deployed or pushed, and no paid provider was called: the fake LLM is injected in every test, and the evaluation script was never run live (see "Evaluation script"). See `PHASE-4-REPORT.md` for what changed, the rulings, the known limits and the open questions.
 
@@ -84,3 +84,22 @@ The literal `corepack pnpm e2e` cannot start on this machine, for the same reaso
 ### Known limits
 
 See "Rulings, known limits and open questions" in the P4.4 section of `PHASE-4-REPORT.md`; the deferred minor findings are grouped there.
+
+### Final-review fix wave
+
+Findings, rulings (including the reversed evidence-input ruling) and commits are in the "Final-review fix wave" section of `PHASE-4-REPORT.md`. New or changed tests: `workflow-inputs.test.ts` (flipped evidence case; empty array/object), `runs.test.ts` (typed reviews reach the model; `menu_items: []`/`{}` block), `live.test.ts` (review reply blocked with neither source, reaches the model with typed text; empty menu list; every `DRAFT_AGENTS` key resolves), `agents.test.ts` (four ordinary-copy probes; reviewer price; observed rank; review-carried link still flags), `version-meta.test.ts`, `action-detail-client.test.tsx` (three locales; `ownerInputPatch`), `templates.contract.test.ts` (13 spec-table rows + coverage), `eval-workflows.test.ts` (unpriced pre-flight), corpus `uncertain_evidence-04` (flipped) and `provider_failure-03` (new; 24 cases, 28 corpus tests).
+**Gate re-runs after the wave** (2026-10-01, sequential, on `0debe06` plus the documentation edits):
+
+| Command | Exit | Result |
+|---|---|---|
+| `corepack pnpm typecheck` | 0 | **passed** (root and all four packages). |
+| `corepack pnpm lint` | 0 | **passed**, `0 errors, 30 warnings`, the same 18 files as before; none in a file this wave touched. |
+| `corepack pnpm test` | 0 | **passed**: app 315 files / 3,540 tests, safe-media 1 / 62, `region` 3 / 23, `scoring` 16 / 183, `contracts` 3 / 20, `scan-engine` 28 / 299. **366 files / 4,127 tests** (+42 over `a5a2211`). A first run under machine load had 3 `Test timed out in 5000ms` failures in files this wave does not touch (`lib/identity/identity-sdk.test.ts`, `lib/report/competitor-invariance.test.ts`, `app/api/versions/[versionId]/versions.test.ts`); all three passed in isolation (20 / 20) and the full re-run above passed with zero failures. Recorded, not hidden. |
+| `NEON_INTEGRATION=1 corepack pnpm test:integration` | 0 | **passed**, 39 files / 399 tests, first run. |
+| `corepack pnpm e2e:acceptance` with the temporary `--webpack` dev-server edit in `test/e2e/environment.ts` (reverted with `git checkout --`, never committed) | 0 | **passed, 38 / 38** (14.5 min). This is the first run of the base-restored `test/e2e/seed.ts`. The literal `e2e` / `e2e:acceptance` with Turbopack stays **blocked** on this machine (radix-ui cascade); CI is the real gate. |
+| `corepack pnpm db:verify` | 0 | **passed**: 0001–0010, replay `[]`, 37 tables / 444 columns / 172 constraints / 95 indexes / 8 triggers / 14 functions, `seededRows` 0. Unchanged. |
+| `corepack pnpm eval:workflows -- --budget-usd 1` | **2** | refused, `not_enabled` (no `EVAL_LIVE`, no key). |
+| `corepack pnpm eval:workflows -- --check-load` | 0 | `load ok: 24 cases`. |
+| Invariants | — | prompt snapshot byte-identical to `c042b20` (vitest rewrote line endings only; restored with `git checkout --`); no migration; no `packages/**` edit. |
+
+Not re-run in this wave: `build`, `test:secret-boundary`, `test:no-supabase`, `test:no-self-service-claim` and the literal `e2e` (not in the wave's gate list; the earlier Task 8 records stand for them). No real model was called and `EVAL_LIVE` was never set.
