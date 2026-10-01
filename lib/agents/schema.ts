@@ -59,6 +59,25 @@ export interface AgentContext {
    * fence exists to close.
    */
   toneInstruction?: string;
+  /**
+   * The one owner-confirmed offer an offer_copy run writes about (P4.1). Set
+   * only by runs.ts for an offer action whose offer passed the gate; every
+   * other agent sees it undefined. Prices and dates arrive formatted.
+   */
+  offer?: {
+    id: string;
+    revision: number;
+    title: string;
+    details: string;
+    terms: string | null;
+    priceDisplay: string | null;
+    validityDisplay: string;
+    endsOn: string | null;
+    openEnded: boolean;
+    approvedClaims: string[];
+    channel: "google_post" | "instagram_post" | "whatsapp_message" | "line_message";
+    hasAsset: boolean;
+  };
 }
 
 export interface AgentDefinition {
