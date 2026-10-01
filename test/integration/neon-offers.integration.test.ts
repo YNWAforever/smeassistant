@@ -3,6 +3,8 @@ import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { applyMigrations, loadMigrations } from "../../scripts/neon/migrations";
+import { offerRepository } from "../../lib/repositories/offers";
+import type { OfferInput } from "../../lib/workspace/offers";
 import { startNeonDatabaseFixture, type NeonDatabaseFixture } from "./neon-database";
 
 // P4.1 migration 0011 (docs/superpowers/specs/2026-10-01-offers-promotion-copy-design.md 1.1, 1.2, 1.4):
@@ -297,5 +299,138 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon offers schema and fun
     }
     const policy = (await owner.query("SELECT roles::text[] AS roles, cmd, qual, with_check FROM pg_policies WHERE tablename='offers'")).rows;
     expect(policy).toEqual([{ roles: ["sme_app_runtime"], cmd: "ALL", qual: "true", with_check: "true" }]);
+  });
+
+  describe("offerRepository", () => {
+    const input = (over: Partial<OfferInput> = {}): OfferInput => ({
+      location_id: null,
+      title: "Lunch set",
+      details: "Soup and a main course",
+      terms: "",
+      price_amount: 88,
+      currency: "HKD",
+      valid_from: "2026-10-01",
+      valid_until: "2099-12-31",
+      claims: ["Halal"],
+      prohibited_terms: [],
+      asset_id: null,
+      ...over,
+    });
+
+    it("create reads back through get, converting numeric to number and dates to YYYY-MM-DD", async () => {
+      const ws = await workspace();
+      const actor = await user();
+      const repo = offerRepository(runtime);
+      const created = await repo.create(ws, actor, input({ price_amount: 1280.5 }));
+      expect(created).toMatchObject({
+        workspaceId: ws,
+        locationId: null,
+        title: "Lunch set",
+        priceAmount: 1280.5,
+        currency: "HKD",
+        validFrom: "2026-10-01",
+        validUntil: "2099-12-31",
+        claims: ["Halal"],
+        status: "draft",
+        revision: 1,
+        confirmedAt: null,
+        expired: false,
+      });
+      expect(await repo.get(ws, created.id)).toEqual(created);
+      expect(await repo.get(await workspace(), created.id)).toBeNull();
+    });
+
+    it("update bumps revision, resets to draft, clears confirmation, and reports changed fields", async () => {
+      const ws = await workspace();
+      const actor = await user();
+      const repo = offerRepository(runtime);
+      const created = await repo.create(ws, actor, input());
+      await repo.confirm(created.id, actor, 1);
+      expect((await repo.get(ws, created.id))?.status).toBe("confirmed");
+
+      const result = await repo.update(ws, created.id, 1, input({ title: "Dinner set", price_amount: 88.0, claims: ["Halal", "Fresh"] }));
+      expect(result.kind).toBe("updated");
+      if (result.kind !== "updated") return;
+      expect(result.offer).toMatchObject({ title: "Dinner set", revision: 2, status: "draft", confirmedAt: null, claims: ["Halal", "Fresh"] });
+      expect(result.changed).toEqual(["title", "claims"]);
+      const row = (await runtime.query("SELECT confirmed_by FROM offers WHERE id=$1", [created.id])).rows[0];
+      expect(row.confirmed_by).toBeNull();
+
+      const unchanged = await repo.update(ws, created.id, 2, input({ title: "Dinner set", claims: ["Halal", "Fresh"] }));
+      expect(unchanged).toMatchObject({ kind: "updated", changed: [] });
+      if (unchanged.kind === "updated") expect(unchanged.offer.revision).toBe(3);
+    });
+
+    it("update with a stale revision returns revision_changed and changes nothing", async () => {
+      const ws = await workspace();
+      const repo = offerRepository(runtime);
+      const created = await repo.create(ws, await user(), input());
+      expect(await repo.update(ws, created.id, 7, input({ title: "Changed" }))).toEqual({ kind: "revision_changed" });
+      expect(await repo.get(ws, created.id)).toEqual(created);
+      expect(await repo.update(ws, randomUUID(), 1, input())).toEqual({ kind: "not_found" });
+      expect(await repo.update(await workspace(), created.id, 1, input({ title: "Other workspace" }))).toEqual({ kind: "not_found" });
+      expect(await repo.get(ws, created.id)).toEqual(created);
+    });
+
+    it("update of an archived offer returns archived", async () => {
+      const ws = await workspace();
+      const actor = await user();
+      const repo = offerRepository(runtime);
+      const created = await repo.create(ws, actor, input());
+      expect(await repo.archive(created.id, actor)).toEqual({ kind: "archived", cancelledActions: 0 });
+      expect(await repo.archive(created.id, actor)).toEqual({ kind: "already-archived", cancelledActions: 0 });
+      expect(await repo.update(ws, created.id, 1, input({ title: "Changed" }))).toEqual({ kind: "archived" });
+      expect((await repo.get(ws, created.id))?.title).toBe("Lunch set");
+    });
+
+    it("get returns expired from the database clock", async () => {
+      const ws = await workspace();
+      const repo = offerRepository(runtime);
+      const past = await insertOffer(ws, { validFrom: "CURRENT_DATE - 30", validUntil: "CURRENT_DATE - 2" });
+      const future = await insertOffer(ws, { validFrom: "CURRENT_DATE", validUntil: "CURRENT_DATE + 30" });
+      expect((await repo.get(ws, past))?.expired).toBe(true);
+      expect((await repo.get(ws, future))?.expired).toBe(false);
+      expect((await repo.list(ws)).map((o) => [o.id, o.expired]).sort()).toEqual([[future, false], [past, true]].sort());
+    });
+
+    it("confirm maps the SQL messages to OfferError and keeps the confirmed shape", async () => {
+      const ws = await workspace("hk");
+      const actor = await user();
+      const repo = offerRepository(runtime);
+      const created = await repo.create(ws, actor, input());
+      await expect(repo.confirm(created.id, actor, 9)).rejects.toMatchObject({ name: "OfferError", code: "offer_revision_changed" });
+      await expect(repo.confirm(randomUUID(), actor, 1)).rejects.toMatchObject({ code: "offer_not_found" });
+      expect(await repo.confirm(created.id, actor, 1)).toEqual({ kind: "confirmed", revision: 1 });
+      expect(await repo.confirm(created.id, actor, 1)).toEqual({ kind: "already-confirmed", revision: 1 });
+      const twd = await repo.create(ws, actor, input({ currency: "TWD" }));
+      await expect(repo.confirm(twd.id, actor, 1)).rejects.toMatchObject({ code: "offer_currency_market" });
+      const expired = await insertOffer(ws, { validFrom: "CURRENT_DATE - 30", validUntil: "CURRENT_DATE - 2" });
+      await expect(repo.confirm(expired, actor, 1)).rejects.toMatchObject({ code: "offer_expired" });
+      await repo.archive(created.id, actor);
+      await expect(repo.confirm(created.id, actor, 1)).rejects.toMatchObject({ code: "offer_archived" });
+    });
+
+    it("archive reports the actions it cancelled", async () => {
+      const ws = await workspace();
+      const actor = await user();
+      const repo = offerRepository(runtime);
+      const created = await repo.create(ws, actor, input());
+      await insertAction(ws, created.id, "recommended");
+      await insertAction(ws, created.id, "completed");
+      expect(await repo.archive(created.id, actor)).toEqual({ kind: "archived", cancelledActions: 1 });
+    });
+
+    it("list returns newest first and only the workspace's rows", async () => {
+      const ws = await workspace();
+      const other = await workspace();
+      const actor = await user();
+      const repo = offerRepository(runtime);
+      const first = await repo.create(ws, actor, input({ title: "First" }));
+      const second = await repo.create(ws, actor, input({ title: "Second" }));
+      const third = await repo.create(ws, actor, input({ title: "Third" }));
+      await repo.create(other, actor, input({ title: "Elsewhere" }));
+      expect((await repo.list(ws)).map((o) => o.id)).toEqual([third.id, second.id, first.id]);
+      expect(await repo.list(randomUUID())).toEqual([]);
+    });
   });
 });
