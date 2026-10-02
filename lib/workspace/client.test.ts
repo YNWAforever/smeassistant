@@ -8,6 +8,7 @@ import {
   decideVersion,
   exportVersion,
   forgetIdempotencyKey,
+  getOpenPack,
   idempotencyKeyFor,
   inviteMember,
   mintIdempotencyKey,
@@ -18,6 +19,7 @@ import {
   saveNotificationPreferences,
   saveVersion,
   setAssetRights,
+  startPack,
   updateAction,
   updateMember,
   uploadAsset,
@@ -227,5 +229,34 @@ describe("phase 6 helpers", () => {
     expect(await confirmInstagramHandle("ws", "@KamManHouse")).toEqual({ ok: true, data: { ok: true, handle: "kammanhouse" } });
     expect(lastCall().url).toBe("/api/workspaces/ws/instagram-handle");
     expect(JSON.parse(String(lastCall().init.body))).toEqual({ handle: "@KamManHouse" });
+  });
+});
+
+describe("work pack helpers (P4.2)", () => {
+  it("startPack posts an explicit location_id, null for a workspace-wide pack", async () => {
+    fetchMock.mockResolvedValue(reply(201, { pack: { pack: { id: "p1" } }, created: true }));
+    const started = await startPack("ws 1", "11111111-1111-4111-8111-111111111111");
+    expect(started.ok).toBe(true);
+    let call = lastCall();
+    expect(call.url).toBe("/api/workspaces/ws%201/packs");
+    expect(call.init.method).toBe("POST");
+    expect(JSON.parse(String(call.init.body))).toEqual({ location_id: "11111111-1111-4111-8111-111111111111" });
+    await startPack("ws-1", null);
+    call = lastCall();
+    expect(JSON.parse(String(call.init.body))).toEqual({ location_id: null });
+  });
+
+  it("startPack maps a refusal to the server's code", async () => {
+    fetchMock.mockResolvedValue(reply(403, { error: "forbidden" }));
+    expect(await startPack("ws-1", null)).toEqual({ ok: false, status: 403, error: "forbidden" });
+  });
+
+  it("getOpenPack reads the open pack for a location, or location=none", async () => {
+    fetchMock.mockResolvedValue(reply(200, { pack: null }));
+    expect(await getOpenPack("ws-1", "loc-1")).toEqual({ ok: true, data: { pack: null } });
+    expect(lastCall().url).toBe("/api/workspaces/ws-1/packs?location=loc-1");
+    expect(lastCall().init.method).toBe("GET");
+    await getOpenPack("ws-1", null);
+    expect(lastCall().url).toBe("/api/workspaces/ws-1/packs?location=none");
   });
 });

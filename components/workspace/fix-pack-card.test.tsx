@@ -18,6 +18,7 @@ vi.mock("@/lib/owner/fix-pack-card-client", () => ({
 }));
 
 import { FixPackCard } from "@/components/workspace/fix-pack-card";
+import { copy } from "@/lib/copy";
 
 async function mount(drafts: unknown[]) {
   listDrafts.mockResolvedValue({ ok: true, drafts });
@@ -73,5 +74,71 @@ describe("FixPackCard empty state", () => {
     expect(container.textContent).toContain("Approve");
     // The empty-state explanation belongs only to the empty state.
     expect(container.textContent).not.toContain("not available in this workspace");
+  });
+});
+
+describe("FixPackCard mode=earlier (P4.2)", () => {
+  const pending = { id: "run-1", jobId: "job-1", businessName: "Kam Man House", findingLabel: "Owner responses", agentKey: "review_reply_agent", status: "draft", draftText: "Thank you for visiting.", reviewExcerpt: null, reviewRating: null, createdAt: "2026-09-01T00:00:00Z" };
+  const approved = { ...pending, id: "run-2", status: "approved", draftText: "Already approved text." };
+
+  async function mountEarlier(drafts: unknown[]) {
+    listDrafts.mockResolvedValue({ ok: true, drafts });
+    let result!: ReturnType<typeof render>;
+    await act(async () => {
+      result = render(<FixPackCard mode="earlier" locale="en" workspaceId="ws-1" viewerRole="owner" actionsHref="/en/owner/kam-man-house/actions?view=drafts" />);
+    });
+    return result.container;
+  }
+
+  it("renders nothing when there are no drafts, and drops the old empty state", async () => {
+    const container = await mountEarlier([]);
+    expect(container.innerHTML).toBe("");
+  });
+
+  it("renders nothing when the only drafts are already approved", async () => {
+    expect((await mountEarlier([approved])).innerHTML).toBe("");
+  });
+
+  it("renders nothing while loading and when the load fails", async () => {
+    listDrafts.mockResolvedValue({ ok: false });
+    let result!: ReturnType<typeof render>;
+    await act(async () => { result = render(<FixPackCard mode="earlier" locale="en" workspaceId="ws-1" viewerRole="owner" />); });
+    expect(result.container.innerHTML).toBe("");
+  });
+
+  it("lists only the pending drafts under 'Earlier staff drafts', with the same review controls", async () => {
+    const container = await mountEarlier([pending, approved]);
+    expect(container.textContent).toContain("Earlier staff drafts");
+    expect(container.textContent).toContain("Thank you for visiting.");
+    expect(container.textContent).not.toContain("Already approved text.");
+    expect(container.textContent).toContain("Approve");
+    expect(container.textContent).toContain("Reject");
+    expect(container.textContent).not.toContain("not available in this workspace");
+  });
+
+  it("keeps the review controls to owners and managers", async () => {
+    listDrafts.mockResolvedValue({ ok: true, drafts: [pending] });
+    let result!: ReturnType<typeof render>;
+    await act(async () => { result = render(<FixPackCard mode="earlier" locale="en" workspaceId="ws-1" viewerRole="viewer" />); });
+    expect(result.container.textContent).toContain("Thank you for visiting.");
+    expect(result.container.textContent).not.toContain("Approve");
+  });
+
+  it("names the heading in every locale", async () => {
+    for (const locale of ["zh-HK", "zh-TW"] as const) {
+      listDrafts.mockResolvedValue({ ok: true, drafts: [pending] });
+      let result!: ReturnType<typeof render>;
+      await act(async () => { result = render(<FixPackCard mode="earlier" locale={locale} workspaceId="ws-1" viewerRole="owner" />); });
+      expect(result.container.textContent).toContain(copy[locale].workspace.packs.earlierDrafts);
+      cleanup();
+    }
+  });
+
+  it("full mode is unchanged: it still lists approved drafts and the empty state", async () => {
+    const container = await mount([pending, approved]);
+    expect(container.textContent).toContain("Already approved text.");
+    expect(container.textContent).not.toContain("Earlier staff drafts");
+    cleanup();
+    expect((await mount([])).textContent).toContain("not available in this workspace");
   });
 });

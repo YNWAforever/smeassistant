@@ -7,7 +7,7 @@ import { localized, type ActionState } from "../domain";
 import { dedupeKeyFor, freshnessText } from "../workspace/actions";
 import { PACK_STARTED_EVENT } from "../workspace/audit";
 import { applyResolvedInputs, resolveEvidenceInputs } from "../workspace/evidence-inputs";
-import { isPackFinished, STARTER_PACK, type PackItemRow, type PackKind, type PackPosition, type StarterItemKey, type WorkPack } from "../workspace/packs";
+import { isPackFinished, STARTER_PACK, type PackItemRow, type PackKind, type PackPosition, type StarterItemKey, type WorkPack } from "../workspace/packs-model";
 import { TEMPLATES } from "../workspace/templates";
 import { actionMutationRepository } from "./action-mutations";
 import { artifactRepository } from "./artifacts";

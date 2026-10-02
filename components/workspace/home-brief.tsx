@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { EvidenceGallery } from "@/components/workspace/evidence-gallery"
 import { FixPackCard } from "@/components/workspace/fix-pack-card"
+import { PackCard, type PackCardProps } from "@/components/workspace/pack-card"
 import { LocationSelect } from "@/components/workspace/location-select"
 import { RescanButton } from "@/components/workspace/rescan-button"
 import { copy, type PrototypeLocale } from "@/lib/copy"
@@ -34,6 +35,12 @@ export interface HomeBriefViewProps {
   demo?: boolean
   /** When present, the Fix Pack drafts card (agent_runs) renders after the secondary grid. */
   fixPack?: { workspaceId: string; role: WorkspaceRole }
+  /**
+   * P4.2, present only with WORK_PACKS_ENABLED on (lib/workspace/packs.ts loadHomeWorkPacks).
+   * Home then renders the starter pack card and, under "Earlier staff drafts", only
+   * the pending Fix Pack drafts. Absent, Home renders exactly the `fixPack` card above.
+   */
+  workPacks?: { enabled: true; card: Omit<PackCardProps, "locale">; earlierDrafts: { workspaceId: string; role: WorkspaceRole } }
   /** Server-resolved; see RescanButton for why it cannot be computed client-side. */
   consentPolicyVersion: string
   /** The signed-in member's real role; drives the Rescan button (hidden for viewers). Omitted = no rescan control. */
@@ -48,7 +55,7 @@ function actionHref(locale: PrototypeLocale, slug: string, action: ActionOvervie
   return withLocation(href, location)
 }
 
-export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, fixPack, role, consentPolicyVersion, problems }: HomeBriefViewProps) {
+export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, fixPack, workPacks, role, consentPolicyVersion, problems }: HomeBriefViewProps) {
   const t = copy[locale].home
   const isChinese = locale !== "en"
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -179,7 +186,14 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         </SectionCard>
       </div>
 
-      {fixPack && <FixPackCard locale={locale} workspaceId={fixPack.workspaceId} viewerRole={fixPack.role} actionsHref={`${base}/actions?view=drafts`} />}
+      {workPacks ? (
+        <>
+          <PackCard locale={locale} {...workPacks.card} />
+          <FixPackCard mode="earlier" locale={locale} workspaceId={workPacks.earlierDrafts.workspaceId} viewerRole={workPacks.earlierDrafts.role} actionsHref={`${base}/actions?view=drafts`} />
+        </>
+      ) : (
+        fixPack && <FixPackCard locale={locale} workspaceId={fixPack.workspaceId} viewerRole={fixPack.role} actionsHref={`${base}/actions?view=drafts`} />
+      )}
 
       <SectionCard className="change-ledger-card">
         <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "最近變化紀錄" : "Recent change ledger"}</p><h2>{isChinese ? "先看證據，再看圖表" : "Evidence before charts"}</h2></div><Badge variant="outline">{snapshot ? `${formatDay(snapshot.observedAt, locale, timezone)}${changed.comparable ? (isChinese ? " 可比較掃描" : " comparable scan") : ""}` : (isChinese ? "尚未有掃描" : "No scan yet")}</Badge></div>

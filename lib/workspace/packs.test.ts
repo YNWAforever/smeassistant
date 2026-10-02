@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ActionState, ApprovalState, DeliveryState, RunState } from "@/lib/domain";
 import { buildActionOverview, type ActionOverview, type ActionRow } from "./overview";
 import { workPacksEnabled } from "./packs-flag";
-import { buildPackOverview, isPackFinished, STARTER_PACK, type StarterItemKey, type WorkPack } from "./packs";
+import { buildPackOverview, isPackFinished, packActionsToDraft, STARTER_PACK, type StarterItemKey, type WorkPack } from "./packs-model";
 import { isOfferTemplate, TEMPLATES } from "./templates";
 
 const lt = (s: string) => ({ en: s, "zh-HK": s, "zh-TW": s });
@@ -144,5 +144,29 @@ describe("isPackFinished", () => {
 
   it("is false for a pack with no items", () => {
     expect(isPackFinished([])).toBe(false);
+  });
+});
+
+describe("packActionsToDraft", () => {
+  function packWith(specs: Array<Parameters<typeof overview>[2]>): ReturnType<typeof buildPackOverview> {
+    return buildPackOverview(
+      pack,
+      STARTER_PACK.items.map((templateKey, index) => ({ templateKey, position: (index + 1) as 1 | 2 | 3, action: overview(`a${index + 1}`, templateKey, specs[index]) })),
+    );
+  }
+
+  it("selects every item with no version, in position order", () => {
+    expect(packActionsToDraft(packWith([{}, {}, {}]))).toEqual(["a1", "a2", "a3"]);
+  });
+
+  it("skips a finished action and any latest version that is a draft, awaiting changes or approved", () => {
+    expect(packActionsToDraft(packWith([{ actionState: "completed" }, { version: { approval: "draft" } }, { version: { approval: "approved" } }]))).toEqual([]);
+    expect(packActionsToDraft(packWith([{ version: { approval: "changes_requested" } }, {}, {}]))).toEqual(["a2", "a3"]);
+  });
+
+  it("still drafts an item whose latest version was rejected or superseded, and one that needs facts or failed", () => {
+    expect(
+      packActionsToDraft(packWith([{ version: { approval: "rejected" } }, { actionState: "needs_input", run: "succeeded" }, { run: "failed" }])),
+    ).toEqual(["a1", "a2", "a3"]);
   });
 });

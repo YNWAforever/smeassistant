@@ -1,6 +1,7 @@
 import type { WorkspaceAgentKey, TemplateKey } from "@/lib/workspace/templates";
 import type { ActionOverview } from "@/lib/workspace/overview";
 import type { Offer, OfferInput } from "@/lib/workspace/offers";
+import type { PackOverview } from "@/lib/workspace/packs-model";
 
 /**
  * Browser-side helpers for the Phase 4 mutation routes (CLAUDE.md §3.2.3,
@@ -339,4 +340,21 @@ export function createPromotions(offerId: string, channels?: PromotionChannel[])
 /** The same read the sidebar and the delivery card use, so the disclosure quotes the real allowance. */
 export function getUsage(workspaceId: string): Promise<ClientResult<UsageResult>> {
   return request(`/api/workspaces/${encodeURIComponent(workspaceId)}/usage`, { method: "GET" });
+}
+
+// ---------------------------------------------------------------------------
+// P4.2 work packs (docs/superpowers/specs/2026-10-02-work-packs-design.md 3.1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Starts (or returns) the open starter pack. Creates or reuses its three
+ * actions and never calls a model; the caller then runs each item through
+ * `runAction`. `locationId: null` is an explicit workspace-wide pack.
+ */
+export function startPack(workspaceId: string, locationId: string | null): Promise<ClientResult<{ pack: PackOverview; created: boolean }>> {
+  return post(`/api/workspaces/${encodeURIComponent(workspaceId)}/packs`, { location_id: locationId });
+}
+
+export function getOpenPack(workspaceId: string, locationId: string | null): Promise<ClientResult<{ pack: PackOverview | null }>> {
+  return request(`/api/workspaces/${encodeURIComponent(workspaceId)}/packs?location=${locationId ? encodeURIComponent(locationId) : "none"}`, { method: "GET" });
 }

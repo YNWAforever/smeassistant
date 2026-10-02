@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { aiBudgetRefusal } from "@/lib/budgets/messages"
 import { copy, type PrototypeLocale } from "@/lib/copy"
-import { createPromotions, runAction, type ClientResult, type PromotionChannel, type RunActionResult } from "@/lib/workspace/client"
+import { createPromotions, type ClientResult, type PromotionChannel } from "@/lib/workspace/client"
 import { isOfferStaleCode } from "@/lib/workspace/offer-format"
+import { useSequentialRuns, type RowState } from "@/lib/workspace/use-sequential-runs"
 
 /**
  * "Create promotion drafts" for one confirmed offer (design 3.2). It states the
@@ -32,12 +33,12 @@ export interface OfferPromotionPanelProps {
 const CHANNELS: readonly PromotionChannel[] = ["instagram", "google"]
 
 type RowStatus = "waiting" | "generating" | "ready" | "needs_input" | "failed"
-interface Row {
+interface Entry {
   channel: PromotionChannel
   actionId: string
-  status: RowStatus
-  message: string | null
 }
+
+const STATUS: Record<RowState, RowStatus> = { idle: "waiting", generating: "generating", draft_ready: "ready", needs_input: "needs_input", failed: "failed" }
 
 function fill(template: string, values: Record<string, string | number>): string {
   return Object.entries(values).reduce((text, [key, value]) => text.split(`{${key}}`).join(String(value)), template)
@@ -47,8 +48,10 @@ export function OfferPromotionPanel({ locale, offerId, offerTitle, usage, canCre
   const text = copy[locale].workspace.offers
   const inputLabels = copy[locale].workspace.inputs
   const [phase, setPhase] = useState<"idle" | "creating" | "started">("idle")
-  const [rows, setRows] = useState<Row[]>([])
+  const [entries, setEntries] = useState<Entry[]>([])
   const [problem, setProblem] = useState<string | null>(null)
+  // A refused run (spend budget, kill switch) is that draft failing, in plain words; the other channel still runs.
+  const runs = useSequentialRuns({ stopOnRefusal: false })
 
   const channelNames = CHANNELS.map((channel) => text.promotion.channels[channel]).join(text.promotion.listSeparator)
   const disclosure =
@@ -62,28 +65,19 @@ export function OfferPromotionPanel({ locale, offerId, offerTitle, usage, canCre
     return aiBudgetRefusal(locale, result.status, result.error) ?? text.promotion.failed
   }
 
-  function outcome(result: ClientResult<RunActionResult>): Pick<Row, "status" | "message"> {
-    if (!result.ok) return { status: "failed", message: failureText(result) }
+  /** The row's explanation in words, from the run's last answer. */
+  function messageFor(actionId: string): string | null {
+    const result = runs.results[actionId]
+    if (!result) return null
+    if (!result.ok) return failureText(result)
     // offer_id is bound by the action's column, so it is never something the owner supplies.
     const facts = (result.data.factsNeeded ?? []).filter((key) => key !== "offer_id")
     if (result.data.factsNeeded?.length) {
       const labels = facts.map((key) => inputLabels[key]).filter((label): label is string => Boolean(label))
-      return {
-        status: "needs_input",
-        message: labels.length ? fill(text.promotion.needsInput, { facts: labels.join(text.promotion.listSeparator) }) : text.promotion.needsInputGeneric,
-      }
+      return labels.length ? fill(text.promotion.needsInput, { facts: labels.join(text.promotion.listSeparator) }) : text.promotion.needsInputGeneric
     }
-    if (result.data.state === "failed") return { status: "failed", message: text.promotion.failed }
-    return { status: "ready", message: null }
-  }
-
-  function patchRow(actionId: string, patch: Partial<Row>) {
-    setRows((current) => current.map((row) => (row.actionId === actionId ? { ...row, ...patch } : row)))
-  }
-
-  async function runRow(actionId: string) {
-    patchRow(actionId, { status: "generating", message: null })
-    patchRow(actionId, outcome(await runAction(actionId)))
+    if (result.data.state === "failed") return text.promotion.failed
+    return null
   }
 
   async function create() {
@@ -96,10 +90,10 @@ export function OfferPromotionPanel({ locale, offerId, offerTitle, usage, canCre
       setProblem(created.status === 409 && isOfferStaleCode(created.error) ? text.stale[created.error] : created.status === 403 ? text.errors.forbidden : text.promotion.createFailed)
       return
     }
-    setRows(created.data.actions.map((entry) => ({ channel: entry.channel, actionId: entry.actionId, status: "waiting" as const, message: null })))
+    setEntries(created.data.actions.map((entry) => ({ channel: entry.channel, actionId: entry.actionId })))
     setPhase("started")
     // In turn, not in parallel: each run is its own request with its own budget check.
-    for (const entry of created.data.actions) await runRow(entry.actionId)
+    await runs.runAll(created.data.actions.map((entry) => entry.actionId))
   }
 
   const icon = (status: RowStatus) =>
@@ -121,24 +115,28 @@ export function OfferPromotionPanel({ locale, offerId, offerTitle, usage, canCre
           </Button>
         </div>
       )}
-      {rows.length > 0 && (
+      {entries.length > 0 && (
         <ul className="evidence-list" role="status" aria-live="polite">
-          {rows.map((row) => (
-            <li key={row.actionId}>
-              {icon(row.status)}
-              <span>
-                <strong>{text.promotion.channels[row.channel]}</strong>{" "}
-                <Badge variant="outline">{text.promotion.states[row.status]}</Badge>
-                {row.message && <small> {row.message}</small>}
-              </span>
-              {row.status === "failed" && (
-                <Button size="sm" variant="outline" onClick={() => void runRow(row.actionId)}><RefreshCw /> {text.promotion.retry}</Button>
-              )}
-              {actionsHref && row.status !== "waiting" && row.status !== "generating" && (
-                <Link href={`${actionsHref}/${row.actionId}`}>{text.promotion.open}</Link>
-              )}
-            </li>
-          ))}
+          {entries.map((entry) => {
+            const status = STATUS[runs.rows[entry.actionId] ?? "idle"]
+            const message = status === "generating" ? null : messageFor(entry.actionId)
+            return (
+              <li key={entry.actionId}>
+                {icon(status)}
+                <span>
+                  <strong>{text.promotion.channels[entry.channel]}</strong>{" "}
+                  <Badge variant="outline">{text.promotion.states[status]}</Badge>
+                  {message && <small> {message}</small>}
+                </span>
+                {status === "failed" && (
+                  <Button size="sm" variant="outline" onClick={() => void runs.retry(entry.actionId)}><RefreshCw /> {text.promotion.retry}</Button>
+                )}
+                {actionsHref && status !== "waiting" && status !== "generating" && (
+                  <Link href={`${actionsHref}/${entry.actionId}`}>{text.promotion.open}</Link>
+                )}
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>

@@ -1,95 +1,26 @@
-import { CLOSED_ACTION_STATES, type ActionState } from "@/lib/domain";
-import type { ActionOverview } from "@/lib/workspace/overview";
+import type { HomeBriefViewProps } from "@/components/workspace/home-brief";
+import type { Membership } from "@/lib/auth";
+import { packRepository } from "@/lib/repositories/packs";
+import { buildPackOverview, type PackItemRow, type PackOverview, type WorkPack } from "@/lib/workspace/packs-model";
+import { workPacksEnabled } from "@/lib/workspace/packs-flag";
+import { inScopeFor } from "@/lib/workspace/page-context";
 import type { WorkspaceContext } from "@/lib/workspace/queries";
 import { loadActionRows, overviewsFor } from "@/lib/workspace/queries-pages";
 
-/**
- * P4.2 work packs (docs/superpowers/specs/2026-10-02-work-packs-design.md §2).
- *
- * A pack is a grouping of actions, never a ledger: everything below is derived
- * from each item's `ActionOverview` (its action, latest run and latest version),
- * so a pack can never disagree with the action pages. Nothing here writes.
- */
-export const STARTER_PACK = {
-  kind: "visibility_starter",
-  items: ["review-response", "visibility-content", "website-basics"],
-} as const;
-
-export type PackKind = (typeof STARTER_PACK)["kind"];
-export type StarterItemKey = (typeof STARTER_PACK)["items"][number];
-export type PackPosition = 1 | 2 | 3;
-
-export interface WorkPack {
-  id: string;
-  workspaceId: string;
-  locationId: string | null;
-  kind: PackKind;
-  createdAt: string;
-  closedAt: string | null;
-}
-
-/** One `work_pack_items` row as the repository returns it. */
-export interface PackItemRow {
-  templateKey: StarterItemKey;
-  position: PackPosition;
-  actionId: string;
-}
-
-export interface PackItem {
-  templateKey: StarterItemKey;
-  position: PackPosition;
-  action: ActionOverview;
-}
-
-export interface PackOverview {
-  pack: WorkPack;
-  items: PackItem[];
-  counts: { drafted: number; needsInput: number; approved: number; exported: number; failed: number; finished: number };
-  nextToReview: { actionId: string; templateKey: StarterItemKey } | null;
-  finished: boolean;
-}
-
-const FINISHED_STATES: ReadonlySet<ActionState> = new Set(CLOSED_ACTION_STATES);
-
-function isFinishedState(state: ActionState): boolean {
-  return FINISHED_STATES.has(state);
-}
-
-/**
- * Every item's action is completed, dismissed, cancelled or expired. A pack with
- * no items is not finished: startPack writes all three items in the pack's own
- * transaction, so an empty pack is not a state this reports on.
- */
-export function isPackFinished(itemActionStates: ActionState[]): boolean {
-  return itemActionStates.length > 0 && itemActionStates.every(isFinishedState);
-}
-
-/** Pure: the pack status (spec §2.4), counted from each item's `ActionOverview`. */
-export function buildPackOverview(pack: WorkPack, items: PackItem[]): PackOverview {
-  const ordered = [...items].sort((a, b) => a.position - b.position);
-  const counts = { drafted: 0, needsInput: 0, approved: 0, exported: 0, failed: 0, finished: 0 };
-  let nextToReview: PackOverview["nextToReview"] = null;
-  for (const item of ordered) {
-    const { action } = item;
-    const latest = action.latestVersion;
-    if (latest) counts.drafted += 1;
-    if (action.actionState === "needs_input") counts.needsInput += 1;
-    if (latest?.approvalState === "approved") counts.approved += 1;
-    if (latest?.deliveryState === "exported") counts.exported += 1;
-    if (action.runState === "failed") counts.failed += 1;
-    if (isFinishedState(action.actionState)) counts.finished += 1;
-    if (!nextToReview && (latest?.approvalState === "draft" || latest?.approvalState === "changes_requested")) {
-      nextToReview = { actionId: action.id, templateKey: item.templateKey };
-    }
-  }
-  return {
-    pack,
-    items: ordered,
-    counts,
-    nextToReview,
-    finished: isPackFinished(ordered.map((item) => item.action.actionState)),
-  };
-}
+// The pure definitions live in packs-model.ts (ruling P4); re-exported so the
+// existing server-side import path keeps working.
+export {
+  STARTER_PACK,
+  buildPackOverview,
+  isPackFinished,
+  type PackItem,
+  type PackItemRow,
+  type PackKind,
+  type PackOverview,
+  type PackPosition,
+  type StarterItemKey,
+  type WorkPack,
+} from "@/lib/workspace/packs-model";
 
 /**
  * The read-side overview for one pack. The caller has already authorized the
@@ -109,4 +40,54 @@ export async function loadPackOverview(ctx: WorkspaceContext, pack: WorkPack, it
       return { templateKey: item.templateKey, position: item.position, action };
     }),
   );
+}
+
+/**
+ * The Home `workPacks` prop (ruling P1). With WORK_PACKS_ENABLED off this returns
+ * undefined without touching the repository, so no SQL is issued against
+ * work_packs or work_pack_items and Home stays exactly today's.
+ *
+ * `location.isAll` is a multi-location Home with no single location to start a
+ * pack for: it lists the open packs of the locations the caller can read. A read
+ * that fails is treated as "no open pack": starting is idempotent, so the worst
+ * case is a Start press that returns the pack that was already there.
+ */
+export async function loadHomeWorkPacks(
+  ctx: WorkspaceContext,
+  membership: Membership,
+  location: { id: string | null; isAll: boolean },
+): Promise<HomeBriefViewProps["workPacks"]> {
+  if (!workPacksEnabled()) return undefined;
+  const repository = packRepository();
+  const readOpen = async (locationId: string | null): Promise<PackOverview | null> => {
+    try {
+      const loaded = await repository.openPack(ctx.workspace.id, locationId);
+      return loaded ? await loadPackOverview(ctx, loaded.pack, loaded.itemRows) : null;
+    } catch {
+      return null;
+    }
+  };
+  const base = {
+    workspaceId: ctx.workspace.id,
+    workspaceSlug: membership.workspaceSlug,
+    role: membership.role,
+    usage: { approvedDeliveries: ctx.usage.approvedDeliveries, allowance: ctx.usage.allowance },
+  };
+  const earlierDrafts = { workspaceId: ctx.workspace.id, role: membership.role };
+
+  if (location.isAll) {
+    // Workspace-wide first, then each location the caller can read.
+    const candidates: Array<{ id: string | null; name: string | null }> = [
+      { id: null, name: null },
+      ...ctx.locations.filter((candidate) => inScopeFor(membership, candidate.id)).map((candidate) => ({ id: candidate.id, name: candidate.name })),
+    ];
+    const open = await Promise.all(candidates.map(async (candidate) => ({ name: candidate.name, pack: await readOpen(candidate.id) })));
+    const locationPacks = open.flatMap((entry) => (entry.pack ? [{ name: entry.name, pack: entry.pack }] : []));
+    return { enabled: true, card: { ...base, location: { id: null, isAll: true }, inScope: false, initialPack: null, locationPacks }, earlierDrafts };
+  }
+  return {
+    enabled: true,
+    card: { ...base, location: { id: location.id, isAll: false }, inScope: inScopeFor(membership, location.id), initialPack: await readOpen(location.id) },
+    earlierDrafts,
+  };
 }

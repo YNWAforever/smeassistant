@@ -9,6 +9,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
+import { FixPackCard } from "@/components/workspace/fix-pack-card";
 import { HomeBriefView } from "@/components/workspace/home-brief";
 import type { HomeBrief } from "@/lib/workspace/queries-pages";
 
@@ -110,5 +111,51 @@ describe("HomeBriefView problems slot", () => {
   it("renders nothing extra when problems is omitted", () => {
     const root = render(null);
     expect(root.querySelector('[data-testid="problems-marker"]')).toBeNull();
+  });
+});
+
+describe("HomeBriefView work packs (P4.2)", () => {
+  const props = {
+    locale: "en" as const,
+    workspaceSlug: "kam-man-house",
+    workspaceId: "ws-1",
+    workspaceName: "Kam Man House",
+    tier: "paid" as const,
+    timezone: "Asia/Hong_Kong",
+    locations: [{ slug: "yik-yam", name: "Yik Yam" }],
+    brief: baseBrief(null),
+    consentPolicyVersion: "2026-07-28",
+    fixPack: { workspaceId: "ws-1", role: "owner" as const },
+  };
+
+  function html(extra: Partial<React.ComponentProps<typeof HomeBriefView>> = {}): HTMLElement {
+    const root = document.createElement("div");
+    root.innerHTML = renderToStaticMarkup(<HomeBriefView {...props} {...extra} />);
+    return root;
+  }
+
+  it("without workPacks renders exactly today's FixPackCard and no pack card", () => {
+    const root = html();
+    const expected = document.createElement("div");
+    expected.innerHTML = renderToStaticMarkup(<FixPackCard locale="en" workspaceId="ws-1" viewerRole="owner" actionsHref="/en/owner/kam-man-house/actions?view=drafts" />);
+    expect(root.querySelector(".fix-pack-card")?.outerHTML).toBe(expected.firstElementChild?.outerHTML);
+    expect(root.querySelector(".pack-card")).toBeNull();
+    expect(root.textContent).not.toContain("Visibility starter pack");
+  });
+
+  it("with workPacks renders the pack card and the earlier-drafts mode instead of the full Fix Pack card", () => {
+    const root = html({
+      workPacks: {
+        enabled: true,
+        card: { workspaceId: "ws-1", workspaceSlug: "kam-man-house", role: "owner", location: { id: "loc-1", isAll: false }, inScope: true, usage: { approvedDeliveries: 1, allowance: 3 }, initialPack: null },
+        earlierDrafts: { workspaceId: "ws-1", role: "owner" },
+      },
+    });
+    expect(root.querySelector(".pack-card")).not.toBeNull();
+    expect(root.textContent).toContain("Start your visibility starter pack");
+    expect(root.textContent).toContain("This month: 1 of 3 used.");
+    // The earlier-drafts card renders nothing until a pending draft is known, and the full card's empty state is gone.
+    expect(root.querySelector(".fix-pack-card")).toBeNull();
+    expect(root.textContent).not.toContain("Fix Pack drafts are not available");
   });
 });
