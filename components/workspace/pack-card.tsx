@@ -2,10 +2,10 @@
 
 import Link from "next/link"
 import { useState } from "react"
-import { AlertTriangle, LoaderCircle, PackageOpen } from "lucide-react"
+import { AlertTriangle, LoaderCircle, PackageOpen, Play } from "lucide-react"
 
 import { SectionCard } from "@/components/product-ui"
-import { PackItemList } from "@/components/workspace/pack-items"
+import { continuableActions, PackItemList } from "@/components/workspace/pack-items"
 import { Button } from "@/components/ui/button"
 import { aiBudgetRefusal } from "@/lib/budgets/messages"
 import { copy, type PrototypeLocale } from "@/lib/copy"
@@ -46,10 +46,14 @@ export function PackCard({ locale, workspaceId, workspaceSlug, role, location, i
   const base = `/${locale}/owner/${workspaceSlug}`
   const [pack, setPack] = useState<PackOverview | null>(initialPack)
   const [starting, setStarting] = useState(false)
+  const [continuing, setContinuing] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [stopReason, setStopReason] = useState<StopReason | null>(null)
   const runs = useSequentialRuns({ onStop: setStopReason })
   const canAct = (role === "owner" || role === "manager") && inScope && !location.isAll
+  // Any run in flight (Start, Continue or a Retry): Retry and Continue are hidden meanwhile, so one item is never run twice.
+  const running = starting || continuing || runs.running
+  const continuable = pack ? continuableActions(pack, runs.rows) : []
 
   const disclosure =
     text.disclosure + (usage && usage.allowance !== null ? fill(text.usage, { used: usage.approvedDeliveries, allowance: usage.allowance }) : "")
@@ -89,7 +93,19 @@ export function PackCard({ locale, workspaceId, workspaceSlug, role, location, i
     setStarting(false)
   }
 
+  /** Runs the items still waiting, in turn: after a refusal, a reload, or a pack another tab started. */
+  async function continueRun() {
+    if (!canAct || running || continuable.length === 0) return
+    setContinuing(true)
+    setProblem(null)
+    setStopReason(null)
+    await runs.runAll(continuable)
+    await refresh()
+    setContinuing(false)
+  }
+
   async function retry(actionId: string) {
+    if (running) return
     setStopReason(null)
     await runs.retry(actionId)
     await refresh()
@@ -122,8 +138,11 @@ export function PackCard({ locale, workspaceId, workspaceSlug, role, location, i
         </>
       ) : pack ? (
         <>
-          <PackItemList locale={locale} actionsHref={`${base}/actions`} items={pack.items} live={runs.rows} canRetry={canAct} onRetry={(id) => void retry(id)} />
+          <PackItemList locale={locale} actionsHref={`${base}/actions`} items={pack.items} live={runs.rows} canRetry={canAct && !running} onRetry={(id) => void retry(id)} />
           <div className="draft-editor-actions">
+            {canAct && !running && !pack.finished && continuable.length > 0 && (
+              <Button onClick={() => void continueRun()}><Play /> {text.continue}</Button>
+            )}
             {pack.nextToReview && (
               <Button asChild><Link href={`${base}/actions/${pack.nextToReview.actionId}`}>{text.reviewNext}</Link></Button>
             )}

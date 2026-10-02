@@ -1,14 +1,14 @@
 "use client"
 
 import Link from "next/link"
-import { AlertTriangle, CheckCircle2, CircleDashed, LoaderCircle, RefreshCw, TextCursorInput } from "lucide-react"
+import { AlertTriangle, CheckCircle2, CircleDashed, CirclePause, LoaderCircle, RefreshCw, TextCursorInput } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { resolveText } from "@/lib/domain"
 import type { ActionOverview } from "@/lib/workspace/overview"
-import type { PackItem } from "@/lib/workspace/packs-model"
+import { packActionsToDraft, type PackItem, type PackOverview } from "@/lib/workspace/packs-model"
 import type { RowState } from "@/lib/workspace/use-sequential-runs"
 
 /**
@@ -17,7 +17,7 @@ import type { RowState } from "@/lib/workspace/use-sequential-runs"
  * bulk control, by design: approval and export happen only on the exact version
  * (spec 3.2).
  */
-export type ItemStateKey = "generating" | "draftReady" | "needsFacts" | "approved" | "exported" | "failed" | "notStarted"
+export type ItemStateKey = "generating" | "draftReady" | "needsFacts" | "approved" | "exported" | "failed" | "paused" | "notStarted"
 
 /**
  * The state to show for one item. A version that is already approved or exported
@@ -30,6 +30,8 @@ export function itemState(action: ActionOverview, live: RowState | undefined): I
   if (version?.deliveryState === "exported") return "exported"
   if (version?.approvalState === "approved") return "approved"
   if (live === "failed") return "failed"
+  // Refused by the AI pause or the spend budget: nothing failed, the item waits to be continued.
+  if (live === "paused") return "paused"
   if (live === "needs_input") return "needsFacts"
   if (live === "draft_ready") return "draftReady"
   if (version && (version.approvalState === "draft" || version.approvalState === "changes_requested")) return "draftReady"
@@ -47,7 +49,24 @@ const ICONS: Record<ItemStateKey, typeof CircleDashed> = {
   approved: CheckCircle2,
   exported: CheckCircle2,
   failed: AlertTriangle,
+  paused: CirclePause,
   notStarted: CircleDashed,
+}
+
+/**
+ * What Continue runs, in position order: the items `packActionsToDraft` would
+ * spend on that are still waiting, not started or paused. A failed item has its
+ * own Retry, an item asking for facts needs the owner's facts rather than another
+ * run, and an item already generating (in this tab or another) is left alone.
+ */
+export function continuableActions(pack: PackOverview, live: Record<string, RowState>): string[] {
+  const waiting = new Set(
+    pack.items.filter(({ action }) => {
+      const state = itemState(action, live[action.id])
+      return state === "notStarted" || state === "paused"
+    }).map(({ action }) => action.id),
+  )
+  return packActionsToDraft(pack).filter((id) => waiting.has(id))
 }
 
 export function PackItemList({

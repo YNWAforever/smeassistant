@@ -106,8 +106,10 @@ export type PacksCopy = {
   noPermission: string;
   progress: string;
   progressNeedsFacts: string;
-  states: { generating: string; draftReady: string; needsFacts: string; approved: string; exported: string; failed: string; notStarted: string };
+  states: { generating: string; draftReady: string; needsFacts: string; approved: string; exported: string; failed: string; paused: string; notStarted: string };
   retry: string;
+  /** Runs the items not yet drafted, in order: after a refusal, a reload, or another tab's start. */
+  continue: string;
   open: string;
   reviewNext: string;
   viewPack: string;
@@ -206,8 +208,9 @@ export const workspaceEn: WorkspaceCopy = {
     noPermission: "Only owners, and managers with access to this location, can start a pack.",
     progress: "{drafted} of {total} drafted",
     progressNeedsFacts: "{n} needs your facts",
-    states: { generating: "Generating", draftReady: "Draft ready", needsFacts: "Needs your facts", approved: "Approved", exported: "Exported", failed: "Failed — retry", notStarted: "Not started" },
+    states: { generating: "Generating", draftReady: "Draft ready", needsFacts: "Needs your facts", approved: "Approved", exported: "Exported", failed: "Failed — retry", paused: "Paused — continue later", notStarted: "Not started" },
     retry: "Retry",
+    continue: "Continue",
     open: "Open",
     reviewNext: "Review next",
     viewPack: "View pack",
@@ -431,8 +434,9 @@ export const workspaceZhHK: WorkspaceCopy = {
     noPermission: "只有店主，以及可管理此地點的經理，才可開始套裝。",
     progress: "已有 {drafted} / {total} 份草稿",
     progressNeedsFacts: "{n} 份需要你補充資料",
-    states: { generating: "生成中", draftReady: "草稿已備妥", needsFacts: "需要你補充資料", approved: "已核准", exported: "已匯出", failed: "失敗，請重試", notStarted: "未開始" },
+    states: { generating: "生成中", draftReady: "草稿已備妥", needsFacts: "需要你補充資料", approved: "已核准", exported: "已匯出", failed: "失敗，請重試", paused: "已暫停，稍後可繼續", notStarted: "未開始" },
     retry: "重試",
+    continue: "繼續",
     open: "開啟",
     reviewNext: "審閱下一份",
     viewPack: "查看套裝",
@@ -627,8 +631,9 @@ export const workspaceZhTW: WorkspaceCopy = {
     noPermission: "只有店主，以及可管理此據點的經理，才能開始套組。",
     progress: "已有 {drafted} / {total} 份草稿",
     progressNeedsFacts: "{n} 份需要你補充資料",
-    states: { generating: "產生中", draftReady: "草稿已備妥", needsFacts: "需要你補充資料", approved: "已核准", exported: "已匯出", failed: "失敗，請重試", notStarted: "尚未開始" },
+    states: { generating: "產生中", draftReady: "草稿已備妥", needsFacts: "需要你補充資料", approved: "已核准", exported: "已匯出", failed: "失敗，請重試", paused: "已暫停，稍後可繼續", notStarted: "尚未開始" },
     retry: "重試",
+    continue: "繼續",
     open: "開啟",
     reviewNext: "審閱下一份",
     viewPack: "查看套組",

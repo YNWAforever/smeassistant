@@ -3,10 +3,10 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { AlertTriangle } from "lucide-react"
+import { AlertTriangle, Play } from "lucide-react"
 
 import { PageIntro, SectionCard } from "@/components/product-ui"
-import { PackItemList } from "@/components/workspace/pack-items"
+import { continuableActions, PackItemList } from "@/components/workspace/pack-items"
 import { Button } from "@/components/ui/button"
 import { aiBudgetRefusal } from "@/lib/budgets/messages"
 import { copy, type PrototypeLocale } from "@/lib/copy"
@@ -38,9 +38,24 @@ export function PackView({ locale, workspaceSlug, role, inScope, pack, locationN
   const closed = pack.pack.closedAt !== null
   const [stopReason, setStopReason] = useState<StopReason | null>(null)
   const runs = useSequentialRuns({ onStop: setStopReason })
-  const canRetry = !closed && (role === "owner" || role === "manager") && inScope
+  const canAct = !closed && (role === "owner" || role === "manager") && inScope
+  const [continuing, setContinuing] = useState(false)
+  // Any run in flight: Retry and Continue are hidden meanwhile, so one item is never run twice.
+  const running = continuing || runs.running
+  const continuable = continuableActions(pack, runs.rows)
+
+  /** Runs the items still waiting, in turn: after a refusal, a reload, or a pack another tab started. */
+  async function continueRun() {
+    if (!canAct || running || continuable.length === 0) return
+    setContinuing(true)
+    setStopReason(null)
+    await runs.runAll(continuable)
+    router.refresh()
+    setContinuing(false)
+  }
 
   async function retry(actionId: string) {
+    if (running) return
     setStopReason(null)
     await runs.retry(actionId)
     // The overview is read on the server; refresh it so Review next and the counts are current.
@@ -54,10 +69,15 @@ export function PackView({ locale, workspaceSlug, role, inScope, pack, locationN
       <PageIntro eyebrow={`${text.pageEyebrow} · ${locationName ?? text.allLocations}`} title={text.title} description={text.pageDescription} />
       <SectionCard className="pack-card">
         {closed && <p className="limitation-note">{text.closed}</p>}
-        <PackItemList locale={locale} actionsHref={`${base}/actions`} items={pack.items} live={runs.rows} canRetry={canRetry} onRetry={(id) => void retry(id)} />
-        {!closed && pack.nextToReview && (
+        <PackItemList locale={locale} actionsHref={`${base}/actions`} items={pack.items} live={runs.rows} canRetry={canAct && !running} onRetry={(id) => void retry(id)} />
+        {!closed && (pack.nextToReview || (canAct && !running && continuable.length > 0)) && (
           <div className="draft-editor-actions">
-            <Button asChild><Link href={`${base}/actions/${pack.nextToReview.actionId}`}>{text.reviewNext}</Link></Button>
+            {canAct && !running && continuable.length > 0 && (
+              <Button onClick={() => void continueRun()}><Play /> {text.continue}</Button>
+            )}
+            {pack.nextToReview && (
+              <Button asChild><Link href={`${base}/actions/${pack.nextToReview.actionId}`}>{text.reviewNext}</Link></Button>
+            )}
           </div>
         )}
         {stopMessage && <p className="limitation-note" role="alert"><AlertTriangle aria-hidden="true" />{stopMessage}</p>}

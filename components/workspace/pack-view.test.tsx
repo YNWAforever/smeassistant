@@ -51,6 +51,30 @@ describe("PackView", () => {
     expect(clientMocks.refresh).toHaveBeenCalledTimes(1)
   })
 
+  it("offers Continue for the idle items, runs them in order, then refreshes", async () => {
+    clientMocks.runAction.mockResolvedValue(READY)
+    mount({ pack: packOf([{}, { version: { approval: "draft" } }, {}]) })
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: text.continue })) })
+    expect(clientMocks.runAction.mock.calls.map((call) => call[0])).toEqual(["act-1", "act-3"])
+    expect(clientMocks.refresh).toHaveBeenCalledTimes(1)
+  })
+
+  it("shows a refused item as paused with no Retry, and no Retry or Continue while a run is in progress", async () => {
+    let finishFirst!: (value: unknown) => void
+    clientMocks.runAction.mockImplementationOnce(() => new Promise((resolve) => { finishFirst = resolve })).mockResolvedValue({ ok: false, status: 429, error: "ai_budget_reached" })
+    mount({ pack: packOf([{}, {}, { run: "failed" }]) })
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: text.continue })) })
+    expect(screen.getByText(text.states.generating)).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: new RegExp(text.retry) })).toBeNull()
+    expect(screen.queryByRole("button", { name: text.continue })).toBeNull()
+    await act(async () => { finishFirst({ ok: false, status: 429, error: "ai_budget_reached" }) })
+    expect(clientMocks.runAction).toHaveBeenCalledTimes(1)
+    expect(screen.getByText(text.states.paused)).toBeInTheDocument()
+    expect(screen.getAllByText(text.states.failed)).toHaveLength(1)
+    // Only the item that failed on its own has a Retry.
+    expect(screen.getAllByRole("button", { name: new RegExp(text.retry) })).toHaveLength(1)
+  })
+
   it("renders a closed pack read-only: no Retry, no Review next, and says so", () => {
     mount({ pack: packOf([{ run: "failed" }, { version: { approval: "draft" } }], { closedAt: "2026-10-03T00:00:00Z" }) })
     expect(screen.getByText(text.closed)).toBeInTheDocument()

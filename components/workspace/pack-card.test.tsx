@@ -115,6 +115,52 @@ describe("PackCard", () => {
     expect(document.body.textContent ?? "").not.toContain("ai_paused")
   })
 
+  it("shows a refused item as paused, not failed, with no Retry (final review G3)", async () => {
+    clientMocks.startPack.mockResolvedValue({ ok: true, data: { pack: packOf(), created: true } })
+    clientMocks.runAction.mockResolvedValue({ ok: false, status: 503, error: "ai_paused" })
+    mount()
+    await pressStart()
+    const first = document.querySelector('li[data-template="review-response"]') as HTMLElement
+    expect(first.textContent).toContain(text.states.paused)
+    expect(first.textContent).not.toContain(text.states.failed)
+    expect(screen.queryByRole("button", { name: new RegExp(text.retry) })).toBeNull()
+    // The pause copy still shows once, and the owner can continue later.
+    expect(screen.getAllByText(aiBudgetRefusal("en", 503, "ai_paused")!)).toHaveLength(1)
+    expect(screen.getByRole("button", { name: text.continue })).toBeEnabled()
+  })
+
+  it("offers Continue on an open pack after a reload, and it runs only the idle items, in order", async () => {
+    clientMocks.runAction.mockResolvedValue(READY)
+    mount({ initialPack: packOf([{}, { version: { approval: "draft" } }, {}]) })
+    expect(clientMocks.runAction).not.toHaveBeenCalled()
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: text.continue })) })
+    expect(clientMocks.runAction.mock.calls.map((call) => call[0])).toEqual(["act-1", "act-3"])
+    expect(clientMocks.startPack).not.toHaveBeenCalled()
+    expect(clientMocks.getOpenPack).toHaveBeenCalledWith("ws-1", "loc-1")
+  })
+
+  it("offers no Continue when nothing is left to run, a failed item has its own Retry, and facts come from the owner", () => {
+    const { unmount } = mount({ initialPack: packOf([{ version: { approval: "draft" } }, { run: "failed" }, { actionState: "needs_input", run: "succeeded" }]) })
+    expect(screen.queryByRole("button", { name: text.continue })).toBeNull()
+    expect(screen.getByRole("button", { name: new RegExp(text.retry) })).toBeEnabled()
+    unmount()
+    mount({ role: "viewer", initialPack: packOf() })
+    expect(screen.queryByRole("button", { name: text.continue })).toBeNull()
+  })
+
+  it("renders no Retry and no Continue while a run is in progress (final review G2)", async () => {
+    clientMocks.startPack.mockResolvedValue({ ok: true, data: { pack: packOf([{}, {}, { run: "failed" }]), created: true } })
+    let finishFirst!: (value: unknown) => void
+    clientMocks.runAction.mockImplementationOnce(() => new Promise((resolve) => { finishFirst = resolve })).mockResolvedValue(READY)
+    mount()
+    await pressStart()
+    expect(screen.getByText(text.states.generating)).toBeInTheDocument()
+    expect(screen.getByText(text.states.failed)).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: new RegExp(text.retry) })).toBeNull()
+    expect(screen.queryByRole("button", { name: text.continue })).toBeNull()
+    await act(async () => { finishFirst(READY) })
+  })
+
   it("stops at ai_budget_reached the same way", async () => {
     clientMocks.startPack.mockResolvedValue({ ok: true, data: { pack: packOf(), created: true } })
     clientMocks.runAction.mockResolvedValueOnce(READY).mockResolvedValueOnce({ ok: false, status: 429, error: "ai_budget_reached" })
