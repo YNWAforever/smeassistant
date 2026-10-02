@@ -200,7 +200,7 @@ Every command in `.github/workflows/ci.yml` is in this table (CI has no gate bey
 | 6 | `corepack pnpm test:no-supabase` | 0 | **passed**: "No forbidden retired transport references; only the approved pinned Neon transitive library is permitted". |
 | 7 | `corepack pnpm test:no-self-service-claim` | 0 | **passed**: "OWNER_SELF_SERVICE_CLAIM is not enabled." |
 | 8 | `corepack pnpm eval:workflows -- --check-load` | 0 | **passed**: `load ok: 31 cases` (unchanged: this slice adds no corpus case). No key, no network call. |
-| 9 | `corepack pnpm build` (`next build`, Turbopack, the literal gate) | **1** | **blocked**: `Module not found: Can't resolve '@radix-ui/react-dismissable-layer'` raised from `@radix-ui/react-tooltip`, through `components/ui/tooltip.tsx` → `components/ui/sidebar.tsx` → `components/product-ui.tsx` → `app/[locale]/owner/[workspaceSlug]/layout.tsx`. The standing Windows-only local cascade; it did not occur in the P4.1 run, so it is intermittent. No file this branch changes is in the trace. |
+| 9 | `corepack pnpm build` (`next build`, Turbopack, the literal gate) | **1** | **blocked**: `Module not found: Can't resolve '@radix-ui/react-dismissable-layer'` raised from `@radix-ui/react-tooltip`, through `components/ui/tooltip.tsx` → `components/ui/sidebar.tsx` → `components/product-ui.tsx` → `app/[locale]/owner/[workspaceSlug]/layout.tsx`. The Windows-only local cascade, recorded at P3 and P4.4, not seen at P4.1, cause unconfirmed. No file this branch changes is in the trace. |
 | 10 | `corepack pnpm test:secret-boundary` (literal) | **1** | **blocked**: it shells out to the Turbopack build and inherits #9. |
 | 11 | `corepack pnpm e2e` (literal) | **1** | **blocked**: the Playwright global setup failed, `Acceptance service not healthy: http://localhost:3100` (the Turbopack dev server cannot serve the owner shell; `test-results/fixture-next.log` shows the same radix error). |
 | 12 | `corepack pnpm e2e:acceptance` (literal) | **1** | **blocked**: tests 1–8 each failed with `Acceptance service not healthy` after about 65 s; the run was **stopped by hand** (`taskkill` of the Playwright process tree) rather than wait out the remaining 32 timeouts. |
@@ -246,3 +246,18 @@ Recorded in full in the "Runbook — `apply-0012.sql`" section of `PHASE-4-REPOR
 - **`corepack pnpm e2e:live`, `e2e:neon-auth`, `neon:readiness` and any hosted check**: need provider keys, a hosted identity target or a hosted database, none authorized.
 - **Real mail, real Stripe, real model**: every test injects a fake.
 - **P4.3, P4.5, P4.6.**
+
+### Final-review fix wave
+
+Findings G1–G6 (Ruling P6), the commits (`4dae03a`, `0a6e615`, `ab3dffc`, `21cbde7`, `b92f7ee`, then a documentation commit), each fix with its covering tests, are in the "Final-review fix wave" subsection of the P4.2 part of `PHASE-4-REPORT.md`. Gate re-runs, 2026-10-03, sequential, on `b92f7ee`:
+
+| # | Command | Exit | Result |
+|---|---|---|---|
+| F1 | `corepack pnpm typecheck` | 0 | **passed** (root and all four packages). |
+| F2 | `corepack pnpm lint` | 0 | **passed**, `✖ 30 problems (0 errors, 30 warnings)`, the same 18 files as above; none touched by the wave. |
+| F3 | `corepack pnpm test` | 0 | **passed on the first full run, no flake.** App part **335 files / 3,931 tests**; `safe-media` 1 / 62; `region` 3 / 23; `scoring` 16 / 183; `contracts` 3 / 20; `scan-engine` 28 / 299. Total **386 files / 4,518 tests** (+1 file / +18 tests over the Task 7 record of 385 / 4,500). New file: `lib/repositories/packs.test.ts` (3); extended: `use-sequential-runs.test.tsx` (+4), `pack-card.test.tsx` (+7), `pack-view.test.tsx` (+4). The P4.1 `offer-promotion-panel.test.tsx` is unchanged and passes. |
+| F4 | `corepack pnpm exec vitest run --config vitest.integration.config.ts test/integration/neon-work-packs.integration.test.ts test/integration/neon-work-packs-flag-off.integration.test.ts` | 0 | **passed**, 2 files / 19 tests. Only these files exercise `lib/repositories/packs.ts`; the full `test:integration` suite was not re-run. |
+| F5 | `corepack pnpm exec playwright test --config playwright.acceptance.config.ts work-pack.spec` (literal Turbopack) | 1 | **blocked**: `Acceptance service not healthy: http://localhost:55139` (the local cascade, #9 above). |
+| F5d | The same with a temporary `--webpack` on the `next dev` arguments in `test/e2e/environment.ts` (restored; `git status` clean) | 0 | **passed 1 / 1** (2.0 min): Start on a fresh (`created: true`) pack still drafts all three items; the spec is unchanged. A diagnostic, not the literal gate. |
+
+Unit and line-ending hygiene: the two snapshot files that Windows unit runs rewrite (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) were restored with `git restore` and are not part of any commit. Not re-run in this wave: `db:verify`, `build`, `test:secret-boundary`, `test:no-supabase`, `test:no-self-service-claim`, `eval:workflows`, the full `e2e` and `e2e:acceptance` suites (no migration, route, agent or build-configuration change; the Task 7 records above stand).
