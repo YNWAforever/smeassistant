@@ -274,6 +274,8 @@ export async function runCorpusCase(c: CorpusCase, llm: typeof llmComplete): Pro
     offers: { get: async (workspaceId, offerId) => (offer && workspaceId === offer.workspaceId && offerId === offer.id ? offer : null) },
     llm: recording,
     budgetEnv: {},
+    // The corpus exercises the shipped feature: promotion_copy cases run with the P4.1 flag on.
+    featureEnv: { OFFER_PROMOTIONS_ENABLED: "true" },
   });
   if (!finishInput) throw new Error(`Case ${c.id}: persistence.finish was never called`);
   return { result, prompts, finishInput, llmCalls: prompts.length };

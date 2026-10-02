@@ -24,9 +24,10 @@ import { checkAiBudget } from "@/lib/budgets/ai";
 import { deriveFaqQuestions } from "./faq-questions";
 import { filterSelectedReviews, resolveBrandProvidedInputs, sampledReviewsFromRawData } from "./evidence-inputs";
 import { canUseOffer, type Offer } from "./offers";
+import { offerPromotionsEnabled } from "./offers-flag";
 import { buildActionOverview, localeOf } from "./overview";
 import { type SnapshotRecord } from "./snapshots";
-import { templateByKey, type TemplateKey } from "./templates";
+import { isOfferTemplate, templateByKey, type TemplateKey } from "./templates";
 import { gateBlockingInputs } from "./workflow-inputs";
 
 /**
@@ -64,6 +65,8 @@ export interface RunAgentInput {
   ipHash?: string | null;
   /** Budget variables; defaults to process.env (tests pass their own). */
   budgetEnv?: Record<string, string | undefined>;
+  /** Feature-flag variables (OFFER_PROMOTIONS_ENABLED); defaults to process.env. */
+  featureEnv?: Record<string, string | undefined>;
 }
 
 export interface RunAgentResult {
@@ -344,6 +347,12 @@ export async function runAgentForAction(
   } catch {
     throw new RunError("agent_unavailable");
   }
+  // P4.1 rollback: with the flag off, an offer action that already exists
+  // stays listed but drafts nothing new -- refused before the budget read, any
+  // offer read, run row or model call, so a refusal leaves nothing behind.
+  // Approve and export of existing versions stay allowed (the owner's boundary
+  // over drafts already written; the SQL freshness guard still applies).
+  if (isOfferTemplate(template) && !offerPromotionsEnabled(input.featureEnv)) throw new RunError("agent_unavailable");
   const agentKey = resolveAgentKey(input.agentKey, template.agentKey),
     agent = AGENTS[agentKey];
   // P3.5a: the AI spend budget, before any evidence read, run row or model
@@ -388,7 +397,7 @@ export async function runAgentForAction(
   // object for the prompt, the gate and the version binding. If the owner edits
   // the offer while the draft is generating, the version still records the
   // revision this run read, so approval answers offer_changed.
-  const offerTemplate = template.inputs.some((i) => i.key === "offer_id");
+  const offerTemplate = isOfferTemplate(template);
   const assets = input.assets ?? assetRepository();
   const offer = offerTemplate
     ? await offerSatisfied(

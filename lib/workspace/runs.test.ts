@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LLMResult } from "@/lib/llm";
 import type {
   ArtifactRepository,
@@ -811,6 +811,33 @@ describe("offer-backed promotion runs (spec §2.2)", () => {
   const promo = (body = "Autumn set dinner for two, HK$1,280. Valid 2026-10-05 to 2026-10-19.") =>
     good({ title: "Autumn set dinner", body });
   const offersOf = (offer: Offer | null) => ({ get: vi.fn(async () => offer) });
+
+  beforeEach(() => vi.stubEnv("OFFER_PROMOTIONS_ENABLED", "true"));
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("refuses with agent_unavailable while the flag is off: no budget read, offer read, run row or model call (F4)", async () => {
+    row = offerRow();
+    for (const over of [{ featureEnv: {} }, { featureEnv: { OFFER_PROMOTIONS_ENABLED: "TRUE" } }]) {
+      const llm = vi.fn(async () => promo());
+      const offers = offersOf(confirmed);
+      await expect(run({ llm, offers, ...over })).rejects.toMatchObject({ name: "RunError", code: "agent_unavailable" });
+      expect(llm).not.toHaveBeenCalled();
+      expect(offers.get).not.toHaveBeenCalled();
+    }
+    // The default reads process.env.
+    vi.stubEnv("OFFER_PROMOTIONS_ENABLED", "");
+    await expect(run({ llm: vi.fn(), offers: offersOf(confirmed) })).rejects.toMatchObject({ code: "agent_unavailable" });
+    expect(aiSpend24h).not.toHaveBeenCalled();
+    expect(queue).not.toHaveBeenCalled();
+    expect(finish).not.toHaveBeenCalled();
+  });
+
+  it("still runs a non-offer action while the flag is off", async () => {
+    vi.stubEnv("OFFER_PROMOTIONS_ENABLED", "");
+    const llm = vi.fn(async () => good());
+    expect(await run({ llm, featureEnv: {} })).toMatchObject({ versionId: "v-1" });
+    expect(llm).toHaveBeenCalledOnce();
+  });
 
   it.each([
     ["a draft offer", { ...confirmed, status: "draft" as const, confirmedAt: null }],
