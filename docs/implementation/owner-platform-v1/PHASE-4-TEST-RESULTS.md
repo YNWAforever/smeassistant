@@ -170,3 +170,7 @@ Recorded in full in the "Runbook — `apply-0011.sql`" section of `PHASE-4-REPOR
 - **`corepack pnpm e2e:live`, `e2e:neon-auth`, `neon:readiness` and any hosted check**: need provider keys, a hosted identity target or a hosted database, none authorized.
 - **Real mail, real Stripe, real model**: every test injects a fake.
 - **P4.2, P4.3, P4.5, P4.6.**
+
+### Final-review fix wave
+
+Findings F1–F7, the commits (`d3bd7b4`, `a5e5ce8`, `941bfa2`, `de8dc18`, then a documentation commit) and the gate re-runs are in the "Final-review fix wave" section of the P4.1 part of `PHASE-4-REPORT.md`. Two records above are superseded by the wave: the invariant row "`lib/assistant/live.ts` unchanged by this branch" (F6 adds an offer-action refusal to its draft path; it still has no promotion intent), and the unit totals (app part now 327 files / 3,828 tests, **378 files / 4,415 tests** in all). New or changed tests: `app/api/offers/[offerId]/promotions/route.test.ts` (F2), `app/api/offers/offers.test.ts` (F1 audit payload, F5 no audit), `lib/workspace/runs.test.ts` (F4), `lib/assistant/live.test.ts` (F6), `test/integration/neon-offers.integration.test.ts` (F1 ×2, F5; 27 tests). `test/corpus/workflows/harness.ts` now passes `featureEnv: { OFFER_PROMOTIONS_ENABLED: "true" }`.

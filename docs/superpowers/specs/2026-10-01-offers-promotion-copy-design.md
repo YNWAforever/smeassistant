@@ -207,7 +207,7 @@ The offer's `prohibited_terms` are merged into the brand's for this run.
 
 As in P4.4, these warn rather than block: the owner is the approver and sees them before approving.
 
-**The assistant** (`lib/assistant/live.ts`) gains **no** promotion draft intent. Its existing rewrite path, used on an offer action, produces a version that inherits the base version's revision (§1.3). So approval still enforces freshness.
+**The assistant** (`lib/assistant/live.ts`) gains **no** promotion draft intent. Its draft intents refuse an offer action, focused or implicitly selected, with the existing "no matching action" answer: no model call and no run row (final-review fix wave, F6). A version created on an offer action by any other path still inherits the base version's revision (§1.3), so approval still enforces freshness.
 
 ### 2.4 Regression corpus
 
@@ -242,10 +242,11 @@ Every route returns 404 unless `OFFER_PROMOTIONS_ENABLED === "true"`. The flag l
 
 **`PATCH /api/offers/[offerId]`** (same rule, applied to the offer's scope)
 - The body carries `expected_revision`.
-- A single `UPDATE … WHERE id = $1 AND revision = $2` sets the new facts, sets `revision = revision + 1` and `status = 'draft'`, and clears confirmation.
-- If zero rows update, it returns 409 `offer_revision_changed`.
+- A single statement, guarded on `revision = expected_revision` and not archived, locks the row and compares the body with the stored facts by value. If a fact changed, it sets the new facts, sets `revision = revision + 1` and `status = 'draft'`, and clears confirmation. If nothing changed, it returns the offer as it is: revision, status and confirmation stay, so drafts written from it stay current (final-review fix wave, F5).
+- If the edit changes `location_id`, the same statement cancels the offer's open actions (`action_state` not in `completed`, `dismissed`, `cancelled`, `expired`), as `archive_offer` does. Those actions were created at the old location and the run gate refuses an action whose location differs from its offer's; `/promotions` then creates fresh ones at the new location (F1).
+- If the revision does not match, it returns 409 `offer_revision_changed`.
 - An archived offer returns 409.
-- Records an `offer.updated` audit event naming only the fields that changed.
+- Records an `offer.updated` audit event naming only the fields that changed, with the revision and `cancelled_actions`. A save that changed nothing records no event.
 
 **`POST /api/offers/[offerId]/confirm`** (same rule)
 - Takes `{ expected_revision }` and calls `confirm_offer`.
@@ -256,7 +257,7 @@ Every route returns 404 unless `OFFER_PROMOTIONS_ENABLED === "true"`. The flag l
 
 **`POST /api/offers/[offerId]/promotions`** (owner or manager, for the offer's scope)
 - Takes `{ channels: ("instagram"|"google")[] }`, defaulting to both.
-- Requires a confirmed, unexpired offer.
+- Requires a confirmed, unexpired offer, and re-checks the caller's scope on the location of the offer as read (the action is created there), so a relocation between the scope read and the offer read cannot widen it (F2).
 - Creates or returns one action per channel, with:
   - `source = 'owner_objective'`;
   - `offer_id`;
@@ -375,9 +376,10 @@ All new strings exist in en, zh-HK and zh-TW (`lib/copy-workspace.ts`). The zh-T
 ## 6. Rollout and rollback
 
 - **The flag defaults to off.** `.env.example` documents `OFFER_PROMOTIONS_ENABLED`, unset. With it off, every offer route returns 404 and the nav entry is hidden.
-- **Deploying the code before `0011` is applied is inert.** The flag is off, no action has an `offer_id`, and the current `approve_output_version` and `export_output_version` still exist.
-- **Applying `0011` to a hosted database needs DEC-11 authorization.** It follows the recorded procedure: a single `DO` block run as `smeassistant_migrator`, rehearsed on a fixture, applied to a test branch and then production. With `0011` applied and the flag off, actions without an offer behave identically, because the helper returns immediately when `offer_id` is null.
-- **Rollback:** turn the flag off. Offers, offer actions and versions stay where they are. There's no need to restore the `0004` function bodies, because the added check only acts on actions that carry an `offer_id`.
+- **Apply `0011` before deploying the code, on a Neon test branch first and then on production.** The code is **not** inert without it: the shared action queries (`ACTION_COLUMNS`) and the version gateway (`artifactRepository.createOutputVersion`) select `actions.offer_id` whether or not the flag is on, so this code against a database without `0011` fails every action read and version write (Ruling R14; this bullet replaces the earlier claim that deploying first was inert). Applying `0011` to a hosted database needs DEC-11 authorization and follows the recorded procedure: a single `DO` block run as `smeassistant_migrator`, rehearsed on a fixture, applied to a test branch and then production. With `0011` applied and the flag off, actions without an offer behave identically, because the helper returns immediately when `offer_id` is null.
+- **Then deploy with the flag unset.** Every offer route answers 404, the offers page calls `notFound()` and the nav entry is hidden.
+- **To enable, set `OFFER_PROMOTIONS_ENABLED=true` and redeploy** (an environment variable change takes effect on the next deployment).
+- **Rollback:** unset the flag (or set anything but `true`) and redeploy. That stops the offers page and nav entry, every offer route (create, edit, confirm, archive, `/promotions`), and any new draft or run on an offer action: `runAgentForAction` refuses offer templates with `agent_unavailable` while the flag is off (F4). It does **not** hide or remove what already exists: offer actions already created stay listed on the actions pages, and their existing versions stay approvable and exportable, under the SQL freshness guard (a draft whose offer changed, expired, was archived or is no longer confirmed is still refused). While the flag is off the owner cannot edit or archive an offer (404), so an approved, current draft can still be exported. Offers, offer actions and versions stay in the database. There's no need to restore the `0004` function bodies, because the added check only acts on actions that carry an `offer_id`.
 
 ## 7. Deliverables
 
