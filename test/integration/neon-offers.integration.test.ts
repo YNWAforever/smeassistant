@@ -357,9 +357,71 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon offers schema and fun
       const row = (await runtime.query("SELECT confirmed_by FROM offers WHERE id=$1", [created.id])).rows[0];
       expect(row.confirmed_by).toBeNull();
 
-      const unchanged = await repo.update(ws, created.id, 2, input({ title: "Dinner set", claims: ["Halal", "Fresh"] }));
-      expect(unchanged).toMatchObject({ kind: "updated", changed: [] });
-      if (unchanged.kind === "updated") expect(unchanged.offer.revision).toBe(3);
+    });
+
+    it("an unchanged save keeps the revision and the confirmation (F5)", async () => {
+      const ws = await workspace();
+      const actor = await user();
+      const repo = offerRepository(runtime);
+      const created = await repo.create(ws, actor, input({ price_amount: 1280 }));
+      await repo.confirm(created.id, actor, 1);
+      const confirmed = await repo.get(ws, created.id);
+      expect(confirmed?.status).toBe("confirmed");
+
+      // Same facts, with the price written differently (1280.00 is 1280 by value).
+      const unchanged = await repo.update(ws, created.id, 1, input({ price_amount: 1280.0 }));
+      expect(unchanged).toEqual({ kind: "updated", offer: confirmed, changed: [], cancelledActions: 0 });
+      expect(await repo.get(ws, created.id)).toEqual(confirmed);
+      const row = (await runtime.query("SELECT confirmed_by FROM offers WHERE id=$1", [created.id])).rows[0];
+      expect(row.confirmed_by).toBe(actor);
+
+      // The revision guard still applies to a no-op save.
+      expect(await repo.update(ws, created.id, 9, input({ price_amount: 1280 }))).toEqual({ kind: "revision_changed" });
+    });
+
+    it("relocating an offer cancels its open actions; an edit that keeps the location does not (F1)", async () => {
+      const ws = await workspace();
+      const actor = await user();
+      const repo = offerRepository(runtime);
+      const [l1, l2] = await Promise.all(
+        ["one", "two"].map(async (slug) =>
+          (await runtime.query("INSERT INTO locations(workspace_id,slug,name) VALUES($1,$2,$2) RETURNING id", [ws, slug])).rows[0].id as string,
+        ),
+      );
+      const created = await repo.create(ws, actor, input({ location_id: l1 }));
+      const open = await insertAction(ws, created.id, "recommended");
+      const running = await insertAction(ws, created.id, "in_progress");
+      const done = await insertAction(ws, created.id, "completed");
+      const other = await insertOffer(ws);
+      const otherOpen = await insertAction(ws, other, "recommended");
+      const state = async (id: string) => (await runtime.query("SELECT action_state FROM actions WHERE id=$1", [id])).rows[0].action_state as string;
+
+      const kept = await repo.update(ws, created.id, 1, input({ location_id: l1, title: "Dinner set" }));
+      expect(kept).toMatchObject({ kind: "updated", changed: ["title"], cancelledActions: 0 });
+      expect([await state(open), await state(running), await state(done)]).toEqual(["recommended", "in_progress", "completed"]);
+
+      const moved = await repo.update(ws, created.id, 2, input({ location_id: l2, title: "Dinner set" }));
+      expect(moved).toMatchObject({ kind: "updated", changed: ["location_id"], cancelledActions: 2 });
+      if (moved.kind === "updated") expect(moved.offer).toMatchObject({ locationId: l2, revision: 3, status: "draft" });
+      expect([await state(open), await state(running), await state(done), await state(otherOpen)]).toEqual([
+        "cancelled",
+        "cancelled",
+        "completed",
+        "recommended",
+      ]);
+
+      // Widening to the whole workspace is a relocation too.
+      await insertAction(ws, created.id, "ready");
+      expect(await repo.update(ws, created.id, 3, input({ location_id: null, title: "Dinner set" }))).toMatchObject({
+        kind: "updated",
+        changed: ["location_id"],
+        cancelledActions: 1,
+      });
+
+      // A refused update (stale revision) cancels nothing.
+      const late = await insertAction(ws, created.id, "recommended");
+      expect(await repo.update(ws, created.id, 3, input({ location_id: l1 }))).toEqual({ kind: "revision_changed" });
+      expect(await state(late)).toBe("recommended");
     });
 
     it("update with a stale revision returns revision_changed and changes nothing", async () => {
@@ -481,6 +543,47 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon offers schema and fun
       expect(results.filter((r) => r.created)).toHaveLength(1);
       const rows = (await runtime.query("SELECT id, offer_id FROM actions WHERE workspace_id=$1", [ws])).rows;
       expect(rows).toEqual([{ id: results[0].id, offer_id: offer }]);
+    });
+
+    it("relocate, re-confirm, promote: the new action is created at the new location (F1)", async () => {
+      const ws = await workspace();
+      const actor = await user();
+      const offers = offerRepository(runtime);
+      const actions = actionMutationRepository(runtime);
+      const [l1, l2] = await Promise.all(
+        ["one", "two"].map(async (slug) =>
+          (await runtime.query("INSERT INTO locations(workspace_id,slug,name) VALUES($1,$2,$2) RETURNING id", [ws, slug])).rows[0].id as string,
+        ),
+      );
+      const offerInput = (location_id: string): OfferInput => ({
+        location_id,
+        title: "Lunch set",
+        details: "Soup and a main course",
+        terms: "",
+        price_amount: 88,
+        currency: "HKD",
+        valid_from: "2026-10-01",
+        valid_until: "2099-12-31",
+        claims: [],
+        prohibited_terms: [],
+        asset_id: null,
+      });
+      const offer = await offers.create(ws, actor, offerInput(l1));
+      await offers.confirm(offer.id, actor, 1);
+      const first = await actions.createObjective({ ...promotionRow(ws, offer.id), location_id: l1 });
+      expect(first.created).toBe(true);
+
+      const moved = await offers.update(ws, offer.id, 1, offerInput(l2));
+      expect(moved).toMatchObject({ kind: "updated", cancelledActions: 1 });
+      await offers.confirm(offer.id, actor, 2);
+      const second = await actions.createObjective({ ...promotionRow(ws, offer.id), location_id: l2 });
+      expect(second.created).toBe(true);
+      expect(second.id).not.toBe(first.id);
+      const rows = (await runtime.query("SELECT id, location_id, action_state FROM actions WHERE offer_id=$1 ORDER BY action_state", [offer.id])).rows;
+      expect(rows).toEqual([
+        { id: first.id, location_id: l1, action_state: "cancelled" },
+        { id: second.id, location_id: l2, action_state: "recommended" },
+      ]);
     });
 
     it("after archive_offer cancels the action, a new call creates a fresh one", async () => {

@@ -10,7 +10,9 @@ import { canManageOffer, parseOfferBody } from "@/lib/workspace/offers";
 /**
  * PATCH /api/offers/[offerId] { expected_revision, ...offer fields } -> 200 { offer }
  * | 409 { error: "offer_revision_changed" | "offer_archived" }.
- * A fact edit resets the offer to draft and clears the confirmation. The
+ * A fact edit resets the offer to draft and clears the confirmation; a save
+ * that changes nothing keeps both. Moving the offer to another location also
+ * cancels its open actions (offerRepository.update). The
  * caller must manage both the stored offer's location and the location the
  * body moves it to (a manager cannot widen an offer to the whole workspace).
  */
@@ -52,6 +54,8 @@ export async function PATCH(req: Request, { params }: Ctx) {
       if (result.kind === "not_found") return json({ error: "not_found" }, 404);
       return json({ error: result.kind === "archived" ? "offer_archived" : "offer_revision_changed" }, 409);
     }
+    // A save that changes nothing keeps the revision and the confirmation, so there is nothing to record.
+    if (result.changed.length === 0) return json({ offer: result.offer });
     await recordNeonEvent({
       workspaceId: scope.workspaceId,
       locationId: result.offer.locationId,
@@ -62,7 +66,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
       entityId: offerId,
       locale: localeFrom(req, body),
       ipHash: ipHashFor(req),
-      payload: { changed: result.changed, revision: result.offer.revision },
+      payload: { changed: result.changed, revision: result.offer.revision, cancelled_actions: result.cancelledActions },
     });
     return json({ offer: result.offer });
   } catch {

@@ -94,7 +94,7 @@ beforeEach(() => {
   mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("owner"));
   mocks.enforceRateLimit.mockResolvedValue({ allowed: true, retryAfterSeconds: 1 });
   mocks.offers.scope.mockResolvedValue({ offerId: OFFER_ID, workspaceId: WORKSPACE_ID, locationId: L1 });
-  mocks.offers.update.mockResolvedValue({ kind: "updated", offer: offer({ revision: 3 }), changed: ["title"] });
+  mocks.offers.update.mockResolvedValue({ kind: "updated", offer: offer({ revision: 3 }), changed: ["title"], cancelledActions: 0 });
   mocks.offers.confirm.mockResolvedValue({ kind: "confirmed", revision: 3 });
   mocks.offers.archive.mockResolvedValue({ kind: "archived", cancelledActions: 2 });
   mocks.artifacts.assistantWorkspace.mockResolvedValue({ id: WORKSPACE_ID, market: "hk" });
@@ -188,7 +188,7 @@ describe("flag, ids and authorization (all three handlers)", () => {
 
 describe("PATCH /api/offers/[offerId]", () => {
   it("updates and records offer.updated with only the changed fields and the new revision", async () => {
-    mocks.offers.update.mockResolvedValue({ kind: "updated", offer: offer({ revision: 3 }), changed: ["title", "valid_until"] });
+    mocks.offers.update.mockResolvedValue({ kind: "updated", offer: offer({ revision: 3 }), changed: ["title", "valid_until"], cancelledActions: 0 });
     const res = await patch(patchBody);
     expect(res.status).toBe(200);
     expect((await res.json()).offer.revision).toBe(3);
@@ -197,9 +197,25 @@ describe("PATCH /api/offers/[offerId]", () => {
       expect.objectContaining({
         event: "offer.updated",
         entityId: OFFER_ID,
-        payload: { changed: ["title", "valid_until"], revision: 3 },
+        payload: { changed: ["title", "valid_until"], revision: 3, cancelled_actions: 0 },
       }),
     );
+  });
+
+  it("records how many open actions a relocation cancelled (F1)", async () => {
+    mocks.offers.update.mockResolvedValue({ kind: "updated", offer: offer({ revision: 3 }), changed: ["location_id"], cancelledActions: 2 });
+    expect((await patch(patchBody)).status).toBe(200);
+    expect(mocks.recordNeonEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "offer.updated", payload: { changed: ["location_id"], revision: 3, cancelled_actions: 2 } }),
+    );
+  });
+
+  it("answers 200 with the unchanged offer and records no audit row when nothing changed (F5)", async () => {
+    mocks.offers.update.mockResolvedValue({ kind: "updated", offer: offer({ revision: 2 }), changed: [], cancelledActions: 0 });
+    const res = await patch(patchBody);
+    expect(res.status).toBe(200);
+    expect((await res.json()).offer.revision).toBe(2);
+    expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
   });
 
   it("requires an integer expected_revision", async () => {

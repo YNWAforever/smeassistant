@@ -102,7 +102,9 @@ function inputValues(input: OfferInput): unknown[] {
   ];
 }
 
-type UpdateOutcome = { kind: "updated"; offer: Offer; changed: string[] } | { kind: "revision_changed" | "archived" | "not_found" };
+type UpdateOutcome =
+  | { kind: "updated"; offer: Offer; changed: string[]; cancelledActions: number }
+  | { kind: "revision_changed" | "archived" | "not_found" };
 
 export function offerRepository(client?: Pick<Pool, "query">) {
   const db = () => client ?? getPool();
@@ -139,25 +141,62 @@ export function offerRepository(client?: Pick<Pool, "query">) {
     },
 
     /**
-     * One UPDATE guarded on revision and not-archived. The pre-update values ride
-     * back from the same statement (`old` is read in the same snapshot), so
-     * `changed` can never be computed against a row another request already
-     * moved. A fact edit resets the offer to draft and clears the confirmation.
+     * One statement, guarded on revision and not-archived. The row is locked and
+     * compared with the input in SQL (by value: numeric 1280.00 equals 1280,
+     * lists in order), so `changed` can never be computed against a row another
+     * request already moved.
+     * - Nothing changed: the row is returned as it is; revision, status and
+     *   confirmation stay, so drafts written from it stay current (F5).
+     * - A fact edit bumps the revision, resets the offer to draft and clears the
+     *   confirmation.
+     * - A new location_id also cancels the offer's open actions, as archive_offer
+     *   does: they were created at the old location, and the run gate refuses an
+     *   action whose location differs from its offer's (F1).
      */
     async update(workspaceId: string, offerId: string, expectedRevision: number, input: OfferInput): Promise<UpdateOutcome> {
-      const { rows } = await db().query<OfferRow & { old: Record<string, unknown> }>(
-        `UPDATE offers o SET location_id=$4, title=$5, details=$6, terms=$7, price_amount=$8, currency=$9, valid_from=$10, valid_until=$11,
-                claims=$12, prohibited_terms=$13, asset_id=$14, revision=o.revision+1, status='draft', confirmed_at=NULL, confirmed_by=NULL, updated_at=now()
-           FROM (SELECT id, location_id, title, details, terms, price_amount::text AS price_amount, currency, valid_from::text AS valid_from,
-                        valid_until::text AS valid_until, claims, prohibited_terms, asset_id
-                   FROM offers WHERE workspace_id=$1 AND id=$2) old
-          WHERE o.workspace_id=$1 AND o.id=$2 AND old.id=o.id AND o.revision=$3 AND o.status <> 'archived'
-          RETURNING ${columns("o")}, to_jsonb(old) AS old`,
+      const { rows } = await db().query<OfferRow & { changed: string[]; cancelled_actions: number }>(
+        `WITH cur AS (
+           SELECT o.*,
+                  array_remove(ARRAY[
+                    CASE WHEN o.location_id IS DISTINCT FROM $4::uuid THEN 'location_id' END,
+                    CASE WHEN o.title IS DISTINCT FROM $5::text THEN 'title' END,
+                    CASE WHEN o.details IS DISTINCT FROM $6::text THEN 'details' END,
+                    CASE WHEN o.terms IS DISTINCT FROM $7::text THEN 'terms' END,
+                    CASE WHEN o.price_amount IS DISTINCT FROM $8::numeric THEN 'price_amount' END,
+                    CASE WHEN o.currency IS DISTINCT FROM $9::text THEN 'currency' END,
+                    CASE WHEN o.valid_from IS DISTINCT FROM $10::date THEN 'valid_from' END,
+                    CASE WHEN o.valid_until IS DISTINCT FROM $11::date THEN 'valid_until' END,
+                    CASE WHEN o.claims IS DISTINCT FROM $12::text[] THEN 'claims' END,
+                    CASE WHEN o.prohibited_terms IS DISTINCT FROM $13::text[] THEN 'prohibited_terms' END,
+                    CASE WHEN o.asset_id IS DISTINCT FROM $14::uuid THEN 'asset_id' END
+                  ], NULL) AS changed
+             FROM offers o
+            WHERE o.workspace_id=$1 AND o.id=$2 AND o.revision=$3 AND o.status <> 'archived'
+              FOR UPDATE
+         ),
+         upd AS (
+           UPDATE offers o SET location_id=$4::uuid, title=$5::text, details=$6::text, terms=$7::text, price_amount=$8::numeric, currency=$9::text,
+                  valid_from=$10::date, valid_until=$11::date, claims=$12::text[], prohibited_terms=$13::text[], asset_id=$14::uuid,
+                  revision=o.revision+1, status='draft', confirmed_at=NULL, confirmed_by=NULL, updated_at=now()
+             FROM cur
+            WHERE o.id=cur.id AND cardinality(cur.changed) > 0
+           RETURNING ${columns("o")}
+         ),
+         cancelled AS (
+           UPDATE actions a SET action_state='cancelled', updated_at=now()
+             FROM cur
+            WHERE a.offer_id=cur.id AND 'location_id' = ANY(cur.changed)
+              AND a.action_state NOT IN ('completed','dismissed','cancelled','expired')
+           RETURNING a.id
+         )
+         SELECT upd.*, cur.changed, (SELECT count(*)::int FROM cancelled) AS cancelled_actions FROM upd, cur
+         UNION ALL
+         SELECT ${columns("cur")}, cur.changed, 0 FROM cur WHERE cardinality(cur.changed) = 0`,
         [workspaceId, offerId, expectedRevision, ...inputValues(input)],
       );
       if (rows[0]) {
-        const { old, ...row } = rows[0];
-        return { kind: "updated", offer: toOffer(row), changed: changedFields(old, input) };
+        const { changed, cancelled_actions, ...row } = rows[0];
+        return { kind: "updated", offer: toOffer(row), changed, cancelledActions: cancelled_actions };
       }
       const status = (await db().query<{ status: OfferStatus }>(`SELECT status FROM offers WHERE workspace_id=$1 AND id=$2`, [workspaceId, offerId])).rows[0]
         ?.status;
@@ -189,29 +228,3 @@ export function offerRepository(client?: Pick<Pool, "query">) {
 }
 
 export type OfferRepository = ReturnType<typeof offerRepository>;
-
-const CHANGE_KEYS = [
-  "location_id",
-  "title",
-  "details",
-  "terms",
-  "price_amount",
-  "currency",
-  "valid_from",
-  "valid_until",
-  "claims",
-  "prohibited_terms",
-  "asset_id",
-] as const;
-
-/** Compares by value: `numeric` text "1280.00" equals the number 1280; lists compare in order. */
-function changedFields(old: Record<string, unknown>, input: OfferInput): string[] {
-  const next = input as unknown as Record<string, unknown>;
-  return CHANGE_KEYS.filter((key) => {
-    const before = old[key];
-    const after = next[key];
-    if (key === "price_amount") return (before === null ? null : Number(before)) !== (after ?? null);
-    if (key === "claims" || key === "prohibited_terms") return JSON.stringify(before) !== JSON.stringify(after);
-    return (before ?? null) !== (after ?? null);
-  });
-}
