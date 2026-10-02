@@ -812,6 +812,8 @@ export const workPackItems = pgTable("work_pack_items", {
  position: smallint("position").notNull(),
  createdAt: timestamp("created_at", {withTimezone:true, mode:"string"}).notNull().default(sql.raw("now()")),
 }, t => [
+ // Types-only mirror. The real constraint (0012_work_packs.sql, ruling P2) is DEFERRABLE INITIALLY DEFERRED with no
+ // delete rule, so deleting a referenced action fails at COMMIT, not mid-statement; drizzle cannot express that here.
  foreignKey({name:"work_pack_items_action_id_fkey",columns:[t.actionId],foreignColumns:[((): AnyPgColumn => actions.id)()]}),
  foreignKey({name:"work_pack_items_pack_id_fkey",columns:[t.packId],foreignColumns:[((): AnyPgColumn => workPacks.id)()]}).onDelete("cascade"),
  primaryKey({name:"work_pack_items_pkey",columns:[t.packId,t.templateKey]}),

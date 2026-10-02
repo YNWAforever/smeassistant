@@ -231,6 +231,12 @@ async function startInTransaction(client: PoolClient, input: StartPackInput): Pr
   return { packId, created: true, items };
 }
 
+/** The failure's SQLSTATE, for the server log only. Never the message: it can carry database text. */
+function failureCode(error: unknown): string {
+  const code = typeof error === "object" && error !== null ? (error as { code?: unknown }).code : undefined;
+  return typeof code === "string" && /^[0-9A-Z]{5}$/.test(code) ? code : "unknown";
+}
+
 /**
  * `database` defaults to the application pool. startPack checks out one client
  * for its whole transaction; the reads run on the pool.
@@ -240,7 +246,8 @@ export function packRepository(database?: PackDatabase) {
   async function read<T>(run: () => Promise<T>): Promise<T> {
     try {
       return await run();
-    } catch {
+    } catch (error) {
+      console.error("[packs] read failed", { category: "pack_read_failed", code: failureCode(error) });
       throw new Error("pack_read_failed");
     }
   }
@@ -249,7 +256,8 @@ export function packRepository(database?: PackDatabase) {
     async startPack(input: StartPackInput): Promise<StartPackResult> {
       try {
         return await withTransaction((client) => startInTransaction(client, input), db());
-      } catch {
+      } catch (error) {
+        console.error("[packs] start failed", { category: "pack_start_failed", code: failureCode(error) });
         throw new Error("pack_start_failed");
       }
     },
