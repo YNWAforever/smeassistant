@@ -44,8 +44,10 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon offers schema and fun
     const before = migrations.filter((m) => m.name < "0011_offers.sql");
     expect(before.at(-1)?.name).toBe("0010_mail_outbox.sql");
     expect(await applyMigrations(owner, before)).toHaveLength(10);
-    expect(await applyMigrations(owner)).toEqual(["0011_offers.sql"]);
-    expect(await applyMigrations(owner)).toEqual([]);
+    // Later migrations are applied by their own tests; stop at 0011 here.
+    const through0011 = migrations.filter((m) => m.name <= "0011_offers.sql");
+    expect(await applyMigrations(owner, through0011)).toEqual(["0011_offers.sql"]);
+    expect(await applyMigrations(owner, through0011)).toEqual([]);
   });
 
   async function workspace(market: "hk" | "tw" | null = "hk", timezone = "Asia/Hong_Kong"): Promise<string> {
