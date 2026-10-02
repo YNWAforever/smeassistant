@@ -75,6 +75,21 @@ describe("PackView", () => {
     expect(screen.getAllByRole("button", { name: new RegExp(text.retry) })).toHaveLength(1)
   })
 
+  it("labels a finished item with no version Done or Dismissed, never Not started (final review G5)", () => {
+    mount({ pack: packOf([{ actionState: "completed" }, { actionState: "dismissed" }, { actionState: "expired", run: "failed" }]) })
+    expect(screen.getAllByText(text.states.done)).toHaveLength(1)
+    expect(screen.getAllByText(text.states.dismissed)).toHaveLength(2)
+    expect(screen.queryByText(text.states.notStarted)).toBeNull()
+    expect(screen.queryByText(text.states.failed)).toBeNull()
+  })
+
+  it("offers no Retry or Continue on a finished pack that is not closed yet (final review G5)", () => {
+    // Finished: every action is closed. The first item's last run failed and its only version was rejected.
+    mount({ pack: packOf([{ actionState: "completed", run: "failed", version: { approval: "rejected" } }, { actionState: "completed" }, { actionState: "cancelled" }]) })
+    expect(screen.getByText(text.states.failed)).toBeInTheDocument()
+    expect(screen.queryAllByRole("button")).toHaveLength(0)
+  })
+
   it("renders a closed pack read-only: no Retry, no Review next, and says so", () => {
     mount({ pack: packOf([{ run: "failed" }, { version: { approval: "draft" } }], { closedAt: "2026-10-03T00:00:00Z" }) })
     expect(screen.getByText(text.closed)).toBeInTheDocument()

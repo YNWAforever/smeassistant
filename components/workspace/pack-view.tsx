@@ -16,9 +16,9 @@ import { useSequentialRuns, type StopReason } from "@/lib/workspace/use-sequenti
 
 /**
  * One pack's page (P4.2, spec 3.2): the same item list as the Home card, with a
- * per-item Retry and "Review next". There is no approve or export control here;
- * those happen only on the action's own page, on the exact version. A closed
- * pack is read-only history.
+ * per-item Retry, Continue and "Review next". There is no approve or export
+ * control here; those happen only on the action's own page, on the exact
+ * version. A closed or finished pack runs nothing: it is read-only history.
  */
 export interface PackViewProps {
   locale: PrototypeLocale
@@ -38,7 +38,7 @@ export function PackView({ locale, workspaceSlug, role, inScope, pack, locationN
   const closed = pack.pack.closedAt !== null
   const [stopReason, setStopReason] = useState<StopReason | null>(null)
   const runs = useSequentialRuns({ onStop: setStopReason })
-  const canAct = !closed && (role === "owner" || role === "manager") && inScope
+  const canAct = !closed && !pack.finished && (role === "owner" || role === "manager") && inScope
   const [continuing, setContinuing] = useState(false)
   // Any run in flight: Retry and Continue are hidden meanwhile, so one item is never run twice.
   const running = continuing || runs.running

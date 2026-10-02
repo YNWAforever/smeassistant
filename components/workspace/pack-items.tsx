@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { AlertTriangle, CheckCircle2, CircleDashed, CirclePause, LoaderCircle, RefreshCw, TextCursorInput } from "lucide-react"
+import { AlertTriangle, CheckCircle2, CircleDashed, CircleMinus, CirclePause, LoaderCircle, RefreshCw, TextCursorInput } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -17,7 +17,7 @@ import type { RowState } from "@/lib/workspace/use-sequential-runs"
  * bulk control, by design: approval and export happen only on the exact version
  * (spec 3.2).
  */
-export type ItemStateKey = "generating" | "draftReady" | "needsFacts" | "approved" | "exported" | "failed" | "paused" | "notStarted"
+export type ItemStateKey = "generating" | "draftReady" | "needsFacts" | "approved" | "exported" | "failed" | "paused" | "done" | "dismissed" | "notStarted"
 
 /**
  * The state to show for one item. A version that is already approved or exported
@@ -35,6 +35,9 @@ export function itemState(action: ActionOverview, live: RowState | undefined): I
   if (live === "needs_input") return "needsFacts"
   if (live === "draft_ready") return "draftReady"
   if (version && (version.approvalState === "draft" || version.approvalState === "changes_requested")) return "draftReady"
+  // A finished action with nothing drafted: it was completed or set aside, so it is not waiting to start.
+  if (!version && action.actionState === "completed") return "done"
+  if (!version && (action.actionState === "dismissed" || action.actionState === "cancelled" || action.actionState === "expired")) return "dismissed"
   if (action.displayPhaseKey === "generating") return "generating"
   if (action.runState === "failed" || action.runState === "timed_out") return "failed"
   // A run that came back asking for facts. Before any run, an item that lists required inputs is simply not started.
@@ -50,6 +53,8 @@ const ICONS: Record<ItemStateKey, typeof CircleDashed> = {
   exported: CheckCircle2,
   failed: AlertTriangle,
   paused: CirclePause,
+  done: CheckCircle2,
+  dismissed: CircleMinus,
   notStarted: CircleDashed,
 }
 
