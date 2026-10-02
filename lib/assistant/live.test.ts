@@ -307,6 +307,28 @@ describe("runLiveAssistant", () => {
     expect(result.answer).toContain("measured 3 of 4 sources");
   });
 
+  it("refuses every draft intent on an offer action, focused or implicit, before the model (F6)", async () => {
+    const offerAction: typeof actionRow = { ...actionRow, id: "77777777-7777-4777-8777-777777777777", template_key: "offer-instagram-post", source: "owner_objective", source_finding_keys: [], required_inputs: ["brand_voice"], provided_inputs: { brand_voice: "warm" }, offer_id: "88888888-8888-4888-8888-888888888888" };
+    state.actions = [offerAction];
+    const llm = vi.fn(async () => good);
+    for (const intentId of Object.keys(DRAFT_AGENTS) as Array<keyof typeof DRAFT_AGENTS>) {
+      for (const context of [{ workspaceId: WORKSPACE_ID, actionId: offerAction.id }, { workspaceId: WORKSPACE_ID, locationId: LOCATION_ID }]) {
+        const result = await run({ intentId, surface: "action", context, llm });
+        expect(result).toMatchObject({ state: "completed", requiresApproval: false });
+        expect(result.output).toBeUndefined();
+        expect(result.draftRunId).toBeUndefined();
+        expect(result.warnings[0]).toMatch(/No open action matches this request/);
+      }
+    }
+    expect(llm).not.toHaveBeenCalled();
+    expect(repository.aiSpend24h).not.toHaveBeenCalled();
+    expect(repository.recordAssistantDraft).not.toHaveBeenCalled();
+    expect(repository.recordAssistantDraftFailure).not.toHaveBeenCalled();
+    expect(writes()).toEqual([]);
+    // Explain intents on the same action still answer.
+    expect(await run({ intentId: "explain_priority", context: { workspaceId: WORKSPACE_ID, actionId: offerAction.id } })).toMatchObject({ state: "completed" });
+  });
+
   it("relays facts_needed instead of an empty draft", async () => {
     state.actions = [{ ...faqRow, provided_inputs: FAQ_FACTS }];
     const llm = vi.fn(async () => ({ ...good, text: JSON.stringify({ title: "", body: "", acceptance_criteria: [], warnings: [], facts_used: [], facts_needed: ["capacity", "lead_time"] }) }));
