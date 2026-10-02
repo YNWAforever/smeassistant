@@ -51,7 +51,8 @@ describe("useSequentialRuns", () => {
     const { result } = renderHook(() => useSequentialRuns({ onStop }));
     await act(async () => { await result.current.runAll(["a", "b", "c", "d"]); });
     expect(clientMocks.runAction.mock.calls.map((call) => call[0])).toEqual(["a", "b"]);
-    expect(result.current.rows).toEqual({ a: "draft_ready", b: "failed" });
+    // A refusal that stopped the loop is its own state, never a failure (final review G3).
+    expect(result.current.rows).toEqual({ a: "draft_ready", b: "paused" });
     expect(result.current.rows.c).toBeUndefined();
     expect(onStop).toHaveBeenCalledTimes(1);
     expect(onStop).toHaveBeenCalledWith(reason);
@@ -73,6 +74,55 @@ describe("useSequentialRuns", () => {
     await act(async () => { await result.current.runAll(["a", "b"]); });
     expect(result.current.rows).toEqual({ a: "failed", b: "draft_ready" });
     expect(onStop).not.toHaveBeenCalled();
+  });
+
+  it("a refused retry is paused and reported once, not failed", async () => {
+    clientMocks.runAction.mockResolvedValue(PAUSED);
+    const onStop = vi.fn();
+    const { result } = renderHook(() => useSequentialRuns({ onStop }));
+    await act(async () => { await result.current.retry("b"); });
+    expect(result.current.rows).toEqual({ b: "paused" });
+    expect(onStop).toHaveBeenCalledTimes(1);
+    expect(onStop).toHaveBeenCalledWith("ai_paused");
+  });
+
+  it("runs a paused row again when the loop is continued", async () => {
+    clientMocks.runAction.mockResolvedValueOnce(PAUSED).mockResolvedValue(READY);
+    const { result } = renderHook(() => useSequentialRuns());
+    await act(async () => { await result.current.runAll(["a", "b"]); });
+    expect(result.current.rows).toEqual({ a: "paused" });
+    await act(async () => { await result.current.runAll(["a", "b"]); });
+    expect(clientMocks.runAction.mock.calls.map((call) => call[0])).toEqual(["a", "a", "b"]);
+    expect(result.current.rows).toEqual({ a: "draft_ready", b: "draft_ready" });
+  });
+
+  it("skips an action retried before the loop reached it, so it is never run twice (final review G2)", async () => {
+    let finishFirst!: (value: unknown) => void;
+    clientMocks.runAction.mockImplementationOnce(() => new Promise((resolve) => { finishFirst = resolve; })).mockResolvedValue(READY);
+    const { result } = renderHook(() => useSequentialRuns());
+    let done!: Promise<void>;
+    await act(async () => { done = result.current.runAll(["a", "b", "c"]); });
+    await act(async () => { await result.current.retry("b"); });
+    await act(async () => { finishFirst(READY); await done; });
+    expect(clientMocks.runAction.mock.calls.map((call) => call[0])).toEqual(["a", "b", "c"]);
+    expect(result.current.rows).toEqual({ a: "draft_ready", b: "draft_ready", c: "draft_ready" });
+  });
+
+  it("is running while a loop or a retry is in flight, and not after", async () => {
+    let finish!: (value: unknown) => void;
+    const pending = () => new Promise((resolve) => { finish = resolve; });
+    clientMocks.runAction.mockImplementationOnce(pending).mockImplementationOnce(pending).mockResolvedValue(READY);
+    const { result } = renderHook(() => useSequentialRuns());
+    expect(result.current.running).toBe(false);
+    let done!: Promise<void>;
+    await act(async () => { done = result.current.runAll(["a"]); });
+    expect(result.current.running).toBe(true);
+    await act(async () => { finish(READY); await done; });
+    expect(result.current.running).toBe(false);
+    await act(async () => { done = result.current.retry("b"); });
+    expect(result.current.running).toBe(true);
+    await act(async () => { finish(READY); await done; });
+    expect(result.current.running).toBe(false);
   });
 
   it("retry runs only that action", async () => {

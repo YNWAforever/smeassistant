@@ -38,7 +38,8 @@ interface Entry {
   actionId: string
 }
 
-const STATUS: Record<RowState, RowStatus> = { idle: "waiting", generating: "generating", draft_ready: "ready", needs_input: "needs_input", failed: "failed" }
+// `paused` only happens with stopOnRefusal on; this panel turns it off, so a refusal stays `failed` (ruling P5).
+const STATUS: Record<RowState, RowStatus> = { idle: "waiting", generating: "generating", draft_ready: "ready", needs_input: "needs_input", failed: "failed", paused: "failed" }
 
 function fill(template: string, values: Record<string, string | number>): string {
   return Object.entries(values).reduce((text, [key, value]) => text.split(`{${key}}`).join(String(value)), template)
