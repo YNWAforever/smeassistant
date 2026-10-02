@@ -234,3 +234,16 @@ describe("POST /api/actions", () => {
     expect((await post({ ...base, objective: "" })).status).toBe(400);
   });
 });
+
+describe("POST /api/actions offer templates (R11)", () => {
+  it.each(["offer-instagram-post", "offer-google-post"])(
+    "rejects %s: offer actions are created only from an offer",
+    async (templateKey) => {
+      const res = await post({ ...base, template_key: templateKey });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "template_key is invalid" });
+      expect(mocks.authorizeWorkspaceRequest).not.toHaveBeenCalled();
+      expect(mocks.db!.calls.find((c) => c.table === "actions" && c.op === "insert")).toBeUndefined();
+    },
+  );
+});

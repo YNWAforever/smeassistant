@@ -17,7 +17,7 @@ import { freshnessText } from "@/lib/workspace/actions";
 import { applyResolvedInputs, resolveEvidenceInputs } from "@/lib/workspace/evidence-inputs";
 import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
 import { runAgentForAction, RunError } from "@/lib/workspace/runs";
-import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
+import { isOfferTemplate, TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
 
 /**
  * POST /api/actions { workspace_id, template_key, location_id?, objective, inputs?, run? }
@@ -29,7 +29,8 @@ import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
  */
 export const maxDuration = 60;
 
-const TEMPLATE_KEYS = new Set<string>(TEMPLATES.map((t) => t.key));
+// Offer-backed templates are created only from an offer (R11), never from an objective.
+const TEMPLATE_KEYS = new Set<string>(TEMPLATES.filter((t) => !isOfferTemplate(t)).map((t) => t.key));
 
 export async function POST(req: Request) {
   const body = await readJson(req);

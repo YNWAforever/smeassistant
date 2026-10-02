@@ -11,7 +11,7 @@ import { assetRepository } from "@/lib/repositories/assets";
 import { assetLocationScope } from "@/lib/workspace/assets";
 import { filterSelectedReviews } from "@/lib/workspace/evidence-inputs";
 import { sampledReviewsFromRawData, satisfiedInputs, snapshotEvidence, socialAssetSatisfied } from "@/lib/workspace/runs";
-import { templateByKey, type TemplateKey } from "@/lib/workspace/templates";
+import { isOfferTemplate, templateByKey, type TemplateKey } from "@/lib/workspace/templates";
 import { gateBlockingInputs } from "@/lib/workspace/workflow-inputs";
 import { type ScanDiffRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
 import { buildEvidenceRefs } from "./evidence";
@@ -134,6 +134,20 @@ export class AssistantAccessError extends Error {
 
 function requireDraftScope(input: LiveRunInput, locationId: string | null) {
   if (!inLocationScope(input.membership, locationId)) throw new AssistantAccessError("forbidden");
+}
+
+/**
+ * Offer actions (P4.1) are drafted only by the run route, which reads the
+ * confirmed offer, gates on it and binds its revision. No assistant draft
+ * intent targets an offer template, so a focused or implicitly selected offer
+ * action is answered like any action the intent cannot draft for.
+ */
+function isOfferAction(row: ActionRow): boolean {
+  try {
+    return isOfferTemplate(templateByKey(row.template_key as TemplateKey));
+  } catch {
+    return false;
+  }
 }
 
 function overviewOf(row: ActionRow, location: LocationRow | null): ActionOverview {
@@ -348,7 +362,7 @@ async function recordFailedDraft(
 async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistantRepository, ctx: ResolvedContext): Promise<DemoAssistantRunResponse> {
   const spec = DRAFT_AGENTS[intent];
   const action = ctx.focused; // Already selected and authorized with its evidence.
-  if (!action) return { ...completed("explain_limits", input, ctx, [NO_ACTION_FOR_DRAFT[input.locale]]) };
+  if (!action || isOfferAction(action.row)) return { ...completed("explain_limits", input, ctx, [NO_ACTION_FOR_DRAFT[input.locale]]) };
 
   const ready = (input.llmReady ?? llmConfigured)();
   const fallback = () => completed(fallbackIntentFor(intent), input, ctx, [AI_UNAVAILABLE[input.locale]]);

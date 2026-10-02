@@ -1,6 +1,7 @@
 import type { ShellWorkspace } from "@/components/product-ui";
 import type { PrototypeLocale } from "@/lib/copy";
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace";
+import { offerPromotionsEnabled } from "@/lib/workspace/offers-flag";
 import type { WorkspaceContext } from "@/lib/workspace/queries";
 
 /**
@@ -98,6 +99,8 @@ export function buildShellWorkspace(
     unreadNotifications,
     demo: workspace.isDemo,
     ...(extras.urgentActions !== undefined ? { urgentActions: extras.urgentActions } : {}),
+    // P4.1: shipped dark. Omitted (not false) when off, and never on a demo workspace.
+    ...(!workspace.isDemo && offerPromotionsEnabled() ? { offersEnabled: true } : {}),
     // Real shells always carry the ids the topbar assistant needs for live mode (§3.8).
     assistant: { workspaceId: workspace.id, ...(locationId ? { locationId } : {}) },
   };

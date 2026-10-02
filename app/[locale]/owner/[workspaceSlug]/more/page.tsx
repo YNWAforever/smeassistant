@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { MoreView } from "@/components/workspace/more-view";
+import { offerPromotionsEnabled } from "@/lib/workspace/offers-flag";
 import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 
 export const dynamic = "force-dynamic";
@@ -11,5 +12,5 @@ export async function generateMetadata(props: OwnerPageProps): Promise<Metadata>
 
 export default async function MoreRoute(props: OwnerPageProps) {
   const page = await loadOwnerPage(props);
-  return <MoreView locale={page.locale} workspaceSlug={page.workspaceSlug} locationCount={page.ctx.locations.length} locationSlug={page.locationSlug} />;
+  return <MoreView locale={page.locale} workspaceSlug={page.workspaceSlug} locationCount={page.ctx.locations.length} locationSlug={page.locationSlug} offersEnabled={offerPromotionsEnabled() && !page.ctx.workspace.isDemo} />;
 }

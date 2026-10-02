@@ -15,6 +15,10 @@ export type VersionErrorCode =
   | "version_not_found"
   | "invalid_decision"
   | "invalid_mode"
+  /** Raised by approve/export (0011) when an offer action's version is not the current confirmed offer. */
+  | "offer_changed"
+  | "offer_inactive"
+  | "offer_expired"
   /** Raised here, never by SQL, so it is deliberately absent from KNOWN_CODES. */
   | "assistant_draft_not_found";
 
@@ -26,6 +30,9 @@ const KNOWN_CODES: VersionErrorCode[] = [
   "version_not_found",
   "invalid_decision",
   "invalid_mode",
+  "offer_changed",
+  "offer_inactive",
+  "offer_expired",
 ];
 
 export class VersionError extends Error {

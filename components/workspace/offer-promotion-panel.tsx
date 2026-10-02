@@ -1,0 +1,146 @@
+"use client"
+
+import Link from "next/link"
+import { useState } from "react"
+import { AlertTriangle, CheckCircle2, CircleDashed, LoaderCircle, RefreshCw, WandSparkles } from "lucide-react"
+
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { aiBudgetRefusal } from "@/lib/budgets/messages"
+import { copy, type PrototypeLocale } from "@/lib/copy"
+import { createPromotions, runAction, type ClientResult, type PromotionChannel, type RunActionResult } from "@/lib/workspace/client"
+import { isOfferStaleCode } from "@/lib/workspace/offer-format"
+
+/**
+ * "Create promotion drafts" for one confirmed offer (design 3.2). It states the
+ * delivery unit before anything runs, then calls POST /api/offers/[id]/promotions
+ * (which creates one action per channel and calls no model) and runs each action
+ * in turn through the ordinary run route, so spend budgets and the AI pause apply
+ * unchanged. One channel failing never touches the other, and a retry runs only
+ * that action. The offer id is never shown to the owner as an input (R3).
+ */
+export interface OfferPromotionPanelProps {
+  locale: PrototypeLocale
+  offerId: string
+  offerTitle: string
+  usage: { approvedDeliveries: number; allowance: number | null }
+  canCreate: boolean
+  /** Base path of the actions list; when present each draft links to its action page. */
+  actionsHref?: string
+}
+
+const CHANNELS: readonly PromotionChannel[] = ["instagram", "google"]
+
+type RowStatus = "waiting" | "generating" | "ready" | "needs_input" | "failed"
+interface Row {
+  channel: PromotionChannel
+  actionId: string
+  status: RowStatus
+  message: string | null
+}
+
+function fill(template: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce((text, [key, value]) => text.split(`{${key}}`).join(String(value)), template)
+}
+
+export function OfferPromotionPanel({ locale, offerId, offerTitle, usage, canCreate, actionsHref }: OfferPromotionPanelProps) {
+  const text = copy[locale].workspace.offers
+  const inputLabels = copy[locale].workspace.inputs
+  const [phase, setPhase] = useState<"idle" | "creating" | "started">("idle")
+  const [rows, setRows] = useState<Row[]>([])
+  const [problem, setProblem] = useState<string | null>(null)
+
+  const channelNames = CHANNELS.map((channel) => text.promotion.channels[channel]).join(text.promotion.listSeparator)
+  const disclosure =
+    fill(text.promotion.disclosure, { n: CHANNELS.length, channels: channelNames }) +
+    (usage.allowance !== null ? fill(text.promotion.usage, { used: usage.approvedDeliveries, allowance: usage.allowance }) : "")
+
+  function failureText(result: Extract<ClientResult<unknown>, { ok: false }>): string {
+    if (result.status === 409 && isOfferStaleCode(result.error)) return text.stale[result.error]
+    if (result.status === 403) return text.errors.forbidden
+    if (result.error === "offline" || result.error === "network") return text.errors.network
+    return aiBudgetRefusal(locale, result.status, result.error) ?? text.promotion.failed
+  }
+
+  function outcome(result: ClientResult<RunActionResult>): Pick<Row, "status" | "message"> {
+    if (!result.ok) return { status: "failed", message: failureText(result) }
+    // offer_id is bound by the action's column, so it is never something the owner supplies.
+    const facts = (result.data.factsNeeded ?? []).filter((key) => key !== "offer_id")
+    if (result.data.factsNeeded?.length) {
+      const labels = facts.map((key) => inputLabels[key]).filter((label): label is string => Boolean(label))
+      return {
+        status: "needs_input",
+        message: labels.length ? fill(text.promotion.needsInput, { facts: labels.join(text.promotion.listSeparator) }) : text.promotion.needsInputGeneric,
+      }
+    }
+    if (result.data.state === "failed") return { status: "failed", message: text.promotion.failed }
+    return { status: "ready", message: null }
+  }
+
+  function patchRow(actionId: string, patch: Partial<Row>) {
+    setRows((current) => current.map((row) => (row.actionId === actionId ? { ...row, ...patch } : row)))
+  }
+
+  async function runRow(actionId: string) {
+    patchRow(actionId, { status: "generating", message: null })
+    patchRow(actionId, outcome(await runAction(actionId)))
+  }
+
+  async function create() {
+    if (!canCreate || phase !== "idle") return
+    setPhase("creating")
+    setProblem(null)
+    const created = await createPromotions(offerId)
+    if (!created.ok) {
+      setPhase("idle")
+      setProblem(created.status === 409 && isOfferStaleCode(created.error) ? text.stale[created.error] : created.status === 403 ? text.errors.forbidden : text.promotion.createFailed)
+      return
+    }
+    setRows(created.data.actions.map((entry) => ({ channel: entry.channel, actionId: entry.actionId, status: "waiting" as const, message: null })))
+    setPhase("started")
+    // In turn, not in parallel: each run is its own request with its own budget check.
+    for (const entry of created.data.actions) await runRow(entry.actionId)
+  }
+
+  const icon = (status: RowStatus) =>
+    status === "generating" ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : status === "ready" ? <CheckCircle2 aria-hidden="true" /> : status === "waiting" ? <CircleDashed aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />
+
+  return (
+    <div className="brand-check-panel" aria-label={`${text.promotion.title}: ${offerTitle}`}>
+      <div className="brand-check-head">
+        <WandSparkles aria-hidden="true" />
+        <div><strong>{text.promotion.title}</strong><span>{offerTitle}</span></div>
+      </div>
+      <p className="limitation-note">{disclosure}</p>
+      {!canCreate && <p className="limitation-note"><AlertTriangle aria-hidden="true" />{text.promotion.noPermission}</p>}
+      {problem && <p className="limitation-note" role="alert"><AlertTriangle aria-hidden="true" />{problem}</p>}
+      {phase !== "started" && (
+        <div className="draft-editor-actions">
+          <Button onClick={() => void create()} disabled={!canCreate || phase === "creating"}>
+            {phase === "creating" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {phase === "creating" ? text.promotion.creating : text.promotion.create}
+          </Button>
+        </div>
+      )}
+      {rows.length > 0 && (
+        <ul className="evidence-list" role="status" aria-live="polite">
+          {rows.map((row) => (
+            <li key={row.actionId}>
+              {icon(row.status)}
+              <span>
+                <strong>{text.promotion.channels[row.channel]}</strong>{" "}
+                <Badge variant="outline">{text.promotion.states[row.status]}</Badge>
+                {row.message && <small> {row.message}</small>}
+              </span>
+              {row.status === "failed" && (
+                <Button size="sm" variant="outline" onClick={() => void runRow(row.actionId)}><RefreshCw /> {text.promotion.retry}</Button>
+              )}
+              {actionsHref && row.status !== "waiting" && row.status !== "generating" && (
+                <Link href={`${actionsHref}/${row.actionId}`}>{text.promotion.open}</Link>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}

@@ -1,6 +1,6 @@
 # Phase 4 test results
 
-Gate-by-gate record for Phase 4. Each slice has its own section. Only P4.4 exists so far.
+Gate-by-gate record for Phase 4. Each slice has its own section. P4.4 and P4.1 are built; P4.2 and P4.3 are not started.
 
 ## P4.4 — reusable workflow contract
 
@@ -103,3 +103,74 @@ Findings, rulings (including the reversed evidence-input ruling) and commits are
 | Invariants | — | prompt snapshot byte-identical to `c042b20` (vitest rewrote line endings only; restored with `git checkout --`); no migration; no `packages/**` edit. |
 
 Not re-run in this wave: `build`, `test:secret-boundary`, `test:no-supabase`, `test:no-self-service-claim` and the literal `e2e` (not in the wave's gate list; the earlier Task 8 records stand for them). No real model was called and `EVAL_LIVE` was never set.
+
+## P4.1 — confirmed offers and promotion copy
+
+Candidate: branch `p41-offers`, HEAD `31970f9` (implementation) plus this documentation commit. Base `dc55e02` (`origin/main`, PR #27). Spec: [`docs/superpowers/specs/2026-10-01-offers-promotion-copy-design.md`](../../superpowers/specs/2026-10-01-offers-promotion-copy-design.md). Plan: `docs/superpowers/plans/2026-10-01-offers-promotion-copy.md`. Environment: Windows 11 Pro 10.0.26200, Node `v24.18.0`, pnpm `9.12.0` via corepack, Docker Server `29.7.2`, `postgres:16` (16.15). Run on 2026-10-02, every heavy gate sequentially. No code changed in the documentation task; every gate below ran against the implementation tree plus the documentation edits (`.env.example`, `docs/integration/DEPLOY.md`, `rollout/apply-0011.sql`, the three Phase 4 documents).
+
+**Read this first.** Everything below is **locally verified**. **Nothing here is hosted-verified.** `0011_offers.sql` was applied only to owned, disposable local Docker Postgres fixtures (`db:verify`, `test:integration`, the `apply-0011.sql` rehearsal). Nothing was applied to any hosted database, nothing was deployed or pushed, and no paid provider, real model or mail was called: the fake LLM is injected in every test, and the evaluation script was never run live. See `PHASE-4-REPORT.md` for what changed, the rulings, the known limits and the owner actions.
+
+### Gate results (Task 11, full inventory)
+
+Every command in `.github/workflows/ci.yml` is in this table, plus `eval:workflows` (not in CI).
+
+| # | Command | Exit | Result |
+|---|---|---|---|
+| 1 | `corepack pnpm typecheck` | 0 | **passed**. Root `tsc --noEmit`, then `packages/{region,scoring,contracts,scan-engine}` each `Done`. |
+| 2 | `corepack pnpm lint` | 0 | **passed**: `✖ 30 problems (0 errors, 30 warnings)` across 18 files. The same count as the P4.4 record; none of the 18 files is a file this branch changed. |
+| 3a | `corepack pnpm test`, **first run** | **1** | **FAILED, not passed**: 2 files failed with `Test timed out in 5000ms` under load (`tests/scan-claim-single-path.test.ts` > "no production source calls claimAuditJob or claim_audit_job outside the wrapper's definition"; `tests/scan-events-single-writer.test.ts` > "only lib/analytics/scan-events.ts inserts into scan_events"), each after its one retry (about 10 s). App part: 325 files passed, 2 failed; 3,820 tests passed, 2 failed. Because the script chains its stages with `&&`, `safe-media` and the packages did not run in this invocation. Both files are the known load-timeout flakes and are unrelated to offers. |
+| 3b | The two failing files, **alone** | 0 | `corepack pnpm exec vitest run tests/scan-claim-single-path.test.ts tests/scan-events-single-writer.test.ts`: **passed**, 2 files / 7 tests, 527 ms. |
+| 3c | `corepack pnpm test`, **full re-run** | 0 | **passed with zero failures**: app 327 files / 3,822 tests, `lib/evidence/safe-media.test.ts` 1 / 62, `region` 3 / 23, `scoring` 16 / 183, `contracts` 3 / 20, `scan-engine` 28 / 299. **Total 378 files / 4,409 tests.** Gate 3c is the pass; 3a is recorded as the flaky run it was. |
+| 4 | `NEON_INTEGRATION=1 corepack pnpm test:integration` | 0 | **passed on the first run, no flakes: 41 files / 441 tests** (282.8 s). New over P4.4: `neon-offers`, `neon-offer-freshness` (and the cases added to existing files). |
+| 5 | `corepack pnpm db:verify` | 0 | **passed**: `0001`–`0011` applied, replay `[]`, **38 tables / 465 columns / 188 constraints / 98 indexes / 8 triggers / 18 functions**, `seededRows` 0, no deferred functions or triggers. Against the P4.4 record (37 / 444 / 172 / 95 / 8 / 14): +1 table (`offers`), +21 columns (20 on `offers`, `actions.offer_id`), +16 constraints, +3 indexes, +4 functions. |
+| 6 | `corepack pnpm test:secret-boundary` | 0 | **passed**: `Secret boundary passed across 56 public artifacts.` (a Node `DEP0190` deprecation warning about `shell: true` printed; it is pre-existing and not a failure). This is the **literal** gate, Turbopack. |
+| 7 | `corepack pnpm test:no-supabase` | 0 | **passed**: "No forbidden retired transport references; only the approved pinned Neon transitive library is permitted". |
+| 8 | `corepack pnpm test:no-self-service-claim` | 0 | **passed**: "OWNER_SELF_SERVICE_CLAIM is not enabled." |
+| 9 | `corepack pnpm build` (`next build`, Turbopack, the literal gate) | 0 | **passed**: `✓ Compiled successfully in 13.3s`, TypeScript finished in 24.7 s, route manifest printed including `/[locale]/owner/[workspaceSlug]/offers`, `/api/offers/[offerId]` (+ `/archive`, `/confirm`, `/promotions`) and `/api/workspaces/[workspaceId]/offers`. **Not blocked on this run:** the Windows-only `radix-ui` Turbopack cascade recorded at every earlier phase did not occur, so no `--webpack` diagnostic was needed or run. |
+| 10 | `corepack pnpm e2e` | 0 | **passed: 31 / 31** (1.3 min), the literal gate with Turbopack. This includes `e2e/owner-shell.spec.ts:16`, which failed once under the P4.4 `--webpack` diagnostic server (see below). |
+| 11 | `corepack pnpm e2e:acceptance` | 0 on the third run; 1 on each of the first two | **passed on the third full run, 39 / 39** (5.8 min), including `offer-promotion.spec.ts`. **The first two full runs each had one failure, so this is not a clean first-run pass.** Run 1: 38 passed, 1 failed: `public-funnel.spec.ts:74` hk "manual scan reaches a report and unlocks it" (`the scan should reach a report`; the page stayed on `/zh-HK/scanning/<id>` for the 120 s poll). Run 2: 38 passed, 1 failed: `merchant-loop.spec.ts:54` "invalid LLM output cannot create or approve a version or charge usage" (`apiRequestContext.post: read ECONNRESET` on `POST /api/actions/<id>/run`). The two failures are in different specs, neither touches offers, and `offer-promotion.spec.ts` passed in all three runs. Each failing spec passed on its own: `public-funnel` 2 / 2 (1.2 min), `merchant-loop` 5 / 5 (1.8 min). The cause was not established; both look like timing or connection trouble on the Playwright-managed `next dev` server on a busy machine (dozens of unrelated node processes and other projects' Docker containers were running), and the third run passing is consistent with that, but that is an inference, not a diagnosis. Recorded, not hidden. Task 10 had one clean 39 / 39 run and one run with a different single failure (`claim-and-market.spec.ts:12`), so this suite has been intermittently flaky on this machine across runs; CI on `ubuntu-latest` is the real gate. |
+| 12 | `corepack pnpm eval:workflows -- --budget-usd 1` | **2** | **refused, as designed**: `eval:workflows refused: not_enabled`. `EVAL_LIVE` was not set, no key was supplied. |
+| 13 | `corepack pnpm eval:workflows -- --check-load` | 0 | **passed**: `load ok: 31 cases` (24 existing + 7 offer cases; R12). No key, no network call. |
+
+**Blocked: none.** No gate was blocked on this run. The P4.4 record's `--webpack` diagnostics (build, secret-boundary, e2e) were not needed.
+
+**Note on the earlier P4.4 e2e finding.** P4.4 recorded `e2e/owner-shell.spec.ts:16` failing **only** under a `--webpack` diagnostic dev server (`getByRole("alert")` resolved to two elements, the page's `<p role="alert">` and Next's `#__next-route-announcer__`), and inferred, without being able to prove it, that the branch was not the cause. On this run the literal Turbopack `e2e` passed 31 / 31 with that spec included. That is consistent with the inference, but it is evidence about this run only; it is not a proof about the P4.4 diagnostic.
+
+### Invariants
+
+| Check | Result |
+|---|---|
+| `git diff dc55e02..31970f9 --stat -- neon/migrations packages` | only `neon/migrations/0011_offers.sql`, 367 insertions: no `0001`–`0010` edit, no vendored-package edit. |
+| `lib/agents/__snapshots__/agents.test.ts.snap` | 758 lines added, 0 removed (`--numstat`), and `--ignore-cr-at-eol` shows 0 removed: existing entries byte-identical (R5). |
+| `git diff dc55e02 --diff-filter=M -- 'lib/agents/agents/*.ts' \| grep '^[-+].*task:'` | prints nothing: no existing agent's `task:` line changed. The only added agent file is `promotion-copy.ts`. |
+| `lib/assistant/live.ts` | unchanged by this branch (`git diff dc55e02..31970f9 --stat -- lib/assistant` prints nothing). |
+
+### Unit-test delta
+
+| Measure | P4.4 final record (`0debe06` + docs) | This branch | Δ |
+|---|---|---|---|
+| App, excl. safe-media | 315 files / 3,540 tests | 327 files / 3,822 tests | **+12 files / +282 tests** |
+| `lib/evidence/safe-media.test.ts` | 1 / 62 | 1 / 62 | 0 |
+| `packages/region` | 3 / 23 | 3 / 23 | 0 |
+| `packages/scoring` | 16 / 183 | 16 / 183 | 0 |
+| `packages/contracts` | 3 / 20 | 3 / 20 | 0 |
+| `packages/scan-engine` | 28 / 299 | 28 / 299 | 0 |
+| **Total** | **366 files / 4,127 tests** | **378 files / 4,409 tests** | **+12 files / +282 tests** |
+
+All four vendored packages are byte-unchanged (their counts are identical by construction). Integration: 39 files / 399 tests → **41 files / 441 tests** (+2 files, +42 tests).
+
+### The `apply-0011.sql` rehearsal
+
+Recorded in full in the "Runbook — `apply-0011.sql`" section of `PHASE-4-REPORT.md`: seven checks (pre-grant refusal, two wrong-journal refusals, first run, `applyMigrations` reporting nothing pending, ownership and runtime access under `SET ROLE sme_app_runtime`, second-run refusal), run twice on a disposable `postgres:16` with identical results. Commands, in order: `docker run` of a loopback-only `postgres:16` → create `neondb_owner` / `neondb`, `smeassistant_migrator`, `sme_app_runtime` → scratch script (outside the repo) → `applyMigrations(0001–0009)` as the migrator → `apply-0010.sql` as `neondb_owner` → `apply-0011.sql` and the checks → `docker rm -f`. `corepack pnpm db:verify` was part of the gate run above and still passes with `0001`–`0011`.
+
+### Not run
+
+- **A real-model evaluation of any kind** (DEC-04).
+- **The hosted migration** (DEC-11): `0011` was never applied outside owned local Docker Postgres.
+- **`corepack pnpm e2e:live`, `e2e:neon-auth`, `neon:readiness` and any hosted check**: need provider keys, a hosted identity target or a hosted database, none authorized.
+- **Real mail, real Stripe, real model**: every test injects a fake.
+- **P4.2, P4.3, P4.5, P4.6.**
+
+### Final-review fix wave
+
+Findings F1–F7, the commits (`d3bd7b4`, `a5e5ce8`, `941bfa2`, `de8dc18`, then a documentation commit) and the gate re-runs are in the "Final-review fix wave" section of the P4.1 part of `PHASE-4-REPORT.md`. Two records above are superseded by the wave: the invariant row "`lib/assistant/live.ts` unchanged by this branch" (F6 adds an offer-action refusal to its draft path; it still has no promotion intent), and the unit totals (app part now 327 files / 3,828 tests, **378 files / 4,415 tests** in all). New or changed tests: `app/api/offers/[offerId]/promotions/route.test.ts` (F2), `app/api/offers/offers.test.ts` (F1 audit payload, F5 no audit), `lib/workspace/runs.test.ts` (F4), `lib/assistant/live.test.ts` (F6), `test/integration/neon-offers.integration.test.ts` (F1 ×2, F5; 27 tests). `test/corpus/workflows/harness.ts` now passes `featureEnv: { OFFER_PROMOTIONS_ENABLED: "true" }`.

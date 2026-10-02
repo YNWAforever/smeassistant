@@ -48,9 +48,18 @@ describe("MoreView", () => {
    * mobile entry point -- the condition, not the instance.
    */
   it("leaves no owner route reachable only from the desktop sidebar", () => {
-    const html = renderToStaticMarkup(<MoreView {...props} />);
+    // Offers is flag-gated, so its mobile entry is checked with the flag on; the next test pins that it is absent otherwise.
+    const html = renderToStaticMarkup(<MoreView {...props} offersEnabled />);
     const orphaned = ownerRoutes().filter((route) => !html.includes(`/owner/kam-man-house/${route}`));
     expect(orphaned).toEqual([]);
+  });
+
+  it("offers Offers on mobile only when the feature is on, carrying the location", () => {
+    expect(renderToStaticMarkup(<MoreView {...props} />)).not.toContain("/offers");
+    expect(renderToStaticMarkup(<MoreView {...props} offersEnabled={false} />)).not.toContain("/offers");
+    const html = renderToStaticMarkup(<MoreView {...props} offersEnabled />);
+    expect(html).toContain('href="/en/owner/kam-man-house/offers?location=yik-yam"');
+    expect(renderToStaticMarkup(<MoreView {...props} locale="zh-TW" offersEnabled />)).toContain("優惠");
   });
 
   it("renders Chinese labels that match the pages they open", () => {

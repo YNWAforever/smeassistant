@@ -12,6 +12,22 @@
 
 `vercel.json` keeps automatic Git deployment disabled for the migration and completion branches. No push/merge/deploy permission is implied by this guide. Old Supabase resources, legacy staff access and domain stay untouched.
 
+## P4.1 offers and promotion copy: migration 0011 and the flag
+
+P4.1 adds migration `neon/migrations/0011_offers.sql` (journal row 11) and one flag, `OFFER_PROMOTIONS_ENABLED`. Nothing here has been applied to any hosted database; hosted acceptance is **NOT RUN**. The statement is [`rollout/apply-0011.sql`](../implementation/owner-platform-v1/rollout/apply-0011.sql); the runbook, its rehearsal and the full phase record are in `docs/implementation/owner-platform-v1/PHASE-4-REPORT.md`.
+
+Order, which matters:
+
+1. **Apply `0011` first, on a Neon test branch of production, then on production, before deploying the P4.1 code.** Run `apply-0011.sql` in the Neon SQL Editor as `neondb_owner`. It refuses unless the journal is exactly `0001`-`0010`, so `apply-0010.sql` must already have been applied. The flag does **not** guard the schema dependency: the action queries and the version-writing path select `actions.offer_id` whether or not the flag is on, so this code against a database without `0011` fails every action read and version write.
+2. **Deploy the code with `OFFER_PROMOTIONS_ENABLED` unset.** With it unset (or any value other than exactly `true`) the offers page answers 404 and every offer route answers 404 `{"error":"not_found"}`; the Offers navigation entry is hidden.
+3. **Then set `OFFER_PROMOTIONS_ENABLED=true` and redeploy** (an environment variable change takes effect on the next deployment). The flag defaults off and is blank in `.env.example`.
+
+Rollback: unset the flag (or set anything but `true`) and redeploy. Exactly what that does:
+
+- **Stops:** the offers page (404) and the Offers nav entry; every offer route (`GET`/`POST /api/workspaces/[id]/offers`, `PATCH /api/offers/[id]`, `…/confirm`, `…/archive`, `…/promotions` all answer 404), so no offer is created, edited, confirmed or archived and no promotion action is created; and every new AI draft or run on an existing offer action (`POST /api/actions/[id]/run` answers 409 `agent_unavailable` for an offer template, shown to the owner as "No agent is available for this action yet", before any model call or run row).
+- **Stays:** offer actions already created stay listed on the actions pages, and their existing versions stay approvable and exportable through the normal version routes, and an owner can still save a hand-edited version (`POST /api/actions/[id]/versions` is not flag-gated; the edit inherits its base version's offer revision). The SQL freshness guard still applies to all of them, so a draft whose offer has changed, expired, been archived or is no longer confirmed is still refused. Because editing and archiving are off too, an approved draft of a current offer can still be exported (and counted) while the flag is off.
+- Nothing is deleted: offers, offer actions and versions stay in the database. `0011` itself is additive and is not rolled back: the new column is nullable, existing rows are null, and the re-created `approve_output_version` / `export_output_version` behave exactly as before for any action without an `offer_id`.
+
 ## Local verification and limits
 
 The Task 16 all-ten-gate epoch is recorded in LAUNCH-REPORT with exact source and warning counts. Task 17 adds one actual-SQL recovery rehearsal: a new application user and report survive a drained pool, restart of the same owned network-none Postgres container and compatible repository reconnect. It also verifies a continued report write. This is not hosted rollback, managed Auth recovery or an old build test.

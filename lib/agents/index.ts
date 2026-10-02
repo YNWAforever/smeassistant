@@ -4,6 +4,7 @@ import { igBio } from "./agents/ig-bio";
 import { localSeoBrief } from "./agents/local-seo-brief";
 import { menuTranslation } from "./agents/menu-translation";
 import { photoBrief } from "./agents/photo-brief";
+import { promotionCopy } from "./agents/promotion-copy";
 import { reviewReply } from "./agents/review-reply";
 import { reviewRequest } from "./agents/review-request";
 import { socialPost } from "./agents/social-post";
@@ -30,6 +31,7 @@ export const AGENTS: Record<AgentKey, AgentDefinition> = {
   photo_brief: photoBrief,
   local_seo_brief: localSeoBrief,
   menu_translation: menuTranslation,
+  promotion_copy: promotionCopy,
 };
 
 export function isAgentKey(value: unknown): value is AgentKey {

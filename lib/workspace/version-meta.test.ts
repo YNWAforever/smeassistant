@@ -89,3 +89,15 @@ describe("parseVersionMeta", () => {
     expect(parseVersionMeta({ acceptance_criteria: [1, null, "keep this one"] }, "agent").acceptanceCriteria).toEqual(["keep this one"]);
   });
 });
+
+describe("offerRevision (P4.1)", () => {
+  it("reads the integer revision the binding recorded", () => {
+    expect(parseVersionMeta({ offer_id: "o-1", offer_revision: 3 }, "agent").offerRevision).toBe(3);
+  });
+
+  it("is null for a non-offer version and for anything that is not an integer", () => {
+    expect(parseVersionMeta({}, "agent").offerRevision).toBeNull();
+    expect(parseVersionMeta(null, "user").offerRevision).toBeNull();
+    for (const bad of ["3", 1.5, null, true, [3]]) expect(parseVersionMeta({ offer_revision: bad }, "agent").offerRevision).toBeNull();
+  });
+});

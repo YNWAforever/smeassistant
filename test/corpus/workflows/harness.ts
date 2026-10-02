@@ -11,6 +11,7 @@ import type {
   FinishActionRunInput,
 } from "@/lib/repositories/artifacts";
 import type { Membership } from "@/lib/auth";
+import type { Offer } from "@/lib/workspace/offers";
 
 /**
  * Regression corpus for the supported workflows (P4.4).
@@ -66,6 +67,23 @@ export const corpusCaseSchema = z.object({
         owner_response: z.string().nullable().optional(),
       }),
     )
+    .optional(),
+  // The offer an offer-* workflow reads (P4.1). Omitted means the action has no offer_id.
+  offer: z
+    .object({
+      title: z.string(),
+      details: z.string(),
+      terms: z.string().default(""),
+      price_amount: z.number().nullable().default(null),
+      currency: z.enum(["HKD", "TWD"]).nullable().default(null),
+      valid_from: z.string(),
+      valid_until: z.string(),
+      claims: z.array(z.string()).default([]),
+      prohibited_terms: z.array(z.string()).default([]),
+      status: z.enum(["draft", "confirmed", "archived"]).default("confirmed"),
+      expired: z.boolean().default(false),
+      revision: z.number().int().min(1).default(1),
+    })
     .optional(),
   // A string is the model's text, null is llmComplete's "no answer", and
   // { throws } makes that call reject (a timeout or transport error).
@@ -149,6 +167,7 @@ export async function runCorpusCase(c: CorpusCase, llm: typeof llmComplete): Pro
     action_state: "recommended",
     measurement_state: "not_eligible",
     capability: template.capability,
+    offer_id: c.offer ? "offer-corpus" : null,
     created_at: "2026-09-01T00:00:00Z",
     updated_at: "2026-09-01T00:00:00Z",
   };
@@ -214,6 +233,30 @@ export async function runCorpusCase(c: CorpusCase, llm: typeof llmComplete): Pro
     },
   };
 
+  const offer: Offer | null = c.offer
+    ? {
+        id: "offer-corpus",
+        workspaceId: "ws-corpus",
+        locationId: "loc-corpus",
+        title: c.offer.title,
+        details: c.offer.details,
+        terms: c.offer.terms,
+        priceAmount: c.offer.price_amount,
+        currency: c.offer.currency,
+        validFrom: c.offer.valid_from,
+        validUntil: c.offer.valid_until,
+        claims: c.offer.claims,
+        prohibitedTerms: c.offer.prohibited_terms,
+        assetId: null,
+        status: c.offer.status,
+        revision: c.offer.revision,
+        confirmedAt: c.offer.status === "confirmed" ? "2026-09-30T00:00:00Z" : null,
+        expired: c.offer.expired,
+        createdAt: "2026-09-30T00:00:00Z",
+        updatedAt: "2026-09-30T00:00:00Z",
+      }
+    : null;
+
   const prompts: string[] = [];
   const recording = (async (prompt, options) => {
     prompts.push(prompt);
@@ -228,8 +271,11 @@ export async function runCorpusCase(c: CorpusCase, llm: typeof llmComplete): Pro
     persistence,
     // Keeps the corpus database-free: text_only cases satisfy the asset gate without a lookup.
     assets: { get: async () => null },
+    offers: { get: async (workspaceId, offerId) => (offer && workspaceId === offer.workspaceId && offerId === offer.id ? offer : null) },
     llm: recording,
     budgetEnv: {},
+    // The corpus exercises the shipped feature: promotion_copy cases run with the P4.1 flag on.
+    featureEnv: { OFFER_PROMOTIONS_ENABLED: "true" },
   });
   if (!finishInput) throw new Error(`Case ${c.id}: persistence.finish was never called`);
   return { result, prompts, finishInput, llmCalls: prompts.length };

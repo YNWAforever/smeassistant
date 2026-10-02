@@ -1,12 +1,12 @@
 import Link from "next/link"
-import { Activity, AlertTriangle, Bell, CalendarDays, CheckCircle2, ChevronRight, CircleDashed, Clock3, CreditCard, Layers3, MapPin, Palette, PlugZap, ShieldAlert, Users, WifiOff } from "lucide-react"
+import { Activity, AlertTriangle, Bell, CalendarDays, CheckCircle2, ChevronRight, CircleDashed, Clock3, CreditCard, Layers3, MapPin, Palette, PlugZap, ShieldAlert, Tag, Users, WifiOff } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { PageIntro, SectionCard } from "@/components/product-ui"
-import type { PrototypeLocale } from "@/lib/copy"
+import { copy, type PrototypeLocale } from "@/lib/copy"
 import { withLocation } from "@/lib/workspace/format"
 
-export function MoreView({ locale, workspaceSlug, locationCount, locationSlug }: { locale: PrototypeLocale; workspaceSlug: string; locationCount: number; locationSlug: string }) {
+export function MoreView({ locale, workspaceSlug, locationCount, locationSlug, offersEnabled = false }: { locale: PrototypeLocale; workspaceSlug: string; locationCount: number; locationSlug: string; offersEnabled?: boolean }) {
   const isChinese = locale !== "en"
   const base = `/${locale}/owner/${workspaceSlug}`
   const links = [
@@ -19,6 +19,8 @@ export function MoreView({ locale, workspaceSlug, locationCount, locationSlug }:
     // Wording and icons come from the destinations themselves, so each row and
     // the page it opens agree.
     { en: "Brand assets", zh: "品牌素材", detailEn: "Approved photos, menus and usage rights", detailZh: "已核准相片、餐牌及使用權", icon: Layers3, href: withLocation(`${base}/assets`, locationSlug) },
+    // P4.1: the Offers page 404s until the flag is on, so its entry exists only then (the desktop sidebar mirrors this).
+    ...(offersEnabled ? [{ en: copy.en.workspace.offers.nav, zh: copy[locale].workspace.offers.nav, detailEn: copy.en.workspace.offers.page.eyebrow, detailZh: copy[locale].workspace.offers.page.eyebrow, icon: Tag, href: withLocation(`${base}/offers`, locationSlug) }] : []),
     { en: "Calendar", zh: "日曆", detailEn: "Rescan cadence and dated work", detailZh: "重新掃描節奏及有到期日的工作", icon: CalendarDays, href: `${base}/calendar` },
     { en: "Activity", zh: "活動紀錄", detailEn: "Append-only decision history", detailZh: "只增不改的決定紀錄", icon: Activity, href: `${base}/activity` },
     { en: "Brand profile", zh: "品牌資料", detailEn: "Voice, claims and guardrails", detailZh: "語氣、說法及保障規則", icon: Palette, href: `${base}/settings/brand` },

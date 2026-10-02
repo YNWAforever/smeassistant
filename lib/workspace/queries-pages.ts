@@ -128,6 +128,8 @@ export interface VersionRow {
   guardrails: GuardrailFlag[];
   agentNotes: string[];
   acceptanceCriteria: string[];
+  /** The offer revision this version recorded; null for a non-offer action or when none was recorded. */
+  offerRevision: number | null;
 }
 
 export interface RunRow {
@@ -224,6 +226,8 @@ export interface FaqQuestionField {
 
 export interface ActionDetail {
   action: ActionOverview;
+  /** The `actions.offer_id` column: set only for an offer promotion action (P4.1). */
+  offerId: string | null;
   versions: VersionRow[];
   runs: RunRow[];
   measurements: MeasurementRow[];
@@ -813,7 +817,7 @@ export async function getAction(ctx: WorkspaceContext, actionId: string): Promis
     buildBusinessContext(ctx, row, action, brand),
     buildFaqQuestions(ctx, row, brand),
   ]);
-  return { action, versions, runs, measurements, scanInputs, businessContext, faqQuestions };
+  return { action, offerId: row.offer_id ?? null, versions, runs, measurements, scanInputs, businessContext, faqQuestions };
 }
 
 // ---------------------------------------------------------------------------

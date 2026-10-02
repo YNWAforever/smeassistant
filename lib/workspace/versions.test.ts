@@ -46,6 +46,9 @@ describe("typed artifact wrappers", () => {
     "version_not_found",
     "invalid_decision",
     "invalid_mode",
+    "offer_changed",
+    "offer_inactive",
+    "offer_expired",
   ])("maps %s", async (code) => {
     await expect(
       approveVersion(
@@ -58,6 +61,21 @@ describe("typed artifact wrappers", () => {
       ),
     ).rejects.toMatchObject({ code });
   });
+  it.each(["offer_changed", "offer_inactive", "offer_expired"])(
+    "maps an export refused with %s",
+    async (code) => {
+      await expect(
+        exportVersion(
+          repository({
+            exportOutputVersion: async () => {
+              throw new Error(code);
+            },
+          }),
+          { versionId: "v", actorId: "u", mode: "export", idempotencyKey: "k" },
+        ),
+      ).rejects.toEqual(new VersionError(code as "offer_changed"));
+    },
+  );
   it("sanitizes unknown failures", async () => {
     await expect(
       approveVersion(

@@ -1,5 +1,6 @@
 import type { WorkspaceAgentKey, TemplateKey } from "@/lib/workspace/templates";
 import type { ActionOverview } from "@/lib/workspace/overview";
+import type { Offer, OfferInput } from "@/lib/workspace/offers";
 
 /**
  * Browser-side helpers for the Phase 4 mutation routes (CLAUDE.md §3.2.3,
@@ -298,4 +299,44 @@ export function disconnectGoogleConnection(workspaceId: string, locale?: string)
     headers: JSON_HEADERS,
     body: JSON.stringify(locale ? { locale } : {}),
   });
+}
+
+// ---------------------------------------------------------------------------
+// P4.1: confirmed offers and promotion drafts (design 3.1). Same never-throw
+// result shape. The routes answer 404 until OFFER_PROMOTIONS_ENABLED is on, so
+// none of these is reachable from a page that is not rendered.
+// ---------------------------------------------------------------------------
+
+export type OfferResult = { offer: Offer };
+export type ConfirmOfferResult = { kind: "confirmed" | "already-confirmed"; revision: number };
+export type ArchiveOfferResult = { kind: "archived" | "already-archived"; cancelledActions: number };
+export type PromotionChannel = "instagram" | "google";
+export type CreatePromotionsResult = { actions: Array<{ channel: PromotionChannel; actionId: string; created: boolean }> };
+export type UsageResult = { period: string; approved_deliveries: number; allowance: number | null; tier: string };
+
+export function createOffer(workspaceId: string, body: OfferInput): Promise<ClientResult<OfferResult>> {
+  return post(`/api/workspaces/${encodeURIComponent(workspaceId)}/offers`, body);
+}
+
+/** `expected_revision` is the revision the editor loaded; a stale one answers 409 `offer_revision_changed`. */
+export function updateOffer(offerId: string, expectedRevision: number, body: OfferInput): Promise<ClientResult<OfferResult>> {
+  return patch(`/api/offers/${encodeURIComponent(offerId)}`, { ...body, expected_revision: expectedRevision });
+}
+
+export function confirmOffer(offerId: string, expectedRevision: number): Promise<ClientResult<ConfirmOfferResult>> {
+  return post(`/api/offers/${encodeURIComponent(offerId)}/confirm`, { expected_revision: expectedRevision });
+}
+
+export function archiveOffer(offerId: string): Promise<ClientResult<ArchiveOfferResult>> {
+  return post(`/api/offers/${encodeURIComponent(offerId)}/archive`, {});
+}
+
+/** One action per channel; a repeat or a double click returns the same ids with `created: false`. Calls no model. */
+export function createPromotions(offerId: string, channels?: PromotionChannel[]): Promise<ClientResult<CreatePromotionsResult>> {
+  return post(`/api/offers/${encodeURIComponent(offerId)}/promotions`, channels ? { channels } : {});
+}
+
+/** The same read the sidebar and the delivery card use, so the disclosure quotes the real allowance. */
+export function getUsage(workspaceId: string): Promise<ClientResult<UsageResult>> {
+  return request(`/api/workspaces/${encodeURIComponent(workspaceId)}/usage`, { method: "GET" });
 }
