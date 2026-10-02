@@ -72,6 +72,9 @@ export async function POST(req: Request, { params }: Ctx) {
 
     const offer = await offerRepository().get(scope.workspaceId, offerId);
     if (!offer) return json({ error: "not_found" }, 404);
+    // The action is created at the location this read returns, so authorize that one too:
+    // a relocation between the scope read and this read must not widen the caller's reach.
+    if (!canUseOffer(auth.membership, offer.locationId)) return json({ error: "forbidden" }, 403);
     if (offer.status !== "confirmed") return json({ error: "offer_inactive" }, 409);
     if (offer.expired) return json({ error: "offer_expired" }, 409);
 

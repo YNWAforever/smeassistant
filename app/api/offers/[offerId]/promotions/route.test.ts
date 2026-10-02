@@ -261,6 +261,17 @@ describe("POST /api/offers/[offerId]/promotions", () => {
     expect(mocks.actions.createObjective).not.toHaveBeenCalled();
   });
 
+  it("refuses a scoped manager when the offer read moved it out of scope after the scope check (F2)", async () => {
+    mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("manager", [LOCATION_ID]));
+    mocks.offers.scope.mockResolvedValue({ offerId: OFFER_ID, workspaceId: WORKSPACE_ID, locationId: LOCATION_ID });
+    mocks.offers.get.mockResolvedValue(offer({ locationId: L2 }));
+    const res = await post({});
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: "forbidden" });
+    expect(mocks.actions.createObjective).not.toHaveBeenCalled();
+    expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
+  });
+
   it("answers 429 when rate limited, before creating anything", async () => {
     mocks.enforceRateLimit.mockResolvedValue({ allowed: false, retryAfterSeconds: 9 });
     expect((await post({})).status).toBe(429);
