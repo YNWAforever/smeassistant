@@ -9,6 +9,6 @@ describe("acceptance isolation", () => {
   it("does not inherit paid keys or production fixture conversion", () => {
     process.env.SERPAPI_API_KEY = "must-not-escape";
     const env = isolatedEnv({ app: "http://127.0.0.1:1", api: "http://127.0.0.1:2", llm: "http://127.0.0.1:3", databaseUrl: "postgresql://fixture@127.0.0.1:4/sme_neon_it_test", identitySecret: "fixture-secret" });
-    expect(env.SERPAPI_API_KEY).toBeUndefined(); expect(env.VERCEL_ENV).toBeUndefined(); expect(env.SCAN_SOURCES).toBe("fixture"); expect(env.SCAN_FIXTURE).toBe("unavailable-ig"); expect(env.OWNER_SELF_SERVICE_CLAIM).toBeUndefined(); expect(env.OFFER_PROMOTIONS_ENABLED).toBe("true");
+    expect(env.SERPAPI_API_KEY).toBeUndefined(); expect(env.VERCEL_ENV).toBeUndefined(); expect(env.SCAN_SOURCES).toBe("fixture"); expect(env.SCAN_FIXTURE).toBe("unavailable-ig"); expect(env.OWNER_SELF_SERVICE_CLAIM).toBeUndefined(); expect(env.OFFER_PROMOTIONS_ENABLED).toBe("true"); expect(env.WORK_PACKS_ENABLED).toBe("true");
   });
 });
