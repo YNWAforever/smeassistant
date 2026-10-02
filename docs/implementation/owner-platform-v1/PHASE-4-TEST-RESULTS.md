@@ -1,6 +1,6 @@
 # Phase 4 test results
 
-Gate-by-gate record for Phase 4. Each slice has its own section. P4.4 and P4.1 are built; P4.2 and P4.3 are not started.
+Gate-by-gate record for Phase 4. Each slice has its own section. P4.4, P4.1 and P4.2 are built; P4.3 is not started.
 
 ## P4.4 — reusable workflow contract
 
@@ -174,3 +174,75 @@ Recorded in full in the "Runbook — `apply-0011.sql`" section of `PHASE-4-REPOR
 ### Final-review fix wave
 
 Findings F1–F7, the commits (`d3bd7b4`, `a5e5ce8`, `941bfa2`, `de8dc18`, then a documentation commit) and the gate re-runs are in the "Final-review fix wave" section of the P4.1 part of `PHASE-4-REPORT.md`. Two records above are superseded by the wave: the invariant row "`lib/assistant/live.ts` unchanged by this branch" (F6 adds an offer-action refusal to its draft path; it still has no promotion intent), and the unit totals (app part now 327 files / 3,828 tests, **378 files / 4,415 tests** in all). New or changed tests: `app/api/offers/[offerId]/promotions/route.test.ts` (F2), `app/api/offers/offers.test.ts` (F1 audit payload, F5 no audit), `lib/workspace/runs.test.ts` (F4), `lib/assistant/live.test.ts` (F6), `test/integration/neon-offers.integration.test.ts` (F1 ×2, F5; 27 tests). `test/corpus/workflows/harness.ts` now passes `featureEnv: { OFFER_PROMOTIONS_ENABLED: "true" }`.
+
+## P4.2 — work packs (visibility starter pack)
+
+Candidate: branch `p42-work-packs`, HEAD `a071ff3` (implementation) plus this documentation commit. Base `a71c5df` (`origin/main`, PR #28). Spec: [`docs/superpowers/specs/2026-10-02-work-packs-design.md`](../../superpowers/specs/2026-10-02-work-packs-design.md). Plan: `docs/superpowers/plans/2026-10-02-work-packs.md`. Environment: Windows 11 Pro 10.0.26200, Node `v24.18.0`, pnpm `9.12.0` via corepack, Docker Server `29.7.2`, `postgres:16` (16.15). Run on 2026-10-03, every heavy gate sequentially, on a busy machine (dozens of unrelated node processes and other projects' Docker containers were running). No code changed in the documentation task; every gate below ran against the implementation tree plus the documentation edits (`.env.example`, `docs/integration/DEPLOY.md`, `rollout/apply-0012.sql`, the three Phase 4 documents).
+
+**Read this first.** Everything below is **locally verified**. **Nothing here is hosted-verified.** `0012_work_packs.sql` was applied only to owned, disposable local Docker Postgres fixtures (`db:verify`, `test:integration`, the `apply-0012.sql` rehearsal). Nothing was applied to any hosted database, nothing was deployed or pushed, and no paid provider, real model or mail was called: the fake LLM is injected in every test, and the evaluation script was never run live. See `PHASE-4-REPORT.md` for what changed, the rulings, the known limits and the owner actions.
+
+### Gate results (Task 7, full inventory)
+
+Every command in `.github/workflows/ci.yml` is in this table (CI has no gate beyond this list), plus `eval:workflows` (not in CI).
+
+| # | Command | Exit | Result |
+|---|---|---|---|
+| 1 | `corepack pnpm typecheck` | 0 | **passed**. Root `tsc --noEmit`, then `packages/{region,scoring,contracts,scan-engine}` each `Done`. |
+| 2 | `corepack pnpm lint` | 0 | **passed**: `✖ 30 problems (0 errors, 30 warnings)` across 18 files; the same count as the P4.1 record, and none of the 18 files is a file this branch changed. |
+| 3a | `corepack pnpm test`, **run 1** | **1** | **FAILED, not passed**: five files failed with `Test timed out in 5000ms` (after one retry each, 10–15 s): `tests/scan-claim-single-path.test.ts`, `tests/scan-events-single-writer.test.ts`, `app/api/actions/[actionId]/route.test.ts` ("dismisses an action and records action.dismissed"), `app/api/versions/[versionId]/versions.test.ts` ("approves this exact version and reports idempotent on a repeat"), `app/api/actions/[actionId]/versions/route.test.ts` ("saves a manual edit as v2 on top of v1 through the RPC"). App part: 329 files passed, 5 failed; 3,908 tests passed, 5 failed. Because the script chains its stages with `&&`, `safe-media` and the packages did not run in this invocation. |
+| 3b | The five failing files, **alone** | 0 | `corepack pnpm exec vitest run` on the five paths: **passed**, 5 files / 34 tests. |
+| 3c | `corepack pnpm test`, **run 2** | **1** | **FAILED**: `scan-claim-single-path` and `scan-events-single-writer` (the same timeout); 332 files / 3,911 tests passed, 2 failed. |
+| 3d | `corepack pnpm test`, **runs 3 and 4** | **1** each | **FAILED**: `app/api/versions/[versionId]/versions.test.ts` > approve "reports idempotent on a repeat" timed out (5,000 ms), in both runs; 333 files / 3,912 tests passed, 1 failed each. The file alone: **passed**, 14 / 14 (2.0 s). |
+| 3e | The stages the chained script skipped, run separately | 0 | `lib/evidence/safe-media.test.ts` 1 / 62; `packages/region` 3 / 23; `scoring` 16 / 183; `contracts` 3 / 20; `scan-engine` 28 / 299: all **passed**. |
+| 3f | Diagnostic: `vitest run --exclude lib/evidence/safe-media.test.ts --testTimeout=30000` | 0 | **334 / 334 files, 3,913 / 3,913 tests passed** (72 s). **A diagnostic, not the gate**: it shows every failure above is the 5 s timeout under load, not a logic failure. The gate (3a, 3c, 3d) never passed clean on this machine; recorded, not hidden. Totals if every stage is counted once: **385 files / 4,500 tests**. |
+| 4 | `NEON_INTEGRATION=1 corepack pnpm test:integration` | 0 | **passed on the first run, no flakes: 43 files / 463 tests** (517 s). New over P4.1: `neon-work-packs` (17), `neon-work-packs-flag-off` (2). |
+| 5 | `corepack pnpm db:verify` | 0 | **passed**: `0001`–`0012` applied, replay `[]`, **40 tables / 477 columns / 198 constraints / 102 indexes / 8 triggers / 18 functions**, `seededRows` 0, no deferred functions or triggers. Against the P4.1 record (38 / 465 / 188 / 98 / 8 / 18): +2 tables, +12 columns, +10 constraints, +4 indexes. |
+| 6 | `corepack pnpm test:no-supabase` | 0 | **passed**: "No forbidden retired transport references; only the approved pinned Neon transitive library is permitted". |
+| 7 | `corepack pnpm test:no-self-service-claim` | 0 | **passed**: "OWNER_SELF_SERVICE_CLAIM is not enabled." |
+| 8 | `corepack pnpm eval:workflows -- --check-load` | 0 | **passed**: `load ok: 31 cases` (unchanged: this slice adds no corpus case). No key, no network call. |
+| 9 | `corepack pnpm build` (`next build`, Turbopack, the literal gate) | **1** | **blocked**: `Module not found: Can't resolve '@radix-ui/react-dismissable-layer'` raised from `@radix-ui/react-tooltip`, through `components/ui/tooltip.tsx` → `components/ui/sidebar.tsx` → `components/product-ui.tsx` → `app/[locale]/owner/[workspaceSlug]/layout.tsx`. The standing Windows-only local cascade; it did not occur in the P4.1 run, so it is intermittent. No file this branch changes is in the trace. |
+| 10 | `corepack pnpm test:secret-boundary` (literal) | **1** | **blocked**: it shells out to the Turbopack build and inherits #9. |
+| 11 | `corepack pnpm e2e` (literal) | **1** | **blocked**: the Playwright global setup failed, `Acceptance service not healthy: http://localhost:3100` (the Turbopack dev server cannot serve the owner shell; `test-results/fixture-next.log` shows the same radix error). |
+| 12 | `corepack pnpm e2e:acceptance` (literal) | **1** | **blocked**: tests 1–8 each failed with `Acceptance service not healthy` after about 65 s; the run was **stopped by hand** (`taskkill` of the Playwright process tree) rather than wait out the remaining 32 timeouts. |
+
+**`--webpack` diagnostics (not the literal gates).** As at P4.4, the blocked gates were repeated with webpack in place of Turbopack. These prove the code builds and behaves; they do not replace the Turbopack gates, and CI on `ubuntu-latest` is the real gate. The two temporary one-token edits (`"--webpack"` added to the build step of `scripts/assert-secret-boundary.mjs` and to the `next dev` arguments in `test/e2e/environment.ts`) were restored from HEAD and are not committed; `git status` shows neither file.
+
+| # | Diagnostic | Result |
+|---|---|---|
+| 9d | `corepack pnpm exec next build --webpack` | **passed**: `✓ Compiled successfully in 41s`, TypeScript route-type check ran, route manifest printed including `/[locale]/owner/[workspaceSlug]/packs/[packId]`, `/api/packs/[packId]` and `/api/workspaces/[workspaceId]/packs`. |
+| 10d | `test:secret-boundary` with `--webpack` | **passed**: `Secret boundary passed across 148 public artifacts.` (the webpack build emits more public artifacts than Turbopack's 56). |
+| 11d | `e2e` with `--webpack` | **30 passed, 1 failed** (1.5 min). The failure is `e2e/owner-shell.spec.ts:16`, `getByRole("alert")` resolving to two elements (the page's `<p role="alert">` and Next's `#__next-route-announcer__`): the same failure recorded under P4.4 for the webpack dev server only, in a spec and files this branch does not touch; the literal Turbopack run passed it 31 / 31 under P4.1. |
+| 12d | `e2e:acceptance` with `--webpack` | **passed 40 / 40 on the first run** (9.0 min), including `work-pack.spec.ts` ("the starter pack becomes drafts, one is approved and exported, and starting again returns the same pack"). Task 6 had seen 20 / 40 fail under load on a busier machine (all stuck at `/owner/sign-in/complete`, each passing alone), so this suite is load-sensitive on this machine. |
+
+### Invariants
+
+| Check | Result |
+|---|---|
+| `git diff a71c5df..a071ff3 --stat -- neon/migrations packages lib/agents/__snapshots__` | only `neon/migrations/0012_work_packs.sql`, 62 insertions: no `0001`–`0011` edit, no vendored-package edit, no agent-snapshot change. |
+| Changed lines of the code diff that mention `agent_runs` | none (`grep '^[+-]'`); `lib/repositories/fix-pack.ts` and the fix-pack-drafts route are unchanged. |
+| SQL touching usage or approve/export | none added; the only SQL added is `0012` (two tables). |
+| Flag off | `neon-work-packs-flag-off` records every statement against a schema stopping at `0011`: zero mention a pack table. |
+
+### Unit-test delta
+
+| Measure | P4.1 final record | This branch | Δ |
+|---|---|---|---|
+| App, excl. safe-media | 327 files / 3,828 tests | 334 files / 3,913 tests | **+7 files / +85 tests** |
+| `lib/evidence/safe-media.test.ts` | 1 / 62 | 1 / 62 | 0 |
+| `packages/region` / `scoring` / `contracts` / `scan-engine` | 3 / 23, 16 / 183, 3 / 20, 28 / 299 | identical | 0 |
+| **Total** | **378 files / 4,415 tests** | **385 files / 4,500 tests** | **+7 files / +85 tests** |
+
+New test files: `app/api/packs/[packId]/route.test.ts`, `app/api/workspaces/[workspaceId]/packs/route.test.ts`, `components/workspace/pack-card.test.tsx`, `pack-view.test.tsx`, `lib/workspace/use-sequential-runs.test.tsx`, `home-packs.test.ts`, `packs.test.ts`; existing files extended: `fix-pack-card.test.tsx`, `home-brief.test.tsx`, `client.test.ts`, `more-view.test.tsx`, `test/e2e/safety.test.ts`. Integration: 41 files / 441 tests (the P4.1 Task 11 record; its fix wave then added three tests to `neon-offers` without a full re-run) → **43 files / 463 tests** (+2 files). All four vendored packages are byte-unchanged.
+
+### The `apply-0012.sql` rehearsal
+
+Recorded in full in the "Runbook — `apply-0012.sql`" section of `PHASE-4-REPORT.md`: seven checks (pre-grant refusal, two wrong-journal refusals, first run, `applyMigrations` reporting nothing pending, ownership and runtime access under `SET ROLE sme_app_runtime`, second-run refusal), run twice on a disposable `postgres:16` with identical results. Commands, in order: `docker run` of a loopback-only `postgres:16` → create `neondb_owner` / `neondb`, `smeassistant_migrator`, `sme_app_runtime` → scratch script (outside the repo) → `applyMigrations(0001–0009)` as the migrator → `apply-0010.sql` and `apply-0011.sql` as `neondb_owner` → `apply-0012.sql` and the checks → `docker rm -f`. `corepack pnpm db:verify` is part of the gate run above and passes with `0001`–`0012`.
+
+### Not run
+
+- **A real-model evaluation of any kind** (DEC-04).
+- **The hosted migration** (DEC-11): `0012` was never applied outside owned local Docker Postgres.
+- **The literal Turbopack `build`, `test:secret-boundary`, `e2e` and `e2e:acceptance`** on this machine (blocked, above); only their `--webpack` diagnostics ran.
+- **`corepack pnpm e2e:live`, `e2e:neon-auth`, `neon:readiness` and any hosted check**: need provider keys, a hosted identity target or a hosted database, none authorized.
+- **Real mail, real Stripe, real model**: every test injects a fake.
+- **P4.3, P4.5, P4.6.**

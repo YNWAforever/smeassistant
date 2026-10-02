@@ -1,6 +1,6 @@
 # Phase 4 report
 
-Phase 4 of the owner-platform plan (Master Plan §7). Two slices are built so far: P4.4 (reusable workflow contract) and P4.1 (confirmed offers and promotion copy). P4.2 and P4.3 have not been started, and P4.5 and P4.6 are deliberately not built.
+Phase 4 of the owner-platform plan (Master Plan §7). Three slices are built so far: P4.4 (reusable workflow contract), P4.1 (confirmed offers and promotion copy) and P4.2 (work packs: the visibility starter pack). P4.3 has not been started, and P4.5 and P4.6 are deliberately not built.
 
 ## P4.4 — reusable workflow contract
 
@@ -381,3 +381,177 @@ The final whole-branch review (`dc55e02..9ac1977`) returned four important and f
 | Invariants | — | `git diff 9ac1977 --stat -- neon/migrations packages lib/agents/__snapshots__` prints nothing. |
 
 Not re-run in this wave: `db:verify`, `build`, `test:secret-boundary`, `test:no-supabase`, `test:no-self-service-claim`, `e2e` and `e2e:acceptance` (no migration change; the Task 11 records stand for them). No real model was called and `EVAL_LIVE` was never set.
+
+## P4.2 — work packs (visibility starter pack)
+
+**Branch** `p42-work-packs`, base `a71c5df` (`origin/main`, PR #28, the merged P4.1 slice). Spec commit `a4fa0b1`, plan `b0b32d5`, implementation commits `06ae80a`..`a071ff3` (six commits, listed below), then this Task 7 documentation commit. Committed diff before this commit: 46 files, 4,055 insertions, 62 deletions (two of the files are the spec and the plan). Worktree `C:\Users\laich\Documents\smeassistant\.claude\worktrees\p42-work-packs`. Node `v24.18.0`, pnpm `9.12.0` via corepack, Windows 11 Pro 10.0.26200, Docker Server `29.7.2`, `postgres:16` (server 16.15). Gates run 2026-10-03.
+
+Built from `docs/superpowers/plans/2026-10-02-work-packs.md` (Tasks 1–7) against the design in [`docs/superpowers/specs/2026-10-02-work-packs-design.md`](../../superpowers/specs/2026-10-02-work-packs-design.md).
+
+**Implemented and locally verified. Nothing here is hosted-verified.** One new migration, `neon/migrations/0012_work_packs.sql`, exists and has been applied **only** to owned, disposable local Docker Postgres fixtures (`db:verify`, `test:integration`, and the `apply-0012.sql` rehearsal). Nothing was applied to any hosted or Neon database, nothing was deployed or pushed, no paid provider or real model was called (the fake LLM is injected in every test and the acceptance journey), and no mail was sent. The feature is behind `WORK_PACKS_ENABLED`, which defaults off.
+
+### What this closes
+
+Master Plan §7 P4.2 (sources E3, F-30, and the remaining part of F-29): a **pack is a grouping of ordinary evidence-linked actions** and their existing immutable versions, not a second output, approval or billing system. This slice ships one fixed pack, the **visibility starter pack**, per location: reply to reviews, FAQ plus JSON-LD, and website basics (`review-response`, `visibility-content`, `website-basics`, in that order).
+
+- **Idempotent generation.** `startPack` creates or reuses each item's action through the existing `createObjective` with the same `dedupe_key` scan derivation uses, inside one transaction guarded by a unique partial index on the open pack, so two people pressing Start at once get one pack and the same id, and a retry never duplicates the three actions. It never calls a model.
+- **Approval and export stay exact.** The pack stores no approval, delivery, run or output state: an item's status is always derived from its action, its latest run and its latest version. No approve or export control is rendered on any pack surface; both happen only on the action's own page, on the exact version.
+- **Partial progress.** Each item has its own state and its own Retry, and retrying one item runs only that action. A refused spend (paused AI, budget reached) stops the loop and shows the existing owner copy once.
+- **The legacy Fix Pack card.** F-30: the card was disconnected (no generator in this repository; only staff tooling writes `agent_runs`). With the flag on, Home shows the pack card, and pending staff drafts remain reviewable under "Earlier staff drafts" through the existing routes, review controls and audit, only while at least one is pending. `agent_runs` is never written, rewritten or relabelled, and no changed line in this branch's code diff mentions it. F-29 was already closed at the baseline (approving or rejecting a Fix Pack draft writes an audit row); this slice keeps it reachable.
+
+Before this slice there was no pack model (no table, route or page), and the Home Fix Pack card could only ever show staff-written drafts.
+
+### Decisions (user, 2026-10-02)
+
+| Question | Decision |
+|---|---|
+| What goes into a pack | **One fixed "visibility starter pack"** per location: review replies, FAQ + JSON-LD and website basics, reusing the open actions the scan created. Owners do not assemble anything. |
+| The legacy Fix Pack card | **Replace it, keep history.** Home shows the pack card. Pending staff drafts in `agent_runs` stay reviewable in an "Earlier staff drafts" section while any are pending. `agent_runs` rows are never rewritten or relabelled. |
+| What starting a pack runs | **Create, then draft each item.** Create or reuse each item's action, then run a draft for each, one at a time, with independent failure and retry. |
+| Storage | **New tables** (migration `0012`) for idempotency, per-item membership and pack history. |
+| Delivery unit | Unchanged DEC-14 safe default: each approved version counts once on its first export. A three-item pack is up to three deliveries. This is shown before anything runs. |
+
+### What changed, by task
+
+| Task | Commit(s) | What it did |
+|---|---|---|
+| Design and plan | `a4fa0b1`, `b0b32d5` | The spec, then the plan. |
+| 1. Migration `0012_work_packs.sql` | `06ae80a` | `public.work_packs` (workspace, location, `kind` CHECK `visibility_starter`, creator, `closed_at`) and `public.work_pack_items` (PK `(pack_id, template_key)`, position 1–3, template CHECK), the unique partial index `work_packs_open_idx` on `(workspace_id, coalesce(location_id, zero-uuid), kind) WHERE closed_at IS NULL` that makes Start idempotent, RLS, the `server_application` policy and `sme_app_runtime` grants as `0010`/`0011`. `work_pack_items.action_id` is `DEFERRABLE INITIALLY DEFERRED` (Ruling P2). Drizzle mirrors, `db:types`, the catalog fixture (+196 lines, insertions only), and the schema test counts (tables 38→40, columns 465→477, constraints 188→198, indexes 98→102, journal 11→12). `neon-offers.integration.test.ts` now applies through `0011` explicitly (a bare `applyMigrations` would have applied `0012` too). |
+| 2. Definition, overview and idempotent start | `e567e7b` | `workPacksEnabled` (exactly `"true"`); `STARTER_PACK`, `isPackFinished`, pure `buildPackOverview` (counts, `nextToReview`, `finished`) and `loadPackOverview`; `packRepository` with `startPack` in one transaction (lock and reuse an unfinished pack, close a finished one, insert on a savepoint so a concurrent 23505 on `work_packs_open_idx` returns the winner with `created: false`, create or reuse each action through `createObjective`, three item rows, `pack.started` audit event), plus `openPack`, `getPack`, `packScope`. Audit label `pack.started` and the trilingual pack title. |
+| 3. Pack routes | `55cfedc` | `POST`/`GET /api/workspaces/[id]/packs` and `GET /api/packs/[packId]`. Order: flag (404) → UUID and body → scope read → authorize → location scope → location-in-workspace → rate limit → work. A repository failure is 503 with no message. Ruling P3. |
+| 4. Home card, pack page, runner, earlier drafts | `836cc62` | `PackCard` (replaces `FixPackCard` when the flag is on), the pack page `/[locale]/owner/[workspaceSlug]/packs/[packId]` (flag off → `notFound()` before any read), `FixPackCard mode="earlier"`, the shared sequential runner `useSequentialRuns` extracted from the P4.1 promotion panel, `loadHomeWorkPacks` (Ruling P1), the leaf `packs-model.ts` (Ruling P4), `stopOnRefusal` (Ruling P5), the item skip rule `packActionsToDraft`, `startPack` and `getOpenPack` client helpers, and trilingual copy including the exact disclosure. |
+| 5. Flag-off safety | `6891a58` | `neon-work-packs-flag-off.integration.test.ts`: against a database whose schema stops at `0011`, with the flag unset, the Home brief, `loadHomeWorkPacks` and the actions list succeed and **zero** recorded statements mention a pack table; with the flag on the same read fails with `42P01` on `work_packs`, so the gate is the only thing standing between the app and the missing table. |
+| 6. Acceptance journey | `a071ff3` | `e2e/acceptance/work-pack.spec.ts` (and `WORK_PACKS_ENABLED=true` in `test/e2e/safety.ts`): disclosure shown with no pack rows → Start → three items in order, one open pack, two drafts, usage 0, no approve or export control on the card → Review next → approve and export on the action page (usage 1) → Home shows review-response exported and website-basics draft ready → a repeat `POST` returns 201 `created: false` with the same pack id, still one open pack, three items, usage 1. |
+| 7. Gates, rollout statement, phase record | this commit | The gate run below, `rollout/apply-0012.sql` with its rehearsal, `.env.example` and `docs/integration/DEPLOY.md`, this report, test results and the traceability rows. |
+
+### Behaviour change for owners
+
+With the flag on, an owner (or a manager, for the locations in their scope) sees the visibility starter pack on Home. Concretely:
+
+- **One pack per location, idempotent.** "Start your visibility starter pack" lists the three items and states the delivery unit first: "Creates up to 3 drafts. Nothing is counted until you approve and export a draft; each one you export counts as 1 delivery." (on a capped plan, followed by " This month: n of m used."). Start creates or reuses the three actions, then drafts them one at a time. Starting again while the pack is unfinished returns the same pack. Once every item's action is completed, dismissed, cancelled or expired, the next Start closes that pack and opens a new one.
+- **Actions the scan already created are reused unchanged.** If an open action with the derivation key exists it is the pack item; otherwise a fresh action is created (source `owner_objective`) and a later scan refreshes its evidence through derivation's existing upsert without duplicating it or changing `source`. If a template's only action is finished, a fresh open action is created for the new pack and the finished one is untouched.
+- **Nothing is re-spent on work that exists.** The loop skips any item whose action is finished or whose latest version is `draft`, `changes_requested` or `approved`.
+- **The FAQ item usually stops at "needs your facts".** It needs three owner facts; that is a normal outcome (a link to its action page), not a failure.
+- **Spend is refused mid-pack, once.** When an item's run answers `ai_paused` or `ai_budget_reached`, no further item is run and the existing pause or budget copy is shown once.
+- **Review stays per version.** "Review next" opens the first item with a draft to review, on its action page. The pack page is read-only for approval: Retry and links only.
+- **Earlier staff drafts.** The Fix Pack list appears under that heading only while a pending `agent_runs` draft exists, with the existing review controls.
+- **Nothing is sent or published, and nothing about counting changed.** Generation, retries and refusals cost nothing in usage.
+- **With the flag off nothing changes.** Home is today's, with the `FixPackCard` unchanged (asserted by `outerHTML` equality), the pack page and every pack route answer 404, and no code path issues SQL against the pack tables.
+
+### Rulings, known limits and open questions
+
+#### Rulings taken while building (from the execution ledger, `.superpowers/sdd/2026-10-02-work-packs/progress.md`)
+
+Each ruling is followed by what it costs if it is wrong. The pre-flight scan (task interfaces checked against each other) found one gap, P1; P2–P5 arose during the build.
+
+| # | Ruling | If wrong |
+|---|---|---|
+| P1 | Task 4 puts the flag-gated Home pack data assembly in one exported server function, `loadHomeWorkPacks(ctx, membership, location)` in `lib/workspace/packs.ts`. It returns `undefined` with zero SQL when the flag is off; `page.tsx` calls it and Task 5's test calls the same function. Without it, the assembly could have been inlined in the page JSX and Task 5 would have had nothing callable to test. | A later reader finds one extra exported function. |
+| P2 | `work_pack_items_action_id_fkey` is `DEFERRABLE INITIALLY DEFERRED` (delete rule still `NO ACTION`) instead of the spec's immediate `NO ACTION`. With an immediate FK, deleting a workspace cascades into `actions` first (the older table's trigger fires first) and fails 23503 on the pack items that still exist. Deferred, the check runs at commit, by which point the cascade has removed the items too. Deleting an action a pack points to still fails, with 23503, at commit. | A statement-time error becomes a commit-time one: a transaction that deletes a referenced action sees 23503 at `COMMIT`, not at the `DELETE`, so later code must not rely on a mid-transaction 23503. Also an item whose `action_id` names no action fails only at commit. Not pinned by a test (deferred, below). |
+| P3 | `POST /api/workspaces/[id]/packs` with `location_id: null` (a workspace-wide pack) requires an owner, or a manager whose `location_scope` is null (the whole workspace). A location-scoped manager gets 403 there. `startPack` reads the newest snapshot for a null location without a membership check, so this keeps that evidence read inside the caller's scope (mirrors `POST /api/actions`' 403). | A scoped manager in a workspace with no location split cannot start the pack; the owner can. |
+| P4 | The pure definitions (`STARTER_PACK`, `PackKind`, `StarterItemKey`, `WorkPack`, `PackItem`, `PackOverview`, `isPackFinished`, `buildPackOverview`) live in a leaf module `lib/workspace/packs-model.ts` with no server imports. `lib/workspace/packs.ts` re-exports them and keeps `loadPackOverview` and `loadHomeWorkPacks`; the repository and every client component import from the leaf. This avoids the `packs.ts` ↔ `repositories/packs.ts` import cycle and server code in client bundles. | One extra module. |
+| P5 | `useSequentialRuns` takes `stopOnRefusal` (default true; the pack surfaces stop on `ai_paused` and `ai_budget_reached`), and the P4.1 `OfferPromotionPanel` passes `false` to keep its existing, tested behaviour of continuing to the next channel after a refusal. P4.1's tests must pass unchanged. | The promotion panel would keep calling `/run` after a budget refusal; each call is refused server-side at zero cost. |
+
+Also recorded: the trailer on each commit names the model that wrote it (three Opus, five Sonnet, counting the spec and plan), as in P4.1 R13/R15; commits are not amended.
+
+#### Deferred minor findings (not acted on in this slice)
+
+Grouped from the task-by-task reviews. **The three items marked FLAG are the ones to look at in the final review.**
+
+- **Task 1 (migration):** the deferred-FK timing (error at `COMMIT`; an item delete plus an action delete in one transaction succeeds) is not pinned by a test; an item with a nonexistent `action_id` also fails only at commit (a note for Task 2); `work_packs.created_by ON DELETE SET NULL` is untested (as for `0010` and `0011`).
+- **Task 2 (start and overview):** the second concurrency interleaving (two starts racing over a finished open pack) is reasoned, not tested; `nextToReview`'s position sort has no out-of-order unit case; `startPack` and the reads rethrow generic codes (`pack_start_failed`, `pack_read_failed`) without logging the cause; the audit label `入門套裝` is shown to zh-TW readers because the labels table has only `en` and `zh` slots (the zh-TW pack title is `入門套組`).
+- **Task 3 (routes):** authorization sits inside the `try` in `GET /api/packs/[packId]` (an identity outage is 503) but outside it in the two workspace-packs handlers (500); the `[packId]` test does not assert that `loadWorkspaceContext` receives `auth.membership`.
+- **Task 4 (card and page):**
+  - **FLAG FOR FINAL REVIEW.** Two people pressing Start at once get one pack (Start is idempotent), but **both clients then run all three items**: the skip rule reads the overview's latest version, not `runState` `queued`/`running`, so concurrent loops can spend twice on the same items.
+  - **FLAG FOR FINAL REVIEW.** Retry is shown on a failed row while `runAll` is still working, so a Retry click can overlap the sequential loop and run an action twice.
+  - **FLAG FOR FINAL REVIEW.** There is no "Continue" after `ai_paused` / `ai_budget_reached` or after a mid-run reload; a refused item reads "Failed — retry" rather than "paused".
+  - Also: a finished item with no version shows "Not started"; the zh-TW pack copy uses 你 where the offers copy uses 您, and the stop-reason-to-status mapping is duplicated in `pack-card` and `pack-view`; the pack page maps a transient read error to 404, and multi-location Home costs three queries per location; `lib/workspace/packs.ts` imports page-context and a component type (layering).
+- **Task 5 (flag-off safety):** the "flag unset" case stubs `""` rather than `undefined`; the flag-on case asserts exactly `["42P01"]`, which assumes one pack read; the test covers `getHomeBrief` and `loadHomeWorkPacks`, not `loadOwnerPage` or `loadWorkspaceProblems`.
+- **Task 6 (acceptance):** Start (a mutating click) is driven by a hand-rolled retry rather than a single click after hydration (safe: Start is idempotent and the retry is guarded); the "no approve or export control on the card" assertion is not repeated after the export; the 180 s timeout headroom is tight.
+
+#### Known limits
+
+- **One fixed pack kind.** `visibility_starter` only, with exactly three items. No custom or owner-built packs, no bulk approval, no packs spanning locations, no offer packs, no regenerating every item at once.
+- **The FAQ item usually needs owner facts.** Three owner facts are required before it can draft, so the starter pack typically ends with two drafts ready and the FAQ item waiting on the owner. That is the designed outcome.
+- **A multi-location "all" view cannot start a pack.** With `?location=all` in a workspace with several locations there is no single location to start for. Home shows the open packs for the in-scope locations (and a workspace-wide pack) and the text "Choose a location to start a starter pack", with no Start button.
+- **A workspace-wide pack needs a whole-workspace caller (Ruling P3).** A location-scoped manager cannot start one.
+- **Ruling P2's deferred FK.** Deleting an action a pack points to fails at commit, not at the statement; an item with a missing action fails only at commit.
+- **Concurrent Start can double-run items** and **Retry can overlap a running loop** (two FLAG items above); the server-side gates (budget, kill switch, pre-model gate) still apply to every run, but the same item may be drafted twice.
+- **Three-item cost model.** A pack is up to three drafts and up to three deliveries (DEC-14 safe default); each is counted only on first export of an approved version.
+- **`neon:readiness` is unchanged** and does not check the pack tables beyond the journal.
+
+#### Open questions (recorded, not resolved here)
+
+- **DEC-14** (delivery units for multi-output promotions and packs) remains **open**; its safe default applies (each approved version counts once, on its first export). No counting code changed.
+
+### Not run / blocked
+
+- **The hosted migration: not run (DEC-11).** `0012` has never touched a Neon or any hosted database. `apply-0012.sql` was prepared and rehearsed on a local Docker `postgres:16` only.
+- **A real-model evaluation: not run (DEC-04).** `EVAL_LIVE` was never set and no key was supplied. `eval:workflows -- --budget-usd 1` refused with exit 2 (`not_enabled`) and `eval:workflows -- --check-load` printed `load ok: 31 cases`. This slice adds no agent and no corpus case; the pack runs the existing agents.
+- **P4.3 (contextual assistant): not started.** It follows in its own spec. P4.5 (preview) and P4.6 (publishing) are not built, blocked by DEC-12 and DEC-13, which are not authorized. Packs add no publishing.
+- **Literal Turbopack `build`, `test:secret-boundary`, `e2e` and `e2e:acceptance` on this Windows machine: blocked** by the standing local `radix-ui` cascade recorded at every earlier phase (`Module not found: Can't resolve '@radix-ui/react-dismissable-layer'`, raised from `@radix-ui/react-tooltip` through `components/ui/tooltip.tsx` → `components/ui/sidebar.tsx` → `components/product-ui.tsx` → `app/[locale]/owner/[workspaceSlug]/layout.tsx`; no file this branch changes is in the trace). P4.1's run was not blocked, so this is intermittent on this machine; CI on `ubuntu-latest` is the real gate. The `--webpack` diagnostics were run and are recorded separately in `PHASE-4-TEST-RESULTS.md`; they are **not** the literal gates.
+- **Hosted verification of any kind:** no deployed request, no production Neon query, no real mail, Stripe or model call. `e2e:live`, `e2e:neon-auth` and `neon:readiness` were not run (they need keys or a hosted target).
+
+### Owner actions
+
+1. **Apply `0012`** by running [`rollout/apply-0012.sql`](rollout/apply-0012.sql) in the Neon SQL Editor as `neondb_owner`, on a Neon test branch of production first and then on production. It refuses unless the journal is exactly `0001`–`0011`, so `apply-0011.sql` must already be applied.
+2. **Deploy.** Unlike `0011`, deploying before `0012` is harmless while `WORK_PACKS_ENABLED` is unset: no code path reads or writes the pack tables (proved by `test/integration/neon-work-packs-flag-off.integration.test.ts` against a schema that stops at `0011`). So the order of steps 1 and 2 is free; both must precede step 3.
+3. **Set `WORK_PACKS_ENABLED=true` and redeploy** (an environment variable change takes effect on the next deployment). Set it only after `0012` is applied: with the flag on and no `0012`, Start fails and the pack routes answer 503.
+4. **Rollback: unset the flag and redeploy.** Home returns to the Fix Pack card, and the pack page and every pack route answer 404. Packs and their items stay in the database; the actions they point to are ordinary actions that stay listed and workable (draft, approve, export) on the actions pages. Nothing is deleted and `agent_runs` is untouched. `0012` is additive and is not rolled back.
+
+DEPLOY.md carries the same order ([`docs/integration/DEPLOY.md`](../../integration/DEPLOY.md), "P4.2 visibility starter pack: migration 0012 and the flag").
+
+### Runbook — `apply-0012.sql`
+
+The statement is [`rollout/apply-0012.sql`](rollout/apply-0012.sql). It was generated from the migration files on disk by a scratch script (kept outside the repository) that imports the repository's own `loadMigrations()` and hashes each file's text exactly as `applyMigrations` does; nothing embedded was typed. It is one `DO $apply$ … $apply$;` block that
+- runs `SET LOCAL ROLE smeassistant_migrator`, and refuses unless `current_user` is that role;
+- takes the runner's lock, `pg_advisory_xact_lock(1936549221, 3)` (`scripts/neon/migrations.ts`);
+- refuses unless `neon_migrations.journal` is **exactly** ordinals 1–11 with the names and sha256 checksums of `neon/migrations/0001…0011`, as `loadMigrations()` computes them;
+- `EXECUTE`s the exact text of `0012_work_packs.sql` inside `$m0012$` (the generator also refuses if the text contained `$m0012$` or `$apply$`);
+- inserts journal row `(12, '0012_work_packs.sql', 'e7933f6caac57dbc7384aae24c0fd86316cf3b521167432fe483df58cc9b7289')`.
+
+After generation every checksum was re-derived independently with `sha256sum` over the file bytes and each appears in the statement. Rows 1–11 are identical to `apply-0011.sql`'s (row 11 carries the checksum `apply-0011.sql` records). The embedded text between the `$m0012$` tags is byte-identical to `0012_work_packs.sql` (3,760 bytes, ASCII, no CR; checked with a byte comparison). The existing `.gitattributes` line `docs/implementation/owner-platform-v1/rollout/*.sql text eol=lf` already covers the new file (`git check-attr eol` reports `lf`).
+
+**Rehearsal (2026-10-03, disposable `postgres:16`, server 16.15, run twice, identical results after masking the container name).** The roles matched production, as in the earlier rehearsals: `neondb_owner` LOGIN CREATEROLE owning database `neondb`; `neondb_owner` created `smeassistant_migrator` NOLOGIN and `sme_app_runtime` NOLOGIN, and granted the migrator CREATE on the database and USAGE, CREATE on schema `public`. `0001`–`0009` were applied as the migrator through the repository's own `applyMigrations` (a pool whose connections `SET ROLE smeassistant_migrator`). `0010` and `0011` were then applied by running `apply-0010.sql` and `apply-0011.sql` themselves as `neondb_owner`, the way production gets them. The container was bound to `127.0.0.1` only and removed afterwards. Each block was sent as one query, as `neondb_owner`:
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Before `GRANT smeassistant_migrator TO neondb_owner WITH SET TRUE` | **refused**: `42501 permission denied to set role "smeassistant_migrator"`. Catalog and journal snapshot unchanged. |
+| — | The grant, run as `neondb_owner` | succeeded (`set_option = true`, `inherit_option = true`, grantor `neondb_owner`) |
+| 2 | Wrong journal: `0001`–`0009` only (`0010` and `0011` not applied) | **refused**: `P0001 apply-0012 refused: neon_migrations.journal is not exactly 0001-0011 with the expected checksums (it has 9 rows)`. Snapshot unchanged. |
+| — | `apply-0010.sql` then `apply-0011.sql`, as `neondb_owner` | applied, with their documented notices; journal 11 rows |
+| 3 | Wrong journal: rows 1–11 present, row 11's checksum altered (inside a transaction, rolled back) | **refused**: `P0001 apply-0012 refused: … (it has 11 rows)`. No `work_packs` table; snapshot unchanged after the rollback. |
+| 4 | First run (journal exactly `0001`–`0011`) | **applied**, with notices `policy "server_application" for relation "public.work_packs" does not exist, skipping`, the same for `public.work_pack_items`, and `apply-0012: applied 0012_work_packs.sql and recorded journal row 12`. Journal rows 1–12 with the expected names, every checksum equal to `loadMigrations()`'s, row 12 `e7933f6c…7289`. Both tables exist. |
+| 5 | `applyMigrations` with all twelve, as the migrator | returned `[]`: nothing pending, so the runner accepts the journal's checksums |
+| 6 | Ownership and runtime access | `work_packs`, `work_pack_items`, both primary-key indexes, `work_packs_open_idx` and `work_pack_items_action_idx` are owned by `smeassistant_migrator`; both tables have RLS on with policy `server_application` (`ALL`, `sme_app_runtime`). `sme_app_runtime` has SELECT, INSERT, UPDATE and DELETE on both; `PUBLIC` has none. `work_pack_items_action_id_fkey` is deferrable, initially deferred, `NO ACTION`; the other FKs are `CASCADE` (pack, workspace, location) and `SET NULL` (`created_by`). Under `SET ROLE sme_app_runtime` (rolled back): a pack and three items inserted, a second open pack for the same workspace, location and kind failed `23505 work_packs_open_idx`, an unknown kind failed `23514 work_packs_kind_check`, deleting an action a pack points to failed `23503 work_pack_items_action_id_fkey`, and deleting the workspace cascaded through packs, items and actions (0 / 0 / 0 remaining). |
+| 7 | Second run | **refused**: `P0001 apply-0012 refused: … (it has 12 rows)`. Snapshot unchanged. |
+
+The snapshot is an md5 over every relation (kind, owner, RLS, ACL), column, constraint, policy, index and function (signature, owner, body md5, ACL) in `public` and `neon_migrations`, plus the journal rows. After the rehearsal `corepack pnpm db:verify` was part of the gate run below: `0001`–`0012`, replay `[]`. The generator and the rehearsal script were scratch files and are **not committed**. **`apply-0012.sql` has never been run against any Neon database.**
+
+### Verification
+
+Full detail is in `PHASE-4-TEST-RESULTS.md`. One line per gate, run 2026-10-03 at `a071ff3` plus the documentation edits (no code changed in this task):
+
+| Command | Result |
+|---|---|
+| `corepack pnpm typecheck` | **passed**, exit 0 (root and all four packages). |
+| `corepack pnpm lint` | **passed**, exit 0, `0 errors, 30 warnings` across 18 files (the same 30 as the P4.1 record; none of the 18 files is a file this branch changed). |
+| `corepack pnpm test` | **Not a clean pass: four full runs, each failed (exit 1), every failure a 5,000 ms load timeout** in the known flakes. Run 1: five files (`scan-claim-single-path`, `scan-events-single-writer`, `app/api/actions/[actionId]/route.test.ts`, `app/api/versions/[versionId]/versions.test.ts`, `app/api/actions/[actionId]/versions/route.test.ts`). Run 2: `scan-claim-single-path`, `scan-events-single-writer`. Runs 3 and 4: `app/api/versions/[versionId]/versions.test.ts` only. All five run-1 files **alone**: 5 files / 34 tests passed. Because the script chains its stages with `&&`, the later stages were run separately and all passed: `safe-media` 1 / 62, `region` 3 / 23, `scoring` 16 / 183, `contracts` 3 / 20, `scan-engine` 28 / 299. A diagnostic app run with `--testTimeout=30000` (not the gate) passed 334 / 334 files, 3,913 / 3,913 tests. App part: 334 files / 3,913 tests (+7 / +85 over the P4.1 record), **385 files / 4,500 tests** in all. Recorded, not hidden. |
+| `NEON_INTEGRATION=1 corepack pnpm test:integration` | **passed**, 43 files / 463 tests, first run (P4.1 record: 41 / 441). |
+| `corepack pnpm db:verify` | **passed**, `0001`–`0012`, replay empty, **40 tables / 477 columns / 198 constraints / 102 indexes / 8 triggers / 18 functions** (P4.1: 38 / 465 / 188 / 98 / 8 / 18). |
+| `corepack pnpm test:no-supabase` / `test:no-self-service-claim` | **passed** / **passed**. |
+| `corepack pnpm eval:workflows -- --check-load` | `load ok: 31 cases`, exit 0 (no pack case was added). The live evaluation was not run (DEC-04). |
+| `corepack pnpm build` (literal, Turbopack) | **blocked**, exit 1: the `radix-ui` cascade above. Diagnostic `next build --webpack`: **passed**, `Compiled successfully in 41s`, route manifest includes `/[locale]/owner/[workspaceSlug]/packs/[packId]`, `/api/packs/[packId]` and `/api/workspaces/[workspaceId]/packs`. |
+| `corepack pnpm test:secret-boundary` (literal) | **blocked**, exit 1 (it shells out to the Turbopack build). Diagnostic with a temporary `--webpack` on its build step (reverted): **passed**, `Secret boundary passed across 148 public artifacts.` |
+| `corepack pnpm e2e` (literal) | **blocked**, exit 1: `Acceptance service not healthy: http://localhost:3100` (the Turbopack dev server answers 500 on `/en/owner/sign-in`). Diagnostic with a temporary `--webpack` on the dev server in `test/e2e/environment.ts` (reverted): **30 / 31 passed**; the one failure is `owner-shell.spec.ts:16`, the same diagnostic-only failure recorded under P4.4 (`getByRole("alert")` resolves to the page's `<p role="alert">` and Next's `#__next-route-announcer__`); neither file is changed by this branch, and the literal Turbopack run passed it 31 / 31 under P4.1. |
+| `corepack pnpm e2e:acceptance` (literal) | **blocked**: the first eight tests each failed with `Acceptance service not healthy` (about 65 s each), and the run was stopped by hand (taskkill of the Playwright process tree) rather than burn the remaining 32 timeouts; exit 1 is the stopped run's. Diagnostic with the same temporary `--webpack` (reverted): **passed 40 / 40 on the first run** (9.0 min), including `work-pack.spec.ts`. |
+| Rehearsal | `apply-0012.sql` on a disposable `postgres:16`: seven checks, run twice, identical (see the runbook above). |
+| Blocked | The literal `build`, `test:secret-boundary`, `e2e` and `e2e:acceptance` (local Windows Turbopack only). |
+
+### Invariants
+
+- `git diff a71c5df..a071ff3 --stat -- neon/migrations packages lib/agents/__snapshots__` lists only `neon/migrations/0012_work_packs.sql` (62 insertions): no `0001`–`0011` edit, no vendored-package edit, no agent snapshot change.
+- No added or removed line of the code diff mentions `agent_runs` (`git diff a71c5df..a071ff3 -- . ':!docs' ':!.superpowers' | grep '^[+-]' | grep -i agent_runs` prints nothing; three unchanged context lines name it); `lib/repositories/fix-pack.ts` and the fix-pack-drafts route are unchanged.
+- No counting code changed: no migration touches `export_output_version`, `approve_output_version` or `workspace_usage`. The only SQL added is the two new tables.
+- With the flag off, no code path issues SQL against `work_packs` or `work_pack_items` (Task 5's recorded-statement test).
+- No approve, export, reject or bulk control exists on the pack card or page in any state or locale (component tests), and the acceptance journey asserts it before the export.
