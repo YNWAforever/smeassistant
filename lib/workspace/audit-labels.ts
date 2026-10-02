@@ -51,6 +51,7 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string }> = {
   // Written by confirm_offer / archive_offer in SQL.
   "offer.confirmed": { en: "Offer confirmed", zh: "優惠已確認" },
   "offer.archived": { en: "Offer archived", zh: "優惠已封存" },
+  "pack.started": { en: "Starter pack started", zh: "已開始入門套裝" },
 };
 
 export const AUDIT_ACTOR_LABELS: Record<"user" | "agent" | "system" | "scanner", { en: string; zh: string }> = {

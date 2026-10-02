@@ -91,6 +91,8 @@ export type OffersCopy = {
 };
 
 export type WorkspaceCopy = {
+  /** P4.2 work packs. `title` is also stored as the evidence detail of an action a pack creates. */
+  packs: { title: string };
   templates: Record<TemplateKey, { title: string; summary: string; workflow: string }>;
   factors: Record<PriorityFactorKey, string>;
   metrics: Record<MetricKey, string>;
@@ -160,6 +162,7 @@ function inputs(labels: string[]): Record<string, string> {
 }
 
 export const workspaceEn: WorkspaceCopy = {
+  packs: { title: "Visibility starter pack" },
   offers: {
     nav: "Offers",
     page: {
@@ -362,6 +365,7 @@ export const workspaceEn: WorkspaceCopy = {
 };
 
 export const workspaceZhHK: WorkspaceCopy = {
+  packs: { title: "能見度入門套裝" },
   offers: {
     nav: "優惠",
     page: { eyebrow: "已確認的推廣資料", title: "優惠", description: "只需記錄優惠一次並確認，之後便可按這些資料建立推廣草稿。系統不會自動發佈或發送任何內容。" },
@@ -535,6 +539,7 @@ export const workspaceZhHK: WorkspaceCopy = {
 
 export const workspaceZhTW: WorkspaceCopy = {
   ...workspaceZhHK,
+  packs: { title: "能見度入門套組" },
   offers: {
     nav: "優惠",
     page: { eyebrow: "已確認的推廣資訊", title: "優惠", description: "只要記錄優惠一次並確認，就能依這些資訊建立推廣草稿。系統不會自動發布或傳送任何內容。" },

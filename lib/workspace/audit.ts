@@ -20,6 +20,7 @@ export const AUDIT_EVENTS = [
   "mail.attempted",
   "scan.auto_closed", "ops.scan.released",
   "offer.created", "offer.updated",
+  "pack.started",
 ] as const;
 
 export type AuditEvent = (typeof AUDIT_EVENTS)[number];
@@ -36,6 +37,8 @@ export const RUN_TIMED_OUT_EVENT = "run.timed_out" satisfies AuditEvent;
 /** Written from raw SQL in lib/repositories/dead-letter.ts; the constants tie that SQL to the tuple. */
 export const SCAN_AUTO_CLOSED_EVENT = "scan.auto_closed" satisfies AuditEvent;
 export const SCAN_RELEASED_EVENT = "ops.scan.released" satisfies AuditEvent;
+/** Written from raw SQL inside startPack's transaction (lib/repositories/packs.ts). */
+export const PACK_STARTED_EVENT = "pack.started" satisfies AuditEvent;
 export type AuditActorType = "user" | "agent" | "system" | "scanner";
 
 export interface AuditEventInput {
