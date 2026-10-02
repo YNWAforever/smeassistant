@@ -113,6 +113,8 @@ export type PacksCopy = {
   open: string;
   reviewNext: string;
   viewPack: string;
+  /** The finished pack's page, beside Start for the next one. */
+  viewLastPack: string;
   allLocations: string;
   closed: string;
   pageEyebrow: string;
@@ -214,6 +216,7 @@ export const workspaceEn: WorkspaceCopy = {
     open: "Open",
     reviewNext: "Review next",
     viewPack: "View pack",
+    viewLastPack: "View last pack",
     allLocations: "All locations",
     closed: "This pack is finished. It is shown here as history.",
     pageEyebrow: "Work pack",
@@ -440,6 +443,7 @@ export const workspaceZhHK: WorkspaceCopy = {
     open: "開啟",
     reviewNext: "審閱下一份",
     viewPack: "查看套裝",
+    viewLastPack: "查看上一個套裝",
     allLocations: "所有地點",
     closed: "這個套裝已完成，在此只作紀錄顯示。",
     pageEyebrow: "工作套裝",
@@ -637,6 +641,7 @@ export const workspaceZhTW: WorkspaceCopy = {
     open: "開啟",
     reviewNext: "審閱下一份",
     viewPack: "查看套組",
+    viewLastPack: "查看上一個套組",
     allLocations: "所有據點",
     closed: "這個套組已完成，在此僅作紀錄顯示。",
     pageEyebrow: "工作套組",

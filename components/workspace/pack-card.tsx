@@ -20,6 +20,11 @@ import { useSequentialRuns, type StopReason } from "@/lib/workspace/use-sequenti
  * and calls no model), then runs each item through the ordinary run route one at
  * a time. It never approves or exports anything: approval and export happen on the
  * action's own page, on the exact version.
+ *
+ * A finished pack (every item's action closed) is shown as the start state again,
+ * with a link to it: Start closes it and opens the next one on the server. When
+ * Start returns a pack that already existed (another tab or person started it),
+ * nothing is run automatically; the card refreshes it and offers Continue.
  */
 export interface PackCardProps {
   locale: PrototypeLocale
@@ -53,7 +58,10 @@ export function PackCard({ locale, workspaceId, workspaceSlug, role, location, i
   const canAct = (role === "owner" || role === "manager") && inScope && !location.isAll
   // Any run in flight (Start, Continue or a Retry): Retry and Continue are hidden meanwhile, so one item is never run twice.
   const running = starting || continuing || runs.running
-  const continuable = pack ? continuableActions(pack, runs.rows) : []
+  // A finished pack is history: the card offers the next one, and links to this one.
+  const openPack = pack && !pack.finished ? pack : null
+  const lastPack = pack?.finished ? pack : null
+  const continuable = openPack ? continuableActions(openPack, runs.rows) : []
 
   const disclosure =
     text.disclosure + (usage && usage.allowance !== null ? fill(text.usage, { used: usage.approvedDeliveries, allowance: usage.allowance }) : "")
@@ -76,7 +84,7 @@ export function PackCard({ locale, workspaceId, workspaceSlug, role, location, i
   }
 
   async function start() {
-    if (!canAct || starting) return
+    if (!canAct || running) return
     setStarting(true)
     setProblem(null)
     setStopReason(null)
@@ -87,8 +95,12 @@ export function PackCard({ locale, workspaceId, workspaceSlug, role, location, i
       return
     }
     setPack(started.data.pack)
-    // In turn, not in parallel: each run is its own request with its own budget check.
-    await runs.runAll(packActionsToDraft(started.data.pack))
+    if (started.data.created) {
+      // In turn, not in parallel: each run is its own request with its own budget check.
+      await runs.runAll(packActionsToDraft(started.data.pack))
+    }
+    // Not created: someone else's Start made this pack and may be running it now, so
+    // nothing runs here; the refreshed pack shows what is left, behind Continue.
     await refresh()
     setStarting(false)
   }
@@ -118,7 +130,7 @@ export function PackCard({ locale, workspaceId, workspaceSlug, role, location, i
       <div className="section-card-heading">
         <div>
           <p className="eyebrow">{text.title}</p>
-          <h2>{pack && !location.isAll ? progress(pack) : text.startHeading}</h2>
+          <h2>{openPack && !location.isAll ? progress(openPack) : text.startHeading}</h2>
         </div>
         <PackageOpen aria-hidden="true" />
       </div>
@@ -136,17 +148,17 @@ export function PackCard({ locale, workspaceId, workspaceSlug, role, location, i
             </div>
           )}
         </>
-      ) : pack ? (
+      ) : openPack ? (
         <>
-          <PackItemList locale={locale} actionsHref={`${base}/actions`} items={pack.items} live={runs.rows} canRetry={canAct && !running} onRetry={(id) => void retry(id)} />
+          <PackItemList locale={locale} actionsHref={`${base}/actions`} items={openPack.items} live={runs.rows} canRetry={canAct && !running} onRetry={(id) => void retry(id)} />
           <div className="draft-editor-actions">
-            {canAct && !running && !pack.finished && continuable.length > 0 && (
+            {canAct && !running && continuable.length > 0 && (
               <Button onClick={() => void continueRun()}><Play /> {text.continue}</Button>
             )}
-            {pack.nextToReview && (
-              <Button asChild><Link href={`${base}/actions/${pack.nextToReview.actionId}`}>{text.reviewNext}</Link></Button>
+            {openPack.nextToReview && (
+              <Button asChild><Link href={`${base}/actions/${openPack.nextToReview.actionId}`}>{text.reviewNext}</Link></Button>
             )}
-            <Button asChild variant="outline"><Link href={`${base}/packs/${pack.pack.id}`}>{text.viewPack}</Link></Button>
+            <Button asChild variant="outline"><Link href={`${base}/packs/${openPack.pack.id}`}>{text.viewPack}</Link></Button>
           </div>
         </>
       ) : (
@@ -160,11 +172,16 @@ export function PackCard({ locale, workspaceId, workspaceSlug, role, location, i
           </ul>
           <p className="limitation-note">{disclosure}</p>
           {!canAct && <p className="limitation-note"><AlertTriangle aria-hidden="true" />{text.noPermission}</p>}
-          {canAct && (
+          {(canAct || lastPack) && (
             <div className="draft-editor-actions">
-              <Button onClick={() => void start()} disabled={starting}>
-                {starting ? <LoaderCircle className="animate-spin" /> : <PackageOpen />} {starting ? text.starting : text.start}
-              </Button>
+              {canAct && (
+                <Button onClick={() => void start()} disabled={starting}>
+                  {starting ? <LoaderCircle className="animate-spin" /> : <PackageOpen />} {starting ? text.starting : text.start}
+                </Button>
+              )}
+              {lastPack && (
+                <Button asChild variant="outline"><Link href={`${base}/packs/${lastPack.pack.id}`}>{text.viewLastPack}</Link></Button>
+              )}
             </div>
           )}
         </>

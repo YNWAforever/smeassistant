@@ -182,11 +182,46 @@ describe("PackCard", () => {
 
   it("skips an item whose action is finished", async () => {
     const pack = packOf([{ actionState: "completed" }, {}, {}])
-    clientMocks.startPack.mockResolvedValue({ ok: true, data: { pack, created: false } })
+    clientMocks.startPack.mockResolvedValue({ ok: true, data: { pack, created: true } })
     clientMocks.runAction.mockResolvedValue(READY)
     mount()
     await pressStart()
     expect(clientMocks.runAction.mock.calls.map((call) => call[0])).toEqual(["act-2", "act-3"])
+  })
+
+  it("runs nothing when Start joins a pack that already existed, refreshes it and offers Continue (final review G4)", async () => {
+    clientMocks.startPack.mockResolvedValue({ ok: true, data: { pack: packOf(), created: false } })
+    clientMocks.getOpenPack.mockResolvedValue({ ok: true, data: { pack: packOf([{ version: { approval: "draft" } }, {}, {}]) } })
+    clientMocks.runAction.mockResolvedValue(READY)
+    mount()
+    await pressStart()
+    expect(clientMocks.runAction).not.toHaveBeenCalled()
+    expect(clientMocks.getOpenPack).toHaveBeenCalledWith("ws-1", "loc-1")
+    expect(screen.getByText("1 of 3 drafted")).toBeInTheDocument()
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: text.continue })) })
+    expect(clientMocks.runAction.mock.calls.map((call) => call[0])).toEqual(["act-2", "act-3"])
+  })
+
+  it("lets a finished pack be followed by a new one: Start, the disclosure, and a link to the last pack (final review G1)", async () => {
+    const finished = packOf([{ actionState: "completed" }, { actionState: "dismissed" }, { actionState: "expired" }], { id: "pack-old" })
+    clientMocks.startPack.mockResolvedValue({ ok: true, data: { pack: packOf([], { id: "pack-new" }), created: true } })
+    clientMocks.runAction.mockResolvedValue(READY)
+    mount({ initialPack: finished })
+    expect(screen.getByRole("heading", { name: text.startHeading })).toBeInTheDocument()
+    expect(screen.getByText(`${DISCLOSURE} This month: 1 of 3 used.`)).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: text.viewLastPack })).toHaveAttribute("href", "/en/owner/kam-man-house/packs/pack-old")
+    expect(screen.queryByRole("button", { name: text.continue })).toBeNull()
+    await pressStart()
+    expect(clientMocks.startPack).toHaveBeenCalledWith("ws-1", "loc-1")
+    expect(clientMocks.runAction.mock.calls.map((call) => call[0])).toEqual(["act-1", "act-2", "act-3"])
+    expect(screen.getByRole("link", { name: text.viewPack })).toHaveAttribute("href", "/en/owner/kam-man-house/packs/pack-new")
+  })
+
+  it("shows a viewer the finished pack's link but no Start", () => {
+    mount({ role: "viewer", initialPack: packOf([{ actionState: "completed" }, { actionState: "completed" }, { actionState: "completed" }], { id: "pack-old" }) })
+    expect(screen.queryByRole("button", { name: text.start })).toBeNull()
+    expect(screen.getByText(text.noPermission)).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: text.viewLastPack })).toHaveAttribute("href", "/en/owner/kam-man-house/packs/pack-old")
   })
 
   it("shows the needs-your-facts state as a normal outcome, not a failure", async () => {
