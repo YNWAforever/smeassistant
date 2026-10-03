@@ -26,14 +26,19 @@ const loc = (id: string, isPrimary: boolean) => ({
 interface Calls {
   actions: Array<{ workspaceId: string; opts: unknown }>;
   waiting: Array<[string, string | null]>;
+  google: string[];
+  locations: string[];
 }
 
 type Db = Parameters<typeof loadSuggestions>[0]["db"];
 
 function fake(overrides: Record<string, unknown> = {}) {
-  const calls: Calls = { actions: [], waiting: [] };
+  const calls: Calls = { actions: [], waiting: [], google: [], locations: [] };
   const db = {
-    assistantLocations: async () => [loc(L2, false), loc(LOCATION_ID, true)],
+    assistantLocations: async (workspaceId: string) => {
+      calls.locations.push(workspaceId);
+      return [loc(L2, false), loc(LOCATION_ID, true)];
+    },
     assistantActions: async (workspaceId: string, opts: unknown) => {
       calls.actions.push({ workspaceId, opts });
       return [{ ...actionRow, action_state: "needs_input" as const, required_inputs: ["opening_hours"], provided_inputs: {} }];
@@ -44,7 +49,10 @@ function fake(overrides: Record<string, unknown> = {}) {
         { id: VERSION_ID, action_id: ACTION_ID, version_no: 3, approval_state: "changes_requested" as const, created_at: "2026-09-01T00:00:00Z", location_id: LOCATION_ID },
       ];
     },
-    assistantGoogleConnection: async () => ({ status: "expired" as const }),
+    assistantGoogleConnection: async (workspaceId: string) => {
+      calls.google.push(workspaceId);
+      return { status: "expired" as const };
+    },
     actionScope: async (id: string) => {
       if (id === ACTION_ID) return { actionId: id, workspaceId: WORKSPACE_ID, locationId: LOCATION_ID };
       if (id === OTHER_ACTION) return { actionId: id, workspaceId: OTHER_WS, locationId: null };
@@ -77,6 +85,13 @@ describe("loadSignalRows", () => {
   });
 });
 
+/** A refused request must stop before the three signal reads. */
+const expectNoSignalReads = (calls: Calls) => {
+  expect(calls.actions).toEqual([]);
+  expect(calls.waiting).toEqual([]);
+  expect(calls.google).toEqual([]);
+};
+
 describe("loadSuggestions", () => {
   it("resolves the primary location when none is given", async () => {
     const { db, calls } = fake();
@@ -95,25 +110,28 @@ describe("loadSuggestions", () => {
   });
 
   it("throws not_found for a location outside the workspace", async () => {
-    const { db } = fake();
+    const { db, calls } = fake();
     const run = () => loadSuggestions({ db, membership: owner, context: { workspaceId: WORKSPACE_ID, locationId: FOREIGN_LOCATION } });
     await expect(run()).rejects.toMatchObject({ code: "not_found", status: 404 });
     await expect(run()).rejects.toBeInstanceOf(AssistantAccessError);
+    expectNoSignalReads(calls);
   });
 
   it("throws not_found for an action of another workspace or an unknown one", async () => {
-    const { db } = fake();
+    const { db, calls } = fake();
     await expect(loadSuggestions({ db, membership: owner, context: { workspaceId: WORKSPACE_ID, actionId: OTHER_ACTION } })).rejects.toMatchObject({ code: "not_found" });
     await expect(
       loadSuggestions({ db, membership: owner, context: { workspaceId: WORKSPACE_ID, actionId: "00000000-0000-4000-8000-000000000000" } }),
     ).rejects.toMatchObject({ code: "not_found" });
+    expectNoSignalReads(calls);
   });
 
   it("throws not_found for a version of another workspace", async () => {
-    const { db } = fake({
+    const { db, calls } = fake({
       versionScope: async (id: string) => ({ versionId: id, actionId: ACTION_ID, workspaceId: OTHER_WS, locationId: null }),
     });
     await expect(loadSuggestions({ db, membership: owner, context: { workspaceId: WORKSPACE_ID, versionId: VERSION_ID } })).rejects.toMatchObject({ code: "not_found" });
+    expectNoSignalReads(calls);
   });
 
   it("throws not_found for a version of another action", async () => {
@@ -121,6 +139,17 @@ describe("loadSuggestions", () => {
     await expect(
       loadSuggestions({ db: own.db, membership: owner, context: { workspaceId: WORKSPACE_ID, actionId: OTHER_ACTION, versionId: VERSION_ID } }),
     ).rejects.toMatchObject({ code: "not_found" });
+    expectNoSignalReads(own.calls);
+  });
+
+  it("throws forbidden before any read when the membership belongs to another workspace", async () => {
+    const { db, calls } = fake();
+    const foreign: Membership = { ...owner, workspaceId: OTHER_WS };
+    const run = () => loadSuggestions({ db, membership: foreign, context: { workspaceId: WORKSPACE_ID } });
+    await expect(run()).rejects.toMatchObject({ code: "forbidden", status: 403 });
+    await expect(run()).rejects.toBeInstanceOf(AssistantAccessError);
+    expect(calls.locations).toEqual([]);
+    expectNoSignalReads(calls);
   });
 
   it("passes a validated focus through to the suggestions", async () => {

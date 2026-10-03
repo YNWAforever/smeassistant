@@ -28,6 +28,7 @@ export type RateLimitScope =
   | "action_mutation"
   | "asset_upload"
   | "assistant_run"
+  | "assistant_suggestions"
   | "rescan"
   | "brand_update"
   | "mail_unsubscribe";
@@ -109,6 +110,8 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   // draft intents spend LLM tokens, so this is a runaway-cost guard sized for a
   // chatty sheet session (one question a minute), not an abuse boundary.
   assistant_run: { limit: 60, windowSeconds: 60 * 60 },
+  // GET /api/assistant/suggestions (P4.3): a cheap read-only fetch per sheet open or surface change, per user.
+  assistant_suggestions: { limit: 120, windowSeconds: 60 * 60 },
   // POST /api/workspaces/[id]/rescan (CLAUDE.md §3.2.3, Phase 6): keyed on the
   // *workspace* id (the route passes it as the identifier) plus the source-IP
   // HMAC, so the 3/day budget is shared by every member of the workspace. A

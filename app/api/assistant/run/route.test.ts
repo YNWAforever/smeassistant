@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { auth, authorizeLike, WORKSPACE_ID } from "@/app/api/actions/_shared/test-db";
 import { AiBudgetRefusal } from "@/lib/budgets/ai";
 
@@ -91,7 +91,7 @@ describe("POST /api/assistant/run", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual(live);
     expect(mocks.enforceRateLimit).toHaveBeenCalledWith(expect.objectContaining({ scope: "assistant_run", identifiers: ["user-1"], failClosed: true }));
-    expect(mocks.runLiveAssistant).toHaveBeenCalledWith({ membership: auth("viewer").membership, intentId: "explain_priority", surface: "home", locale: "zh-HK", context: { workspaceId: WORKSPACE_ID, locationId: "22222222-2222-4222-8222-222222222222", snapshotId: undefined, actionId: undefined, versionId: undefined } });
+    expect(mocks.runLiveAssistant).toHaveBeenCalledWith({ membership: auth("viewer").membership, intentId: "explain_priority", surface: "home", locale: "zh-HK", contextual: false, context: { workspaceId: WORKSPACE_ID, locationId: "22222222-2222-4222-8222-222222222222", snapshotId: undefined, actionId: undefined, versionId: undefined } });
     expect(mocks.llmComplete).not.toHaveBeenCalled();
   });
 
@@ -227,5 +227,87 @@ describe("POST /api/assistant/run AI budget", () => {
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+});
+
+describe("POST /api/assistant/run: contextual assistant (P4.3)", () => {
+  const body = (intentId: string, extra: Record<string, unknown> = {}) => ({ mode: "live", surface: "action", intentId, locale: "en", context: { workspaceId: WORKSPACE_ID }, ...extra });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it.each(["explain_missing_inputs", "where_to_continue"])("404s %s with the flag off, before auth, the limiter and the runner", async (intentId) => {
+    for (const value of ["", "false", "TRUE"]) {
+      vi.stubEnv("CONTEXTUAL_ASSISTANT_ENABLED", value);
+      const res = await post(body(intentId));
+      expect(res.status).toBe(404);
+      expect(await res.json()).toEqual({ error: "not_enabled" });
+    }
+    vi.unstubAllEnvs();
+    delete process.env.CONTEXTUAL_ASSISTANT_ENABLED;
+    expect((await post(body(intentId))).status).toBe(404);
+    expect(mocks.authorizeWorkspaceRequest).not.toHaveBeenCalled();
+    expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+    expect(mocks.runLiveAssistant).not.toHaveBeenCalled();
+  });
+
+  it("with the flag on a viewer gets 200 for where_to_continue, with no manager floor", async () => {
+    vi.stubEnv("CONTEXTUAL_ASSISTANT_ENABLED", "true");
+    const res = await post(body("where_to_continue"));
+    expect(res.status).toBe(200);
+    expect(mocks.authorizeWorkspaceRequest).toHaveBeenCalledWith({ id: WORKSPACE_ID });
+    expect(mocks.runLiveAssistant).toHaveBeenCalledWith(expect.objectContaining({ intentId: "where_to_continue", contextual: true }));
+  });
+
+  it("with the flag on and AI paused, explain_missing_inputs still returns 200 without a model call", async () => {
+    vi.stubEnv("CONTEXTUAL_ASSISTANT_ENABLED", "true");
+    vi.stubEnv("AI_DRAFTS_PAUSED", "true");
+    const res = await post(body("explain_missing_inputs"));
+    expect(res.status).toBe(200);
+    expect(mocks.llmComplete).not.toHaveBeenCalled();
+  });
+
+  it("passes contextual=false to the runner when the flag is off", async () => {
+    await post(body("explain_priority"));
+    expect(mocks.runLiveAssistant).toHaveBeenCalledWith(expect.objectContaining({ contextual: false }));
+  });
+
+  it("400s an unknown origin before auth, and accepts suggested, fixed and none", async () => {
+    vi.stubEnv("CONTEXTUAL_ASSISTANT_ENABLED", "true");
+    for (const origin of ["bogus", "", 1, null, "Suggested"]) {
+      const res = await post(body("explain_priority", { origin }));
+      expect(res.status, String(origin)).toBe(400);
+      expect(await res.json()).toEqual({ error: "invalid_origin" });
+    }
+    expect(mocks.authorizeWorkspaceRequest).not.toHaveBeenCalled();
+    for (const origin of ["suggested", "fixed"]) expect((await post(body("explain_priority", { origin }))).status).toBe(200);
+    expect((await post(body("explain_priority"))).status).toBe(200);
+  });
+
+  it("audits origin and next_step_kind and nothing from the answer", async () => {
+    vi.stubEnv("CONTEXTUAL_ASSISTANT_ENABLED", "true");
+    mocks.runLiveAssistant.mockResolvedValue({ ...live, answer: "SECRET ANSWER TEXT", nextStep: { kind: "review_version", actionId: "a", versionId: "v" } });
+    await post(body("where_to_continue", { origin: "suggested" }));
+    expect(mocks.recordNeonEvent).toHaveBeenCalledTimes(1);
+    const payload = mocks.recordNeonEvent.mock.calls[0][0].payload;
+    expect(payload).toEqual({ intent: "where_to_continue", surface: "action", artifact: false, origin: "suggested", next_step_kind: "review_version" });
+    expect(JSON.stringify(payload)).not.toContain("SECRET");
+    expect(payload).not.toHaveProperty("answer");
+  });
+
+  it("keeps the audit payload unchanged when there is no origin and no nextStep", async () => {
+    await post(body("explain_priority"));
+    expect(mocks.recordNeonEvent.mock.calls[0][0].payload).toEqual({ intent: "explain_priority", surface: "action", artifact: false });
+  });
+
+  it("returns 404 not_found, with no audit row, when the runner refuses a foreign location", async () => {
+    vi.stubEnv("CONTEXTUAL_ASSISTANT_ENABLED", "true");
+    const { AssistantAccessError } = await import("@/lib/assistant/errors");
+    mocks.runLiveAssistant.mockRejectedValue(new AssistantAccessError("not_found"));
+    const res = await post(body("where_to_continue"));
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
   });
 });

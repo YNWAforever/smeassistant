@@ -55,6 +55,8 @@ export async function loadSuggestions(input: {
 }): Promise<AssistantSuggestion[]> {
   const { db, membership, context } = input;
   const workspaceId = context.workspaceId;
+  // The caller authorised `membership` for one workspace; refuse before any read if the context names another.
+  if (membership.workspaceId !== workspaceId) throw new AssistantAccessError("forbidden");
   const locations = await db.assistantLocations(workspaceId);
   if (context.locationId && !locations.some((l) => l.id === context.locationId)) throw new AssistantAccessError("not_found");
   const locationId = context.locationId ?? locations.find((l) => l.is_primary)?.id ?? locations[0]?.id ?? null;
