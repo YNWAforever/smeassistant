@@ -33,7 +33,14 @@ describe("createDemoAssistantRun", () => {
         expect(run.nextStep).toBeUndefined();
         expect(run.evidenceRefs).toEqual([]);
         expect(run.output).toBeUndefined();
+        expect(run.nextAction).toBe(locale === "en" ? "Sign in to your workspace and ask again." : "登入你的工作台後再問一次。");
       }
     });
   }
+
+  it("keeps the generic English next action for every other intent (T1-a)", () => {
+    for (const questionId of demoQuestionIds.filter((id) => id !== "explain_missing_inputs" && id !== "where_to_continue")) {
+      expect(createDemoAssistantRun(questionId, "en").nextAction).toBe("Review the evidence and keep owner approval as the next control point.");
+    }
+  });
 });

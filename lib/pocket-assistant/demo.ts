@@ -239,6 +239,12 @@ const enLabels: Record<DemoQuestionId, string> = {
   where_to_continue: "This question is only answered inside a real workspace, where it can read your own actions, versions and connections. The demo has no real progress to check, so it shows no evidence or draft.",
 }
 
+/** T1-a: the contextual intents have no evidence here, so their next step is to sign in, as in Chinese. */
+const enNextActions: Partial<Record<DemoQuestionId, string>> = {
+  explain_missing_inputs: "Sign in to your workspace and ask again.",
+  where_to_continue: "Sign in to your workspace and ask again.",
+}
+
 export function createDemoAssistantRun(questionId: DemoQuestionId, locale: string): DemoAssistantRunResponse {
   const base = zhAnswers[questionId]
   const isEnglish = locale === "en"
@@ -246,7 +252,7 @@ export function createDemoAssistantRun(questionId: DemoQuestionId, locale: strin
     ...base,
     runId: `demo_run_${crypto.randomUUID()}`,
     answer: isEnglish ? enLabels[questionId] : base.answer,
-    nextAction: isEnglish ? "Review the evidence and keep owner approval as the next control point." : base.nextAction,
+    nextAction: isEnglish ? (enNextActions[questionId] ?? "Review the evidence and keep owner approval as the next control point.") : base.nextAction,
     demoBoundary: isEnglish
       ? "Sanitised Kam Man House demo data only. No arbitrary business or customer data is accepted."
       : "只使用已清理的錦汶館示範資料；不接受任意商戶、客戶或私人資料。",

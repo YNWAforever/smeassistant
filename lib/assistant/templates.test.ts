@@ -225,7 +225,50 @@ describe("contextual answers (P4.3)", () => {
       if (locale === "en") expect(answer.answer).toContain("is revoked");
       if (locale === "zh-TW") expect(answer.answer).toContain("連線");
     }
-    expect(templateAnswer("where_to_continue", context({ signals: signals({ google: null }) })).answer).toContain("not connected");
+  });
+
+  it("says there is no Google connection when none exists, in every locale (T3-d)", () => {
+    const expected: Record<PrototypeLocale, string> = {
+      en: "There is no Google Business connection.",
+      "zh-HK": "目前沒有 Google 商戶 的連接。",
+      "zh-TW": "目前沒有 Google 商家 的連線。",
+    };
+    for (const locale of LOCALES) {
+      const answer = templateAnswer("where_to_continue", context({ actor: owner, signals: signals({ google: null }) }, locale));
+      expect(answer.answer, locale).toContain(expected[locale]);
+      expect(answer.answer, locale).not.toMatch(/\{\w+\}/);
+      expect(answer.nextStep).toEqual({ kind: "open_integrations" });
+    }
+    const en = templateAnswer("where_to_continue", context({ actor: owner, signals: signals({ google: null }) })).answer;
+    expect(en).not.toContain("is not connected");
+    expect(en).toContain("Google evidence and the");
+  });
+
+  it("says “20 or more” when the waiting-version read hits its 20-row cap (Minor 1)", () => {
+    const rows = (count: number) =>
+      Array.from({ length: count }, (_, i) =>
+        waiting(`aaaaaaaa-aaaa-4aaa-8aaa-${String(i).padStart(12, "0")}`, ready.id, i + 1, `2026-09-${String(i + 1).padStart(2, "0")}T00:00:00Z`),
+      );
+    const capped: Record<PrototypeLocale, string> = {
+      en: "20 or more versions are waiting for review. The oldest is v1",
+      "zh-HK": "有 20 個或以上版本等待審閱，最早的是",
+      "zh-TW": "有 20 個或以上版本等待審閱，最早的是",
+    };
+    for (const locale of LOCALES) {
+      const answer = templateAnswer("where_to_continue", context({ actor: owner, signals: signals({ waitingVersions: rows(20) }) }, locale));
+      expect(answer.answer, locale).toContain(capped[locale]);
+      expect(answer.answer, locale).not.toMatch(/\{\w+\}/);
+      expect(answer.nextStep).toEqual({ kind: "review_version", actionId: ready.id, versionId: "aaaaaaaa-aaaa-4aaa-8aaa-000000000000" });
+    }
+    // Below the cap the count is exact.
+    const under = templateAnswer("where_to_continue", context({ actor: owner, signals: signals({ waitingVersions: rows(19) }) }));
+    expect(under.answer).toContain("19 versions are waiting for review.");
+    expect(under.answer).not.toContain("or more");
+    // At the cap with rows hidden by scope, the visible count is a floor too.
+    const L2 = "99999999-9999-4999-8999-999999999999";
+    const mixed = rows(20).map((row, i) => (i < 5 ? row : { ...row, locationId: L2 }));
+    const scoped = templateAnswer("where_to_continue", context({ actor: { role: "manager", locationScope: [LOCATION_ID] }, signals: signals({ waitingVersions: mixed }) }));
+    expect(scoped.answer).toContain("5 or more versions are waiting for review.");
   });
 
   it("never offers Google to a manager", () => {
@@ -256,6 +299,16 @@ describe("contextual answers (P4.3)", () => {
     expect(cases[4].answer).not.toContain("revoked");
     const zh = templateAnswer("explain_missing_inputs", context({ action: needy, actor: viewer }, "zh-HK"));
     expect(zh.nextAction).toContain("店主或經理");
+    // zh-TW keeps 店主或經理, as the existing zh-TW workspace copy does (lib/copy-workspace.ts offers viewer body).
+    for (const answer of [
+      templateAnswer("explain_missing_inputs", context({ action: needy, actor: viewer }, "zh-TW")),
+      templateAnswer("explain_missing_inputs", context({ action: ready, actor: viewer }, "zh-TW")),
+      templateAnswer("where_to_continue", context({ actor: viewer, signals: rows }, "zh-TW")),
+      templateAnswer("where_to_continue", context({ actor: viewer, signals: signals() }, "zh-TW")),
+    ]) {
+      expect(answer.nextAction).toMatch(/^請店主或經理/);
+      expect(answer.nextAction).not.toContain("店家");
+    }
   });
 
   it("never claims that nothing at all was approved or sent, in any locale", () => {

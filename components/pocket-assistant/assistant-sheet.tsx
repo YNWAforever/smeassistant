@@ -28,7 +28,7 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile"
 import type { PrototypeLocale } from "@/lib/copy"
 import { nextStepHref } from "@/lib/assistant/next-step"
-import { resolveText } from "@/lib/domain"
+import { localized, resolveText, type LocalizedText } from "@/lib/domain"
 import {
   isDemoQuestionId,
   type AssistantContext,
@@ -45,7 +45,11 @@ import { aiBudgetRefusal } from "@/lib/budgets/messages"
 /** `AssistantSurface` now lives in contracts.ts (§3.8); re-exported for existing importers. */
 export type { AssistantSurface } from "@/lib/pocket-assistant/contracts"
 
-const surfaceQuestions: Record<AssistantSurface, DemoQuestionId[]> = {
+/**
+ * The fixed questions per surface. The contextual intents (`ContextualIntentId`)
+ * never belong here: they are offered only as "Needs you now" suggestions.
+ */
+export const surfaceQuestions: Record<AssistantSurface, DemoQuestionId[]> = {
   sample: ["explain_priority", "explain_change", "explain_limits", "fallback_plan", "draft_review_reply"],
   report: ["explain_priority", "explain_limits", "draft_review_reply"],
   home: ["explain_priority", "fallback_plan", "explain_insights"],
@@ -58,7 +62,13 @@ const surfaceQuestions: Record<AssistantSurface, DemoQuestionId[]> = {
   workspace: ["explain_priority", "compare_priorities", "explain_insights"],
 }
 
-const labels: Record<DemoQuestionId, { zh: string; en: string }> = {
+type ContextualIntentId = AssistantSuggestion["intentId"]
+
+function isContextualIntent(questionId: DemoQuestionId): questionId is ContextualIntentId {
+  return questionId === "explain_missing_inputs" || questionId === "where_to_continue"
+}
+
+const labels: Record<Exclude<DemoQuestionId, ContextualIntentId>, { zh: string; en: string }> = {
   explain_priority: { zh: "為何評論回覆是首要行動？", en: "Why are review replies the priority?" },
   explain_change: { zh: "22% 升至 31% 代表甚麼？", en: "What does 22% to 31% mean?" },
   explain_limits: { zh: "哪些結果仍未能證明？", en: "What is still unproven?" },
@@ -72,9 +82,19 @@ const labels: Record<DemoQuestionId, { zh: string; en: string }> = {
   generate_social: { zh: "根據已核准素材準備社交帖文", en: "Prepare a post from approved assets" },
   generate_faq: { zh: "準備 FAQ，但不要作出事實", en: "Prepare an FAQ without inventing facts" },
   generate_menu: { zh: "建立餐牌翻譯工作批次", en: "Create a menu translation batch" },
-  explain_missing_inputs: { zh: "還需要甚麼資料？", en: "What detail do you need?" },
-  where_to_continue: { zh: "我應該由哪裡繼續？", en: "Where do I continue?" },
 }
+
+/**
+ * P4.3 copy is keyed per locale: zh-TW says 什麼, 從 and 連線 where zh-HK says
+ * 甚麼, 由 and 連接. The pre-P4.3 labels above keep their shared `zh` string.
+ */
+const contextualLabels: Record<ContextualIntentId, LocalizedText> = {
+  explain_missing_inputs: localized("What detail do you need?", "還需要甚麼資料？", "還需要什麼資料？"),
+  where_to_continue: localized("Where do I continue?", "我應該由哪裡繼續？", "我應該從哪裡繼續？"),
+}
+const MISSING_INPUTS_FOR = localized("What detail do you need for {title}?", "「{title}」還需要甚麼資料？", "「{title}」還需要什麼資料？")
+const WHY_RECONNECT_GOOGLE = localized("Why reconnect Google?", "為何要重新連接 Google？", "為何要重新連線 Google？")
+const NEEDS_YOU_NOW = localized("Needs you now", "現在需要你處理", "現在需要你處理")
 
 /**
  * Live mode answers from the workspace's own snapshots, so the labels that
@@ -86,9 +106,10 @@ const liveLabels: Partial<Record<DemoQuestionId, { zh: string; en: string }>> = 
   fallback_plan: { zh: "如果分數再次下跌，今星期應做甚麼？", en: "What if the score falls again this week?" },
 }
 
-function questionLabel(questionId: DemoQuestionId, mode: AssistantMode, isChinese: boolean) {
+function questionLabel(questionId: DemoQuestionId, mode: AssistantMode, locale: PrototypeLocale) {
+  if (isContextualIntent(questionId)) return resolveText(contextualLabels[questionId], locale)
   const label = (mode === "live" ? liveLabels[questionId] : undefined) ?? labels[questionId]
-  return label[isChinese ? "zh" : "en"]
+  return label[locale === "en" ? "en" : "zh"]
 }
 
 const SUGGESTIONS_ENDPOINT = "/api/assistant/suggestions"
@@ -121,12 +142,11 @@ function suggestionsQuery(context: AssistantContext) {
 }
 
 function suggestionLabel(suggestion: AssistantSuggestion, locale: PrototypeLocale) {
-  const isChinese = locale !== "en"
-  if (suggestion.kind === "google") return isChinese ? "為何要重新連接 Google？" : "Why reconnect Google?"
-  if (suggestion.kind === "review_version") return isChinese ? "我應該由哪裡繼續？" : "Where do I continue?"
+  if (suggestion.kind === "google") return resolveText(WHY_RECONNECT_GOOGLE, locale)
+  if (suggestion.kind === "review_version") return questionLabel("where_to_continue", "live", locale)
   const title = suggestion.label.actionTitle ? resolveText(suggestion.label.actionTitle, locale) : ""
-  if (!title) return questionLabel("explain_missing_inputs", "live", isChinese)
-  return isChinese ? `「${title}」還需要甚麼資料？` : `What detail do you need for ${title}?`
+  if (!title) return questionLabel("explain_missing_inputs", "live", locale)
+  return resolveText(MISSING_INPUTS_FOR, locale).replace("{title}", title)
 }
 
 function surfaceTitle(surface: AssistantSurface, isChinese: boolean) {
@@ -279,7 +299,7 @@ export function ContextualAssistant({
           <div className="assistant-boundary"><LockKeyhole aria-hidden="true" /><span>{mode === "live" ? (isChinese ? "答案只使用此工作台的證據快照；這裡不會發佈或核准任何內容。" : "Answers use only this workspace's evidence snapshots; nothing is published or approved here.") : (isChinese ? "公開及示範模式只使用固定、已清理的錦汶館資料；不接受其他商戶或客戶資料。" : "Public and demo mode uses fixed, sanitised Kam Man House data only; no other business or customer data is accepted.")}</span></div>
 
           {shown.length > 0 && <section className="assistant-question-section" aria-labelledby="assistant-suggestion-title">
-            <p className="eyebrow" id="assistant-suggestion-title">{isChinese ? "現在需要你處理" : "Needs you now"}</p>
+            <p className="eyebrow" id="assistant-suggestion-title">{resolveText(NEEDS_YOU_NOW, locale)}</p>
             <div className="assistant-question-list">
               {shown.map((suggestion) => <button key={suggestion.id} type="button" aria-pressed={selected === suggestion.id} onClick={() => ask(suggestion.intentId, { key: suggestion.id, context: suggestion.context, origin: "suggested" })}><span>{suggestionLabel(suggestion, locale)}</span><ArrowRight aria-hidden="true" /></button>)}
             </div>
@@ -288,7 +308,7 @@ export function ContextualAssistant({
           <section className="assistant-question-section" aria-labelledby="assistant-question-title">
             <p className="eyebrow" id="assistant-question-title">{isChinese ? "由目前問題開始" : "Start from the current problem"}</p>
             <div className="assistant-question-list">
-              {questions.map((questionId) => <button key={questionId} type="button" aria-pressed={selected === questionId} onClick={() => ask(questionId)}><span>{questionLabel(questionId, mode, isChinese)}</span><ArrowRight aria-hidden="true" /></button>)}
+              {questions.map((questionId) => <button key={questionId} type="button" aria-pressed={selected === questionId} onClick={() => ask(questionId)}><span>{questionLabel(questionId, mode, locale)}</span><ArrowRight aria-hidden="true" /></button>)}
             </div>
           </section>
 

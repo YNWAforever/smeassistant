@@ -69,6 +69,7 @@ test("an owner with a waiting draft continues from the assistant to the exact ve
   await expect(page).toHaveURL(new RegExp(`/actions/${merchant.actionId}\\?version=${versionId}(&|$)`));
   await expect(page.locator(".action-detail-page")).toBeVisible();
   await page.getByRole("tab", { name: "Version & audit history" }).click();
+  // A waiting version is always its action's newest (create_output_version supersedes earlier draft/changes_requested rows), so this does not isolate ?version=; components/workspace/action-detail-version-param.test.tsx does.
   await expect(page.locator(".version-list button[aria-pressed='true']")).toContainText("Version 1");
 
   // The assistant and the link changed nothing and called no authority route.

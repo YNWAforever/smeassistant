@@ -197,6 +197,13 @@ const WAITING_MANY = localized(
   "{count} versions are waiting for review. The oldest is v{n} of “{title}” (“{state}”). An authorised person must approve a specific version before it can be exported.",
   "有 {count} 個版本等待審閱，最早的是「{title}」的 v{n}（{state}）。須由獲授權人士核准指定版本後才可匯出。",
 );
+// Minor 1: `assistantWaitingVersions` (lib/repositories/artifacts.ts) reads at
+// most this many rows, so at the cap the visible count is a floor, not a total.
+const WAITING_VERSIONS_READ_LIMIT = 20;
+const WAITING_CAPPED = localized(
+  "{count} or more versions are waiting for review. The oldest is v{n} of “{title}” (“{state}”). An authorised person must approve a specific version before it can be exported.",
+  "有 {count} 個或以上版本等待審閱，最早的是「{title}」的 v{n}（{state}）。須由獲授權人士核准指定版本後才可匯出。",
+);
 const VERSION_NEXT = localized("Open v{n} and review it.", "開啟 v{n} 進行審閱。");
 const VERSION_ASK = localized("Ask an owner or manager to review v{n}.", "請店主或經理審閱 v{n}。");
 const NOTHING_WAITING = localized(
@@ -213,13 +220,18 @@ const GOOGLE_STATE = localized(
   "{google} 的連接狀態：{state}。Google 證據及「{reconnect}」行動都依賴此連接。",
   "{google} 的連線狀態：{state}。Google 證據及「{reconnect}」行動都依賴此連線。",
 );
+// T3-d: with no connection row at all there is no state to report.
+const GOOGLE_NONE = localized(
+  "There is no {google} connection. Google evidence and the “{reconnect}” action depend on it.",
+  "目前沒有 {google} 的連接。Google 證據及「{reconnect}」行動都依賴此連接。",
+  "目前沒有 {google} 的連線。Google 證據及「{reconnect}」行動都依賴此連線。",
+);
 const GOOGLE_NEXT = localized(
   "Open Integrations in settings and reconnect Google.",
   "前往設定中的「連接與整合」，重新連接 Google。",
   "前往設定中的「連接與整合」，重新連線 Google。",
 );
-const GOOGLE_STATES: Record<"none" | Exclude<GoogleStatus, null | "active">, LocalizedText> = {
-  none: localized("not connected", "未連接", "未連線"),
+const GOOGLE_STATES: Record<Exclude<GoogleStatus, null | "active">, LocalizedText> = {
   expired: localized("expired", "已過期"),
   revoked: localized("revoked", "已被撤銷"),
   error: localized("reporting an error", "出現錯誤"),
@@ -525,9 +537,9 @@ function whereToContinue(ctx: TemplateContext): TemplateAnswer {
   // 2. Google needs attention. Integrations settings are owner-only.
   if (signals && !ctx.focusedVersionId && (!ctx.actor || ctx.actor.role === "owner") && signals.google !== "active") {
     return {
-      answer: fill(GOOGLE_STATE, locale, {
+      answer: fill(signals.google ? GOOGLE_STATE : GOOGLE_NONE, locale, {
         google: MODULE_NAMES.google_business[locale],
-        state: GOOGLE_STATES[signals.google ?? "none"][locale],
+        state: signals.google ? GOOGLE_STATES[signals.google][locale] : "",
         reconnect: copy[locale].workspace.templates["google-reconnect"].title,
       }),
       nextAction: GOOGLE_NEXT[locale],
@@ -539,7 +551,10 @@ function whereToContinue(ctx: TemplateContext): TemplateAnswer {
 
   // 3. The oldest waiting version the member can see.
   const oldest = waiting[0];
-  if (oldest) return reviewAnswer(oldest, fill(waiting.length === 1 ? WAITING_ONE : WAITING_MANY, locale, { ...versionVars(oldest), count: waiting.length }));
+  if (oldest) {
+    const text = all.length >= WAITING_VERSIONS_READ_LIMIT ? WAITING_CAPPED : waiting.length === 1 ? WAITING_ONE : WAITING_MANY;
+    return reviewAnswer(oldest, fill(text, locale, { ...versionVars(oldest), count: waiting.length }));
+  }
 
   // 4. Nothing is waiting.
   return {

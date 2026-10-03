@@ -2,7 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 
-import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet";
+import { ContextualAssistant, surfaceQuestions } from "@/components/pocket-assistant/assistant-sheet";
+import type { AssistantSurface } from "@/lib/pocket-assistant/contracts";
 import { getMessages } from "@/lib/i18n";
 
 const WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";
@@ -115,11 +116,32 @@ describe("ContextualAssistant suggestions (P4.3)", () => {
     expect(Object.fromEntries(url.searchParams)).toEqual({ workspaceId: WORKSPACE_ID, actionId: ACTION_ID, versionId: VERSION_ID });
   });
 
-  it.each(["zh-HK", "zh-TW"] as const)("localises the heading and the missing-inputs label in %s", async (locale) => {
-    stubFetch(suggestionsOk([missingInputs]));
+  // zh-TW uses 什麼, 從 and 連線 where zh-HK says 甚麼, 由 and 連接.
+  const SUGGESTION_LABELS = {
+    "zh-HK": { heading: "現在需要你處理", missing: "「回覆評論」還需要甚麼資料？", untitled: "還需要甚麼資料？", review: "我應該由哪裡繼續？", google: "為何要重新連接 Google？" },
+    "zh-TW": { heading: "現在需要你處理", missing: "「回覆評論」還需要什麼資料？", untitled: "還需要什麼資料？", review: "我應該從哪裡繼續？", google: "為何要重新連線 Google？" },
+  } as const;
+  it.each(["zh-HK", "zh-TW"] as const)("localises the heading and every suggestion label in %s", async (locale) => {
+    const expected = SUGGESTION_LABELS[locale];
+    const untitled = { ...missingInputs, id: "mi-2", label: {} };
+    stubFetch(suggestionsOk([missingInputs, reviewVersion, google]));
     await open({ locale });
-    expect(await screen.findByText("現在需要你處理")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "「回覆評論」還需要甚麼資料？" })).toBeInTheDocument();
+    expect(await screen.findByText(expected.heading)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: expected.missing })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: expected.review })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: expected.google })).toBeInTheDocument();
+    cleanup();
+    stubFetch(suggestionsOk([untitled]));
+    await open({ locale });
+    expect(await screen.findByRole("button", { name: expected.untitled })).toBeInTheDocument();
+  });
+
+  it("never mixes zh-HK wording into zh-TW suggestion labels", async () => {
+    stubFetch(suggestionsOk([missingInputs, reviewVersion, google]));
+    await open({ locale: "zh-TW" });
+    await screen.findByText("現在需要你處理");
+    const section = screen.getByText("現在需要你處理").closest("section");
+    expect(section?.textContent).not.toMatch(/甚麼|由哪裡|連接/);
   });
 
   it("labels the Google suggestion without a title", async () => {
@@ -237,6 +259,17 @@ describe("ContextualAssistant Continue here (P4.3)", () => {
   it("renders no link for a bad id", async () => {
     await askFirst({ basePath: BASE_PATH }, { kind: "open_action", actionId: "../../settings" });
     expect(screen.queryByRole("link", { name: "Continue here" })).toBeNull();
+  });
+});
+
+describe("fixed question lists (P4.3, T1-c)", () => {
+  const SURFACES: AssistantSurface[] = ["sample", "report", "home", "actions", "action", "create", "insights", "assets", "rescan", "workspace"];
+  it("covers every surface", () => {
+    expect(Object.keys(surfaceQuestions).sort()).toEqual([...SURFACES].sort());
+  });
+  it.each(SURFACES)("never offers the contextual intents as fixed questions on %s", (surface) => {
+    expect(surfaceQuestions[surface]).not.toContain("explain_missing_inputs");
+    expect(surfaceQuestions[surface]).not.toContain("where_to_continue");
   });
 });
 
