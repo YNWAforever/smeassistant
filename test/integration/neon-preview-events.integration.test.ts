@@ -75,7 +75,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon preview events", () =
     ).rows;
     expect(rows.map((r) => r.proname)).toEqual(names);
     for (const r of rows) {
-      expect(r).toMatchObject({ prosecdef: true, proconfig: ['search_path=""'], runtime_exec: true, public_grants: 0 });
+      expect(r).toMatchObject({ prosecdef: false, proconfig: ['search_path=""'], runtime_exec: true, public_grants: 0 });
     }
   });
 

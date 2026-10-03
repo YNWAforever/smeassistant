@@ -14,6 +14,10 @@
 -- per-job and daily limits; 'failed' rows release the slot and 'refused' rows
 -- record the refusal. The budget sums cost_usd over every row of the last 24
 -- hours, whatever its outcome.
+--
+-- Both functions are SECURITY INVOKER, like 0004 and 0011 (neon/README.md):
+-- the runtime already has RLS-backed DML on preview_events, so no owner
+-- elevation is needed.
 CREATE TABLE IF NOT EXISTS public.preview_events (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   job_id      uuid NOT NULL REFERENCES public.audit_jobs(id) ON DELETE CASCADE,
@@ -44,7 +48,6 @@ CREATE POLICY server_application ON public.preview_events FOR ALL TO sme_app_run
 CREATE OR REPLACE FUNCTION public.claim_preview_slot(p_job uuid, p_grant uuid, p_ip_hash text, p_global_daily integer, p_usd_daily numeric)
  RETURNS jsonb
  LANGUAGE plpgsql
- SECURITY DEFINER
  SET search_path TO ''
 AS $function$
 declare
@@ -114,7 +117,6 @@ GRANT EXECUTE ON FUNCTION public.claim_preview_slot(p_job uuid, p_grant uuid, p_
 CREATE OR REPLACE FUNCTION public.finish_preview_slot(p_event uuid, p_outcome text, p_reason text, p_cost numeric)
  RETURNS void
  LANGUAGE plpgsql
- SECURITY DEFINER
  SET search_path TO ''
 AS $function$
 begin
