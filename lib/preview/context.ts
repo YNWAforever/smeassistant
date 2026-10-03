@@ -28,7 +28,10 @@ export function previewMarket(region: string | null): "hk" | "tw" {
 
 /**
  * An in-memory `review-response` action. It is never persisted: the ids are
- * placeholders, it names no finding or snapshot, and it carries no evidence.
+ * placeholders and it names no finding or snapshot. Its evidence says only
+ * that the text was visitor-supplied and unverified (ruling R5): left empty,
+ * `buildActionOverview` would default it to `Observed`, a fact type the
+ * pasted review has not earned.
  */
 function previewActionRow(now: string): ActionRow {
   const template = findTemplate("review-response");
@@ -42,7 +45,7 @@ function previewActionRow(now: string): ActionRow {
     source_finding_keys: [],
     title: template.title,
     summary: template.summary,
-    evidence: {},
+    evidence: { factType: "Unknown", source: "visitor_supplied" },
     priority: "medium",
     priority_score: 0,
     priority_factors: [],

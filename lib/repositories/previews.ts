@@ -19,6 +19,9 @@ export type ClaimRefusal = "already_used" | "job_limit" | "daily_limit" | "budge
 
 export type ClaimResult = { allowed: true; eventId: string } | { allowed: false; reason: ClaimRefusal };
 
+/** Ruling R3: the only failure reasons a finished slot may carry, so no free text can reach preview_events.reason. */
+export type FinishReason = "no_output" | "invalid_output" | "facts_needed";
+
 const REFUSALS: ReadonlySet<string> = new Set<ClaimRefusal>(["already_used", "job_limit", "daily_limit", "budget"]);
 
 /** Preserve nothing from the driver: no SQL, parameters or connection details leave this module. */
@@ -75,7 +78,7 @@ export function previewRepository(client?: Executor) {
     async finishSlot(input: {
       eventId: string;
       outcome: "generated" | "failed";
-      reason: string | null;
+      reason: FinishReason | null;
       costUsd: number;
     }): Promise<void> {
       await operation(() =>

@@ -12,7 +12,7 @@ vi.mock("../../lib/db/client", () => ({
   },
 }));
 
-import { previewRepository } from "../../lib/repositories/previews";
+import { previewRepository, type FinishReason } from "../../lib/repositories/previews";
 
 // P4.5 migration 0013 (docs/superpowers/specs/2026-10-04-preview-draft-design.md §1):
 // preview_events, claim_preview_slot and finish_preview_slot.
@@ -111,7 +111,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon preview events", () =
       usdDaily: limits.usdDaily ?? 2,
     });
 
-  const finish = (eventId: string, outcome: "generated" | "failed", costUsd = 0, reason: string | null = null) =>
+  const finish = (eventId: string, outcome: "generated" | "failed", costUsd = 0, reason: FinishReason | null = null) =>
     previewRepository(runtime).finishSlot({ eventId, outcome, reason, costUsd });
 
   async function claimedId(jobId: string, grantId: string, limits: Parameters<typeof claim>[2] = {}): Promise<string> {
@@ -212,11 +212,11 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon preview events", () =
     const j = await job();
     const g = await grant(j);
     const first = await claimedId(j, g);
-    await finish(first, "failed", 0, "no_model_output");
+    await finish(first, "failed", 0, "no_output");
     const second = await claim(j, g);
     expect(second).toEqual({ allowed: true, eventId: expect.any(String) });
     expect((await events("job_id=$1", [j])).map((r) => [r.outcome, r.reason])).toEqual([
-      ["failed", "no_model_output"],
+      ["failed", "no_output"],
       ["claimed", null],
     ]);
   });
@@ -248,7 +248,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon preview events", () =
     expect(done).toMatchObject({ outcome: "generated", reason: null, cost_usd: "0.0123" });
     expect(done.finished_at).toBeInstanceOf(Date);
     // generated → failed is a no-op.
-    await finish(id, "failed", 1, "late");
+    await finish(id, "failed", 1, "no_output");
     expect((await events("id=$1", [id]))[0]).toMatchObject({ outcome: "generated", reason: null, cost_usd: "0.0123" });
     // A refused row never changes.
     await claim(j, g);

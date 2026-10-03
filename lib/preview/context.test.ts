@@ -66,6 +66,16 @@ describe("buildPreviewContext", () => {
     expect(prompt.slice(end)).toBe(benign.slice(benign.indexOf(FENCE_END)));
   });
 
+  it("labels the pasted review Unknown, never Observed (ruling R5)", () => {
+    const ctx = buildPreviewContext(base);
+    expect(ctx.action.evidence).toMatchObject({ factType: "Unknown", source: "visitor_supplied" });
+    expect(ctx.evidence).toEqual({});
+    const prompt = AGENTS.review_reply.buildPrompt(ctx);
+    expect(prompt).not.toContain('"factType": "Observed"');
+    expect(prompt).not.toContain('"factType":"Observed"');
+    expect(prompt).toContain('"factType": "Unknown"');
+  });
+
   it("renders no snapshot, metric or finding keys", () => {
     const prompt = AGENTS.review_reply.buildPrompt(buildPreviewContext(base));
     const evidence = JSON.parse(section(prompt, FENCE, FENCE_END).slice(FENCE.length)) as Record<string, unknown>;
