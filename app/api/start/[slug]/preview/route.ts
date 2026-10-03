@@ -100,6 +100,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   const decision = await enforceRateLimit({ req: request, scope: "preview_draft", failClosed: true });
   if (!decision.allowed) return decision.unavailable ? refused("unavailable", "limiter_unavailable") : refused("ip_limit");
 
+  // The preview context does no I/O. It is built before the claim, so nothing that can
+  // throw outside a try runs between a successful claim and finishSlot (ruling R8).
+  const ctx = buildPreviewContext({
+    locale: input.locale,
+    market: previewMarket(job.region),
+    businessName: job.businessName,
+    review: input.review,
+    rating: input.rating,
+  });
+
   // 7. The slot: per grant, per job, per day and the daily spend.
   const repo = previewRepository();
   let eventId: string;
@@ -111,17 +121,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     return refused("unavailable", "claim_failed");
   }
 
-  // 8. One model call over the preview context only.
-  const ctx = buildPreviewContext({
-    locale: input.locale,
-    market: previewMarket(job.region),
-    businessName: job.businessName,
-    review: input.review,
-    rating: input.rating,
-  });
+  // 8. One model call over the preview context only. Provider error text never reaches the logs.
   let result: LLMResult | null = null;
   try {
-    result = await llmComplete(AGENTS.review_reply.buildPrompt(ctx), AGENT_LLM_OPTIONS);
+    result = await llmComplete(AGENTS.review_reply.buildPrompt(ctx), { ...AGENT_LLM_OPTIONS, redactErrors: true });
   } catch {
     result = null;
   }

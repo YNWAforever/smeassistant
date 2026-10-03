@@ -201,6 +201,8 @@ describe("POST /api/start/[slug]/preview", () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     mocks.enforceRateLimit.mockResolvedValue({ allowed: false, retryAfterSeconds: 86400, unavailable: true });
     const res = await post();
+    expect(res.status).toBe(200);
+    expectNoStore(res);
     expect(await res.json()).toEqual({ state: "refused", reason: "unavailable" });
     expect(mocks.claimSlot).not.toHaveBeenCalled();
     expect(mocks.llmComplete).not.toHaveBeenCalled();
@@ -273,7 +275,8 @@ describe("POST /api/start/[slug]/preview", () => {
     expectNoStore(res);
     expect(await res.json()).toEqual({ state: "generated", body: REPLY, warnings: [] });
     expect(mocks.llmComplete).toHaveBeenCalledTimes(1);
-    expect(mocks.llmComplete).toHaveBeenCalledWith(expect.any(String), { jsonMode: true, temperature: 0.4, maxTokens: 1200, timeoutMs: 45_000 });
+    // The agent options, plus redactErrors so a provider error body echoing the review is never logged.
+    expect(mocks.llmComplete).toHaveBeenCalledWith(expect.any(String), { jsonMode: true, temperature: 0.4, maxTokens: 1200, timeoutMs: 45_000, redactErrors: true });
     expect(mocks.finishSlot).toHaveBeenCalledWith({ eventId: EVENT_ID, outcome: "generated", reason: null, costUsd: EXPECTED_COST });
 
     // Review Focus 5: a compensation promise is flagged, after the model's own warnings.
@@ -343,6 +346,12 @@ describe("POST /api/start/[slug]/preview", () => {
       // Logs carry only a category.
       for (const arg of call.slice(1)) expect(Object.keys(arg as object)).toEqual(["category"]);
     }
+  });
+
+  it("asks llmComplete to redact provider error text from its logs", async () => {
+    await post();
+    expect(mocks.llmComplete).toHaveBeenCalledTimes(1);
+    expect(mocks.llmComplete.mock.calls[0][1]).toMatchObject({ redactErrors: true });
   });
 
   it("passes the model only the preview context", async () => {

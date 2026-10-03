@@ -151,3 +151,64 @@ describe("llm config resolution", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("llmComplete error logging", () => {
+  const SENTINEL = "SENTINEL-review-text-Waited-forty-minutes";
+
+  async function configured() {
+    vi.stubEnv("AI_DRAFTS_PAUSED", "");
+    vi.stubEnv("OPENCODE_API_KEY", "sk-opencode-test");
+    vi.stubEnv("LLM_API_KEY", "");
+    vi.stubEnv("OPENROUTER_KEY", "");
+    vi.stubEnv("LLM_BASE_URL", "");
+    return loadLLM();
+  }
+
+  const logged = (spy: ReturnType<typeof vi.spyOn>) =>
+    spy.mock.calls.map((call: unknown[]) => call.map((arg) => (arg instanceof Error ? `${arg.name} ${arg.message} ${arg.stack}` : typeof arg === "string" ? arg : JSON.stringify(arg))).join(" ")).join("\n");
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
+
+  it("with redactErrors, a non-2xx body is not logged, only the status", async () => {
+    const { llmComplete } = await configured();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 403, text: async () => JSON.stringify({ error: { metadata: { flagged_input: SENTINEL } } }) }));
+
+    await expect(llmComplete("prompt", { redactErrors: true })).resolves.toBeNull();
+
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error).toHaveBeenCalledWith("[llm] API error", { status: 403 });
+    expect(logged(error)).not.toContain("SENTINEL");
+  });
+
+  it("with redactErrors, a thrown error logs only its class name", async () => {
+    const { llmComplete } = await configured();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError(SENTINEL)));
+
+    await expect(llmComplete("prompt", { redactErrors: true })).resolves.toBeNull();
+
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error).toHaveBeenCalledWith("[llm] request failed", { error: "TypeError" });
+    expect(logged(error)).not.toContain("SENTINEL");
+  });
+
+  it("without redactErrors, logging is unchanged", async () => {
+    const { llmComplete } = await configured();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const body = `{"error":"${SENTINEL}"}`;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500, text: async () => body }));
+    await llmComplete("prompt");
+    expect(error).toHaveBeenLastCalledWith(`[llm] API error 500: ${body.slice(0, 300)}`);
+
+    const thrown = new Error(SENTINEL);
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(thrown));
+    await llmComplete("prompt", { redactErrors: false });
+    expect(error).toHaveBeenLastCalledWith("[llm] request failed:", thrown);
+  });
+});
