@@ -179,7 +179,7 @@ describe("contextual answers (P4.3)", () => {
     expect(answer.answer).toContain("Reply to unanswered Google reviews");
     expect(answer.answer).toContain("Changes requested");
     expect(answer.answer).toContain("must approve this exact version");
-    expect(answer.answer).toContain("nothing has been approved or sent");
+    expect(answer.answer).toContain("this version has not been approved or sent");
     expect(answer.nextStep).toEqual({ kind: "review_version", actionId: ready.id, versionId: V2 });
     const zh = templateAnswer("where_to_continue", context({ actor: owner, signals: rows, focusedVersionId: V2 }, "zh-HK"));
     expect(zh.answer).toContain("v2");
@@ -256,6 +256,90 @@ describe("contextual answers (P4.3)", () => {
     expect(cases[4].answer).not.toContain("revoked");
     const zh = templateAnswer("explain_missing_inputs", context({ action: needy, actor: viewer }, "zh-HK"));
     expect(zh.nextAction).toContain("店主或經理");
+  });
+
+  it("never claims that nothing at all was approved or sent, in any locale", () => {
+    // Approving and exporting v1, then editing it, leaves a draft v2: a broad
+    // "nothing has been approved or sent" would be false. Only the named version's state is claimed.
+    const two = [waiting(V2, ready.id, 2, "2026-09-01T00:00:00Z"), waiting(V3, needy.id, 1, "2026-08-01T00:00:00Z")];
+    for (const locale of LOCALES) {
+      const answers = [
+        templateAnswer("where_to_continue", context({ actor: owner, signals: signals({ waitingVersions: two }), focusedVersionId: V2 }, locale)),
+        templateAnswer("where_to_continue", context({ actor: owner, signals: signals({ waitingVersions: two }) }, locale)),
+        templateAnswer("where_to_continue", context({ actor: owner, signals: signals({ waitingVersions: [two[0]] }) }, locale)),
+        templateAnswer("where_to_continue", context({ actor: owner, signals: signals() }, locale)),
+        templateAnswer("where_to_continue", context({ actor: owner, signals: signals({ google: "revoked" }) }, locale)),
+        templateAnswer("where_to_continue", context({ actor: viewer, signals: signals({ waitingVersions: two }), focusedVersionId: V2 }, locale)),
+        templateAnswer("explain_missing_inputs", context({ action: needy, actor: owner }, locale)),
+        templateAnswer("explain_missing_inputs", context({ action: ready, actor: owner }, locale)),
+      ];
+      for (const answer of answers) {
+        const text = `${answer.answer} ${answer.nextAction}`;
+        expect(text, locale).not.toMatch(/nothing has been approved or sent/i);
+        expect(text, locale).not.toContain("未有任何內容獲核准或送出");
+        expect(text, locale).not.toContain("未有任何內容");
+      }
+    }
+    const zhTw = templateAnswer("where_to_continue", context({ actor: owner, signals: signals({ waitingVersions: two }), focusedVersionId: V2 }, "zh-TW"));
+    expect(zhTw.answer).toContain("此版本尚未核准或送出");
+    const zhHk = templateAnswer("where_to_continue", context({ actor: owner, signals: signals({ waitingVersions: two }), focusedVersionId: V2 }, "zh-HK"));
+    expect(zhHk.answer).toContain("此版本尚未獲核准或送出");
+  });
+
+  it("names a focused waiting version outside a scoped manager's locations, read-only (R4)", () => {
+    const L2 = "99999999-9999-4999-8999-999999999999";
+    const scoped: Actor = { role: "manager", locationScope: [L2] };
+    const rows = signals({ waitingVersions: [waiting(V2, ready.id, 2, "2026-09-01T00:00:00Z"), { ...waiting(V3, needy.id, 1, "2026-08-01T00:00:00Z"), locationId: L2 }] });
+    const answer = templateAnswer("where_to_continue", context({ actor: scoped, signals: rows, focusedVersionId: V2 }));
+    expect(answer.answer).toContain("v2 of “Reply to unanswered Google reviews”");
+    expect(answer.nextStep).toBeUndefined();
+    expect(answer.nextAction).toBe("Ask an owner or manager to review v2.");
+    // Unfocused, the list stays scope-filtered: only the in-scope v1 is counted.
+    const unfocused = templateAnswer("where_to_continue", context({ actor: scoped, signals: rows }));
+    expect(unfocused.answer).toContain("1 version is waiting for review: v1");
+    expect(unfocused.nextStep).toEqual({ kind: "review_version", actionId: needy.id, versionId: V3 });
+    // A focused out-of-scope action is answered read-only too.
+    const action = templateAnswer("explain_missing_inputs", context({ action: needy, actor: outOfScope }));
+    expect(action.answer).toContain("Approved asset or text only");
+    expect(action.nextStep).toBeUndefined();
+  });
+
+  it("does not name the location when out-of-scope rows were hidden (R5)", () => {
+    const L2 = "99999999-9999-4999-8999-999999999999";
+    const scoped: Actor = { role: "manager", locationScope: [L2] };
+    const rows = signals({ waitingVersions: [waiting(V2, ready.id, 2, "2026-09-01T00:00:00Z")] });
+    const expected: Record<PrototypeLocale, [string, string]> = {
+      en: ["Nothing is waiting for review now in your locations", "No open action in your locations is waiting for details"],
+      "zh-HK": ["你負責的地點目前沒有等待審閱的項目", "你負責的地點目前沒有等待補充資料的未完成行動"],
+      "zh-TW": ["你負責的據點目前沒有等待審閱的項目", "你負責的據點目前沒有等待補充資料的未完成行動"],
+    };
+    for (const locale of LOCALES) {
+      const where = templateAnswer("where_to_continue", context({ actor: scoped, signals: rows }, locale));
+      expect(where.answer).toContain(expected[locale][0]);
+      expect(where.answer).not.toContain("Yik Yam");
+      expect(where.nextStep).toEqual({ kind: "open_actions" });
+      const missing = templateAnswer("explain_missing_inputs", context({ action: null, actor: scoped, signals: signals() }, locale));
+      expect(missing.answer).toContain(expected[locale][1]);
+      expect(missing.answer).not.toContain("Yik Yam");
+    }
+    // Nothing hidden: the location is named as before.
+    expect(templateAnswer("where_to_continue", context({ actor: scoped, signals: signals() })).answer).toContain("Nothing is waiting for review now at Yik Yam");
+    expect(templateAnswer("explain_missing_inputs", context({ action: null, actor: scoped, signals: signals({ actions: [ready] }) })).answer).toContain("No open action for Yik Yam");
+  });
+
+  it("lists a focused action's missing inputs whatever its state, but never an offer's (R6)", () => {
+    const working = overview({ ...socialRow, action_state: "in_progress", required_inputs: ["asset_or_text_only", "alt_text"], provided_inputs: {} });
+    const answer = templateAnswer("explain_missing_inputs", context({ action: working, actor: owner }));
+    expect(answer.answer).toContain("Approved asset or text only, Alt text");
+    expect(answer.nextStep).toEqual({ kind: "provide_inputs", actionId: working.id });
+    const offer = overview({ ...socialRow, template_key: "offer-instagram-post", action_state: "in_progress", required_inputs: ["offer_id", "brand_voice"], provided_inputs: {} });
+    const offerAnswer = templateAnswer("explain_missing_inputs", context({ action: offer, actor: owner }));
+    expect(offerAnswer.answer).not.toContain("Confirmed offer");
+    expect(offerAnswer.answer).not.toContain("Brand voice");
+    expect(offerAnswer.nextStep).toEqual({ kind: "open_action", actionId: offer.id });
+    // Unfocused, the needs_input gate still applies: an in_progress action is not picked.
+    const fallback = templateAnswer("explain_missing_inputs", context({ action: null, actor: owner, signals: signals({ actions: [ready, working] }) }));
+    expect(fallback.answer).toContain("No open action for Yik Yam is waiting for details");
   });
 
   it("adds nextStep to explain_priority and explain_change without changing their text", () => {

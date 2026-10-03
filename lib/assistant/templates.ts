@@ -6,6 +6,7 @@ import { formatDay, metricLabel, priorityLabel, stateLabel } from "@/lib/workspa
 import type { MetricKey } from "@/lib/workspace/metrics";
 import type { ActionOverview } from "@/lib/workspace/overview";
 import type { ModuleStateKey, ScanDiffRow, SnapshotRecord } from "@/lib/workspace/snapshots";
+import { isOfferTemplate, templateByKey, type TemplateKey } from "@/lib/workspace/templates";
 import { MODULE_NAMES, formatCoverage, formatMetricValue, formatScore, measuredMetricKeys, metricChange, pickRefs, type ModuleKey } from "./evidence";
 import { canAct, missingInputKeys, type GoogleStatus, type SignalRows, type WaitingVersion } from "./signals";
 
@@ -172,26 +173,41 @@ const NOTHING_MISSING = localized("“{title}” has every detail it needs right
 const NOTHING_MISSING_NEXT = localized("Open the action to continue.", "開啟該行動以繼續。");
 const NOTHING_MISSING_ASK = localized("Ask an owner or manager to open the action and continue.", "請店主或經理開啟該行動並繼續處理。");
 const NO_ACTION_MISSING = localized("No open action for {loc} is waiting for details right now; nothing is missing.", "{loc} 目前沒有等待補充資料的未完成行動，沒有缺少任何項目。");
+// R5: when some rows were hidden by the member's location scope, the answer must
+// not claim a whole location is clear, so it speaks about their locations only.
+const NO_ACTION_MISSING_SCOPED = localized(
+  "No open action in your locations is waiting for details right now; nothing is missing.",
+  "你負責的地點目前沒有等待補充資料的未完成行動，沒有缺少任何項目。",
+  "你負責的據點目前沒有等待補充資料的未完成行動，沒有缺少任何項目。",
+);
 const OPEN_ACTIONS_NEXT = localized("Open the actions list to choose what to do next.", "開啟行動清單，選擇下一步。");
 const OPEN_ACTIONS_ASK = localized("Ask an owner or manager to choose the next action.", "請店主或經理選擇下一項行動。");
 const MISSING_WARN = localized("Missing details stay Unknown; the assistant never guesses them.", "缺少的資料一律視為「未知」；助手不會推測。");
+// Only the named version's own state is claimed: an earlier version of the
+// same action may well have been approved and exported already.
 const VERSION_FOCUSED = localized(
-  "Version v{n} of “{title}” is “{state}”. An authorised person must approve this exact version before it can be exported; nothing has been approved or sent yet.",
-  "「{title}」的 v{n} 版本目前狀態為「{state}」。須由獲授權人士核准此指定版本後才可匯出；目前未有任何內容獲核准或送出。",
+  "Version v{n} of “{title}” is “{state}”. An authorised person must approve this exact version before it can be exported; this version has not been approved or sent.",
+  "「{title}」的 v{n} 版本目前狀態為「{state}」。須由獲授權人士核准此指定版本後才可匯出；此版本尚未獲核准或送出。",
+  "「{title}」的 v{n} 版本目前狀態為「{state}」。須由獲授權人士核准此指定版本後才可匯出；此版本尚未核准或送出。",
 );
 const WAITING_ONE = localized(
-  "1 version is waiting for review: v{n} of “{title}” (“{state}”). An authorised person must approve a specific version; nothing has been approved or sent yet.",
-  "有 1 個版本等待審閱：「{title}」的 v{n}（{state}）。須由獲授權人士核准指定版本；目前未有任何內容獲核准或送出。",
+  "1 version is waiting for review: v{n} of “{title}” (“{state}”). An authorised person must approve a specific version before it can be exported.",
+  "有 1 個版本等待審閱：「{title}」的 v{n}（{state}）。須由獲授權人士核准指定版本後才可匯出。",
 );
 const WAITING_MANY = localized(
-  "{count} versions are waiting for review. The oldest is v{n} of “{title}” (“{state}”). An authorised person must approve a specific version; nothing has been approved or sent yet.",
-  "有 {count} 個版本等待審閱，最早的是「{title}」的 v{n}（{state}）。須由獲授權人士核准指定版本；目前未有任何內容獲核准或送出。",
+  "{count} versions are waiting for review. The oldest is v{n} of “{title}” (“{state}”). An authorised person must approve a specific version before it can be exported.",
+  "有 {count} 個版本等待審閱，最早的是「{title}」的 v{n}（{state}）。須由獲授權人士核准指定版本後才可匯出。",
 );
 const VERSION_NEXT = localized("Open v{n} and review it.", "開啟 v{n} 進行審閱。");
 const VERSION_ASK = localized("Ask an owner or manager to review v{n}.", "請店主或經理審閱 v{n}。");
 const NOTHING_WAITING = localized(
   "Nothing is waiting for review now at {loc}; no draft or change request needs a decision.",
   "{loc} 目前沒有等待審閱的項目；沒有草稿或修改要求需要決定。",
+);
+const NOTHING_WAITING_SCOPED = localized(
+  "Nothing is waiting for review now in your locations; no draft or change request needs a decision.",
+  "你負責的地點目前沒有等待審閱的項目；沒有草稿或修改要求需要決定。",
+  "你負責的據點目前沒有等待審閱的項目；沒有草稿或修改要求需要決定。",
 );
 const GOOGLE_STATE = localized(
   "The {google} connection is {state}. Google evidence and the “{reconnect}” action depend on it.",
@@ -428,20 +444,41 @@ function inputLabel(key: string, locale: PrototypeLocale): string {
   return copy[locale].workspace.inputs[key] ?? key;
 }
 
+function isOfferAction(action: ActionOverview): boolean {
+  try {
+    return isOfferTemplate(templateByKey(action.templateKey as TemplateKey));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * R6: an action the member opened lists every input it still lacks, whatever
+ * its state; the `needs_input` gate of `missingInputKeys` is for the unfocused
+ * fallback. Offer actions stay excluded, as in `missingInputKeys`: the run
+ * route gates them on the confirmed offer, not on this list.
+ */
+function focusedMissingKeys(action: ActionOverview): string[] {
+  return isOfferAction(action) ? [] : action.missingInputs.filter((key) => key !== "offer_id");
+}
+
 function explainMissingInputs(ctx: TemplateContext): TemplateAnswer {
   const { locale } = ctx;
-  const action = ctx.action ?? (ctx.signals?.actions ?? []).find((a) => visible(ctx, a.location.id) && missingInputKeys(a).length > 0) ?? null;
+  const needing = (ctx.signals?.actions ?? []).filter((a) => missingInputKeys(a).length > 0);
+  const shown = needing.filter((a) => visible(ctx, a.location.id));
+  // R4: a focused action is answered even outside the member's scope, read-only (see `step`).
+  const action = ctx.action ?? shown[0] ?? null;
   const evidenceRefs = ctx.snapshot ? actionRefs(ctx, ctx.snapshot, action) : [];
   const warnings = [MISSING_WARN[locale]];
   if (!action) {
     return {
-      answer: fill(NO_ACTION_MISSING, locale, { loc: ctx.locationName }),
+      answer: shown.length < needing.length ? NO_ACTION_MISSING_SCOPED[locale] : fill(NO_ACTION_MISSING, locale, { loc: ctx.locationName }),
       ...step(ctx, null, OPEN_ACTIONS_NEXT[locale], OPEN_ACTIONS_ASK[locale], { kind: "open_actions" }),
       evidenceRefs,
       warnings,
     };
   }
-  const keys = missingInputKeys(action);
+  const keys = ctx.action ? focusedMissingKeys(action) : missingInputKeys(action);
   const title = action.title[locale];
   if (!keys.length) {
     return {
@@ -465,7 +502,8 @@ function oldestFirst(a: WaitingVersion, b: WaitingVersion): number {
 
 function whereToContinue(ctx: TemplateContext): TemplateAnswer {
   const { locale, signals } = ctx;
-  const waiting = (signals?.waitingVersions ?? []).filter((v) => visible(ctx, v.locationId)).sort(oldestFirst);
+  const all = signals?.waitingVersions ?? [];
+  const waiting = all.filter((v) => visible(ctx, v.locationId)).sort(oldestFirst);
   const actionOf = (actionId: string) => signals?.actions.find((a) => a.id === actionId) ?? (ctx.action?.id === actionId ? ctx.action : null);
   const refsFor = (action: ActionOverview | null) => (ctx.snapshot ? actionRefs(ctx, ctx.snapshot, action) : []);
   const warnings = [WHERE_WARN[locale]];
@@ -487,7 +525,8 @@ function whereToContinue(ctx: TemplateContext): TemplateAnswer {
 
   // 1. The version the sheet was opened from, while it is still waiting. One
   // approved meanwhile is absent from these fresh rows, so it is never named.
-  const focused = ctx.focusedVersionId ? waiting.find((v) => v.id === ctx.focusedVersionId) : undefined;
+  // R4: it is named even outside a scoped manager's locations, read-only.
+  const focused = ctx.focusedVersionId ? all.find((v) => v.id === ctx.focusedVersionId) : undefined;
   if (focused) return reviewAnswer(focused, fill(VERSION_FOCUSED, locale, versionVars(focused)));
 
   // 2. Google needs attention. Integrations settings are owner-only.
@@ -511,7 +550,7 @@ function whereToContinue(ctx: TemplateContext): TemplateAnswer {
 
   // 4. Nothing is waiting.
   return {
-    answer: fill(NOTHING_WAITING, locale, { loc: ctx.locationName }),
+    answer: waiting.length < all.length ? NOTHING_WAITING_SCOPED[locale] : fill(NOTHING_WAITING, locale, { loc: ctx.locationName }),
     ...step(ctx, null, OPEN_ACTIONS_NEXT[locale], OPEN_ACTIONS_ASK[locale], { kind: "open_actions" }),
     evidenceRefs: refsFor(null),
     warnings,

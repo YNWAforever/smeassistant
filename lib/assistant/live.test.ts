@@ -637,3 +637,19 @@ describe("contextual answers (P4.3)", () => {
     expect(result.output).toBeUndefined();
   });
 });
+
+describe("contextual answers: foreign location (R3)", () => {
+  const FOREIGN = "99999999-9999-4999-8999-999999999999";
+  it.each(["explain_missing_inputs", "where_to_continue"] as const)("%s refuses a location outside the workspace before reading signal rows", async (intentId) => {
+    await expect(run({ intentId, contextual: true, context: { workspaceId: WORKSPACE_ID, locationId: FOREIGN } })).rejects.toMatchObject({ status: 404, code: "not_found" });
+    expect(repository.assistantWaitingVersions).not.toHaveBeenCalled();
+    expect(repository.assistantGoogleConnection).not.toHaveBeenCalled();
+    expect(repository.assistantActions).not.toHaveBeenCalled();
+    expect(repository.assistantLatestSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("still answers other template intents for an unknown location, as before", async () => {
+    const result = await run({ intentId: "explain_limits", context: { workspaceId: WORKSPACE_ID, locationId: FOREIGN } });
+    expect(result.state).toBe("completed");
+  });
+});

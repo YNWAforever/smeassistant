@@ -183,6 +183,10 @@ interface ResolvedContext {
 async function resolveContext(db: LiveAssistantRepository, input: LiveRunInput): Promise<ResolvedContext> {
   const { workspaceId } = input.context;
   const [workspace, locations] = await Promise.all([db.assistantWorkspace(workspaceId),db.assistantLocations(workspaceId)]);
+  // R3: like loadSuggestions, the signal intents refuse a location outside the workspace before any further read.
+  if (SIGNAL_INTENTS.includes(input.intentId) && input.context.locationId && !locations.some((l) => l.id === input.context.locationId)) {
+    throw new AssistantAccessError("not_found");
+  }
   let actionId = input.context.actionId;
   if (input.context.versionId) {
     const version = await db.versionScope(input.context.versionId);
