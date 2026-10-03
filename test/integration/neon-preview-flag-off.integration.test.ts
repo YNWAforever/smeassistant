@@ -23,6 +23,29 @@ vi.mock("../../lib/security/rate-limit", async (importOriginal) => ({
 vi.mock("../../lib/llm", () => ({ llmComplete: (...args: unknown[]) => spies.llm(...args), llmConfigured: () => true }));
 
 import { POST } from "../../app/api/start/[slug]/preview/route";
+import { buildReportProps, type ReportViewModelLike } from "../../lib/funnel/report-props";
+import { previewDraftEnabled, previewDraftHrefFor } from "../../lib/preview/flag";
+
+// An unlocked viewer's report model, as loadReport hands it to the page.
+const viewerModel = {
+  access: "viewer",
+  preview: {
+    slug: "flag-off-slug",
+    locale: "en",
+    region: "hk",
+    businessName: "Flag Off Cafe",
+    district: null,
+    industry: null,
+    status: "done",
+    overallScore: 52,
+    coverage: { percent: 65, modules: [] },
+    priorities: [],
+  },
+  fullFindings: [],
+  summary: null,
+  proof: { ig: null, gbp: null, aeo: null, merchant: null, trust: null },
+  evidence: { items: [] },
+} satisfies ReportViewModelLike;
 
 const textOf = (text: unknown): string =>
   typeof text === "string" ? text : typeof text === "object" && text !== null && "text" in text ? String((text as { text: unknown }).text) : JSON.stringify(text);
@@ -129,6 +152,23 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon preview draft: deploy
     expect(spies.llm).not.toHaveBeenCalled();
   });
 
-  // Task 4 adds previewDraftHrefFor (the report page's server props builder) and converts this.
-  it.todo("rendering the report page props with the flag unset runs zero statements (previewDraftHrefFor)");
+  // The report page adds the card from previewDraftHrefFor and the props builder, after the
+  // report itself loaded. Neither may add database traffic, flag on or off, so the card costs
+  // nothing on a schema without preview_events.
+  it.each([undefined, "", "false"])("building the report page props for a viewer with the flag %j runs zero statements and sets no card", (value) => {
+    vi.stubEnv("PREVIEW_DRAFT_ENABLED", value);
+    const href = previewDraftHrefFor({ enabled: previewDraftEnabled(), access: viewerModel.access, locale: "en", slug: viewerModel.preview.slug });
+    const props = { ...buildReportProps(viewerModel, "en"), ...(href ? { previewDraftHref: href } : {}) };
+    expect(href).toBeUndefined();
+    expect(props.access).toBe("viewer");
+    expect("previewDraftHref" in props).toBe(false);
+    expect(ports.statements).toEqual([]);
+  });
+
+  it("with the flag exactly \"true\" the viewer gets the card, still without a statement", () => {
+    vi.stubEnv("PREVIEW_DRAFT_ENABLED", "true");
+    const href = previewDraftHrefFor({ enabled: previewDraftEnabled(), access: viewerModel.access, locale: "en", slug: viewerModel.preview.slug });
+    expect(href).toBe("/en/start/flag-off-slug");
+    expect(ports.statements).toEqual([]);
+  });
 });

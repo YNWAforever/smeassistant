@@ -5,6 +5,7 @@ import { reportMembershipResolver } from "@/lib/auth";
 import { normaliseLocale } from "@/lib/copy";
 import { buildReportProps, type ReportViewModelLike } from "@/lib/funnel/report-props";
 import { t } from "@/lib/i18n";
+import { previewDraftEnabled, previewDraftHrefFor } from "@/lib/preview/flag";
 import { loadReport } from "@/lib/report/load-report";
 
 /**
@@ -32,5 +33,13 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 export default async function Report({ params }: { params: Promise<{ locale: string; slug: string }> }) {
   const { locale, slug } = await params;
   const model = await loadReport(slug, locale, { getMembership: reportMembershipResolver() });
-  return <ReportPage {...buildReportProps(model satisfies ReportViewModelLike, normaliseLocale(locale))} />;
+  const pageLocale = normaliseLocale(locale);
+  // The P4.5 preview card: pure, so with the flag off it adds no SQL to the report.
+  const previewDraftHref = previewDraftHrefFor({ enabled: previewDraftEnabled(), access: model.access, locale: pageLocale, slug });
+  return (
+    <ReportPage
+      {...buildReportProps(model satisfies ReportViewModelLike, pageLocale)}
+      {...(previewDraftHref ? { previewDraftHref } : {})}
+    />
+  );
 }
