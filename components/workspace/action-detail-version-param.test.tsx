@@ -105,6 +105,29 @@ describe("the action page's version landing (P4.3)", () => {
     expect(draft()).toBe("first body");
   });
 
+  function rerenderWith(view: ReturnType<typeof mount>, initialVersionId: string | null) {
+    view.rerender(
+      <ActionDetailClient locale="en" workspaceSlug="kam-man-house" workspaceId="ws-1" timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={{ action: overview(), offerId: null, versions: VERSIONS, runs: [], measurements: [], scanInputs: [], businessContext: [], faqQuestions: [] }} auditRows={[]} locations={[{ slug: "yik-yam", name: "Yik Yam" }]} approvedAssets={[]} initialVersionId={initialVersionId} />,
+    );
+  }
+
+  it("selects another version when ?version= changes on the mounted page", () => {
+    const view = mount();
+    expect(draft()).toBe("second body");
+    rerenderWith(view, "ver-1");
+    expect(draft()).toBe("first body");
+    rerenderWith(view, "ver-2");
+    expect(draft()).toBe("second body");
+  });
+
+  it("changes nothing when the new ?version= is unknown or cleared", () => {
+    const view = mount({ initialVersionId: "ver-1" });
+    rerenderWith(view, "ver-nope");
+    expect(draft()).toBe("first body");
+    rerenderWith(view, null);
+    expect(draft()).toBe("first body");
+  });
+
   it("puts the inputs anchor on the input form when it shows", () => {
     mount({ missingInputs: ["brand_voice"] });
     const form = document.querySelector("form.input-form");

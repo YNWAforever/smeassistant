@@ -246,6 +246,15 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
     }
   }
 
+  // A "Continue here" link to another version of this same action only changes `?version=`; the App
+  // Router keeps this component mounted, so the prop changing is the signal. Same path as a manual
+  // version pick (selectVersion); an id that is not among the versions changes nothing.
+  const [seenInitialVersionId, setSeenInitialVersionId] = useState(initialVersionId)
+  if (seenInitialVersionId !== initialVersionId) {
+    setSeenInitialVersionId(initialVersionId)
+    if (initialVersionId) selectVersion(initialVersionId)
+  }
+
   // A refusal read off a 409 describes the offer and drafts as they were when it happened. Once either
   // changes (a new draft, or the offer edited, confirmed, extended or archived) it is out of date, and
   // the derived reason takes over.
