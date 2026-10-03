@@ -221,6 +221,77 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon preview events", () =
     ]);
   });
 
+  // Ruling R11: every model call costs money, so failed rows (stale included) count toward the
+  // daily limit and the budget, and a grant gets at most three attempts; the job limit still
+  // counts only claimed|generated, so a failure never burns one of the job's three previews.
+  it("failed rows, stale included, count toward daily_limit", async () => {
+    const [j1, j2, j3] = [await job(), await job(), await job()];
+    await finish(await claimedId(j1, await grant(j1), { globalDaily: 2 }), "failed", 0, "no_output");
+    const stale = await claimedId(j2, await grant(j2), { globalDaily: 2 });
+    await runtime.query("UPDATE preview_events SET created_at = now() - interval '6 minutes' WHERE id=$1", [stale]);
+    const g3 = await grant(j3);
+    expect(await claim(j3, g3, { globalDaily: 2 })).toEqual({ allowed: false, reason: "daily_limit" });
+    expect((await events("id=$1", [stale]))[0]).toMatchObject({ outcome: "failed", reason: "stale" });
+    // Refused rows still never count.
+    expect(await claim(j3, g3, { globalDaily: 3 })).toEqual(expect.objectContaining({ allowed: true }));
+  });
+
+  it("failed rows count toward the budget", async () => {
+    const [j1, j2] = [await job(), await job()];
+    await finish(await claimedId(j1, await grant(j1)), "failed", 0.25, "invalid_output");
+    await finish(await claimedId(j1, await grant(j1)), "failed", 0.25, "no_output");
+    expect(await claim(j2, await grant(j2), { usdDaily: 0.5 })).toEqual({ allowed: false, reason: "budget" });
+    expect(await claim(j2, await grant(j2), { usdDaily: 0.51 })).toEqual(expect.objectContaining({ allowed: true }));
+  });
+
+  it("failed rows do not count toward job_limit", async () => {
+    const j = await job();
+    const grants = [await grant(j), await grant(j), await grant(j), await grant(j)];
+    for (const g of grants.slice(0, 3)) await finish(await claimedId(j, g), "failed", 0, "facts_needed");
+    const stale = await claimedId(j, grants[3]);
+    await runtime.query("UPDATE preview_events SET created_at = now() - interval '6 minutes' WHERE id=$1", [stale]);
+    // Four failed rows on the job (one stale), none claimed|generated: still allowed.
+    expect(await claim(j, grants[3])).toEqual(expect.objectContaining({ allowed: true }));
+    expect((await events("job_id=$1 AND outcome='failed'", [j])).length).toBe(4);
+  });
+
+  it("a grant gets three attempts: one or two failures allow a retry, the third is already_used", async () => {
+    const j = await job();
+    const g = await grant(j);
+    await finish(await claimedId(j, g), "failed", 0, "no_output");
+    // One failed attempt still allows a retry.
+    await finish(await claimedId(j, g), "failed", 0, "invalid_output");
+    const third = await claimedId(j, g);
+    await runtime.query("UPDATE preview_events SET created_at = now() - interval '6 minutes' WHERE id=$1", [third]);
+    // Three non-refused rows (the third released as stale): already_used.
+    expect(await claim(j, g)).toEqual({ allowed: false, reason: "already_used" });
+    // Sorted: the stale row was backdated, so creation order no longer matches attempt order.
+    expect((await events("job_id=$1", [j])).map((r) => `${r.outcome}:${r.reason}`).sort()).toEqual([
+      "failed:invalid_output",
+      "failed:no_output",
+      "failed:stale",
+      "refused:already_used",
+    ]);
+    // Refused rows do not add attempts: a fresh grant on the same job is unaffected.
+    expect(await claim(j, await grant(j))).toEqual(expect.objectContaining({ allowed: true }));
+  });
+
+  it("four grants claiming in parallel on one job: exactly three allowed", async () => {
+    for (let round = 0; round < 5; round += 1) {
+      const j = await job();
+      const grants = [await grant(j), await grant(j), await grant(j), await grant(j)];
+      const clients = await Promise.all(grants.map(() => runtime.connect()));
+      try {
+        const results = await Promise.all(grants.map((g, i) => claim(j, g, {}, clients[i])));
+        expect(results.filter((r) => r.allowed)).toHaveLength(3);
+        expect(results.filter((r) => !r.allowed)).toEqual([{ allowed: false, reason: "job_limit" }]);
+      } finally {
+        for (const client of clients) client.release();
+      }
+      expect((await events("job_id=$1 AND outcome='claimed'", [j])).length).toBe(3);
+    }
+  });
+
   it("a claimed row older than 5 minutes is treated as failed (stale)", async () => {
     const j = await job();
     const g = await grant(j);

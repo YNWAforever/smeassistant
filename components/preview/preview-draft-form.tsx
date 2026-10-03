@@ -11,12 +11,15 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { interpolate } from "@/lib/share"
+import { visitorWarningTexts } from "@/lib/workspace/guardrail-text"
 
 /**
  * The unsaved preview form (P4.5, spec §3.2). One review in, at most one
  * draft out; nothing here saves, versions, approves or exports. After a draft
  * the form is replaced by the result, so there is no way to regenerate from
  * this page. Refusals render fixed copy per reason and never echo the input.
+ * Warnings are the agents' codes translated into visitor text; an unknown
+ * code is dropped, never shown raw (ruling R13).
  */
 
 type Refusal = keyof (typeof copy)["en"]["funnel"]["preview"]["refusals"]
@@ -70,6 +73,7 @@ export function PreviewDraftForm({ locale, slug, claimHref }: { locale: Prototyp
   const [outcome, setOutcome] = useState<Outcome | null>(null)
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle")
   const count = codePoints(review)
+  const over = count > MAX_REVIEW
 
   async function submit() {
     if (pending) return
@@ -100,20 +104,21 @@ export function PreviewDraftForm({ locale, slug, claimHref }: { locale: Prototyp
   }
 
   if (outcome?.state === "generated") {
+    const warnings = visitorWarningTexts(outcome.warnings, locale)
     return (
       <section className="unlock-form-card" data-testid="preview-result">
         <Badge variant="outline">{p.badge}</Badge>
         <p style={{ whiteSpace: "pre-wrap" }}>
           {outcome.body}
         </p>
-        {outcome.warnings.length > 0 && (
+        {warnings.length > 0 && (
           <div className="limitations-box">
             <CircleAlert aria-hidden="true" />
             <div>
               <strong>{p.warningsLabel}</strong>
               <ul>
-                {outcome.warnings.map((warning, index) => (
-                  <li key={`${index}-${warning}`}>{warning}</li>
+                {warnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
                 ))}
               </ul>
             </div>
@@ -138,7 +143,7 @@ export function PreviewDraftForm({ locale, slug, claimHref }: { locale: Prototyp
         <div className="form-error" role="alert">
           <CircleAlert aria-hidden="true" />
           <span>{p.refusals[outcome.reason]}</span>
-          {outcome.reason === "already_used" && (
+          {(outcome.reason === "already_used" || outcome.reason === "job_limit") && (
             <Link href={claimHref}>
               {p.cta} <ArrowRight aria-hidden="true" />
             </Link>
@@ -153,9 +158,15 @@ export function PreviewDraftForm({ locale, slug, claimHref }: { locale: Prototyp
           rows={6}
           value={review}
           aria-describedby="preview-review-count"
+          aria-invalid={over || undefined}
           onChange={(event) => setReview(event.target.value)}
         />
-        <small id="preview-review-count" data-testid="preview-count" data-over={count > MAX_REVIEW ? "true" : "false"}>
+        <small
+          id="preview-review-count"
+          data-testid="preview-count"
+          data-over={over ? "true" : "false"}
+          className={over ? "text-destructive" : undefined}
+        >
           {interpolate(p.count, { count })}
         </small>
       </div>

@@ -21,7 +21,7 @@ afterEach(() => {
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.resolver.mockReturnValue(mocks.sentinel);
-  mocks.loadReport.mockResolvedValue({ kind: "public" });
+  mocks.loadReport.mockResolvedValue({ access: "public", preview: { status: "done" } });
   mocks.buildReportProps.mockReturnValue({});
 });
 
@@ -37,9 +37,9 @@ it("builds a fresh resolver for every render, so no membership outlives its requ
   expect(mocks.resolver).toHaveBeenCalledTimes(2);
 });
 
-async function renderedProps(access: string, flag: string | undefined) {
+async function renderedProps(access: string, flag: string | undefined, status = "done") {
   vi.stubEnv("PREVIEW_DRAFT_ENABLED", flag);
-  mocks.loadReport.mockResolvedValue({ access });
+  mocks.loadReport.mockResolvedValue({ access, preview: { status } });
   mocks.buildReportProps.mockReturnValue({ access });
   const element = await Report({ params: Promise.resolve({ locale: "zh-TW", slug: "the-slug" }) });
   if (!isValidElement(element)) throw new Error("expected an element");
@@ -53,5 +53,12 @@ it("links an unlocked viewer to the unsaved preview only when the flag is on", a
   }
   for (const access of ["public", "member", "staff"]) {
     expect(await renderedProps(access, "true")).toEqual({ access });
+  }
+});
+
+it("shows the card only for a done or partial job (R13)", async () => {
+  expect(await renderedProps("viewer", "true", "partial")).toEqual({ access: "viewer", previewDraftHref: "/zh-TW/start/the-slug" });
+  for (const status of ["queued", "collecting", "scoring", "persisting", "failed"]) {
+    expect(await renderedProps("viewer", "true", status)).toEqual({ access: "viewer" });
   }
 });

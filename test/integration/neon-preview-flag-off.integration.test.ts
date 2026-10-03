@@ -157,7 +157,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon preview draft: deploy
   // nothing on a schema without preview_events.
   it.each([undefined, "", "false"])("building the report page props for a viewer with the flag %j runs zero statements and sets no card", (value) => {
     vi.stubEnv("PREVIEW_DRAFT_ENABLED", value);
-    const href = previewDraftHrefFor({ enabled: previewDraftEnabled(), access: viewerModel.access, locale: "en", slug: viewerModel.preview.slug });
+    const href = previewDraftHrefFor({ enabled: previewDraftEnabled(), access: viewerModel.access, status: viewerModel.preview.status, locale: "en", slug: viewerModel.preview.slug });
     const props = { ...buildReportProps(viewerModel, "en"), ...(href ? { previewDraftHref: href } : {}) };
     expect(href).toBeUndefined();
     expect(props.access).toBe("viewer");
@@ -167,7 +167,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon preview draft: deploy
 
   it("with the flag exactly \"true\" the viewer gets the card, still without a statement", () => {
     vi.stubEnv("PREVIEW_DRAFT_ENABLED", "true");
-    const href = previewDraftHrefFor({ enabled: previewDraftEnabled(), access: viewerModel.access, locale: "en", slug: viewerModel.preview.slug });
+    const href = previewDraftHrefFor({ enabled: previewDraftEnabled(), access: viewerModel.access, status: viewerModel.preview.status, locale: "en", slug: viewerModel.preview.slug });
     expect(href).toBe("/en/start/flag-off-slug");
     expect(ports.statements).toEqual([]);
   });

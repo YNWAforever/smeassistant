@@ -21,12 +21,12 @@ import { VIEWER_GRANT_COOKIE, parseViewerGrantCookie } from "@/lib/report-access
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  // Belongs to one unlocked report, which is itself noindex.
+  const robots = { index: false, follow: false };
+  // With the flag off the page is a 404, so its title must not name the preview (ruling R13).
+  if (!previewDraftEnabled()) return { robots };
   const locale = normaliseLocale((await params).locale);
-  return {
-    title: copy[locale].funnel.preview.cardTitle,
-    // Belongs to one unlocked report, which is itself noindex.
-    robots: { index: false, follow: false },
-  };
+  return { title: copy[locale].funnel.preview.cardTitle, robots };
 }
 
 export default async function Start({ params }: { params: Promise<{ locale: string; slug: string }> }) {

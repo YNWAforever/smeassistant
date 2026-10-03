@@ -58,6 +58,17 @@ function llmResult(text: string) {
 
 const EXPECTED_COST = 0.0006; // 1000/1000 × 0.0002 + 500/1000 × 0.0008
 
+/**
+ * Ruling R11: with no reported usage the slot records a conservative estimate —
+ * ceil(prompt length / 2) input tokens and the full 1,200 output tokens — at the default rates.
+ */
+function estimatedCost(): number {
+  const prompt = String(mocks.llmComplete.mock.calls[0]?.[0] ?? "");
+  expect(prompt.length).toBeGreaterThan(0);
+  const cost = (Math.ceil(prompt.length / 2) / 1000) * 0.0002 + (1200 / 1000) * 0.0008;
+  return Math.round(cost * 1e6) / 1e6;
+}
+
 async function post(body: unknown = { review: REVIEW, rating: 2, locale: "en" }, cookie: string | null = COOKIE) {
   const { POST } = await import("./route");
   const headers: Record<string, string> = { "content-type": "application/json" };
@@ -241,7 +252,7 @@ describe("POST /api/start/[slug]/preview", () => {
   });
 
   it.each([
-    ["null result", "no_output", null, 0],
+    ["null result", "no_output", null, "estimate"],
     ["bad JSON", "invalid_output", llmResult("not json at all"), EXPECTED_COST],
     ["facts_needed", "facts_needed", llmResult(modelOutput({ body: "", facts_needed: ["opening_hours"] })), EXPECTED_COST],
     ["facts_needed with a body", "facts_needed", llmResult(modelOutput({ facts_needed: ["opening_hours"] })), EXPECTED_COST],
@@ -252,21 +263,35 @@ describe("POST /api/start/[slug]/preview", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ state: "refused", reason: "unavailable" });
     expect(mocks.llmComplete).toHaveBeenCalledTimes(1);
-    expect(mocks.finishSlot).toHaveBeenCalledWith({ eventId: EVENT_ID, outcome: "failed", reason, costUsd: cost });
+    expect(mocks.finishSlot).toHaveBeenCalledWith({ eventId: EVENT_ID, outcome: "failed", reason, costUsd: cost === "estimate" ? estimatedCost() : cost });
   });
 
-  it("a throwing model call is treated as no output and still finishes the slot", async () => {
+  it("a throwing model call is treated as no output and still finishes the slot with the cost estimate", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     mocks.llmComplete.mockRejectedValue(new Error("boom"));
     const res = await post();
     expect(await res.json()).toEqual({ state: "refused", reason: "unavailable" });
-    expect(mocks.finishSlot).toHaveBeenCalledWith({ eventId: EVENT_ID, outcome: "failed", reason: "no_output", costUsd: 0 });
+    expect(mocks.finishSlot).toHaveBeenCalledWith({ eventId: EVENT_ID, outcome: "failed", reason: "no_output", costUsd: estimatedCost() });
   });
 
-  it("missing usage costs 0", async () => {
+  it("missing usage records the conservative estimate, never 0 (R11)", async () => {
     mocks.llmComplete.mockResolvedValue({ text: modelOutput(), usage: { inputTokens: null, outputTokens: null } });
     await post();
-    expect(mocks.finishSlot).toHaveBeenCalledWith({ eventId: EVENT_ID, outcome: "generated", reason: null, costUsd: 0 });
+    const cost = estimatedCost();
+    expect(cost).toBeGreaterThan(0.00096); // at least the 1,200 output tokens
+    expect(mocks.finishSlot).toHaveBeenCalledWith({ eventId: EVENT_ID, outcome: "generated", reason: null, costUsd: cost });
+  });
+
+  it("partly missing usage also records the estimate", async () => {
+    mocks.llmComplete.mockResolvedValue({ text: modelOutput(), usage: { inputTokens: 1000, outputTokens: null } });
+    await post();
+    expect(mocks.finishSlot).toHaveBeenCalledWith({ eventId: EVENT_ID, outcome: "generated", reason: null, costUsd: estimatedCost() });
+  });
+
+  it("reported usage is recorded as the real cost, not the estimate", async () => {
+    await post();
+    expect(EXPECTED_COST).not.toBe(estimatedCost());
+    expect(mocks.finishSlot).toHaveBeenCalledWith({ eventId: EVENT_ID, outcome: "generated", reason: null, costUsd: EXPECTED_COST });
   });
 
   it("success → finish generated with cost; returns body and acceptance warnings", async () => {

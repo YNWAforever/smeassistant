@@ -122,13 +122,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   }
 
   // 8. One model call over the preview context only. Provider error text never reaches the logs.
+  const prompt = AGENTS.review_reply.buildPrompt(ctx);
   let result: LLMResult | null = null;
   try {
-    result = await llmComplete(AGENTS.review_reply.buildPrompt(ctx), { ...AGENT_LLM_OPTIONS, redactErrors: true });
+    result = await llmComplete(prompt, { ...AGENT_LLM_OPTIONS, redactErrors: true });
   } catch {
     result = null;
   }
-  const costUsd = result ? (computeCostUsd(result.usage) ?? 0) : 0;
+  // Ruling R11: a call that reported no usage (or returned nothing) still spent money, so the
+  // slot records a conservative estimate (about two characters per input token, the full output
+  // allowance) instead of 0; the daily budget then bounds spend without usage reporting.
+  const costUsd =
+    (result ? computeCostUsd(result.usage) : null) ??
+    computeCostUsd({ inputTokens: Math.ceil(prompt.length / 2), outputTokens: AGENT_LLM_OPTIONS.maxTokens }) ??
+    0;
   const output = result ? parseAgentOutput(result.text, AGENTS.review_reply.outputSchema) : null;
   const outcome: Outcome = !result
     ? { kind: "failed", reason: "no_output" }

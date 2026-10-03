@@ -10,6 +10,26 @@ const LOCALES: PrototypeLocale[] = ["en", "zh-HK", "zh-TW"];
 const REASONS = ["already_used", "job_limit", "ip_limit", "daily_limit", "budget", "paused", "unavailable", "invalid_input"] as const;
 const REVIEW = "The roast goose was cold and the wait was long. 燒鵝凍咗 SECRET-INPUT";
 
+// The workspace guardrail copy (components/workspace/action-detail-client.tsx), worded for a visitor
+// who has nothing to approve.
+const WARNING_TEXT = {
+  compensation_promise: {
+    en: "Appears to promise compensation, a refund or a discount.",
+    "zh-HK": "似乎承諾補償、退款或折扣。",
+    "zh-TW": "似乎承諾補償、退款或折扣。",
+  },
+  unexpected_link: {
+    en: "Contains a link you did not supply — check it before using it.",
+    "zh-HK": "含有你沒有提供的連結，使用前請先檢查。",
+    "zh-TW": "包含你沒有提供的連結，使用前請先確認。",
+  },
+  unconfirmed_claim: {
+    en: "Mentions a price or superlative you have not confirmed — check it before using it.",
+    "zh-HK": "提及你未確認的價錢或誇大字眼，使用前請先檢查。",
+    "zh-TW": "提到你未確認的價格或誇大用語，使用前請先確認。",
+  },
+} as const;
+
 const fetchMock = vi.fn();
 const writeText = vi.fn();
 
@@ -69,20 +89,52 @@ describe("PreviewDraftForm", () => {
 
   it.each(LOCALES)("shows the draft with badge, warnings, Copy, not-kept line and CTA on generated (%s)", async (locale) => {
     const p = copy[locale].funnel.preview;
-    fetchMock.mockReturnValue(
-      respond(200, { state: "generated", body: "Thank you for the feedback.", warnings: ["Check the tone", "No offer was promised"] }),
-    );
+    fetchMock.mockReturnValue(respond(200, { state: "generated", body: "Thank you for the feedback.", warnings: ["compensation_promise"] }));
     mount(locale);
     type(locale, REVIEW);
     await submit(locale);
     const result = screen.getByTestId("preview-result");
     expect(result).toHaveTextContent(p.badge);
     expect(result).toHaveTextContent("Thank you for the feedback.");
-    expect(result).toHaveTextContent("Check the tone");
-    expect(result).toHaveTextContent("No offer was promised");
+    expect(result).toHaveTextContent(p.warningsLabel);
+    expect(result).toHaveTextContent(WARNING_TEXT.compensation_promise[locale]);
     expect(result).toHaveTextContent(p.notKept);
     expect(screen.getByRole("button", { name: p.copy })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: p.cta })).toHaveAttribute("href", `/${locale}/owner/sign-in?claim=the-slug`);
+  });
+
+  it.each(LOCALES)("translates known warning codes, drops unknown ones and never shows a raw code (R13, %s)", async (locale) => {
+    fetchMock.mockReturnValue(
+      respond(200, {
+        state: "generated",
+        body: "Thank you.",
+        warnings: ["check_tone", "compensation_promise", "unexpected_link", "unconfirmed_claim", "compensation_promise", "SECRET-INPUT", "body_over_700_chars"],
+      }),
+    );
+    mount(locale);
+    type(locale, REVIEW);
+    await submit(locale);
+    const items = Array.from(screen.getByTestId("preview-result").querySelectorAll("li")).map((item) => item.textContent);
+    expect(items).toEqual([
+      WARNING_TEXT.compensation_promise[locale],
+      WARNING_TEXT.unexpected_link[locale],
+      WARNING_TEXT.unconfirmed_claim[locale],
+      locale === "en" ? "Body is longer than 700 characters." : "內文超過 700 字元。",
+    ]);
+    const text = screen.getByTestId("preview-result").textContent ?? "";
+    for (const raw of ["check_tone", "compensation_promise", "unexpected_link", "unconfirmed_claim", "SECRET-INPUT", "body_over_700_chars"]) {
+      expect(text).not.toContain(raw);
+    }
+  });
+
+  it("shows no warnings box when every warning is unknown", async () => {
+    fetchMock.mockReturnValue(respond(200, { state: "generated", body: "Thank you.", warnings: ["check_tone", "Looks fine"] }));
+    mount();
+    type("en", REVIEW);
+    await submit();
+    const result = screen.getByTestId("preview-result");
+    expect(result).not.toHaveTextContent(copy.en.funnel.preview.warningsLabel);
+    expect(result.querySelectorAll("li")).toHaveLength(0);
   });
 
   it("uses the exact result strings from the spec", () => {
@@ -121,6 +173,18 @@ describe("PreviewDraftForm", () => {
     expect(screen.getByRole("status")).toHaveTextContent(copy.en.funnel.preview.copyFailed);
   });
 
+  it("says so when there is no clipboard (an insecure context)", async () => {
+    Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+    fetchMock.mockReturnValue(respond(200, { state: "generated", body: "Thank you.", warnings: [] }));
+    mount();
+    type("en", REVIEW);
+    await submit();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: copy.en.funnel.preview.copy }));
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(copy.en.funnel.preview.copyFailed);
+  });
+
   describe.each(REASONS)("refusal %s", (reason) => {
     it.each(LOCALES)("shows fixed copy in three locales without echoing input (%s)", async (locale) => {
       const p = copy[locale].funnel.preview;
@@ -132,9 +196,9 @@ describe("PreviewDraftForm", () => {
       expect(alert).toHaveTextContent(p.refusals[reason]);
       expect(alert.textContent).not.toContain("SECRET-INPUT");
       expect(screen.queryByTestId("preview-result")).toBeNull();
-      // already_used points to the ownership CTA; the other refusals do not.
+      // already_used and job_limit point to the ownership CTA; the other refusals do not.
       const cta = screen.queryByRole("link", { name: p.cta });
-      if (reason === "already_used") expect(cta).toHaveAttribute("href", `/${locale}/owner/sign-in?claim=the-slug`);
+      if (reason === "already_used" || reason === "job_limit") expect(cta).toHaveAttribute("href", `/${locale}/owner/sign-in?claim=the-slug`);
       else expect(cta).toBeNull();
     });
   });
@@ -195,6 +259,29 @@ describe("PreviewDraftForm", () => {
     const count = screen.getByTestId("preview-count");
     expect(count).toHaveTextContent(interpolate(copy.en.funnel.preview.count, { count: 1501 }));
     expect(count).toHaveAttribute("data-over", "true");
+    expect(count).toHaveClass("text-destructive");
+    expect(screen.getByLabelText(copy.en.funnel.preview.reviewLabel)).toHaveAttribute("aria-invalid", "true");
+    // Back at the limit: valid again.
+    type("en", "😀".repeat(1500));
+    expect(count).toHaveAttribute("data-over", "false");
+    expect(count).not.toHaveClass("text-destructive");
+    expect(screen.getByLabelText(copy.en.funnel.preview.reviewLabel)).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("uses the final-review refusal copy (zh-HK 明日 and 試用機會, the job_limit next step)", () => {
+    const hk = copy["zh-HK"].funnel.preview;
+    const tw = copy["zh-TW"].funnel.preview;
+    expect(copy.en.funnel.preview.refusals.job_limit).toBe("This report has reached its preview limit. Verify ownership to draft replies in a workspace.");
+    expect(hk.refusals.job_limit).toBe("此報告的試用次數已達上限。驗證擁有權後，即可在工作台草擬回覆。");
+    expect(tw.refusals.job_limit).toBe("此報告的試用次數已達上限。驗證擁有權後，即可在工作台草擬回覆。");
+    expect(hk.refusals.already_used.startsWith("此報告的試用機會已經用過")).toBe(true);
+    expect(tw.refusals.already_used.startsWith("此報告的試用機會已使用過")).toBe(true);
+    expect(hk.ratingLabel).toBe("星級評分（選填）");
+    for (const reason of ["ip_limit", "daily_limit", "budget"] as const) {
+      expect(hk.refusals[reason]).toContain("明日");
+      expect(hk.refusals[reason]).not.toContain("明天");
+    }
+    expect(JSON.stringify(tw)).not.toContain("發佈");
   });
 
   it("never renders version, approve, export, regenerate or save controls", async () => {

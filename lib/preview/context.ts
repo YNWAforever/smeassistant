@@ -1,5 +1,6 @@
 import type { AgentContext } from "@/lib/agents/schema";
 import type { PrototypeLocale } from "@/lib/copy";
+import { resolveBrandProvidedInputs } from "@/lib/workspace/evidence-inputs";
 import { buildActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { findTemplate } from "@/lib/workspace/templates";
 
@@ -8,10 +9,12 @@ import { findTemplate } from "@/lib/workspace/templates";
  *
  * The model gets only the locale, the market, the business name, the default
  * brand and the one review the viewer pasted. Nothing from the report,
- * snapshot, findings or raw data is read or passed, so `evidence` and
- * `providedInputs` are empty and the review travels only in `sampledReviews`,
- * which the prompt renders inside the untrusted-evidence fence, marked
- * `visitor_pasted` so it is never described as scan evidence.
+ * snapshot, findings or raw data is read or passed, so `evidence` is empty,
+ * `providedInputs` holds only the default brand's voice and language (ruling
+ * R10, resolved exactly as the normal run path does, so the prompt never asks
+ * for a "(not provided)" voice), and the review travels only in
+ * `sampledReviews`, which the prompt renders inside the untrusted-evidence
+ * fence, marked `visitor_pasted` so it is never described as scan evidence.
  */
 export interface PreviewContextInput {
   locale: PrototypeLocale;
@@ -68,14 +71,15 @@ export function buildPreviewContext(input: PreviewContextInput): AgentContext {
     latestRun: null,
     latestVersion: null,
   });
+  const brand = { voice: "warm", approvedClaims: [], prohibitedTerms: [], languages: [input.locale], facts: {} };
   return {
     locale: input.locale,
     market: input.market,
-    brand: { voice: "warm", approvedClaims: [], prohibitedTerms: [], languages: [input.locale], facts: {} },
+    brand,
     location: { name: input.businessName },
     action,
     evidence: {},
-    providedInputs: {},
+    providedInputs: resolveBrandProvidedInputs({ voice: brand.voice, languages: brand.languages, approvedClaims: brand.approvedClaims }),
     sampledReviews: [{ rating: input.rating ?? null, text: input.review, time: null }],
     // Ruling R4: the prompt must not describe a pasted review as scan evidence.
     sampledReviewsSource: "visitor_pasted",

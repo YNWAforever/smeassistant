@@ -98,12 +98,20 @@ describe("/start/[slug]", () => {
       "Only the text you type here is used. Nothing from your report is used, and nothing is saved, approved or published. One preview per unlocked report.",
     );
     expect(copy["zh-HK"].funnel.preview.boundary).toBe("只會使用你在此輸入的文字，不會使用報告內容，亦不會儲存、核准或發佈任何內容。每份已解鎖報告可試一次。");
-    expect(copy["zh-TW"].funnel.preview.boundary).toBe("只會使用你在此輸入的文字，不會使用報告內容，也不會儲存、核准或發佈任何內容。每份已解鎖報告可試用一次。");
+    // Ruling R9: Taiwan usage 發布, not the spec's 發佈.
+    expect(copy["zh-TW"].funnel.preview.boundary).toBe("只會使用你在此輸入的文字，不會使用報告內容，也不會儲存、核准或發布任何內容。每份已解鎖報告可試用一次。");
   });
 
-  it("is noindex", async () => {
+  it("is noindex, with the preview title only when the flag is on (R13)", async () => {
+    vi.stubEnv("PREVIEW_DRAFT_ENABLED", "true");
     const metadata = await generateMetadata({ params: Promise.resolve({ locale: "zh-TW" }) });
     expect(metadata.robots).toEqual({ index: false, follow: false });
     expect(metadata.title).toBe(copy["zh-TW"].funnel.preview.cardTitle);
+    for (const value of [undefined, "", "false", "TRUE"]) {
+      vi.stubEnv("PREVIEW_DRAFT_ENABLED", value);
+      const off = await generateMetadata({ params: Promise.resolve({ locale: "en" }) });
+      expect(off).toEqual({ robots: { index: false, follow: false } });
+      expect(JSON.stringify(off)).not.toContain(copy.en.funnel.preview.cardTitle);
+    }
   });
 });

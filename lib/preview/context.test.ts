@@ -16,7 +16,7 @@ function section(prompt: string, from: string, to: string): string {
 }
 
 describe("buildPreviewContext", () => {
-  it("has exactly the keys of spec §2.3 with empty evidence and providedInputs", () => {
+  it("has exactly the keys of spec §2.3 with empty evidence and the default brand inputs", () => {
     const ctx = buildPreviewContext(base);
     expect(Object.keys(ctx).sort()).toEqual(["action", "brand", "evidence", "locale", "location", "market", "providedInputs", "sampledReviews", "sampledReviewsSource"]);
     expect(ctx.locale).toBe("zh-HK");
@@ -24,7 +24,8 @@ describe("buildPreviewContext", () => {
     expect(ctx.brand).toEqual({ voice: "warm", approvedClaims: [], prohibitedTerms: [], languages: ["zh-HK"], facts: {} });
     expect(ctx.location).toEqual({ name: "Kam Man House" });
     expect(ctx.evidence).toEqual({});
-    expect(ctx.providedInputs).toEqual({});
+    // Ruling R10: the default brand's voice and language, exactly as the normal run path resolves them.
+    expect(ctx.providedInputs).toEqual({ brand_voice: "warm", language: "廣東話" });
     expect(ctx.action.templateKey).toBe("review-response");
     expect(ctx.action.capability).toBe("Live");
     expect(ctx.action.title.en).toBe("Reply to unanswered Google reviews");
@@ -76,11 +77,23 @@ describe("buildPreviewContext", () => {
     expect(prompt).toContain('"factType": "Unknown"');
   });
 
+  it.each([
+    ["zh-HK", "廣東話"],
+    ["zh-TW", "國語"],
+    ["en", "English"],
+  ] as const)("%s: providedInputs carry brand_voice warm and the language label, so the prompt never says (not provided) (R10)", (locale, label) => {
+    const ctx = buildPreviewContext({ ...base, locale });
+    expect(ctx.providedInputs).toEqual({ brand_voice: "warm", language: label });
+    const prompt = AGENTS.review_reply.buildPrompt(ctx);
+    expect(prompt).not.toContain("(not provided)");
+    expect(section(prompt, "TASK:", "OUTPUT:")).toContain(`Match the brand voice (warm) and reply in the language requested (${label})`);
+  });
+
   it("renders no snapshot, metric or finding keys", () => {
     const prompt = AGENTS.review_reply.buildPrompt(buildPreviewContext(base));
     const evidence = JSON.parse(section(prompt, FENCE, FENCE_END).slice(FENCE.length)) as Record<string, unknown>;
     expect(Object.keys(evidence).sort()).toEqual(["action", "provided_inputs", "review_sample_provenance", "sampled_reviews_without_owner_response"]);
-    expect(evidence.provided_inputs).toEqual({});
+    expect(evidence.provided_inputs).toEqual({ brand_voice: "warm", language: "廣東話" });
     expect(evidence.sampled_reviews_without_owner_response).toEqual([{ rating: 2, text: base.review, time: null }]);
     expect(evidence.review_sample_provenance).toMatchObject({ source: "visitor_supplied", sampled: 1 });
     expect(prompt).toContain("pasted by a visitor and has not been verified");

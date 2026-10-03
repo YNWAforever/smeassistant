@@ -37,7 +37,7 @@ import { runErrorLabel } from "@/lib/assistant/draft-failure"
 import { formatOfferDate, isOfferStaleCode, offerStaleKind, type OfferStaleKind } from "@/lib/workspace/offer-format"
 import { basisLabel, buildExportText, effortLabel, formatDateTime, metricLabel, priorityClass, priorityLabel, signed, stateLabel, withLocation } from "@/lib/workspace/format"
 import type { ActionDetail, AuditEventRow, VersionRow } from "@/lib/workspace/queries-pages"
-import type { GuardrailFlag } from "@/lib/workspace/version-meta"
+import { guardrailText } from "@/lib/workspace/guardrail-text"
 
 export interface ActionDetailClientProps {
   locale: PrototypeLocale
@@ -133,37 +133,6 @@ export function ownerInputPatch(
     } else if (value.trim()) provided[key] = value.trim()
   }
   return { provided, runInputs }
-}
-
-/** The agents' warning vocabulary, in words an approver can act on. */
-function guardrailText(flag: GuardrailFlag, locale: PrototypeLocale): string {
-  const isChinese = locale !== "en"
-  switch (flag.code) {
-    case "unexpected_link":
-      return locale === "zh-HK" ? "含有你沒有提供的連結，審批前請先檢查。" : locale === "zh-TW" ? "包含你沒有提供的連結，核准前請先確認。" : "Contains a link you did not supply — check it before approving."
-    case "unconfirmed_claim":
-      return locale === "zh-HK" ? "提及你未確認的價錢或誇大字眼，審批前請先檢查。" : locale === "zh-TW" ? "提到你未確認的價格或誇大用語，核准前請先確認。" : "Mentions a price or superlative that is not in your confirmed facts — check it before approving."
-    case "prohibited_term":
-      return isChinese ? `含品牌禁用詞：${flag.detail ?? ""}` : `Contains a prohibited brand term: ${flag.detail ?? ""}`
-    case "compensation_promise":
-      return isChinese ? "似乎承諾補償、退款或折扣。" : "Appears to promise compensation, a refund or a discount."
-    case "alt_text_missing":
-      return isChinese ? "缺少圖片替代文字。" : "Image alt text is missing."
-    case "too_many_hashtags":
-      return isChinese ? "主題標籤過多。" : "Too many hashtags."
-    case "jsonld_missing":
-      return isChinese ? "缺少 JSON-LD 結構化資料。" : "The JSON-LD block is missing."
-    case "jsonld_invalid":
-      return isChinese ? "JSON-LD 結構無效，下次掃描將無法讀取。" : "The JSON-LD is not valid, so the next scan will not read it."
-    case "jsonld_mismatch":
-      return isChinese ? "JSON-LD 的問答與上方文字不一致。" : "The JSON-LD questions and answers do not match the text above them."
-    case "title_too_long":
-      return isChinese ? `標題超過 ${flag.detail ?? ""} 字元。` : `Title is longer than ${flag.detail ?? ""} characters.`
-    case "bio_too_long":
-      return isChinese ? `簡介超過 ${flag.detail ?? ""} 字元。` : `Bio is longer than ${flag.detail ?? ""} characters.`
-    default:
-      return isChinese ? `內文超過 ${flag.detail ?? ""} 字元。` : `Body is longer than ${flag.detail ?? ""} characters.`
-  }
 }
 
 export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false, initialVersionId = null }: ActionDetailClientProps) {

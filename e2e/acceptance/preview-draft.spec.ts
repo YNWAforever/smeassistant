@@ -93,7 +93,7 @@ test("an unlocked viewer gets one unsaved reply draft", async ({ page, browser, 
   const result = page.getByTestId("preview-result");
   await expect(result).toBeVisible();
   await expect(result.getByText(p.badge)).toBeVisible();
-  expect(first.body?.trim()).not.toBe("");
+  expect(first.body).toMatch(/\S/);
   await expect(result.getByText(first.body!)).toBeVisible();
   await expect(result.getByText(p.notKept)).toBeVisible();
   await expect(result.getByRole("button", { name: p.copy })).toBeVisible();

@@ -35,7 +35,7 @@ export default async function Report({ params }: { params: Promise<{ locale: str
   const model = await loadReport(slug, locale, { getMembership: reportMembershipResolver() });
   const pageLocale = normaliseLocale(locale);
   // The P4.5 preview card: pure, so with the flag off it adds no SQL to the report.
-  const previewDraftHref = previewDraftHrefFor({ enabled: previewDraftEnabled(), access: model.access, locale: pageLocale, slug });
+  const previewDraftHref = previewDraftHrefFor({ enabled: previewDraftEnabled(), access: model.access, status: model.preview.status, locale: pageLocale, slug });
   return (
     <ReportPage
       {...buildReportProps(model satisfies ReportViewModelLike, pageLocale)}

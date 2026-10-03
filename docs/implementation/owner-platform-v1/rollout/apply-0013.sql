@@ -14,7 +14,7 @@
 --      names and sha256 checksums of neon/migrations/0001-0012 as loadMigrations()
 --      computes them.
 --   4. Executes the exact text of 0013_preview_events.sql.
---   5. Inserts journal row (13, '0013_preview_events.sql', '122fc89ecf60732287c51b0970de0aff90785373f38fc341050039d166723467').
+--   5. Inserts journal row (13, '0013_preview_events.sql', '98ec68e18a5281885ac12497af8328c3c7300ce7adfd1869f74f62912160cf24').
 -- Any refusal or error rolls the whole statement back; nothing is changed.
 --
 -- How to run: in the Neon SQL Editor, logged in as neondb_owner, paste and run
@@ -87,10 +87,13 @@ BEGIN
 --
 -- Limits live in claim_preview_slot, under one global advisory lock, so
 -- concurrent claims are fully serialized (volume is bounded by the daily
--- limit). Only 'claimed' and 'generated' rows count toward the per-grant,
--- per-job and daily limits; 'failed' rows release the slot and 'refused' rows
--- record the refusal. The budget sums cost_usd over every row of the last 24
--- hours, whatever its outcome.
+-- limit). 'refused' rows only record a refusal and never count. Every other
+-- row ('claimed', 'generated' or 'failed', stale included) is one model call:
+-- each counts toward the daily limit, and a grant gets at most three of them.
+-- A 'failed' row releases the grant's single success and the job's slot: the
+-- per-grant "already used" check and the per-job limit of three count only
+-- 'claimed' and 'generated' rows. The budget sums cost_usd over every row of
+-- the last 24 hours, whatever its outcome.
 --
 -- Both functions are SECURITY INVOKER, like 0004 and 0011 (neon/README.md):
 -- the runtime already has RLS-backed DML on preview_events, so no owner
@@ -153,7 +156,10 @@ begin
   if exists (
     select 1 from public.preview_events
     where grant_id = p_grant and outcome in ('claimed', 'generated')
-  ) then
+  ) or (
+    select count(*) from public.preview_events
+    where grant_id = p_grant and outcome in ('claimed', 'generated', 'failed')
+  ) >= 3 then
     refusal := 'already_used';
   elsif (
     select count(*) from public.preview_events
@@ -162,7 +168,7 @@ begin
     refusal := 'job_limit';
   elsif (
     select count(*) from public.preview_events
-    where outcome in ('claimed', 'generated') and created_at > now() - interval '24 hours'
+    where outcome in ('claimed', 'generated', 'failed') and created_at > now() - interval '24 hours'
   ) >= p_global_daily then
     refusal := 'daily_limit';
   elsif (
@@ -216,7 +222,7 @@ GRANT EXECUTE ON FUNCTION public.finish_preview_slot(p_event uuid, p_outcome tex
 $m0013$;
 
   INSERT INTO neon_migrations.journal(ordinal, name, checksum)
-    VALUES (13, '0013_preview_events.sql', '122fc89ecf60732287c51b0970de0aff90785373f38fc341050039d166723467');
+    VALUES (13, '0013_preview_events.sql', '98ec68e18a5281885ac12497af8328c3c7300ce7adfd1869f74f62912160cf24');
 
   RAISE NOTICE 'apply-0013: applied 0013_preview_events.sql and recorded journal row 13';
 END
