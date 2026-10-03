@@ -7,7 +7,7 @@ import { templateByKey } from "@/lib/workspace/templates";
 
 const asProvided = (row: { provided_inputs: unknown }) => (row.provided_inputs ?? {}) as Record<string, unknown>;
 
-const repository = vi.hoisted(() => ({ actionScope:vi.fn(),assistantWorkspace:vi.fn(),assistantLocations:vi.fn(),assistantActions:vi.fn(),assistantSnapshot:vi.fn(),assistantLatestSnapshot:vi.fn(),assistantDiff:vi.fn(),assistantBrand:vi.fn(),assistantReviewData:vi.fn(),versionScope:vi.fn(),createOutputVersion:vi.fn(),recordAssistantDraft:vi.fn(),recordAssistantDraftFailure:vi.fn(),aiSpend24h:vi.fn() }));
+const repository = vi.hoisted(() => ({ actionScope:vi.fn(),assistantWorkspace:vi.fn(),assistantLocations:vi.fn(),assistantActions:vi.fn(),assistantSnapshot:vi.fn(),assistantLatestSnapshot:vi.fn(),assistantDiff:vi.fn(),assistantBrand:vi.fn(),assistantReviewData:vi.fn(),versionScope:vi.fn(),createOutputVersion:vi.fn(),recordAssistantDraft:vi.fn(),recordAssistantDraftFailure:vi.fn(),aiSpend24h:vi.fn(),assistantWaitingVersions:vi.fn(),assistantGoogleConnection:vi.fn() }));
 vi.mock("@/lib/repositories/artifacts",()=>({artifactRepository:()=>repository}));
 const DRAFT_RUN_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 
@@ -39,6 +39,8 @@ beforeEach(() => {
   repository.recordAssistantDraft.mockResolvedValue(DRAFT_RUN_ID);
   repository.recordAssistantDraftFailure.mockResolvedValue("failed-run-id");
   repository.aiSpend24h.mockResolvedValue({ globalUsd: 0, workspaceUsd: 0 });
+  repository.assistantWaitingVersions.mockResolvedValue([]);
+  repository.assistantGoogleConnection.mockResolvedValue({ status: "active" });
   repository.assistantDiff.mockImplementation(async (id) => id === diff.id ? diff : null);
   repository.assistantActions.mockImplementation(async (workspaceId, opts = {}) => state.actions.filter(a =>
     a.workspace_id === workspaceId && (!opts.locationId || a.location_id === opts.locationId || a.location_id === null) &&
@@ -562,5 +564,76 @@ describe("assistant drafts and the AI budget", () => {
     expect(result.output).toBeUndefined();
     expect(error).toHaveBeenCalledWith("[assistant/live] failed draft not recorded", { category: "assistant_draft_failure_not_recorded" });
     error.mockRestore();
+  });
+});
+
+describe("contextual answers (P4.3)", () => {
+  const VERSION_ID = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+  const waitingRow = { id: VERSION_ID, action_id: ACTION_ID, version_no: 2, approval_state: "draft" as const, created_at: "2026-09-01T00:00:00.000000Z", location_id: LOCATION_ID };
+
+  it("answers where_to_continue with a nextStep when contextual, reading the signal rows once", async () => {
+    repository.assistantWaitingVersions.mockResolvedValue([waitingRow]);
+    const llm = vi.fn();
+    const result = await run({ intentId: "where_to_continue", contextual: true, llm });
+    expect(result.nextStep).toEqual({ kind: "review_version", actionId: ACTION_ID, versionId: VERSION_ID });
+    expect(result.answer).toContain("v2 of “Reply to unanswered Google reviews”");
+    expect(repository.assistantWaitingVersions).toHaveBeenCalledTimes(1);
+    expect(repository.assistantWaitingVersions).toHaveBeenCalledWith(WORKSPACE_ID, LOCATION_ID);
+    expect(repository.assistantGoogleConnection).toHaveBeenCalledTimes(1);
+    expect(llm).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ state: "completed", requiresApproval: false });
+  });
+
+  it("passes the focused version and the member's role into the answer", async () => {
+    repository.assistantWaitingVersions.mockResolvedValue([waitingRow]);
+    repository.assistantGoogleConnection.mockResolvedValue({ status: "revoked" });
+    repository.versionScope.mockResolvedValue({ workspaceId: WORKSPACE_ID, actionId: ACTION_ID });
+    const focused = await run({ intentId: "where_to_continue", contextual: true, context: { workspaceId: WORKSPACE_ID, locationId: LOCATION_ID, versionId: VERSION_ID } });
+    expect(focused.answer).toContain("must approve this exact version");
+    expect(focused.nextStep).toEqual({ kind: "review_version", actionId: ACTION_ID, versionId: VERSION_ID });
+    const owner = await run({ intentId: "where_to_continue", contextual: true });
+    expect(owner.nextStep).toEqual({ kind: "open_integrations" });
+    const manager = await run({ intentId: "where_to_continue", contextual: true, membership: auth("manager").membership });
+    expect(manager.nextStep).toEqual({ kind: "review_version", actionId: ACTION_ID, versionId: VERSION_ID });
+    const viewer = await run({ intentId: "where_to_continue", contextual: true, membership: auth("viewer").membership });
+    expect(viewer.nextStep).toBeUndefined();
+    expect(viewer.nextAction).toMatch(/^Ask an owner or manager to /);
+  });
+
+  it("answers explain_missing_inputs from the signal rows when no action is in context", async () => {
+    state.actions = [actionRow, { ...socialRow, action_state: "needs_input" }];
+    const result = await run({ intentId: "explain_missing_inputs", contextual: true });
+    expect(result.answer).toContain("Approved asset or text only");
+    expect(result.nextStep).toEqual({ kind: "provide_inputs", actionId: socialRow.id });
+  });
+
+  it.each([undefined, false])("strips nextStep from every answer when contextual is %s", async (contextual) => {
+    repository.assistantWaitingVersions.mockResolvedValue([waitingRow]);
+    state.actions = [actionRow, { ...socialRow, action_state: "needs_input" }];
+    for (const intentId of ["where_to_continue", "explain_missing_inputs", "explain_priority", "explain_change"] as const) {
+      const result = await run({ intentId, contextual });
+      expect(result, intentId).not.toHaveProperty("nextStep");
+    }
+  });
+
+  it("adds nextStep to explain_priority without reading the signal rows", async () => {
+    const result = await run({ intentId: "explain_priority", contextual: true });
+    expect(result.nextStep).toEqual({ kind: "open_action", actionId: ACTION_ID });
+    expect(repository.assistantWaitingVersions).not.toHaveBeenCalled();
+    expect(repository.assistantGoogleConnection).not.toHaveBeenCalled();
+    const change = await run({ intentId: "explain_change", contextual: true });
+    expect(change.nextStep).toEqual({ kind: "open_actions" });
+    expect(repository.assistantWaitingVersions).not.toHaveBeenCalled();
+  });
+
+  it.each(["explain_missing_inputs", "where_to_continue"] as const)("%s never calls the model or reads the AI budget", async (intentId) => {
+    const llm = vi.fn();
+    const result = await run({ intentId, contextual: true, llm, llmReady: () => true });
+    expect(llm).not.toHaveBeenCalled();
+    expect(repository.aiSpend24h).not.toHaveBeenCalled();
+    expect(repository.recordAssistantDraft).not.toHaveBeenCalled();
+    expect(repository.recordAssistantDraftFailure).not.toHaveBeenCalled();
+    expect(writes()).toEqual([]);
+    expect(result.output).toBeUndefined();
   });
 });

@@ -16,6 +16,8 @@ import { gateBlockingInputs } from "@/lib/workspace/workflow-inputs";
 import { type ScanDiffRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
 import { AssistantAccessError } from "./errors";
 import { buildEvidenceRefs } from "./evidence";
+import type { SignalRows } from "./signals";
+import { loadSignalRows } from "./suggestions";
 import { fallbackIntentFor, isTemplateIntent, templateAnswer, type TemplateContext } from "./templates";
 
 /**
@@ -68,9 +70,17 @@ export interface LiveRunInput {
   /** Budget variables; defaults to process.env (tests pass their own). */
   budgetEnv?: Record<string, string | undefined>;
   now?: () => Date;
+  /**
+   * P4.3: whether answers may carry a `nextStep` link. Off (the default) strips
+   * it from every answer, so the response is what it was before P4.3.
+   */
+  contextual?: boolean;
 }
 
 type DraftIntent = "draft_review_reply" | "friendlier_review_reply" | "generate_social" | "generate_faq" | "generate_menu";
+
+/** The only intents that read the P4.3 signal rows (waiting versions, Google). */
+const SIGNAL_INTENTS: readonly DemoQuestionId[] = ["explain_missing_inputs", "where_to_continue"];
 
 /** Exported for the contract test that every template key resolves. */
 export const DRAFT_AGENTS: Record<DraftIntent, { agent: AgentKey; type: AssistantArtifact["type"]; templates: TemplateKey[] }> = {
@@ -164,6 +174,10 @@ interface ResolvedContext {
   evidenceRefs: EvidenceReference[];
   locationName: string;
   timezone: string;
+  /** The location the open actions were read for. */
+  locationId: string | null;
+  /** Loaded only for SIGNAL_INTENTS. */
+  signals?: SignalRows;
 }
 
 async function resolveContext(db: LiveAssistantRepository, input: LiveRunInput): Promise<ResolvedContext> {
@@ -261,7 +275,7 @@ async function resolveContext(db: LiveAssistantRepository, input: LiveRunInput):
   const focused = focusedRow ? { row: focusedRow, overview: overviewOf(focusedRow, locations.find((l) => l.id === focusedRow.location_id) ?? null) } : null;
   const locationName = location?.name ?? workspace?.business_name ?? "Workspace";
   const evidenceRefs = snapshot ? buildEvidenceRefs({ snapshot, diff, base, action: focused?.overview ?? open[0]?.overview ?? null, locationName, locale: input.locale }) : [];
-  return { workspace, location, snapshot, base, diff, focused, open, evidenceRefs, locationName, timezone: workspace?.timezone ?? "Asia/Hong_Kong" };
+  return { workspace, location, snapshot, base, diff, focused, open, evidenceRefs, locationName, timezone: workspace?.timezone ?? "Asia/Hong_Kong", locationId };
 }
 
 function templateContext(input: LiveRunInput, ctx: ResolvedContext): TemplateContext {
@@ -275,6 +289,9 @@ function templateContext(input: LiveRunInput, ctx: ResolvedContext): TemplateCon
     actions: ctx.open.map((a) => a.overview),
     action: ctx.focused?.overview ?? null,
     evidenceRefs: ctx.evidenceRefs,
+    actor: { role: input.membership.role, locationScope: input.membership.locationScope },
+    signals: ctx.signals,
+    focusedVersionId: input.context.versionId,
   };
 }
 
@@ -289,6 +306,7 @@ function completed(intent: DemoQuestionId, input: LiveRunInput, ctx: ResolvedCon
     warnings: [...extraWarnings, ...answer.warnings],
     requiresApproval: false,
     demoBoundary: LIVE_BOUNDARY[input.locale],
+    ...(input.contextual && answer.nextStep ? { nextStep: answer.nextStep } : {}),
   };
 }
 
@@ -476,5 +494,6 @@ export async function runLiveAssistant(input: LiveRunInput): Promise<DemoAssista
   const db = input.repository ?? artifactRepository();
   const ctx = await resolveContext(db, input);
   if (isDraftIntent(input.intentId)) return draft(input.intentId, input, db, ctx);
+  if (SIGNAL_INTENTS.includes(input.intentId)) ctx.signals = await loadSignalRows(db, input.context.workspaceId, ctx.locationId);
   return completed(input.intentId, input, ctx);
 }
