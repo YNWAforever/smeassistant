@@ -14,6 +14,7 @@ import { sampledReviewsFromRawData, satisfiedInputs, snapshotEvidence, socialAss
 import { isOfferTemplate, templateByKey, type TemplateKey } from "@/lib/workspace/templates";
 import { gateBlockingInputs } from "@/lib/workspace/workflow-inputs";
 import { type ScanDiffRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
+import { AssistantAccessError } from "./errors";
 import { buildEvidenceRefs } from "./evidence";
 import { fallbackIntentFor, isTemplateIntent, templateAnswer, type TemplateContext } from "./templates";
 
@@ -124,13 +125,7 @@ export function isDraftIntent(intent: DemoQuestionId): intent is DraftIntent {
   return Object.prototype.hasOwnProperty.call(DRAFT_AGENTS, intent);
 }
 
-export class AssistantAccessError extends Error {
-  readonly status: 403 | 404;
-  constructor(readonly code: "forbidden" | "not_found") {
-    super(code);
-    this.status = code === "forbidden" ? 403 : 404;
-  }
-}
+export { AssistantAccessError } from "./errors";
 
 function requireDraftScope(input: LiveRunInput, locationId: string | null) {
   if (!inLocationScope(input.membership, locationId)) throw new AssistantAccessError("forbidden");

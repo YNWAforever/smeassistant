@@ -169,6 +169,33 @@ export function artifactRepository(client?: Executor) {
     WHERE s.job_id=$1 AND s.cited=false`,[jobId,workspaceId])).rows.map(r=>r.query_text));
   },
   /**
+   * Draft and changes-requested versions on open actions (P4.3 signal 2),
+   * oldest first. Read-only. A location also admits workspace-wide actions,
+   * exactly as `actions()` does, and the action scope predicate rejects rows
+   * whose parent references are inconsistent. `created_at` is returned as UTC
+   * ISO text so callers can compare it without a driver Date.
+   */
+  assistantWaitingVersions(workspaceId: string, locationId: string | null) {
+   return operation(async () => {
+    const result=await db().query<{id:string;action_id:string;version_no:number;approval_state:'draft'|'changes_requested';created_at:string;location_id:string|null}>(
+     `SELECT v.id,v.action_id,v.version_no,v.approval_state,to_char(v.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at,a.location_id
+      FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id
+      WHERE a.workspace_id=$1 AND v.approval_state IN ('draft','changes_requested')
+       AND a.action_state NOT IN ('completed','dismissed','cancelled','expired')
+       AND ${ACTION_SCOPE_PREDICATE}
+       AND ($2::uuid IS NULL OR a.location_id=$2 OR a.location_id IS NULL)
+      ORDER BY v.created_at ASC,v.id ASC LIMIT 20`,[workspaceId,locationId]);
+    return result.rows;
+   });
+  },
+  /** Newest `google_gbp` connection status (P4.3 signal 3), or null with no row. Same selection as action derivation. */
+  assistantGoogleConnection(workspaceId: string) {
+   return operation(async () => {
+    const row=(await db().query<{status:'active'|'expired'|'revoked'|'error'}>("SELECT status FROM oauth_connections WHERE workspace_id=$1 AND provider='google_gbp' ORDER BY connected_at DESC,id DESC LIMIT 1",[workspaceId])).rows[0];
+    return row ? {status:row.status} : null;
+   });
+  },
+  /**
    * Recorded AI spend in the last 24 hours (P3.5a), globally and for one
    * workspace, in one read over action_runs_created_idx. A run with no
    * recorded cost adds nothing: computeCostUsd returns null when the gateway
@@ -285,7 +312,7 @@ export function artifactRepository(client?: Executor) {
 export type ArtifactRepository = ReturnType<typeof artifactRepository>;
 
 /** Live drafting has a read-only repository capability; saving is an explicit separate action. */
-export type LiveAssistantRepository = Pick<ArtifactRepository,'actionScope'|'assistantWorkspace'|'assistantLocations'|'assistantActions'|'assistantSnapshot'|'assistantLatestSnapshot'|'assistantDiff'|'assistantBrand'|'assistantReviewData'|'versionScope'|'aiSpend24h'>;
+export type LiveAssistantRepository = Pick<ArtifactRepository,'actionScope'|'assistantWorkspace'|'assistantLocations'|'assistantActions'|'assistantSnapshot'|'assistantLatestSnapshot'|'assistantDiff'|'assistantBrand'|'assistantReviewData'|'versionScope'|'aiSpend24h'|'assistantWaitingVersions'|'assistantGoogleConnection'>;
 
 
 export interface QueueActionRunInput {
