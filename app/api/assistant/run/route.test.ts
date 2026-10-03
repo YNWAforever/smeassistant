@@ -32,9 +32,15 @@ const live = { runId: "live_run_x", state: "completed", answer: "a", nextAction:
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // P4.3 Ruling R7: no test depends on the ambient flag; tests that need it on stub "true".
+  vi.stubEnv("CONTEXTUAL_ASSISTANT_ENABLED", "");
   mocks.enforceRateLimit.mockResolvedValue({ allowed: true, retryAfterSeconds: 1 });
   mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("viewer"));
   mocks.runLiveAssistant.mockResolvedValue(live);
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe("POST /api/assistant/run", () => {
@@ -283,6 +289,23 @@ describe("POST /api/assistant/run: contextual assistant (P4.3)", () => {
     expect(mocks.authorizeWorkspaceRequest).not.toHaveBeenCalled();
     for (const origin of ["suggested", "fixed"]) expect((await post(body("explain_priority", { origin }))).status).toBe(200);
     expect((await post(body("explain_priority"))).status).toBe(200);
+  });
+
+  it("with the flag off ignores a bogus origin: no 400, and nothing about it in the audit (R7)", async () => {
+    for (const origin of ["bogus", "", 1, null, "Suggested"]) {
+      const res = await post(body("explain_priority", { origin }));
+      expect(res.status, String(origin)).toBe(200);
+    }
+    expect((await post({ mode: "demo", surface: "sample", intentId: "explain_change", locale: "en", origin: "bogus" })).status).toBe(200);
+    for (const call of mocks.recordNeonEvent.mock.calls) {
+      expect(call[0].payload).toEqual({ intent: "explain_priority", surface: "action", artifact: false });
+    }
+    expect(mocks.recordNeonEvent).toHaveBeenCalledTimes(5);
+  });
+
+  it("with the flag off a valid origin is not written to the audit (R7)", async () => {
+    await post(body("explain_priority", { origin: "suggested" }));
+    expect(mocks.recordNeonEvent.mock.calls[0][0].payload).toEqual({ intent: "explain_priority", surface: "action", artifact: false });
   });
 
   it("audits origin and next_step_kind and nothing from the answer", async () => {

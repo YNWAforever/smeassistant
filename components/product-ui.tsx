@@ -465,7 +465,7 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
             <strong>{workspaceSection}</strong>
           </div>
           <div className="workspace-topbar-spacer" />
-          <ContextualAssistant locale={locale} surface={assistantSurface} triggerLabel={isChinese ? "問增長助理" : "Ask operator"} mode={workspace.assistant ? "live" : "demo"} context={workspace.assistant} />
+          <ContextualAssistant locale={locale} surface={assistantSurface} triggerLabel={isChinese ? "問增長助理" : "Ask operator"} mode={workspace.assistant ? "live" : "demo"} context={workspace.assistant} basePath={workspace.assistant ? base : undefined} locationParam={location} />
           <Button asChild variant="ghost" size="icon" className="notification-button">
             <Link href={`${base}/settings/notifications`} aria-label={unreadLabel(workspace.unreadNotifications, isChinese)}><Bell />{workspace.unreadNotifications > 0 && <span className="notification-dot" />}</Link>
           </Button>

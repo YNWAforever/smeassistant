@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
+import Link from "next/link"
+import { useEffect, useState, type ReactNode } from "react"
 import {
   ArrowRight,
   Check,
@@ -26,12 +27,17 @@ import {
 } from "@/components/ui/sheet"
 import { useIsMobile } from "@/hooks/use-mobile"
 import type { PrototypeLocale } from "@/lib/copy"
-import type {
-  AssistantContext,
-  AssistantMode,
-  AssistantSurface,
-  DemoAssistantRunResponse,
-  DemoQuestionId,
+import { nextStepHref } from "@/lib/assistant/next-step"
+import { resolveText } from "@/lib/domain"
+import {
+  isDemoQuestionId,
+  type AssistantContext,
+  type AssistantMode,
+  type AssistantOrigin,
+  type AssistantSuggestion,
+  type AssistantSurface,
+  type DemoAssistantRunResponse,
+  type DemoQuestionId,
 } from "@/lib/pocket-assistant/contracts"
 import { ASSISTANT_RUN_ENDPOINT, buildAssistantRequest } from "@/lib/pocket-assistant/request"
 import { aiBudgetRefusal } from "@/lib/budgets/messages"
@@ -85,6 +91,44 @@ function questionLabel(questionId: DemoQuestionId, mode: AssistantMode, isChines
   return label[isChinese ? "zh" : "en"]
 }
 
+const SUGGESTIONS_ENDPOINT = "/api/assistant/suggestions"
+const SUGGESTION_KINDS: readonly AssistantSuggestion["kind"][] = ["missing_inputs", "review_version", "google"]
+
+/** Keeps only well-formed rows; anything else in the body is ignored rather than rendered. */
+function parseSuggestions(body: unknown): AssistantSuggestion[] | null {
+  if (!body || typeof body !== "object") return null
+  const list = (body as { suggestions?: unknown }).suggestions
+  if (!Array.isArray(list)) return null
+  return list.filter((item): item is AssistantSuggestion => {
+    if (!item || typeof item !== "object") return false
+    const row = item as Partial<AssistantSuggestion>
+    return (
+      typeof row.id === "string" &&
+      SUGGESTION_KINDS.includes(row.kind as AssistantSuggestion["kind"]) &&
+      isDemoQuestionId(row.intentId) &&
+      Boolean(row.label) &&
+      typeof row.context?.workspaceId === "string"
+    )
+  })
+}
+
+function suggestionsQuery(context: AssistantContext) {
+  const params = new URLSearchParams({ workspaceId: context.workspaceId })
+  if (context.locationId) params.set("locationId", context.locationId)
+  if (context.actionId) params.set("actionId", context.actionId)
+  if (context.versionId) params.set("versionId", context.versionId)
+  return params.toString()
+}
+
+function suggestionLabel(suggestion: AssistantSuggestion, locale: PrototypeLocale) {
+  const isChinese = locale !== "en"
+  if (suggestion.kind === "google") return isChinese ? "為何要重新連接 Google？" : "Why reconnect Google?"
+  if (suggestion.kind === "review_version") return isChinese ? "我應該由哪裡繼續？" : "Where do I continue?"
+  const title = suggestion.label.actionTitle ? resolveText(suggestion.label.actionTitle, locale) : ""
+  if (!title) return questionLabel("explain_missing_inputs", "live", isChinese)
+  return isChinese ? `「${title}」還需要甚麼資料？` : `What detail do you need for ${title}?`
+}
+
 function surfaceTitle(surface: AssistantSurface, isChinese: boolean) {
   const map: Record<AssistantSurface, [string, string]> = {
     sample: ["錦汶館公開示範", "Kam Man House public demo"],
@@ -110,6 +154,8 @@ export function ContextualAssistant({
   disabled = false,
   mode = "demo",
   context,
+  basePath,
+  locationParam,
 }: {
   locale: PrototypeLocale
   surface: AssistantSurface
@@ -125,19 +171,50 @@ export function ContextualAssistant({
   /** `live` answers from this workspace's evidence (requires `context`); default `demo` keeps the fixed sample (§3.8). */
   mode?: AssistantMode
   context?: AssistantContext
+  /** `/{locale}/owner/{workspaceSlug}`; with it a live answer's next step becomes a "Continue here" link. */
+  basePath?: string
+  /** The page's location query value, carried onto that link. */
+  locationParam?: string
 }) {
   const isChinese = locale !== "en"
   const isMobile = useIsMobile()
   const [open, setOpen] = useState(false)
   const [state, setState] = useState<"idle" | "running" | "failed">("idle")
-  const [selected, setSelected] = useState<DemoQuestionId | null>(null)
+  const [selected, setSelected] = useState<string | null>(null)
   const [run, setRun] = useState<DemoAssistantRunResponse | null>(null)
   const [versionCreated, setVersionCreated] = useState(false)
   const [refusal, setRefusal] = useState<string | null>(null)
-  const questions = surfaceQuestions[surface]
+  const [suggestions, setSuggestions] = useState<AssistantSuggestion[]>([])
+  // The context object is rebuilt on every parent render; its ids are what matter.
+  const contextKey = mode === "live" && context ? suggestionsQuery(context) : null
+  const shown = suggestions.slice(0, 3)
+  const questions = surfaceQuestions[surface].filter((questionId) => !shown.some((item) => item.intentId === questionId))
 
-  async function ask(questionId: DemoQuestionId) {
-    setSelected(questionId)
+  // Each time the sheet opens in live mode, ask the server what needs the owner now.
+  // The fixed questions never wait for this; any failure leaves them alone on screen.
+  useEffect(() => {
+    if (!open || !contextKey) return
+    const controller = new AbortController()
+    void (async () => {
+      try {
+        const response = await fetch(`${SUGGESTIONS_ENDPOINT}?${contextKey}`, { signal: controller.signal })
+        if (!response.ok) return
+        const parsed = parseSuggestions(await response.json())
+        if (parsed && !controller.signal.aborted) setSuggestions(parsed)
+      } catch {
+        // Silent by design: the fixed list is the fallback.
+      }
+    })()
+    return () => controller.abort()
+  }, [open, contextKey])
+
+  function changeOpen(next: boolean) {
+    setOpen(next)
+    if (!next) setSuggestions([])
+  }
+
+  async function ask(questionId: DemoQuestionId, options: { key?: string; context?: AssistantContext; origin?: AssistantOrigin } = {}) {
+    setSelected(options.key ?? questionId)
     setRun(null)
     setVersionCreated(false)
     setRefusal(null)
@@ -146,7 +223,7 @@ export function ContextualAssistant({
       const response = await fetch(ASSISTANT_RUN_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildAssistantRequest(mode, surface, questionId, locale, context)),
+        body: JSON.stringify(buildAssistantRequest(mode, surface, questionId, locale, options.context ?? context, options.origin ?? "fixed")),
       })
       if (!response.ok) {
         // P3.5a: a spend-budget refusal is an answer, not a broken run.
@@ -167,6 +244,8 @@ export function ContextualAssistant({
     }
   }
 
+  const continueHref = mode === "live" && basePath && run?.nextStep ? nextStepHref(basePath, run.nextStep, locationParam) : null
+
   function createVersion() {
     if (!run?.draftRunId || !onCreateVersion) return
     onCreateVersion(run)
@@ -174,7 +253,7 @@ export function ContextualAssistant({
   }
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={changeOpen}>
       <SheetTrigger asChild disabled={disabled}>
         {trigger ?? <Button className="assistant-launcher" variant="outline" disabled={disabled}><Sparkles aria-hidden="true" /><span>{triggerLabel ?? (isChinese ? "問隨身增長助理" : "Ask Visibility Operator")}</span></Button>}
       </SheetTrigger>
@@ -198,6 +277,13 @@ export function ContextualAssistant({
 
         <div className="assistant-sheet-body">
           <div className="assistant-boundary"><LockKeyhole aria-hidden="true" /><span>{mode === "live" ? (isChinese ? "答案只使用此工作台的證據快照；這裡不會發佈或核准任何內容。" : "Answers use only this workspace's evidence snapshots; nothing is published or approved here.") : (isChinese ? "公開及示範模式只使用固定、已清理的錦汶館資料；不接受其他商戶或客戶資料。" : "Public and demo mode uses fixed, sanitised Kam Man House data only; no other business or customer data is accepted.")}</span></div>
+
+          {shown.length > 0 && <section className="assistant-question-section" aria-labelledby="assistant-suggestion-title">
+            <p className="eyebrow" id="assistant-suggestion-title">{isChinese ? "現在需要你處理" : "Needs you now"}</p>
+            <div className="assistant-question-list">
+              {shown.map((suggestion) => <button key={suggestion.id} type="button" aria-pressed={selected === suggestion.id} onClick={() => ask(suggestion.intentId, { key: suggestion.id, context: suggestion.context, origin: "suggested" })}><span>{suggestionLabel(suggestion, locale)}</span><ArrowRight aria-hidden="true" /></button>)}
+            </div>
+          </section>}
 
           <section className="assistant-question-section" aria-labelledby="assistant-question-title">
             <p className="eyebrow" id="assistant-question-title">{isChinese ? "由目前問題開始" : "Start from the current problem"}</p>
@@ -223,7 +309,7 @@ export function ContextualAssistant({
 
             <section className="assistant-next-action">
               <span><ScanSearch aria-hidden="true" /></span>
-              <div><small>{isChinese ? "建議下一步" : "Recommended next step"}</small><strong>{run.nextAction}</strong></div>
+              <div><small>{isChinese ? "建議下一步" : "Recommended next step"}</small><strong>{run.nextAction}</strong>{continueHref && <Link className="assistant-next-link" href={continueHref} onClick={() => changeOpen(false)}>{locale === "en" ? "Continue here" : locale === "zh-TW" ? "從這裡繼續" : "由這裡繼續"}<ArrowRight aria-hidden="true" /></Link>}</div>
             </section>
 
             {run.output && <AssistantArtifactPreview artifact={run.output} isChinese={isChinese} />}

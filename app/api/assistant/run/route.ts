@@ -45,7 +45,10 @@ export async function POST(request: Request) {
   }
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return json({ error: "invalid_request" }, 400);
 
-  const { mode, surface, intentId, locale, context, origin } = payload as Record<string, unknown>;
+  const { mode, surface, intentId, locale, context, origin: rawOrigin } = payload as Record<string, unknown>;
+  const contextual = contextualAssistantEnabled();
+  // P4.3 (R7): with the flag off `origin` does not exist, so flag-off behaviour and audit rows equal ecc60df.
+  const origin = contextual ? rawOrigin : undefined;
   if (mode !== "demo" && mode !== "live") return json({ error: "invalid_mode" }, 400);
   if (!SURFACES.includes(surface as AssistantSurface)) return json({ error: "invalid_surface" }, 400);
   if (!isDemoQuestionId(intentId)) return json({ error: "invalid_intent" }, 400);
@@ -56,7 +59,7 @@ export async function POST(request: Request) {
   if (mode === "demo") return json(createDemoAssistantRun(intentId, locale));
 
   // Before auth and the limiter: with the flag off these intents do not exist for a workspace.
-  if (CONTEXTUAL_INTENTS.includes(intentId) && !contextualAssistantEnabled()) return json({ error: "not_enabled" }, 404);
+  if (CONTEXTUAL_INTENTS.includes(intentId) && !contextual) return json({ error: "not_enabled" }, 404);
 
   const ctx = context && typeof context === "object" && !Array.isArray(context) ? (context as Record<string, unknown>) : null;
   const workspaceId = optionalId(ctx?.workspaceId);
@@ -87,7 +90,7 @@ export async function POST(request: Request) {
       intentId,
       surface: surface as AssistantSurface,
       locale: locale as PrototypeLocale,
-      contextual: contextualAssistantEnabled(),
+      contextual,
       context: { workspaceId, locationId: ids.locationId ?? undefined, snapshotId: ids.snapshotId ?? undefined, actionId: ids.actionId ?? undefined, versionId: ids.versionId ?? undefined },
     });
 

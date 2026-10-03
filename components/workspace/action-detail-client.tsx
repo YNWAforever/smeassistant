@@ -61,6 +61,8 @@ export interface ActionDetailClientProps {
   latestVersionOfferRevision?: number | null
   /** Show the link to the Offers page (the page 404s while the flag is off). */
   offersEnabled?: boolean
+  /** P4.3: the version a `?version=` link names. Anything not among `detail.versions` falls back to the newest. */
+  initialVersionId?: string | null
 }
 
 export interface OfferCardData {
@@ -164,7 +166,7 @@ function guardrailText(flag: GuardrailFlag, locale: PrototypeLocale): string {
   }
 }
 
-export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false }: ActionDetailClientProps) {
+export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false, initialVersionId = null }: ActionDetailClientProps) {
   const isChinese = locale !== "en"
   const router = useRouter()
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -206,9 +208,12 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
 
   const [previewRole, setPreviewRole] = useState<PreviewRole>("owner")
   const effectiveRole: PreviewRole = role === "owner" ? previewRole : role
-  const [versionId, setVersionId] = useState<string | null>(versions[0]?.id ?? null)
-  const [content, setContent] = useState(versions[0]?.body ?? "")
-  const [altText, setAltText] = useState(versions[0]?.alt_text ?? "")
+  // A `?version=` link lands on that version; the render-time re-selection below only runs when the
+  // version list changes, so it never undoes this initial choice.
+  const [initialVersion] = useState(() => versions.find((v) => v.id === initialVersionId) ?? versions[0])
+  const [versionId, setVersionId] = useState<string | null>(initialVersion?.id ?? null)
+  const [content, setContent] = useState(initialVersion?.body ?? "")
+  const [altText, setAltText] = useState(initialVersion?.alt_text ?? "")
   const [comment, setComment] = useState("")
   const [busy, setBusy] = useState<Busy>(null)
   const [conflict, setConflict] = useState(false)
@@ -728,7 +733,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                 </div>
               )}
               {showInputForm && (
-                <form className="field-stack input-form" onSubmit={(event) => { event.preventDefault(); void submitInputs() }} aria-label={isChinese ? "所需資料" : "Required inputs"}>
+                <form id="inputs" className="field-stack input-form" onSubmit={(event) => { event.preventDefault(); void submitInputs() }} aria-label={isChinese ? "所需資料" : "Required inputs"}>
                   <p className="limitation-note"><AlertTriangle /> {isChinese ? "Agent 不會猜測事實。請提供以下資料，再重新生成。" : "The agent never guesses facts. Provide the inputs below, then generate again."}</p>
                   {neededKeys.map((key) => key === "asset_or_text_only" ? (
                     <div key={key} className="field-stack"><Label htmlFor={`input-${key}`}>{inputs[key] ?? key}</Label>
@@ -761,7 +766,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                 {(selectedVersion?.agentNotes ?? []).map((note) => <p key={note} className="limitation-note"><AlertTriangle /> {note}</p>)}
                 <p className="limitation-note">{isChinese ? "除非店主已確認，否則不要加入食材、致敏原、價格或優惠日期。" : "Do not add ingredients, allergens, pricing or offer dates unless the owner confirmed them."}</p></div>
               {lastRunError && <p className="limitation-note" role="alert"><CircleAlert /> {isChinese ? "上次生成失敗：" : "Last generation failed: "}{lastRunError}</p>}
-              <div className="draft-editor-actions"><ContextualAssistant locale={locale} surface={social ? "create" : "action"} triggerLabel={isChinese ? "用助理修改並建立新版本" : "Revise with operator as a new version"} mode="live" context={{ workspaceId, locationId: action.location.id ?? undefined, actionId: action.id, versionId: selectedVersion?.id }} onCreateVersion={(run) => void createAssistantVersion(run)} disabled={!canEdit} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? (isChinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version") : (isChinese ? "生成草稿" : "Generate a draft")}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {isChinese ? "儲存手動修改為新版本" : "Save manual edits as a new version"}</Button></div>
+              <div className="draft-editor-actions"><ContextualAssistant locale={locale} surface={social ? "create" : "action"} triggerLabel={isChinese ? "用助理修改並建立新版本" : "Revise with operator as a new version"} mode="live" context={{ workspaceId, locationId: action.location.id ?? undefined, actionId: action.id, versionId: selectedVersion?.id }} basePath={base} locationParam={location} onCreateVersion={(run) => void createAssistantVersion(run)} disabled={!canEdit} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? (isChinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version") : (isChinese ? "生成草稿" : "Generate a draft")}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {isChinese ? "儲存手動修改為新版本" : "Save manual edits as a new version"}</Button></div>
               {conflict && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "另一位審閱者已更新輸出" : "Another reviewer changed this output"}</strong><p>{isChinese ? "未儲存文字仍保留在本機。載入最新版本、比較內容，再建立新版本。" : "Unsaved text is preserved locally. Load the latest version, compare, then create a new version."}</p><Button size="sm" onClick={loadLatest}><RefreshCw /> {isChinese ? "安全載入最新狀態" : "Load latest safely"}</Button></div></div>}
               </>)}
               {/* The assertion control, offered for checklist and drafted

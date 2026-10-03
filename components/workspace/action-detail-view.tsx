@@ -19,6 +19,7 @@ export interface ActionDetailViewProps {
   offer?: OfferCardData | null
   latestVersionOfferRevision?: number | null
   offersEnabled?: boolean
+  initialVersionId?: string | null
 }
 
 /**

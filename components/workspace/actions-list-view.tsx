@@ -83,7 +83,7 @@ export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, 
         eyebrow={isChinese ? "實證支持的工作清單" : "Evidence-backed work queue"}
         title={isChinese ? "行動" : "Actions"}
         description={isChinese ? "根據已量度的發現或清楚標示的店主目標排定優次，而非互不相干的 Agent 展示。" : "Prioritised from measured findings or a clearly labelled owner objective—never a disconnected agent gallery."}
-        actions={<><ContextualAssistant locale={locale} surface="actions" triggerLabel={isChinese ? "比較優先次序" : "Compare priorities"} mode="live" context={{ workspaceId, locationId: locationId ?? undefined }} /><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /></>}
+        actions={<><ContextualAssistant locale={locale} surface="actions" triggerLabel={isChinese ? "比較優先次序" : "Compare priorities"} mode="live" context={{ workspaceId, locationId: locationId ?? undefined }} basePath={base} locationParam={location} /><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /></>}
       />
       {role === "viewer" && <div className="permission-banner"><ShieldAlert /><div><strong>{isChinese ? "檢視者權限" : "Viewer access"}</strong><span>{isChinese ? "你可查看證據及已量度成效，但不能生成、編輯、審批、送出或管理帳單。" : "You can inspect evidence and measured outcomes, but cannot generate, edit, approve, deliver or manage billing."}</span></div><Badge variant="outline">{isChinese ? "只讀" : "Read only"}</Badge></div>}
       <div className="action-tabs">
