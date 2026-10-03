@@ -104,6 +104,21 @@ describe("AGENTS", () => {
     expect(prompt).toContain("review_reply@2026-09-10.1");
   });
 
+  it("describes a visitor-pasted review as unverified, never as scan evidence (ruling R4)", () => {
+    const scan = AGENTS.review_reply.buildPrompt(fixedCtx);
+    const explicitScan = AGENTS.review_reply.buildPrompt({ ...fixedCtx, sampledReviewsSource: "scan" });
+    expect(explicitScan).toBe(scan);
+    expect(scan).toContain('"source": "scan_evidence"');
+    expect(scan).toContain("were collected by the scan from the merchant's public Google profile");
+
+    const visitor = AGENTS.review_reply.buildPrompt({ ...fixedCtx, sampledReviewsSource: "visitor_pasted" });
+    expect(visitor).toContain('"source": "visitor_supplied"');
+    expect(visitor).toContain("pasted by a visitor and has not been verified as coming from the merchant's public Google profile");
+    expect(visitor).not.toContain("scan_evidence");
+    expect(visitor).not.toContain("collected by the scan");
+    expect(visitor).not.toContain("retained by the scan");
+  });
+
   it("keeps an instruction-shaped review inside the untrusted fence", () => {
     // A merchant's public reviews are attacker-influenceable text. The fence is
     // a boundary marker, not a guarantee -- schema/prohibited-term validation

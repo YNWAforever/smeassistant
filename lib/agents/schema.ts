@@ -44,6 +44,13 @@ export interface AgentContext {
   /** Reviews without an owner response, newest first, excerpts only (review_reply). */
   sampledReviews?: SampledReview[];
   /**
+   * Where `sampledReviews` came from. Absent means "scan" (collected by the
+   * scan from the merchant's public profile). "visitor_pasted" is the unsaved
+   * preview draft (P4.5): one review a report viewer pasted, never verified as
+   * coming from the merchant's profile, so the prompt must not claim it was.
+   */
+  sampledReviewsSource?: "scan" | "visitor_pasted";
+  /**
    * A trusted tone directive rendered in the TASK, not in the evidence block.
    *
    * The assistant's "make it friendlier" control used to travel as

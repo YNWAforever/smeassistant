@@ -18,7 +18,7 @@ function section(prompt: string, from: string, to: string): string {
 describe("buildPreviewContext", () => {
   it("has exactly the keys of spec §2.3 with empty evidence and providedInputs", () => {
     const ctx = buildPreviewContext(base);
-    expect(Object.keys(ctx).sort()).toEqual(["action", "brand", "evidence", "locale", "location", "market", "providedInputs", "sampledReviews"]);
+    expect(Object.keys(ctx).sort()).toEqual(["action", "brand", "evidence", "locale", "location", "market", "providedInputs", "sampledReviews", "sampledReviewsSource"]);
     expect(ctx.locale).toBe("zh-HK");
     expect(ctx.market).toBe("hk");
     expect(ctx.brand).toEqual({ voice: "warm", approvedClaims: [], prohibitedTerms: [], languages: ["zh-HK"], facts: {} });
@@ -35,6 +35,7 @@ describe("buildPreviewContext", () => {
   it("puts the review only in sampledReviews and maps region tw → market tw", () => {
     const ctx = buildPreviewContext(base);
     expect(ctx.sampledReviews).toEqual([{ rating: 2, text: base.review, time: null }]);
+    expect(ctx.sampledReviewsSource).toBe("visitor_pasted");
     expect(buildPreviewContext({ ...base, rating: null }).sampledReviews).toEqual([{ rating: null, text: base.review, time: null }]);
     expect(JSON.stringify({ ...ctx, sampledReviews: undefined })).not.toContain(base.review);
 
@@ -71,6 +72,9 @@ describe("buildPreviewContext", () => {
     expect(Object.keys(evidence).sort()).toEqual(["action", "provided_inputs", "review_sample_provenance", "sampled_reviews_without_owner_response"]);
     expect(evidence.provided_inputs).toEqual({});
     expect(evidence.sampled_reviews_without_owner_response).toEqual([{ rating: 2, text: base.review, time: null }]);
+    expect(evidence.review_sample_provenance).toMatchObject({ source: "visitor_supplied", sampled: 1 });
+    expect(prompt).toContain("pasted by a visitor and has not been verified");
+    expect(prompt).not.toContain("collected by the scan");
     for (const key of ["snapshot", "metrics", "module_states", "website_checks", "findings", "finding_key", "source_finding_keys", "overall_score", "coverage", "gbp.", "ig.", "aeo.", "raw_data"]) {
       expect(prompt).not.toContain(key);
     }

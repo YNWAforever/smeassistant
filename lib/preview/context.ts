@@ -10,7 +10,8 @@ import { findTemplate } from "@/lib/workspace/templates";
  * brand and the one review the viewer pasted. Nothing from the report,
  * snapshot, findings or raw data is read or passed, so `evidence` and
  * `providedInputs` are empty and the review travels only in `sampledReviews`,
- * which the prompt renders inside the untrusted-evidence fence.
+ * which the prompt renders inside the untrusted-evidence fence, marked
+ * `visitor_pasted` so it is never described as scan evidence.
  */
 export interface PreviewContextInput {
   locale: PrototypeLocale;
@@ -73,5 +74,7 @@ export function buildPreviewContext(input: PreviewContextInput): AgentContext {
     evidence: {},
     providedInputs: {},
     sampledReviews: [{ rating: input.rating ?? null, text: input.review, time: null }],
+    // Ruling R4: the prompt must not describe a pasted review as scan evidence.
+    sampledReviewsSource: "visitor_pasted",
   };
 }
