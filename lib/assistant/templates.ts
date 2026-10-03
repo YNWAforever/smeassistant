@@ -6,7 +6,6 @@ import { formatDay, metricLabel, priorityLabel, stateLabel } from "@/lib/workspa
 import type { MetricKey } from "@/lib/workspace/metrics";
 import type { ActionOverview } from "@/lib/workspace/overview";
 import type { ModuleStateKey, ScanDiffRow, SnapshotRecord } from "@/lib/workspace/snapshots";
-import { isOfferTemplate, templateByKey, type TemplateKey } from "@/lib/workspace/templates";
 import { MODULE_NAMES, formatCoverage, formatMetricValue, formatScore, measuredMetricKeys, metricChange, pickRefs, type ModuleKey } from "./evidence";
 import { canAct, missingInputKeys, type GoogleStatus, type SignalRows, type WaitingVersion } from "./signals";
 
@@ -444,22 +443,16 @@ function inputLabel(key: string, locale: PrototypeLocale): string {
   return copy[locale].workspace.inputs[key] ?? key;
 }
 
-function isOfferAction(action: ActionOverview): boolean {
-  try {
-    return isOfferTemplate(templateByKey(action.templateKey as TemplateKey));
-  } catch {
-    return false;
-  }
-}
-
 /**
- * R6: an action the member opened lists every input it still lacks, whatever
- * its state; the `needs_input` gate of `missingInputKeys` is for the unfocused
- * fallback. Offer actions stay excluded, as in `missingInputKeys`: the run
- * route gates them on the confirmed offer, not on this list.
+ * R6/R6a: an action the member opened lists every input it still lacks,
+ * whatever its state and including offer actions (e.g. `brand_voice`), so the
+ * answer never says "nothing is missing" when something is. Only `offer_id` is
+ * dropped: the server satisfies it from the confirmed offer. The `needs_input`
+ * gate and the offer exclusion of `missingInputKeys` apply to the unfocused
+ * fallback only.
  */
 function focusedMissingKeys(action: ActionOverview): string[] {
-  return isOfferAction(action) ? [] : action.missingInputs.filter((key) => key !== "offer_id");
+  return action.missingInputs.filter((key) => key !== "offer_id");
 }
 
 function explainMissingInputs(ctx: TemplateContext): TemplateAnswer {

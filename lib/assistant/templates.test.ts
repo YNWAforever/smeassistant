@@ -327,19 +327,29 @@ describe("contextual answers (P4.3)", () => {
     expect(templateAnswer("explain_missing_inputs", context({ action: null, actor: scoped, signals: signals({ actions: [ready] }) })).answer).toContain("No open action for Yik Yam");
   });
 
-  it("lists a focused action's missing inputs whatever its state, but never an offer's (R6)", () => {
+  it("lists a focused action's missing inputs whatever its state (R6)", () => {
     const working = overview({ ...socialRow, action_state: "in_progress", required_inputs: ["asset_or_text_only", "alt_text"], provided_inputs: {} });
     const answer = templateAnswer("explain_missing_inputs", context({ action: working, actor: owner }));
     expect(answer.answer).toContain("Approved asset or text only, Alt text");
     expect(answer.nextStep).toEqual({ kind: "provide_inputs", actionId: working.id });
-    const offer = overview({ ...socialRow, template_key: "offer-instagram-post", action_state: "in_progress", required_inputs: ["offer_id", "brand_voice"], provided_inputs: {} });
-    const offerAnswer = templateAnswer("explain_missing_inputs", context({ action: offer, actor: owner }));
-    expect(offerAnswer.answer).not.toContain("Confirmed offer");
-    expect(offerAnswer.answer).not.toContain("Brand voice");
-    expect(offerAnswer.nextStep).toEqual({ kind: "open_action", actionId: offer.id });
     // Unfocused, the needs_input gate still applies: an in_progress action is not picked.
     const fallback = templateAnswer("explain_missing_inputs", context({ action: null, actor: owner, signals: signals({ actions: [ready, working] }) }));
     expect(fallback.answer).toContain("No open action for Yik Yam is waiting for details");
+  });
+
+  it("lists a focused offer action's inputs except offer_id, but never picks an offer unfocused (R6a)", () => {
+    const offer = overview({ ...socialRow, template_key: "offer-instagram-post", action_state: "needs_input", required_inputs: ["offer_id", "brand_voice"], provided_inputs: {} });
+    expect(offer.missingInputs).toEqual(["offer_id", "brand_voice"]);
+    const answer = templateAnswer("explain_missing_inputs", context({ action: offer, actor: owner }));
+    expect(answer.answer).toContain("still needs: Brand voice.");
+    expect(answer.answer).not.toContain("Confirmed offer");
+    expect(answer.answer).not.toContain("offer_id");
+    expect(answer.answer).not.toContain("nothing is missing");
+    expect(answer.nextStep).toEqual({ kind: "provide_inputs", actionId: offer.id });
+    // The unfocused fallback (like signals.ts) still skips offer actions.
+    const fallback = templateAnswer("explain_missing_inputs", context({ action: null, actor: owner, signals: signals({ actions: [ready, offer] }) }));
+    expect(fallback.answer).toContain("No open action for Yik Yam is waiting for details");
+    expect(fallback.nextStep).toEqual({ kind: "open_actions" });
   });
 
   it("adds nextStep to explain_priority and explain_change without changing their text", () => {
