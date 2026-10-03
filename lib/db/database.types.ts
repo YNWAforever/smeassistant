@@ -24,6 +24,7 @@ export type DatabaseRows = {
   "oauth_connections": typeof schema.oauthConnections.$inferSelect;
   "offers": typeof schema.offers.$inferSelect;
   "output_versions": typeof schema.outputVersions.$inferSelect;
+  "preview_events": typeof schema.previewEvents.$inferSelect;
   "rate_limit_buckets": typeof schema.rateLimitBuckets.$inferSelect;
   "report_access_grants": typeof schema.reportAccessGrants.$inferSelect;
   "report_evidence": typeof schema.reportEvidence.$inferSelect;
@@ -68,6 +69,7 @@ export type DatabaseInserts = {
   "oauth_connections": typeof schema.oauthConnections.$inferInsert;
   "offers": typeof schema.offers.$inferInsert;
   "output_versions": typeof schema.outputVersions.$inferInsert;
+  "preview_events": typeof schema.previewEvents.$inferInsert;
   "rate_limit_buckets": typeof schema.rateLimitBuckets.$inferInsert;
   "report_access_grants": typeof schema.reportAccessGrants.$inferInsert;
   "report_evidence": typeof schema.reportEvidence.$inferInsert;

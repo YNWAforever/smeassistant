@@ -10,7 +10,7 @@ export const deferredTriggers: string[] = [];
 // replay-compare against. verifyCatalog excludes these from the legacy deepEqual and
 // instead asserts their bare presence; their actual behavior is proven by dedicated tests
 // (e.g. test/integration/neon-membership.integration.test.ts for prevent_owner_removal).
-export const additionalFunctions: string[] = ["prevent_owner_removal","offer_is_expired","confirm_offer","archive_offer","offer_current_for_version"];
+export const additionalFunctions: string[] = ["prevent_owner_removal","offer_is_expired","confirm_offer","archive_offer","offer_current_for_version","claim_preview_slot","finish_preview_slot"];
 // Retained legacy functions that a later migration re-created on purpose (0011 adds one
 // offer-freshness guard line to each). verifyCatalog drops them from the legacy deepEqual and
 // asserts their presence; lib/workspace/offer-sql.test.ts pins their text as 0004 plus that one
