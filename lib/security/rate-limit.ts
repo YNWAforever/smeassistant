@@ -29,6 +29,7 @@ export type RateLimitScope =
   | "asset_upload"
   | "assistant_run"
   | "assistant_suggestions"
+  | "preview_draft"
   | "rescan"
   | "brand_update"
   | "mail_unsubscribe";
@@ -112,6 +113,8 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   assistant_run: { limit: 60, windowSeconds: 60 * 60 },
   // GET /api/assistant/suggestions (P4.3): a cheap read-only fetch per sheet open or surface change, per user.
   assistant_suggestions: { limit: 120, windowSeconds: 60 * 60 },
+  // POST /api/start/[slug]/preview (P4.5): unsaved review-reply preview drafts, 5 a day per source IP, fail-closed.
+  preview_draft: { limit: 5, windowSeconds: 60 * 60 * 24 },
   // POST /api/workspaces/[id]/rescan (CLAUDE.md §3.2.3, Phase 6): keyed on the
   // *workspace* id (the route passes it as the identifier) plus the source-IP
   // HMAC, so the 3/day budget is shared by every member of the workspace. A

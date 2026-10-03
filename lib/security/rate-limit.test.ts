@@ -84,6 +84,8 @@ describe("atomic rate-limit contract", () => {
     // Staff-authenticated, so this is a runaway-cost guard against repeat
     // clicks (each call spends real LLM tokens), not an abuse boundary.
     expect(RATE_LIMITS.staff_fix_pack_generate).toEqual({ limit: 20, windowSeconds: 3600 });
+    // Unsaved preview draft (P4.5): 5 a day per source IP.
+    expect(RATE_LIMITS.preview_draft).toEqual({ limit: 5, windowSeconds: 86400 });
   });
 
   it("checks the fingerprint-only outer bucket before the composite identifier bucket", async () => {
