@@ -1,3 +1,5 @@
+import type { LocalizedText } from "@/lib/domain"
+
 export const demoQuestionIds = [
   "explain_priority",
   "explain_change",
@@ -12,6 +14,8 @@ export const demoQuestionIds = [
   "generate_social",
   "generate_faq",
   "generate_menu",
+  "explain_missing_inputs",
+  "where_to_continue",
 ] as const
 
 export type DemoQuestionId = (typeof demoQuestionIds)[number]
@@ -34,6 +38,16 @@ export type AssistantArtifact = {
   body: string
   acceptanceCriteria: string[]
 }
+
+/** Where a deterministic answer can send the owner next. Navigation only; nothing here writes. */
+export const nextStepKinds = ["provide_inputs", "review_version", "open_integrations", "open_action", "open_actions"] as const
+
+export type NextStepKind = (typeof nextStepKinds)[number]
+
+export type AssistantNextStep = { kind: NextStepKind; actionId?: string; versionId?: string }
+
+/** Whether the owner picked a suggested question or one of the fixed intents. */
+export type AssistantOrigin = "suggested" | "fixed"
 
 export type DemoAssistantRunRequest = {
   questionId: DemoQuestionId
@@ -60,6 +74,8 @@ export type DemoAssistantRunResponse = {
   warnings: string[]
   requiresApproval: boolean
   demoBoundary: string
+  /** Live, deterministic answers only: where to go next. Absent in demo mode and when the flag is off. */
+  nextStep?: AssistantNextStep
 }
 
 export function isDemoQuestionId(value: unknown): value is DemoQuestionId {
@@ -87,4 +103,16 @@ export type AssistantRunRequest = {
   intentId: DemoQuestionId
   locale: "zh-HK" | "zh-TW" | "en"
   context?: AssistantContext
+  origin?: AssistantOrigin
+}
+
+/** A question the sheet offers on its own, derived from the workspace's current state. */
+export type AssistantSuggestion = {
+  id: string
+  /** Lets the sheet pick a label without parsing `id`. */
+  kind: "missing_inputs" | "review_version" | "google"
+  intentId: "explain_missing_inputs" | "where_to_continue"
+  label: { actionTitle?: LocalizedText }
+  context: AssistantContext
+  nextStep?: AssistantNextStep
 }

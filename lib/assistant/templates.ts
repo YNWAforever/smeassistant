@@ -1,11 +1,13 @@
-import type { PrototypeLocale } from "@/lib/copy";
+import type { Membership } from "@/lib/auth";
+import { copy, type PrototypeLocale } from "@/lib/copy";
 import { localized, type LocalizedText } from "@/lib/domain";
-import type { DemoQuestionId, EvidenceReference } from "@/lib/pocket-assistant/contracts";
+import type { AssistantNextStep, DemoQuestionId, EvidenceReference } from "@/lib/pocket-assistant/contracts";
 import { formatDay, metricLabel, priorityLabel, stateLabel } from "@/lib/workspace/format";
 import type { MetricKey } from "@/lib/workspace/metrics";
 import type { ActionOverview } from "@/lib/workspace/overview";
 import type { ModuleStateKey, ScanDiffRow, SnapshotRecord } from "@/lib/workspace/snapshots";
 import { MODULE_NAMES, formatCoverage, formatMetricValue, formatScore, measuredMetricKeys, metricChange, pickRefs, type ModuleKey } from "./evidence";
+import { canAct, missingInputKeys, type GoogleStatus, type SignalRows, type WaitingVersion } from "./signals";
 
 /**
  * Deterministic assistant answers (CLAUDE.md §3.8 (a)): the explain/compare
@@ -23,6 +25,8 @@ export const TEMPLATE_INTENTS = [
   "explain_insights",
   "asset_next_step",
   "rescan_validation",
+  "explain_missing_inputs",
+  "where_to_continue",
 ] as const satisfies readonly DemoQuestionId[];
 
 export type TemplateIntent = (typeof TEMPLATE_INTENTS)[number];
@@ -44,6 +48,12 @@ export interface TemplateContext {
   /** The action the sheet was opened from, if any. */
   action: ActionOverview | null;
   evidenceRefs: EvidenceReference[];
+  /** The asking member's role and scope. Absent = no role restriction. */
+  actor?: Pick<Membership, "role" | "locationScope">;
+  /** Rows the two P4.3 intents decide from; no other intent reads them. */
+  signals?: SignalRows;
+  /** The version the sheet was opened from, if any. */
+  focusedVersionId?: string;
 }
 
 export interface TemplateAnswer {
@@ -51,6 +61,8 @@ export interface TemplateAnswer {
   nextAction: string;
   evidenceRefs: EvidenceReference[];
   warnings: string[];
+  /** A navigation link only; it grants nothing. Live runs drop it unless contextual. */
+  nextStep?: AssistantNextStep;
 }
 
 const MODULES: ModuleKey[] = ["google_business", "instagram", "search_ai", "website"];
@@ -147,6 +159,85 @@ const RESCAN = localized(
 );
 const RESCAN_NEXT = localized("Start the rescan from the Rescan page after the approved version has been delivered; do not compare against a snapshot with a different scope.", "在核准版本送出後，於「重新掃描」頁啟動重掃；不要與範圍不同的快照比較。");
 const RESCAN_WARN = localized("A result that is not comparable is a new snapshot, not a trend.", "不可比較的結果只是新快照，不是趨勢。");
+// P4.3: "What detail do you need?" and "Where do I continue?". Both answer
+// from fresh rows without a snapshot, never call the model, and never claim
+// that anything was approved, sent or published (guardrails 5, 6 and 14).
+const MISSING_INPUTS = localized(
+  "“{title}” still needs: {inputs}. The template cannot draft without these details, and nothing is guessed: until you add them they stay Unknown.",
+  "「{title}」仍需要：{inputs}。缺少這些資料，範本無法產生草稿，亦不會作任何推測；補充之前，這些資料一律視為「未知」。",
+);
+const MISSING_INPUTS_NEXT = localized("Open the action and add these details, then generate a draft.", "開啟該行動並補充這些資料，然後再產生草稿。");
+const MISSING_INPUTS_ASK = localized("Ask an owner or manager to add these details to the action.", "請店主或經理在該行動中補充這些資料。");
+const NOTHING_MISSING = localized("“{title}” has every detail it needs right now; nothing is missing.", "「{title}」目前已具備所需的全部資料，沒有缺少任何項目。");
+const NOTHING_MISSING_NEXT = localized("Open the action to continue.", "開啟該行動以繼續。");
+const NOTHING_MISSING_ASK = localized("Ask an owner or manager to open the action and continue.", "請店主或經理開啟該行動並繼續處理。");
+const NO_ACTION_MISSING = localized("No open action for {loc} is waiting for details right now; nothing is missing.", "{loc} 目前沒有等待補充資料的未完成行動，沒有缺少任何項目。");
+// R5: when some rows were hidden by the member's location scope, the answer must
+// not claim a whole location is clear, so it speaks about their locations only.
+const NO_ACTION_MISSING_SCOPED = localized(
+  "No open action in your locations is waiting for details right now; nothing is missing.",
+  "你負責的地點目前沒有等待補充資料的未完成行動，沒有缺少任何項目。",
+  "你負責的據點目前沒有等待補充資料的未完成行動，沒有缺少任何項目。",
+);
+const OPEN_ACTIONS_NEXT = localized("Open the actions list to choose what to do next.", "開啟行動清單，選擇下一步。");
+const OPEN_ACTIONS_ASK = localized("Ask an owner or manager to choose the next action.", "請店主或經理選擇下一項行動。");
+const MISSING_WARN = localized("Missing details stay Unknown; the assistant never guesses them.", "缺少的資料一律視為「未知」；助手不會推測。");
+// Only the named version's own state is claimed: an earlier version of the
+// same action may well have been approved and exported already.
+const VERSION_FOCUSED = localized(
+  "Version v{n} of “{title}” is “{state}”. An authorised person must approve this exact version before it can be exported; this version has not been approved or sent.",
+  "「{title}」的 v{n} 版本目前狀態為「{state}」。須由獲授權人士核准此指定版本後才可匯出；此版本尚未獲核准或送出。",
+  "「{title}」的 v{n} 版本目前狀態為「{state}」。須由獲授權人士核准此指定版本後才可匯出；此版本尚未核准或送出。",
+);
+const WAITING_ONE = localized(
+  "1 version is waiting for review: v{n} of “{title}” (“{state}”). An authorised person must approve a specific version before it can be exported.",
+  "有 1 個版本等待審閱：「{title}」的 v{n}（{state}）。須由獲授權人士核准指定版本後才可匯出。",
+);
+const WAITING_MANY = localized(
+  "{count} versions are waiting for review. The oldest is v{n} of “{title}” (“{state}”). An authorised person must approve a specific version before it can be exported.",
+  "有 {count} 個版本等待審閱，最早的是「{title}」的 v{n}（{state}）。須由獲授權人士核准指定版本後才可匯出。",
+);
+// Minor 1: `assistantWaitingVersions` (lib/repositories/artifacts.ts) reads at
+// most this many rows, so at the cap the visible count is a floor, not a total.
+const WAITING_VERSIONS_READ_LIMIT = 20;
+const WAITING_CAPPED = localized(
+  "{count} or more versions are waiting for review. The oldest is v{n} of “{title}” (“{state}”). An authorised person must approve a specific version before it can be exported.",
+  "有 {count} 個或以上版本等待審閱，最早的是「{title}」的 v{n}（{state}）。須由獲授權人士核准指定版本後才可匯出。",
+);
+const VERSION_NEXT = localized("Open v{n} and review it.", "開啟 v{n} 進行審閱。");
+const VERSION_ASK = localized("Ask an owner or manager to review v{n}.", "請店主或經理審閱 v{n}。");
+const NOTHING_WAITING = localized(
+  "Nothing is waiting for review now at {loc}; no draft or change request needs a decision.",
+  "{loc} 目前沒有等待審閱的項目；沒有草稿或修改要求需要決定。",
+);
+const NOTHING_WAITING_SCOPED = localized(
+  "Nothing is waiting for review now in your locations; no draft or change request needs a decision.",
+  "你負責的地點目前沒有等待審閱的項目；沒有草稿或修改要求需要決定。",
+  "你負責的據點目前沒有等待審閱的項目；沒有草稿或修改要求需要決定。",
+);
+const GOOGLE_STATE = localized(
+  "The {google} connection is {state}. Google evidence and the “{reconnect}” action depend on it.",
+  "{google} 的連接狀態：{state}。Google 證據及「{reconnect}」行動都依賴此連接。",
+  "{google} 的連線狀態：{state}。Google 證據及「{reconnect}」行動都依賴此連線。",
+);
+// T3-d: with no connection row at all there is no state to report.
+const GOOGLE_NONE = localized(
+  "There is no {google} connection. Google evidence and the “{reconnect}” action depend on it.",
+  "目前沒有 {google} 的連接。Google 證據及「{reconnect}」行動都依賴此連接。",
+  "目前沒有 {google} 的連線。Google 證據及「{reconnect}」行動都依賴此連線。",
+);
+const GOOGLE_NEXT = localized(
+  "Open Integrations in settings and reconnect Google.",
+  "前往設定中的「連接與整合」，重新連接 Google。",
+  "前往設定中的「連接與整合」，重新連線 Google。",
+);
+const GOOGLE_STATES: Record<Exclude<GoogleStatus, null | "active">, LocalizedText> = {
+  expired: localized("expired", "已過期"),
+  revoked: localized("revoked", "已被撤銷"),
+  error: localized("reporting an error", "出現錯誤"),
+};
+const WHERE_WARN = localized("Nothing is approved, sent or published from here.", "這裡不會核准、送出或發佈任何內容。");
+const THIS_ACTION = localized("this action", "此行動");
 const UNKNOWN_VERSION = localized("unknown", "不明");
 const NONE = localized("none", "無");
 
@@ -231,10 +322,20 @@ function explainPriority(ctx: TemplateContext, snapshot: SnapshotRecord): Templa
     effort: action.effortMinutes,
     inputs: missing ? fill(MISSING, locale, { inputs: joinList(action.missingInputs, locale) }) : READY[locale],
   });
-  return { answer, nextAction: (missing ? PRIORITY_NEXT_INPUT : PRIORITY_NEXT_READY)[locale], evidenceRefs: actionRefs(ctx, snapshot, action), warnings: [NOT_PROOF[locale]] };
+  return {
+    answer,
+    nextAction: (missing ? PRIORITY_NEXT_INPUT : PRIORITY_NEXT_READY)[locale],
+    evidenceRefs: actionRefs(ctx, snapshot, action),
+    warnings: [NOT_PROOF[locale]],
+    nextStep: { kind: "open_action", actionId: action.id },
+  };
 }
 
 function explainChange(ctx: TemplateContext, snapshot: SnapshotRecord): TemplateAnswer {
+  return { ...changeAnswer(ctx, snapshot), nextStep: { kind: "open_actions" } };
+}
+
+function changeAnswer(ctx: TemplateContext, snapshot: SnapshotRecord): TemplateAnswer {
   const { locale, diff } = ctx;
   const vars = snapshotVars(ctx, snapshot);
   const refs = pickRefs(ctx.evidenceRefs, snapshot.id, ["composite", "score", "coverage"]);
@@ -331,7 +432,152 @@ function rescanValidation(ctx: TemplateContext, snapshot: SnapshotRecord): Templ
   return { answer, nextAction: RESCAN_NEXT[locale], evidenceRefs: pickRefs(ctx.evidenceRefs, snapshot.id, ["score", "coverage", "composite"]), warnings: [RESCAN_WARN[locale]] };
 }
 
-const HANDLERS: Record<TemplateIntent, (ctx: TemplateContext, snapshot: SnapshotRecord) => TemplateAnswer> = {
+/** Whether the member may follow a next step at this location. No actor = no restriction. */
+function mayAct(ctx: TemplateContext, locationId: string | null): boolean {
+  return !ctx.actor || canAct(ctx.actor, locationId);
+}
+
+/**
+ * Whether a signal row is shown to the member at all, as in `buildSuggestions`:
+ * only a scoped manager loses rows. Viewers read every location; they just
+ * get no next step.
+ */
+function visible(ctx: TemplateContext, locationId: string | null): boolean {
+  return !ctx.actor || ctx.actor.role === "viewer" || canAct(ctx.actor, locationId);
+}
+
+/** A step the member can follow, or the "Ask an owner or manager" sentence and no step. */
+function step(ctx: TemplateContext, locationId: string | null, next: string, ask: string, nextStep: AssistantNextStep): Pick<TemplateAnswer, "nextAction" | "nextStep"> {
+  return mayAct(ctx, locationId) ? { nextAction: next, nextStep } : { nextAction: ask };
+}
+
+function inputLabel(key: string, locale: PrototypeLocale): string {
+  return copy[locale].workspace.inputs[key] ?? key;
+}
+
+/**
+ * R6/R6a: an action the member opened lists every input it still lacks,
+ * whatever its state and including offer actions (e.g. `brand_voice`), so the
+ * answer never says "nothing is missing" when something is. Only `offer_id` is
+ * dropped: the server satisfies it from the confirmed offer. The `needs_input`
+ * gate and the offer exclusion of `missingInputKeys` apply to the unfocused
+ * fallback only.
+ */
+function focusedMissingKeys(action: ActionOverview): string[] {
+  return action.missingInputs.filter((key) => key !== "offer_id");
+}
+
+function explainMissingInputs(ctx: TemplateContext): TemplateAnswer {
+  const { locale } = ctx;
+  const needing = (ctx.signals?.actions ?? []).filter((a) => missingInputKeys(a).length > 0);
+  const shown = needing.filter((a) => visible(ctx, a.location.id));
+  // R4: a focused action is answered even outside the member's scope, read-only (see `step`).
+  const action = ctx.action ?? shown[0] ?? null;
+  const evidenceRefs = ctx.snapshot ? actionRefs(ctx, ctx.snapshot, action) : [];
+  const warnings = [MISSING_WARN[locale]];
+  if (!action) {
+    return {
+      answer: shown.length < needing.length ? NO_ACTION_MISSING_SCOPED[locale] : fill(NO_ACTION_MISSING, locale, { loc: ctx.locationName }),
+      ...step(ctx, null, OPEN_ACTIONS_NEXT[locale], OPEN_ACTIONS_ASK[locale], { kind: "open_actions" }),
+      evidenceRefs,
+      warnings,
+    };
+  }
+  const keys = ctx.action ? focusedMissingKeys(action) : missingInputKeys(action);
+  const title = action.title[locale];
+  if (!keys.length) {
+    return {
+      answer: fill(NOTHING_MISSING, locale, { title }),
+      ...step(ctx, action.location.id, NOTHING_MISSING_NEXT[locale], NOTHING_MISSING_ASK[locale], { kind: "open_action", actionId: action.id }),
+      evidenceRefs,
+      warnings,
+    };
+  }
+  return {
+    answer: fill(MISSING_INPUTS, locale, { title, inputs: joinList(keys.map((key) => inputLabel(key, locale)), locale) }),
+    ...step(ctx, action.location.id, MISSING_INPUTS_NEXT[locale], MISSING_INPUTS_ASK[locale], { kind: "provide_inputs", actionId: action.id }),
+    evidenceRefs,
+    warnings,
+  };
+}
+
+function oldestFirst(a: WaitingVersion, b: WaitingVersion): number {
+  return Date.parse(a.createdAt) - Date.parse(b.createdAt) || 0;
+}
+
+function whereToContinue(ctx: TemplateContext): TemplateAnswer {
+  const { locale, signals } = ctx;
+  const all = signals?.waitingVersions ?? [];
+  const waiting = all.filter((v) => visible(ctx, v.locationId)).sort(oldestFirst);
+  const actionOf = (actionId: string) => signals?.actions.find((a) => a.id === actionId) ?? (ctx.action?.id === actionId ? ctx.action : null);
+  const refsFor = (action: ActionOverview | null) => (ctx.snapshot ? actionRefs(ctx, ctx.snapshot, action) : []);
+  const warnings = [WHERE_WARN[locale]];
+  const versionVars = (version: WaitingVersion): Vars => ({
+    n: version.versionNo,
+    title: actionOf(version.actionId)?.title[locale] ?? THIS_ACTION[locale],
+    state: stateLabel(version.approvalState, locale),
+  });
+  const reviewAnswer = (version: WaitingVersion, answer: string): TemplateAnswer => ({
+    answer,
+    ...step(ctx, version.locationId, fill(VERSION_NEXT, locale, { n: version.versionNo }), fill(VERSION_ASK, locale, { n: version.versionNo }), {
+      kind: "review_version",
+      actionId: version.actionId,
+      versionId: version.id,
+    }),
+    evidenceRefs: refsFor(actionOf(version.actionId)),
+    warnings,
+  });
+
+  // 1. The version the sheet was opened from, while it is still waiting. One
+  // approved meanwhile is absent from these fresh rows, so it is never named.
+  // R4: it is named even outside a scoped manager's locations, read-only.
+  const focused = ctx.focusedVersionId ? all.find((v) => v.id === ctx.focusedVersionId) : undefined;
+  if (focused) return reviewAnswer(focused, fill(VERSION_FOCUSED, locale, versionVars(focused)));
+
+  // 2. Google needs attention. Integrations settings are owner-only.
+  if (signals && !ctx.focusedVersionId && (!ctx.actor || ctx.actor.role === "owner") && signals.google !== "active") {
+    return {
+      answer: fill(signals.google ? GOOGLE_STATE : GOOGLE_NONE, locale, {
+        google: MODULE_NAMES.google_business[locale],
+        state: signals.google ? GOOGLE_STATES[signals.google][locale] : "",
+        reconnect: copy[locale].workspace.templates["google-reconnect"].title,
+      }),
+      nextAction: GOOGLE_NEXT[locale],
+      nextStep: { kind: "open_integrations" },
+      evidenceRefs: refsFor(null),
+      warnings,
+    };
+  }
+
+  // 3. The oldest waiting version the member can see.
+  const oldest = waiting[0];
+  if (oldest) {
+    const text = all.length >= WAITING_VERSIONS_READ_LIMIT ? WAITING_CAPPED : waiting.length === 1 ? WAITING_ONE : WAITING_MANY;
+    return reviewAnswer(oldest, fill(text, locale, { ...versionVars(oldest), count: waiting.length }));
+  }
+
+  // 4. Nothing is waiting.
+  return {
+    answer: waiting.length < all.length ? NOTHING_WAITING_SCOPED[locale] : fill(NOTHING_WAITING, locale, { loc: ctx.locationName }),
+    ...step(ctx, null, OPEN_ACTIONS_NEXT[locale], OPEN_ACTIONS_ASK[locale], { kind: "open_actions" }),
+    evidenceRefs: refsFor(null),
+    warnings,
+  };
+}
+
+/** Intents answered from fresh signal rows; they need no snapshot. */
+type SnapshotFreeIntent = "explain_missing_inputs" | "where_to_continue";
+
+const SNAPSHOT_FREE: Record<SnapshotFreeIntent, (ctx: TemplateContext) => TemplateAnswer> = {
+  explain_missing_inputs: explainMissingInputs,
+  where_to_continue: whereToContinue,
+};
+
+function isSnapshotFree(intent: TemplateIntent): intent is SnapshotFreeIntent {
+  return Object.prototype.hasOwnProperty.call(SNAPSHOT_FREE, intent);
+}
+
+const HANDLERS: Record<Exclude<TemplateIntent, SnapshotFreeIntent>, (ctx: TemplateContext, snapshot: SnapshotRecord) => TemplateAnswer> = {
   explain_priority: explainPriority,
   explain_change: explainChange,
   explain_limits: explainLimits,
@@ -343,6 +589,7 @@ const HANDLERS: Record<TemplateIntent, (ctx: TemplateContext, snapshot: Snapshot
 };
 
 export function templateAnswer(intent: TemplateIntent, ctx: TemplateContext): TemplateAnswer {
+  if (isSnapshotFree(intent)) return SNAPSHOT_FREE[intent](ctx);
   if (!ctx.snapshot) return unavailable(ctx);
   return HANDLERS[intent](ctx, ctx.snapshot);
 }

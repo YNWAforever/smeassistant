@@ -27,6 +27,10 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
   const detail = await getAction(page.ctx, actionId);
   if (!detail) notFound();
 
+  // P4.3: an assistant "Continue here" link carries ?version=<id>; the client ignores an id it cannot find.
+  const rawVersion = (await props.searchParams)?.version;
+  const initialVersionId = (Array.isArray(rawVersion) ? rawVersion[0] : rawVersion) ?? null;
+
   // P4.1: an offer promotion action is written from one offer; the card and the stale
   // banner read it live, so an edit, an end date or an archive shows before the owner clicks.
   // A read failure only hides the card; approve/export enforce the same rules server-side.
@@ -73,6 +77,7 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
       } : null}
       latestVersionOfferRevision={detail.versions[0]?.offerRevision ?? null}
       offersEnabled={offerPromotionsEnabled()}
+      initialVersionId={initialVersionId}
     />
   );
 }

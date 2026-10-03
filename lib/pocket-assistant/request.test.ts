@@ -49,4 +49,10 @@ describe("buildAssistantRequest", () => {
     }
     expect(buildAssistantRequest("live", "actions", "compare_priorities", "en", { workspaceId: "w" }).intentId).toBe("compare_priorities")
   })
+
+  it("sends origin only in live mode", () => {
+    expect(buildAssistantRequest("live", "home", "where_to_continue", "en", { workspaceId: "ws-1" }, "suggested").origin).toBe("suggested")
+    expect(buildAssistantRequest("demo", "home", "explain_priority", "en", undefined, "fixed").origin).toBeUndefined()
+    expect(buildAssistantRequest("live", "home", "where_to_continue", "en", { workspaceId: "ws-1" }).origin).toBeUndefined()
+  })
 })

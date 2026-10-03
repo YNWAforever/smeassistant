@@ -702,6 +702,45 @@ exports[`createDemoAssistantRun > explain_limits / zh-TW 1`] = `
 }
 `;
 
+exports[`createDemoAssistantRun > explain_missing_inputs / en 1`] = `
+{
+  "answer": "This question is only answered inside a real workspace, where it can read which details your own actions still need. The demo has no real actions to check, so it shows no evidence or draft.",
+  "demoBoundary": "Sanitised Kam Man House demo data only. No arbitrary business or customer data is accepted.",
+  "evidenceRefs": [],
+  "nextAction": "Sign in to your workspace and ask again.",
+  "requiresApproval": false,
+  "runId": "demo_run_00000000-0000-4000-8000-000000000000",
+  "state": "completed",
+  "warnings": [],
+}
+`;
+
+exports[`createDemoAssistantRun > explain_missing_inputs / zh-HK 1`] = `
+{
+  "answer": "這個問題只會在真實工作台內回答，因為要看你自己行動所欠缺的資料。示範頁沒有可核對的真實行動，所以不會顯示證據或草稿。",
+  "demoBoundary": "只使用已清理的錦汶館示範資料；不接受任意商戶、客戶或私人資料。",
+  "evidenceRefs": [],
+  "nextAction": "登入你的工作台後再問一次。",
+  "requiresApproval": false,
+  "runId": "demo_run_00000000-0000-4000-8000-000000000000",
+  "state": "completed",
+  "warnings": [],
+}
+`;
+
+exports[`createDemoAssistantRun > explain_missing_inputs / zh-TW 1`] = `
+{
+  "answer": "這個問題只會在真實工作台內回答，因為要看你自己行動所欠缺的資料。示範頁沒有可核對的真實行動，所以不會顯示證據或草稿。",
+  "demoBoundary": "只使用已清理的錦汶館示範資料；不接受任意商戶、客戶或私人資料。",
+  "evidenceRefs": [],
+  "nextAction": "登入你的工作台後再問一次。",
+  "requiresApproval": false,
+  "runId": "demo_run_00000000-0000-4000-8000-000000000000",
+  "state": "completed",
+  "warnings": [],
+}
+`;
+
 exports[`createDemoAssistantRun > explain_priority / en 1`] = `
 {
   "answer": "Review replies are the priority because the latest comparable snapshot fell from 31% to 18%, seven recent reviews remain unanswered, and an owner-reviewable draft is ready.",
@@ -1454,6 +1493,45 @@ exports[`createDemoAssistantRun > rescan_validation / zh-TW 1`] = `
   "requiresApproval": true,
   "runId": "demo_run_00000000-0000-4000-8000-000000000000",
   "state": "needs_approval",
+  "warnings": [],
+}
+`;
+
+exports[`createDemoAssistantRun > where_to_continue / en 1`] = `
+{
+  "answer": "This question is only answered inside a real workspace, where it can read your own actions, versions and connections. The demo has no real progress to check, so it shows no evidence or draft.",
+  "demoBoundary": "Sanitised Kam Man House demo data only. No arbitrary business or customer data is accepted.",
+  "evidenceRefs": [],
+  "nextAction": "Sign in to your workspace and ask again.",
+  "requiresApproval": false,
+  "runId": "demo_run_00000000-0000-4000-8000-000000000000",
+  "state": "completed",
+  "warnings": [],
+}
+`;
+
+exports[`createDemoAssistantRun > where_to_continue / zh-HK 1`] = `
+{
+  "answer": "這個問題只會在真實工作台內回答，因為要看你自己的行動、版本及連接狀態。示範頁沒有可核對的真實進度，所以不會顯示證據或草稿。",
+  "demoBoundary": "只使用已清理的錦汶館示範資料；不接受任意商戶、客戶或私人資料。",
+  "evidenceRefs": [],
+  "nextAction": "登入你的工作台後再問一次。",
+  "requiresApproval": false,
+  "runId": "demo_run_00000000-0000-4000-8000-000000000000",
+  "state": "completed",
+  "warnings": [],
+}
+`;
+
+exports[`createDemoAssistantRun > where_to_continue / zh-TW 1`] = `
+{
+  "answer": "這個問題只會在真實工作台內回答，因為要看你自己的行動、版本及連接狀態。示範頁沒有可核對的真實進度，所以不會顯示證據或草稿。",
+  "demoBoundary": "只使用已清理的錦汶館示範資料；不接受任意商戶、客戶或私人資料。",
+  "evidenceRefs": [],
+  "nextAction": "登入你的工作台後再問一次。",
+  "requiresApproval": false,
+  "runId": "demo_run_00000000-0000-4000-8000-000000000000",
+  "state": "completed",
   "warnings": [],
 }
 `;

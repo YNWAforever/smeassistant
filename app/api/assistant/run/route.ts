@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
+import { contextualAssistantEnabled } from "@/lib/assistant/flag";
 import { AssistantAccessError, isDraftIntent, runLiveAssistant } from "@/lib/assistant/live";
 import { AiBudgetRefusal } from "@/lib/budgets/ai";
 import { logPauseRefusal, pauseState } from "@/lib/budgets/pause";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
 import { isLocale } from "@/lib/locale";
 import type { PrototypeLocale } from "@/lib/copy";
-import { isDemoQuestionId, type AssistantSurface } from "@/lib/pocket-assistant/contracts";
+import { isDemoQuestionId, type AssistantOrigin, type AssistantSurface, type DemoQuestionId } from "@/lib/pocket-assistant/contracts";
 import { createDemoAssistantRun } from "@/lib/pocket-assistant/demo";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
 import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
@@ -20,6 +21,9 @@ import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
 export const maxDuration = 60;
 
 const SURFACES: readonly AssistantSurface[] = ["sample", "report", "home", "actions", "action", "create", "insights", "assets", "rescan", "workspace"];
+const ORIGINS: readonly AssistantOrigin[] = ["suggested", "fixed"];
+// Live answers that only exist behind CONTEXTUAL_ASSISTANT_ENABLED (P4.3); with the flag off they are as absent as before the slice.
+const CONTEXTUAL_INTENTS: readonly DemoQuestionId[] = ["explain_missing_inputs", "where_to_continue"];
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HEADERS = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
 
@@ -41,13 +45,21 @@ export async function POST(request: Request) {
   }
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return json({ error: "invalid_request" }, 400);
 
-  const { mode, surface, intentId, locale, context } = payload as Record<string, unknown>;
+  const { mode, surface, intentId, locale, context, origin: rawOrigin } = payload as Record<string, unknown>;
+  const contextual = contextualAssistantEnabled();
+  // P4.3 (R7): with the flag off `origin` does not exist, so flag-off behaviour and audit rows equal ecc60df.
+  const origin = contextual ? rawOrigin : undefined;
   if (mode !== "demo" && mode !== "live") return json({ error: "invalid_mode" }, 400);
   if (!SURFACES.includes(surface as AssistantSurface)) return json({ error: "invalid_surface" }, 400);
   if (!isDemoQuestionId(intentId)) return json({ error: "invalid_intent" }, 400);
   if (typeof locale !== "string" || !isLocale(locale)) return json({ error: "unsupported_locale" }, 400);
 
+  if (origin !== undefined && !ORIGINS.includes(origin as AssistantOrigin)) return json({ error: "invalid_origin" }, 400);
+
   if (mode === "demo") return json(createDemoAssistantRun(intentId, locale));
+
+  // Before auth and the limiter: with the flag off these intents do not exist for a workspace.
+  if (CONTEXTUAL_INTENTS.includes(intentId) && !contextual) return json({ error: "not_enabled" }, 404);
 
   const ctx = context && typeof context === "object" && !Array.isArray(context) ? (context as Record<string, unknown>) : null;
   const workspaceId = optionalId(ctx?.workspaceId);
@@ -78,6 +90,7 @@ export async function POST(request: Request) {
       intentId,
       surface: surface as AssistantSurface,
       locale: locale as PrototypeLocale,
+      contextual,
       context: { workspaceId, locationId: ids.locationId ?? undefined, snapshotId: ids.snapshotId ?? undefined, actionId: ids.actionId ?? undefined, versionId: ids.versionId ?? undefined },
     });
 
@@ -97,7 +110,14 @@ export async function POST(request: Request) {
       entityId: ids.actionId,
       locale,
       ipHash: ipHashFor(request),
-      payload: { intent: intentId, surface, artifact: Boolean(result.output) },
+      // Only these enumerated values; never the answer text, input values or labels.
+      payload: {
+        intent: intentId,
+        surface,
+        artifact: Boolean(result.output),
+        ...(origin ? { origin } : {}),
+        ...(result.nextStep ? { next_step_kind: result.nextStep.kind } : {}),
+      },
     });
 
     return json(result);
