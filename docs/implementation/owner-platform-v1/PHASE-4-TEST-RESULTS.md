@@ -1,6 +1,6 @@
 # Phase 4 test results
 
-Gate-by-gate record for Phase 4. Each slice has its own section. P4.4, P4.1 and P4.2 are built; P4.3 is not started.
+Gate-by-gate record for Phase 4. Each slice has its own section. P4.4, P4.1, P4.2 and P4.3 are built.
 
 ## P4.4 — reusable workflow contract
 
@@ -261,3 +261,76 @@ Findings G1–G6 (Ruling P6), the commits (`4dae03a`, `0a6e615`, `ab3dffc`, `21c
 | F5d | The same with a temporary `--webpack` on the `next dev` arguments in `test/e2e/environment.ts` (restored; `git status` clean) | 0 | **passed 1 / 1** (2.0 min): Start on a fresh (`created: true`) pack still drafts all three items; the spec is unchanged. A diagnostic, not the literal gate. |
 
 Unit and line-ending hygiene: the two snapshot files that Windows unit runs rewrite (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) were restored with `git restore` and are not part of any commit. Not re-run in this wave: `db:verify`, `build`, `test:secret-boundary`, `test:no-supabase`, `test:no-self-service-claim`, `eval:workflows`, the full `e2e` and `e2e:acceptance` suites (no migration, route, agent or build-configuration change; the Task 7 records above stand).
+
+## P4.3 — contextual assistant
+
+Candidate: branch `p43-contextual-assistant`, HEAD `02b5577` (implementation) plus this documentation commit. Base `ecc60df` (`origin/main`, PR #29). Spec: [`docs/superpowers/specs/2026-10-03-contextual-assistant-design.md`](../../superpowers/specs/2026-10-03-contextual-assistant-design.md). Plan: `docs/superpowers/plans/2026-10-03-contextual-assistant.md`. Environment: Windows 11 Pro 10.0.26200, Node `v24.18.0`, pnpm `9.12.0` via corepack, Docker Server `29.7.2`, `postgres:16`. Run on 2026-10-03, every heavy gate sequentially, on a machine at about 99 % CPU for much of the run (other projects' test runs, dev servers and Docker containers were running); that matters for the timeout failures recorded below. No code changed in the documentation task; every gate below ran against the implementation tree plus the documentation edits (`.env.example`, `docs/integration/DEPLOY.md` and the three Phase 4 documents).
+
+**Read this first.** Everything below is **locally verified**. **Nothing here is hosted-verified.** There is no migration in this slice (the journal is still `0001`–`0012`), nothing was applied to any hosted database, nothing was deployed or pushed, and no paid provider, real model or mail was called: the fake LLM is injected wherever a route is exercised, and the two new intents never reach a model. See `PHASE-4-REPORT.md` for what changed, the rulings, the known limits and the owner actions.
+
+**The run was interrupted once.** A usage limit stopped the session after the unit, integration, `db:verify`, `no-supabase`, `no-self-service-claim`, `eval:workflows`, `build` and webpack `build`/`secret-boundary`/`e2e` results and part of the first `--webpack` acceptance run had been recorded (each to its own log). After the reset the acceptance results were re-checked, the failed acceptance specs were re-run alone, and the literal `e2e` and `e2e:acceptance` runs were made after the temporary `--webpack` edits were restored. Nothing recorded before the interruption was assumed; every row below has a log behind it.
+
+### Gate results (Task 7, full inventory)
+
+Every command in `.github/workflows/ci.yml` is in this table (CI has no gate beyond this list), plus `eval:workflows` (not in CI).
+
+| # | Command | Exit | Result |
+|---|---|---|---|
+| 1 | `corepack pnpm typecheck` | 0 | **passed**. Root `tsc --noEmit`, then `packages/{region,scoring,contracts,scan-engine}` each `Done`. |
+| 2 | `corepack pnpm lint` | 0 | **passed**: `✖ 30 problems (0 errors, 30 warnings)`, the same count as the P4.2 record; none of the files this branch changed carries one. |
+| 3a | `corepack pnpm test`, run 1 | **1** | **FAILED, not passed**: two files failed with `Test timed out in 5000ms`: `tests/scan-claim-single-path.test.ts` ("no production source calls claimAuditJob or claim_audit_job outside the wrapper's definition") and `app/api/versions/[versionId]/versions.test.ts` ("approves this exact version and reports idempotent on a repeat"). Root part: **341 files; 339 passed, 2 failed; 4,081 tests, 4,079 passed, 2 failed.** Because the script chains its stages with `&&`, `safe-media` and the packages did not run in this invocation. |
+| 3b | The two failing files, **alone** | 0 | **passed**, 2 files / 18 tests. |
+| 3c | The stages the chained script skipped, run separately | 0 | `lib/evidence/safe-media.test.ts` 1 / 62; `corepack pnpm -r test`: `packages/region` 3 / 23, `scoring` 16 / 183, `contracts` 3 / 20, `scan-engine` 28 / 299: all **passed**. |
+| 3d | Total if every stage is counted once, all tests passing | — | **392 files / 4,668 tests** (341 + 1 + 3 + 16 + 3 + 28 files; 4,081 + 62 + 23 + 183 + 20 + 299 tests). The gate itself did not pass clean on this machine in the one full run made; recorded, not hidden. |
+| 3e | The P4.3 assistant files in one run (`lib/assistant`, `app/api/assistant`, `components/pocket-assistant`, `action-detail-version-param`, `lib/pocket-assistant`, `test/e2e/safety.test.ts`) | 0 | **passed**, 14 files / 308 tests. |
+| 4 | `NEON_INTEGRATION=1 corepack pnpm test:integration` | 0 | **passed on the first run, no flakes: 45 files / 478 tests.** New over P4.2 (43 / 463): `neon-assistant-signals` and `neon-assistant-flag-off` (+2 files, +15 tests). |
+| 5 | `corepack pnpm db:verify` | 0 | **passed**: `0001`–`0012` applied, replay `[]`, **40 tables / 477 columns / 198 constraints / 102 indexes / 8 triggers / 18 functions**, `seededRows` 0, no deferred functions or triggers. Identical to the P4.2 record: this slice adds no schema. |
+| 6 | `corepack pnpm test:no-supabase` | 0 | **passed**: "No forbidden retired transport references; only the approved pinned Neon transitive library is permitted". |
+| 7 | `corepack pnpm test:no-self-service-claim` | 0 | **passed**: "OWNER_SELF_SERVICE_CLAIM is not enabled." |
+| 8 | `corepack pnpm eval:workflows -- --check-load` | 0 | **passed**: `load ok: 31 cases` (unchanged: this slice adds no corpus case). No key, no network call. |
+| 9 | `corepack pnpm build` (`next build`, Turbopack, the literal gate) | **1** | **blocked**: `Turbopack build failed with 51 errors`, each `Module not found: Can't resolve '@radix-ui/react-*'` raised from `radix-ui/dist/index.mjs` (the same Windows-only local cascade recorded at P3, P4.4 and P4.2; cause unconfirmed). No file this branch changes is in the trace. |
+| 10 | `corepack pnpm test:secret-boundary` (literal) | **1** | **blocked**: it shells out to the Turbopack build and inherits #9. |
+| 11 | `corepack pnpm e2e` (literal) | **1** | **blocked**: the Playwright global setup failed, `Acceptance service not healthy: http://localhost:3100` (the Turbopack dev server cannot serve the owner shell). |
+| 12 | `corepack pnpm e2e:acceptance` (literal) | **1** | **blocked**: the first tests each failed with `Acceptance service not healthy` on the Turbopack dev server (`test-results/fixture-next.log` shows the same radix `Can't resolve` errors, 13,566 lines); the run was stopped at its 240 s limit (exit 124 from `timeout`, then `taskkill` of this worktree's Playwright and `next` processes) rather than wait out the remaining timeouts. |
+
+**`--webpack` diagnostics (not the literal gates).** As at P4.4 and P4.2, the blocked gates were repeated with webpack in place of Turbopack. These prove the code builds and behaves; they do not replace the Turbopack gates, and CI on `ubuntu-latest` is the real gate. The two temporary one-token edits (`"--webpack"` added to the build step of `scripts/assert-secret-boundary.mjs` and to the `next dev` arguments in `test/e2e/environment.ts`) were restored with `git restore` before the literal runs above and are not committed; `git status` shows neither file.
+
+| # | Diagnostic | Result |
+|---|---|---|
+| 9d | `corepack pnpm exec next build --webpack` | **passed**: `✓ Compiled successfully in 43s`, the TypeScript route-type check ran, and the route manifest includes `/api/assistant/run` and `/api/assistant/suggestions`. |
+| 10d | `test:secret-boundary` with `--webpack` | **passed**: `Secret boundary passed across 149 public artifacts.` (P4.2 record: 148). |
+| 11d | `e2e` with `--webpack` | **30 passed, 1 failed** (1.7 min). The failure is `e2e/owner-shell.spec.ts:16`, `getByRole("alert")` resolving to two elements (the page's `<p role="alert">` and Next's `#__next-route-announcer__`): the same diagnostic-only failure recorded at P4.4 and P4.2, in a spec and files this branch does not touch; the literal Turbopack run passed it 31 / 31 under P4.1. |
+| 12d-1 | `e2e:acceptance` with `--webpack`, run 1 | **40 passed, 1 failed** (17.5 min). The failure: `permissions.spec.ts:4` "viewer: accepted evidence reads, omitted/spoofed context denial, revocation", an assistant draft call answering 500 where the test expects 403, on a machine at about 99 % CPU. The file **alone**: **7 passed** (3.1 min). `contextual-assistant.spec.ts` and `work-pack.spec.ts` passed in this run. |
+| 12d-2 | `e2e:acceptance` with `--webpack`, run 2 | **35 passed, 6 failed** (29.0 min). Failures: `claim-and-market.spec.ts` (existing assigned owner succeeds; viewer cannot finalize an assigned owner's claim), `permissions.spec.ts` (viewer and manager, one a 180 s `apiRequestContext.post` timeout), `report-dashboard.spec.ts`, `report-scan-comparison.spec.ts`: five are `expect(page).toHaveURL` failures at the sign-in handoff, the load-sensitivity pattern recorded at P4.2. The four spec files **alone**: **13 passed** (6.2 min). `contextual-assistant.spec.ts` and `work-pack.spec.ts` passed again. |
+| 12d-3 | Reading of 12d | The full suite did not pass clean in either run on this machine, and this is recorded, not hidden: run 1 lost one test and run 2 six to load timeouts and handoff races, each failing spec passed when re-run alone, and the one spec that failed in both runs, `permissions.spec.ts`, failed differently each time (a 500 in run 1, a 180 s request timeout in run 2) and passed 7 / 7 and then 13 / 13 alone. That spec exercises the run route this branch changed, so the 500 is recorded as unexplained beyond the load, not proven unrelated; it did not reproduce in any of the three other runs of that file. Taken together every one of the 41 acceptance tests has passed on this tree under `--webpack`, including the new `contextual-assistant.spec.ts` ("an owner with a waiting draft continues from the assistant to the exact version", also 1 passed in 55.9 s in Task 6). |
+
+### Invariants
+
+| Check | Result |
+|---|---|
+| `git diff ecc60df..HEAD --stat -- neon/migrations packages lib/agents/__snapshots__` | prints nothing: no migration, no vendored-package edit, no agent-snapshot change. |
+| New or changed SQL | none: the only new queries are the two read-only reads in `lib/repositories/artifacts.ts` (`assistantWaitingVersions`, `assistantGoogleConnection`). `neon-assistant-flag-off` asserts a flag-on suggestions fetch runs no `insert`, `update` or `delete`. |
+| Writes to `actions`, `action_runs`, `output_versions`, `deliveries`, `workspace_usage` | none added; the acceptance spec asserts the version, delivery and run counts, the version's state and `workspace_usage` are unchanged after the journey and that no approve, request-changes, reject, export or publish route was requested. |
+| Flag off | `neon-assistant-flag-off` records every statement against a full-migration schema: zero for the suggestions route and for both new intents on the run route (flag values `""`, `false`, `TRUE`, `1`), with a flag-on contrast so the recorder is not silent. |
+| Model | the two new intents never call `llmComplete` or read the budget (`lib/assistant/live.test.ts`, `app/api/assistant/run/route.test.ts`, including `AI_DRAFTS_PAUSED=true`). |
+
+### Unit-test delta
+
+| Measure | P4.2 final record | This branch | Δ |
+|---|---|---|---|
+| App, excl. safe-media | 335 files / 3,931 tests | 341 files / 4,081 tests | **+6 files / +150 tests** |
+| `lib/evidence/safe-media.test.ts` | 1 / 62 | 1 / 62 | 0 |
+| `packages/region` / `scoring` / `contracts` / `scan-engine` | 3 / 23, 16 / 183, 3 / 20, 28 / 299 | identical | 0 |
+| **Total** | **386 files / 4,518 tests** | **392 files / 4,668 tests** | **+6 files / +150 tests** |
+| Integration | 43 files / 463 tests | 45 files / 478 tests | +2 files / +15 tests |
+
+New unit test files: `lib/assistant/flag.test.ts` (2), `lib/assistant/next-step.test.ts` (8), `lib/assistant/signals.test.ts` (29), `lib/assistant/suggestions.test.ts` (10), `app/api/assistant/suggestions/route.test.ts` (22), `components/workspace/action-detail-version-param.test.tsx` (8). Existing files extended: `lib/assistant/templates.test.ts` (29), `lib/assistant/live.test.ts` (72), `app/api/assistant/run/route.test.ts` (32), `components/pocket-assistant/assistant-sheet.test.tsx` (27), `lib/pocket-assistant/demo.test.ts` (47, plus its snapshot), `lib/pocket-assistant/request.test.ts` (7), `test/e2e/safety.test.ts` (9); the counts are each file's current total, not the delta. New integration files: `neon-assistant-signals.integration.test.ts`, `neon-assistant-flag-off.integration.test.ts`. New acceptance spec: `e2e/acceptance/contextual-assistant.spec.ts`. All four vendored packages are byte-unchanged.
+
+### Not run
+
+- **Hosted acceptance of any kind: NOT RUN.** No deployed request, no production Neon query, no hosted identity target.
+- **A real-model evaluation of any kind** (DEC-04).
+- **The literal Turbopack `build`, `test:secret-boundary`, `e2e` and `e2e:acceptance`** on this machine (blocked, above); only their `--webpack` diagnostics ran, and the full acceptance suite did not pass clean in one invocation.
+- **`corepack pnpm e2e:live`, `e2e:neon-auth`, `neon:readiness` and any hosted check**: need provider keys, a hosted identity target or a hosted database, none authorized.
+- **Real mail, real Stripe, real model**: every test injects a fake.
+- **P4.5, P4.6.**

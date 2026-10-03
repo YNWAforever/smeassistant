@@ -44,6 +44,21 @@ Rollback: unset the flag (or set anything but `true`) and redeploy. Exactly what
 - **Stays:** packs and their items stay in the database. The actions they point to are ordinary actions: they stay listed on the actions pages, and their drafts stay reviewable, approvable and exportable there under the existing rules. Nothing is deleted, and `agent_runs` is never touched.
 - `0012` itself is additive and is not rolled back.
 
+## P4.3 contextual assistant: no migration, one flag
+
+P4.3 adds **no migration** (the journal stays `0001`-`0012`; `neon/migrations/` is untouched) and one flag, `CONTEXTUAL_ASSISTANT_ENABLED`. Every signal reads tables that already exist. Nothing here has been applied to any hosted database or deployed; hosted acceptance is **NOT RUN**. The full phase record is in `docs/implementation/owner-platform-v1/PHASE-4-REPORT.md` ("P4.3").
+
+Order:
+
+1. **Deploy the code with `CONTEXTUAL_ASSISTANT_ENABLED` unset.** There is nothing to apply first, so the order against any database step is free. While the flag is unset (or any value other than exactly `true`), `GET /api/assistant/suggestions` answers `200 {"suggestions":[]}` before any auth or SQL, the two new questions (`explain_missing_inputs`, `where_to_continue`) answer `404 {"error":"not_enabled"}` before auth, no answer carries a `nextStep`, and the run route ignores `origin`, so the audit rows are the ones the previous build wrote. `test/integration/neon-assistant-flag-off.integration.test.ts` records every statement the flag-off paths issue and asserts zero.
+2. **Set `CONTEXTUAL_ASSISTANT_ENABLED=true` and redeploy** (an environment variable change takes effect on the next deployment). The assistant sheet then shows up to three "Needs you now" questions (missing inputs, drafts waiting for approval, a Google connection that needs attention) above the usual list, and answers can end with a "Continue here" link.
+
+Rollback: unset the flag (or set anything but `true`) and redeploy. Exactly what that does:
+
+- **Stops:** the "Needs you now" questions (the route returns `[]`), the two new questions (404 `not_enabled`), every "Continue here" link, and the `origin` and `next_step_kind` fields in new `assistant.run` audit rows.
+- **Stays:** every existing assistant question and answer, the action page's `?version=` and `#inputs` landing (they are plain navigation), and all audit rows already written. The assistant never wrote to `actions`, `action_runs`, `output_versions`, `deliveries` or `workspace_usage`, so nothing persisted depends on the flag.
+- **Not a rollback target:** there is no migration to undo.
+
 ## Local verification and limits
 
 The Task 16 all-ten-gate epoch is recorded in LAUNCH-REPORT with exact source and warning counts. Task 17 adds one actual-SQL recovery rehearsal: a new application user and report survive a drained pool, restart of the same owned network-none Postgres container and compatible repository reconnect. It also verifies a continued report write. This is not hosted rollback, managed Auth recovery or an old build test.

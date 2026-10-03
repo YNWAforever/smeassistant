@@ -1,6 +1,6 @@
 # Phase 4 report
 
-Phase 4 of the owner-platform plan (Master Plan §7). Three slices are built so far: P4.4 (reusable workflow contract), P4.1 (confirmed offers and promotion copy) and P4.2 (work packs: the visibility starter pack). P4.3 has not been started, and P4.5 and P4.6 are deliberately not built.
+Phase 4 of the owner-platform plan (Master Plan §7). Four slices are built: P4.4 (reusable workflow contract), P4.1 (confirmed offers and promotion copy), P4.2 (work packs: the visibility starter pack) and P4.3 (the contextual assistant, without added authority). P4.5 and P4.6 are deliberately not built.
 
 ## P4.4 — reusable workflow contract
 
@@ -587,3 +587,167 @@ The final whole-branch review (`a71c5df..02b5e70`) returned four important and s
 | `corepack pnpm exec playwright test --config playwright.acceptance.config.ts work-pack.spec` (literal Turbopack) | 1 | **blocked**: `Acceptance service not healthy` (the local cascade above). Diagnostic with a temporary `--webpack` on the dev server in `test/e2e/environment.ts` (restored, not committed): **passed 1 / 1** (2.0 min). The fresh pack is `created: true`, so Start still drafts every item; on the reloaded Home no Continue appears (the remaining items are a draft and a needs-facts item), so the spec needed no change. |
 
 Not re-run in this wave: `db:verify`, `build`, `test:secret-boundary`, `test:no-supabase`, `test:no-self-service-claim`, `eval:workflows`, the full `e2e` and `e2e:acceptance` suites (no migration, route, agent or build-configuration change; the Task 7 records stand). No real model was called.
+
+## P4.3 — contextual assistant, without adding authority
+
+**Branch** `p43-contextual-assistant`, base `ecc60df` (`origin/main`, PR #29, the merged P4.2 slice). Spec commit `e6cd0ae`, plan `d36b12a`, implementation commits `9958bdb`..`02b5577` (eight, listed below), then this Task 7 documentation commit. Worktree `C:\Users\laich\Documents\smeassistant\.claude\worktrees\p43-contextual-assistant`. Node `v24.18.0`, pnpm `9.12.0` via corepack, Windows 11 Pro 10.0.26200, Docker Server `29.7.2`, `postgres:16`. Gates run 2026-10-03.
+
+Built from `docs/superpowers/plans/2026-10-03-contextual-assistant.md` (Tasks 1–7) against the design in [`docs/superpowers/specs/2026-10-03-contextual-assistant-design.md`](../../superpowers/specs/2026-10-03-contextual-assistant-design.md).
+
+**Implemented and locally verified. Nothing here is hosted-verified.** There is **no migration**: the journal is still `0001`–`0012`, and `git diff ecc60df..HEAD --stat -- neon/migrations packages` prints nothing. Nothing was applied to a hosted database, deployed or pushed, and no paid provider, real model or mail was called. The feature is behind `CONTEXTUAL_ASSISTANT_ENABLED`, which defaults off. This is the last Phase 4 core slice; P4.5 (preview) and P4.6 (publishing) stay unbuilt.
+
+### What this closes
+
+Master Plan §7 P4.3 (Capability Matrix §2 supporting mechanisms; the existing read-only assistant boundary). Before this slice the assistant sheet offered a fixed question list per surface. It never looked at the workspace's state, nothing answered "What detail do you need?" or "Where do I continue?", and an answer ended in a plain-text sentence the owner had to act on by finding the control themselves.
+
+- **Suggestions from state.** When the sheet opens in a real workspace it asks `GET /api/assistant/suggestions` and shows up to three "Needs you now" questions above the usual list: an action that is missing inputs, a draft version waiting for approval, and a Google connection that is missing, expired, revoked or errored. They come from rows the caller is already authorized to read, in that order, each at most once.
+- **Two new deterministic questions.** `explain_missing_inputs` ("What detail do you need?") and `where_to_continue` ("Where do I continue?") join the template intents. They never call the model, never read the AI budget and are allowed while AI is paused. With `explain_priority` ("Why this task?") and `explain_change` ("What changed?") all four owner questions are answered from authorized evidence and persisted versions.
+- **Link to the real control.** An answer can carry a typed `nextStep` (`provide_inputs`, `review_version`, `open_integrations`, `open_action`, `open_actions`). The server never returns a URL: the browser maps the kind to a link in one pure function, `nextStepHref`, and only when the ids are UUIDs. The link opens the action page at the input form (`#inputs`), at the exact version (`?version=`), or Settings → Integrations. Viewers see the same questions without a link, and an answer that tells them to ask an owner or manager.
+- **No new authority.** Nothing in this slice writes to `actions`, `action_runs`, `output_versions`, `deliveries` or `workspace_usage`. A link is navigation; every state change still happens on the page it opens, under that page's own server checks. The intent allowlist is unchanged except for the two read-only additions; there is no new tool, SQL path or cross-workspace read.
+- **Minimal audit.** `assistant.run` gains only `origin` (`suggested` or `fixed`) and `next_step_kind`. It never carries answer text, input values or labels. The suggestions route writes no audit row.
+
+### Decisions (user, 2026-10-03)
+
+| Question | Decision |
+|---|---|
+| How far "suggest the next step" goes | **Link to the right page.** The answer ends with a link button to the exact place. The owner uses the real control there. The assistant gains no mutation power. |
+| Which signals raise a suggestion | **Missing inputs, drafts awaiting approval, Google connection broken.** Pack and offer signals are out of scope. |
+| How suggestions sit with today's questions | **Suggestions first, fixed list below.** Up to three "Needs you now" questions, then the page's existing questions with duplicates removed. With no signals the sheet looks as it does today. |
+| Architecture | **A suggestions endpoint** the sheet calls when it opens, two new deterministic intents, and a typed `nextStep` that the browser maps to a link. |
+| Migration | **None.** Every signal reads tables that already exist. |
+| Rollout | Flag **`CONTEXTUAL_ASSISTANT_ENABLED`**, on only for the exact string `true`. |
+
+**Plan addition.** `AssistantSuggestion` carries a `kind` (`"missing_inputs" | "review_version" | "google"`) that the spec's type did not have, so the sheet picks a label without parsing `id`. It is a contract addition recorded in the plan (Task 1), not a ruling.
+
+### What changed, by task
+
+| Task | Commit(s) | What it did |
+|---|---|---|
+| Design and plan | `e6cd0ae`, `d36b12a` | The spec, then the plan. |
+| 1. Contract, flag, next-step links | `9958bdb` | `explain_missing_inputs` and `where_to_continue` added to `demoQuestionIds` (the demo runner and the sheet's label table each answer both); `nextStepKinds`, `AssistantNextStep`, `AssistantOrigin`, `AssistantSuggestion`, `nextStep?` on the run response, `origin?` on the request; `contextualAssistantEnabled` (`lib/assistant/flag.ts`, exactly `"true"`); `nextStepHref` (`lib/assistant/next-step.ts`, the only place a kind becomes a URL, `null` on a missing or non-UUID id). |
+| 2. Signals and suggestions | `85e4c34` | Pure `buildSuggestions` (`lib/assistant/signals.ts`): order missing inputs → review version → Google, cap 3, each once, role and location scope (§3.9), Google for owners only, viewers without `nextStep`, offer actions excluded; `loadSuggestions` and `loadSignalRows` (`lib/assistant/suggestions.ts`); two read-only repository queries, `assistantWaitingVersions` and `assistantGoogleConnection` (`lib/repositories/artifacts.ts`); `AssistantAccessError` moved to `lib/assistant/errors.ts` (Ruling R1). |
+| 3. The two answers | `aa3bc4a`, then the fix round `7dbc0a6`, `852f68b` | Both intents in `lib/assistant/templates.ts` and `lib/assistant/live.ts`, in en, zh-HK and zh-TW; `explain_priority` gains `nextStep: open_action` and `explain_change` gains `open_actions` with their answer text unchanged; answered before the snapshot early return, so they work with no snapshot. Review fix round: Rulings R3–R6 and R6a, and the approval wording scoped to the version rather than the queue. |
+| 4. Routes | `3529e48` | `GET /api/assistant/suggestions` (flag off → `200 {"suggestions":[]}` before any auth or SQL; UUID validation; `authorizeWorkspaceRequest`; rate limit scope `assistant_suggestions`, 120/h per user, fail-closed; `Cache-Control: no-store`; no audit row); the run route gates the two intents behind the flag (`404 {"error":"not_enabled"}` before auth), takes membership only (no manager floor, no pause or budget check), validates `origin`, and audits `origin` and `next_step_kind`. Ruling R2: `loadSuggestions` refuses a membership from another workspace before any read. |
+| 5. Sheet, mounts, action page | `00712ac`, then the fix `a9fc5ae` | "Needs you now" section above the fixed list, fixed questions with a duplicate intent dropped, suggested questions asked with their own context and `origin: "suggested"`, a "Continue here" link only when `nextStepHref` returns a URL (never in demo mode), a silent fall back to the fixed list on any failed or malformed fetch; the five live mounts pass `basePath`; the action page reads `?version=` (only an id in that action's versions is honoured) and the input form carries `id="inputs"`. Ruling R7. Fix round: a "Continue here" link to another version of the same action selects it, though the page stays mounted. |
+| 6. Acceptance journey | `02b5577` | `e2e/acceptance/contextual-assistant.spec.ts` (and `CONTEXTUAL_ASSISTANT_ENABLED=true` in `test/e2e/safety.ts`): an owner with a draft waiting opens the sheet on Home, sees "Where do I continue?", asks it, clicks "Continue here" and lands on `…/actions/{id}?version={versionId}`; no approve, request-changes, reject, export or publish route is requested, and the version, delivery, run and usage counts are unchanged. |
+| 7. Gates, rollout, phase record | this commit | The gate run in `PHASE-4-TEST-RESULTS.md`, `.env.example`, `docs/integration/DEPLOY.md`, this report and the traceability rows. |
+
+### Behaviour change for owners
+
+With the flag on:
+
+- **The sheet leads with what needs you.** Opening it in an owner workspace can show up to three "Needs you now" questions: "What detail do you need for {title}?" (an action that cannot draft without your facts), "Where do I continue?" (a draft or requested-changes version waiting for an authorised person), and "Why reconnect Google?" (owners only). With no signals the sheet is as before.
+- **Answers point at the exact place.** "Continue here" opens the input form, the exact version, or Settings → Integrations. The sheet closes when the link is followed.
+- **Nothing is guessed.** The missing-inputs answer lists the owner-facing labels of what the template needs and says nothing is invented. The review answer says an authorised person must approve this exact version and that this version has not been approved or sent.
+- **Viewers and out-of-scope managers.** A viewer sees the first two questions with an answer that says to ask an owner or manager, and no link. An out-of-scope manager gets no suggestion for rows outside their locations; a focused out-of-scope item is still answered, read-only, without a link (Ruling R4).
+- **Allowed while AI is paused.** The two new answers are deterministic and cost nothing.
+
+With the flag off nothing changes: the suggestions route returns `[]` with no auth and no SQL, the two new questions answer 404 `not_enabled`, no response carries `nextStep`, and the audit rows are the ones `ecc60df` wrote (Ruling R7). The sheet still makes one suggestions call per open, which returns `[]` at no cost.
+
+### Rulings, known limits and open questions
+
+#### Rulings taken while building (from the execution ledger, `.superpowers/sdd/2026-10-03-contextual-assistant/progress.md`)
+
+Each ruling is followed by what it costs if it is wrong. R1 came from the pre-flight scan (task interfaces checked against each other); the rest arose from reviews.
+
+| # | Ruling | If wrong |
+|---|---|---|
+| R1 | `AssistantAccessError` moves to a new `lib/assistant/errors.ts` in Task 2, and `lib/assistant/live.ts` re-exports it, so existing importers keep working. `suggestions.ts` imports it from `./errors`, never from `./live`. Task 3 makes `live.ts` import `loadSignalRows` from `suggestions.ts`; importing the error class back from `live.ts` would have created an import cycle. | One extra 10-line file. |
+| R2 | Task 4 adds to `loadSuggestions` a guard that throws `AssistantAccessError("forbidden")` when `membership.workspaceId !== context.workspaceId`, before any read, and extends `suggestions.test.ts` so each `not_found` case also asserts that no actions, waiting-version or Google reads happened. Defence in depth on the route it wires. | Two lines and one test. |
+| R3 | `lib/assistant/live.ts` refuses a `context.locationId` that is not one of the workspace's locations, with `AssistantAccessError("not_found")`, for `explain_missing_inputs` and `where_to_continue`, matching `loadSuggestions`. A foreign id used to produce a false "nothing waiting" answer. | A 404 where a degraded answer used to be. |
+| R4 | A focused out-of-scope item (action or version) is answered read-only, without `nextStep`, in both new intents; unfocused lists stay scope-filtered. §3.9 lets out-of-scope managers read, and one rule beats two. | An out-of-scope manager sees a version number they could already open read-only. |
+| R5 | "Nothing waiting" and "no action needs details" answers name the location only when no rows were scope-filtered; otherwise they say "in your locations" (zh-HK 「你負責的地點」, zh-TW 「你負責的據點」). This avoids a false statement about a location the manager cannot fully see. | Slightly vaguer copy. |
+| R6 | For an explicitly focused action, `explain_missing_inputs` lists `action.missingInputs` minus `offer_id` regardless of `actionState`; the `needs_input` gate stays for the unfocused fallback. It keeps the answer consistent with `explain_priority` on the same action. | An `in_progress` action may list inputs the run gate would satisfy server-side. |
+| R6a | Amends R6: for an explicitly focused action, offer templates are **not** excluded; list their `missingInputs` minus `offer_id` (for example `brand_voice`). The offer exclusion stays only in the unfocused fallback and in the signals. R6 as first written made a focused offer action that was missing `brand_voice` say "nothing is missing". | An offer action may list an input the offer page also asks for. |
+| R7 | With the flag off, the run route ignores `origin` entirely (no validation, not written to the audit payload), so flag-off audit rows equal `ecc60df`'s; with the flag on, behaviour is as built. The run-route tests stub `CONTEXTUAL_ASSISTANT_ENABLED` explicitly so no test depends on the ambient environment. Done in Task 5, because the rollback promise is "identical to today". | A bogus `origin` is silently ignored while the flag is off. |
+
+The trailer on each commit names the model that wrote it; commits are not amended.
+
+#### Deferred minor findings (not acted on in this slice)
+
+Grouped from the task-by-task reviews. The items marked "carried" were fixed by a ruling (R2, R7) and are not open.
+
+- **Task 1 (contract):** the English demo `nextAction` for the two new intents is the generic "Review the evidence…" override (`lib/pocket-assistant/demo.ts`, about line 246), contradicting "no evidence here" (the zh answer says to sign in and ask again); zh-TW reuses zh-HK wording for the new labels and demo answers, as the existing intents do; no test guards that the new intents stay out of `surfaceQuestions`; the demo no-`nextStep` assertion runs for zh-HK and en only (zh-TW is covered by the snapshot). The run route accepted the new ids from Task 1 and fell through to `explain_limits` until Task 4's flag gate landed (no release in between).
+- **Task 2 (signals):** `loadSuggestions` lacked the workspace guard `runLiveAssistant` has, and no test pinned scope-before-read (carried into Task 4 by R2, fixed); a manager scoped away from the primary location sees only workspace-wide rows unless the caller passes its location (spec-mandated; every mount passes `locationId`); the `ACTION_SCOPE_PREDICATE` exclusion is untested for `assistantWaitingVersions`.
+- **Task 3 (answers):** `oldestFirst` is duplicated and `visible()` re-derives `inScope` (both could be exported from `signals.ts`); `loadSignalRows` re-reads the locations and actions `resolveContext` already read, two extra queries per signal-intent run; the narrowed no-snapshot loop excludes two string literals where an exported snapshot-free key list would be better; copy nit: "The Google Business connection is not connected." for the `none` state; no live-level test of a new intent with `assistantLatestSnapshot` returning `null`; `app/api/assistant/run/route.test.ts` timed out once under full-suite load (it is not on the known-flake list; it passed in every later run).
+- **Task 4 (routes):** `origin` was validated and audited even with the flag off (carried into Task 5 by R7, fixed); the run-route tests depended on the ambient flag (R7, fixed); there is no route-level end-to-end assertion that a flag-off `explain_priority` has no `nextStep` (covered by composition in `live.test.ts`); the run-route flag-off integration case covers the empty string only at the route level. **Demo mode answers the two new ids with fixed text even with the flag off** (spec §1 makes the demo lines unconditional; at `ecc60df` those ids were `400 invalid_intent`).
+- **Task 5 (sheet):** suggestions are not cleared when the context key changes while the sheet is open (stale suggestions linger until the refetch, and are kept if the refetch fails); no test for a stale first suggestions response arriving after close and reopen (the code is safe); the `selected` state is shared between suggestion ids and intent ids (an `aria-pressed` ambiguity if the ids ever collide); a `?version=` id not yet in `versions` when the prop changes is not retried later, and re-linking to the same `?version=` after a manual pick does not re-select it (prop-change design).
+- **Task 6 (acceptance):** see the first known limit below; the spec's "Version 1 pressed" check cannot fail by construction.
+
+#### Known limits
+
+- **A waiting version is always its action's newest.** `create_output_version` supersedes earlier `draft` and `changes_requested` rows, so the waiting version of an action is its latest, and `?version=` selects something other than the default only in the same-page case (Task 5's fix: following "Continue here" to another version of the action already open). The acceptance spec's "Version 1 pressed" assertion therefore cannot fail, since version 1 is both the default and the target. The same-page landing is pinned by `components/workspace/action-detail-version-param.test.tsx`; a comment pointing at it in the spec is deferred.
+- **Three signals only.** Missing inputs, waiting drafts and a broken Google connection. No pack or offer signal, no free-text question, no model-written explanation, no in-sheet button that runs, saves, approves or exports anything.
+- **The suggestions call costs one request per open when the flag is off.** It returns `[]` with no auth and no SQL.
+- **Out-of-scope managers.** A manager scoped away from the primary location sees only workspace-wide rows unless the caller passes a location; every mount passes one.
+- **Labels in zh-TW** reuse zh-HK wording where the existing intents already do.
+- **Hosted behaviour is unverified.** The suggestions route's rate limit, authorization against the hosted identity service and the sheet against a real deployment have not been exercised.
+
+#### Open questions (recorded, not resolved here)
+
+None new. DEC-14 (delivery units) is untouched: no counting code changed.
+
+### Not run / blocked
+
+- **Hosted acceptance: NOT RUN.** No deployed request, no production Neon query, no real mail, Stripe or model call. `e2e:live`, `e2e:neon-auth` and `neon:readiness` were not run (they need keys or a hosted target). This slice needs no hosted migration.
+- **A real-model evaluation: not run (DEC-04).** The two new intents never call a model, and no agent or corpus case was added; `eval:workflows -- --check-load` reports `load ok: 31 cases`.
+- **P4.5 (preview) and P4.6 (publishing)** are not built, blocked by DEC-12 and DEC-13, which are not authorized. The assistant adds no publishing.
+- **Literal Turbopack `build`, `test:secret-boundary`, `e2e` and `e2e:acceptance` on this Windows machine: blocked** by the local `radix-ui` resolve cascade recorded at P3, P4.4 and P4.2 (`Module not found: Can't resolve '@radix-ui/react-*'`, raised from `radix-ui/dist/index.mjs`; no file this branch changes is in the trace). CI on `ubuntu-latest` is the real gate. The `--webpack` diagnostics were run and are recorded separately in `PHASE-4-TEST-RESULTS.md`; they are **not** the literal gates.
+
+### Owner actions
+
+1. **No migration to apply.** The journal stays `0001`–`0012`.
+2. **Deploy** with `CONTEXTUAL_ASSISTANT_ENABLED` unset. Behaviour is identical to the previous build.
+3. **Set `CONTEXTUAL_ASSISTANT_ENABLED=true` and redeploy** (an environment variable change takes effect on the next deployment). The flag is on only for the exact string `true`.
+4. **Rollback: unset the flag and redeploy.** Suggestions return `[]`, the two new questions are refused with 404 `not_enabled`, and no link renders. Nothing persisted depends on the flag, and no audit row is removed.
+
+DEPLOY.md carries the same steps ([`docs/integration/DEPLOY.md`](../../integration/DEPLOY.md), "P4.3 contextual assistant: no migration, one flag").
+
+### Phase 4 core acceptance gate (Master Plan §7.2)
+
+The core release: "a confirmed offer produces reusable, correctly scoped promotion drafts; pack generation is idempotent; pack review preserves exact-version approval and per-version delivery counting; the assistant provides authorized context without mutation authority; existing three workflows still pass."
+
+| Clause | Slice | State |
+|---|---|---|
+| A confirmed offer produces reusable, correctly scoped promotion drafts | P4.1 | built, locally verified; `0011` is hosted-unapplied (DEC-11) |
+| Pack generation is idempotent | P4.2 | built, locally verified; `0012` is hosted-unapplied (DEC-11) |
+| Pack review preserves exact-version approval and per-version delivery counting | P4.2 | built, locally verified; no counting code changed |
+| **The assistant provides authorized context without mutation authority** | **P4.3** | **built, locally verified** (below) |
+| Existing three workflows still pass | P4.4 and every slice | the regression corpus (31 cases, `load ok`), the unit and integration suites pass, and every acceptance spec has passed under the `--webpack` diagnostic, though the full acceptance suite did not pass clean in one invocation on this loaded machine (`PHASE-4-TEST-RESULTS.md`) |
+
+The assistant clause maps to the authority tests:
+
+- **No writes by construction.** `neon-assistant-flag-off.integration.test.ts` records every SQL statement a flag-on suggestions fetch issues and asserts none is an `insert`, `update` or `delete`; both new intents are deterministic and never reach `llmComplete` or the budget (`lib/assistant/live.test.ts`, `app/api/assistant/run/route.test.ts`, including a paused-AI run that still answers).
+- **No new authority route.** The acceptance spec records every request after the draft exists and asserts none hits approve, request-changes, reject, export or publish, and that the version, delivery and run counts, the version's `approval_state` and `workspace_usage` are unchanged after the journey.
+- **Authorized context only.** `signals.test.ts`, `suggestions.test.ts` and `neon-assistant-signals.integration.test.ts` pin workspace, location-scope and role filtering (an out-of-scope manager gets nothing, Google is owner-only, viewers get no `nextStep`, a foreign workspace or location is refused before any read); the suggestions route refuses a mismatched or foreign id with 404.
+- **Allowlist preserved.** The contract adds only the two read-only intents; the `nextStep` kinds are a closed list; the server returns no URL.
+
+**Status: the core release is built and locally verified. It is not hosted-verified, and hosted acceptance was NOT RUN.** The preview and publishing sub-releases are not built and are labelled as such. Before Phase 4 core is released, `0011` and `0012` still need their hosted application (DEC-11) and the flags need the owner's decision.
+
+### Verification
+
+Full detail is in `PHASE-4-TEST-RESULTS.md`. One line per gate, run 2026-10-03 at `02b5577` plus the documentation edits (no code changed in this task):
+
+| Command | Result |
+|---|---|
+| `corepack pnpm typecheck` | **passed**, exit 0 (root and all four packages). |
+| `corepack pnpm lint` | **passed**, exit 0, `0 errors, 30 warnings` (the same 30 as the P4.2 record; none in a file this branch changed). |
+| `corepack pnpm test` | **Not a clean pass: the one full run failed (exit 1), two files, each a 5,000 ms load timeout** (`tests/scan-claim-single-path.test.ts`, `app/api/versions/[versionId]/versions.test.ts`; 339 of 341 root files, 4,079 of 4,081 root tests passed). Both files **alone**: 2 files / 18 tests passed. The stages the chained script skipped were run separately and passed: `safe-media` 1 / 62, `region` 3 / 23, `scoring` 16 / 183, `contracts` 3 / 20, `scan-engine` 28 / 299. Total counted once, all passing: **392 files / 4,668 tests** (P4.2: 386 / 4,518). |
+| `NEON_INTEGRATION=1 corepack pnpm test:integration` | **passed**, 45 files / 478 tests, first run (P4.2 record: 43 / 463). |
+| `corepack pnpm db:verify` | **passed**, `0001`–`0012`, replay empty, **40 tables / 477 columns / 198 constraints / 102 indexes / 8 triggers / 18 functions** (identical to P4.2: no schema change). |
+| `corepack pnpm test:no-supabase` / `test:no-self-service-claim` | **passed** / **passed**. |
+| `corepack pnpm eval:workflows -- --check-load` | `load ok: 31 cases`, exit 0. The live evaluation was not run (DEC-04). |
+| `corepack pnpm build` (literal, Turbopack) | **blocked**, exit 1: 51 `Can't resolve '@radix-ui/react-*'` errors from `radix-ui/dist/index.mjs`. Diagnostic `next build --webpack`: **passed**, `Compiled successfully in 43s`, route manifest includes `/api/assistant/run` and `/api/assistant/suggestions`. |
+| `corepack pnpm test:secret-boundary` (literal) | **blocked**, exit 1 (it shells out to the Turbopack build). Diagnostic with a temporary `--webpack` on its build step (reverted): **passed**, `Secret boundary passed across 149 public artifacts.` |
+| `corepack pnpm e2e` (literal) | **blocked**, exit 1: `Acceptance service not healthy: http://localhost:3100`. Diagnostic with a temporary `--webpack` on the dev server in `test/e2e/environment.ts` (reverted): **30 / 31 passed**; the one failure is `owner-shell.spec.ts:16`, the diagnostic-only failure recorded at P4.4 and P4.2 (`getByRole("alert")` resolves to two elements). |
+| `corepack pnpm e2e:acceptance` (literal) | **blocked**: `Acceptance service not healthy` on the Turbopack dev server; the run was stopped at 240 s rather than wait out the timeouts. Diagnostic with the same temporary `--webpack` (reverted), **not a clean pass in either full run on a machine at about 99 % CPU**: run 1 **40 passed, 1 failed** (`permissions.spec.ts:4` viewer, a 500 on a draft call), run 2 **35 passed, 6 failed** (load timeouts and sign-in handoff races in four spec files). The failing files re-run alone: `permissions.spec` 7 / 7, then the four files 13 / 13. The new `contextual-assistant.spec.ts` and `work-pack.spec.ts` passed in both full runs. |
+| Blocked | The literal `build`, `test:secret-boundary`, `e2e` and `e2e:acceptance` (local Windows Turbopack only). |
+| Interruption | A usage limit interrupted the Task 7 run once; every recorded result has its own log, and the acceptance results were re-checked after the reset (see `PHASE-4-TEST-RESULTS.md`). |
+
+### Invariants
+
+- `git diff ecc60df..HEAD --stat -- neon/migrations packages lib/agents/__snapshots__` prints nothing: no migration, no vendored-package edit, no agent snapshot change.
+- No added SQL beyond the two read-only reads in `lib/repositories/artifacts.ts`; no counting code, `approve_output_version` or `export_output_version` change.
+- Nothing in the slice writes `actions`, `action_runs`, `output_versions`, `deliveries` or `workspace_usage` (the acceptance journey asserts the counts and states are unchanged and that no authority route was requested).
+- With the flag off, the suggestions route and both new intents run zero SQL (`neon-assistant-flag-off.integration.test.ts`) and the audit rows equal `ecc60df`'s (Ruling R7).
+- The two new intents never reach `llmComplete` or the budget, including while AI is paused.
