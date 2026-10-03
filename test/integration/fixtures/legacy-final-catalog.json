@@ -122,6 +122,14 @@
       "rls": true
     },
     {
+      "name": "work_pack_items",
+      "rls": true
+    },
+    {
+      "name": "work_packs",
+      "rls": true
+    },
+    {
       "name": "workspace_access_requests",
       "rls": true
     },
@@ -3684,6 +3692,114 @@
       "column_default": "now()"
     },
     {
+      "table_name": "work_pack_items",
+      "column_name": "pack_id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "work_pack_items",
+      "column_name": "action_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "work_pack_items",
+      "column_name": "template_key",
+      "ordinal_position": 3,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "work_pack_items",
+      "column_name": "position",
+      "ordinal_position": 4,
+      "data_type": "smallint",
+      "udt_name": "int2",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "work_pack_items",
+      "column_name": "created_at",
+      "ordinal_position": 5,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "work_packs",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "work_packs",
+      "column_name": "workspace_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "work_packs",
+      "column_name": "location_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "work_packs",
+      "column_name": "kind",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "work_packs",
+      "column_name": "created_by",
+      "ordinal_position": 5,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "work_packs",
+      "column_name": "created_at",
+      "ordinal_position": 6,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "work_packs",
+      "column_name": "closed_at",
+      "ordinal_position": 7,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
       "table_name": "workspace_access_requests",
       "column_name": "id",
       "ordinal_position": 1,
@@ -5285,6 +5401,66 @@
       "definition": "PRIMARY KEY (id)"
     },
     {
+      "table_name": "work_pack_items",
+      "name": "work_pack_items_action_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (action_id) REFERENCES actions(id) DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "table_name": "work_pack_items",
+      "name": "work_pack_items_pack_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (pack_id) REFERENCES work_packs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "work_pack_items",
+      "name": "work_pack_items_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (pack_id, template_key)"
+    },
+    {
+      "table_name": "work_pack_items",
+      "name": "work_pack_items_position_check",
+      "type": "c",
+      "definition": "CHECK (((\"position\" >= 1) AND (\"position\" <= 3)))"
+    },
+    {
+      "table_name": "work_pack_items",
+      "name": "work_pack_items_template_check",
+      "type": "c",
+      "definition": "CHECK ((template_key = ANY (ARRAY['review-response'::text, 'visibility-content'::text, 'website-basics'::text])))"
+    },
+    {
+      "table_name": "work_packs",
+      "name": "work_packs_created_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (created_by) REFERENCES app_users(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "work_packs",
+      "name": "work_packs_kind_check",
+      "type": "c",
+      "definition": "CHECK ((kind = 'visibility_starter'::text))"
+    },
+    {
+      "table_name": "work_packs",
+      "name": "work_packs_location_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "work_packs",
+      "name": "work_packs_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "work_packs",
+      "name": "work_packs_workspace_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+    },
+    {
       "table_name": "workspace_access_requests",
       "name": "workspace_access_requests_job_id_fkey",
       "type": "f",
@@ -5861,6 +6037,26 @@
       "tablename": "staff_report_events",
       "indexname": "staff_report_events_pkey",
       "indexdef": "CREATE UNIQUE INDEX staff_report_events_pkey ON public.staff_report_events USING btree (id)"
+    },
+    {
+      "tablename": "work_pack_items",
+      "indexname": "work_pack_items_action_idx",
+      "indexdef": "CREATE INDEX work_pack_items_action_idx ON public.work_pack_items USING btree (action_id)"
+    },
+    {
+      "tablename": "work_pack_items",
+      "indexname": "work_pack_items_pkey",
+      "indexdef": "CREATE UNIQUE INDEX work_pack_items_pkey ON public.work_pack_items USING btree (pack_id, template_key)"
+    },
+    {
+      "tablename": "work_packs",
+      "indexname": "work_packs_open_idx",
+      "indexdef": "CREATE UNIQUE INDEX work_packs_open_idx ON public.work_packs USING btree (workspace_id, COALESCE(location_id, '00000000-0000-0000-0000-000000000000'::uuid), kind) WHERE (closed_at IS NULL)"
+    },
+    {
+      "tablename": "work_packs",
+      "indexname": "work_packs_pkey",
+      "indexdef": "CREATE UNIQUE INDEX work_packs_pkey ON public.work_packs USING btree (id)"
     },
     {
       "tablename": "workspace_access_requests",

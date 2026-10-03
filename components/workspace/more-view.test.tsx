@@ -14,8 +14,8 @@ import { MoreView } from "@/components/workspace/more-view";
  */
 const props = { locale: "en" as const, workspaceSlug: "kam-man-house", locationCount: 2, locationSlug: "yik-yam" };
 
-/** Reachable without More: the four primary tabs, and the detail page you reach from Actions. */
-const PRIMARY = new Set(["actions", "create", "insights", "more", "[actionId]"]);
+/** Reachable without More: the four primary tabs, the detail page you reach from Actions, and a pack page (packs/[packId]), reached from the Home pack card; there is no packs index. */
+const PRIMARY = new Set(["actions", "create", "insights", "more", "[actionId]", "packs"]);
 
 function ownerRoutes(): string[] {
   const root = fileURLToPath(new URL("../../app/[locale]/owner/[workspaceSlug]", import.meta.url));

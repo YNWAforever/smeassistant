@@ -805,6 +805,42 @@ export const workspaceMembers = pgTable("workspace_members", {
  pgPolicy("server_application", {for:"all", to:"sme_app_runtime", using:sql`true`, withCheck:sql`true`}),
 ]).enableRLS();
 
+export const workPackItems = pgTable("work_pack_items", {
+ packId: uuid("pack_id").notNull(),
+ actionId: uuid("action_id").notNull(),
+ templateKey: text("template_key").notNull(),
+ position: smallint("position").notNull(),
+ createdAt: timestamp("created_at", {withTimezone:true, mode:"string"}).notNull().default(sql.raw("now()")),
+}, t => [
+ // Types-only mirror. The real constraint (0012_work_packs.sql, ruling P2) is DEFERRABLE INITIALLY DEFERRED with no
+ // delete rule, so deleting a referenced action fails at COMMIT, not mid-statement; drizzle cannot express that here.
+ foreignKey({name:"work_pack_items_action_id_fkey",columns:[t.actionId],foreignColumns:[((): AnyPgColumn => actions.id)()]}),
+ foreignKey({name:"work_pack_items_pack_id_fkey",columns:[t.packId],foreignColumns:[((): AnyPgColumn => workPacks.id)()]}).onDelete("cascade"),
+ primaryKey({name:"work_pack_items_pkey",columns:[t.packId,t.templateKey]}),
+ check("work_pack_items_position_check", sql.raw("((position >= 1) AND (position <= 3))")),
+ check("work_pack_items_template_check", sql.raw("(template_key = ANY (ARRAY['review-response'::text, 'visibility-content'::text, 'website-basics'::text]))")),
+ index("work_pack_items_action_idx").using("btree", sql.raw("action_id")),
+ pgPolicy("server_application", {for:"all", to:"sme_app_runtime", using:sql`true`, withCheck:sql`true`}),
+]).enableRLS();
+
+export const workPacks = pgTable("work_packs", {
+ id: uuid("id").notNull().default(sql.raw("gen_random_uuid()")),
+ workspaceId: uuid("workspace_id").notNull(),
+ locationId: uuid("location_id"),
+ kind: text("kind").notNull(),
+ createdBy: uuid("created_by"),
+ createdAt: timestamp("created_at", {withTimezone:true, mode:"string"}).notNull().default(sql.raw("now()")),
+ closedAt: timestamp("closed_at", {withTimezone:true, mode:"string"}),
+}, t => [
+ foreignKey({name:"work_packs_created_by_fkey",columns:[t.createdBy],foreignColumns:[((): AnyPgColumn => appUsers.id)()]}).onDelete("set null"),
+ check("work_packs_kind_check", sql.raw("(kind = 'visibility_starter'::text)")),
+ foreignKey({name:"work_packs_location_id_fkey",columns:[t.locationId],foreignColumns:[((): AnyPgColumn => locations.id)()]}).onDelete("cascade"),
+ primaryKey({name:"work_packs_pkey",columns:[t.id]}),
+ foreignKey({name:"work_packs_workspace_id_fkey",columns:[t.workspaceId],foreignColumns:[((): AnyPgColumn => workspaces.id)()]}).onDelete("cascade"),
+ uniqueIndex("work_packs_open_idx").using("btree", sql.raw("workspace_id, COALESCE(location_id, '00000000-0000-0000-0000-000000000000'::uuid), kind")).where(sql.raw("(closed_at IS NULL)")),
+ pgPolicy("server_application", {for:"all", to:"sme_app_runtime", using:sql`true`, withCheck:sql`true`}),
+]).enableRLS();
+
 export const workspaceNotifications = pgTable("workspace_notifications", {
  id: uuid("id").notNull().default(sql.raw("gen_random_uuid()")),
  workspaceId: uuid("workspace_id").notNull(),

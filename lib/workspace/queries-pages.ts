@@ -533,7 +533,7 @@ export async function loadActionRows(workspaceId: string, opts: { locationId?: s
   return read("actions", () => workspaceReadRepository().actions(workspaceId, opts));
 }
 
-async function overviewsFor(ctx: WorkspaceContext, rows: ActionRow[], scanSatisfiedInputs?: readonly string[]): Promise<ActionOverview[]> {
+export async function overviewsFor(ctx: WorkspaceContext, rows: ActionRow[], scanSatisfiedInputs?: readonly string[]): Promise<ActionOverview[]> {
   if (!rows.length) return [];
   const ids = rows.map(row => row.id);
   const repository = workspaceReadRepository();

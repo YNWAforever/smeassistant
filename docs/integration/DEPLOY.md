@@ -28,6 +28,22 @@ Rollback: unset the flag (or set anything but `true`) and redeploy. Exactly what
 - **Stays:** offer actions already created stay listed on the actions pages, and their existing versions stay approvable and exportable through the normal version routes, and an owner can still save a hand-edited version (`POST /api/actions/[id]/versions` is not flag-gated; the edit inherits its base version's offer revision). The SQL freshness guard still applies to all of them, so a draft whose offer has changed, expired, been archived or is no longer confirmed is still refused. Because editing and archiving are off too, an approved draft of a current offer can still be exported (and counted) while the flag is off.
 - Nothing is deleted: offers, offer actions and versions stay in the database. `0011` itself is additive and is not rolled back: the new column is nullable, existing rows are null, and the re-created `approve_output_version` / `export_output_version` behave exactly as before for any action without an `offer_id`.
 
+## P4.2 visibility starter pack: migration 0012 and the flag
+
+P4.2 adds migration `neon/migrations/0012_work_packs.sql` (journal row 12, two new tables, `work_packs` and `work_pack_items`) and one flag, `WORK_PACKS_ENABLED`. Nothing here has been applied to any hosted database; hosted acceptance is **NOT RUN**. The statement is [`rollout/apply-0012.sql`](../implementation/owner-platform-v1/rollout/apply-0012.sql); the runbook, its rehearsal and the full phase record are in `docs/implementation/owner-platform-v1/PHASE-4-REPORT.md`.
+
+Order, which differs from P4.1:
+
+1. **Apply `0012` on a Neon test branch of production, then on production.** Run `apply-0012.sql` in the Neon SQL Editor as `neondb_owner`. It refuses unless the journal is exactly `0001`-`0011`, so `apply-0011.sql` must already have been applied. The statement is purely additive (two new tables); nothing existing is altered.
+2. **Deploy the code with `WORK_PACKS_ENABLED` unset.** Unlike `0011`, deploying before `0012` is applied is **harmless**: while the flag is unset (or any value other than exactly `true`) no code path reads or writes `work_packs` or `work_pack_items`, so the P4.2 code runs against a database without `0012`. `test/integration/neon-work-packs-flag-off.integration.test.ts` proves it against a schema that stops at `0011`: the Home brief, the Home pack loader and the actions list issue no SQL that mentions a pack table. With the flag unset Home renders today's Fix Pack card, the pack page and every pack route answer 404 `{"error":"not_found"}`.
+3. **Set `WORK_PACKS_ENABLED=true` only after `0012` is applied, then redeploy** (an environment variable change takes effect on the next deployment). With the flag on and no `0012`, the Home pack card shows its empty state, Start fails, and every pack route answers 503. The flag defaults off and is blank in `.env.example`.
+
+Rollback: unset the flag (or set anything but `true`) and redeploy. Exactly what that does:
+
+- **Stops:** the pack card on Home (Home returns to the Fix Pack card, unchanged), the pack page (404), and every pack route (`POST`/`GET /api/workspaces/[id]/packs` and `GET /api/packs/[packId]` answer 404), so no pack is started and no pack row is read.
+- **Stays:** packs and their items stay in the database. The actions they point to are ordinary actions: they stay listed on the actions pages, and their drafts stay reviewable, approvable and exportable there under the existing rules. Nothing is deleted, and `agent_runs` is never touched.
+- `0012` itself is additive and is not rolled back.
+
 ## Local verification and limits
 
 The Task 16 all-ten-gate epoch is recorded in LAUNCH-REPORT with exact source and warning counts. Task 17 adds one actual-SQL recovery rehearsal: a new application user and report survive a drained pool, restart of the same owned network-none Postgres container and compatible repository reconnect. It also verifies a continued report write. This is not hosted rollback, managed Auth recovery or an old build test.

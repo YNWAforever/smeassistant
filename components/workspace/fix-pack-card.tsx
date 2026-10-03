@@ -7,7 +7,7 @@ import { Check, Sparkles, X } from "lucide-react"
 import { CapabilityBadge, SectionCard } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import type { PrototypeLocale } from "@/lib/copy"
+import { copy, type PrototypeLocale } from "@/lib/copy"
 import { listDrafts, reviewDraft, type OwnerFixPackDraft } from "@/lib/owner/fix-pack-card-client"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 
@@ -24,8 +24,13 @@ import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
  *
  * Ported from upstream's components/owner/fix-pack-card.tsx onto the
  * prototype's SectionCard / compact-action-list styling.
+ *
+ * `mode="earlier"` (P4.2, work packs on): the same list, routes and review
+ * controls, but it renders nothing unless at least one draft is pending, and then
+ * lists only the pending drafts under "Earlier staff drafts". The old empty state
+ * is gone: with the starter pack on Home, "drafts are not available" is noise.
  */
-export function FixPackCard({ locale, workspaceId, viewerRole, actionsHref }: { locale: PrototypeLocale; workspaceId: string; viewerRole: WorkspaceRole; actionsHref?: string }) {
+export function FixPackCard({ locale, workspaceId, viewerRole, actionsHref, mode = "full" }: { locale: PrototypeLocale; workspaceId: string; viewerRole: WorkspaceRole; actionsHref?: string; mode?: "full" | "earlier" }) {
   const isChinese = locale !== "en"
   const [drafts, setDrafts] = useState<OwnerFixPackDraft[] | null>(null)
   const [error, setError] = useState(false)
@@ -68,6 +73,10 @@ export function FixPackCard({ locale, workspaceId, viewerRole, actionsHref }: { 
   }
 
   const pending = (drafts ?? []).filter((d) => d.status === "draft").length
+  const earlier = mode === "earlier"
+  // Nothing to say until a pending draft is known to exist (while loading, after a failed load, or once the last one is reviewed).
+  if (earlier && pending === 0) return null
+  const visible = earlier ? (drafts ?? []).filter((d) => d.status === "draft") : drafts
 
   return (
     <SectionCard className="fix-pack-card">
@@ -75,13 +84,13 @@ export function FixPackCard({ locale, workspaceId, viewerRole, actionsHref }: { 
           never does. The heading now describes what the surface IS -- a review
           queue for staff-prepared drafts -- without asserting that anything is
           currently filling it. */}
-      <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "Fix Pack 草稿" : "Fix Pack drafts"}</p><h2>{isChinese ? "由職員準備、待你審批的回覆及帖文" : "Staff-prepared replies and posts awaiting your review"}</h2></div><Badge variant="outline"><Sparkles /> {isChinese ? `${pending} 份待審` : `${pending} pending`}</Badge></div>
-      {drafts === null ? (
+      <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "Fix Pack 草稿" : "Fix Pack drafts"}</p><h2>{earlier ? copy[locale].workspace.packs.earlierDrafts : isChinese ? "由職員準備、待你審批的回覆及帖文" : "Staff-prepared replies and posts awaiting your review"}</h2></div><Badge variant="outline"><Sparkles /> {isChinese ? `${pending} 份待審` : `${pending} pending`}</Badge></div>
+      {visible === null ? (
         // Covers both "still loading" and "initial load failed" -- rendering
         // the empty-state copy under a load FAILURE would assert something the
         // card doesn't know.
         !error && <p>{isChinese ? "載入中…" : "Loading…"}</p>
-      ) : drafts.length === 0 ? (
+      ) : visible.length === 0 ? (
         // "Drafts appear here after a paid-tier scan completes" was a promise
         // nothing keeps: this app never writes agent_runs -- CLAUDE.md 3.7 says
         // "do not write to `agent_runs` from this app's agents (v1)", the
@@ -103,7 +112,7 @@ export function FixPackCard({ locale, workspaceId, viewerRole, actionsHref }: { 
         </>
       ) : (
         <div className="fix-pack-list">
-          {drafts.map((draft) => (
+          {visible.map((draft) => (
             <article key={draft.id} className="fix-pack-draft">
               <p className="eyebrow">{draft.businessName ? `${draft.businessName} · ` : ""}{draft.findingLabel} · {draft.status === "draft" ? (isChinese ? "待審批" : "Pending approval") : (isChinese ? "已核准" : "Approved")}</p>
               {draft.reviewExcerpt && <blockquote className="limitation-note">{draft.reviewRating !== null && <span>★ {draft.reviewRating} · </span>}{draft.reviewExcerpt}</blockquote>}

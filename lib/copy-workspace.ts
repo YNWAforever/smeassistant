@@ -90,7 +90,46 @@ export type OffersCopy = {
   card: { heading: string; viewOffers: string };
 };
 
+/**
+ * P4.2 work packs (spec 3.2): the Home card, the pack page and the "Earlier
+ * staff drafts" heading. `states` are the per-item labels; `disclosure` and
+ * `usage` state the delivery unit before anything is requested.
+ */
+export type PacksCopy = {
+  title: string;
+  startHeading: string;
+  disclosure: string;
+  usage: string;
+  start: string;
+  starting: string;
+  chooseLocation: string;
+  noPermission: string;
+  progress: string;
+  progressNeedsFacts: string;
+  states: { generating: string; draftReady: string; needsFacts: string; approved: string; exported: string; failed: string; paused: string; done: string; dismissed: string; notStarted: string };
+  retry: string;
+  /** Runs the items not yet drafted, in order: after a refusal, a reload, or another tab's start. */
+  continue: string;
+  open: string;
+  reviewNext: string;
+  viewPack: string;
+  /** The finished pack's page, beside Start for the next one. */
+  viewLastPack: string;
+  allLocations: string;
+  closed: string;
+  pageEyebrow: string;
+  pageDescription: string;
+  errors: { startFailed: string; forbidden: string; network: string };
+  earlierDrafts: string;
+};
+
 export type WorkspaceCopy = {
+  /**
+   * P4.2 work packs. `title` is also stored as the evidence detail of an action a
+   * pack creates. Interpolated strings use {name} placeholders; a raw error code
+   * never reaches an owner.
+   */
+  packs: PacksCopy;
   templates: Record<TemplateKey, { title: string; summary: string; workflow: string }>;
   factors: Record<PriorityFactorKey, string>;
   metrics: Record<MetricKey, string>;
@@ -160,6 +199,31 @@ function inputs(labels: string[]): Record<string, string> {
 }
 
 export const workspaceEn: WorkspaceCopy = {
+  packs: {
+    title: "Visibility starter pack",
+    startHeading: "Start your visibility starter pack",
+    disclosure: "Creates up to 3 drafts. Nothing is counted until you approve and export a draft; each one you export counts as 1 delivery.",
+    usage: " This month: {used} of {allowance} used.",
+    start: "Start the pack",
+    starting: "Starting the pack",
+    chooseLocation: "Choose a location to start a starter pack",
+    noPermission: "Only owners, and managers with access to this location, can start a pack.",
+    progress: "{drafted} of {total} drafted",
+    progressNeedsFacts: "{n} needs your facts",
+    states: { generating: "Generating", draftReady: "Draft ready", needsFacts: "Needs your facts", approved: "Approved", exported: "Exported", failed: "Failed — retry", paused: "Paused — continue later", done: "Done", dismissed: "Dismissed", notStarted: "Not started" },
+    retry: "Retry",
+    continue: "Continue",
+    open: "Open",
+    reviewNext: "Review next",
+    viewPack: "View pack",
+    viewLastPack: "View last pack",
+    allLocations: "All locations",
+    closed: "This pack is finished. It is shown here as history.",
+    pageEyebrow: "Work pack",
+    pageDescription: "Drafts are reviewed, approved and exported one at a time on each action's own page. Nothing is published or sent from here.",
+    errors: { startFailed: "The pack could not be started. Try again shortly.", forbidden: "Your role or location scope cannot start a pack here.", network: "Could not reach the server. Try again when you are back online." },
+    earlierDrafts: "Earlier staff drafts",
+  },
   offers: {
     nav: "Offers",
     page: {
@@ -362,6 +426,31 @@ export const workspaceEn: WorkspaceCopy = {
 };
 
 export const workspaceZhHK: WorkspaceCopy = {
+  packs: {
+    title: "能見度入門套裝",
+    startHeading: "開始你的能見度入門套裝",
+    disclosure: "最多會建立 3 份草稿。核准並匯出草稿前不會計算用量；每份匯出的草稿計為 1 次交付。",
+    usage: "本月已使用 {used} / {allowance} 次。",
+    start: "開始套裝",
+    starting: "正在開始套裝",
+    chooseLocation: "請先選擇地點，才可開始入門套裝",
+    noPermission: "只有店主，以及可管理此地點的經理，才可開始套裝。",
+    progress: "已有 {drafted} / {total} 份草稿",
+    progressNeedsFacts: "{n} 份需要你補充資料",
+    states: { generating: "生成中", draftReady: "草稿已備妥", needsFacts: "需要你補充資料", approved: "已核准", exported: "已匯出", failed: "失敗，請重試", paused: "已暫停，稍後可繼續", done: "已完成", dismissed: "已略過", notStarted: "未開始" },
+    retry: "重試",
+    continue: "繼續",
+    open: "開啟",
+    reviewNext: "審閱下一份",
+    viewPack: "查看套裝",
+    viewLastPack: "查看上一個套裝",
+    allLocations: "所有地點",
+    closed: "這個套裝已完成，在此只作紀錄顯示。",
+    pageEyebrow: "工作套裝",
+    pageDescription: "草稿會逐份在各行動自己的頁面審閱、核准及匯出。這裏不會發布或傳送任何內容。",
+    errors: { startFailed: "未能開始套裝，請稍後再試。", forbidden: "你的角色或地點範圍不可在此開始套裝。", network: "無法連接伺服器，請在網絡恢復後再試。" },
+    earlierDrafts: "較早前由職員準備的草稿",
+  },
   offers: {
     nav: "優惠",
     page: { eyebrow: "已確認的推廣資料", title: "優惠", description: "只需記錄優惠一次並確認，之後便可按這些資料建立推廣草稿。系統不會自動發佈或發送任何內容。" },
@@ -535,6 +624,31 @@ export const workspaceZhHK: WorkspaceCopy = {
 
 export const workspaceZhTW: WorkspaceCopy = {
   ...workspaceZhHK,
+  packs: {
+    title: "能見度入門套組",
+    startHeading: "開始你的能見度入門套組",
+    disclosure: "最多會建立 3 份草稿。核准並匯出草稿前不會計算用量；每份匯出的草稿計為 1 次交付。",
+    usage: "本月已使用 {used} / {allowance} 次。",
+    start: "開始套組",
+    starting: "正在開始套組",
+    chooseLocation: "請先選擇據點，才能開始入門套組",
+    noPermission: "只有店主，以及可管理此據點的經理，才能開始套組。",
+    progress: "已有 {drafted} / {total} 份草稿",
+    progressNeedsFacts: "{n} 份需要你補充資料",
+    states: { generating: "產生中", draftReady: "草稿已備妥", needsFacts: "需要你補充資料", approved: "已核准", exported: "已匯出", failed: "失敗，請重試", paused: "已暫停，稍後可繼續", done: "已完成", dismissed: "已略過", notStarted: "尚未開始" },
+    retry: "重試",
+    continue: "繼續",
+    open: "開啟",
+    reviewNext: "審閱下一份",
+    viewPack: "查看套組",
+    viewLastPack: "查看上一個套組",
+    allLocations: "所有據點",
+    closed: "這個套組已完成，在此僅作紀錄顯示。",
+    pageEyebrow: "工作套組",
+    pageDescription: "草稿會逐份在各行動自己的頁面審閱、核准及匯出。這裡不會發布或傳送任何內容。",
+    errors: { startFailed: "無法開始套組，請稍後再試。", forbidden: "你的角色或據點範圍不能在此開始套組。", network: "無法連線至伺服器，請在網路恢復後再試。" },
+    earlierDrafts: "先前由職員準備的草稿",
+  },
   offers: {
     nav: "優惠",
     page: { eyebrow: "已確認的推廣資訊", title: "優惠", description: "只要記錄優惠一次並確認，就能依這些資訊建立推廣草稿。系統不會自動發布或傳送任何內容。" },
