@@ -1,6 +1,7 @@
 import type {
   AssistantContext,
   AssistantMode,
+  AssistantOrigin,
   AssistantRunRequest,
   AssistantSurface,
   DemoQuestionId,
@@ -14,6 +15,7 @@ export const ASSISTANT_RUN_ENDPOINT = "/api/assistant/run"
  * but leaving it out keeps the public surfaces from sending ids at all.
  * Live mode requires a context (the route rejects a live request without one);
  * undefined optional ids are dropped so the JSON body stays minimal.
+ * `origin` rides along only in live mode, and only when given.
  */
 export function buildAssistantRequest(
   mode: AssistantMode,
@@ -21,6 +23,7 @@ export function buildAssistantRequest(
   intentId: DemoQuestionId,
   locale: AssistantRunRequest["locale"],
   context?: AssistantContext,
+  origin?: AssistantOrigin,
 ): AssistantRunRequest {
   const base: AssistantRunRequest = { mode, surface, intentId, locale }
   if (mode !== "live" || !context) return base
@@ -29,5 +32,5 @@ export function buildAssistantRequest(
   if (context.snapshotId) trimmed.snapshotId = context.snapshotId
   if (context.actionId) trimmed.actionId = context.actionId
   if (context.versionId) trimmed.versionId = context.versionId
-  return { ...base, context: trimmed }
+  return origin ? { ...base, context: trimmed, origin } : { ...base, context: trimmed }
 }

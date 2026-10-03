@@ -203,6 +203,22 @@ const zhAnswers: Record<DemoQuestionId, DemoAnswer> = {
     warnings: ["不要推測食材或致敏原。"],
     requiresApproval: true,
   },
+  explain_missing_inputs: {
+    state: "completed",
+    answer: "這個問題只會在真實工作台內回答，因為要看你自己行動所欠缺的資料。示範頁沒有可核對的真實行動，所以不會顯示證據或草稿。",
+    nextAction: "登入你的工作台後再問一次。",
+    evidenceRefs: [],
+    warnings: [],
+    requiresApproval: false,
+  },
+  where_to_continue: {
+    state: "completed",
+    answer: "這個問題只會在真實工作台內回答，因為要看你自己的行動、版本及連接狀態。示範頁沒有可核對的真實進度，所以不會顯示證據或草稿。",
+    nextAction: "登入你的工作台後再問一次。",
+    evidenceRefs: [],
+    warnings: [],
+    requiresApproval: false,
+  },
 }
 
 const enLabels: Record<DemoQuestionId, string> = {
@@ -219,6 +235,8 @@ const enLabels: Record<DemoQuestionId, string> = {
   generate_social: "A social caption is ready from an approved asset without unconfirmed prices or offer dates.",
   generate_faq: "The FAQ structure is ready, but the owner must supply capacity, lead time and vegetarian-option facts.",
   generate_menu: "The menu translation batch is ready for owner confirmation of names, ingredients and allergens.",
+  explain_missing_inputs: "This question is only answered inside a real workspace, where it can read which details your own actions still need. The demo has no real actions to check, so it shows no evidence or draft.",
+  where_to_continue: "This question is only answered inside a real workspace, where it can read your own actions, versions and connections. The demo has no real progress to check, so it shows no evidence or draft.",
 }
 
 export function createDemoAssistantRun(questionId: DemoQuestionId, locale: string): DemoAssistantRunResponse {

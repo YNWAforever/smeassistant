@@ -66,6 +66,8 @@ const labels: Record<DemoQuestionId, { zh: string; en: string }> = {
   generate_social: { zh: "根據已核准素材準備社交帖文", en: "Prepare a post from approved assets" },
   generate_faq: { zh: "準備 FAQ，但不要作出事實", en: "Prepare an FAQ without inventing facts" },
   generate_menu: { zh: "建立餐牌翻譯工作批次", en: "Create a menu translation batch" },
+  explain_missing_inputs: { zh: "還需要甚麼資料？", en: "What detail do you need?" },
+  where_to_continue: { zh: "我應該由哪裡繼續？", en: "Where do I continue?" },
 }
 
 /**

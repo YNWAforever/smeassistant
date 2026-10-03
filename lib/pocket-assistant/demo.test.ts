@@ -24,4 +24,16 @@ describe("createDemoAssistantRun", () => {
       });
     }
   }
+
+  for (const locale of ["zh-HK", "en"] as const) {
+    it(`the contextual intents answer inside a workspace only, with no nextStep / ${locale}`, () => {
+      for (const questionId of ["explain_missing_inputs", "where_to_continue"] as const) {
+        const run = createDemoAssistantRun(questionId, locale);
+        expect(run.answer.length).toBeGreaterThan(0);
+        expect(run.nextStep).toBeUndefined();
+        expect(run.evidenceRefs).toEqual([]);
+        expect(run.output).toBeUndefined();
+      }
+    });
+  }
 });
