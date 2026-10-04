@@ -20,6 +20,8 @@ Use Node from `.nvmrc`, pnpm from `packageManager`, and `corepack pnpm install -
 | `corepack pnpm e2e:acceptance` | Required local merchant cases |
 | `corepack pnpm e2e:neon-auth` | Explicit opt-in hosted Auth cases; target not yet chosen |
 
+On Windows, the repository `.npmrc` keeps pnpm's store folder names to 60 characters (`virtual-store-dir-max-length=60`). With Windows long paths off, Turbopack cannot read dependency files past about 275 characters, and the default 120-character names made `corepack pnpm build` fail with `Can't resolve '@radix-ui/…'` from deep worktree paths. A checkout installed before this setting needs one `corepack pnpm install` (accept the store purge) to re-lay `node_modules`.
+
 Run heavy gates sequentially with `VITEST_MAX_WORKERS=1`. The demo seed command accepts only `--owned-test`; it neither persists a shared demo nor seeds managed Auth users. It reports nonsecret counts after executing real SQL.
 
 `neon/migrations/0001` through `0004` are immutable. The older SQL corpus and catalog snapshots are historical compatibility evidence, not deployment instructions. See [deployment preparation](docs/integration/DEPLOY.md) and [Neon schema](neon/README.md). This branch's deployment block remains in place.
