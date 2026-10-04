@@ -10,11 +10,13 @@ export const deferredTriggers: string[] = [];
 // replay-compare against. verifyCatalog excludes these from the legacy deepEqual and
 // instead asserts their bare presence; their actual behavior is proven by dedicated tests
 // (e.g. test/integration/neon-membership.integration.test.ts for prevent_owner_removal).
-export const additionalFunctions: string[] = ["prevent_owner_removal","offer_is_expired","confirm_offer","archive_offer","offer_current_for_version","claim_preview_slot","finish_preview_slot"];
+export const additionalFunctions: string[] = ["prevent_owner_removal","offer_is_expired","confirm_offer","archive_offer","offer_current_for_version","claim_preview_slot","finish_preview_slot","begin_publish_output_version","finish_publish_output_version","cancel_published_reply"];
 // Retained legacy functions that a later migration re-created on purpose (0011 adds one
-// offer-freshness guard line to each). verifyCatalog drops them from the legacy deepEqual and
-// asserts their presence; lib/workspace/offer-sql.test.ts pins their text as 0004 plus that one
-// line. They stay in retainedFunctions, so neon:readiness still requires them.
+// offer-freshness guard line to each; 0014 re-creates export_output_version again with the
+// once-per-version counting changes). verifyCatalog drops them from the legacy deepEqual and
+// asserts their presence; lib/workspace/offer-sql.test.ts pins their 0011 text as 0004 plus that
+// one line, and lib/workspace/publish-sql.test.ts pins the 0014 export as 0011 plus changes (a)-(c).
+// They stay in retainedFunctions, so neon:readiness still requires them.
 export const changedFunctions: string[] = ["approve_output_version","export_output_version"];
 export const additionalTriggers: string[] = ["workspace_members_prevent_owner_removal"];
 export const catalogQueries = {

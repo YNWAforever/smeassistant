@@ -332,14 +332,21 @@ export const deliveries = pgTable("deliveries", {
  payload: jsonb("payload"),
  createdBy: uuid("created_by"),
  createdAt: timestamp("created_at", {withTimezone:true, mode:"string"}).notNull().default(sql.raw("now()")),
+ targetRef: text("target_ref"),
+ providerReceipt: jsonb("provider_receipt"),
+ failureReason: text("failure_reason"),
+ verifiedAt: timestamp("verified_at", {withTimezone:true, mode:"string"}),
 }, t => [
  foreignKey({name:"deliveries_created_by_fkey",columns:[t.createdBy],foreignColumns:[((): AnyPgColumn => appUsers.id)()]}).onDelete("set null"),
  unique("deliveries_idempotency_key_key").on(t.idempotencyKey),
  check("deliveries_mode_check", sql.raw("(mode = ANY (ARRAY['export'::text, 'copy'::text, 'publish'::text]))")),
  primaryKey({name:"deliveries_pkey",columns:[t.id]}),
+ check("deliveries_publish_target_check", sql.raw("((mode <> 'publish'::text) OR (target_ref IS NOT NULL))")),
  check("deliveries_state_check", sql.raw("(state = ANY (ARRAY['export_ready'::text, 'exported'::text, 'scheduled'::text, 'publishing'::text, 'published'::text, 'failed'::text, 'cancelled'::text]))")),
  foreignKey({name:"deliveries_version_id_fkey",columns:[t.versionId],foreignColumns:[((): AnyPgColumn => outputVersions.id)()]}).onDelete("cascade"),
  foreignKey({name:"deliveries_workspace_id_fkey",columns:[t.workspaceId],foreignColumns:[((): AnyPgColumn => workspaces.id)()]}).onDelete("cascade"),
+ uniqueIndex("deliveries_active_publish_target_key").using("btree", sql.raw("target_ref")).where(sql.raw("((mode = 'publish'::text) AND (state = ANY (ARRAY['publishing'::text, 'published'::text])))")),
+ uniqueIndex("deliveries_active_publish_version_key").using("btree", sql.raw("version_id")).where(sql.raw("((mode = 'publish'::text) AND (state = ANY (ARRAY['publishing'::text, 'published'::text])))")),
  pgPolicy("server_application", {for:"all", to:"sme_app_runtime", using:sql`true`, withCheck:sql`true`}),
 ]).enableRLS();
 
@@ -528,6 +535,7 @@ export const outputVersions = pgTable("output_versions", {
  deliveryState: text("delivery_state").notNull().default(sql.raw("'not_requested'::text")),
  firstExportedAt: timestamp("first_exported_at", {withTimezone:true, mode:"string"}),
  createdAt: timestamp("created_at", {withTimezone:true, mode:"string"}).notNull().default(sql.raw("now()")),
+ firstPublishedAt: timestamp("first_published_at", {withTimezone:true, mode:"string"}),
 }, t => [
  foreignKey({name:"output_versions_action_id_fkey",columns:[t.actionId],foreignColumns:[((): AnyPgColumn => actions.id)()]}).onDelete("cascade"),
  unique("output_versions_action_id_version_no_key").on(t.actionId,t.versionNo),
