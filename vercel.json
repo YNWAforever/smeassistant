@@ -4,8 +4,5 @@
       "codex/merchant-acceptance-completion": false,
       "codex/neon-migration": false
     }
-  },
-  "crons": [
-    { "path": "/api/cron/dispatch", "schedule": "*/5 * * * *" }
-  ]
+  }
 }
