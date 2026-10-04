@@ -76,6 +76,8 @@ databases, and hosted acceptance was not run. The owner steps are in
 the flag"): apply `apply-0013.sql` on a Neon test branch and then production,
 set `PREVIEW_DRAFT_ENABLED=true` and redeploy; roll back by unsetting the flag.
 
+Owner-reported 2026-10-04: `0013` applied on the Neon test branch and on production (not verified from this repository).
+
 ## DEC-13 and DEC-14 — decided 2026-10-04
 
 The user made the DEC-13 and DEC-14 choices on 2026-10-04 while the P4.6

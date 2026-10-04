@@ -63,6 +63,8 @@ Rollback: unset the flag (or set anything but `true`) and redeploy. Exactly what
 
 P4.5 adds migration `neon/migrations/0013_preview_events.sql` (journal row 13: one new table, `preview_events`, with no text column, and two `SECURITY INVOKER` functions, `claim_preview_slot` and `finish_preview_slot`, EXECUTE granted to `sme_app_runtime` only) and one flag, `PREVIEW_DRAFT_ENABLED`, with two optional limit overrides, `PREVIEW_DRAFT_DAILY_LIMIT` and `PREVIEW_DRAFT_USD_DAILY`. DEC-12 is decided (`BUSINESS-AND-HOSTED-DECISIONS.md`); applying `0013` to a hosted database is a DEC-11 owner action. Nothing here has been applied to any hosted database or deployed; hosted acceptance is **NOT RUN**. The statement is [`rollout/apply-0013.sql`](../implementation/owner-platform-v1/rollout/apply-0013.sql); its rehearsal and the full phase record are in `docs/implementation/owner-platform-v1/PHASE-4-REPORT.md` ("P4.5"), and the read-only measures are in [`PREVIEW-METRICS.md`](../implementation/owner-platform-v1/PREVIEW-METRICS.md).
 
+Owner-reported 2026-10-04: `0013` applied on the Neon test branch and on production (not verified from this repository).
+
 Order (the same shape as P4.2):
 
 1. **Apply `0013` on a Neon test branch of production, then on production.** Run `apply-0013.sql` in the Neon SQL Editor as `neondb_owner`. It refuses unless the journal is exactly `0001`-`0012`, so `apply-0012.sql` must already have been applied. The statement is purely additive (one new table, two new functions); nothing existing is altered.

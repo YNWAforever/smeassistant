@@ -1,6 +1,6 @@
 # Hosted acceptance checklist for main `080ddf6`
 
-An owner runbook for the hosted rows of [`RELEASE-EVIDENCE-080ddf6.md`](RELEASE-EVIDENCE-080ddf6.md) §5. Each section is one scenario on **`https://smeassistant.vercel.app`**, deployment `dpl_E2HNGePLBHpdDVNzejLTZVrBepqN` (commit `080ddf6`).
+An owner runbook for the hosted rows of [`RELEASE-EVIDENCE-080ddf6.md`](RELEASE-EVIDENCE-080ddf6.md) §5. Each section is one scenario on **`https://smeassistant.vercel.app`**, deployment `dpl_E2HNGePLBHpdDVNzejLTZVrBepqN` (commit `080ddf6`) (§22 excepted: a non-production deployment of a later candidate).
 
 ## Production is the acceptance target
 
