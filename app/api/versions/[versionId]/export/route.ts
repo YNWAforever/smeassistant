@@ -1,17 +1,14 @@
 import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
-import { notificationRepository } from "@/lib/repositories/notifications";
 import {
   authorizeVersionMutation,
   json,
   readJson,
 } from "@/app/api/actions/_shared/mutation";
-import { localized } from "@/lib/domain";
 import {
-  hasSinceWithRepository,
-  notifyWithRepository,
-  homeHrefWithRepository,
-} from "@/lib/workspace/notify";
-import { allowanceWarnAt, getUsage } from "@/lib/workspace/usage";
+  sendAllowanceNotice,
+  sendDeliveryNotices,
+} from "@/lib/workspace/delivery-notices";
+import { getUsage } from "@/lib/workspace/usage";
 import { exportVersion, VersionError } from "@/lib/workspace/versions";
 
 /**
@@ -63,75 +60,18 @@ export async function POST(
       workspace?.timezone || "Asia/Hong_Kong",
       workspace?.tier === "paid" ? "paid" : "lite",
     );
-    // In-app notices (Phase 6 item 4); both best-effort and never thrown. The
+    // In-app notices (Phase 6 item 4); best-effort and never thrown. The
     // delivery notice fires for a new delivery only (an idempotent retry
     // returns the existing one); the allowance notice once per period.
     if (delivery.kind === "exported") {
-      const home = await homeHrefWithRepository(
-        notificationRepository(),
-        auth.scope.workspaceId,
-      );
-      await notifyWithRepository(notificationRepository(), {
+      await sendDeliveryNotices({
         workspaceId: auth.scope.workspaceId,
-        kind: "delivery.exported",
-        title: localized(
-          mode === "copy"
-            ? "Approved version copied"
-            : "Approved version exported",
-          mode === "copy" ? "已複製批准版本" : "已匯出批准版本",
-        ),
-        body:
-          usage.allowance === null
-            ? localized(
-                `${usage.approvedDeliveries} approved deliveries this period.`,
-                `本期已批准交付 ${usage.approvedDeliveries} 項。`,
-              )
-            : localized(
-                `${usage.approvedDeliveries} of ${usage.allowance} approved deliveries used this period.`,
-                `本期已用 ${usage.approvedDeliveries} / ${usage.allowance} 項批准交付。`,
-              ),
-        href: home ? `${home}/actions/${auth.scope.actionId}` : null,
+        actionId: auth.scope.actionId,
+        kind: mode,
+        usage,
       });
-    }
-    const warnAt = allowanceWarnAt(usage.allowance);
-    if (warnAt !== null && usage.approvedDeliveries >= warnAt) {
-      const periodStart = `${usage.period}-01T00:00:00Z`;
-      if (
-        !(await hasSinceWithRepository(
-          notificationRepository(),
-          auth.scope.workspaceId,
-          "usage.allowance_80",
-          periodStart,
-        ))
-      ) {
-        const home = await homeHrefWithRepository(
-          notificationRepository(),
-          auth.scope.workspaceId,
-        );
-        await notifyWithRepository(notificationRepository(), {
-          workspaceId: auth.scope.workspaceId,
-          kind: "usage.allowance_80",
-          // The old title said "80%" directly above a body reading "3 of 3",
-          // two contradictory numbers in one notification. Report what is
-          // actually left, which is the number the owner needs.
-          title: (() => {
-            const left = Math.max(0, (usage.allowance ?? 0) - usage.approvedDeliveries);
-            // Two arguments, as everywhere else in this route: 核准後交付 is the
-            // term both Chinese locales already use for an approved delivery,
-            // so an explicit zh-TW form here would imply a variant that does
-            // not exist.
-            return localized(
-              left === 1 ? "1 approved delivery left this period" : `${left} approved deliveries left this period`,
-              `本期尚餘 ${left} 項核准後交付`,
-            );
-          })(),
-          body: localized(
-            `${usage.approvedDeliveries} of ${usage.allowance} approved deliveries used. Upgrade for unlimited deliveries.`,
-            `已用 ${usage.approvedDeliveries} / ${usage.allowance} 項批准交付。升級即可無限交付。`,
-          ),
-          href: home ? `${home}/settings/billing` : null,
-        });
-      }
+    } else {
+      await sendAllowanceNotice({ workspaceId: auth.scope.workspaceId, usage });
     }
     return json({
       deliveryId: delivery.deliveryId,
