@@ -528,5 +528,53 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon GBP reply publishing"
       ]);
       expect(await repo.publishDeliveryIds(ws, [])).toEqual([]);
     });
+
+    it("activeGbpConnection, storeRefreshedToken and markConnectionExpired touch only the active google_gbp row", async () => {
+      const ws = await workspace();
+      const repo = publishingRepository(runtime);
+      expect(await repo.activeGbpConnection(ws)).toBeNull();
+
+      const insert = async (status: string) =>
+        (
+          await runtime.query(
+            `INSERT INTO oauth_connections(workspace_id,provider,access_token_encrypted,refresh_token_encrypted,scopes,expires_at,status)
+             VALUES($1,'google_gbp',$2,$3,$4,$5,$6) RETURNING id`,
+            [ws, `sealed-access-${status}`, `sealed-refresh-${status}`, ["scope-a", "scope-b"], "2026-10-04T08:00:00Z", status],
+          )
+        ).rows[0].id as string;
+      const revoked = await insert("revoked");
+      const active = await insert("active");
+
+      expect(await repo.activeGbpConnection(ws)).toEqual({
+        id: active,
+        accessTokenEncrypted: "sealed-access-active",
+        refreshTokenEncrypted: "sealed-refresh-active",
+        scopes: ["scope-a", "scope-b"],
+        expiresAt: "2026-10-04T08:00:00.000Z",
+      });
+
+      const row = async (id: string) =>
+        (await runtime.query("SELECT access_token_encrypted,refresh_token_encrypted,expires_at,status FROM oauth_connections WHERE id=$1", [id])).rows[0];
+
+      await repo.storeRefreshedToken({ connectionId: active, workspaceId: ws, accessTokenEncrypted: "sealed-new", expiresAt: "2026-10-04T09:00:00Z" });
+      expect(await row(active)).toMatchObject({
+        access_token_encrypted: "sealed-new",
+        refresh_token_encrypted: "sealed-refresh-active",
+        status: "active",
+      });
+      expect((await row(active)).expires_at.toISOString()).toBe("2026-10-04T09:00:00.000Z");
+
+      // A non-active row is never refreshed or marked.
+      await repo.storeRefreshedToken({ connectionId: revoked, workspaceId: ws, accessTokenEncrypted: "sealed-other", expiresAt: null });
+      await repo.markConnectionExpired(revoked);
+      expect(await row(revoked)).toMatchObject({ access_token_encrypted: "sealed-access-revoked", status: "revoked" });
+
+      await repo.markConnectionExpired(active);
+      expect((await row(active)).status).toBe("expired");
+      expect(await repo.activeGbpConnection(ws)).toBeNull();
+      // Once expired it stays expired: a late refresh cannot revive it.
+      await repo.storeRefreshedToken({ connectionId: active, workspaceId: ws, accessTokenEncrypted: "sealed-late", expiresAt: null });
+      expect(await row(active)).toMatchObject({ access_token_encrypted: "sealed-new", status: "expired" });
+    });
   });
 });
