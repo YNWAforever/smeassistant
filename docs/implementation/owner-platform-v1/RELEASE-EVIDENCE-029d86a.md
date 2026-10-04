@@ -8,7 +8,7 @@ This is the evidence pack for `main` at `029d86a`. It follows [`RELEASE-EVIDENCE
 **Bottom line.** Implemented and CI-verified: push run attempt 2 passed; attempt 1 failed on an unfixed flake.
 
 Locally on Windows:
-- Every gate passed in its normal form, except `e2e`, which ran on port 3197 through temporary config copies.
+- Every other gate passed in its normal form; `e2e` passed, run on port 3197 through temporary config copies.
 - `e2e:acceptance` **failed**: 3 of 42 tests. Those 3 passed when re-run alone.
 
 **Hosted verification is not complete.** The only hosted facts recorded are:
@@ -43,7 +43,7 @@ This is **not** ready to claim a verified release.
 | P1.1–P4.5 | present (no change since the 080ddf6 pack; this pack records deltas only) | — | 080ddf6 pack §2; the gates in §3 re-ran them all | As recorded there. |
 | P3.1 scheduler registration (DEC-10) | changed | PR #33 `b50d406`: `vercel.json` (cron entry removed), `tests/cron-registration.test.ts` (asserts no cron), `docs/integration/DEPLOY.md` | `tests/cron-registration.test.ts`; production runtime logs (§6) | The scheduler is off by DEC-10 default. Re-enabling needs a recorded DEC-10 decision and a valid `CRON_SECRET`. |
 | P4.6 single publishing connector (DEC-13/14) | changed | PR #34: `neon/migrations/0014_publish_reply.sql`, `rollout/apply-0014.sql`, `lib/oauth/google-reviews.ts`, `lib/publishing/*`, `lib/repositories/publishing.ts`, publish/targets/reconcile/reply routes, `components/workspace/gbp-publish-card.tsx` | `test/integration/neon-publish-reply.integration.test.ts`, `neon-publish-flag-off.integration.test.ts` (flag-off path on a 0013 schema), `lib/workspace/publish-sql.test.ts`, route and card tests (`PHASE-4-REPORT.md` P4.6) | Off. No Google call has been made from any environment. Open product question: a reply that is published but never exported earns no Attributed measurement. |
-| Local Windows gates (engineering) | changed | PR #35: `.npmrc`, `tests/npmrc-store-length.test.ts`, `README.md` | `tests/npmrc-store-length.test.ts`; §3 (every gate now runs in its normal form locally) | Existing local checkouts need one `corepack pnpm install` (accept the purge). |
+| Local Windows gates (engineering) | changed | PR #35: `.npmrc`, `tests/npmrc-store-length.test.ts`, `README.md` | `tests/npmrc-store-length.test.ts`; §3 (`build` and `test:secret-boundary` now run in their normal form locally) | Existing local checkouts need one `corepack pnpm install` (accept the purge). |
 | Acceptance stability (engineering) | changed | PR #36: `e2e/acceptance/public-funnel.spec.ts` | 20/20 local repeats; every fallback forced 2/2 (PR #36) | The spec no longer proves the in-app redirect under `next dev`; a `dev-navigation-fallback` annotation records each use. |
 
 ## 3. Offline gate results
@@ -182,7 +182,8 @@ Safe rollback or forward-fix procedure:
   - Regression attributable to P4.6 (it changed the export route and re-created
     export_output_version): promote dpl_8dNy… (f1d59fa, the last production deployment before
     P4.6). This is safe with 0014 applied: for versions never published, the re-created
-    export_output_version behaves exactly like the 0011 body (DEPLOY.md, P4.6 section), and the
+    export_output_version counts exports exactly as the 0011 body did (the comment above it in
+    0014_publish_reply.sql; DEPLOY.md, P4.6 section), and the
     older code never calls the 0014 functions.
   - Regression in the test-only or tooling deltas (#35, #36): promote dpl_53ZY… (577c9d3).
   - No migration rollback: 0014 is additive and inert with the flag off.
@@ -199,5 +200,5 @@ Authority required to execute rollout/rollback: the owner.
 | Hosted verification complete for the advertised scope? | **No.** Only the cron removal is observed. The migrations are owner-reported, and every other hosted scenario is not run. |
 | Commercial/operating choices approved? | **No.**<br>– DEC-01 to DEC-09 and DEC-11: undecided, or no acceptance record.<br>– DEC-11: the owner-reported applies of `0013` and `0014` have no recorded authorization; the "Acceptance authorization record" in `BUSINESS-AND-HOSTED-DECISIONS.md` is blank.<br>– DEC-10: at its default (off).<br>– DEC-12, -13 and -14: decided. |
 | Remaining blockers / not-run scenarios | Hosted checklist §1–§22 (owner authorization and budget). P4.6 needs Google Business Profile API access. The `merchant-loop` ECONNRESET CI flake is unfixed. |
-| Safe independent next work | Fix the `merchant-loop` ECONNRESET acceptance flake (it failed attempt 1 on `080ddf6`, `cef0a4d`, `f1d59fa` and `029d86a`). Then the local dev-server navigation flakes in `claim-and-market`, `permissions` and `offer-promotion`. |
+| Safe independent next work | Fix the `merchant-loop` ECONNRESET acceptance flake (it failed attempt 1 on `080ddf6`, `cef0a4d`, `f1d59fa` and `029d86a`). Then investigate the local acceptance flakes in `claim-and-market`, `permissions` and `offer-promotion` (likely the dev-server navigation race; not yet investigated). |
 | Release decision / authorizer | **Not ready to claim a verified release.** Implemented and CI-verified is not hosted verified. The decision is the owner's. |

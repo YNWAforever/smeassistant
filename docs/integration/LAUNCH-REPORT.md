@@ -14,7 +14,7 @@
 | CI on the exact commit | passed | Run 37229545186 (`push`, `029d86a`): attempt 2 passed. Attempt 1 failed `e2e:acceptance` (41 passed / 1 failed: `merchant-loop` ECONNRESET, an unfixed flake that also failed attempt 1 on `080ddf6`, `cef0a4d` and `f1d59fa`) |
 | Local gates: typecheck, lint, unit, no-supabase, no-self-service-claim, secret-boundary, `db:verify`, integration, build | passed | Windows, each run in its normal form; unit 365 files / 4,435 tests (+ packages), `db:verify` `0001`–`0014`, integration 49 / 537, secret-boundary 61 artifacts |
 | Local gate: `e2e` | passed | 31 passed, run on port 3197 through temporary config copies (another project holds 3100); not the literal command |
-| Local gate: `e2e:acceptance` | failed | 39 passed / 3 failed (dev-server navigation flakes); the 3 passed when re-run alone |
+| Local gate: `e2e:acceptance` | failed | 39 passed / 3 failed (flaky or unexplained; likely the dev-server navigation race, not investigated); the 3 passed when re-run alone |
 | Phase 3 scheduled/resumed work on production | not run | Scheduler off by DEC-10. Cron entry removed (#33). No `/api/cron/dispatch` invocations from 16:35:26 UTC until at least 20:11 UTC on 2026-10-04 (read-only runtime logs). The Vercel Cron Jobs listing was not checked |
 | Migrations `0001`–`0014` on production | not run | The applies are owner-reported (`0014` on 2026-10-05); the independent check is not run |
 | R2 environment inventory | not run | Not re-read for this candidate; last read at `080ddf6` |
