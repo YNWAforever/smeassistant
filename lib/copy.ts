@@ -291,6 +291,42 @@ type FunnelCopy = {
     retentionNote: string
     policyLink: string
   }
+  /**
+   * The unsaved preview draft (P4.5, spec §3): the report card, the /start
+   * page and its form. `badge`, `boundary`, `notKept`, `cta`, `submit` and
+   * `cardTitle` are spec §3 verbatim. Refusals are fixed per reason and never
+   * echo what the visitor typed.
+   */
+  preview: {
+    cardTitle: string
+    badge: string
+    boundary: string
+    reviewLabel: string
+    /** "{count}" is the trimmed review length in Unicode code points. */
+    count: string
+    ratingLabel: string
+    noRating: string
+    /** "{rating}" is 1–5. */
+    ratingOption: string
+    submit: string
+    submitting: string
+    warningsLabel: string
+    copy: string
+    copied: string
+    copyFailed: string
+    notKept: string
+    cta: string
+    refusals: {
+      already_used: string
+      job_limit: string
+      ip_limit: string
+      daily_limit: string
+      budget: string
+      paused: string
+      unavailable: string
+      invalid_input: string
+    }
+  }
   legal: { backToScanner: string; version: string }
 }
 
@@ -666,6 +702,34 @@ const funnelEn: FunnelCopy = {
     retentionNote: "Nothing here is deleted by age yet, and we will not publish a schedule we do not run. One is being finalised; until it is, ask us at the address in the privacy policy and we will tell you what we hold.",
     policyLink: "Privacy policy and terms · version 2026-07-28",
   },
+  preview: {
+    cardTitle: "Try one AI reply draft (not saved)",
+    badge: "Unclaimed draft · not saved",
+    boundary: "Only the text you type here is used. Nothing from your report is used, and nothing is saved, approved or published. One preview per unlocked report.",
+    reviewLabel: "Paste one customer review",
+    count: "{count} / 1,500 characters",
+    ratingLabel: "Star rating (optional)",
+    noRating: "No rating",
+    ratingOption: "{rating} ★",
+    submit: "Draft a reply",
+    submitting: "Drafting…",
+    warningsLabel: "Check before using",
+    copy: "Copy",
+    copied: "Copied",
+    copyFailed: "Could not copy. Select the text and copy it yourself.",
+    notKept: "This draft is not kept. Copy it now if you want it.",
+    cta: "Verify ownership to save and approve drafts",
+    refusals: {
+      already_used: "This report's preview has already been used. Verify ownership to save and approve drafts in a workspace.",
+      job_limit: "This report has reached its preview limit. Verify ownership to draft replies in a workspace.",
+      ip_limit: "Too many previews from this connection today. Please try again tomorrow.",
+      daily_limit: "Today's previews have all been used. Please try again tomorrow.",
+      budget: "Previews are closed for the rest of today. Please try again tomorrow.",
+      paused: "AI drafting is paused right now. Please try again later.",
+      unavailable: "A draft could not be prepared right now. Please try again later.",
+      invalid_input: "Paste one review between 10 and 1,500 characters.",
+    },
+  },
   legal: { backToScanner: "Back to the scanner", version: "Version {version}" },
 }
 
@@ -976,6 +1040,34 @@ const funnelZhHK: FunnelCopy = {
     retentionNote: "以上資料目前不會因年期而自動刪除，我們亦不會公布一個並未實際執行的時間表。保留時間表仍在制定中；在公布之前，請按私隱政策所列地址向我們查詢，我們會告知所持有的資料。",
     policyLink: "私隱政策及使用條款 · 版本 2026-07-28",
   },
+  preview: {
+    cardTitle: "試寫一則 AI 評論回覆（不會儲存）",
+    badge: "未認領草稿 · 未儲存",
+    boundary: "只會使用你在此輸入的文字，不會使用報告內容，亦不會儲存、核准或發佈任何內容。每份已解鎖報告可試一次。",
+    reviewLabel: "貼上一則顧客評論",
+    count: "{count} / 1,500 字",
+    ratingLabel: "星級評分（選填）",
+    noRating: "不提供評分",
+    ratingOption: "{rating} ★",
+    submit: "草擬回覆",
+    submitting: "草擬中…",
+    warningsLabel: "使用前請檢查",
+    copy: "複製",
+    copied: "已複製",
+    copyFailed: "未能複製，請選取文字自行複製。",
+    notKept: "此草稿不會保留，如需要請立即複製。",
+    cta: "驗證擁有權以儲存及核准草稿",
+    refusals: {
+      already_used: "此報告的試用機會已經用過。驗證擁有權後，即可在工作台儲存及核准草稿。",
+      job_limit: "此報告的試用次數已達上限。驗證擁有權後，即可在工作台草擬回覆。",
+      ip_limit: "此網絡連線今日的試用次數已達上限，請明日再試。",
+      daily_limit: "今日的試用名額已滿，請明日再試。",
+      budget: "今日的試用已暫停，請明日再試。",
+      paused: "AI 草擬功能暫停中，請稍後再試。",
+      unavailable: "暫時未能草擬回覆，請稍後再試。",
+      invalid_input: "請貼上一則 10 至 1,500 字的評論。",
+    },
+  },
   legal: { backToScanner: "返回掃描", version: "版本 {version}" },
 }
 
@@ -1285,6 +1377,34 @@ const funnelZhTW: FunnelCopy = {
     ],
     retentionNote: "上述資料目前不會依年限自動刪除，我們也不會公布並未實際執行的時間表。保留時間表仍在制定中；在公布之前，請依隱私政策所列地址與我們聯絡，我們會告知所持有的資料。",
     policyLink: "隱私政策與使用條款 · 版本 2026-07-28",
+  },
+  preview: {
+    cardTitle: "試寫一則 AI 評論回覆（不會儲存）",
+    badge: "未認領草稿 · 未儲存",
+    boundary: "只會使用你在此輸入的文字，不會使用報告內容，也不會儲存、核准或發布任何內容。每份已解鎖報告可試用一次。",
+    reviewLabel: "貼上一則顧客評論",
+    count: "{count} / 1,500 字",
+    ratingLabel: "星等評分（選填）",
+    noRating: "不提供評分",
+    ratingOption: "{rating} ★",
+    submit: "草擬回覆",
+    submitting: "草擬中…",
+    warningsLabel: "使用前請檢查",
+    copy: "複製",
+    copied: "已複製",
+    copyFailed: "無法複製，請選取文字自行複製。",
+    notKept: "此草稿不會保留，如需要請立即複製。",
+    cta: "驗證擁有權以儲存並核准草稿",
+    refusals: {
+      already_used: "此報告的試用機會已使用過。驗證擁有權後，即可在工作台儲存並核准草稿。",
+      job_limit: "此報告的試用次數已達上限。驗證擁有權後，即可在工作台草擬回覆。",
+      ip_limit: "此網路連線今天的試用次數已達上限，請明天再試。",
+      daily_limit: "今天的試用名額已滿，請明天再試。",
+      budget: "今天的試用已暫停，請明天再試。",
+      paused: "AI 草擬功能暫停中，請稍後再試。",
+      unavailable: "目前無法草擬回覆，請稍後再試。",
+      invalid_input: "請貼上一則 10 至 1,500 字的評論。",
+    },
   },
   legal: { backToScanner: "返回掃描", version: "版本 {version}" },
 }

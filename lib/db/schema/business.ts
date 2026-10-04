@@ -542,6 +542,28 @@ export const outputVersions = pgTable("output_versions", {
  pgPolicy("server_application", {for:"all", to:"sme_app_runtime", using:sql`true`, withCheck:sql`true`}),
 ]).enableRLS();
 
+export const previewEvents = pgTable("preview_events", {
+ id: uuid("id").notNull().default(sql.raw("gen_random_uuid()")),
+ jobId: uuid("job_id").notNull(),
+ grantId: uuid("grant_id"),
+ outcome: text("outcome").notNull(),
+ reason: text("reason"),
+ costUsd: numeric("cost_usd").notNull().default(sql.raw("0")),
+ ipHash: text("ip_hash"),
+ createdAt: timestamp("created_at", {withTimezone:true, mode:"string"}).notNull().default(sql.raw("now()")),
+ finishedAt: timestamp("finished_at", {withTimezone:true, mode:"string"}),
+}, t => [
+ check("preview_events_cost_check", sql.raw("(cost_usd >= (0)::numeric)")),
+ foreignKey({name:"preview_events_grant_id_fkey",columns:[t.grantId],foreignColumns:[((): AnyPgColumn => reportAccessGrants.id)()]}).onDelete("set null"),
+ foreignKey({name:"preview_events_job_id_fkey",columns:[t.jobId],foreignColumns:[((): AnyPgColumn => auditJobs.id)()]}).onDelete("cascade"),
+ check("preview_events_outcome_check", sql.raw("(outcome = ANY (ARRAY['claimed'::text, 'generated'::text, 'failed'::text, 'refused'::text]))")),
+ primaryKey({name:"preview_events_pkey",columns:[t.id]}),
+ index("preview_events_created_idx").using("btree", sql.raw("created_at")),
+ index("preview_events_grant_idx").using("btree", sql.raw("grant_id")),
+ index("preview_events_job_idx").using("btree", sql.raw("job_id")),
+ pgPolicy("server_application", {for:"all", to:"sme_app_runtime", using:sql`true`, withCheck:sql`true`}),
+]).enableRLS();
+
 export const rateLimitBuckets = pgTable("rate_limit_buckets", {
  bucketKey: text("bucket_key").notNull(),
  windowStartedAt: timestamp("window_started_at", {withTimezone:true, mode:"string"}).notNull(),

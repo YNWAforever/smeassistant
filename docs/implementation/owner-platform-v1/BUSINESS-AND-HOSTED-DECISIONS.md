@@ -17,7 +17,7 @@ These are pending decisions/authorizations, not new audit findings. They do not 
 | DEC-09 | 3 | Stripe test mode and eventual paid rollout. | Billing unavailable; negative boundaries still work. | Test account/origin, permitted events/checkout/portal, no live charges, webhook configuration, acceptance evidence and separate production sign-off. |
 | DEC-10 | 3 | Single scheduler deployment, run frequency and provider budget. | Local/fake-clock tests; no hosted cron activation. Discover existing executors first. | Scheduler identity, protected endpoint, schedule/rate/budget, pause/retry policy, actual execution proof. |
 | DEC-11 | All | Hosted migrations or data backfills. | Owned fixture only; no production credentials as test fallback. | Exact isolated/production target, migration review, backup/recovery evidence, bounded backfill scope and authorization. |
-| DEC-12 | 4 | Provisional unsaved-preview experiment. | Feature off; main scanner/verified claim flow remains the entrance. | Eligible traffic, purpose-limited grant, input/privacy model, generation budget and success/failure metrics. |
+| DEC-12 | 4 | Provisional unsaved-preview experiment. **Decided 2026-10-04 (user); see "DEC-12 — decided 2026-10-04" below.** | Feature off; main scanner/verified claim flow remains the entrance. The P4.5 code is built behind `PREVIEW_DRAFT_ENABLED`, which ships unset. | Eligible traffic, purpose-limited grant, input/privacy model, generation budget and success/failure metrics: recorded below. Activation still needs `0013` applied (a DEC-11 action) and the flag set by the owner. |
 | DEC-13 | 4 | One direct publishing provider and operation. | No activation, publication, external consent or marketing claim. | Provider/account/location, scopes, exact approved-version confirmation, permitted test destination, idempotency/receipt/revocation handling and separate release approval. |
 | DEC-14 | 4 | Delivery units for multi-output promotions/packs or future publishing. | Keep existing per-approved-version export semantics. No bundle counting change. | User-visible delivery unit, commercial decision, SQL enforcement/compatibility tests and example bills/usage. |
 
@@ -40,6 +40,41 @@ withhold only real approvals. The repository asserts no verification policy of
 its own — the reviewer types what they actually checked and who checked it, so
 enabling this requires the procedure to exist outside the code, not merely a
 variable to be set.
+
+## DEC-12 — decided 2026-10-04
+
+The user made the DEC-12 choices on 2026-10-04 while the P4.5 design was
+brainstormed (spec `docs/superpowers/specs/2026-10-04-preview-draft-design.md`,
+"Decisions (user, 2026-10-04)"):
+
+| DEC-12 question | Decision |
+|---|---|
+| Eligible traffic / grant | **Unlocked report viewers only.** The existing viewer grant for *that* job is the capability. Members, staff and the public view are not eligible. |
+| What is generated | **One review reply.** The visitor pastes one customer review and may add a star rating. |
+| Budget | **Tight trial:** 1 per grant; 3 per job across grants; 5 per IP per day; 50 per day globally; US$2 per day globally, summed from the preview's own cost records. Any limit or check failure refuses. |
+| Hand-off | **Nothing carried over.** The draft is shown once and never stored. The CTA leads to the normal sign-in/claim path, and after a verified claim the owner uses the normal review-reply workflow. |
+| Architecture | A **`preview_events` table** (migration `0013`, events only, no text) with an atomic `claim_preview_slot`. Per-IP uses `consume_rate_limit`. Flag `PREVIEW_DRAFT_ENABLED`, off unless exactly `true`. |
+
+The row's remaining items map as follows:
+
+- **Input/privacy model.** Only the text the visitor types is sent to the
+  model, with the job's market, its business name and a default brand; nothing
+  from the report, snapshot, findings or raw data is read. The review, the reply
+  and the prompt are never stored or logged; `preview_events` has no text column
+  and keeps only the HMAC request fingerprint as `ip_hash`.
+- **Success/failure metrics.** Spec §6, as read-only SQL in
+  [`PREVIEW-METRICS.md`](PREVIEW-METRICS.md): previews generated per day,
+  refusals by reason, failures by reason, daily cost and the claim-after-preview
+  rate. There is no dashboard.
+
+**What this does not authorize.** Recording DEC-12 as decided does not apply
+`0013` to any hosted database (that is DEC-11, still an explicit owner action),
+does not turn the flag on, and does not record any hosted acceptance. As of
+2026-10-04 `0013` has been applied only to owned, disposable local Docker
+databases, and hosted acceptance was not run. The owner steps are in
+`docs/integration/DEPLOY.md` ("P4.5 unsaved preview draft: migration 0013 and
+the flag"): apply `apply-0013.sql` on a Neon test branch and then production,
+set `PREVIEW_DRAFT_ENABLED=true` and redeploy; roll back by unsetting the flag.
 
 ## Configuration inventory — names/presence only
 

@@ -1,6 +1,6 @@
 # Phase 4 report
 
-Phase 4 of the owner-platform plan (Master Plan §7). Four slices are built: P4.4 (reusable workflow contract), P4.1 (confirmed offers and promotion copy), P4.2 (work packs: the visibility starter pack) and P4.3 (the contextual assistant, without added authority). P4.5 and P4.6 are deliberately not built.
+Phase 4 of the owner-platform plan (Master Plan §7). Five slices are built: P4.4 (reusable workflow contract), P4.1 (confirmed offers and promotion copy), P4.2 (work packs: the visibility starter pack), P4.3 (the contextual assistant, without added authority) and P4.5 (the conditional acquisition preview: one unsaved review-reply draft, off by default, DEC-12 decided 2026-10-04). P4.6 is deliberately not built.
 
 ## P4.4 — reusable workflow contract
 
@@ -760,3 +760,226 @@ Full detail is in `PHASE-4-TEST-RESULTS.md`. One line per gate, run 2026-10-03 a
 - Nothing in the slice writes `actions`, `action_runs`, `output_versions`, `deliveries` or `workspace_usage` (the acceptance journey asserts the counts and states are unchanged and that no authority route was requested).
 - With the flag off, the suggestions route and both new intents run zero SQL (`neon-assistant-flag-off.integration.test.ts`) and the audit rows equal `ecc60df`'s (Ruling R7).
 - The two new intents never reach `llmComplete` or the budget, including while AI is paused.
+
+## P4.5 — conditional acquisition preview: one unsaved review-reply draft
+
+**Branch** `p45-preview-draft`, base `8582a7c` (`origin/main`, PR #30, the merged P4.3 slice). Spec commit `404353b`, plan `13b299a`, implementation commits `9fcd467`..`c57d87a` (eight, listed below), then the Task 6 documentation commit `2987427`, then the final-review fix wave: code commit `117ff00` and its documentation commit (see "Final-review fix wave" at the end of this section). Committed diff before the Task 6 commit: 45 files, 3,603 insertions, 20 deletions (two of the files are the spec and the plan). Worktree `C:\Users\laich\Documents\smeassistant\.claude\worktrees\p45-preview-draft`. Node `v24.18.0`, pnpm `9.12.0` via corepack, Windows 11 Pro 10.0.26200, Docker Server `29.7.2`, `postgres:16` (server 16.15). Gates run 2026-10-04.
+
+Built from `docs/superpowers/plans/2026-10-04-preview-draft.md` (Tasks 1–6) against the design in [`docs/superpowers/specs/2026-10-04-preview-draft-design.md`](../../superpowers/specs/2026-10-04-preview-draft-design.md).
+
+**Implemented and locally verified. Nothing here is hosted-verified.** One new migration, `neon/migrations/0013_preview_events.sql`, exists and has been applied **only** to owned, disposable local Docker Postgres fixtures (`db:verify`, `test:integration`, the acceptance fixtures and the `apply-0013.sql` rehearsal). **Nothing was applied to any hosted or Neon database**, nothing was deployed or pushed, **hosted acceptance was NOT RUN**, no paid provider or real model was called (a fake LLM is injected in every test and the acceptance journey uses the fixture LLM server), and no mail was sent. The feature is behind `PREVIEW_DRAFT_ENABLED`, which defaults off.
+
+### What this closes
+
+Master Plan §7 P4.5 (source: Blueprint §5's proposed `/{locale}/start/[jobId]`), new and off by default. A visitor who has **unlocked** a report (the existing viewer grant for that job) may paste one customer review, optionally with a star rating, and get **one** AI review-reply draft that is shown once and **never stored**. It is labelled 「未認領草稿 · 未儲存」 / "Unclaimed draft · not saved", has no version number, approval, export, regenerate or save control, and its only next step is the normal sign-in and verified-claim path.
+
+- **The grant is the capability.** The page and the route are addressed by the report's `share_slug`; only `authorizeReport(...).kind === "viewer"` for that job's own grant, on a `done` or `partial` job, qualifies. Anything else, including a guessed slug, a member or staff session alone, an expired or revoked grant, or another job's grant, is a 404.
+- **Owner text only.** The model gets the locale, the market (from the job's `region`), the business name, a default brand and the one pasted review, fenced as untrusted data. Nothing from the report, snapshot, findings or raw data is read; the preview reads only `id, status, region, business_name` of the job.
+- **Outside the ledger.** No write to `actions`, `action_runs`, `output_versions`, `deliveries`, `workspace_usage`, workspaces, members, claims or audit tables. The only record is `preview_events` (migration `0013`), which has no text column.
+- **Atomic, fail-closed budgets.** 1 per grant, 3 per job, 5 per IP per day, and by default 50 previews and US$2 per rolling 24 hours across all jobs, claimed atomically under one advisory lock before the model call. A failed generation releases its slot, but every model call, failed or not, counts toward the daily limit and a grant gets at most three attempts (Ruling R11); any limit, configuration or check failure refuses. A repeat from the same grant always answers `already_used`.
+- **Measures.** DEC-12's success and failure measures are read-only SQL in [`PREVIEW-METRICS.md`](PREVIEW-METRICS.md), including the claim-after-preview rate.
+
+Before this slice there was no preview: an unlocked visitor's only way to see a draft was to sign in and complete a verified claim.
+
+### Decisions (user, 2026-10-04)
+
+DEC-12 is now recorded as decided in `BUSINESS-AND-HOSTED-DECISIONS.md`.
+
+| DEC-12 question | Decision |
+|---|---|
+| Eligible traffic / grant | **Unlocked report viewers only.** The existing viewer grant for *that* job is the capability. Members, staff and the public view are not eligible. |
+| What is generated | **One review reply.** The visitor pastes one customer review and may add a star rating. |
+| Budget | **Tight trial:** 1 per grant; 3 per job across grants; 5 per IP per day; 50 per day globally; US$2 per day globally, summed from the preview's own cost records. Any limit or check failure refuses. |
+| Hand-off | **Nothing carried over.** The draft is shown once and never stored. The CTA leads to the normal sign-in/claim path, and after a verified claim the owner uses the normal review-reply workflow. |
+| Architecture | A **`preview_events` table** (migration `0013`, events only, no text) with an atomic `claim_preview_slot`. Per-IP uses `consume_rate_limit`. Flag `PREVIEW_DRAFT_ENABLED`, off unless exactly `true`. |
+
+**Spec deviations taken as rulings.** The spec and plan said both slot functions are "security definer"; Ruling R2 made them **`SECURITY INVOKER`** with `SET search_path = ''` (the Neon convention of `0004` and `0011`, `neon/README.md`), and every description of `0013` in this record says `SECURITY INVOKER`. The spec's §2.5 step 7 said a limiter refusal is `ip_limit`; Ruling R6 answers a limiter **outage** with `unavailable`. The zh-TW boundary note's 發佈 became 發布 (Ruling R9), applied in the final-review fix wave. The final review added four more rulings (R10–R13, below): the preview prompt carries the default brand's voice and language (spec §2.3 said `providedInputs: {}`), and `0013` was edited on-branch so failed calls count toward the daily limit.
+
+### What changed, by task
+
+| Task | Commit(s) | What it did |
+|---|---|---|
+| Design and plan | `404353b`, `13b299a` | The spec, then the plan. |
+| 1. Migration `0013_preview_events.sql` and the repository | `9fcd467`, then `35d7b69` (Ruling R2) | `public.preview_events` (no text column; `job_id` `ON DELETE CASCADE`, `grant_id` `ON DELETE SET NULL`; outcome CHECK `claimed`/`generated`/`failed`/`refused`; cost CHECK; three indexes), RLS, the `server_application` policy and `sme_app_runtime` grants as `0012`. `claim_preview_slot(p_job, p_grant, p_ip_hash, p_global_daily, p_usd_daily)`: one global `pg_advisory_xact_lock`; `claimed` rows older than 5 minutes become `failed`/`stale`; then it refuses in order `already_used`, `job_limit`, `daily_limit`, `budget` (each refusal inserts a `refused` row), otherwise inserts `claimed`; null targets or non-positive limits raise 22023. `finish_preview_slot(p_event, p_outcome, p_reason, p_cost)` moves only a `claimed` row to `generated` or `failed`. Both are `SECURITY INVOKER`, `SET search_path = ''`, EXECUTE revoked from PUBLIC and granted to `sme_app_runtime`. `lib/repositories/previews.ts` (`previewJob`, `claimSlot`, `finishSlot`); the Drizzle mirror, `db:types`, the catalog fixture (+135 lines, insertions only), `scripts/neon/catalog.ts` additional functions (18 → 20) and the schema test counts (tables 40 → 41, columns 477 → 486, constraints 198 → 203, indexes 102 → 106, journal 12 → 13). `neon-work-packs.integration.test.ts` now applies through `0012` explicitly. |
+| 2. Flag, limits, input, context, eligibility | `f6b868e`, then `0a1d64e` (Ruling R4) | `previewDraftEnabled` (exactly `"true"`); `readPreviewLimits` (defaults 50 / 2, blank = default, any other invalid value throws); `parsePreviewInput` (review 10–1,500 code points after trim, rating absent or an integer 1–5, a supported locale); `buildPreviewContext` (exactly the spec §2.3 keys) and `previewMarket`; `authorizePreview` (status before the grant lookup, viewer grant only); rate-limit scope `preview_draft` (5 per 24 h). R4: `AgentContext.sampledReviewsSource`, so a pasted review is described as `visitor_supplied`, never scan evidence; the scan prompt and its snapshots are byte-identical. |
+| 3. `POST /api/start/[slug]/preview` | `0f0c309`, then `fcb8e6f` (fix round) | The route, in order: flag → body → eligibility → AI pause → limits → per-IP limiter → context → claim → one `llmComplete` → finish. Every refusal is `200 { state: "refused", reason }`, malformed input `400 invalid_input`, ineligibility `404`; `Cache-Control: no-store`. Rulings R1, R3, R5–R8. Fix round: `llmComplete` gains an opt-in `redactErrors`, which the route uses, so a provider error body (which can echo the pasted review) never reaches the logs; the context is built before the claim. `neon-preview-flag-off.integration.test.ts`. |
+| 4. Page, form, report card, copy | `b6d647f` | `/{locale}/start/[slug]` (flag → `notFound()` before any cookie read; eligibility as in the route; noindex), `PreviewDraftForm` (live code-point counter, optional 1–5 rating, one submit, the result with badge, warnings, Copy, the "not kept" line and the claim CTA; fixed refusal copy that never echoes input), the report card for viewers only (`previewDraftHrefFor`), and the trilingual `funnel.preview` copy. |
+| 5. Acceptance journey | `c57d87a` | `e2e/acceptance/preview-draft.spec.ts` and `PREVIEW_DRAFT_ENABLED=true` in `test/e2e/safety.ts`: unlock → card → `/start` → paste and rate → draft with badge and CTA → a reload and second submit answer `already_used` → a cookie-less context gets 404; the protected tables' counts are unchanged and `preview_events` holds exactly one `generated` and one `refused` row containing no review or reply text. |
+| 6. Rollout, metrics, records, gates | this commit | `rollout/apply-0013.sql` and its rehearsal, `PREVIEW-METRICS.md`, DEC-12 recorded as decided, `.env.example`, `docs/integration/DEPLOY.md`, the `AI_DRAFTS_PAUSED` note in `INCIDENT-RUNBOOK.md`, this report, the test results and the traceability rows. No code change. |
+
+### Behaviour change for visitors and owners
+
+With the flag on:
+
+- **An unlocked viewer sees one extra card** on their report of a `done` or `partial` scan: "Try one AI reply draft (not saved)" (zh-HK and zh-TW 「試寫一則 AI 評論回覆（不會儲存）」). Members, staff, the public preview, `/sample-report` and a report whose scan is not finished never see it.
+- **`/{locale}/start/{slug}`** shows the badge, the boundary note ("Only the text you type here is used. Nothing from your report is used, and nothing is saved, approved or published. One preview per unlocked report."), a review box with a live character count, an optional 1–5 star rating and "Draft a reply".
+- **The result** is the reply under the badge, any warnings (the agents' guardrail codes in plain words, for example "Appears to promise compensation, a refund or a discount."; a code the page does not know is not shown), a Copy button, "This draft is not kept. Copy it now if you want it." and "Verify ownership to save and approve drafts", which opens the normal sign-in with `?claim={slug}`. Reloading loses the draft; a new attempt answers "already used" with the same CTA. When the report's three previews are used up the visitor sees the job limit, which now also says "Verify ownership to draft replies in a workspace." and shows the same CTA.
+- **Refusals** use fixed copy per reason in three locales and never repeat the input: `already_used`, `job_limit`, `ip_limit`, `daily_limit`, `budget`, `paused`, `unavailable`, `invalid_input`.
+- **Owners** see nothing new in the workspace: no preview reaches a workspace, and the review-reply workflow is unchanged.
+
+With the flag off nothing changes: no card, `/start` is a 404, the route answers `404 not_enabled`, and none of them runs SQL.
+
+### Rulings, known limits and open questions
+
+#### Rulings taken while building (from the execution ledger, `.superpowers/sdd/2026-10-04-preview-draft/progress.md`)
+
+Each ruling is followed by what it costs if it is wrong, as the ledger records it. R1 came from the pre-flight scan (task interfaces checked against each other); the rest arose from implementer concerns and reviews.
+
+| # | Ruling | If wrong |
+|---|---|---|
+| R1 | The route computes `ip_hash` with the existing `ipHashFor(request)` (`lib/workspace/audit.ts`, returns null on failure) rather than calling `requestFingerprint` directly; the per-IP limit itself stays enforced by `enforceRateLimit` (fail-closed). A missing fingerprint secret must not turn into an unhandled 500 after the limiter already passed. | An event row may carry a null `ip_hash`. |
+| R2 | `claim_preview_slot` and `finish_preview_slot` are **`SECURITY INVOKER`** with `SET search_path = ''`, EXECUTE revoked from PUBLIC and granted to `sme_app_runtime`, matching `0004`/`0011`. The spec and plan's "security definer" wording came from the Supabase-era rule that the Neon contract superseded; the runtime role already holds RLS-backed DML on `preview_events`, so owner elevation buys nothing. | None for security (no elevation), only a wording mismatch with the spec. |
+| R3 | `finishSlot`'s reason parameter is narrowed to `"no_output" \| "invalid_output" \| "facts_needed" \| null` (`lib/repositories/previews.ts`), so no caller can pass free text into `preview_events.reason`; the "no text stored" promise is enforced by types. | A later failure reason needs a one-line union edit. |
+| R4 | `AgentContext` gains optional `sampledReviewsSource?: "scan" \| "visitor_pasted"` (absent = `"scan"`, today's behaviour byte-identical, existing agent snapshots unchanged); `review_reply` renders provenance source `visitor_supplied` and a task sentence saying the review was pasted by the visitor and is not verified as coming from the merchant's profile; `buildPreviewContext` sets `"visitor_pasted"`. The model must not be told false provenance; the fence still treats the text as data. | One optional field on `AgentContext` and one branch in `review_reply`. |
+| R5 | The preview's synthetic action row is seeded with evidence `{ factType: "Unknown", source: "visitor_supplied" }` in `lib/preview/context.ts`, so the prompt never labels pasted text "Observed" (guardrail 4: six fact types). | One fixture line and one test. |
+| R6 | A limiter outage (`enforceRateLimit` unavailable) answers `unavailable`, not `ip_limit`. Still fail-closed (no claim, no model), and it does not blame the visitor for an outage; spec §2.5 step 7 literally says `ip_limit`. | An outage shows "temporarily unavailable" instead of "limit reached". |
+| R7 | An eligibility lookup that throws answers 404 and logs `preview_eligibility_failed`, keeping the pre-authorization surface uniform (spec: auth/eligibility failures → 404) while operators still see the outage. | A database outage looks like "not found" to the visitor. |
+| R8 | Fix round 1 also moves `buildPreviewContext` above `claimSlot` (no I/O; closes the claimed-slot-leak window) and adds status and `no-store` assertions to the limiter-unavailable test. Same files, zero risk. | None. |
+| R9 | The zh-TW boundary note uses 發布 (Taiwan usage, as the existing zh-TW copy at `lib/copy.ts:982`), not the spec's 發佈. A §3.2 typo-level deviation in favour of the copy rule "zh-TW uses Taiwanese terms". **Applied in the final-review fix wave** (`117ff00`); it was the only 發佈 in the new zh-TW preview copy. | One character. |
+| R10 | (Final review.) `buildPreviewContext` sets `providedInputs` via `resolveBrandProvidedInputs({ voice: "warm", languages: [locale], approvedClaims: [] })`, the same helper the normal run path uses (default brand values only, no report data), deviating from spec §2.3's literal `providedInputs: {}`. The normal workflow always passes these; "(not provided)" invites `facts_needed` failures that waste money. `ctx.evidence` stays `{}`. | The preview prompt carries two default brand inputs. |
+| R11 | (Final review.) `0013` is edited on-branch (unapplied anywhere hosted, as R2 did): `daily_limit` and `budget` count every non-refused row (`claimed`, `generated`, `failed`, stale included); a grant is capped at 3 non-refused rows → `already_used` (in addition to any `claimed`/`generated` row → `already_used`); the per-job limit keeps 3 `claimed`/`generated`. When usage is null the route records `computeCostUsd({ inputTokens: ceil(prompt.length / 2), outputTokens: AGENT_LLM_OPTIONS.maxTokens }) ?? 0`. This bounds model calls to about 50 a day, and spend even without usage reporting, while keeping "a failure doesn't burn your try" within 3 attempts. `apply-0013.sql` was regenerated; the catalog fixture captures no preview function definition, so it needed no change. | An unlucky visitor with 3 failures sees `already_used`; the daily cap fills faster on failures. |
+| R12 | (Final review.) `PREVIEW-METRICS.md`'s claim-after-preview rate excludes jobs attached before their first `generated` preview from **both** the numerator and the denominator (prose and query), so it measures activation that happened after the preview. | A slightly smaller denominator. |
+| R13 | (Final review.) The fix wave also takes the cheap minors: warning codes in the form are translated (reusing the workspace guardrail copy), the report card requires job status `done` or `partial`, `/start`'s `generateMetadata` is gated on the flag, and a 4-grant parallel-claim integration test is added. | None. |
+
+Also recorded: the trailer on each commit names the model that wrote it; commits are not amended.
+
+#### Deferred minor findings (not acted on in this slice)
+
+Grouped from the task-by-task reviews. Items marked "final wave" were routed by the controller to the final-review fix wave; **all of them are fixed** in `117ff00` (details in "Final-review fix wave" below). The rest stay deferred.
+
+- **Task 1 (migration):** **fixed in the final wave:** failed and stale rows are now tested under `job_limit` (they do not count) and under `daily_limit` and `budget` (they do), alongside the new 3-attempt grant cap and a 4-grant parallel claim. Still deferred: the fail-closed 22023 argument guards (null grant, non-positive limits) are untested; `claim_preview_slot` does not check that `p_grant` belongs to `p_job` (the route authorizes it; a SQL guard would make the ledger self-consistent). `finish_preview_slot` storing any `p_reason` text was closed by R3 at the type level; the SQL itself still accepts any text.
+- **Task 2 (flag, limits, input, context):** zero-width and combining characters (U+200B, U+200D, U+2060, U+0301) pass the 10-code-point floor (a UX guard only; every budget still applies); the shared `review_reply` text still frames reviews as "public Google reviews" / "read from the profile" (R4's visitor sentence outweighs it); the `review_reply` `promptVersion` was not bumped for the visitor variant (record `sampledReviewsSource` if telemetry ever needs it). The `factType: "Observed"` default was closed by R5.
+- **Task 3 (route):** with `redactErrors` on, a non-2xx body is never read or cancelled (the socket is released by GC or abort; optional `resp.body?.cancel()`); `buildPreviewContext` can throw `review_response_template_missing` before the claim, which would be Next's default 500 without `no-store` (impossible in practice: the template is static). The runbook note that a paused preview logs `preview_paused`, not `[pause] refused`, was done in Task 6 (`INCIDENT-RUNBOOK.md`, `AI_DRAFTS_PAUSED` row).
+- **Task 4 (page, form, card, copy):** **fixed in the final wave:** zh-HK 今日…明日 (not 明天) in `ip_limit`, `daily_limit` and `budget`; zh-HK `ratingLabel` 「選填」; `job_limit` now says "Verify ownership to draft replies in a workspace." (zh-HK and zh-TW 「…驗證擁有權後，即可在工作台草擬回覆。」) and shows the claim CTA; a test for `navigator.clipboard` undefined (an insecure context); the over-limit counter turns `text-destructive` and the textarea gets `aria-invalid`; zh-HK 「此報告的試用機會已經用過」 and zh-TW 「此報告的試用機會已使用過」. Still deferred: the flag-off integration case for `previewDraftHrefFor` is near-tautological (pure functions; the page-props unit test is the real guard).
+- **Task 5 (acceptance):** **fixed in the final wave:** `preview-draft.spec.ts` asserts `toMatch(/\S/)` on the body, which an undefined body fails.
+- **Task 6 (records):** **fixed in the final wave:** the `PREVIEW-METRICS.md` claim-after-preview prose and query (R12), the `model_calls_finished` column renamed `slots_finished`, the `IMPLEMENTATION-TRACEABILITY.md` citation for `previewJob` (added in `9fcd467`), and the rehearsal table below now lists the `apply-0010.sql`/`apply-0011.sql` step.
+
+#### Known limits
+
+- **Refusals before the claim are only in the logs.** `paused`, `ip_limit`, `unavailable` (invalid overrides, a limiter outage, a claim error), `invalid_input` and every 404 happen before `claim_preview_slot`, so `preview_events` has no row for them; they are logged as `{ category: "preview_<reason>" }`. `PREVIEW-METRICS.md` says so.
+- **The per-IP limit counts attempts, not drafts.** The limiter runs before the claim, so an attempt that the claim then refuses (for example `already_used`) still uses one of the five daily attempts for that IP. Visitors behind one shared address share the five.
+- **The daily count bounds model calls, not drafts** (Ruling R11). Every claimed slot, whatever its outcome (stale included), counts toward `PREVIEW_DRAFT_DAILY_LIMIT`, so at most that many model calls start per rolling 24 hours however many fail; failures fill the cap faster. A grant gets at most three attempts, so a visitor whose three attempts all fail sees `already_used` without ever getting a draft.
+- **The US$ budget is checked, not reserved.** Claims are serialized, but model calls run after the claim, so calls already in flight can each pass the check and together finish slightly over the cap; the overshoot is bounded by the calls in flight (at most `maxTokens` 1,200 each) and by the daily count limit. A call whose provider reports no usage, or that returned nothing, is recorded at a conservative estimate (`ceil(prompt length / 2)` input tokens and 1,200 output tokens at the configured rates), not at 0; the estimate can overstate a cheap call and is not a measured cost.
+- **One global lock.** Every claim takes the same advisory lock. Volume is bounded by the daily limit (default 50), so contention is not expected.
+- **Drafts are lost on reload,** by design (DEC-12 "Nothing carried over"); the page tells the visitor to copy it.
+- **The card shows for every unlocked viewer of a `done` or `partial` report** while the flag is on (Ruling R13 added the status check, matching the page and the route), including on reports whose job already belongs to a workspace (a viewer grant can exist for such a job). The claim CTA then follows the normal path, which does not let a second person take over an owned workspace.
+- **No real-model evaluation of the visitor variant** of the `review_reply` prompt (DEC-04). No corpus case was added.
+- **Hosted behaviour is unverified:** the per-IP limiter against hosted traffic, the real model cost per preview, and the card on a deployed report have never been exercised.
+- **`neon:readiness` against a hosted target fails until `0013` is applied** (it expects the repository's full journal); that is the expected signal, not a defect.
+
+#### Open questions (recorded, not resolved here)
+
+None new. DEC-14 (delivery units) is untouched: the preview counts nothing. P4.6 still needs DEC-13 and separate authorization.
+
+### Not run / blocked
+
+- **The hosted migration: not run (DEC-11).** `0013` has never touched a Neon or any hosted database. `apply-0013.sql` was prepared and rehearsed on a local Docker `postgres:16` only.
+- **Hosted acceptance: NOT RUN.** No deployed request, no production Neon query, no real mail, Stripe or model call. `e2e:live`, `e2e:neon-auth` and `neon:readiness` were not run (they need keys or a hosted target).
+- **A real-model evaluation: not run (DEC-04).** Only `eval:workflows -- --check-load` was run (below).
+- **P4.6 (publishing): not built**, blocked by DEC-13. The preview adds no publishing.
+- **Literal Turbopack `build`, `test:secret-boundary`, `e2e` and `e2e:acceptance` on this Windows machine: blocked** by the local `radix-ui` resolve cascade recorded at P3, P4.4, P4.2 and P4.3 (`Module not found: Can't resolve '@radix-ui/react-*'`; no file this branch changes is in the trace). CI on `ubuntu-latest` is the real gate. The `--webpack` diagnostics were run and are recorded separately in `PHASE-4-TEST-RESULTS.md`; they are **not** the literal gates.
+
+### Owner actions
+
+1. **Apply `0013`** by running [`rollout/apply-0013.sql`](rollout/apply-0013.sql) in the Neon SQL Editor as `neondb_owner`, on a Neon test branch of production first and then on production (a DEC-11 owner action). It refuses unless the journal is exactly `0001`–`0012`, so `apply-0012.sql` must already be applied.
+2. **Deploy.** Deploying before `0013` is **harmless while the flag is off**: the card, the `/start` page and the route check the flag first and run no SQL (proved for the route and the card by `test/integration/neon-preview-flag-off.integration.test.ts` against a schema that stops at `0012`, and for the page by its unit test). So the order of steps 1 and 2 is free; both must precede step 3.
+3. **Set `PREVIEW_DRAFT_ENABLED=true` and redeploy** (an environment variable change takes effect on the next deployment), optionally with `PREVIEW_DRAFT_DAILY_LIMIT` and `PREVIEW_DRAFT_USD_DAILY`. Set it only after `0013` is applied: with the flag on and no `0013`, every submitted preview answers `unavailable`.
+4. **Rollback: unset the flag and redeploy.** The card disappears, `/start` and the route answer 404, and no new event is written. `preview_events` rows stay for the metrics; they hold no text, and no draft was ever stored. `0013` is additive and is not rolled back.
+
+DEPLOY.md carries the same order ([`docs/integration/DEPLOY.md`](../../integration/DEPLOY.md), "P4.5 unsaved preview draft: migration 0013 and the flag"); the measures are in [`PREVIEW-METRICS.md`](PREVIEW-METRICS.md).
+
+### Runbook — `apply-0013.sql`
+
+The statement is [`rollout/apply-0013.sql`](rollout/apply-0013.sql). It was generated from the migration files on disk by a scratch script (kept outside the repository) that imports the repository's own `loadMigrations()` and hashes each file's text exactly as `applyMigrations` does; nothing embedded was typed. It is one `DO $apply$ … $apply$;` block that
+- runs `SET LOCAL ROLE smeassistant_migrator`, and refuses unless `current_user` is that role;
+- takes the runner's lock, `pg_advisory_xact_lock(1936549221, 3)` (`scripts/neon/migrations.ts`);
+- refuses unless `neon_migrations.journal` is **exactly** ordinals 1–12 with the names and sha256 checksums of `neon/migrations/0001…0012`, as `loadMigrations()` computes them;
+- `EXECUTE`s the exact text of `0013_preview_events.sql` inside `$m0013$` (the generator also refuses if the text contained `$m0013$` or `$apply$`; the migration's own `$function$` bodies nest inside it);
+- inserts journal row `(13, '0013_preview_events.sql', '98ec68e18a5281885ac12497af8328c3c7300ce7adfd1869f74f62912160cf24')`.
+
+**Regenerated in the final-review fix wave.** Ruling R11 edited `0013` on-branch (it has never been applied to any hosted database), so the statement was rebuilt by re-running the same scratch generator; its output is byte-identical (`cmp`) to the committed file. The previous checksum `122fc89e…3467` belongs to the superseded text and must not be used.
+
+After generation every checksum was re-derived independently with `sha256sum` over the file bytes and each appears in the statement. Rows 1–11 are identical to `apply-0012.sql`'s, and row 12 carries the checksum `apply-0012.sql` records for `0012_work_packs.sql` (`e7933f6c…7289`). The embedded text between the `$m0013$` tags is byte-identical to `0013_preview_events.sql` (6,658 bytes, ASCII, no CR; checked with a byte comparison). The statement is 11,784 bytes. The existing `.gitattributes` line `docs/implementation/owner-platform-v1/rollout/*.sql text eol=lf` covers the new file (`git check-attr eol` reports `lf`).
+
+**Rehearsal (2026-10-04, disposable `postgres:16`, server 16.15, run twice, identical results; re-run twice on the regenerated statement in the final-review fix wave, identical again, with the R11 runtime checks added to check 6).** The roles matched production, as in the earlier rehearsals: `neondb_owner` LOGIN CREATEROLE owning database `neondb`; `neondb_owner` created `smeassistant_migrator` NOLOGIN and `sme_app_runtime` NOLOGIN, and granted the migrator CREATE on the database and USAGE, CREATE on schema `public`. `0001`–`0009` were applied as the migrator through the repository's own `applyMigrations` (a pool whose connections `SET ROLE smeassistant_migrator`). `0010`, `0011` and `0012` were then applied by running `apply-0010.sql`, `apply-0011.sql` and `apply-0012.sql` themselves as `neondb_owner`, the way production gets them, each with its documented notices. The container was published on `127.0.0.1` only and removed afterwards. Each block was sent as one query, as `neondb_owner`:
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Before `GRANT smeassistant_migrator TO neondb_owner WITH SET TRUE` | **refused**: `42501 permission denied to set role "smeassistant_migrator"`. Catalog and journal snapshot unchanged. |
+| — | The grant, run as `neondb_owner` | succeeded (`set_option = true`, `inherit_option = true`, grantor `neondb_owner`) |
+| — | `apply-0010.sql`, then `apply-0011.sql`, as `neondb_owner` | applied, each with its documented notices; journal 11 rows |
+| 2 | Wrong journal: `0001`–`0011` only (`0012` not applied) | **refused**: `P0001 apply-0013 refused: neon_migrations.journal is not exactly 0001-0012 with the expected checksums (it has 11 rows)`. Snapshot unchanged. |
+| — | `apply-0012.sql`, as `neondb_owner` | applied, with its documented notices; journal 12 rows |
+| 3 | Wrong journal: rows 1–12 present, row 12's checksum altered (inside a transaction, rolled back) | **refused**: `P0001 apply-0013 refused: … (it has 12 rows)`. No `preview_events` table after the rollback; snapshot unchanged. |
+| 4 | First run (journal exactly `0001`–`0012`) | **applied**, with notices `policy "server_application" for relation "public.preview_events" does not exist, skipping` and `apply-0013: applied 0013_preview_events.sql and recorded journal row 13`. Journal rows 1–13 with the expected names, every checksum equal to `loadMigrations()`'s, row 13 `98ec68e1…cf24` (fix-wave rerun; the first rehearsal recorded the superseded `122fc89e…3467`). |
+| 5 | `applyMigrations` with all thirteen, as the migrator | returned `[]`: nothing pending, so the runner accepts the journal's checksums |
+| 6 | Ownership and runtime access | `preview_events`, its primary key and its three indexes are owned by `smeassistant_migrator`; RLS on, with policy `server_application` (`ALL`, `sme_app_runtime`, `true`/`true`). `sme_app_runtime` has SELECT, INSERT, UPDATE and DELETE; `PUBLIC` has none. Both functions are owned by the migrator, `prosecdef = false` (**SECURITY INVOKER**), `proconfig = {search_path=""}`, EXECUTE for `sme_app_runtime`, none for `PUBLIC`. FKs: `job_id` CASCADE, `grant_id` SET NULL. Under `SET ROLE sme_app_runtime` (rolled back): a job and a grant inserted; the first claim `allowed` with an `event_id`; a second claim for the same grant `{"allowed": false, "reason": "already_used"}`; `finish_preview_slot(…, 'generated', NULL, 0.0012)` set `generated`, cost `0.0012` and `finished_at`; a second grant's claim finished as `failed`/`no_output` let that grant claim again. Fix-wave rerun (R11): that grant's third attempt was allowed and, after it failed too, a fourth answered `{"allowed": false, "reason": "already_used"}`; with four non-refused rows (one `generated`, three `failed`) a new grant's claim with `p_global_daily` 4 answered `daily_limit` and with 5 was allowed (failed rows count toward the daily limit, not toward the job limit). Deleting the job cascaded all its events (0 remaining). |
+| 7 | Second run | **refused**: `P0001 apply-0013 refused: … (it has 13 rows)`. Snapshot unchanged. |
+
+The snapshot is an md5 over every relation (kind, owner, RLS, ACL), column, constraint, policy, index and function (signature, owner, security, body md5, ACL, config) in `public` and `neon_migrations`, plus the journal rows. `corepack pnpm db:verify` is part of the gate run below: `0001`–`0013`, replay `[]`. The generator and the rehearsal script were scratch files and are **not committed**. **`apply-0013.sql` has never been run against any Neon database.** The fix-wave rerun left no container of its own (the script runs `docker rm -f` in its `finally`); the older `sme-neon-it-db-*` containers on this machine predate this session and were not touched.
+
+### Verification
+
+Full detail is in `PHASE-4-TEST-RESULTS.md` ("P4.5"). One line per gate, run 2026-10-04, sequentially, at `c57d87a` plus the documentation edits (no code changed in this task):
+
+| Command | Result |
+|---|---|
+| `corepack pnpm install --frozen-lockfile` | exit 0, nothing changed. |
+| `corepack pnpm lint` | **passed**, exit 0, `0 errors, 30 warnings` across 18 files (the same 30 as the P4.3 record; none on a line this branch added). |
+| `corepack pnpm typecheck` | **passed**, exit 0 (root and all four packages). |
+| `corepack pnpm test` | **Not a clean pass: the one full run failed (exit 1), four files, each a 5,000 ms load timeout on its first test** (`app/api/actions/[actionId]/versions/route.test.ts`, `app/api/offers/[offerId]/promotions/route.test.ts`, `app/api/packs/[packId]/route.test.ts`, `app/api/workspaces/[workspaceId]/packs/route.test.ts`; 346 of 350 root files, 4,226 of 4,230 root tests passed). The four files **alone**: 4 files / 58 tests passed. The stages the chained script skipped were run separately and passed: `safe-media` 1 / 62, `region` 3 / 23, `scoring` 16 / 183, `contracts` 3 / 20, `scan-engine` 28 / 299. Total counted once, all passing: **401 files / 4,817 tests** (P4.3: 392 / 4,668). |
+| `NEON_INTEGRATION=1 corepack pnpm test:integration` | **passed**, 47 files / 497 tests, first run (P4.3: 45 / 478). |
+| `corepack pnpm db:verify` | **passed**, `0001`–`0013`, replay empty, **41 tables / 486 columns / 203 constraints / 106 indexes / 8 triggers / 20 functions** (P4.3: 40 / 477 / 198 / 102 / 8 / 18). |
+| `corepack pnpm test:no-supabase` / `test:no-self-service-claim` | **passed** / **passed**. |
+| `corepack pnpm eval:workflows -- --check-load` | `load ok: 31 cases`, exit 0. The live evaluation was not run (DEC-04). |
+| `corepack pnpm build` (literal, Turbopack) | **blocked**, exit 1: `Turbopack build failed with 5 errors`, `Can't resolve '@radix-ui/react-dismissable-layer'`. Diagnostic `next build --webpack`: **passed**, `Compiled successfully in 60s`, route manifest includes `/[locale]/start/[slug]` and `/api/start/[slug]/preview`. |
+| `corepack pnpm test:secret-boundary` (literal) | **blocked**, exit 1 (it shells out to the Turbopack build). Diagnostic with a temporary `--webpack` on its build step (reverted): **passed**, `Secret boundary passed across 151 public artifacts.` |
+| `corepack pnpm e2e` (literal) | **blocked**, exit 1: `Acceptance service not healthy: http://localhost:3100`. Diagnostic with a temporary `--webpack` on the dev server in `test/e2e/environment.ts` (reverted): **30 / 31 passed**; the one failure is `owner-shell.spec.ts:16`, the diagnostic-only failure recorded at P4.4, P4.2 and P4.3 (`getByRole("alert")` resolves to two elements). |
+| `corepack pnpm e2e:acceptance` (literal) | **blocked**: `Acceptance service not healthy` on the Turbopack dev server; stopped at its 300 s limit (exit 124) during test 4 of 42. Diagnostic with the same temporary `--webpack` (reverted), flag on: **37 passed, 5 failed** of 42 (23.8 min), every failure the sign-in handoff race recorded at P4.2 and P4.3 (stuck at `/en/owner/sign-in/complete`), in `report-dashboard`, `report-scan-comparison`, `report-scan-metrics` and `returning-sign-in` (two). The four files alone: **5 / 5 passed**. `preview-draft.spec.ts` passed in the full run. |
+| **`report-scan-metrics.spec.ts` and `report-scan-comparison.spec.ts`** (they now render the preview card for signed-out viewers) | In the full run both failed only at their later sign-in step; their unlocked-viewer checks at 375 px and 1440 px with the card present (no horizontal overflow) passed before that, and their console-diagnostics assertion was not reached. **Alone, both passed end-to-end**, including the 375 px overflow checks and `expect(diagnostics).toEqual([])` (no page error, console warning or console error). |
+| Rehearsal | `apply-0013.sql` on a disposable `postgres:16`: seven checks, run twice, identical (see the runbook above). |
+| Metrics | Every query in `PREVIEW-METRICS.md` returned the expected counts against a disposable `postgres:16` with synthetic rows, in a read-only transaction. |
+| Blocked | The literal `build`, `test:secret-boundary`, `e2e` and `e2e:acceptance` (local Windows Turbopack only). |
+
+### Invariants
+
+- `git diff 8582a7c..c57d87a --stat -- neon/migrations packages lib/agents/__snapshots__` lists only `neon/migrations/0013_preview_events.sql` (138 insertions): no `0001`–`0012` edit, no vendored-package edit, no agent snapshot change (R4 keeps the scan prompt byte-identical). After the fix wave (`8582a7c..117ff00`) it still lists only that file, now 144 insertions.
+- The only added SQL writes are to `preview_events`, all inside `0013` (`git diff 8582a7c..c57d87a`, excluding docs and tests: two `insert into public.preview_events` and two `update public.preview_events`). No added line outside tests names `actions`, `action_runs`, `output_versions`, `deliveries` or `workspace_usage`; the one added mention is the acceptance spec's `UNTOUCHED` list, which asserts their counts are unchanged.
+- `preview_events` has no text column for the review, reply or prompt; the acceptance journey reads the full `json_agg` of the job's rows and finds none of them.
+- With the flag off, the route and the card decision run zero SQL (`neon-preview-flag-off.integration.test.ts`) and `/start` calls `notFound()` before reading a cookie (`page.test.tsx`).
+- Logs carry only `{ category }`; provider error text is redacted for the preview's model call (`route.test.ts`, `lib/llm.test.ts`).
+
+### Final-review fix wave
+
+The final whole-branch review (`8582a7c..2987427`) returned "ready to merge with fixes": two Important findings and the routed minors. Rulings R10–R13 (table above) decided them; one implementer fixed all of them in code commit `117ff00` plus this documentation commit. TDD throughout: each new or changed test was run red before the code change (the R11 integration tests failed 2 of 16 against the old `0013`; the route, context, card, metadata and form tests failed before their fixes).
+
+| Finding | Change | Covering tests |
+|---|---|---|
+| Important 1 / R11: failed calls escaped the daily cap; calls without usage cost 0 | `0013` `claim_preview_slot`: `daily_limit` counts `claimed`/`generated`/`failed` (stale included); 3 non-refused rows for a grant → `already_used`; job limit unchanged; header comment rewritten. The route records `computeCostUsd({ inputTokens: ceil(prompt.length / 2), outputTokens: 1200 })` when the result is null or its usage is (partly) missing, the real cost otherwise. `apply-0013.sql` regenerated (`98ec68e1…cf24`); catalog fixture and `db:types` unchanged (no preview function definition is captured; no column changed). | `neon-preview-events.integration.test.ts` (+5: failed and stale rows under `daily_limit`; under `budget`; not under `job_limit`; 1 or 2 failures allow a retry and the third makes the grant `already_used`; 4 grants in parallel on 4 pool connections → exactly 3 allowed, 5 rounds). `route.test.ts` (null result, a throwing call, missing and partly missing usage record the estimate; reported usage records the real cost). |
+| Important 2 / R10: `providedInputs {}` rendered "(not provided)" | `lib/preview/context.ts`: `providedInputs = resolveBrandProvidedInputs({ voice: "warm", languages: [locale], approvedClaims: [] })`; `evidence` stays `{}`. | `context.test.ts` (+3: per locale, `brand_voice` "warm" and the language label 廣東話 / 國語 / English, no "(not provided)" in the prompt; the existing no-report-data test now expects those two inputs and still finds no snapshot, metric or finding key). |
+| R12: claim-after-preview | `PREVIEW-METRICS.md`: the query reports `excluded_attached_before_preview` and `excluded_attach_unrecorded` and divides `claimed_after_preview` by `eligible_jobs` (both exclusions out of numerator and denominator); prose rewritten; `model_calls_finished` renamed `slots_finished`; the R11 counting and cost estimate described. | Every query re-run on a disposable database (`PHASE-4-TEST-RESULTS.md`, "Final-review fix wave"). |
+| R13: warning codes | The workspace guardrail copy moved verbatim from `action-detail-client.tsx` to `lib/workspace/guardrail-text.ts` (approver wording unchanged), with a visitor wording for the two "check before approving" lines; `visitorWarningTexts` translates known codes, collapses repeats and drops unknown codes and `prohibited_term` (the preview brand has none, so only model text could raise it). `classifyGuardrailWarning` is exported from `version-meta.ts`. | `preview-draft-form.test.tsx` (+4: three locales translate `compensation_promise`, `unexpected_link`, `unconfirmed_claim` and a length code, drop `check_tone` and raw text, never show a raw code; no warnings box when every warning is unknown). The workspace suites (`components/workspace`, `version-meta`) pass unchanged. |
+| R13: card job status | `previewDraftHrefFor` takes `status` and links only `done`/`partial`; the report page passes `model.preview.status`. | `flag.test.ts` (+1), `app/[locale]/r/[slug]/page.test.tsx` (+1). |
+| R13: `/start` metadata | `generateMetadata` returns only `robots` (noindex) when the flag is off. | `app/[locale]/start/[slug]/page.test.tsx` (the metadata case now covers on and four off values). |
+| Copy (ledger → final wave) | zh-HK 明日 ×3, 「選填」, 「試用機會已經用過」; zh-TW 「試用機會已使用過」, 發布 (R9); `job_limit` next step in three locales and the CTA. | `preview-draft-form.test.tsx` (new copy case; the refusal matrix now expects the CTA for `job_limit`), `page.test.tsx` (the zh-TW boundary string). |
+| Over-limit counter | `aria-invalid` on the textarea and `text-destructive` on the counter above 1,500 code points. | `preview-draft-form.test.tsx` (over and back under the limit). |
+| Clipboard undefined (ledger) | No code change needed (the `try` already catches it). | `preview-draft-form.test.tsx` (+1). |
+| `preview-draft.spec.ts:94` | `expect(first.body).toMatch(/\S/)`. | The acceptance run below. |
+| Traceability citation | `IMPLEMENTATION-TRACEABILITY.md`: `previewJob` cites `9fcd467`; R10–R13 reflected in the P4.5 rows. | — |
+| Deploy note | `docs/integration/DEPLOY.md`: the limits line now says 50 model calls a day (failed ones included), at most 3 attempts per grant, and the cost estimate. | — |
+
+Gate re-runs, 2026-10-04, sequential, on `117ff00` (full detail in `PHASE-4-TEST-RESULTS.md`, "Final-review fix wave"):
+
+| Command | Result |
+|---|---|
+| The P4.5 unit set (`lib/preview`, `app/api/start`, `components/preview`, `app/[locale]/start`, `app/[locale]/r`) | **passed**, 9 files / 141 tests. |
+| `NEON_INTEGRATION=1 … vitest run --config vitest.integration.config.ts` on `neon-preview-events`, `neon-preview-flag-off`, `neon-schema`, `neon-catalog` | **passed**, 4 files / 40 tests. |
+| `corepack pnpm db:verify` | **passed**, `0001`–`0013`, replay `[]`, 41 / 486 / 203 / 106 / 8 / 20 (unchanged). |
+| `corepack pnpm typecheck` / `lint` | **passed** / **passed**, `0 errors, 30 warnings` (unchanged). |
+| `corepack pnpm test` | **Not a clean pass:** 4 known load-timeout files failed in the full run (`scan-claim-single-path`, `scan-events-single-writer`, `identity-sdk`, `app/api/versions/[versionId]/versions.test.ts`); 346 of 350 root files, 4,239 of 4,243 tests. The four alone: 3 failed on the first rerun, **all 28 passed on the second**. `safe-media` 1 / 62 and the packages (23 / 183 / 20 / 299) passed. |
+| `preview-draft.spec.ts` (literal Turbopack) | **blocked**, `Acceptance service not healthy` (the local `@radix-ui/react-dismissable-layer` cascade). |
+| `preview-draft.spec.ts` with a temporary `--webpack` (restored) | **passed**, 1 / 1 (1.8 min). A diagnostic, not the literal gate. |
+| `apply-0013.sql` rehearsal | regenerated statement rehearsed twice, identical (runbook above). |
+| `PREVIEW-METRICS.md` | all seven queries re-run read-only on a disposable database; every count matched. |
+
+Not re-run in this wave: the full `test:integration` suite, `build`, `test:secret-boundary`, `test:no-supabase`, `test:no-self-service-claim`, `eval:workflows` and the full `e2e`/`e2e:acceptance` suites; the Task 6 records above stand for them. Nothing was applied to a hosted database, deployed or pushed.

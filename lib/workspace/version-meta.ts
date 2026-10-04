@@ -84,7 +84,7 @@ function isOrigin(value: unknown): value is VersionOrigin {
  * than dropped -- an unclassified warning the approver can read beats a
  * silently discarded one, and a new agent code should degrade to visible.
  */
-function classify(warning: string): GuardrailFlag | null {
+export function classifyGuardrailWarning(warning: string): GuardrailFlag | null {
   if (warning.startsWith("prohibited_term:")) {
     return { code: "prohibited_term", detail: warning.slice("prohibited_term:".length) };
   }
@@ -113,7 +113,7 @@ export function parseVersionMeta(meta: unknown, authorType: "user" | "agent"): V
   const guardrails: GuardrailFlag[] = [];
   const agentNotes: string[] = [];
   for (const warning of warnings) {
-    const flag = classify(warning);
+    const flag = classifyGuardrailWarning(warning);
     if (flag) guardrails.push(flag);
     else agentNotes.push(warning);
   }

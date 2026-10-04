@@ -183,6 +183,23 @@ export function ReportPage(props: ReportProps) {
     <PublicPageFrame locale={locale} demo={sample}>
       <main className="report-page">
         <DashboardSummary report={props} />
+        {/* P4.5: one unsaved AI reply draft. The page sets the href only for an
+            unlocked viewer with the flag on; sample reports never carry it. */}
+        {props.previewDraftHref && (
+          <SectionCard className="retention-summary">
+            <div>
+              <MessageCircle aria-hidden="true" />
+              <div>
+                <p className="eyebrow">{t.funnel.preview.badge}</p>
+              </div>
+            </div>
+            <Button asChild variant="outline">
+              <Link href={props.previewDraftHref}>
+                {t.funnel.preview.cardTitle} <ArrowRight aria-hidden="true" />
+              </Link>
+            </Button>
+          </SectionCard>
+        )}
         <DashboardMetrics report={props} dashboard={dashboard} />
         <DashboardPriorities report={props} />
         {authorized && <EvidenceGallery items={props.evidence} locale={locale} />}

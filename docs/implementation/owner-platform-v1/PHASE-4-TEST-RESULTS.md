@@ -1,6 +1,6 @@
 # Phase 4 test results
 
-Gate-by-gate record for Phase 4. Each slice has its own section. P4.4, P4.1, P4.2 and P4.3 are built.
+Gate-by-gate record for Phase 4. Each slice has its own section. P4.4, P4.1, P4.2, P4.3 and P4.5 are built.
 
 ## P4.4 — reusable workflow contract
 
@@ -334,3 +334,113 @@ New unit test files: `lib/assistant/flag.test.ts` (2), `lib/assistant/next-step.
 - **`corepack pnpm e2e:live`, `e2e:neon-auth`, `neon:readiness` and any hosted check**: need provider keys, a hosted identity target or a hosted database, none authorized.
 - **Real mail, real Stripe, real model**: every test injects a fake.
 - **P4.5, P4.6.**
+
+## P4.5 — conditional acquisition preview (one unsaved review-reply draft)
+
+Candidate: branch `p45-preview-draft`. The Task 6 record below is at HEAD `c57d87a` (implementation) plus its documentation commit `2987427`; the final-review fix wave (code commit `117ff00` plus a documentation commit) re-ran its gates in "Final-review fix wave" at the end of this section. Base `8582a7c` (`origin/main`, PR #30). Spec: [`docs/superpowers/specs/2026-10-04-preview-draft-design.md`](../../superpowers/specs/2026-10-04-preview-draft-design.md). Plan: `docs/superpowers/plans/2026-10-04-preview-draft.md`. Environment: Windows 11 Pro 10.0.26200, Node `v24.18.0`, pnpm `9.12.0` via corepack, Docker Server `29.7.2`, `postgres:16` (16.15). Run on 2026-10-04 between 03:55 and 04:52 HKT, every gate sequentially, never two heavy gates at once, on a machine with other projects' dev servers and Docker containers running. No code changed in the documentation task; every gate below ran against the implementation tree plus the documentation edits (`.env.example`, `docs/integration/DEPLOY.md`, `rollout/apply-0013.sql`, `PREVIEW-METRICS.md`, `INCIDENT-RUNBOOK.md`, `BUSINESS-AND-HOSTED-DECISIONS.md`, `IMPLEMENTATION-TRACEABILITY.md` and the two Phase 4 documents).
+
+**Read this first.** Everything below is **locally verified**. **Nothing here is hosted-verified.** `0013_preview_events.sql` was applied only to owned, disposable local Docker Postgres fixtures (`db:verify`, `test:integration`, the acceptance fixtures, the `apply-0013.sql` rehearsal and the `PREVIEW-METRICS.md` query check). **Nothing was applied to any hosted database, and hosted acceptance was NOT RUN.** Nothing was deployed or pushed, and no paid provider, real model or mail was called: the fake LLM is injected in every unit and integration test, and the acceptance suite uses its fixture LLM server. See `PHASE-4-REPORT.md` ("P4.5") for what changed, the rulings, the known limits and the owner actions.
+
+### Gate results (Task 6, full inventory)
+
+Every command in `.github/workflows/ci.yml` is in this table, in CI order where it matters (CI has no gate beyond this list), plus `eval:workflows` (not in CI). Each ran alone, one after another.
+
+| # | Command | Exit | Result |
+|---|---|---|---|
+| 0 | `corepack pnpm install --frozen-lockfile` | 0 | lockfile up to date, nothing changed (10 s). |
+| 1 | `corepack pnpm lint` | 0 | **passed**: `✖ 30 problems (0 errors, 30 warnings)` across 18 files, the same count as the P4.3 record. The only file in that list this branch touched is `lib/security/rate-limit.test.ts`, whose four warnings (`_functionName`, `_params` at :117-118 and :200-201) predate the branch; its one added line carries none. |
+| 2 | `corepack pnpm typecheck` | 0 | **passed**. Root `tsc --noEmit`, then `packages/{region,scoring,contracts,scan-engine}` each `Done`. |
+| 3a | `corepack pnpm test` | **1** | **FAILED, not passed**: four files failed with `Test timed out in 5000ms`, each on its first test: `app/api/actions/[actionId]/versions/route.test.ts` ("saves a manual edit as v2 on top of v1 through the RPC"), `app/api/offers/[offerId]/promotions/route.test.ts` ("answers 404 before any lookup when the flag is off"), `app/api/packs/[packId]/route.test.ts` ("answers 404 when the flag is off, with neither the repository nor auth called") and `app/api/workspaces/[workspaceId]/packs/route.test.ts` ("answers 404 on GET and POST when the flag is not exactly true, touching nothing"). Root part: **350 files; 346 passed, 4 failed; 4,230 tests, 4,226 passed, 4 failed** (116 s). Because the script chains its stages with `&&`, `safe-media` and the packages did not run in this invocation. None of the four files is changed by this branch; all four were seen timing out under load in earlier P4.5 task runs. |
+| 3b | The four failing files, **alone** | 0 | **passed**, 4 files / 58 tests (16 s). |
+| 3c | The stages the chained script skipped, run separately | 0 | `lib/evidence/safe-media.test.ts` 1 / 62; `corepack pnpm -r test`: `packages/region` 3 / 23, `scoring` 16 / 183, `contracts` 3 / 20, `scan-engine` 28 / 299: all **passed**. |
+| 3d | Total if every stage is counted once, all tests passing | — | **401 files / 4,817 tests** (350 + 1 + 3 + 16 + 3 + 28 files; 4,230 + 62 + 23 + 183 + 20 + 299 tests). The gate itself did not pass clean in the one full run made; recorded, not hidden. |
+| 3e | The P4.5 unit files and the files it extended, in one run | 0 | **passed**, 14 files / 265 tests (listed under "Unit-test delta"). |
+| 4 | `corepack pnpm test:secret-boundary` (literal) | **1** | **blocked**: it shells out to the Turbopack build and inherits #9 (`Turbopack build failed with 5 errors`, `Can't resolve '@radix-ui/react-dismissable-layer'`). |
+| 5 | `corepack pnpm test:no-supabase` | 0 | **passed**: "No forbidden retired transport references; only the approved pinned Neon transitive library is permitted". |
+| 6 | `corepack pnpm test:no-self-service-claim` | 0 | **passed**: "OWNER_SELF_SERVICE_CLAIM is not enabled." |
+| 7 | `corepack pnpm db:verify` | 0 | **passed**: `0001`–`0013` applied, replay `[]`, **41 tables / 486 columns / 203 constraints / 106 indexes / 8 triggers / 20 functions**, `seededRows` 0, no deferred functions or triggers. Against the P4.3 record (40 / 477 / 198 / 102 / 8 / 18): +1 table, +9 columns, +5 constraints, +4 indexes, +2 functions (`claim_preview_slot`, `finish_preview_slot`). |
+| 8 | `NEON_INTEGRATION=1 corepack pnpm test:integration` | 0 | **passed on the first run, no flakes: 47 files / 497 tests** (402 s). New over P4.3 (45 / 478): `neon-preview-events` (11) and `neon-preview-flag-off` (8). |
+| 9 | `corepack pnpm build` (`next build`, Turbopack, the literal gate) | **1** | **blocked**: `Turbopack build failed with 5 errors`, each `Module not found: Can't resolve '@radix-ui/react-*'` (here `react-dismissable-layer`) raised from inside a `@radix-ui` package, import trace `@radix-ui/react-dialog` → `components/ui/sheet.tsx` → `components/product-ui.tsx` → `app/[locale]/owner/[workspaceSlug]/layout.tsx`. The same Windows-only local cascade recorded at P3, P4.4, P4.2 and P4.3, cause unconfirmed; the files in the reported trace are unchanged by this branch. |
+| 10 | `corepack pnpm e2e` (literal) | **1** | **blocked**: the Playwright global setup failed, `Acceptance service not healthy: http://localhost:3100` (the Turbopack dev server cannot serve the owner shell), after 96 s. |
+| 11 | `corepack pnpm e2e:acceptance` (literal) | **124** (stopped by timeout) | **blocked**: the first tests each failed with `Acceptance service not healthy` on the Turbopack dev server; the run was stopped at its 300 s limit (exit 124 from `timeout`) during test 4 of 42 rather than wait out the remaining timeouts. One owned fixture container the stopped run left behind (`sme-neon-it-db-479b7306555c`, labelled as an integration fixture, created inside the stopped run's window, with no other test process running) was removed with `docker rm -f`; no other container was touched. |
+| 12 | `corepack pnpm eval:workflows -- --check-load` | 0 | **passed**: `load ok: 31 cases` (unchanged: this slice adds no corpus case). No key, no network call. |
+
+**`--webpack` diagnostics (not the literal gates).** As at P4.4, P4.2 and P4.3, the blocked gates were repeated with webpack in place of Turbopack. They prove the code builds and behaves; they do not replace the Turbopack gates, and CI on `ubuntu-latest` is the real gate. The two temporary one-token edits (`"--webpack"` added to the build step of `scripts/assert-secret-boundary.mjs`, and to the `next dev` arguments in `test/e2e/environment.ts`) were each reverted with `git restore` straight after their runs (`git status` showed no change to either file afterwards) and are not committed.
+
+| # | Diagnostic | Exit | Result |
+|---|---|---|---|
+| 9d | `corepack pnpm exec next build --webpack` | 0 | **passed**: `✓ Compiled successfully in 60s`, the TypeScript route-type check ran, and the route manifest includes `ƒ /[locale]/start/[slug]` and `ƒ /api/start/[slug]/preview`. |
+| 10d | `test:secret-boundary` with `--webpack` | 0 | **passed**: `Secret boundary passed across 151 public artifacts.` (P4.3 record: 149). |
+| 11d | `e2e` with `--webpack` | 1 | **30 passed, 1 failed** (2.4 min). The failure is `e2e/owner-shell.spec.ts:16`, `strict mode violation: getByRole('alert') resolved to 2 elements` (the page's `<p role="alert">` and Next's `#__next-route-announcer__`): the same diagnostic-only failure recorded at P4.4, P4.2 and P4.3, in a spec and files this branch does not touch. |
+| 12d-1 | `e2e:acceptance` with `--webpack`, full suite, flag on (`PREVIEW_DRAFT_ENABLED=true` in `test/e2e/safety.ts`) | 1 | **37 passed, 5 failed** of 42 (23.8 min). Every failure is the sign-in handoff race recorded at P4.2 and P4.3: `signIn` in `test/e2e/fixtures.ts:41` timed out on `expect(page).toHaveURL(/\/en\/owner\/…/)` with the page still at `/en/owner/sign-in/complete?returnTo=…&method=email`. Failed: `report-dashboard.spec.ts:6`, **`report-scan-comparison.spec.ts:21`**, **`report-scan-metrics.spec.ts:22`**, and `returning-sign-in.spec.ts:7` (owner and viewer). `preview-draft.spec.ts` ("an unlocked viewer gets one unsaved reply draft"), `contextual-assistant.spec.ts`, `work-pack.spec.ts` and `public-funnel.spec.ts` passed. |
+| 12d-2 | The four failing files **alone**, with `--webpack` (`playwright test --config playwright.acceptance.config.ts report-scan-metrics.spec report-scan-comparison.spec report-dashboard.spec returning-sign-in.spec`) | 0 | **5 passed** (3.9 min). |
+
+**The two report specs that now render the preview card.** With the flag on in acceptance, `report-scan-metrics.spec.ts` and `report-scan-comparison.spec.ts` render "Try one AI reply draft (not saved)" for their signed-out unlocked viewer, which no earlier run had exercised (Task 5 review: the 375 px overflow and the console-diagnostics assertions had never run with the card present). Their results, explicitly:
+
+- **Full run (12d-1): both failed, and not on the card.** Each failed at its later `signIn(page, environment, merchant, 'viewer')` step (`report-scan-metrics.spec.ts:113`, `report-scan-comparison.spec.ts:92`), the handoff race above. Every assertion before that step passed, including the viewer-state checks after the unlock at 375 px and 1440 px with the card on the page (`document.documentElement.scrollWidth <= window.innerWidth`, `report-scan-metrics.spec.ts:102`, `report-scan-comparison.spec.ts:85`). The console-diagnostics assertion (`expect(diagnostics).toEqual([])`, :123 and :102) comes after the sign-in step, so it was not reached in this run.
+- **Alone (12d-2): both passed in full,** including the 375 px and 1440 px no-overflow checks with the card rendered and the final `expect(diagnostics).toEqual([])`: no `pageerror`, console warning or console error was collected (the two diagnostics files each spec writes were empty).
+- So both specs have passed end-to-end with the card present, under the `--webpack` diagnostic. They have not been run under the literal Turbopack server on this machine (blocked, #11).
+
+### The `apply-0013.sql` rehearsal
+
+Recorded in full in the "Runbook — `apply-0013.sql`" section of the P4.5 part of `PHASE-4-REPORT.md`: seven checks (pre-grant refusal, two wrong-journal refusals, first run, `applyMigrations` reporting nothing pending, ownership and runtime access under `SET ROLE sme_app_runtime` including both **SECURITY INVOKER** functions, second-run refusal), run twice on a disposable `postgres:16` with identical results. Commands, in order: `docker run` of a `postgres:16` published on `127.0.0.1` only → create `neondb_owner` / `neondb`, `smeassistant_migrator`, `sme_app_runtime` → scratch script (outside the repository) → `applyMigrations(0001–0009)` as the migrator → `apply-0010.sql` and `apply-0011.sql` as `neondb_owner` → the wrong-journal check → `apply-0012.sql` → the remaining checks → `docker rm -f`. `corepack pnpm db:verify` is part of the gate run above and passes with `0001`–`0013`.
+
+### `PREVIEW-METRICS.md` query check
+
+Every query in `PREVIEW-METRICS.md` (seven) was run inside `BEGIN READ ONLY … ROLLBACK` against a disposable `postgres:16` (`127.0.0.1` only, removed afterwards) with `0001`–`0013` applied by the repository runner and synthetic rows: seven jobs, their grants, `generated`, `failed` (`invalid_output`, `stale`) and `refused` (`already_used`, `daily_limit`) events at fixed ages, two Google-verified claims (one before and one after the preview), one `workspace.assigned` audit row after the preview, and one attached job with no preview. Every query returned the counts the fixture implies: for example generated today 3 and yesterday 1; refusals `already_used` 1 and `daily_limit` 1; failures `invalid_output` 1 (US$0.0005) and `stale` 1; US$0.0045 and 3 slots in the last 24 hours; claim-after-preview 2 of 4 (50.0 %) with 1 attached before its preview; baseline 1 of 3 unlocked jobs without a preview attached (33.3 %). No hosted database was queried. The queries changed in the final-review fix wave (R11, R12) and were re-run; see "Final-review fix wave".
+
+### Invariants
+
+| Check | Result |
+|---|---|
+| `git diff 8582a7c..c57d87a --stat -- neon/migrations packages lib/agents/__snapshots__` | only `neon/migrations/0013_preview_events.sql`, 138 insertions: no `0001`–`0012` edit, no vendored-package edit, no agent-snapshot change. |
+| Added SQL writes | four, all in `0013` and all to `public.preview_events` (two `insert`, two `update`). No added line outside tests names `actions`, `action_runs`, `output_versions`, `deliveries` or `workspace_usage`; the one added mention is the acceptance spec's `UNTOUCHED` list. |
+| No text stored | `preview_events` has no text column for the review, reply or prompt; the acceptance journey's `json_agg` over the job's rows contains neither. |
+| Flag off | `neon-preview-flag-off` records every statement against a schema stopping at `0012`: zero for the route (flag unset, `""`, `"false"`) and for the card decision, with a flag-on contrast (one `SELECT … FROM audit_jobs`, no write) so the recorder is not silent. |
+| Functions | `claim_preview_slot` and `finish_preview_slot` are `SECURITY INVOKER` (`prosecdef = false`) with `search_path=""`, EXECUTE for `sme_app_runtime` only (`neon-preview-events` access test and the rehearsal). |
+
+### Unit-test delta
+
+| Measure | P4.3 record | This branch | Δ |
+|---|---|---|---|
+| App, excl. safe-media | 341 files / 4,081 tests | 350 files / 4,230 tests | **+9 files / +149 tests** |
+| `lib/evidence/safe-media.test.ts` | 1 / 62 | 1 / 62 | 0 |
+| `packages/region` / `scoring` / `contracts` / `scan-engine` | 3 / 23, 16 / 183, 3 / 20, 28 / 299 | identical | 0 |
+| **Total** | **392 files / 4,668 tests** | **401 files / 4,817 tests** | **+9 files / +149 tests** |
+| Integration | 45 files / 478 tests | 47 files / 497 tests | +2 files / +19 tests |
+
+New unit test files (nine, 129 tests): `app/[locale]/start/[slug]/page.test.tsx` (7), `app/api/start/[slug]/preview/route.test.ts` (32), `components/preview/preview-draft-form.test.tsx` (42), `components/report-view.test.tsx` (4), `lib/preview/context.test.ts` (5), `eligibility.test.ts` (8), `flag.test.ts` (3), `input.test.ts` (11), `limits.test.ts` (17). Existing files extended (current totals): `app/[locale]/r/[slug]/page.test.tsx` (3), `lib/agents/agents.test.ts` (98), `lib/llm.test.ts` (11), `lib/security/rate-limit.test.ts` (15), `test/e2e/safety.test.ts` (9). New integration files: `neon-preview-events.integration.test.ts` (11), `neon-preview-flag-off.integration.test.ts` (8); `neon-schema`, `neon-catalog` and `neon-work-packs` were adjusted for `0013`. New acceptance spec: `e2e/acceptance/preview-draft.spec.ts`. All four vendored packages are byte-unchanged.
+
+Line-ending hygiene: the two snapshot files Windows unit runs rewrite (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) were restored with `git restore` and are not part of the commit.
+
+### Not run
+
+- **Hosted acceptance of any kind: NOT RUN.** No deployed request, no production Neon query, no hosted identity target.
+- **The hosted migration** (DEC-11): `0013` was never applied outside owned local Docker Postgres.
+- **A real-model evaluation of any kind** (DEC-04), including the visitor variant of the `review_reply` prompt.
+- **The literal Turbopack `build`, `test:secret-boundary`, `e2e` and `e2e:acceptance`** on this machine (blocked, above); only their `--webpack` diagnostics ran, and the full acceptance suite did not pass clean in one invocation.
+- **`corepack pnpm e2e:live`, `e2e:neon-auth`, `neon:readiness` and any hosted check**: need provider keys, a hosted identity target or a hosted database, none authorized.
+- **Real mail, real Stripe, real model**: every test injects a fake.
+- **P4.6.**
+
+### Final-review fix wave
+
+Findings (Important 1 and 2, R12, R13 and the ledger's "final wave" minors), the rulings R10–R13 and each change with its covering tests are in the "Final-review fix wave" subsection of the P4.5 part of `PHASE-4-REPORT.md`. Code commit `117ff00`; this documentation commit follows it. Gate re-runs, 2026-10-04 between 05:15 and 05:55 HKT, sequential, on `117ff00` (the code was identical to the working tree each gate ran on):
+
+| # | Command | Exit | Result |
+|---|---|---|---|
+| F1 | `corepack pnpm exec vitest run lib/preview app/api/start components/preview "app/[locale]/start" "app/[locale]/r"` | 0 | **passed**, 9 files / 141 tests (Task 6 record for these files: 128; +13: `route.test.ts` 34 (+2), `context.test.ts` 8 (+3), `flag.test.ts` 4 (+1), `r/[slug]/page.test.tsx` 4 (+1), `start/[slug]/page.test.tsx` 7 (0, one case rewritten), `preview-draft-form.test.tsx` 48 (+6)). |
+| F2 | `NEON_INTEGRATION=1 corepack pnpm exec vitest run --config vitest.integration.config.ts test/integration/neon-preview-events.integration.test.ts test/integration/neon-preview-flag-off.integration.test.ts test/integration/neon-schema.integration.test.ts test/integration/neon-catalog.integration.test.ts` | 0 | **passed**, 4 files / 40 tests (32.6 s). `neon-preview-events` is now 16 tests (+5). Red first: against the old `0013` the two new counting tests failed (2 of 16). |
+| F3 | `corepack pnpm db:verify` | 0 | **passed**: `0001`–`0013`, replay `[]`, 41 tables / 486 columns / 203 constraints / 106 indexes / 8 triggers / 20 functions (unchanged: only a function body changed). |
+| F4 | `corepack pnpm typecheck` | 0 | **passed** (root and all four packages). |
+| F5 | `corepack pnpm lint` | 0 | **passed**, `✖ 30 problems (0 errors, 30 warnings)`, unchanged. |
+| F6 | `corepack pnpm test` | **1** | **Not a clean pass:** the root part ran 350 files / 4,243 tests, 4 failed, all known load-timeout files on their first test: `tests/scan-claim-single-path.test.ts`, `tests/scan-events-single-writer.test.ts`, `lib/identity/identity-sdk.test.ts` and `app/api/versions/[versionId]/versions.test.ts` (none touched by this wave). The chained stages did not run in that invocation. |
+| F6b | The four files alone | 1, then 0 | First rerun: 3 of 4 files failed again (timeouts, the machine busy); **second rerun: 4 files / 28 tests passed**. |
+| F6c | `vitest run lib/evidence/safe-media.test.ts && corepack pnpm -r test` | 0 | **passed**: `safe-media` 1 / 62; `region` 3 / 23, `scoring` 16 / 183, `contracts` 3 / 20, `scan-engine` 28 / 299. Total counted once, all passing: **401 files / 4,830 tests** (Task 6: 401 / 4,817; +13, no new file). |
+| F7 | `corepack pnpm exec playwright test --config playwright.acceptance.config.ts preview-draft.spec` (literal Turbopack) | 1 | **blocked**: `Acceptance service not healthy` (`Module not found: Can't resolve '@radix-ui/react-dismissable-layer'` in `test-results/fixture-next.log`), the local cascade (#9 above). |
+| F7d | The same with a temporary `--webpack` added to the `next dev` arguments in `test/e2e/environment.ts` (restored with `git restore`; `git status` clean for the file) | 0 | **passed, 1 / 1** (1.8 min), including the `toMatch(/\S/)` body check. A diagnostic, not the literal gate. |
+| F8 | `apply-0013.sql` regeneration | — | the Task 6 scratch generator, re-run, produced a file byte-identical (`cmp`) to the committed one: 11,784 bytes, embedded 0013 6,658 bytes, row 13 checksum `98ec68e18a5281885ac12497af8328c3c7300ce7adfd1869f74f62912160cf24` (= `sha256sum` of the committed migration). |
+| F9 | `apply-0013.sql` rehearsal (the Task 6 scratch script, with R11 runtime checks added) | 0, 0 | run twice, identical JSON: pre-grant refusal 42501; `apply-0010`/`0011`; journal-0011 refusal; `apply-0012`; altered-checksum refusal (no table after rollback); first run applied with its two notices; journal 1–13 matches `loadMigrations()`; `applyMigrations` → `[]`; ownership, RLS, policy, grants, `SECURITY INVOKER` functions; as `sme_app_runtime`: a grant's fourth attempt after three failures → `already_used`, `daily_limit` at `p_global_daily` 4 with four non-refused rows, allowed at 5; cascade; second run refused. Every refusal left the catalog snapshot unchanged. |
+| F10 | `PREVIEW-METRICS.md`, all seven queries, `BEGIN READ ONLY … ROLLBACK`, on a fresh disposable `postgres:16` fixture (`0001`–`0013` by the repository runner) | 0 | every count matched the fixture: 5 jobs with a generated preview; `slots_finished` 8 and `still_claimed` 1 today, `slots_finished` 1 for the 30-hour-old row; refusals `already_used` 1, `daily_limit` 1; failures `facts_needed` 1 (US$0.0010), `no_output` 1 (US$0.0013), `stale` 1; last 24 h US$0.0443 and 9 slots (`claimed` 1 + `generated` 5 + `failed` 3; the US$0.50 row 30 h old is outside); claim-after-preview: 5 jobs, `excluded_attached_before_preview` 1, `excluded_attach_unrecorded` 1, `eligible_jobs` 3, `claimed_after_preview` 2 (one by a claim event, one by `workspace.assigned`), **66.7 %**; baseline 1 of 3 (33.3 %). The fixture was stopped afterwards. |
+
+Line-ending hygiene: the two snapshot files Windows unit runs rewrite were restored with `git restore` and are not part of any commit. Not re-run in this wave: the full `test:integration` suite, `build`, `test:secret-boundary`, `test:no-supabase`, `test:no-self-service-claim`, `eval:workflows` and the full `e2e` and `e2e:acceptance` suites; the Task 6 records above stand for them. The older `sme-neon-it-db-*` containers on this machine (created 2026-09-12 to 2026-10-03) predate this session and were not touched. Nothing was applied to a hosted database, deployed or pushed.

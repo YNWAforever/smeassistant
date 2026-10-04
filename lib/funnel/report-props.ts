@@ -241,6 +241,8 @@ export interface ReportProps {
   proof: ReportProofData | null;
   evidence: ReportEvidenceItem[];
   ctas: ReportCta[];
+  /** P4.5: the unsaved preview link; set by the report page only for a viewer with the flag on (previewDraftHrefFor). */
+  previewDraftHref?: string;
 }
 
 /* ------------------------------------------------------------------------- */

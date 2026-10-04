@@ -86,6 +86,10 @@
       "rls": true
     },
     {
+      "name": "preview_events",
+      "rls": true
+    },
+    {
       "name": "rate_limit_buckets",
       "rls": true
     },
@@ -2819,6 +2823,87 @@
       "column_default": "now()"
     },
     {
+      "table_name": "preview_events",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "preview_events",
+      "column_name": "job_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "preview_events",
+      "column_name": "grant_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "udt_name": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "preview_events",
+      "column_name": "outcome",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "preview_events",
+      "column_name": "reason",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "preview_events",
+      "column_name": "cost_usd",
+      "ordinal_position": 6,
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "NO",
+      "column_default": "0"
+    },
+    {
+      "table_name": "preview_events",
+      "column_name": "ip_hash",
+      "ordinal_position": 7,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "preview_events",
+      "column_name": "created_at",
+      "ordinal_position": 8,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "preview_events",
+      "column_name": "finished_at",
+      "ordinal_position": 9,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
       "table_name": "rate_limit_buckets",
       "column_name": "bucket_key",
       "ordinal_position": 1,
@@ -5149,6 +5234,36 @@
       "definition": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
     },
     {
+      "table_name": "preview_events",
+      "name": "preview_events_cost_check",
+      "type": "c",
+      "definition": "CHECK ((cost_usd >= (0)::numeric))"
+    },
+    {
+      "table_name": "preview_events",
+      "name": "preview_events_grant_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (grant_id) REFERENCES report_access_grants(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "preview_events",
+      "name": "preview_events_job_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (job_id) REFERENCES audit_jobs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "preview_events",
+      "name": "preview_events_outcome_check",
+      "type": "c",
+      "definition": "CHECK ((outcome = ANY (ARRAY['claimed'::text, 'generated'::text, 'failed'::text, 'refused'::text])))"
+    },
+    {
+      "table_name": "preview_events",
+      "name": "preview_events_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
       "table_name": "rate_limit_buckets",
       "name": "rate_limit_buckets_pkey",
       "type": "p",
@@ -5902,6 +6017,26 @@
       "tablename": "output_versions",
       "indexname": "output_versions_pkey",
       "indexdef": "CREATE UNIQUE INDEX output_versions_pkey ON public.output_versions USING btree (id)"
+    },
+    {
+      "tablename": "preview_events",
+      "indexname": "preview_events_created_idx",
+      "indexdef": "CREATE INDEX preview_events_created_idx ON public.preview_events USING btree (created_at)"
+    },
+    {
+      "tablename": "preview_events",
+      "indexname": "preview_events_grant_idx",
+      "indexdef": "CREATE INDEX preview_events_grant_idx ON public.preview_events USING btree (grant_id)"
+    },
+    {
+      "tablename": "preview_events",
+      "indexname": "preview_events_job_idx",
+      "indexdef": "CREATE INDEX preview_events_job_idx ON public.preview_events USING btree (job_id)"
+    },
+    {
+      "tablename": "preview_events",
+      "indexname": "preview_events_pkey",
+      "indexdef": "CREATE UNIQUE INDEX preview_events_pkey ON public.preview_events USING btree (id)"
     },
     {
       "tablename": "rate_limit_buckets",

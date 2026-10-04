@@ -57,8 +57,10 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon work packs schema", (
     const before = migrations.filter((m) => m.name < "0012_work_packs.sql");
     expect(before.at(-1)?.name).toBe("0011_offers.sql");
     expect(await applyMigrations(owner, before)).toHaveLength(11);
-    expect(await applyMigrations(owner)).toEqual(["0012_work_packs.sql"]);
-    expect(await applyMigrations(owner)).toEqual([]);
+    // Later migrations are applied by their own tests; stop at 0012 here.
+    const through0012 = migrations.filter((m) => m.name <= "0012_work_packs.sql");
+    expect(await applyMigrations(owner, through0012)).toEqual(["0012_work_packs.sql"]);
+    expect(await applyMigrations(owner, through0012)).toEqual([]);
   });
 
   async function workspace(): Promise<string> {

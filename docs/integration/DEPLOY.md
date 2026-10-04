@@ -59,6 +59,22 @@ Rollback: unset the flag (or set anything but `true`) and redeploy. Exactly what
 - **Stays:** every existing assistant question and answer, the action page's `?version=` and `#inputs` landing (they are plain navigation), and all audit rows already written. The assistant never wrote to `actions`, `action_runs`, `output_versions`, `deliveries` or `workspace_usage`, so nothing persisted depends on the flag.
 - **Not a rollback target:** there is no migration to undo.
 
+## P4.5 unsaved preview draft: migration 0013 and the flag
+
+P4.5 adds migration `neon/migrations/0013_preview_events.sql` (journal row 13: one new table, `preview_events`, with no text column, and two `SECURITY INVOKER` functions, `claim_preview_slot` and `finish_preview_slot`, EXECUTE granted to `sme_app_runtime` only) and one flag, `PREVIEW_DRAFT_ENABLED`, with two optional limit overrides, `PREVIEW_DRAFT_DAILY_LIMIT` and `PREVIEW_DRAFT_USD_DAILY`. DEC-12 is decided (`BUSINESS-AND-HOSTED-DECISIONS.md`); applying `0013` to a hosted database is a DEC-11 owner action. Nothing here has been applied to any hosted database or deployed; hosted acceptance is **NOT RUN**. The statement is [`rollout/apply-0013.sql`](../implementation/owner-platform-v1/rollout/apply-0013.sql); its rehearsal and the full phase record are in `docs/implementation/owner-platform-v1/PHASE-4-REPORT.md` ("P4.5"), and the read-only measures are in [`PREVIEW-METRICS.md`](../implementation/owner-platform-v1/PREVIEW-METRICS.md).
+
+Order (the same shape as P4.2):
+
+1. **Apply `0013` on a Neon test branch of production, then on production.** Run `apply-0013.sql` in the Neon SQL Editor as `neondb_owner`. It refuses unless the journal is exactly `0001`-`0012`, so `apply-0012.sql` must already have been applied. The statement is purely additive (one new table, two new functions); nothing existing is altered.
+2. **Deploy the code with `PREVIEW_DRAFT_ENABLED` unset.** Deploying before `0013` is applied is **harmless while the flag is off**: with the flag unset (or any value other than exactly `true`) the report renders no preview card, `/{locale}/start/{slug}` answers 404 before reading a cookie or the database, and `POST /api/start/{slug}/preview` answers `404 {"error":"not_enabled"}` before reading the body or issuing any SQL. `test/integration/neon-preview-flag-off.integration.test.ts` proves it against a schema that stops at `0012`: zero statements for the route and for the card decision, with a flag-on contrast so the recorder is not silent.
+3. **Set `PREVIEW_DRAFT_ENABLED=true`, and optionally the two overrides, only after `0013` is applied, then redeploy** (an environment variable change takes effect on the next deployment). Unlocked report viewers then see "Try one AI reply draft (not saved)" on their report. Limits: 1 preview per viewer grant (at most 3 attempts if generation fails), 3 per job, 5 per IP per day, and by default 50 model calls (failed ones included) and US$2 per rolling 24 hours across all jobs; a call whose provider reports no usage is charged a conservative estimate. An invalid override refuses every preview as `unavailable` (fail closed). With the flag on and no `0013`, the card and the page still render, and every submitted preview answers `unavailable` (the slot claim fails); no model is called.
+
+Rollback: unset the flag (or set anything but `true`) and redeploy. Exactly what that does:
+
+- **Stops:** the report card, the `/start` page (404) and the preview route (`404 not_enabled`). No new `preview_events` row is written and no model is called.
+- **Stays:** `preview_events` rows stay for the metrics in `PREVIEW-METRICS.md`; they hold no text. No draft was ever stored, so nothing else exists to clean up. Nothing in `actions`, `action_runs`, `output_versions`, `deliveries` or `workspace_usage` was written by the preview.
+- `0013` itself is additive and is not rolled back.
+
 ## Local verification and limits
 
 The Task 16 all-ten-gate epoch is recorded in LAUNCH-REPORT with exact source and warning counts. Task 17 adds one actual-SQL recovery rehearsal: a new application user and report survive a drained pool, restart of the same owned network-none Postgres container and compatible repository reconnect. It also verifies a continued report write. This is not hosted rollback, managed Auth recovery or an old build test.
