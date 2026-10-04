@@ -1,3 +1,26 @@
+## Current checkpoint (2026-10-04): owner-platform-v1 at main 080ddf6
+
+**Candidate:** `main` at `080ddf6` (merge of PR #31; tree `be5a0d5…`, identical to PR head `42ff03c`), deployed to production as `dpl_E2HNGePLBHpdDVNzejLTZVrBepqN` on `smeassistant.vercel.app`. Scope: owner-platform-v1 Phases 1–4 core plus the P4.5 preview (built, flag off). P4.6 publishing is not built (DEC-13).
+
+| Category | Status | Evidence |
+|---|---|---|
+| Implemented | Phases 1–4 core and P4.5 on `main`; P4.6 excluded | Release evidence §2 |
+| CI on the candidate tree | passed | Run 37169934797 (`pull_request`, merge ref tree = candidate tree): all 18 steps success, 14 m 53 s |
+| CI on the exact commit | failed | Run 37170768091 (`push`, `080ddf6`): every gate passed except `e2e:acceptance`, 40 passed / 2 failed; the same two cases passed in 37169934797; not yet re-run or investigated |
+| Local gate run | pending | Release evidence §3, local column |
+| R2 environment inventory | passed (names/presence only) | Values not read; `BLOB_READ_WRITE_TOKEN` and `NEON_AUTH_BASE_URL` flagged `readable-secret` by Vercel |
+| Migrations `0001`–`0013` on production | owner-reported, not independently verified | Release evidence §1 and §5 |
+| Every other hosted scenario (R3–R8, R11, Phase 2–4 rows, `launch:check`, the four Phase 4 flags) | not run | No acceptance authorization or DEC-04 budget is recorded |
+
+**Release decision:** not ready to claim a verified release, pending the hosted checklist and owner authorization. Implemented and CI-verified is not hosted verified.
+
+- Evidence pack: [`RELEASE-EVIDENCE-080ddf6.md`](../implementation/owner-platform-v1/RELEASE-EVIDENCE-080ddf6.md)
+- Owner runbook: [`HOSTED-ACCEPTANCE-CHECKLIST.md`](../implementation/owner-platform-v1/HOSTED-ACCEPTANCE-CHECKLIST.md)
+
+The sections below are the 2026-09-07 record and are unchanged.
+
+---
+
 # Launch evidence — Tasks 16–17 independently approved; hosted execution not run
 
 **Current checkpoint (2026-09-07): Task 16 technical gates and independent implementation/specification review are approved, including the invitation policy amendment.** Pending workspace invitations remain valid until accepted or explicitly revoked. Managed sign-in links retain expiry and replay protection. Hosted Neon project, branch and origin are not chosen; hosted database/Auth/mail/Google/provider acceptance, migration, deployment and cutover were not run. Task 17 preparation and the owned recovery rehearsal are independently approved after re-review of `9aec5b7674bd52a8ce1e6f485735c78034d2636e`; the source-record and fixture-cleanup findings are resolved. The reviewed source candidate remains `214884c78ba0e4b1cf7e24fbbebca20f459ae1a4`. This is neither merge, deployment nor release approval.
