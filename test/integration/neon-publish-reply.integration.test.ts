@@ -430,6 +430,30 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon GBP reply publishing"
   });
 
   describe("publishingRepository", () => {
+    it("parallel begins of two versions on one target: one begun, the other target_busy (a raced 23505 maps too)", async () => {
+      const { ws, loc } = await seed("paid");
+      const approvedVersion = async () => {
+        const id = await version(ws, await action(ws, loc));
+        await approve(id);
+        return id;
+      };
+      const repo = publishingRepository(runtime);
+      // Several rounds so both paths are likely exercised: the function's own
+      // check (P0001) and the index backstop when both pass it (23505).
+      for (let round = 0; round < 5; round += 1) {
+        const refTarget = target();
+        const [a, b] = [await approvedVersion(), await approvedVersion()];
+        const results = await Promise.allSettled([
+          repo.begin({ versionId: a, actorId: actor, targetRef: refTarget, idempotencyKey: randomUUID() }),
+          repo.begin({ versionId: b, actorId: actor, targetRef: refTarget, idempotencyKey: randomUUID() }),
+        ]);
+        expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+        const refused = results.find((r) => r.status === "rejected") as PromiseRejectedResult;
+        expect(refused.reason).toBeInstanceOf(PublishError);
+        expect(refused.reason).toMatchObject({ code: "target_busy" });
+      }
+    });
+
     it("begin, finish and cancel map the function results", async () => {
       const { ws, ver } = await seed();
       const repo = publishingRepository(runtime);
@@ -448,7 +472,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon GBP reply publishing"
         state: "published",
         counted: true,
       });
-      expect(await repo.finish({ deliveryId: started.deliveryId, actorId: actor, outcome: "failed", receipt: null, reason: "timeout" })).toEqual({
+      expect(await repo.finish({ deliveryId: started.deliveryId, actorId: actor, outcome: "failed", receipt: null, reason: "provider_unavailable" })).toEqual({
         kind: "existing",
         state: "published",
         counted: true,

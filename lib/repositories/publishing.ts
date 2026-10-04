@@ -2,6 +2,8 @@ import "server-only";
 import type { Pool, PoolClient } from "pg";
 import { getPool } from "../db/client";
 import { withTransaction } from "../db/transaction";
+import { filterSelectedReviews, sampledReviewsFromRawData } from "../workspace/evidence-inputs";
+import { artifactRepository } from "./artifacts";
 
 /**
  * Google Business Profile review-reply publishing on plain `pg`
@@ -11,10 +13,13 @@ import { withTransaction } from "../db/transaction";
  * `cancel_published_reply` own every state transition, the allowance check
  * and the once-per-version counting (DEC-14); this module only names the
  * arguments, maps the jsonb results and maps the raised P0001 `message` to a
- * PublishError. Any other database error is rethrown unchanged.
+ * PublishError. A unique violation on one of the two partial indexes (two
+ * begins racing past the functions' own checks) maps to the code the check
+ * would have raised. Any other database error is rethrown unchanged.
  *
- * `publishDeliveryIds` and the first query of `getDelivery` read only columns
- * that exist before 0014, so both are safe on a database without it. So are
+ * `publishDeliveryIds`, `publishSubject`, `candidateReviewTexts` and the first
+ * query of `getDelivery` read only columns that exist before 0014, so all are
+ * safe on a database without it. So are
  * the three `oauth_connections` methods (spec §2.3): that table is unchanged
  * by 0014. They move sealed ciphertext only; `lib/publishing/connection.ts`
  * is the one place that unseals it.
@@ -64,6 +69,30 @@ export class PublishError extends Error {
   }
 }
 
+/**
+ * The only values `finish` stores as `failure_reason` (spec §3.2, §3.3, §5): a
+ * code, so provider text can never be stored by accident.
+ */
+export type PublishFailureReason =
+  | "already_replied"
+  | "connection_expired"
+  | "provider_forbidden"
+  | "review_not_found"
+  | "provider_rate_limited"
+  | "provider_unavailable"
+  | "not_applied";
+
+export type PublishSubject = {
+  workspaceId: string;
+  actionId: string;
+  locationId: string | null;
+  placeId: string | null;
+  templateKey: string;
+  versionNo: number;
+  approvalState: string;
+  body: string;
+};
+
 export type PublishState = "publishing" | "published" | "failed" | "cancelled";
 
 const PUBLISH_STATES: ReadonlySet<string> = new Set<PublishState>(["publishing", "published", "failed", "cancelled"]);
@@ -97,12 +126,27 @@ export type PublishReceipt = { review_name: string; reply_update_time: string | 
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Map a P0001 raised by the publish functions (or the offer guard) to a PublishError; rethrow anything else unchanged. */
+/** The partial unique indexes 0014 adds as the race backstop, and the code each stands for. */
+const RACE_CONSTRAINTS: ReadonlyMap<string, PublishErrorCode> = new Map([
+  ["deliveries_active_publish_version_key", "already_publishing"],
+  ["deliveries_active_publish_target_key", "target_busy"],
+]);
+
+/**
+ * Map a P0001 raised by the publish functions (or the offer guard), or a 23505
+ * on one of the race-backstop indexes, to a PublishError; rethrow anything
+ * else unchanged. A raced `already_publishing` carries no delivery id: the
+ * violation names the version, not the winning delivery.
+ */
 async function call<T>(run: () => Promise<T>): Promise<T> {
   try {
     return await run();
   } catch (error) {
-    const pg = error as { code?: unknown; message?: unknown; detail?: unknown } | null;
+    const pg = error as { code?: unknown; message?: unknown; detail?: unknown; constraint?: unknown } | null;
+    if (pg && pg.code === "23505" && typeof pg.constraint === "string") {
+      const raced = RACE_CONSTRAINTS.get(pg.constraint);
+      if (raced) throw new PublishError(raced);
+    }
     if (pg && pg.code === "P0001" && typeof pg.message === "string" && PUBLISH_ERROR_CODES.has(pg.message)) {
       const code = pg.message as PublishErrorCode;
       const deliveryId = code === "already_publishing" && typeof pg.detail === "string" && UUID.test(pg.detail) ? pg.detail : null;
@@ -172,7 +216,7 @@ export function publishingRepository(client?: Executor) {
       actorId: string;
       outcome: "published" | "failed";
       receipt: PublishReceipt | null;
-      reason: string | null;
+      reason: PublishFailureReason | null;
     }): Promise<{ kind: "finished" | "existing"; state: PublishState; counted: boolean }> {
       const result = await call(() =>
         fn("SELECT public.finish_publish_output_version($1::uuid, $2::uuid, $3::text, $4::jsonb, $5::text) AS result", [
@@ -277,6 +321,11 @@ export function publishingRepository(client?: Executor) {
      * Pre-0014-safe: the existence check reads only 0002 columns, so a database
      * without 0014 (which has no publish deliveries) answers null before any
      * 0014 column is named.
+     *
+     * Not workspace-scoped: it finds the delivery by id alone. Callers must
+     * check the id against `UUID_RE` first, and must authorize the session
+     * against the returned `workspaceId` and `locationId` before using or
+     * returning anything from it.
      */
     async getDelivery(deliveryId: string): Promise<PublishDelivery | null> {
       const exists = (
@@ -326,6 +375,77 @@ export function publishingRepository(client?: Executor) {
         verifiedAt: row.verified_at === null ? null : iso(row.verified_at),
         createdAt: iso(row.created_at),
       };
+    },
+
+    /**
+     * What the publish routes need about one version before any check: its
+     * workspace and action, the action's location and that location's place,
+     * the template, the version number, the approval state and the body.
+     * Pre-0014-safe: every column is from 0002. Null for an unknown version,
+     * or one whose action belongs to another workspace.
+     */
+    async publishSubject(versionId: string): Promise<PublishSubject | null> {
+      const row = (
+        await db().query<{
+          workspace_id: string;
+          action_id: string;
+          location_id: string | null;
+          place_id: string | null;
+          template_key: string;
+          version_no: number;
+          approval_state: string;
+          body: string;
+        }>(
+          `SELECT a.workspace_id, v.action_id, a.location_id, l.place_id, a.template_key, v.version_no, v.approval_state, v.body
+             FROM output_versions v
+             JOIN actions a ON a.id = v.action_id AND a.workspace_id = v.workspace_id
+             LEFT JOIN locations l ON l.id = a.location_id AND l.workspace_id = a.workspace_id
+            WHERE v.id = $1`,
+          [versionId],
+        )
+      ).rows[0];
+      if (!row) return null;
+      return {
+        workspaceId: row.workspace_id,
+        actionId: row.action_id,
+        locationId: row.location_id,
+        placeId: row.place_id,
+        templateKey: row.template_key,
+        versionNo: row.version_no,
+        approvalState: row.approval_state,
+        body: row.body,
+      };
+    },
+
+    /**
+     * The sampled review texts the version's action was drafted from, for the
+     * target preselection (spec §3.1): the action's evidence snapshot → its
+     * job → `raw_data` (read by the assistant's own query), narrowed to the
+     * owner's `selected_reviews`. Only a hint, so any failure is `[]`.
+     * Pre-0014-safe.
+     */
+    async candidateReviewTexts(versionId: string): Promise<string[]> {
+      try {
+        const row = (
+          await db().query<{ workspace_id: string; job_id: string; provided_inputs: unknown }>(
+            `SELECT a.workspace_id, s.job_id, a.provided_inputs
+               FROM output_versions v
+               JOIN actions a ON a.id = v.action_id AND a.workspace_id = v.workspace_id
+               JOIN scan_snapshots s ON s.id = a.source_snapshot_id AND s.workspace_id = a.workspace_id
+              WHERE v.id = $1`,
+            [versionId],
+          )
+        ).rows[0];
+        if (!row) return [];
+        const raw = await artifactRepository(client).assistantReviewData(row.workspace_id, row.job_id);
+        const provided =
+          row.provided_inputs && typeof row.provided_inputs === "object" && !Array.isArray(row.provided_inputs)
+            ? (row.provided_inputs as Record<string, unknown>)
+            : {};
+        return filterSelectedReviews(sampledReviewsFromRawData(raw), provided.selected_reviews).map((review) => review.text);
+      } catch {
+        return [];
+      }
     },
   };
 }
