@@ -23,9 +23,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet"
+import { GbpPublishCard } from "@/components/workspace/gbp-publish-card"
 import type { DemoAssistantRunResponse } from "@/lib/pocket-assistant/contracts"
 import { CapabilityBadge, FactType, SectionCard } from "@/components/product-ui"
 import { copy, type PrototypeLocale } from "@/lib/copy"
+import { googleBusinessPublishCapability } from "@/lib/capabilities"
+import type { PublishPanel } from "@/lib/publishing/page-state"
 import { resolveText } from "@/lib/domain"
 import { copyToClipboard, downloadText } from "@/lib/download"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
@@ -63,6 +66,8 @@ export interface ActionDetailClientProps {
   offersEnabled?: boolean
   /** P4.3: the version a `?version=` link names. Anything not among `detail.versions` falls back to the newest. */
   initialVersionId?: string | null
+  /** P4.6: the Google publish card's data (review-response only); null hides it. The server stays the authority. */
+  publishPanel?: PublishPanel | null
 }
 
 export interface OfferCardData {
@@ -135,7 +140,7 @@ export function ownerInputPatch(
   return { provided, runInputs }
 }
 
-export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false, initialVersionId = null }: ActionDetailClientProps) {
+export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false, initialVersionId = null, publishPanel = null }: ActionDetailClientProps) {
   const isChinese = locale !== "en"
   const router = useRouter()
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -804,11 +809,12 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                   <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" className="text-destructive" disabled={!canApprove || dirty || approval === "rejected"}><X /> {isChinese ? "拒絕草稿" : "Reject draft"}</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{isChinese ? "拒絕這個版本？" : "Reject this version?"}</AlertDialogTitle><AlertDialogDescription>{isChinese ? "版本會保留在審計紀錄，但不能匯出；其後可另存新版本。" : "The version remains in history but cannot be exported; a new version can be saved later."}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>{isChinese ? "取消" : "Cancel"}</AlertDialogCancel><AlertDialogAction onClick={() => void setDecision("rejected")}>{isChinese ? "拒絕此版本" : "Reject version"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
                 </div>}
               </SectionCard>
-              <SectionCard className="delivery-card"><div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "送出" : "Delivery"}</p><h2>{social ? (isChinese ? "匯出至 Instagram" : "Export for Instagram") : (isChinese ? "匯出已核准版本" : "Export the approved version")}</h2></div><CapabilityBadge value="Requires connection" /></div><p>{isChinese ? "目前沒有已驗證的直接發佈連接器。只有指定版本獲核准並完成匯出，才計 1 次核准後交付。" : "No verified direct-publishing connector is present. One approved delivery is counted only after exact-version approval and export."}</p>
+              <SectionCard className="delivery-card"><div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "送出" : "Delivery"}</p><h2>{social ? (isChinese ? "匯出至 Instagram" : "Export for Instagram") : (isChinese ? "匯出已核准版本" : "Export the approved version")}</h2></div><CapabilityBadge value={publishPanel ? googleBusinessPublishCapability({ enabled: publishPanel.enabled, connectionActive: publishPanel.connectionActive }) : "Requires connection"} /></div><p>{publishPanel?.enabled ? copy[locale].workspace.publish.deliveryIntro : isChinese ? "目前沒有已驗證的直接發佈連接器。只有指定版本獲核准並完成匯出，才計 1 次核准後交付。" : "No verified direct-publishing connector is present. One approved delivery is counted only after exact-version approval and export."}</p>
                 {allowanceBlocked && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "本月核准後交付額已用完" : "This month's approved-delivery allowance is used up"}</strong><p>{isChinese ? "版本仍已核准並保留；升級方案或等待下月額度後即可匯出。" : "The version stays approved; upgrade the plan or wait for next month's allowance to export it."}</p><Button asChild size="sm" variant="outline"><Link href={`${base}/settings/billing`}>{isChinese ? "查看帳單與方案" : "View billing and plans"}</Link></Button></div></div>}
                 <Button className="w-full" variant={isApprovedCurrent ? "default" : "outline"} disabled={!isApprovedCurrent || !canApprove} onClick={() => void deliver("export")}>{busy === "export" ? <LoaderCircle className="animate-spin" /> : delivery === "exported" ? <Check /> : <Download />} {delivery === "exported" ? (isChinese ? "再次匯出（不重複計算）" : "Export again (not counted twice)") : (isChinese ? "匯出已核准版本" : "Export approved version")}</Button>
                 <Button className="w-full" variant="outline" disabled={!isApprovedCurrent || !canApprove} onClick={() => void deliver("copy")}>{busy === "copy" ? <LoaderCircle className="animate-spin" /> : <Copy />} {isChinese ? "複製文字" : "Copy text"}</Button>
-                <Button className="w-full" variant="ghost" disabled><Send /> {isChinese ? "直接發佈 · 需要連接" : "Publish directly · Connection required"}</Button>
+                {publishPanel && selectedVersion && <GbpPublishCard locale={locale} versionId={selectedVersion.id} versionNo={selectedVersion.version_no} body={selectedVersion.body} approved={isApprovedCurrent} panel={effectiveRole === role ? publishPanel : { ...publishPanel, canPublish: publishPanel.canPublish && effectiveRole !== "viewer", canDelete: false }} workspaceSlug={workspaceSlug} timezone={timezone} onChanged={() => router.refresh()} />}
+                {!publishPanel?.enabled && <Button className="w-full" variant="ghost" disabled><Send /> {isChinese ? "直接發佈 · 需要連接" : "Publish directly · Connection required"}</Button>}
               </SectionCard>
             </aside>
             )}

@@ -30,6 +30,7 @@ import { GET as targetsRoute } from "../../app/api/versions/[versionId]/publish/
 import { POST as publishRoute } from "../../app/api/versions/[versionId]/publish/route";
 import { POST as reconcileRoute } from "../../app/api/deliveries/[deliveryId]/reconcile/route";
 import { DELETE as deleteReplyRoute } from "../../app/api/deliveries/[deliveryId]/reply/route";
+import { loadPublishPanel } from "../../lib/publishing/page-state";
 import { publishingRepository } from "../../lib/repositories/publishing";
 import { workflowRepository } from "../../lib/repositories/workflow";
 
@@ -184,6 +185,42 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon GBP reply publishing:
     expect(await repo.publishDeliveryIds(seeded.workspaceId, [])).toEqual([]);
     expect(ports.statements).toHaveLength(1);
     expect(ports.statements.filter(namesA0014Column)).toEqual([]);
+  });
+
+  it("loadPublishPanel with the flag off runs on the 0013 schema and names no 0014 column", async () => {
+    const seeded = await seedApproved();
+    // An export delivery exists for the version; it is not a publish, so the panel must not see it.
+    await workflowRepository().exportOutputVersion(seeded.versionId, seeded.actor, "export", randomUUID());
+    const versions = [{ id: seeded.versionId, approval_state: "approved", body: "Thank you for visiting" }];
+
+    // Both spellings of "off": the env unset (the page's default) and an explicit false.
+    for (const enabled of [undefined, false]) {
+      vi.stubEnv("GBP_REPLY_PUBLISH_ENABLED", undefined);
+      ports.statements.length = 0;
+      const panel = await loadPublishPanel({
+        workspaceId: seeded.workspaceId,
+        templateKey: "review-response",
+        locationPlaceId: "place-1",
+        role: "owner",
+        inScope: true,
+        versions,
+        ...(enabled === undefined ? {} : { enabled }),
+      });
+      expect(panel).toEqual({
+        enabled: false,
+        connectionActive: false,
+        eligibility: { ok: false, reason: "flag_off" },
+        canPublish: false,
+        canDelete: false,
+        deliveries: [],
+      });
+      // Only publishDeliveryIds ran: no 0014 column, and the connection was never read.
+      expect(ports.statements).toHaveLength(1);
+      expect(ports.statements[0]).toContain("FROM deliveries");
+      expect(ports.statements.filter(namesA0014Column)).toEqual([]);
+      expect(ports.statements.some((statement) => statement.includes("oauth_connections"))).toBe(false);
+    }
+    expect(spies.fetch).not.toHaveBeenCalled();
   });
 
   it("export_output_version still exports and counts on the 0013 schema", async () => {

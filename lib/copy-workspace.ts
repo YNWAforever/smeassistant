@@ -123,6 +123,52 @@ export type PacksCopy = {
   earlierDrafts: string;
 };
 
+/**
+ * P4.6: publishing an approved review reply to Google Business Profile (spec
+ * §4, §5). `reasons` covers the §5 failure codes, the §2.5 eligibility codes
+ * and the route errors the card can receive, plus four client-side keys
+ * (`rate_limited`, `network`, `forbidden`, `generic`); a raw code never
+ * reaches an owner. Interpolated strings use {n} / {time} placeholders.
+ */
+export const PUBLISH_REASON_KEYS = [
+  "already_replied", "connection_expired", "provider_forbidden", "review_not_found", "provider_rate_limited", "provider_unavailable", "not_applied",
+  "flag_off", "not_review_response", "not_approved", "no_location_listing", "connection_missing", "too_long", "empty_body",
+  "version_changed", "target_not_in_location", "location_not_managed", "already_publishing", "target_busy", "allowance_exceeded",
+  "idempotency_key_conflict", "reply_changed_on_google", "delivery_not_published", "not_enabled", "unavailable", "too_soon",
+  "rate_limited", "network", "forbidden", "generic",
+] as const;
+export type PublishReasonKey = (typeof PUBLISH_REASON_KEYS)[number];
+
+export type PublishCopy = {
+  deliveryIntro: string;
+  publishButton: string;
+  dialogTitle: string;
+  dialogDescription: string;
+  pickReview: string;
+  loadingTargets: string;
+  noTargets: string;
+  /** "{n}" is the version number. */
+  versionLabel: string;
+  confirm: string;
+  publishConfirm: string;
+  publishingNow: string;
+  cancel: string;
+  checkOnGoogle: string;
+  deleteReply: string;
+  deleteTitle: string;
+  deleteConfirm: string;
+  /** "{time}" is the verified time in the workspace timezone. */
+  verifiedAt: string;
+  /** "{n}" is 1-5. */
+  stars: string;
+  noRating: string;
+  connectGoogle: string;
+  noPermission: string;
+  uncertainTitle: string;
+  state: { published: string; publishing: string; failed: string; cancelled: string };
+  reasons: Record<PublishReasonKey, string>;
+};
+
 export type WorkspaceCopy = {
   /**
    * P4.2 work packs. `title` is also stored as the evidence detail of an action a
@@ -181,6 +227,8 @@ export type WorkspaceCopy = {
    * Keyed by template because the two website templates need different
    * "where does this go" instructions; the disclaimer is shared.
    */
+  /** P4.6: the Google publish card on the action detail page. */
+  publish: PublishCopy;
   websiteExport: {
     heading: string;
     criteriaHeading: string;
@@ -414,6 +462,68 @@ export const workspaceEn: WorkspaceCopy = {
       ],
     },
   },
+  publish: {
+    deliveryIntro: "Publish the approved reply to the selected Google review as the owner's reply. Only a verified publish counts as one approved delivery, and a version already exported is not counted again.",
+    publishButton: "Publish to Google",
+    dialogTitle: "Publish this approved reply to Google?",
+    dialogDescription: "Choose the review this reply answers. It will be posted publicly on your Google Business Profile.",
+    pickReview: "Review to reply to",
+    loadingTargets: "Loading reviews without a reply…",
+    noTargets: "Google shows no reviews without a reply for this listing.",
+    versionLabel: "Version {n} · approved",
+    confirm: "I confirm this exact approved version will be posted publicly as the owner's reply to the selected review.",
+    publishConfirm: "Publish",
+    publishingNow: "Publishing…",
+    cancel: "Cancel",
+    checkOnGoogle: "Check on Google",
+    deleteReply: "Delete reply",
+    deleteTitle: "Delete this reply from Google?",
+    deleteConfirm: "The owner's reply is removed from the review on Google. The approved delivery already counted is not refunded.",
+    verifiedAt: "Verified on Google {time}",
+    stars: "{n} of 5 stars",
+    noRating: "No rating",
+    connectGoogle: "Connect Google",
+    noPermission: "Only the owner, or a manager for this location, can publish to Google.",
+    uncertainTitle: "Couldn't confirm",
+    state: {
+      published: "Published on Google",
+      publishing: "We couldn't confirm Google received it. Nothing will be sent again automatically.",
+      failed: "Not published to Google",
+      cancelled: "Deleted from Google",
+    },
+    reasons: {
+      already_replied: "This review already has a reply on Google, so nothing was sent.",
+      connection_expired: "The Google connection has expired. Reconnect Google, then publish again.",
+      provider_forbidden: "Google refused the request for this listing. Check that the connected account manages it, then try again.",
+      review_not_found: "Google could not find this review. Pick another review.",
+      provider_rate_limited: "Google is limiting requests right now. Try again later.",
+      provider_unavailable: "Google could not be reached and nothing was sent. Try again.",
+      not_applied: "Google shows no reply on this review, so nothing was posted. You can publish again.",
+      flag_off: "Publishing to Google is not turned on.",
+      not_review_response: "Only review replies can be published to Google.",
+      not_approved: "Approve this exact version before publishing it.",
+      no_location_listing: "This location has no Google Business Profile listing linked.",
+      connection_missing: "Connect the Google account that manages this listing to publish replies.",
+      too_long: "The reply is longer than Google allows (4,096 bytes). Shorten it and approve a new version.",
+      empty_body: "The approved version is empty.",
+      version_changed: "A newer version was saved. Review the latest version before publishing.",
+      target_not_in_location: "That review is not on this location's Google listing.",
+      location_not_managed: "The connected Google account does not manage this location's listing.",
+      already_publishing: "This version is already published or being published.",
+      target_busy: "A reply to this review is already published or in progress.",
+      allowance_exceeded: "This month's approved-delivery allowance is used up.",
+      idempotency_key_conflict: "This request could not be matched. Close the dialog and try again.",
+      reply_changed_on_google: "The reply on Google has changed since it was posted, so nothing was deleted.",
+      delivery_not_published: "This reply is no longer published on Google.",
+      not_enabled: "Publishing to Google is not available right now.",
+      unavailable: "The service is unavailable right now. Try again shortly.",
+      too_soon: "Google may still be processing it. Check again in a few seconds.",
+      rate_limited: "Too many requests. Try again later.",
+      network: "The server could not be reached. Try again; the same request is never posted twice.",
+      forbidden: "Your role or location scope does not allow this.",
+      generic: "The request failed. Try again, or contact Fimmick if it keeps happening.",
+    },
+  },
   websiteExport: {
     heading: "How to apply this",
     criteriaHeading: "Checklist",
@@ -611,6 +721,68 @@ export const workspaceZhHK: WorkspaceCopy = {
       ],
     },
   },
+  publish: {
+    deliveryIntro: "以店主身份將已核准的回覆發佈到所選的 Google 評論。只有經核實的發佈才計 1 次核准後交付，已匯出的版本不會重複計算。",
+    publishButton: "發佈到 Google",
+    dialogTitle: "將此已核准回覆發佈到 Google？",
+    dialogDescription: "請選擇這則回覆所回應的評論。回覆會公開發佈在你的 Google 商家檔案。",
+    pickReview: "要回覆的評論",
+    loadingTargets: "正在載入未回覆的評論…",
+    noTargets: "Google 顯示此商戶沒有未回覆的評論。",
+    versionLabel: "第 {n} 版 · 已核准",
+    confirm: "我確認會將這個已核准的指定版本，以店主回覆的身份公開發佈到所選評論。",
+    publishConfirm: "發佈",
+    publishingNow: "正在發佈…",
+    cancel: "取消",
+    checkOnGoogle: "到 Google 查核",
+    deleteReply: "刪除回覆",
+    deleteTitle: "從 Google 刪除這則回覆？",
+    deleteConfirm: "店主回覆會從 Google 上的評論移除。已計算的核准後交付不會退回。",
+    verifiedAt: "已於 {time} 在 Google 核實",
+    stars: "{n} 星（滿分 5 星）",
+    noRating: "沒有評分",
+    connectGoogle: "連接 Google",
+    noPermission: "只有店主，或負責此地點的經理，才可發佈到 Google。",
+    uncertainTitle: "未能確認",
+    state: {
+      published: "已發佈到 Google",
+      publishing: "我們未能確認 Google 已收到回覆。系統不會自動再次發送。",
+      failed: "未有發佈到 Google",
+      cancelled: "已從 Google 刪除",
+    },
+    reasons: {
+      already_replied: "此評論在 Google 上已有回覆，因此沒有發送任何內容。",
+      connection_expired: "Google 連接已過期。請重新連接 Google，然後再發佈。",
+      provider_forbidden: "Google 拒絕了此商戶的請求。請確認已連接的帳戶有管理此商戶，然後再試。",
+      review_not_found: "Google 找不到這則評論。請選擇另一則評論。",
+      provider_rate_limited: "Google 目前限制請求次數，請稍後再試。",
+      provider_unavailable: "未能連接 Google，沒有發送任何內容。請再試一次。",
+      not_applied: "Google 顯示此評論沒有回覆，即未有發佈任何內容。你可以再次發佈。",
+      flag_off: "發佈到 Google 功能尚未開啟。",
+      not_review_response: "只有評論回覆可以發佈到 Google。",
+      not_approved: "請先核准這個指定版本，才可發佈。",
+      no_location_listing: "此地點尚未連結 Google 商家檔案。",
+      connection_missing: "請連接管理此商戶的 Google 帳戶，才可發佈回覆。",
+      too_long: "回覆超出 Google 的長度上限（4,096 位元組）。請縮短內容並核准新版本。",
+      empty_body: "已核准的版本沒有內容。",
+      version_changed: "已有較新的版本。請先審閱最新版本，再發佈。",
+      target_not_in_location: "該評論不屬於此地點的 Google 商家檔案。",
+      location_not_managed: "已連接的 Google 帳戶沒有管理此地點的商家檔案。",
+      already_publishing: "此版本已經發佈或正在發佈中。",
+      target_busy: "這則評論已有回覆發佈或正在發佈中。",
+      allowance_exceeded: "本月核准後交付額已用完。",
+      idempotency_key_conflict: "未能配對此請求。請關閉對話框後再試。",
+      reply_changed_on_google: "Google 上的回覆在發佈後已被更改，因此沒有刪除任何內容。",
+      delivery_not_published: "此回覆已不再發佈在 Google 上。",
+      not_enabled: "目前未能使用發佈到 Google 功能。",
+      unavailable: "服務暫時未能使用，請稍後再試。",
+      too_soon: "Google 可能仍在處理中，請數秒後再查核。",
+      rate_limited: "請求過於頻繁，請稍後再試。",
+      network: "無法連接伺服器。請再試一次；同一請求不會重複發佈。",
+      forbidden: "你的角色或地點範圍不允許此操作。",
+      generic: "操作失敗，請再試一次；如持續出現，請聯絡 Fimmick。",
+    },
+  },
   websiteExport: {
     heading: "如何套用",
     criteriaHeading: "檢查清單",
@@ -757,6 +929,68 @@ export const workspaceZhTW: WorkspaceCopy = {
         "為每個精選動態設定封面圖片及簡短名稱。",
         "確認精選動態已在公開個人檔案的簡介下方顯示。",
       ],
+    },
+  },
+  publish: {
+    deliveryIntro: "以店家身分將已核准的回覆發布到所選的 Google 評論。只有經確認的發布才計 1 次核准後交付，已匯出的版本不會重複計算。",
+    publishButton: "發布到 Google",
+    dialogTitle: "將這則已核准回覆發布到 Google？",
+    dialogDescription: "請選擇這則回覆要回應的評論。回覆會公開發布在您的 Google 商家檔案。",
+    pickReview: "要回覆的評論",
+    loadingTargets: "正在載入尚未回覆的評論…",
+    noTargets: "Google 顯示這個商家沒有尚未回覆的評論。",
+    versionLabel: "第 {n} 版 · 已核准",
+    confirm: "我確認會將這個已核准的指定版本，以店家回覆的身分公開發布到所選評論。",
+    publishConfirm: "發布",
+    publishingNow: "正在發布…",
+    cancel: "取消",
+    checkOnGoogle: "到 Google 確認",
+    deleteReply: "刪除回覆",
+    deleteTitle: "要從 Google 刪除這則回覆嗎？",
+    deleteConfirm: "店家回覆會從 Google 上的評論移除。已計算的核准後交付不會退還。",
+    verifiedAt: "已於 {time} 在 Google 確認",
+    stars: "{n} 顆星（滿分 5 顆星）",
+    noRating: "沒有評分",
+    connectGoogle: "連結 Google",
+    noPermission: "只有店家，或負責此據點的經理，才能發布到 Google。",
+    uncertainTitle: "無法確認",
+    state: {
+      published: "已發布到 Google",
+      publishing: "我們無法確認 Google 已收到回覆。系統不會自動再次傳送。",
+      failed: "未發布到 Google",
+      cancelled: "已從 Google 刪除",
+    },
+    reasons: {
+      already_replied: "這則評論在 Google 上已有回覆，因此沒有傳送任何內容。",
+      connection_expired: "Google 連結已過期。請重新連結 Google，再發布一次。",
+      provider_forbidden: "Google 拒絕了這個商家的請求。請確認已連結的帳號有管理這個商家，然後再試一次。",
+      review_not_found: "Google 找不到這則評論。請選擇另一則評論。",
+      provider_rate_limited: "Google 目前限制請求次數，請稍後再試。",
+      provider_unavailable: "無法連線至 Google，沒有傳送任何內容。請再試一次。",
+      not_applied: "Google 顯示這則評論沒有回覆，所以沒有發布任何內容。您可以再發布一次。",
+      flag_off: "發布到 Google 功能尚未開啟。",
+      not_review_response: "只有評論回覆可以發布到 Google。",
+      not_approved: "請先核准這個指定版本，才能發布。",
+      no_location_listing: "這個據點尚未連結 Google 商家檔案。",
+      connection_missing: "請連結管理這個商家的 Google 帳號，才能發布回覆。",
+      too_long: "回覆超過 Google 的長度上限（4,096 位元組）。請縮短內容並核准新版本。",
+      empty_body: "已核准的版本沒有內容。",
+      version_changed: "已有較新的版本。請先審閱最新版本，再發布。",
+      target_not_in_location: "這則評論不屬於此據點的 Google 商家檔案。",
+      location_not_managed: "已連結的 Google 帳號沒有管理這個據點的商家檔案。",
+      already_publishing: "這個版本已經發布或正在發布中。",
+      target_busy: "這則評論已有回覆發布或正在發布中。",
+      allowance_exceeded: "本月核准後交付額度已用完。",
+      idempotency_key_conflict: "無法比對這個請求。請關閉對話框後再試一次。",
+      reply_changed_on_google: "Google 上的回覆在發布後已被修改，因此沒有刪除任何內容。",
+      delivery_not_published: "這則回覆已不在 Google 上發布。",
+      not_enabled: "目前無法使用發布到 Google 功能。",
+      unavailable: "服務暫時無法使用，請稍後再試。",
+      too_soon: "Google 可能仍在處理中，請幾秒後再確認。",
+      rate_limited: "請求過於頻繁，請稍後再試。",
+      network: "無法連線至伺服器。請再試一次；同一個請求不會重複發布。",
+      forbidden: "您的角色或據點範圍不允許此操作。",
+      generic: "操作失敗，請再試一次；如果持續發生，請聯絡 Fimmick。",
     },
   },
   websiteExport: {
