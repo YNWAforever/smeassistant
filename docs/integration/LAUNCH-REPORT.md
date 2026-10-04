@@ -1,5 +1,27 @@
 # Launch evidence — Tasks 16–17 independently approved; hosted execution not run
 
+## Current checkpoint (2026-10-04): owner-platform-v1 at main 080ddf6
+
+**Candidate:** `main` at `080ddf6` (merge of PR #31; tree `be5a0d5…`, identical to PR head `42ff03c`), deployed to production as `dpl_E2HNGePLBHpdDVNzejLTZVrBepqN` on `smeassistant.vercel.app`. Implemented: owner-platform-v1 Phases 1–4 core plus the P4.5 preview (built, flag off). P4.6 publishing is not built (DEC-13). Hosted acceptance targets the production alias by owner choice; `DEPLOY.md` §2 advises against using it as staging.
+
+| Category | Status | Evidence |
+|---|---|---|
+| CI on the candidate tree | passed | Run 37169934797 (`pull_request`, merge ref tree = candidate tree): all 18 steps success, 14 m 53 s |
+| CI on the exact commit | passed | Run 37170768091 (`push`, `080ddf6`): attempt 2 (re-run of the failed job) passed all 18 steps. Attempt 1 failed `e2e:acceptance` (40 passed / 2 failed: merchant-loop ECONNRESET, HK public-funnel timeout), so the failure is flaky or unexplained, not fixed |
+| Local gates: lint, typecheck, unit, no-supabase, no-self-service-claim, `db:verify`, integration | passed | Windows; unit 401 files / 4,830 tests; with Docker running, `db:verify` `0001`–`0013` and integration 47 / 502 |
+| Local gates: `build`, `test:secret-boundary`, `e2e`, `e2e:acceptance` | blocked | Windows-only Turbopack `@radix-ui` resolve error |
+| R2 environment inventory | passed | Names/presence only; values not read; `BLOB_READ_WRITE_TOKEN` and `NEON_AUTH_BASE_URL` flagged `readable-secret` by Vercel |
+| Migrations `0001`–`0013` on production | not run | Independent check not run; the applies are owner-reported |
+| Phase 3 scheduler on production | not run | Cron registered every 5 minutes; all 288 calls in the 24 h before about 09:28 UTC on 2026-10-04 returned 401 (most likely the stored `CRON_SECRET`, or one not available to the deployment at runtime; value not read), so nothing ran through the cron in that window. DEC-10 undecided |
+| Every other hosted scenario (R3–R8, R10, R11, Hosted Blob, Phase 2–4 rows, `launch:check`, the four Phase 4 flags) | not run | No acceptance authorization or DEC-04 budget is recorded |
+
+**Release decision:** not ready to claim a verified release, pending the hosted checklist and owner authorization. Implemented and CI-verified is not hosted verified.
+
+- Evidence pack: [`RELEASE-EVIDENCE-080ddf6.md`](../implementation/owner-platform-v1/RELEASE-EVIDENCE-080ddf6.md)
+- Owner runbook: [`HOSTED-ACCEPTANCE-CHECKLIST.md`](../implementation/owner-platform-v1/HOSTED-ACCEPTANCE-CHECKLIST.md)
+
+The rest of this report is the 2026-09-07 record and is unchanged.
+
 **Current checkpoint (2026-09-07): Task 16 technical gates and independent implementation/specification review are approved, including the invitation policy amendment.** Pending workspace invitations remain valid until accepted or explicitly revoked. Managed sign-in links retain expiry and replay protection. Hosted Neon project, branch and origin are not chosen; hosted database/Auth/mail/Google/provider acceptance, migration, deployment and cutover were not run. Task 17 preparation and the owned recovery rehearsal are independently approved after re-review of `9aec5b7674bd52a8ce1e6f485735c78034d2636e`; the source-record and fixture-cleanup findings are resolved. The reviewed source candidate remains `214884c78ba0e4b1cf7e24fbbebca20f459ae1a4`. This is neither merge, deployment nor release approval.
 
 Use only these status values: `passed`, `failed`, `blocked`, `not run`. A pass applies only to the named category on the recorded commit/deployment. Record failed and blocked attempts as separate rows before adding a successful rerun. No credentials, cookies, private payloads or test contact details belong here.
