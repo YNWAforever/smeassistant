@@ -12,7 +12,7 @@
 | Local gates: `build`, `test:secret-boundary`, `e2e`, `e2e:acceptance` | blocked | Windows-only Turbopack `@radix-ui` resolve error |
 | R2 environment inventory | passed | Names/presence only; values not read; `BLOB_READ_WRITE_TOKEN` and `NEON_AUTH_BASE_URL` flagged `readable-secret` by Vercel |
 | Migrations `0001`–`0013` on production | not run | Independent check not run; the applies are owner-reported |
-| Phase 3 scheduler on production | not run | Cron registered every 5 minutes; all 288 calls in 24 h returned 401 (`CRON_SECRET` invalid; value not read), so nothing scheduled has run. DEC-10 undecided |
+| Phase 3 scheduler on production | not run | Cron registered every 5 minutes; all 288 calls in the 24 h before about 09:28 UTC on 2026-10-04 returned 401 (most likely the stored `CRON_SECRET`, or one not available to the deployment at runtime; value not read), so nothing ran through the cron in that window. DEC-10 undecided |
 | Every other hosted scenario (R3–R8, R10, R11, Hosted Blob, Phase 2–4 rows, `launch:check`, the four Phase 4 flags) | not run | No acceptance authorization or DEC-04 budget is recorded |
 
 **Release decision:** not ready to claim a verified release, pending the hosted checklist and owner authorization. Implemented and CI-verified is not hosted verified.

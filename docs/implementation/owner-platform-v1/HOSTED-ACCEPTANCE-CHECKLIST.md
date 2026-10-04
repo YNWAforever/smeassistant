@@ -16,7 +16,7 @@ What that means:
 
 | Sections | Effect |
 |---|---|
-| §1–§4 | **Read-only.** Nothing is written and nothing is spent. |
+| §1–§4 | **Read-only.** Nothing is written and nothing is spent, except the optional §1 step 6, which changes production configuration. |
 | §5–§9 | **Free, but write production data** (accounts, workspaces, Google connections, stored files) and, in §6, **send real email**. |
 | §10–§12 | **Free, but change production configuration** and redeploy; §12 also sends email. |
 | §13–§17 | **Spend model money** (and §15–§17 change production configuration). |
@@ -50,9 +50,9 @@ ROLLBACK;
 
 ## §1 R2 environment inventory (names, presence and switch states)
 
-**Effect: read-only.**
+**Effect: read-only (step 6 optional: changes production configuration).**
 
-- **Needs:** the owner's own Vercel access. The controller's names-only read on 2026-10-04 was owner-approved in chat; DEC-03 is not recorded. **Cost:** none.
+- **Needs:** the owner's own Vercel access. The controller's names-only read on 2026-10-04 was owner-approved in chat (controller-reported); DEC-03 is not recorded. **Cost:** none.
 - **Preconditions:** Vercel access to project `smeassistant`.
 - **Steps:**
   1. Open Vercel → project `smeassistant` → Settings → Environment Variables. Filter to **Production**.
@@ -237,7 +237,7 @@ ROLLBACK;
   2. Confirm the thumbnail displays.
   3. Open the image in a new tab and note the time. Wait at least two minutes, then reload that tab: the signed address must have expired (assets are signed for 60 seconds; `docs/integration/neon-private-storage.md`).
   4. Open the same asset from the Assets page again: it must display (a fresh signed address).
-  5. If §1 found `EVIDENCE_SNAPSHOT_*_ALLOWED` exactly `true`, open the evidence gallery of a full report from §8 or §18 and confirm images display; otherwise record evidence storage as `not run` (snapshots disabled).
+  5. If §1 found `EVIDENCE_SNAPSHOT_*_ALLOWED` exactly `true`, open the evidence gallery of a full report from §8 or §18 and confirm images display; otherwise record evidence storage as `not run` (snapshots disabled). §18 runs later and costs provider money, so this step can be deferred until §18 has run.
 - **Evidence:** asset ID, time; the step 3 result. Query:
 
   ```sql
@@ -302,7 +302,7 @@ ROLLBACK;
 
 ## §12 Phase 2 application mail, invitation and recovery
 
-**Effect: changes production configuration and sends real email.**
+**Effect: changes production configuration, writes production data (a membership row) and sends real email.**
 
 > **Exposure:** opening application mail sends notices to **real workspace members** for real events, limited only by `MAIL_RECIPIENT_ALLOWLIST` if you set it. **Rollback:** set `MAIL_PAUSED=true` (keeps queued rows) or unset `APPLICATION_MAIL_APPROVED`, then redeploy.
 
@@ -443,7 +443,7 @@ ROLLBACK;
 
 - **Needs:** DEC-12 (decided 2026-10-04), DEC-01, and **first a DEC-04 real-model evaluation**: how often the model returns `facts_needed` for a pasted review, and whether the AI gateway reports token usage (otherwise each preview is charged a conservative estimate).
   - The **owner's step** is to authorize DEC-04 for this evaluation and record its budget.
-  - The evaluation itself is run by the controller or an engineer. `corepack pnpm eval:workflows` refuses unless `EVAL_LIVE=1`, an LLM key (`OPENCODE_API_KEY`, `LLM_API_KEY` or `OPENROUTER_KEY`) and `--budget-usd` are all present (`scripts/eval-workflows.ts`). The key is supplied through the shell environment from the owner's secret store, for example by `vercel env pull` into a local, git-ignored file that the engineer controls. It is never pasted into a chat or a document.
+  - The evaluation itself is run by the controller or an engineer. `corepack pnpm eval:workflows` refuses unless `EVAL_LIVE=1`, an LLM key (`OPENCODE_API_KEY`, `LLM_API_KEY` or `OPENROUTER_KEY`) and `--budget-usd` are all present (`scripts/eval-workflows.ts`). The key is one issued specifically for this evaluation, held in the engineer's own secret store and injected into the shell only for the run, then revoked or rotated afterwards; it is never pasted into a chat or a document.
 - **Cost:** the evaluation's DEC-04 budget, then at most the caps above per day.
 - **Preconditions:** the DEC-04 evaluation recorded as passed; §2 shows journal row 13; a test report you can unlock in a private window.
 - **Steps:**
@@ -526,7 +526,7 @@ ROLLBACK;
 
 **Effect: depends on your DEC-10 decision.** Keeping the scheduler off needs a code change or nothing; activating it changes production configuration and starts **unsupervised provider spend**.
 
-**What is true now (controller, read-only Vercel runtime logs, 2026-10-04).** `vercel.json` at `080ddf6` registers `/api/cron/dispatch` every 5 minutes. Vercel invoked it 288 times in the 24 hours before about 09:28 UTC on 2026-10-04 (deployment `dpl_E2HN…`), and **all 288 returned 401**. `CRON_SECRET` is present, but the route accepts only `Authorization: Bearer <CRON_SECRET>` with a secret of at least 16 characters, compared exactly (`lib/security/cron-auth.ts`), so the stored value is shorter than 16 characters or does not match exactly (for example, whitespace). The value was not read. **So no scheduled or resumed scan, re-claim, reminder or website verification has run in production.** It fails closed, and it is one secret fix away from running.
+**What is true now (controller, read-only Vercel runtime logs, 2026-10-04).** `vercel.json` at `080ddf6` registers `/api/cron/dispatch` every 5 minutes. Vercel invoked it 288 times in the 24 hours before about 09:28 UTC on 2026-10-04 (deployment `dpl_E2HN…`), and **all 288 returned 401**. `CRON_SECRET` is present, but the route accepts only `Authorization: Bearer <CRON_SECRET>` with a secret of at least 16 characters, compared exactly (`lib/security/cron-auth.ts`), so the most likely cause is the stored value; the alternatives are that it is shorter than 16 characters, does not match exactly (for example, whitespace), or is not available to deployment `dpl_E2HN…` at runtime (for example, added or changed after that build, or set in a different scope; see the R2 row's project-level-versus-build limitation). The value was not read. **So, in the observed 24 h before about 09:28 UTC on 2026-10-04, no schedule reminder, re-claim of abandoned scans, auto-close, reconcile or website verification ran through the cron in production.** It fails closed, and it is one fix away from running.
 
 **Step 0 — the DEC-10 decision (owner).** Record scheduler identity, frequency, provider budget, pause and retry policy in `BUSINESS-AND-HOSTED-DECISIONS.md`. DEC-10's recorded default is no hosted cron activation. Then follow one path.
 

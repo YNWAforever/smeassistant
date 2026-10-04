@@ -47,7 +47,7 @@ One row per Master Plan slice. Sources: `IMPLEMENTATION-TRACEABILITY.md` (Phase 
 | P2.3 Shared business context | changed | Items 15–18: `4d09059`, `352cf77`, item 17 (no commit recorded in the backlog), `4407fb5` | `evidence-inputs.test.ts`, action-detail tests | Item 17 has no commit hash in `PHASE-2-BACKLOG.md`; its presence was not separately re-verified here. |
 | P2.4 Assisted ownership assignment | changed | Items 19–23, 27, 28: `70b8a3d`, `ff19a5f`, `84ef171`, `39fa2cd`, `97bf170`, `d41693c`, `1c25db9`; no DDL | `neon-assisted-assignment.integration.test.ts`, `lib/auth/operator*.test.ts`, access-request route and component tests | Off in production: `OPERATOR_EMAILS` and `ASSISTED_ASSIGNMENT_ENABLED` absent (`vercel-facts.md`). DEC-06 undecided. |
 | P2.5 Communication and audit paths | changed | Items 24–26: `9a749ca`, `2a70d4d`, `268bae9` (mail port). Items 29 (invitation delivery) and 30 (report recovery): not built | `notifications` route tests, `fix-pack-drafts` route tests, `lib/mail/transport.test.ts` | In part: items 29–30 not built, blocked on DEC-07. Application mail closed in production (`APPLICATION_MAIL_APPROVED` absent). |
-| P3.1 Durable lifecycle, one scheduler | changed | `/api/cron/dispatch` (GET and POST, bearer), `vercel.json` cron `*/5 * * * *` (`PHASE-3-REPORT.md` P3.1; GET fix in P3.5c final review) | `neon-cron-dispatch.integration.test.ts`, `app/api/cron/dispatch/route.test.ts`, `tests/cron-registration.test.ts`, `neon-execution.integration.test.ts` | Effectively off in production: Vercel invokes the cron every 5 minutes but all 288 calls in the 24 h before about 09:28 UTC on 2026-10-04 returned 401 (controller, read-only runtime logs), so no hosted tick has run (§5). Per-module checkpoint/resume not built. |
+| P3.1 Durable lifecycle, one scheduler | changed | `/api/cron/dispatch` (GET and POST, bearer), `vercel.json` cron `*/5 * * * *` (`PHASE-3-REPORT.md` P3.1; GET fix in P3.5c final review) | `neon-cron-dispatch.integration.test.ts`, `app/api/cron/dispatch/route.test.ts`, `tests/cron-registration.test.ts`, `neon-execution.integration.test.ts` | Effectively off in production: Vercel invokes the cron every 5 minutes but all 288 calls in the 24 h before about 09:28 UTC on 2026-10-04 returned 401 (controller, read-only runtime logs), so no authorized tick ran in the observed 24 h before about 09:28 UTC on 2026-10-04 (§5). Per-module checkpoint/resume not built. |
 | P3.2 Re-scan and proof of change reachable | changed | P3.2 applied evidence (`0006`, `0007`), P3.2b website verifier, P3.2c comparison states (`5238a7b`–`ede55de`), rescan reachability PR #16 | `neon-report-comparison.integration.test.ts`, `neon-website-verification.integration.test.ts`, `lib/report/comparison/*.test.ts`, `report-scan-comparison.spec.ts` | R11 browser pair not run; no member has opened `/r/[slug]` hosted (`PHASE-3-REPORT.md` P3.2c). Only 2 of 13 templates are verifiable. |
 | P3.3 Billing, allowance and seats | changed | Commercial contract on safe defaults (`lib/commercial/*`), billing closed unless approved (`PHASE-3-REPORT.md` P3.3) | `lib/commercial/*.test.ts`, Stripe webhook tests, `permissions.spec.ts` | Billing closed in production (`COMMERCIAL_CONTRACT_APPROVED` absent). No Stripe test-mode run (DEC-09); no commercial matrix (DEC-08). |
 | P3.4 Reliable events and value metric | changed | `0008`, durable `scan_events`, `report:value` CLI (`PHASE-3-REPORT.md` P3.4) | `neon-value-report.integration.test.ts`, `tests/value-report-*.test.ts` | Production reliability not observed. The 2026-09-18 `home lookup failed` 500 was attributed to missing `0005`–`0008`, owner-reported applied 2026-09-24. |
@@ -122,7 +122,7 @@ Candidate deployment for every row: `dpl_E2HNGePLBHpdDVNzejLTZVrBepqN` (`080ddf6
 
 | Scenario | Authorized scope/reference | Status | Candidate deployment | Safe entity/receipt IDs | Evidence and limitation |
 |---|---|---|---|---|---|
-| R2 environment inventory | Controller read-only names inventory, 2026-10-04 (owner-approved in chat); DEC-03 not recorded. Checklist §1 | **passed** (names/presence only) | `dpl_E2HNGePLBHpdDVNzejLTZVrBepqN` | project `prj_Hbox4o4NhM3p0yxRxmY8Xq1mjtb5` | `vercel-facts.md`: 52 production names present, `hiddenProductionEnvCount = 0`; absences listed in §1. **Values were not read or decrypted**, so value validity, fail-closed configuration and flag values (`WORKSPACE_CLAIM_VIA_OAUTH_ENABLED`, `SCAN_SOURCES`, `REPORT_RECOVERY_ENABLED`, `EVIDENCE_SNAPSHOT_*`) are not verified. Project-level presence today is not proof of the environment built into `dpl_E2HN…`, which captured the variables that existed at its build time. Vercel flags `BLOB_READ_WRITE_TOKEN` and `NEON_AUTH_BASE_URL` as `readable-secret` (§7). |
+| R2 environment inventory | Controller read-only names inventory, 2026-10-04 (owner-approved in chat, controller-reported); DEC-03 not recorded. Checklist §1 | **passed** (names/presence only) | `dpl_E2HNGePLBHpdDVNzejLTZVrBepqN` | project `prj_Hbox4o4NhM3p0yxRxmY8Xq1mjtb5` | `vercel-facts.md`: 52 production names present, `hiddenProductionEnvCount = 0`; absences listed in §1. **Values were not read or decrypted**, so value validity, fail-closed configuration and flag values (`WORKSPACE_CLAIM_VIA_OAUTH_ENABLED`, `SCAN_SOURCES`, `REPORT_RECOVERY_ENABLED`, `EVIDENCE_SNAPSHOT_*`) are not verified. Project-level presence today is not proof of the environment built into `dpl_E2HN…`, which captured the variables that existed at its build time. Vercel flags `BLOB_READ_WRITE_TOKEN` and `NEON_AUTH_BASE_URL` as `readable-secret` (§7). |
 | Migration applies `0001`–`0013` (**owner-reported, not independently verified**) | DEC-11 owner actions; checklist §2 | not run (independent check) | n/a (database) | journal rows 1–13 expected | Owner-reported: `0005`–`0008` 2026-09-24; `0011` 2026-10-02; `0012` 2026-10-03 (production; test branch not mentioned); `0013` 2026-10-04; `0009`–`0010` implied by `apply-0011.sql`'s journal precondition; `0001`–`0004` from the Neon migration with no repository application record. The read-only journal query in checklist §2 would verify names and checksums. |
 | R3 HK usable live scan | DEC-04 budget and named HK business: not recorded; checklist §18 | not run | — | — | Blocked by missing DEC-04 authorization and budget. |
 | R3 TW usable live scan | DEC-04: not recorded; checklist §18 | not run | — | — | Same precondition. |
@@ -135,7 +135,7 @@ Candidate deployment for every row: `dpl_E2HNGePLBHpdDVNzejLTZVrBepqN` (`080ddf6
 | Phase 2 FAQ/website-basics workflows | DEC-04: not recorded; checklist §14 | not run | — | — | — |
 | Phase 2 assisted no-GBP assignment | DEC-06: undecided; checklist §11 | not run | — | — | Off in production (`OPERATOR_EMAILS`, `ASSISTED_ASSIGNMENT_ENABLED` absent). |
 | Phase 2 application mail/invitation/recovery | DEC-05 and DEC-07: undecided; checklist §12 | not run | — | — | Application mail closed (`APPLICATION_MAIL_APPROVED` absent). Invitation delivery and report recovery are not built (P2.5 items 29–30). |
-| Phase 3 actual scheduled/resumed work | DEC-10: undecided (recorded default: no hosted cron activation); checklist §20 | not run | `dpl_E2HNGePLBHpdDVNzejLTZVrBepqN` | — | The cron is registered and invoked: `vercel.json` at `080ddf6` schedules `/api/cron/dispatch` every 5 minutes, and Vercel invoked it 288 times in the 24 h before about 09:28 UTC on 2026-10-04, **all returning 401** (controller, read-only Vercel runtime logs, 2026-10-04). `CRON_SECRET` is present (names-only read), but `lib/security/cron-auth.ts` accepts only `Authorization: Bearer <CRON_SECRET>` with a secret of at least 16 characters, compared exactly, so the stored value is shorter than 16 characters or does not match exactly (for example, whitespace); the value was not read. No scheduled or resumed scan, re-claim, reminder or website verification has run in production. The scheduler fails closed and is one secret fix away from unsupervised provider spend. `PHASE-3-REPORT.md:517` and `:671` ("Production runs no cron reclaim (`CRON_SECRET` is unset)") are stale on the variable's presence; that historical report is left unedited. |
+| Phase 3 actual scheduled/resumed work | DEC-10: undecided (recorded default: no hosted cron activation); checklist §20 | not run | `dpl_E2HNGePLBHpdDVNzejLTZVrBepqN` | — | The cron is registered and invoked: `vercel.json` at `080ddf6` schedules `/api/cron/dispatch` every 5 minutes, and Vercel invoked it 288 times in the 24 h before about 09:28 UTC on 2026-10-04, **all returning 401** (controller, read-only Vercel runtime logs, 2026-10-04). `CRON_SECRET` is present (names-only read), but `lib/security/cron-auth.ts` accepts only `Authorization: Bearer <CRON_SECRET>` with a secret of at least 16 characters, compared exactly, so the most likely cause is the stored value; the alternatives are that it is shorter than 16 characters, does not match exactly (for example, whitespace), or is not available to deployment `dpl_E2HN…` at runtime (for example, added or changed after that build, or set in a different scope; see the R2 row's project-level-versus-build limitation). The value was not read. No schedule reminder, re-claim of abandoned scans (resumed work), auto-close, reconcile or website verification ran through the cron in the observed 24 h before about 09:28 UTC on 2026-10-04. The scheduler fails closed and is one secret fix away from unsupervised provider spend. `PHASE-3-REPORT.md:517` and `:671` ("Production runs no cron reclaim (`CRON_SECRET` is unset)") are stale on the variable's presence; that historical report is left unedited. |
 | R8 authorized Stripe test transitions | DEC-08 and DEC-09: undecided; checklist §21 | not run | — | — | Billing closed (`COMMERCIAL_CONTRACT_APPROVED` absent). |
 | R11 successful comparable pair | DEC-04 for two scans: not recorded; checklist §19 | not run | — | — | Needs two authorized, comparable scans of one place. Rescan is paid-tier only (403 `tier_required` on lite) and billing is closed, so this may depend on R8. |
 | R10 hosted mobile observation | No authorization needed (public pages, read-only); checklist §4, plus 375 px screenshots in §5–§19 | not run | — | — | No dedicated mobile Playwright project exists (§4); no hosted mobile observation recorded. |
@@ -207,7 +207,7 @@ Provider spend/budget controls:
   The P3.1 scheduler is effectively off in production: Vercel calls
   /api/cron/dispatch every 5 minutes and all 288 calls in the 24 h before about
   09:28 UTC on 2026-10-04 returned 401 (controller, read-only runtime logs), so no
-  spend has happened through it. A valid CRON_SECRET of 16+ characters would start
+  spend happened through it in that observed window. A valid CRON_SECRET of 16+ characters would start
   re-claims and other cron work for every workspace at once. That is a DEC-10
   decision (default: no hosted cron activation); checklist §20 recommends removing
   the cron entry until DEC-10 is decided.
@@ -249,10 +249,15 @@ Known operational failures and recovery:
   cause not investigated. Locally, Turbopack cannot build on Windows
   (@radix-ui resolve errors), which blocks build, secret-boundary, e2e and
   e2e:acceptance on that machine only. Production cron: 288 of 288 invocations in
-  24 h returned 401 (CRON_SECRET shorter than 16 characters or not an exact match;
-  value not read), so scheduled rescans, re-claim of abandoned scans, auto-close,
-  reconcile, reminders, website verification and mail delivery have not run in
-  production. PHASE-3-REPORT.md:517 and :671 say CRON_SECRET is unset; that is
+  the 24 h before about 09:28 UTC on 2026-10-04 returned 401. Most likely cause:
+  the stored CRON_SECRET; alternatives are a value shorter than 16 characters, one
+  that does not match exactly, or one not available to dpl_E2HN... at runtime
+  (added or changed after its build, or set in another scope; see the R2
+  project-level-versus-build limitation). Value not read. So, in that observed
+  window, schedule reminders (the route only notifies about due schedules and never
+  dispatches rescans; app/api/cron/dispatch/route.ts), re-claim of abandoned scans,
+  auto-close, reconcile, website verification and mail delivery did not run through
+  the cron in production. PHASE-3-REPORT.md:517 and :671 say CRON_SECRET is unset; that is
   stale (the name is present), and the historical report is left unedited.
 ```
 
@@ -275,7 +280,8 @@ Features enabled/disabled:
   OPERATOR_EMAILS, COMMERCIAL_CONTRACT_APPROVED, APPLICATION_MAIL_APPROVED,
   OWNER_SELF_SERVICE_CLAIM. Present, value unverified: WORKSPACE_CLAIM_VIA_OAUTH_ENABLED,
   SCAN_SOURCES, REPORT_RECOVERY_ENABLED, EVIDENCE_SNAPSHOT_*. Scheduler: registered
-  but every call returns 401 (CRON_SECRET invalid), so effectively off.
+  but every call in the observed 24 h returned 401 (most likely the stored
+  CRON_SECRET; see §5 for the alternatives), so effectively off.
 
 Pre-deploy gates:
   CI verify green on the candidate: 37169934797 (same tree) and push run
