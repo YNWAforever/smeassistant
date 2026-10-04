@@ -89,7 +89,8 @@ async function passThrough<T>(_workspaceId: string, fn: (token: string) => Promi
 // A fake Google: accounts → locations → reviews, one review whose reply the
 // PUT stores. Per-call overrides are queued; every request is recorded.
 
-type Step = { status?: number; throws?: "timeout" | "network"; json?: unknown };
+/** `lands`: on a PUT, Google stores the reply before the connection is lost. */
+type Step = { status?: number; throws?: "timeout" | "network"; json?: unknown; lands?: boolean };
 type Call = { method: string; url: string; body: string | null };
 
 class FakeGoogle {
@@ -141,6 +142,7 @@ class FakeGoogle {
     }
     if (method === "PUT" && path === `/v4/${REVIEW_NAME}/reply`) {
       const step = this.puts.shift();
+      if (step?.lands) this.reply = this.storeAs((JSON.parse(String(init?.body)) as { comment: string }).comment);
       if (step?.throws || (step?.status && step.status >= 300)) return this.answer(step, {});
       this.reply = this.storeAs((JSON.parse(String(init?.body)) as { comment: string }).comment);
       return this.answer(step, { comment: this.reply, updateTime: this.replyTime });
@@ -527,6 +529,53 @@ describe("POST …/publish", () => {
       expect(mocks.sendDeliveryNotices).not.toHaveBeenCalled();
     },
   );
+
+  it("put timeout leaves publishing; reconcile then publishes and counts once", async () => {
+    // The PUT reaches Google, but the connection drops before the 2xx.
+    google.puts.push({ throws: "timeout", lands: true });
+    const res = await publish();
+    expect(await res.json()).toEqual({ deliveryId: DELIVERY_ID, state: "publishing", counted: false, usage: usageJson });
+    expect(google.putCalls).toHaveLength(1);
+    expect(mocks.repo.finish).not.toHaveBeenCalled();
+    expect(mocks.sendDeliveryNotices).not.toHaveBeenCalled();
+
+    // The delivery as the repository now holds it, old enough to reconcile.
+    mocks.repo.getDelivery.mockResolvedValue({
+      id: DELIVERY_ID,
+      workspaceId: WORKSPACE_ID,
+      versionId: VERSION_ID,
+      actionId: ACTION_ID,
+      locationId: LOCATION_ID,
+      templateKey: "review-response",
+      versionNo: 2,
+      body: BODY,
+      state: "publishing",
+      targetRef: REVIEW_NAME,
+      counted: false,
+      failureReason: null,
+      verifiedAt: null,
+      createdAt: new Date(Date.now() - 16_000).toISOString(),
+    });
+    const { POST: reconcile } = await import("@/app/api/deliveries/[deliveryId]/reconcile/route");
+    const settled = await reconcile(new Request(`https://app.test/api/deliveries/${DELIVERY_ID}/reconcile`, { method: "POST" }), {
+      params: Promise.resolve({ deliveryId: DELIVERY_ID }),
+    });
+    expect(settled.status).toBe(200);
+    expect(await settled.json()).toEqual({ deliveryId: DELIVERY_ID, state: "published", counted: true });
+
+    expect(google.putCalls).toHaveLength(1);
+    expect(google.reviewCalls.map((c) => c.method)).toEqual(["GET", "PUT", "GET"]);
+    expect(mocks.repo.finish).toHaveBeenCalledTimes(1);
+    expect(mocks.repo.finish).toHaveBeenCalledWith({
+      deliveryId: DELIVERY_ID,
+      actorId: "user-1",
+      outcome: "published",
+      receipt: { review_name: REVIEW_NAME, reply_update_time: "2026-10-04T09:00:00Z" },
+      reason: null,
+    });
+    expect(mocks.sendDeliveryNotices).toHaveBeenCalledTimes(1);
+    expect(mocks.consumePublishLimits).toHaveBeenCalledWith("reconcile", { workspaceId: WORKSPACE_ID, deliveryId: DELIVERY_ID });
+  });
 
   it.each(["timeout", 503, 401, 429] as const)("a read-back failure (%s) after a 2xx PUT stays publishing with one PUT", async (failure) => {
     google.reviewGets.push({}, typeof failure === "number" ? { status: failure } : { throws: failure });

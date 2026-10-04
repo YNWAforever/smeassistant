@@ -37,7 +37,7 @@ type Outcome =
   | { kind: "failed"; reason: PublishFailureReason }
   | { kind: "uncertain" };
 
-type RunPublishRepository = Pick<ReturnType<typeof publishingRepository>, "finish" | "getDelivery">;
+export type RunPublishRepository = Pick<ReturnType<typeof publishingRepository>, "finish" | "getDelivery">;
 
 export type RunPublishDeps = {
   repository?: RunPublishRepository;
@@ -161,8 +161,11 @@ export async function runPublish(
   }
 }
 
-/** What the delivery holds now, when finishing it failed; `publishing` when even that cannot be read. */
-async function storedState(repository: RunPublishRepository, deliveryId: string): Promise<RunPublishResult> {
+/**
+ * What the delivery holds now, when finishing it failed; `publishing` when
+ * even that cannot be read. Shared with reconcile.
+ */
+export async function storedState(repository: RunPublishRepository, deliveryId: string): Promise<RunPublishResult> {
   try {
     const delivery = await repository.getDelivery(deliveryId);
     if (delivery) {

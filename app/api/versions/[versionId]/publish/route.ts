@@ -4,10 +4,10 @@ import { findLocationForPlace, reviewNameIsUnder, type GbpLocationRef } from "@/
 import { withGbpAccessToken } from "@/lib/publishing/connection";
 import { consumePublishLimits } from "@/lib/publishing/limits";
 import { runPublish, type RunPublishResult } from "@/lib/publishing/run-publish";
+import { readPublishUsage } from "@/lib/publishing/route-support";
 import { PublishError } from "@/lib/repositories/publishing";
-import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
 import { sendDeliveryNotices } from "@/lib/workspace/delivery-notices";
-import { getUsage, type Usage } from "@/lib/workspace/usage";
+import type { Usage } from "@/lib/workspace/usage";
 import { googleFailureResponse, guardPublishRequest, limitRefusal, unavailable } from "./guard";
 
 /**
@@ -99,7 +99,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ version
     });
   }
 
-  const usage = await readUsage(subject.workspaceId);
+  const usage = await readPublishUsage(LOG, subject.workspaceId);
   if (begun.kind === "begun" && result.counted && usage) {
     await sendDeliveryNotices({ workspaceId: subject.workspaceId, actionId: subject.actionId, kind: "publish", usage });
   }
@@ -111,27 +111,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ version
     ...(result.reason ? { reason: result.reason } : {}),
     usage: usage ? usageJson(usage) : null,
   });
-}
-
-/**
- * The period usage, read as the export route reads it. Best-effort: by now the
- * delivery is recorded (and maybe published), so a failed read must not turn
- * the answer into an error; the response then carries `usage: null`.
- */
-async function readUsage(workspaceId: string): Promise<Usage | null> {
-  try {
-    const read = workspaceReadRepository();
-    const [workspace] = await read.workspaces([workspaceId]);
-    return await getUsage(
-      read,
-      workspaceId,
-      workspace?.timezone || "Asia/Hong_Kong",
-      workspace?.tier === "paid" ? "paid" : "lite",
-    );
-  } catch {
-    console.error(`[${LOG}] usage not read`, { category: "gbp_publish_usage_unavailable" });
-    return null;
-  }
 }
 
 function usageJson(usage: Usage): UsageJson {
