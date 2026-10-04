@@ -69,9 +69,10 @@ The row's remaining items map as follows:
 
 **What this does not authorize.** Recording DEC-12 as decided does not apply
 `0013` to any hosted database (that is DEC-11, still an explicit owner action),
-does not turn the flag on, and does not record any hosted acceptance. As of
-2026-10-04 `0013` has been applied only to owned, disposable local Docker
-databases, and hosted acceptance was not run. The owner steps are in
+does not turn the flag on, and does not record any hosted acceptance. When
+P4.5 merged, `0013` had been applied only to owned, disposable local Docker
+databases (see the owner-reported line below for the later hosted state), and
+hosted acceptance was not run. The owner steps are in
 `docs/integration/DEPLOY.md` ("P4.5 unsaved preview draft: migration 0013 and
 the flag"): apply `apply-0013.sql` on a Neon test branch and then production,
 set `PREVIEW_DRAFT_ENABLED=true` and redeploy; roll back by unsetting the flag.
