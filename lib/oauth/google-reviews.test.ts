@@ -80,6 +80,31 @@ describe("findLocationForPlace", () => {
   });
 });
 
+describe("findLocationForPlace body parsing", () => {
+  it("maps a 2xx whose JSON body fails to parse to provider_error without leaking the body", async () => {
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => {
+          throw new SyntaxError(`Unexpected token '<', "<!DOCTYPE SECRET_BODY" is not valid JSON`);
+        },
+      } as unknown as Response;
+    });
+
+    const error = await caught(findLocationForPlace("tok_SECRET", "place-a", fetchImpl));
+
+    expect(error).toBeInstanceOf(GbpError);
+    const gbp = error as GbpError;
+    expect(gbp.code).toBe("provider_error");
+    expect(gbp.message).toBe("provider_error");
+    expect(gbp.cause).toBeUndefined();
+    const rendered = [gbp.message, String(gbp), JSON.stringify(gbp), gbp.stack ?? ""].join("\n");
+    expect(rendered).not.toContain("SECRET_BODY");
+    expect(rendered).not.toContain("tok_SECRET");
+  });
+});
+
 describe("listUnrepliedReviews", () => {
   it("skips replied reviews, stops at 50 and at 3 pages, maps star enums and truncates excerpts to 200 code points", async () => {
     const longComment = "😀".repeat(250); // 250 code points, 500 UTF-16 units

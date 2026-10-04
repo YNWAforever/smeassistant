@@ -137,7 +137,15 @@ export async function findLocationForPlace(
   // listManagedLocations owns the paging and the timeout; this wrapper only
   // converts its failures into GbpError codes before they reach it.
   const guarded: typeof fetch = (input, init) => send(fetchImpl, input, init);
-  const locations = await listManagedLocations(accessToken, guarded);
+  let locations: Awaited<ReturnType<typeof listManagedLocations>>;
+  try {
+    locations = await listManagedLocations(accessToken, guarded);
+  } catch (error) {
+    // Body parsing happens inside listManagedLocations (raw response.json()),
+    // whose SyntaxError can quote Google's body. Only a code leaves here.
+    if (error instanceof GbpError) throw error;
+    throw new GbpError("provider_error");
+  }
   const match = locations.find((location) => location.placeId === placeId);
   return match ? { accountName: match.accountName, locationName: match.locationName } : null;
 }
