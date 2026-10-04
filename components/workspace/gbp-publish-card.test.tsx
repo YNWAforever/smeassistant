@@ -26,6 +26,7 @@ function panel(overrides: Partial<PublishPanel> = {}): PublishPanel {
     enabled: true,
     connectionActive: true,
     eligibility: { ok: true },
+    mayAct: true,
     canPublish: true,
     canDelete: true,
     deliveries: [],
@@ -88,7 +89,7 @@ describe("GbpPublishCard", () => {
   })
 
   it("renders nothing when disabled with no deliveries", () => {
-    const { container } = mount({ panel: panel({ enabled: false, connectionActive: false, eligibility: { ok: false, reason: "flag_off" }, canPublish: false, canDelete: false }) })
+    const { container } = mount({ panel: panel({ enabled: false, connectionActive: false, eligibility: { ok: false, reason: "flag_off" }, mayAct: false, canPublish: false, canDelete: false }) })
     expect(container).toBeEmptyDOMElement()
     expect(fetchMock).not.toHaveBeenCalled()
   })
@@ -156,9 +157,12 @@ describe("GbpPublishCard", () => {
     fetchMock.mockImplementation(() => Promise.reject(new TypeError("Failed to fetch")))
     await act(async () => { fireEvent.click(confirmButton()) })
     await screen.findByRole("alert")
+    // Each new destination needs the confirmation ticked again.
     await act(async () => { fireEvent.click(screen.getByRole("radio", { name: /Chan Tai Man/ })) })
+    await check()
     await act(async () => { fireEvent.click(confirmButton()) })
     await act(async () => { fireEvent.click(screen.getByRole("radio", { name: /Lee Siu Ming/ })) })
+    await check()
     await act(async () => { fireEvent.click(confirmButton()) })
 
     expect(posts()).toHaveLength(3)
@@ -262,8 +266,72 @@ describe("GbpPublishCard", () => {
     expect(screen.getByText(text.state.cancelled)).toBeInTheDocument()
   })
 
+  it("changing the selected review clears the confirmation and disables Publish until re-ticked", async () => {
+    mount()
+    await openDialog()
+    await screen.findByText(/Lee Siu Ming/)
+    await check()
+    expect(confirmButton()).toBeEnabled()
+    await act(async () => { fireEvent.click(screen.getByRole("radio", { name: /Chan Tai Man/ })) })
+    expect(screen.getByRole("checkbox", { name: text.confirm })).not.toBeChecked()
+    expect(confirmButton()).toBeDisabled()
+    await check()
+    expect(confirmButton()).toBeEnabled()
+  })
+
+  it("the review list is disabled while a publish is in flight", async () => {
+    mount()
+    await openDialog()
+    await screen.findByText(/Lee Siu Ming/)
+    await check()
+    let answer: (value: Response) => void = () => {}
+    fetchMock.mockImplementationOnce(() => new Promise<Response>((resolve) => { answer = resolve }))
+    await act(async () => { fireEvent.click(confirmButton()) })
+    for (const radio of screen.getAllByRole("radio")) expect(radio).toBeDisabled()
+    await act(async () => { answer(new Response(JSON.stringify({ deliveryId: "d-1", state: "published", counted: true, usage: null }), { status: 200 })) })
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1))
+  })
+
+  it("already_publishing refreshes the page state", async () => {
+    for (const code of ["already_publishing", "target_busy", "version_changed"] as const) {
+      onChanged.mockReset()
+      const { unmount } = mount()
+      await openDialog()
+      await screen.findByText(/Lee Siu Ming/)
+      await check()
+      fetchMock.mockImplementationOnce(() => ok({ error: code }, 409))
+      await act(async () => { fireEvent.click(confirmButton()) })
+      expect(await screen.findByRole("alert")).toHaveTextContent(text.reasons[code])
+      expect(onChanged).toHaveBeenCalledTimes(1)
+      unmount()
+    }
+    // Other refusals do not refresh.
+    onChanged.mockReset()
+    mount()
+    await openDialog()
+    await screen.findByText(/Lee Siu Ming/)
+    await check()
+    fetchMock.mockImplementationOnce(() => ok({ error: "allowance_exceeded" }, 409))
+    await act(async () => { fireEvent.click(confirmButton()) })
+    await screen.findByRole("alert")
+    expect(onChanged).not.toHaveBeenCalled()
+  })
+
+  it("a viewer with connection_missing sees no integrations link", () => {
+    const blocked = { connectionActive: false, eligibility: { ok: false, reason: "connection_missing" } as const, canPublish: false }
+    const { unmount } = mount({ panel: panel({ ...blocked, mayAct: false, canDelete: false }) })
+    expect(screen.queryByRole("link", { name: text.connectGoogle })).not.toBeInTheDocument()
+    expect(screen.queryByText(text.reasons.connection_missing)).not.toBeInTheDocument()
+    expect(screen.getByText(text.noPermission)).toBeInTheDocument()
+    unmount()
+    // An in-scope manager reads the reason, but the integrations settings are the owner's.
+    mount({ panel: panel({ ...blocked, mayAct: true, canDelete: false }) })
+    expect(screen.getByText(text.reasons.connection_missing)).toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: text.connectGoogle })).not.toBeInTheDocument()
+  })
+
   it("viewers and unapproved versions are never offered Publish", () => {
-    const { unmount } = mount({ panel: panel({ canPublish: false, canDelete: false }) })
+    const { unmount } = mount({ panel: panel({ mayAct: false, canPublish: false, canDelete: false }) })
     expect(screen.queryByRole("button", { name: text.publishButton })).not.toBeInTheDocument()
     unmount()
     const { container } = mount({ approved: false })

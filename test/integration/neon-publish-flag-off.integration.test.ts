@@ -210,6 +210,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon GBP reply publishing:
         enabled: false,
         connectionActive: false,
         eligibility: { ok: false, reason: "flag_off" },
+        mayAct: false,
         canPublish: false,
         canDelete: false,
         deliveries: [],

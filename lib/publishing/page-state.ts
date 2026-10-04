@@ -30,6 +30,11 @@ export type PublishPanel = {
   enabled: boolean;
   connectionActive: boolean;
   eligibility: { ok: true } | { ok: false; reason: EligibilityReason };
+  /**
+   * The role half of `canPublish` (owner, or manager in scope), with the flag
+   * on: whether a blocked reason is this member's to fix, or read-only copy.
+   */
+  mayAct: boolean;
   canPublish: boolean;
   canDelete: boolean;
   deliveries: PublishPanelDelivery[];
@@ -102,6 +107,7 @@ export async function loadPublishPanel(input: {
       enabled,
       connectionActive,
       eligibility,
+      mayAct: enabled && mayAct,
       canPublish: enabled && eligibility.ok && mayAct,
       canDelete: enabled && input.role === "owner",
       deliveries,

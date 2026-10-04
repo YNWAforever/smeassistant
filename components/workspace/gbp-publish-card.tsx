@@ -54,6 +54,8 @@ type TargetsAnswer = { targets: GbpReviewTarget[]; preselected: string | null }
 
 const RECONCILE_AFTER_MS = 15_000
 const KNOWN_REASONS: ReadonlySet<string> = new Set(PUBLISH_REASON_KEYS)
+/** Publish refusals that mean the page shows a stale state; refreshing shows the real one. */
+const STALE_PAGE_ERRORS: ReadonlySet<string> = new Set(["already_publishing", "target_busy", "version_changed"])
 
 const mintKey = () => crypto.randomUUID().replaceAll("-", "")
 
@@ -138,8 +140,10 @@ export function GbpPublishCard({ locale, versionId, versionNo, body, approved, p
   const blocked = panel.enabled && approved && !panel.eligibility.ok && !active
     ? panel.eligibility.reason
     : null
-  const blockedReason = blocked === "flag_off" || blocked === "not_review_response" || blocked === "not_approved" ? null : blocked
-  const noPermission = panel.enabled && approved && panel.eligibility.ok && !panel.canPublish && !active
+  const stated = blocked === "flag_off" || blocked === "not_review_response" || blocked === "not_approved" ? null : blocked
+  // A blocked reason is only the fixer's to read; a viewer or out-of-scope manager gets the read-only copy.
+  const blockedReason = panel.mayAct ? stated : null
+  const noPermission = panel.enabled && approved && !active && !panel.mayAct && (panel.eligibility.ok || stated !== null)
 
   if (!latest && !showPublish && !blockedReason && !noPermission) return null
 
@@ -164,10 +168,12 @@ export function GbpPublishCard({ locale, versionId, versionNo, body, approved, p
   }
 
   function choose(reviewName: string) {
-    if (reviewName === selected) return
+    if (busy !== null || reviewName === selected) return
     setSelected(reviewName)
     // A replayed key answers with the earlier delivery, whatever review it named.
     setKey(mintKey())
+    // The tick confirmed a destination; a new destination needs a new tick.
+    setConfirmed(false)
     setDialogError(null)
   }
 
@@ -185,6 +191,8 @@ export function GbpPublishCard({ locale, versionId, versionNo, body, approved, p
       // A dropped answer may still have begun a delivery: keep the key so a retry replays it.
       if (result.error === "idempotency_key_conflict") setKey(mintKey())
       setDialogError(result.error === "network" ? "network" : reasonKey(result.error, result.status))
+      // The page state is out of date: another publish began, or a newer version exists.
+      if (STALE_PAGE_ERRORS.has(result.error)) onChanged()
       return
     }
     if (result.data.state === "failed") {
@@ -290,7 +298,7 @@ export function GbpPublishCard({ locale, versionId, versionNo, body, approved, p
       {blockedReason && (
         <p className="limitation-note">
           {t.reasons[blockedReason]}
-          {blockedReason === "connection_missing" && (
+          {blockedReason === "connection_missing" && panel.canDelete && (
             <>
               {" "}
               <Link href={integrationsHref}>{t.connectGoogle}</Link>
@@ -317,7 +325,7 @@ export function GbpPublishCard({ locale, versionId, versionNo, body, approved, p
             ) : targets ? (
               <div className="field-stack">
                 <Label id="gbp-publish-targets-label">{t.pickReview}</Label>
-                <RadioGroup value={selected ?? ""} onValueChange={choose} aria-labelledby="gbp-publish-targets-label">
+                <RadioGroup value={selected ?? ""} onValueChange={choose} disabled={busy !== null} aria-labelledby="gbp-publish-targets-label">
                   {targets.map((target, index) => (
                     <Label className="consent-row" key={target.reviewName} htmlFor={`gbp-publish-target-${index}`}>
                       <RadioGroupItem id={`gbp-publish-target-${index}`} value={target.reviewName} />

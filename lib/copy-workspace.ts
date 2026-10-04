@@ -220,6 +220,8 @@ export type WorkspaceCopy = {
     saveInputs: string;
   };
   checklistSteps: Partial<Record<TemplateKey, { where: string; steps: string[] }>>;
+  /** P4.6: the Google publish card on the action detail page. */
+  publish: PublishCopy;
   /**
    * P2.2/item 13: the FAQ export must carry instructions for the owner's
    * website editor, and the website-basics export must read as an approved
@@ -227,8 +229,6 @@ export type WorkspaceCopy = {
    * Keyed by template because the two website templates need different
    * "where does this go" instructions; the disclaimer is shared.
    */
-  /** P4.6: the Google publish card on the action detail page. */
-  publish: PublishCopy;
   websiteExport: {
     heading: string;
     criteriaHeading: string;

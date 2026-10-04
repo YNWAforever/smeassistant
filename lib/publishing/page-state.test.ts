@@ -63,6 +63,7 @@ describe("loadPublishPanel", () => {
       enabled: false,
       connectionActive: false,
       eligibility: { ok: false, reason: "flag_off" },
+      mayAct: false,
       canPublish: false,
       canDelete: false,
       deliveries: [],
@@ -101,12 +102,12 @@ describe("loadPublishPanel", () => {
 
   it("canPublish false for viewer and out-of-scope manager; canDelete only for owner", async () => {
     const owner = await loadPublishPanel(input());
-    expect(owner).toMatchObject({ enabled: true, connectionActive: true, eligibility: { ok: true }, canPublish: true, canDelete: true });
-    expect(await loadPublishPanel(input({ role: "manager", inScope: true }))).toMatchObject({ canPublish: true, canDelete: false });
-    expect(await loadPublishPanel(input({ role: "manager", inScope: false }))).toMatchObject({ canPublish: false, canDelete: false });
-    expect(await loadPublishPanel(input({ role: "viewer", inScope: true }))).toMatchObject({ canPublish: false, canDelete: false });
+    expect(owner).toMatchObject({ enabled: true, connectionActive: true, eligibility: { ok: true }, mayAct: true, canPublish: true, canDelete: true });
+    expect(await loadPublishPanel(input({ role: "manager", inScope: true }))).toMatchObject({ mayAct: true, canPublish: true, canDelete: false });
+    expect(await loadPublishPanel(input({ role: "manager", inScope: false }))).toMatchObject({ mayAct: false, canPublish: false, canDelete: false });
+    expect(await loadPublishPanel(input({ role: "viewer", inScope: true }))).toMatchObject({ mayAct: false, canPublish: false, canDelete: false });
     // The flag off: nobody may publish or delete.
-    expect(await loadPublishPanel(input({ enabled: false }))).toMatchObject({ canPublish: false, canDelete: false });
+    expect(await loadPublishPanel(input({ enabled: false }))).toMatchObject({ mayAct: false, canPublish: false, canDelete: false });
     // A connection without the reviews scope is no connection.
     repo.activeGbpConnection.mockResolvedValue({ ...connection, scopes: ["openid"] });
     expect(await loadPublishPanel(input())).toMatchObject({
