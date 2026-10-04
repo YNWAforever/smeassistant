@@ -5,7 +5,13 @@ This is the evidence pack for `main` at `029d86a`. It follows [`RELEASE-EVIDENCE
 - Every result recorded here was produced for this candidate.
 - Status values are `passed`, `failed`, `blocked` and `not run` only.
 
-**Bottom line.** Implemented and CI-verified; locally verified on Windows, with every gate run in its normal form for the first time. **Hosted verification is not complete.** The only hosted facts recorded are:
+**Bottom line.** Implemented and CI-verified: push run attempt 2 passed; attempt 1 failed on an unfixed flake.
+
+Locally on Windows:
+- Every gate passed in its normal form, except `e2e`, which ran on port 3197 through temporary config copies.
+- `e2e:acceptance` **failed**: 3 of 42 tests. Those 3 passed when re-run alone.
+
+**Hosted verification is not complete.** The only hosted facts recorded are:
 - read-only Vercel observations;
 - migrations the owner reported applying.
 
@@ -22,11 +28,11 @@ This is **not** ready to claim a verified release.
 | Runtime / package manager / lockfile | Unchanged: Node from `.nvmrc` = `24` (local v24.18.0), `corepack pnpm` 9.12.0, frozen `pnpm-lock.yaml`. **New:** a repo `.npmrc` with `virtual-store-dir-max-length=60` (PR #35). It changes only pnpm's store folder names; the lockfile is unchanged. |
 | Test database fixture identity | Unchanged: owned, disposable Docker `postgres:16` per `db:verify`, integration and acceptance run. Never a shared or hosted database. |
 | Hosted environment / immutable origin | Vercel project `smeassistant` (`prj_Hbox4o4NhM3p0yxRxmY8Xq1mjtb5`, team `ynwaforevers-projects`). Production alias `smeassistant.vercel.app`. |
-| Deployment ID / source commit | `dpl_51eqbSJz9sdiy8vD2ACxbj89ucWQ`, READY, target production, branch `main`, commit `029d86a`, created 2026-10-04T19:46:22Z. It is a rollback candidate. Earlier production deployments in this delta: `dpl_53ZY…` (`577c9d3`), `dpl_GLyW…` (`d880e2c`), `dpl_8dNy…` (`f1d59fa`), `dpl_DHV3…` (`cef0a4d`). |
+| Deployment ID / source commit | `dpl_51eqbSJz9sdiy8vD2ACxbj89ucWQ`, READY, target production, branch `main`, commit `029d86a`, created 2026-10-04T19:46:22Z; it is the current production deployment. Earlier production deployments in this delta: `dpl_53ZY…` (`577c9d3`), `dpl_GLyW…` (`d880e2c`), `dpl_8dNy…` (`f1d59fa`), `dpl_DHV3…` (`cef0a4d`). |
 | Production alias | `smeassistant.vercel.app`; `main` auto-deploys (unchanged). |
 | Authorization record and budget | **None for hosted acceptance** (unchanged). No DEC-04 budget is recorded. |
-| New/changed feature flags; actual state | **New:** `GBP_REPLY_PUBLISH_ENABLED` (P4.6), on only when exactly `"true"`. It was not re-read in Vercel for this pack; the code path is off unless it is set, and the owner has not set it. The other four Phase 4 flags are as in the 080ddf6 pack. |
-| Migration state (owner-reported, not verified by the writer) | `0013`: applied on the Neon test branch and production on 2026-10-04 (owner-reported). `0014_publish_reply.sql`: applied with [`rollout/apply-0014.sql`](rollout/apply-0014.sql) on the Neon test branch, then production, on 2026-10-05. The owner reported "all checks pass": journal row 14 `e2c181b7…`, 5 columns, 4 SECURITY INVOKER functions, 2 indexes, 0 publish deliveries. |
+| New/changed feature flags; actual state | **New:** `GBP_REPLY_PUBLISH_ENABLED` (P4.6), on only when exactly `"true"`. It was not re-read in Vercel for this pack. The code path is off unless it is set; that it is unset is **owner-reported, not verified**. The other four Phase 4 flags were last read off in the 2026-10-04 names inventory at `080ddf6` (`dpl_E2HN…`). They were not re-read for `dpl_51eq…`. |
+| Migration state (owner-reported, not verified by the writer) | `0013`: applied on the Neon test branch and production on 2026-10-04 (owner-reported). `0014_publish_reply.sql`: applied with [`rollout/apply-0014.sql`](rollout/apply-0014.sql) on the Neon test branch, then production, on 2026-10-05. The owner reported "all checks pass": journal row 14 `e2c181b7…`, 5 columns, 4 SECURITY INVOKER functions, 2 indexes, 0 publish deliveries. Some older records still describe `0014` as never applied to a hosted database (`IMPLEMENTATION-TRACEABILITY.md` P4.6 row, `PHASE-4-TEST-RESULTS.md` P4.6). They are historical: they were true when written, before the owner's applies. |
 | Implemented scope | Phases 1–4 core, P4.5 and P4.6. See §2. |
 | Explicitly deferred/conditional scope | P4.5 and P4.6 are built and off. Turning P4.6 on needs Google Business Profile API access for the GCP project and a separate release approval (checklist §22). |
 
@@ -34,7 +40,7 @@ This is **not** ready to claim a verified release.
 
 | Source ID / requirement | Status | Files changed | Regression evidence | Remaining limitation |
 |---|---|---|---|---|
-| P1.1–P4.5 | unchanged since the 080ddf6 pack | — | 080ddf6 pack §2; the gates in §3 re-ran them all | As recorded there. |
+| P1.1–P4.5 | present (no change since the 080ddf6 pack; this pack records deltas only) | — | 080ddf6 pack §2; the gates in §3 re-ran them all | As recorded there. |
 | P3.1 scheduler registration (DEC-10) | changed | PR #33 `b50d406`: `vercel.json` (cron entry removed), `tests/cron-registration.test.ts` (asserts no cron), `docs/integration/DEPLOY.md` | `tests/cron-registration.test.ts`; production runtime logs (§6) | The scheduler is off by DEC-10 default. Re-enabling needs a recorded DEC-10 decision and a valid `CRON_SECRET`. |
 | P4.6 single publishing connector (DEC-13/14) | changed | PR #34: `neon/migrations/0014_publish_reply.sql`, `rollout/apply-0014.sql`, `lib/oauth/google-reviews.ts`, `lib/publishing/*`, `lib/repositories/publishing.ts`, publish/targets/reconcile/reply routes, `components/workspace/gbp-publish-card.tsx` | `test/integration/neon-publish-reply.integration.test.ts`, `neon-publish-flag-off.integration.test.ts` (flag-off path on a 0013 schema), `lib/workspace/publish-sql.test.ts`, route and card tests (`PHASE-4-REPORT.md` P4.6) | Off. No Google call has been made from any environment. Open product question: a reply that is published but never exported earns no Attributed measurement. |
 | Local Windows gates (engineering) | changed | PR #35: `.npmrc`, `tests/npmrc-store-length.test.ts`, `README.md` | `tests/npmrc-store-length.test.ts`; §3 (every gate now runs in its normal form locally) | Existing local checkouts need one `corepack pnpm install` (accept the purge). |
@@ -49,28 +55,37 @@ This is **not** ready to claim a verified release.
   - **Attempt 2,** a re-run of the failed job, **passed**.
 - **This flake is not fixed** (see §9). The same test also failed attempt 1 on `080ddf6`, `cef0a4d` and `f1d59fa`.
 
-**Local** (Windows 11, Node v24.18.0, worktree `rel-029d86a` at `029d86a`, Docker Desktop running, `VITEST_MAX_WORKERS=1`, sequential). Logs are kept outside the repository.
+**Local** (Windows 11, Node v24.18.0, worktree `rel-029d86a` at `029d86a`, Docker Desktop running, sequential).
+- **Environment:** `VITEST_MAX_WORKERS=1` was set by the runner script. No other variables were set; no `.env` files are present.
+- **Integration enablement:** `vitest.integration.config.ts` sets `NEON_INTEGRATION=1` itself.
+- **Acceptance environment:** acceptance builds its own isolated environment (`test/e2e/safety.ts` `isolatedEnv`):
+  - `SCAN_SOURCES=fixture`;
+  - an owned fixture database;
+  - local identity and LLM servers;
+  - `OFFER_PROMOTIONS_ENABLED`, `WORK_PACKS_ENABLED`, `CONTEXTUAL_ASSISTANT_ENABLED` and `PREVIEW_DRAFT_ENABLED` set to `true`;
+  - `GBP_REPLY_PUBLISH_ENABLED` unset.
+- **Logs:** in the session scratchpad directory `gates-029d86a/`, kept outside the repository and not committed.
 
 | Actual command | Status | Exit / counts / skips | Runtime / candidate | Log | Notes |
 |---|---|---|---|---|---|
 | `corepack pnpm typecheck` | passed | exit 0 | 57 s, `029d86a` | `typecheck.log` | |
 | `corepack pnpm lint` | passed | exit 0; 0 errors, 38 warnings | 84 s | `lint.log` | Warnings only. |
-| `corepack pnpm test` | passed | exit 0; app 365 files / 4,435 tests; `tests/` 1 / 62; packages region 3 / 23, scoring 16 / 183, contracts 3 / 20, scan-engine 28 / 299 | 583 s | `test.log` | With `VITEST_MAX_WORKERS=1` (as CI) there were no load timeouts. |
-| `corepack pnpm test:no-supabase` | passed | exit 0 | — | `no-supabase.log` | "No forbidden retired transport references; only the approved pinned Neon transitive library is permitted" |
-| `corepack pnpm test:no-self-service-claim` | passed | exit 0 | — | `no-ssc.log` | "OWNER_SELF_SERVICE_CLAIM is not enabled." |
+| `corepack pnpm test` | passed | exit 0; app 365 files / 4,435 tests; `safe-media` 1 / 62; packages region 3 / 23, scoring 16 / 183, contracts 3 / 20, scan-engine 28 / 299 | 583 s | `test.log` | With `VITEST_MAX_WORKERS=1` (as CI) there were no load timeouts. |
+| `corepack pnpm test:no-supabase` | passed | exit code not captured; output shows success | — | `no-supabase.log` | "No forbidden retired transport references; only the approved pinned Neon transitive library is permitted" |
+| `corepack pnpm test:no-self-service-claim` | passed | exit code not captured; output shows success | — | `no-ssc.log` | "OWNER_SELF_SERVICE_CLAIM is not enabled." |
 | `corepack pnpm test:secret-boundary` | passed | exit 0; "Secret boundary passed across 61 public artifacts." | 64 s | `secret-boundary.log` | **Literal**, no `--webpack` (blocked locally before PR #35). |
 | `corepack pnpm db:verify` | passed | exit 0; `0001`–`0014` applied, replay `[]`; 41 tables, 491 columns, 204 constraints, 108 indexes, 8 triggers, 23 functions, 0 seeded rows | 6 s | `db-verify.log` | Owned disposable `postgres:16`. |
 | `corepack pnpm test:integration` | passed | exit 0; 49 files / 537 tests | 438 s | `test-integration.log` | Owned fixtures; Docker running. |
 | `corepack pnpm build` | passed | exit 0; Next.js 16.2.6 (Turbopack), "Compiled successfully" | 54 s | `build.log` | **Literal** (blocked locally before PR #35). |
-| `corepack pnpm e2e` | passed | exit 0; 31 passed | 113 s | `e2e-port3197.log` | Same suite, run on port 3197 through temporary copies of `playwright.config.ts` and `test/e2e/public-setup.ts`. Another project's server holds 3100 on this machine. |
+| `corepack pnpm exec playwright test --config playwright.port3197.tmp.config.ts` (in place of `corepack pnpm e2e`) | passed | exit 0; 31 passed | 113 s | `e2e-port3197.log` | **Not the literal command.** It runs the same suite and specs, on port 3197, through temporary copies of `playwright.config.ts` and `test/e2e/public-setup.ts` with `3100` replaced by `3197`. Another project's server holds 3100 on this machine. The copies were deleted afterwards. |
 | `corepack pnpm e2e:acceptance` | failed | exit 1; 39 passed, 3 failed | 1,107 s | `e2e-acceptance.log` | See below. |
-| The 3 failed acceptance tests, re-run alone | passed | exit 0; 4 passed (`permissions.spec.ts:4` covers viewer and manager) | 2.9 min | `acceptance-rerun3.log` | |
+| `corepack pnpm exec playwright test --config playwright.acceptance.config.ts e2e/acceptance/claim-and-market.spec.ts:34 e2e/acceptance/offer-promotion.spec.ts:22 e2e/acceptance/permissions.spec.ts:4` (the 3 failed tests, re-run alone) | passed | 4 passed (`permissions.spec.ts:4` covers viewer and manager); exit 0 reported by the shell, not written to the log | 2.9 min | `acceptance-rerun3.log` | |
 
 **The three local acceptance failures:**
 - `claim-and-market.spec.ts:34` and `permissions.spec.ts:4` (viewer) stayed on `/en/owner/sign-in/complete`.
 - `offer-promotion.spec.ts:22` did not see "已確認" (confirmed) on the offer card.
 
-All three follow a client-side redirect or refresh, which is the `next dev` navigation race diagnosed in PR #36. All passed when re-run alone, and all passed in CI attempt 2 on this commit. They are recorded as **flaky locally, not fixed**.
+All three follow a client-side redirect or refresh. This is **likely** the `next dev` navigation race diagnosed in PR #36 for `public-funnel`, but that is an inference: no trace was examined for these three. All passed when re-run alone, and all passed in CI attempt 2 on this commit. They are recorded as **flaky or unexplained, not fixed**.
 
 **Inventory reconciliation.** The CI `verify` job runs, in order:
 - install and lint;
@@ -84,7 +99,11 @@ All three follow a client-side redirect or refresh, which is the `next dev` navi
 
 ## 4. New regression evidence
 
-The 13 families are as in the 080ddf6 pack §4, all re-run green on this candidate as part of §3. New since then:
+The 13 families are as in the 080ddf6 pack §4.
+- **CI:** all green in push run 37229545186, attempt 2.
+- **Elsewhere:** see §3 for the attempt-1 failure (`merchant-loop`, Saved-draft family) and the local acceptance failures (Auth/claim, Billing/allowance and Phase 4 families), which passed when re-run alone.
+
+New since then:
 
 | Family | Exact test(s) | Status | Failure / skip / blocker | Evidence |
 |---|---|---|---|---|
@@ -96,25 +115,28 @@ The 13 families are as in the 080ddf6 pack §4, all re-run green on this candida
 
 The candidate deployment for every row is `dpl_51eqbSJz9sdiy8vD2ACxbj89ucWQ` (`029d86a`). The runbook is [`HOSTED-ACCEPTANCE-CHECKLIST.md`](HOSTED-ACCEPTANCE-CHECKLIST.md).
 
-| Scenario | Authorized scope/reference | Status | Evidence and limitation |
-|---|---|---|---|
-| R2 environment inventory | Not re-read for this pack (reading Vercel environment variables returns stored values). | not run | The last names-only inventory is in the 080ddf6 pack, read 2026-10-04 at `080ddf6`. It flagged `BLOB_READ_WRITE_TOKEN` and `NEON_AUTH_BASE_URL` as `readable-secret`; whether they were re-saved as Sensitive is not verified. |
-| Migration journal `0001`–`0014` | DEC-11 owner actions; checklist §2 | not run | The applies are **owner-reported** (§1). The independent read-only journal check has not been run. |
-| Phase 3 scheduler (cron) | DEC-10 default, Path A (checklist §20) | passed: off as intended | Read-only runtime logs (§6): no `/api/cron/dispatch` invocations since the `f1d59fa` deploy. |
-| Conditional preview/connector acceptance (P4.5, P4.6) | Separate approvals; P4.6 also needs Google API access (checklist §17, §22) | not run | Both flags off. |
-| R3–R8, R10, R11, Hosted Blob, Phase 2–4 rows, `launch:check` | No acceptance authorization or DEC-04 budget recorded | not run | Unchanged from the 080ddf6 pack. |
+| Scenario | Authorized scope/reference | Status | Candidate deployment | Safe entity/receipt IDs | Evidence and limitation |
+|---|---|---|---|---|---|
+| R2 environment inventory | Not re-read for this pack (reading Vercel environment variables returns stored values). | not run | — | — | The last names-only inventory is in the 080ddf6 pack, read 2026-10-04 at `080ddf6`. It flagged `BLOB_READ_WRITE_TOKEN` and `NEON_AUTH_BASE_URL` as `readable-secret`; whether they were re-saved as Sensitive is not verified. |
+| Migration journal `0001`–`0014` | DEC-11 owner actions, with **no recorded DEC-11 authorization** (the "Acceptance authorization record" in `BUSINESS-AND-HOSTED-DECISIONS.md` is blank); checklist §2 | not run | — | — | The applies are **owner-reported** (§1). The independent read-only journal check has not been run. |
+| Phase 3 actual scheduled/resumed work | DEC-10 default; checklist §20 Path A | not run | `dpl_51eqbSJz9sdiy8vD2ACxbj89ucWQ` (cron removed since `dpl_8dNy…`) | — | **Scheduler off by DEC-10.** The cron entry was removed (#33). Read-only runtime logs (§6) show no `/api/cron/dispatch` invocations from 16:35:26 UTC until at least 20:11 UTC on 2026-10-04. The Vercel → Cron Jobs listing (§20 Path A step 2) was **not checked**. |
+| Conditional preview/connector acceptance (P4.5, P4.6) | Separate approvals; P4.6 also needs Google API access (checklist §17, §22) | not run | — | — | Flags not re-read for this deployment (§1). |
+| R3–R8, R10, R11, Hosted Blob, Phase 2–4 rows, `launch:check` | No acceptance authorization or DEC-04 budget recorded | not run | — | — | Unchanged from the 080ddf6 pack. |
 
 ## 6. Read-only manual observations
 
-All observations were made through the Vercel API, read-only, on 2026-10-04 by the controller. No environment-variable values were read.
+All observations below were made read-only on 2026-10-04 by the controller. The deployment and cron observations came through the Vercel API; the CI history came from `gh run list` and `gh run view`. No environment-variable values were read.
 
 - **Production deployment:** `dpl_51eqbSJz9sdiy8vD2ACxbj89ucWQ` serves `029d86a`. It is READY, target production.
 - **Cron stopped:**
-  - `get_runtime_logs`, filtered to `/api/cron/dispatch` and grouped by deployment over 24 h, counted calls only on `dpl_E2HN…` (91), `dpl_DHV3…` (80) and `dpl_CggH…` (74), all deployments before #33.
+  - `get_runtime_logs`, filtered to `/api/cron/dispatch` and grouped by deployment over 24 h, counted calls only on three deployments, all before #33:
+    - `dpl_E2HN…` (`080ddf6`): 91;
+    - `dpl_DHV3…` (`cef0a4d`): 80;
+    - `dpl_CggHy5YZ6nshqdhaqrZqTP81YFwe` (`8582a7c`): 74.
   - The last call was **16:35:26 UTC** (401, on `dpl_DHV3…`), **20 seconds before** the #33 deploy `dpl_8dNy…` was created (16:35:46 UTC).
   - There were none from then until at least 20:11 UTC.
   - The 401 noise every 5 minutes has stopped.
-- **CI history on `main` since `080ddf6`:** attempt 1 failed on 4 of 6 push runs, with failures in `merchant-loop` ECONNRESET and the HK public funnel (PR #36 fixes the latter). Each was re-run or superseded.
+- **CI history on `main` (GitHub):** attempt 1 failed on 4 of the 5 push runs after `080ddf6` (5 of 6 counting `080ddf6`; only `d880e2c` passed first time), with failures in `merchant-loop` ECONNRESET and the HK public funnel (PR #36 fixes the latter). Each was re-run or superseded.
 
 ## 7. Data, security and operating review
 
@@ -147,16 +169,23 @@ Known operational failures and recovery: CI acceptance flakes (merchant-loop ECO
 
 ```text
 Authorized rollout target: production already serves 029d86a (auto-deploy from main).
-Features enabled/disabled: all five Phase 4 conditional flags off; scheduler off.
+Features enabled/disabled: the four older Phase 4 flags were off as of the 2026-10-04 names read at
+  080ddf6 (not re-read for dpl_51eq…); GBP_REPLY_PUBLISH_ENABLED is unset (owner-reported, not
+  verified); scheduler off (cron removed).
 Pre-deploy gates: CI verify passed (PR #36; push run attempt 2).
 Migration order and backward compatibility: 0014 is not required before the code (flag-off path
   proven on 0013); it is owner-reported applied on both hosted databases.
 Post-deploy observations: §6.
 Disable/rollback trigger: any 5xx regression in owner or export routes; any publish observed while
   GBP_REPLY_PUBLISH_ENABLED is unset.
-Safe rollback or forward-fix procedure: promote the previous production deployment (dpl_53ZY…,
-  577c9d3); the changes since then are test-only. No migration rollback: 0014 is additive and inert
-  with the flag off.
+Safe rollback or forward-fix procedure:
+  - Regression attributable to P4.6 (it changed the export route and re-created
+    export_output_version): promote dpl_8dNy… (f1d59fa, the last production deployment before
+    P4.6). This is safe with 0014 applied: for versions never published, the re-created
+    export_output_version behaves exactly like the 0011 body (DEPLOY.md, P4.6 section), and the
+    older code never calls the 0014 functions.
+  - Regression in the test-only or tooling deltas (#35, #36): promote dpl_53ZY… (577c9d3).
+  - No migration rollback: 0014 is additive and inert with the flag off.
 Data that must be preserved: all; no destructive step.
 Authority required to execute rollout/rollback: the owner.
 ```
@@ -166,9 +195,9 @@ Authority required to execute rollout/rollback: the owner.
 | Question | Evidence-based answer |
 |---|---|
 | Implementation scope complete? | Yes for Phases 1–4 core, P4.5 and P4.6 (both conditional and off). |
-| All required local gates actually passed? | CI: yes on this commit (attempt 2). Locally: every gate passed in its normal form except `e2e:acceptance`, which had 3 flaky failures in the full run; those passed when re-run alone. |
+| All required local gates actually passed? | **CI:** yes on this commit, attempt 2 only; attempt 1 failed. **Locally:** no. `e2e:acceptance` failed 3 of 42 tests in the full run; those passed when re-run alone. `e2e` passed only through temporary port-3197 config copies. Every other gate passed in its normal form. |
 | Hosted verification complete for the advertised scope? | **No.** Only the cron removal is observed. The migrations are owner-reported, and every other hosted scenario is not run. |
-| Commercial/operating choices approved? | No change: DEC-04, -05, -06, -08, -09 and -11 acceptance records are not recorded; DEC-10 is at its default (off); DEC-12, -13 and -14 are decided. |
+| Commercial/operating choices approved? | **No.**<br>– DEC-01 to DEC-09 and DEC-11: undecided, or no acceptance record.<br>– DEC-11: the owner-reported applies of `0013` and `0014` have no recorded authorization; the "Acceptance authorization record" in `BUSINESS-AND-HOSTED-DECISIONS.md` is blank.<br>– DEC-10: at its default (off).<br>– DEC-12, -13 and -14: decided. |
 | Remaining blockers / not-run scenarios | Hosted checklist §1–§22 (owner authorization and budget). P4.6 needs Google Business Profile API access. The `merchant-loop` ECONNRESET CI flake is unfixed. |
-| Safe independent next work | Fix the `merchant-loop` ECONNRESET acceptance flake (attempt 1 failed on 4 of 6 `main` runs). Then the local dev-server navigation flakes in `claim-and-market`, `permissions` and `offer-promotion`. |
+| Safe independent next work | Fix the `merchant-loop` ECONNRESET acceptance flake (it failed attempt 1 on `080ddf6`, `cef0a4d`, `f1d59fa` and `029d86a`). Then the local dev-server navigation flakes in `claim-and-market`, `permissions` and `offer-promotion`. |
 | Release decision / authorizer | **Not ready to claim a verified release.** Implemented and CI-verified is not hosted verified. The decision is the owner's. |

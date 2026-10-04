@@ -2,7 +2,7 @@
 
 ## Current checkpoint (2026-10-05): owner-platform-v1 at main 029d86a
 
-**Candidate:** `main` at `029d86a` (merge of PR #36), deployed to production as `dpl_51eqbSJz9sdiy8vD2ACxbj89ucWQ` on `smeassistant.vercel.app`. Implemented: Phases 1–4 core plus P4.5 and P4.6 (both conditional and **off**). Since `080ddf6`:
+**Candidate:** `main` at `029d86a` (merge of PR #36), deployed to production as `dpl_51eqbSJz9sdiy8vD2ACxbj89ucWQ` on `smeassistant.vercel.app`. Implemented: Phases 1–4 core plus P4.5 and P4.6, both conditional. Their flags were not re-read for this deployment: the older four were last read off at `080ddf6`, and `GBP_REPLY_PUBLISH_ENABLED` is unset (owner-reported). Since `080ddf6`:
 - the production cron entry is removed (#33);
 - P4.6 is built (#34);
 - local Windows builds work (#35);
@@ -12,9 +12,10 @@
 |---|---|---|
 | CI on PR #36 (head `445c3d3`) | passed | Run 37228507276 (`pull_request`) |
 | CI on the exact commit | passed | Run 37229545186 (`push`, `029d86a`): attempt 2 passed. Attempt 1 failed `e2e:acceptance` (41 passed / 1 failed: `merchant-loop` ECONNRESET, an unfixed flake that also failed attempt 1 on `080ddf6`, `cef0a4d` and `f1d59fa`) |
-| Local gates: typecheck, lint, unit, no-supabase, no-self-service-claim, secret-boundary, `db:verify`, integration, build, e2e | passed | Windows, every gate run in its normal form; unit 365 files / 4,435 tests (+ packages), `db:verify` `0001`–`0014`, integration 49 / 537, secret-boundary 61 artifacts, e2e 31 (port 3197) |
+| Local gates: typecheck, lint, unit, no-supabase, no-self-service-claim, secret-boundary, `db:verify`, integration, build | passed | Windows, each run in its normal form; unit 365 files / 4,435 tests (+ packages), `db:verify` `0001`–`0014`, integration 49 / 537, secret-boundary 61 artifacts |
+| Local gate: `e2e` | passed | 31 passed, run on port 3197 through temporary config copies (another project holds 3100); not the literal command |
 | Local gate: `e2e:acceptance` | failed | 39 passed / 3 failed (dev-server navigation flakes); the 3 passed when re-run alone |
-| Phase 3 scheduler on production | passed (off as intended) | No `/api/cron/dispatch` invocations since the `f1d59fa` deploy (read-only runtime logs) |
+| Phase 3 scheduled/resumed work on production | not run | Scheduler off by DEC-10. Cron entry removed (#33). No `/api/cron/dispatch` invocations from 16:35:26 UTC until at least 20:11 UTC on 2026-10-04 (read-only runtime logs). The Vercel Cron Jobs listing was not checked |
 | Migrations `0001`–`0014` on production | not run | The applies are owner-reported (`0014` on 2026-10-05); the independent check is not run |
 | R2 environment inventory | not run | Not re-read for this candidate; last read at `080ddf6` |
 | Every other hosted scenario | not run | No acceptance authorization or DEC-04 budget recorded |
