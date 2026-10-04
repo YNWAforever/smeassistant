@@ -518,3 +518,24 @@ Line-ending hygiene: the two snapshot files Windows unit runs rewrite (`lib/agen
 - **The literal Turbopack `build`, `test:secret-boundary` and `e2e`** on this machine (blocked, above); only their `--webpack` diagnostics ran.
 - **`e2e:acceptance`, `eval:workflows`, `e2e:live`, `e2e:neon-auth`, `neon:readiness`**: no acceptance spec or corpus case was added; the rest need provider keys, a hosted identity target or a hosted database, none authorized.
 - **Real mail, real Stripe, real model**: every test injects a fake.
+
+### Final-review fix wave
+
+Candidate: `16606e2` (code: `3c54989` F1, F2, F4, F5; `16606e2` F3) plus the documentation commit. Run on 2026-10-04/05 between 23:49 and 00:30 HKT, sequentially, same machine and toolchain as above. Locally verified only; nothing hosted, applied, deployed or pushed; no Google call (every test uses a fake `fetch` or an injected token helper).
+
+| # | Command | Exit | Result |
+|---|---|---|---|
+| F-1 | `corepack pnpm exec vitest run app/api/versions app/api/deliveries lib/publishing lib/workspace components/workspace` | 1 | 82 files / 1,118 tests, **1,117 passed, 1 failed**: a 5,000 ms load timeout on a file's first test (`deliveries.test.ts` "works with the flag off" in the first run; `versions.test.ts` "approves this exact version and reports idempotent on a repeat" in the second). Alone: `deliveries.test.ts` **27 / 27 passed**; `versions.test.ts` failed twice at the default timeout, then **14 / 14 passed** alone and with `--testTimeout=30000`. The same `versions.test.ts` case also failed one of two runs on the `4ee87c2` tree (working tree temporarily checked out to the base and restored with `git checkout HEAD -- .`; `git status` clean afterwards): a known load-timeout file, not this wave. |
+| F-2 | `NEON_INTEGRATION=1 corepack pnpm exec vitest run --config vitest.integration.config.ts test/integration/neon-publish-flag-off.integration.test.ts test/integration/neon-publish-reply.integration.test.ts` | 0 | **passed**, 2 files / 35 tests (34.8 s). The new flag-off loader case was run red against the old query first (1 failed / 7 skipped). |
+| F-3 | `corepack pnpm typecheck` | 0 | **passed** (root, then `packages/{region,scoring,contracts,scan-engine}` `Done`). |
+| F-4 | `corepack pnpm lint` | 0 | **passed**: `✖ 38 problems (0 errors, 38 warnings)`, the same 19 files as the Task 8 record; no file this wave touched. |
+| F-5a | `corepack pnpm test` | **1** | **FAILED, not passed**: four files, each `Test timed out in 5000ms` on one test: `app/api/offers/[offerId]/promotions/route.test.ts` ("answers 404 before any lookup when the flag is off"), `app/api/packs/[packId]/route.test.ts` ("answers 404 when the flag is off…"), `app/api/versions/[versionId]/versions.test.ts` ("approves this exact version…"), `tests/scan-claim-single-path.test.ts`. Root part: **364 files, 360 passed; 4,433 tests, 4,429 passed** (149 s). The chained `safe-media` and package stages did not run in this invocation. None of the four files is changed by this wave. |
+| F-5b | The four failing files, together, then each alone | 1, then 0 | Together: all four timed out again. **Each alone: passed** (25 / 25, 7 / 7, 14 / 14, 4 / 4). |
+| F-5c | The skipped stages, separately | 0 | `lib/evidence/safe-media.test.ts` 1 / 62; `corepack pnpm -r test`: `region` 3 / 23, `scoring` 16 / 183, `contracts` 3 / 20, `scan-engine` 28 / 299: all **passed**. |
+| F-5d | Total if every stage is counted once, all tests passing | — | **415 files / 5,020 tests** (Task 8: 415 / 5,007; **+13 tests**, no new file). |
+
+Unit-test delta of the wave (+13): `deliveries.test.ts` 25 → 27 (gone review on delete; stored reason on an `existing` failed finish; the too-soon case rewritten for 60 s), `publish.test.ts` 55 → 56 (limit before the lookup), `lib/workspace/overview.test.ts` +4, `lib/workspace/packs.test.ts` +1, `components/workspace/pack-view.test.tsx` +1, `components/workspace/action-detail-client.test.tsx` +4; `gbp-publish-card.test.tsx` unchanged in count (its mount-reconcile case now uses the 60 s window). Integration: `neon-publish-flag-off` +1 (the full `test:integration` suite was not re-run; Task 8's 49 / 536 plus this case is 49 / 537).
+
+Line-ending hygiene: the two snapshot files the Windows unit run rewrote (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) were restored with `git restore` and are not committed.
+
+Not re-run in this wave: `db:verify` (no migration or `apply-0014.sql` change), the full `test:integration`, `build`, `test:secret-boundary`, `e2e`, `test:no-supabase`, `test:no-self-service-claim`; the Task 8 rows above stand for them.
