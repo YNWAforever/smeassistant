@@ -2,6 +2,10 @@
 
 An owner runbook for the hosted rows of [`RELEASE-EVIDENCE-080ddf6.md`](RELEASE-EVIDENCE-080ddf6.md) §5. Each section is one scenario on **`https://smeassistant.vercel.app`**, deployment `dpl_E2HNGePLBHpdDVNzejLTZVrBepqN` (commit `080ddf6`) (§22 excepted: a non-production deployment of a later candidate).
 
+> **Current candidate (2026-10-05):** `main` at `029d86a`, production deployment `dpl_51eqbSJz9sdiy8vD2ACxbj89ucWQ`; evidence in [`RELEASE-EVIDENCE-029d86a.md`](RELEASE-EVIDENCE-029d86a.md). The sections below apply unchanged to it. Run them against the current production deployment and record its ID. Two exceptions:
+> - §20's Path A is done.
+> - §2's expected journal now ends at `14 0014_publish_reply.sql e2c181b7…`.
+
 ## Production is the acceptance target
 
 Hosted acceptance runs on the **production alias** `smeassistant.vercel.app`, because the owner chose to. `docs/integration/DEPLOY.md` §2 says not to treat the production alias as staging; this checklist departs from that by the owner's choice and does not change the advice.
@@ -527,7 +531,9 @@ ROLLBACK;
 
 **Effect: depends on your DEC-10 decision.** Keeping the scheduler off needs a code change or nothing; activating it changes production configuration and starts **unsupervised provider spend**.
 
-**What is true now (controller, read-only Vercel runtime logs, 2026-10-04).** `vercel.json` at `080ddf6` registers `/api/cron/dispatch` every 5 minutes. Vercel invoked it 288 times in the 24 hours before about 09:28 UTC on 2026-10-04 (deployment `dpl_E2HN…`), and **all 288 returned 401**. `CRON_SECRET` is present, but the route accepts only `Authorization: Bearer <CRON_SECRET>` with a secret of at least 16 characters, compared exactly (`lib/security/cron-auth.ts`), so the most likely cause is the stored value; the alternatives are that it is shorter than 16 characters, does not match exactly (for example, whitespace), or is not available to deployment `dpl_E2HN…` at runtime (for example, added or changed after that build, or set in a different scope; see the R2 row's project-level-versus-build limitation). The value was not read. **So, in the observed 24 h before about 09:28 UTC on 2026-10-04, no schedule reminder, re-claim of abandoned scans, auto-close, reconcile or website verification ran through the cron in production.** It fails closed, and it is one fix away from running.
+**Update, 2026-10-05: Path A is done.** PR #33 removed the cron entry. Read-only runtime logs show the last `/api/cron/dispatch` call at 16:35:26 UTC on 2026-10-04, 20 s before the `f1d59fa` deploy, and none since ([`RELEASE-EVIDENCE-029d86a.md`](RELEASE-EVIDENCE-029d86a.md) §6). The §5 row "Phase 3 actual scheduled/resumed work" stays `not run`, with "scheduler off by DEC-10". Path B is unchanged if DEC-10 is ever decided.
+
+**Before Path A (controller, read-only Vercel runtime logs, 2026-10-04).** `vercel.json` at `080ddf6` registers `/api/cron/dispatch` every 5 minutes. Vercel invoked it 288 times in the 24 hours before about 09:28 UTC on 2026-10-04 (deployment `dpl_E2HN…`), and **all 288 returned 401**. `CRON_SECRET` is present, but the route accepts only `Authorization: Bearer <CRON_SECRET>` with a secret of at least 16 characters, compared exactly (`lib/security/cron-auth.ts`), so the most likely cause is the stored value; the alternatives are that it is shorter than 16 characters, does not match exactly (for example, whitespace), or is not available to deployment `dpl_E2HN…` at runtime (for example, added or changed after that build, or set in a different scope; see the R2 row's project-level-versus-build limitation). The value was not read. **So, in the observed 24 h before about 09:28 UTC on 2026-10-04, no schedule reminder, re-claim of abandoned scans, auto-close, reconcile or website verification ran through the cron in production.** It fails closed, and it is one fix away from running.
 
 **Step 0 — the DEC-10 decision (owner).** Record scheduler identity, frequency, provider budget, pause and retry policy in `BUSINESS-AND-HOSTED-DECISIONS.md`. DEC-10's recorded default is no hosted cron activation. Then follow one path.
 
