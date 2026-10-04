@@ -22,6 +22,7 @@ What that means:
 | §13–§17 | **Spend model money** (and §15–§17 change production configuration). |
 | §18–§20 | **Spend provider money** (live scans), or decide whether the scheduler may. |
 | §21 | **Changes billing configuration** (Stripe test mode). |
+| §22 | **Writes to a Fimmick-owned Google Business Profile listing** and changes **non-production** configuration (P4.6; a later candidate, not `080ddf6`). |
 
 Each section starts with a one-line **Effect**.
 
@@ -580,3 +581,45 @@ ROLLBACK;
 
 - **Pass:** one tier event per distinct Stripe event, the resent event is ignored, and the tier matches Stripe. **Fail:** a duplicate tier event, a tier that disagrees with Stripe, or any live-mode charge.
 - **Fill in:** §5 row "R8 authorized Stripe test transitions".
+
+## §22 Flag `GBP_REPLY_PUBLISH_ENABLED` (P4.6 Google review-reply publishing)
+
+**Effect: changes non-production configuration, applies a migration, and publishes and deletes a public reply on a Fimmick-owned Google Business Profile listing** (no model money, no billing change).
+
+> **Not part of `080ddf6`.** P4.6 is built on branch `p46-gbp-reply-publish` (`docs/implementation/owner-platform-v1/PHASE-4-REPORT.md`, "P4.6"). This section applies to the first candidate deployment that contains it, and it runs on a **non-production** deployment only: this is the **separate release approval** that DEC-13 requires. Turning the flag on in production is a further, explicit owner decision after this section passes. **Exposure:** with the flag on, every owner and in-scope manager of every workspace on that deployment who has an active Google connection sees **Publish to Google** on approved review-reply actions, and a publish posts a public reply. **Rollback:** unset the flag and redeploy; replies already published stay on Google (delete them on the action page while the flag is on, or in Google directly).
+
+- **Needs:** DEC-13 and DEC-14 (decided 2026-10-04); **DEC-11** for applying `0014`; the release approval for this non-production run, recorded in `BUSINESS-AND-HOSTED-DECISIONS.md` ("Acceptance authorization record") with the deployment, the Fimmick-owned listing (by its Google location ID only) and the person who may approve the test reply. **Cost:** no model money (the reply is an already approved version); Google Business Profile API calls only, within the project's quota.
+- **Preconditions (owner actions, in order):**
+  1. **Google Business Profile API access** has been requested for the GCP project behind `GOOGLE_OAUTH_CLIENT_ID` and **approved by Google** (quota stays at 0 until then; a call before approval answers `provider_forbidden`). No reconnect is needed: the scope is already `business.manage`.
+  2. **`0014` applied** with [`rollout/apply-0014.sql`](rollout/apply-0014.sql) in the Neon SQL Editor as `neondb_owner`, first on the Neon **test branch** of production, then on production (the runbook is in `PHASE-4-REPORT.md`, "Runbook — `apply-0014.sql`"). Its one success notice is `apply-0014: applied 0014_publish_reply.sql and recorded journal row 14`. A second run refuses with the journal message.
+  3. A non-production deployment of the P4.6 candidate whose database has `0014`, with `GBP_REPLY_PUBLISH_ENABLED` unset at first.
+  4. A test workspace on that deployment that owns the Fimmick-owned listing through a verified Google connection, and one **invented** test review on that listing (written by a Fimmick account, never a real customer's), plus a review-response action for that location with an approved reply version.
+- **Steps:**
+  1. Run §2 on the target database: exactly **14** rows, rows 1–13 as in §2, and row 14 `0014_publish_reply.sql` with checksum prefix `e2c181b78e1e`.
+  2. With the flag unset: open the approved version's action page. The delivery card shows export and copy only, with no **Publish to Google**.
+  3. Vercel (non-production deployment) → `GBP_REPLY_PUBLISH_ENABLED` = exactly `true` → redeploy → note the deployment ID.
+  4. As the owner, open the action page → **Publish to Google**. Confirm the dialog lists the listing's unreplied reviews (stars, reviewer, date, excerpt) with one preselected, shows the full approved text with "Version N · approved", and keeps **Publish** disabled until a review is selected **and** the confirmation box is ticked. Change the selected review: the tick must clear.
+  5. Select the test review, tick the box, **Publish**. The card shows **Published on Google** with a verified time. In Google (Business Profile manager, or Maps signed in as the listing owner) the reply text equals the approved version exactly.
+  6. **Read-back and reconcile:** run the query below; the delivery is `published`, `counted` is true (or false if the version had already been exported), `verified_at` is set, and `provider_receipt` holds only `review_name` and `reply_update_time`. Press **Check on Google** if a "Couldn't confirm" state ever appears and record what it settled to.
+  7. **Export after publish:** export the same version. Usage does not change (the version already counted), and the card still shows **Published on Google** beside the export.
+  8. **Authority:** as a manager outside the location's scope, and as a viewer, open the same action: no **Publish to Google** and no **Delete reply**. As an in-scope manager: **Publish to Google** is offered, **Delete reply** is not.
+  9. **Delete:** as the owner, **Delete reply** → confirm. The card shows **Deleted from Google**; in Google the reply is gone; usage is unchanged (no refund).
+  10. **Rollback test:** unset the flag → redeploy → **Publish to Google** and **Delete reply** are gone; the card may still show the last delivery's state (here **Deleted from Google**) as history, and the query shows the delivery rows unchanged.
+- **Evidence:** deployment IDs; workspace, action, version and delivery IDs; the Google location ID (not the business name); usage before and after steps 5, 7 and 9; times. One redacted screenshot of the dialog and one of the published card at 375 px, with the review text and reviewer name redacted. Query:
+
+  ```sql
+  BEGIN TRANSACTION READ ONLY;
+  SET LOCAL ROLE smeassistant_migrator;
+  SELECT d.id, d.mode, d.channel, d.state, d.counted, d.failure_reason, d.verified_at,
+         d.provider_receipt ? 'review_name' AS has_receipt, d.created_at,
+         v.version_no, v.delivery_state, v.first_exported_at, v.first_published_at
+    FROM public.deliveries d JOIN public.output_versions v ON v.id = d.version_id
+   WHERE d.version_id = '<version id>' ORDER BY d.created_at;
+  SELECT event, entity_id, payload->>'counted' AS counted, payload->>'reason' AS reason, created_at
+    FROM public.audit_events
+   WHERE event LIKE 'delivery.%' AND payload->>'version_id' = '<version id>' ORDER BY created_at;
+  ROLLBACK;
+  ```
+
+- **Pass:** exactly one counted delivery for the version across publish and export; the reply on Google equals the approved text; a `delivery.publish_started`, a `delivery.published` and a `delivery.publish_cancelled` audit row; no review text, reviewer name or reply text in any delivery column; steps 2, 4, 8 and 10 as described. **Fail:** a reply posted without the confirmation tick, a second counted delivery, an overwritten existing reply, a publish or delete offered to a role that may not use it, a delivery left `publishing` after **Check on Google** with Google reachable, or any text stored on a delivery.
+- **Fill in:** a new §5 row "Phase 4 flag: `GBP_REPLY_PUBLISH_ENABLED` (non-production)" in the release-evidence file of the candidate that contains P4.6, and the connector half of "Conditional preview/connector acceptance".

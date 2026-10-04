@@ -24,10 +24,11 @@ const WORKSPACE_ID_RE = /^[0-9a-f-]{36}$/i;
  * still answers 200. `disconnected` says which of the two happened.
  *
  * Scope note, deliberately not widened: this deletes the credential THIS app
- * stores. It does not call Google's revocation endpoint -- that would need a
- * decrypt path (`decryptToken` has no production call site; these tokens are
- * write-only) plus an outbound provider call, which CLAUDE.md gates as a
- * separately authorized action. The UI therefore points the owner at their
+ * stores. It does not call Google's revocation endpoint -- an outbound
+ * revocation call is a separately authorized action (CLAUDE.md), and the only
+ * production read of these tokens is P4.6 review-reply publishing
+ * (`lib/publishing/connection.ts`, behind GBP_REPLY_PUBLISH_ENABLED), which
+ * never revokes. The UI therefore points the owner at their
  * Google Account for account-level removal instead of implying we did it.
  */
 export async function DELETE(req: Request, { params }: { params: Promise<{ workspaceId: string }> }) {
