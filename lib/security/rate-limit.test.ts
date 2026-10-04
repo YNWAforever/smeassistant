@@ -86,6 +86,11 @@ describe("atomic rate-limit contract", () => {
     expect(RATE_LIMITS.staff_fix_pack_generate).toEqual({ limit: 20, windowSeconds: 3600 });
     // Unsaved preview draft (P4.5): 5 a day per source IP.
     expect(RATE_LIMITS.preview_draft).toEqual({ limit: 5, windowSeconds: 86400 });
+    // GBP review-reply publishing (P4.6, spec §2.6).
+    expect(RATE_LIMITS.gbp_publish).toEqual({ limit: 20, windowSeconds: 86400 });
+    expect(RATE_LIMITS.gbp_publish_global).toEqual({ limit: 200, windowSeconds: 86400 });
+    expect(RATE_LIMITS.gbp_targets).toEqual({ limit: 60, windowSeconds: 3600 });
+    expect(RATE_LIMITS.gbp_reconcile).toEqual({ limit: 30, windowSeconds: 86400 });
   });
 
   it("checks the fingerprint-only outer bucket before the composite identifier bucket", async () => {

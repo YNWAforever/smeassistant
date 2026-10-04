@@ -32,7 +32,11 @@ export type RateLimitScope =
   | "preview_draft"
   | "rescan"
   | "brand_update"
-  | "mail_unsubscribe";
+  | "mail_unsubscribe"
+  | "gbp_publish"
+  | "gbp_publish_global"
+  | "gbp_targets"
+  | "gbp_reconcile";
 
 export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> = {
   scan_start: { limit: 10, windowSeconds: 60 * 60 },
@@ -133,6 +137,16 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   // the HMAC token already prevents guessing who it belongs to, so a limiter
   // outage must not be the reason someone can't leave a mailing.
   mail_unsubscribe: { limit: 30, windowSeconds: 60 * 60 },
+  // GBP review-reply publishing (P4.6, spec §2.6), consumed through
+  // lib/publishing/limits.ts with no request fingerprint and fail-closed.
+  // gbp_publish: publish and delete, 20 a day per workspace id.
+  gbp_publish: { limit: 20, windowSeconds: 24 * 60 * 60 },
+  // gbp_publish_global: every publish, 200 a day across all workspaces (key "all").
+  gbp_publish_global: { limit: 200, windowSeconds: 24 * 60 * 60 },
+  // gbp_targets: listing unreplied reviews from Google, 60 an hour per workspace id.
+  gbp_targets: { limit: 60, windowSeconds: 60 * 60 },
+  // gbp_reconcile: re-reading one unknown-outcome delivery from Google, 30 a day per delivery id.
+  gbp_reconcile: { limit: 30, windowSeconds: 24 * 60 * 60 },
 };
 
 export interface RateLimitDecision {
@@ -148,12 +162,30 @@ export class RateLimitUnavailableError extends Error {
   }
 }
 
-type RateLimitClient = {
+export type RateLimitClient = {
   rpc: (fn: string, args: Record<string, unknown>) => Promise<{
     data: unknown;
     error: { message?: string } | null;
   }>;
 };
+
+/**
+ * The production limiter client: an adapter over the repository's atomic
+ * consume_rate_limit call. The repository is only resolved when a token is
+ * actually consumed.
+ */
+export function defaultRateLimitClient(): RateLimitClient {
+  return {
+    rpc: async (_fn, args) => ({
+      data: await workflowRepository().consumeRateLimit(
+        String(args.p_bucket_key),
+        Number(args.p_limit),
+        Number(args.p_window_seconds),
+      ),
+      error: null,
+    }),
+  };
+}
 
 /** Bucket keys are made entirely from scope names and HMAC digests. */
 export function rateLimitBucketKey(scope: RateLimitScope, ...identifiers: string[]): string {
@@ -213,7 +245,7 @@ export async function enforceRateLimit({
   const policy = RATE_LIMITS[scope];
   try {
     const key = rateLimitBucketKey(scope, ...identifiers, requestFingerprint(req));
-    const dbClient: RateLimitClient = client ?? { rpc: async (_fn, args) => ({ data: await workflowRepository().consumeRateLimit(String(args.p_bucket_key), Number(args.p_limit), Number(args.p_window_seconds)), error: null }) };
+    const dbClient: RateLimitClient = client ?? defaultRateLimitClient();
     return await consumeRateLimit({ client: dbClient, bucketKey: key, ...policy });
   } catch (error) {
     if (!(error instanceof RateLimitConfigurationError)) {

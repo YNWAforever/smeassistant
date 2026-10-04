@@ -29,3 +29,13 @@ export type CapabilityKey = keyof typeof CAPABILITIES;
 export function capabilityOf(key: CapabilityKey): Capability {
   return CAPABILITIES[key];
 }
+
+/**
+ * The live label for publishing a review reply to Google Business Profile
+ * (P4.6): `Beta` only when the publish flag is on and the workspace has an
+ * active Google connection with the required scope; otherwise the static
+ * `CAPABILITIES.google_business_publish` label, `Requires connection`.
+ */
+export function googleBusinessPublishCapability(input: { enabled: boolean; connectionActive: boolean }): Capability {
+  return input.enabled && input.connectionActive ? "Beta" : CAPABILITIES.google_business_publish;
+}
