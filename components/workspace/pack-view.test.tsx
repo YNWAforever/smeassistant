@@ -28,6 +28,14 @@ describe("PackView", () => {
   beforeEach(() => { clientMocks.runAction.mockReset(); clientMocks.refresh.mockReset() })
   afterEach(cleanup)
 
+  it("an item whose reply is published on Google reads as published, not exported or merely approved (P4.6)", () => {
+    mount({ pack: packOf([{ version: { approval: "approved", delivery: "published" } }, { version: { approval: "approved", delivery: "exported" } }, { version: { approval: "approved", delivery: "export_ready" } }]) })
+    expect(screen.getByText(text.states.published)).toBeInTheDocument()
+    expect(screen.getAllByText(text.states.exported)).toHaveLength(1)
+    expect(screen.getAllByText(text.states.approved)).toHaveLength(1)
+    for (const locale of ["zh-HK", "zh-TW"] as const) expect(copy[locale].workspace.packs.states.published).toBeTruthy()
+  })
+
   it("lists the three items with their state and a link to each action's own page", () => {
     mount({ pack: packOf([{ run: "failed" }, { actionState: "needs_input", run: "succeeded" }, { version: { approval: "draft" } }]) })
     expect(screen.getByRole("heading", { level: 1, name: text.title })).toBeInTheDocument()

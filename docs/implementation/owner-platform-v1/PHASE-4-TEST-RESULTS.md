@@ -444,3 +444,98 @@ Findings (Important 1 and 2, R12, R13 and the ledger's "final wave" minors), the
 | F10 | `PREVIEW-METRICS.md`, all seven queries, `BEGIN READ ONLY … ROLLBACK`, on a fresh disposable `postgres:16` fixture (`0001`–`0013` by the repository runner) | 0 | every count matched the fixture: 5 jobs with a generated preview; `slots_finished` 8 and `still_claimed` 1 today, `slots_finished` 1 for the 30-hour-old row; refusals `already_used` 1, `daily_limit` 1; failures `facts_needed` 1 (US$0.0010), `no_output` 1 (US$0.0013), `stale` 1; last 24 h US$0.0443 and 9 slots (`claimed` 1 + `generated` 5 + `failed` 3; the US$0.50 row 30 h old is outside); claim-after-preview: 5 jobs, `excluded_attached_before_preview` 1, `excluded_attach_unrecorded` 1, `eligible_jobs` 3, `claimed_after_preview` 2 (one by a claim event, one by `workspace.assigned`), **66.7 %**; baseline 1 of 3 (33.3 %). The fixture was stopped afterwards. |
 
 Line-ending hygiene: the two snapshot files Windows unit runs rewrite were restored with `git restore` and are not part of any commit. Not re-run in this wave: the full `test:integration` suite, `build`, `test:secret-boundary`, `test:no-supabase`, `test:no-self-service-claim`, `eval:workflows` and the full `e2e` and `e2e:acceptance` suites; the Task 6 records above stand for them. The older `sme-neon-it-db-*` containers on this machine (created 2026-09-12 to 2026-10-03) predate this session and were not touched. Nothing was applied to a hosted database, deployed or pushed.
+
+## P4.6 — conditional single publishing connector (Google Business Profile review reply)
+
+Candidate: branch `p46-gbp-reply-publish`, HEAD `95a766d` (implementation) plus the Task 8 documentation commit. Base `cef0a4d` (`origin/main`, PR #32). Spec: [`docs/superpowers/specs/2026-10-04-gbp-reply-publish-design.md`](../../superpowers/specs/2026-10-04-gbp-reply-publish-design.md). Plan: `docs/superpowers/plans/2026-10-04-gbp-reply-publish.md`. Environment: Windows 11 Pro 10.0.26200, Node `v24.18.0`, pnpm `9.12.0` via corepack, Docker Server `29.8.1`, `postgres:16` (16.15). Run on 2026-10-04 between 22:37 and 23:40 HKT, every gate sequentially, never two heavy gates at once, on a machine with other projects' servers and Docker containers running. The gates ran against the implementation tree plus the Task 8 edits: `rollout/apply-0014.sql`, `.env.example`, `docs/integration/DEPLOY.md`, the Phase 4 records, and one comment in `app/api/workspaces/[workspaceId]/google-connection/route.ts` (no behaviour change).
+
+**Read this first.** Everything below is **locally verified**. **Nothing here is hosted-verified.** `0014_publish_reply.sql` was applied only to owned, disposable local Docker Postgres fixtures (`db:verify`, `test:integration` and the `apply-0014.sql` rehearsal). **Nothing was applied to any hosted database, and hosted acceptance was NOT RUN.** Nothing was deployed or pushed. **No Google API was called**: every Google call goes through an injected `fetchImpl` or a fake. No paid provider, model or mail was called. See `PHASE-4-REPORT.md` ("P4.6") for what changed, the rulings, the known limits and the owner actions.
+
+### Gate results (Task 8, full inventory)
+
+Every command in `.github/workflows/ci.yml` is in this table, plus the stages the chained `test` script skipped. Each ran alone, one after another. `e2e:acceptance` and `eval:workflows` were not run: this slice adds no acceptance spec or corpus case, and changes no acceptance path while the flag is off.
+
+| # | Command | Exit | Result |
+|---|---|---|---|
+| 0 | `corepack pnpm install --frozen-lockfile` | 0 | lockfile up to date, nothing changed (13 s). |
+| 1 | `corepack pnpm typecheck` | 0 | **passed**. Root `tsc --noEmit`, then `packages/{region,scoring,contracts,scan-engine}` each `Done` (45 s). |
+| 2 | `corepack pnpm lint` | 0 | **passed**: `✖ 38 problems (0 errors, 38 warnings)` across 19 files. Against the P4.5 record (30): **+8**, all in the new `lib/oauth/google-reviews.test.ts` (`_input`/`_init` unused parameters of fake `fetch` functions at :19, :31, :85, :238; a deferred Task 2 minor). No other file this branch touched gained a warning; the four in `lib/security/rate-limit.test.ts` (`_functionName`, `_params`) predate the branch and moved to :122-123 and :205-206 with the added scopes. |
+| 3a | `corepack pnpm test` | **1** | **FAILED, not passed**: four files failed with `Test timed out in 5000ms`, each on its first test: `lib/identity/identity-sdk.test.ts`, `app/api/versions/[versionId]/versions.test.ts` (whose timed-out first test then reported 503), `tests/scan-claim-single-path.test.ts` and `tests/scan-events-single-writer.test.ts`, the same four load-timeout files as the P4.5 fix wave. Root part: **364 files; 360 passed, 4 failed; 4,420 tests, 4,416 passed, 4 failed** (121 s). The chained `safe-media` and package stages did not run in this invocation. None of the four files is changed by this branch. |
+| 3b | The four failing files, **alone** | 1, then 0 | First rerun: 2 of 4 files failed again (timeouts in `identity-sdk` and `versions`, the machine busy); **second rerun: 4 files / 28 tests passed**. |
+| 3c | The stages the chained script skipped, run separately | 0 | `lib/evidence/safe-media.test.ts` 1 / 62; `corepack pnpm -r test`: `packages/region` 3 / 23, `scoring` 16 / 183, `contracts` 3 / 20, `scan-engine` 28 / 299: all **passed**. |
+| 3d | Total if every stage is counted once, all tests passing | — | **415 files / 5,007 tests** (364 + 1 + 3 + 16 + 3 + 28 files; 4,420 + 62 + 23 + 183 + 20 + 299 tests). The gate itself did not pass clean in the one full run made; recorded, not hidden. |
+| 3e | The P4.6 unit files and the files it extended, in one run | 0 | **passed**, 17 files / 209 tests (listed under "Unit-test delta"). |
+| 4 | `corepack pnpm db:verify` | 0 | **passed**: `0001`–`0014` applied, replay `[]`, **41 tables / 491 columns / 204 constraints / 108 indexes / 8 triggers / 23 functions**, `seededRows` 0, no deferred functions or triggers. Against the P4.5 record (41 / 486 / 203 / 106 / 8 / 20): +5 columns, +1 constraint (`deliveries_publish_target_check`), +2 indexes, +3 functions (`export_output_version` is re-created, not new). |
+| 5 | `NEON_INTEGRATION=1 corepack pnpm test:integration` | 0 | **passed on the first run, no flakes: 49 files / 536 tests** (1,034 s). New over P4.5 (47 / 497): `neon-publish-reply` and `neon-publish-flag-off`; `neon-schema`, `neon-catalog` and `neon-preview-events` were adjusted for `0014`. |
+| 6 | `corepack pnpm test:secret-boundary` (literal) | **1** | **blocked**: it shells out to the Turbopack build and inherits #7. |
+| 7 | `corepack pnpm build` (`next build`, Turbopack, the literal gate) | **1** | **blocked**: `Turbopack build failed with 45 errors`, each `Module not found: Can't resolve '@radix-ui/react-*'` raised from inside the `radix-ui` package (`react-accessible-icon`, `react-alert-dialog`, `react-aspect-ratio`, `react-collapsible`, …). The import traces run through `components/ui/radio-group.tsx`, `select.tsx`, `sheet.tsx`, `tabs.tsx`, `tooltip.tsx`, `sidebar.tsx`, `components/preview/preview-draft-form.tsx`, `components/product-ui.tsx` and pages that import them; **no file this branch adds or changes appears in any trace** (`gbp-publish-card.tsx` and `action-detail-client.tsx` are absent). The same Windows-only local cascade recorded at P3, P4.4, P4.2, P4.3 and P4.5 (5 errors there; the count varies run to run), cause unconfirmed. |
+| 8 | `corepack pnpm e2e` (literal) | **1** | **blocked**: the Playwright global setup failed, `Acceptance service not healthy: http://localhost:3100`, after 93 s. |
+| 9 | `corepack pnpm test:no-supabase` | 0 | **passed**: "No forbidden retired transport references; only the approved pinned Neon transitive library is permitted". |
+| 10 | `corepack pnpm test:no-self-service-claim` | 0 | **passed**: "OWNER_SELF_SERVICE_CLAIM is not enabled." |
+
+**`--webpack` diagnostics (not the literal gates).** As at P4.4–P4.5, the blocked gates were repeated with webpack in place of Turbopack. They prove the code builds and behaves; they do not replace the Turbopack gates, and CI on `ubuntu-latest` is the real gate. Every temporary edit below was reverted with `git restore` straight after its run (`git status` showed no change afterwards) and is not committed.
+
+| # | Diagnostic | Exit | Result |
+|---|---|---|---|
+| 7d | `corepack pnpm exec next build --webpack` | 0 | **passed**: `✓ Compiled successfully in 96s`; the route manifest includes `ƒ /api/versions/[versionId]/publish`, `ƒ /api/versions/[versionId]/publish/targets`, `ƒ /api/deliveries/[deliveryId]/reconcile` and `ƒ /api/deliveries/[deliveryId]/reply` (250 s in all). |
+| 6d | `test:secret-boundary` with `--webpack` on its build step | 0 | **passed**: `Secret boundary passed across 155 public artifacts.` (P4.5 record: 151). |
+| 8d-1 | `e2e` with `--webpack` on the `next dev` arguments in `test/e2e/environment.ts` | 1 | **not a test result**: `Acceptance service not healthy: http://localhost:3100` twice (82 s, then a retry). The webpack dev server logged `✓ Ready in 2.0s`, but **port 3100 was already held by an unrelated local server** (another project's `next start -p 3100`, started at 22:47 during this run, listening on `0.0.0.0:3100` and `[::]:3100`), so the health probe to `localhost` reached that server. It was not stopped (not this session's process). |
+| 8d-2 | The same, with the e2e port temporarily moved to 3197 (`startEnvironment(3197)` in `test/e2e/public-setup.ts`, `baseURL` in `playwright.config.ts`) | 1 | **30 passed, 1 failed** of 31 (5.7 min). The failure is `e2e/owner-shell.spec.ts:16`, `strict mode violation: getByRole('alert') resolved to 2 elements`: the same diagnostic-only failure recorded at P4.4, P4.2, P4.3 and P4.5, in a spec and files this branch does not touch. |
+
+### The `apply-0014.sql` rehearsal
+
+Recorded in full in the "Runbook — `apply-0014.sql`" section of the P4.6 part of `PHASE-4-REPORT.md`: eight checks (pre-grant refusal, two wrong-journal refusals, first run with one notice and every post-apply check passing, `applyMigrations` reporting nothing pending, objects, ownership, `SECURITY INVOKER`, grants and the `export_output_version` body md5, a runtime smoke under `SET ROLE sme_app_runtime` of begin → finish(published) counting once and a later export not counting, second-run refusal), plus a `0013` export baseline for comparison. Run twice on a disposable `postgres:16`; the two JSON outputs were byte-identical. Commands, in order: `docker run` of a `postgres:16` published on `127.0.0.1` only → create `neondb_owner` / `neondb`, `smeassistant_migrator`, `sme_app_runtime` → scratch script (outside the repository) → `applyMigrations(0001–0009)` as the migrator → `apply-0010.sql`, `apply-0011.sql`, `apply-0012.sql` as `neondb_owner` → the wrong-journal check → `apply-0013.sql` → the remaining checks → `docker rm -f` in a `finally`. Checksum of `0014_publish_reply.sql`: `e2c181b78e1e2015cf624e4465b0b392b02db2ac74c157f4cb5679e0233097a3`.
+
+### Invariants
+
+| Check | Result |
+|---|---|
+| `git diff cef0a4d..95a766d --stat -- neon/migrations packages lib/agents/__snapshots__` | only `neon/migrations/0014_publish_reply.sql` (359 insertions): no `0001`–`0013` edit, no vendored-package edit, no agent-snapshot change. |
+| Usage is counted only in SQL | the only `approved_deliveries + 1` statements are in `0014` (`finish_publish_output_version`, `export_output_version`) and the older migrations; no application file increments usage. |
+| No text stored or logged | `deliveries` gains no text column for the review, reviewer or reply; `provider_receipt` holds `{ review_name, reply_update_time }`; log spies in the route, connection, client, limits and page-state tests allow only categories and ids. |
+| Flag off | `neon-publish-flag-off` records every statement against a schema stopping at `0013`: zero for targets, publish and delete (flag unset, `""`, `"false"`), with no authorization, limiter or fetch call; reconcile, `publishDeliveryIds`, `loadPublishPanel` and `export_output_version` name no `0014` column. |
+| Functions | the four functions are `SECURITY INVOKER` (`prosecdef = false`) with `search_path=""`, EXECUTE for `sme_app_runtime` only (`neon-publish-reply` access test, `apply-0014.sql`'s own post-apply checks and the rehearsal). |
+
+### Unit-test delta
+
+| Measure | P4.5 record (fix wave) | This branch | Δ |
+|---|---|---|---|
+| App, excl. safe-media | 350 files / 4,243 tests | 364 files / 4,420 tests | **+14 files / +177 tests** |
+| `lib/evidence/safe-media.test.ts` | 1 / 62 | 1 / 62 | 0 |
+| `packages/region` / `scoring` / `contracts` / `scan-engine` | 3 / 23, 16 / 183, 3 / 20, 28 / 299 | identical | 0 |
+| **Total** | **401 files / 4,830 tests** | **415 files / 5,007 tests** | **+14 files / +177 tests** |
+| Integration | 47 files / 497 tests | 49 files / 536 tests | +2 files / +39 tests |
+
+New unit test files (fourteen, 176 tests): `app/api/versions/[versionId]/publish/publish.test.ts` (55), `app/api/deliveries/[deliveryId]/deliveries.test.ts` (25), `components/workspace/gbp-publish-card.test.tsx` (17), `lib/oauth/google-reviews.test.ts` (15), `lib/publishing/connection.test.ts` (13), `eligibility.test.ts` (11), `limits.test.ts` (7), `page-state.test.ts` (5), `preselect.test.ts` (5), `run-publish.test.ts` (4), `flag.test.ts` (1), `lib/repositories/publishing.test.ts` (8), `lib/workspace/delivery-notices.test.ts` (6), `lib/workspace/publish-sql.test.ts` (4). Existing files extended (current totals): `lib/capabilities.test.ts` (4), `lib/security/rate-limit.test.ts` (15); `lib/oauth/google-business-profile.test.ts` (14) passes unchanged over the refactor. New integration files: `neon-publish-reply.integration.test.ts`, `neon-publish-flag-off.integration.test.ts`. No new acceptance spec. All four vendored packages are byte-unchanged. The base `cef0a4d` (PR #32, documentation only) is taken to have the P4.5 fix-wave counts; it was not re-run separately.
+
+Line-ending hygiene: the two snapshot files Windows unit runs rewrite (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) were restored with `git restore` and are not part of the commit.
+
+### Not run
+
+- **Hosted acceptance of any kind: NOT RUN.** No deployed request, no production Neon query, no hosted identity target. The prepared run is `HOSTED-ACCEPTANCE-CHECKLIST.md` §22.
+- **The hosted migration** (DEC-11): `0014` was never applied outside owned local Docker Postgres.
+- **Any Google API call**, real or sandboxed; the GCP project has no approved Business Profile API access.
+- **The literal Turbopack `build`, `test:secret-boundary` and `e2e`** on this machine (blocked, above); only their `--webpack` diagnostics ran.
+- **`e2e:acceptance`, `eval:workflows`, `e2e:live`, `e2e:neon-auth`, `neon:readiness`**: no acceptance spec or corpus case was added; the rest need provider keys, a hosted identity target or a hosted database, none authorized.
+- **Real mail, real Stripe, real model**: every test injects a fake.
+
+### Final-review fix wave
+
+Candidate: `16606e2` (code: `3c54989` F1, F2, F4, F5; `16606e2` F3) plus the documentation commit. Run on 2026-10-04/05 between 23:49 and 00:30 HKT, sequentially, same machine and toolchain as above. Locally verified only; nothing hosted, applied, deployed or pushed; no Google call (every test uses a fake `fetch` or an injected token helper).
+
+| # | Command | Exit | Result |
+|---|---|---|---|
+| F-1 | `corepack pnpm exec vitest run app/api/versions app/api/deliveries lib/publishing lib/workspace components/workspace` | 1 | 82 files / 1,118 tests, **1,117 passed, 1 failed**: a 5,000 ms load timeout on a file's first test (`deliveries.test.ts` "works with the flag off" in the first run; `versions.test.ts` "approves this exact version and reports idempotent on a repeat" in the second). Alone: `deliveries.test.ts` **27 / 27 passed**; `versions.test.ts` failed twice at the default timeout, then **14 / 14 passed** alone and with `--testTimeout=30000`. The same `versions.test.ts` case also failed one of two runs on the `4ee87c2` tree (working tree temporarily checked out to the base and restored with `git checkout HEAD -- .`; `git status` clean afterwards): a known load-timeout file, not this wave. |
+| F-2 | `NEON_INTEGRATION=1 corepack pnpm exec vitest run --config vitest.integration.config.ts test/integration/neon-publish-flag-off.integration.test.ts test/integration/neon-publish-reply.integration.test.ts` | 0 | **passed**, 2 files / 35 tests (34.8 s). The new flag-off loader case was run red against the old query first (1 failed / 7 skipped). |
+| F-3 | `corepack pnpm typecheck` | 0 | **passed** (root, then `packages/{region,scoring,contracts,scan-engine}` `Done`). |
+| F-4 | `corepack pnpm lint` | 0 | **passed**: `✖ 38 problems (0 errors, 38 warnings)`, the same 19 files as the Task 8 record; no file this wave touched. |
+| F-5a | `corepack pnpm test` | **1** | **FAILED, not passed**: four files, each `Test timed out in 5000ms` on one test: `app/api/offers/[offerId]/promotions/route.test.ts` ("answers 404 before any lookup when the flag is off"), `app/api/packs/[packId]/route.test.ts` ("answers 404 when the flag is off…"), `app/api/versions/[versionId]/versions.test.ts` ("approves this exact version…"), `tests/scan-claim-single-path.test.ts`. Root part: **364 files, 360 passed; 4,433 tests, 4,429 passed** (149 s). The chained `safe-media` and package stages did not run in this invocation. None of the four files is changed by this wave. |
+| F-5b | The four failing files, together, then each alone | 1, then 0 | Together: all four timed out again. **Each alone: passed** (25 / 25, 7 / 7, 14 / 14, 4 / 4). |
+| F-5c | The skipped stages, separately | 0 | `lib/evidence/safe-media.test.ts` 1 / 62; `corepack pnpm -r test`: `region` 3 / 23, `scoring` 16 / 183, `contracts` 3 / 20, `scan-engine` 28 / 299: all **passed**. |
+| F-5d | Total if every stage is counted once, all tests passing | — | **415 files / 5,020 tests** (Task 8: 415 / 5,007; **+13 tests**, no new file). |
+
+Unit-test delta of the wave (+13): `deliveries.test.ts` 25 → 27 (gone review on delete; stored reason on an `existing` failed finish; the too-soon case rewritten for 60 s), `publish.test.ts` 55 → 56 (limit before the lookup), `lib/workspace/overview.test.ts` +4, `lib/workspace/packs.test.ts` +1, `components/workspace/pack-view.test.tsx` +1, `components/workspace/action-detail-client.test.tsx` +4; `gbp-publish-card.test.tsx` unchanged in count (its mount-reconcile case now uses the 60 s window). Integration: `neon-publish-flag-off` +1 (the full `test:integration` suite was not re-run; Task 8's 49 / 536 plus this case is 49 / 537).
+
+Line-ending hygiene: the two snapshot files the Windows unit run rewrote (`lib/agents/__snapshots__/agents.test.ts.snap`, `lib/pocket-assistant/__snapshots__/demo.test.ts.snap`) were restored with `git restore` and are not committed.
+
+Not re-run in this wave: `db:verify` (no migration or `apply-0014.sql` change), the full `test:integration`, `build`, `test:secret-boundary`, `e2e`, `test:no-supabase`, `test:no-self-service-claim`; the Task 8 rows above stand for them.

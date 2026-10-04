@@ -112,7 +112,12 @@ export interface ActionRow {
 export interface ActionOverviewContext {
   location: { id: string | null; slug: string; name: LocalizedText } | null;
   latestRun: { state: RunState } | null;
-  latestVersion: { id: string; version_no: number; approval_state: ApprovalState; delivery_state: DeliveryState } | null;
+  /**
+   * `first_exported_at` (a pre-0014 column) tells a cancelled Google reply on
+   * an exported version from one on a never-exported version (P4.6). Optional:
+   * callers that build overviews without a version leave it out.
+   */
+  latestVersion: { id: string; version_no: number; approval_state: ApprovalState; delivery_state: DeliveryState; first_exported_at?: string | null } | null;
   assignee?: { id: string; name: string } | null;
   /** Required keys the scan already answers for THIS action (detail page only). */
   scanSatisfiedInputs?: readonly string[];
@@ -157,13 +162,21 @@ export function displayPhaseKey(input: {
   measurementState: MeasurementState;
   applied: boolean;
   verified: boolean;
+  /** The version was exported at least once (`first_exported_at` set). */
+  exported?: boolean;
 }): DisplayPhaseKey {
+  // P4.6: deleting a Google reply leaves the version `cancelled` only when it
+  // was never exported (cancel_published_reply restores 'exported' otherwise);
+  // either way the phase falls back to the export state.
+  const exported = input.exported === true || input.deliveryState === "exported";
+  const deliveryState: DeliveryState =
+    input.deliveryState === "cancelled" ? (exported ? "exported" : "export_ready") : input.deliveryState;
   if (input.capability === "Requires connection") return "requires_connection";
   if (input.actionState === "needs_input") return "needs_input";
   if (input.runState === "queued" || input.runState === "running") return "generating";
   if (input.approvalState === "draft") return "draft_ready";
   if (input.approvalState === "changes_requested") return "changes_requested";
-  if (input.approvalState === "approved" && input.deliveryState === "export_ready") return "approved_export_ready";
+  if (input.approvalState === "approved" && deliveryState === "export_ready") return "approved_export_ready";
   // The owner says this is live and no comparable scan has judged it yet --
   // a real place in the loop that previously had no label. Above `exported`
   // deliberately: deliveryState stays 'exported' for that version once a
@@ -176,7 +189,12 @@ export function displayPhaseKey(input: {
   // which is the scan's verdict on the effect rather than on the change.
   if (input.verified && input.measurementState !== "measured") return "verified";
   if (input.applied && input.measurementState !== "measured") return "applied";
-  if (input.deliveryState === "exported") return "exported";
+  // P4.6 Google publishing sits with exported: one delivery state at a time,
+  // so their mutual order is moot; applied/verified outrank all three alike.
+  // `publishing` is uncertain (the PUT may or may not have landed).
+  if (deliveryState === "publishing") return "publishing_to_google";
+  if (deliveryState === "published") return "published_on_google";
+  if (deliveryState === "exported") return "exported";
   if (input.measurementState === "awaiting_comparable_scan") return "awaiting_comparable_scan";
   if (input.measurementState === "measured") return "measured";
   return "recommended";
@@ -228,6 +246,7 @@ export function buildActionOverview(row: ActionRow, ctx: ActionOverviewContext):
     measurementState: row.measurement_state,
     applied: ctx.applied ?? false,
     verified: ctx.verified ?? false,
+    exported: Boolean(ctx.latestVersion?.first_exported_at),
   });
   return {
     id: row.id,

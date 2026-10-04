@@ -118,6 +118,13 @@ export interface VersionRow {
   reviewer_comment: string | null;
   created_at: string;
   /**
+   * When the version was first exported (pre-0014 column), else null. The
+   * export step and button read this, not `delivery_state === "exported"`,
+   * because a published version keeps `delivery_state = 'published'` after
+   * an export (P4.6).
+   */
+  first_exported_at: string | null;
+  /**
    * Parsed from `output_versions.meta` by the repository (see
    * lib/workspace/version-meta.ts). The raw blob deliberately does not travel:
    * it is unconstrained jsonb, and the approver only needs the classification.

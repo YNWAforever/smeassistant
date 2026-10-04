@@ -18,8 +18,8 @@ These are pending decisions/authorizations, not new audit findings. They do not 
 | DEC-10 | 3 | Single scheduler deployment, run frequency and provider budget. | Local/fake-clock tests; no hosted cron activation. Discover existing executors first. | Scheduler identity, protected endpoint, schedule/rate/budget, pause/retry policy, actual execution proof. |
 | DEC-11 | All | Hosted migrations or data backfills. | Owned fixture only; no production credentials as test fallback. | Exact isolated/production target, migration review, backup/recovery evidence, bounded backfill scope and authorization. |
 | DEC-12 | 4 | Provisional unsaved-preview experiment. **Decided 2026-10-04 (user); see "DEC-12 — decided 2026-10-04" below.** | Feature off; main scanner/verified claim flow remains the entrance. The P4.5 code is built behind `PREVIEW_DRAFT_ENABLED`, which ships unset. | Eligible traffic, purpose-limited grant, input/privacy model, generation budget and success/failure metrics: recorded below. Activation still needs `0013` applied (a DEC-11 action) and the flag set by the owner. |
-| DEC-13 | 4 | One direct publishing provider and operation. | No activation, publication, external consent or marketing claim. | Provider/account/location, scopes, exact approved-version confirmation, permitted test destination, idempotency/receipt/revocation handling and separate release approval. |
-| DEC-14 | 4 | Delivery units for multi-output promotions/packs or future publishing. | Keep existing per-approved-version export semantics. No bundle counting change. | User-visible delivery unit, commercial decision, SQL enforcement/compatibility tests and example bills/usage. |
+| DEC-13 | 4 | One direct publishing provider and operation. **Decided 2026-10-04 (user); see "DEC-13 and DEC-14 — decided 2026-10-04" below.** | No activation, publication, external consent or marketing claim. The P4.6 code is built behind `GBP_REPLY_PUBLISH_ENABLED`, which ships unset. | Provider/account/location, scopes, exact approved-version confirmation, permitted test destination and idempotency/receipt/revocation handling: recorded below. Activation still needs Google Business Profile API access, `0014` applied (a DEC-11 action) and a **separate release approval**. |
+| DEC-14 | 4 | Delivery units for multi-output promotions/packs or future publishing. **Decided 2026-10-04 (user) for publishing; see below.** | Keep existing per-approved-version export semantics. No bundle counting change. | Publishing: once per approved version, at its first export or first verified publish, enforced in SQL (`0014`); recorded below. Multi-output promotions/packs: unchanged (still per approved version). |
 
 ## DEC-06 — code now exists, the decision does not
 
@@ -69,12 +69,72 @@ The row's remaining items map as follows:
 
 **What this does not authorize.** Recording DEC-12 as decided does not apply
 `0013` to any hosted database (that is DEC-11, still an explicit owner action),
-does not turn the flag on, and does not record any hosted acceptance. As of
-2026-10-04 `0013` has been applied only to owned, disposable local Docker
-databases, and hosted acceptance was not run. The owner steps are in
+does not turn the flag on, and does not record any hosted acceptance. When
+P4.5 merged, `0013` had been applied only to owned, disposable local Docker
+databases (see the owner-reported line below for the later hosted state), and
+hosted acceptance was not run. The owner steps are in
 `docs/integration/DEPLOY.md` ("P4.5 unsaved preview draft: migration 0013 and
 the flag"): apply `apply-0013.sql` on a Neon test branch and then production,
 set `PREVIEW_DRAFT_ENABLED=true` and redeploy; roll back by unsetting the flag.
+
+Owner-reported 2026-10-04: `0013` applied on the Neon test branch and on production (not verified from this repository).
+
+## DEC-13 and DEC-14 — decided 2026-10-04
+
+The user made the DEC-13 and DEC-14 choices on 2026-10-04 while the P4.6
+design was brainstormed (spec
+`docs/superpowers/specs/2026-10-04-gbp-reply-publish-design.md`, "Decisions
+(user, 2026-10-04)"):
+
+| Question | Decision |
+|---|---|
+| DEC-13 provider and operation | **Google Business Profile: reply to one review** (v4 `PUT …/reviews/{id}/reply`). A review has at most one reply, so the operation targets one resource. |
+| Destination | The owner **picks from a live list** of the location's newest 50 *unreplied* reviews. The best match is pre-selected, and an explicit confirmation is still required. |
+| Existing reply | **Never overwrite.** If the review already has a reply with different text, refuse ("already replied on Google"). If its text equals our approved version, treat it as published. |
+| Authority | Owner, or manager in location scope, may publish (the same rule as export). **Deleting** a published reply is **owner only** and audited. |
+| DEC-14 counting | **Once per approved version**, at its first export **or** first verified publish, whichever comes first. Enforced in SQL. |
+| Test destination | A Fimmick-owned GBP listing, under a separate release approval. |
+| Architecture | **Synchronous publish plus reconcile, no background worker.** Flag `GBP_REPLY_PUBLISH_ENABLED`, off unless exactly `"true"`. Migration `0014`. |
+
+The row's remaining items map as follows:
+
+- **Account/location and scope.** The existing Google connection
+  (`oauth_connections`, `provider='google_gbp'`, scope `business.manage`,
+  AES-256-GCM sealed tokens) is reused; no reconnect is needed. The location is
+  resolved server-side from the action's location `place_id`, and every target
+  review name must sit under that account and location.
+- **Exact approved-version confirmation.** The dialog shows the full approved
+  text with "Version N · approved", the owner picks the review and ticks a
+  required confirmation; the server refuses a changed version
+  (`409 version_changed`) and a review outside the location
+  (`403 target_not_in_location`).
+- **Idempotency, receipt, uncertainty, revocation.** One idempotency key per
+  confirmation; at most one active publish per version and per review (SQL plus
+  two partial unique indexes); a read-before-write and a verified read-back;
+  the receipt stores only `{ review_name, reply_update_time }`; a lost response
+  stays "Couldn't confirm" and is settled only by a read-only reconcile, never
+  a blind second write. The owner may delete a published reply (audited, no
+  usage refund).
+- **DEC-14 SQL contract.** `0014` adds `output_versions.first_published_at`;
+  `begin_publish_output_version` checks the allowance before Google is called
+  without counting; `finish_publish_output_version` counts a never-counted
+  version once; `export_output_version` is re-created so an export of an
+  already-published version never counts again. Multi-output promotions and
+  work packs keep the existing per-approved-version export semantics.
+
+**What this does not authorize.** Recording DEC-13 and DEC-14 as decided does
+not apply `0014` to any hosted database (DEC-11, an explicit owner action), does
+not turn the flag on in any environment, does not publish anything, and does not
+authorize any marketing claim of direct publishing. Turning the flag on needs a
+**separate release approval**: first in a non-production deployment against the
+Fimmick-owned listing (the checklist section "P4.6 Google review-reply
+publishing" in `HOSTED-ACCEPTANCE-CHECKLIST.md`), and production is a further
+explicit owner decision. Google must also have approved Business Profile API
+access for the GCP project (quota stays at 0 until then). As of 2026-10-04
+`0014` has been applied only to owned, disposable local Docker databases, and
+hosted acceptance was not run. The owner steps are in
+`docs/integration/DEPLOY.md` ("P4.6 Google review-reply publishing: migration
+0014 and the flag").
 
 ## Configuration inventory — names/presence only
 

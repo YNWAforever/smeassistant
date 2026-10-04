@@ -89,9 +89,10 @@ export const claimsRepository = {
   *
   * The ciphertext is overwritten rather than nulled because
   * `access_token_encrypted` is NOT NULL; either way the stored credential is
-  * destroyed, and nothing reads it back (`decryptToken` has no production call
-  * site -- these tokens are write-only today). The row itself is kept, not
-  * deleted: it is the provenance of a connection that once existed, and
+  * destroyed. These tokens are no longer write-only:
+  * `lib/publishing/connection.ts` (`withGbpAccessToken`) is the one reader that
+  * unseals them, and it reads only the `status='active'` row, so a revoked row
+  * is never read back. The row itself is kept, not deleted: it is the provenance of a connection that once existed, and
   * `status='revoked'` is what the reconnect prompt keys on.
   */
  async disconnectGoogleConnection(workspaceId:string):Promise<boolean> {

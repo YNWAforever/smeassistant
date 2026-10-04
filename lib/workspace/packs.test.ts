@@ -107,6 +107,16 @@ describe("buildPackOverview", () => {
     expect(result.nextToReview).toEqual({ actionId: "a3", templateKey: "website-basics" });
   });
 
+  it("counts a reply published on Google as delivered, alongside exported (P4.6)", () => {
+    const result = buildPackOverview(pack, [
+      { templateKey: "review-response", position: 1, action: overview("a1", "review-response", { version: { approval: "approved", delivery: "published" } }) },
+      { templateKey: "visibility-content", position: 2, action: overview("a2", "visibility-content", { version: { approval: "approved", delivery: "exported" } }) },
+      { templateKey: "website-basics", position: 3, action: overview("a3", "website-basics", { version: { approval: "approved", delivery: "publishing" } }) },
+    ]);
+    // An uncertain (publishing) reply is not delivered until reconcile settles it.
+    expect(result.counts).toEqual({ drafted: 3, needsInput: 0, approved: 3, exported: 2, failed: 0, finished: 0 });
+  });
+
   it("has no nextToReview when nothing is waiting for review", () => {
     const result = buildPackOverview(pack, [
       { templateKey: "review-response", position: 1, action: overview("a1", "review-response") },

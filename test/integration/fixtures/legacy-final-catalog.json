@@ -1887,6 +1887,42 @@
       "column_default": "now()"
     },
     {
+      "table_name": "deliveries",
+      "column_name": "target_ref",
+      "ordinal_position": 12,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deliveries",
+      "column_name": "provider_receipt",
+      "ordinal_position": 13,
+      "data_type": "jsonb",
+      "udt_name": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deliveries",
+      "column_name": "failure_reason",
+      "ordinal_position": 14,
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "deliveries",
+      "column_name": "verified_at",
+      "ordinal_position": 15,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
       "table_name": "erasure_events",
       "column_name": "id",
       "ordinal_position": 1,
@@ -2821,6 +2857,15 @@
       "udt_name": "timestamptz",
       "is_nullable": "NO",
       "column_default": "now()"
+    },
+    {
+      "table_name": "output_versions",
+      "column_name": "first_published_at",
+      "ordinal_position": 18,
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
     },
     {
       "table_name": "preview_events",
@@ -4935,6 +4980,12 @@
     },
     {
       "table_name": "deliveries",
+      "name": "deliveries_publish_target_check",
+      "type": "c",
+      "definition": "CHECK (((mode <> 'publish'::text) OR (target_ref IS NOT NULL)))"
+    },
+    {
+      "table_name": "deliveries",
       "name": "deliveries_state_check",
       "type": "c",
       "definition": "CHECK ((state = ANY (ARRAY['export_ready'::text, 'exported'::text, 'scheduled'::text, 'publishing'::text, 'published'::text, 'failed'::text, 'cancelled'::text])))"
@@ -5917,6 +5968,16 @@
       "tablename": "consent_records",
       "indexname": "consent_records_pkey",
       "indexdef": "CREATE UNIQUE INDEX consent_records_pkey ON public.consent_records USING btree (id)"
+    },
+    {
+      "tablename": "deliveries",
+      "indexname": "deliveries_active_publish_target_key",
+      "indexdef": "CREATE UNIQUE INDEX deliveries_active_publish_target_key ON public.deliveries USING btree (target_ref) WHERE ((mode = 'publish'::text) AND (state = ANY (ARRAY['publishing'::text, 'published'::text])))"
+    },
+    {
+      "tablename": "deliveries",
+      "indexname": "deliveries_active_publish_version_key",
+      "indexdef": "CREATE UNIQUE INDEX deliveries_active_publish_version_key ON public.deliveries USING btree (version_id) WHERE ((mode = 'publish'::text) AND (state = ANY (ARRAY['publishing'::text, 'published'::text])))"
     },
     {
       "tablename": "deliveries",

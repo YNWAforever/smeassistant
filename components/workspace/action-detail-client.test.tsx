@@ -95,6 +95,7 @@ function versionRow(overrides: Partial<ActionDetail["versions"][number]> & { id:
     approved_at: null,
     reviewer_comment: null,
     created_at: "2026-09-01T10:00:00Z",
+    first_exported_at: null,
     origin: "agent_run",
     agentKey: null,
     checked: false,
@@ -721,5 +722,44 @@ describe("offer promotion actions (P4.1)", () => {
     );
     expect(screen.queryByTestId("offer-card")).toBeNull();
     expect(screen.queryByTestId("offer-stale-banner")).toBeNull();
+  });
+});
+
+describe("export step and button read first_exported_at, not delivery_state (P4.6)", () => {
+  const KEY = AGENT_TEMPLATES[0].key;
+
+  function renderVersion(version: Partial<ActionDetail["versions"][number]>) {
+    const value = detail(KEY);
+    value.versions = [versionRow({ id: "ver-1", version_no: 1, approval_state: "approved", approved_at: "2026-10-04T01:00:00Z", ...version })];
+    value.action.latestVersion = { id: "ver-1", versionNo: 1, approvalState: "approved", deliveryState: value.versions[0].delivery_state };
+    const root = document.createElement("div");
+    root.innerHTML = renderToStaticMarkup(
+      <ActionDetailClient locale="en" workspaceSlug="kam-man-house" workspaceId="ws-1" timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={value} auditRows={[]} locations={[{ slug: "yik-yam", name: "Yik Yam" }]} approvedAssets={[]} />,
+    );
+    return root.textContent ?? "";
+  }
+
+  it("exported then published: the export stays recorded and the button offers a repeat export", () => {
+    const text = renderVersion({ delivery_state: "published", first_exported_at: "2026-10-04T02:00:00Z" });
+    expect(text).toContain("Export recorded");
+    expect(text).toContain("Export again (not counted twice)");
+  });
+
+  it("exporting a published version reads as exported", () => {
+    // export_output_version keeps delivery_state 'published' and only sets first_exported_at.
+    const text = renderVersion({ delivery_state: "published", first_exported_at: "2026-10-04T03:00:00Z" });
+    expect(text).toContain("Export recorded");
+  });
+
+  it("published but never exported: the export step is still pending", () => {
+    const text = renderVersion({ delivery_state: "published", first_exported_at: null });
+    expect(text).not.toContain("Export recorded");
+    expect(text).not.toContain("Export again (not counted twice)");
+  });
+
+  it("a deleted Google reply on an exported version still shows the export", () => {
+    const text = renderVersion({ delivery_state: "exported", first_exported_at: "2026-10-04T02:00:00Z" });
+    expect(text).toContain("Export recorded");
+    expect(text).toContain("Export again (not counted twice)");
   });
 });

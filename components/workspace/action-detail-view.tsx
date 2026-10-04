@@ -3,6 +3,7 @@ import type { PrototypeLocale } from "@/lib/copy"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import type { OfferCardData } from "@/components/workspace/action-detail-client"
 import type { ActionDetail, AuditEventRow } from "@/lib/workspace/queries-pages"
+import type { PublishPanel } from "@/lib/publishing/page-state"
 
 export interface ActionDetailViewProps {
   locale: PrototypeLocale
@@ -20,6 +21,8 @@ export interface ActionDetailViewProps {
   latestVersionOfferRevision?: number | null
   offersEnabled?: boolean
   initialVersionId?: string | null
+  /** P4.6: the Google publish card's data; null hides it (any other template, or a failed read). */
+  publishPanel?: PublishPanel | null
 }
 
 /**

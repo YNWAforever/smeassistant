@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ActionDetailView } from "@/components/workspace/action-detail-view";
+import { loadPublishPanel } from "@/lib/publishing/page-state";
 import { offerRepository } from "@/lib/repositories/offers";
 import { assetLocationScope, assetUsableByAction, listAssets } from "@/lib/workspace/assets";
 import { formatOfferPrice } from "@/lib/workspace/offer-format";
@@ -37,9 +38,21 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
   const offer = detail.offerId ? await offerRepository().get(page.ctx.workspace.id, detail.offerId).catch(() => null) : null;
 
   const entityIds = new Set<string>([actionId, ...detail.versions.map((v) => v.id), ...detail.runs.map((r) => r.id)]);
-  const [activity, assets] = await Promise.all([
+  const inScope = inScopeFor(page.membership, detail.action.location.id);
+  // P4.6: the Google publish card. Null for any other template, or when a read
+  // fails (the card hides; the page never fails because of it). With the flag
+  // off it reads no connection and names no 0014 column unless publish rows exist.
+  const [activity, assets, publishPanel] = await Promise.all([
     getActivity(page.ctx, { limit: 200 }),
     listAssets(page.ctx.workspace.id, page.ctx.locations, { signedUrls: false }).catch(() => []),
+    loadPublishPanel({
+      workspaceId: page.ctx.workspace.id,
+      templateKey: detail.action.templateKey,
+      locationPlaceId: page.ctx.locations.find((l) => l.id === detail.action.location.id)?.placeId ?? null,
+      role: page.membership.role,
+      inScope,
+      versions: detail.versions.map((v) => ({ id: v.id, approval_state: v.approval_state, body: v.body })),
+    }),
   ]);
   const auditRows = activity.filter((row) => row.entity_id !== null && entityIds.has(row.entity_id));
   // P2.3 item 15: the picker offered every approved image in the workspace, so
@@ -60,7 +73,7 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
       workspaceId={page.ctx.workspace.id}
       timezone={page.ctx.workspace.timezone}
       role={page.membership.role}
-      inScope={inScopeFor(page.membership, detail.action.location.id)}
+      inScope={inScope}
       location={page.locationSlug}
       locations={page.locations}
       detail={detail}
@@ -78,6 +91,7 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
       latestVersionOfferRevision={detail.versions[0]?.offerRevision ?? null}
       offersEnabled={offerPromotionsEnabled()}
       initialVersionId={initialVersionId}
+      publishPanel={publishPanel}
     />
   );
 }

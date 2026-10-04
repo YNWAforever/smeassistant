@@ -51,8 +51,10 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon preview events", () =
     const before = migrations.filter((m) => m.name < "0013_preview_events.sql");
     expect(before.at(-1)?.name).toBe("0012_work_packs.sql");
     expect(await applyMigrations(owner, before)).toHaveLength(12);
-    expect(await applyMigrations(owner)).toEqual(["0013_preview_events.sql"]);
-    expect(await applyMigrations(owner)).toEqual([]);
+    // Later migrations are applied by their own tests; stop at 0013 here.
+    const through0013 = migrations.filter((m) => m.name <= "0013_preview_events.sql");
+    expect(await applyMigrations(owner, through0013)).toEqual(["0013_preview_events.sql"]);
+    expect(await applyMigrations(owner, through0013)).toEqual([]);
   });
 
   it("preview_events and both functions follow the 0012 access rules", async () => {

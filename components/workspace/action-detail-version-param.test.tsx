@@ -51,7 +51,7 @@ function overview(): ActionOverview {
 function versionRow(id: string, versionNo: number, body: string): ActionDetail["versions"][number] {
   return {
     id, version_no: versionNo, approval_state: "draft", action_id: "act-1", body, alt_text: null, author_type: "agent", author_user_id: null,
-    delivery_state: "not_requested", approved_at: null, reviewer_comment: null, created_at: "2026-09-01T10:00:00Z", origin: "agent_run", agentKey: null,
+    delivery_state: "not_requested", approved_at: null, reviewer_comment: null, created_at: "2026-09-01T10:00:00Z", first_exported_at: null, origin: "agent_run", agentKey: null,
     checked: false, guardrails: [], agentNotes: [], acceptanceCriteria: [], offerRevision: null,
   };
 }
