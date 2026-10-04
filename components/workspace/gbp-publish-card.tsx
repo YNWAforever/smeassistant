@@ -17,6 +17,7 @@ import { copy, type PrototypeLocale } from "@/lib/copy"
 import { PUBLISH_REASON_KEYS, type PublishReasonKey } from "@/lib/copy-workspace"
 import type { GbpReviewTarget } from "@/lib/oauth/google-reviews"
 import type { PublishPanel, PublishPanelDelivery } from "@/lib/publishing/page-state"
+import { RECONCILE_AFTER_MS } from "@/lib/publishing/timing"
 import { formatDateTime } from "@/lib/workspace/format"
 
 /**
@@ -52,7 +53,6 @@ type Result<T> = { ok: true; data: T } | { ok: false; status: number; error: str
 type PublishAnswer = { deliveryId: string; state: PublishPanelDelivery["state"]; counted: boolean; reason?: string }
 type TargetsAnswer = { targets: GbpReviewTarget[]; preselected: string | null }
 
-const RECONCILE_AFTER_MS = 15_000
 const KNOWN_REASONS: ReadonlySet<string> = new Set(PUBLISH_REASON_KEYS)
 /** Publish refusals that mean the page shows a stale state; refreshing shows the real one. */
 const STALE_PAGE_ERRORS: ReadonlySet<string> = new Set(["already_publishing", "target_busy", "version_changed"])

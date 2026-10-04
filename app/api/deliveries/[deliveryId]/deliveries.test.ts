@@ -61,6 +61,7 @@ vi.mock("@/lib/workspace/delivery-notices", () => ({
 
 import { GbpError } from "@/lib/oauth/google-reviews";
 import { GbpConnectionError } from "@/lib/publishing/connection";
+import { RECONCILE_AFTER_MS } from "@/lib/publishing/timing";
 import { reconcileDelivery } from "@/lib/publishing/reconcile";
 import { PublishError, type PublishDelivery } from "@/lib/repositories/publishing";
 
@@ -156,7 +157,7 @@ const delivery = (over: Partial<PublishDelivery> = {}): PublishDelivery => ({
   counted: false,
   failureReason: null,
   verifiedAt: null,
-  createdAt: ago(60_000),
+  createdAt: ago(120_000),
   ...over,
 });
 
@@ -272,14 +273,22 @@ describe("POST /api/deliveries/[deliveryId]/reconcile", () => {
     expect(mocks.withToken).not.toHaveBeenCalled();
   });
 
-  it("under 15 s returns too_soon without a Google call", async () => {
-    mocks.repo.getDelivery.mockResolvedValue(delivery({ createdAt: ago(5_000) }));
-    const res = await reconcile();
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ deliveryId: DELIVERY_ID, state: "publishing", counted: false, reason: "too_soon" });
+  it("under 60 s returns too_soon without a Google call (longer than a 30 s publish request)", async () => {
+    expect(RECONCILE_AFTER_MS).toBe(60_000);
+    // 31 s: past the publish route's 30 s maxDuration, still inside the window.
+    for (const age of [5_000, 31_000, 55_000]) {
+      mocks.repo.getDelivery.mockResolvedValue(delivery({ createdAt: ago(age) }));
+      const res = await reconcile();
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ deliveryId: DELIVERY_ID, state: "publishing", counted: false, reason: "too_soon" });
+    }
     expect(google.calls).toEqual([]);
     expect(mocks.consumePublishLimits).not.toHaveBeenCalled();
     expect(mocks.repo.finish).not.toHaveBeenCalled();
+
+    google.reply = BODY;
+    mocks.repo.getDelivery.mockResolvedValue(delivery({ createdAt: ago(61_000) }));
+    expect(await (await reconcile()).json()).toEqual({ deliveryId: DELIVERY_ID, state: "published", counted: true });
   });
 
   it("equal → published and counted once; null → not_applied; different → already_replied; not_found → review_not_found; timeout → stays publishing with provider_unavailable", async () => {
@@ -368,6 +377,21 @@ describe("POST /api/deliveries/[deliveryId]/reconcile", () => {
     google.reply = BODY;
     mocks.repo.finish.mockResolvedValue({ kind: "existing", state: "published", counted: true });
     expect(await (await reconcile()).json()).toEqual({ deliveryId: DELIVERY_ID, state: "published", counted: true });
+    expect(mocks.sendDeliveryNotices).not.toHaveBeenCalled();
+  });
+
+  it("a finish that finds the delivery already failed reports the stored reason, so the card shows failure copy", async () => {
+    google.reply = null;
+    mocks.repo.finish.mockResolvedValue({ kind: "existing", state: "failed", counted: false });
+    mocks.repo.getDelivery
+      .mockResolvedValueOnce(delivery())
+      .mockResolvedValueOnce(delivery({ state: "failed", failureReason: "already_replied" }));
+    expect(await (await reconcile()).json()).toEqual({
+      deliveryId: DELIVERY_ID,
+      state: "failed",
+      counted: false,
+      reason: "already_replied",
+    });
     expect(mocks.sendDeliveryNotices).not.toHaveBeenCalled();
   });
 
@@ -491,6 +515,17 @@ describe("DELETE /api/deliveries/[deliveryId]/reply", () => {
     expect(mocks.repo.cancel).toHaveBeenCalledTimes(2);
   });
 
+  it("a review gone from Google means the reply is gone too: no DELETE, cancel without refund, 200 cancelled", async () => {
+    google.gets.push({ status: 404 });
+    const res = await deleteReplyRoute();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ state: "cancelled" });
+    expect(google.methods).toEqual(["GET"]);
+    // cancel_published_reply leaves counted and first_published_at alone (spec §1.4): no refund.
+    expect(mocks.repo.cancel).toHaveBeenCalledTimes(1);
+    expect(mocks.repo.cancel).toHaveBeenCalledWith({ deliveryId: DELIVERY_ID, actorId: "user-1" });
+  });
+
   it("Google 500 → 502 and no cancel", async () => {
     google.deletes.push({ status: 500 });
     const res = await deleteReplyRoute();
@@ -550,6 +585,14 @@ it("no console.error argument contains the reply body, review text, reviewer nam
       () => deleteReplyRoute(),
     ],
     [() => { google.reply = BODY; mocks.repo.cancel.mockRejectedValueOnce(new Error(`db said ${BODY}`)); }, () => deleteReplyRoute()],
+    [
+      () => {
+        mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("owner"));
+        mocks.repo.getDelivery.mockResolvedValue(delivery({ state: "published" }));
+        google.gets.push({ status: 404 });
+      },
+      () => deleteReplyRoute(),
+    ],
   ];
   for (const [arrange, run] of scenarios) {
     google = new FakeGoogle();

@@ -207,9 +207,10 @@ describe("GbpPublishCard", () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
   })
 
-  it("reconciles once on mount for a publishing delivery older than 15 s", async () => {
-    const old = new Date(Date.now() - 60_000).toISOString()
-    const fresh = new Date().toISOString()
+  it("reconciles once on mount for a publishing delivery older than 60 s", async () => {
+    const old = new Date(Date.now() - 90_000).toISOString()
+    // Older than the publish route's 30 s maxDuration but inside the 60 s window: not reconciled.
+    const fresh = new Date(Date.now() - 31_000).toISOString()
     fetchMock.mockImplementation(() => ok({ deliveryId: "d-old", state: "failed", counted: false, reason: "not_applied" }))
     const deliveries: PublishPanel["deliveries"] = [
       { id: "d-old", versionId: VERSION, state: "publishing", reason: null, verifiedAt: null, createdAt: old },

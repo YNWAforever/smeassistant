@@ -51,6 +51,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ version
   // The client proves it confirmed this exact version; checked before Google is called.
   if (confirmVersionNo !== subject.versionNo) return json({ error: "version_changed" }, 409);
 
+  // Spent before the location lookup (several Google calls), so a refused caller calls Google not at all.
+  const refused = limitRefusal(await consumePublishLimits("publish", { workspaceId: subject.workspaceId }));
+  if (refused) return refused;
+
   let location: GbpLocationRef | null;
   try {
     location = await withGbpAccessToken(subject.workspaceId, (token) => findLocationForPlace(token, subject.placeId));
@@ -59,9 +63,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ version
   }
   if (!location) return json({ error: "location_not_managed" }, 409);
   if (!reviewNameIsUnder(reviewName, location)) return json({ error: "target_not_in_location" }, 403);
-
-  const refused = limitRefusal(await consumePublishLimits("publish", { workspaceId: subject.workspaceId }));
-  if (refused) return refused;
 
   let begun: Awaited<ReturnType<typeof repository.begin>>;
   try {

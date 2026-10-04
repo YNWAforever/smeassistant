@@ -3,6 +3,7 @@ import { authorizeWorkspaceRequest } from "@/lib/auth";
 import { consumePublishLimits } from "@/lib/publishing/limits";
 import { reconcileDelivery, type ReconcileResult } from "@/lib/publishing/reconcile";
 import { limitRefusal, readPublishUsage, unavailableResponse } from "@/lib/publishing/route-support";
+import { RECONCILE_AFTER_MS } from "@/lib/publishing/timing";
 import { publishingRepository, type PublishDelivery } from "@/lib/repositories/publishing";
 import { sendDeliveryNotices } from "@/lib/workspace/delivery-notices";
 
@@ -18,8 +19,9 @@ import { sendDeliveryNotices } from "@/lib/workspace/delivery-notices";
  * columns only) answers null, so no 0014 column is named.
  *
  * Owner, or manager in the delivery's location. A delivery that is not
- * `publishing` reports its state; one younger than 15 s answers `too_soon`
- * (the publish request may still be running). Neither calls Google or spends
+ * `publishing` reports its state; one younger than `RECONCILE_AFTER_MS`
+ * (60 s, twice the publish route's 30 s ceiling) answers `too_soon` (the
+ * publish request may still be running). Neither calls Google or spends
  * the `gbp_reconcile` budget. A delivery this call newly counts sends the
  * export route's in-app notices.
  */
@@ -27,8 +29,6 @@ export const runtime = "nodejs";
 export const maxDuration = 30;
 
 const LOG = "api/deliveries/reconcile";
-/** Longer than any in-flight publish could still be writing its own outcome. */
-const RECONCILE_AFTER_MS = 15_000;
 
 export async function POST(_req: Request, { params }: { params: Promise<{ deliveryId: string }> }) {
   const { deliveryId } = await params;

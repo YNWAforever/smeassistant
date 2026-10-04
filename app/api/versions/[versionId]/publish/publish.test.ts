@@ -393,6 +393,7 @@ describe("POST …/publish refusals before begin", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error: "version_changed" });
     expect(google.calls).toEqual([]);
+    expect(mocks.consumePublishLimits).not.toHaveBeenCalled();
     expect(mocks.repo.begin).not.toHaveBeenCalled();
   });
 
@@ -414,7 +415,7 @@ describe("POST …/publish refusals before begin", () => {
     expect(mocks.repo.begin).not.toHaveBeenCalled();
   });
 
-  it("limiter refused 429 with Retry-After; limiter unavailable 503", async () => {
+  it("limiter refused 429 with Retry-After; limiter unavailable 503; both before the Google location lookup", async () => {
     mocks.consumePublishLimits.mockResolvedValue({ allowed: false, retryAfterSeconds: 120 });
     const limited = await publish();
     expect(limited.status).toBe(429);
@@ -423,7 +424,16 @@ describe("POST …/publish refusals before begin", () => {
     mocks.consumePublishLimits.mockResolvedValue({ allowed: false, unavailable: true });
     expect((await publish()).status).toBe(503);
     expect(mocks.repo.begin).not.toHaveBeenCalled();
-    expect(google.reviewCalls).toEqual([]);
+    // The limit is spent before findLocationForPlace, so a refused caller makes no Google call at all.
+    expect(google.calls).toEqual([]);
+    expect(mocks.withToken).not.toHaveBeenCalled();
+  });
+
+  it("the publish limit is consumed before the location lookup, so a lookup refusal still spends it", async () => {
+    google.placeId = "another-place";
+    expect((await publish()).status).toBe(409);
+    expect(mocks.consumePublishLimits).toHaveBeenCalledWith("publish", { workspaceId: WORKSPACE_ID });
+    expect(mocks.consumePublishLimits.mock.invocationCallOrder[0]).toBeLessThan(mocks.withToken.mock.invocationCallOrder[0]);
   });
 
   it("a connection error before begin is 409; a Google error before begin is 502", async () => {
@@ -554,7 +564,7 @@ describe("POST …/publish", () => {
       counted: false,
       failureReason: null,
       verifiedAt: null,
-      createdAt: new Date(Date.now() - 16_000).toISOString(),
+      createdAt: new Date(Date.now() - 61_000).toISOString(),
     });
     const { POST: reconcile } = await import("@/app/api/deliveries/[deliveryId]/reconcile/route");
     const settled = await reconcile(new Request(`https://app.test/api/deliveries/${DELIVERY_ID}/reconcile`, { method: "POST" }), {

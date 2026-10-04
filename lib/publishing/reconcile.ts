@@ -27,7 +27,8 @@ import {
  *
  * `settledNow` is true only when this call finished the delivery; a finish
  * that found it already settled (a concurrent reconcile) reports the stored
- * state with `settledNow: false`, so the caller sends notices at most once.
+ * state, and for a stored `failed` the stored reason, with `settledNow:
+ * false`, so the caller sends notices at most once.
  *
  * Logs carry only `{ category, deliveryId }`.
  */
@@ -87,10 +88,16 @@ export async function reconcileDelivery(
       reason: outcome.kind === "failed" ? outcome.reason : null,
     });
     const settledNow = finished.kind === "finished";
+    if (!settledNow && finished.state === "failed") {
+      // An `existing` failed finish holds another call's reason, which this one
+      // did not read: re-read it so the card shows that failure's copy.
+      const stored = await storedState(repository, delivery.id);
+      const reason = stored.state === "failed" ? stored.reason : undefined;
+      return { state: finished.state, counted: finished.counted, ...(reason ? { reason } : {}), settledNow };
+    }
     return {
       state: finished.state,
       counted: finished.counted,
-      // An `existing` finish holds another call's reason, which this one did not read.
       ...(settledNow && finished.state === "failed" && outcome.kind === "failed" ? { reason: outcome.reason } : {}),
       settledNow,
     };

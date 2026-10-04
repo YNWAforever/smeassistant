@@ -1,6 +1,6 @@
 import { json, UUID_RE } from "@/app/api/actions/_shared/mutation";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
-import { deleteReply, getReview, sameReply } from "@/lib/oauth/google-reviews";
+import { deleteReply, GbpError, getReview, sameReply } from "@/lib/oauth/google-reviews";
 import { withGbpAccessToken } from "@/lib/publishing/connection";
 import { gbpReplyPublishEnabled } from "@/lib/publishing/flag";
 import { consumePublishLimits } from "@/lib/publishing/limits";
@@ -9,7 +9,7 @@ import { PublishError, publishingRepository, type PublishDelivery } from "@/lib/
 
 /**
  * DELETE /api/deliveries/[deliveryId]/reply (P4.6 spec §3.4)
- * → 200 { state: 'cancelled' }
+ * → 200 { state: 'cancelled' } (also when the review itself is gone)
  * | 400 | 401 | 403 | 404 not_enabled (flag off, before any SQL) | 404 not_found |
  * 409 delivery_not_published | 409 reply_changed_on_google |
  * 409 connection_missing|connection_expired | 429 (Retry-After) |
@@ -18,9 +18,13 @@ import { PublishError, publishingRepository, type PublishDelivery } from "@/lib/
  * Owner only. Never a blind write: the review is re-read first, and a reply
  * on Google that is no longer our approved version is left alone (409). Our
  * reply, or none at all, is deleted (a 404 on the reply counts as already
- * deleted) and only then is the delivery cancelled. A Google failure cancels
- * nothing. If the delete lands but the cancel fails, a retry finds no reply
- * and completes the cancel.
+ * deleted) and only then is the delivery cancelled. A review that is gone
+ * from Google (`not_found` on the re-read) took its reply with it, so nothing
+ * is deleted and the delivery is cancelled (final-review ruling), otherwise
+ * the row would stay `published` and block re-publishing the version. A
+ * cancel never refunds: `counted` and `first_published_at` stay. Any other
+ * Google failure cancels nothing. If the delete lands but the cancel fails, a
+ * retry finds no reply and completes the cancel.
  */
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -53,10 +57,16 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ deli
   const refused = limitRefusal(await consumePublishLimits("delete", { workspaceId }));
   if (refused) return refused;
 
-  let outcome: "deleted" | "changed";
+  let outcome: "deleted" | "gone" | "changed";
   try {
     outcome = await withGbpAccessToken(workspaceId, async (token) => {
-      const current = await getReview(token, targetRef);
+      let current: Awaited<ReturnType<typeof getReview>>;
+      try {
+        current = await getReview(token, targetRef);
+      } catch (error) {
+        if (error instanceof GbpError && error.code === "not_found") return "gone";
+        throw error;
+      }
       if (current.replyComment && !sameReply(current.replyComment, body)) return "changed";
       await deleteReply(token, targetRef);
       return "deleted";
