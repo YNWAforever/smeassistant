@@ -6,8 +6,8 @@
 |---|---|---|
 | Implemented | Phases 1–4 core and P4.5 on `main`; P4.6 excluded | Release evidence §2 |
 | CI on the candidate tree | passed | Run 37169934797 (`pull_request`, merge ref tree = candidate tree): all 18 steps success, 14 m 53 s |
-| CI on the exact commit | failed | Run 37170768091 (`push`, `080ddf6`): every gate passed except `e2e:acceptance`, 40 passed / 2 failed; the same two cases passed in 37169934797; not yet re-run or investigated |
-| Local gate run | pending | Release evidence §3, local column |
+| CI on the exact commit | passed on re-run | Run 37170768091 (`push`, `080ddf6`): attempt 1 failed `e2e:acceptance` (40 passed / 2 failed: merchant-loop ECONNRESET, HK public-funnel timeout); attempt 2 (re-run of the failed job) passed all 18 steps. Flaky or unexplained, not fixed |
+| Local gate run (Windows) | passed in part; blocked in part | Passed: lint, typecheck, unit (401 files / 4,830 tests), no-supabase, no-self-service-claim, and with Docker running `db:verify` and integration (47 / 502). Blocked: `build`, `test:secret-boundary`, `e2e`, `e2e:acceptance` (Windows-only Turbopack `@radix-ui` resolve error) |
 | R2 environment inventory | passed (names/presence only) | Values not read; `BLOB_READ_WRITE_TOKEN` and `NEON_AUTH_BASE_URL` flagged `readable-secret` by Vercel |
 | Migrations `0001`–`0013` on production | owner-reported, not independently verified | Release evidence §1 and §5 |
 | Every other hosted scenario (R3–R8, R11, Phase 2–4 rows, `launch:check`, the four Phase 4 flags) | not run | No acceptance authorization or DEC-04 budget is recorded |
