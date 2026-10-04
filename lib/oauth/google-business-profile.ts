@@ -93,6 +93,31 @@ async function listAllLocations(
 }
 
 /**
+ * Every managed location visible to this token, keeping the owning account's
+ * resource name: the v4 reviews API addresses a location as
+ * `{accountName}/{locationName}`, so callers that go on to read or reply to
+ * reviews need both halves. Locations without a placeId or name are skipped.
+ */
+export async function listManagedLocations(
+  accessToken: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Array<{ accountName: string; locationName: string; placeId: string }>> {
+  const accounts = await listAllAccounts(accessToken, fetchImpl);
+
+  const results: Array<{ accountName: string; locationName: string; placeId: string }> = [];
+  for (const account of accounts) {
+    if (!account.name) continue;
+    const locations = await listAllLocations(account.name, accessToken, fetchImpl);
+    for (const location of locations) {
+      const placeId = location.metadata?.placeId;
+      if (!placeId || !location.name) continue;
+      results.push({ accountName: account.name, locationName: location.name, placeId });
+    }
+  }
+  return results;
+}
+
+/**
  * Every place_id the connected account can manage, across every account and
  * location visible to this token. A business account frequently manages more
  * than one location, so the caller checks for membership in this list rather
@@ -102,17 +127,6 @@ export async function listManagedPlaceIds(
   accessToken: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<ManagedLocation[]> {
-  const accounts = await listAllAccounts(accessToken, fetchImpl);
-
-  const results: ManagedLocation[] = [];
-  for (const account of accounts) {
-    if (!account.name) continue;
-    const locations = await listAllLocations(account.name, accessToken, fetchImpl);
-    for (const location of locations) {
-      const placeId = location.metadata?.placeId;
-      if (!placeId || !location.name) continue;
-      results.push({ placeId, locationName: location.name });
-    }
-  }
-  return results;
+  const locations = await listManagedLocations(accessToken, fetchImpl);
+  return locations.map(({ placeId, locationName }) => ({ placeId, locationName }));
 }
