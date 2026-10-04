@@ -18,6 +18,8 @@ export type DisplayPhaseKey =
   | "approved_export_ready"
   | "verified"
   | "applied"
+  | "publishing_to_google"
+  | "published_on_google"
   | "exported"
   | "awaiting_comparable_scan"
   | "measured"
@@ -32,6 +34,8 @@ export const DISPLAY_PHASE_KEYS: DisplayPhaseKey[] = [
   "approved_export_ready",
   "verified",
   "applied",
+  "publishing_to_google",
+  "published_on_google",
   "exported",
   "awaiting_comparable_scan",
   "measured",
@@ -106,7 +110,7 @@ export type PacksCopy = {
   noPermission: string;
   progress: string;
   progressNeedsFacts: string;
-  states: { generating: string; draftReady: string; needsFacts: string; approved: string; exported: string; failed: string; paused: string; done: string; dismissed: string; notStarted: string };
+  states: { generating: string; draftReady: string; needsFacts: string; approved: string; exported: string; published: string; failed: string; paused: string; done: string; dismissed: string; notStarted: string };
   retry: string;
   /** Runs the items not yet drafted, in order: after a refusal, a reload, or another tab's start. */
   continue: string;
@@ -258,7 +262,7 @@ export const workspaceEn: WorkspaceCopy = {
     noPermission: "Only owners, and managers with access to this location, can start a pack.",
     progress: "{drafted} of {total} drafted",
     progressNeedsFacts: "{n} needs your facts",
-    states: { generating: "Generating", draftReady: "Draft ready", needsFacts: "Needs your facts", approved: "Approved", exported: "Exported", failed: "Failed — retry", paused: "Paused — continue later", done: "Done", dismissed: "Dismissed", notStarted: "Not started" },
+    states: { generating: "Generating", draftReady: "Draft ready", needsFacts: "Needs your facts", approved: "Approved", exported: "Exported", published: "Published on Google", failed: "Failed — retry", paused: "Paused — continue later", done: "Done", dismissed: "Dismissed", notStarted: "Not started" },
     retry: "Retry",
     continue: "Continue",
     open: "Open",
@@ -401,6 +405,7 @@ export const workspaceEn: WorkspaceCopy = {
   phases: {
     requires_connection: "Requires connection", needs_input: "Needs input", generating: "Generating", draft_ready: "Draft ready", changes_requested: "Changes requested",
     approved_export_ready: "Approved · export ready", verified: "Verified on site", exported: "Exported", applied: "Applied (reported)", awaiting_comparable_scan: "Awaiting comparable scan", measured: "Measured", recommended: "Recommended",
+    publishing_to_google: "Publishing to Google · unconfirmed", published_on_google: "Published on Google",
   },
   basis: {
     exported: "exported",
@@ -547,7 +552,7 @@ export const workspaceZhHK: WorkspaceCopy = {
     noPermission: "只有店主，以及可管理此地點的經理，才可開始套裝。",
     progress: "已有 {drafted} / {total} 份草稿",
     progressNeedsFacts: "{n} 份需要你補充資料",
-    states: { generating: "生成中", draftReady: "草稿已備妥", needsFacts: "需要你補充資料", approved: "已核准", exported: "已匯出", failed: "失敗，請重試", paused: "已暫停，稍後可繼續", done: "已完成", dismissed: "已略過", notStarted: "未開始" },
+    states: { generating: "生成中", draftReady: "草稿已備妥", needsFacts: "需要你補充資料", approved: "已核准", exported: "已匯出", published: "已發佈到 Google", failed: "失敗，請重試", paused: "已暫停，稍後可繼續", done: "已完成", dismissed: "已略過", notStarted: "未開始" },
     retry: "重試",
     continue: "繼續",
     open: "開啟",
@@ -662,6 +667,7 @@ export const workspaceZhHK: WorkspaceCopy = {
   phases: {
     requires_connection: "需要連接", needs_input: "需要輸入", generating: "生成中", draft_ready: "草稿已備妥", changes_requested: "要求修改",
     approved_export_ready: "已核准 · 可匯出", verified: "已在網站核實", exported: "已匯出", applied: "已套用（店主回報）", awaiting_comparable_scan: "等待可比較掃描", measured: "已量度", recommended: "建議",
+    publishing_to_google: "發佈到 Google · 尚未確認", published_on_google: "已發佈到 Google",
   },
   basis: {
     exported: "已匯出",
@@ -807,7 +813,7 @@ export const workspaceZhTW: WorkspaceCopy = {
     noPermission: "只有店主，以及可管理此據點的經理，才能開始套組。",
     progress: "已有 {drafted} / {total} 份草稿",
     progressNeedsFacts: "{n} 份需要你補充資料",
-    states: { generating: "產生中", draftReady: "草稿已備妥", needsFacts: "需要你補充資料", approved: "已核准", exported: "已匯出", failed: "失敗，請重試", paused: "已暫停，稍後可繼續", done: "已完成", dismissed: "已略過", notStarted: "尚未開始" },
+    states: { generating: "產生中", draftReady: "草稿已備妥", needsFacts: "需要你補充資料", approved: "已核准", exported: "已匯出", published: "已發布到 Google", failed: "失敗，請重試", paused: "已暫停，稍後可繼續", done: "已完成", dismissed: "已略過", notStarted: "尚未開始" },
     retry: "重試",
     continue: "繼續",
     open: "開啟",
@@ -915,7 +921,7 @@ export const workspaceZhTW: WorkspaceCopy = {
   // Same 核實/查證 split as `basis.verified` above -- inheritance from
   // zh-HK is NOT safe for this verb (that is exactly the inversion the
   // previous slice shipped), so this key needs its own override here.
-  phases: { ...workspaceZhHK.phases, verified: "已在網站查證" },
+  phases: { ...workspaceZhHK.phases, verified: "已在網站查證", publishing_to_google: "發布到 Google · 尚未確認", published_on_google: "已發布到 Google" },
   states: { ...workspaceZhHK.states, unavailable: "無法取得", publishing: "發布中", published: "已發布" },
   freshness: { today: "今天更新", days: "{n} 天前更新" },
   checklistSteps: {

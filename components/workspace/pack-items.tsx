@@ -17,7 +17,7 @@ import type { RowState } from "@/lib/workspace/use-sequential-runs"
  * bulk control, by design: approval and export happen only on the exact version
  * (spec 3.2).
  */
-export type ItemStateKey = "generating" | "draftReady" | "needsFacts" | "approved" | "exported" | "failed" | "paused" | "done" | "dismissed" | "notStarted"
+export type ItemStateKey = "generating" | "draftReady" | "needsFacts" | "approved" | "exported" | "published" | "failed" | "paused" | "done" | "dismissed" | "notStarted"
 
 /**
  * The state to show for one item. A version that is already approved or exported
@@ -27,6 +27,8 @@ export type ItemStateKey = "generating" | "draftReady" | "needsFacts" | "approve
 export function itemState(action: ActionOverview, live: RowState | undefined): ItemStateKey {
   const version = action.latestVersion
   if (live === "generating") return "generating"
+  // P4.6: a reply verified on Google is delivered too, and says where.
+  if (version?.deliveryState === "published") return "published"
   if (version?.deliveryState === "exported") return "exported"
   if (version?.approvalState === "approved") return "approved"
   if (live === "failed") return "failed"
@@ -51,6 +53,7 @@ const ICONS: Record<ItemStateKey, typeof CircleDashed> = {
   needsFacts: TextCursorInput,
   approved: CheckCircle2,
   exported: CheckCircle2,
+  published: CheckCircle2,
   failed: AlertTriangle,
   paused: CirclePause,
   done: CheckCircle2,

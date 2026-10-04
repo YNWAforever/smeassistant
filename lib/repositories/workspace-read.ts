@@ -104,11 +104,16 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
     // panel showed a constant "1 reminder" on every draft and a real violation
     // looked exactly like a clean one. Parsed here rather than shipped raw:
     // the blob is unconstrained jsonb and has no business reaching the client.
+    // `first_exported_at` (0002) says whether the version was ever exported
+    // now that delivery_state can also read publishing/published/cancelled
+    // (P4.6). Deliberately not `first_published_at`: that is a 0014 column,
+    // and this query runs on every action page with the publish flag off.
     async versions(workspaceId: string, actionIds: string[]): Promise<VersionRow[]> {
       if (!actionIds.length) return [];
       const raw = await rows<Omit<VersionRow, "origin" | "agentKey" | "checked" | "guardrails" | "agentNotes" | "acceptanceCriteria" | "offerRevision"> & { meta: unknown }>(
         `SELECT v.id, v.action_id, v.version_no, v.body, v.alt_text, v.author_type,
-        v.author_user_id, v.approval_state, v.delivery_state, v.approved_at::text, v.reviewer_comment, v.created_at::text, v.meta
+        v.author_user_id, v.approval_state, v.delivery_state, v.approved_at::text, v.reviewer_comment, v.created_at::text,
+        v.first_exported_at::text, v.meta
         FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id
         WHERE a.workspace_id=$1 AND v.action_id=ANY($2::uuid[]) ORDER BY v.version_no DESC`, [workspaceId, actionIds]);
       return raw.map(({ meta, ...version }) => ({ ...version, ...parseVersionMeta(meta, version.author_type) }));

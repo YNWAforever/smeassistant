@@ -33,6 +33,7 @@ import { DELETE as deleteReplyRoute } from "../../app/api/deliveries/[deliveryId
 import { loadPublishPanel } from "../../lib/publishing/page-state";
 import { publishingRepository } from "../../lib/repositories/publishing";
 import { workflowRepository } from "../../lib/repositories/workflow";
+import { workspaceReadRepository } from "../../lib/repositories/workspace-read";
 
 /** The columns 0014 adds. No statement on a 0013 database may name one. */
 const COLUMNS_0014 = ["target_ref", "provider_receipt", "failure_reason", "verified_at", "first_published_at"];
@@ -224,6 +225,27 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon GBP reply publishing:
     expect(spies.fetch).not.toHaveBeenCalled();
   });
 
+  it("the action loader's version rows carry first_exported_at on the 0013 schema and name no 0014 column", async () => {
+    // P4.6 final review F3: the overview and the action detail read whether a version was
+    // exported from first_exported_at (0002), never from first_published_at (0014).
+    const seeded = await seedApproved();
+    const read = workspaceReadRepository();
+    ports.statements.length = 0;
+    const [before] = await read.versions(seeded.workspaceId, [seeded.actionId]);
+    expect(before).toMatchObject({ id: seeded.versionId, delivery_state: "export_ready", first_exported_at: null });
+
+    await workflowRepository().exportOutputVersion(seeded.versionId, seeded.actor, "export", randomUUID());
+    const [after] = await read.versions(seeded.workspaceId, [seeded.actionId]);
+    expect(after.delivery_state).toBe("exported");
+    expect(typeof after.first_exported_at).toBe("string");
+    expect(Number.isNaN(Date.parse(after.first_exported_at as string))).toBe(false);
+
+    const versionReads = ports.statements.filter((statement) => statement.includes("FROM output_versions v JOIN actions"));
+    expect(versionReads).toHaveLength(2);
+    expect(versionReads.every((statement) => statement.includes("first_exported_at"))).toBe(true);
+    expect(ports.statements.filter(namesA0014Column)).toEqual([]);
+  });
+
   it("export_output_version still exports and counts on the 0013 schema", async () => {
     const seeded = await seedApproved();
     const workflow = workflowRepository();
@@ -281,6 +303,6 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon GBP reply publishing:
       )
     ).rows[0].id as string;
     await workflowRepository().approveOutputVersion(versionId, actor, null);
-    return { actor, workspaceId, versionId };
+    return { actor, workspaceId, actionId, versionId };
   }
 });

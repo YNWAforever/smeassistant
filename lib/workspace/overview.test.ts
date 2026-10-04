@@ -46,6 +46,49 @@ describe("displayPhaseKey", () => {
   });
 });
 
+describe("displayPhaseKey Google publishing (P4.6)", () => {
+  const b = { capability: "Live" as const, actionState: "in_progress" as const, runState: null, approvalState: "approved" as const, deliveryState: "not_requested" as const, measurementState: "not_eligible" as const, applied: false, verified: false };
+
+  it("an uncertain publish reads publishing_to_google, a verified one published_on_google, never recommended", () => {
+    expect(displayPhaseKey({ ...b, deliveryState: "publishing" })).toBe("publishing_to_google");
+    expect(displayPhaseKey({ ...b, deliveryState: "published" })).toBe("published_on_google");
+    // Exported then published (export_output_version keeps 'published'): still the publish label.
+    expect(displayPhaseKey({ ...b, deliveryState: "published", exported: true })).toBe("published_on_google");
+  });
+
+  it("sits where exported sits: applied and verified still outrank it, measured still wins", () => {
+    expect(displayPhaseKey({ ...b, deliveryState: "published", applied: true })).toBe("applied");
+    expect(displayPhaseKey({ ...b, deliveryState: "published", verified: true })).toBe("verified");
+    expect(displayPhaseKey({ ...b, deliveryState: "published", measurementState: "awaiting_comparable_scan" })).toBe("published_on_google");
+  });
+
+  it("a cancelled (deleted) reply falls back to the export state", () => {
+    expect(displayPhaseKey({ ...b, deliveryState: "cancelled", exported: true })).toBe("exported");
+    expect(displayPhaseKey({ ...b, deliveryState: "cancelled", exported: false })).toBe("approved_export_ready");
+    expect(displayPhaseKey({ ...b, deliveryState: "cancelled" })).toBe("approved_export_ready");
+  });
+
+  it("buildActionOverview passes the version's first_exported_at through", () => {
+    const cancelled = (first_exported_at: string | null) =>
+      buildActionOverview({ ...row, action_state: "in_progress", required_inputs: [], provided_inputs: {} }, {
+        location: null,
+        latestRun: null,
+        latestVersion: { id: "v3", version_no: 3, approval_state: "approved", delivery_state: "cancelled", first_exported_at },
+      });
+    expect(cancelled("2026-10-04T01:00:00Z").displayPhaseKey).toBe("exported");
+    expect(cancelled(null).displayPhaseKey).toBe("approved_export_ready");
+    const published = buildActionOverview({ ...row, action_state: "in_progress", required_inputs: [], provided_inputs: {} }, {
+      location: null,
+      latestRun: null,
+      latestVersion: { id: "v3", version_no: 3, approval_state: "approved", delivery_state: "published", first_exported_at: null },
+    });
+    expect(published.displayPhaseKey).toBe("published_on_google");
+    expect(published.displayPhase.en).toBe("Published on Google");
+    expect(published.displayPhase["zh-HK"]).toBe(copy["zh-HK"].workspace.phases.published_on_google);
+    expect(published.displayPhase["zh-TW"]).toBe(copy["zh-TW"].workspace.phases.published_on_google);
+  });
+});
+
 describe("displayPhaseKey applied", () => {
   const baseInput = {
     capability: "Live" as const,

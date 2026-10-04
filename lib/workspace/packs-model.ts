@@ -75,7 +75,8 @@ export function buildPackOverview(pack: WorkPack, items: PackItem[]): PackOvervi
     if (latest) counts.drafted += 1;
     if (action.actionState === "needs_input") counts.needsInput += 1;
     if (latest?.approvalState === "approved") counts.approved += 1;
-    if (latest?.deliveryState === "exported") counts.exported += 1;
+    // Delivered: exported, or verified on Google (P4.6). `publishing` is uncertain and not yet delivered.
+    if (latest?.deliveryState === "exported" || latest?.deliveryState === "published") counts.exported += 1;
     if (action.runState === "failed") counts.failed += 1;
     if (isFinishedState(action.actionState)) counts.finished += 1;
     if (!nextToReview && (latest?.approvalState === "draft" || latest?.approvalState === "changes_requested")) {
