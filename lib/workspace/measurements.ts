@@ -70,9 +70,15 @@ export interface MeasurableActionRow {
   action_state: string;
 }
 
+/**
+ * A version that left the building: exported, or (P4.6) published to Google.
+ * `first_published_at` is stamped only when Google confirms the reply, so an
+ * unconfirmed publish never appears here.
+ */
 export interface ExportedVersionRow {
   action_id: string;
   first_exported_at: string | null;
+  first_published_at: string | null;
 }
 
 function round1(value: number): number {
@@ -135,8 +141,12 @@ export async function recordMeasurements(repo: MeasurementRepository, input: Rec
   const alreadyMeasured = new Set(existing.map((row) => row.action_id));
   const exportedBeforeHead = new Set<string>();
   for (const row of exports) {
-    const exportedAt = row.first_exported_at ? Date.parse(row.first_exported_at) : Number.NaN;
-    if (Number.isFinite(exportedAt) && exportedAt < headStartedAt) exportedBeforeHead.add(row.action_id);
+    // Whichever came first: a reply published to Google is engagement exactly
+    // like an export, and earns the same `exported` basis.
+    const times = [row.first_exported_at, row.first_published_at]
+      .map((value) => (value ? Date.parse(value) : Number.NaN))
+      .filter(Number.isFinite);
+    if (times.length && Math.min(...times) < headStartedAt) exportedBeforeHead.add(row.action_id);
   }
   const applications = await repo.applications(head, ids);
   const byAction = new Map<string, ApplicationRecord[]>();

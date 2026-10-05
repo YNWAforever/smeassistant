@@ -54,10 +54,10 @@ describe("basisLabel", () => {
     expect(basisLabel(null, "zh-TW")).toBe("未記錄依據");
   });
 
-  it("renders 'exported' in every locale", () => {
-    expect(basisLabel("exported", "en")).toBe("exported");
-    expect(basisLabel("exported", "zh-HK")).toBe("已匯出");
-    expect(basisLabel("exported", "zh-TW")).toBe("已匯出");
+  it("renders 'exported' as exported or published in every locale (a GBP reply published to Google earns it too)", () => {
+    expect(basisLabel("exported", "en")).toBe("exported or published");
+    expect(basisLabel("exported", "zh-HK")).toBe("已匯出或發佈");
+    expect(basisLabel("exported", "zh-TW")).toBe("已匯出或發布");
   });
 
   it("renders 'owner_asserted' with the register Task 8 set for the applied banner (你/您)", () => {

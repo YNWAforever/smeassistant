@@ -165,6 +165,18 @@ describe.runIf(process.env.NEON_INTEGRATION === '1')('Neon snapshot persistence'
   await runtime.query('UPDATE audit_jobs SET workspace_id=$1 WHERE id=$2',[foreign.workspaceId,head.jobId]);
   expect(await measurements.base(head,diff)).toBeNull();
  });
+ it('exports returns a version published to Google but never exported, and skips one neither exported nor published', async () => {
+  const {ws,head}=await pair('published-only'), repo=measurementRepository(runtime);
+  const insertAction=async()=>(await runtime.query(`INSERT INTO actions(workspace_id,template_key,title,summary,evidence,priority,priority_score,priority_factors,effort_minutes,capability,dedupe_key)
+   VALUES($1,'review-response','{}','{}','{}','urgent',1,'[]',10,'Live',gen_random_uuid()::text) RETURNING id`,[ws])).rows[0].id as string;
+  const published=await insertAction(), untouched=await insertAction();
+  await runtime.query("INSERT INTO output_versions(workspace_id,action_id,version_no,body,author_type,first_published_at) VALUES($1,$2,1,'fixture','agent','2026-01-01T00:00:00Z')",[ws,published]);
+  await runtime.query("INSERT INTO output_versions(workspace_id,action_id,version_no,body,author_type) VALUES($1,$2,1,'fixture','agent')",[ws,untouched]);
+  const rows=await repo.exports(head,[published,untouched]);
+  expect(rows).toHaveLength(1);
+  expect(rows[0]).toMatchObject({action_id:published,first_exported_at:null});
+  expect(Date.parse(rows[0].first_published_at!)).toBe(Date.parse('2026-01-01T00:00:00Z'));
+ });
  it('excludes mismatched child workspace exports and measurements even with valid independent foreign keys', async () => {
   const {ws,head,base}=await pair('child-scope'), other=await workspace('child-other'), repo=measurementRepository(runtime);
   const action=(await runtime.query(`INSERT INTO actions(workspace_id,template_key,title,summary,evidence,priority,priority_score,priority_factors,effort_minutes,capability,dedupe_key)
