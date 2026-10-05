@@ -81,3 +81,20 @@ jobs:
 
       - name: Required merchant acceptance (isolated Auth, database, mail and LLM)
         run: pnpm e2e:acceptance
+
+      # Diagnostics for intermittent acceptance failures (for example merchant-loop
+      # `read ECONNRESET`, which does not reproduce off the Linux runner). Both steps
+      # run only when an earlier step failed. Everything printed or uploaded is
+      # local fixture data from the isolated environment, never a real secret.
+      - name: Acceptance dev-server log tail (on failure)
+        if: failure()
+        run: tail -n 400 test-results/fixture-next.log || echo "no dev-server log"
+
+      - name: Upload acceptance results (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: acceptance-results-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: ignore
