@@ -41,8 +41,11 @@ export function measurementRepository(client?: Pick<Pool,'query'>): MeasurementR
   async actions(head,states) { return (await db().query<MeasurableActionRow>('SELECT id,template_key,location_id,action_state FROM actions WHERE workspace_id=$1 AND (location_id=$2 OR location_id IS NULL) AND action_state=ANY($3::text[])',[head.workspaceId,head.locationId,states])).rows; },
   async existing(head,ids) { return (await db().query<{action_id:string;fact_type:MeasurementFactType}>(`SELECT m.action_id,m.fact_type FROM action_measurements m JOIN actions a ON a.id=m.action_id AND a.workspace_id=m.workspace_id
     WHERE m.workspace_id=$1 AND m.after_snapshot_id=$2 AND m.action_id=ANY($3::uuid[]) AND (a.location_id=$4 OR a.location_id IS NULL)`,[head.workspaceId,head.id,ids,head.locationId])).rows; },
-  async exports(head,ids) { return (await db().query<ExportedVersionRow>(`SELECT v.action_id,v.first_exported_at::text FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id
-    WHERE v.workspace_id=$1 AND v.action_id=ANY($2::uuid[]) AND v.first_exported_at IS NOT NULL AND (a.location_id=$3 OR a.location_id IS NULL)`,[head.workspaceId,ids,head.locationId])).rows; },
+  // first_published_at is a 0014 column. Measurement runs with the publish flag
+  // off too, so this query needs 0014 applied -- which neon:readiness already
+  // requires (the journal must match every migration).
+  async exports(head,ids) { return (await db().query<ExportedVersionRow>(`SELECT v.action_id,v.first_exported_at::text,v.first_published_at::text FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id
+    WHERE v.workspace_id=$1 AND v.action_id=ANY($2::uuid[]) AND (v.first_exported_at IS NOT NULL OR v.first_published_at IS NOT NULL) AND (a.location_id=$3 OR a.location_id IS NULL)`,[head.workspaceId,ids,head.locationId])).rows; },
   // The assertion is safe by construction: recordMeasurements returns early on
   // `!head.workspaceId` before any port is called, so this never runs with a
   // null workspace. Scoping is still enforced inside forActions, which joins

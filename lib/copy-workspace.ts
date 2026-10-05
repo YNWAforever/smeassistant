@@ -408,7 +408,8 @@ export const workspaceEn: WorkspaceCopy = {
     publishing_to_google: "Publishing to Google · unconfirmed", published_on_google: "Published on Google",
   },
   basis: {
-    exported: "exported",
+    // A GBP reply published to Google (P4.6) earns the same basis as an export.
+    exported: "exported or published",
     owner_asserted: "you reported applying this",
     verified: "verified on site",
     unknown: "basis not recorded",
@@ -670,7 +671,7 @@ export const workspaceZhHK: WorkspaceCopy = {
     publishing_to_google: "發佈到 Google · 尚未確認", published_on_google: "已發佈到 Google",
   },
   basis: {
-    exported: "已匯出",
+    exported: "已匯出或發佈",
     owner_asserted: "你回報已套用",
     verified: "已在網站核實",
     unknown: "未記錄依據",
@@ -911,10 +912,12 @@ export const workspaceZhTW: WorkspaceCopy = {
   },
   // Mirrors the 核實/查證 verb and 你/您 pronoun split Task 8 set in the
   // `applied` message namespace (lib/messages/{zh-HK,zh-TW}.json:
-  // assertedOn) -- keep the two in sync if either changes. `exported` and
-  // `unknown` carry no verb or pronoun, so they stay inherited from zh-HK.
+  // assertedOn) -- keep the two in sync if either changes. `unknown` carries
+  // no verb or pronoun, so it stays inherited from zh-HK; `exported` uses the
+  // zh-TW 發布 that the publish states above already use.
   basis: {
     ...workspaceZhHK.basis,
+    exported: "已匯出或發布",
     owner_asserted: "您回報已套用",
     verified: "已在網站查證",
   } satisfies Record<AttributionBasis | "unknown", string>,

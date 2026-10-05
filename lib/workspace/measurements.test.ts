@@ -27,7 +27,7 @@ function client(): MeasurementRepository {
   async headJob(){return state.headJob as {created_at:string}|null;},
   async actions(){return state.actions as unknown as Awaited<ReturnType<MeasurementRepository['actions']>>;},
   async existing(head){return state.measurements.filter(m=>m.after_snapshot_id===head.id) as unknown as Awaited<ReturnType<MeasurementRepository['existing']>>;},
-  async exports(){return state.versions.filter(v=>v.first_exported_at) as unknown as Awaited<ReturnType<MeasurementRepository['exports']>>;},
+  async exports(){return state.versions.filter(v=>v.first_exported_at||v.first_published_at) as unknown as Awaited<ReturnType<MeasurementRepository['exports']>>;},
   async applications(){return state.applications.filter(row=>!row.retracted_at) as unknown as Awaited<ReturnType<MeasurementRepository['applications']>>;},
   async insert(rows,head){const fresh=rows.map(row=>({...row,id:completionId('measurement',row.action_id,head.id)})).filter(row=>!state.measurements.some(existing=>existing.id===row.id));state.inserted.push(...fresh);state.measurements.push(...fresh);return fresh.length;},
   async latest(){return {id:state.latestSnapshotId};},
@@ -296,6 +296,34 @@ describe("recordMeasurements attribution basis", () => {
 
     await recordMeasurements(client(), { headSnapshot: snapshot({}), diff });
 
+    expect(state.inserted.find((r) => r.action_id === "a-review")).toMatchObject({ fact_type: "Attributed", attribution_basis: "exported" });
+  });
+
+  // P4.6: a GBP reply can reach the merchant's customers by a verified publish
+  // without ever being exported. first_published_at is stamped only when
+  // Google confirms the reply, so it enters the loop exactly like an export.
+  it("attributes and labels a reply published to Google before the head scan, never exported", async () => {
+    state.versions = [{ action_id: "a-review", first_exported_at: null, first_published_at: "2026-08-20T00:00:00Z" }];
+
+    await recordMeasurements(client(), { headSnapshot: snapshot({}), diff });
+
+    expect(state.inserted.find((r) => r.action_id === "a-review")).toMatchObject({ fact_type: "Attributed", attribution_basis: "exported" });
+    expect(state.updates).toEqual([{ patch: expect.objectContaining({ measurement_state: "measured" }), ids: ["a-review"] }]);
+  });
+
+  it("a publish confirmed after the head scan started does not attribute the change", async () => {
+    state.versions = [{ action_id: "a-review", first_exported_at: null, first_published_at: "2026-09-01T09:30:00Z" }];
+
+    await recordMeasurements(client(), { headSnapshot: snapshot({}), diff });
+
+    expect(state.inserted.find((r) => r.action_id === "a-review")).toMatchObject({ fact_type: "Observed", attribution_basis: null });
+    expect(state.updates).toEqual([]);
+  });
+
+  it("uses the earlier of export and publish, whichever came first", async () => {
+    // Published before the head scan, exported after it: the publish counts.
+    state.versions = [{ action_id: "a-review", first_exported_at: "2026-09-01T09:30:00Z", first_published_at: "2026-08-20T00:00:00Z" }];
+    await recordMeasurements(client(), { headSnapshot: snapshot({}), diff });
     expect(state.inserted.find((r) => r.action_id === "a-review")).toMatchObject({ fact_type: "Attributed", attribution_basis: "exported" });
   });
 
