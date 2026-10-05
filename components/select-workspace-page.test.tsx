@@ -8,7 +8,8 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-import { emptyStateCopy, SelectWorkspacePage } from "@/components/select-workspace-page"
+import { SelectWorkspacePage } from "@/components/select-workspace-page"
+import { noWorkspaceCopy as emptyStateCopy } from "@/lib/workspace/no-workspace-copy"
 
 const LOCALES = ["en", "zh-HK", "zh-TW"] as const
 
