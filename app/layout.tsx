@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import "./globals.css";
 import "./responsive.css";
 import "./ramp-refresh.css";
+import { HydrationMarker } from "@/components/hydration-marker";
 import { Toaster } from "@/components/ui/sonner";
 import { LOCALE_HEADER, resolveHtmlLang } from "@/lib/funnel/locale-redirect";
 import { getSiteUrl } from "@/lib/share";
@@ -41,7 +42,7 @@ export default async function RootLayout({
   const lang = resolveHtmlLang((await headers()).get(LOCALE_HEADER));
   return (
     <html lang={lang} data-scroll-behavior="smooth">
-      <body className="antialiased">{children}<Toaster richColors position="top-right" /></body>
+      <body className="antialiased">{children}<Toaster richColors position="top-right" /><HydrationMarker /></body>
     </html>
   );
 }

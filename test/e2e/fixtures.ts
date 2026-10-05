@@ -10,10 +10,29 @@ export const test = base.extend<{ merchant: MerchantSeed }, { environment: Accep
     });
     await runFixture(context);
   },
+  // Every full page load waits for React to hydrate before the test acts (components/hydration-marker.tsx).
+  page: async ({ page }, runFixture) => {
+    const goto = page.goto.bind(page);
+    page.goto = (async (url: string, options?: Parameters<Page["goto"]>[1]) => {
+      const response = await goto(url, options);
+      if (response?.headers()["content-type"]?.includes("text/html")) await waitForHydration(page);
+      return response;
+    }) as Page["goto"];
+    await runFixture(page);
+  },
   baseURL: async ({ environment }, runFixture) => runFixture(environment.app),
   merchant: async ({ environment }, runFixture) => runFixture(await seedMerchant(environment, "hk")),
 });
 export { expect };
+
+/**
+ * Wait until the root layout's HydrationMarker has run. Under `next dev` hydration can lag the `load`
+ * event by seconds; acting earlier clicks or types on server-rendered HTML, which turns a `<Link>`
+ * into a full navigation and lets React wipe typed input.
+ */
+export async function waitForHydration(page: Page): Promise<void> {
+  await page.waitForFunction(() => document.documentElement.dataset.hydrated === "true", undefined, { timeout: 30_000 });
+}
 export async function requestSignInLink(page: Page, env: AcceptanceEnvironment, merchant: MerchantSeed, role: keyof MerchantSeed["emails"] = "owner", claim?: string) {
   const signInUrl = new URL("/en/owner/sign-in", env.app);
   signInUrl.searchParams.set("returnTo", `/en/owner/${merchant.slug}`);
