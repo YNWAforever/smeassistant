@@ -38,6 +38,34 @@ test("an accepted fixture account is not required for no-access recovery or a re
   await page.getByRole("button", { name: "Change account", exact: true }).click();
   await expect(page.getByRole("button", { name: "Continue with Google", exact: true })).toBeVisible();
 });
+// FA-03. Literal strings on purpose (see visualCases below): this suite runs
+// with WORKSPACE_CLAIM_VIA_OAUTH_ENABLED=false, so the owner step must name the
+// report's claim button, never a Google control that does not render.
+for (const locale of ["en", "zh-HK"] as const) test(`a memberless account sees one real path to a workspace on select-workspace (${locale}, 375px)`, async ({ page, merchant, environment }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await environment.selectGoogleAccount(`outside-${merchant.workspaceId}@acceptance.test`);
+  await page.goto(`/${locale}/owner/sign-in`);
+  await page.getByRole("button", { name: locale === "en" ? "Continue with Google" : "使用 Google 繼續", exact: true }).click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await page.goto(`/${locale}/owner/select-workspace`);
+  const empty = page.locator(".empty-state");
+  if (locale === "en") {
+    await expect(empty).toContainText("Your email isn’t linked to a workspace yet.");
+    await expect(empty).toContainText("choose “Sign in to claim this business”");
+    await expect(empty).toContainText("ask the owner to add your email under “Team & roles”");
+    await expect(page.getByText("fail closed")).toHaveCount(0);
+  } else {
+    await expect(empty).toContainText("你的電郵尚未連結任何工作台。");
+    await expect(empty).toContainText("解鎖報告後按「登入認領此商戶」");
+    await expect(empty).toContainText("請店主在「團隊與權限」加入你的電郵");
+    await expect(page.getByText("深層連結會被安全拒絕")).toHaveCount(0);
+  }
+  await expect(empty).not.toContainText("Google");
+  const links = await empty.locator("a").evaluateAll((anchors) => anchors.map((a) => a.getAttribute("href")));
+  expect(links).toEqual([`/${locale}/scan`]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});
+
 const acceptedMemberships = (environment: { db: string }, workspaceId: string) => sql(environment.db, `select count(*) from workspace_members where workspace_id='${workspaceId}' and accepted_at is not null;`);
 
 for (const fault of ["mapping", "binding", "revoked", "upstream"] as const) {

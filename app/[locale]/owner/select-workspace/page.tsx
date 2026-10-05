@@ -7,6 +7,7 @@ import { copy, normaliseLocale } from "@/lib/copy";
 import { accessRequestRepository } from "@/lib/repositories/access-requests";
 import { deriveRequestStatus } from "@/lib/workspace/my-access-request";
 import { listWorkspaceCards } from "@/lib/workspace/queries";
+import { claimViaOAuthEnabled } from "@/lib/oauth/claim-flow-flag";
 
 import { publicMetadata } from "../../_meta";
 import { firstParam } from "../../_params";
@@ -52,6 +53,7 @@ export default async function OwnerSelectWorkspace({
       email={user.email}
       denied={denied && denied.length <= 120 ? denied : undefined}
       signOutAction={signOutAction.bind(null, locale)}
+      oauthClaimEnabled={claimViaOAuthEnabled()}
       accessRequest={
         myRequest ? (
           <AccessRequestStatus
