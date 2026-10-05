@@ -7,6 +7,7 @@ import { completeWorkspaceClaim } from "../../lib/workspace/claim";
 import { claimsRepository as claims, claimCompletionStore } from "../../lib/repositories/claims";
 import { membershipRepository as members } from "../../lib/repositories/membership";
 import { workspaceReadRepository } from "../../lib/repositories/workspace-read";
+import { workflowRepository, type UnlockInput } from "../../lib/repositories/workflow";
 const ports = vi.hoisted(() => ({ pool: undefined as Pool | undefined }));
 vi.mock("../../lib/db/client", () => ({ getPool: () => ports.pool }));
 const identity = (subject = "member", email = "member@example.test") => ({ provider: "neon" as const, subject, email, verified: true as const });
@@ -176,6 +177,26 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon membership boundaries
   // A revoked grant stops being a mail recipient.
   await runtime.query("UPDATE report_access_grants SET revoked_at=now() WHERE job_id=$1",[id]);
   expect(await claims.isLeadRecipient("claim-wa","owner@example.test")).toBe(false);
+ });
+ it("FA-10: a real complete_report_unlock over WhatsApp or LINE makes the recovery email, and only it, sign-in eligible", async () => {
+  // End to end through the SQL function the unlock route calls, rather than a
+  // hand-inserted grant: route args -> complete_report_unlock -> grant row ->
+  // isLeadRecipient. route.test.ts pins the first hop.
+  for (const [channel, slug, contact] of [["whatsapp","claim-wa-rpc","+85291234567"],["line","claim-line-rpc","line-owner-id"]] as const) {
+   const id=(await runtime.query("INSERT INTO audit_jobs(business_name,share_slug,status) VALUES('Shop',$1,'done') RETURNING id",[slug])).rows[0].id as string;
+   const input: UnlockInput = { jobId:id, whatsapp: channel==="whatsapp"?contact:null, email:null, recoveryEmail:"recovery@example.test", preferredContactChannel:channel, contactIdentifier:contact, businessObjective:"more_leads", reportDeliveryConsent:true, scanDiscussionConsent:false, marketingConsent:false, policyVersion:"fixture", locale:"zh-HK", tokenHash:(channel==="whatsapp"?"b":"d").repeat(64), idempotencyKey:`idem-${channel}`, purpose:"viewer_report", expiresAt:new Date(Date.now()+30*86400000), anonymousSessionId:"fixture-session", eventProperties:{ market:"HK", channel, objective:"more_leads" } };
+   await workflowRepository().completeReportUnlock(input);
+   // The lead carries no email for these channels -- the old predicate's only source.
+   expect((await runtime.query("SELECT email FROM leads WHERE job_id=$1",[id])).rows).toEqual([{ email:null }]);
+   expect(await claims.isLeadRecipient(slug,"recovery@example.test")).toBe(true);
+   expect(await claims.isLeadRecipient(slug,"RECOVERY@Example.test")).toBe(true);
+   expect(await claims.isLeadRecipient(slug,"stranger@example.test")).toBe(false);
+  }
+  // Without a recovery email there is nothing to match, and still no membership.
+  const id=(await runtime.query("INSERT INTO audit_jobs(business_name,share_slug,status) VALUES('Shop','claim-wa-none','done') RETURNING id")).rows[0].id as string;
+  await workflowRepository().completeReportUnlock({ jobId:id, whatsapp:"+85291234567", email:null, recoveryEmail:null, preferredContactChannel:"whatsapp", contactIdentifier:"+85291234567", businessObjective:"more_leads", reportDeliveryConsent:true, scanDiscussionConsent:false, marketingConsent:false, policyVersion:"fixture", locale:"zh-HK", tokenHash:"c".repeat(64), idempotencyKey:"idem-none", purpose:"viewer_report", expiresAt:new Date(Date.now()+30*86400000), anonymousSessionId:"fixture-session", eventProperties:{ market:"HK", channel:"whatsapp", objective:"more_leads" } });
+  expect(await claims.isLeadRecipient("claim-wa-none","recovery@example.test")).toBe(false);
+  expect((await runtime.query("SELECT count(*)::int n FROM workspace_members")).rows[0].n).toBe(0);
  });
  it("rolls back OAuth replacement failure and keeps the predecessor active", async () => {
   const ws=await workspace();
