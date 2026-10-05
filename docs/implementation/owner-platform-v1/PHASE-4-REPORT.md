@@ -733,6 +733,8 @@ The assistant clause maps to the authority tests:
 
 **Status: the core release is built and locally verified. It is not hosted-verified, and hosted acceptance was NOT RUN.** The preview and publishing sub-releases are not built and are labelled as such. Before Phase 4 core is released, `0011` and `0012` still need their hosted application (DEC-11) and the flags need the owner's decision.
 
+> **Superseded 2026-10-05** by "Phase 4 close-out" at the end of this report: P4.5 and P4.6 are now built, and `0011`–`0014` are owner-reported applied. The status above is kept as the P4.3-time record.
+
 ### Verification
 
 Full detail is in `PHASE-4-TEST-RESULTS.md`. One line per gate, run 2026-10-03 at `02b5577` plus the documentation edits (no code changed in this task):
@@ -1228,3 +1230,78 @@ Closes the P4.6 open question above. The owner chose the recommended rule.
 - **Production effect.** None while `GBP_REPLY_PUBLISH_ENABLED` is off: no version can have `first_published_at` until a publish has succeeded.
 - **Files.** `lib/workspace/measurements.ts` (`ExportedVersionRow.first_published_at`, earliest-of gate), `lib/repositories/measurements.ts` (`exports` query), `lib/copy-workspace.ts` (basis label, three locales).
 - **Tests.** `lib/workspace/measurements.test.ts` (+3: published before the head scan → Attributed, `exported` basis, labelled measured; published after the head scan started → Observed, not labelled; export after and publish before → the publish counts). `test/integration/neon-snapshots.integration.test.ts` (+1: `exports` returns a published-only version and skips a version with neither timestamp; it fails against the previous query). `lib/workspace/format.test.ts` (the `exported` label in three locales).
+
+## Phase 4 close-out (2026-10-05)
+
+This section supersedes the status lines in the slice records above. They stay unedited as the record of their time. Candidate: `main` at `e69378d` (PR #40). CI run 37297876866 on that commit passed on its first attempt.
+
+**Verdict: Phase 4 is implemented and CI-verified. It is not hosted-verified, and hosted acceptance was NOT RUN.** Every Phase 4 feature is behind a flag that defaults off. No further code is required by the Master Plan. What remains is owner actions, hosted evidence and the open product questions below.
+
+### What was delivered
+
+| Slice | PR → merge | Migration | Hosted application (owner-reported, not independently verified) | Flag |
+|---|---|---|---|---|
+| P4.4 workflow contract | #27 → `dc55e02` | none | — | none |
+| P4.1 offers and promotion copy | #28 → `a71c5df` | `0011` | Neon test branch, then production, 2026-10-02 | `OFFER_PROMOTIONS_ENABLED` |
+| P4.2 work packs | #29 → `ecc60df` | `0012` | production 2026-10-03 (test branch not reported) | `WORK_PACKS_ENABLED` |
+| P4.3 contextual assistant | #30 → `8582a7c` | none | — | `CONTEXTUAL_ASSISTANT_ENABLED` |
+| P4.5 unsaved preview draft | #31 → `080ddf6` | `0013` | test branch and production, 2026-10-04 | `PREVIEW_DRAFT_ENABLED` |
+| P4.6 Google review-reply publishing | #34 → `d880e2c` | `0014` | test branch, then production, 2026-10-05 | `GBP_REPLY_PUBLISH_ENABLED` |
+| P4.6 follow-up: published-only replies are measured | #40 → `e69378d` | none (reads `0014`) | — | inherits P4.6 (no effect while off) |
+
+**Flag state.**
+- The R2 environment inventory at `080ddf6` read the first four flags as absent. They were not re-read for later candidates (`RELEASE-EVIDENCE-029d86a.md`).
+- `GBP_REPLY_PUBLISH_ENABLED` is owner-reported unset.
+
+**Engineering follow-ups merged after P4.6.**
+- #33 removed the production cron entry (DEC-10: no hosted cron).
+- #35 fixed the Windows Turbopack build.
+- #36 and #39 fixed acceptance flakes.
+- #37 is the `029d86a` evidence pack.
+- #38 added CI acceptance diagnostics.
+
+### Master Plan §7.2 gate, restated
+
+| Clause | State |
+|---|---|
+| A confirmed offer produces reusable, correctly scoped promotion drafts | Built, locally and CI-verified; `0011` applied (owner-reported); flag off. Hosted NOT RUN. |
+| Pack generation is idempotent | Built, locally and CI-verified; `0012` applied on production (owner-reported); flag off. Hosted NOT RUN. |
+| Pack review preserves exact-version approval and per-version delivery counting | Built, locally and CI-verified. Counting stays in SQL. DEC-14 (once per version, at the first export or first verified publish) is enforced by `0014`'s `export_output_version` and `finish_publish_output_version`. |
+| The assistant provides authorized context without mutation authority | Built, locally and CI-verified; flag off. Hosted NOT RUN. |
+| Existing three workflows still pass | CI `verify` (full unit, integration and acceptance on `ubuntu-latest`) passed on the first attempt for every `main` push from `d0bbbbe` to `e69378d`, four runs in a row. Locally, `e2e:acceptance` passed 42 / 42 in two full runs at PR #39. The `merchant-loop` `read ECONNRESET` flake last failed CI on 2026-10-04 (attempt 1 of push run 37229545186 on `029d86a`). It has not recurred since PR #38 added the log tail and artifact upload. |
+| Preview sub-release: its own privacy, security and hosted acceptance record | Built; DEC-12 decided; `0013` applied (owner-reported). Flag off pending DEC-04's authorized real-model check. Hosted record NOT RUN. |
+| Publishing sub-release: its own privacy, security and hosted acceptance record | Built; DEC-13 and DEC-14 decided; `0014` applied (owner-reported). Blocked on Google Business Profile API access and the separate non-production release approval (`HOSTED-ACCEPTANCE-CHECKLIST.md` §22). Hosted record NOT RUN. |
+
+### Master Plan §11, the larger effort
+
+| Owner journey step | Delivered in | Evidence level |
+|---|---|---|
+| Join legitimately | Phase 1 (identity, proof of ownership) | CI and local; hosted NOT RUN |
+| Understand one next action | Phases 1–2; P4.3 suggestions | CI and local; hosted NOT RUN |
+| Produce grounded work | Phase 1 review reply; P4.4 contract; P4.1 offers; P4.2 packs | CI and local; the live model evaluation was not run (DEC-04) |
+| Approve the exact version | SQL `approve_output_version` | CI and local; hosted NOT RUN |
+| Export with correct usage | SQL `export_output_version`, re-created by `0014` | CI and local; hosted NOT RUN |
+| Return | Phase 3 recurrence. The scheduler is off on production (DEC-10; cron entry removed by #33) | Scheduled work is off; owner-triggered rescans remain |
+| See an authorized, comparable observation of change | `recordMeasurements`; published replies since #40 | CI and local; hosted NOT RUN |
+| Reuse business context for the next task | Onboarding context; P4.1 confirmed offers | CI and local; hosted NOT RUN |
+
+§9.5 rule: this is **implemented but hosted-unverified**. It is not "ready". Production rollout remains a separately authorized action.
+
+### What remains
+
+**Owner actions.** No code change is needed for these.
+1. Run the hosted acceptance checklist (`HOSTED-ACCEPTANCE-CHECKLIST.md`), including an independent check of the journal `0001`–`0014` on production. A test-branch application of `0012` was not reported; the checklist's journal check covers it.
+2. Decide each flag. Before turning on `PREVIEW_DRAFT_ENABLED`, record the DEC-04 authorized real-model check. Before turning on `GBP_REPLY_PUBLISH_ENABLED`, get Google Business Profile API access and pass §22.
+3. Re-read the R2 environment inventory for the current deployment. Re-save `BLOB_READ_WRITE_TOKEN` and `NEON_AUTH_BASE_URL` as Sensitive. Optionally remove the now-unused `CRON_SECRET`.
+
+**Open product questions.** Each is small; each needs a decision before code.
+- `gbp-post` is measured on `gbp.days_since_last_review`, which a post cannot change. The options are `null` (as `offer-google-post` already is) or a posts metric, if the scan ever measures one (P4.4 open questions).
+- `review-request.channel` is a `preference`, not a hard choice (P4.4).
+- DEC-14 safe defaults stand: two channel drafts are two deliveries, and a three-item pack is up to three (P4.1, P4.2).
+- The known limits recorded per slice in the traceability register (`open (known limit)` rows).
+
+**Engineering watch.**
+- The `merchant-loop` CI flake: root-cause it from the PR #38 artifact if it recurs.
+- Local dev-server transitions racing Fast Refresh (class B, documented in PR #39). This is local only; CI is unaffected.
+
+The traceability register (`IMPLEMENTATION-TRACEABILITY.md`) and `docs/integration/DEPLOY.md` were updated in the same change: the Windows-gate rows, the hosted migration rows, and the P4.6 deploy order now that measurement reads `0014`.
