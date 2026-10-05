@@ -22,7 +22,7 @@ function formatMagnitude(n: number): string {
 }
 
 const MODULE_LABELS_ZH: Record<string, string> = {
-  ig: "IG 可見度",
+  ig: "IG 能見度",
   gbp: "Google 商家",
   aeo: "AI 能見度",
   trust: "信任指標",

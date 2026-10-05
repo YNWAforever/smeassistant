@@ -42,7 +42,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
   const moduleLabel = { ig: "Instagram", gbp: "Google", aeo: "AI" };
 
   // Load CJK glyphs only for the text we actually draw.
-  const glyphs = `${card.businessName}${tagline}可見度評分報告${moduleLabel.aeo}`;
+  const glyphs = `${card.businessName}${tagline}能見度評分報告${moduleLabel.aeo}`;
   const [bold, regular] = await Promise.all([loadOgFont(glyphs, 700), loadOgFont(glyphs, 400)]);
   const fonts = [bold, regular].filter(Boolean) as NonNullable<Awaited<ReturnType<typeof loadOgFont>>>[];
 

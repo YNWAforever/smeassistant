@@ -212,7 +212,7 @@
     "unlockBodySub": "只需要留低你嘅 WhatsApp。",
     "unlockBtn": "解鎖完整報告 →",
     "marketCorrectionLink": "更正市場並重新掃描",
-    "moduleIg": "IG 可見度",
+    "moduleIg": "IG 能見度",
     "moduleGbp": "Google 商家",
     "moduleAeo": "AI 能見度",
     "moduleTrust": "信任指標",
@@ -468,9 +468,9 @@
     "facebook": "Facebook",
     "shareNative": "分享",
     "downloadPdf": "下載 PDF",
-    "shareText": "睇下我哋【{business}】嘅 AI 可見度報告（{score}/100）👀",
-    "metaTitle": "{business} 的 AI 可見度評分：{score}/100｜SME Scanner",
-    "metaDescription": "AI、Google、Instagram 搵唔搵到「{business}」？睇吓佢哋嘅可見度評分同改善方向。"
+    "shareText": "睇下我哋【{business}】嘅 AI 能見度報告（{score}/100）👀",
+    "metaTitle": "{business} 的 AI 能見度評分：{score}/100｜SME Scanner",
+    "metaDescription": "AI、Google、Instagram 搵唔搵到「{business}」？睇吓佢哋嘅能見度評分同改善方向。"
   },
   "legal": {
     "privacyTitle": "私隱政策及個人資料收集聲明",
