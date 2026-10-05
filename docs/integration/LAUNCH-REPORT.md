@@ -1,6 +1,31 @@
 # Launch evidence — Tasks 16–17 independently approved; hosted execution not run
 
-## Current checkpoint (2026-10-04): owner-platform-v1 at main 080ddf6
+## Current checkpoint (2026-10-05): owner-platform-v1 at main 029d86a
+
+**Candidate:** `main` at `029d86a` (merge of PR #36), deployed to production as `dpl_51eqbSJz9sdiy8vD2ACxbj89ucWQ` on `smeassistant.vercel.app`. Implemented: Phases 1–4 core plus P4.5 and P4.6, both conditional. Their flags were not re-read for this deployment: the older four were last read off at `080ddf6`, and `GBP_REPLY_PUBLISH_ENABLED` is unset (owner-reported). Since `080ddf6`:
+- the production cron entry is removed (#33);
+- P4.6 is built (#34);
+- local Windows builds work (#35);
+- the HK public-funnel acceptance flake is fixed (#36).
+
+| Category | Status | Evidence |
+|---|---|---|
+| CI on PR #36 (head `445c3d3`) | passed | Run 37228507276 (`pull_request`) |
+| CI on the exact commit | passed | Run 37229545186 (`push`, `029d86a`): attempt 2 passed. Attempt 1 failed `e2e:acceptance` (41 passed / 1 failed: `merchant-loop` ECONNRESET, an unfixed flake that also failed attempt 1 on `080ddf6`, `cef0a4d` and `f1d59fa`) |
+| Local gates: typecheck, lint, unit, no-supabase, no-self-service-claim, secret-boundary, `db:verify`, integration, build | passed | Windows, each run in its normal form; unit 365 files / 4,435 tests (+ packages), `db:verify` `0001`–`0014`, integration 49 / 537, secret-boundary 61 artifacts |
+| Local gate: `e2e` | passed | 31 passed, run on port 3197 through temporary config copies (another project holds 3100); not the literal command |
+| Local gate: `e2e:acceptance` | failed | 39 passed / 3 failed (flaky or unexplained; likely the dev-server navigation race, not investigated); the 3 passed when re-run alone |
+| Phase 3 scheduled/resumed work on production | not run | Scheduler off by DEC-10. Cron entry removed (#33). No `/api/cron/dispatch` invocations from 16:35:26 UTC until at least 20:11 UTC on 2026-10-04 (read-only runtime logs). The Vercel Cron Jobs listing was not checked |
+| Migrations `0001`–`0014` on production | not run | The applies are owner-reported (`0014` on 2026-10-05); the independent check is not run |
+| R2 environment inventory | not run | Not re-read for this candidate; last read at `080ddf6` |
+| Every other hosted scenario | not run | No acceptance authorization or DEC-04 budget recorded |
+
+**Release decision:** not ready to claim a verified release, pending the hosted checklist and owner authorization.
+
+- Evidence pack: [`RELEASE-EVIDENCE-029d86a.md`](../implementation/owner-platform-v1/RELEASE-EVIDENCE-029d86a.md)
+- Owner runbook: [`HOSTED-ACCEPTANCE-CHECKLIST.md`](../implementation/owner-platform-v1/HOSTED-ACCEPTANCE-CHECKLIST.md)
+
+## Previous checkpoint (2026-10-04): owner-platform-v1 at main 080ddf6
 
 **Candidate:** `main` at `080ddf6` (merge of PR #31; tree `be5a0d5…`, identical to PR head `42ff03c`), deployed to production as `dpl_E2HNGePLBHpdDVNzejLTZVrBepqN` on `smeassistant.vercel.app`. Implemented: owner-platform-v1 Phases 1–4 core plus the P4.5 preview (built, flag off). P4.6 publishing is not built (DEC-13). Hosted acceptance targets the production alias by owner choice; `DEPLOY.md` §2 advises against using it as staging.
 
