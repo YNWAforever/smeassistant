@@ -1,4 +1,4 @@
-import { test, expect, requestSignInLink } from "../../test/e2e/fixtures";
+import { test, expect, requestSignInLink, signIn } from "../../test/e2e/fixtures";
 import { sql } from "../../test/e2e/environment";
 
 test("owned Google-style handoff shows processing before the authorized destination", async ({ page, merchant, environment }) => {
@@ -42,11 +42,11 @@ test("an accepted fixture account is not required for no-access recovery or a re
 // with WORKSPACE_CLAIM_VIA_OAUTH_ENABLED=false, so the owner step must name the
 // report's claim button, never a Google control that does not render.
 for (const locale of ["en", "zh-HK"] as const) test(`a memberless account sees one real path to a workspace on select-workspace (${locale}, 375px)`, async ({ page, merchant, environment }) => {
+  // A revoked member is a memberless user with a live session: sign in as the
+  // seeded viewer, then remove that membership.
+  await signIn(page, environment, merchant, "viewer");
+  sql(environment.db, `delete from workspace_members where workspace_id='${merchant.workspaceId}' and email='${merchant.emails.viewer}';`);
   await page.setViewportSize({ width: 375, height: 812 });
-  await environment.selectGoogleAccount(`outside-${merchant.workspaceId}@acceptance.test`);
-  await page.goto(`/${locale}/owner/sign-in`);
-  await page.getByRole("button", { name: locale === "en" ? "Continue with Google" : "使用 Google 繼續", exact: true }).click();
-  await expect(page.getByRole("alert")).toBeVisible();
   await page.goto(`/${locale}/owner/select-workspace`);
   const empty = page.locator(".empty-state");
   if (locale === "en") {
