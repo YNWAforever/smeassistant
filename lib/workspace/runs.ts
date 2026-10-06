@@ -547,12 +547,20 @@ export async function runAgentForAction(
         if (!reason) reason = "action_run_timeout";
         break;
       }
-      const result = await llm(prompt, {
-        ...AGENT_LLM_OPTIONS,
-        timeoutMs: Math.min(AGENT_LLM_OPTIONS.timeoutMs, remaining),
-      });
+      let result;
+      try {
+        result = await llm(prompt, {
+          ...AGENT_LLM_OPTIONS,
+          timeoutMs: Math.min(AGENT_LLM_OPTIONS.timeoutMs, remaining),
+        });
+      } catch {
+        // A transport rejection gets the same single, budget-bounded retry as a null/schema failure.
+        reason = "action_run_failed";
+        continue;
+      }
       usage = addUsage(usage, result?.usage);
       output = parseAgentOutput(result?.text, agent.outputSchema);
+      if (output) reason = undefined;
     }
     if (output)
       output = {

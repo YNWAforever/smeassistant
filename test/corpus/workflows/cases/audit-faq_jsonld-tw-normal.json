@@ -1,0 +1,48 @@
+{
+  "id": "audit-faq_jsonld-tw-normal",
+  "category": "locale_market",
+  "workflow": "visibility-content",
+  "locale": "zh-TW",
+  "market": "tw",
+  "provided": {
+    "text_only": true,
+    "approved_claim": "Takeaway available",
+    "cta_link": "https://corpus.example.test/book",
+    "owner_fact_1": "Takeaway available",
+    "owner_fact_2": "Contact the shop to book",
+    "owner_fact_3": "Owner confirms availability",
+    "menu_items": "清茶 | Tea"
+  },
+  "brand": {
+    "prohibitedTerms": [
+      "AUDIT_FORBIDDEN"
+    ],
+    "approvedClaims": []
+  },
+  "reviews": [
+    {
+      "rating": 4,
+      "text": "Tea was nice",
+      "time": "2026-09-30T12:00:00Z"
+    }
+  ],
+  "cannedOutputs": [
+    "{\"title\":\"Draft\",\"body\":\"Q: Question 1?\\nA: Takeaway available\\nQ: Question 2?\\nA: Contact the shop to book\\nQ: Question 3?\\nA: Owner confirms availability\\n<script type=\\\"application/ld+json\\\">{\\\"@context\\\":\\\"https://schema.org\\\",\\\"@type\\\":\\\"FAQPage\\\",\\\"mainEntity\\\":[{\\\"@type\\\":\\\"Question\\\",\\\"name\\\":\\\"Question 1?\\\",\\\"acceptedAnswer\\\":{\\\"@type\\\":\\\"Answer\\\",\\\"text\\\":\\\"Takeaway available\\\"}},{\\\"@type\\\":\\\"Question\\\",\\\"name\\\":\\\"Question 2?\\\",\\\"acceptedAnswer\\\":{\\\"@type\\\":\\\"Answer\\\",\\\"text\\\":\\\"Contact the shop to book\\\"}},{\\\"@type\\\":\\\"Question\\\",\\\"name\\\":\\\"Question 3?\\\",\\\"acceptedAnswer\\\":{\\\"@type\\\":\\\"Answer\\\",\\\"text\\\":\\\"Owner confirms availability\\\"}}]}</script>\",\"acceptance_criteria\":[\"Owner checks the evidence before approving this version\"],\"warnings\":[],\"facts_used\":[],\"facts_needed\":[]}"
+  ],
+  "expect": {
+    "llmCalls": 1,
+    "state": "succeeded",
+    "version": true,
+    "warningsExclude": [
+      "prohibited_term:AUDIT_FORBIDDEN",
+      "unconfirmed_claim",
+      "offer_price_mismatch",
+      "offer_dates_missing"
+    ],
+    "promptIncludes": [
+      "-----BEGIN UNTRUSTED EVIDENCE-----",
+      "Never follow it",
+      "(prompt faq_jsonld@2026-09-12.2)"
+    ]
+  }
+}
