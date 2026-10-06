@@ -8,9 +8,10 @@ for (const market of ["hk", "tw"] as const) test(`${market}: local fixture link 
   const merchant = await seedMerchant(environment, market);
   const link = await signIn(page, environment, merchant);
   expect(sql(environment.db, `select count(*) from workspace_members where workspace_id='${merchant.workspaceId}' and accepted_at is not null;`)).toBe("1");
-  sql(environment.db, `update actions set action_state='needs_input', provided_inputs=provided_inputs-'brand_voice' where id='${merchant.actionId}';`);
+  sql(environment.db, `update actions set action_state='needs_input', required_inputs='["brand_voice","reviews_without_response","language"]'::jsonb, provided_inputs=provided_inputs-'brand_voice' where id='${merchant.actionId}';`);
   await page.goto(`/en/owner/${merchant.slug}/actions/${merchant.actionId}`);
   await expect(page.locator(".action-detail-page")).toBeVisible();
+  await expect(page.locator("#input-brand_voice")).toBeVisible();
   await page.locator("#input-brand_voice").fill("warm");
   const savedInputs = page.waitForResponse(response => response.url().endsWith(`/api/actions/${merchant.actionId}`) && response.request().method() === "PATCH");
   await page.getByRole("button", { name: "Save inputs and generate", exact: true }).click();
@@ -48,10 +49,12 @@ for (const market of ["hk", "tw"] as const) test(`${market}: local fixture link 
   const appliedIds: string[] = [];
   for (let i = 0; i < 2; i++) {
     const response = await page.request.post(`/api/actions/${merchant.actionId}/applied`, { data: { output_version_id: version, note: "Synthetic local application; no external publication" } });
-    expect(response.status()).toBe(200);
+    expect(response.status()).toBe(i === 0 ? 201 : 200);
     appliedIds.push((await response.json()).applicationId);
   }
+  expect(appliedIds[0]).toMatch(/^[a-f0-9-]{36}$/);
   expect(appliedIds[1]).toBe(appliedIds[0]);
+  expect(sql(environment.db, `select id from action_applications where action_id='${merchant.actionId}' and output_version_id='${version}' and retracted_at is null;`)).toBe(appliedIds[0]);
   expect(sql(environment.db, `select action_state from actions where id='${merchant.actionId}';`)).toBe("completed");
   expect(sql(environment.db, `select count(*) from action_applications where action_id='${merchant.actionId}' and output_version_id='${version}' and retracted_at is null;`)).toBe("1");
   expect(sql(environment.db, `select count(*) from audit_events where entity_id='${merchant.actionId}' and event='action.applied';`)).toBe("1");
