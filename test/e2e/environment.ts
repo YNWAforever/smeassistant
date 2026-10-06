@@ -13,7 +13,7 @@ export interface AcceptanceEnvironment { app:string; api:string; mail:string; ll
 const owned=new Map<string,string>();
 export function sql(db:string,query:string):string {
  const database=owned.get(db);if(!database) throw new Error("Refusing SQL outside owned acceptance database");
- return execFileSync("docker",["exec","-i",db,"psql","-U","postgres","-d",database,"-v","ON_ERROR_STOP=1","-Atq"],{input:query,encoding:"utf8",stdio:["pipe","pipe","pipe"]}).trim();
+ return execFileSync("docker",["exec","-i",db,"psql","-U","postgres","-d",database,"-v","ON_ERROR_STOP=1","-Atq"],{input:query,encoding:"utf8",stdio:["pipe","pipe","pipe"],timeout:30_000,windowsHide:true}).trim();
 }
 async function port(requested=0):Promise<number> {const s=netServer();await new Promise<void>((r,reject)=>{s.once("error",reject);s.listen(requested,"127.0.0.1",r);});const p=(s.address() as {port:number}).port;await new Promise<void>(r=>s.close(()=>r()));return p;}
 async function healthy(url:string,child?:ChildProcess) {
@@ -36,7 +36,7 @@ export async function startEnvironment(requestedPort?:number):Promise<Acceptance
     const appPort=await port(requestedPort);
     fixture=await startNeonDatabaseFixture("test");
     owned.set(fixture.containerName,fixture.databaseName);
-    const owner=new Pool({connectionString:fixture.databaseUrl});
+    const owner=new Pool({connectionString:fixture.databaseUrl,connectionTimeoutMillis:10_000,statement_timeout:30_000});
     try {await owner.query("CREATE ROLE sme_app_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS");await applyMigrations(owner);await owner.query("CREATE ROLE fixture_runtime LOGIN PASSWORD 'fixture-only' IN ROLE sme_app_runtime");}finally{await owner.end();}
     const runtime=new URL(fixture.databaseUrl);runtime.username="fixture_runtime";runtime.password="fixture-only";
     const app=`http://localhost:${appPort}`,secret=randomBytes(32).toString("hex");

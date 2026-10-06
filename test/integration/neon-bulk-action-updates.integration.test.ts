@@ -41,6 +41,8 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("atomic scoped assignment u
     expect((await service.bulk(actor, input)).map(r => r.status)).toEqual(["updated", "updated", "forbidden", "updated"]);
     expect(await events()).toBe(0);
     await runtime.query("UPDATE actions SET updated_at=clock_timestamp() WHERE id=$1", [rows[3].actionId]);
+    const reread = await service.bulk(actor, { ...input, items: [rows[3]] });
+    expect(reread[0].eligible).toBe(true); expect(reread[0].expectedUpdatedAt).not.toBe(rows[3].expectedUpdatedAt);
     expect((await service.bulk(actor, { ...input, mode: "apply" })).map(r => r.status)).toEqual(["updated", "updated", "forbidden", "conflict"]);
     expect(await events()).toBe(2);
     // Unknown result recovery can safely read/preview the old desired set: already-set values cause no event.

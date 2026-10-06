@@ -113,3 +113,9 @@ Batch 0: in progress. A1 starts with T-03 → T-18, then continues to A2, B, C1,
 - Workspace-local datetime conversion refuses nonexistent/ambiguous DST times. No browser timezone or locale currency inference. New flag stays off outside explicit synthetic acceptance fixtures.
 - GREEN: 67 unit tests / 6 files, root typecheck and scoped lint exit 0. Genuine Radix dialog Escape/focus, three-language controls, selection cap, URL state and failure-only retry tested. 12 real DB tests passed for filters, IANA/DST and assignment transactions. Browser 375px/keyboard acceptance follows in the third T-13 checkpoint.
 - Evidence includes T13-search-red.txt, T13-date-filter-red.txt, T13-due-input-red.txt, T13-ui-red.txt, T13-assignee-case-red.txt, T13-ui-jsx-failure.txt (corrected intermediate syntax error), T13-ui-final-unit.txt, T13-ui-typecheck.txt, T13-ui-lint.txt. No hosted/CI/production claim.
+
+### C2 / T-13 third checkpoint; T-17 action mobile/keyboard
+
+- Real DB acceptance: 12 tests / 2 files, exit 0. Actual local Chromium: 2 tests, exit 0, 375px keyboard/selection/preview/apply/Escape/focus/overflow; database verified the timezone instant and exactly one event. Viewer mutation 403 and scoped manager list exclusion witnessed.
+- Initial browser setup failed on the dependency junction, not a product assertion. After freed disk, verified/removed only our junction, preserved original repo dependencies, and installed frozen lockfile inside isolated worktree: exit 0, unchanged SHA256 C7C722C958A874DEEE76AB2B4FAAF654D985547A9D29EB256D8F6C9B848F63C6. Default Turbopack rerun passed.
+- T-13 local implementation verified. T-17 local action flow verified, wider mobile journeys still to be covered by final acceptance; HK field participants/workspace remain blocked. No hosted activation/production/remote CI claim. See action-assignment-acceptance.md for contracts, evidence and rollback.

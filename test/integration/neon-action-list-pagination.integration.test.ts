@@ -8,6 +8,7 @@ import { workspaceReadRepository } from "../../lib/repositories/workspace-read";
 import { displayPhaseKey } from "../../lib/workspace/overview";
 import { listActions } from "../../lib/workspace/queries-pages";
 import type { WorkspaceContext } from "../../lib/workspace/queries";
+import { actionListFilters } from "../../lib/workspace/action-list-filters";
 const database = vi.hoisted(() => ({ pool: undefined as Pool | undefined }));
 vi.mock("../../lib/db/client", () => ({ getPool: () => database.pool }));
 
@@ -138,5 +139,34 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("bounded action list SQL (T
     expect((await listActions(ctx, {})).counts.all).toBe(3);
     const ownerCursor = (await listActions(ctx, { pageSize: 1 })).nextCursor!;
     await expect(listActions(manager, { cursor: ownerCursor })).rejects.toThrow("invalid_action_cursor");
+  });
+
+  it("searches visible fields literally, filters assignee and resolves due dates in IANA zones", async () => {
+    const { scope } = await seed(4); const repository = actionListRepository(runtime);
+    const ids = (await runtime.query("SELECT id FROM actions WHERE workspace_id=$1 ORDER BY id", [scope.workspaceId])).rows.map(r => r.id);
+    const userId = (await runtime.query("INSERT INTO app_users(email) VALUES('assignee@example.test') RETURNING id")).rows[0].id;
+    await runtime.query("UPDATE actions SET title=jsonb_build_object('en','100%_literal'),assignee_user_id=$2,due_at='2026-09-30T16:00:00Z' WHERE id=$1", [ids[0], userId]);
+    await runtime.query("UPDATE actions SET summary=jsonb_build_object('zh-HK','Needle'),due_at='2026-09-30T15:59:59.999999Z' WHERE id=$1", [ids[1]]);
+    await runtime.query("UPDATE actions SET due_at='2026-10-07T16:00:00Z' WHERE id=$1", [ids[2]]);
+    await runtime.query("UPDATE output_versions SET body='Needle 100%_literal' WHERE action_id=$1", [ids[3]]);
+    const query = async (input: Parameters<typeof actionListFilters>[0], timezone = "Asia/Hong_Kong", now = new Date("2026-09-30T16:15:00Z")) => {
+      const filtered = { ...scope, ...actionListFilters(input, timezone, now) };
+      const [page, counts] = await Promise.all([repository.page(filtered,"all",25,null),repository.counts(filtered)]);
+      expect(counts.all).toBe(page.length); return page.map(r => r.id).sort();
+    };
+    expect(await query({ q: "100%_literal" })).toEqual([ids[0]]);
+    expect(await query({ q: "needle" })).toEqual([ids[1]]);
+    expect(await query({ q: "' OR 1=1 --" })).toEqual([]);
+    expect(await query({ assignee: userId })).toEqual([ids[0]]);
+    expect(await query({ assignee: "unassigned" })).toEqual(ids.slice(1).sort());
+    expect(await query({ due: "none" })).toEqual([ids[3]]);
+    expect(await query({ due: "today" })).toEqual([ids[0]]);
+    expect(await query({ due: "next_7_days" })).toEqual([ids[0]]); // Exact next-week midnight is exclusive.
+    expect(await query({ due: "today" },"Asia/Taipei")).toEqual([ids[0]]);
+    expect(await query({ due: "today" },"UTC")).toEqual(ids.slice(0,2).sort());
+    expect(await query({ due: "overdue" })).toEqual(ids.slice(0,2).sort());
+    await runtime.query("UPDATE actions SET due_at='2026-11-02T04:59:59.999999Z' WHERE id=$1", [ids[0]]);
+    await runtime.query("UPDATE actions SET due_at='2026-11-02T05:00:00Z' WHERE id=$1", [ids[1]]);
+    expect(await query({ due: "today" },"America/New_York",new Date("2026-11-01T12:00:00Z"))).toEqual([ids[0]]); // 25-hour DST day.
   });
 });
