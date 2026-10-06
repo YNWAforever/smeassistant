@@ -1,0 +1,31 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ tests/funnel-report-props.test.ts (7 tests | 1 failed) 20ms
+     × orders modules ig → gbp → aeo → trust with honest values 10ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/funnel-report-props.test.ts > buildReportProps > orders modules ig → gbp → aeo → trust with honest values
+ FAIL  tests/funnel-report-props.test.ts > buildReportProps > orders modules ig → gbp → aeo → trust with honest values
+AssertionError: expected 'none · Instagram handle not provided' to contain 'IG handle not provided'
+
+Expected: "IG handle not provided"
+Received: "none · Instagram handle not provided"
+
+ ❯ tests/funnel-report-props.test.ts:70:37
+     68|     expect(props.modules.map((module) => module.key)).toEqual(["ig", "…
+     69|     expect(props.modules[0]).toMatchObject({ state: "unavailable", val…
+     70|     expect(props.modules[0].detail).toContain("IG handle not provided"…
+       |                                     ^
+     71|     expect(props.modules[1]).toMatchObject({ state: "measured", score:…
+     72|     expect(props.modules[0].score).toBeNull();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+   Start at  05:29:01
+   Duration  1.16s (transform 262ms, setup 286ms, import 294ms, tests 20ms, environment 0ms)
+

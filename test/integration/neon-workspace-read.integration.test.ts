@@ -6,6 +6,8 @@ import { workspaceReadRepository } from "../../lib/repositories/workspace-read";
 import { listActions } from "../../lib/workspace/queries-pages";
 import { monthWindow } from "../../lib/workspace/month-window";
 import { notificationRepository } from "../../lib/repositories/notifications";
+import { measurementRepository } from "../../lib/repositories/measurements";
+import type { SnapshotRecord } from "../../lib/workspace/snapshots";
 import type { WorkspaceContext } from "../../lib/workspace/queries";
 const database = vi.hoisted(() => ({ pool: undefined as Pool | undefined }));
 vi.mock("../../lib/db/client", () => ({ getPool: () => database.pool }));
@@ -68,6 +70,17 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon workspace read models
     return (await runtime.query(`INSERT INTO actions(workspace_id,location_id,template_key,title,summary,evidence,priority,priority_score,priority_factors,effort_minutes,capability,dedupe_key,updated_at)
       VALUES($1,$2,'review-response','{"en":"Review","zh-HK":"評論","zh-TW":"評論"}','{}','{}','urgent',$3,'[]',10,'Live',gen_random_uuid()::text,$4) RETURNING id`, [workspaceId, locationId, score, updatedAt])).rows[0].id as string;
   }
+  it("T-19: migrated flag-off measurement reads first_published_at independently of publish enablement", async () => {
+    vi.stubEnv("GBP_REPLY_PUBLISH_ENABLED", "false");
+    try {
+      const id = await workspace(), actionId = await action(id, null, 10);
+      await runtime.query("INSERT INTO output_versions(workspace_id,action_id,version_no,body,author_type,first_exported_at) VALUES($1,$2,1,'Fixture','user','2026-09-01')", [id, actionId]);
+      const exports = await measurementRepository(runtime).exports({ workspaceId: id, locationId: null } as SnapshotRecord, [actionId]);
+      expect(exports).toHaveLength(1);
+      expect(exports[0]).toMatchObject({ action_id: actionId, first_published_at: null });
+      expect(exports[0].first_exported_at).toContain("2026-09-01");
+    } finally { vi.unstubAllEnvs(); }
+  });
   it("keeps tab counts stable and scoped against real repository SQL (T-09)", async () => {
     const id = await workspace(); const other = await workspace("other");
     const location = (await runtime.query("INSERT INTO locations(workspace_id,slug,name) VALUES($1,'main','Main') RETURNING id", [id])).rows[0].id as string;

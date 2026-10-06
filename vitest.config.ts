@@ -19,6 +19,8 @@ export default defineConfig({
     },
   },
   test: {
+    // CI already sets this variable; make its intended worker bound explicit on local Windows too.
+    maxWorkers: process.env.VITEST_MAX_WORKERS ? Math.max(1, Number(process.env.VITEST_MAX_WORKERS) || 1) : undefined,
     // Transform the pinned SDK so Next request context can be fixture-mocked.
     server: { deps: { inline: ["@neondatabase/auth"] } },
     // Node by default. Vitest 4 removed `environmentMatchGlobs`, so DOM tests

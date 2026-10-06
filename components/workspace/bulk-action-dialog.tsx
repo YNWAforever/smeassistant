@@ -1,5 +1,6 @@
 "use client";
 import { useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { PrototypeLocale } from "@/lib/copy";
@@ -13,6 +14,7 @@ const completed = (r: AssignmentResult) => r.status === "updated" || r.status ==
 export function BulkActionSelection({ locale, workspaceId, timezone, items, cards, members }: {
   locale: PrototypeLocale; workspaceId: string; timezone: string; items: SelectedAction[]; cards: ReactNode[]; members: AssignmentMember[];
 }) {
+  const router = useRouter();
   const en = locale === "en";
   const text = (english: string, chinese: string) => en ? english : chinese;
   const [selected, setSelected] = useState<Map<string, SelectedAction>>(() => new Map());
@@ -45,7 +47,7 @@ export function BulkActionSelection({ locale, workspaceId, timezone, items, card
         ? text("Choose a change and a valid, unambiguous workspace time.", "請選擇變更及有效的工作台時間；不存在或重複的時間需重新選擇。")
         : text("The result is unknown. Read again and preview failed items before retrying.", "結果未能確認。重試前請重新讀取並預覽失敗項。"));
       if (mode === "apply") setResults(previous => { const byId = new Map(previous.map(r => [r.actionId, r])); for (const i of selections) byId.set(i.actionId, { actionId: i.actionId, status: "failed", eligible: false, reason: "unknown_result" }); return [...selected.keys()].map(id => byId.get(id) ?? { actionId: id, status: "forbidden" as const, eligible: false }); });
-    } finally { setBusy(false); }
+    } finally { setBusy(false); if (mode === "apply") router.refresh(); }
   }
   const ready = preview.filter(r => r.eligible && r.expectedUpdatedAt);
   const failures = results.filter(r => !completed(r));

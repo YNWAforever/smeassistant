@@ -1,0 +1,54 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ test/integration/neon-publish-flag-off.integration.test.ts (9 tests | 9 skipped) 2950ms
+ ❯ test/integration/neon-schema.integration.test.ts (8 tests | 1 failed | 7 skipped) 5380ms
+     × applies all final business objects to empty PostgreSQL with no business seeds 1095ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/integration/neon-publish-flag-off.integration.test.ts > Neon publishing flag-off route boundary; measurement still requires 0014
+AssertionError: expected '0015_action_list_indexes.sql' to be '0013_preview_events.sql' // Object.is equality
+
+Expected: "0013_preview_events.sql"
+Received: "0015_action_list_indexes.sql"
+
+ ❯ test/integration/neon-publish-flag-off.integration.test.ts:92:38
+     90|     // Only 0001-0013: this database has never seen 0014.
+     91|     const through0013 = (await loadMigrations()).filter((m) => m.name …
+     92|     expect(through0013.at(-1)?.name).toBe("0013_preview_events.sql");
+       |                                      ^
+     93|     expect(await applyMigrations(owner, through0013)).toHaveLength(13);
+     94|     const columns = (
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/integration/neon-schema.integration.test.ts > fresh application schema > applies all final business objects to empty PostgreSQL with no business seeds
+AssertionError: expected [ '0001_identity.sql', …(14) ] to deeply equal [ '0001_identity.sql', …(13) ]
+
+- Expected
++ Received
+
+@@ -11,6 +11,7 @@
+    "0010_mail_outbox.sql",
+    "0011_offers.sql",
+    "0012_work_packs.sql",
+    "0013_preview_events.sql",
+    "0014_publish_reply.sql",
++   "0015_action_list_indexes.sql",
+  ]
+
+ ❯ test/integration/neon-schema.integration.test.ts:26:42
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  1 failed | 16 skipped (17)
+   Start at  05:29:29
+   Duration  15.44s (transform 777ms, setup 51ms, import 1.91s, tests 8.33s, environment 0ms)
+

@@ -158,6 +158,13 @@ export async function readiness(
       )
     )
       return { status: "not_ready", category: "schema", target: config.target };
+    // 0014 remains a measurement dependency even when publishing is off. A
+    // matching journal does not prove the column survived later schema drift.
+    const publishedAt = await db.query(
+      "SELECT attname FROM pg_catalog.pg_attribute WHERE attrelid='public.output_versions'::regclass AND attname='first_published_at' AND atttypid='timestamptz'::regtype AND NOT attisdropped",
+    );
+    if (publishedAt.rows.length !== 1)
+      return { status: "not_ready", category: "schema", target: config.target };
     // The direct connection proves migration history only. Exercise the exact
     // application URL independently, including its credentials and pooled host.
     failureCategory = "connection";

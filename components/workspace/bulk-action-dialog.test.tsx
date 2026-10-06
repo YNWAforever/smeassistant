@@ -5,7 +5,9 @@ import { BulkActionSelection } from "./bulk-action-dialog";
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const items = Array.from({ length: 4 }, (_, i) => ({ actionId: id(i + 1), expectedUpdatedAt: "2026-10-01T00:00:00.123456Z", title: `Action ${i + 1}`, closed: false }));
 const fetchMock = vi.fn();
-beforeEach(() => { vi.clearAllMocks(); vi.stubGlobal("fetch", fetchMock); });
+const navigation = vi.hoisted(() => ({ refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => navigation }));
+beforeEach(() => { vi.clearAllMocks(); fetchMock.mockReset(); vi.stubGlobal("fetch", fetchMock); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const draw = (locale: "en" | "zh-HK" | "zh-TW" = "en", key = "scope") => <BulkActionSelection key={key} locale={locale} workspaceId={id(99)} timezone="Asia/Hong_Kong" items={items} cards={items.map(i => <p key={i.actionId}>{i.title}</p>)} members={[]} />;
 it.each(["en", "zh-HK", "zh-TW"] as const)("%s requires explicit selection and preview before confirmation", locale => {
@@ -28,6 +30,7 @@ it("preserves successful results and re-previews only failures before retrying",
   await waitFor(() => expect(screen.getByRole("button", { name: "Confirm changes" })).toBeEnabled());
   fireEvent.click(screen.getByRole("button", { name: "Confirm changes" }));
   await screen.findByText("2 of 4 completed. Review each result.");
+  expect(navigation.refresh).toHaveBeenCalledTimes(1);
   fireEvent.click(screen.getByRole("button", { name: "Read again and preview failed items" }));
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
   const payload = JSON.parse(fetchMock.mock.calls[2][1].body);
@@ -35,6 +38,7 @@ it("preserves successful results and re-previews only failures before retrying",
   await waitFor(() => expect(screen.getByRole("button", { name: "Confirm changes" })).toBeEnabled());
   fireEvent.click(screen.getByRole("button", { name: "Confirm changes" }));
   await screen.findByText("3 of 4 completed. Review each result.");
+  expect(navigation.refresh).toHaveBeenCalledTimes(2);
   const retry = JSON.parse(fetchMock.mock.calls[3][1].body);
   expect(retry.items).toEqual([{ actionId: id(4), expectedUpdatedAt: "2026-10-02T00:00:00.123456Z" }]);
 });

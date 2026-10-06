@@ -1,0 +1,38 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ test/integration/neon-readiness.integration.test.ts (18 tests | 1 failed | 17 skipped) 5221ms
+   × T-19 rejects a missing first_published_at even when every journal checksum is intact 559ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/integration/neon-readiness.integration.test.ts > T-19 rejects a missing first_published_at even when every journal checksum is intact
+AssertionError: expected { status: 'ready', …(2) } to match object { status: 'not_ready', …(1) }
+(3 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "category": "schema",
+-   "status": "not_ready",
++   "category": "ready",
++   "status": "ready",
+  }
+
+ ❯ test/integration/neon-readiness.integration.test.ts:119:34
+    117|   await db.query("ALTER TABLE public.output_versions RENAME COLUMN fir…
+    118|   try {
+    119|     expect(await readiness(env)).toMatchObject({ status: "not_ready", …
+       |                                  ^
+    120|   } finally {
+    121|     await db.query("ALTER TABLE public.output_versions RENAME COLUMN h…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 17 skipped (18)
+   Start at  05:55:36
+   Duration  10.85s (transform 115ms, setup 30ms, import 649ms, tests 5.22s, environment 0ms)
+

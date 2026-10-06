@@ -19,6 +19,12 @@ export const additionalFunctions: string[] = ["prevent_owner_removal","offer_is_
 // They stay in retainedFunctions, so neon:readiness still requires them.
 export const changedFunctions: string[] = ["approve_output_version","export_output_version"];
 export const additionalTriggers: string[] = ["workspace_members_prevent_owner_removal"];
+// Exact PostgreSQL definitions added by 0015; the independently retained legacy catalog stays unchanged.
+export const additionalIndexes = [
+  { tablename: "action_runs", indexname: "action_runs_latest_metadata_idx", indexdef: "CREATE INDEX action_runs_latest_metadata_idx ON public.action_runs USING btree (workspace_id, action_id, created_at DESC, id DESC) INCLUDE (state)" },
+  { tablename: "actions", indexname: "actions_list_keyset_idx", indexdef: "CREATE INDEX actions_list_keyset_idx ON public.actions USING btree (workspace_id, COALESCE(priority_score, (0)::numeric) DESC, updated_at DESC, id DESC) INCLUDE (location_id, action_state, template_key)" },
+  { tablename: "output_versions", indexname: "output_versions_latest_metadata_idx", indexdef: "CREATE INDEX output_versions_latest_metadata_idx ON public.output_versions USING btree (workspace_id, action_id, version_no DESC, id DESC) INCLUDE (approval_state, delivery_state, first_exported_at)" },
+];
 export const catalogQueries = {
   tables: `select c.relname as name,c.relrowsecurity as rls from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' order by c.relname`,
   columns: `select table_name,column_name,ordinal_position,data_type,udt_name,is_nullable,column_default from information_schema.columns where table_schema='public' order by table_name,ordinal_position`,
@@ -54,7 +60,8 @@ export async function verifyCatalog(pool: Pool) {
   const columns = (rows: Row[]) => rows.map(row => Object.fromEntries(Object.entries(row).filter(([key]) => key !== "ordinal_position")));
   assert.deepEqual(columns(business(actual.columns)), columns(legacy.columns), "all business columns/types/nullability/defaults");
   assert.deepEqual(business(actual.constraints), legacy.constraints.map(row => ({...row, definition:String(row.definition).replaceAll("auth.users", "app_users")})), "constraints and deletion semantics");
-  assert.deepEqual(business(actual.indexes), legacy.indexes, "all final indexes and predicates");
+  assert.deepEqual(business(actual.indexes).filter(row => !additionalIndexes.some(index => index.indexname === row.indexname)), legacy.indexes, "all retained indexes and predicates");
+  for (const index of additionalIndexes) assert.deepEqual(actual.indexes.find(row => row.indexname === index.indexname), index, `additional index ${index.indexname} definition`);
   const isAdditionalTrigger = (row: Row) => additionalTriggers.includes(String(row.name));
   const isAdditionalFunction = (row: Row) => additionalFunctions.includes(String(row.name)) || changedFunctions.includes(String(row.name));
   assert.deepEqual(actual.triggers.filter(row => !isAdditionalTrigger(row)), legacy.triggers.filter(row => !deferredTriggers.includes(String(row.name))), "ordinary invariant triggers");
