@@ -23,8 +23,15 @@ export default async function ActionsRoute(props: OwnerPageProps) {
     view,
     channel: page.query.channel && CHANNELS.has(page.query.channel) ? (page.query.channel as ActionFilters["channel"]) : undefined,
     status: page.query.status && STATUSES.has(page.query.status) ? (page.query.status as ActionState) : undefined,
+    cursor: page.query.cursor,
+    pageSize: page.query.pageSize === undefined ? undefined : Number(page.query.pageSize),
   };
-  const result = await listActions(page.ctx, filters);
+  let result;
+  try { result = await listActions(page.ctx, filters); }
+  catch (error) {
+    if (!(error instanceof Error) || !["invalid_action_cursor", "invalid_action_page_size"].includes(error.message)) throw error;
+    return <div role="alert"><p>{page.locale === "en" ? "This page link is invalid or its filters have changed. Refresh the list." : "此頁連結無效或篩選條件已變更，請重新載入清單。"}</p><a href={`/${page.locale}/owner/${page.workspaceSlug}/actions`}>{page.locale === "en" ? "Refresh list" : "重新載入清單"}</a></div>;
+  }
   return (
     <ActionsListView
       locale={page.locale}

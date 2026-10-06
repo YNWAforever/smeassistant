@@ -40,6 +40,7 @@ function tabHref(base: string, filters: ActionFilters, view: string): string {
   if (filters.location) query.set("location", filters.location)
   if (filters.channel) query.set("channel", filters.channel)
   if (filters.status) query.set("status", filters.status)
+  if (filters.pageSize) query.set("pageSize", String(filters.pageSize))
   if (view !== "all") query.set("view", view)
   const qs = query.toString()
   return qs ? `${base}/actions?${qs}` : `${base}/actions`
@@ -96,8 +97,12 @@ export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, 
             <ActionFilterSelect param="channel" value={filters.channel ?? "all"} options={channels} allLabel={isChinese ? "所有渠道" : "All channels"} ariaLabel={isChinese ? "篩選渠道" : "Filter by channel"} />
             <ActionFilterSelect param="status" value={filters.status ?? "all"} options={statuses} allLabel={isChinese ? "所有狀態" : "All statuses"} ariaLabel={isChinese ? "篩選狀態" : "Filter by status"} />
           </section>
-          <div className="queue-summary"><span><strong>{result.actions.length}</strong> {isChinese ? "項行動" : result.actions.length === 1 ? "action shown" : "actions shown"}</span><span>{isChinese ? "按優先分數、所需時間及範本排序" : "Sorted by priority score, effort and template"}</span></div>
+          <div className="queue-summary"><span><strong>{result.actions.length}</strong> {isChinese ? "項行動（本頁）" : "actions on this page"}</span><span>{isChinese ? "按優先分數、更新時間及 ID 排序" : "Sorted by priority, update time and ID"}</span></div>
           {result.actions.length ? <div className="action-list">{result.actions.map((action) => <ActionCard key={action.id} action={action} locale={locale} base={base} timezone={timezone} location={location} />)}</div> : <div className="empty-state"><span><CheckCircle2 /></span><h2>{isChinese ? "沒有符合篩選條件的行動" : "No actions match these filters"}</h2><p>{isChinese ? "請重設一項或多項篩選；沒有行動不代表沒有證據。" : "Reset one or more filters; an empty list does not mean there is no evidence."}</p></div>}
+          <nav aria-label={isChinese ? "清單分頁" : "List pages"}>
+            <Link href={tabHref(base, filters, view)}>{isChinese ? "重新載入首頁" : "Refresh first page"}</Link>
+            {result.nextCursor && <Link href={`${tabHref(base, filters, view)}${tabHref(base, filters, view).includes("?") ? "&" : "?"}cursor=${encodeURIComponent(result.nextCursor)}`}>{isChinese ? "下一頁" : "Next page"}</Link>}
+          </nav>
         </div>
       </div>
       <div className="queue-footnote"><ShieldCheck /><p><strong>{isChinese ? "獨立生命週期狀態：" : "Separate lifecycle states:"}</strong>{isChinese ? " 行動、Agent 執行、審批、送出及量度會分開追蹤，避免一個含糊狀態代表所有事情。" : " action, agent run, approval, delivery and measurement are tracked independently. The customer-facing phase above is derived for scanning, not stored as one overloaded status."}</p></div>

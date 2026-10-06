@@ -88,3 +88,11 @@ Batch 0: in progress. A1 starts with T-03 → T-18, then continues to A2, B, C1,
 - Disposable harness Docker commands now have bounded execution and readiness deadlines after prior pg_isready hangs. Ownership checks/network-none/loopback relay and unrelated containers are preserved. This fixture improvement does not establish a hosted fix.
 - Evidence: T09-red.txt, T10-red.txt, T10-notice-red.txt, C1-green.txt, C1-integration.txt, C1-lint.txt, C1-typecheck.txt. Rollback: revert C1 query commit; no DB migration or history rewrite. Hosted not run; no CI/deployment claim.
 - C1 scoped eslint and root typecheck completed: exit 0.
+
+### C2 / T-12 / F-10 / UC-18
+
+- RED: original unbounded list returned 31 actions and accepted invalid cursor/page size; 2 failures, exit 1.
+- Fix: default 25 / maximum 50, scoped keyset cursor with exact microsecond timestamps; latest run/version metadata projection and independent SQL counts. List/home no longer fetch all version bodies or run inputs/outputs. Detail history remains full. Three-language next/refresh links preserve filter state and clear cursor on scope changes.
+- EXPLAIN evidence justified new 0015 indexes after verified 0014; no committed migration edited. Disposable only. Final 1000-action fixture: 3 queries / 16000 rows / 26,739,928 bytes before; 2 queries / 27 rows / 22,589 bytes after. Latency samples are local, not hosted p95.
+- GREEN: 70 selected unit tests, 6 real PostgreSQL tests, root typecheck and scoped lint, exit 0. SQL phase parity imports the canonical function; no regex extraction. Tests cover tied tuple completeness, counts, viewer/manager/global/foreign scopes and preserved detail histories.
+- Evidence: action-list-performance.md; T12-red.txt, T12-final-unit.txt, T12-db-final.txt, T12-benchmark-final.jsonl, T12-typecheck.txt, T12-lint.txt. Intermediate failed DB run remains recorded. Rollback: revert application commit; retain applied indexes pending separately authorized forward migration. No CI/hosted/deployment claim.

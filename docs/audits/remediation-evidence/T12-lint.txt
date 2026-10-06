@@ -1,0 +1,7 @@
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\lib\workspace\queries-pages.test.ts
+  36:67  warning  '_workspaceId' is defined but never used  @typescript-eslint/no-unused-vars
+  36:89  warning  '_actionIds' is defined but never used    @typescript-eslint/no-unused-vars
+
+✖ 2 problems (0 errors, 2 warnings)
+

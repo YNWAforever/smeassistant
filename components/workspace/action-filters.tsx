@@ -23,6 +23,7 @@ export function ActionFilterSelect({
   const params = useSearchParams()
   function change(next: string) {
     const query = new URLSearchParams(params.toString())
+    query.delete("cursor")
     if (next === "all") query.delete(param)
     else query.set(param, next)
     const qs = query.toString()

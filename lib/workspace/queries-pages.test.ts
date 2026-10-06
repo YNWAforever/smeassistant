@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceContext } from "@/lib/workspace/queries";
+import { buildActionOverview, type ActionRow } from "@/lib/workspace/overview";
+import type { ActionListScope, ActionListProjection } from "@/lib/repositories/action-list";
 
 type Row = Record<string, unknown>;
 
@@ -29,7 +31,9 @@ const repository = vi.hoisted(() => ({
   deliveries: vi.fn(),
 }));
 vi.mock("@/lib/repositories/workspace-read", () => ({ workspaceReadRepository: () => repository }));
-const applications = vi.hoisted(() => ({ forActions: vi.fn(async () => [] as Array<{ action_id: string; source: string; asserted_at: string }>) }));
+const listRepository = vi.hoisted(() => ({ page: vi.fn(), counts: vi.fn() }));
+vi.mock("@/lib/repositories/action-list", () => ({ actionListRepository: () => listRepository }));
+const applications = vi.hoisted(() => ({ forActions: vi.fn(async (_workspaceId: string, _actionIds: string[]) => [] as Array<{ action_id: string; source: string; asserted_at: string }>) }));
 vi.mock("@/lib/repositories/applications", () => ({ applicationRepository: () => applications }));
 const reaper = vi.hoisted(() => ({ reapStrandedRuns: vi.fn(async () => [] as string[]) }));
 vi.mock("@/lib/workspace/run-reaper", () => ({ reapStrandedRuns: reaper.reapStrandedRuns }));
@@ -76,8 +80,37 @@ const actionRow = (over: Row): Row => ({
   assignee_user_id: null, due_at: null, action_state: "needs_input", measurement_state: "not_eligible", capability: "Live", created_at: "2026-09-01T00:00:00Z", updated_at: "2026-09-01T00:00:00Z", ...over,
 });
 
+function listProjection(scope: ActionListScope, appRows: Array<{ action_id: string; source: string; asserted_at: string }> = []): ActionListProjection[] {
+  return state.actions.filter(row => row.workspace_id === scope.workspaceId
+    && (!scope.locationId || row.location_id == null || row.location_id === scope.locationId)
+    && (!scope.allowedLocationIds || row.location_id == null || scope.allowedLocationIds.includes(row.location_id as string))
+    && (!scope.channelTemplates || scope.channelTemplates.includes(row.template_key as string))
+    && (!scope.status || row.action_state === scope.status)).map(row => ({
+      ...(row as unknown as ActionRow),
+      run_state: state.runs.find(r => r.action_id === row.id)?.state ?? null,
+      version: state.versions.find(v => v.action_id === row.id) ?? null,
+      applied_on: appRows.find(a => a.action_id === row.id && a.source === "owner_asserted")?.asserted_at ?? null,
+      verified_on: appRows.find(a => a.action_id === row.id && a.source === "verified")?.asserted_at ?? null,
+    } as ActionListProjection)).sort((a, b) => Number(b.priority_score) - Number(a.priority_score) || b.updated_at.localeCompare(a.updated_at) || b.id.localeCompare(a.id));
+}
+function listPhase(row: ActionListProjection) {
+  return buildActionOverview(row, { location: null, latestRun: row.run_state ? { state: row.run_state } : null, latestVersion: row.version, applied: Boolean(row.applied_on), verified: Boolean(row.verified_on) }).displayPhaseKey;
+}
+const isOpen = (row: ActionRow) => !["completed", "dismissed", "cancelled", "expired"].includes(row.action_state);
+const rowMatches = (row: ActionListProjection, view: string) => view === "needs_input" ? row.action_state === "needs_input" : view === "drafts" ? ["draft_ready", "generating"].includes(listPhase(row)) : view === "awaiting_approval" ? ["draft_ready", "changes_requested"].includes(listPhase(row)) : true;
+
 beforeEach(() => {
   vi.clearAllMocks();
+  listRepository.page.mockImplementation(async (scope: ActionListScope, view: string, size: number, cursor: { score: number; updatedAt: string; id: string } | null) => {
+    const appRows = await applications.forActions(scope.workspaceId, state.actions.map(r => r.id as string));
+    return listProjection(scope, appRows).filter(row => view === "completed" ? row.action_state === "completed" : (scope.status || isOpen(row)) && rowMatches(row, view))
+      .filter(row => !cursor || Number(row.priority_score) < cursor.score || (Number(row.priority_score) === cursor.score && (row.updated_at < cursor.updatedAt || (row.updated_at === cursor.updatedAt && row.id < cursor.id))))
+      .slice(0, size + 1);
+  });
+  listRepository.counts.mockImplementation(async (scope: ActionListScope) => {
+    const rows = listProjection(scope), open = rows.filter(isOpen);
+    return { all: open.length, needs_input: open.filter(r => rowMatches(r, "needs_input")).length, drafts: open.filter(r => rowMatches(r, "drafts")).length, awaiting_approval: open.filter(r => rowMatches(r, "awaiting_approval")).length, completed: rows.filter(r => r.action_state === "completed").length };
+  });
   repository.snapshots.mockImplementation(async (_workspaceId, locationId) => state.snapshots.filter(row => row.location_id === locationId));
   repository.diff.mockImplementation(async id => state.diffs[id] ?? null);
   // E28: mirror repository WHERE predicates; a states filter cannot return all.
@@ -161,6 +194,21 @@ describe("getHomeBrief", () => {
 });
 
 describe("listActions", () => {
+  it("bounds the default list to 25, with counts independent of the page (T-12)", async () => {
+    state.actions = Array.from({ length: 31 }, (_, i) => actionRow({ id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`, action_state: "recommended" }));
+    const result = await listActions(ctx, { view: "all" });
+    expect(result.actions).toHaveLength(25);
+    expect(result.counts.all).toBe(31);
+    expect(result).toMatchObject({ hasMore: true, nextCursor: expect.any(String) });
+    expect(repository.versions).not.toHaveBeenCalled();
+    expect(repository.runs).not.toHaveBeenCalled();
+  });
+  it("rejects an over-limit page and invalid cursor (T-12)", async () => {
+    const tooLarge = { view: "all" as const, pageSize: 51 };
+    const badCursor = { view: "all" as const, cursor: "bad.cursor" };
+    await expect(listActions(ctx, tooLarge)).rejects.toThrow("invalid_action_page_size");
+    await expect(listActions(ctx, badCursor)).rejects.toThrow("invalid_action_cursor");
+  });
   it("keeps scoped counts identical across every active tab with a faithful state filter (T-09)", async () => {
     state.actions.push(actionRow({ id: "done", action_state: "completed" }), actionRow({ id: "dismissed", action_state: "dismissed" }), actionRow({ id: "other", workspace_id: "other-workspace", action_state: "completed" }));
     const baseline = await listActions(ctx, { location: "all" });

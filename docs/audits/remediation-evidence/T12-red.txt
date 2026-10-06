@@ -1,0 +1,210 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ lib/workspace/queries-pages.test.ts (46 tests | 2 failed) 282ms
+     × bounds the default list to 25, with counts independent of the page (T-12) 88ms (retry x1)
+     × rejects an over-limit page and invalid cursor (T-12) 37ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/workspace/queries-pages.test.ts > listActions > bounds the default list to 25, with counts independent of the page (T-12)
+ FAIL  lib/workspace/queries-pages.test.ts > listActions > bounds the default list to 25, with counts independent of the page (T-12)
+AssertionError: expected [ { …(31) }, { …(31) }, …(29) ] to have a length of 25 but got 31
+
+- Expected
++ Received
+
+- 25
++ 31
+
+ ❯ lib/workspace/queries-pages.test.ts:167:28
+    165|     state.actions = Array.from({ length: 31 }, (_, i) => actionRow({ i…
+    166|     const result = await listActions(ctx, { view: "all" });
+    167|     expect(result.actions).toHaveLength(25);
+       |                            ^
+    168|     expect(result.counts.all).toBe(31);
+    169|     expect(result).toMatchObject({ hasMore: true, nextCursor: expect.a…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  lib/workspace/queries-pages.test.ts > listActions > rejects an over-limit page and invalid cursor (T-12)
+ FAIL  lib/workspace/queries-pages.test.ts > listActions > rejects an over-limit page and invalid cursor (T-12)
+AssertionError: promise resolved "{ actions: [ …(2) ], …(1) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "actions": [
++     {
++       "actionState": "needs_input",
++       "applied": false,
++       "appliedOn": null,
++       "approvalState": "draft",
++       "assignee": undefined,
++       "blockingInputs": [
++         "reviews_without_response",
++       ],
++       "capability": "Live",
++       "createdAt": "2026-09-01T00:00:00Z",
++       "delivery": "export_copy",
++       "deliveryState": "not_requested",
++       "displayPhase": {
++         "en": "Needs input",
++         "zh-HK": "需要輸入",
++         "zh-TW": "需要輸入",
++       },
++       "displayPhaseKey": "needs_input",
++       "dueAt": undefined,
++       "effortMinutes": 10,
++       "evidence": {
++         "detail": {
++           "en": "",
++           "zh-HK": "",
++           "zh-TW": "",
++         },
++         "factType": "Observed",
++         "freshness": {
++           "en": "",
++           "zh-HK": "",
++           "zh-TW": "",
++         },
++         "observedAt": "2026-09-01T00:00:00Z",
++         "source": "",
++         "value": "",
++       },
++       "evidenceInputs": [],
++       "id": "a1",
++       "latestVersion": undefined,
++       "location": {
++         "id": "loc-1",
++         "name": {
++           "en": "Yik Yam Street",
++           "zh-HK": "Yik Yam Street",
++           "zh-TW": "Yik Yam Street",
++         },
++         "slug": "yik-yam",
++       },
++       "measurementState": "not_eligible",
++       "missingInputs": [
++         "brand_voice",
++       ],
++       "priority": "urgent",
++       "priorityFactors": [],
++       "requiredInputs": [
++         "brand_voice",
++       ],
++       "runState": "queued",
++       "summary": {
++         "en": "s",
++         "zh-HK": "s",
++         "zh-TW": "s",
++       },
++       "templateKey": "review-response",
++       "title": {
++         "en": "t",
++         "zh-HK": "t",
++         "zh-TW": "t",
++       },
++       "updatedAt": "2026-09-01T00:00:00Z",
++       "verified": false,
++       "verifiedOn": null,
++     },
++     {
++       "actionState": "recommended",
++       "applied": false,
++       "appliedOn": null,
++       "approvalState": "draft",
++       "assignee": undefined,
++       "blockingInputs": [
++         "asset_or_text_only",
++       ],
++       "capability": "Live",
++       "createdAt": "2026-09-01T00:00:00Z",
++       "delivery": "export_copy",
++       "deliveryState": "not_requested",
++       "displayPhase": {
++         "en": "Recommended",
++         "zh-HK": "建議",
++         "zh-TW": "建議",
++       },
++       "displayPhaseKey": "recommended",
++       "dueAt": undefined,
++       "effortMinutes": 10,
++       "evidence": {
++         "detail": {
++           "en": "",
++           "zh-HK": "",
++           "zh-TW": "",
++         },
++         "factType": "Observed",
++         "freshness": {
++           "en": "",
++           "zh-HK": "",
++           "zh-TW": "",
++         },
++         "observedAt": "2026-09-01T00:00:00Z",
++         "source": "",
++         "value": "",
++       },
++       "evidenceInputs": [],
++       "id": "a2",
++       "latestVersion": undefined,
++       "location": {
++         "id": "loc-1",
++         "name": {
++           "en": "Yik Yam Street",
++           "zh-HK": "Yik Yam Street",
++           "zh-TW": "Yik Yam Street",
++         },
++         "slug": "yik-yam",
++       },
++       "measurementState": "not_eligible",
++       "missingInputs": [],
++       "priority": "high",
++       "priorityFactors": [],
++       "requiredInputs": [],
++       "runState": "queued",
++       "summary": {
++         "en": "s",
++         "zh-HK": "s",
++         "zh-TW": "s",
++       },
++       "templateKey": "social-post",
++       "title": {
++         "en": "t",
++         "zh-HK": "t",
++         "zh-TW": "t",
++       },
++       "updatedAt": "2026-09-01T00:00:00Z",
++       "verified": false,
++       "verifiedOn": null,
++     },
++   ],
++   "counts": {
++     "all": 2,
++     "awaiting_approval": 0,
++     "completed": 0,
++     "drafts": 0,
++     "needs_input": 1,
++   },
+  }
+
+ ❯ lib/workspace/queries-pages.test.ts:176:45
+    174|     const tooLarge = { view: "all" as const, pageSize: 51 };
+    175|     const badCursor = { view: "all" as const, cursor: "bad.cursor" };
+    176|     await expect(listActions(ctx, tooLarge)).rejects.toThrow("invalid_…
+       |                                             ^
+    177|     await expect(listActions(ctx, badCursor)).rejects.toThrow("invalid…
+    178|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 44 passed (46)
+   Start at  04:02:17
+   Duration  10.28s (transform 2.46s, setup 5.06s, import 3.69s, tests 282ms, environment 0ms)
+

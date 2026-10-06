@@ -1,6 +1,6 @@
 import { buildAeoTrendModel, type AeoTrendModel } from "@/lib/trends/aeo-trend-model";
 import { buildTrendModel, type StoredDiff, type TrendModel } from "@/lib/trends/history-model";
-import { CLOSED_ACTION_STATES, localized, type ActionState, type FactType, type LocalizedText } from "@/lib/domain";
+import { localized, type ActionState, type FactType, type LocalizedText } from "@/lib/domain";
 import { loadAuthorizedEvidence } from "@/lib/evidence/load-authorized";
 import type { EvidenceGalleryItem } from "@/lib/report/view-model";
 import { inLocationScope, type Membership } from "@/lib/auth";
@@ -14,6 +14,8 @@ import { getBrand, type BrandProfile } from "@/lib/workspace/brand";
 import { deriveFaqQuestions } from "@/lib/workspace/faq-questions";
 import { applicationRepository } from "@/lib/repositories/applications";
 import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
+import { actionListRepository, type ActionListScope } from "@/lib/repositories/action-list";
+import { actionListFingerprint, actionPageSize, decodeActionCursor, encodeActionCursor } from "@/lib/workspace/action-list-cursor";
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace";
 import type { GuardrailFlag, VersionOrigin } from "@/lib/workspace/version-meta";
 import type { AttributionBasis } from "@/lib/workspace/applications";
@@ -62,6 +64,8 @@ export interface HomeBrief {
   changed: HomeChanged;
   priority: ActionOverview | null;
   openActions: ActionOverview[];
+  /** Total in the authorized scope; openActions is only the bounded first page. */
+  openActionCount?: number;
   proof: HomeProof | null;
   month: { resolved: number; regressed: number; awaitingApproval: number; completed: number; measured: number };
   /**
@@ -98,11 +102,15 @@ export interface ActionFilters {
   view?: "all" | "needs_input" | "drafts" | "awaiting_approval" | "completed";
   channel?: "google" | "instagram" | "website" | "search_ai";
   status?: ActionState;
+  cursor?: string;
+  pageSize?: number;
 }
 
 export interface ActionListResult {
   actions: ActionOverview[];
   counts: Record<NonNullable<ActionFilters["view"]>, number>;
+  nextCursor: string | null;
+  hasMore: boolean;
 }
 
 export interface VersionRow {
@@ -653,9 +661,8 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
   const diff = await loadDiffById(snapshot?.diffId ?? null, workspaceId, snapshot?.jobId ?? null);
   const changed = changedFrom(snapshot, diff);
 
-  const openRows = await loadActionRows(workspaceId, { locationId: location?.id ?? null, states: OPEN_STATES });
-  const scopedRows = location ? openRows : openRows;
-  const openActions = await overviewsFor(ctx, scopedRows);
+  const openList = await listActions(ctx, { location: location?.slug ?? "all" });
+  const openActions = openList.actions;
   const priority = openActions[0] ?? null;
 
   const period = currentPeriod(ctx.workspace.timezone);
@@ -683,6 +690,7 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
     changed,
     priority,
     openActions,
+    openActionCount: openList.counts.all,
     proof: proofRow
       ? {
           factType: proofRow.fact_type,
@@ -715,41 +723,31 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
 // Actions list + detail
 // ---------------------------------------------------------------------------
 
-function matchesView(action: ActionOverview, view: NonNullable<ActionFilters["view"]>): boolean {
-  switch (view) {
-    case "needs_input":
-      return action.actionState === "needs_input";
-    case "drafts":
-      return action.displayPhaseKey === "draft_ready" || action.displayPhaseKey === "generating";
-    case "awaiting_approval":
-      return action.displayPhaseKey === "draft_ready" || action.displayPhaseKey === "changes_requested";
-    case "completed":
-      return action.actionState === "completed";
-    default:
-      return true;
-  }
-}
-
 export async function listActions(ctx: WorkspaceContext, filters: ActionFilters): Promise<ActionListResult> {
   const location = resolveLocation(ctx, filters.location ?? "all");
-  // Counts share explicit filter scope; the active tab is only a list predicate.
-  const states = filters.status ? [filters.status] : undefined;
-  const rows = await loadActionRows(ctx.workspace.id, { locationId: location?.id ?? null, states });
-  const scoped = await overviewsFor(ctx, rows);
-  const all = filters.channel ? scoped.filter(a => TEMPLATE_CHANNEL.get(a.templateKey) === filters.channel) : scoped;
-  const open = all.filter((a) => !CLOSED_ACTION_STATES.includes(a.actionState));
-  const counts: ActionListResult["counts"] = {
-    all: open.length,
-    needs_input: open.filter((a) => matchesView(a, "needs_input")).length,
-    drafts: open.filter((a) => matchesView(a, "drafts")).length,
-    awaiting_approval: open.filter((a) => matchesView(a, "awaiting_approval")).length,
-    completed: all.filter((a) => a.actionState === "completed").length,
+  const scope: ActionListScope = {
+    workspaceId: ctx.workspace.id, locationId: location?.id ?? null,
+    allowedLocationIds: ctx.membership.role === "manager" ? ctx.membership.locationScope : null,
+    channelTemplates: filters.channel ? TEMPLATES.filter(t => t.channel === filters.channel).map(t => t.key) : null,
+    status: filters.status ?? null,
   };
-  let actions = filters.view === "completed" ? all.filter((a) => a.actionState === "completed") : filters.status ? all : open;
-  if (filters.view && filters.view !== "all" && filters.view !== "completed") actions = actions.filter((a) => matchesView(a, filters.view!));
-  if (filters.channel) actions = actions.filter((a) => TEMPLATE_CHANNEL.get(a.templateKey) === filters.channel);
-  if (filters.status) actions = actions.filter((a) => a.actionState === filters.status);
-  return { actions, counts };
+  const view = filters.view ?? "all";
+  const pageSize = actionPageSize(filters.pageSize);
+  const fingerprint = actionListFingerprint({ scope, view, userId: ctx.membership.userId, role: ctx.membership.role });
+  const cursor = decodeActionCursor(filters.cursor, fingerprint);
+  const repository = actionListRepository();
+  const [rows, counts] = await read("action list", () => Promise.all([repository.page(scope, view, pageSize, cursor), repository.counts(scope)]));
+  const hasMore = rows.length > pageSize;
+  const page = rows.slice(0, pageSize); // SQL already bounded to at most pageSize+1 metadata projections.
+  const last = page.at(-1);
+  const byLocation = new Map(ctx.locations.map(l => [l.id, l]));
+  const actions = page.map(row => buildActionOverview(row, {
+    location: row.location_id ? locationText(byLocation.get(row.location_id) ?? null) : null,
+    latestRun: row.run_state ? { state: row.run_state } : null, latestVersion: row.version,
+    applied: Boolean(row.applied_on), appliedOn: row.applied_on,
+    verified: Boolean(row.verified_on), verifiedOn: row.verified_on,
+  }));
+  return { actions, counts, hasMore, nextCursor: hasMore && last ? encodeActionCursor({ score: Number(last.priority_score), updatedAt: last.updated_at, id: last.id }, fingerprint) : null };
 }
 
 /** Non-throwing template lookup: an unknown persisted key must not 500 the page. */
