@@ -19,7 +19,7 @@ All on-flags below are confined to owned loopback fixtures. Production values we
 
 These tests form a composed local journey: synthetic rescan evidence is tested through actual completion/read-model functions and owned DB, while browser mutations inspect request/result/stored row/audit and retry behavior. A live collector rescan and hosted identity journey have not been run. Browser fixture mail-link redemption does not prove hosted Google or SMTP registration. The repository's supported sign-in methods are unchanged.
 
-Full command: `pnpm e2e:acceptance`, preceded by the existing lint/type/unit/security/migration/integration/build/E2E gates. Actual totals, exit codes, failed/skipped cases and verified SHA belong in the final gate ledger. This document is a mapping, not a pre-emptive pass statement. Fixture IDs/version IDs are generated and inspected by each test; traces/diagnostics are synthetic. Retain failures without overwriting them with later green logs.
+Full command: `pnpm e2e:acceptance`, preceded by the existing lint/type/unit/security/migration/integration/build/E2E gates. Final full acceptance 49/49 passed, exit 0, 10.1m, fixture SHA 6941ed7; general E2E 31/31 exit 0. Application source 76404c4 is unchanged by that fixture-only correction. Per-gate totals, exact commands/source bindings, historical failed/incomplete attempts and zero final skipped are in remediation-evidence/verification-summary.json and final-gates.jsonl. Fixture IDs/version IDs are generated and inspected by each test; traces/diagnostics are synthetic. First 47/2 acceptance failure, both traces/contexts and intermediate startup/command failures are retained separately from the final green log.
 
 ## Feature matrix
 

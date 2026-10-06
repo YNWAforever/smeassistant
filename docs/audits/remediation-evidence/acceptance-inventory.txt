@@ -1,0 +1,51 @@
+Listing tests:
+  [chromium] › action-list-remediation.spec.ts:4:1 › 375px keyboard selection, preview, apply and Escape use the actual scoped action list (T-13 T-17)
+  [chromium] › action-list-remediation.spec.ts:32:1 › viewer has search and evidence but no bulk selection; manager retains location scope (T-13)
+  [chromium] › action-list-remediation.spec.ts:40:1 › lost apply response is re-read before retry and never duplicates the stored update (T-13 T-15)
+  [chromium] › claim-and-market.spec.ts:12:1 › T-03 legal mixed-case underscore slug survives sign-in and onboarding without granting ownership
+  [chromium] › claim-and-market.spec.ts:28:1 › T-15 attached owner resumes persisted brand setup and repeats completion without changing membership
+  [chromium] › claim-and-market.spec.ts:45:39 › verified Auth claim callback: existing assigned owner succeeds
+  [chromium] › claim-and-market.spec.ts:45:39 › verified Auth claim callback: unassigned report requires ownership verification
+  [chromium] › claim-and-market.spec.ts:67:1 › verified viewer cannot finalize an assigned owner's claim
+  [chromium] › claim-and-market.spec.ts:75:1 › TW workspace switched to Hong Kong locale retains TWD and LINE contact behavior
+  [chromium] › contextual-assistant.spec.ts:16:1 › an owner with a waiting draft continues from the assistant to the exact version
+  [chromium] › guided-sign-in.spec.ts:4:1 › owned Google-style handoff shows processing before the authorized destination
+  [chromium] › guided-sign-in.spec.ts:14:1 › local Google cancellation retains the destination while switching to email
+  [chromium] › guided-sign-in.spec.ts:29:1 › an accepted fixture account is not required for no-access recovery or a rejected cross-origin completion
+  [chromium] › guided-sign-in.spec.ts:54:48 › a memberless account sees one real path to a workspace on select-workspace (en, 375px)
+  [chromium] › guided-sign-in.spec.ts:54:48 › a memberless account sees one real path to a workspace on select-workspace (zh-HK, 375px)
+  [chromium] › guided-sign-in.spec.ts:82:3 › fixture completion fault mapping reaches recovery without acquiring workspace authority
+  [chromium] › guided-sign-in.spec.ts:82:3 › fixture completion fault binding reaches recovery without acquiring workspace authority
+  [chromium] › guided-sign-in.spec.ts:82:3 › fixture completion fault revoked reaches recovery without acquiring workspace authority
+  [chromium] › guided-sign-in.spec.ts:82:3 › fixture completion fault upstream reaches recovery without acquiring workspace authority
+  [chromium] › guided-sign-in.spec.ts:92:1 › changing from an unavailable account to the authorized account retains the destination
+  [chromium] › guided-sign-in.spec.ts:106:1 › a consumed local email link cannot change an accepted membership
+  [chromium] › guided-sign-in.spec.ts:131:3 › owned sign-in start card is keyboard-operable without overflow: en 375
+  [chromium] › guided-sign-in.spec.ts:131:3 › owned sign-in start card is keyboard-operable without overflow: en 1440
+  [chromium] › guided-sign-in.spec.ts:131:3 › owned sign-in start card is keyboard-operable without overflow: zh-HK 375
+  [chromium] › guided-sign-in.spec.ts:131:3 › owned sign-in start card is keyboard-operable without overflow: zh-HK 1440
+  [chromium] › guided-sign-in.spec.ts:131:3 › owned sign-in start card is keyboard-operable without overflow: zh-TW 375
+  [chromium] › guided-sign-in.spec.ts:131:3 › owned sign-in start card is keyboard-operable without overflow: zh-TW 1440
+  [chromium] › merchant-loop.spec.ts:7:45 › hk: local fixture link redemption, exact draft approval/download, repeat usage and fresh edit
+  [chromium] › merchant-loop.spec.ts:7:45 › tw: local fixture link redemption, exact draft approval/download, repeat usage and fresh edit
+  [chromium] › merchant-loop.spec.ts:70:68 › missing LLM output cannot create or approve a version or charge usage
+  [chromium] › merchant-loop.spec.ts:70:68 › invalid LLM output cannot create or approve a version or charge usage
+  [chromium] › merchant-loop.spec.ts:70:68 › unavailable LLM output cannot create or approve a version or charge usage
+  [chromium] › offer-promotion.spec.ts:22:1 › an offer becomes two drafts, one is approved and exported, and an edited offer refuses the stale draft
+  [chromium] › permissions.spec.ts:4:52 › viewer: accepted evidence reads, omitted/spoofed context denial, revocation
+  [chromium] › permissions.spec.ts:4:52 › manager: accepted evidence reads, omitted/spoofed context denial, revocation
+  [chromium] › permissions.spec.ts:27:1 › unverified identity and invalid callback cannot acquire workspace authority
+  [chromium] › permissions.spec.ts:36:1 › lite permits three distinct approved deliveries and blocks the fourth
+  [chromium] › permissions.spec.ts:51:2 › expired local fixture link cannot accept an invitation
+  [chromium] › permissions.spec.ts:59:1 › authenticated fixture session can observe an unknown owner route 404
+  [chromium] › permissions.spec.ts:64:1 › local logout revokes retained fixture session credentials
+  [chromium] › preview-draft.spec.ts:25:1 › an unlocked viewer gets one unsaved reply draft
+  [chromium] › public-funnel.spec.ts:108:3 › hk public funnel › manual scan reaches a report and unlocks it
+  [chromium] › public-funnel.spec.ts:108:3 › tw public funnel › manual scan reaches a report and unlocks it
+  [chromium] › report-dashboard.spec.ts:6:1 › real report excludes private serialized data publicly and grants unlocked viewer full read access
+  [chromium] › report-scan-comparison.spec.ts:21:1 › actual share route keeps earlier comparison evidence private and shows the access state after current-only unlock, then the member state once signed in
+  [chromium] › report-scan-metrics.spec.ts:22:1 › owned stored metrics stay private and render separate samples across locales and viewports
+  [chromium] › returning-sign-in.spec.ts:7:3 › accepted owner receives a fresh magic link and can sign in again
+  [chromium] › returning-sign-in.spec.ts:7:3 › accepted viewer receives a fresh magic link and can sign in again
+  [chromium] › work-pack.spec.ts:22:1 › the starter pack becomes drafts, one is approved and exported, and starting again returns the same pack
+Total: 49 tests in 14 files

@@ -1,0 +1,5 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test:no-supabase C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation
+> node scripts/assert-no-supabase.mjs
+
+No forbidden retired transport references; only the approved pinned Neon transitive library is permitted

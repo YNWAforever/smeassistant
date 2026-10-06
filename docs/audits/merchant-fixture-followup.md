@@ -10,4 +10,6 @@ RED 證據：`remediation-evidence/T15-merchant-fixture-red-context.md`、TW con
 
 GREEN command：`pnpm exec playwright test --config playwright.acceptance.config.ts e2e/acceptance/merchant-loop.spec.ts --grep local.fixture.link.redemption`。實際 PATCH 200、required input／單一更新 audit、immutable v1/v2、精確核准／下載、export retry 同 delivery／用量 1、applied 201/200 同 DB assertion／單一 event，以及未核准 v3 export 409 均核對。Fresh `pnpm lint` exit 0（40 warnings）、`pnpm typecheck` root＋四 packages exit 0。完整 49-case acceptance 結果另記。
 
-Rollback：revert 這個 fixture-only commit；沒有 migration、dependency、feature flag、真實資料或 hosted 變更。產品驗證 source 保持 76404c43458e3bf614bd2ac2329655e265c74f79；修正後 fixture commit／完整結果另外記錄，不能把兩個 SHA 混為同一個遠端 CI run。
+最後完整 `pnpm e2e:acceptance`：49/49 passed、exit 0、10.1m，fixture SHA `6941ed7c24ab66593018ab40e3628d193056ed17`。零 final failed／skipped tests；47/2 首輪及 targeted 404 並未刪除或改寫成 pass。這是本地受控 fixture 驗收，沒有 hosted Google／SMTP／付費 provider／外部 publication。
+
+Rollback：revert 6941ed7 這個 fixture-only commit；沒有 migration、dependency、feature flag、真實資料或 hosted 變更。產品驗證 source 保持 76404c43458e3bf614bd2ac2329655e265c74f79；修正後 fixture commit／完整結果另外記錄，不能把兩個 SHA 混為同一個遠端 CI run。
