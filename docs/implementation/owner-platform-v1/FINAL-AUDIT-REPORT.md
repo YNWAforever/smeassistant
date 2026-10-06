@@ -197,6 +197,7 @@ Approved by Willy after the audit closed, as the code track while hosted checks 
 - **Not changed:** the 「快照」 vocabulary pass and the other rows of the copy table above (out of scope).
 - **375 px:** moving the strip was not enough (the button ended 14–24 px under the bottom nav). Willy chose to put Rescan and the location select in one row on phones; the title's mobile top margin also went from 24 to 12 px. Measured clearance: en 32 px, zh-HK 18 px.
 - **Tests:** `components/workspace/home-brief.test.tsx` "today-first layout (FA-04)" (6 cases, written first and seen failing); `e2e/acceptance/home-today.spec.ts` (en, zh-HK, zh-TW at 375×812: title and button bottoms ≤ the bottom nav's top, `scrollY` 0, disclosure closed then opens, no horizontal scroll).
+- **Fixed on the way:** the card's decorative `::after` circle sat above the 「問為何先做這項」 button and swallowed clicks on it once the shorter 開始處理 label moved it; it now has `pointer-events: none` (caught by `contextual-assistant.spec.ts`).
 - **Seen, not changed:** on desktop the lite-tier Rescan note wraps awkwardly beside the button (pre-existing).
 
 ---

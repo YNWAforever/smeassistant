@@ -1228,6 +1228,8 @@ button:focus-visible {
   border: 1px solid rgba(23, 32, 25, .12);
   border-radius: 50%;
   content: "";
+  /* Decoration only: it overlaps the card's action buttons and must never take their clicks. */
+  pointer-events: none;
 }
 
 .brief-priority-card .card-label-row { grid-area: label; }
