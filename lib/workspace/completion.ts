@@ -1,9 +1,10 @@
 import "server-only";
+import { assertExecutionBudget, currentExecutionBudget, settleWithinReserve } from "@/lib/jobs/execution-budget";
 import type { Pool } from "pg";
 import { postProcessWorkspaceScan } from "./post-process";
 import { completionTransaction } from "./completion-transaction";
 export type CompletionResult = {
-  status: "completed" | "busy" | "skipped" | "retry";
+  status: "completed" | "busy" | "skipped" | "retry" | "deferred";
 };
 type Database = Pick<Pool, "query" | "connect">;
 /** Claims are short transactions. Effects and successful finish commit together; recovery reads persisted evidence only. */
@@ -46,10 +47,10 @@ export async function completeWorkspaceScan(
   } catch {
     // Rollback has completed. A stale token cannot acknowledge another runner's lease.
     try {
-      await db.query(
+      await settleWithinReserve(currentExecutionBudget(), () => db.query(
         "SELECT finish_workspace_completion($1,$2,false,$3) AS finished",
         [jobId, token, "workspace_post_process_failed"],
-      );
+      ));
     } catch {
       /* retained scheduler retries after lease expiry */
     }
@@ -71,6 +72,7 @@ export async function reconcileWorkspaceScans(
   }
   const results: CompletionResult[] = [];
   for (const row of rows.slice(0, 5)) {
+    try { assertExecutionBudget(); } catch { results.push({ status: "deferred" }); break; }
     try {
       results.push(await complete(db, row.job_id));
     } catch {

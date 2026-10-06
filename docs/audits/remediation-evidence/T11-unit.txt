@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+
+ Test Files  17 passed (17)
+      Tests  187 passed (187)
+   Start at  05:17:57
+   Duration  10.97s (transform 942ms, setup 4.15s, import 2.99s, tests 228ms, environment 1ms)
+

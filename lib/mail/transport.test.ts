@@ -37,7 +37,7 @@ describe("createMailTransport", () => {
       REPORT_EMAIL_FROM: "owner@fimmick.com",
     }).send(MESSAGE);
     expect(result).toEqual({ status: "accepted_by_provider", providerMessageId: "msg-1" });
-    expect(sendViaResend).toHaveBeenCalledWith({ apiKey: "key-1", from: "owner@fimmick.com" }, MESSAGE);
+    expect(sendViaResend).toHaveBeenCalledWith({ apiKey: "key-1", from: "owner@fimmick.com" }, MESSAGE, undefined);
   });
 
   it("defaults to process.env when no env is supplied", async () => {

@@ -119,3 +119,6 @@ Batch 0: in progress. A1 starts with T-03 → T-18, then continues to A2, B, C1,
 - Real DB acceptance: 12 tests / 2 files, exit 0. Actual local Chromium: 2 tests, exit 0, 375px keyboard/selection/preview/apply/Escape/focus/overflow; database verified the timezone instant and exactly one event. Viewer mutation 403 and scoped manager list exclusion witnessed.
 - Initial browser setup failed on the dependency junction, not a product assertion. After freed disk, verified/removed only our junction, preserved original repo dependencies, and installed frozen lockfile inside isolated worktree: exit 0, unchanged SHA256 C7C722C958A874DEEE76AB2B4FAAF654D985547A9D29EB256D8F6C9B848F63C6. Default Turbopack rerun passed.
 - T-13 local implementation verified. T-17 local action flow verified, wider mobile journeys still to be covered by final acceptance; HK field participants/workspace remain blocked. No hosted activation/production/remote CI claim. See action-assignment-acceptance.md for contracts, evidence and rollback.
+
+### D / T-11 / F-09 / UC-17
+Shared 55-second work budget and 5-second bounded settlement reserve implemented. RED 3 expected deadline failures; GREEN 187 unit / 35 owned DB tests. Real cancellation and unattempted lease compensation verified. Cron remains off. See dispatch-deadline-verification.md; rollback by reverting this batch, no migration.

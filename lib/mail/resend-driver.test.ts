@@ -86,4 +86,13 @@ describe("sendViaResend", () => {
     await vi.advanceTimersByTimeAsync(10_000);
     expect(await resultPromise).toEqual({ status: "failed", error: "timed_out" });
   });
+  it("keeps the timeout active after headers while JSON body is stalled (T-11)", async () => {
+    vi.useFakeTimers();
+    global.fetch = vi.fn(async (_url: string, init: { signal: AbortSignal }) => ({ ok: true, json: () => new Promise((_resolve,reject) => init.signal.addEventListener("abort",()=>reject(Object.assign(new Error("aborted"),{name:"AbortError"})),{once:true})) })) as unknown as typeof fetch;
+    let done = false;
+    const response = sendViaResend(CONFIG,MESSAGE).then(result=>{done=true;return result;});
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(done).toBe(true);
+    expect(await response).toEqual({status:"failed",error:"timed_out"});
+  });
 });

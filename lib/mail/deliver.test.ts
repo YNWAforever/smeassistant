@@ -60,10 +60,11 @@ interface FakeRepoOptions {
 function fakeRepo(opts: FakeRepoOptions = {}) {
   const facts = opts.facts ?? [QUEUEABLE_FACTS];
   let factsCall = 0;
-  const claimDue = vi.fn(async () => opts.rows ?? [claimedRow()]);
+  const pending=[...(opts.rows ?? [claimedRow()])];
+  const claimDue = vi.fn(async (_now: Date, limit: number) => pending.splice(0,limit));
   const sendFacts = vi.fn(async () => facts[Math.min(factsCall++, facts.length - 1)]);
   const finish = vi.fn(async () => opts.finishResult ?? true);
-  return { claimDue, sendFacts, finish } as unknown as MailOutboxRepository & {
+  return { claimDue, sendFacts, finish, deferUnattempted:vi.fn(async()=>true) } as unknown as MailOutboxRepository & {
     claimDue: typeof claimDue;
     sendFacts: typeof sendFacts;
     finish: typeof finish;
@@ -93,7 +94,7 @@ describe("deliverMail", () => {
 
     const summary = await deliverMail({ repo, transport, env: { ...OPEN_ENV, MAIL_PAUSED: "true" }, now: () => NOW });
 
-    expect(summary).toEqual({ sent: 0, retried: 0, held: 0, dead: 0, expired: 0, paused: true });
+    expect(summary).toEqual({ sent: 0, retried: 0, held: 0, dead: 0, expired: 0, paused: true, deferred: false });
     expect(repo.claimDue).not.toHaveBeenCalled();
     expect(transport.send).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith("[pause] refused", { entry: "mail_send" });
@@ -106,7 +107,7 @@ describe("deliverMail", () => {
 
     const summary = await deliverMail({ repo, transport, env: OPEN_ENV, now: () => NOW });
 
-    expect(summary).toEqual({ sent: 0, retried: 0, held: 0, dead: 0, expired: 1, paused: false });
+    expect(summary).toEqual({ sent: 0, retried: 0, held: 0, dead: 0, expired: 1, paused: false, deferred: false });
     expect(repo.sendFacts).not.toHaveBeenCalled();
     expect(transport.send).not.toHaveBeenCalled();
     expect(repo.finish).toHaveBeenCalledWith(row.id, row.lease_token, { state: "expired" });
@@ -119,7 +120,7 @@ describe("deliverMail", () => {
 
     const summary = await deliverMail({ repo, transport, env: OPEN_ENV, now: () => NOW });
 
-    expect(summary).toEqual({ sent: 0, retried: 0, held: 1, dead: 0, expired: 0, paused: false });
+    expect(summary).toEqual({ sent: 0, retried: 0, held: 1, dead: 0, expired: 0, paused: false, deferred: false });
     expect(transport.send).not.toHaveBeenCalled();
     expect(repo.finish).toHaveBeenCalledWith(row.id, row.lease_token, { state: "held", reason: "opted_out" });
   });
@@ -131,7 +132,7 @@ describe("deliverMail", () => {
 
     const summary = await deliverMail({ repo, transport, env: OPEN_ENV, now: () => NOW });
 
-    expect(summary).toEqual({ sent: 0, retried: 0, held: 1, dead: 0, expired: 0, paused: false });
+    expect(summary).toEqual({ sent: 0, retried: 0, held: 1, dead: 0, expired: 0, paused: false, deferred: false });
     expect(transport.send).not.toHaveBeenCalled();
     expect(repo.finish).toHaveBeenCalledWith(row.id, row.lease_token, { state: "held", reason: "not_member" });
   });
@@ -186,7 +187,7 @@ describe("deliverMail", () => {
 
     const summary = await deliverMail({ repo, transport, env: OPEN_ENV, now: () => NOW });
 
-    expect(summary).toEqual({ sent: 1, retried: 0, held: 0, dead: 0, expired: 0, paused: false });
+    expect(summary).toEqual({ sent: 1, retried: 0, held: 0, dead: 0, expired: 0, paused: false, deferred: false });
     expect(repo.finish).toHaveBeenCalledWith(row.id, row.lease_token, {
       state: "sent",
       providerMessageId: "msg_provider_1",
@@ -201,7 +202,7 @@ describe("deliverMail", () => {
 
     const summary = await deliverMail({ repo, transport, env: OPEN_ENV, now: () => NOW });
 
-    expect(summary).toEqual({ sent: 0, retried: 0, held: 1, dead: 0, expired: 0, paused: false });
+    expect(summary).toEqual({ sent: 0, retried: 0, held: 1, dead: 0, expired: 0, paused: false, deferred: false });
     expect(repo.finish).toHaveBeenCalledWith(row.id, row.lease_token, { state: "held", reason: "mail_unapproved" });
   });
 
@@ -217,7 +218,7 @@ describe("deliverMail", () => {
 
     const summary = await deliverMail({ repo, transport, env: OPEN_ENV, now: () => NOW });
 
-    expect(summary).toEqual({ sent: 0, retried: 1, held: 0, dead: 0, expired: 0, paused: false });
+    expect(summary).toEqual({ sent: 0, retried: 1, held: 0, dead: 0, expired: 0, paused: false, deferred: false });
     expect(repo.finish).toHaveBeenCalledWith(row.id, row.lease_token, {
       state: "retry",
       nextAttemptAt: new Date(NOW.getTime() + delayMinutes * 60_000),
@@ -232,7 +233,7 @@ describe("deliverMail", () => {
 
     const summary = await deliverMail({ repo, transport, env: OPEN_ENV, now: () => NOW });
 
-    expect(summary).toEqual({ sent: 0, retried: 0, held: 0, dead: 1, expired: 0, paused: false });
+    expect(summary).toEqual({ sent: 0, retried: 0, held: 0, dead: 1, expired: 0, paused: false, deferred: false });
     expect(repo.finish).toHaveBeenCalledWith(row.id, row.lease_token, { state: "dead", error: "provider_http_500" });
   });
 
@@ -243,7 +244,7 @@ describe("deliverMail", () => {
 
     const summary = await deliverMail({ repo, transport, env: OPEN_ENV, now: () => NOW });
 
-    expect(summary).toEqual({ sent: 0, retried: 1, held: 0, dead: 0, expired: 0, paused: false });
+    expect(summary).toEqual({ sent: 0, retried: 1, held: 0, dead: 0, expired: 0, paused: false, deferred: false });
     expect(repo.finish).toHaveBeenCalledWith(row.id, row.lease_token, {
       state: "retry",
       nextAttemptAt: new Date(NOW.getTime() + 5 * 60_000),
@@ -258,7 +259,7 @@ describe("deliverMail", () => {
 
     const summary = await deliverMail({ repo, transport, env: OPEN_ENV, now: () => NOW });
 
-    expect(summary).toEqual({ sent: 1, retried: 0, held: 0, dead: 0, expired: 0, paused: false });
+    expect(summary).toEqual({ sent: 1, retried: 0, held: 0, dead: 0, expired: 0, paused: false, deferred: false });
     expect(repo.finish).toHaveBeenCalledWith(row.id, row.lease_token, {
       state: "sent",
       providerMessageId: "msg_async_1",
@@ -273,7 +274,7 @@ describe("deliverMail", () => {
 
     const summary = await deliverMail({ repo, transport, env: OPEN_ENV, now: () => NOW });
 
-    expect(summary).toEqual({ sent: 0, retried: 0, held: 0, dead: 0, expired: 0, paused: false });
+    expect(summary).toEqual({ sent: 0, retried: 0, held: 0, dead: 0, expired: 0, paused: false, deferred: false });
     expect(warnSpy).toHaveBeenCalledWith("[mail] lease_lost", { category: "mail_lease_lost", id: row.id });
     for (const call of warnSpy.mock.calls) {
       expect(JSON.stringify(call)).not.toContain("member@example.test");
@@ -290,7 +291,7 @@ describe("deliverMail", () => {
 
     const summary = await deliverMail({ repo, transport, env: OPEN_ENV, now: () => NOW });
 
-    expect(summary).toEqual({ sent: 1, retried: 0, held: 1, dead: 0, expired: 0, paused: false });
+    expect(summary).toEqual({ sent: 1, retried: 0, held: 1, dead: 0, expired: 0, paused: false, deferred: false });
   });
 
   it("signs the same unsubscribe expiry (and therefore an identical MailMessage) across two attempts at the same row, regardless of how much later the retry runs", async () => {
@@ -308,7 +309,8 @@ describe("deliverMail", () => {
     // send-time-derived unsubscribe expiry) would make Resend see the same
     // key with a different body and reject the retry with a 409 instead.
     await deliverMail({ repo, transport, env: OPEN_ENV, now: () => NOW });
-    await deliverMail({ repo, transport, env: OPEN_ENV, now: () => new Date(NOW.getTime() + 60 * 60_000) });
+    const retryRepo = fakeRepo({ rows: [row] }); // The retry becomes due in a later tick, not repeatedly in the same claim.
+    await deliverMail({ repo: retryRepo, transport, env: OPEN_ENV, now: () => new Date(NOW.getTime() + 60 * 60_000) });
 
     const expectedExpiresAt = row.created_at.getTime() + 90 * 24 * 60 * 60 * 1000;
     expect(signUnsubscribeToken).toHaveBeenNthCalledWith(
@@ -355,14 +357,15 @@ describe("deliverMail", () => {
     const rowB = claimedRow({ id: "row-b", attempts: 1 });
     const finish = vi.fn(async () => true);
     const sendFacts = vi.fn().mockRejectedValueOnce(new Error("boom")).mockResolvedValueOnce(QUEUEABLE_FACTS);
-    const claimDue = vi.fn(async () => [rowA, rowB]);
+    const pending = [rowA, rowB];
+    const claimDue = vi.fn(async (_now: Date, limit: number) => pending.splice(0, limit));
     const repo = { claimDue, sendFacts, finish } as unknown as MailOutboxRepository;
     const transport = fakeTransport({ status: "accepted_by_provider", providerMessageId: "msg_1" });
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const summary = await deliverMail({ repo, transport, env: OPEN_ENV, now: () => NOW });
 
-    expect(summary).toEqual({ sent: 1, retried: 1, held: 0, dead: 0, expired: 0, paused: false });
+    expect(summary).toEqual({ sent: 1, retried: 1, held: 0, dead: 0, expired: 0, paused: false, deferred: false });
     expect(transport.send).toHaveBeenCalledTimes(1);
     expect(finish).toHaveBeenCalledWith(rowA.id, rowA.lease_token, {
       state: "retry",
@@ -382,14 +385,15 @@ describe("deliverMail", () => {
     const row = claimedRow({ attempts: 5 });
     const finish = vi.fn(async () => true);
     const sendFacts = vi.fn().mockRejectedValue(new Error("boom"));
-    const claimDue = vi.fn(async () => [row]);
+    const pending = [row];
+    const claimDue = vi.fn(async (_now: Date, limit: number) => pending.splice(0, limit));
     const repo = { claimDue, sendFacts, finish } as unknown as MailOutboxRepository;
     const transport = fakeTransport({ status: "accepted_by_provider", providerMessageId: "msg_1" });
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const summary = await deliverMail({ repo, transport, env: OPEN_ENV, now: () => NOW });
 
-    expect(summary).toEqual({ sent: 0, retried: 0, held: 0, dead: 1, expired: 0, paused: false });
+    expect(summary).toEqual({ sent: 0, retried: 0, held: 0, dead: 1, expired: 0, paused: false, deferred: false });
     expect(finish).toHaveBeenCalledWith(row.id, row.lease_token, { state: "dead", error: "deliver_exception" });
     errorSpy.mockRestore();
   });
