@@ -1,0 +1,20 @@
+{
+  "members": [
+    {
+      "uid": "eJoBfJc2RIgAHk0DHfXkyAhG",
+      "role": "DEVELOPER",
+      "username": "verna-fimmicktw"
+    },
+    {
+      "uid": "8Rl9NWViWvJleb3PGhaUPvWz",
+      "role": "OWNER",
+      "username": "ynwaforever"
+    }
+  ],
+  "pagination": {
+    "count": 2,
+    "next": null,
+    "prev": 1789530951778,
+    "hasNext": false
+  }
+}
