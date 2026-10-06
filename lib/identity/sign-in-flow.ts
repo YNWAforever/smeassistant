@@ -1,4 +1,5 @@
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/locale";
+import { parseReportSlug } from "@/lib/report-access/slug";
 
 import { safeReturnPath } from "./return-path";
 
@@ -11,7 +12,6 @@ export type AuthFlow = {
 };
 export type AuthScreen = "start" | "complete";
 
-const CLAIM_RE = /^[A-Za-z0-9_-]{6,64}$/;
 const METHODS = new Set<AuthMethod>(["google", "email"]);
 
 function single(query: URLSearchParams, key: string): string | null {
@@ -56,7 +56,7 @@ export function parseAuthFlow(query: URLSearchParams): AuthFlow {
 
   return {
     locale: isLocale(locale) ? locale : DEFAULT_LOCALE,
-    claim: claim && CLAIM_RE.test(claim) ? claim : null,
+    claim: parseReportSlug(claim),
     returnTo: safeAuthFlowReturnPath(single(query, "returnTo")),
     method:
       method && METHODS.has(method as AuthMethod)

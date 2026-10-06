@@ -51,6 +51,23 @@ function mockAuditJobsQueryError(dbError: { message: string }) {
 }
 
 describe("GET /api/oauth/google/claim/start", () => {
+  it("preserves the audit report slug in signed OAuth state", async () => {
+    const slug = "3cuOKFmHdiYf00BOs27E_NO1";
+    mocks.getUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
+    const eq = mockAuditJobsRow({ id: "job-1", place_id: "ChIJ_test", workspace_id: null });
+    const response = await GET(request(`?slug=${slug}&locale=zh-HK`));
+    expect(response.status).toBe(307);
+    expect(eq).toHaveBeenCalledWith("share_slug", slug);
+    expect(mocks.signClaimState).toHaveBeenCalledWith("job-1", "ChIJ_test", slug, "user-1", undefined, "zh-HK");
+  });
+
+  it("rejects duplicate slug parameters before authentication or lookup", async () => {
+    const response = await GET(request("?slug=abc123&slug=def456"));
+    expect(response.status).toBe(400);
+    expect(mocks.getUser).not.toHaveBeenCalled();
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.googleOAuthClaimConfigured.mockReturnValue(true);

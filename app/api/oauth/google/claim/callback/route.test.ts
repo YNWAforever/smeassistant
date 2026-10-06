@@ -91,6 +91,14 @@ function redirectPath(response: Response): string {
 }
 
 describe("GET /api/oauth/google/claim/callback", () => {
+  it("preserves a signed underscore slug on consent recovery without granting membership", async () => {
+    mocks.verifyClaimState.mockReturnValue({ ...CLAIM_PAYLOAD, slug: "3cuOKFmHdiYf00BOs27E_NO1", locale: "zh-HK" });
+    const response = await GET(request("?error=access_denied&state=good"));
+    expect(redirectPath(response)).toBe("/zh-HK/r/3cuOKFmHdiYf00BOs27E_NO1");
+    expect(mocks.createWorkspaceWithOwner).not.toHaveBeenCalled();
+    expect(mocks.attachJobToWorkspace).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.encryptToken.mockImplementation((plaintext: string) => `encrypted:${plaintext}`);

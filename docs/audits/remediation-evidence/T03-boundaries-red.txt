@@ -1,0 +1,37 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ lib/report-access/slug-boundaries.test.ts (7 tests | 2 failed) 18ms
+   × rejects malformed report identifiers consistently:  Ab_cd-12 12ms (retry x1)
+   × rejects malformed report identifiers consistently: Ab_cd-12  2ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/report-access/slug-boundaries.test.ts > rejects malformed report identifiers consistently:  Ab_cd-12
+ FAIL  lib/report-access/slug-boundaries.test.ts > rejects malformed report identifiers consistently:  Ab_cd-12
+ FAIL  lib/report-access/slug-boundaries.test.ts > rejects malformed report identifiers consistently: Ab_cd-12 
+ FAIL  lib/report-access/slug-boundaries.test.ts > rejects malformed report identifiers consistently: Ab_cd-12 
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ lib/report-access/slug-boundaries.test.ts:9:62
+      7| it.each([" Ab_cd-12", "Ab_cd-12 ", "short", "a".repeat(65), "abc/def",…
+      8|   expect(parseAuthFlow(new URLSearchParams({ claim })).claim).toBeNull…
+      9|   expect(parseClaimBody({ ...valid, claim_slug: claim }).ok).toBe(fals…
+       |                                                              ^
+     10| });
+     11|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 5 passed (7)
+   Start at  02:56:12
+   Duration  5.82s (transform 764ms, setup 1.64s, import 2.45s, tests 18ms, environment 0ms)
+
