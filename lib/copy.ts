@@ -364,7 +364,14 @@ type Copy = {
     changed: string
     priority: string
     proof: string
-    reviewDrafts: string
+    /** FA-04: the 今日要做 card's one verb, and the variant when facts are missing. */
+    start: string
+    addFacts: string
+    whyNow: string
+    /** FA-04: the closed disclosure that holds the methodology. */
+    trust: string
+    emptyWeek: string
+    rescanNow: string
     month: string
   }
   common: {
@@ -1442,9 +1449,14 @@ export const copy: Record<PrototypeLocale, Copy> = {
       title: "Your next visibility win is ready.",
       subtitle: "One clear action for today, backed by evidence and ready for your approval.",
       changed: "What changed",
-      priority: "Today’s priority",
+      priority: "Do this today",
       proof: "Previous action outcome",
-      reviewDrafts: "Review drafts",
+      start: "Start",
+      addFacts: "Add the missing facts",
+      whyNow: "Why now",
+      trust: "Why you can trust this",
+      emptyWeek: "Nothing new this week; check back after your next scan.",
+      rescanNow: "To check now, use Rescan.",
       month: "This month",
     },
     common: {
@@ -1495,9 +1507,14 @@ export const copy: Record<PrototypeLocale, Copy> = {
       title: "下一個曝光提升機會已準備好。",
       subtitle: "今天只需處理一項清晰行動；證據和草稿已備妥，等你批准。",
       changed: "最新變化",
-      priority: "今日首要行動",
+      priority: "今日要做",
       proof: "上一項行動結果",
-      reviewDrafts: "審閱草稿",
+      start: "開始處理",
+      addFacts: "補充資料",
+      whyNow: "為何是現在",
+      trust: "為何可信",
+      emptyWeek: "本週沒有新行動，下次掃描後再看。",
+      rescanNow: "想現在檢查，可按「重新掃描」。",
       month: "本月進度",
     },
     common: {
@@ -1548,9 +1565,14 @@ export const copy: Record<PrototypeLocale, Copy> = {
       title: "下一個能見度提升機會已準備好。",
       subtitle: "今天只要處理一個清楚行動；證據和草稿都已備妥，等你核准。",
       changed: "最新變化",
-      priority: "今日優先行動",
+      priority: "今日要做",
       proof: "上一項行動結果",
-      reviewDrafts: "審閱草稿",
+      start: "開始處理",
+      addFacts: "補充資料",
+      whyNow: "為什麼是現在",
+      trust: "為何可信",
+      emptyWeek: "本週沒有新行動，下次掃描後再看。",
+      rescanNow: "想現在檢查，可以按「重新掃描」。",
       month: "本月進度",
     },
     common: {

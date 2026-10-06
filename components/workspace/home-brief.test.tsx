@@ -12,6 +12,8 @@ vi.mock("next/navigation", () => ({
 import { FixPackCard } from "@/components/workspace/fix-pack-card";
 import { HomeBriefView } from "@/components/workspace/home-brief";
 import type { HomeBrief } from "@/lib/workspace/queries-pages";
+import { buildActionOverview } from "@/lib/workspace/overview";
+import { actionRow, snapshot } from "@/lib/assistant/__fixtures__";
 
 /**
  * P3.2 task 9 FIX 2: the "Before and after" proof card on Home is the other
@@ -157,5 +159,92 @@ describe("HomeBriefView work packs (P4.2)", () => {
     // The earlier-drafts card renders nothing until a pending draft is known, and the full card's empty state is gone.
     expect(root.querySelector(".fix-pack-card")).toBeNull();
     expect(root.textContent).not.toContain("Fix Pack drafts are not available");
+  });
+});
+
+/**
+ * FA-04: home leads with the one thing to do today; the methodology stays one
+ * tap away inside a closed 「為何可信」 disclosure.
+ */
+describe("HomeBriefView today-first layout (FA-04)", () => {
+  function priority(missing: string[] = []) {
+    return buildActionOverview(
+      { ...actionRow, required_inputs: missing, provided_inputs: {} },
+      { location: { id: actionRow.location_id, slug: "yik-yam", name: { en: "Yik Yam", "zh-HK": "奕蔭街", "zh-TW": "奕蔭街" } }, latestRun: null, latestVersion: null },
+    );
+  }
+  function view(opts: { locale?: "en" | "zh-HK" | "zh-TW"; tier?: "lite" | "paid"; role?: "owner" | "manager" | "viewer"; priority?: ReturnType<typeof priority> | null; withSnapshot?: boolean } = {}) {
+    const brief = baseBrief(null);
+    brief.priority = opts.priority === undefined ? priority() : opts.priority;
+    if (opts.withSnapshot) brief.snapshot = snapshot;
+    const root = document.createElement("div");
+    root.innerHTML = renderToStaticMarkup(
+      <HomeBriefView
+        locale={opts.locale ?? "en"}
+        workspaceSlug="kam-man-house"
+        workspaceId="ws-1"
+        workspaceName="Kam Man House"
+        tier={opts.tier ?? "paid"}
+        timezone="Asia/Hong_Kong"
+        locations={[{ slug: "yik-yam", name: "Yik Yam" }]}
+        brief={brief}
+        consentPolicyVersion="2026-07-28"
+        role={opts.role}
+      />,
+    );
+    return root;
+  }
+
+  it("renders the 今日要做 card before every methodology section", () => {
+    const html = view().innerHTML;
+    const today = html.indexOf("brief-priority-card");
+    expect(today).toBeGreaterThan(-1);
+    for (const later of ["workspace-agent-strip", "integration-health-card", "change-ledger-card", "operational-footnote"]) {
+      expect(html.indexOf(later)).toBeGreaterThan(today);
+    }
+  });
+
+  it("labels the card 今日要做 in every locale", () => {
+    expect(view({ locale: "en" }).querySelector(".brief-priority-card")?.textContent).toContain("Do this today");
+    expect(view({ locale: "zh-HK" }).querySelector(".brief-priority-card")?.textContent).toContain("今日要做");
+    expect(view({ locale: "zh-TW" }).querySelector(".brief-priority-card")?.textContent).toContain("今日要做");
+  });
+
+  it("names one verb on the card's button: Start, or Add the missing facts when inputs are missing", () => {
+    expect(view({ priority: priority() }).querySelector(".brief-priority-actions a")?.textContent).toContain("Start");
+    expect(view({ priority: priority(["opening_hours"]) }).querySelector(".brief-priority-actions a")?.textContent).toContain("Add the missing facts");
+    expect(view({ locale: "zh-HK", priority: priority() }).querySelector(".brief-priority-actions a")?.textContent).toContain("開始處理");
+  });
+
+  it("folds the methodology into one closed 「為何可信」 disclosure", () => {
+    const disclosure = view().querySelector("details.trust-disclosure");
+    expect(disclosure).not.toBeNull();
+    expect(disclosure!.hasAttribute("open")).toBe(false);
+    expect(disclosure!.querySelector("summary")?.textContent).toContain("Why you can trust this");
+    for (const inside of [".workspace-agent-strip", ".integration-health-card", ".change-ledger-card", ".operational-footnote"]) {
+      expect(disclosure!.querySelector(inside)).not.toBeNull();
+    }
+    expect(view({ locale: "zh-HK" }).querySelector("details.trust-disclosure summary")?.textContent).toContain("為何可信");
+  });
+
+  it("keeps the decision queue outside the disclosure", () => {
+    const root = view();
+    expect(root.querySelector(".pending-approval-card")).not.toBeNull();
+    expect(root.querySelector("details.trust-disclosure .pending-approval-card")).toBeNull();
+  });
+
+  it("gives an empty week a concrete next step, naming Rescan only to someone who can use it", () => {
+    const paidOwner = view({ priority: null, withSnapshot: true, tier: "paid", role: "owner" }).querySelector(".brief-priority-card")?.textContent ?? "";
+    expect(paidOwner).toContain("Nothing new this week; check back after your next scan.");
+    expect(paidOwner).toContain("To check now, use Rescan.");
+    for (const textOf of [
+      view({ priority: null, withSnapshot: true, tier: "lite", role: "owner" }),
+      view({ priority: null, withSnapshot: true, tier: "paid", role: "viewer" }),
+    ]) {
+      const text = textOf.querySelector(".brief-priority-card")?.textContent ?? "";
+      expect(text).toContain("Nothing new this week; check back after your next scan.");
+      expect(text).not.toContain("Rescan");
+    }
+    expect(view({ locale: "zh-HK", priority: null, withSnapshot: true, tier: "lite" }).querySelector(".brief-priority-card")?.textContent).toContain("本週沒有新行動，下次掃描後再看。");
   });
 });
