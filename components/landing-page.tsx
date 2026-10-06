@@ -82,7 +82,7 @@ export function LandingPage({ locale, market: initialMarket, billing }: { locale
         eyebrow: "真實小店，更清晰的一日",
         sticker: "為日常營運而設",
         title: "少啲儀表板，多啲做決定嘅信心。",
-        body: "忙碌老闆不應花時間解讀複雜市場報告。SME Scanner 將公開可見度證據整理成一個簡短、可審閱的決定，再以可比較證據交代改變。",
+        body: "忙碌老闆不應花時間解讀複雜市場報告。SME Scanner 將公開能見度證據整理成一個簡短、可審閱的決定，再以可比較證據交代改變。",
         points: ["由你已經營緊的生意開始", "每項 AI 草稿都由老闆批准", "用簡單語言睇進度，而非虛榮指標"],
         cta: "由我的生意開始",
         mainAlt: "一位時裝設計師在工作室內繪畫設計草圖。",

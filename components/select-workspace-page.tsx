@@ -1,11 +1,12 @@
 import Link from "next/link"
-import { ArrowRight, Building2, MapPin, ScanSearch, ShieldCheck, TriangleAlert } from "lucide-react"
+import { ArrowRight, Building2, MapPin, ScanSearch, TriangleAlert } from "lucide-react"
 
 import { PublicPageFrame } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { PrototypeLocale } from "@/lib/copy"
 import type { WorkspaceCard } from "@/lib/workspace/queries"
+import { noWorkspaceCopy } from "@/lib/workspace/no-workspace-copy"
 import { avatarInitial, formatCoverage, roleLabel } from "@/lib/workspace/shell"
 
 function marketLabel(market: "hk" | "tw", isChinese: boolean) {
@@ -33,6 +34,7 @@ export function SelectWorkspacePage({
   denied,
   signOutAction,
   accessRequest,
+  oauthClaimEnabled = false,
 }: {
   locale: PrototypeLocale
   cards: WorkspaceCard[]
@@ -47,8 +49,11 @@ export function SelectWorkspacePage({
    * outstanding.
    */
   accessRequest?: React.ReactNode
+  /** WORKSPACE_CLAIM_VIA_OAUTH_ENABLED, read by the page; decides which claim control the empty state names. */
+  oauthClaimEnabled?: boolean
 }) {
   const isChinese = locale !== "en"
+  const empty = noWorkspaceCopy(locale, oauthClaimEnabled)
   return (
     <PublicPageFrame locale={locale}>
       <main className="select-workspace-page">
@@ -59,10 +64,12 @@ export function SelectWorkspacePage({
           <div className="empty-state">
             <span><Building2 /></span>
             <h2>{isChinese ? "尚未連結任何工作台" : "No workspace linked yet"}</h2>
-            <p>{isChinese ? "這個電郵未獲任何工作台的成員資格。先免費掃描並解鎖報告，或等待店主邀請你加入。" : "This email holds no workspace membership yet. Start with a free scan and unlock the report, or wait for an owner to invite you."}</p>
+            <p>{empty.lead}</p>
+            <p>{empty.owner}</p>
+            <p>{empty.colleague}</p>
             <div className="flow-card-footer">
-              <form action={signOutAction}><Button variant="outline" type="submit">{isChinese ? "登出" : "Sign out"}</Button></form>
-              <Button asChild><Link href={`/${locale}/scan`}><ScanSearch />{isChinese ? "先免費掃描" : "Start with a free scan"}<ArrowRight /></Link></Button>
+              <form action={signOutAction}><Button variant="outline" type="submit">{isChinese ? "登出並用另一個電郵登入" : "Sign out and use another email"}</Button></form>
+              <Button asChild><Link href={`/${locale}/scan`}><ScanSearch />{empty.scanCta}<ArrowRight /></Link></Button>
             </div>
           </div>
         ) : (
@@ -89,7 +96,6 @@ export function SelectWorkspacePage({
             })}
           </div>
         )}
-        <div className="permission-note"><ShieldCheck /><span>{isChinese ? "錯誤工作台或已撤銷會員的深層連結會被安全拒絕；地點脈絡會保留在後續頁面。" : "Wrong-workspace and revoked-membership links fail closed; location context is preserved across pages."}</span></div>
       </main>
     </PublicPageFrame>
   )

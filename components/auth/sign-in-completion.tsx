@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { authClient } from "@/lib/identity/client";
 import { authFlowHref, callbackHref, type AuthFlow } from "@/lib/identity/sign-in-flow";
+import { noWorkspaceCopy } from "@/lib/workspace/no-workspace-copy";
 
 import { signInCopy } from "./sign-in-copy";
 import styles from "./sign-in.module.css";
@@ -37,9 +38,14 @@ function completionMethod(flow: AuthFlow): "google" | "email" | null {
   return flow.method;
 }
 
-export function SignInCompletion({ flow }: { flow: AuthFlow }) {
+/**
+ * `oauthClaimEnabled` is WORKSPACE_CLAIM_VIA_OAUTH_ENABLED, read by the page:
+ * the no-access card names the claim control that actually renders (FA-13).
+ */
+export function SignInCompletion({ flow, oauthClaimEnabled = false }: { flow: AuthFlow; oauthClaimEnabled?: boolean }) {
   const router = useRouter();
   const copy = signInCopy[flow.locale];
+  const noWorkspace = noWorkspaceCopy(flow.locale, oauthClaimEnabled);
   const [screen, setScreen] = useState<Screen>("processing");
   const promise = useRef<Promise<Completion> | null>(null);
   const routerRef = useRef(router);
@@ -94,5 +100,5 @@ export function SignInCompletion({ flow }: { flow: AuthFlow }) {
   const technicalFailure = method === "email" ? copy.completionFailedEmail : method === "google" ? copy.completionFailedGoogle : copy.technicalFailure;
   const retryLabel = method === "email" ? copy.restartEmail : method === "google" ? copy.restartGoogle : copy.restartSignIn;
 
-  return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1>{screen === "processing" ? <p className={styles.status} role="status">{copy.processing}</p> : null}{screen === "no_access" ? <><p className={styles.alert} role="alert">{copy.noAccess}</p><button className={styles.primary} type="button" onClick={() => void changeAccount()}>{copy.changeAccount}</button></> : null}{screen === "changing" ? <p className={styles.status} role="status">{copy.changingAccount}</p> : null}{screen === "recover_completion" ? <><p className={styles.alert} role="alert">{technicalFailure}</p><button className={styles.primary} type="button" onClick={() => void retry()}>{retryLabel}</button></> : null}{screen === "recover_change_account" ? <><p className={styles.alert} role="alert">{copy.changeAccountFailed}</p><p className={styles.description}>{copy.technicalFailure}</p><button className={styles.primary} type="button" onClick={() => void changeAccount()}>{copy.changeAccount}</button></> : null}<p className={styles.privacy}>{copy.privacy}</p></div></section>;
+  return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1>{screen === "processing" ? <p className={styles.status} role="status">{copy.processing}</p> : null}{screen === "no_access" ? <><p className={styles.alert} role="alert">{copy.noAccess}</p><p className={styles.description}>{noWorkspace.owner}</p><p className={styles.description}>{noWorkspace.colleague}</p><a className={styles.primary} href={`/${flow.locale}/scan`}>{noWorkspace.scanCta}</a><button className={styles.secondary} type="button" onClick={() => void changeAccount()}>{copy.changeAccount}</button></> : null}{screen === "changing" ? <p className={styles.status} role="status">{copy.changingAccount}</p> : null}{screen === "recover_completion" ? <><p className={styles.alert} role="alert">{technicalFailure}</p><button className={styles.primary} type="button" onClick={() => void retry()}>{retryLabel}</button></> : null}{screen === "recover_change_account" ? <><p className={styles.alert} role="alert">{copy.changeAccountFailed}</p><p className={styles.description}>{copy.technicalFailure}</p><button className={styles.primary} type="button" onClick={() => void changeAccount()}>{copy.changeAccount}</button></> : null}<p className={styles.privacy}>{copy.privacy}</p></div></section>;
 }

@@ -4,6 +4,7 @@ import { PublicPageFrame } from "@/components/product-ui";
 import { SignInCompletion } from "@/components/auth/sign-in-completion";
 import { normaliseLocale } from "@/lib/copy";
 import { parseAuthFlow } from "@/lib/identity/sign-in-flow";
+import { claimViaOAuthEnabled } from "@/lib/oauth/claim-flow-flag";
 
 import { publicMetadata } from "../../../_meta";
 
@@ -23,5 +24,5 @@ export default async function OwnerSignInComplete({ params, searchParams }: { pa
     if (typeof value === "string") values.set(key, value);
   }
   const flow = parseAuthFlow(values);
-  return <PublicPageFrame locale={flow.locale}><main><SignInCompletion flow={flow} /></main></PublicPageFrame>;
+  return <PublicPageFrame locale={flow.locale}><main><SignInCompletion flow={flow} oauthClaimEnabled={claimViaOAuthEnabled()} /></main></PublicPageFrame>;
 }

@@ -1,4 +1,4 @@
-import { test, expect, requestSignInLink } from "../../test/e2e/fixtures";
+import { test, expect, requestSignInLink, signIn } from "../../test/e2e/fixtures";
 import { sql } from "../../test/e2e/environment";
 
 test("owned Google-style handoff shows processing before the authorized destination", async ({ page, merchant, environment }) => {
@@ -34,10 +34,42 @@ test("an accepted fixture account is not required for no-access recovery or a re
   await page.goto("/en/owner/sign-in");
   await page.getByRole("button", { name: "Continue with Google", exact: true }).click();
   await expect(page.getByText("This account does not have access to a workspace yet.")).toBeVisible();
+  // FA-13: the card names one real path (flag off here, so the report's claim button) and links only to the scan.
+  await expect(page.getByText("If you own the business: run a free scan, unlock the report, choose “Sign in to claim this business”, then follow the steps to have Fimmick verify and assign it.")).toBeVisible();
+  await expect(page.getByText("If you’re a colleague: ask the owner to add your email under “Team & roles”, then sign in again with that same email.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Start with a free scan", exact: true })).toHaveAttribute("href", "/en/scan");
   expect(accepted()).toBe("0");
   await page.getByRole("button", { name: "Change account", exact: true }).click();
   await expect(page.getByRole("button", { name: "Continue with Google", exact: true })).toBeVisible();
 });
+// FA-03. Literal strings on purpose (see visualCases below): this suite runs
+// with WORKSPACE_CLAIM_VIA_OAUTH_ENABLED=false, so the owner step must name the
+// report's claim button, never a Google control that does not render.
+for (const locale of ["en", "zh-HK"] as const) test(`a memberless account sees one real path to a workspace on select-workspace (${locale}, 375px)`, async ({ page, merchant, environment }) => {
+  // A revoked member is a memberless user with a live session: sign in as the
+  // seeded viewer, then remove that membership.
+  await signIn(page, environment, merchant, "viewer");
+  sql(environment.db, `delete from workspace_members where workspace_id='${merchant.workspaceId}' and email='${merchant.emails.viewer}';`);
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto(`/${locale}/owner/select-workspace`);
+  const empty = page.locator(".empty-state");
+  if (locale === "en") {
+    await expect(empty).toContainText("Your email isn’t linked to a workspace yet.");
+    await expect(empty).toContainText("choose “Sign in to claim this business”");
+    await expect(empty).toContainText("ask the owner to add your email under “Team & roles”");
+    await expect(page.getByText("fail closed")).toHaveCount(0);
+  } else {
+    await expect(empty).toContainText("你的電郵尚未連結任何工作台。");
+    await expect(empty).toContainText("解鎖報告後按「登入認領此商戶」");
+    await expect(empty).toContainText("請店主在「團隊與權限」加入你的電郵");
+    await expect(page.getByText("深層連結會被安全拒絕")).toHaveCount(0);
+  }
+  await expect(empty).not.toContainText("Google");
+  const links = await empty.locator("a").evaluateAll((anchors) => anchors.map((a) => a.getAttribute("href")));
+  expect(links).toEqual([`/${locale}/scan`]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});
+
 const acceptedMemberships = (environment: { db: string }, workspaceId: string) => sql(environment.db, `select count(*) from workspace_members where workspace_id='${workspaceId}' and accepted_at is not null;`);
 
 for (const fault of ["mapping", "binding", "revoked", "upstream"] as const) {
