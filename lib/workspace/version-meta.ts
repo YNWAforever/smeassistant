@@ -28,6 +28,9 @@ export type GuardrailCode =
   | "jsonld_mismatch"
   | "title_too_long"
   | "bio_too_long"
+  | "offer_price_mismatch"
+  | "offer_dates_missing"
+  | "offer_prohibited_term"
   /** P4.4 shared check: a link the owner never supplied. */
   | "unexpected_link"
   /** P4.4 shared check: a price or superlative absent from confirmed facts. */
@@ -96,6 +99,7 @@ export function classifyGuardrailWarning(warning: string): GuardrailFlag | null 
   if (warning === "jsonld_mismatch") return { code: "jsonld_mismatch" };
   if (warning === "unexpected_link") return { code: "unexpected_link" };
   if (warning === "unconfirmed_claim") return { code: "unconfirmed_claim" };
+  if (warning === "offer_price_mismatch" || warning === "offer_dates_missing" || warning === "offer_prohibited_term") return { code: warning };
   const over = /^(body|title|bio)_over_(\d+)_chars$/.exec(warning);
   if (over) {
     const code: GuardrailCode = over[1] === "title" ? "title_too_long" : over[1] === "bio" ? "bio_too_long" : "length";

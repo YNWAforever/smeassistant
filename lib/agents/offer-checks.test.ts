@@ -14,7 +14,8 @@ const offer = (over: Partial<OfferEvidence> = {}): OfferEvidence => ({
 });
 
 describe("offerPriceMismatch", () => {
-  it.each(["Set dinner HK$1,280 for two", "Set dinner $1280.00 for two", "兩人晚餐 1,280元", "兩人晚餐 1280蚊", "Set dinner HKD 1280 for two", "only HK$1,280."])(
+  // T-06: bare $ / 元 now warn because locale does not establish currency.
+  it.each(["Set dinner HK$1,280 for two", "Set dinner HKD1280.00 for two", "兩人晚餐 1,280港元", "兩人晚餐 1280蚊", "Set dinner HKD 1280 for two", "only HK$1,280."])(
     "reads %j as the offer's 1280 by value",
     (body) => {
       expect(offerPriceMismatch(body, offer())).toBe(false);
@@ -46,7 +47,8 @@ describe("offerPriceMismatch", () => {
   it("reads a Taiwan offer's NT$ and 元 forms", () => {
     const tw = offer({ price: { amount: 2800, currency: "TWD" } });
     expect(offerPriceMismatch("雙人套餐 NT$2,800", tw)).toBe(false);
-    expect(offerPriceMismatch("雙人套餐 2800元", tw)).toBe(false);
+    expect(offerPriceMismatch("雙人套餐 2800元", tw)).toBe(true);
+    expect(offerPriceMismatch("雙人套餐 2800新台幣", tw)).toBe(false);
     expect(offerPriceMismatch("雙人套餐 NT$2,500", tw)).toBe(true);
   });
 
@@ -56,12 +58,13 @@ describe("offerPriceMismatch", () => {
 });
 
 describe("offerDatesMissing", () => {
-  it.each(["Until 2026-10-19", "即日起至10月19日", "valid until 19/10", "valid until 19 Oct", "from 5 Oct to 19 October"])("finds the date in %j", (body) => {
+  it.each(["2026-10-05 to 2026-10-19", "10月5日至10月19日", "5/10 to 19/10", "from 5 Oct to 19 October"])("finds both dates in %j", (body) => {
     expect(offerDatesMissing(body, offer())).toBe(false);
   });
 
-  it("finds the start date too", () => {
-    expect(offerDatesMissing("Starts 2026-10-05", offer())).toBe(false);
+  it("warns when only one boundary appears (T-06 tightened contract)", () => {
+    expect(offerDatesMissing("Starts 2026-10-05", offer())).toBe(true);
+    expect(offerDatesMissing("Until 2026-10-19", offer())).toBe(true);
   });
 
   it("is missing when only a different date appears", () => {

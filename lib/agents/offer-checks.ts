@@ -31,14 +31,18 @@ export function promotionChannel(templateKey: string): PromotionChannel {
 
 const NUMBER = String.raw`\d[\d,]*(?:\.\d+)?`;
 // A prefix marker (HK$, NT$, $, HKD, TWD) or a suffix marker (元, 蚊) makes a number a price. 元旦 is New Year's Day.
-const PRICE = new RegExp(String.raw`(?:HK\$|NT\$|US\$|\$|HKD|TWD)\s?(${NUMBER})|(${NUMBER})\s?(?:元(?!旦)|蚊)`, "gi");
+const PRICE = new RegExp(String.raw`(HK\$|NT\$|US\$|HKD|TWD|USD|港元|新台幣|美元|\$)\s*(${NUMBER})|(${NUMBER})\s*(港元|新台幣|美元|蚊|元(?!旦))`, "gi");
 
-function priceValues(body: string): number[] {
-  const values: number[] = [];
+function priceValues(body: string): Array<{ amount: number; currency: "HKD" | "TWD" | "USD" | null }> {
+  const values: Array<{ amount: number; currency: "HKD" | "TWD" | "USD" | null }> = [];
   for (const match of body.matchAll(PRICE)) {
-    const raw = (match[1] ?? match[2]).replace(/,/g, "");
+    const raw = (match[2] ?? match[3]).replace(/,/g, "");
     const value = Number(raw);
-    if (Number.isFinite(value)) values.push(value);
+    const marker = (match[1] ?? match[4]).toUpperCase();
+    const currency = ["HK$", "HKD", "港元", "蚊"].includes(marker) ? "HKD"
+      : ["NT$", "TWD", "新台幣"].includes(marker) ? "TWD"
+      : ["US$", "USD", "美元"].includes(marker) ? "USD" : null;
+    if (Number.isFinite(value)) values.push({ amount: value, currency });
   }
   return values;
 }
@@ -54,38 +58,60 @@ export function offerPriceMismatch(body: string, offer: OfferEvidence): boolean 
   const prices = priceValues(body);
   if (!offer.price) return prices.length > 0;
   if (prices.length === 0) return true;
-  return prices.some((value) => Math.abs(value - offer.price!.amount) > PRICE_TOLERANCE);
+  return prices.some(value => value.currency !== offer.price!.currency || Math.abs(value.amount - offer.price!.amount) > PRICE_TOLERANCE);
 }
 
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"] as const;
 
 /** The forms one ISO date can take in a draft; empty when the input is not a real YYYY-MM-DD. */
-function dateForms(iso: string): RegExp[] {
+function dateParts(iso: string): DateMention | null {
   const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
-  if (!parts) return [];
+  if (!parts) return null;
   const month = Number(parts[2]);
   const day = Number(parts[3]);
-  if (month < 1 || month > 12 || day < 1 || day > 31) return [];
-  const m = `0?${month}`;
-  const d = `0?${day}`;
-  const mon = MONTHS[month - 1];
-  return [
-    // 2026-10-19 (not inside a longer digit run)
-    new RegExp(String.raw`(?<!\d)${parts[1]}-${parts[2]}-${parts[3]}(?!\d)`),
-    // 10月19日 / 10月19號
-    new RegExp(String.raw`(?<!\d)${m}\s?月\s?${d}\s?[日號号]`),
-    // 19/10 (also 19/10/2026)
-    new RegExp(String.raw`(?<!\d)${d}\s?/\s?${m}(?!\d)`),
-    // 19 Oct, 19th October
-    new RegExp(String.raw`(?<!\d)${d}(?:st|nd|rd|th)?\s+${mon}[a-z]*\b`, "i"),
-    // Oct 19
-    new RegExp(String.raw`\b${mon}[a-z]*\.?\s+${d}(?!\d)`, "i"),
-  ];
+  const value = { year: Number(parts[1]), month, day };
+  return validDate(value, value.year) ? value : null;
 }
 
-/** True when neither validity date appears in a recognised form (ISO, M月D日, D/M, D MMM). */
+type DateMention = { year: number | null; month: number; day: number };
+function validDate(value: DateMention, defaultYear: number | null): boolean {
+  const year = value.year ?? defaultYear;
+  if (year == null || year < 1000 || year > 9999) return false;
+  const date = new Date(Date.UTC(year, value.month-1, value.day));
+  return date.getUTCFullYear() === year && date.getUTCMonth()+1 === value.month && date.getUTCDate() === value.day;
+}
+
+/** Match complete date tokens once: a wrong explicit year cannot be stripped. */
+function dateMentions(body: string): DateMention[] {
+  const mentions: DateMention[] = [];
+  const occupied: Array<[number, number]> = [];
+  const collect = (pattern: RegExp, decode: (match: RegExpMatchArray) => DateMention) => {
+    for (const match of body.matchAll(pattern)) {
+      const start = match.index!; const end = start+match[0].length;
+      if (occupied.some(([a,b]) => start < b && end > a)) continue;
+      occupied.push([start,end]); mentions.push(decode(match));
+    }
+  };
+  collect(/(?<![\d/-])(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?![\d/-])/g, m => ({ year: Number(m[1]), month: Number(m[2]), day: Number(m[3]) }));
+  collect(/(?<![\d年])(?:(\d{4})\s*年\s*)?(\d{1,2})\s*月\s*(\d{1,2})\s*[日號号]/g, m => ({ year: m[1] ? Number(m[1]) : null, month: Number(m[2]), day: Number(m[3]) }));
+  collect(/(?<![\d/])(\d{1,2})\s*\/\s*(\d{1,2})(?:\s*\/\s*(\d{2,4}))?(?![\d/])/g, m => ({ year: m[3] ? Number(m[3]) : null, month: Number(m[2]), day: Number(m[1]) }));
+  const monthWords = "Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?";
+  const monthNumber = (word: string) => MONTHS.indexOf(word.slice(0,3).toLowerCase() as typeof MONTHS[number])+1;
+  collect(new RegExp(String.raw`(?<!\d)(\d{1,2})(?:st|nd|rd|th)?\s+(${monthWords})\b\.?(?:\s*,?\s*(\d{2,4})(?!\d))?`, "gi"), m => ({ year: m[3] ? Number(m[3]) : null, month: monthNumber(m[2]), day: Number(m[1]) }));
+  collect(new RegExp(String.raw`\b(${monthWords})\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s*,?\s*(\d{2,4})(?!\d))?(?!\d)`, "gi"), m => ({ year: m[3] ? Number(m[3]) : null, month: monthNumber(m[1]), day: Number(m[2]) }));
+  return mentions;
+}
+
+/** Both boundaries are required; cross-year dates need explicit years. */
 export function offerDatesMissing(body: string, offer: OfferEvidence): boolean {
-  return ![offer.valid_from, offer.valid_until].some((iso) => dateForms(iso).some((form) => form.test(body)));
+  const start = dateParts(offer.valid_from); const end = dateParts(offer.valid_until);
+  if (!start || !end || offer.valid_from > offer.valid_until) return true;
+  const dates = dateMentions(body);
+  if (dates.some(date => !validDate(date, start.year))) return true;
+  const crossYear = start.year !== end.year;
+  const sameDay = (a: DateMention, b: DateMention) => a.month === b.month && a.day === b.day;
+  if (dates.some(date => date.year != null && [start,end].some(boundary => sameDay(date,boundary) && date.year !== boundary.year))) return true;
+  return ![start,end].every(boundary => dates.some(date => sameDay(date,boundary) && (date.year === boundary.year || (!crossYear && date.year == null))));
 }
 
 /** The listed prohibited terms that appear in the body, case-insensitively, as listed. */

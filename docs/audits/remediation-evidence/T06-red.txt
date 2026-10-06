@@ -1,0 +1,106 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ lib/agents/offer-boundaries.test.ts (22 tests | 12 failed) 30ms
+   × warns on wrong or ambiguous currency: NT$88 11ms (retry x1)
+   × warns on wrong or ambiguous currency: US$88 2ms (retry x1)
+   × warns on wrong or ambiguous currency: $88 1ms (retry x1)
+   × warns on wrong or ambiguous currency: 88元 2ms (retry x1)
+   × accepts matching HKD amount and currency: 88港元 1ms (retry x1)
+   × requires both correct validity boundaries: 2026-10-05 1ms (retry x1)
+   × requires both correct validity boundaries: 19 Oct 1ms (retry x1)
+   × requires both correct validity boundaries: 2025年10月5日至2025年10月19日 1ms (retry x1)
+   × requires both correct validity boundaries: 5/10/2025 to 19/10/2025 1ms (retry x1)
+   × requires both correct validity boundaries: 5 Oct 2025 to 19 October 2025 1ms (retry x1)
+   × requires both correct validity boundaries: Oct 5, 2025 to Oct 19, 2025 1ms (retry x1)
+   × requires years for a cross-year offer and permits a one-day offer 1ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 12 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on wrong or ambiguous currency: NT$88
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on wrong or ambiguous currency: NT$88
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on wrong or ambiguous currency: US$88
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on wrong or ambiguous currency: US$88
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on wrong or ambiguous currency: $88
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on wrong or ambiguous currency: $88
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on wrong or ambiguous currency: 88元
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on wrong or ambiguous currency: 88元
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ lib/agents/offer-boundaries.test.ts:4:153
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/24]⎯
+
+ FAIL  lib/agents/offer-boundaries.test.ts > accepts matching HKD amount and currency: 88港元
+ FAIL  lib/agents/offer-boundaries.test.ts > accepts matching HKD amount and currency: 88港元
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ lib/agents/offer-boundaries.test.ts:5:144
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/24]⎯
+
+ FAIL  lib/agents/offer-boundaries.test.ts > requires both correct validity boundaries: 2026-10-05
+ FAIL  lib/agents/offer-boundaries.test.ts > requires both correct validity boundaries: 2026-10-05
+ FAIL  lib/agents/offer-boundaries.test.ts > requires both correct validity boundaries: 19 Oct
+ FAIL  lib/agents/offer-boundaries.test.ts > requires both correct validity boundaries: 19 Oct
+ FAIL  lib/agents/offer-boundaries.test.ts > requires both correct validity boundaries: 2025年10月5日至2025年10月19日
+ FAIL  lib/agents/offer-boundaries.test.ts > requires both correct validity boundaries: 2025年10月5日至2025年10月19日
+ FAIL  lib/agents/offer-boundaries.test.ts > requires both correct validity boundaries: 5/10/2025 to 19/10/2025
+ FAIL  lib/agents/offer-boundaries.test.ts > requires both correct validity boundaries: 5/10/2025 to 19/10/2025
+ FAIL  lib/agents/offer-boundaries.test.ts > requires both correct validity boundaries: 5 Oct 2025 to 19 October 2025
+ FAIL  lib/agents/offer-boundaries.test.ts > requires both correct validity boundaries: 5 Oct 2025 to 19 October 2025
+ FAIL  lib/agents/offer-boundaries.test.ts > requires both correct validity boundaries: Oct 5, 2025 to Oct 19, 2025
+ FAIL  lib/agents/offer-boundaries.test.ts > requires both correct validity boundaries: Oct 5, 2025 to Oct 19, 2025
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ lib/agents/offer-boundaries.test.ts:6:248
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/24]⎯
+
+ FAIL  lib/agents/offer-boundaries.test.ts > requires years for a cross-year offer and permits a one-day offer
+ FAIL  lib/agents/offer-boundaries.test.ts > requires years for a cross-year offer and permits a one-day offer
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ lib/agents/offer-boundaries.test.ts:10:51
+      8| it("requires years for a cross-year offer and permits a one-day offer"…
+      9|   const cross = { ...offer, valid_from: "2026-12-30", valid_until: "20…
+     10|   expect(offerDatesMissing("12月30日至1月2日", cross)).toBe(true);
+       |                                                   ^
+     11|   expect(offerDatesMissing("2026年12月30日至2027年1月2日", cross)).toBe(false…
+     12|   expect(offerDatesMissing("2026-10-05", { ...offer, valid_until: offe…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/24]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  12 failed | 10 passed (22)
+   Start at  03:23:33
+   Duration  1.19s (transform 63ms, setup 529ms, import 46ms, tests 30ms, environment 0ms)
+

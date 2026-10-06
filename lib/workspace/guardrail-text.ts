@@ -13,6 +13,12 @@ export function guardrailText(flag: GuardrailFlag, locale: PrototypeLocale, audi
   const isChinese = locale !== "en"
   const visitor = audience === "visitor"
   switch (flag.code) {
+    case "offer_price_mismatch":
+      return locale === "zh-HK" ? "優惠金額或貨幣缺漏、不一致或不明確；審批前請核對已確認優惠。" : locale === "zh-TW" ? "優惠金額或幣別缺漏、不一致或不明確；核准前請確認已確認優惠。" : "The offer amount or currency is missing, inconsistent or ambiguous; check the confirmed offer before approving."
+    case "offer_dates_missing":
+      return locale === "zh-HK" ? "優惠起訖日期缺漏或不一致；審批前請核對日期及年份。" : locale === "zh-TW" ? "優惠起訖日期缺漏或不一致；核准前請確認日期及年份。" : "The offer start and end dates are missing or inconsistent; check the dates and years before approving."
+    case "offer_prohibited_term":
+      return locale === "zh-HK" ? "含優惠禁用字眼；審批前請核對。" : locale === "zh-TW" ? "包含優惠禁用用語；核准前請確認。" : "Contains a prohibited offer term; check it before approving."
     case "unexpected_link":
       if (visitor) return locale === "zh-HK" ? "含有你沒有提供的連結，使用前請先檢查。" : locale === "zh-TW" ? "包含你沒有提供的連結，使用前請先確認。" : "Contains a link you did not supply — check it before using it."
       return locale === "zh-HK" ? "含有你沒有提供的連結，審批前請先檢查。" : locale === "zh-TW" ? "包含你沒有提供的連結，核准前請先確認。" : "Contains a link you did not supply — check it before approving."
