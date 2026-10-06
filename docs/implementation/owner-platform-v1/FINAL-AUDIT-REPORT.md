@@ -22,7 +22,7 @@ Gate results for the candidate are in [`FINAL-AUDIT-TEST-RESULTS.md`](FINAL-AUDI
 | FA-01 | R, blocker | Unchanged: no hosted core-journey row has been run. Owner action (§6). |
 | FA-02 | R, blocker | Confirmed in code: with `WORKSPACE_CLAIM_VIA_OAUTH_ENABLED` not `true`, step 2 asks Fimmick, and with `OPERATOR_EMAILS` unset no one can act in-app (§3, S3). Config values not read. |
 | FA-03 | U | **Fixed** (`ae0cbb8`). Wording differs from the brief in two places, both for accuracy (§2.1). |
-| FA-04 | U (hypothesis) | Design note and copy table only (§4). Render order confirmed; the 375 px first screen not measured. |
+| FA-04 | U (hypothesis) | Design note (§4); **implemented 2026-10-06 on `fa04-home-today`** after Willy chose it as the next work (§4.1). Owner walkthroughs (FA-01) still pending. |
 | FA-05 | I | Unchanged (DEC-10). |
 | FA-06 | I | Unchanged; closed. |
 | FA-07 | R | Unchanged; owner action. |
@@ -186,7 +186,18 @@ Owner nav: Offers is omitted when off (`lib/workspace/shell.ts:103`); packs have
 | 快照 | 這次掃描 | This scan | brief §3 vocabulary pass |
 | 可比較 / 已量度 | 可以比較 / 已查到 | Comparable / Found | precise term moves to a tooltip |
 
-zh-TW follows in the same register (店家/核准/您) when implemented. Dependencies: FA-01 walkthroughs. **Not implemented** (brief §7).
+zh-TW follows in the same register (店家/核准/您) when implemented. Dependencies: FA-01 walkthroughs.
+
+### 4.1 Implemented (2026-10-06, branch `fa04-home-today`)
+
+Approved by Willy after the audit closed, as the code track while hosted checks are pending. What shipped, against the proposal above:
+
+- **Order:** intro → problems → all-locations banner → 今日要做 card → score/proof → this month → decision queue (now standalone) → work pack / Fix Pack → closed 「為何可信」 `<details>` holding the AI-team strip, source reliability, change ledger, evidence gallery and footnote. A broken Google connection stays visible above it through the problems banner (`google_connection` is an owner failure kind).
+- **Copy (`lib/copy.ts` home, 3 locales):** label 今日要做 / Do this today; button 開始處理 / Start, or 補充資料 / Add the missing facts; 為何是現在 (zh-TW 為什麼是現在) / Why now; disclosure 為何可信 / Why you can trust this. Empty week: 本週沒有新行動，下次掃描後再看。, plus 想現在檢查，可按「重新掃描」。 only for a paid owner or manager (the same rule RescanButton uses).
+- **Not changed:** the 「快照」 vocabulary pass and the other rows of the copy table above (out of scope).
+- **375 px:** moving the strip was not enough (the button ended 14–24 px under the bottom nav). Willy chose to put Rescan and the location select in one row on phones; the title's mobile top margin also went from 24 to 12 px. Measured clearance: en 32 px, zh-HK 18 px.
+- **Tests:** `components/workspace/home-brief.test.tsx` "today-first layout (FA-04)" (6 cases, written first and seen failing); `e2e/acceptance/home-today.spec.ts` (en, zh-HK, zh-TW at 375×812: title and button bottoms ≤ the bottom nav's top, `scrollY` 0, disclosure closed then opens, no horizontal scroll).
+- **Seen, not changed:** on desktop the lite-tier Rescan note wraps awkwardly beside the button (pre-existing).
 
 ---
 
