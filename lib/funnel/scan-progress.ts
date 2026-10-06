@@ -18,7 +18,7 @@ export const MAX_POLL_DELAY_MS = 8000;
 export const POLL_BACKOFF_FACTOR = 1.5;
 export const REPORT_REDIRECT_DELAY_MS = 1500;
 
-export type ModuleProviderState = "measured" | "unavailable" | "unsupported" | "failed" | "pending";
+export type ModuleProviderState = "measured" | "unavailable" | "unsupported" | "failed" | "pending" | "not_provided";
 
 export interface ScanStatusResponse {
   status: string;
@@ -76,41 +76,45 @@ export const COLLECTOR_KEYS: CollectorKey[] = ["google_business", "instagram", "
  * `stalled` is a client display overlay applied by stallCollectorPhases, never
  * something collectorPhases() derives from a server response.
  */
-export type CollectorPhase = "pending" | "running" | "done" | "unavailable" | "failed" | "stalled";
+export type CollectorPhase = "pending" | "running" | "awaiting_result" | "not_provided" | "done" | "unavailable" | "failed" | "stalled";
 
 /**
- * `moduleStates` (from GET /api/scan/status, only present once terminal) is
- * the real per-module outcome -- reusing it here is what stops a `partial`
- * scan from showing "Measured" for a collector that did not actually measure
- * anything. Without it (still running, or an older response shape), all three
- * collectors fall back to the coarser stage-based phase below.
+ * Explicit per-module outcomes are authoritative. A passed stage only says
+ * that the collector stopped running; it does not prove measurement. Legacy
+ * terminal responses without outcomes keep each collector unknown.
  */
 export function collectorPhases(
   processingStage: string | null | undefined,
   status: string,
   moduleStates?: Record<CollectorKey, ModuleProviderState> | null,
 ): Record<CollectorKey, CollectorPhase> {
-  if ((status === "done" || status === "partial" || status === "failed") && moduleStates) {
-    const phaseFor = (state: ModuleProviderState): CollectorPhase =>
-      state === "measured" ? "done" : state === "failed" ? "failed" : state === "pending" ? "pending" : "unavailable";
+  if (moduleStates) {
+    const phaseFor = (state: ModuleProviderState): CollectorPhase => {
+      switch (state) {
+        case "measured": return "done";
+        case "failed": return "failed";
+        case "pending": return "pending";
+        case "not_provided": return "not_provided";
+        case "unsupported": case "unavailable": return "unavailable";
+        default: return "awaiting_result";
+      }
+    };
     return {
       google_business: phaseFor(moduleStates.google_business),
       instagram: phaseFor(moduleStates.instagram),
       search_ai: phaseFor(moduleStates.search_ai),
     };
   }
-  if (status === "failed") return { google_business: "failed", instagram: "failed", search_ai: "failed" };
-  if (status === "partial") return { google_business: "unavailable", instagram: "unavailable", search_ai: "unavailable" };
-  if (status === "done") return { google_business: "done", instagram: "done", search_ai: "done" };
+  if (isTerminalStatus(status)) return { google_business: "awaiting_result", instagram: "awaiting_result", search_ai: "awaiting_result" };
   const stage = processingStage ?? status;
   switch (stage) {
     case "collecting_ig_gbp":
       return { google_business: "running", instagram: "running", search_ai: "pending" };
     case "collecting_aeo":
-      return { google_business: "done", instagram: "done", search_ai: "running" };
+      return { google_business: "awaiting_result", instagram: "awaiting_result", search_ai: "running" };
     case "scoring":
     case "persisting":
-      return { google_business: "done", instagram: "done", search_ai: "done" };
+      return { google_business: "awaiting_result", instagram: "awaiting_result", search_ai: "awaiting_result" };
     default:
       return { google_business: "pending", instagram: "pending", search_ai: "pending" };
   }
@@ -257,7 +261,7 @@ export function scanViewState(input: { status: string; stalledReason: StalledRea
  * about what was still in flight.
  */
 export function stallCollectorPhases(phases: Record<CollectorKey, CollectorPhase>): Record<CollectorKey, CollectorPhase> {
-  const overlay = (phase: CollectorPhase): CollectorPhase => (phase === "pending" || phase === "running" ? "stalled" : phase);
+  const overlay = (phase: CollectorPhase): CollectorPhase => (phase === "pending" || phase === "running" || phase === "awaiting_result" ? "stalled" : phase);
   return {
     google_business: overlay(phases.google_business),
     instagram: overlay(phases.instagram),

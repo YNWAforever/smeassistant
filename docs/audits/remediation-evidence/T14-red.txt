@@ -1,0 +1,122 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ components/report/dashboard.test.tsx (36 tests | 3 failed) 4486ms
+   × localizes unavailable module notes and hides raw provider text: en 867ms (retry x1)
+   × localizes unavailable module notes and hides raw provider text: zh-HK 174ms (retry x1)
+   × localizes unavailable module notes and hides raw provider text: zh-TW 120ms (retry x1)
+ ❯ lib/funnel/report-labels.test.ts (3 tests | 3 failed) 371ms
+   × keeps unknown provider diagnostics out of owner copy: en 306ms (retry x1)
+   × keeps unknown provider diagnostics out of owner copy: zh-HK 31ms (retry x1)
+   × keeps unknown provider diagnostics out of owner copy: zh-TW 7ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/report/dashboard.test.tsx > localizes unavailable module notes and hides raw provider text: en
+ FAIL  components/report/dashboard.test.tsx > localizes unavailable module notes and hides raw provider text: en
+AssertionError: expected 'Key statisticsObservedInstagramFollow…' not to contain 'IG handle not provided'
+
+Expected: "IG handle not provided"
+Received: "Key statisticsObservedInstagramFollowers0followers2026-09-07UnavailableInstagramSampled engagementMeasurement unavailableNo supported engagement measurement2026-09-07UnavailableReport rubric scoresScores use the report criteria, out of 100. Missing evidence is not a zero score.InstagramUnavailableMeasurement unavailable2026-09-07There is not enough supported evidence to report this measurement.Measurement detailsIG handle not providedInstagram handle not providedSearchUnavailableMeasurement unavailableObservation date unavailableThere is not enough supported evidence to report this measurement.Measurement detailsTRUST not measuredTrust signals not measuredObserved search comparisonsBusinesses observed for this query and engine. This sample is not an industry average.No matching observed statistics are available for comparison."
+
+ ❯ components/report/dashboard.test.tsx:38:20
+     36|   expect(text).toContain(ig);
+     37|   expect(text).toContain(trust);
+     38|   expect(text).not.toContain("IG handle not provided");
+       |                    ^
+     39|   expect(text).not.toContain("TRUST not measured");
+     40| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/12]⎯
+
+ FAIL  components/report/dashboard.test.tsx > localizes unavailable module notes and hides raw provider text: zh-HK
+ FAIL  components/report/dashboard.test.tsx > localizes unavailable module notes and hides raw provider text: zh-HK
+AssertionError: expected '關鍵數據ObservedInstagramFollowers0位追蹤者20…' to contain '信任訊號未量度'
+
+Expected: "信任訊號未量度"
+Received: "關鍵數據ObservedInstagramFollowers0位追蹤者2026-09-07UnavailableInstagramSampled engagement未能量度No supported engagement measurement2026-09-07Unavailable報告準則評分按報告準則評分，滿分 100。缺少證據不等於零分。InstagramUnavailable未能量度2026-09-07目前證據不足，未能提供此項量度。量度詳情IG handle not provided未提供 Instagram 帳號SearchUnavailable未能量度觀察日期未有提供目前證據不足，未能提供此項量度。量度詳情TRUST not measured信任指標未能量度搜尋結果實測比較只比較此搜尋字詞及引擎觀察到的商戶，樣本並非行業平均。目前沒有相符的實測數據可供比較。"
+
+ ❯ components/report/dashboard.test.tsx:37:16
+     35|   const text = markup(<DashboardMetrics report={unavailable} dashboard…
+     36|   expect(text).toContain(ig);
+     37|   expect(text).toContain(trust);
+       |                ^
+     38|   expect(text).not.toContain("IG handle not provided");
+     39|   expect(text).not.toContain("TRUST not measured");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/12]⎯
+
+ FAIL  components/report/dashboard.test.tsx > localizes unavailable module notes and hides raw provider text: zh-TW
+ FAIL  components/report/dashboard.test.tsx > localizes unavailable module notes and hides raw provider text: zh-TW
+AssertionError: expected '關鍵數據ObservedInstagramFollowers0位追蹤者20…' to contain '信任訊號尚未量測'
+
+Expected: "信任訊號尚未量測"
+Received: "關鍵數據ObservedInstagramFollowers0位追蹤者2026-09-07UnavailableInstagramSampled engagement無法衡量No supported engagement measurement2026-09-07Unavailable報告準則評分依報告準則評分，滿分 100。缺少證據不等於零分。InstagramUnavailable無法衡量2026-09-07目前證據不足，無法提供此項衡量。衡量詳情IG handle not provided尚未提供 Instagram 帳號SearchUnavailable無法衡量未提供觀察日期目前證據不足，無法提供此項衡量。衡量詳情TRUST not measured信任指標未能量測搜尋結果實測比較僅比較此搜尋字詞及引擎觀察到的店家，樣本並非產業平均。目前沒有相符的實測數據可供比較。"
+
+ ❯ components/report/dashboard.test.tsx:37:16
+     35|   const text = markup(<DashboardMetrics report={unavailable} dashboard…
+     36|   expect(text).toContain(ig);
+     37|   expect(text).toContain(trust);
+       |                ^
+     38|   expect(text).not.toContain("IG handle not provided");
+     39|   expect(text).not.toContain("TRUST not measured");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/12]⎯
+
+ FAIL  lib/funnel/report-labels.test.ts > keeps unknown provider diagnostics out of owner copy: en
+ FAIL  lib/funnel/report-labels.test.ts > keeps unknown provider diagnostics out of owner copy: en
+AssertionError: expected 'PROVIDER internal secret detail' to be 'Evidence could not be measured' // Object.is equality
+
+Expected: "Evidence could not be measured"
+Received: "PROVIDER internal secret detail"
+
+ ❯ lib/funnel/report-labels.test.ts:8:70
+      6|   ["zh-TW", "無法量測這項證據"],
+      7| ])("keeps unknown provider diagnostics out of owner copy: %s", (locale…
+      8|   expect(limitationLabel(locale, "PROVIDER_INTERNAL_SECRET_DETAIL")).t…
+       |                                                                      ^
+      9| });
+     10|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/12]⎯
+
+ FAIL  lib/funnel/report-labels.test.ts > keeps unknown provider diagnostics out of owner copy: zh-HK
+ FAIL  lib/funnel/report-labels.test.ts > keeps unknown provider diagnostics out of owner copy: zh-HK
+AssertionError: expected 'PROVIDER internal secret detail' to be '未能量度這項證據' // Object.is equality
+
+Expected: "未能量度這項證據"
+Received: "PROVIDER internal secret detail"
+
+ ❯ lib/funnel/report-labels.test.ts:8:70
+      6|   ["zh-TW", "無法量測這項證據"],
+      7| ])("keeps unknown provider diagnostics out of owner copy: %s", (locale…
+      8|   expect(limitationLabel(locale, "PROVIDER_INTERNAL_SECRET_DETAIL")).t…
+       |                                                                      ^
+      9| });
+     10|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/12]⎯
+
+ FAIL  lib/funnel/report-labels.test.ts > keeps unknown provider diagnostics out of owner copy: zh-TW
+ FAIL  lib/funnel/report-labels.test.ts > keeps unknown provider diagnostics out of owner copy: zh-TW
+AssertionError: expected 'PROVIDER internal secret detail' to be '無法量測這項證據' // Object.is equality
+
+Expected: "無法量測這項證據"
+Received: "PROVIDER internal secret detail"
+
+ ❯ lib/funnel/report-labels.test.ts:8:70
+      6|   ["zh-TW", "無法量測這項證據"],
+      7| ])("keeps unknown provider diagnostics out of owner copy: %s", (locale…
+      8|   expect(limitationLabel(locale, "PROVIDER_INTERNAL_SECRET_DETAIL")).t…
+       |                                                                      ^
+      9| });
+     10|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/12]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  6 failed | 33 passed (39)
+   Start at  03:18:59
+   Duration  26.02s (transform 9.28s, setup 2.84s, import 12.46s, tests 4.86s, environment 2.63s)
+

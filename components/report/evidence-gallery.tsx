@@ -5,6 +5,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, Dia
 import { copy } from "@/lib/copy";
 import type { ReportEvidenceItem, ReportProps } from "@/lib/funnel/report-props";
 import { interpolate } from "@/lib/share";
+import { limitationCopy } from "@/lib/funnel/report-labels";
 import styles from "./evidence-gallery.module.css";
 
 type GalleryProps = { items: ReportEvidenceItem[]; locale: ReportProps["locale"] };
@@ -30,7 +31,7 @@ function EvidenceCard({ item, locale, title }: { item: ReportEvidenceItem; local
     <small><time dateTime={item.capturedAt}>{interpolate(c.evidenceCaptured, { date: item.capturedAt })}</time></small>
     {item.publishedAt && <small><time dateTime={item.publishedAt}>{interpolate(c.evidencePublished, { date: item.publishedAt })}</time></small>}
     {source && <a href={source} target="_blank" rel="noreferrer noopener">{c.evidenceSource}</a>}
-    {item.limitationCode && <small>{item.limitationCode}</small>}
+    {item.limitationCode && <small>{limitationCopy(locale, item.limitationCode).reason}</small>}
     {item.text && <details><summary>{c.evidenceCaption}</summary><p>{item.text}</p></details>}
   </div>;
   return <article className={styles.card}>

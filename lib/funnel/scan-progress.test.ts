@@ -75,16 +75,16 @@ describe("collectorPhases", () => {
     const phases = collectorPhases(null, "done", { google_business: "measured", instagram: "measured", search_ai: "measured" });
     expect(phases).toEqual({ google_business: "done", instagram: "done", search_ai: "done" });
   });
-  it("falls back to an honest 'unavailable' blanket on a partial job with no module states available", () => {
-    expect(collectorPhases(null, "partial")).toEqual({ google_business: "unavailable", instagram: "unavailable", search_ai: "unavailable" });
+  it("keeps outcomes unknown on a legacy partial job", () => {
+    expect(collectorPhases(null, "partial")).toEqual({ google_business: "awaiting_result", instagram: "awaiting_result", search_ai: "awaiting_result" });
   });
   it("honors real mixed per-module states even when the overall scan status is failed", () => {
     expect(collectorPhases(null, "failed", { google_business: "measured", instagram: "unavailable", search_ai: "failed" })).toEqual({
       google_business: "done", instagram: "unavailable", search_ai: "failed",
     });
   });
-  it("falls back to a blanket failed phase on outright failure with no module states available", () => {
-    expect(collectorPhases(null, "failed")).toEqual({ google_business: "failed", instagram: "failed", search_ai: "failed" });
+  it("does not assign a global failure to each unknown collector", () => {
+    expect(collectorPhases(null, "failed")).toEqual({ google_business: "awaiting_result", instagram: "awaiting_result", search_ai: "awaiting_result" });
   });
   it("uses the coarser stage-based phase while the scan is still running", () => {
     expect(collectorPhases("collecting_ig_gbp", "collecting_ig_gbp")).toEqual({ google_business: "running", instagram: "running", search_ai: "pending" });

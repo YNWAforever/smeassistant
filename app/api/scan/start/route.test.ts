@@ -63,6 +63,13 @@ const validBody = {
 const consentRow = { consent_type: "public_evidence", granted: true, policy_version: LEGAL_POLICY_VERSION, locale: "en" };
 
 describe("POST /api/scan/start scan consent", () => {
+  it.each(["not-a-url", "https://user:password@example.test", 42])("refuses invalid website before quota and job writes: %s", async website_url => {
+    const response = await POST(request({ ...validBody, website_url }));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "website_url is invalid" });
+    expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+    expect(mocks.insert).not.toHaveBeenCalled();
+  });
   it("refuses a direct POST with no consent, before the limiter and before any database work", async () => {
     const withoutConsent: Record<string, unknown> = { ...validBody };
     delete withoutConsent.public_evidence_consent;

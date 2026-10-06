@@ -1,0 +1,150 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ lib/funnel/collector-outcomes.test.ts (7 tests | 7 failed) 28ms
+   × never infers measured outcomes from stage collecting_aeo 8ms (retry x1)
+   × never infers measured outcomes from stage scoring 1ms (retry x1)
+   × never infers measured outcomes from stage persisting 1ms (retry x1)
+   × keeps legacy terminal payload outcomes unknown: done 7ms (retry x1)
+   × keeps legacy terminal payload outcomes unknown: partial 3ms (retry x1)
+   × keeps legacy terminal payload outcomes unknown: failed 3ms (retry x1)
+   × keeps evidenced outcomes while overlaying a stalled unknown result 3ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/funnel/collector-outcomes.test.ts > never infers measured outcomes from stage collecting_aeo
+ FAIL  lib/funnel/collector-outcomes.test.ts > never infers measured outcomes from stage collecting_aeo
+AssertionError: expected [ 'done', 'done', 'running' ] to not include 'done'
+ ❯ lib/funnel/collector-outcomes.test.ts:6:37
+      4| it.each(["collecting_aeo", "scoring", "persisting"])("never infers mea…
+      5|   const phases = collectorPhases(stage, "processing", null);
+      6|   expect(Object.values(phases)).not.toContain("done");
+       |                                     ^
+      7|   expect(phases.instagram).toBe("awaiting_result");
+      8| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/14]⎯
+
+ FAIL  lib/funnel/collector-outcomes.test.ts > never infers measured outcomes from stage scoring
+ FAIL  lib/funnel/collector-outcomes.test.ts > never infers measured outcomes from stage scoring
+ FAIL  lib/funnel/collector-outcomes.test.ts > never infers measured outcomes from stage persisting
+ FAIL  lib/funnel/collector-outcomes.test.ts > never infers measured outcomes from stage persisting
+AssertionError: expected [ 'done', 'done', 'done' ] to not include 'done'
+ ❯ lib/funnel/collector-outcomes.test.ts:6:37
+      4| it.each(["collecting_aeo", "scoring", "persisting"])("never infers mea…
+      5|   const phases = collectorPhases(stage, "processing", null);
+      6|   expect(Object.values(phases)).not.toContain("done");
+       |                                     ^
+      7|   expect(phases.instagram).toBe("awaiting_result");
+      8| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/14]⎯
+
+ FAIL  lib/funnel/collector-outcomes.test.ts > keeps legacy terminal payload outcomes unknown: done
+ FAIL  lib/funnel/collector-outcomes.test.ts > keeps legacy terminal payload outcomes unknown: done
+AssertionError: expected [ 'done', 'done', 'done' ] to deeply equal [ 'awaiting_result', …(2) ]
+
+- Expected
++ Received
+
+  [
+-   "awaiting_result",
+-   "awaiting_result",
+-   "awaiting_result",
++   "done",
++   "done",
++   "done",
+  ]
+
+ ❯ lib/funnel/collector-outcomes.test.ts:10:56
+      8| });
+      9| it.each(["done", "partial", "failed"])("keeps legacy terminal payload …
+     10|   expect(Object.values(collectorPhases(null, status))).toEqual(["await…
+       |                                                        ^
+     11| });
+     12| it("keeps evidenced outcomes while overlaying a stalled unknown result…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/14]⎯
+
+ FAIL  lib/funnel/collector-outcomes.test.ts > keeps legacy terminal payload outcomes unknown: partial
+ FAIL  lib/funnel/collector-outcomes.test.ts > keeps legacy terminal payload outcomes unknown: partial
+AssertionError: expected [ 'unavailable', 'unavailable', …(1) ] to deeply equal [ 'awaiting_result', …(2) ]
+
+- Expected
++ Received
+
+  [
+-   "awaiting_result",
+-   "awaiting_result",
+-   "awaiting_result",
++   "unavailable",
++   "unavailable",
++   "unavailable",
+  ]
+
+ ❯ lib/funnel/collector-outcomes.test.ts:10:56
+      8| });
+      9| it.each(["done", "partial", "failed"])("keeps legacy terminal payload …
+     10|   expect(Object.values(collectorPhases(null, status))).toEqual(["await…
+       |                                                        ^
+     11| });
+     12| it("keeps evidenced outcomes while overlaying a stalled unknown result…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/14]⎯
+
+ FAIL  lib/funnel/collector-outcomes.test.ts > keeps legacy terminal payload outcomes unknown: failed
+ FAIL  lib/funnel/collector-outcomes.test.ts > keeps legacy terminal payload outcomes unknown: failed
+AssertionError: expected [ 'failed', 'failed', 'failed' ] to deeply equal [ 'awaiting_result', …(2) ]
+
+- Expected
++ Received
+
+  [
+-   "awaiting_result",
+-   "awaiting_result",
+-   "awaiting_result",
++   "failed",
++   "failed",
++   "failed",
+  ]
+
+ ❯ lib/funnel/collector-outcomes.test.ts:10:56
+      8| });
+      9| it.each(["done", "partial", "failed"])("keeps legacy terminal payload …
+     10|   expect(Object.values(collectorPhases(null, status))).toEqual(["await…
+       |                                                        ^
+     11| });
+     12| it("keeps evidenced outcomes while overlaying a stalled unknown result…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/14]⎯
+
+ FAIL  lib/funnel/collector-outcomes.test.ts > keeps evidenced outcomes while overlaying a stalled unknown result
+ FAIL  lib/funnel/collector-outcomes.test.ts > keeps evidenced outcomes while overlaying a stalled unknown result
+AssertionError: expected { google_business: 'done', …(2) } to deeply equal { google_business: 'done', …(2) }
+
+- Expected
++ Received
+
+  {
+    "google_business": "done",
+-   "instagram": "stalled",
++   "instagram": "awaiting_result",
+    "search_ai": "failed",
+  }
+
+ ❯ lib/funnel/collector-outcomes.test.ts:13:112
+     11| });
+     12| it("keeps evidenced outcomes while overlaying a stalled unknown result…
+     13|   expect(stallCollectorPhases({ google_business: "done", instagram: "a…
+       |                                                                                                                ^
+     14| });
+     15|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/14]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  7 failed (7)
+   Start at  03:14:05
+   Duration  3.14s (transform 295ms, setup 1.51s, import 275ms, tests 28ms, environment 0ms)
+

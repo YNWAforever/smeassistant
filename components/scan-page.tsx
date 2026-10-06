@@ -58,6 +58,7 @@ import type { TemplateKey } from "@/lib/workspace/templates"
 import { t } from "@/lib/i18n"
 import { scanStartRefusal } from "@/lib/budgets/messages"
 import { interpolate } from "@/lib/share"
+import { resolveScanWebsite } from "@/lib/scan/website-url"
 import { DISTRICTS_HK, DISTRICTS_TW, INDUSTRIES_HK, INDUSTRIES_TW } from "@sme-scanner/region"
 
 // Keep the initial wizard controls inert until their handlers are attached.
@@ -112,6 +113,10 @@ export function ScanPage({
 
   const requestId = useRef(0)
   const lastQuery = useRef("")
+  const websiteInput = useRef<HTMLInputElement>(null)
+  const website = resolveScanWebsite(draft)
+  const validWebsite = website.ok
+  const resolvedWebsite = website.ok ? website.value : null
 
   const update = useCallback((patch: Partial<ScanDraft>) => {
     setDraft((current) => ({ ...current, ...patch }))
@@ -163,6 +168,7 @@ export function ScanPage({
   }, [draft.businessName, draft.mapsUrl, runSearch, searchMarket, step])
 
   async function findInstagram() {
+    if (!website.ok) { setError(c.errors.website); websiteInput.current?.focus(); return }
     setIgSearch({ status: "searching", candidates: [], message: null })
     try {
       const { url, init } = buildInstagramSearchRequest({
@@ -170,7 +176,7 @@ export function ScanPage({
         businessName: draft.businessName,
         sessionId: businessSearchSessionId(),
         ...(draft.district ? { district: draft.district } : {}),
-        ...(draft.websiteUrl.trim() ? { websiteUrl: draft.websiteUrl.trim() } : {}),
+        ...(website.value ? { websiteUrl: website.value } : {}),
       })
       const response = await fetch(url, init)
       const data = (await response.json().catch(() => ({}))) as { outcome?: string; error?: string; candidates?: InstagramCandidate[] }
@@ -191,7 +197,7 @@ export function ScanPage({
     const confirmed = candidateHasIdentity(draft.candidate) && !draft.manualEntry
     return [
       { key: "google", label: c.sourceGoogle, ok: confirmed, note: confirmed ? null : c.sourceManual },
-      { key: "website", label: c.sourceWebsite, ok: Boolean(draft.websiteUrl.trim()), note: draft.websiteUrl.trim() ? null : c.sourceNotProvided },
+      { key: "website", label: c.sourceWebsite, ok: validWebsite && Boolean(resolvedWebsite), note: !validWebsite ? c.errors.website : resolvedWebsite ? null : c.sourceNotProvided },
       { key: "aeo", label: c.sourceSearchAi, ok: true, note: null },
       {
         key: "instagram",
@@ -200,7 +206,7 @@ export function ScanPage({
         note: normaliseInstagramHandle(draft.instagramHandle) ? null : c.sourceNotProvided,
       },
     ]
-  }, [c, draft.candidate, draft.instagramHandle, draft.manualEntry, draft.websiteUrl])
+  }, [c, draft.candidate, draft.instagramHandle, draft.manualEntry, validWebsite, resolvedWebsite])
 
   const requestedCount = requestedSources.filter((source) => source.ok).length
 
@@ -236,7 +242,7 @@ export function ScanPage({
         return
       }
       if (!response.ok || !isJobId(data.jobId)) {
-        setError(data.error ?? c.errors.submit)
+        setError(data.error === "website_url is invalid" ? c.errors.website : data.error ?? c.errors.submit)
         return
       }
       router.push(`/${locale}/scanning/${data.jobId}`)
@@ -248,6 +254,12 @@ export function ScanPage({
   }
 
   function next() {
+    if (step >= 3 && !website.ok) {
+      setError(c.errors.website)
+      setStep(3)
+      websiteInput.current?.focus()
+      return
+    }
     if (step === 1 && !draft.businessName.trim()) {
       setError(c.errors.business)
       return
@@ -540,8 +552,9 @@ export function ScanPage({
                     <Label htmlFor="website">
                       {c.websiteLabel} <span>{c.optional}</span>
                     </Label>
-                    <Input disabled={!hydrated} id="website" inputMode="url" value={draft.websiteUrl} onChange={(event) => update({ websiteUrl: event.target.value })} />
-                    <small>{c.websiteHelp}</small>
+                    <Input ref={websiteInput} disabled={!hydrated} id="website" inputMode="url" aria-invalid={!website.ok} aria-describedby={!website.ok ? "website-error" : "website-help"} value={draft.websiteUrl} onChange={(event) => update({ websiteUrl: event.target.value })} />
+                    <small id="website-help">{c.websiteHelp}</small>
+                    {!website.ok ? <small id="website-error">{c.errors.website}</small> : null}
                   </div>
                   <div className="field-stack">
                     <Label htmlFor="instagram">
