@@ -80,7 +80,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   repository.snapshots.mockImplementation(async (_workspaceId, locationId) => state.snapshots.filter(row => row.location_id === locationId));
   repository.diff.mockImplementation(async id => state.diffs[id] ?? null);
-  repository.actions.mockImplementation(async () => state.actions);
+  // E28: mirror repository WHERE predicates; a states filter cannot return all.
+  repository.actions.mockImplementation(async (workspaceId, opts: { locationId?: string | null; states?: string[]; ids?: string[] } = {}) => state.actions.filter(row =>
+    row.workspace_id === workspaceId && (!opts.locationId || row.location_id === opts.locationId || row.location_id == null)
+    && (!opts.states || opts.states.includes(row.action_state as string)) && (!opts.ids || opts.ids.includes(row.id as string))));
   repository.runs.mockImplementation(async () => state.runs);
   repository.versions.mockImplementation(async () => state.versions);
   repository.latestConnection.mockImplementation(async () => state.connections[0] ?? null);
@@ -107,6 +110,14 @@ beforeEach(() => {
 });
 
 describe("getHomeBrief", () => {
+  it("passes a trusted local month with an exclusive next-month boundary (T-10)", async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date("2026-09-30T16:00:00Z"));
+    try {
+      await getHomeBrief(ctx, "all");
+      expect(repository.completedActions).toHaveBeenCalledWith("ws-1", { period: "2026-10", startLocalDate: "2026-10-01", endLocalDate: "2026-11-01", timezone: "Asia/Hong_Kong" }, null);
+    } finally { vi.useRealTimers(); }
+  });
+
   it("never aggregates for location=all: no snapshot, actions still listed", async () => {
     const brief = await getHomeBrief(ctx, "all");
     expect(brief.snapshot).toBeNull();
@@ -150,6 +161,19 @@ describe("getHomeBrief", () => {
 });
 
 describe("listActions", () => {
+  it("keeps scoped counts identical across every active tab with a faithful state filter (T-09)", async () => {
+    state.actions.push(actionRow({ id: "done", action_state: "completed" }), actionRow({ id: "dismissed", action_state: "dismissed" }), actionRow({ id: "other", workspace_id: "other-workspace", action_state: "completed" }));
+    const baseline = await listActions(ctx, { location: "all" });
+    expect(baseline.counts).toMatchObject({ all: 2, needs_input: 1, completed: 1 });
+    for (const view of ["all", "needs_input", "drafts", "awaiting_approval", "completed"] as const) {
+      expect((await listActions(ctx, { location: "all", view })).counts).toEqual(baseline.counts);
+    }
+    const instagram = await listActions(ctx, { channel: "instagram", view: "completed" });
+    expect(instagram.counts).toMatchObject({ all: 1, needs_input: 0, completed: 0 });
+    const completed = await listActions(ctx, { status: "completed", view: "completed" });
+    expect(completed.counts).toMatchObject({ all: 0, completed: 1 });
+  });
+
   it("counts the tabs and applies view and channel filters", async () => {
     const all = await listActions(ctx, { location: "all" });
     expect(all.counts).toMatchObject({ all: 2, needs_input: 1, completed: 0 });

@@ -1,5 +1,6 @@
 import "server-only";
 import type { Pool, QueryResultRow } from "pg";
+import type { MonthWindow } from "../workspace/month-window";
 import { getPool } from "../db/client";
 import type { WorkspaceRow, LocationRow, UsageRow, SnapshotRow } from "../workspace/queries";
 
@@ -150,8 +151,11 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
     async draftVersions(workspaceId: string, locationId?: string | null): Promise<Array<{ id: string }>> {
       return rows<{ id: string }>("SELECT v.id FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id WHERE a.workspace_id=$1 AND v.approval_state='draft' AND ($2::uuid IS NULL OR a.location_id=$2 OR a.location_id IS NULL)", [workspaceId, locationId ?? null]);
     },
-    async completedActions(workspaceId: string, periodStart: string, locationId?: string | null): Promise<Array<{ id: string; measurement_state: string; completed_at: string | null }>> {
-      return rows<{ id: string; measurement_state: string; completed_at: string | null }>("SELECT id, measurement_state, completed_at::text FROM actions WHERE workspace_id=$1 AND action_state='completed' AND completed_at >= $2 AND ($3::uuid IS NULL OR location_id=$3 OR location_id IS NULL)", [workspaceId, periodStart, locationId ?? null]);
+    async completedActions(workspaceId: string, window: MonthWindow, locationId?: string | null): Promise<Array<{ id: string; measurement_state: string; completed_at: string | null }>> {
+      return rows<{ id: string; measurement_state: string; completed_at: string | null }>(`SELECT id, measurement_state, completed_at::text FROM actions WHERE workspace_id=$1 AND action_state='completed'
+        AND completed_at >= ($2::date::timestamp AT TIME ZONE $4)
+        AND completed_at < ($3::date::timestamp AT TIME ZONE $4)
+        AND ($5::uuid IS NULL OR location_id=$5 OR location_id IS NULL)`, [workspaceId, window.startLocalDate, window.endLocalDate, window.timezone, locationId ?? null]);
     },
     /**
      * `anniversary_day`, not `next_run_at`, is what the workspace can honestly

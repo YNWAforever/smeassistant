@@ -1,7 +1,6 @@
 import { localized, type LocalizedText } from "@/lib/domain";
 import { notificationRepository } from "@/lib/repositories/notifications";
 import {
-  hasSinceWithRepository,
   homeHrefWithRepository,
   notifyWithRepository,
 } from "@/lib/workspace/notify";
@@ -70,8 +69,7 @@ export async function sendAllowanceNotice(input: { workspaceId: string; usage: U
     const warnAt = allowanceWarnAt(usage.allowance);
     if (warnAt === null || usage.approvedDeliveries < warnAt) return;
     const repository = notificationRepository();
-    const periodStart = `${usage.period}-01T00:00:00Z`;
-    if (await hasSinceWithRepository(repository, input.workspaceId, "usage.allowance_80", periodStart)) return;
+    if (await repository.hasInMonth(input.workspaceId, "usage.allowance_80", usage.period)) return;
     const home = await homeHrefWithRepository(repository, input.workspaceId);
     // The old title said "80%" directly above a body reading "3 of 3", two
     // contradictory numbers in one notification. Report what is actually

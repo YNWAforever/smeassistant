@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   factory: vi.fn(),
   inserted: [] as Array<Record<string, unknown>>,
   hasSince: vi.fn(),
+  hasInMonth: vi.fn(),
   workspaceSlug: vi.fn(),
 }));
 
@@ -27,6 +28,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.inserted = [];
   mocks.hasSince.mockResolvedValue(false);
+  mocks.hasInMonth.mockResolvedValue(false);
   mocks.workspaceSlug.mockResolvedValue("kam-man-house");
   mocks.factory.mockReturnValue({
     acceptedMemberIds: async () => ["user-1"],
@@ -35,6 +37,7 @@ beforeEach(() => {
       return rows.length;
     },
     hasSince: (...args: unknown[]) => mocks.hasSince(...args),
+    hasInMonth: (...args: unknown[]) => mocks.hasInMonth(...args),
     workspaceSlug: (...args: unknown[]) => mocks.workspaceSlug(...args),
   });
 });
@@ -62,10 +65,10 @@ describe("sendDeliveryNotices", () => {
       title: { en: "1 approved delivery left this period" },
       href: "/owner/kam-man-house/settings/billing",
     });
-    expect(mocks.hasSince).toHaveBeenCalledWith(WORKSPACE, "usage.allowance_80", "2026-10-01T00:00:00Z");
+    expect(mocks.hasInMonth).toHaveBeenCalledWith(WORKSPACE, "usage.allowance_80", "2026-10");
 
     mocks.inserted = [];
-    mocks.hasSince.mockResolvedValue(true);
+    mocks.hasInMonth.mockResolvedValue(true);
     await sendDeliveryNotices({ workspaceId: WORKSPACE, actionId: ACTION, kind: "publish", usage: usage(2, 3) });
     expect(mocks.inserted.map((row) => row.kind)).toEqual(["delivery.exported"]);
   });

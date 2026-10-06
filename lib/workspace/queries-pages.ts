@@ -20,6 +20,7 @@ import type { AttributionBasis } from "@/lib/workspace/applications";
 import { filterSelectedReviews, scannedReviewKey, selectScannedReviews } from "@/lib/workspace/evidence-inputs";
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { currentPeriod, type LocationSummary, type WorkspaceContext } from "@/lib/workspace/queries";
+import { monthWindow } from "@/lib/workspace/month-window";
 import { reapStrandedRuns } from "@/lib/workspace/run-reaper";
 import { rowToSnapshot, type ScanDiffRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
 import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
@@ -658,7 +659,7 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
   const priority = openActions[0] ?? null;
 
   const period = currentPeriod(ctx.workspace.timezone);
-  const periodStart = `${period}-01T00:00:00Z`;
+  const window = monthWindow(period, ctx.workspace.timezone);
   const [measurements, draftVersions, completed, schedules] = await read("home", () => Promise.all([
     // Scoped to the same location as the rest of the brief. These three were
     // workspace-wide while the snapshot, diff, open actions and schedule beside
@@ -668,7 +669,7 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
     // preserving today's behaviour by construction.
     repository.measurements(workspaceId, undefined, 1, location?.id ?? null),
     repository.draftVersions(workspaceId, location?.id ?? null),
-    repository.completedActions(workspaceId, periodStart, location?.id ?? null),
+    repository.completedActions(workspaceId, window, location?.id ?? null),
     location?.placeId ? repository.schedules(workspaceId, [location.placeId]) : Promise.resolve([]),
   ]));
   const proofRow = measurements[0] ?? null;
@@ -731,9 +732,11 @@ function matchesView(action: ActionOverview, view: NonNullable<ActionFilters["vi
 
 export async function listActions(ctx: WorkspaceContext, filters: ActionFilters): Promise<ActionListResult> {
   const location = resolveLocation(ctx, filters.location ?? "all");
-  const states = filters.view === "completed" ? (["completed"] as ActionState[]) : filters.status ? [filters.status] : filters.view && filters.view !== "all" ? OPEN_STATES : undefined;
+  // Counts share explicit filter scope; the active tab is only a list predicate.
+  const states = filters.status ? [filters.status] : undefined;
   const rows = await loadActionRows(ctx.workspace.id, { locationId: location?.id ?? null, states });
-  const all = await overviewsFor(ctx, rows);
+  const scoped = await overviewsFor(ctx, rows);
+  const all = filters.channel ? scoped.filter(a => TEMPLATE_CHANNEL.get(a.templateKey) === filters.channel) : scoped;
   const open = all.filter((a) => !CLOSED_ACTION_STATES.includes(a.actionState));
   const counts: ActionListResult["counts"] = {
     all: open.length,
