@@ -11,7 +11,7 @@ import type { Locale } from "@/lib/locale"
  * actually renders: "Verify ownership with Google" only exists while the OAuth
  * claim flag is on; otherwise the claim continues through Fimmick assignment.
  */
-export type NoWorkspaceCopy = { lead: string; owner: string; colleague: string; scanCta: string }
+export type NoWorkspaceCopy = { lead: string; owner: string; colleague: string; scanCta: string; requestsCta: string }
 
 export function noWorkspaceCopy(locale: Locale, oauthClaimEnabled: boolean): NoWorkspaceCopy {
   if (locale === "zh-TW") {
@@ -22,6 +22,7 @@ export function noWorkspaceCopy(locale: Locale, oauthClaimEnabled: boolean): NoW
         : "如果您是店家負責人：先免費掃描您的店家，解鎖報告後按「登入認領此店家」，再依指示請 Fimmick 核實並指派。",
       colleague: "如果您是同事：請店家負責人在「團隊與權限」加入您的電子郵件，然後用同一個電子郵件重新登入。",
       scanCta: "先免費掃描",
+      requestsCta: "查看我的申請與工作台",
     }
   }
   if (locale === "en") {
@@ -32,6 +33,7 @@ export function noWorkspaceCopy(locale: Locale, oauthClaimEnabled: boolean): NoW
         : "If you own the business: run a free scan, unlock the report, choose “Sign in to claim this business”, then follow the steps to have Fimmick verify and assign it.",
       colleague: "If you’re a colleague: ask the owner to add your email under “Team & roles”, then sign in again with that same email.",
       scanCta: "Start with a free scan",
+      requestsCta: "View my requests and workspaces",
     }
   }
   return {
@@ -41,5 +43,6 @@ export function noWorkspaceCopy(locale: Locale, oauthClaimEnabled: boolean): NoW
       : "如你是店主：先免費掃描你的商戶，解鎖報告後按「登入認領此商戶」，再按指示請 Fimmick 核實並指派。",
     colleague: "如你是同事：請店主在「團隊與權限」加入你的電郵，然後用同一電郵再登入。",
     scanCta: "先免費掃描",
+    requestsCta: "查看我的申請及工作台",
   }
 }

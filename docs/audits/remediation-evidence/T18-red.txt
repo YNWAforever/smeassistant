@@ -1,0 +1,125 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ components/auth/sign-in-completion.test.tsx (14 tests | 4 failed) 535ms
+   × no-access offers own request status and the scan (en, OAuth claim off) 26ms (retry x1)
+   × no-access offers own request status and the scan (en, OAuth claim on) 32ms (retry x1)
+   × no-access offers own request status and the scan (zh-HK, OAuth claim off) 21ms (retry x1)
+   × no-access offers own request status and the scan (zh-TW, OAuth claim on) 16ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/auth/sign-in-completion.test.tsx > no-access offers own request status and the scan (en, OAuth claim off)
+ FAIL  components/auth/sign-in-completion.test.tsx > no-access offers own request status and the scan (en, OAuth claim off)
+ FAIL  components/auth/sign-in-completion.test.tsx > no-access offers own request status and the scan (en, OAuth claim on)
+AssertionError: expected [ '/en/scan' ] to deeply equal [ '/en/scan', …(1) ]
+
+- Expected
++ Received
+
+  [
+    "/en/scan",
+-   "/en/owner/select-workspace",
+  ]
+
+ ❯ components/auth/sign-in-completion.test.tsx:39:90
+     37|   await screen.findByText(copy.owner);
+     38|   expect(screen.getByText(copy.colleague)).toBeTruthy();
+     39|   expect(Array.from(container.querySelectorAll("a")).map((a) => a.getA…
+       |                                                                                          ^
+     40|   const statusLabel = locale === "en" ? "View my requests and workspac…
+     41|   expect(screen.getByRole("link", { name: statusLabel })).toHaveAttrib…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  components/auth/sign-in-completion.test.tsx > no-access offers own request status and the scan (en, OAuth claim on)
+AssertionError: expected [ '/en/scan' ] to deeply equal [ '/en/scan', …(1) ]
+
+- Expected
++ Received
+
+  [
+    "/en/scan",
+-   "/en/owner/select-workspace",
+  ]
+
+ ❯ components/auth/sign-in-completion.test.tsx:39:90
+     37|   await screen.findByText(copy.owner);
+     38|   expect(screen.getByText(copy.colleague)).toBeTruthy();
+     39|   expect(Array.from(container.querySelectorAll("a")).map((a) => a.getA…
+       |                                                                                          ^
+     40|   const statusLabel = locale === "en" ? "View my requests and workspac…
+     41|   expect(screen.getByRole("link", { name: statusLabel })).toHaveAttrib…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  components/auth/sign-in-completion.test.tsx > no-access offers own request status and the scan (zh-HK, OAuth claim off)
+ FAIL  components/auth/sign-in-completion.test.tsx > no-access offers own request status and the scan (zh-HK, OAuth claim off)
+AssertionError: expected [ '/zh-HK/scan' ] to deeply equal [ '/zh-HK/scan', …(1) ]
+
+- Expected
++ Received
+
+  [
+    "/zh-HK/scan",
+-   "/zh-HK/owner/select-workspace",
+  ]
+
+ ❯ components/auth/sign-in-completion.test.tsx:39:90
+     37|   await screen.findByText(copy.owner);
+     38|   expect(screen.getByText(copy.colleague)).toBeTruthy();
+     39|   expect(Array.from(container.querySelectorAll("a")).map((a) => a.getA…
+       |                                                                                          ^
+     40|   const statusLabel = locale === "en" ? "View my requests and workspac…
+     41|   expect(screen.getByRole("link", { name: statusLabel })).toHaveAttrib…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  components/auth/sign-in-completion.test.tsx > no-access offers own request status and the scan (zh-TW, OAuth claim on)
+AssertionError: expected [ '/zh-TW/scan' ] to deeply equal [ '/zh-TW/scan', …(1) ]
+
+- Expected
++ Received
+
+  [
+    "/zh-TW/scan",
+-   "/zh-TW/owner/select-workspace",
+  ]
+
+ ❯ components/auth/sign-in-completion.test.tsx:39:90
+     37|   await screen.findByText(copy.owner);
+     38|   expect(screen.getByText(copy.colleague)).toBeTruthy();
+     39|   expect(Array.from(container.querySelectorAll("a")).map((a) => a.getA…
+       |                                                                                          ^
+     40|   const statusLabel = locale === "en" ? "View my requests and workspac…
+     41|   expect(screen.getByRole("link", { name: statusLabel })).toHaveAttrib…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  components/auth/sign-in-completion.test.tsx > no-access offers own request status and the scan (zh-TW, OAuth claim on)
+AssertionError: expected [ '/zh-TW/scan' ] to deeply equal [ '/zh-TW/scan', …(1) ]
+
+- Expected
++ Received
+
+  [
+    "/zh-TW/scan",
+-   "/zh-TW/owner/select-workspace",
+  ]
+
+ ❯ components/auth/sign-in-completion.test.tsx:39:90
+     37|   await screen.findByText(copy.owner);
+     38|   expect(screen.getByText(copy.colleague)).toBeTruthy();
+     39|   expect(Array.from(container.querySelectorAll("a")).map((a) => a.getA…
+       |                                                                                          ^
+     40|   const statusLabel = locale === "en" ? "View my requests and workspac…
+     41|   expect(screen.getByRole("link", { name: statusLabel })).toHaveAttrib…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 10 passed (14)
+   Start at  03:03:45
+   Duration  20.13s (transform 1.16s, setup 698ms, import 1.60s, tests 535ms, environment 15.77s)
+
