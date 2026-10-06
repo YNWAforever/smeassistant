@@ -33,7 +33,7 @@ const repository = vi.hoisted(() => ({
 vi.mock("@/lib/repositories/workspace-read", () => ({ workspaceReadRepository: () => repository }));
 const listRepository = vi.hoisted(() => ({ page: vi.fn(), counts: vi.fn() }));
 vi.mock("@/lib/repositories/action-list", () => ({ actionListRepository: () => listRepository }));
-const applications = vi.hoisted(() => ({ forActions: vi.fn(async (_workspaceId: string, _actionIds: string[]) => [] as Array<{ action_id: string; source: string; asserted_at: string }>) }));
+const applications = vi.hoisted(() => ({ forActions: vi.fn(async (workspaceId: string, actionIds: string[]) => { void workspaceId; void actionIds; return [] as Array<{ action_id: string; source: string; asserted_at: string }>; }) }));
 vi.mock("@/lib/repositories/applications", () => ({ applicationRepository: () => applications }));
 const reaper = vi.hoisted(() => ({ reapStrandedRuns: vi.fn(async () => [] as string[]) }));
 vi.mock("@/lib/workspace/run-reaper", () => ({ reapStrandedRuns: reaper.reapStrandedRuns }));
@@ -56,6 +56,16 @@ const mailAvailabilityMock = vi.hoisted(() => ({ mailAvailability: vi.fn() }));
 vi.mock("@/lib/mail/availability", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/mail/availability")>()), mailAvailability: mailAvailabilityMock.mailAvailability }));
 
 import { getHomeBrief, getInsights, listActions, getActivity, getIntegrations, getAction, loadActionRows, loadDiffById, getNotifications } from "./queries-pages";
+
+it("searches only visible title/summary and applies it to counts (T-13)", async () => {
+  state.actions = [actionRow({ id: "a1", title: { en: "Needle reply" }, action_state: "recommended" }), actionRow({ id: "a2", summary: { "zh-HK": "needle summary" }, action_state: "recommended" }), actionRow({ id: "a3", action_state: "recommended" })];
+  state.versions = [{ id: "v3", action_id: "a3", body: "needle private history", approval_state: "draft", delivery_state: "not_requested" }];
+  const result = await listActions(ctx, { q: " needle " } as Parameters<typeof listActions>[1]);
+  expect(result.actions.map(a => a.id).sort()).toEqual(["a1", "a2"]); expect(result.counts.all).toBe(2);
+});
+it("rejects oversized search and malformed assignment/due filters (T-13)", async () => {
+  for (const filters of [{ q: "x".repeat(201) }, { assignee: "someone" }, { due: "tomorrow" }]) await expect(listActions(ctx, filters as Parameters<typeof listActions>[1])).rejects.toThrow("invalid_action_filter");
+});
 
 const ctx: WorkspaceContext = {
   workspace: { id: "ws-1", slug: "kam-man-house", name: "Kam Man House", market: "hk", tier: "paid", timezone: "Asia/Hong_Kong", isDemo: false, instagramHandle: null, industry: "fnb", district: null },
@@ -85,6 +95,8 @@ function listProjection(scope: ActionListScope, appRows: Array<{ action_id: stri
     && (!scope.locationId || row.location_id == null || row.location_id === scope.locationId)
     && (!scope.allowedLocationIds || row.location_id == null || scope.allowedLocationIds.includes(row.location_id as string))
     && (!scope.channelTemplates || scope.channelTemplates.includes(row.template_key as string))
+    && (!scope.q || [...Object.values(row.title as Row), ...Object.values(row.summary as Row)].join(" ").toLowerCase().includes(scope.q.toLowerCase()))
+    && (!scope.assignee || (scope.assignee === "unassigned" ? row.assignee_user_id === null : row.assignee_user_id === scope.assignee))
     && (!scope.status || row.action_state === scope.status)).map(row => ({
       ...(row as unknown as ActionRow),
       run_state: state.runs.find(r => r.action_id === row.id)?.state ?? null,

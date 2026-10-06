@@ -1,0 +1,31 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ lib/workspace/action-list-filters.test.ts (5 tests | 1 failed) 34ms
+     × validates filters and keeps literal query text 5ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/workspace/action-list-filters.test.ts > trusted workspace due window (T-13) > validates filters and keeps literal query text
+ FAIL  lib/workspace/action-list-filters.test.ts > trusted workspace due window (T-13) > validates filters and keeps literal query text
+AssertionError: expected 'ABCDEF01-0000-4000-8000-000000000001' to be 'abcdef01-0000-4000-8000-000000000001' // Object.is equality
+
+Expected: "abcdef01-0000-4000-8000-000000000001"
+Received: "ABCDEF01-0000-4000-8000-000000000001"
+
+ ❯ lib/workspace/action-list-filters.test.ts:8:101
+      6|   });
+      7|   it("validates filters and keeps literal query text", () => {
+      8|     expect(actionListFilters({ assignee: "ABCDEF01-0000-4000-8000-0000…
+       |                                                                                                     ^
+      9|     expect(actionListFilters({ q: "' OR 1=1 --" }, "UTC").q).toBe("' O…
+     10|     for (const input of [{ q: "x".repeat(201) }, { assignee: "fake" },…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  04:47:25
+   Duration  1.21s (transform 54ms, setup 300ms, import 41ms, tests 34ms, environment 0ms)
+

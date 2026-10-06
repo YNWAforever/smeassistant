@@ -6,7 +6,8 @@ import { CapabilityBadge, FactType, PageIntro } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { LocationSelect } from "@/components/workspace/location-select"
-import { ActionFilterSelect } from "@/components/workspace/action-filters"
+import { ActionFilterSelect, ActionSearch } from "@/components/workspace/action-filters"
+import { BulkActionSelection, type AssignmentMember } from "@/components/workspace/bulk-action-dialog"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { resolveText } from "@/lib/domain"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
@@ -25,6 +26,8 @@ export interface ActionsListViewProps {
   locationId: string | null
   filters: ActionFilters
   result: ActionListResult
+  bulkEnabled?: boolean
+  members?: AssignmentMember[]
 }
 
 const VIEWS: Array<{ key: NonNullable<ActionFilters["view"]>; en: string; zh: string }> = [
@@ -41,6 +44,9 @@ function tabHref(base: string, filters: ActionFilters, view: string): string {
   if (filters.channel) query.set("channel", filters.channel)
   if (filters.status) query.set("status", filters.status)
   if (filters.pageSize) query.set("pageSize", String(filters.pageSize))
+  if (filters.q) query.set("q", filters.q)
+  if (filters.assignee) query.set("assignee", filters.assignee)
+  if (filters.due) query.set("due", filters.due)
   if (view !== "all") query.set("view", view)
   const qs = query.toString()
   return qs ? `${base}/actions?${qs}` : `${base}/actions`
@@ -66,7 +72,7 @@ function ActionCard({ action, locale, base, timezone, location }: { action: Acti
   )
 }
 
-export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, role, locations, locationId, filters, result }: ActionsListViewProps) {
+export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, role, locations, locationId, filters, result, bulkEnabled = false, members = [] }: ActionsListViewProps) {
   const isChinese = locale !== "en"
   const base = `/${locale}/owner/${workspaceSlug}`
   const view = filters.view ?? "all"
@@ -93,12 +99,15 @@ export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, 
         </nav>
         <div className="action-tab-content">
           <section className="filter-bar" aria-label={isChinese ? "行動篩選" : "Action filters"}>
+            <ActionSearch key={filters.q ?? ""} value={filters.q ?? ""} label={isChinese ? "搜尋標題及摘要" : "Search title and summary"} submitLabel={isChinese ? "搜尋" : "Search"} />
             <span className="filter-label"><Filter /> {isChinese ? "篩選" : "Filter"}</span>
             <ActionFilterSelect param="channel" value={filters.channel ?? "all"} options={channels} allLabel={isChinese ? "所有渠道" : "All channels"} ariaLabel={isChinese ? "篩選渠道" : "Filter by channel"} />
             <ActionFilterSelect param="status" value={filters.status ?? "all"} options={statuses} allLabel={isChinese ? "所有狀態" : "All statuses"} ariaLabel={isChinese ? "篩選狀態" : "Filter by status"} />
+            <ActionFilterSelect param="assignee" value={filters.assignee ?? "all"} options={[{ value: "unassigned", label: isChinese ? "未指派" : "Unassigned" }, ...members.map(m => ({ value: m.id, label: m.name }))]} allLabel={isChinese ? "所有負責人" : "All assignees"} ariaLabel={isChinese ? "篩選負責人" : "Filter by assignee"} />
+            <ActionFilterSelect param="due" value={filters.due ?? "all"} options={[{ value: "overdue", label: isChinese ? "已逾期" : "Overdue" }, { value: "today", label: isChinese ? "今日" : "Today" }, { value: "next_7_days", label: isChinese ? "未來七日" : "Next 7 days" }, { value: "none", label: isChinese ? "沒有到期日" : "No due date" }]} allLabel={isChinese ? "所有到期日" : "All due dates"} ariaLabel={isChinese ? "篩選到期日" : "Filter by due date"} />
           </section>
           <div className="queue-summary"><span><strong>{result.actions.length}</strong> {isChinese ? "項行動（本頁）" : "actions on this page"}</span><span>{isChinese ? "按優先分數、更新時間及 ID 排序" : "Sorted by priority, update time and ID"}</span></div>
-          {result.actions.length ? <div className="action-list">{result.actions.map((action) => <ActionCard key={action.id} action={action} locale={locale} base={base} timezone={timezone} location={location} />)}</div> : <div className="empty-state"><span><CheckCircle2 /></span><h2>{isChinese ? "沒有符合篩選條件的行動" : "No actions match these filters"}</h2><p>{isChinese ? "請重設一項或多項篩選；沒有行動不代表沒有證據。" : "Reset one or more filters; an empty list does not mean there is no evidence."}</p></div>}
+          {bulkEnabled && role !== "viewer" ? <BulkActionSelection key={JSON.stringify([workspaceId,role,locationId,filters.q,filters.assignee,filters.due,filters.channel,filters.status,view])} locale={locale} workspaceId={workspaceId} timezone={timezone} members={members} items={result.actions.map(action => ({ actionId: action.id, expectedUpdatedAt: action.updatedAt, title: resolveText(action.title,locale), closed: ["completed","dismissed","cancelled","expired"].includes(action.actionState) }))} cards={result.actions.map(action => <ActionCard key={action.id} action={action} locale={locale} base={base} timezone={timezone} location={location} />)} /> : result.actions.length ? <div className="action-list">{result.actions.map((action) => <ActionCard key={action.id} action={action} locale={locale} base={base} timezone={timezone} location={location} />)}</div> : <div className="empty-state"><span><CheckCircle2 /></span><h2>{isChinese ? "沒有符合篩選條件的行動" : "No actions match these filters"}</h2><p>{isChinese ? "請重設一項或多項篩選；沒有行動不代表沒有證據。" : "Reset one or more filters; an empty list does not mean there is no evidence."}</p></div>}
           <nav aria-label={isChinese ? "清單分頁" : "List pages"}>
             <Link href={tabHref(base, filters, view)}>{isChinese ? "重新載入首頁" : "Refresh first page"}</Link>
             {result.nextCursor && <Link href={`${tabHref(base, filters, view)}${tabHref(base, filters, view).includes("?") ? "&" : "?"}cursor=${encodeURIComponent(result.nextCursor)}`}>{isChinese ? "下一頁" : "Next page"}</Link>}

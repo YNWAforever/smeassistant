@@ -50,7 +50,7 @@ export function assignmentUpdateService(pool: Pick<Pool, "connect"> = getPool())
         // Equivalent instants compare in SQL without truncating PostgreSQL microseconds.
         const equal = (await tx.query<{ same: boolean }>("SELECT $1::uuid IS NOT DISTINCT FROM $2::uuid AND $3::timestamptz IS NOT DISTINCT FROM $4::timestamptz AS same", [before.assignee_user_id, after.assignee_user_id, before.due_at, after.due_at])).rows[0].same;
         if (equal && !Object.keys(additionalPatch).length) return { ...result("no_change"), eligible: true, before, after, expectedUpdatedAt: row.updated_at };
-        if ("expectedUpdatedAt" in selection && !(await tx.query<{ same: boolean }>("SELECT $1::timestamptz=$2::timestamptz AS same", [selection.expectedUpdatedAt, row.updated_at])).rows[0].same) return result("conflict", "action_changed");
+        if (mode === "apply" && "expectedUpdatedAt" in selection && !(await tx.query<{ same: boolean }>("SELECT $1::timestamptz=$2::timestamptz AS same", [selection.expectedUpdatedAt, row.updated_at])).rows[0].same) return result("conflict", "action_changed");
         if (mode === "preview") return { ...result("updated"), eligible: true, before, after, expectedUpdatedAt: row.updated_at };
         const extras = Object.entries(additionalPatch);
         const updated = await tx.query<{ updated_at: string }>(`UPDATE actions SET assignee_user_id=$3,due_at=$4,updated_at=clock_timestamp()${extras.map(([key], i) => `,${key}=$${i + 6}`).join("")} WHERE workspace_id=$1 AND id=$2 AND updated_at=$5::timestamptz RETURNING ${stamp} AS updated_at`, [actor.workspaceId, selection.actionId, after.assignee_user_id, after.due_at, row.updated_at, ...extras.map(([key, value]) => key === "provided_inputs" ? JSON.stringify(value) : value)]);

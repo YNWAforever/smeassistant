@@ -7,8 +7,9 @@ import type { ActionListResult, ActionFilters } from "@/lib/workspace/queries-pa
 import type { ActionListKey } from "@/lib/workspace/action-list-cursor";
 import { actionPageSize } from "@/lib/workspace/action-list-cursor";
 import type { ActionState } from "@/lib/domain";
+import type { ListFilterScope } from "@/lib/workspace/action-list-filters";
 
-export interface ActionListScope {
+export interface ActionListScope extends Partial<ListFilterScope> {
   workspaceId: string;
   locationId: string | null;
   allowedLocationIds: string[] | null;
@@ -37,6 +38,11 @@ const SCOPED = `WITH scoped AS (
   WHERE a.workspace_id=$1 AND ($2::uuid IS NULL OR a.location_id=$2 OR a.location_id IS NULL)
     AND ($3::uuid[] IS NULL OR a.location_id IS NULL OR a.location_id=ANY($3))
     AND ($4::text[] IS NULL OR a.template_key=ANY($4)) AND ($5::text IS NULL OR a.action_state=$5)
+    AND ($6::text IS NULL OR strpos(lower(concat_ws(' ',a.title->>'en',a.title->>'zh-HK',a.title->>'zh-TW',a.summary->>'en',a.summary->>'zh-HK',a.summary->>'zh-TW')),lower($6))>0)
+    AND ($7::text IS NULL OR ($7='unassigned' AND a.assignee_user_id IS NULL) OR a.assignee_user_id::text=$7)
+    AND ($8::text IS NULL OR ($8='none' AND a.due_at IS NULL) OR ($8='overdue' AND a.due_at<$13::timestamptz)
+      OR ($8='today' AND a.due_at>=($10::date::timestamp AT TIME ZONE $9) AND a.due_at<($11::date::timestamp AT TIME ZONE $9))
+      OR ($8='next_7_days' AND a.due_at>=($10::date::timestamp AT TIME ZONE $9) AND a.due_at<($12::date::timestamp AT TIME ZONE $9)))
 ), phased AS (
   SELECT scoped.*, CASE
     WHEN capability='Requires connection' THEN 'requires_connection'
@@ -57,7 +63,7 @@ const SCOPED = `WITH scoped AS (
 )`;
 const OPEN = "action_state NOT IN ('completed','dismissed','cancelled','expired')";
 const COLUMNS = `id,workspace_id,location_id,template_key,source,source_finding_keys,source_snapshot_id,title,summary,evidence,priority,COALESCE(priority_score,0) AS priority_score,priority_factors,effort_minutes,required_inputs,provided_inputs,assignee_user_id,due_at::text,action_state,measurement_state,capability,offer_id,created_at::text,to_char(updated_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS updated_at,run_state,version,applied_on,verified_on,phase`;
-const scopeValues = (s: ActionListScope) => [s.workspaceId, s.locationId, s.allowedLocationIds, s.channelTemplates, s.status];
+const scopeValues = (s: ActionListScope) => [s.workspaceId, s.locationId, s.allowedLocationIds, s.channelTemplates, s.status, s.q ?? null, s.assignee ?? null, s.due ?? null, s.timezone ?? "UTC", s.today ?? "2000-01-01", s.tomorrow ?? "2000-01-02", s.next7 ?? "2000-01-08", s.now ?? "2000-01-01T00:00:00Z"];
 
 export function actionListRepository(client?: Pick<Pool, "query">) {
   const db = () => client ?? getPool();
@@ -65,10 +71,10 @@ export function actionListRepository(client?: Pick<Pool, "query">) {
     async page(scope: ActionListScope, view: NonNullable<ActionFilters["view"]>, pageSize: number, cursor: ActionListKey | null): Promise<ActionListProjection[]> {
       actionPageSize(pageSize);
       const result = await db().query<ActionListProjection>(`${SCOPED} SELECT ${COLUMNS} FROM phased
-        WHERE (($6='completed' AND action_state='completed') OR ($6<>'completed' AND ($5::text IS NOT NULL OR ${OPEN}) AND
-          ($6='all' OR ($6='needs_input' AND action_state='needs_input') OR ($6='drafts' AND phase IN ('draft_ready','generating')) OR ($6='awaiting_approval' AND phase IN ('draft_ready','changes_requested')))))
-          AND ($7::numeric IS NULL OR (COALESCE(priority_score,0),updated_at,id)<($7::numeric,$8::timestamptz,$9::uuid))
-        ORDER BY COALESCE(priority_score,0) DESC,phased.updated_at DESC,id DESC LIMIT $10`, [...scopeValues(scope), view, cursor?.score ?? null, cursor?.updatedAt ?? null, cursor?.id ?? null, pageSize + 1]);
+        WHERE (($14='completed' AND action_state='completed') OR ($14<>'completed' AND ($5::text IS NOT NULL OR ${OPEN}) AND
+          ($14='all' OR ($14='needs_input' AND action_state='needs_input') OR ($14='drafts' AND phase IN ('draft_ready','generating')) OR ($14='awaiting_approval' AND phase IN ('draft_ready','changes_requested')))))
+          AND ($15::numeric IS NULL OR (COALESCE(priority_score,0),updated_at,id)<($15::numeric,$16::timestamptz,$17::uuid))
+        ORDER BY COALESCE(priority_score,0) DESC,phased.updated_at DESC,id DESC LIMIT $18`, [...scopeValues(scope), view, cursor?.score ?? null, cursor?.updatedAt ?? null, cursor?.id ?? null, pageSize + 1]);
       return result.rows;
     },
     async counts(scope: ActionListScope): Promise<ActionListResult["counts"]> {

@@ -23,6 +23,7 @@ import { filterSelectedReviews, scannedReviewKey, selectScannedReviews } from "@
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { currentPeriod, type LocationSummary, type WorkspaceContext } from "@/lib/workspace/queries";
 import { monthWindow } from "@/lib/workspace/month-window";
+import { actionListFilters, type DueFilter } from "@/lib/workspace/action-list-filters";
 import { reapStrandedRuns } from "@/lib/workspace/run-reaper";
 import { rowToSnapshot, type ScanDiffRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
 import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
@@ -98,6 +99,9 @@ export async function loadHomeEvidence(jobId: string | null): Promise<EvidenceGa
 }
 
 export interface ActionFilters {
+  q?: string;
+  assignee?: string;
+  due?: DueFilter;
   location?: LocationScope;
   view?: "all" | "needs_input" | "drafts" | "awaiting_approval" | "completed";
   channel?: "google" | "instagram" | "website" | "search_ai";
@@ -726,6 +730,7 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
 export async function listActions(ctx: WorkspaceContext, filters: ActionFilters): Promise<ActionListResult> {
   const location = resolveLocation(ctx, filters.location ?? "all");
   const scope: ActionListScope = {
+    ...actionListFilters(filters, ctx.workspace.timezone),
     workspaceId: ctx.workspace.id, locationId: location?.id ?? null,
     allowedLocationIds: ctx.membership.role === "manager" ? ctx.membership.locationScope : null,
     channelTemplates: filters.channel ? TEMPLATES.filter(t => t.channel === filters.channel).map(t => t.key) : null,
@@ -733,7 +738,7 @@ export async function listActions(ctx: WorkspaceContext, filters: ActionFilters)
   };
   const view = filters.view ?? "all";
   const pageSize = actionPageSize(filters.pageSize);
-  const fingerprint = actionListFingerprint({ scope, view, userId: ctx.membership.userId, role: ctx.membership.role });
+  const fingerprint = actionListFingerprint({ scope: { ...scope, now: undefined }, view, userId: ctx.membership.userId, role: ctx.membership.role });
   const cursor = decodeActionCursor(filters.cursor, fingerprint);
   const repository = actionListRepository();
   const [rows, counts] = await read("action list", () => Promise.all([repository.page(scope, view, pageSize, cursor), repository.counts(scope)]));
