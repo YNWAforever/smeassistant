@@ -89,7 +89,18 @@ function dateMentions(body: string): DateMention[] {
     for (const match of body.matchAll(pattern)) {
       const start = match.index!; const end = start+match[0].length;
       if (occupied.some(([a,b]) => start < b && end > a)) continue;
-      occupied.push([start,end]); mentions.push(decode(match));
+      const date = decode(match);
+      const prefix = /[（(]\s*(\d{4})\s*年?\s*[）)]\s*$/.exec(body.slice(0, start));
+      const suffix = /^\s*[（(]\s*(\d{4})\s*年?\s*[）)]/.exec(body.slice(end));
+      // Adjacent year qualifiers belong to this boundary, not unrelated dates
+      // or business-history years elsewhere in the draft. Preserve conflicts.
+      for (const qualifier of [prefix, suffix]) {
+        if (!qualifier) continue;
+        const year = Number(qualifier[1]);
+        if (date.year === null) date.year = year;
+        else if (date.year !== year) mentions.push({ ...date, year });
+      }
+      occupied.push([start, end + (suffix?.[0].length ?? 0)]); mentions.push(date);
     }
   };
   collect(/(?<![\d/-])(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?![\d/-])/g, m => ({ year: Number(m[1]), month: Number(m[2]), day: Number(m[3]) }));

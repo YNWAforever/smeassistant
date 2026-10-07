@@ -748,6 +748,7 @@ export async function listActions(ctx: WorkspaceContext, filters: ActionFilters)
   const byLocation = new Map(ctx.locations.map(l => [l.id, l]));
   const actions = page.map(row => buildActionOverview(row, {
     location: row.location_id ? locationText(byLocation.get(row.location_id) ?? null) : null,
+    assignee: row.assignee_user_id ? { id: row.assignee_user_id, name: row.assignee_name ?? "" } : null,
     latestRun: row.run_state ? { state: row.run_state } : null, latestVersion: row.version,
     applied: Boolean(row.applied_on), appliedOn: row.applied_on,
     verified: Boolean(row.verified_on), verifiedOn: row.verified_on,

@@ -58,6 +58,7 @@ function ActionCard({ action, locale, base, timezone, location }: { action: Acti
   const phase = action.displayPhaseKey
   const cta = phase === "draft_ready" || phase === "changes_requested" ? (isChinese ? "審閱草稿" : "Review draft") : phase === "requires_connection" ? (isChinese ? "審閱依賴項目" : "Review dependency") : (isChinese ? "審閱所需資料" : "Review inputs")
   const topFactors = [...action.priorityFactors].sort((a, b) => b.points - a.points).slice(0, 3)
+  const assigneeName = action.assignee?.name || (action.assignee ? (isChinese ? "已指派成員不可用" : "Assigned member unavailable") : (isChinese ? "未指派" : "Unassigned"))
   return (
     <article className="action-card">
       <div className="action-card-top">
@@ -66,7 +67,7 @@ function ActionCard({ action, locale, base, timezone, location }: { action: Acti
       </div>
       <div className="action-card-content"><div><p className="eyebrow">{action.evidence.source}</p><h2>{resolveText(action.title, locale)}</h2><p>{resolveText(action.summary, locale)}</p></div><div className="action-evidence"><FactType type={action.evidence.factType} /><p>{resolveText(action.evidence.detail, locale)}</p><small>{resolveText(action.evidence.freshness, locale)} · {formatDateTime(action.evidence.observedAt, locale, timezone)}</small></div></div>
       <div className="priority-reason"><Sparkles /><div><strong>{isChinese ? "為何列為優先" : "Why this priority"}</strong><span>{topFactors.map((f) => `${resolveText(f.label, locale)} ${f.points > 0 ? "+" : ""}${f.points}`).join(" · ")}</span></div></div>
-      <dl className="action-card-meta"><div><dt>{isChinese ? "店主所需時間" : "Owner effort"}</dt><dd>{effortLabel(action.effortMinutes, locale)}</dd></div><div><dt>{isChinese ? "負責人" : "Assignee"}</dt><dd>{action.assignee?.name ?? (isChinese ? "未指派" : "Unassigned")}</dd></div><div><dt>{isChinese ? "到期日" : "Due"}</dt><dd>{action.dueAt ? formatDateTime(action.dueAt, locale, timezone) : "—"}</dd></div><div><dt>{isChinese ? "所需資料" : "Inputs"}</dt><dd>{action.missingInputs.length ? (isChinese ? `缺 ${action.missingInputs.length} 項` : `${action.missingInputs.length} missing`) : (isChinese ? "齊備" : "Ready")}</dd></div></dl>
+      <dl className="action-card-meta"><div><dt>{isChinese ? "店主所需時間" : "Owner effort"}</dt><dd>{effortLabel(action.effortMinutes, locale)}</dd></div><div><dt>{isChinese ? "負責人" : "Assignee"}</dt><dd className="break-all">{assigneeName}</dd></div><div><dt>{isChinese ? "到期日" : "Due"}</dt><dd>{action.dueAt ? formatDateTime(action.dueAt, locale, timezone) : "—"}</dd></div><div><dt>{isChinese ? "所需資料" : "Inputs"}</dt><dd>{action.missingInputs.length ? (isChinese ? `缺 ${action.missingInputs.length} 項` : `${action.missingInputs.length} missing`) : (isChinese ? "齊備" : "Ready")}</dd></div></dl>
       <div className="action-card-footer"><span>{isChinese ? "最近更新：" : "Last changed "}{formatDateTime(action.updatedAt, locale, timezone)}</span><Button asChild><Link href={href}>{cta}<ArrowRight /></Link></Button></div>
     </article>
   )

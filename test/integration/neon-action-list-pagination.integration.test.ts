@@ -40,6 +40,27 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("bounded action list SQL (T
     return { scope, ctx };
   }
 
+  it("projects only the assigned accepted member in the same tenant (T-13)", async () => {
+    const { ctx, scope } = await seed(4);
+    const ids = (await runtime.query("SELECT id FROM actions WHERE workspace_id=$1 ORDER BY id", [scope.workspaceId])).rows.map(row => row.id);
+    const users = (await runtime.query("INSERT INTO app_users(email) VALUES('account@example.test'),('pending@example.test'),('foreign-only@example.test') RETURNING id,email")).rows;
+    const accepted = users.find(user => user.email === "account@example.test")!.id;
+    const pending = users.find(user => user.email === "pending@example.test")!.id;
+    const foreignOnly = users.find(user => user.email === "foreign-only@example.test")!.id;
+    const foreignWorkspace = (await runtime.query("INSERT INTO workspaces(slug,market,timezone) VALUES('foreign-assignee','hk','UTC') RETURNING id")).rows[0].id;
+    await runtime.query("INSERT INTO workspace_members(workspace_id,user_id,email,role,accepted_at) VALUES($1,$2,'accepted-here@example.test','manager',now()),($1,$3,'pending-here@example.test','manager',NULL),($4,$2,'foreign-alias@example.test','owner',now()),($4,$5,'foreign-only@example.test','manager',now())", [scope.workspaceId, accepted, pending, foreignWorkspace, foreignOnly]);
+    for (const [index, userId] of [accepted, pending, foreignOnly].entries()) await runtime.query("UPDATE actions SET assignee_user_id=$2 WHERE id=$1", [ids[index], userId]);
+    const page = await listActions(ctx, {});
+    expect(page.actions.find(action => action.id === ids[0])?.assignee).toEqual({ id: accepted, name: "accepted-here@example.test" });
+    expect(page.actions.find(action => action.id === ids[1])?.assignee).toEqual({ id: pending, name: "" });
+    expect(page.actions.find(action => action.id === ids[2])?.assignee).toEqual({ id: foreignOnly, name: "" });
+    expect(page.actions.find(action => action.id === ids[3])?.assignee).toBeUndefined();
+    expect(JSON.stringify(page.actions)).not.toMatch(/pending-here|foreign-alias|foreign-only@example/);
+    expect((await listActions(ctx, { assignee: accepted })).actions[0].assignee).toEqual({ id: accepted, name: "accepted-here@example.test" });
+    await runtime.query("DELETE FROM workspace_members WHERE workspace_id=$1 AND user_id=$2", [scope.workspaceId, accepted]);
+    expect((await listActions(ctx, { assignee: accepted })).actions[0].assignee).toEqual({ id: accepted, name: "" });
+  });
+
   it.each([10, 100, 1000])("%s actions x 10 versions x 5 runs: constant queries and bounded bytes", async size => {
     const { scope } = await seed(size);
     type QueryRecord = { sql: string; values: unknown[]; rows: number };
@@ -139,6 +160,9 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("bounded action list SQL (T
     expect((await listActions(ctx, {})).counts.all).toBe(3);
     const ownerCursor = (await listActions(ctx, { pageSize: 1 })).nextCursor!;
     await expect(listActions(manager, { cursor: ownerCursor })).rejects.toThrow("invalid_action_cursor");
+    const impossible = JSON.parse(Buffer.from(ownerCursor, "base64url").toString("utf8"));
+    impossible.updatedAt = "2026-02-30T00:00:00.123456Z";
+    await expect(listActions(ctx, { cursor: Buffer.from(JSON.stringify(impossible)).toString("base64url") })).rejects.toThrow("invalid_action_cursor");
   });
 
   it("searches visible fields literally, filters assignee and resolves due dates in IANA zones", async () => {

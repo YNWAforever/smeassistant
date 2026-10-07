@@ -99,6 +99,7 @@ function listProjection(scope: ActionListScope, appRows: Array<{ action_id: stri
     && (!scope.assignee || (scope.assignee === "unassigned" ? row.assignee_user_id === null : row.assignee_user_id === scope.assignee))
     && (!scope.status || row.action_state === scope.status)).map(row => ({
       ...(row as unknown as ActionRow),
+      assignee_name: typeof row.assignee_name === "string" ? row.assignee_name : null,
       run_state: state.runs.find(r => r.action_id === row.id)?.state ?? null,
       version: state.versions.find(v => v.action_id === row.id) ?? null,
       applied_on: appRows.find(a => a.action_id === row.id && a.source === "owner_asserted")?.asserted_at ?? null,
@@ -206,6 +207,23 @@ describe("getHomeBrief", () => {
 });
 
 describe("listActions", () => {
+  it("shows the projected named assignee on the refreshed, assignee-filtered list (T-13)", async () => {
+    const assigneeId = "00000000-0000-4000-8000-000000000002";
+    state.actions = [actionRow({ assignee_user_id: assigneeId, assignee_name: "accepted@example.test" }), actionRow({ id: "a2" })];
+    const result = await listActions(ctx, { assignee: assigneeId });
+    expect(result.actions).toHaveLength(1);
+    expect(result.actions[0].assignee).toEqual({ id: assigneeId, name: "accepted@example.test" });
+    expect(result.counts.all).toBe(1);
+    expect(repository.versions).not.toHaveBeenCalled();
+    expect(repository.runs).not.toHaveBeenCalled();
+  });
+  it("distinguishes an unavailable assigned member from an unassigned action (T-13)", async () => {
+    const assigneeId = "00000000-0000-4000-8000-000000000002";
+    state.actions = [actionRow({ assignee_user_id: assigneeId, assignee_name: null }), actionRow({ id: "a2" })];
+    const result = await listActions(ctx, {});
+    expect(result.actions.find(action => action.id === "a1")?.assignee).toEqual({ id: assigneeId, name: "" });
+    expect(result.actions.find(action => action.id === "a2")?.assignee).toBeUndefined();
+  });
   it("bounds the default list to 25, with counts independent of the page (T-12)", async () => {
     state.actions = Array.from({ length: 31 }, (_, i) => actionRow({ id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`, action_state: "recommended" }));
     const result = await listActions(ctx, { view: "all" });

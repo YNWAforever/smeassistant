@@ -1,0 +1,34 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+No test files found, exiting with code 1
+
+filter: test/integration/neon-action-list-pagination.integration.test.ts
+include: test/integration/*.integration.test.ts
+exclude:  node_modules/**, .next/**, e2e/**, packages/**
+
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: spawnSync docker ETIMEDOUT
+ ❯ Object.spawnSync node:internal/child_process:1143:20
+ ❯ spawnSync node:child_process:911:24
+ ❯ execFileSync node:child_process:954:15
+ ❯ run test/integration/neon-database.ts:31:10
+     29| function run(args: string[], timeout = 30_000): string {
+     30|   // A stalled Docker Desktop command must not freeze the worker beyon…
+     31|   return execFileSync("docker", args, { encoding: "utf8", stdio: ["ign…
+       |          ^
+     32| }
+     33|
+ ❯ stop test/integration/neon-database.ts:112:32
+ ❯ startNeonDatabaseFixture test/integration/neon-database.ts:159:5
+ ❯ Object.setup test/integration/global-setup.ts:6:16
+ ❯ TestProject._initializeGlobalSetup node_modules/.pnpm/vitest@4.1.11_@types+node@22.19.1_kqarhoycv6b6cl6hmix6edvsuq/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:10813:21
+ ❯ Vitest.initializeGlobalSetup node_modules/.pnpm/vitest@4.1.11_@types+node@22.19.1_kqarhoycv6b6cl6hmix6edvsuq/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:13812:35
+ ❯ node_modules/.pnpm/vitest@4.1.11_@types+node@22.19.1_kqarhoycv6b6cl6hmix6edvsuq/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:13655:6
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { errno: -4039, code: 'ETIMEDOUT', syscall: 'spawnSync docker', path: 'docker', spawnargs: [ 'inspect', 'sme-neon-it-db-cdd4fc66eb83' ], error: Error: spawnSync docker ETIMEDOUT { errno: -4039, code: 'ETIMEDOUT', syscall: 'spawnSync docker', path: 'docker', spawnargs: [ 'inspect', 'sme-neon-it-db-cdd4fc66eb83' ], error: [Circular], status: null, signal: 'SIGTERM', output: [ null, '', '' ], pid: 47272, stdout: '', stderr: '', stacks: [ { method: 'Object.spawnSync', file: 'node:internal/child_process', line: 1143, column: 20 }, { method: 'spawnSync', file: 'node:child_process', line: 911, column: 24 }, { method: 'execFileSync', file: 'node:child_process', line: 954, column: 15 }, { method: 'run', file: 'C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation/test/integration/neon-database.ts', line: 31, column: 10 }, { method: 'stop', file: 'C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation/test/integration/neon-database.ts', line: 112, column: 32 }, { method: 'startNeonDatabaseFixture', file: 'C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation/test/integration/neon-database.ts', line: 159, column: 5 }, { method: 'Object.setup', file: 'C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation/test/integration/global-setup.ts', line: 6, column: 16 }, { method: 'TestProject._initializeGlobalSetup', file: 'C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation/node_modules/.pnpm/vitest@4.1.11_@types+node@22.19.1_kqarhoycv6b6cl6hmix6edvsuq/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js', line: 10813, column: 21 }, { method: 'Vitest.initializeGlobalSetup', file: 'C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation/node_modules/.pnpm/vitest@4.1.11_@types+node@22.19.1_kqarhoycv6b6cl6hmix6edvsuq/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js', line: 13812, column: 35 }, { method: '', file: 'C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation/node_modules/.pnpm/vitest@4.1.11_@types+node@22.19.1_kqarhoycv6b6cl6hmix6edvsuq/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js', line: 13655, column: 6 } ] }, status: null, signal: 'SIGTERM', output: [ null, '', '' ], pid: 47272, stdout: '', stderr: '' }
+
+
+

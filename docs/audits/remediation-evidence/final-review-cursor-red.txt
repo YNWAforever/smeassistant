@@ -1,0 +1,40 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ lib/workspace/action-list-cursor.test.ts (18 tests | 3 failed) 26ms
+   × refuses an impossible cursor calendar date: 2026-02-30T00:00:00Z 14ms (retry x1)
+   × refuses an impossible cursor calendar date: 2026-02-29T00:00:00.123456Z 2ms (retry x1)
+   × refuses an impossible cursor calendar date: 2026-04-31 00:00:00.123456+00 1ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/workspace/action-list-cursor.test.ts > refuses an impossible cursor calendar date: 2026-02-30T00:00:00Z
+ FAIL  lib/workspace/action-list-cursor.test.ts > refuses an impossible cursor calendar date: 2026-02-30T00:00:00Z
+ FAIL  lib/workspace/action-list-cursor.test.ts > refuses an impossible cursor calendar date: 2026-02-29T00:00:00.123456Z
+ FAIL  lib/workspace/action-list-cursor.test.ts > refuses an impossible cursor calendar date: 2026-02-29T00:00:00.123456Z
+ FAIL  lib/workspace/action-list-cursor.test.ts > refuses an impossible cursor calendar date: 2026-04-31 00:00:00.123456+00
+ FAIL  lib/workspace/action-list-cursor.test.ts > refuses an impossible cursor calendar date: 2026-04-31 00:00:00.123456+00
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ lib/workspace/action-list-cursor.test.ts:15:93
+     13| });
+     14| it.each(["2026-02-30T00:00:00Z", "2026-02-29T00:00:00.123456Z", "2026-…
+     15|   expect(() => decodeActionCursor(encodeActionCursor({ ...key, updated…
+       |                                                                                             ^
+     16| });
+     17| it.each(["2024-02-29T00:00:00.123456Z", "2024-02-29 00:00:00.654321+00…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 15 passed (18)
+   Start at  08:32:22
+   Duration  7.88s (transform 207ms, setup 6.31s, import 137ms, tests 26ms, environment 0ms)
+

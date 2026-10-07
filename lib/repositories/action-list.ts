@@ -17,6 +17,7 @@ export interface ActionListScope extends Partial<ListFilterScope> {
   status: ActionState | null;
 }
 export interface ActionListProjection extends ActionRow {
+  assignee_name: string | null;
   run_state: ActionRowRunState;
   version: ActionOverviewContext["latestVersion"];
   applied_on: string | null;
@@ -70,7 +71,9 @@ export function actionListRepository(client?: Pick<Pool, "query">) {
   return {
     async page(scope: ActionListScope, view: NonNullable<ActionFilters["view"]>, pageSize: number, cursor: ActionListKey | null): Promise<ActionListProjection[]> {
       actionPageSize(pageSize);
-      const result = await db().query<ActionListProjection>(`${SCOPED} SELECT ${COLUMNS} FROM phased
+      const result = await db().query<ActionListProjection>(`${SCOPED} SELECT ${COLUMNS},
+        (SELECT m.email FROM workspace_members m WHERE m.workspace_id=phased.workspace_id AND m.user_id=phased.assignee_user_id AND m.accepted_at IS NOT NULL ORDER BY m.created_at,m.id LIMIT 1) AS assignee_name
+        FROM phased
         WHERE (($14='completed' AND action_state='completed') OR ($14<>'completed' AND ($5::text IS NOT NULL OR ${OPEN}) AND
           ($14='all' OR ($14='needs_input' AND action_state='needs_input') OR ($14='drafts' AND phase IN ('draft_ready','generating')) OR ($14='awaiting_approval' AND phase IN ('draft_ready','changes_requested')))))
           AND ($15::numeric IS NULL OR (COALESCE(priority_score,0),updated_at,id)<($15::numeric,$16::timestamptz,$17::uuid))

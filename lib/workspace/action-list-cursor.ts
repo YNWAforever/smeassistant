@@ -18,6 +18,9 @@ export function decodeActionCursor(value: string | undefined, fingerprint: strin
     if (!value || value.length > 1024 || !/^[A-Za-z0-9_-]+$/.test(value)) throw new Error();
     const raw = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
     if (raw.v !== 1 || raw.fingerprint !== fingerprint || !Number.isFinite(raw.score) || typeof raw.updatedAt !== "string" || !Number.isFinite(Date.parse(raw.updatedAt)) || !UUID.test(raw.id)) throw new Error();
+    const dateText = raw.updatedAt.slice(0, 10);
+    const calendarDate = new Date(`${dateText}T00:00:00Z`);
+    if (!/^\d{4}-\d{2}-\d{2}[T ]/.test(raw.updatedAt) || !Number.isFinite(calendarDate.getTime()) || calendarDate.toISOString().slice(0, 10) !== dateText) throw new Error();
     // Preserve PostgreSQL's exact timestamp string, including microseconds.
     return { score: raw.score, updatedAt: raw.updatedAt, id: raw.id };
   } catch { throw new Error("invalid_action_cursor"); }

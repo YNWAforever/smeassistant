@@ -16,7 +16,9 @@ test("375px keyboard selection, preview, apply and Escape use the actual scoped 
   const dialog = page.getByRole("dialog"); await expect(dialog).toBeVisible();
   const box = await dialog.boundingBox(); expect(box).not.toBeNull(); expect(box!.x).toBeGreaterThanOrEqual(0); expect(box!.x + box!.width).toBeLessThanOrEqual(375);
   await page.keyboard.press("Escape"); await expect(dialog).not.toBeVisible(); await expect(trigger).toBeFocused();
-  await trigger.press("Enter"); await page.getByLabel("Due date change").selectOption("set");
+  await trigger.press("Enter");
+  await page.getByLabel("Assignee change").selectOption({ label: merchant.emails.owner });
+  await page.getByLabel("Due date change").selectOption("set");
   await page.getByLabel("Due time (Asia/Hong_Kong)").fill("2026-10-12T09:00");
   await page.getByRole("button", { name: "Preview changes", exact: true }).click();
   await expect(dialog.getByText("Eligible after review", { exact: true })).toBeVisible();
@@ -25,7 +27,13 @@ test("375px keyboard selection, preview, apply and Escape use the actual scoped 
   expect(sql(environment.db,`SELECT due_at AT TIME ZONE 'UTC' FROM actions WHERE id='${merchant.actionId}'`)).toBe("2026-10-12 01:00:00");
   expect(sql(environment.db,`SELECT count(*) FROM audit_events WHERE entity_id='${merchant.actionId}' AND event='action.updated'`)).toBe("1");
   await page.keyboard.press("Escape");
+  await expect(page.locator(".action-card-meta")).toContainText(merchant.emails.owner);
   await expect(page.locator(".action-card-meta")).toContainText("12 Oct 2026, 09:00");
+  const assigneeId = sql(environment.db, `SELECT assignee_user_id FROM actions WHERE id='${merchant.actionId}'`);
+  expect(sql(environment.db, `SELECT email FROM workspace_members WHERE workspace_id='${merchant.workspaceId}' AND user_id='${assigneeId}' AND accepted_at IS NOT NULL`)).toBe(merchant.emails.owner);
+  await page.goto(`${base}?assignee=${assigneeId}`);
+  await expect(page.locator(".action-card")).toHaveCount(1);
+  await expect(page.locator(".action-card-meta")).toContainText(merchant.emails.owner);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
