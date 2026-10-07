@@ -1,0 +1,18 @@
+{
+  "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+  "source_tree": "6650a61c31826d044d0f9fe572b031aa031220a8",
+  "branch": "codex/smeassistant-audit-remediation-20261007",
+  "commit_count_since_audit": 16,
+  "lock_sha256": "C7C722C958A874DEEE76AB2B4FAAF654D985547A9D29EB256D8F6C9B848F63C6",
+  "plan_sha256": "4121B9FB00AA7CBA35F4E113ECD88CBE6B43082A143AFF756C534B7E19C16F55",
+  "non_docs_worktree_diff": [],
+  "changed_migration_sql": [
+    "neon/migrations/0015_action_list_indexes.sql"
+  ],
+  "correct_original_status": [],
+  "unrelated_original_status_count": 12,
+  "captured_utc": "2026-10-07T01:47:05.2596763Z",
+  "phase": "post-gates, before final evidence-only commit",
+  "final_gate_count": 11,
+  "audit_status_rows_preserved": 21
+}

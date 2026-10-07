@@ -14,3 +14,7 @@ Executor 判定兩項均影響已承諾的可見行為，保留 Important 並作
 **Final: Ruling:** T-12 已要求無效 cursor 拒絕及 recovery，使用者亦明確要求完成所有未受阻的本地工作；所以這項仍保留 P3，按使用者授權一併作最小 calendar guard，而不照技能的 generic minor-defer 預設留下已確認的範圍內缺陷。三個 impossible-date regression 先 RED，合法 leap day／exact microsecond string 為對照。沒有擴大 scope 或重新序列化 timestamp；GREEN 與最終 gates 在 progress 記錄。
 
 Declined to judge：None。Reviewer 沒有改檔／提交、重跑 heavy suites，或驗證 hosted／正式 migration／provider／release gate；這些狀態繼續按 tracker 分開記錄。沒有第二輪 reviewer；修復完成與否由實際 regression 及 gate 結果判定。
+
+## Resolution and verification
+
+All three in-scope findings were addressed in one fix pass, commit `efd51ca1a68ba9f9d3c56ea726b008b97d400328`. Permanent actual-import regressions, faithful list mocks, real DB projection/scope checks and the named-assignee browser journey passed. Fresh full CI-order local gates at that exact source all exit 0: 5,352 unit tests, 565 integration tests, 31 general E2E and 49 required acceptance. Raw commands/exit codes and source bindings are in remediation-evidence/final-review-gates.jsonl and verification-summary.json. No second reviewer, external deployment or hosted acceptance was performed. The reviewer's original scope and severity record above is retained.

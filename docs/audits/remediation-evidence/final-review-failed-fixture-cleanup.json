@@ -1,0 +1,14 @@
+{
+  "name": "/sme-neon-it-db-cdd4fc66eb83",
+  "id": "c13341f2949c687adf451e819629293e45d68690915934f57d3ca9a133c827e3",
+  "labels": {
+    "com.sme-scanner.integration": "neon-postgres",
+    "com.sme-scanner.integration.database": "sme_neon_it_cdd4fc66eb83"
+  },
+  "network": "none",
+  "created": "2026-10-07T00:21:48.780250484Z",
+  "status": "removed_owned_failed_setup_fixture",
+  "checked_before_removal": true,
+  "removed_utc": "2026-10-07T00:40:10.979Z",
+  "other_containers_touched": 0
+}

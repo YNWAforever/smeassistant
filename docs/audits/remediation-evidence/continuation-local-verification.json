@@ -1,0 +1,17 @@
+{
+  "checked_utc": "2026-10-07T00:12:13.2585175Z",
+  "reviewed_head": "c58bc01788c7d8fa3852155063acd017f641266f",
+  "tracker_rows": 21,
+  "unchanged_columns_except_next_action": true,
+  "final_gate_logs_present": 11,
+  "final_gate_nonzero_exits": 0,
+  "application_source_diff_from_verified_sha": [],
+  "lockfile_sha256": "C7C722C958A874DEEE76AB2B4FAAF654D985547A9D29EB256D8F6C9B848F63C6",
+  "plan_sha256": "4121B9FB00AA7CBA35F4E113ECD88CBE6B43082A143AFF756C534B7E19C16F55",
+  "rerun_heavy_gates": false,
+  "reason": "No application/fixture/test/config changes; review and metadata/tracker correction only so far.",
+  "original_audit_status_rows_verified": 21,
+  "unrelated_checkout_changes_preserved": 12,
+  "original_correct_checkout_changes": 0,
+  "phase": "Pre-review snapshot; later fix pass and new source gates recorded separately."
+}

@@ -1,6 +1,6 @@
 # SMEAssistant 本地整改交付
 
-所有未受阻的本地整改已實作及驗證，十四批本地 implementation／fixture commits 加最後 evidence-only 提交。必須 local gates 全部 exit 0；外部／hosted 前提仍未齊備，沒有本分支遠端 CI、production 部署或啟用。這份文件記錄實作，不代替原 implementation plan。
+所有未受阻的本地整改已實作及驗證。本分支共 17 個本地提交，包含原整改、一次獨立審閱的修復及 evidence-only 紀錄。最新程式／fixture SHA `efd51ca1a68ba9f9d3c56ea726b008b97d400328` 的十一項 local gates 全部 exit 0；外部／hosted 前提仍未齊備，沒有本分支遠端 CI、production 部署或啟用。這份文件記錄實作，不代替原 implementation plan。
 
 ## 基準與界線
 
@@ -19,7 +19,7 @@ Handoff MANIFEST 6/6、原始 evidence MANIFEST 28/28 均相符；原始 ZIP／�
 - C2：列表預設 25、上限 50，scope-bound keyset cursor，latest metadata projection；search／assignee／due filters 與 counts 共用 scope。批量只接受 assignee／due date，preview → fresh authorization/CAS → atomic update/audit，失敗項另重試。Apply 後刷新可見卡片／counts。
 - D：dispatch 共用 55 秒工作及 5 秒收尾預算，涵蓋 headers/body/DB/pool wait；未嘗試 lease 可補償，未知 provider 結果保留 dedupe／lease recovery。Readiness 額外核對實際 first_published_at column，不能以 flags off 或 journal 存在冒充 schema 齊備。
 
-大型列表 fixture：1,000 actions、每項 10 versions／5 runs，由 3 queries／16,000 rows／26,739,928 bytes 降至 2 queries／27 rows／22,589 bytes。這是本地 serialized-result 成本，非 hosted p95。新增 0015 的三個索引只在 disposable DB 套用；舊 migration 和 legacy catalog 保留。
+大型列表 fixture：1,000 actions、每項 10 versions／5 runs，由 3 queries／16,000 rows／26,739,928 bytes 降至 2 queries／27 rows／23,133 bytes（本輪加入 bounded accepted-member label 後）。這是本地 serialized-result 成本，非 hosted p95。新增 0015 的三個索引只在 disposable DB 套用；舊 migration 和 legacy catalog 保留。
 
 詳細可讀證據：[progress](2026-10-07-remediation-progress.md)、[tracker](2026-10-07-remediation-tracker.csv)、[list benchmark](action-list-performance.md)、[assignment acceptance](action-assignment-acceptance.md)、[dispatch deadline](dispatch-deadline-verification.md)、[AI corpus](ai-quality-baseline.md)、[acceptance matrix](acceptance-matrix.md)。
 
@@ -43,21 +43,36 @@ Handoff MANIFEST 6/6、原始 evidence MANIFEST 28/28 均相符；原始 ZIP／�
 | 05da46c | T-02/T-05/T-19/T-21 operations、T-15/T-20 matrix、T-17 field checklist | 唯讀 settings/roles；prepared JSON；lint/typecheck 0；沒有外部套用 |
 | 76404c4 | T-13 refresh；T-19 column readiness/catalog；T-03/T-15/T-17/T-20 fixture follow-up | 14 selected unit／51 DB；完整 lint/type/unit/security/migration/integration/build 0；31 general E2E 0 |
 | 6941ed7 | T-15 required-input fixture／201 create＋200 replay／UUID 和實際 assertion row | HK/TW 2/2 browser；fresh full lint/typecheck 0；完整 required acceptance 49/49 exit 0 |
+| c58bc01 | 前一輪 evidence-only 交付 | 保存 76404c4／6941ed7 source binding、21 項狀態及未執行外部項 |
+| efd51ca | T-06 括號年份；T-12 calendar cursor；T-13 指派名稱／三語 fallback／mobile | RED → targeted GREEN；126 selected unit、13 DB、3 browser；fresh 全部十一項 gate exit 0 |
 
-產品程式驗證 commit：`76404c43458e3bf614bd2ac2329655e265c74f79`，tree `9cc29f67569b7be35849ffe78e21da382917733b`。最新 fixture commit：`6941ed7c24ab66593018ab40e3628d193056ed17`；與前者的非 docs 差異只有 merchant-loop acceptance fixture，application／unit／DB／build／general E2E sources 沒有變動。這批 fresh lint/typecheck 與 HK/TW 2-case browser 通過，再跑完整 required acceptance；沒有重跑無變動的 heavy gates。最後 evidence-only 提交只整理結果，不代表遠端 CI 或部署。
+最新完整驗證的產品程式和 fixture 都是 `efd51ca1a68ba9f9d3c56ea726b008b97d400328`，tree `6650a61c31826d044d0f9fe572b031aa031220a8`。本輪只有一位 fresh-context 唯讀 reviewer；兩項 Important/P2 及使用者 scope 內的 cursor P3 均先 RED，再做同一輪最小修復。沒有 Critical、declined-to-judge 或留下的本地 review 缺陷；沒有第二輪 reviewer。[獨立審閱](final-independent-review.md) 與 [targeted commands](remediation-evidence/final-review-targeted-commands.json) 記錄 provenance、severity ruling、真函式／DB／browser 驗證及 rollback。
+
+之前 `76404c4` 的 application、`6941ed7` 的 fixture 完整驗證仍保留為歷史紀錄；它們不代替本輪 source 的驗證。最後 evidence-only 提交只整理 docs/logs/tracker；最新交付 SHA 隨聊天交付，亦可在此本地分支以 `git rev-parse HEAD` 取得。所有提交均未 push。
 
 ## 實際 gates
 
-最終 ledger：`remediation-evidence/final-gates.jsonl`；每項包含 gate、exit code、時間及 log 路徑，command 是對應的 `pnpm <gate>`。[verification-summary.json](remediation-evidence/verification-summary.json) 記錄每個最後成功結果、command、source/fixture SHA、counts、歷史失敗的保存檔案，以及 remote CI／hosted 未執行界線。十一項 local gates 最後結果全部 exit 0，沒有 final failed／skipped tests。
+本輪 [final-review-gates.jsonl](remediation-evidence/final-review-gates.jsonl) 按 CI 順序記錄全部十一項 command／exit code／時間／log，全部綁定 `efd51ca`；重型 gate 沒有併發。[verification-summary.json](remediation-evidence/verification-summary.json) 是最新完整結果；[pre-review summary](remediation-evidence/pre-review-verification-summary.json)、原 `final-gates.jsonl` 和舊 raw logs 是保留的歷史證據。每項 command 是對應的 `pnpm <gate>`，全部 exit 0，沒有 final failed／skipped tests。
 
-- Frozen install exit 0；full lint exit 0（40 warnings）；root＋四 packages typecheck exit 0。
-- Full unit：root 4,800 tests、packages 525 tests，exit 0。首次未完成的 run 保留為 interrupted；沒有將其列為 pass。
-- Secret boundary 61 public artifacts、no-supabase、no-self-service-claim 各 exit 0。
-- Disposable migrations 0001–0015、replay []、41 business tables／491 columns／204 constraints／111 indexes／8 triggers／23 functions，zero seeded rows，exit 0。
-- Full integration 最後重跑：52 files／564 tests exit 0，沒有 skipped，包含新增的 readiness 缺 column regression。此前 2 個 journal-count 14→15 的期望失敗保留；readiness RED exit 1、三完整 integration files／51 tests GREEN exit 0。
-- Build exit 0。一般 E2E 第一次在啟動健康檢查失敗，零 browser assertions：Next dev manifest 只有 `_not-found`。保存 log／manifest，核對本工作樹及 owned process 後只清除 `.next/dev` 產物快取；沒有改 auth、locale 或測試要求。重建路由後 31/31 通過，exit 0。
-- Bulk refresh regression RED exit 1、selected 14 tests GREEN exit 0。卡片刷新／回應遺失 recovery、claim／resume／no_access cases 在完整 browser 已通過；merchant 新增 facts fixture 的首輪結果 47 passed／2 failed，保留 log／context／trace。補齊既有 template 的 persisted required list，並嚴格核對 applied 201 create／200 replay，同 UUID 對應真 DB row／單一 event；HK/TW targeted 2/2 pass。最後完整 required acceptance **49/49 passed，exit 0，10.1m**。
-- 一個 corrected targeted HK 首次 detail request 404、TW pass；保存 server/context/trace，同程式在核對 cache target／owned process 後清除 `.next/dev`，2/2 再跑及完整 49/49 通過。沒有聲稱已修好 framework cold-start 根因。Command quoting exit 255 的零-test 嘗試也保留；不可計作 product regression 或 pass。
+| Gate | 實際結果 |
+|---|---|
+| lint | exit 0，0 errors／40 warnings |
+| typecheck | root＋四 packages，exit 0 |
+| unit | root 4,765＋safe-media 62；四 packages 23＋183＋20＋299；合共 **5,352 passed** |
+| secret boundary | 61 public artifacts，exit 0 |
+| no-supabase | exit 0，既有 pinned auth-js 例外保留 |
+| no-self-service-claim | exit 0 |
+| disposable DB verification | 0001–0015；replay []；41 tables／491 columns／204 constraints／111 indexes／8 triggers／23 functions；zero seeded rows，exit 0 |
+| integration | **52 files／565 passed**，exit 0，no skips |
+| build | exit 0 |
+| general E2E | **31/31 passed**，exit 0 |
+| required acceptance | **49/49 passed**，exit 0 |
+
+新 regression 覆蓋括號年份與 cross-year、真正 list 函式／三語 assigned fallback、pending／foreign／revoked membership label、scope-matching impossible cursor，以及實際 named assignment apply → refresh → filter → DB audit／375px overflow。Counts、IANA month、exact-version approval、CAS、unknown-result recovery 與既有 security gates 仍通過。這些是本地合成／隔離測試，不是 hosted journey 或 production 部署。
+
+本輪最初完整 unit 程序中斷，未有完成 footer／exit code；[interrupted metadata](remediation-evidence/final-review-interrupted-attempt.json) 和獨立 raw log 保留，沒有算作 pass。確認無 owned runner 後由同一 SHA 接續重跑 unit 和剩餘 gates。首次 fresh DB verification 因本地 Docker daemon 未運行而在 fixture 建立前退出 1；原 log 保留，恢復同一 engine／cached image 後用新的 retry log 接續，沒有改 migration 或測試要求。Targeted DB setup timeout 在 assertions 前中止；首個 GREEN fixture 嘗試保留了 `owner_removal_forbidden`，只修正可移除的 synthetic member role，實際 guard 未改。之前 cold-start／junction／fixture／command quoting 的失敗及 traces 亦全部保留；沒有聲稱 framework cold-start 根因已修好。
+
+首次本輪 required acceptance 為 **48 passed／1 failed**，unavailable LLM case 的本地 `/run` request 在收到 HTTP 回應前 `ECONNRESET`；server log 沒有該 request 的完成紀錄。[failure metadata](remediation-evidence/final-review-acceptance-econnreset.json)、server log、context 和 trace 均保留。原因未確證；既有 CI diagnostics 亦記錄過相同 symptom，但不能據此判定原因。原 source／原 assertion 的 isolated case 1/1 passed（37.6 秒）後，完整 49-case 重跑通過。沒有增加 request retry、改 assertion、改 server/transport/config/source 或跳過 case；**不宣稱 reset 根因已修復**。這是交付的驗證限制，並非另一個已修好的 production bug。
 
 ## 全部 21 項
 
@@ -70,14 +85,14 @@ Handoff MANIFEST 6/6、原始 evidence MANIFEST 28/28 均相符；原始 ZIP／�
 | T-03 | slug parser／unit/DB；精確 slug browser case 已通過 | 未 hosted 驗收 |
 | T-04 | 保留同 audit SHA 的成功 CI 證據 | 不代表本分支新 CI |
 | T-05 | 唯讀 gate/roles 證據及具體未套用提案完成 | gate gap；設定與 failed-candidate drill 受阻 |
-| T-06 | currency／dates／years／visible warnings 完成 | Beta／flags 未變；未驗收 |
+| T-06 | currency／dates／years／visible warnings；括號年份 regression 完成 | Beta／flags 未變；未驗收 |
 | T-07 | 真實 collector outcome／unknown 誠實顯示完成 | live scan 未跑 |
 | T-08 | URL 前後端、真 DB 完成；早期 timeout 已解 | live scan 未跑 |
 | T-09 | faithful mock＋真 DB counts scope 完成 | 未驗收 |
 | T-10 | IANA local month＋DST 真 DB 完成 | 正式資料未讀 |
 | T-11 | shared deadline／cancellation／lease recovery 完成 | cron off，未觀察 hosted ticks |
-| T-12 | 有界列表／cursor／DB benchmark／新索引完成 | 0015 正式 journal／套用未做 |
-| T-13 | scope/CAS/preview/partial retry；刷新／lost-response browser cases 已通過 | 新 bulk flag off，未啟用 |
+| T-12 | 有界列表／calendar cursor／DB benchmark／0015；本輪沒有新 migration | 0015 正式 journal／套用未做 |
+| T-13 | scope/CAS/preview/partial retry；指派名稱／refresh/filter／lost-response browser 通過 | 新 bulk flag off，未啟用 |
 | T-14 | 三語 limitation mapping 完成 | hosted 三語未驗收 |
 | T-15 | composed fixture journey＋facts/resume/exact-version/applied 完成；49/49 | 專用身份／workspace／provider 前提不足；live collector journey 未跑 |
 | T-16 | offline corpus 完成；live manifest 完成 | dataset／budget／model／reviewer 不足 |
@@ -91,10 +106,10 @@ Handoff MANIFEST 6/6、原始 evidence MANIFEST 28/28 均相符；原始 ZIP／�
 
 T-05 已觀察 main protection 404、rulesets []、Vercel automatic custom-domain assignment true／checks empty；GitHub collaborator 及 Vercel team roles 已讀，effective promotion/bypass 與 integration token 權限仍未證實。請先審閱 [gate 提案與失敗演練](../operations/release-gates.md)，外部設定與 dedicated test-alias drill 需另外授權。
 
-T-19 production DATABASE_URL 為 sensitive；未取得獨立 Neon project/branch/host/database binding、direct metadata 與 application-role readiness 存取。[migration checklist](../operations/migration-readiness.md) 已備妥，正式 journal／checksum／column／privileges 仍為未觀察，不能宣稱已套用。
+T-19 production DATABASE_URL 為 sensitive；未取得獨立 Neon project/branch/host/database binding、direct metadata 與 application-role readiness 存取。執行期間已請求 target metadata 及已配置只讀憑證的位置，尚未取得；不要求在聊天貼密碼或連線字串。[migration checklist](../operations/migration-readiness.md) 已備妥，正式 journal／checksum／column／privileges 仍為未觀察，不能宣稱已套用。
 
 T-15/T-20 hosted 需要專用 synthetic workspace、owner/scoped manager/viewer/nonmember、同 SHA 的部署／DB readiness、受准許 providers；任何 publish 要精確 version／target 授權。T-16 live 要 approved dataset/budget/model/pricing/quality thresholds/reviewer。T-17 需要實際 HK participants/devices/networks；沒有把 fixture timing 當 field 結果。
 
 T-02 已唯讀核對 team 為 active Pro，建議五分鐘 cadence 符合當時平台規則；仍需要 DEC-10 決定變更、operating budget、owner/alert destination、T-19 和受控三次 ticks／missing-tick drill。[activation runbook](../operations/maintenance-activation.md) 未執行。T-21 需要 recovery point／retention 證據、全新明確 target、成本／restore／cleanup 授權及交接 owner；[restore runbook](../operations/restore-drill.md) 的 RTO/RPO 都未量度。
 
-本地 rollback 使用各批次 `git revert <commit>`，按相依關係反向處理；不要 reset／清除使用者工作。程式回退不刪除合法 assignments 或 immutable versions。0015 indexes 可保留；任何移除都須新增 forward migration 及獨立授權，不能改舊 SQL/journal。維護或 publishing rollback 保留未知 provider receipt／delivery／completion ledger，先 reconcile，不能盲重送。由於沒有本次 production 變更，沒有宣稱已執行正式 rollback。
+本輪三項 review 修復可先 `git revert efd51ca1a68ba9f9d3c56ea726b008b97d400328`；這不做 schema/data/flag/provider mutation。本地 rollback 使用各批次 `git revert <commit>`，按相依關係反向處理；不要 reset／清除使用者工作。程式回退不刪除合法 assignments 或 immutable versions。0015 indexes 可保留；任何移除都須新增 forward migration 及獨立授權，不能改舊 SQL/journal。維護或 publishing rollback 保留未知 provider receipt／delivery／completion ledger，先 reconcile，不能盲重送。由於沒有本次 production 變更，沒有宣稱已執行正式 rollback。

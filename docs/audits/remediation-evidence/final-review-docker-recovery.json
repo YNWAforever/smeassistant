@@ -1,0 +1,15 @@
+{
+  "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+  "first_attempt_gate": "db:verify",
+  "first_attempt_exit_code": 1,
+  "first_attempt_result": "Docker engine unavailable; fixture not created; zero migration/DB assertions",
+  "failed_log": "docs/audits/remediation-evidence/final-review-full-db-verify.txt",
+  "recovery_command": "docker desktop start --detach --timeout 30",
+  "recovery_exit_code": 0,
+  "observed_server_version": "29.8.1",
+  "cached_postgres_image": "sha256:1a6ab3f5345eb6dbe04a1349529caabdb0ab09293a09590fad07b2246bfa4b54",
+  "matching_fixture_containers_before_resume": 0,
+  "fixture_target": "new owned synthetic postgres:16 container, network none, unique sme_neon_it database; no ambient DATABASE_URL",
+  "recovery_scope": "local prerequisite only; no external DB, image pull or unrelated container mutation",
+  "recorded_utc": "2026-10-07T01:05:34.8990999Z"
+}

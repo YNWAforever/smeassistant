@@ -1,131 +1,256 @@
 {
-  "branch": "codex/smeassistant-audit-remediation-20261007",
-  "base_sha": "d1cbc7bd8a2bc7989c774d15001f7971274bed8d",
-  "verified_application_sha": "76404c43458e3bf614bd2ac2329655e265c74f79",
-  "verified_fixture_sha": "6941ed7c24ab66593018ab40e3628d193056ed17",
-  "application_source_diff": [],
-  "gates": [
+  "application_verification_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+  "fixture_verification_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+  "source_tree": "6650a61c31826d044d0f9fe572b031aa031220a8",
+  "source_fix_commit": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+  "local_gate_source_binding": "All eleven required gates ran against the same immutable efd51ca source/fixture commit; later changes are documentation/evidence only.",
+  "final_gates": [
     {
       "gate": "lint",
       "command": "pnpm lint",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
       "exit_code": 0,
-      "completed_utc": "2026-10-06T22:54:45.3838011Z",
-      "log": "docs/audits/remediation-evidence/T15-fixture-full-lint.txt",
-      "application_sha": "76404c43458e3bf614bd2ac2329655e265c74f79",
-      "fixture_sha": "6941ed7c24ab66593018ab40e3628d193056ed17"
+      "completed_utc": "2026-10-07T00:39:58.3211665Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-lint.txt"
     },
     {
       "gate": "typecheck",
       "command": "pnpm typecheck",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
       "exit_code": 0,
-      "completed_utc": "2026-10-06T22:55:06.0883072Z",
-      "log": "docs/audits/remediation-evidence/T15-fixture-full-typecheck.txt",
-      "application_sha": "76404c43458e3bf614bd2ac2329655e265c74f79",
-      "fixture_sha": "6941ed7c24ab66593018ab40e3628d193056ed17"
+      "completed_utc": "2026-10-07T00:40:34.9229931Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-typecheck.txt"
     },
     {
       "gate": "test",
       "command": "pnpm test",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
       "exit_code": 0,
-      "completed_utc": "2026-10-06T22:07:31.9351948Z",
-      "log": "docs/audits/remediation-evidence/full-unit.txt",
-      "application_sha": "76404c43458e3bf614bd2ac2329655e265c74f79",
-      "fixture_sha": "76404c43458e3bf614bd2ac2329655e265c74f79"
+      "completed_utc": "2026-10-07T01:00:23.1576504Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-test.txt"
     },
     {
       "gate": "test:secret-boundary",
       "command": "pnpm test:secret-boundary",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
       "exit_code": 0,
-      "completed_utc": "2026-10-06T22:08:46.7749431Z",
-      "log": "docs/audits/remediation-evidence/full-secret-boundary.txt",
-      "application_sha": "76404c43458e3bf614bd2ac2329655e265c74f79",
-      "fixture_sha": "76404c43458e3bf614bd2ac2329655e265c74f79"
+      "completed_utc": "2026-10-07T01:01:09.7098395Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-test-secret-boundary.txt"
     },
     {
       "gate": "test:no-supabase",
       "command": "pnpm test:no-supabase",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
       "exit_code": 0,
-      "completed_utc": "2026-10-06T22:08:51.5575343Z",
-      "log": "docs/audits/remediation-evidence/full-no-supabase.txt",
-      "application_sha": "76404c43458e3bf614bd2ac2329655e265c74f79",
-      "fixture_sha": "76404c43458e3bf614bd2ac2329655e265c74f79"
+      "completed_utc": "2026-10-07T01:01:11.6996384Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-test-no-supabase.txt"
     },
     {
       "gate": "test:no-self-service-claim",
       "command": "pnpm test:no-self-service-claim",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
       "exit_code": 0,
-      "completed_utc": "2026-10-06T22:08:54.1261929Z",
-      "log": "docs/audits/remediation-evidence/full-no-self-service-claim.txt",
-      "application_sha": "76404c43458e3bf614bd2ac2329655e265c74f79",
-      "fixture_sha": "76404c43458e3bf614bd2ac2329655e265c74f79"
+      "completed_utc": "2026-10-07T01:01:12.2762868Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-test-no-self-service-claim.txt"
     },
     {
       "gate": "db:verify",
       "command": "pnpm db:verify",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
       "exit_code": 0,
-      "completed_utc": "2026-10-06T22:09:07.6165902Z",
-      "log": "docs/audits/remediation-evidence/full-db-verify.txt",
-      "application_sha": "76404c43458e3bf614bd2ac2329655e265c74f79",
-      "fixture_sha": "76404c43458e3bf614bd2ac2329655e265c74f79"
+      "completed_utc": "2026-10-07T01:05:23.6532095Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-db-verify-retry-1.txt"
     },
     {
       "gate": "test:integration",
       "command": "pnpm test:integration",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
       "exit_code": 0,
-      "completed_utc": "2026-10-06T22:17:37.5280474Z",
-      "log": "docs/audits/remediation-evidence/full-integration.txt",
-      "application_sha": "76404c43458e3bf614bd2ac2329655e265c74f79",
-      "fixture_sha": "76404c43458e3bf614bd2ac2329655e265c74f79"
+      "completed_utc": "2026-10-07T01:19:25.9965895Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-test-integration.txt"
     },
     {
       "gate": "build",
       "command": "pnpm build",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
       "exit_code": 0,
-      "completed_utc": "2026-10-06T22:18:43.3979161Z",
-      "log": "docs/audits/remediation-evidence/full-build.txt",
-      "application_sha": "76404c43458e3bf614bd2ac2329655e265c74f79",
-      "fixture_sha": "76404c43458e3bf614bd2ac2329655e265c74f79"
+      "completed_utc": "2026-10-07T01:20:32.1543362Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-build.txt"
     },
     {
       "gate": "e2e",
       "command": "pnpm e2e",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
       "exit_code": 0,
-      "completed_utc": "2026-10-06T22:28:02.3489072Z",
-      "log": "docs/audits/remediation-evidence/full-e2e.txt",
-      "application_sha": "76404c43458e3bf614bd2ac2329655e265c74f79",
-      "fixture_sha": "76404c43458e3bf614bd2ac2329655e265c74f79"
+      "completed_utc": "2026-10-07T01:21:50.4872265Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-e2e.txt"
     },
     {
       "gate": "e2e:acceptance",
       "command": "pnpm e2e:acceptance",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
       "exit_code": 0,
-      "completed_utc": "2026-10-06T23:06:32.0685891Z",
-      "log": "docs/audits/remediation-evidence/full-acceptance.txt",
-      "application_sha": "76404c43458e3bf614bd2ac2329655e265c74f79",
-      "fixture_sha": "6941ed7c24ab66593018ab40e3628d193056ed17"
+      "completed_utc": "2026-10-07T01:44:31.1470995Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-e2e-acceptance-retry-1.txt"
     }
   ],
-  "unit_tests": 5325,
+  "execution_history": [
+    {
+      "gate": "lint",
+      "command": "pnpm lint",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+      "exit_code": 0,
+      "completed_utc": "2026-10-07T00:39:58.3211665Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-lint.txt"
+    },
+    {
+      "gate": "typecheck",
+      "command": "pnpm typecheck",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+      "exit_code": 0,
+      "completed_utc": "2026-10-07T00:40:34.9229931Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-typecheck.txt"
+    },
+    {
+      "gate": "test",
+      "command": "pnpm test",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+      "exit_code": 0,
+      "completed_utc": "2026-10-07T01:00:23.1576504Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-test.txt"
+    },
+    {
+      "gate": "test:secret-boundary",
+      "command": "pnpm test:secret-boundary",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+      "exit_code": 0,
+      "completed_utc": "2026-10-07T01:01:09.7098395Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-test-secret-boundary.txt"
+    },
+    {
+      "gate": "test:no-supabase",
+      "command": "pnpm test:no-supabase",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+      "exit_code": 0,
+      "completed_utc": "2026-10-07T01:01:11.6996384Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-test-no-supabase.txt"
+    },
+    {
+      "gate": "test:no-self-service-claim",
+      "command": "pnpm test:no-self-service-claim",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+      "exit_code": 0,
+      "completed_utc": "2026-10-07T01:01:12.2762868Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-test-no-self-service-claim.txt"
+    },
+    {
+      "gate": "db:verify",
+      "command": "pnpm db:verify",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+      "exit_code": 1,
+      "completed_utc": "2026-10-07T01:01:13.6568068Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-db-verify.txt"
+    },
+    {
+      "gate": "db:verify",
+      "command": "pnpm db:verify",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+      "exit_code": 0,
+      "completed_utc": "2026-10-07T01:05:23.6532095Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-db-verify-retry-1.txt"
+    },
+    {
+      "gate": "test:integration",
+      "command": "pnpm test:integration",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+      "exit_code": 0,
+      "completed_utc": "2026-10-07T01:19:25.9965895Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-test-integration.txt"
+    },
+    {
+      "gate": "build",
+      "command": "pnpm build",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+      "exit_code": 0,
+      "completed_utc": "2026-10-07T01:20:32.1543362Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-build.txt"
+    },
+    {
+      "gate": "e2e",
+      "command": "pnpm e2e",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+      "exit_code": 0,
+      "completed_utc": "2026-10-07T01:21:50.4872265Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-e2e.txt"
+    },
+    {
+      "gate": "e2e:acceptance",
+      "command": "pnpm e2e:acceptance",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+      "exit_code": 1,
+      "completed_utc": "2026-10-07T01:31:53.4352693Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-e2e-acceptance.txt"
+    },
+    {
+      "gate": "e2e:acceptance",
+      "command": "pnpm e2e:acceptance",
+      "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+      "exit_code": 0,
+      "completed_utc": "2026-10-07T01:44:31.1470995Z",
+      "log": "docs/audits/remediation-evidence/final-review-full-e2e-acceptance-retry-1.txt"
+    }
+  ],
+  "unit_tests": 5352,
+  "unit_test_groups": [
+    4765,
+    62,
+    23,
+    183,
+    20,
+    299
+  ],
   "integration_files": 52,
-  "integration_tests": 564,
+  "integration_tests": 565,
   "general_e2e_tests": 31,
   "required_acceptance_tests": 49,
   "final_failed_tests": 0,
   "final_skipped_tests": 0,
   "lint_warnings": 40,
+  "previous_summary": "pre-review-verification-summary.json",
   "historical_failed_logs": [
     "full-e2e-first-startup-failure.txt",
     "full-integration-first.txt",
     "full-acceptance-first-fixture-failure.txt",
     "T15-merchant-fixture-targeted-first-404.txt",
-    "T15-merchant-fixture-command-error.txt"
+    "T15-merchant-fixture-command-error.txt",
+    "final-review-assignee-db-setup-timeout.txt",
+    "final-review-assignee-db-first-green-fixture-error.txt",
+    "docs/audits/remediation-evidence/final-review-full-db-verify.txt",
+    "docs/audits/remediation-evidence/final-review-full-e2e-acceptance.txt"
   ],
-  "incomplete_attempt_log": "full-unit-first-interrupted.txt",
+  "incomplete_attempt_logs": [
+    "full-unit-first-interrupted.txt",
+    "final-review-full-test-interrupted.txt"
+  ],
+  "interrupted_attempt_metadata": "final-review-interrupted-attempt.json",
+  "independent_review": "docs/audits/final-independent-review.md",
+  "review_outcome": "Two Important/P2 and one in-scope P3 resolved in one fix pass; no Critical or declined-to-judge finding; no second reviewer.",
+  "acceptance_transport_observation": {
+    "isolated_diagnosis": "final-review-unavailable-llm-isolated.json",
+    "saved_trace": "final-review-acceptance-econnreset-trace.zip",
+    "source_or_assertion_changes": 0,
+    "saved_server_log": "final-review-acceptance-econnreset-next.log",
+    "root_cause": "unconfirmed; unchanged isolated case passed, then the complete required suite was rerun; do not claim the reset symptom is fixed",
+    "failed_evidence": "final-review-acceptance-econnreset.json",
+    "request_retry_added": 0,
+    "first_full_run": "48 passed / 1 failed, read ECONNRESET before HTTP response"
+  },
+  "targeted_commands": "final-review-targeted-commands.json",
   "audit_status_rows_preserved": 21,
   "remote_ci_for_remediation": "not_run_no_push",
   "hosted_acceptance": "not_run",
   "production_changes": 0,
   "cron": "off_DEC_10",
   "new_bulk_flag_default": "off",
-  "recorded_utc": "2026-10-06T23:10:44.9518399Z"
+  "recorded_utc": "2026-10-07T01:45:29.4828109Z"
 }

@@ -29,3 +29,19 @@ EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON), parameters and measurements are in reme
 - Hosted 0015 journal/checksum/readiness and deployment require identified target and explicit authorization. New CI and hosted acceptance have not run.
 
 Rollback: revert the T-12 application commit. Existing bounded-list data needs no rewrite. Indexes may remain after application rollback; do not edit or delete an applied migration or journal. Any later index removal must be a separately authorized forward migration.
+
+## Independent-review follow-up at efd51ca
+
+The cursor decoder now rejects impossible calendar dates before PostgreSQL receives them. Three actual-import regressions first failed; two full decoder/list files then passed 68 tests. Valid leap days and the original microsecond timestamp string remain intact. The real scope integration also sends an otherwise scope-matching cursor with an impossible day.
+
+The bounded page projection now includes the assigned accepted member's label, matched by both workspace and user ID. Pending/foreign membership cannot supply a label. No all-member map or history body was added; counts remain a separate aggregate query. The member index lookup executes for the bounded page: the 1,000-action EXPLAIN has 26 lookup loops.
+
+Fresh owned-DB measurements, including the additional label field:
+
+| Actions | Before queries / rows / bytes | After queries / rows / bytes | After initial sample ms |
+| --- | --- | --- | --- |
+| 10 | 3 / 160 / 267,416 | 2 / 11 / 8,936 | 6.96 |
+| 100 | 3 / 1,600 / 2,673,927 | 2 / 27 / 23,108 | 15.32 |
+| 1,000 | 3 / 16,000 / 26,739,928 | 2 / 27 / 23,133 | 37.33 |
+
+Raw plans, parameters and warm samples are in `remediation-evidence/final-review-list-benchmark.jsonl`. These are synthetic serialized-result measurements, not hosted latency. The earlier measurements above remain historical evidence. The follow-up adds no migration; rollback is `git revert efd51ca1a68ba9f9d3c56ea726b008b97d400328`. Fresh full-gate results are recorded separately in `remediation-evidence/final-review-gates.jsonl`.

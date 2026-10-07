@@ -1,0 +1,9 @@
+
+Running 1 test using 1 worker
+
+
+
+(node:28684) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/1] [chromium] ??e2e\acceptance\merchant-loop.spec.ts:73:68 ??unavailable LLM output cannot create or approve a version or charge usage
+  1 passed (37.6s)

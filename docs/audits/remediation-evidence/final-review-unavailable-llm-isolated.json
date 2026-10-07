@@ -1,0 +1,9 @@
+{
+  "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+  "command": "pnpm exec playwright test --config playwright.acceptance.config.ts e2e/acceptance/merchant-loop.spec.ts --grep unavailable",
+  "exit_code": 0,
+  "log": "docs/audits/remediation-evidence/final-review-unavailable-llm-isolated.txt",
+  "source_or_assertion_changes": 0,
+  "retry_added": 0,
+  "completed_utc": "2026-10-07T01:34:59.9865849Z"
+}
