@@ -49,6 +49,37 @@ function normalizeFunctionLineEndings(rows: Row[]): Row[] {
     definition: typeof row.definition === "string" ? row.definition.replaceAll("\r\n", "\n") : row.definition,
   }));
 }
+// PG18 records NOT NULL in pg_constraint as well as pg_attribute. The legacy
+// PG16 snapshot already compares column nullability; validate the new metadata
+// independently before removing only its redundant rows from that comparison.
+async function validateNotNullCatalog(pool: Pool, constraintCount: number): Promise<number> {
+  const version = Number((await pool.query("SELECT current_setting('server_version_num')::int AS version")).rows[0].version);
+  assert.ok(Number.isInteger(version) && version > 0, "valid PostgreSQL catalog version");
+  if (version < 180000) {
+    assert.equal(constraintCount, 0, "unexpected pre-PG18 NOT NULL constraint metadata");
+    return 0;
+  }
+  const columns = (await pool.query(`SELECT c.relname AS table_name,a.attname AS column_name
+    FROM pg_catalog.pg_attribute a JOIN pg_catalog.pg_class c ON c.oid=a.attrelid
+    JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND c.relkind='r' AND a.attnum>0 AND NOT a.attisdropped AND a.attnotnull
+    ORDER BY c.relname,a.attname`)).rows;
+  const constraints = (await pool.query(`SELECT c.relname AS table_name,a.attname AS column_name,
+      k.convalidated,k.conenforced,cardinality(k.conkey) AS key_count
+    FROM pg_catalog.pg_constraint k JOIN pg_catalog.pg_class c ON c.oid=k.conrelid
+    JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    LEFT JOIN pg_catalog.pg_attribute a ON a.attrelid=k.conrelid AND a.attnum=k.conkey[1] AND NOT a.attisdropped
+    WHERE n.nspname='public' AND c.relkind='r' AND k.contype='n'
+    ORDER BY c.relname,a.attname`)).rows;
+  assert.equal(constraints.length, constraintCount, "complete NOT NULL constraint metadata");
+  for (const row of constraints) {
+    assert.ok(row.convalidated === true && row.conenforced === true && row.key_count === 1,
+      "NOT NULL constraints must be validated, enforced and single-column");
+  }
+  assert.deepEqual(constraints.map(({ table_name, column_name }) => ({ table_name, column_name })), columns,
+    "NOT NULL constraints must match every non-null column exactly once");
+  return constraints.length;
+}
 export async function verifyCatalog(pool: Pool) {
   const legacy = JSON.parse(await readFile(new URL("../../test/integration/fixtures/legacy-final-catalog.json", import.meta.url), "utf8")) as Record<string, Row[]>;
   const actual: Record<string, Row[]> = {};
@@ -59,7 +90,9 @@ export async function verifyCatalog(pool: Pool) {
   // Dropped legacy columns leave ordinal gaps; compare surviving order, not physical attnum.
   const columns = (rows: Row[]) => rows.map(row => Object.fromEntries(Object.entries(row).filter(([key]) => key !== "ordinal_position")));
   assert.deepEqual(columns(business(actual.columns)), columns(legacy.columns), "all business columns/types/nullability/defaults");
-  assert.deepEqual(business(actual.constraints), legacy.constraints.map(row => ({...row, definition:String(row.definition).replaceAll("auth.users", "app_users")})), "constraints and deletion semantics");
+  const notNullConstraints = await validateNotNullCatalog(pool, actual.constraints.filter(row => row.type === "n").length);
+  const comparableConstraints = business(actual.constraints).filter(row => row.type !== "n");
+  assert.deepEqual(comparableConstraints, legacy.constraints.map(row => ({...row, definition:String(row.definition).replaceAll("auth.users", "app_users")})), "constraints and deletion semantics");
   assert.deepEqual(business(actual.indexes).filter(row => !additionalIndexes.some(index => index.indexname === row.indexname)), legacy.indexes, "all retained indexes and predicates");
   for (const index of additionalIndexes) assert.deepEqual(actual.indexes.find(row => row.indexname === index.indexname), index, `additional index ${index.indexname} definition`);
   const isAdditionalTrigger = (row: Row) => additionalTriggers.includes(String(row.name));
@@ -81,5 +114,5 @@ export async function verifyCatalog(pool: Pool) {
   let seededRows = 0;
   for (const row of actual.tables) seededRows += Number((await pool.query(`SELECT count(*) AS count FROM public."${String(row.name).replaceAll('"','""')}"`)).rows[0].count);
   assert.equal(seededRows, 0, "fresh migrations must never seed business or account rows");
-  return { tables:business(actual.tables).length, columns:business(actual.columns).length, constraints:business(actual.constraints).length, indexes:business(actual.indexes).length, triggers:actual.triggers.length, functions:actual.functions.length, seededRows, deferredFunctions, deferredTriggers };
+  return { tables:business(actual.tables).length, columns:business(actual.columns).length, constraints:comparableConstraints.length, notNullConstraints, indexes:business(actual.indexes).length, triggers:actual.triggers.length, functions:actual.functions.length, seededRows, deferredFunctions, deferredTriggers };
 }

@@ -1,0 +1,128 @@
+{
+  "task": "T-19",
+  "userCase": "UC-24",
+  "evidenceReference": "E33",
+  "recordedAt": "2026-10-07T20:34:49.7350505Z",
+  "baselineBeforeFollowup": "8ca481676bc552c2024c57ab21c32b4243dbc9f8",
+  "sourceFiles": {
+    "vercel.json": "c3f6fec091f6d3074e2179a5d776413b1240ec0666cee68decc33fd610c017ae",
+    "pnpm-lock.yaml": "c7c722c958a874deee76ab2b4faaf654d985547a9d29eb256d8f6c9b848f63c6",
+    "scripts/neon/catalog.test.ts": "0052f2ea3bfd1d5f2590bb7f10ea6091c11603e74fc13e79c5d6048da302209a",
+    ".github/workflows/ci.yml": "86c5a01c218341f3328bd8b914fa4d501aa7c6bb9a2fc66b0b474ab72b0eddd0",
+    "test/integration/neon-catalog.integration.test.ts": "e342e3795c1b06a181cee69cbdb220bdfe1d32b8ec209bae869396f31536c6b2",
+    "scripts/neon/catalog.ts": "930a598a5c012c7d9c563db6f2325a6d604a2a371df74044b01eee2a0b762544"
+  },
+  "localGates": [
+    {
+      "gate": "lint",
+      "command": "corepack pnpm lint",
+      "exitCode": 0,
+      "completedAt": "2026-10-07T20:00:25.3883775Z"
+    },
+    {
+      "gate": "typecheck",
+      "command": "corepack pnpm typecheck",
+      "exitCode": 0,
+      "completedAt": "2026-10-07T20:01:06.9768021Z"
+    },
+    {
+      "gate": "test",
+      "command": "corepack pnpm test",
+      "exitCode": 0,
+      "completedAt": "2026-10-07T20:11:12.3184936Z"
+    },
+    {
+      "gate": "test:secret-boundary",
+      "command": "corepack pnpm test:secret-boundary",
+      "exitCode": 0,
+      "completedAt": "2026-10-07T20:12:28.359661Z"
+    },
+    {
+      "gate": "test:no-supabase",
+      "command": "corepack pnpm test:no-supabase",
+      "exitCode": 0,
+      "completedAt": "2026-10-07T20:12:31.4371704Z"
+    },
+    {
+      "gate": "test:no-self-service-claim",
+      "command": "corepack pnpm test:no-self-service-claim",
+      "exitCode": 0,
+      "completedAt": "2026-10-07T20:12:33.1424942Z"
+    },
+    {
+      "gate": "db:verify",
+      "command": "corepack pnpm db:verify",
+      "exitCode": 0,
+      "completedAt": "2026-10-07T20:12:41.2119203Z"
+    },
+    {
+      "gate": "test:integration",
+      "command": "corepack pnpm test:integration",
+      "exitCode": 0,
+      "completedAt": "2026-10-07T20:19:28.6770638Z"
+    },
+    {
+      "gate": "build",
+      "command": "corepack pnpm build",
+      "exitCode": 0,
+      "completedAt": "2026-10-07T20:20:20.7902495Z"
+    },
+    {
+      "gate": "e2e",
+      "command": "corepack pnpm e2e",
+      "exitCode": 0,
+      "completedAt": "2026-10-07T20:21:36.8032857Z"
+    },
+    {
+      "gate": "e2e:acceptance",
+      "command": "corepack pnpm e2e:acceptance",
+      "exitCode": 0,
+      "completedAt": "2026-10-07T20:32:03.7402104Z"
+    }
+  ],
+  "testCounts": {
+    "unit": 5362.0,
+    "unitFooters": [
+      4775,
+      62,
+      23,
+      183,
+      20,
+      299
+    ],
+    "integrationFiles": 52,
+    "integrationTests": 566,
+    "e2e": 31,
+    "requiredAcceptance": 49
+  },
+  "targetedRegression": {
+    "redExit": 1,
+    "redFailed": 1,
+    "redPassed": 9,
+    "greenExit": 0,
+    "greenPassed": 10
+  },
+  "nativePostgresql18": {
+    "version": "18.6",
+    "red": "original constraints comparison failed",
+    "green": "native verifyCatalog without adapter passed",
+    "notNullConstraints": 279,
+    "comparableBusinessConstraints": 204,
+    "committedMigrations": 15,
+    "replay": [],
+    "seededRows": 0,
+    "ownedNetworkNone": true,
+    "fixturesCleanedAndAbsenceChecked": true
+  },
+  "boundaries": {
+    "migrationsEdited": false,
+    "dependenciesChanged": false,
+    "applicationFeaturesChanged": false,
+    "workflowGatesChanged": false,
+    "branchDeploymentHoldChanged": false,
+    "sharedDatabaseUsed": false,
+    "hostedAcceptanceClaimed": false
+  },
+  "remoteCi": "Separate candidate-SHA evidence required; prior success is historical",
+  "rollback": "Revert this verifier/test documentation commit; no shared database mutation to reverse"
+}
