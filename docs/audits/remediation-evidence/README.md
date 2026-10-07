@@ -8,6 +8,8 @@ Later read-only continuation: `T19-T21-continuation-target-metadata.json` (2026-
 
 Original audit material is outside the implementation worktree and read-only. `manifest-final-verification.json` records 6 handoff and 28 evidence checksum matches; `input-integrity-final.json` binds the unchanged plan, lockfile, 21 historical audit statuses and old migrations.
 
+`T05-branch-preview-hold.json` records the later local publication guard: only the exact audit branch is added as false to the existing `vercel.json` map. Expected missing-hold RED exits 1; official changed-property schema/negative-control/exact-delta checks exit 0. Full Draft-04 root compilation is not claimed; existing schema-tool setup limitations are retained. Application, fixtures, lockfile, CI, migrations and flags still match efd51ca. Its eleven full gates were not rerun for this config-only change. No push, PR or hosted suppression observation occurred; the production CI/promotion gate gap remains blocked.
+
 Historical verification before the fresh independent review: the local application verification commit is `76404c43458e3bf614bd2ac2329655e265c74f79` (tree `9cc29f67569b7be35849ffe78e21da382917733b`). Fixture-only follow-up `6941ed7c24ab66593018ab40e3628d193056ed17` changes merchant-loop acceptance data and strict assertion/replay checks, with fresh full lint/typecheck and HK/TW 2-case browser verification. All application/unit/DB/build/general-E2E sources remain identical. `final-gates.jsonl` is append-only execution history: use the latest event for each gate and retain earlier failures. Documentation-only commits do not imply another deployment or remote CI run.
 
 | Evidence | Meaning |

@@ -1,0 +1,63 @@
+{
+  "recorded_at_utc": "2026-10-07T13:53:57.577Z",
+  "tasks": [
+    "T-05"
+  ],
+  "findings": [
+    "F-03"
+  ],
+  "user_cases": [
+    "UC-13"
+  ],
+  "baseline_head_before_hold": "48125be0c538380cee759890b37ba7513fa1cdb2",
+  "branch": "codex/smeassistant-audit-remediation-20261007",
+  "verified_application_and_fixture_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+  "official_reference": "https://vercel.com/docs/project-configuration/git-configuration",
+  "schema": {
+    "url": "https://openapi.vercel.sh/vercel.json",
+    "sha256": "ceb3602ab498a46fe8cadb7f4339f8d53adaa39d8f628760ca2f2ae1199aa4f2",
+    "http_status": 200,
+    "validator": "Existing Ajv 8.6.3",
+    "validation_scope": "Exact self-contained properties.git.properties.deploymentEnabled schema; full Draft-04 root not compiled"
+  },
+  "red": {
+    "command": "& 'C:\\Program Files\\nodejs\\node.exe' -e 'const assert=require(\"node:assert/strict\"); const c=require(\"./vercel.json\"); assert.equal(c.git.deploymentEnabled[\"codex/smeassistant-audit-remediation-20261007\"],false,\"audit branch automatic deployment is not held\");'",
+    "exit_code": 1,
+    "expected_reason": "undefined instead of false; branch hold absent before local change"
+  },
+  "green": {
+    "command": "node node_modules/.cache/verify-audit-preview-hold.cjs",
+    "exit_code": 0,
+    "checks": [
+      "Official changed-property schema accepts branch map",
+      "Negative control rejects string boolean",
+      "Only one exact branch key added",
+      "Two prior branch holds preserved",
+      "main remains unspecified/default enabled",
+      "Cron remains absent",
+      "Application/fixtures/lockfile/CI/migrations/feature flags identical to efd51ca",
+      "All eleven earlier gates bind efd51ca and exit 0"
+    ]
+  },
+  "local_deployment_enabled": {
+    "codex/merchant-acceptance-completion": false,
+    "codex/neon-migration": false,
+    "codex/smeassistant-audit-remediation-20261007": false
+  },
+  "ci_workflow_sha256": "86c5a01c218341f3328bd8b914fa4d501aa7c6bb9a2fc66b0b474ab72b0eddd0",
+  "record_integrity_checks": {
+    "all_21_audit_implementation_hosted_statuses_vs_48125be": "UNCHANGED",
+    "source_diff_vs_efd51ca_excluding_docs_and_vercel_config_exit_code": 0,
+    "git_diff_check_exit_code": 0
+  },
+  "application_gates_rerun_for_config_only_change": false,
+  "preserved_validation_setup_limitations": [
+    "Full root schema compile exited 1: installed Vercel Ajv 8.6.3 lacks Draft-04 meta-schema",
+    "System and existing bundled Python runtimes lack jsonschema; no dependency installed",
+    "Validated the unchanged self-contained official branch-map property and exact single-key delta instead; not claiming whole-root Draft-04 validation"
+  ],
+  "hosted_deployment_suppression_observed": false,
+  "production_gate_gap_resolved": false,
+  "external_write_performed": false,
+  "rollback": "Normal revert of the local branch-hold commit; before any later authorised push, re-establish the hold if deployment is still unauthorised. No hosted setting, schema, data, flag or alias change."
+}

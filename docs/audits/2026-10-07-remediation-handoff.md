@@ -1,6 +1,6 @@
 # SMEAssistant 本地整改交付
 
-所有未受阻的本地整改已實作及驗證。本分支共 19 個本地提交，包含原整改、一次獨立審閱的修復、evidence-only 紀錄及接續的只讀 target／Auth metadata。最新程式／fixture SHA `efd51ca1a68ba9f9d3c56ea726b008b97d400328` 的十一項 local gates 全部 exit 0；外部／hosted 前提仍未齊備，沒有本分支遠端 CI、production 部署或啟用。這份文件記錄實作，不代替原 implementation plan。
+所有未受阻的本地整改已實作及驗證。本分支共 20 個本地提交，包含原整改、一次獨立審閱的修復、evidence-only 紀錄、只讀 target／Auth metadata 及本整改分支的本地 Preview hold。最新程式／fixture SHA `efd51ca1a68ba9f9d3c56ea726b008b97d400328` 的十一項 local gates 全部 exit 0；之後的程式／fixture 未變，新增的分支部署配置另有 targeted 驗證。外部／hosted 前提仍未齊備，沒有本分支遠端 CI、production 部署或啟用。這份文件記錄實作，不代替原 implementation plan。
 
 ## 基準與界線
 
@@ -49,6 +49,8 @@ Handoff MANIFEST 6/6、原始 evidence MANIFEST 28/28 均相符；原始 ZIP／�
 
 接續的第 18 個提交 `1d28c8f` 只補 T-19/T-21 metadata 與相應文件。候選 Neon project/branch/host/database 及 6 小時 retention 已由只讀 API 核對，正式 DB binding 仍未確認，沒有 SQL 或 restore。第 19 個提交再補 Auth configuration association；SHA 以本地 HEAD／聊天交付為準，程式與 fixture 未變。
 
+第 20 個提交為 T-05/F-03/UC-13 的本地 publication guard：在 `vercel.json` 原有 branch map 只加入 `codex/smeassistant-audit-remediation-20261007: false`，原有兩個 hold 保留。RED 確認未有此 hold（exit 1），GREEN 用官方 self-contained `deploymentEnabled` schema 驗證 branch map／wrong-type negative control、核對只新增一個 key、其餘程式／fixture／lockfile／CI／migration／flags 與 `efd51ca` 相同（exit 0）。[可讀證據](remediation-evidence/T05-branch-preview-hold.json) 記錄 command、schema checksum、工具限制及 rollback；完整 Draft-04 root 未編譯，沒有把 property 檢查說成整份 schema 驗證。`main` 保持未列出／平台預設，cron 仍沒有配置。這是尚未 push 的本地 hold；正式 gate gap／外部 failed-candidate drill 未解，沒有 hosted 停用部署的直接觀察，沒有為此配置重跑未變的 application heavy gates。
+
 最新完整驗證的產品程式和 fixture 都是 `efd51ca1a68ba9f9d3c56ea726b008b97d400328`，tree `6650a61c31826d044d0f9fe572b031aa031220a8`。本輪只有一位 fresh-context 唯讀 reviewer；兩項 Important/P2 及使用者 scope 內的 cursor P3 均先 RED，再做同一輪最小修復。沒有 Critical、declined-to-judge 或留下的本地 review 缺陷；沒有第二輪 reviewer。[獨立審閱](final-independent-review.md) 與 [targeted commands](remediation-evidence/final-review-targeted-commands.json) 記錄 provenance、severity ruling、真函式／DB／browser 驗證及 rollback。
 
 之前 `76404c4` 的 application、`6941ed7` 的 fixture 完整驗證仍保留為歷史紀錄；它們不代替本輪 source 的驗證。最後 evidence-only 提交只整理 docs/logs/tracker；最新交付 SHA 隨聊天交付，亦可在此本地分支以 `git rev-parse HEAD` 取得。所有提交均未 push。
@@ -87,7 +89,7 @@ Handoff MANIFEST 6/6、原始 evidence MANIFEST 28/28 均相符；原始 ZIP／�
 | T-02 | auth/deadline/lease fixtures；activation／heartbeat／backlog／missing-tick 設計 | DEC-10 維持 off；待明確啟用前提 |
 | T-03 | slug parser／unit/DB；精確 slug browser case 已通過 | 未 hosted 驗收 |
 | T-04 | 保留同 audit SHA 的成功 CI 證據 | 不代表本分支新 CI |
-| T-05 | 唯讀 gate/roles 證據及具體未套用提案完成 | gate gap；設定與 failed-candidate drill 受阻 |
+| T-05 | 唯讀 gate/roles 證據、具體提案及本整改分支 local Preview hold 完成 | 正式 gate gap；設定與 failed-candidate drill 受阻；hold 未 hosted 驗證 |
 | T-06 | currency／dates／years／visible warnings；括號年份 regression 完成 | Beta／flags 未變；未驗收 |
 | T-07 | 真實 collector outcome／unknown 誠實顯示完成 | live scan 未跑 |
 | T-08 | URL 前後端、真 DB 完成；早期 timeout 已解 | live scan 未跑 |
@@ -108,6 +110,8 @@ Handoff MANIFEST 6/6、原始 evidence MANIFEST 28/28 均相符；原始 ZIP／�
 ## 外部 blocker 與 rollback
 
 T-05 已觀察 main protection 404、rulesets []、Vercel automatic custom-domain assignment true／checks empty；GitHub collaborator 及 Vercel team roles 已讀，effective promotion/bypass 與 integration token 權限仍未證實。請先審閱 [gate 提案與失敗演練](../operations/release-gates.md)，外部設定與 dedicated test-alias drill 需另外授權。
+
+本整改分支的本地 hold 依 [Vercel Git configuration](https://vercel.com/docs/project-configuration/git-configuration) 使用 exact branch false；未列出的分支維持平台預設。擬議 Draft PR 保留 GitHub pull-request CI，Preview 與 production 發佈另待明確授權。回退此 hold commit 會移除此分支抑制配置；若仍未獲部署授權，任何後續推送前須重新保留 hold。沒有更改 hosted project 設定、alias 或正式資料。
 
 T-19 production DATABASE_URL 為 sensitive。2026-10-07 12:12 UTC 的只讀 continuation 已取得候選 project `morning-hill-92255530`／production branch `br-wandering-field-azdc91yj`／host `ep-tiny-forest-azzm8bni.c-3.ap-southeast-1.aws.neon.tech`／database `neondb`；它與 Vercel production DATABASE_URL 的獨立 binding 仍未確認。Connector env-list 403、connector-project 404；既有 CLI 成功取得 decrypt=false metadata，沒有取得 DB URL 值。仍需確認上述 binding 及配置好的 application-role／獨立只讀存取位置；不要求貼密碼或連線字串。[migration checklist](../operations/migration-readiness.md) 與 [metadata evidence](remediation-evidence/T19-T21-continuation-target-metadata.json) 已備妥，沒有向候選 DB 發 SQL，正式 journal／checksum／column／privileges 仍為未觀察，不能宣稱已套用。
 
