@@ -1,0 +1,107 @@
+{
+  "observed_at_utc": "2026-10-07T12:53:10Z",
+  "task_ids": [
+    "T-19"
+  ],
+  "user_case_ids": [
+    "UC-24"
+  ],
+  "verified_source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+  "delivery_head_at_observation": "1d28c8fcf0d8f4c7acdd53a854b2f8a5476cd713",
+  "scope": "Read-only configuration/identity metadata. No SQL, connection-string retrieval, Auth login/user operation, env pull, resource/setting change or deployment.",
+  "alias_observation": {
+    "alias": "smeassistant.vercel.app",
+    "deployment_id": "dpl_ARepQExFa36hUt1PzYcCzW4ECzCE",
+    "target": "production",
+    "status": "READY",
+    "sha": "d1cbc7bd8a2bc7989c774d15001f7971274bed8d"
+  },
+  "candidate_neon_auth": {
+    "project_id": "morning-hill-92255530",
+    "branch_id": "br-wandering-field-azdc91yj",
+    "provider": "better_auth",
+    "database_name": "neondb",
+    "hostname": "ep-tiny-forest-azzm8bni.neonauth.c-3.ap-southeast-1.aws.neon.tech",
+    "database_path_matches": true
+  },
+  "vercel_current_production_scoped_auth_configuration": {
+    "project_id": "prj_Hbox4o4NhM3p0yxRxmY8Xq1mjtb5",
+    "team_id": "team_qvzlsFmfCsLkgItSypqHjw3z",
+    "key": "NEON_AUTH_BASE_URL",
+    "env_id": "h9wtlpjumw2f2Y3T",
+    "target": [
+      "production"
+    ],
+    "type": "encrypted",
+    "cli_exit_code": 0,
+    "hostname_matches_candidate": true,
+    "database_path_matches_candidate": true,
+    "url_credentials_present": false,
+    "url_query_present": false,
+    "raw_value_persistence": "NOT_WRITTEN",
+    "raw_value_output": "NOT_DISPLAYED",
+    "database_url_requested": false
+  },
+  "limitations": [
+    "Matching the current production-scoped Auth configuration proves an Auth endpoint association only.",
+    "It does not independently prove the deployment's frozen environment, DATABASE_URL target or actual application runtime DB role.",
+    "It is not a hosted Auth login journey or provider/user acceptance.",
+    "Production DB journal/checksums/actual 0014 column and application-role privileges remain unobserved."
+  ],
+  "prerequisites_checked": {
+    "process_keys_absent": [
+      "DATABASE_URL",
+      "DATABASE_URL_UNPOOLED",
+      "NEON_READINESS_HOST",
+      "NEON_READINESS_DATABASE"
+    ],
+    "repository_roots_checked": [
+      "C:/Users/laich/Documents/smeassistant",
+      "C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation"
+    ],
+    "standard_files_absent_in_both": [
+      ".env",
+      ".env.local",
+      ".env.production",
+      ".env.production.local",
+      ".env.development",
+      ".env.development.local",
+      ".env.test",
+      ".env.test.local",
+      ".neon"
+    ],
+    "environment_file_contents_read": false,
+    "unrelated_smescanner_credentials_used": false
+  },
+  "unsuccessful_attempts": [
+    {
+      "operation": "Vercel connector GET single env by known ID",
+      "status": 404,
+      "code": "not_found",
+      "interpretation": "Not proof that the configuration is absent; the same explicit CLI request succeeds with its existing identity."
+    },
+    {
+      "operation": "Initial functions-isolate URL parsing",
+      "result": "URL constructor unavailable in that runtime",
+      "correction": "Parsed safe hostname/path components without that global, then used Node URL for CLI validation. The Neon URL was valid; no provider URL defect is claimed."
+    }
+  ],
+  "read_commands": [
+    "mcp__codex_apps__neon.get_auth(project_id=morning-hill-92255530, branch_id=br-wandering-field-azdc91yj)",
+    "node C:/Users/laich/AppData/Roaming/npm/node_modules/vercel/dist/vc.js api /v1/projects/prj_Hbox4o4NhM3p0yxRxmY8Xq1mjtb5/env/h9wtlpjumw2f2Y3T?teamId=team_qvzlsFmfCsLkgItSypqHjw3z --method GET",
+    "mcp__codex_apps__vercel.get_deployment(idOrUrl=smeassistant.vercel.app, teamId=team_qvzlsFmfCsLkgItSypqHjw3z, withGitRepoInfo=true)"
+  ],
+  "blocked_reason": "Independent production DATABASE_URL binding and configured application-role / separate read-only readiness access are still missing. The earlier missing-information question remains pending; continue is not a factual target confirmation.",
+  "documentation_verification": {
+    "node_stdin_json_and_auth_metadata_invariants_exit_code": 0,
+    "five_document_evidence_links": "PASS",
+    "powershell_import_csv_original_audit_status_comparison": "21/21 unchanged",
+    "tracker_comparison_exit_code": 0,
+    "source_equality_command": "git diff --exit-code efd51ca1a68ba9f9d3c56ea726b008b97d400328 -- . :(exclude)docs/**",
+    "source_equality_exit_code": 0,
+    "whitespace_command": "git diff --check",
+    "whitespace_exit_code": 0
+  },
+  "source_verification": "All eleven completed local gates at efd51ca remain valid for unchanged source/fixtures. Metadata/docs do not constitute another CI/hosted run.",
+  "rollback": "Revert this documentation commit; no hosted mutation occurred."
+}

@@ -1,6 +1,6 @@
 # SMEAssistant 本地整改交付
 
-所有未受阻的本地整改已實作及驗證。本分支共 18 個本地提交，包含原整改、一次獨立審閱的修復、evidence-only 紀錄及接續的只讀 target metadata。最新程式／fixture SHA `efd51ca1a68ba9f9d3c56ea726b008b97d400328` 的十一項 local gates 全部 exit 0；外部／hosted 前提仍未齊備，沒有本分支遠端 CI、production 部署或啟用。這份文件記錄實作，不代替原 implementation plan。
+所有未受阻的本地整改已實作及驗證。本分支共 19 個本地提交，包含原整改、一次獨立審閱的修復、evidence-only 紀錄及接續的只讀 target／Auth metadata。最新程式／fixture SHA `efd51ca1a68ba9f9d3c56ea726b008b97d400328` 的十一項 local gates 全部 exit 0；外部／hosted 前提仍未齊備，沒有本分支遠端 CI、production 部署或啟用。這份文件記錄實作，不代替原 implementation plan。
 
 ## 基準與界線
 
@@ -47,7 +47,7 @@ Handoff MANIFEST 6/6、原始 evidence MANIFEST 28/28 均相符；原始 ZIP／�
 | efd51ca | T-06 括號年份；T-12 calendar cursor；T-13 指派名稱／三語 fallback／mobile | RED → targeted GREEN；126 selected unit、13 DB、3 browser；fresh 全部十一項 gate exit 0 |
 | 1305565 | 最新 source 的完整 gates／review／21-task evidence-only 交付 | 5,352 unit／565 DB／31 E2E／49 acceptance；程式與 fixture 未變 |
 
-接續的第 18 個提交只補 T-19/T-21 metadata 與相應文件；SHA 以本地 HEAD／聊天交付為準。候選 Neon project/branch/host/database 及 6 小時 retention 已由只讀 API 核對，正式 DB binding 仍未確認，沒有 SQL 或 restore。
+接續的第 18 個提交 `1d28c8f` 只補 T-19/T-21 metadata 與相應文件。候選 Neon project/branch/host/database 及 6 小時 retention 已由只讀 API 核對，正式 DB binding 仍未確認，沒有 SQL 或 restore。第 19 個提交再補 Auth configuration association；SHA 以本地 HEAD／聊天交付為準，程式與 fixture 未變。
 
 最新完整驗證的產品程式和 fixture 都是 `efd51ca1a68ba9f9d3c56ea726b008b97d400328`，tree `6650a61c31826d044d0f9fe572b031aa031220a8`。本輪只有一位 fresh-context 唯讀 reviewer；兩項 Important/P2 及使用者 scope 內的 cursor P3 均先 RED，再做同一輪最小修復。沒有 Critical、declined-to-judge 或留下的本地 review 缺陷；沒有第二輪 reviewer。[獨立審閱](final-independent-review.md) 與 [targeted commands](remediation-evidence/final-review-targeted-commands.json) 記錄 provenance、severity ruling、真函式／DB／browser 驗證及 rollback。
 
@@ -110,6 +110,8 @@ Handoff MANIFEST 6/6、原始 evidence MANIFEST 28/28 均相符；原始 ZIP／�
 T-05 已觀察 main protection 404、rulesets []、Vercel automatic custom-domain assignment true／checks empty；GitHub collaborator 及 Vercel team roles 已讀，effective promotion/bypass 與 integration token 權限仍未證實。請先審閱 [gate 提案與失敗演練](../operations/release-gates.md)，外部設定與 dedicated test-alias drill 需另外授權。
 
 T-19 production DATABASE_URL 為 sensitive。2026-10-07 12:12 UTC 的只讀 continuation 已取得候選 project `morning-hill-92255530`／production branch `br-wandering-field-azdc91yj`／host `ep-tiny-forest-azzm8bni.c-3.ap-southeast-1.aws.neon.tech`／database `neondb`；它與 Vercel production DATABASE_URL 的獨立 binding 仍未確認。Connector env-list 403、connector-project 404；既有 CLI 成功取得 decrypt=false metadata，沒有取得 DB URL 值。仍需確認上述 binding 及配置好的 application-role／獨立只讀存取位置；不要求貼密碼或連線字串。[migration checklist](../operations/migration-readiness.md) 與 [metadata evidence](remediation-evidence/T19-T21-continuation-target-metadata.json) 已備妥，沒有向候選 DB 發 SQL，正式 journal／checksum／column／privileges 仍為未觀察，不能宣稱已套用。
+
+2026-10-07 12:53 UTC 再確認 project 目前 production-scoped Auth 配置與候選 Neon Better Auth endpoint／database path 相符；[Auth evidence](remediation-evidence/T19-auth-association.json) 只記錄 hostname／比對結果。這不證明 deployed frozen environment、DATABASE_URL binding、application DB role 或 hosted 登入。正確 repo／worktree 的標準 .env/context 檔及 process DB/readiness inputs 均不存在，不能自行取得缺少的 runtime connection。正式 alias 的最新只讀回覆仍為 audit SHA；T-19 資料問題待回覆。
 
 T-15/T-20 hosted 需要專用 synthetic workspace、owner/scoped manager/viewer/nonmember、同 SHA 的部署／DB readiness、受准許 providers；任何 publish 要精確 version／target 授權。T-16 live 要 approved dataset/budget/model/pricing/quality thresholds/reviewer。T-17 需要實際 HK participants/devices/networks；沒有把 fixture timing 當 field 結果。
 
