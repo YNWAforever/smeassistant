@@ -1,6 +1,6 @@
 # SMEAssistant 本地整改交付
 
-所有未受阻的本地整改已實作及驗證。本分支共 17 個本地提交，包含原整改、一次獨立審閱的修復及 evidence-only 紀錄。最新程式／fixture SHA `efd51ca1a68ba9f9d3c56ea726b008b97d400328` 的十一項 local gates 全部 exit 0；外部／hosted 前提仍未齊備，沒有本分支遠端 CI、production 部署或啟用。這份文件記錄實作，不代替原 implementation plan。
+所有未受阻的本地整改已實作及驗證。本分支共 18 個本地提交，包含原整改、一次獨立審閱的修復、evidence-only 紀錄及接續的只讀 target metadata。最新程式／fixture SHA `efd51ca1a68ba9f9d3c56ea726b008b97d400328` 的十一項 local gates 全部 exit 0；外部／hosted 前提仍未齊備，沒有本分支遠端 CI、production 部署或啟用。這份文件記錄實作，不代替原 implementation plan。
 
 ## 基準與界線
 
@@ -45,6 +45,9 @@ Handoff MANIFEST 6/6、原始 evidence MANIFEST 28/28 均相符；原始 ZIP／�
 | 6941ed7 | T-15 required-input fixture／201 create＋200 replay／UUID 和實際 assertion row | HK/TW 2/2 browser；fresh full lint/typecheck 0；完整 required acceptance 49/49 exit 0 |
 | c58bc01 | 前一輪 evidence-only 交付 | 保存 76404c4／6941ed7 source binding、21 項狀態及未執行外部項 |
 | efd51ca | T-06 括號年份；T-12 calendar cursor；T-13 指派名稱／三語 fallback／mobile | RED → targeted GREEN；126 selected unit、13 DB、3 browser；fresh 全部十一項 gate exit 0 |
+| 1305565 | 最新 source 的完整 gates／review／21-task evidence-only 交付 | 5,352 unit／565 DB／31 E2E／49 acceptance；程式與 fixture 未變 |
+
+接續的第 18 個提交只補 T-19/T-21 metadata 與相應文件；SHA 以本地 HEAD／聊天交付為準。候選 Neon project/branch/host/database 及 6 小時 retention 已由只讀 API 核對，正式 DB binding 仍未確認，沒有 SQL 或 restore。
 
 最新完整驗證的產品程式和 fixture 都是 `efd51ca1a68ba9f9d3c56ea726b008b97d400328`，tree `6650a61c31826d044d0f9fe572b031aa031220a8`。本輪只有一位 fresh-context 唯讀 reviewer；兩項 Important/P2 及使用者 scope 內的 cursor P3 均先 RED，再做同一輪最小修復。沒有 Critical、declined-to-judge 或留下的本地 review 缺陷；沒有第二輪 reviewer。[獨立審閱](final-independent-review.md) 與 [targeted commands](remediation-evidence/final-review-targeted-commands.json) 記錄 provenance、severity ruling、真函式／DB／browser 驗證及 rollback。
 
@@ -98,18 +101,18 @@ Handoff MANIFEST 6/6、原始 evidence MANIFEST 28/28 均相符；原始 ZIP／�
 | T-16 | offline corpus 完成；live manifest 完成 | dataset／budget／model／reviewer 不足 |
 | T-17 | action 375px／三語登入 375/1440／report keyboard/metrics 通過 | HK field 未執行 |
 | T-18 | 本人狀態入口 unit＋DB；no_access browser 重跑已通過 | 無自動 membership；hosted 未驗收 |
-| T-19 | migrations／measurement／readiness 正反 fixture 完成 | independent DB target／journal／privileges 未觀察 |
+| T-19 | migrations／measurement／readiness 正反 fixture；候選 Neon target metadata 完成 | 正式 deployment→DB binding 未確認；journal／privileges 未觀察 |
 | T-20 | feature off/on／scope/quota/recovery fixture matrix 完成；unit＋DB＋49-case browser | 現有 flags 未變，hosted enablement 未驗收 |
-| T-21 | 隔離 restore runbook／RTO-RPO 模板完成 | source／target／retention／授權不足；沒有 restore |
+| T-21 | 隔離 restore runbook／模板；候選 retention 6 小時／snapshot list 0 | production source binding／可用 recovery point／新 target／授權不足；沒有 restore |
 
 ## 外部 blocker 與 rollback
 
 T-05 已觀察 main protection 404、rulesets []、Vercel automatic custom-domain assignment true／checks empty；GitHub collaborator 及 Vercel team roles 已讀，effective promotion/bypass 與 integration token 權限仍未證實。請先審閱 [gate 提案與失敗演練](../operations/release-gates.md)，外部設定與 dedicated test-alias drill 需另外授權。
 
-T-19 production DATABASE_URL 為 sensitive；未取得獨立 Neon project/branch/host/database binding、direct metadata 與 application-role readiness 存取。執行期間已請求 target metadata 及已配置只讀憑證的位置，尚未取得；不要求在聊天貼密碼或連線字串。[migration checklist](../operations/migration-readiness.md) 已備妥，正式 journal／checksum／column／privileges 仍為未觀察，不能宣稱已套用。
+T-19 production DATABASE_URL 為 sensitive。2026-10-07 12:12 UTC 的只讀 continuation 已取得候選 project `morning-hill-92255530`／production branch `br-wandering-field-azdc91yj`／host `ep-tiny-forest-azzm8bni.c-3.ap-southeast-1.aws.neon.tech`／database `neondb`；它與 Vercel production DATABASE_URL 的獨立 binding 仍未確認。Connector env-list 403、connector-project 404；既有 CLI 成功取得 decrypt=false metadata，沒有取得 DB URL 值。仍需確認上述 binding 及配置好的 application-role／獨立只讀存取位置；不要求貼密碼或連線字串。[migration checklist](../operations/migration-readiness.md) 與 [metadata evidence](remediation-evidence/T19-T21-continuation-target-metadata.json) 已備妥，沒有向候選 DB 發 SQL，正式 journal／checksum／column／privileges 仍為未觀察，不能宣稱已套用。
 
 T-15/T-20 hosted 需要專用 synthetic workspace、owner/scoped manager/viewer/nonmember、同 SHA 的部署／DB readiness、受准許 providers；任何 publish 要精確 version／target 授權。T-16 live 要 approved dataset/budget/model/pricing/quality thresholds/reviewer。T-17 需要實際 HK participants/devices/networks；沒有把 fixture timing 當 field 結果。
 
-T-02 已唯讀核對 team 為 active Pro，建議五分鐘 cadence 符合當時平台規則；仍需要 DEC-10 決定變更、operating budget、owner/alert destination、T-19 和受控三次 ticks／missing-tick drill。[activation runbook](../operations/maintenance-activation.md) 未執行。T-21 需要 recovery point／retention 證據、全新明確 target、成本／restore／cleanup 授權及交接 owner；[restore runbook](../operations/restore-drill.md) 的 RTO/RPO 都未量度。
+T-02 已唯讀核對 team 為 active Pro，建議五分鐘 cadence 符合當時平台規則；仍需要 DEC-10 決定變更、operating budget、owner/alert destination、T-19 和受控三次 ticks／missing-tick drill。[activation runbook](../operations/maintenance-activation.md) 未執行。T-21 候選 project 的 history retention 設定為 6 小時，完整 snapshot list 回覆 0；這不證明 backup 缺失、可用 recovery point 或 restore 成功。仍需要正式 source binding、當下可用 point／expiry、全新明確 target、成本／restore／cleanup 授權及交接 owner；[restore runbook](../operations/restore-drill.md) 的 RTO/RPO 都未量度。
 
 本輪三項 review 修復可先 `git revert efd51ca1a68ba9f9d3c56ea726b008b97d400328`；這不做 schema/data/flag/provider mutation。本地 rollback 使用各批次 `git revert <commit>`，按相依關係反向處理；不要 reset／清除使用者工作。程式回退不刪除合法 assignments 或 immutable versions。0015 indexes 可保留；任何移除都須新增 forward migration 及獨立授權，不能改舊 SQL/journal。維護或 publishing rollback 保留未知 provider receipt／delivery／completion ledger，先 reconcile，不能盲重送。由於沒有本次 production 變更，沒有宣稱已執行正式 rollback。

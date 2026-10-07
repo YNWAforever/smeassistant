@@ -1,0 +1,160 @@
+{
+  "observed_at_utc": "2026-10-07T12:12:23Z",
+  "task_ids": [
+    "T-19",
+    "T-21"
+  ],
+  "finding_ids": [],
+  "user_case_ids": [
+    "UC-24",
+    "UC-25"
+  ],
+  "verified_source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+  "delivery_head_at_observation": "1305565ef7dff8e07afe6c1c3310c6ec3557535e",
+  "operations": "Read-only provider/CLI metadata only. No SQL, connection-string retrieval, env pull, login, resource creation, restore, setting change or deployment.",
+  "production_alias": {
+    "alias": "smeassistant.vercel.app",
+    "project_id": "prj_Hbox4o4NhM3p0yxRxmY8Xq1mjtb5",
+    "team_id": "team_qvzlsFmfCsLkgItSypqHjw3z",
+    "deployment_id": "dpl_ARepQExFa36hUt1PzYcCzW4ECzCE",
+    "target": "production",
+    "status": "READY",
+    "sha": "d1cbc7bd8a2bc7989c774d15001f7971274bed8d"
+  },
+  "vercel_metadata": {
+    "connector_list": {
+      "operation": "GET /v2/connect/projects/{projectId}/connectors",
+      "status": 404,
+      "code": "not_found",
+      "message": "Connector Project not found",
+      "does_not_prove_no_database_integration": true
+    },
+    "mcp_env_list": {
+      "operation": "GET /v10/projects/{idOrName}/env",
+      "status": 403,
+      "code": "forbidden",
+      "message": "Permission to list project environment variables denied for connector identity"
+    },
+    "cli_fallback": {
+      "installed_cli": true,
+      "exit_code": 0,
+      "operation": "GET /v10/projects/prj_Hbox4o4NhM3p0yxRxmY8Xq1mjtb5/env?teamId=team_qvzlsFmfCsLkgItSypqHjw3z&decrypt=false",
+      "env_count": 59,
+      "value_fields_omitted": true,
+      "database_url": {
+        "id": "aPvHUbTs8S6O9xHH",
+        "type": "sensitive",
+        "target": [
+          "production"
+        ],
+        "configuration_id": null,
+        "decrypted": false
+      },
+      "neon_auth_base_url": {
+        "id": "h9wtlpjumw2f2Y3T",
+        "type": "encrypted",
+        "target": [
+          "production"
+        ],
+        "configuration_id": null,
+        "decrypted": false
+      }
+    },
+    "unsuccessful_first_cli_attempt": {
+      "exit_code": 1,
+      "reason": "Windows .cmd split ampersand query argument; returned encrypted fields were inadvertently echoed on error. No plaintext was decrypted, no sensitive DATABASE_URL was returned, and no raw/ciphertext values are retained in this evidence. Fixed by invoking the same installed Node CLI entry directly and projecting a whitelist for all exit codes."
+    }
+  },
+  "neon_identity": {
+    "existing_cli_default_account_present": true,
+    "ambient_neon_api_key_present": false,
+    "no_authentication_launched": true,
+    "profile_check_exit_code": 0
+  },
+  "neon_discovery": {
+    "explicit_organization_catalogs": 3,
+    "project_counts": [
+      {
+        "org_id": "org-rapid-hall-84531233",
+        "count": 3
+      },
+      {
+        "org_id": "org-soft-sunset-25251479",
+        "count": 24
+      },
+      {
+        "org_id": "org-withered-credit-79001055",
+        "count": 1
+      }
+    ],
+    "matching_named_projects": 1,
+    "commands_exit_code": 0,
+    "unsuccessful_implicit_org_attempt": "projects list without --org-id emitted an organization selection prompt and exited 0; it was not treated as a project-list result. Explicit catalog IDs resolved the metadata query. No interactive option was submitted."
+  },
+  "candidate_target": {
+    "binding_to_vercel_production_database_url": "UNCONFIRMED",
+    "selection_for_sql": "NOT_SELECTED",
+    "org_id": "org-soft-sunset-25251479",
+    "project_id": "morning-hill-92255530",
+    "project_name": "Smeassistant",
+    "region_id": "aws-ap-southeast-1",
+    "pg_version": 18,
+    "branch_id": "br-wandering-field-azdc91yj",
+    "branch_name": "production",
+    "primary": true,
+    "default": true,
+    "protected": false,
+    "branch_state": "ready",
+    "endpoint_id": "ep-tiny-forest-azzm8bni",
+    "host": "ep-tiny-forest-azzm8bni.c-3.ap-southeast-1.aws.neon.tech",
+    "endpoint_type": "read_write",
+    "endpoint_state_at_observation": "idle",
+    "database_name": "neondb",
+    "database_owner_name": "neondb_owner"
+  },
+  "recovery_metadata": {
+    "configured_history_retention_seconds": 21600,
+    "configured_history_retention_hours": 6,
+    "snapshot_list_count": 0,
+    "snapshot_list_is_complete": true,
+    "oldest_available_recovery_time": "NOT_RETURNED",
+    "selected_recovery_point": "NOT_SELECTED",
+    "restore_executed": false,
+    "rto": "UNMEASURED",
+    "rpo": "UNMEASURED",
+    "limitations": "A retention setting and an empty snapshot list do not prove backup absence, point availability, recoverability, Auth/object backup coverage, restore privileges or measured RTO/RPO."
+  },
+  "blocked": {
+    "T19": [
+      "Independent confirmation of the Vercel production DATABASE_URL to candidate project/branch/endpoint/database binding",
+      "Configured application-role connection and independent read-only readiness access; do not paste credentials",
+      "Journal/checksums/actual 0014 first_published_at/runtime privileges remain unobserved"
+    ],
+    "T21": [
+      "Confirm actual production source binding",
+      "Selected currently available recovery point and expiry",
+      "Explicit new isolated target IDs, cost cap, owners and restore/cleanup authority"
+    ]
+  },
+  "read_commands": [
+    "node C:/Users/laich/AppData/Roaming/npm/node_modules/neonctl/bin/cli.js profile list -o json --no-analytics --no-color",
+    "node C:/Users/laich/AppData/Roaming/npm/node_modules/neonctl/bin/cli.js orgs list -o json --no-analytics --no-color",
+    "node C:/Users/laich/AppData/Roaming/npm/node_modules/neonctl/bin/cli.js projects list --org-id org-soft-sunset-25251479 -o json --no-analytics --no-color",
+    "node C:/Users/laich/AppData/Roaming/npm/node_modules/neonctl/bin/cli.js branches list --project-id morning-hill-92255530 -o json --no-analytics --no-color",
+    "node C:/Users/laich/AppData/Roaming/npm/node_modules/neonctl/bin/cli.js databases list --project-id morning-hill-92255530 --branch br-wandering-field-azdc91yj -o json --no-analytics --no-color",
+    "mcp__codex_apps__neon.describe_project(project_id=morning-hill-92255530)",
+    "mcp__codex_apps__neon.list_postgres_endpoints(project_id=morning-hill-92255530)",
+    "mcp__codex_apps__neon.get_branch(project_id=morning-hill-92255530, branch_id=br-wandering-field-azdc91yj)",
+    "mcp__codex_apps__neon.list_snapshots(project_id=morning-hill-92255530)"
+  ],
+  "documentation_verification": {
+    "node_stdin_json_metadata_link_lock_assertions_exit_code": 0,
+    "powershell_import_csv_21_rows_and_original_audit_status_comparison_exit_code": 0,
+    "source_equality_command": "git diff --exit-code efd51ca1a68ba9f9d3c56ea726b008b97d400328 -- . :(exclude)docs/**",
+    "source_equality_exit_code": 0,
+    "whitespace_command": "git diff --check",
+    "whitespace_exit_code": 0
+  },
+  "local_verification": "No source/fixture/lockfile/migration/CI/flags changes. The eleven completed gates at efd51ca remain the source verification; metadata/document edits do not imply another CI or hosted test.",
+  "rollback": "Revert this metadata documentation commit; no hosted resources/data/settings changed."
+}

@@ -1,6 +1,8 @@
 # T-21 / UC-25 — isolated restore preparation and handoff
 
-Preparation complete; restore not executed. No production branch/database, alias, credential or backup setting was changed. Backup mechanism, retention, available recovery points, restore privileges and actual cost are unknown pending independent provider evidence. RTO/RPO are unmeasured, not zero.
+Preparation complete; restore not executed. No production branch/database, alias, credential or backup setting was changed. Backup coverage, available recovery points, restore privileges and actual cost remain unverified. Candidate-provider retention metadata is recorded below; its production-source binding is still unconfirmed. RTO/RPO are unmeasured, not zero.
+
+Continuation at 2026-10-07 12:12 UTC obtained candidate-provider metadata: project morning-hill-92255530 / branch br-wandering-field-azdc91yj / database neondb, with history_retention_seconds=21600 (6 hours), and a complete snapshot-list response containing 0 snapshots. The candidate's binding to the Vercel production DATABASE_URL is still unconfirmed. The API did not return an oldest available recovery timestamp; no point was selected. [Evidence](../audits/remediation-evidence/T19-T21-continuation-target-metadata.json) is a current setting observation, not proof of backup absence, a usable recovery point, restore privilege, Auth/object backup coverage or successful recovery. No retention setting was changed.
 
 Required approval package: source project/branch/database and selected recovery timestamp/snapshot; evidence of retention and retention expiry; a newly provisioned isolated target project/branch/database; exact role/owner and cost cap; restore/start/cleanup authorization; named on-call and secret-management owners. Target must differ from production by explicit IDs, host and database, have no production alias, and use fixture providers with mail/scans/publishing disabled. Identify target before every DB operation. Do not rely on its name alone.
 
@@ -17,8 +19,8 @@ Result template:
 
 | Field | Actual evidence |
 |---|---|
-| Source project / branch / DB / recovery point | unknown |
-| Retention / mechanism / privilege / cost source | unknown |
+| Source project / branch / DB / recovery point | candidate morning-hill-92255530 / br-wandering-field-azdc91yj / neondb; production binding unconfirmed; point not selected |
+| Retention / mechanism / privilege / cost source | candidate configured history: 6 hours; snapshot list: 0; actual point/coverage/privilege/cost unverified |
 | New isolated target IDs / no-production-alias proof | not provisioned |
 | Approved actors / cost cap / restore & cleanup authorization | missing |
 | Start / read-ready / login-ready / recovered point | not measured |
