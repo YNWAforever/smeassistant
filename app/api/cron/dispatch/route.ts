@@ -9,7 +9,8 @@ import { verificationRepository } from "@/lib/repositories/verification";
 import { recordApplication } from "@/lib/workspace/applications";
 import { recordNeonEvent } from "@/lib/workspace/audit";
 import { runWebsiteVerification } from "@/lib/verify/website-sweep";
-import { dispatchScanProcess } from "@/lib/scan/dispatch-process";
+import { dispatchScanProcessWithinBudget } from "@/lib/scan/dispatch-process";
+import { assertExecutionBudget, createExecutionBudget, withExecutionBudget, type ExecutionBudget } from "@/lib/jobs/execution-budget";
 import { deadLetterRepository } from "@/lib/repositories/dead-letter";
 import { pauseState, logPauseRefusal } from "@/lib/budgets/pause";
 import { mailOutboxRepository } from "@/lib/repositories/mail-outbox";
@@ -55,12 +56,24 @@ function summarizeByStatus(results: { status: string }[]): Record<string, number
  */
 export async function POST(request: Request): Promise<Response> {
   if (!authorizeCronRequest(request)) return cronUnauthorizedResponse();
+  const budget = createExecutionBudget();
+  try { return await withExecutionBudget(budget, () => dispatchTick(budget)); }
+  finally { budget.dispose(); }
+}
+
+async function dispatchTick(budget: ExecutionBudget): Promise<Response> {
+  const deferredSteps: string[] = [];
+  const failure = (step: string, cause: unknown) => {
+    if (budget.remainingMs() <= 0 || budget.signal.aborted) deferredSteps.push(step);
+    else logFailure(step, cause);
+  };
 
   let notified = { due: 0, notified: 0 };
   try {
+    assertExecutionBudget(budget);
     notified = await notifyDueSchedules(new Date().toISOString());
   } catch (cause) {
-    logFailure("notify_due_schedules", cause);
+    failure("notify_due_schedules", cause);
   }
 
   let reclaimCandidates = 0;
@@ -70,16 +83,21 @@ export async function POST(request: Request): Promise<Response> {
     logPauseRefusal("retry_claim");
   } else {
     try {
+      assertExecutionBudget(budget);
       const jobIds = await schedulerRepository().claimableJobIds(RECLAIM_BATCH_LIMIT);
       reclaimCandidates = jobIds.length;
       const origin = process.env.APP_ORIGIN;
       if (origin) {
-        for (const jobId of jobIds) dispatchScanProcess(jobId, (cause) => logFailure(`reclaim_dispatch:${jobId}`, cause));
+        for (const jobId of jobIds) {
+          assertExecutionBudget(budget);
+          try { await dispatchScanProcessWithinBudget(jobId); }
+          catch (cause) { failure("reclaim_dispatch", cause); assertExecutionBudget(budget); }
+        }
       } else if (jobIds.length > 0) {
         logFailure("reclaim_abandoned_scans", new Error("APP_ORIGIN not configured -- found eligible jobs but could not dispatch any"));
       }
     } catch (cause) {
-      logFailure("reclaim_abandoned_scans", cause);
+      failure("reclaim_abandoned_scans", cause);
     }
   }
 
@@ -89,20 +107,24 @@ export async function POST(request: Request): Promise<Response> {
   // scan.failed notification in this same tick.
   let autoClosed = 0;
   try {
+    assertExecutionBudget(budget);
     autoClosed = (await deadLetterRepository(getPool()).closeExhausted(AUTO_CLOSE_BATCH_LIMIT)).length;
   } catch (cause) {
-    logFailure("close_exhausted_scans", cause);
+    failure("close_exhausted_scans", cause);
   }
 
   let reconciled: Record<string, number> = {};
   try {
+    assertExecutionBudget(budget);
     reconciled = summarizeByStatus(await reconcileWorkspaceScans(getPool()));
+    if (reconciled.deferred) deferredSteps.push("reconcile_stuck_completions");
   } catch (cause) {
-    logFailure("reconcile_stuck_completions", cause);
+    failure("reconcile_stuck_completions", cause);
   }
 
   let verified = { locationsChecked: 0, actionsConsidered: 0, actionsVerified: 0, actionsFailed: 0 };
   try {
+    assertExecutionBudget(budget);
     verified = await runWebsiteVerification(
       verificationRepository(),
       {
@@ -127,8 +149,9 @@ export async function POST(request: Request): Promise<Response> {
       },
       { now: new Date(), limit: VERIFY_LOCATION_LIMIT },
     );
+    if ("deferred" in verified && verified.deferred) deferredSteps.push("verify_website_actions");
   } catch (cause) {
-    logFailure("verify_website_actions", cause);
+    failure("verify_website_actions", cause);
   }
 
   // P3.5c: delivers the mail_outbox after the completion reconcile, so a
@@ -137,12 +160,14 @@ export async function POST(request: Request): Promise<Response> {
   // failure never fails the other steps.
   let mail: DeliverMailSummary | null = null;
   try {
-    mail = await deliverMail({ repo: mailOutboxRepository(getPool()), transport: createMailTransport() });
+    assertExecutionBudget(budget);
+    mail = await deliverMail({ repo: mailOutboxRepository(getPool()), transport: createMailTransport(), budget });
+    if (mail.deferred) deferredSteps.push("deliver_mail");
   } catch (cause) {
-    logFailure("deliver_mail", cause);
+    failure("deliver_mail", cause);
   }
 
-  return NextResponse.json({ notified, reclaimCandidates, autoClosed, reconciled, verified, mail }, { status: 200, headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ notified, reclaimCandidates, autoClosed, reconciled, verified, mail, ...(deferredSteps.length ? { deferredSteps: [...new Set(deferredSteps)] } : {}) }, { status: 200, headers: { "Cache-Control": "no-store" } });
 }
 
 /**

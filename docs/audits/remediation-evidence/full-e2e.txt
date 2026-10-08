@@ -1,0 +1,43 @@
+
+> sme-scanner-visibility-workspace@0.1.0 e2e C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation
+> playwright test
+
+
+Running 31 tests using 1 worker
+
+
+
+(node:18332) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/31] [chromium] › e2e\owner-shell.spec.ts:5:1 › /zh-HK/owner/sign-in renders the magic-link form
+[2/31] [chromium] › e2e\owner-shell.spec.ts:16:1 › /zh-HK/owner/sign-in?error=invalid_code explains the failed link
+[3/31] [chromium] › e2e\owner-shell.spec.ts:21:1 › /zh-HK/owner/select-workspace without a session redirects to sign-in
+[4/31] [chromium] › e2e\owner-shell.spec.ts:27:1 › /zh-HK/owner/onboarding without a session redirects to sign-in, keeping the claim
+[5/31] [chromium] › e2e\owner-shell.spec.ts:33:1 › a workspace URL without a session redirects to sign-in
+[6/31] [chromium] › e2e\owner-shell.spec.ts:38:1 › the prototype bridge no longer serves the owner entry pages
+[7/31] [chromium] › e2e\owner-shell.spec.ts:51:3 › /zh-HK/owner/kam-man-house/actions is a real route that requires sign-in
+[8/31] [chromium] › e2e\owner-shell.spec.ts:51:3 › /zh-HK/owner/kam-man-house/insights is a real route that requires sign-in
+[9/31] [chromium] › e2e\owner-shell.spec.ts:51:3 › /zh-HK/owner/kam-man-house/activity is a real route that requires sign-in
+[10/31] [chromium] › e2e\owner-shell.spec.ts:51:3 › /zh-HK/owner/kam-man-house/calendar is a real route that requires sign-in
+[11/31] [chromium] › e2e\owner-shell.spec.ts:51:3 › /zh-HK/owner/kam-man-house/more is a real route that requires sign-in
+[12/31] [chromium] › e2e\owner-shell.spec.ts:51:3 › /zh-HK/owner/kam-man-house/create is a real route that requires sign-in
+[13/31] [chromium] › e2e\owner-shell.spec.ts:51:3 › /zh-HK/owner/kam-man-house/assets is a real route that requires sign-in
+[14/31] [chromium] › e2e\owner-shell.spec.ts:51:3 › /zh-HK/owner/kam-man-house/settings/integrations is a real route that requires sign-in
+[15/31] [chromium] › e2e\owner-shell.spec.ts:51:3 › /zh-HK/owner/kam-man-house/settings/notifications is a real route that requires sign-in
+[16/31] [chromium] › e2e\owner-shell.spec.ts:51:3 › /zh-HK/owner/kam-man-house/settings/billing is a real route that requires sign-in
+[17/31] [chromium] › e2e\owner-shell.spec.ts:51:3 › /zh-HK/owner/kam-man-house/settings/team is a real route that requires sign-in
+[18/31] [chromium] › e2e\owner-shell.spec.ts:51:3 › /zh-HK/owner/kam-man-house/settings/brand is a real route that requires sign-in
+[19/31] [chromium] › e2e\owner-shell.spec.ts:60:1 › no /owner/kam-man-house/* path renders the prototype any more
+[20/31] [chromium] › e2e\public-funnel.spec.ts:2:1 › the public scan page offers manual entry
+[21/31] [chromium] › e2e\report-dashboard.spec.ts:2:81 › sample dashboard keyboard and layout zh-HK 375
+[22/31] [chromium] › e2e\report-dashboard.spec.ts:2:81 › sample dashboard keyboard and layout zh-HK 1440
+[23/31] [chromium] › e2e\report-dashboard.spec.ts:2:81 › sample dashboard keyboard and layout en 375
+[24/31] [chromium] › e2e\report-dashboard.spec.ts:2:81 › sample dashboard keyboard and layout en 1440
+[25/31] [chromium] › e2e\smoke.spec.ts:23:3 › public route / renders
+[26/31] [chromium] › e2e\smoke.spec.ts:23:3 › public route /zh-HK renders
+[27/31] [chromium] › e2e\smoke.spec.ts:23:3 › public route /en renders
+[28/31] [chromium] › e2e\smoke.spec.ts:23:3 › public route /zh-TW renders
+[29/31] [chromium] › e2e\smoke.spec.ts:23:3 › public route /zh-HK/pricing renders
+[30/31] [chromium] › e2e\smoke.spec.ts:23:3 › public route /zh-HK/sample-report renders
+[31/31] [chromium] › e2e\smoke.spec.ts:32:1 › an unknown locale-shaped path is a 404, not a demo page
+  31 passed (1.3m)

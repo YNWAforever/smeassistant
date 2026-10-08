@@ -1,0 +1,40 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ lib/workspace/queries-pages.test.ts (43 tests | 1 failed) 168ms
+     × keeps scoped counts identical across every active tab with a faithful state filter (T-09) 19ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/workspace/queries-pages.test.ts > listActions > keeps scoped counts identical across every active tab with a faithful state filter (T-09)
+ FAIL  lib/workspace/queries-pages.test.ts > listActions > keeps scoped counts identical across every active tab with a faithful state filter (T-09)
+AssertionError: expected { all: 2, needs_input: 1, …(3) } to deeply equal { all: 2, needs_input: 1, …(3) }
+
+- Expected
++ Received
+
+  {
+    "all": 2,
+    "awaiting_approval": 0,
+-   "completed": 1,
++   "completed": 0,
+    "drafts": 0,
+    "needs_input": 1,
+  }
+
+ ❯ lib/workspace/queries-pages.test.ts:161:74
+    159|     expect(baseline.counts).toMatchObject({ all: 2, needs_input: 1, co…
+    160|     for (const view of ["all", "needs_input", "drafts", "awaiting_appr…
+    161|       expect((await listActions(ctx, { location: "all", view })).count…
+       |                                                                          ^
+    162|     }
+    163|     const instagram = await listActions(ctx, { channel: "instagram", v…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 42 passed (43)
+   Start at  03:34:53
+   Duration  11.48s (transform 4.02s, setup 2.33s, import 6.29s, tests 168ms, environment 0ms)
+

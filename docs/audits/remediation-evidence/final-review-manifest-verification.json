@@ -1,0 +1,12 @@
+[
+  {
+    "manifest": "C:\\Users\\laich\\Documents\\smescanner\\.worktrees\\smeassistant-audit-input\\handoff\\MANIFEST.sha256",
+    "matched": 6,
+    "checked_utc": "2026-10-07T00:55:43.9431025Z"
+  },
+  {
+    "manifest": "C:\\Users\\laich\\Documents\\smescanner\\.worktrees\\smeassistant-audit-input\\evidence\\SMEAssistant_Audit_2026-10-07\\MANIFEST.sha256",
+    "matched": 28,
+    "checked_utc": "2026-10-07T00:55:44.2055632Z"
+  }
+]

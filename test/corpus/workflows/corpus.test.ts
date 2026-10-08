@@ -44,7 +44,12 @@ describe("workflow regression corpus", () => {
       if (want.reason) expect(finishInput.reason).toBe(want.reason);
       if (want.version !== undefined) {
         expect(result.versionId !== undefined).toBe(want.version);
-        expect(finishInput.output !== null).toBe(want.version);
+        if (want.version) expect(finishInput.output).not.toBeNull();
+        else if (finishInput.output) {
+          // A valid model response can request facts without creating an artifact version.
+          expect(finishInput.output.body).toBe("");
+          expect(finishInput.output.facts_needed.length).toBeGreaterThan(0);
+        }
       }
       const warnings = finishInput.output?.warnings ?? [];
       for (const w of want.warningsInclude ?? []) expect(warnings, `warnings include ${w}`).toContain(w);

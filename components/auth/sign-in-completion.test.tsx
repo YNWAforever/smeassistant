@@ -29,14 +29,18 @@ it("shows a server-authoritative no-access state and reports a failed account ch
   await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/we could not change the account/i)); expect(container.textContent).not.toContain("fixture");
 });
 
-// FA-13: the no-access card offers the same one real path as select-workspace (FA-03).
-for (const [locale, oauth] of [["en", false], ["en", true], ["zh-HK", false], ["zh-TW", true]] as const) it(`no-access names the owner and colleague paths with the scan as the only link (${locale}, OAuth claim ${oauth ? "on" : "off"})`, async () => {
+// T-18: status navigation never adds membership or restarts completion.
+for (const [locale, oauth] of [["en", false], ["en", true], ["zh-HK", false], ["zh-TW", true]] as const) it(`no-access offers own request status and the scan (${locale}, OAuth claim ${oauth ? "on" : "off"})`, async () => {
   mocks.fetch.mockResolvedValue(Response.json({ kind: "no_access" })); vi.stubGlobal("fetch", mocks.fetch);
   const { container } = render(<SignInCompletion flow={{ ...flow, locale, returnTo: null }} oauthClaimEnabled={oauth} />);
   const copy = noWorkspaceCopy(locale, oauth);
   await screen.findByText(copy.owner);
   expect(screen.getByText(copy.colleague)).toBeTruthy();
-  expect(Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href"))).toEqual([`/${locale}/scan`]);
+  expect(Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href"))).toEqual([`/${locale}/scan`, `/${locale}/owner/select-workspace`]);
+  const statusLabel = locale === "en" ? "View my requests and workspaces" : locale === "zh-TW" ? "查看我的申請與工作台" : "查看我的申請及工作台";
+  expect(screen.getByRole("link", { name: statusLabel })).toHaveAttribute("href", `/${locale}/owner/select-workspace`);
+  expect(mocks.replace).not.toHaveBeenCalled();
+  expect(mocks.fetch).toHaveBeenCalledTimes(1);
   expect(screen.getByRole("link", { name: copy.scanCta })).toBeTruthy();
   // Changing account is still offered, now as the secondary action.
   expect(screen.getAllByRole("button")).toHaveLength(1);

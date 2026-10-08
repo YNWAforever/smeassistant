@@ -2,6 +2,7 @@ import "server-only";
 import type { Pool } from "pg";
 import { getPool } from "../db/client";
 import type { NotificationRepository } from "../workspace/notify";
+import { monthWindow } from "../workspace/month-window";
 export type NotificationPreferences = Partial<
   Record<
     | "notify_rescan_complete"
@@ -13,6 +14,7 @@ export type NotificationPreferences = Partial<
 export function notificationRepository(
   client?: Pick<Pool, "query">,
 ): NotificationRepository & {
+  hasInMonth(workspaceId: string, kind: string, period: string): Promise<boolean>;
   updatePreferences(
     workspaceId: string,
     updates: NotificationPreferences,
@@ -25,6 +27,16 @@ export function notificationRepository(
 } {
   const db = () => client ?? getPool();
   return {
+    async hasInMonth(workspaceId, kind, period) {
+      try {
+        const workspace = (await db().query<{ timezone: string }>("SELECT timezone FROM workspaces WHERE id=$1", [workspaceId])).rows[0];
+        if (!workspace) throw new Error();
+        const window = monthWindow(period, workspace.timezone);
+        return Boolean((await db().query(`SELECT id FROM workspace_notifications WHERE workspace_id=$1 AND kind=$2
+          AND created_at >= ($3::date::timestamp AT TIME ZONE $5)
+          AND created_at < ($4::date::timestamp AT TIME ZONE $5) LIMIT 1`, [workspaceId, kind, window.startLocalDate, window.endLocalDate, window.timezone])).rows.length);
+      } catch { throw new Error("notification lookup failed"); }
+    },
     async updatePreferences(workspaceId, updates) {
       const keys = [
         "notify_rescan_complete",

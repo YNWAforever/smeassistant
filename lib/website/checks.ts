@@ -1,3 +1,5 @@
+import { requestSignal } from "@/lib/jobs/execution-budget";
+
 /**
  * Website checks (CLAUDE.md §3.6.2). Fifteen display-only checks run at snapshot
  * build time with a short fetch, never inside scan-engine. They feed
@@ -220,8 +222,7 @@ export async function runWebsiteChecksWithUrl(
   } catch {
     return { checks: EMPTY_WEBSITE_CHECKS, finalUrl: null };
   }
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const controller = requestSignal(timeoutMs);
   try {
     const response = await doFetch(target.toString(), {
       signal: controller.signal,
@@ -237,7 +238,7 @@ export async function runWebsiteChecksWithUrl(
     // (evaluated = 0). Never guess a partial result.
     return { checks: EMPTY_WEBSITE_CHECKS, finalUrl: null };
   } finally {
-    clearTimeout(timer);
+    controller.dispose();
   }
 }
 

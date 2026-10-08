@@ -10,7 +10,7 @@ import { interpolate } from "@/lib/share";
 import {
   REPORT_MODULE_ORDER,
   findingLabel,
-  humaniseLimitationCode,
+  limitationLabel,
   moduleLabel,
   overallImpactLabel,
   severityLabel,
@@ -281,7 +281,7 @@ export function buildReportProps(model: ReportViewModelLike, locale: PrototypeLo
       label: moduleLabel(locale, result.module),
       state: result.status,
       value: result.score == null ? c.notScored : interpolate(c.scoreOutOf, { score: result.score }),
-      detail: [result.confidenceExplanation, result.limitation ? humaniseLimitationCode(result.limitation) : null]
+      detail: [result.confidenceExplanation, result.limitation ? limitationLabel(locale, result.limitation) : null]
         .filter(Boolean)
         .join(" · "),
       observedAt: null,

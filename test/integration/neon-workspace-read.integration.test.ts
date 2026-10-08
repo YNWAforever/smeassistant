@@ -1,8 +1,16 @@
 import { Pool } from "pg";
-import { beforeAll, afterAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { applyMigrations } from "../../scripts/neon/migrations";
 import { startNeonDatabaseFixture, type NeonDatabaseFixture } from "./neon-database";
 import { workspaceReadRepository } from "../../lib/repositories/workspace-read";
+import { listActions } from "../../lib/workspace/queries-pages";
+import { monthWindow } from "../../lib/workspace/month-window";
+import { notificationRepository } from "../../lib/repositories/notifications";
+import { measurementRepository } from "../../lib/repositories/measurements";
+import type { SnapshotRecord } from "../../lib/workspace/snapshots";
+import type { WorkspaceContext } from "../../lib/workspace/queries";
+const database = vi.hoisted(() => ({ pool: undefined as Pool | undefined }));
+vi.mock("../../lib/db/client", () => ({ getPool: () => database.pool }));
 
 describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon workspace read models", () => {
   let fixture: NeonDatabaseFixture;
@@ -18,6 +26,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon workspace read models
     url.username = "fixture_runtime";
     url.password = "fixture-only";
     runtime = new Pool({ connectionString: url.href });
+    database.pool = runtime;
     repository = workspaceReadRepository(runtime);
   });
   beforeEach(async () => {
@@ -61,6 +70,66 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon workspace read models
     return (await runtime.query(`INSERT INTO actions(workspace_id,location_id,template_key,title,summary,evidence,priority,priority_score,priority_factors,effort_minutes,capability,dedupe_key,updated_at)
       VALUES($1,$2,'review-response','{"en":"Review","zh-HK":"評論","zh-TW":"評論"}','{}','{}','urgent',$3,'[]',10,'Live',gen_random_uuid()::text,$4) RETURNING id`, [workspaceId, locationId, score, updatedAt])).rows[0].id as string;
   }
+  it("T-19: migrated flag-off measurement reads first_published_at independently of publish enablement", async () => {
+    vi.stubEnv("GBP_REPLY_PUBLISH_ENABLED", "false");
+    try {
+      const id = await workspace(), actionId = await action(id, null, 10);
+      await runtime.query("INSERT INTO output_versions(workspace_id,action_id,version_no,body,author_type,first_exported_at) VALUES($1,$2,1,'Fixture','user','2026-09-01')", [id, actionId]);
+      const exports = await measurementRepository(runtime).exports({ workspaceId: id, locationId: null } as SnapshotRecord, [actionId]);
+      expect(exports).toHaveLength(1);
+      expect(exports[0]).toMatchObject({ action_id: actionId, first_published_at: null });
+      expect(exports[0].first_exported_at).toContain("2026-09-01");
+    } finally { vi.unstubAllEnvs(); }
+  });
+  it("keeps tab counts stable and scoped against real repository SQL (T-09)", async () => {
+    const id = await workspace(); const other = await workspace("other");
+    const location = (await runtime.query("INSERT INTO locations(workspace_id,slug,name) VALUES($1,'main','Main') RETURNING id", [id])).rows[0].id as string;
+    await action(id, location, 20);
+    const completed = await action(id, null, 10);
+    await runtime.query("UPDATE actions SET action_state='completed' WHERE id=$1", [completed]);
+    await action(other, null, 99);
+    const ctx: WorkspaceContext = {
+      workspace: { id, slug: "shop", name: "Shop", market: "hk", tier: "paid", timezone: "Asia/Hong_Kong", isDemo: false, instagramHandle: null, industry: null, district: null },
+      locations: [{ id: location, slug: "main", name: "Main", address: null, district: null, isPrimary: true, placeId: null }],
+      usage: { period: "2026-10", approvedDeliveries: 0, allowance: null }, unreadNotifications: 0,
+      membership: { workspaceId: id, workspaceSlug: "shop", userId: "00000000-0000-4000-8000-000000000001", email: "fixture@example.test", role: "owner", locationScope: null },
+      account: { name: "Fixture", email: "fixture@example.test" },
+    };
+    const baseline = await listActions(ctx, { location: "main" });
+    expect(baseline.counts).toMatchObject({ all: 1, completed: 1 });
+    for (const view of ["all", "needs_input", "drafts", "awaiting_approval", "completed"] as const) {
+      expect((await listActions(ctx, { location: "main", view })).counts).toEqual(baseline.counts);
+    }
+    expect((await listActions(ctx, { location: "main", view: "completed" })).actions.map(row => row.id)).toEqual([completed]);
+  });
+  it.each([
+    ["Asia/Hong_Kong", "2026-10", "2026-09-30T16:00:00Z", "2026-10-31T16:00:00Z"],
+    ["Asia/Taipei", "2026-10", "2026-09-30T16:00:00Z", "2026-10-31T16:00:00Z"],
+    ["UTC", "2026-10", "2026-10-01T00:00:00Z", "2026-11-01T00:00:00Z"],
+    ["America/New_York", "2026-11", "2026-11-01T04:00:00Z", "2026-12-01T05:00:00Z"],
+  ])("%s completion/notification reads use real local [start,end), including DST (T-10)", async (timezone, period, start, end) => {
+    const id = await workspace(); const other = await workspace("other");
+    await runtime.query("UPDATE workspaces SET timezone=$2 WHERE id=$1", [id, timezone]);
+    const startMs = Date.parse(start), endMs = Date.parse(end);
+    const stamps = [startMs - 1, startMs, startMs + 15 * 60_000, startMs + 479 * 60_000, startMs + 480 * 60_000, endMs - 1, endMs];
+    const ids: string[] = [];
+    for (const instant of stamps) {
+      const actionId = await action(id, null, 10); ids.push(actionId);
+      await runtime.query("UPDATE actions SET action_state='completed',completed_at=$2 WHERE id=$1", [actionId, new Date(instant).toISOString()]);
+    }
+    await action(other, null, 99);
+    expect((await repository.completedActions(id, monthWindow(period, timezone))).map(a => a.id).sort()).toEqual(ids.slice(1, 6).sort());
+    const user = (await owner.query("INSERT INTO app_users(email) VALUES('month@example.test') RETURNING id")).rows[0].id;
+    const notices = notificationRepository(runtime);
+    const notice = async (stamp: number) => runtime.query("INSERT INTO workspace_notifications(workspace_id,user_id,kind,title,body,created_at) VALUES($1,$2,'usage.allowance_80','{}','{}',$3)", [id, user, new Date(stamp).toISOString()]);
+    await notice(startMs - 1); await notice(endMs);
+    expect(await notices.hasInMonth(id, "usage.allowance_80", period)).toBe(false);
+    await notice(startMs + 15 * 60_000);
+    expect(await notices.hasInMonth(id, "usage.allowance_80", period)).toBe(true);
+    await runtime.query("DELETE FROM workspace_notifications WHERE workspace_id=$1", [id]);
+    await notice(startMs);
+    expect(await notices.hasInMonth(id, "usage.allowance_80", period)).toBe(true);
+  });
   it("keeps workspace-wide actions, empty filters and exact priority/date ordering", async () => {
     const id = await workspace();
     const other = await workspace("other");
@@ -202,9 +271,9 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon workspace read models
     await action(other, "completed");
 
     // This location plus the workspace-wide one -- never the other location's.
-    expect((await repository.completedActions(id, "2026-09-01", loc)).length).toBe(2);
+    expect((await repository.completedActions(id, monthWindow("2026-09", "Asia/Hong_Kong"), loc)).length).toBe(2);
     // Unscoped (?location=all) still sees everything, exactly as before.
-    expect((await repository.completedActions(id, "2026-09-01")).length).toBe(3);
+    expect((await repository.completedActions(id, monthWindow("2026-09", "Asia/Hong_Kong"))).length).toBe(3);
 
     const scoped = await action(loc, "in_progress");
     const workspaceWide = await action(null, "in_progress");
@@ -218,7 +287,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon workspace read models
   it("executes remaining empty optional reads without hiding query failures", async () => {
     const id = await workspace();
     expect(await repository.schedules(id, ["missing-place"])).toEqual([]);
-    expect(await repository.completedActions(id, "2026-09-01")).toEqual([]);
+    expect(await repository.completedActions(id, monthWindow("2026-09", "Asia/Hong_Kong"))).toEqual([]);
     expect(await repository.notifications(id, "00000000-0000-4000-8000-000000000001")).toEqual([]);
     expect(await repository.unreadNotifications(id, "00000000-0000-4000-8000-000000000001")).toBe(0);
     expect(await repository.notificationPreferences(id)).toMatchObject({ notify_rescan_complete: true, notify_regression_alert: true, notify_monthly_digest: true });

@@ -93,7 +93,7 @@ type FunnelCopy = {
     consentTitle: string
     consentBody: string
     privacyNote: string
-    errors: { business: string; place: string; industry: string; district: string; consent: string; consentStale: string; submit: string; network: string }
+    errors: { business: string; place: string; industry: string; district: string; website: string; consent: string; consentStale: string; submit: string; network: string }
     back: string
     continue: string
     start: string
@@ -106,7 +106,7 @@ type FunnelCopy = {
     progress: string
     subjectLabel: string
     collectors: { google_business: string; instagram: string; search_ai: string }
-    phase: { pending: string; running: string; done: string; unavailable: string; failed: string; stalled: string }
+    phase: { pending: string; running: string; awaiting_result: string; not_provided: string; done: string; unavailable: string; failed: string; stalled: string }
     stalledTitle: string
     stalledBody: string
     stalledReason: { timeout: string; rateLimited: string; unreachable: string; missing: string }
@@ -479,6 +479,7 @@ const funnelEn: FunnelCopy = {
       place: "Confirm a match or choose to continue without one.",
       industry: "Select an industry.",
       district: "Select a district.",
+      website: "Enter a complete http:// or https:// website URL without login details, or leave it blank.",
       consent: "Confirm that we may collect public evidence for this scan.",
       consentStale: "Our privacy notice changed. Please read and confirm the consent again.",
       submit: "The scan could not be started. Please try again.",
@@ -503,6 +504,8 @@ const funnelEn: FunnelCopy = {
       unavailable: "Not measured",
       failed: "The scan did not complete",
       stalled: "No update since we last checked",
+      awaiting_result: "Awaiting collector result",
+      not_provided: "Not provided",
     },
     stalledTitle: "We stopped checking for updates",
     stalledBody: "This scan has not reported a new stage for a while. It may still be running on our side — we simply stopped asking, so this page does not keep polling forever. Nothing has been scored and nothing has been marked as failed.",
@@ -828,6 +831,7 @@ const funnelZhHK: FunnelCopy = {
       place: "請確認配對結果，或選擇以手動資料繼續。",
       industry: "請選擇行業。",
       district: "請選擇地區。",
+      website: "請輸入完整的 http:// 或 https:// 網址，不要包含登入資料；也可留空。",
       consent: "請確認我們可以為這次掃描收集公開證據。",
       consentStale: "私隱聲明已更新，請重新閱讀並確認同意。",
       submit: "未能開始掃描，請再試一次。",
@@ -852,6 +856,8 @@ const funnelZhHK: FunnelCopy = {
       unavailable: "未能量度",
       failed: "掃描未能完成",
       stalled: "自上次檢查後未有更新",
+      awaiting_result: "等候收集結果",
+      not_provided: "未提供",
     },
     stalledTitle: "我們已停止查詢更新",
     stalledBody: "這次掃描已有一段時間沒有回報新階段。它可能仍在我們的伺服器上進行，我們只是停止不斷查詢，避免此頁無了期等待。系統沒有計算任何評分，亦沒有判定掃描失敗。",
@@ -1166,6 +1172,7 @@ const funnelZhTW: FunnelCopy = {
       place: "請確認配對結果，或選擇以手動資料繼續。",
       industry: "請選擇產業。",
       district: "請選擇地區。",
+      website: "請輸入完整的 http:// 或 https:// 網址，不要包含登入資訊；也可留白。",
       consent: "請確認我們可以為這次掃描收集公開證據。",
       consentStale: "隱私權聲明已更新，請重新閱讀並確認同意。",
       submit: "無法開始掃描，請再試一次。",
@@ -1190,6 +1197,8 @@ const funnelZhTW: FunnelCopy = {
       unavailable: "未能量度",
       failed: "掃描未能完成",
       stalled: "自上次檢查後沒有更新",
+      awaiting_result: "等待蒐集結果",
+      not_provided: "尚未提供",
     },
     stalledTitle: "我們已停止查詢更新",
     stalledBody: "這次掃描已有一段時間沒有回報新階段。它可能仍在我們的伺服器上進行，我們只是停止持續查詢，避免這個頁面一直等下去。系統沒有計算任何分數，也沒有判定掃描失敗。",

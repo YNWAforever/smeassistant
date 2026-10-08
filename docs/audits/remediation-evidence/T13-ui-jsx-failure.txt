@@ -1,0 +1,67 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ components/workspace/bulk-action-dialog.test.tsx (0 test)
+ ❯ components/workspace/actions-list-view.test.tsx (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/workspace/actions-list-view.test.tsx [ components/workspace/actions-list-view.test.tsx ]
+Error: Transform failed with 2 errors:
+
+[PARSE_ERROR] Expected corresponding JSX closing tag for 'p'.
+ - Expected `</p>` in components/workspace/bulk-action-dialog.tsx at 9827..9830
+ - Opened here in components/workspace/bulk-action-dialog.tsx at 9685..9686
+
+[PARSE_ERROR] Adjacent JSX elements must be wrapped in an enclosing tag.
+    ╭─[ components/workspace/bulk-action-dialog.tsx:78:3 ]
+    │
+ 78 │   </>;
+    │   ┬  
+    │   ╰── 
+    │ 
+    │ Help: Did you want a JSX fragment `<>...</>`?
+────╯
+
+  Plugin: vite:oxc
+  File: C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation/components/workspace/bulk-action-dialog.tsx
+ ❯ transformWithOxc ../../../smeassistant/node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:4103:19
+ ❯ TransformPluginContext.transform ../../../smeassistant/node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:4174:26
+ ❯ EnvironmentPluginContainer.transform ../../../smeassistant/node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:30932:51
+ ❯ loadAndTransform ../../../smeassistant/node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:20671:26
+ ❯ fetchModule ../../../smeassistant/node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:34343:15
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  components/workspace/bulk-action-dialog.test.tsx [ components/workspace/bulk-action-dialog.test.tsx ]
+Error: Transform failed with 2 errors:
+
+[PARSE_ERROR] Expected corresponding JSX closing tag for 'p'.
+ - Expected `</p>` in components/workspace/bulk-action-dialog.tsx at 9827..9830
+ - Opened here in components/workspace/bulk-action-dialog.tsx at 9685..9686
+
+[PARSE_ERROR] Adjacent JSX elements must be wrapped in an enclosing tag.
+    ╭─[ components/workspace/bulk-action-dialog.tsx:78:3 ]
+    │
+ 78 │   </>;
+    │   ┬  
+    │   ╰── 
+    │ 
+    │ Help: Did you want a JSX fragment `<>...</>`?
+────╯
+
+  Plugin: vite:oxc
+  File: C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation/components/workspace/bulk-action-dialog.tsx
+ ❯ transformWithOxc ../../../smeassistant/node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:4103:19
+ ❯ TransformPluginContext.transform ../../../smeassistant/node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:4174:26
+ ❯ EnvironmentPluginContainer.transform ../../../smeassistant/node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:30932:51
+ ❯ loadAndTransform ../../../smeassistant/node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:20671:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 4 passed (6)
+      Tests  57 passed (57)
+   Start at  04:43:27
+   Duration  10.19s (transform 928ms, setup 2.44s, import 1.63s, tests 246ms, environment 2.24s)
+

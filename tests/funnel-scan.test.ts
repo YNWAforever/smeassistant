@@ -161,10 +161,10 @@ describe("scan progress", () => {
     expect(progressPercent(4)).toBe(67);
     expect(collectorPhases("collecting", "collecting")).toEqual({ google_business: "pending", instagram: "pending", search_ai: "pending" });
     expect(collectorPhases("collecting_ig_gbp", "collecting")).toEqual({ google_business: "running", instagram: "running", search_ai: "pending" });
-    expect(collectorPhases("collecting_aeo", "collecting")).toEqual({ google_business: "done", instagram: "done", search_ai: "running" });
-    expect(collectorPhases("persisting", "persisting")).toEqual({ google_business: "done", instagram: "done", search_ai: "done" });
-    expect(collectorPhases("partial", "partial")).toEqual({ google_business: "unavailable", instagram: "unavailable", search_ai: "unavailable" });
-    expect(collectorPhases("failed", "failed")).toEqual({ google_business: "failed", instagram: "failed", search_ai: "failed" });
+    expect(collectorPhases("collecting_aeo", "collecting")).toEqual({ google_business: "awaiting_result", instagram: "awaiting_result", search_ai: "running" });
+    expect(collectorPhases("persisting", "persisting")).toEqual({ google_business: "awaiting_result", instagram: "awaiting_result", search_ai: "awaiting_result" });
+    expect(collectorPhases("partial", "partial")).toEqual({ google_business: "awaiting_result", instagram: "awaiting_result", search_ai: "awaiting_result" });
+    expect(collectorPhases("failed", "failed")).toEqual({ google_business: "awaiting_result", instagram: "awaiting_result", search_ai: "awaiting_result" });
   });
 
   it("builds the scan reference and the 1 s → 8 s backoff", () => {
@@ -206,10 +206,11 @@ describe("report labels", () => {
     expect(limitationLabel("zh-HK", "WEBSITE_UNREACHABLE")).toBe("網站未能連接");
   });
 
-  it("falls back to the untranslated word-split form for a code with no report.limitation* entry, in every locale", () => {
+  it("uses localized generic copy for an unknown diagnostic code", () => {
     const madeUp = "SOME_NEW_SCAN_ENGINE_CODE";
     for (const locale of ["en", "zh-HK", "zh-TW"]) {
-      expect(limitationLabel(locale, madeUp)).toBe(humaniseLimitationCode(madeUp));
+      expect(limitationLabel(locale, madeUp)).not.toContain("SCAN");
+      expect(limitationLabel(locale, madeUp)).not.toBe(humaniseLimitationCode(madeUp));
     }
   });
 

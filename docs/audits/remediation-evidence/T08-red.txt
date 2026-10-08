@@ -1,0 +1,334 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ lib/scan/website-boundaries.test.ts (12 tests | 9 failed) 46ms
+   × rejects invalid website before submission: not a url 17ms (retry x1)
+   × rejects invalid website before submission: /relative 4ms (retry x1)
+   × rejects invalid website before submission: javascript:alert(1) 3ms (retry x1)
+   × rejects invalid website before submission: ftp://example.test 3ms (retry x1)
+   × rejects invalid website before submission: https://user:secret@example.test 3ms (retry x1)
+   × rejects invalid website before submission: https://example.test/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 3ms (retry x1)
+   × rejects supplied non-string website except missing/null: 42 2ms (retry x1)
+   × rejects supplied non-string website except missing/null: {} 1ms (retry x1)
+   × rejects supplied non-string website except missing/null: undefined 1ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 9 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/scan/website-boundaries.test.ts > rejects invalid website before submission: not a url
+ FAIL  lib/scan/website-boundaries.test.ts > rejects invalid website before submission: not a url
+AssertionError: expected { ok: true, consent: { …(4) }, …(1) } to deeply equal { ok: false, …(1) }
+
+- Expected
++ Received
+
+  {
+-   "error": "website_url is invalid",
+-   "ok": false,
++   "consent": {
++     "consentType": "public_evidence",
++     "granted": true,
++     "locale": "en",
++     "policyVersion": "2026-07-28",
++   },
++   "input": {
++     "address": "",
++     "alternateNames": [],
++     "businessName": "Fixture Cafe",
++     "dataCid": null,
++     "dataId": null,
++     "district": "Central",
++     "facebookUrl": "",
++     "industry": "restaurant",
++     "instagramHandle": "",
++     "instagramMatchProvenance": null,
++     "intent": null,
++     "locale": "en",
++     "manualEntry": true,
++     "mapsUrl": "",
++     "market": "HK",
++     "objective": "more_leads",
++     "parentJobId": null,
++     "placeId": null,
++     "placeMatchConfidence": null,
++     "provider": null,
++     "userRole": null,
++     "websiteUrl": "not a url",
++   },
++   "ok": true,
+  }
+
+ ❯ lib/scan/website-boundaries.test.ts:12:36
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/18]⎯
+
+ FAIL  lib/scan/website-boundaries.test.ts > rejects invalid website before submission: /relative
+ FAIL  lib/scan/website-boundaries.test.ts > rejects invalid website before submission: /relative
+AssertionError: expected { ok: true, consent: { …(4) }, …(1) } to deeply equal { ok: false, …(1) }
+
+- Expected
++ Received
+
+  {
+-   "error": "website_url is invalid",
+-   "ok": false,
++   "consent": {
++     "consentType": "public_evidence",
++     "granted": true,
++     "locale": "en",
++     "policyVersion": "2026-07-28",
++   },
++   "input": {
++     "address": "",
++     "alternateNames": [],
++     "businessName": "Fixture Cafe",
++     "dataCid": null,
++     "dataId": null,
++     "district": "Central",
++     "facebookUrl": "",
++     "industry": "restaurant",
++     "instagramHandle": "",
++     "instagramMatchProvenance": null,
++     "intent": null,
++     "locale": "en",
++     "manualEntry": true,
++     "mapsUrl": "",
++     "market": "HK",
++     "objective": "more_leads",
++     "parentJobId": null,
++     "placeId": null,
++     "placeMatchConfidence": null,
++     "provider": null,
++     "userRole": null,
++     "websiteUrl": "/relative",
++   },
++   "ok": true,
+  }
+
+ ❯ lib/scan/website-boundaries.test.ts:12:36
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/18]⎯
+
+ FAIL  lib/scan/website-boundaries.test.ts > rejects invalid website before submission: javascript:alert(1)
+ FAIL  lib/scan/website-boundaries.test.ts > rejects invalid website before submission: javascript:alert(1)
+AssertionError: expected { ok: true, consent: { …(4) }, …(1) } to deeply equal { ok: false, …(1) }
+
+- Expected
++ Received
+
+  {
+-   "error": "website_url is invalid",
+-   "ok": false,
++   "consent": {
++     "consentType": "public_evidence",
++     "granted": true,
++     "locale": "en",
++     "policyVersion": "2026-07-28",
++   },
++   "input": {
++     "address": "",
++     "alternateNames": [],
++     "businessName": "Fixture Cafe",
++     "dataCid": null,
++     "dataId": null,
++     "district": "Central",
++     "facebookUrl": "",
++     "industry": "restaurant",
++     "instagramHandle": "",
++     "instagramMatchProvenance": null,
++     "intent": null,
++     "locale": "en",
++     "manualEntry": true,
++     "mapsUrl": "",
++     "market": "HK",
++     "objective": "more_leads",
++     "parentJobId": null,
++     "placeId": null,
++     "placeMatchConfidence": null,
++     "provider": null,
++     "userRole": null,
++     "websiteUrl": "javascript:alert(1)",
++   },
++   "ok": true,
+  }
+
+ ❯ lib/scan/website-boundaries.test.ts:12:36
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/18]⎯
+
+ FAIL  lib/scan/website-boundaries.test.ts > rejects invalid website before submission: ftp://example.test
+ FAIL  lib/scan/website-boundaries.test.ts > rejects invalid website before submission: ftp://example.test
+AssertionError: expected { ok: true, consent: { …(4) }, …(1) } to deeply equal { ok: false, …(1) }
+
+- Expected
++ Received
+
+  {
+-   "error": "website_url is invalid",
+-   "ok": false,
++   "consent": {
++     "consentType": "public_evidence",
++     "granted": true,
++     "locale": "en",
++     "policyVersion": "2026-07-28",
++   },
++   "input": {
++     "address": "",
++     "alternateNames": [],
++     "businessName": "Fixture Cafe",
++     "dataCid": null,
++     "dataId": null,
++     "district": "Central",
++     "facebookUrl": "",
++     "industry": "restaurant",
++     "instagramHandle": "",
++     "instagramMatchProvenance": null,
++     "intent": null,
++     "locale": "en",
++     "manualEntry": true,
++     "mapsUrl": "",
++     "market": "HK",
++     "objective": "more_leads",
++     "parentJobId": null,
++     "placeId": null,
++     "placeMatchConfidence": null,
++     "provider": null,
++     "userRole": null,
++     "websiteUrl": "ftp://example.test",
++   },
++   "ok": true,
+  }
+
+ ❯ lib/scan/website-boundaries.test.ts:12:36
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/18]⎯
+
+ FAIL  lib/scan/website-boundaries.test.ts > rejects invalid website before submission: https://user:secret@example.test
+ FAIL  lib/scan/website-boundaries.test.ts > rejects invalid website before submission: https://user:secret@example.test
+AssertionError: expected { ok: true, consent: { …(4) }, …(1) } to deeply equal { ok: false, …(1) }
+
+- Expected
++ Received
+
+  {
+-   "error": "website_url is invalid",
+-   "ok": false,
++   "consent": {
++     "consentType": "public_evidence",
++     "granted": true,
++     "locale": "en",
++     "policyVersion": "2026-07-28",
++   },
++   "input": {
++     "address": "",
++     "alternateNames": [],
++     "businessName": "Fixture Cafe",
++     "dataCid": null,
++     "dataId": null,
++     "district": "Central",
++     "facebookUrl": "",
++     "industry": "restaurant",
++     "instagramHandle": "",
++     "instagramMatchProvenance": null,
++     "intent": null,
++     "locale": "en",
++     "manualEntry": true,
++     "mapsUrl": "",
++     "market": "HK",
++     "objective": "more_leads",
++     "parentJobId": null,
++     "placeId": null,
++     "placeMatchConfidence": null,
++     "provider": null,
++     "userRole": null,
++     "websiteUrl": "https://user:secret@example.test",
++   },
++   "ok": true,
+  }
+
+ ❯ lib/scan/website-boundaries.test.ts:12:36
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/18]⎯
+
+ FAIL  lib/scan/website-boundaries.test.ts > rejects invalid website before submission: https://example.test/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+ FAIL  lib/scan/website-boundaries.test.ts > rejects invalid website before submission: https://example.test/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+AssertionError: expected { ok: true, consent: { …(4) }, …(1) } to deeply equal { ok: false, …(1) }
+
+- Expected
++ Received
+
+  {
+-   "error": "website_url is invalid",
+-   "ok": false,
++   "consent": {
++     "consentType": "public_evidence",
++     "granted": true,
++     "locale": "en",
++     "policyVersion": "2026-07-28",
++   },
++   "input": {
++     "address": "",
++     "alternateNames": [],
++     "businessName": "Fixture Cafe",
++     "dataCid": null,
++     "dataId": null,
++     "district": "Central",
++     "facebookUrl": "",
++     "industry": "restaurant",
++     "instagramHandle": "",
++     "instagramMatchProvenance": null,
++     "intent": null,
++     "locale": "en",
++     "manualEntry": true,
++     "mapsUrl": "",
++     "market": "HK",
++     "objective": "more_leads",
++     "parentJobId": null,
++     "placeId": null,
++     "placeMatchConfidence": null,
++     "provider": null,
++     "userRole": null,
++     "websiteUrl": "https://example.test/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
++   },
++   "ok": true,
+  }
+
+ ❯ lib/scan/website-boundaries.test.ts:12:36
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/18]⎯
+
+ FAIL  lib/scan/website-boundaries.test.ts > rejects supplied non-string website except missing/null: 42
+ FAIL  lib/scan/website-boundaries.test.ts > rejects supplied non-string website except missing/null: 42
+ FAIL  lib/scan/website-boundaries.test.ts > rejects supplied non-string website except missing/null: {}
+ FAIL  lib/scan/website-boundaries.test.ts > rejects supplied non-string website except missing/null: {}
+ FAIL  lib/scan/website-boundaries.test.ts > rejects supplied non-string website except missing/null: undefined
+ FAIL  lib/scan/website-boundaries.test.ts > rejects supplied non-string website except missing/null: undefined
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ lib/scan/website-boundaries.test.ts:18:39
+     16| it.each([undefined, null, 42, {}, []])("rejects supplied non-string we…
+     17|   const body = { ...buildScanStartPayload(draft(""), "en", consent), w…
+     18|   expect(parseScanStartBody(body).ok).toBe(website == null);
+       |                                       ^
+     19| });
+     20| it("accepts a blank website and preserves valid path/query", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/18]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  9 failed | 3 passed (12)
+   Start at  03:09:12
+   Duration  6.28s (transform 1.67s, setup 1.77s, import 3.43s, tests 46ms, environment 0ms)
+

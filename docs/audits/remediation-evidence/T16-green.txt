@@ -1,0 +1,61 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ test/corpus/workflows/corpus.test.ts (123 tests | 10 failed) 136ms
+       × behaves as expected 10ms (retry x1)
+       × behaves as expected 2ms (retry x1)
+       × behaves as expected 3ms (retry x1)
+       × behaves as expected 2ms (retry x1)
+       × behaves as expected 2ms (retry x1)
+       × behaves as expected 1ms (retry x1)
+       × behaves as expected 2ms (retry x1)
+       × behaves as expected 3ms (retry x1)
+       × behaves as expected 1ms (retry x1)
+       × behaves as expected 1ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-gbp_post-hk-missing-data > behaves as expected
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-gbp_post-hk-missing-data > behaves as expected
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-gbp_post-tw-missing-data > behaves as expected
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-gbp_post-tw-missing-data > behaves as expected
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-local_seo_brief-hk-missing-data > behaves as expected
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-local_seo_brief-hk-missing-data > behaves as expected
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-local_seo_brief-tw-missing-data > behaves as expected
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-local_seo_brief-tw-missing-data > behaves as expected
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-photo_brief-hk-missing-data > behaves as expected
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-photo_brief-hk-missing-data > behaves as expected
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-photo_brief-tw-missing-data > behaves as expected
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-photo_brief-tw-missing-data > behaves as expected
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-review_request-hk-missing-data > behaves as expected
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-review_request-hk-missing-data > behaves as expected
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-review_request-tw-missing-data > behaves as expected
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-review_request-tw-missing-data > behaves as expected
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-website_basics-hk-missing-data > behaves as expected
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-website_basics-hk-missing-data > behaves as expected
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-website_basics-tw-missing-data > behaves as expected
+ FAIL  test/corpus/workflows/corpus.test.ts > workflow regression corpus > audit-website_basics-tw-missing-data > behaves as expected
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/corpus/workflows/corpus.test.ts:47:45
+     45|       if (want.version !== undefined) {
+     46|         expect(result.versionId !== undefined).toBe(want.version);
+     47|         expect(finishInput.output !== null).toBe(want.version);
+       |                                             ^
+     48|       }
+     49|       const warnings = finishInput.output?.warnings ?? [];
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/20]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  10 failed | 129 passed (139)
+   Start at  03:46:57
+   Duration  25.86s (transform 4.96s, setup 3.24s, import 15.31s, tests 3.48s, environment 1ms)
+

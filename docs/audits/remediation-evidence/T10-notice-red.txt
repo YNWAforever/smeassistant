@@ -1,0 +1,30 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ lib/workspace/delivery-notices.test.ts (6 tests | 1 failed) 18ms
+     × adds the allowance notice once per period at the warning threshold 7ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/workspace/delivery-notices.test.ts > sendDeliveryNotices > adds the allowance notice once per period at the warning threshold
+ FAIL  lib/workspace/delivery-notices.test.ts > sendDeliveryNotices > adds the allowance notice once per period at the warning threshold
+AssertionError: expected "vi.fn()" to be called with arguments: [ …(3) ]
+
+Number of calls: 0
+
+ ❯ lib/workspace/delivery-notices.test.ts:68:30
+     66|       href: "/owner/kam-man-house/settings/billing",
+     67|     });
+     68|     expect(mocks.hasInMonth).toHaveBeenCalledWith(WORKSPACE, "usage.al…
+       |                              ^
+     69|
+     70|     mocks.inserted = [];
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  03:52:23
+   Duration  2.26s (transform 352ms, setup 587ms, import 1.28s, tests 18ms, environment 0ms)
+

@@ -1,0 +1,210 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ lib/workspace/queries-pages.test.ts (48 tests | 2 failed) 101ms
+   × searches only visible title/summary and applies it to counts (T-13) 23ms (retry x1)
+   × rejects oversized search and malformed assignment/due filters (T-13) 8ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/workspace/queries-pages.test.ts > searches only visible title/summary and applies it to counts (T-13)
+ FAIL  lib/workspace/queries-pages.test.ts > searches only visible title/summary and applies it to counts (T-13)
+AssertionError: expected [ 'a1', 'a2', 'a3' ] to deeply equal [ 'a1', 'a2' ]
+
+- Expected
++ Received
+
+  [
+    "a1",
+    "a2",
++   "a3",
+  ]
+
+ ❯ lib/workspace/queries-pages.test.ts:64:48
+     62|   state.versions = [{ id: "v3", action_id: "a3", body: "needle private…
+     63|   const result = await listActions(ctx, { q: " needle " });
+     64|   expect(result.actions.map(a => a.id).sort()).toEqual(["a1", "a2"]); …
+       |                                                ^
+     65| });
+     66| it("rejects oversized search and malformed assignment/due filters (T-1…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  lib/workspace/queries-pages.test.ts > rejects oversized search and malformed assignment/due filters (T-13)
+ FAIL  lib/workspace/queries-pages.test.ts > rejects oversized search and malformed assignment/due filters (T-13)
+AssertionError: promise resolved "{ actions: [ …(2) ], …(3) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "actions": [
++     {
++       "actionState": "needs_input",
++       "applied": false,
++       "appliedOn": null,
++       "approvalState": "draft",
++       "assignee": undefined,
++       "blockingInputs": [
++         "reviews_without_response",
++       ],
++       "capability": "Live",
++       "createdAt": "2026-09-01T00:00:00Z",
++       "delivery": "export_copy",
++       "deliveryState": "not_requested",
++       "displayPhase": {
++         "en": "Needs input",
++         "zh-HK": "需要輸入",
++         "zh-TW": "需要輸入",
++       },
++       "displayPhaseKey": "needs_input",
++       "dueAt": undefined,
++       "effortMinutes": 10,
++       "evidence": {
++         "detail": {
++           "en": "",
++           "zh-HK": "",
++           "zh-TW": "",
++         },
++         "factType": "Observed",
++         "freshness": {
++           "en": "",
++           "zh-HK": "",
++           "zh-TW": "",
++         },
++         "observedAt": "2026-09-01T00:00:00Z",
++         "source": "",
++         "value": "",
++       },
++       "evidenceInputs": [],
++       "id": "a1",
++       "latestVersion": undefined,
++       "location": {
++         "id": "loc-1",
++         "name": {
++           "en": "Yik Yam Street",
++           "zh-HK": "Yik Yam Street",
++           "zh-TW": "Yik Yam Street",
++         },
++         "slug": "yik-yam",
++       },
++       "measurementState": "not_eligible",
++       "missingInputs": [
++         "brand_voice",
++       ],
++       "priority": "urgent",
++       "priorityFactors": [],
++       "requiredInputs": [
++         "brand_voice",
++       ],
++       "runState": "queued",
++       "summary": {
++         "en": "s",
++         "zh-HK": "s",
++         "zh-TW": "s",
++       },
++       "templateKey": "review-response",
++       "title": {
++         "en": "t",
++         "zh-HK": "t",
++         "zh-TW": "t",
++       },
++       "updatedAt": "2026-09-01T00:00:00Z",
++       "verified": false,
++       "verifiedOn": null,
++     },
++     {
++       "actionState": "recommended",
++       "applied": false,
++       "appliedOn": null,
++       "approvalState": "draft",
++       "assignee": undefined,
++       "blockingInputs": [
++         "asset_or_text_only",
++       ],
++       "capability": "Live",
++       "createdAt": "2026-09-01T00:00:00Z",
++       "delivery": "export_copy",
++       "deliveryState": "not_requested",
++       "displayPhase": {
++         "en": "Recommended",
++         "zh-HK": "建議",
++         "zh-TW": "建議",
++       },
++       "displayPhaseKey": "recommended",
++       "dueAt": undefined,
++       "effortMinutes": 10,
++       "evidence": {
++         "detail": {
++           "en": "",
++           "zh-HK": "",
++           "zh-TW": "",
++         },
++         "factType": "Observed",
++         "freshness": {
++           "en": "",
++           "zh-HK": "",
++           "zh-TW": "",
++         },
++         "observedAt": "2026-09-01T00:00:00Z",
++         "source": "",
++         "value": "",
++       },
++       "evidenceInputs": [],
++       "id": "a2",
++       "latestVersion": undefined,
++       "location": {
++         "id": "loc-1",
++         "name": {
++           "en": "Yik Yam Street",
++           "zh-HK": "Yik Yam Street",
++           "zh-TW": "Yik Yam Street",
++         },
++         "slug": "yik-yam",
++       },
++       "measurementState": "not_eligible",
++       "missingInputs": [],
++       "priority": "high",
++       "priorityFactors": [],
++       "requiredInputs": [],
++       "runState": "queued",
++       "summary": {
++         "en": "s",
++         "zh-HK": "s",
++         "zh-TW": "s",
++       },
++       "templateKey": "social-post",
++       "title": {
++         "en": "t",
++         "zh-HK": "t",
++         "zh-TW": "t",
++       },
++       "updatedAt": "2026-09-01T00:00:00Z",
++       "verified": false,
++       "verifiedOn": null,
++     },
++   ],
++   "counts": {
++     "all": 2,
++     "awaiting_approval": 0,
++     "completed": 0,
++     "drafts": 0,
++     "needs_input": 1,
++   },
++   "hasMore": false,
++   "nextCursor": null,
+  }
+
+ ❯ lib/workspace/queries-pages.test.ts:67:173
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 46 passed (48)
+   Start at  04:33:40
+   Duration  1.48s (transform 395ms, setup 503ms, import 524ms, tests 101ms, environment 0ms)
+

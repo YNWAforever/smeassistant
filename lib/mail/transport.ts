@@ -1,5 +1,6 @@
 import "server-only";
 import { sendViaResend } from "./resend-driver";
+import type { ExecutionBudget } from "@/lib/jobs/execution-budget";
 
 /**
  * Transactional-email port (Phase 2 item 26), explicitly separate from Neon
@@ -44,7 +45,7 @@ export interface MailSendResult {
 }
 
 export interface MailTransport {
-  send(message: MailMessage): Promise<MailSendResult>;
+  send(message: MailMessage, context?: { budget?: ExecutionBudget }): Promise<MailSendResult>;
 }
 
 /** The safe default: reports the honest reason rather than attempting anything. */
@@ -93,6 +94,6 @@ export function createMailTransport(env: MailEnv = currentEnv()): MailTransport 
   if (!config.resendApiKey || !config.fromAddress) return unconfiguredTransport;
   const { resendApiKey, fromAddress } = config;
   return {
-    send: (message) => sendViaResend({ apiKey: resendApiKey, from: fromAddress }, message),
+    send: (message, context) => sendViaResend({ apiKey: resendApiKey, from: fromAddress }, message, context),
   };
 }

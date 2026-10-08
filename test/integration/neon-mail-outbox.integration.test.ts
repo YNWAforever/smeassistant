@@ -100,6 +100,28 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
 
   const row = async (id: string) => (await runtime.query("SELECT * FROM mail_outbox WHERE id=$1", [id])).rows[0];
 
+  it("returns an unattempted deadline claim without charging an attempt, guarded by the exact lease token (T-11)", async () => {
+    const ws = await workspace(), u = await user(), j = await job(ws), id = randomUUID();
+    await member(ws, u, { accepted: true, mailRescanComplete: true });
+    await repo().insert([outboxRow({ id, workspace_id: ws, user_id: u, job_id: j })]);
+    const tickTime = await dbNow();
+    let elapsed = 0;
+    const budget = { remainingMs: () => Math.max(0, 55_000 - elapsed), signal: new AbortController().signal };
+    const actual = repo();
+    const deferredRepo = { ...actual, sendFacts: async (...args: Parameters<typeof actual.sendFacts>) => { const facts = await actual.sendFacts(...args); elapsed = 55_000; return facts; } };
+    let providerCalls = 0;
+    const summary = await deliverMail({ repo: deferredRepo, budget, now: () => tickTime, env: { APPLICATION_MAIL_APPROVED: MAIL_TEMPLATES_VERSION, RESEND_API_KEY: "fixture", REPORT_EMAIL_FROM: "fixture@example.test", APP_ORIGIN: "https://fixture.example.test", MAIL_UNSUBSCRIBE_SECRET: "s".repeat(32) }, transport: { send: async () => { providerCalls++; return { status: "accepted_by_provider", providerMessageId: "fixture" }; } } });
+    expect(summary).toMatchObject({ deferred: true, sent: 0, retried: 0, dead: 0 });
+    expect(providerCalls).toBe(0);
+    expect(await row(id)).toMatchObject({ state: "retry", attempts: 0, lease_token: null, lease_until: null });
+    const [next] = await actual.claimDue(tickTime, 1);
+    expect(next.id).toBe(id); expect(next.attempts).toBe(1);
+    expect(await actual.deferUnattempted(id, randomUUID())).toBe(false);
+    expect(await actual.deferUnattempted(id, next.lease_token)).toBe(true);
+    expect(await actual.deferUnattempted(id, next.lease_token)).toBe(false);
+    expect((await row(id)).attempts).toBe(0);
+  });
+
   /**
    * `claimDue`'s `now` and `mail_outbox.next_attempt_at`'s `now()` default
    * must agree on whose clock is authoritative -- the container's, not the
@@ -565,7 +587,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
       });
 
       expect(sendCalled).toBe(false);
-      expect(summary).toEqual({ sent: 0, retried: 0, held: 1, dead: 0, expired: 0, paused: false });
+      expect(summary).toEqual({ sent: 0, retried: 0, held: 1, dead: 0, expired: 0, paused: false, deferred: false });
       expect(await row(id)).toMatchObject({ state: "held", hold_reason: "opted_out" });
     },
   );
@@ -610,7 +632,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon mail outbox repositor
       });
 
       expect(sendCalled).toBe(false);
-      expect(summary).toEqual({ sent: 0, retried: 0, held: 1, dead: 0, expired: 0, paused: false });
+      expect(summary).toEqual({ sent: 0, retried: 0, held: 1, dead: 0, expired: 0, paused: false, deferred: false });
       expect(await row(id)).toMatchObject({ state: "held", hold_reason: "not_member" });
     },
   );

@@ -1,5 +1,6 @@
 import "server-only";
 import type { MailMessage, MailSendResult } from "./transport";
+import { requestSignal, type ExecutionBudget } from "@/lib/jobs/execution-budget";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -18,12 +19,12 @@ export interface ResendConfig {
 export async function sendViaResend(
   config: ResendConfig,
   message: MailMessage,
+  context?: { budget?: ExecutionBudget },
 ): Promise<MailSendResult> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  let response: Response;
+  let request: ReturnType<typeof requestSignal> | undefined;
   try {
-    response = await fetch(RESEND_ENDPOINT, {
+    request = requestSignal(REQUEST_TIMEOUT_MS, context?.budget);
+    const response = await fetch(RESEND_ENDPOINT, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${config.apiKey}`,
@@ -42,29 +43,20 @@ export async function sendViaResend(
         ...(message.html ? { html: message.html } : {}),
         ...(message.headers ? { headers: message.headers } : {}),
       }),
-      signal: controller.signal,
+      signal: request.signal,
     });
+    let body: unknown;
+    try { body = await response.json(); }
+    catch (cause) { if(request.signal.aborted)throw cause; body=null; }
+    if(request.signal.aborted)throw new Error("aborted");
+    if (!response.ok) return { status: "failed", error: `provider_http_${response.status}` };
+    const providerMessageId = body && typeof body === "object" && "id" in body && typeof body.id === "string" ? body.id : undefined;
+    if (!providerMessageId) return { status: "failed", error: "provider_response_missing_id" };
+    return { status: "accepted_by_provider", providerMessageId };
   } catch (cause) {
-    const reason = cause instanceof Error && cause.name === "AbortError" ? "timed_out" : "network_error";
+    const reason = request?.signal.aborted || (cause instanceof Error && ["AbortError","BudgetExhausted"].includes(cause.name)) || context?.budget?.signal.aborted ? "timed_out" : "network_error";
     return { status: "failed", error: reason };
   } finally {
-    clearTimeout(timeout);
+    request?.dispose();
   }
-  let body: unknown;
-  try {
-    body = await response.json();
-  } catch {
-    body = null;
-  }
-  // Category code only, never the provider's free-text message: last_error
-  // is stored in mail_outbox and surfaced on operator failure lists, and
-  // global-constraints.md forbids logging or persisting provider response
-  // text (it can carry the recipient's address back verbatim).
-  if (!response.ok) {
-    return { status: "failed", error: `provider_http_${response.status}` };
-  }
-  const providerMessageId =
-    body && typeof body === "object" && "id" in body && typeof body.id === "string" ? body.id : undefined;
-  if (!providerMessageId) return { status: "failed", error: "provider_response_missing_id" };
-  return { status: "accepted_by_provider", providerMessageId };
 }

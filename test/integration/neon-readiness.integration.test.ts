@@ -112,6 +112,16 @@ it("refuses a different expected target before transport", async () =>
   expect(
     (await readiness({ ...env, NEON_READINESS_DATABASE: "other" })).category,
   ).toBe("target"));
+it("T-19 rejects a missing first_published_at even when every journal checksum is intact", async () => {
+  expect((await readiness(env)).status).toBe("ready");
+  await db.query("ALTER TABLE public.output_versions RENAME COLUMN first_published_at TO hidden_first_published_at");
+  try {
+    expect(await readiness(env)).toMatchObject({ status: "not_ready", category: "schema" });
+  } finally {
+    await db.query("ALTER TABLE public.output_versions RENAME COLUMN hidden_first_published_at TO first_published_at");
+  }
+  expect((await readiness(env)).status).toBe("ready");
+});
 it("rejects missing journal", async () => {
   await db.query(
     "ALTER TABLE neon_migrations.journal RENAME TO hidden_journal",

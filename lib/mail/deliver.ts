@@ -9,6 +9,7 @@ import { BATCH_SIZE, EXPIRY_HOURS, decideRecipient, retryDelayMinutes } from "./
 import { renderScanMail } from "./templates";
 import { createMailTransport, type MailMessage, type MailTransport } from "./transport";
 import { UNSUBSCRIBE_TTL_MS, signUnsubscribeToken } from "./unsubscribe-token";
+import { assertExecutionBudget, currentExecutionBudget, settleWithinReserve, type ExecutionBudget } from "@/lib/jobs/execution-budget";
 
 /**
  * The cron tick's mail-delivery step (docs/superpowers/specs/2026-09-27-
@@ -28,6 +29,7 @@ export interface DeliverMailDeps {
   transport?: MailTransport;
   env?: Record<string, string | undefined>;
   now?: () => Date;
+  budget?: ExecutionBudget;
 }
 
 export interface DeliverMailSummary {
@@ -37,6 +39,7 @@ export interface DeliverMailSummary {
   dead: number;
   expired: number;
   paused: boolean;
+  deferred: boolean;
 }
 
 /** Mirrors the shape enqueueScanMail (./enqueue.ts) writes into mail_outbox.payload. */
@@ -72,10 +75,11 @@ function logLeaseLost(id: string): void {
 
 async function deliverOne(
   row: ClaimedRow,
-  ctx: { repo: MailOutboxRepository; transport: MailTransport; env: Record<string, string | undefined>; now: Date },
+  ctx: { repo: MailOutboxRepository; transport: MailTransport; env: Record<string, string | undefined>; now: Date; budget?: ExecutionBudget; attempted: boolean },
   summary: DeliverMailSummary,
 ): Promise<void> {
   const { repo, transport, env, now } = ctx;
+  assertExecutionBudget(ctx.budget);
 
   if (isExpired(row, now)) {
     const finished = await repo.finish(row.id, row.lease_token, { state: "expired" });
@@ -160,7 +164,9 @@ async function deliverOne(
     },
   };
 
-  const result = await transport.send(message);
+  assertExecutionBudget(ctx.budget);
+  ctx.attempted=true;
+  const result = await transport.send(message,{budget:ctx.budget});
 
   if (result.status === "not_configured") {
     const finished = await repo.finish(row.id, row.lease_token, { state: "held", reason: "mail_unapproved" });
@@ -239,7 +245,7 @@ async function recoverFromException(
 
 export async function deliverMail(deps: DeliverMailDeps): Promise<DeliverMailSummary> {
   const env = deps.env ?? process.env;
-  const summary: DeliverMailSummary = { sent: 0, retried: 0, held: 0, dead: 0, expired: 0, paused: false };
+  const summary: DeliverMailSummary = { sent: 0, retried: 0, held: 0, dead: 0, expired: 0, paused: false, deferred: false };
 
   if (pauseState(env).mail) {
     logPauseRefusal("mail_send");
@@ -247,14 +253,26 @@ export async function deliverMail(deps: DeliverMailDeps): Promise<DeliverMailSum
     return summary;
   }
 
-  const now = (deps.now ?? (() => new Date()))();
+  const now = deps.now ?? (() => new Date());
+  const budget=deps.budget ?? currentExecutionBudget();
   const transport = deps.transport ?? createMailTransport(env);
-  const rows = await deps.repo.claimDue(now, BATCH_SIZE);
-  for (const row of rows) {
+  // Wrap only settlement, never a new claim or provider call, in the five-second reserve.
+  const repo: MailOutboxRepository = {...deps.repo,finish:(...args)=>settleWithinReserve(budget,()=>deps.repo.finish(...args))};
+  for (let i=0;i<BATCH_SIZE;i++) {
+    if(budget && (budget.remainingMs()<=0 || budget.signal.aborted)){summary.deferred=true;break;}
+    const [row]=await repo.claimDue(now(),1);
+    if(!row)break;
+    const ctx={repo,transport,env,now:now(),budget,attempted:false};
     try {
-      await deliverOne(row, { repo: deps.repo, transport, env, now }, summary);
+      await deliverOne(row,ctx,summary);
     } catch {
-      await recoverFromException(row, { repo: deps.repo, now }, summary);
+      if(budget && (budget.remainingMs()<=0 || budget.signal.aborted)) {
+        summary.deferred=true;
+        if(!ctx.attempted)try{await settleWithinReserve(budget,()=>deps.repo.deferUnattempted(row.id,row.lease_token));}catch{/* CAS lease expiry is the fallback if compensation cannot commit. */}
+        else await recoverFromException(row,{repo,now:now()},summary);
+        break;
+      }
+      await recoverFromException(row,{repo,now:now()},summary);
     }
   }
   return summary;

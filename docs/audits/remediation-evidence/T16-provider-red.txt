@@ -1,0 +1,37 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ test/corpus/workflows/provider-recovery.test.ts (2 tests | 2 failed) 822ms
+   × hk retries a rejected provider call once within the existing generation budget 558ms (retry x1)
+   × tw retries a rejected provider call once within the existing generation budget 262ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/corpus/workflows/provider-recovery.test.ts > hk retries a rejected provider call once within the existing generation budget
+ FAIL  test/corpus/workflows/provider-recovery.test.ts > hk retries a rejected provider call once within the existing generation budget
+ FAIL  test/corpus/workflows/provider-recovery.test.ts > tw retries a rejected provider call once within the existing generation budget
+ FAIL  test/corpus/workflows/provider-recovery.test.ts > tw retries a rejected provider call once within the existing generation budget
+AssertionError: expected 1 to be 2 // Object.is equality
+
+- Expected
++ Received
+
+- 2
++ 1
+
+ ❯ test/corpus/workflows/provider-recovery.test.ts:8:24
+      6|   const outputs = [{ throws: "Synthetic provider timeout" }, ...base.c…
+      7|   const run = await runCorpusCase({ ...base, cannedOutputs: outputs },…
+      8|   expect(run.llmCalls).toBe(2);
+       |                        ^
+      9|   expect(run.result).toMatchObject({ state: "succeeded", versionId: "v…
+     10|   expect(run.finishInput.reason).toBeUndefined();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  03:49:18
+   Duration  12.97s (transform 3.57s, setup 1.34s, import 9.69s, tests 822ms, environment 0ms)
+

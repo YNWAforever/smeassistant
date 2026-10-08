@@ -1,0 +1,36 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ test/integration/neon-action-list-pagination.integration.test.ts (8 tests | 1 failed | 7 skipped) 18771ms
+     × projects only the assigned accepted member in the same tenant (T-13) 3484ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/integration/neon-action-list-pagination.integration.test.ts > bounded action list SQL (T-12) > projects only the assigned accepted member in the same tenant (T-13)
+AssertionError: expected undefined to deeply equal { …(2) }
+
+- Expected:
+{
+  "id": "778c0ea4-1e6c-46bf-80ea-34233c3146fa",
+  "name": "accepted-here@example.test",
+}
+
++ Received:
+undefined
+
+ ❯ test/integration/neon-action-list-pagination.integration.test.ts:54:73
+     52|     for (const [index, userId] of [accepted, pending, foreignOnly].ent…
+     53|     const page = await listActions(ctx, {});
+     54|     expect(page.actions.find(action => action.id === ids[0])?.assignee…
+       |                                                                         ^
+     55|     expect(page.actions.find(action => action.id === ids[1])?.assignee…
+     56|     expect(page.actions.find(action => action.id === ids[2])?.assignee…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 skipped (8)
+   Start at  08:25:05
+   Duration  49.75s (transform 1.41s, setup 53ms, import 10.37s, tests 18.77s, environment 0ms)
+

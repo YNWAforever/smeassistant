@@ -1,0 +1,22 @@
+{
+  "unrelated_repo_path": "C:/Users/laich/Documents/smescanner",
+  "unrelated_change_count": 12,
+  "unrelated_changes_preserved": true,
+  "correct_original_repo_path": "C:/Users/laich/Documents/smeassistant",
+  "correct_original_sha": "d1cbc7bd8a2bc7989c774d15001f7971274bed8d",
+  "correct_original_change_count": 0,
+  "verified_application_sha": "76404c43458e3bf614bd2ac2329655e265c74f79",
+  "verified_fixture_sha": "6941ed7c24ab66593018ab40e3628d193056ed17",
+  "application_source_diff": [],
+  "fixture_only_diff": [
+    "e2e/acceptance/merchant-loop.spec.ts"
+  ],
+  "old_migration_and_dependency_ci_changed_files": [
+    "neon/migrations/0015_action_list_indexes.sql"
+  ],
+  "audit_status_rows_preserved": 21,
+  "lock_sha256": "C7C722C958A874DEEE76AB2B4FAAF654D985547A9D29EB256D8F6C9B848F63C6",
+  "plan_sha256": "4121B9FB00AA7CBA35F4E113ECD88CBE6B43082A143AFF756C534B7E19C16F55",
+  "owned_next_process_count": 0,
+  "observed_utc": "2026-10-06T23:13:27.3088774Z"
+}

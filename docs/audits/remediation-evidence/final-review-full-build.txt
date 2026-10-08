@@ -1,0 +1,135 @@
+
+> sme-scanner-visibility-workspace@0.1.0 build C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation
+> next build
+
+??Next.js 16.2.6 (Turbopack)
+
+  Creating an optimized production build ...
+??Compiled successfully in 14.9s
+  Running TypeScript ...
+  Finished TypeScript in 29.4s ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/31) ...
+  Generating static pages using 11 workers (7/31) 
+  Generating static pages using 11 workers (15/31) 
+  Generating static pages using 11 workers (23/31) 
+??Generating static pages using 11 workers (31/31) in 820ms
+  Finalizing page optimization ...
+
+Route (app)
+??? /
+??? /_not-found
+??? /[locale]
+??? /[locale]/demo-workspace
+??? /[locale]/legal/privacy
+??? /[locale]/legal/terms
+??? /[locale]/methodology
+??? /[locale]/ops/access-requests
+??? /[locale]/ops/access-requests/[requestId]
+??? /[locale]/ops/failures
+??? /[locale]/owner/[workspaceSlug]
+??? /[locale]/owner/[workspaceSlug]/actions
+??? /[locale]/owner/[workspaceSlug]/actions/[actionId]
+??? /[locale]/owner/[workspaceSlug]/activity
+??? /[locale]/owner/[workspaceSlug]/assets
+??? /[locale]/owner/[workspaceSlug]/calendar
+??? /[locale]/owner/[workspaceSlug]/create
+??? /[locale]/owner/[workspaceSlug]/insights
+??? /[locale]/owner/[workspaceSlug]/more
+??? /[locale]/owner/[workspaceSlug]/offers
+??? /[locale]/owner/[workspaceSlug]/packs/[packId]
+??? /[locale]/owner/[workspaceSlug]/settings/billing
+??? /[locale]/owner/[workspaceSlug]/settings/brand
+??? /[locale]/owner/[workspaceSlug]/settings/integrations
+??? /[locale]/owner/[workspaceSlug]/settings/notifications
+??? /[locale]/owner/[workspaceSlug]/settings/team
+??? /[locale]/owner/onboarding
+??? /[locale]/owner/select-workspace
+??? /[locale]/owner/sign-in
+??? /[locale]/owner/sign-in/complete
+??? /[locale]/pricing
+??? /[locale]/r/[slug]
+??? /-/r/-/opengraph-image
+??? /[locale]/sample-report
+??? /[locale]/scan
+??? /[locale]/scanning/[jobId]
+??? /[locale]/start/[slug]
+??? /[locale]/trust
+??? /[locale]/unlock/[slug]
+??? /[locale]/unsubscribe
+??? /api/access-requests
+??? /api/actions
+??? /api/actions/[actionId]
+??? /api/actions/[actionId]/applied
+??? /api/actions/[actionId]/run
+??? /api/actions/[actionId]/versions
+??? /api/assistant/run
+??? /api/assistant/suggestions
+??? /api/auth/[...path]
+??? /api/business/ig-search
+??? /api/business/search
+??? /api/cron/dispatch
+??? /api/deliveries/[deliveryId]/reconcile
+??? /api/deliveries/[deliveryId]/reply
+??? /api/internal/workspace-scan-completion
+??? /api/mail/unsubscribe
+??? /api/oauth/google/callback
+??? /api/oauth/google/claim/callback
+??? /api/oauth/google/claim/start
+??? /api/oauth/google/start
+??? /api/offers/[offerId]
+??? /api/offers/[offerId]/archive
+??? /api/offers/[offerId]/confirm
+??? /api/offers/[offerId]/promotions
+??? /api/ops/access-requests/[requestId]
+??? /api/ops/failures/scans/[jobId]/release
+??? /api/owner/magic-link
+??? /api/owner/sign-in/complete
+??? /api/packs/[packId]
+??? /api/report-access/sign-out
+??? /api/report-access/unlock
+??? /api/scan/process
+??? /api/scan/start
+??? /api/scan/status
+??? /api/start/[slug]/preview
+??? /api/unlock
+??? /api/versions/[versionId]/approve
+??? /api/versions/[versionId]/export
+??? /api/versions/[versionId]/publish
+??? /api/versions/[versionId]/publish/targets
+??? /api/versions/[versionId]/reject
+??? /api/versions/[versionId]/request-changes
+??? /api/webhooks/stripe
+??? /api/workspace-invites/magic-link
+??? /api/workspaces/[workspaceId]/actions
+??? /api/workspaces/[workspaceId]/actions/bulk
+??? /api/workspaces/[workspaceId]/assets
+??? /api/workspaces/[workspaceId]/assets/[assetId]
+??? /api/workspaces/[workspaceId]/billing-portal
+??? /api/workspaces/[workspaceId]/brand
+??? /api/workspaces/[workspaceId]/checkout-link
+??? /api/workspaces/[workspaceId]/fix-pack-drafts
+??? /api/workspaces/[workspaceId]/fix-pack-drafts/[runId]
+??? /api/workspaces/[workspaceId]/google-connection
+??? /api/workspaces/[workspaceId]/instagram-handle
+??? /api/workspaces/[workspaceId]/members
+??? /api/workspaces/[workspaceId]/members/[memberId]
+??? /api/workspaces/[workspaceId]/my-mail-preferences
+??? /api/workspaces/[workspaceId]/notification-preferences
+??? /api/workspaces/[workspaceId]/notifications
+??? /api/workspaces/[workspaceId]/offers
+??? /api/workspaces/[workspaceId]/packs
+??? /api/workspaces/[workspaceId]/rescan
+??? /api/workspaces/[workspaceId]/usage
+??? /api/workspaces/claim
+??? /auth/callback
+????/opengraph-image
+????/robots.txt
+????/sitemap.xml
+
+
+? Proxy (Middleware)
+
+?? (Static)   prerendered as static content
+?  (Dynamic)  server-rendered on demand
+

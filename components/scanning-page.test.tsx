@@ -62,6 +62,22 @@ afterEach(() => {
 });
 
 describe("ScanningPage bounded polling", () => {
+  it.each([
+    ["en", "Awaiting collector result"],
+    ["zh-HK", "等候收集結果"],
+    ["zh-TW", "等待蒐集結果"],
+  ] as const)("never shows measured while waiting for collector outcomes: %s", async (locale, label) => {
+    statusReplies = [{ ...RUNNING, body: { ...RUNNING.body as object, processingStage: "collecting_aeo" } }];
+    render(<ScanningPage locale={locale} jobId={JOB} />);
+    await advance(1000);
+    expect(screen.getAllByText(label)).toHaveLength(2);
+    expect(screen.getAllByTestId("provider-badge").some(node => node.textContent === "measured")).toBe(false);
+    statusReplies = [{ ...RUNNING, body: { status: "done", shareSlug: "fixture-slug", moduleStates: { google_business: "measured", instagram: "not_provided", search_ai: "unsupported" } } }];
+    await advance(3000);
+    expect(screen.getAllByTestId("provider-badge").filter(node => node.textContent === "measured")).toHaveLength(1);
+    expect(screen.getByText(copy[locale].funnel.scanning.phase.not_provided)).toBeTruthy();
+  });
+
   it("stops polling once the budget is spent and says so without claiming failure", async () => {
     render(<ScanningPage locale="en" jobId={JOB} />);
     await advance(MAX_POLL_DURATION_MS + 60_000);

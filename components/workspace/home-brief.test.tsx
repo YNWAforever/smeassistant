@@ -173,9 +173,11 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
       { location: { id: actionRow.location_id, slug: "yik-yam", name: { en: "Yik Yam", "zh-HK": "奕蔭街", "zh-TW": "奕蔭街" } }, latestRun: null, latestVersion: null },
     );
   }
-  function view(opts: { locale?: "en" | "zh-HK" | "zh-TW"; tier?: "lite" | "paid"; role?: "owner" | "manager" | "viewer"; priority?: ReturnType<typeof priority> | null; withSnapshot?: boolean } = {}) {
+  function view(opts: { locale?: "en" | "zh-HK" | "zh-TW"; tier?: "lite" | "paid"; role?: "owner" | "manager" | "viewer"; priority?: ReturnType<typeof priority> | null; withSnapshot?: boolean; openActionCount?: number; openActions?: HomeBrief["openActions"] } = {}) {
     const brief = baseBrief(null);
     brief.priority = opts.priority === undefined ? priority() : opts.priority;
+    Object.assign(brief, { openActionCount: opts.openActionCount });
+    if (opts.openActions) brief.openActions = opts.openActions;
     if (opts.withSnapshot) brief.snapshot = snapshot;
     const root = document.createElement("div");
     root.innerHTML = renderToStaticMarkup(
@@ -231,6 +233,17 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
     const root = view();
     expect(root.querySelector(".pending-approval-card")).not.toBeNull();
     expect(root.querySelector("details.trust-disclosure .pending-approval-card")).toBeNull();
+  });
+
+  it("shows the full open-action count outside the disclosure alongside the bounded preview", () => {
+    const actions = [0, 1, 2].map((index) => ({ ...priority(), id: `action-${index}` }));
+    for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
+      const root = view({ locale, openActionCount: 37, openActions: actions });
+      const queue = root.querySelector(".pending-approval-card");
+      expect(queue?.textContent).toContain(locale === "en" ? "37 open actions" : "共有 37 項待辦");
+      expect(queue?.querySelectorAll(".compact-action-list a")).toHaveLength(3);
+      expect(root.querySelector("details.trust-disclosure .pending-approval-card")).toBeNull();
+    }
   });
 
   it("gives an empty week a concrete next step, naming Rescan only to someone who can use it", () => {

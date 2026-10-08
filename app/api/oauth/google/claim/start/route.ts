@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { parseReportSlug } from "@/lib/report-access/slug";
 import { getUser } from "@/lib/auth";
 import { claimsRepository } from "@/lib/repositories/claims";
 import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
@@ -21,7 +22,6 @@ import { buildConsentUrl, googleOAuthClaimConfigured, signClaimState } from "@/l
  * smeassistant addition: `?locale=` rides along in the signed state so the
  * callback can redirect to `/{locale}/…` (every route here is locale-prefixed).
  */
-const SLUG_RE = /^[A-Za-z0-9_-]{6,64}$/;
 
 export async function GET(req: Request) {
   // claimViaOAuthEnabled() is the very first check, before even the config
@@ -51,8 +51,9 @@ export async function GET(req: Request) {
   }
 
   const requestUrl = new URL(req.url);
-  const slug = requestUrl.searchParams.get("slug");
-  if (!slug || !SLUG_RE.test(slug)) {
+  const slugs = requestUrl.searchParams.getAll("slug");
+  const slug = parseReportSlug(slugs.length === 1 ? slugs[0] : null);
+  if (!slug) {
     return NextResponse.json({ error: "invalid_request" }, { status: 400 });
   }
   const requestedLocale = requestUrl.searchParams.get("locale");

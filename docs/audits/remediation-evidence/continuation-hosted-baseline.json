@@ -1,0 +1,19 @@
+{
+  "observed_utc": "2026-10-07 00:11:48 UTC",
+  "review_base_sha": "d1cbc7bd8a2bc7989c774d15001f7971274bed8d",
+  "review_head_sha": "c58bc01788c7d8fa3852155063acd017f641266f",
+  "remote_main_sha": "d1cbc7bd8a2bc7989c774d15001f7971274bed8d",
+  "branch_protected": false,
+  "required_status_checks": {
+    "enforcement_level": "off",
+    "contexts": [],
+    "checks": []
+  },
+  "production_alias": "smeassistant.vercel.app",
+  "deployment_id": "dpl_ARepQExFa36hUt1PzYcCzW4ECzCE",
+  "deployment_url": "smeassistant-e41x3xysg-ynwaforevers-projects.vercel.app",
+  "deployment_ready_state": "READY",
+  "deployment_git_sha": "d1cbc7bd8a2bc7989c774d15001f7971274bed8d",
+  "deployment_target": "production",
+  "external_mutations": 0
+}

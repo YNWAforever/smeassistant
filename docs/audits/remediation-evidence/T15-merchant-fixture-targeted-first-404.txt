@@ -1,0 +1,50 @@
+
+Running 2 tests using 1 worker
+
+
+
+(node:35640) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/2] [chromium] › e2e\acceptance\merchant-loop.spec.ts:7:45 › hk: local fixture link redemption, exact draft approval/download, repeat usage and fresh edit
+  1) [chromium] › e2e\acceptance\merchant-loop.spec.ts:7:45 › hk: local fixture link redemption, exact draft approval/download, repeat usage and fresh edit 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.action-detail-page')
+    Expected: visible
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" with timeout 15000ms
+      - waiting for locator('.action-detail-page')
+
+
+      11 |   sql(environment.db, `update actions set action_state='needs_input', required_inputs='["brand_voice","reviews_without_response","language"]'::jsonb, provided_inputs=provided_inputs-'brand_voice' where id='${merchant.actionId}';`);
+      12 |   await page.goto(`/en/owner/${merchant.slug}/actions/${merchant.actionId}`);
+    > 13 |   await expect(page.locator(".action-detail-page")).toBeVisible();
+         |                                                     ^
+      14 |   await expect(page.locator("#input-brand_voice")).toBeVisible();
+      15 |   await page.locator("#input-brand_voice").fill("warm");
+      16 |   const savedInputs = page.waitForResponse(response => response.url().endsWith(`/api/actions/${merchant.actionId}`) && response.request().method() === "PATCH");
+        at C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\e2e\acceptance\merchant-loop.spec.ts:13:53
+
+    Error Context: test-results\merchant-loop-hk-local-fix-e4dd3-repeat-usage-and-fresh-edit-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\merchant-loop-hk-local-fix-e4dd3-repeat-usage-and-fresh-edit-chromium\trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results\merchant-loop-hk-local-fix-e4dd3-repeat-usage-and-fresh-edit-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+
+(node:28648) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[2/2] [chromium] › e2e\acceptance\merchant-loop.spec.ts:7:45 › tw: local fixture link redemption, exact draft approval/download, repeat usage and fresh edit
+  1 failed
+    [chromium] › e2e\acceptance\merchant-loop.spec.ts:7:45 › hk: local fixture link redemption, exact draft approval/download, repeat usage and fresh edit 
+  1 passed (1.7m)

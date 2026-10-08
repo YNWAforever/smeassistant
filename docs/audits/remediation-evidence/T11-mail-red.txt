@@ -1,0 +1,53 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ lib/mail/resend-driver.test.ts (9 tests | 1 failed) 30ms
+     × keeps the timeout active after headers while JSON body is stalled (T-11) 5ms (retry x1)
+ ❯ lib/mail/deliver-deadline.test.ts (2 tests | 2 failed) 13ms
+   × one shared deadline includes 0 ms already spent and claims one item just in time (T-11) 10ms (retry x1)
+   × one shared deadline includes 40000 ms already spent and claims one item just in time (T-11) 2ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/mail/deliver-deadline.test.ts > one shared deadline includes 0 ms already spent and claims one item just in time (T-11)
+ FAIL  lib/mail/deliver-deadline.test.ts > one shared deadline includes 0 ms already spent and claims one item just in time (T-11)
+AssertionError: expected 100000 to be less than or equal to 55000
+ ❯ lib/mail/deliver-deadline.test.ts:17:19
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  lib/mail/deliver-deadline.test.ts > one shared deadline includes 40000 ms already spent and claims one item just in time (T-11)
+ FAIL  lib/mail/deliver-deadline.test.ts > one shared deadline includes 40000 ms already spent and claims one item just in time (T-11)
+AssertionError: expected 140000 to be less than or equal to 55000
+ ❯ lib/mail/deliver-deadline.test.ts:17:19
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  lib/mail/resend-driver.test.ts > sendViaResend > keeps the timeout active after headers while JSON body is stalled (T-11)
+ FAIL  lib/mail/resend-driver.test.ts > sendViaResend > keeps the timeout active after headers while JSON body is stalled (T-11)
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ lib/mail/resend-driver.test.ts:95:18
+     93|     const response = sendViaResend(CONFIG,MESSAGE).then(result=>{done=…
+     94|     await vi.advanceTimersByTimeAsync(10_000);
+     95|     expect(done).toBe(true);
+       |                  ^
+     96|     expect(await response).toEqual({status:"failed",error:"timed_out"}…
+     97|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  3 failed | 8 passed (11)
+   Start at  04:56:57
+   Duration  2.63s (transform 97ms, setup 1.97s, import 110ms, tests 42ms, environment 0ms)
+

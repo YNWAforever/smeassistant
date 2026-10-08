@@ -23,6 +23,22 @@ const dashboard: ReportDashboard = {
   ], comparisons: [],
 };
 function markup(element: React.ReactNode) { const root = document.createElement("div"); root.innerHTML = renderToStaticMarkup(element); return root; }
+it.each([
+  ["en", "Instagram handle not provided", "Trust signals not measured"],
+  ["zh-HK", "未提供 Instagram 帳號", "信任指標未能量度"],
+  ["zh-TW", "尚未提供 Instagram 帳號", "信任指標未能量測"],
+] as const)("localizes unavailable module notes and hides raw provider text: %s", (locale, ig, trust) => {
+  const unavailable: ReportProps = { ...report, locale, modules: [
+    { ...report.modules[0], state: "unavailable", score: null, detail: "IG handle not provided", limitationCode: "IG_HANDLE_NOT_PROVIDED" },
+    { ...report.modules[1], key: "trust", state: "unavailable", detail: "TRUST not measured", limitationCode: "TRUST_NOT_MEASURED" },
+  ] };
+  const text = markup(<DashboardMetrics report={unavailable} dashboard={dashboard} />).textContent;
+  expect(text).toContain(ig);
+  expect(text).toContain(trust);
+  expect(text).not.toContain("IG handle not provided");
+  expect(text).not.toContain("TRUST not measured");
+  expect(text).toContain(locale === "en" ? "Provide the business's public Instagram handle, then scan again." : locale === "zh-TW" ? "請提供店家的公開 Instagram 帳號，再重新掃描。" : "請提供商戶的公開 Instagram 帳號，再掃描。");
+});
 describe("dashboard summary", () => {
   it("retains zero, first scan, coverage, business and access note without a synthetic delta", () => {
     const root = markup(<DashboardSummary report={report} />);
@@ -100,7 +116,8 @@ describe("dashboard metrics", () => {
     // P2.3 item 18: a limitation code with no report.limitation* translation
     // still renders (the untranslated word-split fallback), never the raw
     // underscored code verbatim.
-    expect(Array.from(root.querySelectorAll("details")).some(detail => detail.textContent?.includes("PROVIDER timeout"))).toBe(true);
+    expect(Array.from(root.querySelectorAll("details")).some(detail => detail.textContent?.includes("Evidence could not be measured"))).toBe(true);
+    expect(root.textContent).not.toContain("PROVIDER timeout");
   });
   it("renders group-specific review scales, rating units and observation context", () => {
     const group = { query: "nearby cafes", engine: "google_maps", source: "Google Maps", observedAt: "2026-09-06T12:00:00Z", sampleSize: 2, rows: [{ name: "Fixture Cafe", value: 0, currentBusiness: true }, { name: "Fixture Other", value: 1200, currentBusiness: false }] };

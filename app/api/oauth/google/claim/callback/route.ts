@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { parseReportSlug } from "@/lib/report-access/slug";
 import { getUser } from "@/lib/auth";
 import { claimsRepository, recordClaimAuditEvent } from "@/lib/repositories/claims";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/locale";
@@ -30,7 +31,6 @@ import {
  * then completes the workspace (locations, brand profile, usage) and never
  * attaches anything itself.
  */
-const SLUG_RE = /^[A-Za-z0-9_-]{6,64}$/;
 
 function back(
   origin: string,
@@ -50,7 +50,7 @@ function back(
   // smeassistant: every route is locale-prefixed, and success continues the
   // onboarding flow (`/{locale}/owner/onboarding?claim=<slug>`) instead of
   // upstream's unprefixed /owner dashboard.
-  const validSlug = slug && SLUG_RE.test(slug) ? slug : null;
+  const validSlug = parseReportSlug(slug);
   let target: string;
   if (outcome === "success" && validSlug) target = `/${locale}/owner/onboarding`;
   else if (validSlug) target = `/${locale}/r/${validSlug}`;

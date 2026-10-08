@@ -1,0 +1,15 @@
+{
+  "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+  "command": "pnpm e2e:acceptance",
+  "exit_code": 1,
+  "passed": 48,
+  "failed": 1,
+  "duration": "10.0m",
+  "failure": "apiRequestContext.post read ECONNRESET before HTTP response in unavailable LLM case",
+  "request_action_id": "90e71732-ee1c-46dd-b1cc-331e93e20b53",
+  "matching_completed_post_in_server_log": 0,
+  "source_or_assertion_changes": 0,
+  "retry_added": 0,
+  "root_cause": "unconfirmed; existing CI diagnostics mention same symptom, not proof of cause",
+  "recorded_utc": "2026-10-07T01:33:05.3041861Z"
+}

@@ -1,0 +1,112 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+stderr | app/[locale]/owner/onboarding/page.test.tsx > keeps the same underscore report from sign-in callback through onboarding without granting ownership
+[onboarding] access request lookup failed { category: 'workspace_query_failed' }
+
+stderr | app/[locale]/owner/onboarding/page.test.tsx > keeps the same underscore report from sign-in callback through onboarding without granting ownership
+[onboarding] access request lookup failed { category: 'workspace_query_failed' }
+
+stderr | app/[locale]/owner/onboarding/page.test.tsx > rejects invalid report context without a lookup: short
+[onboarding] saved setup lookup failed { category: 'workspace_query_failed' }
+
+stderr | app/[locale]/owner/onboarding/page.test.tsx > rejects invalid report context without a lookup: short
+[onboarding] access request lookup failed { category: 'workspace_query_failed' }
+
+stderr | app/[locale]/owner/onboarding/page.test.tsx > rejects invalid report context without a lookup: short
+[onboarding] saved setup lookup failed { category: 'workspace_query_failed' }
+
+stderr | app/[locale]/owner/onboarding/page.test.tsx > rejects invalid report context without a lookup: short
+[onboarding] access request lookup failed { category: 'workspace_query_failed' }
+
+stderr | app/[locale]/owner/onboarding/page.test.tsx > rejects invalid report context without a lookup: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+[onboarding] saved setup lookup failed { category: 'workspace_query_failed' }
+
+stderr | app/[locale]/owner/onboarding/page.test.tsx > rejects invalid report context without a lookup: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+[onboarding] access request lookup failed { category: 'workspace_query_failed' }
+
+stderr | app/[locale]/owner/onboarding/page.test.tsx > rejects invalid report context without a lookup: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+[onboarding] saved setup lookup failed { category: 'workspace_query_failed' }
+
+stderr | app/[locale]/owner/onboarding/page.test.tsx > rejects invalid report context without a lookup: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+[onboarding] access request lookup failed { category: 'workspace_query_failed' }
+
+ ❯ app/[locale]/owner/onboarding/page.test.tsx (11 tests | 3 failed) 59ms
+   × keeps the same underscore report from sign-in callback through onboarding without granting ownership 14ms (retry x1)
+   × rejects invalid report context without a lookup: short 5ms (retry x1)
+   × rejects invalid report context without a lookup: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 18ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  app/[locale]/owner/onboarding/page.test.tsx > keeps the same underscore report from sign-in callback through onboarding without granting ownership
+ FAIL  app/[locale]/owner/onboarding/page.test.tsx > keeps the same underscore report from sign-in callback through onboarding without granting ownership
+AssertionError: expected { accessRequest: undefined, …(10) } to match object { …(4) }
+(7 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "claim": "3cuOKFmHdiYf00BOs27E_NO1",
+-   "evidence": {
+-     "businessName": "Fixture Shop",
+-     "shareSlug": "3cuOKFmHdiYf00BOs27E_NO1",
+-   },
++   "claim": undefined,
++   "evidence": null,
+    "ownsWorkspace": false,
+    "resumeStep": 1,
+  }
+
+ ❯ app/[locale]/owner/onboarding/page.test.tsx:33:23
+     31|  mocks.job.mockResolvedValue({share_slug:slug,business_name:"Fixture S…
+     32|  const result = await Page({params:Promise.resolve({locale:"en"}),sear…
+     33|  expect(result.props).toMatchObject({claim:slug,evidence:{shareSlug:sl…
+       |                       ^
+     34|  expect(mocks.user).toHaveBeenCalledWith("en",`/en/owner/onboarding?cl…
+     35|  expect(mocks.membership).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  app/[locale]/owner/onboarding/page.test.tsx > rejects invalid report context without a lookup: short
+ FAIL  app/[locale]/owner/onboarding/page.test.tsx > rejects invalid report context without a lookup: short
+ FAIL  app/[locale]/owner/onboarding/page.test.tsx > rejects invalid report context without a lookup: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+ FAIL  app/[locale]/owner/onboarding/page.test.tsx > rejects invalid report context without a lookup: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+AssertionError: expected { accessRequest: { …(10) }, …(10) } to match object { Object (evidence, ownsWorkspace) }
+(15 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "evidence": null,
+-   "ownsWorkspace": false,
++   "evidence": {
++     "businessName": "Shop",
++     "district": undefined,
++     "igHandle": "@shop",
++     "placeId": undefined,
++     "region": undefined,
++     "shareSlug": "abc123",
++     "websiteUrl": null,
++     "workspaceId": "workspace",
++   },
++   "ownsWorkspace": true,
+  }
+
+ ❯ app/[locale]/owner/onboarding/page.test.tsx:40:23
+     38| it.each(["short", "a".repeat(65), " has spaces ", "abc/def", "%2Fstaff…
+     39|  const result = await Page({params:Promise.resolve({locale:"en"}),sear…
+     40|  expect(result.props).toMatchObject({evidence:null,ownsWorkspace:false…
+       |                       ^
+     41|  expect(mocks.job).not.toHaveBeenCalled();
+     42|  expect(mocks.user).toHaveBeenCalledWith("en","/en/owner/onboarding");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 8 passed (11)
+   Start at  02:54:48
+   Duration  8.46s (transform 651ms, setup 1.79s, import 4.82s, tests 59ms, environment 0ms)
+

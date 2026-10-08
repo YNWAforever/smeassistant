@@ -67,4 +67,13 @@ describe("catalog comparison across checkout line endings", () => {
     await expect(applyMigrations(owner, changed)).rejects.toThrow("migration_checksum_mismatch");
     await expect(applyMigrations(owner, migrations)).resolves.toEqual([]);
   });
+  it("still rejects a dropped business NOT NULL requirement", async () => {
+    try {
+      await owner.query("ALTER TABLE public.workspaces ALTER COLUMN timezone DROP NOT NULL");
+      await expect(verifyCatalog(owner)).rejects.toThrow("all business columns/types/nullability/defaults");
+    } finally {
+      await owner.query("ALTER TABLE public.workspaces ALTER COLUMN timezone SET NOT NULL");
+    }
+    await expect(verifyCatalog(owner)).resolves.toMatchObject({ functions: 23, seededRows: 0 });
+  });
 });

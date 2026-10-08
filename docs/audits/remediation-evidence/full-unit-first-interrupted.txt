@@ -1,0 +1,9 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation
+> vitest run --exclude lib/evidence/safe-media.test.ts && vitest run lib/evidence/safe-media.test.ts && corepack pnpm -r test
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ tests/funnel-report-props.test.ts (7 tests | 1 failed) 13ms
+     × orders modules ig → gbp → aeo → trust with honest values 6ms (retry x1)

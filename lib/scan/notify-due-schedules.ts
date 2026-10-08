@@ -1,4 +1,5 @@
 import "server-only";
+import { assertExecutionBudget } from "@/lib/jobs/execution-budget";
 import type { PoolClient } from "pg";
 import { withTransaction } from "@/lib/db/transaction";
 import { nextRunAfter } from "@/lib/scheduler/next-run";
@@ -42,6 +43,7 @@ export async function notifyDueSchedules(nowIso: string): Promise<NotifyDueSched
     let notified = 0;
 
     for (const schedule of due) {
+      assertExecutionBudget();
       try {
         await client.query(`SAVEPOINT ${SAVEPOINT}`);
         await repo.advanceSchedule(schedule.id, nextRunAfter(nowIso, schedule.anniversaryDay));

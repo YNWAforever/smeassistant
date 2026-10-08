@@ -1,0 +1,58 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test:integration C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation
+> vitest run --config vitest.integration.config.ts
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ test/integration/neon-schema.integration.test.ts (8 tests | 2 failed) 6659ms
+     × replays as a no-op and rejects changed, missing, and reordered history 30ms
+     × rolls back interrupted DDL and journal together, then permits retry 13ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/integration/neon-schema.integration.test.ts > fresh application schema > replays as a no-op and rejects changed, missing, and reordered history
+AssertionError: expected 15 to be 14 // Object.is equality
+
+- Expected
++ Received
+
+- 14
++ 15
+
+ ❯ test/integration/neon-schema.integration.test.ts:36:101
+     34|     await expect(applyMigrations(owner, migrations.slice(0, 2))).rejec…
+     35|     await expect(applyMigrations(owner, [...migrations].reverse())).re…
+     36|     expect((await owner.query("SELECT count(*)::int AS n FROM neon_mig…
+       |                                                                                                     ^
+     37|   });
+     38|   it("rolls back interrupted DDL and journal together, then permits re…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/integration/neon-schema.integration.test.ts > fresh application schema > rolls back interrupted DDL and journal together, then permits retry
+AssertionError: expected 15 to be 14 // Object.is equality
+
+- Expected
++ Received
+
+- 14
++ 15
+
+ ❯ test/integration/neon-schema.integration.test.ts:42:101
+     40|     await expect(applyMigrations(owner, [...migrations, { name: "0099_…
+     41|     expect((await owner.query("SELECT to_regclass('public.interruption…
+     42|     expect((await owner.query("SELECT count(*)::int AS n FROM neon_mig…
+       |                                                                                                     ^
+     43|     expect(await applyMigrations(owner)).toEqual([]);
+     44|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 51 passed (52)
+      Tests  2 failed | 561 passed (563)
+   Start at  05:41:48
+   Duration  388.11s (transform 3.28s, setup 856ms, import 26.36s, tests 336.92s, environment 6ms)
+
+ ELIFECYCLE  Command failed with exit code 1.

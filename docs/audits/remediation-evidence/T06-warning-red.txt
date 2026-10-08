@@ -1,0 +1,44 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ lib/workspace/offer-warning-copy.test.ts (3 tests | 3 failed) 204ms
+   × surfaces deterministic offer warnings with actionable localized copy: en 153ms (retry x1)
+   × surfaces deterministic offer warnings with actionable localized copy: zh-HK 31ms (retry x1)
+   × surfaces deterministic offer warnings with actionable localized copy: zh-TW 18ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/workspace/offer-warning-copy.test.ts > surfaces deterministic offer warnings with actionable localized copy: en
+ FAIL  lib/workspace/offer-warning-copy.test.ts > surfaces deterministic offer warnings with actionable localized copy: en
+ FAIL  lib/workspace/offer-warning-copy.test.ts > surfaces deterministic offer warnings with actionable localized copy: zh-HK
+ FAIL  lib/workspace/offer-warning-copy.test.ts > surfaces deterministic offer warnings with actionable localized copy: zh-HK
+ FAIL  lib/workspace/offer-warning-copy.test.ts > surfaces deterministic offer warnings with actionable localized copy: zh-TW
+ FAIL  lib/workspace/offer-warning-copy.test.ts > surfaces deterministic offer warnings with actionable localized copy: zh-TW
+AssertionError: expected [] to deeply equal [ 'offer_price_mismatch', …(2) ]
+
+- Expected
++ Received
+
+- [
+-   "offer_price_mismatch",
+-   "offer_dates_missing",
+-   "offer_prohibited_term",
+- ]
++ []
+
+ ❯ lib/workspace/offer-warning-copy.test.ts:10:50
+      8| ] as const)("surfaces deterministic offer warnings with actionable loc…
+      9|   const meta = parseVersionMeta({ warnings: ["offer_price_mismatch", "…
+     10|   expect(meta.guardrails.map(flag => flag.code)).toEqual(["offer_price…
+       |                                                  ^
+     11|   expect(meta.agentNotes).toEqual([]);
+     12|   expect(guardrailText(meta.guardrails[0], locale)).toContain(price);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  03:32:39
+   Duration  22.47s (transform 1.61s, setup 17.35s, import 1.02s, tests 204ms, environment 0ms)
+

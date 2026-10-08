@@ -19,6 +19,12 @@ export const additionalFunctions: string[] = ["prevent_owner_removal","offer_is_
 // They stay in retainedFunctions, so neon:readiness still requires them.
 export const changedFunctions: string[] = ["approve_output_version","export_output_version"];
 export const additionalTriggers: string[] = ["workspace_members_prevent_owner_removal"];
+// Exact PostgreSQL definitions added by 0015; the independently retained legacy catalog stays unchanged.
+export const additionalIndexes = [
+  { tablename: "action_runs", indexname: "action_runs_latest_metadata_idx", indexdef: "CREATE INDEX action_runs_latest_metadata_idx ON public.action_runs USING btree (workspace_id, action_id, created_at DESC, id DESC) INCLUDE (state)" },
+  { tablename: "actions", indexname: "actions_list_keyset_idx", indexdef: "CREATE INDEX actions_list_keyset_idx ON public.actions USING btree (workspace_id, COALESCE(priority_score, (0)::numeric) DESC, updated_at DESC, id DESC) INCLUDE (location_id, action_state, template_key)" },
+  { tablename: "output_versions", indexname: "output_versions_latest_metadata_idx", indexdef: "CREATE INDEX output_versions_latest_metadata_idx ON public.output_versions USING btree (workspace_id, action_id, version_no DESC, id DESC) INCLUDE (approval_state, delivery_state, first_exported_at)" },
+];
 export const catalogQueries = {
   tables: `select c.relname as name,c.relrowsecurity as rls from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' order by c.relname`,
   columns: `select table_name,column_name,ordinal_position,data_type,udt_name,is_nullable,column_default from information_schema.columns where table_schema='public' order by table_name,ordinal_position`,
@@ -43,6 +49,37 @@ function normalizeFunctionLineEndings(rows: Row[]): Row[] {
     definition: typeof row.definition === "string" ? row.definition.replaceAll("\r\n", "\n") : row.definition,
   }));
 }
+// PG18 records NOT NULL in pg_constraint as well as pg_attribute. The legacy
+// PG16 snapshot already compares column nullability; validate the new metadata
+// independently before removing only its redundant rows from that comparison.
+async function validateNotNullCatalog(pool: Pool, constraintCount: number): Promise<number> {
+  const version = Number((await pool.query("SELECT current_setting('server_version_num')::int AS version")).rows[0].version);
+  assert.ok(Number.isInteger(version) && version > 0, "valid PostgreSQL catalog version");
+  if (version < 180000) {
+    assert.equal(constraintCount, 0, "unexpected pre-PG18 NOT NULL constraint metadata");
+    return 0;
+  }
+  const columns = (await pool.query(`SELECT c.relname AS table_name,a.attname AS column_name
+    FROM pg_catalog.pg_attribute a JOIN pg_catalog.pg_class c ON c.oid=a.attrelid
+    JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND c.relkind='r' AND a.attnum>0 AND NOT a.attisdropped AND a.attnotnull
+    ORDER BY c.relname,a.attname`)).rows;
+  const constraints = (await pool.query(`SELECT c.relname AS table_name,a.attname AS column_name,
+      k.convalidated,k.conenforced,cardinality(k.conkey) AS key_count
+    FROM pg_catalog.pg_constraint k JOIN pg_catalog.pg_class c ON c.oid=k.conrelid
+    JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    LEFT JOIN pg_catalog.pg_attribute a ON a.attrelid=k.conrelid AND a.attnum=k.conkey[1] AND NOT a.attisdropped
+    WHERE n.nspname='public' AND c.relkind='r' AND k.contype='n'
+    ORDER BY c.relname,a.attname`)).rows;
+  assert.equal(constraints.length, constraintCount, "complete NOT NULL constraint metadata");
+  for (const row of constraints) {
+    assert.ok(row.convalidated === true && row.conenforced === true && row.key_count === 1,
+      "NOT NULL constraints must be validated, enforced and single-column");
+  }
+  assert.deepEqual(constraints.map(({ table_name, column_name }) => ({ table_name, column_name })), columns,
+    "NOT NULL constraints must match every non-null column exactly once");
+  return constraints.length;
+}
 export async function verifyCatalog(pool: Pool) {
   const legacy = JSON.parse(await readFile(new URL("../../test/integration/fixtures/legacy-final-catalog.json", import.meta.url), "utf8")) as Record<string, Row[]>;
   const actual: Record<string, Row[]> = {};
@@ -53,8 +90,11 @@ export async function verifyCatalog(pool: Pool) {
   // Dropped legacy columns leave ordinal gaps; compare surviving order, not physical attnum.
   const columns = (rows: Row[]) => rows.map(row => Object.fromEntries(Object.entries(row).filter(([key]) => key !== "ordinal_position")));
   assert.deepEqual(columns(business(actual.columns)), columns(legacy.columns), "all business columns/types/nullability/defaults");
-  assert.deepEqual(business(actual.constraints), legacy.constraints.map(row => ({...row, definition:String(row.definition).replaceAll("auth.users", "app_users")})), "constraints and deletion semantics");
-  assert.deepEqual(business(actual.indexes), legacy.indexes, "all final indexes and predicates");
+  const notNullConstraints = await validateNotNullCatalog(pool, actual.constraints.filter(row => row.type === "n").length);
+  const comparableConstraints = business(actual.constraints).filter(row => row.type !== "n");
+  assert.deepEqual(comparableConstraints, legacy.constraints.map(row => ({...row, definition:String(row.definition).replaceAll("auth.users", "app_users")})), "constraints and deletion semantics");
+  assert.deepEqual(business(actual.indexes).filter(row => !additionalIndexes.some(index => index.indexname === row.indexname)), legacy.indexes, "all retained indexes and predicates");
+  for (const index of additionalIndexes) assert.deepEqual(actual.indexes.find(row => row.indexname === index.indexname), index, `additional index ${index.indexname} definition`);
   const isAdditionalTrigger = (row: Row) => additionalTriggers.includes(String(row.name));
   const isAdditionalFunction = (row: Row) => additionalFunctions.includes(String(row.name)) || changedFunctions.includes(String(row.name));
   assert.deepEqual(actual.triggers.filter(row => !isAdditionalTrigger(row)), legacy.triggers.filter(row => !deferredTriggers.includes(String(row.name))), "ordinary invariant triggers");
@@ -74,5 +114,5 @@ export async function verifyCatalog(pool: Pool) {
   let seededRows = 0;
   for (const row of actual.tables) seededRows += Number((await pool.query(`SELECT count(*) AS count FROM public."${String(row.name).replaceAll('"','""')}"`)).rows[0].count);
   assert.equal(seededRows, 0, "fresh migrations must never seed business or account rows");
-  return { tables:business(actual.tables).length, columns:business(actual.columns).length, constraints:business(actual.constraints).length, indexes:business(actual.indexes).length, triggers:actual.triggers.length, functions:actual.functions.length, seededRows, deferredFunctions, deferredTriggers };
+  return { tables:business(actual.tables).length, columns:business(actual.columns).length, constraints:comparableConstraints.length, notNullConstraints, indexes:business(actual.indexes).length, triggers:actual.triggers.length, functions:actual.functions.length, seededRows, deferredFunctions, deferredTriggers };
 }

@@ -1,0 +1,33 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ components/workspace/bulk-action-dialog.test.tsx (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/workspace/bulk-action-dialog.test.tsx [ components/workspace/bulk-action-dialog.test.tsx ]
+Error: Failed to resolve import "./bulk-action-dialog" from "components/workspace/bulk-action-dialog.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation/components/workspace/bulk-action-dialog.test.tsx:4:36
+  2  |  import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+  3  |  import { afterEach, beforeEach, expect, it, vi } from "vitest";
+  4  |  import { BulkActionSelection } from "./bulk-action-dialog";
+     |                                       ^
+  5  |  var _jsxFileName = "C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation/components/workspac...
+  6  |  import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
+ ❯ TransformPluginContext._formatLog ../../../smeassistant/node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:31147:39
+ ❯ TransformPluginContext.error ../../../smeassistant/node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:31144:14
+ ❯ normalizeUrl ../../../smeassistant/node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:28083:18
+ ❯ ../../../smeassistant/node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:28153:30
+ ❯ TransformPluginContext.transform ../../../smeassistant/node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:28119:4
+ ❯ EnvironmentPluginContainer.transform ../../../smeassistant/node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:30932:14
+ ❯ loadAndTransform ../../../smeassistant/node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:20671:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  04:38:17
+   Duration  4.99s (transform 31ms, setup 337ms, import 0ms, tests 0ms, environment 4.36s)
+

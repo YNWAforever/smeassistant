@@ -26,8 +26,9 @@ export interface NeonDatabaseFixture {
   stop: () => void;
 }
 
-function run(args: string[]): string {
-  return execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+function run(args: string[], timeout = 30_000): string {
+  // A stalled Docker Desktop command must not freeze the worker beyond its setup hook.
+  return execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout }).trim();
 }
 
 async function freePort(): Promise<number> {
@@ -46,10 +47,11 @@ async function freePort(): Promise<number> {
 }
 
 async function waitForPostgres(containerName: string, databaseName: string): Promise<void> {
-  for (let attempt = 0; attempt < 60; attempt += 1) {
+  const deadline = Date.now() + 45_000;
+  for (let attempt = 0; attempt < 60 && Date.now() < deadline; attempt += 1) {
     try {
       // The image initialization server accepts sockets before the final TCP server starts.
-      run(["exec", containerName, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", databaseName]);
+      run(["exec", containerName, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", databaseName], Math.min(5_000, Math.max(1, deadline - Date.now())));
       return;
     } catch {
       await new Promise((resolve) => setTimeout(resolve, 500));

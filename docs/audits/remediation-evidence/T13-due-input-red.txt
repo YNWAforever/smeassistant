@@ -1,0 +1,24 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ lib/workspace/workspace-due-time.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/workspace/workspace-due-time.test.ts [ lib/workspace/workspace-due-time.test.ts ]
+Error: Cannot find module './workspace-due-time' imported from C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation/lib/workspace/workspace-due-time.test.ts
+ ❯ lib/workspace/workspace-due-time.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { workspaceDueTimestamp } from "./workspace-due-time";
+       | ^
+      3| describe("assignment workspace-local due input", () => {
+      4|   it.each(["Asia/Hong_Kong", "Asia/Taipei"])("uses %s rather than brow…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  04:37:43
+   Duration  650ms (transform 34ms, setup 392ms, import 0ms, tests 0ms, environment 0ms)
+
