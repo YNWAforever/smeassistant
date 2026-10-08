@@ -1228,6 +1228,8 @@ button:focus-visible {
   border: 1px solid rgba(23, 32, 25, .12);
   border-radius: 50%;
   content: "";
+  /* Decoration only: it overlaps the card's action buttons and must never take their clicks. */
+  pointer-events: none;
 }
 
 .brief-priority-card .card-label-row { grid-area: label; }
@@ -1348,6 +1350,48 @@ button:focus-visible {
 .pending-approval-card { background: #fff; }
 .integration-health-card { background: var(--lilac); }
 .change-ledger-card { margin-top: 16px; }
+
+/* FA-04: the decision queue now stands alone (it was half of .home-secondary-grid). */
+.owner-home-page > .pending-approval-card { margin-top: 16px; }
+
+/* FA-04: 「為何可信」 holds the methodology, closed by default. */
+.trust-disclosure { margin-top: 16px; }
+.trust-disclosure > summary {
+  display: flex;
+  min-height: 48px;
+  padding: 0 22px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(23, 32, 25, .09);
+  border-radius: 20px;
+  background: #fff;
+  color: #2d382f;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+  list-style: none;
+}
+.trust-disclosure > summary::-webkit-details-marker { display: none; }
+.trust-disclosure > summary::after { margin-left: auto; color: #687267; content: "+"; font-size: 18px; font-weight: 500; }
+.trust-disclosure[open] > summary::after { content: "−"; }
+.trust-disclosure > summary:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+.trust-disclosure > summary svg { width: 16px; color: var(--teal); }
+.trust-disclosure[open] > summary { margin-bottom: 16px; }
+
+/* FA-04: on phones the owner-home controls (Rescan, location) share one row
+   instead of stacking, so 今日要做 and its button clear the bottom nav at
+   375×812 (e2e/acceptance/home-today.spec.ts). A viewer has no Rescan; the
+   location select then takes the whole row. */
+@media (max-width: 767px) {
+  .owner-home-page .page-intro-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 8px; }
+  .owner-home-page .page-intro-actions > :only-child { grid-column: 1 / -1; }
+  .owner-home-page .page-intro-actions > *,
+  .owner-home-page .page-intro-actions .rescan-gate > [data-slot="button"] { width: 100%; min-width: 0; }
+  .owner-home-page .page-intro-actions .rescan-gate { display: grid; gap: 4px; }
+  /* Keep the primary action above wrapped effort/status metadata on phones. */
+  .owner-home-page .brief-priority-card { grid-template-areas: "label" "title" "summary" "evidence" "action" "meta"; }
+  .owner-home-page .brief-priority-actions { grid-area: action; }
+}
 
 .compact-action-list a,
 .integration-compact-list > div,
@@ -2127,7 +2171,8 @@ button:focus-visible {
   }
 
   .brief-priority-card h2 {
-    margin-top: 24px;
+    /* FA-04: 12px (was 24px) so the 今日要做 button clears the bottom nav at 375×812. */
+    margin-top: 12px;
     font-size: 32px;
   }
 
