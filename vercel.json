@@ -3,7 +3,9 @@
     "deploymentEnabled": {
       "codex/merchant-acceptance-completion": false,
       "codex/neon-migration": false,
-      "codex/smeassistant-audit-remediation-20261007": false
+      "codex/smeassistant-audit-remediation-20261007": false,
+      "fa04-home-today": false,
+      "main": false
     }
   }
 }
