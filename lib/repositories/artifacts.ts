@@ -12,6 +12,7 @@ import { rowToSnapshot, type ScanSnapshotRow, type ScanDiffRow } from '../worksp
 import type { ActionState } from '../domain';
 import type { ActionScope, VersionScope } from '../workspace/versions';
 import { bindOfferMeta } from '../workspace/offer-binding';
+import { RUN_STALE_AFTER_MS } from '../workspace/run-reaper';
 
 type Executor = Pick<Pool | PoolClient, 'query'>;
 const EXPECTED_ERRORS = new Set(['version_conflict','not_approved','allowance_exceeded','version_closed','version_not_found','invalid_decision','invalid_mode','artifact_scope_mismatch','offer_changed','offer_inactive','offer_expired']);
@@ -340,6 +341,16 @@ export interface FinishActionRunInput extends RunAttribution {
 export type ActionRunCompletion = {runId:string;state:'succeeded';versionId?:string;versionNo?:number;factsNeeded?:string[]}
  | {runId:string;state:'failed';error:string};
 type RunTransaction = <T>(run: (client: PoolClient) => Promise<T>) => Promise<T>;
+
+/**
+ * F-14: queue() refuses a second run while this action already has a live one.
+ * A double-click or a retry after a lost response used to start another paid
+ * model call and write a second draft. The window is the reaper's staleness
+ * threshold, so a run stranded past it never blocks a fresh explicit run.
+ */
+export class ActionRunInFlightError extends Error {
+ constructor() { super('action_run_in_flight'); this.name='ActionRunInFlightError'; }
+}
 type PersistedRun = { id:string;action_id:string;workspace_id:string;location_id:string|null;agent_key:string;prompt_version:string;requested_by:string|null;state:string };
 
 /**
@@ -365,7 +376,10 @@ export function actionRunRepository(transaction: RunTransaction = withTransactio
      throw error;
     }
    });
-  } catch { throw new Error('artifact_run_operation_failed'); }
+  } catch(error) {
+   if(error instanceof ActionRunInFlightError) throw error;
+   throw new Error('artifact_run_operation_failed');
+  }
  }
  /**
   * The state precondition here is the fence for lib/repositories/action-run-reaper.ts,
@@ -395,6 +409,11 @@ export function actionRunRepository(transaction: RunTransaction = withTransactio
     await client.query('SELECT id FROM actions WHERE id=$1 FOR UPDATE',[input.actionId]);
     const scope=await artifactRepository(client).actionScope(input.actionId);
     if(!scope) throw new Error('artifact_scope_mismatch');
+    // Read under the action row lock above, so two concurrent requests
+    // serialize here and the second one sees the first one's committed run.
+    const live=(await client.query(`SELECT id FROM action_runs WHERE action_id=$1 AND state IN ('queued','running')
+     AND COALESCE(started_at,created_at) > now() - ($2::double precision * interval '1 millisecond') LIMIT 1`,[input.actionId,RUN_STALE_AFTER_MS])).rows[0];
+    if(live) throw new ActionRunInFlightError();
     if(input.providedInputs) await client.query('UPDATE actions SET provided_inputs=$2,updated_at=$3 WHERE id=$1',[input.actionId,JSON.stringify(input.providedInputs),input.now]);
     const row=(await client.query<{id:string}>(`INSERT INTO action_runs(workspace_id,action_id,agent_key,state,input,prompt_version,model,requested_by,created_at)
      VALUES($1,$2,$3,'queued',$4,$5,$6,$7,$8) RETURNING id`,[scope.workspaceId,input.actionId,input.agentKey,JSON.stringify(input.input),input.promptVersion,input.model,input.actorId,input.now])).rows[0];

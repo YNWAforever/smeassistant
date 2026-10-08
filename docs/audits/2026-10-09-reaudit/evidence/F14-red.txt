@@ -1,0 +1,11 @@
+# F-14 RED (base cb0b5466d9845704b81bdb918a348d5ab503d15e + new tests, before the fix). Excerpt of vitest output, captured 2026-10-09 HKT
+command: corepack pnpm exec vitest run --config vitest.integration.config.ts test/integration/neon-artifact-runtime.integration.test.ts -t "in flight|concurrent runs|stale unreaped"
+ ❯ test/integration/neon-artifact-runtime.integration.test.ts (28 tests | 3 failed | 24 skipped) 37255ms
+       × refuses a second run while a fresh queued run is in flight, before any model call 1024ms
+       × refuses a second run while a fresh running run is in flight, before any model call 128ms
+       × serializes two concurrent runs so only one reaches the model 30043ms
+AssertionError: expected 200 to be 409 // Object.is equality
+Error: Test timed out in 30000ms.   (the second request also reached the model and waited on the same gate)
+ Test Files  1 failed (1)
+      Tests  3 failed | 1 passed | 24 skipped (28)
+exit code: 1
