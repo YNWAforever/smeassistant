@@ -37,9 +37,25 @@ for (const visual of [
     await expect(button).toBeVisible();
 
     const limit = await visibleLimit(page);
+    await test.info().attach("first-screen-layout", {
+      contentType: "application/json",
+      body: JSON.stringify({
+        locale: visual.locale,
+        viewport: page.viewportSize(),
+        visibleLimit: limit,
+        title: await title.boundingBox(),
+        primaryAction: await button.boundingBox(),
+        metadata: await card.locator(".brief-action-meta").boundingBox(),
+      }),
+    });
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
     expect(await bottom(title)).toBeLessThanOrEqual(limit);
     expect(await bottom(button)).toBeLessThanOrEqual(limit);
+    // A visible button can still be covered by the fixed navigation.
+    expect(await button.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+    })).toBe(true);
 
     // The methodology is one tap away, closed until asked for.
     const disclosure = page.locator("details.trust-disclosure");
@@ -49,6 +65,10 @@ for (const visual of [
     await expect(disclosure).toHaveAttribute("open", "");
     await expect(disclosure.locator("summary")).toContainText(visual.trust);
     await expect(page.locator(".workspace-agent-strip")).toBeVisible();
+    await disclosure.locator("summary").focus();
+    await page.keyboard.press("Enter");
+    await expect(disclosure).not.toHaveAttribute("open");
+    await expect(page.locator(".workspace-agent-strip")).toBeHidden();
 
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });

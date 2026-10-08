@@ -1388,6 +1388,9 @@ button:focus-visible {
   .owner-home-page .page-intro-actions > *,
   .owner-home-page .page-intro-actions .rescan-gate > [data-slot="button"] { width: 100%; min-width: 0; }
   .owner-home-page .page-intro-actions .rescan-gate { display: grid; gap: 4px; }
+  /* Keep the primary action above wrapped effort/status metadata on phones. */
+  .owner-home-page .brief-priority-card { grid-template-areas: "label" "title" "summary" "evidence" "action" "meta"; }
+  .owner-home-page .brief-priority-actions { grid-area: action; }
 }
 
 .compact-action-list a,
