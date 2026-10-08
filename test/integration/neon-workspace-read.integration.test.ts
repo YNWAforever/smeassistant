@@ -3,7 +3,7 @@ import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from "vites
 import { applyMigrations } from "../../scripts/neon/migrations";
 import { startNeonDatabaseFixture, type NeonDatabaseFixture } from "./neon-database";
 import { workspaceReadRepository } from "../../lib/repositories/workspace-read";
-import { listActions } from "../../lib/workspace/queries-pages";
+import { listActions, loadActionRows } from "../../lib/workspace/queries-pages";
 import { monthWindow } from "../../lib/workspace/month-window";
 import { notificationRepository } from "../../lib/repositories/notifications";
 import { measurementRepository } from "../../lib/repositories/measurements";
@@ -80,6 +80,23 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon workspace read models
       expect(exports[0]).toMatchObject({ action_id: actionId, first_published_at: null });
       expect(exports[0].first_exported_at).toContain("2026-09-01");
     } finally { vi.unstubAllEnvs(); }
+  });
+  // F-16 (review follow-up): the SQLSTATE must survive the repository wrapper,
+  // or the production log line says code: undefined for exactly the failures
+  // it exists to tell apart. Exercised through the real read path and SQL.
+  it("logs the real SQLSTATE when the actions read fails (missing offer_id -> 42703)", async () => {
+    const id = await workspace();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    await owner.query("ALTER TABLE public.actions RENAME COLUMN offer_id TO hidden_offer_id");
+    try {
+      await expect(loadActionRows(id, {})).rejects.toThrow("actions lookup failed");
+      expect(error).toHaveBeenCalledWith("[workspace] read failed", { category: "workspace_read_failed", read: "actions", code: "42703" });
+      expect(JSON.stringify(error.mock.calls)).not.toMatch(/offer_id|SELECT/);
+    } finally {
+      await owner.query("ALTER TABLE public.actions RENAME COLUMN hidden_offer_id TO offer_id");
+      error.mockRestore();
+    }
+    await expect(loadActionRows(id, {})).resolves.toEqual([]);
   });
   it("keeps tab counts stable and scoped against real repository SQL (T-09)", async () => {
     const id = await workspace(); const other = await workspace("other");

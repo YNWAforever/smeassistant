@@ -12,7 +12,7 @@ OP-R10,scan,GET /api/scan/status,terminal partial with measured/unavailable/fail
 OP-R11,scan,scanning page,collecting_aeo without module outcomes,anonymous,none,no source shown as measured,IG awaiting_result (not done),in-flight honesty,E32 re-run (evidence/E32-rerun.json),pure function,pass (T-07)
 OP-R12,rescan,POST /api/workspaces/[id]/rescan,press again while the rescan is queued or in flight,owner/manager,paid tier,"returns live job before the daily limiter; no new job","as expected (before fix: new job)",failure/retry,"rescan route.test.ts; neon-rescan integration",unit + integration,pass (F-13)
 OP-R13,rescan,POST /api/workspaces/[id]/rescan,3 concurrent presses,owner,paid,1 job,"1 job (before fix: 3)",concurrency,neon-rescan integration,integration,pass (F-13)
-OP-R14,rescan,POST /api/workspaces/[id]/rescan,press after the previous one failed or is over 30 min old,owner,paid,new job,new job,recovery,neon-rescan integration,integration,pass
+OP-R14,rescan,POST /api/workspaces/[id]/rescan,"press after the previous one failed or was dead-lettered; an old queued one is reused",owner,paid,"new job after failed/dead-lettered; same job when only old and queued",as expected,recovery,neon-rescan integration,integration,pass
 OP-R15,rescan,POST /api/workspaces/[id]/rescan,lite tier,owner (lite),none,403 before any live-job lookup or limiter,"403; lookup not called",no permission,rescan route.test.ts,unit,pass
 OP-A01,sign-in,parseAuthFlow / parseReportSlug,claim=3cuOKFmHdiYf00BOs27E_NO1,signed-in,none,slug kept through sign-in and onboarding,accepted by the shared parser,normal,E32 re-run,pure function,pass (T-03)
 OP-A02,sign-in,parseReportSlug,"claim with / or 65 chars or %2F",any,none,rejected,null,invalid input,E32 re-run,pure function,pass (T-03)
@@ -27,7 +27,7 @@ OP-D06,daily work,POST /api/actions/[id]/run,viewer or out-of-scope manager,view
 OP-D07,daily work,listActions counts across tabs,mixed open and completed,owner,none,counts identical for every tab,identical (real SQL),tabs,neon-workspace-read integration (T-09),integration,pass (full gate)
 OP-D08,daily work,completedActions month window,HK/TW 00:15 local on the 1st,owner,none,counted in the local month,counted,month boundary,neon-workspace-read integration (T-10),integration,pass (full gate)
 OP-D09,daily work,/zh-HK/owner/nadagogo (production),open owner home,owner,production d1cbc7b,home renders,"actions lookup failed on every observed visit since 2026-10-02 (500 x3, then error boundary)",hosted failure,evidence/F16-red.txt (Vercel logs),hosted (read-only logs),fail (F-16; root cause unconfirmed)
-OP-D10,daily work,read() wrapper,SQL failure,none,none,"log SQLSTATE only; rethrow generic",as expected,observability,lib/workspace/queries-pages.test.ts,unit,pass (F-16)
+OP-D10,daily work,read() wrapper,SQL failure (actions.offer_id missing),none,none,"log SQLSTATE 42703 only; rethrow generic",as expected,observability,"lib/workspace/queries-pages.test.ts; neon-workspace-read integration",unit + integration,pass (F-16)
 OP-M01,maintenance,pnpm neon:readiness,application column missing (actions.offer_id),operator,journal intact,not_ready / schema,"not_ready (before fix: ready)",drift,neon-readiness integration,integration,pass (F-16)
 OP-M02,maintenance,pnpm neon:readiness,production deployed database,operator,read-only access,READY or a named gap,not run (no production DB access),hosted,none,hosted,blocked
 OP-M03,maintenance,/api/cron/dispatch,scheduled tick,none,DEC-10 cron removed,no tick,no tick (by decision),none,vercel.json,config,not-applicable

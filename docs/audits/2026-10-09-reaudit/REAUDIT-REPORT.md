@@ -33,7 +33,7 @@
 
 - **Before：** server 先寫入 job 才回覆。回覆遺失後重按、雙擊、或返回再提交，都會建立第二個付費 scan；重掃同理（只靠每日 3 次上限）。RED：真 route＋Postgres 下重送得到新 job；5 個並發 → 5 個 job；同一 key 換店名仍 200；3 個並發重掃 → 3 個 job（`evidence/F13-red.txt`）。
 - **根因：** `/api/scan/start` 沒有 idempotency；重掃沒有「同一地點進行中」檢查。
-- **修改（`e9a6f9b`）：** client 每次提交帶 `submission_key`（同一 payload 重試沿用；sessionStorage 30 分鐘，不可用時用記憶體）。server 用 advisory lock 串行同一 key，在扣 budget 之前回傳已存在的 job（不再寫第二個 `scan_started`），並把 key 記在該 job 的 `scan.queued` audit event（沿用既有 `audit_events.idempotency_key` unique index，**不需要 migration**）。同一 key 用於不同內容 → 409 `submission_key_conflict`，不寫入。重掃：同地點仍在排隊／進行（未 dead-letter、30 分鐘內）就回傳該 job，先於每日 limiter 檢查一次、insert transaction 內再原子檢查一次。
+- **修改（`e9a6f9b`）：** client 每次提交帶 `submission_key`（同一 payload 重試沿用；sessionStorage 30 分鐘，不可用時用記憶體）。server 用 advisory lock 串行同一 key，在扣 budget 之前回傳已存在的 job（不再寫第二個 `scan_started`），並把 key 記在該 job 的 `scan.queued` audit event（沿用既有 `audit_events.idempotency_key` unique index，**不需要 migration**）。同一 key 用於不同內容 → 409 `submission_key_conflict`，不寫入。重掃：同地點仍在排隊／進行（未 dead-letter）就回傳該 job，先於每日 limiter 檢查一次、insert transaction 內再原子檢查一次。PR 審閱後（Codex review）去掉了原本的 30 分鐘上限：lease 會執行任何排隊中的 job，不論多舊，所以舊的排隊 job 也要沿用，只有 dead-letter 後才可再排。
 - **After：** 見 OP-R03～R08、R12～R15，全部 pass（integration＋component＋unit）。
 - **Rollback：** `git revert e9a6f9b`；沒有資料或 schema 變更。舊 client（沒有 key）照舊可用。
 
@@ -55,7 +55,7 @@
 - **證據（只讀）：** Vercel runtime errors：`Error: actions lookup failed`，count=10、users=3，路由 `/[locale]/owner/[workspaceSlug]` 及 `/calendar`，首次 2026-10-02T14:48:22Z，最近 2026-10-08T16:11:15Z。2026-10-02 14:48–14:49 UTC 連續 5 次打開 `/zh-HK/owner/nadagogo` 全部失敗；request logs 顯示 500 ×3（10-02～10-03），之後在 200 回應中由 error boundary 顯示錯誤（10-08）。logs 中只見這一個工作台，**所有可見的 owner 首頁訪問自 10-02 起都失敗**（`evidence/F16-red.txt`）。
 - **時間關聯：** PR #28（P4.1 offers）2026-10-02T11:57Z 合併，令 actions 查詢加入 `offer_id`（migration 0011）。首次失敗是該次合併後第一個 production deployment。
 - **根因：** **未證實。** wrapper 丟棄了 driver error，logs 沒有 SQLSTATE。最可能是部署所讀的資料庫缺少 0011 欄位（T-19 早已指出 production DATABASE_URL 與已套用 migration 的 Neon branch 綁定未確認），其次是權限或 timeout。
-- **今次修改（`1bbb69d`）：** (1) `read()` 失敗時只記錄 SQLSTATE（不記 message／SQL）；(2) `pnpm neon:readiness` 核對 application schema 宣告的**每一欄**，不再只核對 journal 及 `first_published_at`（RED：改名 `actions.offer_id` 後 readiness 仍說 READY；GREEN 後 not_ready）。
+- **今次修改（`1bbb69d`）：** (1) `read()` 失敗時只記錄 SQLSTATE（不記 message／SQL）；PR 審閱指出 `workspaceReadRepository` 的 `rows()` 會丟掉 driver error 的 code，已改為保留 code，並以真 DB 測試證明缺欄位時 log 為 `42703`；(2) `pnpm neon:readiness` 核對 application schema 宣告的**每一欄**，不再只核對 journal 及 `first_published_at`（RED：改名 `actions.offer_id` 後 readiness 仍說 READY；GREEN 後 not_ready）。
 - **仍需：** 用唯讀身份對部署實際指向的資料庫跑 `pnpm neon:readiness`（見 §8）。若缺欄位，需另行授權按 `docs/implementation/owner-platform-v1/rollout/apply-0011.sql` 程序補套。**在確認前，部署 main 不保證修好首頁**，因為 main 同樣讀 `offer_id`。
 
 ### F-17（觀察，不改）候選商戶網址無效時阻擋第 3 步

@@ -28,8 +28,11 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
   async function rows<T extends QueryResultRow>(sql: string, values: unknown[]): Promise<T[]> {
     try {
       return (await (client ?? getPool()).query<T>(sql, values)).rows;
-    } catch {
-      throw new Error("workspace_read_unavailable");
+    } catch (error) {
+      // F-16: keep the SQLSTATE (never the message or SQL) so the caller's log
+      // can tell a missing column (42703) from a privilege or timeout failure.
+      const code = (error as { code?: unknown } | null)?.code;
+      throw Object.assign(new Error("workspace_read_unavailable"), typeof code === "string" ? { code } : {});
     }
   }
   return {
