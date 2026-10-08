@@ -1,0 +1,34 @@
+
+Running 1 test using 1 worker
+
+
+
+(node:13456) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/1] [chromium] › e2e\acceptance\guided-sign-in.spec.ts:29:1 › an accepted fixture account is not required for no-access recovery or a rejected cross-origin completion
+  1) [chromium] › e2e\acceptance\guided-sign-in.spec.ts:29:1 › an accepted fixture account is not required for no-access recovery or a rejected cross-origin completion 
+
+    Fixture "environment" timeout of 240000ms exceeded during setup.
+
+       at ..\..\test\e2e\fixtures.ts:4
+
+      2 | import { startEnvironment, type AcceptanceEnvironment } from "./environment";
+      3 | import { seedMerchant, type MerchantSeed } from "./seed";
+    > 4 | export const test = base.extend<{ merchant: MerchantSeed }, { environment: AcceptanceEnvironment }>({
+        |                          ^
+      5 |   environment: [async ({}, runFixture) => { const env = await startEnvironment(); try { await runFixture(env); } finally { await env.stop(); } }, { scope: "worker", timeout: 240000 }],
+      6 |   context: async ({ context }, runFixture) => {
+      7 |     await context.route('**/*', route => {
+        at C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\test\e2e\fixtures.ts:4:26
+
+    attachment #1: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\guided-sign-in-an-accepted-f0af5-ted-cross-origin-completion-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\guided-sign-in-an-accepted-f0af5-ted-cross-origin-completion-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+  1 failed
+    [chromium] › e2e\acceptance\guided-sign-in.spec.ts:29:1 › an accepted fixture account is not required for no-access recovery or a rejected cross-origin completion 

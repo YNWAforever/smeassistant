@@ -1,0 +1,11 @@
+{
+  "login": "YNWAforever",
+  "role_name": "admin",
+  "permissions": {
+    "admin": true,
+    "maintain": true,
+    "push": true,
+    "triage": true,
+    "pull": true
+  }
+}

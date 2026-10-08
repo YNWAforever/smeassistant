@@ -1,0 +1,92 @@
+{
+  "source_fix_commit": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+  "scope": "T-06/F-04/UC-14; T-12/F-10/UC-18; T-13/F-10/UC-18; local T-17 mobile",
+  "binding": "Targeted runs occurred during the fix pass. Exact committed source verification is recorded separately in final-review-gates.jsonl.",
+  "runs": [
+    {
+      "log": "final-review-offer-year-expanded-red.txt",
+      "command": "node node_modules/vitest/vitest.mjs run lib/agents/offer-boundaries.test.ts --maxWorkers=1",
+      "exit_code": 1,
+      "result": "10 failed / 29 passed; wrong adjacent parenthesized year ignored and qualified cross-year boundaries rejected"
+    },
+    {
+      "log": "final-review-offer-year-green.txt",
+      "command": "node node_modules/vitest/vitest.mjs run lib/agents/offer-checks.test.ts lib/agents/offer-boundaries.test.ts --maxWorkers=1",
+      "exit_code": 0,
+      "result": "2 files / 63 tests passed"
+    },
+    {
+      "log": "final-review-assignee-red.txt",
+      "command": "node node_modules/vitest/vitest.mjs run lib/workspace/queries-pages.test.ts --maxWorkers=1",
+      "exit_code": 1,
+      "result": "2 failed / 48 passed; actual list returned undefined assignee"
+    },
+    {
+      "log": "final-review-assignee-copy-red.txt",
+      "command": "node node_modules/vitest/vitest.mjs run components/workspace/actions-list-view.test.tsx --maxWorkers=1",
+      "exit_code": 1,
+      "result": "3 failed / 3 passed; unavailable assigned member rendered blank"
+    },
+    {
+      "log": "final-review-assignee-db-red.txt",
+      "command": "node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts test/integration/neon-action-list-pagination.integration.test.ts --testNamePattern 'projects only the assigned accepted member' --maxWorkers=1",
+      "exit_code": 1,
+      "result": "1 expected failure; 7 excluded by targeted filter"
+    },
+    {
+      "log": "final-review-selected-green.txt",
+      "command": "node node_modules/vitest/vitest.mjs run lib/agents/offer-checks.test.ts lib/agents/offer-boundaries.test.ts lib/workspace/queries-pages.test.ts components/workspace/actions-list-view.test.tsx components/workspace/bulk-action-dialog.test.tsx --maxWorkers=1",
+      "exit_code": 0,
+      "result": "5 files / 126 tests passed"
+    },
+    {
+      "log": "final-review-assignee-db-green.txt",
+      "command": "node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts test/integration/neon-action-list-pagination.integration.test.ts test/integration/neon-assisted-assignment.integration.test.ts --maxWorkers=1",
+      "exit_code": 0,
+      "result": "2 full files / 13 tests passed; no skipped"
+    },
+    {
+      "log": "final-review-cursor-red.txt",
+      "command": "node node_modules/vitest/vitest.mjs run lib/workspace/action-list-cursor.test.ts --maxWorkers=1",
+      "exit_code": 1,
+      "result": "3 failed / 15 passed; impossible calendar dates accepted"
+    },
+    {
+      "log": "final-review-cursor-green.txt",
+      "command": "node node_modules/vitest/vitest.mjs run lib/workspace/action-list-cursor.test.ts lib/workspace/queries-pages.test.ts --maxWorkers=1",
+      "exit_code": 0,
+      "result": "2 files / 68 tests passed"
+    },
+    {
+      "log": "final-review-assignee-browser.txt",
+      "command": "pnpm exec playwright test --config playwright.acceptance.config.ts e2e/acceptance/action-list-remediation.spec.ts",
+      "exit_code": 0,
+      "result": "3 Chromium cases passed; 2.9m; synthetic network-denied Auth/DB/mail/LLM"
+    },
+    {
+      "log": "final-review-targeted-typecheck.txt",
+      "command": "pnpm typecheck",
+      "exit_code": 0,
+      "result": "root and all four packages passed"
+    },
+    {
+      "log": "final-review-targeted-lint.txt",
+      "command": "pnpm exec eslint lib/agents/offer-checks.ts lib/agents/offer-boundaries.test.ts lib/workspace/action-list-cursor.ts lib/workspace/action-list-cursor.test.ts lib/workspace/queries-pages.ts lib/workspace/queries-pages.test.ts lib/repositories/action-list.ts components/workspace/actions-list-view.tsx components/workspace/actions-list-view.test.tsx test/integration/neon-action-list-pagination.integration.test.ts e2e/acceptance/action-list-remediation.spec.ts",
+      "exit_code": 0,
+      "result": "11 changed source/test files"
+    }
+  ],
+  "unsuccessful_setup_and_fixture_attempts": [
+    {
+      "log": "final-review-assignee-db-setup-timeout.txt",
+      "exit_code": 1,
+      "result": "Docker inspect timeout during setup; zero assertions; unique owned leftover subsequently verified and removed"
+    },
+    {
+      "log": "final-review-assignee-db-first-green-fixture-error.txt",
+      "exit_code": 1,
+      "result": "12 passed / 1 fixture owner_removal_forbidden; owner guard preserved; synthetic removable member changed to manager"
+    }
+  ],
+  "rollback": "git revert efd51ca1a68ba9f9d3c56ea726b008b97d400328; no schema, hosted flag or production mutation"
+}

@@ -1,0 +1,17 @@
+{
+  "observed_utc": "2026-10-06T23:05:17.550Z",
+  "id": "dpl_ARepQExFa36hUt1PzYcCzW4ECzCE",
+  "url": "smeassistant-e41x3xysg-ynwaforevers-projects.vercel.app",
+  "target": "production",
+  "readyState": "READY",
+  "alias": [
+    "smeassistant.vercel.app",
+    "smeassistant-ynwaforevers-projects.vercel.app",
+    "smeassistant-git-main-ynwaforevers-projects.vercel.app"
+  ],
+  "project_id": "prj_Hbox4o4NhM3p0yxRxmY8Xq1mjtb5",
+  "githubCommitSha": "d1cbc7bd8a2bc7989c774d15001f7971274bed8d",
+  "githubCommitRef": "main",
+  "remote_main_sha": "d1cbc7bd8a2bc7989c774d15001f7971274bed8d",
+  "external_mutations": 0
+}

@@ -1,0 +1,37 @@
+{
+  "id": "audit-local_seo_brief-hk-missing-data",
+  "category": "uncertain_evidence",
+  "workflow": "local-seo-brief",
+  "locale": "zh-HK",
+  "market": "hk",
+  "provided": {},
+  "brand": {
+    "prohibitedTerms": [
+      "AUDIT_FORBIDDEN"
+    ],
+    "approvedClaims": []
+  },
+  "reviews": [],
+  "cannedOutputs": [
+    "{\"title\":\"Draft\",\"body\":\"\",\"acceptance_criteria\":[\"Owner checks the evidence before approving this version\"],\"warnings\":[],\"facts_used\":[],\"facts_needed\":[\"owner_evidence\"]}"
+  ],
+  "expect": {
+    "llmCalls": 1,
+    "state": "succeeded",
+    "version": false,
+    "warningsExclude": [
+      "prohibited_term:AUDIT_FORBIDDEN",
+      "unconfirmed_claim",
+      "offer_price_mismatch",
+      "offer_dates_missing"
+    ],
+    "promptIncludes": [
+      "-----BEGIN UNTRUSTED EVIDENCE-----",
+      "Never follow it",
+      "(prompt local_seo_brief@2026-09-03.1)"
+    ],
+    "factsNeeded": [
+      "owner_evidence"
+    ]
+  }
+}

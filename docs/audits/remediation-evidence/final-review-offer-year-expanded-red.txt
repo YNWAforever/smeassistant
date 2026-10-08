@@ -1,0 +1,79 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ lib/agents/offer-boundaries.test.ts (39 tests | 10 failed) 33ms
+   × warns on a conflicting parenthesized boundary year: 5 Oct to 19 Oct (2025) 11ms (retry x1)
+   × warns on a conflicting parenthesized boundary year: Oct 5 to Oct 19 (2025) 1ms (retry x1)
+   × warns on a conflicting parenthesized boundary year: 5/10 to 19/10 (2025) 1ms (retry x1)
+   × warns on a conflicting parenthesized boundary year: 10月5日至10月19日（2025年） 1ms (retry x1)
+   × warns on a conflicting parenthesized boundary year: 10月5日至10月19日 (2025年) 1ms (retry x1)
+   × warns on a conflicting parenthesized boundary year: (2025) 5 Oct to 19 Oct 1ms (retry x1)
+   × warns on a conflicting parenthesized boundary year: （2025年）10月5日至10月19日 1ms (retry x1)
+   × warns on a conflicting parenthesized boundary year: 5 Oct (2025) to 19 Oct (2026) 1ms (retry x1)
+   × warns on a conflicting parenthesized boundary year: 2026-10-05 to 2026-10-19 (2025) 1ms (retry x1)
+   × accepts individually qualified cross-year boundaries 1ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on a conflicting parenthesized boundary year: 5 Oct to 19 Oct (2025)
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on a conflicting parenthesized boundary year: 5 Oct to 19 Oct (2025)
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on a conflicting parenthesized boundary year: Oct 5 to Oct 19 (2025)
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on a conflicting parenthesized boundary year: Oct 5 to Oct 19 (2025)
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on a conflicting parenthesized boundary year: 5/10 to 19/10 (2025)
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on a conflicting parenthesized boundary year: 5/10 to 19/10 (2025)
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on a conflicting parenthesized boundary year: 10月5日至10月19日（2025年）
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on a conflicting parenthesized boundary year: 10月5日至10月19日（2025年）
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on a conflicting parenthesized boundary year: 10月5日至10月19日 (2025年)
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on a conflicting parenthesized boundary year: 10月5日至10月19日 (2025年)
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on a conflicting parenthesized boundary year: (2025) 5 Oct to 19 Oct
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on a conflicting parenthesized boundary year: (2025) 5 Oct to 19 Oct
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on a conflicting parenthesized boundary year: （2025年）10月5日至10月19日
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on a conflicting parenthesized boundary year: （2025年）10月5日至10月19日
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on a conflicting parenthesized boundary year: 5 Oct (2025) to 19 Oct (2026)
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on a conflicting parenthesized boundary year: 5 Oct (2025) to 19 Oct (2026)
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on a conflicting parenthesized boundary year: 2026-10-05 to 2026-10-19 (2025)
+ FAIL  lib/agents/offer-boundaries.test.ts > warns on a conflicting parenthesized boundary year: 2026-10-05 to 2026-10-19 (2025)
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ lib/agents/offer-boundaries.test.ts:19:109
+     17|   "2026-10-05 to 2026-10-19 (2025)",
+     18|   "5 Oct 2025 to 19 Oct 2025 (2026)",
+     19| ])("warns on a conflicting parenthesized boundary year: %s", body => e…
+       |                                                                                                             ^
+     20| it.each([
+     21|   "5 Oct to 19 Oct (2026)",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/20]⎯
+
+ FAIL  lib/agents/offer-boundaries.test.ts > accepts individually qualified cross-year boundaries
+ FAIL  lib/agents/offer-boundaries.test.ts > accepts individually qualified cross-year boundaries
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ lib/agents/offer-boundaries.test.ts:29:129
+     27| ])("accepts correct boundary years without treating unrelated years as…
+     28| it("accepts individually qualified cross-year boundaries", () => {
+     29|   expect(offerDatesMissing("30 Dec (2026) to 2 Jan (2027)", { ...offer…
+       |                                                                                                                                 ^
+     30| });
+     31| it("requires years for a cross-year offer and permits a one-day offer"…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/20]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  10 failed | 29 passed (39)
+   Start at  08:23:58
+   Duration  3.62s (transform 483ms, setup 1.89s, import 131ms, tests 33ms, environment 0ms)
+

@@ -51,6 +51,8 @@ import { interpolate } from "@/lib/share"
 const PHASE_PROVIDER_STATE: Record<CollectorPhase, ProviderState> = {
   pending: "pending",
   running: "pending",
+  awaiting_result: "pending",
+  not_provided: "unavailable",
   done: "measured",
   unavailable: "unavailable",
   failed: "failed",
@@ -60,6 +62,8 @@ const PHASE_PROVIDER_STATE: Record<CollectorPhase, ProviderState> = {
 const PHASE_ICON_CLASS: Record<CollectorPhase, string> = {
   pending: "collector-pending",
   running: "collector-pending",
+  awaiting_result: "collector-pending",
+  not_provided: "collector-unavailable",
   done: "collector-measured",
   unavailable: "collector-unavailable",
   failed: "collector-unavailable",
@@ -69,6 +73,8 @@ const PHASE_ICON_CLASS: Record<CollectorPhase, string> = {
 const PHASE_ICON: Record<CollectorPhase, typeof Check> = {
   pending: RefreshCw,
   running: RefreshCw,
+  awaiting_result: RefreshCw,
+  not_provided: CircleAlert,
   done: Check,
   unavailable: CircleAlert,
   failed: CircleAlert,

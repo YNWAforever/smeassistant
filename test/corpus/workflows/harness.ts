@@ -204,7 +204,7 @@ export async function runCorpusCase(c: CorpusCase, llm: typeof llmComplete): Pro
     assistantSnapshot: async () => null,
     assistantLatestSnapshot: async () => snapshot,
     assistantAeoQueries: async () => [] as string[],
-    assistantWorkspace: async () => ({ business_name: "Corpus Cafe", market: c.market, timezone: "Asia/Hong_Kong" }),
+    assistantWorkspace: async () => ({ business_name: "Corpus Cafe", market: c.market, timezone: c.market === "tw" ? "Asia/Taipei" : "Asia/Hong_Kong" }),
     assistantLocations: async () => [
       { id: "loc-corpus", slug: "corpus", name: "Corpus Cafe", address: null, district: null },
     ],

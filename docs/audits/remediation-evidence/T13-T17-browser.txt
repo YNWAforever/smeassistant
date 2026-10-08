@@ -1,0 +1,10 @@
+
+Running 2 tests using 1 worker
+
+
+
+(node:47700) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/2] [chromium] › e2e\acceptance\action-list-remediation.spec.ts:4:1 › 375px keyboard selection, preview, apply and Escape use the actual scoped action list (T-13 T-17)
+[2/2] [chromium] › e2e\acceptance\action-list-remediation.spec.ts:31:1 › viewer has search and evidence but no bulk selection; manager retains location scope (T-13)
+  2 passed (1.2m)

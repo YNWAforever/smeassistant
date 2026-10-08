@@ -1,0 +1,87 @@
+
+> sme-scanner-visibility-workspace@0.1.0 lint C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation
+> eslint .
+
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\app\api\report-access\unlock\route.ts
+  37:10  warning  'normalizeContact' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\app\api\scan\process\route.test.ts
+  945:34  warning  '_input' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\components\landing-page.tsx
+  311:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  364:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  375:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\lib\auth\staff.ts
+  21:37  warning  '_email' is defined but never used      @typescript-eslint/no-unused-vars
+  21:53  warning  '_allowlist' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\lib\identity\complete-sign-in-ports.ts
+  63:45  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\lib\oauth\google-business-profile.test.ts
+  11:23  warning  '_input' is defined but never used  @typescript-eslint/no-unused-vars
+  11:50  warning  '_init' is defined but never used   @typescript-eslint/no-unused-vars
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\lib\oauth\google-reviews.test.ts
+   19:23  warning  '_input' is defined but never used  @typescript-eslint/no-unused-vars
+   19:50  warning  '_init' is defined but never used   @typescript-eslint/no-unused-vars
+   31:23  warning  '_input' is defined but never used  @typescript-eslint/no-unused-vars
+   31:50  warning  '_init' is defined but never used   @typescript-eslint/no-unused-vars
+   85:36  warning  '_input' is defined but never used  @typescript-eslint/no-unused-vars
+   85:63  warning  '_init' is defined but never used   @typescript-eslint/no-unused-vars
+  238:36  warning  '_input' is defined but never used  @typescript-eslint/no-unused-vars
+  238:63  warning  '_init' is defined but never used   @typescript-eslint/no-unused-vars
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\lib\scanner\ig-search\rapidapi.test.ts
+  131:34  warning  '_url' is defined but never used   @typescript-eslint/no-unused-vars
+  131:48  warning  '_init' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\lib\scanner\ig-search\serpapi.test.ts
+  99:34  warning  '_url' is defined but never used   @typescript-eslint/no-unused-vars
+  99:48  warning  '_init' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\lib\scanner\merchant-search\market.ts
+  6:45  warning  '_locale' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\lib\scanner\merchant-search\normalize-candidate.ts
+  57:57  warning  '_providerIndex' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\lib\scanner\merchant-search\service.test.ts
+  28:35  warning  '_attempt' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\lib\security\rate-limit.test.ts
+  122:7  warning  '_functionName' is defined but never used  @typescript-eslint/no-unused-vars
+  123:7  warning  '_params' is defined but never used        @typescript-eslint/no-unused-vars
+  205:7  warning  '_functionName' is defined but never used  @typescript-eslint/no-unused-vars
+  206:7  warning  '_params' is defined but never used        @typescript-eslint/no-unused-vars
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\lib\workspace\runs.test.ts
+  190:30  warning  '_p' is defined but never used  @typescript-eslint/no-unused-vars
+  736:30  warning  '_p' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\packages\scan-engine\src\collect-providers.ts
+  16:8  warning  'SerpApiFetcher' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\packages\scan-engine\src\gbp-collector.ts
+  24:6  warning  'SerpApiValue' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\packages\scoring\src\agents\contracts.test.ts
+  19:15  warning  'draftReply' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  51:15  warning  'draftPostZh' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\packages\scoring\src\modules\aeo.ts
+  3:47  warning  '_industry' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\packages\scoring\src\modules\trust.ts
+  306:26  warning  'b' is defined but never used  @typescript-eslint/no-unused-vars
+  307:26  warning  'b' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\packages\scoring\src\types.test.ts
+  23:11  warning  '_bad' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  25:11  warning  '_bad2' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 40 problems (0 errors, 40 warnings)
+

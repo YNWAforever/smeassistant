@@ -1,0 +1,10 @@
+{
+  "id": "prj_Hbox4o4NhM3p0yxRxmY8Xq1mjtb5",
+  "name": "smeassistant",
+  "gitProviderOptions": {
+    "createDeployments": "enabled"
+  },
+  "autoAssignCustomDomains": true,
+  "productionDeploymentsFastLane": true,
+  "checks": null
+}

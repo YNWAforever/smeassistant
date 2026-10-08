@@ -7,10 +7,11 @@
   "category": "provider_failure",
   "workflow": "gbp-post",
   "cannedOutputs": [
+    { "throws": "The operation was aborted due to timeout" },
     { "throws": "The operation was aborted due to timeout" }
   ],
   "expect": {
-    "llmCalls": 1,
+    "llmCalls": 2,
     "state": "failed",
     "version": false,
     "reason": "action_run_failed"

@@ -1,0 +1,27 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ test/integration/neon-scan-start.integration.test.ts (19 tests | 19 skipped) 138689ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/integration/neon-scan-start.integration.test.ts > Neon scan persistence
+Error: Hook timed out in 120000ms.
+If this is a long-running hook, pass a timeout value as the last argument or configure it globally with "hookTimeout".
+ ❯ test/integration/neon-scan-start.integration.test.ts:26:5
+     24|     let owner: Pool;
+     25|     let runtime: Pool;
+     26|     beforeAll(async () => {
+       |     ^
+     27|         fixture = await startNeonDatabaseFixture("test");
+     28|         owner = new Pool({ connectionString: fixture.databaseUrl });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  19 skipped (19)
+   Start at  03:30:43
+   Duration  357.73s (transform 17.50s, setup 527ms, import 34.58s, tests 138.69s, environment 0ms)
+
+[vitest-pool]: Timeout terminating forks worker for test files C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation/test/integration/neon-scan-start.integration.test.ts.

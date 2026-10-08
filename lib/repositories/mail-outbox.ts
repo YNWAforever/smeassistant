@@ -192,6 +192,12 @@ export function mailOutboxRepository(client: Pool | PoolClient) {
       return result.rows;
     },
 
+    /** A known unattempted claim stopped by the deadline is not a failed provider attempt. */
+    async deferUnattempted(id: string, leaseToken: string): Promise<boolean> {
+      const result = await client.query("UPDATE mail_outbox SET state='retry',attempts=GREATEST(attempts-1,0),lease_token=NULL,lease_until=NULL,updated_at=now() WHERE id=$1 AND lease_token=$2 AND state='sending' RETURNING id",[id,leaseToken]);
+      return result.rows.length>0;
+    },
+
     /** Current membership/gate/switch/address for a claimed row, re-read just before sending. */
     async sendFacts(row: ClaimedRow): Promise<RecipientFacts> {
       const notifyCol = notifyColumn(row.kind);

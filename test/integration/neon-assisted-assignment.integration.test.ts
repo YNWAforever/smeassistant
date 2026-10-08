@@ -3,7 +3,7 @@ import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from "vites
 import { applyMigrations } from "../../scripts/neon/migrations";
 import { startNeonDatabaseFixture, type NeonDatabaseFixture } from "./neon-database";
 import { resolveApplicationUser } from "../../lib/identity/users";
-import { resolveAccessRequest } from "../../lib/repositories/access-requests";
+import { accessRequestRepository, resolveAccessRequest } from "../../lib/repositories/access-requests";
 
 const ports = vi.hoisted(() => ({ pool: undefined as Pool | undefined }));
 vi.mock("../../lib/db/client", () => ({ getPool: () => ports.pool }));
@@ -77,6 +77,20 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Assisted ownership assignm
       },
     };
   }
+
+  it("exposes only the caller's request without granting membership (T-18)", async () => {
+    const { requester, input } = await seed({ businessName: "Own Pending Cafe" });
+    const other = await resolveApplicationUser(identity("other", "other@example.test"));
+    const outsider = await resolveApplicationUser(identity("outsider", "outsider@example.test"));
+    const job = (await runtime.query("INSERT INTO audit_jobs(share_slug,business_name,region,status) VALUES('other-private','Other Private Cafe','hk','done') RETURNING id")).rows[0];
+    await runtime.query("INSERT INTO workspace_access_requests(job_id,user_id) VALUES($1,$2)", [job.id, other.id]);
+    const own = await accessRequestRepository().latestForUser(requester.id);
+    expect(own?.request.id).toBe(input.id);
+    expect(own?.request.business_name).toBe("Own Pending Cafe");
+    expect(JSON.stringify(own)).not.toContain("Other Private Cafe");
+    expect(await accessRequestRepository().latestForUser(outsider.id)).toBeNull();
+    expect((await runtime.query("SELECT id FROM workspace_members WHERE user_id=$1", [requester.id])).rows).toEqual([]);
+  });
 
   it("lets exactly one of two concurrent approvals win, and refuses the other visibly", async () => {
     const { input, operator, job } = await seed();

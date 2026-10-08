@@ -34,6 +34,7 @@ export function LocationSelect({
   const current = value === "all" ? allLabel : (locations.find((l) => l.slug === value)?.name ?? value)
   function change(next: string) {
     const query = new URLSearchParams(params.toString())
+    query.delete("cursor")
     query.set("location", next)
     router.push(`${pathname}?${query.toString()}`)
   }

@@ -5,6 +5,7 @@ import { OnboardingPage, type ClaimEvidence, type SavedSetup } from "@/component
 import { AccessRequestForm } from "@/components/workspace/access-request-form";
 import { AccessRequestStatus } from "@/components/workspace/access-request-status";
 import { requireUser } from "@/lib/auth";
+import { parseReportSlug } from "@/lib/report-access/slug";
 import { copy, normaliseLocale } from "@/lib/copy";
 import { brandRepository } from "@/lib/repositories/brand";
 import { membershipRepository } from "@/lib/repositories/membership";
@@ -123,8 +124,7 @@ export default async function OwnerOnboarding({
 }) {
   const locale = normaliseLocale((await params).locale);
   const query = await searchParams;
-  const rawClaim = firstParam(query.claim);
-  const claim = rawClaim && /^[a-z0-9-]{1,120}$/i.test(rawClaim) ? rawClaim : undefined;
+  const claim = parseReportSlug(query.claim) ?? undefined;
   const search = new URLSearchParams();
   if (claim) search.set("claim", claim);
   const plan = firstParam(query.plan);

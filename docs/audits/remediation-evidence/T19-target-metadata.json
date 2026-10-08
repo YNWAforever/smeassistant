@@ -1,0 +1,13 @@
+{
+  "key": "DATABASE_URL",
+  "type": "sensitive",
+  "target": [
+    "production"
+  ],
+  "readable_target": false,
+  "missing_readiness_variables": [
+    "DATABASE_URL_UNPOOLED",
+    "NEON_READINESS_HOST",
+    "NEON_READINESS_DATABASE"
+  ]
+}

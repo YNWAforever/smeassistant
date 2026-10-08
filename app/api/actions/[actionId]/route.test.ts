@@ -156,4 +156,9 @@ describe("PATCH /api/actions/[actionId]", () => {
     expect((await patch({ due_at: "next tuesday" })).status).toBe(400);
     expect((await patch({})).status).toBe(400);
   });
+
+  it("rejects a due date without a timezone before any write (T-13)", async () => {
+    expect((await patch({ due_at: "2026-10-12T09:00:00" })).status).toBe(400);
+    expect(mocks.db!.calls.filter(c => c.op === "update")).toEqual([]);
+  });
 });

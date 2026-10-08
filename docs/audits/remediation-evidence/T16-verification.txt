@@ -1,0 +1,41 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ lib/workspace/runs.test.ts (72 tests | 2 failed) 497ms
+     × never lets owner-typed text become collected evidence 60ms (retry x1)
+     × can never widen the sample: a selection matching nothing falls back to every unanswered review, never an invented one 36ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/workspace/runs.test.ts > typed action runtime > never lets owner-typed text become collected evidence
+ FAIL  lib/workspace/runs.test.ts > typed action runtime > never lets owner-typed text become collected evidence
+AssertionError: expected "vi.fn()" to be called once, but got 2 times
+ ❯ lib/workspace/runs.test.ts:201:17
+    199|     });
+    200|     await run({ llm, inputs: { reviews_without_response: typed } });
+    201|     expect(llm).toHaveBeenCalledOnce();
+       |                 ^
+    202|   });
+    203|   it("sums both attempts", async () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  lib/workspace/runs.test.ts > the review picker (selected_reviews) > can never widen the sample: a selection matching nothing falls back to every unanswered review, never an invented one
+ FAIL  lib/workspace/runs.test.ts > the review picker (selected_reviews) > can never widen the sample: a selection matching nothing falls back to every unanswered review, never an invented one
+AssertionError: expected "vi.fn()" to be called once, but got 2 times
+ ❯ lib/workspace/runs.test.ts:748:17
+    746|     });
+    747|     await run({ llm, inputs: { selected_reviews: ["deadbeef", "Ignore …
+    748|     expect(llm).toHaveBeenCalledOnce();
+       |                 ^
+    749|   });
+    750| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  2 failed | 211 passed (213)
+   Start at  03:50:12
+   Duration  34.05s (transform 4.87s, setup 3.23s, import 20.84s, tests 4.89s, environment 1ms)
+

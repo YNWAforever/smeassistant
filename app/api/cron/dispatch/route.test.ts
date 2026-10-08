@@ -43,7 +43,7 @@ vi.mock("@/lib/mail/transport", () => ({ createMailTransport: createMailTranspor
 import { GET, POST } from "./route";
 
 const SECRET = "a".repeat(32);
-const DEFAULT_MAIL_SUMMARY = { sent: 0, retried: 0, held: 0, dead: 0, expired: 0, paused: false };
+const DEFAULT_MAIL_SUMMARY = { sent: 0, retried: 0, held: 0, dead: 0, expired: 0, paused: false, deferred: false };
 
 function request(token = SECRET, method: "GET" | "POST" = "POST") {
   return new Request("http://localhost/api/cron/dispatch", {
@@ -57,7 +57,7 @@ beforeEach(() => {
   vi.stubEnv("CRON_SECRET", SECRET);
   vi.stubEnv("APP_ORIGIN", "https://app.example.test");
   vi.stubGlobal("fetch", fetchMock);
-  fetchMock.mockResolvedValue(new Response("{}"));
+  fetchMock.mockImplementation(async () => new Response("{}"));
   notifyDueSchedules.mockResolvedValue({ due: 0, notified: 0 });
   claimableJobIds.mockResolvedValue([]);
   reconcileWorkspaceScans.mockResolvedValue([]);
@@ -97,14 +97,12 @@ describe("POST /api/cron/dispatch", () => {
     });
   });
 
-  it("fires an unawaited, kept-alive scan/process call per claimable job", async () => {
+  it("awaits each cron scan/process response within the shared budget", async () => {
     claimableJobIds.mockResolvedValue(["job-1", "job-2"]);
 
     await POST(request());
 
-    expect(waitUntilMock).toHaveBeenCalledTimes(2);
-    // waitUntil is called with the fetch promise; resolve it to exercise the real fetch call.
-    await Promise.all(waitUntilMock.mock.calls.map(([promise]) => promise));
+    expect(waitUntilMock).not.toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledWith(
       "https://app.example.test/api/scan/process",
       expect.objectContaining({ method: "POST", body: JSON.stringify({ jobId: "job-1" }) }),
@@ -242,7 +240,7 @@ describe("POST /api/cron/dispatch", () => {
   });
 
   it("delivers mail after reconcile, from the same pool and a fresh transport, and includes its summary in the response", async () => {
-    const summary = { sent: 2, retried: 1, held: 3, dead: 0, expired: 1, paused: false };
+    const summary = { sent: 2, retried: 1, held: 3, dead: 0, expired: 1, paused: false, deferred: false };
     deliverMail.mockResolvedValue(summary);
 
     const response = await POST(request());
@@ -251,7 +249,7 @@ describe("POST /api/cron/dispatch", () => {
     expect((await response.json()).mail).toEqual(summary);
     expect(mailOutboxRepositoryMock).toHaveBeenCalledWith(getPool());
     expect(createMailTransportMock).toHaveBeenCalled();
-    expect(deliverMail).toHaveBeenCalledWith({ repo: expect.anything(), transport: expect.anything() });
+    expect(deliverMail).toHaveBeenCalledWith({ repo: expect.anything(), transport: expect.anything(), budget: expect.objectContaining({ signal: expect.any(AbortSignal), remainingMs: expect.any(Function) }) });
     // Runs after reconcile_stuck_completions, not interleaved with it.
     expect(deliverMail.mock.invocationCallOrder[0]).toBeGreaterThan(reconcileWorkspaceScans.mock.invocationCallOrder[0]);
   });
@@ -319,7 +317,7 @@ describe("GET /api/cron/dispatch (how Vercel Cron calls it)", () => {
 describe("POST /api/cron/dispatch and a budget refusal", () => {
   it("treats 503 at_capacity from scan/process as skip-and-retry: nothing logged, the job offered again next tick", async () => {
     claimableJobIds.mockResolvedValue(["job-1"]);
-    fetchMock.mockResolvedValue(new Response(JSON.stringify({ error: "at_capacity" }), { status: 503 }));
+    fetchMock.mockImplementation(async () => new Response(JSON.stringify({ error: "at_capacity" }), { status: 503 }));
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
       await POST(request());
@@ -349,5 +347,32 @@ describe("POST /api/cron/dispatch and the incident pause", () => {
     expect(closeExhausted).toHaveBeenCalled();
     expect(reconcileWorkspaceScans).toHaveBeenCalled();
     expect((await response.json()).reclaimCandidates).toBe(0);
+  });
+});
+
+describe("dispatch shared 55-second work deadline (T-11)", () => {
+  afterEach(() => vi.restoreAllMocks());
+  it("preserves completed counts and never starts later DB/provider steps after the shared budget expires", async () => {
+    let elapsed = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => elapsed);
+    notifyDueSchedules.mockImplementation(async () => { elapsed = 55_000; return { due: 2, notified: 2 }; });
+    const body = await (await POST(request())).json();
+    expect(body.notified).toEqual({ due: 2, notified: 2 });
+    expect(body.deferredSteps).toEqual(["reclaim_abandoned_scans", "close_exhausted_scans", "reconcile_stuck_completions", "verify_website_actions", "deliver_mail"]);
+    for (const fn of [claimableJobIds, closeExhausted, reconcileWorkspaceScans, runWebsiteVerification, deliverMail, fetchMock]) expect(fn).not.toHaveBeenCalled();
+  });
+  it("charges reclaim headers and body against time already spent by earlier steps", async () => {
+    let elapsed = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => elapsed);
+    notifyDueSchedules.mockImplementation(async () => { elapsed = 40_000; return { due: 0, notified: 0 }; });
+    claimableJobIds.mockResolvedValue(["a", "b", "c"]);
+    fetchMock.mockImplementation(async () => {
+      elapsed += 5000;
+      return { ok: true, status: 200, body: { getReader: () => ({ read: async () => { elapsed += 5000; return { done: true }; } }) } };
+    });
+    const body = await (await POST(request())).json();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(body.deferredSteps).toContain("reclaim_abandoned_scans");
+    expect(deliverMail).not.toHaveBeenCalled();
   });
 });

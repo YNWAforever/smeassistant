@@ -1,0 +1,10 @@
+{
+  "source_sha": "efd51ca1a68ba9f9d3c56ea726b008b97d400328",
+  "gate": "test",
+  "result": "interrupted_no_completion",
+  "exit_code": null,
+  "original_session_id": 15923,
+  "observed_owned_runner_processes": 0,
+  "log": "docs/audits/remediation-evidence/final-review-full-test-interrupted.txt",
+  "observed_utc": "2026-10-07T00:54:15.0502058Z"
+}

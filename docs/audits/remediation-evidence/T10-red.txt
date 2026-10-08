@@ -1,0 +1,46 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ lib/workspace/queries-pages.test.ts (44 tests | 1 failed) 538ms
+     × passes a trusted local month with an exclusive next-month boundary (T-10) 259ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/workspace/queries-pages.test.ts > getHomeBrief > passes a trusted local month with an exclusive next-month boundary (T-10)
+ FAIL  lib/workspace/queries-pages.test.ts > getHomeBrief > passes a trusted local month with an exclusive next-month boundary (T-10)
+AssertionError: expected "vi.fn()" to be called with arguments: [ 'ws-1', { …(3) }, null ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+    "ws-1",
+-   {
+-     "endLocalDate": "2026-11-01",
+-     "startLocalDate": "2026-10-01",
+-     "timeZone": "Asia/Hong_Kong",
+-   },
++   "2026-10-01T00:00:00Z",
+    null,
+  ]
+
+
+Number of calls: 1
+
+ ❯ lib/workspace/queries-pages.test.ts:117:43
+    115|     try {
+    116|       await getHomeBrief(ctx, "all");
+    117|       expect(repository.completedActions).toHaveBeenCalledWith("ws-1",…
+       |                                           ^
+    118|     } finally { vi.useRealTimers(); }
+    119|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 43 passed (44)
+   Start at  03:39:24
+   Duration  7.51s (transform 4.21s, setup 1.48s, import 4.50s, tests 538ms, environment 0ms)
+

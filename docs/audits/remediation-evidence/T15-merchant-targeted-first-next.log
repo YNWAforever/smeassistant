@@ -1,0 +1,54 @@
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://127.0.0.1:62218
+- Network:       http://127.0.0.1:62218
+✓ Ready in 2.1s
+
+ GET /en/owner/sign-in 200 in 1009ms (proxy.ts: 10ms)
+ GET /en/owner/sign-in 200 in 369ms (next.js: 221ms, proxy.ts: 20ms, application-code: 128ms)
+ GET /en/owner/sign-in?returnTo=%2Fen%2Fowner%2Facceptance-hk-34c36d82 200 in 161ms (next.js: 39ms, proxy.ts: 9ms, application-code: 113ms)
+ GET /en/owner/sign-in?returnTo=%2Fen%2Fowner%2Facceptance-hk-34c36d82&method=email 200 in 137ms (next.js: 18ms, proxy.ts: 5ms, application-code: 114ms)
+ POST /api/auth/sign-in/magic-link 200 in 1172ms (next.js: 930ms, application-code: 242ms)
+ GET /api/auth/verify?token=lQ87JG0BYaQlg1RDV3OPLJFMeYyWXDg1-3BH4CdYgN4 303 in 153ms (next.js: 138ms, application-code: 15ms)
+ GET /auth/callback?locale=en&returnTo=%2Fen%2Fowner%2Facceptance-hk-34c36d82&method=email 307 in 80ms (next.js: 72ms, application-code: 8ms)
+ GET /en/owner/sign-in/complete?returnTo=%2Fen%2Fowner%2Facceptance-hk-34c36d82&method=email 200 in 786ms (next.js: 673ms, proxy.ts: 5ms, application-code: 107ms)
+ POST /api/owner/sign-in/complete 200 in 115ms (next.js: 51ms, application-code: 64ms)
+ GET /en/owner/acceptance-hk-34c36d82 200 in 2.6s (next.js: 1092ms, proxy.ts: 26ms, application-code: 1436ms)
+ GET /api/workspaces/34c36d82-b538-4179-ab65-0b49bd0d6619/fix-pack-drafts?locale=en 200 in 892ms
+ GET /api/workspaces/34c36d82-b538-4179-ab65-0b49bd0d6619/fix-pack-drafts?locale=en 200 in 890ms
+ GET /en/owner/acceptance-hk-34c36d82/actions/cdbddb5f-5921-475e-8e25-3e0b0dddf215 404 in 118ms (next.js: 44ms, proxy.ts: 23ms, application-code: 51ms)
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://127.0.0.1:59153
+- Network:       http://127.0.0.1:59153
+✓ Ready in 567ms
+
+ GET /en/owner/sign-in 200 in 888ms (proxy.ts: 7ms)
+ GET /en/owner/sign-in 200 in 283ms (next.js: 198ms, proxy.ts: 13ms, application-code: 72ms)
+ GET /en/owner/sign-in?returnTo=%2Fen%2Fowner%2Facceptance-tw-7489b345 200 in 87ms (next.js: 20ms, proxy.ts: 5ms, application-code: 62ms)
+ GET /en/owner/sign-in?returnTo=%2Fen%2Fowner%2Facceptance-tw-7489b345&method=email 200 in 130ms (next.js: 92ms, proxy.ts: 7ms, application-code: 30ms)
+ POST /api/auth/sign-in/magic-link 200 in 1148ms (next.js: 884ms, application-code: 264ms)
+ GET /api/auth/verify?token=rphmYxvvGipsqOmAtBXOA1kEG6Q3CjwvHY8mNhpG9QQ 303 in 21ms (next.js: 9ms, application-code: 12ms)
+ GET /auth/callback?locale=en&returnTo=%2Fen%2Fowner%2Facceptance-tw-7489b345&method=email 307 in 71ms (next.js: 64ms, application-code: 7ms)
+ GET /en/owner/sign-in/complete?returnTo=%2Fen%2Fowner%2Facceptance-tw-7489b345&method=email 200 in 659ms (next.js: 541ms, proxy.ts: 7ms, application-code: 112ms)
+ POST /api/owner/sign-in/complete 200 in 104ms (next.js: 40ms, application-code: 64ms)
+ GET /en/owner/acceptance-tw-7489b345 200 in 1621ms (next.js: 879ms, proxy.ts: 12ms, application-code: 730ms)
+ GET /api/workspaces/7489b345-6acd-4086-9011-2a827b96d335/fix-pack-drafts?locale=en 200 in 1357ms (next.js: 1282ms, application-code: 75ms)
+ GET /api/workspaces/7489b345-6acd-4086-9011-2a827b96d335/fix-pack-drafts?locale=en 200 in 1480ms (next.js: 1280ms, application-code: 199ms)
+ GET /en/owner/acceptance-tw-7489b345/actions/d13a58df-f313-470c-8aee-f642e8818886 200 in 3.2s (next.js: 976ms, proxy.ts: 26ms, application-code: 2.2s)
+ PATCH /api/actions/d13a58df-f313-470c-8aee-f642e8818886 200 in 2.6s (next.js: 2.2s, application-code: 393ms)
+ POST /api/actions/d13a58df-f313-470c-8aee-f642e8818886/run 200 in 1489ms (next.js: 1240ms, application-code: 249ms)
+ GET /en/owner/acceptance-tw-7489b345/actions/d13a58df-f313-470c-8aee-f642e8818886 200 in 390ms (next.js: 45ms, proxy.ts: 26ms, application-code: 319ms)
+ POST /api/actions/d13a58df-f313-470c-8aee-f642e8818886/versions 201 in 1557ms (next.js: 1480ms, application-code: 76ms)
+ GET /en/owner/acceptance-tw-7489b345/actions/d13a58df-f313-470c-8aee-f642e8818886 200 in 422ms (next.js: 171ms, proxy.ts: 8ms, application-code: 243ms)
+ POST /api/versions/94a6a271-98fc-4755-be6d-f35b194c2b84/approve 200 in 1576ms (next.js: 1499ms, application-code: 77ms)
+ GET /en/owner/acceptance-tw-7489b345/actions/d13a58df-f313-470c-8aee-f642e8818886 200 in 460ms (next.js: 27ms, proxy.ts: 23ms, application-code: 410ms)
+ POST /api/versions/94a6a271-98fc-4755-be6d-f35b194c2b84/export 200 in 1098ms (next.js: 1022ms, application-code: 77ms)
+ GET /en/owner/acceptance-tw-7489b345/actions/d13a58df-f313-470c-8aee-f642e8818886 200 in 886ms (next.js: 294ms, proxy.ts: 17ms, application-code: 576ms)
+ POST /api/versions/94a6a271-98fc-4755-be6d-f35b194c2b84/export 200 in 162ms (next.js: 16ms, application-code: 146ms)
+ POST /api/versions/94a6a271-98fc-4755-be6d-f35b194c2b84/export 200 in 106ms (next.js: 5ms, application-code: 101ms)
+ POST /api/actions/d13a58df-f313-470c-8aee-f642e8818886/applied 201 in 1707ms (next.js: 1633ms, application-code: 74ms)
+ POST /api/actions/d13a58df-f313-470c-8aee-f642e8818886/applied 200 in 80ms (next.js: 15ms, application-code: 65ms)
+ POST /api/actions/d13a58df-f313-470c-8aee-f642e8818886/versions 201 in 80ms (next.js: 11ms, application-code: 69ms)
+ POST /api/versions/b82a8066-6e63-4c8a-9824-bced9b064312/export 409 in 112ms (next.js: 12ms, application-code: 99ms)
+ GET /zh-HK/owner/acceptance-tw-7489b345/settings/billing 200 in 1143ms (next.js: 727ms, proxy.ts: 22ms, application-code: 394ms)
+ GET /api/auth/verify?token=rphmYxvvGipsqOmAtBXOA1kEG6Q3CjwvHY8mNhpG9QQ 303 in 32ms (next.js: 8ms, application-code: 24ms)
+ GET /en/owner/sign-in?error=invalid_token 200 in 86ms (next.js: 15ms, proxy.ts: 5ms, application-code: 66ms)

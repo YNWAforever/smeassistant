@@ -1,5 +1,6 @@
 import type { IgMatchProvenance, MatchConfidence, MerchantCandidate } from "./business-search";
 import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
+import { resolveScanWebsite } from "@/lib/scan/website-url";
 
 export type ScanMarket = "hk" | "tw";
 
@@ -76,7 +77,7 @@ export function hasBusinessIdentity(draft: Pick<ScanDraft, "candidate" | "manual
 }
 
 export function canStartScan(draft: ScanDraft): boolean {
-  return Boolean(draft.businessName.trim()) && Boolean(draft.industry) && Boolean(draft.district) && hasBusinessIdentity(draft);
+  return Boolean(draft.businessName.trim()) && Boolean(draft.industry) && Boolean(draft.district) && hasBusinessIdentity(draft) && resolveScanWebsite(draft).ok;
 }
 
 /** Field names are upstream's POST /api/scan/start contract, verbatim (CLAUDE.md §3.2.2). */
@@ -157,8 +158,9 @@ export function buildScanStartPayload(
     payload.ig_match_provenance = draft.instagramMatchProvenance ?? "manual_typed";
   }
 
-  const website = draft.websiteUrl.trim() || candidate?.websiteUrl?.trim();
-  if (website) payload.website_url = website;
+  const website = resolveScanWebsite(draft);
+  if (!website.ok) throw new Error("website_url is invalid");
+  if (website.value) payload.website_url = website.value;
 
   const mapsUrl = draft.mapsUrl.trim();
   if (mapsUrl) payload.maps_url = mapsUrl;

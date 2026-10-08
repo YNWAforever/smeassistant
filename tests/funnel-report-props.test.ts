@@ -67,7 +67,7 @@ describe("buildReportProps", () => {
     const props = buildReportProps(publicModel, "en");
     expect(props.modules.map((module) => module.key)).toEqual(["ig", "gbp", "aeo", "trust"]);
     expect(props.modules[0]).toMatchObject({ state: "unavailable", value: "Not scored", limitationCode: "IG_HANDLE_NOT_PROVIDED" });
-    expect(props.modules[0].detail).toContain("IG handle not provided");
+    expect(props.modules[0].detail).toContain("Instagram handle not provided");
     expect(props.modules[1]).toMatchObject({ state: "measured", score: 61, value: "61 / 100", label: getMessages("en").report.moduleGbp });
     expect(props.modules[0].score).toBeNull();
   });

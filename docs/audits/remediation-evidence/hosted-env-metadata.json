@@ -1,0 +1,514 @@
+[
+  {
+    "id": "7BjSI2qXQMK5AwqX",
+    "key": "EVIDENCE_SNAPSHOT_INSTAGRAM_ALLOWED",
+    "type": "encrypted",
+    "target": [
+      "production"
+    ]
+  },
+  {
+    "id": "0lmaFWs2gReGmcgm",
+    "key": "EVIDENCE_SNAPSHOT_GOOGLE_MAPS_ALLOWED",
+    "type": "encrypted",
+    "target": [
+      "production"
+    ]
+  },
+  {
+    "id": "48A6eTGMR5y9Etzv",
+    "key": "BLOB_STORE_ID",
+    "type": "encrypted",
+    "target": [
+      "production"
+    ]
+  },
+  {
+    "id": "s1yLVlmLmozefqUG",
+    "key": "BLOB_READ_WRITE_TOKEN",
+    "type": "encrypted",
+    "target": [
+      "production"
+    ]
+  },
+  {
+    "id": "3oUOSvadvN0VXGyO",
+    "key": "REPORT_ACCESS_TOKEN_SECRET",
+    "type": "sensitive",
+    "target": [
+      "production"
+    ]
+  },
+  {
+    "id": "Qc2rW9mMgkvFKHTl",
+    "key": "RATE_LIMIT_SECRET",
+    "type": "sensitive",
+    "target": [
+      "production"
+    ]
+  },
+  {
+    "id": "JYAm5CLLE8kC9E5p",
+    "key": "SCAN_EXECUTION_RUNTIME",
+    "type": "encrypted",
+    "target": [
+      "production"
+    ]
+  },
+  {
+    "id": "cCvyHv6nDUmNpZRT",
+    "key": "NEXT_PUBLIC_SITE_URL",
+    "type": "encrypted",
+    "target": [
+      "production"
+    ]
+  },
+  {
+    "id": "RF372iZAvyr8SmJu",
+    "key": "APP_ORIGIN",
+    "type": "encrypted",
+    "target": [
+      "production"
+    ]
+  },
+  {
+    "id": "x5GIi2VZmSEwCWs5",
+    "key": "NEON_AUTH_COOKIE_SECRET",
+    "type": "sensitive",
+    "target": [
+      "production"
+    ]
+  },
+  {
+    "id": "h9wtlpjumw2f2Y3T",
+    "key": "NEON_AUTH_BASE_URL",
+    "type": "encrypted",
+    "target": [
+      "production"
+    ]
+  },
+  {
+    "id": "aPvHUbTs8S6O9xHH",
+    "key": "DATABASE_URL",
+    "type": "sensitive",
+    "target": [
+      "production"
+    ]
+  },
+  {
+    "id": "IVmMcHwxBCBRumk2",
+    "key": "RAPIDAPI_INSTAGRAM_KEY",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "ZVmB9t2GWKsPK41d",
+    "key": "RAPIDAPI_INSTAGRAM_SEARCH_PATH",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "KrOWnGfXPcyhfaxM",
+    "key": "GOOGLE_PLACES_KEY",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "wq1qdFhJOQo9JtRe",
+    "key": "SERPAPI_API_KEY",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "wuEGEODz1XM2hLYJ",
+    "key": "SERPAPI_KEY",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "kl17oRuWGbToEIkw",
+    "key": "SERPAPI_API_KEY_FALLBACK",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "Do88sdFqs99FQogJ",
+    "key": "EVIDENCE_SNAPSHOT_INSTAGRAM_ALLOWED",
+    "type": "sensitive",
+    "target": [
+      "preview"
+    ]
+  },
+  {
+    "id": "X9LaiRqmd3gowVb5",
+    "key": "EVIDENCE_SNAPSHOT_GOOGLE_MAPS_ALLOWED",
+    "type": "sensitive",
+    "target": [
+      "preview"
+    ]
+  },
+  {
+    "id": "fYDnptjwHr0zl1Ha",
+    "key": "OPENCODE_API_KEY",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "OCAc1HrZsc2DIp5n",
+    "key": "LLM_API_KEY",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "jGqMiulhDmcRYYAU",
+    "key": "OPENROUTER_KEY",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "YbNZIdlJ7wX9JHCL",
+    "key": "LLM_BASE_URL",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "IkYykYsxZe9fMB26",
+    "key": "LLM_MODEL",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "2vlsiI7tPrCnLaGc",
+    "key": "LLM_COST_PER_1K_INPUT_TOKENS_USD",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "GeGqv2altqz6W0tc",
+    "key": "LLM_COST_PER_1K_OUTPUT_TOKENS_USD",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "b31zDQqOjnlikIl9",
+    "key": "NEXT_PUBLIC_APP_URL",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "5YmpykNOBnt46uHZ",
+    "key": "NEXT_PUBLIC_SITE_URL",
+    "type": "sensitive",
+    "target": [
+      "preview"
+    ]
+  },
+  {
+    "id": "0a0irAQlTvsW18Rl",
+    "key": "APP_ORIGIN",
+    "type": "sensitive",
+    "target": [
+      "preview"
+    ]
+  },
+  {
+    "id": "1svhkoUF0j6mXN9Z",
+    "key": "NEXT_PUBLIC_REGION",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "6xGhXmd87wCwU71N",
+    "key": "NEXT_PUBLIC_HK_WHATSAPP_NUMBER",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "FV028ierwbirOMEf",
+    "key": "NEXT_PUBLIC_HK_PHONE_NUMBER",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "gM5keHNChpgToQzc",
+    "key": "NEXT_PUBLIC_HK_CONTACT_EMAIL",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "Qwj3GhWZBgE0Z7OD",
+    "key": "NEXT_PUBLIC_TW_LINE_URL",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "pde169oA82hJ5d7d",
+    "key": "NEXT_PUBLIC_TW_PHONE_NUMBER",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "ZRGc8eu7B1qJgZvG",
+    "key": "NEXT_PUBLIC_TW_CONTACT_EMAIL",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "tcqWlesHaVO4zGvF",
+    "key": "RATE_LIMIT_SECRET",
+    "type": "sensitive",
+    "target": [
+      "preview"
+    ]
+  },
+  {
+    "id": "gfAbjjssRvjD2uSz",
+    "key": "REPORT_ACCESS_TOKEN_SECRET",
+    "type": "sensitive",
+    "target": [
+      "preview"
+    ]
+  },
+  {
+    "id": "PR7QZHCY2yeRAKnf",
+    "key": "OAUTH_TOKEN_ENCRYPTION_KEY",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "pqXJk1avH5lq4vMu",
+    "key": "CRON_SECRET",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "POD5yxIh8UqRnLdj",
+    "key": "SCAN_EXECUTION_RUNTIME",
+    "type": "sensitive",
+    "target": [
+      "preview"
+    ]
+  },
+  {
+    "id": "GyIwsIiixp7IRydP",
+    "key": "SCAN_WORKER_URL",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "mxp3AkCVhh3jBaTT",
+    "key": "REPORT_RECOVERY_ENABLED",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "rAbGinERK9PjPkbQ",
+    "key": "REPORT_EMAIL_FROM",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "FvmaR8n94v2qmnG5",
+    "key": "RESEND_API_KEY",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "rPAN8LO3NLbdOACw",
+    "key": "REPORT_CONSENT_POLICY_VERSION",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "Bb9YF99999ur6a4i",
+    "key": "GOOGLE_OAUTH_CLIENT_ID",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "zFVejPjYMGxdwa3K",
+    "key": "GOOGLE_OAUTH_CLIENT_SECRET",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "wPmRL7co6IGuD6zl",
+    "key": "GOOGLE_OAUTH_REDIRECT_URI",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "d16SajIm3po2QE4m",
+    "key": "GOOGLE_OAUTH_CLAIM_REDIRECT_URI",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "SUuNjISwwKeEuaot",
+    "key": "WORKSPACE_CLAIM_VIA_OAUTH_ENABLED",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "lCfZc59s37vsbNqQ",
+    "key": "STRIPE_SECRET_KEY",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "IPXBenceTGn45hab",
+    "key": "STRIPE_WEBHOOK_SECRET",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "ISk0kIhxPQldIgMl",
+    "key": "STRIPE_HK_TIER_PRICE_ID",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "RGOxYC5PpnvS9pm8",
+    "key": "STRIPE_TW_TIER_PRICE_ID",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "vOVaMK4sDfG3cAvh",
+    "key": "SCAN_SOURCES",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "Se0nnyMXQxr4H4lS",
+    "key": "POSTHOG_KEY",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  },
+  {
+    "id": "cZl4Il4NvZms3dJY",
+    "key": "POSTHOG_HOST",
+    "type": "sensitive",
+    "target": [
+      "production",
+      "preview"
+    ]
+  }
+]

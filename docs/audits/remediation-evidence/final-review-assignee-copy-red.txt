@@ -1,0 +1,54 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ components/workspace/actions-list-view.test.tsx (6 tests | 3 failed) 7233ms
+   × en distinguishes a named, unavailable and empty assignment on visible cards 1940ms (retry x1)
+   × zh-HK distinguishes a named, unavailable and empty assignment on visible cards 1567ms (retry x1)
+   × zh-TW distinguishes a named, unavailable and empty assignment on visible cards 1811ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/workspace/actions-list-view.test.tsx > en distinguishes a named, unavailable and empty assignment on visible cards
+ FAIL  components/workspace/actions-list-view.test.tsx > en distinguishes a named, unavailable and empty assignment on visible cards
+Error: expect(element).toHaveTextContent()
+
+Expected element to have text content:
+  Assigned member unavailable
+Received:
+
+ ❯ components/workspace/actions-list-view.test.tsx:23:38
+     21|       filters={{}} result={{ actions: [action], counts: { all: 1, draf…
+     22|     const label = screen.getByText(locale === "en" ? "Assignee" : "負責人…
+     23|     expect(label.nextElementSibling).toHaveTextContent(assignee?.name …
+       |                                      ^
+     24|     view.unmount();
+     25|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  components/workspace/actions-list-view.test.tsx > zh-HK distinguishes a named, unavailable and empty assignment on visible cards
+ FAIL  components/workspace/actions-list-view.test.tsx > zh-HK distinguishes a named, unavailable and empty assignment on visible cards
+ FAIL  components/workspace/actions-list-view.test.tsx > zh-TW distinguishes a named, unavailable and empty assignment on visible cards
+ FAIL  components/workspace/actions-list-view.test.tsx > zh-TW distinguishes a named, unavailable and empty assignment on visible cards
+Error: expect(element).toHaveTextContent()
+
+Expected element to have text content:
+  已指派成員不可用
+Received:
+
+ ❯ components/workspace/actions-list-view.test.tsx:23:38
+     21|       filters={{}} result={{ actions: [action], counts: { all: 1, draf…
+     22|     const label = screen.getByText(locale === "en" ? "Assignee" : "負責人…
+     23|     expect(label.nextElementSibling).toHaveTextContent(assignee?.name …
+       |                                      ^
+     24|     view.unmount();
+     25|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 3 passed (6)
+   Start at  08:22:33
+   Duration  41.34s (transform 2.16s, setup 1.89s, import 12.22s, tests 7.23s, environment 19.19s)
+

@@ -1,0 +1,15 @@
+{"gate":"lint","exit_code":0,"completed_utc":"2026-10-06T21:58:49.2894526Z","log":"docs/audits/remediation-evidence/full-lint.txt"}
+{"gate":"typecheck","exit_code":0,"completed_utc":"2026-10-06T21:59:25.1529251Z","log":"docs/audits/remediation-evidence/full-typecheck.txt"}
+{"gate":"test","exit_code":0,"completed_utc":"2026-10-06T22:07:31.9351948Z","log":"docs/audits/remediation-evidence/full-unit.txt"}
+{"gate":"test:secret-boundary","exit_code":0,"completed_utc":"2026-10-06T22:08:46.7749431Z","log":"docs/audits/remediation-evidence/full-secret-boundary.txt"}
+{"gate":"test:no-supabase","exit_code":0,"completed_utc":"2026-10-06T22:08:51.5575343Z","log":"docs/audits/remediation-evidence/full-no-supabase.txt"}
+{"gate":"test:no-self-service-claim","exit_code":0,"completed_utc":"2026-10-06T22:08:54.1261929Z","log":"docs/audits/remediation-evidence/full-no-self-service-claim.txt"}
+{"gate":"db:verify","exit_code":0,"completed_utc":"2026-10-06T22:09:07.6165902Z","log":"docs/audits/remediation-evidence/full-db-verify.txt"}
+{"gate":"test:integration","exit_code":0,"completed_utc":"2026-10-06T22:17:37.5280474Z","log":"docs/audits/remediation-evidence/full-integration.txt"}
+{"gate":"build","exit_code":0,"completed_utc":"2026-10-06T22:18:43.3979161Z","log":"docs/audits/remediation-evidence/full-build.txt"}
+{"gate":"e2e","exit_code":1,"completed_utc":"2026-10-06T22:20:06.7046537Z","log":"docs/audits/remediation-evidence/full-e2e.txt"}
+{"gate":"e2e","exit_code":0,"completed_utc":"2026-10-06T22:28:02.3489072Z","log":"docs/audits/remediation-evidence/full-e2e.txt","note":"retry after removing verified owned Next development cache; first failure retained"}
+{"gate":"e2e:acceptance","exit_code":1,"completed_utc":"2026-10-06T22:46:21.9979984Z","log":"docs/audits/remediation-evidence/full-acceptance.txt"}
+{"gate":"lint","command":"pnpm lint","exit_code":0,"completed_utc":"2026-10-06T22:54:45.3838011Z","log":"docs/audits/remediation-evidence/T15-fixture-full-lint.txt","source_sha":"6941ed7c24ab66593018ab40e3628d193056ed17","note":"fixture-only follow-up; unchanged application sources"}
+{"gate":"typecheck","command":"pnpm typecheck","exit_code":0,"completed_utc":"2026-10-06T22:55:06.0883072Z","log":"docs/audits/remediation-evidence/T15-fixture-full-typecheck.txt","source_sha":"6941ed7c24ab66593018ab40e3628d193056ed17","note":"fixture-only follow-up; unchanged application sources"}
+{"gate":"e2e:acceptance","command":"pnpm e2e:acceptance","exit_code":0,"completed_utc":"2026-10-06T23:06:32.0685891Z","log":"docs/audits/remediation-evidence/full-acceptance.txt","source_sha":"6941ed7c24ab66593018ab40e3628d193056ed17","application_sha":"76404c43458e3bf614bd2ac2329655e265c74f79","note":"full retry after corrected required-input fixture; prior 47/2 failure retained separately"}

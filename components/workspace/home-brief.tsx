@@ -169,6 +169,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         <SectionCard className="pending-approval-card">
           <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "決定清單" : "Decision queue"}</p><h2>{isChinese ? "等待你的決定" : "Open actions"}</h2></div><Button asChild variant="ghost"><Link href={withLocation(`${base}/actions`, location)}>{isChinese ? "查看全部" : "View all"} <ArrowRight /></Link></Button></div>
           <div className="compact-action-list">
+            {brief.openActionCount !== undefined && <p>{isChinese ? `共有 ${brief.openActionCount} 項待辦；以下顯示優先項目。` : `${brief.openActionCount} open actions; priority items shown below.`}</p>}
             {brief.openActions.length === 0 && <p>{isChinese ? "沒有待辦行動。" : "No open actions."}</p>}
             {brief.openActions.slice(0, 3).map((action) => <Link key={action.id} href={actionHref(locale, workspaceSlug, action, location)}><span className={`priority-marker ${priorityClass(action.priority)}`} /><div><strong>{resolveText(action.title, locale)}</strong><small>{resolveText(action.location.name, locale)} · {resolveText(action.displayPhase, locale)}</small></div><span className="compact-effort">{effortLabel(action.effortMinutes, locale)}</span><ArrowRight /></Link>)}
           </div>

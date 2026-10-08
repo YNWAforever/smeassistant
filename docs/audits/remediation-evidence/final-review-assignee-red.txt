@@ -1,0 +1,61 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ lib/workspace/queries-pages.test.ts (50 tests | 2 failed) 80ms
+     × shows the projected named assignee on the refreshed, assignee-filtered list (T-13) 12ms (retry x1)
+     × distinguishes an unavailable assigned member from an unassigned action (T-13) 3ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/workspace/queries-pages.test.ts > listActions > shows the projected named assignee on the refreshed, assignee-filtered list (T-13)
+ FAIL  lib/workspace/queries-pages.test.ts > listActions > shows the projected named assignee on the refreshed, assignee-filtered list (T-13)
+AssertionError: expected undefined to deeply equal { …(2) }
+
+- Expected:
+{
+  "id": "00000000-0000-4000-8000-000000000002",
+  "name": "accepted@example.test",
+}
+
++ Received:
+undefined
+
+ ❯ lib/workspace/queries-pages.test.ts:214:40
+    212|     const result = await listActions(ctx, { assignee: assigneeId });
+    213|     expect(result.actions).toHaveLength(1);
+    214|     expect(result.actions[0].assignee).toEqual({ id: assigneeId, name:…
+       |                                        ^
+    215|     expect(result.counts.all).toBe(1);
+    216|     expect(repository.versions).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  lib/workspace/queries-pages.test.ts > listActions > distinguishes an unavailable assigned member from an unassigned action (T-13)
+ FAIL  lib/workspace/queries-pages.test.ts > listActions > distinguishes an unavailable assigned member from an unassigned action (T-13)
+AssertionError: expected undefined to deeply equal { …(2) }
+
+- Expected:
+{
+  "id": "00000000-0000-4000-8000-000000000002",
+  "name": "",
+}
+
++ Received:
+undefined
+
+ ❯ lib/workspace/queries-pages.test.ts:223:73
+    221|     state.actions = [actionRow({ assignee_user_id: assigneeId, assigne…
+    222|     const result = await listActions(ctx, {});
+    223|     expect(result.actions.find(action => action.id === "a1")?.assignee…
+       |                                                                         ^
+    224|     expect(result.actions.find(action => action.id === "a2")?.assignee…
+    225|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 48 passed (50)
+   Start at  08:20:55
+   Duration  3.05s (transform 595ms, setup 1.20s, import 1.44s, tests 80ms, environment 0ms)
+

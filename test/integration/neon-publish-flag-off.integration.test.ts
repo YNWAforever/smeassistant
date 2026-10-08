@@ -34,6 +34,8 @@ import { loadPublishPanel } from "../../lib/publishing/page-state";
 import { publishingRepository } from "../../lib/repositories/publishing";
 import { workflowRepository } from "../../lib/repositories/workflow";
 import { workspaceReadRepository } from "../../lib/repositories/workspace-read";
+import { measurementRepository } from "../../lib/repositories/measurements";
+import type { SnapshotRecord } from "../../lib/workspace/snapshots";
 
 /** The columns 0014 adds. No statement on a 0013 database may name one. */
 const COLUMNS_0014 = ["target_ref", "provider_receipt", "failure_reason", "verified_at", "first_published_at"];
@@ -74,7 +76,7 @@ const namesA0014Column = (statement: string) => COLUMNS_0014.some((column) => st
 // unset. Targets, publish and delete then answer 404 before any SQL; reconcile (ruling P4)
 // stays on but finds no publish delivery through 0002 columns, so it never names a 0014
 // column; and the export path keeps counting on the 0013 schema.
-describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon GBP reply publishing: deploying before 0014 is harmless while the flag is off", () => {
+describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon publishing flag-off route boundary; measurement still requires 0014", () => {
   let fixture: NeonDatabaseFixture;
   let owner: Pool;
   let runtime: Pool;
@@ -86,7 +88,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon GBP reply publishing:
       "CREATE ROLE sme_app_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; CREATE ROLE fixture_runtime LOGIN PASSWORD 'fixture-only' IN ROLE sme_app_runtime",
     );
     // Only 0001-0013: this database has never seen 0014.
-    const through0013 = (await loadMigrations()).filter((m) => m.name !== "0014_publish_reply.sql");
+    const through0013 = (await loadMigrations()).filter((m) => m.name <= "0013_preview_events.sql");
     expect(through0013.at(-1)?.name).toBe("0013_preview_events.sql");
     expect(await applyMigrations(owner, through0013)).toHaveLength(13);
     const columns = (
@@ -122,6 +124,13 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon GBP reply publishing:
     ports.pool = undefined;
     await Promise.all([runtime?.end(), owner?.end()]);
     fixture?.stop();
+  });
+
+  it("T-19: flag off does not hide the missing first_published_at measurement dependency on 0013", async () => {
+    vi.stubEnv("GBP_REPLY_PUBLISH_ENABLED", "false");
+    const head = { workspaceId: randomUUID(), locationId: null } as SnapshotRecord;
+    await expect(measurementRepository(ports.pool).exports(head, [])).rejects.toMatchObject({ code: "42703" });
+    expect(ports.statements.some(statement => statement.includes("first_published_at"))).toBe(true);
   });
 
   it.each([undefined, "", "false"])("with the flag off, targets, publish and delete answer 404 and send no SQL (flag %j)", async (value) => {

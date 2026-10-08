@@ -1,0 +1,7 @@
+
+C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\lib\workspace\runs.test.ts
+  190:30  warning  '_p' is defined but never used  @typescript-eslint/no-unused-vars
+  736:30  warning  '_p' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 2 problems (0 errors, 2 warnings)
+

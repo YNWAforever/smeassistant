@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceContext } from "@/lib/workspace/queries";
+import { buildActionOverview, type ActionRow } from "@/lib/workspace/overview";
+import type { ActionListScope, ActionListProjection } from "@/lib/repositories/action-list";
 
 type Row = Record<string, unknown>;
 
@@ -29,7 +31,9 @@ const repository = vi.hoisted(() => ({
   deliveries: vi.fn(),
 }));
 vi.mock("@/lib/repositories/workspace-read", () => ({ workspaceReadRepository: () => repository }));
-const applications = vi.hoisted(() => ({ forActions: vi.fn(async () => [] as Array<{ action_id: string; source: string; asserted_at: string }>) }));
+const listRepository = vi.hoisted(() => ({ page: vi.fn(), counts: vi.fn() }));
+vi.mock("@/lib/repositories/action-list", () => ({ actionListRepository: () => listRepository }));
+const applications = vi.hoisted(() => ({ forActions: vi.fn(async (workspaceId: string, actionIds: string[]) => { void workspaceId; void actionIds; return [] as Array<{ action_id: string; source: string; asserted_at: string }>; }) }));
 vi.mock("@/lib/repositories/applications", () => ({ applicationRepository: () => applications }));
 const reaper = vi.hoisted(() => ({ reapStrandedRuns: vi.fn(async () => [] as string[]) }));
 vi.mock("@/lib/workspace/run-reaper", () => ({ reapStrandedRuns: reaper.reapStrandedRuns }));
@@ -52,6 +56,16 @@ const mailAvailabilityMock = vi.hoisted(() => ({ mailAvailability: vi.fn() }));
 vi.mock("@/lib/mail/availability", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/mail/availability")>()), mailAvailability: mailAvailabilityMock.mailAvailability }));
 
 import { getHomeBrief, getInsights, listActions, getActivity, getIntegrations, getAction, loadActionRows, loadDiffById, getNotifications } from "./queries-pages";
+
+it("searches only visible title/summary and applies it to counts (T-13)", async () => {
+  state.actions = [actionRow({ id: "a1", title: { en: "Needle reply" }, action_state: "recommended" }), actionRow({ id: "a2", summary: { "zh-HK": "needle summary" }, action_state: "recommended" }), actionRow({ id: "a3", action_state: "recommended" })];
+  state.versions = [{ id: "v3", action_id: "a3", body: "needle private history", approval_state: "draft", delivery_state: "not_requested" }];
+  const result = await listActions(ctx, { q: " needle " } as Parameters<typeof listActions>[1]);
+  expect(result.actions.map(a => a.id).sort()).toEqual(["a1", "a2"]); expect(result.counts.all).toBe(2);
+});
+it("rejects oversized search and malformed assignment/due filters (T-13)", async () => {
+  for (const filters of [{ q: "x".repeat(201) }, { assignee: "someone" }, { due: "tomorrow" }]) await expect(listActions(ctx, filters as Parameters<typeof listActions>[1])).rejects.toThrow("invalid_action_filter");
+});
 
 const ctx: WorkspaceContext = {
   workspace: { id: "ws-1", slug: "kam-man-house", name: "Kam Man House", market: "hk", tier: "paid", timezone: "Asia/Hong_Kong", isDemo: false, instagramHandle: null, industry: "fnb", district: null },
@@ -76,11 +90,46 @@ const actionRow = (over: Row): Row => ({
   assignee_user_id: null, due_at: null, action_state: "needs_input", measurement_state: "not_eligible", capability: "Live", created_at: "2026-09-01T00:00:00Z", updated_at: "2026-09-01T00:00:00Z", ...over,
 });
 
+function listProjection(scope: ActionListScope, appRows: Array<{ action_id: string; source: string; asserted_at: string }> = []): ActionListProjection[] {
+  return state.actions.filter(row => row.workspace_id === scope.workspaceId
+    && (!scope.locationId || row.location_id == null || row.location_id === scope.locationId)
+    && (!scope.allowedLocationIds || row.location_id == null || scope.allowedLocationIds.includes(row.location_id as string))
+    && (!scope.channelTemplates || scope.channelTemplates.includes(row.template_key as string))
+    && (!scope.q || [...Object.values(row.title as Row), ...Object.values(row.summary as Row)].join(" ").toLowerCase().includes(scope.q.toLowerCase()))
+    && (!scope.assignee || (scope.assignee === "unassigned" ? row.assignee_user_id === null : row.assignee_user_id === scope.assignee))
+    && (!scope.status || row.action_state === scope.status)).map(row => ({
+      ...(row as unknown as ActionRow),
+      assignee_name: typeof row.assignee_name === "string" ? row.assignee_name : null,
+      run_state: state.runs.find(r => r.action_id === row.id)?.state ?? null,
+      version: state.versions.find(v => v.action_id === row.id) ?? null,
+      applied_on: appRows.find(a => a.action_id === row.id && a.source === "owner_asserted")?.asserted_at ?? null,
+      verified_on: appRows.find(a => a.action_id === row.id && a.source === "verified")?.asserted_at ?? null,
+    } as ActionListProjection)).sort((a, b) => Number(b.priority_score) - Number(a.priority_score) || b.updated_at.localeCompare(a.updated_at) || b.id.localeCompare(a.id));
+}
+function listPhase(row: ActionListProjection) {
+  return buildActionOverview(row, { location: null, latestRun: row.run_state ? { state: row.run_state } : null, latestVersion: row.version, applied: Boolean(row.applied_on), verified: Boolean(row.verified_on) }).displayPhaseKey;
+}
+const isOpen = (row: ActionRow) => !["completed", "dismissed", "cancelled", "expired"].includes(row.action_state);
+const rowMatches = (row: ActionListProjection, view: string) => view === "needs_input" ? row.action_state === "needs_input" : view === "drafts" ? ["draft_ready", "generating"].includes(listPhase(row)) : view === "awaiting_approval" ? ["draft_ready", "changes_requested"].includes(listPhase(row)) : true;
+
 beforeEach(() => {
   vi.clearAllMocks();
+  listRepository.page.mockImplementation(async (scope: ActionListScope, view: string, size: number, cursor: { score: number; updatedAt: string; id: string } | null) => {
+    const appRows = await applications.forActions(scope.workspaceId, state.actions.map(r => r.id as string));
+    return listProjection(scope, appRows).filter(row => view === "completed" ? row.action_state === "completed" : (scope.status || isOpen(row)) && rowMatches(row, view))
+      .filter(row => !cursor || Number(row.priority_score) < cursor.score || (Number(row.priority_score) === cursor.score && (row.updated_at < cursor.updatedAt || (row.updated_at === cursor.updatedAt && row.id < cursor.id))))
+      .slice(0, size + 1);
+  });
+  listRepository.counts.mockImplementation(async (scope: ActionListScope) => {
+    const rows = listProjection(scope), open = rows.filter(isOpen);
+    return { all: open.length, needs_input: open.filter(r => rowMatches(r, "needs_input")).length, drafts: open.filter(r => rowMatches(r, "drafts")).length, awaiting_approval: open.filter(r => rowMatches(r, "awaiting_approval")).length, completed: rows.filter(r => r.action_state === "completed").length };
+  });
   repository.snapshots.mockImplementation(async (_workspaceId, locationId) => state.snapshots.filter(row => row.location_id === locationId));
   repository.diff.mockImplementation(async id => state.diffs[id] ?? null);
-  repository.actions.mockImplementation(async () => state.actions);
+  // E28: mirror repository WHERE predicates; a states filter cannot return all.
+  repository.actions.mockImplementation(async (workspaceId, opts: { locationId?: string | null; states?: string[]; ids?: string[] } = {}) => state.actions.filter(row =>
+    row.workspace_id === workspaceId && (!opts.locationId || row.location_id === opts.locationId || row.location_id == null)
+    && (!opts.states || opts.states.includes(row.action_state as string)) && (!opts.ids || opts.ids.includes(row.id as string))));
   repository.runs.mockImplementation(async () => state.runs);
   repository.versions.mockImplementation(async () => state.versions);
   repository.latestConnection.mockImplementation(async () => state.connections[0] ?? null);
@@ -107,6 +156,14 @@ beforeEach(() => {
 });
 
 describe("getHomeBrief", () => {
+  it("passes a trusted local month with an exclusive next-month boundary (T-10)", async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date("2026-09-30T16:00:00Z"));
+    try {
+      await getHomeBrief(ctx, "all");
+      expect(repository.completedActions).toHaveBeenCalledWith("ws-1", { period: "2026-10", startLocalDate: "2026-10-01", endLocalDate: "2026-11-01", timezone: "Asia/Hong_Kong" }, null);
+    } finally { vi.useRealTimers(); }
+  });
+
   it("never aggregates for location=all: no snapshot, actions still listed", async () => {
     const brief = await getHomeBrief(ctx, "all");
     expect(brief.snapshot).toBeNull();
@@ -150,6 +207,51 @@ describe("getHomeBrief", () => {
 });
 
 describe("listActions", () => {
+  it("shows the projected named assignee on the refreshed, assignee-filtered list (T-13)", async () => {
+    const assigneeId = "00000000-0000-4000-8000-000000000002";
+    state.actions = [actionRow({ assignee_user_id: assigneeId, assignee_name: "accepted@example.test" }), actionRow({ id: "a2" })];
+    const result = await listActions(ctx, { assignee: assigneeId });
+    expect(result.actions).toHaveLength(1);
+    expect(result.actions[0].assignee).toEqual({ id: assigneeId, name: "accepted@example.test" });
+    expect(result.counts.all).toBe(1);
+    expect(repository.versions).not.toHaveBeenCalled();
+    expect(repository.runs).not.toHaveBeenCalled();
+  });
+  it("distinguishes an unavailable assigned member from an unassigned action (T-13)", async () => {
+    const assigneeId = "00000000-0000-4000-8000-000000000002";
+    state.actions = [actionRow({ assignee_user_id: assigneeId, assignee_name: null }), actionRow({ id: "a2" })];
+    const result = await listActions(ctx, {});
+    expect(result.actions.find(action => action.id === "a1")?.assignee).toEqual({ id: assigneeId, name: "" });
+    expect(result.actions.find(action => action.id === "a2")?.assignee).toBeUndefined();
+  });
+  it("bounds the default list to 25, with counts independent of the page (T-12)", async () => {
+    state.actions = Array.from({ length: 31 }, (_, i) => actionRow({ id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`, action_state: "recommended" }));
+    const result = await listActions(ctx, { view: "all" });
+    expect(result.actions).toHaveLength(25);
+    expect(result.counts.all).toBe(31);
+    expect(result).toMatchObject({ hasMore: true, nextCursor: expect.any(String) });
+    expect(repository.versions).not.toHaveBeenCalled();
+    expect(repository.runs).not.toHaveBeenCalled();
+  });
+  it("rejects an over-limit page and invalid cursor (T-12)", async () => {
+    const tooLarge = { view: "all" as const, pageSize: 51 };
+    const badCursor = { view: "all" as const, cursor: "bad.cursor" };
+    await expect(listActions(ctx, tooLarge)).rejects.toThrow("invalid_action_page_size");
+    await expect(listActions(ctx, badCursor)).rejects.toThrow("invalid_action_cursor");
+  });
+  it("keeps scoped counts identical across every active tab with a faithful state filter (T-09)", async () => {
+    state.actions.push(actionRow({ id: "done", action_state: "completed" }), actionRow({ id: "dismissed", action_state: "dismissed" }), actionRow({ id: "other", workspace_id: "other-workspace", action_state: "completed" }));
+    const baseline = await listActions(ctx, { location: "all" });
+    expect(baseline.counts).toMatchObject({ all: 2, needs_input: 1, completed: 1 });
+    for (const view of ["all", "needs_input", "drafts", "awaiting_approval", "completed"] as const) {
+      expect((await listActions(ctx, { location: "all", view })).counts).toEqual(baseline.counts);
+    }
+    const instagram = await listActions(ctx, { channel: "instagram", view: "completed" });
+    expect(instagram.counts).toMatchObject({ all: 1, needs_input: 0, completed: 0 });
+    const completed = await listActions(ctx, { status: "completed", view: "completed" });
+    expect(completed.counts).toMatchObject({ all: 0, completed: 1 });
+  });
+
   it("counts the tabs and applies view and channel filters", async () => {
     const all = await listActions(ctx, { location: "all" });
     expect(all.counts).toMatchObject({ all: 2, needs_input: 1, completed: 0 });

@@ -9,6 +9,8 @@ import {
 import { recordNeonEvent } from "@/lib/workspace/audit";
 import { loadWorkspaceContext } from "@/lib/workspace/queries";
 import { getAction } from "@/lib/workspace/queries-pages";
+import { parseAssignmentPatch } from "@/lib/workspace/action-assignment";
+import { assignmentUpdateService } from "@/lib/workspace/bulk-action-updates";
 
 /**
  * PATCH /api/actions/[actionId] { action_state?: 'dismissed', assignee_user_id?, due_at?, provided_inputs? }
@@ -28,6 +30,12 @@ export async function PATCH(
 
   const patch: Record<string, unknown> = {};
   const changes: Record<string, unknown> = {};
+  const hasAssignment = "assignee_user_id" in body || "due_at" in body;
+  let assignment;
+  if (hasAssignment) {
+    try { assignment = parseAssignmentPatch(Object.fromEntries(Object.entries(body).filter(([key]) => ["assignee_user_id", "due_at"].includes(key)))); }
+    catch { return json({ error: "invalid_assignment_patch" }, 400); }
+  }
   if (body.action_state !== undefined) {
     // `completed` is deliberately NOT accepted here. Completion is a
     // consequence of an owner assertion, written by POST .../applied in the
@@ -108,7 +116,11 @@ export async function PATCH(
   patch.updated_at = new Date().toISOString();
 
   try {
-    await actionMutationRepository().patch(
+    if (assignment) {
+      const extra = Object.fromEntries(Object.entries(patch).filter(([key]) => ["action_state", "provided_inputs"].includes(key)));
+      const result = await assignmentUpdateService().item({ workspaceId: auth.scope.workspaceId, userId: auth.user.id, locale: localeFrom(req, body), ipHash: auth.ipHash }, { actionId }, assignment, "apply", extra);
+      if (!["updated", "no_change"].includes(result.status)) return json({ error: result.status }, result.status === "not_found" ? 404 : result.status === "forbidden" ? 403 : result.status === "conflict" ? 409 : 503);
+    } else await actionMutationRepository().patch(
       actionId,
       auth.scope.workspaceId,
       patch,
@@ -117,7 +129,7 @@ export async function PATCH(
     return json({ error: "unavailable" }, 503);
   }
 
-  await recordNeonEvent({
+  if (!assignment) await recordNeonEvent({
     workspaceId: auth.scope.workspaceId,
     locationId: auth.scope.locationId,
     actorType: "user",

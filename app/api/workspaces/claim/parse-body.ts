@@ -1,4 +1,5 @@
 import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
+import { parseReportSlug } from "@/lib/report-access/slug";
 import { BRAND_VOICES } from "@/lib/workspace/brand";
 import { isValidTimezone, type ClaimMarket } from "@/lib/workspace/claim";
 
@@ -14,7 +15,6 @@ import { isValidTimezone, type ClaimMarket } from "@/lib/workspace/claim";
  * accepted too, so a client using the TypeScript input type does not silently
  * 400.
  */
-const SLUG_RE = /^[A-Za-z0-9_-]{6,64}$/;
 const MAX_NAME = 160;
 const MAX_ADDRESS = 500;
 
@@ -43,8 +43,8 @@ export function parseClaimBody(raw: unknown): { ok: true; body: ParsedBody } | {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ok: false, error: "body must be an object" };
   const body = raw as Record<string, unknown>;
 
-  const claimSlug = limitedString(pick(body, "claim_slug", "claimSlug"), 64);
-  if (!claimSlug || !SLUG_RE.test(claimSlug)) return { ok: false, error: "claim_slug is invalid" };
+  const claimSlug = parseReportSlug(pick(body, "claim_slug", "claimSlug"));
+  if (!claimSlug) return { ok: false, error: "claim_slug is invalid" };
 
   const workspaceName = limitedString(pick(body, "workspace_name", "workspaceName"), MAX_NAME);
   if (!workspaceName) return { ok: false, error: "workspace_name is required" };

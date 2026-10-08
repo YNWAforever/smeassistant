@@ -1,0 +1,116 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ lib/mail/deliver.test.ts (21 tests | 3 failed) 42ms
+     × signs the same unsubscribe expiry (and therefore an identical MailMessage) across two attempts at the same row, regardless of how much later the retry runs 6ms (retry x1)
+     × isolates one row's exception: a later row still sends when an earlier row's sendFacts rejects, and the failed row is finished retry 8ms (retry x1)
+     × goes dead (rather than retry) when a row's exception happens on the 5th attempt 3ms (retry x1)
+ ❯ lib/mail/transport.test.ts (4 tests | 1 failed) 11ms
+     × delegates to the Resend driver with the configured key and from address once both are set 7ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/mail/deliver.test.ts > deliverMail > signs the same unsubscribe expiry (and therefore an identical MailMessage) across two attempts at the same row, regardless of how much later the retry runs
+ FAIL  lib/mail/deliver.test.ts > deliverMail > signs the same unsubscribe expiry (and therefore an identical MailMessage) across two attempts at the same row, regardless of how much later the retry runs
+AssertionError: expected 2nd "vi.fn()" call to have been called with [ ObjectContaining{…}, …(1) ], but called only 1 times
+ ❯ lib/mail/deliver.test.ts:320:34
+    318|       OPEN_ENV.MAIL_UNSUBSCRIBE_SECRET,
+    319|     );
+    320|     expect(signUnsubscribeToken).toHaveBeenNthCalledWith(
+       |                                  ^
+    321|       2,
+    322|       expect.objectContaining({ expiresAt: expectedExpiresAt }),
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  lib/mail/deliver.test.ts > deliverMail > isolates one row's exception: a later row still sends when an earlier row's sendFacts rejects, and the failed row is finished retry
+ FAIL  lib/mail/deliver.test.ts > deliverMail > isolates one row's exception: a later row still sends when an earlier row's sendFacts rejects, and the failed row is finished retry
+AssertionError: expected { sent: 1, retried: 9, held: +0, …(4) } to deeply equal { sent: 1, retried: 1, held: +0, …(4) }
+
+- Expected
++ Received
+
+@@ -2,8 +2,8 @@
+    "dead": 0,
+    "deferred": false,
+    "expired": 0,
+    "held": 0,
+    "paused": false,
+-   "retried": 1,
++   "retried": 9,
+    "sent": 1,
+  }
+
+ ❯ lib/mail/deliver.test.ts:366:21
+    364|     const summary = await deliverMail({ repo, transport, env: OPEN_ENV…
+    365|
+    366|     expect(summary).toEqual({ sent: 1, retried: 1, held: 0, dead: 0, e…
+       |                     ^
+    367|     expect(transport.send).toHaveBeenCalledTimes(1);
+    368|     expect(finish).toHaveBeenCalledWith(rowA.id, rowA.lease_token, {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  lib/mail/deliver.test.ts > deliverMail > goes dead (rather than retry) when a row's exception happens on the 5th attempt
+ FAIL  lib/mail/deliver.test.ts > deliverMail > goes dead (rather than retry) when a row's exception happens on the 5th attempt
+AssertionError: expected { sent: +0, retried: +0, …(5) } to deeply equal { sent: +0, retried: +0, …(5) }
+
+- Expected
++ Received
+
+@@ -1,7 +1,7 @@
+  {
+-   "dead": 1,
++   "dead": 10,
+    "deferred": false,
+    "expired": 0,
+    "held": 0,
+    "paused": false,
+    "retried": 0,
+
+ ❯ lib/mail/deliver.test.ts:393:21
+    391|     const summary = await deliverMail({ repo, transport, env: OPEN_ENV…
+    392|
+    393|     expect(summary).toEqual({ sent: 0, retried: 0, held: 0, dead: 1, e…
+       |                     ^
+    394|     expect(finish).toHaveBeenCalledWith(row.id, row.lease_token, { sta…
+    395|     errorSpy.mockRestore();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  lib/mail/transport.test.ts > createMailTransport > delegates to the Resend driver with the configured key and from address once both are set
+ FAIL  lib/mail/transport.test.ts > createMailTransport > delegates to the Resend driver with the configured key and from address once both are set
+AssertionError: expected "vi.fn()" to be called with arguments: [ { apiKey: 'key-1', …(1) }, …(1) ]
+
+Received:
+
+  1st vi.fn() call:
+
+@@ -7,6 +7,7 @@
+      "dedupeKey": "k1",
+      "subject": "Hi",
+      "text": "body",
+      "to": "owner@example.test",
+    },
++   undefined,
+  ]
+
+
+Number of calls: 1
+
+ ❯ lib/mail/transport.test.ts:40:27
+     38|     }).send(MESSAGE);
+     39|     expect(result).toEqual({ status: "accepted_by_provider", providerM…
+     40|     expect(sendViaResend).toHaveBeenCalledWith({ apiKey: "key-1", from…
+       |                           ^
+     41|   });
+     42|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+
+ Test Files  2 failed | 3 passed (5)
+      Tests  4 failed | 35 passed (39)
+   Start at  05:02:54
+   Duration  4.15s (transform 191ms, setup 1.65s, import 266ms, tests 100ms, environment 1ms)
+

@@ -34,10 +34,16 @@ test("an accepted fixture account is not required for no-access recovery or a re
   await page.goto("/en/owner/sign-in");
   await page.getByRole("button", { name: "Continue with Google", exact: true }).click();
   await expect(page.getByText("This account does not have access to a workspace yet.")).toBeVisible();
-  // FA-13: the card names one real path (flag off here, so the report's claim button) and links only to the scan.
+  // T-18: the memberless user can view own status without retrying sign-in.
   await expect(page.getByText("If you own the business: run a free scan, unlock the report, choose “Sign in to claim this business”, then follow the steps to have Fimmick verify and assign it.")).toBeVisible();
   await expect(page.getByText("If you’re a colleague: ask the owner to add your email under “Team & roles”, then sign in again with that same email.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Start with a free scan", exact: true })).toHaveAttribute("href", "/en/scan");
+  await page.getByRole("link", { name: "View my requests and workspaces", exact: true }).click();
+  await expect(page).toHaveURL(/\/en\/owner\/select-workspace$/);
+  await expect(page.getByText("Your email isn’t linked to a workspace yet.", { exact: true })).toBeVisible();
+  expect(accepted()).toBe("0");
+  await page.goto("/en/owner/sign-in/complete?method=google");
+  await expect(page.getByText("This account does not have access to a workspace yet.")).toBeVisible();
   expect(accepted()).toBe("0");
   await page.getByRole("button", { name: "Change account", exact: true }).click();
   await expect(page.getByRole("button", { name: "Continue with Google", exact: true })).toBeVisible();

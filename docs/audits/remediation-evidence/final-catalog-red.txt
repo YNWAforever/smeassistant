@@ -1,0 +1,1071 @@
+
+> sme-scanner-visibility-workspace@0.1.0 db:verify C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation
+> tsx scripts/neon/verify-migrations.ts
+
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: all final indexes and predicates
++ actual - expected
+... Skipped lines
+
+  [
+    {
+      indexdef: 'CREATE INDEX action_applications_action_idx ON public.action_applications USING btree (action_id, source, asserted_at DESC) WHERE (retracted_at IS NULL)',
+      indexname: 'action_applications_action_idx',
+      tablename: 'action_applications'
+...
+    {
++     indexdef: 'CREATE INDEX action_runs_latest_metadata_idx ON public.action_runs USING btree (workspace_id, action_id, created_at DESC, id DESC) INCLUDE (state)',
++     indexname: 'action_runs_latest_metadata_idx',
++     tablename: 'action_runs'
++   },
++   {
+      indexdef: 'CREATE UNIQUE INDEX action_runs_pkey ON public.action_runs USING btree (id)',
+      indexname: 'action_runs_pkey',
+      tablename: 'action_runs'
+    },
+    {
+...
+    {
++     indexdef: 'CREATE INDEX actions_list_keyset_idx ON public.actions USING btree (workspace_id, COALESCE(priority_score, (0)::numeric) DESC, updated_at DESC, id DESC) INCLUDE (location_id, action_state, template_key)',
++     indexname: 'actions_list_keyset_idx',
++     tablename: 'actions'
++   },
++   {
+      indexdef: 'CREATE INDEX actions_offer_idx ON public.actions USING btree (offer_id)',
+      indexname: 'actions_offer_idx',
+      tablename: 'actions'
+    },
+    {
+...
+    {
++     indexdef: 'CREATE INDEX output_versions_latest_metadata_idx ON public.output_versions USING btree (workspace_id, action_id, version_no DESC, id DESC) INCLUDE (approval_state, delivery_state, first_exported_at)',
++     indexname: 'output_versions_latest_metadata_idx',
++     tablename: 'output_versions'
++   },
++   {
+      indexdef: 'CREATE UNIQUE INDEX output_versions_pkey ON public.output_versions USING btree (id)',
+      indexname: 'output_versions_pkey',
+      tablename: 'output_versions'
+    },
+    {
+
+    at verifyCatalog (C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\scripts\neon\catalog.ts:57:10)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-audit-remediation\scripts\neon\verify-migrations.ts:12:19) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: [
+    {
+      tablename: 'action_applications',
+      indexname: 'action_applications_action_idx',
+      indexdef: 'CREATE INDEX action_applications_action_idx ON public.action_applications USING btree (action_id, source, asserted_at DESC) WHERE (retracted_at IS NULL)'
+    },
+    {
+      tablename: 'action_applications',
+      indexname: 'action_applications_pkey',
+      indexdef: 'CREATE UNIQUE INDEX action_applications_pkey ON public.action_applications USING btree (id)'
+    },
+    {
+      tablename: 'action_measurements',
+      indexname: 'action_measurements_pkey',
+      indexdef: 'CREATE UNIQUE INDEX action_measurements_pkey ON public.action_measurements USING btree (id)'
+    },
+    {
+      tablename: 'action_runs',
+      indexname: 'action_runs_created_idx',
+      indexdef: 'CREATE INDEX action_runs_created_idx ON public.action_runs USING btree (created_at)'
+    },
+    {
+      tablename: 'action_runs',
+      indexname: 'action_runs_latest_metadata_idx',
+      indexdef: 'CREATE INDEX action_runs_latest_metadata_idx ON public.action_runs USING btree (workspace_id, action_id, created_at DESC, id DESC) INCLUDE (state)'
+    },
+    {
+      tablename: 'action_runs',
+      indexname: 'action_runs_pkey',
+      indexdef: 'CREATE UNIQUE INDEX action_runs_pkey ON public.action_runs USING btree (id)'
+    },
+    {
+      tablename: 'action_runs',
+      indexname: 'action_runs_workspace_created_idx',
+      indexdef: 'CREATE INDEX action_runs_workspace_created_idx ON public.action_runs USING btree (workspace_id, created_at)'
+    },
+    {
+      tablename: 'actions',
+      indexname: 'actions_list_keyset_idx',
+      indexdef: 'CREATE INDEX actions_list_keyset_idx ON public.actions USING btree (workspace_id, COALESCE(priority_score, (0)::numeric) DESC, updated_at DESC, id DESC) INCLUDE (location_id, action_state, template_key)'
+    },
+    {
+      tablename: 'actions',
+      indexname: 'actions_offer_idx',
+      indexdef: 'CREATE INDEX actions_offer_idx ON public.actions USING btree (offer_id)'
+    },
+    {
+      tablename: 'actions',
+      indexname: 'actions_open_dedupe_idx',
+      indexdef: "CREATE UNIQUE INDEX actions_open_dedupe_idx ON public.actions USING btree (dedupe_key) WHERE (action_state <> ALL (ARRAY['completed'::text, 'dismissed'::text, 'cancelled'::text, 'expired'::text]))"
+    },
+    {
+      tablename: 'actions',
+      indexname: 'actions_pkey',
+      indexdef: 'CREATE UNIQUE INDEX actions_pkey ON public.actions USING btree (id)'
+    },
+    {
+      tablename: 'actions',
+      indexname: 'actions_verification_sweep_idx',
+      indexdef: 'CREATE INDEX actions_verification_sweep_idx ON public.actions USING btree (template_key, verification_checked_at)'
+    },
+    {
+      tablename: 'aeo_surface_snapshots',
+      indexname: 'aeo_surface_snapshots_job_id_surface_query_text_key',
+      indexdef: 'CREATE UNIQUE INDEX aeo_surface_snapshots_job_id_surface_query_text_key ON public.aeo_surface_snapshots USING btree (job_id, surface, query_text)'
+    },
+    {
+      tablename: 'aeo_surface_snapshots',
+      indexname: 'aeo_surface_snapshots_job_idx',
+      indexdef: 'CREATE INDEX aeo_surface_snapshots_job_idx ON public.aeo_surface_snapshots USING btree (job_id)'
+    },
+    {
+      tablename: 'aeo_surface_snapshots',
+      indexname: 'aeo_surface_snapshots_pkey',
+      indexdef: 'CREATE UNIQUE INDEX aeo_surface_snapshots_pkey ON public.aeo_surface_snapshots USING btree (id)'
+    },
+    {
+      tablename: 'aeo_surface_snapshots',
+      indexname: 'aeo_surface_snapshots_place_surface_idx',
+      indexdef: 'CREATE INDEX aeo_surface_snapshots_place_surface_idx ON public.aeo_surface_snapshots USING btree (place_id, surface, captured_at DESC)'
+    },
+    {
+      tablename: 'agent_runs',
+      indexname: 'agent_runs_job_status_idx',
+      indexdef: 'CREATE INDEX agent_runs_job_status_idx ON public.agent_runs USING btree (job_id, status)'
+    },
+    {
+      tablename: 'agent_runs',
+      indexname: 'agent_runs_pkey',
+      indexdef: 'CREATE UNIQUE INDEX agent_runs_pkey ON public.agent_runs USING btree (id)'
+    },
+    {
+      tablename: 'assets',
+      indexname: 'assets_pkey',
+      indexdef: 'CREATE UNIQUE INDEX assets_pkey ON public.assets USING btree (id)'
+    },
+    {
+      tablename: 'audit_events',
+      indexname: 'audit_events_idempotency_key_idx',
+      indexdef: 'CREATE UNIQUE INDEX audit_events_idempotency_key_idx ON public.audit_events USING btree (idempotency_key)'
+    },
+    {
+      tablename: 'audit_events',
+      indexname: 'audit_events_pkey',
+      indexdef: 'CREATE UNIQUE INDEX audit_events_pkey ON public.audit_events USING btree (id)'
+    },
+    {
+      tablename: 'audit_events',
+      indexname: 'audit_events_workspace_idx',
+      indexdef: 'CREATE INDEX audit_events_workspace_idx ON public.audit_events USING btree (workspace_id, created_at DESC)'
+    },
+    {
+      tablename: 'audit_findings',
+      indexname: 'audit_findings_job_finding_key_unique_idx',
+      indexdef: 'CREATE UNIQUE INDEX audit_findings_job_finding_key_unique_idx ON public.audit_findings USING btree (job_id, finding_key)'
+    },
+    {
+      tablename: 'audit_findings',
+      indexname: 'audit_findings_job_id_finding_key_idx',
+      indexdef: 'CREATE INDEX audit_findings_job_id_finding_key_idx ON public.audit_findings USING btree (job_id, finding_key)'
+    },
+    {
+      tablename: 'audit_findings',
+      indexname: 'audit_findings_pkey',
+      indexdef: 'CREATE UNIQUE INDEX audit_findings_pkey ON public.audit_findings USING btree (id)'
+    },
+    {
+      tablename: 'audit_jobs',
+      indexname: 'audit_jobs_pkey',
+      indexdef: 'CREATE UNIQUE INDEX audit_jobs_pkey ON public.audit_jobs USING btree (id)'
+    },
+    {
+      tablename: 'audit_jobs',
+      indexname: 'audit_jobs_place_created_idx',
+      indexdef: 'CREATE INDEX audit_jobs_place_created_idx ON public.audit_jobs USING btree (place_id, created_at DESC)'
+    },
+    {
+      tablename: 'audit_jobs',
+      indexname: 'audit_jobs_share_slug_idx',
+      indexdef: 'CREATE INDEX audit_jobs_share_slug_idx ON public.audit_jobs USING btree (share_slug)'
+    },
+    {
+      tablename: 'audit_jobs',
+      indexname: 'audit_jobs_share_slug_key',
+      indexdef: 'CREATE UNIQUE INDEX audit_jobs_share_slug_key ON public.audit_jobs USING btree (share_slug)'
+    },
+    {
+      tablename: 'audit_jobs',
+      indexname: 'audit_jobs_stale_claim_idx',
+      indexdef: "CREATE INDEX audit_jobs_stale_claim_idx ON public.audit_jobs USING btree (last_attempt_at) WHERE (status = ANY (ARRAY['collecting'::text, 'scoring'::text, 'persisting'::text]))"
+    },
+    {
+      tablename: 'brand_profiles',
+      indexname: 'brand_profiles_pkey',
+      indexdef: 'CREATE UNIQUE INDEX brand_profiles_pkey ON public.brand_profiles USING btree (workspace_id)'
+    },
+    {
+      tablename: 'consent_records',
+      indexname: 'consent_records_job_id_idx',
+      indexdef: 'CREATE INDEX consent_records_job_id_idx ON public.consent_records USING btree (job_id)'
+    },
+    {
+      tablename: 'consent_records',
+      indexname: 'consent_records_pkey',
+      indexdef: 'CREATE UNIQUE INDEX consent_records_pkey ON public.consent_records USING btree (id)'
+    },
+    {
+      tablename: 'deliveries',
+      indexname: 'deliveries_active_publish_target_key',
+      indexdef: "CREATE UNIQUE INDEX deliveries_active_publish_target_key ON public.deliveries USING btree (target_ref) WHERE ((mode = 'publish'::text) AND (state = ANY (ARRAY['publishing'::text, 'published'::text])))"
+    },
+    {
+      tablename: 'deliveries',
+      indexname: 'deliveries_active_publish_version_key',
+      indexdef: "CREATE UNIQUE INDEX deliveries_active_publish_version_key ON public.deliveries USING btree (version_id) WHERE ((mode = 'publish'::text) AND (state = ANY (ARRAY['publishing'::text, 'published'::text])))"
+    },
+    {
+      tablename: 'deliveries',
+      indexname: 'deliveries_idempotency_key_key',
+      indexdef: 'CREATE UNIQUE INDEX deliveries_idempotency_key_key ON public.deliveries USING btree (idempotency_key)'
+    },
+    {
+      tablename: 'deliveries',
+      indexname: 'deliveries_pkey',
+      indexdef: 'CREATE UNIQUE INDEX deliveries_pkey ON public.deliveries USING btree (id)'
+    },
+    {
+      tablename: 'erasure_events',
+      indexname: 'erasure_events_created_at_idx',
+      indexdef: 'CREATE INDEX erasure_events_created_at_idx ON public.erasure_events USING btree (created_at DESC)'
+    },
+    {
+      tablename: 'erasure_events',
+      indexname: 'erasure_events_pkey',
+      indexdef: 'CREATE UNIQUE INDEX erasure_events_pkey ON public.erasure_events USING btree (id)'
+    },
+    {
+      tablename: 'leads',
+      indexname: 'leads_pkey',
+      indexdef: 'CREATE UNIQUE INDEX leads_pkey ON public.leads USING btree (id)'
+    },
+    {
+      tablename: 'locations',
+      indexname: 'locations_pkey',
+      indexdef: 'CREATE UNIQUE INDEX locations_pkey ON public.locations USING btree (id)'
+    },
+    {
+      tablename: 'locations',
+      indexname: 'locations_workspace_id_slug_key',
+      indexdef: 'CREATE UNIQUE INDEX locations_workspace_id_slug_key ON public.locations USING btree (workspace_id, slug)'
+    },
+    {
+      tablename: 'mail_outbox',
+      indexname: 'mail_outbox_due_idx',
+      indexdef: 'CREATE INDEX mail_outbox_due_idx ON public.mail_outbox USING btree (state, next_attempt_at)'
+    },
+    {
+      tablename: 'mail_outbox',
+      indexname: 'mail_outbox_pkey',
+      indexdef: 'CREATE UNIQUE INDEX mail_outbox_pkey ON public.mail_outbox USING btree (id)'
+    },
+    {
+      tablename: 'mail_outbox',
+      indexname: 'mail_outbox_workspace_idx',
+      indexdef: 'CREATE INDEX mail_outbox_workspace_idx ON public.mail_outbox USING btree (workspace_id, created_at DESC)'
+    },
+    {
+      tablename: 'notification_events',
+      indexname: 'notification_events_job_id_key',
+      indexdef: 'CREATE UNIQUE INDEX notification_events_job_id_key ON public.notification_events USING btree (job_id) WHERE (job_id IS NOT NULL)'
+    },
+    {
+      tablename: 'notification_events',
+      indexname: 'notification_events_pkey',
+      indexdef: 'CREATE UNIQUE INDEX notification_events_pkey ON public.notification_events USING btree (id)'
+    },
+    {
+      tablename: 'notification_events',
+      indexname: 'notification_events_workspace_idx',
+      indexdef: 'CREATE INDEX notification_events_workspace_idx ON public.notification_events USING btree (workspace_id, created_at DESC)'
+    },
+    {
+      tablename: 'oauth_connections',
+      indexname: 'oauth_connections_active_provider_key',
+      indexdef: "CREATE UNIQUE INDEX oauth_connections_active_provider_key ON public.oauth_connections USING btree (workspace_id, provider) WHERE (status = 'active'::text)"
+    },
+    {
+      tablename: 'oauth_connections',
+      indexname: 'oauth_connections_pkey',
+      indexdef: 'CREATE UNIQUE INDEX oauth_connections_pkey ON public.oauth_connections USING btree (id)'
+    },
+    {
+      tablename: 'oauth_connections',
+      indexname: 'oauth_connections_workspace_idx',
+      indexdef: 'CREATE INDEX oauth_connections_workspace_idx ON public.oauth_connections USING btree (workspace_id)'
+    },
+    {
+      tablename: 'offers',
+      indexname: 'offers_pkey',
+      indexdef: 'CREATE UNIQUE INDEX offers_pkey ON public.offers USING btree (id)'
+    },
+    {
+      tablename: 'offers',
+      indexname: 'offers_workspace_idx',
+      indexdef: 'CREATE INDEX offers_workspace_idx ON public.offers USING btree (workspace_id, status, valid_until)'
+    },
+    {
+      tablename: 'output_versions',
+      indexname: 'output_versions_action_id_version_no_key',
+      indexdef: 'CREATE UNIQUE INDEX output_versions_action_id_version_no_key ON public.output_versions USING btree (action_id, version_no)'
+    },
+    {
+      tablename: 'output_versions',
+      indexname: 'output_versions_latest_metadata_idx',
+      indexdef: 'CREATE INDEX output_versions_latest_metadata_idx ON public.output_versions USING btree (workspace_id, action_id, version_no DESC, id DESC) INCLUDE (approval_state, delivery_state, first_exported_at)'
+    },
+    {
+      tablename: 'output_versions',
+      indexname: 'output_versions_pkey',
+      indexdef: 'CREATE UNIQUE INDEX output_versions_pkey ON public.output_versions USING btree (id)'
+    },
+    {
+      tablename: 'preview_events',
+      indexname: 'preview_events_created_idx',
+      indexdef: 'CREATE INDEX preview_events_created_idx ON public.preview_events USING btree (created_at)'
+    },
+    {
+      tablename: 'preview_events',
+      indexname: 'preview_events_grant_idx',
+      indexdef: 'CREATE INDEX preview_events_grant_idx ON public.preview_events USING btree (grant_id)'
+    },
+    {
+      tablename: 'preview_events',
+      indexname: 'preview_events_job_idx',
+      indexdef: 'CREATE INDEX preview_events_job_idx ON public.preview_events USING btree (job_id)'
+    },
+    {
+      tablename: 'preview_events',
+      indexname: 'preview_events_pkey',
+      indexdef: 'CREATE UNIQUE INDEX preview_events_pkey ON public.preview_events USING btree (id)'
+    },
+    {
+      tablename: 'rate_limit_buckets',
+      indexname: 'rate_limit_buckets_expires_at_idx',
+      indexdef: 'CREATE INDEX rate_limit_buckets_expires_at_idx ON public.rate_limit_buckets USING btree (expires_at)'
+    },
+    {
+      tablename: 'rate_limit_buckets',
+      indexname: 'rate_limit_buckets_pkey',
+      indexdef: 'CREATE UNIQUE INDEX rate_limit_buckets_pkey ON public.rate_limit_buckets USING btree (bucket_key)'
+    },
+    {
+      tablename: 'report_access_grants',
+      indexname: 'report_access_grants_job_id_idx',
+      indexdef: 'CREATE INDEX report_access_grants_job_id_idx ON public.report_access_grants USING btree (job_id)'
+    },
+    {
+      tablename: 'report_access_grants',
+      indexname: 'report_access_grants_job_idempotency_key_unique_idx',
+      indexdef: 'CREATE UNIQUE INDEX report_access_grants_job_idempotency_key_unique_idx ON public.report_access_grants USING btree (job_id, idempotency_key)'
+    },
+    {
+      tablename: 'report_access_grants',
+      indexname: 'report_access_grants_pkey',
+      indexdef: 'CREATE UNIQUE INDEX report_access_grants_pkey ON public.report_access_grants USING btree (id)'
+    },
+    {
+      tablename: 'report_access_grants',
+      indexname: 'report_access_grants_token_hash_unique_idx',
+      indexdef: 'CREATE UNIQUE INDEX report_access_grants_token_hash_unique_idx ON public.report_access_grants USING btree (token_hash)'
+    },
+    {
+      tablename: 'report_evidence',
+      indexname: 'report_evidence_job_captured_idx',
+      indexdef: 'CREATE INDEX report_evidence_job_captured_idx ON public.report_evidence USING btree (job_id, captured_at DESC)'
+    },
+    {
+      tablename: 'report_evidence',
+      indexname: 'report_evidence_job_id_provider_evidence_type_source_id_key',
+      indexdef: 'CREATE UNIQUE INDEX report_evidence_job_id_provider_evidence_type_source_id_key ON public.report_evidence USING btree (job_id, provider, evidence_type, source_id)'
+    },
+    {
+      tablename: 'report_evidence',
+      indexname: 'report_evidence_pkey',
+      indexdef: 'CREATE UNIQUE INDEX report_evidence_pkey ON public.report_evidence USING btree (id)'
+    },
+    {
+      tablename: 'scan_attempts',
+      indexname: 'scan_attempts_attempted_idx',
+      indexdef: 'CREATE INDEX scan_attempts_attempted_idx ON public.scan_attempts USING btree (attempted_at)'
+    },
+    {
+      tablename: 'scan_attempts',
+      indexname: 'scan_attempts_pkey',
+      indexdef: 'CREATE UNIQUE INDEX scan_attempts_pkey ON public.scan_attempts USING btree (id)'
+    },
+    {
+      tablename: 'scan_attempts',
+      indexname: 'scan_attempts_workspace_idx',
+      indexdef: 'CREATE INDEX scan_attempts_workspace_idx ON public.scan_attempts USING btree (workspace_id, attempted_at)'
+    },
+    {
+      tablename: 'scan_diffs',
+      indexname: 'scan_diffs_base_job_id_head_job_id_key',
+      indexdef: 'CREATE UNIQUE INDEX scan_diffs_base_job_id_head_job_id_key ON public.scan_diffs USING btree (base_job_id, head_job_id)'
+    },
+    {
+      tablename: 'scan_diffs',
+      indexname: 'scan_diffs_head_idx',
+      indexdef: 'CREATE INDEX scan_diffs_head_idx ON public.scan_diffs USING btree (head_job_id)'
+    },
+    {
+      tablename: 'scan_diffs',
+      indexname: 'scan_diffs_pkey',
+      indexdef: 'CREATE UNIQUE INDEX scan_diffs_pkey ON public.scan_diffs USING btree (id)'
+    },
+    {
+      tablename: 'scan_events',
+      indexname: 'scan_events_dedupe_identity_unique_idx',
+      indexdef: 'CREATE UNIQUE INDEX scan_events_dedupe_identity_unique_idx ON public.scan_events USING btree (job_id, anonymous_session_id, event_name, dedupe_key)'
+    },
+    {
+      tablename: 'scan_events',
+      indexname: 'scan_events_job_id_created_at_idx',
+      indexdef: 'CREATE INDEX scan_events_job_id_created_at_idx ON public.scan_events USING btree (job_id, created_at DESC)'
+    },
+    {
+      tablename: 'scan_events',
+      indexname: 'scan_events_job_id_event_name_idx',
+      indexdef: 'CREATE INDEX scan_events_job_id_event_name_idx ON public.scan_events USING btree (job_id, event_name)'
+    },
+    {
+      tablename: 'scan_events',
+      indexname: 'scan_events_pkey',
+      indexdef: 'CREATE UNIQUE INDEX scan_events_pkey ON public.scan_events USING btree (id)'
+    },
+    {
+      tablename: 'scan_schedules',
+      indexname: 'scan_schedules_due_idx',
+      indexdef: "CREATE INDEX scan_schedules_due_idx ON public.scan_schedules USING btree (next_run_at) WHERE (cadence = 'monthly'::text)"
+    },
+    {
+      tablename: 'scan_schedules',
+      indexname: 'scan_schedules_pkey',
+      indexdef: 'CREATE UNIQUE INDEX scan_schedules_pkey ON public.scan_schedules USING btree (id)'
+    },
+    {
+      tablename: 'scan_schedules',
+      indexname: 'scan_schedules_place_id_key',
+      indexdef: 'CREATE UNIQUE INDEX scan_schedules_place_id_key ON public.scan_schedules USING btree (place_id)'
+    },
+    {
+      tablename: 'scan_schedules',
+      indexname: 'scan_schedules_workspace_idx',
+      indexdef: 'CREATE INDEX scan_schedules_workspace_idx ON public.scan_schedules USING btree (workspace_id)'
+    },
+    {
+      tablename: 'scan_snapshots',
+      indexname: 'scan_snapshots_job_id_key',
+      indexdef: 'CREATE UNIQUE INDEX scan_snapshots_job_id_key ON public.scan_snapshots USING btree (job_id)'
+    },
+    {
+      tablename: 'scan_snapshots',
+      indexname: 'scan_snapshots_pkey',
+      indexdef: 'CREATE UNIQUE INDEX scan_snapshots_pkey ON public.scan_snapshots USING btree (id)'
+    },
+    {
+      tablename: 'staff_report_events',
+      indexname: 'staff_report_events_job_id_created_at_idx',
+      indexdef: 'CREATE INDEX staff_report_events_job_id_created_at_idx ON public.staff_report_events USING btree (job_id, created_at DESC)'
+    },
+    {
+      tablename: 'staff_report_events',
+      indexname: 'staff_report_events_pkey',
+      indexdef: 'CREATE UNIQUE INDEX staff_report_events_pkey ON public.staff_report_events USING btree (id)'
+    },
+    {
+      tablename: 'work_pack_items',
+      indexname: 'work_pack_items_action_idx',
+      indexdef: 'CREATE INDEX work_pack_items_action_idx ON public.work_pack_items USING btree (action_id)'
+    },
+    {
+      tablename: 'work_pack_items',
+      indexname: 'work_pack_items_pkey',
+      indexdef: 'CREATE UNIQUE INDEX work_pack_items_pkey ON public.work_pack_items USING btree (pack_id, template_key)'
+    },
+    {
+      tablename: 'work_packs',
+      indexname: 'work_packs_open_idx',
+      indexdef: "CREATE UNIQUE INDEX work_packs_open_idx ON public.work_packs USING btree (workspace_id, COALESCE(location_id, '00000000-0000-0000-0000-000000000000'::uuid), kind) WHERE (closed_at IS NULL)"
+    },
+    {
+      tablename: 'work_packs',
+      indexname: 'work_packs_pkey',
+      indexdef: 'CREATE UNIQUE INDEX work_packs_pkey ON public.work_packs USING btree (id)'
+    },
+    {
+      tablename: 'workspace_access_requests',
+      indexname: 'workspace_access_requests_open_idx',
+      indexdef: 'CREATE UNIQUE INDEX workspace_access_requests_open_idx ON public.workspace_access_requests USING btree (job_id, user_id) WHERE (resolved_at IS NULL)'
+    },
+    {
+      tablename: 'workspace_access_requests',
+      indexname: 'workspace_access_requests_pending_idx',
+      indexdef: 'CREATE INDEX workspace_access_requests_pending_idx ON public.workspace_access_requests USING btree (requested_at DESC) WHERE (resolved_at IS NULL)'
+    },
+    {
+      tablename: 'workspace_access_requests',
+      indexname: 'workspace_access_requests_pkey',
+      indexdef: 'CREATE UNIQUE INDEX workspace_access_requests_pkey ON public.workspace_access_requests USING btree (id)'
+    },
+    {
+      tablename: 'workspace_claim_events',
+      indexname: 'workspace_claim_events_claimed_by_idx',
+      indexdef: 'CREATE INDEX workspace_claim_events_claimed_by_idx ON public.workspace_claim_events USING btree (claimed_by_user_id)'
+    },
+    {
+      tablename: 'workspace_claim_events',
+      indexname: 'workspace_claim_events_job_idx',
+      indexdef: 'CREATE INDEX workspace_claim_events_job_idx ON public.workspace_claim_events USING btree (job_id, created_at DESC)'
+    },
+    {
+      tablename: 'workspace_claim_events',
+      indexname: 'workspace_claim_events_pkey',
+      indexdef: 'CREATE UNIQUE INDEX workspace_claim_events_pkey ON public.workspace_claim_events USING btree (id)'
+    },
+    {
+      tablename: 'workspace_claim_events',
+      indexname: 'workspace_claim_events_workspace_idx',
+      indexdef: 'CREATE INDEX workspace_claim_events_workspace_idx ON public.workspace_claim_events USING btree (workspace_id, created_at DESC)'
+    },
+    {
+      tablename: 'workspace_members',
+      indexname: 'workspace_members_email_idx',
+      indexdef: 'CREATE INDEX workspace_members_email_idx ON public.workspace_members USING btree (lower(email))'
+    },
+    {
+      tablename: 'workspace_members',
+      indexname: 'workspace_members_email_idx_unique',
+      indexdef: 'CREATE UNIQUE INDEX workspace_members_email_idx_unique ON public.workspace_members USING btree (workspace_id, lower(email))'
+    },
+    ... 11 more items
+  ],
+  expected: [
+    {
+      tablename: 'action_applications',
+      indexname: 'action_applications_action_idx',
+      indexdef: 'CREATE INDEX action_applications_action_idx ON public.action_applications USING btree (action_id, source, asserted_at DESC) WHERE (retracted_at IS NULL)'
+    },
+    {
+      tablename: 'action_applications',
+      indexname: 'action_applications_pkey',
+      indexdef: 'CREATE UNIQUE INDEX action_applications_pkey ON public.action_applications USING btree (id)'
+    },
+    {
+      tablename: 'action_measurements',
+      indexname: 'action_measurements_pkey',
+      indexdef: 'CREATE UNIQUE INDEX action_measurements_pkey ON public.action_measurements USING btree (id)'
+    },
+    {
+      tablename: 'action_runs',
+      indexname: 'action_runs_created_idx',
+      indexdef: 'CREATE INDEX action_runs_created_idx ON public.action_runs USING btree (created_at)'
+    },
+    {
+      tablename: 'action_runs',
+      indexname: 'action_runs_pkey',
+      indexdef: 'CREATE UNIQUE INDEX action_runs_pkey ON public.action_runs USING btree (id)'
+    },
+    {
+      tablename: 'action_runs',
+      indexname: 'action_runs_workspace_created_idx',
+      indexdef: 'CREATE INDEX action_runs_workspace_created_idx ON public.action_runs USING btree (workspace_id, created_at)'
+    },
+    {
+      tablename: 'actions',
+      indexname: 'actions_offer_idx',
+      indexdef: 'CREATE INDEX actions_offer_idx ON public.actions USING btree (offer_id)'
+    },
+    {
+      tablename: 'actions',
+      indexname: 'actions_open_dedupe_idx',
+      indexdef: "CREATE UNIQUE INDEX actions_open_dedupe_idx ON public.actions USING btree (dedupe_key) WHERE (action_state <> ALL (ARRAY['completed'::text, 'dismissed'::text, 'cancelled'::text, 'expired'::text]))"
+    },
+    {
+      tablename: 'actions',
+      indexname: 'actions_pkey',
+      indexdef: 'CREATE UNIQUE INDEX actions_pkey ON public.actions USING btree (id)'
+    },
+    {
+      tablename: 'actions',
+      indexname: 'actions_verification_sweep_idx',
+      indexdef: 'CREATE INDEX actions_verification_sweep_idx ON public.actions USING btree (template_key, verification_checked_at)'
+    },
+    {
+      tablename: 'aeo_surface_snapshots',
+      indexname: 'aeo_surface_snapshots_job_id_surface_query_text_key',
+      indexdef: 'CREATE UNIQUE INDEX aeo_surface_snapshots_job_id_surface_query_text_key ON public.aeo_surface_snapshots USING btree (job_id, surface, query_text)'
+    },
+    {
+      tablename: 'aeo_surface_snapshots',
+      indexname: 'aeo_surface_snapshots_job_idx',
+      indexdef: 'CREATE INDEX aeo_surface_snapshots_job_idx ON public.aeo_surface_snapshots USING btree (job_id)'
+    },
+    {
+      tablename: 'aeo_surface_snapshots',
+      indexname: 'aeo_surface_snapshots_pkey',
+      indexdef: 'CREATE UNIQUE INDEX aeo_surface_snapshots_pkey ON public.aeo_surface_snapshots USING btree (id)'
+    },
+    {
+      tablename: 'aeo_surface_snapshots',
+      indexname: 'aeo_surface_snapshots_place_surface_idx',
+      indexdef: 'CREATE INDEX aeo_surface_snapshots_place_surface_idx ON public.aeo_surface_snapshots USING btree (place_id, surface, captured_at DESC)'
+    },
+    {
+      tablename: 'agent_runs',
+      indexname: 'agent_runs_job_status_idx',
+      indexdef: 'CREATE INDEX agent_runs_job_status_idx ON public.agent_runs USING btree (job_id, status)'
+    },
+    {
+      tablename: 'agent_runs',
+      indexname: 'agent_runs_pkey',
+      indexdef: 'CREATE UNIQUE INDEX agent_runs_pkey ON public.agent_runs USING btree (id)'
+    },
+    {
+      tablename: 'assets',
+      indexname: 'assets_pkey',
+      indexdef: 'CREATE UNIQUE INDEX assets_pkey ON public.assets USING btree (id)'
+    },
+    {
+      tablename: 'audit_events',
+      indexname: 'audit_events_idempotency_key_idx',
+      indexdef: 'CREATE UNIQUE INDEX audit_events_idempotency_key_idx ON public.audit_events USING btree (idempotency_key)'
+    },
+    {
+      tablename: 'audit_events',
+      indexname: 'audit_events_pkey',
+      indexdef: 'CREATE UNIQUE INDEX audit_events_pkey ON public.audit_events USING btree (id)'
+    },
+    {
+      tablename: 'audit_events',
+      indexname: 'audit_events_workspace_idx',
+      indexdef: 'CREATE INDEX audit_events_workspace_idx ON public.audit_events USING btree (workspace_id, created_at DESC)'
+    },
+    {
+      tablename: 'audit_findings',
+      indexname: 'audit_findings_job_finding_key_unique_idx',
+      indexdef: 'CREATE UNIQUE INDEX audit_findings_job_finding_key_unique_idx ON public.audit_findings USING btree (job_id, finding_key)'
+    },
+    {
+      tablename: 'audit_findings',
+      indexname: 'audit_findings_job_id_finding_key_idx',
+      indexdef: 'CREATE INDEX audit_findings_job_id_finding_key_idx ON public.audit_findings USING btree (job_id, finding_key)'
+    },
+    {
+      tablename: 'audit_findings',
+      indexname: 'audit_findings_pkey',
+      indexdef: 'CREATE UNIQUE INDEX audit_findings_pkey ON public.audit_findings USING btree (id)'
+    },
+    {
+      tablename: 'audit_jobs',
+      indexname: 'audit_jobs_pkey',
+      indexdef: 'CREATE UNIQUE INDEX audit_jobs_pkey ON public.audit_jobs USING btree (id)'
+    },
+    {
+      tablename: 'audit_jobs',
+      indexname: 'audit_jobs_place_created_idx',
+      indexdef: 'CREATE INDEX audit_jobs_place_created_idx ON public.audit_jobs USING btree (place_id, created_at DESC)'
+    },
+    {
+      tablename: 'audit_jobs',
+      indexname: 'audit_jobs_share_slug_idx',
+      indexdef: 'CREATE INDEX audit_jobs_share_slug_idx ON public.audit_jobs USING btree (share_slug)'
+    },
+    {
+      tablename: 'audit_jobs',
+      indexname: 'audit_jobs_share_slug_key',
+      indexdef: 'CREATE UNIQUE INDEX audit_jobs_share_slug_key ON public.audit_jobs USING btree (share_slug)'
+    },
+    {
+      tablename: 'audit_jobs',
+      indexname: 'audit_jobs_stale_claim_idx',
+      indexdef: "CREATE INDEX audit_jobs_stale_claim_idx ON public.audit_jobs USING btree (last_attempt_at) WHERE (status = ANY (ARRAY['collecting'::text, 'scoring'::text, 'persisting'::text]))"
+    },
+    {
+      tablename: 'brand_profiles',
+      indexname: 'brand_profiles_pkey',
+      indexdef: 'CREATE UNIQUE INDEX brand_profiles_pkey ON public.brand_profiles USING btree (workspace_id)'
+    },
+    {
+      tablename: 'consent_records',
+      indexname: 'consent_records_job_id_idx',
+      indexdef: 'CREATE INDEX consent_records_job_id_idx ON public.consent_records USING btree (job_id)'
+    },
+    {
+      tablename: 'consent_records',
+      indexname: 'consent_records_pkey',
+      indexdef: 'CREATE UNIQUE INDEX consent_records_pkey ON public.consent_records USING btree (id)'
+    },
+    {
+      tablename: 'deliveries',
+      indexname: 'deliveries_active_publish_target_key',
+      indexdef: "CREATE UNIQUE INDEX deliveries_active_publish_target_key ON public.deliveries USING btree (target_ref) WHERE ((mode = 'publish'::text) AND (state = ANY (ARRAY['publishing'::text, 'published'::text])))"
+    },
+    {
+      tablename: 'deliveries',
+      indexname: 'deliveries_active_publish_version_key',
+      indexdef: "CREATE UNIQUE INDEX deliveries_active_publish_version_key ON public.deliveries USING btree (version_id) WHERE ((mode = 'publish'::text) AND (state = ANY (ARRAY['publishing'::text, 'published'::text])))"
+    },
+    {
+      tablename: 'deliveries',
+      indexname: 'deliveries_idempotency_key_key',
+      indexdef: 'CREATE UNIQUE INDEX deliveries_idempotency_key_key ON public.deliveries USING btree (idempotency_key)'
+    },
+    {
+      tablename: 'deliveries',
+      indexname: 'deliveries_pkey',
+      indexdef: 'CREATE UNIQUE INDEX deliveries_pkey ON public.deliveries USING btree (id)'
+    },
+    {
+      tablename: 'erasure_events',
+      indexname: 'erasure_events_created_at_idx',
+      indexdef: 'CREATE INDEX erasure_events_created_at_idx ON public.erasure_events USING btree (created_at DESC)'
+    },
+    {
+      tablename: 'erasure_events',
+      indexname: 'erasure_events_pkey',
+      indexdef: 'CREATE UNIQUE INDEX erasure_events_pkey ON public.erasure_events USING btree (id)'
+    },
+    {
+      tablename: 'leads',
+      indexname: 'leads_pkey',
+      indexdef: 'CREATE UNIQUE INDEX leads_pkey ON public.leads USING btree (id)'
+    },
+    {
+      tablename: 'locations',
+      indexname: 'locations_pkey',
+      indexdef: 'CREATE UNIQUE INDEX locations_pkey ON public.locations USING btree (id)'
+    },
+    {
+      tablename: 'locations',
+      indexname: 'locations_workspace_id_slug_key',
+      indexdef: 'CREATE UNIQUE INDEX locations_workspace_id_slug_key ON public.locations USING btree (workspace_id, slug)'
+    },
+    {
+      tablename: 'mail_outbox',
+      indexname: 'mail_outbox_due_idx',
+      indexdef: 'CREATE INDEX mail_outbox_due_idx ON public.mail_outbox USING btree (state, next_attempt_at)'
+    },
+    {
+      tablename: 'mail_outbox',
+      indexname: 'mail_outbox_pkey',
+      indexdef: 'CREATE UNIQUE INDEX mail_outbox_pkey ON public.mail_outbox USING btree (id)'
+    },
+    {
+      tablename: 'mail_outbox',
+      indexname: 'mail_outbox_workspace_idx',
+      indexdef: 'CREATE INDEX mail_outbox_workspace_idx ON public.mail_outbox USING btree (workspace_id, created_at DESC)'
+    },
+    {
+      tablename: 'notification_events',
+      indexname: 'notification_events_job_id_key',
+      indexdef: 'CREATE UNIQUE INDEX notification_events_job_id_key ON public.notification_events USING btree (job_id) WHERE (job_id IS NOT NULL)'
+    },
+    {
+      tablename: 'notification_events',
+      indexname: 'notification_events_pkey',
+      indexdef: 'CREATE UNIQUE INDEX notification_events_pkey ON public.notification_events USING btree (id)'
+    },
+    {
+      tablename: 'notification_events',
+      indexname: 'notification_events_workspace_idx',
+      indexdef: 'CREATE INDEX notification_events_workspace_idx ON public.notification_events USING btree (workspace_id, created_at DESC)'
+    },
+    {
+      tablename: 'oauth_connections',
+      indexname: 'oauth_connections_active_provider_key',
+      indexdef: "CREATE UNIQUE INDEX oauth_connections_active_provider_key ON public.oauth_connections USING btree (workspace_id, provider) WHERE (status = 'active'::text)"
+    },
+    {
+      tablename: 'oauth_connections',
+      indexname: 'oauth_connections_pkey',
+      indexdef: 'CREATE UNIQUE INDEX oauth_connections_pkey ON public.oauth_connections USING btree (id)'
+    },
+    {
+      tablename: 'oauth_connections',
+      indexname: 'oauth_connections_workspace_idx',
+      indexdef: 'CREATE INDEX oauth_connections_workspace_idx ON public.oauth_connections USING btree (workspace_id)'
+    },
+    {
+      tablename: 'offers',
+      indexname: 'offers_pkey',
+      indexdef: 'CREATE UNIQUE INDEX offers_pkey ON public.offers USING btree (id)'
+    },
+    {
+      tablename: 'offers',
+      indexname: 'offers_workspace_idx',
+      indexdef: 'CREATE INDEX offers_workspace_idx ON public.offers USING btree (workspace_id, status, valid_until)'
+    },
+    {
+      tablename: 'output_versions',
+      indexname: 'output_versions_action_id_version_no_key',
+      indexdef: 'CREATE UNIQUE INDEX output_versions_action_id_version_no_key ON public.output_versions USING btree (action_id, version_no)'
+    },
+    {
+      tablename: 'output_versions',
+      indexname: 'output_versions_pkey',
+      indexdef: 'CREATE UNIQUE INDEX output_versions_pkey ON public.output_versions USING btree (id)'
+    },
+    {
+      tablename: 'preview_events',
+      indexname: 'preview_events_created_idx',
+      indexdef: 'CREATE INDEX preview_events_created_idx ON public.preview_events USING btree (created_at)'
+    },
+    {
+      tablename: 'preview_events',
+      indexname: 'preview_events_grant_idx',
+      indexdef: 'CREATE INDEX preview_events_grant_idx ON public.preview_events USING btree (grant_id)'
+    },
+    {
+      tablename: 'preview_events',
+      indexname: 'preview_events_job_idx',
+      indexdef: 'CREATE INDEX preview_events_job_idx ON public.preview_events USING btree (job_id)'
+    },
+    {
+      tablename: 'preview_events',
+      indexname: 'preview_events_pkey',
+      indexdef: 'CREATE UNIQUE INDEX preview_events_pkey ON public.preview_events USING btree (id)'
+    },
+    {
+      tablename: 'rate_limit_buckets',
+      indexname: 'rate_limit_buckets_expires_at_idx',
+      indexdef: 'CREATE INDEX rate_limit_buckets_expires_at_idx ON public.rate_limit_buckets USING btree (expires_at)'
+    },
+    {
+      tablename: 'rate_limit_buckets',
+      indexname: 'rate_limit_buckets_pkey',
+      indexdef: 'CREATE UNIQUE INDEX rate_limit_buckets_pkey ON public.rate_limit_buckets USING btree (bucket_key)'
+    },
+    {
+      tablename: 'report_access_grants',
+      indexname: 'report_access_grants_job_id_idx',
+      indexdef: 'CREATE INDEX report_access_grants_job_id_idx ON public.report_access_grants USING btree (job_id)'
+    },
+    {
+      tablename: 'report_access_grants',
+      indexname: 'report_access_grants_job_idempotency_key_unique_idx',
+      indexdef: 'CREATE UNIQUE INDEX report_access_grants_job_idempotency_key_unique_idx ON public.report_access_grants USING btree (job_id, idempotency_key)'
+    },
+    {
+      tablename: 'report_access_grants',
+      indexname: 'report_access_grants_pkey',
+      indexdef: 'CREATE UNIQUE INDEX report_access_grants_pkey ON public.report_access_grants USING btree (id)'
+    },
+    {
+      tablename: 'report_access_grants',
+      indexname: 'report_access_grants_token_hash_unique_idx',
+      indexdef: 'CREATE UNIQUE INDEX report_access_grants_token_hash_unique_idx ON public.report_access_grants USING btree (token_hash)'
+    },
+    {
+      tablename: 'report_evidence',
+      indexname: 'report_evidence_job_captured_idx',
+      indexdef: 'CREATE INDEX report_evidence_job_captured_idx ON public.report_evidence USING btree (job_id, captured_at DESC)'
+    },
+    {
+      tablename: 'report_evidence',
+      indexname: 'report_evidence_job_id_provider_evidence_type_source_id_key',
+      indexdef: 'CREATE UNIQUE INDEX report_evidence_job_id_provider_evidence_type_source_id_key ON public.report_evidence USING btree (job_id, provider, evidence_type, source_id)'
+    },
+    {
+      tablename: 'report_evidence',
+      indexname: 'report_evidence_pkey',
+      indexdef: 'CREATE UNIQUE INDEX report_evidence_pkey ON public.report_evidence USING btree (id)'
+    },
+    {
+      tablename: 'scan_attempts',
+      indexname: 'scan_attempts_attempted_idx',
+      indexdef: 'CREATE INDEX scan_attempts_attempted_idx ON public.scan_attempts USING btree (attempted_at)'
+    },
+    {
+      tablename: 'scan_attempts',
+      indexname: 'scan_attempts_pkey',
+      indexdef: 'CREATE UNIQUE INDEX scan_attempts_pkey ON public.scan_attempts USING btree (id)'
+    },
+    {
+      tablename: 'scan_attempts',
+      indexname: 'scan_attempts_workspace_idx',
+      indexdef: 'CREATE INDEX scan_attempts_workspace_idx ON public.scan_attempts USING btree (workspace_id, attempted_at)'
+    },
+    {
+      tablename: 'scan_diffs',
+      indexname: 'scan_diffs_base_job_id_head_job_id_key',
+      indexdef: 'CREATE UNIQUE INDEX scan_diffs_base_job_id_head_job_id_key ON public.scan_diffs USING btree (base_job_id, head_job_id)'
+    },
+    {
+      tablename: 'scan_diffs',
+      indexname: 'scan_diffs_head_idx',
+      indexdef: 'CREATE INDEX scan_diffs_head_idx ON public.scan_diffs USING btree (head_job_id)'
+    },
+    {
+      tablename: 'scan_diffs',
+      indexname: 'scan_diffs_pkey',
+      indexdef: 'CREATE UNIQUE INDEX scan_diffs_pkey ON public.scan_diffs USING btree (id)'
+    },
+    {
+      tablename: 'scan_events',
+      indexname: 'scan_events_dedupe_identity_unique_idx',
+      indexdef: 'CREATE UNIQUE INDEX scan_events_dedupe_identity_unique_idx ON public.scan_events USING btree (job_id, anonymous_session_id, event_name, dedupe_key)'
+    },
+    {
+      tablename: 'scan_events',
+      indexname: 'scan_events_job_id_created_at_idx',
+      indexdef: 'CREATE INDEX scan_events_job_id_created_at_idx ON public.scan_events USING btree (job_id, created_at DESC)'
+    },
+    {
+      tablename: 'scan_events',
+      indexname: 'scan_events_job_id_event_name_idx',
+      indexdef: 'CREATE INDEX scan_events_job_id_event_name_idx ON public.scan_events USING btree (job_id, event_name)'
+    },
+    {
+      tablename: 'scan_events',
+      indexname: 'scan_events_pkey',
+      indexdef: 'CREATE UNIQUE INDEX scan_events_pkey ON public.scan_events USING btree (id)'
+    },
+    {
+      tablename: 'scan_schedules',
+      indexname: 'scan_schedules_due_idx',
+      indexdef: "CREATE INDEX scan_schedules_due_idx ON public.scan_schedules USING btree (next_run_at) WHERE (cadence = 'monthly'::text)"
+    },
+    {
+      tablename: 'scan_schedules',
+      indexname: 'scan_schedules_pkey',
+      indexdef: 'CREATE UNIQUE INDEX scan_schedules_pkey ON public.scan_schedules USING btree (id)'
+    },
+    {
+      tablename: 'scan_schedules',
+      indexname: 'scan_schedules_place_id_key',
+      indexdef: 'CREATE UNIQUE INDEX scan_schedules_place_id_key ON public.scan_schedules USING btree (place_id)'
+    },
+    {
+      tablename: 'scan_schedules',
+      indexname: 'scan_schedules_workspace_idx',
+      indexdef: 'CREATE INDEX scan_schedules_workspace_idx ON public.scan_schedules USING btree (workspace_id)'
+    },
+    {
+      tablename: 'scan_snapshots',
+      indexname: 'scan_snapshots_job_id_key',
+      indexdef: 'CREATE UNIQUE INDEX scan_snapshots_job_id_key ON public.scan_snapshots USING btree (job_id)'
+    },
+    {
+      tablename: 'scan_snapshots',
+      indexname: 'scan_snapshots_pkey',
+      indexdef: 'CREATE UNIQUE INDEX scan_snapshots_pkey ON public.scan_snapshots USING btree (id)'
+    },
+    {
+      tablename: 'staff_report_events',
+      indexname: 'staff_report_events_job_id_created_at_idx',
+      indexdef: 'CREATE INDEX staff_report_events_job_id_created_at_idx ON public.staff_report_events USING btree (job_id, created_at DESC)'
+    },
+    {
+      tablename: 'staff_report_events',
+      indexname: 'staff_report_events_pkey',
+      indexdef: 'CREATE UNIQUE INDEX staff_report_events_pkey ON public.staff_report_events USING btree (id)'
+    },
+    {
+      tablename: 'work_pack_items',
+      indexname: 'work_pack_items_action_idx',
+      indexdef: 'CREATE INDEX work_pack_items_action_idx ON public.work_pack_items USING btree (action_id)'
+    },
+    {
+      tablename: 'work_pack_items',
+      indexname: 'work_pack_items_pkey',
+      indexdef: 'CREATE UNIQUE INDEX work_pack_items_pkey ON public.work_pack_items USING btree (pack_id, template_key)'
+    },
+    {
+      tablename: 'work_packs',
+      indexname: 'work_packs_open_idx',
+      indexdef: "CREATE UNIQUE INDEX work_packs_open_idx ON public.work_packs USING btree (workspace_id, COALESCE(location_id, '00000000-0000-0000-0000-000000000000'::uuid), kind) WHERE (closed_at IS NULL)"
+    },
+    {
+      tablename: 'work_packs',
+      indexname: 'work_packs_pkey',
+      indexdef: 'CREATE UNIQUE INDEX work_packs_pkey ON public.work_packs USING btree (id)'
+    },
+    {
+      tablename: 'workspace_access_requests',
+      indexname: 'workspace_access_requests_open_idx',
+      indexdef: 'CREATE UNIQUE INDEX workspace_access_requests_open_idx ON public.workspace_access_requests USING btree (job_id, user_id) WHERE (resolved_at IS NULL)'
+    },
+    {
+      tablename: 'workspace_access_requests',
+      indexname: 'workspace_access_requests_pending_idx',
+      indexdef: 'CREATE INDEX workspace_access_requests_pending_idx ON public.workspace_access_requests USING btree (requested_at DESC) WHERE (resolved_at IS NULL)'
+    },
+    {
+      tablename: 'workspace_access_requests',
+      indexname: 'workspace_access_requests_pkey',
+      indexdef: 'CREATE UNIQUE INDEX workspace_access_requests_pkey ON public.workspace_access_requests USING btree (id)'
+    },
+    {
+      tablename: 'workspace_claim_events',
+      indexname: 'workspace_claim_events_claimed_by_idx',
+      indexdef: 'CREATE INDEX workspace_claim_events_claimed_by_idx ON public.workspace_claim_events USING btree (claimed_by_user_id)'
+    },
+    {
+      tablename: 'workspace_claim_events',
+      indexname: 'workspace_claim_events_job_idx',
+      indexdef: 'CREATE INDEX workspace_claim_events_job_idx ON public.workspace_claim_events USING btree (job_id, created_at DESC)'
+    },
+    {
+      tablename: 'workspace_claim_events',
+      indexname: 'workspace_claim_events_pkey',
+      indexdef: 'CREATE UNIQUE INDEX workspace_claim_events_pkey ON public.workspace_claim_events USING btree (id)'
+    },
+    {
+      tablename: 'workspace_claim_events',
+      indexname: 'workspace_claim_events_workspace_idx',
+      indexdef: 'CREATE INDEX workspace_claim_events_workspace_idx ON public.workspace_claim_events USING btree (workspace_id, created_at DESC)'
+    },
+    {
+      tablename: 'workspace_members',
+      indexname: 'workspace_members_email_idx',
+      indexdef: 'CREATE INDEX workspace_members_email_idx ON public.workspace_members USING btree (lower(email))'
+    },
+    {
+      tablename: 'workspace_members',
+      indexname: 'workspace_members_email_idx_unique',
+      indexdef: 'CREATE UNIQUE INDEX workspace_members_email_idx_unique ON public.workspace_members USING btree (workspace_id, lower(email))'
+    },
+    {
+      tablename: 'workspace_members',
+      indexname: 'workspace_members_one_owner_idx',
+      indexdef: "CREATE UNIQUE INDEX workspace_members_one_owner_idx ON public.workspace_members USING btree (workspace_id) WHERE (role = 'owner'::text)"
+    },
+    {
+      tablename: 'workspace_members',
+      indexname: 'workspace_members_pkey',
+      indexdef: 'CREATE UNIQUE INDEX workspace_members_pkey ON public.workspace_members USING btree (id)'
+    },
+    {
+      tablename: 'workspace_members',
+      indexname: 'workspace_members_user_workspace_idx',
+      indexdef: 'CREATE UNIQUE INDEX workspace_members_user_workspace_idx ON public.workspace_members USING btree (workspace_id, user_id) WHERE (user_id IS NOT NULL)'
+    },
+    ... 8 more items
+  ],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.18.0
+ ELIFECYCLE  Command failed with exit code 1.

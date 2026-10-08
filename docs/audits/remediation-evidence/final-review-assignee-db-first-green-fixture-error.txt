@@ -1,0 +1,27 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-audit-remediation
+
+ ❯ test/integration/neon-action-list-pagination.integration.test.ts (8 tests | 1 failed) 37805ms
+     × projects only the assigned accepted member in the same tenant (T-13) 938ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/integration/neon-action-list-pagination.integration.test.ts > bounded action list SQL (T-12) > projects only the assigned accepted member in the same tenant (T-13)
+error: owner_removal_forbidden
+ ❯ node_modules/.pnpm/pg-pool@3.14.0_pg@8.23.0/node_modules/pg-pool/index.js:45:11
+ ❯ test/integration/neon-action-list-pagination.integration.test.ts:60:5
+     58|     expect(JSON.stringify(page.actions)).not.toMatch(/pending-here|for…
+     59|     expect((await listActions(ctx, { assignee: accepted })).actions[0]…
+     60|     await runtime.query("DELETE FROM workspace_members WHERE workspace…
+       |     ^
+     61|     expect((await listActions(ctx, { assignee: accepted })).actions[0]…
+     62|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 12 passed (13)
+   Start at  08:27:57
+   Duration  82.31s (transform 1.19s, setup 86ms, import 9.73s, tests 48.11s, environment 0ms)
+

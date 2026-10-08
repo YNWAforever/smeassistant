@@ -9,6 +9,39 @@ function report(env: AcceptanceEnvironment, merchant: MerchantSeed, market: "hk"
   return { id, slug };
 }
 
+test("T-03 legal mixed-case underscore slug survives sign-in and onboarding without granting ownership", async ({ page, merchant, environment }) => {
+  const job = report(environment, merchant, "hk", false), slug = "3cuOKFmHdiYf00BOs27E_NO1";
+  sql(environment.db, `update audit_jobs set share_slug='${slug}' where id='${job.id}';`);
+  const link = await requestSignInLink(page, environment, merchant, "owner", slug);
+  await page.goto(link);
+  await expect(page).toHaveURL(/claimed=requires_verification/);
+  await page.goto(`/en/owner/onboarding?claim=${slug}`);
+  await expect(page.locator(".onboarding-card")).toContainText("Acceptance business");
+  await expect(page.getByRole("button", { name: "Continue", exact: true })).toBeEnabled();
+  expect(new URL(page.url()).searchParams.get("claim")).toBe(slug);
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Continue", exact: true })).toBeDisabled();
+  expect(sql(environment.db, `select count(*) from audit_jobs where id='${job.id}' and workspace_id is null;`)).toBe("1");
+  expect(sql(environment.db, `select count(*) from scan_snapshots where job_id='${job.id}';`)).toBe("0");
+});
+
+test("T-15 attached owner resumes persisted brand setup and repeats completion without changing membership", async ({ page, merchant, environment }) => {
+  const job = report(environment, merchant, "hk", true);
+  await signIn(page, environment, merchant);
+  await page.goto(`/en/owner/onboarding?claim=${job.slug}`);
+  await expect(page.locator(".step-kicker")).toHaveText("Step 4 of 4");
+  await expect(page.locator("#workspace-name")).toHaveValue("Acceptance HK");
+  await page.locator("#workspace-name").fill("Saved HK fixture");
+  const completion = page.waitForResponse(r => r.url().endsWith("/api/workspaces/claim") && r.request().method() === "POST");
+  await page.getByRole("button", { name: "Open workspace", exact: true }).click();
+  expect((await completion).status()).toBe(200);
+  await page.goto(`/en/owner/onboarding?claim=${job.slug}`);
+  await expect(page.locator(".step-kicker")).toHaveText("Step 4 of 4");
+  await expect(page.locator("#workspace-name")).toHaveValue("Saved HK fixture");
+  expect(sql(environment.db, `select count(*) from workspace_members where workspace_id='${merchant.workspaceId}' and role='owner' and accepted_at is not null;`)).toBe("1");
+  expect(sql(environment.db, `select count(*) from scan_snapshots where job_id='${job.id}';`)).toBe("1");
+});
+
 for (const attached of [true, false]) test(`verified Auth claim callback: ${attached ? "existing assigned owner succeeds" : "unassigned report requires ownership verification"}`, async ({ page, merchant, environment }) => {
   // Existing staff/OAuth assignment is fixture state, never a self-service bypass.
   const job = report(environment, merchant, "hk", attached);

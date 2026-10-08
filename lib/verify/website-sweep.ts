@@ -1,4 +1,5 @@
 import type { VerificationRepository } from "@/lib/repositories/verification";
+import { assertExecutionBudget, currentExecutionBudget, settleWithinReserve } from "@/lib/jobs/execution-budget";
 import { TEMPLATES, findTemplate } from "@/lib/workspace/templates";
 import {
   EMPTY_WEBSITE_CHECKS,
@@ -20,6 +21,7 @@ export interface VerificationSweepDeps {
 }
 
 export interface VerificationSweepResult {
+  deferred?: boolean;
   locationsChecked: number;
   /** Actions the sweep actually reached a decision on. */
   actionsConsidered: number;
@@ -78,6 +80,7 @@ export async function runWebsiteVerification(
   const fetched = await Promise.allSettled(
     locations.map((location) => runWebsiteChecksWithUrl(location.website_url, { fetch: deps.fetch })),
   );
+  try { assertExecutionBudget(); } catch { return { ...empty, deferred: true }; }
   // Keyed by location id, never by position: actionsForLocations returns rows
   // in the database's order, not dueLocations', so a positional pairing would
   // silently judge an action against another location's website.
@@ -109,11 +112,13 @@ export async function runWebsiteVerification(
   const evaluated: Array<{ id: string; workspace_id: string }> = [];
   let actionsVerified = 0;
   let actionsFailed = 0;
+  let deferred = false;
   // The stamp is applied in a finally so that an escaping error still records
   // what was in fact attempted. With the per-action catch below nothing should
   // escape, but the property is worth keeping for free.
   try {
     for (const action of actions) {
+      try { assertExecutionBudget(); } catch { deferred = true; break; }
       // Isolated per action, like the reclaim concern isolates per job: one
       // action's failed write must not stop the rest of the batch from being
       // looked at, and must not abort a loop whose remaining members would
@@ -162,6 +167,7 @@ export async function runWebsiteVerification(
         });
         actionsVerified += 1;
       } catch (cause) {
+        try { assertExecutionBudget(); } catch { deferred = true; break; }
         actionsFailed += 1;
         console.error("[verify/website-sweep] action not recorded", {
           category: "website_verification_action_failed",
@@ -170,8 +176,8 @@ export async function runWebsiteVerification(
         });
       }
     }
-    return { locationsChecked: locations.length, actionsConsidered: evaluated.length, actionsVerified, actionsFailed };
+    return { locationsChecked: locations.length, actionsConsidered: evaluated.length, actionsVerified, actionsFailed, ...(deferred ? { deferred: true } : {}) };
   } finally {
-    await repo.markChecked(evaluated, nowIso);
+    if (evaluated.length) await settleWithinReserve(currentExecutionBudget(), () => repo.markChecked(evaluated, nowIso));
   }
 }

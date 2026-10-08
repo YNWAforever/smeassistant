@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { parseReportSlug } from "@/lib/report-access/slug";
 import { sendMagicLink } from "@/lib/identity/composition";
 import { claimsRepository } from "@/lib/repositories/claims";
 import {
@@ -22,7 +23,6 @@ import { callbackHref, parseAuthFlow } from "@/lib/identity/sign-in-flow";
  * The slug is carried, not trusted. Entitlement is decided by claimScan once a
  * session exists; this endpoint only addresses an email.
  */
-const SLUG_RE = /^[A-Za-z0-9_-]{6,64}$/;
 
 /** Mirrors the staff route: reject credentials, path, query and fragment. */
 function safeAppOrigin(raw: string | undefined): string | null {
@@ -49,10 +49,10 @@ export async function POST(req: Request) {
   }
 
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-  const slug = typeof body.slug === "string" ? body.slug.trim() : "";
+  const slug = parseReportSlug(body.slug);
   const flow = parseAuthFlow(new URLSearchParams({
     locale: typeof body.locale === "string" ? body.locale : "",
-    claim: slug,
+    claim: slug ?? "",
     returnTo: typeof body.returnTo === "string" ? body.returnTo : "",
     method: typeof body.method === "string" ? body.method : "",
   }));
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
   // endpoint sent Supabase auth mail to any address a caller named, and the
   // outer rate-limit bucket allows ~1000 sends/hour per fingerprint, so one IP
   // could spray hundreds of unrelated third parties from the project's sender.
-  if (!SLUG_RE.test(slug)) {
+  if (!slug) {
     return NextResponse.json({ error: "invalid_slug" }, { status: 400 });
   }
 

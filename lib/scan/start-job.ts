@@ -6,6 +6,7 @@ import type { IgMatchProvenance } from "@sme-scanner/contracts";
 import type { ScanEvent } from "@sme-scanner/scan-engine";
 import { scanStartedEvent } from "@/lib/analytics/scan-events";
 import { ScanBudgetRefusal } from "@/lib/budgets/scan";
+import { parseOptionalWebsiteUrl } from "./website-url";
 
 
 /**
@@ -113,7 +114,8 @@ export function parseScanStartBody(raw: unknown): ScanStartParse {
     && IG_MATCH_PROVENANCE.has(body.ig_match_provenance)
     ? (body.ig_match_provenance as IgMatchProvenance)
     : null;
-  const websiteUrl = typeof body.website_url === "string" ? body.website_url.trim() : "";
+  const website = parseOptionalWebsiteUrl(body.website_url);
+  const websiteUrl = website.ok ? website.value ?? "" : "";
   const industry = typeof body.industry === "string" ? body.industry : "";
   const district = typeof body.district === "string" ? body.district : "";
   const locale = typeof body.locale === "string" ? body.locale : "";
@@ -172,6 +174,7 @@ export function parseScanStartBody(raw: unknown): ScanStartParse {
     return { ok: false, error: "confirm a SerpApi business or use manual entry" };
   }
   if (parentJobId && !UUID_RE.test(parentJobId)) return { ok: false, error: "parent_job_id is invalid" };
+  if (!website.ok) return { ok: false, error: "website_url is invalid" };
 
   // Consent is checked last so every existing error string keeps its precedence
   // -- and so a consent-less POST is still rejected before any database work.

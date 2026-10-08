@@ -505,7 +505,7 @@ describe("promotion_copy (P4.1)", () => {
   });
 
   it("warns offer_price_mismatch for an Instagram output stating a different price", () => {
-    const warnings = AGENTS.promotion_copy.acceptance(ctxFor("offer-instagram-post", "en"), { ...base, body: "Autumn set dinner HK$999 for two, until 2026-10-19" });
+    const warnings = AGENTS.promotion_copy.acceptance(ctxFor("offer-instagram-post", "en"), { ...base, body: "Autumn set dinner HK$999 for two, 2026-10-05 to 2026-10-19" });
     expect(warnings).toContain("offer_price_mismatch");
     expect(warnings).not.toContain("offer_dates_missing");
   });
@@ -513,6 +513,12 @@ describe("promotion_copy (P4.1)", () => {
   it("is clean when price and dates match", () => {
     const body = "Autumn set dinner for two, HK$1,280. Valid 2026-10-05 to 2026-10-19. Book on WhatsApp.";
     expect(AGENTS.promotion_copy.acceptance(ctxFor("offer-google-post", "en"), { ...base, body })).toEqual([]);
+  });
+
+  it("keeps wrong-currency and incomplete-range warnings on the returned draft", () => {
+    const warnings = AGENTS.promotion_copy.acceptance(ctxFor("offer-google-post", "zh-TW"), { ...base, body: "雙人套餐 NT$1,280，2026年10月5日起。" });
+    expect(warnings).toContain("offer_price_mismatch");
+    expect(warnings).toContain("offer_dates_missing");
   });
 
   it("warns offer_dates_missing when no validity date appears", () => {
