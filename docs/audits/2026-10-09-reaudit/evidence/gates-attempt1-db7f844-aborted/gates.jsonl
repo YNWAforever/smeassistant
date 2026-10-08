@@ -1,10 +1,10 @@
 {"sha":"db7f84413202b1fbb97304c019413e264633ecb1","gate":"pnpm lint","exit":0,"seconds":37,"finished_utc":"2026-10-08T19:31:37Z","log":"gate-lint.txt"}
 {"sha":"db7f84413202b1fbb97304c019413e264633ecb1","gate":"pnpm typecheck","exit":0,"seconds":25,"finished_utc":"2026-10-08T19:32:02Z","log":"gate-typecheck.txt"}
 {"sha":"db7f84413202b1fbb97304c019413e264633ecb1","gate":"pnpm test","exit":1,"seconds":101,"finished_utc":"2026-10-08T19:33:44Z","log":"gate-test.txt"}
-{"sha":"db7f84413202b1fbb97304c019413e264633ecb1","gate":"pnpm test:secret-boundary","exit":0,"seconds":61,"finished_utc":"2026-10-08T19:34:45Z","log":"gate-test:secret-boundary.txt"}
-{"sha":"db7f84413202b1fbb97304c019413e264633ecb1","gate":"pnpm test:no-supabase","exit":0,"seconds":2,"finished_utc":"2026-10-08T19:34:47Z","log":"gate-test:no-supabase.txt"}
-{"sha":"db7f84413202b1fbb97304c019413e264633ecb1","gate":"pnpm test:no-self-service-claim","exit":0,"seconds":0,"finished_utc":"2026-10-08T19:34:47Z","log":"gate-test:no-self-service-claim.txt"}
-{"sha":"db7f84413202b1fbb97304c019413e264633ecb1","gate":"pnpm db:verify","exit":0,"seconds":7,"finished_utc":"2026-10-08T19:34:54Z","log":"gate-db:verify.txt"}
-{"sha":"db7f84413202b1fbb97304c019413e264633ecb1","gate":"pnpm test:integration","exit":127,"seconds":199,"finished_utc":"2026-10-08T19:38:13Z","log":"gate-test:integration.txt"}
+{"sha":"db7f84413202b1fbb97304c019413e264633ecb1","gate":"pnpm test:secret-boundary","exit":0,"seconds":61,"finished_utc":"2026-10-08T19:34:45Z","log":"gate-test-secret-boundary.txt"}
+{"sha":"db7f84413202b1fbb97304c019413e264633ecb1","gate":"pnpm test:no-supabase","exit":0,"seconds":2,"finished_utc":"2026-10-08T19:34:47Z","log":"gate-test-no-supabase.txt"}
+{"sha":"db7f84413202b1fbb97304c019413e264633ecb1","gate":"pnpm test:no-self-service-claim","exit":0,"seconds":0,"finished_utc":"2026-10-08T19:34:47Z","log":"gate-test-no-self-service-claim.txt"}
+{"sha":"db7f84413202b1fbb97304c019413e264633ecb1","gate":"pnpm db:verify","exit":0,"seconds":7,"finished_utc":"2026-10-08T19:34:54Z","log":"gate-db-verify.txt"}
+{"sha":"db7f84413202b1fbb97304c019413e264633ecb1","gate":"pnpm test:integration","exit":127,"seconds":199,"finished_utc":"2026-10-08T19:38:13Z","log":"gate-test-integration.txt"}
 {"sha":"db7f84413202b1fbb97304c019413e264633ecb1","gate":"pnpm build","exit":0,"seconds":59,"finished_utc":"2026-10-08T19:39:13Z","log":"gate-build.txt"}
 {"sha":"db7f84413202b1fbb97304c019413e264633ecb1","gate":"pnpm e2e","exit":0,"seconds":88,"finished_utc":"2026-10-08T19:40:41Z","log":"gate-e2e.txt"}
