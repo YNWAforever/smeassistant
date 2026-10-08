@@ -1,0 +1,10 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test:integration C:\Users\laich\Documents\smeassistant\.claude\worktrees\audit-fix-1009
+> vitest run --config vitest.integration.config.ts
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smeassistant/.claude/worktrees/audit-fix-1009
+
+<claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
+ ❯ test/integration/neon-publish-flag-off.integration.test.ts (9 tests) 6043ms
+ ELIFECYCLE  Command failed with exit code 4294967295.

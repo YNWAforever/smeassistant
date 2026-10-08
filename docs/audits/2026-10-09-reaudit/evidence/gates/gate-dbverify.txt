@@ -1,0 +1,34 @@
+
+> sme-scanner-visibility-workspace@0.1.0 db:verify C:\Users\laich\Documents\smeassistant\.claude\worktrees\audit-fix-1009
+> tsx scripts/neon/verify-migrations.ts
+
+{
+  "applied": [
+    "0001_identity.sql",
+    "0002_business.sql",
+    "0003_workflows.sql",
+    "0004_atomic_operations.sql",
+    "0005_owner_removal_guard.sql",
+    "0006_action_applications.sql",
+    "0007_action_verification.sql",
+    "0008_workspace_internal.sql",
+    "0009_scan_attempts.sql",
+    "0010_mail_outbox.sql",
+    "0011_offers.sql",
+    "0012_work_packs.sql",
+    "0013_preview_events.sql",
+    "0014_publish_reply.sql",
+    "0015_action_list_indexes.sql"
+  ],
+  "replay": [],
+  "tables": 41,
+  "columns": 491,
+  "constraints": 204,
+  "notNullConstraints": 0,
+  "indexes": 111,
+  "triggers": 8,
+  "functions": 23,
+  "seededRows": 0,
+  "deferredFunctions": [],
+  "deferredTriggers": []
+}

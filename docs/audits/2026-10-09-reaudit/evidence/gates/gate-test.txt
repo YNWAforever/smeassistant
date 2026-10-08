@@ -1,0 +1,51 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test C:\Users\laich\Documents\smeassistant\.claude\worktrees\audit-fix-1009
+> vitest run --exclude lib/evidence/safe-media.test.ts && vitest run lib/evidence/safe-media.test.ts && corepack pnpm -r test
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smeassistant/.claude/worktrees/audit-fix-1009
+
+ ❯ tests/scan-claim-single-path.test.ts (4 tests | 1 failed) 10138ms
+     × no production source calls claimAuditJob or claim_audit_job outside the wrapper's definition 10060ms (retry x1)
+ ❯ tests/scan-events-single-writer.test.ts (3 tests | 1 failed) 10107ms
+     × only lib/analytics/scan-events.ts inserts into scan_events 10103ms (retry x1)
+<claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
+<claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/scan-claim-single-path.test.ts > scan claims take the metered path only > no production source calls claimAuditJob or claim_audit_job outside the wrapper's definition
+ FAIL  tests/scan-claim-single-path.test.ts > scan claims take the metered path only > no production source calls claimAuditJob or claim_audit_job outside the wrapper's definition
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ tests/scan-claim-single-path.test.ts:57:3
+     55|
+     56| describe("scan claims take the metered path only", () => {
+     57|   it("no production source calls claimAuditJob or claim_audit_job outs…
+       |   ^
+     58|     expect(await unmeteredClaimers()).toEqual([]);
+     59|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  tests/scan-events-single-writer.test.ts > scan_events single writer > only lib/analytics/scan-events.ts inserts into scan_events
+ FAIL  tests/scan-events-single-writer.test.ts > scan_events single writer > only lib/analytics/scan-events.ts inserts into scan_events
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ tests/scan-events-single-writer.test.ts:44:3
+     42|
+     43| describe("scan_events single writer", () => {
+     44|   it("only lib/analytics/scan-events.ts inserts into scan_events", asy…
+       |   ^
+     45|     expect(await scanEventWriters()).toEqual([SOLE_WRITER]);
+     46|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+
+ Test Files  2 failed | 393 passed (395)
+      Tests  2 failed | 4815 passed (4817)
+   Start at  03:47:57
+   Duration  120.25s (transform 43.14s, setup 356.65s, import 268.17s, tests 191.01s, environment 204.37s)
+
+ ELIFECYCLE  Test failed. See above for more details.

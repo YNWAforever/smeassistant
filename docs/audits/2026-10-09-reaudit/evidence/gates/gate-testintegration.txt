@@ -1,0 +1,14 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test:integration C:\Users\laich\Documents\smeassistant\.claude\worktrees\audit-fix-1009
+> vitest run --config vitest.integration.config.ts
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smeassistant/.claude/worktrees/audit-fix-1009
+
+<claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
+
+ Test Files  53 passed (53)
+      Tests  578 passed (578)
+   Start at  03:51:19
+   Duration  485.70s (transform 3.91s, setup 987ms, import 32.76s, tests 423.04s, environment 8ms)
+
