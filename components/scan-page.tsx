@@ -48,12 +48,16 @@ import {
   buildScanStartPayload,
   candidateHasIdentity,
   emptyScanDraft,
+  forgetScanSubmissionKey,
   isJobId,
+  layeredSubmissionStorage,
   normaliseInstagramHandle,
+  scanSubmissionKeyFor,
   type ScanDraft,
   type ScanMarket,
   type ScanObjective,
 } from "@/lib/funnel/scan-start"
+import { generateIdempotencyKey } from "@/lib/funnel/unlock"
 import type { TemplateKey } from "@/lib/workspace/templates"
 import { t } from "@/lib/i18n"
 import { scanStartRefusal } from "@/lib/budgets/messages"
@@ -114,6 +118,8 @@ export function ScanPage({
   const requestId = useRef(0)
   const lastQuery = useRef("")
   const websiteInput = useRef<HTMLInputElement>(null)
+  // F-13: holds the submission key when session storage is unavailable.
+  const submissionMemory = useRef(new Map<string, string>())
   const website = resolveScanWebsite(draft)
   const validWebsite = website.ok
   const resolvedWebsite = website.ok ? website.value : null
@@ -213,13 +219,25 @@ export function ScanPage({
   async function startScan() {
     setSubmitting(true)
     setError("")
+    const storage = layeredSubmissionStorage(submissionMemory.current, () => window.sessionStorage)
     try {
+      const payload = buildScanStartPayload(draft, locale, { granted: consent, policyVersion })
+      // F-13: a retry of this exact submission reuses its key, so the server
+      // returns the scan it already queued instead of charging for another.
+      const submissionKey = scanSubmissionKeyFor(payload, storage, Date.now(), generateIdempotencyKey)
       const response = await fetch("/api/scan/start", {
         method: "POST",
         headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify(buildScanStartPayload(draft, locale, { granted: consent, policyVersion })),
+        body: JSON.stringify({ ...payload, submission_key: submissionKey }),
       })
       const data = (await response.json().catch(() => ({}))) as { jobId?: string; error?: string; policy_version?: string }
+      // The key belongs to another scan (it cannot match this payload). Drop it
+      // so the next press is a fresh submission; consent is left as given.
+      if (response.status === 409 && data.error === "submission_key_conflict") {
+        forgetScanSubmissionKey(storage)
+        setError(c.errors.submit)
+        return
+      }
       if (response.status === 429) {
         setError(t(locale, "scanner.candidateErrorRateLimited"))
         return

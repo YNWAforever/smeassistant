@@ -76,6 +76,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ workspa
   catch { return NextResponse.json({ error: "unavailable" }, { status: 503 }); }
   if (!tierAllows(tier, "rescans")) return NextResponse.json({ error: "tier_required" }, { status: 403 });
 
+  // F-13: a retry after a lost response, or a second press, while this
+  // location's rescan is still under way gets that job back -- before the
+  // limiter, so it never spends one of the day's rescans. enqueueRescan
+  // re-checks atomically for presses that arrive together.
+  let live: string | null;
+  try { live = await repo.inFlightJob(workspaceId, locationId); }
+  catch { return NextResponse.json({ error: "unavailable" }, { status: 503 }); }
+  if (live) return NextResponse.json({ jobId: live, existing: true }, { status: 200 });
+
   const decision = await enforceRateLimit({ req, scope: "rescan", identifiers: [workspaceId], failClosed: true });
   if (!decision.allowed) return rateLimitedResponse(decision.retryAfterSeconds);
 
@@ -96,6 +105,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ workspa
     if (result.reason === "workspace_scan_budget_reached") return NextResponse.json({ error: "workspace_scan_budget_reached" }, { status: 429 });
     return NextResponse.json({ error: "unavailable" }, { status: 503 });
   }
+  // A concurrent press found this location's rescan already queued.
+  if (result.existing) return NextResponse.json({ jobId: result.jobId, existing: true }, { status: 200 });
 
   try {
     const schedule = await ensureMonthlySchedule(repo, { job: result.sourceJob, workspaceId, actorId: auth.user.id, nowIso: now.toISOString() });

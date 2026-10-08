@@ -1,6 +1,7 @@
 import "server-only";
 import type { Pool } from "pg";
 import { getPool } from "../db/client";
+import { LOCATION_LIVE_JOB_SQL } from "../scan/claimable";
 import type { RescanSourceJob } from "../workspace/rescan";
 import type { ScheduleInsert } from "../scheduler/create-schedule";
 export interface RescanRepository {
@@ -8,6 +9,8 @@ export interface RescanRepository {
  latestFinishedJob(workspaceId: string, locationId: string): Promise<RescanSourceJob | null>;
  scheduleExists(placeId: string): Promise<boolean>;
  insertSchedule(row: ScheduleInsert): Promise<void>;
+ /** F-13: the location's rescan still under way, if any (LOCATION_LIVE_JOB_SQL). */
+ inFlightJob(workspaceId: string, locationId: string): Promise<string | null>;
 }
 /** Authorized rescan persistence only; dispatch remains owned by scan execution. */
 export function rescanRepository(client?: Pick<Pool, "query">): RescanRepository {
@@ -19,6 +22,7 @@ export function rescanRepository(client?: Pick<Pool, "query">): RescanRepository
     FROM audit_jobs j JOIN locations l ON l.id=j.location_id AND l.workspace_id=j.workspace_id
     WHERE j.workspace_id=$1 AND j.location_id=$2 AND j.status IN ('done','partial') ORDER BY j.created_at DESC,j.id DESC LIMIT 1`,[workspaceId,locationId])).rows[0] ?? null;
   },
+  async inFlightJob(workspaceId, locationId) { return (await db().query<{id:string}>(LOCATION_LIVE_JOB_SQL,[workspaceId,locationId])).rows[0]?.id ?? null; },
   async scheduleExists(placeId) { return (await db().query("SELECT id FROM scan_schedules WHERE place_id=$1 LIMIT 1",[placeId])).rows.length>0; },
   async insertSchedule(row) {
    await db().query(`INSERT INTO scan_schedules(place_id,input_snapshot,cadence,anniversary_day,last_job_id,next_run_at,created_by,workspace_id)

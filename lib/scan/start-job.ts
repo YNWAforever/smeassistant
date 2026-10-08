@@ -1,5 +1,5 @@
-import { randomBytes } from "crypto";
-import { jobsRepository, type JobsRepository } from "@/lib/repositories/jobs";
+import { createHash, randomBytes } from "crypto";
+import { jobsRepository, ScanSubmissionConflict, type JobsRepository } from "@/lib/repositories/jobs";
 import { SCAN_CONSENT_TYPE, parseScanConsent, type ScanConsentRecord } from "./consent";
 import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
 import type { IgMatchProvenance } from "@sme-scanner/contracts";
@@ -58,7 +58,7 @@ export interface ScanStartInput {
  * failure assertion keeps matching exactly; the route defaults to 400.
  */
 export type ScanStartParse =
-  | { ok: true; input: ScanStartInput; consent: ScanConsentRecord }
+  | { ok: true; input: ScanStartInput; consent: ScanConsentRecord; submissionKey?: string }
   | { ok: false; error: string; status?: 400 | 409 };
 
 const IG_MATCH_PROVENANCE = new Set<string>(["manual_typed", "picker_confirmed", "gbp_cross_referenced"]);
@@ -66,6 +66,8 @@ const TEMPLATE_KEYS = new Set<string>(TEMPLATES.map((t) => t.key));
 const LOCALES = new Set<string>(["en", "zh-HK", "zh-TW"]);
 const OBJECTIVES = new Set<string>(["more_leads", "better_visibility", "improve_trust", "understand_performance"]);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+/** 32 random bytes as base64url is 43 characters; allow a little room either side. */
+const SUBMISSION_KEY_RE = /^[A-Za-z0-9_-]{22,128}$/;
 
 function isOptionalLimitedString(value: unknown, maxLength: number) {
   return value == null || (typeof value === "string" && value.trim().length <= maxLength);
@@ -175,6 +177,12 @@ export function parseScanStartBody(raw: unknown): ScanStartParse {
   }
   if (parentJobId && !UUID_RE.test(parentJobId)) return { ok: false, error: "parent_job_id is invalid" };
   if (!website.ok) return { ok: false, error: "website_url is invalid" };
+  // F-13: optional so older tabs keep working; when sent it must be the
+  // client's random per-submission token, never free text.
+  const submissionKey = body.submission_key;
+  if (submissionKey != null && (typeof submissionKey !== "string" || !SUBMISSION_KEY_RE.test(submissionKey))) {
+    return { ok: false, error: "submission_key is invalid" };
+  }
 
   // Consent is checked last so every existing error string keeps its precedence
   // -- and so a consent-less POST is still rejected before any database work.
@@ -188,6 +196,7 @@ export function parseScanStartBody(raw: unknown): ScanStartParse {
   return {
     ok: true,
     consent: consent.consent,
+    ...(typeof submissionKey === "string" ? { submissionKey } : {}),
     input: {
       businessName,
       instagramHandle,
@@ -289,13 +298,26 @@ export function buildScanConsentInsert(consent: ScanConsentRecord) {
 }
 
 export type ScanJobInsertResult =
- | { ok: true; jobId: string; startedEvent: ScanEvent }
+ | { ok: true; jobId: string; startedEvent: ScanEvent; replayed?: true }
  | { ok: false; error: unknown };
+
+/**
+ * F-13: what a submission key is bound to. A replay must carry the same
+ * merchant identity, consent and attribution, or it is a different scan.
+ */
+export function scanSubmissionFingerprint(input: ScanStartInput, consent: ScanConsentRecord, attribution: ScanJobAttribution = {}): string {
+ return createHash("sha256").update(JSON.stringify({
+  input,
+  consent: { granted: consent.granted, policyVersion: consent.policyVersion },
+  workspaceId: attribution.workspaceId ?? null,
+  locationId: attribution.locationId ?? null,
+ })).digest("hex");
+}
 
 export async function insertScanJob(
  input: ScanStartInput,
  consent: ScanConsentRecord,
- analytics: { anonymousSessionId: string },
+ analytics: { anonymousSessionId: string; submissionKey?: string | null },
  attribution: ScanJobAttribution = {},
  repository: JobsRepository = jobsRepository,
 ): Promise<ScanJobInsertResult> {
@@ -307,15 +329,20 @@ export async function insertScanJob(
  try {
   // A rolled-back transaction is indistinguishable from any other persistence
   // failure at this boundary, by design.
+  const submission = analytics.submissionKey
+   ? { key: analytics.submissionKey, fingerprint: scanSubmissionFingerprint(input, consent, attribution) }
+   : null;
   const row = await repository.insert(
    buildScanJobInsert(input, attribution),
    buildScanConsentInsert(consent),
    { anonymousSessionId: analytics.anonymousSessionId, event: startedEvent },
+   ...(submission ? [submission] : []),
   );
-  return { ok: true, jobId: row.id, startedEvent };
+  return row.replayed ? { ok: true, jobId: row.id, startedEvent, replayed: true } : { ok: true, jobId: row.id, startedEvent };
  } catch (error) {
   // A budget refusal is an answer, not a persistence failure: the caller maps it.
-  if (error instanceof ScanBudgetRefusal) return { ok: false, error };
+  // So is a key reused for a different scan (F-13).
+  if (error instanceof ScanBudgetRefusal || error instanceof ScanSubmissionConflict) return { ok: false, error };
   return { ok: false, error: new Error("scan_persistence_unavailable") };
  }
 }

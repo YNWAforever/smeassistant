@@ -6,6 +6,7 @@ import { logPauseRefusal, pauseState } from "@/lib/budgets/pause";
 import { currentScanConsentPolicyVersion } from "@/lib/scan/consent";
 import { insertScanJob, parseScanStartBody } from "@/lib/scan/start-job";
 import { ScanBudgetRefusal } from "@/lib/budgets/scan";
+import { ScanSubmissionConflict } from "@/lib/repositories/jobs";
 
 /**
  * Upstream's contract, unchanged (CLAUDE.md 3.2.2): validation, the scan_start
@@ -48,8 +49,12 @@ export async function POST(req: Request) {
   // Resolved before the insert: scan_started is now written inside the job's
   // own transaction, which needs the session id.
   const session = resolveAnalyticsSession(req);
-  const created = await insertScanJob(parsed.input, parsed.consent, { anonymousSessionId: session.id });
+  const created = await insertScanJob(parsed.input, parsed.consent, { anonymousSessionId: session.id, submissionKey: parsed.submissionKey ?? null });
   if (!created.ok) {
+    // F-13: the key was first used for a different scan. Nothing was written.
+    if (created.error instanceof ScanSubmissionConflict) {
+      return NextResponse.json({ error: "submission_key_conflict" }, { status: 409 });
+    }
     // Already logged as "[budget] refused" (or "[budget] check_failed") by the
     // admission check, which ran before anything was written. P3.5d: a paused
     // refusal is reported the same way, distinguished by its scope.
@@ -69,6 +74,13 @@ export async function POST(req: Request) {
   // may never run once a Vercel function freezes. It must not go through
   // recordEvent: with its default NULL dedupe key it would never conflict, so
   // it would insert a second, duplicate scan_started row and then forward it.
+  // F-13: a retried submission already has its job and its scan_started row;
+  // forwarding again would count one scan twice.
+  if (created.replayed) {
+    const replay = NextResponse.json({ jobId: created.jobId, replayed: true });
+    setAnalyticsSessionCookie(replay, session);
+    return replay;
+  }
   const { startedEvent } = created;
   try {
     after(() =>

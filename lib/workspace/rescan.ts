@@ -43,7 +43,7 @@ export interface RescanSourceJob extends SchedulableJob {
 export type RescanRefusal = "no_finished_job" | "snapshot_not_v2" | "insert_failed" | "at_capacity" | "workspace_scan_budget_reached" | "paused";
 
 export type EnqueueRescanResult =
-  | { ok: true; jobId: string; sourceJob: RescanSourceJob }
+  | { ok: true; jobId: string; sourceJob: RescanSourceJob; existing?: true }
   | { ok: false; reason: RescanRefusal };
 
 function requiredString(snapshot: Record<string, unknown>, key: string): string {
@@ -167,12 +167,12 @@ export async function enqueueRescan(repo: RescanRepository, input: EnqueueRescan
   // request through the same `parseScanConsent` contract the scan wizard uses,
   // so a submitted version that no longer matches the published one is refused
   // rather than silently restamped (guardrail 13).
-  let created: { id: string };
+  let created: { id: string; replayed?: boolean };
   try {
     created = await jobsRepository.insert(row, buildScanConsentInsert(input.consent), {
       anonymousSessionId: input.anonymousSessionId,
       event: scanStartedEvent(scanInput.market, scanInput.locale),
-    });
+    }, { workspaceId: input.workspaceId, locationId: input.locationId });
   }
   catch (error) {
     // P3.5a: refused before anything was written, and already logged by the
@@ -187,6 +187,10 @@ export async function enqueueRescan(repo: RescanRepository, input: EnqueueRescan
     console.error("[workspace/rescan] job insert failed", { category: "rescan_insert_failed" });
     return { ok: false, reason: "insert_failed" };
   }
+  // F-13: this location's previous rescan is still under way. Nothing new was
+  // written -- no job, consent, budget admission or audit row -- so there is
+  // nothing to record here either.
+  if (created.replayed) return { ok: true, jobId: created.id, sourceJob, existing: true };
 
   await recordNeonEvent( {
     workspaceId: input.workspaceId,

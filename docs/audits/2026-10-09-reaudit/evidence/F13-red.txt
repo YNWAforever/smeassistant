@@ -1,0 +1,24 @@
+# F-13 RED (scan start + rescan, before the fix). Excerpts of vitest output, 2026-10-09 HKT
+command: corepack pnpm exec vitest run --config vitest.integration.config.ts test/integration/neon-scan-submission.integration.test.ts
+     × replays a retried submission to the same job without a second job, consent or event 251ms
+     × collapses concurrent duplicate submissions to one job 318ms
+     × refuses a reused key carrying a different submission, without writing 41ms
+AssertionError: expected { Object (jobId) } to deeply equal { …(2) }      (retry created a new job)
+AssertionError: expected 5 to be 1                                         (5 concurrent duplicates -> 5 jobs)
+AssertionError: expected 200 to be 409                                     (reused key for another business accepted)
+      Tests  3 failed | 1 passed (4)    exit code: 1
+
+command: corepack pnpm exec vitest run --config vitest.integration.config.ts test/integration/neon-rescan.integration.test.ts
+     × reuses an in-flight rescan for the same location instead of queueing another
+     × collapses concurrent rescans of one location to one job
+     × queues a fresh rescan once the previous one is terminal or past the lease window
+AssertionError: expected '354cfdac-…' to be '3570dafd-…'   (second rescan queued a new job)
+AssertionError: expected 3 to be 1                          (3 concurrent presses -> 3 jobs)
+      Tests  3 failed | 4 passed (7)    exit code: 1
+
+command: corepack pnpm exec vitest run lib/funnel/scan-submission.test.ts components/scan-page.submission.test.tsx
+   × retries a lost start with the same submission key: en / zh-HK / zh-TW   (no submission_key sent)
+   × forgets a key the server says belongs to another scan ...                (409 fell into the stale-consent branch)
+      Tests  9 failed (9)    exit code: 1
+command: corepack pnpm exec vitest run "app/api/workspaces/[workspaceId]/rescan/route.test.ts"
+      Tests  3 failed | 18 passed (21)    exit code: 1
