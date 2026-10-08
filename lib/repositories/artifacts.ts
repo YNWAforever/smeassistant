@@ -12,7 +12,7 @@ import { rowToSnapshot, type ScanSnapshotRow, type ScanDiffRow } from '../worksp
 import type { ActionState } from '../domain';
 import type { ActionScope, VersionScope } from '../workspace/versions';
 import { bindOfferMeta } from '../workspace/offer-binding';
-import { RUN_STALE_AFTER_MS } from '../workspace/run-reaper';
+import { RUN_STALE_AFTER_MS } from '../workspace/run-stale';
 
 type Executor = Pick<Pool | PoolClient, 'query'>;
 const EXPECTED_ERRORS = new Set(['version_conflict','not_approved','allowance_exceeded','version_closed','version_not_found','invalid_decision','invalid_mode','artifact_scope_mismatch','offer_changed','offer_inactive','offer_expired']);

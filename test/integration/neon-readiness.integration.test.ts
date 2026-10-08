@@ -122,6 +122,20 @@ it("T-19 rejects a missing first_published_at even when every journal checksum i
   }
   expect((await readiness(env)).status).toBe("ready");
 });
+// F-16: production owner homes failed reading actions (which selects offer_id,
+// added by 0011). A journal that lists 0011 does not prove its columns exist on
+// the database the deployment reads, so readiness checks every column the
+// application schema declares, not only first_published_at.
+it("F-16 rejects any application-declared column that is missing, e.g. actions.offer_id", async () => {
+  expect((await readiness(env)).status).toBe("ready");
+  await db.query("ALTER TABLE public.actions RENAME COLUMN offer_id TO hidden_offer_id");
+  try {
+    expect(await readiness(env)).toMatchObject({ status: "not_ready", category: "schema" });
+  } finally {
+    await db.query("ALTER TABLE public.actions RENAME COLUMN hidden_offer_id TO offer_id");
+  }
+  expect((await readiness(env)).status).toBe("ready");
+});
 it("rejects missing journal", async () => {
   await db.query(
     "ALTER TABLE neon_migrations.journal RENAME TO hidden_journal",

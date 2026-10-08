@@ -358,6 +358,22 @@ describe("page repository boundaries", () => {
     await expect(getActivity(ctx)).rejects.toThrow("activity lookup failed");
   });
 
+  // F-16: production owner homes failed with only "actions lookup failed" in the
+  // logs. The cause must be diagnosable from the SQLSTATE, while the SQL text,
+  // the driver message and any row data never reach a log line.
+  it("logs the failed read with its SQLSTATE only, then rethrows the generic error", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      repository.actions.mockRejectedValueOnce(Object.assign(new Error("column \"offer_id\" does not exist at SELECT secret_column"), { code: "42703" }));
+      await expect(loadActionRows("ws-1", {})).rejects.toThrow("actions lookup failed");
+      expect(error).toHaveBeenCalledWith("[workspace] read failed", { category: "workspace_read_failed", read: "actions", code: "42703" });
+      expect(JSON.stringify(error.mock.calls)).not.toMatch(/offer_id|secret_column|SELECT/);
+      repository.actions.mockRejectedValueOnce(new Error("no code"));
+      await expect(loadActionRows("ws-1", {})).rejects.toThrow("actions lookup failed");
+      expect(error).toHaveBeenLastCalledWith("[workspace] read failed", { category: "workspace_read_failed", read: "actions", code: undefined });
+    } finally { error.mockRestore(); }
+  });
+
   it("renders unknown integrations for an empty TW merchant and retains read-only membership", async () => {
     state.connections = [];
     const empty = { ...ctx, workspace: { ...ctx.workspace, market: "tw" as const }, locations: [], membership: { ...ctx.membership, role: "viewer" as const } };
