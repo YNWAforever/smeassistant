@@ -180,7 +180,7 @@ export const jobsRepository: JobsRepository & {
         });
     },
     async readStatus(id) {
-        const { rows } = await getPool().query<ScanStatus>(`SELECT id,status,processing_stage,share_slug,score_coverage::float8 AS score_coverage,failure_correlation_id,module_results,module_scores,${DEAD_LETTERED_JOB_CONDITION_SQL} AS dead_lettered FROM audit_jobs WHERE id=$1`, [id]);
+        const { rows } = await getPool().query<ScanStatus>(`SELECT id,status,processing_stage,share_slug,score_coverage::float8 AS score_coverage,failure_correlation_id,module_results,module_scores,${DEAD_LETTERED_JOB_CONDITION_SQL} AS dead_lettered,(COALESCE(btrim(ig_handle),'') <> '') AS instagram_provided FROM audit_jobs WHERE id=$1`, [id]);
         return rows[0] ?? null;
     }
 };
@@ -194,4 +194,6 @@ export interface ScanStatus {
     module_results: unknown;
     module_scores: unknown;
     dead_lettered: boolean;
+    /** F-15: whether a handle was given at start; the engine reads Instagram from nothing else. */
+    instagram_provided?: boolean;
 }

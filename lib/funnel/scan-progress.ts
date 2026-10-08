@@ -27,6 +27,8 @@ export interface ScanStatusResponse {
   coverage: number | null;
   failureCorrelationId: string | null;
   moduleStates?: Record<CollectorKey, ModuleProviderState> | null;
+  /** F-15: collectors whose input the owner did not give at start (today: instagram). */
+  notProvided?: CollectorKey[] | null;
   /** P3.5b: in flight but past its three attempts; the lease will not claim it again. */
   deadLettered?: boolean;
 }
@@ -84,6 +86,23 @@ export type CollectorPhase = "pending" | "running" | "awaiting_result" | "not_pr
  * terminal responses without outcomes keep each collector unknown.
  */
 export function collectorPhases(
+  processingStage: string | null | undefined,
+  status: string,
+  moduleStates?: Record<CollectorKey, ModuleProviderState> | null,
+  notProvided?: readonly CollectorKey[] | null,
+): Record<CollectorKey, CollectorPhase> {
+  const phases = derivedCollectorPhases(processingStage, status, moduleStates);
+  // F-15: an input the owner did not give is known from the first poll (the
+  // engine reads Instagram only from the handle given at start). Say so,
+  // instead of "awaiting a result" that cannot come -- but never over an
+  // evidenced outcome.
+  for (const key of notProvided ?? []) {
+    if (phases[key] !== "done" && phases[key] !== "failed") phases[key] = "not_provided";
+  }
+  return phases;
+}
+
+function derivedCollectorPhases(
   processingStage: string | null | undefined,
   status: string,
   moduleStates?: Record<CollectorKey, ModuleProviderState> | null,

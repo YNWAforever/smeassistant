@@ -80,6 +80,9 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon retry-safe scan start
     expect((await runtime.query("SELECT id FROM scan_events WHERE job_id=$1 AND event_name='scan_started'", [jobId])).rows).toHaveLength(1);
     const audit = (await runtime.query("SELECT workspace_id,actor_type,actor_id,event,entity_type,entity_id FROM audit_events WHERE entity_id=$1", [jobId])).rows;
     expect(audit).toEqual([{ workspace_id: null, actor_type: "user", actor_id: null, event: "scan.queued", entity_type: "audit_job", entity_id: jobId }]);
+    // F-15: readStatus says whether a handle was given (this payload has none).
+    const { jobsRepository } = await import("../../lib/repositories/jobs");
+    expect(await jobsRepository.readStatus(jobId)).toMatchObject({ instagram_provided: false });
   });
 
   it("collapses concurrent duplicate submissions to one job", async () => {

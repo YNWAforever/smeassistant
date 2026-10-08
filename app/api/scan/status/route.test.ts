@@ -59,6 +59,24 @@ describe("scan status rate-limit boundary", () => {
     expect(body.moduleStates).toBeNull();
   });
 
+  // F-15: a missing Instagram handle is known from the first poll.
+  it("names a missing Instagram handle while the scan runs, and refines the terminal state", async () => {
+    const jobId = "00000000-0000-4000-8000-000000000001";
+    mocks.from.mockResolvedValue({ id: jobId, status: "collecting", processing_stage: "collecting_aeo", share_slug: null, score_coverage: null, failure_correlation_id: null, module_results: null, module_scores: null, instagram_provided: false });
+    expect((await (await GET(new Request("https://scanner.test/api/scan/status?jobId=" + jobId))).json()).notProvided).toEqual(["instagram"]);
+    mocks.from.mockResolvedValue({ id: jobId, status: "partial", processing_stage: null, share_slug: "report-1234", score_coverage: 0.5, failure_correlation_id: null, instagram_provided: false,
+      module_results: { gbp: { status: "measured", score: 80, confidence: "high" }, ig: { status: "unavailable", limitationCode: "IG_HANDLE_NOT_PROVIDED" }, aeo: { status: "measured", score: 50, confidence: "medium" } }, module_scores: null });
+    const body = await (await GET(new Request("https://scanner.test/api/scan/status?jobId=" + jobId))).json();
+    expect(body.notProvided).toEqual(["instagram"]);
+    expect(body.moduleStates.instagram).toBe("unavailable");
+  });
+
+  it("names nothing as missing when a handle was given", async () => {
+    const jobId = "00000000-0000-4000-8000-000000000001";
+    mocks.from.mockResolvedValue({ id: jobId, status: "collecting", processing_stage: "collecting_ig_gbp", share_slug: null, score_coverage: null, failure_correlation_id: null, module_results: null, module_scores: null, instagram_provided: true });
+    expect((await (await GET(new Request("https://scanner.test/api/scan/status?jobId=" + jobId))).json()).notProvided).toEqual([]);
+  });
+
   it("reports a dead-lettered job", async () => {
     const jobId = "00000000-0000-4000-8000-000000000001";
     mocks.from.mockResolvedValue({
