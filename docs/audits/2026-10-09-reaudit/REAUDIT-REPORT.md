@@ -1,5 +1,12 @@
 # SMEAssistant 重新稽核及修復報告（2026-10-09）
 
+> **更新（2026-10-09 下午，以此為準）：**
+> - **合併及部署：** #45 合併（`f647b30`）；#46 解除 `main` 的部署 hold，`69750c6` 已部署到 production（`dpl_C2AK7xgGE8Pu8G4kySBWoDeyEDRh`）。因此 Codex 的修復（#44）及本報告的 F-13～F-16 現已上線。
+> - **F-16 已結案：** 新的 SQLSTATE log 顯示 `42703`（欄位不存在）。正式站實際連接的資料庫（`neondb`，endpoint 與 Vercel `DATABASE_URL` 相同）只到 0008，`scan_attempts` 已存在但未記入 journal，並缺少 0009–0014 的 69 個欄位。
+> - **補套：** 腳本經核對並在本地由 0008 演練後，店主以 `rollout/apply-0009.sql`～`apply-0014.sql` 補套。之後店主首頁在正式站正常顯示，log 不再有 `42703`。
+> - **詳情及往後套 migration 的守則：** 見 `docs/operations/migration-readiness.md` 的 2026-10-09 一節；檢查工具為 `docs/operations/check-missing-columns.sql`。
+> - **下文：** 為當天上午的稽核快照，保留不改；狀態以 `tracker-2026-10-09.csv` 為準。
+
 **結論先行。** production（`d1cbc7b`，2026-10-06 部署）仍然是舊稽核版本；Codex 已在 main 修好 T-03～T-18 的程式碼（PR #44，CI 通過），但 main 被 `vercel.json` 刻意停止自動部署，所以**沒有一項 2026-10-07 稽核修復已上線**。今次獨立重驗了這些修復，再新增四項修復（F-13～F-16）。最嚴重的新發現是 **F-16：production 唯一可見的店主工作台首頁自 2026-10-02 起每次打開都失敗**，根因需要正式資料庫唯讀存取才能確認；單靠部署 main 不一定能修好。
 
 狀態用語：**code fixed**（程式已改）→ **local verified**（本地合成／隔離 DB 測試通過）→ **CI verified**（GitHub Actions 同 SHA 通過）→ **hosted verified**（正式站同版本驗收）→ **deployed**（正式 alias 指向該 SHA）。本報告不把較低層級當作較高層級。
