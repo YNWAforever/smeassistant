@@ -77,9 +77,10 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
   // all-locations view never has a snapshot (no aggregate score), so it only
   // falls back to the quiet copy when nothing is open.
   const hasLocations = locations.length > 0
-  const unscanned = !hasLocations || (location !== "all" && !snapshot)
-  const pageTitle = unscanned ? t.noScanTitle : priority ? t.title : t.quietTitle
-  const pageSubtitle = unscanned ? t.noScanSubtitle : priority ? t.subtitle : t.quietSubtitle
+  // An open action is real work whatever the snapshot state, so it always wins.
+  const unscanned = !priority && (!hasLocations || (location !== "all" && !snapshot))
+  const pageTitle = priority ? t.title : unscanned ? t.noScanTitle : t.quietTitle
+  const pageSubtitle = priority ? t.subtitle : unscanned ? t.noScanSubtitle : t.quietSubtitle
 
   return (
     <div className="owner-home-page">

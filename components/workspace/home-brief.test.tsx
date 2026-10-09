@@ -301,6 +301,12 @@ describe("HomeBriefView for an unscanned or unlinked workspace (F-19)", () => {
     expect(root.textContent).not.toContain(copy["zh-HK"].home.subtitle);
   });
 
+  it("keeps the existing headline for an open action even without a snapshot (acceptance home-today)", () => {
+    const root = renderWith("en", { locations: [{ slug: "main", name: "Main" }], locationSlug: "main", withSnapshot: false, withPriority: true });
+    expect(root.querySelector("h1")?.textContent).toBe(copy.en.home.title);
+    expect(root.textContent).not.toContain(copy.en.home.noScanTitle);
+  });
+
   it("keeps the existing headline when there is an open priority action, including the all-locations view", () => {
     for (const locationSlug of ["main", "all"]) {
       const root = renderWith("en", { locations: [{ slug: "main", name: "Main" }], locationSlug, withSnapshot: locationSlug === "main", withPriority: true });
