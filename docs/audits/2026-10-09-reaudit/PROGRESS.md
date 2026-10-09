@@ -24,7 +24,7 @@
 
 - #45（`f647b30`）及 #46（`69750c6`）已合併；`69750c6` 已部署到 production。
 - F-16 已結案：正式 DB 只到 0008；店主補套 `apply-0009`～`apply-0014` 後首頁正常。
-- 下表「未解項」第 1–3 項已完成；仍待：記錄正式 DB 的 branch／endpoint id、套用後跑 `check-missing-columns.sql` 確認 0 行、0015（只是 index）、第 4–6 項。
+- 下表「未解項」第 1–3 項已完成；套用後 `check-missing-columns.sql` 為 0 行（journal 14）。仍待：記錄正式 DB 的 branch／endpoint id、0015（只是 index）、第 4–6 項。
 
 ## 未解項（按優先，上午版本）
 
