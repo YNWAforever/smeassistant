@@ -43,7 +43,7 @@ Rollback: this stage is read-only. For 0015, prefer reverting the application co
 | Missing before | 69 application columns from 0010–0014 (`docs/operations/check-missing-columns.sql`) |
 | Applied | `rollout/apply-0009.sql` … `apply-0014.sql`, in order, by Willy in the Neon SQL Editor as `neondb_owner`, 2026-10-09 (~07:30 UTC) |
 | After | Owner home renders on production; no `read failed` / `42703` in the deployment's logs |
-| Not yet recorded | Post-apply `check-missing-columns.sql` result (expected: 0 rows, `last_migration` 14) |
+| Post-apply check | `check-missing-columns.sql`: 0 rows (no application column missing); journal max ordinal 14 (owner-reported, 2026-10-09) |
 | Still missing | 0015 (indexes only; no rollout statement; the code does not depend on it) |
 
 **Pre-apply evidence (local, disposable PostgreSQL 16 only).** The six statements were checked against `HEAD`: each requires exactly the previous journal (names and sha256), inserts the right row, and embeds its migration byte for byte. A rehearsal from a 0008 journal applied all six, reached journal 1–14 with 0 missing columns and matched a database migrated straight to 0014 on all 7 `catalogQueries`; a re-run of `apply-0011` was refused. With `scan_attempts` pre-created by the migrator, `apply-0009` succeeded; pre-created by `neondb_owner`, it refused ("must be owner") and rolled back.
