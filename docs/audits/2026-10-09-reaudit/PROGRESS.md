@@ -20,7 +20,13 @@
 | 3 | F-16 SQLSTATE log、readiness 全欄核對；F-14 import 修正 | `1bbb69d` | `evidence/F16-red.txt`、`F16-readiness-green.txt` |
 | 4 | 完整 gates（CI 次序）：10/11 exit 0；unit exit 1（2 個 Windows 負載 timeout，單獨 3/3 通過）；integration 578、e2e 31、acceptance 52 全過 | `1bbb69d` | `evidence/gates/gates.jsonl`、`gates/unit-timeout-isolated-rerun.txt` |
 
-## 未解項（按優先）
+## 2026-10-09 下午更新
+
+- #45（`f647b30`）及 #46（`69750c6`）已合併；`69750c6` 已部署到 production。
+- F-16 已結案：正式 DB 只到 0008；店主補套 `apply-0009`～`apply-0014` 後首頁正常。
+- 下表「未解項」第 1–3 項已完成；仍待：記錄正式 DB 的 branch／endpoint id、套用後跑 `check-missing-columns.sql` 確認 0 行、0015（只是 index）、第 4–6 項。
+
+## 未解項（按優先，上午版本）
 
 1. **F-16 production owner 首頁失敗**：需 Willy 以唯讀身份對部署 DB 跑 `corepack pnpm neon:readiness`，回報 `status`／`category`。若缺 0011 欄位，另行授權補套。
 2. 推送本分支、開 PR、跑 CI（需同意）。

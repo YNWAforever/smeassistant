@@ -136,6 +136,18 @@ it("F-16 rejects any application-declared column that is missing, e.g. actions.o
   }
   expect((await readiness(env)).status).toBe("ready");
 });
+// F-16 operator check: the read-only SQL an owner pastes into the Neon SQL Editor.
+it("check-missing-columns.sql returns nothing on a complete database and names a missing column", async () => {
+  const { buildMissingColumnsSql } = await import("../../scripts/neon/missing-columns-sql");
+  const sql = buildMissingColumnsSql();
+  expect((await db.query(sql)).rows).toEqual([]);
+  await db.query("ALTER TABLE public.actions RENAME COLUMN offer_id TO hidden_offer_id");
+  try {
+    expect((await db.query(sql)).rows.map((row: { missing_table: string; missing_column: string }) => `${row.missing_table}.${row.missing_column}`)).toEqual(["actions.offer_id"]);
+  } finally {
+    await db.query("ALTER TABLE public.actions RENAME COLUMN hidden_offer_id TO offer_id");
+  }
+});
 it("rejects missing journal", async () => {
   await db.query(
     "ALTER TABLE neon_migrations.journal RENAME TO hidden_journal",

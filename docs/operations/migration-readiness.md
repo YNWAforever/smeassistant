@@ -27,3 +27,34 @@ Read-only checklist:
 Publishing flag-off does not remove the measurement dependency on 0014. The permanent pre-0014 fixture imports measurementRepository and must observe PostgreSQL undefined-column failure, while the fully migrated fixture must read first_published_at successfully with publishing off. Sequential review also reproduced readiness falsely returning ready after renaming that column while retaining every journal checksum. The CLI now checks the real catalog without DDL or business-row reads; the fixture restores the column and verifies recovery. Existing comparable-rescan tests verify missing metrics remain Unknown and do not establish revenue causation.
 
 Rollback: this stage is read-only. For 0015, prefer reverting the application code while retaining harmless indexes; any later index removal is a separate authorized migration after EXPLAIN evidence. No production migration rollback has been run or authorized.
+
+## 2026-10-09 — production binding confirmed; 0009–0014 applied (F-16)
+
+**Symptom.** From the P4.1 release (#28, 2026-10-02) every owner-home render failed (`actions lookup failed`). After #45 added SQLSTATE logging and `69750c6` was deployed (`dpl_C2AK7xgGE8Pu8G4kySBWoDeyEDRh`), the log named it: `read: 'action list', code: '42703'` (undefined column, `actions.offer_id` from 0011).
+
+**Binding.** Willy compared the compute endpoint in Vercel's Production `DATABASE_URL` with the Neon console. The first two databases he checked were **not** the production target. The production target is database `neondb` on the endpoint that matches `DATABASE_URL`.
+
+| Field | Value |
+|---|---|
+| Neon project / branch / endpoint id | _to be recorded by the owner_ (match against `DATABASE_URL`; never paste the URL) |
+| Database | `neondb` |
+| Journal before | 0001–0008, every name and checksum equal to the committed files |
+| Drift found | `scan_attempts` (0009) already existed, owned by `smeassistant_migrator`, with no journal row 9 |
+| Missing before | 69 application columns from 0010–0014 (`docs/operations/check-missing-columns.sql`) |
+| Applied | `rollout/apply-0009.sql` … `apply-0014.sql`, in order, by Willy in the Neon SQL Editor as `neondb_owner`, 2026-10-09 (~07:30 UTC) |
+| After | Owner home renders on production; no `read failed` / `42703` in the deployment's logs |
+| Not yet recorded | Post-apply `check-missing-columns.sql` result (expected: 0 rows, `last_migration` 14) |
+| Still missing | 0015 (indexes only; no rollout statement; the code does not depend on it) |
+
+**Pre-apply evidence (local, disposable PostgreSQL 16 only).** The six statements were checked against `HEAD`: each requires exactly the previous journal (names and sha256), inserts the right row, and embeds its migration byte for byte. A rehearsal from a 0008 journal applied all six, reached journal 1–14 with 0 missing columns and matched a database migrated straight to 0014 on all 7 `catalogQueries`; a re-run of `apply-0011` was refused. With `scan_attempts` pre-created by the migrator, `apply-0009` succeeded; pre-created by `neondb_owner`, it refused ("must be owner") and rolled back.
+
+**Other databases.** The two earlier attempts ran on databases that production does not use; one of them now has journal 1–14. Nothing was rolled back there. Record which branches they are before reusing them.
+
+**Operator rule from now on**, for any rollout statement:
+
+1. Match the Neon compute endpoint id and database name to Vercel's Production `DATABASE_URL`. Stop on any doubt.
+2. Read-only: `SELECT ordinal, name FROM neon_migrations.journal ORDER BY ordinal;` and run `docs/operations/check-missing-columns.sql`.
+3. Apply the `rollout/apply-00NN.sql` statements in order from the first missing ordinal. Each one refuses (and rolls back) if the journal is not exactly what it expects; a refusal or "must be owner" means stop and investigate, never edit the journal.
+4. Re-run `check-missing-columns.sql`: 0 rows. Then check the owner home and the deployment logs.
+
+`check-missing-columns.sql` is generated from `lib/db/schema` by `corepack pnpm db:missing-columns-sql`; `tests/missing-columns-sql.test.ts` fails if it falls out of date. `pnpm neon:readiness` performs the same column check (since #45) when credentials are available.

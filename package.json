@@ -27,6 +27,7 @@
     "eval:workflows": "tsx --tsconfig scripts/tsconfig.eval.json scripts/eval-workflows.ts",
     "launch:check": "node scripts/launch-check.mjs",
     "neon:readiness": "tsx scripts/neon/readiness.ts",
+    "db:missing-columns-sql": "tsx scripts/neon/missing-columns-sql.ts",
     "report:value": "tsx scripts/report/value.ts",
     "test:no-supabase": "node scripts/assert-no-supabase.mjs",
     "test:no-self-service-claim": "node scripts/assert-no-self-service-claim.mjs",
