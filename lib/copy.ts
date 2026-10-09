@@ -372,6 +372,14 @@ type Copy = {
     trust: string
     emptyWeek: string
     rescanNow: string
+    /** F-19: no scan (or no linked business) yet, and a scanned location with nothing open. */
+    noScanTitle: string
+    noScanSubtitle: string
+    quietTitle: string
+    quietSubtitle: string
+    noLocationTitle: string
+    noLocationBody: string
+    noLocationCta: string
     month: string
   }
   common: {
@@ -1466,6 +1474,13 @@ export const copy: Record<PrototypeLocale, Copy> = {
       trust: "Why you can trust this",
       emptyWeek: "Nothing new this week; check back after your next scan.",
       rescanNow: "To check now, use Rescan.",
+      noScanTitle: "Your workspace is waiting for its first scan.",
+      noScanSubtitle: "There is no measured evidence yet, so there is nothing to approve.",
+      quietTitle: "Nothing needs your decision today.",
+      quietSubtitle: "Your latest scan has no open actions; check back after the next scan.",
+      noLocationTitle: "This workspace is not linked to a scanned business yet",
+      noLocationBody: "Run a free scan of your business, then claim it from the report, or ask Fimmick to link it to this workspace.",
+      noLocationCta: "Start a free scan",
       month: "This month",
     },
     common: {
@@ -1524,6 +1539,13 @@ export const copy: Record<PrototypeLocale, Copy> = {
       trust: "為何可信",
       emptyWeek: "本週沒有新行動，下次掃描後再看。",
       rescanNow: "想現在檢查，可按「重新掃描」。",
+      noScanTitle: "工作台正等待第一次掃描。",
+      noScanSubtitle: "目前未有已量度的證據，所以還沒有需要你批准的事。",
+      quietTitle: "今天沒有需要你決定的事。",
+      quietSubtitle: "最新掃描沒有待處理的行動；下次掃描後再看。",
+      noLocationTitle: "此工作台尚未連結已掃描的商戶",
+      noLocationBody: "先為你的商戶做一次免費掃描，然後在報告頁認領，或請 Fimmick 把它連結到這個工作台。",
+      noLocationCta: "免費掃描",
       month: "本月進度",
     },
     common: {
@@ -1582,6 +1604,13 @@ export const copy: Record<PrototypeLocale, Copy> = {
       trust: "為何可信",
       emptyWeek: "本週沒有新行動，下次掃描後再看。",
       rescanNow: "想現在檢查，可以按「重新掃描」。",
+      noScanTitle: "工作台正在等待第一次掃描。",
+      noScanSubtitle: "目前還沒有已量度的證據，所以還沒有需要你核准的事。",
+      quietTitle: "今天沒有需要你決定的事。",
+      quietSubtitle: "最新掃描沒有待處理的行動；下次掃描後再看看。",
+      noLocationTitle: "這個工作台尚未連結已掃描的店家",
+      noLocationBody: "先為你的店家做一次免費掃描，然後在報告頁認領，或請 Fimmick 把它連結到這個工作台。",
+      noLocationCta: "免費掃描",
       month: "本月進度",
     },
     common: {
