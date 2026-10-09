@@ -14,7 +14,11 @@ vi.mock("@/lib/security/rate-limit", () => ({
   enforceRateLimit: mocks.enforceRateLimit,
   rateLimitedResponse: vi.fn(() => new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 })),
 }));
-vi.mock("@/lib/repositories/jobs", () => ({ jobsRepository: { insert: mocks.insert } }));
+// Spread the original so the real error classes (ScanSubmissionConflict) are used.
+vi.mock("@/lib/repositories/jobs", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/repositories/jobs")>()),
+  jobsRepository: { insert: mocks.insert },
+}));
 // Spread the original: the route still needs the real NextResponse.
 vi.mock("next/server", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/server")>()),
@@ -415,5 +419,49 @@ describe("POST /api/scan/start spend budget", () => {
       vi.unstubAllEnvs();
       warn.mockRestore();
     }
+  });
+});
+
+describe("POST /api/scan/start submission key (F-13)", () => {
+  beforeEach(() => {
+    mocks.insert.mockReset();
+    mocks.enforceRateLimit.mockClear();
+    mocks.forwardEventToPostHog.mockClear();
+    mocks.after.mockClear();
+    mocks.afterTasks.length = 0;
+  });
+
+  it.each(["short", "has spaces in it and is long enough", "x".repeat(129), 42])("refuses a malformed submission_key before the limiter and any write: %s", async (submission_key) => {
+    const response = await POST(request({ ...validBody, submission_key }));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "submission_key is invalid" });
+    expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+    expect(mocks.insert).not.toHaveBeenCalled();
+  });
+
+  it("passes the key and its fingerprint to the repository", async () => {
+    mocks.insert.mockResolvedValue({ id: "job-1" });
+    const response = await POST(request({ ...validBody, submission_key: "K".repeat(43) }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ jobId: "job-1" });
+    expect(mocks.insert.mock.calls[0][3]).toEqual({ key: "K".repeat(43), fingerprint: expect.stringMatching(/^[0-9a-f]{64}$/) });
+  });
+
+  it("returns the existing job on a replay and forwards no second scan_started", async () => {
+    mocks.insert.mockResolvedValue({ id: "job-1", replayed: true });
+    const response = await POST(request({ ...validBody, submission_key: "K".repeat(43) }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ jobId: "job-1", replayed: true });
+    expect(mocks.after).not.toHaveBeenCalled();
+    expect(mocks.forwardEventToPostHog).not.toHaveBeenCalled();
+  });
+
+  it("answers 409 submission_key_conflict when the key was used for a different scan", async () => {
+    const { ScanSubmissionConflict } = await import("@/lib/repositories/jobs");
+    mocks.insert.mockRejectedValue(new ScanSubmissionConflict());
+    const response = await POST(request({ ...validBody, submission_key: "K".repeat(43) }));
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "submission_key_conflict" });
+    expect(mocks.after).not.toHaveBeenCalled();
   });
 });

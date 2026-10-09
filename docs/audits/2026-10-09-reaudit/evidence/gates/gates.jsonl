@@ -1,0 +1,11 @@
+{"sha":"1bbb69dc7db142c0c6b7893294de96af4df4015c","gate":"pnpm lint","exit":0,"seconds":47,"finished_utc":"2026-10-08T19:47:38Z","log":"gate-lint.txt"}
+{"sha":"1bbb69dc7db142c0c6b7893294de96af4df4015c","gate":"pnpm typecheck","exit":0,"seconds":18,"finished_utc":"2026-10-08T19:47:56Z","log":"gate-typecheck.txt"}
+{"sha":"1bbb69dc7db142c0c6b7893294de96af4df4015c","gate":"pnpm test","exit":1,"seconds":122,"finished_utc":"2026-10-08T19:49:58Z","log":"gate-test.txt"}
+{"sha":"1bbb69dc7db142c0c6b7893294de96af4df4015c","gate":"pnpm test:secret-boundary","exit":0,"seconds":64,"finished_utc":"2026-10-08T19:51:02Z","log":"gate-test-secret-boundary.txt"}
+{"sha":"1bbb69dc7db142c0c6b7893294de96af4df4015c","gate":"pnpm test:no-supabase","exit":0,"seconds":2,"finished_utc":"2026-10-08T19:51:05Z","log":"gate-test-no-supabase.txt"}
+{"sha":"1bbb69dc7db142c0c6b7893294de96af4df4015c","gate":"pnpm test:no-self-service-claim","exit":0,"seconds":0,"finished_utc":"2026-10-08T19:51:05Z","log":"gate-test-no-self-service-claim.txt"}
+{"sha":"1bbb69dc7db142c0c6b7893294de96af4df4015c","gate":"pnpm db:verify","exit":0,"seconds":11,"finished_utc":"2026-10-08T19:51:16Z","log":"gate-db-verify.txt"}
+{"sha":"1bbb69dc7db142c0c6b7893294de96af4df4015c","gate":"pnpm test:integration","exit":0,"seconds":489,"finished_utc":"2026-10-08T19:59:25Z","log":"gate-test-integration.txt"}
+{"sha":"1bbb69dc7db142c0c6b7893294de96af4df4015c","gate":"pnpm build","exit":0,"seconds":51,"finished_utc":"2026-10-08T20:00:16Z","log":"gate-build.txt"}
+{"sha":"1bbb69dc7db142c0c6b7893294de96af4df4015c","gate":"pnpm e2e","exit":0,"seconds":71,"finished_utc":"2026-10-08T20:01:27Z","log":"gate-e2e.txt"}
+{"sha":"1bbb69dc7db142c0c6b7893294de96af4df4015c","gate":"pnpm e2e:acceptance","exit":0,"seconds":488,"finished_utc":"2026-10-08T20:09:35Z","log":"gate-e2e-acceptance.txt"}

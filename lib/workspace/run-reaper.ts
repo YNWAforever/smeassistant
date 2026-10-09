@@ -1,3 +1,4 @@
+import { RUN_STALE_AFTER_MS } from "./run-stale";
 import { actionRunReaperRepository } from "@/lib/repositories/action-run-reaper";
 
 /**
@@ -34,7 +35,7 @@ import { actionRunReaperRepository } from "@/lib/repositories/action-run-reaper"
  * one-shot sweep would be a separately authorized action. Every stranded row is
  * reachable through its own detail page, so none is permanently stuck.
  */
-export const RUN_STALE_AFTER_MS = 3 * 60 * 1000;
+export { RUN_STALE_AFTER_MS };
 
 interface ReapRepository {
   reapStale(workspaceId: string, actionIds: string[], staleAfterMs: number): Promise<string[]>;

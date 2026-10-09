@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   ensureMonthlySchedule: vi.fn(),
   tier: "paid" as string | null,
   readTier: vi.fn(),
+  inFlightJob: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({ authorizeWorkspaceRequest: (...args: unknown[]) => mocks.authorizeWorkspaceRequest(...args) }));
@@ -18,7 +19,7 @@ vi.mock("@/lib/workspace/rescan", () => ({
   enqueueRescan: (...args: unknown[]) => mocks.enqueueRescan(...args),
   ensureMonthlySchedule: (...args: unknown[]) => mocks.ensureMonthlySchedule(...args),
 }));
-vi.mock("@/lib/repositories/rescan", () => ({ rescanRepository: () => ({tier: (...args: unknown[]) => mocks.readTier(...args)}) }));
+vi.mock("@/lib/repositories/rescan", () => ({ rescanRepository: () => ({tier: (...args: unknown[]) => mocks.readTier(...args), inFlightJob: (...args: unknown[]) => mocks.inFlightJob(...args)}) }));
 
 const WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";
 const LOCATION_ID = "22222222-2222-4222-8222-222222222222";
@@ -50,6 +51,7 @@ function post(body: Record<string, unknown>) {
 beforeEach(() => {
   mocks.tier = "paid";
   mocks.readTier.mockImplementation(async () => mocks.tier);
+  mocks.inFlightJob.mockResolvedValue(null);
   mocks.enforceRateLimit.mockResolvedValue({ allowed: true, retryAfterSeconds: 1 });
   mocks.enqueueRescan.mockResolvedValue({ ok: true, jobId: "job-new", sourceJob: { id: "job-src", status: "done", place_id: "place-1", created_at: "2026-08-15T10:00:00Z", input_snapshot: { version: 2 } } });
   mocks.ensureMonthlySchedule.mockResolvedValue({ created: true });
@@ -213,5 +215,43 @@ describe("POST /api/workspaces/[workspaceId]/rescan spend budget", () => {
       vi.unstubAllEnvs();
       warn.mockRestore();
     }
+  });
+});
+
+// F-13: a retry or a second press while this location's rescan is still under
+// way must land on that job and must not spend one of the three daily rescans.
+describe("POST /api/workspaces/[workspaceId]/rescan reuses a live rescan", () => {
+  it("returns the location's live rescan before the limiter and without a new job", async () => {
+    mocks.authorizeWorkspaceRequest.mockResolvedValue(auth("manager"));
+    mocks.inFlightJob.mockResolvedValue("job-live");
+    const res = await post({ locationId: LOCATION_ID });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ jobId: "job-live", existing: true });
+    expect(mocks.inFlightJob).toHaveBeenCalledWith(WORKSPACE_ID, LOCATION_ID);
+    expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+    expect(mocks.enqueueRescan).not.toHaveBeenCalled();
+    expect(mocks.ensureMonthlySchedule).not.toHaveBeenCalled();
+  });
+  it("still refuses a lite workspace and a viewer before looking for a live rescan", async () => {
+    mocks.authorizeWorkspaceRequest.mockResolvedValue(auth("owner"));
+    mocks.tier = "lite";
+    expect((await post({ locationId: LOCATION_ID })).status).toBe(403);
+    expect(mocks.inFlightJob).not.toHaveBeenCalled();
+  });
+  it("answers 503 when the live-rescan lookup fails, before spending the budget", async () => {
+    mocks.authorizeWorkspaceRequest.mockResolvedValue(auth("owner"));
+    mocks.inFlightJob.mockRejectedValue(new Error("private SQL detail"));
+    const res = await post({ locationId: LOCATION_ID });
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "unavailable" });
+    expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+  });
+  it("reports a job enqueue found already live (a concurrent press) as 200, without a schedule", async () => {
+    mocks.authorizeWorkspaceRequest.mockResolvedValue(auth("owner"));
+    mocks.enqueueRescan.mockResolvedValue({ ok: true, jobId: "job-live", existing: true, sourceJob: { id: "job-src", status: "done", place_id: "place-1", created_at: "2026-08-15T10:00:00Z", input_snapshot: { version: 2 } } });
+    const res = await post({ locationId: LOCATION_ID });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ jobId: "job-live", existing: true });
+    expect(mocks.ensureMonthlySchedule).not.toHaveBeenCalled();
   });
 });

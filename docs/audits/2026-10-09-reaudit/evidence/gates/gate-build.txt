@@ -1,0 +1,138 @@
+
+> sme-scanner-visibility-workspace@0.1.0 build C:\Users\laich\Documents\smeassistant\.claude\worktrees\audit-fix-1009
+> next build
+
+▲ Next.js 16.2.6 (Turbopack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 12.5s
+  Running TypeScript ...
+  Finished TypeScript in 26.2s ...
+  Collecting page data using 11 workers ...
+<claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
+<claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
+  Generating static pages using 11 workers (0/31) ...
+  Generating static pages using 11 workers (7/31) 
+  Generating static pages using 11 workers (15/31) 
+<claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
+  Generating static pages using 11 workers (23/31) 
+✓ Generating static pages using 11 workers (31/31) in 417ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /[locale]
+├ ƒ /[locale]/demo-workspace
+├ ƒ /[locale]/legal/privacy
+├ ƒ /[locale]/legal/terms
+├ ƒ /[locale]/methodology
+├ ƒ /[locale]/ops/access-requests
+├ ƒ /[locale]/ops/access-requests/[requestId]
+├ ƒ /[locale]/ops/failures
+├ ƒ /[locale]/owner/[workspaceSlug]
+├ ƒ /[locale]/owner/[workspaceSlug]/actions
+├ ƒ /[locale]/owner/[workspaceSlug]/actions/[actionId]
+├ ƒ /[locale]/owner/[workspaceSlug]/activity
+├ ƒ /[locale]/owner/[workspaceSlug]/assets
+├ ƒ /[locale]/owner/[workspaceSlug]/calendar
+├ ƒ /[locale]/owner/[workspaceSlug]/create
+├ ƒ /[locale]/owner/[workspaceSlug]/insights
+├ ƒ /[locale]/owner/[workspaceSlug]/more
+├ ƒ /[locale]/owner/[workspaceSlug]/offers
+├ ƒ /[locale]/owner/[workspaceSlug]/packs/[packId]
+├ ƒ /[locale]/owner/[workspaceSlug]/settings/billing
+├ ƒ /[locale]/owner/[workspaceSlug]/settings/brand
+├ ƒ /[locale]/owner/[workspaceSlug]/settings/integrations
+├ ƒ /[locale]/owner/[workspaceSlug]/settings/notifications
+├ ƒ /[locale]/owner/[workspaceSlug]/settings/team
+├ ƒ /[locale]/owner/onboarding
+├ ƒ /[locale]/owner/select-workspace
+├ ƒ /[locale]/owner/sign-in
+├ ƒ /[locale]/owner/sign-in/complete
+├ ƒ /[locale]/pricing
+├ ƒ /[locale]/r/[slug]
+├ ƒ /-/r/-/opengraph-image
+├ ƒ /[locale]/sample-report
+├ ƒ /[locale]/scan
+├ ƒ /[locale]/scanning/[jobId]
+├ ƒ /[locale]/start/[slug]
+├ ƒ /[locale]/trust
+├ ƒ /[locale]/unlock/[slug]
+├ ƒ /[locale]/unsubscribe
+├ ƒ /api/access-requests
+├ ƒ /api/actions
+├ ƒ /api/actions/[actionId]
+├ ƒ /api/actions/[actionId]/applied
+├ ƒ /api/actions/[actionId]/run
+├ ƒ /api/actions/[actionId]/versions
+├ ƒ /api/assistant/run
+├ ƒ /api/assistant/suggestions
+├ ƒ /api/auth/[...path]
+├ ƒ /api/business/ig-search
+├ ƒ /api/business/search
+├ ƒ /api/cron/dispatch
+├ ƒ /api/deliveries/[deliveryId]/reconcile
+├ ƒ /api/deliveries/[deliveryId]/reply
+├ ƒ /api/internal/workspace-scan-completion
+├ ƒ /api/mail/unsubscribe
+├ ƒ /api/oauth/google/callback
+├ ƒ /api/oauth/google/claim/callback
+├ ƒ /api/oauth/google/claim/start
+├ ƒ /api/oauth/google/start
+├ ƒ /api/offers/[offerId]
+├ ƒ /api/offers/[offerId]/archive
+├ ƒ /api/offers/[offerId]/confirm
+├ ƒ /api/offers/[offerId]/promotions
+├ ƒ /api/ops/access-requests/[requestId]
+├ ƒ /api/ops/failures/scans/[jobId]/release
+├ ƒ /api/owner/magic-link
+├ ƒ /api/owner/sign-in/complete
+├ ƒ /api/packs/[packId]
+├ ƒ /api/report-access/sign-out
+├ ƒ /api/report-access/unlock
+├ ƒ /api/scan/process
+├ ƒ /api/scan/start
+├ ƒ /api/scan/status
+├ ƒ /api/start/[slug]/preview
+├ ƒ /api/unlock
+├ ƒ /api/versions/[versionId]/approve
+├ ƒ /api/versions/[versionId]/export
+├ ƒ /api/versions/[versionId]/publish
+├ ƒ /api/versions/[versionId]/publish/targets
+├ ƒ /api/versions/[versionId]/reject
+├ ƒ /api/versions/[versionId]/request-changes
+├ ƒ /api/webhooks/stripe
+├ ƒ /api/workspace-invites/magic-link
+├ ƒ /api/workspaces/[workspaceId]/actions
+├ ƒ /api/workspaces/[workspaceId]/actions/bulk
+├ ƒ /api/workspaces/[workspaceId]/assets
+├ ƒ /api/workspaces/[workspaceId]/assets/[assetId]
+├ ƒ /api/workspaces/[workspaceId]/billing-portal
+├ ƒ /api/workspaces/[workspaceId]/brand
+├ ƒ /api/workspaces/[workspaceId]/checkout-link
+├ ƒ /api/workspaces/[workspaceId]/fix-pack-drafts
+├ ƒ /api/workspaces/[workspaceId]/fix-pack-drafts/[runId]
+├ ƒ /api/workspaces/[workspaceId]/google-connection
+├ ƒ /api/workspaces/[workspaceId]/instagram-handle
+├ ƒ /api/workspaces/[workspaceId]/members
+├ ƒ /api/workspaces/[workspaceId]/members/[memberId]
+├ ƒ /api/workspaces/[workspaceId]/my-mail-preferences
+├ ƒ /api/workspaces/[workspaceId]/notification-preferences
+├ ƒ /api/workspaces/[workspaceId]/notifications
+├ ƒ /api/workspaces/[workspaceId]/offers
+├ ƒ /api/workspaces/[workspaceId]/packs
+├ ƒ /api/workspaces/[workspaceId]/rescan
+├ ƒ /api/workspaces/[workspaceId]/usage
+├ ƒ /api/workspaces/claim
+├ ƒ /auth/callback
+├ ○ /opengraph-image
+├ ○ /robots.txt
+└ ○ /sitemap.xml
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

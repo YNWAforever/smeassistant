@@ -1,0 +1,13 @@
+
+> sme-scanner-visibility-workspace@0.1.0 typecheck C:\Users\laich\Documents\smeassistant\.claude\worktrees\audit-fix-1009
+> tsc --noEmit && corepack pnpm -r typecheck
+
+Scope: 4 of 5 workspace projects
+packages/region typecheck$ tsc --noEmit
+packages/scoring typecheck$ tsc --noEmit
+packages/region typecheck: Done
+packages/scoring typecheck: Done
+packages/contracts typecheck$ tsc --noEmit
+packages/contracts typecheck: Done
+packages/scan-engine typecheck$ tsc --noEmit
+packages/scan-engine typecheck: Done

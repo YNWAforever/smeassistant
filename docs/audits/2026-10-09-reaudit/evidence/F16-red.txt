@@ -1,0 +1,21 @@
+# F-16 RED excerpts (2026-10-09 HKT), before the fixes in this commit
+
+## Production evidence (read-only; Vercel runtime logs / request logs, no DB access)
+- get_runtime_errors (7d, project prj_Hbox4o4NhM3p0yxRxmY8Xq1mjtb5): "Error: actions lookup failed"
+  count=10 users=3, routes /[locale]/owner/[workspaceSlug] and /calendar, first=2026-10-02T14:48:22Z last=2026-10-08T16:11:15Z,
+  lastDeployment=dpl_ARepQExFa36hUt1PzYcCzW4ECzCE (main d1cbc7b).
+- First occurrences 2026-10-02 14:48:28–14:49:00Z on dpl_GeKwnZheoxhrU2Xwt7LDAqXZkLoe: five consecutive GET /zh-HK/owner/nadagogo,
+  every one "actions lookup failed" (4–6 s after request start). PR #28 (P4.1 offers, adds actions.offer_id via 0011 and
+  selects it in workspace-read ACTION_COLUMNS) merged 2026-10-02T11:57:23Z.
+- vercel logs --status-code 500 --query owner (7d): /zh-HK/owner/nadagogo 500 x3, /zh-HK/owner/nadagogo/calendar 500 x1.
+  Later failures (2026-10-08 16:11Z) were logged during 200 responses (streamed page, error boundary).
+- No other workspace path appears in the logs; every observed owner-home visit since 2026-10-02 failed.
+- The wrapper `read()` in lib/workspace/queries-pages.ts discarded the driver error, so the SQLSTATE is unknown.
+
+## Local RED
+command: corepack pnpm exec vitest run lib/workspace/queries-pages.test.ts -t "SQLSTATE"
+  × logs the failed read with its SQLSTATE only, then rethrows the generic error
+  AssertionError: expected "error" to be called with arguments: [ '[workspace] read failed', { …(3) } ]   exit 1
+command: corepack pnpm exec vitest run --config vitest.integration.config.ts test/integration/neon-readiness.integration.test.ts -t "F-16"
+  × F-16 rejects any application-declared column that is missing, e.g. actions.offer_id
+  - "status": "not_ready"   + "status": "ready"     (readiness said READY with actions.offer_id missing)   exit 1

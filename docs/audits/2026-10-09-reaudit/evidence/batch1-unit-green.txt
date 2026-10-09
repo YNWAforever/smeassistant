@@ -1,0 +1,10 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smeassistant/.claude/worktrees/audit-fix-1009
+
+
+ Test Files  12 passed (12)
+      Tests  214 passed (214)
+   Start at  03:26:18
+   Duration  19.37s (transform 5.78s, setup 6.85s, import 24.34s, tests 8.75s, environment 41.64s)
+
+exit 0

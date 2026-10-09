@@ -1,9 +1,10 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { getPool } from "../db/client";
 import { withTransaction } from "../db/transaction";
 import { admitScanJob } from "../budgets/scan";
-import { DEAD_LETTERED_JOB_CONDITION_SQL } from "../scan/claimable";
+import { DEAD_LETTERED_JOB_CONDITION_SQL, LOCATION_LIVE_JOB_SQL } from "../scan/claimable";
 import { auditJobs } from "../db/schema/jobs";
 import type { buildScanConsentInsert, buildScanJobInsert } from "../scan/start-job";
 import {
@@ -13,13 +14,36 @@ import {
     SCAN_TERMINAL_DEDUPE_KEY,
     type ScanStartedWrite,
 } from "../analytics/scan-events";
+/** F-13: the client's per-submission key and what it was first used for. */
+export interface ScanSubmission {
+    key: string;
+    fingerprint: string;
+}
+/** F-13: a rescan reuses its location's live job (LOCATION_LIVE_JOB_SQL) instead of queueing another. */
+export interface ScanLocationGuard {
+    workspaceId: string;
+    locationId: string;
+}
+/** The key was already used for a different scan; nothing was written. */
+export class ScanSubmissionConflict extends Error {
+    constructor() {
+        super("submission_key_conflict");
+        this.name = "ScanSubmissionConflict";
+    }
+}
+/** Namespaced and hashed: audit_events.idempotency_key is shared by several writers. */
+export function scanSubmissionIdempotencyKey(key: string): string {
+    return `scan_submission:${createHash("sha256").update(key).digest("hex")}`;
+}
 export interface JobsRepository {
     insert(
         row: ReturnType<typeof buildScanJobInsert>,
         consent: ReturnType<typeof buildScanConsentInsert>,
         started: ScanStartedWrite,
+        guard?: ScanSubmission | ScanLocationGuard,
     ): Promise<{
         id: string;
+        replayed?: boolean;
     }>;
 }
 export const jobsRepository: JobsRepository & {
@@ -43,8 +67,35 @@ export const jobsRepository: JobsRepository & {
      * reconciliation, which counts lost events per week without naming them;
      * the event_record_failed log line (job id, SQLSTATE) identifies the job.
      */
-    async insert(row, consent, started) {
+    async insert(row, consent, started, guard) {
+        const submission = guard && "key" in guard ? guard : undefined;
+        const location = guard && "locationId" in guard ? guard : undefined;
         return withTransaction(async (client) => {
+            // F-13: a second rescan of a location while the first is still under
+            // way returns that job. Same serialization as below, keyed on the
+            // location, so two concurrent presses cannot both pass the check.
+            if (location) {
+                await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [`rescan_location:${location.locationId}`]);
+                const live = (await client.query<{ id: string }>(LOCATION_LIVE_JOB_SQL, [location.workspaceId, location.locationId])).rows[0];
+                if (live) return { id: live.id, replayed: true };
+            }
+            // F-13: a retried submission returns the job it already created,
+            // before the budget admission, so it is never admitted or charged
+            // twice. The advisory lock serializes concurrent duplicates: the
+            // second waits for the first to commit, then finds its row. The
+            // unique audit_events.idempotency_key index is the backstop.
+            const idempotencyKey = submission ? scanSubmissionIdempotencyKey(submission.key) : null;
+            if (submission && idempotencyKey) {
+                await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [idempotencyKey]);
+                const prior = (await client.query<{ entity_id: string; fingerprint: string | null }>(
+                    "SELECT entity_id, payload->>'fingerprint' AS fingerprint FROM audit_events WHERE idempotency_key=$1",
+                    [idempotencyKey],
+                )).rows[0];
+                if (prior) {
+                    if (prior.fingerprint !== submission.fingerprint) throw new ScanSubmissionConflict();
+                    return { id: prior.entity_id, replayed: true };
+                }
+            }
             // P3.5a: the spend budget, first, on this transaction's client and
             // under the budget lock, so the pending count it reads and the job
             // it admits commit together. A refusal throws ScanBudgetRefusal
@@ -71,6 +122,15 @@ export const jobsRepository: JobsRepository & {
                 "INSERT INTO consent_records(job_id,lead_id,consent_type,granted,policy_version,locale) VALUES($1,NULL,$2,$3,$4,$5)",
                 [created.id, consent.consent_type, consent.granted, consent.policy_version, consent.locale],
             );
+            // Not best-effort like scan_started: without this row a retry would
+            // queue a second paid scan, so a failure here rolls the job back.
+            if (submission && idempotencyKey) {
+                await client.query(
+                    `INSERT INTO audit_events(idempotency_key,workspace_id,location_id,actor_type,actor_id,event,entity_type,entity_id,payload)
+                     VALUES($1,$2,$3,'user',NULL,'scan.queued','audit_job',$4,$5::jsonb)`,
+                    [idempotencyKey, row.workspace_id ?? null, row.location_id ?? null, created.id, JSON.stringify({ trigger: "public_scan", fingerprint: submission.fingerprint })],
+                );
+            }
             await writeScanEventSafely(client, {
                 jobId: created.id,
                 anonymousSessionId: started.anonymousSessionId,
@@ -120,7 +180,7 @@ export const jobsRepository: JobsRepository & {
         });
     },
     async readStatus(id) {
-        const { rows } = await getPool().query<ScanStatus>(`SELECT id,status,processing_stage,share_slug,score_coverage::float8 AS score_coverage,failure_correlation_id,module_results,module_scores,${DEAD_LETTERED_JOB_CONDITION_SQL} AS dead_lettered FROM audit_jobs WHERE id=$1`, [id]);
+        const { rows } = await getPool().query<ScanStatus>(`SELECT id,status,processing_stage,share_slug,score_coverage::float8 AS score_coverage,failure_correlation_id,module_results,module_scores,${DEAD_LETTERED_JOB_CONDITION_SQL} AS dead_lettered,(COALESCE(btrim(ig_handle),'') <> '') AS instagram_provided FROM audit_jobs WHERE id=$1`, [id]);
         return rows[0] ?? null;
     }
 };
@@ -134,4 +194,6 @@ export interface ScanStatus {
     module_results: unknown;
     module_scores: unknown;
     dead_lettered: boolean;
+    /** F-15: whether a handle was given at start; the engine reads Instagram from nothing else. */
+    instagram_provided?: boolean;
 }

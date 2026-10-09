@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { Pool } from "pg";
 import { is, getTableName } from "drizzle-orm";
-import { PgTable } from "drizzle-orm/pg-core";
+import { PgTable, getTableConfig } from "drizzle-orm/pg-core";
 import * as schema from "../../lib/db/schema";
 import { loadMigrations } from "./migrations";
 import { retainedFunctions } from "./catalog";
@@ -157,6 +157,25 @@ export async function readiness(
         (name) => !functions.some((row) => row.name === name),
       )
     )
+      return { status: "not_ready", category: "schema", target: config.target };
+    // F-16: every column the application schema declares must exist on this
+    // database. A journal listing a migration does not prove its columns reached
+    // the database a deployment reads (production owner homes failed reading
+    // actions, which selects offer_id from 0011). Catalog only, no rows.
+    const declared = Object.values(schema)
+      .filter((value) => is(value, PgTable))
+      .flatMap((value) => {
+        const table = getTableConfig(value as PgTable);
+        return table.columns.map((column) => `${table.name}.${column.name}`);
+      });
+    const columns = new Set(
+      (
+        await db.query(
+          "SELECT c.relname||'.'||a.attname AS name FROM pg_catalog.pg_attribute a JOIN pg_catalog.pg_class c ON c.oid=a.attrelid JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND a.attnum>0 AND NOT a.attisdropped",
+        )
+      ).rows.map((row) => String(row.name)),
+    );
+    if (declared.some((name) => !columns.has(name)))
       return { status: "not_ready", category: "schema", target: config.target };
     // 0014 remains a measurement dependency even when publishing is off. A
     // matching journal does not prove the column survived later schema drift.

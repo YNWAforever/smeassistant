@@ -534,7 +534,12 @@ function locationText(location: LocationSummary | null): { id: string | null; sl
 async function read<T>(label: string, work: () => Promise<T>): Promise<T> {
   try {
     return await work();
-  } catch {
+  } catch (error) {
+    // F-16: the SQLSTATE only -- never the message or the SQL, which can carry
+    // data. Without it, a production "actions lookup failed" could not tell a
+    // missing column (42703) from a privilege (42501) or a timeout (57014).
+    const code = (error as { code?: unknown } | null)?.code;
+    console.error("[workspace] read failed", { category: "workspace_read_failed", read: label, code: typeof code === "string" ? code : undefined });
     throw new Error(`${label} lookup failed`);
   }
 }

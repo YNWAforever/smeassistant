@@ -1,0 +1,39 @@
+
+> sme-scanner-visibility-workspace@0.1.0 e2e:acceptance C:\Users\laich\Documents\smeassistant\.claude\worktrees\audit-fix-1009
+> playwright test --config playwright.acceptance.config.ts
+
+
+Running 52 tests using 1 worker
+
+[1/52] [chromium] › e2e\acceptance\action-list-remediation.spec.ts:4:1 › 375px keyboard selection, preview, apply and Escape use the actual scoped action list (T-13 T-17)
+[2/52] [chromium] › e2e\acceptance\action-list-remediation.spec.ts:40:1 › viewer has search and evidence but no bulk selection; manager retains location scope (T-13)
+[3/52] [chromium] › e2e\acceptance\action-list-remediation.spec.ts:48:1 › lost apply response is re-read before retry and never duplicates the stored update (T-13 T-15)
+[4/52] [chromium] › e2e\acceptance\claim-and-market.spec.ts:12:1 › T-03 legal mixed-case underscore slug survives sign-in and onboarding without granting ownership
+[5/52] [chromium] › e2e\acceptance\claim-and-market.spec.ts:28:1 › T-15 attached owner resumes persisted brand setup and repeats completion without changing membership
+[6/52] [chromium] › e2e\acceptance\claim-and-market.spec.ts:45:39 › verified Auth claim callback: existing assigned owner succeeds
+[7/52] [chromium] › e2e\acceptance\claim-and-market.spec.ts:45:39 › verified Auth claim callback: unassigned report requires ownership verification
+[8/52] [chromium] › e2e\acceptance\claim-and-market.spec.ts:67:1 › verified viewer cannot finalize an assigned owner's claim
+[9/52] [chromium] › e2e\acceptance\claim-and-market.spec.ts:75:1 › TW workspace switched to Hong Kong locale retains TWD and LINE contact behavior
+[10/52] [chromium] › e2e\acceptance\contextual-assistant.spec.ts:16:1 › an owner with a waiting draft continues from the assistant to the exact version
+[11/52] [chromium] › e2e\acceptance\guided-sign-in.spec.ts:4:1 › owned Google-style handoff shows processing before the authorized destination
+[12/52] [chromium] › e2e\acceptance\guided-sign-in.spec.ts:14:1 › local Google cancellation retains the destination while switching to email
+[13/52] [chromium] › e2e\acceptance\guided-sign-in.spec.ts:29:1 › an accepted fixture account is not required for no-access recovery or a rejected cross-origin completion
+[14/52] [chromium] › e2e\acceptance\guided-sign-in.spec.ts:54:48 › a memberless account sees one real path to a workspace on select-workspace (en, 375px)
+[15/52] [chromium] › e2e\acceptance\guided-sign-in.spec.ts:54:48 › a memberless account sees one real path to a workspace on select-workspace (zh-HK, 375px)
+[16/52] [chromium] › e2e\acceptance\guided-sign-in.spec.ts:82:3 › fixture completion fault mapping reaches recovery without acquiring workspace authority
+[17/52] [chromium] › e2e\acceptance\guided-sign-in.spec.ts:82:3 › fixture completion fault binding reaches recovery without acquiring workspace authority
+[18/52] [chromium] › e2e\acceptance\guided-sign-in.spec.ts:82:3 › fixture completion fault revoked reaches recovery without acquiring workspace authority
+[19/52] [chromium] › e2e\acceptance\guided-sign-in.spec.ts:82:3 › fixture completion fault upstream reaches recovery without acquiring workspace authority
+[20/52] [chromium] › e2e\acceptance\guided-sign-in.spec.ts:92:1 › changing from an unavailable account to the authorized account retains the destination
+[21/52] [chromium] › e2e\acceptance\guided-sign-in.spec.ts:106:1 › a consumed local email link cannot change an accepted membership
+[22/52] [chromium] › e2e\acceptance\guided-sign-in.spec.ts:131:3 › owned sign-in start card is keyboard-operable without overflow: en 375
+[23/52] [chromium] › e2e\acceptance\guided-sign-in.spec.ts:131:3 › owned sign-in start card is keyboard-operable without overflow: en 1440
+[24/52] [chromium] › e2e\acceptance\guided-sign-in.spec.ts:131:3 › owned sign-in start card is keyboard-operable without overflow: zh-HK 375
+[25/52] [chromium] › e2e\acceptance\guided-sign-in.spec.ts:131:3 › owned sign-in start card is keyboard-operable without overflow: zh-HK 1440
+[26/52] [chromium] › e2e\acceptance\guided-sign-in.spec.ts:131:3 › owned sign-in start card is keyboard-operable without overflow: zh-TW 375
+[27/52] [chromium] › e2e\acceptance\guided-sign-in.spec.ts:131:3 › owned sign-in start card is keyboard-operable without overflow: zh-TW 1440
+[28/52] [chromium] › e2e\acceptance\home-today.spec.ts:27:3 › owner home shows today's action above the fold at 375px (en)
+[29/52] [chromium] › e2e\acceptance\home-today.spec.ts:27:3 › owner home shows today's action above the fold at 375px (zh-HK)
+[30/52] [chromium] › e2e\acceptance\home-today.spec.ts:27:3 › owner home shows today's action above the fold at 375px (zh-TW)
+[31/52] [chromium] › e2e\acceptance\merchant-loop.spec.ts:7:45 › hk: local fixture link redemption, exact draft approval/download, repeat usage and fresh edit
+ ELIFECYCLE  Command failed with exit code 1.

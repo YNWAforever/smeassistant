@@ -1,4 +1,5 @@
 import {
+  ActionRunInFlightError,
   actionRunRepository,
   type ArtifactRepository,
   type ActionRunRepository,
@@ -40,7 +41,7 @@ import { gateBlockingInputs } from "./workflow-inputs";
  * never overwrites an existing draft (a version is only created on success).
  */
 export type RunErrorCode =
-  "action_not_found" | "agent_unavailable" | "forbidden" | "ai_budget_reached" | "ai_paused";
+  "action_not_found" | "agent_unavailable" | "forbidden" | "ai_budget_reached" | "ai_paused" | "run_in_progress";
 
 export class RunError extends Error {
   constructor(public readonly code: RunErrorCode) {
@@ -489,6 +490,8 @@ export async function runAgentForAction(
   const blocking = gateBlockingInputs(template, provided, satisfied);
 
   const persistence = input.persistence ?? actionRunRepository();
+  // F-14: a live run for this action ends the request here, before any model
+  // call or second draft; the owner sees the first run's result on refresh.
   const runId = await persistence.queue({
     actionId: row.id,
     actorId: input.actorId,
@@ -507,6 +510,9 @@ export async function runAgentForAction(
     ...(input.inputs && Object.keys(input.inputs).length
       ? { providedInputs: provided }
       : {}),
+  }).catch((error: unknown) => {
+    if (error instanceof ActionRunInFlightError) throw new RunError("run_in_progress");
+    throw error;
   });
   const attribution = {
     runId,

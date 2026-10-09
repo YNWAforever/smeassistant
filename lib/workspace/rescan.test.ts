@@ -29,6 +29,7 @@ function client(): RescanRepository {
   latestFinishedJob: async (ws, loc) => state.jobs.find(j => j.workspace_id===ws && j.location_id===loc) as never ?? null,
   scheduleExists: async place => state.schedules.some(s => s.place_id===place),
   insertSchedule: async row => { if(state.scheduleInsertError) throw state.scheduleInsertError; state.inserted.scan_schedules.push({...row}); state.schedules.push({...row}); },
+  inFlightJob: async () => null,
  };
 }
 

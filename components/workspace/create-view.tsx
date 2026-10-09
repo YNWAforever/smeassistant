@@ -120,6 +120,9 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
     } else if (runError === "ai_paused") {
       // P3.5d: the action exists; AI drafting is paused for maintenance.
       toast.error(t(locale, "pause.ai"))
+    } else if (runError === "run_in_progress") {
+      // F-14: the same objective was submitted twice; the first draft is still being written.
+      toast.message(locale === "zh-HK" ? "行動已建立；草稿仍在生成中，沒有重複收費。" : locale === "zh-TW" ? "行動已建立；草稿仍在產生中，沒有重複計費。" : "Action created; its draft is still being written and nothing was charged twice.")
     } else if (runError) {
       toast.error(isChinese ? "行動已建立，但未能開始生成草稿。" : "Action created, but the draft could not be started.")
     } else if (factsNeeded?.length) {

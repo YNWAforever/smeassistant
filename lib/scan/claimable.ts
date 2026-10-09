@@ -18,3 +18,20 @@ export const CLAIMABLE_JOB_CONDITION_SQL = `(status='queued' OR (${IN_FLIGHT_SQL
  * control and the auto-close sweep act on these.
  */
 export const DEAD_LETTERED_JOB_CONDITION_SQL = `(${IN_FLIGHT_SQL} AND attempt_count>=3 AND ${STALE_ATTEMPT_SQL})`;
+
+/**
+ * F-13: the rescan of a location that is still under way -- queued or in
+ * flight, and not dead-lettered. A second owner press (or a retry after a lost
+ * response) reuses it instead of queueing and paying for another scan.
+ *
+ * No age limit: the lease treats every queued job as claimable however old, so
+ * an old queued rescan may still run; queueing a second beside it would pay
+ * twice. Reusing it is also the recovery path, because the client posts
+ * /api/scan/process for the returned job. Only a dead-lettered job (three
+ * attempts, stale) is never run again, so only then may a new one be queued.
+ * $1 workspace_id, $2 location_id.
+ */
+export const LOCATION_LIVE_JOB_SQL = `SELECT id FROM audit_jobs
+ WHERE workspace_id=$1 AND location_id=$2 AND (status='queued' OR ${IN_FLIGHT_SQL})
+   AND NOT ${DEAD_LETTERED_JOB_CONDITION_SQL}
+ ORDER BY created_at DESC, id DESC LIMIT 1`;

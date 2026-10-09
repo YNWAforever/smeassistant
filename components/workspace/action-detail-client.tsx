@@ -309,6 +309,11 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
     const budgetRefusal = aiBudgetRefusal(locale, result.status, result.error)
     // P4.1: approve/export refuse a draft whose offer changed, ended or was archived. Plain copy, never the code.
     if (result.status === 409 && isOfferStaleCode(result.error)) { setOfferRefusal(result.error); toast.error(offersCopy.stale[result.error]) }
+    // F-14: a second click while the first draft is still being written. Nothing was charged; show the live run.
+    else if (result.status === 409 && result.error === "run_in_progress") {
+      toast.message(locale === "zh-HK" ? "草稿仍在生成中，今次沒有重新開始，亦沒有額外收費；請稍候查看結果。" : locale === "zh-TW" ? "草稿仍在產生中，這次沒有重新開始，也沒有額外計費；請稍候查看結果。" : "A draft is still being written, so nothing new was started or charged; check back in a moment.")
+      router.refresh()
+    }
     else if (result.error === "offline" || result.error === "network") toast.error(isChinese ? "無法連接伺服器；文字已保留在此裝置。" : "The server could not be reached; your text is kept on this device.")
     else if (budgetRefusal) toast.error(budgetRefusal)
     else if (result.status === 403) toast.error(isChinese ? "你的角色或地點範圍不允許此操作。" : "Your role or location scope does not allow this action.")

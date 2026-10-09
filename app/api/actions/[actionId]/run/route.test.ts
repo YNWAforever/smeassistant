@@ -264,3 +264,14 @@ describe("POST /api/actions/[actionId]/run AI budget", () => {
     }
   });
 });
+
+describe("POST /api/actions/[actionId]/run while another run is live (F-14)", () => {
+  it("answers 409 run_in_progress and never calls the model", async () => {
+    const { ActionRunInFlightError } = await import("@/lib/repositories/artifacts");
+    mocks.db!.queue = async () => { throw new ActionRunInFlightError(); };
+    const res = await post();
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "run_in_progress" });
+    expect(mocks.llmComplete).not.toHaveBeenCalled();
+  });
+});

@@ -175,3 +175,73 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
 export function isJobId(value: unknown): value is string {
   return typeof value === "string" && UUID_PATTERN.test(value);
 }
+
+// ---------------------------------------------------------------------------
+// F-13: retry-safe start
+//
+// The server commits the scan before it answers, so a lost response used to
+// leave the owner looking at a network error with a paid scan already queued;
+// pressing Start again queued a second one. Each submission now carries a key
+// the server dedupes on. The same key is reused for a retry of the identical
+// payload -- including after a refresh or a back-then-resubmit in the same
+// tab -- and any change to the submission mints a new one. Storage is passed
+// in, never read from `window` here, and every access is allowed to fail.
+// ---------------------------------------------------------------------------
+
+export const SCAN_SUBMISSION_STORAGE_KEY = "sme:scan-submission";
+/** Long enough to cover a retry or a back navigation, short enough that a deliberate re-scan later is a new one. */
+export const SCAN_SUBMISSION_TTL_MS = 30 * 60 * 1000;
+
+export interface SubmissionKeyStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
+
+interface StoredSubmission { fingerprint: string; key: string; createdAt: number }
+
+function readStoredSubmission(storage: SubmissionKeyStorage | null): StoredSubmission | null {
+  try {
+    const raw = storage?.getItem(SCAN_SUBMISSION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredSubmission>;
+    return typeof parsed.fingerprint === "string" && typeof parsed.key === "string" && typeof parsed.createdAt === "number" ? (parsed as StoredSubmission) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function scanSubmissionKeyFor(payload: ScanStartPayload, storage: SubmissionKeyStorage | null, now: number, mint: () => string): string {
+  const fingerprint = JSON.stringify(payload);
+  const stored = readStoredSubmission(storage);
+  const age = stored ? now - stored.createdAt : -1;
+  if (stored && stored.fingerprint === fingerprint && age >= 0 && age < SCAN_SUBMISSION_TTL_MS) return stored.key;
+  const key = mint();
+  try {
+    storage?.setItem(SCAN_SUBMISSION_STORAGE_KEY, JSON.stringify({ fingerprint, key, createdAt: now } satisfies StoredSubmission));
+  } catch {
+    // Without storage a retry in this mount still reuses the in-memory key the caller holds.
+  }
+  return key;
+}
+
+export function forgetScanSubmissionKey(storage: SubmissionKeyStorage | null): void {
+  try {
+    storage?.removeItem(SCAN_SUBMISSION_STORAGE_KEY);
+  } catch {
+    // Nothing to forget.
+  }
+}
+
+/** Session storage when the browser allows it, with an in-memory copy for this mount when it does not. */
+export function layeredSubmissionStorage(memory: Map<string, string>, session: () => SubmissionKeyStorage | null): SubmissionKeyStorage {
+  const tab = () => { try { return session(); } catch { return null; } };
+  return {
+    getItem: (key) => {
+      try { const value = tab()?.getItem(key); if (value != null) return value; } catch { /* fall back to memory */ }
+      return memory.get(key) ?? null;
+    },
+    setItem: (key, value) => { memory.set(key, value); try { tab()?.setItem(key, value); } catch { /* memory holds it */ } },
+    removeItem: (key) => { memory.delete(key); try { tab()?.removeItem(key); } catch { /* memory cleared */ } },
+  };
+}

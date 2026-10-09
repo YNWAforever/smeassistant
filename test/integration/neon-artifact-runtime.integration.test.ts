@@ -691,6 +691,71 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
         });
       });
 
+      // F-14: a double-click or a retry after a lost response must not start a
+      // second paid model call while the first run for this action is live.
+      it.each(["queued", "running"] as const)(
+        "refuses a second run while a fresh %s run is in flight, before any model call",
+        async (runState) => {
+          const inFlight = await strand(runState, "10 seconds");
+          const res = await route("run", { inputs: { channel: "fixture" } });
+          expect(res.status).toBe(409);
+          expect(await res.json()).toEqual({ error: "run_in_progress" });
+          expect(state.llm).not.toHaveBeenCalled();
+          expect(
+            (
+              await runtime.query(
+                "SELECT id FROM action_runs WHERE action_id=$1",
+                [action],
+              )
+            ).rows,
+          ).toEqual([{ id: inFlight }]);
+          expect(
+            (
+              await runtime.query(
+                "SELECT id FROM audit_events WHERE workspace_id=$1 AND event='run.started'",
+                [workspace],
+              )
+            ).rows,
+          ).toHaveLength(0);
+        },
+      );
+
+      it("serializes two concurrent runs so only one reaches the model", async () => {
+        let release!: () => void;
+        const gate = new Promise<void>((resolve) => (release = resolve));
+        state.llm.mockImplementation(async () => {
+          await gate;
+          return {
+            text: JSON.stringify(output),
+            usage: { inputTokens: 100, outputTokens: 50 },
+          };
+        });
+        const first = route("run", { inputs: { channel: "fixture" } });
+        await vi.waitFor(() => expect(state.llm).toHaveBeenCalledTimes(1));
+        const second = await route("run", { inputs: { channel: "fixture" } });
+        expect(second.status).toBe(409);
+        release();
+        const firstRes = await first;
+        expect(firstRes.status).toBe(200);
+        expect(await firstRes.json()).toMatchObject({ state: "succeeded", versionNo: 1 });
+        expect(state.llm).toHaveBeenCalledTimes(1);
+        expect(
+          (
+            await runtime.query(
+              "SELECT version_no FROM output_versions WHERE action_id=$1",
+              [action],
+            )
+          ).rows,
+        ).toEqual([{ version_no: 1 }]);
+      });
+
+      it("does not let a stale unreaped run block a fresh explicit run", async () => {
+        await strand("running", "4 minutes");
+        const result = await run();
+        expect(result.state).toBe("succeeded");
+        expect(state.llm).toHaveBeenCalledTimes(1);
+      });
+
       it("leaves a fresh run alone", async () => {
         const { reapStrandedRuns } = await import(
           "../../lib/workspace/run-reaper"

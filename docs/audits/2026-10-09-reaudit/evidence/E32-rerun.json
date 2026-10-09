@@ -1,0 +1,28 @@
+// git HEAD 1bbb69dc7db142c0c6b7893294de96af4df4015c; command: corepack pnpm exec tsx docs/audits/2026-10-09-reaudit/evidence/E32-rerun.mjs
+{
+ "hk_ntd_symbol": true,
+ "hk_usd_symbol": true,
+ "hk_correct": false,
+ "hk_correct_hkd_word": false,
+ "hk_bare_dollar": true,
+ "hk_wrong_amount": true,
+ "tw_thousands": false,
+ "tw_yuan": true,
+ "tw_hk_symbol": true,
+ "missing_end": true,
+ "missing_start": true,
+ "both_dates": false,
+ "local_dates_zh": false,
+ "wrong_year": true,
+ "slash_dates_tw": false,
+ "en_dates": false,
+ "inFlight": {
+  "google_business": "awaiting_result",
+  "instagram": "awaiting_result",
+  "search_ai": "running"
+ },
+ "slug_underscore": "3cuOKFmHdiYf00BOs27E_NO1",
+ "slug_slash": null,
+ "slug_long": null,
+ "slug_encoded": null
+}

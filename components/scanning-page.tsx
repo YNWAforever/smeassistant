@@ -296,7 +296,7 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
   }, [reportHref, router, status.status])
 
   const view = scanViewState({ status: status.status, stalledReason: stalled, deadLettered: status.deadLettered === true })
-  const base = collectorPhases(status.processingStage, status.status, status.moduleStates)
+  const base = collectorPhases(status.processingStage, status.status, status.moduleStates, status.notProvided)
   const phases = view === "stalled" || view === "dead_lettered" ? stallCollectorPhases(base) : base
 
   return (
