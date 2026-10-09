@@ -72,19 +72,30 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
   const canRescan = tier === "paid" && (role === "owner" || role === "manager")
   const changedBadge = changed.comparable ? (isChinese ? "可比較" : "Comparable") : (isChinese ? "未能比較" : "Not comparable")
   const changedReason = changed.comparable ? null : comparisonReasonText(changed.reason, isChinese)
+  // F-19: never promise ready work that does not exist. No linked business, or
+  // one location with no snapshot, means nothing has been scanned yet. The
+  // all-locations view never has a snapshot (no aggregate score), so it only
+  // falls back to the quiet copy when nothing is open.
+  const hasLocations = locations.length > 0
+  // An open action is real work whatever the snapshot state, so it always wins.
+  const unscanned = !priority && (!hasLocations || (location !== "all" && !snapshot))
+  const pageTitle = priority ? t.title : unscanned ? t.noScanTitle : t.quietTitle
+  const pageSubtitle = priority ? t.subtitle : unscanned ? t.noScanSubtitle : t.quietSubtitle
 
   return (
     <div className="owner-home-page">
       <PageIntro
         eyebrow={snapshot ? `${isChinese ? "快照" : "Snapshot"} · ${formatDateTime(snapshot.observedAt, locale, timezone)}` : (isChinese ? "尚未有快照" : "No snapshot yet")}
-        title={t.title}
-        description={t.subtitle}
+        title={pageTitle}
+        description={pageSubtitle}
         actions={<>{role && <RescanButton locale={locale} workspaceId={workspaceId} workspaceSlug={workspaceSlug} locationId={brief.location?.id ?? null} tier={tier} role={role} consentPolicyVersion={consentPolicyVersion} />}<LocationSelect locale={locale} value={location} locations={locations} /></>}
       />
 
       {problems}
 
-      {location === "all" && <div className="context-banner" role="status"><CircleAlert /><div><strong>{isChinese ? "已切換至所有地點" : "Context changed to all locations"}</strong><span>{isChinese ? "摘要按地點範圍顯示；未能取得資料的地點不會當成零分平均。" : "Summary data is location-aware; unavailable locations are never averaged as zero."}</span></div></div>}
+      {!hasLocations && <div className="context-banner" role="status"><CircleAlert /><div><strong>{t.noLocationTitle}</strong><span>{t.noLocationBody}</span><Link href={`/${locale}/scan`}>{t.noLocationCta}</Link></div></div>}
+
+      {hasLocations && location === "all" && <div className="context-banner" role="status"><CircleAlert /><div><strong>{isChinese ? "已切換至所有地點" : "Context changed to all locations"}</strong><span>{isChinese ? "摘要按地點範圍顯示；未能取得資料的地點不會當成零分平均。" : "Summary data is location-aware; unavailable locations are never averaged as zero."}</span></div></div>}
 
       <section className="owner-brief-grid" aria-label={isChinese ? "今日營運摘要" : "Today's operating brief"}>
         <article className="brief-priority-card">
@@ -182,7 +193,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
       <details className="trust-disclosure">
         <summary><ShieldCheck /> {t.trust}</summary>
         <section className="workspace-agent-strip" aria-label={isChinese ? "AI 能見度團隊狀態" : "AI Visibility Team status"}>
-          <div className="workspace-agent-summary"><span><Sparkles /></span><div><Badge variant="outline">{tierLabel}{demo ? (isChinese ? " · 示範" : " · Demo") : ""}</Badge><h2>{isChinese ? `AI 能見度團隊已完成分析 · ${decisions} 項待你決定` : `AI Visibility Team finished the analysis · ${decisions} ${decisions === 1 ? "decision" : "decisions"} for you`}</h2><p>{isChinese ? "各專員只在背後協作；你只需審閱一項首要行動。" : "Specialists coordinate backstage; you review one priority action."}</p></div></div>
+          <div className="workspace-agent-summary"><span><Sparkles /></span><div><Badge variant="outline">{tierLabel}{demo ? (isChinese ? " · 示範" : " · Demo") : ""}</Badge><h2>{unscanned ? (isChinese ? "AI 能見度團隊正等待第一次掃描" : "AI Visibility Team is waiting for the first scan") : isChinese ? `AI 能見度團隊已完成分析 · ${decisions} 項待你決定` : `AI Visibility Team finished the analysis · ${decisions} ${decisions === 1 ? "decision" : "decisions"} for you`}</h2><p>{isChinese ? "各專員只在背後協作；你只需審閱一項首要行動。" : "Specialists coordinate backstage; you review one priority action."}</p></div></div>
           <ol>
             {steps.map((step, index) => <li key={step} className={stepDone[index] ? "is-complete" : "is-current"}><span>{stepDone[index] ? <Check /> : index + 1}</span><strong>{step}</strong></li>)}
           </ol>

@@ -11,6 +11,7 @@ vi.mock("next/navigation", () => ({
 
 import { FixPackCard } from "@/components/workspace/fix-pack-card";
 import { HomeBriefView } from "@/components/workspace/home-brief";
+import { copy } from "@/lib/copy";
 import type { HomeBrief } from "@/lib/workspace/queries-pages";
 import { buildActionOverview } from "@/lib/workspace/overview";
 import { actionRow, snapshot } from "@/lib/assistant/__fixtures__";
@@ -259,5 +260,58 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
       expect(text).not.toContain("Rescan");
     }
     expect(view({ locale: "zh-HK", priority: null, withSnapshot: true, tier: "lite" }).querySelector(".brief-priority-card")?.textContent).toContain("本週沒有新行動，下次掃描後再看。");
+  });
+});
+
+// F-19 (hosted acceptance 2026-10-09): a workspace whose claim never completed
+// has no location and no scan. Home must not promise "evidence and drafts are
+// ready" or "the AI team finished the analysis", and must say how to link the
+// business; a scanned workspace keeps the existing copy.
+describe("HomeBriefView for an unscanned or unlinked workspace (F-19)", () => {
+  const openAction = buildActionOverview(actionRow, { location: null, latestRun: null, latestVersion: null });
+  function renderWith(locale: "en" | "zh-HK" | "zh-TW", opts: { locations: Array<{ slug: string; name: string }>; locationSlug: string; withSnapshot: boolean; withPriority: boolean }) {
+    const brief = { ...baseBrief(null), locationSlug: opts.locationSlug, snapshot: opts.withSnapshot ? snapshot : null, priority: opts.withPriority ? openAction : null, openActions: opts.withPriority ? [openAction] : [] } as HomeBrief;
+    const root = document.createElement("div");
+    root.innerHTML = renderToStaticMarkup(
+      <HomeBriefView locale={locale} workspaceSlug="nadagogo" workspaceId="ws-1" workspaceName="Nadagogo" tier="lite" timezone="Asia/Hong_Kong" locations={opts.locations} brief={brief} consentPolicyVersion="2026-07-28" role="owner" />,
+    );
+    return root;
+  }
+
+  it.each(["en", "zh-HK", "zh-TW"] as const)("no location: no ready-work claims and a scan link (%s)", (locale) => {
+    const root = renderWith(locale, { locations: [], locationSlug: "all", withSnapshot: false, withPriority: false });
+    const text = root.textContent ?? "";
+    expect(root.querySelector("h1")?.textContent).toBe(copy[locale].home.noScanTitle);
+    expect(text).not.toContain(copy[locale].home.title);
+    expect(text).not.toContain(copy[locale].home.subtitle);
+    expect(text).not.toMatch(/finished the analysis|已完成分析/);
+    expect(text).toContain(copy[locale].home.noLocationTitle);
+    expect(root.querySelector(`a[href="/${locale}/scan"]`)?.textContent).toBe(copy[locale].home.noLocationCta);
+  });
+
+  it("a single location with no snapshot is also waiting for its first scan", () => {
+    const root = renderWith("en", { locations: [{ slug: "main", name: "Main" }], locationSlug: "main", withSnapshot: false, withPriority: false });
+    expect(root.querySelector("h1")?.textContent).toBe(copy.en.home.noScanTitle);
+    expect(root.textContent).not.toContain(copy.en.home.noLocationTitle);
+  });
+
+  it("a scanned location with no open action says so instead of promising drafts", () => {
+    const root = renderWith("zh-HK", { locations: [{ slug: "main", name: "Main" }], locationSlug: "main", withSnapshot: true, withPriority: false });
+    expect(root.querySelector("h1")?.textContent).toBe(copy["zh-HK"].home.quietTitle);
+    expect(root.textContent).not.toContain(copy["zh-HK"].home.subtitle);
+  });
+
+  it("keeps the existing headline for an open action even without a snapshot (acceptance home-today)", () => {
+    const root = renderWith("en", { locations: [{ slug: "main", name: "Main" }], locationSlug: "main", withSnapshot: false, withPriority: true });
+    expect(root.querySelector("h1")?.textContent).toBe(copy.en.home.title);
+    expect(root.textContent).not.toContain(copy.en.home.noScanTitle);
+  });
+
+  it("keeps the existing headline when there is an open priority action, including the all-locations view", () => {
+    for (const locationSlug of ["main", "all"]) {
+      const root = renderWith("en", { locations: [{ slug: "main", name: "Main" }], locationSlug, withSnapshot: locationSlug === "main", withPriority: true });
+      expect(root.querySelector("h1")?.textContent).toBe(copy.en.home.title);
+      expect(root.textContent).toMatch(/finished the analysis/);
+    }
   });
 });

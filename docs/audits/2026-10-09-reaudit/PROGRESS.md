@@ -26,6 +26,11 @@
 - F-16 已結案：正式 DB 只到 0008；店主補套 `apply-0009`～`apply-0014` 後首頁正常。
 - 下表「未解項」第 1–3 項已完成；套用後 `check-missing-columns.sql` 為 0 行（journal 14）。仍待：記錄正式 DB 的 branch／endpoint id、0015（只是 index）、第 4–6 項。
 
+## 2026-10-09 晚上：hosted 驗收（只讀）
+
+- 見 [hosted-acceptance-2026-10-09.md](hosted-acceptance-2026-10-09.md)：店主頁面三語正常；T-14 及 T-03（第一步）hosted 驗證。
+- 新發現 F-19：Nadagogo 沒有地點／掃描／行動，首頁卻顯示「已準備好」；修正於 `fix/f19-empty-workspace-home`。連結 Nadagogo 本身需 Google 驗證或 Fimmick 指派。
+
 ## 未解項（按優先，上午版本）
 
 1. **F-16 production owner 首頁失敗**：需 Willy 以唯讀身份對部署 DB 跑 `corepack pnpm neon:readiness`，回報 `status`／`category`。若缺 0011 欄位，另行授權補套。
