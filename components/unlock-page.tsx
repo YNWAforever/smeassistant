@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
 import { ArrowRight, CircleAlert, Eye, ListChecks, LockKeyhole, UserCheck } from "lucide-react"
 
+import { RecoveryForm } from "@/components/report/recovery-form"
 import { PublicPageFrame } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -37,7 +38,7 @@ const OBJECTIVE_MESSAGE_KEYS: Record<ScanObjective, string> = {
 
 const BENEFIT_ICONS = [Eye, UserCheck, ListChecks] as const
 
-export function UnlockPage({ locale, slug, market }: { locale: PrototypeLocale; slug: string; market: UnlockMarket }) {
+export function UnlockPage({ locale, slug, market, recoveryAvailable }: { locale: PrototypeLocale; slug: string; market: UnlockMarket; recoveryAvailable?: boolean }) {
   const c = copy[locale].funnel.unlock
   const router = useRouter()
   const channels = unlockChannels(market)
@@ -227,6 +228,7 @@ export function UnlockPage({ locale, slug, market }: { locale: PrototypeLocale; 
             <LockKeyhole /> {c.privacyNote}
           </p>
           <Link href={`/${locale}/trust`}>{c.policyLink}</Link>
+          {recoveryAvailable && <RecoveryForm locale={locale} slug={slug} />}
         </section>
       </main>
     </PublicPageFrame>

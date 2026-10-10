@@ -243,6 +243,8 @@ export interface ReportProps {
   ctas: ReportCta[];
   /** P4.5: the unsaved preview link; set by the report page only for a viewer with the flag on (previewDraftHrefFor). */
   previewDraftHref?: string;
+  /** Set by the report page for the public (locked) view only; renders the "email me a new link" form. */
+  recoveryAvailable?: boolean;
 }
 
 /* ------------------------------------------------------------------------- */

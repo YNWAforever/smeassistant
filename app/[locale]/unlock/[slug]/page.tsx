@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { UnlockPage } from "@/components/public-pages";
 import { copy, normaliseLocale } from "@/lib/copy";
 import { resolveUnlockMarket } from "@/lib/funnel/unlock";
+import { recoveryAvailable } from "@/lib/mail/feature-flags";
 
 import { firstParam } from "../../_params";
 
@@ -33,6 +34,7 @@ export default async function Unlock({
       locale={normaliseLocale(locale)}
       slug={slug}
       market={resolveUnlockMarket(firstParam(query.market), locale)}
+      recoveryAvailable={recoveryAvailable()}
     />
   );
 }
