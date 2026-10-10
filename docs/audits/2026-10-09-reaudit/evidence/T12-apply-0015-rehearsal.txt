@@ -1,0 +1,17 @@
+# apply-0015.sql rehearsal — 2026-10-10, local disposable postgres:16 container only (no hosted database)
+# Roles as in production: neondb_owner (LOGIN, non-superuser) holds smeassistant_migrator WITH SET; tables migrated 0001-0014 by smeassistant_migrator.
+# Cases: 1 apply on 0014; 2 compare with a database migrated straight to 0015; 3 repository runner on the result; 4 re-run; 5 journal at 0013; 6 same-named index with another definition; 7 login without SET on the migrator.
+1 apply on 0014: {"ok":true,"notices":["apply-0015: applied 0015_action_list_indexes.sql and recorded journal row 15"]}
+1 journal max: {"ordinal":15,"name":"0015_action_list_indexes.sql","checksum":"61c3ce12d4342181d979e586d9077ef40664f318fa9f5051929f59c3cc3b5763"}
+2 journal equal to straight: true
+2 indexes equal to straight: true
+2 index owners: ["smeassistant_migrator","smeassistant_migrator","smeassistant_migrator"]
+3 runner on applied db (expect []): []
+4 re-run: {"ok":false,"error":"apply-0015 refused: neon_migrations.journal is not exactly 0001-0014 with the expected checksums (it has 15 rows)","notices":[]}
+4 journal rows after re-run: 15
+5 apply on 0013: {"ok":false,"error":"apply-0015 refused: neon_migrations.journal is not exactly 0001-0014 with the expected checksums (it has 13 rows)","notices":[]}
+5 journal rows: 13
+6 apply with conflicting index: {"ok":false,"error":"apply-0015 check failed: index actions_list_keyset_idx exists with a different definition: CREATE INDEX actions_list_keyset_idx ON public.actions USING btree (workspace_id)","notices":["relation \"actions_list_keyset_idx\" already exists, skipping"]}
+6 journal rows: 14
+6 indexes after: [{"relname":"actions_list_keyset_idx","def":"CREATE INDEX actions_list_keyset_idx ON public.actions USING btree (workspace_id)","owner":"smeassistant_migrator"}]
+7 no-set-role: permission denied to set role "smeassistant_migrator"

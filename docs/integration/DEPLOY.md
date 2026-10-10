@@ -99,6 +99,16 @@ Rollback: unset the flag (or set anything but `true`) and redeploy. Exactly what
 - **Stays:** replies already published stay on Google; the owner can remove them in Google directly. Reconcile keeps working, so a "Couldn't confirm" delivery can still be settled read-only. Delivery rows, their counted usage and the audit events stay; the card keeps showing the last delivery's state as history.
 - `0014` itself is not rolled back. Its columns and functions are additive, and the re-created `export_output_version` behaves like the `0011` body for any version that was never published.
 
+## T-12 action-list indexes: migration 0015, no flag
+
+`neon/migrations/0015_action_list_indexes.sql` (journal row 15) adds three read indexes, `action_runs_latest_metadata_idx`, `output_versions_latest_metadata_idx` and `actions_list_keyset_idx`, for the bounded owner action list and the latest run/version lookups (T-12). No table, column, function, grant or data changes. The deployed code does **not** depend on it: every query runs without these indexes, only more slowly on large workspaces. Applying it to a hosted database is a DEC-11 owner action. Hosted state: **not applied** (production journal 1–14, owner-reported 2026-10-09). The statement is [`rollout/apply-0015.sql`](../implementation/owner-platform-v1/rollout/apply-0015.sql); `tests/rollout-apply-0015.test.ts` keeps its embedded migration and checksums equal to the files on disk.
+
+1. Follow the operator rule in [`docs/operations/migration-readiness.md`](../operations/migration-readiness.md): match the Neon endpoint and database to Vercel's Production `DATABASE_URL`, confirm the journal is exactly `1`–`14`, and run `check-missing-columns.sql` (0 rows).
+2. **Apply on a Neon test branch of production, then on production.** Run `apply-0015.sql` in the Neon SQL Editor as `neondb_owner`. It refuses unless the journal is exactly `0001`-`0014`, and refuses (rolling back) if an index of the same name already exists with a different definition. A plain `CREATE INDEX` holds a SHARE lock on `action_runs`, `output_versions` and `actions` while it builds: writes to those tables wait until the statement commits, reads continue. On current row counts that is well under a second; prefer a quiet hour if the tables have grown.
+3. Re-run the journal query (max ordinal 15) and check the owner home and action list.
+
+Rollback: none needed for the code. The indexes are harmless to keep; removing them would be a separate authorised migration, never a journal edit.
+
 ## Local verification and limits
 
 The Task 16 all-ten-gate epoch is recorded in LAUNCH-REPORT with exact source and warning counts. Task 17 adds one actual-SQL recovery rehearsal: a new application user and report survive a drained pool, restart of the same owned network-none Postgres container and compatible repository reconnect. It also verifies a continued report write. This is not hosted rollback, managed Auth recovery or an old build test.
