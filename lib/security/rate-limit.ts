@@ -36,7 +36,8 @@ export type RateLimitScope =
   | "gbp_publish"
   | "gbp_publish_global"
   | "gbp_targets"
-  | "gbp_reconcile";
+  | "gbp_reconcile"
+  | "invitation_resend";
 
 export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> = {
   scan_start: { limit: 10, windowSeconds: 60 * 60 },
@@ -147,6 +148,8 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   gbp_targets: { limit: 60, windowSeconds: 60 * 60 },
   // gbp_reconcile: re-reading one unknown-outcome delivery from Google, 30 a day per delivery id.
   gbp_reconcile: { limit: 30, windowSeconds: 24 * 60 * 60 },
+  // POST /api/workspaces/[id]/members/[memberId]/resend: 3 a day per invited member id (composite, fail-closed).
+  invitation_resend: { limit: 3, windowSeconds: 24 * 60 * 60 },
 };
 
 export interface RateLimitDecision {
@@ -267,7 +270,8 @@ type CompositeIdentifierScope =
   | "staff_magic_link"
   | "owner_magic_link"
   | "workspace_invite_magic_link"
-  | "staff_otp_verify";
+  | "staff_otp_verify"
+  | "invitation_resend";
 
 /**
  * Bound attacker-controlled identifier cardinality with one per-scope bucket

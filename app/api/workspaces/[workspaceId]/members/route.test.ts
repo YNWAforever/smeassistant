@@ -2,9 +2,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const authorizeWorkspaceRequest = vi.fn();
 const from = vi.fn();
+const sendInvitation = vi.fn();
+const invitationContext = vi.fn();
+vi.mock("@/lib/mail/invitation", () => ({ sendInvitation: (...args: unknown[]) => sendInvitation(...args) }));
+vi.mock("@/lib/mail/transport", () => ({ createMailTransport: () => ({ send: vi.fn() }) }));
+vi.mock("@/lib/db/client", () => ({ getPool: () => ({ query: vi.fn() }) }));
 
 vi.mock("@/lib/auth", () => ({ authorizeWorkspaceRequest: (...args: unknown[]) => authorizeWorkspaceRequest(...args) }));
 vi.mock("@/lib/repositories/membership", () => ({ membershipRepository: {
+ invitationContext: (...args: unknown[]) => invitationContext(...args),
  invite: async (input:{workspaceId:string;email:string;role:string;invitedBy:string}) => {
   const result=await from("workspace_members").insert({workspace_id:input.workspaceId,email:input.email,role:input.role,invited_by:input.invitedBy}).select().single();
   if(result.error) throw result.error;return result.data?.id;
@@ -55,7 +61,10 @@ function targetRow(role: string | null) {
   };
 }
 
-afterEach(() => vi.resetAllMocks());
+afterEach(() => {
+  vi.resetAllMocks();
+  vi.unstubAllEnvs();
+});
 
 describe("POST /api/workspaces/[workspaceId]/members", () => {
   it("lets an owner invite a manager and records a member.invited audit event", async () => {
@@ -85,6 +94,59 @@ describe("POST /api/workspaces/[workspaceId]/members", () => {
         payload: { locale: "en", role: "manager" },
       }),
     );
+  });
+
+  describe("invitation mail", () => {
+    function arrange() {
+      authorizeWorkspaceRequest.mockResolvedValue(auth("owner"));
+      from.mockImplementation((table: string) =>
+        table === "workspace_members"
+          ? { insert: () => ({ select: () => ({ single: async () => ({ data: { id: "member-1" }, error: null }) }) }) }
+          : { insert: async () => ({ error: null }) },
+      );
+      invitationContext.mockResolvedValue({ email: "teammate@example.com", role: "manager", invitedAt: "2026-10-10T00:00:00Z", workspaceName: "Demo" });
+    }
+
+    it("flag off: body is exactly { memberId } and nothing is sent", async () => {
+      arrange();
+      const res = await post({ email: "teammate@example.com", role: "manager", locale: "en" });
+      expect(res.status).toBe(201);
+      expect(await res.json()).toEqual({ memberId: "member-1" });
+      expect(sendInvitation).not.toHaveBeenCalled();
+    });
+
+    it("flag on: echoes the send status", async () => {
+      arrange();
+      vi.stubEnv("INVITATION_MAIL_ENABLED", "true");
+      vi.stubEnv("APP_ORIGIN", "https://app.test");
+      sendInvitation.mockResolvedValue({ status: "sent" });
+      const res = await post({ email: "teammate@example.com", role: "manager", locale: "zh-TW" });
+      expect(res.status).toBe(201);
+      expect(await res.json()).toEqual({ memberId: "member-1", invitation: { status: "sent" } });
+      expect(sendInvitation).toHaveBeenCalledWith(
+        expect.objectContaining({ workspaceId: WORKSPACE_ID, workspaceName: "Demo", locale: "zh-TW", origin: "https://app.test", member: expect.objectContaining({ id: "member-1" }) }),
+      );
+    });
+
+    it("a throwing send still 201s with status failed and logs only a category", async () => {
+      arrange();
+      vi.stubEnv("INVITATION_MAIL_ENABLED", "true");
+      sendInvitation.mockRejectedValue(new Error("boom teammate@example.com"));
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      const res = await post({ email: "teammate@example.com", role: "manager" });
+      expect(res.status).toBe(201);
+      expect(await res.json()).toEqual({ memberId: "member-1", invitation: { status: "failed" } });
+      expect(JSON.stringify(consoleError.mock.calls)).not.toContain("teammate@example.com");
+      consoleError.mockRestore();
+    });
+
+    it("an unknown locale falls back to zh-HK", async () => {
+      arrange();
+      vi.stubEnv("INVITATION_MAIL_ENABLED", "true");
+      sendInvitation.mockResolvedValue({ status: "sent" });
+      await post({ email: "teammate@example.com", role: "manager", locale: "fr" });
+      expect(sendInvitation).toHaveBeenCalledWith(expect.objectContaining({ locale: "zh-HK" }));
+    });
   });
 
   it("refuses anyone below owner (the authorization helper decides) without touching the database", async () => {
