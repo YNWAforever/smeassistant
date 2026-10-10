@@ -3,12 +3,30 @@ import { ShieldAlert, UserCheck, UserCog, UserRound } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { PageIntro, SectionCard } from "@/components/product-ui"
-import { InviteMemberSheet, MemberRoleSelect, MemberScopeControl, RemoveMemberButton } from "@/components/workspace/team-client"
+import { InviteMemberSheet, MemberRoleSelect, MemberScopeControl, RemoveMemberButton, ResendInvitationButton } from "@/components/workspace/team-client"
 import type { PrototypeLocale } from "@/lib/copy"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import { formatDay } from "@/lib/workspace/format"
 import { roleLabel } from "@/lib/workspace/shell"
-import type { TeamModel } from "@/lib/workspace/team"
+import type { TeamMember, TeamModel } from "@/lib/workspace/team"
+
+const STATUS_COPY = {
+  en: { emailed: "Invitation emailed", closed: "Email not sent: email isn't set up yet", allowlist: "Email not sent: recipient isn't on the test list", failed: "Email failed", expired: "Expired" },
+  "zh-HK": { emailed: "已發出邀請電郵", closed: "未發出電郵：電郵功能尚未設定", allowlist: "未發出電郵：收件人不在測試名單", failed: "電郵發送失敗", expired: "已過期" },
+  "zh-TW": { emailed: "已寄出邀請信", closed: "未寄出：電子郵件功能尚未設定", allowlist: "未寄出：收件人不在測試名單", failed: "寄送失敗", expired: "已過期" },
+} as const satisfies Record<PrototypeLocale, Record<string, string>>
+
+/** Invitation delivery line for a pending member; null when there is nothing to report. */
+function invitationStatusText(member: TeamMember, locale: PrototypeLocale): string | null {
+  const copy = STATUS_COPY[locale]
+  if (member.expired) return copy.expired
+  const attempt = member.invitation
+  if (!attempt) return null
+  if (attempt.status === "accepted_by_provider") return copy.emailed
+  if (attempt.status === "failed") return copy.failed
+  if (attempt.status === "not_configured") return attempt.error === "not_allowlisted" ? copy.allowlist : attempt.error === "mail_closed" ? copy.closed : null
+  return null
+}
 
 /**
  * Team & permissions (CLAUDE.md §3.1 `settings/team`, §3.9, Phase 6 item 5):
@@ -17,7 +35,7 @@ import type { TeamModel } from "@/lib/workspace/team"
  * location-scope multi-select and remove dialog; managers and viewers see the
  * read-only table behind the prototype's permission banner.
  */
-export function TeamView({ locale, workspaceId, role, timezone, model }: { locale: PrototypeLocale; workspaceId: string; role: WorkspaceRole; timezone: string; model: TeamModel }) {
+export function TeamView({ locale, workspaceId, role, timezone, model, invitationMail = false }: { locale: PrototypeLocale; workspaceId: string; role: WorkspaceRole; timezone: string; model: TeamModel; invitationMail?: boolean }) {
   const isChinese = locale !== "en"
   const owner = role === "owner"
   const locations = model.locations.map((l) => ({ id: l.id, name: l.name }))
@@ -47,14 +65,15 @@ export function TeamView({ locale, workspaceId, role, timezone, model }: { local
             {model.members.map((member) => {
               const pending = !member.acceptedAt
               const editable = owner && member.role !== "owner"
+              const statusText = invitationMail && pending ? invitationStatusText(member, locale) : null
               return (
                 <TableRow key={member.id}>
-                  <TableCell><div className="member-cell"><span>{member.email.slice(0, 1).toUpperCase()}</span><div><strong>{member.email}</strong><small>{pending ? (isChinese ? `邀請待接受 · ${member.invitedAt ? formatDay(member.invitedAt, locale, timezone) : ""}` : `Invite pending · ${member.invitedAt ? formatDay(member.invitedAt, locale, timezone) : ""}`) : (isChinese ? `已加入 · ${formatDay(member.acceptedAt!, locale, timezone)}` : `Joined · ${formatDay(member.acceptedAt!, locale, timezone)}`)}</small></div></div></TableCell>
+                  <TableCell><div className="member-cell"><span>{member.email.slice(0, 1).toUpperCase()}</span><div><strong>{member.email}</strong><small>{pending ? (isChinese ? `邀請待接受 · ${member.invitedAt ? formatDay(member.invitedAt, locale, timezone) : ""}` : `Invite pending · ${member.invitedAt ? formatDay(member.invitedAt, locale, timezone) : ""}`) : (isChinese ? `已加入 · ${formatDay(member.acceptedAt!, locale, timezone)}` : `Joined · ${formatDay(member.acceptedAt!, locale, timezone)}`)}</small>{statusText && <small className="invitation-status">{statusText}</small>}</div></div></TableCell>
                   <TableCell>{editable && member.role !== "owner" ? <MemberRoleSelect locale={locale} workspaceId={workspaceId} memberId={member.id} role={member.role} /> : <Badge variant="outline">{roleLabel(member.role, locale)}</Badge>}</TableCell>
                   <TableCell>{editable && member.role === "manager" ? <MemberScopeControl locale={locale} workspaceId={workspaceId} memberId={member.id} locations={locations} scope={member.locationScope} /> : member.role === "manager" ? scopeText(member.locationScope) : allLocations}</TableCell>
                   <TableCell>{member.role === "owner" ? yes : no}</TableCell>
                   <TableCell>{member.role === "viewer" ? no : yes}</TableCell>
-                  {owner && <TableCell>{editable && <RemoveMemberButton locale={locale} workspaceId={workspaceId} memberId={member.id} email={member.email} />}</TableCell>}
+                  {owner && <TableCell>{editable && invitationMail && pending && <ResendInvitationButton locale={locale} workspaceId={workspaceId} memberId={member.id} />}{editable && <RemoveMemberButton locale={locale} workspaceId={workspaceId} memberId={member.id} email={member.email} />}</TableCell>}
                 </TableRow>
               )
             })}

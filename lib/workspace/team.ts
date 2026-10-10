@@ -1,3 +1,10 @@
+import type { Pool } from "pg";
+import { getPool } from "@/lib/db/client";
+import { invitationMailEnabled } from "@/lib/mail/feature-flags";
+import { invitationDedupeKey } from "@/lib/mail/invitation";
+import { findMailAttempt } from "@/lib/mail/ledger";
+import type { MailSendStatus } from "@/lib/mail/transport";
+import { INVITATION_TTL_DAYS } from "@/lib/workspace/invitation-expiry";
 import { membershipRepository, type MembershipRepository } from "@/lib/repositories/membership";
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace";
 import type { LocationSummary, WorkspaceContext } from "@/lib/workspace/queries";
@@ -17,6 +24,10 @@ export interface TeamMember {
   invitedAt: string | null;
   /** workspace_members.location_scope (uuid[]); null = all locations. */
   locationScope: string[] | null;
+  /** Latest invitation mail attempt for this invite; set for pending members only when invitation mail is enabled. null = none recorded. */
+  invitation?: { status: MailSendStatus; error: string | null } | null;
+  /** Pending invite older than INVITATION_TTL_DAYS; set only when invitation mail is enabled. */
+  expired?: boolean;
 }
 
 export interface TeamModel {
@@ -47,9 +58,24 @@ export function rowToTeamMember(row: MemberRow): TeamMember {
   };
 }
 
-export async function getTeam(ctx: WorkspaceContext, db: MembershipRepository = membershipRepository): Promise<TeamModel> {
+export interface GetTeamOptions {
+  invitationMail?: boolean;
+  mailDb?: Pick<Pool, "query">;
+  now?: Date;
+}
+
+export async function getTeam(ctx: WorkspaceContext, db: MembershipRepository = membershipRepository, options: GetTeamOptions = {}): Promise<TeamModel> {
  const rows = await db.team(ctx.workspace.id);
- const members = rows.map(rowToTeamMember).sort((a,b) => Number(b.role === "owner") - Number(a.role === "owner"));
+ let members = rows.map(rowToTeamMember).sort((a,b) => Number(b.role === "owner") - Number(a.role === "owner"));
+ if (options.invitationMail ?? invitationMailEnabled()) {
+  const mailDb = options.mailDb ?? getPool();
+  const cutoff = (options.now ?? new Date()).getTime() - INVITATION_TTL_DAYS * 86_400_000;
+  members = await Promise.all(members.map(async (member) => {
+   if (member.acceptedAt || !member.invitedAt) return member;
+   const attempt = await findMailAttempt(mailDb, invitationDedupeKey(member.id, member.invitedAt));
+   return {...member, invitation: attempt ? {status: attempt.status, error: attempt.error} : null, expired: Date.parse(member.invitedAt) < cutoff};
+  }));
+ }
  return {members, locations: ctx.locations};
 }
 

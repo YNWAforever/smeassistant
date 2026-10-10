@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type { Pool } from "pg";
+import { invitationDedupeKey } from "@/lib/mail/invitation";
 import type { MembershipRepository } from "@/lib/repositories/membership";
 import type { WorkspaceContext } from "@/lib/workspace/queries";
 import { getTeam, loadLocationIds, rowToTeamMember } from "./team";
@@ -44,5 +46,43 @@ describe("getTeam", () => {
 describe("loadLocationIds", () => {
   it("returns the workspace's location ids as a set", async () => {
     expect(await loadLocationIds(client(rows), "ws-1")).toEqual(new Set(["loc-1", "loc-2"]));
+  });
+});
+
+function mailDbOf(query: ReturnType<typeof vi.fn>) {
+  return { query } as unknown as Pick<Pool, "query"> & { query: typeof query };
+}
+
+describe("getTeam invitation status", () => {
+  const now = new Date("2026-09-20T00:00:00Z");
+  const pending = (invitedAt: string) => ({ workspace_members: [{ id: "m-9", email: "p@example.test", role: "viewer", user_id: null, accepted_at: null, invited_at: invitedAt, location_scope: null, created_at: invitedAt }] });
+
+  it("adds no invitation fields when the invitation mail flag is off", async () => {
+    const mailDb = mailDbOf(vi.fn(async () => ({ rows: [] })));
+    const team = await getTeam(ctx, client(pending("2026-09-01T00:00:00Z")), { invitationMail: false, mailDb, now });
+    expect(team.members[0]).not.toHaveProperty("invitation");
+    expect(team.members[0]).not.toHaveProperty("expired");
+    expect(mailDb.query).not.toHaveBeenCalled();
+  });
+
+  it("marks a 15-day-old pending invite expired and reads the attempt by the current invited_at key", async () => {
+    const invitedAt = "2026-09-05T00:00:00Z";
+    const mailDb = mailDbOf(vi.fn(async () => ({ rows: [{ payload: { status: "not_configured", error: "mail_closed" }, created_at: "2026-09-05T00:00:01Z" }] })));
+    const team = await getTeam(ctx, client(pending(invitedAt)), { invitationMail: true, mailDb, now });
+    expect(team.members[0]).toMatchObject({ expired: true, invitation: { status: "not_configured", error: "mail_closed" } });
+    expect(mailDb.query).toHaveBeenCalledWith(expect.any(String), [`mail:${invitationDedupeKey("m-9", invitedAt)}`]);
+  });
+
+  it("does not expire a 13-day-old invite and reports no attempt as null", async () => {
+    const mailDb = mailDbOf(vi.fn(async () => ({ rows: [] })));
+    const team = await getTeam(ctx, client(pending("2026-09-07T00:00:00Z")), { invitationMail: true, mailDb, now });
+    expect(team.members[0]).toMatchObject({ expired: false, invitation: null });
+  });
+
+  it("skips accepted members", async () => {
+    const mailDb = mailDbOf(vi.fn(async () => ({ rows: [] })));
+    const team = await getTeam(ctx, client(rows), { invitationMail: true, mailDb, now });
+    expect(team.members.find((m) => m.id === "m-2")).not.toHaveProperty("invitation");
+    expect(mailDb.query).toHaveBeenCalledTimes(1);
   });
 });
