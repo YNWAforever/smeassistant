@@ -11,8 +11,8 @@ import { createViewerToken } from "@/lib/report-access/token";
 import { recordClaimAuditEvent } from "@/lib/repositories/claims";
 import { reportRecoveryRepository } from "@/lib/repositories/report-recovery";
 import {
-  enforceCompositeIdentifierRateLimit,
   enforceRateLimit,
+  enforceRecipientRateLimit,
   rateLimitUnavailableResponse,
   rateLimitedResponse,
 } from "@/lib/security/rate-limit";
@@ -52,12 +52,8 @@ export async function POST(req: Request) {
   const perIp = await enforceRateLimit({ req, scope: "report_recovery_ip", failClosed: true });
   if (perIp.unavailable) return rateLimitUnavailableResponse();
   if (!perIp.allowed) return rateLimitedResponse(perIp.retryAfterSeconds);
-  const perRecipient = await enforceCompositeIdentifierRateLimit({
-    req,
-    scope: "report_recovery",
-    identifier: `${email}|${slug}`,
-    failClosed: true,
-  });
+  // Per inbox and report from any network (spec D2), so no IP in this key.
+  const perRecipient = await enforceRecipientRateLimit({ req, scope: "report_recovery", identifier: `${email}|${slug}` });
   if (perRecipient.unavailable) return rateLimitUnavailableResponse();
   if (!perRecipient.allowed) return rateLimitedResponse(perRecipient.retryAfterSeconds);
 

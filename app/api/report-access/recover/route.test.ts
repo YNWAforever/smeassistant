@@ -8,7 +8,8 @@ const mocks = vi.hoisted(() => ({
   recordMailAttempt: vi.fn(),
   audit: vi.fn(),
   enforceRateLimit: vi.fn(),
-  enforceComposite: vi.fn(),
+  enforceRecipient: vi.fn(),
+  consume: vi.fn(),
 }));
 
 vi.mock("@/lib/repositories/report-recovery", () => ({
@@ -22,14 +23,28 @@ vi.mock("@/lib/mail/ledger", () => ({ recordMailAttempt: mocks.recordMailAttempt
 vi.mock("@/lib/mail/transport", () => ({ createMailTransport: () => ({ send: vi.fn() }) }));
 vi.mock("@/lib/db/client", () => ({ getPool: () => ({ query: vi.fn() }) }));
 vi.mock("@/lib/repositories/claims", () => ({ recordClaimAuditEvent: mocks.audit }));
-vi.mock("@/lib/security/rate-limit", () => ({
-  enforceRateLimit: mocks.enforceRateLimit,
-  enforceCompositeIdentifierRateLimit: mocks.enforceComposite,
-  rateLimitedResponse: () => new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 }),
-  rateLimitUnavailableResponse: () => new Response(JSON.stringify({ error: "rate_limit_unavailable" }), { status: 503 }),
-}));
+vi.mock("@/lib/repositories/workflow", () => ({ workflowRepository: () => ({ consumeRateLimit: mocks.consume }) }));
+vi.mock("@/lib/security/rate-limit", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/security/rate-limit")>();
+  return {
+    realEnforceRecipientRateLimit: real.enforceRecipientRateLimit,
+    rateLimitBucketKey: real.rateLimitBucketKey,
+    enforceRateLimit: mocks.enforceRateLimit,
+    enforceRecipientRateLimit: mocks.enforceRecipient,
+    rateLimitedResponse: () => new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 }),
+    rateLimitUnavailableResponse: () => new Response(JSON.stringify({ error: "rate_limit_unavailable" }), { status: 503 }),
+  };
+});
 
+import * as rateLimit from "@/lib/security/rate-limit";
 import { POST } from "./route";
+
+// The mocked module re-exports the real helper under another name so a test can
+// run it against an in-memory limiter.
+const { realEnforceRecipientRateLimit } = rateLimit as unknown as {
+  realEnforceRecipientRateLimit: typeof rateLimit.enforceRecipientRateLimit;
+};
+const { rateLimitBucketKey } = rateLimit;
 
 const OPEN_MAIL_ENV = {
   APPLICATION_MAIL_APPROVED: MAIL_TEMPLATES_VERSION,
@@ -68,7 +83,7 @@ describe("POST /api/report-access/recover", () => {
     stubOpen();
     consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     mocks.enforceRateLimit.mockResolvedValue(allowed);
-    mocks.enforceComposite.mockResolvedValue(allowed);
+    mocks.enforceRecipient.mockResolvedValue(allowed);
     mocks.findRecipientGrant.mockResolvedValue({ jobId: "job-1", workspaceId: "ws-1", businessName: "Kam Man House" });
     mocks.insertRecoveryGrant.mockResolvedValue({ grantId: "grant-1" });
     mocks.sendGated.mockResolvedValue({ status: "accepted_by_provider", providerMessageId: "msg-1" });
@@ -111,15 +126,16 @@ describe("POST /api/report-access/recover", () => {
     const res = await POST(request(body));
     expect(res.status).toBe(400);
     expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
-    expect(mocks.enforceComposite).not.toHaveBeenCalled();
+    expect(mocks.enforceRecipient).not.toHaveBeenCalled();
   });
 
-  it("applies the per-IP and per-email-and-slug limiters, fail-closed, with a normalised email", async () => {
+  it("applies the per-IP limiter (fail-closed) before the per-email-and-slug limiter, with a normalised email", async () => {
     await POST(request({ slug: SLUG, email: `  ${EMAIL} `, locale: "en" }));
     expect(mocks.enforceRateLimit).toHaveBeenCalledWith(expect.objectContaining({ scope: "report_recovery_ip", failClosed: true }));
-    expect(mocks.enforceComposite).toHaveBeenCalledWith(
-      expect.objectContaining({ scope: "report_recovery", identifier: `owner@example.com|${SLUG}`, failClosed: true }),
+    expect(mocks.enforceRecipient).toHaveBeenCalledWith(
+      expect.objectContaining({ scope: "report_recovery", identifier: `owner@example.com|${SLUG}` }),
     );
+    expect(mocks.enforceRateLimit.mock.invocationCallOrder[0]).toBeLessThan(mocks.enforceRecipient.mock.invocationCallOrder[0]);
     expect(mocks.findRecipientGrant).toHaveBeenCalledWith(SLUG, "owner@example.com");
   });
 
@@ -131,10 +147,43 @@ describe("POST /api/report-access/recover", () => {
   });
 
   it("answers 429 when the per-email-and-slug limiter denies", async () => {
-    mocks.enforceComposite.mockResolvedValue({ allowed: false, retryAfterSeconds: 600 });
+    mocks.enforceRecipient.mockResolvedValue({ allowed: false, retryAfterSeconds: 600 });
     const res = await POST(request({ slug: SLUG, email: EMAIL, locale: "en" }));
     expect(res.status).toBe(429);
     expect(mocks.findRecipientGrant).not.toHaveBeenCalled();
+  });
+
+  it("answers 503 when the per-email-and-slug limiter is unavailable", async () => {
+    mocks.enforceRecipient.mockResolvedValue({ allowed: false, retryAfterSeconds: 600, unavailable: true });
+    const res = await POST(request({ slug: SLUG, email: EMAIL, locale: "en" }));
+    expect(res.status).toBe(503);
+    expect(mocks.findRecipientGrant).not.toHaveBeenCalled();
+  });
+
+  // Spec D2: one request per email per report every 10 minutes, per inbox --
+  // not per inbox per source IP. A second request from another IP must hit the
+  // same bucket and be refused.
+  it("bounds the per-email-and-slug bucket across source IPs", async () => {
+    const buckets = new Map<string, number>();
+    mocks.consume.mockImplementation(async (key: string, limit: number) => {
+      const used = (buckets.get(key) ?? 0) + 1;
+      buckets.set(key, used);
+      return { allowed: used <= limit, retry_after_seconds: used <= limit ? 0 : 600 };
+    });
+    mocks.enforceRecipient.mockImplementation(realEnforceRecipientRateLimit);
+    const from = (ip: string) => new Request("https://app.example.test/api/report-access/recover", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-forwarded-for": ip },
+      body: JSON.stringify({ slug: SLUG, email: EMAIL, locale: "en" }),
+    });
+
+    expect((await POST(from("203.0.113.42"))).status).toBe(200);
+    const second = await POST(from("198.51.100.7"));
+    expect(second.status).toBe(429);
+    expect(mocks.findRecipientGrant).toHaveBeenCalledTimes(1);
+    const recipientKey = rateLimitBucketKey("report_recovery", `owner@example.com|${SLUG}`);
+    expect(buckets.get(recipientKey)).toBe(2);
+    expect([...buckets.keys()].filter((key) => key.startsWith("report_recovery:"))).toEqual([recipientKey]);
   });
 
   it("on a match inserts one recovery row and sends one mail with the recover link", async () => {
@@ -161,7 +210,7 @@ describe("POST /api/report-access/recover", () => {
     const matched = await snapshot(await POST(request({ slug: SLUG, email: EMAIL, locale: "en" })));
     vi.clearAllMocks();
     mocks.enforceRateLimit.mockResolvedValue(allowed);
-    mocks.enforceComposite.mockResolvedValue(allowed);
+    mocks.enforceRecipient.mockResolvedValue(allowed);
     mocks.findRecipientGrant.mockResolvedValue(null);
     const unmatched = await snapshot(await POST(request({ slug: SLUG, email: "stranger@example.com", locale: "en" })));
     expect(unmatched).toEqual(matched);

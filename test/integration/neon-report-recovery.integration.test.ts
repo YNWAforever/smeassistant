@@ -86,12 +86,20 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon report recovery grant
     const { token } = await recovery(job.jobId);
     const fresh = viewer();
     const redeemed = await reportRecoveryRepository.redeemRecoveryGrant(token.tokenHash, fresh);
-    expect(redeemed).toEqual({ grantId: expect.any(String), jobId: job.jobId, slug: job.slug });
+    expect(redeemed).toEqual({ grantId: expect.any(String), jobId: job.jobId, slug: job.slug, workspaceId: null });
     const found = await reportsRepository(runtime).findViewerGrant(job.jobId, redeemed!.grantId);
     expect(found).toMatchObject({ id: redeemed!.grantId, job_id: job.jobId, token_hash: fresh.tokenHash, revoked_at: null });
     const row = (await runtime.query("SELECT purpose,idempotency_key,expires_at > now() + interval '29 days' AS thirty_days,expires_at <= now() + interval '30 days' AS not_more FROM report_access_grants WHERE id=$1", [redeemed!.grantId])).rows[0];
     expect(row).toEqual({ purpose: "viewer_report", idempotency_key: fresh.idempotencyKey, thirty_days: true, not_more: true });
     expect(await reportRecoveryRepository.redeemRecoveryGrant(token.tokenHash, viewer())).toBeNull();
+  });
+
+  it("returns the job's workspace id with a redeemed grant", async () => {
+    const job = await seed();
+    const workspaceId = (await runtime.query("INSERT INTO workspaces(slug,market) VALUES($1,'hk') RETURNING id", [`ws-${crypto.randomUUID()}`])).rows[0].id as string;
+    await runtime.query("UPDATE audit_jobs SET workspace_id=$1 WHERE id=$2", [workspaceId, job.jobId]);
+    const { token } = await recovery(job.jobId);
+    expect(await reportRecoveryRepository.redeemRecoveryGrant(token.tokenHash, viewer())).toEqual({ grantId: expect.any(String), jobId: job.jobId, slug: job.slug, workspaceId });
   });
 
   it("refuses an expired, revoked or unknown recovery token, and a viewer token presented as recovery", async () => {

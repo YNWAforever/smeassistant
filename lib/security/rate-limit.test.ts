@@ -6,6 +6,7 @@ import {
   consumeRateLimit,
   enforceCompositeIdentifierRateLimit,
   enforceRateLimit,
+  enforceRecipientRateLimit,
   RATE_LIMITS,
   rateLimitBucketKey,
 } from "./rate-limit";
@@ -151,6 +152,60 @@ describe("atomic rate-limit contract", () => {
     })).resolves.toEqual({ allowed: false, retryAfterSeconds: 31 });
     expect(rpc).toHaveBeenCalledTimes(1);
   });
+
+  // Per-recipient limits (recovery mail, invitation resend) bound mail to one
+  // inbox or member, so the request fingerprint must not reach the inner key:
+  // otherwise every source IP gets its own budget against the same recipient.
+  it("keys the per-recipient bucket on the identifier alone, whatever the caller's IP", async () => {
+    process.env.RATE_LIMIT_SECRET = "test-secret-a";
+    const keys: string[] = [];
+    const rpc = async (_fn: string, args: Record<string, unknown>) => {
+      keys.push(String(args.p_bucket_key));
+      return { data: [{ allowed: true, retry_after_seconds: 0 }], error: null };
+    };
+    for (const ip of ["203.0.113.42", "198.51.100.7"]) {
+      await expect(enforceRecipientRateLimit({
+        req: new Request("https://scanner.test", { headers: { "x-forwarded-for": ip } }),
+        scope: "report_recovery",
+        identifier: "owner@example.com|report-1234",
+        client: { rpc },
+      })).resolves.toEqual({ allowed: true, retryAfterSeconds: 1 });
+    }
+    expect(keys).toHaveLength(4);
+    // Outer cardinality bound first, still per source IP.
+    expect(keys[0]).toMatch(/^composite_identifier_outer:[0-9a-f]{64}:[0-9a-f]{64}$/);
+    expect(keys[2]).not.toBe(keys[0]);
+    // Inner bucket: scope + identifier HMAC only, identical across IPs.
+    expect(keys[1]).toBe(rateLimitBucketKey("report_recovery", "owner@example.com|report-1234"));
+    expect(keys[3]).toBe(keys[1]);
+  });
+
+  it("stops before the per-recipient bucket when the outer bucket is denied", async () => {
+    const rpc = vi.fn(async () => ({ data: [{ allowed: false, retry_after_seconds: 31 }], error: null }));
+    await expect(enforceRecipientRateLimit({
+      req: new Request("https://scanner.test"),
+      scope: "invitation_resend",
+      identifier: "member-2",
+      client: { rpc },
+    })).resolves.toEqual({ allowed: false, retryAfterSeconds: 31 });
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed when the per-recipient limiter is unavailable", async () => {
+    const rpc = vi.fn()
+      .mockResolvedValueOnce({ data: [{ allowed: true, retry_after_seconds: 0 }], error: null })
+      .mockResolvedValueOnce({ data: null, error: { message: "down" } });
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(enforceRecipientRateLimit({
+      req: new Request("https://scanner.test"),
+      scope: "invitation_resend",
+      identifier: "member-2",
+      client: { rpc },
+    })).resolves.toEqual({ allowed: false, retryAfterSeconds: RATE_LIMITS.invitation_resend.windowSeconds, unavailable: true });
+    expect(errorSpy).toHaveBeenCalledWith(expect.any(String), { category: "database_unavailable" });
+    errorSpy.mockRestore();
+  });
+
   it("uses one consume_rate_limit RPC and returns retry metadata", async () => {
     const rpc = vi.fn(async () => ({ data: [{ allowed: false, retry_after_seconds: 17 }], error: null }));
     await expect(consumeRateLimit({

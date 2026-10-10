@@ -7,7 +7,7 @@ import { sendInvitation } from "@/lib/mail/invitation";
 import { createMailTransport, type MailSendStatus } from "@/lib/mail/transport";
 import { membershipRepository, type InvitationContext } from "@/lib/repositories/membership";
 import { recordClaimAuditEvent } from "@/lib/repositories/claims";
-import { enforceCompositeIdentifierRateLimit, rateLimitedResponse, rateLimitUnavailableResponse } from "@/lib/security/rate-limit";
+import { enforceRecipientRateLimit, rateLimitedResponse, rateLimitUnavailableResponse } from "@/lib/security/rate-limit";
 
 /**
  * POST /api/workspaces/[workspaceId]/members/[memberId]/resend
@@ -34,7 +34,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ workspa
   const auth = await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "owner" });
   if (!auth.ok) return NextResponse.json({ error: auth.code }, { status: auth.status });
 
-  const limit = await enforceCompositeIdentifierRateLimit({ req, scope: "invitation_resend", identifier: memberId, failClosed: true });
+  // 3 a day per member from any network (spec D2), so no IP in this key.
+  const limit = await enforceRecipientRateLimit({ req, scope: "invitation_resend", identifier: memberId });
   if (limit.unavailable) return rateLimitUnavailableResponse();
   if (!limit.allowed) return rateLimitedResponse(limit.retryAfterSeconds);
 

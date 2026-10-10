@@ -47,7 +47,7 @@ describe("POST /api/report-access/redeem", () => {
     vi.stubEnv("REPORT_RECOVERY_ENABLED", "true");
     consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     mocks.enforceRateLimit.mockResolvedValue({ allowed: true, retryAfterSeconds: 0 });
-    mocks.redeemRecoveryGrant.mockResolvedValue({ grantId: "viewer-grant-9", jobId: "job-1", slug: "real-slug-1234" });
+    mocks.redeemRecoveryGrant.mockResolvedValue({ grantId: "viewer-grant-9", jobId: "job-1", slug: "real-slug-1234", workspaceId: "ws-7" });
     mocks.audit.mockResolvedValue(undefined);
   });
 
@@ -121,8 +121,14 @@ describe("POST /api/report-access/redeem", () => {
     expect(cookie).not.toContain(TOKEN);
 
     expect(mocks.audit).toHaveBeenCalledWith(
-      expect.objectContaining({ event: "report.recovery_redeemed", payload: { job_id: "job-1" } }),
+      expect.objectContaining({ event: "report.recovery_redeemed", workspace_id: "ws-7", entity_id: "viewer-grant-9", payload: { job_id: "job-1" } }),
     );
+  });
+
+  it("audits with a null workspace id when the report belongs to no workspace", async () => {
+    mocks.redeemRecoveryGrant.mockResolvedValue({ grantId: "viewer-grant-9", jobId: "job-1", slug: "real-slug-1234", workspaceId: null });
+    expect((await POST(request({ token: TOKEN, locale: "en" }))).status).toBe(200);
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ event: "report.recovery_redeemed", workspace_id: null }));
   });
 
   it("falls back to zh-HK for an unsupported locale", async () => {

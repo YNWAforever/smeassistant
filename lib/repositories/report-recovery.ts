@@ -31,7 +31,7 @@ VALUES($1,NULL,$2,$3,'report_recovery',NULL,now()+interval '60 minutes') RETURNI
    * so of two concurrent redeems only one matches `redeemed_at IS NULL`; the
    * other waits on the row lock, re-checks, and gets zero rows.
    */
-  async redeemRecoveryGrant(tokenHash: string, viewer: { tokenHash: string; idempotencyKey: string }): Promise<{ grantId: string; jobId: string; slug: string } | null> {
+  async redeemRecoveryGrant(tokenHash: string, viewer: { tokenHash: string; idempotencyKey: string }): Promise<{ grantId: string; jobId: string; slug: string; workspaceId: string | null } | null> {
     return withTransaction(async client => {
       const redeemed = (await client.query<{ id: string; job_id: string }>(`UPDATE report_access_grants SET redeemed_at=now()
 WHERE token_hash=$1 AND purpose='report_recovery' AND redeemed_at IS NULL AND revoked_at IS NULL AND expires_at > now()
@@ -39,8 +39,8 @@ RETURNING id, job_id`, [tokenHash])).rows[0];
       if (!redeemed) return null;
       const grant = (await client.query<{ id: string }>(`INSERT INTO report_access_grants(job_id,lead_id,token_hash,idempotency_key,purpose,email_normalized,expires_at)
 VALUES($1,NULL,$2,$3,'viewer_report',NULL,now()+interval '30 days') RETURNING id`, [redeemed.job_id, viewer.tokenHash, viewer.idempotencyKey])).rows[0];
-      const job = (await client.query<{ share_slug: string }>("SELECT share_slug FROM audit_jobs WHERE id=$1", [redeemed.job_id])).rows[0];
-      return { grantId: grant.id, jobId: redeemed.job_id, slug: job.share_slug };
+      const job = (await client.query<{ share_slug: string; workspace_id: string | null }>("SELECT share_slug, workspace_id FROM audit_jobs WHERE id=$1", [redeemed.job_id])).rows[0];
+      return { grantId: grant.id, jobId: redeemed.job_id, slug: job.share_slug, workspaceId: job.workspace_id };
     });
   },
 };

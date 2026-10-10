@@ -51,7 +51,7 @@ export async function POST(req: Request) {
   if (!redeemed) return NextResponse.json({ error: "link_expired" }, { status: 410 });
 
   await recordClaimAuditEvent({
-    workspace_id: null,
+    workspace_id: redeemed.workspaceId,
     actor_type: "system",
     event: "report.recovery_redeemed",
     entity_type: "report_access_grant",

@@ -69,9 +69,11 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   // 10 attempts against 1,000,000 possibilities is a negligible brute-force
   // budget even before the identity provider's per-token attempt limit applies.
   staff_otp_verify: { limit: 10, windowSeconds: 60 * 60 },
-  // One recovery mail per email x report per ten minutes: the address is
-  // caller-supplied, so this bounds mail to any one inbox. The per-IP bucket
-  // below bounds how many (email, report) pairs one origin can probe.
+  // One recovery mail per email x report per ten minutes, whatever network the
+  // requests come from: consumed through enforceRecipientRateLimit, whose
+  // inner key carries no request fingerprint, so this bounds mail to any one
+  // inbox per report. The per-IP bucket below bounds how many (email, report)
+  // pairs one origin can probe.
   report_recovery: { limit: 1, windowSeconds: 10 * 60 },
   report_recovery_ip: { limit: 20, windowSeconds: 60 * 60 },
   // Guesses against 32-byte recovery tokens are hopeless; this only bounds load.
@@ -156,7 +158,9 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   gbp_targets: { limit: 60, windowSeconds: 60 * 60 },
   // gbp_reconcile: re-reading one unknown-outcome delivery from Google, 30 a day per delivery id.
   gbp_reconcile: { limit: 30, windowSeconds: 24 * 60 * 60 },
-  // POST /api/workspaces/[id]/members/[memberId]/resend: 3 a day per invited member id (composite, fail-closed).
+  // POST /api/workspaces/[id]/members/[memberId]/resend: 3 a day per invited
+  // member id from any network (enforceRecipientRateLimit: no fingerprint in
+  // the inner key), fail-closed.
   invitation_resend: { limit: 3, windowSeconds: 24 * 60 * 60 },
 };
 
@@ -274,12 +278,10 @@ type CompositeIdentifierScope =
   | "scan_process"
   | "scan_status"
   | "report_unlock"
-  | "report_recovery"
   | "staff_magic_link"
   | "owner_magic_link"
   | "workspace_invite_magic_link"
-  | "staff_otp_verify"
-  | "invitation_resend";
+  | "staff_otp_verify";
 
 /**
  * Bound attacker-controlled identifier cardinality with one per-scope bucket
@@ -316,6 +318,50 @@ export async function enforceCompositeIdentifierRateLimit({
   });
   if (!outer.allowed || outer.unavailable) return outer;
   return enforceRateLimit({ req, scope, identifiers: [identifier], client, failClosed });
+}
+
+type RecipientScope = "report_recovery" | "invitation_resend";
+
+/**
+ * A per-recipient budget (one inbox, one invited member) that holds whatever
+ * network the requests come from. The outer per-scope bucket is still keyed on
+ * the request fingerprint and bounds how many identifiers one origin can mint;
+ * the inner bucket is `rateLimitBucketKey(scope, identifier)` with no
+ * fingerprint, like lib/publishing/limits.ts. Always fail-closed: these
+ * routes send mail.
+ */
+export async function enforceRecipientRateLimit({
+  req,
+  scope,
+  identifier,
+  client,
+}: {
+  req: Request;
+  scope: RecipientScope;
+  identifier: string;
+  client?: RateLimitClient;
+}): Promise<RateLimitDecision> {
+  const outer = await enforceRateLimit({
+    req,
+    scope: "composite_identifier_outer",
+    identifiers: [scope],
+    client,
+    failClosed: true,
+  });
+  if (!outer.allowed || outer.unavailable) return outer;
+  const policy = RATE_LIMITS[scope];
+  try {
+    return await consumeRateLimit({
+      client: client ?? defaultRateLimitClient(),
+      bucketKey: rateLimitBucketKey(scope, identifier),
+      ...policy,
+    });
+  } catch (error) {
+    if (!(error instanceof RateLimitConfigurationError)) {
+      console.error("Rate limiter unavailable", { category: "database_unavailable" });
+    }
+    return { allowed: false, retryAfterSeconds: policy.windowSeconds, unavailable: true };
+  }
 }
 
 export function rateLimitedResponse(retryAfterSeconds: number): Response {

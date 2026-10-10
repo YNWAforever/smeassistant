@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   refreshInvitation: vi.fn(),
   sendInvitation: vi.fn(),
   enforce: vi.fn(),
+  consume: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({ authorizeWorkspaceRequest: (...args: unknown[]) => mocks.authorizeWorkspaceRequest(...args) }));
@@ -16,10 +17,22 @@ vi.mock("@/lib/repositories/membership", () => ({
 vi.mock("@/lib/mail/invitation", () => ({ sendInvitation: (...args: unknown[]) => mocks.sendInvitation(...args) }));
 vi.mock("@/lib/mail/transport", () => ({ createMailTransport: () => ({ send: vi.fn() }) }));
 vi.mock("@/lib/db/client", () => ({ getPool: () => ({ query: vi.fn() }) }));
-vi.mock("@/lib/security/rate-limit", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/security/rate-limit")>()),
-  enforceCompositeIdentifierRateLimit: (...args: unknown[]) => mocks.enforce(...args),
-}));
+vi.mock("@/lib/repositories/workflow", () => ({ workflowRepository: () => ({ consumeRateLimit: mocks.consume }) }));
+vi.mock("@/lib/security/rate-limit", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/security/rate-limit")>();
+  return {
+    ...real,
+    // The real helper, kept reachable so one test can run it against an in-memory limiter.
+    realEnforceRecipientRateLimit: real.enforceRecipientRateLimit,
+    enforceRecipientRateLimit: (...args: unknown[]) => mocks.enforce(...args),
+  };
+});
+
+import * as rateLimit from "@/lib/security/rate-limit";
+
+const { realEnforceRecipientRateLimit } = rateLimit as unknown as {
+  realEnforceRecipientRateLimit: typeof rateLimit.enforceRecipientRateLimit;
+};
 
 const WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";
 const EMAIL = "teammate@example.com";
@@ -78,7 +91,7 @@ describe("POST /api/workspaces/[workspaceId]/members/[memberId]/resend", () => {
     mocks.enforce.mockResolvedValue({ allowed: false, retryAfterSeconds: 120, unavailable: false });
     const res = await resend();
     expect(res.status).toBe(429);
-    expect(mocks.enforce).toHaveBeenCalledWith(expect.objectContaining({ scope: "invitation_resend", identifier: "member-2", failClosed: true }));
+    expect(mocks.enforce).toHaveBeenCalledWith(expect.objectContaining({ scope: "invitation_resend", identifier: "member-2" }));
     expect(mocks.refreshInvitation).not.toHaveBeenCalled();
   });
 
@@ -86,6 +99,30 @@ describe("POST /api/workspaces/[workspaceId]/members/[memberId]/resend", () => {
     mocks.enforce.mockResolvedValue({ allowed: false, retryAfterSeconds: 60, unavailable: true });
     expect((await resend()).status).toBe(503);
     expect(mocks.refreshInvitation).not.toHaveBeenCalled();
+  });
+
+  // Spec D2: 3 a day per member, not per member per source IP. Requests from
+  // different IPs must spend the same bucket.
+  it("bounds the per-member bucket across source IPs", async () => {
+    const buckets = new Map<string, number>();
+    mocks.consume.mockImplementation(async (key: string, limit: number) => {
+      const used = (buckets.get(key) ?? 0) + 1;
+      buckets.set(key, used);
+      return { allowed: used <= limit, retry_after_seconds: used <= limit ? 0 : 3600 };
+    });
+    mocks.enforce.mockImplementation(realEnforceRecipientRateLimit);
+    const { POST } = await import("./route");
+    const from = (ip: string) => POST(
+      new Request(URL_BASE, { method: "POST", headers: { "x-forwarded-for": ip }, body: "{}" }),
+      { params: Promise.resolve({ workspaceId: WORKSPACE_ID, memberId: "member-2" }) },
+    );
+
+    for (const ip of ["203.0.113.1", "203.0.113.2", "203.0.113.3"]) expect((await from(ip)).status).toBe(200);
+    expect((await from("203.0.113.4")).status).toBe(429);
+    expect(mocks.refreshInvitation).toHaveBeenCalledTimes(3);
+    const memberKey = rateLimit.rateLimitBucketKey("invitation_resend", "member-2");
+    expect(buckets.get(memberKey)).toBe(4);
+    expect([...buckets.keys()].filter((key) => key.startsWith("invitation_resend:"))).toEqual([memberKey]);
   });
 
   it("404s not_found and sends nothing when there is no pending invitation", async () => {

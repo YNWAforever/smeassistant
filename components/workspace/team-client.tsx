@@ -181,9 +181,11 @@ export function MemberRoleSelect({ locale, workspaceId, memberId, role }: { loca
 
 const COPY = {
   en: {
-    // No mail is dispatched when an invite is created -- the row is written and
-    // the invitee joins by requesting a sign-in link themselves, so this copy
-    // must not claim a send that never happened.
+    // An invitation mail is sent on create (and on Resend) only when
+    // INVITATION_MAIL_ENABLED is on and application mail is open; the Team page
+    // status line reports that outcome. With it off, the row is written and the
+    // invitee joins by requesting a sign-in link, so this copy must not claim a
+    // send.
     invite: "Invite member", inviteNote: "The invite is saved here; the member joins by signing in with this address and gets the role you choose. Owners are never invited here.",
     email: "Email", role: "Role", manager: "Manager", viewer: "Viewer", send: "Create invite", invited: "Invite created. Ask them to sign in with this address.",
     remove: "Remove", removeTitle: "Remove this member?", removeNote: "Their access ends immediately; audit history is kept.", removed: "Member removed.", cancel: "Cancel",
