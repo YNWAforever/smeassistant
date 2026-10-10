@@ -123,6 +123,9 @@ export type PacksCopy = {
   viewLastPack: string;
   allLocations: string;
   closed: string;
+  /** The pack page when a read failed: it may exist, so never say it does not. */
+  unavailable: string;
+  backToHome: string;
   pageEyebrow: string;
   pageDescription: string;
   errors: { startFailed: string; forbidden: string; network: string };
@@ -273,6 +276,8 @@ export const workspaceEn: WorkspaceCopy = {
     viewLastPack: "View last pack",
     allLocations: "All locations",
     closed: "This pack is finished. It is shown here as history.",
+    unavailable: "This pack could not be loaded right now. Nothing has changed; try again shortly.",
+    backToHome: "Back to Home",
     pageEyebrow: "Work pack",
     pageDescription: "Drafts are reviewed, approved and exported one at a time on each action's own page. Nothing is published or sent from here.",
     errors: { startFailed: "The pack could not be started. Try again shortly.", forbidden: "Your role or location scope cannot start a pack here.", network: "Could not reach the server. Try again when you are back online." },
@@ -565,6 +570,8 @@ export const workspaceZhHK: WorkspaceCopy = {
     viewLastPack: "查看上一個套裝",
     allLocations: "所有地點",
     closed: "這個套裝已完成，在此只作紀錄顯示。",
+    unavailable: "暫時未能載入這個套裝，內容沒有任何改變，請稍後再試。",
+    backToHome: "返回主頁",
     pageEyebrow: "工作套裝",
     pageDescription: "草稿會逐份在各行動自己的頁面審閱、核准及匯出。這裏不會發布或傳送任何內容。",
     errors: { startFailed: "未能開始套裝，請稍後再試。", forbidden: "你的角色或地點範圍不可在此開始套裝。", network: "無法連接伺服器，請在網絡恢復後再試。" },
@@ -827,6 +834,8 @@ export const workspaceZhTW: WorkspaceCopy = {
     viewLastPack: "查看上一個套組",
     allLocations: "所有據點",
     closed: "這個套組已完成，在此僅作紀錄顯示。",
+    unavailable: "目前無法載入這個套組，內容沒有任何變更，請稍後再試。",
+    backToHome: "返回首頁",
     pageEyebrow: "工作套組",
     pageDescription: "草稿會逐份在各行動自己的頁面審閱、核准及匯出。這裡不會發布或傳送任何內容。",
     errors: { startFailed: "無法開始套組，請稍後再試。", forbidden: "你的角色或據點範圍不能在此開始套組。", network: "無法連線至伺服器，請在網路恢復後再試。" },

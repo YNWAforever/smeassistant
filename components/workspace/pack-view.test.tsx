@@ -13,7 +13,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-import { PackView, type PackViewProps } from "@/components/workspace/pack-view"
+import { PackUnavailable, PackView, type PackViewProps } from "@/components/workspace/pack-view"
 import { packOf } from "@/components/workspace/pack-test-fixtures"
 import { copy } from "@/lib/copy"
 
@@ -133,5 +133,17 @@ describe("PackView", () => {
   it("shows the workspace-wide label when the pack has no location", () => {
     mount({ locationName: null })
     expect(screen.getByText(new RegExp(text.allLocations))).toBeInTheDocument()
+  })
+})
+
+describe("PackUnavailable", () => {
+  afterEach(cleanup)
+
+  it.each(["en", "zh-HK", "zh-TW"] as const)("says to try again and links Home, never claiming the pack is missing (%s)", (locale) => {
+    const packs = copy[locale].workspace.packs
+    render(<PackUnavailable locale={locale} workspaceSlug="kam-man-house" />)
+    expect(screen.getByRole("alert")).toHaveTextContent(packs.unavailable)
+    expect(screen.getByRole("link", { name: packs.backToHome })).toHaveAttribute("href", `/${locale}/owner/kam-man-house`)
+    expect(document.body.textContent).not.toMatch(/not found|找不到|不存在/i)
   })
 })
