@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { parseReportSlug } from "@/lib/report-access/slug";
 import { sendMagicLink } from "@/lib/identity/composition";
+import { providerErrorDetail } from "@/lib/identity/provider-error";
 import { claimsRepository } from "@/lib/repositories/claims";
 import {
   enforceCompositeIdentifierRateLimit,
@@ -103,7 +104,7 @@ export async function POST(req: Request) {
       callbackURL: redirect.toString(),
     });
     if (error) {
-      console.error("Owner magic-link provider rejected request");
+      console.error("Owner magic-link provider rejected request", { category: "magic_link_rejected", ...providerErrorDetail(error) });
       return NextResponse.json({ ok: true });
     }
 

@@ -41,6 +41,26 @@ describe("POST /api/owner/magic-link", () => {
     wireRepositories();
   });
 
+  it("logs the provider's status and code, never the address, when the provider rejects (F-21)", async () => {
+    wireRepositories({ job: { id: "job-1" }, knownLead: true });
+    mocks.signInWithOtp.mockResolvedValue({
+      error: { status: 404, statusText: "Not Found", code: "NOT_FOUND", message: "known@example.com not found" },
+    } as never);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = await POST(request({ slug: "abcdef", email: "known@example.com" }));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true });
+    expect(logged).toHaveBeenCalledWith("Owner magic-link provider rejected request", {
+      category: "magic_link_rejected",
+      status: 404,
+      code: "NOT_FOUND",
+    });
+    expect(JSON.stringify(logged.mock.calls)).not.toContain("known@example.com");
+    logged.mockRestore();
+  });
+
   it("does not mail an address that is not already a lead on the named report", async () => {
     wireRepositories({ job: { id: "job-1" }, knownLead: false });
     const response = await POST(request({ slug: "abcdef", email: "stranger@example.com" }));

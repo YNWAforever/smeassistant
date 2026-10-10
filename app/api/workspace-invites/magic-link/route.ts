@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendMagicLink } from "@/lib/identity/composition";
+import { providerErrorDetail } from "@/lib/identity/provider-error";
 import { membershipRepository } from "@/lib/repositories/membership";
 import {
   enforceCompositeIdentifierRateLimit,
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
       callbackURL: redirect.toString(),
     });
     if (error) {
-      console.error("Workspace invite magic-link provider rejected request");
+      console.error("Workspace invite magic-link provider rejected request", { category: "magic_link_rejected", ...providerErrorDetail(error) });
       return NextResponse.json({ ok: true });
     }
 
