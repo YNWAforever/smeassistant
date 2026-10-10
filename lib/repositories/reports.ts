@@ -66,7 +66,7 @@ LIMIT 25 OFFSET $2`, [jobId, offset]);
             }>("SELECT finding_key,agent_key,output FROM agent_runs WHERE job_id=$1 AND status='approved'", [jobId])).map(row => ({ findingKey: row.finding_key, agentKey: row.agent_key, output: row.output }));
         },
         async findViewerGrant(jobId, grantId) {
-            return (await rows<ViewerGrantRecord>("SELECT id,job_id,token_hash,expires_at::text,redeemed_at::text,revoked_at::text,last_used_at::text FROM report_access_grants WHERE id=$1 AND job_id=$2", [grantId, jobId]))[0] ?? null;
+            return (await rows<ViewerGrantRecord>("SELECT id,job_id,token_hash,expires_at::text,redeemed_at::text,revoked_at::text,last_used_at::text FROM report_access_grants WHERE id=$1 AND job_id=$2 AND purpose <> 'report_recovery'", [grantId, jobId]))[0] ?? null;
         },
         async revokeViewerGrant(grantId, tokenHash) {
             await rows("UPDATE report_access_grants SET revoked_at=now() WHERE id=$1 AND token_hash=$2 AND revoked_at IS NULL", [grantId, tokenHash]);
