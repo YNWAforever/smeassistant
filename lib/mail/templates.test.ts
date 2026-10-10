@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { renderScanMail } from "./templates";
+import { renderInvitationMail, renderRecoveryMail, renderScanMail } from "./templates";
+import type { Locale } from "@/lib/locale";
 
 const BASE_INPUT = {
   businessName: "Kam Man House",
@@ -91,5 +92,64 @@ describe("renderScanMail", () => {
         expect(mail.html.toLowerCase()).not.toContain("delivered");
       }
     }
+  });
+});
+
+const LOCALES: Locale[] = ["en", "zh-HK", "zh-TW"];
+const SIGN_IN_URL = "https://app.example.com/auth/callback?token_hash=abcDEF123_-abcDEF123_-abcDEF123_-abcDEF123";
+const RECOVER_URL = "https://app.example.com/api/report-access/recover?t=abcDEF123_-abcDEF123_-abcDEF123_-abcDEF123";
+
+describe("renderInvitationMail", () => {
+  it.each(LOCALES)("includes workspace name and sign-in URL (%s)", (locale) => {
+    const mail = renderInvitationMail(locale, {
+      workspaceName: "Kam Man House",
+      role: "manager",
+      signInUrl: SIGN_IN_URL,
+    });
+    expect(mail.subject).toContain("Kam Man House");
+    expect(mail.text).toContain("Kam Man House");
+    expect(mail.text).toContain(SIGN_IN_URL);
+    expect(mail.html).toContain(`<a href="${SIGN_IN_URL}">`);
+  });
+
+  it.each(LOCALES)("escapes the workspace name in html (%s)", (locale) => {
+    const mail = renderInvitationMail(locale, {
+      workspaceName: "<b>Evil</b>",
+      role: "viewer",
+      signInUrl: SIGN_IN_URL,
+    });
+    expect(mail.html).not.toContain("<b>");
+    expect(mail.html).toContain("&lt;b&gt;Evil&lt;/b&gt;");
+  });
+
+  it.each(LOCALES)("carries no long token-like run outside the URL (%s)", (locale) => {
+    const mail = renderInvitationMail(locale, {
+      workspaceName: "Kam Man House",
+      role: "viewer",
+      signInUrl: SIGN_IN_URL,
+    });
+    expect(mail.text.replace(SIGN_IN_URL, "")).not.toMatch(/[A-Za-z0-9_-]{32,}/);
+  });
+
+  it("localizes the role word", () => {
+    const input = { workspaceName: "W", signInUrl: SIGN_IN_URL };
+    expect(renderInvitationMail("en", { ...input, role: "manager" }).text).toContain("as manager");
+    expect(renderInvitationMail("zh-HK", { ...input, role: "viewer" }).text).toContain("檢視者");
+    expect(renderInvitationMail("zh-TW", { ...input, role: "manager" }).text).toContain("經理");
+  });
+});
+
+describe("renderRecoveryMail", () => {
+  it.each([
+    ["en", "once", "60 minutes"],
+    ["zh-HK", "一次", "60 分鐘"],
+    ["zh-TW", "一次", "60 分鐘"],
+  ] as const)("states single use and expiry (%s)", (locale, once, sixty) => {
+    const mail = renderRecoveryMail(locale, { businessName: "Kam Man House", recoverUrl: RECOVER_URL });
+    expect(mail.subject).toContain("Kam Man House");
+    expect(mail.text).toContain(RECOVER_URL);
+    expect(mail.text).toContain(once);
+    expect(mail.text).toContain(sixty);
+    expect(mail.html).toContain(`<a href="${RECOVER_URL}">`);
   });
 });
