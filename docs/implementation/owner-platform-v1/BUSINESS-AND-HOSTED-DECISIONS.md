@@ -41,6 +41,23 @@ its own — the reviewer types what they actually checked and who checked it, so
 enabling this requires the procedure to exist outside the code, not merely a
 variable to be set.
 
+### DEC-06 — temporary internal-test activation (user, 2026-10-10)
+
+DEC-06 itself stays **undecided** for real merchants. The user decided one
+bounded exception so that a workspace linked to a real business exists for
+hosted daily-work acceptance:
+
+| Item | Decision for this test only |
+|---|---|
+| Why | The Google-verified claim cannot run yet: the GCP project behind `GOOGLE_OAUTH_CLIENT_ID` has no approved Business Profile API access, and claim verification lists managed locations through that API. `WORKSPACE_CLAIM_VIA_OAUTH_ENABLED` is off in production (claim start answered `404 not_found`, 2026-10-10). |
+| Business | One store whose Google Business Profile the user personally manages. The test workspace `nadagogo` is left unchanged. |
+| Requester | A separate email of the user, recorded as a lead on that store's report through the normal unlock, signed in through the normal magic link, filing the normal onboarding access request. |
+| Operator | The user only: `OPERATOR_EMAILS` = the user's existing owner account email. |
+| Verification method | The reviewer records that they personally manage the store's Business Profile and that the requester is their own second address. |
+| Activation | `ASSISTED_ASSIGNMENT_ENABLED=true` and `OPERATOR_EMAILS` set in production by the user, for the duration of this acceptance. |
+| End | After the assignment and the hosted check, `ASSISTED_ASSIGNMENT_ENABLED` goes back to unset/`false`. `OPERATOR_EMAILS` may stay (it only opens the read-only queue). |
+| Not authorized | Approving any other request; describing assisted assignment as an operating service; changing the code's verification model. |
+
 ## DEC-12 — decided 2026-10-04
 
 The user made the DEC-12 choices on 2026-10-04 while the P4.5 design was
