@@ -1,0 +1,22 @@
+# reconcile-journal-0009-0015.sql rehearsal — 2026-10-10, local disposable postgres:18 (18.6) container only
+# Production-like = migrated 0001-0015 by smeassistant_migrator, then the 6 tables + 9 functions production shows owned by neondb_owner re-owned to neondb_owner, then journal rows 9-15 deleted.
+# Statement run as neondb_owner (LOGIN, non-superuser, SET on smeassistant_migrator) except case 7.
+1 reconcile on production-like: {"ok":true,"notices":["reconcile-journal: schema matches 0015; recorded journal rows 9-15"]}
+1 journal rows: 15
+1 journal equal to straight-migrated 0015: true
+1 repository runner afterwards (expect []): []
+2 re-run: {"ok":false,"error":"reconcile-journal refused: neon_migrations.journal is not exactly 0001-0008 with the expected checksums (it has 15 rows)"}
+3 journal 1-14: {"ok":false,"error":"reconcile-journal refused: neon_migrations.journal is not exactly 0001-0008 with the expected checksums (it has 14 rows)"}
+3 journal rows after: 14
+4 genuine 0008 schema: {"ok":false,"error":"reconcile-journal refused: the schema does not match 0015 in: columns, constraints, functions, indexes, runtime_grants, tables"}
+4 journal rows after: 8
+5 one index missing: {"ok":false,"error":"reconcile-journal refused: the schema does not match 0015 in: indexes"}
+6 grant + default drift: {"ok":false,"error":"reconcile-journal refused: the schema does not match 0015 in: columns, runtime_grants"}
+6 journal rows after: 8
+7 without SET on migrator: {"ok":false,"error":"permission denied to set role \"smeassistant_migrator\""}
+
+# Read-only checks on production (br-wandering-field-azdc91yj / ep-tiny-forest-azzm8bni / neondb), 2026-10-10, BEGIN READ ONLY + default_transaction_read_only=on, owner-approved:
+# - schema fingerprint (8 categories) vs local postgres:18 migrated straight to 0015: columns, constraints, functions, indexes, runtime_grants, tables, triggers, types all match (same for br-empty-fire-azlxboex)
+# - journal exactly 0001-0008 with committed checksums: true
+# - {"u":"neondb_owner","can_set":true,"mig_insert":true,"mig_select":true,"mig_usage":true,"journal_owner":"smeassistant_migrator"}
+# - full catalog diff production vs br-empty-fire: tables 43/43, columns 497/497, indexes 113/113, constraints 487/487, functions 23/23, runtime table grants 172/172, triggers 13/13, 0 differences

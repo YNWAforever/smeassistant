@@ -36,14 +36,14 @@ Rollback: this stage is read-only. For 0015, prefer reverting the application co
 
 | Field | Value |
 |---|---|
-| Neon project / branch / endpoint id | _to be recorded by the owner_ (match against `DATABASE_URL`; never paste the URL) |
+| Neon project / branch / endpoint id | `morning-hill-92255530` / `br-wandering-field-azdc91yj` / `ep-tiny-forest-azzm8bni` (recorded 2026-10-10, see the 2026-10-10 section) |
 | Database | `neondb` |
 | Journal before | 0001–0008, every name and checksum equal to the committed files |
 | Drift found | `scan_attempts` (0009) already existed, owned by `smeassistant_migrator`, with no journal row 9 |
 | Missing before | 69 application columns from 0010–0014 (`docs/operations/check-missing-columns.sql`) |
 | Applied | `rollout/apply-0009.sql` … `apply-0014.sql`, in order, by Willy in the Neon SQL Editor as `neondb_owner`, 2026-10-09 (~07:30 UTC) |
 | After | Owner home renders on production; no `read failed` / `42703` in the deployment's logs |
-| Post-apply check | `check-missing-columns.sql`: 0 rows (no application column missing); journal max ordinal 14 (owner-reported, 2026-10-09) |
+| Post-apply check | `check-missing-columns.sql`: 0 rows (no application column missing); journal max ordinal 14 (owner-reported, 2026-10-09). **Corrected 2026-10-10:** the production journal is 1–8; that reading came from another database (see the 2026-10-10 section) |
 | Still missing | 0015 (indexes only; the code does not depend on it). Rollout statement `rollout/apply-0015.sql` added 2026-10-10, rehearsed locally; **not applied** to any hosted database |
 
 **Pre-apply evidence (local, disposable PostgreSQL 16 only).** The six statements were checked against `HEAD`: each requires exactly the previous journal (names and sha256), inserts the right row, and embeds its migration byte for byte. A rehearsal from a 0008 journal applied all six, reached journal 1–14 with 0 missing columns and matched a database migrated straight to 0014 on all 7 `catalogQueries`; a re-run of `apply-0011` was refused. With `scan_attempts` pre-created by the migrator, `apply-0009` succeeded; pre-created by `neondb_owner`, it refused ("must be owner") and rolled back.
@@ -58,3 +58,28 @@ Rollback: this stage is read-only. For 0015, prefer reverting the application co
 4. Re-run `check-missing-columns.sql`: 0 rows. Then check the owner home and the deployment logs.
 
 `check-missing-columns.sql` is generated from `lib/db/schema` by `corepack pnpm db:missing-columns-sql`; `tests/missing-columns-sql.test.ts` fails if it falls out of date. `pnpm neon:readiness` performs the same column check (since #45) when credentials are available.
+
+## 2026-10-10 — production journal stops at 0008 although its schema is 0015
+
+**Correction to the 2026-10-09 section.** A read-only check (owner-approved; `BEGIN READ ONLY` with `default_transaction_read_only=on`, through the authenticated Neon CLI; no connection string recorded) shows that production's journal holds **only 0001–0008**, not 1–14. The "journal max ordinal 14" post-check reported on 2026-10-09 was not taken on the production database. The production schema itself is complete.
+
+| | Production | Branch `br-empty-fire-azlxboex` |
+|---|---|---|
+| Neon project / branch | `morning-hill-92255530` / `br-wandering-field-azdc91yj` ("production", default, primary) | same project / `br-empty-fire-azlxboex` ("application db", child of production created 2026-10-07 16:32 UTC) |
+| Endpoint / database | `ep-tiny-forest-azzm8bni` / `neondb` (PostgreSQL 18.6) | `ep-wispy-grass-azrjrec9` / `neondb` |
+| Binding to the app | Compute starts match production traffic (2026-10-10 06:05 start, Vercel DB log on `/owner/select-workspace` at 06:06:25; 2026-10-09 07:03 and 07:24, the owner's rollout session). The project has only these two branches. | Idle from 2026-10-07 18:31 until the owner's SQL Editor query on 2026-10-10 06:28. |
+| Journal | 0001–0008, checksums equal to the committed files | 0001–0015; rows 9–14 in one transaction at 2026-10-07 17:19:55, row 15 at 17:21:32 (repository-runner pattern) |
+| Schema (public) | identical to the right-hand column: 43 tables with RLS, 497 columns, 113 indexes, 487 constraints, 23 functions (body md5, SECURITY, search_path, owner, runtime EXECUTE), 172 `sme_app_runtime` table privileges, 13 triggers | migrated to 0015 |
+| 0009–0014 object owners | `neondb_owner` (tables mail_outbox, offers, preview_events, scan_attempts, work_pack_items, work_packs; 9 functions) | same |
+
+So 0009–0015 were applied to production **without** the `apply-00NN` statements, which run as `smeassistant_migrator` and always write the journal; the owners show the DDL ran as `neondb_owner`. When and by whom is not recorded (Neon branch logs are not available on this plan). The `apply-0015.sql` run by the owner on 2026-10-10 refused on production (journal is not 1–14) and changed nothing; the three 0015 indexes already existed.
+
+**Impact.** The application is unaffected because the schema is complete. Every `apply-00NN` statement, `pnpm neon:readiness` and any future migration refuse production while its journal says 8.
+
+**Remedy (owner action, not run):** [`rollout/reconcile-journal-0009-0015.sql`](../implementation/owner-platform-v1/rollout/reconcile-journal-0009-0015.sql). As `smeassistant_migrator`, under the runner's advisory lock, it requires journal exactly 1–8 with the committed checksums. It then computes an owner-free fingerprint of the public schema in eight categories (tables/RLS, columns, indexes, constraints, functions, `sme_app_runtime` grants, triggers, types) and refuses unless all eight equal a PostgreSQL 18.6 database migrated straight to 0015 by `scripts/neon/migrations.ts`. Only then does it insert journal rows 9–15. It changes no schema object and no application row.
+
+Read-only on production before the PR: all eight fingerprints match; journal 1–8 matches the committed checksums; `neondb_owner` can `SET ROLE smeassistant_migrator`; the migrator owns and can insert into the journal. Local rehearsal (postgres:18 only, 7 cases): [`T19-reconcile-journal-rehearsal.txt`](../audits/2026-10-09-reaudit/evidence/T19-reconcile-journal-rehearsal.txt).
+
+**Not changed:** object owners. A future migration that runs as `smeassistant_migrator` cannot alter objects owned by `neondb_owner` ("must be owner"); reassigning them (`ALTER … OWNER TO smeassistant_migrator`) is a separate owner decision.
+
+**Operator rule, amended:** before any rollout statement, identify the database by Neon project **and** branch **and** endpoint, not by the SQL Editor's default selection, and paste the branch id with the result. A journal reading without the branch id is not evidence.
