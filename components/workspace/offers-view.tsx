@@ -279,7 +279,11 @@ function OfferForm({
     const details = form.details.trim()
     if (!title || !details) return { ok: false, error: text.errors.required }
     if (!DATE_RE.test(form.validFrom) || !DATE_RE.test(form.validUntil) || form.validUntil < form.validFrom) return { ok: false, error: text.errors.dates }
-    const rawPrice = form.price.trim().replace(/,/g, "")
+    const typedPrice = form.price.trim()
+    // A comma is accepted only as a thousands separator. Stripping it anywhere
+    // else would silently change a price the owner typed ("12,80" → 1280).
+    if (typedPrice.includes(",") && !/^\d{1,3}(,\d{3})+(\.\d{1,2})?$/.test(typedPrice)) return { ok: false, error: text.errors.price }
+    const rawPrice = typedPrice.replace(/,/g, "")
     let price: number | null = null
     if (rawPrice) {
       if (!/^\d+(\.\d{1,2})?$/.test(rawPrice) || Number(rawPrice) > 9_999_999_999.99) return { ok: false, error: text.errors.price }
