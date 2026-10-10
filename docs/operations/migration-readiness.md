@@ -76,7 +76,7 @@ So 0009–0015 were applied to production **without** the `apply-00NN` statement
 
 **Impact.** The application is unaffected because the schema is complete. Every `apply-00NN` statement, `pnpm neon:readiness` and any future migration refuse production while its journal says 8.
 
-**Applied 2026-10-10 (11:16:36 UTC, owner, Neon SQL Editor as `neondb_owner`, after PR #52).** Read-only check afterwards on `ep-tiny-forest-azzm8bni` / `neondb`: journal rows 1–15, names and sha256 checksums equal to `neon/migrations/0001-0015`; rows 9–15 share the 11:16:36 timestamp of the one reconcile transaction. Production is now at journal 15 with a matching schema; the next migration is applied with its own `apply-00NN.sql`. Object owners were not changed.
+**Applied 2026-10-10 (11:16:36 UTC, owner, Neon SQL Editor as `neondb_owner`, after PR #52).** Read-only check afterwards on `ep-tiny-forest-azzm8bni` / `neondb`: journal rows 1–15, names and sha256 checksums equal to `neon/migrations/0001-0015`; rows 9–15 share the 11:16:36 timestamp of the one reconcile transaction. Production is now at journal 15 with a matching schema; the next migration is applied with its own `apply-00NN.sql`. Object owners were not changed by this statement (see the ownership subsection below).
 
 **Remedy (as prepared):** [`rollout/reconcile-journal-0009-0015.sql`](../implementation/owner-platform-v1/rollout/reconcile-journal-0009-0015.sql). As `smeassistant_migrator`, under the runner's advisory lock, it requires journal exactly 1–8 with the committed checksums. It then computes an owner-free fingerprint of the public schema in eight categories (tables/RLS, columns, indexes, constraints, functions, `sme_app_runtime` grants, triggers, types) and refuses unless all eight equal a PostgreSQL 18.6 database migrated straight to 0015 by `scripts/neon/migrations.ts`. Only then does it insert journal rows 9–15. It changes no schema object and no application row.
 
@@ -86,7 +86,7 @@ Read-only on production before the PR: all eight fingerprints match; journal 1�
 
 **Operator rule, amended:** before any rollout statement, identify the database by Neon project **and** branch **and** endpoint, not by the SQL Editor's default selection, and paste the branch id with the result. A journal reading without the branch id is not evidence.
 
-### 2026-10-10 — ownership of the 0009–0014 objects (prepared, not run)
+### 2026-10-10 — ownership of the 0009–0014 objects (applied)
 
 Production's 0009–0014 objects are owned by `neondb_owner`: tables `mail_outbox`, `offers`, `preview_events`, `scan_attempts`, `work_pack_items`, `work_packs` (with their 16 indexes) and nine functions. All nine are `SECURITY INVOKER`, no table uses `FORCE ROW LEVEL SECURITY`, there are no sequences or standalone types among them, and the application connects as `sme_app_runtime`, which owns nothing. A migration run as `smeassistant_migrator` would still fail with "must be owner" on any `ALTER`, `CREATE OR REPLACE`, `DROP` or `GRANT` touching them.
 
@@ -94,4 +94,4 @@ Production's 0009–0014 objects are owned by `neondb_owner`: tables `mail_outbo
 
 Read-only on production (2026-10-10): journal 1–15 as expected; 8/8 fingerprints match; the non-migrator objects are exactly the expected 15; `neondb_owner` can `SET ROLE smeassistant_migrator`; the migrator has CREATE on `public`. Local rehearsal (postgres:18 only, 6 cases): [`T19-reown-rehearsal.txt`](../audits/2026-10-09-reaudit/evidence/T19-reown-rehearsal.txt) — after the transfer, owners and ACLs of every public relation and function equal a database migrated straight by the migrator, and the migrator can alter `offers` and `archive_offer`.
 
-Running it is an owner action: Neon SQL Editor, project Smeassistant, branch production (`br-wandering-field-azdc91yj`), database `neondb`, as `neondb_owner`.
+**Applied 2026-10-10** by the owner (Neon SQL Editor, project Smeassistant, branch production `br-wandering-field-azdc91yj`, database `neondb`, as `neondb_owner`, after PR #54). Read-only check afterwards on `ep-tiny-forest-azzm8bni`: no relation, function or standalone type in `public` is owned by any role other than `smeassistant_migrator`; journal 1–15 equal to the committed files; all eight 0015 fingerprints (including `sme_app_runtime` grants) unchanged. Production is now in the same state as a database migrated by the migrator, and the next migration can be applied with its own `apply-00NN.sql`.
