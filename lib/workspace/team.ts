@@ -68,12 +68,21 @@ export async function getTeam(ctx: WorkspaceContext, db: MembershipRepository = 
  const rows = await db.team(ctx.workspace.id);
  let members = rows.map(rowToTeamMember).sort((a,b) => Number(b.role === "owner") - Number(a.role === "owner"));
  if (options.invitationMail ?? invitationMailEnabled()) {
-  const mailDb = options.mailDb ?? getPool();
   const cutoff = (options.now ?? new Date()).getTime() - INVITATION_TTL_DAYS * 86_400_000;
+  let mailDb: Pick<Pool, "query"> | null = null;
+  try { mailDb = options.mailDb ?? getPool(); } catch { console.error("[workspace/team] invitation status unavailable", { category: "team_invitation_status_failed" }); }
   members = await Promise.all(members.map(async (member) => {
    if (member.acceptedAt || !member.invitedAt) return member;
-   const attempt = await findMailAttempt(mailDb, invitationDedupeKey(member.id, member.invitedAt));
-   return {...member, invitation: attempt ? {status: attempt.status, error: attempt.error} : null, expired: Date.parse(member.invitedAt) < cutoff};
+   // Same boundary as pendingInvitationLiveSql: live only while invited_at > now - TTL.
+   const expired = Date.parse(member.invitedAt) <= cutoff;
+   let invitation: TeamMember["invitation"] = null;
+   if (mailDb) {
+    try {
+     const attempt = await findMailAttempt(mailDb, invitationDedupeKey(member.id, member.invitedAt));
+     invitation = attempt ? {status: attempt.status, error: attempt.error} : null;
+    } catch { console.error("[workspace/team] invitation status unavailable", { category: "team_invitation_status_failed" }); }
+   }
+   return {...member, invitation, expired};
   }));
  }
  return {members, locations: ctx.locations};

@@ -79,6 +79,22 @@ describe("getTeam invitation status", () => {
     expect(team.members[0]).toMatchObject({ expired: false, invitation: null });
   });
 
+  it("treats exactly 14 days as expired, matching pendingInvitationLiveSql", async () => {
+    const mailDb = mailDbOf(vi.fn(async () => ({ rows: [] })));
+    const team = await getTeam(ctx, client(pending("2026-09-06T00:00:00Z")), { invitationMail: true, mailDb, now });
+    expect(team.members[0]).toMatchObject({ expired: true });
+  });
+
+  it("still resolves the roster, with invitation null, when the ledger read rejects", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const mailDb = mailDbOf(vi.fn(async () => { throw new Error("db down"); }));
+    const team = await getTeam(ctx, client(pending("2026-09-05T00:00:00Z")), { invitationMail: true, mailDb, now });
+    expect(team.members).toHaveLength(1);
+    expect(team.members[0]).toMatchObject({ invitation: null, expired: true });
+    expect(spy).toHaveBeenCalledWith(expect.any(String), { category: "team_invitation_status_failed" });
+    spy.mockRestore();
+  });
+
   it("skips accepted members", async () => {
     const mailDb = mailDbOf(vi.fn(async () => ({ rows: [] })));
     const team = await getTeam(ctx, client(rows), { invitationMail: true, mailDb, now });
