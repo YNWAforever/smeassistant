@@ -209,3 +209,18 @@ DEC-06 remains pending. `OPERATOR_EMAILS` unset means nobody can open the queue;
 everyone, including an allowlisted operator. The queue pages are readable with
 the flag off by design, because DEC-06's recorded safe default is to build the
 protected request, status and queue code and withhold only real approvals.
+
+## Invitation mail and report recovery slice (P2 items 29-30)
+
+Branch `feat/invitation-recovery-mail`, commits 71c64fc..d5f420e plus 7355c4e (guard narrowed so the `/recover?t=` link does not count as a report-delivery email; ban strings unchanged). Local only; nothing applied to any hosted environment; flags unset in production.
+
+| Gate | Result |
+|---|---|
+| `corepack pnpm typecheck` | pass (exit 0) |
+| `corepack pnpm lint` | pass (0 errors, 40 pre-existing warnings in `packages/**`) |
+| `corepack pnpm test` | pass: 412 files / 4,969 tests (first run failed only the report-delivery-email guard, fixed by 7355c4e) |
+| `corepack pnpm test:integration` | pass: 55 files / 595 tests |
+| `corepack pnpm build` | pass |
+| `corepack pnpm test:secret-boundary` | pass: 62 public artifacts |
+
+No `scan-claim-single-path` / `scan-events-single-writer` timeouts occurred in this run.

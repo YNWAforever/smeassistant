@@ -351,3 +351,11 @@ The local code does not alter the pinned legacy checkout or deployed scheduler. 
 The concrete retained-runner change is prepared in [legacy-workspace-completion.patch](legacy-workspace-completion.patch), pinned to upstream `b9b4151fb89217a926e38f187873b5ff9f10f90f`. `git apply --check` passes and its extracted transport fixtures pass 20 cases. It is not applied to the pinned checkout or a deployed service. Independent source review is complete; execute full caller/receiver integration locally before requesting its operational rollout.
 
 </details>
+
+## Invitation mail and report recovery (default off)
+
+Both features are built and ship disabled; nothing is applied to any hosted environment.
+
+- **Turn on:** record the DEC-07 values (sender, recipients), then set `APPLICATION_MAIL_APPROVED=2026-10-mail-v2` with `RESEND_API_KEY`, `REPORT_EMAIL_FROM`, `APP_ORIGIN` and `MAIL_UNSUBSCRIBE_SECRET` (>= 32 bytes; optional `MAIL_RECIPIENT_ALLOWLIST`). Then set `INVITATION_MAIL_ENABLED=true` and/or `REPORT_RECOVERY_ENABLED=true` (exactly `true`). Recovery additionally requires mail to be open.
+- **Rollback:** unset the two flags (and, to close all mail, `APPLICATION_MAIL_APPROVED`, or `MAIL_PAUSED=true`).
+- **Limits:** `invitation_resend` 3/day per member; `report_recovery` 1 per 10 min per email|slug; `report_recovery_ip` 20/h; `report_redeem` 30/h. Audit events `member.invitation_resent`, `report.recovery_requested`, `report.recovery_redeemed`.

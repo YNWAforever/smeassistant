@@ -330,7 +330,7 @@ Searched: re-ran their grep then widened to operator_|OPERATOR_ALLOW|operatorEma
 
 #### 29. Invitation delivery with evidence-based status, and invitation expiry. Today the invite is a row plus an audit line and nothing ever reaches the invitee; the owner is told to notify them out of band. Needed: (a) an invitation notice sent through the new email port, (b) a persisted attempt record carrying queued/accepted-by-provider/failed WITH the provider id, so a retry re-sends at most once and never creates a second invitation, (c) an expiry predicate on pending invitations. LOUD SCHEMA CALLOUT: there is no invitation status/token/expiry column and no invitations table, and the catalog is frozen - so unless a migration is authorized, the attempt ledger must ride on audit_events (its payload jsonb plus its UNUSED idempotency_key column, which already has a unique index) rather than a new column, and expiry must be derived from workspace_members.invited_at rather than stored. Provider-accepted must be rendered as 'accepted by the mail provider', never as 'delivered'.
 
-**Status:** `blocked_needs_authorization`
+**Status:** built, default off (`INVITATION_MAIL_ENABLED`), not applied to any hosted environment. Commits: 71c64fc, 0a9a46e, 98c800f, a0e937c, cb1cdc7, b72095f, 33a5548. Resend route `POST /api/workspaces/[workspaceId]/members/[memberId]/resend` (3/day per member, audit `member.invitation_resent`). Templates `2026-10-mail-v2`.
 
 **Update after `268bae9`:** the email port now exists (`lib/mail/transport.ts`, item 26, above) and defaults to `not_configured` until DEC-07 sets both env vars, so building this item's own route, attempt ledger wiring and expiry predicate no longer needs the port itself to be invented first. Actually sending an invitation still needs DEC-07 authorization; the proof below is otherwise unchanged.
 
@@ -338,7 +338,7 @@ Genuinely absent, all three parts. (a) No email port exists: no lib/email, no li
 
 #### 30. Report recovery. A recovery request route plus a single-use redeem route, issuing a fresh expiring grant for the SAME job to the address recorded at unlock, with an anti-enumeration response, and sending it through the email port. It must mint only a viewer grant for that one job - never a workspace membership, never a widened grant. Build it only once the email channel above exists; until then the honest state is the current one (nothing promised). Also resolve REPORT_RECOVERY_ENABLED, which is documented as a gate but is read by nothing.
 
-**Status:** `blocked_needs_authorization`
+**Status:** built, default off (`REPORT_RECOVERY_ENABLED`), not applied to any hosted environment. Commits: 53f7861, 00ae4f5, d5f420e, 7355c4e. Routes `POST /api/report-access/recover` (1 per 10 min per email|slug, 20/h per IP) and `POST /api/report-access/redeem` (30/h), page `/[locale]/r/[slug]/recover`; audit `report.recovery_requested`, `report.recovery_redeemed`. It mails an on-request single-use re-entry link, not a report-delivery email.
 
 **Update after `268bae9`:** the email port now exists (item 26, above), so the same reasoning as item 29 applies here — the missing prerequisite named below is otherwise unchanged, and sending a real recovery email still needs DEC-07 authorization.
 
