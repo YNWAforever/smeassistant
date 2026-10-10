@@ -284,4 +284,4 @@ Rows from `FINAL-AUDIT-REPORT.md`. Candidate `final-audit-fixes` on `3558697`; g
 | Requirement | State | Evidence |
 |---|---|---|
 | Invitation email with evidence-based status, resend, 14-day expiry | built, default off (`INVITATION_MAIL_ENABLED`); not hosted-verified | 71c64fc, 98c800f, a0e937c, cb1cdc7, b72095f, 33a5548 |
-| Report recovery: request + single-use redeem, anti-enumeration | built, default off (`REPORT_RECOVERY_ENABLED`); not hosted-verified | 53f7861, 00ae4f5, d5f420e; guard kept honest by 7355c4e |
+| Report recovery: request + single-use redeem, anti-enumeration | built, default off (`REPORT_RECOVERY_ENABLED`); not hosted-verified | 53f7861, 0a9a46e, 00ae4f5, d5f420e; guard kept honest by 7355c4e |

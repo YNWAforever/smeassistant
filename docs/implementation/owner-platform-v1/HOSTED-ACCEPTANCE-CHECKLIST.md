@@ -312,7 +312,7 @@ ROLLBACK;
 > **Exposure:** opening application mail sends notices to **real workspace members** for real events, limited only by `MAIL_RECIPIENT_ALLOWLIST` if you set it. **Rollback:** set `MAIL_PAUSED=true` (keeps queued rows) or unset `APPLICATION_MAIL_APPROVED`, then redeploy.
 
 - **Needs:** **DEC-05** (recipients, count), **DEC-07** (mail channel, sender, templates) and DEC-01. **Cost:** the Resend sends you authorize.
-- **Preconditions:** DEC-05 and DEC-07 recorded. What exists today: invitation **sign-in links** go through Neon Auth and work now; application mail (rescan-complete notices) is closed until approved; **invitation delivery by application mail and report recovery are not built** (`PHASE-2-BACKLOG.md` items 29–30), so they stay `not run`.
+- **Preconditions:** DEC-05 and DEC-07 recorded. What exists today: invitation **sign-in links** go through Neon Auth and work now; application mail (rescan-complete notices) is closed until approved; **invitation delivery by application mail and report recovery are built behind default-off flags** (`INVITATION_MAIL_ENABLED`, `REPORT_RECOVERY_ENABLED`; `PHASE-2-BACKLOG.md` items 29–30). They stay `not run` until the owner opens mail (DEC-07) and sets the flags; see "Invitations and report recovery (not run)" below.
 - **Dependency:** the mail-producing event in step 3 is a completed workspace rescan, which first happens in §19 (paid, provider spend). Do steps 1–2 now; do steps 3–5 after §19, or record them `not run`.
 - **Steps:**
   1. **Invitation:** as an owner, Settings → Team → invite a test recipient as viewer. As the recipient, request a sign-in link at `/en/owner/sign-in` and open it. Confirm you join the workspace as viewer.
