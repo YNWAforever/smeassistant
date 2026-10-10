@@ -1,0 +1,76 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smeassistant
+
+ ❯ app/api/workspace-invites/magic-link/route.test.ts (9 tests | 1 failed) 1768ms
+     × logs the provider's status and code, never the address, when the provider rejects (F-21) 1756ms (retry x1)
+ ❯ app/api/owner/magic-link/route.test.ts (9 tests | 1 failed) 84ms
+     × logs the provider's status and code, never the address, when the provider rejects (F-21) 67ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  app/api/owner/magic-link/route.test.ts > POST /api/owner/magic-link > logs the provider's status and code, never the address, when the provider rejects (F-21)
+ FAIL  app/api/owner/magic-link/route.test.ts > POST /api/owner/magic-link > logs the provider's status and code, never the address, when the provider rejects (F-21)
+AssertionError: expected "error" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st error call:
+
+  [
+    "Owner magic-link provider rejected request",
+-   {
+-     "category": "magic_link_rejected",
+-     "code": "NOT_FOUND",
+-     "status": 404,
+-   },
+  ]
+
+
+Number of calls: 1
+
+ ❯ app/api/owner/magic-link/route.test.ts:55:20
+     53|     expect(response.status).toBe(200);
+     54|     expect(await response.json()).toEqual({ ok: true });
+     55|     expect(logged).toHaveBeenCalledWith("Owner magic-link provider rej…
+       |                    ^
+     56|       category: "magic_link_rejected",
+     57|       status: 404,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  app/api/workspace-invites/magic-link/route.test.ts > POST /api/workspace-invites/magic-link > logs the provider's status and code, never the address, when the provider rejects (F-21)
+ FAIL  app/api/workspace-invites/magic-link/route.test.ts > POST /api/workspace-invites/magic-link > logs the provider's status and code, never the address, when the provider rejects (F-21)
+AssertionError: expected "error" to be called with arguments: [ …(2) ]
+
+Received:
+
+  1st error call:
+
+  [
+    "Workspace invite magic-link provider rejected request",
+-   {
+-     "category": "magic_link_rejected",
+-     "code": "NOT_FOUND",
+-     "status": 404,
+-   },
+  ]
+
+
+Number of calls: 1
+
+ ❯ app/api/workspace-invites/magic-link/route.test.ts:52:20
+     50|     expect(res.status).toBe(200);
+     51|     expect(await res.json()).toEqual({ ok: true });
+     52|     expect(logged).toHaveBeenCalledWith("Workspace invite magic-link p…
+       |                    ^
+     53|       category: "magic_link_rejected",
+     54|       status: 404,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 16 passed (18)
+   Start at  21:36:49
+   Duration  20.40s (transform 611ms, setup 16.69s, import 7.92s, tests 1.85s, environment 0ms)
+

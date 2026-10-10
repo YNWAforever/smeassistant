@@ -38,6 +38,26 @@ afterEach(() => {
 });
 
 describe("POST /api/workspace-invites/magic-link", () => {
+  it("logs the provider's status and code, never the address, when the provider rejects (F-21)", async () => {
+    from.mockReturnValue(pendingRow(true));
+    signInWithOtp.mockResolvedValue({
+      error: { status: 404, statusText: "Not Found", code: "NOT_FOUND", message: "invited@example.com not found" },
+    } as never);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await post({ email: "invited@example.com" });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+    expect(logged).toHaveBeenCalledWith("Workspace invite magic-link provider rejected request", {
+      category: "magic_link_rejected",
+      status: 404,
+      code: "NOT_FOUND",
+    });
+    expect(JSON.stringify(logged.mock.calls)).not.toContain("invited@example.com");
+    logged.mockRestore();
+  });
+
   it("mails an OTP when a pending invite exists for the email", async () => {
     from.mockReturnValue(pendingRow(true));
 
