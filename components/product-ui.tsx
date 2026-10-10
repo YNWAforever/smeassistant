@@ -235,7 +235,10 @@ function LocaleSelect({ locale }: { locale: PrototypeLocale }) {
   )
 }
 
-export function PublicHeader({ locale }: { locale: PrototypeLocale }) {
+export function PublicHeader({ locale, signInHref }: { locale: PrototypeLocale; signInHref?: string }) {
+  // A page with its own context (an unlocked report) passes a sign-in link that
+  // carries it, so signing in from the header does not drop the claim (F-20).
+  const signIn = signInHref ?? `/${locale}/owner/sign-in`
   const t = copy[locale]
   const isChinese = locale !== "en"
   return (
@@ -261,7 +264,7 @@ export function PublicHeader({ locale }: { locale: PrototypeLocale }) {
               phone-width viewport the only way back into a workspace was the
               menu. It stays listed in the menu as well. */}
           <Button asChild variant="outline" className="header-sign-in">
-            <Link href={`/${locale}/owner/sign-in`}>{t.nav.signIn}</Link>
+            <Link href={signIn}>{t.nav.signIn}</Link>
           </Button>
           <Button asChild className="header-scan-cta hidden md:inline-flex">
             <Link href={`/${locale}/scan`}>{isChinese ? "免費掃描" : "Free scan"}<ArrowRight /></Link>
@@ -283,7 +286,7 @@ export function PublicHeader({ locale }: { locale: PrototypeLocale }) {
                 <Link href={`/${locale}/methodology`}>{t.nav.methodology}</Link>
                 <Link href={`/${locale}/pricing`}>{t.nav.pricing}</Link>
                 <Link href={`/${locale}/trust`}>{t.nav.trust}</Link>
-                <Link href={`/${locale}/owner/sign-in`}>{t.nav.signIn}</Link>
+                <Link href={signIn}>{t.nav.signIn}</Link>
               </nav>
             </SheetContent>
           </Sheet>
@@ -492,7 +495,7 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
  * `demo` renders the EnvironmentBar and adds the `has-env-bar` hook the CSS
  * offsets are gated behind (CLAUDE.md §5 "Global"); it is false everywhere else.
  */
-export function PublicPageFrame({ locale, demo = false, children }: { locale: PrototypeLocale; demo?: boolean; children: ReactNode }) {
+export function PublicPageFrame({ locale, demo = false, signInHref, children }: { locale: PrototypeLocale; demo?: boolean; signInHref?: string; children: ReactNode }) {
   const isChinese = locale !== "en"
   const t = copy[locale].funnel.footer
   useEffect(() => {
@@ -501,7 +504,7 @@ export function PublicPageFrame({ locale, demo = false, children }: { locale: Pr
   return (
     <div className={`public-site${demo ? " has-env-bar" : ""}`}>
       <EnvironmentBar locale={locale} show={demo} />
-      <PublicHeader locale={locale} />
+      <PublicHeader locale={locale} signInHref={signInHref} />
       {children}
       <footer className="public-footer">
         <div>

@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smeassistant
+
+
+ Test Files  2 passed (2)
+      Tests  15 passed (15)
+   Start at  22:41:54
+   Duration  8.53s (transform 3.37s, setup 1.88s, import 7.78s, tests 2.07s, environment 3.10s)
+

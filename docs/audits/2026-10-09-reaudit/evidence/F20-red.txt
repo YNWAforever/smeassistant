@@ -1,0 +1,93 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smeassistant
+
+ ❯ components/product-ui.test.tsx (7 tests | 1 failed) 1318ms
+     × uses the page's sign-in href, so a report keeps its claim through sign-in 111ms (retry x1)
+ ❯ components/report-view.test.tsx (8 tests | 3 failed) 507ms
+     × an unlocked viewer signs in with this report's claim (en) 63ms (retry x1)
+     × an unlocked viewer signs in with this report's claim (zh-HK) 48ms (retry x1)
+     × an unlocked viewer signs in with this report's claim (zh-TW) 56ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/product-ui.test.tsx > PublicHeader sign-in link (F-20) > uses the page's sign-in href, so a report keeps its claim through sign-in
+ FAIL  components/product-ui.test.tsx > PublicHeader sign-in link (F-20) > uses the page's sign-in href, so a report keeps its claim through sign-in
+Error: [2mexpect([22m[31melement[39m[2m).toHaveAttribute([22m[32m[32m"href"[32m[39m[2m, [22m[32m[32m"/zh-HK/owner/sign-in?claim=abc123"[32m[39m[2m) // element.getAttribute("href") === "/zh-HK/owner/sign-in?claim=abc123"[22m
+
+Expected the element to have attribute:
+[32m  href="/zh-HK/owner/sign-in?claim=abc123"[39m
+Received:
+[31m  href="/zh-HK/owner/sign-in"[39m
+ ❯ components/product-ui.test.tsx:79:74
+     77|     const { PublicHeader } = await import("@/components/product-ui");
+     78|     render(<PublicHeader locale="zh-HK" signInHref="/zh-HK/owner/sign-…
+     79|     expect(screen.getByRole("link", { name: copy["zh-HK"].nav.signIn }…
+       |                                                                          ^
+     80|   });
+     81| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  components/report-view.test.tsx > ReportPage header sign-in (F-20) > an unlocked viewer signs in with this report's claim (en)
+ FAIL  components/report-view.test.tsx > ReportPage header sign-in (F-20) > an unlocked viewer signs in with this report's claim (en)
+AssertionError: expected '' to be '/en/owner/sign-in?claim=rwGNE2DDRVpEP…' // Object.is equality
+
+- Expected
++ Received
+
+- /en/owner/sign-in?claim=rwGNE2DDRVpEPKQ1suqeGXaU
+
+ ❯ components/report-view.test.tsx:57:81
+     55|
+     56|   it.each(["en", "zh-HK", "zh-TW"] as const)("an unlocked viewer signs…
+     57|     expect(signInHref({ ...report, locale, slug: "rwGNE2DDRVpEPKQ1suqe…
+       |                                                                                 ^
+     58|   });
+     59|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  components/report-view.test.tsx > ReportPage header sign-in (F-20) > an unlocked viewer signs in with this report's claim (zh-HK)
+ FAIL  components/report-view.test.tsx > ReportPage header sign-in (F-20) > an unlocked viewer signs in with this report's claim (zh-HK)
+AssertionError: expected '' to be '/zh-HK/owner/sign-in?claim=rwGNE2DDRV…' // Object.is equality
+
+- Expected
++ Received
+
+- /zh-HK/owner/sign-in?claim=rwGNE2DDRVpEPKQ1suqeGXaU
+
+ ❯ components/report-view.test.tsx:57:81
+     55|
+     56|   it.each(["en", "zh-HK", "zh-TW"] as const)("an unlocked viewer signs…
+     57|     expect(signInHref({ ...report, locale, slug: "rwGNE2DDRVpEPKQ1suqe…
+       |                                                                                 ^
+     58|   });
+     59|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  components/report-view.test.tsx > ReportPage header sign-in (F-20) > an unlocked viewer signs in with this report's claim (zh-TW)
+ FAIL  components/report-view.test.tsx > ReportPage header sign-in (F-20) > an unlocked viewer signs in with this report's claim (zh-TW)
+AssertionError: expected '' to be '/zh-TW/owner/sign-in?claim=rwGNE2DDRV…' // Object.is equality
+
+- Expected
++ Received
+
+- /zh-TW/owner/sign-in?claim=rwGNE2DDRVpEPKQ1suqeGXaU
+
+ ❯ components/report-view.test.tsx:57:81
+     55|
+     56|   it.each(["en", "zh-HK", "zh-TW"] as const)("an unlocked viewer signs…
+     57|     expect(signInHref({ ...report, locale, slug: "rwGNE2DDRVpEPKQ1suqe…
+       |                                                                                 ^
+     58|   });
+     59|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  4 failed | 11 passed (15)
+   Start at  22:40:17
+   Duration  40.18s (transform 3.37s, setup 17.18s, import 14.89s, tests 1.82s, environment 34.50s)
+

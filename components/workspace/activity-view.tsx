@@ -4,7 +4,7 @@ import { PageIntro, SectionCard } from "@/components/product-ui"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import type { PrototypeLocale } from "@/lib/copy"
 import { formatDateTime } from "@/lib/workspace/format"
-import { AUDIT_ACTOR_LABELS, AUDIT_EVENT_LABELS } from "@/lib/workspace/audit-labels"
+import { AUDIT_EVENT_LABELS, activityActorLabel, auditEntityLabel } from "@/lib/workspace/audit-labels"
 import type { AuditEventRow } from "@/lib/workspace/queries-pages"
 
 function detail(row: AuditEventRow, isChinese: boolean): string {
@@ -14,7 +14,8 @@ function detail(row: AuditEventRow, isChinese: boolean): string {
     if (key === "locale" || value === null || value === undefined || typeof value === "object") continue
     parts.push(`${key} ${String(value)}`)
   }
-  if (!parts.length && row.entity_type) parts.push(isChinese ? `${row.entity_type}` : row.entity_type)
+  const entity = parts.length ? null : auditEntityLabel(row.entity_type, isChinese)
+  if (entity) parts.push(entity)
   return parts.join(" · ")
 }
 
@@ -32,11 +33,10 @@ export function ActivityView({ locale, timezone, events, problems }: { locale: P
             {events.length === 0 && <TableRow><TableCell colSpan={4}>{isChinese ? "尚未有事件。" : "No events yet."}</TableCell></TableRow>}
             {events.map((row) => {
               const label = AUDIT_EVENT_LABELS[row.event]
-              const actor = AUDIT_ACTOR_LABELS[row.actor_type]
               return (
                 <TableRow key={row.id}>
                   <TableCell>{formatDateTime(row.created_at, locale, timezone)}</TableCell>
-                  <TableCell>{isChinese ? actor.zh : actor.en}</TableCell>
+                  <TableCell>{activityActorLabel(row, isChinese)}</TableCell>
                   <TableCell>{label ? (isChinese ? label.zh : label.en) : row.event}</TableCell>
                   <TableCell>{detail(row, isChinese)}</TableCell>
                 </TableRow>

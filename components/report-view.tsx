@@ -180,7 +180,13 @@ export function ReportPage(props: ReportProps) {
   const authorized = props.access !== "public" && !locked
   const dashboard = buildReportDashboard(props)
   return (
-    <PublicPageFrame locale={locale} demo={sample}>
+    <PublicPageFrame
+      locale={locale}
+      demo={sample}
+      // Same condition as the claim hand-off in DashboardSummary: only an unlocked
+      // viewer of a real report signs in with this report's claim (F-20).
+      signInHref={!sample && props.access === "viewer" && props.slug ? `/${locale}/owner/sign-in?claim=${encodeURIComponent(props.slug)}` : undefined}
+    >
       <main className="report-page">
         <DashboardSummary report={props} />
         {/* P4.5: one unsaved AI reply draft. The page sets the href only for an
