@@ -633,7 +633,9 @@ ROLLBACK;
 
 ## Invitations and report recovery (not run)
 
-Nothing is sent unless the owner enables application mail (`APPLICATION_MAIL_APPROVED=2026-10-mail-v2` plus the DEC-07 values) and sets `INVITATION_MAIL_ENABLED=true` and/or `REPORT_RECOVERY_ENABLED=true` (exactly `true`). Flags are unset in production and nothing here has been hosted-verified.
+Nothing is sent unless the owner enables application mail (`APPLICATION_MAIL_APPROVED=2026-10-mail-v2` plus the DEC-07 values) and sets `INVITATION_MAIL_ENABLED=true` and/or `REPORT_RECOVERY_ENABLED=true` (exactly `true`). Production flag state: `INVITATION_MAIL_ENABLED` is not set; `REPORT_RECOVERY_ENABLED` is present in Vercel production, inherited from the legacy app, with its value never read (`RELEASE-EVIDENCE-080ddf6.md`). Nothing here has been hosted-verified.
+
+**Precondition:** before setting `APPLICATION_MAIL_APPROVED=2026-10-mail-v2` for any reason (including scan notices), read `REPORT_RECOVERY_ENABLED` in production and set it to `false` or remove it unless recovery is intended; an inherited `true` would turn recovery on as soon as mail opens.
 
 1. **Invite:** as owner, Settings -> Team -> invite a test recipient; the Team page shows a delivery status (accepted by the mail provider, never "delivered").
 2. **Resend:** use Resend on a pending invitation; a fourth resend in a day is refused (3/day per member).

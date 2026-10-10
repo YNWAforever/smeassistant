@@ -212,7 +212,7 @@ protected request, status and queue code and withhold only real approvals.
 
 ## Invitation mail and report recovery slice (P2 items 29-30)
 
-Branch `feat/invitation-recovery-mail`, commits 71c64fc..d5f420e plus 7355c4e (guard narrowed so the `/recover?t=` link does not count as a report-delivery email; ban strings unchanged). Local only; nothing applied to any hosted environment; flags unset in production.
+Branch `feat/invitation-recovery-mail`, commits 71c64fc..d5f420e plus 7355c4e (guard narrowed so the `/recover?t=` link does not count as a report-delivery email; ban strings unchanged). Local only; nothing applied to any hosted environment. Production flag state: `INVITATION_MAIL_ENABLED` is not set; `REPORT_RECOVERY_ENABLED` is present in Vercel production, inherited from the legacy app, with its value never read (`RELEASE-EVIDENCE-080ddf6.md`), so recovery is closed today only because application mail is closed. **Precondition:** before setting `APPLICATION_MAIL_APPROVED=2026-10-mail-v2` for any reason (including scan notices), read `REPORT_RECOVERY_ENABLED` in production and set it to `false` or remove it unless recovery is intended.
 
 | Gate | Result |
 |---|---|
