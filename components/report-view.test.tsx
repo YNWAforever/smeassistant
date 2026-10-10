@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({
 // The frame renders the public header and its locale select; the report body is the subtree under test.
 vi.mock("@/components/product-ui", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
-  PublicPageFrame: ({ children }: { children: ReactNode }) => children,
+  PublicPageFrame: ({ children, signInHref }: { children: ReactNode; signInHref?: string }) => <div data-sign-in-href={signInHref ?? ""}>{children}</div>,
 }));
 
 import { ReportPage } from "@/components/report-view";
@@ -47,5 +47,19 @@ describe("ReportPage preview card", () => {
     expect(copy.en.funnel.preview.cardTitle).toBe("Try one AI reply draft (not saved)");
     expect(copy["zh-HK"].funnel.preview.cardTitle).toBe("試寫一則 AI 評論回覆（不會儲存）");
     expect(copy["zh-TW"].funnel.preview.cardTitle).toBe("試寫一則 AI 評論回覆（不會儲存）");
+  });
+});
+
+describe("ReportPage header sign-in (F-20)", () => {
+  const signInHref = (props: ReportProps) => markup(props).querySelector("[data-sign-in-href]")?.getAttribute("data-sign-in-href");
+
+  it.each(["en", "zh-HK", "zh-TW"] as const)("an unlocked viewer signs in with this report's claim (%s)", (locale: PrototypeLocale) => {
+    expect(signInHref({ ...report, locale, slug: "rwGNE2DDRVpEPKQ1suqeGXaU" })).toBe(`/${locale}/owner/sign-in?claim=rwGNE2DDRVpEPKQ1suqeGXaU`);
+  });
+
+  it("does not attach a claim for the public preview, a member, or the sample report", () => {
+    expect(signInHref({ ...report, access: "public" } as unknown as ReportProps)).toBe("");
+    expect(signInHref({ ...report, access: "member" })).toBe("");
+    expect(signInHref({ ...report, sample: true })).toBe("");
   });
 });

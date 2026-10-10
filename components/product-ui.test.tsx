@@ -65,3 +65,17 @@ describe("WorkspaceShell offers entry (P4.1)", () => {
     expect(offersLinks()[0]).toHaveTextContent(copy[locale].workspace.offers.nav);
   });
 });
+
+describe("PublicHeader sign-in link (F-20)", () => {
+  it("links to the plain sign-in page by default", async () => {
+    const { PublicHeader } = await import("@/components/product-ui");
+    render(<PublicHeader locale="en" />);
+    expect(screen.getByRole("link", { name: copy.en.nav.signIn })).toHaveAttribute("href", "/en/owner/sign-in");
+  });
+
+  it("uses the page's sign-in href, so a report keeps its claim through sign-in", async () => {
+    const { PublicHeader } = await import("@/components/product-ui");
+    render(<PublicHeader locale="zh-HK" signInHref="/zh-HK/owner/sign-in?claim=abc123" />);
+    expect(screen.getByRole("link", { name: copy["zh-HK"].nav.signIn })).toHaveAttribute("href", "/zh-HK/owner/sign-in?claim=abc123");
+  });
+});

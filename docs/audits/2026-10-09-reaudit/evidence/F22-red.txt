@@ -1,0 +1,108 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smeassistant
+
+ ❯ components/workspace/activity-view.test.tsx (7 tests | 6 failed) 625ms
+     × shows an operator assignment as done by an operator, not a member (en) 282ms (retry x1)
+     × shows an operator assignment as done by an operator, not a member (zh-HK) 44ms (retry x1)
+     × shows an operator assignment as done by an operator, not a member (zh-TW) 84ms (retry x1)
+     × labels the entity instead of printing its raw type (en) 52ms (retry x1)
+     × labels the entity instead of printing its raw type (zh-HK) 38ms (retry x1)
+     × shows nothing rather than an unknown raw entity type 110ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/workspace/activity-view.test.tsx > ActivityView labels (F-22) > shows an operator assignment as done by an operator, not a member (en)
+ FAIL  components/workspace/activity-view.test.tsx > ActivityView labels (F-22) > shows an operator assignment as done by an operator, not a member (en)
+AssertionError: expected 'Member' to be 'Operator' // Object.is equality
+
+Expected: "Operator"
+Received: "Member"
+
+ ❯ components/workspace/activity-view.test.tsx:29:19
+     27|   ] as const)("shows an operator assignment as done by an operator, no…
+     28|     const [[, actor]] = cells(locale, [row({ event: "workspace.assigne…
+     29|     expect(actor).toBe(operator);
+       |                   ^
+     30|   });
+     31|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/12]⎯
+
+ FAIL  components/workspace/activity-view.test.tsx > ActivityView labels (F-22) > shows an operator assignment as done by an operator, not a member (zh-HK)
+ FAIL  components/workspace/activity-view.test.tsx > ActivityView labels (F-22) > shows an operator assignment as done by an operator, not a member (zh-HK)
+ FAIL  components/workspace/activity-view.test.tsx > ActivityView labels (F-22) > shows an operator assignment as done by an operator, not a member (zh-TW)
+ FAIL  components/workspace/activity-view.test.tsx > ActivityView labels (F-22) > shows an operator assignment as done by an operator, not a member (zh-TW)
+AssertionError: expected '成員' to be '營運人員' // Object.is equality
+
+Expected: "營運人員"
+Received: "成員"
+
+ ❯ components/workspace/activity-view.test.tsx:29:19
+     27|   ] as const)("shows an operator assignment as done by an operator, no…
+     28|     const [[, actor]] = cells(locale, [row({ event: "workspace.assigne…
+     29|     expect(actor).toBe(operator);
+       |                   ^
+     30|   });
+     31|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/12]⎯
+
+ FAIL  components/workspace/activity-view.test.tsx > ActivityView labels (F-22) > labels the entity instead of printing its raw type (en)
+ FAIL  components/workspace/activity-view.test.tsx > ActivityView labels (F-22) > labels the entity instead of printing its raw type (en)
+AssertionError: expected 'audit_job' to be 'Scan' // Object.is equality
+
+Expected: "Scan"
+Received: "audit_job"
+
+ ❯ components/workspace/activity-view.test.tsx:42:20
+     40|   ] as const)("labels the entity instead of printing its raw type (%s)…
+     41|     const [[, , , detail]] = cells(locale, [row({ event: "workspace.cl…
+     42|     expect(detail).toBe(label);
+       |                    ^
+     43|     expect(detail).not.toContain("audit_job");
+     44|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/12]⎯
+
+ FAIL  components/workspace/activity-view.test.tsx > ActivityView labels (F-22) > labels the entity instead of printing its raw type (zh-HK)
+ FAIL  components/workspace/activity-view.test.tsx > ActivityView labels (F-22) > labels the entity instead of printing its raw type (zh-HK)
+AssertionError: expected 'audit_job' to be '掃描' // Object.is equality
+
+Expected: "掃描"
+Received: "audit_job"
+
+ ❯ components/workspace/activity-view.test.tsx:42:20
+     40|   ] as const)("labels the entity instead of printing its raw type (%s)…
+     41|     const [[, , , detail]] = cells(locale, [row({ event: "workspace.cl…
+     42|     expect(detail).toBe(label);
+       |                    ^
+     43|     expect(detail).not.toContain("audit_job");
+     44|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/12]⎯
+
+ FAIL  components/workspace/activity-view.test.tsx > ActivityView labels (F-22) > shows nothing rather than an unknown raw entity type
+ FAIL  components/workspace/activity-view.test.tsx > ActivityView labels (F-22) > shows nothing rather than an unknown raw entity type
+AssertionError: expected 'some_internal_table' to be '' // Object.is equality
+
+- Expected
++ Received
+
++ some_internal_table
+
+ ❯ components/workspace/activity-view.test.tsx:48:20
+     46|   it("shows nothing rather than an unknown raw entity type", () => {
+     47|     const [[, , , detail]] = cells("en", [row({ event: "brand.updated"…
+     48|     expect(detail).toBe("");
+       |                    ^
+     49|   });
+     50| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/12]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 1 passed (7)
+   Start at  22:43:17
+   Duration  8.04s (transform 778ms, setup 1.08s, import 3.23s, tests 625ms, environment 2.03s)
+
