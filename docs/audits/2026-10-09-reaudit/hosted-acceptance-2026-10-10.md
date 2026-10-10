@@ -27,6 +27,10 @@ The requester account turned out to own the old test workspace `nadagogo` too; i
 | `/zh-HK/owner/select-workspace` | pass — approved request status, both workspaces listed |
 | Browser console | no errors |
 
+## F-21 follow-up (same day)
+
+Root cause: the production Neon Auth branch had the `magic_link` plugin disabled (`neon neon-auth plugins list`, read-only). The owner enabled it (expiry 5 minutes, sign-up allowed, shared email provider). The owner then requested a magic link for the lead email from `/zh-HK/owner/sign-in?claim=…`, received it and signed in; production logs showed no `magic link provider rejected` line afterwards. PR #58 adds the provider status/code to the rejection log.
+
 ## Not run
 
 AI generation (paid model), approve/export, mark applied, rescan, team invite, Google connect, and every manager/viewer/stranger boundary check. Those still need per-item approval and test identities.
