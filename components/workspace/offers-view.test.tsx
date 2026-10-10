@@ -137,6 +137,38 @@ describe("OffersView", () => {
     expect(clientMocks.createOffer).toHaveBeenCalledWith("ws-1", expect.objectContaining({ price_amount: null, currency: null }));
   });
 
+  it.each(["12,80", "1,28", "1,2800", ",1280", "1280,", "1,,280", "1280.5,0"])(
+    "refuses a comma that is not a thousands separator instead of changing the owner's price (%s)",
+    async (value) => {
+      mount();
+      fireEvent.click(button(text.actions.newOffer));
+      fireEvent.change(screen.getByLabelText(text.fields.title), { target: { value: "Set lunch" } });
+      fireEvent.change(screen.getByLabelText(text.fields.details), { target: { value: "Weekdays" } });
+      fireEvent.change(screen.getByLabelText(text.fields.validFrom), { target: { value: "2026-10-01" } });
+      fireEvent.change(screen.getByLabelText(text.fields.validUntil), { target: { value: "2026-10-31" } });
+      fireEvent.change(screen.getByLabelText(text.fields.price), { target: { value } });
+      await act(async () => { fireEvent.click(button(text.actions.save)); });
+      expect(clientMocks.createOffer).not.toHaveBeenCalled();
+      expect(screen.getByRole("alert")).toHaveTextContent(text.errors.price);
+    },
+  );
+
+  it.each([["1,280", 1280], ["12,345,678.9", 12345678.9], ["1280", 1280]] as const)(
+    "accepts a well-formed thousands separator (%s)",
+    async (value, expected) => {
+      clientMocks.createOffer.mockResolvedValue({ ok: true, data: { offer: offer() } });
+      mount();
+      fireEvent.click(button(text.actions.newOffer));
+      fireEvent.change(screen.getByLabelText(text.fields.title), { target: { value: "Set lunch" } });
+      fireEvent.change(screen.getByLabelText(text.fields.details), { target: { value: "Weekdays" } });
+      fireEvent.change(screen.getByLabelText(text.fields.validFrom), { target: { value: "2026-10-01" } });
+      fireEvent.change(screen.getByLabelText(text.fields.validUntil), { target: { value: "2026-10-31" } });
+      fireEvent.change(screen.getByLabelText(text.fields.price), { target: { value } });
+      await act(async () => { fireEvent.click(button(text.actions.save)); });
+      expect(clientMocks.createOffer).toHaveBeenCalledWith("ws-1", expect.objectContaining({ price_amount: expected }));
+    },
+  );
+
   it("answers a 409 offer_revision_changed on save with the reload message and keeps the typed text", async () => {
     clientMocks.updateOffer.mockResolvedValue({ ok: false, status: 409, error: "offer_revision_changed" });
     mount({ offers: [offer()] });
@@ -218,6 +250,13 @@ describe("OffersView", () => {
     expect(clientMocks.getUsage).toHaveBeenCalledWith("ws-1");
     expect(screen.getByText(/This month: 1 of 3 used\./)).toBeInTheDocument();
     expect(clientMocks.createPromotions).not.toHaveBeenCalled();
+  });
+
+  it("says the usage could not be checked when the read fails, rather than looking unlimited", async () => {
+    clientMocks.getUsage.mockResolvedValue({ ok: false, status: 503, error: "unavailable" });
+    mount({ offers: [offer({ status: "confirmed" })] });
+    await act(async () => { fireEvent.click(button(text.actions.createDrafts)); });
+    expect(screen.getByText(new RegExp(text.promotion.usageUnavailable.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))).toBeInTheDocument();
   });
 
   it("only lists rights-approved assets usable at the offer's location in the photo picker", () => {

@@ -89,6 +89,8 @@ export type OffersCopy = {
     createFailed: string;
     noPermission: string;
     checkingUsage: string;
+    /** Appended to the disclosure when the usage read failed: never imply the allowance is unlimited. */
+    usageUnavailable: string;
   };
   stale: { offer_changed: string; offer_expired: string; offer_inactive: string };
   card: { heading: string; viewOffers: string };
@@ -121,6 +123,9 @@ export type PacksCopy = {
   viewLastPack: string;
   allLocations: string;
   closed: string;
+  /** The pack page when a read failed: it may exist, so never say it does not. */
+  unavailable: string;
+  backToHome: string;
   pageEyebrow: string;
   pageDescription: string;
   errors: { startFailed: string; forbidden: string; network: string };
@@ -271,6 +276,8 @@ export const workspaceEn: WorkspaceCopy = {
     viewLastPack: "View last pack",
     allLocations: "All locations",
     closed: "This pack is finished. It is shown here as history.",
+    unavailable: "This pack could not be loaded right now. Nothing has changed; try again shortly.",
+    backToHome: "Back to Home",
     pageEyebrow: "Work pack",
     pageDescription: "Drafts are reviewed, approved and exported one at a time on each action's own page. Nothing is published or sent from here.",
     errors: { startFailed: "The pack could not be started. Try again shortly.", forbidden: "Your role or location scope cannot start a pack here.", network: "Could not reach the server. Try again when you are back online." },
@@ -368,6 +375,7 @@ export const workspaceEn: WorkspaceCopy = {
       createFailed: "The drafts could not be created. Try again shortly.",
       noPermission: "Your role or location scope cannot create drafts for this offer.",
       checkingUsage: "Checking this month's usage",
+      usageUnavailable: " This month's usage could not be checked right now; each draft you export still counts.",
     },
     stale: {
       offer_changed: "The offer changed after this draft was written. Generate a new draft from the current offer.",
@@ -562,6 +570,8 @@ export const workspaceZhHK: WorkspaceCopy = {
     viewLastPack: "查看上一個套裝",
     allLocations: "所有地點",
     closed: "這個套裝已完成，在此只作紀錄顯示。",
+    unavailable: "暫時未能載入這個套裝，內容沒有任何改變，請稍後再試。",
+    backToHome: "返回主頁",
     pageEyebrow: "工作套裝",
     pageDescription: "草稿會逐份在各行動自己的頁面審閱、核准及匯出。這裏不會發布或傳送任何內容。",
     errors: { startFailed: "未能開始套裝，請稍後再試。", forbidden: "你的角色或地點範圍不可在此開始套裝。", network: "無法連接伺服器，請在網絡恢復後再試。" },
@@ -635,6 +645,7 @@ export const workspaceZhHK: WorkspaceCopy = {
       createFailed: "未能建立草稿，請稍後再試。",
       noPermission: "你的角色或地點範圍不可為此優惠建立草稿。",
       checkingUsage: "正在查看本月用量",
+      usageUnavailable: "暫時未能查看本月用量；每份匯出的草稿仍會計算。",
     },
     stale: { offer_changed: "優惠在這份草稿撰寫後已更改。請按目前的優惠重新生成草稿。", offer_expired: "此優惠已結束。請延長日期並重新確認後才可使用。", offer_inactive: "此優惠尚未確認或已封存。" },
     card: { heading: "這份草稿所依據的優惠", viewOffers: "前往優惠" },
@@ -823,6 +834,8 @@ export const workspaceZhTW: WorkspaceCopy = {
     viewLastPack: "查看上一個套組",
     allLocations: "所有據點",
     closed: "這個套組已完成，在此僅作紀錄顯示。",
+    unavailable: "目前無法載入這個套組，內容沒有任何變更，請稍後再試。",
+    backToHome: "返回首頁",
     pageEyebrow: "工作套組",
     pageDescription: "草稿會逐份在各行動自己的頁面審閱、核准及匯出。這裡不會發布或傳送任何內容。",
     errors: { startFailed: "無法開始套組，請稍後再試。", forbidden: "你的角色或據點範圍不能在此開始套組。", network: "無法連線至伺服器，請在網路恢復後再試。" },
@@ -896,6 +909,7 @@ export const workspaceZhTW: WorkspaceCopy = {
       createFailed: "無法建立草稿，請稍後再試。",
       noPermission: "您的角色或據點範圍無法為此優惠建立草稿。",
       checkingUsage: "正在查看本月用量",
+      usageUnavailable: "目前無法查看本月用量；每份匯出的草稿仍會計算。",
     },
     stale: { offer_changed: "優惠在這份草稿撰寫後已變更。請依目前的優惠重新產生草稿。", offer_expired: "此優惠已結束。請延長日期並重新確認後才能使用。", offer_inactive: "此優惠尚未確認或已封存。" },
     card: { heading: "這份草稿所依據的優惠", viewOffers: "前往優惠" },

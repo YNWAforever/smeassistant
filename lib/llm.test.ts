@@ -198,17 +198,32 @@ describe("llmComplete error logging", () => {
     expect(logged(error)).not.toContain("SENTINEL");
   });
 
-  it("without redactErrors, logging is unchanged", async () => {
+  // Every agent prompt carries owner facts or review excerpts, and a provider
+  // error body or a network error's message/cause can echo the input or carry
+  // host details. No call path may log them, whatever the caller asks.
+  it("without redactErrors, a non-2xx body is still not logged, only the status", async () => {
     const { llmComplete } = await configured();
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
-    const body = `{"error":"${SENTINEL}"}`;
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500, text: async () => body }));
-    await llmComplete("prompt");
-    expect(error).toHaveBeenLastCalledWith(`[llm] API error 500: ${body.slice(0, 300)}`);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500, text: async () => `{"error":"${SENTINEL}"}` }));
 
-    const thrown = new Error(SENTINEL);
+    await expect(llmComplete("prompt")).resolves.toBeNull();
+
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error).toHaveBeenCalledWith("[llm] API error", { status: 500 });
+    expect(logged(error)).not.toContain("SENTINEL");
+  });
+
+  it("without redactErrors, a thrown error still logs only its class name, never its message or cause", async () => {
+    const { llmComplete } = await configured();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const thrown = new TypeError("fetch failed", { cause: new Error(`connect ECONNREFUSED 10.0.0.1:443 ${SENTINEL}`) });
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(thrown));
-    await llmComplete("prompt", { redactErrors: false });
-    expect(error).toHaveBeenLastCalledWith("[llm] request failed:", thrown);
+
+    await expect(llmComplete("prompt", { redactErrors: false })).resolves.toBeNull();
+
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error).toHaveBeenCalledWith("[llm] request failed", { error: "TypeError" });
+    expect(logged(error)).not.toContain("SENTINEL");
+    expect(logged(error)).not.toContain("10.0.0.1");
   });
 });

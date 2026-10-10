@@ -60,10 +60,12 @@ export interface LLMOptions {
   jsonMode?: boolean;
   timeoutMs?: number;
   /**
-   * Log failures without any provider text: only the HTTP status, or the
-   * thrown error's class name. For prompts that carry visitor text (the P4.5
-   * preview), because a provider error body can echo the input (OpenRouter
-   * moderation returns `metadata.flagged_input`). Off by default.
+   * Failures are logged without any provider text on every call: only the HTTP
+   * status, or the thrown error's class name. A provider error body can echo
+   * the input (OpenRouter moderation returns `metadata.flagged_input`), and a
+   * network error's message or cause can carry host details; every agent prompt
+   * carries owner facts or review excerpts. The P4.5 preview still passes
+   * `true` so its redaction does not depend on this default.
    */
   redactErrors?: boolean;
 }
@@ -138,12 +140,8 @@ export async function llmComplete(prompt: string, opts: LLMOptions = {}): Promis
     });
 
     if (!resp.ok) {
-      if (opts.redactErrors) {
-        console.error("[llm] API error", { status: resp.status });
-        return null;
-      }
-      const body = await resp.text().catch(() => "");
-      console.error(`[llm] API error ${resp.status}: ${body.slice(0, 300)}`);
+      // The body is never read: it can echo the prompt.
+      console.error("[llm] API error", { status: resp.status });
       return null;
     }
 
@@ -151,12 +149,8 @@ export async function llmComplete(prompt: string, opts: LLMOptions = {}): Promis
     const text: string = data?.choices?.[0]?.message?.content?.trim() ?? "";
     return text ? { text, usage: readUsage(data) } : null;
   } catch (err) {
-    if (opts.redactErrors) {
-      const name = typeof (err as { name?: unknown } | null)?.name === "string" ? (err as { name: string }).name : "unknown";
-      console.error("[llm] request failed", { error: name });
-      return null;
-    }
-    console.error("[llm] request failed:", err);
+    const name = typeof (err as { name?: unknown } | null)?.name === "string" ? (err as { name: string }).name : "unknown";
+    console.error("[llm] request failed", { error: name });
     return null;
   } finally {
     clearTimeout(timeout);

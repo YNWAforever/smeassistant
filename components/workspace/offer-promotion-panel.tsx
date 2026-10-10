@@ -24,7 +24,8 @@ export interface OfferPromotionPanelProps {
   locale: PrototypeLocale
   offerId: string
   offerTitle: string
-  usage: { approvedDeliveries: number; allowance: number | null }
+  /** "unavailable" when the usage read failed: the panel says so instead of implying an unlimited allowance. */
+  usage: { approvedDeliveries: number; allowance: number | null } | "unavailable"
   canCreate: boolean
   /** Base path of the actions list; when present each draft links to its action page. */
   actionsHref?: string
@@ -57,7 +58,9 @@ export function OfferPromotionPanel({ locale, offerId, offerTitle, usage, canCre
   const channelNames = CHANNELS.map((channel) => text.promotion.channels[channel]).join(text.promotion.listSeparator)
   const disclosure =
     fill(text.promotion.disclosure, { n: CHANNELS.length, channels: channelNames }) +
-    (usage.allowance !== null ? fill(text.promotion.usage, { used: usage.approvedDeliveries, allowance: usage.allowance }) : "")
+    (usage === "unavailable"
+      ? text.promotion.usageUnavailable
+      : usage.allowance !== null ? fill(text.promotion.usage, { used: usage.approvedDeliveries, allowance: usage.allowance }) : "")
 
   function failureText(result: Extract<ClientResult<unknown>, { ok: false }>): string {
     if (result.status === 409 && isOfferStaleCode(result.error)) return text.stale[result.error]

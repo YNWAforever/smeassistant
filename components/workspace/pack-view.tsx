@@ -85,3 +85,20 @@ export function PackView({ locale, workspaceSlug, role, inScope, pack, locationN
     </div>
   )
 }
+
+/**
+ * The pack page when a read failed. The pack may well exist, so this never says
+ * it does not (a 404 is kept for a pack that is missing or out of scope).
+ */
+export function PackUnavailable({ locale, workspaceSlug }: { locale: PrototypeLocale; workspaceSlug: string }) {
+  const text = copy[locale].workspace.packs
+  return (
+    <div className="pack-view">
+      <PageIntro eyebrow={text.pageEyebrow} title={text.title} description={text.pageDescription} />
+      <SectionCard className="pack-card">
+        <p className="limitation-note" role="alert"><AlertTriangle aria-hidden="true" />{text.unavailable}</p>
+        <Link href={`/${locale}/owner/${workspaceSlug}`}>{text.backToHome}</Link>
+      </SectionCard>
+    </div>
+  )
+}
