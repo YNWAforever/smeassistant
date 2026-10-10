@@ -12,7 +12,7 @@ export const AUDIT_EVENTS = [
   "scan.queued", "scan.completed", "scan.failed", "snapshot.created", "action.derived", "action.updated", "action.dismissed",
   "action.applied", "action.application_retracted", "action.verified",
   "run.started", "run.succeeded", "run.failed", "run.timed_out", "version.created", "version.approved", "version.changes_requested", "version.rejected",
-  "delivery.exported", "delivery.copied", "workspace.claimed", "member.invited", "member.role_changed", "integration.updated",
+  "delivery.exported", "delivery.copied", "workspace.claimed", "member.invited", "member.invitation_resent", "member.role_changed", "integration.updated",
   "brand.updated", "asset.uploaded", "asset.rights_confirmed", "assistant.run", "consent.public_evidence",
   "fix_pack.reviewed",
   "access_request.submitted", "access_request.reviewed", "access_request.information_requested",
@@ -21,6 +21,7 @@ export const AUDIT_EVENTS = [
   "scan.auto_closed", "ops.scan.released",
   "offer.created", "offer.updated",
   "pack.started",
+  "report.recovery_requested", "report.recovery_redeemed",
 ] as const;
 
 export type AuditEvent = (typeof AUDIT_EVENTS)[number];

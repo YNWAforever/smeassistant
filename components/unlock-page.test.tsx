@@ -40,3 +40,20 @@ describe("UnlockPage optional email field", () => {
     expect(render(locale).textContent).not.toMatch(/reopen your report|on another device|重新開啟報告|其他裝置/);
   });
 });
+
+describe("UnlockPage recovery form", () => {
+  const heading = "Already unlocked this report? Email me a new link";
+  function renderWith(recoveryAvailable?: boolean) {
+    const root = document.createElement("div");
+    root.innerHTML = renderToStaticMarkup(<UnlockPage locale="en" slug="fixture" market="hk" recoveryAvailable={recoveryAvailable} />);
+    return root;
+  }
+
+  it("is present only when recoveryAvailable is true", () => {
+    expect(renderWith(true).textContent).toContain(heading);
+  });
+
+  it.each([false, undefined])("is absent when recoveryAvailable is %s", (flag) => {
+    expect(renderWith(flag).textContent).not.toContain(heading);
+  });
+});

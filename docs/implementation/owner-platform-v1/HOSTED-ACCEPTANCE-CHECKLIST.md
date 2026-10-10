@@ -312,11 +312,11 @@ ROLLBACK;
 > **Exposure:** opening application mail sends notices to **real workspace members** for real events, limited only by `MAIL_RECIPIENT_ALLOWLIST` if you set it. **Rollback:** set `MAIL_PAUSED=true` (keeps queued rows) or unset `APPLICATION_MAIL_APPROVED`, then redeploy.
 
 - **Needs:** **DEC-05** (recipients, count), **DEC-07** (mail channel, sender, templates) and DEC-01. **Cost:** the Resend sends you authorize.
-- **Preconditions:** DEC-05 and DEC-07 recorded. What exists today: invitation **sign-in links** go through Neon Auth and work now; application mail (rescan-complete notices) is closed until approved; **invitation delivery by application mail and report recovery are not built** (`PHASE-2-BACKLOG.md` items 29–30), so they stay `not run`.
+- **Preconditions:** DEC-05 and DEC-07 recorded. What exists today: invitation **sign-in links** go through Neon Auth and work now; application mail (rescan-complete notices) is closed until approved; **invitation delivery by application mail and report recovery are built behind default-off flags** (`INVITATION_MAIL_ENABLED`, `REPORT_RECOVERY_ENABLED`; `PHASE-2-BACKLOG.md` items 29–30). They stay `not run` until the owner opens mail (DEC-07) and sets the flags; see "Invitations and report recovery (not run)" below.
 - **Dependency:** the mail-producing event in step 3 is a completed workspace rescan, which first happens in §19 (paid, provider spend). Do steps 1–2 now; do steps 3–5 after §19, or record them `not run`.
 - **Steps:**
   1. **Invitation:** as an owner, Settings → Team → invite a test recipient as viewer. As the recipient, request a sign-in link at `/en/owner/sign-in` and open it. Confirm you join the workspace as viewer.
-  2. **Open application mail:** in Vercel set `APPLICATION_MAIL_APPROVED` to exactly `2026-09-event-mail-v1`, a new `MAIL_UNSUBSCRIBE_SECRET` of at least 32 random bytes (generate it in a password manager and type it straight into Vercel), and `MAIL_RECIPIENT_ALLOWLIST` to the DEC-05 test recipients → redeploy (`PHASE-3-REPORT.md` P3.5c, "Owner actions").
+  2. **Open application mail:** in Vercel set `APPLICATION_MAIL_APPROVED` to exactly `2026-10-mail-v2`, a new `MAIL_UNSUBSCRIBE_SECRET` of at least 32 random bytes (generate it in a password manager and type it straight into Vercel), and `MAIL_RECIPIENT_ALLOWLIST` to the DEC-05 test recipients → redeploy (`PHASE-3-REPORT.md` P3.5c, "Owner actions").
   3. After the §19 rescan completes, check the outbox:
 
      ```sql
@@ -630,3 +630,14 @@ ROLLBACK;
 
 - **Pass:** exactly one counted delivery for the version across publish and export; the reply on Google equals the approved text; a `delivery.publish_started`, a `delivery.published` and a `delivery.publish_cancelled` audit row; no review text, reviewer name or reply text in any delivery column; steps 2, 4, 7, 9 and 11 as described. **Fail:** a reply posted without the confirmation tick, a second counted delivery, an overwritten existing reply, a publish or delete offered to a role that may not use it, a delivery left `publishing` after **Check on Google** with Google reachable, or any text stored on a delivery.
 - **Fill in:** a new §5 row "Phase 4 flag: `GBP_REPLY_PUBLISH_ENABLED` (non-production)" in the release-evidence file of the candidate that contains P4.6, and the connector half of "Conditional preview/connector acceptance".
+
+## Invitations and report recovery (not run)
+
+Nothing is sent unless the owner enables application mail (`APPLICATION_MAIL_APPROVED=2026-10-mail-v2` plus the DEC-07 values) and sets `INVITATION_MAIL_ENABLED=true` and/or `REPORT_RECOVERY_ENABLED=true` (exactly `true`). Production flag state: `INVITATION_MAIL_ENABLED` is not set; `REPORT_RECOVERY_ENABLED` is present in Vercel production, inherited from the legacy app, with its value never read (`RELEASE-EVIDENCE-080ddf6.md`). Nothing here has been hosted-verified.
+
+**Precondition:** before setting `APPLICATION_MAIL_APPROVED=2026-10-mail-v2` for any reason (including scan notices), read `REPORT_RECOVERY_ENABLED` in production and set it to `false` or remove it unless recovery is intended; an inherited `true` would turn recovery on as soon as mail opens.
+
+1. **Invite:** as owner, Settings -> Team -> invite a test recipient; the Team page shows a delivery status (accepted by the mail provider, never "delivered").
+2. **Resend:** use Resend on a pending invitation; a fourth resend in a day is refused (3/day per member).
+3. **Recover:** open a locked report (`/r/<slug>`) and use the recovery entry with the address recorded at unlock; the response is the same for unknown addresses. The mailed link is single-use.
+4. **Redeem:** open the link; the report opens. Open the same link again: it reports expired.

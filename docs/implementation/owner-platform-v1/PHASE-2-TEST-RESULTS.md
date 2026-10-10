@@ -209,3 +209,19 @@ DEC-06 remains pending. `OPERATOR_EMAILS` unset means nobody can open the queue;
 everyone, including an allowlisted operator. The queue pages are readable with
 the flag off by design, because DEC-06's recorded safe default is to build the
 protected request, status and queue code and withhold only real approvals.
+
+## Invitation mail and report recovery slice (P2 items 29-30)
+
+Branch `feat/invitation-recovery-mail`, commits 71c64fc..d5f420e plus 7355c4e (guard narrowed so the `/recover?t=` link does not count as a report-delivery email; ban strings unchanged). Local only; nothing applied to any hosted environment. Production flag state: `INVITATION_MAIL_ENABLED` is not set; `REPORT_RECOVERY_ENABLED` is present in Vercel production, inherited from the legacy app, with its value never read (`RELEASE-EVIDENCE-080ddf6.md`), so recovery is closed today only because application mail is closed. **Precondition:** before setting `APPLICATION_MAIL_APPROVED=2026-10-mail-v2` for any reason (including scan notices), read `REPORT_RECOVERY_ENABLED` in production and set it to `false` or remove it unless recovery is intended.
+
+| Gate | Result |
+|---|---|
+| `corepack pnpm typecheck` | pass (exit 0) |
+| `corepack pnpm lint` | pass (0 errors, 40 pre-existing warnings in `packages/**`) |
+| `corepack pnpm test` at 7355c4e | pass: 412 files / 4,969 tests (the earlier run failed only the report-delivery-email guard, fixed by 7355c4e) |
+| `corepack pnpm test:integration` at 7355c4e | pass: 55 files / 595 tests |
+| `corepack pnpm build` at 7355c4e | pass |
+| `corepack pnpm test:secret-boundary` at 7355c4e | pass: 62 public artifacts |
+| Three further full unit runs after the docs edits (413 files / 5,031 tests, includes the guard test) | run 1: 1 failing test out of 5,031, **not identified** (output not captured) and not reproduced; runs 2 and 3: 413 files / 5,031 tests, all passing. The single failure was treated as a load flake, not proven to be one. |
+
+No `scan-claim-single-path` / `scan-events-single-writer` timeouts occurred in this run.

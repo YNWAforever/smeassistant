@@ -3,12 +3,15 @@ import { getPool } from "../db/client";
 import { withTransaction } from "../db/transaction";
 import type { WorkspaceRole } from "../workspace/authorize-workspace";
 import type { SessionUser } from "../auth";
+import { invitationMailEnabled } from "../mail/feature-flags";
+import { pendingInvitationLiveSql } from "../workspace/invitation-expiry";
 
 export interface MemberRow {
  id: string; workspace_id: string; user_id: string | null; email: string;
  role: WorkspaceRole; location_scope: string[] | null;
  accepted_at: string | null; invited_at: string | null; created_at: string;
 }
+export interface InvitationContext { email: string; role: "manager" | "viewer"; invitedAt: string; workspaceName: string }
 export interface AcceptedMemberRow extends MemberRow { user_id: string; workspace_slug: string | null }
 const columns = "id,workspace_id,user_id,email,role,location_scope,accepted_at::text,invited_at::text,created_at::text";
 
@@ -39,21 +42,30 @@ export const membershipRepository = {
    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`invitation:${email}`]);
    const mapped=await client.query("SELECT u.id FROM app_users u WHERE u.id=$1 AND lower(u.email)=$2 AND EXISTS(SELECT 1 FROM auth_identities i WHERE i.user_id=u.id) FOR UPDATE",[user.id,email]);
    if (!mapped.rows.length) throw new Error("invitation_identity_invalid");
-   const bound=await client.query<{workspace_id:string}>("WITH pending AS (SELECT id FROM workspace_members WHERE lower(email)=$2 AND user_id IS NULL AND accepted_at IS NULL ORDER BY created_at,id FOR UPDATE), bound AS (UPDATE workspace_members m SET user_id=$1,accepted_at=now() FROM pending p WHERE m.id=p.id RETURNING m.workspace_id,m.created_at,m.id) SELECT workspace_id FROM bound ORDER BY created_at,id",[user.id,email]);
+   const bound=await client.query<{workspace_id:string}>(`WITH pending AS (SELECT id FROM workspace_members WHERE lower(email)=$2 AND user_id IS NULL AND accepted_at IS NULL AND ${pendingInvitationLiveSql("workspace_members",invitationMailEnabled())} ORDER BY created_at,id FOR UPDATE), bound AS (UPDATE workspace_members m SET user_id=$1,accepted_at=now() FROM pending p WHERE m.id=p.id RETURNING m.workspace_id,m.created_at,m.id) SELECT workspace_id FROM bound ORDER BY created_at,id`,[user.id,email]);
    return bound.rows[0]?.workspace_id ?? null;
   });
  },
  async hasPendingInvitation(email: string): Promise<boolean> {
-  return Boolean((await getPool().query("SELECT id FROM workspace_members WHERE lower(email)=lower($1) AND accepted_at IS NULL LIMIT 1",[email])).rows.length);
+  return Boolean((await getPool().query(`SELECT id FROM workspace_members WHERE lower(email)=lower($1) AND accepted_at IS NULL AND ${pendingInvitationLiveSql("workspace_members",invitationMailEnabled())} LIMIT 1`,[email])).rows.length);
  },
  /** Mail eligibility only: never grants workspace access or rebinds a membership. */
  async hasSignInMembership(email: string): Promise<boolean> {
   return Boolean((await getPool().query(`SELECT m.id FROM workspace_members m
    LEFT JOIN app_users u ON u.id=m.user_id
-   WHERE (m.user_id IS NULL AND m.accepted_at IS NULL AND lower(m.email)=lower($1))
+   WHERE (m.user_id IS NULL AND m.accepted_at IS NULL AND lower(m.email)=lower($1)
+          AND ${pendingInvitationLiveSql("m",invitationMailEnabled())})
       OR (m.accepted_at IS NOT NULL AND lower(u.email)=lower($1)
           AND EXISTS (SELECT 1 FROM auth_identities i WHERE i.user_id=u.id))
    LIMIT 1`,[email])).rows.length);
+ },
+ /** Pending (not yet accepted) manager/viewer invitation, for composing its mail. */
+ async invitationContext(memberId: string): Promise<InvitationContext | null> {
+  return (await getPool().query<InvitationContext>(`SELECT m.email, m.role, m.invited_at::text AS "invitedAt", w.business_name AS "workspaceName" FROM workspace_members m JOIN workspaces w ON w.id=m.workspace_id WHERE m.id::text=$1 AND m.accepted_at IS NULL AND m.role<>'owner'`,[memberId])).rows[0] ?? null;
+ },
+ /** Resend: renews the invitation window; null when the member is accepted, an owner, or absent. */
+ async refreshInvitation(workspaceId: string, memberId: string): Promise<InvitationContext | null> {
+  return (await getPool().query<InvitationContext>(`WITH r AS (UPDATE workspace_members SET invited_at=now() WHERE id::text=$2 AND workspace_id=$1 AND accepted_at IS NULL AND role<>'owner' RETURNING email,role,invited_at,workspace_id) SELECT r.email, r.role, r.invited_at::text AS "invitedAt", w.business_name AS "workspaceName" FROM r JOIN workspaces w ON w.id=r.workspace_id`,[workspaceId,memberId])).rows[0] ?? null;
  },
  async team(workspaceId: string): Promise<MemberRow[]> {
   return (await getPool().query<MemberRow>(`SELECT ${columns} FROM workspace_members WHERE workspace_id=$1 ORDER BY created_at,id`,[workspaceId])).rows;

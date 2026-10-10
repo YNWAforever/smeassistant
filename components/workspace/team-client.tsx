@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { LoaderCircle, MapPin, Plus, Trash2 } from "lucide-react"
+import { LoaderCircle, MapPin, Plus, RotateCw, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import type { PrototypeLocale } from "@/lib/copy"
-import { inviteMember, removeMember, updateMember, type ClientResult } from "@/lib/workspace/client"
+import { inviteMember, removeMember, resendInvitation, updateMember, type ClientResult } from "@/lib/workspace/client"
 
 /**
  * Owner-only team mutations (CLAUDE.md §3.9, Phase 6 item 5): the invite
@@ -97,6 +97,26 @@ export function RemoveMemberButton({ locale, workspaceId, memberId, email }: { l
   )
 }
 
+/** Owner-only: renews the invite window and re-sends the invitation mail (POST members/[memberId]/resend). */
+export function ResendInvitationButton({ locale, workspaceId, memberId }: { locale: PrototypeLocale; workspaceId: string; memberId: string }) {
+  const router = useRouter()
+  const t = COPY[locale]
+  const [busy, setBusy] = useState(false)
+
+  async function resend() {
+    if (busy) return
+    setBusy(true)
+    const result = await resendInvitation(workspaceId, memberId, locale)
+    setBusy(false)
+    if (!result.ok) { toast.error(failureMessage(result, t)); return }
+    if (result.data.invitation.status === "accepted_by_provider") toast.success(t.resent)
+    else toast.info(t.renewed)
+    router.refresh()
+  }
+
+  return <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void resend()}>{busy ? <LoaderCircle className="animate-spin" /> : <RotateCw />} {t.resend}</Button>
+}
+
 /** Manager location scope: "all locations" or a checked subset; saved as `location_scope` (null = all). */
 export function MemberScopeControl({ locale, workspaceId, memberId, locations, scope }: { locale: PrototypeLocale; workspaceId: string; memberId: string; locations: Array<{ id: string; name: string }>; scope: string[] | null }) {
   const router = useRouter()
@@ -161,15 +181,18 @@ export function MemberRoleSelect({ locale, workspaceId, memberId, role }: { loca
 
 const COPY = {
   en: {
-    // No mail is dispatched when an invite is created -- the row is written and
-    // the invitee joins by requesting a sign-in link themselves, so this copy
-    // must not claim a send that never happened.
+    // An invitation mail is sent on create (and on Resend) only when
+    // INVITATION_MAIL_ENABLED is on and application mail is open; the Team page
+    // status line reports that outcome. With it off, the row is written and the
+    // invitee joins by requesting a sign-in link, so this copy must not claim a
+    // send.
     invite: "Invite member", inviteNote: "The invite is saved here; the member joins by signing in with this address and gets the role you choose. Owners are never invited here.",
     email: "Email", role: "Role", manager: "Manager", viewer: "Viewer", send: "Create invite", invited: "Invite created. Ask them to sign in with this address.",
     remove: "Remove", removeTitle: "Remove this member?", removeNote: "Their access ends immediately; audit history is kept.", removed: "Member removed.", cancel: "Cancel",
     allLocations: "All locations", saveScope: "Save scope", scopeSaved: "Location scope saved.", scopeEmpty: "Choose at least one location, or all locations.", roleSaved: "Role updated.",
     invalid: "Enter a valid email address.", duplicate: "This email is already a member or has a pending invite.", forbidden: "Only the owner can manage the team.",
     network: "The server could not be reached; try again shortly.", failed: "The request failed.",
+    resend: "Resend invitation", resent: "Invitation sent again.", renewed: "Invitation renewed. The email was not sent.",
   },
   "zh-HK": {
     invite: "邀請成員", inviteNote: "邀請會在此儲存；成員以此電郵登入即可加入，並取得你選擇的角色。店主角色不會在此邀請。",
@@ -178,6 +201,7 @@ const COPY = {
     allLocations: "所有地點", saveScope: "儲存範圍", scopeSaved: "地點範圍已儲存。", scopeEmpty: "請選擇至少一個地點，或所有地點。", roleSaved: "角色已更新。",
     invalid: "請輸入有效電郵。", duplicate: "此電郵已是成員或已有待接受的邀請。", forbidden: "只有店主可以管理團隊。",
     network: "無法連接伺服器，請稍後再試。", failed: "操作失敗。",
+    resend: "重新發送邀請", resent: "已重新發送邀請。", renewed: "邀請已更新，但未發出電郵。",
   },
   "zh-TW": {
     invite: "邀請成員", inviteNote: "邀請會在此儲存；成員以此電子郵件登入即可加入，並取得你選擇的角色。店家負責人角色不會在此邀請。",
@@ -186,5 +210,6 @@ const COPY = {
     allLocations: "所有據點", saveScope: "儲存範圍", scopeSaved: "據點範圍已儲存。", scopeEmpty: "請選擇至少一個據點，或所有據點。", roleSaved: "角色已更新。",
     invalid: "請輸入有效的電子郵件。", duplicate: "此電子郵件已是成員或已有待接受的邀請。", forbidden: "只有店家負責人可以管理團隊。",
     network: "無法連線至伺服器，請稍後再試。", failed: "操作失敗。",
+    resend: "重新寄送邀請", resent: "已重新寄送邀請。", renewed: "邀請已更新，但未寄出電子郵件。",
   },
 } as const satisfies Record<PrototypeLocale, Record<string, string>>

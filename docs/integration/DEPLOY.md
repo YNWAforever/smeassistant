@@ -351,3 +351,13 @@ The local code does not alter the pinned legacy checkout or deployed scheduler. 
 The concrete retained-runner change is prepared in [legacy-workspace-completion.patch](legacy-workspace-completion.patch), pinned to upstream `b9b4151fb89217a926e38f187873b5ff9f10f90f`. `git apply --check` passes and its extracted transport fixtures pass 20 cases. It is not applied to the pinned checkout or a deployed service. Independent source review is complete; execute full caller/receiver integration locally before requesting its operational rollout.
 
 </details>
+
+## Invitation mail and report recovery (default off)
+
+Both features are built and ship disabled in code; nothing is applied to any hosted environment. Production flag state: `INVITATION_MAIL_ENABLED` is not set. `REPORT_RECOVERY_ENABLED` **is present** in Vercel production, inherited from the legacy app, with its value never read (`docs/implementation/owner-platform-v1/RELEASE-EVIDENCE-080ddf6.md`, "New/changed feature flags"). Today recovery stays closed only because application mail is closed.
+
+- **Precondition before opening mail for any reason (including scan notices):** before setting `APPLICATION_MAIL_APPROVED=2026-10-mail-v2`, read `REPORT_RECOVERY_ENABLED` in Vercel production and set it to `false` or remove it, unless recovery is intended. If its inherited value is `true`, opening mail turns recovery on at the next deployment.
+- **Superseded mail version:** `APPLICATION_MAIL_APPROVED=2026-09-event-mail-v1` (the value in `PHASE-3-REPORT.md`) no longer matches `MAIL_TEMPLATES_VERSION`; it now leaves **all** application mail closed, including scan notices. The current value is `2026-10-mail-v2`.
+- **Turn on:** record the DEC-07 values (sender, recipients), then set `APPLICATION_MAIL_APPROVED=2026-10-mail-v2` with `RESEND_API_KEY`, `REPORT_EMAIL_FROM`, `APP_ORIGIN` and `MAIL_UNSUBSCRIBE_SECRET` (>= 32 bytes; optional `MAIL_RECIPIENT_ALLOWLIST`). Then set `INVITATION_MAIL_ENABLED=true` and/or `REPORT_RECOVERY_ENABLED=true` (exactly `true`). Recovery additionally requires mail to be open.
+- **Rollback:** unset the two flags (and, to close all mail, `APPLICATION_MAIL_APPROVED`, or `MAIL_PAUSED=true`).
+- **Limits:** `invitation_resend` 3/day per member and `report_recovery` 1 per 10 min per email|slug, both counted across all source IPs (no request fingerprint in the key); `report_recovery_ip` 20/h; `report_redeem` 30/h. Audit events `member.invitation_resent`, `report.recovery_requested`, `report.recovery_redeemed`.

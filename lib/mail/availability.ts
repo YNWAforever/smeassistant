@@ -12,7 +12,7 @@ export type MailAvailability =
   | { open: true }
   | { open: false; reason: "mail_unapproved" | "provider_unconfigured" };
 
-export const MAIL_TEMPLATES_VERSION = "2026-09-event-mail-v1";
+export const MAIL_TEMPLATES_VERSION = "2026-10-mail-v2";
 
 const MAIL_ENV_KEYS = ["RESEND_API_KEY", "REPORT_EMAIL_FROM", "APP_ORIGIN"] as const;
 

@@ -6,6 +6,7 @@ import { normaliseLocale } from "@/lib/copy";
 import { buildReportProps, type ReportViewModelLike } from "@/lib/funnel/report-props";
 import { t } from "@/lib/i18n";
 import { previewDraftEnabled, previewDraftHrefFor } from "@/lib/preview/flag";
+import { recoveryAvailable } from "@/lib/mail/feature-flags";
 import { loadReport } from "@/lib/report/load-report";
 
 /**
@@ -40,6 +41,7 @@ export default async function Report({ params }: { params: Promise<{ locale: str
     <ReportPage
       {...buildReportProps(model satisfies ReportViewModelLike, pageLocale)}
       {...(previewDraftHref ? { previewDraftHref } : {})}
+      {...(model.access === "public" && recoveryAvailable() ? { recoveryAvailable: true } : {})}
     />
   );
 }

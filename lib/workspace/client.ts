@@ -270,6 +270,10 @@ export function inviteMember(workspaceId: string, body: { email: string; role: "
   return post(`/api/workspaces/${encodeURIComponent(workspaceId)}/members`, body);
 }
 
+export function resendInvitation(workspaceId: string, memberId: string, locale: string): Promise<ClientResult<{ invitation: { status: string }; invitedAt: string }>> {
+  return post(`/api/workspaces/${encodeURIComponent(workspaceId)}/members/${encodeURIComponent(memberId)}/resend`, { locale });
+}
+
 export function removeMember(workspaceId: string, memberId: string): Promise<ClientResult<{ ok: true }>> {
   return request(`/api/workspaces/${encodeURIComponent(workspaceId)}/members?memberId=${encodeURIComponent(memberId)}`, { method: "DELETE" });
 }

@@ -63,3 +63,21 @@ describe("ReportPage header sign-in (F-20)", () => {
     expect(signInHref({ ...report, sample: true })).toBe("");
   });
 });
+
+describe("ReportPage recovery form", () => {
+  const locked = { hiddenFindingCount: 3, unlockHref: "/en/unlock/fixture" };
+  const heading = "Already unlocked this report? Email me a new link";
+
+  it("is present in the locked banner only when recoveryAvailable is true", () => {
+    const on = markup({ ...report, access: "public", locked, recoveryAvailable: true });
+    expect(on.querySelector(".unlock-banner")?.textContent).toContain(heading);
+    expect(on.querySelector(".unlock-banner input[type=email]")).not.toBeNull();
+  });
+
+  it.each([false, undefined])("is absent when recoveryAvailable is %s", (flag) => {
+    const off = markup({ ...report, access: "public", locked, recoveryAvailable: flag });
+    expect(off.querySelector(".unlock-banner")).not.toBeNull();
+    expect(off.textContent).not.toContain(heading);
+    expect(off.querySelector("input[type=email]")).toBeNull();
+  });
+});

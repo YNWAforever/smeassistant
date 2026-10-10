@@ -35,6 +35,15 @@ describe("mailAvailability", () => {
     },
   );
 
+  it("treats the previous template version as unapproved", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(MAIL_TEMPLATES_VERSION).toBe("2026-10-mail-v2");
+    expect(mailAvailability({ ...FULL_ENV, APPLICATION_MAIL_APPROVED: "2026-09-event-mail-v1" })).toEqual({
+      open: false,
+      reason: "mail_unapproved",
+    });
+  });
+
   it("warns once on a mismatched approval value", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(mailAvailability({ APPLICATION_MAIL_APPROVED: "2026-08-old" })).toEqual({

@@ -138,6 +138,9 @@ const PROMISES: readonly Promised[] = [
     // So telling that person to "reply to the report email" still points at
     // an email that never arrives. The detector trips once a mail kind is
     // about reports, or any code that can send mail also builds a report link.
+    // The P2 item 30 recovery route mails an on-request, single-use re-entry
+    // link (default off). That does not deliver a report to the unlocker, so
+    // the ban stands; the detector deliberately ignores the `/recover?t=` link.
     capability: "a report-delivery email (any code path that mails a report link)",
     implemented: () => {
       const kinds = /MAIL_KINDS\s*=\s*\[([^\]]*)\]/.exec(readFileSync(join(repoRoot, "lib", "mail", "decide.ts"), "utf8"))?.[1] ?? "";
@@ -145,7 +148,8 @@ const PROMISES: readonly Promised[] = [
         /report/i.test(kinds) ||
         backendText().some(
           (source) =>
-            /createMailTransport|transport\.send\(/.test(source) && /reportPath\(|absoluteReportUrl\(|\/r\/\$\{/.test(source),
+            /createMailTransport|transport\.send\(/.test(source) &&
+            /reportPath\(|absoluteReportUrl\(|\/r\/\$\{/.test(source.replace(/\/r\/\$\{[^}]*\}\/recover\?t=/g, "")),
         )
       );
     },

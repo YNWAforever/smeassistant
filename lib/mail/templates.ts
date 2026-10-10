@@ -68,7 +68,7 @@ const COPY: Record<MailKind, Record<Locale, MailCopy>> = {
 };
 
 /** Keys whose value is a URL, rendered as `<a href>` in HTML instead of escaped text. */
-const LINK_KEYS = new Set(["workspaceUrl", "unsubscribeUrl"]);
+const LINK_KEYS = new Set(["workspaceUrl", "unsubscribeUrl", "signInUrl", "recoverUrl"]);
 
 function escapeHtml(value: string): string {
   return value
@@ -93,30 +93,99 @@ function fillTemplate(
   });
 }
 
+function renderCopy(copy: MailCopy, values: Record<string, string>): RenderedMail {
+  const bodyText = fillTemplate(copy.body, values, "text");
+  const footerText = fillTemplate(copy.footer, values, "text");
+  const bodyHtml = fillTemplate(copy.body, values, "html");
+  const footerHtml = fillTemplate(copy.footer, values, "html");
+
+  return {
+    subject: fillTemplate(copy.subject, values, "text"),
+    text: `${bodyText}
+
+${footerText}`,
+    html: `<p>${bodyHtml}</p><p>${footerHtml}</p>`,
+  };
+}
+
 /**
  * Renders one scan-mail kind in one locale. `html` HTML-escapes every
  * interpolated value and renders `workspaceUrl`/`unsubscribeUrl` as anchors;
  * `text` is the raw interpolation, `body` + a blank line + `footer`.
  */
 export function renderScanMail(kind: MailKind, locale: Locale, input: ScanMailInput): RenderedMail {
-  const copy = COPY[kind][locale];
-  const values: Record<string, string> = {
+  return renderCopy(COPY[kind][locale], {
     business: input.businessName,
     count: String(input.regressedCount ?? 0),
     workspaceUrl: input.workspaceUrl,
     unsubscribeUrl: input.unsubscribeUrl,
-  };
+  });
+}
 
-  const subject = fillTemplate(copy.subject, values, "text");
-  const bodyText = fillTemplate(copy.body, values, "text");
-  const footerText = fillTemplate(copy.footer, values, "text");
+export interface InvitationMailInput {
+  workspaceName: string;
+  role: "manager" | "viewer";
+  signInUrl: string;
+}
 
-  const bodyHtml = fillTemplate(copy.body, values, "html");
-  const footerHtml = fillTemplate(copy.footer, values, "html");
+export interface RecoveryMailInput {
+  businessName: string;
+  recoverUrl: string;
+}
 
-  return {
-    subject,
-    text: `${bodyText}\n\n${footerText}`,
-    html: `<p>${bodyHtml}</p><p>${footerHtml}</p>`,
-  };
+const INVITATION_COPY: Record<Locale, MailCopy> = {
+  en: {
+    subject: "You're invited to {workspace}",
+    body: "You've been invited to join {workspace} as {role}. Sign in with this email address to accept: {signInUrl}",
+    footer: "If you weren't expecting this, you can ignore this email.",
+  },
+  "zh-HK": {
+    subject: "你獲邀加入 {workspace}",
+    body: "你獲邀以{role}身份加入 {workspace}。請用此電郵地址登入以接受邀請：{signInUrl}",
+    footer: "如你沒有預期收到此邀請，可略過此電郵。",
+  },
+  "zh-TW": {
+    subject: "你受邀加入 {workspace}",
+    body: "你受邀以{role}身分加入 {workspace}。請用這個電子郵件地址登入以接受邀請：{signInUrl}",
+    footer: "如果你沒有預期收到這封邀請，可以忽略此信。",
+  },
+};
+
+const ROLE_WORDS: Record<Locale, Record<InvitationMailInput["role"], string>> = {
+  en: { manager: "manager", viewer: "viewer" },
+  "zh-HK": { manager: "經理", viewer: "檢視者" },
+  "zh-TW": { manager: "經理", viewer: "檢視者" },
+};
+
+const RECOVERY_COPY: Record<Locale, MailCopy> = {
+  en: {
+    subject: "Your link to the {business} report",
+    body: "Open your report again: {recoverUrl} — this link works once and expires in 60 minutes.",
+    footer: "If you didn't ask for this, ignore this email; nothing changes.",
+  },
+  "zh-HK": {
+    subject: "{business} 報告的連結",
+    body: "重新開啟你的報告：{recoverUrl}。連結只可使用一次，60 分鐘內有效。",
+    footer: "如你沒有提出此要求，請略過此電郵，一切不會改變。",
+  },
+  "zh-TW": {
+    subject: "{business} 報告的連結",
+    body: "重新開啟你的報告：{recoverUrl}。連結只能使用一次，60 分鐘內有效。",
+    footer: "如果你沒有提出這個要求，請忽略此信，一切不會改變。",
+  },
+};
+
+export function renderInvitationMail(locale: Locale, input: InvitationMailInput): RenderedMail {
+  return renderCopy(INVITATION_COPY[locale], {
+    workspace: input.workspaceName,
+    role: ROLE_WORDS[locale][input.role],
+    signInUrl: input.signInUrl,
+  });
+}
+
+export function renderRecoveryMail(locale: Locale, input: RecoveryMailInput): RenderedMail {
+  return renderCopy(RECOVERY_COPY[locale], {
+    business: input.businessName,
+    recoverUrl: input.recoverUrl,
+  });
 }

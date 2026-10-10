@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
+import { getPool } from "@/lib/db/client";
+import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
+import { invitationMailEnabled } from "@/lib/mail/feature-flags";
+import { sendInvitation } from "@/lib/mail/invitation";
+import { createMailTransport, type MailSendStatus } from "@/lib/mail/transport";
 import { membershipRepository } from "@/lib/repositories/membership";
 import { recordClaimAuditEvent } from "@/lib/repositories/claims";
 
@@ -70,7 +75,32 @@ export async function POST(req: Request, { params }: { params: Promise<{ workspa
     payload: { locale: typeof body.locale === "string" ? body.locale : null, role },
   });
 
-  return NextResponse.json({ memberId: memberId }, { status: 201 });
+  // Flag off: the response stays exactly { memberId } (no `invitation` key).
+  if (!invitationMailEnabled()) return NextResponse.json({ memberId: memberId }, { status: 201 });
+
+  // The invite row exists; a mail problem is reported, never thrown. Logs carry a category only.
+  let status: MailSendStatus = "failed";
+  try {
+    const context = await membershipRepository.invitationContext(memberId);
+    if (context) {
+      status = (
+        await sendInvitation({
+          db: getPool(),
+          transport: createMailTransport(),
+          env: process.env,
+          member: { id: memberId, email: context.email, role: context.role, invitedAt: context.invitedAt },
+          workspaceId,
+          workspaceName: context.workspaceName,
+          locale: isLocale(body.locale) ? body.locale : DEFAULT_LOCALE,
+          origin: process.env.APP_ORIGIN ?? "",
+        })
+      ).status;
+    }
+  } catch {
+    console.error("[mail] invitation_send_failed", { category: "invitation_send_failed" });
+  }
+
+  return NextResponse.json({ memberId: memberId, invitation: { status } }, { status: 201 });
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ workspaceId: string }> }) {

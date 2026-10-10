@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { TeamView } from "@/components/workspace/team-view";
+import { invitationMailEnabled } from "@/lib/mail/feature-flags";
 import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 import { getTeam } from "@/lib/workspace/team";
 
@@ -17,6 +18,7 @@ export async function generateMetadata(props: OwnerPageProps): Promise<Metadata>
  */
 export default async function TeamRoute(props: OwnerPageProps) {
   const page = await loadOwnerPage(props);
-  const model = await getTeam(page.ctx);
-  return <TeamView locale={page.locale} workspaceId={page.ctx.workspace.id} role={page.membership.role} timezone={page.ctx.workspace.timezone} model={model} />;
+  const invitationMail = invitationMailEnabled();
+  const model = await getTeam(page.ctx, undefined, { invitationMail });
+  return <TeamView locale={page.locale} workspaceId={page.ctx.workspace.id} role={page.membership.role} timezone={page.ctx.workspace.timezone} model={model} invitationMail={invitationMail} />;
 }

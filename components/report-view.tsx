@@ -5,6 +5,7 @@ import { DashboardPriorities } from "@/components/report/dashboard-priorities"
 import { buildReportDashboard } from "@/lib/funnel/report-dashboard"
 import styles from "@/components/report/dashboard.module.css"
 import Link from "next/link"
+import { RecoveryForm } from "@/components/report/recovery-form"
 import { ArrowRight, Check, LockKeyhole, MessageCircle, TriangleAlert } from "lucide-react"
 
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet"
@@ -252,6 +253,7 @@ export function ReportPage(props: ReportProps) {
                 {c.unlockButton} <ArrowRight />
               </Link>
             </Button>
+            {props.recoveryAvailable && <RecoveryForm locale={locale} slug={props.slug} />}
           </section>
         )}
 
