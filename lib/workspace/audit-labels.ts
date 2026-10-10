@@ -28,6 +28,8 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string }> = {
   "member.invited": { en: "Member invited", zh: "已邀請成員" },
   "member.invitation_resent": { en: "Invitation resent", zh: "已重新發送邀請" },
   "member.role_changed": { en: "Member role changed", zh: "成員角色已更改" },
+  "report.recovery_requested": { en: "Report link requested", zh: "已要求報告連結" },
+  "report.recovery_redeemed": { en: "Report link used", zh: "已使用報告連結" },
   "integration.updated": { en: "Integration updated", zh: "連接已更新" },
   "brand.updated": { en: "Brand profile updated", zh: "品牌資料已更新" },
   "asset.uploaded": { en: "Asset uploaded", zh: "素材已上載" },

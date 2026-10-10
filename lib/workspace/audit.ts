@@ -21,6 +21,7 @@ export const AUDIT_EVENTS = [
   "scan.auto_closed", "ops.scan.released",
   "offer.created", "offer.updated",
   "pack.started",
+  "report.recovery_requested", "report.recovery_redeemed",
 ] as const;
 
 export type AuditEvent = (typeof AUDIT_EVENTS)[number];

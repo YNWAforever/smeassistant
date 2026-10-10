@@ -72,7 +72,9 @@ describe("atomic rate-limit contract", () => {
     // 10 guesses against 1,000,000 possibilities is negligible per hour even
     // before the identity provider's per-token attempt limit is considered.
     expect(RATE_LIMITS.staff_otp_verify).toEqual({ limit: 10, windowSeconds: 3600 });
-    expect(RATE_LIMITS.report_recovery).toEqual({ limit: 5, windowSeconds: 3600 });
+    expect(RATE_LIMITS.report_recovery).toEqual({ limit: 1, windowSeconds: 600 });
+    expect(RATE_LIMITS.report_recovery_ip).toEqual({ limit: 20, windowSeconds: 3600 });
+    expect(RATE_LIMITS.report_redeem).toEqual({ limit: 30, windowSeconds: 3600 });
     expect(RATE_LIMITS.composite_identifier_outer).toEqual({ limit: 1000, windowSeconds: 3600 });
     expect(RATE_LIMITS.staff_lead_contact).toEqual({ limit: 60, windowSeconds: 3600 });
     // Lower than disclosure on purpose: reading 60 contacts is recoverable,

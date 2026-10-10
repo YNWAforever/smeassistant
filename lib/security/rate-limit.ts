@@ -14,6 +14,8 @@ export type RateLimitScope =
   | "report_unlock"
   | "composite_identifier_outer"
   | "report_recovery"
+  | "report_recovery_ip"
+  | "report_redeem"
   | "staff_magic_link"
   | "owner_magic_link"
   | "workspace_invite_magic_link"
@@ -67,7 +69,13 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   // 10 attempts against 1,000,000 possibilities is a negligible brute-force
   // budget even before the identity provider's per-token attempt limit applies.
   staff_otp_verify: { limit: 10, windowSeconds: 60 * 60 },
-  report_recovery: { limit: 5, windowSeconds: 60 * 60 },
+  // One recovery mail per email x report per ten minutes: the address is
+  // caller-supplied, so this bounds mail to any one inbox. The per-IP bucket
+  // below bounds how many (email, report) pairs one origin can probe.
+  report_recovery: { limit: 1, windowSeconds: 10 * 60 },
+  report_recovery_ip: { limit: 20, windowSeconds: 60 * 60 },
+  // Guesses against 32-byte recovery tokens are hopeless; this only bounds load.
+  report_redeem: { limit: 30, windowSeconds: 60 * 60 },
   // Staff are allowlisted and email-verified, so this is not about distrusting
   // them. enforceRateLimit keys the bucket on `identifiers` (staff.email here)
   // plus requestFingerprint(req) — an HMAC of the caller's source IP — so the
