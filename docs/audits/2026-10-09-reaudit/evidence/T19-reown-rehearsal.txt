@@ -1,0 +1,21 @@
+# reown-0009-0014-objects.sql rehearsal — 2026-10-10, local disposable postgres:18 (18.6) container only
+# Production-like = migrated 0001-0015 by smeassistant_migrator (journal 1-15), then the 6 tables + 9 functions re-owned to neondb_owner as on production.
+# Statement run as neondb_owner (LOGIN, non-superuser, SET on smeassistant_migrator) except case 6. '31 objects' = 6 tables + 16 indexes + 9 functions.
+1 objects owned by neondb_owner before: 31
+1 reown on production-like: {"ok":true,"notices":["reown: 6 tables and 9 functions now owned by smeassistant_migrator"]}
+1 objects owned by neondb_owner after: 0
+1 owners + ACLs equal to a database migrated straight by the migrator: true
+1 repository runner afterwards (expect []): []
+1 migrator can alter offers + archive_offer: true
+2 re-run: {"ok":false,"error":"reown refused: objects not owned by smeassistant_migrator are not exactly the expected 6 tables and 9 functions: "}
+3 journal 1-8: {"ok":false,"error":"reown refused: neon_migrations.journal is not exactly 0001-0015 with the expected checksums (it has 8 rows)"}
+4 extra neondb_owner table: {"ok":false,"error":"reown refused: the schema does not match 0015 in: columns, tables"}
+4 offers still owned by neondb_owner after refusal: true
+5 partially transferred: {"ok":false,"error":"reown refused: objects not owned by smeassistant_migrator are not exactly the expected 6 tables and 9 functions: function archive_offer(uuid,uuid); function begin_publish_output_version(uuid,uuid,text,text); function cancel_published_reply(uuid,uuid); function claim_preview_slot(uuid,uuid,text,integer,numeric); function confirm_offer(uuid,uuid,integer); function finish_preview_slot(uuid,text,text,numeric); function finish_publish_output_version(uuid,uuid,text,jsonb,text); function offer_current_for_version(output_versions); table mail_outbox; table offers; table preview_events; table scan_attempts; table work_pack_items; table work_packs"}
+6 other login: {"ok":false,"error":"reown refused: running as other_owner, not neondb_owner"}
+
+# Read-only checks on production (br-wandering-field-azdc91yj / ep-tiny-forest-azzm8bni / neondb), 2026-10-10, BEGIN READ ONLY + default_transaction_read_only=on, owner-approved:
+# - journal exactly 1-15 as expected: true
+# - fingerprints: columns, constraints, functions, indexes, runtime_grants, tables, triggers, types all match
+# - non-migrator objects exactly the expected 15: true
+# - {"u":"neondb_owner","can_set":true,"mig_create":true}; all 9 functions secdef=false; force_rls 0; no standalone types; no sequences
