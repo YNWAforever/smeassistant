@@ -89,6 +89,8 @@ export type OffersCopy = {
     createFailed: string;
     noPermission: string;
     checkingUsage: string;
+    /** Appended to the disclosure when the usage read failed: never imply the allowance is unlimited. */
+    usageUnavailable: string;
   };
   stale: { offer_changed: string; offer_expired: string; offer_inactive: string };
   card: { heading: string; viewOffers: string };
@@ -368,6 +370,7 @@ export const workspaceEn: WorkspaceCopy = {
       createFailed: "The drafts could not be created. Try again shortly.",
       noPermission: "Your role or location scope cannot create drafts for this offer.",
       checkingUsage: "Checking this month's usage",
+      usageUnavailable: " This month's usage could not be checked right now; each draft you export still counts.",
     },
     stale: {
       offer_changed: "The offer changed after this draft was written. Generate a new draft from the current offer.",
@@ -635,6 +638,7 @@ export const workspaceZhHK: WorkspaceCopy = {
       createFailed: "未能建立草稿，請稍後再試。",
       noPermission: "你的角色或地點範圍不可為此優惠建立草稿。",
       checkingUsage: "正在查看本月用量",
+      usageUnavailable: "暫時未能查看本月用量；每份匯出的草稿仍會計算。",
     },
     stale: { offer_changed: "優惠在這份草稿撰寫後已更改。請按目前的優惠重新生成草稿。", offer_expired: "此優惠已結束。請延長日期並重新確認後才可使用。", offer_inactive: "此優惠尚未確認或已封存。" },
     card: { heading: "這份草稿所依據的優惠", viewOffers: "前往優惠" },
@@ -896,6 +900,7 @@ export const workspaceZhTW: WorkspaceCopy = {
       createFailed: "無法建立草稿，請稍後再試。",
       noPermission: "您的角色或據點範圍無法為此優惠建立草稿。",
       checkingUsage: "正在查看本月用量",
+      usageUnavailable: "目前無法查看本月用量；每份匯出的草稿仍會計算。",
     },
     stale: { offer_changed: "優惠在這份草稿撰寫後已變更。請依目前的優惠重新產生草稿。", offer_expired: "此優惠已結束。請延長日期並重新確認後才能使用。", offer_inactive: "此優惠尚未確認或已封存。" },
     card: { heading: "這份草稿所依據的優惠", viewOffers: "前往優惠" },

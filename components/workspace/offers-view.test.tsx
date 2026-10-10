@@ -252,6 +252,13 @@ describe("OffersView", () => {
     expect(clientMocks.createPromotions).not.toHaveBeenCalled();
   });
 
+  it("says the usage could not be checked when the read fails, rather than looking unlimited", async () => {
+    clientMocks.getUsage.mockResolvedValue({ ok: false, status: 503, error: "unavailable" });
+    mount({ offers: [offer({ status: "confirmed" })] });
+    await act(async () => { fireEvent.click(button(text.actions.createDrafts)); });
+    expect(screen.getByText(new RegExp(text.promotion.usageUnavailable.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))).toBeInTheDocument();
+  });
+
   it("only lists rights-approved assets usable at the offer's location in the photo picker", () => {
     mount({ assets: [{ id: "a-1", filename: "shared.jpg", locationId: null }, { id: "a-2", filename: "yik-yam.jpg", locationId: "loc-1" }, { id: "a-3", filename: "tin-hau.jpg", locationId: "loc-2" }] });
     fireEvent.click(button(text.actions.newOffer));

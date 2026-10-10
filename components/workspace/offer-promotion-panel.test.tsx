@@ -48,6 +48,14 @@ describe("OfferPromotionPanel", () => {
     expect(disclosure.textContent).not.toContain("This month");
   });
 
+  it.each(["en", "zh-HK", "zh-TW"] as const)("says the month's usage could not be checked when the read failed (%s)", (locale) => {
+    mount({ locale, usage: "unavailable" });
+    const promotion = copy[locale].workspace.offers.promotion;
+    const channels = locale === "en" ? "Instagram, Google" : "Instagram、Google";
+    expect(promotion.usageUnavailable.trim()).not.toBe("");
+    expect(screen.getByText(promotion.disclosure.replace("{n}", "2").replace("{channels}", channels) + promotion.usageUnavailable)).toBeInTheDocument();
+  });
+
   it("states the unit in each locale", () => {
     for (const locale of ["zh-HK", "zh-TW"] as const) {
       const { unmount } = mount({ locale });
