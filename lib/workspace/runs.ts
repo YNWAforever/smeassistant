@@ -135,10 +135,13 @@ function resolveAgentKey(
   return templateAgent;
 }
 
-function addUsage(total: LLMUsage, next: LLMUsage | undefined): LLMUsage {
-  if (!next) return total;
+function addUsage(total: LLMUsage, next: LLMUsage | undefined, firstAttempt: boolean): LLMUsage {
+  // The initial nulls mean no call yet. Once a call has unknown usage, a later
+  // report cannot turn that missing amount into zero or a known total cost.
+  if (firstAttempt) return next ? { ...next } : NO_USAGE;
+  if (!next) return NO_USAGE;
   const add = (a: number | null, b: number | null) =>
-    a === null && b === null ? null : (a ?? 0) + (b ?? 0);
+    a === null || b === null ? null : a + b;
   return {
     inputTokens: add(total.inputTokens, next.inputTokens),
     outputTokens: add(total.outputTokens, next.outputTokens),
@@ -571,11 +574,13 @@ export async function runAgentForAction(
           outcome = result ? { ok: true, result } : { ok: false, code: "no_model_output", retryable: false };
         } else outcome = await (input.llmDetailed ?? llmCompleteDetailed)(prompt, options);
       } catch {
-        // A transport rejection gets the same single, budget-bounded retry as a null/schema failure.
+        // A transport rejection can recover, but its unreported charge remains
+        // unknown even when the next completion reports both token counts.
+        usage = addUsage(usage, undefined, attempt === 0);
         reason = "action_run_failed";
         continue;
       }
-      usage = addUsage(usage, outcome.ok ? outcome.result.usage : outcome.usage);
+      usage = addUsage(usage, outcome.ok ? outcome.result.usage : outcome.usage, attempt === 0);
       if (!outcome.ok) {
         reason = outcome.code;
         if (!outcome.retryable || attempt + 1 >= MAX_AGENT_ATTEMPTS) break;

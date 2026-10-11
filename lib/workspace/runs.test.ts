@@ -190,6 +190,18 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 describe("typed action runtime", () => {
+  it.each(['transport-rejection','unreported-retry','partial-usage','unreported-later'] as const)('T19: %s keeps aggregate usage/cost unknown across attempts',async mode=>{
+    const llmDetailed=vi.fn<typeof import('@/lib/llm').llmCompleteDetailed>();
+    if(mode==='transport-rejection')llmDetailed.mockRejectedValueOnce(new Error('fixture transport uncertainty'));
+    else if(mode==='unreported-retry')llmDetailed.mockResolvedValueOnce({ok:false,code:'provider_unavailable',retryable:true});
+    else if(mode==='partial-usage')llmDetailed.mockResolvedValueOnce({ok:true,result:{text:'invalid json',usage:{inputTokens:null,outputTokens:2}}});
+    else llmDetailed.mockResolvedValueOnce({ok:true,result:{...good(),text:'invalid json'}});
+    llmDetailed.mockResolvedValueOnce(mode==='unreported-later'?{ok:false,code:'provider_unavailable',retryable:false}:{ok:true,result:good()});
+    await run({llmDetailed});
+    expect(llmDetailed).toHaveBeenCalledTimes(2);
+    expect(finish).toHaveBeenCalledWith(expect.objectContaining({usage:{inputTokens:null,outputTokens:mode==='partial-usage'?52:null},costUsd:null}));
+  });
+
   it("uses review excerpts and persists token cost", async () => {
     const llm = vi.fn(async (p: string) => {
       expect(p).toContain("Slow service");
