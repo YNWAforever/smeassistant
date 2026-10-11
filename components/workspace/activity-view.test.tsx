@@ -47,4 +47,20 @@ describe("ActivityView labels (F-22)", () => {
     const [[, , , detail]] = cells("en", [row({ event: "brand.updated", entity_type: "some_internal_table" })]);
     expect(detail).toBe("");
   });
+
+  it.each([
+    ["pack.started", "已開始入門套組", "入門套裝"],
+    ["asset.uploaded", "素材已上傳", "上載"],
+    ["mail.attempted", "已嘗試發送電子郵件", "電郵"],
+  ])("uses Taiwan wording for zh-TW (%s)", (event, tw, hkOnly) => {
+    const [[, , label]] = cells("zh-TW", [row({ event })]);
+    expect(label).toBe(tw);
+    expect(label).not.toContain(hkOnly);
+  });
+
+  it("keeps Hong Kong wording for zh-HK", () => {
+    const [[, , label]] = cells("zh-HK", [row({ event: "pack.started" })]);
+    expect(label).toBe("已開始入門套裝");
+  });
 });
+
