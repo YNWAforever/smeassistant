@@ -85,17 +85,18 @@ test("an offer becomes two drafts, one is approved and exported, and an edited o
   await expect(again.getByText("已確認", { exact: true })).toBeVisible();
   expect(sql(environment.db, `select status || ':' || price_amount from offers where workspace_id='${merchant.workspaceId}';`)).toBe("confirmed:1180.00");
 
-  // 5. The Google draft was written from the old revision: approving it answers 409 offer_changed, shows the owner copy, and stays a draft.
+  // 5. The Google draft was written from the old revision: the page shows the owner copy and disables
+  // every Approve control, and the server still refuses a direct approve with 409 offer_changed.
   await page.goto(googleHref);
   await expect(page.getByTestId("offer-stale-banner")).toContainText(OFFER_CHANGED);
-  const refusal = page.waitForResponse((response) => /\/api\/versions\/[^/]+\/approve/.test(response.url()));
-  await clickUntil(page.getByRole("button", { name: "核准第 1 版" }).first(), page.getByRole("dialog"));
-  await page.getByRole("dialog").getByRole("button", { name: "核准第 1 版" }).click();
-  const response = await refusal;
+  const approves = page.getByRole("button", { name: /^核准/ });
+  await expect(approves.first()).toBeVisible();
+  for (const button of await approves.all()) await expect(button).toBeDisabled();
+  await expect(page.locator("body")).not.toContainText("offer_changed");
+  const staleVersionId = sql(environment.db, `select v.id from output_versions v join actions a on a.id=v.action_id where a.workspace_id='${merchant.workspaceId}' and a.template_key='offer-google-post';`);
+  const response = await page.request.post(`/api/versions/${staleVersionId}/approve`, { data: {} });
   expect(response.status()).toBe(409);
   expect((await response.json() as { error: string }).error).toBe("offer_changed");
-  await expect(page.getByTestId("offer-stale-banner")).toContainText(OFFER_CHANGED);
-  await expect(page.locator("body")).not.toContainText("offer_changed");
   expect(sql(environment.db, `select v.approval_state from output_versions v join actions a on a.id=v.action_id where a.workspace_id='${merchant.workspaceId}' and a.template_key='offer-google-post';`)).toBe("draft");
   expect(used()).toBe("1");
 });

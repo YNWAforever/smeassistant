@@ -250,7 +250,9 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
       ? (isChinese ? "已檢查" : "Checked")
       : (isChinese ? "未經檢查" : "Not checked")
   const offersCopy = copy[locale].workspace.offers
-  const offerStale: OfferStaleKind | null = offerRefusal ?? (offer ? offerStaleKind(offer, { hasVersion: versions.length > 0, recordedRevision: latestVersionOfferRevision }) : null)
+  // Judged against the selected version's recorded revision: approve and export act on that row,
+  // and the server checks that row's revision (an older approved version can be stale while the latest is not).
+  const offerStale: OfferStaleKind | null = offerRefusal ?? (offer ? offerStaleKind(offer, { hasVersion: versions.length > 0, recordedRevision: selectedVersion ? selectedVersion.offerRevision : latestVersionOfferRevision }) : null)
   const approval = selectedVersion?.approval_state ?? null
   const delivery = selectedVersion?.delivery_state ?? "not_requested"
   // P4.6: delivery_state can read publishing/published/cancelled now, and an
@@ -265,7 +267,9 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   const canEdit = hydrated && !offline && inScope && effectiveRole !== "viewer" && busy === null
   const canApprove = hydrated && !offline && inScope && effectiveRole !== "viewer" && busy === null && selectedVersion !== null
   const isApprovedCurrent = approval === "approved" && !dirty
-  const canApproveCurrent = canApprove && !dirty && approval !== "rejected" && approval !== "superseded" && approval !== "approved"
+  // While the stale-offer banner shows, the server refuses approve and export; the controls say so too.
+  const canApproveCurrent = canApprove && !dirty && approval !== "rejected" && approval !== "superseded" && approval !== "approved" && offerStale === null
+  const canDeliver = isApprovedCurrent && canApprove && offerStale === null
   const latestRun = runs[0]
   const runStateKey = latestRun?.state
   // R3: the offer is bound by the action's offer_id column, so the owner is never asked for it.
@@ -527,7 +531,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   }
 
   async function deliver(mode: "export" | "copy") {
-    if (!isApprovedCurrent || !canApprove || !selectedVersion) { toast.error(isChinese ? "只有目前已儲存及已核准的指定版本可以匯出。" : "Only the selected saved and approved version can be exported."); return }
+    if (!canDeliver || !selectedVersion) { toast.error(isChinese ? "只有目前已儲存及已核准的指定版本可以匯出。" : "Only the selected saved and approved version can be exported."); return }
     setBusy(mode)
     const result = await exportVersion(selectedVersion.id, mode)
     setBusy(null)
@@ -820,8 +824,8 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
               </SectionCard>
               <SectionCard className="delivery-card"><div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "送出" : "Delivery"}</p><h2>{social ? (isChinese ? "匯出至 Instagram" : "Export for Instagram") : (isChinese ? "匯出已核准版本" : "Export the approved version")}</h2></div><CapabilityBadge value={publishPanel ? googleBusinessPublishCapability({ enabled: publishPanel.enabled, connectionActive: publishPanel.connectionActive }) : "Requires connection"} /></div><p>{publishPanel?.enabled ? copy[locale].workspace.publish.deliveryIntro : isChinese ? "目前沒有已驗證的直接發佈連接器。只有指定版本獲核准並完成匯出，才計 1 次核准後交付。" : "No verified direct-publishing connector is present. One approved delivery is counted only after exact-version approval and export."}</p>
                 {allowanceBlocked && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "本月核准後交付額已用完" : "This month's approved-delivery allowance is used up"}</strong><p>{isChinese ? "版本仍已核准並保留；升級方案或等待下月額度後即可匯出。" : "The version stays approved; upgrade the plan or wait for next month's allowance to export it."}</p><Button asChild size="sm" variant="outline"><Link href={`${base}/settings/billing`}>{isChinese ? "查看帳單與方案" : "View billing and plans"}</Link></Button></div></div>}
-                <Button className="w-full" variant={isApprovedCurrent ? "default" : "outline"} disabled={!isApprovedCurrent || !canApprove} onClick={() => void deliver("export")}>{busy === "export" ? <LoaderCircle className="animate-spin" /> : exported ? <Check /> : <Download />} {exported ? (isChinese ? "再次匯出（不重複計算）" : "Export again (not counted twice)") : (isChinese ? "匯出已核准版本" : "Export approved version")}</Button>
-                <Button className="w-full" variant="outline" disabled={!isApprovedCurrent || !canApprove} onClick={() => void deliver("copy")}>{busy === "copy" ? <LoaderCircle className="animate-spin" /> : <Copy />} {isChinese ? "複製文字" : "Copy text"}</Button>
+                <Button className="w-full" variant={isApprovedCurrent ? "default" : "outline"} disabled={!canDeliver} onClick={() => void deliver("export")}>{busy === "export" ? <LoaderCircle className="animate-spin" /> : exported ? <Check /> : <Download />} {exported ? (isChinese ? "再次匯出（不重複計算）" : "Export again (not counted twice)") : (isChinese ? "匯出已核准版本" : "Export approved version")}</Button>
+                <Button className="w-full" variant="outline" disabled={!canDeliver} onClick={() => void deliver("copy")}>{busy === "copy" ? <LoaderCircle className="animate-spin" /> : <Copy />} {isChinese ? "複製文字" : "Copy text"}</Button>
                 {publishPanel && selectedVersion && <GbpPublishCard locale={locale} versionId={selectedVersion.id} versionNo={selectedVersion.version_no} body={selectedVersion.body} approved={isApprovedCurrent} panel={effectiveRole === role ? publishPanel : { ...publishPanel, mayAct: publishPanel.mayAct && effectiveRole !== "viewer", canPublish: publishPanel.canPublish && effectiveRole !== "viewer", canDelete: false }} workspaceSlug={workspaceSlug} timezone={timezone} onChanged={() => router.refresh()} />}
                 {!publishPanel?.enabled && <Button className="w-full" variant="ghost" disabled><Send /> {isChinese ? "直接發佈 · 需要連接" : "Publish directly · Connection required"}</Button>}
               </SectionCard>
@@ -862,7 +866,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
         </TabsContent>
       </Tabs>
 
-      <div className="sticky-approval-bar"><div><span className="sticky-status"><FileClock /></span><span><strong>{versionName} · {dirty ? (isChinese ? "未儲存" : "Unsaved") : approvalText(approval)}</strong><small>{effectiveRole === "viewer" ? (isChinese ? "檢視者只讀" : "Viewer access is read only") : (isChinese ? "核准不會自動發佈；匯出後才計用量" : "Approval does not publish; usage counts after export")}</small></span></div><div><Button variant="outline" onClick={() => void saveDraft()} disabled={!canEdit || !dirty}><Save /> {isChinese ? "儲存" : "Save"}</Button><Button onClick={() => void (isApprovedCurrent ? deliver("export") : approveDraft())} disabled={isApprovedCurrent ? !canApprove : !canApproveCurrent}>{isApprovedCurrent ? <><Download /> {isChinese ? "匯出" : "Export"}</> : <><BadgeCheck /> {isChinese ? "核准" : "Approve"}</>}</Button></div></div>
+      <div className="sticky-approval-bar"><div><span className="sticky-status"><FileClock /></span><span><strong>{versionName} · {dirty ? (isChinese ? "未儲存" : "Unsaved") : approvalText(approval)}</strong><small>{effectiveRole === "viewer" ? (isChinese ? "檢視者只讀" : "Viewer access is read only") : (isChinese ? "核准不會自動發佈；匯出後才計用量" : "Approval does not publish; usage counts after export")}</small></span></div><div><Button variant="outline" onClick={() => void saveDraft()} disabled={!canEdit || !dirty}><Save /> {isChinese ? "儲存" : "Save"}</Button><Button onClick={() => void (isApprovedCurrent ? deliver("export") : approveDraft())} disabled={isApprovedCurrent ? !canDeliver : !canApproveCurrent}>{isApprovedCurrent ? <><Download /> {isChinese ? "匯出" : "Export"}</> : <><BadgeCheck /> {isChinese ? "核准" : "Approve"}</>}</Button></div></div>
     </div>
   )
 }

@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { signInCopy } from "../components/auth/sign-in-copy";
+
 /** Public signed-out owner checks. Authenticated coverage is required in acceptance. */
 
 test("/zh-HK/owner/sign-in renders the magic-link form", async ({ page }) => {
@@ -15,7 +17,9 @@ test("/zh-HK/owner/sign-in renders the magic-link form", async ({ page }) => {
 
 test("/zh-HK/owner/sign-in?error=invalid_code explains the failed link", async ({ page }) => {
   await page.goto("/zh-HK/owner/sign-in?error=invalid_code&claim=sample-slug");
-  await expect(page.getByRole("alert")).toBeVisible();
+  // Scoped to <main>: Next adds its own empty role="alert" route announcer after hydration,
+  // so a page-wide getByRole("alert") matches two elements whenever it has mounted.
+  await expect(page.locator("main").getByRole("alert")).toHaveText(signInCopy["zh-HK"].expired);
 });
 
 test("/zh-HK/owner/select-workspace without a session redirects to sign-in", async ({ page }) => {

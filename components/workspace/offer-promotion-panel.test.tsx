@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 
 const clientMocks = vi.hoisted(() => ({ createPromotions: vi.fn(), runAction: vi.fn() }));
 vi.mock("@/lib/workspace/client", async (importOriginal) => ({
@@ -63,6 +63,18 @@ describe("OfferPromotionPanel", () => {
       expect(screen.getByText(expected)).toBeInTheDocument();
       unmount();
     }
+  });
+
+  it("is a named region, and its draft rows stay a list inside a polite live status", async () => {
+    clientMocks.createPromotions.mockResolvedValue({ ok: true, data: { actions: [{ channel: "instagram", actionId: "a-ig" }, { channel: "google", actionId: "a-g" }] } });
+    clientMocks.runAction.mockResolvedValue({ ok: true, data: { runId: "r", state: "succeeded", versionId: "v", versionNo: 1 } });
+    mount();
+    expect(screen.getByRole("region", { name: /Autumn set menu/ })).toBeInTheDocument();
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: copy.en.workspace.offers.promotion.create })); });
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("aria-live", "polite");
+    const list = within(status).getByRole("list");
+    expect(within(list).getAllByRole("listitem")).toHaveLength(2);
   });
 
   it("creates the actions first, then runs each one in turn", async () => {

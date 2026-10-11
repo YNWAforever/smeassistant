@@ -64,6 +64,12 @@ describe("parseOfferBody", () => {
     expect(ok({ ...MINIMAL, valid_from: "2026-10-01", valid_until: "2026-10-01" }).valid_until).toBe("2026-10-01");
   });
 
+  it("refuses year 0000 as a 400 instead of letting PostgreSQL fail it (no year zero)", () => {
+    expect(err({ ...MINIMAL, valid_from: "0000-01-01" })).toMatch(/valid_from/);
+    expect(err({ ...MINIMAL, valid_until: "0000-12-31" })).toMatch(/valid_until/);
+    expect(ok({ ...MINIMAL, valid_from: "0001-01-01" }).valid_from).toBe("0001-01-01");
+  });
+
   it("accepts prices by value with at most two decimals up to 9,999,999,999.99", () => {
     expect(ok({ ...MINIMAL, price_amount: 0, currency: "HKD" }).price_amount).toBe(0);
     expect(ok({ ...MINIMAL, price_amount: 1280.5, currency: "HKD" }).price_amount).toBe(1280.5);
