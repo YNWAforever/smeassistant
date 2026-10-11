@@ -250,7 +250,9 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
       ? (isChinese ? "已檢查" : "Checked")
       : (isChinese ? "未經檢查" : "Not checked")
   const offersCopy = copy[locale].workspace.offers
-  const offerStale: OfferStaleKind | null = offerRefusal ?? (offer ? offerStaleKind(offer, { hasVersion: versions.length > 0, recordedRevision: latestVersionOfferRevision }) : null)
+  // Judged against the selected version's recorded revision: approve and export act on that row,
+  // and the server checks that row's revision (an older approved version can be stale while the latest is not).
+  const offerStale: OfferStaleKind | null = offerRefusal ?? (offer ? offerStaleKind(offer, { hasVersion: versions.length > 0, recordedRevision: selectedVersion ? selectedVersion.offerRevision : latestVersionOfferRevision }) : null)
   const approval = selectedVersion?.approval_state ?? null
   const delivery = selectedVersion?.delivery_state ?? "not_requested"
   // P4.6: delivery_state can read publishing/published/cancelled now, and an

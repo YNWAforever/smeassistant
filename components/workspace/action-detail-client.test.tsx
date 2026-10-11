@@ -602,7 +602,7 @@ describe("offer promotion actions (P4.1)", () => {
   const offerCopy = copy.en.workspace.offers;
   const offer: OfferCardData = { title: "Autumn set menu", priceText: "HK$1,280", validFrom: "2026-10-01", validUntil: "2026-10-31", revision: 2, status: "confirmed", expired: false };
 
-  function mountOffer(props: { offer?: typeof offer | null; latestVersionOfferRevision?: number | null; versions?: ActionDetail["versions"]; locale?: "en" | "zh-HK" | "zh-TW" }) {
+  function mountOffer(props: { offer?: typeof offer | null; latestVersionOfferRevision?: number | null; versions?: ActionDetail["versions"]; locale?: "en" | "zh-HK" | "zh-TW"; initialVersionId?: string }) {
     const value = detail(OFFER_KEY);
     value.offerId = "offer-1";
     value.versions = props.versions ?? [versionRow({ id: "ver-1", version_no: 1, approval_state: "draft", offerRevision: 1 })];
@@ -622,6 +622,7 @@ describe("offer promotion actions (P4.1)", () => {
         offer={props.offer === undefined ? offer : props.offer}
         latestVersionOfferRevision={props.latestVersionOfferRevision === undefined ? 1 : props.latestVersionOfferRevision}
         offersEnabled
+        initialVersionId={props.initialVersionId ?? null}
       />,
     );
   }
@@ -678,6 +679,23 @@ describe("offer promotion actions (P4.1)", () => {
     for (const name of [/^Export/, /^Copy text/]) {
       const buttons = screen.getAllByRole("button", { name });
       for (const button of buttons) expect(button).toBeDisabled();
+    }
+  });
+
+  it("judges an older approved version by its own recorded revision, not the latest draft's", () => {
+    // v1 was approved from revision 1; the offer moved to revision 2 and v2 was drafted from it.
+    // The server refuses to export v1 (offer_changed), so selecting it from history must not enable delivery.
+    mountOffer({
+      latestVersionOfferRevision: 2,
+      versions: [
+        versionRow({ id: "ver-2", version_no: 2, approval_state: "draft", offerRevision: 2 }),
+        versionRow({ id: "ver-1", version_no: 1, approval_state: "approved", offerRevision: 1 }),
+      ],
+      initialVersionId: "ver-1",
+    });
+    expect(screen.getByTestId("offer-stale-banner")).toHaveTextContent(offerCopy.stale.offer_changed);
+    for (const name of [/^Export/, /^Copy text/]) {
+      for (const button of screen.getAllByRole("button", { name })) expect(button).toBeDisabled();
     }
   });
 
