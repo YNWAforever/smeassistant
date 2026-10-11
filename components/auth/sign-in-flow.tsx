@@ -19,6 +19,7 @@ export type SignInState =
   | { kind: "opening_google" }
   | { kind: "sending_email" }
   | { kind: "email_sent"; email: string; retryAt: number }
+  | { kind: "rate_limited"; email: string; retryAt: number }
   | { kind: "recover"; method: AuthMethod | null; reason: "cancelled" | "expired" | "unavailable" };
 
 function initialState(reason: "cancelled" | "expired" | "unavailable" | null, flow: AuthFlow): SignInState {
@@ -53,7 +54,7 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
     previousKind.current = state.kind;
   }, [state.kind]);
   useEffect(() => {
-    if (state.kind !== "email_sent") return;
+    if (state.kind !== "email_sent" && state.kind !== "rate_limited") return;
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, [state.kind]);
@@ -92,7 +93,8 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
       if (result.error) {
         const until = retryAfter(result.error, Date.now());
         if ((result.error as { status?: number }).status === 429) {
-          setState({ kind: "email_sent", email: normalized, retryAt: until });
+          // Refused before any mail was sent: say so, rather than showing the inbox screen.
+          setState({ kind: "rate_limited", email: normalized, retryAt: until });
           return;
         }
         throw result.error;
@@ -103,11 +105,20 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
     }
   }
 
+  function resendLabel(seconds: number): string {
+    if (seconds <= 0) return copy.resend;
+    return seconds < 180 ? copy.resendIn(seconds) : copy.resendInMinutes(Math.round(seconds / 60));
+  }
   const eligibility = flow.claim ? copy.claimEmailIntro : copy.emailIntro;
   if (state.kind === "recover") return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1><p className={styles.alert} role="alert">{copy[state.reason]}</p><p className={styles.description}>{eligibility}</p><button className={styles.primary} type="button" onClick={() => state.method === "email" ? clearToStart("email") : google()}>{state.method === "email" ? copy.retryEmail : copy.retryGoogle}</button><a className={styles.secondary} href={authFlowHref(withMethod(state.method === "google" ? "email" : "google"), "start")}>{state.method === "google" ? copy.retryEmail : copy.retryGoogle}</a><p className={styles.privacy}>{copy.privacy}</p></div></section>;
+  if (state.kind === "rate_limited") {
+    const seconds = Math.max(0, Math.ceil((state.retryAt - now) / 1000));
+    const minutes = Math.max(1, Math.round(seconds / 60));
+    return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1><p className={styles.alert} role="alert">{copy.rateLimited(minutes)}</p><p className={styles.email}>{state.email}</p><p className={styles.description}>{copy.rateLimitedHelp}</p><button className={styles.secondary} type="button" disabled={seconds > 0} onClick={() => void send()}>{resendLabel(seconds)}</button><button className={styles.link} type="button" onClick={() => clearToStart("email")}>{copy.changeEmail}</button><p className={styles.privacy}>{copy.privacy}</p></div></section>;
+  }
   if (state.kind === "email_sent") {
     const seconds = Math.max(0, Math.ceil((state.retryAt - now) / 1000));
-    return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1><div className={styles.status} role="status">{flow.claim ? copy.claimInbox : copy.inbox}</div><p className={styles.email}>{state.email}</p><button className={styles.secondary} type="button" disabled={seconds > 0} onClick={() => void send()}>{seconds > 0 ? copy.resendIn(seconds) : copy.resend}</button><button className={styles.link} type="button" onClick={() => clearToStart("email")}>{copy.changeEmail}</button><p className={styles.description}>{flow.claim ? copy.claimNoLinkHelp : copy.noLinkHelp}</p><p className={styles.privacy}>{copy.privacy}</p></div></section>;
+    return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1><div className={styles.status} role="status">{flow.claim ? copy.claimInbox : copy.inbox}</div><p className={styles.email}>{state.email}</p><button className={styles.secondary} type="button" disabled={seconds > 0} onClick={() => void send()}>{resendLabel(seconds)}</button><button className={styles.link} type="button" onClick={() => clearToStart("email")}>{copy.changeEmail}</button><p className={styles.description}>{flow.claim ? copy.claimNoLinkHelp : copy.noLinkHelp}</p><p className={styles.privacy}>{copy.privacy}</p></div></section>;
   }
   return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1>{plan ? <p className={styles.description}>{plan}</p> : null}<p className={styles.description}>{eligibility}</p><button className={styles.primary} type="button" disabled={!hydrated || busy} aria-busy={state.kind === "opening_google"} onClick={() => void google()}>{copy.google}</button>{state.kind === "opening_google" ? <div className={styles.status} role="status">{copy.openingGoogle}</div> : null}<div className={styles.divider}>{copy.emailAlternative}</div><form className={styles.form} onSubmit={(event) => void send(event)} noValidate><div className={styles.field}><label htmlFor="sign-in-email">{copy.emailLabel}</label><input className={styles.input} id="sign-in-email" disabled={!hydrated || busy} value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" inputMode="email" /></div>{fieldError ? <p className={styles.alert} role="alert">{fieldError}</p> : null}<button className={styles.secondary} type="submit" disabled={!hydrated || busy} aria-busy={state.kind === "sending_email"}>{copy.emailAction}</button>{state.kind === "sending_email" ? <div className={styles.status} role="status">{copy.sendingEmail}</div> : null}</form><p className={styles.privacy}>{copy.privacy}</p></div></section>;
 }

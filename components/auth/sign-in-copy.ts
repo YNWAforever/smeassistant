@@ -25,6 +25,14 @@ export type SignInCopy = {
   changeEmail: string;
   resend: string;
   resendIn: (seconds: number) => string;
+  resendInMinutes: (minutes: number) => string;
+  /**
+   * Shown when a link request is refused by the per-address rate limit. Both
+   * mail routes apply the limit before the eligibility check, so saying so
+   * reveals nothing about whether the address is a member.
+   */
+  rateLimited: (minutes: number) => string;
+  rateLimitedHelp: string;
   cancelled: string;
   expired: string;
   unavailable: string;
@@ -62,6 +70,9 @@ const en: SignInCopy = {
   changeEmail: "Use a different email",
   resend: "Send another link",
   resendIn: (seconds) => `Send another link in ${seconds}s`,
+  resendInMinutes: (minutes) => `Send another link in ${minutes} min`,
+  rateLimited: (minutes) => `Too many sign-in links were requested for this address. No new link was sent. Try again in about ${minutes} ${minutes === 1 ? "minute" : "minutes"}.`,
+  rateLimitedHelp: "If an earlier link reached your inbox, use the most recent one; it still works.",
   cancelled: "Google sign-in was cancelled.",
   expired: "That sign-in link has expired or was already used.",
   unavailable: "Sign-in is temporarily unavailable. Please try again shortly.",
@@ -99,6 +110,9 @@ const zhHK: SignInCopy = {
   changeEmail: "使用另一個電郵",
   resend: "再寄一次連結",
   resendIn: (seconds) => `${seconds} 秒後可再寄一次連結`,
+  resendInMinutes: (minutes) => `${minutes} 分鐘後可再寄一次連結`,
+  rateLimited: (minutes) => `這個電郵地址要求登入連結的次數太多，今次沒有寄出新連結。請約 ${minutes} 分鐘後再試。`,
+  rateLimitedHelp: "如較早的連結已送達收件箱，請使用最新的一封，該連結仍然有效。",
   cancelled: "已取消 Google 登入。",
   expired: "登入連結已過期或已被使用。",
   unavailable: "登入服務暫時未能使用，請稍後再試。",
@@ -144,6 +158,9 @@ const zhTW: SignInCopy = {
   changeEmail: "使用其他電子郵件",
   resend: "再寄一次連結",
   resendIn: (seconds) => `${seconds} 秒後可再寄一次連結`,
+  resendInMinutes: (minutes) => `${minutes} 分鐘後可再寄一次連結`,
+  rateLimited: (minutes) => `這個電子郵件地址要求登入連結的次數過多，這次沒有寄出新連結。請約 ${minutes} 分鐘後再試。`,
+  rateLimitedHelp: "如果較早的連結已送達收件匣，請使用最新的一封，該連結仍然有效。",
   cancelled: "已取消 Google 登入。",
   expired: "登入連結已過期或已被使用。",
   unavailable: "登入服務暫時無法使用，請稍後再試。",
