@@ -330,7 +330,7 @@ export interface IntegrationsModel {
 }
 
 export interface CalendarModel {
-  nextScans: Array<{ locationId: string | null; locationName: string | null; placeId: string; anniversaryDay: number | null; cadence: string }>;
+  nextScans: Array<{ locationId: string | null; locationName: string | null; locationSlug?:string; placeId: string; anniversaryDay: number | null; cadence: string }>;
   dueActions: ActionOverview[];
 }
 
@@ -761,6 +761,16 @@ export async function listActions(ctx: WorkspaceContext, filters: ActionFilters)
   return { actions, counts, hasMore, nextCursor: hasMore && last ? encodeActionCursor({ score: Number(last.priority_score), updatedAt: last.updated_at, id: last.id }, fingerprint) : null };
 }
 
+/** One scoped representative per template, independent of ordinary list pagination. */
+export async function listCreateRecommendationSummaries(ctx:WorkspaceContext,locationSlug:LocationScope):Promise<ActionOverview[]> {
+  const location=resolveLocation(ctx,locationSlug);
+  const rows=await read('create recommendations',()=>actionListRepository().listCreateRecommendationSummaries({workspaceId:ctx.workspace.id,
+    locationId:location?.id ?? null,allowedLocationIds:ctx.membership.locationScope,channelTemplates:null,status:null}));
+  const locations=new Map(ctx.locations.map(l=>[l.id,l]));
+  return rows.map(row=>buildActionOverview(row,{location:row.location_id?locationText(locations.get(row.location_id)??null):null,
+    latestRun:row.run_state?{state:row.run_state}:null,latestVersion:row.version}));
+}
+
 /** Non-throwing template lookup: an unknown persisted key must not 500 the page. */
 const TEMPLATE_AGENT = new Map<string, string | null>(TEMPLATES.map((t) => [t.key, t.agentKey ?? null]));
 
@@ -939,19 +949,22 @@ export async function getActivity(ctx: WorkspaceContext, opts: { limit?: number 
   return read("activity", () => workspaceReadRepository().activity(ctx.workspace.id, opts.limit ?? 100));
 }
 
-export async function getCalendar(ctx: WorkspaceContext): Promise<CalendarModel> {
+export async function getCalendar(ctx: WorkspaceContext, scope:LocationScope='all'): Promise<CalendarModel> {
   const repository = workspaceReadRepository();
-  const placeIds = ctx.locations.map((l) => l.placeId).filter((p): p is string => Boolean(p));
+  const selected=resolveLocation(ctx,scope);
+  const locations=ctx.locations.filter(l=>(!selected || l.id===selected.id) && inLocationScope(ctx.membership,l.id));
+  const placeIds = locations.map((l) => l.placeId).filter((p): p is string => Boolean(p));
   const [schedules, rows] = await Promise.all([
     read("schedules", () => repository.schedules(ctx.workspace.id, placeIds)),
-    loadActionRows(ctx.workspace.id, { states: OPEN_STATES }),
+    loadActionRows(ctx.workspace.id, { states: OPEN_STATES,locationId:selected?.id ?? null }),
   ]);
-  const byPlace = new Map(ctx.locations.filter((l) => l.placeId).map((l) => [l.placeId as string, l]));
-  const dueRows = rows.filter((r) => r.due_at).sort((a, b) => String(a.due_at).localeCompare(String(b.due_at)));
+  const byPlace = new Map(locations.filter((l) => l.placeId).map((l) => [l.placeId as string, l]));
+  const dueRows = rows.filter((r) => r.due_at && (!selected || !r.location_id || r.location_id===selected.id) && inLocationScope(ctx.membership,r.location_id)).sort((a, b) => String(a.due_at).localeCompare(String(b.due_at)));
   return {
-    nextScans: schedules.map((s) => ({
+    nextScans: schedules.filter(s=>byPlace.has(s.place_id)).map((s) => ({
       locationId: byPlace.get(s.place_id)?.id ?? null,
       locationName: byPlace.get(s.place_id)?.name ?? null,
+      locationSlug:byPlace.get(s.place_id)?.slug,
       placeId: s.place_id,
       anniversaryDay: cadenceDay(s),
       cadence: s.cadence,

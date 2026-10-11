@@ -61,6 +61,20 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("bounded action list SQL (T
     expect((await listActions(ctx, { assignee: accepted })).actions[0].assignee).toEqual({ id: accepted, name: "" });
   });
 
+  it.each([26,50,51])('T12: %s rows retain a low-ranked second template within location/tenant scope',async size=>{
+    const {scope}=await seed(size);
+    const locations=(await runtime.query("INSERT INTO locations(workspace_id,slug,name) VALUES($1,'a','A'),($1,'b','B') RETURNING id,slug",[scope.workspaceId])).rows;
+    const a=locations.find(l=>l.slug==='a')!.id,b=locations.find(l=>l.slug==='b')!.id;
+    await runtime.query('UPDATE actions SET location_id=$2 WHERE workspace_id=$1',[scope.workspaceId,a]);
+    await runtime.query("UPDATE actions SET template_key='visibility-content',priority_score=1,location_id=$2 WHERE id=(SELECT id FROM actions WHERE workspace_id=$1 ORDER BY id LIMIT 1)",[scope.workspaceId,b]);
+    const repo=actionListRepository(runtime);
+    expect((await repo.page(scope,'all',25,null)).slice(0,25).every(a=>a.template_key==='review-response')).toBe(true);
+    expect((await repo.listCreateRecommendationSummaries(scope)).map(a=>a.template_key)).toEqual(['review-response','visibility-content']);
+    expect((await repo.listCreateRecommendationSummaries({...scope,locationId:a})).map(a=>a.template_key)).toEqual(['review-response']);
+    expect((await repo.listCreateRecommendationSummaries({...scope,allowedLocationIds:[b]})).map(a=>a.template_key)).toEqual(['visibility-content']);
+    expect(await repo.listCreateRecommendationSummaries({...scope,workspaceId:crypto.randomUUID()})).toEqual([]);
+  });
+
   it.each([10, 100, 1000])("%s actions x 10 versions x 5 runs: constant queries and bounded bytes", async size => {
     const { scope } = await seed(size);
     type QueryRecord = { sql: string; values: unknown[]; rows: number };
@@ -76,6 +90,13 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("bounded action list SQL (T
     const before = { queries: records.length, rows: records.reduce((n, r) => n + r.rows, 0), bytes: Buffer.byteLength(JSON.stringify({ actions, versions, runs })), latencyMs: performance.now() - beforeStart };
     const beforeRecords = records.splice(0);
     const repository = actionListRepository(client);
+    const summaryStart=performance.now();
+    const summaries=await repository.listCreateRecommendationSummaries(scope);
+    expect(records).toHaveLength(1);expect(summaries).toHaveLength(1);
+    expect(JSON.stringify(summaries)).not.toMatch(/HISTORY_BODY_SENTINEL|RUN_SENTINEL|private_note/);
+    const summaryQuery=records.splice(0)[0];
+    const summaryPlan=(await runtime.query(`EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) ${summaryQuery.sql}`,summaryQuery.values)).rows[0]['QUERY PLAN'];
+    console.info('T12_CREATE_SUMMARY '+JSON.stringify({size,queries:1,rows:summaries.length,bytes:Buffer.byteLength(JSON.stringify(summaries)),latencyMs:performance.now()-summaryStart,plan:summaryPlan}));
     const afterStart = performance.now();
     const [page, counts] = await Promise.all([repository.page(scope, "all", 25, null), repository.counts(scope)]);
     const after = { queries: records.length, rows: records.reduce((n, r) => n + r.rows, 0), bytes: Buffer.byteLength(JSON.stringify({ page, counts })), latencyMs: performance.now() - afterStart };

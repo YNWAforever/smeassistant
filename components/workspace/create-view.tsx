@@ -18,7 +18,7 @@ import { ContextualAssistant } from "@/components/pocket-assistant/assistant-she
 import { CapabilityBadge, FactType, PageIntro, SectionCard } from "@/components/product-ui"
 import { LocationSelect } from "@/components/workspace/location-select"
 import { copy, type PrototypeLocale } from "@/lib/copy"
-import { resolveText } from "@/lib/domain"
+import { resolveText, type FactType as EvidenceFactType } from "@/lib/domain"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import { createObjectiveAction } from "@/lib/workspace/client"
 import { effortLabel, withLocation } from "@/lib/workspace/format"
@@ -35,7 +35,7 @@ export interface CreateViewProps {
   locationId: string | null
   locations: Array<{ slug: string; name: string }>
   /** Open actions in the scoped location: template → { id, evidence detail }. Marks a goal "evidence-led". */
-  openActions: Array<{ id: string; templateKey: TemplateKey; evidence: string; freshness: string }>
+  openActions: Array<{ id: string; templateKey: TemplateKey; evidence: string; freshness: string; factType?:EvidenceFactType; source?:string }>
 }
 
 const ICONS: Record<Exclude<TemplateKey, OfferTemplateKey>, typeof MessageSquareText> = {
@@ -150,7 +150,7 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
       <button key={goal.key} type="button" className={selectedKey === goal.key ? "goal-card is-selected" : "goal-card"} aria-pressed={selectedKey === goal.key} onClick={() => { setSelectedKey(goal.key); setStage("idle") }}>
         <span><Icon /></span>
         <div>
-          <Badge variant="outline">{open ? (isChinese ? "證據建議" : "Evidence-led") : (isChinese ? "店主目標" : "Owner objective")}</Badge>
+          <Badge variant="outline">{open?.factType==='Observed' ? (isChinese ? "證據建議" : "Evidence-led") : open?.factType==='Recommended' || !open ? (isChinese ? "店主目標" : "Owner objective") : (isChinese?"來源未確認":"Source unconfirmed")}</Badge>
           <CapabilityBadge value={goal.capability} />
           <h2>{labels[goal.key].title}</h2>
           <p>{open ? open.evidence : labels[goal.key].summary}</p>
@@ -190,7 +190,7 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
       <div className="create-review-layout">
         <SectionCard>
           <p className="eyebrow">{existing ? (isChinese ? "為何現在建議" : "Why this is suggested") : (isChinese ? "店主目標" : "Owner objective")}</p><h2>{labels[selected.key].title}</h2>
-          <div className="fact-stack">{existing ? <div><FactType type="Observed" /><p>{existing.evidence}{existing.freshness ? ` · ${existing.freshness}` : ""}</p></div> : <div><FactType type="Unknown" /><p>{isChinese ? "此目標沒有量度證據支持；它會標示為店主目標，而非發現。" : "No measured evidence backs this goal; it is labelled an owner objective, not a finding."}</p></div>}<div><FactType type="Recommended" /><p>{labels[selected.key].summary}</p></div></div>
+          <div className="fact-stack">{existing ? <div><FactType type={existing.factType ?? "Unknown"} /><p>{existing.source ? `${existing.source} · ` : ""}{existing.evidence}{existing.freshness ? ` · ${existing.freshness}` : ""}</p></div> : <div><FactType type="Unknown" /><p>{isChinese ? "此目標沒有量度證據支持；它會標示為店主目標，而非發現。" : "No measured evidence backs this goal; it is labelled an owner objective, not a finding."}</p></div>}<div><FactType type="Recommended" /><p>{labels[selected.key].summary}</p></div></div>
           <div className="field-stack"><Label htmlFor="objective">{isChinese ? "你想達成甚麼？" : "What do you want to achieve?"}</Label><Textarea id="objective" rows={4} value={objective} onChange={(event) => setObjective(event.target.value)} placeholder={isChinese ? "例如：本週推廣午市套餐，語氣溫暖，不提及價格。" : "For example: promote this week's lunch set in a warm tone, without mentioning prices."} disabled={!canCreate || stage === "queued"} /><small>{isChinese ? "目標會以「建議」事實類型記錄在行動證據中，店主資料仍由你確認。" : "The objective is recorded on the action as a Recommended fact; owner facts still come from you."}</small></div>
           <div className="required-inputs"><strong>{isChinese ? "開始前所需資料" : "Required before starting"}</strong>{selected.requiredInputs.length === 0 ? <span><CheckCircle2 /> {isChinese ? "不需要額外資料" : "No extra inputs needed"}</span> : selected.requiredInputs.map((key) => <span key={key}><AlertTriangle /> {inputs[key] ?? key}</span>)}<span><CheckCircle2 /> {isChinese ? "事實資料仍由店主確認" : "Owner still confirms factual claims"}</span></div>
           {existing && <p className="limitation-note"><Sparkles /> {isChinese ? "此地點已有一項開啟中的同類行動。" : "An open action of this kind already exists for this location."} <Link href={withLocation(`${base}/actions/${existing.id}`, location)}>{isChinese ? "開啟現有行動" : "Open the existing action"}</Link></p>}
