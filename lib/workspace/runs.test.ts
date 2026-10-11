@@ -156,6 +156,26 @@ const run = (over: Record<string, unknown> = {}) =>
     assets: { get: asset },
     ...over,
   });
+
+describe("T19 generation provider classification", () => {
+  it("refuses unconfigured generation before reserving or starting a run", async () => {
+    await expect(run({ llmReady: () => false })).rejects.toMatchObject({ code: "provider_unconfigured" });
+    expect(queue).not.toHaveBeenCalled();
+    expect(start).not.toHaveBeenCalled();
+  });
+  it.each(["provider_auth_failed", "provider_rate_limited", "no_model_output", "invalid_provider_response"] as const)("preserves %s as the terminal reason without schema retry", async code => {
+    const llmDetailed = vi.fn(async () => ({ ok: false as const, code, retryable: false }));
+    expect(await run({ llmDetailed })).toMatchObject({ state: "failed" });
+    expect(llmDetailed).toHaveBeenCalledTimes(1);
+    expect(finish).toHaveBeenCalledWith(expect.objectContaining({ reason: code, usage: { inputTokens: null, outputTokens: null }, output: null }));
+  });
+  it("does not wait past the deadline for a long Retry-After", async () => {
+    const llmDetailed = vi.fn(async () => ({ ok: false as const, code: "provider_rate_limited" as const, retryable: true, retryAfterSeconds: 300 }));
+    await run({ llmDetailed });
+    expect(llmDetailed).toHaveBeenCalledTimes(1);
+    expect(finish).toHaveBeenCalledWith(expect.objectContaining({ reason: "provider_rate_limited" }));
+  });
+});
 beforeEach(() => {
   row = { ...action };
   snapshotData = { ...snapshotRow };

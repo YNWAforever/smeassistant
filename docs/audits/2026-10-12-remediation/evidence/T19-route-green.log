@@ -1,0 +1,27 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ app/api/actions/[actionId]/run/route.test.ts (8 tests | 1 failed) 43ms
+     × reports a failed run (no version) when the model never returns valid JSON 9ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  app/api/actions/[actionId]/run/route.test.ts > POST /api/actions/[actionId]/run > reports a failed run (no version) when the model never returns valid JSON
+ FAIL  app/api/actions/[actionId]/run/route.test.ts > POST /api/actions/[actionId]/run > reports a failed run (no version) when the model never returns valid JSON
+AssertionError: expected "vi.fn()" to be called 2 times, but got 1 times
+ ❯ app/api/actions/[actionId]/run/route.test.ts:191:31
+    189|     expect(res.status).toBe(200);
+    190|     expect(await res.json()).toMatchObject({ runId: "run-1", state: "f…
+    191|     expect(mocks.llmComplete).toHaveBeenCalledTimes(2);
+       |                               ^
+    192|     expect(mocks.db!.rpc).not.toHaveBeenCalled();
+    193|     consoleError.mockRestore();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 39 passed (40)
+   Start at  03:08:11
+   Duration  2.94s (transform 1.59s, setup 708ms, import 2.21s, tests 2.13s, environment 0ms)
+

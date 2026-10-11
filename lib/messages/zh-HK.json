@@ -16,6 +16,8 @@
     "aiLimit": "今日的 AI 草稿生成額度已用完，請稍後再試。"
   },
   "draftFailure": {
+    "serviceUnavailable": "AI 草稿服務尚未可用，請聯絡支援確認服務恢復後再試。",
+    "tryLater": "AI 服務今次未能完成草稿，請稍後再試。",
     "factsNeeded": "需要更多資料",
     "invalidOutput": "未能讀取草稿",
     "noModelOutput": "AI 草稿生成暫時未能使用"

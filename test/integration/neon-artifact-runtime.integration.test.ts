@@ -41,7 +41,7 @@ vi.mock("../../lib/auth", async (original) => ({
     membership: state.membership,
   }),
 }));
-vi.mock("../../lib/llm", () => ({
+vi.mock("../../lib/llm", () => ({ llmConfigured: () => true, llmCompleteDetailed: async (...args: unknown[]) => { const result = await state.llm(...args); return result ? { ok: true, result } : { ok: false, code: "no_model_output", retryable: false }; },
   llmComplete: (...args: unknown[]) => state.llm(...args),
 }));
 vi.mock("../../lib/security/rate-limit", async (original) => ({

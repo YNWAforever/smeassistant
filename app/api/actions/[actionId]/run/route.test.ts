@@ -40,7 +40,7 @@ vi.mock("@/lib/repositories/notifications", () => ({
 vi.mock("@/lib/repositories/claims", () => ({
   recordClaimAuditEvent: (row: Record<string, unknown>) => mocks.db?.audit(row),
 }));
-vi.mock("@/lib/llm", () => ({
+vi.mock("@/lib/llm", () => ({ llmConfigured: () => true, llmCompleteDetailed: async (...args: unknown[]) => { const result = await mocks.llmComplete(...args); return result ? { ok: true, result } : { ok: false, code: "no_model_output", retryable: false }; },
   llmComplete: (...args: unknown[]) => mocks.llmComplete(...args),
 }));
 vi.mock("@/lib/security/rate-limit", async (importOriginal) => ({
@@ -180,7 +180,7 @@ describe("POST /api/actions/[actionId]/run", () => {
     ).toEqual(["run.started", "run.succeeded"]);
   });
 
-  it("reports a failed run (no version) when the model never returns valid JSON", async () => {
+  it("records no_model_output once without a schema retry or version", async () => {
     const consoleError = vi
       .spyOn(console, "error")
       .mockImplementation(() => {});
@@ -188,7 +188,7 @@ describe("POST /api/actions/[actionId]/run", () => {
     const res = await post();
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ runId: "run-1", state: "failed" });
-    expect(mocks.llmComplete).toHaveBeenCalledTimes(2);
+    expect(mocks.llmComplete).toHaveBeenCalledTimes(1);
     expect(mocks.db!.rpc).not.toHaveBeenCalled();
     consoleError.mockRestore();
   });

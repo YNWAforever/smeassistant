@@ -10,6 +10,14 @@ const DRAFT_FAILURE_KEYS: Record<string, string> = {
   facts_needed: "draftFailure.factsNeeded",
   invalid_output: "draftFailure.invalidOutput",
   no_model_output: "draftFailure.noModelOutput",
+  provider_unconfigured: "draftFailure.serviceUnavailable",
+  provider_auth_failed: "draftFailure.serviceUnavailable",
+  ai_paused: "draftFailure.serviceUnavailable",
+  provider_rate_limited: "draftFailure.tryLater",
+  provider_unavailable: "draftFailure.tryLater",
+  timeout: "draftFailure.tryLater",
+  network_error: "draftFailure.tryLater",
+  invalid_provider_response: "draftFailure.tryLater",
 };
 
 export function runErrorLabel(locale: string, error: string): string {

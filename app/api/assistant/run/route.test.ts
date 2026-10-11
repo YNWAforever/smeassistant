@@ -20,7 +20,7 @@ vi.mock("@/lib/workspace/audit", async (importOriginal) => ({
 }));
 
 vi.mock("@/lib/auth", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/auth")>()), authorizeWorkspaceRequest: (...args: unknown[]) => mocks.authorizeWorkspaceRequest(...args) }));
-vi.mock("@/lib/llm", () => ({ llmComplete: (...args: unknown[]) => mocks.llmComplete(...args), llmConfigured: () => true }));
+vi.mock("@/lib/llm", () => ({ llmConfigured: () => true, llmCompleteDetailed: async (...args: unknown[]) => { const result = await mocks.llmComplete(...args); return result ? { ok: true, result } : { ok: false, code: "no_model_output", retryable: false }; }, llmComplete: (...args: unknown[]) => mocks.llmComplete(...args) }));
 vi.mock("@/lib/assistant/live", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/assistant/live")>()), runLiveAssistant: (...args: unknown[]) => mocks.runLiveAssistant(...args) }));
 vi.mock("@/lib/security/rate-limit", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/security/rate-limit")>()),

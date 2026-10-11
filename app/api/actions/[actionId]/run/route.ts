@@ -62,6 +62,7 @@ export async function POST(
     if (error instanceof RunError) {
       if (error.code === "forbidden") return json({ error: "forbidden" }, 403);
       if (error.code === "ai_paused") return json({ error: "ai_paused" }, 503);
+      if (error.code === "provider_unconfigured") return json({ error: "provider_unconfigured" }, 503);
       if (error.code === "ai_budget_reached") return json({ error: "ai_budget_reached" }, 429);
       // F-14: another run for this action is still live; nothing was charged.
       if (error.code === "run_in_progress") return json({ error: "run_in_progress" }, 409);

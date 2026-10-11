@@ -81,7 +81,7 @@ export interface RecordAssistantDraftFailureInput {
  locale: string;
  model: string | null;
  /** no_model_output: llmComplete returned nothing; invalid_output: it returned text that did not parse. */
- reason: 'no_model_output' | 'invalid_output' | 'facts_needed';
+ reason: 'no_model_output' | 'invalid_output' | 'facts_needed' | import('../llm').LLMFailureCode;
  factsNeeded: string[];
  usage: LLMUsage;
  /** Null when the gateway reported no usage; never a guessed zero. */

@@ -81,6 +81,13 @@ export interface LLMResult {
   usage: LLMUsage;
 }
 
+export type LLMFailureCode = "ai_paused" | "provider_unconfigured" | "provider_auth_failed"
+  | "provider_rate_limited" | "provider_unavailable" | "timeout" | "network_error"
+  | "no_model_output" | "invalid_provider_response";
+export type LLMOutcome =
+  | { ok: true; result: LLMResult }
+  | { ok: false; code: LLMFailureCode; retryable: boolean; status?: number; retryAfterSeconds?: number; usage?: LLMUsage };
+
 function readUsage(data: unknown): LLMUsage {
   const usage = (data as { usage?: Record<string, unknown> } | null)?.usage;
   const asCount = (value: unknown): number | null =>
@@ -104,25 +111,30 @@ function readUsage(data: unknown): LLMUsage {
  * Still returns null on every failure — timeout, missing key, non-2xx, malformed
  * response — so callers keep their single "no completion" branch.
  */
-export async function llmComplete(prompt: string, opts: LLMOptions = {}): Promise<LLMResult | null> {
+export async function llmCompleteDetailed(prompt: string, opts: LLMOptions = {}): Promise<LLMOutcome> {
   // P3.5d backstop: every caller already handles null, so an AI pause stops
   // report summaries and translations too, before any network call.
   if (pauseState().ai) {
     logPauseRefusal("llm");
-    return null;
+    return { ok: false, code: "ai_paused", retryable: false };
   }
   const { apiKey, baseUrl, model, configured } = resolveLLMConfig();
 
   if (!configured || !apiKey) {
-    console.error("[llm] set OPENCODE_API_KEY, LLM_API_KEY, or OPENROUTER_KEY");
-    return null;
+    console.error("[llm] unavailable", { category: "provider_unconfigured" });
+    return { ok: false, code: "provider_unconfigured", retryable: false };
   }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 20000);
+  let abort: () => void = () => {};
+  const interrupted = new Promise<never>((_resolve, reject) => {
+    abort = () => reject(new DOMException("Request deadline exceeded", "AbortError"));
+    controller.signal.addEventListener("abort", abort, { once: true });
+  });
 
   try {
-    const resp = await fetch(`${baseUrl}/chat/completions`, {
+    const resp = await Promise.race([fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -137,22 +149,47 @@ export async function llmComplete(prompt: string, opts: LLMOptions = {}): Promis
         ...(opts.jsonMode ? { response_format: { type: "json_object" } } : {}),
       }),
       signal: controller.signal,
-    });
+    }), interrupted]);
 
     if (!resp.ok) {
       // The body is never read: it can echo the prompt.
       console.error("[llm] API error", { status: resp.status });
-      return null;
+      const status = resp.status;
+      const rawRetry = resp.headers?.get("retry-after");
+      const retrySeconds = rawRetry && /^\d+$/.test(rawRetry) ? Number(rawRetry) : rawRetry ? Math.ceil((Date.parse(rawRetry) - Date.now()) / 1000) : NaN;
+      return { ok: false, status,
+        code: status === 401 || status === 403 ? "provider_auth_failed" : status === 429 ? "provider_rate_limited" : "provider_unavailable",
+        retryable: status === 429 || status >= 500,
+        ...(status === 429 && Number.isFinite(retrySeconds) && retrySeconds >= 0 && retrySeconds <= 3600 ? { retryAfterSeconds: retrySeconds } : {}),
+      };
     }
 
-    const data = await resp.json();
-    const text: string = data?.choices?.[0]?.message?.content?.trim() ?? "";
-    return text ? { text, usage: readUsage(data) } : null;
+    let data: unknown;
+    try { data = await Promise.race([resp.json(), interrupted]); }
+    catch (error) {
+      if (controller.signal.aborted) throw error;
+      return { ok: false, code: "invalid_provider_response", retryable: false };
+    }
+    const choices = data && typeof data === "object" ? (data as { choices?: unknown }).choices : undefined;
+    const first: unknown = Array.isArray(choices) ? choices[0] : undefined;
+    const message = first && typeof first === "object" ? (first as { message?: unknown }).message : undefined;
+    const content = message && typeof message === "object" ? (message as { content?: unknown }).content : undefined;
+    const usage = readUsage(data);
+    if (typeof content !== "string") return { ok: false, code: "invalid_provider_response", retryable: false, usage };
+    const text = content.trim();
+    return text ? { ok: true, result: { text, usage } } : { ok: false, code: "no_model_output", retryable: false, usage };
   } catch (err) {
     const name = typeof (err as { name?: unknown } | null)?.name === "string" ? (err as { name: string }).name : "unknown";
     console.error("[llm] request failed", { error: name });
-    return null;
+    return { ok: false, code: controller.signal.aborted || name === "AbortError" ? "timeout" : "network_error", retryable: true };
   } finally {
     clearTimeout(timeout);
+    controller.signal.removeEventListener("abort", abort);
   }
+}
+
+/** Compatibility adapter for summary/translation callers. */
+export async function llmComplete(prompt: string, opts: LLMOptions = {}): Promise<LLMResult | null> {
+  const outcome = await llmCompleteDetailed(prompt, opts);
+  return outcome.ok ? outcome.result : null;
 }

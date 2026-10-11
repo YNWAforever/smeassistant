@@ -1,0 +1,7 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-remediation-20261012
+> vitest run --exclude lib/evidence/safe-media.test.ts && vitest run lib/evidence/safe-media.test.ts && corepack pnpm -r test
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+

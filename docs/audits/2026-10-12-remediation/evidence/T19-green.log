@@ -1,0 +1,38 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ lib/assistant/live.test.ts (72 tests | 2 failed) 107ms
+     × degrades to the template answer with a warning when the model is not configured or returns nothing 8ms
+     × records a draft whose model returned nothing as no_model_output with a null cost 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/assistant/live.test.ts > runLiveAssistant > degrades to the template answer with a warning when the model is not configured or returns nothing
+AssertionError: expected 'AI 草稿生成目前無法使用' to be 'AI 草稿功能暫時無法使用' // Object.is equality
+
+Expected: "AI 草稿功能暫時無法使用"
+Received: "AI 草稿生成目前無法使用"
+
+ ❯ lib/assistant/live.test.ts:299:31
+    297|     expect(llm).toHaveBeenCalledTimes(1);
+    298|     expect(empty.output).toBeUndefined();
+    299|     expect(empty.warnings[0]).toBe("AI 草稿功能暫時無法使用");
+       |                               ^
+    300|     expect(writes()).toEqual([]);
+    301|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  lib/assistant/live.test.ts > assistant drafts and the AI budget > records a draft whose model returned nothing as no_model_output with a null cost
+AssertionError: expected [ 'AI drafting unavailable', …(1) ] to include 'AI drafting unavailable right now'
+ ❯ lib/assistant/live.test.ts:554:29
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  2 failed | 180 passed (182)
+   Start at  02:57:28
+   Duration  6.47s (transform 886ms, setup 1.67s, import 3.20s, tests 292ms, environment 1ms)
+

@@ -1,0 +1,96 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ lib/repositories/access-requests.test.ts (9 tests | 2 failed) 8ms
+     × binds the verified user and report in SQL before selecting a stable latest request 2ms
+     × reads events belonging to the scoped request 1ms
+stdout | tests/audit-onboarding-scope.test.tsx > desired behavior: an approved request for report A must not hide report B's request form
+AUDIT_ONBOARDING_SCOPE {"currentReport":"report_B_123","currentBusiness":"Second shop","ownsWorkspace":false,"displayedRequest":{"status":"approved","isChinese":false,"businessName":"First shop"},"formVisible":false}
+
+ ❯ tests/audit-onboarding-scope.test.tsx (5 tests | 3 failed) 15ms
+   × finds B's older pending request even when A's approved request is newer 9ms
+   × shows a retryable read failure rather than inviting a duplicate application 1ms
+   × desired behavior: an approved request for report A must not hide report B's request form 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/audit-onboarding-scope.test.tsx > finds B's older pending request even when A's approved request is newer
+AssertionError: expected { status: 'approved', …(2) } to match object { status: 'pending', …(1) }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "businessName": "Second shop",
+-   "status": "pending",
++   "businessName": "First shop",
++   "status": "approved",
+  }
+
+ ❯ tests/audit-onboarding-scope.test.tsx:37:42
+     35|   const page = await render();
+     36|   expect(page.props.accessRequest.type).toBe(AccessRequestStatus);
+     37|   expect(page.props.accessRequest.props).toMatchObject({ status: "pend…
+       |                                          ^
+     38|   expect(mocks.scoped).toHaveBeenCalledWith("same-owner", currentSlug);
+     39|   expect(page.props.ownsWorkspace).toBe(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  tests/audit-onboarding-scope.test.tsx > shows a retryable read failure rather than inviting a duplicate application
+AssertionError: expected [Function AccessRequestForm] not to be [Function AccessRequestForm] // Object.is equality
+ ❯ tests/audit-onboarding-scope.test.tsx:45:45
+     43|   mocks.scoped.mockRejectedValue(new Error("fixture read outage"));
+     44|   const page = await render();
+     45|   expect(page.props.accessRequest.type).not.toBe(AccessRequestForm);
+       |                                             ^
+     46|   expect(page.props.accessRequest.type).not.toBe(AccessRequestStatus);
+     47|   expect(page.props.ownsWorkspace).toBe(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  tests/audit-onboarding-scope.test.tsx > desired behavior: an approved request for report A must not hide report B's request form
+AssertionError: expected [Function AccessRequestStatus] to be [Function AccessRequestForm] // Object.is equality
+
+- Expected
++ Received
+
+- [Function AccessRequestForm]
++ [Function AccessRequestStatus]
+
+ ❯ tests/audit-onboarding-scope.test.tsx:68:41
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  lib/repositories/access-requests.test.ts > T22 latestForUserAndReport > binds the verified user and report in SQL before selecting a stable latest request
+TypeError: accessRequestRepository(...).latestForUserAndReport is not a function
+ ❯ lib/repositories/access-requests.test.ts:99:44
+     97|   it("binds the verified user and report in SQL before selecting a sta…
+     98|     poolQuery.mockResolvedValue({ rows: [], rowCount: 0 });
+     99|     expect(await accessRequestRepository().latestForUserAndReport("u-1…
+       |                                            ^
+    100|     const [sql, params] = poolQuery.mock.calls[0];
+    101|     expect(sql).toContain("r.user_id = $1 AND j.share_slug = $2");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  lib/repositories/access-requests.test.ts > T22 latestForUserAndReport > reads events belonging to the scoped request
+TypeError: accessRequestRepository(...).latestForUserAndReport is not a function
+ ❯ lib/repositories/access-requests.test.ts:108:52
+    106|   it("reads events belonging to the scoped request", async () => {
+    107|     poolQuery.mockResolvedValueOnce({ rows: [ROW] }).mockResolvedValue…
+    108|     const result = await accessRequestRepository().latestForUserAndRep…
+       |                                                    ^
+    109|     expect(result?.request.id).toBe("req-1");
+    110|     expect(poolQuery.mock.calls[1][1]).toEqual(["req-1"]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  5 failed | 9 passed (14)
+   Start at  02:59:58
+   Duration  1.21s (transform 185ms, setup 511ms, import 251ms, tests 23ms, environment 0ms)
+

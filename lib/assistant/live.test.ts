@@ -296,7 +296,7 @@ describe("runLiveAssistant", () => {
     const empty = await run({ intentId: "generate_menu", locale: "zh-TW", llm });
     expect(llm).toHaveBeenCalledTimes(1);
     expect(empty.output).toBeUndefined();
-    expect(empty.warnings[0]).toBe("AI 草稿功能暫時無法使用");
+    expect(empty.warnings[0]).toBe("AI 草稿生成目前無法使用");
     expect(writes()).toEqual([]);
   });
 
@@ -551,7 +551,7 @@ describe("assistant drafts and the AI budget", () => {
     const llm = vi.fn<Llm>(async () => null);
     const result = await run({ intentId: "draft_review_reply", surface: "action", context: draftContext, llm });
     expect(result.output).toBeUndefined();
-    expect(result.warnings).toContain("AI drafting unavailable right now");
+    expect(result.warnings).toContain("AI drafting unavailable");
     expect(repository.recordAssistantDraftFailure).toHaveBeenCalledTimes(1);
     expect(repository.recordAssistantDraftFailure).toHaveBeenCalledWith(expect.objectContaining({ reason: "no_model_output", factsNeeded: [], usage: { inputTokens: null, outputTokens: null }, costUsd: null }));
   });

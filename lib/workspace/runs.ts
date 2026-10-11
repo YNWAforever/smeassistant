@@ -20,7 +20,8 @@ import {
   type AgentOutput,
 } from "@/lib/agents";
 import { localized, resolveText } from "@/lib/domain";
-import { llmComplete, type LLMUsage } from "@/lib/llm";
+import { llmComplete, llmCompleteDetailed, llmConfigured, type LLMUsage, type LLMOutcome } from "@/lib/llm";
+import { runErrorLabel } from "@/lib/assistant/draft-failure";
 import { checkAiBudget } from "@/lib/budgets/ai";
 import { deriveFaqQuestions } from "./faq-questions";
 import { filterSelectedReviews, resolveBrandProvidedInputs, sampledReviewsFromRawData } from "./evidence-inputs";
@@ -41,7 +42,7 @@ import { gateBlockingInputs } from "./workflow-inputs";
  * never overwrites an existing draft (a version is only created on success).
  */
 export type RunErrorCode =
-  "action_not_found" | "agent_unavailable" | "forbidden" | "ai_budget_reached" | "ai_paused" | "run_in_progress";
+  "action_not_found" | "agent_unavailable" | "forbidden" | "ai_budget_reached" | "ai_paused" | "run_in_progress" | "provider_unconfigured";
 
 export class RunError extends Error {
   constructor(public readonly code: RunErrorCode) {
@@ -62,6 +63,8 @@ export interface RunAgentInput {
   inputs?: Record<string, unknown> | null;
   locale: string;
   llm?: typeof llmComplete;
+  llmDetailed?: typeof llmCompleteDetailed;
+  llmReady?: () => boolean;
   now?: Date;
   ipHash?: string | null;
   /** Budget variables; defaults to process.env (tests pass their own). */
@@ -333,9 +336,8 @@ export async function runAgentForAction(
   db: ArtifactRepository,
   input: RunAgentInput,
 ): Promise<RunAgentResult> {
-  const now = input.now ?? new Date(),
-    llm = input.llm ?? llmComplete,
-    locale = localeOf(input.locale);
+  const now = input.now ?? new Date(), locale = localeOf(input.locale);
+  const deadline = Date.now() + AGENT_RUN_BUDGET_MS;
   const { row, snapshot } = await resolveActionRunContext(
     db,
     input.actionId,
@@ -489,6 +491,10 @@ export async function runAgentForAction(
   if (offer) satisfied.add("offer_id");
   const blocking = gateBlockingInputs(template, provided, satisfied);
 
+  if (!blocking.length && !(input.llmReady ?? (() => Boolean(input.llm || input.llmDetailed) || llmConfigured()))()) {
+    throw new RunError("provider_unconfigured");
+  }
+
   const persistence = input.persistence ?? actionRunRepository();
   // F-14: a live run for this action ends the request here, before any model
   // call or second draft; the owner sees the first run's result on refresh.
@@ -544,7 +550,6 @@ export async function runAgentForAction(
     // now bounded by what is actually left of the budget, and finalization
     // time is reserved so the terminal state is always recorded.
     // AGENT_RUN_BUDGET_MS already excludes the finalization reserve.
-    const deadline = Date.now() + AGENT_RUN_BUDGET_MS;
     for (let attempt = 0; attempt < MAX_AGENT_ATTEMPTS && !output; attempt += 1) {
       const remaining = deadline - Date.now();
       if (remaining < MIN_ATTEMPT_MS) {
@@ -553,20 +558,32 @@ export async function runAgentForAction(
         if (!reason) reason = "action_run_timeout";
         break;
       }
-      let result;
+      let outcome: LLMOutcome;
       try {
-        result = await llm(prompt, {
+        const options = {
           ...AGENT_LLM_OPTIONS,
           timeoutMs: Math.min(AGENT_LLM_OPTIONS.timeoutMs, remaining),
-        });
+        };
+        if (input.llm) {
+          const result = await input.llm(prompt, options);
+          outcome = result ? { ok: true, result } : { ok: false, code: "no_model_output", retryable: false };
+        } else outcome = await (input.llmDetailed ?? llmCompleteDetailed)(prompt, options);
       } catch {
         // A transport rejection gets the same single, budget-bounded retry as a null/schema failure.
         reason = "action_run_failed";
         continue;
       }
-      usage = addUsage(usage, result?.usage);
-      output = parseAgentOutput(result?.text, agent.outputSchema);
-      if (output) reason = undefined;
+      usage = addUsage(usage, outcome.ok ? outcome.result.usage : outcome.usage);
+      if (!outcome.ok) {
+        reason = outcome.code;
+        if (!outcome.retryable || attempt + 1 >= MAX_AGENT_ATTEMPTS) break;
+        const delay = (outcome.retryAfterSeconds ?? 0) * 1000;
+        if (delay + MIN_ATTEMPT_MS > deadline - Date.now()) break;
+        if (delay > 0) await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      output = parseAgentOutput(outcome.result.text, agent.outputSchema);
+      reason = output ? undefined : "invalid_output";
     }
     if (output)
       output = {
@@ -587,7 +604,7 @@ export async function runAgentForAction(
     usage,
     costUsd: computeCostUsd(usage),
     output,
-    ...(reason ? { error: FRIENDLY_ERROR[locale], reason } : {}),
+    ...(reason ? { error: runErrorLabel(locale, reason) === reason ? FRIENDLY_ERROR[locale] : runErrorLabel(locale, reason), reason } : {}),
     ...(offer ? { offerRevision: offer.revision } : {}),
     finishedAt: new Date(),
   });

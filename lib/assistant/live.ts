@@ -4,7 +4,8 @@ import { AGENTS, AGENT_LLM_OPTIONS, computeCostUsd, parseAgentOutput, type Agent
 import { inLocationScope, roleAtLeast, type Membership } from "@/lib/auth";
 import type { PrototypeLocale } from "@/lib/copy";
 import { localized } from "@/lib/domain";
-import { llmComplete, llmConfigured } from "@/lib/llm";
+import { llmComplete, llmCompleteDetailed, llmConfigured, type LLMOutcome } from "@/lib/llm";
+import { runErrorLabel } from "./draft-failure";
 import type { AssistantArtifact, AssistantSurface, DemoAssistantRunResponse, DemoQuestionId, EvidenceReference } from "@/lib/pocket-assistant/contracts";
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { assetRepository } from "@/lib/repositories/assets";
@@ -53,6 +54,7 @@ export interface LiveRunInput {
   /** Explicit read-only data capability; defaults to the Neon repository. */
   repository?: LiveAssistantRepository;
   llm?: typeof llmComplete;
+  llmDetailed?: typeof llmCompleteDetailed;
   llmReady?: () => boolean;
   /** Asset rights lookup for the social_post gate; defaults to the Neon repository. */
   assets?: Pick<ReturnType<typeof assetRepository>, "get">;
@@ -421,13 +423,18 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistant
   // P3.5a: the AI spend budget, immediately before the model call.
   const budget = await checkAiBudget(() => db.aiSpend24h(input.context.workspaceId), { entry: "assistant_draft" }, input.budgetEnv);
   if (!budget.allowed) throw new AiBudgetRefusal(budget.scope);
-  const result = await (input.llm ?? llmComplete)(agent.buildPrompt(agentCtx), AGENT_LLM_OPTIONS);
-  const usage = result?.usage ?? { inputTokens: null, outputTokens: null };
+  const prompt = agent.buildPrompt(agentCtx);
+  const legacy = input.llm ? await input.llm(prompt, AGENT_LLM_OPTIONS) : undefined;
+  const outcome: LLMOutcome = input.llm
+    ? legacy ? { ok: true, result: legacy } : { ok: false, code: "no_model_output", retryable: false }
+    : await (input.llmDetailed ?? llmCompleteDetailed)(prompt, AGENT_LLM_OPTIONS);
+  const usage = (outcome.ok ? outcome.result.usage : outcome.usage) ?? { inputTokens: null, outputTokens: null };
   const failure = { actionId: action.row.id, agentKey: spec.agent, promptVersion: agent.promptVersion, intentId: intent, usage };
-  const output = parseAgentOutput(result?.text, agent.outputSchema);
+  const output = parseAgentOutput(outcome.ok ? outcome.result.text : undefined, agent.outputSchema);
   if (!output) {
-    await recordFailedDraft(input, { ...failure, reason: result ? "invalid_output" : "no_model_output", factsNeeded: [] });
-    return fallback();
+    const reason = outcome.ok ? "invalid_output" : outcome.code;
+    await recordFailedDraft(input, { ...failure, reason, factsNeeded: [] });
+    return completed(fallbackIntentFor(intent), input, ctx, [runErrorLabel(input.locale, reason)]);
   }
 
   const warnings = [...output.warnings, ...agent.acceptance(agentCtx, output)];
