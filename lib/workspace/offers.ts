@@ -103,7 +103,8 @@ function stringList(value: unknown, field: string): { ok: true; list: string[] }
 function isoDate(value: unknown, field: string): { ok: true; value: string } | { ok: false; error: string } {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return { ok: false, error: `${field} must be a YYYY-MM-DD date` };
   const parsed = new Date(`${value}T00:00:00Z`);
-  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) return { ok: false, error: `${field} must be a real date` };
+  // PostgreSQL has no year 0 (it would fail the insert as a 500), so 0000-xx-xx is not a real date here.
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value || value.startsWith("0000")) return { ok: false, error: `${field} must be a real date` };
   return { ok: true, value };
 }
 
