@@ -27,7 +27,9 @@ export async function GET(req: Request, { params }: Ctx) {
   const locationId = param === "none" ? null : param && UUID_RE.test(param) ? param : undefined;
   if (locationId === undefined) return json({ error: "location is invalid" }, 400);
 
-  const auth = await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "viewer", locationId: locationId ?? undefined });
+  // An identity or database outage is 503, like every other failure here, never an unhandled 500.
+  const auth = await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "viewer", locationId: locationId ?? undefined }).catch(() => null);
+  if (!auth) return json({ error: "unavailable" }, 503);
   if (!auth.ok) return json({ error: auth.code }, auth.status);
   try {
     const loaded = await packRepository().openPack(workspaceId, locationId);
@@ -49,7 +51,9 @@ export async function POST(req: Request, { params }: Ctx) {
     body.location_id === null ? null : typeof body.location_id === "string" && UUID_RE.test(body.location_id) ? body.location_id : undefined;
   if (locationId === undefined) return json({ error: "location_id is invalid" }, 400);
 
-  const auth = await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager", locationId: locationId ?? undefined });
+  // An identity or database outage is 503, like every other failure here, never an unhandled 500.
+  const auth = await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager", locationId: locationId ?? undefined }).catch(() => null);
+  if (!auth) return json({ error: "unavailable" }, 503);
   if (!auth.ok) return json({ error: auth.code }, auth.status);
   // Ruling P3: a workspace-wide pack spans every location, so a location-scoped manager may not start one.
   if (locationId === null && auth.membership.role !== "owner" && auth.membership.locationScope !== null) {

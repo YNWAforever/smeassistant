@@ -19,7 +19,9 @@ export async function GET(_req: Request, { params }: Ctx) {
   if (disabled) return disabled;
   const { workspaceId } = await params;
   if (!UUID_RE.test(workspaceId)) return json({ error: "workspaceId is invalid" }, 400);
-  const auth = await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "viewer" });
+  // An identity or database outage is 503, like every other failure here, never an unhandled 500.
+  const auth = await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "viewer" }).catch(() => null);
+  if (!auth) return json({ error: "unavailable" }, 503);
   if (!auth.ok) return json({ error: auth.code }, auth.status);
   try {
     const offers = await offerRepository().list(workspaceId);
@@ -37,7 +39,9 @@ export async function POST(req: Request, { params }: Ctx) {
   const body = await readJson(req);
   if (!body) return json({ error: "Invalid JSON" }, 400);
 
-  const auth = await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager" });
+  // An identity or database outage is 503, like every other failure here, never an unhandled 500.
+  const auth = await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager" }).catch(() => null);
+  if (!auth) return json({ error: "unavailable" }, 503);
   if (!auth.ok) return json({ error: auth.code }, auth.status);
 
   try {
