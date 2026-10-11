@@ -51,6 +51,29 @@ describe("GET /auth/callback", () => {
     expect(forwarded.url).toBe(original.url);
   });
 
+  // Production 2026-10-11: a stale or reused magic link reaches this route as a
+  // top-level navigation from the mail client, so the request carries the SDK
+  // challenge cookie but no Origin header. Managed Auth's upstream sign-out is
+  // a cookie-bearing POST, which better-auth's origin check rejects with 403
+  // MISSING_OR_NULL_ORIGIN, so signOut() throws after it has already cleared
+  // the local cookies. That throw used to escape into the catch-all, logging a
+  // misleading verifier_exchange failure and telling the owner the service was
+  // unavailable instead of that the link had expired.
+  it("reports an expired link, not an outage, when a rejected verifier's best-effort sign-out fails upstream", async () => {
+    mocks.middleware.mockResolvedValue(new Response(null, { status: 200, headers: { "x-middleware-next": "1" } }));
+    mocks.signOut.mockRejectedValue(new Error("identity_signout_failed"));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = await GET(request("locale=zh-HK&method=email&neon_auth_session_verifier=stale"));
+    expect(response.headers.get("location")).toBe("https://app.test/zh-HK/owner/sign-in?method=email&error=invalid_code");
+    expect(mocks.signOut).toHaveBeenCalledOnce();
+    expect(JSON.stringify(spy.mock.calls)).not.toContain("verifier_exchange");
+    spy.mockRestore();
+  });
+  it("reports an expired link, not an outage, when a provider token error's best-effort sign-out fails upstream", async () => {
+    mocks.signOut.mockRejectedValue(new Error("identity_signout_failed"));
+    const response = await GET(request("locale=en&claim=fixture-report&method=email&error=INVALID_TOKEN"));
+    expect(response.headers.get("location")).toBe("https://app.test/en/owner/sign-in?claim=fixture-report&method=email&error=invalid_code");
+  });
   it("fails closed when a fixture verifier exchange produces no response", async () => {
     process.env.SME_TEST_IDENTITY = "owned-local";
     mocks.exchangeFixtureVerifier.mockResolvedValue(null);

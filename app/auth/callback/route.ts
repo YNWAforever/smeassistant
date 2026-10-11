@@ -5,6 +5,19 @@ import { cleanCallbackHandoff } from "@/lib/identity/callback-handoff";
 import { authDiagnostic } from "@/lib/identity/sign-in-diagnostics";
 import { authFlowHref, parseAuthFlow, type AuthFlow } from "@/lib/identity/sign-in-flow";
 
+/**
+ * Clears a failed attempt's managed-auth state without letting the upstream
+ * revocation decide the outcome. This route is reached by top-level navigation
+ * from a mail client or Google, so the browser sends the SDK challenge cookie
+ * but no Origin header; managed Auth's upstream sign-out is a cookie-bearing
+ * POST that better-auth rejects as MISSING_OR_NULL_ORIGIN. signOut() clears the
+ * local cookies before it reports that, so a throw here must not turn an
+ * expired or reused link into an "auth unavailable" outage.
+ */
+async function clearFailedAttempt(): Promise<void> {
+  await signOut().catch(() => {});
+}
+
 function landing(request: Request, flow: AuthFlow, error?: string): URL {
   const url = new URL(authFlowHref(flow, error ? "start" : "complete"), request.url);
   if (error) url.searchParams.set("error", error);
@@ -19,7 +32,7 @@ export async function GET(request: Request) {
   const correlationId = crypto.randomUUID();
   try {
     if (requestUrl.searchParams.has("error")) {
-      await signOut();
+      await clearFailedAttempt();
       return NextResponse.redirect(landing(request, flow, requestUrl.searchParams.get("error") === "access_denied" ? "cancelled" : "invalid_code"));
     }
     if (requestUrl.searchParams.has("neon_auth_session_verifier")) {
@@ -44,13 +57,13 @@ export async function GET(request: Request) {
         const handoff = cleanCallbackHandoff(request, exchanged);
         if (handoff) return handoff;
       }
-      await signOut();
+      await clearFailedAttempt();
       return NextResponse.redirect(landing(request, flow, requestUrl.searchParams.get("error") === "access_denied" ? "cancelled" : "invalid_code"));
     }
     return NextResponse.redirect(landing(request, flow));
   } catch {
     console.error(authDiagnostic("verifier_exchange", correlationId));
-    await signOut().catch(() => {});
+    await clearFailedAttempt();
     return NextResponse.redirect(landing(request, flow, "auth_unavailable"));
   }
 }
