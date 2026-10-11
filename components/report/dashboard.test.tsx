@@ -7,6 +7,15 @@ import type { ReportProps } from "@/lib/funnel/report-props";
 import type { ReportDashboard } from "@/lib/funnel/report-dashboard";
 import { DashboardSummary } from "./dashboard-summary";
 import { DashboardMetrics } from "./dashboard-metrics";
+it.each([0,1,2,3,4])('T14: %s priorities never promises a fixed three cards',count=>{
+  for(const locale of ['en','zh-HK','zh-TW'] as const){
+    for(const access of ['public','member'] as const){
+      const root=markup(<DashboardPriorities report={{...report,locale,access,priorities:Array.from({length:count},(_,i)=>priority(i+1))}}/>);
+      expect(root.querySelectorAll('article')).toHaveLength(Math.min(count,3));
+      expect(root.querySelector('h2')?.textContent).not.toMatch(/three|3 項/);
+    }
+  }
+});
 vi.mock("next/navigation", () => ({ usePathname: () => "/en/r/fixture", useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
 const report: ReportProps = {
   locale: "en", access: "viewer", sample: false, slug: "fixture", market: "hk", businessName: "Fixture Cafe",
