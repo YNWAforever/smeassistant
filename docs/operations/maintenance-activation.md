@@ -19,3 +19,13 @@ Activation checklist, after explicit DEC-10 change and operational authorization
 5. Only after that proof separately approve production enablement. Record first production tick and backlog observations; do not translate fixture results into hosted passes.
 
 Disable/rollback: remove the scheduler entry or restore the saved cron-free config under deployment authorization; do not erase pending outbox/completion ledgers. Preserve uncertain provider receipts and leases, inspect idempotency/reconcile before restart. Active mail/scans pause switches retain their existing values unless specifically authorized. T-02 is intentionally not enabled; blocker includes owner/destination, operating budget, T-19, failure drill and explicit enablement.
+
+## 2026-10-12 current evidence — T-20261011-07 / UC-20261011-38
+
+Read-only Vercel project metadata, retained at `../audits/2026-10-12-remediation/evidence/T07-platform-scheduler-metadata.json`, reports production deployment `dpl_4H8u4jXti2KHdT2HAVGCEYm1SMmz` and `crons.definitions=[]`. A CRON_SECRET metadata entry exists. Neither proves a successful tick. There is no evidence in this session of an external executor; its absence is not inferred from an empty Vercel list. The later successful owner login remains valid historical evidence and does not establish daily maintenance.
+
+Keep DEC-10's manual mode. The owner explicitly requests scans/actions and receives the existing budget/consent refusals; notify schedules request owner action rather than silently rescan. No scheduler, alert destination or mail provider is activated by this remediation. Existing dispatch authorization, bounded per-step budget, lease fencing, idempotency and mail held/deadline tests are retained in the local gate.
+
+If operations chooses ON, the reviewable target remains **one** authenticated executor every five minutes, UTC scheduler with business due times in the workspace timezone (HK `Asia/Hong_Kong`, TW `Asia/Taipei`), 55 seconds work plus five seconds settlement, existing claim limits and pause switches. Name the operating owner, recipient, provider/scan/mail allowance, and read-only last-success receipt source before activation. Apply the stale-observer and missing-tick drill above; zero or absent receipts must show unknown/stale, never healthy. Record a real success and defer/retry on the matching deployment before describing maintenance as automated.
+
+T07 is locally prepared, operationally blocked pending that decision, exact executor/configuration authorization and staging fixture. T05/T15's manual daily-workflow fixture checks can proceed independently. Rollback pauses only the chosen executor and retains all held mail, leases, dedupe receipts and audit history.
