@@ -82,6 +82,26 @@ it("says no link was sent when the address is rate limited, instead of showing t
   expect(mocks.magicLink).toHaveBeenCalledTimes(1);
 });
 
+it("drops the wait from the rate-limit notice once the cooldown is over", async () => {
+  vi.useFakeTimers();
+  mocks.magicLink.mockResolvedValue({ error: { status: 429, headers: new Headers({ "retry-after": "0" }) } });
+  render(<SignInFlow flow={flow} initialReason={null} />);
+  await act(async () => { enterFixtureEmail(); await Promise.resolve(); });
+  expect(screen.getByRole("alert")).toHaveTextContent(/try again in about 1 minute/i);
+  await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
+  expect(screen.getByRole("alert")).toHaveTextContent(signInCopy.en.rateLimitedReady);
+  expect(screen.getByRole("alert")).not.toHaveTextContent(/try again in/i);
+  expect(screen.getByRole("button", { name: /^send another link$/i })).toBeEnabled();
+});
+
+it("never attributes the limit to the submitted address, since a shared limit can refuse an unused one", () => {
+  for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
+    for (const text of [signInCopy[locale].rateLimited(5), signInCopy[locale].rateLimitedReady]) {
+      expect(text).not.toMatch(/this address|地址/);
+    }
+  }
+});
+
 it.each(["zh-HK", "zh-TW"] as const)("explains a rate-limited request in %s", async (locale) => {
   mocks.magicLink.mockResolvedValue({ error: { status: 429, headers: new Headers({ "retry-after": "2400" }) } });
   const { container } = render(<SignInFlow flow={{ ...flow, locale }} initialReason={null} />);

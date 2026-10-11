@@ -114,7 +114,7 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
   if (state.kind === "rate_limited") {
     const seconds = Math.max(0, Math.ceil((state.retryAt - now) / 1000));
     const minutes = Math.max(1, Math.round(seconds / 60));
-    return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1><p className={styles.alert} role="alert">{copy.rateLimited(minutes)}</p><p className={styles.email}>{state.email}</p><p className={styles.description}>{copy.rateLimitedHelp}</p><button className={styles.secondary} type="button" disabled={seconds > 0} onClick={() => void send()}>{resendLabel(seconds)}</button><button className={styles.link} type="button" onClick={() => clearToStart("email")}>{copy.changeEmail}</button><p className={styles.privacy}>{copy.privacy}</p></div></section>;
+    return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1><p className={styles.alert} role="alert">{seconds > 0 ? copy.rateLimited(minutes) : copy.rateLimitedReady}</p><p className={styles.email}>{state.email}</p><p className={styles.description}>{copy.rateLimitedHelp}</p><button className={styles.secondary} type="button" disabled={seconds > 0} onClick={() => void send()}>{resendLabel(seconds)}</button><button className={styles.link} type="button" onClick={() => clearToStart("email")}>{copy.changeEmail}</button><p className={styles.privacy}>{copy.privacy}</p></div></section>;
   }
   if (state.kind === "email_sent") {
     const seconds = Math.max(0, Math.ceil((state.retryAt - now) / 1000));
