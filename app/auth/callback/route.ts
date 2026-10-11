@@ -1,25 +1,34 @@
 import { NextResponse, NextRequest } from "next/server";
 
-import { signOut } from "@/lib/auth";
 import { cleanCallbackHandoff } from "@/lib/identity/callback-handoff";
-import { MANAGED_AUTH_COOKIES, expiredAuthCookie } from "@/lib/identity/cookies";
+import { identityProvider } from "@/lib/identity/composition";
+import { MANAGED_SESSION_COOKIES, expiredAuthCookie } from "@/lib/identity/cookies";
 import { authDiagnostic } from "@/lib/identity/sign-in-diagnostics";
 import { authFlowHref, parseAuthFlow, type AuthFlow } from "@/lib/identity/sign-in-flow";
 
 /**
  * Ends a failed attempt: a best-effort upstream revocation, then a redirect
- * that itself expires every managed-auth cookie. This route is reached by
- * top-level navigation from a mail client or Google, so the browser sends the
- * SDK challenge cookie but no Origin header; managed Auth's upstream sign-out
- * is a cookie-bearing POST that better-auth rejects as MISSING_OR_NULL_ORIGIN.
- * That rejection must not turn an expired or reused link into an "auth
- * unavailable" outage, and local invalidation must not depend on signOut()
- * succeeding, so the cookies are expired on the response that is returned.
+ * that itself expires the session cookies. This route is reached by top-level
+ * navigation from a mail client or Google, so the browser sends the SDK
+ * challenge cookie but no Origin header; managed Auth's upstream sign-out is a
+ * cookie-bearing POST that better-auth rejects as MISSING_OR_NULL_ORIGIN. That
+ * rejection must not turn an expired or reused link into an "auth unavailable"
+ * outage, and local invalidation must not depend on it, so the cookies are
+ * expired on the response that is returned.
+ *
+ * The challenge cookies are deliberately kept (lib/auth signOut() would clear
+ * them, so it is not used here): each link request overwrites the single
+ * challenge, so it belongs to the newest link. Clearing it when an older link
+ * fails made the newer, still-valid link fail too (production, 2026-10-11).
  */
 async function failedAttempt(url: URL): Promise<NextResponse> {
-  await signOut().catch(() => {});
+  try {
+    await (await identityProvider()).signOut();
+  } catch {
+    // Expected for this navigation (see above); the session cookies are still expired below.
+  }
   const response = NextResponse.redirect(url);
-  for (const name of MANAGED_AUTH_COOKIES) response.cookies.set(name, "", expiredAuthCookie);
+  for (const name of MANAGED_SESSION_COOKIES) response.cookies.set(name, "", expiredAuthCookie);
   return response;
 }
 

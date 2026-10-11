@@ -1,20 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({ signOut: vi.fn(), middleware: vi.fn(), exchangeFixtureVerifier: vi.fn() }));
-vi.mock("@/lib/auth", () => ({ signOut: mocks.signOut }));
+vi.mock("@/lib/identity/composition", () => ({ identityProvider: async () => ({ signOut: mocks.signOut }) }));
 vi.mock("@/lib/identity/neon", () => ({ getNeonAuth: () => ({ middleware: () => mocks.middleware }) }));
 vi.mock("@/test/e2e/composition", () => ({ exchangeFixtureVerifier: mocks.exchangeFixtureVerifier }));
 import { GET } from "./route";
-import { MANAGED_AUTH_COOKIES } from "@/lib/identity/cookies";
+import { MANAGED_AUTH_COOKIES, MANAGED_SESSION_COOKIES } from "@/lib/identity/cookies";
 const request = (query: string) => new Request(`https://app.test/auth/callback?${query}`);
 beforeEach(() => { vi.clearAllMocks(); delete process.env.SME_TEST_IDENTITY; mocks.signOut.mockResolvedValue(undefined); mocks.middleware.mockResolvedValue(new Response(null, { status: 307, headers: { location: "https://app.test/auth/callback?locale=en&returnTo=%2Fen%2Fowner%2Ffixture", "set-cookie": "__Secure-neon-auth.session_token=fixture; Path=/" } })); });
 afterEach(() => { delete process.env.SME_TEST_IDENTITY; vi.restoreAllMocks(); });
-/** Local invalidation is carried by the failure redirect itself, never only by signOut(). */
+/**
+ * Local invalidation is carried by the failure redirect itself, never only by
+ * signOut(); the challenge cookies are left alone because they belong to the
+ * newest pending link, not to the link that just failed.
+ */
 function expectManagedCookiesExpired(response: Response) {
   const cookies = response.headers.getSetCookie();
-  for (const name of MANAGED_AUTH_COOKIES) {
+  for (const name of MANAGED_SESSION_COOKIES) {
     expect(cookies.some((cookie) => cookie.startsWith(`${name}=;`) && /Max-Age=0/i.test(cookie))).toBe(true);
   }
+  const challenges = MANAGED_AUTH_COOKIES.filter((name) => !(MANAGED_SESSION_COOKIES as readonly string[]).includes(name));
+  expect(challenges.length).toBeGreaterThan(0);
+  for (const name of challenges) expect(cookies.some((cookie) => cookie.startsWith(`${name}=`))).toBe(false);
 }
 describe("GET /auth/callback", () => {
   it("exchanges a verifier then preserves SDK cookies while redirecting exactly once to completion", async () => {
@@ -91,6 +98,18 @@ describe("GET /auth/callback", () => {
     const response = await GET(request("locale=en&method=email&neon_auth_session_verifier=fixture"));
     expect(response.headers.get("location")).toBe("https://app.test/en/owner/sign-in?method=email&error=auth_unavailable");
     expectManagedCookiesExpired(response);
+  });
+  // Production 2026-10-11: two links requested, the older clicked first. Its
+  // verifier fails against the newer link's challenge cookie, and the old
+  // failure path then deleted that challenge, so the newer link failed too.
+  it("an older link's failure keeps the newer link's challenge cookie so the newer link can still sign in", async () => {
+    mocks.middleware.mockResolvedValue(new Response(null, { status: 200, headers: { "x-middleware-next": "1" } }));
+    mocks.signOut.mockRejectedValue(new Error("identity_signout_failed"));
+    const response = await GET(new Request("https://app.test/auth/callback?locale=zh-HK&method=email&neon_auth_session_verifier=older", {
+      headers: { cookie: "__Secure-neon-auth.session_challenge=newer-link-challenge" },
+    }));
+    expect(response.headers.get("location")).toBe("https://app.test/zh-HK/owner/sign-in?method=email&error=invalid_code");
+    expect(response.headers.getSetCookie().some((cookie) => cookie.includes("session_challenge"))).toBe(false);
   });
   it("fails closed when a fixture verifier exchange produces no response", async () => {
     process.env.SME_TEST_IDENTITY = "owned-local";
