@@ -154,7 +154,10 @@ export function artifactRepository(client?: Executor) {
    return row ?? null;
    });
   },
-  assistantBrand(workspaceId: string) {
+  assistantBrand(workspaceId: string, generationActorId?: string) {
+   // Generation explicitly supplies the verified actor. Explanation-only reads
+   // retain their read-only behavior and never initialize a profile.
+   if(generationActorId) return operation(async()=> (await db().query<{profile:{voice:string|null;approved_claims:unknown;prohibited_terms:unknown;languages:unknown;facts:unknown;current_revision_id:string}}>('SELECT public.brand_snapshot_for_generation($1,$2) AS profile',[workspaceId,generationActorId])).rows[0].profile);
    return operation(async ()=>(await db().query<{voice:string|null;approved_claims:unknown;prohibited_terms:unknown;languages:unknown;facts:unknown;current_revision_id?:string|null}>(`SELECT COALESCE(r.profile->>'voice',p.voice) AS voice,
     COALESCE(r.profile->'approved_claims',to_jsonb(p.approved_claims)) AS approved_claims,COALESCE(r.profile->'prohibited_terms',to_jsonb(p.prohibited_terms)) AS prohibited_terms,
     COALESCE(r.profile->'languages',to_jsonb(p.languages)) AS languages,COALESCE(r.profile->'facts',p.facts) AS facts,p.current_revision_id

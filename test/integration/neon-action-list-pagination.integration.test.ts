@@ -96,7 +96,8 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("bounded action list SQL (T
     expect(JSON.stringify(summaries)).not.toMatch(/HISTORY_BODY_SENTINEL|RUN_SENTINEL|private_note/);
     const summaryQuery=records.splice(0)[0];
     const summaryPlan=(await runtime.query(`EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) ${summaryQuery.sql}`,summaryQuery.values)).rows[0]['QUERY PLAN'];
-    console.info('T12_CREATE_SUMMARY '+JSON.stringify({size,queries:1,rows:summaries.length,bytes:Buffer.byteLength(JSON.stringify(summaries)),latencyMs:performance.now()-summaryStart,plan:summaryPlan}));
+    const createSummary={queries:1,rows:summaries.length,bytes:Buffer.byteLength(JSON.stringify(summaries)),latencyMs:performance.now()-summaryStart,plan:summaryPlan};
+    console.info('T12_CREATE_SUMMARY '+JSON.stringify({size,...createSummary}));
     const afterStart = performance.now();
     const [page, counts] = await Promise.all([repository.page(scope, "all", 25, null), repository.counts(scope)]);
     const after = { queries: records.length, rows: records.reduce((n, r) => n + r.rows, 0), bytes: Buffer.byteLength(JSON.stringify({ page, counts })), latencyMs: performance.now() - afterStart };
@@ -112,7 +113,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("bounded action list SQL (T
     for (const [name, queries] of [["before", beforeRecords], ["after", afterRecords]] as const) {
       for (const query of queries) plans[name].push((await runtime.query(`EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) ${query.sql}`, query.values)).rows[0]["QUERY PLAN"]);
     }
-    const result = JSON.stringify({ size, environment: "owned postgres:16 / network-none Docker Desktop loopback relay", before, after, warmMs, plans });
+    const result = JSON.stringify({ size, environment: "owned postgres:16 / network-none Docker Desktop loopback relay", before, after, createSummary, warmMs, plans });
     // Local opt-in evidence file; CI uses the reporter and never writes an artifact by default.
     if (process.env.T12_BENCHMARK_OUTPUT) appendFileSync(process.env.T12_BENCHMARK_OUTPUT, result + "\n");
     console.info("T12_BENCHMARK " + result);

@@ -153,7 +153,7 @@ export async function readiness(
     ).rows;
     if (
       tables.some((name) => !found.some((row) => row.name === name)) ||
-      [...retainedFunctions,'save_brand_revision','guard_brand_revision_immutable'].some(
+      [...retainedFunctions,'save_brand_revision','guard_brand_revision_immutable','capture_brand_profile_revision','brand_snapshot_for_generation'].some(
         (name) => !functions.some((row) => row.name === name),
       )
     )

@@ -364,7 +364,7 @@ export async function runAgentForAction(
   if (!budget.allowed) throw new RunError(budget.scope === "ai_paused" ? "ai_paused" : "ai_budget_reached");
   const [workspace, brand, locations] = await Promise.all([
     db.assistantWorkspace(row.workspace_id),
-    db.assistantBrand(row.workspace_id),
+    db.assistantBrand(row.workspace_id,input.actorId),
     db.assistantLocations(row.workspace_id),
   ]);
   // P2.3 item 11: the FAQ + JSON-LD template asks for three owner_fact_*

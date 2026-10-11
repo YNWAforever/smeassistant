@@ -10,7 +10,7 @@ export const deferredTriggers: string[] = [];
 // replay-compare against. verifyCatalog excludes these from the legacy deepEqual and
 // instead asserts their bare presence; their actual behavior is proven by dedicated tests
 // (e.g. test/integration/neon-membership.integration.test.ts for prevent_owner_removal).
-export const additionalFunctions: string[] = ["prevent_owner_removal","offer_is_expired","confirm_offer","archive_offer","offer_current_for_version","claim_preview_slot","finish_preview_slot","begin_publish_output_version","finish_publish_output_version","cancel_published_reply","guard_brand_revision_immutable","save_brand_revision"];
+export const additionalFunctions: string[] = ["prevent_owner_removal","offer_is_expired","confirm_offer","archive_offer","offer_current_for_version","claim_preview_slot","finish_preview_slot","begin_publish_output_version","finish_publish_output_version","cancel_published_reply","guard_brand_revision_immutable","save_brand_revision","capture_brand_profile_revision","brand_snapshot_for_generation"];
 // Retained legacy functions that a later migration re-created on purpose (0011 adds one
 // offer-freshness guard line to each; 0014 re-creates export_output_version again with the
 // once-per-version counting changes). verifyCatalog drops them from the legacy deepEqual and
@@ -18,7 +18,7 @@ export const additionalFunctions: string[] = ["prevent_owner_removal","offer_is_
 // one line, and lib/workspace/publish-sql.test.ts pins the 0014 export as 0011 plus changes (a)-(c).
 // They stay in retainedFunctions, so neon:readiness still requires them.
 export const changedFunctions: string[] = ["approve_output_version","export_output_version"];
-export const additionalTriggers: string[] = ["workspace_members_prevent_owner_removal","brand_revision_immutable"];
+export const additionalTriggers: string[] = ["workspace_members_prevent_owner_removal","brand_revision_immutable","brand_profile_revision_capture"];
 // Exact PostgreSQL definitions added by 0015; the independently retained legacy catalog stays unchanged.
 export const additionalIndexes = [
   { tablename: "action_runs", indexname: "action_runs_latest_metadata_idx", indexdef: "CREATE INDEX action_runs_latest_metadata_idx ON public.action_runs USING btree (workspace_id, action_id, created_at DESC, id DESC) INCLUDE (state)" },
