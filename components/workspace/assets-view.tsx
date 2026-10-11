@@ -7,6 +7,7 @@ import { PageIntro, SectionCard } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AssetRightsControls, AssetUploadDialog } from "@/components/workspace/assets-client"
+import {AssetPreview} from './asset-preview'
 import { LocationSelect } from "@/components/workspace/location-select"
 import type { PrototypeLocale } from "@/lib/copy"
 import type { AssetItem } from "@/lib/workspace/assets"
@@ -49,11 +50,7 @@ export function AssetsView({ locale, workspaceId, timezone, role, location, loca
           {rows.length === 0 ? <div className="empty-state"><span><FileImage /></span><h2>{isChinese ? "尚未有素材" : "No assets yet"}</h2><p>{isChinese ? "上載相片或餐牌，確認使用權後即可用於社交帖文草稿。" : "Upload a photo or menu; once rights are confirmed it can be used in social post drafts."}</p></div> : (
             <div className="asset-grid">{rows.map((asset) => (
               <SectionCard key={asset.id}>
-                <div className="asset-preview">{asset.signedUrl && asset.kind !== "document" && !asset.storage_path.endsWith(".pdf") ? (
-                  // Signed URL (60 s), never a public bucket path; a plain <img> keeps the private origin out of next/image's loader.
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={asset.signedUrl} alt={asset.alt_text ?? asset.filename} loading="lazy" />
-                ) : <FileImage />}</div>
+                <div className="asset-preview"><AssetPreview asset={asset} workspaceId={workspaceId} locale={locale}/></div>
                 <div className="section-card-heading"><div><p className="eyebrow">{kindLabel(asset.kind)}</p><h2>{asset.filename}</h2></div><Badge variant="outline">{rightsLabel(asset.rights_status)}</Badge></div>
                 <dl className="asset-meta"><div><dt>{isChinese ? "使用權" : "Rights"}</dt><dd>{asset.rights_confirmed_at ? `${rightsLabel(asset.rights_status)} · ${formatDateTime(asset.rights_confirmed_at, locale, timezone)}` : (isChinese ? "尚未確認" : "Not confirmed yet")}</dd></div><div><dt>{isChinese ? "地點" : "Location"}</dt><dd>{asset.locationName ?? (isChinese ? "所有地點" : "All locations")}</dd></div><div><dt>{isChinese ? "上載時間" : "Uploaded"}</dt><dd>{formatDateTime(asset.created_at, locale, timezone)}</dd></div></dl>
                 <AssetRightsControls locale={locale} workspaceId={workspaceId} assetId={asset.id} rightsStatus={asset.rights_status} altText={asset.alt_text} canDecide={role !== "viewer" && asset.inScope} />
