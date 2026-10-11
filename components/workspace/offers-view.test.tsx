@@ -276,4 +276,21 @@ describe("OffersView", () => {
       cleanup();
     }
   });
+
+  it("defaults a new offer's location to the selected location when the caller may manage it", () => {
+    mount({ selectedLocationId: "loc-2" });
+    fireEvent.click(button(text.actions.newOffer));
+    expect(screen.getByLabelText(text.fields.location)).toHaveValue("loc-2");
+  });
+
+  it("falls back to the first manageable location when the selected one is not manageable, or none is selected", () => {
+    mount({ selectedLocationId: "loc-2", canManage: { workspace: false, "loc-1": true, "loc-2": false } });
+    fireEvent.click(button(text.actions.newOffer));
+    expect(screen.getByLabelText(text.fields.location)).toHaveValue("loc-1");
+    cleanup();
+    mount({ selectedLocationId: null });
+    fireEvent.click(button(text.actions.newOffer));
+    expect(screen.getByLabelText(text.fields.location)).toHaveValue("loc-1");
+  });
 });
+

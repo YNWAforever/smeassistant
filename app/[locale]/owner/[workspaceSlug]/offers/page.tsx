@@ -30,7 +30,11 @@ export default async function OffersRoute(props: OwnerPageProps) {
     offerRepository().list(ctx.workspace.id),
     listAssets(ctx.workspace.id, ctx.locations, { signedUrls: false }).catch(() => []),
   ]);
-  const offers = allOffers.filter((offer) => canReadOffer(membership, offer.locationId));
+  // Only an explicit ?location= narrows the list (workspace-wide offers always show); no param or "all" lists everything readable.
+  const selectedLocationId = ctx.locations.find((location) => location.slug === page.query?.location)?.id ?? null;
+  const offers = allOffers
+    .filter((offer) => canReadOffer(membership, offer.locationId))
+    .filter((offer) => selectedLocationId === null || offer.locationId === null || offer.locationId === selectedLocationId);
 
   const keys: Array<{ key: string; locationId: string | null }> = [
     { key: "workspace", locationId: null },
@@ -58,6 +62,7 @@ export default async function OffersRoute(props: OwnerPageProps) {
       offers={offers}
       locations={ctx.locations.map((location) => ({ id: location.id, slug: location.slug, name: location.name }))}
       assets={assets}
+      selectedLocationId={selectedLocationId}
     />
   );
 }
