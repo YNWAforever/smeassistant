@@ -660,6 +660,33 @@ describe("offer promotion actions (P4.1)", () => {
     expect(screen.getByTestId("offer-stale-banner")).toHaveTextContent(offerCopy.stale.offer_inactive);
   });
 
+  it.each([
+    ["changed", { latestVersionOfferRevision: 1 }],
+    ["ended", { offer: { ...offer, expired: true }, latestVersionOfferRevision: 2, versions: [versionRow({ id: "ver-1", version_no: 1, approval_state: "draft", offerRevision: 2 })] }],
+    ["inactive", { offer: { ...offer, status: "archived" as const }, latestVersionOfferRevision: 2, versions: [versionRow({ id: "ver-1", version_no: 1, approval_state: "draft", offerRevision: 2 })] }],
+  ] satisfies Array<[string, Parameters<typeof mountOffer>[0]]>)("disables every Approve control while the stale-offer banner shows (%s)", (_kind, props) => {
+    mountOffer(props);
+    expect(screen.getByTestId("offer-stale-banner")).toBeInTheDocument();
+    const approves = screen.getAllByRole("button", { name: /^Approve/ });
+    expect(approves.length).toBeGreaterThan(0);
+    for (const button of approves) expect(button).toBeDisabled();
+  });
+
+  it("disables Export and Copy for an approved version once its offer has ended", () => {
+    mountOffer({ offer: { ...offer, expired: true }, latestVersionOfferRevision: 2, versions: [versionRow({ id: "ver-1", version_no: 1, approval_state: "approved", offerRevision: 2 })] });
+    expect(screen.getByTestId("offer-stale-banner")).toHaveTextContent(offerCopy.stale.offer_expired);
+    for (const name of [/^Export/, /^Copy text/]) {
+      const buttons = screen.getAllByRole("button", { name });
+      for (const button of buttons) expect(button).toBeDisabled();
+    }
+  });
+
+  it("keeps Export enabled for an approved version of a current, confirmed offer", () => {
+    mountOffer({ latestVersionOfferRevision: 2, versions: [versionRow({ id: "ver-1", version_no: 1, approval_state: "approved", offerRevision: 2 })] });
+    expect(screen.queryByTestId("offer-stale-banner")).toBeNull();
+    expect(screen.getAllByRole("button", { name: /^Export/ }).some((button) => !(button as HTMLButtonElement).disabled)).toBe(true);
+  });
+
   it("maps an approve answering 409 offer_changed to the owner copy, never the code", async () => {
     clientMocks.approveVersion.mockResolvedValue({ ok: false, status: 409, error: "offer_changed" });
     mountOffer({ latestVersionOfferRevision: 2, versions: [versionRow({ id: "ver-1", version_no: 1, approval_state: "draft", offerRevision: 2 })] });
