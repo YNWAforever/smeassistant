@@ -1,13 +1,28 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({ signOut: vi.fn(), middleware: vi.fn(), exchangeFixtureVerifier: vi.fn() }));
-vi.mock("@/lib/auth", () => ({ signOut: mocks.signOut }));
+vi.mock("@/lib/identity/composition", () => ({ identityProvider: async () => ({ signOut: mocks.signOut }) }));
 vi.mock("@/lib/identity/neon", () => ({ getNeonAuth: () => ({ middleware: () => mocks.middleware }) }));
 vi.mock("@/test/e2e/composition", () => ({ exchangeFixtureVerifier: mocks.exchangeFixtureVerifier }));
 import { GET } from "./route";
+import { MANAGED_AUTH_COOKIES, MANAGED_SESSION_COOKIES } from "@/lib/identity/cookies";
 const request = (query: string) => new Request(`https://app.test/auth/callback?${query}`);
 beforeEach(() => { vi.clearAllMocks(); delete process.env.SME_TEST_IDENTITY; mocks.signOut.mockResolvedValue(undefined); mocks.middleware.mockResolvedValue(new Response(null, { status: 307, headers: { location: "https://app.test/auth/callback?locale=en&returnTo=%2Fen%2Fowner%2Ffixture", "set-cookie": "__Secure-neon-auth.session_token=fixture; Path=/" } })); });
 afterEach(() => { delete process.env.SME_TEST_IDENTITY; vi.restoreAllMocks(); });
+/**
+ * Local invalidation is carried by the failure redirect itself, never only by
+ * signOut(); the challenge cookies are left alone because they belong to the
+ * newest pending link, not to the link that just failed.
+ */
+function expectManagedCookiesExpired(response: Response) {
+  const cookies = response.headers.getSetCookie();
+  for (const name of MANAGED_SESSION_COOKIES) {
+    expect(cookies.some((cookie) => cookie.startsWith(`${name}=;`) && /Max-Age=0/i.test(cookie))).toBe(true);
+  }
+  const challenges = MANAGED_AUTH_COOKIES.filter((name) => !(MANAGED_SESSION_COOKIES as readonly string[]).includes(name));
+  expect(challenges.length).toBeGreaterThan(0);
+  for (const name of challenges) expect(cookies.some((cookie) => cookie.startsWith(`${name}=`))).toBe(false);
+}
 describe("GET /auth/callback", () => {
   it("exchanges a verifier then preserves SDK cookies while redirecting exactly once to completion", async () => {
     const response = await GET(request("locale=en&returnTo=%2Fen%2Fowner%2Ffixture&neon_auth_session_verifier=fixture"));
@@ -51,6 +66,51 @@ describe("GET /auth/callback", () => {
     expect(forwarded.url).toBe(original.url);
   });
 
+  // Production 2026-10-11: a stale or reused magic link reaches this route as a
+  // top-level navigation from the mail client, so the request carries the SDK
+  // challenge cookie but no Origin header. Managed Auth's upstream sign-out is
+  // a cookie-bearing POST, which better-auth's origin check rejects with 403
+  // MISSING_OR_NULL_ORIGIN, so signOut() throws after it has already cleared
+  // the local cookies. That throw used to escape into the catch-all, logging a
+  // misleading verifier_exchange failure and telling the owner the service was
+  // unavailable instead of that the link had expired.
+  it("reports an expired link, not an outage, when a rejected verifier's best-effort sign-out fails upstream", async () => {
+    mocks.middleware.mockResolvedValue(new Response(null, { status: 200, headers: { "x-middleware-next": "1" } }));
+    mocks.signOut.mockRejectedValue(new Error("identity_signout_failed"));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = await GET(request("locale=zh-HK&method=email&neon_auth_session_verifier=stale"));
+    expect(response.headers.get("location")).toBe("https://app.test/zh-HK/owner/sign-in?method=email&error=invalid_code");
+    expect(mocks.signOut).toHaveBeenCalledOnce();
+    expectManagedCookiesExpired(response);
+    expect(JSON.stringify(spy.mock.calls)).not.toContain("verifier_exchange");
+    spy.mockRestore();
+  });
+  it("reports an expired link, not an outage, when a provider token error's best-effort sign-out fails upstream", async () => {
+    mocks.signOut.mockRejectedValue(new Error("identity_signout_failed"));
+    const response = await GET(request("locale=en&claim=fixture-report&method=email&error=INVALID_TOKEN"));
+    expect(response.headers.get("location")).toBe("https://app.test/en/owner/sign-in?claim=fixture-report&method=email&error=invalid_code");
+    expectManagedCookiesExpired(response);
+  });
+  it("expires the managed cookies on the outage redirect too, whatever signOut reports", async () => {
+    mocks.middleware.mockRejectedValue(new Error("private provider detail"));
+    mocks.signOut.mockRejectedValue(new Error("identity_signout_failed"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = await GET(request("locale=en&method=email&neon_auth_session_verifier=fixture"));
+    expect(response.headers.get("location")).toBe("https://app.test/en/owner/sign-in?method=email&error=auth_unavailable");
+    expectManagedCookiesExpired(response);
+  });
+  // Production 2026-10-11: two links requested, the older clicked first. Its
+  // verifier fails against the newer link's challenge cookie, and the old
+  // failure path then deleted that challenge, so the newer link failed too.
+  it("an older link's failure keeps the newer link's challenge cookie so the newer link can still sign in", async () => {
+    mocks.middleware.mockResolvedValue(new Response(null, { status: 200, headers: { "x-middleware-next": "1" } }));
+    mocks.signOut.mockRejectedValue(new Error("identity_signout_failed"));
+    const response = await GET(new Request("https://app.test/auth/callback?locale=zh-HK&method=email&neon_auth_session_verifier=older", {
+      headers: { cookie: "__Secure-neon-auth.session_challenge=newer-link-challenge" },
+    }));
+    expect(response.headers.get("location")).toBe("https://app.test/zh-HK/owner/sign-in?method=email&error=invalid_code");
+    expect(response.headers.getSetCookie().some((cookie) => cookie.includes("session_challenge"))).toBe(false);
+  });
   it("fails closed when a fixture verifier exchange produces no response", async () => {
     process.env.SME_TEST_IDENTITY = "owned-local";
     mocks.exchangeFixtureVerifier.mockResolvedValue(null);
