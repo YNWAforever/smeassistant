@@ -148,3 +148,11 @@
 - 沒有登入身份，所有 hosted 流程（註冊、認領、onboarding、每日工作）未在正式站驗收。
 - 沒有付費 scan、真模型、寄信或外部發佈。
 - 本地 gates 在 Windows 跑；兩個掃描整個 repo 的測試在全套負載下偶爾超過 5 秒（見 §6）。
+
+## 2026-10-12 更正 — F-20261011-01 / T-20261011-08
+
+以上保留為 2026-10-09 歷史記錄。2026-10-11 的 E18/E20/E27 已有後來成功登入的 B owner；A 的歷史 no-membership 狀態不能用作現在沒有 owner session 的證明。本轮 agent 沒有可用的已授權測試身份，也不能把歷史 B 的登入當成自己現在持有的 session。
+
+`CONTEXTUAL_ASSISTANT_ENABLED` 只控制新 contextual questions、suggestions 及 next-step links。Fixed draft intents 在 flag 關閉時仍可走 live model 路徑；不能以 flag off 宣稱所有 assistant 生成關閉。F01/T01 要使用與普通 action 相同的持久化 queue/start 鎖，並保持 preview → owner 建立版本 → 指定版本批准的語義。
+
+2026-10-12 核對 main 為 ca9ecb34、production 為 301be115。AI 配置 metadata entries 存在，但 selected credential、部署 binding 及一次真生成未經驗證；目前 hosted 阻擋應寫為配置／同 SHA fixture 及授權缺口。詳見 `docs/operations/ai-readiness.md`，不可把先前的 owner 缺席結論延續為當前商戶狀態。
