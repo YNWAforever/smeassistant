@@ -8,9 +8,9 @@ import { RecoveryForm } from "@/components/report/recovery-form";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const SENT = {
-  en: "If that address unlocked this report, a link is on its way. It works once, for 60 minutes.",
-  "zh-HK": "如該地址曾解鎖此報告，連結已在途中。連結只可使用一次，60 分鐘內有效。",
-  "zh-TW": "如果該地址曾解鎖這份報告，連結已寄出。連結只能使用一次，60 分鐘內有效。",
+  en: "If that address is eligible to access this report, we will send a recovery link. It works once, for 60 minutes.",
+  "zh-HK": "如這個電郵地址符合報告存取條件，我們會寄出恢復連結。連結只可使用一次，60 分鐘內有效。",
+  "zh-TW": "如果這個電子郵件地址符合報告存取條件，我們會寄出恢復連結。連結只能使用一次，60 分鐘內有效。",
 } as const;
 
 function mount(locale: "en" | "zh-HK" | "zh-TW") {
@@ -58,16 +58,20 @@ describe("RecoveryForm", () => {
     expect(host.textContent).toContain(SENT[locale]);
   });
 
-  it("shows the same message when the response is not 200 or the fetch rejects", async () => {
+  it("retains input and shows an honest retry alert on 429 and network failure", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 429, ok: false }));
     let host = mount("en");
     await submit(host);
-    expect(host.textContent).toContain(SENT.en);
+    expect(host.textContent).not.toContain(SENT.en);
+    expect(host.querySelector("[role=alert]")).not.toBeNull();
+    expect((host.querySelector("input") as HTMLInputElement).value).toBe("a@example.com");
 
     document.body.innerHTML = "";
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("down")));
     host = mount("en");
     await submit(host);
-    expect(host.textContent).toContain(SENT.en);
+    expect(host.textContent).not.toContain(SENT.en);
+    expect(host.querySelector("[role=alert]")).not.toBeNull();
+    expect((host.querySelector("input") as HTMLInputElement).value).toBe("a@example.com");
   });
 });
