@@ -5,9 +5,17 @@ vi.mock("@/lib/auth", () => ({ signOut: mocks.signOut }));
 vi.mock("@/lib/identity/neon", () => ({ getNeonAuth: () => ({ middleware: () => mocks.middleware }) }));
 vi.mock("@/test/e2e/composition", () => ({ exchangeFixtureVerifier: mocks.exchangeFixtureVerifier }));
 import { GET } from "./route";
+import { MANAGED_AUTH_COOKIES } from "@/lib/identity/cookies";
 const request = (query: string) => new Request(`https://app.test/auth/callback?${query}`);
 beforeEach(() => { vi.clearAllMocks(); delete process.env.SME_TEST_IDENTITY; mocks.signOut.mockResolvedValue(undefined); mocks.middleware.mockResolvedValue(new Response(null, { status: 307, headers: { location: "https://app.test/auth/callback?locale=en&returnTo=%2Fen%2Fowner%2Ffixture", "set-cookie": "__Secure-neon-auth.session_token=fixture; Path=/" } })); });
 afterEach(() => { delete process.env.SME_TEST_IDENTITY; vi.restoreAllMocks(); });
+/** Local invalidation is carried by the failure redirect itself, never only by signOut(). */
+function expectManagedCookiesExpired(response: Response) {
+  const cookies = response.headers.getSetCookie();
+  for (const name of MANAGED_AUTH_COOKIES) {
+    expect(cookies.some((cookie) => cookie.startsWith(`${name}=;`) && /Max-Age=0/i.test(cookie))).toBe(true);
+  }
+}
 describe("GET /auth/callback", () => {
   it("exchanges a verifier then preserves SDK cookies while redirecting exactly once to completion", async () => {
     const response = await GET(request("locale=en&returnTo=%2Fen%2Fowner%2Ffixture&neon_auth_session_verifier=fixture"));
@@ -66,6 +74,7 @@ describe("GET /auth/callback", () => {
     const response = await GET(request("locale=zh-HK&method=email&neon_auth_session_verifier=stale"));
     expect(response.headers.get("location")).toBe("https://app.test/zh-HK/owner/sign-in?method=email&error=invalid_code");
     expect(mocks.signOut).toHaveBeenCalledOnce();
+    expectManagedCookiesExpired(response);
     expect(JSON.stringify(spy.mock.calls)).not.toContain("verifier_exchange");
     spy.mockRestore();
   });
@@ -73,6 +82,15 @@ describe("GET /auth/callback", () => {
     mocks.signOut.mockRejectedValue(new Error("identity_signout_failed"));
     const response = await GET(request("locale=en&claim=fixture-report&method=email&error=INVALID_TOKEN"));
     expect(response.headers.get("location")).toBe("https://app.test/en/owner/sign-in?claim=fixture-report&method=email&error=invalid_code");
+    expectManagedCookiesExpired(response);
+  });
+  it("expires the managed cookies on the outage redirect too, whatever signOut reports", async () => {
+    mocks.middleware.mockRejectedValue(new Error("private provider detail"));
+    mocks.signOut.mockRejectedValue(new Error("identity_signout_failed"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = await GET(request("locale=en&method=email&neon_auth_session_verifier=fixture"));
+    expect(response.headers.get("location")).toBe("https://app.test/en/owner/sign-in?method=email&error=auth_unavailable");
+    expectManagedCookiesExpired(response);
   });
   it("fails closed when a fixture verifier exchange produces no response", async () => {
     process.env.SME_TEST_IDENTITY = "owned-local";

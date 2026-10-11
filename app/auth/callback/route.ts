@@ -2,20 +2,25 @@ import { NextResponse, NextRequest } from "next/server";
 
 import { signOut } from "@/lib/auth";
 import { cleanCallbackHandoff } from "@/lib/identity/callback-handoff";
+import { MANAGED_AUTH_COOKIES, expiredAuthCookie } from "@/lib/identity/cookies";
 import { authDiagnostic } from "@/lib/identity/sign-in-diagnostics";
 import { authFlowHref, parseAuthFlow, type AuthFlow } from "@/lib/identity/sign-in-flow";
 
 /**
- * Clears a failed attempt's managed-auth state without letting the upstream
- * revocation decide the outcome. This route is reached by top-level navigation
- * from a mail client or Google, so the browser sends the SDK challenge cookie
- * but no Origin header; managed Auth's upstream sign-out is a cookie-bearing
- * POST that better-auth rejects as MISSING_OR_NULL_ORIGIN. signOut() clears the
- * local cookies before it reports that, so a throw here must not turn an
- * expired or reused link into an "auth unavailable" outage.
+ * Ends a failed attempt: a best-effort upstream revocation, then a redirect
+ * that itself expires every managed-auth cookie. This route is reached by
+ * top-level navigation from a mail client or Google, so the browser sends the
+ * SDK challenge cookie but no Origin header; managed Auth's upstream sign-out
+ * is a cookie-bearing POST that better-auth rejects as MISSING_OR_NULL_ORIGIN.
+ * That rejection must not turn an expired or reused link into an "auth
+ * unavailable" outage, and local invalidation must not depend on signOut()
+ * succeeding, so the cookies are expired on the response that is returned.
  */
-async function clearFailedAttempt(): Promise<void> {
+async function failedAttempt(url: URL): Promise<NextResponse> {
   await signOut().catch(() => {});
+  const response = NextResponse.redirect(url);
+  for (const name of MANAGED_AUTH_COOKIES) response.cookies.set(name, "", expiredAuthCookie);
+  return response;
 }
 
 function landing(request: Request, flow: AuthFlow, error?: string): URL {
@@ -32,8 +37,7 @@ export async function GET(request: Request) {
   const correlationId = crypto.randomUUID();
   try {
     if (requestUrl.searchParams.has("error")) {
-      await clearFailedAttempt();
-      return NextResponse.redirect(landing(request, flow, requestUrl.searchParams.get("error") === "access_denied" ? "cancelled" : "invalid_code"));
+      return await failedAttempt(landing(request, flow, requestUrl.searchParams.get("error") === "access_denied" ? "cancelled" : "invalid_code"));
     }
     if (requestUrl.searchParams.has("neon_auth_session_verifier")) {
       const exchanged = process.env.SME_TEST_IDENTITY
@@ -57,13 +61,11 @@ export async function GET(request: Request) {
         const handoff = cleanCallbackHandoff(request, exchanged);
         if (handoff) return handoff;
       }
-      await clearFailedAttempt();
-      return NextResponse.redirect(landing(request, flow, requestUrl.searchParams.get("error") === "access_denied" ? "cancelled" : "invalid_code"));
+      return await failedAttempt(landing(request, flow, requestUrl.searchParams.get("error") === "access_denied" ? "cancelled" : "invalid_code"));
     }
     return NextResponse.redirect(landing(request, flow));
   } catch {
     console.error(authDiagnostic("verifier_exchange", correlationId));
-    await clearFailedAttempt();
-    return NextResponse.redirect(landing(request, flow, "auth_unavailable"));
+    return await failedAttempt(landing(request, flow, "auth_unavailable"));
   }
 }
