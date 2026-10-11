@@ -25,6 +25,17 @@ export type SignInCopy = {
   changeEmail: string;
   resend: string;
   resendIn: (seconds: number) => string;
+  resendInMinutes: (minutes: number) => string;
+  /**
+   * Shown when a link request answers 429. That can be the per-address bucket
+   * or the shared per-origin bucket in front of it, so the copy never blames
+   * the address. Both mail routes apply the limit before the eligibility check,
+   * so it reveals nothing about whether the address is a member.
+   */
+  rateLimited: (minutes: number) => string;
+  /** The same notice once the wait is over and another request is allowed. */
+  rateLimitedReady: string;
+  rateLimitedHelp: string;
   cancelled: string;
   expired: string;
   unavailable: string;
@@ -62,6 +73,10 @@ const en: SignInCopy = {
   changeEmail: "Use a different email",
   resend: "Send another link",
   resendIn: (seconds) => `Send another link in ${seconds}s`,
+  resendInMinutes: (minutes) => `Send another link in ${minutes} min`,
+  rateLimited: (minutes) => `Too many sign-in links have been requested, so no new link was sent. Try again in about ${minutes} ${minutes === 1 ? "minute" : "minutes"}.`,
+  rateLimitedReady: "Too many sign-in links were requested earlier, so no new link was sent. You can request another link now.",
+  rateLimitedHelp: "If an earlier link reached your inbox, use the most recent one; it still works.",
   cancelled: "Google sign-in was cancelled.",
   expired: "That sign-in link has expired or was already used.",
   unavailable: "Sign-in is temporarily unavailable. Please try again shortly.",
@@ -99,6 +114,10 @@ const zhHK: SignInCopy = {
   changeEmail: "使用另一個電郵",
   resend: "再寄一次連結",
   resendIn: (seconds) => `${seconds} 秒後可再寄一次連結`,
+  resendInMinutes: (minutes) => `${minutes} 分鐘後可再寄一次連結`,
+  rateLimited: (minutes) => `要求登入連結的次數太多，今次沒有寄出新連結。請約 ${minutes} 分鐘後再試。`,
+  rateLimitedReady: "較早前要求登入連結的次數太多，所以沒有寄出新連結。你現在可以再要求一次連結。",
+  rateLimitedHelp: "如較早的連結已送達收件箱，請使用最新的一封，該連結仍然有效。",
   cancelled: "已取消 Google 登入。",
   expired: "登入連結已過期或已被使用。",
   unavailable: "登入服務暫時未能使用，請稍後再試。",
@@ -144,6 +163,10 @@ const zhTW: SignInCopy = {
   changeEmail: "使用其他電子郵件",
   resend: "再寄一次連結",
   resendIn: (seconds) => `${seconds} 秒後可再寄一次連結`,
+  resendInMinutes: (minutes) => `${minutes} 分鐘後可再寄一次連結`,
+  rateLimited: (minutes) => `要求登入連結的次數過多，這次沒有寄出新連結。請約 ${minutes} 分鐘後再試。`,
+  rateLimitedReady: "先前要求登入連結的次數過多，所以沒有寄出新連結。您現在可以再要求一次連結。",
+  rateLimitedHelp: "如果較早的連結已送達收件匣，請使用最新的一封，該連結仍然有效。",
   cancelled: "已取消 Google 登入。",
   expired: "登入連結已過期或已被使用。",
   unavailable: "登入服務暫時無法使用，請稍後再試。",

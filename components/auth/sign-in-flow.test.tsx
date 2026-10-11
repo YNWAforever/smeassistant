@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({ replace: vi.fn(), social: vi.fn(), magicLink: 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replace }) }));
 vi.mock("@/lib/identity/client", () => ({ authClient: { signIn: { social: mocks.social, magicLink: mocks.magicLink } } }));
 
+import { signInCopy } from "./sign-in-copy";
 import { SignInFlow } from "./sign-in-flow";
 
 const flow = { locale: "en" as const, claim: null, returnTo: "/en/owner/select-workspace", method: null };
@@ -65,6 +66,48 @@ it("honors a numeric Retry-After delay without automatically sending another ema
   enterFixtureEmail();
   await screen.findByText(/send another link in 12[01]s/i);
   expect(mocks.magicLink).toHaveBeenCalledTimes(1);
+});
+
+it("says no link was sent when the address is rate limited, instead of showing the inbox screen", async () => {
+  mocks.magicLink.mockResolvedValue({ error: { status: 429, headers: new Headers({ "retry-after": "2400" }) } });
+  render(<SignInFlow flow={flow} initialReason={null} />);
+  enterFixtureEmail();
+  const alert = await screen.findByRole("alert");
+  expect(alert).toHaveTextContent(/no new link was sent/i);
+  expect(alert).toHaveTextContent(/about 40 minutes/i);
+  expect(screen.queryByRole("status")).toBeNull();
+  expect(screen.queryByText(signInCopy.en.inbox)).toBeNull();
+  expect(screen.getByText(signInCopy.en.rateLimitedHelp)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /send another link in 40 min/i })).toBeDisabled();
+  expect(mocks.magicLink).toHaveBeenCalledTimes(1);
+});
+
+it("drops the wait from the rate-limit notice once the cooldown is over", async () => {
+  vi.useFakeTimers();
+  mocks.magicLink.mockResolvedValue({ error: { status: 429, headers: new Headers({ "retry-after": "0" }) } });
+  render(<SignInFlow flow={flow} initialReason={null} />);
+  await act(async () => { enterFixtureEmail(); await Promise.resolve(); });
+  expect(screen.getByRole("alert")).toHaveTextContent(/try again in about 1 minute/i);
+  await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
+  expect(screen.getByRole("alert")).toHaveTextContent(signInCopy.en.rateLimitedReady);
+  expect(screen.getByRole("alert")).not.toHaveTextContent(/try again in/i);
+  expect(screen.getByRole("button", { name: /^send another link$/i })).toBeEnabled();
+});
+
+it("never attributes the limit to the submitted address, since a shared limit can refuse an unused one", () => {
+  for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
+    for (const text of [signInCopy[locale].rateLimited(5), signInCopy[locale].rateLimitedReady]) {
+      expect(text).not.toMatch(/this address|地址/);
+    }
+  }
+});
+
+it.each(["zh-HK", "zh-TW"] as const)("explains a rate-limited request in %s", async (locale) => {
+  mocks.magicLink.mockResolvedValue({ error: { status: 429, headers: new Headers({ "retry-after": "2400" }) } });
+  const { container } = render(<SignInFlow flow={{ ...flow, locale }} initialReason={null} />);
+  fireEvent.change(container.querySelector("#sign-in-email")!, { target: { value: "owner@fixture.test" } });
+  fireEvent.submit(container.querySelector("form")!);
+  expect(await screen.findByRole("alert")).toHaveTextContent(signInCopy[locale].rateLimited(40));
 });
 
 it("honors an HTTP-date Retry-After delay", async () => {
