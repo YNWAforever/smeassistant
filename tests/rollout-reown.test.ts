@@ -18,7 +18,9 @@ const TABLES = ["mail_outbox", "offers", "preview_events", "scan_attempts", "wor
 
 describe("rollout/reown-0009-0014-objects.sql", () => {
   it("requires exactly journal 0001-0015 with the on-disk checksums", async () => {
-    const migrations = await loadMigrations();
+    // This historical operator packet remains bound to exactly 0015. Later
+    // expand-only migrations must not rewrite its approved hashes or scope.
+    const migrations = (await loadMigrations()).filter(m=>Number(m.name.slice(0,4))<=15);
     expect(migrations).toHaveLength(15);
     expect(listed("expected_journal")).toEqual(migrations.map((m, i) => `${i + 1} ${m.name} ${sha256(m.sql)}`));
   });

@@ -14,6 +14,7 @@ export type DatabaseRows = {
   "audit_jobs": typeof schema.auditJobs.$inferSelect;
   "auth_identities": typeof schema.authIdentities.$inferSelect;
   "brand_profiles": typeof schema.brandProfiles.$inferSelect;
+  "brand_revisions": typeof schema.brandRevisions.$inferSelect;
   "consent_records": typeof schema.consentRecords.$inferSelect;
   "deliveries": typeof schema.deliveries.$inferSelect;
   "erasure_events": typeof schema.erasureEvents.$inferSelect;
@@ -59,6 +60,7 @@ export type DatabaseInserts = {
   "audit_jobs": typeof schema.auditJobs.$inferInsert;
   "auth_identities": typeof schema.authIdentities.$inferInsert;
   "brand_profiles": typeof schema.brandProfiles.$inferInsert;
+  "brand_revisions": typeof schema.brandRevisions.$inferInsert;
   "consent_records": typeof schema.consentRecords.$inferInsert;
   "deliveries": typeof schema.deliveries.$inferInsert;
   "erasure_events": typeof schema.erasureEvents.$inferInsert;

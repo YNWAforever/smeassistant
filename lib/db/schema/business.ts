@@ -291,6 +291,7 @@ export const auditJobs = pgTable("audit_jobs", {
 
 export const brandProfiles = pgTable("brand_profiles", {
  workspaceId: uuid("workspace_id").notNull(),
+ currentRevisionId:uuid('current_revision_id'),
  voice: text("voice").notNull().default(sql.raw("'warm'::text")),
  approvedClaims: text("approved_claims").array().notNull().default(sql.raw("'{}'::text[]")),
  prohibitedTerms: text("prohibited_terms").array().notNull().default(sql.raw("'{}'::text[]")),
@@ -299,9 +300,17 @@ export const brandProfiles = pgTable("brand_profiles", {
  updatedAt: timestamp("updated_at", {withTimezone:true, mode:"string"}).notNull().default(sql.raw("now()")),
 }, t => [
  primaryKey({name:"brand_profiles_pkey",columns:[t.workspaceId]}),
+ foreignKey({name:"brand_profiles_current_revision_fkey",columns:[t.workspaceId,t.currentRevisionId],foreignColumns:[((): AnyPgColumn => brandRevisions.workspaceId)(),((): AnyPgColumn => brandRevisions.id)()]}),
  foreignKey({name:"brand_profiles_workspace_id_fkey",columns:[t.workspaceId],foreignColumns:[((): AnyPgColumn => workspaces.id)()]}).onDelete("cascade"),
  pgPolicy("server_application", {for:"all", to:"sme_app_runtime", using:sql`true`, withCheck:sql`true`}),
 ]).enableRLS();
+
+export const brandRevisions=pgTable('brand_revisions',{
+ id:uuid('id').primaryKey().defaultRandom(),workspaceId:uuid('workspace_id').notNull().references(()=>workspaces.id),
+ profile:jsonb('profile').notNull(),actorId:uuid('actor_id').references(()=>appUsers.id),
+ createdAt:timestamp('created_at',{withTimezone:true,mode:'string'}).notNull().defaultNow(),source:text('source').notNull(),
+},t=>[check('brand_revisions_profile_check',sql`jsonb_typeof(profile)='object'`),check('brand_revisions_source_check',sql`source IN ('baseline','save')`),unique('brand_revisions_workspace_id_id_key').on(t.workspaceId,t.id),index('brand_revisions_history_idx').on(t.workspaceId,t.createdAt.desc(),t.id.desc()),
+ pgPolicy('server_read_brand_revisions',{for:'select',to:'sme_app_runtime',using:sql`true`}),pgPolicy('server_append_brand_revisions',{for:'insert',to:'sme_app_runtime',withCheck:sql`true`})]).enableRLS();
 
 export const consentRecords = pgTable("consent_records", {
  id: uuid("id").notNull().default(sql.raw("gen_random_uuid()")),

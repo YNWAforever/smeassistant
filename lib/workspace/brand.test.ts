@@ -12,7 +12,9 @@ const state = vi.hoisted(() => ({
 
 vi.mock("@/lib/repositories/brand", () => ({ brandRepository: () => ({
   get: async () => state.row,
-  put: async (row: Row) => { state.upserts.push(row); return row; },
+  saveBrandRevision: async (input:{workspaceId:string;profile:Row;expectedRevisionId:string|null}) => {
+    const row={workspace_id:input.workspaceId,...input.profile,updated_at:"2026-09-04T09:00:00.000Z",current_revision_id:"revision-fixture"};state.upserts.push(row);return {profile:row,revisionId:"revision-fixture"};
+  },
 }) }));
 vi.mock("@/lib/repositories/claims", () => ({ recordClaimAuditEvent: async (row: Row) => { state.audits.push(row); } }));
 
@@ -58,7 +60,7 @@ describe("getBrand", () => {
   it("shapes a stored row and drops unknown values", async () => {
     state.row = { workspace_id: "ws-1", voice: "direct", approved_claims: ["a"], prohibited_terms: null, languages: ["en", "fr"], facts: { k: "v", n: 1 }, updated_at: "2026-09-04T00:00:00Z" };
     expect(await getBrand("ws-1")).toEqual({
-      workspaceId: "ws-1",
+      workspaceId: "ws-1",revisionId:null,revisions:[],
       voice: "direct",
       approvedClaims: ["a"],
       prohibitedTerms: [],
@@ -70,7 +72,7 @@ describe("getBrand", () => {
 });
 
 describe("putBrand", () => {
-  it("upserts on workspace_id and records brand.updated", async () => {
+  it("saves a revision and records brand.updated with its id", async () => {
     const parsed = parseBrandBody(VALID);
     if (!parsed.ok) throw new Error("fixture invalid");
     const brand = await putBrand({ workspaceId: "ws-1", actorId: "user-1", brand: parsed.brand, locale: "en", now: new Date("2026-09-04T09:00:00Z") });

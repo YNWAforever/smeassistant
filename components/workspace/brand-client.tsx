@@ -35,6 +35,7 @@ function fromLines(text: string): string[] { return text.split(/\r?\n/).map((lin
 function failureMessage(result: Extract<ClientResult<unknown>, { ok: false }>, t: (typeof COPY)[PrototypeLocale]): string {
   if (result.error === "offline" || result.error === "network") return t.network
   if (result.status === 403) return t.forbidden
+  if(result.status===409)return t.conflict
   if (result.status === 400) return `${t.invalid} ${result.error}`
   return t.failed
 }
@@ -48,6 +49,7 @@ export function BrandSettingsForm({ locale, workspaceId, brand, readOnly, banner
   const [languages, setLanguages] = useState<BrandLanguage[]>(brand.languages)
   const [facts, setFacts] = useState<FactRow[]>(Object.entries(brand.facts).map(([key, value]) => ({ key, value })))
   const [busy, setBusy] = useState(false)
+  const [revisionId,setRevisionId]=useState(brand.revisionId ?? null)
 
   function setFact(index: number, patch: Partial<FactRow>) {
     setFacts((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)))
@@ -64,9 +66,10 @@ export function BrandSettingsForm({ locale, workspaceId, brand, readOnly, banner
       factRecord[key] = row.value.trim()
     }
     setBusy(true)
-    const result = await saveBrand(workspaceId, { voice, approved_claims: fromLines(claims), prohibited_terms: fromLines(prohibited), languages, facts: factRecord })
+    const result = await saveBrand(workspaceId, { voice, approved_claims: fromLines(claims), prohibited_terms: fromLines(prohibited), languages, facts: factRecord,expectedRevisionId:revisionId })
     setBusy(false)
     if (!result.ok) { toast.error(failureMessage(result, t)); return }
+    setRevisionId(result.data.brand.revisionId ?? null)
     toast.success(t.saved)
     router.refresh()
   }
@@ -80,6 +83,14 @@ export function BrandSettingsForm({ locale, workspaceId, brand, readOnly, banner
         actions={readOnly ? null : <Button type="submit" disabled={busy}>{busy ? <LoaderCircle className="animate-spin" /> : <Check />} {t.save}</Button>}
       />
       {banner}
+      {revisionId && <p>{locale==='en'?'Current revision':'目前版本'}: <code>{revisionId}</code></p>}
+      {brand.revisions?.length ? <details><summary>{locale==='en'?'Saved profile history':locale==='zh-TW'?'品牌儲存紀錄':'品牌儲存記錄'}</summary><ol>{brand.revisions.map(revision=><li key={revision.id}><details><summary>{revision.createdAt} · {revision.source==='baseline'?(locale==='en'?'Known current baseline':'已知目前資料基線'):(locale==='en'?'Saved revision':'已儲存版本')}</summary><code>{revision.id}</code>{revision.profile ? <dl>
+        <dt>{t.voiceLabel}</dt><dd>{t.voices[revision.profile.voice]}</dd>
+        <dt>{t.languagesLabel}</dt><dd>{revision.profile.languages.map(language=>t.languages[language]).join(', ')}</dd>
+        <dt>{t.claimsLabel}</dt><dd><ul>{revision.profile.approved_claims.map((claim,i)=><li key={i}>{claim}</li>)}</ul></dd>
+        <dt>{t.prohibitedLabel}</dt><dd><ul>{revision.profile.prohibited_terms.map((term,i)=><li key={i}>{term}</li>)}</ul></dd>
+        <dt>{t.factsTitle}</dt><dd><dl>{Object.entries(revision.profile.facts).map(([key,value])=><div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl></dd>
+      </dl>:<p>{locale==='en'?'Historical content cannot be read.':'未能讀取這項歷史資料。'}</p>}</details></li>)}</ol></details>:null}
       <div className="settings-grid">
         <SectionCard>
           <p className="eyebrow">{t.voiceEyebrow}</p>
@@ -158,6 +169,7 @@ const COPY = {
     prohibitedLabel: "Prohibited terms (one per line)", prohibitedPlaceholder: "best in town",
     versionEyebrow: "Versioning", versionTitle: "Current brand profile", versionBody: "Saving updates the current brand profile; an audit event records each change.",
     updated: "Updated", neverSaved: "Defaults · not saved yet",
+    conflict:"Another save changed this profile. Your input is retained; reload the latest profile before merging your changes.",
     invalid: "The profile was rejected:", forbidden: "Only the owner can edit the brand profile.",
     network: "The server could not be reached; try again shortly.", failed: "The profile could not be saved.",
   },
@@ -177,6 +189,7 @@ const COPY = {
     prohibitedLabel: "禁用詞語（每行一項）", prohibitedPlaceholder: "全港最好",
     versionEyebrow: "版本", versionTitle: "目前品牌資料", versionBody: "儲存會更新目前品牌資料；每次更改都會記錄審計事件。",
     updated: "更新於", neverSaved: "預設值 · 尚未儲存",
+    conflict:"品牌資料已有另一項儲存。你的輸入仍然保留；請先重載最新資料，再合併你的修改。",
     invalid: "品牌資料未獲接受：", forbidden: "只有店主可以編輯品牌資料。",
     network: "無法連接伺服器，請稍後再試。", failed: "未能儲存品牌資料。",
   },
@@ -196,6 +209,7 @@ const COPY = {
     prohibitedLabel: "禁用詞語（每行一項）", prohibitedPlaceholder: "全台最好",
     versionEyebrow: "版本", versionTitle: "目前品牌資料", versionBody: "儲存會更新目前品牌資料；每次更改都會記錄稽核事件。",
     updated: "更新於", neverSaved: "預設值 · 尚未儲存",
+    conflict:"品牌資料已有另一項儲存。你的輸入仍然保留；請先重載最新資料，再合併你的修改。",
     invalid: "品牌資料未獲接受：", forbidden: "只有店家負責人可以編輯品牌資料。",
     network: "無法連線至伺服器，請稍後再試。", failed: "無法儲存品牌資料。",
   },

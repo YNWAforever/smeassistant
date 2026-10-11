@@ -52,15 +52,19 @@ export async function PUT(req: Request, { params }: { params: Promise<{ workspac
   }
   const parsed = parseBrandBody(raw);
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+  const expectedRevisionId=(raw as {expectedRevisionId?:unknown}).expectedRevisionId ?? null;
+  if(expectedRevisionId!==null && (typeof expectedRevisionId!=='string' || !WORKSPACE_ID_RE.test(expectedRevisionId)))return NextResponse.json({error:'invalid_revision'}, {status:400,headers:HEADERS});
 
   const bodyLocale = raw && typeof raw === "object" ? (raw as { locale?: unknown }).locale : undefined;
   const candidate = typeof bodyLocale === "string" ? bodyLocale : req.headers.get("x-sme-locale") ?? "";
   const locale = isLocale(candidate) ? candidate : DEFAULT_LOCALE;
 
   try {
-    const brand = await putBrand({ workspaceId, actorId: auth.user.id, brand: parsed.brand, locale, ipHash: ipHashFor(req) });
+    const brand = await putBrand({ workspaceId, actorId: auth.user.id, brand: parsed.brand, expectedRevisionId,locale, ipHash: ipHashFor(req) });
     return NextResponse.json({ brand });
-  } catch {
+  } catch (error) {
+    if(error instanceof Error && error.message==='brand_revision_conflict')return NextResponse.json({error:'brand_revision_conflict'}, {status:409,headers:HEADERS});
+    if(error instanceof Error && error.message==='brand_revision_forbidden')return NextResponse.json({error:'forbidden'}, {status:403,headers:HEADERS});
     console.error("[api/workspaces/brand] save failed", { category: "brand_save_failed" });
     return NextResponse.json({ error: "unavailable" }, { status: 503, headers: HEADERS });
   }
