@@ -86,6 +86,13 @@ describe("BillingView while billing is closed", () => {
 });
 
 describe("BillingView while billing is open", () => {
+  it.each(['en','zh-HK','zh-TW'] as const)('T20: free current price is zero and the market price belongs to the upgrade (%s)',locale=>{
+    for(const market of ['hk','tw'] as const){
+      const root=render({locale,billingOpen:false,contactHref:null,model:baseModel({marketPrice:MARKETS[market].pricing})});
+      expect(root.querySelector('.plan-card-head h2')?.textContent).toMatch(/\$0/);
+      expect(root.querySelector('.upgrade-price')?.textContent).toContain(MARKETS[market].pricing.amount.toLocaleString('en-US'));
+    }
+  });
   it("owner on lite sees Subscribe via Stripe, and no not-open label", () => {
     const root = render({ role: "owner", billingOpen: true, contactHref: null });
     expect(root.textContent).toContain("Subscribe via Stripe");
