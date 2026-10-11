@@ -57,7 +57,9 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon private content metad
     expect(await repo.get(other)).toBeNull();
     const user = await resolveApplicationUser({ provider: "neon", subject: "brand-owner", email: "brand@example.test", verified: true });
     await runtime.query("INSERT INTO workspace_members(workspace_id,user_id,email,role,accepted_at) VALUES($1,$2,$3,'owner',now())",[ws,user.id,user.email]);
-    const saved=await putBrand({ workspaceId: ws, actorId: user.id, brand: { voice: "direct", approved_claims: ["台北"], prohibited_terms: [], languages: ["zh-TW"], facts: { currency: "TWD" } }, locale: "zh-TW" });
+    const current=await repo.get(ws);
+    expect(current?.current_revision_id).toEqual(expect.any(String));
+    const saved=await putBrand({ workspaceId: ws, actorId: user.id, expectedRevisionId:current!.current_revision_id!, brand: { voice: "direct", approved_claims: ["台北"], prohibited_terms: [], languages: ["zh-TW"], facts: { currency: "TWD" } }, locale: "zh-TW" });
     expect((await runtime.query("SELECT event,payload FROM audit_events WHERE workspace_id=$1", [ws])).rows).toEqual([{ event: "brand.updated", payload: { locale: "zh-TW",revision_id:saved.revisionId, voice: "direct", languages: ["zh-TW"], approved_claims: 1, prohibited_terms: 0, facts: 1 } }]);
     expect((await runtime.query("SELECT count(*)::int AS count FROM brand_profiles WHERE workspace_id=$1", [ws])).rows[0].count).toBe(1);
   });

@@ -23,7 +23,8 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon membership boundaries
   const url = new URL(fixture.databaseUrl); url.username = "fixture_runtime"; url.password = "fixture-only";
   runtime = new Pool({ connectionString: url.href, max: 10 }); ports.pool = runtime;
  });
- beforeEach(async () => { await runtime.query("DELETE FROM audit_jobs; DELETE FROM workspaces; DELETE FROM app_users"); });
+ // Only the fixture owner resets immutable history; runtime grants stay strict.
+ beforeEach(async () => { await owner.query("TRUNCATE app_users,workspaces CASCADE"); });
  afterAll(async () => { await Promise.all([owner?.end(), runtime?.end()]); fixture?.stop(); });
  const workspace = async (slug = "shop") => (await runtime.query("INSERT INTO workspaces(slug) VALUES($1) RETURNING id", [slug])).rows[0].id as string;
  it("reads only accepted membership for the mapped application UUID and workspace", async () => {
