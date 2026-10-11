@@ -55,7 +55,7 @@ export interface RunAgentInput {
   actionId: string;
   actorId: string;
   membership: Membership;
-  persistence?: ActionRunRepository;
+  persistence?: Pick<ActionRunRepository, 'queue'|'start'|'finish'>;
   assets?: Pick<ReturnType<typeof assetRepository>, "get">;
   /** Offer reads for offer-* templates (P4.1); defaults to offerRepository(). */
   offers?: Pick<OfferRepository, "get">;
@@ -427,6 +427,7 @@ export async function runAgentForAction(
     locale,
     market: workspace?.market?.toLowerCase() === "tw" ? "tw" : "hk",
     brand: {
+      revisionId:brand?.current_revision_id ?? null,
       voice: brand?.voice ?? "warm",
       // An offer's claims and prohibited terms count for this run only (spec
       // §2.3), so the shared unconfirmed_claim / unexpected_link checks accept
@@ -506,6 +507,7 @@ export async function runAgentForAction(
       agent_key: agentKey,
       provided_inputs: provided,
       snapshot_id: snapshot?.id ?? null,
+      brand_revision_id:ctx.brand.revisionId ?? null,
       prompt_version: agent.promptVersion,
       locale,
       ...(offer ? { offer_id: offer.id, offer_revision: offer.revision } : {}),

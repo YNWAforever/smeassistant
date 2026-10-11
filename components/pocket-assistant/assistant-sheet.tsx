@@ -204,6 +204,7 @@ export function ContextualAssistant({
   const [run, setRun] = useState<DemoAssistantRunResponse | null>(null)
   const [versionCreated, setVersionCreated] = useState(false)
   const [refusal, setRefusal] = useState<string | null>(null)
+  const [needsReconciliation,setNeedsReconciliation]=useState(false)
   const [suggestions, setSuggestions] = useState<AssistantSuggestion[]>([])
   // The context object is rebuilt on every parent render; its ids are what matter.
   const contextKey = mode === "live" && context ? suggestionsQuery(context) : null
@@ -234,6 +235,7 @@ export function ContextualAssistant({
   }
 
   async function ask(questionId: DemoQuestionId, options: { key?: string; context?: AssistantContext; origin?: AssistantOrigin } = {}) {
+    if(needsReconciliation)return
     setSelected(options.key ?? questionId)
     setRun(null)
     setVersionCreated(false)
@@ -248,6 +250,12 @@ export function ContextualAssistant({
       if (!response.ok) {
         // P3.5a: a spend-budget refusal is an answer, not a broken run.
         const body = (await response.json().catch(() => null)) as { error?: unknown } | null
+        if(response.status===409 && body?.error==='run_in_progress') {
+          setNeedsReconciliation(true)
+          setRefusal(isChinese ? "此行動已有草稿正在生成。請先重新整理行動，查看目前執行結果。" : "This action already has a draft running. Refresh the action to check its current result first.")
+          setState("idle")
+          return
+        }
         const refused = aiBudgetRefusal(locale, response.status, body?.error)
         if (refused) {
           setRefusal(refused)
@@ -260,6 +268,10 @@ export function ContextualAssistant({
       setRun(result)
       setState("idle")
     } catch {
+      if(mode==='live') {
+        setNeedsReconciliation(true)
+        setRefusal(isChinese ? "未能確認執行結果。請先重新整理行動，查看目前執行紀錄，再決定是否重新生成。" : "The run outcome could not be confirmed. Refresh the action and check its run history before generating again.")
+      }
       setState("failed")
     }
   }
@@ -301,20 +313,21 @@ export function ContextualAssistant({
           {shown.length > 0 && <section className="assistant-question-section" aria-labelledby="assistant-suggestion-title">
             <p className="eyebrow" id="assistant-suggestion-title">{resolveText(NEEDS_YOU_NOW, locale)}</p>
             <div className="assistant-question-list">
-              {shown.map((suggestion) => <button key={suggestion.id} type="button" aria-pressed={selected === suggestion.id} onClick={() => ask(suggestion.intentId, { key: suggestion.id, context: suggestion.context, origin: "suggested" })}><span>{suggestionLabel(suggestion, locale)}</span><ArrowRight aria-hidden="true" /></button>)}
+              {shown.map((suggestion) => <button key={suggestion.id} type="button" disabled={needsReconciliation} aria-pressed={selected === suggestion.id} onClick={() => ask(suggestion.intentId, { key: suggestion.id, context: suggestion.context, origin: "suggested" })}><span>{suggestionLabel(suggestion, locale)}</span><ArrowRight aria-hidden="true" /></button>)}
             </div>
           </section>}
 
           <section className="assistant-question-section" aria-labelledby="assistant-question-title">
             <p className="eyebrow" id="assistant-question-title">{isChinese ? "由目前問題開始" : "Start from the current problem"}</p>
             <div className="assistant-question-list">
-              {questions.map((questionId) => <button key={questionId} type="button" aria-pressed={selected === questionId} onClick={() => ask(questionId)}><span>{questionLabel(questionId, mode, locale)}</span><ArrowRight aria-hidden="true" /></button>)}
+              {questions.map((questionId) => <button key={questionId} type="button" disabled={needsReconciliation} aria-pressed={selected === questionId} onClick={() => ask(questionId)}><span>{questionLabel(questionId, mode, locale)}</span><ArrowRight aria-hidden="true" /></button>)}
             </div>
           </section>
 
           <AssistantRunStatus state={state} isChinese={isChinese} mode={mode} />
 
           {refusal && <div className="assistant-warning" role="alert"><ShieldCheck aria-hidden="true" /><div><p>{refusal}</p></div></div>}
+          {needsReconciliation && basePath && context?.actionId && <a href={`${basePath}/actions/${context.actionId}`}>{isChinese?"查看目前行動及執行紀錄":"View action and run history"}</a>}
 
           {run && <div className="assistant-result" aria-live="polite">
             <section className="assistant-answer-card">

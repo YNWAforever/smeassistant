@@ -29,6 +29,13 @@ async function ask(locale: keyof typeof TRIGGER) {
 }
 
 describe("ContextualAssistant and the AI drafting limit", () => {
+  it('T01: a run conflict directs reconciliation and prevents another model request',async()=>{
+    const fetchSpy=vi.fn(async()=>({ok:false,status:409,json:async()=>({error:'run_in_progress'})}) as Response);
+    vi.stubGlobal('fetch',fetchSpy);await ask('en');
+    expect(await screen.findByText(/This action already has a draft/)).toBeInTheDocument();
+    const question=screen.getByRole('button',{name:QUESTION.en});expect(question).toBeDisabled();fireEvent.click(question);
+    expect(fetchSpy.mock.calls.filter(([url])=>url==='/api/assistant/run')).toHaveLength(1);
+  });
   it.each(["en", "zh-HK", "zh-TW"] as const)("shows the %s limit message instead of a generic failure", async (locale) => {
     const fetchSpy = vi.fn(async () => ({ ok: false, status: 429, json: async () => ({ error: "ai_budget_reached" }) }) as unknown as Response);
     vi.stubGlobal("fetch", fetchSpy);

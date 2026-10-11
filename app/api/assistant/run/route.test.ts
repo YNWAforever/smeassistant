@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { auth, authorizeLike, WORKSPACE_ID } from "@/app/api/actions/_shared/test-db";
 import { AiBudgetRefusal } from "@/lib/budgets/ai";
+import { ActionRunInFlightError } from "@/lib/repositories/artifacts";
 
 const mocks = vi.hoisted(() => ({
   authorizeWorkspaceRequest: vi.fn(),
@@ -44,6 +45,13 @@ afterEach(() => {
 });
 
 describe("POST /api/assistant/run", () => {
+  it('returns controlled no-store 409 for the shared action run lock',async()=>{
+    mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike('owner'));
+    mocks.runLiveAssistant.mockRejectedValueOnce(new ActionRunInFlightError());
+    const res=await post({mode:'live',surface:'action',intentId:'draft_review_reply',locale:'en',context:{workspaceId:WORKSPACE_ID}});
+    expect(res.status).toBe(409);expect(res.headers.get('cache-control')).toBe('no-store');expect(await res.json()).toEqual({error:'run_in_progress'});
+    expect(mocks.llmComplete).not.toHaveBeenCalled();expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
+  });
   it("demo mode returns createDemoAssistantRun output with no auth and ignores context", async () => {
     const res = await post({ mode: "demo", surface: "sample", intentId: "explain_change", locale: "en", context: { workspaceId: WORKSPACE_ID } });
     expect(res.status).toBe(200);

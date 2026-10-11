@@ -220,7 +220,7 @@ export async function runCorpusCase(c: CorpusCase, llm: typeof llmComplete): Pro
   } as unknown as ArtifactRepository;
 
   let finishInput: FinishActionRunInput | undefined;
-  const persistence: ActionRunRepository = {
+  const persistence: Pick<ActionRunRepository,"queue"|"start"|"finish"> = {
     queue: async () => "run-corpus",
     start: async () => {},
     finish: async (input) => {

@@ -155,7 +155,10 @@ export function artifactRepository(client?: Executor) {
    });
   },
   assistantBrand(workspaceId: string) {
-   return operation(async ()=>(await db().query<{voice:string|null;approved_claims:unknown;prohibited_terms:unknown;languages:unknown;facts:unknown}>('SELECT voice,approved_claims,prohibited_terms,languages,facts FROM brand_profiles WHERE workspace_id=$1',[workspaceId])).rows[0] ?? null);
+   return operation(async ()=>(await db().query<{voice:string|null;approved_claims:unknown;prohibited_terms:unknown;languages:unknown;facts:unknown;current_revision_id?:string|null}>(`SELECT COALESCE(r.profile->>'voice',p.voice) AS voice,
+    COALESCE(r.profile->'approved_claims',to_jsonb(p.approved_claims)) AS approved_claims,COALESCE(r.profile->'prohibited_terms',to_jsonb(p.prohibited_terms)) AS prohibited_terms,
+    COALESCE(r.profile->'languages',to_jsonb(p.languages)) AS languages,COALESCE(r.profile->'facts',p.facts) AS facts,p.current_revision_id
+    FROM brand_profiles p LEFT JOIN brand_revisions r ON r.workspace_id=p.workspace_id AND r.id=p.current_revision_id WHERE p.workspace_id=$1`,[workspaceId])).rows[0] ?? null);
   },
   assistantReviewData(workspaceId: string, jobId: string) {
    return operation(async ()=>(await db().query<{raw_data:unknown}>(`SELECT raw_data FROM audit_jobs j WHERE id=$1 AND workspace_id=$2
@@ -351,7 +354,11 @@ type RunTransaction = <T>(run: (client: PoolClient) => Promise<T>) => Promise<T>
 export class ActionRunInFlightError extends Error {
  constructor() { super('action_run_in_flight'); this.name='ActionRunInFlightError'; }
 }
-type PersistedRun = { id:string;action_id:string;workspace_id:string;location_id:string|null;agent_key:string;prompt_version:string;requested_by:string|null;state:string };
+export interface FinishAssistantDraftInput {
+ runId:string;
+ result:{ok:true;draft:RecordAssistantDraftInput}|{ok:false;failure:RecordAssistantDraftFailureInput};
+}
+type PersistedRun = { id:string;action_id:string;workspace_id:string;location_id:string|null;agent_key:string;prompt_version:string;requested_by:string|null;state:string;input:Record<string,unknown> };
 
 /**
  * All run writes require an explicit transaction capability. Its callback owns
@@ -392,7 +399,7 @@ export function actionRunRepository(transaction: RunTransaction = withTransactio
   * silently re-open that overwrite hole.
   */
  async function loadRun(client: PoolClient, input: RunAttribution, state: string): Promise<PersistedRun> {
-  const row=(await client.query<PersistedRun>(`SELECT r.id,r.action_id,r.workspace_id,a.location_id,r.agent_key,r.prompt_version,r.requested_by,r.state
+  const row=(await client.query<PersistedRun>(`SELECT r.id,r.action_id,r.workspace_id,a.location_id,r.agent_key,r.prompt_version,r.requested_by,r.state,r.input
    FROM action_runs r JOIN actions a ON a.id=r.action_id AND a.workspace_id=r.workspace_id
    WHERE r.id=$1 FOR UPDATE OF r,a`,[input.runId])).rows[0];
   if(!row || row.state!==state || row.requested_by!==input.actorId || !await artifactRepository(client).actionScope(row.action_id)) throw new Error('invalid_run_transition');
@@ -426,6 +433,28 @@ export function actionRunRepository(transaction: RunTransaction = withTransactio
     const row=await loadRun(client,input,'queued');
     await client.query("UPDATE action_runs SET state='running',started_at=now() WHERE id=$1",[row.id]);
     await audit(client,row,input,'run.started',{});
+   });
+  },
+  finishAssistantDraft(input:FinishAssistantDraftInput):Promise<{draftRunId:string;state:'succeeded'|'failed'}> {
+   return atomic(async client => {
+    const data=input.result.ok?input.result.draft:input.result.failure;
+    const attribution={runId:input.runId,actorId:data.actorId,locale:data.locale};
+    const row=await loadRun(client,attribution,'running');
+    const stored=asRecord(row.input);
+    if(row.action_id!==data.actionId || row.workspace_id!==data.workspaceId || row.agent_key!==data.agentKey
+      || row.prompt_version!==data.promptVersion || stored.source!=='assistant' || stored.intent!==data.intentId
+      || stored.surface!==data.surface || stored.locale!==data.locale) throw new Error('invalid_run_transition');
+    const membership=(await client.query<{role:string;location_scope:string[]|null}>("SELECT role,location_scope FROM workspace_members WHERE workspace_id=$1 AND user_id=$2 AND accepted_at IS NOT NULL",[row.workspace_id,data.actorId])).rows[0];
+    const evidenceLocation=asRecord(stored.context).locationId;
+    if(!membership || !['owner','manager'].includes(membership.role)
+      || (membership.location_scope && [row.location_id,evidenceLocation].some(id=>typeof id==='string' && !membership.location_scope!.includes(id)))) throw new Error('invalid_run_transition');
+    const state=input.result.ok?'succeeded':'failed';
+    const output=input.result.ok?input.result.draft.output:input.result.failure.reason==='facts_needed'?{facts_needed:input.result.failure.factsNeeded}:null;
+    await client.query('UPDATE action_runs SET state=$2,output=$3,error=$4,input_tokens=$5,output_tokens=$6,cost_usd=$7,finished_at=$8 WHERE id=$1',
+      [row.id,state,JSON.stringify(output),input.result.ok?null:input.result.failure.reason,data.usage.inputTokens,data.usage.outputTokens,data.costUsd,data.finishedAt]);
+    await audit(client,row,attribution,input.result.ok?'run.succeeded':'run.failed',{source:'assistant',intent:data.intentId,...(input.result.ok?{}:{reason:input.result.failure.reason})});
+    // Preview custody only: never create a version or change action approval/state.
+    return {draftRunId:row.id,state};
    });
   },
   finish(input:FinishActionRunInput):Promise<ActionRunCompletion> {

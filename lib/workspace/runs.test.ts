@@ -108,7 +108,7 @@ const finish = vi.fn(async (i: FinishActionRunInput) =>
           versionNo: 1,
         },
 );
-const persistence: ActionRunRepository = { queue, start, finish };
+const persistence: Pick<ActionRunRepository,"queue"|"start"|"finish"> = { queue, start, finish };
 function repository() {
   return {
     actionScope: async () => ({

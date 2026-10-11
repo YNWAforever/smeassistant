@@ -30,6 +30,7 @@ export interface AgentContext {
   locale: PrototypeLocale;
   market: "hk" | "tw";
   brand: {
+    revisionId?:string|null;
     voice: string;
     approvedClaims: string[];
     prohibitedTerms: string[];

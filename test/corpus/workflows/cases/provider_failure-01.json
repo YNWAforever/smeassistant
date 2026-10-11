@@ -11,7 +11,8 @@
     null
   ],
   "expect": {
-    "llmCalls": 2,
+    "llmCalls": 1,
+    "reason": "no_model_output",
     "state": "failed",
     "version": false
   }

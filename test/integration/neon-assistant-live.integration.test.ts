@@ -2,7 +2,8 @@ import { Pool } from 'pg';
 import { beforeAll,afterAll,beforeEach,describe,it,expect,vi } from 'vitest';
 import { applyMigrations } from '../../scripts/neon/migrations';
 import { startNeonDatabaseFixture,type NeonDatabaseFixture } from './neon-database';
-import { artifactRepository } from '../../lib/repositories/artifacts';
+import { artifactRepository, actionRunRepository } from '../../lib/repositories/artifacts';
+import { withTransaction } from '../../lib/db/transaction';
 import type { llmComplete } from '../../lib/llm';
 import { runLiveAssistant } from '../../lib/assistant/live';
 import { auth } from '../../app/api/actions/_shared/test-db';
@@ -28,25 +29,28 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon live assistant authorit
   // A real app_users row: failed drafts now write action_runs.requested_by (a uuid FK), which the "user-1" fixture id cannot satisfy.
   actor=(await runtime.query("INSERT INTO app_users(email) VALUES($1) RETURNING id",[`${crypto.randomUUID()}@example.test`])).rows[0].id;
   wide=await action(null,'wide');scoped=await action(locB,'scoped');
+  await runtime.query("INSERT INTO workspace_members(workspace_id,user_id,email,role,accepted_at) VALUES($1,$2,'fixture@example.test','owner',now())",[workspace,actor]);
  });
  function request(role:'owner'|'manager'|'viewer'='owner',scope:string[]|null=null){
   const repository=artifactRepository(runtime),llm=vi.fn<typeof llmComplete>(async()=>({text:JSON.stringify(output),usage:{inputTokens:1,outputTokens:1}}));
-  const persistence=vi.spyOn(repository,'createOutputVersion');
-  return {repository,llm,persistence,intentId:'draft_review_reply' as const,surface:'action' as const,locale:'en' as const,membership:{...auth(role,scope).membership,workspaceId:workspace,userId:actor},context:{workspaceId:workspace,actionId:wide},llmReady:vi.fn(()=>true)};
+  const versionWrites=vi.spyOn(repository,'createOutputVersion');
+  return {repository,llm,versionWrites,persistence:actionRunRepository(fn=>withTransaction(fn,runtime)),intentId:'draft_review_reply' as const,surface:'action' as const,locale:'en' as const,membership:{...auth(role,scope).membership,workspaceId:workspace,userId:actor},context:{workspaceId:workspace,actionId:wide},llmReady:vi.fn(()=>true)};
  }
- async function noWrites(requested:Pick<ReturnType<typeof request>,'persistence'>){
-  expect(requested.persistence).not.toHaveBeenCalled();
+ async function noWrites(requested:Pick<ReturnType<typeof request>,'versionWrites'>){
+  expect(requested.versionWrites).not.toHaveBeenCalled();
   for(const sql of ['SELECT id FROM action_runs WHERE workspace_id=$1','SELECT id FROM output_versions WHERE workspace_id=$1','SELECT id FROM audit_events WHERE workspace_id=$1'])expect((await runtime.query(sql,[workspace])).rows).toHaveLength(0);
  }
  it.each(['owner','manager'] as const)('allows %s workspace-wide drafting from owned in-scope source evidence',async(role)=>{
   const req=request(role,[locB]);const result=await runLiveAssistant(req);
-  expect(result.output?.body).toBe(output.body);expect(req.llm).toHaveBeenCalledOnce();expect(req.llm.mock.calls[0][0]).toContain('Location B');await noWrites(req);
+  expect(result.output?.body).toBe(output.body);expect(req.llm).toHaveBeenCalledOnce();expect(req.llm.mock.calls[0][0]).toContain('Location B');
+  expect(req.versionWrites).not.toHaveBeenCalled();expect((await runtime.query('SELECT id FROM output_versions WHERE workspace_id=$1',[workspace])).rows).toHaveLength(0);
+  expect((await runtime.query('SELECT state FROM action_runs WHERE workspace_id=$1',[workspace])).rows).toEqual([{state:'succeeded'}]);
  });
  it.each(['viewer','manager'] as const)('preserves %s out-of-scope evidence reads',async(role)=>{
   const req={...request(role,[locA]),intentId:'explain_limits' as const};const result=await runLiveAssistant(req);
   expect(result.state).toBe('completed');expect(result.evidenceRefs.some(ref=>ref.scanId===job)).toBe(true);expect(req.llm).not.toHaveBeenCalled();await noWrites(req);
  });
- it.each(['viewer','omitted','spoofed','implicit'])('denies %s drafts before LLM or persistence',async(kind)=>{
+ it.each(['viewer','omitted','spoofed','implicit'])('denies %s drafts before LLM or versionWrites',async(kind)=>{
   const req=request(kind==='viewer'?'viewer':'manager',[locA]);
   const context=kind==='implicit'?{workspaceId:workspace}:kind==='spoofed'?{workspaceId:workspace,actionId:scoped,locationId:locA}:{workspaceId:workspace,actionId:wide};
   await expect(runLiveAssistant({...req,context})).rejects.toMatchObject({code:'forbidden'});expect(req.llmReady).not.toHaveBeenCalled();expect(req.llm).not.toHaveBeenCalled();await noWrites(req);
@@ -60,11 +64,12 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon live assistant authorit
  });
  it('withholds nonempty facts-needed output, creates no artifact, and records the failed run with its cost',async()=>{
   const req=request();req.llm.mockResolvedValue({text:JSON.stringify({...output,facts_needed:['capacity']}),usage:{inputTokens:1000,outputTokens:1000}});
-  const result=await runLiveAssistant({...req,persistDraftFailure:(row)=>req.repository.recordAssistantDraftFailure(row)});
-  expect(result.output).toBeUndefined();expect(result.requiresApproval).toBe(false);expect(req.llm).toHaveBeenCalledOnce();expect(req.persistence).not.toHaveBeenCalled();
+  const result=await runLiveAssistant({...req});
+  expect(result.output).toBeUndefined();expect(result.requiresApproval).toBe(false);expect(req.llm).toHaveBeenCalledOnce();expect(req.versionWrites).not.toHaveBeenCalled();
   // P3.5a: the model ran and cost money, so the AI budget must see it.
   expect((await runtime.query("SELECT state,agent_key,output,error,cost_usd::float8 AS cost,input->>'source' AS source FROM action_runs WHERE workspace_id=$1",[workspace])).rows).toEqual([{state:'failed',agent_key:'review_reply',output:{facts_needed:['capacity']},error:'facts_needed',cost:0.001,source:'assistant'}]);
-  for(const sql of ['SELECT id FROM output_versions WHERE workspace_id=$1','SELECT id FROM audit_events WHERE workspace_id=$1'])expect((await runtime.query(sql,[workspace])).rows).toHaveLength(0);
+  expect((await runtime.query('SELECT id FROM output_versions WHERE workspace_id=$1',[workspace])).rows).toHaveLength(0);
+  expect((await runtime.query('SELECT event FROM audit_events WHERE workspace_id=$1 ORDER BY created_at',[workspace])).rows).toEqual([{event:'run.started'},{event:'run.failed'}]);
  });
  // P3.5a: both failure kinds reach the AI budget's own read, not only the table.
  it.each([
@@ -72,16 +77,16 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon live assistant authorit
   ['facts_needed',JSON.stringify({...output,facts_needed:['capacity']}),{facts_needed:['capacity']}],
  ] as const)('records a %s draft as exactly one failed run that aiSpend24h counts',async(reason,text,stored)=>{
   const req=request();req.llm.mockResolvedValue({text,usage:{inputTokens:1000,outputTokens:1000}});
-  const result=await runLiveAssistant({...req,persistDraftFailure:(row)=>req.repository.recordAssistantDraftFailure(row)});
-  expect(result.output).toBeUndefined();expect(req.llm).toHaveBeenCalledOnce();expect(req.persistence).not.toHaveBeenCalled();
+  const result=await runLiveAssistant({...req});
+  expect(result.output).toBeUndefined();expect(req.llm).toHaveBeenCalledOnce();expect(req.versionWrites).not.toHaveBeenCalled();
   expect((await runtime.query('SELECT state,error,output,input_tokens,output_tokens,cost_usd::float8 AS cost FROM action_runs WHERE workspace_id=$1',[workspace])).rows).toEqual([{state:'failed',error:reason,output:stored,input_tokens:1000,output_tokens:1000,cost:0.001}]);
   const spend=await req.repository.aiSpend24h(workspace);
   expect(spend.workspaceUsd).toBeCloseTo(0.001,9);expect(spend.globalUsd).toBeGreaterThanOrEqual(spend.workspaceUsd);
  });
  it('records a draft whose model returned nothing as a failed run with a null cost, never a guessed zero',async()=>{
   const req=request();req.llm.mockResolvedValue(null);
-  const result=await runLiveAssistant({...req,persistDraftFailure:(row)=>req.repository.recordAssistantDraftFailure(row)});
-  expect(result.output).toBeUndefined();expect(result.warnings).toContain('AI drafting unavailable right now');
+  const result=await runLiveAssistant({...req});
+  expect(result.output).toBeUndefined();expect(result.warnings).toContain('AI drafting unavailable');
   expect((await runtime.query('SELECT state,error,input_tokens,output_tokens,cost_usd FROM action_runs WHERE workspace_id=$1',[workspace])).rows).toEqual([{state:'failed',error:'no_model_output',input_tokens:null,output_tokens:null,cost_usd:null}]);
   expect((await req.repository.aiSpend24h(workspace)).workspaceUsd).toBe(0);
  });
@@ -89,17 +94,17 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon live assistant authorit
   const warn=vi.spyOn(console,'warn').mockImplementation(()=>{});
   const budgetEnv={BUDGET_AI_USD_GLOBAL_24H:'off',BUDGET_AI_USD_WORKSPACE_24H:'0.001'};
   const first=request();first.llm.mockResolvedValue({text:'not json',usage:{inputTokens:1000,outputTokens:1000}});
-  await runLiveAssistant({...first,budgetEnv,persistDraftFailure:(row)=>first.repository.recordAssistantDraftFailure(row)});
+  await runLiveAssistant({...first,budgetEnv});
   expect(first.llm).toHaveBeenCalledOnce();
   const second=request();
-  await expect(runLiveAssistant({...second,budgetEnv,persistDraftFailure:(row)=>second.repository.recordAssistantDraftFailure(row)})).rejects.toMatchObject({code:'ai_budget_reached',scope:'ai_workspace'});
+  await expect(runLiveAssistant({...second,budgetEnv})).rejects.toMatchObject({code:'ai_budget_reached',scope:'ai_workspace'});
   expect(second.llm).not.toHaveBeenCalled();
   expect((await runtime.query('SELECT id FROM action_runs WHERE workspace_id=$1',[workspace])).rows).toHaveLength(1);
   expect(warn).toHaveBeenCalledWith('[budget] refused',{scope:'ai_workspace',entry:'assistant_draft',used:0.001,limit:0.001});
   warn.mockRestore();
  });
 
- it.each(['foreign_workspace','mismatched_action','foreign_run'])('denies supplied version with %s before model or persistence',async(kind)=>{
+ it.each(['foreign_workspace','mismatched_action','foreign_run'])('denies supplied version with %s before model or versionWrites',async(kind)=>{
   const version=(await runtime.query("INSERT INTO output_versions(workspace_id,action_id,version_no,body,author_type) VALUES($1,$2,1,'Version fixture','user') RETURNING id",[kind==='foreign_workspace'?foreign:workspace,scoped])).rows[0].id;
   if(kind==='foreign_run'){
    const run=(await runtime.query("INSERT INTO action_runs(workspace_id,action_id,agent_key,state) VALUES($1,$2,'review_reply','succeeded') RETURNING id",[workspace,wide])).rows[0].id;
@@ -107,7 +112,7 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon live assistant authorit
   }
   const req=request();
   await expect(runLiveAssistant({...req,context:{workspaceId:workspace,actionId:kind==='mismatched_action'?wide:scoped,versionId:version}})).rejects.toMatchObject({code:'not_found'});
-  expect(req.llmReady).not.toHaveBeenCalled();expect(req.llm).not.toHaveBeenCalled();expect(req.persistence).not.toHaveBeenCalled();
+  expect(req.llmReady).not.toHaveBeenCalled();expect(req.llm).not.toHaveBeenCalled();expect(req.versionWrites).not.toHaveBeenCalled();
   expect((await runtime.query('SELECT id FROM output_versions WHERE id=$1',[version])).rows).toHaveLength(1);
   expect((await runtime.query('SELECT id FROM audit_events WHERE workspace_id=$1',[workspace])).rows).toHaveLength(0);
  });
@@ -116,7 +121,7 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon live assistant authorit
   const version=(await runtime.query("INSERT INTO output_versions(workspace_id,action_id,version_no,body,author_type) VALUES($1,$2,1,'Version fixture','user') RETURNING id",[workspace,scoped])).rows[0].id;
   const req=request('manager',[locB]);
   const result=await runLiveAssistant({...req,context:{workspaceId:workspace,versionId:version}});
-  expect(result.requiresApproval).toBe(true);expect(req.llm.mock.calls[0][0]).toContain('Selected version action');expect(req.persistence).not.toHaveBeenCalled();
+  expect(result.requiresApproval).toBe(true);expect(req.llm.mock.calls[0][0]).toContain('Selected version action');expect(req.versionWrites).not.toHaveBeenCalled();
  });
 
  it('does not let an explicit owned snapshot conceal a corrupt persisted action source',async()=>{
@@ -135,12 +140,12 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon live assistant authorit
   const before=(await runtime.query('SELECT * FROM actions WHERE id=$1',[wide])).rows;
   const req=request('manager',[locA]);
   await expect(runLiveAssistant({...req,context})).rejects.toMatchObject({code:'forbidden'});
-  expect(req.llmReady).not.toHaveBeenCalled();expect(req.llm).not.toHaveBeenCalled();expect(req.persistence).not.toHaveBeenCalled();
+  expect(req.llmReady).not.toHaveBeenCalled();expect(req.llm).not.toHaveBeenCalled();expect(req.versionWrites).not.toHaveBeenCalled();
   expect((await runtime.query('SELECT * FROM actions WHERE id=$1',[wide])).rows).toEqual(before);
   expect((await runtime.query('SELECT id FROM output_versions WHERE workspace_id=$1',[workspace])).rows).toHaveLength(version?1:0);
   for(const table of ['action_runs','audit_events'])expect((await runtime.query(`SELECT id FROM ${table} WHERE workspace_id=$1`,[workspace])).rows).toHaveLength(0);
   for(const allowed of [request('owner'),request('manager',[locA,locB])]){
-   expect((await runLiveAssistant({...allowed,context})).output?.body).toBe(output.body);expect(allowed.llm).toHaveBeenCalledOnce();expect(allowed.persistence).not.toHaveBeenCalled();
+   expect((await runLiveAssistant({...allowed,context})).output?.body).toBe(output.body);expect(allowed.llm).toHaveBeenCalledOnce();expect(allowed.versionWrites).not.toHaveBeenCalled();
   }
  });
 
@@ -185,7 +190,8 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon live assistant authorit
  it('preserves drafting with a pinned diff but legitimately missing base snapshot',async()=>{
   await comparisons();await runtime.query('UPDATE scan_snapshots SET comparable_to=NULL WHERE id=$1',[snapshot]);
   const req=request(),result=await runLiveAssistant(req);
-  expect(result.output?.body).toBe(output.body);expect(req.llm).toHaveBeenCalledOnce();await noWrites(req);
+  expect(result.output?.body).toBe(output.body);expect(req.llm).toHaveBeenCalledOnce();expect(req.versionWrites).not.toHaveBeenCalled();
+  expect((await runtime.query('SELECT id FROM output_versions WHERE workspace_id=$1',[workspace])).rows).toHaveLength(0);
  });
  it.each(['workspace','expected_head','foreign_base','foreign_head','different_location','foreign_location_owner'])('refuses exact diff with invalid %s scope',async(kind)=>{
   const {older,baseOne}=await comparisons(),repo=artifactRepository(runtime);
