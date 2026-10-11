@@ -65,9 +65,9 @@ describe("T-19 PostgreSQL NOT NULL catalog compatibility", () => {
     await expect(verifyCatalog(metadataPool({ notNullRows }).pool)).rejects.toThrow(/NOT NULL/);
   });
   it("still rejects relaxed column nullability", async () => {
-    await expect(verifyCatalog(metadataPool({ nullable: true }).pool)).rejects.toThrow("retained business columns/types/nullability/defaults");
+    await expect(verifyCatalog(metadataPool({ nullable: true }).pool)).rejects.toThrow("all business columns/types/nullability/defaults");
   });
   it("still rejects changed ordinary constraints", async () => {
-    await expect(verifyCatalog(metadataPool({ changedCheck: true }).pool)).rejects.toThrow("retained constraints and deletion semantics");
+    await expect(verifyCatalog(metadataPool({ changedCheck: true }).pool)).rejects.toThrow("constraints and deletion semantics");
   });
 });

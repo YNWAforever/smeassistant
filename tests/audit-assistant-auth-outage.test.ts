@@ -1,6 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { auth, authorizeLike, WORKSPACE_ID } from "@/app/api/actions/_shared/test-db";
-import { AiBudgetRefusal } from "@/lib/budgets/ai";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { authorizeLike, WORKSPACE_ID } from "@/app/api/actions/_shared/test-db";
 
 const mocks = vi.hoisted(() => ({
   authorizeWorkspaceRequest: vi.fn(),

@@ -30,7 +30,7 @@ async function ask(locale: keyof typeof TRIGGER) {
 
 describe("ContextualAssistant and the AI drafting limit", () => {
   it('T01: a run conflict directs reconciliation and prevents another model request',async()=>{
-    const fetchSpy=vi.fn(async()=>({ok:false,status:409,json:async()=>({error:'run_in_progress'})}) as Response);
+    const fetchSpy=vi.fn<typeof fetch>(async()=>({ok:false,status:409,json:async()=>({error:'run_in_progress'})}) as Response);
     vi.stubGlobal('fetch',fetchSpy);await ask('en');
     expect(await screen.findByText(/This action already has a draft/)).toBeInTheDocument();
     const question=screen.getByRole('button',{name:QUESTION.en});expect(question).toBeDisabled();fireEvent.click(question);

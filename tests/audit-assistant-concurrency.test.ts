@@ -1,31 +1,20 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 import { auth } from "@/app/api/actions/_shared/test-db";
-import { ACTION_ID, LOCATION_ID, SNAPSHOT_ID, WORKSPACE_ID, actionRow, base, diff, socialRow, snapshot } from "@/lib/assistant/__fixtures__";
-import { DRAFT_AGENTS, LIVE_BOUNDARY, runLiveAssistant } from "@/lib/assistant/live";
-import { AiBudgetRefusal } from "@/lib/budgets/ai";
-import { templateByKey } from "@/lib/workspace/templates";
-
-const asProvided = (row: { provided_inputs: unknown }) => (row.provided_inputs ?? {}) as Record<string, unknown>;
+import { ACTION_ID, LOCATION_ID, WORKSPACE_ID, actionRow, base, diff, socialRow, snapshot } from "@/lib/assistant/__fixtures__";
+import { runLiveAssistant } from "@/lib/assistant/live";
 
 const repository = vi.hoisted(() => ({ actionScope:vi.fn(),assistantWorkspace:vi.fn(),assistantLocations:vi.fn(),assistantActions:vi.fn(),assistantSnapshot:vi.fn(),assistantLatestSnapshot:vi.fn(),assistantDiff:vi.fn(),assistantBrand:vi.fn(),assistantReviewData:vi.fn(),versionScope:vi.fn(),createOutputVersion:vi.fn(),recordAssistantDraft:vi.fn(),recordAssistantDraftFailure:vi.fn(),aiSpend24h:vi.fn(),assistantWaitingVersions:vi.fn(),assistantGoogleConnection:vi.fn() }));
 const runPersistence = vi.hoisted(() => ({ queue:vi.fn(),start:vi.fn(),finishAssistantDraft:vi.fn() }));
 vi.mock("@/lib/repositories/artifacts",async original=>({...(await original<typeof import("@/lib/repositories/artifacts")>()),artifactRepository:()=>repository,actionRunRepository:()=>runPersistence}));
 const DRAFT_RUN_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 
-type Llm = (prompt: string, opts?: unknown) => Promise<typeof good | null>;
 const LOCATION_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
-const ACTION_B = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-const SNAPSHOT_B = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
-const FAQ_FACTS = { owner_fact_1: "Seats 40", owner_fact_2: "Book by WhatsApp", owner_fact_3: "Vegetarian options daily" };
-const faqRow: typeof actionRow = { ...actionRow, id: "55555555-5555-4555-8555-555555555555", template_key: "visibility-content", required_inputs: ["owner_fact_1", "owner_fact_2", "owner_fact_3"], provided_inputs: {} };
-const menuRow: typeof actionRow = { ...actionRow, id: "66666666-6666-4666-8666-666666666666", template_key: "menu-translation", required_inputs: ["menu_items"], provided_inputs: {} };
 const state = { actions: [actionRow, socialRow] as Array<typeof actionRow>, snapshots: [snapshot, base] as Array<typeof snapshot> };
 
 
 const good: { text: string; usage: { inputTokens: number; outputTokens: number } } = { text: JSON.stringify({ title: "Reply draft", body: "1. “Waited 25…” — Thank you for telling us; we are adding a host at Friday lunch. Please come back.", acceptance_criteria: ["no compensation"], warnings: [], facts_used: ["voice"], facts_needed: [] }), usage: { inputTokens: 10, outputTokens: 5 } };
 const run = (over: Partial<Parameters<typeof runLiveAssistant>[0]> = {}) =>
   runLiveAssistant({ intentId: "explain_priority", surface: "home", locale: "en", membership: auth("owner").membership, context: { workspaceId: WORKSPACE_ID, locationId: LOCATION_ID }, llmReady: () => true, ...over });
-const writes = () => repository.createOutputVersion.mock.calls;
 
 beforeEach(() => {
   vi.clearAllMocks();

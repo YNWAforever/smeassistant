@@ -28,7 +28,9 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon private content metad
     const url = new URL(fixture.databaseUrl); url.username = "fixture_runtime"; url.password = "fixture-only";
     runtime = new Pool({ connectionString: url.href }); ports.pool = runtime;
   });
-  beforeEach(async () => { await runtime.query("DELETE FROM audit_jobs; DELETE FROM workspaces; DELETE FROM app_users"); });
+  // Only the owned fixture owner resets immutable history between cases. The
+  // runtime never receives deletion/truncation privileges on saved revisions.
+  beforeEach(async () => { await owner.query("TRUNCATE brand_revisions,workspaces CASCADE"); await runtime.query("DELETE FROM audit_jobs; DELETE FROM app_users"); });
   afterAll(async () => { await Promise.all([owner?.end(), runtime?.end()]); fixture?.stop(); });
   async function workspace(slug: string) { return (await runtime.query("INSERT INTO workspaces(slug,market) VALUES($1,'tw') RETURNING id", [slug])).rows[0].id as string; }
   it("persists scoped asset metadata and explicit rights; missing differs from SQL error", async () => {
@@ -54,8 +56,9 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon private content metad
     expect(await repo.get(ws)).toMatchObject({ voice: "direct", languages: ["en","zh-TW"], facts: { currency: "TWD" } });
     expect(await repo.get(other)).toBeNull();
     const user = await resolveApplicationUser({ provider: "neon", subject: "brand-owner", email: "brand@example.test", verified: true });
-    await putBrand({ workspaceId: ws, actorId: user.id, brand: { voice: "direct", approved_claims: ["台北"], prohibited_terms: [], languages: ["zh-TW"], facts: { currency: "TWD" } }, locale: "zh-TW" });
-    expect((await runtime.query("SELECT event,payload FROM audit_events WHERE workspace_id=$1", [ws])).rows).toEqual([{ event: "brand.updated", payload: { locale: "zh-TW", voice: "direct", languages: ["zh-TW"], approved_claims: 1, prohibited_terms: 0, facts: 1 } }]);
+    await runtime.query("INSERT INTO workspace_members(workspace_id,user_id,email,role,accepted_at) VALUES($1,$2,$3,'owner',now())",[ws,user.id,user.email]);
+    const saved=await putBrand({ workspaceId: ws, actorId: user.id, brand: { voice: "direct", approved_claims: ["台北"], prohibited_terms: [], languages: ["zh-TW"], facts: { currency: "TWD" } }, locale: "zh-TW" });
+    expect((await runtime.query("SELECT event,payload FROM audit_events WHERE workspace_id=$1", [ws])).rows).toEqual([{ event: "brand.updated", payload: { locale: "zh-TW",revision_id:saved.revisionId, voice: "direct", languages: ["zh-TW"], approved_claims: 1, prohibited_terms: 0, facts: 1 } }]);
     expect((await runtime.query("SELECT count(*)::int AS count FROM brand_profiles WHERE workspace_id=$1", [ws])).rows[0].count).toBe(1);
   });
   it("stores metadata-only evidence with the production repository and no provider transport", async () => {

@@ -1,17 +1,11 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 
 import { RecoveryForm } from "@/components/report/recovery-form";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-
-const SENT = {
-  en: "If that address unlocked this report, a link is on its way. It works once, for 60 minutes.",
-  "zh-HK": "如該地址曾解鎖此報告，連結已在途中。連結只可使用一次，60 分鐘內有效。",
-  "zh-TW": "如果該地址曾解鎖這份報告，連結已寄出。連結只能使用一次，60 分鐘內有效。",
-} as const;
 
 function mount(locale: "en" | "zh-HK" | "zh-TW") {
   const host = document.createElement("div");

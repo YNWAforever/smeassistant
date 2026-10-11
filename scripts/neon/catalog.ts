@@ -91,13 +91,13 @@ export async function verifyCatalog(pool: Pool) {
   assert.deepEqual(actual.tables.find(row=>row.name==='brand_revisions'),{name:'brand_revisions',rls:true},'immutable brand table and RLS');
   // Dropped legacy columns leave ordinal gaps; compare surviving order, not physical attnum.
   const columns = (rows: Row[]) => rows.map(row => Object.fromEntries(Object.entries(row).filter(([key]) => key !== "ordinal_position")));
-  assert.deepEqual(columns(legacyBusiness(actual.columns).filter(row=>!(row.table_name==='brand_profiles' && row.column_name==='current_revision_id'))), columns(legacy.columns), "retained business columns/types/nullability/defaults");
+  assert.deepEqual(columns(legacyBusiness(actual.columns).filter(row=>!(row.table_name==='brand_profiles' && row.column_name==='current_revision_id'))), columns(legacy.columns), "all business columns/types/nullability/defaults");
   const revisionColumns=columns(actual.columns.filter(row=>row.table_name==='brand_revisions' || (row.table_name==='brand_profiles' && row.column_name==='current_revision_id')));
   const column=(table_name:string,column_name:string,data_type:string,udt_name:string,is_nullable:string,column_default:string|null)=>({table_name,column_name,data_type,udt_name,is_nullable,column_default});
   assert.deepEqual(revisionColumns,[column('brand_profiles','current_revision_id','uuid','uuid','YES',null),column('brand_revisions','id','uuid','uuid','NO','gen_random_uuid()'),column('brand_revisions','workspace_id','uuid','uuid','NO',null),column('brand_revisions','profile','jsonb','jsonb','NO',null),column('brand_revisions','actor_id','uuid','uuid','YES',null),column('brand_revisions','created_at','timestamp with time zone','timestamptz','NO','now()'),column('brand_revisions','source','text','text','NO',null)],'exact revision columns');
   const notNullConstraints = await validateNotNullCatalog(pool, actual.constraints.filter(row => row.type === "n").length);
   const comparableConstraints = business(actual.constraints).filter(row => row.type !== "n");
-  assert.deepEqual(legacyBusiness(comparableConstraints).filter(row=>row.name!=='brand_profiles_current_revision_fkey'), legacy.constraints.map(row => ({...row, definition:String(row.definition).replaceAll("auth.users", "app_users")})), "retained constraints and deletion semantics");
+  assert.deepEqual(legacyBusiness(comparableConstraints).filter(row=>row.name!=='brand_profiles_current_revision_fkey'), legacy.constraints.map(row => ({...row, definition:String(row.definition).replaceAll("auth.users", "app_users")})), "constraints and deletion semantics");
   const constraint=(table_name:string,name:string,type:string,definition:string)=>({table_name,name,type,definition});
   assert.deepEqual(comparableConstraints.filter(row=>row.table_name==='brand_revisions' || row.name==='brand_profiles_current_revision_fkey'),[
    constraint('brand_profiles','brand_profiles_current_revision_fkey','f','FOREIGN KEY (workspace_id, current_revision_id) REFERENCES brand_revisions(workspace_id, id)'),

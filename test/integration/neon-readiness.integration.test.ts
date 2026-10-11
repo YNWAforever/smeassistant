@@ -112,6 +112,13 @@ it("refuses a different expected target before transport", async () =>
   expect(
     (await readiness({ ...env, NEON_READINESS_DATABASE: "other" })).category,
   ).toBe("target"));
+it('T21 rejects mutation privileges on immutable brand history',async()=>{
+  expect((await readiness(env)).status).toBe('ready');
+  await db.query('GRANT UPDATE,DELETE,TRUNCATE ON brand_revisions TO sme_app_runtime');
+  try{expect(await readiness(env)).toMatchObject({status:'not_ready',category:'privileges'})}
+  finally{await db.query('REVOKE UPDATE,DELETE,TRUNCATE ON brand_revisions FROM sme_app_runtime')}
+  expect((await readiness(env)).status).toBe('ready');
+});
 it("T-19 rejects a missing first_published_at even when every journal checksum is intact", async () => {
   expect((await readiness(env)).status).toBe("ready");
   await db.query("ALTER TABLE public.output_versions RENAME COLUMN first_published_at TO hidden_first_published_at");
