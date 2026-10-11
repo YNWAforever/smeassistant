@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
 function flowQuery(query: Record<string, string | string[] | undefined>, locale: string): URLSearchParams {
   const params = new URLSearchParams();
-  for (const key of ["claim", "returnTo", "method"] as const) {
+  for (const key of ["claim", "returnTo", "method","intent"] as const) {
     const value = query[key];
     if (Array.isArray(value)) for (const item of value) params.append(key, item);
     else if (typeof value === "string") params.append(key, value);

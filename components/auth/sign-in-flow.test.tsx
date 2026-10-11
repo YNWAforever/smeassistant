@@ -17,6 +17,13 @@ function enterFixtureEmail() {
   fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: "owner@fixture.test" } });
   fireEvent.click(screen.getByRole("button", { name: /email me a sign-in link/i }));
 }
+it('T09: switch guidance preserves callback and uses only the pinned social API',async()=>{
+  mocks.social.mockResolvedValue({error:null});
+  render(<SignInFlow flow={{...flow,claim:'fixture-report',intent:'switch_account'}} initialReason={null}/>);
+  expect(screen.getByText(/If Google keeps returning the same account/)).toBeTruthy();
+  fireEvent.click(screen.getByRole('button',{name:/continue with google/i}));
+  await waitFor(()=>expect(mocks.social).toHaveBeenCalledWith({provider:'google',callbackURL:expect.stringContaining('claim=fixture-report'),errorCallbackURL:expect.stringContaining('claim=fixture-report')}));
+});
 
 it("renders one Google primary action and an explicitly labelled email alternative without promotional auth copy", () => {
   render(<SignInFlow flow={flow} initialReason={null} />);
