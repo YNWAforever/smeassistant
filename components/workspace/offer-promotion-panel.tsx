@@ -104,7 +104,7 @@ export function OfferPromotionPanel({ locale, offerId, offerTitle, usage, canCre
     status === "generating" ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : status === "ready" ? <CheckCircle2 aria-hidden="true" /> : status === "waiting" ? <CircleDashed aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />
 
   return (
-    <div className="brand-check-panel" aria-label={`${text.promotion.title}: ${offerTitle}`}>
+    <section className="brand-check-panel" aria-label={`${text.promotion.title}: ${offerTitle}`}>
       <div className="brand-check-head">
         <WandSparkles aria-hidden="true" />
         <div><strong>{text.promotion.title}</strong><span>{offerTitle}</span></div>
@@ -120,29 +120,31 @@ export function OfferPromotionPanel({ locale, offerId, offerTitle, usage, canCre
         </div>
       )}
       {entries.length > 0 && (
-        <ul className="evidence-list" role="status" aria-live="polite">
-          {entries.map((entry) => {
-            const status = STATUS[runs.rows[entry.actionId] ?? "idle"]
-            const message = status === "generating" ? null : messageFor(entry.actionId)
-            return (
-              <li key={entry.actionId}>
-                {icon(status)}
-                <span>
-                  <strong>{text.promotion.channels[entry.channel]}</strong>{" "}
-                  <Badge variant="outline">{text.promotion.states[status]}</Badge>
-                  {message && <small> {message}</small>}
-                </span>
-                {status === "failed" && (
-                  <Button size="sm" variant="outline" onClick={() => void runs.retry(entry.actionId)}><RefreshCw /> {text.promotion.retry}</Button>
-                )}
-                {actionsHref && status !== "waiting" && status !== "generating" && (
-                  <Link href={`${actionsHref}/${entry.actionId}`}>{text.promotion.open}</Link>
-                )}
-              </li>
-            )
-          })}
-        </ul>
+        <div role="status" aria-live="polite">
+          <ul className="evidence-list">
+            {entries.map((entry) => {
+              const status = STATUS[runs.rows[entry.actionId] ?? "idle"]
+              const message = status === "generating" ? null : messageFor(entry.actionId)
+              return (
+                <li key={entry.actionId}>
+                  {icon(status)}
+                  <span>
+                    <strong>{text.promotion.channels[entry.channel]}</strong>{" "}
+                    <Badge variant="outline">{text.promotion.states[status]}</Badge>
+                    {message && <small> {message}</small>}
+                  </span>
+                  {status === "failed" && (
+                    <Button size="sm" variant="outline" onClick={() => void runs.retry(entry.actionId)}><RefreshCw /> {text.promotion.retry}</Button>
+                  )}
+                  {actionsHref && status !== "waiting" && status !== "generating" && (
+                    <Link href={`${actionsHref}/${entry.actionId}`}>{text.promotion.open}</Link>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
       )}
-    </div>
+    </section>
   )
 }
