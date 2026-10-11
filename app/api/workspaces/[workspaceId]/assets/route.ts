@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
+import { authorizationOrUnavailable } from "@/lib/security/authorization-boundary";
 import { isLocale } from "@/lib/locale";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
 import { insertAsset, isAllowedMime, isAssetKind, listAssets, MAX_ASSET_BYTES, signedUrlFor } from "@/lib/workspace/assets";
@@ -17,12 +18,13 @@ import { loadWorkspaceContext } from "@/lib/workspace/queries";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function bad(error: string, status = 400): Response {
-  return NextResponse.json({ error }, { status });
+  return NextResponse.json({ error }, { status, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
 }
 
 export async function GET(_req: Request, context: { params: Promise<{ workspaceId: string }> }) {
   const { workspaceId } = await context.params;
-  const auth = await authorizeWorkspaceRequest({ id: workspaceId });
+  const auth = await authorizationOrUnavailable(() => authorizeWorkspaceRequest({ id: workspaceId }));
+  if (!auth) return bad("unavailable", 503);
   if (!auth.ok) return bad(auth.code, auth.status);
   try {
     const ctx = await loadWorkspaceContext(auth.membership);
@@ -60,7 +62,8 @@ export async function POST(req: Request, context: { params: Promise<{ workspaceI
   if (file.size > MAX_ASSET_BYTES) return bad("file_too_large", 413);
 
   // Role + location scope before any storage work (guardrail 9).
-  const auth = await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager", ...(locationId ? { locationId } : {}) });
+  const auth = await authorizationOrUnavailable(() => authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager", ...(locationId ? { locationId } : {}) }));
+  if (!auth) return bad("unavailable", 503);
   if (!auth.ok) return bad(auth.code, auth.status);
 
   const limit = await enforceRateLimit({ req, scope: "asset_upload", identifiers: [auth.user.id], failClosed: true });

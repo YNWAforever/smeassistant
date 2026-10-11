@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
+import { authorizationOrUnavailable } from "@/lib/security/authorization-boundary";
 import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
 import { ipHashFor } from "@/lib/workspace/audit";
@@ -11,20 +12,22 @@ import { getBrand, parseBrandBody, putBrand } from "@/lib/workspace/brand";
  *      owner only (CLAUDE.md §3.9 brand settings); audit `brand.updated` (§3.11).
  */
 const WORKSPACE_ID_RE = /^[0-9a-f-]{36}$/i;
+const HEADERS = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
 
 export async function GET(_req: Request, { params }: { params: Promise<{ workspaceId: string }> }) {
   const { workspaceId } = await params;
   if (!WORKSPACE_ID_RE.test(workspaceId)) {
     return NextResponse.json({ error: "workspaceId is invalid" }, { status: 400 });
   }
-  const auth = await authorizeWorkspaceRequest({ id: workspaceId });
+  const auth = await authorizationOrUnavailable(() => authorizeWorkspaceRequest({ id: workspaceId }));
+  if (!auth) return NextResponse.json({ error: "unavailable" }, { status: 503, headers: HEADERS });
   if (!auth.ok) return NextResponse.json({ error: auth.code }, { status: auth.status });
   try {
     const brand = await getBrand(workspaceId);
     return NextResponse.json({ brand });
   } catch {
     console.error("[api/workspaces/brand] lookup failed", { category: "brand_lookup_failed" });
-    return NextResponse.json({ error: "unavailable" }, { status: 503 });
+    return NextResponse.json({ error: "unavailable" }, { status: 503, headers: HEADERS });
   }
 }
 
@@ -34,7 +37,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ workspac
     return NextResponse.json({ error: "workspaceId is invalid" }, { status: 400 });
   }
 
-  const auth = await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "owner" });
+  const auth = await authorizationOrUnavailable(() => authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "owner" }));
+  if (!auth) return NextResponse.json({ error: "unavailable" }, { status: 503, headers: HEADERS });
   if (!auth.ok) return NextResponse.json({ error: auth.code }, { status: auth.status });
 
   const decision = await enforceRateLimit({ req, scope: "brand_update", identifiers: [auth.user.id], failClosed: true });
@@ -58,6 +62,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ workspac
     return NextResponse.json({ brand });
   } catch {
     console.error("[api/workspaces/brand] save failed", { category: "brand_save_failed" });
-    return NextResponse.json({ error: "unavailable" }, { status: 503 });
+    return NextResponse.json({ error: "unavailable" }, { status: 503, headers: HEADERS });
   }
 }
