@@ -1,0 +1,43 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test:integration C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-remediation-20261012
+> vitest run --config vitest.integration.config.ts
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ test/integration/neon-private-content.integration.test.ts (6 tests | 1 failed) 10024ms
+     × upserts TW brand language and facts without conflating missing/error 844ms
+ ❯ test/integration/neon-membership.integration.test.ts (24 tests | 1 failed) 6210ms
+     × mints an absent empty slug once and preserves it on later completion updates 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/integration/neon-membership.integration.test.ts > Neon membership boundaries > mints an absent empty slug once and preserves it on later completion updates
+error: update or delete on table "workspaces" violates foreign key constraint "brand_revisions_workspace_id_fkey" on table "brand_revisions"
+ ❯ node_modules/.pnpm/pg-pool@3.14.0_pg@8.23.0/node_modules/pg-pool/index.js:45:11
+ ❯ test/integration/neon-membership.integration.test.ts:26:27
+     24|   runtime = new Pool({ connectionString: url.href, max: 10 }); ports.p…
+     25|  });
+     26|  // Only the fixture owner resets immutable history; runtime grants st…
+       |                           ^
+     27|  beforeEach(async () => { await owner.query("TRUNCATE app_users,worksp…
+     28|  afterAll(async () => { await Promise.all([owner?.end(), runtime?.end(…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/integration/neon-private-content.integration.test.ts > Neon private content metadata > upserts TW brand language and facts without conflating missing/error
+Error: brand_revision_conflict
+ ❯ Object.saveBrandRevision lib/repositories/brand.ts:11:156
+
+ ❯ Module.putBrand lib/workspace/brand.ts:159:35
+ ❯ test/integration/neon-private-content.integration.test.ts:60:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 55 passed (57)
+      Tests  2 failed | 612 passed (614)
+   Start at  04:40:37
+   Duration  503.77s (transform 3.89s, setup 1.09s, import 32.78s, tests 442.93s, environment 8ms)
+
+ ELIFECYCLE  Command failed with exit code 1.

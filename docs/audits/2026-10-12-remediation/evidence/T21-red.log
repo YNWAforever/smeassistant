@@ -1,0 +1,39 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test:integration C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-remediation-20261012
+> vitest run --config vitest.integration.config.ts "test/integration/neon-brand-revisions.integration.test.ts"
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ test/integration/neon-brand-revisions.integration.test.ts (2 tests | 2 failed) 12682ms
+     × stores A→B immutably and rejects stale concurrent CAS without partial writes 188ms
+     × rejects foreign/non-owner writes and rolls back a failed profile atomically 27ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/integration/neon-brand-revisions.integration.test.ts > T21 immutable brand revision SQL > stores A→B immutably and rejects stale concurrent CAS without partial writes
+TypeError: repo.saveBrandRevision is not a function
+ ❯ test/integration/neon-brand-revisions.integration.test.ts:23:22
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/integration/neon-brand-revisions.integration.test.ts > T21 immutable brand revision SQL > rejects foreign/non-owner writes and rolls back a failed profile atomically
+TypeError: repo.saveBrandRevision is not a function
+ ❯ test/integration/neon-brand-revisions.integration.test.ts:35:21
+     33|  it('rejects foreign/non-owner writes and rolls back a failed profile …
+     34|   const input=await setup(),other=await setup(),repo=brandRepository(r…
+     35|   await expect(repo.saveBrandRevision({...input,actorId:other.actorId}…
+       |                     ^
+     36|   await expect(repo.saveBrandRevision({...input,profile:{...input.prof…
+     37|   expect(await repo.history(input.workspaceId)).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  03:27:33
+   Duration  33.01s (transform 222ms, setup 51ms, import 2.98s, tests 12.68s, environment 0ms)
+
+ ELIFECYCLE  Command failed with exit code 1.

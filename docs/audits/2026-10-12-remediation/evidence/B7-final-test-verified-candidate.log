@@ -1,0 +1,63 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-remediation-20261012
+> vitest run --exclude lib/evidence/safe-media.test.ts && vitest run lib/evidence/safe-media.test.ts && corepack pnpm -r test
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+
+ Test Files  425 passed (425)
+      Tests  5095 passed (5095)
+   Start at  04:55:28
+   Duration  384.59s (transform 9.79s, setup 101.50s, import 92.70s, tests 65.57s, environment 40.45s)
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+
+ Test Files  1 passed (1)
+      Tests  62 passed (62)
+   Start at  05:01:53
+   Duration  1.99s (transform 89ms, setup 242ms, import 134ms, tests 1.44s, environment 0ms)
+
+Scope: 4 of 5 workspace projects
+packages/region test$ vitest run
+packages/scoring test$ vitest run
+packages/region test: (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+packages/region test:   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+packages/region test: Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+packages/scoring test: (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+packages/scoring test:   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+packages/scoring test: Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+packages/region test:  RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012/packages/region
+packages/scoring test:  RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012/packages/scoring
+packages/region test:  Test Files  3 passed (3)
+packages/region test:       Tests  23 passed (23)
+packages/region test:    Start at  05:01:56
+packages/region test:    Duration  1.12s (transform 75ms, setup 0ms, import 145ms, tests 28ms, environment 1ms)
+packages/region test: Done
+packages/scoring test:  Test Files  16 passed (16)
+packages/scoring test:       Tests  183 passed (183)
+packages/scoring test:    Start at  05:01:56
+packages/scoring test:    Duration  3.83s (transform 255ms, setup 0ms, import 608ms, tests 106ms, environment 1ms)
+packages/scoring test: Done
+packages/contracts test$ vitest run
+packages/contracts test: (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+packages/contracts test:   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+packages/contracts test: Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+packages/contracts test:  RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012/packages/contracts
+packages/contracts test:  Test Files  3 passed (3)
+packages/contracts test:       Tests  20 passed (20)
+packages/contracts test:    Start at  05:02:01
+packages/contracts test:    Duration  891ms (transform 64ms, setup 0ms, import 120ms, tests 11ms, environment 0ms)
+packages/contracts test: Done
+packages/scan-engine test$ vitest run
+packages/scan-engine test: (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+packages/scan-engine test:   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+packages/scan-engine test: Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+packages/scan-engine test:  RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012/packages/scan-engine
+packages/scan-engine test:  Test Files  28 passed (28)
+packages/scan-engine test:       Tests  299 passed (299)
+packages/scan-engine test:    Start at  05:02:02
+packages/scan-engine test:    Duration  7.76s (transform 481ms, setup 0ms, import 1.14s, tests 444ms, environment 2ms)
+packages/scan-engine test: Done

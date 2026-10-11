@@ -1,0 +1,13 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test:integration C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-remediation-20261012
+> vitest run --config vitest.integration.config.ts "test/integration/neon-brand-revisions.integration.test.ts" "test/integration/neon-artifact-runtime.integration.test.ts" "test/integration/neon-action-list-pagination.integration.test.ts"
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+
+ Test Files  3 passed (3)
+      Tests  45 passed (45)
+   Start at  03:31:29
+   Duration  55.72s (transform 1.09s, setup 64ms, import 7.27s, tests 40.38s, environment 0ms)
+

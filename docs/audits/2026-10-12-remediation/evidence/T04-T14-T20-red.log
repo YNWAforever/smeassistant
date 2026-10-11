@@ -1,0 +1,98 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ lib/report/taxonomy.test.ts (0 test)
+ ❯ components/report/dashboard.test.tsx (0 test)
+ ❯ components/workspace/billing-view.test.tsx (9 tests | 3 failed) 157ms
+     × T20: free current price is zero and the market price belongs to the upgrade (en) 28ms (retry x1)
+     × T20: free current price is zero and the market price belongs to the upgrade (zh-HK) 18ms (retry x1)
+     × T20: free current price is zero and the market price belongs to the upgrade (zh-TW) 15ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/report/dashboard.test.tsx [ components/report/dashboard.test.tsx ]
+Error: Transform failed with 1 error:
+
+[PARSE_ERROR] Identifier `DashboardPriorities` has already been declared
+     ╭─[ components/report/dashboard.test.tsx:10:9 ]
+     │
+  10 │ import {DashboardPriorities} from './dashboard-priorities';
+     │         ─────────┬─────────  
+     │                  ╰─────────── `DashboardPriorities` has already been declared here
+     │ 
+ 171 │ import { DashboardPriorities } from "./dashboard-priorities";
+     │          ─────────┬─────────  
+     │                   ╰─────────── It can not be redeclared here
+─────╯
+
+  Plugin: vite:oxc
+  File: C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012/components/report/dashboard.test.tsx
+ ❯ transformWithOxc node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:4103:19
+ ❯ TransformPluginContext.transform node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:4174:26
+ ❯ EnvironmentPluginContainer.transform node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:30932:51
+ ❯ loadAndTransform node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:20671:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  lib/report/taxonomy.test.ts [ lib/report/taxonomy.test.ts ]
+Error: Cannot find module './taxonomy' imported from C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012/lib/report/taxonomy.test.ts
+ ❯ lib/report/taxonomy.test.ts:2:1
+      1| import {it,expect} from 'vitest';
+      2| import {reportTaxonomyLabel} from './taxonomy';
+       | ^
+      3| it('T04: historical taxonomy localizes independently of report market'…
+      4|   expect(reportTaxonomyLabel('灣仔區','district','hk','en')).toBe('Wan Ch…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/workspace/billing-view.test.tsx > BillingView while billing is open > T20: free current price is zero and the market price belongs to the upgrade (en)
+ FAIL  components/workspace/billing-view.test.tsx > BillingView while billing is open > T20: free current price is zero and the market price belongs to the upgrade (en)
+AssertionError: expected 'HK$888 / month' to match /\$0/
+
+- Expected:
+/\$0/
+
++ Received:
+"HK$888 / month"
+
+ ❯ components/workspace/billing-view.test.tsx:92:69
+     90|     for(const market of ['hk','tw'] as const){
+     91|       const root=render({locale,billingOpen:false,contactHref:null,mod…
+     92|       expect(root.querySelector('.plan-card-head h2')?.textContent).to…
+       |                                                                     ^
+     93|       expect(root.querySelector('.upgrade-price')?.textContent).toCont…
+     94|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  components/workspace/billing-view.test.tsx > BillingView while billing is open > T20: free current price is zero and the market price belongs to the upgrade (zh-HK)
+ FAIL  components/workspace/billing-view.test.tsx > BillingView while billing is open > T20: free current price is zero and the market price belongs to the upgrade (zh-HK)
+ FAIL  components/workspace/billing-view.test.tsx > BillingView while billing is open > T20: free current price is zero and the market price belongs to the upgrade (zh-TW)
+ FAIL  components/workspace/billing-view.test.tsx > BillingView while billing is open > T20: free current price is zero and the market price belongs to the upgrade (zh-TW)
+AssertionError: expected 'HK$888 ／月' to match /\$0/
+
+- Expected:
+/\$0/
+
++ Received:
+"HK$888 ／月"
+
+ ❯ components/workspace/billing-view.test.tsx:92:69
+     90|     for(const market of ['hk','tw'] as const){
+     91|       const root=render({locale,billingOpen:false,contactHref:null,mod…
+     92|       expect(root.querySelector('.plan-card-head h2')?.textContent).to…
+       |                                                                     ^
+     93|       expect(root.querySelector('.upgrade-price')?.textContent).toCont…
+     94|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  3 failed | 6 passed (9)
+   Start at  03:24:09
+   Duration  2.47s (transform 362ms, setup 925ms, import 1.11s, tests 157ms, environment 1.28s)
+

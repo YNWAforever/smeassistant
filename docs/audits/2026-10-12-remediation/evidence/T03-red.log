@@ -1,0 +1,46 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+stdout | tests/audit-recovery-failure.test.tsx > AUDIT F-20261011-03: rate_limited must not tell the visitor a link is on its way
+AUDIT {"kind":"rate_limited","text":"Already unlocked this report? Email me a new linkIf that address unlocked this report, a link is on its way. It works once, for 60 minutes.","retryFormVisible":false}
+
+stdout | tests/audit-recovery-failure.test.tsx > AUDIT F-20261011-03: rate_limited must not tell the visitor a link is on its way
+AUDIT {"kind":"rate_limited","text":"Already unlocked this report? Email me a new linkIf that address unlocked this report, a link is on its way. It works once, for 60 minutes.","retryFormVisible":false}
+
+stdout | tests/audit-recovery-failure.test.tsx > AUDIT F-20261011-03: network_error must not tell the visitor a link is on its way
+AUDIT {"kind":"network_error","text":"Already unlocked this report? Email me a new linkIf that address unlocked this report, a link is on its way. It works once, for 60 minutes.","retryFormVisible":false}
+
+stdout | tests/audit-recovery-failure.test.tsx > AUDIT F-20261011-03: network_error must not tell the visitor a link is on its way
+AUDIT {"kind":"network_error","text":"Already unlocked this report? Email me a new linkIf that address unlocked this report, a link is on its way. It works once, for 60 minutes.","retryFormVisible":false}
+
+ ❯ tests/audit-recovery-failure.test.tsx (2 tests | 2 failed) 75ms
+   × AUDIT F-20261011-03: rate_limited must not tell the visitor a link is on its way 61ms (retry x1)
+   × AUDIT F-20261011-03: network_error must not tell the visitor a link is on its way 12ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/audit-recovery-failure.test.tsx > AUDIT F-20261011-03: rate_limited must not tell the visitor a link is on its way
+ FAIL  tests/audit-recovery-failure.test.tsx > AUDIT F-20261011-03: rate_limited must not tell the visitor a link is on its way
+ FAIL  tests/audit-recovery-failure.test.tsx > AUDIT F-20261011-03: network_error must not tell the visitor a link is on its way
+ FAIL  tests/audit-recovery-failure.test.tsx > AUDIT F-20261011-03: network_error must not tell the visitor a link is on its way
+AssertionError: expected 'Already unlocked this report? Email m…' not to contain 'a link is on its way'
+
+Expected: "a link is on its way"
+Received: "Already unlocked this report? Email me a new linkIf that address unlocked this report, a link is on its way. It works once, for 60 minutes."
+
+ ❯ tests/audit-recovery-failure.test.tsx:46:32
+     44|   await submit(host);
+     45|   console.info("AUDIT", JSON.stringify({kind, text:host.textContent, r…
+     46|   expect(host.textContent).not.toContain("a link is on its way");
+       |                                ^
+     47| });
+     48|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  03:17:08
+   Duration  4.16s (transform 84ms, setup 484ms, import 912ms, tests 75ms, environment 2.40s)
+

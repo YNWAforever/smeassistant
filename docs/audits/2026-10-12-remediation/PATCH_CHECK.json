@@ -1,0 +1,12 @@
+{
+  "observed_hk": "2026-10-12T05:45:40.1662152+08:00",
+  "source_sha": "6ac091365fe5cf0aa9be1fd658b7a1ca72ce22f1",
+  "first_command": "git apply --reverse --check --whitespace=nowarn IMPLEMENTATION.patch",
+  "first_exit": 1,
+  "cause": "PowerShell pipeline serialized native Git patch with CRLF",
+  "correction": "git diff --binary --output=IMPLEMENTATION.patch; no runtime edits",
+  "verified_command": "git apply --reverse --check --cached --whitespace=nowarn IMPLEMENTATION.patch",
+  "verified_exit": 0,
+  "first_log": "evidence/B7-patch-first-check.log",
+  "verified_log": "evidence/B7-patch-native-check.log"
+}

@@ -1,0 +1,281 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test:integration C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-remediation-20261012
+> vitest run --config vitest.integration.config.ts
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ test/integration/neon-publish-reply.integration.test.ts (27 tests | 1 failed) 15693ms
+     × 0014 applies after 0013 and a second applyMigrations returns [] 152ms
+ ❯ test/integration/neon-schema.integration.test.ts (8 tests | 4 failed) 12795ms
+     × applies all final business objects to empty PostgreSQL with no business seeds 2507ms
+     × replays as a no-op and rejects changed, missing, and reordered history 36ms
+     × rolls back interrupted DDL and journal together, then permits retry 20ms
+     × exposes all final columns and constraints through typed Drizzle tables 8ms
+ ❯ test/integration/neon-private-content.integration.test.ts (6 tests | 1 failed) 6975ms
+     × upserts TW brand language and facts without conflating missing/error 48ms
+ ❯ test/integration/neon-readiness.integration.test.ts (20 tests | 3 failed) 11387ms
+   × verifies an owned migrated schema without modifying its journal 326ms
+   × T-19 rejects a missing first_published_at even when every journal checksum is intact 343ms
+   × F-16 rejects any application-declared column that is missing, e.g. actions.offer_id 291ms
+ ❯ test/integration/neon-catalog.integration.test.ts (9 tests | 3 failed) 6690ms
+     × accepts LF migration output against the independently captured mixed-ending legacy catalog 151ms
+     × accepts CRLF function bodies without changing the catalog contract 304ms
+     × still rejects a dropped business NOT NULL requirement 46ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 12 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/integration/neon-catalog.integration.test.ts > catalog comparison across checkout line endings > accepts LF migration output against the independently captured mixed-ending legacy catalog
+AssertionError: expected { tables: 42, columns: 498, …(8) } to match object { functions: 23, seededRows: +0 }
+(8 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "functions": 23,
++   "functions": 25,
+    "seededRows": 0,
+  }
+
+ ❯ test/integration/neon-catalog.integration.test.ts:25:39
+     23|
+     24|   it("accepts LF migration output against the independently captured m…
+     25|     await expect(verifyCatalog(owner)).resolves.toMatchObject({ functi…
+       |                                       ^
+     26|   });
+     27|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/12]⎯
+
+ FAIL  test/integration/neon-catalog.integration.test.ts > catalog comparison across checkout line endings > accepts CRLF function bodies without changing the catalog contract
+AssertionError: expected { tables: 42, columns: 498, …(8) } to match object { functions: 23, seededRows: +0 }
+(8 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "functions": 23,
++   "functions": 25,
+    "seededRows": 0,
+  }
+
+ ❯ test/integration/neon-catalog.integration.test.ts:31:41
+     29|     try {
+     30|       for (const row of definitions) await owner.query(row.definition.…
+     31|       await expect(verifyCatalog(owner)).resolves.toMatchObject({ func…
+       |                                         ^
+     32|     } finally {
+     33|       for (const row of definitions) await owner.query(row.definition);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/12]⎯
+
+ FAIL  test/integration/neon-catalog.integration.test.ts > catalog comparison across checkout line endings > still rejects a dropped business NOT NULL requirement
+AssertionError: expected [Function] to throw error including 'all business columns/types/nullabilit…' but got 'retained business columns/types/nulla…'
+
+- Expected
++ Received
+
+- all business columns/types/nullability/defaults
++ retained business columns/types/nullability/defaults
++ + actual - expected
++ ... Skipped lines
++
++   [
++     {
++       column_default: 'gen_random_uuid()',
++       column_name: 'id',
++       data_type: 'uuid',
++ ...
++       data_type: 'text',
++ +     is_nullable: 'YES',
++ -     is_nullable: 'NO',
++       table_name: 'workspaces',
++       udt_name: 'text'
++     },
++     {
++       column_default: 'false',
++
+
+ ❯ test/integration/neon-catalog.integration.test.ts:73:41
+     71|     try {
+     72|       await owner.query("ALTER TABLE public.workspaces ALTER COLUMN ti…
+     73|       await expect(verifyCatalog(owner)).rejects.toThrow("all business…
+       |                                         ^
+     74|     } finally {
+     75|       await owner.query("ALTER TABLE public.workspaces ALTER COLUMN ti…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/12]⎯
+
+ FAIL  test/integration/neon-private-content.integration.test.ts > Neon private content metadata > upserts TW brand language and facts without conflating missing/error
+Error: brand_revision_forbidden
+ ❯ Object.saveBrandRevision lib/repositories/brand.ts:11:156
+
+ ❯ Module.putBrand lib/workspace/brand.ts:159:35
+ ❯ test/integration/neon-private-content.integration.test.ts:57:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/12]⎯
+
+ FAIL  test/integration/neon-publish-reply.integration.test.ts > Neon GBP reply publishing > 0014 applies after 0013 and a second applyMigrations returns []
+AssertionError: expected [ Array(2) ] to deeply equal [ '0015_action_list_indexes.sql' ]
+
+- Expected
++ Received
+
+  [
+    "0015_action_list_indexes.sql",
++   "0016_brand_revisions.sql",
+  ]
+
+ ❯ test/integration/neon-publish-reply.integration.test.ts:150:42
+    148|     const through0014 = (await loadMigrations()).filter(m => m.name <=…
+    149|     expect(await applyMigrations(owner, through0014)).toEqual(["0014_p…
+    150|     expect(await applyMigrations(owner)).toEqual(["0015_action_list_in…
+       |                                          ^
+    151|     expect(await applyMigrations(owner)).toEqual([]);
+    152|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/12]⎯
+
+ FAIL  test/integration/neon-readiness.integration.test.ts > verifies an owned migrated schema without modifying its journal
+AssertionError: expected { status: 'not_ready', …(2) } to match object { status: 'ready', …(1) }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "status": "ready",
++   "status": "not_ready",
+    "target": {
+      "database": "sme_neon_it_98ab6b37302a",
+    },
+  }
+
+ ❯ test/integration/neon-readiness.integration.test.ts:89:18
+     87|     };
+     88|   });
+     89|   expect(result).toMatchObject({
+       |                  ^
+     90|     status: "ready",
+     91|     target: { database: fixture.databaseName },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/12]⎯
+
+ FAIL  test/integration/neon-readiness.integration.test.ts > T-19 rejects a missing first_published_at even when every journal checksum is intact
+AssertionError: expected 'not_ready' to be 'ready' // Object.is equality
+
+Expected: "ready"
+Received: "not_ready"
+
+ ❯ test/integration/neon-readiness.integration.test.ts:116:41
+    114|   ).toBe("target"));
+    115| it('T21 rejects mutation privileges on immutable brand history',async(…
+    116|   expect((await readiness(env)).status).toBe('ready');
+       |                                         ^
+    117|   await db.query('GRANT UPDATE,DELETE,TRUNCATE ON brand_revisions TO s…
+    118|   try{expect(await readiness(env)).toMatchObject({status:'not_ready',c…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/12]⎯
+
+ FAIL  test/integration/neon-readiness.integration.test.ts > F-16 rejects any application-declared column that is missing, e.g. actions.offer_id
+AssertionError: expected 'not_ready' to be 'ready' // Object.is equality
+
+Expected: "ready"
+Received: "not_ready"
+
+ ❯ test/integration/neon-readiness.integration.test.ts:130:41
+    128|     await db.query("ALTER TABLE public.output_versions RENAME COLUMN h…
+    129|   }
+    130|   expect((await readiness(env)).status).toBe("ready");
+       |                                         ^
+    131| });
+    132| // F-16: production owner homes failed reading actions (which selects …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/12]⎯
+
+ FAIL  test/integration/neon-schema.integration.test.ts > fresh application schema > applies all final business objects to empty PostgreSQL with no business seeds
+AssertionError: expected [ '0001_identity.sql', …(15) ] to deeply equal [ '0001_identity.sql', …(14) ]
+
+- Expected
++ Received
+
+@@ -12,6 +12,7 @@
+    "0011_offers.sql",
+    "0012_work_packs.sql",
+    "0013_preview_events.sql",
+    "0014_publish_reply.sql",
+    "0015_action_list_indexes.sql",
++   "0016_brand_revisions.sql",
+  ]
+
+ ❯ test/integration/neon-schema.integration.test.ts:26:42
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/12]⎯
+
+ FAIL  test/integration/neon-schema.integration.test.ts > fresh application schema > replays as a no-op and rejects changed, missing, and reordered history
+AssertionError: expected 16 to be 15 // Object.is equality
+
+- Expected
++ Received
+
+- 15
++ 16
+
+ ❯ test/integration/neon-schema.integration.test.ts:36:101
+     34|     await expect(applyMigrations(owner, migrations.slice(0, 2))).rejec…
+     35|     await expect(applyMigrations(owner, [...migrations].reverse())).re…
+     36|     expect((await owner.query("SELECT count(*)::int AS n FROM neon_mig…
+       |                                                                                                     ^
+     37|   });
+     38|   it("rolls back interrupted DDL and journal together, then permits re…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/12]⎯
+
+ FAIL  test/integration/neon-schema.integration.test.ts > fresh application schema > rolls back interrupted DDL and journal together, then permits retry
+AssertionError: expected 16 to be 15 // Object.is equality
+
+- Expected
++ Received
+
+- 15
++ 16
+
+ ❯ test/integration/neon-schema.integration.test.ts:42:101
+     40|     await expect(applyMigrations(owner, [...migrations, { name: "0099_…
+     41|     expect((await owner.query("SELECT to_regclass('public.interruption…
+     42|     expect((await owner.query("SELECT count(*)::int AS n FROM neon_mig…
+       |                                                                                                     ^
+     43|     expect(await applyMigrations(owner)).toEqual([]);
+     44|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/12]⎯
+
+ FAIL  test/integration/neon-schema.integration.test.ts > fresh application schema > exposes all final columns and constraints through typed Drizzle tables
+AssertionError: expected 44 to be 43 // Object.is equality
+
+- Expected
++ Received
+
+- 43
++ 44
+
+ ❯ test/integration/neon-schema.integration.test.ts:64:27
+     62|     const oracle = JSON.parse(await readFile(new URL("./fixtures/legac…
+     63|     const tables = Object.values(schema).map(table => getTableConfig(t…
+     64|     expect(tables.length).toBe(44);
+       |                           ^
+     65|     for (const expected of oracle.tables as Array<{name:string}>) {
+     66|       const table = tables.find(table => table.name === expected.name)…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/12]⎯
+
+
+ Test Files  5 failed | 51 passed (56)
+      Tests  12 failed | 598 passed (610)
+   Start at  03:52:17
+   Duration  574.49s (transform 4.41s, setup 1.11s, import 32.74s, tests 511.76s, environment 8ms)
+
+ ELIFECYCLE  Command failed with exit code 1.

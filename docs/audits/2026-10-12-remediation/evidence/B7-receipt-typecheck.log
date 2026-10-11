@@ -1,0 +1,13 @@
+
+> sme-scanner-visibility-workspace@0.1.0 typecheck C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-remediation-20261012
+> tsc --noEmit && corepack pnpm -r typecheck
+
+docs/audits/2026-10-12-remediation/CAPTURE_LOCAL_WORKFLOW_RECEIPT.ts(20,9): error TS7022: 'context' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
+docs/audits/2026-10-12-remediation/CAPTURE_LOCAL_WORKFLOW_RECEIPT.ts(21,30): error TS7006: Parameter 'route' implicitly has an 'any' type.
+docs/audits/2026-10-12-remediation/CAPTURE_LOCAL_WORKFLOW_RECEIPT.ts(22,9): error TS7022: 'page' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
+docs/audits/2026-10-12-remediation/CAPTURE_LOCAL_WORKFLOW_RECEIPT.ts(24,20): error TS7006: Parameter 'url' implicitly has an 'any' type.
+docs/audits/2026-10-12-remediation/CAPTURE_LOCAL_WORKFLOW_RECEIPT.ts(24,24): error TS7006: Parameter 'options' implicitly has an 'any' type.
+docs/audits/2026-10-12-remediation/CAPTURE_LOCAL_WORKFLOW_RECEIPT.ts(26,9): error TS7023: 'request' implicitly has return type 'any' because it does not have a return type annotation and is referenced directly or indirectly in one of its return expressions.
+docs/audits/2026-10-12-remediation/CAPTURE_LOCAL_WORKFLOW_RECEIPT.ts(27,10): error TS7022: 'response' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
+docs/audits/2026-10-12-remediation/CAPTURE_LOCAL_WORKFLOW_RECEIPT.ts(29,9): error TS7022: 'preview' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
+ ELIFECYCLE  Command failed with exit code 2.

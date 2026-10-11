@@ -1,0 +1,33 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test:integration C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-remediation-20261012
+> vitest run --config vitest.integration.config.ts "test/integration/neon-artifact-runtime.integration.test.ts" "test/integration/neon-assistant-live.integration.test.ts" "test/integration/neon-action-list-pagination.integration.test.ts"
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ test/integration/neon-action-list-pagination.integration.test.ts (11 tests | 1 failed) 13968ms
+     × T12: 26 rows retain a low-ranked second template within location/tenant scope 49ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/integration/neon-action-list-pagination.integration.test.ts > bounded action list SQL (T-12) > T12: 26 rows retain a low-ranked second template within location/tenant scope
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/integration/neon-action-list-pagination.integration.test.ts:71:97
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  1 failed | 79 passed (80)
+   Start at  03:22:03
+   Duration  47.76s (transform 1.10s, setup 66ms, import 2.48s, tests 37.94s, environment 1ms)
+
+ ELIFECYCLE  Command failed with exit code 1.

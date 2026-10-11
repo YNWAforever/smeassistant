@@ -1,0 +1,60 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ lib/assistant/live.test.ts (0 test)
+(node:30444) PromiseRejectionHandledWarning: Promise rejection was handled asynchronously (rejection id: 2)
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/assistant/live.test.ts [ lib/assistant/live.test.ts ]
+Error: Transform failed with 1 error:
+
+[PARSE_ERROR] Unexpected token
+     ╭─[ lib/assistant/live.test.ts:560:1 ]
+     │
+ 560 │ });
+     │ ┬  
+     │ ╰── 
+─────╯
+
+  Plugin: vite:oxc
+  File: C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012/lib/assistant/live.test.ts
+ ❯ transformWithOxc node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:4103:19
+ ❯ TransformPluginContext.transform node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:4174:26
+ ❯ EnvironmentPluginContainer.transform node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:30932:51
+ ❯ loadAndTransform node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:20671:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+ActionRunInFlightError: action_run_in_flight
+ ❯ Object.<anonymous> tests/audit-assistant-concurrency.test.ts:59:67
+     57|   const {ActionRunInFlightError}=await import("@/lib/repositories/arti…
+     58|   let live=false;
+     59|   runPersistence.queue.mockImplementation(async()=>{if(live)throw new …
+       |                                                                   ^
+     60|   let release!: () => void;
+     61|   const gate = new Promise<void>(resolve => { release = resolve; });
+ ❯ Object.Mock [as queue] node_modules/.pnpm/@vitest+spy@4.1.11/node_modules/@vitest/spy/dist/index.js:332:34
+ ❯ draft lib/assistant/live.ts:385:35
+ ❯ processTicksAndRejections node:internal/process/task_queues:104:5
+
+This error originated in "tests/audit-assistant-concurrency.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "AUDIT F-20261011-01: identical concurrent draft requests must call the model at most once, contextual flag off". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  33 passed (33)
+     Errors  1 error
+   Start at  03:14:09
+   Duration  2.05s (transform 1.10s, setup 798ms, import 1.61s, tests 1.51s, environment 0ms)
+

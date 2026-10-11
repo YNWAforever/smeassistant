@@ -1,0 +1,13 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test:integration C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-remediation-20261012
+> vitest run --config vitest.integration.config.ts
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+
+ Test Files  57 passed (57)
+      Tests  614 passed (614)
+   Start at  05:02:11
+   Duration  421.57s (transform 3.61s, setup 1.03s, import 28.99s, tests 366.66s, environment 10ms)
+

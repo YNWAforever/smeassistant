@@ -1,0 +1,3 @@
+"command","source_sha","environment","exit_code","result","evidence"
+"corepack pnpm test","48e96d6751d54c2574d56c32c5c887c3e48664f5","local fixtures, Node24.18/pnpm9.12","0","5682 passed (5095+62+23+183+20+299), 476 files, no skips","evidence/B7-unit-final.log"
+"corepack pnpm db:verify","working tree, runtime equivalent except later read-only readiness/test changes","owned PostgreSQL16, network-none","0","16 migrations; replay0; seededRows0; 42 business tables","evidence/B7-db-verify.log"

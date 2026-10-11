@@ -1,0 +1,24 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ lib/scanner/bounded-request.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/scanner/bounded-request.test.ts [ lib/scanner/bounded-request.test.ts ]
+Error: Cannot find module './bounded-request' imported from C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012/lib/scanner/bounded-request.test.ts
+ ❯ lib/scanner/bounded-request.test.ts:2:1
+      1| import {afterEach,it,expect,vi} from 'vitest';
+      2| import {fetchJsonWithinDeadline} from './bounded-request';
+       | ^
+      3| afterEach(()=>{vi.unstubAllGlobals();vi.useRealTimers();});
+      4| it.each(['headers','body'])('T16: %s stall ends within the deadline ev…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  03:33:22
+   Duration  3.88s (transform 26ms, setup 3.69s, import 0ms, tests 0ms, environment 0ms)
+

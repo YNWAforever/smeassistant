@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+
+ Test Files  2 passed (2)
+      Tests  94 passed (94)
+   Start at  05:10:39
+   Duration  3.69s (transform 638ms, setup 1.03s, import 1.88s, tests 157ms, environment 0ms)
+

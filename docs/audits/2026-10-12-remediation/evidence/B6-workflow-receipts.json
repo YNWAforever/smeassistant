@@ -1,0 +1,218 @@
+{
+  "observed_at": "2026-10-11T21:37:15.989Z",
+  "source_sha": "6ac091365fe5cf0aa9be1fd658b7a1ca72ce22f1",
+  "receipts": [
+    {
+      "source_sha": "6ac091365fe5cf0aa9be1fd658b7a1ca72ce22f1",
+      "market": "hk",
+      "environment": "owned loopback Auth/mail/LLM/PostgreSQL; model canned; no hosted calls",
+      "workspace_id": "0abf75d9-a205-4391-a29e-ad85b97cf862",
+      "action_id": "8ff099f0-27fb-42db-b206-70093bd1479a",
+      "preview_versions_before_redemption": 0,
+      "version_ids": [
+        "616a2b45-dd98-474d-8f99-77da047b481e",
+        "279b1c0b-d23c-435f-973d-c8ef74234aaa",
+        "40825a50-c012-4df9-b3f3-ba680bdc447b"
+      ],
+      "delivery_id": "72f6d43d-0f4b-40bf-a682-89b595641f78",
+      "application_id": "97e8a048-979a-4393-929e-f993862bd451",
+      "first_export_counted": true,
+      "repeat_export_counted": false,
+      "new_edit_export_status": 409,
+      "rescan_measurement": "separate integration/acceptance evidence; not exercised by this receipt",
+      "run": {
+        "id": "336dee4c-ffc3-4d49-b740-0b702ebe5cc3",
+        "state": "succeeded",
+        "brand_revision_id": "dbbb61fb-8e27-4971-8f86-4ab59b7a05ba",
+        "requested_by": "944a7165-9d76-45f8-9fd8-e24a966df9ef",
+        "cost_usd": 0.00001
+      },
+      "versions": [
+        {
+          "id": "616a2b45-dd98-474d-8f99-77da047b481e",
+          "version_no": 1,
+          "action_run_id": "336dee4c-ffc3-4d49-b740-0b702ebe5cc3",
+          "approval_state": "superseded",
+          "delivery_state": "not_requested"
+        },
+        {
+          "id": "279b1c0b-d23c-435f-973d-c8ef74234aaa",
+          "version_no": 2,
+          "action_run_id": null,
+          "approval_state": "approved",
+          "delivery_state": "exported"
+        },
+        {
+          "id": "40825a50-c012-4df9-b3f3-ba680bdc447b",
+          "version_no": 3,
+          "action_run_id": null,
+          "approval_state": "draft",
+          "delivery_state": "not_requested"
+        }
+      ],
+      "events": [
+        {
+          "id": 1,
+          "event": "run.started",
+          "entity_id": "336dee4c-ffc3-4d49-b740-0b702ebe5cc3",
+          "actor_id": "944a7165-9d76-45f8-9fd8-e24a966df9ef"
+        },
+        {
+          "id": 2,
+          "event": "run.succeeded",
+          "entity_id": "336dee4c-ffc3-4d49-b740-0b702ebe5cc3",
+          "actor_id": "944a7165-9d76-45f8-9fd8-e24a966df9ef"
+        },
+        {
+          "id": 3,
+          "event": "assistant.run",
+          "entity_id": "8ff099f0-27fb-42db-b206-70093bd1479a",
+          "actor_id": "944a7165-9d76-45f8-9fd8-e24a966df9ef"
+        },
+        {
+          "id": 4,
+          "event": "version.created",
+          "entity_id": "616a2b45-dd98-474d-8f99-77da047b481e",
+          "actor_id": "944a7165-9d76-45f8-9fd8-e24a966df9ef"
+        },
+        {
+          "id": 5,
+          "event": "version.created",
+          "entity_id": "279b1c0b-d23c-435f-973d-c8ef74234aaa",
+          "actor_id": "944a7165-9d76-45f8-9fd8-e24a966df9ef"
+        },
+        {
+          "id": 6,
+          "event": "version.approved",
+          "entity_id": "279b1c0b-d23c-435f-973d-c8ef74234aaa",
+          "actor_id": "944a7165-9d76-45f8-9fd8-e24a966df9ef"
+        },
+        {
+          "id": 7,
+          "event": "delivery.copied",
+          "entity_id": "72f6d43d-0f4b-40bf-a682-89b595641f78",
+          "actor_id": "944a7165-9d76-45f8-9fd8-e24a966df9ef"
+        },
+        {
+          "id": 8,
+          "event": "action.applied",
+          "entity_id": "8ff099f0-27fb-42db-b206-70093bd1479a",
+          "actor_id": "944a7165-9d76-45f8-9fd8-e24a966df9ef"
+        },
+        {
+          "id": 9,
+          "event": "version.created",
+          "entity_id": "40825a50-c012-4df9-b3f3-ba680bdc447b",
+          "actor_id": "944a7165-9d76-45f8-9fd8-e24a966df9ef"
+        }
+      ],
+      "usage": 1
+    },
+    {
+      "source_sha": "6ac091365fe5cf0aa9be1fd658b7a1ca72ce22f1",
+      "market": "tw",
+      "environment": "owned loopback Auth/mail/LLM/PostgreSQL; model canned; no hosted calls",
+      "workspace_id": "c3774d63-ff62-4006-8502-963cb9a3a5e8",
+      "action_id": "c836ef7f-2cac-4747-81dd-f6c42a288858",
+      "preview_versions_before_redemption": 0,
+      "version_ids": [
+        "76a72c57-5d10-4a0e-bcbb-538f29d3e4f6",
+        "d60904a6-0046-4d36-a28e-7d1fe1174cda",
+        "bdfd75b1-6ca9-4ffe-82d7-c6cc60a25821"
+      ],
+      "delivery_id": "cdccb9c1-1da4-4215-9764-faf54efb3cc6",
+      "application_id": "a28c3738-0a30-4761-b715-cdba971d6c16",
+      "first_export_counted": true,
+      "repeat_export_counted": false,
+      "new_edit_export_status": 409,
+      "rescan_measurement": "separate integration/acceptance evidence; not exercised by this receipt",
+      "run": {
+        "id": "2df80da7-cf57-4d51-bbd6-aa5007efd422",
+        "state": "succeeded",
+        "brand_revision_id": "637ab105-d36d-4ca2-a328-2b58d4f54146",
+        "requested_by": "910c13f0-49ce-441a-a9ff-4bba7aa92a76",
+        "cost_usd": 0.00001
+      },
+      "versions": [
+        {
+          "id": "76a72c57-5d10-4a0e-bcbb-538f29d3e4f6",
+          "version_no": 1,
+          "action_run_id": "2df80da7-cf57-4d51-bbd6-aa5007efd422",
+          "approval_state": "superseded",
+          "delivery_state": "not_requested"
+        },
+        {
+          "id": "d60904a6-0046-4d36-a28e-7d1fe1174cda",
+          "version_no": 2,
+          "action_run_id": null,
+          "approval_state": "approved",
+          "delivery_state": "exported"
+        },
+        {
+          "id": "bdfd75b1-6ca9-4ffe-82d7-c6cc60a25821",
+          "version_no": 3,
+          "action_run_id": null,
+          "approval_state": "draft",
+          "delivery_state": "not_requested"
+        }
+      ],
+      "events": [
+        {
+          "id": 10,
+          "event": "run.started",
+          "entity_id": "2df80da7-cf57-4d51-bbd6-aa5007efd422",
+          "actor_id": "910c13f0-49ce-441a-a9ff-4bba7aa92a76"
+        },
+        {
+          "id": 11,
+          "event": "run.succeeded",
+          "entity_id": "2df80da7-cf57-4d51-bbd6-aa5007efd422",
+          "actor_id": "910c13f0-49ce-441a-a9ff-4bba7aa92a76"
+        },
+        {
+          "id": 12,
+          "event": "assistant.run",
+          "entity_id": "c836ef7f-2cac-4747-81dd-f6c42a288858",
+          "actor_id": "910c13f0-49ce-441a-a9ff-4bba7aa92a76"
+        },
+        {
+          "id": 13,
+          "event": "version.created",
+          "entity_id": "76a72c57-5d10-4a0e-bcbb-538f29d3e4f6",
+          "actor_id": "910c13f0-49ce-441a-a9ff-4bba7aa92a76"
+        },
+        {
+          "id": 14,
+          "event": "version.created",
+          "entity_id": "d60904a6-0046-4d36-a28e-7d1fe1174cda",
+          "actor_id": "910c13f0-49ce-441a-a9ff-4bba7aa92a76"
+        },
+        {
+          "id": 15,
+          "event": "version.approved",
+          "entity_id": "d60904a6-0046-4d36-a28e-7d1fe1174cda",
+          "actor_id": "910c13f0-49ce-441a-a9ff-4bba7aa92a76"
+        },
+        {
+          "id": 16,
+          "event": "delivery.copied",
+          "entity_id": "cdccb9c1-1da4-4215-9764-faf54efb3cc6",
+          "actor_id": "910c13f0-49ce-441a-a9ff-4bba7aa92a76"
+        },
+        {
+          "id": 17,
+          "event": "action.applied",
+          "entity_id": "c836ef7f-2cac-4747-81dd-f6c42a288858",
+          "actor_id": "910c13f0-49ce-441a-a9ff-4bba7aa92a76"
+        },
+        {
+          "id": 18,
+          "event": "version.created",
+          "entity_id": "bdfd75b1-6ca9-4ffe-82d7-c6cc60a25821",
+          "actor_id": "910c13f0-49ce-441a-a9ff-4bba7aa92a76"
+        }
+      ],
+      "usage": 1
+    }
+  ]
+}

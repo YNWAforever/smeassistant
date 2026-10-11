@@ -1,0 +1,9 @@
+
+> sme-scanner-visibility-workspace@0.1.0 typecheck C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-remediation-20261012
+> tsc --noEmit && corepack pnpm -r typecheck
+
+app/api/workspaces/[workspaceId]/assets/[assetId]/preview/route.ts(17,98): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+app/api/workspaces/[workspaceId]/assets/[assetId]/route.ts(51,128): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+ ELIFECYCLE  Command failed with exit code 2.

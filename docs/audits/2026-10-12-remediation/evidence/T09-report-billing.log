@@ -1,0 +1,44 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ app/[locale]/owner/select-workspace/page.test.tsx (3 tests | 3 failed) 9ms
+   × reads only the verified caller's pending status 6ms (retry x1)
+   × reads only the verified caller's awaiting_information status 1ms (retry x1)
+   × reads only the verified caller's no_request status 1ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  app/[locale]/owner/select-workspace/page.test.tsx > reads only the verified caller's pending status
+ FAIL  app/[locale]/owner/select-workspace/page.test.tsx > reads only the verified caller's pending status
+ FAIL  app/[locale]/owner/select-workspace/page.test.tsx > reads only the verified caller's awaiting_information status
+ FAIL  app/[locale]/owner/select-workspace/page.test.tsx > reads only the verified caller's awaiting_information status
+ FAIL  app/[locale]/owner/select-workspace/page.test.tsx > reads only the verified caller's no_request status
+ FAIL  app/[locale]/owner/select-workspace/page.test.tsx > reads only the verified caller's no_request status
+Error: [vitest] No "switchAccountAction" export is defined on the "../actions" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+vi.mock(import("../actions"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+ ❯ Module.OwnerSelectWorkspace app/[locale]/owner/select-workspace/page.tsx:55:22
+     53|       email={user.email}
+     54|       denied={denied && denied.length <= 120 ? denied : undefined}
+     55|       signOutAction={switchAccountAction.bind(null, locale,firstParam(…
+       |                      ^
+     56|       oauthClaimEnabled={claimViaOAuthEnabled()}
+     57|       accessRequest={
+ ❯ app/[locale]/owner/select-workspace/page.test.tsx:26:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+
+ Test Files  1 failed | 5 passed (6)
+      Tests  3 failed | 82 passed (85)
+   Start at  03:26:06
+   Duration  4.45s (transform 2.68s, setup 2.17s, import 5.94s, tests 1.58s, environment 2.27s)
+
