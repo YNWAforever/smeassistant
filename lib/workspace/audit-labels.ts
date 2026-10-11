@@ -1,9 +1,10 @@
 /**
  * Display labels for audit_events rows (CLAUDE.md §3.11), shared by the
  * Activity page and the action detail history tab. Plain data, safe to import
- * from client components.
+ * from client components. `zh` is the zh-HK wording; `zhTW` is set only where
+ * Taiwan wording differs (copy hygiene: 台灣用語).
  */
-export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string }> = {
+export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string; zhTW?: string }> = {
   "scan.queued": { en: "Scan queued", zh: "掃描已排隊" },
   "scan.completed": { en: "Scan completed", zh: "掃描已完成" },
   "scan.failed": { en: "Scan failed", zh: "掃描失敗" },
@@ -32,7 +33,7 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string }> = {
   "report.recovery_redeemed": { en: "Report link used", zh: "已使用報告連結" },
   "integration.updated": { en: "Integration updated", zh: "連接已更新" },
   "brand.updated": { en: "Brand profile updated", zh: "品牌資料已更新" },
-  "asset.uploaded": { en: "Asset uploaded", zh: "素材已上載" },
+  "asset.uploaded": { en: "Asset uploaded", zh: "素材已上載", zhTW: "素材已上傳" },
   "asset.rights_confirmed": { en: "Asset rights confirmed", zh: "素材權利已確認" },
   "assistant.run": { en: "Operator answered", zh: "助理已回應" },
   "consent.public_evidence": { en: "Public evidence consent", zh: "公開證據同意" },
@@ -46,7 +47,7 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string }> = {
   // them would make the ledger unable to tell an attested claim from an
   // operator assignment.
   "workspace.assigned": { en: "Workspace assigned by an operator", zh: "營運人員已指派工作台" },
-  "mail.attempted": { en: "Email attempted", zh: "已嘗試發送電郵" },
+  "mail.attempted": { en: "Email attempted", zh: "已嘗試發送電郵", zhTW: "已嘗試發送電子郵件" },
   "scan.auto_closed": { en: "Stuck scan closed", zh: "已結束停止回應的掃描" },
   "ops.scan.released": { en: "Scan resumed by Fimmick", zh: "Fimmick 已恢復掃描" },
   "offer.created": { en: "Offer created", zh: "已建立優惠" },
@@ -54,7 +55,7 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string }> = {
   // Written by confirm_offer / archive_offer in SQL.
   "offer.confirmed": { en: "Offer confirmed", zh: "優惠已確認" },
   "offer.archived": { en: "Offer archived", zh: "優惠已封存" },
-  "pack.started": { en: "Starter pack started", zh: "已開始入門套裝" },
+  "pack.started": { en: "Starter pack started", zh: "已開始入門套裝", zhTW: "已開始入門套組" },
 };
 
 export const AUDIT_ACTOR_LABELS: Record<"user" | "agent" | "system" | "scanner", { en: string; zh: string }> = {
@@ -108,9 +109,11 @@ export function auditEntityLabel(entityType: string | null, isChinese: boolean):
   return label ? (isChinese ? label.zh : label.en) : null;
 }
 
-export function auditEventLabel(event: string, isChinese: boolean): string {
+export function auditEventLabel(event: string, locale: "en" | "zh-HK" | "zh-TW"): string {
   const label = AUDIT_EVENT_LABELS[event];
-  return label ? (isChinese ? label.zh : label.en) : event;
+  if (!label) return event;
+  if (locale === "en") return label.en;
+  return locale === "zh-TW" ? label.zhTW ?? label.zh : label.zh;
 }
 
 export function auditActorLabel(actor: keyof typeof AUDIT_ACTOR_LABELS, isChinese: boolean): string {

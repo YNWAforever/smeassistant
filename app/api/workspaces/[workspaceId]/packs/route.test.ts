@@ -236,3 +236,15 @@ describe("GET /api/workspaces/[id]/packs", () => {
     expect(await res.json()).toEqual({ error: "unavailable" });
   });
 });
+
+describe("identity or database outage during authorization", () => {
+  it("answers 503 unavailable on GET and POST, not an unhandled 500", async () => {
+    mocks.authorizeWorkspaceRequest.mockRejectedValue(new Error("identity unavailable"));
+    const read = await get();
+    expect(read.status).toBe(503);
+    expect(await read.json()).toEqual({ error: "unavailable" });
+    const write = await post({ location_id: L1 });
+    expect(write.status).toBe(503);
+    expect(await write.json()).toEqual({ error: "unavailable" });
+  });
+});

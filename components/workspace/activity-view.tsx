@@ -4,7 +4,7 @@ import { PageIntro, SectionCard } from "@/components/product-ui"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import type { PrototypeLocale } from "@/lib/copy"
 import { formatDateTime } from "@/lib/workspace/format"
-import { AUDIT_EVENT_LABELS, activityActorLabel, auditEntityLabel } from "@/lib/workspace/audit-labels"
+import { activityActorLabel, auditEntityLabel, auditEventLabel } from "@/lib/workspace/audit-labels"
 import type { AuditEventRow } from "@/lib/workspace/queries-pages"
 
 function detail(row: AuditEventRow, isChinese: boolean): string {
@@ -31,17 +31,14 @@ export function ActivityView({ locale, timezone, events, problems }: { locale: P
           <TableHeader><TableRow><TableHead>{isChinese ? "時間" : "Time"}</TableHead><TableHead>{isChinese ? "操作人" : "Actor"}</TableHead><TableHead>{isChinese ? "事件" : "Event"}</TableHead><TableHead>{isChinese ? "詳情" : "Detail"}</TableHead></TableRow></TableHeader>
           <TableBody>
             {events.length === 0 && <TableRow><TableCell colSpan={4}>{isChinese ? "尚未有事件。" : "No events yet."}</TableCell></TableRow>}
-            {events.map((row) => {
-              const label = AUDIT_EVENT_LABELS[row.event]
-              return (
-                <TableRow key={row.id}>
-                  <TableCell>{formatDateTime(row.created_at, locale, timezone)}</TableCell>
-                  <TableCell>{activityActorLabel(row, isChinese)}</TableCell>
-                  <TableCell>{label ? (isChinese ? label.zh : label.en) : row.event}</TableCell>
-                  <TableCell>{detail(row, isChinese)}</TableCell>
-                </TableRow>
-              )
-            })}
+            {events.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>{formatDateTime(row.created_at, locale, timezone)}</TableCell>
+                <TableCell>{activityActorLabel(row, isChinese)}</TableCell>
+                <TableCell>{auditEventLabel(row.event, locale)}</TableCell>
+                <TableCell>{detail(row, isChinese)}</TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </SectionCard>

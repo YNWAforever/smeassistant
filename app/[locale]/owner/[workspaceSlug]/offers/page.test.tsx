@@ -22,8 +22,9 @@ function asset(id: string, location_id: string | null, overrides: Record<string,
   return { id, filename: `${id}.jpg`, location_id, rights_status: "approved", kind: "image", ...overrides };
 }
 
-function pageFor(membership: Record<string, unknown>) {
+function pageFor(membership: Record<string, unknown>, query: Record<string, string | undefined> = {}) {
   mocks.loadOwnerPage.mockResolvedValue({
+    query,
     locale: "en",
     workspaceSlug: "kam-man-house",
     membership: { workspaceId: "ws-1", workspaceSlug: "kam-man-house", userId: "u", email: "u@example.test", locationScope: null, ...membership },
@@ -92,5 +93,19 @@ describe("offers page", () => {
       { id: "a-shared", filename: "a-shared.jpg", locationId: null },
       { id: "a-1", filename: "a-1.jpg", locationId: "loc-1" },
     ]);
+  });
+
+  it("honours an explicit ?location=: that location's and workspace-wide offers, and the form defaults to it", async () => {
+    pageFor({ role: "owner" }, { location: "tin-hau" });
+    const element = await Page(props);
+    expect(element.props.offers.map((o: { id: string }) => o.id)).toEqual(["o-ws", "o-2"]);
+    expect(element.props.selectedLocationId).toBe("loc-2");
+  });
+
+  it.each([undefined, "all", "not-a-location"])("lists every readable offer with no location selected (location=%s)", async (location) => {
+    pageFor({ role: "owner" }, { location });
+    const element = await Page(props);
+    expect(element.props.offers.map((o: { id: string }) => o.id)).toEqual(["o-ws", "o-1", "o-2"]);
+    expect(element.props.selectedLocationId).toBeNull();
   });
 });

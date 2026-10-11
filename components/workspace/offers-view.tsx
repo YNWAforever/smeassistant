@@ -40,6 +40,8 @@ export interface OffersViewProps {
   assets: Array<{ id: string; filename: string; locationId: string | null }>
   /** When present, drafts created from an offer link to their action pages. */
   workspaceSlug?: string
+  /** The location chosen with ?location=; a new offer starts there when the caller may manage it. */
+  selectedLocationId?: string | null
 }
 
 const WORKSPACE = "workspace"
@@ -80,7 +82,7 @@ function initialForm(offer: Offer | null, firstKey: string): FormState {
   }
 }
 
-export function OffersView({ locale, workspaceId, market, role, canManage, canUse, offers, locations, assets, workspaceSlug }: OffersViewProps) {
+export function OffersView({ locale, workspaceId, market, role, canManage, canUse, offers, locations, assets, workspaceSlug, selectedLocationId = null }: OffersViewProps) {
   const text = copy[locale].workspace.offers
   const router = useRouter()
   const currency = marketCurrency(market)
@@ -167,6 +169,7 @@ export function OffersView({ locale, workspaceId, market, role, canManage, canUs
           canManage={canManage}
           locations={locations}
           assets={assets}
+          selectedLocationId={selectedLocationId}
           onClose={() => setEditor(null)}
           onSaved={() => { setEditor(null); router.refresh() }}
           onReload={() => router.refresh()}
@@ -248,7 +251,7 @@ export function OffersView({ locale, workspaceId, market, role, canManage, canUs
 }
 
 function OfferForm({
-  locale, workspaceId, currency, offer, canManage, locations, assets, onClose, onSaved, onReload,
+  locale, workspaceId, currency, offer, canManage, locations, assets, selectedLocationId, onClose, onSaved, onReload,
 }: {
   locale: PrototypeLocale
   workspaceId: string
@@ -257,6 +260,7 @@ function OfferForm({
   canManage: Record<string, boolean>
   locations: OffersViewProps["locations"]
   assets: OffersViewProps["assets"]
+  selectedLocationId: string | null
   onClose: () => void
   onSaved: () => void
   onReload: () => void
@@ -267,7 +271,8 @@ function OfferForm({
     ...locations.filter((l) => canManage[l.id] === true).map((l) => ({ key: l.id, name: l.name })),
     ...(canManage[WORKSPACE] === true ? [{ key: WORKSPACE, name: text.scope.all }] : []),
   ]
-  const [form, setForm] = useState<FormState>(() => initialForm(offer, scopes[0]?.key ?? WORKSPACE))
+  const firstKey = scopes.find((scope) => scope.key === selectedLocationId)?.key ?? scopes[0]?.key ?? WORKSPACE
+  const [form, setForm] = useState<FormState>(() => initialForm(offer, firstKey))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<{ text: string; reload: boolean } | null>(null)
   const locationId = form.locationKey === WORKSPACE ? null : form.locationKey
