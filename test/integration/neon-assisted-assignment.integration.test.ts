@@ -92,6 +92,31 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Assisted ownership assignm
     expect((await runtime.query("SELECT id FROM workspace_members WHERE user_id=$1", [requester.id])).rows).toEqual([]);
   });
 
+  it.each(["pending", "approved", "rejected", "closed"])("T22 finds this report's older %s request instead of a newer report", async status => {
+    const older = await seed({ businessName: "Report B" });
+    const newer = await seed({ businessName: "Report A" });
+    await runtime.query("UPDATE workspace_access_requests SET requested_at=now()-interval '1 day', resolved_at=$2 WHERE id=$1", [older.input.id, status === "pending" ? null : new Date().toISOString()]);
+    if (status !== "pending") await runtime.query("INSERT INTO audit_events(actor_type,event,entity_type,entity_id,payload) VALUES('system',$1,'workspace_access_request',$2,'{}')", [`access_request.${status}`, older.input.id]);
+    const repo = accessRequestRepository();
+    expect((await repo.latestForUser(older.requester.id))?.request.id).toBe(newer.input.id);
+    const scoped = await repo.latestForUserAndReport(older.requester.id, "slug-report-b");
+    expect(scoped?.request.id).toBe(older.input.id);
+    expect(scoped?.request.share_slug).toBe("slug-report-b");
+    expect(scoped?.events.map(event => event.event)).toEqual(status === "pending" ? [] : [`access_request.${status}`]);
+    const foreign = await resolveApplicationUser(identity("foreign-reader", "foreign@example.test"));
+    expect(await repo.latestForUserAndReport(foreign.id, "slug-report-b")).toBeNull();
+    expect(await repo.latestForUserAndReport(older.requester.id, "unknown-slug")).toBeNull();
+    expect(await repo.latestForUserAndReport(older.requester.id, "invalid/slug")).toBeNull();
+    expect((await runtime.query("SELECT id FROM workspace_members WHERE user_id=$1", [older.requester.id])).rows).toEqual([]);
+  });
+
+  it("T22 preserves the database's duplicate-open refusal and reloads the same request", async () => {
+    const seeded = await seed({ businessName: "Duplicate Open" });
+    await expect(runtime.query("INSERT INTO workspace_access_requests(job_id,user_id) VALUES($1,$2)", [seeded.job.id, seeded.requester.id])).rejects.toMatchObject({ code: "23505" });
+    const repo = accessRequestRepository();
+    for (let reload = 0; reload < 2; reload++) expect((await repo.latestForUserAndReport(seeded.requester.id, "slug-duplicate-open"))?.request.id).toBe(seeded.input.id);
+  });
+
   it("lets exactly one of two concurrent approvals win, and refuses the other visibly", async () => {
     const { input, operator, job } = await seed();
     const call = {

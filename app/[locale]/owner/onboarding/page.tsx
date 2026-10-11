@@ -157,13 +157,20 @@ export default async function OwnerOnboarding({
   // with no claim slug and so has never had a request filed for them at all.
   // Non-fatal, like the ownership lookup above it: this is a status panel, and
   // failing to read it must not stop an owner completing onboarding.
-  const myRequest = await accessRequestRepository()
-    .latestForUser(user.id)
+  let requestUnavailable = false;
+  const myRequest = evidence ? await accessRequestRepository()
+    .latestForUserAndReport(user.id, evidence.shareSlug)
     .catch(() => {
+      requestUnavailable = true;
       console.error("[onboarding] access request lookup failed", { category: "workspace_query_failed" });
       return null;
-    });
-  const accessRequest = myRequest ? (
+    }) : null;
+  const accessRequest = requestUnavailable ? (
+    <div role="alert">
+      <p>{locale === "en" ? "We could not read this report's application status. Please reload before applying." : locale === "zh-TW" ? "目前無法讀取這份報告的申請狀態，請重新載入後再申請。" : "暫時未能讀取這份報告的申請狀態，請重新載入後再申請。"}</p>
+      <a href={returnTo}>{locale === "en" ? "Try again" : "重新載入"}</a>
+    </div>
+  ) : myRequest ? (
     <AccessRequestStatus
       status={deriveRequestStatus(myRequest.request, myRequest.events)}
       isChinese={locale !== "en"}
