@@ -57,3 +57,4 @@
 .comparisonCard[data-direction="decreased"] > p > strong { color: #b54708; }
 .sampleCoverage { margin-top: 12px; }
 .scanComparison details summary:focus-visible { outline: 3px solid #175cd3; outline-offset: 4px; border-radius: 2px; }
+.observedValue { margin: 0 0 8px; color: #172019; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }

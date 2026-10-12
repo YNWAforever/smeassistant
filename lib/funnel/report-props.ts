@@ -1,5 +1,6 @@
 import type { ScanMetrics } from "@/lib/report/scan-metrics/types";
 import type { ScanComparison } from "@/lib/report/comparison/types";
+import type { DashboardMetric } from "./report-dashboard";
 import { projectScanComparison } from "@/lib/report/comparison/projection";
 import { getMarketCtas, type Market } from "@sme-scanner/region";
 
@@ -245,6 +246,8 @@ export interface ReportProps {
   previewDraftHref?: string;
   /** Set by the report page for the public (locked) view only; renders the "email me a new link" form. */
   recoveryAvailable?: boolean;
+  /** Fixed key-statistic tiles for the sample report only; real reports derive them from `proof`. */
+  dashboardMetrics?: DashboardMetric[];
 }
 
 /* ------------------------------------------------------------------------- */

@@ -1,6 +1,8 @@
-import type { PrototypeLocale } from "@/lib/copy";
+import { copy, type PrototypeLocale } from "@/lib/copy";
 import { actions, merchant, providers } from "@/lib/demo-data";
+import { interpolate } from "@/lib/share";
 
+import type { DashboardMetric } from "./report-dashboard";
 import type { ReportModuleRow, ReportPriorityRow, ReportProps } from "./report-props";
 
 /**
@@ -22,7 +24,36 @@ const providerZh: Record<string, { name: string; value: string; detail: string }
   "Instagram public evidence": { name: "Instagram 公開證據", value: "不計分", detail: "來源未能提供完整公開快照，因此不會降低評分。" },
 }
 
+/**
+ * The dashboard looks modules up by the real report keys (ig · gbp · aeo; the
+ * website is display-only) and only shows ISO observation times, so the sample
+ * carries both. The times are the demo providers' own 25 Aug 09:42–09:45 HKT.
+ */
+const providerReportFields: Record<string, { key: string; observedAt: string }> = {
+  "Google Business & Maps": { key: "gbp", observedAt: "2026-08-25T01:42:00.000Z" },
+  "Public website": { key: "website", observedAt: "2026-08-25T01:43:00.000Z" },
+  "Google Search & AI surfaces": { key: "aeo", observedAt: "2026-08-25T01:45:00.000Z" },
+  "Instagram public evidence": { key: "ig", observedAt: "2026-08-25T01:44:00.000Z" },
+}
+
 const priorityTone = { Urgent: "urgent", High: "high", Medium: "medium", Low: "low" } as const
+
+/**
+ * Key statistics for the sample, built only from facts the demo story already
+ * states (18% response rate, 7 unanswered reviews, 12 of 15 website checks,
+ * 2 of 5 queries). The demo has no Google rating or review count, so it shows
+ * none rather than inventing them; Instagram stays unavailable, as measured.
+ */
+function sampleMetrics(locale: PrototypeLocale, instagramReason: string): DashboardMetric[] {
+  const d = copy[locale].funnel.report.dashboard
+  return [
+    { key: "google-response-rate", label: d.responseRate, source: "Google Maps", state: "measured", value: 18, unit: "percent", sampleSize: null },
+    { key: "google-unanswered-reviews", label: d.unansweredReviews, source: "Google Maps", state: "measured", value: 7, unit: "count", sampleSize: null, unitLabel: d.reviewsUnit },
+    { key: "website-checks", label: d.websiteChecks, source: d.websiteSource, state: "measured", value: 12, unit: "count", sampleSize: null, unitLabel: interpolate(d.outOf, { total: 15 }) },
+    { key: "search-visibility", label: d.searchVisibility, source: "Search / AI", state: "measured", value: 2, unit: "count", sampleSize: null, unitLabel: interpolate(d.queriesOutOf, { total: 5 }) },
+    { key: "instagram-followers", label: copy[locale].funnel.report.proof.followers, source: "Instagram", state: "unavailable", reason: instagramReason },
+  ]
+}
 
 export function sampleReportProps(locale: PrototypeLocale): ReportProps {
   const isChinese = locale !== "en"
@@ -53,17 +84,21 @@ export function sampleReportProps(locale: PrototypeLocale): ReportProps {
 
   const modules: ReportModuleRow[] = providers.map((provider) => {
     const zh = providerZh[provider.name]
+    const fields = providerReportFields[provider.name]
     return {
-      key: provider.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      key: fields?.key ?? provider.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      // The demo publishes observed values, not per-module rubric scores; the
+      // dashboard shows `value` for a measured row without one.
       score: null,
       label: isChinese && zh ? zh.name : provider.name,
       state: provider.state,
       value: isChinese && zh ? zh.value : provider.value,
       detail: isChinese && zh ? zh.detail : provider.detail,
-      observedAt: isChinese ? "2026 年 8 月 25 日 · 香港時間 · 示範" : provider.observedAt,
+      observedAt: fields?.observedAt ?? null,
       limitationCode: null,
     }
   })
+  const instagram = modules.find((module) => module.key === "ig")
 
   return {
     locale,
@@ -104,5 +139,6 @@ export function sampleReportProps(locale: PrototypeLocale): ReportProps {
       status: "stored" as const, limitationCode: isChinese ? "示範插圖" : "Illustrative sample artwork",
     })),
     ctas: [],
+    dashboardMetrics: sampleMetrics(locale, instagram?.detail ?? copy[locale].funnel.report.dashboard.unavailableReason),
   }
 }

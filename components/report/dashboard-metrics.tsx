@@ -17,17 +17,18 @@ export function DashboardMetrics({ report, dashboard }: { report: ReportProps; d
   const number = new Intl.NumberFormat(report.locale);
   const hasSearchMetrics = report.modules.some(row => row.key === "aeo" && row.state === "measured") && Boolean(report.scanMetrics?.search.length);
   const hasIgSample = report.modules.some(row => row.key === "ig" && row.state === "measured") && Boolean(report.scanMetrics?.instagram);
-  const unit = (metric: Extract<DashboardMetric, { state: "measured" }>) => metric.unit === "rating" ? "/ 5" : metric.unit === "percent" ? "%" : metric.key === "instagram-followers" ? d.followersUnit : metric.key === "google-reviews" ? d.reviewsUnit : d.countUnit;
+  const unit = (metric: Extract<DashboardMetric, { state: "measured" }>) => metric.unitLabel ?? (metric.unit === "rating" ? "/ 5" : metric.unit === "percent" ? "%" : metric.key === "instagram-followers" ? d.followersUnit : metric.key === "google-reviews" ? d.reviewsUnit : d.countUnit);
+  const moduleKeyFor = (metricKey: string) => metricKey.startsWith("instagram") ? "ig" : metricKey.startsWith("google") ? "gbp" : metricKey.startsWith("website") ? "website" : "aeo";
   return <div className={styles.dashboard}>
     <section aria-labelledby="dashboard-statistics">
       <div className={styles.sectionHeading}><h2 id="dashboard-statistics">{d.statistics}</h2><FactType type="Observed" /></div>
       <div className={styles.metrics}>
         {dashboard.metrics.filter(metric => metric.key !== "search-visibility" || !hasSearchMetrics).map(metric => {
-          const sourceModule = report.modules.find(row => row.key === (metric.key.startsWith("instagram") ? "ig" : metric.key.startsWith("google") ? "gbp" : "aeo"));
+          const sourceModule = report.modules.find(row => row.key === moduleKeyFor(metric.key));
           return <article key={metric.key} data-metric={metric.key} className={styles.metric}>
             <p className={styles.metricSource}>{metric.source}</p><h3>{metric.label}</h3>
             {metric.state === "measured" ? <><div className={styles.value}><strong>{number.format(metric.value)}</strong><span>{unit(metric)}</span></div>{metric.sampleSize != null && <p>{d.sampleSize}: {number.format(metric.sampleSize)}</p>}</> : <><p className={styles.unavailable}>{d.unavailable}</p><p className={styles.caption}>{metric.key === "instagram-engagement" && hasIgSample ? scanMetricsCopy[report.locale].historical : metric.reason === d.unavailable ? d.unavailableReason : metric.reason}</p></>}
-            <footer className={styles.provenance}><ObservationDate value={sourceModule?.observedAt} fallback={d.dateUnavailable} />{sourceModule && sourceModule.state !== "measured" && <ProviderBadge state={sourceModule.state} />}</footer>
+            <footer className={styles.provenance}><ObservationDate value={sourceModule?.observedAt} fallback={d.dateUnavailable} />{sourceModule && sourceModule.state !== "measured" && <ProviderBadge state={sourceModule.state} locale={report.locale} />}</footer>
           </article>;
         })}
       </div>
@@ -37,8 +38,9 @@ export function DashboardMetrics({ report, dashboard }: { report: ReportProps; d
       <section className={styles.panel} aria-labelledby="dashboard-rubric">
         <h2 id="dashboard-rubric">{d.rubric}</h2><p className={styles.caption}>{d.rubricNote}</p>
         {report.modules.map(module => <article className={styles.scoreRow} key={module.key}>
-          <div className={styles.rowLabel}><h3>{module.label}</h3><ProviderBadge state={module.state} /></div>
-          {module.state === "measured" && module.score != null ? <div className={styles.bar}><meter min={0} max={100} value={module.score} aria-label={`${module.label} · ${d.rubric}`} /><strong>{number.format(module.score)} / 100</strong></div> : <p className={styles.unavailable}>{d.unavailable}</p>}
+          <div className={styles.rowLabel}><h3>{module.label}</h3><ProviderBadge state={module.state} locale={report.locale} /></div>
+          {/* A measured module without a rubric score (only the fixed sample) shows its observed value, never "unavailable". */}
+          {module.state === "measured" && module.score != null ? <div className={styles.bar}><meter min={0} max={100} value={module.score} aria-label={`${module.label} · ${d.rubric}`} /><strong>{number.format(module.score)} / 100</strong></div> : module.state === "measured" ? <p className={styles.observedValue}>{module.value}</p> : <p className={styles.unavailable}>{d.unavailable}</p>}
           <p className={styles.provenance}><ObservationDate value={module.observedAt} fallback={d.dateUnavailable} /></p>
           {module.state !== "measured" && <p className={styles.caption}>{d.unavailableReason}</p>}
           {module.state === "measured" && module.detail && <p className={styles.caption}>{module.detail}</p>}

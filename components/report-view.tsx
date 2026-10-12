@@ -176,6 +176,8 @@ function ProofPanels({ proof, locale }: { proof: ReportProofData; locale: Report
 
 export function ReportPage(props: ReportProps) {
   const { locale, sample, modules, locked } = props
+  // Module times are ISO when present; show them as a local date-time in the report's market.
+  const observedFormat = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: props.market === "tw" ? "Asia/Taipei" : "Asia/Hong_Kong" })
   const t = copy[locale]
   const c = t.funnel.report
   const authorized = props.access !== "public" && !locked
@@ -226,7 +228,7 @@ export function ReportPage(props: ReportProps) {
                 <div>
                   <h3>{module.label}</h3>
                   {module.detail && <p>{module.detail}</p>}
-                  {module.observedAt && <small>{module.observedAt}</small>}
+                  {module.observedAt && (Number.isNaN(Date.parse(module.observedAt)) ? <small>{module.observedAt}</small> : <small><time dateTime={module.observedAt}>{observedFormat.format(new Date(module.observedAt))}</time></small>)}
                 </div>
                 <div className="evidence-passport-value">
                   <strong>{module.value}</strong>
