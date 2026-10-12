@@ -66,7 +66,7 @@ import {
   SidebarProvider,
   SidebarSeparator,
 } from "@/components/ui/sidebar"
-import { copy, normaliseLocale, supportedLocales, type PrototypeLocale } from "@/lib/copy"
+import { copy, LOCALE_NAMES, normaliseLocale, supportedLocales, type PrototypeLocale } from "@/lib/copy"
 import type { Capability, ProviderState } from "@/lib/demo-data"
 import { accountInitials, resolveLocationSlug, usagePercent } from "@/lib/workspace/shell"
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet"
@@ -226,11 +226,11 @@ function LocaleSelect({ locale }: { locale: PrototypeLocale }) {
   return (
     <Select value={locale} onValueChange={changeLocale}>
       <SelectTrigger className="locale-trigger" aria-label={locale === "en" ? "Language" : "介面語言"}>
-        <SelectValue>{copy[locale].language}</SelectValue>
+        <SelectValue>{LOCALE_NAMES[locale]}</SelectValue>
       </SelectTrigger>
       <SelectContent align="end">
         {supportedLocales.map((item) => (
-          <SelectItem key={item} value={item}>{copy[item].language}</SelectItem>
+          <SelectItem key={item} value={item}>{LOCALE_NAMES[item]}</SelectItem>
         ))}
       </SelectContent>
     </Select>

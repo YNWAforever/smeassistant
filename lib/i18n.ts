@@ -1,10 +1,10 @@
-import en from "@/lib/messages/en.json";
-import zhHK from "@/lib/messages/zh-HK.json";
-import zhTW from "@/lib/messages/zh-TW.json";
-import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/locale";
+import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
+import { findLocaleData, localeDataFor } from "@/lib/locale-data/registry";
+import type { Messages } from "@/lib/locale-data/types";
 import { interpolate } from "@/lib/share";
 
 export { interpolate };
+export type { Messages };
 
 /**
  * The upstream message namespaces this app reuses (scanner, scanning, report,
@@ -13,17 +13,12 @@ export { interpolate };
  * `unlock` namespace was removed: no t() call reached it, and five of its keys
  * described a /api/report-access/recover flow that does not exist in this app —
  * no route, no configuration reader and no mail sender.
+ *
+ * Bundles are read from the locale registry (lib/locale-data/registry.ts), so
+ * the browser only holds the locale its page provided.
  */
-export type Messages = typeof en;
-
-const bundles: Record<Locale, Messages> = {
-  en,
-  "zh-HK": zhHK as Messages,
-  "zh-TW": zhTW as Messages,
-};
-
 export function getMessages(locale: string): Messages {
-  return bundles[isLocale(locale) ? locale : DEFAULT_LOCALE];
+  return localeDataFor(isLocale(locale) ? locale : DEFAULT_LOCALE).messages;
 }
 
 type MessageTree = { [key: string]: string | MessageTree };
@@ -48,6 +43,6 @@ export function hasMessage(locale: string, key: string): boolean {
  * same {token} syntax the upstream messages use.
  */
 export function t(locale: string, key: string, vars?: Record<string, string | number>): string {
-  const value = lookup(getMessages(locale), key) ?? lookup(bundles.en, key) ?? key;
+  const value = lookup(getMessages(locale), key) ?? lookup(findLocaleData("en")?.messages, key) ?? key;
   return vars ? interpolate(value, vars) : value;
 }
