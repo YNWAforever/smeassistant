@@ -1441,3 +1441,33 @@ body {
 /* Short pages: keep the footer at the bottom of the window. */
 .public-site { display: flex; min-height: 100svh; flex-direction: column; }
 .public-site > main { flex: 1 0 auto; }
+
+/* ── Owner: onboarding ─────────────────────────────────────────────────── */
+/* The step title sat flush against its card, the claim-evidence table took
+   half the card, and on phones the page title shared a row with the status
+   badge (60% width) while Back and Continue touched. */
+.onboarding-card .step-kicker + h2,
+.onboarding-card .step-kicker + h1 { margin: 6px 0 18px; font-size: clamp(20px, 2vw, 24px); letter-spacing: -.02em; }
+.onboarding-choice { border-radius: 14px; }
+.onboarding-choice > div { min-width: 0; flex: 1 1 auto; }
+.onboarding-choice h2 { margin: 8px 0 4px; font-size: 18px; }
+.onboarding-choice p { margin: 0; color: #3e4844; font-size: 14px; line-height: 1.5; }
+.onboarding-choice dl { width: 100%; margin: 14px 0 0; }
+.onboarding-choice dl div { grid-template-columns: minmax(100px, 160px) minmax(0, 1fr); padding: 9px 0; font-size: 13px; }
+.onboarding-choice dt { color: #56615c; }
+.onboarding-choice dd { font-weight: 600; overflow-wrap: anywhere; }
+.onboarding-card { min-height: 0; }
+.onboarding-card > .flow-card-footer { margin-top: 28px; gap: 10px; }
+@media (max-width: 767px) {
+  .onboarding-head { flex-direction: column; gap: 10px; }
+  .onboarding-head > div { width: 100%; }
+  .onboarding-head h1 { font-size: clamp(30px, 8vw, 36px); line-height: 1.12; }
+  .onboarding-card > .flow-card-footer { gap: 10px; }
+  .onboarding-choice { padding: 16px; flex-direction: column; gap: 12px; }
+  .onboarding-choice dl div { grid-template-columns: 1fr; gap: 2px; }
+}
+.onboarding-choice a:not([data-slot="button"]) { display: inline-block; margin-top: 12px; color: var(--teal); font-size: 13px; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; }
+/* `.connection-choice > div > span` styles the icon chip, and also caught the
+   capability badge beside it, forcing it into a 42px box. */
+.connection-choice > div > span:not(:first-child) { display: inline-flex; width: auto; height: auto; padding: 2px 8px; place-items: initial; border-radius: 999px; flex: 0 0 auto; }
+.connection-choice p { color: #56615c; font-size: 12px; line-height: 1.45; }
