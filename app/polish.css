@@ -794,3 +794,21 @@ body {
 :is(.public-footer, .product-loop-section, .sample-case-section, .flow-steps, .partial-result-card, .public-demo-flow, .agent-gateway) :focus-visible {
   outline-color: var(--lime) !important;
 }
+
+/* Tablet: the confidence strip broke 2 + 1 with a lone full-width card.
+   Keep three columns and stack icon above text until there is room. */
+@media (min-width: 768px) and (max-width: 1100px) {
+  .owner-confidence-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .owner-confidence-strip article,
+  .owner-confidence-strip article:last-child {
+    grid-column: auto;
+    grid-template-columns: 1fr;
+    align-content: start;
+  }
+}
+
+/* The strip's visually hidden <h2> is its first child, so the nth-child tints
+   were shifted by one and the third card had none. */
+.owner-confidence-strip article:nth-of-type(1) { background: var(--peach); }
+.owner-confidence-strip article:nth-of-type(2) { background: var(--sky); }
+.owner-confidence-strip article:nth-of-type(3) { background: var(--lilac); }
