@@ -989,8 +989,7 @@ body {
 }
 
 /* Inactive tabs and bottom-nav labels were 4.3–4.4:1 (axe). */
-.detail-tab-list [data-slot="tabs-trigger"]:not([data-state="active"]),
-.action-tab-list [data-slot="tabs-trigger"]:not([data-state="active"]) { color: #575d5a; }
+.workspace-root [data-slot="tabs-trigger"]:not([data-state="active"]) { color: #575d5a; }
 .mobile-bottom-nav a { color: #545c58; }
 .mobile-bottom-nav a.is-active { color: #3f6421; }
 /* The approval card kept its widest unwrapped button as its minimum width. */
@@ -1172,4 +1171,155 @@ body {
 .billing-detail-grid .section-card > p:not(.eyebrow):not(.limitation-note) { margin: 0 0 16px; color: #56615c; font-size: 13px; line-height: 1.55; }
 @media (max-width: 767px) {
   .plan-card .upgrade-price { display: flex; border-radius: 12px; }
+}
+
+/* ── Workspace: shared label/value lists ───────────────────────────────── */
+/* `asset-meta` and `integration-meta` dl blocks had no rules: each dt and dd
+   stacked as full-size body text. */
+.asset-meta,
+.integration-meta {
+  display: grid;
+  margin: 16px 0 0;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+.asset-meta > div,
+.integration-meta > div { min-width: 0; padding: 11px 14px 11px 0; border-bottom: 1px solid var(--border); }
+.asset-meta dt,
+.integration-meta dt { color: #56615c; font-size: 11px; font-weight: 650; letter-spacing: .02em; }
+.asset-meta dd,
+.integration-meta dd { margin: 4px 0 0; color: var(--ink); font-size: 13px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+
+/* ── Workspace: integrations ───────────────────────────────────────────── */
+.integration-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.integration-grid > .section-card { min-width: 0; }
+.integration-head { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 14px; }
+.integration-head > span:first-child {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+.integration-head > span:first-child svg { width: 20px; height: 20px; }
+.integration-head h2 { margin: 0; font-size: 17px; }
+.integration-head p { margin: 3px 0 0; color: #56615c; font-size: 13px; }
+.integration-grid .integration-actions {
+  display: flex;
+  margin-top: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
+.integration-grid .integration-actions > .limitation-note { flex: 1 1 100%; margin: 0; }
+.instagram-handle-form { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: flex-start; gap: 10px; }
+.instagram-handle-form > [data-slot="button"] { margin-top: 27px; }
+.instagram-handle-form > * { min-width: 0; }
+.instagram-handle-form .field-stack { flex: 1 1 260px; }
+
+/* ── Workspace: calendar ───────────────────────────────────────────────── */
+.calendar-list { display: grid; margin: 16px 0 6px; padding: 0; list-style: none; }
+.calendar-list li {
+  display: grid;
+  padding: 12px 0;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+}
+.calendar-list li > span {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+.calendar-list li > span svg { width: 18px; }
+.calendar-list li > div { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.calendar-list strong { font-size: 14px; }
+.calendar-list small { color: #56615c; font-size: 12px; }
+.calendar-list li > a { color: var(--teal); font-size: 13px; font-weight: 650; }
+.calendar-page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.compact-action-list small { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.compact-action-list small svg { width: 12px; flex: 0 0 auto; }
+
+/* ── Workspace: create ─────────────────────────────────────────────────── */
+.goal-card-grid { display: grid; margin: 4px 0 18px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.goal-card-grid .goal-card { display: grid; min-height: 0; grid-template-columns: 40px minmax(0, 1fr) 18px; align-items: start; gap: 12px; }
+.goal-card > span {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+.goal-card > span svg { width: 18px; }
+.goal-card > div { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 6px; }
+.goal-card > div > h2 { flex: 1 1 100%; margin: 8px 0 0; font-size: 16px; }
+.goal-card > div > p { flex: 1 1 100%; margin: 0; color: #56615c; font-size: 13px; line-height: 1.5; }
+.goal-card > div > small { flex: 1 1 100%; color: #56615c; font-size: 11px; }
+.goal-card > svg:last-child { width: 18px; align-self: center; color: var(--soft); }
+.goal-card.is-selected > span { background: var(--paper); }
+.goal-card.is-selected { border-color: var(--teal); background: var(--teal-soft); box-shadow: 0 0 0 1px var(--teal) inset; }
+.create-tabs [data-slot="tabs-content"] { padding: 18px; }
+.create-tabs [data-slot="tabs-content"] > .eyebrow { margin: 0 0 10px; }
+.create-review-layout { display: grid; margin-top: 14px; grid-template-columns: minmax(0, 1.5fr) minmax(280px, .75fr); align-items: start; gap: 14px; }
+.create-review-layout > * { min-width: 0; }
+.required-inputs { display: flex; margin-top: 18px; flex-wrap: wrap; align-items: center; gap: 8px; }
+.required-inputs > strong { flex: 1 1 100%; font-size: 13px; }
+.required-inputs > span {
+  display: inline-flex;
+  padding: 6px 11px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #e4cfa8;
+  border-radius: 999px;
+  background: var(--amber-soft);
+  color: #6f420c;
+  font-size: 12px;
+  font-weight: 600;
+}
+.required-inputs > span:has(.lucide-circle-check-big, .lucide-circle-check) { border-color: #b9d6cd; background: var(--teal-soft); color: #22584c; }
+.required-inputs > span svg { width: 14px; height: 14px; }
+.usage-before-generation h2 { margin: 8px 0; font-size: 18px; }
+.usage-before-generation > p:not(.eyebrow):not(.limitation-note) { color: #56615c; font-size: 13px; line-height: 1.55; }
+.usage-before-generation [data-slot="button"] { width: 100%; height: auto; min-height: 44px; margin-top: 10px; white-space: normal; }
+
+/* ── Workspace: offers and packs ───────────────────────────────────────── */
+.offer-card .asset-meta { margin-bottom: 4px; }
+.pack-card .evidence-list { margin: 0 0 6px; gap: 0; }
+.pack-card .evidence-list li { display: grid; padding: 14px 0; grid-template-columns: 22px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; border-top: 1px solid var(--border); }
+.pack-card .evidence-list li:first-child { border-top: 0; }
+.pack-card .evidence-list li > svg { width: 20px; color: var(--teal); }
+.pack-card .evidence-list li > span { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pack-card .evidence-list strong { font-size: 14px; }
+.pack-card .evidence-list li > a { color: var(--teal); font-size: 13px; font-weight: 650; }
+
+@media (max-width: 900px) {
+  .create-review-layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 767px) {
+  .integration-head { grid-template-columns: 40px minmax(0, 1fr); }
+  .integration-head > :last-child:not(div) { grid-column: 2; justify-self: start; }
+  .integration-grid .integration-actions [data-slot="button"] { width: 100%; }
+  .create-tabs [data-slot="tabs-content"] { padding: 12px; }
+  .calendar-list li { grid-template-columns: 40px minmax(0, 1fr); }
+  .calendar-list li > a { grid-column: 2; }
+}
+.calendar-list li > a { align-self: center; }
+.integration-grid .instagram-handle-form { margin-top: 4px; }
+.pack-card .evidence-list li > a { align-self: center; }
+@media (max-width: 767px) {
+  .integration-grid .integration-actions { flex-direction: column; align-items: stretch; }
+  .integration-grid .integration-actions > .limitation-note { justify-content: flex-start; text-align: left; }
+  .integration-grid .instagram-handle-form { padding: 0; }
+  .instagram-handle-form .field-stack { flex: 1 1 auto; width: 100%; }
+  .instagram-handle-form > [data-slot="button"] { margin-top: 0; }
 }
