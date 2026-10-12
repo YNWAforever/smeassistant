@@ -16,6 +16,8 @@ export function DashboardSummary({ report }: { report: ReportProps }) {
   const { comparison, score } = report;
   const failed = report.status === "failed";
   const measured = report.modules.filter(module => module.state === "measured").length;
+  const plural = new Intl.PluralRules(report.locale);
+  const sources = (count: number) => interpolate(plural.select(count) === "one" ? c.sourceCountOne : c.sourceCount, { count });
   const accessNote = report.sample ? c.sampleNote : report.access === "member" ? c.memberNote : ["viewer", "staff"].includes(report.access) ? c.viewerNote : null;
   const subtitle = report.subtitle ?? [report.market === "tw" ? c.marketTW : c.marketHK,reportTaxonomyLabel(report.district,'district',report.market,report.locale),reportTaxonomyLabel(report.industry,'industry',report.market,report.locale)].filter(Boolean).join(" · ");
   const title = failed ? c.failedTitle : score == null ? c.withheldTitle : comparison.kind === "comparable" ? comparison.title : comparison.kind === "incomparable" ? c.comparisonLabel : comparison.kind === "not_evaluated" ? comparisonC.currentReportTitle : c.firstScanTitle;
@@ -49,8 +51,8 @@ export function DashboardSummary({ report }: { report: ReportProps }) {
         {comparison.kind === "incomparable" && (failed || score == null) && <p className={styles.notice}>{c.comparisonLabel}: {comparison.reason}</p>}
         <dl className={styles.coverage}>
           <div><dt>{copy[report.locale].common.coverage}</dt><dd>{report.coverage == null ? d.coverageUnavailable : `${new Intl.NumberFormat(report.locale).format(report.coverage)}%`}</dd></div>
-          <div><dt>{c.measuredLabel}</dt><dd>{interpolate(c.sourceCount, { count: measured })}</dd></div>
-          <div><dt>{c.unavailableLabel}</dt><dd>{interpolate(c.sourceCount, { count: report.modules.length - measured })}</dd></div>
+          <div><dt>{c.measuredLabel}</dt><dd>{sources(measured)}</dd></div>
+          <div><dt>{c.unavailableLabel}</dt><dd>{sources(report.modules.length - measured)}</dd></div>
         </dl>
         <Link href={`/${report.locale}/methodology`}>{c.howMeasured} →</Link>
       </div>

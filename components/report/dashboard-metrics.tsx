@@ -36,7 +36,7 @@ export function DashboardMetrics({ report, dashboard }: { report: ReportProps; d
     </section>
     <div className={styles.benchmarks}>
       <section className={styles.panel} aria-labelledby="dashboard-rubric">
-        <h2 id="dashboard-rubric">{d.rubric}</h2><p className={styles.caption}>{d.rubricNote}</p>
+        <h2 id="dashboard-rubric">{report.sample ? d.rubricSample : d.rubric}</h2><p className={styles.caption}>{report.sample ? d.rubricSampleNote : d.rubricNote}</p>
         {report.modules.map(module => <article className={styles.scoreRow} key={module.key}>
           <div className={styles.rowLabel}><h3>{module.label}</h3><ProviderBadge state={module.state} locale={report.locale} /></div>
           {/* A measured module without a rubric score (only the fixed sample) shows its observed value, never "unavailable". */}

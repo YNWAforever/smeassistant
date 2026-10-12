@@ -8,6 +8,7 @@ import { copy } from "@/lib/copy";
 import { buildReportDashboard } from "@/lib/funnel/report-dashboard";
 import { sampleReportProps } from "@/lib/funnel/sample-report";
 import { DashboardMetrics } from "./dashboard-metrics";
+import { DashboardSummary } from "./dashboard-summary";
 
 function render(locale: "en" | "zh-HK" | "zh-TW") {
   const report = sampleReportProps(locale);
@@ -56,6 +57,24 @@ describe.each(["en", "zh-HK", "zh-TW"] as const)("sample report dashboard (%s)",
     const { root } = render(locale);
     expect(root.querySelector("[data-metric='google-rating']")).toBeNull();
     expect(root.querySelector("[data-metric='google-reviews']")).toBeNull();
+  });
+});
+
+describe("sample wording", () => {
+  it("titles the panel as observed values, not /100 rubric scores", () => {
+    for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
+      const { root, d } = render(locale);
+      expect(root.querySelector("#dashboard-rubric")?.textContent).toBe(d.rubricSample);
+      expect(root.textContent).not.toContain(d.rubricNote);
+    }
+  });
+
+  it("uses the singular for one source in English", () => {
+    const root = document.createElement("div");
+    root.innerHTML = renderToStaticMarkup(<DashboardSummary report={sampleReportProps("en")} />);
+    expect(root.textContent).toContain("3 sources");
+    expect(root.textContent).toContain("1 source");
+    expect(root.textContent).not.toContain("1 sources");
   });
 });
 
