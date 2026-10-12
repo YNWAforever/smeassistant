@@ -1,6 +1,7 @@
 import type { PrototypeLocale } from "@/lib/copy";
 import { copy } from "@/lib/copy";
 import type { Priority } from "@/lib/domain";
+import { findingLabel as localizedFindingLabel } from "@/lib/funnel/report-labels";
 import { readableFindingKey } from "@/lib/report/finding-label";
 import type { AttributionBasis } from "@/lib/workspace/applications";
 import type { TemplateKey } from "@/lib/workspace/templates";
@@ -97,8 +98,9 @@ export function metricLabel(key: string, locale: PrototypeLocale): string {
   return table[key] ?? key;
 }
 
-export function findingLabel(key: string): string {
-  return readableFindingKey(key);
+/** The report's own finding wording when a locale is given ("bio cta" read as a code). */
+export function findingLabel(key: string, locale?: PrototypeLocale): string {
+  return locale ? localizedFindingLabel(locale, key) : readableFindingKey(key);
 }
 
 export function stateLabel(key: string, locale: PrototypeLocale): string {
