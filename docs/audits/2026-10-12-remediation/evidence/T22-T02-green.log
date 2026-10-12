@@ -1,0 +1,28 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ tests/maintenance-audit-maintenance-auth-outage.test.ts (2 tests | 2 failed) 10ms
+   × returns controlled 503 when brand authorization dependency is unavailable 8ms
+   × returns controlled 503 when assets authorization dependency is unavailable 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/maintenance-audit-maintenance-auth-outage.test.ts > returns controlled 503 when brand authorization dependency is unavailable
+ FAIL  tests/maintenance-audit-maintenance-auth-outage.test.ts > returns controlled 503 when assets authorization dependency is unavailable
+Error: audit_identity_dependency_timeout
+ ❯ tests/maintenance-audit-maintenance-auth-outage.test.ts:8:67
+      6| import { GET as getAssets } from "@/app/api/workspaces/[workspaceId]/a…
+      7| const workspaceId = "11111111-1111-4111-8111-111111111111";
+      8| beforeEach(() => auth.authorizeWorkspaceRequest.mockRejectedValue(new …
+       |                                                                   ^
+      9| it.each([["brand", getBrand], ["assets", getAssets]] as const)("return…
+     10|   const result = handler(new Request(`https://app.test/api/workspaces/…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed | 6 passed (7)
+      Tests  2 failed | 75 passed (77)
+   Start at  03:00:53
+   Duration  22.77s (transform 1.26s, setup 2.04s, import 7.04s, tests 920ms, environment 11.17s)
+

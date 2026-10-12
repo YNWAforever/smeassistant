@@ -153,7 +153,7 @@ export async function readiness(
     ).rows;
     if (
       tables.some((name) => !found.some((row) => row.name === name)) ||
-      retainedFunctions.some(
+      [...retainedFunctions,'save_brand_revision','guard_brand_revision_immutable','capture_brand_profile_revision','brand_snapshot_for_generation'].some(
         (name) => !functions.some((row) => row.name === name),
       )
     )
@@ -218,7 +218,12 @@ export async function readiness(
         JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
         CROSS JOIN (VALUES ('SELECT'),('INSERT'),('UPDATE'),('DELETE')) privileges(name)
         WHERE n.nspname='public' AND c.relname=ANY($2::text[])
+          AND (c.relname<>'brand_revisions' OR privileges.name IN ('SELECT','INSERT'))
           AND NOT has_table_privilege(current_user,c.oid,privileges.name)
+      ) AND NOT EXISTS (
+        SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+        WHERE n.nspname='public' AND c.relname='brand_revisions'
+          AND has_table_privilege(current_user,c.oid,'UPDATE,DELETE,TRUNCATE,TRIGGER')
       ) AS table_privileges
   `,
         [identity.migration_role, tables],

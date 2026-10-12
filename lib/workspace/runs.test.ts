@@ -108,7 +108,7 @@ const finish = vi.fn(async (i: FinishActionRunInput) =>
           versionNo: 1,
         },
 );
-const persistence: ActionRunRepository = { queue, start, finish };
+const persistence: Pick<ActionRunRepository,"queue"|"start"|"finish"> = { queue, start, finish };
 function repository() {
   return {
     actionScope: async () => ({
@@ -156,6 +156,26 @@ const run = (over: Record<string, unknown> = {}) =>
     assets: { get: asset },
     ...over,
   });
+
+describe("T19 generation provider classification", () => {
+  it("refuses unconfigured generation before reserving or starting a run", async () => {
+    await expect(run({ llmReady: () => false })).rejects.toMatchObject({ code: "provider_unconfigured" });
+    expect(queue).not.toHaveBeenCalled();
+    expect(start).not.toHaveBeenCalled();
+  });
+  it.each(["provider_auth_failed", "provider_rate_limited", "no_model_output", "invalid_provider_response"] as const)("preserves %s as the terminal reason without schema retry", async code => {
+    const llmDetailed = vi.fn(async () => ({ ok: false as const, code, retryable: false }));
+    expect(await run({ llmDetailed })).toMatchObject({ state: "failed" });
+    expect(llmDetailed).toHaveBeenCalledTimes(1);
+    expect(finish).toHaveBeenCalledWith(expect.objectContaining({ reason: code, usage: { inputTokens: null, outputTokens: null }, output: null }));
+  });
+  it("does not wait past the deadline for a long Retry-After", async () => {
+    const llmDetailed = vi.fn(async () => ({ ok: false as const, code: "provider_rate_limited" as const, retryable: true, retryAfterSeconds: 300 }));
+    await run({ llmDetailed });
+    expect(llmDetailed).toHaveBeenCalledTimes(1);
+    expect(finish).toHaveBeenCalledWith(expect.objectContaining({ reason: "provider_rate_limited" }));
+  });
+});
 beforeEach(() => {
   row = { ...action };
   snapshotData = { ...snapshotRow };
@@ -170,6 +190,18 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 describe("typed action runtime", () => {
+  it.each(['transport-rejection','unreported-retry','partial-usage','unreported-later'] as const)('T19: %s keeps aggregate usage/cost unknown across attempts',async mode=>{
+    const llmDetailed=vi.fn<typeof import('@/lib/llm').llmCompleteDetailed>();
+    if(mode==='transport-rejection')llmDetailed.mockRejectedValueOnce(new Error('fixture transport uncertainty'));
+    else if(mode==='unreported-retry')llmDetailed.mockResolvedValueOnce({ok:false,code:'provider_unavailable',retryable:true});
+    else if(mode==='partial-usage')llmDetailed.mockResolvedValueOnce({ok:true,result:{text:'invalid json',usage:{inputTokens:null,outputTokens:2}}});
+    else llmDetailed.mockResolvedValueOnce({ok:true,result:{...good(),text:'invalid json'}});
+    llmDetailed.mockResolvedValueOnce(mode==='unreported-later'?{ok:false,code:'provider_unavailable',retryable:false}:{ok:true,result:good()});
+    await run({llmDetailed});
+    expect(llmDetailed).toHaveBeenCalledTimes(2);
+    expect(finish).toHaveBeenCalledWith(expect.objectContaining({usage:{inputTokens:null,outputTokens:mode==='partial-usage'?52:null},costUsd:null}));
+  });
+
   it("uses review excerpts and persists token cost", async () => {
     const llm = vi.fn(async (p: string) => {
       expect(p).toContain("Slow service");

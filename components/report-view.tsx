@@ -245,7 +245,7 @@ export function ReportPage(props: ReportProps) {
                 <p className="eyebrow">{c.unlockEyebrow}</p>
                 <h2>{c.unlockTitle}</h2>
                 <p>{c.unlockBody}</p>
-                <small>{interpolate(c.unlockHidden, { count: locked.hiddenFindingCount })}</small>
+                <small>{locale==='en' && locked.hiddenFindingCount===1?'1 more finding in the full report':interpolate(c.unlockHidden, { count: locked.hiddenFindingCount })}</small>
               </div>
             </div>
             <Button asChild size="lg">

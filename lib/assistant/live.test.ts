@@ -8,7 +8,8 @@ import { templateByKey } from "@/lib/workspace/templates";
 const asProvided = (row: { provided_inputs: unknown }) => (row.provided_inputs ?? {}) as Record<string, unknown>;
 
 const repository = vi.hoisted(() => ({ actionScope:vi.fn(),assistantWorkspace:vi.fn(),assistantLocations:vi.fn(),assistantActions:vi.fn(),assistantSnapshot:vi.fn(),assistantLatestSnapshot:vi.fn(),assistantDiff:vi.fn(),assistantBrand:vi.fn(),assistantReviewData:vi.fn(),versionScope:vi.fn(),createOutputVersion:vi.fn(),recordAssistantDraft:vi.fn(),recordAssistantDraftFailure:vi.fn(),aiSpend24h:vi.fn(),assistantWaitingVersions:vi.fn(),assistantGoogleConnection:vi.fn() }));
-vi.mock("@/lib/repositories/artifacts",()=>({artifactRepository:()=>repository}));
+const runPersistence = vi.hoisted(() => ({ queue:vi.fn(),start:vi.fn(),finishAssistantDraft:vi.fn() }));
+vi.mock("@/lib/repositories/artifacts",async original=>({...(await original<typeof import("@/lib/repositories/artifacts")>()),artifactRepository:()=>repository,actionRunRepository:()=>runPersistence}));
 const DRAFT_RUN_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 
 type Llm = (prompt: string, opts?: unknown) => Promise<typeof good | null>;
@@ -28,6 +29,9 @@ const writes = () => repository.createOutputVersion.mock.calls;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  runPersistence.queue.mockResolvedValue(DRAFT_RUN_ID);
+  runPersistence.start.mockResolvedValue(undefined);
+  runPersistence.finishAssistantDraft.mockImplementation(async ({runId,result})=>{ if(result.ok) await repository.recordAssistantDraft(result.draft); else await repository.recordAssistantDraftFailure(result.failure); return {draftRunId:runId,state:result.ok?"succeeded":"failed"}; });
   repository.actionScope.mockImplementation(async(id)=>{const row=state.actions.find(a=>a.id===id);return row?{actionId:row.id,workspaceId:row.workspace_id,locationId:row.location_id}:null;});
   repository.assistantWorkspace.mockResolvedValue({business_name:"Kam Man House",market:"hk",timezone:"Asia/Hong_Kong"});
   repository.assistantLocations.mockResolvedValue([{id:LOCATION_ID,slug:"yik-yam",name:"Yik Yam",address:null,district:"Happy Valley",is_primary:true},{id:LOCATION_B,slug:"branch-b",name:"Branch B",address:null,district:null,is_primary:false}]);
@@ -50,6 +54,17 @@ beforeEach(() => {
 });
 
 describe("runLiveAssistant", () => {
+  it('does not spend on the model when reservation consumed the remaining deadline',async()=>{
+    const clock=vi.spyOn(Date,'now').mockReturnValue(0);
+    runPersistence.start.mockImplementationOnce(async()=>{clock.mockReturnValue(50_001)});
+    const llm=vi.fn<Llm>(async()=>good);
+    try{
+      const result=await run({intentId:'draft_review_reply',surface:'action',context:{workspaceId:WORKSPACE_ID,actionId:ACTION_ID},llm});
+      expect(llm).not.toHaveBeenCalled();
+      expect(runPersistence.finishAssistantDraft).toHaveBeenCalledWith(expect.objectContaining({result:expect.objectContaining({ok:false,failure:expect.objectContaining({reason:'timeout'})})}));
+      expect(result.draftRunId).toBeUndefined();
+    }finally{clock.mockRestore()}
+  });
   it("answers explain intents from the template with real evidence ids and no model call", async () => {
     const llm = vi.fn();
     const result = await run({ intentId: "explain_change", llm });
@@ -128,22 +143,13 @@ describe("runLiveAssistant", () => {
     expect(repository.createOutputVersion).not.toHaveBeenCalled();
   });
 
-  it("still answers when the draft cannot be kept, but withdraws the version offer and says so", async () => {
-    const log = vi.spyOn(console, "error").mockImplementation(() => {});
-    try {
-      repository.recordAssistantDraft.mockRejectedValue(new Error("artifact_operation_failed"));
-      const llm = vi.fn<Llm>(async () => good);
-      const result = await run({ intentId: "draft_review_reply", surface: "action", locale: "en", context: { workspaceId: WORKSPACE_ID, actionId: ACTION_ID }, llm });
-
-      expect(result.draftRunId).toBeUndefined();
-      expect(result.output!.body).toContain("adding a host");
-      expect(result.warnings).toContain("This draft could not be saved for approval; copy the text or ask again.");
-      expect(log).toHaveBeenCalledWith("[assistant/live] draft not persisted", { category: "assistant_draft_not_persisted" });
-    } finally {
-      log.mockRestore();
-    }
+  it("refuses an unpersisted preview without a second model call", async () => {
+    repository.recordAssistantDraft.mockRejectedValueOnce(new Error("artifact_operation_failed"));
+    const llm=vi.fn<Llm>(async()=>good);
+    await expect(run({intentId:"draft_review_reply",surface:"action",context:{workspaceId:WORKSPACE_ID,actionId:ACTION_ID},llm})).rejects.toThrow("artifact_operation_failed");
+    expect(llm).toHaveBeenCalledOnce();
+    expect(repository.createOutputVersion).not.toHaveBeenCalled();
   });
-
   it("adds the warmer instruction for friendlier_review_reply and picks the matching open action when none is focused", async () => {
     const llm = vi.fn<Llm>(async () => good);
     await run({ intentId: "friendlier_review_reply", llm });
@@ -296,7 +302,7 @@ describe("runLiveAssistant", () => {
     const empty = await run({ intentId: "generate_menu", locale: "zh-TW", llm });
     expect(llm).toHaveBeenCalledTimes(1);
     expect(empty.output).toBeUndefined();
-    expect(empty.warnings[0]).toBe("AI 草稿功能暫時無法使用");
+    expect(empty.warnings[0]).toBe("AI 草稿生成目前無法使用");
     expect(writes()).toEqual([]);
   });
 
@@ -551,19 +557,16 @@ describe("assistant drafts and the AI budget", () => {
     const llm = vi.fn<Llm>(async () => null);
     const result = await run({ intentId: "draft_review_reply", surface: "action", context: draftContext, llm });
     expect(result.output).toBeUndefined();
-    expect(result.warnings).toContain("AI drafting unavailable right now");
+    expect(result.warnings).toContain("AI drafting unavailable");
     expect(repository.recordAssistantDraftFailure).toHaveBeenCalledTimes(1);
     expect(repository.recordAssistantDraftFailure).toHaveBeenCalledWith(expect.objectContaining({ reason: "no_model_output", factsNeeded: [], usage: { inputTokens: null, outputTokens: null }, costUsd: null }));
   });
 
-  it("still answers when the failed run cannot be recorded", async () => {
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  it("surfaces a failed settlement without re-calling the provider", async () => {
     repository.recordAssistantDraftFailure.mockRejectedValueOnce(new Error("artifact_operation_failed"));
-    const llm = vi.fn<Llm>(async () => ({ text: "not json", usage: { inputTokens: 1, outputTokens: 1 } }));
-    const result = await run({ intentId: "draft_review_reply", surface: "action", context: draftContext, llm });
-    expect(result.output).toBeUndefined();
-    expect(error).toHaveBeenCalledWith("[assistant/live] failed draft not recorded", { category: "assistant_draft_failure_not_recorded" });
-    error.mockRestore();
+    const llm=vi.fn<Llm>(async()=>({text:"not json",usage:{inputTokens:1,outputTokens:1}}));
+    await expect(run({intentId:"draft_review_reply",surface:"action",context:draftContext,llm})).rejects.toThrow("artifact_operation_failed");
+    expect(llm).toHaveBeenCalledOnce();
   });
 });
 

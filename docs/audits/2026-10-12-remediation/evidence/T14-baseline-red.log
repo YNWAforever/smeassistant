@@ -1,0 +1,41 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ components/report/dashboard.test.tsx (41 tests | 5 failed | 36 skipped) 53ms
+   × T14: 0 priorities never promises a fixed three cards 33ms
+   × T14: 1 priorities never promises a fixed three cards 7ms
+   × T14: 2 priorities never promises a fixed three cards 4ms
+   × T14: 3 priorities never promises a fixed three cards 4ms
+   × T14: 4 priorities never promises a fixed three cards 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/report/dashboard.test.tsx > T14: 0 priorities never promises a fixed three cards
+ FAIL  components/report/dashboard.test.tsx > T14: 1 priorities never promises a fixed three cards
+ FAIL  components/report/dashboard.test.tsx > T14: 2 priorities never promises a fixed three cards
+ FAIL  components/report/dashboard.test.tsx > T14: 3 priorities never promises a fixed three cards
+ FAIL  components/report/dashboard.test.tsx > T14: 4 priorities never promises a fixed three cards
+AssertionError: expected 'Top three evidence-backed actions' not to match /three|3 項/
+
+- Expected:
+/three|3 項/
+
++ Received:
+"Top three evidence-backed actions"
+
+ ❯ components/report/dashboard.test.tsx:15:57
+     13|       const root=markup(<DashboardPriorities report={{...report,locale…
+     14|       expect(root.querySelectorAll('article')).toHaveLength(Math.min(c…
+     15|       expect(root.querySelector('h2')?.textContent).not.toMatch(/three…
+       |                                                         ^
+     16|     }
+     17|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 36 skipped (41)
+   Start at  04:01:45
+   Duration  16.82s (transform 1.12s, setup 2.79s, import 2.78s, tests 53ms, environment 10.95s)
+

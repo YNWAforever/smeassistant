@@ -84,10 +84,15 @@ describe("TeamView", () => {
 const brand: BrandProfile = { workspaceId: "ws", voice: "professional", approvedClaims: ["20 seats"], prohibitedTerms: ["best"], languages: ["zh-HK", "en"], facts: { seats: "20" }, updatedAt: "2026-09-01T00:00:00Z" };
 
 describe("BrandView", () => {
+  it('shows the actual saved revision content separately from the current profile',()=>{
+    const history:BrandProfile={...brand,revisionId:'revision-b',revisions:[{id:'revision-a',createdAt:'2026-10-11T00:00:00Z',source:'save',actorId:null,profile:{voice:'warm',approved_claims:['Known prior claim'],prohibited_terms:['Prior forbidden term'],languages:['en'],facts:{seats:'12'}}}]};
+    const html=renderToStaticMarkup(<BrandView locale='en' workspaceId='ws' role='owner' brand={history}/>);
+    expect(html).toContain('Known prior claim');expect(html).toContain('Prior forbidden term');expect(html).toContain('<dd>12</dd>');expect(html).toContain('revision-a');expect(html).toContain('20 seats');
+  });
   it("binds the prototype layout to the profile and gates saving on the owner role", () => {
     const owner = renderToStaticMarkup(<BrandView locale="en" workspaceId="ws" role="owner" brand={brand} />);
     expect(owner).toContain('type="submit"');
-    expect(owner).toContain("Save new version");
+    expect(owner).toContain("Save current profile");
     expect(owner).not.toContain("permission-banner");
     expect(owner).toContain("Clear and professional");
     expect(owner).toContain("20 seats");

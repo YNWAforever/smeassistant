@@ -1,0 +1,106 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+stderr | lib/workspace/runs.test.ts > T19 generation provider classification > refuses unconfigured generation before reserving or starting a run
+[llm] unavailable { category: 'provider_unconfigured' }
+
+stderr | lib/workspace/runs.test.ts > T19 generation provider classification > refuses unconfigured generation before reserving or starting a run
+[llm] unavailable { category: 'provider_unconfigured' }
+
+stderr | lib/workspace/runs.test.ts > T19 generation provider classification > preserves provider_auth_failed as the terminal reason without schema retry
+[llm] unavailable { category: 'provider_unconfigured' }
+
+stderr | lib/workspace/runs.test.ts > T19 generation provider classification > preserves provider_auth_failed as the terminal reason without schema retry
+[llm] unavailable { category: 'provider_unconfigured' }
+
+stderr | lib/workspace/runs.test.ts > T19 generation provider classification > preserves provider_rate_limited as the terminal reason without schema retry
+[llm] unavailable { category: 'provider_unconfigured' }
+
+stderr | lib/workspace/runs.test.ts > T19 generation provider classification > preserves provider_rate_limited as the terminal reason without schema retry
+[llm] unavailable { category: 'provider_unconfigured' }
+
+stderr | lib/workspace/runs.test.ts > T19 generation provider classification > preserves no_model_output as the terminal reason without schema retry
+[llm] unavailable { category: 'provider_unconfigured' }
+
+stderr | lib/workspace/runs.test.ts > T19 generation provider classification > preserves no_model_output as the terminal reason without schema retry
+[llm] unavailable { category: 'provider_unconfigured' }
+
+stderr | lib/workspace/runs.test.ts > T19 generation provider classification > preserves invalid_provider_response as the terminal reason without schema retry
+[llm] unavailable { category: 'provider_unconfigured' }
+
+stderr | lib/workspace/runs.test.ts > T19 generation provider classification > preserves invalid_provider_response as the terminal reason without schema retry
+[llm] unavailable { category: 'provider_unconfigured' }
+
+stderr | lib/workspace/runs.test.ts > T19 generation provider classification > does not wait past the deadline for a long Retry-After
+[llm] unavailable { category: 'provider_unconfigured' }
+
+stderr | lib/workspace/runs.test.ts > T19 generation provider classification > does not wait past the deadline for a long Retry-After
+[llm] unavailable { category: 'provider_unconfigured' }
+
+ ❯ lib/workspace/runs.test.ts (78 tests | 6 failed | 72 skipped) 21ms
+     × refuses unconfigured generation before reserving or starting a run 12ms
+     × preserves provider_auth_failed as the terminal reason without schema retry 2ms
+     × preserves provider_rate_limited as the terminal reason without schema retry 1ms
+     × preserves no_model_output as the terminal reason without schema retry 1ms
+     × preserves invalid_provider_response as the terminal reason without schema retry 1ms
+     × does not wait past the deadline for a long Retry-After 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/workspace/runs.test.ts > T19 generation provider classification > refuses unconfigured generation before reserving or starting a run
+AssertionError: promise resolved "{ runId: 'run-1', …(2) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "error": "The draft could not be generated this time. Your existing draft is unchanged — please try again in a moment.",
++   "runId": "run-1",
++   "state": "failed",
+  }
+
+ ❯ lib/workspace/runs.test.ts:162:49
+    160| describe("T19 generation provider classification", () => {
+    161|   it("refuses unconfigured generation before reserving or starting a r…
+    162|     await expect(run({ llmReady: () => false })).rejects.toMatchObject…
+       |                                                 ^
+    163|     expect(queue).not.toHaveBeenCalled();
+    164|     expect(start).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  lib/workspace/runs.test.ts > T19 generation provider classification > preserves provider_auth_failed as the terminal reason without schema retry
+ FAIL  lib/workspace/runs.test.ts > T19 generation provider classification > preserves provider_rate_limited as the terminal reason without schema retry
+ FAIL  lib/workspace/runs.test.ts > T19 generation provider classification > preserves no_model_output as the terminal reason without schema retry
+ FAIL  lib/workspace/runs.test.ts > T19 generation provider classification > preserves invalid_provider_response as the terminal reason without schema retry
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ lib/workspace/runs.test.ts:169:25
+    167|     const llmDetailed = vi.fn(async () => ({ ok: false as const, code,…
+    168|     expect(await run({ llmDetailed })).toMatchObject({ state: "failed"…
+    169|     expect(llmDetailed).toHaveBeenCalledTimes(1);
+       |                         ^
+    170|     expect(finish).toHaveBeenCalledWith(expect.objectContaining({ reas…
+    171|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  lib/workspace/runs.test.ts > T19 generation provider classification > does not wait past the deadline for a long Retry-After
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ lib/workspace/runs.test.ts:175:25
+    173|     const llmDetailed = vi.fn(async () => ({ ok: false as const, code:…
+    174|     await run({ llmDetailed });
+    175|     expect(llmDetailed).toHaveBeenCalledTimes(1);
+       |                         ^
+    176|     expect(finish).toHaveBeenCalledWith(expect.objectContaining({ reas…
+    177|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 72 skipped (78)
+   Start at  02:55:59
+   Duration  2.39s (transform 446ms, setup 254ms, import 1.91s, tests 21ms, environment 0ms)
+

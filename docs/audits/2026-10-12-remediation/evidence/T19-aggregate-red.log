@@ -1,0 +1,320 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ lib/workspace/runs.test.ts (81 tests | 3 failed | 78 skipped) 26ms
+     × T19: transport-rejection keeps aggregate usage/cost unknown after a later measured completion 19ms (retry x1)
+     × T19: unreported-retry keeps aggregate usage/cost unknown after a later measured completion 2ms (retry x1)
+     × T19: partial-usage keeps aggregate usage/cost unknown after a later measured completion 3ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/workspace/runs.test.ts > typed action runtime > T19: transport-rejection keeps aggregate usage/cost unknown after a later measured completion
+AssertionError: expected "vi.fn()" to be called with arguments: [ ObjectContaining{…} ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+-   ObjectContaining {
+-     "costUsd": null,
++   {
++     "actorId": "user-1",
++     "costUsd": 0.00006,
++     "finishedAt": 2026-10-11T21:02:58.797Z,
++     "ipHash": undefined,
++     "locale": "en",
++     "output": {
++       "acceptance_criteria": [
++         "check names",
++       ],
++       "body": "1. Thank you — we will speed up service. Please come back.",
++       "facts_needed": [],
++       "facts_used": [
++         "voice",
++       ],
++       "title": "Replies",
++       "warnings": [],
++     },
++     "runId": "run-1",
+      "usage": {
+-       "inputTokens": null,
+-       "outputTokens": null,
++       "inputTokens": 100,
++       "outputTokens": 50,
+      },
+    },
+  ]
+
+
+Number of calls: 1
+
+ ❯ lib/workspace/runs.test.ts:201:20
+    199|     await run({llmDetailed});
+    200|     expect(llmDetailed).toHaveBeenCalledTimes(2);
+    201|     expect(finish).toHaveBeenCalledWith(expect.objectContaining({usage…
+       |                    ^
+    202|   });
+    203|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  lib/workspace/runs.test.ts > typed action runtime > T19: transport-rejection keeps aggregate usage/cost unknown after a later measured completion
+AssertionError: expected "vi.fn()" to be called with arguments: [ ObjectContaining{…} ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+-   ObjectContaining {
+-     "costUsd": null,
++   {
++     "actorId": "user-1",
++     "costUsd": 0.00006,
++     "finishedAt": 2026-10-11T21:02:58.809Z,
++     "ipHash": undefined,
++     "locale": "en",
++     "output": {
++       "acceptance_criteria": [
++         "check names",
++       ],
++       "body": "1. Thank you — we will speed up service. Please come back.",
++       "facts_needed": [],
++       "facts_used": [
++         "voice",
++       ],
++       "title": "Replies",
++       "warnings": [],
++     },
++     "runId": "run-1",
+      "usage": {
+-       "inputTokens": null,
+-       "outputTokens": null,
++       "inputTokens": 100,
++       "outputTokens": 50,
+      },
+    },
+  ]
+
+
+Number of calls: 1
+
+ ❯ lib/workspace/runs.test.ts:201:20
+    199|     await run({llmDetailed});
+    200|     expect(llmDetailed).toHaveBeenCalledTimes(2);
+    201|     expect(finish).toHaveBeenCalledWith(expect.objectContaining({usage…
+       |                    ^
+    202|   });
+    203|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  lib/workspace/runs.test.ts > typed action runtime > T19: unreported-retry keeps aggregate usage/cost unknown after a later measured completion
+AssertionError: expected "vi.fn()" to be called with arguments: [ ObjectContaining{…} ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+-   ObjectContaining {
+-     "costUsd": null,
++   {
++     "actorId": "user-1",
++     "costUsd": 0.00006,
++     "finishedAt": 2026-10-11T21:02:58.811Z,
++     "ipHash": undefined,
++     "locale": "en",
++     "output": {
++       "acceptance_criteria": [
++         "check names",
++       ],
++       "body": "1. Thank you — we will speed up service. Please come back.",
++       "facts_needed": [],
++       "facts_used": [
++         "voice",
++       ],
++       "title": "Replies",
++       "warnings": [],
++     },
++     "runId": "run-1",
+      "usage": {
+-       "inputTokens": null,
+-       "outputTokens": null,
++       "inputTokens": 100,
++       "outputTokens": 50,
+      },
+    },
+  ]
+
+
+Number of calls: 1
+
+ ❯ lib/workspace/runs.test.ts:201:20
+    199|     await run({llmDetailed});
+    200|     expect(llmDetailed).toHaveBeenCalledTimes(2);
+    201|     expect(finish).toHaveBeenCalledWith(expect.objectContaining({usage…
+       |                    ^
+    202|   });
+    203|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  lib/workspace/runs.test.ts > typed action runtime > T19: unreported-retry keeps aggregate usage/cost unknown after a later measured completion
+AssertionError: expected "vi.fn()" to be called with arguments: [ ObjectContaining{…} ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+-   ObjectContaining {
+-     "costUsd": null,
++   {
++     "actorId": "user-1",
++     "costUsd": 0.00006,
++     "finishedAt": 2026-10-11T21:02:58.812Z,
++     "ipHash": undefined,
++     "locale": "en",
++     "output": {
++       "acceptance_criteria": [
++         "check names",
++       ],
++       "body": "1. Thank you — we will speed up service. Please come back.",
++       "facts_needed": [],
++       "facts_used": [
++         "voice",
++       ],
++       "title": "Replies",
++       "warnings": [],
++     },
++     "runId": "run-1",
+      "usage": {
+-       "inputTokens": null,
+-       "outputTokens": null,
++       "inputTokens": 100,
++       "outputTokens": 50,
+      },
+    },
+  ]
+
+
+Number of calls: 1
+
+ ❯ lib/workspace/runs.test.ts:201:20
+    199|     await run({llmDetailed});
+    200|     expect(llmDetailed).toHaveBeenCalledTimes(2);
+    201|     expect(finish).toHaveBeenCalledWith(expect.objectContaining({usage…
+       |                    ^
+    202|   });
+    203|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  lib/workspace/runs.test.ts > typed action runtime > T19: partial-usage keeps aggregate usage/cost unknown after a later measured completion
+AssertionError: expected "vi.fn()" to be called with arguments: [ ObjectContaining{…} ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+-   ObjectContaining {
+-     "costUsd": null,
++   {
++     "actorId": "user-1",
++     "costUsd": 0.000062,
++     "finishedAt": 2026-10-11T21:02:58.813Z,
++     "ipHash": undefined,
++     "locale": "en",
++     "output": {
++       "acceptance_criteria": [
++         "check names",
++       ],
++       "body": "1. Thank you — we will speed up service. Please come back.",
++       "facts_needed": [],
++       "facts_used": [
++         "voice",
++       ],
++       "title": "Replies",
++       "warnings": [],
++     },
++     "runId": "run-1",
+      "usage": {
+-       "inputTokens": null,
++       "inputTokens": 100,
+        "outputTokens": 52,
+      },
+    },
+  ]
+
+
+Number of calls: 1
+
+ ❯ lib/workspace/runs.test.ts:201:20
+    199|     await run({llmDetailed});
+    200|     expect(llmDetailed).toHaveBeenCalledTimes(2);
+    201|     expect(finish).toHaveBeenCalledWith(expect.objectContaining({usage…
+       |                    ^
+    202|   });
+    203|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  lib/workspace/runs.test.ts > typed action runtime > T19: partial-usage keeps aggregate usage/cost unknown after a later measured completion
+AssertionError: expected "vi.fn()" to be called with arguments: [ ObjectContaining{…} ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+-   ObjectContaining {
+-     "costUsd": null,
++   {
++     "actorId": "user-1",
++     "costUsd": 0.000062,
++     "finishedAt": 2026-10-11T21:02:58.815Z,
++     "ipHash": undefined,
++     "locale": "en",
++     "output": {
++       "acceptance_criteria": [
++         "check names",
++       ],
++       "body": "1. Thank you — we will speed up service. Please come back.",
++       "facts_needed": [],
++       "facts_used": [
++         "voice",
++       ],
++       "title": "Replies",
++       "warnings": [],
++     },
++     "runId": "run-1",
+      "usage": {
+-       "inputTokens": null,
++       "inputTokens": 100,
+        "outputTokens": 52,
+      },
+    },
+  ]
+
+
+Number of calls: 1
+
+ ❯ lib/workspace/runs.test.ts:201:20
+    199|     await run({llmDetailed});
+    200|     expect(llmDetailed).toHaveBeenCalledTimes(2);
+    201|     expect(finish).toHaveBeenCalledWith(expect.objectContaining({usage…
+       |                    ^
+    202|   });
+    203|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 78 skipped (81)
+   Start at  05:02:55
+   Duration  2.94s (transform 715ms, setup 552ms, import 2.06s, tests 26ms, environment 0ms)
+

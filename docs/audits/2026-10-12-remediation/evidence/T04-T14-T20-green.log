@@ -1,0 +1,37 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ components/report/dashboard.test.tsx (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/report/dashboard.test.tsx [ components/report/dashboard.test.tsx ]
+Error: Transform failed with 1 error:
+
+[PARSE_ERROR] Identifier `DashboardPriorities` has already been declared
+     ╭─[ components/report/dashboard.test.tsx:10:9 ]
+     │
+  10 │ import {DashboardPriorities} from './dashboard-priorities';
+     │         ─────────┬─────────  
+     │                  ╰─────────── `DashboardPriorities` has already been declared here
+     │ 
+ 171 │ import { DashboardPriorities } from "./dashboard-priorities";
+     │          ─────────┬─────────  
+     │                   ╰─────────── It can not be redeclared here
+─────╯
+
+  Plugin: vite:oxc
+  File: C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012/components/report/dashboard.test.tsx
+ ❯ transformWithOxc node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:4103:19
+ ❯ TransformPluginContext.transform node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:4174:26
+ ❯ EnvironmentPluginContainer.transform node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:30932:51
+ ❯ loadAndTransform node_modules/.pnpm/vite@8.2.2_@types+node@22.19.19_e_5h7g3amcfjrcrovtm3iz7ayc2y/node_modules/vite/dist/node/chunks/node.js:20671:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  10 passed (10)
+   Start at  03:24:16
+   Duration  2.08s (transform 373ms, setup 785ms, import 1.01s, tests 139ms, environment 1.05s)
+

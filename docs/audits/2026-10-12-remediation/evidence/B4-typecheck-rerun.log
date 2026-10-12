@@ -1,0 +1,8 @@
+
+> sme-scanner-visibility-workspace@0.1.0 typecheck C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-remediation-20261012
+> tsc --noEmit && corepack pnpm -r typecheck
+
+test/integration/neon-artifact-runtime.integration.test.ts(219,32): error TS2493: Tuple type '[]' of length '0' has no element at index '0'.
+test/integration/neon-artifact-runtime.integration.test.ts(220,32): error TS2493: Tuple type '[]' of length '0' has no element at index '0'.
+test/integration/neon-artifact-runtime.integration.test.ts(220,90): error TS2493: Tuple type '[]' of length '0' has no element at index '0'.
+ ELIFECYCLE  Command failed with exit code 2.

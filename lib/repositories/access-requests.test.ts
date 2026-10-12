@@ -92,3 +92,21 @@ describe("latestForUser", () => {
     expect(params).toEqual(["u-1"]);
   });
 });
+
+describe("T22 latestForUserAndReport", () => {
+  it("binds the verified user and report in SQL before selecting a stable latest request", async () => {
+    poolQuery.mockResolvedValue({ rows: [], rowCount: 0 });
+    expect(await accessRequestRepository().latestForUserAndReport("u-1", "report_B")).toBeNull();
+    const [sql, params] = poolQuery.mock.calls[0];
+    expect(sql).toContain("r.user_id = $1 AND j.share_slug = $2");
+    expect(sql).toContain("ORDER BY r.requested_at DESC, r.id DESC");
+    expect(params).toEqual(["u-1", "report_B"]);
+    expect(poolQuery).toHaveBeenCalledTimes(1);
+  });
+  it("reads events belonging to the scoped request", async () => {
+    poolQuery.mockResolvedValueOnce({ rows: [ROW] }).mockResolvedValueOnce({ rows: [{ event: "access_request.submitted" }] });
+    const result = await accessRequestRepository().latestForUserAndReport("u-1", "abc123");
+    expect(result?.request.id).toBe("req-1");
+    expect(poolQuery.mock.calls[1][1]).toEqual(["req-1"]);
+  });
+});

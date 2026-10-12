@@ -41,7 +41,7 @@ vi.mock("../../lib/auth", async (original) => ({
     membership: state.membership,
   }),
 }));
-vi.mock("../../lib/llm", () => ({
+vi.mock("../../lib/llm", () => ({ llmConfigured: () => true, llmCompleteDetailed: async (...args: unknown[]) => { const result = await state.llm(...args); return result ? { ok: true, result } : { ok: false, code: "no_model_output", retryable: false }; },
   llmComplete: (...args: unknown[]) => state.llm(...args),
 }));
 vi.mock("../../lib/security/rate-limit", async (original) => ({
@@ -161,6 +161,70 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
         locale: "en",
         inputs: { channel: "fixture" },
       });
+    it("T01: concurrent assistant drafts reserve one SQL run before one model call", async()=>{
+      const {runLiveAssistant}=await import('../../lib/assistant/live');
+      let release!:()=>void;
+      const gate=new Promise<void>(resolve=>{release=resolve;});
+      const llm=vi.fn<typeof import("../../lib/llm").llmComplete>(async()=>{await gate;return {text:JSON.stringify(output),usage:{inputTokens:null,outputTokens:null}};});
+      const input={intentId:'draft_review_reply' as const,surface:'action' as const,locale:'en' as const,contextual:false,
+        context:{workspaceId:workspace,actionId:action},membership:state.membership!,llmReady:()=>true,llm};
+      const outcomes=Promise.allSettled([runLiveAssistant(input),runLiveAssistant(input)]);
+      await vi.waitFor(()=>expect(llm).toHaveBeenCalledTimes(1));
+      const competing=await run().catch(error=>error);
+      release();
+      expect(competing.message).toBe('run_in_progress');
+      const results=await outcomes;
+      expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);
+      expect((results.find(r=>r.status==='rejected') as PromiseRejectedResult).reason.message).toBe('action_run_in_flight');
+      expect(llm).toHaveBeenCalledTimes(1);
+      expect((await runtime.query('SELECT state,input,output,cost_usd FROM action_runs WHERE action_id=$1',[action])).rows).toMatchObject([{state:'succeeded',input:{source:'assistant'},cost_usd:null}]);
+      expect((await runtime.query('SELECT id FROM output_versions WHERE action_id=$1',[action])).rows).toHaveLength(0);
+      const before=(await runtime.query('SELECT action_state FROM actions WHERE id=$1',[action])).rows[0];
+      await runLiveAssistant({...input,llm:async()=>({text:JSON.stringify(output),usage:{inputTokens:null,outputTokens:null}})});
+      expect((await runtime.query('SELECT action_state FROM actions WHERE id=$1',[action])).rows[0]).toEqual(before);
+      expect((await runtime.query('SELECT id FROM action_runs WHERE action_id=$1',[action])).rows).toHaveLength(2);
+    });
+    it.each(['timed_out','revoked'])("T01: %s fence refuses a late assistant settlement",async mode=>{
+      const {actionRunRepository}=await import('../../lib/repositories/artifacts');
+      const {withTransaction}=await import('../../lib/db/transaction');
+      const repo=actionRunRepository(fn=>withTransaction(fn,runtime));
+      let requester=actor;
+      if(mode==='revoked'){
+        requester=(await runtime.query("INSERT INTO app_users(email) VALUES($1) RETURNING id",[`${crypto.randomUUID()}@example.test`])).rows[0].id;
+        await runtime.query("INSERT INTO workspace_members(workspace_id,user_id,email,role,accepted_at) VALUES($1,$2,'manager@example.test','manager',now())",[workspace,requester]);
+      }
+      const runId=await repo.queue({actionId:action,actorId:requester,agentKey:'review_reply',promptVersion:'test',model:null,now:new Date(),
+        input:{source:'assistant',intent:'draft_review_reply',surface:'action',locale:'en'}});
+      await repo.start({runId,actorId:requester,locale:'en'});
+      if(mode==='timed_out')await runtime.query("UPDATE action_runs SET state='timed_out' WHERE id=$1",[runId]);
+      else await runtime.query('DELETE FROM workspace_members WHERE workspace_id=$1 AND user_id=$2',[workspace,requester]);
+      await expect(repo.finishAssistantDraft({runId,result:{ok:true,draft:{actionId:action,workspaceId:workspace,actorId:requester,agentKey:'review_reply',promptVersion:'test',intentId:'draft_review_reply',surface:'action',locale:'en',model:null,
+        output:{...output,alt_text:null},usage:{inputTokens:null,outputTokens:null},costUsd:null,finishedAt:new Date().toISOString()}}})).rejects.toThrow('artifact_run_operation_failed');
+      expect((await runtime.query('SELECT output FROM action_runs WHERE id=$1',[runId])).rows[0].output).toBeNull();
+      expect((await runtime.query('SELECT id FROM output_versions WHERE action_id=$1',[action])).rows).toHaveLength(0);
+    });
+    it('T21: brand save during generation binds the prompt and run to the same immutable revision on both paths',async()=>{
+      const {brandRepository}=await import('../../lib/repositories/brand');
+      const {runLiveAssistant}=await import('../../lib/assistant/live');
+      const brand=brandRepository(runtime);
+      const profile={voice:'warm',approved_claims:[],prohibited_terms:[],languages:['en'],facts:{confirmed:'Revision A fact'}};
+      const a=await brand.saveBrandRevision({workspaceId:workspace,actorId:actor,profile,expectedRevisionId:null});
+      let release!:()=>void;
+      const gate=new Promise<void>(resolve=>{release=resolve;});
+      const llm=vi.fn<typeof import("../../lib/llm").llmComplete>(async()=>{await gate;return {text:JSON.stringify(output),usage:{inputTokens:null,outputTokens:null}};});
+      const pending=runLiveAssistant({intentId:'draft_review_reply',surface:'action',locale:'en',context:{workspaceId:workspace,actionId:action},membership:state.membership!,llmReady:()=>true,llm});
+      await vi.waitFor(()=>expect(llm).toHaveBeenCalledOnce());
+      const b=await brand.saveBrandRevision({workspaceId:workspace,actorId:actor,profile:{...profile,facts:{confirmed:'Revision B fact'}},expectedRevisionId:a.revisionId});
+      release();const preview=await pending;
+      expect(llm.mock.calls[0][0]).toContain(`Brand revision: ${a.revisionId}`);
+      expect(llm.mock.calls[0][0]).toContain('Revision A fact');expect(llm.mock.calls[0][0]).not.toContain('Revision B fact');
+      expect((await runtime.query('SELECT input FROM action_runs WHERE id=$1',[preview.draftRunId])).rows[0].input.brand_revision_id).toBe(a.revisionId);
+      state.llm.mockClear();const ordinary=await run();
+      expect(state.llm.mock.calls[0][0]).toContain(`Brand revision: ${b.revisionId}`);
+      expect(state.llm.mock.calls[0][0]).toContain('Revision B fact');
+      expect((await runtime.query('SELECT input FROM action_runs WHERE id=$1',[ordinary.runId])).rows[0].input.brand_revision_id).toBe(b.revisionId);
+      expect((await runtime.query('SELECT output FROM action_runs WHERE id=$1',[preview.draftRunId])).rows[0].output.body).toBe(output.body);
+    });
     async function route(kind: "run" | "edit" | "patch", body: unknown = {}) {
       const req = new Request("https://fixture.test", {
           method: kind === "patch" ? "PATCH" : "POST",

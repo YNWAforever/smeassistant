@@ -1,0 +1,88 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ app/api/workspaces/[workspaceId]/brand/route.test.ts (9 tests | 2 failed) 956ms
+     × returns no-store 503 before writes on identity_session_failed 4ms
+     × returns no-store 503 before writes on membership_dependency_unavailable 1ms
+ ❯ tests/audit-assistant-auth-outage.test.ts (1 test | 1 failed) 1612ms
+   × AUDIT F-20261011-02: identity outage should return a retryable structured 503 1610ms
+ ❯ tests/maintenance-audit-maintenance-auth-outage.test.ts (2 tests | 2 failed) 9ms
+   × returns controlled 503 when brand authorization dependency is unavailable 7ms
+   × returns controlled 503 when assets authorization dependency is unavailable 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/audit-assistant-auth-outage.test.ts > AUDIT F-20261011-02: identity outage should return a retryable structured 503
+AssertionError: promise rejected "Error: identity_provider_unavailable" instead of resolving
+ ❯ tests/audit-assistant-auth-outage.test.ts:48:128
+     46| it("AUDIT F-20261011-02: identity outage should return a retryable str…
+     47|   mocks.authorizeWorkspaceRequest.mockRejectedValue(new Error("identit…
+     48|   await expect(post({ mode:"live",surface:"home",intentId:"explain_pri…
+       |                                                                                                                                ^
+     49| });
+     50|
+
+Caused by: Error: identity_provider_unavailable
+ ❯ tests/audit-assistant-auth-outage.test.ts:47:53
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  tests/maintenance-audit-maintenance-auth-outage.test.ts > returns controlled 503 when brand authorization dependency is unavailable
+ FAIL  tests/maintenance-audit-maintenance-auth-outage.test.ts > returns controlled 503 when assets authorization dependency is unavailable
+AssertionError: promise rejected "Error: audit_identity_dependency_timeout" instead of resolving
+ ❯ tests/maintenance-audit-maintenance-auth-outage.test.ts:11:23
+      9| it.each([["brand", getBrand], ["assets", getAssets]] as const)("return…
+     10|   const result = handler(new Request(`https://app.test/api/workspaces/…
+     11|   await expect(result).resolves.toHaveProperty("status", 503);
+       |                       ^
+     12| });
+     13|
+
+Caused by: Error: audit_identity_dependency_timeout
+ ❯ tests/maintenance-audit-maintenance-auth-outage.test.ts:8:67
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  tests/maintenance-audit-maintenance-auth-outage.test.ts > returns controlled 503 when brand authorization dependency is unavailable
+ FAIL  tests/maintenance-audit-maintenance-auth-outage.test.ts > returns controlled 503 when assets authorization dependency is unavailable
+Error: audit_identity_dependency_timeout
+ ❯ tests/maintenance-audit-maintenance-auth-outage.test.ts:8:67
+      6| import { GET as getAssets } from "@/app/api/workspaces/[workspaceId]/a…
+      7| const workspaceId = "11111111-1111-4111-8111-111111111111";
+      8| beforeEach(() => auth.authorizeWorkspaceRequest.mockRejectedValue(new …
+       |                                                                   ^
+      9| it.each([["brand", getBrand], ["assets", getAssets]] as const)("return…
+     10|   const result = handler(new Request(`https://app.test/api/workspaces/…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  app/api/workspaces/[workspaceId]/brand/route.test.ts > PUT /api/workspaces/[workspaceId]/brand > returns no-store 503 before writes on identity_session_failed
+Error: identity_session_failed
+ ❯ app/api/workspaces/[workspaceId]/brand/route.test.ts:68:55
+     66| describe("PUT /api/workspaces/[workspaceId]/brand", () => {
+     67|   it.each(["identity_session_failed", "membership_dependency_unavailab…
+     68|     mocks.authorizeWorkspaceRequest.mockRejectedValue(new Error(reason…
+       |                                                       ^
+     69|     const res = await put(body);
+     70|     expect(res.status).toBe(503);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  app/api/workspaces/[workspaceId]/brand/route.test.ts > PUT /api/workspaces/[workspaceId]/brand > returns no-store 503 before writes on membership_dependency_unavailable
+Error: membership_dependency_unavailable
+ ❯ app/api/workspaces/[workspaceId]/brand/route.test.ts:68:55
+     66| describe("PUT /api/workspaces/[workspaceId]/brand", () => {
+     67|   it.each(["identity_session_failed", "membership_dependency_unavailab…
+     68|     mocks.authorizeWorkspaceRequest.mockRejectedValue(new Error(reason…
+       |                                                       ^
+     69|     const res = await put(body);
+     70|     expect(res.status).toBe(503);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  5 failed | 7 passed (12)
+   Start at  02:58:15
+   Duration  5.19s (transform 771ms, setup 928ms, import 878ms, tests 2.58s, environment 0ms)
+

@@ -20,7 +20,7 @@ vi.mock("../../lib/security/rate-limit", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../lib/security/rate-limit")>()),
   enforceRateLimit: (...args: unknown[]) => spies.limit(...args),
 }));
-vi.mock("../../lib/llm", () => ({ llmComplete: (...args: unknown[]) => spies.llm(...args), llmConfigured: () => true }));
+vi.mock("../../lib/llm", () => ({ llmConfigured: () => true, llmCompleteDetailed: async (...args: unknown[]) => { const result = await spies.llm(...args); return result ? { ok: true, result } : { ok: false, code: "no_model_output", retryable: false }; }, llmComplete: (...args: unknown[]) => spies.llm(...args) }));
 
 import { POST } from "../../app/api/start/[slug]/preview/route";
 import { buildReportProps, type ReportViewModelLike } from "../../lib/funnel/report-props";

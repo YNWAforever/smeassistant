@@ -11,7 +11,7 @@ import { claimViaOAuthEnabled } from "@/lib/oauth/claim-flow-flag";
 
 import { publicMetadata } from "../../_meta";
 import { firstParam } from "../../_params";
-import { signOutAction } from "../actions";
+import { switchAccountAction } from "../actions";
 
 /** Session-bound: reads cookies and the caller's memberships on every request. */
 export const dynamic = "force-dynamic";
@@ -52,7 +52,7 @@ export default async function OwnerSelectWorkspace({
       cards={cards}
       email={user.email}
       denied={denied && denied.length <= 120 ? denied : undefined}
-      signOutAction={signOutAction.bind(null, locale)}
+      signOutAction={switchAccountAction.bind(null, locale,firstParam(query.returnTo) ?? `/${locale}/owner/select-workspace`,firstParam(query.claim) ?? null)}
       oauthClaimEnabled={claimViaOAuthEnabled()}
       accessRequest={
         myRequest ? (

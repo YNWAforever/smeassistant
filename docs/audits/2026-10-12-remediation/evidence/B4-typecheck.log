@@ -1,0 +1,6 @@
+
+> sme-scanner-visibility-workspace@0.1.0 typecheck C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-remediation-20261012
+> tsc --noEmit && corepack pnpm -r typecheck
+
+components/workspace/brand-client.tsx(69,164): error TS2353: Object literal may only specify known properties, and 'expectedRevisionId' does not exist in type 'BrandInput'.
+ ELIFECYCLE  Command failed with exit code 2.

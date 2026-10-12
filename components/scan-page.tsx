@@ -28,6 +28,7 @@ import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { copy, type PrototypeLocale } from "@/lib/copy"
+import {fetchJsonWithinDeadline,FinderRequestError} from '@/lib/scanner/bounded-request'
 import {
   BUSINESS_SEARCH_DEBOUNCE_MS,
   CANDIDATE_ERROR_KEYS,
@@ -184,8 +185,9 @@ export function ScanPage({
         ...(draft.district ? { district: draft.district } : {}),
         ...(website.value ? { websiteUrl: website.value } : {}),
       })
-      const response = await fetch(url, init)
-      const data = (await response.json().catch(() => ({}))) as { outcome?: string; error?: string; candidates?: InstagramCandidate[] }
+      const result=await fetchJsonWithinDeadline(url,init)
+      const response=result.response
+      const data=result.data as { outcome?: string; error?: string; candidates?: InstagramCandidate[] }
       if (isSearchFailure(response.status, data)) {
         // P3.5d: a paused-scans refusal is not a generic provider failure.
         const paused = scanStartRefusal(locale, response.status, data.error)
@@ -194,8 +196,8 @@ export function ScanPage({
       }
       const candidates = (data.candidates ?? []).slice(0, MAX_CANDIDATES_SHOWN)
       setIgSearch({ status: "done", candidates, message: candidates.length ? null : c.igNoResults })
-    } catch {
-      setIgSearch({ status: "done", candidates: [], message: t(locale, "scanner.candidateErrorNetwork") })
+    } catch (error) {
+      setIgSearch({ status: "done", candidates: [], message: t(locale,error instanceof FinderRequestError && error.code==='timeout'?CANDIDATE_ERROR_KEYS[parseSearchError(504,{error:'TIMEOUT'})]:"scanner.candidateErrorNetwork") })
     }
   }
 

@@ -9,6 +9,7 @@ export type AuthFlow = {
   claim: string | null;
   returnTo: string | null;
   method: AuthMethod | null;
+  intent?:'switch_account';
 };
 export type AuthScreen = "start" | "complete";
 
@@ -62,6 +63,7 @@ export function parseAuthFlow(query: URLSearchParams): AuthFlow {
       method && METHODS.has(method as AuthMethod)
         ? (method as AuthMethod)
         : null,
+    ...(single(query,'intent')==='switch_account'?{intent:'switch_account' as const}:{}),
   };
 }
 
@@ -70,6 +72,7 @@ function flowParams(flow: AuthFlow): URLSearchParams {
   if (flow.claim) query.set("claim", flow.claim);
   if (flow.returnTo) query.set("returnTo", flow.returnTo);
   if (flow.method) query.set("method", flow.method);
+  if(flow.intent==='switch_account')query.set('intent',flow.intent);
   return query;
 }
 

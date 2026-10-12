@@ -11,6 +11,7 @@ import {
   type SessionUser,
 } from "@/lib/auth";
 import { DEFAULT_LOCALE, isLocale } from "@/lib/locale";
+import { authorizationOrUnavailable } from "@/lib/security/authorization-boundary";
 import {
   enforceRateLimit,
   rateLimitedResponse,
@@ -46,7 +47,7 @@ export type Mutation<Scope> =
   | { ok: false; response: Response };
 
 export function json(body: unknown, status = 200): Response {
-  return NextResponse.json(body, { status });
+  return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
 }
 
 export async function readJson(
@@ -80,10 +81,11 @@ async function authorizeScope<Scope extends ActionScope>(
   limit: RateLimitScope,
 ): Promise<Mutation<Scope>> {
   if (!scope) return { ok: false, response: json({ error: "not_found" }, 404) };
-  const auth = await authorizeWorkspaceRequest(
+  const auth = await authorizationOrUnavailable(() => authorizeWorkspaceRequest(
     { id: scope.workspaceId },
     { minRole: "manager", locationId: scope.locationId ?? undefined },
-  );
+  ));
+  if (!auth) return { ok: false, response: json({ error: "unavailable" }, 503) };
   if (!auth.ok)
     return { ok: false, response: json({ error: auth.code }, auth.status) };
   const repository = artifactRepository();

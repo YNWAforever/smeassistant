@@ -12,6 +12,6 @@ export async function generateMetadata(props: OwnerPageProps): Promise<Metadata>
 
 export default async function CalendarRoute(props: OwnerPageProps) {
   const page = await loadOwnerPage(props);
-  const model = await getCalendar(page.ctx);
+  const model = await getCalendar(page.ctx,page.locationSlug);
   return <CalendarView locale={page.locale} workspaceSlug={page.workspaceSlug} timezone={page.ctx.workspace.timezone} model={model} />;
 }

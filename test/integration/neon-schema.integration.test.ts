@@ -23,8 +23,8 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("fresh application schema",
   afterAll(async () => { await Promise.all([owner?.end(), runtime?.end(), denied?.end()]); fixture?.stop(); });
 
   it("applies all final business objects to empty PostgreSQL with no business seeds", async () => {
-    expect(await applyMigrations(owner)).toEqual(["0001_identity.sql", "0002_business.sql", "0003_workflows.sql", "0004_atomic_operations.sql", "0005_owner_removal_guard.sql", "0006_action_applications.sql", "0007_action_verification.sql", "0008_workspace_internal.sql", "0009_scan_attempts.sql", "0010_mail_outbox.sql", "0011_offers.sql", "0012_work_packs.sql", "0013_preview_events.sql", "0014_publish_reply.sql", "0015_action_list_indexes.sql"]);
-    expect(await verifyCatalog(owner)).toMatchObject({ tables: 41, columns: 491, constraints: 204, indexes: 111, triggers: 8, functions: 23, seededRows: 0 });
+    expect(await applyMigrations(owner)).toEqual(["0001_identity.sql", "0002_business.sql", "0003_workflows.sql", "0004_atomic_operations.sql", "0005_owner_removal_guard.sql", "0006_action_applications.sql", "0007_action_verification.sql", "0008_workspace_internal.sql", "0009_scan_attempts.sql", "0010_mail_outbox.sql", "0011_offers.sql", "0012_work_packs.sql", "0013_preview_events.sql", "0014_publish_reply.sql", "0015_action_list_indexes.sql","0016_brand_revisions.sql","0017_brand_profile_revision_capture.sql"]);
+    expect(await verifyCatalog(owner)).toMatchObject({ tables: 42, columns: 498, constraints: 211, indexes: 114, triggers: 10, functions: 27, seededRows: 0 });
     expect((await owner.query("SELECT nspname FROM pg_namespace WHERE nspname IN ('auth','storage','neon_auth')")).rows).toEqual([]);
   });
   it("replays as a no-op and rejects changed, missing, and reordered history", async () => {
@@ -33,13 +33,13 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("fresh application schema",
     await expect(applyMigrations(owner, [{ ...migrations[0], sql: migrations[0].sql + "\n-- changed" }, ...migrations.slice(1)])).rejects.toThrow("migration_checksum_mismatch");
     await expect(applyMigrations(owner, migrations.slice(0, 2))).rejects.toThrow("migration_history_mismatch");
     await expect(applyMigrations(owner, [...migrations].reverse())).rejects.toThrow("migration_order_invalid");
-    expect((await owner.query("SELECT count(*)::int AS n FROM neon_migrations.journal")).rows[0].n).toBe(15);
+    expect((await owner.query("SELECT count(*)::int AS n FROM neon_migrations.journal")).rows[0].n).toBe(17);
   });
   it("rolls back interrupted DDL and journal together, then permits retry", async () => {
     const migrations = await loadMigrations();
     await expect(applyMigrations(owner, [...migrations, { name: "0099_probe.sql", sql: "CREATE TABLE public.interruption_probe(id integer); SELECT 1/0;" }])).rejects.toThrow();
     expect((await owner.query("SELECT to_regclass('public.interruption_probe') AS relation")).rows[0].relation).toBeNull();
-    expect((await owner.query("SELECT count(*)::int AS n FROM neon_migrations.journal")).rows[0].n).toBe(15);
+    expect((await owner.query("SELECT count(*)::int AS n FROM neon_migrations.journal")).rows[0].n).toBe(17);
     expect(await applyMigrations(owner)).toEqual([]);
   });
   it("rolls back a cancelled in-flight migration before a clean retry", async () => {
@@ -61,16 +61,22 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("fresh application schema",
   it("exposes all final columns and constraints through typed Drizzle tables", async () => {
     const oracle = JSON.parse(await readFile(new URL("./fixtures/legacy-final-catalog.json", import.meta.url), "utf8"));
     const tables = Object.values(schema).map(table => getTableConfig(table));
-    expect(tables.length).toBe(43);
+    expect(tables.length).toBe(44);
     for (const expected of oracle.tables as Array<{name:string}>) {
       const table = tables.find(table => table.name === expected.name)!;
       expect(table, expected.name).toBeDefined();
       const columns = oracle.columns.filter((column: {table_name:string}) => column.table_name === expected.name);
-      expect(table.columns.map(column => ({name:column.name,notNull:column.notNull}))).toEqual(columns.map((column:{column_name:string;is_nullable:string}) => ({name:column.column_name,notNull:column.is_nullable === "NO"})));
+      const retainedColumns=table.columns.filter(column=>!(table.name==='brand_profiles' && column.name==='current_revision_id'));
+      expect(retainedColumns.map(column => ({name:column.name,notNull:column.notNull}))).toEqual(columns.map((column:{column_name:string;is_nullable:string}) => ({name:column.column_name,notNull:column.is_nullable === "NO"})));
       const constraints = [...table.primaryKeys.map(c=>c.getName()), ...table.uniqueConstraints.map(c=>c.getName()), ...table.foreignKeys.map(c=>c.getName()), ...table.checks.map(c=>c.name)].sort();
-      expect(constraints).toEqual(oracle.constraints.filter((c:{table_name:string})=>c.table_name===expected.name).map((c:{name:string})=>c.name).sort());
+      expect(constraints).toEqual([...oracle.constraints.filter((c:{table_name:string})=>c.table_name===expected.name).map((c:{name:string})=>c.name),...(table.name==='brand_profiles'?['brand_profiles_current_revision_fkey']:[])].sort());
       expect(table.enableRLS).toBe(true);
     }
+    const revisions=tables.find(table=>table.name==='brand_revisions')!;
+    expect(revisions.columns.map(column=>column.name)).toEqual(['id','workspace_id','profile','actor_id','created_at','source']);
+    expect(revisions.enableRLS).toBe(true);
+    expect(revisions.policies.map(policy=>policy.for).sort()).toEqual(['insert','select']);
+    expect(tables.find(table=>table.name==='brand_profiles')!.columns.find(column=>column.name==='current_revision_id')?.notNull).toBe(false);
   });
   it("uses a real non-owner runtime role with explicit server-only policies and rejects unrelated roles", async () => {
     const role = (await runtime.query("SELECT current_user AS name, rolsuper, rolbypassrls, rolcreatedb, rolcreaterole FROM pg_roles WHERE rolname=current_user")).rows[0];

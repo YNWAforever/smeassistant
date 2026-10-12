@@ -1,0 +1,18 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-remediation-20261012
+> vitest run --exclude lib/evidence/safe-media.test.ts && vitest run lib/evidence/safe-media.test.ts && corepack pnpm -r test
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+stderr | app/api/actions/[actionId]/run/route.test.ts > POST /api/actions/[actionId]/run > runs the agent and creates v1 for an owner
+[api/actions/run] failed { category: 'action_run_route_failed' }
+
+stderr | app/api/actions/[actionId]/run/route.test.ts > POST /api/actions/[actionId]/run > runs the agent and creates v1 for an owner
+[api/actions/run] failed { category: 'action_run_route_failed' }
+
+ ❯ app/api/actions/[actionId]/run/route.test.ts (8 tests | 4 failed) 29ms
+     × runs the agent and creates v1 for an owner 15ms (retry x1)
+     × reports a failed run (no version) when the model never returns valid JSON 2ms (retry x1)
+     × 403s a viewer and a manager outside the action's location scope 4ms (retry x1)
+     × answers 409 run_in_progress and never calls the model 2ms (retry x1)

@@ -1,0 +1,56 @@
+error: patch failed: tests/maintenance-audit-maintenance-counterexamples.test.tsx:1
+error: tests/maintenance-audit-maintenance-counterexamples.test.tsx: patch does not apply
+error: patch failed: tests/maintenance-audit-maintenance-auth-outage.test.ts:1
+error: tests/maintenance-audit-maintenance-auth-outage.test.ts: patch does not apply
+error: patch failed: tests/audit-recovery-failure.test.tsx:1
+error: tests/audit-recovery-failure.test.tsx: patch does not apply
+error: patch failed: tests/audit-onboarding-scope.test.tsx:1
+error: tests/audit-onboarding-scope.test.tsx: patch does not apply
+error: patch failed: tests/audit-assistant-concurrency.test.ts:1
+error: tests/audit-assistant-concurrency.test.ts: patch does not apply
+error: patch failed: tests/audit-assistant-auth-outage.test.ts:1
+error: tests/audit-assistant-auth-outage.test.ts: patch does not apply
+error: patch failed: test/integration/neon-brand-revisions.integration.test.ts:1
+error: test/integration/neon-brand-revisions.integration.test.ts: patch does not apply
+error: patch failed: test/integration/neon-brand-profile-capture.integration.test.ts:1
+error: test/integration/neon-brand-profile-capture.integration.test.ts: patch does not apply
+error: patch failed: test/integration/neon-action-list-pagination.integration.test.ts:90
+error: test/integration/neon-action-list-pagination.integration.test.ts: patch does not apply
+error: patch failed: neon/migrations/0017_brand_profile_revision_capture.sql:1
+error: neon/migrations/0017_brand_profile_revision_capture.sql: patch does not apply
+error: patch failed: neon/migrations/0016_brand_revisions.sql:1
+error: neon/migrations/0016_brand_revisions.sql: patch does not apply
+error: patch failed: lib/workspace/brand.test.ts:12
+error: lib/workspace/brand.test.ts: patch does not apply
+error: patch failed: lib/security/authorization-boundary.ts:1
+error: lib/security/authorization-boundary.ts: patch does not apply
+error: patch failed: lib/scanner/bounded-request.ts:1
+error: lib/scanner/bounded-request.ts: patch does not apply
+error: patch failed: lib/scanner/bounded-request.test.ts:1
+error: lib/scanner/bounded-request.test.ts: patch does not apply
+error: patch failed: lib/report/taxonomy.ts:1
+error: lib/report/taxonomy.ts: patch does not apply
+error: patch failed: lib/report/taxonomy.test.ts:1
+error: lib/report/taxonomy.test.ts: patch does not apply
+error: patch failed: lib/llm-outcome.test.ts:1
+error: lib/llm-outcome.test.ts: patch does not apply
+error: patch failed: lib/db/database.types.ts:14
+error: lib/db/database.types.ts: patch does not apply
+error: patch failed: lib/assistant/live.test.ts:8
+error: lib/assistant/live.test.ts: patch does not apply
+error: patch failed: components/workspace/brand-client.tsx:167
+error: components/workspace/brand-client.tsx: patch does not apply
+error: patch failed: components/workspace/billing-view.tsx:61
+error: components/workspace/billing-view.tsx: patch does not apply
+error: patch failed: components/workspace/assets-view.tsx:50
+error: components/workspace/assets-view.tsx: patch does not apply
+error: patch failed: components/workspace/asset-preview.tsx:1
+error: components/workspace/asset-preview.tsx: patch does not apply
+error: patch failed: components/workspace/asset-preview.test.tsx:1
+error: components/workspace/asset-preview.test.tsx: patch does not apply
+error: patch failed: components/report/recovery-form.test.tsx:58
+error: components/report/recovery-form.test.tsx: patch does not apply
+error: patch failed: app/api/workspaces/[workspaceId]/assets/[assetId]/preview/route.ts:1
+error: app/api/workspaces/[workspaceId]/assets/[assetId]/preview/route.ts: patch does not apply
+error: patch failed: app/api/workspaces/[workspaceId]/assets/[assetId]/preview/route.test.ts:1
+error: app/api/workspaces/[workspaceId]/assets/[assetId]/preview/route.test.ts: patch does not apply

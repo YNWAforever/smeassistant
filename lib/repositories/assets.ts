@@ -7,7 +7,7 @@ export function assetRepository(client?: Pick<Pool, "query">) {
   const db = () => client ?? getPool();
   return {
     async list(workspaceId: string): Promise<AssetRow[]> { return (await db().query<AssetRow>(`SELECT ${COLUMNS} FROM assets WHERE workspace_id=$1 ORDER BY created_at DESC`, [workspaceId])).rows; },
-    async get(workspaceId: string, id: string): Promise<AssetRow | null> { return (await db().query<AssetRow>(`SELECT ${COLUMNS} FROM assets WHERE workspace_id=$1 AND id=$2`, [workspaceId, id])).rows[0] ?? null; },
+    async get(workspaceId: string, id: string): Promise<AssetRow | null> { return (await db().query<AssetRow>(`SELECT ${COLUMNS} FROM assets WHERE workspace_id=$1 AND id=$2 AND (location_id IS NULL OR EXISTS(SELECT 1 FROM locations l WHERE l.id=assets.location_id AND l.workspace_id=assets.workspace_id))`, [workspaceId, id])).rows[0] ?? null; },
     async insert(row: Omit<AssetRow, "created_at">): Promise<AssetRow> {
       const result = await db().query<AssetRow>(`INSERT INTO assets(id,workspace_id,location_id,kind,storage_path,filename,alt_text,rights_status,rights_confirmed_at,uploaded_by)
         SELECT $1,$2,$3,$4,$5,$6,$7,'needs_review',NULL,$8 WHERE $3::uuid IS NULL OR EXISTS(SELECT 1 FROM locations WHERE id=$3 AND workspace_id=$2) RETURNING ${COLUMNS}`,

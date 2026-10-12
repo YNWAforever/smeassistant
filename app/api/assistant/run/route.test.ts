@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { auth, authorizeLike, WORKSPACE_ID } from "@/app/api/actions/_shared/test-db";
 import { AiBudgetRefusal } from "@/lib/budgets/ai";
+import { ActionRunInFlightError } from "@/lib/repositories/artifacts";
 
 const mocks = vi.hoisted(() => ({
   authorizeWorkspaceRequest: vi.fn(),
@@ -20,7 +21,7 @@ vi.mock("@/lib/workspace/audit", async (importOriginal) => ({
 }));
 
 vi.mock("@/lib/auth", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/auth")>()), authorizeWorkspaceRequest: (...args: unknown[]) => mocks.authorizeWorkspaceRequest(...args) }));
-vi.mock("@/lib/llm", () => ({ llmComplete: (...args: unknown[]) => mocks.llmComplete(...args), llmConfigured: () => true }));
+vi.mock("@/lib/llm", () => ({ llmConfigured: () => true, llmCompleteDetailed: async (...args: unknown[]) => { const result = await mocks.llmComplete(...args); return result ? { ok: true, result } : { ok: false, code: "no_model_output", retryable: false }; }, llmComplete: (...args: unknown[]) => mocks.llmComplete(...args) }));
 vi.mock("@/lib/assistant/live", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/assistant/live")>()), runLiveAssistant: (...args: unknown[]) => mocks.runLiveAssistant(...args) }));
 vi.mock("@/lib/security/rate-limit", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/security/rate-limit")>()),
@@ -44,6 +45,13 @@ afterEach(() => {
 });
 
 describe("POST /api/assistant/run", () => {
+  it('returns controlled no-store 409 for the shared action run lock',async()=>{
+    mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike('owner'));
+    mocks.runLiveAssistant.mockRejectedValueOnce(new ActionRunInFlightError());
+    const res=await post({mode:'live',surface:'action',intentId:'draft_review_reply',locale:'en',context:{workspaceId:WORKSPACE_ID}});
+    expect(res.status).toBe(409);expect(res.headers.get('cache-control')).toBe('no-store');expect(await res.json()).toEqual({error:'run_in_progress'});
+    expect(mocks.llmComplete).not.toHaveBeenCalled();expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
+  });
   it("demo mode returns createDemoAssistantRun output with no auth and ignores context", async () => {
     const res = await post({ mode: "demo", surface: "sample", intentId: "explain_change", locale: "en", context: { workspaceId: WORKSPACE_ID } });
     expect(res.status).toBe(200);

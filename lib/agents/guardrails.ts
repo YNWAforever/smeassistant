@@ -43,6 +43,7 @@ export function brandBlock(ctx: AgentContext): string {
   const facts = Object.entries(ctx.brand.facts ?? {}).map(([key, value]) => `${key}: ${typeof value === "string" ? value : JSON.stringify(value)}`);
   return [
     "BRAND FACTS — only these facts may be asserted:",
+      ...(ctx.brand.revisionId?[`Brand revision: ${ctx.brand.revisionId}`]:[]),
     `Voice: ${ctx.brand.voice || "warm"}`,
     "Approved claims:",
     list(ctx.brand.approvedClaims),

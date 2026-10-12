@@ -1,0 +1,70 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ test/integration/neon-brand-profile-capture.integration.test.ts (3 tests | 3 failed) 7321ms
+   × T21: a newly initialized manager generation gets one immutable default snapshot 1047ms
+   × T21: legacy claim writes retain old content and advance the generation snapshot without inventing an actor 828ms
+   × T21: a viewer or foreign actor cannot initialize a brand snapshot 855ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/integration/neon-brand-profile-capture.integration.test.ts > T21: a newly initialized manager generation gets one immutable default snapshot
+AssertionError: expected undefined to deeply equal Any<String>
+
+- Expected:
+Any<String>
+
++ Received:
+undefined
+
+ ❯ test/integration/neon-brand-profile-capture.integration.test.ts:27:37
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/integration/neon-brand-profile-capture.integration.test.ts > T21: legacy claim writes retain old content and advance the generation snapshot without inventing an actor
+AssertionError: expected null to deeply equal Any<String>
+
+- Expected:
+Any<String>
+
++ Received:
+null
+
+ ❯ test/integration/neon-brand-profile-capture.integration.test.ts:35:69
+     33|  const {workspace,actor}=await member();const repo=brandRepository(run…
+     34|  const base={workspace_id:workspace,voice:'warm',approved_claims:[],pr…
+     35|  const first=await repo.put(base);expect(first.current_revision_id).to…
+       |                                                                     ^
+     36|  const second=await repo.put({...base,voice:'professional'});expect(se…
+     37|  expect(await reader.assistantBrand(workspace,actor)).toMatchObject({v…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/integration/neon-brand-profile-capture.integration.test.ts > T21: a viewer or foreign actor cannot initialize a brand snapshot
+AssertionError: promise resolved "null" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+null
+
+ ❯ test/integration/neon-brand-profile-capture.integration.test.ts:44:54
+     42| it('T21: a viewer or foreign actor cannot initialize a brand snapshot'…
+     43|  const {workspace,actor}=await member('viewer');const reader=artifactR…
+     44|  await expect(reader.assistantBrand(workspace,actor)).rejects.toThrow(…
+       |                                                      ^
+     45|  const foreign=(await runtime.query("INSERT INTO app_users(email) VALU…
+     46|  await expect(reader.assistantBrand(workspace,foreign)).rejects.toThro…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  04:21:35
+   Duration  14.71s (transform 161ms, setup 31ms, import 610ms, tests 7.32s, environment 0ms)
+

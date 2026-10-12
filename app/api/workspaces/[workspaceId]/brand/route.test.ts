@@ -64,6 +64,20 @@ describe("GET /api/workspaces/[workspaceId]/brand", () => {
 });
 
 describe("PUT /api/workspaces/[workspaceId]/brand", () => {
+  it.each(["identity_session_failed", "membership_dependency_unavailable"])("returns no-store 503 before writes on %s", async reason => {
+    mocks.authorizeWorkspaceRequest.mockRejectedValue(new Error(reason));
+    const res = await put(body);
+    expect(res.status).toBe(503);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(await res.json()).toEqual({ error: "unavailable" });
+    expect(mocks.putBrand).not.toHaveBeenCalled();
+    expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+  });
+  it("does not hide a programming error in authorization as an outage", async () => {
+    mocks.authorizeWorkspaceRequest.mockRejectedValue(new TypeError("fixture unexpected bug"));
+    await expect(put(body)).rejects.toThrow("fixture unexpected bug");
+    expect(mocks.putBrand).not.toHaveBeenCalled();
+  });
   it("lets the owner save: validated body, per-user limiter, audit via putBrand", async () => {
     mocks.authorizeWorkspaceRequest.mockResolvedValue(auth("owner"));
     const res = await put(body);

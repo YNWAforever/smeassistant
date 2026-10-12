@@ -8,6 +8,7 @@ import type { ActionListKey } from "@/lib/workspace/action-list-cursor";
 import { actionPageSize } from "@/lib/workspace/action-list-cursor";
 import type { ActionState } from "@/lib/domain";
 import type { ListFilterScope } from "@/lib/workspace/action-list-filters";
+import { TEMPLATES } from "@/lib/workspace/templates";
 
 export interface ActionListScope extends Partial<ListFilterScope> {
   workspaceId: string;
@@ -69,6 +70,12 @@ const scopeValues = (s: ActionListScope) => [s.workspaceId, s.locationId, s.allo
 export function actionListRepository(client?: Pick<Pool, "query">) {
   const db = () => client ?? getPool();
   return {
+    async listCreateRecommendationSummaries(scope:ActionListScope):Promise<ActionListProjection[]> {
+      return (await db().query<ActionListProjection>(`${SCOPED} SELECT DISTINCT ON (template_key) ${COLUMNS},NULL::text AS assignee_name
+        FROM phased WHERE ${OPEN} AND template_key=ANY($14::text[])
+        ORDER BY template_key,COALESCE(priority_score,0) DESC,updated_at DESC,id DESC LIMIT $15`,
+        [...scopeValues(scope),TEMPLATES.map(t=>t.key),TEMPLATES.length])).rows;
+    },
     async page(scope: ActionListScope, view: NonNullable<ActionFilters["view"]>, pageSize: number, cursor: ActionListKey | null): Promise<ActionListProjection[]> {
       actionPageSize(pageSize);
       const result = await db().query<ActionListProjection>(`${SCOPED} SELECT ${COLUMNS},

@@ -77,6 +77,15 @@ interface WorkspaceRefRow { id: string; slug: string | null }
 const loadWorkspaceRef = membershipRepository.workspace;
 const loadAcceptedMembership = membershipRepository.accepted;
 
+/** Mark database I/O failures at their boundary; pure authorization decisions remain distinct. */
+async function membershipDependency<T>(read: () => Promise<T>): Promise<T> {
+  try { return await read(); }
+  catch (error) {
+    if (error instanceof TypeError) throw error;
+    throw new Error("membership_dependency_unavailable");
+  }
+}
+
 type Decision =
   | { kind: "ok"; membership: Membership }
   | { kind: "none" }
@@ -91,7 +100,7 @@ async function decideMembership(
   workspace: WorkspaceRefRow,
   opts: MembershipOptions,
 ): Promise<Decision> {
-  const row = await loadAcceptedMembership(user.id, workspace.id);
+  const row = await membershipDependency(() => loadAcceptedMembership(user.id, workspace.id));
   const access = authorizeWorkspace({
     membership: row ? { workspaceId: row.workspace_id, role: row.role } : null,
     sessionUser: { id: user.id, email: user.email },
@@ -143,7 +152,7 @@ export async function authorizeWorkspaceRequest(
 ): Promise<RouteAuth> {
   const user = await getUser();
   if (!user) return { ok: false, status: 401, code: "unauthenticated" };
-  const workspace = await loadWorkspaceRef(workspaceRef);
+  const workspace = await membershipDependency(() => loadWorkspaceRef(workspaceRef));
   if (!workspace) return { ok: false, status: 404, code: "not_found" };
   const decision = await decideMembership(user, workspace, opts);
   if (decision.kind !== "ok") return { ok: false, status: 403, code: "forbidden" };

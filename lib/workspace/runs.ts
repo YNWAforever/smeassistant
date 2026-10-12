@@ -20,7 +20,8 @@ import {
   type AgentOutput,
 } from "@/lib/agents";
 import { localized, resolveText } from "@/lib/domain";
-import { llmComplete, type LLMUsage } from "@/lib/llm";
+import { llmComplete, llmCompleteDetailed, llmConfigured, type LLMUsage, type LLMOutcome } from "@/lib/llm";
+import { runErrorLabel } from "@/lib/assistant/draft-failure";
 import { checkAiBudget } from "@/lib/budgets/ai";
 import { deriveFaqQuestions } from "./faq-questions";
 import { filterSelectedReviews, resolveBrandProvidedInputs, sampledReviewsFromRawData } from "./evidence-inputs";
@@ -41,7 +42,7 @@ import { gateBlockingInputs } from "./workflow-inputs";
  * never overwrites an existing draft (a version is only created on success).
  */
 export type RunErrorCode =
-  "action_not_found" | "agent_unavailable" | "forbidden" | "ai_budget_reached" | "ai_paused" | "run_in_progress";
+  "action_not_found" | "agent_unavailable" | "forbidden" | "ai_budget_reached" | "ai_paused" | "run_in_progress" | "provider_unconfigured";
 
 export class RunError extends Error {
   constructor(public readonly code: RunErrorCode) {
@@ -54,7 +55,7 @@ export interface RunAgentInput {
   actionId: string;
   actorId: string;
   membership: Membership;
-  persistence?: ActionRunRepository;
+  persistence?: Pick<ActionRunRepository, 'queue'|'start'|'finish'>;
   assets?: Pick<ReturnType<typeof assetRepository>, "get">;
   /** Offer reads for offer-* templates (P4.1); defaults to offerRepository(). */
   offers?: Pick<OfferRepository, "get">;
@@ -62,6 +63,8 @@ export interface RunAgentInput {
   inputs?: Record<string, unknown> | null;
   locale: string;
   llm?: typeof llmComplete;
+  llmDetailed?: typeof llmCompleteDetailed;
+  llmReady?: () => boolean;
   now?: Date;
   ipHash?: string | null;
   /** Budget variables; defaults to process.env (tests pass their own). */
@@ -132,10 +135,13 @@ function resolveAgentKey(
   return templateAgent;
 }
 
-function addUsage(total: LLMUsage, next: LLMUsage | undefined): LLMUsage {
-  if (!next) return total;
+function addUsage(total: LLMUsage, next: LLMUsage | undefined, firstAttempt: boolean): LLMUsage {
+  // The initial nulls mean no call yet. Once a call has unknown usage, a later
+  // report cannot turn that missing amount into zero or a known total cost.
+  if (firstAttempt) return next ? { ...next } : NO_USAGE;
+  if (!next) return NO_USAGE;
   const add = (a: number | null, b: number | null) =>
-    a === null && b === null ? null : (a ?? 0) + (b ?? 0);
+    a === null || b === null ? null : a + b;
   return {
     inputTokens: add(total.inputTokens, next.inputTokens),
     outputTokens: add(total.outputTokens, next.outputTokens),
@@ -333,9 +339,8 @@ export async function runAgentForAction(
   db: ArtifactRepository,
   input: RunAgentInput,
 ): Promise<RunAgentResult> {
-  const now = input.now ?? new Date(),
-    llm = input.llm ?? llmComplete,
-    locale = localeOf(input.locale);
+  const now = input.now ?? new Date(), locale = localeOf(input.locale);
+  const deadline = Date.now() + AGENT_RUN_BUDGET_MS;
   const { row, snapshot } = await resolveActionRunContext(
     db,
     input.actionId,
@@ -362,7 +367,7 @@ export async function runAgentForAction(
   if (!budget.allowed) throw new RunError(budget.scope === "ai_paused" ? "ai_paused" : "ai_budget_reached");
   const [workspace, brand, locations] = await Promise.all([
     db.assistantWorkspace(row.workspace_id),
-    db.assistantBrand(row.workspace_id),
+    db.assistantBrand(row.workspace_id,input.actorId),
     db.assistantLocations(row.workspace_id),
   ]);
   // P2.3 item 11: the FAQ + JSON-LD template asks for three owner_fact_*
@@ -425,6 +430,7 @@ export async function runAgentForAction(
     locale,
     market: workspace?.market?.toLowerCase() === "tw" ? "tw" : "hk",
     brand: {
+      revisionId:brand?.current_revision_id ?? null,
       voice: brand?.voice ?? "warm",
       // An offer's claims and prohibited terms count for this run only (spec
       // §2.3), so the shared unconfirmed_claim / unexpected_link checks accept
@@ -489,6 +495,10 @@ export async function runAgentForAction(
   if (offer) satisfied.add("offer_id");
   const blocking = gateBlockingInputs(template, provided, satisfied);
 
+  if (!blocking.length && !(input.llmReady ?? (() => Boolean(input.llm || input.llmDetailed) || llmConfigured()))()) {
+    throw new RunError("provider_unconfigured");
+  }
+
   const persistence = input.persistence ?? actionRunRepository();
   // F-14: a live run for this action ends the request here, before any model
   // call or second draft; the owner sees the first run's result on refresh.
@@ -500,6 +510,7 @@ export async function runAgentForAction(
       agent_key: agentKey,
       provided_inputs: provided,
       snapshot_id: snapshot?.id ?? null,
+      brand_revision_id:ctx.brand.revisionId ?? null,
       prompt_version: agent.promptVersion,
       locale,
       ...(offer ? { offer_id: offer.id, offer_revision: offer.revision } : {}),
@@ -544,7 +555,6 @@ export async function runAgentForAction(
     // now bounded by what is actually left of the budget, and finalization
     // time is reserved so the terminal state is always recorded.
     // AGENT_RUN_BUDGET_MS already excludes the finalization reserve.
-    const deadline = Date.now() + AGENT_RUN_BUDGET_MS;
     for (let attempt = 0; attempt < MAX_AGENT_ATTEMPTS && !output; attempt += 1) {
       const remaining = deadline - Date.now();
       if (remaining < MIN_ATTEMPT_MS) {
@@ -553,20 +563,34 @@ export async function runAgentForAction(
         if (!reason) reason = "action_run_timeout";
         break;
       }
-      let result;
+      let outcome: LLMOutcome;
       try {
-        result = await llm(prompt, {
+        const options = {
           ...AGENT_LLM_OPTIONS,
           timeoutMs: Math.min(AGENT_LLM_OPTIONS.timeoutMs, remaining),
-        });
+        };
+        if (input.llm) {
+          const result = await input.llm(prompt, options);
+          outcome = result ? { ok: true, result } : { ok: false, code: "no_model_output", retryable: false };
+        } else outcome = await (input.llmDetailed ?? llmCompleteDetailed)(prompt, options);
       } catch {
-        // A transport rejection gets the same single, budget-bounded retry as a null/schema failure.
+        // A transport rejection can recover, but its unreported charge remains
+        // unknown even when the next completion reports both token counts.
+        usage = addUsage(usage, undefined, attempt === 0);
         reason = "action_run_failed";
         continue;
       }
-      usage = addUsage(usage, result?.usage);
-      output = parseAgentOutput(result?.text, agent.outputSchema);
-      if (output) reason = undefined;
+      usage = addUsage(usage, outcome.ok ? outcome.result.usage : outcome.usage, attempt === 0);
+      if (!outcome.ok) {
+        reason = outcome.code;
+        if (!outcome.retryable || attempt + 1 >= MAX_AGENT_ATTEMPTS) break;
+        const delay = (outcome.retryAfterSeconds ?? 0) * 1000;
+        if (delay + MIN_ATTEMPT_MS > deadline - Date.now()) break;
+        if (delay > 0) await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      output = parseAgentOutput(outcome.result.text, agent.outputSchema);
+      reason = output ? undefined : "invalid_output";
     }
     if (output)
       output = {
@@ -587,7 +611,7 @@ export async function runAgentForAction(
     usage,
     costUsd: computeCostUsd(usage),
     output,
-    ...(reason ? { error: FRIENDLY_ERROR[locale], reason } : {}),
+    ...(reason ? { error: runErrorLabel(locale, reason) === reason ? FRIENDLY_ERROR[locale] : runErrorLabel(locale, reason), reason } : {}),
     ...(offer ? { offerRevision: offer.revision } : {}),
     finishedAt: new Date(),
   });

@@ -229,7 +229,7 @@ export type NotificationPreferences = { notifyRescanComplete?: boolean; notifyRe
 export type MyMailPreferences = { rescanComplete?: boolean; regressionAlert?: boolean; locale: string };
 export type InviteMemberResult = { memberId: string };
 export type MemberPatch = { role?: "manager" | "viewer"; location_scope?: string[] | null };
-export type BrandInput = { voice: string; approved_claims: string[]; prohibited_terms: string[]; languages: string[]; facts: Record<string, string> };
+export type BrandInput = { voice: string; approved_claims: string[]; prohibited_terms: string[]; languages: string[]; facts: Record<string, string>;expectedRevisionId?:string|null };
 export type ConfirmInstagramHandleResult = { ok: true; handle: string };
 
 function patch<T>(url: string, body: unknown): Promise<ClientResult<T>> {
@@ -282,7 +282,7 @@ export function updateMember(workspaceId: string, memberId: string, body: Member
   return patch(`/api/workspaces/${encodeURIComponent(workspaceId)}/members/${encodeURIComponent(memberId)}`, body);
 }
 
-export function saveBrand(workspaceId: string, brand: BrandInput): Promise<ClientResult<{ ok: true }>> {
+export function saveBrand(workspaceId: string, brand: BrandInput): Promise<ClientResult<{brand:import('./brand').BrandProfile}>> {
   return request(`/api/workspaces/${encodeURIComponent(workspaceId)}/brand`, { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify(brand) });
 }
 

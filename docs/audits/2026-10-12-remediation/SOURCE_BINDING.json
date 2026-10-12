@@ -1,0 +1,39 @@
+{
+  "candidate_sha": "6ac091365fe5cf0aa9be1fd658b7a1ca72ce22f1",
+  "created_hk": "2026-10-12T05:41:34.3224081+08:00",
+  "runtime_git_objects": {
+    "app": "b20ea94fe429015a4b824c4307c67607a2efa47c",
+    "components": "82d81acb6f4dd3b8c0056dd2caad9f5612e8a060",
+    "lib": "0d3fb2d3f662f66cc02baf049e8bfa6edf83ae99",
+    "packages": "b838d2de511499bb09efda729188cddb918df2d1",
+    "scripts": "0ccb06d4d80535d6ef37c3e38cf557de2d1b0b9b",
+    "neon": "13903bc024ab8ad55158febf2bd04f7f26915a88",
+    "test": "5a14a150a0a82e3f5dc86e77b468b5a4d60a6362",
+    "tests": "aa5f55bca3a5c629fc0e4b94ac8d449de3224b33",
+    "e2e": "1212dd40703ff52ad39d4cb10e9a67c8cfd33a7a",
+    "package.json": "34fcc93fbccf0cd93d12dd8d6f6c77a6ea65f94b",
+    "pnpm-lock.yaml": "7e93cf18682920578a1ac92e9f5253880f71a29d",
+    "vercel.json": "01482016a07e7bdf514f5532515cefd1597957f6",
+    "next.config.ts": "da40300a33f94c2a74c0771e87070a87c8b6fb93",
+    "tsconfig.json": "2a37619500306d92fd197e0d38e81b92851b4836",
+    "vitest.config.ts": "70b74181d567adb7e50de86ad3ebba58e0631705",
+    "vitest.integration.config.ts": "2acdce1a33e0971d648e11e26ac63e1b07f0e036",
+    "playwright.config.ts": "5c8d772be0cb265c080c1548598ab2445a4846e0",
+    "playwright.acceptance.config.ts": "c910ab13f5e8135f602b99cdae20386a7df6e19d"
+  },
+  "evidence_tool_working_bytes_sha256": {
+    "docs/audits/2026-10-12-remediation/CAPTURE_LOCAL_WORKFLOW_RECEIPT.ts": "d0b2a501799780191ce791ccecbee8e56769aafcd99908517cd31a1f401a9f5c",
+    "docs/audits/2026-10-12-remediation/RUN_LOCAL_GATES.ps1": "eb4db2185ff714679b88653b081d90bac945ed67706f5832cf0b5dade75c8f2d",
+    "docs/audits/2026-10-12-remediation/UPDATE_SOURCE_BINDING.ps1": "2793e88cd03ce03b3360d4a7fe90f70d6745b2e4086eb13ff3de6bad96d1aa3b",
+    "docs/audits/2026-10-12-remediation/UPDATE_ACCEPTANCE_MATRIX.ps1": "de442c5d2652afde1dd351a14a1da06d7e655cda77ad2e9e52e0516113efba07",
+    "docs/audits/2026-10-12-remediation/UPDATE_TASK_STATUS.ps1": "24db96bfdf84faf2f23c4f3f5fc34a917105975aee8259fe5febf6ce8161948e"
+  },
+  "migration_working_bytes_sha256": {
+    "neon/migrations/0016_brand_revisions.sql": "65931eada54f740239d088e88f5581acf24b78195434b5d207d37fe81540751b",
+    "neon/migrations/0017_brand_profile_revision_capture.sql": "eeb6ba42d070103dc701a20d7cf5b0d7dded9be940ed2412b4786a84f1799996"
+  },
+  "neon_auth_sdk": "0.5.0-beta",
+  "node": "24.18.0",
+  "pnpm": "9.12.0",
+  "environment": "owned local fixtures; no hosted/paid calls"
+}

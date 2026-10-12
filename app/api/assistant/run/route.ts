@@ -4,6 +4,8 @@ import { AssistantAccessError, isDraftIntent, runLiveAssistant } from "@/lib/ass
 import { AiBudgetRefusal } from "@/lib/budgets/ai";
 import { logPauseRefusal, pauseState } from "@/lib/budgets/pause";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
+import { authorizationOrUnavailable } from "@/lib/security/authorization-boundary";
+import { ActionRunInFlightError } from "@/lib/repositories/artifacts";
 import { isLocale } from "@/lib/locale";
 import type { PrototypeLocale } from "@/lib/copy";
 import { isDemoQuestionId, type AssistantOrigin, type AssistantSurface, type DemoQuestionId } from "@/lib/pocket-assistant/contracts";
@@ -67,9 +69,10 @@ export async function POST(request: Request) {
   const ids = { locationId: optionalId(ctx?.locationId), snapshotId: optionalId(ctx?.snapshotId), actionId: optionalId(ctx?.actionId), versionId: optionalId(ctx?.versionId) };
   if (Object.values(ids).some((id) => id === null)) return json({ error: "invalid_context" }, 400);
 
-  const auth = isDraftIntent(intentId)
-    ? await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager" })
-    : await authorizeWorkspaceRequest({ id: workspaceId });
+  const auth = await authorizationOrUnavailable(() => isDraftIntent(intentId)
+    ? authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager" })
+    : authorizeWorkspaceRequest({ id: workspaceId }));
+  if (!auth) return json({ error: "unavailable" }, 503);
   if (!auth.ok) return json({ error: auth.code }, auth.status);
 
   // P3.5d: checked ahead of the limiter, so a paused draft request never
@@ -122,6 +125,7 @@ export async function POST(request: Request) {
 
     return json(result);
   } catch (error) {
+    if (error instanceof ActionRunInFlightError) return json({error:"run_in_progress"},409);
     if (error instanceof AssistantAccessError) return json({ error: error.code }, error.status);
     // Already logged as "[budget] refused" (or "[budget] check_failed"); nothing reached the model.
     if (error instanceof AiBudgetRefusal) return json({ error: error.code }, error.code === "ai_paused" ? 503 : 429);

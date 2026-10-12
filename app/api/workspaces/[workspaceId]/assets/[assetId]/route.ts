@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
+import {authorizationOrUnavailable} from '@/lib/security/authorization-boundary';
 import { isLocale } from "@/lib/locale";
 import { getAsset, updateAssetRights } from "@/lib/workspace/assets";
 import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
@@ -20,7 +21,7 @@ const bodySchema = z.object({
 });
 
 function bad(error: string, status = 400): Response {
-  return NextResponse.json({ error }, { status });
+  return NextResponse.json({ error }, { status,headers:{'Cache-Control':'no-store'} });
 }
 
 export async function PATCH(req: Request, context: { params: Promise<{ workspaceId: string; assetId: string }> }) {
@@ -39,14 +40,17 @@ export async function PATCH(req: Request, context: { params: Promise<{ workspace
   const locale = body.locale && isLocale(body.locale) ? body.locale : null;
 
   // Membership first (401/404), then the asset's own location for the scope check.
-  const member = await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager" });
+  const member = await authorizationOrUnavailable(()=>authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager" }));
+  if(!member)return bad('unavailable',503);
   if (!member.ok) return bad(member.code, member.status);
 
   try {
     const asset = await getAsset(workspaceId, assetId);
     if (!asset) return bad("not_found", 404);
     if (asset.location_id) {
-      const scoped = await authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager", locationId: asset.location_id });
+      const locationId=asset.location_id;
+      const scoped = await authorizationOrUnavailable(()=>authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager", locationId }));
+      if(!scoped)return bad('unavailable',503);
       if (!scoped.ok) return bad(scoped.code, scoped.status);
     }
     const updated = await updateAssetRights({
@@ -69,7 +73,8 @@ export async function PATCH(req: Request, context: { params: Promise<{ workspace
       payload: { rights_status: updated.rights_status, filename: updated.filename },
     });
     return NextResponse.json({ ok: true, rights_status: updated.rights_status, rights_confirmed_at: updated.rights_confirmed_at });
-  } catch {
+  } catch (error) {
+    if(error instanceof TypeError)throw error;
     console.error("[api/workspaces/assets] rights update failed", { category: "asset_rights_update_failed" });
     return bad("unavailable", 503);
   }

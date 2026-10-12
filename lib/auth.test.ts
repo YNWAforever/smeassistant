@@ -279,7 +279,7 @@ describe("requireMembership", () => {
 
   it("throws rather than denying on a database error", async () => {
     state.membershipError = { message: "db down" };
-    await expect(requireMembership("kam-man-house", "zh-HK")).rejects.toThrow("Unable to load membership");
+    await expect(requireMembership("kam-man-house", "zh-HK")).rejects.toThrow("membership_dependency_unavailable");
   });
 });
 

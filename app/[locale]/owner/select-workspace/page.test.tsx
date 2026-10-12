@@ -6,7 +6,7 @@ vi.mock("@/lib/auth", () => ({ requireUser: mocks.user }));
 vi.mock("@/lib/workspace/queries", () => ({ listWorkspaceCards: mocks.cards }));
 vi.mock("@/lib/repositories/access-requests", () => ({ accessRequestRepository: () => ({ latestForUser: mocks.latest }) }));
 vi.mock("@/lib/oauth/claim-flow-flag", () => ({ claimViaOAuthEnabled: () => false }));
-vi.mock("../actions", () => ({ signOutAction: vi.fn() }));
+vi.mock("../actions", () => ({ signOutAction: vi.fn(),switchAccountAction:vi.fn() }));
 vi.mock("@/components/select-workspace-page", () => ({ SelectWorkspacePage: () => null }));
 import Page from "./page";
 

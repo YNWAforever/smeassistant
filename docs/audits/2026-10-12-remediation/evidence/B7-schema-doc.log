@@ -1,0 +1,5 @@
+
+> sme-scanner-visibility-workspace@0.1.0 db:missing-columns-sql C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-remediation-20261012
+> tsx scripts/neon/missing-columns-sql.ts
+
+wrote docs/operations/check-missing-columns.sql

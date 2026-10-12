@@ -1,0 +1,44 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test:integration C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-remediation-20261012
+> vitest run --config vitest.integration.config.ts "test/integration/neon-artifact-runtime.integration.test.ts"
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ test/integration/neon-artifact-runtime.integration.test.ts (31 tests | 2 failed) 11652ms
+     × T01: concurrent assistant drafts reserve one SQL run before one model call 523ms
+     × T01: revoked fence refuses a late assistant settlement 53ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/integration/neon-artifact-runtime.integration.test.ts > Neon actual artifact runtime and routes > T01: concurrent assistant drafts reserve one SQL run before one model call
+AssertionError: expected 'run_in_progress' to be 'action_run_in_flight' // Object.is equality
+
+Expected: "action_run_in_flight"
+Received: "run_in_progress"
+
+ ❯ test/integration/neon-artifact-runtime.integration.test.ts:174:33
+    172|       await vi.waitFor(()=>expect(llm).toHaveBeenCalledTimes(1));
+    173|       const competing=await run().catch(error=>error);
+    174|       expect(competing.message).toBe('action_run_in_flight');
+       |                                 ^
+    175|       release();
+    176|       const results=await outcomes;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/integration/neon-artifact-runtime.integration.test.ts > Neon actual artifact runtime and routes > T01: revoked fence refuses a late assistant settlement
+error: owner_removal_forbidden
+ ❯ node_modules/.pnpm/pg-pool@3.14.0_pg@8.23.0/node_modules/pg-pool/index.js:45:11
+ ❯ test/integration/neon-artifact-runtime.integration.test.ts:195:12
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 29 passed (31)
+   Start at  03:16:07
+   Duration  20.78s (transform 1.42s, setup 39ms, import 1.61s, tests 11.65s, environment 0ms)
+
+ ELIFECYCLE  Command failed with exit code 1.

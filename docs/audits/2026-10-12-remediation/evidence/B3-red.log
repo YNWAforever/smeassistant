@@ -1,0 +1,88 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+stdout | tests/maintenance-audit-maintenance-counterexamples.test.tsx > keeps a stored owner objective Recommended after revisiting Create
+AUDIT owner-objective fact stack ObservedPromote our lunch menu · TodayRecommendedDrafts follow your brand voice and each review's content, ready for one review pass.
+
+stdout | tests/maintenance-audit-maintenance-counterexamples.test.tsx > keeps a stored owner objective Recommended after revisiting Create
+AUDIT owner-objective fact stack ObservedPromote our lunch menu · TodayRecommendedDrafts follow your brand voice and each review's content, ready for one review pass.
+
+stdout | tests/maintenance-audit-maintenance-counterexamples.test.tsx > includes an evidence-backed FAQ goal beyond the first 25 multi-location actions
+AUDIT recommended goal cards [ 'Reply to unanswered Google reviews' ]
+
+stdout | tests/maintenance-audit-maintenance-counterexamples.test.tsx > includes an evidence-backed FAQ goal beyond the first 25 multi-location actions
+AUDIT recommended goal cards [ 'Reply to unanswered Google reviews' ]
+
+stdout | tests/maintenance-audit-maintenance-counterexamples.test.tsx > keeps the secondary shop selected when opening its cadence Insights link
+AUDIT secondary-shop insights href /en/owner/audit/insights
+
+stdout | tests/maintenance-audit-maintenance-counterexamples.test.tsx > keeps the secondary shop selected when opening its cadence Insights link
+AUDIT secondary-shop insights href /en/owner/audit/insights
+
+ ❯ tests/maintenance-audit-maintenance-counterexamples.test.tsx (3 tests | 3 failed) 136ms
+   × keeps a stored owner objective Recommended after revisiting Create 86ms (retry x1)
+   × includes an evidence-backed FAQ goal beyond the first 25 multi-location actions 40ms (retry x1)
+   × keeps the secondary shop selected when opening its cadence Insights link 9ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/maintenance-audit-maintenance-counterexamples.test.tsx > keeps a stored owner objective Recommended after revisiting Create
+ FAIL  tests/maintenance-audit-maintenance-counterexamples.test.tsx > keeps a stored owner objective Recommended after revisiting Create
+AssertionError: expected 'ObservedPromote our lunch menu · Toda…' not to contain 'Observed'
+
+Expected: "Observed"
+Received: "ObservedPromote our lunch menu · TodayRecommendedDrafts follow your brand voice and each review's content, ready for one review pass."
+
+ ❯ tests/maintenance-audit-maintenance-counterexamples.test.tsx:30:24
+     28|   const evidence = root.querySelector(".fact-stack")?.textContent;
+     29|   console.info("AUDIT owner-objective fact stack", evidence);
+     30|   expect(evidence).not.toContain("Observed");
+       |                        ^
+     31| });
+     32|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  tests/maintenance-audit-maintenance-counterexamples.test.tsx > includes an evidence-backed FAQ goal beyond the first 25 multi-location actions
+ FAIL  tests/maintenance-audit-maintenance-counterexamples.test.tsx > includes an evidence-backed FAQ goal beyond the first 25 multi-location actions
+AssertionError: expected 1 to be 2 // Object.is equality
+
+- Expected
++ Received
+
+- 2
++ 1
+
+ ❯ tests/maintenance-audit-maintenance-counterexamples.test.tsx:44:54
+     42|   console.info("AUDIT recommended goal cards", Array.from(root.querySe…
+     43|   // The recommended tab must include the existing FAQ action, regardl…
+     44|   expect(root.querySelectorAll(".goal-card").length).toBe(2);
+       |                                                      ^
+     45| });
+     46|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  tests/maintenance-audit-maintenance-counterexamples.test.tsx > keeps the secondary shop selected when opening its cadence Insights link
+ FAIL  tests/maintenance-audit-maintenance-counterexamples.test.tsx > keeps the secondary shop selected when opening its cadence Insights link
+AssertionError: expected '/en/owner/audit/insights' to be '/en/owner/audit/insights?location=sec…' // Object.is equality
+
+Expected: "/en/owner/audit/insights?location=secondary"
+Received: "/en/owner/audit/insights"
+
+ ❯ tests/maintenance-audit-maintenance-counterexamples.test.tsx:52:16
+     50|   const href = root.querySelector(".calendar-list a")?.getAttribute("h…
+     51|   console.info("AUDIT secondary-shop insights href", href);
+     52|   expect(href).toBe("/en/owner/audit/insights?location=secondary");
+       |                ^
+     53| });
+     54|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  03:20:25
+   Duration  2.94s (transform 517ms, setup 260ms, import 1.83s, tests 136ms, environment 526ms)
+

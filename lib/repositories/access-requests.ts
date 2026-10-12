@@ -138,6 +138,20 @@ export function accessRequestRepository(client?: Pick<Pool, "query">) {
       if (!request) return null;
       return { request, events: await eventsFor(request.id) };
     },
+
+    /** Onboarding status belongs to this verified user AND this resolved report. */
+    async latestForUserAndReport(userId: string, shareSlug: string): Promise<{ request: AccessRequestRow; events: AccessRequestEvent[] } | null> {
+      const request = (await db().query<AccessRequestRow>(
+        `SELECT ${SELECT_COLUMNS}
+         FROM workspace_access_requests r
+         JOIN audit_jobs j ON j.id = r.job_id
+         LEFT JOIN app_users u ON u.id = r.user_id
+         WHERE r.user_id = $1 AND j.share_slug = $2
+         ORDER BY r.requested_at DESC, r.id DESC
+         LIMIT 1`, [userId, shareSlug],
+      )).rows[0];
+      return request ? { request, events: await eventsFor(request.id) } : null;
+    },
   };
 }
 

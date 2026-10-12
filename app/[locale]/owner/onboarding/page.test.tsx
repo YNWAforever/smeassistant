@@ -4,7 +4,7 @@ vi.mock("@/lib/auth",()=>({requireUser:mocks.user}));
 vi.mock("@/lib/repositories/membership",()=>({membershipRepository:{accepted:mocks.membership}}));
 vi.mock("@/lib/repositories/claims",()=>({claimsRepository:{jobBySlug:mocks.job,hasActiveGoogleConnection:mocks.connection}}));
 vi.mock("@/components/onboarding-page",()=>({OnboardingPage:()=>null}));
-vi.mock("@/lib/repositories/access-requests",()=>({accessRequestRepository:()=>({latestForUser:async()=>null})}));
+vi.mock("@/lib/repositories/access-requests",()=>({accessRequestRepository:()=>({latestForUserAndReport:async()=>null})}));
 vi.mock("@/lib/repositories/workspace-read",()=>({workspaceReadRepository:()=>({workspaces:async()=>[],locations:async()=>[]})}));
 vi.mock("@/lib/repositories/brand",()=>({brandRepository:()=>({get:async()=>null})}));
 import Page from "./page";

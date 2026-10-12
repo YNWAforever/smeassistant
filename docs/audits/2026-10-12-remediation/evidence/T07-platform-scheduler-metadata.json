@@ -1,0 +1,13 @@
+{
+  "id": "prj_Hbox4o4NhM3p0yxRxmY8Xq1mjtb5",
+  "name": "smeassistant",
+  "crons": {
+    "enabledAt": 1788441875460,
+    "disabledAt": null,
+    "updatedAt": 1791719633855,
+    "deploymentId": "dpl_4H8u4jXti2KHdT2HAVGCEYm1SMmz",
+    "definitions": []
+  },
+  "framework": "nextjs",
+  "functionRuntime": "24.x"
+}

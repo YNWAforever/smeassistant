@@ -21,6 +21,8 @@ export interface BrandProfile {
   languages: BrandLanguage[];
   facts: Record<string, string>;
   updatedAt: string | null;
+  revisionId?:string|null;
+  revisions?:Array<{id:string;createdAt:string;source:string;actorId:string|null;profile:BrandInput|null}>;
 }
 
 export interface BrandInput {
@@ -29,6 +31,7 @@ export interface BrandInput {
   prohibited_terms: string[];
   languages: BrandLanguage[];
   facts: Record<string, string>;
+  expectedRevisionId?:string|null;
 }
 
 export type BrandParse = { ok: true; brand: BrandInput } | { ok: false; error: string };
@@ -41,6 +44,7 @@ export interface BrandRow {
   languages: string[] | null;
   facts: unknown;
   updated_at: string | null;
+  current_revision_id?:string|null;
 }
 
 const MAX_LIST_ITEMS = 50;
@@ -129,12 +133,16 @@ function rowToBrand(row: BrandRow): BrandProfile {
     languages: Array.isArray(row.languages) ? (row.languages.filter((l): l is BrandLanguage => LANGUAGE_SET.has(l)) as BrandLanguage[]) : ["zh-HK"],
     facts,
     updatedAt: row.updated_at,
+    revisionId:row.current_revision_id ?? null,
   };
 }
 
 export async function getBrand(workspaceId: string): Promise<BrandProfile> {
-  const data = await brandRepository().get(workspaceId);
-  return data ? rowToBrand(data) : defaultBrand(workspaceId);
+  const repo=brandRepository();
+  const data = await repo.get(workspaceId);
+  if(!data)return defaultBrand(workspaceId);
+  const history=data.current_revision_id?await repo.history(workspaceId):[];
+  return {...rowToBrand(data),revisions:history.map(r=>{const parsed=parseBrandBody(r.profile);return {id:r.id,createdAt:r.created_at,source:r.source,actorId:r.actor_id,profile:parsed.ok?parsed.brand:null}})};
 }
 
 export interface PutBrandInput {
@@ -144,11 +152,11 @@ export interface PutBrandInput {
   locale?: string | null;
   ipHash?: string | null;
   now?: Date;
+  expectedRevisionId?:string|null;
 }
 
 export async function putBrand(input: PutBrandInput): Promise<BrandProfile> {
-  const now = (input.now ?? new Date()).toISOString();
-  const data = await brandRepository().put({ workspace_id: input.workspaceId, ...input.brand, updated_at: now });
+  const {profile:data,revisionId}=await brandRepository().saveBrandRevision({workspaceId:input.workspaceId,actorId:input.actorId,profile:{...input.brand},expectedRevisionId:input.expectedRevisionId ?? null});
 
   await recordNeonEvent({
     workspaceId: input.workspaceId,
@@ -160,6 +168,7 @@ export async function putBrand(input: PutBrandInput): Promise<BrandProfile> {
     locale: input.locale ?? null,
     ipHash: input.ipHash ?? null,
     payload: {
+      revision_id:revisionId,
       voice: input.brand.voice,
       languages: input.brand.languages,
       approved_claims: input.brand.approved_claims.length,

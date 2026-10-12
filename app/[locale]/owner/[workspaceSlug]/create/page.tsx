@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { CreateView } from "@/components/workspace/create-view";
 import { resolveText } from "@/lib/domain";
 import { inScopeFor, loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
-import { listActions } from "@/lib/workspace/queries-pages";
+import { listCreateRecommendationSummaries } from "@/lib/workspace/queries-pages";
 
 export const dynamic = "force-dynamic";
 
@@ -20,12 +20,14 @@ export async function generateMetadata(props: OwnerPageProps): Promise<Metadata>
 export default async function CreateRoute(props: OwnerPageProps) {
   const page = await loadOwnerPage(props);
   const location = page.locationSlug === "all" ? null : page.ctx.locations.find((l) => l.slug === page.locationSlug) ?? null;
-  const { actions } = await listActions(page.ctx, { location: page.locationSlug, view: "all" });
+  const actions = await listCreateRecommendationSummaries(page.ctx,page.locationSlug);
   const openActions = actions.map((action) => ({
     id: action.id,
     templateKey: action.templateKey,
     evidence: resolveText(action.evidence.detail, page.locale),
     freshness: resolveText(action.evidence.freshness, page.locale),
+    factType:action.evidence.factType,
+    source:action.evidence.source,
   }));
   return (
     <CreateView

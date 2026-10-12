@@ -1,0 +1,57 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test:integration C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-remediation-20261012
+> vitest run --config vitest.integration.config.ts "test/integration/neon-artifact-runtime.integration.test.ts" "test/integration/neon-assistant-live.integration.test.ts"
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ test/integration/neon-artifact-runtime.integration.test.ts (31 tests | 1 failed) 13008ms
+     × T01: revoked fence refuses a late assistant settlement 81ms
+ ❯ test/integration/neon-assistant-live.integration.test.ts (38 tests | 2 failed) 10625ms
+     × records a draft whose model returned nothing as a failed run with a null cost, never a guessed zero 90ms
+     × preserves drafting with a pinned diff but legitimately missing base snapshot 105ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/integration/neon-artifact-runtime.integration.test.ts > Neon actual artifact runtime and routes > T01: revoked fence refuses a late assistant settlement
+error: duplicate key value violates unique constraint "workspace_members_one_owner_idx"
+ ❯ node_modules/.pnpm/pg-pool@3.14.0_pg@8.23.0/node_modules/pg-pool/index.js:45:11
+ ❯ test/integration/neon-artifact-runtime.integration.test.ts:197:9
+    195|       else {
+    196|         const replacement=(await runtime.query("INSERT INTO app_users(…
+    197|         await runtime.query("INSERT INTO workspace_members(workspace_i…
+       |         ^
+    198|         await runtime.query('DELETE FROM workspace_members WHERE works…
+    199|       }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/integration/neon-assistant-live.integration.test.ts > Neon live assistant authority > records a draft whose model returned nothing as a failed run with a null cost, never a guessed zero
+AssertionError: expected [ 'AI drafting unavailable', …(1) ] to include 'AI drafting unavailable right now'
+ ❯ test/integration/neon-assistant-live.integration.test.ts:89:65
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/integration/neon-assistant-live.integration.test.ts > Neon live assistant authority > preserves drafting with a pinned diff but legitimately missing base snapshot
+AssertionError: expected [ Array(1) ] to have a length of +0 but got 1
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ noWrites test/integration/neon-assistant-live.integration.test.ts:41:232
+
+ ❯ test/integration/neon-assistant-live.integration.test.ts:193:88
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  3 failed | 66 passed (69)
+   Start at  03:19:18
+   Duration  36.89s (transform 1.61s, setup 49ms, import 3.14s, tests 23.63s, environment 0ms)
+
+ ELIFECYCLE  Command failed with exit code 1.

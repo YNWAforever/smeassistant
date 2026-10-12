@@ -1,0 +1,12 @@
+{
+  "observed_utc": "2026-10-11T21:37:13Z",
+  "main_sha": "ca9ecb34138aa3e0f3f330e5c03727ce4c4a9746",
+  "production_sha": "301be115702c313bdf0a3cfa984518a00b6d98da",
+  "deployment_id": "dpl_4H8u4jXti2KHdT2HAVGCEYm1SMmz",
+  "state": "READY",
+  "alias": "smeassistant.vercel.app",
+  "verified_candidate_source_sha": "6ac091365fe5cf0aa9be1fd658b7a1ca72ce22f1",
+  "source": "read-only git ls-remote and Vercel deployment metadata; runtime configuration not verified",
+  "candidate_deployed": false,
+  "external_mutations": 0
+}

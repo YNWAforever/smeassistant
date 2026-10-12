@@ -10,7 +10,7 @@ export const deferredTriggers: string[] = [];
 // replay-compare against. verifyCatalog excludes these from the legacy deepEqual and
 // instead asserts their bare presence; their actual behavior is proven by dedicated tests
 // (e.g. test/integration/neon-membership.integration.test.ts for prevent_owner_removal).
-export const additionalFunctions: string[] = ["prevent_owner_removal","offer_is_expired","confirm_offer","archive_offer","offer_current_for_version","claim_preview_slot","finish_preview_slot","begin_publish_output_version","finish_publish_output_version","cancel_published_reply"];
+export const additionalFunctions: string[] = ["prevent_owner_removal","offer_is_expired","confirm_offer","archive_offer","offer_current_for_version","claim_preview_slot","finish_preview_slot","begin_publish_output_version","finish_publish_output_version","cancel_published_reply","guard_brand_revision_immutable","save_brand_revision","capture_brand_profile_revision","brand_snapshot_for_generation"];
 // Retained legacy functions that a later migration re-created on purpose (0011 adds one
 // offer-freshness guard line to each; 0014 re-creates export_output_version again with the
 // once-per-version counting changes). verifyCatalog drops them from the legacy deepEqual and
@@ -18,7 +18,7 @@ export const additionalFunctions: string[] = ["prevent_owner_removal","offer_is_
 // one line, and lib/workspace/publish-sql.test.ts pins the 0014 export as 0011 plus changes (a)-(c).
 // They stay in retainedFunctions, so neon:readiness still requires them.
 export const changedFunctions: string[] = ["approve_output_version","export_output_version"];
-export const additionalTriggers: string[] = ["workspace_members_prevent_owner_removal"];
+export const additionalTriggers: string[] = ["workspace_members_prevent_owner_removal","brand_revision_immutable","brand_profile_revision_capture"];
 // Exact PostgreSQL definitions added by 0015; the independently retained legacy catalog stays unchanged.
 export const additionalIndexes = [
   { tablename: "action_runs", indexname: "action_runs_latest_metadata_idx", indexdef: "CREATE INDEX action_runs_latest_metadata_idx ON public.action_runs USING btree (workspace_id, action_id, created_at DESC, id DESC) INCLUDE (state)" },
@@ -86,14 +86,32 @@ export async function verifyCatalog(pool: Pool) {
   for (const [name, query] of Object.entries(catalogQueries)) actual[name] = (await pool.query(query)).rows;
   const identity = new Set(["app_users", "auth_identities"]);
   const business = (rows: Row[]) => rows.filter(row => !identity.has(String(row.table_name ?? row.tablename ?? row.name)));
-  assert.deepEqual(business(actual.tables), legacy.tables, "business tables and RLS");
+  const legacyBusiness = (rows: Row[]) => business(rows).filter(row => (row.table_name ?? row.tablename ?? row.name) !== "brand_revisions");
+  assert.deepEqual(legacyBusiness(actual.tables), legacy.tables, "retained business tables and RLS");
+  assert.deepEqual(actual.tables.find(row=>row.name==='brand_revisions'),{name:'brand_revisions',rls:true},'immutable brand table and RLS');
   // Dropped legacy columns leave ordinal gaps; compare surviving order, not physical attnum.
   const columns = (rows: Row[]) => rows.map(row => Object.fromEntries(Object.entries(row).filter(([key]) => key !== "ordinal_position")));
-  assert.deepEqual(columns(business(actual.columns)), columns(legacy.columns), "all business columns/types/nullability/defaults");
+  assert.deepEqual(columns(legacyBusiness(actual.columns).filter(row=>!(row.table_name==='brand_profiles' && row.column_name==='current_revision_id'))), columns(legacy.columns), "all business columns/types/nullability/defaults");
+  const revisionColumns=columns(actual.columns.filter(row=>row.table_name==='brand_revisions' || (row.table_name==='brand_profiles' && row.column_name==='current_revision_id')));
+  const column=(table_name:string,column_name:string,data_type:string,udt_name:string,is_nullable:string,column_default:string|null)=>({table_name,column_name,data_type,udt_name,is_nullable,column_default});
+  assert.deepEqual(revisionColumns,[column('brand_profiles','current_revision_id','uuid','uuid','YES',null),column('brand_revisions','id','uuid','uuid','NO','gen_random_uuid()'),column('brand_revisions','workspace_id','uuid','uuid','NO',null),column('brand_revisions','profile','jsonb','jsonb','NO',null),column('brand_revisions','actor_id','uuid','uuid','YES',null),column('brand_revisions','created_at','timestamp with time zone','timestamptz','NO','now()'),column('brand_revisions','source','text','text','NO',null)],'exact revision columns');
   const notNullConstraints = await validateNotNullCatalog(pool, actual.constraints.filter(row => row.type === "n").length);
   const comparableConstraints = business(actual.constraints).filter(row => row.type !== "n");
-  assert.deepEqual(comparableConstraints, legacy.constraints.map(row => ({...row, definition:String(row.definition).replaceAll("auth.users", "app_users")})), "constraints and deletion semantics");
-  assert.deepEqual(business(actual.indexes).filter(row => !additionalIndexes.some(index => index.indexname === row.indexname)), legacy.indexes, "all retained indexes and predicates");
+  assert.deepEqual(legacyBusiness(comparableConstraints).filter(row=>row.name!=='brand_profiles_current_revision_fkey'), legacy.constraints.map(row => ({...row, definition:String(row.definition).replaceAll("auth.users", "app_users")})), "constraints and deletion semantics");
+  const constraint=(table_name:string,name:string,type:string,definition:string)=>({table_name,name,type,definition});
+  assert.deepEqual(comparableConstraints.filter(row=>row.table_name==='brand_revisions' || row.name==='brand_profiles_current_revision_fkey'),[
+   constraint('brand_profiles','brand_profiles_current_revision_fkey','f','FOREIGN KEY (workspace_id, current_revision_id) REFERENCES brand_revisions(workspace_id, id)'),
+   constraint('brand_revisions','brand_revisions_actor_id_fkey','f','FOREIGN KEY (actor_id) REFERENCES app_users(id)'),
+   constraint('brand_revisions','brand_revisions_pkey','p','PRIMARY KEY (id)'),
+   constraint('brand_revisions','brand_revisions_profile_check','c',"CHECK ((jsonb_typeof(profile) = 'object'::text))"),
+   constraint('brand_revisions','brand_revisions_source_check','c',"CHECK ((source = ANY (ARRAY['baseline'::text, 'save'::text])))"),
+   constraint('brand_revisions','brand_revisions_workspace_id_fkey','f','FOREIGN KEY (workspace_id) REFERENCES workspaces(id)'),
+   constraint('brand_revisions','brand_revisions_workspace_id_id_key','u','UNIQUE (workspace_id, id)')],'exact revision constraints and non-destructive deletion semantics');
+  assert.deepEqual(legacyBusiness(actual.indexes).filter(row => !additionalIndexes.some(index => index.indexname === row.indexname)), legacy.indexes, "all retained indexes and predicates");
+  assert.deepEqual(actual.indexes.filter(row=>row.tablename==='brand_revisions'),[
+   {tablename:'brand_revisions',indexname:'brand_revisions_history_idx',indexdef:'CREATE INDEX brand_revisions_history_idx ON public.brand_revisions USING btree (workspace_id, created_at DESC, id DESC)'},
+   {tablename:'brand_revisions',indexname:'brand_revisions_pkey',indexdef:'CREATE UNIQUE INDEX brand_revisions_pkey ON public.brand_revisions USING btree (id)'},
+   {tablename:'brand_revisions',indexname:'brand_revisions_workspace_id_id_key',indexdef:'CREATE UNIQUE INDEX brand_revisions_workspace_id_id_key ON public.brand_revisions USING btree (workspace_id, id)'}],'exact revision indexes');
   for (const index of additionalIndexes) assert.deepEqual(actual.indexes.find(row => row.indexname === index.indexname), index, `additional index ${index.indexname} definition`);
   const isAdditionalTrigger = (row: Row) => additionalTriggers.includes(String(row.name));
   const isAdditionalFunction = (row: Row) => additionalFunctions.includes(String(row.name)) || changedFunctions.includes(String(row.name));
@@ -105,8 +123,13 @@ export async function verifyCatalog(pool: Pool) {
   for (const name of changedFunctions) assert.ok(actual.functions.some(row => row.name === name), `changed function ${name} present`);
   assert.deepEqual(actual.enums, legacy.enums, "enum catalog");
   const policy = (await pool.query("SELECT tablename,roles::text[] AS roles,cmd,qual,with_check FROM pg_policies WHERE schemaname='public' ORDER BY tablename")).rows;
-  assert.equal(policy.length, legacy.tables.length + 2);
-  for (const row of policy) assert.deepEqual({...row, tablename:undefined}, {tablename:undefined,roles:["sme_app_runtime"],cmd:"ALL",qual:"true",with_check:"true"});
+  assert.equal(policy.length, legacy.tables.length + 4);
+  for (const row of policy.filter(row=>row.tablename!=='brand_revisions')) assert.deepEqual({...row, tablename:undefined}, {tablename:undefined,roles:["sme_app_runtime"],cmd:"ALL",qual:"true",with_check:"true"});
+  assert.deepEqual(policy.filter(row=>row.tablename==='brand_revisions').sort((a,b)=>String(a.cmd).localeCompare(String(b.cmd))),[
+   {tablename:'brand_revisions',roles:['sme_app_runtime'],cmd:'INSERT',qual:null,with_check:'true'},
+   {tablename:'brand_revisions',roles:['sme_app_runtime'],cmd:'SELECT',qual:'true',with_check:null}],'append-only revision policies');
+  const revisionGrants=await pool.query("SELECT privilege_type FROM information_schema.role_table_grants WHERE grantee='sme_app_runtime' AND table_schema='public' AND table_name='brand_revisions' ORDER BY privilege_type");
+  assert.deepEqual(revisionGrants.rows,[{privilege_type:'INSERT'},{privilege_type:'SELECT'}],'runtime cannot mutate saved revisions');
   const invalidGrants = await pool.query(`SELECT table_name,privilege_type FROM information_schema.role_table_grants WHERE grantee='sme_app_runtime' AND (table_schema <> 'public' OR privilege_type NOT IN ('SELECT','INSERT','UPDATE','DELETE'))`);
   assert.equal(invalidGrants.rowCount, 0, "runtime only has DML table grants");
   const functionsPublic = await pool.query(`SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace CROSS JOIN LATERAL aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a WHERE n.nspname='public' AND a.grantee=0 AND a.privilege_type='EXECUTE'`);

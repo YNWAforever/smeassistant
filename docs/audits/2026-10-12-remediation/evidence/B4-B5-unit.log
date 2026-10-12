@@ -1,0 +1,44 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-remediation-20261012
+
+ ❯ lib/workspace/brand.test.ts (6 tests | 1 failed) 18ms
+     × shapes a stored row and drops unknown values 11ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/workspace/brand.test.ts > getBrand > shapes a stored row and drops unknown values
+ FAIL  lib/workspace/brand.test.ts > getBrand > shapes a stored row and drops unknown values
+AssertionError: expected { workspaceId: 'ws-1', …(8) } to deeply equal { workspaceId: 'ws-1', …(6) }
+
+- Expected
++ Received
+
+@@ -7,9 +7,11 @@
+    },
+    "languages": [
+      "en",
+    ],
+    "prohibitedTerms": [],
++   "revisionId": null,
++   "revisions": [],
+    "updatedAt": "2026-09-04T00:00:00Z",
+    "voice": "direct",
+    "workspaceId": "ws-1",
+  }
+
+ ❯ lib/workspace/brand.test.ts:62:36
+     60|   it("shapes a stored row and drops unknown values", async () => {
+     61|     state.row = { workspace_id: "ws-1", voice: "direct", approved_clai…
+     62|     expect(await getBrand("ws-1")).toEqual({
+       |                                    ^
+     63|       workspaceId: "ws-1",
+     64|       voice: "direct",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed | 6 passed (7)
+      Tests  1 failed | 74 passed (75)
+   Start at  03:33:30
+   Duration  16.52s (transform 2.68s, setup 2.43s, import 10.49s, tests 1.64s, environment 18.43s)
+

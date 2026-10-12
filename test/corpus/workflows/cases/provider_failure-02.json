@@ -7,7 +7,7 @@
   "category": "provider_failure",
   "workflow": "gbp-post",
   "cannedOutputs": [
-    null,
+    {"throws":"network_error"},
     "{\"title\":\"Draft\",\"body\":\"Fresh bakes are out of the oven this morning. Drop by and say hello.\",\"acceptance_criteria\":[\"Owner checks the facts\"],\"warnings\":[],\"facts_used\":[],\"facts_needed\":[]}"
   ],
   "expect": {

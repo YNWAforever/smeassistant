@@ -7,6 +7,7 @@ import { interpolate } from "@/lib/share";
 import styles from "./dashboard.module.css";
 import { ScanComparisonPanel } from "./scan-comparison";
 import { comparisonCopy } from "@/lib/report/comparison/copy";
+import {reportTaxonomyLabel} from '@/lib/report/taxonomy';
 
 export function DashboardSummary({ report }: { report: ReportProps }) {
   const c = copy[report.locale].funnel.report;
@@ -16,7 +17,7 @@ export function DashboardSummary({ report }: { report: ReportProps }) {
   const failed = report.status === "failed";
   const measured = report.modules.filter(module => module.state === "measured").length;
   const accessNote = report.sample ? c.sampleNote : report.access === "member" ? c.memberNote : ["viewer", "staff"].includes(report.access) ? c.viewerNote : null;
-  const subtitle = report.subtitle ?? [report.market === "tw" ? c.marketTW : c.marketHK, report.district, report.industry].filter(Boolean).join(" · ");
+  const subtitle = report.subtitle ?? [report.market === "tw" ? c.marketTW : c.marketHK,reportTaxonomyLabel(report.district,'district',report.market,report.locale),reportTaxonomyLabel(report.industry,'industry',report.market,report.locale)].filter(Boolean).join(" · ");
   const title = failed ? c.failedTitle : score == null ? c.withheldTitle : comparison.kind === "comparable" ? comparison.title : comparison.kind === "incomparable" ? c.comparisonLabel : comparison.kind === "not_evaluated" ? comparisonC.currentReportTitle : c.firstScanTitle;
   const body = failed ? c.failedBody : score == null ? c.withheldBody : comparison.kind === "comparable" ? comparison.body : comparison.kind === "incomparable" ? comparison.reason : comparison.kind === "not_evaluated" ? comparisonC.currentReportBody : c.firstScanBody;
   const scanDate = report.scannedAt && !Number.isNaN(Date.parse(report.scannedAt)) ? report.scannedAt : null;
