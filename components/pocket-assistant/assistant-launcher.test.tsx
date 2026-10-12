@@ -31,6 +31,11 @@ describe("lazy Visibility Operator launcher", () => {
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 
+  it("keeps an accessible name when a bar hides the label text", () => {
+    render(<Launcher locale="zh-HK" surface="home" triggerLabel="問增長助理" />);
+    expect(screen.getByRole("button", { name: "問增長助理" })).toHaveAttribute("aria-label", "問增長助理");
+  });
+
   it("does nothing while disabled", async () => {
     render(<Launcher locale="en" surface="sample" disabled />);
     fireEvent.click(screen.getByRole("button", { name: "Ask Visibility Operator" }));

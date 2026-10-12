@@ -49,10 +49,12 @@ export function ContextualAssistant(props: AssistantProps) {
   }
 
   if (props.trigger) return <Slot.Root {...handlers}>{props.trigger}</Slot.Root>
+  const label = props.triggerLabel ?? (isChinese ? "問隨身增長助理" : "Ask Visibility Operator")
+  // aria-label: the workspace top bar hides the text on phones and shows the icon only.
   return (
-    <Button className="assistant-launcher" variant="outline" disabled={props.disabled} {...handlers}>
+    <Button className="assistant-launcher" variant="outline" disabled={props.disabled} aria-label={label} {...handlers}>
       <Sparkles aria-hidden="true" />
-      <span>{props.triggerLabel ?? (isChinese ? "問隨身增長助理" : "Ask Visibility Operator")}</span>
+      <span>{label}</span>
     </Button>
   )
 }

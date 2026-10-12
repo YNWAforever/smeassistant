@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { copy, LOCALE_NAMES, supportedLocales } from "@/lib/copy";
+import { copy, LOCALE_NAMES, LOCALE_SHORT_NAMES, supportedLocales } from "@/lib/copy";
 import { localeData as bundled } from "@/lib/locale-data/all";
 import { localeData as browser } from "@/lib/locale-data/browser";
 import { findLocaleData, localeDataFor, provideLocaleData } from "@/lib/locale-data/registry";
@@ -32,6 +32,10 @@ describe("locale dictionary split", () => {
     expect(localeDataFor("zh-TW")).toBe(data);
     expect(findLocaleData("zh-TW")?.messages).toBe(data.messages);
     expect(t("zh-TW", "report.overallScore")).toBe(t("zh-TW", "report.overallScore"));
+  });
+
+  it("has a compact picker label for every locale", () => {
+    for (const locale of supportedLocales) expect(LOCALE_SHORT_NAMES[locale].length).toBeGreaterThan(0);
   });
 
   it("names each locale in the picker exactly as its dictionary does", () => {

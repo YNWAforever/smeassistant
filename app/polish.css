@@ -812,3 +812,163 @@ body {
 .owner-confidence-strip article:nth-of-type(1) { background: var(--peach); }
 .owner-confidence-strip article:nth-of-type(2) { background: var(--sky); }
 .owner-confidence-strip article:nth-of-type(3) { background: var(--lilac); }
+
+/* ── Workspace: actions list ───────────────────────────────────────────── */
+
+/* The view tabs became links in a <nav>, but the CSS still targeted the old
+   Tabs buttons, so they ran together as plain text ("All 2Needs input 1…"). */
+.action-tab-list {
+  display: flex;
+  padding: 8px 12px;
+  align-items: center;
+  gap: 4px;
+  scrollbar-width: none;
+}
+
+.action-tab-list > a {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 14px;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  color: var(--soft);
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  transition: background-color .2s ease, color .2s ease;
+}
+
+.action-tab-list > a:hover { background: #f0f3e9; color: var(--ink); }
+
+.action-tab-list > a > span {
+  display: inline-grid;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  place-items: center;
+  border-radius: 999px;
+  background: #e9ece4;
+  color: var(--ink);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.action-tab-list > a[aria-current="page"] { background: #172019; color: #fff; }
+.action-tab-list > a[aria-current="page"] > span { background: var(--lime); color: #172019; }
+
+/* Search used a bare bordered input and a text-only submit. */
+.action-search {
+  display: flex;
+  min-width: min(100%, 320px);
+  flex: 1 1 320px;
+  gap: 8px;
+}
+
+.action-search-field {
+  position: relative;
+  display: block;
+  flex: 1 1 auto;
+}
+
+.action-search-field > svg {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  width: 16px;
+  color: var(--soft);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.action-search-field [data-slot="input"] {
+  min-height: 44px;
+  padding-left: 36px;
+  border-radius: 999px;
+  background: #fff;
+}
+
+.filter-bar .filter-label { font-size: 12px; }
+.queue-summary { font-size: 12px; }
+
+.queue-pages {
+  display: flex;
+  margin-top: 16px;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.queue-pages > a {
+  display: inline-flex;
+  min-height: 40px;
+  padding: 0 16px;
+  align-items: center;
+  border: 1px solid var(--input);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.queue-pages > a:hover { border-color: rgba(23, 32, 25, .3); }
+.queue-footnote { font-size: 12px; line-height: 1.55; }
+
+/* ── Workspace: home and shared headings ───────────────────────────────── */
+
+/* Card headings were set at 400 under bold page titles; give the workspace
+   the same display hierarchy as the public site. */
+.workspace-root :is(h1, h2) { font-weight: 700; letter-spacing: -.028em; }
+.workspace-root h3 { font-weight: 640; letter-spacing: -.012em; }
+
+/* The open-actions count read as body copy at 16px above the list. */
+.compact-action-list > p {
+  margin: 0 0 4px;
+  color: var(--soft);
+  font-size: 13px;
+}
+
+/* "+9 change": the unit is a word, not a figure. */
+.proof-value strong span {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* The card's decorative ring ran through the translucent "Ask why" button. */
+.brief-priority-card .brief-priority-actions { position: relative; z-index: 1; }
+.brief-priority-card .assistant-launcher { background: var(--lime-soft); }
+
+/* The list card never showed the observed value its evidence carries. */
+.action-evidence-value {
+  display: block;
+  margin: 10px 0 4px;
+  color: var(--ink);
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -.02em;
+}
+
+/* Language picker: full name by default, short code where a bar is tight. */
+.locale-short { display: none; }
+
+/* ── Workspace: phone top bar ──────────────────────────────────────────── */
+/* Brand, assistant, bell, language and demo badge did not fit in 390px: the
+   brand text collapsed into a one-character column and the badge overflowed. */
+@media (max-width: 767px) {
+  .workspace-topbar { gap: 6px; padding-inline: 12px; }
+  .workspace-topbar .workspace-topbar-spacer { display: none; }
+  .workspace-mobile-brand { display: flex; min-width: 0; flex: 1 1 auto; }
+  .workspace-mobile-brand > span:last-child { min-width: 0; }
+  .workspace-mobile-brand strong,
+  .workspace-mobile-brand small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .workspace-topbar .locale-trigger { width: auto; min-width: 0; padding-inline: 10px; }
+  .workspace-topbar .locale-full { display: none; }
+  .workspace-topbar .locale-short { display: inline; }
+  /* Demo workspaces already show the demo bar above the shell. */
+  .workspace-topbar .demo-badge { display: none; }
+}
+
+/* Evidence date on tinted cards (axe 3.6:1). */
+.action-evidence small { color: #56615c; }

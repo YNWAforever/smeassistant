@@ -38,7 +38,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import { copy, LOCALE_NAMES, normaliseLocale, supportedLocales, type PrototypeLocale } from "@/lib/copy"
+import { copy, LOCALE_NAMES, LOCALE_SHORT_NAMES, normaliseLocale, supportedLocales, type PrototypeLocale } from "@/lib/copy"
 import type { Capability, ProviderState } from "@/lib/demo-data"
 import { MotionDirector } from "@/components/motion-director"
 import { PublicBrandLink, PublicFooter, PublicNavLinks } from "@/components/public-chrome"
@@ -196,7 +196,7 @@ export function LocaleSelect({ locale }: { locale: PrototypeLocale }) {
   return (
     <Select value={locale} onValueChange={changeLocale}>
       <SelectTrigger className="locale-trigger" aria-label={locale === "en" ? "Language" : "介面語言"}>
-        <SelectValue>{LOCALE_NAMES[locale]}</SelectValue>
+        <SelectValue><span className="locale-full">{LOCALE_NAMES[locale]}</span><span className="locale-short" aria-hidden="true">{LOCALE_SHORT_NAMES[locale]}</span></SelectValue>
       </SelectTrigger>
       <SelectContent align="end">
         {supportedLocales.map((item) => (

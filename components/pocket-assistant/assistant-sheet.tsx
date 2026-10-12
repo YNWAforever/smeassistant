@@ -290,7 +290,7 @@ export function ContextualAssistant({
   return (
     <Sheet open={open} onOpenChange={changeOpen}>
       <SheetTrigger asChild disabled={disabled}>
-        {trigger ?? <Button className="assistant-launcher" variant="outline" disabled={disabled}><Sparkles aria-hidden="true" /><span>{triggerLabel ?? (isChinese ? "問隨身增長助理" : "Ask Visibility Operator")}</span></Button>}
+        {trigger ?? <Button className="assistant-launcher" variant="outline" disabled={disabled} aria-label={triggerLabel ?? (isChinese ? "問隨身增長助理" : "Ask Visibility Operator")}><Sparkles aria-hidden="true" /><span>{triggerLabel ?? (isChinese ? "問隨身增長助理" : "Ask Visibility Operator")}</span></Button>}
       </SheetTrigger>
       <SheetContent
         side={isMobile ? "bottom" : "right"}

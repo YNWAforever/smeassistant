@@ -15,6 +15,13 @@ export const LOCALE_NAMES: Readonly<Record<PrototypeLocale, string>> = {
   "zh-TW": "繁體中文（台灣）",
 }
 
+/** Compact picker labels for tight bars (the trigger keeps its full accessible name). */
+export const LOCALE_SHORT_NAMES: Readonly<Record<PrototypeLocale, string>> = {
+  en: "EN",
+  "zh-HK": "繁·港",
+  "zh-TW": "繁·台",
+}
+
 export function normaliseLocale(value: string | undefined): PrototypeLocale {
   return supportedLocales.includes(value as PrototypeLocale) ? (value as PrototypeLocale) : "zh-HK"
 }
