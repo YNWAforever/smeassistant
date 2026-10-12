@@ -765,3 +765,32 @@ body {
   .unlock-page { align-items: start; }
   .unlock-context { position: sticky; top: 120px; padding-top: 40px; }
 }
+
+/* ── Contrast (WCAG 2.2 AA, axe-verified) ─────────────────────────────── */
+
+/* Primary buttons on dark panels are lime; the global white label made the
+   landing "View sample report" 1.26:1. */
+.sample-case-section [data-slot="button"][data-variant="default"],
+.sample-case-section [data-slot="button"][data-variant="default"]:hover {
+  color: #172019 !important;
+}
+
+/* Eyebrows on ink panels used the light-surface teal (2.9:1). */
+:is(.flow-steps, .public-demo-flow, .product-loop-section, .partial-result-card) .eyebrow {
+  color: var(--lime);
+}
+
+/* Secondary text on tinted cards needs a darker grey than on white. */
+.source-grid > article p { color: #535d53; }
+.agent-role-index,
+.outcome-index { color: #545f52; }
+.agent-role-grid article > small { color: #57624f; }
+.sample-case-steps article > span { color: #565f54; }
+.public-demo-evidence small { color: #56645c; }
+.provider-unsupported { color: #575d5a !important; }
+
+/* Focus rings on ink panels: the forest ring is ~3.3:1 against #172019; lime
+   is well clear of the 3:1 non-text minimum. */
+:is(.public-footer, .product-loop-section, .sample-case-section, .flow-steps, .partial-result-card, .public-demo-flow, .agent-gateway) :focus-visible {
+  outline-color: var(--lime) !important;
+}

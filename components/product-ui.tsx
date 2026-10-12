@@ -199,7 +199,8 @@ export function LoopRibbon({ active = 0 }: { active?: number }) {
   const locale = normaliseLocale(pathname.split("/").filter(Boolean)[0])
   const steps = locale === "en" ? loopSteps : loopStepsZh
   return (
-    <ol className="loop-ribbon" aria-label={locale === "en" ? "Visibility improvement loop" : "能見度改善循環"}>
+    // Scrolls sideways on phones, so keyboard users need to be able to focus it (WCAG 2.1.1).
+    <ol className="loop-ribbon" tabIndex={0} aria-label={locale === "en" ? "Visibility improvement loop" : "能見度改善循環"}>
       {steps.map((step, index) => (
         <li key={step} className={index === active ? "is-active" : index < active ? "is-done" : ""}>
           <span className="loop-index">{index < active ? <Check aria-hidden="true" /> : index + 1}</span>
