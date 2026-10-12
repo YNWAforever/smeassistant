@@ -64,3 +64,23 @@ describe("ActivityView labels (F-22)", () => {
   });
 });
 
+
+describe("ActivityView detail column", () => {
+  it("never prints the request fingerprint, row ids or raw payload keys", () => {
+    const [[, , , detail]] = cells("en", [row({ event: "asset.uploaded", payload: { locale: "en", ip_hash: "3fa9c0ffee", job_id: "6f1c2a8e-0000-4000-8000-000000000000", bytes: 52340, filename: "steamed-fish.jpg", content_type: "image/jpeg" } })]);
+    expect(detail).toBe("steamed-fish.jpg");
+  });
+
+  it.each([
+    ["en", "Version 2 · Exported"],
+    ["zh-HK", "第 2 版 · 匯出"],
+  ] as const)("words a delivery's version and mode (%s)", (locale, expected) => {
+    const [[, , , detail]] = cells(locale, [row({ event: "delivery.exported", payload: { locale, version_no: 2, mode: "export" } })]);
+    expect(detail).toBe(expected);
+  });
+
+  it("falls back to the entity label when no readable field exists", () => {
+    const [[, , , detail]] = cells("en", [row({ event: "workspace.claimed", entity_type: "audit_job", payload: { locale: "en", ip_hash: "abc" } })]);
+    expect(detail).toBe("Scan");
+  });
+});
