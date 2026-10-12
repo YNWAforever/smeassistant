@@ -281,6 +281,12 @@ export function LandingPage({ locale, market: initialMarket, billing }: { locale
     workspaceCta: "View public read-only workspace",
   }
 
+  const outcomeUi = locale === "zh-HK"
+    ? { eyebrow: "先揀一個想見到嘅成果", title: "免費掃描會為以下範疇準備草稿", body: "揀一個開始掃描；如果證據支持，你嘅工作台會直接打開呢項行動。", cta: "由呢個開始" }
+    : locale === "zh-TW"
+      ? { eyebrow: "先挑一個想看到的成果", title: "免費掃描可以為以下項目準備草稿", body: "挑一項開始掃描；若證據支持，你的工作台會直接開啟這項行動。", cta: "從這項開始" }
+      : { eyebrow: "Pick an outcome to see first", title: "Your free scan can draft any of these", body: "Pick one to start your scan; if the evidence supports it, your workspace opens straight into that action.", cta: "Start with this" }
+
   function startSearch(event: React.FormEvent) {
     event.preventDefault()
     if (!query.trim()) {
@@ -493,22 +499,22 @@ export function LandingPage({ locale, market: initialMarket, billing }: { locale
             (copy[locale].workspace.templates), never invented marketing text,
             so the promise here is never ahead of what the product does. */}
         <section className="outcome-examples-section" aria-labelledby="outcome-examples-title">
-          <div className="sample-case-copy">
-            <p className="eyebrow">{isChinese ? "先揀一個想見到嘅成果" : "Pick an outcome to see first"}</p>
-            <h2 id="outcome-examples-title">{isChinese ? "免費掃描會為以下範疇準備草稿" : "Your free scan can draft any of these"}</h2>
-            <p>{isChinese ? "揀一個開始掃描；如果證據支持，你嘅工作台會直接打開呢項行動。" : "Pick one to start your scan; if the evidence supports it, your workspace opens straight into that action."}</p>
+          <div className="outcome-examples-heading">
+            <p className="eyebrow">{outcomeUi.eyebrow}</p>
+            <h2 id="outcome-examples-title">{outcomeUi.title}</h2>
+            <p>{outcomeUi.body}</p>
           </div>
-          <div className="agent-role-grid">
+          <div className="outcome-grid">
             {(["review-response", "visibility-content", "gbp-profile-fix"] as const).map((key, index) => {
               const template = copyT.workspace.templates[key]
               return (
                 <article key={key}>
-                  <div className="agent-role-top"><span className="agent-role-index">0{index + 1}</span></div>
+                  <span className="outcome-index" aria-hidden="true">0{index + 1}</span>
                   <h3>{template.title}</h3>
                   <p>{template.summary}</p>
                   <Button asChild variant="outline">
                     <Link href={`/${locale}/scan?${new URLSearchParams({ market, intent: key }).toString()}`}>
-                      {isChinese ? "由呢個開始" : "Start with this"}<ArrowRight />
+                      {outcomeUi.cta}<ArrowRight />
                     </Link>
                   </Button>
                 </article>

@@ -70,6 +70,7 @@ import { copy, normaliseLocale, supportedLocales, type PrototypeLocale } from "@
 import type { Capability, ProviderState } from "@/lib/demo-data"
 import { accountInitials, resolveLocationSlug, usagePercent } from "@/lib/workspace/shell"
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet"
+import { MotionDirector } from "@/components/motion-director"
 import type { AssistantSurface } from "@/lib/pocket-assistant/contracts"
 
 /**
@@ -258,7 +259,7 @@ export function PublicHeader({ locale, signInHref }: { locale: PrototypeLocale; 
           <Link href={`/${locale}/trust`}>{t.nav.trust}</Link>
         </nav>
         <div className="header-actions">
-          <LocaleSelect locale={locale} />
+          <span className="header-locale"><LocaleSelect locale={locale} /></span>
           {/* Returning owners need a sign-in entry point without opening the
               hamburger menu: this was `hidden lg:inline-flex`, so on any
               phone-width viewport the only way back into a workspace was the
@@ -288,6 +289,8 @@ export function PublicHeader({ locale, signInHref }: { locale: PrototypeLocale; 
                 <Link href={`/${locale}/trust`}>{t.nav.trust}</Link>
                 <Link href={signIn}>{t.nav.signIn}</Link>
               </nav>
+              {/* On phones the header has no room for the language control, so it lives here too. */}
+              <div className="mobile-sheet-locale"><LocaleSelect locale={locale} /></div>
             </SheetContent>
           </Sheet>
         </div>
@@ -519,7 +522,10 @@ export function PublicPageFrame({ locale, demo = false, signInHref, children }: 
           <Link href={`/${locale}/legal/privacy`}>{t.privacy}</Link>
           <Link href={`/${locale}/legal/terms`}>{t.terms}</Link>
         </nav>
+        {/* Decorative sign-off; the tagline is already read once in the lockup above. */}
+        <p className="footer-statement" aria-hidden="true">{t.tagline}</p>
       </footer>
+      <MotionDirector />
     </div>
   )
 }

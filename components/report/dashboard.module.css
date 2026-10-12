@@ -7,7 +7,10 @@
 .badges, .rowLabel { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }.rowLabel { justify-content: space-between; }
 .scanDate { flex-shrink: 0; color: #51667c; font-size: 12px; line-height: 1.7; }.scanDate time { color: #233c57; font-weight: 650; }
 .health { display: grid; grid-template-columns: 200px minmax(0, 1fr); align-items: center; gap: clamp(24px, 4vw, 54px); margin-top: 30px; }
-.dial { text-align: center; }.dial > .caption { display: block; margin-top: 10px; }.withheld { display: grid; min-height: 130px; place-items: center; color: #51667c; font-size: 22px; }
+.dial { text-align: center; }
+/* The 200px column could not hold the dial and its meta side by side ("coverag/e"); stack them. */
+.dial :global(.score-dial-wrap) { flex-direction: column; gap: 12px; }
+.dial :global(.score-dial-meta) { align-items: center; }.dial > .caption { display: block; margin-top: 10px; }.withheld { display: grid; min-height: 130px; place-items: center; color: #51667c; font-size: 22px; }
 .takeaway h2 { margin: 12px 0 8px; font-size: clamp(20px, 2.3vw, 27px); line-height: 1.3; }.takeaway > p { font-size: 14px; line-height: 1.65; max-width: 70ch; }.takeaway > a { font-size: 13px; color: #175cd3; font-weight: 650; }
 .coverage { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 20px 0; padding-top: 16px; gap: 18px; border-top: 1px solid #d7e4ee; }.coverage dt { font-size: 12px; color: #51667c; }.coverage dd { margin: 5px 0 0; font-size: 17px; font-weight: 700; }
 .chip { display: inline-block; width: fit-content; padding: 4px 8px; border-radius: 6px; background: #e7f3f2; color: #14646e; font-size: 11px; font-weight: 650; }.notice { border-left: 3px solid #98b5d6; padding-left: 12px; }
