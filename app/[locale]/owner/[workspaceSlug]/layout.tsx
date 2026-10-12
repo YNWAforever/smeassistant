@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { WorkspacePageFrame } from "@/components/product-ui";
+import { WorkspacePageFrame } from "@/components/workspace-shell";
 import { requireMembership } from "@/lib/auth";
 import { normaliseLocale } from "@/lib/copy";
 import { countUrgentActions, loadWorkspaceContext } from "@/lib/workspace/queries";

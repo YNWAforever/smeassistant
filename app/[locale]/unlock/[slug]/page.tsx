@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { UnlockPage } from "@/components/public-pages";
+import { UnlockPage } from "@/components/unlock-page";
 import { copy, normaliseLocale } from "@/lib/copy";
 import { resolveUnlockMarket } from "@/lib/funnel/unlock";
 import { recoveryAvailable } from "@/lib/mail/feature-flags";

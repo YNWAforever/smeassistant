@@ -24,7 +24,7 @@ import {
   UserCheck,
 } from "lucide-react"
 
-import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet"
+import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
 import {
   DemoBadge,
   FactType,

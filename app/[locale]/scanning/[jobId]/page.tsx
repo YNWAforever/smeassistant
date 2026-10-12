@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { ScanningPage } from "@/components/public-pages";
+import { ScanningPage } from "@/components/scanning-page";
 import { copy, normaliseLocale } from "@/lib/copy";
 
 /**

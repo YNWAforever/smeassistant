@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ArrowRight, CheckCircle2, Filter, MapPin, ShieldAlert, ShieldCheck, Sparkles } from "lucide-react"
 
-import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet"
+import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
 import { CapabilityBadge, FactType, PageIntro } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"

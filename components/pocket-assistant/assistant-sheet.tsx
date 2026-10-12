@@ -176,6 +176,7 @@ export function ContextualAssistant({
   context,
   basePath,
   locationParam,
+  initialOpen = false,
 }: {
   locale: PrototypeLocale
   surface: AssistantSurface
@@ -195,10 +196,12 @@ export function ContextualAssistant({
   basePath?: string
   /** The page's location query value, carried onto that link. */
   locationParam?: string
+  /** Open on mount: the lazy launcher (./assistant-launcher.tsx) renders this once the visitor asks. */
+  initialOpen?: boolean
 }) {
   const isChinese = locale !== "en"
   const isMobile = useIsMobile()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(initialOpen)
   const [state, setState] = useState<"idle" | "running" | "failed">("idle")
   const [selected, setSelected] = useState<string | null>(null)
   const [run, setRun] = useState<DemoAssistantRunResponse | null>(null)

@@ -8,7 +8,7 @@ import Link from "next/link"
 import { RecoveryForm } from "@/components/report/recovery-form"
 import { ArrowRight, Check, LockKeyhole, MessageCircle, TriangleAlert } from "lucide-react"
 
-import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet"
+import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
 import {
   FactType,
   LoopRibbon,

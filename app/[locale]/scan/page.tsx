@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { ScanPage } from "@/components/public-pages";
+import { ScanPage } from "@/components/scan-page";
 import { normaliseLocale } from "@/lib/copy";
 import { currentScanConsentPolicyVersion } from "@/lib/scan/consent";
 

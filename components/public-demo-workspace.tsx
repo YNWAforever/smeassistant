@@ -11,7 +11,7 @@ import {
   TrendingDown,
 } from "lucide-react"
 
-import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet"
+import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DemoBadge, FactType, PublicPageFrame, ScoreDial } from "@/components/product-ui"

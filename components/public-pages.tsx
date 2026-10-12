@@ -24,11 +24,9 @@ import { interpolate } from "@/lib/share"
 import { getMarketConfig, type Market } from "@sme-scanner/region"
 import type { ScoreResult } from "@sme-scanner/scoring"
 
-export { LandingPage } from "@/components/landing-page"
-export { ReportPage } from "@/components/report-view"
-export { ScanPage } from "@/components/scan-page"
-export { ScanningPage } from "@/components/scanning-page"
-export { UnlockPage } from "@/components/unlock-page"
+// No re-exports of the page components: Next ships every client component a
+// server module imports, so a barrel here made each public page download the
+// landing, scan, scanning, report and unlock pages. Import them directly.
 
 /** Pinned to the scorer both apps run (CLAUDE.md guardrail 16); a bump upstream breaks this line. */
 const SCORING_VERSION: ScoreResult["scoringVersion"] = "2026-08-16"
