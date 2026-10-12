@@ -18,6 +18,7 @@ export function normaliseLocale(value: string | undefined): PrototypeLocale {
 type FunnelCopy = {
   demoBar: { title: string; body: string; note: string }
   footer: { tagline: string; body: string; privacy: string; terms: string }
+  notFound: { eyebrow: string; title: string; body: string; home: string; scan: string; sample: string }
   landing: { timing: string; planNote: string; perMonth: string; contactPricing: string }
   scan: {
     eyebrow: string
@@ -404,6 +405,7 @@ type Copy = {
 const funnelEn: FunnelCopy = {
   demoBar: { title: "Demo data", body: "Fixed, sanitised Kam Man House sample", note: "No live scans, payments or external publishing on this page" },
   footer: { tagline: "Evidence first, action next.", body: "SME Scanner by Fimmick · Evidence first, action next.", privacy: "Privacy", terms: "Terms" },
+  notFound: { eyebrow: "404 · Not found", title: "There is no evidence at this address.", body: "The link may be mistyped, or the page has moved. Reports and workspaces are never guessed from a URL, so nothing private is shown here.", home: "Back to SME Scanner", scan: "Start a free scan", sample: "See a sample report" },
   landing: {
     timing: "A free scan takes a few minutes. Completion time varies by source availability.",
     planNote: "Prices shown for the selected market · Interface language never changes market or currency",
@@ -757,6 +759,7 @@ const funnelEn: FunnelCopy = {
 const funnelZhHK: FunnelCopy = {
   demoBar: { title: "示範資料", body: "固定並已清理的錦汶館資料", note: "此頁不包含即時掃描、付款或自動對外發佈" },
   footer: { tagline: "證據為先，行動為本。", body: "SME Scanner by Fimmick · 證據為先，行動為本。", privacy: "私隱政策", terms: "使用條款" },
+  notFound: { eyebrow: "404 · 找不到頁面", title: "呢個網址未有任何證據。", body: "連結可能輸入有誤，或頁面已經移走。報告及工作台不會由網址推測，所以這裡不會顯示任何私人資料。", home: "返回 SME Scanner", scan: "開始免費掃描", sample: "查看示範報告" },
   landing: {
     timing: "免費掃描數分鐘內完成；完成時間視乎各資料來源供應情況。",
     planNote: "價格按所選市場顯示 · 介面語言不會自動改變市場或貨幣",
@@ -1099,6 +1102,7 @@ const funnelZhHK: FunnelCopy = {
 const funnelZhTW: FunnelCopy = {
   demoBar: { title: "範例資料", body: "固定且已清理的錦汶館資料", note: "此頁不包含即時掃描、付款或自動對外發布" },
   footer: { tagline: "證據為先，行動為本。", body: "SME Scanner by Fimmick · 證據為先，行動為本。", privacy: "隱私政策", terms: "使用條款" },
+  notFound: { eyebrow: "404 · 找不到頁面", title: "這個網址沒有任何證據。", body: "連結可能輸入有誤，或頁面已經移動。報告及工作台不會從網址推測，因此這裡不會顯示任何私人資料。", home: "返回 SME Scanner", scan: "開始免費掃描", sample: "查看示範報告" },
   landing: {
     timing: "免費掃描數分鐘內完成；完成時間依各資料來源狀況而異。",
     planNote: "價格依所選市場顯示 · 介面語言不會自動改變市場或貨幣",

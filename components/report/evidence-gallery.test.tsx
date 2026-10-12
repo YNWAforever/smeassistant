@@ -69,10 +69,17 @@ describe("authorized evidence gallery", () => {
     render(<EvidenceGallery locale="en" items={[item("long", { text: "Long caption ".repeat(50) })]} />);
     fireEvent.click(screen.getByRole("button", { name: /Open photo/ }));
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("Captured 2026-09-07T12:00:00Z")).toBeVisible();
-    expect(within(dialog).getByText("Published 2026-09-06T12:00:00Z")).toBeVisible();
+    expect(within(dialog).getByText("Captured 7 Sept 2026, 12:00 UTC")).toBeVisible();
+    expect(within(dialog).getByText("Published 6 Sept 2026, 12:00 UTC")).toBeVisible();
     expect(within(dialog).getByRole("link", { name: "View source" })).toHaveAttribute("href", "https://example.com/post");
     expect(dialog.querySelector("details")).not.toHaveAttribute("open");
+  });
+  it("shows capture times in the given market zone instead of a raw ISO string", async () => {
+    render(<EvidenceGallery locale="en" timeZone="Asia/Hong_Kong" items={[item("zoned")]} />);
+    fireEvent.click(screen.getByRole("button", { name: /Open photo/ }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Captured 7 Sept 2026, 20:00")).toBeVisible();
+    expect(dialog.textContent).not.toContain("T12:00:00Z");
   });
   it("turns a broken thumbnail into useful metadata without opening a source image", () => {
     render(<EvidenceGallery locale="en" items={[item("broken")]} />);

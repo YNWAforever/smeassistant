@@ -227,7 +227,7 @@ export function UnlockPage({ locale, slug, market, recoveryAvailable }: { locale
           <p className="privacy-note">
             <LockKeyhole /> {c.privacyNote}
           </p>
-          <Link href={`/${locale}/trust`}>{c.policyLink}</Link>
+          <Link className="policy-link" href={`/${locale}/trust`}>{c.policyLink}<ArrowRight aria-hidden="true" /></Link>
           {recoveryAvailable && <RecoveryForm locale={locale} slug={slug} />}
         </section>
       </main>

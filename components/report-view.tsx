@@ -211,7 +211,7 @@ export function ReportPage(props: ReportProps) {
         )}
         <DashboardMetrics report={props} dashboard={dashboard} />
         <DashboardPriorities report={props} />
-        {authorized && <EvidenceGallery items={props.evidence} locale={locale} />}
+        {authorized && <EvidenceGallery items={props.evidence} locale={locale} timeZone={props.market === "tw" ? "Asia/Taipei" : "Asia/Hong_Kong"} />}
         {sample && <ContextualAssistant locale={locale} surface="report" />}
         <LoopRibbon active={sample ? 2 : 1} />
         <details className={styles.detailDisclosure}>

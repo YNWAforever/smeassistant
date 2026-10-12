@@ -608,3 +608,160 @@ body {
   font-weight: 600;
   letter-spacing: 0;
 }
+
+/* Radio, checkbox and switch indicators are Radix buttons, so the global
+   44px touch-target min-height stretched them into tall pills. The label
+   card around each one carries the touch target. */
+[data-slot="radio-group-item"],
+[data-slot="checkbox"],
+[data-slot="switch"] {
+  min-height: 0;
+}
+
+/* Policy links sat in cards as bare 16px block links. */
+.policy-link {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 44px;
+  align-items: center;
+  gap: 6px;
+  color: var(--teal-dark);
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-underline-offset: 4px;
+  transition: text-decoration-color .2s ease;
+}
+
+.policy-link:hover { text-decoration-color: currentColor; }
+.policy-link svg { width: 14px; transition: transform .3s var(--ease-spring); }
+.policy-link:hover svg { transform: translateX(3px); }
+
+/* Dark status cards (scanning, unlock banner): the body read 12px while the
+   reason line under it rendered larger, and the default button was ink on an
+   ink panel. */
+.partial-result-card p {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.partial-result-card small {
+  display: block;
+  max-width: 620px;
+  margin-top: 10px;
+  color: #a9b5a6;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+:is(.partial-result-card, .unlock-banner) [data-slot="button"][data-variant="default"] {
+  border-color: var(--lime);
+  background: var(--lime);
+  color: #172019 !important;
+}
+
+:is(.partial-result-card, .unlock-banner) [data-slot="button"][data-variant="default"]:hover {
+  background: var(--lime-strong);
+}
+
+/* 404 */
+.not-found-page {
+  display: grid;
+  width: min(760px, calc(100% - 40px));
+  min-height: 62svh;
+  margin: 0 auto;
+  padding: 96px 0 40px;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+}
+
+.not-found-mark {
+  display: grid;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 24px;
+  place-items: center;
+  border: 1px solid rgba(23, 32, 25, .12);
+  border-radius: 22px;
+  background: var(--lime);
+  color: #172019;
+  box-shadow: 0 18px 40px rgba(88, 118, 35, .2);
+}
+
+.not-found-mark svg { width: 30px; height: 30px; }
+
+.not-found-page h1 {
+  max-width: 680px;
+  margin: 6px 0 18px;
+  font-size: clamp(38px, 6vw, 68px);
+  line-height: 1;
+}
+
+.not-found-body {
+  max-width: 560px;
+  margin: 0 0 30px;
+  color: var(--soft);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.not-found-actions {
+  display: flex;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .not-found-page > * { animation: rise-in .9s var(--ease-out) both; }
+  .not-found-page > :nth-child(2) { animation-delay: .05s; }
+  .not-found-page > :nth-child(3) { animation-delay: .1s; }
+  .not-found-page > :nth-child(4) { animation-delay: .15s; }
+  .not-found-page > :nth-child(5) { animation-delay: .2s; }
+}
+
+/* Unlock form: choice rows kept a 64px floor whatever their content, help
+   text was set solid at 10px, the radio group doubled its gaps, and the
+   submit button touched the last row. */
+.consent-row {
+  min-height: 52px;
+  margin-top: 10px;
+  padding: 14px 16px;
+  align-items: center;
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease;
+}
+
+.consent-row:has(small) { align-items: flex-start; }
+.consent-row:has(small) > [data-slot] { margin-top: 2px; }
+.consent-row strong { font-size: 13px; line-height: 1.35; }
+.consent-row small { font-size: 11.5px; line-height: 1.55; }
+
+.consent-row:hover { border-color: rgba(23, 32, 25, .22); }
+
+.consent-row:has([data-state="checked"]) {
+  border-color: #6e9b36;
+  background: var(--lime-soft);
+  box-shadow: 0 0 0 1px #6e9b36 inset;
+}
+
+.consent-row:has(:focus-visible) {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+
+[data-slot="radio-group"]:has(> .consent-row) { gap: 8px; }
+[data-slot="radio-group"] > .consent-row { margin-top: 0; }
+
+.unlock-form-card > [data-slot="button"] { margin-top: 22px; }
+.unlock-form-card > p { line-height: 1.6; }
+
+@media (min-width: 901px) {
+  .unlock-page { align-items: start; }
+  .unlock-context { position: sticky; top: 120px; padding-top: 40px; }
+}

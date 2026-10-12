@@ -6,9 +6,15 @@ import { copy } from "@/lib/copy";
 import type { ReportEvidenceItem, ReportProps } from "@/lib/funnel/report-props";
 import { interpolate } from "@/lib/share";
 import { limitationCopy } from "@/lib/funnel/report-labels";
+import { formatDateTime } from "@/lib/workspace/format";
 import styles from "./evidence-gallery.module.css";
 
-type GalleryProps = { items: ReportEvidenceItem[]; locale: ReportProps["locale"] };
+/** `timeZone` is the market or workspace zone; without it times are shown in UTC, labelled. */
+type GalleryProps = { items: ReportEvidenceItem[]; locale: ReportProps["locale"]; timeZone?: string };
+
+function timeLabel(value: string, locale: GalleryProps["locale"], timeZone?: string): string {
+  return timeZone ? formatDateTime(value, locale, timeZone) : `${formatDateTime(value, locale, "UTC")} UTC`;
+}
 
 // The authorized server loader has already removed sensitive source URLs.
 // This client guard rejects executable protocols and credentials without altering signed media URLs.
@@ -20,7 +26,7 @@ function sourceLink(value: string | null): string | null {
   } catch { return null; }
 }
 
-function EvidenceCard({ item, locale, title }: { item: ReportEvidenceItem; locale: GalleryProps["locale"]; title: string }) {
+function EvidenceCard({ item, locale, title, timeZone }: { item: ReportEvidenceItem; locale: GalleryProps["locale"]; title: string; timeZone?: string }) {
   const c = copy[locale].funnel.report;
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const [previewFailed, setPreviewFailed] = useState(false);
@@ -28,8 +34,8 @@ function EvidenceCard({ item, locale, title }: { item: ReportEvidenceItem; local
   const source = sourceLink(item.sourceUrl);
   const unavailable = item.status === "metadata_only" ? c.evidenceMetadataOnly : item.status === "failed" ? c.evidenceFailed : c.evidenceStoredUnavailable;
   const metadata = <div className={styles.metadata}>
-    <small><time dateTime={item.capturedAt}>{interpolate(c.evidenceCaptured, { date: item.capturedAt })}</time></small>
-    {item.publishedAt && <small><time dateTime={item.publishedAt}>{interpolate(c.evidencePublished, { date: item.publishedAt })}</time></small>}
+    <small><time dateTime={item.capturedAt}>{interpolate(c.evidenceCaptured, { date: timeLabel(item.capturedAt, locale, timeZone) })}</time></small>
+    {item.publishedAt && <small><time dateTime={item.publishedAt}>{interpolate(c.evidencePublished, { date: timeLabel(item.publishedAt, locale, timeZone) })}</time></small>}
     {source && <a href={source} target="_blank" rel="noreferrer noopener">{c.evidenceSource}</a>}
     {item.limitationCode && <small>{limitationCopy(locale, item.limitationCode).reason}</small>}
     {item.text && <details><summary>{c.evidenceCaption}</summary><p>{item.text}</p></details>}
@@ -58,7 +64,7 @@ function EvidenceCard({ item, locale, title }: { item: ReportEvidenceItem; local
   </article>;
 }
 
-function ProviderGroup({ provider, items, locale }: GalleryProps & { provider: string }) {
+function ProviderGroup({ provider, items, locale, timeZone }: GalleryProps & { provider: string }) {
   const [expanded, setExpanded] = useState(false);
   const id = useId();
   const name = provider === "instagram" ? "Instagram" : provider === "google_maps" ? "Google Maps" : provider;
@@ -66,7 +72,7 @@ function ProviderGroup({ provider, items, locale }: GalleryProps & { provider: s
   return <section className={styles.group} aria-labelledby={`${id}-heading`}>
     <h3 id={`${id}-heading`}>{name} ({items.length})</h3>
     <div id={id} className={styles.grid}>
-      {(expanded ? items : items.slice(0, 6)).map((item, index) => <EvidenceCard key={`${item.id}:${item.mediaUrl}`} item={item} locale={locale} title={`${name} · ${item.evidenceType} ${index + 1}`} />)}
+      {(expanded ? items : items.slice(0, 6)).map((item, index) => <EvidenceCard key={`${item.id}:${item.mediaUrl}`} item={item} locale={locale} timeZone={timeZone} title={`${name} · ${item.evidenceType} ${index + 1}`} />)}
     </div>
     {items.length > 6 && <button type="button" className={styles.control} aria-controls={id} aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
       {expanded ? c.evidenceShowLess : interpolate(c.evidenceShowMore, { count: items.length - 6 })}
@@ -75,7 +81,7 @@ function ProviderGroup({ provider, items, locale }: GalleryProps & { provider: s
 }
 
 /** Receives only the authorized evidence projection, never the full report or storage credentials. */
-export function EvidenceGallery({ items, locale }: GalleryProps) {
+export function EvidenceGallery({ items, locale, timeZone }: GalleryProps) {
   const c = copy[locale].funnel.report;
   if (!items.length) return null;
   const groups = new Map<string, ReportEvidenceItem[]>();
@@ -84,6 +90,6 @@ export function EvidenceGallery({ items, locale }: GalleryProps) {
     <p className="eyebrow">{c.evidenceEyebrow}</p>
     <h2>{c.evidenceTitle}</h2>
     <p>{c.evidenceBody}</p>
-    {[...groups].map(([provider, group]) => <ProviderGroup key={provider} provider={provider} items={group} locale={locale} />)}
+    {[...groups].map(([provider, group]) => <ProviderGroup key={provider} provider={provider} items={group} locale={locale} timeZone={timeZone} />)}
   </section>;
 }
