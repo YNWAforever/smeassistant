@@ -21,3 +21,7 @@ a.primary { display: flex; align-items: center; justify-content: center; text-de
 .alert { padding: .75rem; border-radius: .5rem; background: color-mix(in srgb, var(--destructive) 10%, transparent); color: var(--destructive); }
 .email { overflow-wrap: anywhere; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .primary, .secondary, .link, .input { transition: none; } .primary:hover, .secondary:hover { transform: none; } }
+button.primary { display: inline-flex; align-items: center; justify-content: center; gap: .65rem; }
+.googleMark { display: inline-grid; width: 26px; height: 26px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: #fff; }
+/* Focus moves to the heading in code when the screen changes, so screen readers announce it; no ring is needed there. */
+.heading:focus { outline: none; }

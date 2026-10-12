@@ -14,6 +14,8 @@ export interface LegalDocumentProps {
   title: string
   versionLabel: string
   backLabel: string
+  /** Heading of the in-page contents list ("On this page"). */
+  contentsLabel: string
   sections: LegalSection[]
 }
 
@@ -23,7 +25,7 @@ export interface LegalDocumentProps {
  * server component. Styling reuses the public content-page primitives so the
  * legal documents match the rest of the site (CLAUDE.md §5: preserve the design).
  */
-export function LegalDocument({ locale, title, versionLabel, backLabel, sections }: LegalDocumentProps) {
+export function LegalDocument({ locale, title, versionLabel, backLabel, contentsLabel, sections }: LegalDocumentProps) {
   return (
     <PublicPageFrame locale={locale}>
       <main className="content-page legal-page">
@@ -31,13 +33,21 @@ export function LegalDocument({ locale, title, versionLabel, backLabel, sections
           <p className="eyebrow">{versionLabel}</p>
           <h1>{title}</h1>
         </header>
-        <div className="legal-sections">
-          {sections.map((section) => (
-            <SectionCard key={section.key} as="article">
-              <h2 id={section.key}>{section.heading}</h2>
-              <p className="legal-body">{section.body}</p>
-            </SectionCard>
-          ))}
+        <div className="legal-layout">
+          <nav className="legal-toc" aria-labelledby="legal-toc-heading">
+            <p className="eyebrow" id="legal-toc-heading">{contentsLabel}</p>
+            <ol>
+              {sections.map((section) => <li key={section.key}><a href={`#${section.key}`}>{section.heading}</a></li>)}
+            </ol>
+          </nav>
+          <div className="legal-sections">
+            {sections.map((section) => (
+              <SectionCard key={section.key} as="article">
+                <h2 id={section.key}>{section.heading}</h2>
+                <p className="legal-body">{section.body}</p>
+              </SectionCard>
+            ))}
+          </div>
         </div>
         <p className="legal-back">
           <Link href={`/${locale}`}>{backLabel}</Link>

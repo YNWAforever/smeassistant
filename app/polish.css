@@ -1400,3 +1400,44 @@ body {
   .activity-table td:nth-child(4):not(:empty)::before { content: "\00a0·\00a0"; }
   .activity-table td[colspan] { flex-basis: 100%; font-size: 13px; }
 }
+
+/* ── Public: legal documents ───────────────────────────────────────────── */
+/* Policy text ran at 12–13px across the full 1300px container (~200
+   characters a line). It now reads at a book measure beside a contents list. */
+.legal-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.legal-toc { padding: 18px 20px; border: 1px solid var(--border); border-radius: 16px; background: var(--paper); }
+.legal-toc ol { display: grid; margin: 10px 0 0; padding: 0; gap: 2px; counter-reset: legal; list-style: none; }
+.legal-toc li { counter-increment: legal; }
+.legal-toc a {
+  display: grid;
+  padding: 7px 8px;
+  grid-template-columns: 22px minmax(0, 1fr);
+  border-radius: 8px;
+  color: #3e4844;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.legal-toc a::before { content: counter(legal, decimal-leading-zero); color: var(--soft); font-size: 11px; font-variant-numeric: tabular-nums; line-height: 1.6; }
+.legal-toc a:hover { background: var(--teal-soft); color: var(--ink); }
+.legal-sections { display: grid; gap: 12px; }
+.legal-sections > .section-card { padding: clamp(20px, 2.4vw, 32px); scroll-margin-top: 110px; }
+.legal-sections h2 { margin: 0 0 10px; font-size: clamp(18px, 1.6vw, 21px); scroll-margin-top: 110px; }
+.legal-body { max-width: 68ch; margin: 0; color: #3e4844; font-size: 15px; line-height: 1.7; white-space: pre-line; }
+:lang(zh) .legal-body { max-width: 40em; font-size: 16px; line-height: 1.85; letter-spacing: .02em; }
+.legal-back { margin-top: 24px; }
+.legal-back a { color: var(--teal); font-weight: 650; }
+@media (min-width: 1024px) {
+  .legal-layout { grid-template-columns: 260px minmax(0, 1fr); align-items: start; gap: 28px; }
+  .legal-toc { position: sticky; top: 104px; }
+}
+
+/* ── Public: unsubscribe ───────────────────────────────────────────────── */
+.unsubscribe-page { display: grid; width: min(560px, calc(100% - 28px)); min-height: 52vh; margin: 0 auto; padding: 72px 0; place-items: center; }
+.unsubscribe-card.section-card { display: grid; width: 100%; padding: clamp(24px, 4vw, 40px); justify-items: start; gap: 14px; }
+.unsubscribe-card h1 { margin: 0; font-size: clamp(26px, 3vw, 34px); letter-spacing: -.03em; }
+.unsubscribe-card p { margin: 0; color: #56615c; font-size: 15px; line-height: 1.6; }
+
+/* Short pages: keep the footer at the bottom of the window. */
+.public-site { display: flex; min-height: 100svh; flex-direction: column; }
+.public-site > main { flex: 1 0 auto; }

@@ -349,7 +349,7 @@ export type FunnelCopy = {
       invalid_input: string
     }
   }
-  legal: { backToScanner: string; version: string }
+  legal: { backToScanner: string; version: string; contents: string }
 }
 
 export type Copy = {

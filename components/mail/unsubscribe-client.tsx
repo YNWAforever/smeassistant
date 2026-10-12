@@ -1,10 +1,11 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 
 import { PublicPageFrame, SectionCard } from "@/components/product-ui"
 import { Button } from "@/components/ui/button"
-import type { PrototypeLocale } from "@/lib/copy"
+import { copy, type PrototypeLocale } from "@/lib/copy"
 import { t } from "@/lib/i18n"
 
 type UnsubscribeState = "idle" | "submitting" | "done" | "invalid"
@@ -44,13 +45,17 @@ export function UnsubscribeClient({
 
   return (
     <PublicPageFrame locale={locale}>
-      <main className="unlock-page">
-        <SectionCard className="unlock-form-card">
+      <main className="unsubscribe-page">
+        <SectionCard className="unsubscribe-card">
           <h1>{t(locale, "mail.unsubscribeTitle")}</h1>
           {state === "done" ? (
             <p>{t(locale, "mail.unsubscribeDone")}</p>
           ) : state === "invalid" ? (
-            <p>{t(locale, "mail.unsubscribeInvalid")}</p>
+            <>
+              <p>{t(locale, "mail.unsubscribeInvalid")}</p>
+              {/* The message points at workspace settings; give the way there. */}
+              <Button asChild variant="outline"><Link href={`/${locale}/owner/sign-in`}>{copy[locale].nav.signIn}</Link></Button>
+            </>
           ) : (
             <Button onClick={() => void submit()} size="lg" disabled={state === "submitting"}>
               {t(locale, "mail.unsubscribeConfirm")}

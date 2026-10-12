@@ -358,7 +358,7 @@ const funnelEn: FunnelCopy = {
       invalid_input: "Paste one review between 10 and 1,500 characters.",
     },
   },
-  legal: { backToScanner: "Back to the scanner", version: "Version {version}" },
+  legal: { backToScanner: "Back to the scanner", version: "Version {version}", contents: "On this page" },
 }
 
 const funnelZhHK: FunnelCopy = {
@@ -701,7 +701,7 @@ const funnelZhHK: FunnelCopy = {
       invalid_input: "請貼上一則 10 至 1,500 字的評論。",
     },
   },
-  legal: { backToScanner: "返回掃描", version: "版本 {version}" },
+  legal: { backToScanner: "返回掃描", version: "版本 {version}", contents: "本頁內容" },
 }
 
 const funnelZhTW: FunnelCopy = {
@@ -1044,7 +1044,7 @@ const funnelZhTW: FunnelCopy = {
       invalid_input: "請貼上一則 10 至 1,500 字的評論。",
     },
   },
-  legal: { backToScanner: "返回掃描", version: "版本 {version}" },
+  legal: { backToScanner: "返回掃描", version: "版本 {version}", contents: "本頁內容" },
 }
 
 export const copyDictionaries: Record<PrototypeLocale, Copy> = {
