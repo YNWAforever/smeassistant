@@ -1486,3 +1486,7 @@ body {
 .scan-status-hero:is([data-state="ready"], [data-state="failed"], [data-state="dead_lettered"]) .scan-pulse { animation: none; }
 .scan-status-hero[data-state="ready"] .scan-pulse { background: var(--teal-soft); color: var(--teal); box-shadow: 0 0 0 14px rgba(13, 107, 93, .08); }
 .scan-status-hero[data-state="failed"] .scan-pulse { background: #eef0ec; color: #56615c; box-shadow: none; }
+
+/* The phone bottom nav (z 60) sat above every overlay (sheets, dialogs and
+   select menus are z 50): it stayed bright and clickable over an open sheet. */
+@media (max-width: 767px) { .mobile-bottom-nav { z-index: 40; } }

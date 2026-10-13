@@ -300,8 +300,9 @@ export function ContextualAssistant({
           <div className="assistant-title-row">
             <span className="assistant-mark"><Sparkles aria-hidden="true" /></span>
             <div>
-              <Badge variant="outline">Visibility Operator</Badge>
-              <SheetTitle>{isChinese ? "隨身增長助理" : "Pocket Growth Assistant"}</SheetTitle>
+              {/* The name is the title; the badge says what the answers are drawn from. */}
+              <Badge variant="outline">{mode === "live" ? (isChinese ? "只用本工作台證據" : "This workspace's evidence") : (isChinese ? "示範資料" : "Demo data")}</Badge>
+              <SheetTitle>{isChinese ? "隨身增長助理" : "Visibility Operator"}</SheetTitle>
             </div>
           </div>
           <SheetDescription>{isChinese ? `目前情境：${surfaceTitle(surface, true)}。解釋證據、建議下一步及準備新草稿，但不會自行批准或發佈。` : `Current context: ${surfaceTitle(surface, false)}. It explains evidence, recommends a next step and prepares new drafts—never approval or publishing.`}</SheetDescription>

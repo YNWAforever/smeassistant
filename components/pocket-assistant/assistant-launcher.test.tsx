@@ -43,3 +43,20 @@ describe("lazy Visibility Operator launcher", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
+
+describe("Visibility Operator panel header", () => {
+  // The English title read "Pocket Growth Assistant" under a "Visibility
+  // Operator" badge: two names for one assistant. The badge now says where the
+  // answers come from.
+  it.each([
+    ["demo", "en", "Visibility Operator", "Demo data"],
+    ["live", "en", "Visibility Operator", "This workspace's evidence"],
+    ["demo", "zh-HK", "隨身增長助理", "示範資料"],
+  ] as const)("names the assistant once and badges its %s data (%s)", (mode, locale, title, badge) => {
+    render(<Panel locale={locale} surface="sample" mode={mode} initialOpen context={mode === "live" ? { workspaceId: "ws-1" } : undefined} />);
+    const dialog = screen.getByRole("dialog");
+    expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
+    expect(dialog.textContent).toContain(badge);
+    expect(dialog.textContent).not.toContain("Pocket Growth Assistant");
+  });
+});
