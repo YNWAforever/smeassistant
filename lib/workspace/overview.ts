@@ -13,6 +13,7 @@ import {
   type Priority,
   type RunState,
 } from "@/lib/domain";
+import { freshnessText } from "./actions";
 import type { PriorityFactor } from "./priority";
 import { findTemplate, type TemplateDelivery, type TemplateKey } from "./templates";
 import { gateBlockingInputs } from "./workflow-inputs";
@@ -119,6 +120,8 @@ export interface ActionOverviewContext {
    */
   latestVersion: { id: string; version_no: number; approval_state: ApprovalState; delivery_state: DeliveryState; first_exported_at?: string | null } | null;
   assignee?: { id: string; name: string } | null;
+  /** Clock for the freshness label; defaults to the current time. */
+  now?: Date;
   /** Required keys the scan already answers for THIS action (detail page only). */
   scanSatisfiedInputs?: readonly string[];
   /**
@@ -262,7 +265,11 @@ export function buildActionOverview(row: ActionRow, ctx: ActionOverviewContext):
       value: evidence.value ?? "",
       detail: text(evidence.detail, localized("", "")),
       observedAt: evidence.observedAt ?? row.updated_at,
-      freshness: text(evidence.freshness, localized("", "")),
+      // The persisted label was frozen at derivation time ("Updated today" days
+      // later); recompute it from the observation whenever that is a real date.
+      freshness: Number.isFinite(Date.parse(evidence.observedAt ?? ""))
+        ? freshnessText(evidence.observedAt as string, ctx.now ?? new Date())
+        : text(evidence.freshness, localized("", "")),
     },
     priority: row.priority,
     priorityFactors: factors.map((factor) => ({ key: factor.key, label: factorLabel(factor.key), points: factor.points })),

@@ -68,6 +68,13 @@ describe("displayPhaseKey Google publishing (P4.6)", () => {
     expect(displayPhaseKey({ ...b, deliveryState: "cancelled" })).toBe("approved_export_ready");
   });
 
+  it("buildActionOverview recomputes the freshness label from observedAt at read time", () => {
+    const stale = { ...row, evidence: { observedAt: "2026-10-10T12:55:00Z", freshness: { en: "Updated today", "zh-HK": "今日更新", "zh-TW": "今天更新" } } };
+    const overview = buildActionOverview(stale, { location: null, latestRun: null, latestVersion: null, now: new Date("2026-10-13T12:00:00Z") });
+    expect(overview.evidence.freshness.en).toBe("Updated 2 days ago");
+    expect(overview.evidence.freshness["zh-HK"]).toBe("2 日前更新");
+  });
+
   it("buildActionOverview passes the version's first_exported_at through", () => {
     const cancelled = (first_exported_at: string | null) =>
       buildActionOverview({ ...row, action_state: "in_progress", required_inputs: [], provided_inputs: {} }, {
