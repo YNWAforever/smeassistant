@@ -2037,3 +2037,140 @@ body:has(.public-site) {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/* ---------- Owner workspace (Kinnso light) ---------- */
+
+.workspace-shell {
+  --sidebar: #ffffff;
+  --sidebar-foreground: var(--ed-ink);
+  --sidebar-primary: var(--ed-orange);
+  --sidebar-primary-foreground: var(--ed-ink);
+  --sidebar-accent: var(--ed-peach-100);
+  --sidebar-accent-foreground: var(--ed-orange-800);
+  --sidebar-border: var(--ed-line);
+  --sidebar-ring: var(--ed-orange);
+  --lime: var(--ed-orange);
+  --lime-strong: var(--ed-orange-hover);
+  --lime-soft: var(--ed-peach-100);
+  --teal: var(--ed-orange-700);
+  --teal-dark: var(--ed-orange-800);
+  --teal-soft: var(--ed-peach-100);
+  --primary: var(--ed-ink);
+  --primary-foreground: #fff;
+  --ring: var(--ed-orange);
+  font-family: var(--ed-sans);
+}
+
+.workspace-root,
+.workspace-main {
+  background: var(--ed-bg) !important;
+}
+
+.workspace-shell .workspace-sidebar {
+  border-right: 1px solid var(--ed-line);
+  background: #fff !important;
+  color: var(--ed-ink);
+}
+
+.workspace-shell .brand-lockup-inverse strong {
+  color: var(--ed-ink);
+}
+
+.workspace-shell .brand-lockup-inverse small {
+  color: var(--ed-ink-3);
+}
+
+.workspace-shell .brand-lockup-inverse .brand-mark,
+.workspace-shell .workspace-avatar {
+  background: var(--ed-orange);
+  color: var(--ed-ink);
+}
+
+.workspace-shell .brand-lockup-inverse .brand-mark {
+  border-radius: 999px;
+}
+
+.workspace-shell .workspace-switcher {
+  border-color: var(--ed-line);
+  background: var(--ed-peach-50);
+  color: var(--ed-ink);
+}
+
+.workspace-shell .workspace-switcher:hover {
+  border-color: var(--ed-peach-200);
+  background: var(--ed-peach-100);
+}
+
+.workspace-shell .workspace-switcher small,
+.workspace-shell .account-button small {
+  color: var(--ed-ink-3);
+}
+
+.workspace-shell .workspace-sidebar [data-sidebar="group-label"] {
+  color: var(--ed-ink-3);
+}
+
+.workspace-shell .workspace-sidebar [data-sidebar="menu-button"] {
+  color: var(--ed-ink-2);
+  font-size: 14px;
+  font-weight: 560;
+}
+
+.workspace-shell .workspace-sidebar [data-active="true"] {
+  background: var(--ed-peach-100) !important;
+  color: var(--ed-orange-800) !important;
+  font-weight: 700;
+}
+
+.workspace-shell .workspace-sidebar [data-sidebar="menu-button"]:hover:not([data-active="true"]) {
+  background: var(--ed-peach-50);
+  color: var(--ed-ink);
+}
+
+.workspace-shell .workspace-sidebar [data-sidebar="menu-badge"] {
+  color: var(--ed-orange-800);
+}
+
+.workspace-shell .workspace-sidebar [data-sidebar="separator"] {
+  background: var(--ed-line);
+}
+
+.workspace-shell .usage-mini {
+  border-color: var(--ed-line-warm);
+  background: var(--ed-peach-50);
+  color: var(--ed-ink-2);
+}
+
+.workspace-shell .usage-mini strong {
+  color: var(--ed-ink);
+}
+
+.workspace-shell .usage-track {
+  background: var(--ed-peach-200);
+}
+
+.workspace-shell .usage-track span {
+  background: var(--ed-orange);
+}
+
+.workspace-shell .account-button {
+  color: var(--ed-ink);
+}
+
+.workspace-shell .account-button:hover {
+  background: var(--ed-peach-50);
+}
+
+.workspace-shell .account-avatar {
+  background: var(--ed-ink);
+  color: #fff;
+}
+
+.workspace-shell .workspace-topbar {
+  border-bottom-color: var(--ed-line);
+  background: rgb(255 255 255 / 0.86);
+}
+
+.workspace-shell .usage-mini :is(span, small) {
+  color: var(--ed-ink-3);
+}

@@ -29,8 +29,8 @@ export const metadata: Metadata = {
   openGraph: { siteName: "SME Scanner", type: "website" },
 };
 
-/** Brand teal; matches the workspace sidebar and the OG card. */
-export const viewport: Viewport = { themeColor: "#173b34", width: "device-width", initialScale: 1 };
+/** Brand orange (Kinnso palette); matches the brand mark and the OG card. */
+export const viewport: Viewport = { themeColor: "#f39a3d", width: "device-width", initialScale: 1 };
 
 /**
  * The only place `<html>`/`<body>` exist, so `<html lang>` has to be resolved

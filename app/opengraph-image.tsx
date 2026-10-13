@@ -5,16 +5,16 @@ import { loadOgFont } from "@/lib/og-font";
 /**
  * Default Open Graph card for every page that does not render its own
  * (the report card lives at app/[locale]/r/[slug]/opengraph-image.tsx).
- * Colours are the public site's ink and lime tokens; no external images.
+ * Colours are the public site's ink and orange tokens; no external images.
  */
 export const runtime = "nodejs";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const alt = "SME Scanner Visibility Workspace";
 
-const INK = "#172019";
-const LIME = "#caf36a";
-const MUTED = "#c1cbc0";
+const INK = "#18181b";
+const LIME = "#f39a3d";
+const MUTED = "#c9c4bf";
 
 const brand = "SME Scanner";
 const byline = "BY FIMMICK";

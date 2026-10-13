@@ -24,7 +24,7 @@ const RING: Record<ScoreBand, string> = {
   warn: "#f59e0b",
   critical: "#ef4444",
 };
-const ACCENT = "#3b6ea5";
+const ACCENT = "#b45f12";
 
 export default async function Image({ params }: { params: Promise<{ slug: string; locale: string }> }) {
   const { slug, locale } = await params;
@@ -48,14 +48,14 @@ export default async function Image({ params }: { params: Promise<{ slug: string
 
   return new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 64, background: "linear-gradient(135deg,#eef3f8,#ffffff)", fontFamily: "Noto Sans HK, sans-serif" }}>
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 64, background: "linear-gradient(135deg,#fdeee2,#fffaf5)", fontFamily: "Noto Sans HK, sans-serif" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 40 }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 220, height: 220, borderRadius: 220, border: `16px solid ${RING[card.band]}`, flexShrink: 0 }}>
-            <div style={{ display: "flex", fontSize: 96, fontWeight: 700, color: "#111827", lineHeight: 1 }}>{card.found ? card.score : "–"}</div>
+            <div style={{ display: "flex", fontSize: 96, fontWeight: 700, color: "#18181b", lineHeight: 1 }}>{card.found ? card.score : "–"}</div>
             <div style={{ display: "flex", fontSize: 28, color: "#6b7280" }}>/ 100</div>
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", fontSize: 52, fontWeight: 700, color: "#111827" }}>{card.found ? card.businessName : "SME Scanner"}</div>
+            <div style={{ display: "flex", fontSize: 52, fontWeight: 700, color: "#18181b" }}>{card.found ? card.businessName : "SME Scanner"}</div>
             <div style={{ display: "flex", fontSize: 30, color: "#6b7280", marginTop: 12 }}>{tagline}</div>
             {card.found && (
               <div style={{ display: "flex", gap: 16, marginTop: 24 }}>
