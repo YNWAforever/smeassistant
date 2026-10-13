@@ -2030,3 +2030,10 @@ body:has(.public-site) {
 .public-site :is(input:not([type="radio"], [type="checkbox"]), textarea, [data-slot="select-trigger"]) {
   background-color: var(--ed-surface);
 }
+
+.ed-story-visuals figcaption a {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

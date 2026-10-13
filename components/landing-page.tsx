@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
@@ -354,12 +355,12 @@ export function LandingPage({ locale, market: initialMarket, billing, heroPhrase
         {/* 02 — A wide, quiet photograph; the owner's day is the context, the evidence ticket is the product. */}
         <section className="ed-moment" aria-label={ownerStory.heroKicker}>
           <figure className="ed-moment-figure">
-            <img
-              src="https://images.pexels.com/photos/4473399/pexels-photo-4473399.jpeg?auto=compress&dpr=2&h=900&w=1800"
+            <Image
+              src="https://images.pexels.com/photos/4473399/pexels-photo-4473399.jpeg?auto=compress&h=1200&w=2400"
               alt={ownerStory.heroAlt}
-              width="1800"
-              height="900"
-              fetchPriority="high"
+              fill
+              sizes="(max-width: 767px) 100vw, min(1200px, 92vw)"
+              priority
             />
             <figcaption className="ed-moment-caption">
               <span className="ed-kicker ed-kicker-light"><BadgeCheck aria-hidden="true" /> {ownerStory.heroKicker}</span>
@@ -391,11 +392,11 @@ export function LandingPage({ locale, market: initialMarket, billing, heroPhrase
         <section className="ed-story" aria-labelledby="owner-story-title">
           <div className="ed-story-visuals" aria-label={locale === "en" ? "Independent business owners at work" : "正在工作的獨立小店團隊"}>
             <figure className="ed-story-main">
-              <img src="https://images.pexels.com/photos/7147547/pexels-photo-7147547.jpeg?auto=compress&dpr=2&h=900&w=1200" alt={ownerStory.mainAlt} width="1200" height="900" loading="lazy" decoding="async" />
+              <Image src="https://images.pexels.com/photos/7147547/pexels-photo-7147547.jpeg?auto=compress&h=1200&w=1600" alt={ownerStory.mainAlt} fill sizes="(max-width: 767px) 100vw, 520px" />
               <figcaption><a href="https://www.pexels.com/photo/smiling-asian-tailor-with-illustration-against-sewing-machine-in-workroom-7147547/" target="_blank" rel="noreferrer">{photoContext} · Photo: Michael Burrows / Pexels</a></figcaption>
             </figure>
             <figure className="ed-story-second">
-              <img src="https://images.pexels.com/photos/6949788/pexels-photo-6949788.jpeg?auto=compress&dpr=2&h=900&w=900" alt={ownerStory.secondaryAlt} width="900" height="900" loading="lazy" decoding="async" />
+              <Image src="https://images.pexels.com/photos/6949788/pexels-photo-6949788.jpeg?auto=compress&h=900&w=900" alt={ownerStory.secondaryAlt} fill sizes="260px" />
               <figcaption><a href="https://www.pexels.com/photo/portrait-of-a-woman-in-a-store-6949788/" target="_blank" rel="noreferrer">{photoContext} · Photo: Prem Kumar / Pexels</a></figcaption>
             </figure>
             <span className="ed-sticker" aria-hidden="true">{ownerStory.sticker}</span>
