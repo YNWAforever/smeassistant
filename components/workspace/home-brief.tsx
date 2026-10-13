@@ -19,6 +19,7 @@ import type { HomeBrief } from "@/lib/workspace/queries-pages"
 import type { ActionOverview } from "@/lib/workspace/overview"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import type { EvidenceGalleryItem } from "@/lib/report/view-model"
+import { sourceLabel } from "@/lib/workspace/source-label"
 
 /** Phase 6 adds `evidence` to the brief (Stream A); read defensively so the page renders either way. */
 type HomeBriefWithEvidence = HomeBrief & { evidence?: EvidenceGalleryItem[] | null }
@@ -104,7 +105,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
             <>
               <h2>{resolveText(priority.title, locale)}</h2>
               <p>{resolveText(priority.summary, locale)}</p>
-              <div className="why-now-box"><FactType type={priority.evidence.factType} /><div><strong>{t.whyNow}</strong><span>{resolveText(priority.evidence.detail, locale)}</span><small>{isChinese ? "觀察於" : "Observed"} {formatDateTime(priority.evidence.observedAt, locale, timezone)} · {priority.evidence.source}</small></div></div>
+              <div className="why-now-box"><FactType type={priority.evidence.factType} /><div><strong>{t.whyNow}</strong><span>{resolveText(priority.evidence.detail, locale)}</span><small>{isChinese ? "觀察於" : "Observed"} {formatDateTime(priority.evidence.observedAt, locale, timezone)} · {sourceLabel(priority.evidence.source, locale)}</small></div></div>
               <div className="brief-action-meta"><span><Clock3 /> {effortLabel(priority.effortMinutes, locale)} {isChinese ? "店主時間" : "owner time"}</span><span><FileClock /> {resolveText(priority.displayPhase, locale)}</span></div>
               <div className="brief-priority-actions"><Button asChild size="lg"><Link href={actionHref(locale, workspaceSlug, priority, location)}>{priority.missingInputs.length ? t.addFacts : t.start}<ArrowRight /></Link></Button><ContextualAssistant locale={locale} surface="home" triggerLabel={isChinese ? "問為何先做這項" : "Ask why this comes first"} mode="live" context={{ workspaceId, locationId: brief.location?.id, snapshotId: snapshot?.id }} basePath={base} locationParam={location} /></div>
             </>
