@@ -49,12 +49,15 @@ export function isTerminalStatus(status: string | null | undefined): status is T
 }
 
 /**
- * 0..6 index of the furthest stage reached. Terminal states count as all six
- * stages complete; unknown strings map to 0 so the bar never jumps backwards
- * on an unexpected value (callers keep the maximum they have seen).
+ * 0..6 index of the furthest stage reached. A finished scan (done or partial)
+ * counts as all six stages complete. A failed scan did not complete its
+ * stages, so it maps to 0 and the caller keeps the furthest stage it saw;
+ * unknown strings also map to 0 so the bar never jumps backwards on an
+ * unexpected value (callers keep the maximum they have seen).
  */
 export function stageIndex(processingStage: string | null | undefined, status: string): number {
-  if (status === "done" || status === "partial" || status === "failed") return SCAN_STAGE_COUNT;
+  if (status === "done" || status === "partial") return SCAN_STAGE_COUNT;
+  if (status === "failed") return 0;
   const stage = processingStage ?? status;
   const index = (SCAN_STAGES as readonly string[]).indexOf(stage);
   return index < 0 ? 0 : Math.min(index, SCAN_STAGE_COUNT);
@@ -281,6 +284,21 @@ export function scanViewState(input: { status: string; stalledReason: StalledRea
  */
 export function stallCollectorPhases(phases: Record<CollectorKey, CollectorPhase>): Record<CollectorKey, CollectorPhase> {
   const overlay = (phase: CollectorPhase): CollectorPhase => (phase === "pending" || phase === "running" || phase === "awaiting_result" ? "stalled" : phase);
+  return {
+    google_business: overlay(phases.google_business),
+    instagram: overlay(phases.instagram),
+    search_ai: overlay(phases.search_ai),
+  };
+}
+
+/**
+ * Display overlay for a scan that failed outright. A collector with no
+ * recorded outcome is still unknown (collectorPhases never blames it), but it
+ * can no longer be "awaiting a result" or "pending": nothing more will arrive,
+ * and nothing was scored, so it reads as not measured.
+ */
+export function stopCollectorPhases(phases: Record<CollectorKey, CollectorPhase>): Record<CollectorKey, CollectorPhase> {
+  const overlay = (phase: CollectorPhase): CollectorPhase => (phase === "pending" || phase === "running" || phase === "awaiting_result" ? "unavailable" : phase);
   return {
     google_business: overlay(phases.google_business),
     instagram: overlay(phases.instagram),

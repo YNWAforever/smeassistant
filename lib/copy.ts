@@ -122,6 +122,10 @@ export type FunnelCopy = {
   scanning: {
     reference: string
     title: string
+    /** Hero title once the scan has finished (the card below says what to do next). */
+    titleReady: string
+    /** Hero title once the scan has stopped without a result. */
+    titleFailed: string
     body: string
     progress: string
     subjectLabel: string

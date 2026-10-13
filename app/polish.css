@@ -1480,3 +1480,9 @@ body {
 .flow-card-header h1:focus { outline: none; }
 .unlock-form-card .form-error { scroll-margin-top: 112px; }
 .unlock-form-card .form-error:focus { outline: none; }
+
+/* ── Public: scanning outcome ──────────────────────────────────────────── */
+/* The pulse kept running on a finished or stopped scan. */
+.scan-status-hero:is([data-state="ready"], [data-state="failed"], [data-state="dead_lettered"]) .scan-pulse { animation: none; }
+.scan-status-hero[data-state="ready"] .scan-pulse { background: var(--teal-soft); color: var(--teal); box-shadow: 0 0 0 14px rgba(13, 107, 93, .08); }
+.scan-status-hero[data-state="failed"] .scan-pulse { background: #eef0ec; color: #56615c; box-shadow: none; }

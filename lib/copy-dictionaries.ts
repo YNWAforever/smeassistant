@@ -110,6 +110,8 @@ const funnelEn: FunnelCopy = {
   scanning: {
     reference: "Scan reference",
     title: "Your evidence scan is running",
+    titleReady: "Your scan is complete",
+    titleFailed: "This scan stopped",
     body: "Public evidence is collected stage by stage and each source reports its own state—without fabricating a percentage or finish time. Remaining checks continue in the background.",
     progress: "{done} of 6 stages complete",
     subjectLabel: "Scan subject",
@@ -464,6 +466,8 @@ const funnelZhHK: FunnelCopy = {
   scanning: {
     reference: "掃描編號",
     title: "證據掃描進行中",
+    titleReady: "掃描已完成",
+    titleFailed: "這次掃描已停止",
     body: "公開證據會逐階段收集，每個來源如實回報自己的狀態，不會虛構完成百分比或時間。餘下檢查會在背景繼續進行。",
     progress: "6 個階段中已完成 {done} 個",
     subjectLabel: "掃描對象",
@@ -807,6 +811,8 @@ const funnelZhTW: FunnelCopy = {
   scanning: {
     reference: "掃描編號",
     title: "證據掃描進行中",
+    titleReady: "掃描已完成",
+    titleFailed: "這次掃描已停止",
     body: "公開證據會逐階段收集，每個來源如實回報自己的狀態，不會虛構完成百分比或時間。其餘檢查會在背景繼續進行。",
     progress: "6 個階段中已完成 {done} 個",
     subjectLabel: "掃描對象",
