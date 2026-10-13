@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { copy, type PrototypeLocale } from "@/lib/copy";
 import { DEFAULT_LOCALE } from "@/lib/locale";
 import { localeAlternates } from "@/lib/seo";
+import { seoDescription } from "@/lib/seo-copy";
 
 /**
  * Metadata for the public, indexable segments.
@@ -76,21 +77,21 @@ export function publicPageMetadata(locale: PrototypeLocale, page: "landing" | "s
         locale,
         path: "/sample-report",
         title: c.nav.sample,
-        description: `${c.funnel.demoBar.body} · ${c.funnel.demoBar.note}`,
+        description: seoDescription(locale, "sample"),
       });
     case "pricing":
       return publicMetadata({
         locale,
         path: "/pricing",
         title: c.nav.pricing,
-        description: `${c.funnel.pricing.marketNote} ${c.funnel.pricing.planNote}`,
+        description: seoDescription(locale, "pricing"),
       });
     case "methodology":
       return publicMetadata({
         locale,
         path: "/methodology",
         title: c.nav.methodology,
-        description: `${c.funnel.methodology.versionBadge} · ${c.landing.checked}`,
+        description: seoDescription(locale, "methodology"),
       });
     case "trust":
       return publicMetadata({ locale, path: "/trust", title: c.nav.trust, description: c.funnel.trust.intro });
