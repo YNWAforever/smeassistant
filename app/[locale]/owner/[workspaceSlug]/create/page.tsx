@@ -4,6 +4,7 @@ import { CreateView } from "@/components/workspace/create-view";
 import { resolveText } from "@/lib/domain";
 import { inScopeFor, loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 import { listCreateRecommendationSummaries } from "@/lib/workspace/queries-pages";
+import { sourceLabel } from "@/lib/workspace/source-label";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export default async function CreateRoute(props: OwnerPageProps) {
     evidence: resolveText(action.evidence.detail, page.locale),
     freshness: resolveText(action.evidence.freshness, page.locale),
     factType:action.evidence.factType,
-    source:action.evidence.source,
+    source:sourceLabel(action.evidence.source, page.locale),
   }));
   return (
     <CreateView

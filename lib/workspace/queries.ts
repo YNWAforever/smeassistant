@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { listMemberships, type Membership } from "@/lib/auth";
 import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace";
@@ -200,23 +201,29 @@ async function latestSnapshot(workspaceId: string, locationId: string): Promise<
   return read("snapshots", () => workspaceReadRepository().latestSnapshot(workspaceId, locationId));
 }
 
-/** Everything the shell needs for one accepted membership (Phase 2 item 6). */
-export async function loadWorkspaceContext(membership: Membership): Promise<WorkspaceContext> {
-  const workspace = summariseWorkspace(await loadWorkspaceRow(membership.workspaceId));
+// Memoised per server render (React `cache`): the workspace layout and its page
+// both load this context, and each uncached call is four queries including the
+// usage upsert. Keyed by primitives because each guard builds a new membership.
+const loadWorkspaceContextCore = cache(async (workspaceId: string, userId: string, email: string) => {
+  const workspace = summariseWorkspace(await loadWorkspaceRow(workspaceId));
   const [locationRows, usage, unreadNotifications] = await Promise.all([
     loadLocationRows([workspace.id]),
     loadOrCreateUsage(workspace.id, workspace.tier, currentPeriod(workspace.timezone)),
-    countUnreadNotifications(workspace.id, membership.userId),
+    countUnreadNotifications(workspace.id, userId),
   ]);
-  const email = membership.email || "";
   return {
     workspace,
     locations: locationRows.map(summariseLocation),
     usage,
     unreadNotifications,
-    membership,
     account: { name: accountNameFromEmail(email), email },
   };
+});
+
+/** Everything the shell needs for one accepted membership (Phase 2 item 6). */
+export async function loadWorkspaceContext(membership: Membership): Promise<WorkspaceContext> {
+  const core = await loadWorkspaceContextCore(membership.workspaceId, membership.userId, membership.email || "");
+  return { ...core, membership };
 }
 
 /** One card per accepted membership: the workspace plus each location's latest snapshot and urgent count (Phase 2 item 5). */

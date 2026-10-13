@@ -15,6 +15,7 @@ import { effortLabel, formatDateTime, priorityClass, priorityLabel, withLocation
 import type { ActionOverview } from "@/lib/workspace/overview"
 import type { ActionFilters, ActionListResult } from "@/lib/workspace/queries-pages"
 import { zhFor } from "@/lib/zh-tw"
+import { sourceLabel } from "@/lib/workspace/source-label"
 
 export interface ActionsListViewProps {
   locale: PrototypeLocale
@@ -66,7 +67,7 @@ function ActionCard({ action, locale, base, timezone, location }: { action: Acti
         <div className="action-card-badges"><Badge variant="outline" className={priorityClass(action.priority)}>{priorityLabel(action.priority, locale)}</Badge><Badge variant="outline">{resolveText(action.displayPhase, locale)}</Badge><CapabilityBadge value={action.capability} /></div>
         <span className="action-scope"><MapPin />{resolveText(action.location.name, locale)}</span>
       </div>
-      <div className="action-card-content"><div><p className="eyebrow">{action.evidence.source}</p><h2>{resolveText(action.title, locale)}</h2><p>{resolveText(action.summary, locale)}</p></div><div className="action-evidence"><FactType type={action.evidence.factType} />{action.evidence.value && <strong className="action-evidence-value">{action.evidence.value}</strong>}<p>{resolveText(action.evidence.detail, locale)}</p><small>{[resolveText(action.evidence.freshness, locale), formatDateTime(action.evidence.observedAt, locale, timezone)].filter(Boolean).join(" · ")}</small></div></div>
+      <div className="action-card-content"><div><p className="eyebrow">{sourceLabel(action.evidence.source, locale)}</p><h2>{resolveText(action.title, locale)}</h2><p>{resolveText(action.summary, locale)}</p></div><div className="action-evidence"><FactType type={action.evidence.factType} />{action.evidence.value && <strong className="action-evidence-value">{action.evidence.value}</strong>}<p>{resolveText(action.evidence.detail, locale)}</p><small>{[resolveText(action.evidence.freshness, locale), formatDateTime(action.evidence.observedAt, locale, timezone)].filter(Boolean).join(" · ")}</small></div></div>
       <div className="priority-reason"><Sparkles /><div><strong>{isChinese ? "為何列為優先" : "Why this priority"}</strong><span>{topFactors.map((f) => `${resolveText(f.label, locale)} ${f.points > 0 ? "+" : ""}${f.points}`).join(" · ")}</span></div></div>
       <dl className="action-card-meta"><div><dt>{isChinese ? zhFor(locale, "店主所需時間") : "Owner effort"}</dt><dd>{effortLabel(action.effortMinutes, locale)}</dd></div><div><dt>{isChinese ? "負責人" : "Assignee"}</dt><dd className="break-all">{assigneeName}</dd></div><div><dt>{isChinese ? "到期日" : "Due"}</dt><dd>{action.dueAt ? formatDateTime(action.dueAt, locale, timezone) : "—"}</dd></div><div><dt>{isChinese ? "所需資料" : "Inputs"}</dt><dd>{action.missingInputs.length ? (isChinese ? `缺 ${action.missingInputs.length} 項` : `${action.missingInputs.length} missing`) : (isChinese ? "齊備" : "Ready")}</dd></div></dl>
       <div className="action-card-footer"><span>{isChinese ? "最近更新：" : "Last changed "}{formatDateTime(action.updatedAt, locale, timezone)}</span><Button asChild><Link href={href}>{cta}<ArrowRight /></Link></Button></div>

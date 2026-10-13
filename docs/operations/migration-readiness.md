@@ -95,3 +95,16 @@ Production's 0009–0014 objects are owned by `neondb_owner`: tables `mail_outbo
 Read-only on production (2026-10-10): journal 1–15 as expected; 8/8 fingerprints match; the non-migrator objects are exactly the expected 15; `neondb_owner` can `SET ROLE smeassistant_migrator`; the migrator has CREATE on `public`. Local rehearsal (postgres:18 only, 6 cases): [`T19-reown-rehearsal.txt`](../audits/2026-10-09-reaudit/evidence/T19-reown-rehearsal.txt) — after the transfer, owners and ACLs of every public relation and function equal a database migrated straight by the migrator, and the migrator can alter `offers` and `archive_offer`.
 
 **Applied 2026-10-10** by the owner (Neon SQL Editor, project Smeassistant, branch production `br-wandering-field-azdc91yj`, database `neondb`, as `neondb_owner`, after PR #54). Read-only check afterwards on `ep-tiny-forest-azzm8bni`: no relation, function or standalone type in `public` is owned by any role other than `smeassistant_migrator`; journal 1–15 equal to the committed files; all eight 0015 fingerprints (including `sme_app_runtime` grants) unchanged. Production is now in the same state as a database migrated by the migrator, and the next migration can be applied with its own `apply-00NN.sql`.
+
+## 2026-10-13: 0016 and 0017 deployed without their migrations
+
+PR #66 (`73bc4c3`) merged `0016_brand_revisions.sql` and `0017_brand_profile_revision_capture.sql`, and `main` auto-deployed. Production is still at journal 15, so every read of `brand_profiles.current_revision_id` fails with `42703 column "current_revision_id" does not exist`. Observed on production 2026-10-13 (Vercel runtime errors, 10 events since 2026-10-12): the brand settings page and the action detail page return a server error, and draft generation cannot read the brand snapshot.
+
+| Step | Statement | Expects | Records |
+|---|---|---|---|
+| 1 | [`rollout/apply-0016.sql`](../implementation/owner-platform-v1/rollout/apply-0016.sql) | journal 1–15 | row 16 |
+| 2 | [`rollout/apply-0017.sql`](../implementation/owner-platform-v1/rollout/apply-0017.sql) | journal 1–16 | row 17 |
+
+Run both, in order, under the operator rule above (test branch of production first). `tests/rollout-apply-0016-0017.test.ts` checks the embedded migration text and checksums.
+
+**Pre-apply evidence (local, disposable postgres:16 only, roles as in production: `neondb_owner` holds `smeassistant_migrator` WITH SET, migrated 0001–0015 by the migrator, two seeded brand profiles).** `apply-0017` on journal 15 refused; `apply-0016` applied and recorded row 16; its re-run refused; `apply-0017` applied and recorded row 17; its re-run refused. Both seeded profiles point at a `baseline` revision holding their own voice. `brand_revisions` and all four new functions are owned by `smeassistant_migrator`. The repository runner on the result applied nothing.
