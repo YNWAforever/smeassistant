@@ -269,8 +269,11 @@ export function PublicPageFrame({ locale, demo = false, signInHref, children }: 
   }, [locale])
   return (
     <div className={`public-site${demo ? " has-env-bar" : ""}`}>
+      <a className="skip-link" href="#main-content">{locale === "en" ? "Skip to content" : "跳到主要內容"}</a>
       <EnvironmentBar locale={locale} show={demo} />
       <PublicHeader locale={locale} signInHref={signInHref} />
+      {/* Skip-link target: pages render their own <main>, so focus lands just before it. */}
+      <div id="main-content" className="skip-target" tabIndex={-1} />
       {children}
       <PublicFooter locale={locale} />
       <MotionDirector />

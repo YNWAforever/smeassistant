@@ -42,6 +42,7 @@ import {
 import { copy, normaliseLocale, type PrototypeLocale } from "@/lib/copy"
 import { accountInitials, resolveLocationSlug, usagePercent } from "@/lib/workspace/shell"
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
+import { useFocusClearOfBars } from "@/hooks/use-focus-clear-of-bars"
 import type { AssistantSurface } from "@/lib/pocket-assistant/contracts"
 import { DemoBadge, EnvironmentBar, LocaleSelect, type ShellWorkspace } from "@/components/product-ui"
 
@@ -87,6 +88,7 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const t = copy[locale]
+  useFocusClearOfBars(".workspace-topbar", ".mobile-bottom-nav")
   const isChinese = locale !== "en"
   const base = `/${locale}/owner/${workspace.slug}`
   const location = resolveLocationSlug(searchParams.get("location"), workspace.locations, workspace.defaultLocationSlug)
@@ -146,6 +148,7 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
             : "home"
   return (
     <SidebarProvider className="workspace-shell">
+      <a className="skip-link" href="#main-content">{isChinese ? "跳到主要內容" : "Skip to content"}</a>
       <Sidebar collapsible="none" className="workspace-sidebar hidden md:flex">
         <SidebarHeader className="workspace-sidebar-header">
           <Link className="brand-lockup brand-lockup-inverse" href={base}>
@@ -229,7 +232,7 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
           <LocaleSelect locale={locale} />
           {workspace.demo && <DemoBadge locale={locale} />}
         </header>
-        <main className="workspace-content">{children}</main>
+        <main className="workspace-content" id="main-content" tabIndex={-1}>{children}</main>
         <nav className="mobile-bottom-nav md:hidden" aria-label={isChinese ? "工作台導覽" : "Workspace navigation"}>
           {primaryWorkspaceNav.map(({ key, label, icon: Icon, suffix }) => {
             const href = scopedHref(`${base}${suffix}`)

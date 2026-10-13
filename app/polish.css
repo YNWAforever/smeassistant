@@ -1490,3 +1490,31 @@ body {
 /* The phone bottom nav (z 60) sat above every overlay (sheets, dialogs and
    select menus are z 50): it stayed bright and clickable over an open sheet. */
 @media (max-width: 767px) { .mobile-bottom-nav { z-index: 40; } }
+
+/* ── Keyboard: skip link and focus clear of sticky bars ────────────────── */
+/* The first Tab stop was the logo; the workspace sidebar put about a dozen
+   stops before the content. */
+.skip-link {
+  position: fixed;
+  z-index: 100;
+  top: 10px;
+  left: 10px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--lime);
+  font-size: 14px;
+  font-weight: 700;
+  transform: translateY(-160%);
+  transition: transform .18s var(--ease-out);
+}
+.skip-link:focus-visible { transform: none; outline: 3px solid var(--lime); outline-offset: 2px; }
+.skip-target { scroll-margin-top: 110px; }
+.skip-target:focus, .workspace-content:focus { outline: none; }
+/* Keep a focused control from being scrolled under the sticky header or the
+   phone bottom nav (WCAG 2.4.11). */
+html { scroll-padding-top: 96px; }
+@media (max-width: 767px) {
+  html:has(.mobile-bottom-nav) { scroll-padding-top: 72px; scroll-padding-bottom: 96px; }
+}
+@media (prefers-reduced-motion: reduce) { .skip-link { transition: none; } }
