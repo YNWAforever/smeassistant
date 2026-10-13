@@ -1,8 +1,8 @@
 import type { PrototypeLocale } from "@/lib/copy";
 import { copyDictionaries } from "@/lib/copy-dictionaries";
-import en from "@/lib/messages/en.json";
-import zhHK from "@/lib/messages/zh-HK.json";
-import zhTW from "@/lib/messages/zh-TW.json";
+import en from "@/lib/messages/en.json" with { type: "json" };
+import zhHK from "@/lib/messages/zh-HK.json" with { type: "json" };
+import zhTW from "@/lib/messages/zh-TW.json" with { type: "json" };
 
 import type { LocaleData, Messages } from "./types";
 
