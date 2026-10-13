@@ -1930,3 +1930,103 @@ body:has(.ed-landing) {
     text-overflow: ellipsis;
   }
 }
+
+/* ---------- Warm theme for every public page ----------
+   The older public pages (pricing, methodology, trust, scan, report, sign-in)
+   are built on ramp-refresh/polish variables. Remapping those variables on
+   .public-site moves all of them onto the Kinnso palette at once, without
+   touching the owner workspace (which does not render inside .public-site). */
+
+.public-site {
+  --ink: var(--ed-ink);
+  --soft: var(--ed-ink-2);
+  --paper: var(--ed-surface);
+  --canvas: var(--ed-bg);
+  --teal: var(--ed-orange-700);
+  --teal-dark: var(--ed-orange-800);
+  --teal-soft: var(--ed-peach-100);
+  --lime: var(--ed-orange);
+  --lime-strong: var(--ed-orange-hover);
+  --lime-soft: var(--ed-peach-100);
+  --peach: var(--ed-peach-100);
+  --border: var(--ed-line);
+  --ring: var(--ed-orange);
+  --shadow-sm: var(--ed-shadow);
+  --shadow-md: var(--ed-shadow-lg);
+  background: var(--ed-bg);
+  font-family: var(--ed-sans);
+}
+
+body:has(.public-site) {
+  background: var(--ed-bg);
+}
+
+.public-site :is(h1, h2, h3) {
+  font-family: var(--ed-sans);
+}
+
+/* Report links and panels used blue/sky; they join the warm palette. */
+.public-site {
+  --blue: var(--ed-orange-700);
+  --blue-soft: var(--ed-peach-100);
+  --sky: var(--ed-peach-50);
+}
+
+/* Dark panels hard-coded to the old green-black move to warm ink. */
+.public-site :is(.flow-steps, .report-page > .loop-ribbon, .unlock-banner, .formula-card, .partial-result-card, .onboarding-layout > aside, .recommended-label, .prototype-bar) {
+  background: var(--ed-ink);
+}
+
+.public-site .section-card.formula-card {
+  background:
+    radial-gradient(circle at 92% 0%, oklch(76% 0.158 55 / 0.22), transparent 22rem),
+    var(--ed-ink);
+}
+
+.public-site .pricing-featured {
+  border-color: var(--ed-orange);
+  background: var(--ed-surface);
+  box-shadow: 0 0 0 1px var(--ed-orange), var(--ed-shadow-lg);
+}
+
+.public-site .scan-pulse {
+  background: var(--ed-peach-100);
+  color: var(--ed-orange-800);
+}
+
+/* Scan steps sidebar: teal states become warm. */
+.public-site .flow-steps li {
+  color: rgb(255 255 255 / 0.62);
+}
+
+.public-site .flow-steps li > span {
+  border-color: rgb(255 255 255 / 0.25);
+}
+
+.public-site .flow-steps .is-active {
+  background: rgb(255 255 255 / 0.08);
+  color: #fff;
+}
+
+.public-site .flow-steps .is-active > span {
+  border-color: var(--ed-orange);
+  background: var(--ed-orange);
+  color: var(--ed-ink);
+}
+
+.public-site .flow-steps .is-complete {
+  color: oklch(88% 0.08 70);
+}
+
+/* shadcn tokens inside the public site: warm ink primary, white fields. */
+.public-site {
+  --primary: var(--ed-ink);
+  --primary-foreground: #fff;
+  --foreground: var(--ed-ink);
+  --card-foreground: var(--ed-ink);
+  --input: var(--ed-line);
+}
+
+.public-site :is(input:not([type="radio"], [type="checkbox"]), textarea, [data-slot="select-trigger"]) {
+  background-color: var(--ed-surface);
+}
