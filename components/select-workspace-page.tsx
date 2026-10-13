@@ -79,8 +79,10 @@ export function SelectWorkspacePage({
               const base = `/${locale}/owner/${card.workspace.slug}`
               const count = card.locations.length
               const locationsCopy = isChinese ? zhFor(locale, `${count} 個地點 · ${marketLabel(card.workspace.market, true)}`) : `${count} ${count === 1 ? "location" : "locations"} · ${marketLabel(card.workspace.market, false)}`
+              // Two workspaces can share a business name (e.g. an earlier claim); the slug tells them apart.
+              const sameName = cards.filter((other) => other.workspace.name === card.workspace.name).length > 1
               return [
-                <Link key={card.workspace.id} href={`${base}?location=all`}><span className="workspace-choice-icon">{avatarInitial(card.workspace.name)}</span><div><Badge>{roleLabel(card.role, locale)}</Badge><h2>{card.workspace.name}</h2><p>{locationsCopy}</p><small>{isChinese ? zhFor(locale, "所有地點存取") : "All-locations access"}</small></div><ArrowRight /></Link>,
+                <Link key={card.workspace.id} href={`${base}?location=all`}><span className="workspace-choice-icon">{avatarInitial(card.workspace.name)}</span><div><Badge>{roleLabel(card.role, locale)}</Badge><h2>{card.workspace.name}</h2><p>{locationsCopy}{sameName ? ` · /${card.workspace.slug}` : ""}</p><small>{isChinese ? zhFor(locale, "所有地點存取") : "All-locations access"}</small></div><ArrowRight /></Link>,
                 ...card.locations.map((location) => {
                   const score = location.latestScore === null ? "—" : String(Math.round(location.latestScore))
                   const coverage = formatCoverage(location.latestCoverage)
