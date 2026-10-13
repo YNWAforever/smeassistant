@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { membershipRepository } from "@/lib/repositories/membership";
 import { authorizeWorkspace, type WorkspaceRole } from "@/lib/workspace/authorize-workspace";
 
@@ -54,14 +55,19 @@ export function inLocationScope(m: Membership, locationId: string | null): boole
   return m.locationScope.includes(locationId);
 }
 
-/** Verified server identity mapped to an app UUID. Outages remain errors, absence is null. */
-export async function getUser(): Promise<SessionUser | null> {
+/**
+ * Verified server identity mapped to an app UUID. Outages remain errors, absence is null.
+ * Memoised per server render (React `cache`): the workspace layout and its page
+ * both guard, and each uncached call is an upstream session check plus a user
+ * lookup. Every request still checks revocation once; nothing outlives it.
+ */
+export const getUser = cache(async (): Promise<SessionUser | null> => {
   const { identityProvider } = await import("@/lib/identity/composition");
   const identity = await (await identityProvider()).getIdentity();
   if (!identity) return null;
   const { resolveApplicationUser } = await import("@/lib/identity/users");
   return resolveApplicationUser(identity);
-}
+});
 
 export function signInPath(locale: string, returnTo: string): string {
   return `/${locale}/owner/sign-in?returnTo=${encodeURIComponent(returnTo)}`;
@@ -76,6 +82,9 @@ export async function requireUser(locale: string, returnTo: string): Promise<Ses
 interface WorkspaceRefRow { id: string; slug: string | null }
 const loadWorkspaceRef = membershipRepository.workspace;
 const loadAcceptedMembership = membershipRepository.accepted;
+// Per-render memo for the page guard (the layout and its page ask the same questions).
+const workspaceRefBySlug = cache((slug: string) => loadWorkspaceRef({ slug }));
+const acceptedMembershipFor = cache((userId: string, workspaceId: string) => loadAcceptedMembership(userId, workspaceId));
 
 /** Mark database I/O failures at their boundary; pure authorization decisions remain distinct. */
 async function membershipDependency<T>(read: () => Promise<T>): Promise<T> {
@@ -100,7 +109,7 @@ async function decideMembership(
   workspace: WorkspaceRefRow,
   opts: MembershipOptions,
 ): Promise<Decision> {
-  const row = await membershipDependency(() => loadAcceptedMembership(user.id, workspace.id));
+  const row = await membershipDependency(() => acceptedMembershipFor(user.id, workspace.id));
   const access = authorizeWorkspace({
     membership: row ? { workspaceId: row.workspace_id, role: row.role } : null,
     sessionUser: { id: user.id, email: user.email },
@@ -134,7 +143,7 @@ export async function requireMembership(
   opts: MembershipOptions = {},
 ): Promise<Membership> {
   const user = await requireUser(locale, `/${locale}/owner/${workspaceSlug}`);
-  const workspace = await loadWorkspaceRef({ slug: workspaceSlug });
+  const workspace = await workspaceRefBySlug(workspaceSlug);
   const decision = workspace ? await decideMembership(user, workspace, opts) : { kind: "none" as const };
   if (decision.kind === "none") {
     redirect(`/${locale}/owner/select-workspace?denied=${encodeURIComponent(workspaceSlug)}`);
