@@ -162,8 +162,8 @@ export function ScoreDial({ score, coverage, delta }: { score: number; coverage:
   )
 }
 
-const loopSteps = ["Discover", "Diagnose", "Prioritise", "Draft", "Approve", "Export", "Re-scan", "Prove change"]
-const loopStepsZh = ["發現", "診斷", "排序", "擬稿", "審批", "匯出／發佈", "重新掃描", "證明改善"]
+export const loopSteps = ["Discover", "Diagnose", "Prioritise", "Draft", "Approve", "Export", "Re-scan", "Prove change"]
+export const loopStepsZh = ["發現", "診斷", "排序", "擬稿", "審批", "匯出／發佈", "重新掃描", "證明改善"]
 
 export function LoopRibbon({ active = 0 }: { active?: number }) {
   const pathname = usePathname()

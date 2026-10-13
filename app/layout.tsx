@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import "@fontsource-variable/inter/opsz.css";
+import "@fontsource-variable/geist/wght.css";
 import "./globals.css";
 import "./responsive.css";
 import "./ramp-refresh.css";
 import "./polish.css";
+import "./editorial.css";
 import { HydrationMarker } from "@/components/hydration-marker";
 import { Toaster } from "@/components/ui/sonner";
 import { LOCALE_HEADER, resolveHtmlLang } from "@/lib/funnel/locale-redirect";
@@ -27,8 +29,8 @@ export const metadata: Metadata = {
   openGraph: { siteName: "SME Scanner", type: "website" },
 };
 
-/** Brand teal; matches the workspace sidebar and the OG card. */
-export const viewport: Viewport = { themeColor: "#173b34", width: "device-width", initialScale: 1 };
+/** Brand orange (Kinnso palette); matches the brand mark and the OG card. */
+export const viewport: Viewport = { themeColor: "#f39a3d", width: "device-width", initialScale: 1 };
 
 /**
  * The only place `<html>`/`<body>` exist, so `<html lang>` has to be resolved

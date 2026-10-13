@@ -34,6 +34,7 @@
     "e2e:neon-auth": "playwright test --config playwright.neon-auth.config.ts"
   },
   "dependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/inter": "5.3.0",
     "@neondatabase/auth": "0.5.0-beta",
     "@sme-scanner/contracts": "workspace:*",

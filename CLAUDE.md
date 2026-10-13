@@ -1350,6 +1350,7 @@ corepack pnpm seed:demo --owned-test      # creates, seeds, verifies and destroy
 | 2026-09-03 | Owner "Rescan now" allowed for paid workspaces (3/day); monthly via `scan_schedules` | assumed — **Willy to confirm** |
 | 2026-09-03 | Fix Pack drafts surfaced read-only (approve/reject) rather than merged into versions | assumed, v1 |
 | 2026-09-03 | Tooling: Node 22, pnpm via corepack, no Supabase CLI, Docker for verify/integration | assumed |
+| 2026-10-14 | Public site redesigned as a modern, friendly SaaS look in the Kinnso palette (kinnso.ai: orange primary, amber secondary, peach tints, zinc ink, sans type). Supersedes the §0.1/§5 "preserve the visual design / never restyle" rule; extended to the owner workspace the same day (white sidebar, warm shell). Design system lives in `app/editorial.css` (`ed-*` + variable remaps); legacy stylesheets were hue-shifted, status colours (measured/observed/success) kept | decided (Willy) |
 | open | Retention periods on the Trust page; owned photos for `public/brand/` | Willy |
 | open | Whether the 13 local-only commits and stale worktrees in `Documents\smescanner` get archived (tag) and removed | Willy |
 | open | Re-pin cadence: when upstream changes `scoringVersion` or the lease, both apps must move together | Willy + upstream maintainer |
