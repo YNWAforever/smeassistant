@@ -2,6 +2,10 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
+import { Search as SearchIcon } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
@@ -45,5 +49,18 @@ export function ActionFilterSelect({
 export function ActionSearch({ value, label, submitLabel }: { value: string; label: string; submitLabel: string }) {
   const router = useRouter(), pathname = usePathname(), params = useSearchParams();
   const [draft, setDraft] = useState(value);
-  return <form className="flex min-w-0 flex-wrap gap-2" onSubmit={event => { event.preventDefault(); const query = new URLSearchParams(params.toString()); query.delete("cursor"); if (draft.trim()) query.set("q", draft.trim()); else query.delete("q"); router.push(`${pathname}${query.size ? `?${query}` : ""}`); }}><label>{label}<input type="search" value={draft} maxLength={200} onChange={event => setDraft(event.target.value)} className="min-w-0 w-full rounded border p-2" /></label><button type="submit">{submitLabel}</button></form>;
+  return (
+    <form
+      className="action-search"
+      role="search"
+      onSubmit={event => { event.preventDefault(); const query = new URLSearchParams(params.toString()); query.delete("cursor"); if (draft.trim()) query.set("q", draft.trim()); else query.delete("q"); router.push(`${pathname}${query.size ? `?${query}` : ""}`); }}
+    >
+      <label className="action-search-field">
+        <span className="sr-only">{label}</span>
+        <SearchIcon aria-hidden="true" />
+        <Input type="search" value={draft} maxLength={200} placeholder={label} onChange={event => setDraft(event.target.value)} />
+      </label>
+      <Button type="submit" variant="outline">{submitLabel}</Button>
+    </form>
+  );
 }

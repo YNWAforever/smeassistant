@@ -7,6 +7,7 @@ import type { PrototypeLocale } from "@/lib/copy"
 import { resolveText } from "@/lib/domain"
 import { formatDay, ordinal, priorityClass, priorityLabel, withLocation } from "@/lib/workspace/format"
 import type { CalendarModel } from "@/lib/workspace/queries-pages"
+import { zhFor } from "@/lib/zh-tw"
 
 /**
  * The rescan cadence comes from `scan_schedules` by place id; due items are
@@ -22,9 +23,9 @@ export function CalendarView({ locale, workspaceSlug, timezone, model }: { local
   const base = `/${locale}/owner/${workspaceSlug}`
   return (
     <div className="calendar-page">
-      <PageIntro eyebrow={isChinese ? "已規劃工作及監察" : "Planned work and monitoring"} title={isChinese ? "日曆" : "Calendar"} description={isChinese ? "所有日期都帶完整年份與狀態；目前沒有已驗證的外部發佈連接器。" : "Every item has a full date and explicit state; no external publishing connector is verified."} />
+      <PageIntro eyebrow={isChinese ? zhFor(locale, "已規劃工作及監察") : "Planned work and monitoring"} title={isChinese ? "日曆" : "Calendar"} description={isChinese ? "所有日期都帶完整年份與狀態；目前沒有已驗證的外部發佈連接器。" : "Every item has a full date and explicit state; no external publishing connector is verified."} />
       <SectionCard className="calendar-card">
-        <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "監察節奏" : "Monitoring cadence"}</p><h2>{isChinese ? "重新掃描節奏" : "Rescan cadence"}</h2></div><Badge variant="outline">{isChinese ? "由你執行" : "You run these"}</Badge></div>
+        <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? zhFor(locale, "監察節奏") : "Monitoring cadence"}</p><h2>{isChinese ? "重新掃描節奏" : "Rescan cadence"}</h2></div><Badge variant="outline">{isChinese ? "由你執行" : "You run these"}</Badge></div>
         {model.nextScans.length === 0 ? <p>{isChinese ? "尚未有節奏。付費方案在你首次重新掃描後，會在這裡記錄每月節奏。" : "No cadence yet. On the paid tier, your first rescan records a monthly cadence here."}</p> : (
           <ul className="calendar-list">
             {model.nextScans.map((scan) => <li key={scan.placeId}><span><CalendarClock /></span><div><strong>{scan.locationName ?? scan.placeId}</strong><small>{scan.cadence === "paused" ? (isChinese ? "已暫停" : "Paused") : scan.anniversaryDay ? (isChinese ? `每月 · 每月 ${scan.anniversaryDay} 號` : `Monthly · around the ${ordinal(scan.anniversaryDay)}`) : (isChinese ? "每月" : "Monthly")}</small></div><Link href={withLocation(`${base}/insights`, scan.locationSlug)}>{isChinese ? "成效" : "Insights"}</Link></li>)}

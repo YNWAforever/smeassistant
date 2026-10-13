@@ -2,6 +2,11 @@ import type { PriorityFactorKey } from "@/lib/workspace/priority";
 import type { TemplateKey } from "@/lib/workspace/templates";
 import type { MetricKey } from "@/lib/workspace/metrics";
 import type { AttributionBasis } from "@/lib/workspace/applications";
+import { ACTION_INPUT_KEYS, type DisplayPhaseKey, type PublishReasonKey } from "@/lib/copy-workspace-keys";
+
+// The key lists live in a data-free module so client code can import them
+// without pulling every locale's workspace dictionary into the browser.
+export { ACTION_INPUT_KEYS, DISPLAY_PHASE_KEYS, PUBLISH_REASON_KEYS, type DisplayPhaseKey, type PublishReasonKey } from "@/lib/copy-workspace-keys";
 
 /**
  * Workspace copy (`copy[locale].workspace`, CLAUDE.md Phase 3 item 5): labels
@@ -9,39 +14,6 @@ import type { AttributionBasis } from "@/lib/workspace/applications";
  * three locales. Kept in its own module so lib/copy.ts stays navigable; it is
  * still reached only through `copy[locale].workspace`.
  */
-export type DisplayPhaseKey =
-  | "requires_connection"
-  | "needs_input"
-  | "generating"
-  | "draft_ready"
-  | "changes_requested"
-  | "approved_export_ready"
-  | "verified"
-  | "applied"
-  | "publishing_to_google"
-  | "published_on_google"
-  | "exported"
-  | "awaiting_comparable_scan"
-  | "measured"
-  | "recommended";
-
-export const DISPLAY_PHASE_KEYS: DisplayPhaseKey[] = [
-  "requires_connection",
-  "needs_input",
-  "generating",
-  "draft_ready",
-  "changes_requested",
-  "approved_export_ready",
-  "verified",
-  "applied",
-  "publishing_to_google",
-  "published_on_google",
-  "exported",
-  "awaiting_comparable_scan",
-  "measured",
-  "recommended",
-];
-
 export type StateLabelKey =
   | "measured" | "unavailable" | "unsupported" | "failed" | "pending"
   | "recommended" | "needs_input" | "ready" | "in_progress" | "completed" | "dismissed" | "cancelled" | "expired"
@@ -139,14 +111,7 @@ export type PacksCopy = {
  * (`rate_limited`, `network`, `forbidden`, `generic`); a raw code never
  * reaches an owner. Interpolated strings use {n} / {time} placeholders.
  */
-export const PUBLISH_REASON_KEYS = [
-  "already_replied", "connection_expired", "provider_forbidden", "review_not_found", "provider_rate_limited", "provider_unavailable", "not_applied",
-  "flag_off", "not_review_response", "not_approved", "no_location_listing", "connection_missing", "too_long", "empty_body",
-  "version_changed", "target_not_in_location", "location_not_managed", "already_publishing", "target_busy", "allowance_exceeded",
-  "idempotency_key_conflict", "reply_changed_on_google", "delivery_not_published", "not_enabled", "unavailable", "too_soon",
-  "rate_limited", "network", "forbidden", "generic",
-] as const;
-export type PublishReasonKey = (typeof PUBLISH_REASON_KEYS)[number];
+
 
 export type PublishCopy = {
   deliveryIntro: string;
@@ -246,10 +211,7 @@ export type WorkspaceCopy = {
   };
 };
 
-export const ACTION_INPUT_KEYS = [
-  "brand_voice", "reviews_without_response", "language", "channel", "opening_hours", "categories", "asset_or_text_only", "alt_text",
-  "approved_claim", "cta_link", "owner_fact_1", "owner_fact_2", "owner_fact_3", "menu_items", "google_account_owner", "offer_id",
-] as const;
+
 
 function inputs(labels: string[]): Record<string, string> {
   return Object.fromEntries(ACTION_INPUT_KEYS.map((key, index) => [key, labels[index]]));

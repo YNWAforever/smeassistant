@@ -8,6 +8,7 @@ import type { PrototypeLocale } from "@/lib/copy"
 import type { WorkspaceCard } from "@/lib/workspace/queries"
 import { noWorkspaceCopy } from "@/lib/workspace/no-workspace-copy"
 import { avatarInitial, formatCoverage, roleLabel } from "@/lib/workspace/shell"
+import { zhFor } from "@/lib/zh-tw"
 
 function marketLabel(market: "hk" | "tw", isChinese: boolean) {
   if (market === "tw") return isChinese ? "台灣市場" : "Taiwan market"
@@ -57,7 +58,7 @@ export function SelectWorkspacePage({
   return (
     <PublicPageFrame locale={locale}>
       <main className="select-workspace-page">
-        <header><Badge variant="outline">{isChinese ? `已登入 · ${email}` : `Signed in as ${email}`}</Badge><h1>{isChinese ? "選擇工作台或地點" : "Choose a workspace or location"}</h1><p>{isChinese ? "選擇後會再次檢查你的角色及地點範圍。" : "Your role and location scope are re-checked after selection."}</p></header>
+        <header><Badge variant="outline">{isChinese ? `已登入 · ${email}` : `Signed in as ${email}`}</Badge><h1>{isChinese ? zhFor(locale, "選擇工作台或地點") : "Choose a workspace or location"}</h1><p>{isChinese ? zhFor(locale, "選擇後會再次檢查你的角色及地點範圍。") : "Your role and location scope are re-checked after selection."}</p></header>
         {denied && <div className="permission-note" role="alert"><TriangleAlert /><span>{isChinese ? `你不是「${denied}」工作台的成員，或成員資格已被撤銷。請從下方選擇你有權限的工作台。` : `You are not a member of the “${denied}” workspace, or the membership was revoked. Choose one you have access to below.`}</span></div>}
         {accessRequest}
         {cards.length === 0 ? (
@@ -68,7 +69,7 @@ export function SelectWorkspacePage({
             <p>{empty.owner}</p>
             <p>{empty.colleague}</p>
             <div className="flow-card-footer">
-              <form action={signOutAction}><Button variant="outline" type="submit">{isChinese ? "登出並用另一個電郵登入" : "Sign out and use another email"}</Button></form>
+              <form action={signOutAction}><Button variant="outline" type="submit">{isChinese ? zhFor(locale, "登出並用另一個電郵登入") : "Sign out and use another email"}</Button></form>
               <Button asChild><Link href={`/${locale}/scan`}><ScanSearch />{empty.scanCta}<ArrowRight /></Link></Button>
             </div>
           </div>
@@ -77,9 +78,9 @@ export function SelectWorkspacePage({
             {cards.map((card) => {
               const base = `/${locale}/owner/${card.workspace.slug}`
               const count = card.locations.length
-              const locationsCopy = isChinese ? `${count} 個地點 · ${marketLabel(card.workspace.market, true)}` : `${count} ${count === 1 ? "location" : "locations"} · ${marketLabel(card.workspace.market, false)}`
+              const locationsCopy = isChinese ? zhFor(locale, `${count} 個地點 · ${marketLabel(card.workspace.market, true)}`) : `${count} ${count === 1 ? "location" : "locations"} · ${marketLabel(card.workspace.market, false)}`
               return [
-                <Link key={card.workspace.id} href={`${base}?location=all`}><span className="workspace-choice-icon">{avatarInitial(card.workspace.name)}</span><div><Badge>{roleLabel(card.role, locale)}</Badge><h2>{card.workspace.name}</h2><p>{locationsCopy}</p><small>{isChinese ? "所有地點存取" : "All-locations access"}</small></div><ArrowRight /></Link>,
+                <Link key={card.workspace.id} href={`${base}?location=all`}><span className="workspace-choice-icon">{avatarInitial(card.workspace.name)}</span><div><Badge>{roleLabel(card.role, locale)}</Badge><h2>{card.workspace.name}</h2><p>{locationsCopy}</p><small>{isChinese ? zhFor(locale, "所有地點存取") : "All-locations access"}</small></div><ArrowRight /></Link>,
                 ...card.locations.map((location) => {
                   const score = location.latestScore === null ? "—" : String(Math.round(location.latestScore))
                   const coverage = formatCoverage(location.latestCoverage)
@@ -89,7 +90,7 @@ export function SelectWorkspacePage({
                       ? `評分 ${score} · 覆蓋率 ${coverage === null ? "—" : `${coverage}%`}`
                       : `Score ${score} · Coverage ${coverage === null ? "—" : `${coverage}%`}`
                   return (
-                    <Link key={location.id} href={`${base}?location=${location.slug}`}><span className="workspace-choice-icon"><MapPin /></span><div><Badge variant="outline">{isChinese ? "地點" : "Location"}</Badge><h2>{location.name}</h2><p>{summary}</p><small>{urgentCopy(location.urgentActions, isChinese)}</small></div><ArrowRight /></Link>
+                    <Link key={location.id} href={`${base}?location=${location.slug}`}><span className="workspace-choice-icon"><MapPin /></span><div><Badge variant="outline">{isChinese ? zhFor(locale, "地點") : "Location"}</Badge><h2>{location.name}</h2><p>{summary}</p><small>{urgentCopy(location.urgentActions, isChinese)}</small></div><ArrowRight /></Link>
                   )
                 }),
               ]

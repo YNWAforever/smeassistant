@@ -3,6 +3,8 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
+
+import { coveredTop, revealElement, useRevealError } from "@/hooks/use-reveal-error"
 import {
   ArrowRight,
   Check,
@@ -119,6 +121,9 @@ export function ScanPage({
   const requestId = useRef(0)
   const lastQuery = useRef("")
   const websiteInput = useRef<HTMLInputElement>(null)
+  const errorBanner = useRef<HTMLDivElement>(null)
+  const stepHeading = useRef<HTMLHeadingElement>(null)
+  const shownStep = useRef(step)
   // F-13: holds the submission key when session storage is unavailable.
   const submissionMemory = useRef(new Map<string, string>())
   const website = resolveScanWebsite(draft)
@@ -218,6 +223,21 @@ export function ScanPage({
 
   const requestedCount = requestedSources.filter((source) => source.ok).length
 
+  // Continue sits at the foot of a long step, so the next step used to open
+  // scrolled to its bottom. Start each new step at its title, and give the
+  // title focus so keyboard and screen-reader users land there too.
+  useEffect(() => {
+    if (shownStep.current === step) return
+    shownStep.current = step
+    const heading = stepHeading.current
+    if (!heading) return
+    heading.focus({ preventScroll: true })
+    const card = heading.closest(".flow-card")
+    if (card && heading.getBoundingClientRect().top < coveredTop()) revealElement(heading, card)
+  }, [step])
+
+  useRevealError(errorBanner, error)
+
   async function startScan() {
     setSubmitting(true)
     setError("")
@@ -262,7 +282,9 @@ export function ScanPage({
         return
       }
       if (!response.ok || !isJobId(data.jobId)) {
-        setError(data.error === "website_url is invalid" ? c.errors.website : data.error ?? c.errors.submit)
+        // The server's own strings ("Failed to create scan job", validation
+        // messages) are English diagnostics, not owner copy.
+        setError(data.error === "website_url is invalid" ? c.errors.website : c.errors.submit)
         return
       }
       router.push(`/${locale}/scanning/${data.jobId}`)
@@ -348,12 +370,12 @@ export function ScanPage({
             <div className="flow-card-header">
               <div>
                 <span>{interpolate(c.stepOf, { step })}</span>
-                <h1>{c.stepTitles[step - 1]}</h1>
+                <h1 ref={stepHeading} tabIndex={-1}>{c.stepTitles[step - 1]}</h1>
               </div>
             </div>
             <Progress value={step * 25} aria-label={interpolate(c.progressLabel, { percent: step * 25 })} />
             {error && (
-              <div className="form-error" role="alert">
+              <div className="form-error" role="alert" tabIndex={-1} ref={errorBanner}>
                 <CircleAlert /> {error}
               </div>
             )}

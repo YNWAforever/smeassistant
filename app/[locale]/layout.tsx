@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { LocaleDataProvider } from "@/components/locale-data-provider";
 import { isLocale } from "@/lib/locale";
+import { serverLocaleData } from "@/lib/locale-data/server";
 
 /**
  * The locale segment is a validation boundary only. `<html lang>` lives in the
@@ -11,7 +13,9 @@ import { isLocale } from "@/lib/locale";
  * in one place so the design is unchanged.
  *
  * Public pages bring their own chrome (`PublicPageFrame` inside
- * components/public-pages.tsx), so nothing is wrapped here.
+ * components/public-pages.tsx). The only wrapper is the locale dictionary
+ * provider: the browser bundle carries no strings, so this hands the page's
+ * one locale to client components (lib/locale-data/registry.ts).
  */
 export default async function LocaleLayout({
   children,
@@ -22,5 +26,5 @@ export default async function LocaleLayout({
 }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  return <>{children}</>;
+  return <LocaleDataProvider locale={locale} data={serverLocaleData(locale)}>{children}</LocaleDataProvider>;
 }

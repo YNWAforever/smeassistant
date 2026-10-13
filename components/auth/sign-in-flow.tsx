@@ -3,11 +3,25 @@
 import { type FormEvent, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 
-import { authClient } from "@/lib/identity/client";
+import { loadAuthClient, preloadAuthClient } from "@/lib/identity/load-client";
 import { authFlowHref, callbackHref, type AuthFlow, type AuthMethod } from "@/lib/identity/sign-in-flow";
 
 import { signInCopy } from "./sign-in-copy";
 import styles from "./sign-in.module.css";
+
+/** Google's "G", on the white chip its sign-in branding asks for on dark buttons. Decorative: the label names the provider. */
+function GoogleMark() {
+  return (
+    <span className={styles.googleMark} aria-hidden="true">
+      <svg viewBox="0 0 48 48" width="18" height="18">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+      </svg>
+    </span>
+  );
+}
 
 const subscribeHydration = () => () => {};
 const hydratedClient = () => true;
@@ -41,6 +55,11 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
   const router = useRouter();
   const copy = signInCopy[flow.locale];
   const hydrated = useSyncExternalStore(subscribeHydration, hydratedClient, hydratedServer);
+  // Warm the on-demand auth client once the page is idle, so a press rarely waits for it.
+  useEffect(() => {
+    const idle = window.requestIdleCallback ? window.requestIdleCallback(preloadAuthClient, { timeout: 3000 }) : window.setTimeout(preloadAuthClient, 1500);
+    return () => { if (window.cancelIdleCallback) window.cancelIdleCallback(idle); else window.clearTimeout(idle); };
+  }, []);
   const [state, setState] = useState<SignInState>(() => initialState(initialReason, flow));
   const [email, setEmail] = useState("");
   const [fieldError, setFieldError] = useState("");
@@ -74,7 +93,7 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
     const next = withMethod("google");
     router.replace(authFlowHref(next, "start"));
     try {
-      const result = await authClient.signIn.social({ provider: "google", callbackURL: callbackHref(next), errorCallbackURL: callbackHref(next) });
+      const result = await (await loadAuthClient()).signIn.social({ provider: "google", callbackURL: callbackHref(next), errorCallbackURL: callbackHref(next) });
       if (result.error) throw result.error;
     } catch {
       setState({ kind: "recover", method: "google", reason: "unavailable" });
@@ -90,7 +109,7 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
     const next = withMethod("email");
     router.replace(authFlowHref(next, "start"));
     try {
-      const result = await authClient.signIn.magicLink({ email: normalized, callbackURL: callbackHref(next) });
+      const result = await (await loadAuthClient()).signIn.magicLink({ email: normalized, callbackURL: callbackHref(next) });
       if (result.error) {
         const until = retryAfter(result.error, Date.now());
         if ((result.error as { status?: number }).status === 429) {
@@ -121,5 +140,5 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
     const seconds = Math.max(0, Math.ceil((state.retryAt - now) / 1000));
     return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1><div className={styles.status} role="status">{flow.claim ? copy.claimInbox : copy.inbox}</div><p className={styles.email}>{state.email}</p><button className={styles.secondary} type="button" disabled={seconds > 0} onClick={() => void send()}>{resendLabel(seconds)}</button><button className={styles.link} type="button" onClick={() => clearToStart("email")}>{copy.changeEmail}</button><p className={styles.description}>{flow.claim ? copy.claimNoLinkHelp : copy.noLinkHelp}</p><p className={styles.privacy}>{copy.privacy}</p></div></section>;
   }
-  return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1>{plan ? <p className={styles.description}>{plan}</p> : null}<p className={styles.description}>{eligibility}</p><button className={styles.primary} type="button" disabled={!hydrated || busy} aria-busy={state.kind === "opening_google"} onClick={() => void google()}>{copy.google}</button>{state.kind === "opening_google" ? <div className={styles.status} role="status">{copy.openingGoogle}</div> : null}<button className={styles.link} type="button" disabled={busy} onClick={()=>setSwitchAccount(true)}>{flow.locale==='en'?'Use another Google account':flow.locale==='zh-TW'?'使用另一個 Google 帳戶':'用另一個 Google 帳戶'}</button>{switchAccount && <p role="status" className={styles.description}>{flow.locale==='en'?'Continue with Google and choose Use another account if offered. If Google keeps returning the same account, add or select the intended account in Google first, then return here; you can also use its email sign-in link below.':flow.locale==='zh-TW'?'繼續 Google 登入，並在 Google 提供時選擇「使用其他帳戶」。如一直返回同一帳戶，請先在 Google 新增或選擇目標帳戶，再回來；也可使用下方該帳戶的電子郵件登入連結。':'繼續 Google 登入，並在 Google 提供時選擇「使用其他帳戶」。如一直返回同一帳戶，請先在 Google 加入或選擇目標帳戶，再回來；亦可使用下方該帳戶的電郵登入連結。'}</p>}<div className={styles.divider}>{copy.emailAlternative}</div><form className={styles.form} onSubmit={(event) => void send(event)} noValidate><div className={styles.field}><label htmlFor="sign-in-email">{copy.emailLabel}</label><input className={styles.input} id="sign-in-email" disabled={!hydrated || busy} value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" inputMode="email" /></div>{fieldError ? <p className={styles.alert} role="alert">{fieldError}</p> : null}<button className={styles.secondary} type="submit" disabled={!hydrated || busy} aria-busy={state.kind === "sending_email"}>{copy.emailAction}</button>{state.kind === "sending_email" ? <div className={styles.status} role="status">{copy.sendingEmail}</div> : null}</form><p className={styles.privacy}>{copy.privacy}</p></div></section>;
+  return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1>{plan ? <p className={styles.description}>{plan}</p> : null}<p className={styles.description}>{eligibility}</p><button className={styles.primary} type="button" disabled={!hydrated || busy} aria-busy={state.kind === "opening_google"} onClick={() => void google()}><GoogleMark />{copy.google}</button>{state.kind === "opening_google" ? <div className={styles.status} role="status">{copy.openingGoogle}</div> : null}<button className={styles.link} type="button" disabled={busy} onClick={()=>setSwitchAccount(true)}>{flow.locale==='en'?'Use another Google account':flow.locale==='zh-TW'?'使用另一個 Google 帳戶':'用另一個 Google 帳戶'}</button>{switchAccount && <p role="status" className={styles.description}>{flow.locale==='en'?'Continue with Google and choose Use another account if offered. If Google keeps returning the same account, add or select the intended account in Google first, then return here; you can also use its email sign-in link below.':flow.locale==='zh-TW'?'繼續 Google 登入，並在 Google 提供時選擇「使用其他帳戶」。如一直返回同一帳戶，請先在 Google 新增或選擇目標帳戶，再回來；也可使用下方該帳戶的電子郵件登入連結。':'繼續 Google 登入，並在 Google 提供時選擇「使用其他帳戶」。如一直返回同一帳戶，請先在 Google 加入或選擇目標帳戶，再回來；亦可使用下方該帳戶的電郵登入連結。'}</p>}<div className={styles.divider}>{copy.emailAlternative}</div><form className={styles.form} onSubmit={(event) => void send(event)} noValidate><div className={styles.field}><label htmlFor="sign-in-email">{copy.emailLabel}</label><input className={styles.input} id="sign-in-email" disabled={!hydrated || busy} value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" inputMode="email" /></div>{fieldError ? <p className={styles.alert} role="alert">{fieldError}</p> : null}<button className={styles.secondary} type="submit" disabled={!hydrated || busy} aria-busy={state.kind === "sending_email"}>{copy.emailAction}</button>{state.kind === "sending_email" ? <div className={styles.status} role="status">{copy.sendingEmail}</div> : null}</form><p className={styles.privacy}>{copy.privacy}</p></div></section>;
 }

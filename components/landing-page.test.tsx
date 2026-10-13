@@ -46,6 +46,15 @@ describe("LandingPage outcome examples (item 8)", () => {
     const zhTW = markup("zh-TW")
     expect(zhTW.querySelector(".outcome-examples-section")?.textContent).toContain("回覆未回覆的 Google 評論")
   })
+
+  it("speaks Taiwanese Mandarin in zh-TW, not the zh-HK Cantonese register", () => {
+    const zhTW = markup("zh-TW").querySelector(".outcome-examples-section")?.textContent ?? ""
+    expect(zhTW).toContain("先挑一個想看到的成果")
+    expect(zhTW).toContain("從這項開始")
+    expect(zhTW).not.toMatch(/[嘅呢揀]/)
+    const zhHK = markup("zh-HK").querySelector(".outcome-examples-section")?.textContent ?? ""
+    expect(zhHK).toContain("由呢個開始")
+  })
 })
 
 /**

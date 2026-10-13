@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ArrowRight, CheckCircle2, Filter, MapPin, ShieldAlert, ShieldCheck, Sparkles } from "lucide-react"
 
-import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet"
+import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
 import { CapabilityBadge, FactType, PageIntro } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,7 @@ import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import { effortLabel, formatDateTime, priorityClass, priorityLabel, withLocation } from "@/lib/workspace/format"
 import type { ActionOverview } from "@/lib/workspace/overview"
 import type { ActionFilters, ActionListResult } from "@/lib/workspace/queries-pages"
+import { zhFor } from "@/lib/zh-tw"
 import { sourceLabel } from "@/lib/workspace/source-label"
 
 export interface ActionsListViewProps {
@@ -66,9 +67,9 @@ function ActionCard({ action, locale, base, timezone, location }: { action: Acti
         <div className="action-card-badges"><Badge variant="outline" className={priorityClass(action.priority)}>{priorityLabel(action.priority, locale)}</Badge><Badge variant="outline">{resolveText(action.displayPhase, locale)}</Badge><CapabilityBadge value={action.capability} /></div>
         <span className="action-scope"><MapPin />{resolveText(action.location.name, locale)}</span>
       </div>
-      <div className="action-card-content"><div><p className="eyebrow">{sourceLabel(action.evidence.source, locale)}</p><h2>{resolveText(action.title, locale)}</h2><p>{resolveText(action.summary, locale)}</p></div><div className="action-evidence"><FactType type={action.evidence.factType} /><p>{resolveText(action.evidence.detail, locale)}</p><small>{resolveText(action.evidence.freshness, locale)} · {formatDateTime(action.evidence.observedAt, locale, timezone)}</small></div></div>
+      <div className="action-card-content"><div><p className="eyebrow">{sourceLabel(action.evidence.source, locale)}</p><h2>{resolveText(action.title, locale)}</h2><p>{resolveText(action.summary, locale)}</p></div><div className="action-evidence"><FactType type={action.evidence.factType} />{action.evidence.value && <strong className="action-evidence-value">{action.evidence.value}</strong>}<p>{resolveText(action.evidence.detail, locale)}</p><small>{[resolveText(action.evidence.freshness, locale), formatDateTime(action.evidence.observedAt, locale, timezone)].filter(Boolean).join(" · ")}</small></div></div>
       <div className="priority-reason"><Sparkles /><div><strong>{isChinese ? "為何列為優先" : "Why this priority"}</strong><span>{topFactors.map((f) => `${resolveText(f.label, locale)} ${f.points > 0 ? "+" : ""}${f.points}`).join(" · ")}</span></div></div>
-      <dl className="action-card-meta"><div><dt>{isChinese ? "店主所需時間" : "Owner effort"}</dt><dd>{effortLabel(action.effortMinutes, locale)}</dd></div><div><dt>{isChinese ? "負責人" : "Assignee"}</dt><dd className="break-all">{assigneeName}</dd></div><div><dt>{isChinese ? "到期日" : "Due"}</dt><dd>{action.dueAt ? formatDateTime(action.dueAt, locale, timezone) : "—"}</dd></div><div><dt>{isChinese ? "所需資料" : "Inputs"}</dt><dd>{action.missingInputs.length ? (isChinese ? `缺 ${action.missingInputs.length} 項` : `${action.missingInputs.length} missing`) : (isChinese ? "齊備" : "Ready")}</dd></div></dl>
+      <dl className="action-card-meta"><div><dt>{isChinese ? zhFor(locale, "店主所需時間") : "Owner effort"}</dt><dd>{effortLabel(action.effortMinutes, locale)}</dd></div><div><dt>{isChinese ? "負責人" : "Assignee"}</dt><dd className="break-all">{assigneeName}</dd></div><div><dt>{isChinese ? "到期日" : "Due"}</dt><dd>{action.dueAt ? formatDateTime(action.dueAt, locale, timezone) : "—"}</dd></div><div><dt>{isChinese ? "所需資料" : "Inputs"}</dt><dd>{action.missingInputs.length ? (isChinese ? `缺 ${action.missingInputs.length} 項` : `${action.missingInputs.length} missing`) : (isChinese ? "齊備" : "Ready")}</dd></div></dl>
       <div className="action-card-footer"><span>{isChinese ? "最近更新：" : "Last changed "}{formatDateTime(action.updatedAt, locale, timezone)}</span><Button asChild><Link href={href}>{cta}<ArrowRight /></Link></Button></div>
     </article>
   )
@@ -91,10 +92,10 @@ export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, 
       <PageIntro
         eyebrow={isChinese ? "實證支持的工作清單" : "Evidence-backed work queue"}
         title={isChinese ? "行動" : "Actions"}
-        description={isChinese ? "根據已量度的發現或清楚標示的店主目標排定優次，而非互不相干的 Agent 展示。" : "Prioritised from measured findings or a clearly labelled owner objective—never a disconnected agent gallery."}
+        description={isChinese ? zhFor(locale, "根據已量度的發現或清楚標示的店主目標排定優次，而非互不相干的 Agent 展示。") : "Prioritised from measured findings or a clearly labelled owner objective—never a disconnected agent gallery."}
         actions={<><ContextualAssistant locale={locale} surface="actions" triggerLabel={isChinese ? "比較優先次序" : "Compare priorities"} mode="live" context={{ workspaceId, locationId: locationId ?? undefined }} basePath={base} locationParam={location} /><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /></>}
       />
-      {role === "viewer" && <div className="permission-banner"><ShieldAlert /><div><strong>{isChinese ? "檢視者權限" : "Viewer access"}</strong><span>{isChinese ? "你可查看證據及已量度成效，但不能生成、編輯、審批、送出或管理帳單。" : "You can inspect evidence and measured outcomes, but cannot generate, edit, approve, deliver or manage billing."}</span></div><Badge variant="outline">{isChinese ? "只讀" : "Read only"}</Badge></div>}
+      {role === "viewer" && <div className="permission-banner"><ShieldAlert /><div><strong>{isChinese ? "檢視者權限" : "Viewer access"}</strong><span>{isChinese ? zhFor(locale, "你可查看證據及已量度成效，但不能生成、編輯、審批、送出或管理帳單。") : "You can inspect evidence and measured outcomes, but cannot generate, edit, approve, deliver or manage billing."}</span></div><Badge variant="outline">{isChinese ? "只讀" : "Read only"}</Badge></div>}
       <div className="action-tabs">
         <nav className="action-tab-list" aria-label={isChinese ? "行動分類" : "Action views"}>
           {VIEWS.map((tab) => <Link key={tab.key} href={tabHref(base, filters, tab.key)} aria-current={view === tab.key ? "page" : undefined} className={view === tab.key ? "is-active" : ""}>{isChinese ? tab.zh : tab.en} <span>{result.counts[tab.key]}</span></Link>)}
@@ -110,13 +111,13 @@ export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, 
           </section>
           <div className="queue-summary"><span><strong>{result.actions.length}</strong> {isChinese ? "項行動（本頁）" : "actions on this page"}</span><span>{isChinese ? "按優先分數、更新時間及 ID 排序" : "Sorted by priority, update time and ID"}</span></div>
           {bulkEnabled && role !== "viewer" ? <BulkActionSelection key={JSON.stringify([workspaceId,role,locationId,filters.q,filters.assignee,filters.due,filters.channel,filters.status,view])} locale={locale} workspaceId={workspaceId} timezone={timezone} members={members} items={result.actions.map(action => ({ actionId: action.id, expectedUpdatedAt: action.updatedAt, title: resolveText(action.title,locale), closed: ["completed","dismissed","cancelled","expired"].includes(action.actionState) }))} cards={result.actions.map(action => <ActionCard key={action.id} action={action} locale={locale} base={base} timezone={timezone} location={location} />)} /> : result.actions.length ? <div className="action-list">{result.actions.map((action) => <ActionCard key={action.id} action={action} locale={locale} base={base} timezone={timezone} location={location} />)}</div> : <div className="empty-state"><span><CheckCircle2 /></span><h2>{isChinese ? "沒有符合篩選條件的行動" : "No actions match these filters"}</h2><p>{isChinese ? "請重設一項或多項篩選；沒有行動不代表沒有證據。" : "Reset one or more filters; an empty list does not mean there is no evidence."}</p></div>}
-          <nav aria-label={isChinese ? "清單分頁" : "List pages"}>
+          <nav className="queue-pages" aria-label={isChinese ? "清單分頁" : "List pages"}>
             <Link href={tabHref(base, filters, view)}>{isChinese ? "重新載入首頁" : "Refresh first page"}</Link>
             {result.nextCursor && <Link href={`${tabHref(base, filters, view)}${tabHref(base, filters, view).includes("?") ? "&" : "?"}cursor=${encodeURIComponent(result.nextCursor)}`}>{isChinese ? "下一頁" : "Next page"}</Link>}
           </nav>
         </div>
       </div>
-      <div className="queue-footnote"><ShieldCheck /><p><strong>{isChinese ? "獨立生命週期狀態：" : "Separate lifecycle states:"}</strong>{isChinese ? " 行動、Agent 執行、審批、送出及量度會分開追蹤，避免一個含糊狀態代表所有事情。" : " action, agent run, approval, delivery and measurement are tracked independently. The customer-facing phase above is derived for scanning, not stored as one overloaded status."}</p></div>
+      <div className="queue-footnote"><ShieldCheck /><p><strong>{isChinese ? "獨立生命週期狀態：" : "Separate lifecycle states:"}</strong>{isChinese ? zhFor(locale, " 行動、Agent 執行、審批、送出及量度會分開追蹤，避免一個含糊狀態代表所有事情。") : " action, agent run, approval, delivery and measurement are tracked independently. The customer-facing phase above is derived for scanning, not stored as one overloaded status."}</p></div>
     </div>
   )
 }

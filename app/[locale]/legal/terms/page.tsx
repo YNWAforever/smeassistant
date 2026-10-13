@@ -32,6 +32,7 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
       title={t(locale, "legal.termsTitle")}
       versionLabel={interpolate(copy[locale].funnel.legal.version, { version: LEGAL_POLICY_VERSION })}
       backLabel={copy[locale].funnel.legal.backToScanner}
+      contentsLabel={copy[locale].funnel.legal.contents}
       sections={sections}
     />
   )

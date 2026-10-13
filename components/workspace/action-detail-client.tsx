@@ -22,7 +22,7 @@ import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet"
+import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
 import { GbpPublishCard } from "@/components/workspace/gbp-publish-card"
 import type { DemoAssistantRunResponse } from "@/lib/pocket-assistant/contracts"
 import { CapabilityBadge, FactType, SectionCard } from "@/components/product-ui"
@@ -41,6 +41,7 @@ import { formatOfferDate, isOfferStaleCode, offerStaleKind, type OfferStaleKind 
 import { basisLabel, buildExportText, effortLabel, formatDateTime, metricLabel, priorityClass, priorityLabel, signed, stateLabel, withLocation } from "@/lib/workspace/format"
 import type { ActionDetail, AuditEventRow, VersionRow } from "@/lib/workspace/queries-pages"
 import { guardrailText } from "@/lib/workspace/guardrail-text"
+import { zhFor } from "@/lib/zh-tw"
 import { sourceLabel } from "@/lib/workspace/source-label"
 
 export interface ActionDetailClientProps {
@@ -295,9 +296,9 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
     },
     { label: isChinese ? "執行" : "Run", state: runStateKey === "succeeded" ? "complete" : latestRun ? "active" : "pending", detail: latestRun ? stateLabel(latestRun.state, locale) : (isChinese ? "尚未執行" : "Not run yet") },
     { label: isChinese ? "輸出版本" : "Output version", state: selectedVersion ? "active" : "pending", detail: versionName },
-    { label: isChinese ? "審批" : "Approval", state: isApprovedCurrent ? "complete" : "pending", detail: dirty ? (isChinese ? "有未儲存修改" : "Unsaved changes") : approvalText(approval) },
+    { label: isChinese ? zhFor(locale, "審批") : "Approval", state: isApprovedCurrent ? "complete" : "pending", detail: dirty ? (isChinese ? "有未儲存修改" : "Unsaved changes") : approvalText(approval) },
     { label: isChinese ? "匯出" : "Export", state: exported ? "complete" : "pending", detail: exported ? (isChinese ? "已記錄匯出" : "Export recorded") : (isChinese ? "核准指定版本後可用" : "Available after exact-version approval") },
-    { label: isChinese ? "量度" : "Measurement", state: action.measurementState === "measured" ? "complete" : "pending", detail: stateLabel(action.measurementState, locale) },
+    { label: isChinese ? zhFor(locale, "量度") : "Measurement", state: action.measurementState === "measured" ? "complete" : "pending", detail: stateLabel(action.measurementState, locale) },
   ] as const
 
   function selectVersion(nextId: string) {
@@ -321,7 +322,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
     }
     else if (result.error === "offline" || result.error === "network") toast.error(isChinese ? "無法連接伺服器；文字已保留在此裝置。" : "The server could not be reached; your text is kept on this device.")
     else if (budgetRefusal) toast.error(budgetRefusal)
-    else if (result.status === 403) toast.error(isChinese ? "你的角色或地點範圍不允許此操作。" : "Your role or location scope does not allow this action.")
+    else if (result.status === 403) toast.error(isChinese ? zhFor(locale, "你的角色或地點範圍不允許此操作。") : "Your role or location scope does not allow this action.")
     else if (result.status === 429) toast.error(isChinese ? "請求過於頻繁，請稍後再試。" : "Too many requests; try again shortly.")
     else if (result.error === "agent_unavailable") toast.error(isChinese ? "此行動目前沒有可用的 Agent。" : "No agent is available for this action yet.")
     // P3.5b: never a raw error code in front of an owner.
@@ -337,7 +338,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
     if (!result.ok) return failureToast(result)
     if (result.data.factsNeeded?.length) {
       setFactsNeeded(result.data.factsNeeded)
-      toast.message(isChinese ? "生成前需要店主提供資料；沒有猜測任何事實。" : "The agent needs owner facts before drafting; nothing was guessed.")
+      toast.message(isChinese ? zhFor(locale, "生成前需要店主提供資料；沒有猜測任何事實。") : "The agent needs owner facts before drafting; nothing was guessed.")
       router.refresh()
       return
     }
@@ -372,7 +373,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
       router.refresh()
       return
     }
-    toast.message(isChinese ? "已記錄店主資料；正在重新生成。" : "Owner inputs recorded; generating again.")
+    toast.message(isChinese ? zhFor(locale, "已記錄店主資料；正在重新生成。") : "Owner inputs recorded; generating again.")
     await generate({ ...provided, ...runInputs })
   }
 
@@ -452,7 +453,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
     const patched = await updateAction(action.id, { provided_inputs: { reviews_without_response: value } })
     setBusy(null)
     if (!patched.ok) return failureToast(patched)
-    toast.message(isChinese ? "已記錄店主提供的評論；正在重新生成。" : "Owner-supplied review recorded; generating again.")
+    toast.message(isChinese ? zhFor(locale, "已記錄店主提供的評論；正在重新生成。") : "Owner-supplied review recorded; generating again.")
     await generate({ reviews_without_response: value })
   }
 
@@ -578,7 +579,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
           {role === "owner" ? (
             <Select disabled={!hydrated} value={previewRole} onValueChange={(value) => setPreviewRole(value as PreviewRole)}>
               <SelectTrigger className="role-select" aria-label={isChinese ? "預覽角色" : "Preview role"}><UserRound /><SelectValue>{roleName(previewRole)}</SelectValue></SelectTrigger>
-              <SelectContent align="end"><SelectItem value="owner">{isChinese ? "店主" : "Owner"}</SelectItem><SelectItem value="manager">{isChinese ? "經理" : "Manager"}</SelectItem><SelectItem value="viewer">{isChinese ? "檢視者" : "Viewer"}</SelectItem></SelectContent>
+              <SelectContent align="end"><SelectItem value="owner">{isChinese ? zhFor(locale, "店主") : "Owner"}</SelectItem><SelectItem value="manager">{isChinese ? "經理" : "Manager"}</SelectItem><SelectItem value="viewer">{isChinese ? "檢視者" : "Viewer"}</SelectItem></SelectContent>
             </Select>
           ) : <Badge variant="outline"><UserRound /> {roleName(role)}</Badge>}
           <span className="offline-toggle" aria-live="polite">{offline ? <CloudOff /> : <Check />}<span>{offline ? (isChinese ? "離線" : "Offline") : (isChinese ? "在線" : "Online")}</span></span>
@@ -594,9 +595,9 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
         <div className="action-detail-next"><small>{isChinese ? "下一步" : "Direct next step"}</small><strong>{effectiveRole === "viewer" ? (isChinese ? "查看證據" : "Inspect the evidence") : showInputForm ? (isChinese ? "提供所需資料" : "Provide the required inputs") : dirty ? (isChinese ? "先儲存新版本" : "Save a new version first") : isApprovedCurrent ? (isChinese ? "匯出已核准版本" : "Export approved version") : selectedVersion ? (isChinese ? `審閱並核准${versionName}` : `Review and approve ${versionName}`) : (isChinese ? "生成第一份草稿" : "Generate the first draft")}</strong><span>{isChinese ? "到期：" : "Due "}{action.dueAt ? formatDateTime(action.dueAt, locale, timezone) : "—"}</span></div>
       </header>
 
-      {offline && <div className="offline-banner" role="status"><CloudOff /><div><strong>{isChinese ? "你目前離線" : "You are offline"}</strong><span>{isChinese ? "文字會保留在此裝置，但儲存、審批及匯出會暫停，直至伺服器確認安全轉換。" : "Text remains on this device, but save, approval and export stay blocked until the server confirms a safe transition."}</span></div><Button variant="outline" onClick={() => { if (navigator.onLine) router.refresh(); else toast.message(isChinese ? "仍然離線；請檢查網絡連線。" : "Still offline; check your connection.") }}>{isChinese ? "重新連接" : "Reconnect"}</Button></div>}
-      {effectiveRole === "viewer" && <div className="permission-banner"><ShieldAlert /><div><strong>{isChinese ? "檢視者權限" : "Viewer access"}</strong><span>{isChinese ? "可查看證據及紀錄；編輯、生成、審批及匯出會安全拒絕。" : "Evidence and history are visible; editing, generation, approval and export fail closed."}</span></div><Badge variant="outline">{isChinese ? "只讀" : "Read only"}</Badge></div>}
-      {role === "manager" && !inScope && <div className="permission-banner"><ShieldAlert /><div><strong>{isChinese ? "超出你的地點權限範圍" : "Outside your location scope"}</strong><span>{isChinese ? "你可查看此行動，但另一地點或所有地點的編輯、審批及送出仍會被拒絕。" : "You may inspect this action, but editing, approval and delivery remain blocked for another location or all-location work."}</span></div><Badge variant="outline">{isChinese ? "拒絕操作" : "Fail closed"}</Badge></div>}
+      {offline && <div className="offline-banner" role="status"><CloudOff /><div><strong>{isChinese ? "你目前離線" : "You are offline"}</strong><span>{isChinese ? zhFor(locale, "文字會保留在此裝置，但儲存、審批及匯出會暫停，直至伺服器確認安全轉換。") : "Text remains on this device, but save, approval and export stay blocked until the server confirms a safe transition."}</span></div><Button variant="outline" onClick={() => { if (navigator.onLine) router.refresh(); else toast.message(isChinese ? "仍然離線；請檢查網絡連線。" : "Still offline; check your connection.") }}>{isChinese ? "重新連接" : "Reconnect"}</Button></div>}
+      {effectiveRole === "viewer" && <div className="permission-banner"><ShieldAlert /><div><strong>{isChinese ? "檢視者權限" : "Viewer access"}</strong><span>{isChinese ? zhFor(locale, "可查看證據及紀錄；編輯、生成、審批及匯出會安全拒絕。") : "Evidence and history are visible; editing, generation, approval and export fail closed."}</span></div><Badge variant="outline">{isChinese ? "只讀" : "Read only"}</Badge></div>}
+      {role === "manager" && !inScope && <div className="permission-banner"><ShieldAlert /><div><strong>{isChinese ? zhFor(locale, "超出你的地點權限範圍") : "Outside your location scope"}</strong><span>{isChinese ? zhFor(locale, "你可查看此行動，但另一地點或所有地點的編輯、審批及送出仍會被拒絕。") : "You may inspect this action, but editing, approval and delivery remain blocked for another location or all-location work."}</span></div><Badge variant="outline">{isChinese ? "拒絕操作" : "Fail closed"}</Badge></div>}
 
       {offerStale && (
         <div className="permission-banner" role="alert" data-testid="offer-stale-banner">
@@ -611,7 +612,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
       </ol>
 
       <Tabs defaultValue="draft" className="action-detail-tabs">
-        <TabsList variant="line" className="detail-tab-list"><TabsTrigger value="draft">{isChinese ? "草稿與審批" : "Draft & approval"}</TabsTrigger><TabsTrigger value="evidence">{isChinese ? "來源證據" : "Source evidence"}</TabsTrigger><TabsTrigger value="workflow">{isChinese ? "流程狀態" : "Workflow states"}</TabsTrigger><TabsTrigger value="history">{isChinese ? "版本及審計紀錄" : "Version & audit history"}</TabsTrigger></TabsList>
+        <TabsList variant="line" className="detail-tab-list"><TabsTrigger value="draft">{isChinese ? zhFor(locale, "草稿與審批") : "Draft & approval"}</TabsTrigger><TabsTrigger value="evidence">{isChinese ? "來源證據" : "Source evidence"}</TabsTrigger><TabsTrigger value="workflow">{isChinese ? "流程狀態" : "Workflow states"}</TabsTrigger><TabsTrigger value="history">{isChinese ? "版本及審計紀錄" : "Version & audit history"}</TabsTrigger></TabsList>
 
         <TabsContent value="draft">
           <div className="draft-layout">
@@ -638,7 +639,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                   a draft after the fact. Collapsed by default to stay compact. */}
               {businessContext.length > 0 && (
                 <details className="brand-check-panel">
-                  <summary><strong>{isChinese ? "生成所用的商戶資料" : "Business details used"}</strong> <span>{isChinese ? "查看即將用於生成的資料" : "See what the next draft will use"}</span></summary>
+                  <summary><strong>{isChinese ? zhFor(locale, "生成所用的商戶資料") : "Business details used"}</strong> <span>{isChinese ? "查看即將用於生成的資料" : "See what the next draft will use"}</span></summary>
                   <dl className="asset-meta">
                     {businessContext.map((row) => (
                       <div key={row.key}>
@@ -738,7 +739,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                         <SelectTrigger id={`input-${key}`} aria-label={inputs[key] ?? key}><SelectValue placeholder={isChinese ? "選擇已核准素材或純文字" : "Choose an approved asset or text only"} /></SelectTrigger>
                         <SelectContent><SelectItem value="text_only">{isChinese ? "純文字（不使用相片）" : "Text only (no photo)"}</SelectItem>{approvedAssets.map((asset) => <SelectItem key={asset.id} value={asset.id}>{asset.filename}</SelectItem>)}</SelectContent>
                       </Select>
-                      {approvedAssets.length === 0 && <small>{isChinese ? "尚未有已核准素材；可先上載並確認使用權，或選擇純文字。" : "No approved assets yet; upload and confirm rights first, or choose text only."} <Link href={`${base}/assets`}>{isChinese ? "前往素材" : "Go to assets"}</Link></small>}
+                      {approvedAssets.length === 0 && <small>{isChinese ? zhFor(locale, "尚未有已核准素材；可先上載並確認使用權，或選擇純文字。") : "No approved assets yet; upload and confirm rights first, or choose text only."} <Link href={`${base}/assets`}>{isChinese ? "前往素材" : "Go to assets"}</Link></small>}
                     </div>
                   ) : (
                     <div key={key} className="field-stack"><Label htmlFor={`input-${key}`}>{faqQuestionByKey.get(key) ? resolveText(faqQuestionByKey.get(key)!.question, locale) : (inputs[key] ?? key)}</Label>{key.startsWith("owner_fact") || key === "menu_items" || key === "reviews_without_response" ? <Textarea id={`input-${key}`} rows={3} value={inputValues[key] ?? faqQuestionByKey.get(key)?.prefill ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} /> : <Input id={`input-${key}`} value={inputValues[key] ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} />}{faqQuestionByKey.get(key)?.prefill && <small>{isChinese ? "已按品牌設定中已儲存的資料預填，可自行修改。" : "Prefilled from a fact already saved in Brand settings; edit as needed."}</small>}</div>
@@ -754,14 +755,14 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                   back: this panel showed a hard-coded "1 reminder" on every
                   draft, so a prohibited brand term or a compensation promise
                   looked exactly like a clean one to the person approving it. */}
-              <div className="brand-check-panel"><div className="brand-check-head"><ShieldCheck /><div><strong>{isChinese ? "品牌保障檢查" : "Brand guardrail check"}</strong><span>{isChinese ? "生成內容只使用店主確認的事實。" : "Generated content uses owner-confirmed facts only."}</span></div><Badge variant="outline">{guardrailBadge}</Badge></div>
+              <div className="brand-check-panel"><div className="brand-check-head"><ShieldCheck /><div><strong>{isChinese ? "品牌保障檢查" : "Brand guardrail check"}</strong><span>{isChinese ? zhFor(locale, "生成內容只使用店主確認的事實。") : "Generated content uses owner-confirmed facts only."}</span></div><Badge variant="outline">{guardrailBadge}</Badge></div>
                 {guardrailFlags.length > 0
                   ? <ul className="evidence-list">{guardrailFlags.map((flag, index) => <li key={`${flag.code}-${index}`}><AlertTriangle /> <span>{guardrailText(flag, locale)}</span></li>)}</ul>
                   : <p><ShieldCheck /> {selectedVersion?.checked
-                      ? (isChinese ? "已檢查這個版本，未發現違規。仍需你審批後才可匯出。" : "This version was checked and nothing was flagged. It still needs your approval before export.")
+                      ? (isChinese ? zhFor(locale, "已檢查這個版本，未發現違規。仍需你審批後才可匯出。") : "This version was checked and nothing was flagged. It still needs your approval before export.")
                       : (isChinese ? "這個版本沒有經過 Agent 檢查（手動編輯）。" : "This version was not agent-checked (edited by hand).")}</p>}
                 {(selectedVersion?.agentNotes ?? []).map((note) => <p key={note} className="limitation-note"><AlertTriangle /> {note}</p>)}
-                <p className="limitation-note">{isChinese ? "除非店主已確認，否則不要加入食材、致敏原、價格或優惠日期。" : "Do not add ingredients, allergens, pricing or offer dates unless the owner confirmed them."}</p></div>
+                <p className="limitation-note">{isChinese ? zhFor(locale, "除非店主已確認，否則不要加入食材、致敏原、價格或優惠日期。") : "Do not add ingredients, allergens, pricing or offer dates unless the owner confirmed them."}</p></div>
               {lastRunError && <p className="limitation-note" role="alert"><CircleAlert /> {isChinese ? "上次生成失敗：" : "Last generation failed: "}{lastRunError}</p>}
               <div className="draft-editor-actions"><ContextualAssistant locale={locale} surface={social ? "create" : "action"} triggerLabel={isChinese ? "用助理修改並建立新版本" : "Revise with operator as a new version"} mode="live" context={{ workspaceId, locationId: action.location.id ?? undefined, actionId: action.id, versionId: selectedVersion?.id }} basePath={base} locationParam={location} onCreateVersion={(run) => void createAssistantVersion(run)} disabled={!canEdit} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? (isChinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version") : (isChinese ? "生成草稿" : "Generate a draft")}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {isChinese ? "儲存手動修改為新版本" : "Save manual edits as a new version"}</Button></div>
               {conflict && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "另一位審閱者已更新輸出" : "Another reviewer changed this output"}</strong><p>{isChinese ? "未儲存文字仍保留在本機。載入最新版本、比較內容，再建立新版本。" : "Unsaved text is preserved locally. Load the latest version, compare, then create a new version."}</p><Button size="sm" onClick={loadLatest}><RefreshCw /> {isChinese ? "安全載入最新狀態" : "Load latest safely"}</Button></div></div>}
@@ -806,15 +807,15 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                   <p>{checklistCopy.note}</p>
                   <dl className="state-machine-dl">
                     <div><dt>{isChinese ? "行動" : "Action"}</dt><dd><Badge variant="outline">{stateLabel(action.actionState, locale)}</Badge></dd></div>
-                    <div><dt>{isChinese ? "量度" : "Measurement"}</dt><dd><Badge variant="outline">{stateLabel(action.measurementState, locale)}</Badge></dd></div>
+                    <div><dt>{isChinese ? zhFor(locale, "量度") : "Measurement"}</dt><dd><Badge variant="outline">{stateLabel(action.measurementState, locale)}</Badge></dd></div>
                   </dl>
-                  <p className="limitation-note">{isChinese ? "沒有可審批或匯出的版本，也不會扣除核准後交付額。" : "There is no version to approve or export, and no approved delivery is counted."}</p>
+                  <p className="limitation-note">{isChinese ? zhFor(locale, "沒有可審批或匯出的版本，也不會扣除核准後交付額。") : "There is no version to approve or export, and no approved delivery is counted."}</p>
                 </SectionCard>
               </aside>
             ) : (
             <aside className="approval-panel">
               <SectionCard>
-                <p className="eyebrow">{isChinese ? "審批決定" : "Approval decision"}</p><h2>{isApprovedCurrent ? `${versionName}${isChinese ? "已核准" : " approved"}` : (isChinese ? "一項安全的店主決定" : "One safe owner decision")}</h2><p>{isChinese ? "核准只適用於這個不可變更版本。任何修改都必須另存新版本，再次審批。" : "Approval applies only to this immutable version. Any edit must be saved as a new version and approved again."}</p>
+                <p className="eyebrow">{isChinese ? zhFor(locale, "審批決定") : "Approval decision"}</p><h2>{isApprovedCurrent ? `${versionName}${isChinese ? "已核准" : " approved"}` : (isChinese ? zhFor(locale, "一項安全的店主決定") : "One safe owner decision")}</h2><p>{isChinese ? zhFor(locale, "核准只適用於這個不可變更版本。任何修改都必須另存新版本，再次審批。") : "Approval applies only to this immutable version. Any edit must be saved as a new version and approved again."}</p>
                 <div className="field-stack"><Label htmlFor="reviewer-comment">{isChinese ? "審閱者備註" : "Reviewer comment"}</Label><Textarea id="reviewer-comment" value={comment} onChange={(event) => setComment(event.target.value)} placeholder={isChinese ? "審計紀錄的選填備註" : "Optional note for the audit trail"} rows={3} disabled={!canApprove} /></div>
                 {isApprovedCurrent && selectedVersion ? <div className="approved-state"><CheckCircle2 /><div><strong>{isChinese ? "已核准" : "Approved"}</strong><span>{formatDateTime(selectedVersion.approved_at, locale, timezone)} · {versionName}{selectedVersion.reviewer_comment ? ` · ${selectedVersion.reviewer_comment}` : ""}</span></div></div> : <div className="decision-stack">
                   {dirty && <p className="limitation-note"><AlertTriangle /> {isChinese ? "先儲存修改，才可核准指定版本。" : "Save changes before approving an exact version."}</p>}
@@ -837,9 +838,9 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
 
         <TabsContent value="evidence">
           <div className="evidence-detail-grid">
-            <SectionCard><div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "已觀察事實" : "Observed fact"}</p><h2>{sourceLabel(action.evidence.source, locale)}</h2></div><FactType type={action.evidence.factType} /></div><div className="evidence-big-value">{action.evidence.value || "—"}<span>{resolveText(action.evidence.detail, locale)}</span></div><dl className="evidence-detail-dl"><div><dt>{isChinese ? "觀察時間" : "Observed"}</dt><dd>{formatDateTime(action.evidence.observedAt, locale, timezone)}</dd></div><div><dt>{isChinese ? "地點" : "Location"}</dt><dd>{locationName}</dd></div><div><dt>{isChinese ? "新鮮度" : "Freshness"}</dt><dd>{resolveText(action.evidence.freshness, locale) || "—"}</dd></div><div><dt>{isChinese ? "量度" : "Measurement"}</dt><dd>{stateLabel(action.measurementState, locale)}</dd></div></dl></SectionCard>
-            <SectionCard><p className="eyebrow">{isChinese ? "解讀與限制" : "Interpretation and limitation"}</p><h2>{isChinese ? "為何建立此行動" : "Why this action exists"}</h2><div className="fact-stack"><div><FactType type={action.evidence.factType} /><p>{resolveText(action.evidence.detail, locale)}</p></div><div><FactType type="Inference" /><p>{action.priorityFactors.map((factor) => `${resolveText(factor.label, locale)} ${signed(factor.points)}`).join(" · ") || priorityLabel(action.priority, locale)}</p></div><div><FactType type="Recommended" /><p>{resolveText(action.title, locale)}</p></div><div><FactType type="Unknown" /><p>{isChinese ? "此行動沒有量度收入、預訂量或顧客意圖。" : "Revenue, reservations and customer intent are not measured by this action."}</p></div></div></SectionCard>
-            {measurements.length > 0 && <SectionCard><p className="eyebrow">{isChinese ? "量度" : "Measurement"}</p><h2>{isChinese ? "行動前後" : "Before and after"}</h2><dl className="trust-dl">{measurements.map((m) => <div key={m.id}><dt>{metricLabel(m.metric_key, locale)} · <FactType type={m.fact_type} />{m.fact_type === "Attributed" ? <span> · {basisLabel(m.attribution_basis, locale)}</span> : null}</dt><dd>{m.before_value ?? "—"} → {m.after_value ?? "—"} ({signed(Number(m.delta), 1)})</dd></div>)}</dl></SectionCard>}
+            <SectionCard><div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "已觀察事實" : "Observed fact"}</p><h2>{sourceLabel(action.evidence.source, locale)}</h2></div><FactType type={action.evidence.factType} /></div><div className="evidence-big-value">{action.evidence.value || "—"}<span>{resolveText(action.evidence.detail, locale)}</span></div><dl className="evidence-detail-dl"><div><dt>{isChinese ? "觀察時間" : "Observed"}</dt><dd>{formatDateTime(action.evidence.observedAt, locale, timezone)}</dd></div><div><dt>{isChinese ? zhFor(locale, "地點") : "Location"}</dt><dd>{locationName}</dd></div><div><dt>{isChinese ? "新鮮度" : "Freshness"}</dt><dd>{resolveText(action.evidence.freshness, locale) || "—"}</dd></div><div><dt>{isChinese ? zhFor(locale, "量度") : "Measurement"}</dt><dd>{stateLabel(action.measurementState, locale)}</dd></div></dl></SectionCard>
+            <SectionCard><p className="eyebrow">{isChinese ? "解讀與限制" : "Interpretation and limitation"}</p><h2>{isChinese ? "為何建立此行動" : "Why this action exists"}</h2><div className="fact-stack"><div><FactType type={action.evidence.factType} /><p>{resolveText(action.evidence.detail, locale)}</p></div><div><FactType type="Inference" /><p>{action.priorityFactors.map((factor) => `${resolveText(factor.label, locale)} ${signed(factor.points)}`).join(" · ") || priorityLabel(action.priority, locale)}</p></div><div><FactType type="Recommended" /><p>{resolveText(action.title, locale)}</p></div><div><FactType type="Unknown" /><p>{isChinese ? zhFor(locale, "此行動沒有量度收入、預訂量或顧客意圖。") : "Revenue, reservations and customer intent are not measured by this action."}</p></div></div></SectionCard>
+            {measurements.length > 0 && <SectionCard><p className="eyebrow">{isChinese ? zhFor(locale, "量度") : "Measurement"}</p><h2>{isChinese ? "行動前後" : "Before and after"}</h2><dl className="trust-dl">{measurements.map((m) => <div key={m.id}><dt>{metricLabel(m.metric_key, locale)} · <FactType type={m.fact_type} />{m.fact_type === "Attributed" ? <span> · {basisLabel(m.attribution_basis, locale)}</span> : null}</dt><dd>{m.before_value ?? "—"} → {m.after_value ?? "—"} ({signed(Number(m.delta), 1)})</dd></div>)}</dl></SectionCard>}
           </div>
         </TabsContent>
 
@@ -850,7 +851,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
               <Progress value={runProgress(workflowState ?? undefined)} aria-label={isChinese ? `執行狀態：${workflowLabel}` : `Run state ${workflowLabel}`} />
               {runs.length === 0 ? <p className="limitation-note">{isChinese ? "尚未執行。" : "No runs yet."}</p> : <div className="version-list">{runs.map((run) => <div key={run.id}><span><FileClock /></span><div><strong>{run.agent_key} · {stateLabel(run.state, locale)}</strong><small>{formatDateTime(run.created_at, locale, timezone)}{run.finished_at ? ` → ${formatDateTime(run.finished_at, locale, timezone)}` : ""}{run.error ? ` · ${runErrorLabel(locale, run.error)}` : ""}</small></div></div>)}</div>}
             </SectionCard>
-            <SectionCard><p className="eyebrow">{isChinese ? "獨立生命週期摘要" : "Independent lifecycle summary"}</p><h2>{isChinese ? "不以一個含糊狀態代表所有事情" : "No single overloaded status"}</h2><dl className="state-machine-dl"><div><dt>{isChinese ? "行動" : "Action"}</dt><dd><Badge variant="outline">{stateLabel(action.actionState, locale)}</Badge></dd></div><div><dt>Agent run</dt><dd><Badge variant="outline">{workflowLabel}</Badge></dd></div><div><dt>{isChinese ? "審批" : "Approval"}</dt><dd><Badge variant="outline">{approvalText(approval)}</Badge></dd></div><div><dt>{isChinese ? "送出" : "Delivery"}</dt><dd><Badge variant="outline">{stateLabel(delivery, locale)}</Badge></dd></div><div><dt>{isChinese ? "量度" : "Measurement"}</dt><dd><Badge variant="outline">{stateLabel(action.measurementState, locale)}</Badge></dd></div></dl></SectionCard>
+            <SectionCard><p className="eyebrow">{isChinese ? "獨立生命週期摘要" : "Independent lifecycle summary"}</p><h2>{isChinese ? "不以一個含糊狀態代表所有事情" : "No single overloaded status"}</h2><dl className="state-machine-dl"><div><dt>{isChinese ? "行動" : "Action"}</dt><dd><Badge variant="outline">{stateLabel(action.actionState, locale)}</Badge></dd></div><div><dt>Agent run</dt><dd><Badge variant="outline">{workflowLabel}</Badge></dd></div><div><dt>{isChinese ? zhFor(locale, "審批") : "Approval"}</dt><dd><Badge variant="outline">{approvalText(approval)}</Badge></dd></div><div><dt>{isChinese ? "送出" : "Delivery"}</dt><dd><Badge variant="outline">{stateLabel(delivery, locale)}</Badge></dd></div><div><dt>{isChinese ? zhFor(locale, "量度") : "Measurement"}</dt><dd><Badge variant="outline">{stateLabel(action.measurementState, locale)}</Badge></dd></div></dl></SectionCard>
           </div>
         </TabsContent>
 
@@ -860,7 +861,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
               {versions.length === 0 ? <p>{isChinese ? "尚未有版本。" : "No versions yet."}</p> : <div className="version-list">{versions.map((item) => <button key={item.id} type="button" disabled={!hydrated} onClick={() => selectVersion(item.id)} aria-pressed={versionId === item.id} className={versionId === item.id ? "is-active" : ""}><span><History /></span><div><strong>{versionLabel(item.version_no)} · {stateLabel(item.approval_state, locale)}</strong><small>{item.author_type === "agent" ? "Agent" : (isChinese ? "成員" : "Member")} · {formatDateTime(item.created_at, locale, timezone)}{item.reviewer_comment ? ` · ${item.reviewer_comment}` : ""}</small></div>{versionId === item.id && <Check />}</button>)}</div>}
             </SectionCard>
             <SectionCard><div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "衝突及冪等性" : "Conflict and idempotency"}</p><h2>{isChinese ? "安全狀態" : "Safety states"}</h2></div></div>
-              {conflict ? <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "另一位審閱者已更新輸出" : "Another reviewer changed this output"}</strong><p>{isChinese ? "未儲存文字仍保留在本機。載入最新版本、比較內容，再建立新版本。" : "Unsaved text is preserved locally. Load the latest version, compare, then create a new version."}</p><Button size="sm" onClick={loadLatest}><RefreshCw /> {isChinese ? "安全載入最新狀態" : "Load latest safely"}</Button></div></div> : <div className="idempotent-state"><CheckCircle2 /><div><strong>{isChinese ? "目前沒有衝突" : "No active conflict"}</strong><p>{isChinese ? "重複審批或匯出會返回原本結果，不會重複工作或用量。" : "Repeated approval or export returns the original transition without duplicate work or usage."}</p></div></div>}
+              {conflict ? <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "另一位審閱者已更新輸出" : "Another reviewer changed this output"}</strong><p>{isChinese ? "未儲存文字仍保留在本機。載入最新版本、比較內容，再建立新版本。" : "Unsaved text is preserved locally. Load the latest version, compare, then create a new version."}</p><Button size="sm" onClick={loadLatest}><RefreshCw /> {isChinese ? "安全載入最新狀態" : "Load latest safely"}</Button></div></div> : <div className="idempotent-state"><CheckCircle2 /><div><strong>{isChinese ? "目前沒有衝突" : "No active conflict"}</strong><p>{isChinese ? zhFor(locale, "重複審批或匯出會返回原本結果，不會重複工作或用量。") : "Repeated approval or export returns the original transition without duplicate work or usage."}</p></div></div>}
               <div className="audit-mini">{relatedAudit.length === 0 ? <div><span>—</span><p>{isChinese ? "尚未有審計事件。" : "No audit events yet."}</p></div> : relatedAudit.map((row) => <div key={row.id}><span>{formatDateTime(row.created_at, locale, timezone)}</span><p><strong>{auditEventLabel(row.event, locale)}</strong> · {auditActorLabel(row.actor_type, isChinese)}{typeof row.payload?.version_no === "number" ? ` · ${versionLabel(row.payload.version_no)}` : ""}</p></div>)}</div>
             </SectionCard>
           </div>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { localeToMarket } from "@sme-scanner/region";
 
-import { LandingPage } from "@/components/public-pages";
+import { LandingPage } from "@/components/landing-page";
 import { publicBilling } from "@/lib/commercial/presentation";
 import { normaliseLocale } from "@/lib/copy";
 

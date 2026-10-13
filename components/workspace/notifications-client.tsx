@@ -165,7 +165,7 @@ export function NotificationList({ locale, workspaceId, timezone, rows }: { loca
     <>
       <div className="compact-action-list">
         {rows.map((row) => {
-          const body = <div><strong>{resolveText(row.title, locale)}</strong><small>{row.body ? resolveText(row.body, locale) : ""} · {formatDateTime(row.created_at, locale, timezone)}</small></div>
+          const body = <div><strong>{resolveText(row.title, locale)}</strong><small>{[row.body ? resolveText(row.body, locale) : null, formatDateTime(row.created_at, locale, timezone)].filter(Boolean).join(" · ")}</small></div>
           const className = row.read_at ? "" : "is-unread"
           return row.href
             ? <Link key={row.id} href={row.href} className={className} onClick={() => { if (!row.read_at) void markNotificationsRead(workspaceId, [row.id]) }}>{body}</Link>

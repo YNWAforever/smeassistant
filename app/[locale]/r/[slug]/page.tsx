@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { ReportPage } from "@/components/public-pages";
+import { ReportPage } from "@/components/report-view";
 import { reportMembershipResolver } from "@/lib/auth";
 import { normaliseLocale } from "@/lib/copy";
 import { buildReportProps, type ReportViewModelLike } from "@/lib/funnel/report-props";

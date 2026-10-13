@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { authClient } from "@/lib/identity/client";
+import { loadAuthClient, preloadAuthClient } from "@/lib/identity/load-client";
 import { authFlowHref, callbackHref, type AuthFlow } from "@/lib/identity/sign-in-flow";
 import { noWorkspaceCopy } from "@/lib/workspace/no-workspace-copy";
 
@@ -52,6 +52,11 @@ export function SignInCompletion({ flow, oauthClaimEnabled = false }: { flow: Au
   const heading = useRef<HTMLHeadingElement>(null);
   const previousScreen = useRef(screen);
   const method = completionMethod(flow);
+  // Warm the on-demand auth client once the page is idle, so a press rarely waits for it.
+  useEffect(() => {
+    const idle = window.requestIdleCallback ? window.requestIdleCallback(preloadAuthClient, { timeout: 3000 }) : window.setTimeout(preloadAuthClient, 1500);
+    return () => { if (window.cancelIdleCallback) window.cancelIdleCallback(idle); else window.clearTimeout(idle); };
+  }, []);
   useEffect(() => {
     routerRef.current = router;
   }, [router]);
@@ -83,7 +88,7 @@ export function SignInCompletion({ flow, oauthClaimEnabled = false }: { flow: Au
       return;
     }
     try {
-      const result = await authClient.signIn.social({ provider: "google", callbackURL: callbackHref(flow), errorCallbackURL: callbackHref(flow) });
+      const result = await (await loadAuthClient()).signIn.social({ provider: "google", callbackURL: callbackHref(flow), errorCallbackURL: callbackHref(flow) });
       if (result.error) throw result.error;
     } catch { setScreen("recover_completion"); }
   }
@@ -91,7 +96,7 @@ export function SignInCompletion({ flow, oauthClaimEnabled = false }: { flow: Au
   async function changeAccount() {
     setScreen("changing");
     try {
-      const result: unknown = await authClient.signOut();
+      const result: unknown = await (await loadAuthClient()).signOut();
       if (result && typeof result === "object" && "error" in result && (result as { error?: unknown }).error) throw new Error("sign_out_failed");
       router.replace(authFlowHref({ ...flow, method: null }, "start"));
     } catch { setScreen("recover_change_account"); }

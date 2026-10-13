@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { PrototypeLocale } from "@/lib/copy"
+import { zhFor } from "@/lib/zh-tw"
 
 /**
  * The prototype's location `Select`, bound to the `?location=` query param so
@@ -30,7 +31,7 @@ export function LocationSelect({
   const pathname = usePathname()
   const params = useSearchParams()
   const isChinese = locale !== "en"
-  const allLabel = isChinese ? "所有地點" : "All locations"
+  const allLabel = isChinese ? zhFor(locale, "所有地點") : "All locations"
   const current = value === "all" ? allLabel : (locations.find((l) => l.slug === value)?.name ?? value)
   function change(next: string) {
     const query = new URLSearchParams(params.toString())
@@ -40,7 +41,7 @@ export function LocationSelect({
   }
   return (
     <Select value={value} onValueChange={change}>
-      <SelectTrigger className={className} aria-label={ariaLabel ?? (isChinese ? "選擇地點" : "Choose location")}>
+      <SelectTrigger className={className} aria-label={ariaLabel ?? (isChinese ? zhFor(locale, "選擇地點") : "Choose location")}>
         <MapPin />
         <SelectValue>{current}</SelectValue>
       </SelectTrigger>
