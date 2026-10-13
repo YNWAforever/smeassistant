@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
 import {
   ArrowRight,
+  ArrowUpRight,
   BadgeCheck,
   Building2,
   Check,
@@ -16,7 +17,6 @@ import {
   ListChecks,
   MapPin,
   RefreshCw,
-  ScanSearch,
   Search,
   ShieldCheck,
   Sparkles,
@@ -28,12 +28,11 @@ import { ContextualAssistant } from "@/components/pocket-assistant/assistant-lau
 import {
   DemoBadge,
   FactType,
-  LoopRibbon,
+  loopSteps,
+  loopStepsZh,
   PublicPageFrame,
   ScoreDial,
 } from "@/components/product-ui"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -60,7 +59,7 @@ const supportedSources = [
   { name: "Instagram & website", detail: "Supported public evidence, with honest coverage states", icon: Globe2 },
 ]
 
-export function LandingPage({ locale, market: initialMarket, billing }: { locale: PrototypeLocale; market: Market; billing: PublicBilling }) {
+export function LandingPage({ locale, market: initialMarket, billing, heroPhrases }: { locale: PrototypeLocale; market: Market; billing: PublicBilling; heroPhrases?: string[] }) {
   const copyT = copy[locale]
   const f = copyT.funnel.landing
   const router = useRouter()
@@ -299,138 +298,178 @@ export function LandingPage({ locale, market: initialMarket, billing }: { locale
     router.push(`/${locale}/scan?${params.toString()}`)
   }
 
+  const loopLabels = locale === "en" ? loopSteps : loopStepsZh
+  // Server-segmented words (lib/typography/phrases) so a Chinese headline never breaks inside a word.
+  const heroWords = heroPhrases && heroPhrases.length > 1
+    ? heroPhrases.map((phrase, index) => <span key={index} className="ed-phrase">{phrase}</span>)
+    : copyT.landing.title
+
   return (
     <PublicPageFrame locale={locale}>
-      <main>
-        <section className="landing-hero">
-          <div className="landing-hero-copy">
-            <Badge variant="outline" className="hero-eyebrow"><ScanSearch /> {copyT.landing.eyebrow}</Badge>
-            <h1>{copyT.landing.title}</h1>
-            <p className="hero-lead">{copyT.landing.body}</p>
-            <div className="trust-row" aria-label={copyT.landing.trust}>
-              <ShieldCheck aria-hidden="true" /><span>{copyT.landing.trust}</span>
+      <main className="ed-landing">
+        {/* 01 — Hero: editorial split. The headline carries the page; the scanner is an instrument beside it. */}
+        <section className="ed-hero" aria-labelledby="ed-hero-title">
+          <div className="ed-hero-copy">
+            <p className="ed-eyebrow"><span className="ed-eyebrow-dot" aria-hidden="true" />{copyT.landing.eyebrow}</p>
+            <h1 id="ed-hero-title" className="ed-display">{heroWords}</h1>
+            <p className="ed-lead">{copyT.landing.body}</p>
+            <div className="ed-hero-actions">
+              <Link className="ed-pill ed-pill-ink" href={`/${locale}/sample-report`}>
+                <span>{landingUi.sampleLink}</span><span className="ed-pill-icon" aria-hidden="true"><ArrowUpRight /></span>
+              </Link>
+              <Link className="ed-text-link" href={`/${locale}/methodology`}>{landingUi.methodLink}</Link>
             </div>
-            <div className="hero-links">
-              <Link href={`/${locale}/sample-report`}>{landingUi.sampleLink} <ArrowRight /></Link>
-              <Link href={`/${locale}/methodology`}>{landingUi.methodLink}</Link>
-            </div>
-            <figure className="owner-moment-card">
-              <img
-                src="https://images.pexels.com/photos/4473399/pexels-photo-4473399.jpeg?auto=compress&dpr=1&h=750&w=1260"
-                alt={ownerStory.heroAlt}
-                width="1260"
-                height="750"
-                fetchPriority="high"
-              />
-              <span className="context-photo-label">{isChinese ? "情境示意 · 非客戶案例" : "Context image · not a customer case"}</span>
-              <figcaption>
-                <span><BadgeCheck aria-hidden="true" /> {ownerStory.heroKicker}</span>
-                <strong>{ownerStory.heroTitle}</strong>
-                <small>{ownerStory.heroBody}</small>
-                <a href="https://www.pexels.com/photo/happy-ethnic-coffee-shop-owner-standing-at-entrance-door-4473399/" target="_blank" rel="noreferrer">{photoContext} · Photo: Ketut Subiyanto / Pexels</a>
-              </figcaption>
-            </figure>
+            <p className="ed-trust"><ShieldCheck aria-hidden="true" /><span>{copyT.landing.trust}</span></p>
           </div>
-          <form className="business-search-card" onSubmit={startSearch} noValidate>
-            <div className="search-card-heading">
-              <span className="step-kicker">{landingUi.scannerStep}</span>
-              <h2>{copyT.landing.searchLabel}</h2>
-              <p>{landingUi.scannerBody}</p>
-            </div>
-            {error && <div id="business-search-error" className="form-error" role="alert"><CircleAlert /> {error}</div>}
-            <div className="field-stack">
-              <Label htmlFor="business-search">{copyT.landing.searchLabel}</Label>
-              <div className="input-with-icon"><Search /><Input ref={queryInputRef} id="business-search" value={query} onChange={(event) => { setQuery(event.target.value); setError("") }} placeholder={copyT.landing.searchPlaceholder} aria-invalid={Boolean(error)} aria-describedby={error ? "business-search-error" : undefined} /></div>
-            </div>
-            <fieldset className="field-stack">
-              <legend>{copyT.landing.marketLabel}</legend>
-              <RadioGroup className="market-choice-grid" value={market} onValueChange={(value) => setMarket(value as Market)}>
-                <Label className="market-choice" htmlFor="market-hk"><RadioGroupItem id="market-hk" value="hk" /><span><strong>{landingUi.hkName}</strong><small>{landingUi.hkMeta}</small></span></Label>
-                <Label className="market-choice" htmlFor="market-tw"><RadioGroupItem id="market-tw" value="tw" /><span><strong>{landingUi.twName}</strong><small>{landingUi.twMeta}</small></span></Label>
-              </RadioGroup>
-            </fieldset>
-            <div className="locale-market-note"><Languages /><span><strong>{copyT.language}</strong> · {landingUi.localeNote}</span></div>
-            <Button size="lg" className="primary-action" type="submit">{copyT.landing.start}<ArrowRight /></Button>
-            <p className="timing-note"><Clock3 /> {f.timing}</p>
-          </form>
+
+          <div className="ed-bezel ed-scanner-shell">
+            <form className="ed-bezel-core ed-scanner" onSubmit={startSearch} noValidate>
+              <div className="ed-scanner-head">
+                <span className="ed-kicker">{landingUi.scannerStep}</span>
+                <h2>{copyT.landing.searchLabel}</h2>
+                <p>{landingUi.scannerBody}</p>
+              </div>
+              {error && <div id="business-search-error" className="ed-form-error" role="alert"><CircleAlert aria-hidden="true" /> {error}</div>}
+              <div className="ed-field">
+                <Label htmlFor="business-search" className="sr-only">{copyT.landing.searchLabel}</Label>
+                <Search className="ed-field-icon" aria-hidden="true" />
+                <Input ref={queryInputRef} id="business-search" value={query} onChange={(event) => { setQuery(event.target.value); setError("") }} placeholder={copyT.landing.searchPlaceholder} aria-invalid={Boolean(error)} aria-describedby={error ? "business-search-error" : undefined} />
+              </div>
+              <fieldset className="ed-market">
+                <legend>{copyT.landing.marketLabel}</legend>
+                <RadioGroup className="ed-market-grid" value={market} onValueChange={(value) => setMarket(value as Market)}>
+                  <Label className="ed-market-choice" htmlFor="market-hk"><RadioGroupItem id="market-hk" value="hk" /><span><strong>{landingUi.hkName}</strong><small>{landingUi.hkMeta}</small></span></Label>
+                  <Label className="ed-market-choice" htmlFor="market-tw"><RadioGroupItem id="market-tw" value="tw" /><span><strong>{landingUi.twName}</strong><small>{landingUi.twMeta}</small></span></Label>
+                </RadioGroup>
+              </fieldset>
+              <p className="ed-locale-note"><Languages aria-hidden="true" /><span><strong>{copyT.language}</strong> · {landingUi.localeNote}</span></p>
+              <button className="ed-pill ed-pill-lime ed-pill-wide" type="submit">
+                <span>{copyT.landing.start}</span><span className="ed-pill-icon" aria-hidden="true"><ArrowRight /></span>
+              </button>
+              <p className="ed-timing"><Clock3 aria-hidden="true" /> {f.timing}</p>
+            </form>
+          </div>
         </section>
 
-        <section className="owner-confidence-strip" aria-labelledby="owner-confidence-title">
+        {/* 02 — A wide, quiet photograph; the owner's day is the context, the evidence ticket is the product. */}
+        <section className="ed-moment" aria-label={ownerStory.heroKicker}>
+          <figure className="ed-moment-figure">
+            <img
+              src="https://images.pexels.com/photos/4473399/pexels-photo-4473399.jpeg?auto=compress&dpr=2&h=900&w=1800"
+              alt={ownerStory.heroAlt}
+              width="1800"
+              height="900"
+              fetchPriority="high"
+            />
+            <figcaption className="ed-moment-caption">
+              <span className="ed-kicker ed-kicker-light"><BadgeCheck aria-hidden="true" /> {ownerStory.heroKicker}</span>
+              <strong>{ownerStory.heroTitle}</strong>
+              <small>{ownerStory.heroBody}</small>
+            </figcaption>
+            <div className="ed-ticket" aria-hidden="true">
+              <span className="ed-ticket-tag">{isChinese ? "已觀察" : "Observed"}</span>
+              <strong>{landingUi.briefAction}</strong>
+              <small>{landingUi.briefMeta}</small>
+            </div>
+            <a className="ed-photo-credit" href="https://www.pexels.com/photo/happy-ethnic-coffee-shop-owner-standing-at-entrance-door-4473399/" target="_blank" rel="noreferrer">{photoContext} · Photo: Ketut Subiyanto / Pexels</a>
+          </figure>
+        </section>
+
+        {/* 03 — Three promises, set like an editorial index rather than three cards. */}
+        <section className="ed-promises" aria-labelledby="owner-confidence-title">
           <h2 id="owner-confidence-title" className="sr-only">{locale === "en" ? "Built for busy business owners" : "為忙碌中小企老闆而設"}</h2>
-          {confidence.map(({ title, body, icon: Icon }) => (
+          {confidence.map(({ title, body }, index) => (
             <article key={title}>
-              <span aria-hidden="true"><Icon /></span>
-              <div><h3>{title}</h3><p>{body}</p></div>
+              <span className="ed-numeral" aria-hidden="true">0{index + 1}</span>
+              <h3>{title}</h3>
+              <p>{body}</p>
             </article>
           ))}
         </section>
 
-        <section className="owner-story-section" aria-labelledby="owner-story-title">
-          <div className="owner-story-visuals" aria-label={locale === "en" ? "Independent business owners at work" : "正在工作的獨立小店團隊"}>
-            <figure className="owner-story-main-photo">
-              <img
-                src="https://images.pexels.com/photos/7147547/pexels-photo-7147547.jpeg?auto=compress&dpr=1&h=750&w=1260"
-                alt={ownerStory.mainAlt}
-                width="1260"
-                height="750"
-                loading="lazy"
-                decoding="async"
-              />
+        {/* 04 — Owner story: overlapping photographs, copy that reads like a column. */}
+        <section className="ed-story" aria-labelledby="owner-story-title">
+          <div className="ed-story-visuals" aria-label={locale === "en" ? "Independent business owners at work" : "正在工作的獨立小店團隊"}>
+            <figure className="ed-story-main">
+              <img src="https://images.pexels.com/photos/7147547/pexels-photo-7147547.jpeg?auto=compress&dpr=2&h=900&w=1200" alt={ownerStory.mainAlt} width="1200" height="900" loading="lazy" decoding="async" />
               <figcaption><a href="https://www.pexels.com/photo/smiling-asian-tailor-with-illustration-against-sewing-machine-in-workroom-7147547/" target="_blank" rel="noreferrer">{photoContext} · Photo: Michael Burrows / Pexels</a></figcaption>
             </figure>
-            <figure className="owner-story-secondary-photo">
-              <img
-                src="https://images.pexels.com/photos/6949788/pexels-photo-6949788.jpeg?auto=compress&dpr=1&h=750&w=1260"
-                alt={ownerStory.secondaryAlt}
-                width="1260"
-                height="750"
-                loading="lazy"
-                decoding="async"
-              />
+            <figure className="ed-story-second">
+              <img src="https://images.pexels.com/photos/6949788/pexels-photo-6949788.jpeg?auto=compress&dpr=2&h=900&w=900" alt={ownerStory.secondaryAlt} width="900" height="900" loading="lazy" decoding="async" />
               <figcaption><a href="https://www.pexels.com/photo/portrait-of-a-woman-in-a-store-6949788/" target="_blank" rel="noreferrer">{photoContext} · Photo: Prem Kumar / Pexels</a></figcaption>
             </figure>
-            <span className="owner-story-sticker" aria-hidden="true"><Sparkles /> {ownerStory.sticker}</span>
+            <span className="ed-sticker" aria-hidden="true">{ownerStory.sticker}</span>
           </div>
-          <div className="owner-story-copy">
-            <p className="eyebrow">{ownerStory.eyebrow}</p>
-            <h2 id="owner-story-title">{ownerStory.title}</h2>
-            <p>{ownerStory.body}</p>
-            <ul>
-              {ownerStory.points.map((point) => <li key={point}><span aria-hidden="true"><Check /></span>{point}</li>)}
-            </ul>
-            <Button asChild size="lg"><Link href={`/${locale}/scan`}>{ownerStory.cta}<ArrowRight /></Link></Button>
-          </div>
-        </section>
-
-        <section className="supported-strip" aria-labelledby="supported-title">
-          <div className="section-heading-inline"><div><p className="eyebrow">{landingUi.supportedEyebrow}</p><h2 id="supported-title">{copyT.landing.checked}</h2></div><Link href={`/${locale}/methodology`}>{landingUi.coverageRules} <ArrowRight /></Link></div>
-          <div className="source-grid">
-            {displaySources.map(({ name, detail, icon: Icon }) => <article key={name}><span className="source-icon"><Icon /></span><div><h3>{name}</h3><p>{detail}</p></div><Badge variant="outline">{landingUi.supportBadge}</Badge></article>)}
-          </div>
-          <p className="limitation-note"><TriangleAlert /> {landingUi.limitation}</p>
-        </section>
-
-        <section className="product-loop-section">
-          <div className="section-heading-centered"><p className="eyebrow">{landingUi.loopEyebrow}</p><h2>{landingUi.loopTitle}</h2><p>{landingUi.loopBody}</p></div>
-          <LoopRibbon active={0} />
-          <div className="loop-proof-grid">
-            {landingUi.loopCards.map(([title, body], index) => <article key={title}><span>0{index + 1}</span><h3>{title}</h3><p>{body}</p></article>)}
+          <div className="ed-story-copy">
+            <p className="ed-eyebrow"><span className="ed-eyebrow-dot" aria-hidden="true" />{ownerStory.eyebrow}</p>
+            <h2 id="owner-story-title" className="ed-heading">{ownerStory.title}</h2>
+            <p className="ed-body">{ownerStory.body}</p>
+            <ol className="ed-checklist">
+              {ownerStory.points.map((point) => <li key={point}><Check aria-hidden="true" />{point}</li>)}
+            </ol>
+            <Link className="ed-pill ed-pill-ink" href={`/${locale}/scan`}><span>{ownerStory.cta}</span><span className="ed-pill-icon" aria-hidden="true"><ArrowRight /></span></Link>
           </div>
         </section>
 
-        <section id="why-sme-scanner" className="comparison-section" aria-labelledby="comparison-title">
-          <div className="comparison-heading">
+        {/* 05 — Sources as an asymmetric bento; the limitation is a footnote, not an apology. */}
+        <section className="ed-sources" aria-labelledby="supported-title">
+          <header className="ed-section-head">
             <div>
-              <p className="eyebrow">{comparison.eyebrow}</p>
-              <h2 id="comparison-title">{comparison.title}</h2>
+              <p className="ed-eyebrow"><span className="ed-eyebrow-dot" aria-hidden="true" />{landingUi.supportedEyebrow}</p>
+              <h2 id="supported-title" className="ed-heading">{copyT.landing.checked}</h2>
             </div>
-            <p>{comparison.body}</p>
+            <Link className="ed-text-link" href={`/${locale}/methodology`}>{landingUi.coverageRules} <ArrowUpRight aria-hidden="true" /></Link>
+          </header>
+          <div className="ed-bento">
+            {displaySources.map(({ name, detail, icon: Icon }, index) => (
+              <article key={name} className={`ed-bezel ed-bento-${index + 1}`}>
+                <div className="ed-bezel-core">
+                  <span className="ed-icon-well" aria-hidden="true"><Icon /></span>
+                  <h3>{name}</h3>
+                  <p>{detail}</p>
+                  <span className="ed-chip">{landingUi.supportBadge}</span>
+                </div>
+              </article>
+            ))}
           </div>
-          <div className="comparison-promises" aria-label={locale === "en" ? "SME Scanner product promises" : "SME Scanner 產品承諾"}>
-            {comparison.promises.map((item) => <span key={item}><Check aria-hidden="true" />{item}</span>)}
+          <p className="ed-footnote"><TriangleAlert aria-hidden="true" /> {landingUi.limitation}</p>
+        </section>
+
+        {/* 06 — The loop: eight steps on one line, three proofs below in large numerals. */}
+        <section className="ed-loop" aria-labelledby="ed-loop-title">
+          <header className="ed-section-head ed-section-head-center">
+            <p className="ed-eyebrow"><span className="ed-eyebrow-dot" aria-hidden="true" />{landingUi.loopEyebrow}</p>
+            <h2 id="ed-loop-title" className="ed-heading">{landingUi.loopTitle}</h2>
+            <p className="ed-body">{landingUi.loopBody}</p>
+          </header>
+          <ol className="ed-loop-line" tabIndex={0} aria-label={locale === "en" ? "Visibility improvement loop" : "能見度改善循環"}>
+            {loopLabels.map((step, index) => <li key={step}><span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>{step}</li>)}
+          </ol>
+          <div className="ed-loop-proofs">
+            {landingUi.loopCards.map(([title, body], index) => (
+              <article key={title}>
+                <span className="ed-numeral" aria-hidden="true">0{index + 1}</span>
+                <h3>{title}</h3>
+                <p>{body}</p>
+              </article>
+            ))}
           </div>
-          <div className="comparison-table-shell" role="region" aria-labelledby="comparison-title" tabIndex={0}>
-            <Table className="comparison-table">
+        </section>
+
+        {/* 07 — Comparison on a dark forest ground: the one place the page raises its voice. */}
+        <section id="why-sme-scanner" className="ed-dark ed-compare" aria-labelledby="comparison-title">
+          <header className="ed-section-head">
+            <div>
+              <p className="ed-eyebrow ed-eyebrow-light"><span className="ed-eyebrow-dot" aria-hidden="true" />{comparison.eyebrow}</p>
+              <h2 id="comparison-title" className="ed-heading">{comparison.title}</h2>
+            </div>
+            <p className="ed-body">{comparison.body}</p>
+          </header>
+          <ul className="ed-promise-row" aria-label={locale === "en" ? "SME Scanner product promises" : "SME Scanner 產品承諾"}>
+            {comparison.promises.map((item) => <li key={item}><Check aria-hidden="true" />{item}</li>)}
+          </ul>
+          <div className="ed-table-shell" role="region" aria-labelledby="comparison-title" tabIndex={0}>
+            <Table className="ed-table">
               <TableCaption className="sr-only">{comparison.caption}</TableCaption>
               <TableHeader>
                 <TableRow>
@@ -448,107 +487,165 @@ export function LandingPage({ locale, market: initialMarket, billing }: { locale
               </TableBody>
             </Table>
           </div>
-          <p className="comparison-scroll-note">{isChinese ? "手機可左右滑動查看完整比較" : "Swipe sideways on mobile to see the full comparison"}</p>
-          <p className="comparison-fairness-note">{isChinese ? "此為類別層級概括；個別產品與服務能力可能不同。" : "This is a category-level summary; individual products and services may differ."}</p>
+          <p className="ed-footnote ed-footnote-light ed-mobile-only">{isChinese ? "手機可左右滑動查看完整比較" : "Swipe sideways on mobile to see the full comparison"}</p>
+          <p className="ed-footnote ed-footnote-light">{isChinese ? "此為類別層級概括；個別產品與服務能力可能不同。" : "This is a category-level summary; individual products and services may differ."}</p>
         </section>
 
-        <section className="agent-team-section" aria-labelledby="agent-team-title">
-          <div className="agent-team-heading">
-            <div><p className="eyebrow">{isChinese ? "一個工作台 · 一隊協作團隊" : "One workspace · one coordinated team"}</p><h2 id="agent-team-title">{isChinese ? "你只需決定下一步；AI 專員在背後協作。" : "You decide the next move; specialists coordinate backstage."}</h2></div>
-            <p>{isChinese ? zhFor(locale, "你毋須逐個選擇、提示或管理 Agent。SME Scanner 會按最新證據調度合適專員，交給你的永遠是一項清晰優先工作、可審批草稿和之後的成效證明。") : "You never need to select, prompt or reconcile separate agents. SME Scanner routes the evidence to the right specialists and returns one priority, an owner-ready draft and proof later."}</p>
+        {/* 08 — The team behind the one decision. */}
+        <section className="ed-team" aria-labelledby="agent-team-title">
+          <header className="ed-section-head">
+            <div>
+              <p className="ed-eyebrow"><span className="ed-eyebrow-dot" aria-hidden="true" />{isChinese ? "一個工作台 · 一隊協作團隊" : "One workspace · one coordinated team"}</p>
+              <h2 id="agent-team-title" className="ed-heading">{isChinese ? "你只需決定下一步；AI 專員在背後協作。" : "You decide the next move; specialists coordinate backstage."}</h2>
+            </div>
+            <p className="ed-body">{isChinese ? zhFor(locale, "你毋須逐個選擇、提示或管理 Agent。SME Scanner 會按最新證據調度合適專員，交給你的永遠是一項清晰優先工作、可審批草稿和之後的成效證明。") : "You never need to select, prompt or reconcile separate agents. SME Scanner routes the evidence to the right specialists and returns one priority, an owner-ready draft and proof later."}</p>
+          </header>
+          <div className="ed-flow" aria-hidden="true">
+            <span><Building2 /> {isChinese ? zhFor(locale, "商戶事實庫") : "Business Truth"}</span>
+            <i />
+            <strong>{isChinese ? "AI 能見度團隊" : "AI Visibility Team"}</strong>
+            <i />
+            <span><UserCheck /> {isChinese ? zhFor(locale, "店主保留最後決定") : "Owner keeps final control"}</span>
           </div>
-          <div className="agent-gateway"><span><Building2 /> {isChinese ? zhFor(locale, "商戶事實庫") : "Business Truth"}</span><ArrowRight /><strong>{isChinese ? "AI 能見度團隊" : "AI Visibility Team"}</strong><ArrowRight /><span><UserCheck /> {isChinese ? zhFor(locale, "店主保留最後決定") : "Owner keeps final control"}</span></div>
-          <div className="operator-explainer"><Sparkles /><div><Badge variant="outline">Visibility Operator</Badge><strong>{isChinese ? "隨身增長助理不是另一個 Agent。" : "The Visibility Operator is not another agent."}</strong><span>{isChinese ? zhFor(locale, "它只讀取目前頁面、掃描編號、證據與版本狀態，解釋問題並調度合適能力；任何輸出仍要建立新版本及由店主審批。") : "It reads the current surface, scan ID, evidence and version state, then explains the issue and routes the right capability. Every output still becomes a new owner-approved version."}</span></div></div>
-          <div className="agent-role-grid">
-            {agentRoles.map(({ title, english, body, output, icon: Icon }, index) => <article key={title}><div className="agent-role-top"><span className="agent-role-index">0{index + 1}</span><span className="agent-role-icon"><Icon /></span></div><small>{english}</small><h3>{title}</h3><p>{body}</p><strong><Check /> {output}</strong></article>)}
+          <div className="ed-team-grid">
+            {agentRoles.map(({ title, english, body, output, icon: Icon }, index) => (
+              <article key={title} className="ed-bezel">
+                <div className="ed-bezel-core">
+                  <div className="ed-team-top"><span className="ed-numeral ed-numeral-sm" aria-hidden="true">0{index + 1}</span><span className="ed-icon-well" aria-hidden="true"><Icon /></span></div>
+                  <small className="ed-kicker">{english}</small>
+                  <h3>{title}</h3>
+                  <p>{body}</p>
+                  <strong className="ed-output"><Check aria-hidden="true" /> {output}</strong>
+                </div>
+              </article>
+            ))}
           </div>
-          <div className="agent-specialist-row"><span>{isChinese ? "按需要調度：" : "Specialists routed when relevant:"}</span>{(isChinese ? ["評論回覆", "社交內容", "海報／圖片", "餐牌翻譯", "SEO／AI 能見度"] : ["Review replies", "Social posts", "Poster / image", "Menu translation", "SEO / AI visibility"]).map((item) => <Badge key={item} variant="outline">{item}</Badge>)}</div>
-          <div className="owner-control-banner"><ShieldCheck /><div><strong>{isChinese ? zhFor(locale, "所有工作台及專人方案都保留店主審批") : "Owner approval is included in every workspace and managed plan"}</strong><span>{isChinese ? zhFor(locale, "免費掃描只提供證據與優先建議；工作台不會自動對外發佈。只有正確權限、清楚審批紀錄及可還原路徑，才可匯出或發佈。") : "The free scanner provides evidence and priorities only. Workspace delivery requires the right permission, an explicit approval record and a recoverable path."}</span></div></div>
+          <div className="ed-operator">
+            <Sparkles aria-hidden="true" />
+            <div>
+              <span className="ed-chip">Visibility Operator</span>
+              <strong>{isChinese ? "隨身增長助理不是另一個 Agent。" : "The Visibility Operator is not another agent."}</strong>
+              <p>{isChinese ? zhFor(locale, "它只讀取目前頁面、掃描編號、證據與版本狀態，解釋問題並調度合適能力；任何輸出仍要建立新版本及由店主審批。") : "It reads the current surface, scan ID, evidence and version state, then explains the issue and routes the right capability. Every output still becomes a new owner-approved version."}</p>
+            </div>
+          </div>
+          <p className="ed-specialists"><span>{isChinese ? "按需要調度：" : "Specialists routed when relevant:"}</span>{(isChinese ? ["評論回覆", "社交內容", "海報／圖片", "餐牌翻譯", "SEO／AI 能見度"] : ["Review replies", "Social posts", "Poster / image", "Menu translation", "SEO / AI visibility"]).map((item) => <span key={item} className="ed-chip">{item}</span>)}</p>
+          <div className="ed-control">
+            <ShieldCheck aria-hidden="true" />
+            <div>
+              <strong>{isChinese ? zhFor(locale, "所有工作台及專人方案都保留店主審批") : "Owner approval is included in every workspace and managed plan"}</strong>
+              <p>{isChinese ? zhFor(locale, "免費掃描只提供證據與優先建議；工作台不會自動對外發佈。只有正確權限、清楚審批紀錄及可還原路徑，才可匯出或發佈。") : "The free scanner provides evidence and priorities only. Workspace delivery requires the right permission, an explicit approval record and a recoverable path."}</p>
+            </div>
+          </div>
         </section>
 
-        <section id="sample-case" className="sample-case-section" aria-labelledby="sample-case-title">
-          <div className="sample-case-copy">
-            <div className="sample-case-label"><DemoBadge locale={locale} /><span>{sampleCase.eyebrow}</span></div>
-            <h2 id="sample-case-title">{sampleCase.title}</h2>
-            <p>{sampleCase.body}</p>
-            <div className="sample-case-actions">
-              <Button asChild><Link href={`/${locale}/sample-report`}>{sampleCase.sampleCta}<ArrowRight /></Link></Button>
+        {/* 09 — The sample case reads as a measured before/after, numbers set large. */}
+        <section id="sample-case" className="ed-case" aria-labelledby="sample-case-title">
+          <div className="ed-case-copy">
+            <p className="ed-eyebrow"><DemoBadge locale={locale} /><span>{sampleCase.eyebrow}</span></p>
+            <h2 id="sample-case-title" className="ed-heading">{sampleCase.title}</h2>
+            <p className="ed-body">{sampleCase.body}</p>
+            <div className="ed-case-actions">
+              <Link className="ed-pill ed-pill-ink" href={`/${locale}/sample-report`}><span>{sampleCase.sampleCta}</span><span className="ed-pill-icon" aria-hidden="true"><ArrowRight /></span></Link>
               <ContextualAssistant locale={locale} surface="sample" />
-              <Button asChild variant="outline"><Link href={`/${locale}/demo-workspace`}>{sampleCase.workspaceCta}</Link></Button>
+              <Link className="ed-text-link" href={`/${locale}/demo-workspace`}>{sampleCase.workspaceCta} <ArrowUpRight aria-hidden="true" /></Link>
             </div>
           </div>
-          <div className="sample-case-proof">
-            <div className="sample-case-business"><span>{isChinese ? "香港示範商家 · 錦汶館 · 奕蔭街" : "Hong Kong demo business · 錦汶館 · Yik Yam Street"}</span><Badge variant="outline">Google Business</Badge></div>
-            <div className="sample-case-steps">
-              <article><span>{sampleCase.before}</span><strong>22%</strong><small>{sampleCase.beforeLabel}</small></article>
-              <ArrowRight aria-hidden="true" />
-              <article className="is-action"><span>{sampleCase.action}</span><strong>{sampleCase.actionDate}</strong><small>{sampleCase.actionLabel}</small></article>
-              <ArrowRight aria-hidden="true" />
-              <article className="is-after"><span>{sampleCase.after}</span><strong>31%</strong><small>{sampleCase.afterLabel}</small><em>{sampleCase.delta}</em></article>
-            </div>
-            <div className="sample-case-evidence">
-              <FactType type="Observed" />
-              <div><strong>{sampleCase.evidenceTitle}</strong><p>{sampleCase.caveat}</p></div>
+          <div className="ed-bezel ed-case-proof">
+            <div className="ed-bezel-core">
+              <div className="ed-case-business"><span>{isChinese ? "香港示範商家 · 錦汶館 · 奕蔭街" : "Hong Kong demo business · 錦汶館 · Yik Yam Street"}</span><span className="ed-chip">Google Business</span></div>
+              <ol className="ed-case-steps">
+                <li><span>{sampleCase.before}</span><strong className="ed-figure">22%</strong><small>{sampleCase.beforeLabel}</small></li>
+                <li className="is-action"><span>{sampleCase.action}</span><strong className="ed-figure ed-figure-sm">{sampleCase.actionDate}</strong><small>{sampleCase.actionLabel}</small></li>
+                <li className="is-after"><span>{sampleCase.after}</span><strong className="ed-figure">31%</strong><small>{sampleCase.afterLabel}</small><em>{sampleCase.delta}</em></li>
+              </ol>
+              <div className="ed-case-evidence">
+                <FactType type="Observed" />
+                <div><strong>{sampleCase.evidenceTitle}</strong><p>{sampleCase.caveat}</p></div>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* Item 8: three outcome examples, each linking into the scan with an
-            `intent` that survives claim -- so the owner lands on this exact
-            action afterwards, if the scan actually produces one. Copy is the
-            real template title/summary an owner sees inside the workspace
-            (copy[locale].workspace.templates), never invented marketing text,
-            so the promise here is never ahead of what the product does. */}
-        <section className="outcome-examples-section" aria-labelledby="outcome-examples-title">
-          <div className="outcome-examples-heading">
-            <p className="eyebrow">{outcomeUi.eyebrow}</p>
-            <h2 id="outcome-examples-title">{outcomeUi.title}</h2>
-            <p>{outcomeUi.body}</p>
-          </div>
-          <div className="outcome-grid">
+        {/* 10 — Outcomes. Copy is the real workspace template text (item 8), never invented marketing. */}
+        <section className="ed-outcomes" aria-labelledby="outcome-examples-title">
+          <header className="ed-section-head ed-section-head-center">
+            <p className="ed-eyebrow"><span className="ed-eyebrow-dot" aria-hidden="true" />{outcomeUi.eyebrow}</p>
+            <h2 id="outcome-examples-title" className="ed-heading">{outcomeUi.title}</h2>
+            <p className="ed-body">{outcomeUi.body}</p>
+          </header>
+          <div className="ed-outcome-grid">
             {(["review-response", "visibility-content", "gbp-profile-fix"] as const).map((key, index) => {
               const template = copyT.workspace.templates[key]
               return (
-                <article key={key}>
-                  <span className="outcome-index" aria-hidden="true">0{index + 1}</span>
+                <Link key={key} className="ed-outcome" href={`/${locale}/scan?${new URLSearchParams({ market, intent: key }).toString()}`}>
+                  <span className="ed-numeral" aria-hidden="true">0{index + 1}</span>
                   <h3>{template.title}</h3>
                   <p>{template.summary}</p>
-                  <Button asChild variant="outline">
-                    <Link href={`/${locale}/scan?${new URLSearchParams({ market, intent: key }).toString()}`}>
-                      {outcomeUi.cta}<ArrowRight />
-                    </Link>
-                  </Button>
-                </article>
+                  <span className="ed-outcome-cta">{outcomeUi.cta}<span className="ed-pill-icon" aria-hidden="true"><ArrowRight /></span></span>
+                </Link>
               )
             })}
           </div>
         </section>
 
-        <section className="home-plan-section" aria-labelledby="home-plan-title">
-          <div className="section-heading-inline"><div><p className="eyebrow">{isChinese ? "由證據開始，按業務步伐升級" : "Start with evidence, scale with the business"}</p><h2 id="home-plan-title">{isChinese ? "先免費看清問題，再選擇合適的執行節奏。" : "See the issue for free, then choose the right operating rhythm."}</h2></div><Button asChild variant="outline"><Link href={`/${locale}/pricing`}>{isChinese ? "比較所有方案" : "Compare all plans"}<ArrowRight /></Link></Button></div>
-          <div className="free-plan-banner"><div><Badge variant="outline">{isChinese ? "一次免費掃描" : "One free scan"}</Badge><h3>{isChinese ? "SME Scanner · 免費" : "SME Scanner · Free"}</h3><p>{isChinese ? "查看能見度快照、證據來源及最值得先處理的問題，毋須登入開始。" : "See a visibility snapshot, source evidence and the best next issue to tackle—no login required."}</p></div><Button asChild><Link href={`/${locale}/scan`}>{isChinese ? "免費掃描" : "Start free scan"}<ArrowRight /></Link></Button></div>
-          <div className="paid-plan-preview-grid">
-            <article className="is-featured"><Badge>{isChinese ? zhFor(locale, "最適合單一地點") : "Best for one location"}</Badge><h3>{isChinese ? zhFor(locale, "增長工作台") : "Growth Workspace"}</h3><strong>{price}<small>/{f.perMonth}</small></strong><p>{isChinese ? zhFor(locale, `1 個地點 · ${paidAllowance} · 團隊成員及角色權限`) : `1 location · ${paidAllowance} · team members with roles`}</p>{!billing.open && <p className="limitation-note">{contactHref ? <a href={contactHref}>{notOpenLabel}</a> : notOpenLabel}</p>}</article>
-            <article><Badge variant="outline">{isChinese ? zhFor(locale, "最多 3 個地點") : "Up to 3 locations"}</Badge><h3>{isChinese ? zhFor(locale, "多地點工作台") : "Multi-location"}</h3><strong>{f.contactPricing}</strong><p>{isChinese ? zhFor(locale, "最多 3 個地點 · 由 Fimmick 團隊開通") : "Up to 3 locations · activated by the Fimmick team"}</p></article>
-            <article><Badge variant="outline">{isChinese ? "專人協作" : "Human-managed"}</Badge><h3>{isChinese ? "專人能見度服務" : "Managed Visibility"}</h3><strong>{f.contactPricing}</strong><p>{isChinese ? "專人協助執行與檢視 · 最短 3 個月" : "Human execution and review · 3-month minimum"}</p></article>
+        {/* 11 — Plans. */}
+        <section className="ed-plans" aria-labelledby="home-plan-title">
+          <header className="ed-section-head">
+            <div>
+              <p className="ed-eyebrow"><span className="ed-eyebrow-dot" aria-hidden="true" />{isChinese ? "由證據開始，按業務步伐升級" : "Start with evidence, scale with the business"}</p>
+              <h2 id="home-plan-title" className="ed-heading">{isChinese ? "先免費看清問題，再選擇合適的執行節奏。" : "See the issue for free, then choose the right operating rhythm."}</h2>
+            </div>
+            <Link className="ed-text-link" href={`/${locale}/pricing`}>{isChinese ? "比較所有方案" : "Compare all plans"} <ArrowUpRight aria-hidden="true" /></Link>
+          </header>
+          <div className="ed-plan-grid">
+            <article className="ed-plan ed-plan-free">
+              <span className="ed-chip">{isChinese ? "一次免費掃描" : "One free scan"}</span>
+              <h3>{isChinese ? "SME Scanner · 免費" : "SME Scanner · Free"}</h3>
+              <p>{isChinese ? "查看能見度快照、證據來源及最值得先處理的問題，毋須登入開始。" : "See a visibility snapshot, source evidence and the best next issue to tackle—no login required."}</p>
+              <Link className="ed-pill ed-pill-lime" href={`/${locale}/scan`}><span>{isChinese ? "免費掃描" : "Start free scan"}</span><span className="ed-pill-icon" aria-hidden="true"><ArrowRight /></span></Link>
+            </article>
+            <article className="ed-bezel ed-plan-featured">
+              <div className="ed-bezel-core">
+                <span className="ed-chip ed-chip-solid">{isChinese ? zhFor(locale, "最適合單一地點") : "Best for one location"}</span>
+                <h3>{isChinese ? zhFor(locale, "增長工作台") : "Growth Workspace"}</h3>
+                <p className="ed-price">{price}<small>/{f.perMonth}</small></p>
+                <p>{isChinese ? zhFor(locale, `1 個地點 · ${paidAllowance} · 團隊成員及角色權限`) : `1 location · ${paidAllowance} · team members with roles`}</p>
+                {!billing.open && <p className="ed-footnote">{contactHref ? <a href={contactHref}>{notOpenLabel}</a> : notOpenLabel}</p>}
+              </div>
+            </article>
+            <article className="ed-plan">
+              <span className="ed-chip">{isChinese ? zhFor(locale, "最多 3 個地點") : "Up to 3 locations"}</span>
+              <h3>{isChinese ? zhFor(locale, "多地點工作台") : "Multi-location"}</h3>
+              <p className="ed-price ed-price-sm">{f.contactPricing}</p>
+              <p>{isChinese ? zhFor(locale, "最多 3 個地點 · 由 Fimmick 團隊開通") : "Up to 3 locations · activated by the Fimmick team"}</p>
+            </article>
+            <article className="ed-plan">
+              <span className="ed-chip">{isChinese ? "專人協作" : "Human-managed"}</span>
+              <h3>{isChinese ? "專人能見度服務" : "Managed Visibility"}</h3>
+              <p className="ed-price ed-price-sm">{f.contactPricing}</p>
+              <p>{isChinese ? "專人協助執行與檢視 · 最短 3 個月" : "Human execution and review · 3-month minimum"}</p>
+            </article>
           </div>
-          <p className="plan-test-note">{f.planNote}</p>
+          <p className="ed-footnote">{f.planNote}</p>
         </section>
 
-        <section className="workspace-preview-section">
-          <div className="workspace-preview-copy">
-            <Badge variant="outline">Visibility Workspace</Badge>
-            <h2>{landingUi.workspaceTitle}</h2>
-            <p>{landingUi.workspaceBody}</p>
-            <ul className="check-list">
-              {landingUi.workspacePoints.map((item) => <li key={item}><Check /> {item}</li>)}
+        {/* 12 — Closing: the workspace, on the dark ground, with the brief as the hero object. */}
+        <section className="ed-dark ed-workspace" aria-labelledby="ed-workspace-title">
+          <div className="ed-workspace-copy">
+            <p className="ed-eyebrow ed-eyebrow-light"><span className="ed-eyebrow-dot" aria-hidden="true" />Visibility Workspace</p>
+            <h2 id="ed-workspace-title" className="ed-heading">{landingUi.workspaceTitle}</h2>
+            <p className="ed-body">{landingUi.workspaceBody}</p>
+            <ul className="ed-checklist ed-checklist-light">
+              {landingUi.workspacePoints.map((item) => <li key={item}><Check aria-hidden="true" />{item}</li>)}
             </ul>
-            <Button asChild><Link href={`/${locale}/demo-workspace`}>{landingUi.workspaceCta} <ArrowRight /></Link></Button>
+            <Link className="ed-pill ed-pill-lime" href={`/${locale}/demo-workspace`}><span>{landingUi.workspaceCta}</span><span className="ed-pill-icon" aria-hidden="true"><ArrowUpRight /></span></Link>
           </div>
-          <div className="brief-preview-card" aria-label={isChinese ? zhFor(locale, "示範店主簡報") : "Sample owner brief"}>
-            <div className="preview-card-top"><div><small>錦汶館 · Yik Yam Street</small><strong>{landingUi.briefTitle}</strong></div><DemoBadge locale={locale} /></div>
-            <div className="preview-score-row"><ScoreDial score={62} coverage={78} delta={-4} /><div className="preview-priority"><span>{landingUi.briefPriority}</span><strong>{landingUi.briefAction}</strong><small>{landingUi.briefMeta}</small></div></div>
-            <div className="preview-outcome"><FactType type="Observed" /><span>{landingUi.briefProof}</span></div>
+          <div className="ed-bezel ed-bezel-dark ed-brief" aria-label={isChinese ? zhFor(locale, "示範店主簡報") : "Sample owner brief"}>
+            <div className="ed-bezel-core">
+              <div className="ed-brief-top"><div><small>錦汶館 · Yik Yam Street</small><strong>{landingUi.briefTitle}</strong></div><DemoBadge locale={locale} /></div>
+              <div className="ed-brief-score"><ScoreDial score={62} coverage={78} delta={-4} /><div><span className="ed-kicker">{landingUi.briefPriority}</span><strong>{landingUi.briefAction}</strong><small>{landingUi.briefMeta}</small></div></div>
+              <div className="ed-brief-proof"><FactType type="Observed" /><span>{landingUi.briefProof}</span></div>
+            </div>
           </div>
         </section>
       </main>

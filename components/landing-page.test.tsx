@@ -29,7 +29,7 @@ function markup(locale: "en" | "zh-HK" | "zh-TW" = "en", billing: PublicBilling 
 describe("LandingPage outcome examples (item 8)", () => {
   it("renders the three outcome cards with the real template copy and an intent-carrying scan link", () => {
     const root = markup("en")
-    const section = root.querySelector(".outcome-examples-section")
+    const section = root.querySelector(".ed-outcomes")
     expect(section).not.toBeNull()
     expect(section?.textContent).toContain("Reply to unanswered Google reviews")
     expect(section?.textContent).toContain("Add clear FAQ answers for search and AI")
@@ -42,17 +42,17 @@ describe("LandingPage outcome examples (item 8)", () => {
 
   it("renders in zh-HK and zh-TW without falling back to English", () => {
     const zhHK = markup("zh-HK")
-    expect(zhHK.querySelector(".outcome-examples-section")?.textContent).toContain("回覆未回覆的 Google 評論")
+    expect(zhHK.querySelector(".ed-outcomes")?.textContent).toContain("回覆未回覆的 Google 評論")
     const zhTW = markup("zh-TW")
-    expect(zhTW.querySelector(".outcome-examples-section")?.textContent).toContain("回覆未回覆的 Google 評論")
+    expect(zhTW.querySelector(".ed-outcomes")?.textContent).toContain("回覆未回覆的 Google 評論")
   })
 
   it("speaks Taiwanese Mandarin in zh-TW, not the zh-HK Cantonese register", () => {
-    const zhTW = markup("zh-TW").querySelector(".outcome-examples-section")?.textContent ?? ""
+    const zhTW = markup("zh-TW").querySelector(".ed-outcomes")?.textContent ?? ""
     expect(zhTW).toContain("先挑一個想看到的成果")
     expect(zhTW).toContain("從這項開始")
     expect(zhTW).not.toMatch(/[嘅呢揀]/)
-    const zhHK = markup("zh-HK").querySelector(".outcome-examples-section")?.textContent ?? ""
+    const zhHK = markup("zh-HK").querySelector(".ed-outcomes")?.textContent ?? ""
     expect(zhHK).toContain("由呢個開始")
   })
 })
@@ -65,14 +65,14 @@ describe("LandingPage outcome examples (item 8)", () => {
 describe("LandingPage Growth plan card (P3.3)", () => {
   it("shows the not-open label and the unlimited-allowance line when billing is closed", () => {
     const root = markup("en", CLOSED)
-    const growth = root.querySelector(".is-featured")
+    const growth = root.querySelector(".ed-plan-featured")
     expect(growth?.textContent).toContain(t("en", "commercial.notOpen"))
     expect(growth?.textContent).toContain(t("en", "commercial.unlimitedLine"))
   })
 
   it("omits the not-open label, but keeps the allowance line, when billing is open", () => {
     const root = markup("en", { open: true, contactHref: { hk: null, tw: null } })
-    const growth = root.querySelector(".is-featured")
+    const growth = root.querySelector(".ed-plan-featured")
     expect(growth?.textContent).not.toContain(t("en", "commercial.notOpen"))
     expect(growth?.textContent).toContain(t("en", "commercial.unlimitedLine"))
   })
