@@ -35,6 +35,7 @@ import {
   scanViewState,
   shouldCatchUp,
   stageIndex,
+  stopCollectorPhases,
   stallCollectorPhases,
   writePollRecord,
   type CollectorPhase,
@@ -297,20 +298,20 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
 
   const view = scanViewState({ status: status.status, stalledReason: stalled, deadLettered: status.deadLettered === true })
   const base = collectorPhases(status.processingStage, status.status, status.moduleStates, status.notProvided)
-  const phases = view === "stalled" || view === "dead_lettered" ? stallCollectorPhases(base) : base
+  const phases = view === "stalled" || view === "dead_lettered" ? stallCollectorPhases(base) : view === "failed" ? stopCollectorPhases(base) : base
 
   return (
     <PublicPageFrame locale={locale}>
       <main className="scanning-page">
-        <div className="scan-status-hero">
+        <div className="scan-status-hero" data-state={view}>
           <div className="scan-pulse" aria-hidden="true">
             <ScanSearch />
           </div>
           <Badge variant="outline">
             {c.reference} · {scanReference(jobId)}
           </Badge>
-          <h1>{c.title}</h1>
-          <p>{c.body}</p>
+          <h1>{view === "ready" ? c.titleReady : view === "failed" ? c.titleFailed : c.title}</h1>
+          {view !== "ready" && view !== "failed" && <p>{c.body}</p>}
           <div className="scan-progress-summary">
             <Progress value={progressPercent(index)} aria-label={interpolate(c.progress, { done: index })} />
             <span>{interpolate(c.progress, { done: index })}</span>

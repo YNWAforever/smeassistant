@@ -10,7 +10,8 @@ vi.mock("next/navigation", () => ({
 // The topbar assistant is unrelated to navigation and pulls in its own client dependencies.
 vi.mock("@/components/pocket-assistant/assistant-sheet", () => ({ ContextualAssistant: () => null }));
 
-import { WorkspaceShell, type ShellWorkspace } from "@/components/product-ui";
+import type { ShellWorkspace } from "@/components/product-ui";
+import { WorkspaceShell } from "@/components/workspace-shell";
 import { copy } from "@/lib/copy";
 
 beforeAll(() => {

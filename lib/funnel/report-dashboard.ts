@@ -6,7 +6,7 @@ export type DashboardMetric = {
   label: string;
   source: string;
 } & (
-  | { state: "measured"; value: number; unit: "count" | "rating" | "percent"; sampleSize: number | null }
+  | { state: "measured"; value: number; unit: "count" | "rating" | "percent"; sampleSize: number | null; unitLabel?: string }
   | { state: "unavailable"; reason: string }
 );
 
@@ -91,6 +91,9 @@ export function buildReportDashboard(props: ReportProps): ReportDashboard {
   if (props.access === "public" || props.locked) {
     return { metrics: [], comparisons: [] };
   }
+
+  // The fixed sample states its own facts (lib/funnel/sample-report.ts); it has no provider proof to derive tiles from.
+  if (props.dashboardMetrics) return { metrics: props.dashboardMetrics, comparisons: [] };
 
   const c = copy[props.locale].funnel.report;
   const reason = c.dashboard.unavailable;

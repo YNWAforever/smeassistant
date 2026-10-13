@@ -24,7 +24,7 @@ import {
   UserCheck,
 } from "lucide-react"
 
-import { ContextualAssistant } from "@/components/pocket-assistant/assistant-sheet"
+import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
 import {
   DemoBadge,
   FactType,
@@ -47,6 +47,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { allowanceText, type PublicBilling } from "@/lib/commercial/presentation"
+import { zhDeep, zhFor } from "@/lib/zh-tw"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { formatMarketPrice, marketPricing } from "@/lib/funnel/pricing"
 import { t } from "@/lib/i18n"
@@ -136,7 +137,7 @@ export function LandingPage({ locale, market: initialMarket, billing }: { locale
         ]
   const isChinese = locale !== "en"
   const photoContext = isChinese ? "情境照片（非客戶現場）" : "Context photo (not a customer location)"
-  const landingUi = isChinese ? {
+  const landingUi = isChinese ? zhDeep(locale, {
     sampleLink: "查看示範報告",
     methodLink: "了解評分方法",
     scannerStep: "免費掃描 · 4 步中的第 1 步",
@@ -167,7 +168,7 @@ export function LandingPage({ locale, market: initialMarket, billing }: { locale
     briefAction: "回覆 7 則未回覆評論",
     briefMeta: "店主需時 10 分鐘 · 7 則評論回覆草稿已備妥",
     briefProof: "上次回覆後，回覆率提高 9 個百分點。",
-  } : {
+  }) : {
     sampleLink: "Explore a sample report",
     methodLink: "Read the methodology",
     scannerStep: "Free scanner · Step 1 of 4",
@@ -199,24 +200,24 @@ export function LandingPage({ locale, market: initialMarket, billing }: { locale
     briefMeta: "10 min owner time · 7 review-reply drafts ready",
     briefProof: "Response rate improved by 9 points after the previous reply batch.",
   }
-  const displaySources = isChinese ? [
+  const displaySources = isChinese ? zhDeep(locale, [
     { name: "Google 搜尋", detail: "自然搜尋曝光及商戶實體配對證據", icon: Search },
     { name: "Google 地圖", detail: "商戶檔案、評論及公開資料完整度", icon: MapPin },
     { name: "Google AI 搜尋版面", detail: "在支援的搜尋字詞出現時量度 AI Overview 及 AI Mode", icon: Sparkles },
     { name: "Instagram 及網站", detail: "量度可取得的公開證據，並如實顯示覆蓋狀態", icon: Globe2 },
-  ] : supportedSources
-  const agentRoles = isChinese ? [
+  ]) : supportedSources
+  const agentRoles = isChinese ? zhDeep(locale, [
     { title: "能見度偵察", english: "Visibility Scout", body: "檢查 Google、地圖、網站及可支援的公開來源，找出可核實的缺口。", output: "已發現：7 則評論未回覆", icon: Eye },
     { title: "優先次序教練", english: "Priority Coach", body: "按影響、急切性、工作量、風險及證據強度，選出最值得先做的一件事。", output: "今日首要行動已排好", icon: ListChecks },
     { title: "行動與品質工作室", english: "Action & Quality Studio", body: "調度評論回覆、社交內容、海報、餐牌翻譯或 SEO 專員，再檢查品牌事實與品質。", output: "7 則評論回覆草稿已備妥", icon: Sparkles },
     { title: "審批與成效", english: "Approval & Proof", body: "保留版本、權限及審批紀錄；匯出或發佈後提示你重新掃描，證明有甚麼改善。", output: "待你審批 · 不會自動發佈", icon: ShieldCheck },
-  ] : [
+  ]) : [
     { title: "Visibility Scout", english: "Evidence discovery", body: "Checks Google, Maps, the website and supported public sources for verifiable gaps.", output: "Found: 7 unanswered reviews", icon: Eye },
     { title: "Priority Coach", english: "Decision support", body: "Ranks the one best next action by impact, urgency, effort, risk and evidence strength.", output: "Today’s priority is ready", icon: ListChecks },
     { title: "Action & Quality Studio", english: "Specialist execution", body: "Routes work to the right specialist, then checks brand facts, quality and safety.", output: "7 review-reply drafts prepared", icon: Sparkles },
     { title: "Approval & Proof", english: "Owner control", body: "Keeps versions, permissions and approvals, then prompts you to re-scan after export so the change can be measured.", output: "Awaiting you · never auto-published", icon: ShieldCheck },
   ]
-  const comparison = isChinese ? {
+  const comparison = isChinese ? zhDeep(locale, {
     eyebrow: "不是另一個 AI 工具",
     title: "將報告之後的工作，接成一個可證明的改善循環。",
     body: "一般工具幫你產生內容，報告幫你列出問題，代辦則替你執行。SME Scanner 的獨特之處，是用同一套證據連接決定、審批、執行與重掃。",
@@ -231,7 +232,7 @@ export function LandingPage({ locale, market: initialMarket, billing }: { locale
       ["成效證明", "重掃並保留可比較變更紀錄", "一般不會持續追蹤", "等待下一份報告", "視匯報週期而定"],
     ],
     promises: ["一次只聚焦一項優先行動", "由店主掌握每次審批", "用重掃證據交代有沒有改善"],
-  } : {
+  }) : {
     eyebrow: "Not another AI tool",
     title: "Connect the work after the report into one provable improvement loop.",
     body: "AI tools generate. Reports diagnose. Agencies execute. SME Scanner is different because one evidence trail connects the decision, approval, action and comparable re-scan.",
@@ -247,7 +248,7 @@ export function LandingPage({ locale, market: initialMarket, billing }: { locale
     ],
     promises: ["One priority at a time", "Owner approval on every action", "Comparable evidence of what improved"],
   }
-  const sampleCase = isChinese ? {
+  const sampleCase = isChinese ? zhDeep(locale, {
     eyebrow: "成效示範 · Demo data",
     title: "由一項店主批准的行動，看見可追蹤的改變。",
     body: "以示範商戶「錦汶館」為例：系統先找出回覆缺口，準備草稿，再由店主批准回覆批次。兩個可比較的 Google 商家檔案快照顯示，評論回覆率其後上升。",
@@ -263,7 +264,7 @@ export function LandingPage({ locale, market: initialMarket, billing }: { locale
     caveat: "這是示範資料，只反映兩個公開快照之間的時間關聯；不代表已證明帶來收入、預約或因果影響。持續重掃才能看清改善是否維持。",
     sampleCta: "查看示範報告",
     workspaceCta: "查看公開唯讀工作台",
-  } : {
+  }) : {
     eyebrow: "Outcome example · Demo data",
     title: "See a trackable change from one owner-approved action.",
     body: "In the Kam Man House demo, the system found a response gap, prepared drafts and waited for owner approval. Two comparable Google Business snapshots then showed a higher review response rate.",
@@ -280,6 +281,12 @@ export function LandingPage({ locale, market: initialMarket, billing }: { locale
     sampleCta: "View sample report",
     workspaceCta: "View public read-only workspace",
   }
+
+  const outcomeUi = locale === "zh-HK"
+    ? { eyebrow: "先揀一個想見到嘅成果", title: "免費掃描會為以下範疇準備草稿", body: "揀一個開始掃描；如果證據支持，你嘅工作台會直接打開呢項行動。", cta: "由呢個開始" }
+    : locale === "zh-TW"
+      ? { eyebrow: "先挑一個想看到的成果", title: "免費掃描可以為以下項目準備草稿", body: "挑一項開始掃描；若證據支持，你的工作台會直接開啟這項行動。", cta: "從這項開始" }
+      : { eyebrow: "Pick an outcome to see first", title: "Your free scan can draft any of these", body: "Pick one to start your scan; if the evidence supports it, your workspace opens straight into that action.", cta: "Start with this" }
 
   function startSearch(event: React.FormEvent) {
     event.preventDefault()
@@ -448,15 +455,15 @@ export function LandingPage({ locale, market: initialMarket, billing }: { locale
         <section className="agent-team-section" aria-labelledby="agent-team-title">
           <div className="agent-team-heading">
             <div><p className="eyebrow">{isChinese ? "一個工作台 · 一隊協作團隊" : "One workspace · one coordinated team"}</p><h2 id="agent-team-title">{isChinese ? "你只需決定下一步；AI 專員在背後協作。" : "You decide the next move; specialists coordinate backstage."}</h2></div>
-            <p>{isChinese ? "你毋須逐個選擇、提示或管理 Agent。SME Scanner 會按最新證據調度合適專員，交給你的永遠是一項清晰優先工作、可審批草稿和之後的成效證明。" : "You never need to select, prompt or reconcile separate agents. SME Scanner routes the evidence to the right specialists and returns one priority, an owner-ready draft and proof later."}</p>
+            <p>{isChinese ? zhFor(locale, "你毋須逐個選擇、提示或管理 Agent。SME Scanner 會按最新證據調度合適專員，交給你的永遠是一項清晰優先工作、可審批草稿和之後的成效證明。") : "You never need to select, prompt or reconcile separate agents. SME Scanner routes the evidence to the right specialists and returns one priority, an owner-ready draft and proof later."}</p>
           </div>
-          <div className="agent-gateway"><span><Building2 /> {isChinese ? "商戶事實庫" : "Business Truth"}</span><ArrowRight /><strong>{isChinese ? "AI 能見度團隊" : "AI Visibility Team"}</strong><ArrowRight /><span><UserCheck /> {isChinese ? "店主保留最後決定" : "Owner keeps final control"}</span></div>
-          <div className="operator-explainer"><Sparkles /><div><Badge variant="outline">Visibility Operator</Badge><strong>{isChinese ? "隨身增長助理不是另一個 Agent。" : "The Pocket Growth Assistant is not another agent."}</strong><span>{isChinese ? "它只讀取目前頁面、scan_id、證據與版本狀態，解釋問題並調度合適能力；任何輸出仍要建立新版本及由店主審批。" : "It reads the current surface, scan ID, evidence and version state, then explains the issue and routes the right capability. Every output still becomes a new owner-approved version."}</span></div></div>
+          <div className="agent-gateway"><span><Building2 /> {isChinese ? zhFor(locale, "商戶事實庫") : "Business Truth"}</span><ArrowRight /><strong>{isChinese ? "AI 能見度團隊" : "AI Visibility Team"}</strong><ArrowRight /><span><UserCheck /> {isChinese ? zhFor(locale, "店主保留最後決定") : "Owner keeps final control"}</span></div>
+          <div className="operator-explainer"><Sparkles /><div><Badge variant="outline">Visibility Operator</Badge><strong>{isChinese ? "隨身增長助理不是另一個 Agent。" : "The Visibility Operator is not another agent."}</strong><span>{isChinese ? zhFor(locale, "它只讀取目前頁面、掃描編號、證據與版本狀態，解釋問題並調度合適能力；任何輸出仍要建立新版本及由店主審批。") : "It reads the current surface, scan ID, evidence and version state, then explains the issue and routes the right capability. Every output still becomes a new owner-approved version."}</span></div></div>
           <div className="agent-role-grid">
             {agentRoles.map(({ title, english, body, output, icon: Icon }, index) => <article key={title}><div className="agent-role-top"><span className="agent-role-index">0{index + 1}</span><span className="agent-role-icon"><Icon /></span></div><small>{english}</small><h3>{title}</h3><p>{body}</p><strong><Check /> {output}</strong></article>)}
           </div>
           <div className="agent-specialist-row"><span>{isChinese ? "按需要調度：" : "Specialists routed when relevant:"}</span>{(isChinese ? ["評論回覆", "社交內容", "海報／圖片", "餐牌翻譯", "SEO／AI 能見度"] : ["Review replies", "Social posts", "Poster / image", "Menu translation", "SEO / AI visibility"]).map((item) => <Badge key={item} variant="outline">{item}</Badge>)}</div>
-          <div className="owner-control-banner"><ShieldCheck /><div><strong>{isChinese ? "所有工作台及專人方案都保留店主審批" : "Owner approval is included in every workspace and managed plan"}</strong><span>{isChinese ? "免費掃描只提供證據與優先建議；工作台不會自動對外發佈。只有正確權限、清楚審批紀錄及可還原路徑，才可匯出或發佈。" : "The free scanner provides evidence and priorities only. Workspace delivery requires the right permission, an explicit approval record and a recoverable path."}</span></div></div>
+          <div className="owner-control-banner"><ShieldCheck /><div><strong>{isChinese ? zhFor(locale, "所有工作台及專人方案都保留店主審批") : "Owner approval is included in every workspace and managed plan"}</strong><span>{isChinese ? zhFor(locale, "免費掃描只提供證據與優先建議；工作台不會自動對外發佈。只有正確權限、清楚審批紀錄及可還原路徑，才可匯出或發佈。") : "The free scanner provides evidence and priorities only. Workspace delivery requires the right permission, an explicit approval record and a recoverable path."}</span></div></div>
         </section>
 
         <section id="sample-case" className="sample-case-section" aria-labelledby="sample-case-title">
@@ -493,22 +500,22 @@ export function LandingPage({ locale, market: initialMarket, billing }: { locale
             (copy[locale].workspace.templates), never invented marketing text,
             so the promise here is never ahead of what the product does. */}
         <section className="outcome-examples-section" aria-labelledby="outcome-examples-title">
-          <div className="sample-case-copy">
-            <p className="eyebrow">{isChinese ? "先揀一個想見到嘅成果" : "Pick an outcome to see first"}</p>
-            <h2 id="outcome-examples-title">{isChinese ? "免費掃描會為以下範疇準備草稿" : "Your free scan can draft any of these"}</h2>
-            <p>{isChinese ? "揀一個開始掃描；如果證據支持，你嘅工作台會直接打開呢項行動。" : "Pick one to start your scan; if the evidence supports it, your workspace opens straight into that action."}</p>
+          <div className="outcome-examples-heading">
+            <p className="eyebrow">{outcomeUi.eyebrow}</p>
+            <h2 id="outcome-examples-title">{outcomeUi.title}</h2>
+            <p>{outcomeUi.body}</p>
           </div>
-          <div className="agent-role-grid">
+          <div className="outcome-grid">
             {(["review-response", "visibility-content", "gbp-profile-fix"] as const).map((key, index) => {
               const template = copyT.workspace.templates[key]
               return (
                 <article key={key}>
-                  <div className="agent-role-top"><span className="agent-role-index">0{index + 1}</span></div>
+                  <span className="outcome-index" aria-hidden="true">0{index + 1}</span>
                   <h3>{template.title}</h3>
                   <p>{template.summary}</p>
                   <Button asChild variant="outline">
                     <Link href={`/${locale}/scan?${new URLSearchParams({ market, intent: key }).toString()}`}>
-                      {isChinese ? "由呢個開始" : "Start with this"}<ArrowRight />
+                      {outcomeUi.cta}<ArrowRight />
                     </Link>
                   </Button>
                 </article>
@@ -521,8 +528,8 @@ export function LandingPage({ locale, market: initialMarket, billing }: { locale
           <div className="section-heading-inline"><div><p className="eyebrow">{isChinese ? "由證據開始，按業務步伐升級" : "Start with evidence, scale with the business"}</p><h2 id="home-plan-title">{isChinese ? "先免費看清問題，再選擇合適的執行節奏。" : "See the issue for free, then choose the right operating rhythm."}</h2></div><Button asChild variant="outline"><Link href={`/${locale}/pricing`}>{isChinese ? "比較所有方案" : "Compare all plans"}<ArrowRight /></Link></Button></div>
           <div className="free-plan-banner"><div><Badge variant="outline">{isChinese ? "一次免費掃描" : "One free scan"}</Badge><h3>{isChinese ? "SME Scanner · 免費" : "SME Scanner · Free"}</h3><p>{isChinese ? "查看能見度快照、證據來源及最值得先處理的問題，毋須登入開始。" : "See a visibility snapshot, source evidence and the best next issue to tackle—no login required."}</p></div><Button asChild><Link href={`/${locale}/scan`}>{isChinese ? "免費掃描" : "Start free scan"}<ArrowRight /></Link></Button></div>
           <div className="paid-plan-preview-grid">
-            <article className="is-featured"><Badge>{isChinese ? "最適合單一地點" : "Best for one location"}</Badge><h3>{isChinese ? "增長工作台" : "Growth Workspace"}</h3><strong>{price}<small>/{f.perMonth}</small></strong><p>{isChinese ? `1 個地點 · ${paidAllowance} · 團隊成員及角色權限` : `1 location · ${paidAllowance} · team members with roles`}</p>{!billing.open && <p className="limitation-note">{contactHref ? <a href={contactHref}>{notOpenLabel}</a> : notOpenLabel}</p>}</article>
-            <article><Badge variant="outline">{isChinese ? "最多 3 個地點" : "Up to 3 locations"}</Badge><h3>{isChinese ? "多地點工作台" : "Multi-location"}</h3><strong>{f.contactPricing}</strong><p>{isChinese ? "最多 3 個地點 · 由 Fimmick 團隊開通" : "Up to 3 locations · activated by the Fimmick team"}</p></article>
+            <article className="is-featured"><Badge>{isChinese ? zhFor(locale, "最適合單一地點") : "Best for one location"}</Badge><h3>{isChinese ? zhFor(locale, "增長工作台") : "Growth Workspace"}</h3><strong>{price}<small>/{f.perMonth}</small></strong><p>{isChinese ? zhFor(locale, `1 個地點 · ${paidAllowance} · 團隊成員及角色權限`) : `1 location · ${paidAllowance} · team members with roles`}</p>{!billing.open && <p className="limitation-note">{contactHref ? <a href={contactHref}>{notOpenLabel}</a> : notOpenLabel}</p>}</article>
+            <article><Badge variant="outline">{isChinese ? zhFor(locale, "最多 3 個地點") : "Up to 3 locations"}</Badge><h3>{isChinese ? zhFor(locale, "多地點工作台") : "Multi-location"}</h3><strong>{f.contactPricing}</strong><p>{isChinese ? zhFor(locale, "最多 3 個地點 · 由 Fimmick 團隊開通") : "Up to 3 locations · activated by the Fimmick team"}</p></article>
             <article><Badge variant="outline">{isChinese ? "專人協作" : "Human-managed"}</Badge><h3>{isChinese ? "專人能見度服務" : "Managed Visibility"}</h3><strong>{f.contactPricing}</strong><p>{isChinese ? "專人協助執行與檢視 · 最短 3 個月" : "Human execution and review · 3-month minimum"}</p></article>
           </div>
           <p className="plan-test-note">{f.planNote}</p>
@@ -538,7 +545,7 @@ export function LandingPage({ locale, market: initialMarket, billing }: { locale
             </ul>
             <Button asChild><Link href={`/${locale}/demo-workspace`}>{landingUi.workspaceCta} <ArrowRight /></Link></Button>
           </div>
-          <div className="brief-preview-card" aria-label={isChinese ? "示範店主簡報" : "Sample owner brief"}>
+          <div className="brief-preview-card" aria-label={isChinese ? zhFor(locale, "示範店主簡報") : "Sample owner brief"}>
             <div className="preview-card-top"><div><small>錦汶館 · Yik Yam Street</small><strong>{landingUi.briefTitle}</strong></div><DemoBadge locale={locale} /></div>
             <div className="preview-score-row"><ScoreDial score={62} coverage={78} delta={-4} /><div className="preview-priority"><span>{landingUi.briefPriority}</span><strong>{landingUi.briefAction}</strong><small>{landingUi.briefMeta}</small></div></div>
             <div className="preview-outcome"><FactType type="Observed" /><span>{landingUi.briefProof}</span></div>

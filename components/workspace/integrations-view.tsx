@@ -10,6 +10,7 @@ import type { Capability } from "@/lib/domain"
 import { limitationLabel } from "@/lib/funnel/report-labels"
 import { formatDateTime } from "@/lib/workspace/format"
 import type { IntegrationsModel } from "@/lib/workspace/queries-pages"
+import { zhFor } from "@/lib/zh-tw"
 
 /**
  * Evidence reads, draft generation and external publishing are separate
@@ -38,11 +39,11 @@ export function IntegrationsView({ locale, workspaceSlug, workspaceId, timezone,
   const cards = [
     {
       key: "google",
-      name: isChinese ? "Google 商戶檔案" : "Google Business Profile",
+      name: isChinese ? zhFor(locale, "Google 商戶檔案") : "Google Business Profile",
       status: googleStatus,
       capability: googleCapability,
       lastSync: model.google.updatedAt ? formatDateTime(model.google.updatedAt, locale, timezone) : "—",
-      scope: isChinese ? "只讀取商戶檔案及評論" : "Read profile and reviews only",
+      scope: isChinese ? zhFor(locale, "只讀取商戶檔案及評論") : "Read profile and reviews only",
       // Disconnect is offered only while a connection is actually active:
       // there is nothing to withdraw from an expired or revoked one, and the
       // route would answer `disconnected: false` anyway.

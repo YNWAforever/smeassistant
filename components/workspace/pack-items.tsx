@@ -95,7 +95,10 @@ export function PackItemList({
 }) {
   const text = copy[locale].workspace.packs
   return (
-    <ul className="evidence-list" role="status" aria-live="polite">
+    // The live region wraps the list: role="status" on the <ul> itself removed
+    // its list semantics, so its items were announced as orphaned.
+    <div role="status" aria-live="polite">
+      <ul className="evidence-list">
       {items.map(({ templateKey, action }) => {
         const state = itemState(action, live[action.id])
         const Icon = ICONS[state]
@@ -112,6 +115,7 @@ export function PackItemList({
           </li>
         )
       })}
-    </ul>
+      </ul>
+    </div>
   )
 }

@@ -1,5 +1,5 @@
 import { copy, type PrototypeLocale } from "@/lib/copy";
-import { DISPLAY_PHASE_KEYS, type DisplayPhaseKey } from "@/lib/copy-workspace";
+import { DISPLAY_PHASE_KEYS, type DisplayPhaseKey } from "@/lib/copy-workspace-keys";
 import {
   isLocalizedText,
   localized,

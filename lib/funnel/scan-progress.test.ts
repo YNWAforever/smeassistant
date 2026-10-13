@@ -3,6 +3,8 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { RATE_LIMITS } from "@/lib/security/rate-limit";
 import {
+  stageIndex,
+  stopCollectorPhases,
   CLOCK_SKEW_TOLERANCE_MS,
   INITIAL_POLL_DELAY_MS,
   MAX_CONSECUTIVE_POLL_ERRORS,
@@ -85,6 +87,14 @@ describe("collectorPhases", () => {
   });
   it("does not assign a global failure to each unknown collector", () => {
     expect(collectorPhases(null, "failed")).toEqual({ google_business: "awaiting_result", instagram: "awaiting_result", search_ai: "awaiting_result" });
+  });
+  it("shows unknown collectors of a stopped scan as not measured, never pending or failed", () => {
+    expect(stopCollectorPhases(collectorPhases(null, "failed"))).toEqual({ google_business: "unavailable", instagram: "unavailable", search_ai: "unavailable" });
+    expect(stopCollectorPhases({ google_business: "done", instagram: "not_provided", search_ai: "failed" })).toEqual({ google_business: "done", instagram: "not_provided", search_ai: "failed" });
+  });
+  it("never counts a failed scan as all stages complete", () => {
+    expect(stageIndex("failed", "failed")).toBe(0);
+    expect(stageIndex(null, "done")).toBe(6);
   });
   it("uses the coarser stage-based phase while the scan is still running", () => {
     expect(collectorPhases("collecting_ig_gbp", "collecting_ig_gbp")).toEqual({ google_business: "running", instagram: "running", search_ai: "pending" });

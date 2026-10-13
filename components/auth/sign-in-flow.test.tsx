@@ -51,7 +51,12 @@ it("shows one distinct polite Google progress announcement and blocks a second a
   expect(screen.getAllByText(/opening google/i)).toHaveLength(1);
   expect(screen.getByRole("status")).toHaveTextContent(/opening google/i);
   expect(screen.getByRole("button", { name: /email me a sign-in link/i })).toBeDisabled();
-  fireEvent.click(google); expect(mocks.social).toHaveBeenCalledTimes(1); resolve?.({ error: null });
+  fireEvent.click(google);
+  // The auth client loads on demand, so the one call lands after a tick; the second press must not add another.
+  await waitFor(() => expect(mocks.social).toHaveBeenCalledTimes(1));
+  await new Promise((settle) => setTimeout(settle, 20));
+  expect(mocks.social).toHaveBeenCalledTimes(1);
+  resolve?.({ error: null });
 });
 
 it("announces email progress once while its request is pending", () => {

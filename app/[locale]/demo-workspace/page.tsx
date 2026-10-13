@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
 
 import { PublicDemoWorkspacePage } from "@/components/public-demo-workspace";
-import { copy, normaliseLocale } from "@/lib/copy";
+import { normaliseLocale } from "@/lib/copy";
+import { demoWorkspaceTitle, seoDescription } from "@/lib/seo-copy";
 
 import { publicMetadata } from "../_meta";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const locale = normaliseLocale((await params).locale);
-  const c = copy[locale];
   return publicMetadata({
     locale,
     path: "/demo-workspace",
-    title: c.home.title,
-    description: `${c.funnel.demoBar.body} · ${c.funnel.demoBar.note}`,
+    title: demoWorkspaceTitle(locale),
+    description: seoDescription(locale, "demoWorkspace"),
   });
 }
 
