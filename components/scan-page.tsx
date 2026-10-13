@@ -119,6 +119,9 @@ export function ScanPage({
   const requestId = useRef(0)
   const lastQuery = useRef("")
   const websiteInput = useRef<HTMLInputElement>(null)
+  const errorBanner = useRef<HTMLDivElement>(null)
+  const stepHeading = useRef<HTMLHeadingElement>(null)
+  const shownStep = useRef(step)
   // F-13: holds the submission key when session storage is unavailable.
   const submissionMemory = useRef(new Map<string, string>())
   const website = resolveScanWebsite(draft)
@@ -218,6 +221,40 @@ export function ScanPage({
 
   const requestedCount = requestedSources.filter((source) => source.ok).length
 
+  // Continue sits at the foot of a long step, so the next step used to open
+  // scrolled to its bottom. Start each new step at its title, and give the
+  // title focus so keyboard and screen-reader users land there too.
+  useEffect(() => {
+    if (shownStep.current === step) return
+    shownStep.current = step
+    const heading = stepHeading.current
+    if (!heading) return
+    heading.focus({ preventScroll: true })
+    const covered = Math.max(0, document.querySelector(".public-header")?.getBoundingClientRect().bottom ?? 0)
+    if (heading.getBoundingClientRect().top < covered) {
+      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+      heading.closest(".flow-card")?.scrollIntoView?.({ block: "start", behavior: reduce ? "auto" : "smooth" })
+    }
+  }, [step])
+
+  // Errors render at the top of the card, but Continue sits at its foot: on a
+  // phone the message landed 300-500px above the screen and pressing the
+  // button seemed to do nothing. Bring it into view, and move focus to it
+  // unless a field was focused on purpose (the website check does that).
+  useEffect(() => {
+    const banner = errorBanner.current
+    if (!error || !banner) return
+    const active = document.activeElement
+    if (!(active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement || active instanceof HTMLSelectElement)) banner.focus({ preventScroll: true })
+    const box = banner.getBoundingClientRect()
+    // Below the sticky header counts as hidden too.
+    const covered = Math.max(0, document.querySelector(".public-header")?.getBoundingClientRect().bottom ?? 0)
+    if (box.top < covered || box.bottom > window.innerHeight) {
+      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+      banner.scrollIntoView?.({ block: "start", behavior: reduce ? "auto" : "smooth" })
+    }
+  }, [error])
+
   async function startScan() {
     setSubmitting(true)
     setError("")
@@ -262,7 +299,9 @@ export function ScanPage({
         return
       }
       if (!response.ok || !isJobId(data.jobId)) {
-        setError(data.error === "website_url is invalid" ? c.errors.website : data.error ?? c.errors.submit)
+        // The server's own strings ("Failed to create scan job", validation
+        // messages) are English diagnostics, not owner copy.
+        setError(data.error === "website_url is invalid" ? c.errors.website : c.errors.submit)
         return
       }
       router.push(`/${locale}/scanning/${data.jobId}`)
@@ -348,12 +387,12 @@ export function ScanPage({
             <div className="flow-card-header">
               <div>
                 <span>{interpolate(c.stepOf, { step })}</span>
-                <h1>{c.stepTitles[step - 1]}</h1>
+                <h1 ref={stepHeading} tabIndex={-1}>{c.stepTitles[step - 1]}</h1>
               </div>
             </div>
             <Progress value={step * 25} aria-label={interpolate(c.progressLabel, { percent: step * 25 })} />
             {error && (
-              <div className="form-error" role="alert">
+              <div className="form-error" role="alert" tabIndex={-1} ref={errorBanner}>
                 <CircleAlert /> {error}
               </div>
             )}

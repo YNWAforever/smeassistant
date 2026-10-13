@@ -1471,3 +1471,10 @@ body {
    capability badge beside it, forcing it into a 42px box. */
 .connection-choice > div > span:not(:first-child) { display: inline-flex; width: auto; height: auto; padding: 2px 8px; place-items: initial; border-radius: 999px; flex: 0 0 auto; }
 .connection-choice p { color: #56615c; font-size: 12px; line-height: 1.45; }
+
+/* Scan form errors scroll into view beneath the sticky header and take focus. */
+.flow-card .form-error { scroll-margin-top: 112px; }
+.flow-card .form-error:focus { outline: none; }
+.flow-card .form-error:focus-visible { outline: 3px solid var(--ring, #0d6b5d); outline-offset: 2px; }
+.flow-card { scroll-margin-top: 24px; }
+.flow-card-header h1:focus { outline: none; }

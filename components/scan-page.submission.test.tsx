@@ -71,3 +71,24 @@ it("forgets a key the server says belongs to another scan, so the next press is 
   const [first, retry] = startBodies(fetch);
   expect(retry.submission_key).not.toBe(first.submission_key);
 });
+
+// The server's English diagnostics ("Failed to create scan job") were shown to
+// owners verbatim, in every locale.
+it.each(["en", "zh-HK", "zh-TW"] as const)("shows its own copy, not the server's error string, when a start fails: %s", async (locale) => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({ error: "Failed to create scan job", correlationId: "x" }) }));
+  const c = walkToStart(locale);
+  fireEvent.click(screen.getByRole("button", { name: c.start }));
+  const alert = await screen.findByRole("alert");
+  expect(alert.textContent).toContain(c.errors.submit);
+  expect(alert.textContent).not.toContain("Failed to create scan job");
+  // The message sits at the top of the card; it takes focus so it is not missed.
+  expect(document.activeElement).toBe(alert);
+});
+
+it("moves focus to each new step's title", () => {
+  const c = copy.en.funnel.scan;
+  render(<ScanPage locale="en" initialMarket="hk" initialBusiness="Fixture Cafe" consentPolicyVersion="fixture-policy" />);
+  fireEvent.click(screen.getByRole("button", { name: c.manualEntry }));
+  fireEvent.click(screen.getByRole("button", { name: c.continue }));
+  expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1, name: c.stepTitles[1] }));
+});
