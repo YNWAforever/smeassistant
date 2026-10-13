@@ -7,17 +7,11 @@
  * warms it when the page is idle or the pointer or focus nears the form, so
  * the press itself rarely waits.
  */
+import { retryableLoad } from "@/lib/retryable-load";
+
 type AuthClient = (typeof import("./client"))["authClient"];
 
-let pending: Promise<AuthClient> | null = null;
-
-export function loadAuthClient(): Promise<AuthClient> {
-  pending ??= import("./client").then((module) => module.authClient).catch((error: unknown) => {
-    pending = null;
-    throw error;
-  });
-  return pending;
-}
+export const loadAuthClient: () => Promise<AuthClient> = retryableLoad(() => import("./client").then((module) => module.authClient));
 
 export function preloadAuthClient(): void {
   void loadAuthClient().catch(() => undefined);

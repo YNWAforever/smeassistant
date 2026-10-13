@@ -5,13 +5,14 @@ import { Sparkles } from "lucide-react"
 import { Slot } from "radix-ui"
 
 import { Button } from "@/components/ui/button"
+import { retryableLoad } from "@/lib/retryable-load"
 
 import type { ContextualAssistant as AssistantPanel } from "./assistant-sheet"
 
 type AssistantProps = ComponentProps<typeof AssistantPanel>
 
-let panelModule: Promise<typeof import("./assistant-sheet")> | null = null
-const loadPanel = () => (panelModule ??= import("./assistant-sheet"))
+// A failed load (a hover prefetch included) is never cached, so the next press retries it.
+const loadPanel = retryableLoad(() => import("./assistant-sheet"))
 
 /**
  * The Visibility Operator's trigger, without the sheet. The panel, its demo
@@ -35,7 +36,6 @@ export function ContextualAssistant(props: AssistantProps) {
       .then((module) => setPanel(() => module.ContextualAssistant))
       .catch(() => {
         // A failed chunk load leaves the trigger usable for another try.
-        panelModule = null
         setLoading(false)
       })
   }
