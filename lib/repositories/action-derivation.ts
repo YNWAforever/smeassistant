@@ -59,7 +59,7 @@ export function actionDerivationRepository(db:Pick<Pool,'query'>):ActionDerivati
     SELECT 1 FROM scan_snapshots s JOIN audit_jobs j ON j.id=s.job_id AND j.workspace_id=s.workspace_id AND j.location_id IS NOT DISTINCT FROM s.location_id
     WHERE s.id=a.source_snapshot_id AND s.workspace_id=a.workspace_id AND s.location_id IS NOT DISTINCT FROM a.location_id) FOR UPDATE OF a`,[ws,loc,OPEN_ACTION_STATES])).rows;
   if(invalidActions.length)throw new Error('derivation_scope_mismatch');
-  const findings=(await db.query<FindingRow>(`SELECT finding_key,module,severity,score_impact,owner_message_zh,owner_message_en,owner_action_zh,owner_action_en,evidence FROM audit_findings WHERE job_id=$1`,[snapshot.jobId])).rows;
+  const findings=(await db.query<FindingRow>(`SELECT finding_key,module,severity,score_impact,owner_message_zh,owner_message_en,owner_message_tw,owner_action_zh,owner_action_en,evidence FROM audit_findings WHERE job_id=$1`,[snapshot.jobId])).rows;
   const brand=(await db.query<{voice:string|null;languages:unknown;approved_claims:unknown}>('SELECT voice,languages,approved_claims FROM brand_profiles WHERE workspace_id=$1',[ws])).rows[0];
   const google=(await db.query<{status:string}>("SELECT status FROM oauth_connections WHERE workspace_id=$1 AND provider='google_gbp' ORDER BY connected_at DESC,id DESC LIMIT 1",[ws])).rows[0]??null;
   const workspace=(await db.query<{industry:string|null}>('SELECT industry FROM workspaces WHERE id=$1',[ws])).rows[0];

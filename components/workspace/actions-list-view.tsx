@@ -15,7 +15,7 @@ import { effortLabel, formatDateTime, priorityClass, priorityLabel, withLocation
 import type { ActionOverview } from "@/lib/workspace/overview"
 import type { ActionFilters, ActionListResult } from "@/lib/workspace/queries-pages"
 import { zhFor } from "@/lib/zh-tw"
-import { sourceLabel } from "@/lib/workspace/source-label"
+import { evidenceValueLabel, sourceLabel } from "@/lib/workspace/source-label"
 
 export interface ActionsListViewProps {
   locale: PrototypeLocale
@@ -58,7 +58,7 @@ function ActionCard({ action, locale, base, timezone, location }: { action: Acti
   const isChinese = locale !== "en"
   const href = withLocation(action.templateKey === "google-reconnect" ? `${base}/settings/integrations` : `${base}/actions/${action.id}`, location)
   const phase = action.displayPhaseKey
-  const cta = phase === "draft_ready" || phase === "changes_requested" ? (isChinese ? "審閱草稿" : "Review draft") : phase === "requires_connection" ? (isChinese ? "審閱依賴項目" : "Review dependency") : (isChinese ? "審閱所需資料" : "Review inputs")
+  const cta = phase === "draft_ready" || phase === "changes_requested" ? (isChinese ? "審閱草稿" : "Review draft") : phase === "requires_connection" ? (isChinese ? "審閱依賴項目" : "Review dependency") : action.missingInputs.length > 0 ? (isChinese ? "審閱所需資料" : "Review inputs") : (isChinese ? "開啟行動" : "Open action")
   const topFactors = [...action.priorityFactors].sort((a, b) => b.points - a.points).slice(0, 3)
   const assigneeName = action.assignee?.name || (action.assignee ? (isChinese ? "已指派成員不可用" : "Assigned member unavailable") : (isChinese ? "未指派" : "Unassigned"))
   return (
@@ -67,7 +67,7 @@ function ActionCard({ action, locale, base, timezone, location }: { action: Acti
         <div className="action-card-badges"><Badge variant="outline" className={priorityClass(action.priority)}>{priorityLabel(action.priority, locale)}</Badge><Badge variant="outline">{resolveText(action.displayPhase, locale)}</Badge><CapabilityBadge value={action.capability} /></div>
         <span className="action-scope"><MapPin />{resolveText(action.location.name, locale)}</span>
       </div>
-      <div className="action-card-content"><div><p className="eyebrow">{sourceLabel(action.evidence.source, locale)}</p><h2>{resolveText(action.title, locale)}</h2><p>{resolveText(action.summary, locale)}</p></div><div className="action-evidence"><FactType type={action.evidence.factType} />{action.evidence.value && <strong className="action-evidence-value">{action.evidence.value}</strong>}<p>{resolveText(action.evidence.detail, locale)}</p><small>{[resolveText(action.evidence.freshness, locale), formatDateTime(action.evidence.observedAt, locale, timezone)].filter(Boolean).join(" · ")}</small></div></div>
+      <div className="action-card-content"><div><p className="eyebrow">{sourceLabel(action.evidence.source, locale)}</p><h2>{resolveText(action.title, locale)}</h2><p>{resolveText(action.summary, locale)}</p></div><div className="action-evidence"><FactType type={action.evidence.factType} />{action.evidence.value && <strong className="action-evidence-value">{evidenceValueLabel(action.evidence.value, locale)}</strong>}<p>{resolveText(action.evidence.detail, locale)}</p><small>{[resolveText(action.evidence.freshness, locale), formatDateTime(action.evidence.observedAt, locale, timezone)].filter(Boolean).join(" · ")}</small></div></div>
       <div className="priority-reason"><Sparkles /><div><strong>{isChinese ? "為何列為優先" : "Why this priority"}</strong><span>{topFactors.map((f) => `${resolveText(f.label, locale)} ${f.points > 0 ? "+" : ""}${f.points}`).join(" · ")}</span></div></div>
       <dl className="action-card-meta"><div><dt>{isChinese ? zhFor(locale, "店主所需時間") : "Owner effort"}</dt><dd>{effortLabel(action.effortMinutes, locale)}</dd></div><div><dt>{isChinese ? "負責人" : "Assignee"}</dt><dd className="break-all">{assigneeName}</dd></div><div><dt>{isChinese ? "到期日" : "Due"}</dt><dd>{action.dueAt ? formatDateTime(action.dueAt, locale, timezone) : "—"}</dd></div><div><dt>{isChinese ? "所需資料" : "Inputs"}</dt><dd>{action.missingInputs.length ? (isChinese ? `缺 ${action.missingInputs.length} 項` : `${action.missingInputs.length} missing`) : (isChinese ? "齊備" : "Ready")}</dd></div></dl>
       <div className="action-card-footer"><span>{isChinese ? "最近更新：" : "Last changed "}{formatDateTime(action.updatedAt, locale, timezone)}</span><Button asChild><Link href={href}>{cta}<ArrowRight /></Link></Button></div>
@@ -112,7 +112,7 @@ export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, 
           <div className="queue-summary"><span><strong>{result.actions.length}</strong> {isChinese ? "項行動（本頁）" : "actions on this page"}</span><span>{isChinese ? "按優先分數、更新時間及 ID 排序" : "Sorted by priority, update time and ID"}</span></div>
           {bulkEnabled && role !== "viewer" ? <BulkActionSelection key={JSON.stringify([workspaceId,role,locationId,filters.q,filters.assignee,filters.due,filters.channel,filters.status,view])} locale={locale} workspaceId={workspaceId} timezone={timezone} members={members} items={result.actions.map(action => ({ actionId: action.id, expectedUpdatedAt: action.updatedAt, title: resolveText(action.title,locale), closed: ["completed","dismissed","cancelled","expired"].includes(action.actionState) }))} cards={result.actions.map(action => <ActionCard key={action.id} action={action} locale={locale} base={base} timezone={timezone} location={location} />)} /> : result.actions.length ? <div className="action-list">{result.actions.map((action) => <ActionCard key={action.id} action={action} locale={locale} base={base} timezone={timezone} location={location} />)}</div> : <div className="empty-state"><span><CheckCircle2 /></span><h2>{isChinese ? "沒有符合篩選條件的行動" : "No actions match these filters"}</h2><p>{isChinese ? "請重設一項或多項篩選；沒有行動不代表沒有證據。" : "Reset one or more filters; an empty list does not mean there is no evidence."}</p></div>}
           <nav className="queue-pages" aria-label={isChinese ? "清單分頁" : "List pages"}>
-            <Link href={tabHref(base, filters, view)}>{isChinese ? "重新載入首頁" : "Refresh first page"}</Link>
+            <Link href={tabHref(base, filters, view)}>{isChinese ? "重新載入第一頁" : "Refresh first page"}</Link>
             {result.nextCursor && <Link href={`${tabHref(base, filters, view)}${tabHref(base, filters, view).includes("?") ? "&" : "?"}cursor=${encodeURIComponent(result.nextCursor)}`}>{isChinese ? "下一頁" : "Next page"}</Link>}
           </nav>
         </div>

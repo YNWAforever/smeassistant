@@ -47,6 +47,18 @@ describe("deriveActions", () => {
     expect(derived.find((a) => a.templateKey === "visibility-content")!.sourceFindingKeys).toEqual(["website.checks.faq_schema"]);
   });
 
+  it("uses the Taiwan finding message for zh-TW and falls back to the Hong Kong one", () => {
+    const withTw: FindingRow[] = [
+      { ...findings[0], owner_message_tw: "tw1" },
+      { ...findings[4] },
+    ];
+    const derived = deriveActions({ ...baseInput, findings: withTw });
+    const review = derived.find((a) => a.templateKey === "review-response")!;
+    expect(review.evidence.detail["zh-TW"]).toBe("tw1");
+    expect(review.evidence.detail["zh-HK"]).toBe("zh1");
+    expect(derived.find((a) => a.templateKey === "social-post")!.evidence.detail["zh-TW"]).toBe("zh4");
+  });
+
   it("adds google-reconnect when the connection is missing or expired and ranks deterministically", () => {
     expect(deriveActions({ ...baseInput, googleConnection: null }).map((a) => a.templateKey)).toContain("google-reconnect");
     const expired = deriveActions({ ...baseInput, googleConnection: { status: "expired" } });

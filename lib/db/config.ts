@@ -30,7 +30,19 @@ function validatedPostgresUrl(value: string | undefined, missingAllowed = false)
     if (error instanceof Error && error.message === "database_configuration_insecure") throw error;
     throw new Error("database_configuration_invalid");
   }
-  return candidate;
+  return withExplicitVerifyFull(candidate);
+}
+
+// pg-connection-string v2 already treats sslmode=require and verify-ca as
+// verify-full, and logs a SECURITY WARNING on every pool start saying so
+// (it surfaced as the most frequent "error" in the Vercel runtime logs).
+// Spelling out the mode pg applies keeps the TLS behaviour identical and
+// removes the noise. An explicit uselibpqcompat choice is left alone.
+function withExplicitVerifyFull(candidate: string): string {
+  const url = new URL(candidate);
+  const sslmode = url.searchParams.get("sslmode");
+  if ((sslmode !== "require" && sslmode !== "verify-ca") || url.searchParams.has("uselibpqcompat")) return candidate;
+  return candidate.replace(/([?&])sslmode=(require|verify-ca)(?=&|$)/, "$1sslmode=verify-full");
 }
 
 export function readDatabaseConfig(env: Record<string, string | undefined>): DatabaseConfig {
