@@ -42,6 +42,7 @@ import { copy, LOCALE_NAMES, LOCALE_SHORT_NAMES, normaliseLocale, supportedLocal
 import type { Capability, ProviderState } from "@/lib/demo-data"
 import { MotionDirector } from "@/components/motion-director"
 import { PublicBrandLink, PublicFooter, PublicNavLinks } from "@/components/public-chrome"
+import { zhFor } from "@/lib/zh-tw"
 
 /**
  * Everything the workspace chrome renders about the current workspace
@@ -150,7 +151,7 @@ export function ScoreDial({ score, coverage, delta }: { score: number; coverage:
         </div>
       </div>
       <div className="score-dial-meta">
-        {coverage != null && <strong>{coverage}% {isChinese ? "覆蓋率" : "coverage"}</strong>}
+        {coverage != null && <strong>{coverage}% {isChinese ? zhFor(locale, "覆蓋率") : "coverage"}</strong>}
         {typeof delta === "number" && (
           <span className={delta < 0 ? "delta-down" : "delta-up"}>
             {delta > 0 ? "+" : ""}{delta} {isChinese ? "（自上次可比較掃描）" : "since comparable scan"}

@@ -4,6 +4,7 @@ import type { PrototypeLocale } from "@/lib/copy"
 // Domain enums live in lib/domain.ts (CLAUDE.md section 3.4); re-exported here unchanged.
 export type { ActionState, ApprovalState, Capability, DeliveryState, MeasurementState, ProviderState, RunState } from "@/lib/domain"
 import type { ActionState, ApprovalState, Capability, DeliveryState, MeasurementState, ProviderState, RunState } from "@/lib/domain"
+import { zhFor } from "@/lib/zh-tw"
 
 
 export type DemoAction = {
@@ -72,7 +73,7 @@ export function demoShellWorkspaceFor(locale: PrototypeLocale): ShellWorkspace {
       { slug: "yik-yam", name: isChinese ? "奕蔭街" : "Yik Yam Street" },
       { slug: "tin-hau", name: isChinese ? "天后" : "Tin Hau" },
     ],
-    account: { ...demoShellWorkspace.account, roleLabel: isChinese ? "店主" : "Owner" },
+    account: { ...demoShellWorkspace.account, roleLabel: isChinese ? zhFor(locale, "店主") : "Owner" },
   }
 }
 

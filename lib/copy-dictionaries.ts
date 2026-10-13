@@ -820,8 +820,8 @@ const funnelZhTW: FunnelCopy = {
     phase: {
       pending: "等待此階段開始",
       running: "正在讀取公開來源",
-      done: "已量度",
-      unavailable: "未能量度",
+      done: "已量測",
+      unavailable: "無法量測",
       failed: "掃描未能完成",
       stalled: "自上次檢查後沒有更新",
       awaiting_result: "等待蒐集結果",
@@ -1225,7 +1225,7 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
       emptyWeek: "本週沒有新行動，下次掃描後再看。",
       rescanNow: "想現在檢查，可以按「重新掃描」。",
       noScanTitle: "工作台正在等待第一次掃描。",
-      noScanSubtitle: "目前還沒有已量度的證據，所以還沒有需要你核准的事。",
+      noScanSubtitle: "目前還沒有已量測的證據，所以還沒有需要你核准的事。",
       quietTitle: "今天沒有需要你決定的事。",
       quietSubtitle: "最新掃描沒有待處理的行動；下次掃描後再看看。",
       noLocationTitle: "這個工作台尚未連結已掃描的店家",
@@ -1234,7 +1234,7 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
       month: "本月進度",
     },
     common: {
-      coverage: "覆蓋率",
+      coverage: "涵蓋率",
       measured: "已量測",
       unavailable: "暫時無法取得",
       unsupported: "未支援",

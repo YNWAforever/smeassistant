@@ -9,6 +9,7 @@ import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import { formatDay } from "@/lib/workspace/format"
 import { roleLabel } from "@/lib/workspace/shell"
 import type { TeamMember, TeamModel } from "@/lib/workspace/team"
+import { zhFor } from "@/lib/zh-tw"
 
 const STATUS_COPY = {
   en: { emailed: "Invitation emailed", closed: "Email not sent: email isn't set up yet", allowlist: "Email not sent: recipient isn't on the test list", failed: "Email failed", expired: "Expired" },
@@ -48,18 +49,18 @@ export function TeamView({ locale, workspaceId, role, timezone, model, invitatio
   return (
     <div className="settings-page team-page">
       <PageIntro
-        eyebrow={isChinese ? "成員、角色及地點權限" : "Membership, role and location scope"}
+        eyebrow={isChinese ? zhFor(locale, "成員、角色及地點權限") : "Membership, role and location scope"}
         title={isChinese ? "團隊與權限" : "Team & permissions"}
         description={isChinese ? "介面只解釋能力；伺服器端授權才是執行邊界。" : "The interface explains capability; server-side authorization remains the enforcement boundary."}
         actions={owner ? <InviteMemberSheet locale={locale} workspaceId={workspaceId} /> : null}
       />
       {!owner && (
-        <div className="permission-banner"><ShieldAlert /><div><strong>{isChinese ? `${roleLabel(role, locale)}權限` : `${roleLabel(role, locale)} access`}</strong><span>{role === "viewer" ? (isChinese ? "只可查看證據及成效；成員管理會安全拒絕。" : "Evidence and outcomes only; membership changes fail closed.") : (isChinese ? "可在分配地點準備及審批內容，但不能管理帳單或成員。" : "Prepare and approve in assigned locations; no billing or membership changes.")}</span></div><Badge variant="outline">{isChinese ? "拒絕操作" : "Fail closed"}</Badge></div>
+        <div className="permission-banner"><ShieldAlert /><div><strong>{isChinese ? `${roleLabel(role, locale)}權限` : `${roleLabel(role, locale)} access`}</strong><span>{role === "viewer" ? (isChinese ? "只可查看證據及成效；成員管理會安全拒絕。" : "Evidence and outcomes only; membership changes fail closed.") : (isChinese ? zhFor(locale, "可在分配地點準備及審批內容，但不能管理帳單或成員。") : "Prepare and approve in assigned locations; no billing or membership changes.")}</span></div><Badge variant="outline">{isChinese ? "拒絕操作" : "Fail closed"}</Badge></div>
       )}
       <SectionCard className="team-table-card">
         <Table>
-          <TableCaption>{isChinese ? "顧問、分店經理與內容審批人等進階角色仍屬規劃中。" : "Advanced consultant, branch-manager and content-approver roles remain planned."}</TableCaption>
-          <TableHeader><TableRow><TableHead>{isChinese ? "成員" : "Member"}</TableHead><TableHead>{isChinese ? "角色" : "Role"}</TableHead><TableHead>{isChinese ? "地點範圍" : "Location scope"}</TableHead><TableHead>{isChinese ? "帳單" : "Billing"}</TableHead><TableHead>{isChinese ? "審批" : "Approve"}</TableHead>{owner && <TableHead><span className="sr-only">{isChinese ? "操作" : "Actions"}</span></TableHead>}</TableRow></TableHeader>
+          <TableCaption>{isChinese ? zhFor(locale, "顧問、分店經理與內容審批人等進階角色仍屬規劃中。") : "Advanced consultant, branch-manager and content-approver roles remain planned."}</TableCaption>
+          <TableHeader><TableRow><TableHead>{isChinese ? "成員" : "Member"}</TableHead><TableHead>{isChinese ? "角色" : "Role"}</TableHead><TableHead>{isChinese ? zhFor(locale, "地點範圍") : "Location scope"}</TableHead><TableHead>{isChinese ? "帳單" : "Billing"}</TableHead><TableHead>{isChinese ? zhFor(locale, "審批") : "Approve"}</TableHead>{owner && <TableHead><span className="sr-only">{isChinese ? "操作" : "Actions"}</span></TableHead>}</TableRow></TableHeader>
           <TableBody>
             {model.members.length === 0 && <TableRow><TableCell colSpan={owner ? 6 : 5}>{isChinese ? "尚未有成員。" : "No members yet."}</TableCell></TableRow>}
             {model.members.map((member) => {
@@ -81,8 +82,8 @@ export function TeamView({ locale, workspaceId, role, timezone, model, invitatio
         </Table>
       </SectionCard>
       <div className="role-contract-grid">
-        <SectionCard><UserCheck /><h2>{roleLabel("owner", locale)}</h2><p>{isChinese ? "管理認領、帳單、成員、所有地點及審批。" : "Claim, billing, members, all locations and approvals."}</p></SectionCard>
-        <SectionCard><UserCog /><h2>{roleLabel("manager", locale)}</h2><p>{isChinese ? "只在獲分配地點生成、編輯及審批。" : "Generate, edit and approve only in assigned locations."}</p></SectionCard>
+        <SectionCard><UserCheck /><h2>{roleLabel("owner", locale)}</h2><p>{isChinese ? zhFor(locale, "管理認領、帳單、成員、所有地點及審批。") : "Claim, billing, members, all locations and approvals."}</p></SectionCard>
+        <SectionCard><UserCog /><h2>{roleLabel("manager", locale)}</h2><p>{isChinese ? zhFor(locale, "只在獲分配地點生成、編輯及審批。") : "Generate, edit and approve only in assigned locations."}</p></SectionCard>
         <SectionCard><UserRound /><h2>{roleLabel("viewer", locale)}</h2><p>{isChinese ? "只看證據、趨勢及成效。" : "Evidence, trends and outcomes only."}</p></SectionCard>
       </div>
     </div>

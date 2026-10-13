@@ -12,6 +12,7 @@ import type { PrototypeLocale } from "@/lib/copy"
 import type { BillingModel } from "@/lib/workspace/billing"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import { formatDateTime } from "@/lib/workspace/format"
+import { zhFor } from "@/lib/zh-tw"
 
 /**
  * `/settings/billing` bound to lib/workspace/billing.ts (CLAUDE.md §3.10,
@@ -45,7 +46,7 @@ export function BillingView({ locale, workspaceId, role, timezone, model, checko
   const unlimited = usage.allowance === null
   const remaining = unlimited ? null : Math.max(0, (usage.allowance ?? 0) - usage.approvedDeliveries)
   const progress = unlimited ? 0 : Math.min(100, Math.round((usage.approvedDeliveries / Math.max(1, usage.allowance ?? 1)) * 100))
-  const planName = paid ? (isChinese ? "增長工作台" : "Growth Workspace") : (isChinese ? "免費方案" : "Free plan")
+  const planName = paid ? (isChinese ? zhFor(locale, "增長工作台") : "Growth Workspace") : (isChinese ? "免費方案" : "Free plan")
   const allowanceLabel = unlimited ? (isChinese ? "不限" : "unlimited") : String(usage.allowance)
   const notOpenLabel = t(locale, "commercial.notOpen")
   // Same anchor/plain-text rule as the public pricing page (Task 4): a
@@ -76,7 +77,7 @@ export function BillingView({ locale, workspaceId, role, timezone, model, checko
         <SectionCard className="payment-retry-card">
           <div className="payment-retry-icon"><CreditCard /></div>
           <Badge variant="outline">{isChinese ? "付款週期" : "Payment lifecycle"}</Badge>
-          <h2>{paid ? (isChinese ? "訂閱由 Stripe 管理" : "Your subscription is managed by Stripe") : !billingOpen ? notOpenLabel : (isChinese ? "訂閱後即時解鎖增長工作台" : "Subscribe to unlock the Growth Workspace")}</h2>
+          <h2>{paid ? (isChinese ? "訂閱由 Stripe 管理" : "Your subscription is managed by Stripe") : !billingOpen ? notOpenLabel : (isChinese ? zhFor(locale, "訂閱後即時解鎖增長工作台") : "Subscribe to unlock the Growth Workspace")}</h2>
           <p>{isChinese ? "寬限期內工作台仍可使用；權益以目前訂閱狀態核對，不依賴 webhook 到達次序。" : "The workspace remains available during grace; entitlement is reconciled from subscription state, not webhook order."}</p>
           <p className="limitation-note"><ShieldCheck /> {isChinese ? "方案變更只會經 Stripe webhook 或 Fimmick 職員授權寫入；此頁面不會自行更改權益。" : "Tier changes arrive only through the Stripe webhook or a Fimmick staff grant; this page never edits entitlements itself."}</p>
         </SectionCard>
@@ -94,7 +95,7 @@ export function BillingView({ locale, workspaceId, role, timezone, model, checko
                 {model.tierEvents.map((event) => (
                   <TableRow key={event.id}>
                     <TableCell>{formatDateTime(event.createdAt, locale, timezone)}</TableCell>
-                    <TableCell><Badge variant={event.tier === "paid" ? "default" : "outline"}>{event.tier === "paid" ? (isChinese ? "增長工作台" : "Growth Workspace") : (isChinese ? "免費方案" : "Free plan")}</Badge></TableCell>
+                    <TableCell><Badge variant={event.tier === "paid" ? "default" : "outline"}>{event.tier === "paid" ? (isChinese ? zhFor(locale, "增長工作台") : "Growth Workspace") : (isChinese ? "免費方案" : "Free plan")}</Badge></TableCell>
                     <TableCell>{event.source === "stripe_webhook" ? (isChinese ? "Stripe 訂閱狀態" : "Stripe subscription") : event.source === "staff_grant" ? (isChinese ? "Fimmick 職員授權" : "Fimmick staff grant") : event.source}</TableCell>
                   </TableRow>
                 ))}
@@ -106,7 +107,7 @@ export function BillingView({ locale, workspaceId, role, timezone, model, checko
         <SectionCard>
           <p className="eyebrow">{isChinese ? "商業服務邊界" : "Commercial boundary"}</p>
           <h2>{isChinese ? "專人能見度服務不是此自助方案" : "Managed Visibility is separate"}</h2>
-          <p>{isChinese ? "顧問策略、落地執行及宣傳營運會另行界定範圍及報價；同樣保留工作台證據及店主審批。" : "Consultant strategy, implementation and campaign operations are separately scoped and invoiced, while retaining evidence and owner approval."}</p>
+          <p>{isChinese ? zhFor(locale, "顧問策略、落地執行及宣傳營運會另行界定範圍及報價；同樣保留工作台證據及店主審批。") : "Consultant strategy, implementation and campaign operations are separately scoped and invoiced, while retaining evidence and owner approval."}</p>
           <Button asChild variant="outline"><Link href={`/${locale}/pricing`}>{isChinese ? "比較所有方案" : "Compare all plans"}<ArrowRight /></Link></Button>
         </SectionCard>
       </div>

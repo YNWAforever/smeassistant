@@ -45,6 +45,7 @@ import { ContextualAssistant } from "@/components/pocket-assistant/assistant-lau
 import { useFocusClearOfBars } from "@/hooks/use-focus-clear-of-bars"
 import type { AssistantSurface } from "@/lib/pocket-assistant/contracts"
 import { DemoBadge, EnvironmentBar, LocaleSelect, type ShellWorkspace } from "@/components/product-ui"
+import { zhFor } from "@/lib/zh-tw"
 
 /**
  * The authenticated workspace chrome (sidebar, top bar, mobile nav). Kept out
@@ -93,15 +94,15 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
   const base = `/${locale}/owner/${workspace.slug}`
   const location = resolveLocationSlug(searchParams.get("location"), workspace.locations, workspace.defaultLocationSlug)
   const locationName = location === "all"
-    ? (isChinese ? "所有地點" : "All locations")
+    ? (isChinese ? zhFor(locale, "所有地點") : "All locations")
     : (workspace.locations.find((item) => item.slug === location)?.name ?? location)
   const scopedHref = (href: string) => `${href}${href.includes("?") ? "&" : "?"}location=${location}`
   const usageShare = usagePercent(workspace.usage.approvedDeliveries, workspace.usage.allowance)
   const actionsBadge = workspace.urgentActions && workspace.urgentActions > 0 ? String(workspace.urgentActions) : undefined
   const workspaceSection = pathname.includes("/actions/")
-    ? (isChinese ? "審閱與審批" : "Review & approve")
+    ? (isChinese ? zhFor(locale, "審閱與審批") : "Review & approve")
     : pathname.endsWith("/actions")
-      ? (isChinese ? "行動與審批" : "Actions & approvals")
+      ? (isChinese ? zhFor(locale, "行動與審批") : "Actions & approvals")
       : pathname.endsWith("/create")
         ? (isChinese ? "建立內容" : "Create")
         : pathname.endsWith("/insights")
@@ -221,7 +222,7 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
             <span><strong>{isChinese ? "能見度工作台" : "Visibility Workspace"}</strong><small>{workspace.name} · {locationName}</small></span>
           </div>
           <div className="workspace-topbar-context hidden md:flex" aria-label={isChinese ? `目前區域：${workspaceSection}` : `Current section: ${workspaceSection}`}>
-            <span>{isChinese ? "店主工作台" : "Owner workspace"}</span>
+            <span>{isChinese ? zhFor(locale, "店主工作台") : "Owner workspace"}</span>
             <strong>{workspaceSection}</strong>
           </div>
           <div className="workspace-topbar-spacer" />

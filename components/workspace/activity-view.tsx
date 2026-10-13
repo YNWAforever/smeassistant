@@ -6,6 +6,7 @@ import { copy, type PrototypeLocale } from "@/lib/copy"
 import { formatDateTime } from "@/lib/workspace/format"
 import { activityActorLabel, auditEntityLabel, auditEventLabel } from "@/lib/workspace/audit-labels"
 import type { AuditEventRow } from "@/lib/workspace/queries-pages"
+import { zhFor } from "@/lib/zh-tw"
 
 type DetailLocale = PrototypeLocale
 
@@ -67,7 +68,7 @@ export function ActivityView({ locale, timezone, events, problems }: { locale: P
   const isChinese = locale !== "en"
   return (
     <div className="activity-page">
-      <PageIntro eyebrow={isChinese ? "只增不改的店主審計紀錄" : "Append-only owner audit"} title={isChinese ? "活動紀錄" : "Activity"} description={isChinese ? "記錄來源、版本、角色、審批及交付；最新事件在上，原始內容不會藏在分析事件內。" : "Source, version, role, approval and delivery events are recorded latest-first without putting raw content in analytics."} />
+      <PageIntro eyebrow={isChinese ? zhFor(locale, "只增不改的店主審計紀錄") : "Append-only owner audit"} title={isChinese ? "活動紀錄" : "Activity"} description={isChinese ? zhFor(locale, "記錄來源、版本、角色、審批及交付；最新事件在上，原始內容不會藏在分析事件內。") : "Source, version, role, approval and delivery events are recorded latest-first without putting raw content in analytics."} />
       {problems}
       <SectionCard className="activity-card">
         <Table className="activity-table">

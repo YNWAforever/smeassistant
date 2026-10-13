@@ -41,6 +41,7 @@ import {
 } from "@/lib/pocket-assistant/contracts"
 import { ASSISTANT_RUN_ENDPOINT, buildAssistantRequest } from "@/lib/pocket-assistant/request"
 import { aiBudgetRefusal } from "@/lib/budgets/messages"
+import { zhFor } from "@/lib/zh-tw"
 
 /** `AssistantSurface` now lives in contracts.ts (§3.8); re-exported for existing importers. */
 export type { AssistantSurface } from "@/lib/pocket-assistant/contracts"
@@ -305,14 +306,14 @@ export function ContextualAssistant({
               <SheetTitle>{isChinese ? "隨身增長助理" : "Visibility Operator"}</SheetTitle>
             </div>
           </div>
-          <SheetDescription>{isChinese ? `目前情境：${surfaceTitle(surface, true)}。解釋證據、建議下一步及準備新草稿，但不會自行批准或發佈。` : `Current context: ${surfaceTitle(surface, false)}. It explains evidence, recommends a next step and prepares new drafts—never approval or publishing.`}</SheetDescription>
+          <SheetDescription>{isChinese ? zhFor(locale, `目前情境：${surfaceTitle(surface, true)}。解釋證據、建議下一步及準備新草稿，但不會自行批准或發佈。`) : `Current context: ${surfaceTitle(surface, false)}. It explains evidence, recommends a next step and prepares new drafts—never approval or publishing.`}</SheetDescription>
           <ol className="assistant-flow" aria-label={isChinese ? "助理處理流程" : "Assistant flow"}>
             {(isChinese ? ["解釋", "證據", "行動", "草稿", "審批／重掃"] : ["Explain", "Evidence", "Act", "Draft", "Approve / re-scan"]).map((item, index) => <li key={item}><span>{index + 1}</span>{item}</li>)}
           </ol>
         </SheetHeader>
 
         <div className="assistant-sheet-body">
-          <div className="assistant-boundary"><LockKeyhole aria-hidden="true" /><span>{mode === "live" ? (isChinese ? "答案只使用此工作台的證據快照；這裡不會發佈或核准任何內容。" : "Answers use only this workspace's evidence snapshots; nothing is published or approved here.") : (isChinese ? "公開及示範模式只使用固定、已清理的錦汶館資料；不接受其他商戶或客戶資料。" : "Public and demo mode uses fixed, sanitised Kam Man House data only; no other business or customer data is accepted.")}</span></div>
+          <div className="assistant-boundary"><LockKeyhole aria-hidden="true" /><span>{mode === "live" ? (isChinese ? "答案只使用此工作台的證據快照；這裡不會發佈或核准任何內容。" : "Answers use only this workspace's evidence snapshots; nothing is published or approved here.") : (isChinese ? zhFor(locale, "公開及示範模式只使用固定、已清理的錦汶館資料；不接受其他商戶或客戶資料。") : "Public and demo mode uses fixed, sanitised Kam Man House data only; no other business or customer data is accepted.")}</span></div>
 
           {shown.length > 0 && <section className="assistant-question-section" aria-labelledby="assistant-suggestion-title">
             <p className="eyebrow" id="assistant-suggestion-title">{resolveText(NEEDS_YOU_NOW, locale)}</p>
@@ -355,7 +356,7 @@ export function ContextualAssistant({
 
             {run.draftRunId && onCreateVersion && <Button className="w-full" onClick={createVersion} disabled={versionCreated}><FilePlus2 aria-hidden="true" />{versionCreated ? (isChinese ? "已建立新版本" : "New version created") : (isChinese ? "建立新版本（不覆蓋現有內容）" : "Create a new version without overwriting")}</Button>}
 
-            <div className="assistant-approval-boundary"><ShieldCheck aria-hidden="true" /><span>{run.requiresApproval ? (isChinese ? "此輸出需要獲授權人士核准指定版本；目前未發佈，也未扣除交付額。" : "An authorised person must approve the exact version. It is not published and no delivery is consumed.") : (isChinese ? "這是解釋與建議，不會改變掃描分數、審批狀態或用量。" : "This explanation changes no score, approval state or usage.")}</span></div>
+            <div className="assistant-approval-boundary"><ShieldCheck aria-hidden="true" /><span>{run.requiresApproval ? (isChinese ? "此輸出需要獲授權人士核准指定版本；目前未發佈，也未扣除交付額。" : "An authorised person must approve the exact version. It is not published and no delivery is consumed.") : (isChinese ? zhFor(locale, "這是解釋與建議，不會改變掃描分數、審批狀態或用量。") : "This explanation changes no score, approval state or usage.")}</span></div>
           </div>}
         </div>
       </SheetContent>

@@ -3,6 +3,7 @@ import { ArrowRight, Search } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { copy, type PrototypeLocale } from "@/lib/copy"
+import { resolveText } from "@/lib/domain"
 
 /**
  * Public chrome with no client code: the brand link, primary links and footer
@@ -70,8 +71,8 @@ export function PublicFooter({ locale }: { locale: PrototypeLocale }) {
       </div>
       <nav aria-label={isChinese ? "頁尾導覽" : "Footer navigation"}>
         <Link href={`/${locale}/methodology`}>{isChinese ? "評分方法與限制" : "Methodology & limitations"}</Link>
-        <Link href={`/${locale}/trust`}>{isChinese ? "安全與私隱" : "Security & privacy"}</Link>
-        <Link href={`/${locale}/pricing`}>{isChinese ? "收費方案" : "Pricing"}</Link>
+        <Link href={`/${locale}/trust`}>{resolveText({ en: "Security & privacy", "zh-HK": "安全與私隱", "zh-TW": "安全與隱私" }, locale)}</Link>
+        <Link href={`/${locale}/pricing`}>{resolveText({ en: "Pricing", "zh-HK": "收費方案", "zh-TW": "方案價格" }, locale)}</Link>
         <Link href={`/${locale}/legal/privacy`}>{t.privacy}</Link>
         <Link href={`/${locale}/legal/terms`}>{t.terms}</Link>
       </nav>
