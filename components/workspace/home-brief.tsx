@@ -86,7 +86,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
   return (
     <div className="owner-home-page">
       <PageIntro
-        eyebrow={snapshot ? `${isChinese ? "快照" : "Snapshot"} · ${formatDateTime(snapshot.observedAt, locale, timezone)}` : hasLocations && location === "all" ? (isChinese ? "所有地點 · 快照按地點顯示" : "All locations · snapshots shown per location") : (isChinese ? "尚未有快照" : "No snapshot yet")}
+        eyebrow={snapshot ? `${isChinese ? "快照" : "Snapshot"} · ${formatDateTime(snapshot.observedAt, locale, timezone)}` : hasLocations && location === "all" ? (isChinese ? "所有地點 · 不顯示合併快照" : "All locations · no combined snapshot") : (isChinese ? "尚未有快照" : "No snapshot yet")}
         title={pageTitle}
         description={pageSubtitle}
         actions={<>{role && <RescanButton locale={locale} workspaceId={workspaceId} workspaceSlug={workspaceSlug} locationId={brief.location?.id ?? null} tier={tier} role={role} consentPolicyVersion={consentPolicyVersion} />}<LocationSelect locale={locale} value={location} locations={locations} /></>}
