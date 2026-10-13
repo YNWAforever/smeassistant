@@ -99,6 +99,21 @@ describe("readDatabaseConfig", () => {
     );
   });
 
+  it.each(["require", "verify-ca"])("spells sslmode=%s as the verify-full pg already applies, keeping other parameters", (sslmode) => {
+    vi.stubEnv("NODE_ENV", "production");
+    const config = readDatabaseConfig({
+      DATABASE_URL: `postgresql://app:password@db.example/app?sslmode=${sslmode}&channel_binding=require`,
+      DATABASE_URL_UNPOOLED: `postgresql://owner:password@db.example/app?sslmode=${sslmode}`,
+    });
+    expect(config.applicationUrl).toBe("postgresql://app:password@db.example/app?sslmode=verify-full&channel_binding=require");
+    expect(config.migrationUrl).toBe("postgresql://owner:password@db.example/app?sslmode=verify-full");
+  });
+
+  it("leaves an explicit libpq-compatible sslmode untouched", () => {
+    const url = "postgresql://app:password@db.example/app?uselibpqcompat=true&sslmode=require";
+    expect(readDatabaseConfig({ DATABASE_URL: url }).applicationUrl).toBe(url);
+  });
+
   it("rejects a secure application URL paired with an insecure migration URL in production", () => {
     vi.stubEnv("NODE_ENV", "production");
     expect(() =>

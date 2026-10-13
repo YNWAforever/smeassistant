@@ -34,20 +34,6 @@ function normalizeEmail(value: string): string | null {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 }
 
-function normalizeContact(channel: string, value: string): string | null {
-  const input = value.trim();
-  if (!input) return null;
-  if (channel === "email") return normalizeEmail(input);
-  if (channel === "whatsapp" || channel === "phone") {
-    const compact = input.replace(/[\s().-]/g, "");
-    return /^\+?\d{8,15}$/.test(compact) ? compact : null;
-  }
-  if (channel === "line") {
-    const lineId = input.replace(/^@+/, "");
-    return /^[A-Za-z0-9._-]{2,100}$/.test(lineId) ? lineId : null;
-  }
-  return null;
-}
 
 function booleanValue(value: unknown): boolean | null {
   return typeof value === "boolean" ? value : null;
