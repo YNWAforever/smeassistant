@@ -1818,7 +1818,9 @@
 }
 
 .public-site .public-footer .footer-statement {
-  color: rgb(255 255 255 / 0.06);
+  background: linear-gradient(180deg, oklch(80% 0.15 60 / 0.95), oklch(76% 0.158 55 / 0.15) 92%);
+  -webkit-background-clip: text;
+  background-clip: text;
 }
 
 /* Cards whose last item must sit on the bottom edge (chip, output, CTA) are
@@ -1845,4 +1847,86 @@
 
 .ed-team-grid .ed-output {
   align-self: stretch;
+}
+
+/* The page ground behind the public site (the body showed through as a strip). */
+body:has(.ed-landing) {
+  background: var(--ed-bg);
+}
+
+.ed-bento .ed-chip {
+  align-self: flex-start;
+  margin-top: auto !important;
+}
+
+.ed-team-grid .ed-output,
+.ed-outcome .ed-outcome-cta {
+  margin-top: auto !important;
+}
+
+.ed-table thead tr,
+.ed-table thead th {
+  border-bottom: 1px solid var(--ed-line) !important;
+}
+
+/* The assistant trigger keeps its behaviour; only its colour joins the palette. */
+.ed-landing .assistant-launcher {
+  min-height: 3rem;
+  border: 1.5px solid var(--ed-peach-200) !important;
+  border-radius: 999px;
+  background: var(--ed-surface) !important;
+  color: var(--ed-orange-800) !important;
+  font-weight: 620;
+}
+
+.ed-landing .assistant-launcher:hover {
+  border-color: var(--ed-orange) !important;
+  background: var(--ed-peach-50) !important;
+}
+
+/* ---------- Phone refinements ---------- */
+
+@media (max-width: 767px) {
+  /* A 13-character Chinese phrase must fit one 358px line, or keep-all falls
+     back to breaking inside a word (循/環). */
+  :is(:lang(zh), :lang(zh-HK), :lang(zh-TW)) .ed-heading {
+    font-size: 1.5rem;
+    line-height: 1.35;
+  }
+
+  :is(:lang(zh), :lang(zh-HK), :lang(zh-TW)) .ed-display {
+    font-size: 2.05rem;
+  }
+
+  /* Caption sits clear of the photo credit. */
+  .ed-moment-caption {
+    bottom: 2.75rem;
+  }
+
+  .ed-photo-credit {
+    right: auto;
+    left: 1.25rem;
+    bottom: 0.9rem;
+  }
+
+  /* One photograph on a phone: the overlapping second one only crowds it. */
+  .ed-story-visuals {
+    min-height: 0;
+    aspect-ratio: 4 / 3;
+  }
+
+  .ed-story-main {
+    inset: 0;
+  }
+
+  .ed-story-second {
+    display: none;
+  }
+
+  .ed-story-visuals figcaption a {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
 }
