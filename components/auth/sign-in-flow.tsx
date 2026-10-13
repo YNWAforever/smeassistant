@@ -3,7 +3,7 @@
 import { type FormEvent, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 
-import { authClient } from "@/lib/identity/client";
+import { loadAuthClient, preloadAuthClient } from "@/lib/identity/load-client";
 import { authFlowHref, callbackHref, type AuthFlow, type AuthMethod } from "@/lib/identity/sign-in-flow";
 
 import { signInCopy } from "./sign-in-copy";
@@ -55,6 +55,11 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
   const router = useRouter();
   const copy = signInCopy[flow.locale];
   const hydrated = useSyncExternalStore(subscribeHydration, hydratedClient, hydratedServer);
+  // Warm the on-demand auth client once the page is idle, so a press rarely waits for it.
+  useEffect(() => {
+    const idle = window.requestIdleCallback ? window.requestIdleCallback(preloadAuthClient, { timeout: 3000 }) : window.setTimeout(preloadAuthClient, 1500);
+    return () => { if (window.cancelIdleCallback) window.cancelIdleCallback(idle); else window.clearTimeout(idle); };
+  }, []);
   const [state, setState] = useState<SignInState>(() => initialState(initialReason, flow));
   const [email, setEmail] = useState("");
   const [fieldError, setFieldError] = useState("");
@@ -88,7 +93,7 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
     const next = withMethod("google");
     router.replace(authFlowHref(next, "start"));
     try {
-      const result = await authClient.signIn.social({ provider: "google", callbackURL: callbackHref(next), errorCallbackURL: callbackHref(next) });
+      const result = await (await loadAuthClient()).signIn.social({ provider: "google", callbackURL: callbackHref(next), errorCallbackURL: callbackHref(next) });
       if (result.error) throw result.error;
     } catch {
       setState({ kind: "recover", method: "google", reason: "unavailable" });
@@ -104,7 +109,7 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
     const next = withMethod("email");
     router.replace(authFlowHref(next, "start"));
     try {
-      const result = await authClient.signIn.magicLink({ email: normalized, callbackURL: callbackHref(next) });
+      const result = await (await loadAuthClient()).signIn.magicLink({ email: normalized, callbackURL: callbackHref(next) });
       if (result.error) {
         const until = retryAfter(result.error, Date.now());
         if ((result.error as { status?: number }).status === 429) {

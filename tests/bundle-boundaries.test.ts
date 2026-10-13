@@ -10,6 +10,13 @@ const source = (path: string) => readFileSync(new URL(`../${path}`, import.meta.
  * public pages when it was introduced.
  */
 describe("client bundle boundaries", () => {
+  it("sign-in loads the Neon Auth client on demand, not with the page (~105 kB gzipped)", () => {
+    for (const file of ["components/auth/sign-in-flow.tsx", "components/auth/sign-in-completion.tsx"]) {
+      expect(source(file)).not.toContain('from "@/lib/identity/client"');
+      expect(source(file)).toContain("@/lib/identity/load-client");
+    }
+  });
+
   it("public-pages does not re-export the client page components", () => {
     expect(source("components/public-pages.tsx")).not.toMatch(/export \{[^}]*\} from "@\/components\//);
   });
