@@ -6,6 +6,7 @@ import { useRef, useState } from "react"
 import { ArrowRight, CircleAlert, Eye, ListChecks, LockKeyhole, UserCheck } from "lucide-react"
 
 import { RecoveryForm } from "@/components/report/recovery-form"
+import { useRevealError } from "@/hooks/use-reveal-error"
 import { PublicPageFrame } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -57,6 +58,8 @@ export function UnlockPage({ locale, slug, market, recoveryAvailable }: { locale
   // (job, key). Generated on first submit so no random value is produced during
   // server rendering.
   const idempotencyKey = useRef("")
+  const errorBanner = useRef<HTMLDivElement>(null)
+  useRevealError(errorBanner, error)
 
   function update(patch: Partial<UnlockFormValues>) {
     setValues((current) => ({ ...current, ...patch }))
@@ -92,7 +95,8 @@ export function UnlockPage({ locale, slug, market, recoveryAvailable }: { locale
         return
       }
       if (!response.ok || !data.ok || !data.reportUrl) {
-        setError(data.error ?? c.errors.failed)
+        // The server's own strings are English diagnostics, not owner copy.
+        setError(c.errors.failed)
         return
       }
       router.push(data.reportUrl)
@@ -131,7 +135,7 @@ export function UnlockPage({ locale, slug, market, recoveryAvailable }: { locale
           <h2>{c.formTitle}</h2>
           <p>{c.formBody}</p>
           {error && (
-            <div className="form-error" role="alert">
+            <div className="form-error" role="alert" tabIndex={-1} ref={errorBanner}>
               <CircleAlert />
               {error}
             </div>

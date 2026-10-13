@@ -3,6 +3,8 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
+
+import { coveredTop, revealElement, useRevealError } from "@/hooks/use-reveal-error"
 import {
   ArrowRight,
   Check,
@@ -230,30 +232,11 @@ export function ScanPage({
     const heading = stepHeading.current
     if (!heading) return
     heading.focus({ preventScroll: true })
-    const covered = Math.max(0, document.querySelector(".public-header")?.getBoundingClientRect().bottom ?? 0)
-    if (heading.getBoundingClientRect().top < covered) {
-      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-      heading.closest(".flow-card")?.scrollIntoView?.({ block: "start", behavior: reduce ? "auto" : "smooth" })
-    }
+    const card = heading.closest(".flow-card")
+    if (card && heading.getBoundingClientRect().top < coveredTop()) revealElement(heading, card)
   }, [step])
 
-  // Errors render at the top of the card, but Continue sits at its foot: on a
-  // phone the message landed 300-500px above the screen and pressing the
-  // button seemed to do nothing. Bring it into view, and move focus to it
-  // unless a field was focused on purpose (the website check does that).
-  useEffect(() => {
-    const banner = errorBanner.current
-    if (!error || !banner) return
-    const active = document.activeElement
-    if (!(active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement || active instanceof HTMLSelectElement)) banner.focus({ preventScroll: true })
-    const box = banner.getBoundingClientRect()
-    // Below the sticky header counts as hidden too.
-    const covered = Math.max(0, document.querySelector(".public-header")?.getBoundingClientRect().bottom ?? 0)
-    if (box.top < covered || box.bottom > window.innerHeight) {
-      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-      banner.scrollIntoView?.({ block: "start", behavior: reduce ? "auto" : "smooth" })
-    }
-  }, [error])
+  useRevealError(errorBanner, error)
 
   async function startScan() {
     setSubmitting(true)

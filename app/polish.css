@@ -1478,3 +1478,5 @@ body {
 .flow-card .form-error:focus-visible { outline: 3px solid var(--ring, #0d6b5d); outline-offset: 2px; }
 .flow-card { scroll-margin-top: 24px; }
 .flow-card-header h1:focus { outline: none; }
+.unlock-form-card .form-error { scroll-margin-top: 112px; }
+.unlock-form-card .form-error:focus { outline: none; }
