@@ -13,11 +13,11 @@ import { zhFor } from "@/lib/zh-tw"
  * viewers get the same layout read-only behind the prototype's permission
  * banner. The PUT route enforces owner-only server-side.
  */
-export function BrandView({ locale, workspaceId, role, brand }: { locale: PrototypeLocale; workspaceId: string; role: WorkspaceRole; brand: BrandProfile }) {
+export function BrandView({ locale, workspaceId, role, brand, timezone }: { locale: PrototypeLocale; workspaceId: string; role: WorkspaceRole; brand: BrandProfile; timezone?: string }) {
   const isChinese = locale !== "en"
   const owner = role === "owner"
   const banner = owner ? null : (
     <div className="permission-banner"><ShieldAlert /><div><strong>{isChinese ? `${roleLabel(role, locale)}權限` : `${roleLabel(role, locale)} access`}</strong><span>{isChinese ? zhFor(locale, "品牌資料只供查看；只有店主可以儲存新版本。") : "The brand profile is read-only; only the owner can save a new version."}</span></div><Badge variant="outline">{isChinese ? "只讀" : "Read only"}</Badge></div>
   )
-  return <BrandSettingsForm locale={locale} workspaceId={workspaceId} brand={brand} readOnly={!owner} banner={banner} />
+  return <BrandSettingsForm locale={locale} workspaceId={workspaceId} brand={brand} readOnly={!owner} banner={banner} timezone={timezone} />
 }

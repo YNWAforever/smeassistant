@@ -8,7 +8,7 @@ import { getMessages } from "@/lib/i18n";
 
 const WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";
 const TRIGGER = { en: "Ask Visibility Operator", "zh-HK": "問隨身增長助理", "zh-TW": "問隨身增長助理" } as const;
-const QUESTION = { en: "Draft one suitable review reply", "zh-HK": "示範 1 則合適的評論回覆", "zh-TW": "示範 1 則合適的評論回覆" } as const;
+const QUESTION = { en: "Draft one suitable review reply", "zh-HK": "草擬 1 則合適的評論回覆", "zh-TW": "草擬 1 則合適的評論回覆" } as const;
 
 beforeEach(() => {
   if (!window.matchMedia)

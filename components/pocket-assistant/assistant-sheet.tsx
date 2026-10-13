@@ -103,6 +103,9 @@ const NEEDS_YOU_NOW = localized("Needs you now", "現在需要你處理", "現�
  * Demo labels above stay exactly as they are.
  */
 const liveLabels: Partial<Record<DemoQuestionId, { zh: string; en: string }>> = {
+  // The sample's top action is review replies; a real workspace's may be anything.
+  explain_priority: { zh: "為何這是首要行動？", en: "Why is this the priority?" },
+  draft_review_reply: { zh: "草擬 1 則合適的評論回覆", en: "Draft one suitable review reply" },
   explain_change: { zh: "最新的分數變化代表甚麼？", en: "What does the latest score change mean?" },
   fallback_plan: { zh: "如果分數再次下跌，今星期應做甚麼？", en: "What if the score falls again this week?" },
 }
@@ -342,7 +345,7 @@ export function ContextualAssistant({
 
             <section className="assistant-evidence-section">
               <p className="eyebrow">{isChinese ? "引用的證據 snapshot" : "Referenced evidence snapshots"}</p>
-              <div className="assistant-evidence-list">{run.evidenceRefs.map((item) => <AssistantEvidenceCard key={item.evidenceId} evidence={item} isChinese={isChinese} />)}</div>
+              <div className="assistant-evidence-list">{run.evidenceRefs.map((item) => <AssistantEvidenceCard key={item.evidenceId} evidence={item} isChinese={isChinese} locale={locale} />)}</div>
             </section>
 
             <section className="assistant-next-action">

@@ -16,6 +16,7 @@ import { PageIntro, SectionCard } from "@/components/product-ui"
 import type { PrototypeLocale } from "@/lib/copy"
 import type { BrandLanguage, BrandProfile, BrandVoice } from "@/lib/workspace/brand"
 import { saveBrand, type ClientResult } from "@/lib/workspace/client"
+import { formatDateTime } from "@/lib/workspace/format"
 
 /**
  * Brand profile form (CLAUDE.md §3.1 `settings/brand`, Phase 6): the
@@ -40,7 +41,7 @@ function failureMessage(result: Extract<ClientResult<unknown>, { ok: false }>, t
   return t.failed
 }
 
-export function BrandSettingsForm({ locale, workspaceId, brand, readOnly, banner }: { locale: PrototypeLocale; workspaceId: string; brand: BrandProfile; readOnly: boolean; banner?: React.ReactNode }) {
+export function BrandSettingsForm({ locale, workspaceId, brand, readOnly, banner, timezone = "Asia/Hong_Kong" }: { locale: PrototypeLocale; workspaceId: string; brand: BrandProfile; readOnly: boolean; banner?: React.ReactNode; timezone?: string }) {
   const router = useRouter()
   const t = COPY[locale]
   const [voice, setVoice] = useState<BrandVoice>(brand.voice)
@@ -50,6 +51,7 @@ export function BrandSettingsForm({ locale, workspaceId, brand, readOnly, banner
   const [facts, setFacts] = useState<FactRow[]>(Object.entries(brand.facts).map(([key, value]) => ({ key, value })))
   const [busy, setBusy] = useState(false)
   const [revisionId,setRevisionId]=useState(brand.revisionId ?? null)
+  const currentRevision = brand.revisions?.find((revision) => revision.id === revisionId) ?? null
 
   function setFact(index: number, patch: Partial<FactRow>) {
     setFacts((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)))
@@ -83,8 +85,9 @@ export function BrandSettingsForm({ locale, workspaceId, brand, readOnly, banner
         actions={readOnly ? null : <Button type="submit" disabled={busy}>{busy ? <LoaderCircle className="animate-spin" /> : <Check />} {t.save}</Button>}
       />
       {banner}
-      {revisionId && <p>{locale==='en'?'Current revision':'目前版本'}: <code>{revisionId}</code></p>}
-      {brand.revisions?.length ? <details><summary>{locale==='en'?'Saved profile history':locale==='zh-TW'?'品牌儲存紀錄':'品牌儲存記錄'}</summary><ol>{brand.revisions.map(revision=><li key={revision.id}><details><summary>{revision.createdAt} · {revision.source==='baseline'?(locale==='en'?'Known current baseline':'已知目前資料基線'):(locale==='en'?'Saved revision':'已儲存版本')}</summary><code>{revision.id}</code>{revision.profile ? <dl>
+      {/* The revision id stays in state for conflict fencing; owners see when it was saved, not the uuid. */}
+      {currentRevision && <p>{locale==='en'?'Current version saved':locale==='zh-TW'?'目前版本儲存於':'目前版本儲存於'} {formatDateTime(currentRevision.createdAt, locale, timezone)}</p>}
+      {brand.revisions?.length ? <details><summary>{locale==='en'?'Saved profile history':locale==='zh-TW'?'品牌儲存紀錄':'品牌儲存記錄'}</summary><ol>{brand.revisions.map(revision=><li key={revision.id}><details><summary>{formatDateTime(revision.createdAt, locale, timezone)} · {revision.source==='baseline'?(locale==='en'?'Known current baseline':'已知目前資料基線'):(locale==='en'?'Saved revision':'已儲存版本')}{revision.id===revisionId?(locale==='en'?' · current':' · 目前版本'):''}</summary><code>{revision.id}</code>{revision.profile ? <dl>
         <dt>{t.voiceLabel}</dt><dd>{t.voices[revision.profile.voice]}</dd>
         <dt>{t.languagesLabel}</dt><dd>{revision.profile.languages.map(language=>t.languages[language]).join(', ')}</dd>
         <dt>{t.claimsLabel}</dt><dd><ul>{revision.profile.approved_claims.map((claim,i)=><li key={i}>{claim}</li>)}</ul></dd>
