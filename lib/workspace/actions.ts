@@ -19,6 +19,7 @@ export interface FindingRow {
   score_impact: number | string;
   owner_message_zh: string | null;
   owner_message_en: string | null;
+  owner_message_tw?: string | null;
   owner_action_zh?: string | null;
   owner_action_en?: string | null;
   evidence: Record<string, unknown> | null;
@@ -151,7 +152,7 @@ function buildAction(
     moduleMeasured: moduleState ? moduleState.status === "measured" : true,
   });
   const detail = lead
-    ? localized(lead.owner_message_en ?? lead.owner_message_zh ?? lead.finding_key, lead.owner_message_zh ?? lead.owner_message_en ?? lead.finding_key)
+    ? localized(lead.owner_message_en ?? lead.owner_message_zh ?? lead.finding_key, lead.owner_message_zh ?? lead.owner_message_en ?? lead.finding_key, lead.owner_message_tw ?? lead.owner_message_zh ?? lead.owner_message_en ?? lead.finding_key)
     : template.summary;
   return {
     templateKey: template.key,

@@ -35,5 +35,5 @@ it.each(["en", "zh-HK", "zh-TW"] as const)("%s shows a bounded page and scoped n
   expect(Object.fromEntries(url.searchParams)).toMatchObject({ location: "all", channel: "google", status: "recommended", view: "drafts", pageSize: "50", cursor: "opaque_next", q: "reply", assignee: "unassigned", due: "today" });
   expect(screen.queryByRole("checkbox")).toBeNull();
   for (const link of screen.getAllByRole("link").filter(link => link.getAttribute("aria-current") !== null)) expect(link.getAttribute("href")).not.toContain("cursor");
-  expect(screen.getByText(locale === "en" ? "Refresh first page" : "重新載入首頁")).toBeVisible();
+  expect(screen.getByText(locale === "en" ? "Refresh first page" : "重新載入第一頁")).toBeVisible();
 });
