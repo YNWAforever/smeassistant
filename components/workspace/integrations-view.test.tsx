@@ -61,3 +61,26 @@ describe("IntegrationsView Google disconnect", () => {
     expect(render("expired").textContent).toContain("Scans are unaffected");
   });
 });
+
+describe("IntegrationsView when Google OAuth is not configured", () => {
+  function renderUnconfigured(status: GoogleStatus) {
+    const root = document.createElement("div");
+    root.innerHTML = renderToStaticMarkup(
+      <IntegrationsView locale="en" workspaceSlug="kam-man-house" workspaceId="ws-1" timezone="Asia/Hong_Kong" model={model(status)} googleConfigured={false} />,
+    );
+    return root;
+  }
+
+  it("does not link to the start route, which would answer 503 JSON", () => {
+    const root = renderUnconfigured("not_connected");
+    expect(root.querySelector('a[href^="/api/oauth/google/start"]')).toBeNull();
+    const button = [...root.querySelectorAll("button")].find((b) => b.textContent?.includes("Connect Google"));
+    expect(button?.hasAttribute("disabled")).toBe(true);
+    expect(root.textContent).toContain("Connecting Google is not available yet");
+  });
+
+  it("keeps the link when configured (the default)", () => {
+    expect(render("not_connected").querySelector('a[href^="/api/oauth/google/start"]')).not.toBeNull();
+    expect(render("not_connected").textContent).not.toContain("not available yet");
+  });
+});

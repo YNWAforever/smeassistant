@@ -1084,7 +1084,7 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     },
     home: {
       title: "Your next visibility win is ready.",
-      subtitle: "One clear action for today, backed by evidence and ready for your approval.",
+      subtitle: "One clear action for today, backed by evidence. You decide what happens next.",
       changed: "What changed",
       priority: "Do this today",
       proof: "Previous action outcome",
@@ -1149,7 +1149,7 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     },
     home: {
       title: "下一個曝光提升機會已準備好。",
-      subtitle: "今天只需處理一項清晰行動；證據和草稿已備妥，等你批准。",
+      subtitle: "今天只需處理一項清晰行動；證據已備妥，下一步由你決定。",
       changed: "最新變化",
       priority: "今日要做",
       proof: "上一項行動結果",
@@ -1214,7 +1214,7 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     },
     home: {
       title: "下一個能見度提升機會已準備好。",
-      subtitle: "今天只要處理一個清楚行動；證據和草稿都已備妥，等你核准。",
+      subtitle: "今天只要處理一個清楚行動；證據都已備妥，下一步由你決定。",
       changed: "最新變化",
       priority: "今日要做",
       proof: "上一項行動結果",

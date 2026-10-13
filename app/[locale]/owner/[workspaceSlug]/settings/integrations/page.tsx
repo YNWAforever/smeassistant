@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { IntegrationsView } from "@/components/workspace/integrations-view";
+import { googleOAuthConfigured } from "@/lib/oauth/google-connection";
 import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 import { getIntegrations } from "@/lib/workspace/queries-pages";
 
@@ -14,5 +15,5 @@ export async function generateMetadata(props: OwnerPageProps): Promise<Metadata>
 export default async function IntegrationsRoute(props: OwnerPageProps) {
   const page = await loadOwnerPage(props, { minRole: "owner" });
   const model = await getIntegrations(page.ctx);
-  return <IntegrationsView locale={page.locale} workspaceSlug={page.workspaceSlug} workspaceId={page.ctx.workspace.id} timezone={page.ctx.workspace.timezone} model={model} />;
+  return <IntegrationsView locale={page.locale} workspaceSlug={page.workspaceSlug} workspaceId={page.ctx.workspace.id} timezone={page.ctx.workspace.timezone} model={model} googleConfigured={googleOAuthConfigured()} />;
 }

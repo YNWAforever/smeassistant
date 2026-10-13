@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import {
   ArrowRight,
   Check,
@@ -178,6 +178,7 @@ export function ContextualAssistant({
   basePath,
   locationParam,
   initialOpen = false,
+  autoAsk,
 }: {
   locale: PrototypeLocale
   surface: AssistantSurface
@@ -199,6 +200,12 @@ export function ContextualAssistant({
   locationParam?: string
   /** Open on mount: the lazy launcher (./assistant-launcher.tsx) renders this once the visitor asks. */
   initialOpen?: boolean
+  /**
+   * For a trigger whose label is itself a question ("Ask why this comes first"):
+   * the first opening asks it, so the owner is not made to pick the same
+   * question again from the list. Asked once per mount; reopening shows that answer.
+   */
+  autoAsk?: DemoQuestionId
 }) {
   const isChinese = locale !== "en"
   const isMobile = useIsMobile()
@@ -279,6 +286,15 @@ export function ContextualAssistant({
       setState("failed")
     }
   }
+
+  const autoAsked = useRef(false)
+  useEffect(() => {
+    if (!open || !autoAsk || autoAsked.current) return
+    autoAsked.current = true
+    void ask(autoAsk)
+    // `ask` is recreated every render; the ref makes this fire once per mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, autoAsk])
 
   const continueHref = mode === "live" && basePath && run?.nextStep ? nextStepHref(basePath, run.nextStep, locationParam) : null
 

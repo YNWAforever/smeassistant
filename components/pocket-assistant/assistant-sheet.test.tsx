@@ -296,3 +296,35 @@ describe("ContextualAssistant in demo mode (P4.3)", () => {
     expect(fetched.suggestionCalls()).toHaveLength(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// A trigger whose label is the question ("Ask why this comes first") asks it on open.
+// ---------------------------------------------------------------------------
+describe("ContextualAssistant autoAsk", () => {
+  it("asks the named question once when the sheet opens, and not again on reopen", async () => {
+    const stub = stubFetch(suggestionsOk([]));
+    await open({ surface: "home", autoAsk: "explain_priority", context: { workspaceId: WORKSPACE_ID } });
+    expect(await screen.findByText("An answer")).toBeInTheDocument();
+    expect(stub.runCalls()).toHaveLength(1);
+    expect(stub.runCalls()[0].body).toMatchObject({ intentId: "explain_priority" });
+    await act(async () => { fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" }); });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: TRIGGER.en })); });
+    expect(stub.runCalls()).toHaveLength(1);
+  });
+
+  it("asks on mount when the lazy launcher renders it already open", async () => {
+    const stub = stubFetch(suggestionsOk([]));
+    await act(async () => {
+      render(<ContextualAssistant locale="en" surface="actions" mode="live" context={{ workspaceId: WORKSPACE_ID }} autoAsk="compare_priorities" initialOpen />);
+    });
+    expect(await screen.findByText("An answer")).toBeInTheDocument();
+    expect(stub.runCalls()).toHaveLength(1);
+    expect(stub.runCalls()[0].body).toMatchObject({ intentId: "compare_priorities" });
+  });
+
+  it("asks nothing on open without autoAsk", async () => {
+    const stub = stubFetch(suggestionsOk([]));
+    await open({ surface: "home", context: { workspaceId: WORKSPACE_ID } });
+    expect(stub.runCalls()).toHaveLength(0);
+  });
+});

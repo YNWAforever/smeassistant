@@ -19,7 +19,7 @@ import { zhFor } from "@/lib/zh-tw"
  * expired, revoked or errored connection carries a "requires re-authorisation"
  * note. The Instagram card confirms the public handle inline (Phase 6).
  */
-export function IntegrationsView({ locale, workspaceSlug, workspaceId, timezone, model }: { locale: PrototypeLocale; workspaceSlug: string; workspaceId: string; timezone: string; model: IntegrationsModel }) {
+export function IntegrationsView({ locale, workspaceSlug, workspaceId, timezone, model, googleConfigured = true }: { locale: PrototypeLocale; workspaceSlug: string; workspaceId: string; timezone: string; model: IntegrationsModel; googleConfigured?: boolean }) {
   const isChinese = locale !== "en"
   const base = `/${locale}/owner/${workspaceSlug}`
   const googleOk = model.google.status === "active"
@@ -30,6 +30,8 @@ export function IntegrationsView({ locale, workspaceSlug, workspaceId, timezone,
   // nothing about collection changes when this connection lapses. Now that a
   // Disconnect button sits beside it, an owner would have acted on that.
   const reauthNote = locale === "en" ? "Requires re-authorisation before this connection can be used again. Scans are unaffected: evidence comes from public sources, not from this connection." : locale === "zh-TW" ? "需要重新授權後，這個連接才能再次使用。掃描不受影響：證據來自公開來源，而非這個連接。" : "需要重新授權後，這個連接先可以再次使用。掃描不受影響：證據來自公開來源，而唔係這個連接。"
+  const googleUnavailableNote = locale === "en" ? "Connecting Google is not available yet. Contact Fimmick to turn it on. Scans are unaffected." : locale === "zh-TW" ? "Google 連接暫未開放，請聯絡 Fimmick 開通。掃描不受影響。" : "Google 連接暫未開放，請聯絡 Fimmick 開通。掃描不受影響。"
+  const googleConnectLabel = googleOk || googleNeedsReauth ? (isChinese ? "重新授權" : "Re-authorise") : (isChinese ? "連接 Google" : "Connect Google")
   const googleCapability: Capability = googleOk ? "Live" : "Requires connection"
   const googleStatus = isChinese
     ? { active: "已連接", expired: "連接已過期", revoked: "權限已撤銷", error: "連接錯誤", not_connected: "尚未連接" }[model.google.status]
@@ -47,7 +49,9 @@ export function IntegrationsView({ locale, workspaceSlug, workspaceId, timezone,
       // Disconnect is offered only while a connection is actually active:
       // there is nothing to withdraw from an expired or revoked one, and the
       // route would answer `disconnected: false` anyway.
-      action: <>{googleNeedsReauth && <p className="limitation-note" role="status"><TriangleAlert /> {reauthNote}</p>}<Button asChild variant={googleOk ? "outline" : "default"}><a href={`/api/oauth/google/start?workspace=${encodeURIComponent(workspaceSlug)}&locale=${locale}`}>{googleOk || googleNeedsReauth ? (isChinese ? "重新授權" : "Re-authorise") : (isChinese ? "連接 Google" : "Connect Google")}</a></Button>{googleOk && <GoogleDisconnectButton locale={locale} workspaceId={workspaceId} />}</>,
+      // Without OAuth configuration the start route answers 503 JSON, so the
+      // link would strand the owner on a raw error body; say so here instead.
+      action: <>{googleNeedsReauth && googleConfigured && <p className="limitation-note" role="status"><TriangleAlert /> {reauthNote}</p>}{!googleConfigured && <p className="limitation-note" role="status"><TriangleAlert /> {googleUnavailableNote}</p>}{googleConfigured ? <Button asChild variant={googleOk ? "outline" : "default"}><a href={`/api/oauth/google/start?workspace=${encodeURIComponent(workspaceSlug)}&locale=${locale}`}>{googleConnectLabel}</a></Button> : <Button variant="outline" disabled>{googleConnectLabel}</Button>}{googleOk && <GoogleDisconnectButton locale={locale} workspaceId={workspaceId} />}</>,
       badge: null,
     },
     {
