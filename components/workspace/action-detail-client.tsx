@@ -562,7 +562,12 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
       downloadText(`${action.templateKey}-v${selectedVersion.version_no}.md`, text, "text/markdown;charset=utf-8")
     } else {
       const copied = await copyToClipboard(selectedVersion.body)
-      if (!copied) toast.error(isChinese ? "無法存取剪貼簿；請手動複製。" : "Clipboard unavailable; copy the text manually.")
+      if (!copied) {
+        toast.error(isChinese ? "無法存取剪貼簿；請手動複製。" : "Clipboard unavailable; copy the text manually.")
+        // The delivery is recorded either way. A first copy still says usage went
+        // up; a repeat must not then claim "Approved text copied" over the error.
+        if (!result.data.counted) { router.refresh(); return }
+      }
     }
     toast.success(result.data.counted ? (isChinese ? "已記錄匯出；本月核准後交付用量增加 1 次。" : "Export recorded; one approved delivery was added to monthly usage.") : (mode === "copy" ? (isChinese ? "已複製核准文字；此版本已計算，不再重複扣除。" : "Approved text copied; this version was already counted, nothing more was used.") : (isChinese ? "已再次匯出；此版本已計算，不再重複扣除。" : "Exported again; this version was already counted, nothing more was used.")))
     router.refresh()

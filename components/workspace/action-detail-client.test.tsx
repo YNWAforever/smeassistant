@@ -22,6 +22,8 @@ vi.mock("@/lib/workspace/client", async (importOriginal) => ({
   exportVersion: clientMocks.exportVersion,
 }));
 vi.mock("sonner", () => ({ toast: toastMocks }));
+const downloadMocks = vi.hoisted(() => ({ copyToClipboard: vi.fn(async () => true), downloadText: vi.fn() }));
+vi.mock("@/lib/download", () => downloadMocks);
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -806,5 +808,46 @@ describe("export step and button read first_exported_at, not delivery_state (P4.
     const text = renderVersion({ delivery_state: "exported", first_exported_at: "2026-10-04T02:00:00Z" });
     expect(text).toContain("Export recorded");
     expect(text).toContain("Export again (not counted twice)");
+  });
+});
+
+describe("copying an approved version", () => {
+  const DRAFTED_KEY = AGENT_TEMPLATES[0].key;
+  beforeEach(() => {
+    if (!window.matchMedia)
+      window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia;
+    toastMocks.error.mockReset();
+    toastMocks.success.mockReset();
+    clientMocks.exportVersion.mockReset();
+    downloadMocks.copyToClipboard.mockReset();
+  });
+  afterEach(cleanup);
+
+  function mountApproved() {
+    const value = detail(DRAFTED_KEY);
+    value.action.latestVersion = { id: "ver-1", versionNo: 1, approvalState: "approved", deliveryState: "exported" };
+    value.versions = [versionRow({ id: "ver-1", version_no: 1, approval_state: "approved", delivery_state: "exported" })];
+    renderLive(
+      <ActionDetailClient locale="en" workspaceSlug="kam-man-house" workspaceId="ws-1" timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam"
+        detail={value} auditRows={[]} locations={[{ slug: "yik-yam", name: "Yik Yam" }]} approvedAssets={[]} />,
+    );
+  }
+
+  it("does not claim the text was copied when the clipboard refused it", async () => {
+    downloadMocks.copyToClipboard.mockResolvedValue(false);
+    clientMocks.exportVersion.mockResolvedValue({ ok: true, data: { counted: false } });
+    mountApproved();
+    await act(async () => { fireEvent.click(screen.getAllByRole("button", { name: /^Copy text/ })[0]); });
+    expect(toastMocks.error).toHaveBeenCalledWith("Clipboard unavailable; copy the text manually.");
+    expect(JSON.stringify(toastMocks.success.mock.calls)).not.toContain("Approved text copied");
+  });
+
+  it("still confirms a successful repeat copy", async () => {
+    downloadMocks.copyToClipboard.mockResolvedValue(true);
+    clientMocks.exportVersion.mockResolvedValue({ ok: true, data: { counted: false } });
+    mountApproved();
+    await act(async () => { fireEvent.click(screen.getAllByRole("button", { name: /^Copy text/ })[0]); });
+    expect(toastMocks.error).not.toHaveBeenCalled();
+    expect(toastMocks.success).toHaveBeenCalledWith(expect.stringContaining("Approved text copied"));
   });
 });
