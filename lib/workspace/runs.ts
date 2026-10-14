@@ -568,6 +568,8 @@ export async function runAgentForAction(
         const options = {
           ...AGENT_LLM_OPTIONS,
           timeoutMs: Math.min(AGENT_LLM_OPTIONS.timeoutMs, remaining),
+          // One conversation per run: both attempts share the provider session.
+          sessionId: String(runId),
         };
         if (input.llm) {
           const result = await input.llm(prompt, options);

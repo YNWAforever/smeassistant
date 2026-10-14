@@ -16,7 +16,7 @@ describe("llm config resolution", () => {
     vi.stubEnv("OPENCODE_API_KEY", "");
     vi.stubEnv("LLM_API_KEY", "");
     vi.stubEnv("OPENROUTER_KEY", "sk-openrouter-test");
-    vi.stubEnv("LLM_BASE_URL", "https://opencode.ai/zen/go/v1");
+    vi.stubEnv("LLM_BASE_URL", "https://opencode.ai/inference/go/v1");
 
     const { llmConfigured } = await loadLLM();
 
@@ -83,7 +83,7 @@ describe("llm config resolution", () => {
     await llmComplete("hello", { timeoutMs: 10 });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://opencode.ai/zen/go/v1/chat/completions",
+      "https://opencode.ai/inference/go/v1/chat/completions",
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: "Bearer sk-opencode-legacy-test",
@@ -149,6 +149,41 @@ describe("llm config resolution", () => {
     const { llmComplete } = await loadLLM();
     expect(await llmComplete("prompt")).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("OpenCode request headers", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  async function call(env: Record<string, string>, opts = {}) {
+    for (const [k, v] of Object.entries({ AI_DRAFTS_PAUSED: "", OPENCODE_API_KEY: "", LLM_API_KEY: "", OPENROUTER_KEY: "", LLM_BASE_URL: "", ...env })) vi.stubEnv(k, v);
+    const { llmComplete } = await loadLLM();
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: "ok" } }] }) });
+    vi.stubGlobal("fetch", fetchMock);
+    await llmComplete("hello", { timeoutMs: 10, ...opts });
+    return fetchMock.mock.calls[0] as [string, { headers: Record<string, string> }];
+  }
+
+  // Without these OpenCode answers 400 MissingSessionID before checking the key.
+  it("sends x-opencode-session and a named User-Agent to OpenCode", async () => {
+    const [url, init] = await call({ OPENCODE_API_KEY: "sk-opencode-test" }, { sessionId: "run-123" });
+    expect(url).toBe("https://opencode.ai/inference/go/v1/chat/completions");
+    expect(init.headers["x-opencode-session"]).toBe("run-123");
+    expect(init.headers["User-Agent"]).toBe("sme-scanner/1.0");
+  });
+
+  it("makes up a session id when the caller has none", async () => {
+    const [, init] = await call({ OPENCODE_API_KEY: "sk-opencode-test" });
+    expect(init.headers["x-opencode-session"]).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it("does not send the OpenCode session header to other gateways", async () => {
+    const [, init] = await call({ OPENROUTER_KEY: "sk-openrouter-test", LLM_BASE_URL: "https://openrouter.ai/api/v1" }, { sessionId: "run-123" });
+    expect(init.headers["x-opencode-session"]).toBeUndefined();
   });
 });
 

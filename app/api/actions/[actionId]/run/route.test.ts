@@ -164,7 +164,8 @@ describe("POST /api/actions/[actionId]/run", () => {
     );
     expect(mocks.llmComplete).toHaveBeenCalledWith(
       expect.stringContaining("LINE"),
-      { jsonMode: true, temperature: 0.4, maxTokens: 1200, timeoutMs: 45_000 },
+      // sessionId: the run id, sent to OpenCode as x-opencode-session.
+      { jsonMode: true, temperature: 0.4, maxTokens: 1200, timeoutMs: 45_000, sessionId: expect.any(String) },
     );
     expect(mocks.db!.rpc).toHaveBeenCalledWith(
       "create_output_version",
