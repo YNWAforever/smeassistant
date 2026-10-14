@@ -8,7 +8,7 @@ import { logPauseRefusal, pauseState } from "./pause";
  * cost counts as zero.
  *
  * A pre-check: a run that starts under the limit may finish above it by that
- * run's own cost. Runs are bounded (at most 2 model calls, maxTokens 1200),
+ * run's own cost. Runs are bounded (at most 2 model calls, maxTokens 4000),
  * so the overshoot is at most one run per concurrent request.
  */
 export interface AiSpend {
