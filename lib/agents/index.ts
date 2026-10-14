@@ -39,4 +39,8 @@ export function isAgentKey(value: unknown): value is AgentKey {
 }
 
 /** The runtime options §3.7 fixes for every generation call. */
-export const AGENT_LLM_OPTIONS = { jsonMode: true, temperature: 0.4, maxTokens: 1200, timeoutMs: 45_000 } as const;
+// maxTokens covers reasoning too: the default gateway model (deepseek-v4-flash)
+// spends output tokens on reasoning_content before the answer. With 1200 a full
+// agent prompt exhausted the allowance in reasoning and returned empty content
+// (no_model_output) in production; only tokens actually used are billed.
+export const AGENT_LLM_OPTIONS = { jsonMode: true, temperature: 0.4, maxTokens: 4000, timeoutMs: 45_000 } as const;

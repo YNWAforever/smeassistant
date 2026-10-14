@@ -65,7 +65,7 @@ const EXPECTED_COST = 0.0006; // 1000/1000 × 0.0002 + 500/1000 × 0.0008
 function estimatedCost(): number {
   const prompt = String(mocks.llmComplete.mock.calls[0]?.[0] ?? "");
   expect(prompt.length).toBeGreaterThan(0);
-  const cost = (Math.ceil(prompt.length / 2) / 1000) * 0.0002 + (1200 / 1000) * 0.0008;
+  const cost = (Math.ceil(prompt.length / 2) / 1000) * 0.0002 + (4000 / 1000) * 0.0008;
   return Math.round(cost * 1e6) / 1e6;
 }
 
@@ -301,7 +301,7 @@ describe("POST /api/start/[slug]/preview", () => {
     expect(await res.json()).toEqual({ state: "generated", body: REPLY, warnings: [] });
     expect(mocks.llmComplete).toHaveBeenCalledTimes(1);
     // The agent options, plus redactErrors so a provider error body echoing the review is never logged.
-    expect(mocks.llmComplete).toHaveBeenCalledWith(expect.any(String), { jsonMode: true, temperature: 0.4, maxTokens: 1200, timeoutMs: 45_000, redactErrors: true });
+    expect(mocks.llmComplete).toHaveBeenCalledWith(expect.any(String), { jsonMode: true, temperature: 0.4, maxTokens: 4000, timeoutMs: 45_000, redactErrors: true });
     expect(mocks.finishSlot).toHaveBeenCalledWith({ eventId: EVENT_ID, outcome: "generated", reason: null, costUsd: EXPECTED_COST });
 
     // Review Focus 5: a compensation promise is flagged, after the model's own warnings.

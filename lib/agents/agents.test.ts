@@ -66,7 +66,7 @@ describe("AGENTS", () => {
     expect(beta).toEqual(["gbp_post", "local_seo_brief", "menu_translation", "photo_brief", "promotion_copy"]);
     expect(isAgentKey("review_reply")).toBe(true);
     expect(isAgentKey("review_reply_agent")).toBe(false);
-    expect(AGENT_LLM_OPTIONS).toEqual({ jsonMode: true, temperature: 0.4, maxTokens: 1200, timeoutMs: 45_000 });
+    expect(AGENT_LLM_OPTIONS).toEqual({ jsonMode: true, temperature: 0.4, maxTokens: 4000, timeoutMs: 45_000 });
   });
 
   for (const agent of Object.values(AGENTS)) {

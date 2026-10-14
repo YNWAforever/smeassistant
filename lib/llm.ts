@@ -191,6 +191,17 @@ export async function llmCompleteDetailed(prompt: string, opts: LLMOptions = {})
     const usage = readUsage(data);
     if (typeof content !== "string") return { ok: false, code: "invalid_provider_response", retryable: false, usage };
     const text = content.trim();
+    if (!text) {
+      // Metadata only, never content: an empty answer after `length` means the
+      // allowance went to reasoning, which nothing else in the logs would show.
+      const finishReason = first && typeof first === "object" ? (first as { finish_reason?: unknown }).finish_reason : undefined;
+      const details = (data as { usage?: { completion_tokens_details?: { reasoning_tokens?: unknown } } } | null)?.usage?.completion_tokens_details;
+      console.error("[llm] empty model output", {
+        finishReason: typeof finishReason === "string" ? finishReason : null,
+        reasoningTokens: typeof details?.reasoning_tokens === "number" ? details.reasoning_tokens : null,
+        outputTokens: usage.outputTokens,
+      });
+    }
     return text ? { ok: true, result: { text, usage } } : { ok: false, code: "no_model_output", retryable: false, usage };
   } catch (err) {
     const name = typeof (err as { name?: unknown } | null)?.name === "string" ? (err as { name: string }).name : "unknown";
