@@ -3188,3 +3188,38 @@ button:focus-visible {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* Owner daily focus: one next task; supporting detail stays available on demand. */
+.owner-home-page.owner-daily-focus { max-width: 860px; margin-inline: auto; }
+.owner-home-page.owner-daily-focus > .owner-brief-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "priority"; }
+.owner-home-page.owner-daily-focus .brief-priority-card { display: block; padding: clamp(20px, 3vw, 30px); background: var(--paper); border-color: var(--border); box-shadow: var(--shadow-sm); }
+.owner-home-page.owner-daily-focus .brief-priority-card::after { content: none; }
+.owner-home-page.owner-daily-focus .brief-priority-card h2 { margin: 16px 0 12px; font-size: clamp(23px, 2.5vw, 32px); line-height: 1.35; letter-spacing: -.025em; text-wrap: balance; }
+.owner-home-page.owner-daily-focus .brief-action-meta { margin: 16px 0; flex-wrap: wrap; }
+.owner-home-page.owner-daily-focus .brief-priority-actions { display: flex; justify-content: flex-start; }
+.owner-home-shortcuts { display: flex; flex-wrap: wrap; gap: 12px; margin: 18px 0 24px; }
+.owner-disclosure { margin-top: 12px; border-top: 1px solid var(--border); }
+.owner-disclosure > summary { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 12px 2px; color: var(--ink); font-size: 14px; font-weight: 600; cursor: pointer; list-style: none; }
+.owner-disclosure > summary::-webkit-details-marker { display: none; }
+.owner-disclosure > summary::after { content: "+"; margin-left: auto; font-size: 18px; }
+.owner-disclosure[open] > summary::after { content: "−"; }
+.owner-disclosure > summary:focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; }
+.owner-disclosure[open] > summary { margin-bottom: 12px; }
+.owner-results-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "score proof"; gap: 16px; }
+.owner-results-tools { display: flex; flex-wrap: wrap; margin-bottom: 16px; gap: 12px; }
+.owner-priority-evidence .why-now-box { margin: 0 0 16px; }
+.owner-priority-evidence .why-now-box span { font-size: 14px; line-height: 1.6; }
+.owner-priority-evidence .why-now-box small { margin-top: 8px; font-size: 12px; }
+.owner-approval-note { margin: 20px 0 0; color: var(--soft); font-size: 13px; }
+.owner-more-group { margin-top: 28px; }
+.owner-more-group > h2 { margin-bottom: 14px; font-size: 19px; }
+.owner-more-group .more-link-grid h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.owner-workflow-disclosure .provenance-chain { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.owner-workflow-disclosure .provenance-chain li:not(:last-child)::after { display: none; }
+@media (max-width: 767px) {
+  .owner-home-page.owner-daily-focus .page-intro h1 { font-size: 28px; line-height: 1.3; }
+  .owner-home-page.owner-daily-focus .brief-priority-card h2 { font-size: 24px; }
+  .owner-results-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "score" "proof"; }
+  .owner-home-shortcuts > a { flex: 1 1 160px; min-height: 44px; }
+  .owner-workflow-disclosure .provenance-chain { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

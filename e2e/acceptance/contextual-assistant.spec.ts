@@ -43,6 +43,9 @@ test("an owner with a waiting draft continues from the assistant to the exact ve
   // 2. Home: open the sheet from "Ask why this comes first". The trigger is the
   // question, so opening asks it (explain_priority, a fixed question) by itself.
   await page.goto(`/en/owner/${merchant.slug}`);
+  const evidence = page.locator("details.owner-priority-evidence");
+  await expect(evidence).not.toHaveAttribute("open");
+  await evidence.locator("summary").click();
   const isAssistantRun = (response: { url(): string; request(): { method(): string; postDataJSON(): unknown } }, origin: string) =>
     response.url().includes("/api/assistant/run") && response.request().method() === "POST"
     && (response.request().postDataJSON() as { origin?: string } | null)?.origin === origin;

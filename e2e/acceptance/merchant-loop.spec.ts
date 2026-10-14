@@ -12,6 +12,16 @@ for (const market of ["hk", "tw"] as const) test(`${market}: local fixture link 
   await page.goto(`/en/owner/${merchant.slug}/actions/${merchant.actionId}`);
   await expect(page.locator(".action-detail-page")).toBeVisible();
   await expect(page.locator("#input-brand_voice")).toBeVisible();
+  const workflow = page.locator("details.owner-workflow-disclosure");
+  await expect(workflow).not.toHaveAttribute("open");
+  await expect(workflow.locator(".provenance-chain")).toBeHidden();
+  await workflow.locator("summary").focus();
+  await page.keyboard.press("Enter");
+  await expect(workflow.locator(".provenance-chain")).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(workflow).not.toHaveAttribute("open");
+  await expect(page.locator("#input-brand_voice")).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("owner-task-detail.png"), fullPage: true });
   await page.locator("#input-brand_voice").fill("warm");
   const savedInputs = page.waitForResponse(response => response.url().endsWith(`/api/actions/${merchant.actionId}`) && response.request().method() === "PATCH");
   await page.getByRole("button", { name: "Save inputs and generate", exact: true }).click();

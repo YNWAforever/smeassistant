@@ -3,21 +3,13 @@
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import {
-  Activity,
-  BadgeCheck,
   BarChart3,
   Bell,
-  CalendarDays,
   ChevronDown,
   FileClock,
-  FileText,
   Home,
-  Layers3,
   MoreHorizontal,
   Search,
-  Settings2,
-  Tag,
-  Users,
   WandSparkles,
 } from "lucide-react"
 import { useEffect, type ReactNode } from "react"
@@ -37,7 +29,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarSeparator,
 } from "@/components/ui/sidebar"
 import { copy, normaliseLocale, type PrototypeLocale } from "@/lib/copy"
 import { accountInitials, resolveLocationSlug, usagePercent } from "@/lib/workspace/shell"
@@ -64,20 +55,6 @@ const primaryWorkspaceNav: ReadonlyArray<{
   { key: "insights", label: "Insights", icon: BarChart3, suffix: "/insights" },
 ]
 
-const secondaryWorkspaceNav = [
-  { label: "Assets", icon: Layers3, suffix: "/assets" },
-  { label: "Calendar", icon: CalendarDays, suffix: "/calendar" },
-  { label: "Activity", icon: Activity, suffix: "/activity" },
-  { label: "Brand profile", icon: FileText, suffix: "/settings/brand" },
-  { label: "Integrations", icon: Settings2, suffix: "/settings/integrations" },
-  { label: "Team & roles", icon: Users, suffix: "/settings/team" },
-  { label: "Plan & billing", icon: BadgeCheck, suffix: "/settings/billing" },
-] as const
-
-/** Inserted after Assets when the offers feature is on; the label comes from copy, not the zh map below. */
-type SecondaryNavItem = { readonly label: string; readonly icon: typeof Home; readonly suffix: string }
-const offersNavItem: SecondaryNavItem = { label: "Offers", icon: Tag, suffix: "/offers" }
-
 const englishSmallNumbers = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
 
 function unreadLabel(count: number, isChinese: boolean) {
@@ -102,11 +79,11 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
   const workspaceSection = pathname.includes("/actions/")
     ? (isChinese ? zhFor(locale, "審閱與審批") : "Review & approve")
     : pathname.endsWith("/actions")
-      ? (isChinese ? zhFor(locale, "行動與審批") : "Actions & approvals")
+      ? t.nav.actions
       : pathname.endsWith("/create")
-        ? (isChinese ? "建立內容" : "Create")
+        ? t.nav.create
         : pathname.endsWith("/insights")
-          ? (isChinese ? "成效與證明" : "Insights & proof")
+          ? t.nav.insights
           : pathname.includes("/settings/")
             ? (isChinese ? "工作台設定" : "Workspace settings")
             : pathname.endsWith("/assets")
@@ -117,25 +94,15 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
                   ? (isChinese ? "日曆" : "Calendar")
                   : pathname.endsWith("/activity")
                     ? (isChinese ? "活動紀錄" : "Activity")
-                    : (isChinese ? "今日焦點" : "Today")
+                    : pathname.endsWith("/more") ? t.nav.more : t.nav.home
   const labelMap: Record<string, string> = {
     Home: t.nav.home,
     Actions: t.nav.actions,
     Create: t.nav.create,
     Insights: t.nav.insights,
   }
-  const secondaryNav: ReadonlyArray<SecondaryNavItem> = workspace.offersEnabled
-    ? secondaryWorkspaceNav.flatMap<SecondaryNavItem>((item) => (item.suffix === "/assets" ? [item, offersNavItem] : [item]))
-    : secondaryWorkspaceNav
-  const secondaryLabelMap: Record<string, string> = isChinese ? {
-    Assets: "素材",
-    Calendar: "日曆",
-    Activity: "活動紀錄",
-    "Brand profile": "品牌資料",
-    Integrations: "連接與整合",
-    "Team & roles": "團隊與權限",
-    "Plan & billing": "方案與帳單",
-  } : {}
+  const moreActive = ["/more", "/assets", "/calendar", "/activity", "/settings", "/offers", "/packs"]
+    .some((suffix) => pathname === `${base}${suffix}` || pathname.startsWith(`${base}${suffix}/`))
   const assistantSurface: AssistantSurface = pathname.includes("/actions/")
     ? "action"
     : pathname.endsWith("/actions")
@@ -169,35 +136,23 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
               <SidebarMenu>
                 {primaryWorkspaceNav.map(({ key, label, icon: Icon, suffix }) => {
                   const href = scopedHref(`${base}${suffix}`)
-                  const active = suffix ? pathname.startsWith(href) : pathname === base || pathname === `/${locale}/owner`
+                  const path = `${base}${suffix}`
+                  const active = suffix ? pathname === path || pathname.startsWith(`${path}/`) : pathname === base || pathname === `/${locale}/owner`
                   const badge = key === "actions" ? actionsBadge : undefined
                   return (
                     <SidebarMenuItem key={label}>
                       <SidebarMenuButton asChild isActive={active} tooltip={labelMap[label] ?? label}>
-                        <Link href={href}><Icon /><span>{labelMap[label] ?? label}</span></Link>
+                        <Link href={href} aria-current={active ? "page" : undefined}><Icon /><span>{labelMap[label] ?? label}</span></Link>
                       </SidebarMenuButton>
                       {badge && <SidebarMenuBadge>{badge}</SidebarMenuBadge>}
                     </SidebarMenuItem>
                   )
                 })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-          <SidebarSeparator />
-          <SidebarGroup>
-            <SidebarGroupLabel>{isChinese ? "管理" : "Manage"}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {secondaryNav.map(({ label, icon: Icon, suffix }) => {
-                  const href = scopedHref(`${base}${suffix}`)
-                  return (
-                    <SidebarMenuItem key={label}>
-                      <SidebarMenuButton asChild isActive={pathname === href}>
-                        <Link href={href}><Icon /><span>{label === "Offers" ? t.workspace.offers.nav : secondaryLabelMap[label] ?? label}</span></Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )
-                })}
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={moreActive}>
+                    <Link href={scopedHref(`${base}/more`)} aria-current={moreActive ? "page" : undefined}><MoreHorizontal /><span>{t.nav.more}</span></Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -237,10 +192,11 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
         <nav className="mobile-bottom-nav md:hidden" aria-label={isChinese ? "工作台導覽" : "Workspace navigation"}>
           {primaryWorkspaceNav.map(({ key, label, icon: Icon, suffix }) => {
             const href = scopedHref(`${base}${suffix}`)
-            const active = suffix ? pathname.startsWith(href) : pathname === base
-            return <Link key={key} href={href} className={active ? "is-active" : ""}><Icon /><span>{labelMap[label] ?? label}</span></Link>
+            const path = `${base}${suffix}`
+            const active = suffix ? pathname === path || pathname.startsWith(`${path}/`) : pathname === base
+            return <Link key={key} href={href} aria-current={active ? "page" : undefined} className={active ? "is-active" : ""}><Icon /><span>{labelMap[label] ?? label}</span></Link>
           })}
-          <Link href={scopedHref(`${base}/more`)} className={pathname.includes("/more") || pathname.includes("/settings/") ? "is-active" : ""}>
+          <Link href={scopedHref(`${base}/more`)} aria-current={moreActive ? "page" : undefined} className={moreActive ? "is-active" : ""}>
             <MoreHorizontal /><span>{t.nav.more}</span>
           </Link>
         </nav>

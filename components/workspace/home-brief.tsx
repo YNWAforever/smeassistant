@@ -59,6 +59,7 @@ function actionHref(locale: PrototypeLocale, slug: string, action: ActionOvervie
 
 export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, fixPack, workPacks, role, consentPolicyVersion, problems }: HomeBriefViewProps) {
   const t = copy[locale].home
+  const focus = copy[locale].ownerFocus
   const isChinese = locale !== "en"
   const base = `/${locale}/owner/${workspaceSlug}`
   const location = brief.locationSlug
@@ -83,21 +84,25 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
   const unscanned = !priority && (!hasLocations || (location !== "all" && !snapshot))
   const pageTitle = priority ? t.title : unscanned ? t.noScanTitle : t.quietTitle
   const pageSubtitle = priority ? t.subtitle : unscanned ? t.noScanSubtitle : t.quietSubtitle
+  const priorityCta = role === "viewer" ? focus.view
+    : priority?.templateKey === "google-reconnect" ? focus.connect
+    : priority?.missingInputs.length ? t.addFacts
+    : priority?.latestVersion?.approvalState === "approved"
+      ? ((role === "owner" || role === "manager") && priority.latestVersion.deliveryState === "export_ready" ? focus.export : focus.view)
+    : priority?.latestVersion ? focus.review : t.start
 
   return (
-    <div className="owner-home-page">
+    <div className="owner-home-page owner-daily-focus">
       <PageIntro
         eyebrow={snapshot ? `${isChinese ? "快照" : "Snapshot"} · ${formatDateTime(snapshot.observedAt, locale, timezone)}` : hasLocations && location === "all" ? (isChinese ? "所有地點 · 不顯示合併快照" : "All locations · no combined snapshot") : (isChinese ? "尚未有快照" : "No snapshot yet")}
         title={pageTitle}
         description={pageSubtitle}
-        actions={<>{role && <RescanButton locale={locale} workspaceId={workspaceId} workspaceSlug={workspaceSlug} locationId={brief.location?.id ?? null} tier={tier} role={role} consentPolicyVersion={consentPolicyVersion} />}<LocationSelect locale={locale} value={location} locations={locations} /></>}
+        actions={<LocationSelect locale={locale} value={location} locations={locations} />}
       />
 
       {problems}
 
       {!hasLocations && <div className="context-banner" role="status"><CircleAlert /><div><strong>{t.noLocationTitle}</strong><span>{t.noLocationBody}</span><Link href={`/${locale}/scan`}>{t.noLocationCta}</Link></div></div>}
-
-      {hasLocations && location === "all" && <div className="context-banner" role="status"><CircleAlert /><div><strong>{isChinese ? zhFor(locale, "已切換至所有地點") : "Context changed to all locations"}</strong><span>{isChinese ? zhFor(locale, "摘要按地點範圍顯示；未能取得資料的地點不會當成零分平均。") : "Summary data is location-aware; unavailable locations are never averaged as zero."}</span></div></div>}
 
       <section className="owner-brief-grid" aria-label={isChinese ? "今日營運摘要" : "Today's operating brief"}>
         <article className="brief-priority-card">
@@ -106,9 +111,8 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
             <>
               <h2>{resolveText(priority.title, locale)}</h2>
               <p>{resolveText(priority.summary, locale)}</p>
-              <div className="why-now-box"><FactType type={priority.evidence.factType} /><div><strong>{t.whyNow}</strong><span>{resolveText(priority.evidence.detail, locale)}</span><small>{isChinese ? "觀察於" : "Observed"} {formatDateTime(priority.evidence.observedAt, locale, timezone)} · {sourceLabel(priority.evidence.source, locale)}</small></div></div>
               <div className="brief-action-meta"><span><Clock3 /> {effortLabel(priority.effortMinutes, locale)} {isChinese ? zhFor(locale, "店主時間") : "owner time"}</span><span><FileClock /> {resolveText(priority.displayPhase, locale)}</span></div>
-              <div className="brief-priority-actions"><Button asChild size="lg"><Link href={actionHref(locale, workspaceSlug, priority, location)}>{priority.missingInputs.length ? t.addFacts : t.start}<ArrowRight /></Link></Button><ContextualAssistant locale={locale} surface="home" triggerLabel={isChinese ? "問為何先做這項" : "Ask why this comes first"} autoAsk="explain_priority" mode="live" context={{ workspaceId, locationId: brief.location?.id, snapshotId: snapshot?.id }} basePath={base} locationParam={location} /></div>
+              <div className="brief-priority-actions"><Button asChild size="lg"><Link href={actionHref(locale, workspaceSlug, priority, location)}>{priorityCta}<ArrowRight /></Link></Button></div>
             </>
           ) : (
             <>
@@ -117,6 +121,24 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
             </>
           )}
         </article>
+      </section>
+
+      <div className="owner-home-shortcuts">
+        <Button asChild variant="outline"><Link href={withLocation(`${base}/actions`, location)}>{focus.allTasks}<ArrowRight /></Link></Button>
+        <Button asChild variant="outline"><Link href={withLocation(`${base}/create`, location)}>{focus.create}<ArrowRight /></Link></Button>
+      </div>
+
+      {priority && <details className="owner-disclosure owner-priority-evidence">
+        <summary>{focus.why}</summary>
+        <div className="why-now-box"><FactType type={priority.evidence.factType} /><div><strong>{t.whyNow}</strong><span>{resolveText(priority.evidence.detail, locale)}</span><small>{isChinese ? "觀察於" : "Observed"} {formatDateTime(priority.evidence.observedAt, locale, timezone)} · {sourceLabel(priority.evidence.source, locale)}</small></div></div>
+        <ContextualAssistant locale={locale} surface="home" triggerLabel={isChinese ? "問為何先做這項" : "Ask why this comes first"} autoAsk="explain_priority" mode="live" context={{ workspaceId, locationId: brief.location?.id, snapshotId: snapshot?.id }} basePath={base} locationParam={location} />
+      </details>}
+
+      <details className="owner-disclosure owner-results-disclosure">
+        <summary>{focus.results}</summary>
+        {hasLocations && location === "all" && <div className="context-banner" role="status"><CircleAlert /><div><strong>{isChinese ? zhFor(locale, "已切換至所有地點") : "Context changed to all locations"}</strong><span>{isChinese ? zhFor(locale, "摘要按地點範圍顯示；未能取得資料的地點不會當成零分平均。") : "Summary data is location-aware; unavailable locations are never averaged as zero."}</span></div></div>}
+        {role && <div className="owner-results-tools"><RescanButton locale={locale} workspaceId={workspaceId} workspaceSlug={workspaceSlug} locationId={brief.location?.id ?? null} tier={tier} role={role} consentPolicyVersion={consentPolicyVersion} /></div>}
+        <div className="owner-results-grid">
 
         <article className="brief-score-card">
           <div className="card-label-row"><span>{changed.delta !== null && changed.delta < 0 ? <TrendingDown /> : <TrendingUp />} {t.changed}</span><Badge variant="outline">{changedBadge}</Badge></div>
@@ -156,7 +178,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
           )}
           <Link href={withLocation(`${base}/insights`, location)}>{isChinese ? "查看行動前後" : "Inspect before and after"} <ArrowRight /></Link>
         </article>
-      </section>
+        </div>
 
       <section className="month-brief" aria-labelledby="month-title">
         <div className="month-brief-heading"><div><p className="eyebrow">{t.month}</p><h2 id="month-title">{isChinese ? "小行動，累積看得見的進展。" : "Small actions, visible momentum."}</h2></div>{/* A cadence you act on, not a booked run: nothing dispatches a due
@@ -171,7 +193,10 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
           <article><span className="metric-icon completed"><CircleCheck /></span><div><strong>{month.completed}</strong><span>{isChinese ? "項行動已完成" : "actions completed"}</span></div><small>{isChinese ? zhFor(locale, `${month.measured} 項已量度`) : `${month.measured} measured`}</small></article>
         </div>
       </section>
+      </details>
 
+      <details className="owner-disclosure owner-tasks-disclosure">
+        <summary>{focus.otherTasks}{brief.openActionCount !== undefined && <Badge variant="outline">{brief.openActionCount}</Badge>}</summary>
       <SectionCard className="pending-approval-card">
         <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "決定清單" : "Decision queue"}</p><h2>{isChinese ? "等待你的決定" : "Open actions"}</h2></div><Button asChild variant="ghost"><Link href={withLocation(`${base}/actions`, location)}>{isChinese ? "查看全部" : "View all"} <ArrowRight /></Link></Button></div>
         <div className="compact-action-list">
@@ -189,6 +214,9 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
       ) : (
         fixPack && <FixPackCard locale={locale} workspaceId={fixPack.workspaceId} viewerRole={fixPack.role} actionsHref={`${base}/actions?view=drafts`} />
       )}
+      </details>
+
+      <p className="owner-approval-note">{focus.approvalNote}</p>
 
       {/* FA-04: the methodology stays one tap away, closed by default so the
           next action owns the first screen (native <details>: no JS, keyboard-operable). */}

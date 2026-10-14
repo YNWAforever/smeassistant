@@ -614,9 +614,12 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
         </div>
       )}
 
+      <details className="owner-disclosure owner-workflow-disclosure">
+        <summary>{copy[locale].ownerFocus.workflow}</summary>
       <ol className="provenance-chain" aria-label={isChinese ? "行動來源及生命週期" : "Action provenance and lifecycle"}>
         {provenance.map((item, index) => <li key={item.label} className={`is-${item.state}`}><span className="provenance-node">{item.state === "complete" ? <Check /> : index + 1}</span><div><strong>{item.label}</strong><small>{item.detail}</small></div></li>)}
       </ol>
+      </details>
 
       <Tabs defaultValue="draft" className="action-detail-tabs">
         <TabsList variant="line" className="detail-tab-list"><TabsTrigger value="draft">{isChinese ? zhFor(locale, "草稿與審批") : "Draft & approval"}</TabsTrigger><TabsTrigger value="evidence">{isChinese ? "來源證據" : "Source evidence"}</TabsTrigger><TabsTrigger value="workflow">{isChinese ? "流程狀態" : "Workflow states"}</TabsTrigger><TabsTrigger value="history">{isChinese ? "版本及審計紀錄" : "Version & audit history"}</TabsTrigger></TabsList>

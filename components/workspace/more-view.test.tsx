@@ -25,6 +25,11 @@ function ownerRoutes(): string[] {
 }
 
 describe("MoreView", () => {
+  it("groups supporting tools into content, records and settings without a system-state showcase", () => {
+    const html = renderToStaticMarkup(<MoreView {...props} />);
+    for (const label of ["Content", "Work history", "Workspace settings"]) expect(html.includes(label), label).toBe(true);
+    expect(html).not.toContain("Reviewable edge states");
+  });
   it("reaches Brand assets and Calendar, which the mobile navigation otherwise cannot", () => {
     const html = renderToStaticMarkup(<MoreView {...props} />);
     expect(html).toContain('href="/en/owner/kam-man-house/assets?location=yik-yam"');
