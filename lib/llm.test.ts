@@ -181,6 +181,12 @@ describe("OpenCode request headers", () => {
     expect(init.headers["x-opencode-session"]).toMatch(/^[0-9a-f-]{36}$/);
   });
 
+  it("trims a pasted key and base URL before sending", async () => {
+    const [url, init] = await call({ OPENCODE_API_KEY: " sk-opencode-test\n", LLM_BASE_URL: "https://opencode.ai/inference/go/v1/ \n" });
+    expect(url).toBe("https://opencode.ai/inference/go/v1/chat/completions");
+    expect(init.headers.Authorization).toBe("Bearer sk-opencode-test");
+  });
+
   it("does not send the OpenCode session header to other gateways", async () => {
     const [, init] = await call({ OPENROUTER_KEY: "sk-openrouter-test", LLM_BASE_URL: "https://openrouter.ai/api/v1" }, { sessionId: "run-123" });
     expect(init.headers["x-opencode-session"]).toBeUndefined();

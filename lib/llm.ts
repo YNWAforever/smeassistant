@@ -24,11 +24,13 @@ const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENCODE_MODEL = "deepseek-v4-flash";
 const OPENROUTER_MODEL = "openai/gpt-4o-mini";
 
-const OPENCODE_API_KEY = process.env.OPENCODE_API_KEY ?? "";
-const LLM_API_KEY = process.env.LLM_API_KEY ?? "";
-const OPENROUTER_KEY = process.env.OPENROUTER_KEY ?? "";
-const BASE_URL = (process.env.LLM_BASE_URL ?? "").replace(/\/$/, "");
-const MODEL = process.env.LLM_MODEL ?? "";
+// Trimmed: a value pasted into the Vercel dashboard can carry a trailing space or
+// newline, and `Bearer <key>\n` is rejected by the gateway as an invalid credential.
+const OPENCODE_API_KEY = (process.env.OPENCODE_API_KEY ?? "").trim();
+const LLM_API_KEY = (process.env.LLM_API_KEY ?? "").trim();
+const OPENROUTER_KEY = (process.env.OPENROUTER_KEY ?? "").trim();
+const BASE_URL = (process.env.LLM_BASE_URL ?? "").trim().replace(/\/$/, "");
+const MODEL = (process.env.LLM_MODEL ?? "").trim();
 const REFERER = process.env.NEXT_PUBLIC_APP_URL ?? "https://smescanner.fimmick.com";
 
 function resolveLLMConfig() {
