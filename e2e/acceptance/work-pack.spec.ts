@@ -39,9 +39,18 @@ test("the starter pack becomes drafts, one is approved and exported, and startin
   await signIn(page, environment, merchant);
   expect(used()).toBe("0");
 
-  // 1. Home: the disclosure is visible before anything is requested, and no pack exists yet.
+  // 1. Home: the pack is tucked into the collapsed supporting-task disclosure, and no pack exists yet.
   await page.goto(`/zh-HK/owner/${merchant.slug}`);
-  const card = page.locator(".pack-card");
+  const tasksDisclosure = page.locator("details.owner-tasks-disclosure");
+  const card = tasksDisclosure.locator(".pack-card");
+  const openTasksDisclosure = async () => {
+    if ((await tasksDisclosure.getAttribute("open")) === null) {
+      await tasksDisclosure.locator("summary").click();
+    }
+    await expect(tasksDisclosure).toHaveAttribute("open", "");
+  };
+  await expect(card.getByText(DISCLOSURE)).toBeHidden();
+  await openTasksDisclosure();
   await expect(card.getByText(DISCLOSURE)).toBeVisible();
   const startButton = card.getByRole("button", { name: "開始套裝", exact: true });
   await expect(startButton).toBeEnabled();
@@ -83,6 +92,7 @@ test("the starter pack becomes drafts, one is approved and exported, and startin
 
   // Home now shows that item as exported (the other items are unchanged).
   await page.goto(`/zh-HK/owner/${merchant.slug}`);
+  await openTasksDisclosure();
   await expect(card.locator(`li[data-template="review-response"]`).getByText(EXPORTED)).toBeVisible();
   await expect(card.locator(`li[data-template="website-basics"]`).getByText(DRAFT_READY)).toBeVisible();
 
