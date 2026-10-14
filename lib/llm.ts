@@ -2,7 +2,7 @@ import { logPauseRefusal, pauseState } from "./budgets/pause";
 
 // Centralized LLM gateway client.
 //
-// Defaults to OpenCode Go (https://opencode.ai/zen/go/v1), an OpenAI-compatible
+// Defaults to OpenCode Go (https://opencode.ai/inference/go/v1), an OpenAI-compatible
 // gateway. Every value is overridable via env so the provider can be swapped
 // without code changes:
 //   OPENCODE_API_KEY  – API key (Bearer).               (preferred)
@@ -14,7 +14,12 @@ import { logPauseRefusal, pauseState } from "./budgets/pause";
 // Returns the assistant message text, or null on any failure (missing key,
 // non-2xx, network/timeout, empty body). Callers fall back gracefully on null.
 
-const OPENCODE_BASE_URL = "https://opencode.ai/zen/go/v1";
+// OpenCode moved Go from /zen/go/v1 to /inference/go/v1. Both now answer 400
+// MissingSessionID unless the request carries `x-opencode-session` (one stable id
+// per conversation) and the client names itself in User-Agent
+// (https://opencode.ai/docs/go/#where-can-i-use-it).
+const OPENCODE_BASE_URL = "https://opencode.ai/inference/go/v1";
+const USER_AGENT = "sme-scanner/1.0";
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENCODE_MODEL = "deepseek-v4-flash";
 const OPENROUTER_MODEL = "openai/gpt-4o-mini";
@@ -46,7 +51,7 @@ function resolveLLMConfig() {
   const model = MODEL || defaultModel;
   const configured = Boolean(apiKey && baseUrl);
 
-  return { apiKey, baseUrl, model, configured };
+  return { apiKey, baseUrl, model, configured, usingOpenCodeBase };
 }
 
 export function llmConfigured(): boolean {
@@ -68,6 +73,11 @@ export interface LLMOptions {
    * `true` so its redaction does not depend on this default.
    */
   redactErrors?: boolean;
+  /**
+   * OpenCode's `x-opencode-session`: one stable id per conversation, so retries
+   * of one agent run share it. A fresh id is used when the caller has none.
+   */
+  sessionId?: string;
 }
 
 export interface LLMUsage {
@@ -118,7 +128,7 @@ export async function llmCompleteDetailed(prompt: string, opts: LLMOptions = {})
     logPauseRefusal("llm");
     return { ok: false, code: "ai_paused", retryable: false };
   }
-  const { apiKey, baseUrl, model, configured } = resolveLLMConfig();
+  const { apiKey, baseUrl, model, configured, usingOpenCodeBase } = resolveLLMConfig();
 
   if (!configured || !apiKey) {
     console.error("[llm] unavailable", { category: "provider_unconfigured" });
@@ -140,6 +150,8 @@ export async function llmCompleteDetailed(prompt: string, opts: LLMOptions = {})
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
         "HTTP-Referer": REFERER,
+        "User-Agent": USER_AGENT,
+        ...(usingOpenCodeBase ? { "x-opencode-session": opts.sessionId ?? crypto.randomUUID() } : {}),
       },
       body: JSON.stringify({
         model,
