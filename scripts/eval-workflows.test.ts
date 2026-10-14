@@ -106,7 +106,7 @@ describe("runEval", () => {
     expect(report.model).toBe("some-model");
     expect(report.baseUrlHost).toBe("gateway.example.test");
     expect(JSON.stringify(report)).not.toContain("nope");
-    expect(report.options).toEqual({ jsonMode: true, temperature: 0.4, maxTokens: 1200, timeoutMs: 45_000 });
+    expect(report.options).toEqual({ jsonMode: true, temperature: 0.4, maxTokens: 4000, timeoutMs: 45_000 });
     // runEval returns the report; writing is the CLI entry's job only.
     expect(existsSync("eval-results")).toBe(before);
     const blank = await runEval({ cases: [], llm: cannedLlm([]), budgetUsd: 1, now, env: {} });
