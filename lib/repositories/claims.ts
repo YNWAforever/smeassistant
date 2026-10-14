@@ -109,6 +109,10 @@ export const claimsRepository = {
    const row=(await db.query<{id:string}>("INSERT INTO oauth_connections(workspace_id,provider,account_ref,access_token_encrypted,refresh_token_encrypted,scopes,expires_at,status) VALUES($1,'google_gbp',$2,$3,$4,$5,$6,'expired') RETURNING id",[input.workspaceId,input.accountRef??null,input.accessTokenEncrypted,input.refreshTokenEncrypted,input.scopes,input.expiresAt])).rows[0];
    await db.query("UPDATE oauth_connections SET status='revoked',updated_at=now() WHERE workspace_id=$1 AND provider='google_gbp' AND status='active'",[input.workspaceId]);
    await db.query("UPDATE oauth_connections SET status='active',updated_at=now() WHERE id=$1 AND status='expired'",[row.id]);
+   // The "reconnect Google" action is only derived on a snapshot build, so without
+   // this it stayed open after a successful connect until the next scan (never, on
+   // the lite tier). Same transaction: it closes exactly when the connection is live.
+   await db.query("UPDATE actions SET action_state='completed',completed_at=now(),updated_at=now() WHERE workspace_id=$1 AND template_key='google-reconnect' AND action_state NOT IN ('completed','dismissed','cancelled','expired')",[input.workspaceId]);
    return row.id;
   });
  },

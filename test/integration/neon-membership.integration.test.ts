@@ -239,6 +239,24 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon membership boundaries
   expect((await runtime.query("SELECT count(*)::int n FROM oauth_connections WHERE workspace_id=$1",[ws])).rows[0].n).toBe(2);
  });
 
+ it("completes the open reconnect-Google action when a connection goes live, and nothing else", async () => {
+  const ws=await workspace();
+  const insert=(template:string,state:string)=>runtime.query(
+   `INSERT INTO actions(workspace_id,template_key,title,summary,evidence,priority,priority_score,priority_factors,effort_minutes,capability,dedupe_key,action_state)
+    VALUES($1,$2,'{}'::jsonb,'{}'::jsonb,'{}'::jsonb,'medium',20,'[]'::jsonb,5,'Requires connection',$3,$4) RETURNING id`,
+   [ws,template,`dedupe-${crypto.randomUUID()}`,state]).then(r=>r.rows[0].id as string);
+  const reconnect=await insert("google-reconnect","recommended");
+  const other=await insert("review-request","recommended");
+  const dismissed=await insert("google-reconnect","dismissed");
+
+  await claims.replaceGoogleConnection({workspaceId:ws,accessTokenEncrypted:"fixture-access",refreshTokenEncrypted:"fixture-refresh",scopes:["business.manage"],expiresAt:null});
+
+  const state=async(id:string)=>(await runtime.query("SELECT action_state,completed_at IS NOT NULL done FROM actions WHERE id=$1",[id])).rows[0];
+  expect(await state(reconnect)).toEqual({action_state:"completed",done:true});
+  expect(await state(other)).toEqual({action_state:"recommended",done:false});
+  expect(await state(dismissed)).toEqual({action_state:"dismissed",done:false});
+ });
+
  it("reports the active connection even when a non-active row is newer", async () => {
   // The Integrations card reads latestConnection, and the Disconnect control
   // keys on the status it returns. Ordering by connected_at alone would report
