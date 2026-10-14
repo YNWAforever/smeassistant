@@ -40,18 +40,26 @@ test("an owner with a waiting draft continues from the assistant to the exact ve
   const requested: string[] = [];
   page.on("request", (request) => { requested.push(`${request.method()} ${new URL(request.url()).pathname}`); });
 
-  // 2. Home: open the sheet from "Ask why this comes first".
+  // 2. Home: open the sheet from "Ask why this comes first". The trigger is the
+  // question, so opening asks it (explain_priority, a fixed question) by itself.
   await page.goto(`/en/owner/${merchant.slug}`);
+  const isAssistantRun = (response: { url(): string; request(): { method(): string; postDataJSON(): unknown } }, origin: string) =>
+    response.url().includes("/api/assistant/run") && response.request().method() === "POST"
+    && (response.request().postDataJSON() as { origin?: string } | null)?.origin === origin;
   const suggestionsResponse = page.waitForResponse((response) => response.url().includes("/api/assistant/suggestions") && response.status() === 200);
+  const autoAsk = page.waitForResponse((response) => isAssistantRun(response, "fixed"));
   await clickUntil(page.getByRole("button", { name: "Ask why this comes first" }), page.getByRole("dialog"));
   await suggestionsResponse;
+  const autoAskResponse = await autoAsk;
+  expect(autoAskResponse.status()).toBe(200);
+  expect(autoAskResponse.request().postDataJSON()).toMatchObject({ intentId: "explain_priority", origin: "fixed" });
 
   // 3. "Needs you now" and "Where do I continue?" are offered; ask it.
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByText("Needs you now", { exact: true })).toBeVisible();
   const askButton = sheet.getByRole("button", { name: "Where do I continue?" });
   await expect(askButton).toBeVisible();
-  const run = page.waitForResponse((response) => response.url().includes("/api/assistant/run") && response.request().method() === "POST");
+  const run = page.waitForResponse((response) => isAssistantRun(response, "suggested"));
   await askButton.click();
   const runResponse = await run;
   expect(runResponse.status()).toBe(200);
