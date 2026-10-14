@@ -21,7 +21,7 @@ import { logPauseRefusal, pauseState } from "./budgets/pause";
 const OPENCODE_BASE_URL = "https://opencode.ai/inference/go/v1";
 const USER_AGENT = "sme-scanner/1.0";
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-const OPENCODE_MODEL = "deepseek-v4-flash";
+const OPENCODE_MODEL = "deepseek-v4.1-flash";
 const OPENROUTER_MODEL = "openai/gpt-4o-mini";
 
 // Trimmed: a value pasted into the Vercel dashboard can carry a trailing space or

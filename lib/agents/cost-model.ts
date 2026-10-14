@@ -3,7 +3,7 @@ import type { LLMUsage } from "@/lib/llm";
 // Ported verbatim from upstream apps/web/lib/agents/cost-model.ts.
 //
 // Per-1K-token rate for the default gateway model (lib/llm.ts's OPENCODE_MODEL,
-// deepseek-v4-flash). Override via env if the deployed model changes -- this
+// deepseek-v4.1-flash). Override via env if the deployed model changes -- this
 // is the first feature in the repo to persist LLM cost, so there is no
 // existing per-model table to extend.
 const DEFAULT_INPUT_RATE_PER_1K = 0.0002;

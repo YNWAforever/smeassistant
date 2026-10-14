@@ -88,7 +88,7 @@ describe("llm config resolution", () => {
         headers: expect.objectContaining({
           Authorization: "Bearer sk-opencode-legacy-test",
         }),
-        body: expect.stringContaining('"model":"deepseek-v4-flash"'),
+        body: expect.stringContaining('"model":"deepseek-v4.1-flash"'),
       }),
     );
   });
