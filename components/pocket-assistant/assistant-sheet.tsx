@@ -221,6 +221,24 @@ export function ContextualAssistant({
   const contextKey = mode === "live" && context ? suggestionsQuery(context) : null
   const shown = suggestions.slice(0, 3)
   const questions = surfaceQuestions[surface].filter((questionId) => !shown.some((item) => item.intentId === questionId))
+  // Only the latest request may write the answer: a slower earlier one (an auto-ask,
+  // or a previous click) must not overwrite the question the owner chose since.
+  const latestAsk = useRef(0)
+
+  // A soft navigation (another location or filter) can keep this component mounted
+  // with a new context. An answer about the old context must not stay on screen.
+  const [answeredFor, setAnsweredFor] = useState(contextKey)
+  if (answeredFor !== contextKey) {
+    setAnsweredFor(contextKey)
+    setRun(null)
+    setSelected(null)
+    setRefusal(null)
+    setVersionCreated(false)
+    setState("idle")
+  }
+  useEffect(() => {
+    latestAsk.current += 1
+  }, [contextKey])
 
   // Each time the sheet opens in live mode, ask the server what needs the owner now.
   // The fixed questions never wait for this; any failure leaves them alone on screen.
@@ -247,6 +265,8 @@ export function ContextualAssistant({
 
   async function ask(questionId: DemoQuestionId, options: { key?: string; context?: AssistantContext; origin?: AssistantOrigin } = {}) {
     if(needsReconciliation)return
+    const seq = ++latestAsk.current
+    const stale = () => seq !== latestAsk.current
     setSelected(options.key ?? questionId)
     setRun(null)
     setVersionCreated(false)
@@ -261,6 +281,7 @@ export function ContextualAssistant({
       if (!response.ok) {
         // P3.5a: a spend-budget refusal is an answer, not a broken run.
         const body = (await response.json().catch(() => null)) as { error?: unknown } | null
+        if (stale()) return
         if(response.status===409 && body?.error==='run_in_progress') {
           setNeedsReconciliation(true)
           setRefusal(isChinese ? "此行動已有草稿正在生成。請先重新整理行動，查看目前執行結果。" : "This action already has a draft running. Refresh the action to check its current result first.")
@@ -276,9 +297,11 @@ export function ContextualAssistant({
         throw new Error("assistant_run_failed")
       }
       const result = await response.json() as DemoAssistantRunResponse
+      if (stale()) return
       setRun(result)
       setState("idle")
     } catch {
+      if (stale()) return
       if(mode==='live') {
         setNeedsReconciliation(true)
         setRefusal(isChinese ? "未能確認執行結果。請先重新整理行動，查看目前執行紀錄，再決定是否重新生成。" : "The run outcome could not be confirmed. Refresh the action and check its run history before generating again.")
@@ -287,14 +310,18 @@ export function ContextualAssistant({
     }
   }
 
-  const autoAsked = useRef(false)
+  // Keyed by question and context: reopening in the same context shows the earlier
+  // answer, while a new location or filter asks again about the new context.
+  const autoAskedFor = useRef<string | null>(null)
   useEffect(() => {
-    if (!open || !autoAsk || autoAsked.current) return
-    autoAsked.current = true
+    if (!open || !autoAsk) return
+    const key = `${autoAsk}|${contextKey ?? ""}`
+    if (autoAskedFor.current === key) return
+    autoAskedFor.current = key
     void ask(autoAsk)
-    // `ask` is recreated every render; the ref makes this fire once per mount.
+    // `ask` is recreated every render; the ref keys this to the question and context.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, autoAsk])
+  }, [open, autoAsk, contextKey])
 
   const continueHref = mode === "live" && basePath && run?.nextStep ? nextStepHref(basePath, run.nextStep, locationParam) : null
 

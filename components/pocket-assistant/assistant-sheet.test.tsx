@@ -328,3 +328,39 @@ describe("ContextualAssistant autoAsk", () => {
     expect(stub.runCalls()).toHaveLength(0);
   });
 });
+
+describe("ContextualAssistant answer ownership (PR #71 review)", () => {
+  it("re-asks the autoAsk question for a new context and drops the old answer", async () => {
+    const answers = ["Answer for A", "Answer for B"];
+    const stub = stubFetch(suggestionsOk([]), () => ({ ok: true, status: 200, json: async () => runResponse({ answer: answers.shift() }) }) as unknown as Response);
+    const props = { locale: "en" as const, surface: "actions" as const, mode: "live" as const, autoAsk: "compare_priorities" as const, initialOpen: true };
+    let view!: ReturnType<typeof render>;
+    await act(async () => { view = render(<ContextualAssistant {...props} context={{ workspaceId: WORKSPACE_ID, locationId: "loc-a" }} />); });
+    expect(await screen.findByText("Answer for A")).toBeInTheDocument();
+    await act(async () => { view.rerender(<ContextualAssistant {...props} context={{ workspaceId: WORKSPACE_ID, locationId: "loc-b" }} />); });
+    expect(await screen.findByText("Answer for B")).toBeInTheDocument();
+    expect(screen.queryByText("Answer for A")).toBeNull();
+    expect(stub.runCalls()).toHaveLength(2);
+  });
+
+  it("keeps the answer to the question chosen last when an earlier request returns later", async () => {
+    let releaseFirst!: () => void;
+    const first = new Promise<void>((resolve) => { releaseFirst = resolve; });
+    let n = 0;
+    stubFetch(suggestionsOk([]), () => {
+      n += 1;
+      const answer = n === 1 ? "Auto answer" : "Chosen answer";
+      return (n === 1
+        ? { ok: true, status: 200, json: async () => { await first; return runResponse({ answer }); } }
+        : { ok: true, status: 200, json: async () => runResponse({ answer }) }) as unknown as Response;
+    });
+    await act(async () => {
+      render(<ContextualAssistant locale="en" surface="actions" mode="live" context={{ workspaceId: WORKSPACE_ID }} autoAsk="compare_priorities" initialOpen />);
+    });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "What is still unproven?" })); });
+    expect(await screen.findByText("Chosen answer")).toBeInTheDocument();
+    await act(async () => { releaseFirst(); });
+    expect(screen.getByText("Chosen answer")).toBeInTheDocument();
+    expect(screen.queryByText("Auto answer")).toBeNull();
+  });
+});
