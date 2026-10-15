@@ -507,6 +507,53 @@ describe("the fallback failure toast", () => {
   });
 });
 
+describe("provider limits while generating a draft", () => {
+  beforeEach(() => {
+    if (!window.matchMedia)
+      window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia;
+    clientMocks.runAction.mockReset().mockResolvedValue({ ok: true, data: { state: "failed", error: "provider_rate_limited" } });
+    clientMocks.approveVersion.mockReset();
+    clientMocks.exportVersion.mockReset();
+    toastMocks.error.mockReset();
+  });
+  afterEach(cleanup);
+
+  it.each([
+    ["en", "Regenerate with the agent as a new version", /limit/i, /manually/i],
+    ["zh-HK", "以 Agent 重新生成為新版本", /用量|請求/, /手動/],
+    ["zh-TW", "以 Agent 重新生成為新版本", /用量|請求/, /手動/],
+  ] as const)("in %s explains the provider limit and preserves the draft without delivering it", async (locale, generateLabel, limitLabel, manualLabel) => {
+    const value = detail("review-request");
+    value.versions = [versionRow({ id: "ver-1", version_no: 1, approval_state: "draft", author_type: "user", body: "[TEST DRAFT - DO NOT SEND] Existing owner draft" })];
+    renderLive(
+      <ActionDetailClient
+        locale={locale}
+        workspaceSlug="eldage"
+        workspaceId="ws-1"
+        timezone="Asia/Hong_Kong"
+        role="owner"
+        inScope
+        location="yik-yam"
+        detail={value}
+        auditRows={[]}
+        locations={[{ slug: "yik-yam", name: "Yik Yam" }]}
+        approvedAssets={[]}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: generateLabel }));
+    });
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toMatch(limitLabel);
+    expect(alert.textContent).toMatch(manualLabel);
+    expect(document.body.textContent).not.toContain("provider_rate_limited");
+    expect((screen.getByDisplayValue("[TEST DRAFT - DO NOT SEND] Existing owner draft") as HTMLTextAreaElement).value).toBe("[TEST DRAFT - DO NOT SEND] Existing owner draft");
+    expect(clientMocks.runAction).toHaveBeenCalledTimes(1);
+    expect(clientMocks.approveVersion).not.toHaveBeenCalled();
+    expect(clientMocks.exportVersion).not.toHaveBeenCalled();
+  });
+});
+
 describe("failed assistant drafts in the run history", () => {
   // recordAssistantDraftFailure stores a reason code in action_runs.error;
   // the workflow tab must show owners a label, never the code.

@@ -175,6 +175,18 @@ describe("T19 generation provider classification", () => {
     expect(llmDetailed).toHaveBeenCalledTimes(1);
     expect(finish).toHaveBeenCalledWith(expect.objectContaining({ reason: "provider_rate_limited" }));
   });
+  it("does not immediately retry a rate-limited provider when Retry-After is missing", async () => {
+    const llmDetailed = vi.fn(async () => ({ ok: false as const, code: "provider_rate_limited" as const, retryable: true }));
+    await run({ llmDetailed });
+    expect(llmDetailed).toHaveBeenCalledTimes(1);
+    expect(finish).toHaveBeenCalledWith(expect.objectContaining({ reason: "provider_rate_limited" }));
+  });
+  it("does not immediately retry a rate-limited provider when Retry-After is zero", async () => {
+    const llmDetailed = vi.fn(async () => ({ ok: false as const, code: "provider_rate_limited" as const, retryable: true, retryAfterSeconds: 0 }));
+    await run({ llmDetailed });
+    expect(llmDetailed).toHaveBeenCalledTimes(1);
+    expect(finish).toHaveBeenCalledWith(expect.objectContaining({ reason: "provider_rate_limited" }));
+  });
 });
 beforeEach(() => {
   row = { ...action };

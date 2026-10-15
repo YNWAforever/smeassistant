@@ -18,6 +18,7 @@
   "draftFailure": {
     "serviceUnavailable": "AI 草稿服務尚未可用，請聯絡支援確認服務恢復後再試。",
     "tryLater": "AI 服務今次未能完成草稿，請稍後再試。",
+    "providerLimited": "AI 服務已達請求或用量上限，現有草稿已保留。你可以繼續手動編輯及儲存，或聯絡支援恢復 AI 草稿服務。",
     "factsNeeded": "需要更多資料",
     "invalidOutput": "未能讀取草稿",
     "noModelOutput": "AI 草稿生成暫時未能使用"
