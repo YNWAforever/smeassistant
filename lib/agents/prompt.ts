@@ -40,7 +40,7 @@ function evidenceBlock(spec: AgentSpec, ctx: AgentContext): string {
     },
     ...ctx.evidence,
     provided_inputs: ctx.providedInputs,
-    ...(ctx.draftGrounding ? { current_business: { name: ctx.draftGrounding.businessName, generation_time: ctx.draftGrounding.asOf }, confirmed_business_facts: confirmedDraftBusinessFacts(ctx), location_scope: { id: ctx.action.location.id, name: ctx.action.location.name }, revision_source: ctx.draftGrounding.revisionSource } : {}),
+    ...(ctx.draftGrounding ? { current_business: { name: ctx.draftGrounding.businessName, generation_time: ctx.draftGrounding.asOf }, confirmed_business_facts: confirmedDraftBusinessFacts(ctx), location_scope: ctx.draftGrounding.sourceLocation ?? { id: ctx.action.location.id, name: ctx.action.location.name }, revision_source: ctx.draftGrounding.revisionSource } : {}),
     ...(spec.evidence ? spec.evidence(ctx) : {}),
   };
   return [

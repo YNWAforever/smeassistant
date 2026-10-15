@@ -55,4 +55,30 @@ describe("assistant business fact guard", () => {
     const ctx = { ...context, brand: { ...context.brand, facts: { 地址: address } } };
     expect(check(`地址：${address}\n\n有問題歡迎留言聯絡我哋。`, ctx)).toEqual([]);
   });
+  it.each(["Find us at Fake Plaza, 12 Example Street", "Address: 12 Example Street, Wrong District"])("withholds invented qualifiers around a confirmed address: %s", body => {
+    const ctx = { ...context, brand: { ...context.brand, facts: { address: "12 Example Street" } } };
+    expect(check(body, ctx)).toContain("unconfirmed_address");
+  });
+  it("allows a complete confirmed address clause", () => {
+    const ctx = { ...context, brand: { ...context.brand, facts: { address: "12 Example Street" } } };
+    expect(check("Find us at 12 Example Street. Please contact us with questions.", ctx)).toEqual([]);
+  });
+  it.each(["1 easy way to improve your visibility", "Please do not visit our shop.", "You cannot visit our office.", "請勿到店自取。"])("allows numbered prose and explicit prohibitions: %s", body => {
+    expect(check(body)).toEqual([]);
+  });
+  it("still withholds a Way address introduced as an address", () => {
+    expect(check("Address: 12 Heritage Way")).toContain("unconfirmed_address");
+  });
+  it.each(["Our email address: hello@example.com.", "電郵地址：hello@example.com。"])("allows an email address label: %s", body => {
+    expect(check(body, { ...context, brand: { ...context.brand, facts: { email: "hello@example.com" } } })).toEqual([]);
+  });
+  it("visit approval cannot exempt a stale embedded address", () => {
+    const ctx = { ...context, brand: { ...context.brand, facts: { address: "22 New Road" } }, providedInputs: { approved_visit_invitation: "Visit us at 12 Old Street." } };
+    expect(check("Visit us at 12 Old Street.", ctx)).toContain("unconfirmed_address");
+  });
+  it("allows an exact approved invitation at the confirmed current address", () => {
+    const invitation = "Visit us at 22 New Road.";
+    const ctx = { ...context, brand: { ...context.brand, facts: { address: "22 New Road", approved_visit_invitation: invitation } } };
+    expect(check(invitation, ctx)).toEqual([]);
+  });
 });

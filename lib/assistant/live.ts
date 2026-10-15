@@ -338,7 +338,7 @@ async function agentContext(db: LiveAssistantRepository, input: LiveRunInput, ct
     evidence: snapshotEvidence(ctx.snapshot),
     providedInputs: provided,
     sampledReviews,
-    draftGrounding: { businessName: ctx.workspace?.business_name ?? ctx.locationName, asOf: (input.now ?? (() => new Date()))().toISOString(), revisionSource },
+    draftGrounding: { businessName: ctx.workspace?.business_name ?? ctx.locationName, asOf: (input.now ?? (() => new Date()))().toISOString(), sourceLocation: { id: ctx.locationId, name: ctx.locationName }, revisionSource },
     // A fixed module literal, never owner text -- see AgentContext.toneInstruction.
     ...(intent === "friendlier_review_reply" ? { toneInstruction: WARMER_INSTRUCTION } : {}),
   };

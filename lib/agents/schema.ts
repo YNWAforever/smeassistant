@@ -71,6 +71,7 @@ export interface AgentContext {
   draftGrounding?: {
     businessName: string;
     asOf: string;
+    sourceLocation?: { id: string | null; name: string };
     revisionSource: { id: string; body: string; alt_text: string | null } | null;
   };
 }
