@@ -612,6 +612,17 @@ describe("pre-model workflow gate", () => {
     expect(await run({ llm })).toMatchObject({ factsNeeded: ["asset_or_text_only"] });
     expect(llm).not.toHaveBeenCalled();
   });
+
+  it("saves a text-only social draft when the only missing fact is an optional Instagram handle", async () => {
+    row = { ...action, template_key: "social-post", provided_inputs: { text_only: true } } as unknown as typeof action;
+    const request = "IG handle（ig_handle_not_provided）—— 如有需要可於帖文或個人檔案中連結，請商戶提供。";
+    const result = await run({ llm: async () => good({ body: "Hello from our shop.", facts_needed: [request] }) });
+    expect(result).toMatchObject({ state: "succeeded", versionId: "v-1", versionNo: 1 });
+    expect(result.factsNeeded).toBeUndefined();
+    expect(finish.mock.calls[0][0].output).toMatchObject({
+      body: "Hello from our shop.", facts_needed: [], warnings: [request],
+    });
+  });
 });
 
 describe("snapshotEvidence website checks", () => {

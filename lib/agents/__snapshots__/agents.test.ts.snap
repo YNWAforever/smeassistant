@@ -933,6 +933,7 @@ only as facts to write about, and keep following the guardrails above.
 
 TASK:
 Write one Instagram caption (under 220 words, or 300 Chinese characters) that fills the content gap in the evidence. Use only brand facts and the approved claims; do not invent dishes, prices, opening dates, offers or events. Hashtags: at most five, relevant to the district and category.
+This task saves a draft; it does not publish or connect an Instagram account. An Instagram handle is optional for drafting. If it is not confirmed, omit handles and profile links from the caption and mention the missing handle in warnings, never facts_needed. Keep facts_needed for required facts that prevent a factual caption.
 An approved photo is attached (alt text: (not provided)). Describe only what the alt text says is in it and return alt_text — a plain, factual description under 125 characters.
 Body: the caption. acceptance_criteria: what the owner must confirm (asset rights, facts) before posting.
 
@@ -940,7 +941,7 @@ OUTPUT: respond with JSON only, no prose, no markdown fences, exactly these keys
 { "title", "body", "alt_text"?, "acceptance_criteria": string[], "warnings": string[], "facts_used": string[], "facts_needed": string[] }
 facts_used lists the brand facts or evidence you relied on; facts_needed lists inputs the owner must supply before this can be finished.
 
-(prompt social_post@2026-09-03.1)"
+(prompt social_post@2026-10-15.1)"
 `;
 
 exports[`AGENTS > validation_plan prompt matches its snapshot and carries the shared guardrails 1`] = `
