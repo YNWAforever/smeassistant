@@ -585,6 +585,9 @@ export async function runAgentForAction(
       usage = addUsage(usage, outcome.ok ? outcome.result.usage : outcome.usage, attempt === 0);
       if (!outcome.ok) {
         reason = outcome.code;
+        // A 429 without a positive provider-supplied retry window must not
+        // trigger an immediate second request that can deepen the rate limit.
+        if (outcome.code === "provider_rate_limited" && (outcome.retryAfterSeconds ?? 0) <= 0) break;
         if (!outcome.retryable || attempt + 1 >= MAX_AGENT_ATTEMPTS) break;
         const delay = (outcome.retryAfterSeconds ?? 0) * 1000;
         if (delay + MIN_ATTEMPT_MS > deadline - Date.now()) break;
