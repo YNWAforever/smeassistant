@@ -199,6 +199,36 @@ describe("acceptance", () => {
   });
 });
 
+describe("social post optional Instagram handle", () => {
+  const output = (facts_needed: string[], body = "你好，我哋係傳耆 Eldage。") => JSON.stringify({
+    title: "打個招呼", body, acceptance_criteria: ["Confirm the business name"],
+    warnings: ["Owner review required"], facts_used: ["商戶名稱：傳耆 Eldage"], facts_needed,
+  });
+  const productionRequest = "IG handle（ig_handle_not_provided）—— 如有需要可於帖文或個人檔案中連結，請商戶提供。";
+
+  it.each([productionRequest, "ig_handle_not_provided", "instagram_handle", "Instagram handle (optional)"])("keeps %s as a warning rather than a draft blocker", request => {
+    const parsed = parseAgentOutput(output([request]), AGENTS.social_post.outputSchema);
+    expect(parsed).toMatchObject({
+      body: "你好，我哋係傳耆 Eldage。", facts_needed: [],
+      warnings: ["Owner review required", request],
+    });
+  });
+
+  it("retains required facts and mixed requests even when a handle is also missing", () => {
+    const parsed = parseAgentOutput(output([productionRequest, "offer expiry date", "Instagram handle and confirmed promotion price"]), AGENTS.social_post.outputSchema);
+    expect(parsed?.facts_needed).toEqual(["offer expiry date", "Instagram handle and confirmed promotion price"]);
+    expect(parsed?.warnings).toEqual(["Owner review required", productionRequest]);
+  });
+
+  it("does not turn an empty model response into a savable draft", () => {
+    expect(parseAgentOutput(output([productionRequest], "   "), AGENTS.social_post.outputSchema)?.facts_needed).toEqual([productionRequest]);
+  });
+
+  it("does not change another agent's missing facts", () => {
+    expect(parseAgentOutput(output(["ig_handle_not_provided"]), AGENTS.ig_bio.outputSchema)?.facts_needed).toEqual(["ig_handle_not_provided"]);
+  });
+});
+
 describe("parseAgentOutput", () => {
   it("accepts fenced JSON and fills missing lists", () => {
     const out = parseAgentOutput('```json\n{"title":"Hi","body":"Thanks","facts_used":["voice"]}\n```');
