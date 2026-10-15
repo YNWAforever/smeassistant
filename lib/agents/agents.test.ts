@@ -101,7 +101,7 @@ describe("AGENTS", () => {
     expect(prompt).toContain("collected by the scan from the merchant's public Google profile");
     expect(prompt).toContain("provided_inputs.reviews_without_response is text the owner typed themselves");
     expect(prompt).toContain("Use it ONLY when sampled_reviews_without_owner_response is empty");
-    expect(prompt).toContain("review_reply@2026-09-10.1");
+    expect(prompt).toContain("review_reply@2026-10-15.1");
   });
 
   it("describes a visitor-pasted review as unverified, never as scan evidence (ruling R4)", () => {
@@ -196,6 +196,49 @@ describe("acceptance", () => {
     expect(AGENTS.ig_bio.acceptance(fixedCtx, { ...base, body: "x".repeat(151) })).toEqual(["bio_over_150_chars"]);
     expect(AGENTS.social_post.acceptance(fixedCtx, { ...base, body: "hello" })).toEqual(["alt_text_missing"]);
     expect(AGENTS.social_post.acceptance({ ...fixedCtx, providedInputs: { text_only: true } }, { ...base, body: "hello" })).toEqual([]);
+  });
+});
+
+describe("review reply confirmed next steps", () => {
+  const revisionCtx: AgentContext = {
+    ...fixedCtx,
+    brand: { voice: "warm", approvedClaims: [], prohibitedTerms: [], languages: ["zh-HK"], facts: {} },
+    location: { name: "Example" },
+    providedInputs: {
+      brand_voice: "warm",
+      language: "zh-HK",
+      reviews_without_response: "Five stars, no written review.",
+    },
+    sampledReviews: [],
+    draftGrounding: {
+      businessName: "Example",
+      asOf: "2026-10-15T00:00:00Z",
+      revisionSource: {
+        id: "old-draft",
+        body: "Thank you for five stars. We will improve our service. Come visit us anytime.",
+        alt_text: "A review reply inviting the customer back.",
+      },
+    },
+  };
+
+  it("does not require an improvement promise or a return visit with an empty confirmed profile", () => {
+    const prompt = AGENTS.review_reply.buildPrompt(revisionCtx);
+    const beforeEvidence = prompt.split("-----BEGIN UNTRUSTED EVIDENCE-----")[0];
+    const task = prompt.split("TASK:\n")[1].split("\n\nOUTPUT:")[0];
+    expect(beforeEvidence).not.toMatch(/one concrete improvement, invite back/i);
+    expect(task).not.toMatch(/must:[^\n]*(?:concrete improvement|invite them back)/i);
+    expect(task).toMatch(/contact-only next step/i);
+  });
+
+  it("does not infer customer experience from a rating without written feedback", () => {
+    const task = AGENTS.review_reply.buildPrompt(revisionCtx).split("TASK:\n")[1];
+    expect(task).toMatch(/rating-only review/i);
+    expect(task).toMatch(/do not infer[^\n]*visit[^\n]*purchase[^\n]*experience/i);
+  });
+
+  it("does not reuse a historical image description for a text-only review reply", () => {
+    const task = AGENTS.review_reply.buildPrompt(revisionCtx).split("TASK:\n")[1];
+    expect(task).toMatch(/text-only review replies[^\n]*omit alt_text/i);
   });
 });
 

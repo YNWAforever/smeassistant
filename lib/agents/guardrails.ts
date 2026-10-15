@@ -22,7 +22,7 @@ export const GUARDRAILS = [
   "No invented ingredients, allergens, prices, offer dates, capacity, policies or legal claims.",
   "No superlatives from the prohibited list.",
   "No compensation promises in review replies.",
-  "Review replies: acknowledge, thank, one concrete improvement, invite back.",
+  "Review replies: acknowledge and thank; any next step must use confirmed facts. Prefer a contact-only invitation, never require an improvement promise or a physical return visit.",
 ] as const;
 
 /** §3.7 item 5, verbatim keys. */

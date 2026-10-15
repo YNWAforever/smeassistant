@@ -2,6 +2,8 @@
 
 > User-approved amendment (2026-09-07): retain pinned `@neondatabase/auth@0.5.0-beta` and only its transitive `@supabase/auth-js@2.79.0` library relationship. The library is runtime-reachable through Neon error helpers; this is not zero Supabase-authored packages. No direct application SDK client, Supabase service use, credentials, endpoints or active imports are allowed. The exit gate validates the pinned manifest/importer, package integrity, snapshot and sole introducer edge, then scans all remaining lockfile content. Version or introducer drift fails closed. No SDK patch or upgrade is authorized. This supersedes the literal zero-dependency acceptance wording only; hosted acceptance and release remain separate gates.
 
+> User-approved amendment (2026-10-15): review replies acknowledge and thank the reviewer; any next step uses current confirmed facts, with contact-only feedback as the safe default. Never require an unconfirmed improvement promise or physical return invitation. Rating-only reviews do not establish a visit, purchase or service failure. This supersedes the mandatory "one concrete improvement, invite back" wording in section 3.7. Existing fact validation, version approval and delivery boundaries remain required.
+
 > **What this file is.** The operating manual + executable integration playbook for Claude Code in this repo.
 > Part A (sections 0–3) is always-on context and contracts. Part B (section 4) is the phased playbook.
 > Sections 5–7 are content rules, verification and pitfalls. Appendix D is the decisions log. Read Part A fully before touching code.
