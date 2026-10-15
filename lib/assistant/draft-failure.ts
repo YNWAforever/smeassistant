@@ -13,7 +13,7 @@ const DRAFT_FAILURE_KEYS: Record<string, string> = {
   provider_unconfigured: "draftFailure.serviceUnavailable",
   provider_auth_failed: "draftFailure.serviceUnavailable",
   ai_paused: "draftFailure.serviceUnavailable",
-  provider_rate_limited: "draftFailure.tryLater",
+  provider_rate_limited: "draftFailure.providerLimited",
   provider_unavailable: "draftFailure.tryLater",
   timeout: "draftFailure.tryLater",
   network_error: "draftFailure.tryLater",

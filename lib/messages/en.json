@@ -18,6 +18,7 @@
   "draftFailure": {
     "serviceUnavailable": "AI drafting is not available yet. Please contact support before trying again.",
     "tryLater": "The AI service could not complete this draft. Please try again later.",
+    "providerLimited": "The AI service has reached a request or usage limit. Your existing draft is safe. You can edit and save it manually, or contact support to restore AI drafting.",
     "factsNeeded": "Needed more facts",
     "invalidOutput": "Draft could not be read",
     "noModelOutput": "AI drafting unavailable"
