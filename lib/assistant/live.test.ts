@@ -170,6 +170,16 @@ describe("runLiveAssistant", () => {
     expect(result.output).toMatchObject({ type: "social_post", body: "Lunch is on." });
   });
 
+  it("does not tell friendlier revisions to keep unsupported historical claims", async () => {
+    const llm = vi.fn<Llm>(async () => good);
+    await run({ intentId: "friendlier_review_reply", llm });
+    const prompt = llm.mock.calls[0][0];
+    const tone = prompt.slice(prompt.lastIndexOf("Tone: "));
+    expect(tone).not.toContain("Keep every fact");
+    expect(tone).toContain("only currently confirmed facts");
+    expect(tone).toContain("Remove unsupported or outdated claims and physical invitations");
+  });
+
   it("refuses a social draft with no approved asset before calling the model", async () => {
     // The run path already gates this; the assistant drafted anyway, and the
     // prompt then told the model an approved photo was attached with alt text

@@ -84,7 +84,7 @@ export const DRAFT_AGENTS: Record<DraftIntent, { agent: AgentKey; type: Assistan
   generate_menu: { agent: "menu_translation", type: "menu_translation", templates: ["menu-translation"] },
 };
 
-const WARMER_INSTRUCTION = "Rewrite in a warmer, friendlier tone. Keep every fact; do not add promises, offers, compensation or dates.";
+const WARMER_INSTRUCTION = "Rewrite in a warmer, friendlier tone. Preserve only currently confirmed facts and the supported review details. Remove unsupported or outdated claims and physical invitations from the old draft. Do not add promises, offers, compensation or dates.";
 
 export const LIVE_BOUNDARY = localized(
   "Answers use only this workspace's evidence snapshots; nothing is published or approved here.",

@@ -5,6 +5,7 @@ import {
   filterSelectedReviews,
   resolveBrandProvidedInputs,
   resolveEvidenceInputs,
+  sampledReviewsFromRawData,
   scannedReviewKey,
   selectScannedReviews,
 } from "./evidence-inputs";
@@ -27,6 +28,31 @@ describe("selectScannedReviews", () => {
   it("caps each excerpt so a long review cannot dominate the prompt", () => {
     const selection = selectScannedReviews(rawData([review({ text: "x".repeat(900) })]));
     expect(selection.sampled[0].text).toHaveLength(500);
+  });
+
+  it.each(["", undefined, "   "])("retains an unanswered valid rating without written text: %s", text => {
+    expect(selectScannedReviews(rawData([review({ rating: 5, text })]))).toEqual({
+      inspected: 1,
+      sampled: [{ rating: 5, text: "", time: "2026-08-01T00:00:00Z" }],
+    });
+  });
+
+  it("does not retain an answered rating-only review", () => {
+    expect(selectScannedReviews(rawData([review({ rating: 5, text: "", owner_response: "Thanks" })]))).toEqual({
+      inspected: 1, sampled: [],
+    });
+  });
+
+  it.each([null, undefined, 0, -1, 6, "5", NaN, Infinity])("rejects a blank review with no valid numeric rating: %s", rating => {
+    expect(selectScannedReviews(rawData([review({ rating, text: "   " })])).sampled).toEqual([]);
+  });
+
+  it("supplies rating-only evidence to both input readiness and the assistant", () => {
+    const stored = rawData([review({ rating: 1, text: "" })]);
+    expect(resolveEvidenceInputs({ rawData: stored }).has("reviews_without_response")).toBe(true);
+    expect(sampledReviewsFromRawData(stored)).toEqual([
+      { rating: 1, text: "", time: "2026-08-01T00:00:00Z" },
+    ]);
   });
 
   it("reports nothing to draft from when there is no usable review", () => {
@@ -134,6 +160,13 @@ describe("scannedReviewKey / filterSelectedReviews", () => {
   it("narrows the sample to the owner's picks", () => {
     expect(filterSelectedReviews(sampled, [scannedReviewKey(b)])).toEqual([b]);
     expect(filterSelectedReviews(sampled, [scannedReviewKey(a), scannedReviewKey(b)])).toEqual(sampled);
+  });
+
+  it("selects different rating-only reviews independently even when their times match", () => {
+    const fiveStars = { rating: 5, text: "", time: null };
+    const oneStar = { rating: 1, text: "", time: null };
+    expect(scannedReviewKey(fiveStars)).not.toBe(scannedReviewKey(oneStar));
+    expect(filterSelectedReviews([fiveStars, oneStar], [scannedReviewKey(fiveStars)])).toEqual([fiveStars]);
   });
 
   it("treats absent, empty and unusable selections as all of them", () => {

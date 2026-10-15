@@ -142,6 +142,40 @@ describe("focused draft review", () => {
   });
 });
 
+describe("scanned review choices", () => {
+  afterEach(cleanup);
+
+  it("labels rating-only review choices with their star ratings", () => {
+    const value = detail("review-response");
+    value.scanInputs = [{
+      key: "reviews_without_response", source: "gbp_reviews", factType: "Observed",
+      snapshotId: "snapshot-1", jobId: "job-1", observedAt: "2026-10-15T00:00:00Z",
+      reviews: [
+        { key: "five", rating: 5, excerpt: "", time: null },
+        { key: "one", rating: 1, excerpt: "", time: null },
+      ],
+      selected: ["five"], available: 2, inspected: 2, populationCount: 2,
+    }];
+    renderLive(
+      <ActionDetailClient
+        locale="en"
+        workspaceSlug="kam-man-house"
+        workspaceId="ws-1"
+        timezone="Asia/Hong_Kong"
+        role="owner"
+        inScope
+        location="yik-yam"
+        detail={value}
+        auditRows={[]}
+        locations={[{ slug: "yik-yam", name: "Yik Yam" }]}
+        approvedAssets={[]}
+      />,
+    );
+    expect(screen.getByRole("checkbox", { name: `${copy.en.workspace.scanInputs.include}: ★ 5` })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: `${copy.en.workspace.scanInputs.include}: ★ 1` })).not.toBeChecked();
+  });
+});
+
 describe("checklist templates have a completion path", () => {
   // The defect: an agent-less template rendered exactly like an agent one, so
   // the only primary control was "Generate a draft" -> 409 agent_unavailable.

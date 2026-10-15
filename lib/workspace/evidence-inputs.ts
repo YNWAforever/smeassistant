@@ -67,11 +67,13 @@ export function selectScannedReviews(rawData: unknown): ScannedReviewSelection {
   return {
     inspected: retained.length,
     sampled: retained
-      .filter((review) => !review.ownerResponse && review.text)
+      .filter((review) => !review.ownerResponse && (
+        review.text.trim() || (Number.isFinite(review.rating) && review.rating >= 1 && review.rating <= 5)
+      ))
       .sort((a, b) => (b.time || "").localeCompare(a.time || ""))
       .map((review) => ({
         rating: review.rating || null,
-        text: review.text.slice(0, 500),
+        text: review.text.trim() ? review.text.slice(0, 500) : "",
         time: review.time || null,
       })),
   };
@@ -89,20 +91,22 @@ export function sampledReviewsFromRawData(rawData: unknown): SampledReview[] {
  * Content-derived rather than positional. An index would silently re-point at a
  * different review the moment a new scan reorders the sample, turning the
  * owner's choice quietly wrong rather than visibly stale. Derived from the
- * review's own time and text, so the same stored evidence always yields the
- * same key and a re-derivation still matches.
+ * review's own time and text, or its rating when no text exists, so the same
+ * stored evidence always yields the same key and a re-derivation still matches.
  *
  * It is a lookup handle, not a secret: it travels to the client and back, and
  * all it can do is select from a list the server rebuilt from
  * `audit_jobs.raw_data`. That is the point -- see `filterSelectedReviews`.
  */
-// Takes the whole review but reads only `time` and `text`: the rating is
-// editorial and can be absent, so folding it in would make the key unstable.
+// Preserve existing written-review keys; ratings distinguish newly retained
+// reviews that have no text, even when their timestamps match or are missing.
 export function scannedReviewKey(review: SampledReview): string {
   // FNV-1a. Collision resistance is irrelevant here: the worst case is drafting
   // from one extra review the scan did collect, never from invented text.
   let hash = 0x811c9dc5;
-  const source = `${review.time ?? ""}|${review.text}`;
+  const source = review.text.trim()
+    ? `${review.time ?? ""}|${review.text}`
+    : `rating|${review.time ?? ""}|${review.rating ?? ""}`;
   for (let i = 0; i < source.length; i += 1) {
     hash ^= source.charCodeAt(i);
     hash = Math.imul(hash, 0x01000193) >>> 0;
