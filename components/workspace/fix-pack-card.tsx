@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { Check, Sparkles, X } from "lucide-react"
 
-import { CapabilityBadge, SectionCard } from "@/components/product-ui"
+import { SectionCard } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { copy, type PrototypeLocale } from "@/lib/copy"
@@ -31,7 +31,7 @@ import { zhFor } from "@/lib/zh-tw"
  * lists only the pending drafts under "Earlier staff drafts". The old empty state
  * is gone: with the starter pack on Home, "drafts are not available" is noise.
  */
-export function FixPackCard({ locale, workspaceId, viewerRole, actionsHref, mode = "full" }: { locale: PrototypeLocale; workspaceId: string; viewerRole: WorkspaceRole; actionsHref?: string; mode?: "full" | "earlier" }) {
+export function FixPackCard({ locale, workspaceId, viewerRole, actionsHref, createHref, mode = "full" }: { locale: PrototypeLocale; workspaceId: string; viewerRole: WorkspaceRole; actionsHref?: string; createHref?: string; mode?: "full" | "earlier" }) {
   const isChinese = locale !== "en"
   const [drafts, setDrafts] = useState<OwnerFixPackDraft[] | null>(null)
   const [error, setError] = useState(false)
@@ -92,24 +92,10 @@ export function FixPackCard({ locale, workspaceId, viewerRole, actionsHref, mode
         // card doesn't know.
         !error && <p>{isChinese ? "載入中…" : "Loading…"}</p>
       ) : visible.length === 0 ? (
-        // "Drafts appear here after a paid-tier scan completes" was a promise
-        // nothing keeps: this app never writes agent_runs -- CLAUDE.md 3.7 says
-        // "do not write to `agent_runs` from this app's agents (v1)", the
-        // upstream generator (plan-fix-pack / generate-fix-pack) was never
-        // ported, and no INSERT exists outside integration tests. So a scan can
-        // never populate this card, and an owner who ran one waited for nothing.
-        //
-        // Nor may this name a supplier. The first attempt at this fix said the
-        // drafts were "prepared for you by the Fimmick team" -- softer, and
-        // still unkeepable: that tooling writes the legacy Supabase database,
-        // this app's only pool is Neon, there is no Supabase client left (a
-        // test:no-supabase CI gate enforces it), and NEON-CUTOVER.md requires
-        // an "empty application-data" target. No actor can deliver a draft
-        // here today, so the card says exactly that and points at Actions,
-        // where this workspace's own drafting genuinely is live.
         <>
-          <div className="section-card-heading"><p>{isChinese ? "這個工作台暫時無法取得 Fix Pack 草稿。草稿來自 Fimmick 另一套職員工具，並非由掃描生成。" : "Fix Pack drafts are not available in this workspace. They come from separate Fimmick staff tooling, not from a scan."}</p><CapabilityBadge value="Planned" /></div>
-          {actionsHref && <p className="limitation-note">{isChinese ? "你自己的評論回覆及帖文在「行動」生成：" : "Your own review replies and posts are drafted in Actions:"} <Link href={actionsHref}>{isChinese ? "查看草稿" : "Open drafts"}</Link></p>}
+          <p>{isChinese ? zhFor(locale, "目前沒有待審閱的職員草稿。你可以在「製作內容」準備自己的評論回覆或帖文。") : "No staff drafts to review. You can prepare your own review replies or posts in Create content."}</p>
+          {createHref && <p><Link href={createHref}>{isChinese ? zhFor(locale, "製作內容") : "Create content"}</Link></p>}
+          {actionsHref && <p className="limitation-note"><Link href={actionsHref}>{isChinese ? "查看草稿" : "Open drafts"}</Link></p>}
         </>
       ) : (
         <div className="fix-pack-list">
@@ -128,7 +114,7 @@ export function FixPackCard({ locale, workspaceId, viewerRole, actionsHref, mode
           ))}
         </div>
       )}
-      {error && <p className="limitation-note" role="alert">{isChinese ? "操作未能完成，已重新載入最新狀態。" : "The action could not be completed; the latest state has been reloaded."}</p>}
+      {error && <p className="limitation-note" role="alert">{drafts === null ? (isChinese ? zhFor(locale, "未能載入職員草稿，請重新整理頁面再試。") : "Could not load staff drafts. Refresh the page to try again.") : (isChinese ? zhFor(locale, "操作未能完成，請檢查最新狀態再試。") : "The action could not be completed. Check the latest state and try again.")}</p>}
       {!canApprove && drafts && drafts.length > 0 && <p className="limitation-note">{isChinese ? zhFor(locale, "檢視者只可查看草稿；核准由店主或經理處理。") : "Viewers can inspect drafts; approval is for owners and managers."}</p>}
     </SectionCard>
   )

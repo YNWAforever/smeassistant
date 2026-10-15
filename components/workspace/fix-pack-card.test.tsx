@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const listDrafts = vi.fn();
 const reviewDraft = vi.fn();
 
-// The empty state renders CapabilityBadge, which reads usePathname().
+// Shared product UI reads navigation context.
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
   usePathname: () => "/en/owner/kam-man-house",
@@ -27,7 +27,7 @@ async function mount(drafts: unknown[]) {
     result = render(
       // The same value home-brief.tsx passes: the owner's own drafts, not the
       // whole queue.
-      <FixPackCard locale="en" workspaceId="ws-1" viewerRole="owner" actionsHref="/en/owner/kam-man-house/actions?view=drafts" />,
+      <FixPackCard locale="en" workspaceId="ws-1" viewerRole="owner" createHref="/en/owner/kam-man-house/create?location=all" actionsHref="/en/owner/kam-man-house/actions?view=drafts" />,
     );
   });
   return result.container;
@@ -48,21 +48,38 @@ describe("FixPackCard empty state", () => {
     expect(text).not.toMatch(/after a paid-tier scan completes|drafted from scan findings/i);
   });
 
-  it("does not name a supplier who cannot reach this workspace either", async () => {
-    // The first attempt at this fix said the drafts were "prepared for you by
-    // the Fimmick team" -- softer, still unkeepable. That tooling writes the
-    // legacy Supabase database while this app reads Neon, and the cutover
-    // requires an empty application-data target, so no draft can arrive.
+  it("shows an empty queue rather than an unavailable service", async () => {
     const text = (await mount([])).textContent ?? "";
     expect(text).not.toMatch(/prepared for you by the Fimmick team/i);
-    expect(text).toContain("not available in this workspace");
-    expect(text).toContain("not from a scan");
+    expect(text).toContain("No staff drafts to review.");
+    expect(text).not.toMatch(/not available|separate Fimmick|Planned/i);
   });
 
   it("sends the owner to their own drafts", async () => {
     const container = await mount([]);
     const link = [...container.querySelectorAll("a")].find((node) => /Open drafts/i.test(node.textContent ?? ""));
     expect(link?.getAttribute("href")).toBe("/en/owner/kam-man-house/actions?view=drafts");
+    expect(container.querySelector('a[href="/en/owner/kam-man-house/create?location=all"]')).not.toBeNull();
+  });
+
+  it.each(["zh-HK", "zh-TW"] as const)("shows an accurate empty queue in %s", async (locale) => {
+    listDrafts.mockResolvedValue({ ok: true, drafts: [] });
+    let result!: ReturnType<typeof render>;
+    await act(async () => {
+      result = render(<FixPackCard locale={locale} workspaceId="ws-1" viewerRole="owner" />);
+    });
+    expect(result.container.textContent).toContain("目前沒有待審閱的職員草稿");
+    expect(result.container.textContent).not.toContain("暫時無法取得");
+  });
+
+  it("distinguishes a failed request from an empty queue", async () => {
+    listDrafts.mockResolvedValue({ ok: false });
+    let result!: ReturnType<typeof render>;
+    await act(async () => {
+      result = render(<FixPackCard locale="en" workspaceId="ws-1" viewerRole="owner" />);
+    });
+    expect(result.container.textContent).not.toContain("No staff drafts to review.");
+    expect(result.container.textContent).toContain("Could not load");
   });
 
   it("still renders drafts and their review controls when any exist", async () => {
@@ -139,6 +156,6 @@ describe("FixPackCard mode=earlier (P4.2)", () => {
     expect(container.textContent).toContain("Already approved text.");
     expect(container.textContent).not.toContain("Earlier staff drafts");
     cleanup();
-    expect((await mount([])).textContent).toContain("not available in this workspace");
+    expect((await mount([])).textContent).toContain("No staff drafts to review.");
   });
 });
