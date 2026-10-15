@@ -7,7 +7,7 @@ import { templateByKey } from "@/lib/workspace/templates";
 
 const asProvided = (row: { provided_inputs: unknown }) => (row.provided_inputs ?? {}) as Record<string, unknown>;
 
-const repository = vi.hoisted(() => ({ actionScope:vi.fn(),assistantWorkspace:vi.fn(),assistantLocations:vi.fn(),assistantActions:vi.fn(),assistantSnapshot:vi.fn(),assistantLatestSnapshot:vi.fn(),assistantDiff:vi.fn(),assistantBrand:vi.fn(),assistantReviewData:vi.fn(),versionScope:vi.fn(),createOutputVersion:vi.fn(),recordAssistantDraft:vi.fn(),recordAssistantDraftFailure:vi.fn(),aiSpend24h:vi.fn(),assistantWaitingVersions:vi.fn(),assistantGoogleConnection:vi.fn() }));
+const repository = vi.hoisted(() => ({ actionScope:vi.fn(),assistantWorkspace:vi.fn(),assistantLocations:vi.fn(),assistantActions:vi.fn(),assistantSnapshot:vi.fn(),assistantLatestSnapshot:vi.fn(),assistantDiff:vi.fn(),assistantBrand:vi.fn(),assistantReviewData:vi.fn(),assistantVersion:vi.fn(),versionScope:vi.fn(),createOutputVersion:vi.fn(),recordAssistantDraft:vi.fn(),recordAssistantDraftFailure:vi.fn(),aiSpend24h:vi.fn(),assistantWaitingVersions:vi.fn(),assistantGoogleConnection:vi.fn() }));
 const runPersistence = vi.hoisted(() => ({ queue:vi.fn(),start:vi.fn(),finishAssistantDraft:vi.fn() }));
 vi.mock("@/lib/repositories/artifacts",async original=>({...(await original<typeof import("@/lib/repositories/artifacts")>()),artifactRepository:()=>repository,actionRunRepository:()=>runPersistence}));
 const DRAFT_RUN_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
@@ -22,7 +22,7 @@ const menuRow: typeof actionRow = { ...actionRow, id: "66666666-6666-4666-8666-6
 const state = { actions: [actionRow, socialRow] as Array<typeof actionRow>, snapshots: [snapshot, base] as Array<typeof snapshot> };
 
 
-const good: { text: string; usage: { inputTokens: number; outputTokens: number } } = { text: JSON.stringify({ title: "Reply draft", body: "1. “Waited 25…” — Thank you for telling us; we are adding a host at Friday lunch. Please come back.", acceptance_criteria: ["no compensation"], warnings: [], facts_used: ["voice"], facts_needed: [] }), usage: { inputTokens: 10, outputTokens: 5 } };
+const good: { text: string; usage: { inputTokens: number; outputTokens: number } } = { text: JSON.stringify({ title: "Reply draft", body: "1. “Waited 25…” — Thank you for telling us; we are adding a host at Friday lunch. Please contact us with any questions.", acceptance_criteria: ["no compensation"], warnings: [], facts_used: ["voice"], facts_needed: [] }), usage: { inputTokens: 10, outputTokens: 5 } };
 const run = (over: Partial<Parameters<typeof runLiveAssistant>[0]> = {}) =>
   runLiveAssistant({ intentId: "explain_priority", surface: "home", locale: "en", membership: auth("owner").membership, context: { workspaceId: WORKSPACE_ID, locationId: LOCATION_ID }, llmReady: () => true, ...over });
 const writes = () => repository.createOutputVersion.mock.calls;
@@ -40,6 +40,7 @@ beforeEach(() => {
   repository.assistantBrand.mockResolvedValue({voice:"warm",approved_claims:["Family-run since 1988"],prohibited_terms:["best in Hong Kong"],languages:["zh-HK"],facts:{}});
   repository.assistantReviewData.mockResolvedValue({gbp:{reviews:[{rating:3,text:"Waited 25 minutes on Friday",time:"2026-08-22",owner_response:null}]}});
   repository.versionScope.mockResolvedValue(null);
+  repository.assistantVersion.mockResolvedValue(null);
   repository.recordAssistantDraft.mockResolvedValue(DRAFT_RUN_ID);
   repository.recordAssistantDraftFailure.mockResolvedValue("failed-run-id");
   repository.aiSpend24h.mockResolvedValue({ globalUsd: 0, workspaceUsd: 0 });
@@ -344,6 +345,75 @@ describe("runLiveAssistant", () => {
     expect(result.output).toBeUndefined();
     expect(result.answer).toBe("The agent still needs: capacity, lead_time.");
     expect(result.requiresApproval).toBe(false);
+  });
+});
+
+describe("assistant revision fact grounding", () => {
+  const versionId = "99999999-9999-4999-8999-999999999999";
+  const currentAddress = "1/F, Hung To Centre, 94-96 How Ming St, Kwun Tong";
+  const reply = (body: string) => ({ ...good, text: JSON.stringify({ title: "Greeting", body, warnings: [], acceptance_criteria: [], facts_used: [], facts_needed: [] }) });
+  const revise = (body = "大家好，我哋係傳耆 Eldage，多謝支持。") => run({ intentId: "generate_social", surface: "create", locale: "zh-HK", context: { workspaceId: WORKSPACE_ID, actionId: socialRow.id, versionId }, llm: vi.fn(async () => reply(body)) });
+  beforeEach(() => {
+    state.actions = [{ ...socialRow, provided_inputs: { text_only: true, asset_or_text_only: "text_only", owner_brief: "只介紹傳耆 Eldage，沒有已確認活動。不要加入地址或到訪邀請。" } }];
+    repository.assistantWorkspace.mockResolvedValue({ business_name: "傳耆 Eldage", market: "hk", timezone: "Asia/Hong_Kong" });
+    repository.assistantLocations.mockResolvedValue([{ id: LOCATION_ID, slug: "old-office", name: "Old office", address: "94-96 Old Street", district: "Old district", is_primary: true }]);
+    repository.versionScope.mockResolvedValue({ versionId, actionId: socialRow.id, workspaceId: WORKSPACE_ID, locationId: LOCATION_ID });
+    repository.assistantVersion.mockResolvedValue({ id: versionId, body: "舊稿：地址喺鴻圖街，歡迎隨時過嚟坐坐。", alt_text: null });
+    repository.assistantBrand.mockResolvedValue({ voice: "warm", approved_claims: [], prohibited_terms: [], languages: ["zh-HK"], facts: {}, current_revision_id: "latest-brand-revision" });
+  });
+  it("uses the selected server draft, current brand revision and saved brief without promoting location metadata to confirmed facts", async () => {
+    const llm = vi.fn<Llm>(async () => reply("大家好，我哋係傳耆 Eldage，多謝支持。"));
+    const result = await run({ intentId: "generate_social", surface: "create", locale: "zh-HK", context: { workspaceId: WORKSPACE_ID, actionId: socialRow.id, versionId }, llm });
+    expect(repository.assistantVersion).toHaveBeenCalledWith(versionId, socialRow.id, WORKSPACE_ID);
+    const prompt = llm.mock.calls[0][0];
+    expect(prompt).toContain('"revision_source"');
+    expect(prompt).toContain("舊稿：地址喺鴻圖街");
+    expect(prompt).toContain("只介紹傳耆 Eldage");
+    expect(prompt).toContain("latest-brand-revision");
+    expect(prompt.split("GUARDRAILS:")[0]).not.toContain("94-96 Old Street");
+    expect(prompt).toContain("Never translate or transliterate an address");
+    expect(prompt).toContain("Historical drafts and scan evidence do not confirm current business facts");
+    expect(result.draftRunId).toBe(DRAFT_RUN_ID);
+    expect(runPersistence.queue.mock.calls[0][0].input).toMatchObject({ grounding_policy_version: expect.any(String), context: { versionId } });
+  });
+  it.each([
+    "地址喺觀塘鴻圖中心 1 樓，94-96 鴻圖街。",
+    "Find us at 94-96 How Ming Street, Kwun Tong.",
+    "歡迎你哋隨時過嚟坐坐。",
+    "有咩想知，可以直接嚟搵我哋傾吓偈。",
+    "Come visit our shop anytime.",
+  ])("withholds an unsupported address or visit invitation: %s", async body => {
+    const result = await revise(body);
+    expect(result.output).toBeUndefined();
+    expect(result.draftRunId).toBeUndefined();
+    expect(repository.recordAssistantDraft).not.toHaveBeenCalled();
+    expect(repository.recordAssistantDraftFailure).toHaveBeenCalledWith(expect.objectContaining({ reason: "unconfirmed_business_fact" }));
+    expect(result.warnings.join(" ")).toContain("未確認");
+    expect(repository.createOutputVersion).not.toHaveBeenCalled();
+  });
+  it("preserves a currently confirmed address verbatim and blocks an invented translation", async () => {
+    repository.assistantBrand.mockResolvedValue({ voice: "warm", facts: { address: currentAddress }, current_revision_id: "current" });
+    expect((await revise(`地址：${currentAddress}。`)).output?.body).toContain(currentAddress);
+    expect((await revise("地址：觀塘鴻圖街94-96號鴻圖中心1樓。")).output).toBeUndefined();
+  });
+  it("allows the owner's confirmed localized address and a contact-only CTA", async () => {
+    const address = "觀塘巧明街94-96號鴻圖中心1樓";
+    repository.assistantBrand.mockResolvedValue({ voice: "warm", facts: { 地址: address }, current_revision_id: "current" });
+    expect((await revise(`地址：${address}。有問題歡迎留言聯絡我哋。`)).output?.body).toContain(address);
+  });
+  it("never treats an old version or a negative policy as permission to invite visits", async () => {
+    repository.assistantBrand.mockResolvedValue({ voice: "warm", facts: { visits: "No walk-ins. We moved; pickup is unavailable." }, current_revision_id: "current" });
+    expect((await revise("Drop by our office for a chat.")).output).toBeUndefined();
+  });
+  it("fails before spending if the selected version disappears", async () => {
+    repository.assistantVersion.mockResolvedValue(null);
+    await expect(revise()).rejects.toMatchObject({ code: "not_found" });
+    expect(runPersistence.queue).not.toHaveBeenCalled();
+  });
+  it("does not read a foreign selected draft before authorizing its action", async () => {
+    repository.versionScope.mockResolvedValue({ versionId, actionId: socialRow.id, workspaceId: ACTION_B, locationId: LOCATION_ID });
+    await expect(revise()).rejects.toMatchObject({ code: "not_found" });
+    expect(repository.assistantVersion).not.toHaveBeenCalled();
   });
 });
 

@@ -20,6 +20,7 @@
     "tryLater": "AI 服務這次無法完成草稿，請稍後再試。",
     "providerLimited": "AI 服務已達請求或用量上限，現有草稿已保留。您可以繼續手動編輯及儲存，或聯絡支援恢復 AI 草稿服務。",
     "factsNeeded": "需要更多資訊",
+    "unconfirmedBusinessFact": "草稿含有未確認的地址或到訪邀請，已暫停提供。請先確認商家目前資料再試；現有草稿已保留。",
     "invalidOutput": "無法讀取草稿",
     "noModelOutput": "AI 草稿生成目前無法使用"
   },

@@ -67,6 +67,13 @@ export interface AgentContext {
    * fence exists to close.
    */
   toneInstruction?: string;
+  /** Server-resolved context for assistant drafts; never an instruction from the browser. */
+  draftGrounding?: {
+    businessName: string;
+    asOf: string;
+    sourceLocation?: { id: string | null; name: string };
+    revisionSource: { id: string; body: string; alt_text: string | null } | null;
+  };
 }
 
 export interface AgentDefinition {
