@@ -161,6 +161,11 @@ export async function llmCompleteDetailed(prompt: string, opts: LLMOptions = {})
         max_tokens: opts.maxTokens ?? 1000,
         temperature: opts.temperature ?? 0.5,
         ...(opts.jsonMode ? { response_format: { type: "json_object" } } : {}),
+        // LongCat's default reasoning can outlast the inline draft deadline.
+        // Its documented non-thinking mode keeps structured drafts direct.
+        ...(usingOpenCodeBase && model === "longcat-2.5-preview-free" && opts.jsonMode
+          ? { thinking: { type: "disabled" } }
+          : {}),
       }),
       signal: controller.signal,
     }), interrupted]);
