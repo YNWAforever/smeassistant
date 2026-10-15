@@ -2,13 +2,19 @@ import { bodyLength } from "../guardrails";
 import { defineAgent, inputLine } from "../prompt";
 import { agentOutputSchema } from "../schema";
 
-// Only handle-only requests are optional for caption drafting. Unknown prose
-// and requests that combine a handle with required facts stay blocking.
-const optionalHandleFacts = new Set([
-  "ig_handle", "ig_handle_not_provided", "instagram_handle", "instagram_handle_not_provided",
-  "ig handle", "instagram handle", "ig handle (optional)", "instagram handle (optional)",
-  "ig handle（ig_handle_not_provided）—— 如有需要可於帖文或個人檔案中連結，請商戶提供。",
-]);
+const handleField = "(?:ig|instagram)\\s*(?:handle|username|帳號|賬號|帐号|账号|用戶名稱|用户名称|用戶名|用户名)";
+const optionalStatus = "(?:not provided|not confirmed|missing|optional|未提供|尚未提供|未有提供|未確認|未确认|選填|选填|如有)";
+const handleOnlyRequest = new RegExp(`^(?:please provide\\s+|請(?:提供|確認)\\s*)?${handleField}(?:\\s*${optionalStatus}|\\s*\\((?:${handleField}\\s*)?${optionalStatus}\\))?[。.!]?$`, "i");
+
+function isOptionalHandleFact(fact: string): boolean {
+  // Normalize full-width punctuation, key separators, case and whitespace.
+  // Match the entire request so "Instagram handle and offer price" still blocks.
+  const normalized = fact.normalize("NFKC").toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  // The observed completion appended this handle-only explanation. Do not
+  // discard arbitrary explanatory prose, which could include required facts.
+  const request = normalized.replace(/\s*—+\s*如有需要可於帖文或個人檔案中連結,\s*請商戶提供[。.]?$/, "").trim();
+  return handleOnlyRequest.test(request);
+}
 
 const definition = defineAgent({
   key: "social_post",
@@ -37,10 +43,10 @@ export const socialPost = {
   // the same rule, without relaxing the shared missing-fact persistence gate.
   outputSchema: agentOutputSchema.transform((output) => {
     if (!output.body.trim()) return output;
-    const optional = output.facts_needed.filter((fact) => optionalHandleFacts.has(fact.toLowerCase()));
+    const optional = output.facts_needed.filter(isOptionalHandleFact);
     return {
       ...output,
-      facts_needed: output.facts_needed.filter((fact) => !optionalHandleFacts.has(fact.toLowerCase())),
+      facts_needed: output.facts_needed.filter((fact) => !isOptionalHandleFact(fact)),
       warnings: [...new Set([...output.warnings, ...optional])],
     };
   }),

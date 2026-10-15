@@ -206,7 +206,11 @@ describe("social post optional Instagram handle", () => {
   });
   const productionRequest = "IG handle（ig_handle_not_provided）—— 如有需要可於帖文或個人檔案中連結，請商戶提供。";
 
-  it.each([productionRequest, "ig_handle_not_provided", "instagram_handle", "Instagram handle (optional)"])("keeps %s as a warning rather than a draft blocker", request => {
+  it.each([
+    productionRequest, "ig_handle_not_provided", "instagram_handle", "Instagram handle (optional)",
+    "Instagram 帳號（未提供）", "IG 用戶名稱（選填）", "INSTAGRAM_HANDLE_NOT_PROVIDED",
+    "Instagram   handle (not provided)", "IG帳號尚未提供", "請提供 Instagram 帳號（如有）",
+  ])("keeps %s as a warning rather than a draft blocker", request => {
     const parsed = parseAgentOutput(output([request]), AGENTS.social_post.outputSchema);
     expect(parsed).toMatchObject({
       body: "你好，我哋係傳耆 Eldage。", facts_needed: [],
@@ -215,8 +219,8 @@ describe("social post optional Instagram handle", () => {
   });
 
   it("retains required facts and mixed requests even when a handle is also missing", () => {
-    const parsed = parseAgentOutput(output([productionRequest, "offer expiry date", "Instagram handle and confirmed promotion price"]), AGENTS.social_post.outputSchema);
-    expect(parsed?.facts_needed).toEqual(["offer expiry date", "Instagram handle and confirmed promotion price"]);
+    const parsed = parseAgentOutput(output([productionRequest, "offer expiry date", "Instagram handle and confirmed promotion price", "Instagram 帳號及優惠價格（未提供）"]), AGENTS.social_post.outputSchema);
+    expect(parsed?.facts_needed).toEqual(["offer expiry date", "Instagram handle and confirmed promotion price", "Instagram 帳號及優惠價格（未提供）"]);
     expect(parsed?.warnings).toEqual(["Owner review required", productionRequest]);
   });
 
