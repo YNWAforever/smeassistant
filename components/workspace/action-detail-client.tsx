@@ -222,6 +222,13 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
     }
   }
 
+  // Computed before the render-phase resync blocks below: the `?version=`
+  // link calls `selectVersion`, whose unsaved-changes refusal reads `dirty`.
+  // Reading it after those blocks threw "Cannot access 'dirty' before
+  // initialization" when `?version=` changed on the mounted page.
+  const selectedVersion: VersionRow | null = versions.find((item) => item.id === versionId) ?? null
+  const dirty = selectedVersion ? content !== selectedVersion.body || altText !== (selectedVersion.alt_text ?? "") : content.trim().length > 0
+
   // A "Continue here" link to another version of this same action only changes `?version=`; the App
   // Router keeps this component mounted, so the prop changing is the signal. Same path as a manual
   // version pick (selectVersion); an id that is not among the versions changes nothing.
@@ -241,11 +248,9 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
     if (offerRefusal) setOfferRefusal(null)
   }
 
-  const selectedVersion: VersionRow | null = versions.find((item) => item.id === versionId) ?? null
   const guardrailFlags = selectedVersion?.guardrails ?? []
-  // "Not checked" and "checked, clean" are different facts and must not share a
-  // badge -- that conflation is what let a constant "1 reminder" pass for a
-  // real count.
+  // "Not checked" and "checked, clean" are different facts and must not share
+  // a badge.
   const guardrailBadge = guardrailFlags.length > 0
     ? (isChinese ? `${guardrailFlags.length} 項違規` : `${guardrailFlags.length} flagged`)
     : selectedVersion?.checked
@@ -261,7 +266,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   // export of a published version keeps 'published', so "was it exported" is
   // first_exported_at (the 'exported' state stays a fallback for older rows).
   const exported = Boolean(selectedVersion?.first_exported_at) || selectedVersion?.delivery_state === "exported"
-  const dirty = selectedVersion ? content !== selectedVersion.body || altText !== (selectedVersion.alt_text ?? "") : content.trim().length > 0
+  const saveBeforeAssistantMessage = t(locale, "assistant.saveManualEditsFirst")
   const versionLabel = (no: number) => (isChinese ? `第 ${no} 版` : `Version ${no}`)
   const versionName = selectedVersion ? versionLabel(selectedVersion.version_no) : (isChinese ? "尚未有版本" : "No version yet")
   const approvalText = (state: VersionRow["approval_state"] | null) => (state ? stateLabel(state, locale) : (isChinese ? "尚未有版本" : "No version yet"))
@@ -303,7 +308,11 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
 
   function selectVersion(nextId: string) {
     const next = versions.find((item) => item.id === nextId)
-    if (!next) return
+    if (!next || next.id === versionId) return
+    if (dirty) {
+      toast.error(t(locale, "editor.saveManualEditsBeforeVersionChange"))
+      return
+    }
     setVersionId(next.id)
     setContent(next.body)
     setAltText(next.alt_text ?? "")
@@ -774,7 +783,8 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                 {(selectedVersion?.agentNotes ?? []).map((note) => <p key={note} className="limitation-note"><AlertTriangle /> {note}</p>)}
                 <p className="limitation-note">{isChinese ? zhFor(locale, "除非店主已確認，否則不要加入食材、致敏原、價格或優惠日期。") : "Do not add ingredients, allergens, pricing or offer dates unless the owner confirmed them."}</p></div>
               {lastRunError && <p className="limitation-note" role="alert"><CircleAlert /> {isChinese ? "上次生成失敗：" : "Last generation failed: "}{runErrorLabel(locale, lastRunError)}</p>}
-              <div className="draft-editor-actions"><ContextualAssistant locale={locale} surface={social ? "create" : "action"} triggerLabel={isChinese ? "用助理修改並建立新版本" : "Revise with operator as a new version"} mode="live" context={{ workspaceId, locationId: action.location.id ?? undefined, actionId: action.id, versionId: selectedVersion?.id }} basePath={base} locationParam={location} onCreateVersion={(run) => void createAssistantVersion(run)} disabled={!canEdit} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? (isChinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version") : (isChinese ? "生成草稿" : "Generate a draft")}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {isChinese ? "儲存手動修改為新版本" : "Save manual edits as a new version"}</Button></div>
+              <div className="draft-editor-actions"><ContextualAssistant locale={locale} surface={social ? "create" : "action"} triggerLabel={isChinese ? "用助理修改並建立新版本" : "Revise with operator as a new version"} mode="live" context={{ workspaceId, locationId: action.location.id ?? undefined, actionId: action.id, versionId: selectedVersion?.id }} basePath={base} locationParam={location} onCreateVersion={(run) => void createAssistantVersion(run)} disabled={!canEdit || dirty} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? (isChinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version") : (isChinese ? "生成草稿" : "Generate a draft")}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {isChinese ? "儲存手動修改為新版本" : "Save manual edits as a new version"}</Button></div>
+              {dirty && <p className="limitation-note">{saveBeforeAssistantMessage}</p>}
               {conflict && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "另一位審閱者已更新輸出" : "Another reviewer changed this output"}</strong><p>{isChinese ? "未儲存文字仍保留在本機。載入最新版本、比較內容，再建立新版本。" : "Unsaved text is preserved locally. Load the latest version, compare, then create a new version."}</p><Button size="sm" onClick={loadLatest}><RefreshCw /> {isChinese ? "安全載入最新狀態" : "Load latest safely"}</Button></div></div>}
               </>)}
               {/* The assertion control, offered for checklist and drafted

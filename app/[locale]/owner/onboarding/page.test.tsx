@@ -1,11 +1,11 @@
 import { beforeEach, expect, it, vi } from "vitest";
-const mocks=vi.hoisted(()=>({user:vi.fn(),job:vi.fn(),membership:vi.fn(),connection:vi.fn()}));
+const mocks=vi.hoisted(()=>({user:vi.fn(),job:vi.fn(),membership:vi.fn(),connection:vi.fn(),workspaces:vi.fn(),locations:vi.fn()}));
 vi.mock("@/lib/auth",()=>({requireUser:mocks.user}));
 vi.mock("@/lib/repositories/membership",()=>({membershipRepository:{accepted:mocks.membership}}));
 vi.mock("@/lib/repositories/claims",()=>({claimsRepository:{jobBySlug:mocks.job,hasActiveGoogleConnection:mocks.connection}}));
 vi.mock("@/components/onboarding-page",()=>({OnboardingPage:()=>null}));
 vi.mock("@/lib/repositories/access-requests",()=>({accessRequestRepository:()=>({latestForUserAndReport:async()=>null})}));
-vi.mock("@/lib/repositories/workspace-read",()=>({workspaceReadRepository:()=>({workspaces:async()=>[],locations:async()=>[]})}));
+vi.mock("@/lib/repositories/workspace-read",()=>({workspaceReadRepository:()=>({workspaces:mocks.workspaces,locations:mocks.locations})}));
 vi.mock("@/lib/repositories/brand",()=>({brandRepository:()=>({get:async()=>null})}));
 import Page from "./page";
 import { callbackHref, parseAuthFlow } from "@/lib/identity/sign-in-flow";
@@ -14,10 +14,26 @@ beforeEach(()=>{
  vi.resetAllMocks();mocks.user.mockResolvedValue({id:"mapped-app-id",email:"owner@example.test",verified:true});
  mocks.job.mockResolvedValue({share_slug:"abc123",business_name:"Shop",workspace_id:"workspace",input_snapshot:{instagramHandle:"@shop"}});
  mocks.membership.mockResolvedValue({role:"owner"});mocks.connection.mockResolvedValue(true);
+ mocks.workspaces.mockResolvedValue([]);mocks.locations.mockResolvedValue([]);
 });
 it("uses mapped app ownership before showing connected onboarding steps",async()=>{
  const result=await render();expect(result.props).toMatchObject({ownsWorkspace:true,gbpConnected:true,evidence:{igHandle:"@shop"}});
  expect(mocks.membership).toHaveBeenCalledWith("mapped-app-id","workspace");
+});
+it("sends an accepted owner directly to essentials without a connections step", async () => {
+ const result = await render();
+ expect(result.props.resumeStep).toBe(2);
+});
+it("prefills the report's recorded address rather than a district", async () => {
+ mocks.job.mockResolvedValue({share_slug:"abc123",business_name:"Shop",workspace_id:"workspace",district:"Central",input_snapshot:{address:"12 Fixture Road"}});
+ const result = await render();
+ expect(result.props.evidence).toMatchObject({address:"12 Fixture Road",district:"Central"});
+});
+it("does not treat a saved district as a confirmed street address", async () => {
+ mocks.workspaces.mockResolvedValue([{business_name:"Confirmed Group"}]);
+ mocks.locations.mockResolvedValue([{name:"Central Branch",address:null,district:"Central"}]);
+ const result = await render();
+ expect(result.props.saved.locationAddress).toBeNull();
 });
 it("does not unlock ownership from a claimed query flag or viewer membership",async()=>{
  mocks.membership.mockResolvedValue({role:"viewer"});const result=await render();

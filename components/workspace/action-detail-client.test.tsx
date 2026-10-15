@@ -176,6 +176,157 @@ describe("scanned review choices", () => {
   });
 });
 
+describe("assistant revisions preserve unsaved edits", () => {
+  const fetchSpy = vi.fn();
+
+  beforeEach(() => {
+    if (!window.matchMedia)
+      window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia;
+    fetchSpy.mockReset().mockRejectedValue(new Error("Unexpected request in a UI-only test"));
+    vi.stubGlobal("fetch", fetchSpy);
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it.each([
+    { locale: "en" as const, field: "body" as const },
+    { locale: "zh-HK" as const, field: "body" as const },
+    { locale: "zh-TW" as const, field: "body" as const },
+    { locale: "en" as const, field: "alt_text" as const },
+  ])("requires saving or undoing $field edits before assistant revision in $locale", ({ locale, field }) => {
+    const value = detail("review-response");
+    value.versions = [versionRow({
+      id: "saved-version", version_no: 3, approval_state: "draft",
+      body: "Saved example reply", alt_text: "Saved example description",
+    })];
+    const chinese = locale !== "en";
+    const message = chinese
+      ? "請先將手動修改儲存為新版本，再使用助理修改。"
+      : "Save manual edits as a new version before revising with the assistant.";
+    renderLive(
+      <ActionDetailClient
+        locale={locale}
+        workspaceSlug="example-business"
+        workspaceId="example-workspace"
+        timezone="Asia/Hong_Kong"
+        role="owner"
+        inScope
+        location="yik-yam"
+        detail={value}
+        auditRows={[]}
+        locations={[{ slug: "yik-yam", name: "Example location" }]}
+        approvedAssets={[]}
+      />,
+    );
+    const trigger = screen.getByRole("button", {
+      name: chinese ? "用助理修改並建立新版本" : "Revise with operator as a new version",
+    });
+    const editor = screen.getByLabelText(field === "body" ? (chinese ? "草稿" : "Draft") : "Image alt text");
+    const savedValue = field === "body" ? "Saved example reply" : "Saved example description";
+    expect(trigger).toBeEnabled();
+
+    fireEvent.change(editor, { target: { value: "Unsaved local edit" } });
+    expect(trigger).toBeDisabled();
+    expect(editor).toHaveValue("Unsaved local edit");
+    expect(screen.getByRole("button", {
+      name: chinese ? "儲存手動修改為新版本" : "Save manual edits as a new version",
+    })).toBeEnabled();
+    expect(screen.getByText(message)).toBeInTheDocument();
+    fireEvent.click(trigger);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    fireEvent.change(editor, { target: { value: savedValue } });
+    expect(trigger).toBeEnabled();
+    expect(screen.queryByText(message)).not.toBeInTheDocument();
+  });
+});
+
+describe("version history preserves unsaved edits", () => {
+  const fetchSpy = vi.fn();
+
+  beforeEach(() => {
+    if (!window.matchMedia)
+      window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia;
+    toastMocks.error.mockReset();
+    fetchSpy.mockReset().mockRejectedValue(new Error("Unexpected request in a UI-only test"));
+    vi.stubGlobal("fetch", fetchSpy);
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  function mountHistory(locale: "en" | "zh-HK" | "zh-TW" = "en") {
+    const value = detail("review-response");
+    value.versions = [
+      versionRow({ id: "current-version", version_no: 3, approval_state: "draft", body: "Current reply", alt_text: "Current description" }),
+      versionRow({ id: "earlier-version", version_no: 2, approval_state: "superseded", body: "Earlier reply", alt_text: "Earlier description" }),
+    ];
+    renderLive(
+      <ActionDetailClient
+        locale={locale}
+        workspaceSlug="example-business"
+        workspaceId="example-workspace"
+        timezone="Asia/Hong_Kong"
+        role="owner"
+        inScope
+        location="yik-yam"
+        detail={value}
+        auditRows={[]}
+        locations={[{ slug: "yik-yam", name: "Example location" }]}
+        approvedAssets={[]}
+      />,
+    );
+  }
+
+  it.each([
+    { locale: "en" as const, field: "body" as const },
+    { locale: "zh-HK" as const, field: "body" as const },
+    { locale: "zh-TW" as const, field: "body" as const },
+    { locale: "en" as const, field: "alt_text" as const },
+  ])("keeps $field edits when another version is selected in $locale, then allows a clean switch", ({ locale, field }) => {
+    mountHistory(locale);
+    const chinese = locale !== "en";
+    const editorLabel = field === "body" ? (chinese ? "草稿" : "Draft") : "Image alt text";
+    const historyTab = () => screen.getByRole("tab", { name: chinese ? /版本/ : /Version & audit history/ });
+    const draftTab = () => screen.getByRole("tab", { name: chinese ? /草稿/ : /Draft & approval/ });
+    fireEvent.change(screen.getByLabelText(editorLabel), { target: { value: "Unsaved local edit" } });
+    fireEvent.mouseDown(historyTab(), { button: 0 });
+    fireEvent.click(screen.getByRole("button", { name: chinese ? /^第 2 版/ : /^Version 2/ }));
+    fireEvent.mouseDown(draftTab(), { button: 0 });
+
+    expect(screen.getByLabelText(editorLabel)).toHaveValue("Unsaved local edit");
+    expect(toastMocks.error).toHaveBeenCalledWith(chinese
+      ? "請先將手動修改儲存為新版本，再切換版本。"
+      : "Save manual edits as a new version before switching versions.");
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText(editorLabel), {
+      target: { value: field === "body" ? "Current reply" : "Current description" },
+    });
+    fireEvent.mouseDown(historyTab(), { button: 0 });
+    fireEvent.click(screen.getByRole("button", { name: chinese ? /^第 2 版/ : /^Version 2/ }));
+    fireEvent.mouseDown(draftTab(), { button: 0 });
+    expect(screen.getByLabelText(chinese ? "草稿" : "Draft")).toHaveValue("Earlier reply");
+    expect(screen.getByLabelText(chinese ? "圖片替代文字" : "Image alt text")).toHaveValue("Earlier description");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not reset local edits when the already selected version is clicked", () => {
+    mountHistory();
+    fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "Unsaved local edit" } });
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /Version & audit history/ }), { button: 0 });
+    fireEvent.click(screen.getByRole("button", { name: /^Version 3/ }));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /Draft & approval/ }), { button: 0 });
+    expect(screen.getByLabelText("Draft")).toHaveValue("Unsaved local edit");
+    expect(toastMocks.error).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
 describe("checklist templates have a completion path", () => {
   // The defect: an agent-less template rendered exactly like an agent one, so
   // the only primary control was "Generate a draft" -> 409 agent_unavailable.

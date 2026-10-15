@@ -1,4 +1,20 @@
 {
+  "onboarding": {
+    "title": "設定店家，查看第一項建議",
+    "intro": "確認店家與存取權，再核對基本資料，即可查看掃描結果與優先建議。",
+    "verifyStep": "店家與存取權",
+    "basicsStep": "基本資料與結果",
+    "viewReport": "查看掃描報告",
+    "ownershipReady": "存取權已確認。核對預填資料後，即可查看結果。",
+    "basicsIntro": "核對店家資料後，我們會開啟掃描結果，顯示優先建議。",
+    "businessName": "店家名稱",
+    "address": "地址（選填）",
+    "connectionsLater": "Instagram、Google 連線與品牌設定，都可以稍後在「設定」補充。",
+    "moreSettings": "更多設定（選填）",
+    "finish": "完成設定，查看結果",
+    "saving": "儲存中…",
+    "resultUnavailable": "目前無法開啟結果。您輸入的資料仍然保留，請再試一次。"
+  },
   "applied": {
     "markButton": "標記為已套用",
     "markHint": "我們只記錄您告訴我們的內容；下次掃描才會查核。",
@@ -14,6 +30,12 @@
   "budget": {
     "scanAtCapacity": "免費掃描目前已達上限，請於幾個小時後再試。",
     "aiLimit": "今天的 AI 草稿生成額度已用完，請稍後再試。"
+  },
+  "assistant": {
+    "saveManualEditsFirst": "請先將手動修改儲存為新版本，再使用助理修改。"
+  },
+  "editor": {
+    "saveManualEditsBeforeVersionChange": "請先將手動修改儲存為新版本，再切換版本。"
   },
   "draftFailure": {
     "serviceUnavailable": "AI 草稿服務尚未可用，請聯絡支援確認服務恢復後再試。",

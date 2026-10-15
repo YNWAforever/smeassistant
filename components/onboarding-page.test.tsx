@@ -40,18 +40,18 @@ function render(props: Partial<Parameters<typeof OnboardingPage>[0]> = {}) {
 
 describe("OnboardingPage resume step", () => {
   it("starts at step 1 when nothing is owned yet", () => {
-    expect(render().textContent).toContain("Step 1 of 4");
+    expect(render().textContent).toContain("Step 1 of 2");
   });
 
   it("resumes from persisted ownership, with no query parameter involved", () => {
     // The OAuth callback no longer passes `claimed=1`; an owner returning to
     // the same URL must still land past the ownership step.
-    expect(render({ ownsWorkspace: true, gbpConnected: true, resumeStep: 3 }).textContent).toContain("Step 3 of 4");
+    expect(render({ ownsWorkspace: true, gbpConnected: true, resumeStep: 3 }).textContent).toContain("Step 2 of 2");
   });
 
-  it("resumes at brand basics once the claim route has created the location", () => {
+  it("resumes at essentials with persisted fields once the claim route has created the location", () => {
     const root = render({ ownsWorkspace: true, gbpConnected: true, resumeStep: 4, saved });
-    expect(root.textContent).toContain("Step 4 of 4");
+    expect(root.textContent).toContain("Step 2 of 2");
     // Saved values win over the scan's guesses.
     const inputs = [...root.querySelectorAll("input")].map((node) => node.getAttribute("value"));
     expect(inputs).toContain("Kam Man House Ltd");
@@ -62,7 +62,7 @@ describe("OnboardingPage resume step", () => {
   it("ignores a stored voice this build does not know about", () => {
     // Falls back to the default rather than rendering a dead Select value.
     const root = render({ ownsWorkspace: true, resumeStep: 4, saved: { ...saved, voice: "sardonic" } });
-    expect(root.textContent).toContain("Step 4 of 4");
+    expect(root.textContent).toContain("Step 2 of 2");
   });
 });
 
