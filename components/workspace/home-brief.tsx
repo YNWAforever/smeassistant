@@ -212,7 +212,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
           <FixPackCard mode="earlier" locale={locale} workspaceId={workPacks.earlierDrafts.workspaceId} viewerRole={workPacks.earlierDrafts.role} actionsHref={`${base}/actions?view=drafts`} />
         </>
       ) : (
-        fixPack && <FixPackCard locale={locale} workspaceId={fixPack.workspaceId} viewerRole={fixPack.role} actionsHref={`${base}/actions?view=drafts`} />
+        fixPack && <FixPackCard locale={locale} workspaceId={fixPack.workspaceId} viewerRole={fixPack.role} createHref={withLocation(`${base}/create`, location)} actionsHref={`${base}/actions?view=drafts`} />
       )}
       </details>
 
