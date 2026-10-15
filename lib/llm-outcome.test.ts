@@ -11,6 +11,25 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("T19 provider outcomes", () => {
+  it.each([
+    { model: "longcat-2.5-preview-free", baseUrl: "https://opencode.ai/inference/go/v1", jsonMode: true, thinking: { type: "disabled" } },
+    { model: "longcat-2.5-preview-free", baseUrl: "https://custom.example/v1", jsonMode: true, thinking: undefined },
+    { model: "deepseek-v4.1-flash", baseUrl: "https://opencode.ai/inference/go/v1", jsonMode: true, thinking: undefined },
+    { model: "longcat-2.5-preview-free", baseUrl: "https://opencode.ai/inference/go/v1", jsonMode: false, thinking: undefined },
+  ])("sets draft reasoning options only for OpenCode LongCat JSON ($model, $baseUrl, json=$jsonMode)", async ({ model, baseUrl, jsonMode, thinking }) => {
+    vi.stubEnv("LLM_MODEL", model);
+    vi.stubEnv("LLM_BASE_URL", baseUrl);
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ choices: [{ message: { content: '{"draft":"fixture"}' } }] })));
+    vi.stubGlobal("fetch", fetchMock);
+    const { llmCompleteDetailed } = await import("./llm");
+    expect(await llmCompleteDetailed("fixture draft", { jsonMode, timeoutMs: 1000 })).toMatchObject({ ok: true, result: { text: '{"draft":"fixture"}' } });
+    const request = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(String(request[1].body));
+    expect(body.thinking).toEqual(thinking);
+    expect(body.model).toBe(model);
+    expect(body.response_format).toEqual(jsonMode ? { type: "json_object" } : undefined);
+  });
+
   it("refuses missing configuration before any fetch", async () => {
     vi.stubEnv("OPENCODE_API_KEY", "");
     const fetch = vi.fn(); vi.stubGlobal("fetch", fetch);
