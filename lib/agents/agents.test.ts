@@ -234,6 +234,7 @@ describe("review reply confirmed next steps", () => {
     const task = AGENTS.review_reply.buildPrompt(revisionCtx).split("TASK:\n")[1];
     expect(task).toMatch(/rating-only review/i);
     expect(task).toMatch(/do not infer[^\n]*visit[^\n]*purchase[^\n]*experience/i);
+    expect(task).toMatch(/when no written words exist[^\n]*star rating/i);
   });
 
   it("does not reuse a historical image description for a text-only review reply", () => {

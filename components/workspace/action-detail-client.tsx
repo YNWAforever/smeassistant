@@ -688,7 +688,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                           ? <Checkbox
                               checked={selectedReviews.includes(review.key)}
                               disabled={busy === "inputs"}
-                              aria-label={`${scanInputCopy.include}: ${review.excerpt.slice(0, 60)}`}
+                              aria-label={`${scanInputCopy.include}: ${review.excerpt.slice(0, 60) || `★ ${review.rating}`}`}
                               onCheckedChange={(checked) => void toggleReview(review.key, checked === true)}
                             />
                           : <MessageSquare />}</span>
