@@ -12,6 +12,7 @@ vi.mock("@/components/pocket-assistant/assistant-sheet", () => ({ ContextualAssi
 
 import type { ShellWorkspace } from "@/components/product-ui";
 import { WorkspaceShell } from "@/components/workspace-shell";
+import { MoreView } from "@/components/workspace/more-view";
 import { copy } from "@/lib/copy";
 
 beforeAll(() => {
@@ -36,12 +37,13 @@ const workspace: ShellWorkspace = {
 };
 
 function mount(overrides: Partial<ShellWorkspace> = {}, locale: "en" | "zh-HK" | "zh-TW" = "en") {
-  return render(<WorkspaceShell locale={locale} workspace={{ ...workspace, ...overrides }}><div /></WorkspaceShell>);
+  const value = { ...workspace, ...overrides };
+  return render(<WorkspaceShell locale={locale} workspace={value}><MoreView locale={locale} workspaceSlug={value.slug} locationSlug={value.defaultLocationSlug} locationCount={value.locations.length} offersEnabled={value.offersEnabled} /></WorkspaceShell>);
 }
 
 const offersLinks = () => screen.queryAllByRole("link").filter((link) => link.getAttribute("href")?.includes("/offers"));
 
-describe("WorkspaceShell offers entry (P4.1)", () => {
+describe("WorkspaceShell Offers through More (P4.1)", () => {
   it("has no Offers link when offersEnabled is absent", () => {
     mount();
     expect(offersLinks()).toHaveLength(0);
@@ -53,8 +55,11 @@ describe("WorkspaceShell offers entry (P4.1)", () => {
     expect(offersLinks()).toHaveLength(0);
   });
 
-  it("shows one Offers link, scoped to the location, only when enabled", () => {
+  it("reaches one scoped Offers link through More only when enabled", () => {
     mount({ offersEnabled: true });
+    const menuLinks = screen.getAllByRole("link", { name: copy.en.nav.more });
+    expect(menuLinks).toHaveLength(2); // Desktop and mobile use the same destination.
+    for (const link of menuLinks) expect(link).toHaveAttribute("href", "/en/owner/kam-man-house/more?location=yik-yam");
     const links = offersLinks();
     expect(links).toHaveLength(1);
     expect(links[0]).toHaveAttribute("href", "/en/owner/kam-man-house/offers?location=yik-yam");

@@ -132,6 +132,16 @@ function render(templateKey: TemplateKey, measurements: ActionDetail["measuremen
 const checklistCopy = copy.en.workspace.checklist;
 const appliedCopy = getMessages("en").applied;
 
+describe("focused draft review", () => {
+  it("keeps the lifecycle available on demand without putting it ahead of the editor", () => {
+    const root = render("review-response");
+    const disclosure = root.querySelector(".provenance-chain")?.closest("details");
+    expect(disclosure).not.toBeNull();
+    expect(disclosure?.hasAttribute("open")).toBe(false);
+    expect(root.querySelector(".draft-editor-card")?.closest("details")).toBeNull();
+  });
+});
+
 describe("checklist templates have a completion path", () => {
   // The defect: an agent-less template rendered exactly like an agent one, so
   // the only primary control was "Generate a draft" -> 409 agent_unavailable.

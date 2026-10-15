@@ -207,6 +207,44 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
     }
   });
 
+  it("keeps evidence and results closed so the priority action owns the daily view", () => {
+    const root = view({ withSnapshot: true });
+    for (const selector of [".why-now-box", ".brief-score-card", ".brief-proof-card", ".month-brief"]) {
+      const disclosure = root.querySelector(selector)?.closest("details");
+      expect(disclosure, selector).not.toBeNull();
+      expect(disclosure?.hasAttribute("open"), selector).toBe(false);
+    }
+    expect(root.querySelector(".brief-priority-actions a")?.closest("details")).toBeNull();
+    expect(root.querySelector(".brief-priority-card h2")?.closest("details")).toBeNull();
+  });
+
+  it("offers short routes to all tasks and content creation without losing the branch", () => {
+    const shortcuts = view().querySelector(".owner-home-shortcuts");
+    expect(shortcuts).not.toBeNull();
+    expect(shortcuts?.querySelector('a[href="/en/owner/kam-man-house/actions?location=yik-yam"]')).not.toBeNull();
+    expect(shortcuts?.querySelector('a[href="/en/owner/kam-man-house/create?location=yik-yam"]')).not.toBeNull();
+  });
+
+  it("takes an existing draft straight to review instead of promising a new start", () => {
+    const action = { ...priority(), latestVersion: { id: "version-1", versionNo: 2, approvalState: "draft" as const, deliveryState: "not_requested" as const } };
+    const link = view({ priority: action }).querySelector(".brief-priority-actions a");
+    expect(link?.textContent).toContain("Review draft");
+    expect(link?.getAttribute("href")).toContain("/actions/");
+  });
+
+  it.each(["owner", "manager", "viewer"] as const)("offers an approved version only within the %s role", (role) => {
+    const action = { ...priority(), latestVersion: { id: "version-1", versionNo: 2, approvalState: "approved" as const, deliveryState: "export_ready" as const } };
+    const link = view({ priority: action, role }).querySelector(".brief-priority-actions a");
+    expect(link?.textContent).toContain(role === "viewer" ? "View task" : "Export approved version");
+    expect(link?.getAttribute("href")).toContain("/actions/");
+    if (role === "viewer") expect(link?.textContent).not.toContain("Export");
+  });
+
+  it("does not invite another export once the approved version has been exported", () => {
+    const action = { ...priority(), latestVersion: { id: "version-1", versionNo: 2, approvalState: "approved" as const, deliveryState: "exported" as const } };
+    expect(view({ priority: action, role: "owner" }).querySelector(".brief-priority-actions a")?.textContent).toContain("View task");
+  });
+
   it("labels the card 今日要做 in every locale", () => {
     expect(view({ locale: "en" }).querySelector(".brief-priority-card")?.textContent).toContain("Do this today");
     expect(view({ locale: "zh-HK" }).querySelector(".brief-priority-card")?.textContent).toContain("今日要做");

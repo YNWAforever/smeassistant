@@ -1,50 +1,40 @@
 import Link from "next/link"
-import { Activity, AlertTriangle, Bell, CalendarDays, CheckCircle2, ChevronRight, CircleDashed, Clock3, CreditCard, Layers3, MapPin, Palette, PlugZap, ShieldAlert, Tag, Users, WifiOff } from "lucide-react"
+import { Activity, Bell, CalendarDays, ChevronRight, CreditCard, Layers3, MapPin, Palette, PlugZap, Tag, Users } from "lucide-react"
 
-import { Badge } from "@/components/ui/badge"
-import { PageIntro, SectionCard } from "@/components/product-ui"
+import { PageIntro } from "@/components/product-ui"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { withLocation } from "@/lib/workspace/format"
+import { zhFor } from "@/lib/zh-tw"
 
 export function MoreView({ locale, workspaceSlug, locationCount, locationSlug, offersEnabled = false }: { locale: PrototypeLocale; workspaceSlug: string; locationCount: number; locationSlug: string; offersEnabled?: boolean }) {
   const isChinese = locale !== "en"
   const base = `/${locale}/owner/${workspaceSlug}`
+  const focus = copy[locale].ownerFocus
   const links = [
-    { en: "Locations", zh: "地點", detailEn: `${locationCount} ${locationCount === 1 ? "location" : "locations"} and comparison`, detailZh: `${locationCount} 個地點及比較`, icon: MapPin, href: `/${locale}/owner/select-workspace` },
-    // Assets and Calendar lived only in the desktop sidebar (product-ui.tsx
-    // :306-307, `hidden md:flex`), and the mobile bottom nav is the four
-    // primary tabs plus More -- so on a phone both routes were unreachable.
-    // That blocked a real job: a social post needs an approved asset or an
-    // explicit text-only choice, and Assets is the only place to grant rights.
-    // Wording and icons come from the destinations themselves, so each row and
-    // the page it opens agree.
-    { en: "Brand assets", zh: "品牌素材", detailEn: "Approved photos, menus and usage rights", detailZh: "已核准相片、餐牌及使用權", icon: Layers3, href: withLocation(`${base}/assets`, locationSlug) },
-    // P4.1: the Offers page 404s until the flag is on, so its entry exists only then (the desktop sidebar mirrors this).
-    ...(offersEnabled ? [{ en: copy.en.workspace.offers.nav, zh: copy[locale].workspace.offers.nav, detailEn: copy.en.workspace.offers.page.eyebrow, detailZh: copy[locale].workspace.offers.page.eyebrow, icon: Tag, href: withLocation(`${base}/offers`, locationSlug) }] : []),
-    { en: "Calendar", zh: "日曆", detailEn: "Rescan cadence and dated work", detailZh: "重新掃描節奏及有到期日的工作", icon: CalendarDays, href: `${base}/calendar` },
-    { en: "Activity", zh: "活動紀錄", detailEn: "Append-only decision history", detailZh: "只增不改的決定紀錄", icon: Activity, href: `${base}/activity` },
-    { en: "Brand profile", zh: "品牌資料", detailEn: "Voice, claims and guardrails", detailZh: "語氣、說法及保障規則", icon: Palette, href: `${base}/settings/brand` },
-    { en: "Integrations", zh: "連接與整合", detailEn: "Scope, sync and recovery", detailZh: "權限、同步及復原", icon: PlugZap, href: `${base}/settings/integrations` },
-    { en: "Team & roles", zh: "團隊與角色", detailEn: "Owner, manager and viewer", detailZh: "店主、經理及檢視者", icon: Users, href: `${base}/settings/team` },
-    { en: "Notifications", zh: "通知", detailEn: "Consent and quiet hours", detailZh: "同意及靜音時段", icon: Bell, href: `${base}/settings/notifications` },
-    { en: "Plan & billing", zh: "方案與帳單", detailEn: "Approved deliveries and payment", detailZh: "核准後交付及付款", icon: CreditCard, href: `${base}/settings/billing` },
+    { group: "settings", en: "Locations", zh: "地點", detailEn: `${locationCount} ${locationCount === 1 ? "location" : "locations"} and comparison`, detailZh: `${locationCount} 個地點及比較`, icon: MapPin, href: `/${locale}/owner/select-workspace` },
+    { group: "content", en: "Brand assets", zh: "品牌素材", detailEn: "Approved photos, menus and usage rights", detailZh: "已核准相片、餐牌及使用權", icon: Layers3, href: withLocation(`${base}/assets`, locationSlug) },
+    // The destination exists only when the offers feature is enabled.
+    ...(offersEnabled ? [{ group: "content", en: copy.en.workspace.offers.nav, zh: copy[locale].workspace.offers.nav, detailEn: copy.en.workspace.offers.page.eyebrow, detailZh: copy[locale].workspace.offers.page.eyebrow, icon: Tag, href: withLocation(`${base}/offers`, locationSlug) }] : []),
+    { group: "history", en: "Calendar", zh: "日曆", detailEn: "Rescan cadence and dated work", detailZh: "重新掃描節奏及有到期日的工作", icon: CalendarDays, href: `${base}/calendar` },
+    { group: "history", en: "Activity", zh: "活動紀錄", detailEn: "Your decisions and completed work", detailZh: "查看決定及已完成的工作", icon: Activity, href: `${base}/activity` },
+    { group: "content", en: "Brand profile", zh: "品牌資料", detailEn: "Voice and confirmed business facts", detailZh: "品牌語氣及已確認的商戶資料", icon: Palette, href: `${base}/settings/brand` },
+    { group: "settings", en: "Integrations", zh: "連接與整合", detailEn: "Connect or check your data sources", detailZh: "連接或檢查資料來源", icon: PlugZap, href: `${base}/settings/integrations` },
+    { group: "settings", en: "Team & roles", zh: "團隊與權限", detailEn: "Manage your team and access", detailZh: "管理同事及存取權限", icon: Users, href: `${base}/settings/team` },
+    { group: "settings", en: "Notifications", zh: "通知", detailEn: "Choose which updates to receive", detailZh: "選擇接收哪些更新", icon: Bell, href: `${base}/settings/notifications` },
+    { group: "settings", en: "Plan & billing", zh: "方案與帳單", detailEn: "Usage, plan and payment", detailZh: "用量、方案及付款", icon: CreditCard, href: `${base}/settings/billing` },
   ]
-  const states = [
-    { icon: Clock3, en: "Loading", zh: "載入中", detailEn: "Structure and labels remain stable.", detailZh: "頁面結構及標籤保持穩定。" },
-    { icon: CheckCircle2, en: "Empty", zh: "沒有資料", detailEn: "No urgent work; persistent work remains.", detailZh: "沒有緊急工作；持續項目仍可查看。" },
-    { icon: AlertTriangle, en: "Stale data", zh: "資料過時", detailEn: "Freshness remains explicit.", detailZh: "清楚顯示證據新鮮度。" },
-    { icon: WifiOff, en: "Offline", zh: "離線", detailEn: "Approval and delivery stay blocked.", detailZh: "審批及送出保持停用。" },
-    { icon: ShieldAlert, en: "Permission denied", zh: "權限不足", detailEn: "Unauthorised mutations fail closed.", detailZh: "未授權操作會安全拒絕。" },
-    { icon: CircleDashed, en: "No comparable scan", zh: "暫無可比較掃描", detailEn: "No trend until eligibility is met.", detailZh: "符合資格前不顯示趨勢。" },
+  const groups = [
+    { key: "content", title: focus.contentGroup },
+    { key: "history", title: focus.historyGroup },
+    { key: "settings", title: focus.settingsGroup },
   ]
   return (
-    <div className="more-page">
-      <PageIntro eyebrow={isChinese ? "工作台管理" : "Workspace management"} title={isChinese ? "更多" : "More"} description={isChinese ? "支援日常工作的頁面、次要設定及系統狀態，不會擠入五項主要流動版導覽。" : "Supporting surfaces, secondary settings and system states — kept out of the five-item primary mobile navigation."} />
-      <div className="more-link-grid">{links.map(({ en, zh, detailEn, detailZh, icon: Icon, href }) => <Link key={en} href={href}><span><Icon /></span><div><h2>{isChinese ? zh : en}</h2><p>{isChinese ? detailZh : detailEn}</p></div><ChevronRight /></Link>)}</div>
-      <SectionCard className="state-gallery">
-        <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "可審閱的邊界狀態" : "Reviewable edge states"}</p><h2>{isChinese ? "失敗及復原也是產品的一部分" : "Failure and recovery are part of the product"}</h2></div><Badge variant="outline">{isChinese ? "6 個狀態" : "6 states"}</Badge></div>
-        <div className="state-gallery-grid">{states.map(({ icon: Icon, en, zh, detailEn, detailZh }) => <article key={en}><span><Icon /></span><h3>{isChinese ? zh : en}</h3><p>{isChinese ? detailZh : detailEn}</p></article>)}</div>
-      </SectionCard>
+    <div className="more-page owner-more-page">
+      <PageIntro eyebrow={isChinese ? "工作台管理" : "Workspace management"} title={copy[locale].nav.more} description={focus.moreIntro} />
+      {groups.map(group => <section className="owner-more-group" key={group.key} aria-labelledby={`more-${group.key}`}>
+        <h2 id={`more-${group.key}`}>{group.title}</h2>
+        <div className="more-link-grid">{links.filter(link => link.group === group.key).map(({ en, zh, detailEn, detailZh, icon: Icon, href }) => <Link key={en} href={href}><span><Icon aria-hidden="true" /></span><div><h3>{isChinese ? zhFor(locale, zh) : en}</h3><p>{isChinese ? zhFor(locale, detailZh) : detailEn}</p></div><ChevronRight aria-hidden="true" /></Link>)}</div>
+      </section>)}
     </div>
   )
 }

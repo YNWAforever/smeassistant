@@ -57,6 +57,21 @@ for (const visual of [
       return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
     })).toBe(true);
 
+    const results = page.locator("details.owner-results-disclosure");
+    const evidence = page.locator("details.owner-priority-evidence");
+    await expect(results).not.toHaveAttribute("open");
+    await expect(evidence).not.toHaveAttribute("open");
+    await expect(page.locator(".brief-score-card")).toBeHidden();
+    await expect(page.locator(".why-now-box").first()).toBeHidden();
+    await page.screenshot({ path: test.info().outputPath("owner-daily-focus-mobile.png"), fullPage: true });
+    await evidence.locator("summary").click();
+    await expect(evidence.locator(".why-now-box")).toBeVisible();
+    await evidence.locator("summary").click();
+    await results.locator("summary").click();
+    await expect(results.locator(".brief-score-card")).toBeVisible();
+    await expect(results.locator(".month-brief")).toBeVisible();
+    await results.locator("summary").click();
+
     // The methodology is one tap away, closed until asked for.
     const disclosure = page.locator("details.trust-disclosure");
     await expect(disclosure).not.toHaveAttribute("open");
@@ -73,3 +88,21 @@ for (const visual of [
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
 }
+
+test("desktop More reaches supporting tools while keeping navigation focused", async ({ page, merchant, environment }) => {
+  await signIn(page, environment, merchant, "owner");
+  await page.goto(`/en/owner/${merchant.slug}?location=all`);
+  const sidebar = page.locator(".workspace-sidebar");
+  await expect(sidebar.locator("[data-slot='sidebar-menu'] a")).toHaveCount(5);
+  await page.screenshot({ path: test.info().outputPath("owner-daily-focus-desktop.png"), fullPage: true });
+  const more = sidebar.getByRole("link", { name: "More", exact: true });
+  await more.click();
+  await expect(page).toHaveURL(`${environment.app}/en/owner/${merchant.slug}/more?location=all`);
+  await expect(more).toHaveAttribute("aria-current", "page");
+  await expect(page.locator(".workspace-topbar-context strong")).toHaveText("More");
+  for (const heading of ["Content", "Work history", "Workspace settings"]) await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("owner-more-desktop.png"), fullPage: true });
+  await page.getByRole("link", { name: /Brand assets/ }).click();
+  await expect(page).toHaveURL(`${environment.app}/en/owner/${merchant.slug}/assets?location=all`);
+  await expect(sidebar.getByRole("link", { name: "More", exact: true })).toHaveAttribute("aria-current", "page");
+});

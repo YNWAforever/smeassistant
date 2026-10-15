@@ -408,6 +408,23 @@ export type Copy = {
     noLocationCta: string
     month: string
   }
+  ownerFocus: {
+    why: string
+    results: string
+    otherTasks: string
+    allTasks: string
+    create: string
+    review: string
+    view: string
+    export: string
+    connect: string
+    workflow: string
+    contentGroup: string
+    historyGroup: string
+    settingsGroup: string
+    moreIntro: string
+    approvalNote: string
+  }
   common: {
     coverage: string
     measured: string
