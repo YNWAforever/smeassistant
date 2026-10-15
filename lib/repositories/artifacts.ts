@@ -81,7 +81,7 @@ export interface RecordAssistantDraftFailureInput {
  locale: string;
  model: string | null;
  /** no_model_output: llmComplete returned nothing; invalid_output: it returned text that did not parse. */
- reason: 'no_model_output' | 'invalid_output' | 'facts_needed' | import('../llm').LLMFailureCode;
+ reason: 'no_model_output' | 'invalid_output' | 'facts_needed' | 'unconfirmed_business_fact' | import('../llm').LLMFailureCode;
  factsNeeded: string[];
  usage: LLMUsage;
  /** Null when the gateway reported no usage; never a guessed zero. */
@@ -136,6 +136,12 @@ export function artifactRepository(client?: Executor) {
  }
  return {
   actionScope,versionScope,
+  assistantVersion(versionId: string, actionId: string, workspaceId: string) {
+   return operation(async () => (await db().query<{id:string;body:string;alt_text:string|null}>(`SELECT v.id,v.body,v.alt_text
+    FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id
+    WHERE v.id=$1 AND a.id=$2 AND a.workspace_id=$3 AND ${ACTION_SCOPE_PREDICATE}
+    AND (v.action_run_id IS NULL OR EXISTS(SELECT 1 FROM action_runs r WHERE r.id=v.action_run_id AND r.action_id=a.id AND r.workspace_id=a.workspace_id))`,[versionId,actionId,workspaceId])).rows[0] ?? null);
+  },
   async assistantWorkspace(workspaceId: string) { return (await workspaceReadRepository(client).workspaces([workspaceId]))[0] ?? null; },
   assistantLocations(workspaceId: string) { return workspaceReadRepository(client).locations([workspaceId]); },
   assistantActions(workspaceId: string, opts: {locationId?: string|null;states?: ActionState[];ids?:string[]} = {}) { return workspaceReadRepository(client).actions(workspaceId,opts); },
@@ -319,7 +325,7 @@ export function artifactRepository(client?: Executor) {
 export type ArtifactRepository = ReturnType<typeof artifactRepository>;
 
 /** Live drafting has a read-only repository capability; saving is an explicit separate action. */
-export type LiveAssistantRepository = Pick<ArtifactRepository,'actionScope'|'assistantWorkspace'|'assistantLocations'|'assistantActions'|'assistantSnapshot'|'assistantLatestSnapshot'|'assistantDiff'|'assistantBrand'|'assistantReviewData'|'versionScope'|'aiSpend24h'|'assistantWaitingVersions'|'assistantGoogleConnection'>;
+export type LiveAssistantRepository = Pick<ArtifactRepository,'actionScope'|'assistantWorkspace'|'assistantLocations'|'assistantActions'|'assistantSnapshot'|'assistantLatestSnapshot'|'assistantDiff'|'assistantBrand'|'assistantReviewData'|'assistantVersion'|'versionScope'|'aiSpend24h'|'assistantWaitingVersions'|'assistantGoogleConnection'>;
 
 
 export interface QueueActionRunInput {

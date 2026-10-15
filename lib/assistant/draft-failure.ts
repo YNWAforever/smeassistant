@@ -8,6 +8,7 @@ import { t } from "@/lib/i18n";
  */
 const DRAFT_FAILURE_KEYS: Record<string, string> = {
   facts_needed: "draftFailure.factsNeeded",
+  unconfirmed_business_fact: "draftFailure.unconfirmedBusinessFact",
   invalid_output: "draftFailure.invalidOutput",
   no_model_output: "draftFailure.noModelOutput",
   provider_unconfigured: "draftFailure.serviceUnavailable",

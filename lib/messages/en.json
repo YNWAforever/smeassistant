@@ -20,6 +20,7 @@
     "tryLater": "The AI service could not complete this draft. Please try again later.",
     "providerLimited": "The AI service has reached a request or usage limit. Your existing draft is safe. You can edit and save it manually, or contact support to restore AI drafting.",
     "factsNeeded": "Needed more facts",
+    "unconfirmedBusinessFact": "The draft includes an unconfirmed address or visit invitation and was withheld. Confirm the current business facts before trying again; your existing draft is safe.",
     "invalidOutput": "Draft could not be read",
     "noModelOutput": "AI drafting unavailable"
   },

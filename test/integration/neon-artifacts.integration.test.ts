@@ -59,6 +59,16 @@ describe.runIf(process.env.NEON_INTEGRATION === '1')('Neon artifact persistence 
   expect(second).toMatchObject({ version_id:two.version_id,counted:true });
   expect(second.delivery_id).not.toBe(first.delivery_id);
  });
+ it('reads a revision source only for the matching action and workspace', async () => {
+  const a=await setup(),b=await setup(),repo=artifactRepository(runtime);
+  const source='Selected revision source '.repeat(600)+'Final qualification must survive revision.';
+  const version=await repo.createOutputVersion(input(a.action,source));
+  expect(await repo.assistantVersion(version.version_id,a.action,a.workspace)).toMatchObject({id:version.version_id,body:source});
+  expect(await repo.assistantVersion(version.version_id,b.action,a.workspace)).toBeNull();
+  expect(await repo.assistantVersion(version.version_id,a.action,b.workspace)).toBeNull();
+  await runtime.query('UPDATE output_versions SET workspace_id=$1 WHERE id=$2',[b.workspace,version.version_id]);
+  expect(await repo.assistantVersion(version.version_id,a.action,a.workspace)).toBeNull();
+ });
  it('rejects foreign parent workspace, location and action-run references before artifact writes', async () => {
   const a=await setup(),b=await setup(),repo=artifactRepository(runtime);
   const foreignLocation=(await runtime.query("INSERT INTO locations(workspace_id,slug,name) VALUES($1,'foreign','Foreign') RETURNING id",[b.workspace])).rows[0].id;

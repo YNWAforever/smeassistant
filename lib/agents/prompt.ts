@@ -1,5 +1,6 @@
 import { brandBlock, guardrailBlock, outputBlock, roleBlock, sharedAcceptance } from "./guardrails";
 import { agentOutputSchema, type AgentContext, type AgentDefinition, type AgentKey, type AgentOutput } from "./schema";
+import { confirmedDraftBusinessFacts, DRAFT_GROUNDING_POLICY } from "./draft-grounding";
 
 /**
  * What each agent file declares. `composePrompt` turns it into the §3.7
@@ -39,6 +40,7 @@ function evidenceBlock(spec: AgentSpec, ctx: AgentContext): string {
     },
     ...ctx.evidence,
     provided_inputs: ctx.providedInputs,
+    ...(ctx.draftGrounding ? { current_business: { name: ctx.draftGrounding.businessName, generation_time: ctx.draftGrounding.asOf }, confirmed_business_facts: confirmedDraftBusinessFacts(ctx), location_scope: { id: ctx.action.location.id, name: ctx.action.location.name }, revision_source: ctx.draftGrounding.revisionSource } : {}),
     ...(spec.evidence ? spec.evidence(ctx) : {}),
   };
   return [
@@ -57,6 +59,7 @@ export function composePrompt(spec: AgentSpec, ctx: AgentContext): string {
     roleBlock(spec.role, ctx),
     brandBlock(ctx),
     guardrailBlock(),
+    ...(ctx.draftGrounding ? [DRAFT_GROUNDING_POLICY] : []),
     evidenceBlock(spec, ctx),
     `TASK:\n${spec.task(ctx).trim()}`,
     outputBlock(),
