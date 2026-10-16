@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes, randomInt, randomUUID } from 'node:crypto';
 
 import { assertLocalOrigin, listen } from './safety';
 
@@ -15,6 +15,7 @@ function validFixtureEmail(value: unknown): value is string {
 export async function startIdentityServer(app: string, secret: string) {
  assertLocalOrigin(app);
  const links = new Map<string, Link>();
+ const codes = new Map<string, { otp: string; expires: number; attempts: number }>();
  const sessions = new Map<string, Session>();
  const verifiers = new Map<string, GoogleVerifier>();
  const messages: { ID: string; To: { Address: string }[]; HTML: string; Text: string }[] = [];
@@ -61,6 +62,27 @@ export async function startIdentityServer(app: string, secret: string) {
    }
    if (!controller()) return json({ error: 'unauthorized' }, 401);
    const body = await read();
+   if (req.url === '/send-code') {
+    if (!validFixtureEmail(body.email)) return json({ error: 'unsafe_fixture_recipient' }, 400);
+    const otp = randomInt(0, 1_000_000).toString().padStart(6, '0');
+    codes.set(body.email, { otp, expires: Date.now() + 60_000, attempts: 0 });
+    messages.push({ ID: randomUUID(), To: [{ Address: body.email }], HTML: `<p>Local sign-in code: <strong>${otp}</strong></p>`, Text: otp });
+    return json({ ok: true });
+   }
+   if (req.url === '/verify-code') {
+    if (!validFixtureEmail(body.email)) return json({ error: 'invalid_code' }, 401);
+    const entry = codes.get(body.email);
+    if (!entry || entry.expires <= Date.now() || entry.attempts >= 3) {
+     codes.delete(body.email);
+     return json({ error: 'invalid_code' }, 401);
+    }
+    entry.attempts++;
+    if (entry.otp !== body.otp) return json({ error: 'invalid_code' }, 401);
+    codes.delete(body.email);
+    const token = randomBytes(32).toString('base64url');
+    sessions.set(token, { email: body.email, subject: `fixture:${body.email}`, fault: null });
+    return json({ token, email: body.email });
+   }
    if (req.url === '/send') {
     const callback = safeCallback(body.callbackURL);
     if (!callback || !validFixtureEmail(body.email)) return json({ error: 'unsafe_fixture_recipient_or_callback' }, 400);

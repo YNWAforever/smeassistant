@@ -18,7 +18,7 @@ it("blocks native pre-hydration submission then posts email with claim context a
   await act(async () => { root = hydrateRoot(container, page); }); await waitFor(() => expect(input.disabled).toBe(false));
   fireEvent.change(input, { target: { value: "owner@acceptance.test" } }); fireEvent.submit(container.querySelector("form")!);
   await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
-  expect(String(fetch.mock.calls[0][0])).toContain("/api/auth/sign-in/magic-link");
+  expect(String(fetch.mock.calls[0][0])).toContain("/api/auth/email-otp/send-verification-otp");
   expect(JSON.parse(fetch.mock.calls[0][1]!.body as string)).toMatchObject({ email: "owner@acceptance.test", callbackURL: "/auth/callback?locale=en&claim=fixture-report&returnTo=%2Fen%2Fowner%2Ffixture&method=email" });
 });
 it("uses eligibility-aware generic and claim copy without presenting access as an entitlement", () => {

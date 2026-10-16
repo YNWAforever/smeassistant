@@ -34,12 +34,17 @@ export async function waitForHydration(page: Page): Promise<void> {
   await page.waitForFunction(() => document.documentElement.dataset.hydrated === "true", undefined, { timeout: 30_000 });
 }
 export async function requestSignInLink(page: Page, env: AcceptanceEnvironment, merchant: MerchantSeed, role: keyof MerchantSeed["emails"] = "owner", claim?: string) {
-  const signInUrl = new URL("/en/owner/sign-in", env.app);
-  signInUrl.searchParams.set("returnTo", `/en/owner/${merchant.slug}`);
-  if (claim) signInUrl.searchParams.set("claim", claim);
-  await page.goto(signInUrl.toString());
-  await page.locator("#sign-in-email").fill(merchant.emails[role]);
-  await page.locator("form button[type=submit]").click();
+  // Legacy-link contract setup only. The current code-entry UI is exercised by
+  // returning-sign-in.spec.ts; retain expired/reused-link regressions separately.
+  const callback = new URL("/auth/callback", env.app);
+  callback.searchParams.set("locale", "en");
+  if (claim) callback.searchParams.set("claim", claim);
+  callback.searchParams.set("returnTo", `/en/owner/${merchant.slug}`);
+  callback.searchParams.set("method", "email");
+  const sent = await page.request.post("/api/auth/sign-in/magic-link", {
+    data: { email: merchant.emails[role], callbackURL: `${callback.pathname}${callback.search}` },
+  });
+  expect(sent.status()).toBe(200);
   let link = "";
   await expect(async () => {
     const list = await (await fetch(`${env.mail}/api/v1/messages`)).json() as { messages: { ID: string; To: { Address: string }[] }[] };

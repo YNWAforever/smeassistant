@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useRef, useState, useSyncExternalStore } fro
 import { useRouter } from "next/navigation";
 
 import { loadAuthClient, preloadAuthClient } from "@/lib/identity/load-client";
+import { requestEmailCode } from "@/lib/identity/email-code-client";
 import { authFlowHref, callbackHref, type AuthFlow, type AuthMethod } from "@/lib/identity/sign-in-flow";
 
 import { signInCopy } from "./sign-in-copy";
@@ -63,11 +64,15 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
   const [state, setState] = useState<SignInState>(() => initialState(initialReason, flow));
   const [email, setEmail] = useState("");
   const [fieldError, setFieldError] = useState("");
+  const [code, setCode] = useState("");
+  const [codeError, setCodeError] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const verificationInFlight = useRef(false);
   const [switchAccount,setSwitchAccount]=useState(flow.intent==='switch_account');
   const [now, setNow] = useState(() => Date.now());
   const heading = useRef<HTMLHeadingElement>(null);
   const previousKind = useRef(state.kind);
-  const busy = state.kind === "opening_google" || state.kind === "sending_email";
+  const busy = state.kind === "opening_google" || state.kind === "sending_email" || verifying;
 
   useEffect(() => {
     if (previousKind.current !== state.kind) heading.current?.focus();
@@ -83,6 +88,8 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
   function clearToStart(method: AuthMethod) {
     setFieldError("");
     setEmail("");
+    setCode("");
+    setCodeError("");
     setState({ kind: "start" });
     router.replace(authFlowHref(withMethod(method), "start"));
   }
@@ -105,11 +112,13 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
     const normalized = email.trim().toLowerCase();
     if (!EMAIL.test(normalized)) { setFieldError(copy.invalidEmail); return; }
     setFieldError("");
+    setCode("");
+    setCodeError("");
     setState({ kind: "sending_email" });
     const next = withMethod("email");
     router.replace(authFlowHref(next, "start"));
     try {
-      const result = await (await loadAuthClient()).signIn.magicLink({ email: normalized, callbackURL: callbackHref(next) });
+      const result = await requestEmailCode({ email: normalized, callbackURL: callbackHref(next) });
       if (result.error) {
         const until = retryAfter(result.error, Date.now());
         if ((result.error as { status?: number }).status === 429) {
@@ -125,6 +134,53 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
     }
   }
 
+  function verificationFailure(error: unknown): string {
+    const status = error && typeof error === "object" && "status" in error ? error.status : null;
+    if (status === 429) return copy.codeRateLimited;
+    return status === 400 || status === 401 || status === 403 || status === 422 ? copy.invalidCode : copy.unavailable;
+  }
+
+  async function verifyCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy || verificationInFlight.current || (state.kind !== "email_sent" && state.kind !== "rate_limited")) return;
+    if (!/^\d{6}$/.test(code.trim())) { setCodeError(copy.invalidCode); return; }
+    verificationInFlight.current = true;
+    setVerifying(true);
+    setCodeError("");
+    let completing = false;
+    try {
+      const result = await (await loadAuthClient()).signIn.emailOtp({ email: state.email, otp: code.trim() });
+      if (result.error) {
+        setCodeError(verificationFailure(result.error));
+        return;
+      }
+      router.replace(authFlowHref(withMethod("email"), "complete"));
+      completing = true;
+    } catch (error) {
+      // The pinned browser SDK throws normalized AuthApiError for HTTP failures.
+      setCodeError(verificationFailure(error));
+    } finally {
+      if (!completing) {
+        verificationInFlight.current = false;
+        setVerifying(false);
+      }
+    }
+  }
+
+  function codeForm() {
+    return <form className={styles.form} onSubmit={event => void verifyCode(event)} noValidate>
+      <div className={styles.field}>
+        <label htmlFor="sign-in-code">{copy.codeLabel}</label>
+        <input id="sign-in-code" className={styles.input} value={code} onChange={event => setCode(event.target.value)}
+          type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} disabled={verifying}
+          aria-invalid={Boolean(codeError)} aria-describedby={codeError ? "sign-in-code-error" : undefined} />
+      </div>
+      {codeError ? <p id="sign-in-code-error" className={styles.alert} role="alert">{codeError}</p> : null}
+      <button className={styles.primary} type="submit" disabled={verifying} aria-busy={verifying}>{copy.verifyCode}</button>
+      {verifying ? <p className={styles.status} role="status">{copy.verifyingCode}</p> : null}
+    </form>;
+  }
+
   function resendLabel(seconds: number): string {
     if (seconds <= 0) return copy.resend;
     return seconds < 180 ? copy.resendIn(seconds) : copy.resendInMinutes(Math.round(seconds / 60));
@@ -134,11 +190,11 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
   if (state.kind === "rate_limited") {
     const seconds = Math.max(0, Math.ceil((state.retryAt - now) / 1000));
     const minutes = Math.max(1, Math.round(seconds / 60));
-    return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1><p className={styles.alert} role="alert">{seconds > 0 ? copy.rateLimited(minutes) : copy.rateLimitedReady}</p><p className={styles.email}>{state.email}</p><p className={styles.description}>{copy.rateLimitedHelp}</p><button className={styles.secondary} type="button" disabled={seconds > 0} onClick={() => void send()}>{resendLabel(seconds)}</button><button className={styles.link} type="button" onClick={() => clearToStart("email")}>{copy.changeEmail}</button><p className={styles.privacy}>{copy.privacy}</p></div></section>;
+    return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1><p className={styles.alert} role="alert">{seconds > 0 ? copy.rateLimited(minutes) : copy.rateLimitedReady}</p><p className={styles.email}>{state.email}</p>{codeForm()}<p className={styles.description}>{copy.rateLimitedHelp}</p><button className={styles.secondary} type="button" disabled={seconds > 0 || verifying} onClick={() => void send()}>{resendLabel(seconds)}</button><button className={styles.link} type="button" disabled={verifying} onClick={() => clearToStart("email")}>{copy.changeEmail}</button><p className={styles.privacy}>{copy.privacy}</p></div></section>;
   }
   if (state.kind === "email_sent") {
     const seconds = Math.max(0, Math.ceil((state.retryAt - now) / 1000));
-    return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1><div className={styles.status} role="status">{flow.claim ? copy.claimInbox : copy.inbox}</div><p className={styles.email}>{state.email}</p><button className={styles.secondary} type="button" disabled={seconds > 0} onClick={() => void send()}>{resendLabel(seconds)}</button><button className={styles.link} type="button" onClick={() => clearToStart("email")}>{copy.changeEmail}</button><p className={styles.description}>{flow.claim ? copy.claimNoLinkHelp : copy.noLinkHelp}</p><p className={styles.privacy}>{copy.privacy}</p></div></section>;
+    return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1><div className={styles.status} role={verifying ? undefined : "status"}>{flow.claim ? copy.claimInbox : copy.inbox}</div><p className={styles.email}>{state.email}</p>{codeForm()}<button className={styles.secondary} type="button" disabled={seconds > 0 || verifying} onClick={() => void send()}>{resendLabel(seconds)}</button><button className={styles.link} type="button" disabled={verifying} onClick={() => clearToStart("email")}>{copy.changeEmail}</button><p className={styles.description}>{flow.claim ? copy.claimNoLinkHelp : copy.noLinkHelp}</p><p className={styles.privacy}>{copy.privacy}</p></div></section>;
   }
-  return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1>{plan ? <p className={styles.description}>{plan}</p> : null}<p className={styles.description}>{eligibility}</p><button className={styles.primary} type="button" disabled={!hydrated || busy} aria-busy={state.kind === "opening_google"} onClick={() => void google()}><GoogleMark />{copy.google}</button>{state.kind === "opening_google" ? <div className={styles.status} role="status">{copy.openingGoogle}</div> : null}<button className={styles.link} type="button" disabled={busy} onClick={()=>setSwitchAccount(true)}>{flow.locale==='en'?'Use another Google account':flow.locale==='zh-TW'?'使用另一個 Google 帳戶':'用另一個 Google 帳戶'}</button>{switchAccount && <p role="status" className={styles.description}>{flow.locale==='en'?'Continue with Google and choose Use another account if offered. If Google keeps returning the same account, add or select the intended account in Google first, then return here; you can also use its email sign-in link below.':flow.locale==='zh-TW'?'繼續 Google 登入，並在 Google 提供時選擇「使用其他帳戶」。如一直返回同一帳戶，請先在 Google 新增或選擇目標帳戶，再回來；也可使用下方該帳戶的電子郵件登入連結。':'繼續 Google 登入，並在 Google 提供時選擇「使用其他帳戶」。如一直返回同一帳戶，請先在 Google 加入或選擇目標帳戶，再回來；亦可使用下方該帳戶的電郵登入連結。'}</p>}<div className={styles.divider}>{copy.emailAlternative}</div><form className={styles.form} onSubmit={(event) => void send(event)} noValidate><div className={styles.field}><label htmlFor="sign-in-email">{copy.emailLabel}</label><input className={styles.input} id="sign-in-email" disabled={!hydrated || busy} value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" inputMode="email" /></div>{fieldError ? <p className={styles.alert} role="alert">{fieldError}</p> : null}<button className={styles.secondary} type="submit" disabled={!hydrated || busy} aria-busy={state.kind === "sending_email"}>{copy.emailAction}</button>{state.kind === "sending_email" ? <div className={styles.status} role="status">{copy.sendingEmail}</div> : null}</form><p className={styles.privacy}>{copy.privacy}</p></div></section>;
+  return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1>{plan ? <p className={styles.description}>{plan}</p> : null}<p className={styles.description}>{eligibility}</p><button className={styles.primary} type="button" disabled={!hydrated || busy} aria-busy={state.kind === "opening_google"} onClick={() => void google()}><GoogleMark />{copy.google}</button>{state.kind === "opening_google" ? <div className={styles.status} role="status">{copy.openingGoogle}</div> : null}<button className={styles.link} type="button" disabled={busy} onClick={()=>setSwitchAccount(true)}>{flow.locale==='en'?'Use another Google account':flow.locale==='zh-TW'?'使用另一個 Google 帳戶':'用另一個 Google 帳戶'}</button>{switchAccount && <p role="status" className={styles.description}>{flow.locale==='en'?'Continue with Google and choose Use another account if offered. If Google keeps returning the same account, add or select the intended account in Google first, then return here; you can also use its email sign-in code below.':flow.locale==='zh-TW'?'繼續 Google 登入，並在 Google 提供時選擇「使用其他帳戶」。如一直返回同一帳戶，請先在 Google 新增或選擇目標帳戶，再回來；也可使用下方該帳戶的電子郵件驗證碼。':'繼續 Google 登入，並在 Google 提供時選擇「使用其他帳戶」。如一直返回同一帳戶，請先在 Google 加入或選擇目標帳戶，再回來；亦可使用下方該帳戶的電郵驗證碼。'}</p>}<div className={styles.divider}>{copy.emailAlternative}</div><form className={styles.form} onSubmit={(event) => void send(event)} noValidate><div className={styles.field}><label htmlFor="sign-in-email">{copy.emailLabel}</label><input className={styles.input} id="sign-in-email" disabled={!hydrated || busy} value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" inputMode="email" /></div>{fieldError ? <p className={styles.alert} role="alert">{fieldError}</p> : null}<button className={styles.secondary} type="submit" disabled={!hydrated || busy} aria-busy={state.kind === "sending_email"}>{copy.emailAction}</button>{state.kind === "sending_email" ? <div className={styles.status} role="status">{copy.sendingEmail}</div> : null}</form><p className={styles.privacy}>{copy.privacy}</p></div></section>;
 }

@@ -32,7 +32,10 @@ const sentinels = {
   OPENROUTER_API_KEY: `openrouter-secret-${uuid()}`,
 };
 
-execFileSync("corepack", ["pnpm", "exec", "next", "build"], {
+// Explicit local opt-in for shared dependency junctions; CI keeps Turbopack.
+const buildArgs = ["pnpm", "exec", "next", "build"];
+if (process.env.SME_TEST_WEBPACK === "1") buildArgs.push("--webpack");
+execFileSync("corepack", buildArgs, {
   cwd: root,
   env: { ...process.env, SERPAPI_KEY: sentinels.SERPAPI_API_KEY, ...sentinels },
   stdio: "inherit",

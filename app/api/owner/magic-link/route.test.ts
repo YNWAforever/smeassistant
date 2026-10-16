@@ -2,12 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   signInWithOtp: vi.fn(async () => ({ error: null })),
+  sendCode: vi.fn(async () => ({ error: null })),
   from: vi.fn(),
   enforceCompositeIdentifierRateLimit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 1 })),
 }));
 
 vi.mock("@/lib/identity/neon", () => ({
-  getNeonAuth: () => ({ signIn: { magicLink: mocks.signInWithOtp } }),
+  getNeonAuth: () => ({ signIn: { magicLink: mocks.signInWithOtp }, emailOtp: { sendVerificationOtp: mocks.sendCode } }),
 }));
 
 vi.mock("@/lib/repositories/claims", () => ({ claimsRepository: { isLeadRecipient: mocks.from } }));
@@ -69,6 +70,17 @@ describe("POST /api/owner/magic-link", () => {
     // used to enumerate leads, but it must not actually send.
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true });
+    expect(mocks.signInWithOtp).not.toHaveBeenCalled();
+  });
+
+  it("sends a sign-in code only for the report's recorded recipient", async () => {
+    wireRepositories({ knownLead: false });
+    expect(await (await POST(request({ slug: "abcdef", email: "stranger@example.com", delivery: "code" }))).json()).toEqual({ ok: true });
+    expect(mocks.sendCode).not.toHaveBeenCalled();
+    wireRepositories({ knownLead: true });
+    const response = await POST(request({ slug: "abcdef", email: "KNOWN@example.com", delivery: "code" }));
+    expect(response.status).toBe(200);
+    expect(mocks.sendCode).toHaveBeenCalledExactlyOnceWith({ email: "known@example.com", type: "sign-in" });
     expect(mocks.signInWithOtp).not.toHaveBeenCalled();
   });
 

@@ -47,7 +47,9 @@ export async function startEnvironment(requestedPort?:number):Promise<Acceptance
     mkdirSync("test-results",{recursive:true});
     const output=createWriteStream("test-results/fixture-next.log",{flags:"a"});
     await appPortReservation.release();
-    next=spawn(process.execPath,["node_modules/next/dist/bin/next","dev","--hostname","127.0.0.1","--port",String(appPort)],{env:isolatedEnv({app,api:identity.url,llm:llm.url,databaseUrl:runtime.href,identitySecret:secret}),stdio:["ignore","pipe","pipe"],windowsHide:true,detached:process.platform!=="win32"});
+    // Local shared dependency junctions are outside Turbopack's filesystem root.
+    // Opt in explicitly for that checkout; CI keeps its default bundler.
+    next=spawn(process.execPath,["node_modules/next/dist/bin/next","dev",...(process.env.SME_TEST_WEBPACK==="1"?["--webpack"]:[]),"--hostname","127.0.0.1","--port",String(appPort)],{env:isolatedEnv({app,api:identity.url,llm:llm.url,databaseUrl:runtime.href,identitySecret:secret}),stdio:["ignore","pipe","pipe"],windowsHide:true,detached:process.platform!=="win32"});
     next.stdout?.pipe(output);next.stderr?.pipe(output);next.once("exit",()=>output.end());
     await healthy(`${app}/en/owner/sign-in`,next);
     const control = async (path: string, body: object) => {

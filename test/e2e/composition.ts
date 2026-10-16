@@ -50,6 +50,10 @@ export async function sendFixtureMagicLink(input: { email: string; callbackURL: 
  const response = await fixtureRequest('/send', input);
  return { error: response.ok ? null : { message: 'fixture_delivery_failed' } };
 }
+export async function sendFixtureEmailCode(email: string) {
+ const response = await fixtureRequest('/send-code', { email });
+ return { error: response.ok ? null : { message: 'fixture_delivery_failed' } };
+}
 
 export async function exchangeFixtureVerifier(request: Request): Promise<Response | null> {
  await fixtureContext(request);
@@ -66,6 +70,17 @@ export async function exchangeFixtureVerifier(request: Request): Promise<Respons
 
 export async function handleFixtureAuth(request: Request, path: string): Promise<Response> {
  await fixtureContext(request);
+ if (path === 'sign-in/email-otp' && request.method === 'POST') {
+  const input = await request.json() as { email?: unknown; otp?: unknown };
+  const result = await fixtureRequest('/verify-code', input, request);
+  const data = await result.json() as { token?: string; email?: string };
+  if (!result.ok || !data.token || !data.email) return Response.json({ code: 'INVALID_OTP', message: 'Invalid code' }, { status: 401 });
+  const userId = `fixture:${data.email}`;
+  return Response.json({
+   user: { id: userId, email: data.email, emailVerified: true },
+   session: { id: data.token, token: data.token, userId, expiresAt: new Date(Date.now() + 60_000).toISOString() },
+  }, { headers: { 'set-cookie': `${FIXTURE_COOKIE}=${data.token}; HttpOnly; SameSite=Lax; Path=/` } });
+ }
  if (request.method === 'GET' && path === 'verify') {
   const result = await fixtureRequest('/redeem', { code: new URL(request.url).searchParams.get('token') }, request);
   const data = await result.json() as { token?: string; callbackURL?: string };
