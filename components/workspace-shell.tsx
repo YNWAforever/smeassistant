@@ -163,11 +163,11 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
             {usageShare !== null && <div className="usage-track"><span style={{ width: `${usageShare}%` }} /></div>}
             <small>{isChinese ? "生成、修改或拒絕均不扣用量" : "Generation, revisions and rejection use no allowance"}</small>
           </div>
-          <button className="account-button" type="button" title={workspace.account.email}>
+          <Link className="account-button" href={`/${locale}/owner/select-workspace`} title={workspace.account.email}>
             <span className="account-avatar">{accountInitials(workspace.account.name)}</span>
             <span><strong>{workspace.account.name}</strong><small>{workspace.account.roleLabel}</small></span>
             <MoreHorizontal aria-hidden="true" />
-          </button>
+          </Link>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset className="workspace-main">
