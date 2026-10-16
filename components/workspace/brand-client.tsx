@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Check, LoaderCircle, Plus, X, XCircle } from "lucide-react"
 import { toast } from "sonner"
 
@@ -29,6 +29,8 @@ const VOICES: BrandVoice[] = ["warm", "professional", "playful", "direct"]
 const LANGUAGES: BrandLanguage[] = ["zh-HK", "zh-TW", "en"]
 
 type FactRow = { key: string; value: string }
+type FormProps = { locale: PrototypeLocale; workspaceId: string; actorId: string; brand: BrandProfile; readOnly: boolean; banner?: React.ReactNode; timezone?: string }
+type FormError = { message: string; conflict?: boolean; voice?: boolean }
 
 function toLines(list: string[]): string { return list.join("\n") }
 function fromLines(text: string): string[] { return text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean) }
@@ -41,17 +43,88 @@ function failureMessage(result: Extract<ClientResult<unknown>, { ok: false }>, t
   return t.failed
 }
 
-export function BrandSettingsForm({ locale, workspaceId, brand, readOnly, banner, timezone = "Asia/Hong_Kong" }: { locale: PrototypeLocale; workspaceId: string; brand: BrandProfile; readOnly: boolean; banner?: React.ReactNode; timezone?: string }) {
+function validProfile(value: unknown, workspaceId: string): value is BrandProfile {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  const row = value as Record<string, unknown>
+  return row.workspaceId === workspaceId
+    && VOICES.includes(row.voice as BrandVoice)
+    && (row.voiceConfigured === undefined || typeof row.voiceConfigured === "boolean")
+    && Array.isArray(row.approvedClaims) && row.approvedClaims.every(item => typeof item === "string")
+    && Array.isArray(row.prohibitedTerms) && row.prohibitedTerms.every(item => typeof item === "string")
+    && Array.isArray(row.languages) && row.languages.length > 0 && row.languages.every(item => LANGUAGES.includes(item as BrandLanguage))
+    && !!row.facts && typeof row.facts === "object" && !Array.isArray(row.facts) && Object.values(row.facts).every(item => typeof item === "string")
+    && (row.updatedAt === null || (typeof row.updatedAt === "string" && Number.isFinite(Date.parse(row.updatedAt))))
+    && (row.revisionId === null || (typeof row.revisionId === "string" && /^[0-9a-f-]{36}$/i.test(row.revisionId)))
+}
+
+/** Remount drafts when the server-authorized actor, workspace or permission changes. */
+export function BrandSettingsForm(props: FormProps) {
+  if (props.brand.workspaceId !== props.workspaceId) return <p role="alert">{COPY[props.locale].failed}</p>
+  return <ScopedBrandSettingsForm key={JSON.stringify([props.actorId, props.workspaceId, props.readOnly])} {...props} />
+}
+
+function ScopedBrandSettingsForm({ locale, workspaceId, brand, readOnly, banner, timezone = "Asia/Hong_Kong" }: FormProps) {
   const router = useRouter()
   const t = COPY[locale]
-  const [voice, setVoice] = useState<BrandVoice>(brand.voice)
+  const [voice, setVoice] = useState<BrandVoice | "">(brand.voiceConfigured === false ? "" : brand.voice)
   const [claims, setClaims] = useState(toLines(brand.approvedClaims))
   const [prohibited, setProhibited] = useState(toLines(brand.prohibitedTerms))
   const [languages, setLanguages] = useState<BrandLanguage[]>(brand.languages)
   const [facts, setFacts] = useState<FactRow[]>(Object.entries(brand.facts).map(([key, value]) => ({ key, value })))
   const [busy, setBusy] = useState(false)
   const [revisionId,setRevisionId]=useState(brand.revisionId ?? null)
+  const [savedProfile, setSavedProfile] = useState(brand)
+  const [error, setError] = useState<FormError | null>(null)
+  const [latest, setLatest] = useState<BrandProfile | null>(null)
+  const active = useRef(false)
+  const pending = useRef(false)
+  const errorRef = useRef<HTMLDivElement>(null)
   const currentRevision = brand.revisions?.find((revision) => revision.id === revisionId) ?? null
+
+  useEffect(() => {
+    active.current = true
+    return () => { active.current = false }
+  }, [])
+  useEffect(() => { if (error) errorRef.current?.focus() }, [error])
+
+  function fail(nextError: FormError) {
+    setError(nextError)
+    toast.error(nextError.message)
+  }
+
+  function replaceDraft(next: BrandProfile) {
+    setVoice(next.voiceConfigured === false ? "" : next.voice)
+    setClaims(toLines(next.approvedClaims))
+    setProhibited(toLines(next.prohibitedTerms))
+    setLanguages(next.languages)
+    setFacts(Object.entries(next.facts).map(([key, value]) => ({ key, value })))
+    setRevisionId(next.revisionId ?? null)
+    setSavedProfile(next)
+    setLatest(null)
+    setError(null)
+  }
+
+  async function reviewLatest() {
+    if (pending.current || readOnly) return
+    pending.current = true
+    setBusy(true)
+    try {
+      const response = await fetch(`/api/workspaces/${encodeURIComponent(workspaceId)}/brand`, { credentials: "same-origin", cache: "no-store" })
+      const body: unknown = await response.json()
+      if (!active.current) return
+      const candidate = body && typeof body === "object" ? (body as { brand?: unknown }).brand : null
+      if (!response.ok || !validProfile(candidate, workspaceId)) {
+        fail({ message: t.latestFailed, conflict: true })
+        return
+      }
+      setLatest(candidate)
+    } catch {
+      if (active.current) fail({ message: t.latestFailed, conflict: true })
+    } finally {
+      pending.current = false
+      if (active.current) setBusy(false)
+    }
+  }
 
   function setFact(index: number, patch: Partial<FactRow>) {
     setFacts((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)))
@@ -59,19 +132,30 @@ export function BrandSettingsForm({ locale, workspaceId, brand, readOnly, banner
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (readOnly || busy) return
-    if (languages.length === 0) { toast.error(t.languageRequired); return }
+    if (readOnly || pending.current || error?.conflict) return
+    if (!voice || !VOICES.includes(voice)) { fail({ message: t.voiceRequired, voice: true }); return }
+    if (languages.length === 0) { fail({ message: t.languageRequired }); return }
     const factRecord: Record<string, string> = {}
     for (const row of facts) {
       const key = row.key.trim()
       if (!key) continue
       factRecord[key] = row.value.trim()
     }
+    pending.current = true
     setBusy(true)
+    setError(null)
     const result = await saveBrand(workspaceId, { voice, approved_claims: fromLines(claims), prohibited_terms: fromLines(prohibited), languages, facts: factRecord,expectedRevisionId:revisionId })
+    pending.current = false
+    if (!active.current) return
     setBusy(false)
-    if (!result.ok) { toast.error(failureMessage(result, t)); return }
+    if (!result.ok) { fail({ message: failureMessage(result, t), conflict: result.status === 409 }); return }
+    const saved: unknown = result.data && typeof result.data === "object" ? result.data.brand : null
+    if (!validProfile(saved, workspaceId) || saved.voiceConfigured === false || !saved.revisionId || saved.revisionId === revisionId || !saved.updatedAt || saved.voice !== voice) {
+      fail({ message: t.invalidResponse })
+      return
+    }
     setRevisionId(result.data.brand.revisionId ?? null)
+    setSavedProfile(result.data.brand)
     toast.success(t.saved)
     router.refresh()
   }
@@ -82,9 +166,27 @@ export function BrandSettingsForm({ locale, workspaceId, brand, readOnly, banner
         eyebrow={t.eyebrow}
         title={t.title}
         description={t.description}
-        actions={readOnly ? null : <Button type="submit" disabled={busy}>{busy ? <LoaderCircle className="animate-spin" /> : <Check />} {t.save}</Button>}
+        actions={readOnly ? null : <Button type="submit" disabled={busy || error?.conflict}>{busy ? <LoaderCircle className="animate-spin" /> : <Check />} {t.save}</Button>}
       />
       {banner}
+      {error && <div role="alert" tabIndex={-1} ref={errorRef} className="permission-banner">
+        <p>{error.message}</p>
+        {!readOnly && (error.conflict
+          ? <Button type="button" variant="outline" disabled={busy} onClick={() => void reviewLatest()}>{t.reviewLatest}</Button>
+          : <Button type="submit" variant="outline" disabled={busy}>{t.retry}</Button>)}
+      </div>}
+      {latest && <section role="region" aria-label={t.latestTitle} className="section-card">
+        <h2>{t.latestTitle}</h2>
+        <dl>
+          <dt>{t.voiceLabel}</dt><dd>{latest.voiceConfigured === false ? t.voiceUnset : t.voices[latest.voice]}</dd>
+          <dt>{t.languagesLabel}</dt><dd>{latest.languages.map(language => t.languages[language]).join(", ")}</dd>
+          <dt>{t.claimsLabel}</dt><dd>{latest.approvedClaims.join("\n")}</dd>
+          <dt>{t.prohibitedLabel}</dt><dd>{latest.prohibitedTerms.join("\n")}</dd>
+          <dt>{t.factsTitle}</dt><dd>{Object.entries(latest.facts).map(([key, value]) => <p key={key}>{key}: {value}</p>)}</dd>
+        </dl>
+        <p>{t.replaceWarning}</p>
+        <Button type="button" variant="outline" onClick={() => replaceDraft(latest)}>{t.replaceDraft}</Button>
+      </section>}
       {/* The revision id stays in state for conflict fencing; owners see when it was saved, not the uuid. */}
       {currentRevision && <p>{locale==='en'?'Current version saved':locale==='zh-TW'?'目前版本儲存於':'目前版本儲存於'} {formatDateTime(currentRevision.createdAt, locale, timezone)}</p>}
       {brand.revisions?.length ? <details><summary>{locale==='en'?'Saved profile history':locale==='zh-TW'?'品牌儲存紀錄':'品牌儲存記錄'}</summary><ol>{brand.revisions.map(revision=><li key={revision.id}><details><summary>{formatDateTime(revision.createdAt, locale, timezone)} · {revision.source==='baseline'?(locale==='en'?'Known current baseline':'已知目前資料基線'):(locale==='en'?'Saved revision':'已儲存版本')}{revision.id===revisionId?(locale==='en'?' · current':' · 目前版本'):''}</summary><code>{revision.id}</code>{revision.profile ? <dl>
@@ -100,8 +202,8 @@ export function BrandSettingsForm({ locale, workspaceId, brand, readOnly, banner
           <h2>{t.voiceTitle}</h2>
           <div className="field-stack">
             <Label htmlFor="brand-voice">{t.voiceLabel}</Label>
-            <Select value={voice} onValueChange={(value) => setVoice(value as BrandVoice)} disabled={readOnly}>
-              <SelectTrigger id="brand-voice"><SelectValue>{t.voices[voice]}</SelectValue></SelectTrigger>
+            <Select value={voice} onValueChange={(value) => { if (VOICES.includes(value as BrandVoice)) setVoice(value as BrandVoice) }} disabled={readOnly}>
+              <SelectTrigger id="brand-voice" aria-invalid={error?.voice || undefined}><SelectValue placeholder={t.voiceUnset}>{voice ? t.voices[voice] : t.voiceUnset}</SelectValue></SelectTrigger>
               <SelectContent>{VOICES.map((option) => <SelectItem key={option} value={option}>{t.voices[option]}</SelectItem>)}</SelectContent>
             </Select>
           </div>
@@ -148,7 +250,7 @@ export function BrandSettingsForm({ locale, workspaceId, brand, readOnly, banner
           <p className="eyebrow">{t.versionEyebrow}</p>
           <h2>{t.versionTitle}</h2>
           <p>{t.versionBody}</p>
-          <Badge variant="outline">{brand.updatedAt ? `${t.updated} ${brand.updatedAt.slice(0, 10)}` : t.neverSaved}</Badge>
+          <Badge variant="outline">{savedProfile.updatedAt ? `${t.updated} ${savedProfile.updatedAt.slice(0, 10)}` : t.neverSaved}</Badge>
         </SectionCard>
       </div>
     </form>
@@ -160,6 +262,12 @@ const COPY = {
     eyebrow: "Versioned workspace guardrails", title: "Brand profile",
     description: "Agents may use only approved voice, facts and assets; missing facts trigger an owner question.",
     save: "Save current profile", saved: "Current brand profile saved.",
+    retry: "Retry save", voiceUnset: "Choose a voice", voiceRequired: "Choose a voice before saving.",
+    invalidResponse: "The saved profile could not be verified. Your input is retained; review it and retry.",
+    reviewLatest: "Review latest profile", latestTitle: "Latest saved profile",
+    latestFailed: "The latest profile could not be loaded. Your input is retained; try reviewing it again.",
+    replaceWarning: "Review this saved version before replacing your unsaved draft. Copy any edits you want to keep first.",
+    replaceDraft: "Use latest profile and replace my draft",
     voiceEyebrow: "Voice and language", voiceTitle: "Brand voice", voiceLabel: "Choose voice",
     voices: { warm: "Warm, local and sincere", professional: "Clear and professional", playful: "Friendly and lively", direct: "Short and direct" },
     languagesLabel: "Languages agents may draft in", languages: { "zh-HK": "Traditional Chinese (Hong Kong)", "zh-TW": "Traditional Chinese (Taiwan)", en: "English" },
@@ -180,6 +288,12 @@ const COPY = {
     eyebrow: "版本化工作台保障", title: "品牌資料",
     description: "Agent 只可使用已核准語氣、事實與素材；缺少資料時必須停下並向店主提問。",
     save: "儲存目前品牌資料", saved: "目前品牌資料已儲存。",
+    retry: "重試儲存", voiceUnset: "請選擇語氣", voiceRequired: "儲存前請選擇語氣。",
+    invalidResponse: "未能確認已儲存的品牌資料。你的輸入仍然保留；請檢查後重試。",
+    reviewLatest: "查看最新品牌資料", latestTitle: "最新已儲存品牌資料",
+    latestFailed: "未能載入最新資料。你的輸入仍然保留；請再次查看。",
+    replaceWarning: "取代未儲存草稿前，請先檢查這個版本。請先複製要保留的修改。",
+    replaceDraft: "使用最新資料並取代我的草稿",
     voiceEyebrow: "語氣及語言", voiceTitle: "品牌語氣", voiceLabel: "選擇語氣",
     voices: { warm: "溫暖、本地及真誠", professional: "清晰專業", playful: "親切活潑", direct: "簡短直接" },
     languagesLabel: "Agent 可用於草稿的語言", languages: { "zh-HK": "繁體中文（香港）", "zh-TW": "繁體中文（台灣）", en: "英文" },
@@ -200,6 +314,12 @@ const COPY = {
     eyebrow: "版本化工作台保障", title: "品牌資料",
     description: "Agent 只能使用已核准的語氣、事實與素材；缺少資料時必須停下並向店家提問。",
     save: "儲存目前品牌資料", saved: "目前品牌資料已儲存。",
+    retry: "重試儲存", voiceUnset: "請選擇語氣", voiceRequired: "儲存前請選擇語氣。",
+    invalidResponse: "無法確認已儲存的品牌資料。你的輸入仍然保留；請檢查後重試。",
+    reviewLatest: "查看最新品牌資料", latestTitle: "最新已儲存品牌資料",
+    latestFailed: "無法載入最新資料。你的輸入仍然保留；請再次查看。",
+    replaceWarning: "取代未儲存草稿前，請先檢查這個版本。請先複製要保留的修改。",
+    replaceDraft: "使用最新資料並取代我的草稿",
     voiceEyebrow: "語氣及語言", voiceTitle: "品牌語氣", voiceLabel: "選擇語氣",
     voices: { warm: "溫暖、在地及真誠", professional: "清晰專業", playful: "親切活潑", direct: "簡短直接" },
     languagesLabel: "Agent 可用於草稿的語言", languages: { "zh-HK": "繁體中文（香港）", "zh-TW": "繁體中文（台灣）", en: "英文" },

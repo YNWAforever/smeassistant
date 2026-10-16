@@ -9,7 +9,7 @@ import { startLlmServer } from "./llm-server";
 import { startIdentityServer } from "./identity-server";
 import { reserveLoopbackPort, type ReservedLoopbackPort } from "./reserved-port";
 export type FixtureCompletionFault = "binding" | "mapping" | "revoked" | "upstream" | "cancelled" | null;
-export interface AcceptanceEnvironment { app:string; api:string; mail:string; llm:string; db:string; expireLink(link:string):void; selectGoogleAccount(email:string):Promise<void>; setFixtureFault(fault:FixtureCompletionFault):Promise<void>; holdCompletion():Promise<void>; releaseCompletion():Promise<void>; stop():Promise<void> }
+export interface AcceptanceEnvironment { app:string; api:string; mail:string; llm:string; db:string; expireLink(link:string):void; expireCode(email:string):Promise<void>; expireSessions(email:string):Promise<void>; selectGoogleAccount(email:string):Promise<void>; setFixtureFault(fault:FixtureCompletionFault):Promise<void>; holdCompletion():Promise<void>; releaseCompletion():Promise<void>; stop():Promise<void> }
 const owned=new Map<string,string>();
 export function sql(db:string,query:string):string {
  const database=owned.get(db);if(!database) throw new Error("Refusing SQL outside owned acceptance database");
@@ -57,6 +57,8 @@ export async function startEnvironment(requestedPort?:number):Promise<Acceptance
       if (!response.ok) throw new Error(`fixture_control_failed:${response.status}`);
     };
     return { app, api: app, mail: identity.url, llm: llm.url, db: fixture.containerName, expireLink: identity.expireLink,
+      expireCode: async (email: string) => control("/test/expire-code", { email }),
+      expireSessions: async (email: string) => control("/test/expire-sessions", { email }),
       selectGoogleAccount: async (email: string) => control("/test/google-account", { email }),
       setFixtureFault: async (fault: FixtureCompletionFault) => control("/test/fault", { fault }),
       holdCompletion: async () => control("/test/completion-hold", {}),

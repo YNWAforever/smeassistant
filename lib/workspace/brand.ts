@@ -16,6 +16,8 @@ export type BrandLanguage = (typeof BRAND_LANGUAGES)[number];
 export interface BrandProfile {
   workspaceId: string;
   voice: BrandVoice;
+  /** The core voice retains its compatibility fallback; settings require a persisted valid selection. */
+  voiceConfigured?: boolean;
   approvedClaims: string[];
   prohibitedTerms: string[];
   languages: BrandLanguage[];
@@ -117,7 +119,7 @@ export function parseBrandBody(raw: unknown): BrandParse {
 }
 
 export function defaultBrand(workspaceId: string): BrandProfile {
-  return { workspaceId, voice: "warm", approvedClaims: [], prohibitedTerms: [], languages: ["zh-HK"], facts: {}, updatedAt: null };
+  return { workspaceId, voice: "warm", voiceConfigured: false, approvedClaims: [], prohibitedTerms: [], languages: ["zh-HK"], facts: {}, updatedAt: null };
 }
 
 function rowToBrand(row: BrandRow): BrandProfile {
@@ -128,6 +130,7 @@ function rowToBrand(row: BrandRow): BrandProfile {
   return {
     workspaceId: row.workspace_id,
     voice: isVoice(row.voice) ? row.voice : "warm",
+    voiceConfigured: isVoice(row.voice),
     approvedClaims: Array.isArray(row.approved_claims) ? row.approved_claims.filter((c): c is string => typeof c === "string") : [],
     prohibitedTerms: Array.isArray(row.prohibited_terms) ? row.prohibited_terms.filter((c): c is string => typeof c === "string") : [],
     languages: Array.isArray(row.languages) ? (row.languages.filter((l): l is BrandLanguage => LANGUAGE_SET.has(l)) as BrandLanguage[]) : ["zh-HK"],

@@ -55,6 +55,7 @@ export type SignInCopy = {
   invalidEmail: string;
   codeLabel: string;
   verifyCode: string;
+  verifyIn: (seconds: number) => string;
   verifyingCode: string;
   invalidCode: string;
   codeRateLimited: string;
@@ -101,9 +102,10 @@ const en: SignInCopy = {
   invalidEmail: "Enter a valid email address.",
   codeLabel: "6-digit code",
   verifyCode: "Verify and continue",
+  verifyIn: (seconds) => `Verify again in ${seconds}s`,
   verifyingCode: "Verifying code…",
   invalidCode: "That code is invalid or has expired.",
-  codeRateLimited: "Too many verification attempts. Please try again later.",
+  codeRateLimited: "Too many verification attempts. Please try again later. You can retry after the countdown; sign-in may still be temporarily limited.",
 };
 
 const zhHK: SignInCopy = {
@@ -147,9 +149,10 @@ const zhHK: SignInCopy = {
   invalidEmail: "請輸入有效的電郵地址。",
   codeLabel: "六位驗證碼",
   verifyCode: "驗證並繼續",
+  verifyIn: (seconds) => `${seconds} 秒後可再驗證`,
   verifyingCode: "正在驗證…",
   invalidCode: "驗證碼不正確或已過期。",
-  codeRateLimited: "嘗試驗證的次數太多，請稍後再試。",
+  codeRateLimited: "嘗試驗證的次數太多，請稍後再試。倒數後可以再嘗試；登入服務仍可能暫時限制驗證。",
 };
 
 /**
@@ -201,9 +204,10 @@ const zhTW: SignInCopy = {
   invalidEmail: "請輸入有效的電子郵件地址。",
   codeLabel: "六位驗證碼",
   verifyCode: "驗證並繼續",
+  verifyIn: (seconds) => `${seconds} 秒後可再驗證`,
   verifyingCode: "正在驗證…",
   invalidCode: "驗證碼不正確或已過期。",
-  codeRateLimited: "嘗試驗證的次數過多，請稍後再試。",
+  codeRateLimited: "嘗試驗證的次數過多，請稍後再試。倒數後可以再嘗試；登入服務仍可能暫時限制驗證。",
 };
 
 export const signInCopy: Record<Locale, SignInCopy> = {
