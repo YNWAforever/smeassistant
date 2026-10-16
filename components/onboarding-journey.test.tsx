@@ -108,19 +108,20 @@ describe("focused onboarding journey", () => {
 
   it("keeps a saved location name independent from a renamed workspace", async () => {
     request.mockResolvedValue(Response.json({ ok: true, workspaceSlug: "fixture-bakery", locationId: "fixture-location", matchedActionId: null }));
-    setup({ saved: { workspaceName: "Bakery Group", locationName: "Central Branch", locationAddress: "12 Fixture Road", voice: "professional", approvedClaims: "Owner confirmed fact", hasLocation: true } });
+    setup({ saved: { workspaceName: "Bakery Group", locationName: "Central Branch", locationAddress: "12 Fixture Road", voice: "professional", approvedClaims: "Owner confirmed fact", hasLocation: true, brandProfileExists: true, workspaceSlug: "fixture-bakery" } });
     fireEvent.change(screen.getByLabelText("Business name"), { target: { value: "Renamed Group" } });
     fireEvent.click(screen.getByRole("button", { name: "Finish setup and view results" }));
     await waitFor(() => expect(navigation.push).toHaveBeenCalled());
     expect(JSON.parse(String(request.mock.calls[0][1]?.body))).toMatchObject({
       workspace_name: "Renamed Group", primary_location: { name: "Central Branch", address: "12 Fixture Road" },
-      brand_voice: "professional", approved_claims: ["Owner confirmed fact"],
     });
+    expect(JSON.parse(String(request.mock.calls[0][1]?.body))).not.toHaveProperty("brand_voice");
+    expect(JSON.parse(String(request.mock.calls[0][1]?.body))).not.toHaveProperty("approved_claims");
   });
 
   it("uses the corrected business name for a new location when the assigned name differs from the scan", async () => {
     request.mockResolvedValue(Response.json({ ok: true, workspaceSlug: "fixture-bakery", locationId: "fixture-location", matchedActionId: null }));
-    setup({ saved: { workspaceName: "Assigned workspace", locationName: null, locationAddress: null, voice: null, approvedClaims: "", hasLocation: false } });
+    setup({ saved: { workspaceName: "Assigned workspace", locationName: null, locationAddress: null, voice: null, approvedClaims: "", hasLocation: false, brandProfileExists: false, workspaceSlug: "fixture-bakery" } });
     fireEvent.change(screen.getByLabelText("Business name"), { target: { value: "Corrected Bakery" } });
     fireEvent.click(screen.getByRole("button", { name: "Finish setup and view results" }));
     await waitFor(() => expect(navigation.push).toHaveBeenCalled());

@@ -52,10 +52,24 @@ function retryAfter(error: unknown, now: number): number {
   return Number.isFinite(date) ? Math.max(now + 60_000, date) : now + 60_000;
 }
 
-export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; initialReason: "cancelled" | "expired" | "unavailable" | null; plan?: string }) {
+type SignInFlowProps = { flow: AuthFlow; initialReason: "cancelled" | "expired" | "unavailable" | null; plan?: string };
+
+export function SignInFlow(props: SignInFlowProps) {
+  // Internal method/locale navigation retains progress; another target or account intent starts fresh.
+  const destination = props.flow.returnTo?.replace(/^\/(?:en|zh-HK|zh-TW)(?=\/|$)/, "");
+  const scope = JSON.stringify([props.flow.claim, destination, props.flow.intent ?? null]);
+  return <ScopedSignInFlow key={scope} {...props} />;
+}
+
+function ScopedSignInFlow({ flow, initialReason, plan }: SignInFlowProps) {
   const router = useRouter();
   const copy = signInCopy[flow.locale];
   const hydrated = useSyncExternalStore(subscribeHydration, hydratedClient, hydratedServer);
+  const live = useRef(true);
+  useEffect(() => {
+    live.current = true;
+    return () => { live.current = false; };
+  }, []);
   // Warm the on-demand auth client once the page is idle, so a press rarely waits for it.
   useEffect(() => {
     const idle = window.requestIdleCallback ? window.requestIdleCallback(preloadAuthClient, { timeout: 3000 }) : window.setTimeout(preloadAuthClient, 1500);
@@ -67,6 +81,7 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState("");
   const [verifying, setVerifying] = useState(false);
+  const [verificationRetryAt, setVerificationRetryAt] = useState(0);
   const verificationInFlight = useRef(false);
   const [switchAccount,setSwitchAccount]=useState(flow.intent==='switch_account');
   const [now, setNow] = useState(() => Date.now());
@@ -90,25 +105,29 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
     setEmail("");
     setCode("");
     setCodeError("");
+    setVerificationRetryAt(0);
     setState({ kind: "start" });
     router.replace(authFlowHref(withMethod(method), "start"));
   }
   async function google() {
-    if (!hydrated || busy) return;
+    if (!live.current || !hydrated || busy) return;
     setFieldError("");
     setState({ kind: "opening_google" });
     const next = withMethod("google");
     router.replace(authFlowHref(next, "start"));
     try {
-      const result = await (await loadAuthClient()).signIn.social({ provider: "google", callbackURL: callbackHref(next), errorCallbackURL: callbackHref(next) });
+      const client = await loadAuthClient();
+      if (!live.current) return;
+      const result = await client.signIn.social({ provider: "google", callbackURL: callbackHref(next), errorCallbackURL: callbackHref(next) });
+      if (!live.current) return;
       if (result.error) throw result.error;
     } catch {
-      setState({ kind: "recover", method: "google", reason: "unavailable" });
+      if (live.current) setState({ kind: "recover", method: "google", reason: "unavailable" });
     }
   }
   async function send(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
-    if (!hydrated || busy) return;
+    if (!live.current || !hydrated || busy) return;
     const normalized = email.trim().toLowerCase();
     if (!EMAIL.test(normalized)) { setFieldError(copy.invalidEmail); return; }
     setFieldError("");
@@ -119,6 +138,7 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
     router.replace(authFlowHref(next, "start"));
     try {
       const result = await requestEmailCode({ email: normalized, callbackURL: callbackHref(next) });
+      if (!live.current) return;
       if (result.error) {
         const until = retryAfter(result.error, Date.now());
         if ((result.error as { status?: number }).status === 429) {
@@ -130,26 +150,34 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
       }
       setState({ kind: "email_sent", email: normalized, retryAt: Date.now() + 60_000 });
     } catch {
-      setState({ kind: "recover", method: "email", reason: "unavailable" });
+      if (live.current) setState({ kind: "recover", method: "email", reason: "unavailable" });
     }
   }
 
   function verificationFailure(error: unknown): string {
     const status = error && typeof error === "object" && "status" in error ? error.status : null;
-    if (status === 429) return copy.codeRateLimited;
+    if (status === 429) {
+      const currentTime = Date.now();
+      setNow(currentTime);
+      setVerificationRetryAt(retryAfter(error, currentTime));
+      return copy.codeRateLimited;
+    }
     return status === 400 || status === 401 || status === 403 || status === 422 ? copy.invalidCode : copy.unavailable;
   }
 
   async function verifyCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy || verificationInFlight.current || (state.kind !== "email_sent" && state.kind !== "rate_limited")) return;
+    if (!live.current || busy || verificationInFlight.current || Date.now() < verificationRetryAt || (state.kind !== "email_sent" && state.kind !== "rate_limited")) return;
     if (!/^\d{6}$/.test(code.trim())) { setCodeError(copy.invalidCode); return; }
     verificationInFlight.current = true;
     setVerifying(true);
     setCodeError("");
     let completing = false;
     try {
-      const result = await (await loadAuthClient()).signIn.emailOtp({ email: state.email, otp: code.trim() });
+      const client = await loadAuthClient();
+      if (!live.current) return;
+      const result = await client.signIn.emailOtp({ email: state.email, otp: code.trim() });
+      if (!live.current) return;
       if (result.error) {
         setCodeError(verificationFailure(result.error));
         return;
@@ -158,9 +186,9 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
       completing = true;
     } catch (error) {
       // The pinned browser SDK throws normalized AuthApiError for HTTP failures.
-      setCodeError(verificationFailure(error));
+      if (live.current) setCodeError(verificationFailure(error));
     } finally {
-      if (!completing) {
+      if (live.current && !completing) {
         verificationInFlight.current = false;
         setVerifying(false);
       }
@@ -168,6 +196,7 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
   }
 
   function codeForm() {
+    const seconds = Math.max(0, Math.ceil((verificationRetryAt - now) / 1000));
     return <form className={styles.form} onSubmit={event => void verifyCode(event)} noValidate>
       <div className={styles.field}>
         <label htmlFor="sign-in-code">{copy.codeLabel}</label>
@@ -176,7 +205,7 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
           aria-invalid={Boolean(codeError)} aria-describedby={codeError ? "sign-in-code-error" : undefined} />
       </div>
       {codeError ? <p id="sign-in-code-error" className={styles.alert} role="alert">{codeError}</p> : null}
-      <button className={styles.primary} type="submit" disabled={verifying} aria-busy={verifying}>{copy.verifyCode}</button>
+      <button className={styles.primary} type="submit" disabled={verifying || seconds > 0} aria-busy={verifying}>{seconds > 0 ? copy.verifyIn(seconds) : copy.verifyCode}</button>
       {verifying ? <p className={styles.status} role="status">{copy.verifyingCode}</p> : null}
     </form>;
   }
@@ -186,7 +215,7 @@ export function SignInFlow({ flow, initialReason, plan }: { flow: AuthFlow; init
     return seconds < 180 ? copy.resendIn(seconds) : copy.resendInMinutes(Math.round(seconds / 60));
   }
   const eligibility = flow.claim ? copy.claimEmailIntro : copy.emailIntro;
-  if (state.kind === "recover") return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1><p className={styles.alert} role="alert">{copy[state.reason]}</p><p className={styles.description}>{eligibility}</p><button className={styles.primary} type="button" onClick={() => state.method === "email" ? clearToStart("email") : google()}>{state.method === "email" ? copy.retryEmail : copy.retryGoogle}</button><a className={styles.secondary} href={authFlowHref(withMethod(state.method === "google" ? "email" : "google"), "start")}>{state.method === "google" ? copy.retryEmail : copy.retryGoogle}</a><p className={styles.privacy}>{copy.privacy}</p></div></section>;
+  if (state.kind === "recover") return <section className={styles.shell}><div className={styles.card}><h1 className={styles.heading} tabIndex={-1} ref={heading}>{copy.title}</h1><p className={styles.alert} role="alert">{copy[state.reason]}</p><p className={styles.description}>{eligibility}</p><button className={styles.primary} type="button" onClick={() => state.method === "google" ? google() : clearToStart("email")}>{state.method === "google" ? copy.retryGoogle : copy.retryEmail}</button><a className={styles.secondary} href={authFlowHref(withMethod(state.method === "google" ? "email" : "google"), "start")}>{state.method === "google" ? copy.retryEmail : copy.retryGoogle}</a><p className={styles.privacy}>{copy.privacy}</p></div></section>;
   if (state.kind === "rate_limited") {
     const seconds = Math.max(0, Math.ceil((state.retryAt - now) / 1000));
     const minutes = Math.max(1, Math.round(seconds / 60));

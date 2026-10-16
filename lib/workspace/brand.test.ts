@@ -62,11 +62,21 @@ describe("getBrand", () => {
     expect(await getBrand("ws-1")).toEqual({
       workspaceId: "ws-1",revisionId:null,revisions:[],
       voice: "direct",
+      voiceConfigured: true,
       approvedClaims: ["a"],
       prohibitedTerms: [],
       languages: ["en"],
       facts: { k: "v" },
       updatedAt: "2026-09-04T00:00:00Z",
+    });
+  });
+
+  it.each([null, "unrecognised"])("keeps an existing profile with %s voice distinguishable from configured warm", async (voice) => {
+    state.row = { workspace_id: "ws-1", voice, approved_claims: ["Keep"], prohibited_terms: ["Never"],
+      languages: ["en"], facts: { hours: "11-22" }, updated_at: "2026-10-15T00:00:00Z" };
+    expect(await getBrand("ws-1")).toMatchObject({
+      voiceConfigured: false, approvedClaims: ["Keep"], prohibitedTerms: ["Never"],
+      languages: ["en"], facts: { hours: "11-22" },
     });
   });
 });

@@ -28,6 +28,8 @@ const saved: SavedSetup = {
   voice: "playful",
   approvedClaims: "Family-run since 2009",
   hasLocation: true,
+  brandProfileExists: true,
+  workspaceSlug: "kam-man-house",
 };
 
 function render(props: Partial<Parameters<typeof OnboardingPage>[0]> = {}) {

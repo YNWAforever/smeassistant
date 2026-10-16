@@ -95,6 +95,30 @@ describe("PUT /api/workspaces/[workspaceId]/brand", () => {
     );
   });
 
+  it("keeps revision CAS and derives write scope from authorization even when the body spoofs scope", async () => {
+    mocks.authorizeWorkspaceRequest.mockResolvedValue(auth("owner"));
+    const revision = "22222222-2222-4222-8222-222222222222";
+    const res = await put({ ...body, expectedRevisionId: revision, actorId: "another-user", workspaceId: "another-workspace" });
+    expect(res.status).toBe(200);
+    expect(mocks.putBrand).toHaveBeenCalledWith(expect.objectContaining({
+      workspaceId: WORKSPACE_ID, actorId: "user-1", expectedRevisionId: revision,
+    }));
+    expect(mocks.putBrand.mock.calls[0][0].brand).not.toHaveProperty("actorId");
+    expect(mocks.putBrand.mock.calls[0][0].brand).not.toHaveProperty("workspaceId");
+  });
+
+  it.each([
+    ["brand_revision_conflict", 409, "brand_revision_conflict"],
+    ["brand_revision_forbidden", 403, "forbidden"],
+  ] as const)("preserves the database revision guard's %s refusal", async (reason, status, error) => {
+    mocks.authorizeWorkspaceRequest.mockResolvedValue(auth("owner"));
+    mocks.putBrand.mockRejectedValue(new Error(reason));
+    const res = await put(body);
+    expect(res.status).toBe(status);
+    expect(await res.json()).toEqual({ error });
+    expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
   it("is owner-only: the auth helper's 403 is returned before any write", async () => {
     mocks.authorizeWorkspaceRequest.mockResolvedValue({ ok: false, status: 403, code: "forbidden" });
     expect((await put(body)).status).toBe(403);

@@ -18,5 +18,5 @@ export async function generateMetadata(props: OwnerPageProps): Promise<Metadata>
 export default async function BrandRoute(props: OwnerPageProps) {
   const page = await loadOwnerPage(props);
   const brand = await getBrand(page.ctx.workspace.id);
-  return <BrandView locale={page.locale} workspaceId={page.ctx.workspace.id} role={page.membership.role} brand={brand} timezone={page.ctx.workspace.timezone} />;
+  return <BrandView locale={page.locale} workspaceId={page.ctx.workspace.id} actorId={page.membership.userId} role={page.membership.role} brand={brand} timezone={page.ctx.workspace.timezone} />;
 }

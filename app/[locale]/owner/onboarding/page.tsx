@@ -100,6 +100,7 @@ async function loadSavedSetup(workspaceId: string): Promise<SavedSetup | null> {
       brandRepository().get(workspaceId),
     ]);
     const primary = locations[0] ?? null;
+    if (!workspaces[0]) return null;
     return {
       workspaceName: text(workspaces[0]?.business_name),
       locationName: text(primary?.name),
@@ -107,6 +108,8 @@ async function loadSavedSetup(workspaceId: string): Promise<SavedSetup | null> {
       voice: text(brand?.voice),
       approvedClaims: Array.isArray(brand?.approved_claims) ? (brand.approved_claims as string[]).join("\n") : "",
       hasLocation: Boolean(primary),
+      brandProfileExists: Boolean(brand),
+      workspaceSlug: text(workspaces[0]?.slug),
     };
   } catch {
     // A read failure must not strand the owner at step 1 with no explanation;
@@ -183,12 +186,14 @@ export default async function OwnerOnboarding({
 
   return (
     <OnboardingPage
+      scopeKey={`${user.id}:${evidence?.workspaceId ?? "unassigned"}:${claim ?? ""}`}
       accessRequest={accessRequest}
       locale={locale}
       claim={claim}
       plan={plan}
       resumeStep={resumeStep}
       saved={saved}
+      savedUnavailable={owned && saved === null}
       oauthEnabled={process.env.WORKSPACE_CLAIM_VIA_OAUTH_ENABLED === "true"}
       contacts={contacts}
       evidence={evidence}

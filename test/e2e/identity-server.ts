@@ -5,7 +5,7 @@ import { assertLocalOrigin, listen } from './safety';
 
 type Link = { email: string; callbackURL: string; expires: number };
 type FixtureFault = 'binding' | 'mapping' | 'revoked' | 'upstream' | 'cancelled' | null;
-type Session = { email: string; subject: string; fault: FixtureFault };
+type Session = { email: string; subject: string; fault: FixtureFault; expires: number };
 type GoogleVerifier = { email: string; callbackURL: string; expires: number; fault: FixtureFault };
 
 function validFixtureEmail(value: unknown): value is string {
@@ -23,6 +23,9 @@ export async function startIdentityServer(app: string, secret: string) {
  let nextFault: FixtureFault = null;
  let completionHold: Promise<void> | null = null;
  let releaseCompletionHold: (() => void) | null = null;
+ const session = (email: string, fault: FixtureFault = null): Session => ({
+  email, subject: `fixture:${email}`, fault, expires: Date.now() + 24 * 60 * 60_000,
+ });
 
  const server = createServer(async (req, res) => {
   const json = (value: unknown, status = 200, headers: Record<string, string> = {}) => {
@@ -64,7 +67,10 @@ export async function startIdentityServer(app: string, secret: string) {
    const body = await read();
    if (req.url === '/send-code') {
     if (!validFixtureEmail(body.email)) return json({ error: 'unsafe_fixture_recipient' }, 400);
-    const otp = randomInt(0, 1_000_000).toString().padStart(6, '0');
+    // Model Better Auth's documented default rotate contract, not live managed configuration.
+    const previous = codes.get(body.email)?.otp;
+    let otp: string;
+    do { otp = randomInt(0, 1_000_000).toString().padStart(6, '0'); } while (otp === previous);
     codes.set(body.email, { otp, expires: Date.now() + 60_000, attempts: 0 });
     messages.push({ ID: randomUUID(), To: [{ Address: body.email }], HTML: `<p>Local sign-in code: <strong>${otp}</strong></p>`, Text: otp });
     return json({ ok: true });
@@ -80,8 +86,9 @@ export async function startIdentityServer(app: string, secret: string) {
     if (entry.otp !== body.otp) return json({ error: 'invalid_code' }, 401);
     codes.delete(body.email);
     const token = randomBytes(32).toString('base64url');
-    sessions.set(token, { email: body.email, subject: `fixture:${body.email}`, fault: null });
-    return json({ token, email: body.email });
+    const identity = session(body.email);
+    sessions.set(token, identity);
+    return json({ token, email: body.email, expiresAt: new Date(identity.expires).toISOString() });
    }
    if (req.url === '/send') {
     const callback = safeCallback(body.callbackURL);
@@ -97,7 +104,7 @@ export async function startIdentityServer(app: string, secret: string) {
     links.delete(String(body.code ?? ''));
     if (!link || link.expires <= Date.now()) return json({ error: 'invalid_token' }, 401);
     const token = randomBytes(32).toString('base64url');
-    sessions.set(token, { email: link.email, subject: `fixture:${link.email}`, fault: null });
+    sessions.set(token, session(link.email));
     return json({ token, callbackURL: link.callbackURL });
    }
    if (req.url === '/google/start') {
@@ -115,18 +122,33 @@ export async function startIdentityServer(app: string, secret: string) {
     verifiers.delete(verifier);
     if (!entry || entry.expires <= Date.now() || entry.fault === 'cancelled') return json({ error: 'invalid_verifier' }, 401);
     const token = randomBytes(32).toString('base64url');
-    sessions.set(token, { email: entry.email, subject: `fixture:${entry.email}`, fault: entry.fault });
+    sessions.set(token, session(entry.email, entry.fault));
     return json({ token });
    }
    if (req.url === '/session') {
     const hold = completionHold;
     if (hold) await hold;
     const identity = sessions.get(String(body.token ?? ''));
-    if (!identity || identity.fault === 'revoked') return json(null);
+    if (!identity || identity.fault === 'revoked' || identity.expires <= Date.now()) {
+     sessions.delete(String(body.token ?? ''));
+     return json(null);
+    }
     if (identity.fault === 'upstream') return json({ error: 'fixture_upstream_unavailable' }, 503);
     return json({ email: identity.email, subject: identity.subject, provider: 'neon', verified: true, fixtureFault: identity.fault });
    }
    if (req.url === '/revoke') { sessions.delete(String(body.token ?? '')); return json({ ok: true }); }
+   if (req.url === '/test/expire-code') {
+    if (!validFixtureEmail(body.email)) return json({ error: 'invalid_fixture_account' }, 400);
+    const entry = codes.get(body.email);
+    if (!entry) return json({ error: 'fixture_code_missing' }, 409);
+    entry.expires = 0;
+    return json({ ok: true });
+   }
+   if (req.url === '/test/expire-sessions') {
+    if (!validFixtureEmail(body.email)) return json({ error: 'invalid_fixture_account' }, 400);
+    for (const identity of sessions.values()) if (identity.email === body.email) identity.expires = 0;
+    return json({ ok: true });
+   }
    if (req.url === '/test/google-account') {
     if (!validFixtureEmail(body.email)) return json({ error: 'invalid_fixture_account' }, 400);
     selectedGoogleEmail = body.email;

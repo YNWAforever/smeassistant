@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { ArrowRight, BadgeCheck, Check, CircleAlert, Globe2, ScanSearch, ShieldCheck, TriangleAlert, UserCheck } from "lucide-react"
 
 import { CapabilityBadge, PublicPageFrame } from "@/components/product-ui"
@@ -43,6 +43,9 @@ export type SavedSetup = {
   approvedClaims: string
   /** A primary location exists, i.e. `POST /api/workspaces/claim` completed. */
   hasLocation: boolean
+  /** Profile existence is independent of whether its voice has been set. */
+  brandProfileExists: boolean
+  workspaceSlug: string | null
 }
 
 export type OnboardingProps = {
@@ -55,6 +58,9 @@ export type OnboardingProps = {
    */
   resumeStep?: 1 | 2 | 3 | 4
   saved?: SavedSetup | null
+  savedUnavailable?: boolean
+  /** Verified actor scope supplied by the server; used only to isolate editor state. */
+  scopeKey?: string
   /** `WORKSPACE_CLAIM_VIA_OAUTH_ENABLED === "true"` on the server. */
   oauthEnabled: boolean
   /**
@@ -123,11 +129,23 @@ function contactHref(contact: { channel: keyof typeof CONTACT_LABELS; href: stri
  * can be managed later in workspace settings. Claim completion still uses the
  * owner-only endpoint; optional configuration never replaces ownership proof.
  */
-export function OnboardingPage({ locale, claim, plan, resumeStep, saved = null, oauthEnabled, contacts = [], evidence, ownsWorkspace, gbpConnected, accessRequest }: OnboardingProps) {
+export function OnboardingPage(props: OnboardingProps) {
+  // A failed read must not seed the recovered editor from scan guesses.
+  // Ordinary same-scope refreshes still preserve an in-progress draft.
+  return <OnboardingForm key={[props.scopeKey, props.claim, props.evidence?.workspaceId, props.ownsWorkspace, props.savedUnavailable === true].join(":")} {...props} />
+}
+
+function OnboardingForm({ locale, claim, plan, resumeStep, saved = null, savedUnavailable = false, oauthEnabled, contacts = [], evidence, ownsWorkspace, gbpConnected, accessRequest }: OnboardingProps) {
   const router = useRouter()
   const isChinese = locale !== "en"
   const { market, label: marketName, timezone } = marketLabel(evidence?.region ?? null, isChinese)
   const [step, setStep] = useState(ownsWorkspace && evidence && resumeStep !== 1 ? 2 : 1)
+  const stepTitle = useRef<HTMLHeadingElement>(null)
+  const previousStep = useRef(step)
+  useEffect(() => {
+    if (previousStep.current !== step) stepTitle.current?.focus()
+    previousStep.current = step
+  }, [step])
   // Saved values win over the scan's guesses.
   const [workspaceName, setWorkspaceName] = useState(saved?.workspaceName ?? evidence?.businessName ?? "")
   // A NEW location has no name of its own yet, so it follows the visible
@@ -141,6 +159,12 @@ export function OnboardingPage({ locale, claim, plan, resumeStep, saved = null, 
   const [voice, setVoice] = useState<BrandVoice>(isBrandVoice(saved?.voice) ? saved.voice : "warm")
   const [approvedClaims, setApprovedClaims] = useState(saved?.approvedClaims ?? "")
   const [submitState, setSubmitState] = useState<{ kind: "idle" | "saving" | "error"; message?: string }>({ kind: "idle" })
+  const pending = useRef<AbortController | null>(null)
+  const errorRef = useRef<HTMLDivElement>(null)
+  useEffect(() => () => { pending.current?.abort(); pending.current = null }, [])
+  useEffect(() => {
+    if (savedUnavailable || submitState.kind === "error") errorRef.current?.focus()
+  }, [savedUnavailable, submitState.kind])
 
   const steps = [t(locale, "onboarding.verifyStep"), t(locale, "onboarding.basicsStep")]
   const ownershipLabel = ownsWorkspace
@@ -155,15 +179,23 @@ export function OnboardingPage({ locale, claim, plan, resumeStep, saved = null, 
   // Optional override: blank means "use the business name", so clearing a
   // field inside the collapsed disclosure can never silently block completion.
   const effectiveLocationName = locationOverride && locationName.trim() ? locationName.trim() : workspaceName.trim()
-  const canContinue = Boolean(evidence) && ownsWorkspace && (step === 1 || workspaceName.trim().length > 0)
+  const existingBrand = ownsWorkspace && saved?.brandProfileExists === true
+  const brandHref = saved?.workspaceSlug && /^[a-z0-9_-]+$/i.test(saved.workspaceSlug)
+    ? `/${locale}/owner/${encodeURIComponent(saved.workspaceSlug)}/settings/brand` : null
+  const reloadHref = `/${locale}/owner/onboarding${claim ? `?claim=${encodeURIComponent(claim)}` : ""}`
+  const canContinue = !savedUnavailable && Boolean(evidence) && ownsWorkspace && (step === 1 || workspaceName.trim().length > 0)
 
   async function completeWorkspace() {
-    if (!evidence || !ownsWorkspace || !canContinue || submitState.kind === "saving") return
+    if (!evidence || !ownsWorkspace || !canContinue || step !== 2 || pending.current) return
+    const controller = new AbortController()
+    pending.current = controller
+    let completed = false
     setSubmitState({ kind: "saving" })
     try {
       const response = await fetch("/api/workspaces/claim", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           claim_slug: evidence.shareSlug,
           workspace_name: workspaceName.trim(),
@@ -171,11 +203,14 @@ export function OnboardingPage({ locale, claim, plan, resumeStep, saved = null, 
           market,
           timezone,
           locale,
-          brand_voice: voice,
-          approved_claims: approvedClaims.split("\n").map((line) => line.trim()).filter(Boolean),
+          ...(!existingBrand ? {
+            brand_voice: voice,
+            approved_claims: approvedClaims.split("\n").map((line) => line.trim()).filter(Boolean),
+          } : {}),
         }),
       })
       const data = (await response.json().catch(() => null)) as { workspaceSlug?: unknown; matchedActionId?: unknown; error?: unknown } | null
+      if (controller.signal.aborted) return
       if (!response.ok) {
         setSubmitState({ kind: "error", message: response.status === 403 ? (isChinese ? zhFor(locale, "只有已驗證的店主可以完成這個工作台。") : "Only the verified owner can complete this workspace.") : (isChinese ? "暫時未能完成設定，請稍後再試。" : "Could not complete the workspace right now. Try again shortly.") })
         return
@@ -192,8 +227,11 @@ export function OnboardingPage({ locale, claim, plan, resumeStep, saved = null, 
         ? `/${locale}/owner/${slug}/actions/${encodeURIComponent(actionId)}`
         : `/${locale}/owner/${slug}`
       router.push(destination)
+      completed = true
     } catch {
-      setSubmitState({ kind: "error", message: isChinese ? "網絡連線失敗，請檢查後再試。" : "Network error. Check your connection and try again." })
+      if (!controller.signal.aborted) setSubmitState({ kind: "error", message: isChinese ? "網絡連線失敗，請檢查後再試。" : "Network error. Check your connection and try again." })
+    } finally {
+      if (!completed && pending.current === controller) pending.current = null
     }
   }
 
@@ -235,23 +273,42 @@ export function OnboardingPage({ locale, claim, plan, resumeStep, saved = null, 
             listing could only be told to get in touch out of band. */}
         {accessRequest}</div>
     )
+  const brandSummary = existingBrand ? (
+    <section className="onboarding-choice" aria-label={isChinese ? "已儲存的品牌設定" : "Saved brand settings"}>
+      <span className="onboarding-icon"><ShieldCheck /></span>
+      <div>
+        <h3>{isChinese ? "已儲存的品牌設定" : "Saved brand settings"}</h3>
+        <dl><div><dt>{isChinese ? "品牌語氣" : "Brand voice"}</dt><dd>{isBrandVoice(saved?.voice) ? voiceLabels[saved.voice] : isChinese ? "未設定" : "Not set"}</dd></div></dl>
+        <p>{isChinese ? "這裡會保留現有品牌資料。如需修改，請前往品牌設定。" : "Your existing brand profile is preserved here. To make changes, open brand settings."}</p>
+        {saved.approvedClaims ? <details><summary>{isChinese ? "已儲存的事實描述" : "Saved factual claims"}</summary><ul>{saved.approvedClaims.split("\n").filter(Boolean).map((line, index) => <li key={index}>{line}</li>)}</ul></details> : null}
+        {brandHref
+          ? <Button asChild type="button" variant="outline"><Link href={brandHref}>{isChinese ? "前往品牌設定" : "Open brand settings"}</Link></Button>
+          : <p className="limitation-note">{isChinese ? "完成商戶設定後，可從工作台開啟品牌設定。" : "After completing business setup, open brand settings from the workspace."}</p>}
+      </div>
+    </section>
+  ) : null
+  const readFailure = <div ref={errorRef} tabIndex={-1} className="form-error" role="alert">
+    <p>{isChinese ? "暫時未能讀取現有設定。請重新載入後再繼續。" : "We could not read the current settings. Reload before continuing."}</p>
+    <Link href={reloadHref}>{isChinese ? "重新載入設定" : "Reload settings"}</Link>
+  </div>
   const basics = (
       <form id="onboarding-basics" className="onboarding-form" onSubmit={(event) => { event.preventDefault(); void completeWorkspace() }}>
         <p>{t(locale, "onboarding.basicsIntro")}</p>
         <div className="field-stack"><Label htmlFor="workspace-name">{t(locale, "onboarding.businessName")}</Label><Input id="workspace-name" value={workspaceName} required maxLength={160} onChange={(event) => setWorkspaceName(event.target.value)} /></div>
         <div className="field-stack"><Label htmlFor="primary-address">{t(locale, "onboarding.address")}</Label><Input id="primary-address" value={locationAddress} maxLength={500} onChange={(event) => setLocationAddress(event.target.value)} /></div>
         <p className="limitation-note">{t(locale, "onboarding.connectionsLater")}</p>
+        {brandSummary}
         <details className="owner-disclosure">
           <summary>{t(locale, "onboarding.moreSettings")}</summary>
           <div className="onboarding-form">
         <div className="field-stack"><Label htmlFor="primary-location">{isChinese ? zhFor(locale, "主要地點") : "Primary location"}</Label><Input id="primary-location" value={locationOverride ? locationName : workspaceName} maxLength={160} placeholder={workspaceName} onChange={(event) => { setLocationName(event.target.value); setLocationOverride(true) }} /></div>
         <div className="two-column-fields"><div className="field-stack"><Label htmlFor="onboarding-market">{isChinese ? "市場" : "Market"}</Label><Input id="onboarding-market" value={marketName} readOnly /></div><div className="field-stack"><Label htmlFor="onboarding-timezone">{isChinese ? "時區" : "Timezone"}</Label><Input id="onboarding-timezone" value={timezone} readOnly /></div></div>
-        <div className="field-stack"><Label htmlFor="onboarding-voice">{isChinese ? "品牌語氣" : "Brand voice"}</Label><Select value={voice} onValueChange={(value) => setVoice(value as BrandVoice)}><SelectTrigger id="onboarding-voice" className="w-full"><SelectValue>{voiceLabels[voice]}</SelectValue></SelectTrigger><SelectContent>{(Object.keys(voiceLabels) as BrandVoice[]).map((key) => <SelectItem key={key} value={key}>{voiceLabels[key]}</SelectItem>)}</SelectContent></Select></div>
+        {!existingBrand && <><div className="field-stack"><Label htmlFor="onboarding-voice">{isChinese ? "品牌語氣" : "Brand voice"}</Label><Select value={voice} onValueChange={(value) => setVoice(value as BrandVoice)}><SelectTrigger id="onboarding-voice" className="w-full"><SelectValue>{voiceLabels[voice]}</SelectValue></SelectTrigger><SelectContent>{(Object.keys(voiceLabels) as BrandVoice[]).map((key) => <SelectItem key={key} value={key}>{voiceLabels[key]}</SelectItem>)}</SelectContent></Select></div>
         <div className="field-stack"><Label htmlFor="approved-claims">{isChinese ? "已核准事實描述（每行一項）" : "Approved factual claims (one per line)"}</Label><Textarea id="approved-claims" value={approvedClaims} onChange={(event) => setApprovedClaims(event.target.value)} rows={4} /></div>
-        <p className="limitation-note"><TriangleAlert /> {isChinese ? zhFor(locale, "餐牌材料、致敏原、價格及法律聲明必須由店主確認。") : "Menu ingredients, allergens, prices and legal claims always require owner confirmation."}</p>
+        <p className="limitation-note"><TriangleAlert /> {isChinese ? zhFor(locale, "餐牌材料、致敏原、價格及法律聲明必須由店主確認。") : "Menu ingredients, allergens, prices and legal claims always require owner confirmation."}</p></>}
           </div>
         </details>
-        {submitState.kind === "error" && <div className="form-error" role="alert"><CircleAlert /> {submitState.message}</div>}
+        {submitState.kind === "error" && <div ref={errorRef} tabIndex={-1} className="form-error" role="alert"><CircleAlert /> {submitState.message}</div>}
       </form>
     )
 
@@ -262,9 +319,9 @@ export function OnboardingPage({ locale, claim, plan, resumeStep, saved = null, 
         <div className="onboarding-layout">
           <aside><ol>{steps.map((label, index) => <li key={label} aria-current={step === index + 1 ? "step" : undefined} aria-disabled={index === 1 && !ownsWorkspace ? true : undefined} className={step === index + 1 ? "is-active" : step > index + 1 ? "is-complete" : ""}><span>{step > index + 1 ? <Check /> : index + 1}</span><strong>{label}</strong></li>)}</ol></aside>
           <section className="onboarding-card" aria-live="polite">
-            <div><span className="step-kicker">{isChinese ? `第 ${step} 步，共 ${STEP_COUNT} 步` : `Step ${step} of ${STEP_COUNT}`}</span><h2>{steps[step - 1]}</h2></div>
-            {step === 1 ? <>{claimEvidence}{evidence && ownership}</> : basics}
-            {evidence && ownsWorkspace && <div className="flow-card-footer">
+            <div><span className="step-kicker">{isChinese ? `第 ${step} 步，共 ${STEP_COUNT} 步` : `Step ${step} of ${STEP_COUNT}`}</span><h2 ref={stepTitle} tabIndex={-1}>{steps[step - 1]}</h2></div>
+            {savedUnavailable ? readFailure : step === 1 ? <>{claimEvidence}{evidence && ownership}</> : basics}
+            {evidence && ownsWorkspace && !savedUnavailable && <div className="flow-card-footer">
               {step === 2 && <Button type="button" variant="outline" onClick={() => setStep(1)} disabled={submitState.kind === "saving"}>{isChinese ? "返回" : "Back"}</Button>}
               {/* Keep step navigation separate from the submitter during a click. */}
               {step === 1

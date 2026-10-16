@@ -74,6 +74,7 @@ it.each([
   fireEvent.change(code, { target: { value: "123456" } });
   fireEvent.click(screen.getByRole("button", { name: "Verify and continue" }));
   expect(await screen.findByRole("alert")).toHaveTextContent(message);
-  expect(screen.getByRole("button", { name: "Verify and continue" })).toBeEnabled();
+  if (status === 429) expect(screen.getByRole("button", { name: /Verify again in/ })).toBeDisabled();
+  else expect(screen.getByRole("button", { name: "Verify and continue" })).toBeEnabled();
   expect(mocks.replace.mock.calls.some(([url]) => url.includes("/complete"))).toBe(false);
 });
