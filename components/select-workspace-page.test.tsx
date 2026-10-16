@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -10,6 +11,7 @@ vi.mock("next/navigation", () => ({
 
 import { SelectWorkspacePage } from "@/components/select-workspace-page"
 import { noWorkspaceCopy as emptyStateCopy } from "@/lib/workspace/no-workspace-copy"
+import type { WorkspaceCard } from "@/lib/workspace/queries"
 
 const LOCALES = ["en", "zh-HK", "zh-TW"] as const
 
@@ -64,4 +66,34 @@ describe("SelectWorkspacePage empty state", () => {
       "你的電郵尚未連結任何工作台。如你是店主：先免費掃描你的商戶，解鎖報告後按「以 Google 驗證擁有權」。如你是同事：請店主在「團隊與權限」加入你的電郵，然後用同一電郵再登入。",
     )
   })
+})
+
+describe("signed-in account exit", () => {
+  beforeEach(() => {
+    vi.stubGlobal("matchMedia", () => ({ matches: false, addListener: vi.fn(), removeListener: vi.fn(),
+      addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn() }))
+  })
+  afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+
+  for (const locale of LOCALES) {
+    it.each(["owner", "viewer"] as const)(`offers the existing sign-out action to a %s with a workspace (${locale})`, async role => {
+      const signOutAction = vi.fn(async () => {})
+      const card: WorkspaceCard = {
+        workspace: { id: "workspace-a", slug: "workspace-a", name: "Workspace A", market: "hk",
+          tier: "lite", timezone: "Asia/Hong_Kong", isDemo: false, instagramHandle: null, industry: null, district: null },
+        role, locations: [],
+      }
+      render(<SelectWorkspacePage locale={locale} cards={[card]} email="member@acceptance.test" signOutAction={signOutAction} />)
+      expect(signOutAction).not.toHaveBeenCalled()
+      const button = screen.getByRole("button", { name: /Sign out and use another email|登出.*登入/ })
+      expect(button).toHaveAttribute("type", "submit")
+      fireEvent.click(button)
+      await waitFor(() => expect(signOutAction).toHaveBeenCalledTimes(1))
+    })
+
+    it(`keeps exactly one sign-out action for a memberless account (${locale})`, () => {
+      render(<SelectWorkspacePage locale={locale} cards={[]} email="member@acceptance.test" signOutAction={async () => {}} />)
+      expect(screen.getAllByRole("button", { name: /Sign out and use another email|登出.*登入/ })).toHaveLength(1)
+    })
+  }
 })

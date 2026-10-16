@@ -55,6 +55,7 @@ export function SelectWorkspacePage({
 }) {
   const isChinese = locale !== "en"
   const empty = noWorkspaceCopy(locale, oauthClaimEnabled)
+  const accountExit = <form action={signOutAction}><Button variant="outline" type="submit">{isChinese ? zhFor(locale, "登出並用另一個電郵登入") : "Sign out and use another email"}</Button></form>
   return (
     <PublicPageFrame locale={locale}>
       <main className="select-workspace-page">
@@ -69,7 +70,7 @@ export function SelectWorkspacePage({
             <p>{empty.owner}</p>
             <p>{empty.colleague}</p>
             <div className="flow-card-footer">
-              <form action={signOutAction}><Button variant="outline" type="submit">{isChinese ? zhFor(locale, "登出並用另一個電郵登入") : "Sign out and use another email"}</Button></form>
+              {accountExit}
               <Button asChild><Link href={`/${locale}/scan`}><ScanSearch />{empty.scanCta}<ArrowRight /></Link></Button>
             </div>
           </div>
@@ -99,6 +100,7 @@ export function SelectWorkspacePage({
             })}
           </div>
         )}
+        {cards.length > 0 && <div className="flow-card-footer">{accountExit}</div>}
       </main>
     </PublicPageFrame>
   )

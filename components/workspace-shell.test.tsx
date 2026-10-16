@@ -50,4 +50,14 @@ describe("focused owner navigation", () => {
   it("names More in the current-section context when its menu is open", () => {
     expect(view("/en/owner/example/more").querySelector(".workspace-topbar-context strong")?.textContent).toBe("More");
   });
+
+  it.each(["en", "zh-HK", "zh-TW"] as const)("the account control opens the authenticated account/workspace page (%s)", locale => {
+    const root = document.createElement("div");
+    root.innerHTML = renderToStaticMarkup(<WorkspaceShell locale={locale} workspace={workspace}><h1>Page</h1></WorkspaceShell>);
+    const account = root.querySelector(".account-button");
+    expect(account?.tagName).toBe("A");
+    expect(account?.getAttribute("href")).toBe(`/${locale}/owner/select-workspace`);
+    expect(account?.getAttribute("title")).toBe("owner@example.test");
+    expect(account?.textContent).toContain("Owner");
+  });
 });
