@@ -176,6 +176,322 @@ describe("scanned review choices", () => {
   });
 });
 
+describe("assistant revisions preserve unsaved edits", () => {
+  const fetchSpy = vi.fn();
+
+  beforeEach(() => {
+    if (!window.matchMedia)
+      window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia;
+    fetchSpy.mockReset().mockRejectedValue(new Error("Unexpected request in a UI-only test"));
+    vi.stubGlobal("fetch", fetchSpy);
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it.each([
+    { locale: "en" as const, field: "body" as const },
+    { locale: "zh-HK" as const, field: "body" as const },
+    { locale: "zh-TW" as const, field: "body" as const },
+    { locale: "en" as const, field: "alt_text" as const },
+  ])("requires saving or undoing $field edits before assistant revision in $locale", ({ locale, field }) => {
+    const value = detail("review-response");
+    value.versions = [versionRow({
+      id: "saved-version", version_no: 3, approval_state: "draft",
+      body: "Saved example reply", alt_text: "Saved example description",
+    })];
+    const chinese = locale !== "en";
+    const message = locale === "zh-TW" ? "請先將手動修改儲存為新版本，再產生內容。"
+      : chinese ? "請先將手動修改儲存為新版本，再生成內容。"
+      : "Save manual edits as a new version before generating more content.";
+    renderLive(
+      <ActionDetailClient
+        locale={locale}
+        workspaceSlug="example-business"
+        workspaceId="example-workspace"
+        timezone="Asia/Hong_Kong"
+        role="owner"
+        inScope
+        location="yik-yam"
+        detail={value}
+        auditRows={[]}
+        locations={[{ slug: "yik-yam", name: "Example location" }]}
+        approvedAssets={[]}
+      />,
+    );
+    const trigger = screen.getByRole("button", {
+      name: chinese ? "用助理修改並建立新版本" : "Revise with operator as a new version",
+    });
+    const regenerate = screen.getByRole("button", {
+      name: chinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version",
+    });
+    const editor = screen.getByLabelText(field === "body" ? (chinese ? "草稿" : "Draft") : "Image alt text");
+    const savedValue = field === "body" ? "Saved example reply" : "Saved example description";
+    expect(trigger).toBeEnabled();
+    expect(regenerate).toBeEnabled();
+
+    fireEvent.change(editor, { target: { value: "Unsaved local edit" } });
+    expect(trigger).toBeDisabled();
+    expect(regenerate).toBeDisabled();
+    expect(editor).toHaveValue("Unsaved local edit");
+    expect(screen.getByRole("button", {
+      name: chinese ? "儲存手動修改為新版本" : "Save manual edits as a new version",
+    })).toBeEnabled();
+    expect(screen.getByText(message)).toBeInTheDocument();
+    fireEvent.click(trigger);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    fireEvent.change(editor, { target: { value: savedValue } });
+    expect(trigger).toBeEnabled();
+    expect(regenerate).toBeEnabled();
+    expect(screen.queryByText(message)).not.toBeInTheDocument();
+  });
+});
+
+describe("all generation paths preserve unsaved edits", () => {
+  const fetchSpy = vi.fn();
+  beforeEach(() => {
+    if (!window.matchMedia)
+      window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia;
+    clientMocks.runAction.mockReset();
+    toastMocks.error.mockReset();
+    fetchSpy.mockReset().mockRejectedValue(new Error("Unexpected request"));
+    vi.stubGlobal("fetch", fetchSpy);
+  });
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+  function draft() {
+    const value = detail("review-response");
+    value.versions = [versionRow({ id: "saved-version", version_no: 3, approval_state: "draft", body: "Saved reply", alt_text: "Saved description" })];
+    return value;
+  }
+  function element(value: ActionDetail) {
+    return <ActionDetailClient locale="en" workspaceSlug="example-business" workspaceId="example-workspace"
+      timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={value} auditRows={[]}
+      locations={[{ slug: "yik-yam", name: "Example location" }]} approvedAssets={[]} />;
+  }
+  function withReviews(value: ActionDetail) {
+    value.scanInputs = [{
+      key: "reviews_without_response", source: "gbp_reviews", factType: "Observed",
+      snapshotId: "snapshot-1", jobId: "job-1", observedAt: "2026-10-15T00:00:00Z",
+      reviews: [{ key: "review-1", rating: 5, excerpt: "Fixture review", time: null }],
+      selected: ["review-1"], available: 1, inspected: 1, populationCount: 1,
+    }];
+    return value;
+  }
+
+  it("refuses dirty required-input submission before saving facts or generating", async () => {
+    const value = draft();
+    value.action.actionState = "needs_input";
+    value.action.missingInputs = ["language"];
+    renderLive(element(value));
+    fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "Unsaved reply" } });
+    fireEvent.change(screen.getByLabelText(copy.en.workspace.inputs.language), { target: { value: "en" } });
+    const submit = screen.getByRole("button", { name: "Save inputs and generate" });
+    expect(submit).toBeDisabled();
+    // Enter submits the form without relying on the disabled button.
+    await act(async () => { fireEvent.submit(screen.getByRole("form", { name: "Required inputs" })); });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(clientMocks.runAction).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Draft")).toHaveValue("Unsaved reply");
+  });
+
+  it("refuses dirty owner-review-note generation before saving the note", async () => {
+    renderLive(element(withReviews(draft())));
+    fireEvent.click(screen.getByText(copy.en.workspace.scanInputs.addOwn));
+    const note = document.querySelector<HTMLTextAreaElement>("#input-owner-review")!;
+    fireEvent.change(note, { target: { value: "Additional owner-supplied review" } });
+    fireEvent.change(screen.getByLabelText("Image alt text"), { target: { value: "Unsaved description" } });
+    const generate = screen.getByRole("button", { name: copy.en.workspace.scanInputs.addOwnSubmit });
+    expect(generate).toBeDisabled();
+    fireEvent.click(generate);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(clientMocks.runAction).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Image alt text")).toHaveValue("Unsaved description");
+  });
+
+  it.each(["regenerate", "manual save"] as const)("keeps the editor locked after %s succeeds until its saved version arrives", async (kind) => {
+    const value = draft();
+    const view = renderLive(element(value));
+    clientMocks.runAction.mockResolvedValue({ ok: true, data: { state: "succeeded", versionId: "new-version", versionNo: 4 } });
+    fetchSpy.mockResolvedValue(Response.json({ versionId: "new-version", versionNo: 4 }));
+    if (kind === "manual save") fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "Manually saved reply" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: kind === "manual save" ? "Save manual edits as a new version" : "Regenerate with the agent as a new version" }));
+    });
+    expect(screen.getByLabelText("Draft")).toBeDisabled();
+    expect(screen.getByLabelText("Image alt text")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Reload saved version" })).toBeEnabled();
+    const refreshed = { ...value, versions: [
+      versionRow({ id: "new-version", version_no: 4, approval_state: "draft", body: kind === "manual save" ? "Manually saved reply" : "Generated reply" }),
+      ...value.versions,
+    ] };
+    view.rerender(element(refreshed));
+    expect(screen.getByLabelText("Draft")).toBeEnabled();
+    expect(screen.getByLabelText("Draft")).toHaveValue(kind === "manual save" ? "Manually saved reply" : "Generated reply");
+    expect(screen.queryByRole("button", { name: "Reload saved version" })).not.toBeInTheDocument();
+  });
+
+  it("unlocks when refreshed versions arrive before the save response", async () => {
+    let finish!: (response: Response) => void;
+    fetchSpy.mockImplementation(() => new Promise<Response>((resolve) => { finish = resolve; }));
+    const value = draft();
+    const view = renderLive(element(value));
+    fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "Manually saved reply" } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save manual edits as a new version" })); });
+    view.rerender(element({ ...value, versions: [
+      versionRow({ id: "new-version", version_no: 4, approval_state: "draft", body: "Manually saved reply" }),
+      ...value.versions,
+    ] }));
+    await act(async () => { finish(Response.json({ versionId: "new-version", versionNo: 4 })); });
+    expect(screen.getByLabelText("Draft")).toBeEnabled();
+    expect(screen.getByLabelText("Draft")).toHaveValue("Manually saved reply");
+    expect(screen.queryByRole("button", { name: "Reload saved version" })).not.toBeInTheDocument();
+  });
+
+  it.each(["required inputs", "owner review note"] as const)("still generates from clean %s", async (kind) => {
+    const value = draft();
+    if (kind === "required inputs") {
+      value.action.actionState = "needs_input";
+      value.action.missingInputs = ["language"];
+    } else withReviews(value);
+    renderLive(element(value));
+    fetchSpy.mockResolvedValue(Response.json({ ok: true }));
+    clientMocks.runAction.mockResolvedValue({ ok: true, data: { state: "succeeded", versionId: "new-version", versionNo: 4 } });
+    if (kind === "required inputs") {
+      fireEvent.change(screen.getByLabelText(copy.en.workspace.inputs.language), { target: { value: "en" } });
+      await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save inputs and generate" })); });
+    } else {
+      fireEvent.click(screen.getByText(copy.en.workspace.scanInputs.addOwn));
+      fireEvent.change(document.querySelector<HTMLTextAreaElement>("#input-owner-review")!, { target: { value: "Additional review" } });
+      await act(async () => { fireEvent.click(screen.getByRole("button", { name: copy.en.workspace.scanInputs.addOwnSubmit })); });
+    }
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(clientMocks.runAction).toHaveBeenCalledWith("act-1", { inputs: kind === "required inputs" ? { language: "en" } : { reviews_without_response: "Additional review" } });
+    expect(screen.getByLabelText("Draft")).toBeDisabled();
+  });
+
+  it.each([false, true])("assistant version saving respects current dirty state (%s)", async (makeDirty) => {
+    fetchSpy.mockImplementation(async (url: string) => {
+      if (url.startsWith("/api/assistant/suggestions")) return Response.json({ suggestions: [] });
+      if (url === "/api/assistant/run") return Response.json({
+        runId: "assistant-run", draftRunId: "persisted-assistant-draft", state: "needs_approval",
+        answer: "Revised reply preview", nextAction: "Review the preview", evidenceRefs: [], warnings: [],
+        requiresApproval: true, demoBoundary: "Nothing is published",
+        output: { artifactId: "artifact-1", type: "review_reply", title: "Reply", body: "Revised reply", version: 1, acceptanceCriteria: [] },
+      });
+      return Response.json({ versionId: "assistant-version", versionNo: 4 });
+    });
+    renderLive(element(draft()));
+    const editor = screen.getByLabelText("Draft");
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Revise with operator as a new version" })); });
+    await act(async () => { fireEvent.click(await screen.findByRole("button", { name: "Make it warmer without overpromising" })); });
+    const createName = "Create a new version without overwriting";
+    expect(screen.getByRole("button", { name: createName })).toBeInTheDocument();
+    if (makeDirty) {
+      // Models an editor update while a previously opened assistant is still
+      // holding its preview. A disabled launcher alone cannot secure the save.
+      fireEvent.change(editor, { target: { value: "Unsaved reply" } });
+      expect(screen.queryByRole("button", { name: createName })).not.toBeInTheDocument();
+      expect(editor).toHaveValue("Unsaved reply");
+      expect(fetchSpy.mock.calls.filter(([url]) => String(url).endsWith("/versions"))).toHaveLength(0);
+    } else {
+      await act(async () => { fireEvent.click(screen.getByRole("button", { name: createName })); });
+      const saves = fetchSpy.mock.calls.filter(([url]) => String(url).endsWith("/versions"));
+      expect(saves).toHaveLength(1);
+      expect(JSON.parse(String(saves[0][1]?.body))).toEqual({
+        assistant_run_id: "persisted-assistant-draft", base_version_id: "saved-version",
+      });
+      expect(editor).toBeDisabled();
+    }
+  });
+});
+
+describe("version history preserves unsaved edits", () => {
+  const fetchSpy = vi.fn();
+
+  beforeEach(() => {
+    if (!window.matchMedia)
+      window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia;
+    toastMocks.error.mockReset();
+    fetchSpy.mockReset().mockRejectedValue(new Error("Unexpected request in a UI-only test"));
+    vi.stubGlobal("fetch", fetchSpy);
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  function mountHistory(locale: "en" | "zh-HK" | "zh-TW" = "en") {
+    const value = detail("review-response");
+    value.versions = [
+      versionRow({ id: "current-version", version_no: 3, approval_state: "draft", body: "Current reply", alt_text: "Current description" }),
+      versionRow({ id: "earlier-version", version_no: 2, approval_state: "superseded", body: "Earlier reply", alt_text: "Earlier description" }),
+    ];
+    renderLive(
+      <ActionDetailClient
+        locale={locale}
+        workspaceSlug="example-business"
+        workspaceId="example-workspace"
+        timezone="Asia/Hong_Kong"
+        role="owner"
+        inScope
+        location="yik-yam"
+        detail={value}
+        auditRows={[]}
+        locations={[{ slug: "yik-yam", name: "Example location" }]}
+        approvedAssets={[]}
+      />,
+    );
+  }
+
+  it.each([
+    { locale: "en" as const, field: "body" as const },
+    { locale: "zh-HK" as const, field: "body" as const },
+    { locale: "zh-TW" as const, field: "body" as const },
+    { locale: "en" as const, field: "alt_text" as const },
+  ])("keeps $field edits when another version is selected in $locale, then allows a clean switch", ({ locale, field }) => {
+    mountHistory(locale);
+    const chinese = locale !== "en";
+    const editorLabel = field === "body" ? (chinese ? "草稿" : "Draft") : "Image alt text";
+    const historyTab = () => screen.getByRole("tab", { name: chinese ? /版本/ : /Version & audit history/ });
+    const draftTab = () => screen.getByRole("tab", { name: chinese ? /草稿/ : /Draft & approval/ });
+    fireEvent.change(screen.getByLabelText(editorLabel), { target: { value: "Unsaved local edit" } });
+    fireEvent.mouseDown(historyTab(), { button: 0 });
+    fireEvent.click(screen.getByRole("button", { name: chinese ? /^第 2 版/ : /^Version 2/ }));
+    fireEvent.mouseDown(draftTab(), { button: 0 });
+
+    expect(screen.getByLabelText(editorLabel)).toHaveValue("Unsaved local edit");
+    expect(toastMocks.error).toHaveBeenCalledWith(chinese
+      ? "請先將手動修改儲存為新版本，再切換版本。"
+      : "Save manual edits as a new version before switching versions.");
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText(editorLabel), {
+      target: { value: field === "body" ? "Current reply" : "Current description" },
+    });
+    fireEvent.mouseDown(historyTab(), { button: 0 });
+    fireEvent.click(screen.getByRole("button", { name: chinese ? /^第 2 版/ : /^Version 2/ }));
+    fireEvent.mouseDown(draftTab(), { button: 0 });
+    expect(screen.getByLabelText(chinese ? "草稿" : "Draft")).toHaveValue("Earlier reply");
+    expect(screen.getByLabelText(chinese ? "圖片替代文字" : "Image alt text")).toHaveValue("Earlier description");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not reset local edits when the already selected version is clicked", () => {
+    mountHistory();
+    fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "Unsaved local edit" } });
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /Version & audit history/ }), { button: 0 });
+    fireEvent.click(screen.getByRole("button", { name: /^Version 3/ }));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /Draft & approval/ }), { button: 0 });
+    expect(screen.getByLabelText("Draft")).toHaveValue("Unsaved local edit");
+    expect(toastMocks.error).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
 describe("checklist templates have a completion path", () => {
   // The defect: an agent-less template rendered exactly like an agent one, so
   // the only primary control was "Generate a draft" -> 409 agent_unavailable.

@@ -12,7 +12,7 @@ export function AssistantArtifactPreview({ artifact, isChinese }: { artifact: As
           <small>{isChinese ? "可審批輸出預覽" : "Approval-ready output preview"}</small>
           <h3 id="assistant-artifact-title">{artifact.title}</h3>
         </div>
-        <Badge variant="outline">v{artifact.version}</Badge>
+        <Badge variant="outline">{isChinese ? "草稿預覽" : "Draft preview"}</Badge>
       </div>
       <p className="assistant-artifact-body">{artifact.body}</p>
       <div className="assistant-criteria">

@@ -60,6 +60,7 @@ async function loadClaimEvidence(slug: string): Promise<ClaimEvidence | null> {
     shareSlug: data.share_slug,
     businessName: data.business_name,
     district: data.district,
+    address: text(snapshot.address),
     region: data.region,
     workspaceId: data.workspace_id,
     placeId: data.place_id,
@@ -68,7 +69,7 @@ async function loadClaimEvidence(slug: string): Promise<ClaimEvidence | null> {
   };
 }
 
-/** Accepted owner row for this user on the job's workspace — the only thing that unlocks steps 3–4. */
+/** Accepted owner row for this user on the job's workspace — the only thing that unlocks setup. */
 async function ownsWorkspace(userId: string, workspaceId: string): Promise<boolean> {
   try { return (await membershipRepository.accepted(userId,workspaceId))?.role === "owner"; }
   catch {
@@ -87,7 +88,7 @@ async function hasActiveGbpConnection(workspaceId:string):Promise<boolean> {
  * rather than from a query parameter the owner may not still have.
  *
  * `POST /api/workspaces/claim` is what creates the primary location, so a
- * workspace WITH one has finished step 4: the fields below then show the values
+ * workspace WITH one has completed setup: the fields below then show the values
  * that were actually saved instead of re-proposing the scan's guesses.
  */
 async function loadSavedSetup(workspaceId: string): Promise<SavedSetup | null> {
@@ -102,7 +103,7 @@ async function loadSavedSetup(workspaceId: string): Promise<SavedSetup | null> {
     return {
       workspaceName: text(workspaces[0]?.business_name),
       locationName: text(primary?.name),
-      locationAddress: text(primary?.address, primary?.district),
+      locationAddress: text(primary?.address),
       voice: text(brand?.voice),
       approvedClaims: Array.isArray(brand?.approved_claims) ? (brand.approved_claims as string[]).join("\n") : "",
       hasLocation: Boolean(primary),
@@ -142,7 +143,7 @@ export default async function OwnerOnboarding({
   // flow a `?claimed=1` and the step was read from it, so an owner who came
   // back to the same URL later -- or simply reloaded without the parameter --
   // was dropped at step 1 with their ownership already proven.
-  const resumeStep = !owned ? 1 : saved?.hasLocation ? 4 : 3;
+  const resumeStep = owned ? 2 : 1;
 
   // The market of the business being claimed, not of the interface language
   // (guardrail 11). Resolved here because `getMarketCtas` reads env through a

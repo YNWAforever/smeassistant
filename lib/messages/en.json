@@ -1,4 +1,20 @@
 {
+  "onboarding": {
+    "title": "Set up and see what to do first",
+    "intro": "Confirm your business and access, then check the essentials to see your scan results and first recommended action.",
+    "verifyStep": "Business and access",
+    "basicsStep": "Essentials and results",
+    "viewReport": "View scan report",
+    "ownershipReady": "Access is confirmed. Check the prefilled details, then open your results.",
+    "basicsIntro": "Check your business details. We will open the results from your scan, with the first recommended action.",
+    "businessName": "Business name",
+    "address": "Address (optional)",
+    "connectionsLater": "You can add Instagram, connect Google and adjust your brand settings later in Settings.",
+    "moreSettings": "More settings (optional)",
+    "finish": "Finish setup and view results",
+    "saving": "Saving…",
+    "resultUnavailable": "Could not open your results right now. Your entered details are still here. Please try again."
+  },
   "applied": {
     "markButton": "Mark as applied",
     "markHint": "We record what you tell us; the next scan is what checks it.",
@@ -14,6 +30,15 @@
   "budget": {
     "scanAtCapacity": "Free scans are at capacity right now. Please try again in a few hours.",
     "aiLimit": "Today's AI drafting limit has been reached. Try again later."
+  },
+  "assistant": {
+    "saveManualEditsFirst": "Save manual edits as a new version before revising with the assistant."
+  },
+  "editor": {
+    "saveBeforeGeneration": "Save manual edits as a new version before generating more content.",
+    "waitingForVersion": "Your new version is saved. Loading it before you continue editing.",
+    "retryVersion": "Reload saved version",
+    "saveManualEditsBeforeVersionChange": "Save manual edits as a new version before switching versions."
   },
   "draftFailure": {
     "serviceUnavailable": "AI drafting is not available yet. Please contact support before trying again.",

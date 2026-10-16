@@ -210,9 +210,12 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   // unsaved local text survives an unrelated refresh.
   const versionsKey = versions.map((v) => v.id).join(",")
   const [seenVersionsKey, setSeenVersionsKey] = useState(versionsKey)
-  if (seenVersionsKey !== versionsKey) {
+  // A refresh can arrive before the mutation response supplies pendingSelect.
+  // Reconcile that response against an already-present row as well.
+  const pendingVersion = versions.find((v) => v.id === pendingSelect)
+  if (seenVersionsKey !== versionsKey || pendingVersion) {
     setSeenVersionsKey(versionsKey)
-    const target = pendingSelect && versions.find((v) => v.id === pendingSelect) ? pendingSelect : versions.some((v) => v.id === versionId) ? null : versions[0]?.id ?? null
+    const target = pendingVersion?.id ?? (versions.some((v) => v.id === versionId) ? null : versions[0]?.id ?? null)
     if (target) {
       const next = versions.find((v) => v.id === target)!
       setVersionId(next.id)
@@ -221,6 +224,13 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
       setPendingSelect(null)
     }
   }
+
+  // Computed before the render-phase resync blocks below: the `?version=`
+  // link calls `selectVersion`, whose unsaved-changes refusal reads `dirty`.
+  // Reading it after those blocks threw "Cannot access 'dirty' before
+  // initialization" when `?version=` changed on the mounted page.
+  const selectedVersion: VersionRow | null = versions.find((item) => item.id === versionId) ?? null
+  const dirty = selectedVersion ? content !== selectedVersion.body || altText !== (selectedVersion.alt_text ?? "") : content.trim().length > 0
 
   // A "Continue here" link to another version of this same action only changes `?version=`; the App
   // Router keeps this component mounted, so the prop changing is the signal. Same path as a manual
@@ -241,11 +251,9 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
     if (offerRefusal) setOfferRefusal(null)
   }
 
-  const selectedVersion: VersionRow | null = versions.find((item) => item.id === versionId) ?? null
   const guardrailFlags = selectedVersion?.guardrails ?? []
-  // "Not checked" and "checked, clean" are different facts and must not share a
-  // badge -- that conflation is what let a constant "1 reminder" pass for a
-  // real count.
+  // "Not checked" and "checked, clean" are different facts and must not share
+  // a badge.
   const guardrailBadge = guardrailFlags.length > 0
     ? (isChinese ? `${guardrailFlags.length} 項違規` : `${guardrailFlags.length} flagged`)
     : selectedVersion?.checked
@@ -261,13 +269,13 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   // export of a published version keeps 'published', so "was it exported" is
   // first_exported_at (the 'exported' state stays a fallback for older rows).
   const exported = Boolean(selectedVersion?.first_exported_at) || selectedVersion?.delivery_state === "exported"
-  const dirty = selectedVersion ? content !== selectedVersion.body || altText !== (selectedVersion.alt_text ?? "") : content.trim().length > 0
+  const saveBeforeGenerationMessage = t(locale, "editor.saveBeforeGeneration")
   const versionLabel = (no: number) => (isChinese ? `第 ${no} 版` : `Version ${no}`)
   const versionName = selectedVersion ? versionLabel(selectedVersion.version_no) : (isChinese ? "尚未有版本" : "No version yet")
   const approvalText = (state: VersionRow["approval_state"] | null) => (state ? stateLabel(state, locale) : (isChinese ? "尚未有版本" : "No version yet"))
   const canAssert = inScope && effectiveRole !== "viewer"
-  const canEdit = hydrated && !offline && inScope && effectiveRole !== "viewer" && busy === null
-  const canApprove = hydrated && !offline && inScope && effectiveRole !== "viewer" && busy === null && selectedVersion !== null
+  const canEdit = hydrated && !offline && inScope && effectiveRole !== "viewer" && busy === null && pendingSelect === null
+  const canApprove = canEdit && selectedVersion !== null
   const isApprovedCurrent = approval === "approved" && !dirty
   // While the stale-offer banner shows, the server refuses approve and export; the controls say so too.
   const canApproveCurrent = canApprove && !dirty && approval !== "rejected" && approval !== "superseded" && approval !== "approved" && offerStale === null
@@ -277,7 +285,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   // R3: the offer is bound by the action's offer_id column, so the owner is never asked for it.
   const neededKeys = (factsNeeded ?? (action.actionState === "needs_input" ? action.missingInputs : [])).filter((key) => key !== "offer_id")
   const showInputForm = neededKeys.length > 0 && effectiveRole !== "viewer" && inScope
-  const canGenerate = canEdit && agentBacked && action.capability !== "Requires connection" && runStateKey !== "running" && runStateKey !== "queued"
+  const canGenerate = canEdit && !dirty && agentBacked && action.capability !== "Requires connection" && runStateKey !== "running" && runStateKey !== "queued"
   const relatedAudit = auditRows.slice(0, 12)
 
   const provenance = [
@@ -303,7 +311,11 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
 
   function selectVersion(nextId: string) {
     const next = versions.find((item) => item.id === nextId)
-    if (!next) return
+    if (!next || next.id === versionId) return
+    if (dirty) {
+      toast.error(t(locale, "editor.saveManualEditsBeforeVersionChange"))
+      return
+    }
     setVersionId(next.id)
     setContent(next.body)
     setAltText(next.alt_text ?? "")
@@ -332,6 +344,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   }
 
   async function generate(extraInputs?: Record<string, unknown>) {
+    if (dirty) { toast.error(saveBeforeGenerationMessage); return }
     if (!canGenerate && !extraInputs) return
     setBusy("run")
     setLastRunError(null)
@@ -357,6 +370,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   }
 
   async function submitInputs() {
+    if (dirty && !checklistSteps) { toast.error(saveBeforeGenerationMessage); return }
     if (!canEdit) return
     const { provided, runInputs } = ownerInputPatch(neededKeys, inputValues)
     const missing = neededKeys.filter((key) => provided[key] === undefined)
@@ -448,6 +462,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   }
 
   async function addOwnerReviewNote() {
+    if (dirty) { toast.error(saveBeforeGenerationMessage); return }
     if (!canEdit) return
     const value = (inputValues.reviews_without_response ?? "").trim()
     if (!value) return
@@ -482,6 +497,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
    * manual save, based on the selected version, then the server tree refreshes.
    */
   async function createAssistantVersion(run: DemoAssistantRunResponse) {
+    if (dirty) { toast.error(saveBeforeGenerationMessage); return }
     if (!canEdit) {
       toast.error(isChinese ? "目前角色或連線狀態不允許建立版本。" : "Your current role or connection state cannot create a version.")
       return
@@ -730,7 +746,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                           <Button
                             variant="outline"
                             onClick={() => void addOwnerReviewNote()}
-                            disabled={!canEdit || !(inputValues.reviews_without_response ?? "").trim()}
+                            disabled={!canEdit || dirty || !(inputValues.reviews_without_response ?? "").trim()}
                           >
                             {busy === "inputs" || busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {scanInputCopy.addOwnSubmit}
                           </Button>
@@ -754,7 +770,7 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                   ) : (
                     <div key={key} className="field-stack"><Label htmlFor={`input-${key}`}>{faqQuestionByKey.get(key) ? resolveText(faqQuestionByKey.get(key)!.question, locale) : (inputs[key] ?? key)}</Label>{key.startsWith("owner_fact") || key === "menu_items" || key === "reviews_without_response" ? <Textarea id={`input-${key}`} rows={3} value={inputValues[key] ?? faqQuestionByKey.get(key)?.prefill ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} /> : <Input id={`input-${key}`} value={inputValues[key] ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} />}{faqQuestionByKey.get(key)?.prefill && <small>{isChinese ? "已按品牌設定中已儲存的資料預填，可自行修改。" : "Prefilled from a fact already saved in Brand settings; edit as needed."}</small>}</div>
                   ))}
-                  <div className="draft-editor-actions"><Button type="submit" disabled={!canEdit}>{busy === "inputs" || busy === "run" ? <LoaderCircle className="animate-spin" /> : checklistSteps ? <Save /> : <WandSparkles />} {checklistSteps ? checklistCopy.saveInputs : isChinese ? "儲存資料並重新生成" : "Save inputs and generate"}</Button></div>
+                  <div className="draft-editor-actions"><Button type="submit" disabled={!canEdit || (!checklistSteps && dirty)}>{busy === "inputs" || busy === "run" ? <LoaderCircle className="animate-spin" /> : checklistSteps ? <Save /> : <WandSparkles />} {checklistSteps ? checklistCopy.saveInputs : isChinese ? "儲存資料並重新生成" : "Save inputs and generate"}</Button></div>
                 </form>
               )}
               {!checklistSteps && (<>
@@ -774,7 +790,9 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                 {(selectedVersion?.agentNotes ?? []).map((note) => <p key={note} className="limitation-note"><AlertTriangle /> {note}</p>)}
                 <p className="limitation-note">{isChinese ? zhFor(locale, "除非店主已確認，否則不要加入食材、致敏原、價格或優惠日期。") : "Do not add ingredients, allergens, pricing or offer dates unless the owner confirmed them."}</p></div>
               {lastRunError && <p className="limitation-note" role="alert"><CircleAlert /> {isChinese ? "上次生成失敗：" : "Last generation failed: "}{runErrorLabel(locale, lastRunError)}</p>}
-              <div className="draft-editor-actions"><ContextualAssistant locale={locale} surface={social ? "create" : "action"} triggerLabel={isChinese ? "用助理修改並建立新版本" : "Revise with operator as a new version"} mode="live" context={{ workspaceId, locationId: action.location.id ?? undefined, actionId: action.id, versionId: selectedVersion?.id }} basePath={base} locationParam={location} onCreateVersion={(run) => void createAssistantVersion(run)} disabled={!canEdit} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? (isChinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version") : (isChinese ? "生成草稿" : "Generate a draft")}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {isChinese ? "儲存手動修改為新版本" : "Save manual edits as a new version"}</Button></div>
+              {pendingSelect && <div className="draft-editor-actions" role="status"><span>{t(locale, "editor.waitingForVersion")}</span><Button variant="outline" onClick={() => router.refresh()}>{t(locale, "editor.retryVersion")}</Button></div>}
+              <div className="draft-editor-actions"><ContextualAssistant locale={locale} surface={social ? "create" : "action"} triggerLabel={isChinese ? "用助理修改並建立新版本" : "Revise with operator as a new version"} mode="live" context={{ workspaceId, locationId: action.location.id ?? undefined, actionId: action.id, versionId: selectedVersion?.id }} basePath={base} locationParam={location} onCreateVersion={dirty ? undefined : (run) => void createAssistantVersion(run)} disabled={!canEdit || dirty} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? (isChinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version") : (isChinese ? "生成草稿" : "Generate a draft")}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {isChinese ? "儲存手動修改為新版本" : "Save manual edits as a new version"}</Button></div>
+              {dirty && <p className="limitation-note">{saveBeforeGenerationMessage}</p>}
               {conflict && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "另一位審閱者已更新輸出" : "Another reviewer changed this output"}</strong><p>{isChinese ? "未儲存文字仍保留在本機。載入最新版本、比較內容，再建立新版本。" : "Unsaved text is preserved locally. Load the latest version, compare, then create a new version."}</p><Button size="sm" onClick={loadLatest}><RefreshCw /> {isChinese ? "安全載入最新狀態" : "Load latest safely"}</Button></div></div>}
               </>)}
               {/* The assertion control, offered for checklist and drafted

@@ -17,10 +17,10 @@ test("T-03 legal mixed-case underscore slug survives sign-in and onboarding with
   await expect(page).toHaveURL(/claimed=requires_verification/);
   await page.goto(`/en/owner/onboarding?claim=${slug}`);
   await expect(page.locator(".onboarding-card")).toContainText("Acceptance business");
-  await expect(page.getByRole("button", { name: "Continue", exact: true })).toBeEnabled();
+  await expect(page.getByText("Ask Fimmick to assign your workspace")).toBeVisible();
   expect(new URL(page.url()).searchParams.get("claim")).toBe(slug);
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Continue", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Continue", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "View scan report", exact: true })).toHaveAttribute("href", `/en/r/${slug}`);
   expect(sql(environment.db, `select count(*) from audit_jobs where id='${job.id}' and workspace_id is null;`)).toBe("1");
   expect(sql(environment.db, `select count(*) from scan_snapshots where job_id='${job.id}';`)).toBe("0");
 });
@@ -29,17 +29,64 @@ test("T-15 attached owner resumes persisted brand setup and repeats completion w
   const job = report(environment, merchant, "hk", true);
   await signIn(page, environment, merchant);
   await page.goto(`/en/owner/onboarding?claim=${job.slug}`);
-  await expect(page.locator(".step-kicker")).toHaveText("Step 4 of 4");
+  await expect(page.locator(".step-kicker")).toHaveText("Step 2 of 2");
   await expect(page.locator("#workspace-name")).toHaveValue("Acceptance HK");
   await page.locator("#workspace-name").fill("Saved HK fixture");
   const completion = page.waitForResponse(r => r.url().endsWith("/api/workspaces/claim") && r.request().method() === "POST");
-  await page.getByRole("button", { name: "Open workspace", exact: true }).click();
+  await page.getByRole("button", { name: "Finish setup and view results", exact: true }).click();
   expect((await completion).status()).toBe(200);
   await page.goto(`/en/owner/onboarding?claim=${job.slug}`);
-  await expect(page.locator(".step-kicker")).toHaveText("Step 4 of 4");
+  await expect(page.locator(".step-kicker")).toHaveText("Step 2 of 2");
   await expect(page.locator("#workspace-name")).toHaveValue("Saved HK fixture");
   expect(sql(environment.db, `select count(*) from workspace_members where workspace_id='${merchant.workspaceId}' and role='owner' and accepted_at is not null;`)).toBe("1");
   expect(sql(environment.db, `select count(*) from scan_snapshots where job_id='${job.id}';`)).toBe("1");
+});
+
+for (const { locale, finish } of [
+  { locale: "en", finish: "Finish setup and view results" },
+  { locale: "zh-HK", finish: "完成設定，查看結果" },
+  { locale: "zh-TW", finish: "完成設定，查看結果" },
+]) test(`new owner completes essentials and sees the first evidence-backed result (${locale})`, async ({ page, merchant, environment }, testInfo) => {
+  // All rows belong to this test's fresh, labelled disposable database. Start
+  // with staff-assigned ownership but no location, brand, snapshot or draft.
+  sql(environment.db, `delete from actions where workspace_id='${merchant.workspaceId}'; delete from locations where workspace_id='${merchant.workspaceId}';`);
+  const jobId = randomUUID(), slug = `onboarding-${jobId.slice(0, 12)}`;
+  sql(environment.db, `insert into audit_jobs(id,share_slug,business_name,district,region,status,workspace_id,overall_score,score_coverage,module_results,input_snapshot,completed_at)
+    values ('${jobId}','${slug}','Fixture Bakery','Central','hk','done','${merchant.workspaceId}',62,0.6,
+    '{"ig":{"status":"unavailable","score":null},"gbp":{"status":"measured","score":62,"confidence":"high"},"aeo":{"status":"measured","score":62,"confidence":"high"}}',
+    '{"address":"12 Fixture Road","placeId":"onboarding-fixture-place"}',now());
+    insert into audit_findings(job_id,finding_key,module,severity,score_impact,owner_message_en,owner_action_en,evidence)
+    values ('${jobId}','gbp.owner_response_low','gbp','warning',-10,'Scan found unanswered reviews','Reply to an unanswered review','{"sampled":5,"unanswered":3}');`);
+  await signIn(page, environment, merchant);
+  await page.setViewportSize(locale === "en" ? { width: 1280, height: 900 } : { width: 390, height: 844 });
+  await page.goto(`/${locale}/owner/onboarding?claim=${slug}`);
+  await expect(page.locator(".step-kicker")).toHaveText(locale === "en" ? "Step 2 of 2" : "第 2 步，共 2 步");
+  await expect(page.locator("#primary-address")).toHaveValue("12 Fixture Road");
+  await expect(page.locator("#instagram-handle")).toHaveCount(0);
+  await expect(page.locator(".onboarding-form > details")).not.toHaveAttribute("open");
+  await expect(page.getByRole("button", { name: finish, exact: true })).toBeVisible();
+  const onboardingScreenshot = testInfo.outputPath(`onboarding-${locale}.png`);
+  await page.screenshot({ path: onboardingScreenshot, fullPage: true });
+  await testInfo.attach("Prefilled essentials", { path: onboardingScreenshot, contentType: "image/png" });
+  const completion = page.waitForResponse(r => r.url().endsWith("/api/workspaces/claim") && r.request().method() === "POST");
+  await page.getByRole("button", { name: finish, exact: true }).click();
+  expect((await completion).status()).toBe(200);
+  await expect(page).toHaveURL(new RegExp(`/${locale}/owner/${merchant.slug}$`));
+  // This is the real owner component reading the newly persisted snapshot and
+  // derived action, rather than a mocked success page.
+  await expect(page.locator(".brief-priority-card h2")).not.toBeEmpty();
+  await expect(page.locator(".brief-priority-card a")).toHaveAttribute("href", /\/actions\//);
+  const priorityTitle = await page.locator(".brief-priority-card h2").innerText();
+  expect(priorityTitle).not.toMatch(/No action|沒有需要/);
+  expect(sql(environment.db, `select count(*) from scan_snapshots where job_id='${jobId}';`)).toBe("1");
+  expect(sql(environment.db, `select count(*) from locations where workspace_id='${merchant.workspaceId}';`)).toBe("1");
+  expect(sql(environment.db, `select count(*) from actions where workspace_id='${merchant.workspaceId}' and template_key='review-response';`)).toBe("1");
+  expect(sql(environment.db, `select market from workspaces where id='${merchant.workspaceId}';`)).toBe("hk");
+  expect(sql(environment.db, `select count(*) from output_versions v join actions a on a.id=v.action_id where a.workspace_id='${merchant.workspaceId}';`)).toBe("0");
+  expect(sql(environment.db, `select approved_deliveries from workspace_usage where workspace_id='${merchant.workspaceId}';`)).toBe("0");
+  const resultScreenshot = testInfo.outputPath(`first-result-${locale}.png`);
+  await page.screenshot({ path: resultScreenshot, fullPage: true });
+  await testInfo.attach("First evidence-backed result", { path: resultScreenshot, contentType: "image/png" });
 });
 
 for (const attached of [true, false]) test(`verified Auth claim callback: ${attached ? "existing assigned owner succeeds" : "unassigned report requires ownership verification"}`, async ({ page, merchant, environment }) => {
