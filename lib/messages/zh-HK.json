@@ -35,6 +35,9 @@
     "saveManualEditsFirst": "請先將手動修改儲存為新版本，再使用助理修改。"
   },
   "editor": {
+    "saveBeforeGeneration": "請先將手動修改儲存為新版本，再生成內容。",
+    "waitingForVersion": "新版本已儲存，載入後即可繼續修改。",
+    "retryVersion": "重新載入已儲存版本",
     "saveManualEditsBeforeVersionChange": "請先將手動修改儲存為新版本，再切換版本。"
   },
   "draftFailure": {

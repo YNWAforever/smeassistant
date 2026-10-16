@@ -35,6 +35,9 @@
     "saveManualEditsFirst": "Save manual edits as a new version before revising with the assistant."
   },
   "editor": {
+    "saveBeforeGeneration": "Save manual edits as a new version before generating more content.",
+    "waitingForVersion": "Your new version is saved. Loading it before you continue editing.",
+    "retryVersion": "Reload saved version",
     "saveManualEditsBeforeVersionChange": "Save manual edits as a new version before switching versions."
   },
   "draftFailure": {
