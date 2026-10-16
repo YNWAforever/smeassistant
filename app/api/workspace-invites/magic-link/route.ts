@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sendMagicLink } from "@/lib/identity/composition";
+import { sendEmailCode, sendMagicLink } from "@/lib/identity/composition";
 import { providerErrorDetail } from "@/lib/identity/provider-error";
 import { membershipRepository } from "@/lib/repositories/membership";
 import {
@@ -13,7 +13,7 @@ import { callbackHref, parseAuthFlow } from "@/lib/identity/sign-in-flow";
  * Sends sign-in mail to pending invitees and returning workspace members.
  * Pending invitations use their recorded recipient; accepted memberships use
  * the mapped app user's current email, never a stale invitation address.
- * /auth/callback independently verifies identity and workspace authorization.
+ * The completion POST independently verifies identity and workspace authorization.
  * Unknown recipients and provider failures retain the same anti-enumeration
  * response. Report-only recipients must use the report's claim entry point.
  */
@@ -30,7 +30,7 @@ function safeAppOrigin(raw: string | undefined): string | null {
   }
 }
 
-type InviteLinkBody = { email?: unknown; locale?: unknown; returnTo?: unknown; method?: unknown };
+type InviteLinkBody = { email?: unknown; locale?: unknown; returnTo?: unknown; method?: unknown; delivery?: unknown };
 
 export async function POST(req: Request) {
   let body: InviteLinkBody;
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
 
     const redirect = new URL(callbackHref(flow), appOrigin);
 
-    const { error } = await sendMagicLink({
+    const { error } = body.delivery === "code" ? await sendEmailCode(email) : await sendMagicLink({
       email,
       callbackURL: redirect.toString(),
     });

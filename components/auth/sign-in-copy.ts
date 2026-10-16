@@ -15,7 +15,7 @@ export type SignInCopy = {
   claimInbox: string;
   /**
    * Shown beneath the inbox status. Both mail routes answer uniformly whether
-   * or not a link was sent, so the page cannot report eligibility -- it can
+   * or not a code was sent, so the page cannot report eligibility -- it can
    * only state the precondition and point at the other entry point. Naming the
    * rule is safe; naming whether THIS address met it would be the enumeration
    * leak the uniform response exists to prevent.
@@ -27,7 +27,7 @@ export type SignInCopy = {
   resendIn: (seconds: number) => string;
   resendInMinutes: (minutes: number) => string;
   /**
-   * Shown when a link request answers 429. That can be the per-address bucket
+   * Shown when a code request answers 429. That can be the per-address bucket
    * or the shared per-origin bucket in front of it, so the copy never blames
    * the address. Both mail routes apply the limit before the eligibility check,
    * so it reveals nothing about whether the address is a member.
@@ -53,6 +53,11 @@ export type SignInCopy = {
   restartEmail: string;
   restartSignIn: string;
   invalidEmail: string;
+  codeLabel: string;
+  verifyCode: string;
+  verifyingCode: string;
+  invalidCode: string;
+  codeRateLimited: string;
 };
 
 const en: SignInCopy = {
@@ -62,23 +67,23 @@ const en: SignInCopy = {
   openingGoogle: "Opening Google…",
   emailAlternative: "Or use email instead",
   emailLabel: "Email address",
-  emailAction: "Email me a sign-in link",
-  sendingEmail: "Sending sign-in link…",
+  emailAction: "Email me a code",
+  sendingEmail: "Sending sign-in code…",
   emailIntro: "Use the email for your current workspace membership or invitation.",
   claimEmailIntro: "Use the email that unlocked this report. Workspace access is still checked separately.",
-  inbox: "Check your inbox. If the address is eligible, a one-time sign-in link will arrive shortly.",
-  claimInbox: "Check your inbox. If this address unlocked the report, a one-time sign-in link will arrive shortly.",
-  noLinkHelp: "No link? Sign-in links only reach an address that is already a workspace member or has a pending invitation. If you started from a report, open that report and use the sign-in link there instead.",
-  claimNoLinkHelp: "No link? Sign-in links only reach the address that unlocked this report. If you used a different address, unlock the report again with the one you want to sign in with.",
+  inbox: "Check your inbox. If the address is eligible, a one-time sign-in code will arrive shortly.",
+  claimInbox: "Check your inbox. If this address unlocked the report, a one-time sign-in code will arrive shortly.",
+  noLinkHelp: "No code? Sign-in codes only reach an address that is already a workspace member or has a pending invitation. If you started from a report, open that report and sign in from there instead.",
+  claimNoLinkHelp: "No code? Sign-in codes only reach the address that unlocked this report. If you used a different address, unlock the report again with the one you want to sign in with.",
   changeEmail: "Use a different email",
-  resend: "Send another link",
-  resendIn: (seconds) => `Send another link in ${seconds}s`,
-  resendInMinutes: (minutes) => `Send another link in ${minutes} min`,
-  rateLimited: (minutes) => `Too many sign-in links have been requested, so no new link was sent. Try again in about ${minutes} ${minutes === 1 ? "minute" : "minutes"}.`,
-  rateLimitedReady: "Too many sign-in links were requested earlier, so no new link was sent. You can request another link now.",
-  rateLimitedHelp: "If an earlier link reached your inbox, use the most recent one; it still works.",
+  resend: "Send another code",
+  resendIn: (seconds) => `Send another code in ${seconds}s`,
+  resendInMinutes: (minutes) => `Send another code in ${minutes} min`,
+  rateLimited: (minutes) => `Too many sign-in codes have been requested, so no new code was sent. Try again in about ${minutes} ${minutes === 1 ? "minute" : "minutes"}.`,
+  rateLimitedReady: "Too many sign-in codes were requested earlier, so no new code was sent. You can request another code now.",
+  rateLimitedHelp: "If a code already arrived, you can enter it below.",
   cancelled: "Google sign-in was cancelled.",
-  expired: "That sign-in link has expired or was already used.",
+  expired: "That sign-in attempt did not complete. Request a new email code to continue.",
   unavailable: "Sign-in is temporarily unavailable. Please try again shortly.",
   retryGoogle: "Try Google again",
   retryEmail: "Try email instead",
@@ -94,6 +99,11 @@ const en: SignInCopy = {
   restartEmail: "Start email sign-in again",
   restartSignIn: "Start sign-in again",
   invalidEmail: "Enter a valid email address.",
+  codeLabel: "6-digit code",
+  verifyCode: "Verify and continue",
+  verifyingCode: "Verifying code…",
+  invalidCode: "That code is invalid or has expired.",
+  codeRateLimited: "Too many verification attempts. Please try again later.",
 };
 
 const zhHK: SignInCopy = {
@@ -103,23 +113,23 @@ const zhHK: SignInCopy = {
   openingGoogle: "正在開啟 Google…",
   emailAlternative: "或改用電郵",
   emailLabel: "電郵地址",
-  emailAction: "寄出登入連結",
-  sendingEmail: "正在寄出登入連結…",
+  emailAction: "寄出登入驗證碼",
+  sendingEmail: "正在寄出登入驗證碼…",
   emailIntro: "使用現有工作台成員身分或邀請所用的電郵。",
   claimEmailIntro: "使用解鎖此報告時的電郵；工作台存取仍會獨立核實。",
-  inbox: "請查看收件箱。如該地址符合資格，一次性登入連結會在短時間內送達。",
-  claimInbox: "請查看收件箱。如該地址曾解鎖此報告，一次性登入連結會在短時間內送達。",
-  noLinkHelp: "收不到連結？登入連結只會寄給已是工作台成員或已獲邀請的電郵地址。如果你是從報告開始的，請開啟該報告，改用報告中的登入連結。",
-  claimNoLinkHelp: "收不到連結？登入連結只會寄給曾解鎖此報告的電郵地址。如果你當時用了另一個地址，請用你想登入的地址再解鎖一次報告。",
+  inbox: "請查看收件箱。如該地址符合資格，一次性登入驗證碼會在短時間內送達。",
+  claimInbox: "請查看收件箱。如該地址曾解鎖此報告，一次性登入驗證碼會在短時間內送達。",
+  noLinkHelp: "收不到驗證碼？登入驗證碼只會寄給已是工作台成員或已獲邀請的電郵地址。如果你是從報告開始的，請開啟該報告，再從報告登入。",
+  claimNoLinkHelp: "收不到驗證碼？登入驗證碼只會寄給曾解鎖此報告的電郵地址。如果你當時用了另一個地址，請用你想登入的地址再解鎖一次報告。",
   changeEmail: "使用另一個電郵",
-  resend: "再寄一次連結",
-  resendIn: (seconds) => `${seconds} 秒後可再寄一次連結`,
-  resendInMinutes: (minutes) => `${minutes} 分鐘後可再寄一次連結`,
-  rateLimited: (minutes) => `要求登入連結的次數太多，今次沒有寄出新連結。請約 ${minutes} 分鐘後再試。`,
-  rateLimitedReady: "較早前要求登入連結的次數太多，所以沒有寄出新連結。你現在可以再要求一次連結。",
-  rateLimitedHelp: "如較早的連結已送達收件箱，請使用最新的一封，該連結仍然有效。",
+  resend: "再寄一次驗證碼",
+  resendIn: (seconds) => `${seconds} 秒後可再寄一次驗證碼`,
+  resendInMinutes: (minutes) => `${minutes} 分鐘後可再寄一次驗證碼`,
+  rateLimited: (minutes) => `要求登入驗證碼的次數太多，今次沒有寄出新驗證碼。請約 ${minutes} 分鐘後再試。`,
+  rateLimitedReady: "較早前要求登入驗證碼的次數太多，所以沒有寄出新驗證碼。你現在可以再要求一次驗證碼。",
+  rateLimitedHelp: "如已收到驗證碼，可以在下方輸入。",
   cancelled: "已取消 Google 登入。",
-  expired: "登入連結已過期或已被使用。",
+  expired: "未能完成今次登入，請重新索取電郵驗證碼以繼續。",
   unavailable: "登入服務暫時未能使用，請稍後再試。",
   retryGoogle: "再試一次 Google",
   retryEmail: "改用電郵",
@@ -135,6 +145,11 @@ const zhHK: SignInCopy = {
   restartEmail: "重新開始電郵登入",
   restartSignIn: "重新開始登入",
   invalidEmail: "請輸入有效的電郵地址。",
+  codeLabel: "六位驗證碼",
+  verifyCode: "驗證並繼續",
+  verifyingCode: "正在驗證…",
+  invalidCode: "驗證碼不正確或已過期。",
+  codeRateLimited: "嘗試驗證的次數太多，請稍後再試。",
 };
 
 /**
@@ -152,23 +167,23 @@ const zhTW: SignInCopy = {
   openingGoogle: "正在開啟 Google…",
   emailAlternative: "或改用電子郵件",
   emailLabel: "電子郵件地址",
-  emailAction: "寄送登入連結",
-  sendingEmail: "正在寄送登入連結…",
+  emailAction: "寄送登入驗證碼",
+  sendingEmail: "正在寄送登入驗證碼…",
   emailIntro: "請使用現有工作台成員身分或邀請所使用的電子郵件。",
   claimEmailIntro: "請使用解鎖此報告時的電子郵件；工作台存取仍會獨立查證。",
-  inbox: "請查看收件匣。如該地址符合資格，一次性登入連結會在短時間內送達。",
-  claimInbox: "請查看收件匣。如該地址曾解鎖此報告，一次性登入連結會在短時間內送達。",
-  noLinkHelp: "收不到連結？登入連結只會寄給已是工作台成員或已獲邀請的電子郵件地址。如果您是從報告開始的，請開啟該報告，改用報告中的登入連結。",
-  claimNoLinkHelp: "收不到連結？登入連結只會寄給曾解鎖此報告的電子郵件地址。如果您當時使用了另一個地址，請用您想登入的地址再解鎖一次報告。",
+  inbox: "請查看收件匣。如該地址符合資格，一次性登入驗證碼會在短時間內送達。",
+  claimInbox: "請查看收件匣。如該地址曾解鎖此報告，一次性登入驗證碼會在短時間內送達。",
+  noLinkHelp: "收不到驗證碼？登入驗證碼只會寄給已是工作台成員或已獲邀請的電子郵件地址。如果您是從報告開始的，請開啟該報告，再從報告登入。",
+  claimNoLinkHelp: "收不到驗證碼？登入驗證碼只會寄給曾解鎖此報告的電子郵件地址。如果您當時使用了另一個地址，請用您想登入的地址再解鎖一次報告。",
   changeEmail: "使用其他電子郵件",
-  resend: "再寄一次連結",
-  resendIn: (seconds) => `${seconds} 秒後可再寄一次連結`,
-  resendInMinutes: (minutes) => `${minutes} 分鐘後可再寄一次連結`,
-  rateLimited: (minutes) => `要求登入連結的次數過多，這次沒有寄出新連結。請約 ${minutes} 分鐘後再試。`,
-  rateLimitedReady: "先前要求登入連結的次數過多，所以沒有寄出新連結。您現在可以再要求一次連結。",
-  rateLimitedHelp: "如果較早的連結已送達收件匣，請使用最新的一封，該連結仍然有效。",
+  resend: "再寄一次驗證碼",
+  resendIn: (seconds) => `${seconds} 秒後可再寄一次驗證碼`,
+  resendInMinutes: (minutes) => `${minutes} 分鐘後可再寄一次驗證碼`,
+  rateLimited: (minutes) => `要求登入驗證碼的次數過多，這次沒有寄出新驗證碼。請約 ${minutes} 分鐘後再試。`,
+  rateLimitedReady: "先前要求登入驗證碼的次數過多，所以沒有寄出新驗證碼。您現在可以再要求一次驗證碼。",
+  rateLimitedHelp: "如果已收到驗證碼，可以在下方輸入。",
   cancelled: "已取消 Google 登入。",
-  expired: "登入連結已過期或已被使用。",
+  expired: "無法完成這次登入，請重新索取電子郵件驗證碼以繼續。",
   unavailable: "登入服務暫時無法使用，請稍後再試。",
   retryGoogle: "再試一次 Google",
   retryEmail: "改用電子郵件",
@@ -184,6 +199,11 @@ const zhTW: SignInCopy = {
   restartEmail: "重新開始電子郵件登入",
   restartSignIn: "重新開始登入",
   invalidEmail: "請輸入有效的電子郵件地址。",
+  codeLabel: "六位驗證碼",
+  verifyCode: "驗證並繼續",
+  verifyingCode: "正在驗證…",
+  invalidCode: "驗證碼不正確或已過期。",
+  codeRateLimited: "嘗試驗證的次數過多，請稍後再試。",
 };
 
 export const signInCopy: Record<Locale, SignInCopy> = {

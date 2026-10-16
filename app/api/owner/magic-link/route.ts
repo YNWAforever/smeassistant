@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseReportSlug } from "@/lib/report-access/slug";
-import { sendMagicLink } from "@/lib/identity/composition";
+import { sendEmailCode, sendMagicLink } from "@/lib/identity/composition";
 import { providerErrorDetail } from "@/lib/identity/provider-error";
 import { claimsRepository } from "@/lib/repositories/claims";
 import {
@@ -11,11 +11,9 @@ import {
 import { callbackHref, parseAuthFlow } from "@/lib/identity/sign-in-flow";
 
 /**
- * Sends the owner a magic link that returns through /auth/callback
- * carrying the slug they are claiming (upstream: /auth/owner/callback).
- * Local additions: the optional `locale` and `returnTo` body fields are
- * validated and carried on the link so the callback can land on a
- * locale-prefixed page.
+ * Shared report-recipient and mail-budget guard for sign-in codes and legacy
+ * links. Codes establish the managed session through the same-origin SDK API;
+ * links retain their validated locale/claim/returnTo callback context.
  *
  * Additive rather than a change to the unlock route: unlock already works, and
  * account creation is an offer made after it, not a step inside it. A failure
@@ -39,7 +37,7 @@ function safeAppOrigin(raw: string | undefined): string | null {
   }
 }
 
-type MagicLinkBody = { email?: unknown; slug?: unknown; locale?: unknown; returnTo?: unknown; method?: unknown };
+type MagicLinkBody = { email?: unknown; slug?: unknown; locale?: unknown; returnTo?: unknown; method?: unknown; delivery?: unknown };
 
 export async function POST(req: Request) {
   let body: MagicLinkBody;
@@ -99,7 +97,7 @@ export async function POST(req: Request) {
 
     const redirect = new URL(callbackHref(flow), appOrigin);
 
-    const { error } = await sendMagicLink({
+    const { error } = body.delivery === "code" ? await sendEmailCode(email) : await sendMagicLink({
       email,
       callbackURL: redirect.toString(),
     });

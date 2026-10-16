@@ -1,4 +1,4 @@
-import {afterEach,describe,it,expect} from 'vitest';
+import {afterEach,describe,it,expect,vi} from 'vitest';
 import {startIdentityServer} from './identity-server';
 describe('local identity service contracts',()=>{
  let server:Awaited<ReturnType<typeof startIdentityServer>>|undefined;
@@ -6,6 +6,35 @@ describe('local identity service contracts',()=>{
  const app='http://localhost:3000',secret='per-run-fixture-secret';
  const post=(path:string,body:object,authorization=secret)=>fetch(`${server!.url}${path}`,{method:'POST',headers:{authorization:`Bearer ${authorization}`,'content-type':'application/json','x-fixture-origin':app},body:JSON.stringify(body)});
  async function link(){await post('/send',{email:'owner@acceptance.test',callbackURL:`${app}/auth/callback?locale=en`});const list=await(await fetch(`${server!.url}/api/v1/messages`)).json();expect(list.messages[0].To[0].Address).toBe('owner@acceptance.test');return list.messages[0].Text as string;}
+ it('local email codes are recipient-bound, single-use and independent of OAuth challenges',async()=>{
+  server=await startIdentityServer(app,secret);
+  expect((await post('/send-code',{email:'owner@acceptance.test'})).status).toBe(200);
+  const list=await(await fetch(`${server.url}/api/v1/messages`)).json();
+  const code=list.messages[0].Text as string;
+  expect(code).toMatch(/^\d{6}$/);
+  expect((await post('/verify-code',{email:'viewer@acceptance.test',otp:code})).status).toBe(401);
+  const redeemed=await post('/verify-code',{email:'owner@acceptance.test',otp:code});
+  expect(redeemed.status).toBe(200);
+  const {token}=await redeemed.json();
+  expect(await(await post('/session',{token})).json()).toMatchObject({verified:true,email:'owner@acceptance.test'});
+  expect((await post('/verify-code',{email:'owner@acceptance.test',otp:code})).status).toBe(401);
+  expect((await post('/send-code',{email:'real@example.com'})).status).toBe(400);
+ });
+ it('expired or exhausted local codes cannot issue a session',async()=>{
+  server=await startIdentityServer(app,secret);
+  await post('/send-code',{email:'owner@acceptance.test'});
+  const mail=await(await fetch(`${server.url}/api/v1/messages`)).json();
+  const code=mail.messages[0].Text as string;
+  const clock=vi.spyOn(Date,'now').mockReturnValue(Date.now()+61_000);
+  try { expect((await post('/verify-code',{email:'owner@acceptance.test',otp:code})).status).toBe(401); }
+  finally { clock.mockRestore(); }
+  await post('/send-code',{email:'owner@acceptance.test'});
+  const nextMail=await(await fetch(`${server.url}/api/v1/messages`)).json();
+  const nextCode=nextMail.messages[0].Text as string;
+  const wrong=nextCode==='000000'?'000001':'000000';
+  for(let attempt=0;attempt<3;attempt++) expect((await post('/verify-code',{email:'owner@acceptance.test',otp:wrong})).status).toBe(401);
+  expect((await post('/verify-code',{email:'owner@acceptance.test',otp:nextCode})).status).toBe(401);
+ });
  it('captures local mail, redeems only once and revokes the resulting identity',async()=>{
   server=await startIdentityServer(app,secret);const url=await link();const code=new URL(url).searchParams.get('token');
   const redeemed=await post('/redeem',{code});expect(redeemed.status).toBe(200);const {token}=await redeemed.json();

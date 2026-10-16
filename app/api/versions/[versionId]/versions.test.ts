@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   LOCATION_ID,
   VERSION_ID,
@@ -85,6 +85,11 @@ const ROUTES: Record<
   reject: () => import("./reject/route"),
   export: () => import("./export/route"),
 };
+// Module compilation is fixture initialization. A cold import inside the first
+// behavior test can outlive its timeout and race the retry's freshly reset mocks.
+beforeAll(async () => {
+  for (const load of Object.values(ROUTES)) await load();
+});
 async function post(route: Route, body: unknown = {}) {
   const mod = await ROUTES[route]();
   return mod.POST(

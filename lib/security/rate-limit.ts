@@ -20,6 +20,7 @@ export type RateLimitScope =
   | "owner_magic_link"
   | "workspace_invite_magic_link"
   | "staff_otp_verify"
+  | "owner_otp_verify"
   | "staff_lead_contact"
   | "staff_erasure"
   | "staff_consent_withdrawal"
@@ -69,6 +70,7 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   // 10 attempts against 1,000,000 possibilities is a negligible brute-force
   // budget even before the identity provider's per-token attempt limit applies.
   staff_otp_verify: { limit: 10, windowSeconds: 60 * 60 },
+  owner_otp_verify: { limit: 10, windowSeconds: 60 * 60 },
   // One recovery mail per email x report per ten minutes, whatever network the
   // requests come from: consumed through enforceRecipientRateLimit, whose
   // inner key carries no request fingerprint, so this bounds mail to any one
@@ -281,7 +283,8 @@ type CompositeIdentifierScope =
   | "staff_magic_link"
   | "owner_magic_link"
   | "workspace_invite_magic_link"
-  | "staff_otp_verify";
+  | "staff_otp_verify"
+  | "owner_otp_verify";
 
 /**
  * Bound attacker-controlled identifier cardinality with one per-scope bucket

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getNeonAuth } from "@/lib/identity/neon";
 import { callbackHref, parseAuthFlow } from "@/lib/identity/sign-in-flow";
 import { MANAGED_AUTH_COOKIES, expiredAuthCookie } from "@/lib/identity/cookies";
+import { enforceCompositeIdentifierRateLimit, rateLimitedResponse, rateLimitUnavailableResponse } from "@/lib/security/rate-limit";
 
 type Context = { params: Promise<{ path: string[] }> };
 function unavailable() {
@@ -29,10 +30,32 @@ export async function POST(request: Request, context: Context) {
   const path = (await context.params).path.join("/");
   let response: Response;
   try {
-    if (path === "sign-in/magic-link" || path === "sign-in/social") {
+    if (path === "sign-in/email-otp") {
+      if (request.headers.get("origin") !== new URL(request.url).origin) {
+        return NextResponse.json({ error: "invalid_origin" }, { status: 400 });
+      }
       let body: Record<string, unknown>;
       try { body = await request.clone().json(); }
       catch { return NextResponse.json({ error: "invalid_json" }, { status: 400 }); }
+      if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+      const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+      if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || typeof body.otp !== "string" || !/^\d{6}$/.test(body.otp)) {
+        return NextResponse.json({ error: "invalid_code_input" }, { status: 400 });
+      }
+      const limiter = await enforceCompositeIdentifierRateLimit({ req: request, scope: "owner_otp_verify", identifier: email, failClosed: true });
+      if (limiter.unavailable) return rateLimitUnavailableResponse();
+      if (!limiter.allowed) return rateLimitedResponse(limiter.retryAfterSeconds);
+      const headers = new Headers(request.headers);
+      for (const name of ["cookie", "authorization", "content-length"]) headers.delete(name);
+      headers.set("content-type", "application/json");
+      request = new Request(request.url, { method: "POST", headers, body: JSON.stringify({ email, otp: body.otp }) });
+    } else if (path === "sign-in/magic-link" || path === "sign-in/social" || path === "email-otp/send-verification-otp") {
+      let body: Record<string, unknown>;
+      try { body = await request.clone().json(); }
+      catch { return NextResponse.json({ error: "invalid_json" }, { status: 400 }); }
+      if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+      const codeDelivery = path === "email-otp/send-verification-otp";
+      if (codeDelivery && body.type !== "sign-in") return NextResponse.json({ error: "invalid_email_type" }, { status: 400 });
       const origin = new URL(request.url).origin;
       const target = callback(body.callbackURL, origin);
       const errorTarget = body.errorCallbackURL === undefined ? null : callback(body.errorCallbackURL, origin);
@@ -40,7 +63,7 @@ export async function POST(request: Request, context: Context) {
       if (!target || (body.errorCallbackURL !== undefined && !errorTarget) || (body.newUserCallbackURL !== undefined && !newUserTarget)) {
         return NextResponse.json({ error: "invalid_callback" }, { status: 400 });
       }
-      if (path === "sign-in/magic-link") {
+      if (path === "sign-in/magic-link" || codeDelivery) {
         // Reuse the existing rate limit, recipient bound and uniform outcome.
         // Direct SDK traffic must never bypass the application's mail guard.
         const claim = target.searchParams.get("claim");
@@ -49,7 +72,7 @@ export async function POST(request: Request, context: Context) {
           : await import("@/app/api/workspace-invites/magic-link/route");
         return send(new Request(request.url, {
           method: "POST", headers: request.headers,
-          body: JSON.stringify({ email: body.email, slug: claim, locale: target.searchParams.get("locale"), returnTo: target.searchParams.get("returnTo"), method: target.searchParams.get("method") }),
+          body: JSON.stringify({ email: body.email, slug: claim, locale: target.searchParams.get("locale"), returnTo: target.searchParams.get("returnTo"), method: target.searchParams.get("method"), ...(codeDelivery ? { delivery: "code" } : {}) }),
         }));
       }
       if (body.provider !== "google") return NextResponse.json({ error: "invalid_provider" }, { status: 400 });

@@ -2,9 +2,10 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-const mocks = vi.hoisted(() => ({ replace: vi.fn(), social: vi.fn(), magicLink: vi.fn() }));
+const mocks = vi.hoisted(() => ({ replace: vi.fn(), social: vi.fn(), requestCode: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replace }) }));
-vi.mock("@/lib/identity/client", () => ({ authClient: { signIn: { social: mocks.social, magicLink: mocks.magicLink } } }));
+vi.mock("@/lib/identity/client", () => ({ authClient: { signIn: { social: mocks.social } } }));
+vi.mock("@/lib/identity/email-code-client", () => ({ requestEmailCode: mocks.requestCode }));
 
 import { signInCopy } from "./sign-in-copy";
 import { SignInFlow } from "./sign-in-flow";
@@ -15,7 +16,7 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals(); vi.useRe
 
 function enterFixtureEmail() {
   fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: "owner@fixture.test" } });
-  fireEvent.click(screen.getByRole("button", { name: /email me a sign-in link/i }));
+  fireEvent.click(screen.getByRole("button", { name: /email me a code/i }));
 }
 it('T09: switch guidance preserves callback and uses only the pinned social API',async()=>{
   mocks.social.mockResolvedValue({error:null});
@@ -35,10 +36,10 @@ it("renders one Google primary action and an explicitly labelled email alternati
 it("keeps submit disabled before hydration and carries flow context into an email request", async () => {
   render(<SignInFlow flow={{ ...flow, claim: "fixture-report" }} initialReason={null} />);
   const email = screen.getByLabelText(/email address/i);
-  const submit = screen.getByRole("button", { name: /email me a sign-in link/i });
-  mocks.magicLink.mockResolvedValue({ error: null });
+  const submit = screen.getByRole("button", { name: /email me a code/i });
+  mocks.requestCode.mockResolvedValue({ error: null });
   fireEvent.change(email, { target: { value: "owner@fixture.test" } }); fireEvent.click(submit);
-  await waitFor(() => expect(mocks.magicLink).toHaveBeenCalledWith(expect.objectContaining({ email: "owner@fixture.test", callbackURL: expect.stringContaining("claim=fixture-report") })));
+  await waitFor(() => expect(mocks.requestCode).toHaveBeenCalledWith(expect.objectContaining({ email: "owner@fixture.test", callbackURL: expect.stringContaining("claim=fixture-report") })));
   expect(screen.getByText(/check your inbox/i)).toBeTruthy();
 });
 
@@ -50,7 +51,7 @@ it("shows one distinct polite Google progress announcement and blocks a second a
   fireEvent.click(google);
   expect(screen.getAllByText(/opening google/i)).toHaveLength(1);
   expect(screen.getByRole("status")).toHaveTextContent(/opening google/i);
-  expect(screen.getByRole("button", { name: /email me a sign-in link/i })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /email me a code/i })).toBeDisabled();
   fireEvent.click(google);
   // The auth client loads on demand, so the one call lands after a tick; the second press must not add another.
   await waitFor(() => expect(mocks.social).toHaveBeenCalledTimes(1));
@@ -60,11 +61,11 @@ it("shows one distinct polite Google progress announcement and blocks a second a
 });
 
 it("announces email progress once while its request is pending", () => {
-  mocks.magicLink.mockReturnValue(new Promise(() => {}));
+  mocks.requestCode.mockReturnValue(new Promise(() => {}));
   render(<SignInFlow flow={flow} initialReason={null} />);
   enterFixtureEmail();
-  expect(screen.getAllByText(/sending sign-in link/i)).toHaveLength(1);
-  expect(screen.getByRole("status")).toHaveTextContent(/sending sign-in link/i);
+  expect(screen.getAllByText(/sending sign-in code/i)).toHaveLength(1);
+  expect(screen.getByRole("status")).toHaveTextContent(/sending sign-in code/i);
 });
 it("renders locale-specific claim eligibility copy and recovery instead of the untouched form", () => {
   render(<SignInFlow flow={{ ...flow, locale: "zh-HK", claim: "fixture-report", method: "google" }} initialReason="cancelled" />);
@@ -73,37 +74,37 @@ it("renders locale-specific claim eligibility copy and recovery instead of the u
 });
 
 it("honors a numeric Retry-After delay without automatically sending another email", async () => {
-  mocks.magicLink.mockResolvedValue({ error: { status: 429, headers: new Headers({ "retry-after": "120" }) } });
+  mocks.requestCode.mockResolvedValue({ error: { status: 429, headers: new Headers({ "retry-after": "120" }) } });
   render(<SignInFlow flow={flow} initialReason={null} />);
   enterFixtureEmail();
-  await screen.findByText(/send another link in 12[01]s/i);
-  expect(mocks.magicLink).toHaveBeenCalledTimes(1);
+  await screen.findByText(/send another code in 12[01]s/i);
+  expect(mocks.requestCode).toHaveBeenCalledTimes(1);
 });
 
 it("says no link was sent when the address is rate limited, instead of showing the inbox screen", async () => {
-  mocks.magicLink.mockResolvedValue({ error: { status: 429, headers: new Headers({ "retry-after": "2400" }) } });
+  mocks.requestCode.mockResolvedValue({ error: { status: 429, headers: new Headers({ "retry-after": "2400" }) } });
   render(<SignInFlow flow={flow} initialReason={null} />);
   enterFixtureEmail();
   const alert = await screen.findByRole("alert");
-  expect(alert).toHaveTextContent(/no new link was sent/i);
+  expect(alert).toHaveTextContent(/no new code was sent/i);
   expect(alert).toHaveTextContent(/about 40 minutes/i);
   expect(screen.queryByRole("status")).toBeNull();
   expect(screen.queryByText(signInCopy.en.inbox)).toBeNull();
   expect(screen.getByText(signInCopy.en.rateLimitedHelp)).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /send another link in 40 min/i })).toBeDisabled();
-  expect(mocks.magicLink).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole("button", { name: /send another code in 40 min/i })).toBeDisabled();
+  expect(mocks.requestCode).toHaveBeenCalledTimes(1);
 });
 
 it("drops the wait from the rate-limit notice once the cooldown is over", async () => {
   vi.useFakeTimers();
-  mocks.magicLink.mockResolvedValue({ error: { status: 429, headers: new Headers({ "retry-after": "0" }) } });
+  mocks.requestCode.mockResolvedValue({ error: { status: 429, headers: new Headers({ "retry-after": "0" }) } });
   render(<SignInFlow flow={flow} initialReason={null} />);
   await act(async () => { enterFixtureEmail(); await Promise.resolve(); });
   expect(screen.getByRole("alert")).toHaveTextContent(/try again in about 1 minute/i);
   await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
   expect(screen.getByRole("alert")).toHaveTextContent(signInCopy.en.rateLimitedReady);
   expect(screen.getByRole("alert")).not.toHaveTextContent(/try again in/i);
-  expect(screen.getByRole("button", { name: /^send another link$/i })).toBeEnabled();
+  expect(screen.getByRole("button", { name: /^send another code$/i })).toBeEnabled();
 });
 
 it("never attributes the limit to the submitted address, since a shared limit can refuse an unused one", () => {
@@ -115,7 +116,7 @@ it("never attributes the limit to the submitted address, since a shared limit ca
 });
 
 it.each(["zh-HK", "zh-TW"] as const)("explains a rate-limited request in %s", async (locale) => {
-  mocks.magicLink.mockResolvedValue({ error: { status: 429, headers: new Headers({ "retry-after": "2400" }) } });
+  mocks.requestCode.mockResolvedValue({ error: { status: 429, headers: new Headers({ "retry-after": "2400" }) } });
   const { container } = render(<SignInFlow flow={{ ...flow, locale }} initialReason={null} />);
   fireEvent.change(container.querySelector("#sign-in-email")!, { target: { value: "owner@fixture.test" } });
   fireEvent.submit(container.querySelector("form")!);
@@ -124,49 +125,49 @@ it.each(["zh-HK", "zh-TW"] as const)("explains a rate-limited request in %s", as
 
 it("honors an HTTP-date Retry-After delay", async () => {
   const retryAt = new Date(Date.now() + 120_000).toUTCString();
-  mocks.magicLink.mockResolvedValue({ error: { status: 429, headers: new Headers({ "retry-after": retryAt }) } });
+  mocks.requestCode.mockResolvedValue({ error: { status: 429, headers: new Headers({ "retry-after": retryAt }) } });
   render(<SignInFlow flow={flow} initialReason={null} />);
   enterFixtureEmail();
-  await screen.findByText(/send another link in 11[89]s|send another link in 120s/i);
-  expect(mocks.magicLink).toHaveBeenCalledTimes(1);
+  await screen.findByText(/send another code in 11[89]s|send another code in 120s/i);
+  expect(mocks.requestCode).toHaveBeenCalledTimes(1);
 });
 
 it("uses the one-minute fallback for an invalid Retry-After", async () => {
-  mocks.magicLink.mockResolvedValue({ error: { status: 429, headers: new Headers({ "retry-after": "not-a-delay" }) } });
+  mocks.requestCode.mockResolvedValue({ error: { status: 429, headers: new Headers({ "retry-after": "not-a-delay" }) } });
   render(<SignInFlow flow={flow} initialReason={null} />);
   enterFixtureEmail();
-  await screen.findByText(/send another link in 6[01]s/i);
-  expect(mocks.magicLink).toHaveBeenCalledTimes(1);
+  await screen.findByText(/send another code in 6[01]s/i);
+  expect(mocks.requestCode).toHaveBeenCalledTimes(1);
 });
 
 it("renders resend after the elapsed deadline without sending automatically", async () => {
   vi.useFakeTimers();
-  mocks.magicLink.mockResolvedValue({ error: { status: 429, headers: new Headers({ "retry-after": "0" }) } });
+  mocks.requestCode.mockResolvedValue({ error: { status: 429, headers: new Headers({ "retry-after": "0" }) } });
   render(<SignInFlow flow={flow} initialReason={null} />);
   await act(async () => { enterFixtureEmail(); await Promise.resolve(); });
-  expect(screen.getByRole("button", { name: /send another link in 60s/i })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /send another code in 60s/i })).toBeDisabled();
   await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
-  expect(screen.getByRole("button", { name: /^send another link$/i })).toBeEnabled();
-  expect(mocks.magicLink).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole("button", { name: /^send another code$/i })).toBeEnabled();
+  expect(mocks.requestCode).toHaveBeenCalledTimes(1);
 });
 
 it("shows recover state after an explicitly requested resend fails", async () => {
   vi.useFakeTimers();
-  mocks.magicLink.mockResolvedValueOnce({ error: { status: 429, headers: new Headers({ "retry-after": "0" }) } }).mockRejectedValueOnce(new Error("fixture resend failure"));
+  mocks.requestCode.mockResolvedValueOnce({ error: { status: 429, headers: new Headers({ "retry-after": "0" }) } }).mockRejectedValueOnce(new Error("fixture resend failure"));
   render(<SignInFlow flow={flow} initialReason={null} />);
   await act(async () => { enterFixtureEmail(); await Promise.resolve(); });
   await act(async () => { await vi.advanceTimersByTimeAsync(60_001); });
-  fireEvent.click(screen.getByRole("button", { name: /^send another link$/i }));
+  fireEvent.click(screen.getByRole("button", { name: /^send another code$/i }));
   await act(async () => { await Promise.resolve(); });
   expect(screen.getByRole("alert")).toHaveTextContent(/temporarily unavailable/i);
-  expect(mocks.magicLink).toHaveBeenCalledTimes(2);
+  expect(mocks.requestCode).toHaveBeenCalledTimes(2);
 });
 
 it("does not send email when the start screen mounts again after a refresh", () => {
   const first = render(<SignInFlow flow={flow} initialReason={null} />);
   first.unmount();
   render(<SignInFlow flow={flow} initialReason={null} />);
-  expect(mocks.magicLink).not.toHaveBeenCalled();
+  expect(mocks.requestCode).not.toHaveBeenCalled();
 });
 
 it("links a cancelled Google recovery to the email start screen with retained flow context", () => {
@@ -179,7 +180,7 @@ it("links a cancelled Google recovery to the email start screen with retained fl
 // precondition and offer the other entry point, rather than leaving someone
 // who will never receive a link waiting on an inbox that stays empty.
 it("tells a visitor who will never receive a link what to do next", async () => {
-  mocks.magicLink.mockResolvedValue({ error: null });
+  mocks.requestCode.mockResolvedValue({ error: null });
   render(<SignInFlow flow={flow} initialReason={null} />);
   enterFixtureEmail();
   await screen.findByText(/check your inbox/i);
@@ -188,7 +189,7 @@ it("tells a visitor who will never receive a link what to do next", async () => 
 });
 
 it("gives the claim door its own next step, about the unlocking address rather than membership", async () => {
-  mocks.magicLink.mockResolvedValue({ error: null });
+  mocks.requestCode.mockResolvedValue({ error: null });
   render(<SignInFlow flow={{ ...flow, claim: "fixture-report" }} initialReason={null} />);
   enterFixtureEmail();
   await screen.findByText(/check your inbox/i);

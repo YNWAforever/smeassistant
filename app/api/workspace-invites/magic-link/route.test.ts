@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const signInWithOtp = vi.fn(async () => ({ error: null }));
+const sendCode = vi.fn(async () => ({ error: null }));
 const from = vi.fn();
 const signInRecipient = vi.fn();
 const rateLimit = vi.fn();
 
 vi.mock("@/lib/identity/neon", () => ({
-  getNeonAuth: () => ({ signIn: { magicLink: signInWithOtp } }),
+  getNeonAuth: () => ({ signIn: { magicLink: signInWithOtp }, emailOtp: { sendVerificationOtp: sendCode } }),
 }));
 vi.mock("@/lib/repositories/membership", () => ({ membershipRepository: { hasPendingInvitation: (email:string) => from(email), hasSignInMembership: (email:string) => signInRecipient(email) } }));
 vi.mock("@/lib/security/rate-limit", () => ({
@@ -70,6 +71,15 @@ describe("POST /api/workspace-invites/magic-link", () => {
         callbackURL: "https://app.example.com/auth/callback?locale=zh-HK",
       }),
     );
+  });
+  it("applies the same membership guard to email codes and never mails unknown recipients", async () => {
+    signInRecipient.mockResolvedValue(false);
+    expect(await (await post({ email: "nobody@example.com", delivery: "code" })).json()).toEqual({ ok: true });
+    expect(sendCode).not.toHaveBeenCalled();
+    signInRecipient.mockResolvedValue(true);
+    expect((await post({ email: "MEMBER@example.com", delivery: "code" })).status).toBe(200);
+    expect(sendCode).toHaveBeenCalledExactlyOnceWith({ email: "member@example.com", type: "sign-in" });
+    expect(signInWithOtp).not.toHaveBeenCalled();
   });
 
   it("mails a returning accepted member even after the pending invitation is consumed", async () => {
