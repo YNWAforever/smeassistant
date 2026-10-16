@@ -64,6 +64,24 @@ for (const { locale, finish } of [
   await expect(page.locator("#primary-address")).toHaveValue("12 Fixture Road");
   await expect(page.locator("#instagram-handle")).toHaveCount(0);
   await expect(page.locator(".onboarding-form > details")).not.toHaveAttribute("open");
+  const submittedSetups: unknown[] = [];
+  page.on("request", request => {
+    if (new URL(request.url()).pathname === "/api/workspaces/claim" && request.method() === "POST") {
+      submittedSetups.push(request.postDataJSON());
+    }
+  });
+  // A real browser runs the click's default action after React updates the
+  // step. Continue must not become the newly rendered form's submit button.
+  await page.getByRole("button", { name: locale === "en" ? "Back" : "返回", exact: true }).click();
+  await expect(page.locator(".step-kicker")).toHaveText(locale === "en" ? "Step 1 of 2" : "第 1 步，共 2 步");
+  await page.getByRole("button", { name: locale === "en" ? "Continue" : "繼續", exact: true }).click();
+  await expect(page.locator(".step-kicker")).toHaveText(locale === "en" ? "Step 2 of 2" : "第 2 步，共 2 步");
+  await expect(page.getByRole("button", { name: finish, exact: true })).toBeEnabled();
+  expect(submittedSetups).toHaveLength(0);
+  expect(sql(environment.db, `select count(*) from scan_snapshots where job_id='${jobId}';`)).toBe("0");
+  expect(sql(environment.db, `select count(*) from locations where workspace_id='${merchant.workspaceId}';`)).toBe("0");
+  await page.locator("#workspace-name").fill("Confirmed Fixture Bakery");
+  await page.locator("#primary-address").fill("24 Confirmed Fixture Road");
   await expect(page.getByRole("button", { name: finish, exact: true })).toBeVisible();
   const onboardingScreenshot = testInfo.outputPath(`onboarding-${locale}.png`);
   await page.screenshot({ path: onboardingScreenshot, fullPage: true });
@@ -71,6 +89,7 @@ for (const { locale, finish } of [
   const completion = page.waitForResponse(r => r.url().endsWith("/api/workspaces/claim") && r.request().method() === "POST");
   await page.getByRole("button", { name: finish, exact: true }).click();
   expect((await completion).status()).toBe(200);
+  expect(submittedSetups).toHaveLength(1);
   await expect(page).toHaveURL(new RegExp(`/${locale}/owner/${merchant.slug}$`));
   // This is the real owner component reading the newly persisted snapshot and
   // derived action, rather than a mocked success page.
@@ -84,6 +103,13 @@ for (const { locale, finish } of [
   expect(sql(environment.db, `select market from workspaces where id='${merchant.workspaceId}';`)).toBe("hk");
   expect(sql(environment.db, `select count(*) from output_versions v join actions a on a.id=v.action_id where a.workspace_id='${merchant.workspaceId}';`)).toBe("0");
   expect(sql(environment.db, `select approved_deliveries from workspace_usage where workspace_id='${merchant.workspaceId}';`)).toBe("0");
+  await page.goto(`/${locale}/owner/onboarding?claim=${slug}`);
+  await expect(page.locator("#workspace-name")).toHaveValue("Confirmed Fixture Bakery");
+  await expect(page.locator("#primary-address")).toHaveValue("24 Confirmed Fixture Road");
+  expect(submittedSetups).toHaveLength(1);
+  expect(sql(environment.db, `select count(*) from scan_snapshots where job_id='${jobId}';`)).toBe("1");
+  await page.goto(`/${locale}/owner/${merchant.slug}`);
+  await expect(page.locator(".brief-priority-card h2")).toHaveText(priorityTitle);
   const resultScreenshot = testInfo.outputPath(`first-result-${locale}.png`);
   await page.screenshot({ path: resultScreenshot, fullPage: true });
   await testInfo.attach("First evidence-backed result", { path: resultScreenshot, contentType: "image/png" });

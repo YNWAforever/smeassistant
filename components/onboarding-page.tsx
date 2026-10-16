@@ -266,9 +266,10 @@ export function OnboardingPage({ locale, claim, plan, resumeStep, saved = null, 
             {step === 1 ? <>{claimEvidence}{evidence && ownership}</> : basics}
             {evidence && ownsWorkspace && <div className="flow-card-footer">
               {step === 2 && <Button type="button" variant="outline" onClick={() => setStep(1)} disabled={submitState.kind === "saving"}>{isChinese ? "返回" : "Back"}</Button>}
+              {/* Keep step navigation separate from the submitter during a click. */}
               {step === 1
-                ? <Button type="button" onClick={() => setStep(2)}>{isChinese ? "繼續" : "Continue"}<ArrowRight /></Button>
-                : <Button form="onboarding-basics" type="submit" disabled={!canContinue || submitState.kind === "saving"}>{t(locale, submitState.kind === "saving" ? "onboarding.saving" : "onboarding.finish")}<ArrowRight /></Button>}
+                ? <Button key="continue" type="button" onClick={() => setStep(2)}>{isChinese ? "繼續" : "Continue"}<ArrowRight /></Button>
+                : <Button key="finish" form="onboarding-basics" type="submit" disabled={!canContinue || submitState.kind === "saving"}>{t(locale, submitState.kind === "saving" ? "onboarding.saving" : "onboarding.finish")}<ArrowRight /></Button>}
             </div>}
           </section>
         </div>
