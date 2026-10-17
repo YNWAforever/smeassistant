@@ -1,0 +1,65 @@
+{
+  "sourceSha": "d153c4a3e4c614de0377f055ee24b10d7b5cb655",
+  "startedAt": "2026-10-17T09:50:00.169Z",
+  "observedAt": "2026-10-17T09:51:20.400Z",
+  "model": "longcat-2.5-preview-free",
+  "budgetUsd": 0,
+  "results": [
+    {
+      "case": 1,
+      "title": "已有品牌：第一份回覆",
+      "language": "en",
+      "review": "The team explained the options clearly and were patient with my questions. Thank you.",
+      "factScope": "Professional voice; no confirmed address, prices, offers, hours or operational promises.",
+      "business": "Synthetic UAT Merchant 1",
+      "voice": "professional",
+      "workspaceId": "2af442c6-d797-4197-8e1e-245430dcffdf",
+      "locationId": "a675779b-c57b-40cc-8445-5ef654db8112",
+      "actionId": "1b306c54-0538-46d2-90b1-e0f076a50364",
+      "brandRevision": "2d6d9cd6-9072-43f9-b8fa-e0df73a31eb6",
+      "firstSaveMs": 17679,
+      "repeatedKnownReviewConfirmation": false,
+      "version": {
+        "id": "322ec8f8-660e-41e0-99a9-f34db315e1af",
+        "version_no": 1,
+        "body": "1. Review (owner-supplied): \"The team explained the options clearly...\"\n\nThank you for your kind words. We are glad the team explained the options clearly and took the time to answer your questions. We appreciate you sharing your experience.",
+        "approval_state": "draft",
+        "approved_at": null,
+        "first_exported_at": null,
+        "meta": {
+          "title": "Reply to review",
+          "warnings": [
+            "No confirmed address, visit invitation, or contact details are available, so no location or contact information is included.",
+            "The review text was supplied by the owner and was not read from a public profile."
+          ],
+          "agent_key": "review_reply",
+          "facts_used": [
+            "Brand name: Synthetic UAT Merchant 1",
+            "Brand voice: professional",
+            "Language: en"
+          ],
+          "prompt_version": "2026-10-17.2",
+          "acceptance_criteria": [
+            "Replies in English with a professional tone.",
+            "Acknowledges the reviewer's specific comments about clear explanations and patience.",
+            "Thanks the reviewer.",
+            "Makes no factual claims beyond the brand name.",
+            "Contains no prohibited terms, compensation promises, or visit invitations.",
+            "Notes the review text was supplied by the owner."
+          ]
+        },
+        "action_run_id": "1d056985-a73e-4dc6-9f24-893499a148cb"
+      },
+      "persistedAndReloaded": true,
+      "freshFixtureSessionReadback": true,
+      "providerCalls": 1,
+      "state": "PASS persistence; human quality pending",
+      "manualTailAdded": false
+    }
+  ],
+  "providerCalls": 1,
+  "forbidden": [],
+  "humanRatings": "PENDING: user",
+  "deployed": false,
+  "productionDataChanged": false
+}

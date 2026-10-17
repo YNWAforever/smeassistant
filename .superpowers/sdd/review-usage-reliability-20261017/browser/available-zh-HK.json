@@ -1,0 +1,37 @@
+{
+  "environment": "owned local DB/Auth/model fixtures; not real AI",
+  "result": "PASS",
+  "runId": "99267b06-95c2-453d-9021-2f217502e938",
+  "versionId": "549a435b-20e8-412d-a6e3-bda24ab227e9",
+  "observation": {
+    "state": "succeeded",
+    "input_tokens": 10,
+    "output_tokens": 10,
+    "provider_usage": {
+      "status": "complete",
+      "costUsd": 0.00001,
+      "version": 1,
+      "attempts": {
+        "9f37c57c-d76a-4c16-8f9c-c362ef1c2ec7": {
+          "id": "9f37c57c-d76a-4c16-8f9c-c362ef1c2ec7",
+          "late": false,
+          "model": "fixture",
+          "state": "reported",
+          "usage": {
+            "inputTokens": 10,
+            "outputTokens": 10
+          },
+          "costUsd": 0.00001,
+          "sequence": 1,
+          "startedAt": "2026-10-17T09:48:05.153Z",
+          "finishedAt": "2026-10-17T09:48:05.192Z"
+        }
+      },
+      "inputTokens": 10,
+      "knownCostUsd": 0.00001,
+      "outputTokens": 10,
+      "knownInputTokens": 10,
+      "knownOutputTokens": 10
+    }
+  }
+}

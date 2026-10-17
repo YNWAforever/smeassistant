@@ -1,0 +1,10 @@
+{
+  "observedAt": "2026-10-17T09:51:35.414Z",
+  "result": {
+    "runId": "8fa75636-b098-46d8-8af6-ff00f67015e2",
+    "state": "failed",
+    "error": "草稿含有未確認的地址或到訪邀請，已暫停提供。請先確認商戶現時資料再試；現有草稿已保留。"
+  },
+  "elapsedMs": 9608,
+  "repeatedKnownReviewConfirmation": false
+}

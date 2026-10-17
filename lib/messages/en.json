@@ -41,6 +41,7 @@
     "saveManualEditsBeforeVersionChange": "Save manual edits as a new version before switching versions."
   },
   "draftFailure": {
+    "statusUnconfirmed": "The previous generation did not finish. Reload its status before deciding whether to start again.",
     "serviceUnavailable": "AI drafting is not available yet. Please contact support before trying again.",
     "tryLater": "The AI service could not complete this draft. Please try again later.",
     "providerLimited": "The AI service has reached a request or usage limit. Your existing draft is safe. You can edit and save it manually, or contact support to restore AI drafting.",

@@ -1,0 +1,68 @@
+{
+  "result": "PASS",
+  "outputElapsedMs": 45590,
+  "totalElapsedMs": 55622,
+  "output": {
+    "runId": "9bef525c-80c4-4c31-84d3-64f00e5dacf3",
+    "state": "failed",
+    "error": "The previous generation did not finish. Reload its status before deciding whether to start again.",
+    "usagePending": true
+  },
+  "actualFreeModelResponseHeldLocally": true,
+  "inferenceCalls": 1,
+  "retryStatus": 409,
+  "receipt": {
+    "workspaceId": "4bb4a558-b671-479f-9513-b95ea261d55d",
+    "versions": [
+      {
+        "id": "68d2c96c-e5cf-4db6-9ef1-2613ca064281",
+        "version_no": 1,
+        "approval_state": "draft",
+        "approved_at": null,
+        "first_exported_at": null,
+        "action_run_id": null
+      }
+    ],
+    "runs": [
+      {
+        "id": "9bef525c-80c4-4c31-84d3-64f00e5dacf3",
+        "state": "failed",
+        "model": "longcat-2.5-preview-free",
+        "input_tokens": 1684,
+        "output_tokens": 177,
+        "cost_usd": 0,
+        "started_at": "2026-10-17T09:58:20.824451+00:00",
+        "finished_at": "2026-10-17T09:59:05.864+00:00",
+        "provider_usage": {
+          "status": "complete",
+          "costUsd": 0,
+          "version": 1,
+          "attempts": {
+            "4efd9261-e969-4597-a786-551e409b69ff": {
+              "id": "4efd9261-e969-4597-a786-551e409b69ff",
+              "late": true,
+              "model": "longcat-2.5-preview-free",
+              "state": "reported",
+              "usage": {
+                "inputTokens": 1684,
+                "outputTokens": 177
+              },
+              "costUsd": 0,
+              "sequence": 1,
+              "startedAt": "2026-10-17T09:58:20.841Z",
+              "finishedAt": "2026-10-17T09:59:06.888Z",
+              "providerRequestId": "70f74e8c043b46c8969289ee7bfdeffb"
+            }
+          },
+          "inputTokens": 1684,
+          "knownCostUsd": 0,
+          "outputTokens": 177,
+          "knownInputTokens": 1684,
+          "knownOutputTokens": 177
+        }
+      }
+    ],
+    "deliveries": 0,
+    "deliveryUsage": 0
+  }
+}

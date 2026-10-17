@@ -1,4 +1,5 @@
 import { logPauseRefusal, pauseState } from "./budgets/pause";
+import type { ProviderUsageObservation } from "./workspace/provider-usage";
 
 // Centralized LLM gateway client.
 //
@@ -80,6 +81,10 @@ export interface LLMOptions {
    * of one agent run share it. A fresh id is used when the caller has none.
    */
   sessionId?: string;
+  /** Usage-only observation may continue after the unchanged output deadline. */
+  usageSettlementTimeoutMs?: number;
+  onUsageObservation?: (observation: ProviderUsageObservation) => Promise<void>;
+  deferUsageSettlement?: (work: Promise<unknown>) => void;
 }
 
 export interface LLMUsage {
@@ -95,10 +100,10 @@ export interface LLMResult {
 
 export type LLMFailureCode = "ai_paused" | "provider_unconfigured" | "provider_auth_failed"
   | "provider_rate_limited" | "provider_unavailable" | "timeout" | "network_error"
-  | "no_model_output" | "invalid_provider_response";
+  | "no_model_output" | "invalid_provider_response" | "usage_record_failed" | "provider_usage_pending";
 export type LLMOutcome =
   | { ok: true; result: LLMResult }
-  | { ok: false; code: LLMFailureCode; retryable: boolean; status?: number; retryAfterSeconds?: number; usage?: LLMUsage };
+  | { ok: false; code: LLMFailureCode; retryable: boolean; status?: number; retryAfterSeconds?: number; usage?: LLMUsage; usagePending?: boolean };
 
 function readUsage(data: unknown): LLMUsage {
   const usage = (data as { usage?: Record<string, unknown> } | null)?.usage;
@@ -108,6 +113,90 @@ function readUsage(data: unknown): LLMUsage {
     inputTokens: asCount(usage?.prompt_tokens),
     outputTokens: asCount(usage?.completion_tokens),
   };
+}
+
+/**
+ * Tracked drafting keeps the output deadline distinct from a bounded,
+ * post-response usage settlement. No late text is exposed to the caller.
+ * A killed host can leave the prior durable reservation pending; it is never
+ * reinterpreted as zero or permission to make another request.
+ */
+async function trackedCompletion(request: (signal: AbortSignal) => Promise<Response>, opts: LLMOptions): Promise<LLMOutcome> {
+  const controller = new AbortController();
+  const outputMs = opts.timeoutMs ?? 20_000;
+  const settlementMs = Math.max(outputMs, Math.min(opts.usageSettlementTimeoutMs ?? outputMs, 55_000));
+  const timedOut: LLMOutcome = { ok: false, code: "timeout", retryable: false, usagePending: true };
+  let late = false, closed = false;
+  let providerRequestId: string | undefined;
+  let closeSettlement!: (outcome: LLMOutcome) => void;
+  const hardEnd = new Promise<LLMOutcome>(resolve => { closeSettlement = resolve; });
+  const observe = (value: ProviderUsageObservation) => opts.onUsageObservation!(value);
+  const hardTimer = setTimeout(async () => {
+    closed = true;
+    controller.abort();
+    let outcome = timedOut;
+    let observationTimer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        observe({ state: "unknown", usage: { inputTokens: null, outputTokens: null },
+          reason: "settlement_timeout", late: true, ...(providerRequestId ? { providerRequestId } : {}) }),
+        new Promise<never>((_, reject) => { observationTimer = setTimeout(() => reject(new Error("usage_record_timeout")), 1000); }),
+      ]);
+    } catch { outcome = { ok: false, code: "usage_record_failed", retryable: false, usagePending: true }; }
+    finally { clearTimeout(observationTimer); }
+    closeSettlement(outcome);
+  }, settlementMs);
+  const work = (async (): Promise<LLMOutcome> => {
+    try {
+      const response = await request(controller.signal);
+      if (closed) return hardEnd;
+      const headerId = response.headers?.get("x-request-id");
+      if (headerId && /^[\w.:-]{1,200}$/.test(headerId)) providerRequestId = headerId;
+      if (!response.ok) {
+        const code = response.status === 401 || response.status === 403 ? "provider_auth_failed"
+          : response.status === 429 ? "provider_rate_limited" : "provider_unavailable";
+        // Never read an error body: it can echo merchant prompts.
+        await observe({ state: response.status >= 500 ? "unknown" : "rejected", usage: { inputTokens: null, outputTokens: null },
+          reason: code, late, ...(providerRequestId ? { providerRequestId } : {}) });
+        const retry = response.headers?.get("retry-after");
+        return { ok: false, code, status: response.status, retryable: response.status === 429,
+          ...(response.status >= 500 ? { usagePending: true } : {}),
+          ...(response.status === 429 && retry && /^\d+$/.test(retry) && Number(retry) <= 3600 ? { retryAfterSeconds: Number(retry) } : {}) };
+      }
+      let data: unknown;
+      try { data = await response.json(); }
+      catch {
+        if (closed) return hardEnd;
+        await observe({ state: "unknown", usage: { inputTokens: null, outputTokens: null }, reason: "invalid_provider_response", late });
+        return { ok: false, code: "invalid_provider_response", retryable: false, usagePending: true };
+      }
+      if (closed) return hardEnd;
+      const id = (data as { id?: unknown } | null)?.id;
+      if (typeof id === "string" && /^[\w.:-]{1,200}$/.test(id)) providerRequestId = id;
+      const usage = readUsage(data);
+      await observe({ state: "reported", usage, late, ...(providerRequestId ? { providerRequestId } : {}) });
+      const content = (data as { choices?: Array<{ message?: { content?: unknown } }> } | null)?.choices?.[0]?.message?.content;
+      if (typeof content !== "string") return { ok: false, code: "invalid_provider_response", retryable: false, usage };
+      return content.trim() ? { ok: true, result: { text: content.trim(), usage } }
+        : { ok: false, code: "no_model_output", retryable: false, usage };
+    } catch (error) {
+      if (closed) return hardEnd;
+      try {
+        await observe({ state: "unknown", usage: { inputTokens: null, outputTokens: null }, reason: "network_error", late,
+          ...(providerRequestId ? { providerRequestId } : {}) });
+      } catch {
+        console.error("[llm] usage settlement failed", { category: "usage_record_failed" });
+        return { ok: false, code: "usage_record_failed", retryable: false, usagePending: true };
+      }
+      void error;
+      return { ok: false, code: "network_error", retryable: false, usagePending: true };
+    }
+  })();
+  const settlement = Promise.race([work, hardEnd]).finally(() => { closed = true; clearTimeout(hardTimer); });
+  opts.deferUsageSettlement?.(settlement.then(() => undefined));
+  let outputTimer: ReturnType<typeof setTimeout>;
+  const outputEnd = new Promise<LLMOutcome>(resolve => { outputTimer = setTimeout(() => { late = true; resolve(timedOut); }, outputMs); });
+  try { return await Promise.race([settlement, outputEnd]); } finally { clearTimeout(outputTimer!); }
 }
 
 /**
@@ -137,6 +226,23 @@ export async function llmCompleteDetailed(prompt: string, opts: LLMOptions = {})
     return { ok: false, code: "provider_unconfigured", retryable: false };
   }
 
+  const request = (signal: AbortSignal) => fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "HTTP-Referer": REFERER,
+      "User-Agent": USER_AGENT,
+      ...(usingOpenCodeBase ? { "x-opencode-session": opts.sessionId ?? crypto.randomUUID() } : {}),
+    },
+    body: JSON.stringify({
+      model, messages: [{ role: "user", content: prompt }], max_tokens: opts.maxTokens ?? 1000,
+      temperature: opts.temperature ?? 0.5,
+      ...(opts.jsonMode ? { response_format: { type: "json_object" } } : {}),
+      ...(usingOpenCodeBase && model === "longcat-2.5-preview-free" && opts.jsonMode ? { thinking: { type: "disabled" } } : {}),
+    }),
+    signal,
+  });
+  if (opts.onUsageObservation) return trackedCompletion(request, opts);
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 20000);
   let abort: () => void = () => {};
@@ -146,29 +252,7 @@ export async function llmCompleteDetailed(prompt: string, opts: LLMOptions = {})
   });
 
   try {
-    const resp = await Promise.race([fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": REFERER,
-        "User-Agent": USER_AGENT,
-        ...(usingOpenCodeBase ? { "x-opencode-session": opts.sessionId ?? crypto.randomUUID() } : {}),
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: opts.maxTokens ?? 1000,
-        temperature: opts.temperature ?? 0.5,
-        ...(opts.jsonMode ? { response_format: { type: "json_object" } } : {}),
-        // LongCat's default reasoning can outlast the inline draft deadline.
-        // Its documented non-thinking mode keeps structured drafts direct.
-        ...(usingOpenCodeBase && model === "longcat-2.5-preview-free" && opts.jsonMode
-          ? { thinking: { type: "disabled" } }
-          : {}),
-      }),
-      signal: controller.signal,
-    }), interrupted]);
+    const resp = await Promise.race([request(controller.signal), interrupted]);
 
     if (!resp.ok) {
       // The body is never read: it can echo the prompt.

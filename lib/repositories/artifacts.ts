@@ -13,6 +13,7 @@ import type { ActionState } from '../domain';
 import type { ActionScope, VersionScope } from '../workspace/versions';
 import { bindOfferMeta } from '../workspace/offer-binding';
 import { RUN_STALE_AFTER_MS } from '../workspace/run-stale';
+import { beginProviderUsage, providerUsageFromInput, settleProviderUsage, type ProviderUsageObservation, type ProviderUsageRecord } from '../workspace/provider-usage';
 
 type Executor = Pick<Pool | PoolClient, 'query'>;
 const EXPECTED_ERRORS = new Set(['version_conflict','not_approved','allowance_exceeded','version_closed','version_not_found','invalid_decision','invalid_mode','artifact_scope_mismatch','offer_changed','offer_inactive','offer_expired']);
@@ -211,15 +212,23 @@ export function artifactRepository(client?: Executor) {
   /**
    * Recorded AI spend in the last 24 hours (P3.5a), globally and for one
    * workspace, in one read over action_runs_created_idx. A run with no
-   * recorded cost adds nothing: computeCostUsd returns null when the gateway
-   * omits token usage.
+   * recorded cost remains nullable. Tracked unknown usage supplies a known
+   * subtotal plus uncertainty flags, so budgets cannot treat it as a full zero.
    */
   aiSpend24h(workspaceId: string) {
    return operation(async () => {
-    const row=(await db().query<{global_usd:number;workspace_usd:number}>(`SELECT coalesce(sum(cost_usd),0)::float8 AS global_usd,
-     coalesce(sum(cost_usd) FILTER (WHERE workspace_id=$1),0)::float8 AS workspace_usd
+    const row=(await db().query<{global_usd:number;workspace_usd:number;global_unknown:boolean;workspace_unknown:boolean}>(`SELECT
+     coalesce(sum(coalesce(cost_usd,(input #>> '{provider_usage,knownCostUsd}')::numeric)),0)::float8 AS global_usd,
+     coalesce(sum(coalesce(cost_usd,(input #>> '{provider_usage,knownCostUsd}')::numeric)) FILTER (WHERE workspace_id=$1),0)::float8 AS workspace_usd,
+     coalesce(bool_or((cost_usd IS NULL AND NOT (coalesce(input,'{}'::jsonb) ? 'provider_usage') AND state NOT IN ('queued','running'))
+       OR input #>> '{provider_usage,status}' IN ('unknown','partial')
+       OR (state NOT IN ('queued','running') AND input #>> '{provider_usage,status}'='pending')),false) AS global_unknown,
+     coalesce(bool_or((cost_usd IS NULL AND NOT (coalesce(input,'{}'::jsonb) ? 'provider_usage') AND state NOT IN ('queued','running'))
+       OR input #>> '{provider_usage,status}' IN ('unknown','partial')
+       OR (state NOT IN ('queued','running') AND input #>> '{provider_usage,status}'='pending')) FILTER (WHERE workspace_id=$1),false) AS workspace_unknown
      FROM action_runs WHERE created_at > now() - interval '24 hours'`,[workspaceId])).rows[0];
-    return {globalUsd:Number(row.global_usd),workspaceUsd:Number(row.workspace_usd)};
+    return {globalUsd:Number(row.global_usd),workspaceUsd:Number(row.workspace_usd),
+     ...(row.global_unknown?{globalUsageUnknown:true}:{}),...(row.workspace_unknown?{workspaceUsageUnknown:true}:{})};
    });
   },
   /**
@@ -351,7 +360,7 @@ export interface FinishActionRunInput extends RunAttribution {
  offerRevision?: number;
 }
 export type ActionRunCompletion = {runId:string;state:'succeeded';versionId?:string;versionNo?:number;factsNeeded?:string[]}
- | {runId:string;state:'failed';error:string};
+ | {runId:string;state:'failed';error:string;usagePending?:boolean};
 type RunTransaction = <T>(run: (client: PoolClient) => Promise<T>) => Promise<T>;
 
 /**
@@ -362,6 +371,12 @@ type RunTransaction = <T>(run: (client: PoolClient) => Promise<T>) => Promise<T>
  */
 export class ActionRunInFlightError extends Error {
  constructor() { super('action_run_in_flight'); this.name='ActionRunInFlightError'; }
+}
+export class ActionRunUsageUncertainError extends Error {
+ constructor() { super('provider_usage_pending'); this.name='ActionRunUsageUncertainError'; }
+}
+export interface ProviderUsageAttribution {
+ runId:string; actorId:string; workspaceId:string; attemptId:string; locale?:string;
 }
 export interface FinishAssistantDraftInput {
  runId:string;
@@ -393,7 +408,7 @@ export function actionRunRepository(transaction: RunTransaction = withTransactio
     }
    });
   } catch(error) {
-   if(error instanceof ActionRunInFlightError) throw error;
+   if(error instanceof ActionRunInFlightError || error instanceof ActionRunUsageUncertainError) throw error;
    throw new Error('artifact_run_operation_failed');
   }
  }
@@ -419,6 +434,26 @@ export function actionRunRepository(transaction: RunTransaction = withTransactio
    VALUES($1,$2,'user',$3,$4,'action_run',$5,$6)`,[row.workspace_id,row.location_id,input.actorId,event,row.id,
    JSON.stringify({locale:input.locale,...(input.ipHash?{ip_hash:input.ipHash}:{}),agent_key:row.agent_key,action_id:row.action_id,...payload})]);
  }
+ async function writeUsage(client:PoolClient, row:PersistedRun, usage:ProviderUsageRecord) {
+  await client.query(`UPDATE action_runs SET input=jsonb_set(coalesce(input,'{}'::jsonb),'{provider_usage}',$2::jsonb,true),
+   input_tokens=$3,output_tokens=$4,cost_usd=$5 WHERE id=$1`,
+   [row.id,JSON.stringify(usage),usage.inputTokens,usage.outputTokens,usage.costUsd]);
+ }
+ async function restoreRecordedUsage(client:PoolClient,row:PersistedRun) {
+  const usage=providerUsageFromInput(asRecord(row.input));
+  if(usage) await client.query('UPDATE action_runs SET input_tokens=$2,output_tokens=$3,cost_usd=$4 WHERE id=$1',
+   [row.id,usage.inputTokens,usage.outputTokens,usage.costUsd]);
+ }
+ async function usageRun(client:PoolClient,input:ProviderUsageAttribution):Promise<PersistedRun> {
+  const row=(await client.query<PersistedRun>(`SELECT r.id,r.action_id,r.workspace_id,a.location_id,r.agent_key,r.prompt_version,r.requested_by,r.state,r.input
+   FROM action_runs r JOIN actions a ON a.id=r.action_id AND a.workspace_id=r.workspace_id
+   WHERE r.id=$1 AND r.workspace_id=$2 AND r.requested_by=$3 FOR UPDATE OF r`,
+   [input.runId,input.workspaceId,input.actorId])).rows[0];
+  // Accounting belongs to the already-authorized request, even if membership
+  // was subsequently revoked. This capability cannot write output or versions.
+  if(!row || !/^[0-9a-f-]{36}$/i.test(input.attemptId)) throw new Error('invalid_provider_attribution');
+  return row;
+ }
  return {
   queue(input:QueueActionRunInput):Promise<string> {
    return atomic(async client => {
@@ -430,6 +465,9 @@ export function actionRunRepository(transaction: RunTransaction = withTransactio
     const live=(await client.query(`SELECT id FROM action_runs WHERE action_id=$1 AND state IN ('queued','running')
      AND COALESCE(started_at,created_at) > now() - ($2::double precision * interval '1 millisecond') LIMIT 1`,[input.actionId,RUN_STALE_AFTER_MS])).rows[0];
     if(live) throw new ActionRunInFlightError();
+    const uncertain=(await client.query(`SELECT id FROM action_runs WHERE action_id=$1
+     AND input #>> '{provider_usage,status}' IN ('pending','unknown','partial') LIMIT 1`,[input.actionId])).rows[0];
+    if(uncertain) throw new ActionRunUsageUncertainError();
     if(input.providedInputs) await client.query('UPDATE actions SET provided_inputs=$2,updated_at=$3 WHERE id=$1',[input.actionId,JSON.stringify(input.providedInputs),input.now]);
     const row=(await client.query<{id:string}>(`INSERT INTO action_runs(workspace_id,action_id,agent_key,state,input,prompt_version,model,requested_by,created_at)
      VALUES($1,$2,$3,'queued',$4,$5,$6,$7,$8) RETURNING id`,[scope.workspaceId,input.actionId,input.agentKey,JSON.stringify(input.input),input.promptVersion,input.model,input.actorId,input.now])).rows[0];
@@ -442,6 +480,29 @@ export function actionRunRepository(transaction: RunTransaction = withTransactio
     const row=await loadRun(client,input,'queued');
     await client.query("UPDATE action_runs SET state='running',started_at=now() WHERE id=$1",[row.id]);
     await audit(client,row,input,'run.started',{});
+   });
+  },
+  beginProviderAttempt(input:ProviderUsageAttribution & {model:string|null;startedAt:Date}):Promise<void> {
+   return atomic(async client=>{
+    const row=await usageRun(client,input);
+    if(row.state!=='running') throw new Error('invalid_provider_transition');
+    const previous=providerUsageFromInput(asRecord(row.input));
+    const usage=beginProviderUsage(previous,{id:input.attemptId,model:input.model,startedAt:input.startedAt.toISOString()});
+    if(usage===previous) return;
+    await writeUsage(client,row,usage);
+    await audit(client,row,{...input,locale:input.locale ?? 'en'},'run.provider_reserved',{attempt_id:input.attemptId});
+   });
+  },
+  observeProviderAttempt(input:ProviderUsageAttribution & {observation:ProviderUsageObservation;finishedAt:Date}):Promise<void> {
+   return atomic(async client=>{
+    const row=await usageRun(client,input);
+    const previous=providerUsageFromInput(asRecord(row.input));
+    if(!previous) throw new Error('provider_reservation_missing');
+    const usage=settleProviderUsage(previous,input.attemptId,input.observation,input.finishedAt.toISOString());
+    if(usage===previous) return;
+    await writeUsage(client,row,usage);
+    await audit(client,row,{...input,locale:input.locale ?? 'en'},'run.usage_observed',
+     {attempt_id:input.attemptId,state:input.observation.state,late:input.observation.late ?? false});
    });
   },
   finishAssistantDraft(input:FinishAssistantDraftInput):Promise<{draftRunId:string;state:'succeeded'|'failed'}> {
@@ -461,6 +522,7 @@ export function actionRunRepository(transaction: RunTransaction = withTransactio
     const output=input.result.ok?input.result.draft.output:input.result.failure.reason==='facts_needed'?{facts_needed:input.result.failure.factsNeeded}:null;
     await client.query('UPDATE action_runs SET state=$2,output=$3,error=$4,input_tokens=$5,output_tokens=$6,cost_usd=$7,finished_at=$8 WHERE id=$1',
       [row.id,state,JSON.stringify(output),input.result.ok?null:input.result.failure.reason,data.usage.inputTokens,data.usage.outputTokens,data.costUsd,data.finishedAt]);
+    await restoreRecordedUsage(client,row);
     await audit(client,row,attribution,input.result.ok?'run.succeeded':'run.failed',{source:'assistant',intent:data.intentId,...(input.result.ok?{}:{reason:input.result.failure.reason})});
     // Preview custody only: never create a version or change action approval/state.
     return {draftRunId:row.id,state};
@@ -480,9 +542,12 @@ export function actionRunRepository(transaction: RunTransaction = withTransactio
     const state=input.error?'failed':'succeeded';
     await client.query('UPDATE action_runs SET state=$2,output=$3,error=$4,input_tokens=$5,output_tokens=$6,cost_usd=$7,finished_at=$8 WHERE id=$1',
      [row.id,state,JSON.stringify(input.output ?? (factsNeeded.length?{facts_needed:factsNeeded}:null)),input.error ?? null,input.usage.inputTokens,input.usage.outputTokens,input.costUsd,input.finishedAt]);
+    await restoreRecordedUsage(client,row);
     if(!input.error) await client.query('UPDATE actions SET action_state=$2,updated_at=$3 WHERE id=$1',[row.action_id,factsNeeded.length?'needs_input':'in_progress',input.finishedAt]);
     await audit(client,row,input,input.error?'run.failed':'run.succeeded',input.error?{reason:input.reason ?? 'unknown'}:version?{version_id:version.version_id,version_no:version.version_no,warnings:input.output?.warnings ?? []}:{facts_needed:factsNeeded});
-    if(input.error) return {runId:row.id,state:'failed',error:input.error};
+    const usageStatus=providerUsageFromInput(asRecord(row.input))?.status;
+    if(input.error) return {runId:row.id,state:'failed',error:input.error,
+     ...(['pending','unknown','partial'].includes(usageStatus ?? '')?{usagePending:true}:{})};
     return version?{runId:row.id,state:'succeeded',versionId:version.version_id,versionNo:version.version_no}:{runId:row.id,state:'succeeded',factsNeeded};
    });
   },

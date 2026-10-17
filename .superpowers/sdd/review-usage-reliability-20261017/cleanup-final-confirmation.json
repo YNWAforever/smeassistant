@@ -1,0 +1,18 @@
+{
+  "observedAt": "2026-10-17T18:04:45.7616740+08:00",
+  "context": "desktop-linux",
+  "confirmations": [
+    {
+      "run": "live-2026-10-17T09-50-00-122Z",
+      "exactContainerId": "8c9fbcd06c784fe42ffc48b941328fb8d2d3f822d99333fccc3e8ac8908ffa19",
+      "remaining": [],
+      "status": "CONFIRMED_ABSENT"
+    },
+    {
+      "run": "live-2026-10-17T09-54-10-647Z",
+      "exactContainerId": "f8826d001494c581d9b092f36002d864d5fc91c5145565a49f0ff42e28a6e6c8",
+      "remaining": [],
+      "status": "CONFIRMED_ABSENT"
+    }
+  ]
+}

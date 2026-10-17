@@ -11,7 +11,7 @@
     { "throws": "The operation was aborted due to timeout" }
   ],
   "expect": {
-    "llmCalls": 2,
+    "llmCalls": 1,
     "state": "failed",
     "version": false,
     "reason": "action_run_failed"

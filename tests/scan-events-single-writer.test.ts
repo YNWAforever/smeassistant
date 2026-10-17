@@ -31,9 +31,15 @@ async function sourceFiles(dir: string): Promise<string[]> {
 async function scanEventWriters(root = repoRoot): Promise<string[]> {
   const writers: string[] = [];
   for (const dir of ROOTS) {
-    for (const file of await sourceFiles(path.join(root, dir))) {
-      if (INSERT_SCAN_EVENTS.test(await readFile(file, "utf8"))) {
-        writers.push(path.relative(root, file).split(path.sep).join("/"));
+    const files = await sourceFiles(path.join(root, dir));
+    // Read every source with bounded concurrency; serial Windows I/O can
+    // exhaust the normal test budget during the full suite.
+    for (let offset = 0; offset < files.length; offset += 16) {
+      const batch = await Promise.all(files.slice(offset, offset + 16).map(async file => ({ file, text: await readFile(file, "utf8") })));
+      for (const { file, text } of batch) {
+        if (INSERT_SCAN_EVENTS.test(text)) {
+          writers.push(path.relative(root, file).split(path.sep).join("/"));
+        }
       }
     }
   }

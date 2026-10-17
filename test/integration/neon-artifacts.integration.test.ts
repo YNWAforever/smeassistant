@@ -1,14 +1,18 @@
 import { Pool } from 'pg';
 import { randomUUID } from 'node:crypto';
-import { beforeAll, afterAll, describe, it, expect } from 'vitest';
+import { beforeAll, afterAll, afterEach, describe, it, expect } from 'vitest';
 import { applyMigrations } from '../../scripts/neon/migrations';
 import { startNeonDatabaseFixture, type NeonDatabaseFixture } from './neon-database';
 import { artifactRepository } from '../../lib/repositories/artifacts';
 import * as artifactModule from '../../lib/repositories/artifacts';
 import { withTransaction } from '../../lib/db/transaction';
+import { createAssistantVersion } from '../../lib/workspace/versions';
+import { workspaceReadRepository } from '../../lib/repositories/workspace-read';
+import { clearActionRunFixtures } from './action-run-fixture';
 
 describe.runIf(process.env.NEON_INTEGRATION === '1')('Neon artifact persistence and scope', () => {
  let fixture: NeonDatabaseFixture, owner: Pool, runtime: Pool, actor: string;
+ const fixtureWorkspaces = new Set<string>();
  beforeAll(async () => {
   fixture = await startNeonDatabaseFixture('test');
   owner = new Pool({ connectionString: fixture.databaseUrl });
@@ -20,12 +24,95 @@ describe.runIf(process.env.NEON_INTEGRATION === '1')('Neon artifact persistence 
   actor=(await runtime.query("INSERT INTO app_users(email) VALUES('artifact@example.test') RETURNING id")).rows[0].id;
  });
  afterAll(async () => { await Promise.all([owner?.end(),runtime?.end()]); fixture?.stop(); });
+  afterEach(async () => {
+   await clearActionRunFixtures(runtime, [...fixtureWorkspaces]);
+   fixtureWorkspaces.clear();
+  });
  async function setup() {
   const workspace=(await runtime.query('INSERT INTO workspaces DEFAULT VALUES RETURNING id')).rows[0].id as string;
   const action=(await runtime.query("INSERT INTO actions(workspace_id,template_key,title,summary,evidence,priority,priority_score,priority_factors,effort_minutes,capability,dedupe_key) VALUES($1,'fixture','{}','{}','[]','low',1,'{}',5,'Live',$2) RETURNING id",[workspace,randomUUID()])).rows[0].id as string;
+  fixtureWorkspaces.add(workspace);
   return { workspace,action };
  }
  const input=(actionId: string, body='Original fixture') => ({ actionId,actor,authorType:'user',actionRunId:null,body,alt:null,meta:{ fixture:true },baseVersionId:null });
+ it('blocks a manual retry and shows pending usage after a partial provider report', async () => {
+  const {workspace,action}=await setup(),runs=artifactModule.actionRunRepository(work=>withTransaction(work,runtime));
+  const runId=await runs.queue({actionId:action,actorId:actor,agentKey:'fixture',input:{},promptVersion:'fixture',model:'fixture',now:new Date()});
+  await runs.start({runId,actorId:actor,locale:'en'});
+  const attribution={runId,actorId:actor,workspaceId:workspace,attemptId:randomUUID()};
+  await runs.beginProviderAttempt({...attribution,model:'fixture',startedAt:new Date()});
+  await runs.observeProviderAttempt({...attribution,observation:{state:'reported',usage:{inputTokens:17,outputTokens:null}},finishedAt:new Date()});
+  expect(await runs.finish({runId,actorId:actor,locale:'en',usage:{inputTokens:17,outputTokens:null},costUsd:null,output:null,error:'Incomplete usage',finishedAt:new Date()})).toMatchObject({usagePending:true});
+  expect((await workspaceReadRepository(runtime).runs(workspace,[action]))[0]).toMatchObject({usage_pending:true});
+  await expect(runs.queue({actionId:action,actorId:actor,agentKey:'fixture',input:{},promptVersion:'fixture',model:'fixture',now:new Date()})).rejects.toThrow('provider_usage_pending');
+ });
+ it('records a provider reservation before work and late usage once without reviving failed output', async () => {
+  const {workspace,action}=await setup(), runs=artifactModule.actionRunRepository(work=>withTransaction(work,runtime));
+  const runId=await runs.queue({actionId:action,actorId:actor,agentKey:'fixture',input:{},promptVersion:'fixture',model:'fixture',now:new Date()});
+  await runs.start({runId,actorId:actor,locale:'en'});
+  const attemptId=randomUUID(), attribution={runId,actorId:actor,workspaceId:workspace,attemptId};
+  await runs.beginProviderAttempt({...attribution,model:'fixture',startedAt:new Date()});
+  expect((await runtime.query('SELECT input_tokens,output_tokens,input FROM action_runs WHERE id=$1',[runId])).rows[0]).toMatchObject({
+   input_tokens:null,output_tokens:null,input:{provider_usage:{status:'pending'}},
+  });
+  await runs.finish({runId,actorId:actor,locale:'en',usage:{inputTokens:null,outputTokens:null},costUsd:null,output:null,error:'Timed out',finishedAt:new Date()});
+  await expect(runs.queue({actionId:action,actorId:actor,agentKey:'fixture',input:{},promptVersion:'fixture',model:'fixture',now:new Date()})).rejects.toThrow();
+  const observation={state:'reported' as const,usage:{inputTokens:17,outputTokens:9},providerRequestId:'fixture-provider-1',late:true};
+  await runs.observeProviderAttempt({...attribution,observation,finishedAt:new Date()});
+  await runs.observeProviderAttempt({...attribution,observation,finishedAt:new Date()});
+  expect((await runtime.query('SELECT state,output,input_tokens,output_tokens,input FROM action_runs WHERE id=$1',[runId])).rows[0]).toMatchObject({
+   state:'failed',output:null,input_tokens:17,output_tokens:9,input:{provider_usage:{status:'complete',knownInputTokens:17,knownOutputTokens:9}},
+  });
+  expect((await runtime.query('SELECT id FROM output_versions WHERE action_id=$1',[action])).rows).toHaveLength(0);
+  expect((await runtime.query("SELECT id FROM audit_events WHERE entity_id=$1 AND event='run.usage_observed'",[runId])).rows).toHaveLength(1);
+ });
+ it('rejects foreign actor/workspace observations and unreserved attempts', async () => {
+  const a=await setup(),b=await setup(),runs=artifactModule.actionRunRepository(work=>withTransaction(work,runtime));
+  const runId=await runs.queue({actionId:a.action,actorId:actor,agentKey:'fixture',input:{},promptVersion:'fixture',model:'fixture',now:new Date()});
+  await runs.start({runId,actorId:actor,locale:'en'});
+  const attemptId=randomUUID();
+  await expect(runs.beginProviderAttempt({runId,actorId:actor,workspaceId:b.workspace,attemptId,model:'fixture',startedAt:new Date()})).rejects.toThrow();
+  await expect(runs.beginProviderAttempt({runId,actorId:randomUUID(),workspaceId:a.workspace,attemptId,model:'fixture',startedAt:new Date()})).rejects.toThrow();
+  await expect(runs.observeProviderAttempt({runId,actorId:actor,workspaceId:a.workspace,attemptId,observation:{state:'reported',usage:{inputTokens:17,outputTokens:9}},finishedAt:new Date()})).rejects.toThrow();
+  expect((await runtime.query('SELECT input FROM action_runs WHERE id=$1',[runId])).rows[0].input).toEqual({});
+ });
+ it('preserves a measured subtotal and refuses an unresolved retry instead of treating the other attempt as zero', async () => {
+  const {workspace,action}=await setup(),runs=artifactModule.actionRunRepository(work=>withTransaction(work,runtime));
+  const runId=await runs.queue({actionId:action,actorId:actor,agentKey:'fixture',input:{},promptVersion:'fixture',model:'fixture',now:new Date()});
+  await runs.start({runId,actorId:actor,locale:'en'});
+  for(const [index,usage] of [{inputTokens:17,outputTokens:9},{inputTokens:null,outputTokens:null}].entries()) {
+   const attribution={runId,actorId:actor,workspaceId:workspace,attemptId:randomUUID()};
+   await runs.beginProviderAttempt({...attribution,model:'fixture',startedAt:new Date()});
+   await runs.observeProviderAttempt({...attribution,observation:{state:index===0?'reported':'unknown',usage},finishedAt:new Date()});
+  }
+  await runs.finish({runId,actorId:actor,locale:'en',usage:{inputTokens:null,outputTokens:null},costUsd:null,output:null,error:'Unknown provider outcome',finishedAt:new Date()});
+  expect((await runtime.query('SELECT input_tokens,output_tokens,cost_usd,input FROM action_runs WHERE id=$1',[runId])).rows[0]).toMatchObject({
+   input_tokens:null,output_tokens:null,cost_usd:null,input:{provider_usage:{status:'unknown',knownInputTokens:17,knownOutputTokens:9}},
+  });
+  expect(await artifactRepository(runtime).aiSpend24h(workspace)).toMatchObject({
+   globalUsageUnknown:true,workspaceUsageUnknown:true,globalUsd:expect.any(Number),workspaceUsd:expect.any(Number),
+  });
+  await expect(runs.queue({actionId:action,actorId:actor,agentKey:'fixture',input:{},promptVersion:'fixture',model:'fixture',now:new Date()})).rejects.toThrow();
+ });
+ it('cleans unresolved usage only for fixture-owned workspaces before another case reads the global budget', async () => {
+  const unresolved=await setup(),other=await setup();
+  for(const fixture of [unresolved,other]) {
+   await runtime.query("INSERT INTO action_runs(workspace_id,action_id,agent_key,state,input,cost_usd,finished_at) VALUES($1,$2,'fixture','failed','{}',NULL,now())",[fixture.workspace,fixture.action]);
+  }
+  expect(await artifactRepository(runtime).aiSpend24h(unresolved.workspace)).toMatchObject({
+   globalUsageUnknown:true,workspaceUsageUnknown:true,
+  });
+  await clearActionRunFixtures(runtime,[unresolved.workspace]);
+  expect((await runtime.query('SELECT id FROM action_runs WHERE workspace_id=$1',[unresolved.workspace])).rows).toHaveLength(0);
+  expect((await runtime.query('SELECT id FROM action_runs WHERE workspace_id=$1',[other.workspace])).rows).toHaveLength(1);
+  expect(await artifactRepository(runtime).aiSpend24h(other.workspace)).toMatchObject({
+   globalUsageUnknown:true,workspaceUsageUnknown:true,
+  });
+  await clearActionRunFixtures(runtime,[other.workspace]);
+  expect(await artifactRepository(runtime).aiSpend24h(other.workspace)).not.toMatchObject({
+   globalUsageUnknown:true,workspaceUsageUnknown:true,
+  });
+ });
  it('uses a restricted role and preserves two edits, selected approval, history, retry usage and audit', async () => {
   expect((await runtime.query('SELECT current_user AS name')).rows[0].name).toBe('artifact_login');
   const { workspace,action }=await setup(), repo=artifactRepository(runtime);
@@ -49,6 +136,110 @@ describe.runIf(process.env.NEON_INTEGRATION === '1')('Neon artifact persistence 
   expect((await runtime.query("SELECT count(*)::int AS n FROM audit_events WHERE workspace_id=$1 AND event='version.created'",[workspace])).rows[0].n).toBe(3);
   expect((await runtime.query("SELECT count(*)::int AS n FROM audit_events WHERE workspace_id=$1 AND event='version.approved'",[workspace])).rows[0].n).toBe(1);
   expect((await runtime.query("SELECT count(*)::int AS n FROM audit_events WHERE workspace_id=$1 AND event='delivery.exported'",[workspace])).rows[0].n).toBe(1);
+ });
+ it('deduplicates concurrent and response-lost manual saves without allowing a different stale first edit', async () => {
+  const {workspace,action}=await setup(),repo=artifactRepository(runtime);
+  const request=input(action,'First saved text');
+  const results=await Promise.all([repo.createOutputVersion(request),repo.createOutputVersion(request)]);
+  expect(results[0]).toEqual(results[1]);
+  expect(results[0]).toMatchObject({version_no:1});
+  await expect(repo.createOutputVersion({...request,body:'Different stale first edit'})).rejects.toThrow('version_conflict');
+  const edit={...request,body:'Second saved text',baseVersionId:results[0].version_id};
+  const second=await repo.createOutputVersion(edit);
+  expect(await repo.createOutputVersion(edit)).toEqual(second);
+  expect(await repo.createOutputVersion(request)).toEqual(results[0]);
+  expect((await runtime.query('SELECT body,approval_state FROM output_versions WHERE action_id=$1 ORDER BY version_no',[action])).rows).toEqual([
+   {body:'First saved text',approval_state:'superseded'},{body:'Second saved text',approval_state:'draft'},
+  ]);
+  expect((await runtime.query("SELECT count(*)::int AS n FROM audit_events WHERE workspace_id=$1 AND event='version.created'",[workspace])).rows[0].n).toBe(2);
+  expect((await runtime.query('SELECT * FROM workspace_usage WHERE workspace_id=$1',[workspace])).rows).toEqual([]);
+ });
+ it('serializes different first-tab saves against explicitly empty history', async () => {
+  const {action}=await setup(),repo=artifactRepository(runtime);
+  const outcomes=await Promise.allSettled([
+   repo.createOutputVersion(input(action,'Tab one')),
+   repo.createOutputVersion(input(action,'Tab two')),
+  ]);
+  expect(outcomes.filter(result=>result.status==='fulfilled')).toHaveLength(1);
+  const refused=outcomes.find(result=>result.status==='rejected') as PromiseRejectedResult;
+  expect(refused.reason).toMatchObject({message:'version_conflict'});
+  expect((await runtime.query('SELECT id FROM output_versions WHERE action_id=$1',[action])).rows).toHaveLength(1);
+ });
+ async function savedAssistantRun(workspace:string,action:string,source:string|null) {
+  return (await runtime.query<{id:string}>(`INSERT INTO action_runs
+   (workspace_id,action_id,agent_key,state,input,output,prompt_version,requested_by,input_tokens,output_tokens,cost_usd,finished_at)
+   VALUES($1,$2,'review_reply','succeeded',$3,$4,'fixture',$5,10,5,0.01,now()) RETURNING id`,
+   [workspace,action,JSON.stringify({source:'assistant',intent:'friendlier_review_reply',context:{versionId:source}}),
+    JSON.stringify({title:'Fixture',body:'Saved assistant revision',alt_text:null,acceptance_criteria:[],warnings:[],facts_used:[]}),actor])).rows[0].id;
+ }
+ it('redeems one assistant run once under concurrent and later response-lost retries, preserving human approval and usage',async()=>{
+  const {workspace,action}=await setup(),repo=artifactRepository(runtime);
+  const source=await repo.createOutputVersion(input(action));
+  const runId=await savedAssistantRun(workspace,action,source.version_id);
+  const request={workspaceId:workspace,actionId:action,actorId:actor,runId,baseVersionId:source.version_id};
+  const [first,repeat]=await Promise.all([createAssistantVersion(repo,request),createAssistantVersion(repo,request)]);
+  expect(first).toEqual(repeat);
+  expect(first.versionNo).toBe(2);
+  await repo.approveOutputVersion(first.versionId,actor,'Human approval');
+  const next=await repo.createOutputVersion({...input(action,'Later manual edit'),baseVersionId:first.versionId});
+  expect(await createAssistantVersion(repo,request)).toEqual(first);
+  expect((await runtime.query('SELECT approval_state,approved_by,body FROM output_versions WHERE id=$1',[first.versionId])).rows[0]).toEqual({
+   approval_state:'approved',approved_by:actor,body:'Saved assistant revision',
+  });
+  expect((await runtime.query('SELECT approval_state,approved_by FROM output_versions WHERE id=$1',[next.version_id])).rows[0]).toEqual({approval_state:'draft',approved_by:null});
+  expect((await runtime.query('SELECT count(*)::int AS n FROM output_versions WHERE action_run_id=$1',[runId])).rows[0].n).toBe(1);
+  expect((await runtime.query("SELECT count(*)::int AS n FROM audit_events WHERE workspace_id=$1 AND event='version.created'",[workspace])).rows[0].n).toBe(3);
+  expect((await runtime.query('SELECT input_tokens,output_tokens,cost_usd::float8 AS cost FROM action_runs WHERE id=$1',[runId])).rows[0]).toEqual({input_tokens:10,output_tokens:5,cost:0.01});
+  expect((await runtime.query('SELECT * FROM workspace_usage WHERE workspace_id=$1',[workspace])).rows).toEqual([]);
+  expect((await runtime.query('SELECT * FROM deliveries WHERE workspace_id=$1',[workspace])).rows).toEqual([]);
+ });
+ it.each([false,true])('binds an assistant first draft to empty history even if another tab saved meanwhile=%s',async(changed)=>{
+  const {workspace,action}=await setup(),repo=artifactRepository(runtime);
+  const runId=await savedAssistantRun(workspace,action,null);
+  const request={workspaceId:workspace,actionId:action,actorId:actor,runId,baseVersionId:null};
+  if(changed) {
+   await repo.createOutputVersion(input(action,'Another tab saved first'));
+   await expect(createAssistantVersion(repo,request)).rejects.toThrow('version_conflict');
+   expect((await runtime.query('SELECT id FROM output_versions WHERE action_run_id=$1',[runId])).rows).toEqual([]);
+  } else {
+   const [first,repeat]=await Promise.all([createAssistantVersion(repo,request),createAssistantVersion(repo,request)]);
+   expect(first).toEqual(repeat);
+   expect(first.versionNo).toBe(1);
+  }
+  expect((await runtime.query('SELECT id FROM output_versions WHERE action_id=$1',[action])).rows).toHaveLength(1);
+ });
+ it('refuses an unredeemed stale assistant revision and cannot rebase it by naming the current version',async()=>{
+  const {workspace,action}=await setup(),repo=artifactRepository(runtime);
+  const source=await repo.createOutputVersion(input(action));
+  const runId=await savedAssistantRun(workspace,action,source.version_id);
+  const current=await repo.createOutputVersion({...input(action,'Newer saved version'),baseVersionId:source.version_id});
+  const request={workspaceId:workspace,actionId:action,actorId:actor,runId};
+  await expect(createAssistantVersion(repo,{...request,baseVersionId:current.version_id})).rejects.toThrow('version_conflict');
+  await expect(createAssistantVersion(repo,{...request,baseVersionId:source.version_id})).rejects.toThrow('version_conflict');
+  await expect(createAssistantVersion(repo,request)).rejects.toThrow('version_conflict');
+  // The SQL boundary also rejects bypassing the wrapper's source check.
+  await expect(repo.createOutputVersion({...input(action,'Saved assistant revision'),authorType:'agent',actionRunId:runId,baseVersionId:current.version_id})).rejects.toThrow('version_conflict');
+  expect((await runtime.query('SELECT id FROM output_versions WHERE action_run_id=$1',[runId])).rows).toEqual([]);
+ });
+ it('keeps ordinary non-assistant agent appends compatible with a null base',async()=>{
+  const {workspace,action}=await setup(),repo=artifactRepository(runtime);
+  await repo.createOutputVersion(input(action));
+  const runId=(await runtime.query<{id:string}>("INSERT INTO action_runs(workspace_id,action_id,agent_key,state,input) VALUES($1,$2,'review_reply','running','{}') RETURNING id",[workspace,action])).rows[0].id;
+  expect(await repo.createOutputVersion({...input(action,'Ordinary agent append'),authorType:'agent',actionRunId:runId})).toMatchObject({version_no:2});
+ });
+ it('serializes a new saved edit with exact-version approval without approving changed content or deadlocking',async()=>{
+  const {workspace,action}=await setup(),repo=artifactRepository(runtime);
+  const source=await repo.createOutputVersion(input(action));
+  const outcomes=await Promise.allSettled([
+   repo.approveOutputVersion(source.version_id,actor,'Approve exactly the text read'),
+   repo.createOutputVersion({...input(action,'Changed content requires approval'),baseVersionId:source.version_id}),
+  ]);
+  expect(outcomes[1].status).toBe('fulfilled');
+  if(outcomes[0].status==='rejected') expect(outcomes[0].reason).toMatchObject({message:'version_closed'});
+  const rows=(await runtime.query('SELECT body,approval_state,approved_by FROM output_versions WHERE action_id=$1 ORDER BY version_no',[action])).rows;
+  expect(rows[1]).toEqual({body:'Changed content requires approval',approval_state:'draft',approved_by:null});
+  expect(['approved','superseded']).toContain(rows[0].approval_state);
+  expect((await runtime.query('SELECT * FROM workspace_usage WHERE workspace_id=$1',[workspace])).rows).toEqual([]);
  });
  it('binds retry keys to selected version and mode across workspaces', async () => {
   const a=await setup(),b=await setup(),repo=artifactRepository(runtime);

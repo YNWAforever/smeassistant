@@ -1,0 +1,34 @@
+{
+  "startedAt": "2026-10-17T09:54:10.701Z",
+  "sourceSha": "bb3f48af4ae42a362c3ff58878f74286736e0f40",
+  "firstCase": 2,
+  "scripts": [
+    {
+      "file": "live-relay.ts",
+      "sha256": "2f29e1a8cb9c41268d03293089561ef9f500b283ef276fba00852778056cfed0"
+    },
+    {
+      "file": "live-environment.ts",
+      "sha256": "385aadf3b3a933e7e8524c26997bbf268db37ff49af70498b5ec7ddc4a706bd0"
+    },
+    {
+      "file": "run-live-acceptance.ts",
+      "sha256": "16743f4e15722fa775ac0a72aa8f1089e497f150a9cf75cea1aeae48028aba7e"
+    }
+  ],
+  "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "newSource": [
+    {
+      "file": "lib/agents/review-source.ts",
+      "sha256": "822b9a7640f9f8fb787695e693ed3cffcf6df2ffb7cb8712573c86912cf3acce"
+    },
+    {
+      "file": "lib/workspace/provider-attempt.ts",
+      "sha256": "dd7d17ea92c5a4d62591a5f705d0dff98140e0954bd48bf84398fa7970fbd21c"
+    },
+    {
+      "file": "lib/workspace/provider-usage.ts",
+      "sha256": "1d894f642243bc77d9aad18670b383e454c5faa599072d0dfbfde734b5d947f9"
+    }
+  ]
+}

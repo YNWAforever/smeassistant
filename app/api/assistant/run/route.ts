@@ -1,14 +1,14 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { contextualAssistantEnabled } from "@/lib/assistant/flag";
 import { AssistantAccessError, isDraftIntent, runLiveAssistant } from "@/lib/assistant/live";
 import { AiBudgetRefusal } from "@/lib/budgets/ai";
 import { logPauseRefusal, pauseState } from "@/lib/budgets/pause";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
 import { authorizationOrUnavailable } from "@/lib/security/authorization-boundary";
-import { ActionRunInFlightError } from "@/lib/repositories/artifacts";
+import { ActionRunInFlightError, ActionRunUsageUncertainError } from "@/lib/repositories/artifacts";
 import { isLocale } from "@/lib/locale";
 import type { PrototypeLocale } from "@/lib/copy";
-import { isDemoQuestionId, type AssistantOrigin, type AssistantSurface, type DemoQuestionId } from "@/lib/pocket-assistant/contracts";
+import { isAssistantIntentId, isDemoQuestionId, type AssistantIntentId, type AssistantOrigin, type AssistantSurface } from "@/lib/pocket-assistant/contracts";
 import { createDemoAssistantRun } from "@/lib/pocket-assistant/demo";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
 import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
@@ -25,7 +25,7 @@ export const maxDuration = 60;
 const SURFACES: readonly AssistantSurface[] = ["sample", "report", "home", "actions", "action", "create", "insights", "assets", "rescan", "workspace"];
 const ORIGINS: readonly AssistantOrigin[] = ["suggested", "fixed"];
 // Live answers that only exist behind CONTEXTUAL_ASSISTANT_ENABLED (P4.3); with the flag off they are as absent as before the slice.
-const CONTEXTUAL_INTENTS: readonly DemoQuestionId[] = ["explain_missing_inputs", "where_to_continue"];
+const CONTEXTUAL_INTENTS: readonly AssistantIntentId[] = ["explain_missing_inputs", "where_to_continue"];
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HEADERS = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
 
@@ -53,12 +53,12 @@ export async function POST(request: Request) {
   const origin = contextual ? rawOrigin : undefined;
   if (mode !== "demo" && mode !== "live") return json({ error: "invalid_mode" }, 400);
   if (!SURFACES.includes(surface as AssistantSurface)) return json({ error: "invalid_surface" }, 400);
-  if (!isDemoQuestionId(intentId)) return json({ error: "invalid_intent" }, 400);
+  if (!isAssistantIntentId(intentId) || (mode === "demo" && !isDemoQuestionId(intentId))) return json({ error: "invalid_intent" }, 400);
   if (typeof locale !== "string" || !isLocale(locale)) return json({ error: "unsupported_locale" }, 400);
 
   if (origin !== undefined && !ORIGINS.includes(origin as AssistantOrigin)) return json({ error: "invalid_origin" }, 400);
 
-  if (mode === "demo") return json(createDemoAssistantRun(intentId, locale));
+  if (mode === "demo" && isDemoQuestionId(intentId)) return json(createDemoAssistantRun(intentId, locale));
 
   // Before auth and the limiter: with the flag off these intents do not exist for a workspace.
   if (CONTEXTUAL_INTENTS.includes(intentId) && !contextual) return json({ error: "not_enabled" }, 404);
@@ -94,6 +94,7 @@ export async function POST(request: Request) {
       surface: surface as AssistantSurface,
       locale: locale as PrototypeLocale,
       contextual,
+      deferUsageSettlement: work => after(() => work.then(() => undefined)),
       context: { workspaceId, locationId: ids.locationId ?? undefined, snapshotId: ids.snapshotId ?? undefined, actionId: ids.actionId ?? undefined, versionId: ids.versionId ?? undefined },
     });
 
@@ -126,9 +127,10 @@ export async function POST(request: Request) {
     return json(result);
   } catch (error) {
     if (error instanceof ActionRunInFlightError) return json({error:"run_in_progress"},409);
+    if (error instanceof ActionRunUsageUncertainError) return json({error:"provider_usage_pending"},409);
     if (error instanceof AssistantAccessError) return json({ error: error.code }, error.status);
     // Already logged as "[budget] refused" (or "[budget] check_failed"); nothing reached the model.
-    if (error instanceof AiBudgetRefusal) return json({ error: error.code }, error.code === "ai_paused" ? 503 : 429);
+    if (error instanceof AiBudgetRefusal) return json({ error: error.code }, error.code === "ai_paused" ? 503 : error.code === "provider_usage_pending" ? 409 : 429);
     console.error("[api/assistant/run] failed", { category: "assistant_run_failed" });
     return json({ error: "unavailable" }, 503);
   }

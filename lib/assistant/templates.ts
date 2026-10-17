@@ -1,7 +1,7 @@
 import type { Membership } from "@/lib/auth";
 import { copy, type PrototypeLocale } from "@/lib/copy";
 import { localized, type LocalizedText } from "@/lib/domain";
-import type { AssistantNextStep, DemoQuestionId, EvidenceReference } from "@/lib/pocket-assistant/contracts";
+import type { AssistantIntentId, AssistantNextStep, DemoQuestionId, EvidenceReference } from "@/lib/pocket-assistant/contracts";
 import { formatDay, metricLabel, priorityLabel, stateLabel } from "@/lib/workspace/format";
 import type { MetricKey } from "@/lib/workspace/metrics";
 import type { ActionOverview } from "@/lib/workspace/overview";
@@ -595,10 +595,12 @@ export function templateAnswer(intent: TemplateIntent, ctx: TemplateContext): Te
 }
 
 /** The template that stands in when a draft intent cannot run (no action, or the model is unavailable). */
-export function fallbackIntentFor(intent: DemoQuestionId): TemplateIntent {
+export function fallbackIntentFor(intent: AssistantIntentId): TemplateIntent {
   switch (intent) {
     case "draft_review_reply":
     case "friendlier_review_reply":
+    case "shorten_review_reply":
+    case "contact_review_reply":
       return "explain_priority";
     case "generate_social":
       return "asset_next_step";

@@ -1,0 +1,27 @@
+{
+  "id": "b00f0d29abb245ecaa929ba48d3702fe",
+  "object": "chat.completion",
+  "created": 1792230936,
+  "model": "longcat-2.5-preview-free",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "logprobs": null,
+      "message": {
+        "role": "assistant",
+        "content": "{\n  \"title\": \"回覆評論\",\n  \"body\": \"1. 評論：「等咗一陣，但職員有耐心解答問題。」\\n\\n多謝你嘅留言同耐心等候！好開心我哋嘅職員能夠耐心解答你嘅問題，亦都明白等待嘅時間可能令你覺得唔方便。你嘅意見對我好重要，如果仲有任何疑問或者想進一步了解，歡迎隨時喺呢個評論下面留言聯絡我哋，我會盡力協助你。再次多謝你嘅支持同鼓勵！\",\n  \"acceptance_criteria\": [\n    \"回覆以繁體中文（香港書面粵語）撰寫，語氣專業\",\n    \"有確認評論內容（等候及職員耐心解答）並致謝\",\n    \"下一步僅邀請在評論區留言聯絡，無實體邀請或補償承諾\",\n    \"無使用禁用詞語（Guaranteed）\",\n    \"無虛構事實、地址、優惠或政策\"\n  ],\n  \"warnings\": [\n    \"評論由商戶自行提供，並非從公開檔案讀取\",\n    \"品牌無已確認地址或探訪邀請，故未加入地址或實體聯絡方式\"\n  ],\n  \"facts_used\": [\n    \"brand_voice: professional\",\n    \"language: zh-HK\",\n    \"reviews_without_response（商戶提供）：等咗一陣，但職員有耐心解答問題。\"\n  ],\n  \"facts_needed\": []\n}"
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 1719,
+    "completion_tokens": 302,
+    "total_tokens": 2021,
+    "prompt_tokens_details": {
+      "audio_tokens": 0,
+      "cached_tokens": 0,
+      "cache_write_tokens": 0
+    }
+  }
+}

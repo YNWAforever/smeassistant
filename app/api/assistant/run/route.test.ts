@@ -45,6 +45,20 @@ afterEach(() => {
 });
 
 describe("POST /api/assistant/run", () => {
+  it.each(["shorten_review_reply", "contact_review_reply"])("accepts %s only as an authorized live draft intent", async intentId => {
+    mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("owner"));
+    const context = { workspaceId: WORKSPACE_ID, actionId: "33333333-3333-4333-8333-333333333333", versionId: "44444444-4444-4444-8444-444444444444" };
+    const result = await post({ mode: "live", surface: "action", intentId, locale: "en", context });
+    expect(result.status).toBe(200);
+    expect(mocks.authorizeWorkspaceRequest).toHaveBeenCalledWith({ id: WORKSPACE_ID }, { minRole: "manager" });
+    expect(mocks.runLiveAssistant).toHaveBeenCalledWith(expect.objectContaining({ intentId, context: expect.objectContaining(context) }));
+    expect((await post({ mode: "demo", surface: "sample", intentId, locale: "en" })).status).toBe(400);
+  });
+  it.each(["shorten_review_reply", "contact_review_reply"])("refuses viewer %s before the live runner", async intentId => {
+    const result = await post({ mode: "live", surface: "action", intentId, locale: "en", context: { workspaceId: WORKSPACE_ID, versionId: "44444444-4444-4444-8444-444444444444" } });
+    expect(result.status).toBe(403);
+    expect(mocks.runLiveAssistant).not.toHaveBeenCalled();
+  });
   it('returns controlled no-store 409 for the shared action run lock',async()=>{
     mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike('owner'));
     mocks.runLiveAssistant.mockRejectedValueOnce(new ActionRunInFlightError());
@@ -105,7 +119,7 @@ describe("POST /api/assistant/run", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual(live);
     expect(mocks.enforceRateLimit).toHaveBeenCalledWith(expect.objectContaining({ scope: "assistant_run", identifiers: ["user-1"], failClosed: true }));
-    expect(mocks.runLiveAssistant).toHaveBeenCalledWith({ membership: auth("viewer").membership, intentId: "explain_priority", surface: "home", locale: "zh-HK", contextual: false, context: { workspaceId: WORKSPACE_ID, locationId: "22222222-2222-4222-8222-222222222222", snapshotId: undefined, actionId: undefined, versionId: undefined } });
+    expect(mocks.runLiveAssistant).toHaveBeenCalledWith({ membership: auth("viewer").membership, intentId: "explain_priority", surface: "home", locale: "zh-HK", contextual: false, context: { workspaceId: WORKSPACE_ID, locationId: "22222222-2222-4222-8222-222222222222", snapshotId: undefined, actionId: undefined, versionId: undefined }, deferUsageSettlement: expect.any(Function) });
     expect(mocks.llmComplete).not.toHaveBeenCalled();
   });
 

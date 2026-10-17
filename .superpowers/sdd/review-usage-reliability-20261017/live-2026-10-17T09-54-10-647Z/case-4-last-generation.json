@@ -1,0 +1,11 @@
+{
+  "observedAt": "2026-10-17T09:56:37.230Z",
+  "result": {
+    "runId": "d0654f37-838a-4531-b0cf-80cfcdbdabe4",
+    "state": "succeeded",
+    "versionId": "20330cdb-390f-44b4-bdff-b0d65a6cfe17",
+    "versionNo": 1
+  },
+  "elapsedMs": 11719,
+  "repeatedKnownReviewConfirmation": false
+}

@@ -20,6 +20,18 @@ export const demoQuestionIds = [
 
 export type DemoQuestionId = (typeof demoQuestionIds)[number]
 
+export const reviewRevisionIntentIds = ["shorten_review_reply", "contact_review_reply"] as const
+export type ReviewRevisionIntentId = (typeof reviewRevisionIntentIds)[number]
+export type AssistantIntentId = DemoQuestionId | ReviewRevisionIntentId
+
+export function isReviewRevisionIntent(value: unknown): value is ReviewRevisionIntentId {
+  return typeof value === "string" && reviewRevisionIntentIds.includes(value as ReviewRevisionIntentId)
+}
+
+export function isAssistantIntentId(value: unknown): value is AssistantIntentId {
+  return isDemoQuestionId(value) || isReviewRevisionIntent(value)
+}
+
 export type EvidenceReference = {
   evidenceId: string
   scanId: string
@@ -100,7 +112,7 @@ export type AssistantContext = {
 export type AssistantRunRequest = {
   mode: AssistantMode
   surface: AssistantSurface
-  intentId: DemoQuestionId
+  intentId: AssistantIntentId
   locale: "zh-HK" | "zh-TW" | "en"
   context?: AssistantContext
   origin?: AssistantOrigin

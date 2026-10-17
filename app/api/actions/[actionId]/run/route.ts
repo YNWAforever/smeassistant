@@ -6,6 +6,7 @@ import {
 } from "@/app/api/actions/_shared/mutation";
 import { logPauseRefusal, pauseState } from "@/lib/budgets/pause";
 import { RunError, runAgentForAction } from "@/lib/workspace/runs";
+import { after } from "next/server";
 
 /**
  * POST /api/actions/[actionId]/run { agentKey?, inputs? } (CLAUDE.md §3.2.3).
@@ -56,6 +57,7 @@ export async function POST(
       inputs,
       locale: localeFrom(req, body),
       ipHash: auth.ipHash,
+      deferUsageSettlement: work => after(() => work.then(() => undefined)),
     });
     return json(result);
   } catch (error) {
@@ -66,6 +68,7 @@ export async function POST(
       if (error.code === "ai_budget_reached") return json({ error: "ai_budget_reached" }, 429);
       // F-14: another run for this action is still live; nothing was charged.
       if (error.code === "run_in_progress") return json({ error: "run_in_progress" }, 409);
+      if (error.code === "provider_usage_pending") return json({ error: "provider_usage_pending" }, 409);
       return json(
         {
           error:

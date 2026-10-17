@@ -48,11 +48,11 @@ export async function POST(
     typeof payload?.alt_text === "string"
       ? payload.alt_text.trim().slice(0, 500) || null
       : null;
-  const baseVersionId =
-    typeof payload?.base_version_id === "string"
-      ? payload.base_version_id
-      : null;
-  if (baseVersionId && !UUID_RE.test(baseVersionId))
+  const rawBase = payload?.base_version_id;
+  if (rawBase !== undefined && rawBase !== null && typeof rawBase !== "string")
+    return json({ error: "base_version_id is invalid" }, 400);
+  const baseVersionId = rawBase as string | null | undefined;
+  if (typeof baseVersionId === "string" && !UUID_RE.test(baseVersionId))
     return json({ error: "base_version_id is invalid" }, 400);
 
   try {

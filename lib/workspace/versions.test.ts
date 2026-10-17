@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import type { ArtifactRepository } from "@/lib/repositories/artifacts";
 import {
   createVersion,
+  createAssistantVersion,
   approveVersion,
   decideVersion,
   exportVersion,
@@ -166,5 +167,43 @@ describe("typed artifact wrappers", () => {
       ),
     ).toBeNull();
     expect(VersionError).toBeDefined();
+  });
+});
+
+describe("assistant saved-version source binding", () => {
+  const source = "55555555-5555-4555-8555-555555555555";
+  const other = "66666666-6666-4666-8666-666666666666";
+  const input = { actionId: "a", workspaceId: "w", actorId: "u", runId: "r" };
+  function draft(versionId?: string) {
+    const createOutputVersion = vi.fn(async () => ({
+      kind: "created" as const, version_id: "new", version_no: 2,
+    }));
+    return {
+      createOutputVersion,
+      db: repository({
+        createOutputVersion,
+        assistantDraft: async () => ({
+          output: { body: "Server-held revision", warnings: [], facts_used: [] },
+          agent_key: "review_reply",
+          prompt_version: "fixture",
+          input: { source: "assistant", intent: "friendlier_review_reply", context: versionId ? { versionId } : {} },
+        }),
+      }),
+    };
+  }
+  it("uses the saved generation source when a compatible caller omits its base", async () => {
+    const { db, createOutputVersion } = draft(source);
+    await createAssistantVersion(db, input);
+    expect(createOutputVersion).toHaveBeenCalledWith(expect.objectContaining({ baseVersionId: source }));
+  });
+  it.each([null, other])("refuses rebasing a revision from its saved source onto %s", async (baseVersionId) => {
+    const { db, createOutputVersion } = draft(source);
+    await expect(createAssistantVersion(db, { ...input, baseVersionId })).rejects.toEqual(new VersionError("version_conflict"));
+    expect(createOutputVersion).not.toHaveBeenCalled();
+  });
+  it("refuses attaching a first draft to a client-supplied saved version", async () => {
+    const { db, createOutputVersion } = draft();
+    await expect(createAssistantVersion(db, { ...input, baseVersionId: other })).rejects.toEqual(new VersionError("version_conflict"));
+    expect(createOutputVersion).not.toHaveBeenCalled();
   });
 });

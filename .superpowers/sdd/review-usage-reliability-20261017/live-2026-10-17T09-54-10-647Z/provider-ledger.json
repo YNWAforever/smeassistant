@@ -1,0 +1,347 @@
+[
+  {
+    "number": 1,
+    "startedAt": "2026-10-17T09:55:20.745Z",
+    "freeGate": {
+      "observedAt": "2026-10-17T09:55:22.562Z",
+      "model": "longcat-2.5-preview-free",
+      "endpoint": "https://opencode.ai/inference/go/v1/chat/completions",
+      "budgetUsd": 0,
+      "pricing": "Free input, output and cache read; limited-time free model",
+      "sources": [
+        "https://opencode.ai/docs/zen/",
+        "https://opencode.ai/inference/go/v1/models"
+      ],
+      "fallbackAllowed": false,
+      "authorization": "User explicitly approved the Go endpoint on 2026-10-17; no production configuration change."
+    },
+    "requestedModel": "longcat-2.5-preview-free",
+    "promptSha256": "6028a58bd95f8a4263a373599d2240585dcac8e886cbcd92734f67a14be836f4",
+    "factChecks": {
+      "includesBranchA": false,
+      "includesImportedAddress": false,
+      "professionalVoice": true,
+      "directVoice": false
+    },
+    "status": 200,
+    "responseModel": "longcat-2.5-preview-free",
+    "responseId": "b00f0d29abb245ecaa929ba48d3702fe",
+    "usage": {
+      "prompt_tokens": 1719,
+      "completion_tokens": 302,
+      "total_tokens": 2021,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0,
+        "cache_write_tokens": 0
+      }
+    },
+    "outputBodyPresent": true,
+    "outputFactsNeeded": [],
+    "reportedCostUsd": null,
+    "costBasis": "official free pricing; response omitted cost; invoice not checked",
+    "finishedAt": "2026-10-17T09:55:36.034Z"
+  },
+  {
+    "number": 2,
+    "startedAt": "2026-10-17T09:55:59.237Z",
+    "freeGate": {
+      "observedAt": "2026-10-17T09:56:01.087Z",
+      "model": "longcat-2.5-preview-free",
+      "endpoint": "https://opencode.ai/inference/go/v1/chat/completions",
+      "budgetUsd": 0,
+      "pricing": "Free input, output and cache read; limited-time free model",
+      "sources": [
+        "https://opencode.ai/docs/zen/",
+        "https://opencode.ai/inference/go/v1/models"
+      ],
+      "fallbackAllowed": false,
+      "authorization": "User explicitly approved the Go endpoint on 2026-10-17; no production configuration change."
+    },
+    "requestedModel": "longcat-2.5-preview-free",
+    "promptSha256": "cdc3896037f0d2fe34ea49d1e93f5843a1f559d0ac7a55167097e5172f3ec594",
+    "factChecks": {
+      "includesBranchA": false,
+      "includesImportedAddress": false,
+      "professionalVoice": true,
+      "directVoice": false
+    },
+    "status": 200,
+    "responseModel": "longcat-2.5-preview-free",
+    "responseId": "917ce3c9a80247cf9b3e696c1df9ef17",
+    "usage": {
+      "prompt_tokens": 1682,
+      "completion_tokens": 239,
+      "total_tokens": 1921,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0,
+        "cache_write_tokens": 0
+      }
+    },
+    "outputBodyPresent": true,
+    "outputFactsNeeded": [],
+    "reportedCostUsd": null,
+    "costBasis": "official free pricing; response omitted cost; invoice not checked",
+    "finishedAt": "2026-10-17T09:56:07.497Z"
+  },
+  {
+    "number": 3,
+    "startedAt": "2026-10-17T09:56:25.701Z",
+    "freeGate": {
+      "observedAt": "2026-10-17T09:56:27.622Z",
+      "model": "longcat-2.5-preview-free",
+      "endpoint": "https://opencode.ai/inference/go/v1/chat/completions",
+      "budgetUsd": 0,
+      "pricing": "Free input, output and cache read; limited-time free model",
+      "sources": [
+        "https://opencode.ai/docs/zen/",
+        "https://opencode.ai/inference/go/v1/models"
+      ],
+      "fallbackAllowed": false,
+      "authorization": "User explicitly approved the Go endpoint on 2026-10-17; no production configuration change."
+    },
+    "requestedModel": "longcat-2.5-preview-free",
+    "promptSha256": "cea46a78bb2996579bdbcfe3b352a56c4da47ed48a756f01ff7aaa31b8729c35",
+    "factChecks": {
+      "includesBranchA": false,
+      "includesImportedAddress": false,
+      "professionalVoice": true,
+      "directVoice": false
+    },
+    "status": 200,
+    "responseModel": "longcat-2.5-preview-free",
+    "responseId": "8429f8eb97024707bac39b8d00e390ca",
+    "usage": {
+      "prompt_tokens": 1718,
+      "completion_tokens": 237,
+      "total_tokens": 1955,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0,
+        "cache_write_tokens": 0
+      }
+    },
+    "outputBodyPresent": true,
+    "outputFactsNeeded": [],
+    "reportedCostUsd": null,
+    "costBasis": "official free pricing; response omitted cost; invoice not checked",
+    "finishedAt": "2026-10-17T09:56:36.587Z"
+  },
+  {
+    "number": 4,
+    "startedAt": "2026-10-17T09:56:43.330Z",
+    "freeGate": {
+      "observedAt": "2026-10-17T09:56:45.260Z",
+      "model": "longcat-2.5-preview-free",
+      "endpoint": "https://opencode.ai/inference/go/v1/chat/completions",
+      "budgetUsd": 0,
+      "pricing": "Free input, output and cache read; limited-time free model",
+      "sources": [
+        "https://opencode.ai/docs/zen/",
+        "https://opencode.ai/inference/go/v1/models"
+      ],
+      "fallbackAllowed": false,
+      "authorization": "User explicitly approved the Go endpoint on 2026-10-17; no production configuration change."
+    },
+    "requestedModel": "longcat-2.5-preview-free",
+    "promptSha256": "7f451152d0490e423826de287a6e60a8d1b5c1477b178955c57f7b006a8002e3",
+    "factChecks": {
+      "includesBranchA": false,
+      "includesImportedAddress": false,
+      "professionalVoice": false,
+      "directVoice": true
+    },
+    "status": 200,
+    "responseModel": "longcat-2.5-preview-free",
+    "responseId": "075e48df3ddc4ece9dd1e3d614bc849b",
+    "usage": {
+      "prompt_tokens": 1869,
+      "completion_tokens": 184,
+      "total_tokens": 2053,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0,
+        "cache_write_tokens": 0
+      }
+    },
+    "outputBodyPresent": true,
+    "outputFactsNeeded": [],
+    "reportedCostUsd": null,
+    "costBasis": "official free pricing; response omitted cost; invoice not checked",
+    "finishedAt": "2026-10-17T09:56:52.293Z"
+  },
+  {
+    "number": 5,
+    "startedAt": "2026-10-17T09:56:57.034Z",
+    "freeGate": {
+      "observedAt": "2026-10-17T09:56:58.834Z",
+      "model": "longcat-2.5-preview-free",
+      "endpoint": "https://opencode.ai/inference/go/v1/chat/completions",
+      "budgetUsd": 0,
+      "pricing": "Free input, output and cache read; limited-time free model",
+      "sources": [
+        "https://opencode.ai/docs/zen/",
+        "https://opencode.ai/inference/go/v1/models"
+      ],
+      "fallbackAllowed": false,
+      "authorization": "User explicitly approved the Go endpoint on 2026-10-17; no production configuration change."
+    },
+    "requestedModel": "longcat-2.5-preview-free",
+    "promptSha256": "ba4960f2808f2162f52b321c0d4489cfca79834f5b950cf99dcbcc95b27c414e",
+    "factChecks": {
+      "includesBranchA": false,
+      "includesImportedAddress": false,
+      "professionalVoice": false,
+      "directVoice": true
+    },
+    "status": 200,
+    "responseModel": "longcat-2.5-preview-free",
+    "responseId": "147399c0adad4d73b29c5fac04eeaff5",
+    "usage": {
+      "prompt_tokens": 1885,
+      "completion_tokens": 178,
+      "total_tokens": 2063,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0,
+        "cache_write_tokens": 0
+      }
+    },
+    "outputBodyPresent": true,
+    "outputFactsNeeded": [],
+    "reportedCostUsd": null,
+    "costBasis": "official free pricing; response omitted cost; invoice not checked",
+    "finishedAt": "2026-10-17T09:57:23.678Z"
+  },
+  {
+    "number": 6,
+    "startedAt": "2026-10-17T09:57:25.373Z",
+    "freeGate": {
+      "observedAt": "2026-10-17T09:57:26.821Z",
+      "model": "longcat-2.5-preview-free",
+      "endpoint": "https://opencode.ai/inference/go/v1/chat/completions",
+      "budgetUsd": 0,
+      "pricing": "Free input, output and cache read; limited-time free model",
+      "sources": [
+        "https://opencode.ai/docs/zen/",
+        "https://opencode.ai/inference/go/v1/models"
+      ],
+      "fallbackAllowed": false,
+      "authorization": "User explicitly approved the Go endpoint on 2026-10-17; no production configuration change."
+    },
+    "requestedModel": "longcat-2.5-preview-free",
+    "promptSha256": "c4e77e9348c72bf6cb0966e4e058ba7f9bc9495104b25d8ebd7349774554ecca",
+    "factChecks": {
+      "includesBranchA": false,
+      "includesImportedAddress": false,
+      "professionalVoice": false,
+      "directVoice": true
+    },
+    "status": 200,
+    "responseModel": "longcat-2.5-preview-free",
+    "responseId": "758eb17547bf4f89b4008d3b6c2731fd",
+    "usage": {
+      "prompt_tokens": 1877,
+      "completion_tokens": 193,
+      "total_tokens": 2070,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0,
+        "cache_write_tokens": 0
+      }
+    },
+    "outputBodyPresent": true,
+    "outputFactsNeeded": [],
+    "reportedCostUsd": null,
+    "costBasis": "official free pricing; response omitted cost; invoice not checked",
+    "finishedAt": "2026-10-17T09:57:34.327Z"
+  },
+  {
+    "number": 7,
+    "startedAt": "2026-10-17T09:57:51.066Z",
+    "freeGate": {
+      "observedAt": "2026-10-17T09:57:52.903Z",
+      "model": "longcat-2.5-preview-free",
+      "endpoint": "https://opencode.ai/inference/go/v1/chat/completions",
+      "budgetUsd": 0,
+      "pricing": "Free input, output and cache read; limited-time free model",
+      "sources": [
+        "https://opencode.ai/docs/zen/",
+        "https://opencode.ai/inference/go/v1/models"
+      ],
+      "fallbackAllowed": false,
+      "authorization": "User explicitly approved the Go endpoint on 2026-10-17; no production configuration change."
+    },
+    "requestedModel": "longcat-2.5-preview-free",
+    "promptSha256": "b7f49769fce1d2f853008fccaa5e1ce093890007a20d015487852692fbe5bc9d",
+    "factChecks": {
+      "includesBranchA": false,
+      "includesImportedAddress": false,
+      "professionalVoice": true,
+      "directVoice": false
+    },
+    "status": 200,
+    "responseModel": "longcat-2.5-preview-free",
+    "responseId": "029369a500704709a22c94293d26b709",
+    "usage": {
+      "prompt_tokens": 1680,
+      "completion_tokens": 209,
+      "total_tokens": 1889,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0,
+        "cache_write_tokens": 0
+      }
+    },
+    "outputBodyPresent": true,
+    "outputFactsNeeded": [],
+    "reportedCostUsd": null,
+    "costBasis": "official free pricing; response omitted cost; invoice not checked",
+    "finishedAt": "2026-10-17T09:57:58.363Z"
+  },
+  {
+    "number": 8,
+    "startedAt": "2026-10-17T09:58:20.862Z",
+    "freeGate": {
+      "observedAt": "2026-10-17T09:58:22.783Z",
+      "model": "longcat-2.5-preview-free",
+      "endpoint": "https://opencode.ai/inference/go/v1/chat/completions",
+      "budgetUsd": 0,
+      "pricing": "Free input, output and cache read; limited-time free model",
+      "sources": [
+        "https://opencode.ai/docs/zen/",
+        "https://opencode.ai/inference/go/v1/models"
+      ],
+      "fallbackAllowed": false,
+      "authorization": "User explicitly approved the Go endpoint on 2026-10-17; no production configuration change."
+    },
+    "requestedModel": "longcat-2.5-preview-free",
+    "promptSha256": "a816a303c1bec466f9f08dfc7465cf77001b8d11e2660723aa31dee81302abfa",
+    "factChecks": {
+      "includesBranchA": false,
+      "includesImportedAddress": false,
+      "professionalVoice": true,
+      "directVoice": false
+    },
+    "status": 200,
+    "responseModel": "longcat-2.5-preview-free",
+    "responseId": "70f74e8c043b46c8969289ee7bfdeffb",
+    "usage": {
+      "prompt_tokens": 1684,
+      "completion_tokens": 177,
+      "total_tokens": 1861,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0,
+        "cache_write_tokens": 0
+      }
+    },
+    "outputBodyPresent": true,
+    "outputFactsNeeded": [],
+    "reportedCostUsd": null,
+    "costBasis": "official free pricing; response omitted cost; invoice not checked",
+    "heldForLateUsageRegression": true,
+    "finishedAt": "2026-10-17T09:59:06.887Z"
+  }
+]

@@ -101,7 +101,7 @@ describe("AGENTS", () => {
     expect(prompt).toContain("collected by the scan from the merchant's public Google profile");
     expect(prompt).toContain("provided_inputs.reviews_without_response is text the owner typed themselves");
     expect(prompt).toContain("Use it ONLY when sampled_reviews_without_owner_response is empty");
-    expect(prompt).toContain("review_reply@2026-10-15.1");
+    expect(prompt).toContain("review_reply@2026-10-17.2");
   });
 
   it("describes a visitor-pasted review as unverified, never as scan evidence (ruling R4)", () => {

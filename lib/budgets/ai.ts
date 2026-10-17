@@ -4,8 +4,9 @@ import { logPauseRefusal, pauseState } from "./pause";
 
 /**
  * AI spend budget (P3.5a). The unit is the US$ cost_usd already recorded on
- * action_runs. No provider price is invented, and a run that recorded no
- * cost counts as zero.
+ * action_runs. Known subtotals are retained when a tracked request is
+ * unresolved; a configured limit refuses rather than interpreting its
+ * missing usage as zero.
  *
  * A pre-check: a run that starts under the limit may finish above it by that
  * run's own cost. Runs are bounded (at most 2 model calls, maxTokens 4000),
@@ -14,16 +15,18 @@ import { logPauseRefusal, pauseState } from "./pause";
 export interface AiSpend {
   globalUsd: number;
   workspaceUsd: number;
+  globalUsageUnknown?: boolean;
+  workspaceUsageUnknown?: boolean;
 }
 
-export type AiBudgetScope = "ai_global" | "ai_workspace" | "ai_paused";
+export type AiBudgetScope = "ai_global" | "ai_workspace" | "ai_paused" | "ai_usage_unknown";
 export type AiBudgetDecision = { allowed: true } | { allowed: false; scope: AiBudgetScope };
 
 /** Thrown by the assistant's draft path; the message is the route's error code. */
 export class AiBudgetRefusal extends Error {
-  readonly code: "ai_budget_reached" | "ai_paused";
+  readonly code: "ai_budget_reached" | "ai_paused" | "provider_usage_pending";
   constructor(readonly scope: AiBudgetScope) {
-    const code = scope === "ai_paused" ? "ai_paused" : "ai_budget_reached";
+    const code = scope === "ai_paused" ? "ai_paused" : scope === "ai_usage_unknown" ? "provider_usage_pending" : "ai_budget_reached";
     super(code);
     this.code = code;
     this.name = "AiBudgetRefusal";
@@ -56,6 +59,11 @@ export async function checkAiBudget(
   } catch {
     logBudgetCheckFailed(input.entry, "query");
     return { allowed: false, scope: "ai_global" };
+  }
+  if ((config.aiUsdGlobal24h !== null && spend.globalUsageUnknown)
+      || (config.aiUsdWorkspace24h !== null && spend.workspaceUsageUnknown)) {
+    console.warn("[budget] provider_usage_unknown", { entry: input.entry });
+    return { allowed: false, scope: "ai_usage_unknown" };
   }
   if (config.aiUsdGlobal24h !== null && spend.globalUsd >= config.aiUsdGlobal24h) {
     logBudgetRefusal("ai_global", input.entry, spend.globalUsd, config.aiUsdGlobal24h);

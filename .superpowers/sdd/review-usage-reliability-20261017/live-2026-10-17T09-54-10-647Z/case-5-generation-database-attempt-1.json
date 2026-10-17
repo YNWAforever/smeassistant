@@ -1,0 +1,54 @@
+{
+  "workspaceId": "73cb227f-9718-4847-8a43-2347d957d193",
+  "versions": [
+    {
+      "id": "f4e529c8-f0c5-4ceb-8a4d-cf9ca9b554aa",
+      "version_no": 1,
+      "approval_state": "draft",
+      "approved_at": null,
+      "first_exported_at": null,
+      "action_run_id": "e007f667-4223-426e-a4fa-5d175d49441c"
+    }
+  ],
+  "runs": [
+    {
+      "id": "e007f667-4223-426e-a4fa-5d175d49441c",
+      "state": "succeeded",
+      "model": "longcat-2.5-preview-free",
+      "input_tokens": 1680,
+      "output_tokens": 209,
+      "cost_usd": 0,
+      "started_at": "2026-10-17T09:57:51.024878+00:00",
+      "finished_at": "2026-10-17T09:57:58.384+00:00",
+      "provider_usage": {
+        "status": "complete",
+        "costUsd": 0,
+        "version": 1,
+        "attempts": {
+          "496f8ceb-f854-4acd-9448-4edf9c320963": {
+            "id": "496f8ceb-f854-4acd-9448-4edf9c320963",
+            "late": false,
+            "model": "longcat-2.5-preview-free",
+            "state": "reported",
+            "usage": {
+              "inputTokens": 1680,
+              "outputTokens": 209
+            },
+            "costUsd": 0,
+            "sequence": 1,
+            "startedAt": "2026-10-17T09:57:51.046Z",
+            "finishedAt": "2026-10-17T09:57:58.364Z",
+            "providerRequestId": "029369a500704709a22c94293d26b709"
+          }
+        },
+        "inputTokens": 1680,
+        "knownCostUsd": 0,
+        "outputTokens": 209,
+        "knownInputTokens": 1680,
+        "knownOutputTokens": 209
+      }
+    }
+  ],
+  "deliveries": 0,
+  "deliveryUsage": 0
+}

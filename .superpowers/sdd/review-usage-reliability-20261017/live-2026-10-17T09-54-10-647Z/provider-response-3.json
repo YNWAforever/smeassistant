@@ -1,0 +1,27 @@
+{
+  "id": "8429f8eb97024707bac39b8d00e390ca",
+  "object": "chat.completion",
+  "created": 1792230997,
+  "model": "longcat-2.5-preview-free",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "logprobs": null,
+      "message": {
+        "role": "assistant",
+        "content": "{\n  \"title\": \"回覆評論\",\n  \"body\": \"1. 評論：「職員解釋清楚，態度友善，多謝你哋。」\\n\\n多謝你嘅好評！好開心我哋嘅同事解釋同態度都令你滿意。如有任何查詢，歡迎隨時聯絡我哋。\\n\\n（備註：以上評論由店主提供，並非從評論頁面讀取。）\",\n  \"acceptance_criteria\": [\n    \"回覆以專業語氣撰寫，使用香港書面粵語。\",\n    \"回覆確認並感謝評論者所述內容（職員解釋清楚、態度友善）。\",\n    \"未加入未經確認的承諾、賠償或實體邀請。\",\n    \"已註明評論由店主提供。\"\n  ],\n  \"warnings\": [\n    \"評論由店主提供，並非從評論頁面讀取的掃描證據。\"\n  ],\n  \"facts_used\": [\n    \"brand_voice: professional\",\n    \"language: zh-HK\",\n    \"reviews_without_response（店主提供）: 職員解釋清楚，態度友善，多謝你哋。\"\n  ],\n  \"facts_needed\": []\n}"
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 1718,
+    "completion_tokens": 237,
+    "total_tokens": 1955,
+    "prompt_tokens_details": {
+      "audio_tokens": 0,
+      "cached_tokens": 0,
+      "cache_write_tokens": 0
+    }
+  }
+}

@@ -9,6 +9,7 @@ import { formatOfferPrice } from "@/lib/workspace/offer-format";
 import { offerPromotionsEnabled } from "@/lib/workspace/offers-flag";
 import { inScopeFor, loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 import { getAction, getActivity } from "@/lib/workspace/queries-pages";
+import { auditBelongsToAction } from "@/lib/workspace/audit-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,7 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
       versions: detail.versions.map((v) => ({ id: v.id, approval_state: v.approval_state, body: v.body })),
     }),
   ]);
-  const auditRows = activity.filter((row) => row.entity_id !== null && entityIds.has(row.entity_id));
+  const auditRows = activity.filter((row) => auditBelongsToAction(row, { actionId, entityIds }));
   // P2.3 item 15: the picker offered every approved image in the workspace, so
   // a social post for one shop could attach another shop's photo, and a manager
   // scoped to one location could see and use assets outside it. Same predicate

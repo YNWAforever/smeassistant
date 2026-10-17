@@ -6,8 +6,10 @@ import type { PrototypeLocale } from "@/lib/copy";
 import { localized } from "@/lib/domain";
 import { llmComplete, llmCompleteDetailed, llmConfigured, type LLMOutcome } from "@/lib/llm";
 import { runErrorLabel } from "./draft-failure";
-import { DRAFT_GROUNDING_VERSION, unconfirmedDraftBusinessFacts } from "@/lib/agents/draft-grounding";
-import type { AssistantArtifact, AssistantSurface, DemoAssistantRunResponse, DemoQuestionId, EvidenceReference } from "@/lib/pocket-assistant/contracts";
+import { blockingReviewWarnings, DRAFT_GROUNDING_VERSION, normalizeMerchantReviewOutput, scopeReviewReplyFacts, unconfirmedDraftBusinessFacts } from "@/lib/agents/draft-grounding";
+import { unusableExistingReviewQuestion } from "@/lib/agents/review-source";
+import { invokeProviderAttempt } from "@/lib/workspace/provider-attempt";
+import { isReviewRevisionIntent, type AssistantArtifact, type AssistantIntentId, type AssistantSurface, type DemoAssistantRunResponse, type EvidenceReference, type ReviewRevisionIntentId } from "@/lib/pocket-assistant/contracts";
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { assetRepository } from "@/lib/repositories/assets";
 import { assetLocationScope } from "@/lib/workspace/assets";
@@ -46,7 +48,7 @@ export interface LiveRunContext {
 }
 
 export interface LiveRunInput {
-  intentId: DemoQuestionId;
+  intentId: AssistantIntentId;
   surface: AssistantSurface;
   locale: PrototypeLocale;
   context: LiveRunContext;
@@ -63,6 +65,7 @@ export interface LiveRunInput {
   /** Budget variables; defaults to process.env (tests pass their own). */
   budgetEnv?: Record<string, string | undefined>;
   now?: () => Date;
+  deferUsageSettlement?: (work: Promise<unknown>) => void;
   /**
    * P4.3: whether answers may carry a `nextStep` link. Off (the default) strips
    * it from every answer, so the response is what it was before P4.3.
@@ -70,15 +73,17 @@ export interface LiveRunInput {
   contextual?: boolean;
 }
 
-type DraftIntent = "draft_review_reply" | "friendlier_review_reply" | "generate_social" | "generate_faq" | "generate_menu";
+type DraftIntent = "draft_review_reply" | "friendlier_review_reply" | "generate_social" | "generate_faq" | "generate_menu" | ReviewRevisionIntentId;
 
 /** The only intents that read the P4.3 signal rows (waiting versions, Google). */
-const SIGNAL_INTENTS: readonly DemoQuestionId[] = ["explain_missing_inputs", "where_to_continue"];
+const SIGNAL_INTENTS: readonly AssistantIntentId[] = ["explain_missing_inputs", "where_to_continue"];
 
 /** Exported for the contract test that every template key resolves. */
 export const DRAFT_AGENTS: Record<DraftIntent, { agent: AgentKey; type: AssistantArtifact["type"]; templates: TemplateKey[] }> = {
   draft_review_reply: { agent: "review_reply", type: "review_reply", templates: ["review-response"] },
   friendlier_review_reply: { agent: "review_reply", type: "review_reply", templates: ["review-response"] },
+  shorten_review_reply: { agent: "review_reply", type: "review_reply", templates: ["review-response"] },
+  contact_review_reply: { agent: "review_reply", type: "review_reply", templates: ["review-response"] },
   generate_social: { agent: "social_post", type: "social_post", templates: ["social-post"] },
   generate_faq: { agent: "faq_jsonld", type: "faq", templates: ["visibility-content"] },
   generate_menu: { agent: "menu_translation", type: "menu_translation", templates: ["menu-translation"] },
@@ -116,7 +121,7 @@ function asStrings(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
 }
 
-export function isDraftIntent(intent: DemoQuestionId): intent is DraftIntent {
+export function isDraftIntent(intent: AssistantIntentId): intent is DraftIntent {
   return Object.prototype.hasOwnProperty.call(DRAFT_AGENTS, intent);
 }
 
@@ -161,6 +166,7 @@ interface ResolvedContext {
   timezone: string;
   /** The location the open actions were read for. */
   locationId: string | null;
+  multipleLocations: boolean;
   /** Loaded only for SIGNAL_INTENTS. */
   signals?: SignalRows;
 }
@@ -264,7 +270,7 @@ async function resolveContext(db: LiveAssistantRepository, input: LiveRunInput):
   const focused = focusedRow ? { row: focusedRow, overview: overviewOf(focusedRow, locations.find((l) => l.id === focusedRow.location_id) ?? null) } : null;
   const locationName = location?.name ?? workspace?.business_name ?? "Workspace";
   const evidenceRefs = snapshot ? buildEvidenceRefs({ snapshot, diff, base, action: focused?.overview ?? open[0]?.overview ?? null, locationName, locale: input.locale }) : [];
-  return { workspace, location, snapshot, base, diff, focused, open, evidenceRefs, locationName, timezone: workspace?.timezone ?? "Asia/Hong_Kong", locationId };
+  return { workspace, location, snapshot, base, diff, focused, open, evidenceRefs, locationName, timezone: workspace?.timezone ?? "Asia/Hong_Kong", locationId, multipleLocations: locations.length > 1 };
 }
 
 function templateContext(input: LiveRunInput, ctx: ResolvedContext): TemplateContext {
@@ -284,7 +290,7 @@ function templateContext(input: LiveRunInput, ctx: ResolvedContext): TemplateCon
   };
 }
 
-function completed(intent: DemoQuestionId, input: LiveRunInput, ctx: ResolvedContext, extraWarnings: string[] = []): DemoAssistantRunResponse {
+function completed(intent: AssistantIntentId, input: LiveRunInput, ctx: ResolvedContext, extraWarnings: string[] = []): DemoAssistantRunResponse {
   const answer = templateAnswer(isTemplateIntent(intent) ? intent : "explain_limits", templateContext(input, ctx));
   return {
     runId: `live_run_${crypto.randomUUID()}`,
@@ -320,7 +326,7 @@ async function agentContext(db: LiveAssistantRepository, input: LiveRunInput, ct
   const sampledReviews = agentKey === "review_reply" && ctx.snapshot
     ? filterSelectedReviews(sampledReviewsFromRawData(await db.assistantReviewData(input.context.workspaceId, ctx.snapshot.jobId)), provided.selected_reviews)
     : undefined;
-  return {
+  const agentCtx: AgentContext = {
     locale: input.locale,
     market: ctx.workspace?.market?.toLowerCase() === "tw" ? "tw" : "hk",
     brand: {
@@ -341,13 +347,16 @@ async function agentContext(db: LiveAssistantRepository, input: LiveRunInput, ct
     draftGrounding: { businessName: ctx.workspace?.business_name ?? ctx.locationName, asOf: (input.now ?? (() => new Date()))().toISOString(), sourceLocation: { id: ctx.locationId, name: ctx.locationName }, revisionSource },
     // A fixed module literal, never owner text -- see AgentContext.toneInstruction.
     ...(intent === "friendlier_review_reply" ? { toneInstruction: WARMER_INSTRUCTION } : {}),
+    ...(intent === "shorten_review_reply" ? { reviewRevision: "shorten" } : intent === "contact_review_reply" ? { reviewRevision: "contact" } : {}),
   };
+  return scopeReviewReplyFacts(agentCtx, ctx.multipleLocations);
 }
 
 async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistantRepository, ctx: ResolvedContext, started:number): Promise<DemoAssistantRunResponse> {
   const spec = DRAFT_AGENTS[intent];
   const action = ctx.focused; // Already selected and authorized with its evidence.
-  if (!action || isOfferAction(action.row)) return { ...completed("explain_limits", input, ctx, [NO_ACTION_FOR_DRAFT[input.locale]]) };
+  if (!action || isOfferAction(action.row) || !spec.templates.includes(action.row.template_key as TemplateKey)) return { ...completed("explain_limits", input, ctx, [NO_ACTION_FOR_DRAFT[input.locale]]) };
+  if (isReviewRevisionIntent(intent) && !input.context.versionId) throw new AssistantAccessError("not_found");
 
   const ready = (input.llmReady ?? llmConfigured)();
   const fallback = () => completed(fallbackIntentFor(intent), input, ctx, [AI_UNAVAILABLE[input.locale]]);
@@ -401,25 +410,36 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistant
   let outcome: LLMOutcome;
   try {
     if (timeoutMs <= 0) outcome={ok:false,code:"timeout",retryable:true};
-    else if (input.llm) {
-      const legacy=await input.llm(prompt,{...AGENT_LLM_OPTIONS,timeoutMs});
-      outcome=legacy?{ok:true,result:legacy}:{ok:false,code:"no_model_output",retryable:false};
-    } else outcome=await (input.llmDetailed ?? llmCompleteDetailed)(prompt,{...AGENT_LLM_OPTIONS,timeoutMs});
+    else outcome=await invokeProviderAttempt({
+      persistence,attribution:{...attribution,runId,workspaceId:input.context.workspaceId},
+      model:process.env.LLM_MODEL || null,
+      options:{...AGENT_LLM_OPTIONS,timeoutMs,sessionId:runId,
+        usageSettlementTimeoutMs:Math.min(timeoutMs+5_000,55_000-(Date.now()-started)),
+        deferUsageSettlement:input.deferUsageSettlement},
+      call:async options=>{
+        if(input.llm){const legacy=await input.llm(prompt,options);return legacy?{ok:true,result:legacy}:{ok:false,code:"no_model_output",retryable:false};}
+        return (input.llmDetailed ?? llmCompleteDetailed)(prompt,options);
+      },
+    });
   } catch { outcome={ok:false,code:"network_error",retryable:true}; }
   const usage = (outcome.ok ? outcome.result.usage : outcome.usage) ?? { inputTokens: null, outputTokens: null };
   const failure = { actionId: action.row.id, agentKey: spec.agent, promptVersion: agent.promptVersion, intentId: intent, usage };
   const finishFailure = (reason:RecordAssistantDraftFailureInput["reason"],factsNeeded:string[]) => persistence.finishAssistantDraft({runId,result:{ok:false,failure:{...failure,
     ...attribution,workspaceId:input.context.workspaceId,surface:input.surface,model:process.env.LLM_MODEL || null,
     reason,factsNeeded,costUsd:computeCostUsd(usage),finishedAt:(input.now ?? (()=>new Date()))().toISOString()}}});
-  const output = parseAgentOutput(outcome.ok ? outcome.result.text : undefined, agent.outputSchema);
-  if (!output) {
-    const reason = outcome.ok ? "invalid_output" : outcome.code;
+  const parsedOutput = parseAgentOutput(outcome.ok ? outcome.result.text : undefined, agent.outputSchema);
+  if (!parsedOutput || unusableExistingReviewQuestion(agentCtx, parsedOutput)) {
+    const reason = outcome.ok ? "invalid_output" : outcome.usagePending ? "provider_usage_pending" : outcome.code;
     await finishFailure(reason, []);
     return completed(fallbackIntentFor(intent), input, ctx, [runErrorLabel(input.locale, reason)]);
   }
 
-  const warnings = [...output.warnings, ...agent.acceptance(agentCtx, output)];
-  const unsupported = unconfirmedDraftBusinessFacts(agentCtx, output);
+  const output = normalizeMerchantReviewOutput(agentCtx, {
+    ...parsedOutput,
+    warnings: [...parsedOutput.warnings, ...agent.acceptance(agentCtx, parsedOutput)],
+  });
+  const warnings = output.warnings;
+  const unsupported = [...unconfirmedDraftBusinessFacts(agentCtx, output), ...blockingReviewWarnings(agentCtx, warnings)];
   if (unsupported.length) {
     await finishFailure("unconfirmed_business_fact", unsupported);
     return completed(fallbackIntentFor(intent), input, ctx, [runErrorLabel(input.locale, "unconfirmed_business_fact")]);

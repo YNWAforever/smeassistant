@@ -1,0 +1,8 @@
+{"phase":"unit","exitCode":0,"observedAt":"2026-10-17T17:44:05.9919027+08:00"}
+{"phase":"db","exitCode":0,"observedAt":"2026-10-17T17:44:24.8180527+08:00"}
+{"phase":"typecheck","exitCode":0,"observedAt":"2026-10-17T17:44:39.8761642+08:00"}
+{"phase":"lint","exitCode":0,"observedAt":"2026-10-17T17:45:35.0594216+08:00"}
+{"phase":"no-supabase","exitCode":0,"observedAt":"2026-10-17T17:45:37.4077521+08:00"}
+{"phase":"no-self-service-claim","exitCode":0,"observedAt":"2026-10-17T17:45:38.0448349+08:00"}
+{"phase":"secret-boundary-build","exitCode":0,"observedAt":"2026-10-17T17:46:47.7180446+08:00"}
+{"phase":"browser","exitCode":0,"observedAt":"2026-10-17T17:49:27.3287465+08:00"}

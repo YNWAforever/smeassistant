@@ -18,6 +18,7 @@ import { applyResolvedInputs, resolveEvidenceInputs } from "@/lib/workspace/evid
 import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
 import { runAgentForAction, RunError } from "@/lib/workspace/runs";
 import { isOfferTemplate, TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
+import { after } from "next/server";
 
 /**
  * POST /api/actions { workspace_id, template_key, location_id?, objective, inputs?, run? }
@@ -189,6 +190,7 @@ export async function POST(req: Request) {
       membership: auth.membership,
       locale,
       ipHash: ipHashFor(req),
+      deferUsageSettlement: work => after(() => work.then(() => undefined)),
     });
     return json(
       {
@@ -197,6 +199,7 @@ export async function POST(req: Request) {
         versionId: run.versionId,
         state: run.state,
         factsNeeded: run.factsNeeded,
+        ...(run.usagePending ? { usagePending: true } : {}),
       },
       201,
     );

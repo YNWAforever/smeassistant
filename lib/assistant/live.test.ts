@@ -22,7 +22,7 @@ const menuRow: typeof actionRow = { ...actionRow, id: "66666666-6666-4666-8666-6
 const state = { actions: [actionRow, socialRow] as Array<typeof actionRow>, snapshots: [snapshot, base] as Array<typeof snapshot> };
 
 
-const good: { text: string; usage: { inputTokens: number; outputTokens: number } } = { text: JSON.stringify({ title: "Reply draft", body: "1. “Waited 25…” — Thank you for telling us; we are adding a host at Friday lunch. Please contact us with any questions.", acceptance_criteria: ["no compensation"], warnings: [], facts_used: ["voice"], facts_needed: [] }), usage: { inputTokens: 10, outputTokens: 5 } };
+const good: { text: string; usage: { inputTokens: number; outputTokens: number } } = { text: JSON.stringify({ title: "Reply draft", body: "1. “Waited 25…” — Thank you for telling us. Please contact us with any questions.", acceptance_criteria: ["no compensation"], warnings: [], facts_used: ["voice"], facts_needed: [] }), usage: { inputTokens: 10, outputTokens: 5 } };
 const run = (over: Partial<Parameters<typeof runLiveAssistant>[0]> = {}) =>
   runLiveAssistant({ intentId: "explain_priority", surface: "home", locale: "en", membership: auth("owner").membership, context: { workspaceId: WORKSPACE_ID, locationId: LOCATION_ID }, llmReady: () => true, ...over });
 const writes = () => repository.createOutputVersion.mock.calls;
@@ -37,7 +37,7 @@ beforeEach(() => {
   repository.assistantLocations.mockResolvedValue([{id:LOCATION_ID,slug:"yik-yam",name:"Yik Yam",address:null,district:"Happy Valley",is_primary:true},{id:LOCATION_B,slug:"branch-b",name:"Branch B",address:null,district:null,is_primary:false}]);
   repository.assistantSnapshot.mockImplementation(async(workspaceId,id)=>state.snapshots.find(s=>s.id===id && s.workspaceId===workspaceId) ?? null);
   repository.assistantLatestSnapshot.mockImplementation(async(workspaceId,locationId)=>state.snapshots.find(s=>s.workspaceId===workspaceId && (!locationId || s.locationId===locationId)) ?? null);
-  repository.assistantBrand.mockResolvedValue({voice:"warm",approved_claims:["Family-run since 1988"],prohibited_terms:["best in Hong Kong"],languages:["zh-HK"],facts:{}});
+  repository.assistantBrand.mockResolvedValue({voice:"warm",approved_claims:["Family-run since 1988"],prohibited_terms:["best in Hong Kong"],languages:["zh-HK"],facts:{location_id:LOCATION_ID}});
   repository.assistantReviewData.mockResolvedValue({gbp:{reviews:[{rating:3,text:"Waited 25 minutes on Friday",time:"2026-08-22",owner_response:null}]}});
   repository.versionScope.mockResolvedValue(null);
   repository.assistantVersion.mockResolvedValue(null);
@@ -55,6 +55,98 @@ beforeEach(() => {
 });
 
 describe("runLiveAssistant", () => {
+  it("does not repeat an existing review question when a usable review reply is returned", async () => {
+    const result = await run({ intentId: "draft_review_reply", llm: async () => ({
+      ...good, text: JSON.stringify({ title: "Reply", body: "Thank you for your feedback. Please comment here.", warnings: [], acceptance_criteria: [], facts_used: [], facts_needed: ["reviews_without_response"] }),
+    }) });
+    expect(result.draftRunId).toBe(DRAFT_RUN_ID);
+    expect(repository.recordAssistantDraftFailure).not.toHaveBeenCalled();
+  });
+  it.each(["", "Please provide the review text so I can write a reply.", "請提供評論內容，然後我可以撰寫回覆。"])("does not turn an unusable answer into a new question for an existing review: %j", async body => {
+    const result = await run({ intentId: "draft_review_reply", llm: async () => ({
+      ...good, text: JSON.stringify({ title: "Reply", body, warnings: [], acceptance_criteria: [], facts_used: [], facts_needed: ["reviews_without_response"] }),
+    }) });
+    expect(result.draftRunId).toBeUndefined();
+    expect(repository.recordAssistantDraftFailure).toHaveBeenCalledWith(expect.objectContaining({ reason: "invalid_output", factsNeeded: [] }));
+  });
+  it("retains branch facts for a workspace-wide action whose persisted source is authorized for the manager", async () => {
+    state.actions = [{ ...actionRow, location_id: null, source_snapshot_id: SNAPSHOT_B }];
+    state.snapshots = [{ ...snapshot, id: SNAPSHOT_B, locationId: LOCATION_B, comparableTo: null, diffId: null }];
+    repository.assistantBrand.mockResolvedValue({ voice: "warm", approved_claims: [], prohibited_terms: [], languages: ["en"], facts: { location_id: LOCATION_B, confirmed: "Confirmed source branch B fact" }, current_revision_id: "current-brand" });
+    const llm = vi.fn<Llm>(async () => good);
+    const result = await run({ intentId: "draft_review_reply", membership: auth("manager", [LOCATION_B]).membership, context: { workspaceId: WORKSPACE_ID, actionId: ACTION_ID }, llm });
+    expect(result.draftRunId).toBe(DRAFT_RUN_ID);
+    expect(llm.mock.calls[0][0]).toContain("Confirmed source branch B fact");
+    expect(result.evidenceRefs.every(ref => ref.scanId === snapshot.jobId)).toBe(true);
+  });
+  it("withholds a preview that restores removed rows from older action facts despite a current saved brand revision", async () => {
+    state.actions = [{ ...actionRow, provided_inputs: { ...asProvided(actionRow), address: "12 Old Street", price: "HK$88" } }];
+    repository.assistantBrand.mockResolvedValue({ voice: "direct", approved_claims: [], prohibited_terms: [], languages: ["en"], facts: {}, current_revision_id: "current-saved-revision" });
+    const result = await run({ intentId: "draft_review_reply", llm: vi.fn<Llm>(async () => ({ ...good, text: JSON.stringify({ title: "Reply", body: "Address: 12 Old Street.\nHK$88", warnings: [], acceptance_criteria: [], facts_used: [], facts_needed: [] }) })) });
+    expect(result.draftRunId).toBeUndefined();
+    expect(result.output).toBeUndefined();
+    expect(repository.recordAssistantDraftFailure).toHaveBeenCalledWith(expect.objectContaining({ reason: "unconfirmed_business_fact" }));
+  });
+  it.each([
+    '1. "I asked for a refund and a discount" - Thank you for your feedback. Please comment here.',
+    "We cannot promise a refund or a discount. Please leave further feedback here.",
+  ])("preserves a saveable preview for verified quotations or no-compensation wording: %s", async body => {
+    repository.assistantReviewData.mockResolvedValue({ gbp: { reviews: [{ rating: 2, text: "I asked for a refund and a discount", time: "2026-08-30", owner_response: null }] } });
+    const result = await run({ intentId: "draft_review_reply", llm: vi.fn<Llm>(async () => ({ ...good, text: JSON.stringify({ title: "Reply", body, warnings: [], acceptance_criteria: [], facts_used: [], facts_needed: [] }) })) });
+    expect(result.draftRunId).toBe(DRAFT_RUN_ID);
+    expect(result.output?.body).toBe(body);
+  });
+  it("keeps a true compensation promise blocked even after a verified quote", async () => {
+    repository.assistantReviewData.mockResolvedValue({ gbp: { reviews: [{ rating: 2, text: "I asked for a refund and a discount", time: "2026-08-30", owner_response: null }] } });
+    const result = await run({ intentId: "draft_review_reply", llm: vi.fn<Llm>(async () => ({ ...good, text: JSON.stringify({ title: "Reply", body: '1. "I asked for a refund and a discount" - We will refund your meal.', warnings: [], acceptance_criteria: [], facts_used: [], facts_needed: [] }) })) });
+    expect(result.draftRunId).toBeUndefined();
+    expect(result.output).toBeUndefined();
+  });
+  it("keeps merchant optional-fact omission after shared parsing", async () => {
+    const result = await run({ intentId: "draft_review_reply", llm: vi.fn<Llm>(async () => ({ ...good, text: JSON.stringify({ title: "Reply", body: "Thank you for your feedback. Please comment here.", warnings: [], acceptance_criteria: [], facts_used: [], facts_needed: ["opening_hours"] }) })) });
+    expect(result.draftRunId).toBe(DRAFT_RUN_ID);
+    expect(result.warnings).toContain("opening_hours");
+  });
+  it("uses the current saved voice for a review revision rather than stale action preferences", async () => {
+    state.actions = [{ ...actionRow, provided_inputs: { ...asProvided(actionRow), brand_voice: "warm" } }];
+    repository.assistantBrand.mockResolvedValue({ voice: "direct", approved_claims: [], prohibited_terms: [], languages: ["en"], facts: {} });
+    const llm = vi.fn<Llm>(async () => ({ ...good, text: JSON.stringify({ title: "Reply", body: "Thank you for your feedback. Please comment here.", acceptance_criteria: [], warnings: [], facts_used: [], facts_needed: [] }) }));
+    await run({ intentId: "friendlier_review_reply", llm });
+    expect(llm.mock.calls[0][0]).toContain("Match the brand voice (direct)");
+  });
+  it.each(["shorten_review_reply", "contact_review_reply"] as const)("revises the selected persisted reply for %s", async intent => {
+    const versionId = "99999999-9999-4999-8999-999999999999";
+    repository.versionScope.mockResolvedValue({ versionId, actionId: ACTION_ID, workspaceId: WORKSPACE_ID, locationId: LOCATION_ID });
+    repository.assistantVersion.mockResolvedValue({ id: versionId, body: "A long original reply with a supported thank-you.", alt_text: null });
+    const llm = vi.fn<Llm>(async () => ({ ...good, text: JSON.stringify({ title: "Reply", body: "Thank you for your feedback. Please comment here.", acceptance_criteria: [], warnings: [], facts_used: [], facts_needed: [] }) }));
+    const result = await run({ intentId: intent as Parameters<typeof runLiveAssistant>[0]["intentId"], surface: "action", context: { workspaceId: WORKSPACE_ID, actionId: ACTION_ID, versionId }, llm });
+    expect(result.draftRunId).toBe(DRAFT_RUN_ID);
+    expect(repository.assistantVersion).toHaveBeenCalledWith(versionId, ACTION_ID, WORKSPACE_ID);
+    const task = llm.mock.calls[0][0].split("TASK:")[1];
+    expect(task).toContain(intent === "shorten_review_reply" ? "shorter" : "contact-only");
+    expect(llm.mock.calls[0][0]).toContain("A long original reply");
+    expect(repository.createOutputVersion).not.toHaveBeenCalled();
+  });
+  it.each(["shorten_review_reply", "contact_review_reply"] as const)("requires a selected saved version before %s can spend", async intent => {
+    const llm = vi.fn<Llm>(async () => good);
+    await expect(run({ intentId: intent as Parameters<typeof runLiveAssistant>[0]["intentId"], surface: "action", context: { workspaceId: WORKSPACE_ID, actionId: ACTION_ID }, llm })).rejects.toMatchObject({ code: "not_found" });
+    expect(llm).not.toHaveBeenCalled();
+    expect(runPersistence.queue).not.toHaveBeenCalled();
+  });
+  it("does not expose unscoped brand facts from another branch in a review draft", async () => {
+    repository.assistantBrand.mockResolvedValue({ voice: "direct", approved_claims: ["Branch B offers free pickup"], prohibited_terms: [], languages: ["en"], facts: { address: "12 Branch B Street", hours: "Branch B opens at 9am" } });
+    const llm = vi.fn<Llm>(async () => ({ ...good, text: JSON.stringify({ title: "Reply", body: "Thank you for your feedback.", acceptance_criteria: [], warnings: [], facts_used: [], facts_needed: [] }) }));
+    await run({ intentId: "draft_review_reply", llm });
+    expect(llm.mock.calls[0][0]).not.toContain("12 Branch B Street");
+    expect(llm.mock.calls[0][0]).not.toContain("Branch B offers free pickup");
+  });
+  it.each(["Our opening hours are 9am to 10pm daily.", "Enjoy our HK$88 offer.", "Bookings increased by 25%."])("withholds a saveable review preview with unsupported operations: %s", async body => {
+    const llm = vi.fn<Llm>(async () => ({ ...good, text: JSON.stringify({ title: "Reply", body, acceptance_criteria: [], warnings: [], facts_used: [], facts_needed: [] }) }));
+    const result = await run({ intentId: "draft_review_reply", llm });
+    expect(result.output).toBeUndefined();
+    expect(result.draftRunId).toBeUndefined();
+    expect(repository.recordAssistantDraftFailure).toHaveBeenCalledWith(expect.objectContaining({ reason: "unconfirmed_business_fact" }));
+  });
   it('does not spend on the model when reservation consumed the remaining deadline',async()=>{
     const clock=vi.spyOn(Date,'now').mockReturnValue(0);
     runPersistence.start.mockImplementationOnce(async()=>{clock.mockReturnValue(50_001)});
@@ -103,12 +195,15 @@ describe("runLiveAssistant", () => {
     const llm = vi.fn<Llm>(async () => good);
     const result = await run({ intentId: "draft_review_reply", surface: "action", locale: "zh-HK", context: { workspaceId: WORKSPACE_ID, actionId: ACTION_ID }, llm });
     expect(llm).toHaveBeenCalledTimes(1);
-    expect(llm).toHaveBeenCalledWith(expect.stringContaining("Waited 25 minutes"), { jsonMode: true, temperature: 0.4, maxTokens: 4000, timeoutMs: 45_000 });
+    expect(llm).toHaveBeenCalledWith(expect.stringContaining("Waited 25 minutes"), {
+      jsonMode: true, temperature: 0.4, maxTokens: 4000, timeoutMs: 45_000,
+      sessionId: DRAFT_RUN_ID, usageSettlementTimeoutMs: 50_000, deferUsageSettlement: undefined,
+    });
     expect(llm.mock.calls[0][0]).toContain("Family-run since 1988");
     expect(result).toMatchObject({ state: "needs_approval", requiresApproval: true, demoBoundary: LIVE_BOUNDARY["zh-HK"] });
     expect(result.output).toMatchObject({ type: "review_reply", version: 1, title: "Reply draft", acceptanceCriteria: ["no compensation"] });
     expect(result.output!.artifactId).toMatch(/^art_[0-9a-f-]{36}$/);
-    expect(result.output!.body).toContain("adding a host");
+    expect(result.output!.body).toContain("Please contact us");
     expect(result.answer).toContain("「回覆未回覆的 Google 評論」的草稿已準備好");
     expect(writes()).toEqual([]);
     expect(repository.createOutputVersion).not.toHaveBeenCalled();

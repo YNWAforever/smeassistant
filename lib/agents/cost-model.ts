@@ -17,8 +17,11 @@ function envRate(name: string, fallback: number): number {
 }
 
 /** Null when usage is incomplete -- an honest missing cost, not a wrong one. */
-export function computeCostUsd(usage: LLMUsage): number | null {
+export function computeCostUsd(usage: LLMUsage, model: string | null | undefined = process.env.LLM_MODEL): number | null {
   if (usage.inputTokens === null || usage.outputTokens === null) return null;
+  // The selected preview is officially free; do not fill a paid-model estimate
+  // into usage/budgets when the provider omits a monetary field.
+  if (model === "longcat-2.5-preview-free") return 0;
   const inputRate = envRate("LLM_COST_PER_1K_INPUT_TOKENS_USD", DEFAULT_INPUT_RATE_PER_1K);
   const outputRate = envRate("LLM_COST_PER_1K_OUTPUT_TOKENS_USD", DEFAULT_OUTPUT_RATE_PER_1K);
   const cost = (usage.inputTokens / 1000) * inputRate + (usage.outputTokens / 1000) * outputRate;

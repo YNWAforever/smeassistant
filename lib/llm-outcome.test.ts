@@ -11,6 +11,58 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("T19 provider outcomes", () => {
+  it("aborts transport and bounds settlement even when usage persistence stalls", async () => {
+    vi.useFakeTimers();
+    let signal!: AbortSignal;
+    vi.stubGlobal("fetch", vi.fn((_url, init) => {
+      signal = init.signal;
+      return new Promise<Response>(() => {});
+    }));
+    const deferred: Promise<unknown>[] = [];
+    const { llmCompleteDetailed } = await import("./llm");
+    const call = llmCompleteDetailed("fixture", { timeoutMs: 10, usageSettlementTimeoutMs: 25,
+      onUsageObservation: async () => new Promise<void>(() => {}),
+      deferUsageSettlement: work => { deferred.push(work); } });
+    await vi.advanceTimersByTimeAsync(25);
+    expect(await call).toMatchObject({ ok: false, usagePending: true });
+    expect(signal.aborted).toBe(true);
+    let settled = false;
+    void Promise.all(deferred).then(() => { settled = true; });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(settled).toBe(true);
+  });
+  it("records late measured usage after the output deadline without returning late text or allowing automatic retry", async () => {
+    vi.useFakeTimers();
+    let release!: (response: Response) => void;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(resolve => { release = resolve; })));
+    const observations: unknown[] = [], deferred: Promise<unknown>[] = [];
+    const options = { timeoutMs: 10, usageSettlementTimeoutMs: 30,
+      onUsageObservation: async (value: unknown) => { observations.push(value); },
+      deferUsageSettlement: (work: Promise<unknown>) => { deferred.push(work); } };
+    const { llmCompleteDetailed } = await import("./llm");
+    const call = llmCompleteDetailed("fixture", options);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(await call).toMatchObject({ ok: false, code: "timeout", retryable: false, usagePending: true });
+    release(new Response(JSON.stringify({ id: "provider-late-1", choices: [{ message: { content: "LATE_TEXT_MUST_NOT_BECOME_A_DRAFT" } }], usage: { prompt_tokens: 17, completion_tokens: 9 } })));
+    await Promise.all(deferred);
+    expect(observations).toEqual([expect.objectContaining({ state: "reported", late: true, providerRequestId: "provider-late-1", usage: { inputTokens: 17, outputTokens: 9 } })]);
+    expect(JSON.stringify(observations)).not.toContain("LATE_TEXT_MUST_NOT_BECOME_A_DRAFT");
+  });
+  it("durably reports unknown when the bounded settlement window expires instead of inventing zero usage", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
+    const observations: unknown[] = [], deferred: Promise<unknown>[] = [];
+    const options = { timeoutMs: 10, usageSettlementTimeoutMs: 25,
+      onUsageObservation: async (value: unknown) => { observations.push(value); },
+      deferUsageSettlement: (work: Promise<unknown>) => { deferred.push(work); } };
+    const { llmCompleteDetailed } = await import("./llm");
+    const call = llmCompleteDetailed("fixture", options);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(await call).toMatchObject({ ok: false, code: "timeout" });
+    await vi.advanceTimersByTimeAsync(15);
+    await Promise.all(deferred);
+    expect(observations).toEqual([expect.objectContaining({ state: "unknown", reason: "settlement_timeout", usage: { inputTokens: null, outputTokens: null } })]);
+  });
   it.each([
     { model: "longcat-2.5-preview-free", baseUrl: "https://opencode.ai/inference/go/v1", jsonMode: true, thinking: { type: "disabled" } },
     { model: "longcat-2.5-preview-free", baseUrl: "https://custom.example/v1", jsonMode: true, thinking: undefined },

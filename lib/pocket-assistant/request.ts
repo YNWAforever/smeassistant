@@ -4,7 +4,7 @@ import type {
   AssistantOrigin,
   AssistantRunRequest,
   AssistantSurface,
-  DemoQuestionId,
+  AssistantIntentId,
 } from "@/lib/pocket-assistant/contracts"
 
 export const ASSISTANT_RUN_ENDPOINT = "/api/assistant/run"
@@ -20,7 +20,7 @@ export const ASSISTANT_RUN_ENDPOINT = "/api/assistant/run"
 export function buildAssistantRequest(
   mode: AssistantMode,
   surface: AssistantSurface,
-  intentId: DemoQuestionId,
+  intentId: AssistantIntentId,
   locale: AssistantRunRequest["locale"],
   context?: AssistantContext,
   origin?: AssistantOrigin,

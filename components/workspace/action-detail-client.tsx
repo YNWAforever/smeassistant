@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState, useSyncExternalStore } from "react"
+import { useRef, useState, useSyncExternalStore } from "react"
 import {
   AlertTriangle, ArrowLeft, BadgeCheck, Check, CheckCircle2, CircleAlert, Clock3, CloudOff, Copy, Download, FileClock, FileImage,
   History, LoaderCircle, MapPin, MessageSquare, PencilLine, RefreshCw, Save, Send, ShieldAlert, ShieldCheck, Sparkles, Tag, UserRound, WandSparkles, X,
@@ -142,7 +142,11 @@ export function ownerInputPatch(
   return { provided, runInputs }
 }
 
-export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false, initialVersionId = null, publishPanel = null }: ActionDetailClientProps) {
+export function ActionDetailClient(props: ActionDetailClientProps) {
+  return <ActionDetailEditor key={`${props.workspaceId}:${props.detail.action.id}`} {...props} />
+}
+
+function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false, initialVersionId = null, publishPanel = null }: ActionDetailClientProps) {
   const isChinese = locale !== "en"
   const router = useRouter()
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -192,11 +196,15 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   const [altText, setAltText] = useState(initialVersion?.alt_text ?? "")
   const [comment, setComment] = useState("")
   const [busy, setBusy] = useState<Busy>(null)
+  const mutationPending = useRef(false)
   const [conflict, setConflict] = useState(false)
+  const [comparing, setComparing] = useState(false)
+  const [saveFailed, setSaveFailed] = useState(false)
   const [allowanceBlocked, setAllowanceBlocked] = useState<{ approvedDeliveries: number | null; allowance: number | null } | null>(null)
   const [factsNeeded, setFactsNeeded] = useState<string[] | null>(null)
   const [inputValues, setInputValues] = useState<Record<string, string>>({})
   const [lastRunError, setLastRunError] = useState<string | null>(null)
+  const [localRunReconciliation, setNeedsRunReconciliation] = useState(false)
   // A 409 from approve/export names the reason the moment it happens; the derived reason below catches it on load.
   const [offerRefusal, setOfferRefusal] = useState<OfferStaleKind | null>(null)
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)
@@ -222,6 +230,11 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
       setContent(next.body)
       setAltText(next.alt_text ?? "")
       setPendingSelect(null)
+      if (pendingVersion) {
+        setConflict(false)
+        setComparing(false)
+        setSaveFailed(false)
+      }
     }
   }
 
@@ -278,14 +291,15 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   const canApprove = canEdit && selectedVersion !== null
   const isApprovedCurrent = approval === "approved" && !dirty
   // While the stale-offer banner shows, the server refuses approve and export; the controls say so too.
-  const canApproveCurrent = canApprove && !dirty && approval !== "rejected" && approval !== "superseded" && approval !== "approved" && offerStale === null
+  const canApproveCurrent = canApprove && !dirty && !conflict && selectedVersion?.id === versions[0]?.id && approval !== "rejected" && approval !== "superseded" && approval !== "approved" && offerStale === null
   const canDeliver = isApprovedCurrent && canApprove && offerStale === null
   const latestRun = runs[0]
+  const needsRunReconciliation = localRunReconciliation || Boolean(latestRun?.usage_pending)
   const runStateKey = latestRun?.state
   // R3: the offer is bound by the action's offer_id column, so the owner is never asked for it.
   const neededKeys = (factsNeeded ?? (action.actionState === "needs_input" ? action.missingInputs : [])).filter((key) => key !== "offer_id")
   const showInputForm = neededKeys.length > 0 && effectiveRole !== "viewer" && inScope
-  const canGenerate = canEdit && !dirty && agentBacked && action.capability !== "Requires connection" && runStateKey !== "running" && runStateKey !== "queued"
+  const canGenerate = canEdit && !dirty && !needsRunReconciliation && agentBacked && action.capability !== "Requires connection" && runStateKey !== "running" && runStateKey !== "queued"
   const relatedAudit = auditRows.slice(0, 12)
 
   const provenance = [
@@ -332,6 +346,10 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
       toast.message(locale === "zh-HK" ? "草稿仍在生成中，今次沒有重新開始，亦沒有額外收費；請稍候查看結果。" : locale === "zh-TW" ? "草稿仍在產生中，這次沒有重新開始，也沒有額外計費；請稍候查看結果。" : "A draft is still being written, so nothing new was started or charged; check back in a moment.")
       router.refresh()
     }
+    else if (result.status === 409 && result.error === "provider_usage_pending") {
+      setNeedsRunReconciliation(true)
+      toast.message(isChinese ? "上次生成結果仍未確認，請先重新讀取狀態。" : "The previous generation is not yet confirmed. Reload its status first.")
+    }
     else if (result.error === "offline" || result.error === "network") toast.error(isChinese ? "無法連接伺服器；文字已保留在此裝置。" : "The server could not be reached; your text is kept on this device.")
     else if (budgetRefusal) toast.error(budgetRefusal)
     else if (result.status === 403) toast.error(isChinese ? zhFor(locale, "你的角色或地點範圍不允許此操作。") : "Your role or location scope does not allow this action.")
@@ -345,25 +363,37 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
 
   async function generate(extraInputs?: Record<string, unknown>) {
     if (dirty) { toast.error(saveBeforeGenerationMessage); return }
-    if (!canGenerate && !extraInputs) return
+    if (mutationPending.current || needsRunReconciliation || (!canGenerate && !extraInputs)) return
+    mutationPending.current = true
     setBusy("run")
     setLastRunError(null)
     const result = await runAction(action.id, extraInputs ? { inputs: extraInputs } : {})
+    mutationPending.current = false
     setBusy(null)
-    if (!result.ok) return failureToast(result)
+    if (!result.ok) {
+      // A lost response can follow a completed run. Read the server's current
+      // draft/run first rather than spending another model request blindly.
+      if (result.error === "network" || result.status >= 500) setNeedsRunReconciliation(true)
+      return failureToast(result)
+    }
     if (result.data.factsNeeded?.length) {
       setFactsNeeded(result.data.factsNeeded)
       toast.message(isChinese ? zhFor(locale, "生成前需要店主提供資料；沒有猜測任何事實。") : "The agent needs owner facts before drafting; nothing was guessed.")
       router.refresh()
       return
     }
+    // This settled run did not request facts. Previously fulfilled requests
+    // must not keep the input form open or disable a safe explicit retry.
+    setFactsNeeded(null)
     if (result.data.state === "failed") {
+      if (result.data.usagePending) setNeedsRunReconciliation(true)
       setLastRunError(result.data.error ?? "failed")
-      toast.error(isChinese ? "生成未能完成；現有草稿已保留，不扣除用量。" : "Generation did not complete; the existing draft is preserved and nothing was counted.")
+      toast.error(result.data.usagePending
+        ? (isChinese ? "生成結果仍未確認；現有草稿已保留，請重新讀取狀態。" : "The generation is not yet confirmed; your existing draft is preserved. Reload its status.")
+        : (isChinese ? "生成未能完成；現有草稿已保留。" : "Generation did not complete; your existing draft is preserved."))
       router.refresh()
       return
     }
-    setFactsNeeded(null)
     if (result.data.versionId) setPendingSelect(result.data.versionId)
     toast.success(result.data.versionNo ? (isChinese ? `Agent 輸出已建立為不可變更的第 ${result.data.versionNo} 版；沒有覆蓋原稿。` : `Agent output created immutable version ${result.data.versionNo}; the previous draft was not overwritten.`) : (isChinese ? "執行已完成" : "Run completed"))
     router.refresh()
@@ -475,14 +505,18 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
   }
 
   async function saveDraft() {
-    if (!canEdit) return
+    if (!canEdit || mutationPending.current) return
     if (conflict) { toast.error(isChinese ? "版本衝突：請先載入最新版本。" : "Version conflict: load the latest version first."); return }
     if (!dirty) { toast.message(isChinese ? "目前沒有需要儲存的修改。" : "There are no changes to save."); return }
     if (!content.trim()) { toast.error(isChinese ? "版本內容不能為空。" : "A version cannot be empty."); return }
+    mutationPending.current = true
     setBusy("save")
-    const result = await saveVersion(action.id, { body: content, alt_text: altText || undefined, base_version_id: selectedVersion?.id })
+    setSaveFailed(false)
+    const result = await saveVersion(action.id, { body: content, alt_text: altText || undefined, base_version_id: selectedVersion?.id ?? null })
+    mutationPending.current = false
     setBusy(null)
     if (!result.ok) {
+      setSaveFailed(true)
       if (result.status === 409 && result.error === "version_conflict") { setConflict(true); return }
       return failureToast(result)
     }
@@ -497,37 +531,58 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
    * manual save, based on the selected version, then the server tree refreshes.
    */
   async function createAssistantVersion(run: DemoAssistantRunResponse) {
-    if (dirty) { toast.error(saveBeforeGenerationMessage); return }
-    if (!canEdit) {
+    if (dirty) { toast.error(saveBeforeGenerationMessage); return { ok: false as const } }
+    if (!canEdit || mutationPending.current) {
       toast.error(isChinese ? "目前角色或連線狀態不允許建立版本。" : "Your current role or connection state cannot create a version.")
-      return
+      return { ok: false as const }
     }
     // Only the run id travels. The body is read from the run the server
     // persisted, so the version is recorded as agent-authored rather than
     // arriving here as text this component would have posted as the member's.
-    if (!run.draftRunId) { toast.error(isChinese ? "此草稿未能儲存，無法建立版本。" : "This draft was not saved and cannot become a version."); return }
+    if (!run.draftRunId) { toast.error(isChinese ? "此草稿未能儲存，無法建立版本。" : "This draft was not saved and cannot become a version."); return { ok: false as const } }
+    mutationPending.current = true
     setBusy("save")
-    const result = await saveAssistantVersion(action.id, { assistant_run_id: run.draftRunId, base_version_id: selectedVersion?.id })
+    setSaveFailed(false)
+    const result = await saveAssistantVersion(action.id, { assistant_run_id: run.draftRunId, base_version_id: selectedVersion?.id ?? null })
+    mutationPending.current = false
     setBusy(null)
     if (!result.ok) {
-      if (result.status === 409 && result.error === "version_conflict") { setConflict(true); return }
-      return failureToast(result)
+      setSaveFailed(true)
+      if (result.status === 409 && result.error === "version_conflict") setConflict(true)
+      else failureToast(result)
+      return { ok: false as const }
     }
     setPendingSelect(result.data.versionId)
     toast.success(isChinese ? `已儲存為不可變更的第 ${result.data.versionNo} 版` : `Saved as immutable version ${result.data.versionNo}`)
     router.refresh()
+    return { ok: true as const, versionNo: result.data.versionNo }
   }
 
   function loadLatest() {
-    setConflict(false)
-    toast.message(isChinese ? "已載入最新狀態；本機文字仍保留" : "Latest state loaded; local text preserved")
+    setComparing(true)
     router.refresh()
   }
 
+  function resolveConflict(keepEdits: boolean) {
+    const latest = versions[0]
+    if (!latest || latest.id === versionId) return
+    setVersionId(latest.id)
+    if (!keepEdits) {
+      setContent(latest.body)
+      setAltText(latest.alt_text ?? "")
+    }
+    setConflict(false)
+    setComparing(false)
+    setSaveFailed(false)
+  }
+
   async function approveDraft() {
+    if (mutationPending.current) return
     if (!canApproveCurrent || !selectedVersion) { toast.error(isChinese ? "請先儲存修改，再核准指定版本。" : "Save changes before approving this exact version."); return }
+    mutationPending.current = true
     setBusy("approve")
     const result = await approveVersion(selectedVersion.id, comment.trim() || undefined)
+    mutationPending.current = false
     setBusy(null)
     if (!result.ok) {
       if (result.error === "version_closed") toast.error(isChinese ? "此版本已關閉，不能再核准。" : "This version is closed and can no longer be approved.")
@@ -789,9 +844,23 @@ export function ActionDetailClient({ locale, workspaceSlug, workspaceId, timezon
                       : (isChinese ? "這個版本沒有經過 Agent 檢查（手動編輯）。" : "This version was not agent-checked (edited by hand).")}</p>}
                 {(selectedVersion?.agentNotes ?? []).map((note) => <p key={note} className="limitation-note"><AlertTriangle /> {note}</p>)}
                 <p className="limitation-note">{isChinese ? zhFor(locale, "除非店主已確認，否則不要加入食材、致敏原、價格或優惠日期。") : "Do not add ingredients, allergens, pricing or offer dates unless the owner confirmed them."}</p></div>
+              {needsRunReconciliation && <div className="conflict-state" role="alert"><CircleAlert /><div><strong>{isChinese ? "暫時未能確認生成結果" : "The generation outcome is not confirmed"}</strong><p>{isChinese ? "草稿可能已經生成。請先重新讀取草稿同執行狀態，確認後先決定是否再生成。" : "A draft may already have been created. Reload the saved draft and run status before deciding whether to generate again."}</p><Button variant="outline" onClick={() => window.location.reload()}>{isChinese ? "重新讀取草稿與執行狀態" : "Reload draft and run status"}</Button></div></div>}
               {lastRunError && <p className="limitation-note" role="alert"><CircleAlert /> {isChinese ? "上次生成失敗：" : "Last generation failed: "}{runErrorLabel(locale, lastRunError)}</p>}
               {pendingSelect && <div className="draft-editor-actions" role="status"><span>{t(locale, "editor.waitingForVersion")}</span><Button variant="outline" onClick={() => router.refresh()}>{t(locale, "editor.retryVersion")}</Button></div>}
-              <div className="draft-editor-actions"><ContextualAssistant locale={locale} surface={social ? "create" : "action"} triggerLabel={isChinese ? "用助理修改並建立新版本" : "Revise with operator as a new version"} mode="live" context={{ workspaceId, locationId: action.location.id ?? undefined, actionId: action.id, versionId: selectedVersion?.id }} basePath={base} locationParam={location} onCreateVersion={dirty ? undefined : (run) => void createAssistantVersion(run)} disabled={!canEdit || dirty} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? (isChinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version") : (isChinese ? "生成草稿" : "Generate a draft")}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {isChinese ? "儲存手動修改為新版本" : "Save manual edits as a new version"}</Button></div>
+              <div className="draft-editor-actions"><ContextualAssistant locale={locale} surface={social ? "create" : "action"} triggerLabel={isChinese ? "用助理修改並建立新版本" : "Revise with operator as a new version"} mode="live" context={{ workspaceId, locationId: action.location.id ?? undefined, actionId: action.id, versionId: selectedVersion?.id }} basePath={base} locationParam={location} reviewDraft={action.templateKey === "review-response"} onCreateVersion={dirty ? undefined : createAssistantVersion} disabled={!canEdit || dirty} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? (isChinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version") : (isChinese ? "生成草稿" : "Generate a draft")}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {isChinese ? "儲存手動修改為新版本" : "Save manual edits as a new version"}</Button></div>
+              <p role="status" aria-live="polite">{busy === "save" ? (isChinese ? "儲存中…" : "Saving…") : pendingSelect ? t(locale, "editor.waitingForVersion") : saveFailed ? (isChinese ? "儲存失敗；內容仍保留，請重試或處理版本衝突。" : "Save failed; your content is retained. Retry or resolve the version conflict.") : dirty ? (isChinese ? "有未儲存修改" : "Unsaved changes") : selectedVersion ? (isChinese ? `已儲存 · ${versionName}` : `Saved · ${versionName}`) : (isChinese ? "尚未儲存草稿" : "No saved draft yet")}</p>
+              {comparing && <section className="field-stack" aria-label={isChinese ? "比較草稿" : "Compare drafts"}>
+                {versions[0] && versions[0].id !== versionId ? <>
+                  <Label htmlFor="latest-saved-draft">{isChinese ? "最新已儲存草稿（供比較）" : "Latest saved draft for comparison"}</Label>
+                  <Textarea id="latest-saved-draft" value={versions[0].body} readOnly rows={7} />
+                  {versions[0].alt_text && <p>{isChinese ? "圖片替代文字：" : "Image alt text: "}{versions[0].alt_text}</p>}
+                  <p>{isChinese ? "比較以上內容與你保留嘅修改，再選擇下一步。保留修改後仍須儲存為新版本並重新批准。" : "Compare this saved draft with your retained edits. Keeping your edits still requires saving a new version and a new approval."}</p>
+                  <div className="draft-editor-actions">
+                    <Button onClick={() => resolveConflict(true)}>{isChinese ? `保留我的修改，以第 ${versions[0].version_no} 版為基礎` : `Keep my edits over Version ${versions[0].version_no}`}</Button>
+                    <Button variant="outline" onClick={() => resolveConflict(false)}>{isChinese ? "放棄本機修改，使用最新草稿" : "Discard my edits and use the latest draft"}</Button>
+                  </div>
+                </> : <p role="status">{isChinese ? "正在讀取最新草稿；本機修改仍保留。請再按「安全載入最新狀態」重試。" : "Waiting for the latest draft; your local edits are retained. Use Load latest safely to retry."}</p>}
+              </section>}
               {dirty && <p className="limitation-note">{saveBeforeGenerationMessage}</p>}
               {conflict && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "另一位審閱者已更新輸出" : "Another reviewer changed this output"}</strong><p>{isChinese ? "未儲存文字仍保留在本機。載入最新版本、比較內容，再建立新版本。" : "Unsaved text is preserved locally. Load the latest version, compare, then create a new version."}</p><Button size="sm" onClick={loadLatest}><RefreshCw /> {isChinese ? "安全載入最新狀態" : "Load latest safely"}</Button></div></div>}
               </>)}

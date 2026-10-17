@@ -1,6 +1,6 @@
 import { test as base, expect, type Page } from "@playwright/test";
 import { startEnvironment, type AcceptanceEnvironment } from "./environment";
-import { seedMerchant, type MerchantSeed } from "./seed";
+import { clearMerchantActionRuns, seedMerchant, type MerchantSeed } from "./seed";
 export const test = base.extend<{ merchant: MerchantSeed }, { environment: AcceptanceEnvironment }>({
   environment: [async ({}, runFixture) => { const env = await startEnvironment(); try { await runFixture(env); } finally { await env.stop(); } }, { scope: "worker", timeout: 240000 }],
   context: async ({ context }, runFixture) => {
@@ -21,7 +21,14 @@ export const test = base.extend<{ merchant: MerchantSeed }, { environment: Accep
     await runFixture(page);
   },
   baseURL: async ({ environment }, runFixture) => runFixture(environment.app),
-  merchant: async ({ environment }, runFixture) => runFixture(await seedMerchant(environment, "hk")),
+  merchant: async ({ environment }, runFixture) => {
+    const merchant = await seedMerchant(environment, "hk");
+    try {
+      await runFixture(merchant);
+    } finally {
+      clearMerchantActionRuns(environment, merchant);
+    }
+  },
 });
 export { expect };
 

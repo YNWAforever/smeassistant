@@ -11,8 +11,9 @@
     "{\"title\":\"Draft\",\"body\":\"Fresh bakes are out of the oven this morning. Drop by and say hello.\",\"acceptance_criteria\":[\"Owner checks the facts\"],\"warnings\":[],\"facts_used\":[],\"facts_needed\":[]}"
   ],
   "expect": {
-    "llmCalls": 2,
-    "state": "succeeded",
-    "version": true
+    "llmCalls": 1,
+    "state": "failed",
+    "version": false,
+    "reason": "action_run_failed"
   }
 }

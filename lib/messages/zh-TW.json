@@ -41,6 +41,7 @@
     "saveManualEditsBeforeVersionChange": "請先將手動修改儲存為新版本，再切換版本。"
   },
   "draftFailure": {
+    "statusUnconfirmed": "上次未能完成產生。請先重新讀取狀態，再決定是否重新產生。",
     "serviceUnavailable": "AI 草稿服務尚未可用，請聯絡支援確認服務恢復後再試。",
     "tryLater": "AI 服務這次無法完成草稿，請稍後再試。",
     "providerLimited": "AI 服務已達請求或用量上限，現有草稿已保留。您可以繼續手動編輯及儲存，或聯絡支援恢復 AI 草稿服務。",
