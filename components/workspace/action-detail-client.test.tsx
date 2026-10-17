@@ -636,12 +636,17 @@ describe("the owner's applied assertion", () => {
   });
   afterEach(cleanup);
 
-  function mount(templateKey: TemplateKey, mutate: (value: ActionDetail) => void = () => {}, role: "owner" | "viewer" = "owner") {
+  function mount(
+    templateKey: TemplateKey,
+    mutate: (value: ActionDetail) => void = () => {},
+    role: "owner" | "viewer" = "owner",
+    locale: "en" | "zh-HK" = "en",
+  ) {
     const value = detail(templateKey);
     mutate(value);
     renderLive(
       <ActionDetailClient
-        locale="en"
+        locale={locale}
         workspaceSlug="kam-man-house"
         workspaceId="ws-1"
         timezone="Asia/Hong_Kong"
@@ -714,6 +719,39 @@ describe("the owner's applied assertion", () => {
     expect(screen.queryByRole("button", { name: new RegExp(appliedCopy.markButton, "i") })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: new RegExp(appliedCopy.retract, "i") }));
     expect(clientMocks.retractApplied).toHaveBeenCalledWith("act-1");
+  });
+
+  it("shows the applied lifecycle and next scan after completion without hiding approval", () => {
+    mount(DRAFTED_KEY, (value) => {
+      value.action.actionState = "completed";
+      value.action.approvalState = "approved";
+      value.action.deliveryState = "exported";
+      value.action.applied = true;
+      value.action.appliedOn = "2026-10-18T00:50:00.000Z";
+      value.action.displayPhase = localized("Applied (reported)", "已套用（店主回報）");
+      value.action.displayPhaseKey = "applied";
+      value.action.latestVersion = {
+        id: "ver-1",
+        versionNo: 1,
+        approvalState: "approved",
+        deliveryState: "exported",
+      };
+      value.versions = [
+        versionRow({
+          id: "ver-1",
+          version_no: 1,
+          approval_state: "approved",
+          delivery_state: "exported",
+          approved_at: "2026-10-18T00:48:00.000Z",
+          first_exported_at: "2026-10-18T00:50:00.000Z",
+        }),
+      ];
+    }, "owner", "zh-HK");
+
+    expect(document.querySelector(".action-detail-badges")?.textContent).toContain("已套用（店主回報）");
+    expect(document.querySelector(".action-detail-next strong")?.textContent).toBe("等待下次掃描");
+    // The immutable version approval remains visible in its own record.
+    expect(screen.getByText("第 1 版已核准")).toBeInTheDocument();
   });
 
   it("hides the control from viewers", () => {
