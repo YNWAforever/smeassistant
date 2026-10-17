@@ -364,3 +364,68 @@ describe("ContextualAssistant answer ownership (PR #71 review)", () => {
     expect(screen.queryByText("Auto answer")).toBeNull();
   });
 });
+
+describe("assistant preview persistence", () => {
+  async function preview(onCreateVersion: NonNullable<Props["onCreateVersion"]>) {
+    stubFetch(suggestionsOk([]), () => Response.json(runResponse({
+      draftRunId: "stored-run",
+      output: { artifactId: "preview", type: "review_reply", title: "Reply", body: "Thank you for your feedback.", version: 1, acceptanceCriteria: [] },
+    })));
+    await open({ onCreateVersion });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: FIXED_FIRST })); });
+    return screen.getByRole("button", { name: "Create a new version without overwriting" });
+  }
+
+  it("waits for persistence before claiming success and prevents duplicate saves", async () => {
+    let finish!: (value: { ok: true; versionNo: number }) => void;
+    const persist = vi.fn(() => new Promise<{ ok: true; versionNo: number }>(resolve => { finish = resolve; }));
+    const button = await preview(persist);
+    await act(async () => { fireEvent.click(button); fireEvent.click(button); });
+    expect(persist).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: "New version created" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Saving new version…" })).toBeDisabled();
+    await act(async () => { finish({ ok: true, versionNo: 4 }); });
+    expect(screen.getByRole("button", { name: "Version 4 saved" })).toBeDisabled();
+  });
+
+  it.each(["refused", "network"] as const)("retains the preview and a retry when save is %s", async failure => {
+    const persist = vi.fn(async () => {
+      if (failure === "network") throw new Error("network");
+      return { ok: false as const };
+    });
+    const button = await preview(persist);
+    await act(async () => { fireEvent.click(button); });
+    expect(screen.getByRole("alert")).toHaveTextContent(/not be confirmed as saved/i);
+    expect(screen.getByRole("button", { name: "Create a new version without overwriting" })).toBeEnabled();
+    expect(screen.getByText("Thank you for your feedback.")).toBeInTheDocument();
+    expect(screen.queryByText("New version created")).toBeNull();
+  });
+});
+
+describe("targeted review revisions", () => {
+  it.each([
+    ["en", "Shorten this reply", "Use a contact-only next step"],
+    ["zh-HK", "縮短呢則回覆", "改用聯絡方式作下一步"],
+    ["zh-TW", "縮短這則回覆", "改用聯絡方式作下一步"],
+  ] as const)("offers focused revision choices in %s for a saved review", async (locale, shorten, cta) => {
+    const fetched = stubFetch(suggestionsOk([]));
+    await open({ locale, reviewDraft: true });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: shorten })); });
+    expect(fetched.runCalls().at(-1)?.body).toMatchObject({ intentId: "shorten_review_reply", context: CONTEXT });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: cta })); });
+    expect(fetched.runCalls().at(-1)?.body).toMatchObject({ intentId: "contact_review_reply", context: CONTEXT });
+  });
+
+  it("does not offer saved-review revisions without a selected saved version", async () => {
+    stubFetch(suggestionsOk([]));
+    await open({ reviewDraft: true, context: { workspaceId: WORKSPACE_ID, actionId: ACTION_ID } });
+    expect(screen.queryByRole("button", { name: "Shorten this reply" })).toBeNull();
+  });
+
+  it("does not offer review-only revisions for saved FAQ or menu content", async () => {
+    stubFetch(suggestionsOk([]));
+    await open({ reviewDraft: false });
+    expect(screen.queryByRole("button", { name: "Shorten this reply" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Use a contact-only next step" })).toBeNull();
+  });
+});

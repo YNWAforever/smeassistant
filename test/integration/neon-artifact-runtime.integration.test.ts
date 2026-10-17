@@ -207,14 +207,14 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
       const {brandRepository}=await import('../../lib/repositories/brand');
       const {runLiveAssistant}=await import('../../lib/assistant/live');
       const brand=brandRepository(runtime);
-      const profile={voice:'warm',approved_claims:[],prohibited_terms:[],languages:['en'],facts:{confirmed:'Revision A fact'}};
+      const profile={voice:'warm',approved_claims:[],prohibited_terms:[],languages:['en'],facts:{location_id:locB,confirmed:'Revision A fact'}};
       const a=await brand.saveBrandRevision({workspaceId:workspace,actorId:actor,profile,expectedRevisionId:null});
       let release!:()=>void;
       const gate=new Promise<void>(resolve=>{release=resolve;});
       const llm=vi.fn<typeof import("../../lib/llm").llmComplete>(async()=>{await gate;return {text:JSON.stringify(output),usage:{inputTokens:null,outputTokens:null}};});
       const pending=runLiveAssistant({intentId:'draft_review_reply',surface:'action',locale:'en',context:{workspaceId:workspace,actionId:action},membership:state.membership!,llmReady:()=>true,llm});
       await vi.waitFor(()=>expect(llm).toHaveBeenCalledOnce());
-      const b=await brand.saveBrandRevision({workspaceId:workspace,actorId:actor,profile:{...profile,facts:{confirmed:'Revision B fact'}},expectedRevisionId:a.revisionId});
+      const b=await brand.saveBrandRevision({workspaceId:workspace,actorId:actor,profile:{...profile,facts:{...profile.facts,confirmed:'Revision B fact'}},expectedRevisionId:a.revisionId});
       release();const preview=await pending;
       expect(llm.mock.calls[0][0]).toContain(`Brand revision: ${a.revisionId}`);
       expect(llm.mock.calls[0][0]).toContain('Revision A fact');expect(llm.mock.calls[0][0]).not.toContain('Revision B fact');

@@ -45,6 +45,20 @@ afterEach(() => {
 });
 
 describe("POST /api/assistant/run", () => {
+  it.each(["shorten_review_reply", "contact_review_reply"])("accepts %s only as an authorized live draft intent", async intentId => {
+    mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("owner"));
+    const context = { workspaceId: WORKSPACE_ID, actionId: "33333333-3333-4333-8333-333333333333", versionId: "44444444-4444-4444-8444-444444444444" };
+    const result = await post({ mode: "live", surface: "action", intentId, locale: "en", context });
+    expect(result.status).toBe(200);
+    expect(mocks.authorizeWorkspaceRequest).toHaveBeenCalledWith({ id: WORKSPACE_ID }, { minRole: "manager" });
+    expect(mocks.runLiveAssistant).toHaveBeenCalledWith(expect.objectContaining({ intentId, context: expect.objectContaining(context) }));
+    expect((await post({ mode: "demo", surface: "sample", intentId, locale: "en" })).status).toBe(400);
+  });
+  it.each(["shorten_review_reply", "contact_review_reply"])("refuses viewer %s before the live runner", async intentId => {
+    const result = await post({ mode: "live", surface: "action", intentId, locale: "en", context: { workspaceId: WORKSPACE_ID, versionId: "44444444-4444-4444-8444-444444444444" } });
+    expect(result.status).toBe(403);
+    expect(mocks.runLiveAssistant).not.toHaveBeenCalled();
+  });
   it('returns controlled no-store 409 for the shared action run lock',async()=>{
     mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike('owner'));
     mocks.runLiveAssistant.mockRejectedValueOnce(new ActionRunInFlightError());

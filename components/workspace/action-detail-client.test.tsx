@@ -351,6 +351,91 @@ describe("all generation paths preserve unsaved edits", () => {
     expect(screen.queryByRole("button", { name: "Reload saved version" })).not.toBeInTheDocument();
   });
 
+  it("shows the latest saved text for comparison and rebases only after an explicit choice", async () => {
+    const value = draft();
+    const view = renderLive(element(value));
+    fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "My local changes" } });
+    fetchSpy.mockResolvedValue(Response.json({ error: "version_conflict" }, { status: 409 }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save manual edits as a new version" })); });
+    fireEvent.click(screen.getByRole("button", { name: "Load latest safely" }));
+    view.rerender(element({ ...value, versions: [
+      versionRow({ id: "newer-version", version_no: 4, approval_state: "draft", body: "Another reviewer's saved changes" }),
+      ...value.versions,
+    ] }));
+    expect(screen.getByLabelText("Draft")).toHaveValue("My local changes");
+    expect(screen.getByLabelText("Latest saved draft for comparison")).toHaveValue("Another reviewer's saved changes");
+    expect(screen.getByRole("button", { name: "Approve Version 3" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Keep my edits over Version 4" }));
+    expect(screen.getByLabelText("Draft")).toHaveValue("My local changes");
+    fetchSpy.mockResolvedValue(Response.json({ versionId: "merged-version", versionNo: 5 }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save manual edits as a new version" })); });
+    const writes = fetchSpy.mock.calls.filter(([url]) => String(url).endsWith("/versions"));
+    expect(JSON.parse(String(writes.at(-1)?.[1]?.body))).toMatchObject({ body: "My local changes", base_version_id: "newer-version" });
+  });
+
+  it("drops a previous workspace's unsaved editor when soft navigation reuses the page", () => {
+    const view = renderLive(element(draft()));
+    fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "Private unsaved workspace A text" } });
+    const other = draft();
+    other.action = { ...other.action, id: "action-b" };
+    other.versions = [];
+    view.rerender(<ActionDetailClient locale="en" workspaceSlug="other-business" workspaceId="workspace-b"
+      timezone="Asia/Hong_Kong" role="owner" inScope location="other" detail={other} auditRows={[]}
+      locations={[{ slug: "other", name: "Other location" }]} approvedAssets={[]} />);
+    expect(screen.getByLabelText("Draft")).toHaveValue("");
+    expect(screen.queryByDisplayValue("Private unsaved workspace A text")).toBeNull();
+  });
+
+  it("requires reading current run status after a lost generation response before another model request", async () => {
+    renderLive(element(draft()));
+    clientMocks.runAction.mockResolvedValue({ ok: false, status: 0, error: "network" });
+    const generate = screen.getByRole("button", { name: "Regenerate with the agent as a new version" });
+    await act(async () => { fireEvent.click(generate); });
+    expect(generate).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Reload draft and run status" })).toBeEnabled();
+    fireEvent.click(generate);
+    expect(clientMocks.runAction).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears a fulfilled facts request after a definitive generation failure so retry does not ask again", async () => {
+    const value = draft();
+    value.versions = [];
+    const view = renderLive(element(value));
+    clientMocks.runAction
+      .mockResolvedValueOnce({ ok: true, data: { runId: "missing-run", state: "succeeded", factsNeeded: ["reviews_without_response"] } })
+      .mockResolvedValueOnce({ ok: true, data: { runId: "failed-run", state: "failed", error: "unconfirmed_business_fact" } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /^Generate a draft$/ })); });
+    const input = document.querySelector<HTMLTextAreaElement>("#input-reviews_without_response")!;
+    expect(input).not.toBeNull();
+    fireEvent.change(input, { target: { value: "A review supplied by the owner" } });
+    fetchSpy.mockResolvedValue(Response.json({ action: value.action }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save inputs and generate" })); });
+    // The server has stored the input even though the provider could not
+    // supply a safe draft. The old local request must not outlive that read.
+    view.rerender(element({ ...value, action: { ...value.action, actionState: "needs_input", missingInputs: [] } }));
+    expect(document.querySelector("#input-reviews_without_response")).toBeNull();
+    expect(screen.getByRole("button", { name: /^Generate a draft$/ })).toBeEnabled();
+    expect(clientMocks.runAction).toHaveBeenCalledTimes(2);
+  });
+
+  it("clears an old conflict after the server confirms an explicitly regenerated version", async () => {
+    const value = draft();
+    const view = renderLive(element(value));
+    fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "An abandoned local edit" } });
+    fetchSpy.mockResolvedValue(Response.json({ error: "version_conflict" }, { status: 409 }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save manual edits as a new version" })); });
+    fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "Saved reply" } });
+    clientMocks.runAction.mockResolvedValue({ ok: true, data: { state: "succeeded", versionId: "regenerated-version", versionNo: 5 } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Regenerate with the agent as a new version" })); });
+    view.rerender(element({ ...value, versions: [
+      versionRow({ id: "regenerated-version", version_no: 5, approval_state: "draft", body: "A fresh server-confirmed reply" }),
+      ...value.versions,
+    ] }));
+    expect(screen.getByLabelText("Draft")).toHaveValue("A fresh server-confirmed reply");
+    expect(screen.queryByText("Another reviewer changed this output")).toBeNull();
+    expect(screen.getByRole("button", { name: /^Approve Version 5$/ })).toBeEnabled();
+  });
+
   it.each(["required inputs", "owner review note"] as const)("still generates from clean %s", async (kind) => {
     const value = draft();
     if (kind === "required inputs") {
@@ -387,7 +472,8 @@ describe("all generation paths preserve unsaved edits", () => {
     renderLive(element(draft()));
     const editor = screen.getByLabelText("Draft");
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Revise with operator as a new version" })); });
-    await act(async () => { fireEvent.click(await screen.findByRole("button", { name: "Make it warmer without overpromising" })); });
+    const warmer = await screen.findByRole("button", { name: "Make it warmer without overpromising" });
+    await act(async () => { fireEvent.click(warmer); });
     const createName = "Create a new version without overwriting";
     expect(screen.getByRole("button", { name: createName })).toBeInTheDocument();
     if (makeDirty) {

@@ -17,7 +17,7 @@ export const additionalFunctions: string[] = ["prevent_owner_removal","offer_is_
 // asserts their presence; lib/workspace/offer-sql.test.ts pins their 0011 text as 0004 plus that
 // one line, and lib/workspace/publish-sql.test.ts pins the 0014 export as 0011 plus changes (a)-(c).
 // They stay in retainedFunctions, so neon:readiness still requires them.
-export const changedFunctions: string[] = ["approve_output_version","export_output_version"];
+export const changedFunctions: string[] = ["create_output_version","approve_output_version","export_output_version"];
 export const additionalTriggers: string[] = ["workspace_members_prevent_owner_removal","brand_revision_immutable","brand_profile_revision_capture"];
 // Exact PostgreSQL definitions added by 0015; the independently retained legacy catalog stays unchanged.
 export const additionalIndexes = [

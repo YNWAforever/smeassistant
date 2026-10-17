@@ -400,7 +400,22 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon offer freshness on ap
     it("an assistant-redeemed version inherits its base's revision", async () => {
       const { ws, offer, act, ver } = await offerVersion();
       const repo = artifactRepository(runtime);
-      const runId = await repo.recordAssistantDraft({
+      const source = await repo.assistantVersion(ver, act, ws);
+      expect(source).toMatchObject({ id: ver, body: "Body 1" });
+      if (!source) throw new Error("expected persisted revision source");
+      await runtime.query("INSERT INTO workspace_members(workspace_id,user_id,email,role,accepted_at) VALUES($1,$2,'freshness@example.test','owner',now())", [ws, actor]);
+      const runs = actionRunRepository(run => withTransaction(run, runtime));
+      const runId = await runs.queue({
+        actionId: act,
+        actorId: actor,
+        agentKey: "promotion_copy",
+        input: { source: "assistant", intent: "rewrite", surface: "action", locale: "en", context: { workspaceId: ws, actionId: act, versionId: source.id } },
+        promptVersion: "fixture",
+        model: null,
+        now: new Date(),
+      });
+      await runs.start({ runId, actorId: actor, locale: "en" });
+      await runs.finishAssistantDraft({ runId, result: { ok: true, draft: {
         actionId: act,
         workspaceId: ws,
         actorId: actor,
@@ -414,8 +429,9 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon offer freshness on ap
         usage: { inputTokens: 1, outputTokens: 1 },
         costUsd: 0,
         finishedAt: new Date().toISOString(),
-      });
-      const redeemed = await createAssistantVersion(repo, { actionId: act, workspaceId: ws, actorId: actor, runId, baseVersionId: ver });
+      } } });
+      expect((await runtime.query("SELECT input->'context'->>'versionId' AS source_version FROM action_runs WHERE id=$1", [runId])).rows[0].source_version).toBe(source.id);
+      const redeemed = await createAssistantVersion(repo, { actionId: act, workspaceId: ws, actorId: actor, runId, baseVersionId: source.id });
       expect(await storedMeta(redeemed.versionId)).toMatchObject({ origin: "assistant", offer_id: offer, offer_revision: 1 });
     });
   });

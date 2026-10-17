@@ -34,6 +34,10 @@ describe.runIf(process.env.NEON_INTEGRATION === '1')('atomic workflows', () => {
         expect((await owner.query("SELECT count(*)::int AS n FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname IN ('claim_workspace_completion','create_output_version','complete_report_unlock')")).rows[0].n).toBe(3);
     });
     const draft = (body = "body'; DROP TABLE public.actions;--") => ({ actionId: action, actor: user, authorType: 'user', actionRunId: null, body, alt: null, meta: { sentinel: body }, baseVersionId: null });
+    async function currentDraft(body: string, db: Pick<Pool, 'query'> = runtime) {
+        const base = (await db.query<{ id: string }>('SELECT id FROM output_versions WHERE action_id=$1 ORDER BY version_no DESC LIMIT 1', [action])).rows[0]?.id ?? null;
+        return { ...draft(body), baseVersionId: base };
+    }
     async function blocked(client: PoolClient) {
         const pid = (await client.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;
         return pid as number;
@@ -47,19 +51,23 @@ describe.runIf(process.env.NEON_INTEGRATION === '1')('atomic workflows', () => {
         throw new Error('expected_distinct_connection_lock_wait');
     }
     it('serializes concurrent version numbers and retains conflict and approval contracts', async () => {
+        const ordinaryRun = (await runtime.query<{ id: string }>("INSERT INTO action_runs(workspace_id,action_id,agent_key,state,input) VALUES($1,$2,'fixture','running','{}') RETURNING id", [workspace, action])).rows[0].id;
         const a = await runtime.connect(), b = await runtime.connect();
         try {
             expect((await a.query('SELECT pg_backend_pid() AS pid')).rows[0].pid).not.toBe(await blocked(b));
             const pid = await blocked(b);
             await a.query('BEGIN');
             const first = await workflowRepository(a).createOutputVersion(draft());
-            const pending = workflowRepository(b).createOutputVersion(draft('second'));
+            // Ordinary agent runs retain append semantics; manual null means empty history.
+            const pending = workflowRepository(b).createOutputVersion({ ...draft('second'), authorType: 'agent', actionRunId: ordinaryRun });
             await waitBlocked(pid);
             await a.query('COMMIT');
             const second = await pending;
             expect([first.version_no, second.version_no]).toEqual([1, 2]);
             expect((await runtime.query('SELECT body,meta FROM output_versions WHERE id=$1', [first.version_id])).rows[0]).toEqual({ body: draft().body, meta: draft().meta });
+            await expect(workflowRepository().createOutputVersion(draft('another first-tab manual edit'))).rejects.toThrow('version_conflict');
             await expect(workflowRepository().createOutputVersion({ ...draft(), baseVersionId: first.version_id })).rejects.toThrow('version_conflict');
+            expect((await runtime.query('SELECT id FROM output_versions WHERE action_id=$1', [action])).rows).toHaveLength(2);
             await expect(workflowRepository().approveOutputVersion(first.version_id, user, null)).rejects.toThrow('version_closed');
             expect(await workflowRepository().approveOutputVersion(second.version_id, user, 'approved')).toMatchObject({ kind: 'approved' });
             expect(await workflowRepository().approveOutputVersion(second.version_id, user, null)).toMatchObject({ kind: 'already-approved' });
@@ -128,7 +136,7 @@ describe.runIf(process.env.NEON_INTEGRATION === '1')('atomic workflows', () => {
         expect(await repo.consumeRateLimit(key, 1, 60)).toEqual({ allowed: true, retry_after_seconds: 0 });
         expect(await repo.consumeRateLimit(key, 1, 60)).toMatchObject({ allowed: false });
         await expect(repo.consumeRateLimit(key, 0, 60)).rejects.toMatchObject({ code: '22023' });
-        const version = await repo.createOutputVersion(draft('review'));
+        const version = await repo.createOutputVersion(await currentDraft('review'));
         expect(await repo.decideOutputVersion(version.version_id, user, 'changes_requested', key)).toMatchObject({ kind: 'decided', decision: 'changes_requested' });
         expect(await repo.decideOutputVersion(version.version_id, user, 'changes_requested', key)).toMatchObject({ kind: 'already-decided' });
         await expect(repo.decideOutputVersion(version.version_id, user, 'invalid', null)).rejects.toThrow('invalid_decision');
@@ -140,13 +148,13 @@ describe.runIf(process.env.NEON_INTEGRATION === '1')('atomic workflows', () => {
             throw new Error('claim_failed');
         expect(await workflowRepository().claimWorkspaceCompletion(job)).toEqual({ status: 'busy' });
         const token = claim.token;
-        const write = () => withCompletionContext(job, token, client => workflowRepository(client).createOutputVersion(draft('fenced')));
+        const write = () => withCompletionContext(job, token, async client => workflowRepository(client).createOutputVersion(await currentDraft('fenced', client)));
         expect(await write()).toMatchObject({ kind: 'created' });
-        await expect(withCompletionContext(job, randomUUID(), client => workflowRepository(client).createOutputVersion(draft()))).rejects.toThrow('completion_lease_lost');
-        await expect(withCompletionContext(randomUUID(), token, client => workflowRepository(client).createOutputVersion(draft()))).rejects.toThrow('completion_lease_lost');
+        await expect(withCompletionContext(job, randomUUID(), async client => workflowRepository(client).createOutputVersion(await currentDraft(draft().body, client)))).rejects.toThrow('completion_lease_lost');
+        await expect(withCompletionContext(randomUUID(), token, async client => workflowRepository(client).createOutputVersion(await currentDraft(draft().body, client)))).rejects.toThrow('completion_lease_lost');
         for (const [j, t] of [[job, ''], ['', token]])
-            await expect(withCompletionContext(j, t, client => workflowRepository(client).createOutputVersion(draft()))).rejects.toThrow('completion_context_missing');
-        await expect(withCompletionContext(job, "bad'; SELECT 1;--", client => workflowRepository(client).createOutputVersion(draft()))).rejects.toMatchObject({ code: '22P02' });
+            await expect(withCompletionContext(j, t, async client => workflowRepository(client).createOutputVersion(await currentDraft(draft().body, client)))).rejects.toThrow('completion_context_missing');
+        await expect(withCompletionContext(job, "bad'; SELECT 1;--", async client => workflowRepository(client).createOutputVersion(await currentDraft(draft().body, client)))).rejects.toMatchObject({ code: '22P02' });
         await runtime.query("UPDATE workspace_scan_completions SET lease_until=clock_timestamp()-interval '1 second' WHERE job_id=$1", [job]);
         await expect(write()).rejects.toThrow('completion_lease_lost');
         expect(await workflowRepository().finishWorkspaceCompletion(job, token, true, null)).toBe(false);
@@ -156,7 +164,7 @@ describe.runIf(process.env.NEON_INTEGRATION === '1')('atomic workflows', () => {
         await runtime.query("UPDATE audit_jobs SET status='done' WHERE id=$1", [job]);
         expect(await workflowRepository().finishWorkspaceCompletion(job, randomUUID(), true, null)).toBe(false);
         // No-context interactive operations retain their original behavior; pooled settings never leak.
-        expect(await workflowRepository().createOutputVersion(draft('interactive'))).toMatchObject({ kind: 'created' });
+        expect(await workflowRepository().createOutputVersion(await currentDraft('interactive'))).toMatchObject({ kind: 'created' });
         const clients = await Promise.all([runtime.connect(), runtime.connect(), runtime.connect(), runtime.connect()]);
         try {
             for (const client of clients)
@@ -209,7 +217,7 @@ describe.runIf(process.env.NEON_INTEGRATION === '1')('atomic workflows', () => {
     });
     it('binds every JSONB value shape without PostgreSQL array coercion', async () => {
         for (const meta of [["literal", "'; DROP TABLE actions;--"], "string value", 5, true, null]) {
-            const version = await workflowRepository().createOutputVersion({ ...draft('JSON'), meta });
+            const version = await workflowRepository().createOutputVersion({ ...await currentDraft('JSON'), meta });
             expect((await runtime.query('SELECT meta FROM output_versions WHERE id=$1', [version.version_id])).rows[0].meta).toEqual(meta ?? {});
         }
     });

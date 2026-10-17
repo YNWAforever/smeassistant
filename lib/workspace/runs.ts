@@ -31,6 +31,7 @@ import { buildActionOverview, localeOf } from "./overview";
 import { type SnapshotRecord } from "./snapshots";
 import { isOfferTemplate, templateByKey, type TemplateKey } from "./templates";
 import { gateBlockingInputs } from "./workflow-inputs";
+import { blockingReviewWarnings, DRAFT_GROUNDING_VERSION, normalizeMerchantReviewOutput, scopeReviewReplyFacts, unconfirmedDraftBusinessFacts } from "@/lib/agents/draft-grounding";
 
 /**
  * One agent run for one action (CLAUDE.md §3.7 runtime, §3.2.3 POST
@@ -392,7 +393,7 @@ export async function runAgentForAction(
   // Server-resolved brand facts (brand_voice, language, approved_claim -- P2.3
   // item 16) and any FAQ prefill fill in first; the owner's own stored
   // answers and anything submitted this run always take precedence over them.
-  const provided = {
+  let provided = {
     ...resolveBrandProvidedInputs({ voice: brand?.voice ?? "warm", languages: asStrings(brand?.languages), approvedClaims: asStrings(brand?.approved_claims) }),
     ...faqPrefill,
     ...asRecord(row.provided_inputs),
@@ -426,7 +427,7 @@ export async function runAgentForAction(
           provided.selected_reviews,
         )
       : undefined;
-  const ctx: AgentContext = {
+  let ctx: AgentContext = {
     locale,
     market: workspace?.market?.toLowerCase() === "tw" ? "tw" : "hk",
     brand: {
@@ -441,9 +442,8 @@ export async function runAgentForAction(
       facts: asRecord(brand?.facts),
     },
     location: {
-      name: location?.name ?? workspace?.business_name ?? "Workspace",
-      address: location?.address ?? null,
-      district: location?.district ?? null,
+      name: agentKey === "review_reply" ? workspace?.business_name ?? "Workspace" : location?.name ?? workspace?.business_name ?? "Workspace",
+      ...(agentKey === "review_reply" ? {} : { address: location?.address ?? null, district: location?.district ?? null }),
     },
     action: buildActionOverview(
       { ...row, provided_inputs: provided },
@@ -469,7 +469,17 @@ export async function runAgentForAction(
     },
     providedInputs: provided,
     sampledReviews,
+    ...(agentKey === "review_reply" ? {
+      draftGrounding: {
+        businessName: workspace?.business_name ?? "Workspace",
+        asOf: now.toISOString(),
+        sourceLocation: { id: row.location_id ?? snapshot?.locationId ?? null, name: (location ?? locations.find(item => item.id === snapshot?.locationId))?.name ?? "Workspace" },
+        revisionSource: null,
+      },
+    } : {}),
   };
+  ctx = scopeReviewReplyFacts(ctx, locations.length > 1);
+  provided = ctx.providedInputs;
 
   // The pre-model gate (P4.4), decided before the run row exists so a failing
   // satisfier read cannot strand a queued run. A confirmed fact or evidence
@@ -511,6 +521,7 @@ export async function runAgentForAction(
       provided_inputs: provided,
       snapshot_id: snapshot?.id ?? null,
       brand_revision_id:ctx.brand.revisionId ?? null,
+      ...(ctx.draftGrounding ? { grounding_policy_version: DRAFT_GROUNDING_VERSION } : {}),
       prompt_version: agent.promptVersion,
       locale,
       ...(offer ? { offer_id: offer.id, offer_revision: offer.revision } : {}),
@@ -597,11 +608,16 @@ export async function runAgentForAction(
       output = parseAgentOutput(outcome.result.text, agent.outputSchema);
       reason = output ? undefined : "invalid_output";
     }
-    if (output)
-      output = {
+    if (output) {
+      output = normalizeMerchantReviewOutput(ctx, {
         ...output,
         warnings: [...output.warnings, ...agent.acceptance(ctx, output)],
-      };
+      });
+      if (unconfirmedDraftBusinessFacts(ctx, output).length || blockingReviewWarnings(ctx, output.warnings).length) {
+        reason = "unconfirmed_business_fact";
+        output = null;
+      }
+    }
     // Keep a budget-exhaustion reason: it is a different, retryable story from
     // "the model answered but the answer did not validate".
     else if (!reason) reason = "invalid_output";

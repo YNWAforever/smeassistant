@@ -13,7 +13,7 @@ beforeAll(async()=>{
  const interimWorkspace=(await owner.query('INSERT INTO workspaces DEFAULT VALUES RETURNING id')).rows[0].id;
  await owner.query("INSERT INTO brand_profiles(workspace_id,facts) VALUES($1,'{\"known\":\"between migrations\"}')",[interimWorkspace]);
  expect((await owner.query('SELECT current_revision_id FROM brand_profiles WHERE workspace_id=$1',[interimWorkspace])).rows[0].current_revision_id).toBeNull();
- expect(await applyMigrations(owner)).toEqual(['0017_brand_profile_revision_capture.sql']);
+ expect(await applyMigrations(owner)).toEqual(['0017_brand_profile_revision_capture.sql','0018_content_version_retry_boundaries.sql']);
  expect((await owner.query('SELECT p.current_revision_id,r.profile,r.actor_id,r.source FROM brand_profiles p JOIN brand_revisions r ON r.id=p.current_revision_id WHERE p.workspace_id=$1',[interimWorkspace])).rows).toMatchObject([{current_revision_id:expect.any(String),profile:{facts:{known:'between migrations'}},actor_id:null,source:'baseline'}]);
  expect(await applyMigrations(owner)).toEqual([]);
  const url=new URL(fixture.databaseUrl);url.username='fixture_runtime';url.password='fixture-only';runtime=new Pool({connectionString:url.href});

@@ -84,7 +84,7 @@ export function runAction(actionId: string, body: { agentKey?: WorkspaceAgentKey
   return post(`/api/actions/${encodeURIComponent(actionId)}/run`, body);
 }
 
-export function saveVersion(actionId: string, body: { body: string; alt_text?: string; base_version_id?: string }): Promise<ClientResult<SaveVersionResult>> {
+export function saveVersion(actionId: string, body: { body: string; alt_text?: string; base_version_id?: string | null }): Promise<ClientResult<SaveVersionResult>> {
   return post(`/api/actions/${encodeURIComponent(actionId)}/versions`, body);
 }
 
@@ -94,7 +94,7 @@ export function saveVersion(actionId: string, body: { body: string; alt_text?: s
  * is recorded as agent-authored and linked to the run that costs it. Sending
  * the text from here is what made a model's words read as a member's.
  */
-export function saveAssistantVersion(actionId: string, body: { assistant_run_id: string; base_version_id?: string }): Promise<ClientResult<SaveVersionResult>> {
+export function saveAssistantVersion(actionId: string, body: { assistant_run_id: string; base_version_id?: string | null }): Promise<ClientResult<SaveVersionResult>> {
   return post(`/api/actions/${encodeURIComponent(actionId)}/versions`, body);
 }
 

@@ -1,6 +1,7 @@
 import type { AgentContext, AgentOutput } from "./schema";
+import { compensationPromise } from "./guardrails";
 
-export const DRAFT_GROUNDING_VERSION = "2026-10-15.2";
+export const DRAFT_GROUNDING_VERSION = "2026-10-17.1";
 
 /** Fixed policy only. All merchant text, including the old draft, stays in the data fence. */
 export const DRAFT_GROUNDING_POLICY = `ASSISTANT FACT GROUNDING (${DRAFT_GROUNDING_VERSION}):
@@ -21,15 +22,36 @@ const valuesFor = (record: Record<string, unknown>, key: RegExp): string[] =>
 const visitPolicyKey = /visit|walk.?in|pickup|pick.up|到訪|到访|到店|自取|取貨|取货/i;
 const noVisits = /\b(?:no|not|unavailable|closed|prohibited)\b.{0,25}\b(?:walk.?ins?|visits?|pickup|pick.up)\b|\b(?:walk.?ins?|visits?|pickup|pick.up)\b.{0,25}\b(?:not|unavailable|prohibited)\b|(?:不|未|暫停|暂停|停止|取消).{0,8}(?:到訪|到访|到店|自取|取貨|取货)/iu;
 
+/** A flat workspace profile cannot establish which branch an operating fact describes. */
+export function scopeReviewReplyFacts(ctx: AgentContext, multipleLocations: boolean): AgentContext {
+  if (ctx.action.templateKey !== "review-response") return ctx;
+  const factLocation = ctx.brand.facts.location_id;
+  // Source metadata is built only after the runner authorizes the persisted snapshot.
+  const locationId = ctx.action.location.id ?? ctx.draftGrounding?.sourceLocation?.id ?? null;
+  const scoped = locationId !== null && (typeof factLocation === "string"
+    ? factLocation === locationId
+    : !multipleLocations);
+  const providedInputs: Record<string, unknown> = { ...ctx.providedInputs, brand_voice: ctx.brand.voice };
+  delete providedInputs.approved_claim;
+  if (scoped && ctx.brand.approvedClaims[0]) providedInputs.approved_claim = ctx.brand.approvedClaims[0];
+  return {
+    ...ctx,
+    brand: { ...ctx.brand, facts: scoped ? ctx.brand.facts : {}, approvedClaims: scoped ? ctx.brand.approvedClaims : [] },
+    providedInputs,
+  };
+}
+
 /** Current brand facts win over older saved inputs; a visit policy is never implicit permission. */
 export function confirmedDraftBusinessFacts(ctx: AgentContext): { addresses: string[]; visit_invitations: string[] } {
+  const currentReviewRevision = ctx.action.templateKey === "review-response" && Boolean(ctx.brand.revisionId);
   const brandAddresses = valuesFor(ctx.brand.facts, addressKey);
+  const brandHasAddress = Object.keys(ctx.brand.facts).some(key => addressKey.test(key));
   const brandHasVisitPolicy = Object.keys(ctx.brand.facts).some(key => visitPolicyKey.test(key));
   const brandInvitations = valuesFor(ctx.brand.facts, invitationKey);
   const currentPolicies = [...Object.values(ctx.brand.facts).filter((v): v is string => typeof v === "string"), ...ctx.brand.approvedClaims].join("\n");
   return {
-    addresses: brandAddresses.length ? brandAddresses : valuesFor(ctx.providedInputs, addressKey),
-    visit_invitations: noVisits.test(currentPolicies) ? [] : brandHasVisitPolicy ? brandInvitations : valuesFor(ctx.providedInputs, invitationKey),
+    addresses: brandHasAddress || currentReviewRevision ? brandAddresses : valuesFor(ctx.providedInputs, addressKey),
+    visit_invitations: noVisits.test(currentPolicies) ? [] : brandHasVisitPolicy || currentReviewRevision ? brandInvitations : valuesFor(ctx.providedInputs, invitationKey),
   };
 }
 
@@ -96,6 +118,67 @@ const VISIT = /\b(?:come\s+(?:back|by|over|visit|see)|visit\s+(?:us|our|the\s+(?
 const negativeVisitPhrase = "(?:visit (?:us|(?:our|the) (?:shop|store|office|premises))|drop by|drop in|come back|come by|come over)";
 const NEGATED_VISIT = new RegExp(`\\b(?:(?:please\\s+)?(?:do not|don't)|(?:you\\s+)?(?:cannot|can't|must not|should not))\\s+${negativeVisitPhrase}(?:\\s+or\\s+${negativeVisitPhrase})*\\b`, "giu");
 
+const OPERATIONAL_FACT = /\b(?:opening hours|business hours|open(?:s|ing)?\s+(?:daily|every|from|until|at|today|tomorrow)|(?:our|the)\s+(?:shop|store|office)\s+(?:is\s+)?(?:open|closed)|\d{1,2}(?::\d{2})?\s*(?:am|pm)|(?:we(?:'re|'ve| are| will| have| now)?\s+(?:(?:already|now|recently|been)\s+)?)(?:add(?:ed|ing)?|improv\w*|train\w*|hir\w*|offer\w*|provid\w*|sell\w*|open\w*|clos\w*|mov\w*|launch\w*|deliver\w*|accept\w*|refund\w*)|offer|discount|promotion|sale|complimentary|free\s+(?:meal|drink|item|pickup|delivery)|capacity|seats?\s+\d|(?:bookings?|sales|revenue|reservations?)\s+(?:have\s+|has\s+)?(?:increas\w*|grew|grown|doubled|improv\w*)|\d+(?:\.\d+)?\s*%\s*(?:more|increase|growth|discount|off))\b|(?:HK\$|NT\$|US\$|\$|HKD\s*|TWD\s*)\s*\d|\d[\d,.]*\s*(?:元|蚊)|營業|营业|開門|开门|營運時間|营业时间|優惠|优惠|折扣|特價|特价|促銷|促销|免費|免费|(?:增加|提升|改善).{0,12}(?:營業額|营业额|收入|訂單|订单|預訂|预订)/iu;
+const CONFIRMED_INPUT = /^(?:address|current_address|approved_visit_invitation|opening_hours|hours|price|offer|policy|capacity|booking|contact|email|phone|cta_link)$/i;
+const BLOCKING_REVIEW_WARNING = /^(?:unexpected_link|unconfirmed_claim|compensation_promise|prohibited_term:)/;
+
+function withoutReviewQuotes(ctx: AgentContext, text: string): string {
+  // A literal quoted review is historical evidence, never a current operating promise.
+  const reviews = (ctx.sampledReviews ?? []).map(review => normalize(review.text));
+  const ownerReview = ctx.providedInputs.reviews_without_response;
+  if (!reviews.length && typeof ownerReview === "string") reviews.push(normalize(ownerReview));
+  return text.replace(/["“「]([^"”」\n]+)["”」]/gu, (quote, content: string) => {
+    const excerpt = normalize(content).replace(/(?:\.{3}|…)+$/u, "").trim();
+    return excerpt && reviews.some(review => review.includes(excerpt)) ? "" : quote;
+  });
+}
+
+const COMPENSATION_ITEM = "(?:(?:any|a|full)\\s+)?(?:refunds?|compensation|discounts?|vouchers?|coupons?|reimbursement)";
+const NEGATED_COMPENSATION = new RegExp(`\\b(?:we\\s+)?(?:cannot|can't|will not|won't|do not|don't)\\s+(?:(?:offer|provide|promise|guarantee|issue|give)\\s+)?${COMPENSATION_ITEM}(?:\\s+(?:or|and)\\s+${COMPENSATION_ITEM})*\\b`, "giu");
+
+function withoutCompensationNegations(text: string): string {
+  return text.replace(NEGATED_COMPENSATION, "")
+    .replace(/(?:不會|不会|不能|無法|无法)(?:承諾|承诺|提供|保證|保证)?(?:任何)?(?:退款|補償|补偿|折扣|賠償|赔偿)(?:[、或及和](?:退款|補償|补偿|折扣|賠償|赔偿))*/gu, "");
+}
+
+const OPTIONAL_REPLY_FACT = /^(?:address|opening[_ -]*hours|hours|phone(?:[_ -]*number)?|email|website(?:[_ -]*url)?|contact[_ -]*details|reviewer[_ -]*name|地址|營業時間|营业时间|電話|电话|電郵|电邮|聯絡方式|联络方式)$/i;
+
+/** Merchant-only normalization; the public preview keeps the shared parser's facts_needed intact. */
+export function normalizeMerchantReviewOutput(ctx: AgentContext, output: AgentOutput): AgentOutput {
+  if (ctx.action.templateKey !== "review-response" || !ctx.draftGrounding || !output.body.trim()) return output;
+  const optional = output.facts_needed.filter(fact => OPTIONAL_REPLY_FACT.test(fact.normalize("NFKC").trim()));
+  const replyBody = withoutCompensationNegations(withoutReviewQuotes(ctx, output.body));
+  const compensation = compensationPromise({ ...output, body: replyBody }).length > 0
+    || /\b(?:refunds|discounts|vouchers|coupons)\b/i.test(replyBody);
+  return {
+    ...output,
+    facts_needed: output.facts_needed.filter(fact => !optional.includes(fact)),
+    warnings: [...new Set([
+      ...output.warnings.filter(warning => warning !== "compensation_promise"),
+      ...(compensation ? ["compensation_promise"] : []),
+      ...optional,
+    ])],
+  };
+}
+
+function unconfirmedReviewOperations(ctx: AgentContext, output: AgentOutput): boolean {
+  if (ctx.action.templateKey !== "review-response") return false;
+  const text = withoutCompensationNegations(withoutReviewQuotes(ctx, `${output.title}\n${output.body}\n${output.alt_text ?? ""}`));
+  const confirmed = [
+    ...Object.values(ctx.brand.facts),
+    ...ctx.brand.approvedClaims,
+    ...Object.entries(ctx.providedInputs)
+      .filter(([key]) => !ctx.brand.revisionId && CONFIRMED_INPUT.test(key) && !Object.prototype.hasOwnProperty.call(ctx.brand.facts, key))
+      .map(([, value]) => value),
+  ].filter((value): value is string => typeof value === "string" && Boolean(value.trim()));
+  return OPERATIONAL_FACT.test(withoutConfirmed(text, confirmed));
+}
+
+/** These review checks withhold the draft rather than merely decorating a saveable version. */
+export function blockingReviewWarnings(ctx: AgentContext, warnings: string[]): string[] {
+  return ctx.action.templateKey === "review-response" ? warnings.filter(warning => BLOCKING_REVIEW_WARNING.test(warning)) : [];
+}
+
 export function unconfirmedDraftBusinessFacts(ctx: AgentContext, output: AgentOutput): string[] {
   if (!ctx.draftGrounding) return [];
   const text = `${output.title}\n${output.body}\n${output.alt_text ?? ""}`;
@@ -117,5 +200,6 @@ export function unconfirmedDraftBusinessFacts(ctx: AgentContext, output: AgentOu
   return [
     ...(address.invalid || ADDRESS.test(addressRemainder) ? ["unconfirmed_address"] : []),
     ...(VISIT.test(visitRemainder) ? ["unconfirmed_visit_invitation"] : []),
+    ...(unconfirmedReviewOperations(ctx, output) ? ["unconfirmed_operational_fact"] : []),
   ];
 }

@@ -12,7 +12,7 @@ const LOCATION_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const state = { actions: [actionRow, socialRow] as Array<typeof actionRow>, snapshots: [snapshot, base] as Array<typeof snapshot> };
 
 
-const good: { text: string; usage: { inputTokens: number; outputTokens: number } } = { text: JSON.stringify({ title: "Reply draft", body: "1. “Waited 25…” — Thank you for telling us; we are adding a host at Friday lunch. Please contact us with any questions.", acceptance_criteria: ["no compensation"], warnings: [], facts_used: ["voice"], facts_needed: [] }), usage: { inputTokens: 10, outputTokens: 5 } };
+const good: { text: string; usage: { inputTokens: number; outputTokens: number } } = { text: JSON.stringify({ title: "Reply draft", body: "1. “Waited 25…” — Thank you for telling us. Please leave any further feedback in this review thread.", acceptance_criteria: ["no compensation"], warnings: [], facts_used: ["voice"], facts_needed: [] }), usage: { inputTokens: 10, outputTokens: 5 } };
 const run = (over: Partial<Parameters<typeof runLiveAssistant>[0]> = {}) =>
   runLiveAssistant({ intentId: "explain_priority", surface: "home", locale: "en", membership: auth("owner").membership, context: { workspaceId: WORKSPACE_ID, locationId: LOCATION_ID }, llmReady: () => true, ...over });
 
@@ -59,5 +59,7 @@ it("AUDIT F-20261011-01: identical concurrent draft requests must call the model
   const conflict=results.find(r=>r.status==='rejected') as PromiseRejectedResult;
   expect(conflict.reason).toBeInstanceOf(ActionRunInFlightError);
   expect(repository.recordAssistantDraft).toHaveBeenCalledTimes(1);
+  expect(repository.recordAssistantDraftFailure).not.toHaveBeenCalled();
+  expect(runPersistence.start).toHaveBeenCalledTimes(1);
   expect(llm).toHaveBeenCalledTimes(1);
 });

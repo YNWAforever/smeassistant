@@ -31,6 +31,8 @@ import { nextStepHref } from "@/lib/assistant/next-step"
 import { localized, resolveText, type LocalizedText } from "@/lib/domain"
 import {
   isDemoQuestionId,
+  isReviewRevisionIntent,
+  type AssistantIntentId,
   type AssistantContext,
   type AssistantMode,
   type AssistantOrigin,
@@ -64,6 +66,8 @@ export const surfaceQuestions: Record<AssistantSurface, DemoQuestionId[]> = {
 }
 
 type ContextualIntentId = AssistantSuggestion["intentId"]
+
+export type AssistantVersionSaveResult = { ok: true; versionNo: number } | { ok: false }
 
 function isContextualIntent(questionId: DemoQuestionId): questionId is ContextualIntentId {
   return questionId === "explain_missing_inputs" || questionId === "where_to_continue"
@@ -110,7 +114,12 @@ const liveLabels: Partial<Record<DemoQuestionId, { zh: string; en: string }>> = 
   fallback_plan: { zh: "如果分數再次下跌，今星期應做甚麼？", en: "What if the score falls again this week?" },
 }
 
-function questionLabel(questionId: DemoQuestionId, mode: AssistantMode, locale: PrototypeLocale) {
+function questionLabel(questionId: AssistantIntentId, mode: AssistantMode, locale: PrototypeLocale) {
+  if (isReviewRevisionIntent(questionId)) {
+    return questionId === "shorten_review_reply"
+      ? (locale === "en" ? "Shorten this reply" : locale === "zh-HK" ? "縮短呢則回覆" : "縮短這則回覆")
+      : (locale === "en" ? "Use a contact-only next step" : "改用聯絡方式作下一步")
+  }
   if (isContextualIntent(questionId)) return resolveText(contextualLabels[questionId], locale)
   const label = (mode === "live" ? liveLabels[questionId] : undefined) ?? labels[questionId]
   return label[locale === "en" ? "en" : "zh"]
@@ -175,6 +184,7 @@ export function ContextualAssistant({
   triggerLabel,
   trigger,
   onCreateVersion,
+  reviewDraft = false,
   disabled = false,
   mode = "demo",
   context,
@@ -192,7 +202,9 @@ export function ContextualAssistant({
    * `run.draftRunId`; carrying it through the browser is how a model's words
    * came to be recorded as a member's.
    */
-  onCreateVersion?: (run: DemoAssistantRunResponse) => void
+  onCreateVersion?: (run: DemoAssistantRunResponse) => Promise<AssistantVersionSaveResult>
+  /** Only the review-response editor can offer the review-specific revisions. */
+  reviewDraft?: boolean
   disabled?: boolean
   /** `live` answers from this workspace's evidence (requires `context`); default `demo` keeps the fixed sample (§3.8). */
   mode?: AssistantMode
@@ -216,14 +228,21 @@ export function ContextualAssistant({
   const [state, setState] = useState<"idle" | "running" | "failed">("idle")
   const [selected, setSelected] = useState<string | null>(null)
   const [run, setRun] = useState<DemoAssistantRunResponse | null>(null)
-  const [versionCreated, setVersionCreated] = useState(false)
+  const [savedVersionNo, setSavedVersionNo] = useState<number | null>(null)
+  const [savingVersion, setSavingVersion] = useState(false)
+  const [saveFailed, setSaveFailed] = useState(false)
+  const savePending = useRef(false)
+  const saveScope = useRef<string | null>(null)
   const [refusal, setRefusal] = useState<string | null>(null)
   const [needsReconciliation,setNeedsReconciliation]=useState(false)
   const [suggestions, setSuggestions] = useState<AssistantSuggestion[]>([])
   // The context object is rebuilt on every parent render; its ids are what matter.
   const contextKey = mode === "live" && context ? suggestionsQuery(context) : null
   const shown = suggestions.slice(0, 3)
-  const questions = surfaceQuestions[surface].filter((questionId) => !shown.some((item) => item.intentId === questionId))
+  const questions: AssistantIntentId[] = [
+    ...(mode === "live" && reviewDraft && surface === "action" && context?.versionId ? ["shorten_review_reply" as const, "contact_review_reply" as const] : []),
+    ...surfaceQuestions[surface].filter((questionId) => !shown.some((item) => item.intentId === questionId)),
+  ]
   // Only the latest request may write the answer: a slower earlier one (an auto-ask,
   // or a previous click) must not overwrite the question the owner chose since.
   const latestAsk = useRef(0)
@@ -236,11 +255,14 @@ export function ContextualAssistant({
     setRun(null)
     setSelected(null)
     setRefusal(null)
-    setVersionCreated(false)
+    setSavedVersionNo(null)
+    setSavingVersion(false)
+    setSaveFailed(false)
     setState("idle")
   }
   useEffect(() => {
     latestAsk.current += 1
+    saveScope.current = contextKey
   }, [contextKey])
 
   // Each time the sheet opens in live mode, ask the server what needs the owner now.
@@ -266,13 +288,14 @@ export function ContextualAssistant({
     if (!next) setSuggestions([])
   }
 
-  async function ask(questionId: DemoQuestionId, options: { key?: string; context?: AssistantContext; origin?: AssistantOrigin } = {}) {
-    if(needsReconciliation)return
+  async function ask(questionId: AssistantIntentId, options: { key?: string; context?: AssistantContext; origin?: AssistantOrigin } = {}) {
+    if(needsReconciliation || savePending.current)return
     const seq = ++latestAsk.current
     const stale = () => seq !== latestAsk.current
     setSelected(options.key ?? questionId)
     setRun(null)
-    setVersionCreated(false)
+    setSavedVersionNo(null)
+    setSaveFailed(false)
     setRefusal(null)
     setState("running")
     try {
@@ -328,10 +351,23 @@ export function ContextualAssistant({
 
   const continueHref = mode === "live" && basePath && run?.nextStep ? nextStepHref(basePath, run.nextStep, locationParam) : null
 
-  function createVersion() {
-    if (!run?.draftRunId || !onCreateVersion) return
-    onCreateVersion(run)
-    setVersionCreated(true)
+  async function createVersion() {
+    if (!run?.draftRunId || !onCreateVersion || savePending.current || savedVersionNo !== null) return
+    const scope = contextKey
+    savePending.current = true
+    setSavingVersion(true)
+    setSaveFailed(false)
+    try {
+      const result = await onCreateVersion(run)
+      if (saveScope.current !== scope) return
+      if (result.ok) setSavedVersionNo(result.versionNo)
+      else setSaveFailed(true)
+    } catch {
+      if (saveScope.current === scope) setSaveFailed(true)
+    } finally {
+      savePending.current = false
+      if (saveScope.current === scope) setSavingVersion(false)
+    }
   }
 
   return (
@@ -364,14 +400,14 @@ export function ContextualAssistant({
           {shown.length > 0 && <section className="assistant-question-section" aria-labelledby="assistant-suggestion-title">
             <p className="eyebrow" id="assistant-suggestion-title">{resolveText(NEEDS_YOU_NOW, locale)}</p>
             <div className="assistant-question-list">
-              {shown.map((suggestion) => <button key={suggestion.id} type="button" disabled={needsReconciliation} aria-pressed={selected === suggestion.id} onClick={() => ask(suggestion.intentId, { key: suggestion.id, context: suggestion.context, origin: "suggested" })}><span>{suggestionLabel(suggestion, locale)}</span><ArrowRight aria-hidden="true" /></button>)}
+              {shown.map((suggestion) => <button key={suggestion.id} type="button" disabled={needsReconciliation || savingVersion} aria-pressed={selected === suggestion.id} onClick={() => ask(suggestion.intentId, { key: suggestion.id, context: suggestion.context, origin: "suggested" })}><span>{suggestionLabel(suggestion, locale)}</span><ArrowRight aria-hidden="true" /></button>)}
             </div>
           </section>}
 
           <section className="assistant-question-section" aria-labelledby="assistant-question-title">
             <p className="eyebrow" id="assistant-question-title">{isChinese ? "由目前問題開始" : "Start from the current problem"}</p>
             <div className="assistant-question-list">
-              {questions.map((questionId) => <button key={questionId} type="button" disabled={needsReconciliation} aria-pressed={selected === questionId} onClick={() => ask(questionId)}><span>{questionLabel(questionId, mode, locale)}</span><ArrowRight aria-hidden="true" /></button>)}
+              {questions.map((questionId) => <button key={questionId} type="button" disabled={needsReconciliation || savingVersion} aria-pressed={selected === questionId} onClick={() => ask(questionId)}><span>{questionLabel(questionId, mode,locale)}</span><ArrowRight aria-hidden="true" /></button>)}
             </div>
           </section>
 
@@ -400,7 +436,8 @@ export function ContextualAssistant({
 
             {run.warnings.length > 0 && <div className="assistant-warning"><ShieldCheck aria-hidden="true" /><div><strong>{isChinese ? "限制" : "Limit"}</strong>{run.warnings.map((warning) => <p key={warning}>{warning}</p>)}</div></div>}
 
-            {run.draftRunId && onCreateVersion && <Button className="w-full" onClick={createVersion} disabled={versionCreated}><FilePlus2 aria-hidden="true" />{versionCreated ? (isChinese ? "已建立新版本" : "New version created") : (isChinese ? "建立新版本（不覆蓋現有內容）" : "Create a new version without overwriting")}</Button>}
+            {saveFailed && <p role="alert">{isChinese ? "未能確認新版本已儲存。預覽仍然保留，請重試；如有版本衝突，先關閉助理並比較最新草稿。" : "The new version could not be confirmed as saved. Your preview is retained; retry, or close the assistant and compare the latest draft if there is a conflict."}</p>}
+            {run.draftRunId && onCreateVersion && <Button className="w-full" onClick={() => void createVersion()} disabled={savingVersion || savedVersionNo !== null}><FilePlus2 aria-hidden="true" />{savingVersion ? (isChinese ? "正在儲存新版本…" : "Saving new version…") : savedVersionNo !== null ? (isChinese ? `第 ${savedVersionNo} 版已儲存` : `Version ${savedVersionNo} saved`) : (isChinese ? "建立新版本（不覆蓋現有內容）" : "Create a new version without overwriting")}</Button>}
 
             <div className="assistant-approval-boundary"><ShieldCheck aria-hidden="true" /><span>{run.requiresApproval ? (isChinese ? "此輸出需要獲授權人士核准指定版本；目前未發佈，也未扣除交付額。" : "An authorised person must approve the exact version. It is not published and no delivery is consumed.") : (isChinese ? zhFor(locale, "這是解釋與建議，不會改變掃描分數、審批狀態或用量。") : "This explanation changes no score, approval state or usage.")}</span></div>
           </div>}

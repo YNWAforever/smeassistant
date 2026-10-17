@@ -67,6 +67,8 @@ export interface AgentContext {
    * fence exists to close.
    */
   toneInstruction?: string;
+  /** Fixed review editing modes selected by trusted server intent mapping. */
+  reviewRevision?: "shorten" | "contact";
   /** Server-resolved context for assistant drafts; never an instruction from the browser. */
   draftGrounding?: {
     businessName: string;

@@ -124,9 +124,18 @@ export async function createAssistantVersion(
   // there is nothing to supersede, so the route answers 404.
   if (!draft || !body.trim()) throw new VersionError("assistant_draft_not_found");
 
-  const intent = draft.input && typeof draft.input === "object" && !Array.isArray(draft.input)
-    ? (draft.input as Record<string, unknown>).intent
-    : undefined;
+  const runInput = draft.input && typeof draft.input === "object" && !Array.isArray(draft.input)
+    ? draft.input as Record<string, unknown>
+    : {};
+  const context = runInput.context && typeof runInput.context === "object" && !Array.isArray(runInput.context)
+    ? runInput.context as Record<string, unknown>
+    : {};
+  const sourceVersionId = typeof context.versionId === "string" ? context.versionId : null;
+  // An omitted base is compatible with earlier callers, but never permits
+  // rebasing model output onto a version the model did not read.
+  if (input.baseVersionId !== undefined && input.baseVersionId !== sourceVersionId)
+    throw new VersionError("version_conflict");
+  const intent = runInput.intent;
 
   return createVersion(db, {
     actionId: input.actionId,
@@ -148,7 +157,7 @@ export async function createAssistantVersion(
       warnings: strings(output?.warnings),
       facts_used: strings(output?.facts_used),
     },
-    baseVersionId: input.baseVersionId ?? null,
+    baseVersionId: sourceVersionId,
   });
 }
 

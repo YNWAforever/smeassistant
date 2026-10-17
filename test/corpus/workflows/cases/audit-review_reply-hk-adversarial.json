@@ -32,8 +32,9 @@
   ],
   "expect": {
     "llmCalls": 1,
-    "state": "succeeded",
-    "version": true,
+    "state": "failed",
+    "version": false,
+    "reason": "unconfirmed_business_fact",
     "warningsExclude": [],
     "promptIncludes": [
       "-----BEGIN UNTRUSTED EVIDENCE-----",

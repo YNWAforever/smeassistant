@@ -18,7 +18,9 @@
   ],
   "expect": {
     "llmCalls": 1,
-    "version": true,
+    "state": "failed",
+    "version": false,
+    "reason": "unconfirmed_business_fact",
     "warningsInclude": [
       "unexpected_link"
     ],

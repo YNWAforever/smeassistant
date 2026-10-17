@@ -116,6 +116,24 @@ describe("POST /api/actions/[actionId]/versions", () => {
       400,
     );
   });
+  it.each([false, 1, {}, []].map((value) => ({ value })))("400s a non-null/non-string base $value without writing", async ({ value: base_version_id }) => {
+    mocks.db!.rpc.mockResolvedValue({
+      data: { kind: "created", version_id: "unexpected", version_no: 1 }, error: null,
+    });
+    const response = await post({ body: "Draft", base_version_id });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "base_version_id is invalid" });
+    expect(mocks.db!.rpc).not.toHaveBeenCalled();
+  });
+  it("keeps omitted first-save bases compatible and forwards explicit null as the same empty-history expectation", async () => {
+    mocks.db!.rpc.mockResolvedValue({
+      data: { kind: "created", version_id: "first", version_no: 1 }, error: null,
+    });
+    for (const payload of [{ body: "First" }, { body: "First", base_version_id: null }]) {
+      expect((await post(payload)).status).toBe(201);
+      expect(mocks.db!.rpc).toHaveBeenLastCalledWith("create_output_version", expect.objectContaining({ p_base_version_id: null }));
+    }
+  });
 });
 
 /**
@@ -220,5 +238,16 @@ describe("POST /api/actions/[actionId]/versions (operator draft)", () => {
     mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("viewer"));
     expect((await post({ assistant_run_id: RUN_ID })).status).toBe(403);
     expect(mocks.db!.calls.some((call) => call.table === "action_runs")).toBe(false);
+  });
+  it("409s an assistant revision whose claimed base differs from the persisted generation source", async () => {
+    withDraft({ ...draftRow, input: {
+      ...draftRow.input, context: { versionId: "55555555-5555-4555-8555-555555555555" },
+    } });
+    const response = await post({
+      assistant_run_id: RUN_ID, base_version_id: "66666666-6666-4666-8666-666666666666",
+    });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "version_conflict" });
+    expect(mocks.db!.rpc).not.toHaveBeenCalled();
   });
 });

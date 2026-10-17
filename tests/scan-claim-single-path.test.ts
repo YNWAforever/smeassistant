@@ -41,13 +41,18 @@ async function sourceFiles(dir: string): Promise<string[]> {
 async function unmeteredClaimers(root = repoRoot): Promise<string[]> {
   const offenders: string[] = [];
   for (const dir of ROOTS) {
-    for (const file of await sourceFiles(path.join(root, dir))) {
-      const relative = path.relative(root, file).split(path.sep).join("/");
-      const text = await readFile(file, "utf8");
-      const own = relative === DEFINITION_FILE;
-      const methodUses = count(METHOD_REFERENCE, text) - (own ? Math.min(1, count(METHOD_DEFINITION, text)) : 0);
-      const sqlCalls = count(SQL_CALL, text) - (own ? 1 : 0);
-      if (methodUses > 0 || sqlCalls > 0) offenders.push(relative);
+    const files = await sourceFiles(path.join(root, dir));
+    // Keep the file set and assertions strict while avoiding one I/O wait per
+    // source in Windows full-suite runs. Cap open reads rather than timeouts.
+    for (let offset = 0; offset < files.length; offset += 16) {
+      const batch = await Promise.all(files.slice(offset, offset + 16).map(async file => ({ file, text: await readFile(file, "utf8") })));
+      for (const { file, text } of batch) {
+        const relative = path.relative(root, file).split(path.sep).join("/");
+        const own = relative === DEFINITION_FILE;
+        const methodUses = count(METHOD_REFERENCE, text) - (own ? Math.min(1, count(METHOD_DEFINITION, text)) : 0);
+        const sqlCalls = count(SQL_CALL, text) - (own ? 1 : 0);
+        if (methodUses > 0 || sqlCalls > 0) offenders.push(relative);
+      }
     }
   }
   return offenders.sort();

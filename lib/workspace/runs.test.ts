@@ -58,7 +58,7 @@ const snapshotRow = {
 const good = (over: Partial<Record<string, unknown>> = {}): LLMResult => ({
   text: JSON.stringify({
     title: "Replies",
-    body: "1. Thank you — we will speed up service. Please come back.",
+    body: "1. Thank you for your review. Please leave further feedback in this review thread.",
     acceptance_criteria: ["check names"],
     warnings: [],
     facts_used: ["voice"],
@@ -202,6 +202,81 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 describe("typed action runtime", () => {
+  it("retains scoped branch facts for a workspace-wide action using its authorized source snapshot", async () => {
+    row = { ...action, location_id: null } as unknown as typeof action;
+    const db = Object.assign(repository(), {
+      assistantLocations: async () => [{ id: "loc-1", name: "Branch B" }, { id: "loc-2", name: "Other branch" }],
+      assistantBrand: async () => ({ voice: "warm", approved_claims: [], prohibited_terms: [], languages: ["en"], facts: { location_id: "loc-1", confirmed: "Confirmed source branch B fact" }, current_revision_id: "current-brand" }),
+    });
+    const llm = vi.fn(async (_prompt: string) => good());
+    const result = await runAgentForAction(db, { actionId: row.id, actorId: membership.userId, locale: "en", membership, persistence, llm });
+    expect(result.versionId).toBe("v-1");
+    expect(llm.mock.calls[0][0]).toContain("Confirmed source branch B fact");
+    const evidence = JSON.parse(llm.mock.calls[0][0].split("-----BEGIN UNTRUSTED EVIDENCE-----")[1].split("-----END UNTRUSTED EVIDENCE-----")[0]);
+    expect(evidence.location_scope.id).toBe("loc-1");
+  });
+  it("withholds old action facts after their rows were removed from the current saved brand revision", async () => {
+    row = { ...action, provided_inputs: { brand_voice: "warm", address: "12 Old Street", price: "HK$88" } } as unknown as typeof action;
+    const db = Object.assign(repository(), {
+      assistantBrand: async () => ({ voice: "direct", approved_claims: [], prohibited_terms: [], languages: ["en"], facts: {}, current_revision_id: "current-saved-revision" }),
+    });
+    const llm = vi.fn(async () => good({ body: "Address: 12 Old Street.\nHK$88" }));
+    const result = await runAgentForAction(db, { actionId: row.id, actorId: membership.userId, locale: "en", membership, persistence, llm });
+    expect(result.state).toBe("failed");
+    expect(result.versionId).toBeUndefined();
+    expect(finish.mock.calls[0][0]).toMatchObject({ output: null, reason: "unconfirmed_business_fact" });
+  });
+  it.each([
+    '1. "I asked for a refund and a discount" - Thank you for your feedback. Please comment here.',
+    "We cannot promise a refund or a discount. Please leave further feedback here.",
+  ])("allows verified review quotations and negative compensation statements: %s", async body => {
+    reviewData = { gbp: { reviews: [{ rating: 2, text: "I asked for a refund and a discount", time: "2026-08-30", owner_response: null }] } };
+    expect(await run({ llm: vi.fn(async () => good({ body })) })).toMatchObject({ state: "succeeded", versionId: "v-1" });
+  });
+  it.each([
+    '1. "I asked for a refund and a discount" - We will refund your meal.',
+    '"We will refund your meal" - Thank you for your feedback.',
+    "We cannot promise a refund, but we will issue refunds.",
+  ])("does not excuse a real or fabricated compensation promise: %s", async body => {
+    reviewData = { gbp: { reviews: [{ rating: 2, text: "I asked for a refund and a discount", time: "2026-08-30", owner_response: null }] } };
+    const result = await run({ llm: vi.fn(async () => good({ body })) });
+    expect(result).toMatchObject({ state: "failed" });
+    expect(result.versionId).toBeUndefined();
+  });
+  it("omits optional business facts only after entering merchant review grounding", async () => {
+    const result = await run({ llm: vi.fn(async () => good({ body: "Thank you for your feedback. Please comment here.", facts_needed: ["opening_hours"] })) });
+    expect(result).toMatchObject({ state: "succeeded", versionId: "v-1" });
+    expect(finish.mock.calls[0][0].output?.facts_needed).toEqual([]);
+    expect(finish.mock.calls[0][0].output?.warnings).toContain("opening_hours");
+  });
+  it("grounds initial review generation in the current saved voice without imported address facts", async () => {
+    const db = Object.assign(repository(), {
+      assistantBrand: async () => ({ voice: "direct", approved_claims: [], prohibited_terms: [], languages: ["en"], facts: {}, current_revision_id: "brand-current" }),
+      assistantLocations: async () => [{ id: "loc-1", slug: "primary", name: "Primary", address: "12 Imported Street", district: "Imported district" }],
+    });
+    const llm = vi.fn(async (_prompt: string) => good({ body: "Thank you for your feedback. Please contact us in this review thread." }));
+    await runAgentForAction(db, { actionId: row.id, actorId: membership.userId, locale: "en", membership, persistence, llm });
+    const prompt = llm.mock.calls[0][0];
+    expect(prompt).toContain("Match the brand voice (direct)");
+    expect(prompt.split("GUARDRAILS:")[0]).not.toContain("12 Imported Street");
+    expect(prompt).toContain("Historical drafts and scan evidence do not confirm current business facts");
+  });
+  it("does not promote unscoped brand facts from another branch into review generation", async () => {
+    const db = Object.assign(repository(), {
+      assistantBrand: async () => ({ voice: "direct", approved_claims: ["Branch A offers free pickup"], prohibited_terms: [], languages: ["en"], facts: { address: "12 Branch A Street", hours: "Branch A opens at 9am" } }),
+      assistantLocations: async () => [{ id: "loc-1", name: "Primary" }, { id: "loc-2", name: "Branch A" }],
+    });
+    const llm = vi.fn(async (_prompt: string) => good({ body: "Thank you for your review. Please leave further feedback here." }));
+    await runAgentForAction(db, { actionId: row.id, actorId: membership.userId, locale: "en", membership, persistence, llm });
+    expect(llm.mock.calls[0][0]).not.toContain("12 Branch A Street");
+    expect(llm.mock.calls[0][0]).not.toContain("Branch A offers free pickup");
+  });
+  it.each(["Our opening hours are 9am to 10pm daily.", "Enjoy our HK$88 offer.", "We will add a host tomorrow.", "Bookings increased by 25%."])("initial review generation cannot save unsupported claims: %s", async body => {
+    const result = await run({ llm: vi.fn(async () => good({ body })) });
+    expect(result.state).toBe("failed");
+    expect(result.versionId).toBeUndefined();
+    expect(finish.mock.calls[0][0].output).toBeNull();
+  });
   it.each(['transport-rejection','unreported-retry','partial-usage','unreported-later'] as const)('T19: %s keeps aggregate usage/cost unknown across attempts',async mode=>{
     const llmDetailed=vi.fn<typeof import('@/lib/llm').llmCompleteDetailed>();
     if(mode==='transport-rejection')llmDetailed.mockRejectedValueOnce(new Error('fixture transport uncertainty'));
@@ -275,17 +350,15 @@ describe("typed action runtime", () => {
       }),
     );
   });
-  it("retains acceptance warnings", async () => {
-    await run({
+  it("withholds a review draft containing prohibited claims and compensation instead of saving warning-only content", async () => {
+    const result = await run({
       llm: vi.fn(async () =>
         good({ body: "We are the best in Hong Kong, refund guaranteed." }),
       ),
     });
-    expect(finish.mock.calls[0][0].output?.warnings).toEqual([
-      "prohibited_term:best in Hong Kong",
-      "unconfirmed_claim",
-      "compensation_promise",
-    ]);
+    expect(result.state).toBe("failed");
+    expect(result.versionId).toBeUndefined();
+    expect(finish.mock.calls[0][0]).toMatchObject({ output: null, reason: "unconfirmed_business_fact" });
   });
   it.each(["viewer", "manager"])("denies %s before effects", async (role) => {
     const llm = vi.fn();
