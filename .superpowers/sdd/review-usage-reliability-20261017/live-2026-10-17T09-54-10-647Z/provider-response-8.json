@@ -1,0 +1,27 @@
+{
+  "id": "70f74e8c043b46c8969289ee7bfdeffb",
+  "object": "chat.completion",
+  "created": 1792231110,
+  "model": "longcat-2.5-preview-free",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "logprobs": null,
+      "message": {
+        "role": "assistant",
+        "content": "{\"title\":\"Reply to review\",\"body\":\"1. Review: \\\"Thank you for answering my questions clearly.\\\"\\n\\nThank you for your kind words. We are glad we could answer your questions clearly. If you have any further questions, please feel free to reach out to us here.\",\"acceptance_criteria\":[\"Acknowledges the reviewer's specific comment about clear answers\",\"Thanks the reviewer\",\"Uses a contact-only next step inviting further feedback in the review thread\",\"No compensation promises\",\"No physical visit or return-visit invitation\",\"No invented facts, policies, or claims\",\"Professional tone\",\"Written in English\"],\"warnings\":[\"The review text was supplied by the owner, not read from the public profile.\"],\"facts_used\":[\"Brand voice: professional\",\"Language: en\",\"Review text supplied by owner: \\\"Thank you for answering my questions clearly.\\\"\"],\"facts_needed\":[]}"
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 1684,
+    "completion_tokens": 177,
+    "total_tokens": 1861,
+    "prompt_tokens_details": {
+      "audio_tokens": 0,
+      "cached_tokens": 0,
+      "cache_write_tokens": 0
+    }
+  }
+}

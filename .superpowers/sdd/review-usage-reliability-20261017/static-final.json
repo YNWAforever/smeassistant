@@ -1,0 +1,6 @@
+{
+  "typecheck": 0,
+  "lint": 0,
+  "noSupabase": 0,
+  "noSelfServiceClaim": 0
+}

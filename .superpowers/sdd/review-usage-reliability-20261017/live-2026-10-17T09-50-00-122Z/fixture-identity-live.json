@@ -1,0 +1,15 @@
+{
+  "observedAt": "2026-10-17T09:50:04.078Z",
+  "containerId": "8c9fbcd06c784fe42ffc48b941328fb8d2d3f822d99333fccc3e8ac8908ffa19",
+  "containerName": "sme-neon-it-db-5759f5403010",
+  "database": "sme_neon_it_5759f5403010",
+  "labels": {
+    "com.sme-scanner.integration": "neon-postgres",
+    "com.sme-scanner.integration.database": "sme_neon_it_5759f5403010"
+  },
+  "image": "sha256:1a6ab3f5345eb6dbe04a1349529caabdb0ab09293a09590fad07b2246bfa4b54",
+  "network": "none",
+  "publishedPorts": {},
+  "syntheticOnly": true,
+  "runtime": "local Auth/mail; real free OpenCode model through allowlisted relay"
+}

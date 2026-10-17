@@ -1,0 +1,192 @@
+{
+  "sourceSha": "bb3f48af4ae42a362c3ff58878f74286736e0f40",
+  "startedAt": "2026-10-17T09:54:10.701Z",
+  "observedAt": "2026-10-17T09:58:15.536Z",
+  "model": "longcat-2.5-preview-free",
+  "budgetUsd": 0,
+  "results": [
+    {
+      "case": 2,
+      "title": "資料不完整：只用已知評論",
+      "language": "zh-HK",
+      "review": "等咗一陣，但職員有耐心解答問題。",
+      "factScope": "未設定地址、電話、營業時間、優惠或改善承諾；必要評論先追問，非必要資料省略。",
+      "business": "Synthetic UAT Merchant 2",
+      "voice": "professional",
+      "workspaceId": "a49a433f-3954-4791-9810-ac355a518820",
+      "locationId": "12fa83a9-9aa1-4f2e-8b26-4521e0f6c3ed",
+      "actionId": "6101af0f-2888-4970-8871-fb1ac8c6ae30",
+      "brandRevision": "a1a20ff3-1222-4512-9d66-2d399017ef49",
+      "firstSaveMs": 17578,
+      "repeatedKnownReviewConfirmation": false,
+      "version": {
+        "id": "bbf1c442-2a61-456e-ad32-96576e331891",
+        "version_no": 1,
+        "body": "1. 評論：「等咗一陣，但職員有耐心解答問題。」\n\n多謝你嘅留言同耐心等候！好開心我哋嘅職員能夠耐心解答你嘅問題，亦都明白等待嘅時間可能令你覺得唔方便。你嘅意見對我好重要，如果仲有任何疑問或者想進一步了解，歡迎隨時喺呢個評論下面留言聯絡我哋，我會盡力協助你。再次多謝你嘅支持同鼓勵！",
+        "approval_state": "draft",
+        "approved_at": null,
+        "first_exported_at": null,
+        "meta": {
+          "title": "回覆評論",
+          "warnings": [
+            "評論由商戶自行提供，並非從公開檔案讀取",
+            "品牌無已確認地址或探訪邀請，故未加入地址或實體聯絡方式"
+          ],
+          "agent_key": "review_reply",
+          "facts_used": [
+            "brand_voice: professional",
+            "language: zh-HK",
+            "reviews_without_response（商戶提供）：等咗一陣，但職員有耐心解答問題。"
+          ],
+          "prompt_version": "2026-10-17.2",
+          "acceptance_criteria": [
+            "回覆以繁體中文（香港書面粵語）撰寫，語氣專業",
+            "有確認評論內容（等候及職員耐心解答）並致謝",
+            "下一步僅邀請在評論區留言聯絡，無實體邀請或補償承諾",
+            "無使用禁用詞語（Guaranteed）",
+            "無虛構事實、地址、優惠或政策"
+          ]
+        },
+        "action_run_id": "16578b75-102d-411e-948c-73caa201f202"
+      },
+      "persistedAndReloaded": true,
+      "freshFixtureSessionReadback": true,
+      "providerCalls": 1,
+      "state": "PASS persistence; human quality pending",
+      "manualTailAdded": false
+    },
+    {
+      "case": 3,
+      "title": "指定分店：不混用其他店資料",
+      "language": "en",
+      "review": "Thank you to the staff for answering my questions.",
+      "factScope": "Selected Branch B; Branch A's confirmed 12 Branch A Road and imported 99 Imported B Street are not authorized facts for this reply.",
+      "business": "Synthetic UAT Merchant 3",
+      "voice": "professional",
+      "workspaceId": "cc42618a-b9be-4a41-8253-e466f1c7f8e2",
+      "locationId": "24c1c14b-c5c2-4db8-9cde-d34ecf453a47",
+      "actionId": "d818cb57-5003-43f6-a0f7-f7f56b3feb23",
+      "brandRevision": "4899f1e5-5569-4fae-acdf-b55c90f8d0ad",
+      "firstSaveMs": 9892,
+      "repeatedKnownReviewConfirmation": false,
+      "version": {
+        "id": "97b82c5e-f2ed-4bf9-8cbe-14c5c076a0a9",
+        "version_no": 1,
+        "body": "The following review was supplied by the owner and was not read from the business profile.\n\n1. Review: \"Thank you to the staff for answering my questions.\"\n\nThank you for your kind words. We are glad the staff could answer your questions, and we appreciate you taking the time to share your feedback.",
+        "approval_state": "draft",
+        "approved_at": null,
+        "first_exported_at": null,
+        "meta": {
+          "title": "Reply to owner-supplied review",
+          "warnings": [
+            "Review text was supplied by the owner, not collected from the business profile; no scan evidence was available."
+          ],
+          "agent_key": "review_reply",
+          "facts_used": [
+            "Brand voice: professional",
+            "Language: en",
+            "Owner-supplied review text: \"Thank you to the staff for answering my questions.\""
+          ],
+          "prompt_version": "2026-10-17.2",
+          "acceptance_criteria": [
+            "Acknowledges the reviewer's thanks to the staff for answering questions",
+            "Thanks the reviewer for sharing feedback",
+            "Uses a professional tone in English",
+            "No compensation promises, physical visit invitations, or invented business facts",
+            "Notes the review was owner-supplied rather than read from the profile"
+          ]
+        },
+        "action_run_id": "b60a5c4f-8251-47c8-98d6-fa621360d0a3"
+      },
+      "persistedAndReloaded": true,
+      "freshFixtureSessionReadback": true,
+      "providerCalls": 1,
+      "state": "PASS persistence; human quality pending",
+      "manualTailAdded": false
+    },
+    {
+      "case": 4,
+      "title": "修改保存：縮短、語氣及 CTA",
+      "language": "zh-HK",
+      "review": "職員解釋清楚，態度友善，多謝你哋。",
+      "factScope": "目前品牌語氣 direct；只可邀請在評論留言補充意見，沒有實體到訪許可或優惠。",
+      "business": "Synthetic UAT Merchant 4",
+      "voice": "direct",
+      "workspaceId": "5b90e845-ba86-42e7-a433-242d6581c641",
+      "locationId": "3a853ae4-66e7-4a0f-bff4-9c949a491dfe",
+      "actionId": "254cc7d1-f9ad-4de8-a71b-15725158be9d",
+      "brandRevision": "299cde97-6a1c-4687-831a-f4e6dd6b8131",
+      "firstSaveMs": 12159,
+      "repeatedKnownReviewConfirmation": false,
+      "version": {
+        "id": "002cbb52-ebf6-4ccb-aead-d01e31b023e2",
+        "version_no": 4,
+        "body": "1. 評論：「職員解釋清楚，態度友善，多謝你哋。」\n\n多謝你嘅好評！同事解釋同態度令你滿意，我哋好開心。如有查詢，歡迎隨時聯絡我哋。\n\n（備註：以上評論由店主提供，並非從評論頁面讀取。）",
+        "approval_state": "draft",
+        "approved_at": null,
+        "first_exported_at": null,
+        "meta": {
+          "title": "回覆評論",
+          "intent": "contact_review_reply",
+          "origin": "assistant",
+          "warnings": [],
+          "agent_key": "review_reply",
+          "facts_used": [
+            "brand_voice: direct",
+            "language: zh-HK",
+            "reviews_without_response: 職員解釋清楚，態度友善，多謝你哋。"
+          ],
+          "prompt_version": "2026-10-17.2",
+          "acceptance_criteria": [
+            "回覆確認評論內容致謝",
+            "使用聯絡作下一步，無實體邀請",
+            "無補償承諾",
+            "無禁用詞",
+            "註明評論由店主提供"
+          ]
+        },
+        "action_run_id": "ed715329-a7e7-4398-a249-0a79bdd236cf"
+      },
+      "persistedAndReloaded": true,
+      "freshFixtureSessionReadback": true,
+      "providerCalls": 4,
+      "state": "PASS persistence; human quality pending",
+      "manualTailAdded": false
+    },
+    {
+      "case": 5,
+      "title": "舊分頁衝突後保存正確版本",
+      "language": "en",
+      "review": "I appreciate the clear explanation and friendly support.",
+      "factScope": "Professional voice; no confirmed operational promises. A stale-tab edit is explicitly compared and saved over the new base.",
+      "business": "Synthetic UAT Merchant 5",
+      "voice": "professional",
+      "workspaceId": "73cb227f-9718-4847-8a43-2347d957d193",
+      "locationId": "5001e7c7-4743-46bb-bcd7-5c9dec354a1c",
+      "actionId": "d2908206-8661-4fdf-af57-d49a50af450c",
+      "brandRevision": "f1fe66ef-eef0-47f5-8051-82822cd8cffa",
+      "firstSaveMs": 8788,
+      "repeatedKnownReviewConfirmation": false,
+      "version": {
+        "id": "3ab6c20a-4365-441d-bcbf-06d442553253",
+        "version_no": 3,
+        "body": "1. Review: \"I appreciate the clear explanation and friendly support.\"\n\nThank you for your review. We are glad the explanation was clear and that you found the support friendly. If you have any further questions, feel free to leave a comment in this review thread.\nThank you for taking the time to share your feedback.",
+        "approval_state": "draft",
+        "approved_at": null,
+        "first_exported_at": null,
+        "meta": {},
+        "action_run_id": null
+      },
+      "persistedAndReloaded": true,
+      "freshFixtureSessionReadback": true,
+      "providerCalls": 1,
+      "state": "PASS persistence; human quality pending",
+      "manualTailAdded": true
+    }
+  ],
+  "providerCalls": 7,
+  "forbidden": [],
+  "humanRatings": "PENDING: user",
+  "deployed": false,
+  "productionDataChanged": false
+}

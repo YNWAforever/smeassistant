@@ -1,0 +1,13 @@
+{
+  "result": "FAIL",
+  "sourceSha": "d153c4a3e4c614de0377f055ee24b10d7b5cb655",
+  "cases": 1,
+  "providerCalls": 2,
+  "error": "acceptance_assertion_or_runtime_failure",
+  "errorName": "Error",
+  "frames": [
+    "    at generate (C:\\Users\\laich\\Documents\\smescanner\\.worktrees\\smeassistant-llm-rate-limit-20261015\\.superpowers\\sdd\\review-usage-reliability-20261017\\run-live-acceptance.ts:93:32)",
+    "    at async main (C:\\Users\\laich\\Documents\\smescanner\\.worktrees\\smeassistant-llm-rate-limit-20261015\\.superpowers\\sdd\\review-usage-reliability-20261017\\run-live-acceptance.ts:187:21)"
+  ],
+  "message": "generation_not_saved_草稿含有未確認的地址或到訪邀請，已暫停提供。請先確認商戶現時資料再試；現有草稿已保留。"
+}

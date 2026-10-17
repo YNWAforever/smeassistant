@@ -1,0 +1,25 @@
+{
+  "runId": "live_run_271dff4d-43b0-45ac-8025-06bd2b171acd",
+  "state": "needs_approval",
+  "answer": "「回覆評論」的草稿已準備好供店主審閱。內容只使用品牌事實及所示證據；建立新版本前不會儲存任何內容。",
+  "nextAction": "檢查語氣及事實，建立新版本，再核准指定版本；不會自動發佈。",
+  "evidenceRefs": [],
+  "draftRunId": "ed715329-a7e7-4398-a249-0a79bdd236cf",
+  "output": {
+    "type": "review_reply",
+    "artifactId": "art_b3c6f173-babb-41d7-b516-f0512374acc2",
+    "version": 1,
+    "title": "回覆評論",
+    "body": "1. 評論：「職員解釋清楚，態度友善，多謝你哋。」\n\n多謝你嘅好評！同事解釋同態度令你滿意，我哋好開心。如有查詢，歡迎隨時聯絡我哋。\n\n（備註：以上評論由店主提供，並非從評論頁面讀取。）",
+    "acceptanceCriteria": [
+      "回覆確認評論內容致謝",
+      "使用聯絡作下一步，無實體邀請",
+      "無補償承諾",
+      "無禁用詞",
+      "註明評論由店主提供"
+    ]
+  },
+  "warnings": [],
+  "requiresApproval": true,
+  "demoBoundary": "回答只使用此工作區的證據快照；這裡不會發佈或核准任何內容。"
+}

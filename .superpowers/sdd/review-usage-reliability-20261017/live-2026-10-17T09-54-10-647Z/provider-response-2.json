@@ -1,0 +1,27 @@
+{
+  "id": "917ce3c9a80247cf9b3e696c1df9ef17",
+  "object": "chat.completion",
+  "created": 1792230968,
+  "model": "longcat-2.5-preview-free",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "logprobs": null,
+      "message": {
+        "role": "assistant",
+        "content": "{\n  \"title\": \"Reply to owner-supplied review\",\n  \"body\": \"The following review was supplied by the owner and was not read from the business profile.\\n\\n1. Review: \\\"Thank you to the staff for answering my questions.\\\"\\n\\nThank you for your kind words. We are glad the staff could answer your questions, and we appreciate you taking the time to share your feedback.\",\n  \"acceptance_criteria\": [\n    \"Acknowledges the reviewer's thanks to the staff for answering questions\",\n    \"Thanks the reviewer for sharing feedback\",\n    \"Uses a professional tone in English\",\n    \"No compensation promises, physical visit invitations, or invented business facts\",\n    \"Notes the review was owner-supplied rather than read from the profile\"\n  ],\n  \"warnings\": [\n    \"Review text was supplied by the owner, not collected from the business profile; no scan evidence was available.\"\n  ],\n  \"facts_used\": [\n    \"Brand voice: professional\",\n    \"Language: en\",\n    \"Owner-supplied review text: \\\"Thank you to the staff for answering my questions.\\\"\"\n  ],\n  \"facts_needed\": []\n}"
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 1682,
+    "completion_tokens": 239,
+    "total_tokens": 1921,
+    "prompt_tokens_details": {
+      "audio_tokens": 0,
+      "cached_tokens": 0,
+      "cache_write_tokens": 0
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "029369a500704709a22c94293d26b709",
+  "object": "chat.completion",
+  "created": 1792231079,
+  "model": "longcat-2.5-preview-free",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "logprobs": null,
+      "message": {
+        "role": "assistant",
+        "content": "{\n  \"title\": \"Reply to review\",\n  \"body\": \"1. Review: \\\"I appreciate the clear explanation and friendly support.\\\"\\n\\nThank you for your review. We are glad the explanation was clear and that you found the support friendly. If you have any further questions, feel free to leave a comment in this review thread.\",\n  \"acceptance_criteria\": [\n    \"Acknowledges the reviewer's words about clear explanation and friendly support.\",\n    \"Thanks the reviewer.\",\n    \"Uses a contact-only next step inviting further feedback in the review thread.\",\n    \"No compensation promises, physical visit invitations, or unconfirmed business claims.\",\n    \"Professional voice in English.\"\n  ],\n  \"warnings\": [\n    \"Review text was supplied by the owner, not read from the profile.\"\n  ],\n  \"facts_used\": [\n    \"Brand voice: professional\",\n    \"Language: en\",\n    \"Owner-supplied review text in provided_inputs.reviews_without_response\"\n  ],\n  \"facts_needed\": []\n}"
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 1680,
+    "completion_tokens": 209,
+    "total_tokens": 1889,
+    "prompt_tokens_details": {
+      "audio_tokens": 0,
+      "cached_tokens": 0,
+      "cache_write_tokens": 0
+    }
+  }
+}

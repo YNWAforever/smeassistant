@@ -1,0 +1,54 @@
+{
+  "workspaceId": "5b90e845-ba86-42e7-a433-242d6581c641",
+  "versions": [
+    {
+      "id": "20330cdb-390f-44b4-bdff-b0d65a6cfe17",
+      "version_no": 1,
+      "approval_state": "draft",
+      "approved_at": null,
+      "first_exported_at": null,
+      "action_run_id": "d0654f37-838a-4531-b0cf-80cfcdbdabe4"
+    }
+  ],
+  "runs": [
+    {
+      "id": "d0654f37-838a-4531-b0cf-80cfcdbdabe4",
+      "state": "succeeded",
+      "model": "longcat-2.5-preview-free",
+      "input_tokens": 1718,
+      "output_tokens": 237,
+      "cost_usd": 0,
+      "started_at": "2026-10-17T09:56:25.657233+00:00",
+      "finished_at": "2026-10-17T09:56:36.73+00:00",
+      "provider_usage": {
+        "status": "complete",
+        "costUsd": 0,
+        "version": 1,
+        "attempts": {
+          "931f74a6-3594-48c9-9bbe-317bd845a116": {
+            "id": "931f74a6-3594-48c9-9bbe-317bd845a116",
+            "late": false,
+            "model": "longcat-2.5-preview-free",
+            "state": "reported",
+            "usage": {
+              "inputTokens": 1718,
+              "outputTokens": 237
+            },
+            "costUsd": 0,
+            "sequence": 1,
+            "startedAt": "2026-10-17T09:56:25.679Z",
+            "finishedAt": "2026-10-17T09:56:36.588Z",
+            "providerRequestId": "8429f8eb97024707bac39b8d00e390ca"
+          }
+        },
+        "inputTokens": 1718,
+        "knownCostUsd": 0,
+        "outputTokens": 237,
+        "knownInputTokens": 1718,
+        "knownOutputTokens": 237
+      }
+    }
+  ],
+  "deliveries": 0,
+  "deliveryUsage": 0
+}

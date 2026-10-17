@@ -1,0 +1,14 @@
+{
+  "result": "PASS",
+  "providerRequests": 8,
+  "providerIn": 14114,
+  "providerOut": 1719,
+  "applicationIn": 14114,
+  "applicationOut": 1719,
+  "unresolvedAttempts": 0,
+  "applicationEstimatedCostUsd": 0,
+  "pricingBasis": "Exact free model, current official pricing gate before every request; invoice not checked",
+  "productionChanged": false,
+  "fallback": false,
+  "approvedOrPublished": false
+}

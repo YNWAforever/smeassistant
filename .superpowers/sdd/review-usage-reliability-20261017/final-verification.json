@@ -1,0 +1,243 @@
+{
+  "observedAt": "2026-10-17T10:02:10.833Z",
+  "applicationSha": "d153c4a3e4c614de0377f055ee24b10d7b5cb655",
+  "diagnosticRunnerSha": "bb3f48af4ae42a362c3ff58878f74286736e0f40",
+  "applicationBytesIdenticalAcrossRuns": true,
+  "preservedFailure": {
+    "run": "live-2026-10-17T09-50-00-122Z",
+    "case": 2,
+    "reason": "Business fact guard refused the completion; no version",
+    "originalProviderBodyRetained": false,
+    "exactOffendingTextOrFalsePositive": "UNVERIFIED",
+    "usageCompleteBeforeContinuation": true
+  },
+  "model": "longcat-2.5-preview-free",
+  "endpoint": "https://opencode.ai/inference/go/v1/chat/completions",
+  "budgetUsd": 0,
+  "fallback": false,
+  "providerRequests": 10,
+  "providerInput": 17517,
+  "providerOutput": 2152,
+  "applicationInput": 17517,
+  "applicationOutput": 2152,
+  "unmatchedProviderResponses": 0,
+  "unresolvedAttempts": 0,
+  "applicationEstimatedCostUsd": 0,
+  "invoiceVerified": false,
+  "deliveries": 0,
+  "approvedVersions": 0,
+  "cases": [
+    {
+      "case": 1,
+      "evidenceRun": "live-2026-10-17T09-50-00-122Z",
+      "version": 1,
+      "versionId": "322ec8f8-660e-41e0-99a9-f34db315e1af",
+      "firstSaveMs": 17679,
+      "language": "en",
+      "voice": "professional",
+      "body": "1. Review (owner-supplied): \"The team explained the options clearly...\"\n\nThank you for your kind words. We are glad the team explained the options clearly and took the time to answer your questions. We appreciate you sharing your experience.",
+      "originalReview": "The team explained the options clearly and were patient with my questions. Thank you.",
+      "factScope": "Professional voice; no confirmed address, prices, offers, hours or operational promises.",
+      "reload": true,
+      "newFixtureSession": true,
+      "repeatedKnownReviewConfirmation": false,
+      "manualTailAdded": false,
+      "humanRating": "PENDING_USER"
+    },
+    {
+      "case": 2,
+      "evidenceRun": "live-2026-10-17T09-54-10-647Z",
+      "version": 1,
+      "versionId": "bbf1c442-2a61-456e-ad32-96576e331891",
+      "firstSaveMs": 17578,
+      "language": "zh-HK",
+      "voice": "professional",
+      "body": "1. 評論：「等咗一陣，但職員有耐心解答問題。」\n\n多謝你嘅留言同耐心等候！好開心我哋嘅職員能夠耐心解答你嘅問題，亦都明白等待嘅時間可能令你覺得唔方便。你嘅意見對我好重要，如果仲有任何疑問或者想進一步了解，歡迎隨時喺呢個評論下面留言聯絡我哋，我會盡力協助你。再次多謝你嘅支持同鼓勵！",
+      "originalReview": "等咗一陣，但職員有耐心解答問題。",
+      "factScope": "未設定地址、電話、營業時間、優惠或改善承諾；必要評論先追問，非必要資料省略。",
+      "reload": true,
+      "newFixtureSession": true,
+      "repeatedKnownReviewConfirmation": false,
+      "manualTailAdded": false,
+      "humanRating": "PENDING_USER"
+    },
+    {
+      "case": 3,
+      "evidenceRun": "live-2026-10-17T09-54-10-647Z",
+      "version": 1,
+      "versionId": "97b82c5e-f2ed-4bf9-8cbe-14c5c076a0a9",
+      "firstSaveMs": 9892,
+      "language": "en",
+      "voice": "professional",
+      "body": "The following review was supplied by the owner and was not read from the business profile.\n\n1. Review: \"Thank you to the staff for answering my questions.\"\n\nThank you for your kind words. We are glad the staff could answer your questions, and we appreciate you taking the time to share your feedback.",
+      "originalReview": "Thank you to the staff for answering my questions.",
+      "factScope": "Selected Branch B; Branch A's confirmed 12 Branch A Road and imported 99 Imported B Street are not authorized facts for this reply.",
+      "reload": true,
+      "newFixtureSession": true,
+      "repeatedKnownReviewConfirmation": false,
+      "manualTailAdded": false,
+      "humanRating": "PENDING_USER"
+    },
+    {
+      "case": 4,
+      "evidenceRun": "live-2026-10-17T09-54-10-647Z",
+      "version": 4,
+      "versionId": "002cbb52-ebf6-4ccb-aead-d01e31b023e2",
+      "firstSaveMs": 12159,
+      "language": "zh-HK",
+      "voice": "direct",
+      "body": "1. 評論：「職員解釋清楚，態度友善，多謝你哋。」\n\n多謝你嘅好評！同事解釋同態度令你滿意，我哋好開心。如有查詢，歡迎隨時聯絡我哋。\n\n（備註：以上評論由店主提供，並非從評論頁面讀取。）",
+      "originalReview": "職員解釋清楚，態度友善，多謝你哋。",
+      "factScope": "目前品牌語氣 direct；只可邀請在評論留言補充意見，沒有實體到訪許可或優惠。",
+      "reload": true,
+      "newFixtureSession": true,
+      "repeatedKnownReviewConfirmation": false,
+      "manualTailAdded": false,
+      "humanRating": "PENDING_USER"
+    },
+    {
+      "case": 5,
+      "evidenceRun": "live-2026-10-17T09-54-10-647Z",
+      "version": 3,
+      "versionId": "3ab6c20a-4365-441d-bcbf-06d442553253",
+      "firstSaveMs": 8788,
+      "language": "en",
+      "voice": "professional",
+      "body": "1. Review: \"I appreciate the clear explanation and friendly support.\"\n\nThank you for your review. We are glad the explanation was clear and that you found the support friendly. If you have any further questions, feel free to leave a comment in this review thread.\nThank you for taking the time to share your feedback.",
+      "originalReview": "I appreciate the clear explanation and friendly support.",
+      "factScope": "Professional voice; no confirmed operational promises. A stale-tab edit is explicitly compared and saved over the new base.",
+      "reload": true,
+      "newFixtureSession": true,
+      "repeatedKnownReviewConfirmation": false,
+      "manualTailAdded": true,
+      "humanRating": "PENDING_USER"
+    }
+  ],
+  "lateUsage": {
+    "result": "PASS",
+    "outputElapsedMs": 45590,
+    "totalElapsedMs": 55622,
+    "output": {
+      "runId": "9bef525c-80c4-4c31-84d3-64f00e5dacf3",
+      "state": "failed",
+      "error": "The previous generation did not finish. Reload its status before deciding whether to start again.",
+      "usagePending": true
+    },
+    "actualFreeModelResponseHeldLocally": true,
+    "inferenceCalls": 1,
+    "retryStatus": 409,
+    "receipt": {
+      "workspaceId": "4bb4a558-b671-479f-9513-b95ea261d55d",
+      "versions": [
+        {
+          "id": "68d2c96c-e5cf-4db6-9ef1-2613ca064281",
+          "version_no": 1,
+          "approval_state": "draft",
+          "approved_at": null,
+          "first_exported_at": null,
+          "action_run_id": null
+        }
+      ],
+      "runs": [
+        {
+          "id": "9bef525c-80c4-4c31-84d3-64f00e5dacf3",
+          "state": "failed",
+          "model": "longcat-2.5-preview-free",
+          "input_tokens": 1684,
+          "output_tokens": 177,
+          "cost_usd": 0,
+          "started_at": "2026-10-17T09:58:20.824451+00:00",
+          "finished_at": "2026-10-17T09:59:05.864+00:00",
+          "provider_usage": {
+            "status": "complete",
+            "costUsd": 0,
+            "version": 1,
+            "attempts": {
+              "4efd9261-e969-4597-a786-551e409b69ff": {
+                "id": "4efd9261-e969-4597-a786-551e409b69ff",
+                "late": true,
+                "model": "longcat-2.5-preview-free",
+                "state": "reported",
+                "usage": {
+                  "inputTokens": 1684,
+                  "outputTokens": 177
+                },
+                "costUsd": 0,
+                "sequence": 1,
+                "startedAt": "2026-10-17T09:58:20.841Z",
+                "finishedAt": "2026-10-17T09:59:06.888Z",
+                "providerRequestId": "70f74e8c043b46c8969289ee7bfdeffb"
+              }
+            },
+            "inputTokens": 1684,
+            "knownCostUsd": 0,
+            "outputTokens": 177,
+            "knownInputTokens": 1684,
+            "knownOutputTokens": 177
+          }
+        }
+      ],
+      "deliveries": 0,
+      "deliveryUsage": 0
+    }
+  },
+  "cleanup": [
+    {
+      "observedAt": "2026-10-17T09:51:37.057Z",
+      "exactContainerId": "8c9fbcd06c784fe42ffc48b941328fb8d2d3f822d99333fccc3e8ac8908ffa19",
+      "remaining": "",
+      "stopped": true
+    },
+    {
+      "observedAt": "2026-10-17T09:59:21.519Z",
+      "exactContainerId": "f8826d001494c581d9b092f36002d864d5fc91c5145565a49f0ff42e28a6e6c8",
+      "remaining": "",
+      "stopped": true
+    }
+  ],
+  "testStages": [
+    {
+      "phase": "unit",
+      "exitCode": 0,
+      "observedAt": "2026-10-17T17:44:05.9919027+08:00"
+    },
+    {
+      "phase": "db",
+      "exitCode": 0,
+      "observedAt": "2026-10-17T17:44:24.8180527+08:00"
+    },
+    {
+      "phase": "typecheck",
+      "exitCode": 0,
+      "observedAt": "2026-10-17T17:44:39.8761642+08:00"
+    },
+    {
+      "phase": "lint",
+      "exitCode": 0,
+      "observedAt": "2026-10-17T17:45:35.0594216+08:00"
+    },
+    {
+      "phase": "no-supabase",
+      "exitCode": 0,
+      "observedAt": "2026-10-17T17:45:37.4077521+08:00"
+    },
+    {
+      "phase": "no-self-service-claim",
+      "exitCode": 0,
+      "observedAt": "2026-10-17T17:45:38.0448349+08:00"
+    },
+    {
+      "phase": "secret-boundary-build",
+      "exitCode": 0,
+      "observedAt": "2026-10-17T17:46:47.7180446+08:00"
+    },
+    {
+      "phase": "browser",
+      "exitCode": 0,
+      "observedAt": "2026-10-17T17:49:27.3287465+08:00"
+    }
+  ],
+  "deployed": false,
+  "productionDataChanged": false,
+  "humanQuality": "PENDING_USER"
+}
