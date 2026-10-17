@@ -631,6 +631,21 @@ export async function runAgentForAction(
         break;
       }
     }
+    if (output && template.key === "local-seo-brief" && output.facts_needed.length) {
+      // The local SEO brief deliberately has no owner-input form. Keep a usable
+      // partial draft and surface model-reported evidence gaps as limitations;
+      // otherwise fail closed rather than leaving an empty needs_input action.
+      if (!output.body.trim()) {
+        reason = "invalid_output";
+        output = null;
+      } else {
+        output = {
+          ...output,
+          facts_needed: [],
+          warnings: [...new Set([...output.warnings, ...output.facts_needed])],
+        };
+      }
+    }
     if (output) {
       if (unusableExistingReviewQuestion(ctx, output)) {
         reason = "invalid_output";

@@ -248,6 +248,59 @@ describe("typed action runtime", () => {
     expect(finish.mock.calls[0][0].output?.facts_needed).toEqual([]);
     expect(finish.mock.calls[0][0].output?.warnings).toContain("opening_hours");
   });
+  it("saves a no-input local SEO brief and treats free-form missing evidence as limitations", async () => {
+    row = {
+      ...action,
+      template_key: "local-seo-brief",
+      required_inputs: [],
+      provided_inputs: {},
+    } as unknown as typeof action;
+    const limitations = [
+      "Google 地圖模組失敗原因（SERPAPI_GBP_INVALID_RESPONSE）",
+      "3 個競爭對手嘅名稱",
+      "Instagram handle（目前未提供）",
+    ];
+    const body = `Where we appear
+Observed: one Maps result is recorded.
+Where competitors appear above us
+No competitor names are available in the evidence.
+What to do first
+Observed: review the recorded Maps gap.
+Limitations
+${limitations.join("\n")}`;
+    const llm = vi.fn(async () => good({ body, facts_needed: limitations }));
+    const result = await run({ llm });
+    expect(result).toMatchObject({ state: "succeeded", versionId: "v-1" });
+    expect(result.factsNeeded).toBeUndefined();
+    expect(finish.mock.calls[0][0].output).toMatchObject({
+      body,
+      facts_needed: [],
+      warnings: limitations,
+    });
+  });
+  it("fails closed when a no-input local SEO agent asks for facts but supplies no body", async () => {
+    row = {
+      ...action,
+      template_key: "local-seo-brief",
+      required_inputs: [],
+      provided_inputs: {},
+    } as unknown as typeof action;
+    const llm = vi.fn(async () => good({
+      body: "",
+      facts_needed: [
+        "Google 地圖模組失敗原因（SERPAPI_GBP_INVALID_RESPONSE）",
+        "3 個競爭對手嘅名稱",
+      ],
+    }));
+    const result = await run({ llm });
+    expect(result).toMatchObject({ state: "failed" });
+    expect(result.factsNeeded).toBeUndefined();
+    expect(finish.mock.calls[0][0].factsNeeded).toBeUndefined();
+    expect(finish.mock.calls[0][0]).toMatchObject({
+      output: null,
+      reason: "invalid_output",
+    });
+  });
   it("does not ask for an existing review when the model produced a usable review reply", async () => {
     const result = await run({ llm: vi.fn(async () => good({ facts_needed: ["reviews_without_response"] })) });
     expect(result).toMatchObject({ versionId: "v-1" });

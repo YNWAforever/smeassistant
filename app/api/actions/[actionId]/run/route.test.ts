@@ -182,6 +182,55 @@ describe("POST /api/actions/[actionId]/run", () => {
     ).toEqual(["run.started", "run.succeeded"]);
   });
 
+  it("creates a local SEO v1 instead of returning an empty needs_input response", async () => {
+    actionRow = {
+      ...action,
+      template_key: "local-seo-brief",
+      required_inputs: [],
+      provided_inputs: {},
+    };
+    mocks.llmComplete.mockResolvedValue({
+      text: JSON.stringify({
+        title: "Local search brief",
+        body: [
+          "Where we appear",
+          "Observed: one Maps result is recorded.",
+          "Where competitors appear above us",
+          "No competitor names are available in the evidence.",
+          "What to do first",
+          "Observed: review the recorded Maps gap.",
+          "Limitations",
+          "The Google Maps module source failed.",
+        ].join("\n"),
+        acceptance_criteria: [],
+        warnings: [],
+        facts_used: [],
+        facts_needed: [
+          "Google 地圖模組失敗原因（SERPAPI_GBP_INVALID_RESPONSE）",
+          "3 個競爭對手嘅名稱",
+        ],
+      }),
+      usage: { inputTokens: 50, outputTokens: 20 },
+    });
+
+    const res = await post();
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      runId: "run-1",
+      state: "succeeded",
+      versionId: "v-1",
+      versionNo: 1,
+    });
+    expect(mocks.db!.rpc).toHaveBeenCalledWith(
+      "create_output_version",
+      expect.objectContaining({
+        p_author_type: "agent",
+        p_action_run_id: "run-1",
+      }),
+    );
+  });
+
   it("records no_model_output once without a schema retry or version", async () => {
     const consoleError = vi
       .spyOn(console, "error")
