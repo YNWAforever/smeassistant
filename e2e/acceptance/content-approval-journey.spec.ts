@@ -259,7 +259,7 @@ test("S4 Hong Kong mobile: shorten, tone and CTA revisions save, fresh login rea
   record("scenario-4", { result: "PASS", browser: "Chromium 390x844 viewport, not a real phone or Safari", targetedRevisions: ["shorten", "warmer", "contact-only CTA"], freshFixtureLoginReadback: true, savedBody: finalBody, versions: 5 });
 });
 
-test("S5 old tab compares before saving; provider failure preserves drafts and an explicit retry succeeds", async ({ page, context, merchant, environment }) => {
+test("S5 old tab compares before saving; invalid provider output preserves drafts and an explicit retry succeeds", async ({ page, context, merchant, environment }) => {
   await signIn(page, environment, merchant);
   await saveBrand(page, merchant);
   await page.goto(actionPath(merchant));
@@ -281,8 +281,7 @@ test("S5 old tab compares before saving; provider failure preserves drafts and a
     await stale.getByRole("button", { name: "Save manual edits as a new version" }).click();
     await expect(stale.getByRole("button", { name: "Approve Version 3", exact: true })).toBeEnabled();
     expect((await stale.request.post(`/api/versions/${v1.versionId}/approve`, { data: {} })).status()).toBe(409);
-    await fetch(`${environment.llm}/mode`, { method: "POST", body: "unavailable" });
-    await modelOutput(environment, null);
+    await fetch(`${environment.llm}/mode`, { method: "POST", body: "invalid" });
     const failed = await stale.request.post(`/api/actions/${merchant.actionId}/run`, { data: { locale: "en" } });
     expect(failed.status()).toBe(200);
     expect((await failed.json()).versionId).toBeUndefined();
@@ -295,7 +294,7 @@ test("S5 old tab compares before saving; provider failure preserves drafts and a
     await stale.reload(); await waitForHydration(stale);
     await expect(stale.locator("#draft-content")).toHaveValue("Thank you for your feedback. Please leave a comment with any further thoughts.");
     await approve(stale, merchant, environment, 4);
-    record("scenario-5", { result: "PASS", conflictComparedAndExplicitlyRebased: true, staleApprovalRefused: true, providerFailureRetainedVersion: 3, retryVersion: saved.versionNo });
+    record("scenario-5", { result: "PASS", conflictComparedAndExplicitlyRebased: true, staleApprovalRefused: true, providerFailure: "invalid response with complete usage", providerFailureRetainedVersion: 3, retryVersion: saved.versionNo });
   } finally { await stale.close(); }
 });
 

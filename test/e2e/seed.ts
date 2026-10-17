@@ -14,3 +14,12 @@ export async function seedMerchant(env: AcceptanceEnvironment, market: "hk" | "t
     insert into actions(id,workspace_id,location_id,template_key,title,summary,evidence,priority,priority_score,priority_factors,effort_minutes,capability,dedupe_key,provided_inputs) values ('${actionId}','${workspaceId}','${locationId}','review-response','{"en":"Reply to reviews","zh-HK":"回覆評論","zh-TW":"回覆評論"}','{"en":"Fixture review"}','{}','high',80,'{}',10,'Live','${actionId}','{"brand_voice":"warm","reviews_without_response":"Thank you for the service","language":"en"}');`);
   return { workspaceId, slug, locationId, otherLocationId, actionId, emails };
 }
+
+/**
+ * AI budget checks scan action_runs globally. Remove only the runs owned by
+ * this test merchant so an intentionally unresolved provider case cannot
+ * refuse the next acceptance case in the worker's shared fixture database.
+ */
+export function clearMerchantActionRuns(env: AcceptanceEnvironment, merchant: MerchantSeed): void {
+  sql(env.db, `delete from action_runs where workspace_id='${merchant.workspaceId}';`);
+}
