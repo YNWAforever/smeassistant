@@ -396,6 +396,23 @@ describe("all generation paths preserve unsaved edits", () => {
     fireEvent.click(generate);
     expect(clientMocks.runAction).toHaveBeenCalledTimes(1);
   });
+  it("blocks another inference when the failed response still has usage settlement pending", async () => {
+    renderLive(element(draft()));
+    clientMocks.runAction.mockResolvedValue({ ok: true, data: { runId: "pending-usage", state: "failed", error: "timeout", usagePending: true } });
+    const generate = screen.getByRole("button", { name: "Regenerate with the agent as a new version" });
+    await act(async () => { fireEvent.click(generate); });
+    expect(generate).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Reload draft and run status" })).toBeEnabled();
+    expect(String(toastMocks.error.mock.calls.at(-1)?.[0])).not.toContain("nothing was counted");
+  });
+  it("keeps an unsettled provider run blocked after a server reload", () => {
+    const value = draft();
+    value.runs = [{ id: "pending-usage", action_id: "act-1", agent_key: "review_reply", state: "failed", error: "timeout",
+      created_at: "2026-10-17T08:00:00Z", finished_at: "2026-10-17T08:00:45Z", usage_pending: true }];
+    renderLive(element(value));
+    expect(screen.getByRole("button", { name: "Regenerate with the agent as a new version" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Reload draft and run status" })).toBeEnabled();
+  });
 
   it("clears a fulfilled facts request after a definitive generation failure so retry does not ask again", async () => {
     const value = draft();

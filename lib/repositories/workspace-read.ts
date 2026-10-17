@@ -88,7 +88,8 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
     },
     async runs(workspaceId: string, actionIds: string[]): Promise<RunRow[]> {
       if (!actionIds.length) return [];
-      return rows<RunRow>(`SELECT r.id, r.action_id, r.agent_key, r.state, r.error, r.created_at::text, r.finished_at::text
+      return rows<RunRow>(`SELECT r.id, r.action_id, r.agent_key, r.state, r.error, r.created_at::text, r.finished_at::text,
+        coalesce(r.state NOT IN ('queued','running') AND r.input #>> '{provider_usage,status}' IN ('pending','unknown','partial'),false) AS usage_pending
         FROM action_runs r JOIN actions a ON a.id=r.action_id AND a.workspace_id=r.workspace_id
         WHERE a.workspace_id=$1 AND r.action_id=ANY($2::uuid[]) ORDER BY r.created_at DESC`, [workspaceId, actionIds]);
     },

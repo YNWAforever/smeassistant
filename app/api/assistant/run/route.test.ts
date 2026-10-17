@@ -119,7 +119,7 @@ describe("POST /api/assistant/run", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual(live);
     expect(mocks.enforceRateLimit).toHaveBeenCalledWith(expect.objectContaining({ scope: "assistant_run", identifiers: ["user-1"], failClosed: true }));
-    expect(mocks.runLiveAssistant).toHaveBeenCalledWith({ membership: auth("viewer").membership, intentId: "explain_priority", surface: "home", locale: "zh-HK", contextual: false, context: { workspaceId: WORKSPACE_ID, locationId: "22222222-2222-4222-8222-222222222222", snapshotId: undefined, actionId: undefined, versionId: undefined } });
+    expect(mocks.runLiveAssistant).toHaveBeenCalledWith({ membership: auth("viewer").membership, intentId: "explain_priority", surface: "home", locale: "zh-HK", contextual: false, context: { workspaceId: WORKSPACE_ID, locationId: "22222222-2222-4222-8222-222222222222", snapshotId: undefined, actionId: undefined, versionId: undefined }, deferUsageSettlement: expect.any(Function) });
     expect(mocks.llmComplete).not.toHaveBeenCalled();
   });
 

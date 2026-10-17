@@ -7,6 +7,15 @@ afterEach(() => vi.restoreAllMocks());
 const spend = (globalUsd: number, workspaceUsd: number) => vi.fn(async () => ({ globalUsd, workspaceUsd }));
 
 describe("checkAiBudget", () => {
+  it("does not treat unresolved global provider usage as zero spend", async () => {
+    expect(await checkAiBudget(async () => ({ globalUsd: 0, workspaceUsd: 0, globalUsageUnknown: true }), { entry: "ai_run" }, {}))
+      .toEqual({ allowed: false, scope: "ai_usage_unknown" });
+  });
+  it("does not treat unresolved workspace usage as zero under its configured limit", async () => {
+    expect(await checkAiBudget(async () => ({ globalUsd: 0, workspaceUsd: 0, workspaceUsageUnknown: true }), { entry: "assistant_draft" },
+      { BUDGET_AI_USD_GLOBAL_24H: "off", BUDGET_AI_USD_WORKSPACE_24H: "5" }))
+      .toEqual({ allowed: false, scope: "ai_usage_unknown" });
+  });
   it("allows below the default US$20 global limit", async () => {
     expect(await checkAiBudget(spend(19.99, 19.99), { entry: "ai_run" }, {})).toEqual({ allowed: true });
   });

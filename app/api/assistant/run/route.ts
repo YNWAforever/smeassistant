@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { contextualAssistantEnabled } from "@/lib/assistant/flag";
 import { AssistantAccessError, isDraftIntent, runLiveAssistant } from "@/lib/assistant/live";
 import { AiBudgetRefusal } from "@/lib/budgets/ai";
 import { logPauseRefusal, pauseState } from "@/lib/budgets/pause";
 import { authorizeWorkspaceRequest } from "@/lib/auth";
 import { authorizationOrUnavailable } from "@/lib/security/authorization-boundary";
-import { ActionRunInFlightError } from "@/lib/repositories/artifacts";
+import { ActionRunInFlightError, ActionRunUsageUncertainError } from "@/lib/repositories/artifacts";
 import { isLocale } from "@/lib/locale";
 import type { PrototypeLocale } from "@/lib/copy";
 import { isAssistantIntentId, isDemoQuestionId, type AssistantIntentId, type AssistantOrigin, type AssistantSurface } from "@/lib/pocket-assistant/contracts";
@@ -94,6 +94,7 @@ export async function POST(request: Request) {
       surface: surface as AssistantSurface,
       locale: locale as PrototypeLocale,
       contextual,
+      deferUsageSettlement: work => after(() => work.then(() => undefined)),
       context: { workspaceId, locationId: ids.locationId ?? undefined, snapshotId: ids.snapshotId ?? undefined, actionId: ids.actionId ?? undefined, versionId: ids.versionId ?? undefined },
     });
 
@@ -126,9 +127,10 @@ export async function POST(request: Request) {
     return json(result);
   } catch (error) {
     if (error instanceof ActionRunInFlightError) return json({error:"run_in_progress"},409);
+    if (error instanceof ActionRunUsageUncertainError) return json({error:"provider_usage_pending"},409);
     if (error instanceof AssistantAccessError) return json({ error: error.code }, error.status);
     // Already logged as "[budget] refused" (or "[budget] check_failed"); nothing reached the model.
-    if (error instanceof AiBudgetRefusal) return json({ error: error.code }, error.code === "ai_paused" ? 503 : 429);
+    if (error instanceof AiBudgetRefusal) return json({ error: error.code }, error.code === "ai_paused" ? 503 : error.code === "provider_usage_pending" ? 409 : 429);
     console.error("[api/assistant/run] failed", { category: "assistant_run_failed" });
     return json({ error: "unavailable" }, 503);
   }

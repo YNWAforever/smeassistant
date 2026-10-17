@@ -14,7 +14,7 @@ import type { PackOverview } from "@/lib/workspace/packs-model";
  */
 export type ClientResult<T> = { ok: true; data: T } | { ok: false; status: number; error: string };
 
-export type RunActionResult = { runId: string; state: "succeeded" | "failed"; versionId?: string; versionNo?: number; factsNeeded?: string[]; error?: string };
+export type RunActionResult = { runId: string; state: "succeeded" | "failed"; versionId?: string; versionNo?: number; factsNeeded?: string[]; error?: string; usagePending?: boolean };
 export type SaveVersionResult = { versionId: string; versionNo: number };
 export type ApproveVersionResult = { state: "approved"; delivery_state: "export_ready"; idempotent: boolean };
 export type DecideVersionResult = { state: "changes_requested" | "rejected" };
@@ -34,6 +34,7 @@ export type CreateObjectiveActionResult = {
   state?: "succeeded" | "failed";
   factsNeeded?: string[];
   runError?: string;
+  usagePending?: boolean;
 };
 export type UploadAssetResult = { assetId: string; signedUrl: string | null };
 export type SetAssetRightsResult = { ok: true; rights_status: "approved" | "rejected"; rights_confirmed_at: string | null };

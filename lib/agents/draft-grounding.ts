@@ -1,5 +1,6 @@
 import type { AgentContext, AgentOutput } from "./schema";
 import { compensationPromise } from "./guardrails";
+import { reviewSource, stripReviewQuotes as withoutReviewQuotes, unusableExistingReviewQuestion, withoutReviewRequests, withoutSuppliedReviewQuestion } from "./review-source";
 
 export const DRAFT_GROUNDING_VERSION = "2026-10-17.1";
 
@@ -122,17 +123,6 @@ const OPERATIONAL_FACT = /\b(?:opening hours|business hours|open(?:s|ing)?\s+(?:
 const CONFIRMED_INPUT = /^(?:address|current_address|approved_visit_invitation|opening_hours|hours|price|offer|policy|capacity|booking|contact|email|phone|cta_link)$/i;
 const BLOCKING_REVIEW_WARNING = /^(?:unexpected_link|unconfirmed_claim|compensation_promise|prohibited_term:)/;
 
-function withoutReviewQuotes(ctx: AgentContext, text: string): string {
-  // A literal quoted review is historical evidence, never a current operating promise.
-  const reviews = (ctx.sampledReviews ?? []).map(review => normalize(review.text));
-  const ownerReview = ctx.providedInputs.reviews_without_response;
-  if (!reviews.length && typeof ownerReview === "string") reviews.push(normalize(ownerReview));
-  return text.replace(/["“「]([^"”」\n]+)["”」]/gu, (quote, content: string) => {
-    const excerpt = normalize(content).replace(/(?:\.{3}|…)+$/u, "").trim();
-    return excerpt && reviews.some(review => review.includes(excerpt)) ? "" : quote;
-  });
-}
-
 const COMPENSATION_ITEM = "(?:(?:any|a|full)\\s+)?(?:refunds?|compensation|discounts?|vouchers?|coupons?|reimbursement)";
 const NEGATED_COMPENSATION = new RegExp(`\\b(?:we\\s+)?(?:cannot|can't|will not|won't|do not|don't)\\s+(?:(?:offer|provide|promise|guarantee|issue|give)\\s+)?${COMPENSATION_ITEM}(?:\\s+(?:or|and)\\s+${COMPENSATION_ITEM})*\\b`, "giu");
 
@@ -145,14 +135,18 @@ const OPTIONAL_REPLY_FACT = /^(?:address|opening[_ -]*hours|hours|phone(?:[_ -]*
 
 /** Merchant-only normalization; the public preview keeps the shared parser's facts_needed intact. */
 export function normalizeMerchantReviewOutput(ctx: AgentContext, output: AgentOutput): AgentOutput {
-  if (ctx.action.templateKey !== "review-response" || !ctx.draftGrounding || !output.body.trim()) return output;
-  const optional = output.facts_needed.filter(fact => OPTIONAL_REPLY_FACT.test(fact.normalize("NFKC").trim()));
+  if (ctx.action.templateKey !== "review-response" || !ctx.draftGrounding || !output.body.trim()
+      || unusableExistingReviewQuestion(ctx, output)) return output;
+  const sourceExists = reviewSource(ctx).kind !== "missing";
+  const facts = sourceExists ? output.facts_needed.map(withoutSuppliedReviewQuestion).filter(Boolean) : output.facts_needed;
+  const optional = facts.filter(fact => OPTIONAL_REPLY_FACT.test(fact.normalize("NFKC").trim()));
   const replyBody = withoutCompensationNegations(withoutReviewQuotes(ctx, output.body));
   const compensation = compensationPromise({ ...output, body: replyBody }).length > 0
     || /\b(?:refunds|discounts|vouchers|coupons)\b/i.test(replyBody);
   return {
     ...output,
-    facts_needed: output.facts_needed.filter(fact => !optional.includes(fact)),
+    ...(sourceExists ? { body: withoutReviewRequests(output.body) } : {}),
+    facts_needed: facts.filter(fact => !optional.includes(fact)),
     warnings: [...new Set([
       ...output.warnings.filter(warning => warning !== "compensation_promise"),
       ...(compensation ? ["compensation_promise"] : []),

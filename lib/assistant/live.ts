@@ -7,6 +7,8 @@ import { localized } from "@/lib/domain";
 import { llmComplete, llmCompleteDetailed, llmConfigured, type LLMOutcome } from "@/lib/llm";
 import { runErrorLabel } from "./draft-failure";
 import { blockingReviewWarnings, DRAFT_GROUNDING_VERSION, normalizeMerchantReviewOutput, scopeReviewReplyFacts, unconfirmedDraftBusinessFacts } from "@/lib/agents/draft-grounding";
+import { unusableExistingReviewQuestion } from "@/lib/agents/review-source";
+import { invokeProviderAttempt } from "@/lib/workspace/provider-attempt";
 import { isReviewRevisionIntent, type AssistantArtifact, type AssistantIntentId, type AssistantSurface, type DemoAssistantRunResponse, type EvidenceReference, type ReviewRevisionIntentId } from "@/lib/pocket-assistant/contracts";
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { assetRepository } from "@/lib/repositories/assets";
@@ -63,6 +65,7 @@ export interface LiveRunInput {
   /** Budget variables; defaults to process.env (tests pass their own). */
   budgetEnv?: Record<string, string | undefined>;
   now?: () => Date;
+  deferUsageSettlement?: (work: Promise<unknown>) => void;
   /**
    * P4.3: whether answers may carry a `nextStep` link. Off (the default) strips
    * it from every answer, so the response is what it was before P4.3.
@@ -407,10 +410,17 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistant
   let outcome: LLMOutcome;
   try {
     if (timeoutMs <= 0) outcome={ok:false,code:"timeout",retryable:true};
-    else if (input.llm) {
-      const legacy=await input.llm(prompt,{...AGENT_LLM_OPTIONS,timeoutMs});
-      outcome=legacy?{ok:true,result:legacy}:{ok:false,code:"no_model_output",retryable:false};
-    } else outcome=await (input.llmDetailed ?? llmCompleteDetailed)(prompt,{...AGENT_LLM_OPTIONS,timeoutMs});
+    else outcome=await invokeProviderAttempt({
+      persistence,attribution:{...attribution,runId,workspaceId:input.context.workspaceId},
+      model:process.env.LLM_MODEL || null,
+      options:{...AGENT_LLM_OPTIONS,timeoutMs,sessionId:runId,
+        usageSettlementTimeoutMs:Math.min(timeoutMs+5_000,55_000-(Date.now()-started)),
+        deferUsageSettlement:input.deferUsageSettlement},
+      call:async options=>{
+        if(input.llm){const legacy=await input.llm(prompt,options);return legacy?{ok:true,result:legacy}:{ok:false,code:"no_model_output",retryable:false};}
+        return (input.llmDetailed ?? llmCompleteDetailed)(prompt,options);
+      },
+    });
   } catch { outcome={ok:false,code:"network_error",retryable:true}; }
   const usage = (outcome.ok ? outcome.result.usage : outcome.usage) ?? { inputTokens: null, outputTokens: null };
   const failure = { actionId: action.row.id, agentKey: spec.agent, promptVersion: agent.promptVersion, intentId: intent, usage };
@@ -418,8 +428,8 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistant
     ...attribution,workspaceId:input.context.workspaceId,surface:input.surface,model:process.env.LLM_MODEL || null,
     reason,factsNeeded,costUsd:computeCostUsd(usage),finishedAt:(input.now ?? (()=>new Date()))().toISOString()}}});
   const parsedOutput = parseAgentOutput(outcome.ok ? outcome.result.text : undefined, agent.outputSchema);
-  if (!parsedOutput) {
-    const reason = outcome.ok ? "invalid_output" : outcome.code;
+  if (!parsedOutput || unusableExistingReviewQuestion(agentCtx, parsedOutput)) {
+    const reason = outcome.ok ? "invalid_output" : outcome.usagePending ? "provider_usage_pending" : outcome.code;
     await finishFailure(reason, []);
     return completed(fallbackIntentFor(intent), input, ctx, [runErrorLabel(input.locale, reason)]);
   }

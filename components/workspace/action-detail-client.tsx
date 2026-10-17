@@ -204,7 +204,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
   const [factsNeeded, setFactsNeeded] = useState<string[] | null>(null)
   const [inputValues, setInputValues] = useState<Record<string, string>>({})
   const [lastRunError, setLastRunError] = useState<string | null>(null)
-  const [needsRunReconciliation, setNeedsRunReconciliation] = useState(false)
+  const [localRunReconciliation, setNeedsRunReconciliation] = useState(false)
   // A 409 from approve/export names the reason the moment it happens; the derived reason below catches it on load.
   const [offerRefusal, setOfferRefusal] = useState<OfferStaleKind | null>(null)
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)
@@ -294,6 +294,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
   const canApproveCurrent = canApprove && !dirty && !conflict && selectedVersion?.id === versions[0]?.id && approval !== "rejected" && approval !== "superseded" && approval !== "approved" && offerStale === null
   const canDeliver = isApprovedCurrent && canApprove && offerStale === null
   const latestRun = runs[0]
+  const needsRunReconciliation = localRunReconciliation || Boolean(latestRun?.usage_pending)
   const runStateKey = latestRun?.state
   // R3: the offer is bound by the action's offer_id column, so the owner is never asked for it.
   const neededKeys = (factsNeeded ?? (action.actionState === "needs_input" ? action.missingInputs : [])).filter((key) => key !== "offer_id")
@@ -345,6 +346,10 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
       toast.message(locale === "zh-HK" ? "草稿仍在生成中，今次沒有重新開始，亦沒有額外收費；請稍候查看結果。" : locale === "zh-TW" ? "草稿仍在產生中，這次沒有重新開始，也沒有額外計費；請稍候查看結果。" : "A draft is still being written, so nothing new was started or charged; check back in a moment.")
       router.refresh()
     }
+    else if (result.status === 409 && result.error === "provider_usage_pending") {
+      setNeedsRunReconciliation(true)
+      toast.message(isChinese ? "上次生成結果仍未確認，請先重新讀取狀態。" : "The previous generation is not yet confirmed. Reload its status first.")
+    }
     else if (result.error === "offline" || result.error === "network") toast.error(isChinese ? "無法連接伺服器；文字已保留在此裝置。" : "The server could not be reached; your text is kept on this device.")
     else if (budgetRefusal) toast.error(budgetRefusal)
     else if (result.status === 403) toast.error(isChinese ? zhFor(locale, "你的角色或地點範圍不允許此操作。") : "Your role or location scope does not allow this action.")
@@ -381,8 +386,11 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
     // must not keep the input form open or disable a safe explicit retry.
     setFactsNeeded(null)
     if (result.data.state === "failed") {
+      if (result.data.usagePending) setNeedsRunReconciliation(true)
       setLastRunError(result.data.error ?? "failed")
-      toast.error(isChinese ? "生成未能完成；現有草稿已保留，不扣除用量。" : "Generation did not complete; the existing draft is preserved and nothing was counted.")
+      toast.error(result.data.usagePending
+        ? (isChinese ? "生成結果仍未確認；現有草稿已保留，請重新讀取狀態。" : "The generation is not yet confirmed; your existing draft is preserved. Reload its status.")
+        : (isChinese ? "生成未能完成；現有草稿已保留。" : "Generation did not complete; your existing draft is preserved."))
       router.refresh()
       return
     }

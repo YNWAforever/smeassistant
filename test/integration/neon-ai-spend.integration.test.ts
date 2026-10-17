@@ -48,8 +48,8 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon AI spend read", () =>
     await recordRun(mine, a, 100, "25 hours");
     await recordRun(mine, a, null);
     await recordRun(other, b, 3);
-    expect(await artifactRepository(runtime).aiSpend24h(mine)).toEqual({ globalUsd: 8, workspaceUsd: 5 });
-    expect(await artifactRepository(runtime).aiSpend24h(other)).toEqual({ globalUsd: 8, workspaceUsd: 3 });
+    expect(await artifactRepository(runtime).aiSpend24h(mine)).toEqual({ globalUsd: 8, workspaceUsd: 5, globalUsageUnknown: true, workspaceUsageUnknown: true });
+    expect(await artifactRepository(runtime).aiSpend24h(other)).toEqual({ globalUsd: 8, workspaceUsd: 3, globalUsageUnknown: true });
   });
 
   it("reads zero, not nothing, when no run is recorded", async () => {

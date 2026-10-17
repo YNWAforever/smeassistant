@@ -7,6 +7,7 @@ import { artifactRepository } from '../../lib/repositories/artifacts';
 import * as artifactModule from '../../lib/repositories/artifacts';
 import { withTransaction } from '../../lib/db/transaction';
 import { createAssistantVersion } from '../../lib/workspace/versions';
+import { workspaceReadRepository } from '../../lib/repositories/workspace-read';
 
 describe.runIf(process.env.NEON_INTEGRATION === '1')('Neon artifact persistence and scope', () => {
  let fixture: NeonDatabaseFixture, owner: Pool, runtime: Pool, actor: string;
@@ -27,6 +28,65 @@ describe.runIf(process.env.NEON_INTEGRATION === '1')('Neon artifact persistence 
   return { workspace,action };
  }
  const input=(actionId: string, body='Original fixture') => ({ actionId,actor,authorType:'user',actionRunId:null,body,alt:null,meta:{ fixture:true },baseVersionId:null });
+ it('blocks a manual retry and shows pending usage after a partial provider report', async () => {
+  const {workspace,action}=await setup(),runs=artifactModule.actionRunRepository(work=>withTransaction(work,runtime));
+  const runId=await runs.queue({actionId:action,actorId:actor,agentKey:'fixture',input:{},promptVersion:'fixture',model:'fixture',now:new Date()});
+  await runs.start({runId,actorId:actor,locale:'en'});
+  const attribution={runId,actorId:actor,workspaceId:workspace,attemptId:randomUUID()};
+  await runs.beginProviderAttempt({...attribution,model:'fixture',startedAt:new Date()});
+  await runs.observeProviderAttempt({...attribution,observation:{state:'reported',usage:{inputTokens:17,outputTokens:null}},finishedAt:new Date()});
+  expect(await runs.finish({runId,actorId:actor,locale:'en',usage:{inputTokens:17,outputTokens:null},costUsd:null,output:null,error:'Incomplete usage',finishedAt:new Date()})).toMatchObject({usagePending:true});
+  expect((await workspaceReadRepository(runtime).runs(workspace,[action]))[0]).toMatchObject({usage_pending:true});
+  await expect(runs.queue({actionId:action,actorId:actor,agentKey:'fixture',input:{},promptVersion:'fixture',model:'fixture',now:new Date()})).rejects.toThrow('provider_usage_pending');
+ });
+ it('records a provider reservation before work and late usage once without reviving failed output', async () => {
+  const {workspace,action}=await setup(), runs=artifactModule.actionRunRepository(work=>withTransaction(work,runtime));
+  const runId=await runs.queue({actionId:action,actorId:actor,agentKey:'fixture',input:{},promptVersion:'fixture',model:'fixture',now:new Date()});
+  await runs.start({runId,actorId:actor,locale:'en'});
+  const attemptId=randomUUID(), attribution={runId,actorId:actor,workspaceId:workspace,attemptId};
+  await runs.beginProviderAttempt({...attribution,model:'fixture',startedAt:new Date()});
+  expect((await runtime.query('SELECT input_tokens,output_tokens,input FROM action_runs WHERE id=$1',[runId])).rows[0]).toMatchObject({
+   input_tokens:null,output_tokens:null,input:{provider_usage:{status:'pending'}},
+  });
+  await runs.finish({runId,actorId:actor,locale:'en',usage:{inputTokens:null,outputTokens:null},costUsd:null,output:null,error:'Timed out',finishedAt:new Date()});
+  await expect(runs.queue({actionId:action,actorId:actor,agentKey:'fixture',input:{},promptVersion:'fixture',model:'fixture',now:new Date()})).rejects.toThrow();
+  const observation={state:'reported' as const,usage:{inputTokens:17,outputTokens:9},providerRequestId:'fixture-provider-1',late:true};
+  await runs.observeProviderAttempt({...attribution,observation,finishedAt:new Date()});
+  await runs.observeProviderAttempt({...attribution,observation,finishedAt:new Date()});
+  expect((await runtime.query('SELECT state,output,input_tokens,output_tokens,input FROM action_runs WHERE id=$1',[runId])).rows[0]).toMatchObject({
+   state:'failed',output:null,input_tokens:17,output_tokens:9,input:{provider_usage:{status:'complete',knownInputTokens:17,knownOutputTokens:9}},
+  });
+  expect((await runtime.query('SELECT id FROM output_versions WHERE action_id=$1',[action])).rows).toHaveLength(0);
+  expect((await runtime.query("SELECT id FROM audit_events WHERE entity_id=$1 AND event='run.usage_observed'",[runId])).rows).toHaveLength(1);
+ });
+ it('rejects foreign actor/workspace observations and unreserved attempts', async () => {
+  const a=await setup(),b=await setup(),runs=artifactModule.actionRunRepository(work=>withTransaction(work,runtime));
+  const runId=await runs.queue({actionId:a.action,actorId:actor,agentKey:'fixture',input:{},promptVersion:'fixture',model:'fixture',now:new Date()});
+  await runs.start({runId,actorId:actor,locale:'en'});
+  const attemptId=randomUUID();
+  await expect(runs.beginProviderAttempt({runId,actorId:actor,workspaceId:b.workspace,attemptId,model:'fixture',startedAt:new Date()})).rejects.toThrow();
+  await expect(runs.beginProviderAttempt({runId,actorId:randomUUID(),workspaceId:a.workspace,attemptId,model:'fixture',startedAt:new Date()})).rejects.toThrow();
+  await expect(runs.observeProviderAttempt({runId,actorId:actor,workspaceId:a.workspace,attemptId,observation:{state:'reported',usage:{inputTokens:17,outputTokens:9}},finishedAt:new Date()})).rejects.toThrow();
+  expect((await runtime.query('SELECT input FROM action_runs WHERE id=$1',[runId])).rows[0].input).toEqual({});
+ });
+ it('preserves a measured subtotal and refuses an unresolved retry instead of treating the other attempt as zero', async () => {
+  const {workspace,action}=await setup(),runs=artifactModule.actionRunRepository(work=>withTransaction(work,runtime));
+  const runId=await runs.queue({actionId:action,actorId:actor,agentKey:'fixture',input:{},promptVersion:'fixture',model:'fixture',now:new Date()});
+  await runs.start({runId,actorId:actor,locale:'en'});
+  for(const [index,usage] of [{inputTokens:17,outputTokens:9},{inputTokens:null,outputTokens:null}].entries()) {
+   const attribution={runId,actorId:actor,workspaceId:workspace,attemptId:randomUUID()};
+   await runs.beginProviderAttempt({...attribution,model:'fixture',startedAt:new Date()});
+   await runs.observeProviderAttempt({...attribution,observation:{state:index===0?'reported':'unknown',usage},finishedAt:new Date()});
+  }
+  await runs.finish({runId,actorId:actor,locale:'en',usage:{inputTokens:null,outputTokens:null},costUsd:null,output:null,error:'Unknown provider outcome',finishedAt:new Date()});
+  expect((await runtime.query('SELECT input_tokens,output_tokens,cost_usd,input FROM action_runs WHERE id=$1',[runId])).rows[0]).toMatchObject({
+   input_tokens:null,output_tokens:null,cost_usd:null,input:{provider_usage:{status:'unknown',knownInputTokens:17,knownOutputTokens:9}},
+  });
+  expect(await artifactRepository(runtime).aiSpend24h(workspace)).toMatchObject({
+   globalUsageUnknown:true,workspaceUsageUnknown:true,globalUsd:expect.any(Number),workspaceUsd:expect.any(Number),
+  });
+  await expect(runs.queue({actionId:action,actorId:actor,agentKey:'fixture',input:{},promptVersion:'fixture',model:'fixture',now:new Date()})).rejects.toThrow();
+ });
  it('uses a restricted role and preserves two edits, selected approval, history, retry usage and audit', async () => {
   expect((await runtime.query('SELECT current_user AS name')).rows[0].name).toBe('artifact_login');
   const { workspace,action }=await setup(), repo=artifactRepository(runtime);

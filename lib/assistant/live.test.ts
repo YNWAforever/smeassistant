@@ -55,6 +55,20 @@ beforeEach(() => {
 });
 
 describe("runLiveAssistant", () => {
+  it("does not repeat an existing review question when a usable review reply is returned", async () => {
+    const result = await run({ intentId: "draft_review_reply", llm: async () => ({
+      ...good, text: JSON.stringify({ title: "Reply", body: "Thank you for your feedback. Please comment here.", warnings: [], acceptance_criteria: [], facts_used: [], facts_needed: ["reviews_without_response"] }),
+    }) });
+    expect(result.draftRunId).toBe(DRAFT_RUN_ID);
+    expect(repository.recordAssistantDraftFailure).not.toHaveBeenCalled();
+  });
+  it.each(["", "Please provide the review text so I can write a reply.", "請提供評論內容，然後我可以撰寫回覆。"])("does not turn an unusable answer into a new question for an existing review: %j", async body => {
+    const result = await run({ intentId: "draft_review_reply", llm: async () => ({
+      ...good, text: JSON.stringify({ title: "Reply", body, warnings: [], acceptance_criteria: [], facts_used: [], facts_needed: ["reviews_without_response"] }),
+    }) });
+    expect(result.draftRunId).toBeUndefined();
+    expect(repository.recordAssistantDraftFailure).toHaveBeenCalledWith(expect.objectContaining({ reason: "invalid_output", factsNeeded: [] }));
+  });
   it("retains branch facts for a workspace-wide action whose persisted source is authorized for the manager", async () => {
     state.actions = [{ ...actionRow, location_id: null, source_snapshot_id: SNAPSHOT_B }];
     state.snapshots = [{ ...snapshot, id: SNAPSHOT_B, locationId: LOCATION_B, comparableTo: null, diffId: null }];
@@ -181,7 +195,10 @@ describe("runLiveAssistant", () => {
     const llm = vi.fn<Llm>(async () => good);
     const result = await run({ intentId: "draft_review_reply", surface: "action", locale: "zh-HK", context: { workspaceId: WORKSPACE_ID, actionId: ACTION_ID }, llm });
     expect(llm).toHaveBeenCalledTimes(1);
-    expect(llm).toHaveBeenCalledWith(expect.stringContaining("Waited 25 minutes"), { jsonMode: true, temperature: 0.4, maxTokens: 4000, timeoutMs: 45_000 });
+    expect(llm).toHaveBeenCalledWith(expect.stringContaining("Waited 25 minutes"), {
+      jsonMode: true, temperature: 0.4, maxTokens: 4000, timeoutMs: 45_000,
+      sessionId: DRAFT_RUN_ID, usageSettlementTimeoutMs: 50_000, deferUsageSettlement: undefined,
+    });
     expect(llm.mock.calls[0][0]).toContain("Family-run since 1988");
     expect(result).toMatchObject({ state: "needs_approval", requiresApproval: true, demoBoundary: LIVE_BOUNDARY["zh-HK"] });
     expect(result.output).toMatchObject({ type: "review_reply", version: 1, title: "Reply draft", acceptanceCriteria: ["no compensation"] });

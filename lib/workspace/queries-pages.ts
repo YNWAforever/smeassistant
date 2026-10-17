@@ -160,6 +160,7 @@ export interface RunRow {
   error: string | null;
   created_at: string;
   finished_at: string | null;
+  usage_pending?: boolean;
 }
 
 export interface MeasurementRow {

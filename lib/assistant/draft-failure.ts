@@ -7,6 +7,8 @@ import { t } from "@/lib/i18n";
  * returned unchanged: task runs already store owner-facing text. Client-safe.
  */
 const DRAFT_FAILURE_KEYS: Record<string, string> = {
+  provider_usage_pending: "draftFailure.statusUnconfirmed",
+  usage_record_failed: "draftFailure.statusUnconfirmed",
   facts_needed: "draftFailure.factsNeeded",
   unconfirmed_business_fact: "draftFailure.unconfirmedBusinessFact",
   invalid_output: "draftFailure.invalidOutput",

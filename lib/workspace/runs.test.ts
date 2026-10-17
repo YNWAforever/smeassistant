@@ -8,7 +8,6 @@ import type {
 import type { Membership } from "@/lib/auth";
 import { rowToSnapshot } from "./snapshots";
 import { scannedReviewKey } from "./evidence-inputs";
-import { computeCostUsd } from "@/lib/agents";
 import { AGENT_RUN_BUDGET_MS, offerSatisfied, runAgentForAction, snapshotEvidence } from "./runs";
 import type { Offer } from "./offers";
 const action = {
@@ -249,6 +248,17 @@ describe("typed action runtime", () => {
     expect(finish.mock.calls[0][0].output?.facts_needed).toEqual([]);
     expect(finish.mock.calls[0][0].output?.warnings).toContain("opening_hours");
   });
+  it("does not ask for an existing review when the model produced a usable review reply", async () => {
+    const result = await run({ llm: vi.fn(async () => good({ facts_needed: ["reviews_without_response"] })) });
+    expect(result).toMatchObject({ versionId: "v-1" });
+    expect(result.factsNeeded).toBeUndefined();
+  });
+  it.each(["", '"Slow service"', "Please provide the review text so I can write a reply.", "請提供評論內容，然後我可以撰寫回覆。"])("fails an unusable answer even without a review facts_needed marker: %j", async body => {
+    const result = await run({ llm: vi.fn(async () => good({ body, facts_needed: [] })) });
+    expect(result.state).toBe("failed");
+    expect(result.factsNeeded).toBeUndefined();
+    expect(finish.mock.calls[0][0]).toMatchObject({ output: null, reason: "invalid_output" });
+  });
   it("grounds initial review generation in the current saved voice without imported address facts", async () => {
     const db = Object.assign(repository(), {
       assistantBrand: async () => ({ voice: "direct", approved_claims: [], prohibited_terms: [], languages: ["en"], facts: {}, current_revision_id: "brand-current" }),
@@ -285,8 +295,8 @@ describe("typed action runtime", () => {
     else llmDetailed.mockResolvedValueOnce({ok:true,result:{...good(),text:'invalid json'}});
     llmDetailed.mockResolvedValueOnce(mode==='unreported-later'?{ok:false,code:'provider_unavailable',retryable:false}:{ok:true,result:good()});
     await run({llmDetailed});
-    expect(llmDetailed).toHaveBeenCalledTimes(2);
-    expect(finish).toHaveBeenCalledWith(expect.objectContaining({usage:{inputTokens:null,outputTokens:mode==='partial-usage'?52:null},costUsd:null}));
+    expect(llmDetailed).toHaveBeenCalledTimes(mode==='unreported-later'?2:1);
+    expect(finish).toHaveBeenCalledWith(expect.objectContaining({usage:{inputTokens:null,outputTokens:mode==='partial-usage'?2:null},costUsd:null}));
   });
 
   it("uses review excerpts and persists token cost", async () => {
@@ -530,6 +540,19 @@ describe("typed action runtime", () => {
     }
   });
 
+  it("records zero usage when setup consumes the budget before any provider attempt", async () => {
+    const now = vi.spyOn(Date, "now").mockReturnValueOnce(1_000_000)
+      .mockReturnValue(1_000_000 + AGENT_RUN_BUDGET_MS + 1);
+    const llm = vi.fn(async () => good());
+    try {
+      expect(await run({ llm })).toMatchObject({ state: "failed" });
+      expect(llm).not.toHaveBeenCalled();
+      expect(finish).toHaveBeenCalledWith(expect.objectContaining({
+        output: null, reason: "action_run_timeout", usage: { inputTokens: 0, outputTokens: 0 }, costUsd: 0,
+      }));
+    } finally { now.mockRestore(); }
+  });
+
   it("refuses a registered agent that is not this action template's own agent", async () => {
     // The gap this closes: isAgentKey() only proves membership of the global
     // agent registry, so any real key used to be accepted on any action --
@@ -569,7 +592,8 @@ describe("pre-model workflow gate", () => {
       expect.objectContaining({
         output: null,
         factsNeeded: ["cta_link"],
-        costUsd: computeCostUsd({ inputTokens: null, outputTokens: null }),
+        costUsd: 0,
+        usage: { inputTokens: 0, outputTokens: 0 },
       }),
     );
     expect(queue).toHaveBeenCalledOnce();
@@ -980,8 +1004,8 @@ describe("offer-backed promotion runs (spec §2.2)", () => {
       expect.objectContaining({
         output: null,
         factsNeeded: ["offer_id"],
-        usage: { inputTokens: null, outputTokens: null },
-        costUsd: computeCostUsd({ inputTokens: null, outputTokens: null }),
+        usage: { inputTokens: 0, outputTokens: 0 },
+        costUsd: 0,
       }),
     );
     expect(result).toMatchObject({ factsNeeded: ["offer_id"] });

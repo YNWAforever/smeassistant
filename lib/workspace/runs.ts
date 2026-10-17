@@ -1,5 +1,6 @@
 import {
   ActionRunInFlightError,
+  ActionRunUsageUncertainError,
   actionRunRepository,
   type ArtifactRepository,
   type ActionRunRepository,
@@ -32,6 +33,8 @@ import { type SnapshotRecord } from "./snapshots";
 import { isOfferTemplate, templateByKey, type TemplateKey } from "./templates";
 import { gateBlockingInputs } from "./workflow-inputs";
 import { blockingReviewWarnings, DRAFT_GROUNDING_VERSION, normalizeMerchantReviewOutput, scopeReviewReplyFacts, unconfirmedDraftBusinessFacts } from "@/lib/agents/draft-grounding";
+import { unusableExistingReviewQuestion } from "@/lib/agents/review-source";
+import { invokeProviderAttempt } from "./provider-attempt";
 
 /**
  * One agent run for one action (CLAUDE.md §3.7 runtime, §3.2.3 POST
@@ -43,7 +46,7 @@ import { blockingReviewWarnings, DRAFT_GROUNDING_VERSION, normalizeMerchantRevie
  * never overwrites an existing draft (a version is only created on success).
  */
 export type RunErrorCode =
-  "action_not_found" | "agent_unavailable" | "forbidden" | "ai_budget_reached" | "ai_paused" | "run_in_progress" | "provider_unconfigured";
+  "action_not_found" | "agent_unavailable" | "forbidden" | "ai_budget_reached" | "ai_paused" | "run_in_progress" | "provider_unconfigured" | "provider_usage_pending";
 
 export class RunError extends Error {
   constructor(public readonly code: RunErrorCode) {
@@ -72,6 +75,7 @@ export interface RunAgentInput {
   budgetEnv?: Record<string, string | undefined>;
   /** Feature-flag variables (OFFER_PROMOTIONS_ENABLED); defaults to process.env. */
   featureEnv?: Record<string, string | undefined>;
+  deferUsageSettlement?: (work: Promise<unknown>) => void;
 }
 
 export interface RunAgentResult {
@@ -81,6 +85,7 @@ export interface RunAgentResult {
   versionNo?: number;
   factsNeeded?: string[];
   error?: string;
+  usagePending?: boolean;
 }
 
 /**
@@ -365,7 +370,8 @@ export async function runAgentForAction(
   // P3.5a: the AI spend budget, before any evidence read, run row or model
   // call. A refusal leaves nothing behind, so no queued run can strand.
   const budget = await checkAiBudget(() => db.aiSpend24h(row.workspace_id), { entry: "ai_run" }, input.budgetEnv);
-  if (!budget.allowed) throw new RunError(budget.scope === "ai_paused" ? "ai_paused" : "ai_budget_reached");
+  if (!budget.allowed) throw new RunError(budget.scope === "ai_paused" ? "ai_paused"
+    : budget.scope === "ai_usage_unknown" ? "provider_usage_pending" : "ai_budget_reached");
   const [workspace, brand, locations] = await Promise.all([
     db.assistantWorkspace(row.workspace_id),
     db.assistantBrand(row.workspace_id,input.actorId),
@@ -534,6 +540,7 @@ export async function runAgentForAction(
       : {}),
   }).catch((error: unknown) => {
     if (error instanceof ActionRunInFlightError) throw new RunError("run_in_progress");
+    if (error instanceof ActionRunUsageUncertainError) throw new RunError("provider_usage_pending");
     throw error;
   });
   const attribution = {
@@ -546,14 +553,16 @@ export async function runAgentForAction(
   if (blocking.length) {
     return persistence.finish({
       ...attribution,
-      usage: NO_USAGE,
-      costUsd: computeCostUsd(NO_USAGE),
+      usage: { inputTokens: 0, outputTokens: 0 },
+      costUsd: 0,
       output: null,
       factsNeeded: blocking,
       finishedAt: new Date(),
     });
   }
-  let usage: LLMUsage = NO_USAGE;
+  // Until a provider attempt starts, no model work has happened. The first
+  // outcome (or thrown transport) replaces this with measured or unknown usage.
+  let usage: LLMUsage = { inputTokens: 0, outputTokens: 0 };
   let output: AgentOutput | null = null,
     reason: string | undefined;
   try {
@@ -581,25 +590,35 @@ export async function runAgentForAction(
           timeoutMs: Math.min(AGENT_LLM_OPTIONS.timeoutMs, remaining),
           // One conversation per run: both attempts share the provider session.
           sessionId: String(runId),
+          usageSettlementTimeoutMs: Math.min(remaining, AGENT_LLM_OPTIONS.timeoutMs + 5_000),
+          deferUsageSettlement: input.deferUsageSettlement,
         };
-        if (input.llm) {
-          const result = await input.llm(prompt, options);
-          outcome = result ? { ok: true, result } : { ok: false, code: "no_model_output", retryable: false };
-        } else outcome = await (input.llmDetailed ?? llmCompleteDetailed)(prompt, options);
+        outcome = await invokeProviderAttempt({
+          persistence, attribution: { ...attribution, workspaceId: row.workspace_id },
+          model: process.env.LLM_MODEL || null, options,
+          call: async observedOptions => {
+            if (input.llm) {
+              const result = await input.llm(prompt, observedOptions);
+              return result ? { ok: true, result } : { ok: false, code: "no_model_output", retryable: false };
+            }
+            return (input.llmDetailed ?? llmCompleteDetailed)(prompt, observedOptions);
+          },
+        });
       } catch {
         // A transport rejection can recover, but its unreported charge remains
         // unknown even when the next completion reports both token counts.
         usage = addUsage(usage, undefined, attempt === 0);
-        reason = "action_run_failed";
-        continue;
+        reason = "beginProviderAttempt" in persistence ? "usage_record_failed" : "action_run_failed";
+        break;
       }
       usage = addUsage(usage, outcome.ok ? outcome.result.usage : outcome.usage, attempt === 0);
       if (!outcome.ok) {
-        reason = outcome.code;
+        reason = outcome.usagePending ? "provider_usage_pending" : outcome.code;
         // A 429 without a positive provider-supplied retry window must not
         // trigger an immediate second request that can deepen the rate limit.
         if (outcome.code === "provider_rate_limited" && (outcome.retryAfterSeconds ?? 0) <= 0) break;
-        if (!outcome.retryable || attempt + 1 >= MAX_AGENT_ATTEMPTS) break;
+        if (outcome.usagePending || !outcome.usage || outcome.usage.inputTokens === null || outcome.usage.outputTokens === null
+            || !outcome.retryable || attempt + 1 >= MAX_AGENT_ATTEMPTS) break;
         const delay = (outcome.retryAfterSeconds ?? 0) * 1000;
         if (delay + MIN_ATTEMPT_MS > deadline - Date.now()) break;
         if (delay > 0) await new Promise(resolve => setTimeout(resolve, delay));
@@ -607,6 +626,16 @@ export async function runAgentForAction(
       }
       output = parseAgentOutput(outcome.result.text, agent.outputSchema);
       reason = output ? undefined : "invalid_output";
+      if (!output && (outcome.result.usage.inputTokens === null || outcome.result.usage.outputTokens === null)) {
+        reason = "provider_usage_pending";
+        break;
+      }
+    }
+    if (output) {
+      if (unusableExistingReviewQuestion(ctx, output)) {
+        reason = "invalid_output";
+        output = null;
+      }
     }
     if (output) {
       output = normalizeMerchantReviewOutput(ctx, {
