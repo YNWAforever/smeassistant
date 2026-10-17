@@ -2,6 +2,7 @@ import { Pool } from "pg";
 import {
   beforeAll,
   afterAll,
+  afterEach,
   beforeEach,
   describe,
   it,
@@ -17,6 +18,7 @@ import { artifactRepository } from "../../lib/repositories/artifacts";
 import { downloadText } from "../../lib/download";
 import { runAgentForAction } from "../../lib/workspace/runs";
 import type { Membership } from "../../lib/auth";
+import { clearActionRunFixtures } from "./action-run-fixture";
 const state = vi.hoisted(() => ({
   pool: null as Pool | null,
   membership: null as Membership | null,
@@ -69,6 +71,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
       action: string,
       job: string,
       snapshot: string;
+    const fixtureWorkspaces = new Set<string>();
     beforeAll(async () => {
       fixture = await startNeonDatabaseFixture("test");
       owner = new Pool({ connectionString: fixture.databaseUrl });
@@ -95,6 +98,10 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
       await Promise.all([owner?.end(), runtime?.end()]);
       fixture?.stop();
     });
+    afterEach(async () => {
+      await clearActionRunFixtures(runtime, [...fixtureWorkspaces]);
+      fixtureWorkspaces.clear();
+    });
     beforeEach(async () => {
       vi.clearAllMocks();
       state.limit.mockResolvedValue({ allowed: true, retryAfterSeconds: 1 });
@@ -107,6 +114,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
           "INSERT INTO workspaces(business_name,market,slug) VALUES('Fixture','hk',gen_random_uuid()::text) RETURNING id",
         )
       ).rows[0].id;
+      fixtureWorkspaces.add(workspace);
       locA = (
         await runtime.query(
           "INSERT INTO locations(workspace_id,slug,name) VALUES($1,'a','Location A') RETURNING id",
@@ -153,19 +161,20 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
         [workspace, actor],
       );
     });
-    const run = () =>
+    const run = (budgetEnv?: Record<string, string | undefined>) =>
       runAgentForAction(artifactRepository(runtime), {
         actionId: action,
         actorId: actor,
         membership: state.membership!,
         locale: "en",
         inputs: { channel: "fixture" },
+        ...(budgetEnv ? { budgetEnv } : {}),
       });
     it("T01: concurrent assistant drafts reserve one SQL run before one model call", async()=>{
       const {runLiveAssistant}=await import('../../lib/assistant/live');
       let release!:()=>void;
       const gate=new Promise<void>(resolve=>{release=resolve;});
-      const llm=vi.fn<typeof import("../../lib/llm").llmComplete>(async()=>{await gate;return {text:JSON.stringify(output),usage:{inputTokens:null,outputTokens:null}};});
+      const llm=vi.fn<typeof import("../../lib/llm").llmComplete>(async()=>{await gate;return {text:JSON.stringify(output),usage:{inputTokens:100,outputTokens:50}};});
       const input={intentId:'draft_review_reply' as const,surface:'action' as const,locale:'en' as const,contextual:false,
         context:{workspaceId:workspace,actionId:action},membership:state.membership!,llmReady:()=>true,llm};
       const outcomes=Promise.allSettled([runLiveAssistant(input),runLiveAssistant(input)]);
@@ -177,7 +186,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
       expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);
       expect((results.find(r=>r.status==='rejected') as PromiseRejectedResult).reason.message).toBe('action_run_in_flight');
       expect(llm).toHaveBeenCalledTimes(1);
-      expect((await runtime.query('SELECT state,input,output,cost_usd FROM action_runs WHERE action_id=$1',[action])).rows).toMatchObject([{state:'succeeded',input:{source:'assistant'},cost_usd:null}]);
+      expect((await runtime.query('SELECT state,input,output FROM action_runs WHERE action_id=$1',[action])).rows).toMatchObject([{state:'succeeded',input:{source:'assistant'}}]);
       expect((await runtime.query('SELECT id FROM output_versions WHERE action_id=$1',[action])).rows).toHaveLength(0);
       const before=(await runtime.query('SELECT action_state FROM actions WHERE id=$1',[action])).rows[0];
       await runLiveAssistant({...input,llm:async()=>({text:JSON.stringify(output),usage:{inputTokens:null,outputTokens:null}})});
@@ -211,7 +220,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
       const a=await brand.saveBrandRevision({workspaceId:workspace,actorId:actor,profile,expectedRevisionId:null});
       let release!:()=>void;
       const gate=new Promise<void>(resolve=>{release=resolve;});
-      const llm=vi.fn<typeof import("../../lib/llm").llmComplete>(async()=>{await gate;return {text:JSON.stringify(output),usage:{inputTokens:null,outputTokens:null}};});
+      const llm=vi.fn<typeof import("../../lib/llm").llmComplete>(async()=>{await gate;return {text:JSON.stringify(output),usage:{inputTokens:100,outputTokens:50}};});
       const pending=runLiveAssistant({intentId:'draft_review_reply',surface:'action',locale:'en',context:{workspaceId:workspace,actionId:action},membership:state.membership!,llmReady:()=>true,llm});
       await vi.waitFor(()=>expect(llm).toHaveBeenCalledOnce());
       const b=await brand.saveBrandRevision({workspaceId:workspace,actorId:actor,profile:{...profile,facts:{...profile.facts,confirmed:'Revision B fact'}},expectedRevisionId:a.revisionId});
@@ -442,11 +451,15 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
           expect(
             (
               await runtime.query(
-                "SELECT event FROM audit_events WHERE workspace_id=$1",
+                "SELECT event FROM audit_events WHERE workspace_id=$1 ORDER BY created_at,id",
                 [workspace],
               )
             ).rows,
-          ).toEqual([{ event: "run.started" }]);
+          ).toEqual([
+            { event: "run.started" },
+            { event: "run.provider_reserved" },
+            { event: "run.usage_observed" },
+          ]);
         } finally {
           await owner.query(
             "DROP TRIGGER fixture_terminal_failure ON audit_events",
@@ -946,7 +959,10 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")(
         // Idempotent: a second pass finds nothing and writes no second audit row.
         expect(await reapStrandedRuns(workspace, [action])).toEqual([]);
         expect(await timeoutEvents(runId)).toHaveLength(1);
-        const result = await run();
+        const result = await run({
+          BUDGET_AI_USD_GLOBAL_24H: "off",
+          BUDGET_AI_USD_WORKSPACE_24H: "off",
+        });
         expect(result.state).toBe("succeeded");
         expect(
           (

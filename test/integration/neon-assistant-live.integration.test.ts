@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { beforeAll,afterAll,beforeEach,describe,it,expect,vi } from 'vitest';
+import { beforeAll,afterAll,afterEach,beforeEach,describe,it,expect,vi } from 'vitest';
 import { applyMigrations } from '../../scripts/neon/migrations';
 import { startNeonDatabaseFixture,type NeonDatabaseFixture } from './neon-database';
 import { artifactRepository, actionRunRepository } from '../../lib/repositories/artifacts';
@@ -7,20 +7,24 @@ import { withTransaction } from '../../lib/db/transaction';
 import type { llmComplete } from '../../lib/llm';
 import { runLiveAssistant } from '../../lib/assistant/live';
 import { auth } from '../../app/api/actions/_shared/test-db';
+import { clearActionRunFixtures } from './action-run-fixture';
 // A scanned review without an owner response: the P4.4 pre-model gate needs a review source (this, or owner-typed reviews_without_response) and these actions carry no typed text.
 const rawWithReview=JSON.stringify({gbp:{reviews:[{rating:3,text:'Waited 25 minutes on Friday',time:'2026-08-22',owner_response:null}]}});
 const output={title:'Fixture reply',body:'Thank you for telling us.',acceptance_criteria:[],warnings:[],facts_used:[],facts_needed:[]};
 describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon live assistant authority',()=>{
  let actor:string,fixture:NeonDatabaseFixture,owner:Pool,runtime:Pool,workspace:string,foreign:string,locA:string,locB:string,snapshot:string,job:string,wide:string,scoped:string;
+ const fixtureWorkspaces=new Set<string>();
  beforeAll(async()=>{
   fixture=await startNeonDatabaseFixture('test');owner=new Pool({connectionString:fixture.databaseUrl});
   await owner.query('CREATE ROLE sme_app_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS');await applyMigrations(owner);
   await owner.query("CREATE ROLE live_login LOGIN PASSWORD 'fixture-only' IN ROLE sme_app_runtime");const url=new URL(fixture.databaseUrl);url.username='live_login';url.password='fixture-only';runtime=new Pool({connectionString:url.href});
  });
  afterAll(async()=>{await Promise.all([owner?.end(),runtime?.end()]);fixture?.stop();});
+  afterEach(async()=>{await clearActionRunFixtures(runtime,[...fixtureWorkspaces]);fixtureWorkspaces.clear();});
  beforeEach(async()=>{
   workspace=(await runtime.query("INSERT INTO workspaces(business_name,market) VALUES('Fixture','hk') RETURNING id")).rows[0].id;
   foreign=(await runtime.query('INSERT INTO workspaces DEFAULT VALUES RETURNING id')).rows[0].id;
+   fixtureWorkspaces.add(workspace);fixtureWorkspaces.add(foreign);
   locA=(await runtime.query("INSERT INTO locations(workspace_id,slug,name,is_primary) VALUES($1,'a','Location A',true) RETURNING id",[workspace])).rows[0].id;
   locB=(await runtime.query("INSERT INTO locations(workspace_id,slug,name) VALUES($1,'b','Location B') RETURNING id",[workspace])).rows[0].id;
   job=(await runtime.query("INSERT INTO audit_jobs(workspace_id,location_id,business_name,status,raw_data) VALUES($1,$2,'Fixture','done',$3) RETURNING id",[workspace,locB,rawWithReview])).rows[0].id;
@@ -69,7 +73,9 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon live assistant authorit
   // P3.5a: the model ran and cost money, so the AI budget must see it.
   expect((await runtime.query("SELECT state,agent_key,output,error,cost_usd::float8 AS cost,input->>'source' AS source FROM action_runs WHERE workspace_id=$1",[workspace])).rows).toEqual([{state:'failed',agent_key:'review_reply',output:{facts_needed:['capacity']},error:'facts_needed',cost:0.001,source:'assistant'}]);
   expect((await runtime.query('SELECT id FROM output_versions WHERE workspace_id=$1',[workspace])).rows).toHaveLength(0);
-  expect((await runtime.query('SELECT event FROM audit_events WHERE workspace_id=$1 ORDER BY created_at',[workspace])).rows).toEqual([{event:'run.started'},{event:'run.failed'}]);
+  expect((await runtime.query('SELECT event FROM audit_events WHERE workspace_id=$1 ORDER BY created_at,id',[workspace])).rows).toEqual([
+   {event:'run.started'},{event:'run.provider_reserved'},{event:'run.usage_observed'},{event:'run.failed'},
+  ]);
  });
  // P3.5a: both failure kinds reach the AI budget's own read, not only the table.
  it.each([

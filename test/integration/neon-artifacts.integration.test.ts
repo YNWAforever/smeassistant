@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 import { randomUUID } from 'node:crypto';
-import { beforeAll, afterAll, describe, it, expect } from 'vitest';
+import { beforeAll, afterAll, afterEach, describe, it, expect } from 'vitest';
 import { applyMigrations } from '../../scripts/neon/migrations';
 import { startNeonDatabaseFixture, type NeonDatabaseFixture } from './neon-database';
 import { artifactRepository } from '../../lib/repositories/artifacts';
@@ -8,9 +8,11 @@ import * as artifactModule from '../../lib/repositories/artifacts';
 import { withTransaction } from '../../lib/db/transaction';
 import { createAssistantVersion } from '../../lib/workspace/versions';
 import { workspaceReadRepository } from '../../lib/repositories/workspace-read';
+import { clearActionRunFixtures } from './action-run-fixture';
 
 describe.runIf(process.env.NEON_INTEGRATION === '1')('Neon artifact persistence and scope', () => {
  let fixture: NeonDatabaseFixture, owner: Pool, runtime: Pool, actor: string;
+ const fixtureWorkspaces = new Set<string>();
  beforeAll(async () => {
   fixture = await startNeonDatabaseFixture('test');
   owner = new Pool({ connectionString: fixture.databaseUrl });
@@ -22,9 +24,14 @@ describe.runIf(process.env.NEON_INTEGRATION === '1')('Neon artifact persistence 
   actor=(await runtime.query("INSERT INTO app_users(email) VALUES('artifact@example.test') RETURNING id")).rows[0].id;
  });
  afterAll(async () => { await Promise.all([owner?.end(),runtime?.end()]); fixture?.stop(); });
+  afterEach(async () => {
+   await clearActionRunFixtures(runtime, [...fixtureWorkspaces]);
+   fixtureWorkspaces.clear();
+  });
  async function setup() {
   const workspace=(await runtime.query('INSERT INTO workspaces DEFAULT VALUES RETURNING id')).rows[0].id as string;
   const action=(await runtime.query("INSERT INTO actions(workspace_id,template_key,title,summary,evidence,priority,priority_score,priority_factors,effort_minutes,capability,dedupe_key) VALUES($1,'fixture','{}','{}','[]','low',1,'{}',5,'Live',$2) RETURNING id",[workspace,randomUUID()])).rows[0].id as string;
+  fixtureWorkspaces.add(workspace);
   return { workspace,action };
  }
  const input=(actionId: string, body='Original fixture') => ({ actionId,actor,authorType:'user',actionRunId:null,body,alt:null,meta:{ fixture:true },baseVersionId:null });
@@ -86,6 +93,25 @@ describe.runIf(process.env.NEON_INTEGRATION === '1')('Neon artifact persistence 
    globalUsageUnknown:true,workspaceUsageUnknown:true,globalUsd:expect.any(Number),workspaceUsd:expect.any(Number),
   });
   await expect(runs.queue({actionId:action,actorId:actor,agentKey:'fixture',input:{},promptVersion:'fixture',model:'fixture',now:new Date()})).rejects.toThrow();
+ });
+ it('cleans unresolved usage only for fixture-owned workspaces before another case reads the global budget', async () => {
+  const unresolved=await setup(),other=await setup();
+  for(const fixture of [unresolved,other]) {
+   await runtime.query("INSERT INTO action_runs(workspace_id,action_id,agent_key,state,input,cost_usd,finished_at) VALUES($1,$2,'fixture','failed','{}',NULL,now())",[fixture.workspace,fixture.action]);
+  }
+  expect(await artifactRepository(runtime).aiSpend24h(unresolved.workspace)).toMatchObject({
+   globalUsageUnknown:true,workspaceUsageUnknown:true,
+  });
+  await clearActionRunFixtures(runtime,[unresolved.workspace]);
+  expect((await runtime.query('SELECT id FROM action_runs WHERE workspace_id=$1',[unresolved.workspace])).rows).toHaveLength(0);
+  expect((await runtime.query('SELECT id FROM action_runs WHERE workspace_id=$1',[other.workspace])).rows).toHaveLength(1);
+  expect(await artifactRepository(runtime).aiSpend24h(other.workspace)).toMatchObject({
+   globalUsageUnknown:true,workspaceUsageUnknown:true,
+  });
+  await clearActionRunFixtures(runtime,[other.workspace]);
+  expect(await artifactRepository(runtime).aiSpend24h(other.workspace)).not.toMatchObject({
+   globalUsageUnknown:true,workspaceUsageUnknown:true,
+  });
  });
  it('uses a restricted role and preserves two edits, selected approval, history, retry usage and audit', async () => {
   expect((await runtime.query('SELECT current_user AS name')).rows[0].name).toBe('artifact_login');
