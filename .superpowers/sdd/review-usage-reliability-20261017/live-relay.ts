@@ -112,6 +112,9 @@ export async function startLiveRelay() {
         fatal = "response_model_mismatch";
         throw new Error(fatal);
       }
+      // This relay serves only the uniquely owned isolated test fixture. Retain
+      // its response (never headers/credentials) to diagnose withheld drafts.
+      record(`provider-response-${entry.number}`, data);
       entry.reportedCostUsd = costs.length ? 0 : null;
       entry.costBasis = costs.length ? "provider-reported zero" : "official free pricing; response omitted cost; invoice not checked";
       if (hold) {
