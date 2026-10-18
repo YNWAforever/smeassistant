@@ -1,0 +1,46 @@
+{
+  "recordedAt": "2026-10-18T18:56:06.712Z",
+  "layer": "Existing authenticated in-app browser; not hosted Playwright WebKit",
+  "workspace": "SMEAssistant UAT cb1419df",
+  "actionId": "9c2b8cf3-eee3-4d37-9902-98924205aa4a",
+  "en": {
+    "header": "Medium\nApplied (reported)\nLive\nReply to unanswered Google reviews\n\nDrafts follow your brand voice and each review's content, ready for one review pass.\n\nUAT primary cb1419df\nabout 10 minutes\nUnassigned\nDIRECT NEXT STEP\nWait for the next scan\nDue —",
+    "audit": "17 Oct 2026, 23:05\n\nMarked as applied · Member\n\n17 Oct 2026, 22:54\n\nExport recorded · Member · Version 2\n\n17 Oct 2026, 22:46\n\nVersion approved · Member · Version 2\n\n17 Oct 2026, 22:36\n\nVersion saved · Member · Version 2\n\n17 Oct 2026, 22:36\n\nVersion saved · Member · Version 1\n\n17 Oct 2026, 22:36\n\nDraft prepared · Member · Version 1\n\n17 Oct 2026, 22:36\n\nrun.usage_observed · Member\n\n17 Oct 2026, 22:35\n\nrun.provider_reserved · Member\n\n17 Oct 2026, 22:35\n\nDraft generation started · Member\n\n17 Oct 2026, 22:35\n\nAction updated · Member\n\n17 Oct 2026, 22:35\n\nDraft prepared · Member\n\n17 Oct 2026, 22:35\n\nDraft generation started · Member",
+    "fullReloadEqual": true,
+    "completed": {
+      "text": "Medium\nApplied (reported)\nLive\nUAT primary cb1419df\n\nOWNER OBJECTIVE\n\nReply to unanswered Google reviews\n\nDrafts follow your brand voice and each review's content, ready for one review pass.\n\nRECOMMENDED\n\n回覆一則近期 Google 評論，感謝顧客並維持專業友善語氣。\n\nUpdated 1 days ago · 17 Oct 2026, 22:35\nWhy this priority\nOWNER EFFORT\nabout 10 minutes\nASSIGNEE\nUnassigned\nDUE\n—\nINPUTS\nReady\nLast changed 17 Oct 2026, 23:05\nOpen action",
+      "actionHref": "/en/owner/smeassistant-uat-sme-uat-20261016-cb1419df/actions/9c2b8cf3-eee3-4d37-9902-98924205aa4a?location=smeassistant-uat-sme-uat-20261016-cb1419df",
+      "fullReloadEqual": true
+    },
+    "billing": {
+      "text": "Approved deliveries this month\n2 / 3\n1 remain · period 2026-10",
+      "fullReloadEqual": true
+    }
+  },
+  "zhHK": {
+    "header": "中\n已套用（店主回報）\n已啟用\n回覆未回覆的 Google 評論\n\n草稿已按品牌語氣及評論內容準備好，等你一次過審閱。\n\nUAT primary cb1419df\n約 10 分鐘\n未指派\n下一步\n等待下次掃描\n到期：—",
+    "audit": "2026年10月17日 下午11:05\n\n標記為已套用 · 成員\n\n2026年10月17日 下午10:54\n\n已記錄匯出 · 成員 · 第 2 版\n\n2026年10月17日 下午10:46\n\n版本已核准 · 成員 · 第 2 版\n\n2026年10月17日 下午10:36\n\n已儲存新版本 · 成員 · 第 2 版\n\n2026年10月17日 下午10:36\n\n已儲存新版本 · 成員 · 第 1 版\n\n2026年10月17日 下午10:36\n\n草稿已準備 · 成員 · 第 1 版\n\n2026年10月17日 下午10:36\n\nrun.usage_observed · 成員\n\n2026年10月17日 下午10:35\n\nrun.provider_reserved · 成員\n\n2026年10月17日 下午10:35\n\n草稿生成已開始 · 成員\n\n2026年10月17日 下午10:35\n\n行動已更新 · 成員\n\n2026年10月17日 下午10:35\n\n草稿已準備 · 成員\n\n2026年10月17日 下午10:35\n\n草稿生成已開始 · 成員",
+    "fullReloadEqual": true,
+    "billing": {
+      "text": "本月核准後交付\n2 / 3\n尚餘 1 次 · 2026-10 期間",
+      "fullReloadEqual": true
+    },
+    "completed": {
+      "text": "中\n已套用（店主回報）\n已啟用\nUAT primary cb1419df\n\n店主目標\n\n回覆未回覆的 Google 評論\n\n草稿已按品牌語氣及評論內容準備好，等你一次過審閱。\n\n建議\n\n回覆一則近期 Google 評論，感謝顧客並維持專業友善語氣。\n\n1 日前更新 · 2026年10月17日 下午10:35\n為何列為優先\n店主所需時間\n約 10 分鐘\n負責人\n未指派\n到期日\n—\n所需資料\n齊備\n最近更新：2026年10月17日 下午11:05\n開啟行動",
+      "actionHref": "/zh-HK/owner/smeassistant-uat-sme-uat-20261016-cb1419df/actions/9c2b8cf3-eee3-4d37-9902-98924205aa4a?location=smeassistant-uat-sme-uat-20261016-cb1419df",
+      "fullReloadEqual": true
+    }
+  },
+  "agentInvokedBusinessMutations": false,
+  "independentProductionDatabaseRead": false,
+  "finishedAt": "2026-10-18T18:59:31.832Z",
+  "viewport": {
+    "height": 720,
+    "scrollWidth": 1265,
+    "width": 1280
+  },
+  "cookiesOrTokensTransferred": false,
+  "googleLoginPerformed": false,
+  "productionNetworkTrace": "NOT_CAPTURED; normal UI observations and exact visible readback comparisons only",
+  "auditDetailPhotoAt": "2026-10-18T19:14:42.6092324Z"
+}

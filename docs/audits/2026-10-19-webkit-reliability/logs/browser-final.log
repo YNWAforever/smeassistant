@@ -1,0 +1,92 @@
+
+Running 64 tests using 1 worker
+
+
+
+(node:53112) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/64] [webkit] › e2e\acceptance\audit-delivery-history.spec.ts:8:1 › shows every version, approval, and repeated delivery audit without double-counting usage
+[2/64] [webkit] › e2e\acceptance\audit-delivery-history.spec.ts:101:1 › bilingual completed-page reloads preserve exact version, approval, delivery, application, audit and monthly usage
+[3/64] [webkit] › e2e\acceptance\content-approval-journey.spec.ts:83:1 › assistant preview remains retryable when saving fails
+[4/64] [webkit] › e2e\acceptance\content-approval-journey.spec.ts:113:1 › S1 existing brand: recommendation, source/time/limits, first saved draft and explicit exact-version approval
+[5/64] [webkit] › e2e\acceptance\content-approval-journey.spec.ts:158:1 › S2 incomplete facts: required review is asked for, invented operations are withheld, safe omissions save
+[6/64] [webkit] › e2e\acceptance\content-approval-journey.spec.ts:190:1 › S3 selected branch: other branch facts and imported metadata never enter the confirmed drafting context
+[7/64] [webkit] › e2e\acceptance\content-approval-journey.spec.ts:210:1 › S4 Hong Kong mobile: shorten, tone and CTA revisions save, fresh login reads the exact version and reapproval is explicit
+[8/64] [webkit] › e2e\acceptance\content-approval-journey.spec.ts:262:1 › S5 old tab compares before saving; invalid provider output preserves drafts and an explicit retry succeeds
+[9/64] [webkit] › e2e\acceptance\content-approval-journey.spec.ts:301:1 › API boundaries: active generation is unique, cross-workspace and non-approver requests fail closed
+[10/64] [webkit] › e2e\acceptance\content-approval-journey.spec.ts:340:1 › a lost generation response is reconciled by reading the saved draft instead of another model call
+[11/64] [webkit] › e2e\acceptance\permissions.spec.ts:4:52 › viewer: accepted evidence reads, omitted/spoofed context denial, revocation
+[12/64] [webkit] › e2e\acceptance\permissions.spec.ts:4:52 › manager: accepted evidence reads, omitted/spoofed context denial, revocation
+[13/64] [webkit] › e2e\acceptance\permissions.spec.ts:27:1 › unverified identity and invalid callback cannot acquire workspace authority
+[14/64] [webkit] › e2e\acceptance\permissions.spec.ts:36:1 › lite permits three distinct approved deliveries and blocks the fourth
+[15/64] [webkit] › e2e\acceptance\permissions.spec.ts:51:2 › expired local fixture link cannot accept an invitation
+[16/64] [webkit] › e2e\acceptance\permissions.spec.ts:59:1 › authenticated fixture session can observe an unknown owner route 404
+[17/64] [webkit] › e2e\acceptance\permissions.spec.ts:64:1 › local logout revokes retained fixture session credentials
+[18/64] [webkit] › e2e\acceptance\returning-sign-in.spec.ts:12:3 › en 1440px returning owner completes email-code sign-in
+[19/64] [webkit] › e2e\acceptance\returning-sign-in.spec.ts:12:3 › en 1440px returning viewer completes email-code sign-in
+[20/64] [webkit] › e2e\acceptance\returning-sign-in.spec.ts:12:3 › zh-HK 375px first owner completes email-code sign-in
+[21/64] [webkit] › e2e\acceptance\webkit-navigation-regression.spec.ts:81:1 › an authenticated fixture can navigate to an action and reload without fetch or hydration failures
+[22/64] [webkit] › e2e\acceptance\webkit-navigation-regression.spec.ts:85:1 › native HTTP behind a rejecting proxy preserves authenticated action navigation
+
+(node:35308) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[23/64] [webkit] › e2e\acceptance\auth-reliability.spec.ts:34:1 › LOCAL OTP rejects wrong and expired codes, then accepts one fresh code and refuses consumed replay
+[24/64] [webkit] › e2e\acceptance\auth-reliability.spec.ts:61:1 › LOCAL resend honors the client cooldown, rotates the fixture code and leaves the old code unusable
+[25/64] [webkit] › e2e\acceptance\auth-reliability.spec.ts:79:1 › LOCAL request budget stops after five deliveries and the UI counts down without sending automatically
+[26/64] [webkit] › e2e\acceptance\auth-reliability.spec.ts:105:1 › LOCAL verify budget blocks the eleventh attempt and the UI preserves its countdown without acquiring ownership
+[27/64] [webkit] › e2e\acceptance\auth-reliability.spec.ts:130:1 › LOCAL expired-session reload requires relogin, sign-out removes access, and switching identity cannot replace the existing owner
+[28/64] [webkit] › e2e\acceptance\auth-reliability.spec.ts:163:3 › LOCAL legacy invalid-code recovery offers explicit email-code and Google alternatives (en)
+[29/64] [webkit] › e2e\acceptance\auth-reliability.spec.ts:163:3 › LOCAL legacy invalid-code recovery offers explicit email-code and Google alternatives (zh-HK)
+[30/64] [webkit] › e2e\acceptance\auth-reliability.spec.ts:163:3 › LOCAL legacy invalid-code recovery offers explicit email-code and Google alternatives (zh-TW)
+
+(node:22672) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[31/64] [webkit] › e2e\acceptance\webkit-http-repro.spec.ts:11:3 › same-origin streaming fetch and navigation with interception true
+[32/64] [webkit] › e2e\acceptance\webkit-http-repro.spec.ts:11:3 › same-origin streaming fetch and navigation with interception false
+
+(node:10736) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[33/64] [chromium] › e2e\acceptance\audit-delivery-history.spec.ts:8:1 › shows every version, approval, and repeated delivery audit without double-counting usage
+[34/64] [chromium] › e2e\acceptance\audit-delivery-history.spec.ts:101:1 › bilingual completed-page reloads preserve exact version, approval, delivery, application, audit and monthly usage
+[35/64] [chromium] › e2e\acceptance\content-approval-journey.spec.ts:83:1 › assistant preview remains retryable when saving fails
+[36/64] [chromium] › e2e\acceptance\content-approval-journey.spec.ts:113:1 › S1 existing brand: recommendation, source/time/limits, first saved draft and explicit exact-version approval
+[37/64] [chromium] › e2e\acceptance\content-approval-journey.spec.ts:158:1 › S2 incomplete facts: required review is asked for, invented operations are withheld, safe omissions save
+[38/64] [chromium] › e2e\acceptance\content-approval-journey.spec.ts:190:1 › S3 selected branch: other branch facts and imported metadata never enter the confirmed drafting context
+[39/64] [chromium] › e2e\acceptance\content-approval-journey.spec.ts:210:1 › S4 Hong Kong mobile: shorten, tone and CTA revisions save, fresh login reads the exact version and reapproval is explicit
+[40/64] [chromium] › e2e\acceptance\content-approval-journey.spec.ts:262:1 › S5 old tab compares before saving; invalid provider output preserves drafts and an explicit retry succeeds
+[41/64] [chromium] › e2e\acceptance\content-approval-journey.spec.ts:301:1 › API boundaries: active generation is unique, cross-workspace and non-approver requests fail closed
+[42/64] [chromium] › e2e\acceptance\content-approval-journey.spec.ts:340:1 › a lost generation response is reconciled by reading the saved draft instead of another model call
+[43/64] [chromium] › e2e\acceptance\permissions.spec.ts:4:52 › viewer: accepted evidence reads, omitted/spoofed context denial, revocation
+[44/64] [chromium] › e2e\acceptance\permissions.spec.ts:4:52 › manager: accepted evidence reads, omitted/spoofed context denial, revocation
+[45/64] [chromium] › e2e\acceptance\permissions.spec.ts:27:1 › unverified identity and invalid callback cannot acquire workspace authority
+[46/64] [chromium] › e2e\acceptance\permissions.spec.ts:36:1 › lite permits three distinct approved deliveries and blocks the fourth
+[47/64] [chromium] › e2e\acceptance\permissions.spec.ts:51:2 › expired local fixture link cannot accept an invitation
+[48/64] [chromium] › e2e\acceptance\permissions.spec.ts:59:1 › authenticated fixture session can observe an unknown owner route 404
+[49/64] [chromium] › e2e\acceptance\permissions.spec.ts:64:1 › local logout revokes retained fixture session credentials
+[50/64] [chromium] › e2e\acceptance\returning-sign-in.spec.ts:12:3 › en 1440px returning owner completes email-code sign-in
+[51/64] [chromium] › e2e\acceptance\returning-sign-in.spec.ts:12:3 › en 1440px returning viewer completes email-code sign-in
+[52/64] [chromium] › e2e\acceptance\returning-sign-in.spec.ts:12:3 › zh-HK 375px first owner completes email-code sign-in
+[53/64] [chromium] › e2e\acceptance\webkit-navigation-regression.spec.ts:81:1 › an authenticated fixture can navigate to an action and reload without fetch or hydration failures
+[54/64] [chromium] › e2e\acceptance\webkit-navigation-regression.spec.ts:85:1 › native HTTP behind a rejecting proxy preserves authenticated action navigation
+
+(node:26512) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+
+(Use `node --trace-warnings ...` to show where the warning was created)
+[55/64] [chromium] › e2e\acceptance\auth-reliability.spec.ts:34:1 › LOCAL OTP rejects wrong and expired codes, then accepts one fresh code and refuses consumed replay
+[56/64] [chromium] › e2e\acceptance\auth-reliability.spec.ts:61:1 › LOCAL resend honors the client cooldown, rotates the fixture code and leaves the old code unusable
+[57/64] [chromium] › e2e\acceptance\auth-reliability.spec.ts:79:1 › LOCAL request budget stops after five deliveries and the UI counts down without sending automatically
+[58/64] [chromium] › e2e\acceptance\auth-reliability.spec.ts:105:1 › LOCAL verify budget blocks the eleventh attempt and the UI preserves its countdown without acquiring ownership
+[59/64] [chromium] › e2e\acceptance\auth-reliability.spec.ts:130:1 › LOCAL expired-session reload requires relogin, sign-out removes access, and switching identity cannot replace the existing owner
+[60/64] [chromium] › e2e\acceptance\auth-reliability.spec.ts:163:3 › LOCAL legacy invalid-code recovery offers explicit email-code and Google alternatives (en)
+[61/64] [chromium] › e2e\acceptance\auth-reliability.spec.ts:163:3 › LOCAL legacy invalid-code recovery offers explicit email-code and Google alternatives (zh-HK)
+[62/64] [chromium] › e2e\acceptance\auth-reliability.spec.ts:163:3 › LOCAL legacy invalid-code recovery offers explicit email-code and Google alternatives (zh-TW)
+
+
+(node:3724) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[63/64] [chromium] › e2e\acceptance\webkit-http-repro.spec.ts:11:3 › same-origin streaming fetch and navigation with interception true
+[64/64] [chromium] › e2e\acceptance\webkit-http-repro.spec.ts:11:3 › same-origin streaming fetch and navigation with interception false
+  64 passed (17.8m)

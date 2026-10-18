@@ -1,0 +1,43 @@
+
+Running 64 tests using 1 worker
+
+
+
+(node:27752) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/64] [webkit] › e2e\acceptance\audit-delivery-history.spec.ts:8:1 › shows every version, approval, and repeated delivery audit without double-counting usage
+  1) [webkit] › e2e\acceptance\audit-delivery-history.spec.ts:8:1 › shows every version, approval, and repeated delivery audit without double-counting usage
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator:  locator('.usage-mini').getByText('Approved deliveries', { exact: true })
+    Expected: visible
+    Received: hidden
+    Timeout:  15000ms
+
+    Call log:
+      - Expect "toBeVisible" with timeout 15000ms
+      - waiting for locator('.usage-mini').getByText('Approved deliveries', { exact: true })
+        30 × locator resolved to <span>Approved deliveries</span>
+           - unexpected value "hidden"
+
+
+      83 |   await expect(auditList.getByText("Export recorded", { exact: true })).toHaveCount(2);
+      84 |   const usage = page.locator(".usage-mini");
+    > 85 |   await expect(usage.getByText("Approved deliveries", { exact: true })).toBeVisible();
+         |                                                                         ^
+      86 |   await expect(usage.getByText("1 / 3", { exact: true })).toBeVisible();
+      87 |   await page.screenshot({ path: `${evidence}/audit-delivery-history.png`, fullPage: true });
+      88 |
+        at C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\e2e\acceptance\audit-delivery-history.spec.ts:85:73
+
+    Error Context: test-results\webkit-reliability-20261019\browser-regression\audit-delivery-history-sho-c9c5a-thout-double-counting-usage-webkit\error-context.md
+
+
+
+(node:17640) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[2/64] [webkit] › e2e\acceptance\audit-delivery-history.spec.ts:101:1 › bilingual completed-page reloads preserve exact version, approval, delivery, application, audit and monthly usage
+[3/64] [webkit] › e2e\acceptance\content-approval-journey.spec.ts:83:1 › assistant preview remains retryable when saving fails
+[4/64] [webkit] › e2e\acceptance\content-approval-journey.spec.ts:113:1 › S1 existing brand: recommendation, source/time/limits, first saved draft and explicit exact-version approval

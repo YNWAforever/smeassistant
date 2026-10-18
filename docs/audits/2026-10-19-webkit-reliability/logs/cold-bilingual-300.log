@@ -1,0 +1,42 @@
+
+Running 2 tests using 1 worker
+
+
+(node:19860) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[1/2] [webkit] › e2e\acceptance\audit-delivery-history.spec.ts:101:1 › bilingual completed-page reloads preserve exact version, approval, delivery, application, audit and monthly usage
+  1) [webkit] › e2e\acceptance\audit-delivery-history.spec.ts:101:1 › bilingual completed-page reloads preserve exact version, approval, delivery, application, audit and monthly usage
+
+    Error: expect(page).toHaveURL(expected) failed
+
+    Expected pattern: /\/en\/owner\/acceptance-hk-6f74d32a/
+    Received string:  "http://localhost:58341/en/owner/sign-in/complete?returnTo=%2Fen%2Fowner%2Facceptance-hk-6f74d32a&method=email"
+    Timeout: 15000ms
+
+    Call log:
+      - Expect "toHaveURL" with timeout 15000ms
+        32 × unexpected value "http://localhost:58341/en/owner/sign-in/complete?returnTo=%2Fen%2Fowner%2Facceptance-hk-6f74d32a&method=email"
+
+
+       at ..\..\test\e2e\fixtures.ts:99
+
+       97 |   const link = await requestSignInLink(page, env, merchant, role);
+       98 |   await page.goto(link);
+    >  99 |   await expect(page).toHaveURL(new RegExp(`/en/owner/${merchant.slug}`));
+          |                      ^
+      100 |   if (page.context().browser()?.browserType().name() === "webkit") await waitForPageReady(page);
+      101 |   return link;
+      102 | }
+        at signIn (C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\test\e2e\fixtures.ts:99:22)
+        at C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\e2e\acceptance\audit-delivery-history.spec.ts:108:3
+
+    Error Context: test-results\webkit-reliability-20261019\cold-bilingual-300\audit-delivery-history-bil-23357-ion-audit-and-monthly-usage-webkit\error-context.md
+
+
+Testing stopped early after 1 maximum allowed failures.
+
+  1 failed
+    [webkit] › e2e\acceptance\audit-delivery-history.spec.ts:101:1 › bilingual completed-page reloads preserve exact version, approval, delivery, application, audit and monthly usage
+  1 did not run
+  1 error was not a part of any test, see above for details
