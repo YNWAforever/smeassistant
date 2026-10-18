@@ -180,6 +180,25 @@ export type WorkspaceCopy = {
     addOwnSubmit: string;
   };
   inputs: Record<string, string>;
+  verification: {
+    heading: string;
+    outcomes: Record<"verified" | "not_yet" | "source_unavailable" | "not_verifiable" | "pending", string>;
+    unsupportedReview: string;
+    unsupported: string;
+    unknown: string;
+    businessResults: string;
+    source: string;
+    checkedAt: string;
+    noCheck: string;
+    noSource: string;
+    googleNext: string;
+    scanNext: string;
+    retryNext: string;
+    verifiedNext: string;
+    followUp: string;
+    featureAvailable: string;
+    featureHelp: string;
+  };
   offers: OffersCopy;
   /**
    * P2.1 item 6 / P2.2 item 12. Templates whose `delivery` is "checklist" have
@@ -218,6 +237,31 @@ function inputs(labels: string[]): Record<string, string> {
 }
 
 export const workspaceEn: WorkspaceCopy = {
+  verification: {
+    heading: "External change check",
+    outcomes: {
+      verified: "Matching external change observed",
+      not_yet: "No matching change observed yet",
+      source_unavailable: "Unable to verify with current evidence",
+      not_verifiable: "No comparable source evidence",
+      pending: "Awaiting independent verification",
+    },
+    unsupportedReview: "Current sources cannot verify this specific Google review reply.",
+    unsupported: "Current sources cannot independently verify this action.",
+    unknown: "Missing or failed source data does not mean the work was not applied.",
+    businessResults: "This checks an external change. It does not prove business results.",
+    source: "Source",
+    checkedAt: "Checked at",
+    noCheck: "No independent check has been recorded.",
+    noSource: "No matching verification source is available.",
+    googleNext: "Check the reply in Google",
+    scanNext: "Wait for the next scan",
+    retryNext: "Check the source and try again later",
+    verifiedNext: "Review business results separately",
+    followUp: "Follow-up to completed work",
+    featureAvailable: "Feature available",
+    featureHelp: "Feature availability does not indicate publication or independent verification.",
+  },
   packs: {
     title: "Visibility starter pack",
     startHeading: "Start your visibility starter pack",
@@ -512,6 +556,31 @@ export const workspaceEn: WorkspaceCopy = {
 };
 
 export const workspaceZhHK: WorkspaceCopy = {
+  verification: {
+    heading: "外部變更核對",
+    outcomes: {
+      verified: "已觀察到相符的外部變更",
+      not_yet: "暫未觀察到相符變更",
+      source_unavailable: "目前證據不足，暫時無法判定",
+      not_verifiable: "沒有可比較的來源證據",
+      pending: "待獨立核實",
+    },
+    unsupportedReview: "目前來源無法核實這則 Google 評論的指定回覆。",
+    unsupported: "目前來源無法獨立核實此行動。",
+    unknown: "來源缺失或讀取失敗，不代表工作尚未套用。",
+    businessResults: "此核對只確認外部變更，並不證明營業成效。",
+    source: "來源",
+    checkedAt: "檢查時間",
+    noCheck: "尚未有獨立核對紀錄。",
+    noSource: "暫無可核實此變更的來源。",
+    googleNext: "到 Google 核對回覆",
+    scanNext: "等待下次掃描",
+    retryNext: "檢查來源，稍後再試",
+    verifiedNext: "另行檢視營業成效",
+    followUp: "已完成工作的後續事項",
+    featureAvailable: "功能可用",
+    featureHelp: "功能可用不代表內容已發佈或經獨立核實。",
+  },
   packs: {
     title: "能見度入門套裝",
     startHeading: "開始你的能見度入門套裝",
@@ -776,6 +845,14 @@ export const workspaceZhHK: WorkspaceCopy = {
 
 export const workspaceZhTW: WorkspaceCopy = {
   ...workspaceZhHK,
+  verification: {
+    ...workspaceZhHK.verification,
+    outcomes: {
+      ...workspaceZhHK.verification.outcomes,
+      pending: "待獨立查證",
+    },
+    featureHelp: "功能可用不代表內容已發布或經獨立查證。",
+  },
   packs: {
     title: "能見度入門套組",
     startHeading: "開始你的能見度入門套組",

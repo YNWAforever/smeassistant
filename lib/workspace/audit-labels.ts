@@ -14,6 +14,7 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string; zhTW?:
   "action.dismissed": { en: "Action dismissed", zh: "行動已略過" },
   "action.applied": { en: "Marked as applied", zh: "標記為已套用" },
   "action.verified": { en: "Confirmed on the website", zh: "已在網站確認" },
+  "action.verification_checked": { en: "External change checked", zh: "已核對外部變更", zhTW: "已查證外部變更" },
   "action.application_retracted": { en: "Applied mark withdrawn", zh: "撤回已套用標記" },
   "run.started": { en: "Draft generation started", zh: "草稿生成已開始" },
   "run.succeeded": { en: "Draft prepared", zh: "草稿已準備" },

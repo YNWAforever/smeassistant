@@ -1,0 +1,24 @@
+diff --git a/test/e2e/fixtures.ts b/test/e2e/fixtures.ts
+index 8e3ae8f..ee93bbf 100644
+--- a/test/e2e/fixtures.ts
++++ b/test/e2e/fixtures.ts
+@@ -3,7 +3,18 @@ import { startEnvironment, type AcceptanceEnvironment } from "./environment";
+ import { clearMerchantActionRuns, seedMerchant, type MerchantSeed } from "./seed";
+ export const test = base.extend<{ merchant: MerchantSeed }, { environment: AcceptanceEnvironment }>({
+   environment: [async ({}, runFixture) => { const env = await startEnvironment(); try { await runFixture(env); } finally { await env.stop(); } }, { scope: "worker", timeout: 240000 }],
+-  context: async ({ context }, runFixture) => {
++  context: async ({ context, environment }, runFixture) => {
++    // Fixed-source local acceptance has no live edits to apply. WebKit can
++    // cancel webpack's hot-update fetch during navigation and Next then reloads
++    // the previous page. Isolate only this dev channel, never application/Auth
++    // traffic; keep the mocked socket open so Next cannot trigger reconnect reloads.
++    if (process.env.SME_TEST_WEBPACK === "1" && process.env.SME_TEST_FIXED_SOURCE === "1") {
++      const app = new URL(environment.app);
++      await context.routeWebSocket(
++        url => url.protocol === "ws:" && url.host === app.host && url.pathname === "/_next/webpack-hmr",
++        socket => { socket.onMessage(() => {}); },
++      );
++    }
+     await context.route('**/*', route => {
+       const url=new URL(route.request().url());
+       return ['localhost','127.0.0.1','[::1]'].includes(url.hostname) ? route.continue() : route.abort('blockedbyclient');

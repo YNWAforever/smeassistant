@@ -23,6 +23,11 @@ function pageLimit(value: number): number {
 const WORKSPACE_COLUMNS = "id, slug, business_name, market, tier, timezone, is_demo, instagram_handle, industry, district";
 const LOCATION_COLUMNS = "id, workspace_id, slug, name, address, district, is_primary, place_id";
 
+export interface ActionVerificationScope {
+  actionId: string;
+  locationId: string | null;
+}
+
 /** Selected workspace rows, called only after membership authorization. */
 export function workspaceReadRepository(client?: Pick<Pool, "query">) {
   async function rows<T extends QueryResultRow>(sql: string, values: unknown[]): Promise<T[]> {
@@ -178,7 +183,14 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
         FROM aeo_surface_snapshots s JOIN audit_jobs j ON j.id=s.job_id
         WHERE j.workspace_id=$1 AND s.job_id=ANY($2::uuid[])`, [workspaceId, jobIds]);
     },
-    async activity(workspaceId: string, limit: number): Promise<AuditEventRow[]> {
+    async activity(workspaceId: string, limit: number, verificationFor?: ActionVerificationScope): Promise<AuditEventRow[]> {
+      if (verificationFor) {
+        return rows<AuditEventRow>(`SELECT id, workspace_id, location_id, actor_type, actor_id, event, entity_type, entity_id, payload, created_at::text
+          FROM audit_events WHERE workspace_id=$1 AND entity_type='action' AND entity_id=$3
+           AND event='action.verification_checked' AND location_id IS NOT DISTINCT FROM $4::uuid
+          ORDER BY created_at DESC,id DESC LIMIT $2`,
+        [workspaceId, pageLimit(limit), verificationFor.actionId, verificationFor.locationId]);
+      }
       return rows<AuditEventRow>(`SELECT id, workspace_id, location_id, actor_type, actor_id, event, entity_type, entity_id, payload, created_at::text
         FROM audit_events WHERE workspace_id=$1 ORDER BY created_at DESC LIMIT $2`, [workspaceId, pageLimit(limit)]);
     },

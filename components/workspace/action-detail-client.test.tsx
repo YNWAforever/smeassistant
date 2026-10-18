@@ -36,7 +36,7 @@ import { copy } from "@/lib/copy";
 import { getMessages } from "@/lib/i18n";
 import { localized } from "@/lib/domain";
 import type { ActionOverview } from "@/lib/workspace/overview";
-import type { ActionDetail } from "@/lib/workspace/queries-pages";
+import type { ActionDetail, AuditEventRow } from "@/lib/workspace/queries-pages";
 import { TEMPLATES, templateByKey, type TemplateKey } from "@/lib/workspace/templates";
 
 const CHECKLIST_TEMPLATES = TEMPLATES.filter((t) => t.delivery === "checklist");
@@ -129,6 +129,16 @@ function render(templateKey: TemplateKey, measurements: ActionDetail["measuremen
   return root;
 }
 
+function verificationMarkup(value: ActionDetail, auditRows: AuditEventRow[] = [], locale: "en" | "zh-HK" | "zh-TW" = "en") {
+  const root = document.createElement("div");
+  root.innerHTML = renderToStaticMarkup(
+    <ActionDetailClient locale={locale} workspaceSlug="kam-man-house" workspaceId="ws-1"
+      timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={value}
+      auditRows={auditRows} locations={[]} approvedAssets={[]} />,
+  );
+  return root;
+}
+
 const checklistCopy = copy.en.workspace.checklist;
 const appliedCopy = getMessages("en").applied;
 
@@ -139,6 +149,112 @@ describe("focused draft review", () => {
     expect(disclosure).not.toBeNull();
     expect(disclosure?.hasAttribute("open")).toBe(false);
     expect(root.querySelector(".draft-editor-card")?.closest("details")).toBeNull();
+  });
+
+  it("does not promise that a routine scan can verify a specific Google review reply", () => {
+    const value = detail("review-response");
+    value.action.applied = true;
+    value.action.actionState = "completed";
+    value.action.displayPhase = localized("Applied (reported)", "已套用（店主回報）");
+    value.action.displayPhaseKey = "applied";
+    const root = document.createElement("div");
+    root.innerHTML = renderToStaticMarkup(
+      <ActionDetailClient locale="en" workspaceSlug="kam-man-house" workspaceId="ws-1"
+        timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={value}
+        auditRows={[]} locations={[]} approvedAssets={[]} />,
+    );
+    expect(root.textContent).toContain("Current sources cannot verify this specific Google review reply.");
+    expect(root.querySelector(".action-detail-next strong")?.textContent).toBe("Check the reply in Google");
+    expect(root.querySelector(".action-detail-badges")?.textContent).toContain("Applied (reported)");
+  });
+
+  it.each([
+    ["verified", "Matching external change observed"],
+    ["not_yet", "No matching change observed yet"],
+    ["source_unavailable", "Unable to verify with current evidence"],
+  ] as const)("shows the recorded %s outcome without inferring business results", (outcome, expected) => {
+    const value = detail("visibility-content");
+    value.action.applied = true;
+    value.action.actionState = "completed";
+    value.action.verified = outcome === "verified";
+    value.action.verifiedOn = outcome === "verified" ? "2026-10-18T02:00:00Z" : null;
+    const root = verificationMarkup(value, [{
+      id: 1, workspace_id: "ws-1", location_id: "loc-1", actor_type: "scanner",
+      actor_id: null, event: "action.verification_checked", entity_type: "action",
+      entity_id: "act-1", created_at: "2026-10-18T02:00:00Z",
+      payload: { verification: {
+        outcome, checkedAt: "2026-10-18T02:00:00Z", sourceUrl: "https://source.example.test/faq",
+        checks: ["faq_schema"],
+      } },
+    }]);
+    const panel = root.querySelector(".action-verification-result");
+    expect(panel?.textContent).toContain(expected);
+    expect(panel?.textContent).toContain("18 Oct 2026");
+    expect(panel?.querySelector('a[href="https://source.example.test/faq"]')).not.toBeNull();
+    expect(panel?.textContent).toContain("It does not prove business results.");
+    expect(value.action.actionState).toBe("completed");
+  });
+
+  it.each(["zh-HK", "zh-TW"] as const)("%s explains the exact-review verification limit", (locale) => {
+    const value = detail("review-response");
+    value.action.applied = true;
+    const root = verificationMarkup(value, [], locale);
+    expect(root.textContent).toContain("目前來源無法核實這則 Google 評論的指定回覆。");
+    expect(root.querySelector(".action-detail-next strong")?.textContent).toBe("到 Google 核對回覆");
+  });
+
+  it("keeps another workspace's verification receipt and source out of the action", () => {
+    const value = detail("visibility-content");
+    value.action.applied = true;
+    const root = verificationMarkup(value, [{
+      id: 2, workspace_id: "foreign-workspace", location_id: "loc-1", actor_type: "scanner",
+      actor_id: null, event: "action.verification_checked", entity_type: "action",
+      entity_id: "act-1", created_at: "2026-10-18T03:00:00Z",
+      payload: { verification: {
+        outcome: "verified", checkedAt: "2026-10-18T03:00:00Z", sourceUrl: "https://private.example.test/",
+      } },
+    }]);
+    expect(root.textContent).not.toContain("private.example.test");
+    expect(root.textContent).not.toContain("Matching external change observed");
+  });
+
+  it("keeps an externally verified lifecycle ahead of its historical approval", () => {
+    const value = detail("visibility-content");
+    value.action.verified = true;
+    value.action.actionState = "completed";
+    value.action.displayPhase = localized("Verified external change", "外部變更已驗證");
+    value.action.displayPhaseKey = "verified";
+    value.versions = [versionRow({ id: "ver-2", version_no: 2, approval_state: "approved" })];
+    const root = verificationMarkup(value);
+    expect(root.querySelector(".action-detail-badges")?.textContent).toContain("Verified external change");
+    expect(root.querySelector(".action-detail-next strong")?.textContent).toBe("Review business results separately");
+    expect(root.textContent).toContain("Version 2 approved");
+  });
+
+  it("links a proven recurrence back to the completed work in the same workspace", () => {
+    const value = detail("review-response");
+    value.action.evidence.followUpOfActionId = "11111111-2222-4333-8444-555555555555";
+    const root = verificationMarkup(value);
+    const link = root.querySelector('a[href="/en/owner/kam-man-house/actions/11111111-2222-4333-8444-555555555555?location=yik-yam"]');
+    expect(link).not.toBeNull();
+    expect(link?.textContent).toContain("Follow-up to completed work");
+  });
+});
+
+describe("delivery submission identity", () => {
+  afterEach(() => { cleanup(); clientMocks.exportVersion.mockReset(); });
+
+  it("starts one export when the same saved version is clicked twice in one tick", async () => {
+    clientMocks.exportVersion.mockReset();
+    clientMocks.exportVersion.mockReturnValue(new Promise<never>(() => {}));
+    const value = detail("review-response");
+    value.versions = [versionRow({ id: "ver-2", version_no: 2, approval_state: "approved", body: "Synthetic approved reply." })];
+    renderLive(<ActionDetailClient locale="en" workspaceSlug="kam-man-house" workspaceId="ws-1"
+      timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={value}
+      auditRows={[]} locations={[]} approvedAssets={[]} />);
+    const button = screen.getByRole("button", { name: "Export approved version" });
+    await act(async () => { button.click(); button.click(); });
+    expect(clientMocks.exportVersion).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -721,7 +837,7 @@ describe("the owner's applied assertion", () => {
     expect(clientMocks.retractApplied).toHaveBeenCalledWith("act-1");
   });
 
-  it("shows the applied lifecycle and next scan after completion without hiding approval", () => {
+  it("shows applied review work and its source limitation without hiding approval", () => {
     mount(DRAFTED_KEY, (value) => {
       value.action.actionState = "completed";
       value.action.approvalState = "approved";
@@ -749,7 +865,7 @@ describe("the owner's applied assertion", () => {
     }, "owner", "zh-HK");
 
     expect(document.querySelector(".action-detail-badges")?.textContent).toContain("已套用（店主回報）");
-    expect(document.querySelector(".action-detail-next strong")?.textContent).toBe("等待下次掃描");
+    expect(document.querySelector(".action-detail-next strong")?.textContent).toBe("到 Google 核對回覆");
     // The immutable version approval remains visible in its own record.
     expect(screen.getByText("第 1 版已核准")).toBeInTheDocument();
   });

@@ -1,0 +1,25 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018
+
+ ❯ components/workspace/action-detail-client.test.tsx (107 tests | 1 failed | 106 skipped) 282ms
+     × starts one export when the same saved version is clicked twice in one tick 280ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/workspace/action-detail-client.test.tsx > delivery submission identity > starts one export when the same saved version is clicked twice in one tick
+AssertionError: expected "vi.fn()" to be called 1 times, but got 2 times
+ ❯ components/workspace/action-detail-client.test.tsx:257:39
+    255|     const button = screen.getByRole("button", { name: "Export approved…
+    256|     await act(async () => { button.click(); button.click(); });
+    257|     expect(clientMocks.exportVersion).toHaveBeenCalledTimes(1);
+       |                                       ^
+    258|   });
+    259| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 106 skipped (107)
+   Start at  23:56:46
+   Duration  3.28s (transform 773ms, setup 270ms, import 1.70s, tests 282ms, environment 783ms)

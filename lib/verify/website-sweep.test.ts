@@ -43,6 +43,29 @@ describe("runWebsiteVerification", () => {
     },
   });
 
+  it.each([
+    { name: "observed external change", body: FAQ, unavailable: false, outcome: "verified" },
+    { name: "no external change observed", body: "", unavailable: false, outcome: "not_yet" },
+    { name: "unavailable source", body: "", unavailable: true, outcome: "source_unavailable" },
+  ])("retains an auditable result and source for $name", async ({ body, unavailable, outcome }) => {
+    const r = repo();
+    const transport = deps(body);
+    if (unavailable) transport.fetch = (async () => { throw new Error("synthetic source unavailable"); }) as typeof fetch;
+    const now = new Date("2026-10-18T02:00:00Z");
+    await runWebsiteVerification(r as never, transport as never, { now, limit: 1 });
+    expect(r.markChecked).toHaveBeenCalledWith([expect.objectContaining({
+      id: "act-1",
+      workspace_id: "ws-1",
+      verification: expect.objectContaining({
+        outcome,
+        checkedAt: now.toISOString(),
+        sourceUrl: "https://example.test",
+        checks: ["faq_schema"],
+      }),
+    })], now.toISOString());
+    expect(recorded).toHaveLength(outcome === "verified" ? 1 : 0);
+  });
+
   it("writes one verified row when the failing check now passes", async () => {
     const r = repo();
     const result = await runWebsiteVerification(r as never, deps(FAQ) as never, {
@@ -66,10 +89,12 @@ describe("runWebsiteVerification", () => {
     expect(recorded).toEqual([]);
     // Stamping on failure is what turns a five-minute retry into a daily one.
     // Pairs, not bare ids: an id alone does not imply a tenant.
-    expect(r.markChecked).toHaveBeenCalledWith([{ id: "act-1", workspace_id: "ws-1" }], expect.any(String));
+    expect(r.markChecked).toHaveBeenCalledWith([expect.objectContaining({
+      id: "act-1", workspace_id: "ws-1", verification: expect.objectContaining({ outcome: "not_yet" }),
+    })], expect.any(String));
   });
 
-  it("treats an unreachable site as not-yet, not as verified", async () => {
+  it("keeps an unreachable source unknown without recording an applied change", async () => {
     const r = repo();
     const failing = {
       ...deps(""),
@@ -121,8 +146,8 @@ describe("runWebsiteVerification", () => {
     // the same hammering failure arriving by a different door.
     expect(r.markChecked).toHaveBeenCalledWith(
       [
-        { id: "act-1", workspace_id: "ws-1" },
-        { id: "act-2", workspace_id: "ws-1" },
+        expect.objectContaining({ id: "act-1", workspace_id: "ws-1", verification: expect.objectContaining({ outcome: "source_unavailable" }) }),
+        expect.objectContaining({ id: "act-2", workspace_id: "ws-1", verification: expect.objectContaining({ outcome: "verified" }) }),
       ],
       expect.any(String),
     );
@@ -162,8 +187,8 @@ describe("runWebsiteVerification", () => {
     expect(result.actionsConsidered).toBe(2);
     expect(r.markChecked).toHaveBeenCalledWith(
       [
-        { id: "act-1", workspace_id: "ws-1" },
-        { id: "act-2", workspace_id: "ws-2" },
+        expect.objectContaining({ id: "act-1", workspace_id: "ws-1", verification: expect.objectContaining({ outcome: "verified" }) }),
+        expect.objectContaining({ id: "act-2", workspace_id: "ws-2", verification: expect.objectContaining({ outcome: "verified" }) }),
       ],
       expect.any(String),
     );

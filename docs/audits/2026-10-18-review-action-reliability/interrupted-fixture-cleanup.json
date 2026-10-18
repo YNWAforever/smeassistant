@@ -1,0 +1,11 @@
+{
+  "containerId": "cef407a48eb16b10e4caf42e4825b822c7e5b999d66f9dfd29e4dad176f25c81",
+  "containerName": "sme-neon-it-db-220e72c10499",
+  "database": "sme_neon_it_220e72c10499",
+  "labelsAndIdentityMatched": true,
+  "network": "none",
+  "ownedAppPort": 52750,
+  "appPortClosed": true,
+  "removed": true,
+  "reason": "Interrupted first WebKit fixture run; no production data"
+}

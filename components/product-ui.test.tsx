@@ -11,6 +11,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/components/pocket-assistant/assistant-sheet", () => ({ ContextualAssistant: () => null }));
 
 import type { ShellWorkspace } from "@/components/product-ui";
+import { CapabilityBadge } from "@/components/product-ui";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { MoreView } from "@/components/workspace/more-view";
 import { copy } from "@/lib/copy";
@@ -23,6 +24,12 @@ beforeAll(() => {
   });
 });
 afterEach(cleanup);
+
+it("labels Live as feature availability, without claiming publication", () => {
+  render(<CapabilityBadge value="Live" context="action" />);
+  expect(screen.getByText("Feature available", { exact: true })).toBeVisible();
+  expect(screen.queryByText("Live", { exact: true })).toBeNull();
+});
 
 const workspace: ShellWorkspace = {
   slug: "kam-man-house",

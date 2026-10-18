@@ -32,6 +32,8 @@ export interface ActionEvidence {
   detail: LocalizedText;
   observedAt: string;
   freshness: LocalizedText;
+  /** Same-scope completed predecessor, only after a proven comparable recurrence. */
+  followUpOfActionId?: string;
 }
 
 export interface DerivedAction {
