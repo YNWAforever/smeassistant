@@ -44,6 +44,8 @@ import { guardrailText } from "@/lib/workspace/guardrail-text"
 import { zhFor } from "@/lib/zh-tw"
 import { evidenceValueLabel, sourceLabel } from "@/lib/workspace/source-label"
 import { actionVerificationView } from "@/lib/workspace/action-verification"
+import { OwnerReviewCheckPanel } from "@/components/workspace/owner-review-check-panel"
+import { EMPTY_OWNER_CHECK, ownerCheckNextStep, type OwnerCheckContext } from "@/lib/workspace/owner-review-check"
 
 export interface ActionDetailClientProps {
   locale: PrototypeLocale
@@ -71,6 +73,8 @@ export interface ActionDetailClientProps {
   initialVersionId?: string | null
   /** P4.6: the Google publish card's data (review-response only); null hides it. The server stays the authority. */
   publishPanel?: PublishPanel | null
+  ownerCheck?: OwnerCheckContext
+  ownerCheckIdentity?: string
 }
 
 export interface OfferCardData {
@@ -147,7 +151,7 @@ export function ActionDetailClient(props: ActionDetailClientProps) {
   return <ActionDetailEditor key={`${props.workspaceId}:${props.detail.action.id}`} {...props} />
 }
 
-function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false, initialVersionId = null, publishPanel = null }: ActionDetailClientProps) {
+function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false, initialVersionId = null, publishPanel = null, ownerCheck = EMPTY_OWNER_CHECK, ownerCheckIdentity }: ActionDetailClientProps) {
   const isChinese = locale !== "en"
   const router = useRouter()
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -654,12 +658,19 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
   const locationName = resolveText(action.location.name, locale) || locations.find((l) => l.slug === location)?.name || ""
   const verificationCopy = copy[locale].workspace.verification
   const verification = actionVerificationView(action, workspaceId, auditRows)
+  const currentOwnerCheck = ownerCheck.records.find(row => row.versionId === selectedVersion?.id)
+  const ownerNext = action.templateKey === "review-response" && selectedVersion && !ownerCheck.unavailable
+    ? !ownerCheck.appliedVersionIds.includes(selectedVersion.id)
+      ? resolveText(ownerCheckNextStep("not_applied"), locale)
+      : currentOwnerCheck ? resolveText(ownerCheckNextStep(currentOwnerCheck.decision), locale) : null
+    : null
   const verificationNext = action.verified ? verificationCopy.verifiedNext
-    : verification.unsupported ? verificationCopy.googleNext
+    : ownerNext ?? (verification.unsupported ? verificationCopy.googleNext
     : verification.outcome === "source_unavailable" || verification.outcome === "not_verifiable"
-      ? verificationCopy.retryNext : verificationCopy.scanNext
+      ? verificationCopy.retryNext : verificationCopy.scanNext)
   const showVerification = action.applied || action.verified ||
-    versions.some((version) => version.first_exported_at) || verification.checkedAt !== null
+    versions.some((version) => version.first_exported_at) || verification.checkedAt !== null ||
+    action.templateKey === "review-response" && ownerCheck.records.length > 0
 
   return (
     <div className="action-detail-page">
@@ -695,6 +706,13 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
           <div><dt>{verificationCopy.checkedAt}</dt><dd>{verification.checkedAt ? formatDateTime(verification.checkedAt, locale, timezone) : verificationCopy.noCheck}</dd></div>
         </dl>
         <p>{verificationNext}</p><p>{verificationCopy.businessResults}</p>
+        {action.templateKey === "review-response" && (applied || ownerCheck.records.length > 0) && selectedVersion && <OwnerReviewCheckPanel
+          locale={locale} workspaceId={workspaceId} actionId={action.id} version={selectedVersion}
+          latestVersionId={versions[0].id} identity={ownerCheckIdentity ?? locationName}
+          timezone={timezone} mapsUrl={reviewEvidence?.mapsUrl ?? null} context={ownerCheck}
+          approvedAssets={approvedAssets} canEdit={canEdit} offline={offline} dirty={dirty || conflict}
+          onSaved={() => router.refresh()} onReload={() => router.refresh()}
+        />}
       </SectionCard>}
 
       {offline && <div className="offline-banner" role="status"><CloudOff /><div><strong>{isChinese ? "你目前離線" : "You are offline"}</strong><span>{isChinese ? zhFor(locale, "文字會保留在此裝置，但儲存、審批及匯出會暫停，直至伺服器確認安全轉換。") : "Text remains on this device, but save, approval and export stay blocked until the server confirms a safe transition."}</span></div><Button variant="outline" onClick={() => { if (navigator.onLine) router.refresh(); else toast.message(isChinese ? "仍然離線；請檢查網絡連線。" : "Still offline; check your connection.") }}>{isChinese ? "重新連接" : "Reconnect"}</Button></div>}

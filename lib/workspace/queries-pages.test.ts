@@ -526,6 +526,19 @@ describe("page repository boundaries", () => {
     expect(detail?.scanInputs[0].selected).toEqual([detail?.scanInputs[0].reviews[0].key]);
   });
 
+  it.each([
+    ["https://www.google.com/maps/place/Synthetic", "https://www.google.com/maps/place/Synthetic"],
+    ["https://google.com.evil.test/maps", null],
+    ["https://www.google.com/maps?token=synthetic-secret", null],
+  ])("only carries a sanitized business Maps reference from the action's own snapshot: %s", async (url, expected) => {
+    artifacts.assistantSnapshot.mockResolvedValue({ id: "snap-9", jobId: "job-9", workspaceId: "ws-1", locationId: "loc-1",
+      observedAt: "2026-09-02T00:00:00Z", metrics: {} });
+    artifacts.assistantReviewData.mockResolvedValue({ gbp: { maps_url: url, reviews: [{ rating: 5, text: "Synthetic review", time: "2026-09-01" }] } });
+    state.actions = [actionRow({ id: "a1", template_key: "review-response", source_snapshot_id: "snap-9" })];
+    expect((await getAction(ctx, "a1"))?.scanInputs[0].mapsUrl).toBe(expected);
+    expect(artifacts.assistantReviewData).toHaveBeenCalledWith("ws-1", "job-9");
+  });
+
   it("reports only the reviews the owner picked, and falls back when the pick goes stale", async () => {
     const snapshot: FakeSnapshot = { id: "snap-9", jobId: "job-9", workspaceId: "ws-1", locationId: "loc-1", observedAt: "2026-09-02T00:00:00Z", metrics: {} };
     artifacts.assistantSnapshot.mockResolvedValue(snapshot);

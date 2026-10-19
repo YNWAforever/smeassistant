@@ -13,6 +13,7 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string; zhTW?:
   "action.updated": { en: "Action updated", zh: "行動已更新" },
   "action.dismissed": { en: "Action dismissed", zh: "行動已略過" },
   "action.applied": { en: "Marked as applied", zh: "標記為已套用" },
+  "action.owner_review_check_recorded": { en: "Owner review check recorded (statement)", zh: "已記錄店主評論核對（聲明）" },
   "action.verified": { en: "Confirmed on the website", zh: "已在網站確認" },
   "action.verification_checked": { en: "External change checked", zh: "已核對外部變更", zhTW: "已查證外部變更" },
   "action.application_retracted": { en: "Applied mark withdrawn", zh: "撤回已套用標記" },

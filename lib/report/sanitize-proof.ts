@@ -19,7 +19,7 @@ const safeUrl = (value: unknown): string | null => {
   return candidate && /^https?:\/\//i.test(candidate) ? candidate : null;
 };
 
-const safeGoogleMapsUrl = (value: unknown): string | null => {
+export const safeGoogleMapsUrl = (value: unknown): string | null => {
   const candidate = nullableText(value, 300);
   if (!candidate) return null;
   try {

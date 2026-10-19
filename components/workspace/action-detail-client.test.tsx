@@ -32,6 +32,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { ActionDetailClient, ownerInputPatch, type OfferCardData } from "@/components/workspace/action-detail-client";
+import type { OwnerCheckContext } from "@/lib/workspace/owner-review-check";
 import { copy } from "@/lib/copy";
 import { getMessages } from "@/lib/i18n";
 import { localized } from "@/lib/domain";
@@ -129,12 +130,12 @@ function render(templateKey: TemplateKey, measurements: ActionDetail["measuremen
   return root;
 }
 
-function verificationMarkup(value: ActionDetail, auditRows: AuditEventRow[] = [], locale: "en" | "zh-HK" | "zh-TW" = "en") {
+function verificationMarkup(value: ActionDetail, auditRows: AuditEventRow[] = [], locale: "en" | "zh-HK" | "zh-TW" = "en", ownerCheck?: OwnerCheckContext) {
   const root = document.createElement("div");
   root.innerHTML = renderToStaticMarkup(
     <ActionDetailClient locale={locale} workspaceSlug="kam-man-house" workspaceId="ws-1"
       timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={value}
-      auditRows={auditRows} locations={[]} approvedAssets={[]} />,
+      auditRows={auditRows} locations={[]} approvedAssets={[]} ownerCheck={ownerCheck} />,
   );
   return root;
 }
@@ -143,6 +144,37 @@ const checklistCopy = copy.en.workspace.checklist;
 const appliedCopy = getMessages("en").applied;
 
 describe("focused draft review", () => {
+  it("offers version-bound owner checks after a review reply was applied, without claiming independent verification", () => {
+    const value = detail("review-response");
+    value.action.applied = true;
+    value.action.actionState = "completed";
+    value.versions = [versionRow({ id: "version-2", version_no: 2, approval_state: "approved" })];
+    const root = verificationMarkup(value);
+    expect(root.querySelector(".owner-review-check")).not.toBeNull();
+    expect(root.querySelector(".action-verification-result")?.textContent).toContain("Current sources cannot verify");
+    expect(root.querySelector(".owner-review-check")?.textContent).toContain("Owner check");
+  });
+  it("advances the next step after an owner check while retaining unknown independent verification", () => {
+    const value = detail("review-response");
+    value.action.applied = true;
+    value.versions = [versionRow({ id: "v2", version_no: 2, approval_state: "approved" })];
+    const context: OwnerCheckContext = { appliedVersionIds: ["v2"], records: [{ id: "6", versionId: "v2", decision: "checked",
+      reviewReference: "Synthetic review", note: "", evidenceAssetId: null, evidenceLabel: null, previousId: null,
+      recordedAt: "2026-10-19T00:00:00Z", independent: false }] };
+    const root = verificationMarkup(value, [], "en", context);
+    expect(root.querySelector(".action-detail-next strong")?.textContent).toBe("Await independent confirmation");
+    expect(root.querySelector(".action-verification-result")?.textContent).toContain("Current sources cannot verify");
+  });
+  it("retains owner check history after the applied mark is withdrawn", () => {
+    const value = detail("review-response");
+    value.versions = [versionRow({ id: "v2", version_no: 2, approval_state: "approved" })];
+    const context: OwnerCheckContext = { appliedVersionIds: [], records: [{ id: "6", versionId: "v2", decision: "checked",
+      reviewReference: "Synthetic review", note: "Historical statement", evidenceAssetId: null, evidenceLabel: null,
+      previousId: null, recordedAt: "2026-10-19T00:00:00Z", independent: false }] };
+    const root = verificationMarkup(value, [], "en", context);
+    expect(root.querySelector(".owner-review-check")?.textContent).toContain("Historical statement");
+    expect(root.querySelector(".owner-review-check")?.textContent).toContain("no active applied statement");
+  });
   it("keeps the lifecycle available on demand without putting it ahead of the editor", () => {
     const root = render("review-response");
     const disclosure = root.querySelector(".provenance-chain")?.closest("details");

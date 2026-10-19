@@ -10,6 +10,8 @@ import { offerPromotionsEnabled } from "@/lib/workspace/offers-flag";
 import { inScopeFor, loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 import { getAction, getActivity } from "@/lib/workspace/queries-pages";
 import { auditBelongsToAction } from "@/lib/workspace/audit-scope";
+import { ownerReviewCheckRepository } from "@/lib/repositories/owner-review-check";
+import { EMPTY_OWNER_CHECK } from "@/lib/workspace/owner-review-check";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +45,7 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
   // P4.6: the Google publish card. Null for any other template, or when a read
   // fails (the card hides; the page never fails because of it). With the flag
   // off it reads no connection and names no 0014 column unless publish rows exist.
-  const [activity, verificationActivity, assets, publishPanel] = await Promise.all([
+  const [activity, verificationActivity, assets, publishPanel, ownerCheck] = await Promise.all([
     getActivity(page.ctx, { limit: 200 }),
     // A durable result must not disappear behind unrelated workspace events.
     // Scope this read before LIMIT; the normal history remains bounded.
@@ -57,6 +59,9 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
       inScope,
       versions: detail.versions.map((v) => ({ id: v.id, approval_state: v.approval_state, body: v.body })),
     }),
+    detail.action.templateKey === "review-response" && detail.versions.length
+      ? ownerReviewCheckRepository().load({ workspaceId: page.ctx.workspace.id, actionId, locationId: detail.action.location.id }).catch(() => EMPTY_OWNER_CHECK)
+      : Promise.resolve(EMPTY_OWNER_CHECK),
   ]);
   const auditRows = [...new Map([...activity, ...verificationActivity].map((row) => [row.id, row])).values()]
     .filter((row) => auditBelongsToAction(row, { actionId, entityIds }))
@@ -98,6 +103,9 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
       offersEnabled={offerPromotionsEnabled()}
       initialVersionId={initialVersionId}
       publishPanel={publishPanel}
+      ownerCheck={ownerCheck}
+      ownerCheckIdentity={[page.ctx.workspace.name, page.ctx.locations.find(l => l.id === detail.action.location.id)?.name,
+        page.ctx.locations.find(l => l.id === detail.action.location.id)?.address].filter(Boolean).join(" · ")}
     />
   );
 }

@@ -3,6 +3,7 @@ import { buildTrendModel, type StoredDiff, type TrendModel } from "@/lib/trends/
 import { localized, type ActionState, type FactType, type LocalizedText } from "@/lib/domain";
 import { loadAuthorizedEvidence } from "@/lib/evidence/load-authorized";
 import type { EvidenceGalleryItem } from "@/lib/report/view-model";
+import { sanitizeReportProof } from "@/lib/report/sanitize-proof";
 import { inLocationScope, type Membership } from "@/lib/auth";
 import { getPool } from "@/lib/db/client";
 import { pauseState } from "@/lib/budgets/pause";
@@ -186,6 +187,8 @@ export interface MeasurementRow {
  * `audit_jobs.raw_data` through the same selector.
  */
 export interface ScanInputEvidence {
+  /** Existing sanitized business Maps page, never an exact review URL. */
+  mapsUrl?: string | null;
   key: "reviews_without_response";
   source: "gbp_reviews";
   factType: FactType;
@@ -798,10 +801,12 @@ export async function loadScanInputEvidence(
   if (snapshot.workspaceId !== workspaceId) return [];
   if (row.location_id && snapshot.locationId !== row.location_id) return [];
   if (!inLocationScope(membership, snapshot.locationId)) return [];
-  const selection = selectScannedReviews(await db.assistantReviewData(workspaceId, snapshot.jobId));
+  const rawReviewData = await db.assistantReviewData(workspaceId, snapshot.jobId);
+  const selection = selectScannedReviews(rawReviewData);
   if (!selection.sampled.length) return [];
   return [{
     key: "reviews_without_response",
+    mapsUrl: sanitizeReportProof(rawReviewData, []).gbp?.mapsUrl ?? null,
     source: "gbp_reviews",
     factType: "Observed",
     snapshotId: snapshot.id,

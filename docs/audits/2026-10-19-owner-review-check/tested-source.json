@@ -1,0 +1,108 @@
+{
+  "base": "c72d991ea8ff72ae7b73e80747c58152fed251db",
+  "branch": "codex/review-owner-check-20261019",
+  "recordedAt": "2026-10-19T08:55:29.5709340Z",
+  "scope": "Final source; related213 + browser6 + typecheck/lint/security + safe Webpack171; real DB/Auth NOT_RUN",
+  "files": [
+    {
+      "path": "app/[locale]/owner/[workspaceSlug]/actions/[actionId]/page.tsx",
+      "sha256": "07982E25709E5174BF5BA2B9AB78EF1757B0EF8DF5C27099D45F022E61A6BA28",
+      "gitBlob": "7137bea4ed754bee1b34e161e63fb6ea958454ed"
+    },
+    {
+      "path": "app/api/actions/[actionId]/owner-check/route.test.ts",
+      "sha256": "8D604CFECBDEC33AD4701DC847F4F2EDD4059884C6DE39725398F5231B62796B",
+      "gitBlob": "772c4afb47cb9cf74b2279904702e9d0b8ecd279"
+    },
+    {
+      "path": "app/api/actions/[actionId]/owner-check/route.ts",
+      "sha256": "177087297E0484A6CBD78510B81C3C1AEFABCE0F79F572BCA767E02F98E60451",
+      "gitBlob": "ef964577153b24674004c442fbe476ca3175a25d"
+    },
+    {
+      "path": "components/workspace/action-detail-client.test.tsx",
+      "sha256": "C06DCF1ABA843E0BC0F25915D5A8BACDA7FCB17247467FDF83BDD22C59B402C1",
+      "gitBlob": "9500417139d445fe933a27bfb088c5363e4a5a66"
+    },
+    {
+      "path": "components/workspace/action-detail-client.tsx",
+      "sha256": "B73C408A0FEF2F9675B61BB88C5B4FCD7D5DB06820A882BC60AFC422BBDD85BE",
+      "gitBlob": "bb0d845800cf7c38bee539e3bbccf39fc047a58d"
+    },
+    {
+      "path": "components/workspace/action-detail-view.tsx",
+      "sha256": "185CADBC32268281BA2CC8DAF5FDD91D416D2C13EC68734666C6FB6B47C77950",
+      "gitBlob": "6783952c7e00664fedf853181d083841c5ceb0bd"
+    },
+    {
+      "path": "components/workspace/owner-review-check-panel.test.tsx",
+      "sha256": "0B956E94D477F3F48C6C4617E35F2C942C910061A9A3CFE65ED9B2A2A5511F0F",
+      "gitBlob": "9a9620e25db33a948dcddaaa1e6d937d422e91b8"
+    },
+    {
+      "path": "components/workspace/owner-review-check-panel.tsx",
+      "sha256": "50CC88A7847BFFD3F1A37806B3B49A0E143A9D24385F6F79F05F82461B6D0BCB",
+      "gitBlob": "36a40dc36e2ad805b0f985343894d94818056df8"
+    },
+    {
+      "path": "lib/report/sanitize-proof.ts",
+      "sha256": "CE24415B60D4D1476BFE1335B95BD7B30C0DF82C4CD9B8CFA4867EED0731E07E",
+      "gitBlob": "a330d8455822226f580bb6df8c5120ce9aebd795"
+    },
+    {
+      "path": "lib/repositories/owner-review-check.test.ts",
+      "sha256": "8F21021E27E52CE5DF78B99B5761D0FD94990DA0C2CBADB3C6DA8A27DB032FD5",
+      "gitBlob": "dfec252defdf1cf9613479a333a6cd26eedd2c19"
+    },
+    {
+      "path": "lib/repositories/owner-review-check.ts",
+      "sha256": "C6D34340CB4304BE0E1FC60A8D2B671F4FFB839B5D599B61EDA01F977FFB5539",
+      "gitBlob": "4001919a64f2236d897f068da967b05e2b8ec46a"
+    },
+    {
+      "path": "lib/workspace/audit-labels.ts",
+      "sha256": "F8A984B1FAC09D1D59384415B0D6B25ACADBFF42F0713CEF2CB629DE89B896DE",
+      "gitBlob": "f9fb24c1078368805e95a35027257537194267fb"
+    },
+    {
+      "path": "lib/workspace/audit.ts",
+      "sha256": "45EBA1093EE4F5DDE5D54CE9508364B5AF4CEFC636D8B999EC3A46263B3A1512",
+      "gitBlob": "cd369b6318f3670e4f615cc34130131fd9c322ce"
+    },
+    {
+      "path": "lib/workspace/client.ts",
+      "sha256": "192439BCE6E16FB845EDCC3ADC5D3A890A53CE0413527C69EAC37F9B150358E7",
+      "gitBlob": "dd6274f821396254f624ac04829efcd558246686"
+    },
+    {
+      "path": "lib/workspace/owner-review-check.test.ts",
+      "sha256": "D5C49BF34E16CA33FD72D223B18CB869C416793E694935506BF3EC5950DD7D0C",
+      "gitBlob": "bed9d07585c061fc1ededb68b0762a35ba26c38a"
+    },
+    {
+      "path": "lib/workspace/owner-review-check.ts",
+      "sha256": "7B86167DDF189E4B1F08F80778BE4404E13F0C807064E69AE8648976845D134D",
+      "gitBlob": "02b44797e1ecbd8e4321fefa80adee1370dbb6f8"
+    },
+    {
+      "path": "lib/workspace/queries-pages.test.ts",
+      "sha256": "FCF00481F3246A48F4F7D115DDBCF59497D7026916A2CCDD6BF648E6F10E7B70",
+      "gitBlob": "cbebbfe2f694e41962be26f9efe0c5a975b97b7a"
+    },
+    {
+      "path": "lib/workspace/queries-pages.ts",
+      "sha256": "603E3FC10722B8D2B4DB347F3D82AA2CADC016404927971BB2316031C9208822",
+      "gitBlob": "21131b2d97e02c32ed00511a7401f574ed1223bc"
+    },
+    {
+      "path": "playwright.owner-check.config.ts",
+      "sha256": "144F497765E73709498958DDDFDFE096A873B9DA0D41F9BAB675E3EF3FBB78D3",
+      "gitBlob": "21436911e81249287287bb886462ef23be56f0c9"
+    },
+    {
+      "path": "test/offline/owner-review-check.spec.ts",
+      "sha256": "DA6CBEAF83F15AFF74AD02F342F6584E23C184EEB82F905521A5748211949A18",
+      "gitBlob": "ce530750196c35b5ce07b4ae9c725a64ac852173"
+    }
+  ]
+}

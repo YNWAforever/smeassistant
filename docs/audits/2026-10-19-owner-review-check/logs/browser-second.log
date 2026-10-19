@@ -1,0 +1,68 @@
+
+Running 6 tests using 1 worker
+
+
+
+(node:23812) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/6] test\offline\owner-review-check.spec.ts:108:3 › en 1440px saves and restores the exact version's owner check with usage 2/3
+[2/6] test\offline\owner-review-check.spec.ts:108:3 › en 390px saves and restores the exact version's owner check with usage 2/3
+[3/6] test\offline\owner-review-check.spec.ts:108:3 › zh-HK 1440px saves and restores the exact version's owner check with usage 2/3
+[4/6] test\offline\owner-review-check.spec.ts:108:3 › zh-HK 390px saves and restores the exact version's owner check with usage 2/3
+[5/6] test\offline\owner-review-check.spec.ts:138:1 › lost save response retries once with the same identity and no duplicate record or usage
+  1) test\offline\owner-review-check.spec.ts:138:1 › lost save response retries once with the same identity and no duplicate record or usage
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator: getByLabel('Notes (optional)', { exact: true })
+    Expected: "Synthetic saved check."
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveValue" with timeout 5000ms
+      - waiting for getByLabel('Notes (optional)', { exact: true })
+
+
+      141 |   await page.getByRole("button", { name: "Save check", exact: true }).click();
+      142 |   await expect(page.getByRole("alert")).toContainText("not saved");
+    > 143 |   await expect(page.getByLabel("Notes (optional)", { exact: true })).toHaveValue("Synthetic saved check.");
+          |                                                                      ^
+      144 |   await page.getByRole("button", { name: "Save check", exact: true }).click();
+      145 |   await expect(page.getByRole("status")).toHaveText("Saved");
+      146 |   expect(app.state.commands[0].requestId).toBe(app.state.commands[1].requestId);
+        at C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\test\offline\owner-review-check.spec.ts:143:70
+
+    Error Context: test-results\owner-review-check-20261019\browser\owner-review-check-lost-sa-6329b-o-duplicate-record-or-usage\error-context.md
+
+
+(node:47976) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[6/6] test\offline\owner-review-check.spec.ts:149:1 › a stale tab explicitly reloads before correcting; a new draft inherits no owner check
+  2) test\offline\owner-review-check.spec.ts:149:1 › a stale tab explicitly reloads before correcting; a new draft inherits no owner check
+
+    Test timeout of 45000ms exceeded.
+
+    Error: locator.fill: Test timeout of 45000ms exceeded.
+    Call log:
+      - waiting for getByLabel('Notes (optional)', { exact: true })
+
+
+      157 |   await old.getByRole("button", { name: "Reload saved records", exact: true }).click();
+      158 |   await expect(old.getByRole("alert")).toHaveCount(0);
+    > 159 |   await old.getByLabel("Notes (optional)", { exact: true }).fill("Synthetic correction after comparing.");
+          |                                                             ^
+      160 |   await old.getByRole("button", { name: "Save check", exact: true }).click();
+      161 |   await expect(old.getByRole("status")).toHaveText("Saved");
+      162 |   expect(app.state.records).toHaveLength(2);
+        at C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\test\offline\owner-review-check.spec.ts:159:61
+
+    Error Context: test-results\owner-review-check-20261019\browser\owner-review-check-a-stale-8e015-aft-inherits-no-owner-check\error-context.md
+
+
+  2 failed
+    test\offline\owner-review-check.spec.ts:138:1 › lost save response retries once with the same identity and no duplicate record or usage
+    test\offline\owner-review-check.spec.ts:149:1 › a stale tab explicitly reloads before correcting; a new draft inherits no owner check
+  4 passed (59.6s)

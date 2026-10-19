@@ -1,0 +1,8 @@
+{
+  "scope": "Independent read-only code review; current slice and final label/ID delta",
+  "result": "No remaining P1/P2 findings",
+  "realSql": "NOT_RUN",
+  "realAuth": "NOT_RUN",
+  "providerCalls": 0,
+  "reviewerExecutedTests": false
+}

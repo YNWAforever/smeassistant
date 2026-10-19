@@ -4,6 +4,7 @@ import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import type { OfferCardData } from "@/components/workspace/action-detail-client"
 import type { ActionDetail, AuditEventRow } from "@/lib/workspace/queries-pages"
 import type { PublishPanel } from "@/lib/publishing/page-state"
+import type { OwnerCheckContext } from "@/lib/workspace/owner-review-check"
 
 export interface ActionDetailViewProps {
   locale: PrototypeLocale
@@ -23,6 +24,8 @@ export interface ActionDetailViewProps {
   initialVersionId?: string | null
   /** P4.6: the Google publish card's data; null hides it (any other template, or a failed read). */
   publishPanel?: PublishPanel | null
+  ownerCheck?: OwnerCheckContext
+  ownerCheckIdentity?: string
 }
 
 /**
