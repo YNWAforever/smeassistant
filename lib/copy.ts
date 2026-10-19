@@ -1,4 +1,5 @@
 export const supportedLocales = ["en", "zh-HK", "zh-TW"] as const
+import type { UiCopy } from "@/lib/copy-ui"
 import type { WorkspaceCopy } from "@/lib/copy-workspace"
 import { localeDataFor } from "@/lib/locale-data/registry"
 
@@ -478,6 +479,8 @@ export type Copy = {
   }
   funnel: FunnelCopy
   workspace: WorkspaceCopy
+  /** Component kit strings (lib/copy-ui.ts). */
+  ui: UiCopy
 }
 
 /**
