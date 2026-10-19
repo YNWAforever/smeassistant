@@ -43,6 +43,7 @@ import type { ActionDetail, AuditEventRow, VersionRow } from "@/lib/workspace/qu
 import { guardrailText } from "@/lib/workspace/guardrail-text"
 import { zhFor } from "@/lib/zh-tw"
 import { evidenceValueLabel, sourceLabel } from "@/lib/workspace/source-label"
+import { actionVerificationView } from "@/lib/workspace/action-verification"
 
 export interface ActionDetailClientProps {
   locale: PrototypeLocale
@@ -606,9 +607,12 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
   }
 
   async function deliver(mode: "export" | "copy") {
+    if (mutationPending.current) return
     if (!canDeliver || !selectedVersion) { toast.error(isChinese ? "只有目前已儲存及已核准的指定版本可以匯出。" : "Only the selected saved and approved version can be exported."); return }
+    mutationPending.current = true
     setBusy(mode)
     const result = await exportVersion(selectedVersion.id, mode)
+    mutationPending.current = false
     setBusy(null)
     if (!result.ok) {
       if (result.error === "allowance_exceeded") { setAllowanceBlocked({ approvedDeliveries: null, allowance: null }); return }
@@ -648,6 +652,14 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
   const workflowState = runStateKey ?? null
   const workflowLabel = workflowState ? stateLabel(workflowState, locale) : (isChinese ? "尚未執行" : "Not run yet")
   const locationName = resolveText(action.location.name, locale) || locations.find((l) => l.slug === location)?.name || ""
+  const verificationCopy = copy[locale].workspace.verification
+  const verification = actionVerificationView(action, workspaceId, auditRows)
+  const verificationNext = action.verified ? verificationCopy.verifiedNext
+    : verification.unsupported ? verificationCopy.googleNext
+    : verification.outcome === "source_unavailable" || verification.outcome === "not_verifiable"
+      ? verificationCopy.retryNext : verificationCopy.scanNext
+  const showVerification = action.applied || action.verified ||
+    versions.some((version) => version.first_exported_at) || verification.checkedAt !== null
 
   return (
     <div className="action-detail-page">
@@ -666,12 +678,24 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
 
       <header className="action-detail-header">
         <div>
-          <div className="action-detail-badges"><Badge variant="outline" className={priorityClass(action.priority)}>{priorityLabel(action.priority, locale)}</Badge><Badge variant="outline">{dirty ? (isChinese ? "未儲存修改" : "Unsaved changes") : action.applied ? resolveText(action.displayPhase, locale) : selectedVersion ? approvalText(approval) : resolveText(action.displayPhase, locale)}</Badge><CapabilityBadge value={action.capability} /></div>
+          <div className="action-detail-badges"><Badge variant="outline" className={priorityClass(action.priority)}>{priorityLabel(action.priority, locale)}</Badge><Badge variant="outline">{dirty ? (isChinese ? "未儲存修改" : "Unsaved changes") : action.applied || action.verified ? resolveText(action.displayPhase, locale) : selectedVersion ? approvalText(approval) : resolveText(action.displayPhase, locale)}</Badge><CapabilityBadge value={action.capability} context="action" /></div>
           <h1>{resolveText(action.title, locale)}</h1><p>{resolveText(action.summary, locale)}</p>
           <div className="header-meta"><span><MapPin />{locationName}</span><span><Clock3 />{effortLabel(action.effortMinutes, locale)}</span><span><UserRound />{action.assignee?.name ?? (isChinese ? "未指派" : "Unassigned")}</span></div>
         </div>
-        <div className="action-detail-next"><small>{isChinese ? "下一步" : "Direct next step"}</small><strong>{effectiveRole === "viewer" ? (isChinese ? "查看證據" : "Inspect the evidence") : showInputForm ? (isChinese ? "提供所需資料" : "Provide the required inputs") : dirty ? (isChinese ? "先儲存新版本" : "Save a new version first") : action.applied ? (isChinese ? "等待下次掃描" : "Wait for the next scan") : isApprovedCurrent ? (isChinese ? "匯出已核准版本" : "Export approved version") : selectedVersion ? (isChinese ? `審閱並核准${versionName}` : `Review and approve ${versionName}`) : (isChinese ? "生成第一份草稿" : "Generate the first draft")}</strong><span>{isChinese ? "到期：" : "Due "}{action.dueAt ? formatDateTime(action.dueAt, locale, timezone) : "—"}</span></div>
+        <div className="action-detail-next"><small>{isChinese ? "下一步" : "Direct next step"}</small><strong>{effectiveRole === "viewer" ? (isChinese ? "查看證據" : "Inspect the evidence") : showInputForm ? (isChinese ? "提供所需資料" : "Provide the required inputs") : dirty ? (isChinese ? "先儲存新版本" : "Save a new version first") : action.applied || action.verified ? verificationNext : isApprovedCurrent ? (isChinese ? "匯出已核准版本" : "Export approved version") : selectedVersion ? (isChinese ? `審閱並核准${versionName}` : `Review and approve ${versionName}`) : (isChinese ? "生成第一份草稿" : "Generate the first draft")}</strong><span>{isChinese ? "到期：" : "Due "}{action.dueAt ? formatDateTime(action.dueAt, locale, timezone) : "—"}</span></div>
       </header>
+
+      {action.evidence.followUpOfActionId && <p className="action-follow-up"><Link href={withLocation(`${base}/actions/${action.evidence.followUpOfActionId}`, location)}>{verificationCopy.followUp}</Link></p>}
+      {showVerification && <SectionCard className="action-verification-result">
+        <div className="section-card-heading"><div><p className="eyebrow">{verificationCopy.heading}</p><h2>{verificationCopy.outcomes[verification.outcome]}</h2></div><FactType type={verification.outcome === "verified" ? "Observed" : "Unknown"} /></div>
+        {verification.unsupported && <p>{verificationCopy.unsupportedReview}</p>}
+        {verification.outcome !== "verified" && <p>{verificationCopy.unknown}</p>}
+        <dl className="evidence-detail-dl">
+          <div><dt>{verificationCopy.source}</dt><dd>{verification.sourceUrl ? <a className="break-all" href={verification.sourceUrl} target="_blank" rel="noopener noreferrer">{verification.sourceUrl}</a> : verificationCopy.noSource}</dd></div>
+          <div><dt>{verificationCopy.checkedAt}</dt><dd>{verification.checkedAt ? formatDateTime(verification.checkedAt, locale, timezone) : verificationCopy.noCheck}</dd></div>
+        </dl>
+        <p>{verificationNext}</p><p>{verificationCopy.businessResults}</p>
+      </SectionCard>}
 
       {offline && <div className="offline-banner" role="status"><CloudOff /><div><strong>{isChinese ? "你目前離線" : "You are offline"}</strong><span>{isChinese ? zhFor(locale, "文字會保留在此裝置，但儲存、審批及匯出會暫停，直至伺服器確認安全轉換。") : "Text remains on this device, but save, approval and export stay blocked until the server confirms a safe transition."}</span></div><Button variant="outline" onClick={() => { if (navigator.onLine) router.refresh(); else toast.message(isChinese ? "仍然離線；請檢查網絡連線。" : "Still offline; check your connection.") }}>{isChinese ? "重新連接" : "Reconnect"}</Button></div>}
       {effectiveRole === "viewer" && <div className="permission-banner"><ShieldAlert /><div><strong>{isChinese ? "檢視者權限" : "Viewer access"}</strong><span>{isChinese ? zhFor(locale, "可查看證據及紀錄；編輯、生成、審批及匯出會安全拒絕。") : "Evidence and history are visible; editing, generation, approval and export fail closed."}</span></div><Badge variant="outline">{isChinese ? "只讀" : "Read only"}</Badge></div>}

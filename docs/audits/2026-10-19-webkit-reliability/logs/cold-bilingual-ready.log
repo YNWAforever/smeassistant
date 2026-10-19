@@ -1,0 +1,47 @@
+
+Running 2 tests using 1 worker
+
+
+(node:45364) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[1/2] [webkit] › e2e\acceptance\audit-delivery-history.spec.ts:101:1 › bilingual completed-page reloads preserve exact version, approval, delivery, application, audit and monthly usage
+
+
+(node:29760) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[2/2] [chromium] › e2e\acceptance\audit-delivery-history.spec.ts:101:1 › bilingual completed-page reloads preserve exact version, approval, delivery, application, audit and monthly usage
+  1) [chromium] › e2e\acceptance\audit-delivery-history.spec.ts:101:1 › bilingual completed-page reloads preserve exact version, approval, delivery, application, audit and monthly usage
+
+    Error: expect(page).toHaveURL(expected) failed
+
+    Expected pattern: /\/en\/owner\/acceptance-hk-e8d198f3/
+    Received string:  "http://localhost:65231/en/owner/sign-in/complete?returnTo=%2Fen%2Fowner%2Facceptance-hk-e8d198f3&method=email"
+    Timeout: 15000ms
+
+    Call log:
+      - Expect "toHaveURL" with timeout 15000ms
+        33 × unexpected value "http://localhost:65231/en/owner/sign-in/complete?returnTo=%2Fen%2Fowner%2Facceptance-hk-e8d198f3&method=email"
+
+
+       at ..\..\test\e2e\fixtures.ts:107
+
+      105 |       .toBeAttached({ timeout: 30_000 });
+      106 |   }
+    > 107 |   await expect(page).toHaveURL(new RegExp(`/en/owner/${merchant.slug}`));
+          |                      ^
+      108 |   if (page.context().browser()?.browserType().name() === "webkit") await waitForPageReady(page);
+      109 |   return link;
+      110 | }
+        at signIn (C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\test\e2e\fixtures.ts:107:22)
+        at C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\e2e\acceptance\audit-delivery-history.spec.ts:108:3
+
+    Error Context: test-results\webkit-reliability-20261019\cold-bilingual-ready\audit-delivery-history-bil-23357-ion-audit-and-monthly-usage-chromium\error-context.md
+
+
+Testing stopped early after 1 maximum allowed failures.
+
+  1 failed
+    [chromium] › e2e\acceptance\audit-delivery-history.spec.ts:101:1 › bilingual completed-page reloads preserve exact version, approval, delivery, application, audit and monthly usage
+  1 passed (7.1m)
+  1 error was not a part of any test, see above for details

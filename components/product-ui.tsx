@@ -88,7 +88,7 @@ export function EnvironmentBar({ locale, show = false }: { locale: PrototypeLoca
   )
 }
 
-export function CapabilityBadge({ value }: { value: Capability }) {
+export function CapabilityBadge({ value, context }: { value: Capability; context?: "action" }) {
   const pathname = usePathname()
   const locale = normaliseLocale(pathname.split("/").filter(Boolean)[0])
   const className = {
@@ -99,8 +99,8 @@ export function CapabilityBadge({ value }: { value: Capability }) {
     Planned: "cap-planned",
   }[value]
   return (
-    <Badge variant="outline" className={className}>
-      {locale === "en" ? value : ({ Live: "已啟用", Beta: "測試版", Demo: "示範", "Requires connection": "需要連接", Planned: "計劃中" } as Record<Capability, string>)[value]}
+    <Badge variant="outline" className={className} title={context === "action" ? copy[locale].workspace.verification.featureHelp : undefined}>
+      {value === "Live" && context === "action" ? copy[locale].workspace.verification.featureAvailable : locale === "en" ? value : ({ Live: "已啟用", Beta: "測試版", Demo: "示範", "Requires connection": "需要連接", Planned: "計劃中" } as Record<Capability, string>)[value]}
     </Badge>
   )
 }

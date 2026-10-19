@@ -1,0 +1,72 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018
+
+ ❯ test/e2e/page-readiness.test.ts (13 tests | 3 failed) 11ms
+     × allows a GET document read for /en/owner/acceptance-hk-deadbeef/actions/00000000-0000-4000-8000-000000000001 in the owned app 6ms
+     × allows a GET document read for /zh-HK/owner/acceptance-hk-deadbeef/actions?view=completed in the owned app 1ms
+     × allows a GET document read for /en/owner/acceptance-tw-1234abcd/settings/billing in the owned app 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/e2e/page-readiness.test.ts > owned fixture document precompilation scope > allows a GET document read for /en/owner/acceptance-hk-deadbeef/actions/00000000-0000-4000-8000-000000000001 in the owned app
+AssertionError: expected null to be 'http://localhost:3100/en/owner/accept…' // Object.is equality
+
+- Expected:
+"http://localhost:3100/en/owner/acceptance-hk-deadbeef/actions/00000000-0000-4000-8000-000000000001"
+
++ Received:
+null
+
+ ❯ test/e2e/page-readiness.test.ts:13:58
+     11|     "/en/owner/acceptance-tw-1234abcd/settings/billing",
+     12|   ])("allows a GET document read for %s in the owned app", target => {
+     13|     expect(workspaceReadTarget(origin, current, target)).toBe(origin +…
+       |                                                          ^
+     14|   });
+     15|   it.each([
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/e2e/page-readiness.test.ts > owned fixture document precompilation scope > allows a GET document read for /zh-HK/owner/acceptance-hk-deadbeef/actions?view=completed in the owned app
+AssertionError: expected null to be 'http://localhost:3100/zh-HK/owner/acc…' // Object.is equality
+
+- Expected:
+"http://localhost:3100/zh-HK/owner/acceptance-hk-deadbeef/actions?view=completed"
+
++ Received:
+null
+
+ ❯ test/e2e/page-readiness.test.ts:13:58
+     11|     "/en/owner/acceptance-tw-1234abcd/settings/billing",
+     12|   ])("allows a GET document read for %s in the owned app", target => {
+     13|     expect(workspaceReadTarget(origin, current, target)).toBe(origin +…
+       |                                                          ^
+     14|   });
+     15|   it.each([
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/e2e/page-readiness.test.ts > owned fixture document precompilation scope > allows a GET document read for /en/owner/acceptance-tw-1234abcd/settings/billing in the owned app
+AssertionError: expected null to be 'http://localhost:3100/en/owner/accept…' // Object.is equality
+
+- Expected:
+"http://localhost:3100/en/owner/acceptance-tw-1234abcd/settings/billing"
+
++ Received:
+null
+
+ ❯ test/e2e/page-readiness.test.ts:13:58
+     11|     "/en/owner/acceptance-tw-1234abcd/settings/billing",
+     12|   ])("allows a GET document read for %s in the owned app", target => {
+     13|     expect(workspaceReadTarget(origin, current, target)).toBe(origin +…
+       |                                                          ^
+     14|   });
+     15|   it.each([
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 10 passed (13)
+   Start at  02:38:13
+   Duration  6.83s (transform 54ms, setup 5.89s, import 25ms, tests 11ms, environment 0ms)

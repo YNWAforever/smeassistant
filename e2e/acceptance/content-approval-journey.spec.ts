@@ -256,7 +256,7 @@ test("S4 Hong Kong mobile: shorten, tone and CTA revisions save, fresh login rea
     await other.screenshot({ path: `${evidenceDir}/mobile-approved-fresh-session.png`, fullPage: true });
     expect(sql(environment.db, `select count(*) from output_versions where action_id='${merchant.actionId}' and approval_state='approved';`)).toBe("1");
   } finally { await fresh.close(); }
-  record("scenario-4", { result: "PASS", browser: "Chromium 390x844 viewport, not a real phone or Safari", targetedRevisions: ["shorten", "warmer", "contact-only CTA"], freshFixtureLoginReadback: true, savedBody: finalBody, versions: 5 });
+  record("scenario-4", { result: "PASS", browser: `${browser.browserType().name()} ${browser.version()} at 390x844 viewport; not a physical device or Safari acceptance`, targetedRevisions: ["shorten", "warmer", "contact-only CTA"], freshFixtureLoginReadback: true, savedBody: finalBody, versions: 5 });
 });
 
 test("S5 old tab compares before saving; invalid provider output preserves drafts and an explicit retry succeeds", async ({ page, context, merchant, environment }) => {

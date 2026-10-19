@@ -1,0 +1,28 @@
+
+Running 1 test using 1 worker
+
+
+
+(node:3032) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/1] [webkit] › e2e\acceptance\_navigation-probe.spec.ts:4:1 › diagnoses the isolated WebKit navigation boundary without credential capture
+  1) [webkit] › e2e\acceptance\_navigation-probe.spec.ts:4:1 › diagnoses the isolated WebKit navigation boundary without credential capture
+
+    Error: fixture_prewarm_membership_failed
+
+       at ..\..\test\e2e\prewarm.ts:54
+
+      52 |           || !(await response.text()).includes("workspace-shell")) {
+      53 |           throw new Error("fixture_prewarm_protected_route_failed");
+    > 54 |         }
+         |          ^
+      55 |       }
+      56 |     }
+      57 |   } finally {
+        at prewarmEnvironment (C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\test\e2e\prewarm.ts:54:13)
+        at startEnvironment (C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\test\e2e\environment.ts:68:7)
+        at Object.base.extend.environment.scope (C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\test\e2e\fixtures.ts:5:57)
+
+
+  1 failed
+    [webkit] › e2e\acceptance\_navigation-probe.spec.ts:4:1 › diagnoses the isolated WebKit navigation boundary without credential capture

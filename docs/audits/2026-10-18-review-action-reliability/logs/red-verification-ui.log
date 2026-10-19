@@ -1,0 +1,80 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018
+
+ ❯ components/workspace/action-detail-client.test.tsx (104 tests | 6 failed | 96 skipped) 353ms
+     × does not promise that a routine scan can verify a specific Google review reply 51ms
+     × shows the recorded verified outcome without inferring business results 38ms
+     × shows the recorded not_yet outcome without inferring business results 27ms
+     × shows the recorded source_unavailable outcome without inferring business results 29ms
+     × zh-HK explains the exact-review verification limit 32ms
+     × zh-TW explains the exact-review verification limit 36ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/workspace/action-detail-client.test.tsx > focused draft review > does not promise that a routine scan can verify a specific Google review reply
+AssertionError: expected ' Back to actionsOwnerOnlineHighApplie…' to contain 'Current sources cannot verify this sp…'
+
+Expected: "Current sources cannot verify this specific Google review reply."
+Received: " Back to actionsOwnerOnlineHighApplied (reported)LiveAction titleAction summaryYik Yamabout 10 minutesUnassignedDirect next stepWait for the next scanDue —View source and workflowScan evidenceGoogle Business Profile · 1 Sept 2026, 18:00FindingResponse rate fell to 18%ActionPriority factors recordedAgent inputInputs ready5RunNot run yet6Output versionNo version yet7ApprovalNo version yet8ExportAvailable after exact-version approval9MeasurementNot eligibleDraft & approvalSource evidenceWorkflow statesVersion & audit historyGenerated outputReview reply workflowNo version yetObservedSource findingResponse rate fell to 18%1 Sept 2026, 18:00 · Source preserved as evidenceDraft0 charactersBrand guardrail checkGenerated content uses owner-confirmed facts only.Not checked This version was not agent-checked (edited by hand).Do not add ingredients, allergens, pricing or offer dates unless the owner confirmed them.Revise with operator as a new version Generate a draft Save manual edits as a new versionNo saved draft yetYou marked this applied on — · not independently verifiedWithdrawing takes back the claim. The record of it stays in activity. Withdraw this markApproval decisionOne safe owner decisionApproval applies only to this immutable version. Any edit must be saved as a new version and approved again.Reviewer comment Approve No version yet Request changes Reject draftDeliveryExport the approved versionRequires connectionNo verified direct-publishing connector is present. One approved delivery is counted only after exact-version approval and export. Export approved version Copy text Publish directly · Connection requiredNo version yet · No version yetApproval does not publish; usage counts after export Save Approve"
+
+ ❯ components/workspace/action-detail-client.test.tsx:166:30
+    164|         auditRows={[]} locations={[]} approvedAssets={[]} />,
+    165|     );
+    166|     expect(root.textContent).toContain("Current sources cannot verify …
+       |                              ^
+    167|     expect(root.querySelector(".action-detail-next strong")?.textConte…
+    168|     expect(root.querySelector(".action-detail-badges")?.textContent).t…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  components/workspace/action-detail-client.test.tsx > focused draft review > shows the recorded verified outcome without inferring business results
+ FAIL  components/workspace/action-detail-client.test.tsx > focused draft review > shows the recorded not_yet outcome without inferring business results
+ FAIL  components/workspace/action-detail-client.test.tsx > focused draft review > shows the recorded source_unavailable outcome without inferring business results
+AssertionError: the given combination of arguments (undefined and string) is invalid for this assertion. You can use an array, a map, an object, a set, a string, or a weakset instead of a string
+ ❯ components/workspace/action-detail-client.test.tsx:191:32
+    189|     }]);
+    190|     const panel = root.querySelector(".action-verification-result");
+    191|     expect(panel?.textContent).toContain(expected);
+       |                                ^
+    192|     expect(panel?.textContent).toContain("18 Oct 2026");
+    193|     expect(panel?.querySelector('a[href="https://source.example.test/f…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  components/workspace/action-detail-client.test.tsx > focused draft review > zh-HK explains the exact-review verification limit
+AssertionError: expected ' 返回行動店主在線高建議Live行動標題行動摘要益欣約 10 分鐘未指派下…' to contain '目前來源無法核實這則 Google 評論的指定回覆。'
+
+Expected: "目前來源無法核實這則 Google 評論的指定回覆。"
+Received: " 返回行動店主在線高建議Live行動標題行動摘要益欣約 10 分鐘未指派下一步等待下次掃描到期：—查看來源及流程掃描證據Google 商戶檔案 · 2026年9月1日 下午6:00發現回覆率降至 18%行動已記錄優先因素Agent 輸入資料齊備5執行尚未執行6輸出版本尚未有版本7審批尚未有版本8匯出核准指定版本後可用9量度不符合資格草稿與審批來源證據流程狀態版本及審計紀錄生成輸出評論回覆流程尚未有版本Observed來源發現回覆率降至 18%2026年9月1日 下午6:00 · 原始來源保留作證據草稿0 個字元品牌保障檢查生成內容只使用店主確認的事實。未經檢查 這個版本沒有經過 Agent 檢查（手動編輯）。除非店主已確認，否則不要加入食材、致敏原、價格或優惠日期。用助理修改並建立新版本 生成草稿 儲存手動修改為新版本尚未儲存草稿你在 — 標記為已套用 · 未經獨立核實撤回只是收回這項聲明；相關紀錄仍會保留在活動紀錄內。 撤回此標記審批決定一項安全的店主決定核准只適用於這個不可變更版本。任何修改都必須另存新版本，再次審批。審閱者備註 核准尚未有版本 要求修改 拒絕草稿送出匯出已核准版本Requires connection目前沒有已驗證的直接發佈連接器。只有指定版本獲核准並完成匯出，才計 1 次核准後交付。 匯出已核准版本 複製文字 直接發佈 · 需要連接尚未有版本 · 尚未有版本核准不會自動發佈；匯出後才計用量 儲存 核准"
+
+ ❯ components/workspace/action-detail-client.test.tsx:202:30
+    200|     value.action.applied = true;
+    201|     const root = verificationMarkup(value, [], locale);
+    202|     expect(root.textContent).toContain("目前來源無法核實這則 Google 評論的指定回覆。");
+       |                              ^
+    203|     expect(root.querySelector(".action-detail-next strong")?.textConte…
+    204|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  components/workspace/action-detail-client.test.tsx > focused draft review > zh-TW explains the exact-review verification limit
+AssertionError: expected ' 返回行動店主在線高建議Live行動標題行動摘要益欣約 10 分鐘未指派下…' to contain '目前來源無法核實這則 Google 評論的指定回覆。'
+
+Expected: "目前來源無法核實這則 Google 評論的指定回覆。"
+Received: " 返回行動店主在線高建議Live行動標題行動摘要益欣約 10 分鐘未指派下一步等待下次掃描到期：—查看來源及流程掃描證據Google 商家檔案 · 2026年9月1日 下午6:00發現回覆率降至 18%行動已記錄優先因素Agent 輸入資料齊備5執行尚未執行6輸出版本尚未有版本7核准尚未有版本8匯出核准指定版本後可用9量測不符合資格草稿與核准來源證據流程狀態版本及審計紀錄生成輸出評論回覆流程尚未有版本Observed來源發現回覆率降至 18%2026年9月1日 下午6:00 · 原始來源保留作證據草稿0 個字元品牌保障檢查生成內容只使用店家確認的事實。未經檢查 這個版本沒有經過 Agent 檢查（手動編輯）。除非店家已確認，否則不要加入食材、致敏原、價格或優惠日期。用助理修改並建立新版本 生成草稿 儲存手動修改為新版本尚未儲存草稿您在 — 標記為已套用 · 未經獨立查證撤回只是收回這項聲明；相關紀錄仍會保留在活動紀錄中。 撤回此標記核准決定一項安全的店家決定核准只適用於這個不可變更版本。任何修改都必須另存新版本，再次核准。審閱者備註 核准尚未有版本 要求修改 拒絕草稿送出匯出已核准版本Requires connection目前沒有已驗證的直接發佈連接器。只有指定版本獲核准並完成匯出，才計 1 次核准後交付。 匯出已核准版本 複製文字 直接發佈 · 需要連接尚未有版本 · 尚未有版本核准不會自動發佈；匯出後才計用量 儲存 核准"
+
+ ❯ components/workspace/action-detail-client.test.tsx:202:30
+    200|     value.action.applied = true;
+    201|     const root = verificationMarkup(value, [], locale);
+    202|     expect(root.textContent).toContain("目前來源無法核實這則 Google 評論的指定回覆。");
+       |                              ^
+    203|     expect(root.querySelector(".action-detail-next strong")?.textConte…
+    204|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 2 passed | 96 skipped (104)
+   Start at  23:36:10
+   Duration  3.66s (transform 627ms, setup 481ms, import 1.69s, tests 353ms, environment 875ms)

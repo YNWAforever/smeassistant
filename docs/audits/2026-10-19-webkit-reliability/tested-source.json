@@ -1,0 +1,50 @@
+{
+  "recordedAt": "2026-10-18T20:19:43.0591313Z",
+  "base": "4b866045192abc17c4b9924d042d4fa33034957d",
+  "branch": "codex/review-action-reliability-20261018",
+  "scope": "Final seven source files including both-engine normal sign-in DOM readiness. Final cold bilingual replay and final static checks recorded separately; broad64 and guard unit/build cohorts retained separately.",
+  "files": [
+    {
+      "path": "test/e2e/fixtures.ts",
+      "bytes": 5937,
+      "sha256": "34041AA9A614AB5E656DC5B2C9FBA1439AC1E2F3372153123A90346336FADAA0",
+      "gitBlob": "65822d8a8863690b0dd79ccc6e3b6cda24a66f16"
+    },
+    {
+      "path": "test/e2e/page-readiness.ts",
+      "bytes": 3403,
+      "sha256": "EDD26BF42C5BB1921F15F207EF1355B2D1AF9061668C5D1331EA7D9BC5680276",
+      "gitBlob": "f43d76a696603d34c47962c27d14f8240edb8f43"
+    },
+    {
+      "path": "test/e2e/page-readiness.test.ts",
+      "bytes": 3444,
+      "sha256": "8FD49BC6B2BAE4F225563CA708FD995F872BBE5C63F9C2499A07D50CFDF13A59",
+      "gitBlob": "6ccb4f2a5f99b22ec22b99992955fa440d391cb3"
+    },
+    {
+      "path": "e2e/acceptance/webkit-navigation-regression.spec.ts",
+      "bytes": 5593,
+      "sha256": "EC0825231D902234AB7F5132A434696BF1AE54C2B9B5E1576D52FB1C0B92D7C9",
+      "gitBlob": "49dbe7a8d2f024eefcd9c358f2bfc72e6a8b1c00"
+    },
+    {
+      "path": "e2e/acceptance/webkit-http-repro.spec.ts",
+      "bytes": 2256,
+      "sha256": "A56F9748290BD41747D027D21A0D046CB8683AC7054EDFAFB91CE7D76D898EE4",
+      "gitBlob": "af1db4634dc45fb125385ca39d2d6e7002f15d36"
+    },
+    {
+      "path": "e2e/acceptance/content-approval-journey.spec.ts",
+      "bytes": 27570,
+      "sha256": "687DBFEE4A427CCB3D53B9BC0A9CEF25842436105D3B760405FC7A7CBF20A5AA",
+      "gitBlob": "e27dde12064521bf5803a2c656047a834dc30685"
+    },
+    {
+      "path": "playwright.webkit.config.ts",
+      "bytes": 970,
+      "sha256": "792903383E6EC08ABFA1C7735642B353AA76284DF260717627172B34A04FFD67",
+      "gitBlob": "b5ac6254b497d7ac0b3f727ab9042c1b7235917b"
+    }
+  ]
+}

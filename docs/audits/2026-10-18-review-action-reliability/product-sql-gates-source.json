@@ -1,0 +1,136 @@
+{
+  "base": "94770e3dc36bfbe775f044e2755b62cd2ccfa5d2",
+  "branch": "codex/review-action-reliability-20261018",
+  "files": [
+    {
+      "path": "app/[locale]/owner/[workspaceSlug]/actions/[actionId]/page.tsx",
+      "bytes": 5421,
+      "sha256": "E8EF3386A4B588BC2C801C6F3A9D2A8BB075C86DF6D3C8694D11982D0CB182B4"
+    },
+    {
+      "path": "components/product-ui.test.tsx",
+      "bytes": 4553,
+      "sha256": "1A296E441A26751CDDB2858A398DFAC59A7B199B3EC9161000CE79EDA790754E"
+    },
+    {
+      "path": "components/product-ui.tsx",
+      "bytes": 14178,
+      "sha256": "CFA258003DED88738D5D3BD57BA6FDB058A517D8CDC6E5FF9058A40C9A43B2D2"
+    },
+    {
+      "path": "components/workspace/action-detail-client.test.tsx",
+      "bytes": 79238,
+      "sha256": "47017F3065FDF3CAE15C36293AFC1C8E3D54BA9DB60EF927B669187107EB2A22"
+    },
+    {
+      "path": "components/workspace/action-detail-client.tsx",
+      "bytes": 86482,
+      "sha256": "7394B511A8CFC75C25625CC712ADA5EA93DD54FDAF049A43EC4D6D8D62BC0839"
+    },
+    {
+      "path": "components/workspace/actions-list-view.tsx",
+      "bytes": 12936,
+      "sha256": "4EADD3957ACA37619F9D2EAD6A7B2C1FBBBE01B265C9ACF2653B93FC72C7E3E7"
+    },
+    {
+      "path": "e2e/acceptance/audit-delivery-history.spec.ts",
+      "bytes": 15986,
+      "sha256": "110FFAAC43ED4EEF6C62E662D130B25E0E8002CC3536C37566E337403F167773"
+    },
+    {
+      "path": "lib/copy-workspace.ts",
+      "bytes": 68175,
+      "sha256": "E5466A67411ADF5873E9414DDC7DD9F6480D5E0207A3A0508BB766AFE2C99883"
+    },
+    {
+      "path": "lib/repositories/action-derivation.test.ts",
+      "bytes": 11158,
+      "sha256": "38867DBD2F8BBA519F697E49C78C0B6E71A1C0641C88EFAF407F01CB96206AF3"
+    },
+    {
+      "path": "lib/repositories/action-derivation.ts",
+      "bytes": 14700,
+      "sha256": "CEDD8FAF64953CF440E303C4D07AA243BB085954712BAE6513A748230001B2D3"
+    },
+    {
+      "path": "lib/repositories/verification.ts",
+      "bytes": 7309,
+      "sha256": "C593C6DC2D1D8AAD00F26083500915C9CBE8B2433BEA2F0957FBEBE89B3179DD"
+    },
+    {
+      "path": "lib/repositories/workspace-read.ts",
+      "bytes": 16956,
+      "sha256": "4597CCE5613BB422BAF4FD4A85B09399B2E057005652162912C0FBB055BB306D"
+    },
+    {
+      "path": "lib/verify/decide.test.ts",
+      "bytes": 4663,
+      "sha256": "6ED5A93C5A824D43E1E56586D9FF021C6FE9DF0591C12DD5E4345B60E0D14BA6"
+    },
+    {
+      "path": "lib/verify/decide.ts",
+      "bytes": 3829,
+      "sha256": "70A6169EFE47709CBD1DE1D5CB069DC6253DCBAB4E13476532222EDBDAF8FD6E"
+    },
+    {
+      "path": "lib/verify/receipt.ts",
+      "bytes": 527,
+      "sha256": "35E62EFE2F064531069A4B6B50FFE849A6C06616F1F05102C7390F62F2560FD0"
+    },
+    {
+      "path": "lib/verify/website-sweep.test.ts",
+      "bytes": 15760,
+      "sha256": "A3E27534F07CAB09FE2D16877DBF56B7B9491797CFBB0D50FF7CBCB72BAD3704"
+    },
+    {
+      "path": "lib/verify/website-sweep.ts",
+      "bytes": 9912,
+      "sha256": "49D41D247F0C4281508C863AF3CF2D2A6F5FC9012EDB6DB8034150F211234B1B"
+    },
+    {
+      "path": "lib/workspace/action-recurrence.ts",
+      "bytes": 3317,
+      "sha256": "E1FD53ABF4665CBBBA970D51F3ABB2FEBB034A85577496DB47888B7D69FB7FE5"
+    },
+    {
+      "path": "lib/workspace/action-verification.ts",
+      "bytes": 2870,
+      "sha256": "AC7AFA26DB423EB3A1676CD91353AADB0D34B2DB349F0077972A19AE7CD780FA"
+    },
+    {
+      "path": "lib/workspace/actions.ts",
+      "bytes": 10173,
+      "sha256": "0A0B8D4CDF4922F801F13D8BD98A75C5B258997A59CC0CF4B4D22BC30A01E357"
+    },
+    {
+      "path": "lib/workspace/audit-labels.ts",
+      "bytes": 7550,
+      "sha256": "54BB940E991827A4EE7C72734029495BD3FB263051EA1052425E945AC6810602"
+    },
+    {
+      "path": "lib/workspace/overview.ts",
+      "bytes": 14803,
+      "sha256": "FBE69F6FF36434561E9E42668611EA846E70DEACA1F19BF3EC32B813F6BA0186"
+    },
+    {
+      "path": "lib/workspace/queries-pages.ts",
+      "bytes": 49186,
+      "sha256": "07938A5930F955AEEA037722A3774EFC76DDF55CAD4843AD5794EDE5A97C40BE"
+    },
+    {
+      "path": "test/integration/neon-action-derivation.integration.test.ts",
+      "bytes": 30307,
+      "sha256": "221ADED842B9485937C500DC6156B71FC5780FD0B5E5BA98AD9588CF7AE06CAC"
+    },
+    {
+      "path": "test/integration/neon-artifacts.integration.test.ts",
+      "bytes": 42895,
+      "sha256": "2FB15C395D5876ADF321E7B703DFB17349EB3E996FA10C85BE82A4630546B8F0"
+    },
+    {
+      "path": "test/integration/neon-website-verification.integration.test.ts",
+      "bytes": 34688,
+      "sha256": "2C121012478189A62C919E1BBC789762AA7617CC3A8BADDD7D7FF959DF65A89D"
+    }
+  ]
+}

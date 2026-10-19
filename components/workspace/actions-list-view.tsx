@@ -64,7 +64,7 @@ function ActionCard({ action, locale, base, timezone, location }: { action: Acti
   return (
     <article className="action-card">
       <div className="action-card-top">
-        <div className="action-card-badges"><Badge variant="outline" className={priorityClass(action.priority)}>{priorityLabel(action.priority, locale)}</Badge><Badge variant="outline">{resolveText(action.displayPhase, locale)}</Badge><CapabilityBadge value={action.capability} /></div>
+        <div className="action-card-badges"><Badge variant="outline" className={priorityClass(action.priority)}>{priorityLabel(action.priority, locale)}</Badge><Badge variant="outline">{resolveText(action.displayPhase, locale)}</Badge><CapabilityBadge value={action.capability} context="action" /></div>
         <span className="action-scope"><MapPin />{resolveText(action.location.name, locale)}</span>
       </div>
       <div className="action-card-content"><div><p className="eyebrow">{sourceLabel(action.evidence.source, locale)}</p><h2>{resolveText(action.title, locale)}</h2><p>{resolveText(action.summary, locale)}</p></div><div className="action-evidence"><FactType type={action.evidence.factType} />{action.evidence.value && <strong className="action-evidence-value">{evidenceValueLabel(action.evidence.value, locale)}</strong>}<p>{resolveText(action.evidence.detail, locale)}</p><small>{[resolveText(action.evidence.freshness, locale), formatDateTime(action.evidence.observedAt, locale, timezone)].filter(Boolean).join(" · ")}</small></div></div>

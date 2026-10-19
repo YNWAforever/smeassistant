@@ -1,6 +1,7 @@
 import { test as base, expect, type Page } from "@playwright/test";
 import { startEnvironment, type AcceptanceEnvironment } from "./environment";
 import { clearMerchantActionRuns, seedMerchant, type MerchantSeed } from "./seed";
+import { observePageReads, prepareFixtureDocument } from "./page-readiness";
 export const test = base.extend<{ merchant: MerchantSeed }, { environment: AcceptanceEnvironment }>({
   environment: [async ({}, runFixture) => { const env = await startEnvironment(); try { await runFixture(env); } finally { await env.stop(); } }, { scope: "worker", timeout: 240000 }],
   context: async ({ context }, runFixture) => {
@@ -11,13 +12,25 @@ export const test = base.extend<{ merchant: MerchantSeed }, { environment: Accep
     await runFixture(context);
   },
   // Every full page load waits for React to hydrate before the test acts (components/hydration-marker.tsx).
-  page: async ({ page }, runFixture) => {
+  page: async ({ page, environment }, runFixture) => {
+    const webkit = page.context().browser()?.browserType().name() === "webkit";
+    if (webkit) observePageReads(page);
     const goto = page.goto.bind(page);
     page.goto = (async (url: string, options?: Parameters<Page["goto"]>[1]) => {
+      if (webkit) await prepareFixtureDocument(page, environment.app, url);
       const response = await goto(url, options);
-      if (response?.headers()["content-type"]?.includes("text/html")) await waitForHydration(page);
+      if (response?.headers()["content-type"]?.includes("text/html")) await waitForPageReady(page);
       return response;
     }) as Page["goto"];
+    if (webkit) {
+      const reload = page.reload.bind(page);
+      page.reload = (async (options?: Parameters<Page["reload"]>[0]) => {
+        await prepareFixtureDocument(page, environment.app, page.url());
+        const response = await reload(options);
+        if (response?.headers()["content-type"]?.includes("text/html")) await waitForPageReady(page);
+        return response;
+      }) as Page["reload"];
+    }
     await runFixture(page);
   },
   baseURL: async ({ environment }, runFixture) => runFixture(environment.app),
@@ -39,6 +52,19 @@ export { expect };
  */
 export async function waitForHydration(page: Page): Promise<void> {
   await page.waitForFunction(() => document.documentElement.dataset.hydrated === "true", undefined, { timeout: 30_000 });
+}
+
+/**
+ * Hydration precedes background reads; a client redirect may also retain a
+ * previously-fired networkidle lifecycle state. Observe actual reads instead.
+ * The existing DOM assertions, HMR and Auth guards remain active.
+ */
+export async function waitForPageReady(page: Page): Promise<void> {
+  await waitForHydration(page);
+  if (page.context().browser()?.browserType().name() === "webkit") {
+    await observePageReads(page).wait();
+    await waitForHydration(page);
+  }
 }
 export async function requestSignInLink(page: Page, env: AcceptanceEnvironment, merchant: MerchantSeed, role: keyof MerchantSeed["emails"] = "owner", claim?: string) {
   // Legacy-link contract setup only. The current code-entry UI is exercised by
@@ -67,8 +93,16 @@ export async function requestSignInLink(page: Page, env: AcceptanceEnvironment, 
 
 
 export async function signIn(page: Page, env: AcceptanceEnvironment, merchant: MerchantSeed, role: keyof MerchantSeed["emails"] = "owner") {
+  if (page.context().browser()?.browserType().name() === "webkit") observePageReads(page);
   const link = await requestSignInLink(page, env, merchant, role);
   await page.goto(link);
+  // In either engine a successful completion POST may precede a cold workspace
+  // RSC render. Require the intended authorized workspace before asserting the
+  // final URL; do not bypass completion or infer access from a successful POST.
+  await expect(page.locator(".workspace-shell")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(`.workspace-shell a[href="/en/owner/${merchant.slug}"]`).first())
+    .toBeAttached({ timeout: 30_000 });
   await expect(page).toHaveURL(new RegExp(`/en/owner/${merchant.slug}`));
+  if (page.context().browser()?.browserType().name() === "webkit") await waitForPageReady(page);
   return link;
 }

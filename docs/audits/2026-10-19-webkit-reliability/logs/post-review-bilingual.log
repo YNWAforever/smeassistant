@@ -1,0 +1,43 @@
+
+Running 2 tests using 1 worker
+
+
+
+(node:22580) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/2] [webkit] › e2e\acceptance\audit-delivery-history.spec.ts:101:1 › bilingual completed-page reloads preserve exact version, approval, delivery, application, audit and monthly usage
+  1) [webkit] › e2e\acceptance\audit-delivery-history.spec.ts:101:1 › bilingual completed-page reloads preserve exact version, approval, delivery, application, audit and monthly usage
+
+    Test timeout of 180000ms exceeded.
+
+    Error: apiRequestContext.get: Test timeout of 180000ms exceeded.
+    Call log:
+      - → GET http://localhost:57384/en/owner/acceptance-hk-037d1541/actions?view=completed
+        - user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15
+        - accept: */*
+        - accept-encoding: gzip,deflate,br
+        - cookie: [redacted fixture header]
+
+
+       at ..\..\test\e2e\page-readiness.ts:76
+
+      74 |   const href = workspaceReadTarget(origin, page.url(), target);
+      75 |   if (!href) return;
+    > 76 |   const response = await page.request.get(href);
+         |                                       ^
+      77 |   try {
+      78 |     await response.body();
+      79 |     if (response.status() >= 500) {
+        at prepareFixtureDocument (C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\test\e2e\page-readiness.ts:76:39)
+        at _Page.goto (C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\test\e2e\fixtures.ts:20:25)
+        at C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\e2e\acceptance\audit-delivery-history.spec.ts:191:26
+
+    Error Context: test-results\webkit-reliability-20261019\post-review-bilingual\audit-delivery-history-bil-23357-ion-audit-and-monthly-usage-webkit\error-context.md
+
+
+Testing stopped early after 1 maximum allowed failures.
+
+  1 failed
+    [webkit] › e2e\acceptance\audit-delivery-history.spec.ts:101:1 › bilingual completed-page reloads preserve exact version, approval, delivery, application, audit and monthly usage
+  1 did not run
+  1 error was not a part of any test, see above for details

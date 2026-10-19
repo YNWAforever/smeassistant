@@ -1,0 +1,23 @@
+[
+  {
+    "name": "typecheck-latest",
+    "command": "corepack pnpm typecheck",
+    "startedAt": "2026-10-18T20:20:33.1343565Z",
+    "finishedAt": "2026-10-18T20:20:48.2724335Z",
+    "exitCode": 0
+  },
+  {
+    "name": "lint-latest",
+    "command": "corepack pnpm lint",
+    "startedAt": "2026-10-18T20:20:48.2948169Z",
+    "finishedAt": "2026-10-18T20:21:40.7686859Z",
+    "exitCode": 0
+  },
+  {
+    "name": "scope-latest",
+    "command": "corepack pnpm exec vitest run test/e2e/page-readiness.test.ts --retry=0 --maxWorkers=1",
+    "startedAt": "2026-10-18T20:21:40.7724677Z",
+    "finishedAt": "2026-10-18T20:21:48.8385130Z",
+    "exitCode": 0
+  }
+]

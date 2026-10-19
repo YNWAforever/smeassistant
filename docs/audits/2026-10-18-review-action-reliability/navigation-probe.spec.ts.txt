@@ -1,0 +1,59 @@
+import { writeFileSync } from "node:fs";
+import { test, expect, signIn } from "../../test/e2e/fixtures";
+
+test("diagnoses the isolated WebKit navigation boundary without credential capture", async ({ page, environment, merchant }, info) => {
+  const started = Date.now();
+  const events: Array<Record<string, unknown>> = [];
+  const pending: Promise<unknown>[] = [];
+  const safePath = (value: string | null) => {
+    try { return value ? new URL(value, environment.app).pathname : null; } catch { return "unparseable"; }
+  };
+  const record = (value: Record<string, unknown>) => events.push({ ms: Date.now() - started, ...value });
+  page.on("websocket", socket => {
+    socket.on("framesent", frame => {
+      try {
+        const value = JSON.parse(String(frame.payload)) as Record<string, unknown>;
+        if (value.event === "client-full-reload") {
+          const summary = typeof value.stackTrace === "string" ? value.stackTrace.split("\n")[0]
+            .replace(/https?:\/\/[^\s)]+/g, url => safePath(url) ?? "") : null;
+          record({ kind: "hmr_reload", hadRuntimeError: value.hadRuntimeError === true,
+            summary, dependencyCount: Array.isArray(value.dependencyChain) ? value.dependencyChain.length : null });
+        }
+      } catch { /* Non-JSON development protocol frames are not evidence. */ }
+    });
+  });
+  page.on("pageerror", error => record({ kind: "pageerror", name: error.name }));
+  page.on("request", request => {
+    if (request.isNavigationRequest()) record({ kind: "request", path: safePath(request.url()), main: request.frame() === page.mainFrame() });
+  });
+  page.on("response", response => {
+    if (!response.request().isNavigationRequest()) return;
+    pending.push((async () => {
+      const refresh = await response.headerValue("refresh");
+      record({ kind: "response", path: safePath(response.url()), status: response.status(),
+        location: safePath(await response.headerValue("location")),
+        refresh: refresh !== null,
+        refreshTarget: refresh ? safePath(refresh.match(/url\s*=\s*["']?([^"']+)/i)?.[1] ?? null) : null });
+    })());
+  });
+  page.on("framenavigated", frame => record({ kind: "commit", path: safePath(frame.url()), main: frame === page.mainFrame() }));
+  try {
+    await signIn(page, environment, merchant);
+    record({ kind: "helper_return", path: safePath(page.url()),
+      hydrated: await page.evaluate(() => document.documentElement.dataset.hydrated),
+      shell: await page.locator(".workspace-shell").isVisible() });
+    await page.goto(`/en/owner/${merchant.slug}/actions/${merchant.actionId}`);
+    await expect(page.locator(".action-detail-page")).toBeVisible();
+    record({ kind: "target_visible", path: safePath(page.url()) });
+    const helper = events.findIndex(event => event.kind === "helper_return");
+    expect(events.slice(helper + 1).filter(event =>
+      event.kind === "request" && event.main && event.path === `/en/owner/${merchant.slug}`)).toEqual([]);
+    expect(events.filter(event => event.kind === "hmr_reload" || event.kind === "pageerror")).toEqual([]);
+  } finally {
+    await Promise.allSettled(pending);
+    writeFileSync(info.outputPath("navigation-metadata.json"), JSON.stringify({
+      environment: "Owned isolated synthetic fixtures; no cookies/tokens/OTP/headers captured",
+      events,
+    }, null, 2));
+  }
+});

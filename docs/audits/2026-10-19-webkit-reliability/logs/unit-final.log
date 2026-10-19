@@ -1,0 +1,33 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018
+> vitest run --exclude lib/evidence/safe-media.test.ts && vitest run lib/evidence/safe-media.test.ts && corepack pnpm -r test
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018
+
+ ❯ app/api/packs/[packId]/route.test.ts (7 tests | 1 failed) 12698ms
+     × answers 404 when the flag is off, with neither the repository nor auth called 11498ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  app/api/packs/[packId]/route.test.ts > GET /api/packs/[packId] > answers 404 when the flag is off, with neither the repository nor auth called
+ FAIL  app/api/packs/[packId]/route.test.ts > GET /api/packs/[packId] > answers 404 when the flag is off, with neither the repository nor auth called
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ app/api/packs/[packId]/route.test.ts:50:3
+     48|
+     49| describe("GET /api/packs/[packId]", () => {
+     50|   it("answers 404 when the flag is off, with neither the repository no…
+       |   ^
+     51|     vi.stubEnv("WORK_PACKS_ENABLED", "TRUE");
+     52|     const res = await get();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed | 463 passed (464)
+      Tests  1 failed | 5680 passed (5681)
+   Start at  03:18:42
+   Duration  304.10s (transform 16.22s, setup 157.78s, import 140.11s, tests 119.18s, environment 68.67s)
+
+ ELIFECYCLE  Test failed. See above for more details.

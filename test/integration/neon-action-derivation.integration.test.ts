@@ -268,4 +268,47 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('Neon final action runtime',(
   expect((await db.query("SELECT id FROM audit_events WHERE entity_id=$1 AND event='action.derived'",[head.snapshot])).rows).toHaveLength(0);
  });
 
+ it('keeps completed review work, its approval/application and usage intact on same and unchanged newer derivations',async()=>{
+  const f=await setup();await deriveActionsForSnapshot(db,f.snapshot);
+  const action=(await db.query("SELECT id FROM actions WHERE workspace_id=$1 AND template_key='review-response'",[f.ws])).rows[0].id;
+  const version=(await db.query("INSERT INTO output_versions(workspace_id,action_id,version_no,body,author_type,approval_state,delivery_state,first_exported_at) VALUES($1,$2,2,'Synthetic approved reply','user','approved','exported','2026-09-01') RETURNING id",[f.ws,action])).rows[0].id;
+  await db.query("INSERT INTO action_applications(workspace_id,action_id,output_version_id,source,asserted_by,asserted_at) VALUES($1,$2,$3,'owner_asserted',$4,'2026-09-02')",[f.ws,action,version,actor]);
+  await db.query("UPDATE actions SET action_state='completed',completed_at='2026-09-02',updated_at='2026-09-02' WHERE id=$1",[action]);
+  await db.query("INSERT INTO workspace_usage(workspace_id,period,approved_deliveries,allowance) VALUES($1,'2026-09',2,3)",[f.ws]);
+  const protectedRows=async()=>({
+   action:(await db.query('SELECT * FROM actions WHERE id=$1',[action])).rows,
+   versions:(await db.query('SELECT * FROM output_versions WHERE action_id=$1 ORDER BY id',[action])).rows,
+   applications:(await db.query('SELECT * FROM action_applications WHERE action_id=$1 ORDER BY id',[action])).rows,
+   usage:(await db.query('SELECT * FROM workspace_usage WHERE workspace_id=$1 ORDER BY period',[f.ws])).rows,
+  });
+  const before=await protectedRows();
+  await deriveActionsForSnapshot(db,f.snapshot);
+  const next=await setup(f.ws,f.loc,'2026-09-03',{gbp:{reviews:[{rating:2,text:'A changed synthetic review'}]}});
+  await deriveActionsForSnapshot(db,next.snapshot);await deriveActionsForSnapshot(db,next.snapshot);
+  expect((await db.query("SELECT id FROM actions WHERE workspace_id=$1 AND template_key='review-response'",[f.ws])).rows).toEqual([{id:action}]);
+  expect(await protectedRows()).toEqual(before);
+ });
+
+ it.each([false,true])('creates only a linked proven recurrence, never one from unavailable baseline evidence (%s)',async sourceUnavailable=>{
+  const original=await setup();await deriveActionsForSnapshot(db,original.snapshot);
+  const parent=(await db.query("SELECT id FROM actions WHERE workspace_id=$1 AND template_key='review-response'",[original.ws])).rows[0].id;
+  await db.query("UPDATE actions SET action_state='completed',completed_at='2026-09-02' WHERE id=$1",[parent]);
+  const base=await setup(original.ws,original.loc,'2026-09-03');
+  await db.query('DELETE FROM audit_findings WHERE job_id=$1',[base.job]);
+  const head=await setup(original.ws,original.loc,'2026-09-04');
+  const measured={google_business:{status:'measured',confidence:'high',score:70,limitationCode:null}};
+  const absentSource={google_business:{status:'unavailable',confidence:'none',score:null,limitationCode:'GBP_UNAVAILABLE'}};
+  await db.query("UPDATE audit_jobs SET created_at='2026-09-03' WHERE id=$1",[base.job]);
+  await db.query("UPDATE audit_jobs SET created_at='2026-09-04' WHERE id=$1",[head.job]);
+  await db.query('UPDATE scan_snapshots SET module_states=$2 WHERE id=$1',[base.snapshot,JSON.stringify(sourceUnavailable?absentSource:measured)]);
+  await db.query('UPDATE scan_snapshots SET module_states=$2 WHERE id=$1',[head.snapshot,JSON.stringify(measured)]);
+  const diff=(await db.query("INSERT INTO scan_diffs(base_job_id,head_job_id,comparable,intersection_modules,regressed_findings) VALUES($1,$2,true,ARRAY['gbp'],ARRAY['gbp.owner_response_low']) RETURNING id",[base.job,head.job])).rows[0].id;
+  await db.query('UPDATE scan_snapshots SET comparable_to=$2,diff_id=$3 WHERE id=$1',[head.snapshot,base.snapshot,diff]);
+  await deriveActionsForSnapshot(db,head.snapshot);await deriveActionsForSnapshot(db,head.snapshot);
+  const actions=(await db.query("SELECT id,action_state,evidence FROM actions WHERE workspace_id=$1 AND template_key='review-response' ORDER BY completed_at NULLS LAST",[original.ws])).rows;
+  expect(actions).toHaveLength(sourceUnavailable?1:2);
+  expect(actions[0]).toMatchObject({id:parent,action_state:'completed'});
+  if(!sourceUnavailable)expect(actions[1].evidence).toMatchObject({followUpOfActionId:parent});
+ });
+
 });

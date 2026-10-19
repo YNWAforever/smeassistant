@@ -1,0 +1,42 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018
+
+ ❯ components/workspace/action-detail-client.test.tsx (106 tests | 2 failed | 104 skipped) 184ms
+     × keeps an externally verified lifecycle ahead of its historical approval 143ms
+     × links a proven recurrence back to the completed work in the same workspace 38ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/workspace/action-detail-client.test.tsx > focused draft review > keeps an externally verified lifecycle ahead of its historical approval
+AssertionError: expected 'HighApprovedFeature available' to contain 'Verified external change'
+
+Expected: "Verified external change"
+Received: "HighApprovedFeature available"
+
+ ❯ components/workspace/action-detail-client.test.tsx:229:70
+    227|     value.versions = [versionRow({ id: "ver-2", version_no: 2, approva…
+    228|     const root = verificationMarkup(value);
+    229|     expect(root.querySelector(".action-detail-badges")?.textContent).t…
+       |                                                                      ^
+    230|     expect(root.querySelector(".action-detail-next strong")?.textConte…
+    231|     expect(root.textContent).toContain("Version 2 approved");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  components/workspace/action-detail-client.test.tsx > focused draft review > links a proven recurrence back to the completed work in the same workspace
+AssertionError: the given combination of arguments (undefined and string) is invalid for this assertion. You can use an array, a map, an object, a set, a string, or a weakset instead of a string
+ ❯ components/workspace/action-detail-client.test.tsx:239:31
+    237|     const root = verificationMarkup(value);
+    238|     const link = root.querySelector('a[href="/en/owner/kam-man-house/a…
+    239|     expect(link?.textContent).toContain("Follow-up to completed work");
+       |                               ^
+    240|   });
+    241| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 104 skipped (106)
+   Start at  23:40:58
+   Duration  4.06s (transform 910ms, setup 469ms, import 2.36s, tests 184ms, environment 780ms)

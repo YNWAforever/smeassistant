@@ -946,8 +946,10 @@ export async function getInsights(ctx: WorkspaceContext, scope: LocationScope): 
 // Activity, calendar, notifications
 // ---------------------------------------------------------------------------
 
-export async function getActivity(ctx: WorkspaceContext, opts: { limit?: number } = {}): Promise<AuditEventRow[]> {
-  return read("activity", () => workspaceReadRepository().activity(ctx.workspace.id, opts.limit ?? 100));
+export async function getActivity(ctx: WorkspaceContext, opts: { limit?: number; verificationFor?: { actionId: string; locationId: string | null } } = {}): Promise<AuditEventRow[]> {
+  return read("activity", () => opts.verificationFor
+    ? workspaceReadRepository().activity(ctx.workspace.id, opts.limit ?? 100, opts.verificationFor)
+    : workspaceReadRepository().activity(ctx.workspace.id, opts.limit ?? 100));
 }
 
 export async function getCalendar(ctx: WorkspaceContext, scope:LocationScope='all'): Promise<CalendarModel> {

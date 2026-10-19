@@ -1,0 +1,30 @@
+
+Running 1 test using 1 worker
+
+
+
+(node:51988) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/1] [webkit] › e2e\acceptance\webkit-navigation-regression.spec.ts:82:1 › native HTTP behind a rejecting proxy preserves authenticated action navigation
+  1) [webkit] › e2e\acceptance\webkit-navigation-regression.spec.ts:82:1 › native HTTP behind a rejecting proxy preserves authenticated action navigation
+
+    Error: page.goto: Navigation to "http://localhost:65117/en/owner/acceptance-hk-f077a04f/actions/39425576-43bc-48f4-a483-a9e0c9953ad6" is interrupted by another navigation to "http://localhost:65117/en/owner/acceptance-hk-f077a04f"
+    Call log:
+      - navigating to "http://localhost:65117/en/owner/acceptance-hk-f077a04f/actions/39425576-43bc-48f4-a483-a9e0c9953ad6", waiting until "load"
+
+
+      59 |     record({ kind: "authenticated_home" });
+      60 |     const action = `/en/owner/${merchant.slug}/actions/${merchant.actionId}`;
+    > 61 |     expect((await page.goto(action))?.status()).toBe(200);
+         |                        ^
+      62 |     await waitForHydration(page);
+      63 |     await expect(page.locator(".action-detail-page")).toBeVisible();
+      64 |     expect((await page.reload())?.status()).toBe(200);
+        at checkNavigation (C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\e2e\acceptance\webkit-navigation-regression.spec.ts:61:24)
+        at C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\e2e\acceptance\webkit-navigation-regression.spec.ts:98:5
+
+    Error Context: test-results\webkit-reliability-20261019\native-navigation\webkit-navigation-regressi-a4028-enticated-action-navigation-webkit\error-context.md
+
+
+  1 failed
+    [webkit] › e2e\acceptance\webkit-navigation-regression.spec.ts:82:1 › native HTTP behind a rejecting proxy preserves authenticated action navigation

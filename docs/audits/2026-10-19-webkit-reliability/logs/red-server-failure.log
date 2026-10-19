@@ -1,0 +1,34 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018
+
+ ❯ test/e2e/page-readiness.test.ts (16 tests | 1 failed) 14ms
+     × does not conceal a server failure behind a later browser GET and disposes its body 7ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/e2e/page-readiness.test.ts > document pre-read failures > does not conceal a server failure behind a later browser GET and disposes its body
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+undefined
+
+ ❯ test/e2e/page-readiness.test.ts:65:51
+     63|     const fixture = responsePage(503);
+     64|     await expect(prepareFixtureDocument(fixture.page, "http://localhos…
+     65|       "/en/owner/acceptance-hk-deadbeef/actions")).rejects.toThrow(
+       |                                                   ^
+     66|       "fixture_document_precompile_failed:503:/en/owner/acceptance-hk-…
+     67|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 15 passed (16)
+   Start at  03:07:22
+   Duration  7.68s (transform 97ms, setup 6.84s, import 83ms, tests 14ms, environment 0ms)

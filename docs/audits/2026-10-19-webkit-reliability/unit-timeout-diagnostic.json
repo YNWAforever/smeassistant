@@ -1,0 +1,13 @@
+{
+  "observedAtHKT": "2026-10-19T03:24:27+08:00",
+  "failure": "5000ms timeout in first test, which dynamically imports the route",
+  "fullRun": "1 failed / 5680 passed; default retry policy retained",
+  "unchangedTest": "app/api/packs/[packId]/route.test.ts",
+  "baselineBlob": "44448897d75e71fbefa92403acfecce90d4cba70",
+  "workingBlob": "44448897d75e71fbefa92403acfecce90d4cba70",
+  "cpuLoadAtInspectionPercent": 97,
+  "freeMemoryMiBAtInspection": 5341,
+  "focusedCommand": "corepack pnpm exec vitest run app/api/packs/[packId]/route.test.ts --retry=0 --maxWorkers=1",
+  "focusedResult": "7 PASS, exit 0, same 5000ms limit",
+  "interpretation": "Initial timing-sensitive failure retained; same source and 5000ms limit focused7PASS, followed by full single-worker6268PASS. No unrelated code/assertion change."
+}

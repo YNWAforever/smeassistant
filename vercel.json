@@ -2,6 +2,7 @@
   "regions": ["sin1"],
   "git": {
     "deploymentEnabled": {
+      "codex/review-action-reliability-20261018": false,
       "codex/merchant-acceptance-completion": false,
       "codex/neon-migration": false,
       "codex/smeassistant-audit-remediation-20261007": false,

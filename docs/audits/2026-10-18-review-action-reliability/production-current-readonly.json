@@ -1,0 +1,12 @@
+{
+  "recordedAt": "2026-10-18T15:52:12.142Z",
+  "layer": "Existing authenticated in-app browser; not WebKit acceptance",
+  "productionSha": "94770e3dc36bfbe775f044e2755b62cd2ccfa5d2",
+  "deployment": "dpl_33uanKg72DQCQXpXLPBNCymwHpt9",
+  "workspace": "SMEAssistant UAT cb1419df",
+  "actionId": "9c2b8cf3-eee3-4d37-9902-98924205aa4a",
+  "audit": "IMMUTABLE OUTPUT VERSIONS\n\nVersion history\nVersion 2 · Approved\nMember · 17 Oct 2026, 22:36\nVersion 1 · Superseded\nAgent · 17 Oct 2026, 22:36\n\nCONFLICT AND IDEMPOTENCY\n\nSafety states\nNo active conflict\n\nRepeated approval or export returns the original transition without duplicate work or usage.\n\n17 Oct 2026, 23:05\n\nMarked as applied · Member\n\n17 Oct 2026, 22:54\n\nExport recorded · Member · Version 2\n\n17 Oct 2026, 22:46\n\nVersion approved · Member · Version 2\n\n17 Oct 2026, 22:36\n\nVersion saved · Member · Version 2\n\n17 Oct 2026, 22:36\n\nVersion saved · Member · Version 1\n\n17 Oct 2026, 22:36\n\nDraft prepared · Member · Version 1\n\n17 Oct 2026, 22:36\n\nrun.usage_observed · Member\n\n17 Oct 2026, 22:35\n\nrun.provider_reserved · Member\n\n17 Oct 2026, 22:35\n\nDraft generation started · Member\n\n17 Oct 2026, 22:35\n\nAction updated · Member\n\n17 Oct 2026, 22:35\n\nDraft prepared · Member\n\n17 Oct 2026, 22:35\n\nDraft generation started · Member",
+  "usage": "Approved deliveries this month\n2 / 3\n1 remain · period 2026-10",
+  "completed": true,
+  "writesPerformed": false
+}

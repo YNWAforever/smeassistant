@@ -1,0 +1,10 @@
+
+Running 2 tests using 1 worker
+
+
+
+(node:52008) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/2] [webkit] › e2e\acceptance\webkit-http-repro.spec.ts:11:3 › same-origin streaming fetch and navigation with interception true
+[2/2] [webkit] › e2e\acceptance\webkit-http-repro.spec.ts:11:3 › same-origin streaming fetch and navigation with interception false
+  2 passed (1.4s)

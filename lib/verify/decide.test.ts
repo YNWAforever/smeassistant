@@ -61,19 +61,26 @@ describe("decideVerification", () => {
     expect(decideVerification(THREE, { prior, fresh })).toBe("not_yet");
   });
 
-  it("is not_yet when the fresh fetch evaluated only some of the relevant checks", () => {
+  it("is source_unavailable when the fresh fetch evaluated only some relevant checks", () => {
     // A partial fetch is not a partial verification. This is the case a
     // refactor that special-cased `evaluated === 0` would break while every
     // other test stayed green -- the rule must stay a per-key lookup.
     const prior = checks({ title: false, meta_description_50_160: true, single_h1: false });
     const fresh = checks({ title: true });
-    expect(decideVerification(THREE, { prior, fresh })).toBe("not_yet");
+    expect(decideVerification(THREE, { prior, fresh })).toBe("source_unavailable");
   });
 
-  it("is not_yet when the fresh fetch never evaluated a relevant check", () => {
+  it("is source_unavailable when the fresh fetch never evaluated a relevant check", () => {
     // An unreachable site yields evaluated: 0. That is "we could not look",
     // not "it is fixed".
     const decision = decideVerification(["faq_schema"], { prior: checks({ faq_schema: false }), fresh: { evaluated: 0, passed: 0, results: [] } });
-    expect(decision).toBe("not_yet");
+    expect(decision).toBe("source_unavailable");
+  });
+
+  it("does not turn partial evidence into a negative verdict when another check still fails", () => {
+    expect(decideVerification(["title", "single_h1"], {
+      prior: checks({ title: false, single_h1: false }),
+      fresh: checks({ title: false }),
+    })).toBe("source_unavailable");
   });
 });

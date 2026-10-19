@@ -43,8 +43,11 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
   // P4.6: the Google publish card. Null for any other template, or when a read
   // fails (the card hides; the page never fails because of it). With the flag
   // off it reads no connection and names no 0014 column unless publish rows exist.
-  const [activity, assets, publishPanel] = await Promise.all([
+  const [activity, verificationActivity, assets, publishPanel] = await Promise.all([
     getActivity(page.ctx, { limit: 200 }),
+    // A durable result must not disappear behind unrelated workspace events.
+    // Scope this read before LIMIT; the normal history remains bounded.
+    getActivity(page.ctx, { limit: 1, verificationFor: { actionId, locationId: detail.action.location.id } }),
     listAssets(page.ctx.workspace.id, page.ctx.locations, { signedUrls: false }).catch(() => []),
     loadPublishPanel({
       workspaceId: page.ctx.workspace.id,
@@ -55,7 +58,9 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
       versions: detail.versions.map((v) => ({ id: v.id, approval_state: v.approval_state, body: v.body })),
     }),
   ]);
-  const auditRows = activity.filter((row) => auditBelongsToAction(row, { actionId, entityIds }));
+  const auditRows = [...new Map([...activity, ...verificationActivity].map((row) => [row.id, row])).values()]
+    .filter((row) => auditBelongsToAction(row, { actionId, entityIds }))
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
   // P2.3 item 15: the picker offered every approved image in the workspace, so
   // a social post for one shop could attach another shop's photo, and a manager
   // scoped to one location could see and use assets outside it. Same predicate

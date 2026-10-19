@@ -2,6 +2,13 @@ import 'server-only';
 import type { Pool } from 'pg';
 import { getPool } from '../db/client';
 import type { WebsiteChecks } from '../website/checks';
+import type { VerificationReceipt } from '../verify/receipt';
+
+export interface VerificationAttempt {
+  id: string;
+  workspace_id: string;
+  verification?: VerificationReceipt;
+}
 
 export interface VerifiableLocation {
   location_id: string;
@@ -46,7 +53,7 @@ export interface VerificationRepository {
    * alone to imply a tenant, and here the pairing also guards against a
    * caller accidentally handing back an id from a different sweep pass.
    */
-  markChecked(actions: Array<{ id: string; workspace_id: string }>, nowIso: string): Promise<void>;
+  markChecked(actions: VerificationAttempt[], nowIso: string): Promise<void>;
 }
 
 /**
@@ -121,11 +128,26 @@ export function verificationRepository(client?: Pick<Pool, 'query'>): Verificati
       // A join against a VALUES list, not `id = ANY($1)`: an id alone does
       // not imply a tenant in this codebase, so the workspace_id the caller
       // read the action under must match the row being stamped.
+      const receipts = Object.fromEntries(actions.filter((action) => action.verification).map((action) => [
+        `${action.workspace_id}:${action.id}`,
+        { locale: null, verification: action.verification },
+      ]));
       await db().query(
-        `UPDATE actions a SET verification_checked_at = $2
+        `WITH stamped AS (
+         UPDATE actions a SET verification_checked_at = $2
          FROM (SELECT * FROM unnest($1::uuid[], $3::uuid[]) AS t(id, workspace_id)) pairs
-         WHERE a.id = pairs.id AND a.workspace_id = pairs.workspace_id`,
-        [actions.map((a) => a.id), nowIso, actions.map((a) => a.workspace_id)],
+         WHERE a.id = pairs.id AND a.workspace_id = pairs.workspace_id
+          AND (a.verification_checked_at IS NULL OR a.verification_checked_at <= $2::timestamptz)
+         RETURNING a.id, a.workspace_id, a.location_id
+        )
+        INSERT INTO audit_events(idempotency_key,workspace_id,location_id,actor_type,event,entity_type,entity_id,payload)
+        SELECT 'action.verification_checked:' || id::text || ':' || $2::text,
+         workspace_id,location_id,'scanner','action.verification_checked','action',id,
+         $4::jsonb -> (workspace_id::text || ':' || id::text)
+        FROM stamped
+        WHERE $4::jsonb ? (workspace_id::text || ':' || id::text)
+        ON CONFLICT(idempotency_key) DO NOTHING`,
+        [actions.map((a) => a.id), nowIso, actions.map((a) => a.workspace_id), JSON.stringify(receipts)],
       );
     },
   };
