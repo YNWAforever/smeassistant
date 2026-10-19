@@ -1,0 +1,117 @@
+{
+  "recordedAt": "2026-10-19T15:13:27.1594359Z",
+  "branch": "codex/review-owner-check-20261019",
+  "testedBaseHead": "838165393d7dafd6a5f3ac7302e6f571630e33b2",
+  "sourceFiles": [
+    {
+      "path": "scripts/owner-check-isolated.ts",
+      "sha256": "6975BBADF98A3489E4A88C7777279A1168E29FDAD1CB4FFD2543E67568977EC7",
+      "repositoryBlobSha256": "6975BBADF98A3489E4A88C7777279A1168E29FDAD1CB4FFD2543E67568977EC7",
+      "lineEndingNormalization": "none"
+    },
+    {
+      "path": "test/e2e/environment.ts",
+      "sha256": "19B12CDC8AD54003F20ACF225469CA7F012017CA6A1FA1B8BBAC62B1F21E25A4",
+      "repositoryBlobSha256": "8C5DE244378B013829376CEC83869A15C1D5EC8C27F0B4CD590BD595F6A55C8D",
+      "lineEndingNormalization": "tested CRLF working tree; standard Git LF blob"
+    },
+    {
+      "path": "test/integration/neon-database.ts",
+      "sha256": "07A4D12FBFE16256AAF4527EA37A4F58EEA0D80D0EC3FD1EB739EF0EC23E3DB1",
+      "repositoryBlobSha256": "5DC3C4B1E0C48672FD3715598C7159EF52189303B429FBC66C94768C922A97F9",
+      "lineEndingNormalization": "tested CRLF working tree; standard Git LF blob"
+    },
+    {
+      "path": "test/integration/owner-check-contract.ts",
+      "sha256": "1CB93F86B61105E96D9B98595BDD5D3ABEC2C6743028B723F1C31D625E0DA97A",
+      "repositoryBlobSha256": "1CB93F86B61105E96D9B98595BDD5D3ABEC2C6743028B723F1C31D625E0DA97A",
+      "lineEndingNormalization": "none"
+    },
+    {
+      "path": "test/integration/owner-check-real.acceptance.ts",
+      "sha256": "D8CC62C6837825C80E9C1843340C6F406A4019B0E27720A89E1D383BA855E740",
+      "repositoryBlobSha256": "D8CC62C6837825C80E9C1843340C6F406A4019B0E27720A89E1D383BA855E740",
+      "lineEndingNormalization": "none"
+    },
+    {
+      "path": "test/integration/owner-check-target.ts",
+      "sha256": "2AF4558EC1C2DA0755AC96FB482696BFA61ADB5DA5F981E408F0A813F7438BCD",
+      "repositoryBlobSha256": "2AF4558EC1C2DA0755AC96FB482696BFA61ADB5DA5F981E408F0A813F7438BCD",
+      "lineEndingNormalization": "none"
+    },
+    {
+      "path": "test/integration/owner-check-target.test.ts",
+      "sha256": "32677D9D869B182CEFADAD9815E089AD3F3579CD403EC8908AD8CE82200F2761",
+      "repositoryBlobSha256": "32677D9D869B182CEFADAD9815E089AD3F3579CD403EC8908AD8CE82200F2761",
+      "lineEndingNormalization": "none"
+    },
+    {
+      "path": "vitest.owner-check.config.ts",
+      "sha256": "6A851202F753AB220999BD04A56CA3A02DA3E3407E978373DAEE37C76404CDAA",
+      "repositoryBlobSha256": "6A851202F753AB220999BD04A56CA3A02DA3E3407E978373DAEE37C76404CDAA",
+      "lineEndingNormalization": "none"
+    },
+    {
+      "path": "test/integration/owner-check-seed.ts",
+      "sha256": "C7B6E5CEB689DC2B629CDCF4B9544DE82EDF73D874206A1FBD05B8450D03E09D",
+      "repositoryBlobSha256": "C7B6E5CEB689DC2B629CDCF4B9544DE82EDF73D874206A1FBD05B8450D03E09D",
+      "lineEndingNormalization": "none"
+    },
+    {
+      "path": "test/integration/owner-check-seed-contract.test.ts",
+      "sha256": "D7578ED5D36CBEF4EFC860795B8ABE2A26F84858DF6773829F7399E021876F79",
+      "repositoryBlobSha256": "D7578ED5D36CBEF4EFC860795B8ABE2A26F84858DF6773829F7399E021876F79",
+      "lineEndingNormalization": "none"
+    },
+    {
+      "path": "test/integration/owner-check-seed-session.ts",
+      "sha256": "D20421AF8BB903EA95BEFB99337054354F37EEB240CC3D47FF77E85354C6CCB8",
+      "repositoryBlobSha256": "D20421AF8BB903EA95BEFB99337054354F37EEB240CC3D47FF77E85354C6CCB8",
+      "lineEndingNormalization": "none"
+    },
+    {
+      "path": "test/integration/owner-check-seed-session.test.ts",
+      "sha256": "B6DF1C410DBF8017FFB0843404B073CCB095E29D864B3CAAAF5759FD300839D6",
+      "repositoryBlobSha256": "B6DF1C410DBF8017FFB0843404B073CCB095E29D864B3CAAAF5759FD300839D6",
+      "lineEndingNormalization": "none"
+    },
+    {
+      "path": "test/integration/owner-check-config.test.ts",
+      "sha256": "89267F453AB64A26A4C3A7388F982A28077BC63BDF533DB9AAFE97ADBFD074AB",
+      "repositoryBlobSha256": "89267F453AB64A26A4C3A7388F982A28077BC63BDF533DB9AAFE97ADBFD074AB",
+      "lineEndingNormalization": "none"
+    }
+  ],
+  "gates": [
+    {
+      "warnings": 0,
+      "name": "typecheck",
+      "finishedAt": "2026-10-19T15:08:29.459Z",
+      "exitCode": 0,
+      "startedAt": "2026-10-19T15:08:13.779Z",
+      "command": "corepack pnpm typecheck"
+    },
+    {
+      "errors": 0,
+      "name": "lint",
+      "finishedAt": "2026-10-19T15:09:31.914Z",
+      "existingWarnings": 40,
+      "exitCode": 0,
+      "startedAt": "2026-10-19T15:08:29.672Z",
+      "command": "corepack pnpm lint"
+    },
+    {
+      "runnerWarning": "Node DEP0190",
+      "name": "safe-webpack-secret-boundary",
+      "finishedAt": "2026-10-19T15:10:38.6403315Z",
+      "publicArtifacts": 171,
+      "exitCode": 0,
+      "startedAt": "2026-10-19T15:09:32.1286454Z",
+      "command": "corepack pnpm test:secret-boundary via safe runner"
+    }
+  ],
+  "newFixtures": 0,
+  "runtimeOrUnitReruns": 0,
+  "scope": "fresh final quality gates only; prior RETRY2 results remain separate",
+  "sourceComparison": "working-tree sha256 is the exact tested source; repositoryBlobSha256 accounts only for existing Git CRLF/LF normalization"
+}
