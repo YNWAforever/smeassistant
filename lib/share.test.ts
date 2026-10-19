@@ -117,6 +117,15 @@ describe("buildShareCardData", () => {
     });
     expect(data.modules).toEqual([]);
   });
+  it("falls back to module_scores for a module that module_results omits", () => {
+    const data = buildShareCardData({
+      business_name: "X",
+      overall_score: 60,
+      module_scores: { ig: { score: 0 }, gbp: { score: 70 } },
+      module_results: { ig: { status: "unavailable", score: null, confidence: "none", evidenceCollectedAt: null, limitationCode: null } },
+    });
+    expect(data.modules).toEqual([{ key: "gbp", score: 70 }]);
+  });
   it("skips a legacy module with no numeric score", () => {
     const data = buildShareCardData({ business_name: "X", overall_score: 50, module_scores: { gbp: { score: 70 } } });
     expect(data.modules).toEqual([{ key: "gbp", score: 70 }]);

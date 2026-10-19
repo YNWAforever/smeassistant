@@ -54,14 +54,16 @@ export interface ShareCardData {
 type JobCardInput = (Pick<AuditJobRow, "business_name" | "overall_score" | "module_scores"> & Partial<Pick<AuditJobRow, "module_results">>) | null;
 
 /**
- * A module appears on the card only when it was measured. `module_results`
- * (coverage-aware) wins; legacy rows without it fall back to `module_scores`.
+ * A module appears on the card only when it was measured. A module's
+ * `module_results` entry wins; a module without one falls back to `module_scores`.
  * An unmeasured module is left off rather than shown as 0 (guardrail 2).
  */
 function measuredModuleScore(job: NonNullable<JobCardInput>, key: "ig" | "gbp" | "aeo"): number | null {
+  // Per module, as lib/report/load-report.ts does: a present result is
+  // authoritative (unavailable/failed stays off); only an absent one falls back.
   const result = job.module_results?.[key];
-  if (job.module_results) {
-    return result?.status === "measured" && typeof result.score === "number" && Number.isFinite(result.score) ? result.score : null;
+  if (result) {
+    return result.status === "measured" && typeof result.score === "number" && Number.isFinite(result.score) ? result.score : null;
   }
   const legacy = job.module_scores?.[key]?.score;
   return typeof legacy === "number" && Number.isFinite(legacy) ? legacy : null;
