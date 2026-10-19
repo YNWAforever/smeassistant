@@ -25,9 +25,13 @@ export function CommandPalette({ items, locale, open: controlledOpen, onOpenChan
   const router = useRouter()
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const open = controlledOpen ?? uncontrolledOpen
-  const setOpen = useCallback((next: boolean) => { onOpenChange?.(next); if (controlledOpen === undefined) setUncontrolledOpen(next) }, [controlledOpen, onOpenChange])
   const [query, setQuery] = useState("")
   const [active, setActive] = useState(0)
+  const setOpen = useCallback((next: boolean) => {
+    if (!next) { setQuery(""); setActive(0) }
+    onOpenChange?.(next)
+    if (controlledOpen === undefined) setUncontrolledOpen(next)
+  }, [controlledOpen, onOpenChange])
   const listId = useId()
   const inputRef = useRef<HTMLInputElement>(null)
   const results = useMemo(() => matchCommands(items, query), [items, query])
@@ -39,8 +43,6 @@ export function CommandPalette({ items, locale, open: controlledOpen, onOpenChan
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [open, setOpen])
-
-  useEffect(() => { if (!open) { setQuery(""); setActive(0) } }, [open])
 
   const choose = (item: CommandItem | undefined) => {
     if (!item) return
