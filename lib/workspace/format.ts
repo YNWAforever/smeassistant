@@ -87,6 +87,13 @@ export function scorePercent(coverage: number | null | undefined): number | null
   return coverage <= 1 ? Math.round(coverage * 100) : Math.round(coverage);
 }
 
+/** A Postgres numeric arrives as a string; null stays null rather than becoming 0 (guardrail 2). */
+export function numericOrNull(value: number | string | null | undefined): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export function signed(value: number | null | undefined, digits = 0): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return "—";
   const rounded = Number(value.toFixed(digits));

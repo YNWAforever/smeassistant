@@ -72,7 +72,8 @@ export interface HomeBrief {
   /** Recent applied review reply; completion and its exact saved version stay independent of a new draft. */
   reviewFollowUp?: HomeReviewFollowUp | null;
   proof: HomeProof | null;
-  month: { resolved: number; regressed: number; awaitingApproval: number; completed: number; measured: number };
+  /** `resolved`/`regressed` are null without a comparable diff: unknown, never 0 (guardrail 2). */
+  month: { resolved: number | null; regressed: number | null; awaitingApproval: number; completed: number; measured: number };
   /**
    * Day of the month the location's monthly rescan cadence falls on, or null
    * when no cadence is recorded. Deliberately not a date: nothing dispatches a
@@ -312,6 +313,8 @@ export interface InsightsModel {
   trend: TrendModel;
   aeoTrend: AeoTrendModel;
   metricCards: MetricCard[];
+  /** True only when the head scan has a comparable diff; the ledger is empty otherwise. */
+  ledgerComparable: boolean;
   ledger: { resolved: string[]; regressed: string[]; decayed: string[] };
   perLocation: InsightsLocationSummary[];
   deliveries: DeliveredWorkRow[];
@@ -725,8 +728,8 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
         }
       : null,
     month: {
-      resolved: diff?.comparable ? diff.resolved_findings.length : 0,
-      regressed: diff?.comparable ? diff.regressed_findings.length : 0,
+      resolved: diff?.comparable ? diff.resolved_findings.length : null,
+      regressed: diff?.comparable ? diff.regressed_findings.length : null,
       awaitingApproval: drafts,
       completed: completed.length,
       measured: completed.filter((row) => row.measurement_state === "measured").length,
@@ -734,7 +737,8 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
     rescanCadenceDay: cadenceDay(schedules[0] ?? null),
     drafts,
     agentStrip: { scout: Boolean(snapshot), priority: openActions.length > 0, drafts, awaiting: drafts },
-    ledger: diff ? { resolved: diff.resolved_findings, regressed: diff.regressed_findings, decayed: diff.decayed_findings } : { resolved: [], regressed: [], decayed: [] },
+    // Change only across a comparable pair (guardrail 3); the UI labels these "latest comparable scan".
+    ledger: diff?.comparable ? { resolved: diff.resolved_findings, regressed: diff.regressed_findings, decayed: diff.decayed_findings } : { resolved: [], regressed: [], decayed: [] },
     integrations,
     evidence,
   };
@@ -911,6 +915,7 @@ export async function getInsights(ctx: WorkspaceContext, scope: LocationScope): 
       trend: buildTrendModel(null),
       aeoTrend: buildAeoTrendModel([]),
       metricCards: [],
+      ledgerComparable: false,
       ledger: { resolved: [], regressed: [], decayed: [] },
       perLocation,
       deliveries: [],
@@ -949,7 +954,8 @@ export async function getInsights(ctx: WorkspaceContext, scope: LocationScope): 
     trend: buildTrendModel(toStoredDiff(headDiff)),
     aeoTrend: buildAeoTrendModel(aeoRows),
     metricCards: metricCards(head, base, Boolean(headDiff?.comparable)),
-    ledger: headDiff ? { resolved: headDiff.resolved_findings, regressed: headDiff.regressed_findings, decayed: headDiff.decayed_findings } : { resolved: [], regressed: [], decayed: [] },
+    ledgerComparable: Boolean(headDiff?.comparable),
+    ledger: headDiff?.comparable ? { resolved: headDiff.resolved_findings, regressed: headDiff.regressed_findings, decayed: headDiff.decayed_findings } : { resolved: [], regressed: [], decayed: [] },
     perLocation,
     deliveries,
   };

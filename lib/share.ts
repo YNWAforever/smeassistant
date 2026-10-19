@@ -51,17 +51,30 @@ export interface ShareCardData {
   modules: { key: "ig" | "gbp" | "aeo"; score: number }[];
 }
 
-type JobCardInput = Pick<AuditJobRow, "business_name" | "overall_score" | "module_scores"> | null;
+type JobCardInput = (Pick<AuditJobRow, "business_name" | "overall_score" | "module_scores"> & Partial<Pick<AuditJobRow, "module_results">>) | null;
+
+/**
+ * A module appears on the card only when it was measured. `module_results`
+ * (coverage-aware) wins; legacy rows without it fall back to `module_scores`.
+ * An unmeasured module is left off rather than shown as 0 (guardrail 2).
+ */
+function measuredModuleScore(job: NonNullable<JobCardInput>, key: "ig" | "gbp" | "aeo"): number | null {
+  const result = job.module_results?.[key];
+  if (job.module_results) {
+    return result?.status === "measured" && typeof result.score === "number" && Number.isFinite(result.score) ? result.score : null;
+  }
+  const legacy = job.module_scores?.[key]?.score;
+  return typeof legacy === "number" && Number.isFinite(legacy) ? legacy : null;
+}
 
 export function buildShareCardData(job: JobCardInput): ShareCardData {
   if (!job || job.overall_score == null) {
     return { businessName: "", score: 0, band: "critical", found: false, modules: [] };
   }
-  const ms = job.module_scores ?? {};
-  const modules = (["ig", "gbp", "aeo"] as const).map((key) => ({
-    key,
-    score: Math.round((ms[key]?.score as number) ?? 0),
-  }));
+  const modules = (["ig", "gbp", "aeo"] as const).flatMap((key) => {
+    const score = measuredModuleScore(job, key);
+    return score === null ? [] : [{ key, score: Math.round(score) }];
+  });
   const score = Math.round(job.overall_score);
   return { businessName: job.business_name, score, band: scoreBand(score), found: true, modules };
 }

@@ -32,7 +32,7 @@ function baseBrief(proof: HomeBrief["proof"]): HomeBrief {
     priority: null,
     openActions: [],
     proof,
-    month: { resolved: 0, regressed: 0, awaitingApproval: 0, completed: 0, measured: 0 },
+    month: { resolved: null, regressed: null, awaitingApproval: 0, completed: 0, measured: 0 },
     rescanCadenceDay: null,
     drafts: 0,
     agentStrip: { scout: false, priority: false, drafts: 0, awaiting: 0 },
@@ -406,5 +406,20 @@ describe("HomeBriefView for an unscanned or unlinked workspace (F-19)", () => {
       expect(root.querySelector("h1")?.textContent).toBe(copy.en.home.title);
       expect(root.textContent).toMatch(/finished the analysis/);
     }
+  });
+});
+
+describe("month metrics without a comparable scan (guardrail 2)", () => {
+  it("shows resolved and regressed as unknown, never 0", () => {
+    const metrics = Array.from(render(null).querySelectorAll(".month-metrics article")).slice(0, 2);
+    for (const card of metrics) {
+      expect(card.querySelector("strong")?.textContent).toBe("—");
+      expect(card.textContent).toContain(copy.en.home.noComparable);
+    }
+  });
+  it("draws a flat glyph, not an up-trend, when there is no comparable change", () => {
+    const label = render(null).querySelector(".brief-score-card .card-label-row");
+    expect(label?.querySelector('[data-trend="flat"]')).not.toBeNull();
+    expect(label?.querySelector('[data-trend="up"]')).toBeNull();
   });
 });

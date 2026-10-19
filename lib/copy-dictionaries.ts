@@ -1102,6 +1102,7 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
       noLocationBody: "Run a free scan of your business, then claim it from the report, or ask Fimmick to link it to this workspace.",
       noLocationCta: "Start a free scan",
       month: "This month",
+      noComparable: "No comparable scan yet",
     },
     ownerFocus: {
       why: "Why this task first?", results: "View recent results", otherTasks: "Other tasks and drafts",
@@ -1173,6 +1174,7 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
       noLocationBody: "先為你的商戶做一次免費掃描，然後在報告頁認領，或請 Fimmick 把它連結到這個工作台。",
       noLocationCta: "免費掃描",
       month: "本月進度",
+      noComparable: "未有可比較的掃描",
     },
     ownerFocus: {
       why: "為何先處理這項？", results: "查看最近成效", otherTasks: "其他待辦與草稿",
@@ -1244,6 +1246,7 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
       noLocationBody: "先為你的店家做一次免費掃描，然後在報告頁認領，或請 Fimmick 把它連結到這個工作台。",
       noLocationCta: "免費掃描",
       month: "本月進度",
+      noComparable: "尚無可比較的掃描",
     },
     ownerFocus: {
       why: "為什麼先處理這項？", results: "查看最近成效", otherTasks: "其他待辦與草稿",

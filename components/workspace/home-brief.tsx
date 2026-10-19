@@ -1,9 +1,9 @@
 import Link from "next/link"
 import type { ReactNode } from "react"
-import { ArrowRight, CalendarClock, Check, CheckCircle2, CircleAlert, CircleCheck, Clock3, FileClock, Globe2, ShieldCheck, Sparkles, TrendingDown, TrendingUp } from "lucide-react"
+import { ArrowRight, CalendarClock, Check, CheckCircle2, CircleAlert, CircleCheck, Clock3, FileClock, Globe2, ShieldCheck, Sparkles, TrendingDown } from "lucide-react"
 
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
-import { CapabilityBadge, FactType, PageIntro, ScoreDial, SectionCard } from "@/components/product-ui"
+import { CapabilityBadge, FactType, PageIntro, ScoreDial, SectionCard, TrendIcon } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { EvidenceGallery } from "@/components/workspace/evidence-gallery"
@@ -168,7 +168,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         <div className="owner-results-grid">
 
         <article className="brief-score-card">
-          <div className="card-label-row"><span>{changed.delta !== null && changed.delta < 0 ? <TrendingDown /> : <TrendingUp />} {t.changed}</span><Badge variant="outline">{changedBadge}</Badge></div>
+          <div className="card-label-row"><span><TrendIcon delta={changed.comparable ? changed.delta : null} /> {t.changed}</span><Badge variant="outline">{changedBadge}</Badge></div>
           {!snapshot ? (
             <div className="aggregate-empty"><CircleAlert /><h2>{location === "all" ? (isChinese ? "不製造合併平均分" : "No fabricated aggregate score") : (isChinese ? "尚未有快照" : "No snapshot yet")}</h2><p>{location === "all" ? (isChinese ? zhFor(locale, "各地點的證據覆蓋與比較資格不同；請逐個地點查看評分。") : "Coverage and eligibility differ by location; inspect each location separately.") : (isChinese ? zhFor(locale, "完成第一次掃描後，評分與覆蓋率會在這裡出現。") : "Score and coverage appear here after the first scan completes.")}</p></div>
           ) : snapshot.overallScore === null ? (
@@ -180,8 +180,9 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
                   page assert "unchanged since comparable scan" -- in the
                   sighted UI and the aria-label -- next to a "Not comparable"
                   badge. Same pattern the report page already uses. */}
-              <ScoreDial score={Math.round(snapshot.overallScore)} coverage={scorePercent(snapshot.coverage) ?? 0} {...(changed.comparable && changed.delta !== null ? { delta: Math.round(changed.delta) } : {})} />
-              <div className="coverage-source-line"><span><Check /> {isChinese ? zhFor(locale, `${sources?.measured ?? 0} 個來源已量度`) : `${sources?.measured ?? 0} measured`}</span><span><CircleAlert /> {isChinese ? `${(sources?.total ?? 4) - (sources?.measured ?? 0)} 個暫時未能取得` : `${(sources?.total ?? 4) - (sources?.measured ?? 0)} unavailable`}</span></div>
+              <ScoreDial score={Math.round(snapshot.overallScore)} coverage={scorePercent(snapshot.coverage)} {...(changed.comparable && changed.delta !== null ? { delta: Math.round(changed.delta) } : {})} />
+              {/* Only when the source counts are known; never invent "0 measured". */}
+              {sources && <div className="coverage-source-line"><span><Check /> {isChinese ? zhFor(locale, `${sources.measured} 個來源已量度`) : `${sources.measured} measured`}</span><span><CircleAlert /> {isChinese ? `${sources.total - sources.measured} 個暫時未能取得` : `${sources.total - sources.measured} unavailable`}</span></div>}
               {changedReason && <p className="limitation-note">{changedReason}</p>}
             </>
           )}
@@ -192,7 +193,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
           <div className="card-label-row"><span><CircleCheck /> {t.proof}</span><Badge variant="outline">{proof ? (proof.factType === "Attributed" ? (isChinese ? "行動後觀察" : "Observed after action") : (isChinese ? "可比較變化" : "Comparable change")) : (isChinese ? zhFor(locale, "尚無量度") : "Nothing measured yet")}</Badge></div>
           {proof ? (
             <>
-              <div className="proof-value">{proof.delta !== null && proof.delta < 0 ? <TrendingDown /> : <TrendingUp />}<strong>{signed(proof.delta, 1)}<span> {isChinese ? "變化" : "change"}</span></strong></div>
+              <div className="proof-value"><TrendIcon delta={proof.delta} /><strong>{signed(proof.delta, 1)}<span> {isChinese ? "變化" : "change"}</span></strong></div>
               <h2>{metricLabel(proof.metricKey, locale)}</h2>
               <p>{isChinese ? zhFor(locale, `${proof.before ?? "—"} → ${proof.after ?? "—"}，於 ${formatDay(proof.observedAt, locale, timezone)} 量度`) : `${proof.before ?? "—"} → ${proof.after ?? "—"}, measured ${formatDay(proof.observedAt, locale, timezone)}`}{proof.windowDays ? (isChinese ? ` · ${proof.windowDays} 日內` : ` · ${proof.windowDays}-day window`) : ""}</p>
               <div className="proof-caveat"><FactType type={proof.factType} /><span>{proof.factType === "Attributed" ? `${basisLabel(proof.attributionBasis, locale)} · ${isChinese ? "只顯示時間上的可能關聯；不宣稱帶來收入或預訂因果。" : "Temporal association only; no revenue or booking causation is claimed."}` : (isChinese ? "兩次可比較快照之間的已觀察差異。" : "Observed difference between two comparable snapshots.")}</span></div>
@@ -214,8 +215,8 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
     date silently became one in the past. The recurring day stays true. */}
 <div className="next-scan"><CalendarClock /><span>{isChinese ? "重新掃描節奏" : "Rescan cadence"}<strong>{brief.rescanCadenceDay ? (isChinese ? `每月 ${brief.rescanCadenceDay} 號` : `Monthly · ${ordinal(brief.rescanCadenceDay)}`) : (isChinese ? "未設節奏" : "None yet")}</strong></span></div></div>
         <div className="month-metrics">
-          <article><span className="metric-icon resolved"><CheckCircle2 /></span><div><strong>{month.resolved}</strong><span>{isChinese ? "個問題已解決" : "issues resolved"}</span></div><small>{isChinese ? "來自可比較掃描" : "Across comparable scans"}</small></article>
-          <article><span className="metric-icon regressed"><TrendingDown /></span><div><strong>{month.regressed}</strong><span>{isChinese ? "項新退步" : month.regressed === 1 ? "new regression" : "new regressions"}</span></div><small>{brief.ledger.regressed[0] ? findingLabel(brief.ledger.regressed[0], locale) : (isChinese ? "沒有退步" : "None recorded")}</small></article>
+          <article><span className="metric-icon resolved"><CheckCircle2 /></span><div><strong>{month.resolved ?? "—"}</strong><span>{isChinese ? "個問題已解決" : "issues resolved"}</span></div><small>{month.resolved === null ? t.noComparable : (isChinese ? "來自可比較掃描" : "Across comparable scans")}</small></article>
+          <article><span className="metric-icon regressed"><TrendingDown /></span><div><strong>{month.regressed ?? "—"}</strong><span>{isChinese ? "項新退步" : month.regressed === 1 ? "new regression" : "new regressions"}</span></div><small>{month.regressed === null ? t.noComparable : brief.ledger.regressed[0] ? findingLabel(brief.ledger.regressed[0], locale) : (isChinese ? "沒有退步" : "None recorded")}</small></article>
           <article><span className="metric-icon approval"><FileClock /></span><div><strong>{month.awaitingApproval}</strong><span>{isChinese ? zhFor(locale, "項等待審批") : "awaiting approval"}</span></div><small>{isChinese ? "草稿版本" : "Draft versions"}</small></article>
           <article><span className="metric-icon completed"><CircleCheck /></span><div><strong>{month.completed}</strong><span>{isChinese ? "項行動已完成" : "actions completed"}</span></div><small>{isChinese ? zhFor(locale, `${month.measured} 項已量度`) : `${month.measured} measured`}</small></article>
         </div>
