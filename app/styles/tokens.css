@@ -58,6 +58,9 @@
     --ink-3: var(--k-neutral-500);
     --line: var(--k-neutral-200);
     --line-warm: oklch(90% 0.025 50);
+    /* Dark panels that stay dark in both themes (footer, scan steps). */
+    --inverse: var(--k-neutral-900);
+    --on-inverse: var(--k-neutral-0);
 
     --brand: var(--k-orange-400);
     --brand-hover: var(--k-orange-500);
@@ -78,6 +81,13 @@
     --danger: var(--k-red-600);
     --danger-text: var(--k-red-700);
     --danger-soft: var(--k-red-100);
+    --warning-border: oklch(82% 0.08 70);
+    --info-soft: oklch(95% 0.018 240);
+    --info-text: oklch(45% 0.09 240);
+    --violet-soft: oklch(94.5% 0.02 330);
+    --violet-text: oklch(45% 0.08 330);
+    --danger-border: oklch(80% 0.07 25);
+    --success-border: oklch(82% 0.07 155);
 
     /* ── Type ───────────────────────────────────────────────────────── */
     --font-latin: "Geist Variable", "Geist";
@@ -137,6 +147,8 @@
     --ink-3: oklch(71% 0.012 286);
     --line: oklch(31% 0.008 286);
     --line-warm: oklch(34% 0.03 55);
+    --inverse: oklch(26% 0.008 286);
+    --on-inverse: oklch(96% 0.004 286);
     --brand: var(--k-orange-400);
     --brand-hover: oklch(80% 0.14 60);
     --brand-pressed: var(--k-orange-500);
@@ -152,6 +164,13 @@
     --warning-soft: oklch(30% 0.05 80);
     --danger-text: oklch(76% 0.14 25);
     --danger-soft: oklch(30% 0.06 25);
+    --warning-border: oklch(45% 0.08 75);
+    --info-soft: oklch(28% 0.03 240);
+    --info-text: oklch(80% 0.08 240);
+    --violet-soft: oklch(28% 0.03 330);
+    --violet-text: oklch(82% 0.06 330);
+    --danger-border: oklch(45% 0.09 25);
+    --success-border: oklch(45% 0.08 155);
     --shadow-xs: 0 1px 2px oklch(0% 0 0 / 0.4);
     --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.4), 0 10px 30px -14px oklch(0% 0 0 / 0.6);
     --shadow-md: 0 2px 4px oklch(0% 0 0 / 0.4), 0 24px 60px -24px oklch(0% 0 0 / 0.7);

@@ -193,7 +193,7 @@
 }
 
 .ed-chip-solid {
-  background: var(--ed-ink);
+  background: var(--inverse);
   box-shadow: none;
   color: #fff;
 }
@@ -305,13 +305,13 @@
 }
 
 .ed-pill-lime .ed-pill-icon {
-  background: var(--ed-ink);
+  background: var(--inverse);
   color: #fff;
 }
 
 /* Secondary: ink. */
 .ed-pill-ink {
-  background: var(--ed-ink);
+  background: var(--inverse);
   color: #fff;
   box-shadow: 0 8px 20px -10px oklch(21% 0.006 285 / 0.45);
 }
@@ -587,8 +587,8 @@
   gap: 0.5rem;
   padding: 0.7rem 0.9rem;
   border-radius: var(--ed-radius-sm);
-  background: #fff1ed;
-  color: #9a3412;
+  background: var(--brand-softer);
+  color: var(--danger-text);
   font-size: 0.9rem;
 }
 
@@ -1204,7 +1204,7 @@
 }
 
 .ed-control {
-  background: var(--ed-ink);
+  background: var(--inverse);
   box-shadow: none;
 }
 
@@ -1478,7 +1478,7 @@
   border-radius: 2rem;
   background:
     radial-gradient(60% 80% at 100% 0%, oklch(76% 0.158 55 / 0.28), transparent 60%),
-    var(--ed-ink);
+    var(--inverse);
   color: #fff;
 }
 
@@ -1699,7 +1699,7 @@
 .public-site .public-header-inner {
   border-color: var(--ed-line);
   border-radius: 999px;
-  background: rgb(255 255 255 / 0.86);
+  background: color-mix(in oklab, var(--paper) 86%, transparent);
   box-shadow: 0 8px 30px -16px oklch(40% 0.08 55 / 0.25);
 }
 
@@ -1768,7 +1768,7 @@
 /* ---------- Shared public footer ---------- */
 
 .public-site .public-footer {
-  background: var(--ed-ink);
+  background: var(--inverse);
   color: rgb(255 255 255 / 0.72);
   font-family: var(--ed-sans);
 }
@@ -1918,13 +1918,13 @@ body:has(.public-site) {
 
 /* Dark panels hard-coded to the old green-black move to warm ink. */
 .public-site :is(.flow-steps, .report-page > .loop-ribbon, .unlock-banner, .formula-card, .partial-result-card, .onboarding-layout > aside, .recommended-label, .prototype-bar) {
-  background: var(--ed-ink);
+  background: var(--inverse);
 }
 
 .public-site .section-card.formula-card {
   background:
     radial-gradient(circle at 92% 0%, oklch(76% 0.158 55 / 0.22), transparent 22rem),
-    var(--ed-ink);
+    var(--inverse);
 }
 
 .public-site .pricing-featured {
@@ -1988,7 +1988,7 @@ body:has(.public-site) {
 
 .workspace-shell .workspace-sidebar {
   border-right: 1px solid var(--ed-line);
-  background: #fff !important;
+  background: var(--paper) !important;
   color: var(--ed-ink);
 }
 
@@ -2082,13 +2082,13 @@ body:has(.public-site) {
 }
 
 .workspace-shell .account-avatar {
-  background: var(--ed-ink);
+  background: var(--inverse);
   color: #fff;
 }
 
 .workspace-shell .workspace-topbar {
   border-bottom-color: var(--ed-line);
-  background: rgb(255 255 255 / 0.86);
+  background: color-mix(in oklab, var(--paper) 86%, transparent);
 }
 
 .workspace-shell .usage-mini :is(span, small) {
