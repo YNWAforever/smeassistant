@@ -2100,14 +2100,3 @@ body:has(.public-site) {
    --teal to mean success / measured / ready, so they get the status green
    back on the element itself; descendants (e.g. the score dial's ring)
    inherit it. Applies to the public site and the workspace alike. */
-:is(.public-site, .workspace-shell) :is(
-  .delta-up, .health-ok, .score-dial, .collector-measured, .legend-measured,
-  .movement-resolved, .approved-state, .idempotent-state, .integration-logo.is-live,
-  .summary-icon.up, .proof-value, .before-after-values .observed-change,
-  .scan-status-hero[data-state="ready"] .scan-pulse,
-  .required-inputs > span:has(.lucide-circle-check-big, .lucide-circle-check)
-) {
-  --teal: oklch(50% 0.12 155);
-  --teal-dark: oklch(40% 0.1 155);
-  --teal-soft: oklch(96.5% 0.03 155);
-}
