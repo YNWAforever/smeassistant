@@ -1,0 +1,14 @@
+
+Running 6 tests using 1 worker
+
+
+(node:32260) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[1/6] test\offline\owner-review-check.spec.ts:108:3 › en 1440px saves and restores the exact version's owner check with usage 2/3
+[2/6] test\offline\owner-review-check.spec.ts:108:3 › en 390px saves and restores the exact version's owner check with usage 2/3
+[3/6] test\offline\owner-review-check.spec.ts:108:3 › zh-HK 1440px saves and restores the exact version's owner check with usage 2/3
+[4/6] test\offline\owner-review-check.spec.ts:108:3 › zh-HK 390px saves and restores the exact version's owner check with usage 2/3
+[5/6] test\offline\owner-review-check.spec.ts:138:1 › lost save response retries once with the same identity and no duplicate record or usage
+[6/6] test\offline\owner-review-check.spec.ts:149:1 › a stale tab explicitly reloads before correcting; a new draft inherits no owner check
+  6 passed (14.3s)

@@ -9,6 +9,8 @@ import type { ActionRow } from "../workspace/overview";
 import { parseVersionMeta } from "../workspace/version-meta";
 import type { ScanSnapshotRow, ScanDiffRow } from "../workspace/snapshots";
 import type { AeoSnapshotRow } from "../trends/aeo-trend-model";
+import type { HomeReviewCandidate } from "../workspace/home-review-follow-up";
+import { OWNER_REVIEW_CHECK_EVENT } from "../workspace/owner-review-check";
 import type { RunRow, VersionRow, MeasurementRow, AuditEventRow, NotificationRow, IntegrationsModel, DeliveredWorkRow } from "../workspace/queries-pages";
 
 export const SNAPSHOT_COLUMNS = "id, job_id, workspace_id, location_id, market, observed_at::text, scoring_version, overall_score, coverage, module_states, metrics, website_checks, comparable_to, diff_id, created_at::text";
@@ -159,6 +161,31 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
     // counters SMALLER than the same location's Actions tab.
     async draftVersions(workspaceId: string, locationId?: string | null): Promise<Array<{ id: string }>> {
       return rows<{ id: string }>("SELECT v.id FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id WHERE a.workspace_id=$1 AND v.approval_state='draft' AND ($2::uuid IS NULL OR a.location_id=$2 OR a.location_id IS NULL)", [workspaceId, locationId ?? null]);
+    },
+    async homeReviewCandidates(workspaceId: string, locationId: string | null, allowedLocationIds: string[] | null): Promise<HomeReviewCandidate[]> {
+      return rows<HomeReviewCandidate>(`SELECT a.workspace_id,a.id AS action_id,a.location_id,a.title,a.action_state,
+        v.id AS version_id,v.version_no,v.approval_state,v.delivery_state,p.asserted_at::text AS applied_at,
+        latest.id AS latest_version_id,latest.version_no AS latest_version_no,latest.approval_state AS latest_approval_state,
+        CASE WHEN checked.id IS NULL THEN NULL ELSE to_jsonb(checked) END AS owner_check
+        FROM actions a
+        JOIN action_applications p ON p.workspace_id=a.workspace_id AND p.action_id=a.id
+        JOIN output_versions v ON v.workspace_id=a.workspace_id AND v.action_id=a.id AND v.id=p.output_version_id
+        JOIN LATERAL (SELECT id,version_no,approval_state FROM output_versions
+          WHERE workspace_id=a.workspace_id AND action_id=a.id ORDER BY version_no DESC LIMIT 1) latest ON true
+        LEFT JOIN LATERAL (SELECT e.id::text AS id,e.workspace_id,e.location_id,e.actor_type,e.actor_id,
+          e.event,e.entity_type,e.entity_id,e.payload,
+          to_char(e.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at
+          FROM audit_events e WHERE e.workspace_id=a.workspace_id AND e.entity_type='action' AND e.entity_id=a.id
+          AND e.location_id IS NOT DISTINCT FROM a.location_id AND e.event=$4
+          AND e.payload#>>'{owner_check,versionId}'=v.id::text ORDER BY e.created_at DESC,e.id DESC LIMIT 1) checked ON true
+        WHERE a.workspace_id=$1 AND a.template_key='review-response' AND a.action_state='completed'
+        AND p.source='owner_asserted' AND p.retracted_at IS NULL
+        AND ($2::uuid IS NULL OR a.location_id=$2 OR a.location_id IS NULL)
+        AND ($3::uuid[] IS NULL OR a.location_id IS NULL OR a.location_id=ANY($3::uuid[]))
+        AND NOT EXISTS(SELECT 1 FROM action_applications verified WHERE verified.workspace_id=a.workspace_id
+          AND verified.action_id=a.id AND verified.output_version_id=v.id AND verified.source='verified' AND verified.retracted_at IS NULL)
+        ORDER BY p.asserted_at DESC,v.version_no DESC,a.id LIMIT 3`,
+      [workspaceId, locationId, allowedLocationIds, OWNER_REVIEW_CHECK_EVENT]);
     },
     async completedActions(workspaceId: string, window: MonthWindow, locationId?: string | null): Promise<Array<{ id: string; measurement_state: string; completed_at: string | null }>> {
       return rows<{ id: string; measurement_state: string; completed_at: string | null }>(`SELECT id, measurement_state, completed_at::text FROM actions WHERE workspace_id=$1 AND action_state='completed'

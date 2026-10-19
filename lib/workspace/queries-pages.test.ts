@@ -18,6 +18,7 @@ const state = vi.hoisted(() => ({
   brand: { workspaceId: "ws-1", voice: "warm", approvedClaims: [] as string[], prohibitedTerms: [] as string[], languages: ["zh-HK"] as string[], facts: {} as Record<string, string>, updatedAt: null as string | null },
   asset: null as Row | null,
   deliveries: [] as Row[],
+  reviewCandidates: [] as Row[],
 }));
 
 vi.mock("server-only", () => ({}));
@@ -28,7 +29,7 @@ const repository = vi.hoisted(() => ({
   latestConnection: vi.fn(), measurements: vi.fn(), draftVersions: vi.fn(),
   completedActions: vi.fn(), schedules: vi.fn(), aeoSnapshots: vi.fn(),
   activity: vi.fn(), notifications: vi.fn(), notificationPreferences: vi.fn(),
-  deliveries: vi.fn(),
+  deliveries: vi.fn(), homeReviewCandidates: vi.fn(),
 }));
 vi.mock("@/lib/repositories/workspace-read", () => ({ workspaceReadRepository: () => repository }));
 const listRepository = vi.hoisted(() => ({ page: vi.fn(), counts: vi.fn() }));
@@ -142,6 +143,8 @@ beforeEach(() => {
   repository.notifications.mockResolvedValue([]);
   repository.notificationPreferences.mockResolvedValue(null);
   repository.deliveries.mockImplementation(async () => state.deliveries);
+  repository.homeReviewCandidates.mockImplementation(async () => state.reviewCandidates);
+  state.reviewCandidates = [];
   brandMock.getBrand.mockImplementation(async () => state.brand);
   assetsMock.get.mockImplementation(async () => state.asset);
   mailOutboxMock.memberSwitches.mockResolvedValue(null);
@@ -156,6 +159,34 @@ beforeEach(() => {
 });
 
 describe("getHomeBrief", () => {
+  it("does not turn a failed follow-up read into an empty or already-checked home state", async () => {
+    repository.homeReviewCandidates.mockRejectedValueOnce(new Error("isolated read failure"));
+    await expect(getHomeBrief(ctx, "all")).rejects.toThrow();
+  });
+  it("restores a completed applied V2 follow-up beside a separate V3 draft without foreign data, writes or quota changes", async () => {
+    state.actions = [actionRow({ id: "a1", action_state: "completed" })];
+    state.versions = [{ id: "v3", action_id: "a1", version_no: 3, approval_state: "draft", delivery_state: "not_requested" }];
+    const candidate = {
+      workspace_id: "ws-1", action_id: "a1", location_id: "loc-1", action_state: "completed",
+      title: { en: "Synthetic applied reply", "zh-HK": "合成已套用回覆", "zh-TW": "合成已套用回覆" },
+      version_id: "v2", version_no: 2, approval_state: "approved", delivery_state: "exported",
+      applied_at: "2026-10-01T00:00:00Z", latest_version_id: "v3", latest_version_no: 3,
+      latest_approval_state: "draft", owner_check: null,
+    };
+    state.reviewCandidates = [{ ...candidate, workspace_id: "ws-foreign", title: { en: "Foreign secret" } }, candidate];
+    const scoped = { ...ctx, usage: Object.freeze({ period: "2026-10", approvedDeliveries: 2, allowance: 3 }) };
+    const brief = await getHomeBrief(scoped, "yik-yam");
+    expect(brief.priority).toBeNull();
+    expect(brief).toMatchObject({ reviewFollowUp: {
+      workspaceId: "ws-1", actionId: "a1", actionState: "completed", versionId: "v2", versionNo: 2,
+      currentCheck: null, newerDraft: { id: "v3", versionNo: 3 },
+    } });
+    expect(JSON.stringify(brief)).not.toContain("Foreign secret");
+    expect(repository.homeReviewCandidates).toHaveBeenCalledWith("ws-1", "loc-1", null);
+    expect(scoped.usage).toEqual({ period: "2026-10", approvedDeliveries: 2, allowance: 3 });
+    expect(reaper.reapStrandedRuns).not.toHaveBeenCalled();
+  });
+
   it("passes a trusted local month with an exclusive next-month boundary (T-10)", async () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date("2026-09-30T16:00:00Z"));
     try {
@@ -524,6 +555,19 @@ describe("page repository boundaries", () => {
     // cannot promise the agent a review it will not receive.
     expect(detail?.scanInputs[0].reviews[0].key).toEqual(expect.stringMatching(/^[0-9a-f]{8}$/));
     expect(detail?.scanInputs[0].selected).toEqual([detail?.scanInputs[0].reviews[0].key]);
+  });
+
+  it.each([
+    ["https://www.google.com/maps/place/Synthetic", "https://www.google.com/maps/place/Synthetic"],
+    ["https://google.com.evil.test/maps", null],
+    ["https://www.google.com/maps?token=synthetic-secret", null],
+  ])("only carries a sanitized business Maps reference from the action's own snapshot: %s", async (url, expected) => {
+    artifacts.assistantSnapshot.mockResolvedValue({ id: "snap-9", jobId: "job-9", workspaceId: "ws-1", locationId: "loc-1",
+      observedAt: "2026-09-02T00:00:00Z", metrics: {} });
+    artifacts.assistantReviewData.mockResolvedValue({ gbp: { maps_url: url, reviews: [{ rating: 5, text: "Synthetic review", time: "2026-09-01" }] } });
+    state.actions = [actionRow({ id: "a1", template_key: "review-response", source_snapshot_id: "snap-9" })];
+    expect((await getAction(ctx, "a1"))?.scanInputs[0].mapsUrl).toBe(expected);
+    expect(artifacts.assistantReviewData).toHaveBeenCalledWith("ws-1", "job-9");
   });
 
   it("reports only the reviews the owner picked, and falls back when the pick goes stale", async () => {

@@ -1,0 +1,480 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018
+
+ ❯ components/workspace/owner-review-check-panel.test.tsx (8 tests | 2 failed) 365ms
+     × only saves a check; double-clicks do not generate, approve, export, copy or change 2/3 usage 94ms
+     × restores saved history after a remount but never applies version 2's check to version 3 9ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/workspace/owner-review-check-panel.test.tsx > owner review check offline UI > only saves a check; double-clicks do not generate, approve, export, copy or change 2/3 usage
+TestingLibraryElementError: Found multiple elements with the text: Owner checked · statement only
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+<p
+  class="font-medium"
+>
+  Owner checked · statement only
+</p>
+
+Ignored nodes: comments, script, style
+<strong>
+  Owner checked · statement only
+</strong>
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <p>
+      Usage 2/3
+    </p>
+    <section
+      aria-label="Owner check"
+      class="owner-review-check mt-5 border-t pt-5"
+    >
+      <h3
+        class="font-semibold"
+      >
+        Owner check
+         ·
+        Version 2
+      </h3>
+      <p>
+        This is your statement, not independent verification. A screenshot also remains owner-provided evidence.
+      </p>
+      <p
+        class="font-medium"
+      >
+        Owner checked · statement only
+      </p>
+      <ol
+        class="my-3 list-decimal space-y-2 pl-5"
+      >
+        <li>
+          Match the business and branch:
+
+          Synthetic merchant · Central branch
+        </li>
+        <li>
+          Find the specified review. No exact review link is available; manual location is required.
+        </li>
+        <li>
+          Compare the reply with this saved version. Do not change it here.
+          <details>
+            <summary>
+              View saved reply
+            </summary>
+            <pre
+              class="whitespace-pre-wrap break-words rounded border p-3"
+            >
+              Thank you for your review.
+            </pre>
+          </details>
+        </li>
+      </ol>
+      <form
+        class="mt-4 space-y-3"
+      >
+        <label
+          class="grid gap-1"
+        >
+          Check result
+          <select
+            class="rounded-md border bg-transparent p-2"
+          >
+            <option
+              value="checked"
+            >
+              Owner checked
+            </option>
+            <option
+              value="not_found"
+            >
+              Not found / content differs
+            </option>
+            <option
+              value="later"
+            >
+              Check later
+            </option>
+            <option
+              value="retracted"
+            >
+              Withdraw the previous check
+            </option>
+          </select>
+        </label>
+        <label
+          class="grid gap-1"
+        >
+          Review reference
+          <input
+            class="h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none selection:bg-primary selection:text-primary-foreground file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40"
+            data-slot="input"
+            maxlength="500"
+            value="Customer A · date · helpful"
+          />
+        </label>
+        <small>
+          For example, reviewer, date and the opening words. This is a manual reference, not a verified review ID.
+        </small>
+        <fieldset
+          class="grid gap-2"
+        >
+          <legend>
+            Confirm before recording an owner check
+          </legend>
+          <label
+            class="flex items-start gap-2"
+          >
+            <input
+              type="checkbox"
+            />
+            Business and branch match
+          </label>
+          <label
+            class="flex items-start gap-2"
+          >
+            <input
+              type="checkbox"
+            />
+            I found and matched the specified review
+          </label>
+          <label
+            class="flex items-start gap-2"
+          >
+            <input
+              type="checkbox"
+            />
+            The reply matches this saved version
+          </label>
+        </fieldset>
+        <label
+          class="grid gap-1"
+        >
+          Notes (optional)
+          <textarea
+            class="flex field-sizing-content min-h-16 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:aria-invalid:ring-destructive/40"
+            data-slot="textarea"
+            maxlength="2000"
+          >
+            Matched reply
+          </textarea>
+        </label>
+        <small>
+          Explain a missing/mismatched reply or a withdrawal. Those outcomes require a note. Later records a deferral, not a schedule.
+        </small>
+        <p
+          class="text-sm"
+        >
+          Recording a check does not generate, approve, export, copy or publish content and consumes no delivery allowance. Recording time is saved by the server.
+        </p>
+        <p
+          aria-live="polite"
+          role="status"
+        >
+          Saved
+        </p>
+        <div
+          class="flex flex-wrap gap-2"
+        >
+          <button
+            class="inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 has-[>svg]:px-3"
+            data-size="default"
+            data-slot="button"
+            data-variant="default"
+            disabled=""
+            type="submit"
+          >
+            Save check
+          </button>
+        </div>
+      </form>
+      <details
+        class="mt-4"
+      >
+        <summary>
+          Owner check history (latest 100 records)
+        </summary>
+        <ol
+          class="grid gap-3 pt-3"
+        >
+          <li
+            class="rounded border p-3"
+          >
+            <strong>
+              Owner checked · statement only
+            </strong>
+            <p>
+              19 Oct 2026, 10:00
+               ·
+              Version 2
+            </p>
+            <p>
+              Customer A · date · helpful
+            </p>
+            <p
+              class="whitespace-pre-wrap break-words"
+            >
+              Matched reply
+            </p>
+          </li>
+        </ol>
+      </details>
+    </section>
+  </div>
+</body>
+ ❯ Object.getElementError ../smeassistant-owner-focus-20261015/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ getElementError ../smeassistant-owner-focus-20261015/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:20:35
+ ❯ getMultipleElementsFoundError ../smeassistant-owner-focus-20261015/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:23:10
+ ❯ ../smeassistant-owner-focus-20261015/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:55:13
+ ❯ ../smeassistant-owner-focus-20261015/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ components/workspace/owner-review-check-panel.test.tsx:45:19
+     43|     expect(screen.getByRole("status")).toHaveTextContent("Saved");
+     44|     expect(screen.getByText("Usage 2/3")).toBeVisible();
+     45|     expect(screen.getByText("Owner checked · statement only")).toBeVis…
+       |                   ^
+     46|     expect(screen.getByRole("button", { name: "Save check" })).toBeDis…
+     47|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  components/workspace/owner-review-check-panel.test.tsx > owner review check offline UI > restores saved history after a remount but never applies version 2's check to version 3
+TestingLibraryElementError: Found multiple elements with the text: Owner checked · statement only
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+<p
+  class="font-medium"
+>
+  Owner checked · statement only
+</p>
+
+Ignored nodes: comments, script, style
+<strong>
+  Owner checked · statement only
+</strong>
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <section
+      aria-label="Owner check"
+      class="owner-review-check mt-5 border-t pt-5"
+    >
+      <h3
+        class="font-semibold"
+      >
+        Owner check
+         ·
+        Version 2
+      </h3>
+      <p>
+        This is your statement, not independent verification. A screenshot also remains owner-provided evidence.
+      </p>
+      <p
+        class="font-medium"
+      >
+        Owner checked · statement only
+      </p>
+      <ol
+        class="my-3 list-decimal space-y-2 pl-5"
+      >
+        <li>
+          Match the business and branch:
+
+          Synthetic merchant · Central branch
+        </li>
+        <li>
+          Find the specified review. No exact review link is available; manual location is required.
+        </li>
+        <li>
+          Compare the reply with this saved version. Do not change it here.
+          <details>
+            <summary>
+              View saved reply
+            </summary>
+            <pre
+              class="whitespace-pre-wrap break-words rounded border p-3"
+            >
+              Thank you for your review.
+            </pre>
+          </details>
+        </li>
+      </ol>
+      <form
+        class="mt-4 space-y-3"
+      >
+        <label
+          class="grid gap-1"
+        >
+          Check result
+          <select
+            class="rounded-md border bg-transparent p-2"
+          >
+            <option
+              value="checked"
+            >
+              Owner checked
+            </option>
+            <option
+              value="not_found"
+            >
+              Not found / content differs
+            </option>
+            <option
+              value="later"
+            >
+              Check later
+            </option>
+            <option
+              value="retracted"
+            >
+              Withdraw the previous check
+            </option>
+          </select>
+        </label>
+        <label
+          class="grid gap-1"
+        >
+          Review reference
+          <input
+            class="h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none selection:bg-primary selection:text-primary-foreground file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40"
+            data-slot="input"
+            maxlength="500"
+            value=""
+          />
+        </label>
+        <small>
+          For example, reviewer, date and the opening words. This is a manual reference, not a verified review ID.
+        </small>
+        <fieldset
+          class="grid gap-2"
+        >
+          <legend>
+            Confirm before recording an owner check
+          </legend>
+          <label
+            class="flex items-start gap-2"
+          >
+            <input
+              type="checkbox"
+            />
+            Business and branch match
+          </label>
+          <label
+            class="flex items-start gap-2"
+          >
+            <input
+              type="checkbox"
+            />
+            I found and matched the specified review
+          </label>
+          <label
+            class="flex items-start gap-2"
+          >
+            <input
+              type="checkbox"
+            />
+            The reply matches this saved version
+          </label>
+        </fieldset>
+        <label
+          class="grid gap-1"
+        >
+          Notes (optional)
+          <textarea
+            class="flex field-sizing-content min-h-16 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:aria-invalid:ring-destructive/40"
+            data-slot="textarea"
+            maxlength="2000"
+          />
+        </label>
+        <small>
+          Explain a missing/mismatched reply or a withdrawal. Those outcomes require a note. Later records a deferral, not a schedule.
+        </small>
+        <p
+          class="text-sm"
+        >
+          Recording a check does not generate, approve, export, copy or publish content and consumes no delivery allowance. Recording time is saved by the server.
+        </p>
+        <p
+          aria-live="polite"
+          role="status"
+        >
+          Not saved
+        </p>
+        <div
+          class="flex flex-wrap gap-2"
+        >
+          <button
+            class="inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 has-[>svg]:px-3"
+            data-size="default"
+            data-slot="button"
+            data-variant="default"
+            type="submit"
+          >
+            Save check
+          </button>
+        </div>
+      </form>
+      <details
+        class="mt-4"
+      >
+        <summary>
+          Owner check history (latest 100 records)
+        </summary>
+        <ol
+          class="grid gap-3 pt-3"
+        >
+          <li
+            class="rounded border p-3"
+          >
+            <strong>
+              Owner checked · statement only
+            </strong>
+            <p>
+              19 Oct 2026, 10:00
+               ·
+              Version 2
+            </p>
+            <p>
+              Customer A · date · helpful
+            </p>
+            <p
+              class="whitespace-pre-wrap break-words"
+            >
+              Matched reply
+            </p>
+          </li>
+        </ol>
+      </details>
+    </section>
+  </div>
+</body>
+ ❯ Object.getElementError ../smeassistant-owner-focus-20261015/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ getElementError ../smeassistant-owner-focus-20261015/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:20:35
+ ❯ getMultipleElementsFoundError ../smeassistant-owner-focus-20261015/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:23:10
+ ❯ ../smeassistant-owner-focus-20261015/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:55:13
+ ❯ ../smeassistant-owner-focus-20261015/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ components/workspace/owner-review-check-panel.test.tsx:78:19
+     76|     value.context.records = [receipt() as NonNullable<typeof value.con…
+     77|     const mounted = render(<OwnerReviewCheckPanel {...value} />);
+     78|     expect(screen.getByText("Owner checked · statement only")).toBeVis…
+       |                   ^
+     79|     mounted.unmount();
+     80|     const fresh = render(<OwnerReviewCheckPanel {...value} />);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  2 failed | 33 passed (35)
+   Start at  16:15:47
+   Duration  13.63s (transform 1.15s, setup 1.37s, import 10.46s, tests 404ms, environment 524ms)

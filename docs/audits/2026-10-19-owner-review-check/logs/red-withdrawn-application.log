@@ -1,0 +1,63 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018
+
+ ❯ components/workspace/owner-review-check-panel.test.tsx (12 tests | 1 failed | 11 skipped) 105ms
+     × can withdraw the check history after the original applied mark was withdrawn 104ms
+ ❯ lib/repositories/owner-review-check.test.ts (10 tests | 1 failed | 9 skipped) 10ms
+     × allows withdrawing an old check after the applied statement was withdrawn, without restoring completion 9ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/workspace/owner-review-check-panel.test.tsx > owner review check offline UI > can withdraw the check history after the original applied mark was withdrawn
+Error: expect(element).toBeEnabled()
+
+Received element is not enabled:
+  <button
+  class="inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 has-[>svg]:px-3"
+  data-size="default"
+  data-slot="button"
+  data-variant="default"
+  disabled=""
+  type="submit"
+/>
+ ❯ components/workspace/owner-review-check-panel.test.tsx:110:64
+    108|     fireEvent.change(screen.getByLabelText("Check result"), { target: …
+    109|     fireEvent.change(screen.getByLabelText("Notes (optional)"), { targ…
+    110|     expect(screen.getByRole("button", { name: "Save check" })).toBeEna…
+       |                                                                ^
+    111|     await act(async () => fireEvent.click(screen.getByRole("button", {…
+    112|     expect(screen.getByTestId("current-owner-check")).toHaveTextConten…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  lib/repositories/owner-review-check.test.ts > append-only owner check transaction (offline protocol fixture) > allows withdrawing an old check after the applied statement was withdrawn, without restoring completion
+AssertionError: expected { ok: false, error: 'not_applied' } to match object { ok: true, record: { …(2) } }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "ok": true,
+-   "record": {
+-     "decision": "retracted",
+-     "previousId": "6",
+-   },
++   "ok": false,
+  }
+
+ ❯ lib/repositories/owner-review-check.test.ts:87:8
+     85|     f.state.applied = false;
+     86|     expect(await f.repository.record({ ...input, command: { ...command…
+     87|       .toMatchObject({ ok: true, record: { decision: "retracted", prev…
+       |        ^
+     88|     expect(f.state.applied).toBe(false);
+     89|     expect(f.state.usage).toEqual({ approved_deliveries: 2, allowance:…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 20 skipped (22)
+   Start at  16:33:56
+   Duration  3.19s (transform 377ms, setup 587ms, import 1.46s, tests 115ms, environment 607ms)

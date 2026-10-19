@@ -1,0 +1,32 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018
+
+ ❯ lib/repositories/owner-review-check.test.ts (9 tests | 1 failed) 11ms
+     × keeps a version's newest check when other versions fill the bounded history window 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/repositories/owner-review-check.test.ts > append-only owner check transaction (offline protocol fixture) > keeps a version's newest check when other versions fill the bounded history window
+AssertionError: expected undefined to be '66666666-1111-4111-8111-111111111111' // Object.is equality
+
+- Expected:
+"66666666-1111-4111-8111-111111111111"
+
++ Received:
+undefined
+
+ ❯ lib/repositories/owner-review-check.test.ts:80:61
+     78|       return original(sql, values);
+     79|     });
+     80|     expect((await f.repository.load(input)).records[0]?.id).toBe(uuid(…
+       |                                                             ^
+     81|   });
+     82|   it.each(["version", "record", "workspace", "applied", "asset"])("ref…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 8 passed (9)
+   Start at  16:18:13
+   Duration  1.03s (transform 105ms, setup 285ms, import 527ms, tests 11ms, environment 0ms)

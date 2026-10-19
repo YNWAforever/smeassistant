@@ -2,6 +2,7 @@ import type { WorkspaceAgentKey, TemplateKey } from "@/lib/workspace/templates";
 import type { ActionOverview } from "@/lib/workspace/overview";
 import type { Offer, OfferInput } from "@/lib/workspace/offers";
 import type { PackOverview } from "@/lib/workspace/packs-model";
+import type { OwnerCheckCommand, OwnerCheckRecord } from "@/lib/workspace/owner-review-check";
 
 /**
  * Browser-side helpers for the Phase 4 mutation routes (CLAUDE.md §3.2.3,
@@ -79,6 +80,10 @@ async function request<T>(url: string, init: RequestInit): Promise<ClientResult<
 
 function post<T>(url: string, body: unknown): Promise<ClientResult<T>> {
   return request<T>(url, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body ?? {}) });
+}
+
+export function recordOwnerCheck(actionId: string, command: OwnerCheckCommand & { locale?: string }): Promise<ClientResult<{ record: OwnerCheckRecord; duplicate: boolean }>> {
+  return post(`/api/actions/${encodeURIComponent(actionId)}/owner-check`, command);
 }
 
 export function runAction(actionId: string, body: { agentKey?: WorkspaceAgentKey; inputs?: Record<string, unknown> } = {}): Promise<ClientResult<RunActionResult>> {

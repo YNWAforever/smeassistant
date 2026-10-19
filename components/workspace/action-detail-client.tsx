@@ -26,7 +26,7 @@ import { ContextualAssistant } from "@/components/pocket-assistant/assistant-lau
 import { GbpPublishCard } from "@/components/workspace/gbp-publish-card"
 import type { DemoAssistantRunResponse } from "@/lib/pocket-assistant/contracts"
 import { CapabilityBadge, FactType, SectionCard } from "@/components/product-ui"
-import { copy, type PrototypeLocale } from "@/lib/copy"
+import { copy, homeReviewCopy, type PrototypeLocale } from "@/lib/copy"
 import { googleBusinessPublishCapability } from "@/lib/capabilities"
 import type { PublishPanel } from "@/lib/publishing/page-state"
 import { resolveText } from "@/lib/domain"
@@ -44,6 +44,8 @@ import { guardrailText } from "@/lib/workspace/guardrail-text"
 import { zhFor } from "@/lib/zh-tw"
 import { evidenceValueLabel, sourceLabel } from "@/lib/workspace/source-label"
 import { actionVerificationView } from "@/lib/workspace/action-verification"
+import { OwnerReviewCheckPanel } from "@/components/workspace/owner-review-check-panel"
+import { EMPTY_OWNER_CHECK, ownerCheckNextStep, type OwnerCheckContext } from "@/lib/workspace/owner-review-check"
 
 export interface ActionDetailClientProps {
   locale: PrototypeLocale
@@ -67,10 +69,12 @@ export interface ActionDetailClientProps {
   latestVersionOfferRevision?: number | null
   /** Show the link to the Offers page (the page 404s while the flag is off). */
   offersEnabled?: boolean
-  /** P4.3: the version a `?version=` link names. Anything not among `detail.versions` falls back to the newest. */
+  /** The exact version a `?version=` link names. An unavailable version fails closed. */
   initialVersionId?: string | null
   /** P4.6: the Google publish card's data (review-response only); null hides it. The server stays the authority. */
   publishPanel?: PublishPanel | null
+  ownerCheck?: OwnerCheckContext
+  ownerCheckIdentity?: string
 }
 
 export interface OfferCardData {
@@ -144,10 +148,37 @@ export function ownerInputPatch(
 }
 
 export function ActionDetailClient(props: ActionDetailClientProps) {
-  return <ActionDetailEditor key={`${props.workspaceId}:${props.detail.action.id}`} {...props} />
+  return <VersionBoundActionDetail key={`${props.workspaceId}:${props.detail.action.id}`} {...props} />
 }
 
-function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false, initialVersionId = null, publishPanel = null }: ActionDetailClientProps) {
+function VersionBoundActionDetail(props: ActionDetailClientProps) {
+  const router = useRouter()
+  const invalid = props.initialVersionId != null && !props.detail.versions.some(version => version.id === props.initialVersionId)
+  // Retain only this action/workspace's previously valid editor. An invalid
+  // route must neither mount a fallback editor nor discard pending local input.
+  const [lastValidProps, setLastValidProps] = useState<ActionDetailClientProps | null>(() => invalid ? null : props)
+  if (!invalid && lastValidProps !== props) setLastValidProps(props)
+  const editorProps = invalid ? lastValidProps : props
+  const text = homeReviewCopy[props.locale]
+  const restoreHref = editorProps ? withLocation(
+    `/${editorProps.locale}/owner/${editorProps.workspaceSlug}/actions/${editorProps.detail.action.id}${editorProps.initialVersionId != null ? `?version=${encodeURIComponent(editorProps.initialVersionId)}` : ""}`,
+    editorProps.location,
+  ) : null
+  return <>
+    {invalid && <section className="section-card" data-testid="invalid-action-version" role="alert">
+      <h1>{text.missingVersion}</h1>
+      <p>{text.missingVersionHelp}</p>
+      {restoreHref
+        ? <Button type="button" variant="outline" onClick={() => router.replace(restoreHref)}>{text.restoreVersion}</Button>
+        : <Button asChild variant="outline"><Link href={withLocation(`/${props.locale}/owner/${props.workspaceSlug}`, props.location)}>{text.returnHome}</Link></Button>}
+    </section>}
+    {editorProps && <div hidden={invalid} inert={invalid} data-retained-action-editor>
+      <ActionDetailEditor {...editorProps} />
+    </div>}
+  </>
+}
+
+function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false, initialVersionId = null, publishPanel = null, ownerCheck = EMPTY_OWNER_CHECK, ownerCheckIdentity }: ActionDetailClientProps) {
   const isChinese = locale !== "en"
   const router = useRouter()
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -654,12 +685,19 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
   const locationName = resolveText(action.location.name, locale) || locations.find((l) => l.slug === location)?.name || ""
   const verificationCopy = copy[locale].workspace.verification
   const verification = actionVerificationView(action, workspaceId, auditRows)
+  const currentOwnerCheck = ownerCheck.records.find(row => row.versionId === selectedVersion?.id)
+  const ownerNext = action.templateKey === "review-response" && selectedVersion && !ownerCheck.unavailable
+    ? !ownerCheck.appliedVersionIds.includes(selectedVersion.id)
+      ? resolveText(ownerCheckNextStep("not_applied"), locale)
+      : currentOwnerCheck ? resolveText(ownerCheckNextStep(currentOwnerCheck.decision), locale) : null
+    : null
   const verificationNext = action.verified ? verificationCopy.verifiedNext
-    : verification.unsupported ? verificationCopy.googleNext
+    : ownerNext ?? (verification.unsupported ? verificationCopy.googleNext
     : verification.outcome === "source_unavailable" || verification.outcome === "not_verifiable"
-      ? verificationCopy.retryNext : verificationCopy.scanNext
+      ? verificationCopy.retryNext : verificationCopy.scanNext)
   const showVerification = action.applied || action.verified ||
-    versions.some((version) => version.first_exported_at) || verification.checkedAt !== null
+    versions.some((version) => version.first_exported_at) || verification.checkedAt !== null ||
+    action.templateKey === "review-response" && ownerCheck.records.length > 0
 
   return (
     <div className="action-detail-page">
@@ -695,6 +733,14 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
           <div><dt>{verificationCopy.checkedAt}</dt><dd>{verification.checkedAt ? formatDateTime(verification.checkedAt, locale, timezone) : verificationCopy.noCheck}</dd></div>
         </dl>
         <p>{verificationNext}</p><p>{verificationCopy.businessResults}</p>
+        {action.templateKey === "review-response" && (applied || ownerCheck.records.length > 0) && selectedVersion && <OwnerReviewCheckPanel
+          locale={locale} workspaceId={workspaceId} actionId={action.id} version={selectedVersion}
+          latestVersionId={versions[0].id} identity={ownerCheckIdentity ?? locationName}
+          timezone={timezone} mapsUrl={reviewEvidence?.mapsUrl ?? null} context={ownerCheck}
+          approvedAssets={approvedAssets} canEdit={canEdit} offline={offline} dirty={dirty || conflict}
+          onSaved={() => router.refresh()} onReload={() => router.refresh()}
+          returnHomeHref={withLocation(base, location)}
+        />}
       </SectionCard>}
 
       {offline && <div className="offline-banner" role="status"><CloudOff /><div><strong>{isChinese ? "你目前離線" : "You are offline"}</strong><span>{isChinese ? zhFor(locale, "文字會保留在此裝置，但儲存、審批及匯出會暫停，直至伺服器確認安全轉換。") : "Text remains on this device, but save, approval and export stay blocked until the server confirms a safe transition."}</span></div><Button variant="outline" onClick={() => { if (navigator.onLine) router.refresh(); else toast.message(isChinese ? "仍然離線；請檢查網絡連線。" : "Still offline; check your connection.") }}>{isChinese ? "重新連接" : "Reconnect"}</Button></div>}

@@ -3,6 +3,7 @@ import { buildTrendModel, type StoredDiff, type TrendModel } from "@/lib/trends/
 import { localized, type ActionState, type FactType, type LocalizedText } from "@/lib/domain";
 import { loadAuthorizedEvidence } from "@/lib/evidence/load-authorized";
 import type { EvidenceGalleryItem } from "@/lib/report/view-model";
+import { sanitizeReportProof } from "@/lib/report/sanitize-proof";
 import { inLocationScope, type Membership } from "@/lib/auth";
 import { getPool } from "@/lib/db/client";
 import { pauseState } from "@/lib/budgets/pause";
@@ -23,6 +24,7 @@ import { filterSelectedReviews, scannedReviewKey, selectScannedReviews } from "@
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { currentPeriod, type LocationSummary, type WorkspaceContext } from "@/lib/workspace/queries";
 import { monthWindow } from "@/lib/workspace/month-window";
+import { selectHomeReviewFollowUp, type HomeReviewFollowUp } from "@/lib/workspace/home-review-follow-up";
 import { actionListFilters, type DueFilter } from "@/lib/workspace/action-list-filters";
 import { reapStrandedRuns } from "@/lib/workspace/run-reaper";
 import { rowToSnapshot, type ScanDiffRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
@@ -67,6 +69,8 @@ export interface HomeBrief {
   openActions: ActionOverview[];
   /** Total in the authorized scope; openActions is only the bounded first page. */
   openActionCount?: number;
+  /** Recent applied review reply; completion and its exact saved version stay independent of a new draft. */
+  reviewFollowUp?: HomeReviewFollowUp | null;
   proof: HomeProof | null;
   month: { resolved: number; regressed: number; awaitingApproval: number; completed: number; measured: number };
   /**
@@ -186,6 +190,8 @@ export interface MeasurementRow {
  * `audit_jobs.raw_data` through the same selector.
  */
 export interface ScanInputEvidence {
+  /** Existing sanitized business Maps page, never an exact review URL. */
+  mapsUrl?: string | null;
   key: "reviews_without_response";
   source: "gbp_reviews";
   factType: FactType;
@@ -677,7 +683,8 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
 
   const period = currentPeriod(ctx.workspace.timezone);
   const window = monthWindow(period, ctx.workspace.timezone);
-  const [measurements, draftVersions, completed, schedules] = await read("home", () => Promise.all([
+  const allowedLocationIds = ctx.membership.role === "manager" ? ctx.membership.locationScope : null;
+  const [measurements, draftVersions, completed, schedules, reviewCandidates] = await read("home", () => Promise.all([
     // Scoped to the same location as the rest of the brief. These three were
     // workspace-wide while the snapshot, diff, open actions and schedule beside
     // them were location-scoped, so under a location the proof card could show
@@ -688,6 +695,7 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
     repository.draftVersions(workspaceId, location?.id ?? null),
     repository.completedActions(workspaceId, window, location?.id ?? null),
     location?.placeId ? repository.schedules(workspaceId, [location.placeId]) : Promise.resolve([]),
+    repository.homeReviewCandidates(workspaceId, location?.id ?? null, allowedLocationIds),
   ]));
   const proofRow = measurements[0] ?? null;
   const drafts = draftVersions.length;
@@ -699,6 +707,9 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
     snapshot,
     changed,
     priority,
+    reviewFollowUp: selectHomeReviewFollowUp(reviewCandidates, {
+      workspaceId, locationId: location?.id ?? null, allowedLocationIds, role: ctx.membership.role,
+    }),
     openActions,
     openActionCount: openList.counts.all,
     proof: proofRow
@@ -798,10 +809,12 @@ export async function loadScanInputEvidence(
   if (snapshot.workspaceId !== workspaceId) return [];
   if (row.location_id && snapshot.locationId !== row.location_id) return [];
   if (!inLocationScope(membership, snapshot.locationId)) return [];
-  const selection = selectScannedReviews(await db.assistantReviewData(workspaceId, snapshot.jobId));
+  const rawReviewData = await db.assistantReviewData(workspaceId, snapshot.jobId);
+  const selection = selectScannedReviews(rawReviewData);
   if (!selection.sampled.length) return [];
   return [{
     key: "reviews_without_response",
+    mapsUrl: sanitizeReportProof(rawReviewData, []).gbp?.mapsUrl ?? null,
     source: "gbp_reviews",
     factType: "Observed",
     snapshotId: snapshot.id,

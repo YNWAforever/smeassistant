@@ -2,6 +2,7 @@
   "regions": ["sin1"],
   "git": {
     "deploymentEnabled": {
+      "codex/owner-home-next-step-20261019": false,
       "codex/review-action-reliability-20261018": false,
       "codex/merchant-acceptance-completion": false,
       "codex/neon-migration": false,

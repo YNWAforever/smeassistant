@@ -1,0 +1,8 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018
+
+
+ Test Files  7 passed (7)
+      Tests  213 passed (213)
+   Start at  16:51:38
+   Duration  21.04s (transform 1.73s, setup 1.72s, import 4.67s, tests 12.03s, environment 1.25s)

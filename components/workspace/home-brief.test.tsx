@@ -65,6 +65,61 @@ function render(proof: HomeBrief["proof"], problems?: ReactNode) {
   return root;
 }
 
+describe("returning owner version-bound follow-up", () => {
+  const followUp: NonNullable<HomeBrief["reviewFollowUp"]> = {
+    workspaceId: "ws-1", actionId: "applied-review", locationId: "loc-1",
+    title: { en: "Synthetic review reply", "zh-HK": "合成評論回覆", "zh-TW": "合成評論回覆" },
+    actionState: "completed", versionId: "saved-v2", versionNo: 2,
+    approvalState: "approved", deliveryState: "exported",
+    appliedAt: "2026-10-01T00:00:00Z", currentCheck: null, canRecord: true,
+    newerDraft: { id: "draft-v3", versionNo: 3 },
+  };
+  function home(candidate: HomeBrief["reviewFollowUp"], role: "owner" | "viewer" = "owner") {
+    const root = document.createElement("div");
+    root.innerHTML = renderToStaticMarkup(<HomeBriefView locale="en" workspaceSlug="synthetic"
+      workspaceId="ws-1" workspaceName="Synthetic merchant" tier="lite" timezone="Asia/Hong_Kong"
+      locations={[{ slug: "central", name: "Synthetic Central" }]} role={role}
+      consentPolicyVersion="2026-07-28"
+      brief={{ ...baseBrief(null), locationSlug: "central", reviewFollowUp: candidate } as HomeBrief} />);
+    return root;
+  }
+  it("keeps completed V2 visible for a check while V3 remains a separate draft and pins both links", () => {
+    const root = home(followUp);
+    const card = root.querySelector('[data-testid="home-review-followup"]');
+    expect(card).not.toBeNull();
+    expect(card?.textContent).toContain("Version 2");
+    expect(card?.textContent).toContain("Applied (reported)");
+    expect(card?.textContent).toContain("Completed");
+    expect(card?.querySelector('a[data-next-check]')?.getAttribute("href"))
+      .toBe("/en/owner/synthetic/actions/applied-review?version=saved-v2&location=central");
+    expect(card?.querySelector('a[data-newer-draft]')?.getAttribute("href"))
+      .toBe("/en/owner/synthetic/actions/applied-review?version=draft-v3&location=central");
+    expect(card?.textContent).toMatch(/Version 3.*draft/i);
+    expect(root.textContent).not.toContain("No action needs your decision right now");
+  });
+  it("shows a read-only next step, hides foreign workspace follow-ups and keeps the true empty state", () => {
+    expect(home(followUp, "viewer").textContent).toContain("View saved check");
+    const foreign = home({ ...followUp, workspaceId: "another-workspace", title: { en: "Foreign secret", "zh-HK": "私密", "zh-TW": "私密" } });
+    expect(foreign.textContent).not.toContain("Foreign secret");
+    expect(foreign.querySelector('[data-testid="home-review-followup"]')).toBeNull();
+    expect(home(null).textContent).toContain("No action needs your decision right now");
+  });
+  it.each([
+    ["checked", "Owner checked · statement only", "Await independent confirmation"],
+    ["not_found", "Not found / content differs", "Locate the correct review"],
+    ["later", "Check deferred", "three manual checks"],
+    ["retracted", "Owner check withdrawn", "three manual checks"],
+  ] as const)("shows the %s owner's next step while preserving Completed and pending independent verification", (decision, label, next) => {
+    const root = home({ ...followUp, currentCheck: { id: "1", decision, recordedAt: "2026-10-19T03:00:00Z" } });
+    const card = root.querySelector('[data-testid="home-review-followup"]');
+    expect(card?.textContent).toContain(label);
+    expect(card?.textContent).toContain(next);
+    expect(card?.textContent).toContain("Completed");
+    expect(card?.textContent).toContain("Independent verification is pending");
+    expect(card?.querySelector('a[data-next-check]')?.getAttribute("href")).toContain("version=saved-v2");
+  });
+});
+
 describe("HomeBriefView proof card", () => {
   const baseProof = {
     metricKey: "gbp.response_rate_pct",

@@ -20,6 +20,7 @@ export interface InspectedPostgresContainer {
 }
 
 export interface NeonDatabaseFixture {
+  containerId: string;
   databaseUrl: string;
   databaseName: string;
   containerName: string;
@@ -89,7 +90,7 @@ export function assertOwnedPostgresContainer(
   }
 }
 
-export async function startNeonDatabaseFixture(nodeEnv = process.env.NODE_ENV): Promise<NeonDatabaseFixture> {
+export async function startNeonDatabaseFixture(nodeEnv = process.env.NODE_ENV, options: { tmpfs?: boolean } = {}): Promise<NeonDatabaseFixture> {
   const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
   const databaseName = `${DATABASE_PREFIX}${suffix}`;
   const containerName = `sme-neon-it-db-${suffix}`;
@@ -126,7 +127,8 @@ export async function startNeonDatabaseFixture(nodeEnv = process.env.NODE_ENV): 
   };
 
   try {
-    containerId = run(["run", "--pull=never", "-d", "--name", containerName, "--label", `${OWNERSHIP_LABEL}=neon-postgres`, "--label", `${DATABASE_LABEL}=${databaseName}`, "-e", "POSTGRES_PASSWORD=postgres", "-e", `POSTGRES_DB=${databaseName}`, "--network", "none", PG_IMAGE]);
+    containerId = run(["run", "--pull=never", "-d", "--name", containerName, "--label", `${OWNERSHIP_LABEL}=neon-postgres`, "--label", `${DATABASE_LABEL}=${databaseName}`, "-e", "POSTGRES_PASSWORD=postgres", "-e", `POSTGRES_DB=${databaseName}`, "--network", "none",
+      ...(options.tmpfs ? ["--tmpfs", "/var/lib/postgresql/data:rw,nosuid,size=256m"] : []), PG_IMAGE]);
     await waitForPostgres(containerName, databaseName);
     // Docker Desktop cannot publish ports from an internal-only network.
     // Carry the PostgreSQL byte stream over owned Docker exec pipes instead:
@@ -154,7 +156,7 @@ export async function startNeonDatabaseFixture(nodeEnv = process.env.NODE_ENV): 
       socket.on("error",()=>socket.destroy());
     });
     await new Promise<void>((resolve,reject)=>{relay!.once("error",reject);relay!.listen(port,"127.0.0.1",resolve);});
-    return { databaseUrl, databaseName, containerName, stop };
+    return { databaseUrl, databaseName, containerName, containerId, stop };
   } catch (error) {
     stop();
     throw error;

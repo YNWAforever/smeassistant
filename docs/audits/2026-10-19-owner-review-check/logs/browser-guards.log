@@ -1,0 +1,10 @@
+
+Running 2 tests using 1 worker
+
+
+
+(node:23640) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/2] test\offline\owner-review-check.spec.ts:138:1 › lost save response retries once with the same identity and no duplicate record or usage
+[2/2] test\offline\owner-review-check.spec.ts:149:1 › a stale tab explicitly reloads before correcting; a new draft inherits no owner check
+  2 passed (4.7s)

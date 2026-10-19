@@ -4,6 +4,40 @@ import { localeDataFor } from "@/lib/locale-data/registry"
 
 export type PrototypeLocale = (typeof supportedLocales)[number]
 
+const homeReviewZh = {
+  title: "已套用回覆的下一步", applied: "已套用（店主回報）", completed: "已完成",
+  version: "第 {n} 版", pending: "待店主人工核對", checked: "店主已核對 · 店主聲明",
+  notFound: "未找到／內容不符", later: "稍後再核對", retracted: "店主核對已撤回",
+  check: "核對已儲存回覆", view: "查看已儲存核對", next: "下一步：",
+  compare: "比對商戶、指定評論及此已儲存回覆。",
+  independent: "獨立驗證仍待核實；店主聲明不代表已發佈或成效改善。",
+  newerDraft: "第 {n} 版是另一份待審草稿；此核對及已套用聲明只屬第 {applied} 版。",
+  reviewDraft: "審閱第 {n} 版草稿", returnHome: "返回今日首頁",
+  returnBlocked: "請先儲存這份核對再返回。若結果未確認，請重試儲存；輸入會保留。",
+  missingVersion: "無法讀取指定的已儲存版本",
+  missingVersionHelp: "請重新開啟指定的已儲存版本；這裡不會自動選取另一版本。",
+  restoreVersion: "返回上一個畫面",
+}
+/** Shared vocabulary for the version-bound home/check handoff. */
+export const homeReviewCopy = {
+  en: {
+    title: "Follow up an applied reply", applied: "Applied (reported)", completed: "Completed",
+    version: "Version {n}", pending: "Owner check pending", checked: "Owner checked · statement only",
+    notFound: "Not found / content differs", later: "Check deferred", retracted: "Owner check withdrawn",
+    check: "Check saved reply", view: "View saved check", next: "Next:",
+    compare: "Match the business, specified review and this saved reply.",
+    independent: "Independent verification is pending; an owner statement does not confirm publication or improved results.",
+    newerDraft: "Version {n} is a separate draft and needs its own review. This check and applied statement stay with version {applied}.",
+    reviewDraft: "Review draft version {n}", returnHome: "Return to today",
+    returnBlocked: "Save this check before going back. If the result is unclear, retry the save; your input stays here.",
+    missingVersion: "This saved version is unavailable",
+    missingVersionHelp: "Open the intended saved version again. Another version will not be selected automatically.",
+    restoreVersion: "Return to the previous view",
+  },
+  "zh-HK": homeReviewZh,
+  "zh-TW": { ...homeReviewZh, independent: "獨立驗證仍待核實；店主聲明不代表已發佈或成效改善。" },
+}
+
 /**
  * Each locale's name in its own language, for the language picker. It lists
  * every locale, so it cannot come from the per-page dictionary registry;
