@@ -197,7 +197,7 @@ body {
   background: rgba(255, 255, 255, .05);
 }
 
-.section-card.formula-card .formula-example span { color: #b5aea6; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.section-card.formula-card .formula-example span { color: #b5aea6; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .section-card.formula-card .formula-example strong { margin: 8px 0 4px; color: var(--lime); font-size: 40px; }
 .section-card.formula-card .formula-example small { color: #cbc5c0; font-size: 12px; }
 
@@ -338,7 +338,7 @@ body {
 
 /* ── Mobile ────────────────────────────────────────────────────────────── */
 
-@media (max-width: 900px) {
+@media (max-width: 1023px) {
   /* `1fr` let the photo column's min-content push the section 220px past
      the viewport, where overflow-x clipped it. */
   .landing-hero,
@@ -369,6 +369,7 @@ body {
   .public-menu-trigger { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 999px; }
 }
 
+/* Narrow-phone exception (≤380 px): hide the wordmark so the header fits. */
 @media (max-width: 380px) {
   .public-header .brand-lockup > span:last-child { display: none; }
 }
@@ -535,7 +536,7 @@ body {
 .consent-row:has(small) { align-items: flex-start; }
 .consent-row:has(small) > [data-slot] { margin-top: 2px; }
 .consent-row strong { font-size: 13px; line-height: 1.35; }
-.consent-row small { font-size: 11.5px; line-height: 1.55; }
+.consent-row small { font-size: 12px; line-height: 1.55; }
 
 .consent-row:hover { border-color: rgba(31, 28, 24, .22); }
 
@@ -556,7 +557,7 @@ body {
 .unlock-form-card > [data-slot="button"] { margin-top: 22px; }
 .unlock-form-card > p { line-height: 1.6; }
 
-@media (min-width: 901px) {
+@media (min-width: 1024px) {
   .unlock-page { align-items: start; }
   .unlock-context { position: sticky; top: 120px; padding-top: 40px; }
 }
@@ -619,7 +620,7 @@ body {
   border-radius: 999px;
   background: #ebe8e5;
   color: var(--ink);
-  font-size: 11px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -810,7 +811,7 @@ body {
   letter-spacing: -.04em;
   line-height: 1.05;
 }
-.insight-stat > small { color: #615c56; font-size: 11px; line-height: 1.4; }
+.insight-stat > small { color: #615c56; font-size: 12px; line-height: 1.4; }
 
 .no-comparable-card.section-card { display: flex; align-items: flex-start; gap: 14px; }
 .no-comparable-card > svg { width: 22px; flex: 0 0 auto; margin-top: 2px; color: var(--amber); }
@@ -856,19 +857,19 @@ body {
   font-weight: 720;
 }
 .trend-strip li:last-child strong { border-color: var(--ink); background: var(--ink); color: var(--lime); }
-.trend-strip small { margin-top: 6px; color: var(--soft); font-size: 11px; white-space: nowrap; }
-.trend-strip span { color: #615c56; font-size: 11px; font-variant-numeric: tabular-nums; }
+.trend-strip small { margin-top: 6px; color: var(--soft); font-size: 12px; white-space: nowrap; }
+.trend-strip span { color: #615c56; font-size: 12px; font-variant-numeric: tabular-nums; }
 .trend-strip em {
   margin-top: 2px;
   padding: 1px 7px;
   border-radius: 999px;
   background: var(--amber-soft);
   color: #7a4709;
-  font-size: 10px;
+  font-size: 12px;
   font-style: normal;
   font-weight: 700;
 }
-.trend-card [data-slot="table-caption"] { color: #615c56; font-size: 11px; }
+.trend-card [data-slot="table-caption"] { color: #615c56; font-size: 12px; }
 
 .before-after-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
 .metric-change-card.section-card { display: grid; padding: 20px; align-content: start; justify-items: start; gap: 6px; }
@@ -897,13 +898,13 @@ body {
 .surface-trend-card .evidence-list li:first-child { border-top: 0; }
 .surface-trend-card .evidence-list .badge { min-width: 150px; justify-content: flex-start; }
 .surface-trend-card .evidence-list strong { font-size: 18px; font-variant-numeric: tabular-nums; }
-.surface-trend-card .evidence-list small { color: #615c56; font-size: 11px; line-height: 1.5; }
+.surface-trend-card .evidence-list small { color: #615c56; font-size: 12px; line-height: 1.5; }
 .change-ledger-card .evidence-list li { align-items: center; }
 .change-ledger-card .evidence-list strong { font-size: 13px; font-weight: 650; }
 .insights-page .change-ledger-card,
 .insights-page .delivered-work-card { margin-top: 0; }
 
-@media (max-width: 1100px) {
+@media (max-width: 1279px) {
   .insight-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 767px) {
@@ -912,7 +913,7 @@ body {
   .surface-trend-card .evidence-list li { flex-direction: column; align-items: flex-start; gap: 6px; }
   .surface-trend-card .evidence-list .badge { min-width: 0; }
 }
-@media (max-width: 480px) {
+@media (max-width: 639px) {
   .insight-summary-grid { gap: 8px; }
   .insight-stat.section-card { padding: 14px; }
   .insight-stat > svg { margin-bottom: 6px; }
@@ -955,7 +956,7 @@ body {
 .asset-meta > div,
 .integration-meta > div { min-width: 0; padding: 11px 14px 11px 0; border-bottom: 1px solid var(--border); }
 .asset-meta dt,
-.integration-meta dt { color: #615c56; font-size: 11px; font-weight: 650; letter-spacing: .02em; }
+.integration-meta dt { color: #615c56; font-size: 12px; font-weight: 650; letter-spacing: .02em; }
 .asset-meta dd,
 .integration-meta dd { margin: 4px 0 0; color: var(--ink); font-size: 13px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
 
@@ -1032,7 +1033,7 @@ body {
 .goal-card > div { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 6px; }
 .goal-card > div > h2 { flex: 1 1 100%; margin: 8px 0 0; font-size: 16px; }
 .goal-card > div > p { flex: 1 1 100%; margin: 0; color: #615c56; font-size: 13px; line-height: 1.5; }
-.goal-card > div > small { flex: 1 1 100%; color: #615c56; font-size: 11px; }
+.goal-card > div > small { flex: 1 1 100%; color: #615c56; font-size: 12px; }
 .goal-card > svg:last-child { width: 18px; align-self: center; color: var(--soft); }
 .goal-card.is-selected > span { background: var(--paper); }
 .goal-card.is-selected { border-color: var(--teal); background: var(--teal-soft); box-shadow: 0 0 0 1px var(--teal) inset; }
@@ -1070,7 +1071,7 @@ body {
 .pack-card .evidence-list strong { font-size: 14px; }
 .pack-card .evidence-list li > a { color: var(--teal); font-size: 13px; font-weight: 650; }
 
-@media (max-width: 900px) {
+@media (max-width: 1023px) {
   .create-review-layout { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 767px) {
@@ -1145,7 +1146,7 @@ body {
 .compact-action-list + .plan-actions { margin-top: 14px; }
 .asset-preview a { color: var(--teal); font-size: 12px; font-weight: 650; }
 .member-cell strong { font-size: 13px; overflow-wrap: anywhere; }
-.member-cell small { font-size: 11px; color: #615c56; }
+.member-cell small { font-size: 12px; color: #615c56; }
 
 /* ── Workspace: activity ───────────────────────────────────────────────── */
 /* On phones the four-column audit table scrolled sideways inside a container
@@ -1158,7 +1159,7 @@ body {
   .activity-table caption { display: block; margin: 0 0 6px; text-align: left; }
   .activity-table tr { display: flex; padding: 12px 0; flex-wrap: wrap; align-items: baseline; border-bottom: 1px solid var(--border); }
   .activity-table td { display: block; padding: 0; border: 0; white-space: normal; }
-  .activity-table td:nth-child(1) { flex: 1 1 100%; order: 0; color: #615c56; font-size: 11px; font-variant-numeric: tabular-nums; }
+  .activity-table td:nth-child(1) { flex: 1 1 100%; order: 0; color: #615c56; font-size: 12px; font-variant-numeric: tabular-nums; }
   .activity-table td:nth-child(3) { flex: 1 1 100%; order: 1; margin: 3px 0 2px; color: var(--ink); font-size: 14px; font-weight: 650; }
   .activity-table td:nth-child(2) { order: 2; color: #615c56; font-size: 12px; }
   .activity-table td:nth-child(4) { order: 3; color: #615c56; font-size: 12px; }
@@ -1183,7 +1184,7 @@ body {
   font-weight: 600;
   line-height: 1.35;
 }
-.legal-toc a::before { content: counter(legal, decimal-leading-zero); color: var(--soft); font-size: 11px; font-variant-numeric: tabular-nums; line-height: 1.6; }
+.legal-toc a::before { content: counter(legal, decimal-leading-zero); color: var(--soft); font-size: 12px; font-variant-numeric: tabular-nums; line-height: 1.6; }
 .legal-toc a:hover { background: var(--teal-soft); color: var(--ink); }
 .legal-sections { display: grid; gap: 12px; }
 .legal-sections > .section-card { padding: clamp(20px, 2.4vw, 32px); scroll-margin-top: 110px; }

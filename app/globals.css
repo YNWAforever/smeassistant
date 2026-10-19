@@ -10,8 +10,9 @@
  *   legacy     pre-redesign stylesheets, kept last so existing pages render as
  *              before; each page moves out of this layer as it is redesigned
  *   i18n       Chinese typography that must win over legacy sizes
+ *   a11y       touch-target and focus floor, last so nothing undercuts it
  */
-@layer theme, tokens, base, components, utilities, legacy, i18n;
+@layer theme, tokens, base, components, utilities, legacy, i18n, a11y;
 
 @import "tailwindcss" source(none);
 @source "../app";
@@ -27,6 +28,8 @@
 @import "./styles/legacy/03-ramp-refresh.css" layer(legacy);
 @import "./styles/legacy/04-polish.css" layer(legacy);
 @import "./styles/legacy/05-editorial.css" layer(legacy);
+@import "./styles/i18n.css" layer(i18n);
+@import "./styles/a11y.css" layer(a11y);
 
 @utility scrollbar-thin { scrollbar-width: thin; }
 @utility scrollbar-none { scrollbar-width: none; &::-webkit-scrollbar { display: none; } }

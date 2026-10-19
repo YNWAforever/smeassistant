@@ -1,0 +1,37 @@
+/*
+ * Chinese typography (zh-HK, zh-TW). Loaded in the i18n layer, after legacy,
+ * so these win over the older per-component sizes. System fonts only
+ * (CLAUDE.md 2026-10-19); the per-locale stacks live in tokens.css.
+ */
+
+:lang(zh) {
+  /* Kinsoku: no closing punctuation at a line start, no opening at an end. */
+  line-break: strict;
+}
+
+/* Han glyphs need more leading than Latin; legacy body copy was 1.5-1.65. */
+:lang(zh) :is(p, li, dd, blockquote, figcaption, label, td) {
+  line-height: var(--leading-body);
+}
+
+/* Headings were set as tight as 0.96, which crowds stacked Han lines. */
+:lang(zh) :is(h1, h2) {
+  line-height: max(var(--leading-heading), 1.25);
+}
+
+:lang(zh) :is(h3, h4, h5, h6) {
+  line-height: 1.4;
+}
+
+/* Keep CJK words together in headings and balance the lines; long unbroken
+   strings still wrap rather than overflow on narrow screens. */
+:lang(zh) :is(h1, h2, h3) {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+/* Letter-spacing on uppercase Latin eyebrows reads as gaps between Han glyphs. */
+:lang(zh) :is(.eyebrow, .ed-kicker, .ed-eyebrow) {
+  letter-spacing: 0.04em;
+}
