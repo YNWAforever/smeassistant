@@ -11,7 +11,8 @@ import { FixPackCard } from "@/components/workspace/fix-pack-card"
 import { PackCard, type PackCardProps } from "@/components/workspace/pack-card"
 import { LocationSelect } from "@/components/workspace/location-select"
 import { RescanButton } from "@/components/workspace/rescan-button"
-import { copy, type PrototypeLocale } from "@/lib/copy"
+import { copy, homeReviewCopy, type PrototypeLocale } from "@/lib/copy"
+import { ownerCheckNextStep } from "@/lib/workspace/owner-review-check"
 import { resolveText } from "@/lib/domain"
 import { basisLabel, comparisonReasonText, effortLabel, findingLabel, formatDateTime, formatDay, metricLabel, ordinal, priorityClass, priorityLabel, scorePercent, signed, withLocation } from "@/lib/workspace/format"
 import { measuredPrimarySources } from "@/lib/workspace/module-states"
@@ -54,7 +55,8 @@ export interface HomeBriefViewProps {
 function actionHref(locale: PrototypeLocale, slug: string, action: ActionOverview, location: string): string {
   const base = `/${locale}/owner/${slug}`
   const href = action.templateKey === "google-reconnect" ? `${base}/settings/integrations` : `${base}/actions/${action.id}`
-  return withLocation(href, location)
+  return withLocation(action.templateKey !== "google-reconnect" && action.latestVersion
+    ? `${href}?version=${encodeURIComponent(action.latestVersion.id)}` : href, location)
 }
 
 export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, fixPack, workPacks, role, consentPolicyVersion, problems }: HomeBriefViewProps) {
@@ -64,6 +66,13 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
   const base = `/${locale}/owner/${workspaceSlug}`
   const location = brief.locationSlug
   const { snapshot, changed, priority, proof, month } = brief
+  const followUp = brief.reviewFollowUp?.workspaceId === workspaceId ? brief.reviewFollowUp : null
+  const reviewText = homeReviewCopy[locale]
+  const versionLabel = (n: number) => reviewText.version.replace("{n}", String(n))
+  const followUpHref = (versionId: string) => withLocation(`${base}/actions/${encodeURIComponent(followUp!.actionId)}?version=${encodeURIComponent(versionId)}`, location)
+  const followUpStatus = followUp?.currentCheck ? ({
+    checked: reviewText.checked, not_found: reviewText.notFound, later: reviewText.later, retracted: reviewText.retracted,
+  })[followUp.currentCheck.decision] : reviewText.pending
   const sources = snapshot ? measuredPrimarySources(snapshot.moduleStates) : null
   const tierLabel = tier === "paid" ? (isChinese ? zhFor(locale, "增長工作台") : "Growth Workspace") : (isChinese ? "免費方案" : "Free plan")
   const decisions = brief.agentStrip.awaiting
@@ -82,8 +91,8 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
   const hasLocations = locations.length > 0
   // An open action is real work whatever the snapshot state, so it always wins.
   const unscanned = !priority && (!hasLocations || (location !== "all" && !snapshot))
-  const pageTitle = priority ? t.title : unscanned ? t.noScanTitle : t.quietTitle
-  const pageSubtitle = priority ? t.subtitle : unscanned ? t.noScanSubtitle : t.quietSubtitle
+  const pageTitle = priority || followUp ? t.title : unscanned ? t.noScanTitle : t.quietTitle
+  const pageSubtitle = priority || followUp ? t.subtitle : unscanned ? t.noScanSubtitle : t.quietSubtitle
   const priorityCta = role === "viewer" ? focus.view
     : priority?.templateKey === "google-reconnect" ? focus.connect
     : priority?.missingInputs.length ? t.addFacts
@@ -105,22 +114,40 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
       {!hasLocations && <div className="context-banner" role="status"><CircleAlert /><div><strong>{t.noLocationTitle}</strong><span>{t.noLocationBody}</span><Link href={`/${locale}/scan`}>{t.noLocationCta}</Link></div></div>}
 
       <section className="owner-brief-grid" aria-label={isChinese ? "今日營運摘要" : "Today's operating brief"}>
-        <article className="brief-priority-card">
+        {(priority || !followUp) && <article className="brief-priority-card">
           <div className="card-label-row"><span><Sparkles /> {t.priority}</span>{priority ? <Badge className={priorityClass(priority.priority)}>{priorityLabel(priority.priority, locale)}</Badge> : <Badge variant="outline">{isChinese ? "沒有待辦" : "Nothing open"}</Badge>}</div>
           {priority ? (
             <>
               <h2>{resolveText(priority.title, locale)}</h2>
               <p>{resolveText(priority.summary, locale)}</p>
               <div className="brief-action-meta"><span><Clock3 /> {effortLabel(priority.effortMinutes, locale)} {isChinese ? zhFor(locale, "店主時間") : "owner time"}</span><span><FileClock /> {resolveText(priority.displayPhase, locale)}</span></div>
+              {priority.latestVersion && <p>{versionLabel(priority.latestVersion.versionNo)}</p>}
               <div className="brief-priority-actions"><Button asChild size="lg"><Link href={actionHref(locale, workspaceSlug, priority, location)}>{priorityCta}<ArrowRight /></Link></Button></div>
             </>
-          ) : (
+          ) : followUp ? null : (
             <>
               <h2>{isChinese ? "暫時沒有需要你決定的行動" : "No action needs your decision right now"}</h2>
               <p>{snapshot ? (canRescan ? `${t.emptyWeek} ${t.rescanNow}` : t.emptyWeek) : (isChinese ? zhFor(locale, "完成一次掃描後，行動會從已量度的發現推導出來。") : "Actions are derived from measured findings once a scan completes.")}</p>
             </>
           )}
-        </article>
+        </article>}
+        {followUp && <article className="brief-priority-card" data-testid="home-review-followup" aria-label={reviewText.title}>
+          <div className="card-label-row"><span><FileClock /> {reviewText.title}</span><Badge variant="outline">{reviewText.completed}</Badge></div>
+          <h2>{resolveText(followUp.title, locale)}</h2>
+          <p className="brief-action-meta">{versionLabel(followUp.versionNo)} · {reviewText.applied}</p>
+          <p data-testid="home-owner-check-status">{followUpStatus}</p>
+          <p>{reviewText.next} {followUp.currentCheck
+            ? resolveText(ownerCheckNextStep(followUp.currentCheck.decision), locale) : reviewText.compare}</p>
+          <p className="limitation-note">{reviewText.independent}</p>
+          <div className="brief-priority-actions"><Button asChild variant={priority ? "outline" : "default"} size={priority ? "default" : "lg"}><Link data-next-check
+            href={followUpHref(followUp.versionId)} prefetch={false}>{followUp.canRecord && role !== "viewer" && followUp.currentCheck?.decision !== "checked" ? reviewText.check : reviewText.view}<ArrowRight /></Link></Button></div>
+          {followUp.newerDraft && <div className="mt-4 border-t pt-3">
+            <p>{reviewText.newerDraft.replace("{n}", String(followUp.newerDraft.versionNo)).replace("{applied}", String(followUp.versionNo))}</p>
+            <Link data-newer-draft href={followUpHref(followUp.newerDraft.id)} prefetch={false}>
+              {reviewText.reviewDraft.replace("{n}", String(followUp.newerDraft.versionNo))}<ArrowRight className="inline size-4" />
+            </Link>
+          </div>}
+        </article>}
       </section>
 
       <div className="owner-home-shortcuts">

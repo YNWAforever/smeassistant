@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { recordOwnerCheck } from "@/lib/workspace/client";
 import { ownerCheckBusinessLink, ownerCheckNextStep, parseOwnerCheck, type OwnerCheckContext, type OwnerCheckDecision, type OwnerCheckRecord } from "@/lib/workspace/owner-review-check";
 import { formatDateTime } from "@/lib/workspace/format";
-import type { PrototypeLocale } from "@/lib/copy";
+import { homeReviewCopy, type PrototypeLocale } from "@/lib/copy";
 import { zhFor } from "@/lib/zh-tw";
 import { resolveText } from "@/lib/domain";
 
@@ -27,6 +27,8 @@ export interface OwnerReviewCheckPanelProps {
   dirty: boolean;
   onSaved(): void;
   onReload(): void;
+  /** Server-derived owner home URL. A full navigation reads the saved state afresh. */
+  returnHomeHref?: string;
 }
 
 export function OwnerReviewCheckPanel(props: OwnerReviewCheckPanelProps) {
@@ -72,6 +74,14 @@ function OwnerReviewCheckEditor(props: OwnerReviewCheckPanelProps) {
   const data = { decision, reviewReference: reference, note, evidenceAssetId: assetId || null,
     confirmBusiness: confirmed[0], confirmReview: confirmed[1], confirmReply: confirmed[2] };
   const fingerprint = JSON.stringify(data);
+  const hasInput = reference !== "" || note !== "" || assetId !== "" || confirmed.some(Boolean) || decision !== "checked";
+  const returnBlocked = saving || props.dirty || Boolean(error) || hasInput && fingerprint !== savedFingerprint;
+  useEffect(() => {
+    if (!props.returnHomeHref || !returnBlocked) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [props.returnHomeHref, returnBlocked]);
   const stale = error === "stale_check" || error === "stale_version" || error === "idempotency_conflict";
   const allowed = props.canEdit && !props.offline && !props.dirty && (appliedVersion || decision === "retracted" && Boolean(current)) && !context.unavailable && !stale;
   const mapsLink = ownerCheckBusinessLink(props.mapsUrl);
@@ -157,6 +167,12 @@ function OwnerReviewCheckEditor(props: OwnerReviewCheckPanelProps) {
         {(stale || context.unavailable || error === "not_applied") && <Button type="button" variant="outline" onClick={() => { acceptingRefresh.current = true; props.onReload(); }}>{text("Reload saved records", "重新讀取已儲存紀錄")}</Button>}
       </div>
     </form>
+    {props.returnHomeHref && <div className="mt-4">
+      {returnBlocked
+        ? <><Button type="button" variant="outline" disabled>{homeReviewCopy[locale].returnHome}</Button>
+          <p className="text-sm">{homeReviewCopy[locale].returnBlocked}</p></>
+        : <Button asChild variant="outline"><a href={props.returnHomeHref}>{homeReviewCopy[locale].returnHome}</a></Button>}
+    </div>}
     <details className="mt-4">
       <summary>{text("Owner check history (recent records and each version's latest check)", "店主核對歷史（最近紀錄及各版最新核對）")}</summary>
       <ol className="grid gap-3 pt-3">{rows.map(row => <li key={row.id} className="rounded border p-3">

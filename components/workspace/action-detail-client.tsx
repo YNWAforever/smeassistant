@@ -26,7 +26,7 @@ import { ContextualAssistant } from "@/components/pocket-assistant/assistant-lau
 import { GbpPublishCard } from "@/components/workspace/gbp-publish-card"
 import type { DemoAssistantRunResponse } from "@/lib/pocket-assistant/contracts"
 import { CapabilityBadge, FactType, SectionCard } from "@/components/product-ui"
-import { copy, type PrototypeLocale } from "@/lib/copy"
+import { copy, homeReviewCopy, type PrototypeLocale } from "@/lib/copy"
 import { googleBusinessPublishCapability } from "@/lib/capabilities"
 import type { PublishPanel } from "@/lib/publishing/page-state"
 import { resolveText } from "@/lib/domain"
@@ -69,7 +69,7 @@ export interface ActionDetailClientProps {
   latestVersionOfferRevision?: number | null
   /** Show the link to the Offers page (the page 404s while the flag is off). */
   offersEnabled?: boolean
-  /** P4.3: the version a `?version=` link names. Anything not among `detail.versions` falls back to the newest. */
+  /** The exact version a `?version=` link names. An unavailable version fails closed. */
   initialVersionId?: string | null
   /** P4.6: the Google publish card's data (review-response only); null hides it. The server stays the authority. */
   publishPanel?: PublishPanel | null
@@ -148,6 +148,14 @@ export function ownerInputPatch(
 }
 
 export function ActionDetailClient(props: ActionDetailClientProps) {
+  if (props.initialVersionId != null && !props.detail.versions.some(version => version.id === props.initialVersionId)) {
+    const text = homeReviewCopy[props.locale]
+    return <section className="section-card" data-testid="invalid-action-version" role="alert">
+      <h1>{text.missingVersion}</h1>
+      <p>{text.missingVersionHelp}</p>
+      <Button asChild variant="outline"><Link href={withLocation(`/${props.locale}/owner/${props.workspaceSlug}`, props.location)}>{text.returnHome}</Link></Button>
+    </section>
+  }
   return <ActionDetailEditor key={`${props.workspaceId}:${props.detail.action.id}`} {...props} />
 }
 
@@ -712,6 +720,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
           timezone={timezone} mapsUrl={reviewEvidence?.mapsUrl ?? null} context={ownerCheck}
           approvedAssets={approvedAssets} canEdit={canEdit} offline={offline} dirty={dirty || conflict}
           onSaved={() => router.refresh()} onReload={() => router.refresh()}
+          returnHomeHref={withLocation(base, location)}
         />}
       </SectionCard>}
 

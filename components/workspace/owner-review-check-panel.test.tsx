@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { OwnerReviewCheckPanel, type OwnerReviewCheckPanelProps } from "./owner-review-check-panel";
+import type { OwnerCheckRecord } from "@/lib/workspace/owner-review-check";
 const id = (n: number) => `${n}`.repeat(8) + "-1111-4111-8111-111111111111";
 const props = (): OwnerReviewCheckPanelProps => ({
   locale: "en", workspaceId: id(1), actionId: id(2), version: { id: id(3), version_no: 2, body: "Thank you for your review." },
@@ -9,7 +10,7 @@ const props = (): OwnerReviewCheckPanelProps => ({
   context: { records: [], appliedVersionIds: [id(3)] }, approvedAssets: [],
   mapsUrl: null, canEdit: true, offline: false, dirty: false, onSaved: vi.fn(), onReload: vi.fn(),
 });
-const receipt = () => ({ id: "6", versionId: id(3), decision: "checked", reviewReference: "Customer A · date · helpful",
+const receipt = (): OwnerCheckRecord => ({ id: "6", versionId: id(3), decision: "checked", reviewReference: "Customer A · date · helpful",
   note: "Matched reply", evidenceAssetId: null, evidenceLabel: null, previousId: null, recordedAt: "2026-10-19T02:00:00Z", independent: false });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 function fillEnglish() {
@@ -20,6 +21,57 @@ function fillEnglish() {
   }
 }
 describe("owner review check offline UI", () => {
+  it.each(["forbidden", "transport"] as const)("retains input and blocks return without claiming success after %s failure", async failure => {
+    const fetch = failure === "forbidden"
+      ? vi.fn().mockResolvedValue(new Response('{"error":"forbidden"}', { status: 403 }))
+      : vi.fn().mockRejectedValue(new TypeError("Synthetic connection lost"));
+    vi.stubGlobal("fetch", fetch);
+    const data = { ...props(), returnHomeHref: "/en/owner/test-shop?location=central" };
+    render(<OwnerReviewCheckPanel {...data} />);
+    fillEnglish();
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Save check" })));
+    expect(screen.getByRole("alert")).toHaveTextContent(failure === "forbidden" ? "cannot record a check" : "not saved");
+    expect(screen.getByLabelText("Notes (optional)")).toHaveValue("Matched reply");
+    expect(screen.getByRole("button", { name: "Return to today" })).toBeDisabled();
+    expect(screen.getByRole("status")).not.toHaveTextContent(/^Saved$/);
+    expect(screen.getByTestId("current-owner-check")).toHaveTextContent("No owner check for this version");
+    expect(data.onSaved).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+  it("does not replace a newer saved check when an older save acknowledgement arrives late", async () => {
+    let complete!: (response: Response) => void;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(done => { complete = done; })));
+    const data = { ...props(), returnHomeHref: "/en/owner/test-shop?location=central" };
+    const view = render(<OwnerReviewCheckPanel {...data} />);
+    fillEnglish();
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Save check" })));
+    const newer = { ...receipt(), id: "8", decision: "not_found" as const, note: "Newer mismatch",
+      recordedAt: "2026-10-19T04:00:00Z" };
+    view.rerender(<OwnerReviewCheckPanel {...data} context={{ ...data.context, records: [newer] }} />);
+    await act(async () => complete(new Response(JSON.stringify({ record: receipt(), duplicate: false }), { status: 201 })));
+    expect(screen.getByTestId("current-owner-check")).toHaveTextContent("Not found / content differs");
+    expect(screen.getByRole("link", { name: "Return to today" })).toHaveAttribute("href", "/en/owner/test-shop?location=central");
+    expect(newer.note).toBe("Newer mismatch");
+  });
+  it("keeps return-home blocked for unsaved or unconfirmed input, then exposes a fresh home navigation only after acknowledgement", async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(new Response('{"error":"unavailable"}', { status: 503 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ record: receipt(), duplicate: true }), { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    const data = { ...props(), returnHomeHref: "/en/owner/synthetic?location=central" };
+    render(<OwnerReviewCheckPanel {...data} />);
+    fillEnglish();
+    expect(screen.getByRole("button", { name: "Return to today" })).toBeDisabled();
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Save check" })));
+    expect(screen.getByRole("alert")).toHaveTextContent("not saved");
+    expect(screen.getByRole("status")).not.toHaveTextContent(/^Saved$/);
+    expect(screen.getByLabelText("Notes (optional)")).toHaveValue("Matched reply");
+    expect(screen.getByRole("button", { name: "Return to today" })).toBeDisabled();
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Save check" })));
+    expect(JSON.parse(fetch.mock.calls[1][1].body).requestId).toBe(JSON.parse(fetch.mock.calls[0][1].body).requestId);
+    expect(screen.getByRole("link", { name: "Return to today" })).toHaveAttribute("href", "/en/owner/synthetic?location=central");
+    expect(screen.getByRole("status")).toHaveTextContent(/^Saved$/);
+    expect(fetch.mock.calls.every(call => call[0] === `/api/actions/${id(2)}/owner-check`)).toBe(true);
+  });
   it.each(["en", "zh-HK"] as const)("%s explains manual location and keeps independent verification separate", locale => {
     const fetch = vi.fn(); vi.stubGlobal("fetch", fetch);
     render(<OwnerReviewCheckPanel {...props()} locale={locale} mapsUrl="https://www.google.com/maps/place/Synthetic" />);
