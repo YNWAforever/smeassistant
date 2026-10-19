@@ -243,12 +243,19 @@ Rules shown in the panel:
 
 ---
 
-## 5. Open product questions (need your decision)
+## 5. Product decisions
 
-1. **Product name** for UI, metadata and OG: SME Scanner, Visibility Workspace, or another name? (Phase 7 asks again; it affects copy in Phases 2–5.)
-2. **Assistant name:** keep "Visibility Operator" / 隨身增長助理, rename it, or use a neutral "Ask" button?
-3. **Bulk approve:** is it acceptable at all, given that approval is "one immutable version" per action? If yes, which templates count as "safe" (for example checklist-only, no generated claims)?
-4. **Fix Pack drafts (upstream `agent_runs`):** fold them into the Actions queue as a separate source, or retire the Home card?
-5. **Create / Offers / Starter pack:** merge them into one "New" flow with modes?
-6. **Dark mode:** Phase 1 asks for light and dark. There is no dark theme today. Is dark mode in scope for the workspace only, or for the public site too?
-7. **CJK web font:** load a subset Noto Sans TC/HK (adds roughly 300–600 KB per weight even when subset), or stay on system fonts with a tuned fallback stack?
+| Date | Decision | Effect on the plan |
+|---|---|---|
+| 2026-10-19 | **Product name: Kinnso OS** | Replaces SME Scanner, Visibility Workspace, Growth Workspace and the other names in UI copy, metadata, the OG image, sitemap and README. The rename is applied phase by phase, with metadata finished in Phase 7, and recorded in the CLAUDE.md decisions log at the start of Phase 1. |
+| 2026-10-19 | **Guardrail items G-1 to G-7 ship first as a separate PR** | Done in [YNWAforever/smeassistant#94](https://github.com/YNWAforever/smeassistant/pull/94), ahead of Phase 1. |
+| 2026-10-19 | **OAuth-verified claim is the intended production path** (`WORKSPACE_CLAIM_VIA_OAUTH_ENABLED=true`) | The Phase 5 first-run wizard is designed around "Verify with Google" as the main ownership step, with staff assignment as the fallback. Turning the flag on in Vercel is an owner/provider action outside this repo. It needs the Google OAuth client and the claim redirect URI registered (see `docs/integration/DEPLOY.md`). `.env.example` keeps its fail-closed default. |
+| 2026-10-19 | **Dark mode: workspace only** | Phase 1 tokens define light and dark for the owner workspace (`.workspace-shell` and its overlays). The public site stays light. The stray shadcn `dark:` utilities are scoped so they no longer fire on public pages under OS dark mode. |
+| 2026-10-19 | **Fonts: system fonts, no CJK web font** | Phase 1 builds one tuned stack per locale (zh-HK: PingFang HK → Microsoft JhengHei → Noto Sans HK; zh-TW: PingFang TC → Microsoft JhengHei → Noto Sans TC), with `:lang()` line-height and line-breaking rules. No added font bytes. |
+
+### Still open
+
+1. **Assistant name.** If you don't choose one, it is shown as "Kinnso OS assistant", or a plain "Ask" button.
+2. **Bulk approve:** allowed at all? If yes, for which templates?
+3. **Fix Pack drafts:** fold them into Actions, or retire the Home card?
+4. **Create / Offers / Starter pack:** merge them into one "New" flow?

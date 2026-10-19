@@ -355,7 +355,7 @@ Related findings outside the top 10:
 
 ## Decisions needed before Phase 1
 
-The full list is in `target-ia.md` §5:
+Decided 2026-10-19: Kinnso OS name, guardrail PR first, OAuth claim on, workspace-only dark mode, system fonts. See `target-ia.md` §5 for the record and what is still open. The original list follows:
 
 1. Product name (and assistant name)
 2. Whether `WORKSPACE_CLAIM_VIA_OAUTH_ENABLED` is expected to be on, since it decides whether first-session activation is even possible
