@@ -473,6 +473,8 @@ export type Copy = {
     howMeasured: string
     back: string
     continue: string
+    /** Workspace colour theme switch (dark mode is workspace-only). */
+    theme: { label: string; light: string; dark: string; system: string }
   }
   funnel: FunnelCopy
   workspace: WorkspaceCopy

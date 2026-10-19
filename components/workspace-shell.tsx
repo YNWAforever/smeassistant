@@ -33,6 +33,7 @@ import {
 import { copy, normaliseLocale, type PrototypeLocale } from "@/lib/copy"
 import { accountInitials, resolveLocationSlug, usagePercent } from "@/lib/workspace/shell"
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
+import { ThemeMenu, WorkspaceTheme } from "@/components/theme/workspace-theme"
 import { useFocusClearOfBars } from "@/hooks/use-focus-clear-of-bars"
 import type { AssistantSurface } from "@/lib/pocket-assistant/contracts"
 import { DemoBadge, EnvironmentBar, LocaleSelect, type ShellWorkspace } from "@/components/product-ui"
@@ -185,6 +186,7 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
           <Button asChild variant="ghost" size="icon" className="notification-button">
             <Link href={scopedHref(`${base}/settings/notifications`)} aria-label={unreadLabel(workspace.unreadNotifications, isChinese)}><Bell />{workspace.unreadNotifications > 0 && <span className="notification-dot" />}</Link>
           </Button>
+          <ThemeMenu locale={locale} />
           <LocaleSelect locale={locale} />
           {workspace.demo && <DemoBadge locale={locale} />}
         </header>
@@ -216,9 +218,11 @@ export function WorkspacePageFrame({ locale, workspace, demo = false, children }
     document.documentElement.lang = safeLocale === "zh-HK" ? "zh-HK" : safeLocale === "zh-TW" ? "zh-TW" : "en"
   }, [safeLocale])
   return (
-    <div className={`workspace-root${demo ? " has-env-bar" : ""}`}>
-      <EnvironmentBar locale={safeLocale} show={demo} />
-      <WorkspaceShell locale={safeLocale} workspace={workspace}>{children}</WorkspaceShell>
-    </div>
+    <WorkspaceTheme>
+      <div className={`workspace-root${demo ? " has-env-bar" : ""}`}>
+        <EnvironmentBar locale={safeLocale} show={demo} />
+        <WorkspaceShell locale={safeLocale} workspace={workspace}>{children}</WorkspaceShell>
+      </div>
+    </WorkspaceTheme>
   )
 }
