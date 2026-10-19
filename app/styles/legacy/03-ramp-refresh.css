@@ -4,58 +4,6 @@
  * bright progress cues and a calmer information hierarchy.
  */
 
-:root {
-  --background: #f8f4f1;
-  --foreground: #1a1a1d;
-  --card: #ffffff;
-  --card-foreground: #1a1a1d;
-  --popover: #ffffff;
-  --popover-foreground: #1a1a1d;
-  --primary: #1a1a1d;
-  --primary-foreground: #ffffff;
-  --secondary: #f2ede8;
-  --secondary-foreground: #1a1a1d;
-  --muted: #eeecea;
-  --muted-foreground: #706b66;
-  --accent: #f8dbbf;
-  --accent-foreground: #202025;
-  --destructive: #b6423a;
-  --border: #e2ded9;
-  --input: #d3cdc6;
-  --ring: #78512a;
-  --radius: 1rem;
-  --sidebar: #1c1c20;
-  --sidebar-foreground: #faf4ef;
-  --sidebar-primary: #f0af6d;
-  --sidebar-primary-foreground: #1a1a1d;
-  --sidebar-accent: #313138;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #443f39;
-  --sidebar-ring: #f0af6d;
-  --ink: #1a1a1d;
-  --soft: #6d6862;
-  --paper: #ffffff;
-  --canvas: #f8f4f1;
-  --teal: #714518;
-  --teal-dark: #303037;
-  --teal-soft: #f5ece2;
-  --amber: #a76010;
-  --amber-soft: #fff1d7;
-  --red: #a74039;
-  --red-soft: #ffe8e4;
-  --blue: #86603a;
-  --blue-soft: #fef3e8;
-  --lime: #f0af6d;
-  --lime-strong: #e5a05b;
-  --lime-soft: #fee3c9;
-  --peach: #ffe4ca;
-  --lilac: #ece5ff;
-  --sky: #fef2e5;
-  --shadow-sm: 0 1px 2px rgba(31, 28, 24, .04), 0 12px 28px rgba(31, 28, 24, .055);
-  --shadow-md: 0 24px 70px rgba(31, 28, 24, .13);
-  --content: 1320px;
-}
-
 body {
   background:
     radial-gradient(circle at 4% 12%, rgba(240, 175, 109, .14), transparent 24rem),

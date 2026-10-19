@@ -1,12 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
-import "@fontsource-variable/inter/opsz.css";
 import "@fontsource-variable/geist/wght.css";
 import "./globals.css";
-import "./responsive.css";
-import "./ramp-refresh.css";
-import "./polish.css";
-import "./editorial.css";
 import { HydrationMarker } from "@/components/hydration-marker";
 import { Toaster } from "@/components/ui/sonner";
 import { LOCALE_HEADER, resolveHtmlLang } from "@/lib/funnel/locale-redirect";
