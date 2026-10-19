@@ -235,6 +235,33 @@ test("empty, viewer and foreign workspace summaries cannot expose or mutate anot
   expect(app.state.calls).toHaveLength(0); expect(app.state.usage).toBe(2); expect(app.state.forbiddenWrites).toBe(0);
 });
 for (const locale of ["en", "zh-HK"] as const) {
+  test(`${locale} invalid query recovery retains unsaved draft and owner-check input`, async ({ page, app }, info) => {
+    const zh = locale === "zh-HK", errors: string[] = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${app.origin}/${locale}/owner/test-shop/actions/${ACTION}?version=${V2}&location=central`);
+    await fill(page, zh, "Synthetic unsaved owner check");
+    await page.locator("#draft-content").fill("Synthetic unsaved draft revision");
+    await page.evaluate((url: string) => {
+      history.replaceState(null, "", url);
+      window.dispatchEvent(new Event("fixture:refresh"));
+    }, `/${locale}/owner/test-shop/actions/${ACTION}?version=${id(9)}&location=central`);
+    await expect(page.getByTestId("invalid-action-version")).toBeVisible();
+    await expect(page.locator("[data-retained-action-editor]")).toHaveAttribute("inert", "");
+    await expect(page.locator("#draft-content")).toBeHidden();
+    await expect(page.locator(".owner-review-check")).toBeHidden();
+    await expect(page.getByRole("link", { name: zh ? "返回今日首頁" : "Return to today", exact: true })).toHaveCount(0);
+    await page.getByRole("button", { name: zh ? "返回上一個畫面" : "Return to the previous view", exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`version=${V2}`));
+    await expect(page.getByTestId("invalid-action-version")).toHaveCount(0);
+    await expect(page.locator("#draft-content")).toHaveValue("Synthetic unsaved draft revision");
+    await expect(page.getByLabel(zh ? "備註（可選）" : "Notes (optional)", { exact: true })).toHaveValue("Synthetic unsaved owner check");
+    await expect(page.getByRole("button", { name: zh ? "返回今日首頁" : "Return to today", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: zh ? "儲存核對" : "Save check", exact: true })).toBeDisabled();
+    await page.screenshot({ path: info.outputPath("version-recovered-unsaved.png"), fullPage: true });
+    expect(app.state.calls).toHaveLength(0); expect(app.state.saved).toHaveLength(0);
+    expect(app.state.usage).toBe(2); expect(app.state.forbiddenWrites).toBe(0); expect(errors).toEqual([]);
+  });
   test(`${locale} invalid exact-version links never fall back to another saved draft`, async ({ page, app }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${app.origin}/${locale}/owner/test-shop/actions/${ACTION}?version=${id(9)}&location=central`);

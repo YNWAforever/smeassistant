@@ -1,12 +1,15 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
+const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
+const messages = vi.hoisted(() => ({ error: vi.fn() }));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  useRouter: () => router,
   usePathname: () => "/en/owner/kam-man-house/actions/act-1",
   useSearchParams: () => new URLSearchParams(),
 }));
+vi.mock("sonner", () => ({ toast: messages }));
 
 import { ActionDetailClient } from "@/components/workspace/action-detail-client";
 import { localized } from "@/lib/domain";
@@ -59,24 +62,33 @@ function versionRow(id: string, versionNo: number, body: string): ActionDetail["
 // Newest first, as the page loads them.
 const VERSIONS = [versionRow("ver-2", 2, "second body"), versionRow("ver-1", 1, "first body")];
 
-function mount(opts: { initialVersionId?: string | null; missingInputs?: string[] } = {}) {
+function mount(opts: { initialVersionId?: string | null; missingInputs?: string[]; locale?: "en" | "zh-HK" } = {}) {
   const value: ActionDetail = { action: overview(), offerId: null, versions: VERSIONS, runs: [], measurements: [], scanInputs: [], businessContext: [], faqQuestions: [] };
   if (opts.missingInputs) {
     value.action.actionState = "needs_input";
     value.action.missingInputs = opts.missingInputs;
   }
   return render(
-    <ActionDetailClient locale="en" workspaceSlug="kam-man-house" workspaceId="ws-1" timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={value} auditRows={[]} locations={[{ slug: "yik-yam", name: "Yik Yam" }]} approvedAssets={[]} initialVersionId={opts.initialVersionId} />,
+    <ActionDetailClient locale={opts.locale ?? "en"} workspaceSlug="kam-man-house" workspaceId="ws-1" timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={value} auditRows={[]} locations={[{ slug: "yik-yam", name: "Yik Yam" }]} approvedAssets={[]} initialVersionId={opts.initialVersionId} />,
   );
 }
 
 const draft = () => (document.querySelector("#draft-content") as HTMLTextAreaElement).value;
+const requests = vi.fn();
 
 beforeEach(() => {
+  requests.mockClear();
+  vi.stubGlobal("fetch", requests);
+  router.replace.mockClear();
+  messages.error.mockClear();
   if (!window.matchMedia)
     window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia;
 });
-afterEach(cleanup);
+afterEach(() => {
+  expect(requests).not.toHaveBeenCalled();
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe("the action page's version landing (P4.3)", () => {
   it("selects the version named by initialVersionId and loads its body", () => {
@@ -92,10 +104,15 @@ describe("the action page's version landing (P4.3)", () => {
     expect(draft()).toBe("second body");
   });
 
-  it("falls back to the newest version for an unknown id", () => {
-    mount({ initialVersionId: "ver-nope" });
-    expect(draft()).toBe("second body");
-  });
+  for (const locale of ["en", "zh-HK"] as const) {
+    it.each(["ver-nope", ""])("%s fails closed without mounting another version on first load (" + locale + ")", initialVersionId => {
+      mount({ initialVersionId, locale });
+      expect(screen.getByRole("alert")).toHaveTextContent(locale === "en" ? "This saved version is unavailable" : "無法讀取指定的已儲存版本");
+      expect(document.querySelector("#draft-content")).toBeNull();
+      expect(screen.getByRole("link")).toHaveAttribute("href", `/${locale}/owner/kam-man-house?location=yik-yam`);
+      expect(screen.queryByRole("button", { name: /Approve|核准/ })).toBeNull();
+    });
+  }
 
   it("keeps the named version when the page re-renders with the same versions", () => {
     const view = mount({ initialVersionId: "ver-1" });
@@ -105,9 +122,9 @@ describe("the action page's version landing (P4.3)", () => {
     expect(draft()).toBe("first body");
   });
 
-  function rerenderWith(view: ReturnType<typeof mount>, initialVersionId: string | null) {
+  function rerenderWith(view: ReturnType<typeof mount>, initialVersionId: string | null, workspaceId = "ws-1") {
     view.rerender(
-      <ActionDetailClient locale="en" workspaceSlug="kam-man-house" workspaceId="ws-1" timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={{ action: overview(), offerId: null, versions: VERSIONS, runs: [], measurements: [], scanInputs: [], businessContext: [], faqQuestions: [] }} auditRows={[]} locations={[{ slug: "yik-yam", name: "Yik Yam" }]} approvedAssets={[]} initialVersionId={initialVersionId} />,
+      <ActionDetailClient locale="en" workspaceSlug="kam-man-house" workspaceId={workspaceId} timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={{ action: overview(), offerId: null, versions: VERSIONS, runs: [], measurements: [], scanInputs: [], businessContext: [], faqQuestions: [] }} auditRows={[]} locations={[{ slug: "yik-yam", name: "Yik Yam" }]} approvedAssets={[]} initialVersionId={initialVersionId} />,
     );
   }
 
@@ -120,12 +137,51 @@ describe("the action page's version landing (P4.3)", () => {
     expect(draft()).toBe("second body");
   });
 
-  it("changes nothing when the new ?version= is unknown or cleared", () => {
+  it("blocks an unknown parameter and restores the selected version when the parameter is cleared", () => {
     const view = mount({ initialVersionId: "ver-1" });
     rerenderWith(view, "ver-nope");
-    expect(draft()).toBe("first body");
+    expect(screen.getByRole("alert")).toHaveTextContent("This saved version is unavailable");
+    expect(screen.queryByRole("textbox", { name: /^Draft$/ })).toBeNull();
     rerenderWith(view, null);
     expect(draft()).toBe("first body");
+  });
+
+  it("retains unsaved edits when an unknown parameter is followed by the original valid version", () => {
+    const view = mount({ initialVersionId: "ver-1" });
+    fireEvent.change(document.querySelector("#draft-content")!, { target: { value: "Unsaved owner text" } });
+    rerenderWith(view, "ver-nope");
+    expect(screen.queryByRole("textbox", { name: /^Draft$/ })).toBeNull();
+    rerenderWith(view, "ver-1");
+    expect(draft()).toBe("Unsaved owner text");
+  });
+
+  it("offers same-page recovery instead of a home link while a previous editor may contain unsaved input", () => {
+    const view = mount({ initialVersionId: "ver-1" });
+    fireEvent.change(document.querySelector("#draft-content")!, { target: { value: "Unsaved owner text" } });
+    rerenderWith(view, "ver-nope");
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(document.querySelector("[data-retained-action-editor]")).toHaveAttribute("inert");
+    fireEvent.click(screen.getByRole("button", { name: "Return to the previous view" }));
+    expect(router.replace).toHaveBeenCalledWith("/en/owner/kam-man-house/actions/act-1?version=ver-1&location=yik-yam");
+    rerenderWith(view, "ver-1");
+    expect(draft()).toBe("Unsaved owner text");
+  });
+
+  it("still refuses switching to another valid version while the current draft is dirty", () => {
+    const view = mount({ initialVersionId: "ver-1" });
+    fireEvent.change(document.querySelector("#draft-content")!, { target: { value: "Unsaved owner text" } });
+    rerenderWith(view, "ver-2");
+    expect(draft()).toBe("Unsaved owner text");
+    expect(messages.error).toHaveBeenCalledOnce();
+  });
+
+  it("never restores a previous workspace's unsaved editor through an invalid parameter", () => {
+    const view = mount({ initialVersionId: "ver-1" });
+    fireEvent.change(document.querySelector("#draft-content")!, { target: { value: "Workspace A private draft" } });
+    rerenderWith(view, "ver-nope", "ws-other");
+    expect(document.querySelector("#draft-content")).toBeNull();
+    rerenderWith(view, null, "ws-other");
+    expect(draft()).toBe("second body");
   });
 
   it("puts the inputs anchor on the input form when it shows", () => {

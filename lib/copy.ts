@@ -15,7 +15,8 @@ const homeReviewZh = {
   reviewDraft: "審閱第 {n} 版草稿", returnHome: "返回今日首頁",
   returnBlocked: "請先儲存這份核對再返回。若結果未確認，請重試儲存；輸入會保留。",
   missingVersion: "無法讀取指定的已儲存版本",
-  missingVersionHelp: "請返回首頁重新開啟指定版本；這裡不會自動選取另一版本。",
+  missingVersionHelp: "請重新開啟指定的已儲存版本；這裡不會自動選取另一版本。",
+  restoreVersion: "返回上一個畫面",
 }
 /** Shared vocabulary for the version-bound home/check handoff. */
 export const homeReviewCopy = {
@@ -30,7 +31,8 @@ export const homeReviewCopy = {
     reviewDraft: "Review draft version {n}", returnHome: "Return to today",
     returnBlocked: "Save this check before going back. If the result is unclear, retry the save; your input stays here.",
     missingVersion: "This saved version is unavailable",
-    missingVersionHelp: "Return to today and open the intended version again. Another version will not be selected automatically.",
+    missingVersionHelp: "Open the intended saved version again. Another version will not be selected automatically.",
+    restoreVersion: "Return to the previous view",
   },
   "zh-HK": homeReviewZh,
   "zh-TW": { ...homeReviewZh, independent: "獨立驗證仍待核實；店主聲明不代表已發佈或成效改善。" },

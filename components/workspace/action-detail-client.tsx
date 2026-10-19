@@ -148,15 +148,34 @@ export function ownerInputPatch(
 }
 
 export function ActionDetailClient(props: ActionDetailClientProps) {
-  if (props.initialVersionId != null && !props.detail.versions.some(version => version.id === props.initialVersionId)) {
-    const text = homeReviewCopy[props.locale]
-    return <section className="section-card" data-testid="invalid-action-version" role="alert">
+  return <VersionBoundActionDetail key={`${props.workspaceId}:${props.detail.action.id}`} {...props} />
+}
+
+function VersionBoundActionDetail(props: ActionDetailClientProps) {
+  const router = useRouter()
+  const invalid = props.initialVersionId != null && !props.detail.versions.some(version => version.id === props.initialVersionId)
+  // Retain only this action/workspace's previously valid editor. An invalid
+  // route must neither mount a fallback editor nor discard pending local input.
+  const [lastValidProps, setLastValidProps] = useState<ActionDetailClientProps | null>(() => invalid ? null : props)
+  if (!invalid && lastValidProps !== props) setLastValidProps(props)
+  const editorProps = invalid ? lastValidProps : props
+  const text = homeReviewCopy[props.locale]
+  const restoreHref = editorProps ? withLocation(
+    `/${editorProps.locale}/owner/${editorProps.workspaceSlug}/actions/${editorProps.detail.action.id}${editorProps.initialVersionId != null ? `?version=${encodeURIComponent(editorProps.initialVersionId)}` : ""}`,
+    editorProps.location,
+  ) : null
+  return <>
+    {invalid && <section className="section-card" data-testid="invalid-action-version" role="alert">
       <h1>{text.missingVersion}</h1>
       <p>{text.missingVersionHelp}</p>
-      <Button asChild variant="outline"><Link href={withLocation(`/${props.locale}/owner/${props.workspaceSlug}`, props.location)}>{text.returnHome}</Link></Button>
-    </section>
-  }
-  return <ActionDetailEditor key={`${props.workspaceId}:${props.detail.action.id}`} {...props} />
+      {restoreHref
+        ? <Button type="button" variant="outline" onClick={() => router.replace(restoreHref)}>{text.restoreVersion}</Button>
+        : <Button asChild variant="outline"><Link href={withLocation(`/${props.locale}/owner/${props.workspaceSlug}`, props.location)}>{text.returnHome}</Link></Button>}
+    </section>}
+    {editorProps && <div hidden={invalid} inert={invalid} data-retained-action-editor>
+      <ActionDetailEditor {...editorProps} />
+    </div>}
+  </>
 }
 
 function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false, initialVersionId = null, publishPanel = null, ownerCheck = EMPTY_OWNER_CHECK, ownerCheckIdentity }: ActionDetailClientProps) {
