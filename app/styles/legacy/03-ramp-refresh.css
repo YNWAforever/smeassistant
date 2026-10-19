@@ -563,7 +563,7 @@ button:focus-visible {
 }
 
 .workspace-topbar-context span {
-  color: #85807a;
+  color: var(--ink-3);
   font-size: 12px;
   font-weight: 700;
 }

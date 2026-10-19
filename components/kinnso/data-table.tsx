@@ -5,10 +5,10 @@ import { copy, type PrototypeLocale } from "@/lib/copy"
 
 export type DataColumn<Row> = { key: string; header: string; cell: (row: Row) => ReactNode; numeric?: boolean }
 
-/** Accessible table: a caption is required; wide tables scroll inside a focusable region. */
+/** Accessible table: a caption is required; wide tables scroll inside the focusable table container. */
 export function DataTable<Row>({ caption, columns, rows, rowKey, empty, locale }: { caption: string; columns: DataColumn<Row>[]; rows: Row[]; rowKey: (row: Row) => string; empty?: string; locale: PrototypeLocale }) {
   return (
-    <div className="kinnso-table overflow-x-auto" tabIndex={0} role="region" aria-label={caption}>
+    <div className="kinnso-table" role="region" aria-label={caption}>
       <Table>
         <TableCaption>{caption}</TableCaption>
         <TableHeader>

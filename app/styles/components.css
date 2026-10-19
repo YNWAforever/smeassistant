@@ -91,7 +91,3 @@ li[data-state="pending"] > .kinnso-coverage-icon { color: var(--brand-text); }
   text-decoration: line-through;
 }
 
-.kinnso-table:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
