@@ -8,7 +8,7 @@ const id = (n: number) => `${n}`.repeat(8) + "-1111-4111-8111-111111111111";
 const WS = id(1), ACTION = id(2), V2 = id(3), V3 = id(4), LOCATION = id(5);
 type Saved = { command: OwnerCheckCommand; record: OwnerCheckRecord };
 type State = { saved: Saved[]; calls: OwnerCheckCommand[]; role: "owner" | "viewer"; loseNext: boolean;
-  foreign: boolean; empty: boolean; usage: number; forbiddenWrites: number };
+  foreign: boolean; empty: boolean; priority: boolean; usage: number; forbiddenWrites: number };
 type App = { origin: string; state: State };
 const root = process.cwd(), staticRoot = resolve(root, ".next/static");
 const require = createRequire(import.meta.url);
@@ -26,18 +26,24 @@ const locale=location.pathname.startsWith("/zh-HK")?"zh-HK":"en", zh=locale!=="e
 const title={en:"Synthetic review reply","zh-HK":"合成評論回覆","zh-TW":"合成評論回覆"};
 const common={locale,workspaceSlug:"test-shop",workspaceId:d.workspaceId,timezone:"Asia/Hong_Kong",
 role:d.role,locations:[{slug:"central",name:"Synthetic Central"}]};
-const action=buildActionOverview({id:d.actionId,workspace_id:d.workspaceId,location_id:d.locationId,
+const row={id:d.actionId,workspace_id:d.workspaceId,location_id:d.locationId,
 template_key:"review-response",source:"system",source_finding_keys:[],title,summary:title,evidence:{},
 priority:"medium",priority_score:50,priority_factors:[],effort_minutes:10,required_inputs:[],provided_inputs:{},
 assignee_user_id:null,due_at:null,action_state:"completed",measurement_state:"awaiting_comparable_scan",
-capability:"Live",created_at:"2026-10-01T00:00:00Z",updated_at:"2026-10-02T00:00:00Z"},
+capability:"Live",created_at:"2026-10-01T00:00:00Z",updated_at:"2026-10-02T00:00:00Z"};
+const action=buildActionOverview(row,
 {location:{id:d.locationId,slug:"central",name:title},latestRun:null,latestVersion:d.versions[0],
 applied:true,appliedOn:"2026-10-02T00:00:00Z",verified:false,verifiedOn:null});
+const faqTitle={en:"Add clear FAQ answers for search and AI","zh-HK":"新增清晰的常見問題，供搜尋及 AI 引用","zh-TW":"新增清晰的常見問題，供搜尋及 AI 引用"};
+const priority=d.priority?buildActionOverview({...row,id:d.priorityId,template_key:"visibility-content",
+title:faqTitle,summary:faqTitle,action_state:"needs_input",priority:"high",effort_minutes:15,
+required_inputs:["owner_fact_1","owner_fact_2","owner_fact_3"]},
+{location:{id:d.locationId,slug:"central",name:faqTitle},latestRun:null,latestVersion:null}):null;
 const follow=selectHomeReviewFollowUp(d.candidates,{workspaceId:d.workspaceId,locationId:d.locationId,
 allowedLocationIds:null,role:d.role});
 const brief={locationSlug:"central",location:{id:d.locationId,slug:"central",name:"Synthetic Central"},
 snapshot:null,changed:{factType:"Unknown",delta:null,base:null,head:null,reason:null,comparable:false},
-priority:null,openActions:[],openActionCount:0,reviewFollowUp:follow,proof:null,
+priority,openActions:priority?[priority]:[],openActionCount:priority?1:0,reviewFollowUp:follow,proof:null,
 month:{resolved:0,regressed:0,awaitingApproval:follow?1:0,completed:follow?1:0,measured:0},
 rescanCadenceDay:null,drafts:follow?1:0,agentStrip:{scout:false,priority:false,drafts:follow?1:0,awaiting:follow?1:0},
 ledger:{resolved:[],regressed:[],decayed:[]},evidence:[],
@@ -72,7 +78,7 @@ async function cssFiles(path: string) {
 }
 const test = base.extend<{ app: App }>({
   app: async ({}, runFixture) => {
-    const state: State = { saved: [], calls: [], role: "owner", loseNext: false, foreign: false, empty: false, usage: 2, forbiddenWrites: 0 };
+    const state: State = { saved: [], calls: [], role: "owner", loseNext: false, foreign: false, empty: false, priority: false, usage: 2, forbiddenWrites: 0 };
     const bootstrap = () => {
       const versions = [3, 2].map(n => ({
         id: n === 2 ? V2 : V3, action_id: ACTION, version_no: n,
@@ -92,7 +98,7 @@ const test = base.extend<{ app: App }>({
           actor_type: "user", actor_id: id(6), event: "action.owner_review_check_recorded", entity_type: "action",
           entity_id: ACTION, created_at: saved.record.recordedAt, payload: { owner_check: saved.command } } : null,
       };
-      return { workspaceId: WS, locationId: LOCATION, actionId: ACTION, role: state.role, versions,
+      return { workspaceId: WS, locationId: LOCATION, actionId: ACTION, priorityId: id(9), priority: state.priority, role: state.role, versions,
         candidates: state.empty ? [] : [candidate], usage: state.usage,
         context: { records: state.saved.map(row => row.record), appliedVersionIds: [V2] } };
     };
@@ -149,6 +155,81 @@ async function fill(page: Page, zh = false, note = "Synthetic checked reply") {
   for (const label of zh ? ["商戶及分店相符", "已找到並比對指定評論", "回覆與此已儲存版本相符"] : ["Business and branch match", "I found and matched the specified review", "The reply matches this saved version"]) {
     await page.getByRole("checkbox", { name: label, exact: true }).check();
   }
+}
+for (const locale of ["en", "zh-HK"] as const) for (const width of [1440, 1072, 390]) {
+  test(`dual-card ${locale} ${width}px FAQ and applied V2 stay separate and preserve read-only state`, async ({ page, context, app }, info) => {
+    app.state.priority = true;
+    const errors: string[] = [], external: string[] = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await context.route("**/*", route => new URL(route.request().url()).origin === app.origin
+      ? route.continue() : (external.push("blocked"), route.abort("blockedbyclient")));
+    const zh = locale === "zh-HK", height = width === 390 ? 844 : width === 1072 ? 1788 : 900;
+    await page.setViewportSize({ width, height });
+    const home = `${app.origin}/${locale}/owner/test-shop?location=central`;
+    await page.goto(home);
+    const cards = page.locator(".owner-brief-grid > .brief-priority-card");
+    await expect(cards).toHaveCount(2);
+    const faq = cards.nth(0), follow = page.getByTestId("home-review-followup");
+    await expect(faq).toContainText(zh ? "新增清晰的常見問題" : "Add clear FAQ answers");
+    await expect(follow).toContainText(zh ? "第 2 版" : "Version 2");
+    await expect(follow).toContainText(zh ? "已完成" : "Completed");
+    const faqBounds = await faq.boundingBox(), followBounds = await follow.boundingBox();
+    expect(faqBounds).not.toBeNull(); expect(followBounds).not.toBeNull();
+    await page.screenshot({ path: info.outputPath("dual-cards-before-navigation.png"), fullPage: true });
+    expect(followBounds!.y).toBeGreaterThanOrEqual(faqBounds!.y + faqBounds!.height + 13);
+    const faqLink = faq.getByRole("link"), reviewLink = follow.locator("a[data-next-check]");
+    await expect(faqLink).toHaveAttribute("href", `/${locale}/owner/test-shop/actions/${id(9)}?location=central`);
+    await expect(reviewLink).toHaveAttribute("href", `/${locale}/owner/test-shop/actions/${ACTION}?version=${V2}&location=central`);
+    await faqLink.scrollIntoViewIfNeeded();
+    expect(await faqLink.evaluate(el => { const r = el.getBoundingClientRect(); return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest("a") === el; })).toBe(true);
+    await faqLink.focus(); await expect(faqLink).toBeFocused();
+    await page.keyboard.press("Tab"); await expect(reviewLink).toBeFocused();
+    const readPointerState = () => reviewLink.evaluate(el => {
+      const r = el.getBoundingClientRect(), x = r.x + r.width / 2, y = r.y + r.height / 2;
+      const hit = document.elementFromPoint(x, y);
+      return { matched: hit?.closest("a") === el, x, y, width: innerWidth, height: innerHeight,
+        focused: document.activeElement === el, scrollY, scrollBehavior: getComputedStyle(document.documentElement).scrollBehavior,
+        hitTag: hit?.tagName ?? null };
+    });
+    await writeFile(info.outputPath("focus-pointer-state.json"), JSON.stringify(await readPointerState(), null, 2));
+    // Tab focus can precede the browser's native smooth-scroll frame.
+    await expect.poll(async () => (await readPointerState()).matched).toBe(true);
+    await writeFile(info.outputPath("settled-pointer-state.json"), JSON.stringify(await readPointerState(), null, 2));
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(new RegExp(`version=${V2}`));
+    await expect(page.getByRole("heading", { name: zh ? "店主核對 · 第 2 版" : "Owner check · Version 2" })).toBeVisible();
+    await page.getByRole("link", { name: zh ? "返回今日首頁" : "Return to today", exact: true }).click();
+    await page.reload();
+    await expect(cards).toHaveCount(2);
+    await expect(follow).toContainText(zh ? "已完成" : "Completed");
+    await expect(reviewLink).toHaveAttribute("href", `/${locale}/owner/test-shop/actions/${ACTION}?version=${V2}&location=central`);
+    await expect(page.getByTestId("fixture-usage")).toContainText("2/3");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const reloadedFaq = await faq.boundingBox(), reloadedFollow = await follow.boundingBox();
+    expect(reloadedFollow!.y).toBeGreaterThanOrEqual(reloadedFaq!.y + reloadedFaq!.height + 13);
+    await page.screenshot({ path: info.outputPath("dual-cards-reloaded.png"), fullPage: true });
+    expect(app.state.calls).toHaveLength(0); expect(app.state.saved).toHaveLength(0);
+    expect(app.state.usage).toBe(2); expect(app.state.forbiddenWrites).toBe(0);
+    expect(errors).toEqual([]); expect(external).toEqual([]);
+    await writeFile(info.outputPath("layout-result.json"), JSON.stringify({ layer: "OFFLINE synthetic / mock session and memory HTTP",
+      locale, viewport: { width, height }, faqBounds, followBounds, completed: true, version: 2, usage: "2/3", writes: 0, errors, external }, null, 2));
+  });
+}
+for (const locale of ["en", "zh-HK"] as const) {
+  test(`single-card ${locale} FAQ-only and empty home retain visible content and 2/3`, async ({ page, app }) => {
+    app.state.priority = true; app.state.empty = true;
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${app.origin}/${locale}/owner/test-shop?location=central`);
+    const cards = page.locator(".owner-brief-grid > .brief-priority-card");
+    await expect(cards).toHaveCount(1);
+    await expect(cards).toContainText(locale === "en" ? "Add clear FAQ answers" : "新增清晰的常見問題");
+    await expect(cards.getByRole("link")).toBeVisible();
+    app.state.priority = false; await page.reload();
+    await expect(cards).toHaveCount(1);
+    await expect(cards).toContainText(locale === "en" ? "No action needs your decision right now" : "暫時沒有需要你決定的行動");
+    await expect(page.getByTestId("fixture-usage")).toContainText("2/3");
+    expect(app.state.calls).toHaveLength(0); expect(app.state.usage).toBe(2);
+  });
 }
 for (const locale of ["en", "zh-HK"] as const) for (const width of [1440, 390]) {
   test(`${locale} ${width}px home → exact V2 check → home stays completed with V3 separate`, async ({ page, context, app }, info) => {
