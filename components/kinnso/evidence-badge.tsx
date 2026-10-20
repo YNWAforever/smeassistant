@@ -1,16 +1,7 @@
-import { Check, CircleAlert, CircleDashed, Loader2, X, type LucideIcon } from "lucide-react"
-
+import { PROVIDER_STATE_ICONS } from "@/components/visual/icons"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { fill } from "@/lib/copy-ui"
 import type { ProviderStateName } from "@/lib/domain-labels"
-
-export const PROVIDER_STATE_ICONS: Record<ProviderStateName, LucideIcon> = {
-  measured: Check,
-  pending: Loader2,
-  unavailable: CircleDashed,
-  unsupported: X,
-  failed: CircleAlert,
-}
 
 export function formatObservedDate(iso: string | null, locale: PrototypeLocale, timeZone = "Asia/Hong_Kong"): string | null {
   if (!iso) return null

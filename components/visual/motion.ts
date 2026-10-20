@@ -80,6 +80,31 @@ export function useReveal<T extends HTMLElement>(): [RefObject<T | null>, Reveal
   return [ref, state]
 }
 
+/**
+ * Plays a short scale-in on the children whose value changed since the last
+ * render (a source turning "measured", a step completing). The first render
+ * never animates, so nothing already on screen is replayed on load.
+ */
+export function useChangeFlash<T extends HTMLElement>(values: readonly string[]): RefObject<T | null> {
+  const ref = useRef<T>(null)
+  const previous = useRef<readonly string[] | null>(null)
+  const key = values.join("|")
+  useEffect(() => {
+    const before = previous.current
+    previous.current = key.split("|")
+    const container = ref.current
+    if (!before || !container) return
+    previous.current.forEach((value, index) => {
+      const child = container.children[index]
+      if (!(child instanceof HTMLElement) || before[index] === value) return
+      child.classList.remove("k-changed")
+      void child.offsetWidth
+      child.classList.add("k-changed")
+    })
+  }, [key])
+  return ref
+}
+
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3)
 
 /**

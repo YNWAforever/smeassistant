@@ -3,3 +3,45 @@
  * so light and workspace-dark both follow tokens.css. Motion lives in
  * motion.css; everything here is the still state.
  */
+
+/* Coverage meter: one segment per source, state carried by shape as well as
+   colour (measured solid, pending striped, unavailable hollow, failed cross). */
+.k-coverage-bar {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  gap: 4px;
+  height: 10px;
+}
+.k-coverage-segment {
+  border-radius: var(--radius-pill);
+  background: var(--paper-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.k-coverage-segment[data-state="measured"] {
+  background: var(--success);
+  box-shadow: none;
+}
+.k-coverage-segment[data-state="pending"] {
+  background: repeating-linear-gradient(135deg, var(--brand-soft) 0 4px, var(--paper-2) 4px 8px);
+}
+.k-coverage-segment[data-state="failed"] {
+  background: var(--danger-soft);
+  box-shadow: inset 0 0 0 1px var(--danger-border);
+}
+.k-coverage-segment[data-state="unsupported"] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+li[data-state="measured"] > .k-state-icon { color: var(--success-text); }
+li[data-state="failed"] > .k-state-icon { color: var(--danger-text); }
+li[data-state="pending"] > .k-state-icon { color: var(--brand-text); }
+
+/* Fact-type chip with a tooltip: a real button, sized like the badge. */
+.k-fact-chip {
+  cursor: help;
+}
+.k-fact-chip:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}

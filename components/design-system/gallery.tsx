@@ -7,17 +7,17 @@ import { ActionCard } from "@/components/kinnso/action-card"
 import { ApprovalBar } from "@/components/kinnso/approval-bar"
 import { CommandPalette } from "@/components/kinnso/command-palette"
 import { ConfirmDialog } from "@/components/kinnso/confirm-dialog"
-import { CoverageMeter } from "@/components/kinnso/coverage-meter"
 import { DataTable } from "@/components/kinnso/data-table"
 import { EvidenceBadge } from "@/components/kinnso/evidence-badge"
-import { FactTypeLegend } from "@/components/kinnso/fact-type-badge"
 import { PageHeader } from "@/components/kinnso/page-header"
-import { KinnsoScoreDial } from "@/components/kinnso/score-dial"
 import { SkeletonList } from "@/components/kinnso/skeletons"
 import { StatCard } from "@/components/kinnso/stat-card"
 import { EmptyState, ErrorState, PartialDataState, PermissionDenied } from "@/components/kinnso/states"
 import { VersionDiff } from "@/components/kinnso/version-diff"
 import { Button } from "@/components/ui/button"
+import { CoverageMeter } from "@/components/visual/coverage-meter"
+import { FactTypeLegend } from "@/components/visual/fact-type"
+import { ScoreDial } from "@/components/visual/score-dial"
 import { supportedLocales, type PrototypeLocale } from "@/lib/copy"
 
 const SWATCHES = [
@@ -130,8 +130,8 @@ export function DesignSystemGallery({ locale }: { locale: PrototypeLocale }) {
 
         <Section title="Score, coverage and evidence">
           <div className="flex flex-wrap items-start gap-8">
-            <KinnsoScoreDial score={62} coverage={60} locale={locale} />
-            <KinnsoScoreDial score={null} coverage={35} locale={locale} />
+            <ScoreDial score={62} coverage={60} locale={locale} />
+            <ScoreDial score={null} coverage={35} locale={locale} />
           </div>
           <CoverageMeter sources={SAMPLE.sources} locale={locale} />
           <div className="flex flex-wrap gap-2">

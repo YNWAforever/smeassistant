@@ -6,10 +6,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
 import { ApprovalBar } from "./approval-bar"
 import { CommandPalette, matchCommands } from "./command-palette"
-import { CoverageMeter } from "./coverage-meter"
 import { EvidenceBadge } from "./evidence-badge"
-import { FactTypeBadge, FactTypeLegend } from "./fact-type-badge"
-import { KinnsoScoreDial } from "./score-dial"
 import { StatCard } from "./stat-card"
 import { EmptyState, ErrorState, PartialDataState, PermissionDenied } from "./states"
 import { VersionDiff } from "./version-diff"
@@ -31,30 +28,6 @@ describe("guardrail behaviour of the component kit", () => {
     expect(container.textContent).toContain("Date not recorded")
     rerender(<StatCard label="Score" value={62} factType="Observed" source="Scan" observedAt={null} delta={{ value: 4, comparable: true }} locale="en" />)
     expect(container.querySelector("[data-delta]")?.getAttribute("data-delta")).toBe("4")
-  })
-
-  it("ScoreDial renders 'no score yet' for a withheld score, not 0", () => {
-    render(<KinnsoScoreDial score={null} coverage={35} locale="en" />)
-    const dial = screen.getByRole("img")
-    expect(dial.getAttribute("aria-label")).toContain("No score yet")
-    expect(dial.getAttribute("aria-label")).not.toContain("0 out of")
-  })
-
-  it("CoverageMeter counts only measured sources and names every state", () => {
-    render(<CoverageMeter locale="en" sources={[
-      { key: "gbp", label: "Google Maps", state: "measured" },
-      { key: "ig", label: "Instagram", state: "unavailable" },
-      { key: "ai", label: "AI search", state: "pending" },
-    ]} />)
-    expect(screen.getByRole("img", { name: "1 of 3 sources measured" })).toBeTruthy()
-    expect(screen.getByText(": Not available")).toBeTruthy()
-  })
-
-  it("FactTypeBadge explains itself to screen readers; the legend lists all six", () => {
-    render(<FactTypeBadge type="Attributed" locale="zh-TW" />)
-    expect(screen.getByText(/僅代表時間先後/)).toBeTruthy()
-    const { container } = render(<FactTypeLegend locale="en" />)
-    expect(container.querySelectorAll("[data-fact-type]")).toHaveLength(6)
   })
 
   it("EvidenceBadge says when the date is unknown instead of inventing one", () => {

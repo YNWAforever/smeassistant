@@ -4,6 +4,7 @@
  * Chinese, zh-TW uses Taiwan terms (CLAUDE.md §5 copy hygiene).
  */
 import type { FactTypeName, ProviderStateName } from "@/lib/domain-labels"
+import { visualEn, visualZhHK, visualZhTW, type VisualCopy } from "@/lib/copy-visual"
 
 export type UiCopy = {
   factTypes: Record<FactTypeName, { label: string; description: string }>
@@ -29,6 +30,8 @@ export type UiCopy = {
   table: { empty: string }
   confirm: { cancel: string; confirm: string }
   command: { label: string; placeholder: string; empty: string; shortcut: string }
+  /** Visual explanation components (lib/copy-visual.ts). */
+  visual: VisualCopy
 }
 
 export const uiEn: UiCopy = {
@@ -80,6 +83,7 @@ export const uiEn: UiCopy = {
   table: { empty: "No rows to show" },
   confirm: { cancel: "Cancel", confirm: "Confirm" },
   command: { label: "Search and jump", placeholder: "Type a page or action…", empty: "No matches", shortcut: "Ctrl K" },
+  visual: visualEn,
 }
 
 export const uiZhHK: UiCopy = {
@@ -131,6 +135,7 @@ export const uiZhHK: UiCopy = {
   table: { empty: "沒有資料" },
   confirm: { cancel: "取消", confirm: "確認" },
   command: { label: "搜尋及前往", placeholder: "輸入頁面或行動…", empty: "沒有相符結果", shortcut: "Ctrl K" },
+  visual: visualZhHK,
 }
 
 export const uiZhTW: UiCopy = {
@@ -182,6 +187,7 @@ export const uiZhTW: UiCopy = {
   table: { empty: "沒有資料" },
   confirm: { cancel: "取消", confirm: "確認" },
   command: { label: "搜尋並前往", placeholder: "輸入頁面或行動…", empty: "沒有符合的結果", shortcut: "Ctrl K" },
+  visual: visualZhTW,
 }
 
 /** Fills `{name}` placeholders; missing values stay visible rather than becoming empty. */
