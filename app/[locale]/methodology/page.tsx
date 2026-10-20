@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { MethodologyPage } from "@/components/public-pages";
+import { MethodologyPage } from "@/components/public/methodology";
 import { normaliseLocale } from "@/lib/copy";
 
 import { publicPageMetadata } from "../_meta";

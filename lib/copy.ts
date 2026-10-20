@@ -1,4 +1,6 @@
 export const supportedLocales = ["en", "zh-HK", "zh-TW"] as const
+import type { PublicCopy } from "@/lib/copy-public"
+import type { PublicInfoCopy } from "@/lib/copy-public-info"
 import type { UiCopy } from "@/lib/copy-ui"
 import type { WorkspaceCopy } from "@/lib/copy-workspace"
 import { localeDataFor } from "@/lib/locale-data/registry"
@@ -481,6 +483,10 @@ export type Copy = {
   workspace: WorkspaceCopy
   /** Component kit strings (lib/copy-ui.ts). */
   ui: UiCopy
+  /** Public site: header, footer and landing (lib/copy-public.ts). */
+  site: PublicCopy
+  /** Methodology and Trust pages (lib/copy-public-info.ts). */
+  siteInfo: PublicInfoCopy
 }
 
 /**

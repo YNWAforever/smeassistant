@@ -1,4 +1,6 @@
 import type { Copy, FunnelCopy, PrototypeLocale } from "@/lib/copy"
+import { publicEn, publicZhHK, publicZhTW } from "@/lib/copy-public"
+import { infoEn, infoZhHK, infoZhTW } from "@/lib/copy-public-info"
 import { uiEn, uiZhHK, uiZhTW } from "@/lib/copy-ui"
 import { workspaceEn, workspaceZhHK, workspaceZhTW } from "@/lib/copy-workspace"
 
@@ -10,8 +12,8 @@ import { workspaceEn, workspaceZhHK, workspaceZhTW } from "@/lib/copy-workspace"
  */
 const funnelEn: FunnelCopy = {
   demoBar: { title: "Demo data", body: "Fixed, sanitised Kam Man House sample", note: "No live scans, payments or external publishing on this page" },
-  footer: { tagline: "Evidence first, action next.", body: "SME Scanner by Fimmick · Evidence first, action next.", privacy: "Privacy", terms: "Terms" },
-  notFound: { eyebrow: "404 · Not found", title: "There is no evidence at this address.", body: "The link may be mistyped, or the page has moved. Reports and workspaces are never guessed from a URL, so nothing private is shown here.", home: "Back to SME Scanner", scan: "Start a free scan", sample: "See a sample report" },
+  footer: { tagline: "Evidence first, action next.", body: "Kinnso OS by Fimmick · Evidence first, action next.", privacy: "Privacy", terms: "Terms" },
+  notFound: { eyebrow: "404 · Not found", title: "There is no evidence at this address.", body: "The link may be mistyped, or the page has moved. Reports and workspaces are never guessed from a URL, so nothing private is shown here.", home: "Back to Kinnso OS", scan: "Start a free scan", sample: "See a sample report" },
   landing: {
     timing: "A free scan takes a few minutes. Completion time varies by source availability.",
     planNote: "Prices shown for the selected market · Interface language never changes market or currency",
@@ -26,7 +28,7 @@ const funnelEn: FunnelCopy = {
     progressLabel: "Scan setup {percent}% complete",
     securityTitle: "Public evidence only",
     securityBody: "No owner-only data is requested in the free scan.",
-    backHome: "Back to SME Scanner",
+    backHome: "Back to Kinnso OS",
     businessLabel: "Business name or Google Maps link",
     businessHint: "Add an area or address if several businesses share the same name.",
     searchButton: "Find business",
@@ -230,7 +232,7 @@ const funnelEn: FunnelCopy = {
     },
     evidenceEyebrow: "Original evidence",
     evidenceTitle: "Public-source content captured at scan time",
-    evidenceBody: "Provider facts are shown separately from SME Scanner analysis. Media is stored only where the retention setting allows it.",
+    evidenceBody: "Provider facts are shown separately from Kinnso OS analysis. Media is stored only where the retention setting allows it.",
     evidenceCaptured: "Captured {date}",
     evidenceMetadataOnly: "Metadata only · snapshot not stored",
     evidenceStoredUnavailable: "Stored image unavailable",
@@ -366,8 +368,8 @@ const funnelEn: FunnelCopy = {
 
 const funnelZhHK: FunnelCopy = {
   demoBar: { title: "示範資料", body: "固定並已清理的錦汶館資料", note: "此頁不包含即時掃描、付款或自動對外發佈" },
-  footer: { tagline: "證據為先，行動為本。", body: "SME Scanner by Fimmick · 證據為先，行動為本。", privacy: "私隱政策", terms: "使用條款" },
-  notFound: { eyebrow: "404 · 找不到頁面", title: "呢個網址未有任何證據。", body: "連結可能輸入有誤，或頁面已經移走。報告及工作台不會由網址推測，所以這裡不會顯示任何私人資料。", home: "返回 SME Scanner", scan: "開始免費掃描", sample: "查看示範報告" },
+  footer: { tagline: "證據為先，行動為本。", body: "Kinnso OS by Fimmick · 證據為先，行動為本。", privacy: "私隱政策", terms: "使用條款" },
+  notFound: { eyebrow: "404 · 找不到頁面", title: "呢個網址未有任何證據。", body: "連結可能輸入有誤，或頁面已經移走。報告及工作台不會由網址推測，所以這裡不會顯示任何私人資料。", home: "返回 Kinnso OS", scan: "開始免費掃描", sample: "查看示範報告" },
   landing: {
     timing: "免費掃描數分鐘內完成；完成時間視乎各資料來源供應情況。",
     planNote: "價格按所選市場顯示 · 介面語言不會自動改變市場或貨幣",
@@ -382,7 +384,7 @@ const funnelZhHK: FunnelCopy = {
     progressLabel: "掃描設定完成 {percent}%",
     securityTitle: "只收集公開證據",
     securityBody: "免費掃描不會要求店主專屬資料。",
-    backHome: "返回 SME Scanner",
+    backHome: "返回 Kinnso OS",
     businessLabel: "商戶名稱或 Google Maps 連結",
     businessHint: "如有多間同名商戶，請加入地區或地址。",
     searchButton: "尋找商戶",
@@ -586,7 +588,7 @@ const funnelZhHK: FunnelCopy = {
     },
     evidenceEyebrow: "原始證據",
     evidenceTitle: "掃描時擷取的公開來源內容",
-    evidenceBody: "來源事實與 SME Scanner 的分析分開顯示。只有在保留設定容許時才會儲存媒體。",
+    evidenceBody: "來源事實與 Kinnso OS 的分析分開顯示。只有在保留設定容許時才會儲存媒體。",
     evidenceCaptured: "擷取於 {date}",
     evidenceMetadataOnly: "只有中繼資料 · 未儲存快照",
     evidenceStoredUnavailable: "已儲存相片暫時未能顯示",
@@ -711,8 +713,8 @@ const funnelZhHK: FunnelCopy = {
 
 const funnelZhTW: FunnelCopy = {
   demoBar: { title: "範例資料", body: "固定且已清理的錦汶館資料", note: "此頁不包含即時掃描、付款或自動對外發布" },
-  footer: { tagline: "證據為先，行動為本。", body: "SME Scanner by Fimmick · 證據為先，行動為本。", privacy: "隱私政策", terms: "使用條款" },
-  notFound: { eyebrow: "404 · 找不到頁面", title: "這個網址沒有任何證據。", body: "連結可能輸入有誤，或頁面已經移動。報告及工作台不會從網址推測，因此這裡不會顯示任何私人資料。", home: "返回 SME Scanner", scan: "開始免費掃描", sample: "查看示範報告" },
+  footer: { tagline: "證據為先，行動為本。", body: "Kinnso OS by Fimmick · 證據為先，行動為本。", privacy: "隱私政策", terms: "使用條款" },
+  notFound: { eyebrow: "404 · 找不到頁面", title: "這個網址沒有任何證據。", body: "連結可能輸入有誤，或頁面已經移動。報告及工作台不會從網址推測，因此這裡不會顯示任何私人資料。", home: "返回 Kinnso OS", scan: "開始免費掃描", sample: "查看示範報告" },
   landing: {
     timing: "免費掃描數分鐘內完成；完成時間依各資料來源狀況而異。",
     planNote: "價格依所選市場顯示 · 介面語言不會自動改變市場或貨幣",
@@ -727,7 +729,7 @@ const funnelZhTW: FunnelCopy = {
     progressLabel: "掃描設定完成 {percent}%",
     securityTitle: "只收集公開證據",
     securityBody: "免費掃描不會要求店家專屬資料。",
-    backHome: "返回 SME Scanner",
+    backHome: "返回 Kinnso OS",
     businessLabel: "店家名稱或 Google Maps 連結",
     businessHint: "若有多家同名店家，請加入地區或地址。",
     searchButton: "尋找店家",
@@ -931,7 +933,7 @@ const funnelZhTW: FunnelCopy = {
     },
     evidenceEyebrow: "原始證據",
     evidenceTitle: "掃描時擷取的公開來源內容",
-    evidenceBody: "來源事實與 SME Scanner 的分析分開顯示。只有在保留設定允許時才會儲存媒體。",
+    evidenceBody: "來源事實與 Kinnso OS 的分析分開顯示。只有在保留設定允許時才會儲存媒體。",
     evidenceCaptured: "擷取於 {date}",
     evidenceMetadataOnly: "僅有中繼資料 · 未儲存快照",
     evidenceStoredUnavailable: "已儲存相片暫時無法顯示",
@@ -1128,6 +1130,8 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     funnel: funnelEn,
     workspace: workspaceEn,
     ui: uiEn,
+    site: publicEn,
+    siteInfo: infoEn,
   },
   "zh-HK": {
     language: "繁體中文（香港）",
@@ -1202,6 +1206,8 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     funnel: funnelZhHK,
     workspace: workspaceZhHK,
     ui: uiZhHK,
+    site: publicZhHK,
+    siteInfo: infoZhHK,
   },
   "zh-TW": {
     language: "繁體中文（台灣）",
@@ -1276,5 +1282,7 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     funnel: funnelZhTW,
     workspace: workspaceZhTW,
     ui: uiZhTW,
+    site: publicZhTW,
+    siteInfo: infoZhTW,
   },
 }

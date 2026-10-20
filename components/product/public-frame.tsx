@@ -43,7 +43,7 @@ export function PublicHeader({ locale, signInHref }: { locale: PrototypeLocale; 
   // carries it, so signing in from the header does not drop the claim (F-20).
   const signIn = signInHref ?? `/${locale}/owner/sign-in`
   const t = copy[locale]
-  const isChinese = locale !== "en"
+  const nav = t.site.nav
   return (
     <header className="public-header">
       <div className="public-header-inner">
@@ -59,25 +59,24 @@ export function PublicHeader({ locale, signInHref }: { locale: PrototypeLocale; 
             <Link href={signIn}>{t.nav.signIn}</Link>
           </Button>
           <Button asChild className="header-scan-cta hidden md:inline-flex">
-            <Link href={`/${locale}/scan`}>{isChinese ? "免費掃描" : "Free scan"}<ArrowRight /></Link>
+            <Link href={`/${locale}/scan`}>{nav.freeScan}<ArrowRight /></Link>
           </Button>
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="public-menu-trigger" aria-label={isChinese ? "開啟選單" : "Open menu"}><Menu /></Button>
+              <Button variant="outline" size="icon" className="public-menu-trigger" aria-label={nav.openMenu}><Menu /></Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[min(92vw,22rem)]" closeLabel={isChinese ? "關閉選單" : "Close menu"}>
+            <SheetContent side="right" className="w-[min(92vw,22rem)]" closeLabel={nav.closeMenu}>
               <SheetHeader>
-                <SheetTitle>SME Scanner</SheetTitle>
-                <SheetDescription>{isChinese ? "以證據為先的能見度管理" : "Evidence-first visibility monitoring"}</SheetDescription>
+                <SheetTitle>{t.site.brand.name}</SheetTitle>
+                <SheetDescription>{nav.menuTitle}</SheetDescription>
               </SheetHeader>
-              <nav className="mobile-sheet-nav" aria-label={isChinese ? "流動版導覽" : "Mobile navigation"}>
-                <Link href={`/${locale}/scan`}>{t.nav.scanner}</Link>
-                <Link href={`/${locale}#why-sme-scanner`}>{isChinese ? "產品優勢" : "Why us"}</Link>
-                <Link href={`/${locale}#sample-case`}>{isChinese ? "示範案例" : "Sample case"}</Link>
-                <Link href={`/${locale}/sample-report`}>{t.nav.sample}</Link>
-                <Link href={`/${locale}/methodology`}>{t.nav.methodology}</Link>
-                <Link href={`/${locale}/pricing`}>{t.nav.pricing}</Link>
-                <Link href={`/${locale}/trust`}>{t.nav.trust}</Link>
+              <nav className="mobile-sheet-nav" aria-label={nav.mobileLabel}>
+                <Link href={`/${locale}/scan`}>{nav.freeScan}</Link>
+                <Link href={`/${locale}#how-it-works`}>{nav.howItWorks}</Link>
+                <Link href={`/${locale}/sample-report`}>{nav.sample}</Link>
+                <Link href={`/${locale}/pricing`}>{nav.pricing}</Link>
+                <Link href={`/${locale}/methodology`}>{nav.methodology}</Link>
+                <Link href={`/${locale}/trust`}>{nav.trust}</Link>
                 <Link href={signIn}>{t.nav.signIn}</Link>
               </nav>
               {/* On phones the header has no room for the language control, so it lives here too. */}
@@ -100,7 +99,7 @@ export function PublicPageFrame({ locale, demo = false, signInHref, children }: 
   }, [locale])
   return (
     <div className={`public-site${demo ? " has-env-bar" : ""}`}>
-      <a className="skip-link" href="#main-content">{locale === "en" ? "Skip to content" : "跳到主要內容"}</a>
+      <a className="skip-link" href="#main-content">{copy[locale].site.brand.skip}</a>
       <EnvironmentBar locale={locale} show={demo} />
       <PublicHeader locale={locale} signInHref={signInHref} />
       {/* Skip-link target: pages render their own <main>, so focus lands just before it. */}

@@ -10,13 +10,13 @@ import { loadOgFont } from "@/lib/og-font";
 export const runtime = "nodejs";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "SME Scanner Visibility Workspace";
+export const alt = "Kinnso OS by Fimmick";
 
 const INK = "#18181b";
 const LIME = "#f39a3d";
 const MUTED = "#c9c4bf";
 
-const brand = "SME Scanner";
+const brand = "Kinnso OS";
 const byline = "BY FIMMICK";
 const headline = ["Evidence first,", "action next."];
 const subtitle = "證據為先，行動為本。";
