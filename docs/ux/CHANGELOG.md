@@ -2,6 +2,18 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## Phase 2: public site (2026-10-20)
+
+- **Kinnso OS brand** in the header, footer, page titles and Open Graph images, with a simpler nav (How it works · Pricing · Methodology) and one Free scan button.
+- **Landing page** cut from 13 sections to 7:
+  - One value line, the business field, an explicit market and one Start free scan button.
+  - An 8-second illustration with no numbers or real business.
+  - Then how it works, what we check, a Demo-labelled sample report, Free and Growth pricing, a five-question FAQ and a trust strip.
+  - About 5,200 px tall on a phone instead of 15,500, with no photos.
+- **Methodology and Trust** rebuilt with the shared visuals. The comparison table and how the work is prepared moved to Methodology, without agent names.
+- **Honesty:** the hero no longer promises more customers (G-8), and the landing no longer claims a response-rate rise that the demo data contradicts (G-11).
+- **CSS:** 36 KB of dead legacy rules removed, with no visual change elsewhere.
+
 ## Phase 1B: visual explanation and motion (2026-10-20)
 
 - **Motion:** CSS presets with the still state as the default, plus small hooks (1.1 KB gzipped). Reduced motion shows every final state at once.
