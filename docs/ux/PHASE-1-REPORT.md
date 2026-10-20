@@ -1,13 +1,13 @@
 # Phase 1 report: design system
 
-Date: 2026-10-19 · Branch: `ux/phase-1-design-system`, cut from `ux/guardrail-fixes` (PR #94) · Not pushed.
+Date: 2026-10-19 · Branch: `ux/phase-1-design-system`, cut from `ux/guardrail-fixes` (PR #94).
 
 Phase 0 (the audit, the target information architecture and the screenshots) is on `claude/optimistic-meitner-r5ntsa`. This phase follows the plan approved on 2026-10-19 and the decisions taken that day:
 
 | Decision | Choice |
 |---|---|
 | Brand colour | Kinnso orange |
-| Dark mode | Workspace only; follows the device, plus a manual switch |
+| Dark mode | Workspace only; light by default, with a Light / Dark / Match device switch (decided 2026-10-20) |
 | Fonts | System fonts only |
 | Name | Kinnso OS |
 | Ownership claim | OAuth-verified claim on |
@@ -20,7 +20,7 @@ Phase 0 (the audit, the target information architecture and the screenshots) is 
 | 1.2–1.3 | `8fd239f` | `app/styles/tokens.css` is now the one token source: colour, type, space, radius, elevation, motion and z-index, with light values and workspace-dark values. `app/globals.css` fixes the cascade-layer order: `theme, tokens, base, components, utilities, legacy, i18n, a11y`. The four duplicated `:root` sets and the `.public-site` / `.workspace-shell` remaps are gone, so pop-up overlays now get Kinnso tokens too. `--teal` and `--lime` (orange in all but name) are kept only as compatibility aliases. |
 | 1.4 | `dca541a`, `e837739`, `3fabf1d` | **Removed:** 541 unused legacy rules (156 class names). **Floors:** a 12 px minimum font size (206 declarations raised); 16 width breakpoints collapsed to 639/767/1023/1279 plus one 380 px header exception. **Tokens:** about 330 hard-coded colours replaced by semantic tokens, so the workspace can go dark. Light mode was verified pixel-stable after each step. |
 | 1.5 | `e837739` | **Chinese typography (`i18n` layer):** strict line breaking (kinsoku), body line height 1.75, heading line height ≥ 1.25, word-kept balanced headings. **Fonts:** a per-locale system stack (PingFang HK / TC → Microsoft JhengHei → Noto Sans HK / TC). **Touch and focus (`a11y` layer):** 44 px touch targets on touch screens, and a focus ring that survives forced-colours mode. |
-| Dark mode | `17c9bcc` | **Behaviour:** follows the device, with a Light / Dark / Match device switch in the workspace top bar. A pre-paint script prevents a light flash. The `html[data-theme]` attribute is removed when leaving the workspace, so public pages stay light. **Shared components:** toasts follow the page theme, and Tailwind's `dark:` variant now keys off the attribute rather than the OS setting. **Dependencies:** `next-themes` and the unused Inter font package are removed. |
+| Dark mode | `17c9bcc`, follow-up | **Behaviour:** light by default; a Light / Dark / Match device switch in the workspace top bar stores the owner's choice, and only Match device follows the OS. A pre-paint script prevents a light flash. The `html[data-theme]` attribute is removed when leaving the workspace, so public pages stay light. **Shared components:** toasts follow the page theme, and Tailwind's `dark:` variant now keys off the attribute rather than the OS setting. **Dependencies:** `next-themes` and the unused Inter font package are removed. |
 | 1.6 | `4ef7546`, `de27304` | **Kit (`components/kinnso/`):** PageHeader, StatCard, ScoreDial, CoverageMeter, EvidenceBadge, FactTypeBadge plus a legend, ActionCard, ApprovalBar, VersionDiff, EmptyState, ErrorState, PartialDataState, PermissionDenied, DataTable, ConfirmDialog, CommandPalette and skeletons. **Guardrails enforced by the component inputs:** a stat card needs a source and an observed date; null shows "Unknown" (never 0); a change figure shows only for a comparable pair; a withheld score shows "No score yet". **Strings:** `lib/copy-ui.ts` in three locales. **Command palette:** built on Radix Dialog with an ARIA combobox; no `cmdk`. |
 | 1.7 | `730c01c` | `product-ui.tsx` (328 lines) is split into `components/product/*`, with a re-export barrel so no importers change. The action-detail helpers move out to their own file. See the deviations below. |
 | 1.8 | `b86c0e8` | `/[locale]/dev/design-system` shows every token and component, with dark-preview, reduced-motion and locale switches. A test checks that it answers 404 in production, is noindex, and is absent from the sitemap. Verified against `next start`: the page returns 404 while `/en/methodology` returns 200. |
@@ -39,7 +39,7 @@ Phase 0 (the audit, the target information architecture and the screenshots) is 
 | Breakpoints | 16 | 4 + 1 narrow-phone exception |
 | axe-core violations, 31 page states × 390/1440 × 3 locales | 108 nodes (105 colour contrast) | **0** |
 | Horizontal overflow at 390/768/1024/1440 | none | none |
-| Dark mode | none (shadcn `dark:` classes leaked under OS dark) | workspace only, device + switch |
+| Dark mode | none (shadcn `dark:` classes leaked under OS dark) | workspace only, light by default + switch |
 
 ## Before and after
 
@@ -55,7 +55,7 @@ Captures come from the local fixture stack at 390 and 1440 px. Every step was di
 | Actions | [mobile](phase-1/compare/actions-zh-HK-mobile.jpg) | [desktop](phase-1/compare/actions-zh-HK-desktop.jpg) |
 | Action detail | [mobile](phase-1/compare/action-detail-zh-HK-mobile.jpg) | [desktop](phase-1/compare/action-detail-zh-HK-desktop.jpg) |
 
-- **Dark workspace:** captured with the device set to dark, in [phase-1/dark/](phase-1/dark/) (Today, Actions, Action detail and Brand at 390 and 1440).
+- **Dark workspace:** captured with dark selected, in [phase-1/dark/](phase-1/dark/) (Today, Actions, Action detail and Brand at 390 and 1440).
 - **Design-system gallery:** [light](phase-1/design-system-en.jpg) and [dark](phase-1/design-system-zh-HK-dark.jpg).
 
 ### Intended visual changes
@@ -96,7 +96,7 @@ New tests:
 1. **Splitting oversized files (1.7)** was done only for `product-ui.tsx` and the action-detail helpers.
    - The 860-line action-detail editor, `landing-page.tsx`, `scan-page.tsx`, `scanning-page.tsx` and `assistant-sheet.tsx` are each rewritten in a later phase: Phase 2 (landing), Phase 3 (scan and scanning) and Phase 4 (action side panel and assistant drawer).
    - Splitting them now would be thrown away, and the editor's sections all share one block of state, so a "pure move" is not possible without a refactor.
-   - **Your call:** split them now, or let each phase rebuild them under 300 lines.
+   - **Decided 2026-10-20:** each file is split in the phase that rewrites it, under 300 lines per file.
 2. **The legacy layer sits after `utilities`, not before.** Tailwind utilities therefore do not yet override legacy class rules. Putting legacy first would restyle every shadcn button and many cards at once. New components use new class names, so they are unaffected. Each page leaves the legacy layer when it is redesigned.
 3. **Stylesheets are not physically merged** into `base/components`. The five legacy files stay as ordered files in one layer, keeping their git history. Merging text gives no runtime benefit, and the rules disappear page by page in Phases 2–4.
 4. **There are four breakpoints, not three:** Tailwind's 639/767/1023/1279, plus a 380 px exception for the header wordmark.
@@ -106,16 +106,19 @@ New tests:
 
 ## Risks
 
-- **Dark mode coverage.** Today, Actions, Action detail, Insights and Brand were checked. Less common workspace states (dialogs, the GBP publish card, offers, team and billing tables) still contain some of the 100 literal colours left in legacy CSS. Owners whose device is set to dark will see dark mode as soon as this ships. **Question below.**
+- **Dark mode coverage.** Today, Actions, Action detail, Insights and Brand were checked. Less common workspace states (dialogs, the GBP publish card, offers, team and billing tables) still contain some of the 100 literal colours left in legacy CSS. Because the workspace is light by default, only owners who choose Dark or Match device see these states until Phase 4 re-checks them.
 - **Taller pages.** The type floor and Chinese line height make pages taller. No horizontal overflow and no clipped text were found in the captures, but fixed-height containers in rarely seen states have not all been visited.
 - **Existing caption overlap.** The landing hero photo caption overlaps the hero text at 390 px. This is in the baseline too; the hero is rebuilt in Phase 2.
 
+## Resolved after review (2026-10-20)
+
+1. **Dark mode rollout:** light by default. Dark and Match device are explicit choices in the switch, and the choice is stored.
+2. **Oversized files:** split in the phase that rewrites each one (Phase 2 landing; Phase 3 scan and scanning; Phase 4 action editor and assistant).
+
 ## Open questions
 
-1. **Dark mode rollout.** Ship following the device as soon as this merges, or default every owner to light until Phase 4 has re-checked every workspace state? Defaulting to light is one constant (`"system"` → `"light"` as the default in `lib/theme.ts`), and the switch would still offer dark.
-2. **Oversized files.** Split now, or in the phase that rewrites each one (deviation 1)?
-3. **Still open from Phase 0:**
-   - Assistant name
-   - Whether bulk approve is allowed
-   - Fix Pack drafts
-   - Merging Create, Offers and Starter pack. These decide Phase 4.
+Still open from Phase 0; these decide Phase 4:
+- Assistant name
+- Whether bulk approve is allowed
+- Fix Pack drafts
+- Merging Create, Offers and Starter pack

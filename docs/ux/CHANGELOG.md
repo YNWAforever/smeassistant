@@ -10,8 +10,8 @@ Each phase has a full report in `docs/ux/`.
   - Pre-redesign CSS moved to `app/styles/legacy/`, with 541 unused rules removed.
 - **Kinnso orange brand, AA contrast:** zero axe violations across 31 page states, two widths and three locales.
 - **Workspace dark mode**
-  - Follows the device.
-  - Light / dark / device switch in the top bar.
+  - Light by default.
+  - Light / Dark / Match device switch in the top bar; the choice is stored.
   - Public pages always light.
 - **Typography**
   - 12 px type floor.
