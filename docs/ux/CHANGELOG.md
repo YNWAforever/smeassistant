@@ -20,7 +20,7 @@ Each phase has a full report in `docs/ux/`.
   - 44 px touch targets on touch screens.
 - **Component kit:** `components/kinnso/`, with guardrails built into the props.
 - **Internal gallery:** `/[locale]/dev/design-system`, not served in production.
-- **Dependencies removed:** `next-themes` and the Inter font package.
+- **Dependencies removed:** `next-themes` and the Inter and Geist font packages; text uses system fonts only.
 
 ## Guardrail fixes (PR #94, before Phase 1)
 
