@@ -52,6 +52,8 @@ export type ShellCopy = {
    * can change it; the server checks stay the authority. {role} and {name} are
    * filled by components/states/role-notice.tsx.
    */
+  /** Signed-in tasks outside a workspace (sign-in, onboarding, choosing a workspace). */
+  auth: { help: string; helpLabel: string; home: string }
   access: {
     readOnly: string
     ownerOnly: string
@@ -143,6 +145,7 @@ export const shellEn: ShellCopy = {
     done: "{approved} of {total} approved",
     version: "Version {n}",
   },
+  auth: { help: "Help", helpLabel: "Questions about Kinnso OS", home: "Kinnso OS home" },
   access: {
     readOnly: "Read only",
     ownerOnly: "Owner only",
@@ -234,6 +237,7 @@ export const shellZhHK: ShellCopy = {
     done: "已審批 {total} 份中的 {approved} 份",
     version: "第 {n} 版",
   },
+  auth: { help: "說明", helpLabel: "關於 Kinnso OS 的常見問題", home: "Kinnso OS 首頁" },
   access: {
     readOnly: "只讀",
     ownerOnly: "只限店主",
@@ -325,6 +329,7 @@ export const shellZhTW: ShellCopy = {
     done: "已核准 {total} 份中的 {approved} 份",
     version: "第 {n} 版",
   },
+  auth: { help: "說明", helpLabel: "關於 Kinnso OS 的常見問題", home: "Kinnso OS 首頁" },
   access: {
     readOnly: "唯讀",
     ownerOnly: "僅限店家負責人",

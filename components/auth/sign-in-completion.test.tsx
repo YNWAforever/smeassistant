@@ -24,7 +24,7 @@ it("shows a server-authoritative no-access state and reports a failed account ch
   mocks.fetch.mockResolvedValue(Response.json({ kind: "no_access" })); mocks.signOut.mockRejectedValue(new Error("fixture")); vi.stubGlobal("fetch", mocks.fetch);
   const { container } = render(<SignInCompletion flow={flow} />);
   await screen.findByText(/does not have access/i);
-  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("heading", { name: /sign in to your workspace/i })));
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("heading", { name: /sign in to your kinnso\sos workspace/i })));
   fireEvent.click(screen.getByRole("button", { name: /change account/i }));
   await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/we could not change the account/i)); expect(container.textContent).not.toContain("fixture");
 });
@@ -52,7 +52,7 @@ it("uses Google technical recovery for a rejected completion request and starts 
   render(<SignInCompletion flow={flow} />);
   await screen.findByRole("alert");
   expect(screen.getByRole("alert")).toHaveTextContent(/could not finish Google sign-in/i);
-  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("heading", { name: /sign in to your workspace/i })));
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("heading", { name: /sign in to your kinnso\sos workspace/i })));
   fireEvent.click(screen.getByRole("button", { name: /start Google sign-in again/i }));
   await waitFor(() => expect(mocks.social).toHaveBeenCalledWith(expect.objectContaining({ provider: "google" })));
 });
@@ -82,7 +82,7 @@ it("waits for successful sign-out before returning to a fresh start state", asyn
   mocks.fetch.mockResolvedValue(Response.json({ kind: "no_access" })); mocks.signOut.mockResolvedValue(undefined); vi.stubGlobal("fetch", mocks.fetch);
   render(<SignInCompletion flow={flow} />);
   await screen.findByText(/does not have access/i);
-  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("heading", { name: /sign in to your workspace/i })));
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("heading", { name: /sign in to your kinnso\sos workspace/i })));
   fireEvent.click(screen.getByRole("button", { name: /change account/i }));
   await waitFor(() => expect(mocks.signOut).toHaveBeenCalledTimes(1));
   expect(mocks.replace).toHaveBeenCalledWith(expect.stringContaining("/en/owner/sign-in?returnTo="));
@@ -105,7 +105,7 @@ it("moves focus to the heading while a user-requested account change is pending"
   const change = screen.getByRole("button", { name: /change account/i });
   change.focus(); fireEvent.click(change);
   await screen.findByRole("status");
-  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("heading", { name: /sign in to your workspace/i })));
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("heading", { name: /sign in to your kinnso\sos workspace/i })));
 });
 
 it("uses generic technical recovery when callback method context is absent", async () => {

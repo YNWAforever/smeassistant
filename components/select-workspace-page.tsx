@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ArrowRight, Building2, MapPin, ScanSearch } from "lucide-react"
 
-import { PublicPageFrame } from "@/components/product-ui"
+import { AuthFrame } from "@/components/auth/auth-frame"
 import { RoleNotice } from "@/components/states/role-notice"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -58,7 +58,7 @@ export function SelectWorkspacePage({
   const empty = noWorkspaceCopy(locale, oauthClaimEnabled)
   const accountExit = <form action={signOutAction}><Button variant="outline" type="submit">{isChinese ? zhFor(locale, "登出並用另一個電郵登入") : "Sign out and use another email"}</Button></form>
   return (
-    <PublicPageFrame locale={locale}>
+    <AuthFrame locale={locale}>
       <main className="select-workspace-page">
         <header><Badge variant="outline">{isChinese ? `已登入 · ${email}` : `Signed in as ${email}`}</Badge><h1>{isChinese ? zhFor(locale, "選擇工作台或地點") : "Choose a workspace or location"}</h1><p>{isChinese ? zhFor(locale, "選擇後會再次檢查你的角色及地點範圍。") : "Your role and location scope are re-checked after selection."}</p></header>
         {denied && <RoleNotice kind="notMember" name={denied} locale={locale} />}
@@ -103,6 +103,6 @@ export function SelectWorkspacePage({
         )}
         {cards.length > 0 && <div className="flow-card-footer">{accountExit}</div>}
       </main>
-    </PublicPageFrame>
+    </AuthFrame>
   )
 }

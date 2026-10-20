@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { ArrowRight, BadgeCheck, Check, CircleAlert, Globe2, ScanSearch, ShieldCheck, TriangleAlert, UserCheck } from "lucide-react"
 
-import { CapabilityBadge, PublicPageFrame } from "@/components/product-ui"
+import { AuthFrame } from "@/components/auth/auth-frame"
+import { CapabilityBadge } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -313,7 +314,7 @@ function OnboardingForm({ locale, claim, plan, resumeStep, saved = null, savedUn
     )
 
   return (
-    <PublicPageFrame locale={locale}>
+    <AuthFrame locale={locale}>
       <main className="onboarding-page">
         <div className="onboarding-head"><div><Badge variant="outline">{isChinese ? "延續認領流程" : "Claim continuation"}{claim ? ` · ${claim}` : ""}</Badge><h1>{t(locale, "onboarding.title")}</h1><p>{t(locale, "onboarding.intro")}</p>{plan && <Badge>{isChinese ? "已保留所選方案" : "Selected plan preserved"} · {plan === "multi" ? (isChinese ? zhFor(locale, "多地點") : "Multi-location") : (isChinese ? zhFor(locale, "增長工作台") : "Growth Workspace")}</Badge>}</div><Badge variant="outline">{ownershipLabel}</Badge></div>
         <div className="onboarding-layout">
@@ -331,6 +332,6 @@ function OnboardingForm({ locale, claim, plan, resumeStep, saved = null, savedUn
           </section>
         </div>
       </main>
-    </PublicPageFrame>
+    </AuthFrame>
   )
 }

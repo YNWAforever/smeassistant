@@ -62,7 +62,7 @@ export type SignInCopy = {
 };
 
 const en: SignInCopy = {
-  title: "Sign in to your workspace",
+  title: "Sign in to your Kinnso\u00a0OS workspace",
   privacy: "We use your sign-in only to identify you. Workspace access and actions are checked separately.",
   google: "Continue with Google",
   openingGoogle: "Opening Google…",
@@ -109,7 +109,7 @@ const en: SignInCopy = {
 };
 
 const zhHK: SignInCopy = {
-  title: "登入你的工作台",
+  title: "登入你的 Kinnso\u00a0OS 工作台",
   privacy: "登入只用於識別你；工作台存取和每項操作仍會獨立核實。",
   google: "使用 Google 繼續",
   openingGoogle: "正在開啟 Google…",
@@ -164,7 +164,7 @@ const zhHK: SignInCopy = {
  * 您 not 你, 查證 not 核實, 電子郵件 not 電郵, 收件匣 not 收件箱, 無法 not 未能.
  */
 const zhTW: SignInCopy = {
-  title: "登入您的工作台",
+  title: "登入您的 Kinnso\u00a0OS 工作台",
   privacy: "登入只用於識別您；工作台存取和每項操作仍會獨立查證。",
   google: "使用 Google 繼續",
   openingGoogle: "正在開啟 Google…",

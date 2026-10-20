@@ -66,3 +66,19 @@ main.route-state { min-height: 70vh; padding-top: 12vh; }
   .role-notice { grid-template-columns: 20px minmax(0, 1fr); }
   .role-notice > [data-slot="badge"] { grid-column: 2; justify-self: start; }
 }
+
+/* AuthFrame: sign-in, onboarding and choosing a workspace. */
+.auth-site { min-height: 100svh; background: var(--canvas); }
+.auth-header { position: sticky; top: 0; z-index: 20; border-bottom: 1px solid var(--line); background: color-mix(in oklch, var(--paper) 92%, transparent); backdrop-filter: blur(8px); }
+.auth-header-inner { display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: 1120px; min-height: 64px; margin: 0 auto; padding: 0 16px; }
+.auth-header-actions { display: flex; align-items: center; gap: 8px; }
+.auth-help { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 10px; border-radius: 999px; color: var(--ink-2); font-weight: 600; font-size: 0.875rem; }
+.auth-help:hover { color: var(--ink); background: var(--brand-softer); }
+.auth-help svg { width: 18px; height: 18px; }
+@media (max-width: 479px) { .auth-help span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } }
+@media (max-width: 639px) {
+  .auth-header .locale-full { display: none; }
+  .auth-header .locale-short { display: inline; }
+  .auth-header .locale-trigger { width: auto; min-width: 0; padding-inline: 10px; }
+  .auth-header .brand-lockup small { display: none; }
+}

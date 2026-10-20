@@ -4,7 +4,7 @@ import { act, fireEvent, waitFor } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { hydrateRoot, type Root } from "react-dom/client";
 import type { ReactNode } from "react";
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn() }), usePathname: () => "/zh-HK/owner/sign-in", useSearchParams: () => new URLSearchParams() }));
 vi.mock("@/components/product-ui", () => ({ PublicPageFrame: ({ children }: { children: ReactNode }) => children }));
 import { SignInPage } from "@/components/sign-in-page";
 let root: Root | undefined;
