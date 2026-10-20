@@ -16,8 +16,13 @@ import type { ActionDetailViewProps } from "@/components/workspace/action-detail
  * workspace or not readable by this member; callers turn that into a 404 or
  * simply no panel. The read model, offer card, audit rows, scoped assets,
  * publish panel and owner check are loaded exactly as the detail page did.
+ * An id that is not a UUID can name no action, so it is null without a read
+ * (the database would reject it and turn a bad link into a server error).
  */
+const ACTION_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function loadActionDetailProps(page: OwnerPageContext, actionId: string, initialVersionId: string | null): Promise<ActionDetailViewProps | null> {
+  if (!ACTION_ID_RE.test(actionId)) return null;
   const detail = await getAction(page.ctx, actionId);
   if (!detail) return null;
 
