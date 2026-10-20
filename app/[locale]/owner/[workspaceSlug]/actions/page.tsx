@@ -5,6 +5,8 @@ import { Maximize2, X } from "lucide-react";
 import { UUID_RE } from "@/app/api/actions/_shared/mutation";
 import { ActionDetailView } from "@/components/workspace/action-detail-view";
 import { loadActionDetailProps } from "@/lib/workspace/action-detail-props";
+import { bulkApproveItems, isBulkApprovable } from "@/lib/workspace/bulk-approve";
+import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
 import { withLocation } from "@/lib/workspace/format";
 
 import { ActionsListView, tabHref } from "@/components/workspace/actions-list-view";
@@ -81,6 +83,10 @@ export default async function ActionsRoute(props: OwnerPageProps) {
       <ActionDetailView {...openDetail} embedded />
     </aside>
   ) : undefined;
+  // Bulk approve: read the full text only for drafts that already qualify, so each can be read before approving.
+  const candidates = result.actions.filter((action) => isBulkApprovable(action, page.membership));
+  const candidateVersions = candidates.length ? await workspaceReadRepository().versions(page.ctx.workspace.id, candidates.map((action) => action.id)).catch(() => []) : [];
+  const bulkApprove = bulkApproveItems(candidates, page.membership, candidateVersions);
   const members = (await membershipRepository.team(page.ctx.workspace.id)).filter(m => m.accepted_at && m.user_id && ["owner","manager"].includes(m.role)).map(m => ({ id: m.user_id!, name: m.email }));
   return (
     <ActionsListView
@@ -96,6 +102,7 @@ export default async function ActionsRoute(props: OwnerPageProps) {
       bulkEnabled={actionBulkAssignEnabled()}
       members={members}
       panel={panel}
+      bulkApprove={bulkApprove}
     />
   );
 }

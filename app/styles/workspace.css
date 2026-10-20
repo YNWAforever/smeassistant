@@ -58,3 +58,18 @@ a.destination-row[aria-current="true"] { border-color: var(--brand); }
 .action-progress { display: grid; gap: 10px; margin-bottom: 16px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
 .action-progress-diff > summary { cursor: pointer; min-height: 32px; color: var(--brand-text); font-size: 14px; font-weight: 600; }
 .action-progress-diff > summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+
+/* Bulk approve: safe drafts, each read before approval */
+.bulk-approve { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; margin-bottom: 16px; padding: 16px 18px; border: 1px solid var(--brand); border-radius: 14px; background: var(--brand-softer); }
+.bulk-approve > div { flex: 1 1 280px; min-width: 0; }
+.bulk-approve h2 { margin: 0 0 4px; font-size: 16px; }
+.bulk-approve p { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.5; }
+.bulk-approve-dialog { max-height: 90dvh; overflow-y: auto; }
+.bulk-approve-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.bulk-approve-list li { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
+.bulk-approve-list li[data-outcome="approved"] { border-color: var(--success-border); background: var(--success-soft); }
+.bulk-approve-list small { color: var(--ink-3); }
+.bulk-approve-list blockquote { margin: 0; padding: 8px 12px; border-left: 3px solid var(--line-warm); color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.bulk-approve-read { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; cursor: pointer; }
+.bulk-approve-status { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
+.bulk-approve-status svg { width: 16px; height: 16px; }

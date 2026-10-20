@@ -32,6 +32,21 @@ export type ShellCopy = {
     tabs: { all: string; needs_input: string; drafts: string; awaiting_approval: string; completed: string }
   }
   panel: { label: string; preview: string; close: string; fullPage: string }
+  bulk: {
+    title: string
+    body: string
+    open: string
+    dialogTitle: string
+    dialogBody: string
+    read: string
+    approve: string
+    approving: string
+    cancel: string
+    approved: string
+    failed: string
+    done: string
+    version: string
+  }
 }
 
 export const shellEn: ShellCopy = {
@@ -92,6 +107,21 @@ export const shellEn: ShellCopy = {
     tabs: { all: "All", needs_input: "Needs input", drafts: "Drafts", awaiting_approval: "Approvals", completed: "Completed" },
   },
   panel: { label: "Action details", preview: "Preview", close: "Close details", fullPage: "Open full page" },
+  bulk: {
+    title: "{count} drafts ready to approve",
+    body: "Review replies and social posts with no missing facts or warnings. Read each one before you approve.",
+    open: "Review and approve",
+    dialogTitle: "Approve drafts",
+    dialogBody: "Tick each draft you have read. Each approval locks that exact version; nothing is published or counted until you export it.",
+    read: "I have read this draft",
+    approve: "Approve {count} selected",
+    approving: "Approving…",
+    cancel: "Close",
+    approved: "Approved",
+    failed: "Not approved: open it to review",
+    done: "{approved} of {total} approved",
+    version: "Version {n}",
+  },
 }
 
 export const shellZhHK: ShellCopy = {
@@ -152,6 +182,21 @@ export const shellZhHK: ShellCopy = {
     tabs: { all: "全部", needs_input: "需要資料", drafts: "草稿", awaiting_approval: "待審批", completed: "已完成" },
   },
   panel: { label: "行動詳情", preview: "預覽", close: "關閉詳情", fullPage: "開啟完整頁面" },
+  bulk: {
+    title: "{count} 份草稿可審批",
+    body: "沒有缺少資料或警告的評論回覆及社交帖文。請逐份閱讀後才審批。",
+    open: "審閱並審批",
+    dialogTitle: "審批草稿",
+    dialogBody: "請勾選每份已閱讀的草稿。每次審批只鎖定該版本；匯出前不會發佈，亦不計用量。",
+    read: "我已閱讀這份草稿",
+    approve: "審批已選的 {count} 份",
+    approving: "審批中…",
+    cancel: "關閉",
+    approved: "已審批",
+    failed: "未能審批：請開啟審閱",
+    done: "已審批 {total} 份中的 {approved} 份",
+    version: "第 {n} 版",
+  },
 }
 
 export const shellZhTW: ShellCopy = {
@@ -212,4 +257,19 @@ export const shellZhTW: ShellCopy = {
     tabs: { all: "全部", needs_input: "需要資料", drafts: "草稿", awaiting_approval: "待核准", completed: "已完成" },
   },
   panel: { label: "行動詳情", preview: "預覽", close: "關閉詳情", fullPage: "開啟完整頁面" },
+  bulk: {
+    title: "{count} 份草稿可核准",
+    body: "沒有缺少資料或警告的評論回覆與社群貼文。請逐份閱讀後再核准。",
+    open: "審閱並核准",
+    dialogTitle: "核准草稿",
+    dialogBody: "請勾選每份已閱讀的草稿。每次核准只鎖定該版本；匯出前不會發布，也不計用量。",
+    read: "我已閱讀這份草稿",
+    approve: "核准已選的 {count} 份",
+    approving: "核准中…",
+    cancel: "關閉",
+    approved: "已核准",
+    failed: "無法核准：請開啟審閱",
+    done: "已核准 {total} 份中的 {approved} 份",
+    version: "第 {n} 版",
+  },
 }
