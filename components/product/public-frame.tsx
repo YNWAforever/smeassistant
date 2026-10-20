@@ -26,7 +26,7 @@ export function LocaleSelect({ locale }: { locale: PrototypeLocale }) {
   }
   return (
     <Select value={locale} onValueChange={changeLocale}>
-      <SelectTrigger className="locale-trigger" aria-label={locale === "en" ? "Language" : "介面語言"}>
+      <SelectTrigger className="locale-trigger" aria-label={copy[locale].product.language}>
         <SelectValue><span className="locale-full">{LOCALE_NAMES[locale]}</span><span className="locale-short" aria-hidden="true">{LOCALE_SHORT_NAMES[locale]}</span></SelectValue>
       </SelectTrigger>
       <SelectContent align="end">

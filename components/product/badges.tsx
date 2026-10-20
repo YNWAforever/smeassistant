@@ -38,7 +38,7 @@ export function CapabilityBadge({ value, context }: { value: Capability; context
   }[value]
   return (
     <Badge variant="outline" className={className} title={context === "action" ? copy[locale].workspace.verification.featureHelp : undefined}>
-      {value === "Live" && context === "action" ? copy[locale].workspace.verification.featureAvailable : locale === "en" ? value : ({ Live: "已啟用", Beta: "測試版", Demo: "示範", "Requires connection": "需要連接", Planned: "計劃中" } as Record<Capability, string>)[value]}
+      {value === "Live" && context === "action" ? copy[locale].workspace.verification.featureAvailable : copy[locale].product.capability[value]}
     </Badge>
   )
 }
@@ -81,6 +81,5 @@ export function TrendIcon({ delta }: { delta: number | null }) {
 export function FactType({ type }: { type: "Observed" | "Inference" | "Recommended" | "Attributed" | "Estimated" | "Unknown" }) {
   const pathname = usePathname()
   const locale = normaliseLocale(pathname.split("/").filter(Boolean)[0])
-  const labels = { Observed: "已觀察", Inference: "推論", Recommended: "建議", Attributed: "可能相關", Estimated: "估算", Unknown: "未知" }
-  return <span className={`fact-type fact-${type.toLowerCase()}`}>{locale === "en" ? type : labels[type]}</span>
+  return <span className={`fact-type fact-${type.toLowerCase()}`}>{copy[locale].product.factType[type]}</span>
 }
