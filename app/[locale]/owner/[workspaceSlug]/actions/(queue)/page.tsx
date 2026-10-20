@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Maximize2, X } from "lucide-react";
 
 import { UUID_RE } from "@/app/api/actions/_shared/mutation";
-import { ActionDetailView } from "@/components/workspace/action-detail-view";
+import { ActionDetailPanel } from "@/components/workspace/action-detail-panel";
 import { loadActionDetailProps } from "@/lib/workspace/action-detail-props";
 import { bulkApproveItems, isBulkApprovable } from "@/lib/workspace/bulk-approve";
 import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
@@ -80,7 +80,7 @@ export default async function ActionsRoute(props: OwnerPageProps) {
         <Link href={`${base}/actions${closeQuery.size ? `?${closeQuery}` : ""}`} scroll={false}><X aria-hidden="true" />{panelCopy.close}</Link>
         <Link href={withLocation(`${base}/actions/${openId}`, page.locationSlug)}><Maximize2 aria-hidden="true" />{panelCopy.fullPage}</Link>
       </div>
-      <ActionDetailView {...openDetail} embedded />
+      <ActionDetailPanel {...openDetail} />
     </aside>
   ) : undefined;
   // Bulk approve: read the full text only for drafts that already qualify, so each can be read before approving.
