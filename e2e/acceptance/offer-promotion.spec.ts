@@ -16,7 +16,7 @@ async function clickUntil(target: Locator, opened: Locator) {
   }).toPass({ timeout: 60000 });
 }
 
-// zh-HK strings, from lib/copy-workspace.ts (offers) and components/workspace/action-detail-client.tsx.
+// zh-HK strings, from lib/copy-workspace.ts (offers) and lib/copy-action.ts.
 const OFFER_CHANGED = "優惠在這份草稿撰寫後已更改。請按目前的優惠重新生成草稿。";
 
 test("an offer becomes two drafts, one is approved and exported, and an edited offer refuses the stale draft", async ({ page, merchant, environment }) => {

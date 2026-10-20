@@ -11,7 +11,7 @@ async function clickUntil(target: Locator, opened: Locator) {
   }).toPass({ timeout: 60000 });
 }
 
-// zh-HK strings, from lib/copy-workspace.ts (packs) and components/workspace/action-detail-client.tsx.
+// zh-HK strings, from lib/copy-workspace.ts (packs) and lib/copy-action.ts.
 const DISCLOSURE = "最多會建立 3 份草稿。核准並匯出草稿前不會計算用量；每份匯出的草稿計為 1 次交付。";
 const DRAFT_READY = "草稿已備妥";
 const NEEDS_FACTS = "需要你補充資料";

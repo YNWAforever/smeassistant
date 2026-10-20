@@ -10,7 +10,7 @@ const LOCALES: PrototypeLocale[] = ["en", "zh-HK", "zh-TW"];
 const REASONS = ["already_used", "job_limit", "ip_limit", "daily_limit", "budget", "paused", "unavailable", "invalid_input"] as const;
 const REVIEW = "The roast goose was cold and the wait was long. 燒鵝凍咗 SECRET-INPUT";
 
-// The workspace guardrail copy (components/workspace/action-detail-client.tsx), worded for a visitor
+// The workspace guardrail copy (lib/copy-action.ts), worded for a visitor
 // who has nothing to approve.
 const WARNING_TEXT = {
   compensation_promise: {
