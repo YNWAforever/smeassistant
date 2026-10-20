@@ -60,7 +60,7 @@ for (const { locale, finish } of [
   await signIn(page, environment, merchant);
   await page.setViewportSize(locale === "en" ? { width: 1280, height: 900 } : { width: 390, height: 844 });
   await page.goto(`/${locale}/owner/onboarding?claim=${slug}`);
-  await expect(page.locator(".step-kicker")).toHaveText(locale === "en" ? "Step 3 of 3" : "第 2 步，共 2 步");
+  await expect(page.locator(".step-kicker")).toHaveText(locale === "en" ? "Step 3 of 3" : "第 3 步，共 3 步");
   await expect(page.locator("#primary-address")).toHaveValue("12 Fixture Road");
   await expect(page.locator("#instagram-handle")).toHaveCount(0);
   await expect(page.locator(".onboarding-form > details")).not.toHaveAttribute("open");
@@ -73,9 +73,9 @@ for (const { locale, finish } of [
   // A real browser runs the click's default action after React updates the
   // step. Continue must not become the newly rendered form's submit button.
   await page.getByRole("button", { name: locale === "en" ? "Back" : "返回", exact: true }).click();
-  await expect(page.locator(".step-kicker")).toHaveText(locale === "en" ? "Step 2 of 3" : "第 1 步，共 2 步");
+  await expect(page.locator(".step-kicker")).toHaveText(locale === "en" ? "Step 2 of 3" : "第 2 步，共 3 步");
   await page.getByRole("button", { name: locale === "en" ? "Continue" : "繼續", exact: true }).click();
-  await expect(page.locator(".step-kicker")).toHaveText(locale === "en" ? "Step 3 of 3" : "第 2 步，共 2 步");
+  await expect(page.locator(".step-kicker")).toHaveText(locale === "en" ? "Step 3 of 3" : "第 3 步，共 3 步");
   await expect(page.getByRole("button", { name: finish, exact: true })).toBeEnabled();
   expect(submittedSetups).toHaveLength(0);
   expect(sql(environment.db, `select count(*) from scan_snapshots where job_id='${jobId}';`)).toBe("0");
