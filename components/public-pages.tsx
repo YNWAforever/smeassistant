@@ -44,7 +44,7 @@ export function PricingPage({ locale, market, billing }: { locale: PrototypeLoca
     {
       key: "free",
       label: "一次免費掃描",
-      title: "SME Scanner",
+      title: copy[locale].site.pricing.freeTitle,
       price: "免費",
       cadence: "",
       description: "先看清目前的能見度、證據來源及最值得處理的問題。",
@@ -95,7 +95,7 @@ export function PricingPage({ locale, market, billing }: { locale: PrototypeLoca
     },
   ]) : [
     {
-      key: "free", label: "One free scan", title: "SME Scanner", price: "Free", cadence: "", description: "See current visibility, source evidence and the best issue to tackle first.", meta: "No login to start", features: ["One public evidence scan", "Score with coverage", "Three safe priorities", "Methodology, sources and limitations", liteAllowance], cta: "Start free scan", href: `/${locale}/scan`, featured: false,
+      key: "free", label: "One free scan", title: copy[locale].site.pricing.freeTitle, price: "Free", cadence: "", description: "See current visibility, source evidence and the best issue to tackle first.", meta: "No login to start", features: ["One public evidence scan", "Score with coverage", "Three safe priorities", "Methodology, sources and limitations", liteAllowance], cta: "Start free scan", href: `/${locale}/scan`, featured: false,
     },
     {
       key: "growth", label: "Best for one location", title: "Growth Workspace", price: growthPrice, cadence: ` / ${f.perMonth}`, description: "For a small team that wants recurring improvement without managing a bundle of AI tools.", meta: "1 location", features: [paidAllowance, "Comparable rescans, run whenever you choose", "Complete AI Visibility Team", "Versions, owner approval and proof"], cta: "Start Growth", href: `/${locale}/owner/sign-in?plan=growth`, featured: true,
