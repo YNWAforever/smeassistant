@@ -42,8 +42,11 @@ export function ScanProgress({ sources, locale, label }: { sources: ScanProgress
               ) : (
                 <Icon aria-hidden="true" className="k-state-icon size-4 shrink-0" />
               )}
-              <span className="flex-1 text-sm text-ink">{source.label}</span>
-              <span className="text-xs text-ink-2">{source.detail ?? t.providerStates[source.state]}</span>
+              {/* Label above status: a longer status line never changes the row height (no layout shift). */}
+              <span className="grid min-w-0 flex-1 py-1.5">
+                <span className="text-sm text-ink">{source.label}</span>
+                <span className="text-xs text-ink-2">{source.detail ?? t.providerStates[source.state]}</span>
+              </span>
             </li>
           )
         })}
