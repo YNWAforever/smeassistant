@@ -107,3 +107,11 @@ a.destination-row[aria-current="true"] { border-color: var(--brand); }
 @media (max-width: 767px) {
   .workspace-topbar .locale-trigger [data-slot="select-value"] { flex: none; overflow: visible; }
 }
+
+/* Phone queue: a long status badge ("Approved · export ready") wraps instead of
+   pushing the card past the screen edge, where the page clips it. */
+@media (max-width: 767px) {
+  .action-card { min-width: 0; }
+  .action-card-top,
+  .action-card-badges { flex-wrap: wrap; }
+}
