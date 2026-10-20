@@ -2,6 +2,7 @@ export const supportedLocales = ["en", "zh-HK", "zh-TW"] as const
 import type { PublicCopy } from "@/lib/copy-public"
 import type { PublicInfoCopy } from "@/lib/copy-public-info"
 import type { ReportUiCopy } from "@/lib/copy-report"
+import type { ActionCopy } from "@/lib/copy-action"
 import type { OnboardingCopy } from "@/lib/copy-onboarding"
 import type { ShellCopy } from "@/lib/copy-shell"
 import type { UiCopy } from "@/lib/copy-ui"
@@ -496,6 +497,8 @@ export type Copy = {
   shell: ShellCopy
   /** First-run wizard (lib/copy-onboarding.ts). */
   onboarding: OnboardingCopy
+  /** Action detail: editor, approval, delivery and history (lib/copy-action.ts). */
+  action: ActionCopy
 }
 
 /**

@@ -35,6 +35,7 @@ import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import { auditActorLabel, auditEventLabel } from "@/lib/workspace/audit-labels"
 import { approveVersion, decideVersion, exportVersion, markApplied as markAppliedRequest, retractApplied as retractAppliedRequest, runAction, saveAssistantVersion, saveVersion, updateAction, type ClientResult } from "@/lib/workspace/client"
 import { t } from "@/lib/i18n"
+import { fill } from "@/lib/copy-ui"
 import { aiBudgetRefusal } from "@/lib/budgets/messages"
 import { runErrorLabel } from "@/lib/assistant/draft-failure"
 import { formatOfferDate, isOfferStaleCode, offerStaleKind, type OfferStaleKind } from "@/lib/workspace/offer-format"
@@ -44,7 +45,6 @@ import { EvidenceTab } from "@/components/workspace/action-detail/evidence-tab"
 import { WorkflowTab } from "@/components/workspace/action-detail/workflow-tab"
 import { clientHydrated, originLabel, ownerInputPatch, serverHydrated, subscribeHydration, subscribeOnline } from "@/components/workspace/action-detail/helpers"
 import { guardrailText } from "@/lib/workspace/guardrail-text"
-import { zhFor } from "@/lib/zh-tw"
 import { sourceLabel } from "@/lib/workspace/source-label"
 import { actionVerificationView } from "@/lib/workspace/action-verification"
 import { OwnerReviewCheckPanel } from "@/components/workspace/owner-review-check-panel"
@@ -130,7 +130,7 @@ function VersionBoundActionDetail(props: ActionDetailClientProps) {
 }
 
 function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false, initialVersionId = null, publishPanel = null, ownerCheck = EMPTY_OWNER_CHECK, ownerCheckIdentity, embedded = false }: ActionDetailClientProps) {
-  const isChinese = locale !== "en"
+  const ac = copy[locale].action
   const router = useRouter()
   const base = `/${locale}/owner/${workspaceSlug}`
   const { action, versions, runs, measurements, scanInputs, businessContext, faqQuestions } = detail
@@ -251,10 +251,10 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
   // "Not checked" and "checked, clean" are different facts and must not share
   // a badge.
   const guardrailBadge = guardrailFlags.length > 0
-    ? (isChinese ? `${guardrailFlags.length} 項違規` : `${guardrailFlags.length} flagged`)
+    ? fill(ac.guardrailBadge.flagged, { n: guardrailFlags.length })
     : selectedVersion?.checked
-      ? (isChinese ? "已檢查" : "Checked")
-      : (isChinese ? "未經檢查" : "Not checked")
+      ? ac.guardrailBadge.checked
+      : ac.guardrailBadge.notChecked
   const offersCopy = copy[locale].workspace.offers
   // Judged against the selected version's recorded revision: approve and export act on that row,
   // and the server checks that row's revision (an older approved version can be stale while the latest is not).
@@ -266,9 +266,9 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
   // first_exported_at (the 'exported' state stays a fallback for older rows).
   const exported = Boolean(selectedVersion?.first_exported_at) || selectedVersion?.delivery_state === "exported"
   const saveBeforeGenerationMessage = t(locale, "editor.saveBeforeGeneration")
-  const versionLabel = (no: number) => (isChinese ? `第 ${no} 版` : `Version ${no}`)
-  const versionName = selectedVersion ? versionLabel(selectedVersion.version_no) : (isChinese ? "尚未有版本" : "No version yet")
-  const approvalText = (state: VersionRow["approval_state"] | null) => (state ? stateLabel(state, locale) : (isChinese ? "尚未有版本" : "No version yet"))
+  const versionLabel = (no: number) => fill(ac.versionLabel, { n: no })
+  const versionName = selectedVersion ? versionLabel(selectedVersion.version_no) : ac.noVersion
+  const approvalText = (state: VersionRow["approval_state"] | null) => (state ? stateLabel(state, locale) : ac.noVersion)
   const canAssert = inScope && effectiveRole !== "viewer"
   const canEdit = hydrated && !offline && inScope && effectiveRole !== "viewer" && busy === null && pendingSelect === null
   const canApprove = canEdit && selectedVersion !== null
@@ -286,24 +286,24 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
   const relatedAudit = auditRows.slice(0, 12)
 
   const provenance = [
-    { label: isChinese ? "掃描證據" : "Scan evidence", state: "complete", detail: `${sourceLabel(action.evidence.source, locale)} · ${formatDateTime(action.evidence.observedAt, locale, timezone)}` },
-    { label: isChinese ? "發現" : "Finding", state: "complete", detail: resolveText(action.evidence.detail, locale) },
-    { label: isChinese ? "行動" : "Action", state: "complete", detail: isChinese ? "已記錄優先因素" : "Priority factors recorded" },
+    { label: ac.provenance.scanEvidence, state: "complete", detail: `${sourceLabel(action.evidence.source, locale)} · ${formatDateTime(action.evidence.observedAt, locale, timezone)}` },
+    { label: ac.provenance.finding, state: "complete", detail: resolveText(action.evidence.detail, locale) },
+    { label: ac.provenance.action, state: "complete", detail: ac.provenance.priorityRecorded },
     {
-      label: isChinese ? "Agent 輸入" : "Agent input",
+      label: ac.provenance.agentInput,
       state: neededKeys.length ? "pending" : "complete",
       detail: neededKeys.length
-        ? (isChinese ? `缺 ${neededKeys.length} 項資料` : `${neededKeys.length} inputs missing`)
+        ? fill(ac.provenance.inputsMissing, { n: neededKeys.length })
         : reviewEvidence
           // Name the source, so "ready" is never mistaken for "the owner typed it".
           ? `${scanInputCopy.fromScan} · ${reviewEvidence.available}`
-          : (isChinese ? "資料齊備" : "Inputs ready"),
+          : ac.provenance.inputsReady,
     },
-    { label: isChinese ? "執行" : "Run", state: runStateKey === "succeeded" ? "complete" : latestRun ? "active" : "pending", detail: latestRun ? stateLabel(latestRun.state, locale) : (isChinese ? "尚未執行" : "Not run yet") },
-    { label: isChinese ? "輸出版本" : "Output version", state: selectedVersion ? "active" : "pending", detail: versionName },
-    { label: isChinese ? zhFor(locale, "審批") : "Approval", state: isApprovedCurrent ? "complete" : "pending", detail: dirty ? (isChinese ? "有未儲存修改" : "Unsaved changes") : approvalText(approval) },
-    { label: isChinese ? "匯出" : "Export", state: exported ? "complete" : "pending", detail: exported ? (isChinese ? "已記錄匯出" : "Export recorded") : (isChinese ? "核准指定版本後可用" : "Available after exact-version approval") },
-    { label: isChinese ? zhFor(locale, "量度") : "Measurement", state: action.measurementState === "measured" ? "complete" : "pending", detail: stateLabel(action.measurementState, locale) },
+    { label: ac.provenance.run, state: runStateKey === "succeeded" ? "complete" : latestRun ? "active" : "pending", detail: latestRun ? stateLabel(latestRun.state, locale) : ac.provenance.notRun },
+    { label: ac.provenance.outputVersion, state: selectedVersion ? "active" : "pending", detail: versionName },
+    { label: ac.provenance.approval, state: isApprovedCurrent ? "complete" : "pending", detail: dirty ? ac.provenance.unsaved : approvalText(approval) },
+    { label: ac.provenance.export, state: exported ? "complete" : "pending", detail: exported ? ac.provenance.exportRecorded : ac.provenance.exportAfterApproval },
+    { label: ac.provenance.measurement, state: action.measurementState === "measured" ? "complete" : "pending", detail: stateLabel(action.measurementState, locale) },
   ] as const
 
   function selectVersion(nextId: string) {
@@ -326,22 +326,22 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
     if (result.status === 409 && isOfferStaleCode(result.error)) { setOfferRefusal(result.error); toast.error(offersCopy.stale[result.error]) }
     // F-14: a second click while the first draft is still being written. Nothing was charged; show the live run.
     else if (result.status === 409 && result.error === "run_in_progress") {
-      toast.message(locale === "zh-HK" ? "草稿仍在生成中，今次沒有重新開始，亦沒有額外收費；請稍候查看結果。" : locale === "zh-TW" ? "草稿仍在產生中，這次沒有重新開始，也沒有額外計費；請稍候查看結果。" : "A draft is still being written, so nothing new was started or charged; check back in a moment.")
+      toast.message(ac.toasts.runInProgress)
       router.refresh()
     }
     else if (result.status === 409 && result.error === "provider_usage_pending") {
       setNeedsRunReconciliation(true)
-      toast.message(isChinese ? "上次生成結果仍未確認，請先重新讀取狀態。" : "The previous generation is not yet confirmed. Reload its status first.")
+      toast.message(ac.toasts.usagePending)
     }
-    else if (result.error === "offline" || result.error === "network") toast.error(isChinese ? "無法連接伺服器；文字已保留在此裝置。" : "The server could not be reached; your text is kept on this device.")
+    else if (result.error === "offline" || result.error === "network") toast.error(ac.toasts.unreachable)
     else if (budgetRefusal) toast.error(budgetRefusal)
-    else if (result.status === 403) toast.error(isChinese ? zhFor(locale, "你的角色或地點範圍不允許此操作。") : "Your role or location scope does not allow this action.")
-    else if (result.status === 429) toast.error(isChinese ? "請求過於頻繁，請稍後再試。" : "Too many requests; try again shortly.")
-    else if (result.error === "agent_unavailable") toast.error(isChinese ? "此行動目前沒有可用的 Agent。" : "No agent is available for this action yet.")
+    else if (result.status === 403) toast.error(ac.toasts.forbidden)
+    else if (result.status === 429) toast.error(ac.toasts.tooMany)
+    else if (result.error === "agent_unavailable") toast.error(ac.toasts.agentUnavailable)
     // 503 before any run row exists: say the drafting service is down, not "try again".
     else if (result.error === "provider_unconfigured") toast.error(runErrorLabel(locale, result.error))
     // P3.5b: never a raw error code in front of an owner.
-    else toast.error(isChinese ? "操作失敗，請再試一次；如持續出現，請聯絡 Fimmick。" : "The request failed. Try again, or contact Fimmick if it keeps happening.")
+    else toast.error(ac.toasts.failed)
   }
 
   async function generate(extraInputs?: Record<string, unknown>) {
@@ -361,7 +361,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
     }
     if (result.data.factsNeeded?.length) {
       setFactsNeeded(result.data.factsNeeded)
-      toast.message(isChinese ? zhFor(locale, "生成前需要店主提供資料；沒有猜測任何事實。") : "The agent needs owner facts before drafting; nothing was guessed.")
+      toast.message(ac.toasts.factsNeeded)
       router.refresh()
       return
     }
@@ -372,13 +372,13 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
       if (result.data.usagePending) setNeedsRunReconciliation(true)
       setLastRunError(result.data.error ?? "failed")
       toast.error(result.data.usagePending
-        ? (isChinese ? "生成結果仍未確認；現有草稿已保留，請重新讀取狀態。" : "The generation is not yet confirmed; your existing draft is preserved. Reload its status.")
-        : (isChinese ? "生成未能完成；現有草稿已保留。" : "Generation did not complete; your existing draft is preserved."))
+        ? ac.toasts.runUnconfirmed
+        : ac.toasts.runFailed)
       router.refresh()
       return
     }
     if (result.data.versionId) setPendingSelect(result.data.versionId)
-    toast.success(result.data.versionNo ? (isChinese ? `Agent 輸出已建立為不可變更的第 ${result.data.versionNo} 版；沒有覆蓋原稿。` : `Agent output created immutable version ${result.data.versionNo}; the previous draft was not overwritten.`) : (isChinese ? "執行已完成" : "Run completed"))
+    toast.success(result.data.versionNo ? fill(ac.toasts.versionCreated, { n: result.data.versionNo }) : ac.toasts.runCompleted)
     router.refresh()
   }
 
@@ -388,7 +388,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
     const { provided, runInputs } = ownerInputPatch(neededKeys, inputValues)
     const missing = neededKeys.filter((key) => provided[key] === undefined)
     if (missing.length) {
-      toast.error(isChinese ? "請先填妥所有所需資料。" : "Fill in every required input first.")
+      toast.error(ac.toasts.fillAll)
       return
     }
     setBusy("inputs")
@@ -398,11 +398,11 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
     // A checklist template has no agent to hand these to. Calling generate()
     // here is exactly what made the input form dead-end on 409.
     if (checklistSteps) {
-      toast.success(isChinese ? "已記錄你設定的內容。" : "Saved what you set.")
+      toast.success(ac.toasts.checklistSaved)
       router.refresh()
       return
     }
-    toast.message(isChinese ? zhFor(locale, "已記錄店主資料；正在重新生成。") : "Owner inputs recorded; generating again.")
+    toast.message(ac.toasts.inputsRecorded)
     await generate({ ...provided, ...runInputs })
   }
 
@@ -483,15 +483,15 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
     const patched = await updateAction(action.id, { provided_inputs: { reviews_without_response: value } })
     setBusy(null)
     if (!patched.ok) return failureToast(patched)
-    toast.message(isChinese ? zhFor(locale, "已記錄店主提供的評論；正在重新生成。") : "Owner-supplied review recorded; generating again.")
+    toast.message(ac.toasts.ownerReviewRecorded)
     await generate({ reviews_without_response: value })
   }
 
   async function saveDraft() {
     if (!canEdit || mutationPending.current) return
-    if (conflict) { toast.error(isChinese ? "版本衝突：請先載入最新版本。" : "Version conflict: load the latest version first."); return }
-    if (!dirty) { toast.message(isChinese ? "目前沒有需要儲存的修改。" : "There are no changes to save."); return }
-    if (!content.trim()) { toast.error(isChinese ? "版本內容不能為空。" : "A version cannot be empty."); return }
+    if (conflict) { toast.error(ac.toasts.conflict); return }
+    if (!dirty) { toast.message(ac.toasts.nothingToSave); return }
+    if (!content.trim()) { toast.error(ac.toasts.emptyVersion); return }
     mutationPending.current = true
     setBusy("save")
     setSaveFailed(false)
@@ -504,7 +504,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
       return failureToast(result)
     }
     setPendingSelect(result.data.versionId)
-    toast.success(isChinese ? `已儲存為不可變更的第 ${result.data.versionNo} 版` : `Saved as immutable version ${result.data.versionNo}`)
+    toast.success(fill(ac.toasts.savedAs, { n: result.data.versionNo }))
     router.refresh()
   }
 
@@ -516,13 +516,13 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
   async function createAssistantVersion(run: DemoAssistantRunResponse) {
     if (dirty) { toast.error(saveBeforeGenerationMessage); return { ok: false as const } }
     if (!canEdit || mutationPending.current) {
-      toast.error(isChinese ? "目前角色或連線狀態不允許建立版本。" : "Your current role or connection state cannot create a version.")
+      toast.error(ac.toasts.cannotCreateVersion)
       return { ok: false as const }
     }
     // Only the run id travels. The body is read from the run the server
     // persisted, so the version is recorded as agent-authored rather than
     // arriving here as text this component would have posted as the member's.
-    if (!run.draftRunId) { toast.error(isChinese ? "此草稿未能儲存，無法建立版本。" : "This draft was not saved and cannot become a version."); return { ok: false as const } }
+    if (!run.draftRunId) { toast.error(ac.toasts.draftNotSaved); return { ok: false as const } }
     mutationPending.current = true
     setBusy("save")
     setSaveFailed(false)
@@ -536,7 +536,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
       return { ok: false as const }
     }
     setPendingSelect(result.data.versionId)
-    toast.success(isChinese ? `已儲存為不可變更的第 ${result.data.versionNo} 版` : `Saved as immutable version ${result.data.versionNo}`)
+    toast.success(fill(ac.toasts.savedAs, { n: result.data.versionNo }))
     router.refresh()
     return { ok: true as const, versionNo: result.data.versionNo }
   }
@@ -561,18 +561,18 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
 
   async function approveDraft() {
     if (mutationPending.current) return
-    if (!canApproveCurrent || !selectedVersion) { toast.error(isChinese ? "請先儲存修改，再核准指定版本。" : "Save changes before approving this exact version."); return }
+    if (!canApproveCurrent || !selectedVersion) { toast.error(ac.toasts.saveBeforeApprove); return }
     mutationPending.current = true
     setBusy("approve")
     const result = await approveVersion(selectedVersion.id, comment.trim() || undefined)
     mutationPending.current = false
     setBusy(null)
     if (!result.ok) {
-      if (result.error === "version_closed") toast.error(isChinese ? "此版本已關閉，不能再核准。" : "This version is closed and can no longer be approved.")
+      if (result.error === "version_closed") toast.error(ac.toasts.versionClosed)
       else failureToast(result)
       return
     }
-    toast.success(result.data.idempotent ? (isChinese ? `${versionName}早已核准；沒有重複記錄。` : `${versionName} was already approved; nothing was duplicated.`) : (isChinese ? `${versionName}已核准；現在可安全匯出。` : `${versionName} approved; safe export is now available.`))
+    toast.success(result.data.idempotent ? fill(ac.toasts.alreadyApproved, { version: versionName }) : fill(ac.toasts.approved, { version: versionName }))
     setComment("")
     router.refresh()
   }
@@ -583,14 +583,14 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
     const result = await decideVersion(selectedVersion.id, decision, comment.trim() || undefined)
     setBusy(null)
     if (!result.ok) return failureToast(result)
-    toast.message(decision === "changes_requested" ? (isChinese ? "已要求修改此版本" : "Changes requested for this version") : (isChinese ? "已拒絕此版本" : "Version rejected"))
+    toast.message(decision === "changes_requested" ? ac.toasts.changesRequested : ac.toasts.rejected)
     setComment("")
     router.refresh()
   }
 
   async function deliver(mode: "export" | "copy") {
     if (mutationPending.current) return
-    if (!canDeliver || !selectedVersion) { toast.error(isChinese ? "只有目前已儲存及已核准的指定版本可以匯出。" : "Only the selected saved and approved version can be exported."); return }
+    if (!canDeliver || !selectedVersion) { toast.error(ac.toasts.onlyApproved); return }
     mutationPending.current = true
     setBusy(mode)
     const result = await exportVersion(selectedVersion.id, mode)
@@ -598,7 +598,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
     setBusy(null)
     if (!result.ok) {
       if (result.error === "allowance_exceeded") { setAllowanceBlocked({ approvedDeliveries: null, allowance: null }); return }
-      if (result.error === "not_approved") toast.error(isChinese ? "此版本尚未核准。" : "This version is not approved.")
+      if (result.error === "not_approved") toast.error(ac.toasts.notApproved)
       else failureToast(result)
       return
     }
@@ -620,19 +620,19 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
     } else {
       const copied = await copyToClipboard(selectedVersion.body)
       if (!copied) {
-        toast.error(isChinese ? "無法存取剪貼簿；請手動複製。" : "Clipboard unavailable; copy the text manually.")
+        toast.error(ac.toasts.clipboard)
         // The delivery is recorded either way. A first copy still says usage went
         // up; a repeat must not then claim "Approved text copied" over the error.
         if (!result.data.counted) { router.refresh(); return }
       }
     }
-    toast.success(result.data.counted ? (isChinese ? "已記錄匯出；本月核准後交付用量增加 1 次。" : "Export recorded; one approved delivery was added to monthly usage.") : (mode === "copy" ? (isChinese ? "已複製核准文字；此版本已計算，不再重複扣除。" : "Approved text copied; this version was already counted, nothing more was used.") : (isChinese ? "已再次匯出；此版本已計算，不再重複扣除。" : "Exported again; this version was already counted, nothing more was used.")))
+    toast.success(result.data.counted ? ac.toasts.counted : (mode === "copy" ? ac.toasts.copiedAgain : ac.toasts.exportedAgain))
     router.refresh()
   }
 
-  const roleName = (r: PreviewRole) => (isChinese ? (r === "owner" ? "店主" : r === "manager" ? "經理" : "檢視者") : `${r[0].toUpperCase()}${r.slice(1)}`)
+  const roleName = (r: PreviewRole) => ac.roles[r]
   const workflowState = runStateKey ?? null
-  const workflowLabel = workflowState ? stateLabel(workflowState, locale) : (isChinese ? "尚未執行" : "Not run yet")
+  const workflowLabel = workflowState ? stateLabel(workflowState, locale) : ac.provenance.notRun
   const locationName = resolveText(action.location.name, locale) || locations.find((l) => l.slug === location)?.name || ""
   const verificationCopy = copy[locale].workspace.verification
   const verification = actionVerificationView(action, workspaceId, auditRows)
@@ -654,25 +654,25 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
     <div className="action-detail-page">
       <div className="action-detail-toolbar">
         {/* In the side panel, Close (which keeps the queue's filters) replaces this link. */}
-        {!embedded && <Link href={withLocation(`${base}/actions`, location)} className="back-link"><ArrowLeft /> {isChinese ? "返回行動" : "Back to actions"}</Link>}
+        {!embedded && <Link href={withLocation(`${base}/actions`, location)} className="back-link"><ArrowLeft /> {ac.toolbar.back}</Link>}
         <div>
           {role === "owner" ? (
             <Select disabled={!hydrated} value={previewRole} onValueChange={(value) => setPreviewRole(value as PreviewRole)}>
-              <SelectTrigger className="role-select" aria-label={isChinese ? "預覽角色" : "Preview role"}><UserRound /><SelectValue>{roleName(previewRole)}</SelectValue></SelectTrigger>
-              <SelectContent align="end"><SelectItem value="owner">{isChinese ? zhFor(locale, "店主") : "Owner"}</SelectItem><SelectItem value="manager">{isChinese ? "經理" : "Manager"}</SelectItem><SelectItem value="viewer">{isChinese ? "檢視者" : "Viewer"}</SelectItem></SelectContent>
+              <SelectTrigger className="role-select" aria-label={ac.toolbar.previewRole}><UserRound /><SelectValue>{roleName(previewRole)}</SelectValue></SelectTrigger>
+              <SelectContent align="end"><SelectItem value="owner">{ac.roleOptions.owner}</SelectItem><SelectItem value="manager">{ac.roleOptions.manager}</SelectItem><SelectItem value="viewer">{ac.roleOptions.viewer}</SelectItem></SelectContent>
             </Select>
           ) : <Badge variant="outline"><UserRound /> {roleName(role)}</Badge>}
-          <span className="offline-toggle" aria-live="polite">{offline ? <CloudOff /> : <Check />}<span>{offline ? (isChinese ? "離線" : "Offline") : (isChinese ? "在線" : "Online")}</span></span>
+          <span className="offline-toggle" aria-live="polite">{offline ? <CloudOff /> : <Check />}<span>{offline ? ac.toolbar.offline : ac.toolbar.online}</span></span>
         </div>
       </div>
 
       <header className="action-detail-header">
         <div>
-          <div className="action-detail-badges"><Badge variant="outline" className={priorityClass(action.priority)}>{priorityLabel(action.priority, locale)}</Badge><Badge variant="outline">{dirty ? (isChinese ? "未儲存修改" : "Unsaved changes") : action.applied || action.verified ? resolveText(action.displayPhase, locale) : selectedVersion ? approvalText(approval) : resolveText(action.displayPhase, locale)}</Badge><CapabilityBadge value={action.capability} context="action" /></div>
+          <div className="action-detail-badges"><Badge variant="outline" className={priorityClass(action.priority)}>{priorityLabel(action.priority, locale)}</Badge><Badge variant="outline">{dirty ? ac.header.unsaved : action.applied || action.verified ? resolveText(action.displayPhase, locale) : selectedVersion ? approvalText(approval) : resolveText(action.displayPhase, locale)}</Badge><CapabilityBadge value={action.capability} context="action" /></div>
           {embedded ? <h2>{resolveText(action.title, locale)}</h2> : <h1>{resolveText(action.title, locale)}</h1>}<p>{resolveText(action.summary, locale)}</p>
-          <div className="header-meta"><span><MapPin />{locationName}</span><span><Clock3 />{effortLabel(action.effortMinutes, locale)}</span><span><UserRound />{action.assignee?.name ?? (isChinese ? "未指派" : "Unassigned")}</span></div>
+          <div className="header-meta"><span><MapPin />{locationName}</span><span><Clock3 />{effortLabel(action.effortMinutes, locale)}</span><span><UserRound />{action.assignee?.name ?? ac.header.unassigned}</span></div>
         </div>
-        <div className="action-detail-next"><small>{isChinese ? "下一步" : "Direct next step"}</small><strong>{effectiveRole === "viewer" ? (isChinese ? "查看證據" : "Inspect the evidence") : showInputForm ? (isChinese ? "提供所需資料" : "Provide the required inputs") : dirty ? (isChinese ? "先儲存新版本" : "Save a new version first") : action.applied || action.verified ? verificationNext : isApprovedCurrent ? (isChinese ? "匯出已核准版本" : "Export approved version") : selectedVersion ? (isChinese ? `審閱並核准${versionName}` : `Review and approve ${versionName}`) : (isChinese ? "生成第一份草稿" : "Generate the first draft")}</strong><span>{isChinese ? "到期：" : "Due "}{action.dueAt ? formatDateTime(action.dueAt, locale, timezone) : "—"}</span></div>
+        <div className="action-detail-next"><small>{ac.header.nextLabel}</small><strong>{effectiveRole === "viewer" ? ac.header.next.inspect : showInputForm ? ac.header.next.inputs : dirty ? ac.header.next.saveFirst : action.applied || action.verified ? verificationNext : isApprovedCurrent ? ac.header.next.export : selectedVersion ? fill(ac.header.next.review, { version: versionName }) : ac.header.next.generate}</strong><span>{ac.header.due}{action.dueAt ? formatDateTime(action.dueAt, locale, timezone) : "—"}</span></div>
       </header>
 
       {action.evidence.followUpOfActionId && <p className="action-follow-up"><Link href={withLocation(`${base}/actions/${action.evidence.followUpOfActionId}`, location)}>{verificationCopy.followUp}</Link></p>}
@@ -695,7 +695,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
         />}
       </SectionCard>}
 
-      {offline && <div className="offline-banner" role="status"><CloudOff /><div><strong>{isChinese ? "你目前離線" : "You are offline"}</strong><span>{isChinese ? zhFor(locale, "文字會保留在此裝置，但儲存、審批及匯出會暫停，直至伺服器確認安全轉換。") : "Text remains on this device, but save, approval and export stay blocked until the server confirms a safe transition."}</span></div><Button variant="outline" onClick={() => { if (navigator.onLine) router.refresh(); else toast.message(isChinese ? "仍然離線；請檢查網絡連線。" : "Still offline; check your connection.") }}>{isChinese ? "重新連接" : "Reconnect"}</Button></div>}
+      {offline && <div className="offline-banner" role="status"><CloudOff /><div><strong>{ac.offline.title}</strong><span>{ac.offline.body}</span></div><Button variant="outline" onClick={() => { if (navigator.onLine) router.refresh(); else toast.message(ac.toasts.stillOffline) }}>{ac.offline.reconnect}</Button></div>}
       {effectiveRole === "viewer" && <RoleNotice kind="viewerAction" locale={locale} />}
       {role === "manager" && !inScope && <RoleNotice kind="outOfScope" locale={locale} />}
 
@@ -709,20 +709,20 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
 
       <details className="owner-disclosure owner-workflow-disclosure">
         <summary>{copy[locale].ownerFocus.workflow}</summary>
-      <ol className="provenance-chain" aria-label={isChinese ? "行動來源及生命週期" : "Action provenance and lifecycle"}>
+      <ol className="provenance-chain" aria-label={ac.provenance.aria}>
         {provenance.map((item, index) => <li key={item.label} className={`is-${item.state}`}><span className="provenance-node">{item.state === "complete" ? <Check /> : index + 1}</span><div><strong>{item.label}</strong><small>{item.detail}</small></div></li>)}
       </ol>
       </details>
 
       <Tabs defaultValue="draft" className="action-detail-tabs">
-        <TabsList variant="line" className="detail-tab-list"><TabsTrigger value="draft">{isChinese ? zhFor(locale, "草稿與審批") : "Draft & approval"}</TabsTrigger><TabsTrigger value="evidence">{isChinese ? "來源證據" : "Source evidence"}</TabsTrigger><TabsTrigger value="workflow">{isChinese ? "流程狀態" : "Workflow states"}</TabsTrigger><TabsTrigger value="history">{isChinese ? "版本及審計紀錄" : "Version & audit history"}</TabsTrigger></TabsList>
+        <TabsList variant="line" className="detail-tab-list"><TabsTrigger value="draft">{ac.tabs.draft}</TabsTrigger><TabsTrigger value="evidence">{ac.tabs.evidence}</TabsTrigger><TabsTrigger value="workflow">{ac.tabs.workflow}</TabsTrigger><TabsTrigger value="history">{ac.tabs.history}</TabsTrigger></TabsList>
 
         <TabsContent value="draft">
           <div className="draft-layout">
             <SectionCard className="draft-editor-card">
-              <div className="section-card-heading"><div><p className="eyebrow">{checklistSteps ? checklistSteps.where : isChinese ? "生成輸出" : "Generated output"}</p><h2>{copy[locale].workspace.templates[action.templateKey]?.workflow ?? action.templateKey}</h2></div><div><Badge variant="outline">{checklistSteps ? stateLabel(action.actionState, locale) : versionName}</Badge>{!checklistSteps && selectedVersion && <Badge variant="outline">{originLabel(selectedVersion.origin, isChinese)}</Badge>}</div></div>
-              {social && approvedAssets.length > 0 && <div className="asset-reference"><span><FileImage /></span><div><strong>{approvedAssets[0].filename}</strong><small>{isChinese ? `已核准素材 · 共 ${approvedAssets.length} 項可用` : `Approved asset · ${approvedAssets.length} available`}</small></div><Badge variant="outline">{isChinese ? "已核准" : "Approved"}</Badge></div>}
-              <div className="original-context"><FactType type={action.evidence.factType} /><div><strong>{isChinese ? "來源發現" : "Source finding"}</strong><p>{resolveText(action.evidence.detail, locale)}</p><small>{formatDateTime(action.evidence.observedAt, locale, timezone)} · {isChinese ? "原始來源保留作證據" : "Source preserved as evidence"}</small></div></div>
+              <div className="section-card-heading"><div><p className="eyebrow">{checklistSteps ? checklistSteps.where : ac.editor.generatedOutput}</p><h2>{copy[locale].workspace.templates[action.templateKey]?.workflow ?? action.templateKey}</h2></div><div><Badge variant="outline">{checklistSteps ? stateLabel(action.actionState, locale) : versionName}</Badge>{!checklistSteps && selectedVersion && <Badge variant="outline">{originLabel(selectedVersion.origin, locale !== "en")}</Badge>}</div></div>
+              {social && approvedAssets.length > 0 && <div className="asset-reference"><span><FileImage /></span><div><strong>{approvedAssets[0].filename}</strong><small>{fill(ac.editor.approvedAsset, { n: approvedAssets.length })}</small></div><Badge variant="outline">{ac.editor.approved}</Badge></div>}
+              <div className="original-context"><FactType type={action.evidence.factType} /><div><strong>{ac.editor.sourceFinding}</strong><p>{resolveText(action.evidence.detail, locale)}</p><small>{formatDateTime(action.evidence.observedAt, locale, timezone)} · {ac.editor.sourcePreserved}</small></div></div>
               {offer && (
                 <div className="brand-check-panel" data-testid="offer-card">
                   <div className="brand-check-head">
@@ -742,7 +742,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
                   a draft after the fact. Collapsed by default to stay compact. */}
               {businessContext.length > 0 && (
                 <details className="brand-check-panel">
-                  <summary><strong>{isChinese ? zhFor(locale, "生成所用的商戶資料") : "Business details used"}</strong> <span>{isChinese ? "查看即將用於生成的資料" : "See what the next draft will use"}</span></summary>
+                  <summary><strong>{ac.editor.businessDetails}</strong> <span>{ac.editor.businessDetailsHint}</span></summary>
                   <dl className="asset-meta">
                     {businessContext.map((row) => (
                       <div key={row.key}>
@@ -751,7 +751,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
                       </div>
                     ))}
                   </dl>
-                  <p className="limitation-note"><Link href={`${base}/business/profile`}>{isChinese ? "在品牌設定中修改" : "Edit in Brand settings"}</Link></p>
+                  <p className="limitation-note"><Link href={`${base}/business/profile`}>{ac.editor.editInBrand}</Link></p>
                 </details>
               )}
               {checklistSteps && (
@@ -834,57 +834,57 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
                 </div>
               )}
               {showInputForm && (
-                <form id="inputs" className="field-stack input-form" onSubmit={(event) => { event.preventDefault(); void submitInputs() }} aria-label={isChinese ? "所需資料" : "Required inputs"}>
-                  <p className="limitation-note"><AlertTriangle /> {isChinese ? "Agent 不會猜測事實。請提供以下資料，再重新生成。" : "The agent never guesses facts. Provide the inputs below, then generate again."}</p>
+                <form id="inputs" className="field-stack input-form" onSubmit={(event) => { event.preventDefault(); void submitInputs() }} aria-label={ac.editor.inputsAria}>
+                  <p className="limitation-note"><AlertTriangle /> {ac.editor.neverGuesses}</p>
                   {neededKeys.map((key) => key === "asset_or_text_only" ? (
                     <div key={key} className="field-stack"><Label htmlFor={`input-${key}`}>{inputs[key] ?? key}</Label>
                       <Select disabled={!hydrated} value={inputValues[key] ?? ""} onValueChange={(value) => setInputValues((prev) => ({ ...prev, [key]: value }))}>
-                        <SelectTrigger id={`input-${key}`} aria-label={inputs[key] ?? key}><SelectValue placeholder={isChinese ? "選擇已核准素材或純文字" : "Choose an approved asset or text only"} /></SelectTrigger>
-                        <SelectContent><SelectItem value="text_only">{isChinese ? "純文字（不使用相片）" : "Text only (no photo)"}</SelectItem>{approvedAssets.map((asset) => <SelectItem key={asset.id} value={asset.id}>{asset.filename}</SelectItem>)}</SelectContent>
+                        <SelectTrigger id={`input-${key}`} aria-label={inputs[key] ?? key}><SelectValue placeholder={ac.editor.assetPlaceholder} /></SelectTrigger>
+                        <SelectContent><SelectItem value="text_only">{ac.editor.textOnly}</SelectItem>{approvedAssets.map((asset) => <SelectItem key={asset.id} value={asset.id}>{asset.filename}</SelectItem>)}</SelectContent>
                       </Select>
-                      {approvedAssets.length === 0 && <small>{isChinese ? zhFor(locale, "尚未有已核准素材；可先上載並確認使用權，或選擇純文字。") : "No approved assets yet; upload and confirm rights first, or choose text only."} <Link href={`${base}/business/assets`}>{isChinese ? "前往素材" : "Go to assets"}</Link></small>}
+                      {approvedAssets.length === 0 && <small>{ac.editor.noAssets} <Link href={`${base}/business/assets`}>{ac.editor.goToAssets}</Link></small>}
                     </div>
                   ) : (
-                    <div key={key} className="field-stack"><Label htmlFor={`input-${key}`}>{faqQuestionByKey.get(key) ? resolveText(faqQuestionByKey.get(key)!.question, locale) : (inputs[key] ?? key)}</Label>{key.startsWith("owner_fact") || key === "menu_items" || key === "reviews_without_response" ? <Textarea id={`input-${key}`} rows={3} value={inputValues[key] ?? faqQuestionByKey.get(key)?.prefill ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} /> : <Input id={`input-${key}`} value={inputValues[key] ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} />}{faqQuestionByKey.get(key)?.prefill && <small>{isChinese ? "已按品牌設定中已儲存的資料預填，可自行修改。" : "Prefilled from a fact already saved in Brand settings; edit as needed."}</small>}</div>
+                    <div key={key} className="field-stack"><Label htmlFor={`input-${key}`}>{faqQuestionByKey.get(key) ? resolveText(faqQuestionByKey.get(key)!.question, locale) : (inputs[key] ?? key)}</Label>{key.startsWith("owner_fact") || key === "menu_items" || key === "reviews_without_response" ? <Textarea id={`input-${key}`} rows={3} value={inputValues[key] ?? faqQuestionByKey.get(key)?.prefill ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} /> : <Input id={`input-${key}`} value={inputValues[key] ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} />}{faqQuestionByKey.get(key)?.prefill && <small>{ac.editor.prefilled}</small>}</div>
                   ))}
-                  <div className="draft-editor-actions"><Button type="submit" disabled={!canEdit || (!checklistSteps && dirty)}>{busy === "inputs" || busy === "run" ? <LoaderCircle className="animate-spin" /> : checklistSteps ? <Save /> : <WandSparkles />} {checklistSteps ? checklistCopy.saveInputs : isChinese ? "儲存資料並重新生成" : "Save inputs and generate"}</Button></div>
+                  <div className="draft-editor-actions"><Button type="submit" disabled={!canEdit || (!checklistSteps && dirty)}>{busy === "inputs" || busy === "run" ? <LoaderCircle className="animate-spin" /> : checklistSteps ? <Save /> : <WandSparkles />} {checklistSteps ? checklistCopy.saveInputs : ac.editor.saveAndGenerate}</Button></div>
                 </form>
               )}
               {!checklistSteps && (<>
-              <div className="field-stack"><Label htmlFor="draft-content">{social ? (isChinese ? "帖文說明" : "Caption") : (isChinese ? "草稿" : "Draft")}</Label><Textarea id="draft-content" value={content} onChange={(event) => setContent(event.target.value)} rows={social ? 8 : 7} disabled={!canEdit} placeholder={selectedVersion ? undefined : (isChinese ? "尚未生成草稿。按「生成草稿」或直接撰寫，儲存後成為第 1 版。" : "No draft yet. Generate one, or write here and save it as version 1.")} /><div className="field-helper-row"><span>{content.length} {isChinese ? "個字元" : "characters"}</span><span>{selectedVersion ? formatDateTime(selectedVersion.created_at, locale, timezone) : ""}</span></div></div>
-              {(social || altText) && <div className="field-stack"><Label htmlFor="alt-text">{isChinese ? "圖片替代文字" : "Image alt text"}</Label><Textarea id="alt-text" value={altText} onChange={(event) => setAltText(event.target.value)} rows={3} disabled={!canEdit} /><small>{isChinese ? "無障礙匯出所需；請確認描述與已核准素材相符。" : "Required for accessible export; confirm it matches the approved asset."}</small></div>}
+              <div className="field-stack"><Label htmlFor="draft-content">{social ? ac.editor.caption : ac.editor.draft}</Label><Textarea id="draft-content" value={content} onChange={(event) => setContent(event.target.value)} rows={social ? 8 : 7} disabled={!canEdit} placeholder={selectedVersion ? undefined : ac.editor.placeholder} /><div className="field-helper-row"><span>{content.length} {ac.editor.characters}</span><span>{selectedVersion ? formatDateTime(selectedVersion.created_at, locale, timezone) : ""}</span></div></div>
+              {(social || altText) && <div className="field-stack"><Label htmlFor="alt-text">{ac.editor.altText}</Label><Textarea id="alt-text" value={altText} onChange={(event) => setAltText(event.target.value)} rows={3} disabled={!canEdit} /><small>{ac.editor.altTextNote}</small></div>}
               {/* The agents compute guardrail violations and artifacts.ts
                   persists them into meta.warnings, but nothing ever read them
                   back: this panel showed a hard-coded "1 reminder" on every
                   draft, so a prohibited brand term or a compensation promise
                   looked exactly like a clean one to the person approving it. */}
-              <div className="brand-check-panel"><div className="brand-check-head"><ShieldCheck /><div><strong>{isChinese ? "品牌保障檢查" : "Brand guardrail check"}</strong><span>{isChinese ? zhFor(locale, "生成內容只使用店主確認的事實。") : "Generated content uses owner-confirmed facts only."}</span></div><Badge variant="outline">{guardrailBadge}</Badge></div>
+              <div className="brand-check-panel"><div className="brand-check-head"><ShieldCheck /><div><strong>{ac.editor.guardrailTitle}</strong><span>{ac.editor.guardrailSubtitle}</span></div><Badge variant="outline">{guardrailBadge}</Badge></div>
                 {guardrailFlags.length > 0
                   ? <ul className="evidence-list">{guardrailFlags.map((flag, index) => <li key={`${flag.code}-${index}`}><AlertTriangle /> <span>{guardrailText(flag, locale)}</span></li>)}</ul>
                   : <p><ShieldCheck /> {selectedVersion?.checked
-                      ? (isChinese ? zhFor(locale, "已檢查這個版本，未發現違規。仍需你審批後才可匯出。") : "This version was checked and nothing was flagged. It still needs your approval before export.")
-                      : (isChinese ? "這個版本沒有經過 Agent 檢查（手動編輯）。" : "This version was not agent-checked (edited by hand).")}</p>}
+                      ? ac.editor.checkedClean
+                      : ac.editor.notAgentChecked}</p>}
                 {(selectedVersion?.agentNotes ?? []).map((note) => <p key={note} className="limitation-note"><AlertTriangle /> {note}</p>)}
-                <p className="limitation-note">{isChinese ? zhFor(locale, "除非店主已確認，否則不要加入食材、致敏原、價格或優惠日期。") : "Do not add ingredients, allergens, pricing or offer dates unless the owner confirmed them."}</p></div>
-              {needsRunReconciliation && <div className="conflict-state" role="alert"><CircleAlert /><div><strong>{isChinese ? "暫時未能確認生成結果" : "The generation outcome is not confirmed"}</strong><p>{isChinese ? "草稿可能已經生成。請先重新讀取草稿同執行狀態，確認後先決定是否再生成。" : "A draft may already have been created. Reload the saved draft and run status before deciding whether to generate again."}</p><Button variant="outline" onClick={() => window.location.reload()}>{isChinese ? "重新讀取草稿與執行狀態" : "Reload draft and run status"}</Button></div></div>}
-              {lastRunError && <p className="limitation-note" role="alert"><CircleAlert /> {isChinese ? "上次生成失敗：" : "Last generation failed: "}{runErrorLabel(locale, lastRunError)}</p>}
+                <p className="limitation-note">{ac.editor.noInventedFacts}</p></div>
+              {needsRunReconciliation && <div className="conflict-state" role="alert"><CircleAlert /><div><strong>{ac.editor.reconcileTitle}</strong><p>{ac.editor.reconcileBody}</p><Button variant="outline" onClick={() => window.location.reload()}>{ac.editor.reconcileReload}</Button></div></div>}
+              {lastRunError && <p className="limitation-note" role="alert"><CircleAlert /> {ac.editor.lastRunFailed}{runErrorLabel(locale, lastRunError)}</p>}
               {pendingSelect && <div className="draft-editor-actions" role="status"><span>{t(locale, "editor.waitingForVersion")}</span><Button variant="outline" onClick={() => router.refresh()}>{t(locale, "editor.retryVersion")}</Button></div>}
-              <div className="draft-editor-actions"><ContextualAssistant locale={locale} surface={social ? "create" : "action"} triggerLabel={isChinese ? "用助理修改並建立新版本" : "Revise with operator as a new version"} mode="live" context={{ workspaceId, locationId: action.location.id ?? undefined, actionId: action.id, versionId: selectedVersion?.id }} basePath={base} locationParam={location} reviewDraft={action.templateKey === "review-response"} onCreateVersion={dirty ? undefined : createAssistantVersion} disabled={!canEdit || dirty} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? (isChinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version") : (isChinese ? "生成草稿" : "Generate a draft")}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {isChinese ? "儲存手動修改為新版本" : "Save manual edits as a new version"}</Button></div>
-              <p role="status" aria-live="polite">{busy === "save" ? (isChinese ? "儲存中…" : "Saving…") : pendingSelect ? t(locale, "editor.waitingForVersion") : saveFailed ? (isChinese ? "儲存失敗；內容仍保留，請重試或處理版本衝突。" : "Save failed; your content is retained. Retry or resolve the version conflict.") : dirty ? (isChinese ? "有未儲存修改" : "Unsaved changes") : selectedVersion ? (isChinese ? `已儲存 · ${versionName}` : `Saved · ${versionName}`) : (isChinese ? "尚未儲存草稿" : "No saved draft yet")}</p>
-              {comparing && <section className="field-stack" aria-label={isChinese ? "比較草稿" : "Compare drafts"}>
+              <div className="draft-editor-actions"><ContextualAssistant locale={locale} surface={social ? "create" : "action"} triggerLabel={ac.editor.reviseWithOperator} mode="live" context={{ workspaceId, locationId: action.location.id ?? undefined, actionId: action.id, versionId: selectedVersion?.id }} basePath={base} locationParam={location} reviewDraft={action.templateKey === "review-response"} onCreateVersion={dirty ? undefined : createAssistantVersion} disabled={!canEdit || dirty} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? ac.editor.regenerate : ac.editor.generate}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {ac.editor.saveManual}</Button></div>
+              <p role="status" aria-live="polite">{busy === "save" ? ac.editor.saving : pendingSelect ? t(locale, "editor.waitingForVersion") : saveFailed ? ac.editor.saveFailed : dirty ? ac.editor.unsaved : selectedVersion ? fill(ac.editor.saved, { version: versionName }) : ac.editor.noSavedDraft}</p>
+              {comparing && <section className="field-stack" aria-label={ac.editor.compareAria}>
                 {versions[0] && versions[0].id !== versionId ? <>
-                  <Label htmlFor="latest-saved-draft">{isChinese ? "最新已儲存草稿（供比較）" : "Latest saved draft for comparison"}</Label>
+                  <Label htmlFor="latest-saved-draft">{ac.editor.latestSaved}</Label>
                   <Textarea id="latest-saved-draft" value={versions[0].body} readOnly rows={7} />
-                  {versions[0].alt_text && <p>{isChinese ? "圖片替代文字：" : "Image alt text: "}{versions[0].alt_text}</p>}
-                  <p>{isChinese ? "比較以上內容與你保留嘅修改，再選擇下一步。保留修改後仍須儲存為新版本並重新批准。" : "Compare this saved draft with your retained edits. Keeping your edits still requires saving a new version and a new approval."}</p>
+                  {versions[0].alt_text && <p>{ac.editor.altTextPrefix}{versions[0].alt_text}</p>}
+                  <p>{ac.editor.compareHelp}</p>
                   <div className="draft-editor-actions">
-                    <Button onClick={() => resolveConflict(true)}>{isChinese ? `保留我的修改，以第 ${versions[0].version_no} 版為基礎` : `Keep my edits over Version ${versions[0].version_no}`}</Button>
-                    <Button variant="outline" onClick={() => resolveConflict(false)}>{isChinese ? "放棄本機修改，使用最新草稿" : "Discard my edits and use the latest draft"}</Button>
+                    <Button onClick={() => resolveConflict(true)}>{fill(ac.editor.keepEdits, { n: versions[0].version_no })}</Button>
+                    <Button variant="outline" onClick={() => resolveConflict(false)}>{ac.editor.discardEdits}</Button>
                   </div>
-                </> : <p role="status">{isChinese ? "正在讀取最新草稿；本機修改仍保留。請再按「安全載入最新狀態」重試。" : "Waiting for the latest draft; your local edits are retained. Use Load latest safely to retry."}</p>}
+                </> : <p role="status">{ac.editor.waitingLatest}</p>}
               </section>}
               {dirty && <p className="limitation-note">{saveBeforeGenerationMessage}</p>}
-              {conflict && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "另一位審閱者已更新輸出" : "Another reviewer changed this output"}</strong><p>{isChinese ? "未儲存文字仍保留在本機。載入最新版本、比較內容，再建立新版本。" : "Unsaved text is preserved locally. Load the latest version, compare, then create a new version."}</p><Button size="sm" onClick={loadLatest}><RefreshCw /> {isChinese ? "安全載入最新狀態" : "Load latest safely"}</Button></div></div>}
+              {conflict && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{ac.editor.conflictTitle}</strong><p>{ac.editor.conflictBody}</p><Button size="sm" onClick={loadLatest}><RefreshCw /> {ac.editor.loadLatest}</Button></div></div>}
               </>)}
               {/* The assertion control, offered for checklist and drafted
                   actions alike. Before: an offer to record what the owner tells
@@ -921,34 +921,34 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
             {checklistSteps ? (
               <aside className="approval-panel">
                 <SectionCard>
-                  <p className="eyebrow">{isChinese ? "如何完成" : "How this is completed"}</p>
-                  <h2>{isChinese ? "此行動由你完成，不經 Agent" : "You complete this one, not an agent"}</h2>
+                  <p className="eyebrow">{ac.checklistPanel.eyebrow}</p>
+                  <h2>{ac.checklistPanel.title}</h2>
                   <p>{checklistCopy.note}</p>
                   <dl className="state-machine-dl">
-                    <div><dt>{isChinese ? "行動" : "Action"}</dt><dd><Badge variant="outline">{stateLabel(action.actionState, locale)}</Badge></dd></div>
-                    <div><dt>{isChinese ? zhFor(locale, "量度") : "Measurement"}</dt><dd><Badge variant="outline">{stateLabel(action.measurementState, locale)}</Badge></dd></div>
+                    <div><dt>{ac.checklistPanel.action}</dt><dd><Badge variant="outline">{stateLabel(action.actionState, locale)}</Badge></dd></div>
+                    <div><dt>{ac.checklistPanel.measurement}</dt><dd><Badge variant="outline">{stateLabel(action.measurementState, locale)}</Badge></dd></div>
                   </dl>
-                  <p className="limitation-note">{isChinese ? zhFor(locale, "沒有可審批或匯出的版本，也不會扣除核准後交付額。") : "There is no version to approve or export, and no approved delivery is counted."}</p>
+                  <p className="limitation-note">{ac.checklistPanel.note}</p>
                 </SectionCard>
               </aside>
             ) : (
             <aside className="approval-panel">
               <SectionCard>
-                <p className="eyebrow">{isChinese ? zhFor(locale, "審批決定") : "Approval decision"}</p><h2>{isApprovedCurrent ? `${versionName}${isChinese ? "已核准" : " approved"}` : (isChinese ? zhFor(locale, "一項安全的店主決定") : "One safe owner decision")}</h2><p>{isChinese ? zhFor(locale, "核准只適用於這個不可變更版本。任何修改都必須另存新版本，再次審批。") : "Approval applies only to this immutable version. Any edit must be saved as a new version and approved again."}</p>
-                <div className="field-stack"><Label htmlFor="reviewer-comment">{isChinese ? "審閱者備註" : "Reviewer comment"}</Label><Textarea id="reviewer-comment" value={comment} onChange={(event) => setComment(event.target.value)} placeholder={isChinese ? "審計紀錄的選填備註" : "Optional note for the audit trail"} rows={3} disabled={!canApprove} /></div>
-                {isApprovedCurrent && selectedVersion ? <div className="approved-state"><CheckCircle2 /><div><strong>{isChinese ? "已核准" : "Approved"}</strong><span>{formatDateTime(selectedVersion.approved_at, locale, timezone)} · {versionName}{selectedVersion.reviewer_comment ? ` · ${selectedVersion.reviewer_comment}` : ""}</span></div></div> : <div className="decision-stack">
-                  {dirty && <p className="limitation-note"><AlertTriangle /> {isChinese ? "先儲存修改，才可核准指定版本。" : "Save changes before approving an exact version."}</p>}
-                  <Dialog><DialogTrigger asChild><Button disabled={!canApproveCurrent}><BadgeCheck /> {isChinese ? `核准${versionName}` : `Approve ${versionName}`}</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>{isChinese ? "核准這個指定版本？" : "Approve this exact version?"}</DialogTitle><DialogDescription>{isChinese ? `決定會記錄在${versionName}，不會自動發佈或扣除用量。` : `The decision is recorded against ${versionName}; it does not publish or consume usage.`}</DialogDescription></DialogHeader><div className="confirm-summary"><strong>{resolveText(action.title, locale)}</strong><span>{locationName} · {sourceLabel(action.evidence.source, locale)}</span></div><DialogFooter><DialogClose asChild><Button variant="outline">{isChinese ? "繼續審閱" : "Keep reviewing"}</Button></DialogClose><DialogClose asChild><Button onClick={() => void approveDraft()}>{isChinese ? `核准${versionName}` : `Approve ${versionName}`}</Button></DialogClose></DialogFooter></DialogContent></Dialog>
-                  <Button variant="outline" onClick={() => void setDecision("changes_requested")} disabled={!canApprove || dirty || approval === "changes_requested"}><PencilLine /> {isChinese ? "要求修改" : "Request changes"}</Button>
-                  <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" className="text-destructive" disabled={!canApprove || dirty || approval === "rejected"}><X /> {isChinese ? "拒絕草稿" : "Reject draft"}</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{isChinese ? "拒絕這個版本？" : "Reject this version?"}</AlertDialogTitle><AlertDialogDescription>{isChinese ? "版本會保留在審計紀錄，但不能匯出；其後可另存新版本。" : "The version remains in history but cannot be exported; a new version can be saved later."}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>{isChinese ? "取消" : "Cancel"}</AlertDialogCancel><AlertDialogAction onClick={() => void setDecision("rejected")}>{isChinese ? "拒絕此版本" : "Reject version"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+                <p className="eyebrow">{ac.approval.eyebrow}</p><h2>{isApprovedCurrent ? fill(ac.approval.approvedTitle, { version: versionName }) : ac.approval.safeDecision}</h2><p>{ac.approval.scope}</p>
+                <div className="field-stack"><Label htmlFor="reviewer-comment">{ac.approval.comment}</Label><Textarea id="reviewer-comment" value={comment} onChange={(event) => setComment(event.target.value)} placeholder={ac.approval.commentPlaceholder} rows={3} disabled={!canApprove} /></div>
+                {isApprovedCurrent && selectedVersion ? <div className="approved-state"><CheckCircle2 /><div><strong>{ac.approval.approved}</strong><span>{formatDateTime(selectedVersion.approved_at, locale, timezone)} · {versionName}{selectedVersion.reviewer_comment ? ` · ${selectedVersion.reviewer_comment}` : ""}</span></div></div> : <div className="decision-stack">
+                  {dirty && <p className="limitation-note"><AlertTriangle /> {ac.approval.saveFirst}</p>}
+                  <Dialog><DialogTrigger asChild><Button disabled={!canApproveCurrent}><BadgeCheck /> {fill(ac.approval.approve, { version: versionName })}</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>{ac.approval.dialogTitle}</DialogTitle><DialogDescription>{fill(ac.approval.dialogBody, { version: versionName })}</DialogDescription></DialogHeader><div className="confirm-summary"><strong>{resolveText(action.title, locale)}</strong><span>{locationName} · {sourceLabel(action.evidence.source, locale)}</span></div><DialogFooter><DialogClose asChild><Button variant="outline">{ac.approval.keepReviewing}</Button></DialogClose><DialogClose asChild><Button onClick={() => void approveDraft()}>{fill(ac.approval.approve, { version: versionName })}</Button></DialogClose></DialogFooter></DialogContent></Dialog>
+                  <Button variant="outline" onClick={() => void setDecision("changes_requested")} disabled={!canApprove || dirty || approval === "changes_requested"}><PencilLine /> {ac.approval.requestChanges}</Button>
+                  <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" className="text-destructive" disabled={!canApprove || dirty || approval === "rejected"}><X /> {ac.approval.reject}</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{ac.approval.rejectTitle}</AlertDialogTitle><AlertDialogDescription>{ac.approval.rejectBody}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>{ac.approval.cancel}</AlertDialogCancel><AlertDialogAction onClick={() => void setDecision("rejected")}>{ac.approval.rejectVersion}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
                 </div>}
               </SectionCard>
-              <SectionCard className="delivery-card"><div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "送出" : "Delivery"}</p><h2>{social ? (isChinese ? "匯出至 Instagram" : "Export for Instagram") : (isChinese ? "匯出已核准版本" : "Export the approved version")}</h2></div><CapabilityBadge value={publishPanel ? googleBusinessPublishCapability({ enabled: publishPanel.enabled, connectionActive: publishPanel.connectionActive }) : "Requires connection"} /></div><p>{publishPanel?.enabled ? copy[locale].workspace.publish.deliveryIntro : isChinese ? "目前沒有已驗證的直接發佈連接器。只有指定版本獲核准並完成匯出，才計 1 次核准後交付。" : "No verified direct-publishing connector is present. One approved delivery is counted only after exact-version approval and export."}</p>
-                {allowanceBlocked && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "本月核准後交付額已用完" : "This month's approved-delivery allowance is used up"}</strong><p>{isChinese ? "版本仍已核准並保留；升級方案或等待下月額度後即可匯出。" : "The version stays approved; upgrade the plan or wait for next month's allowance to export it."}</p><Button asChild size="sm" variant="outline"><Link href={`${base}/settings/plan`}>{isChinese ? "查看帳單與方案" : "View billing and plans"}</Link></Button></div></div>}
-                <Button className="w-full" variant={isApprovedCurrent ? "default" : "outline"} disabled={!canDeliver} onClick={() => void deliver("export")}>{busy === "export" ? <LoaderCircle className="animate-spin" /> : exported ? <Check /> : <Download />} {exported ? (isChinese ? "再次匯出（不重複計算）" : "Export again (not counted twice)") : (isChinese ? "匯出已核准版本" : "Export approved version")}</Button>
-                <Button className="w-full" variant="outline" disabled={!canDeliver} onClick={() => void deliver("copy")}>{busy === "copy" ? <LoaderCircle className="animate-spin" /> : <Copy />} {isChinese ? "複製文字" : "Copy text"}</Button>
+              <SectionCard className="delivery-card"><div className="section-card-heading"><div><p className="eyebrow">{ac.delivery.eyebrow}</p><h2>{social ? ac.delivery.titleSocial : ac.delivery.title}</h2></div><CapabilityBadge value={publishPanel ? googleBusinessPublishCapability({ enabled: publishPanel.enabled, connectionActive: publishPanel.connectionActive }) : "Requires connection"} /></div><p>{publishPanel?.enabled ? copy[locale].workspace.publish.deliveryIntro : ac.delivery.noConnector}</p>
+                {allowanceBlocked && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{ac.delivery.allowanceTitle}</strong><p>{ac.delivery.allowanceBody}</p><Button asChild size="sm" variant="outline"><Link href={`${base}/settings/plan`}>{ac.delivery.billing}</Link></Button></div></div>}
+                <Button className="w-full" variant={isApprovedCurrent ? "default" : "outline"} disabled={!canDeliver} onClick={() => void deliver("export")}>{busy === "export" ? <LoaderCircle className="animate-spin" /> : exported ? <Check /> : <Download />} {exported ? ac.delivery.exportAgain : ac.delivery.exportApproved}</Button>
+                <Button className="w-full" variant="outline" disabled={!canDeliver} onClick={() => void deliver("copy")}>{busy === "copy" ? <LoaderCircle className="animate-spin" /> : <Copy />} {ac.delivery.copyText}</Button>
                 {publishPanel && selectedVersion && <GbpPublishCard locale={locale} versionId={selectedVersion.id} versionNo={selectedVersion.version_no} body={selectedVersion.body} approved={isApprovedCurrent} panel={effectiveRole === role ? publishPanel : { ...publishPanel, mayAct: publishPanel.mayAct && effectiveRole !== "viewer", canPublish: publishPanel.canPublish && effectiveRole !== "viewer", canDelete: false }} workspaceSlug={workspaceSlug} timezone={timezone} onChanged={() => router.refresh()} />}
-                {!publishPanel?.enabled && <Button className="w-full" variant="ghost" disabled><Send /> {isChinese ? "直接發佈 · 需要連接" : "Publish directly · Connection required"}</Button>}
+                {!publishPanel?.enabled && <Button className="w-full" variant="ghost" disabled><Send /> {ac.delivery.publishDirect}</Button>}
               </SectionCard>
             </aside>
             )}
@@ -965,18 +965,18 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
 
         <TabsContent value="history">
           <div className="history-layout">
-            <SectionCard><p className="eyebrow">{isChinese ? "不可變更的輸出版本" : "Immutable output versions"}</p><h2>{isChinese ? "版本紀錄" : "Version history"}</h2>
-              {versions.length === 0 ? <p>{isChinese ? "尚未有版本。" : "No versions yet."}</p> : <div className="version-list">{versions.map((item) => <button key={item.id} type="button" disabled={!hydrated} onClick={() => selectVersion(item.id)} aria-pressed={versionId === item.id} className={versionId === item.id ? "is-active" : ""}><span><History /></span><div><strong>{versionLabel(item.version_no)} · {stateLabel(item.approval_state, locale)}</strong><small>{item.author_type === "agent" ? "Agent" : (isChinese ? "成員" : "Member")} · {formatDateTime(item.created_at, locale, timezone)}{item.reviewer_comment ? ` · ${item.reviewer_comment}` : ""}</small></div>{versionId === item.id && <Check />}</button>)}</div>}
+            <SectionCard><p className="eyebrow">{ac.history.eyebrow}</p><h2>{ac.history.title}</h2>
+              {versions.length === 0 ? <p>{ac.history.none}</p> : <div className="version-list">{versions.map((item) => <button key={item.id} type="button" disabled={!hydrated} onClick={() => selectVersion(item.id)} aria-pressed={versionId === item.id} className={versionId === item.id ? "is-active" : ""}><span><History /></span><div><strong>{versionLabel(item.version_no)} · {stateLabel(item.approval_state, locale)}</strong><small>{item.author_type === "agent" ? ac.history.agent : ac.history.member} · {formatDateTime(item.created_at, locale, timezone)}{item.reviewer_comment ? ` · ${item.reviewer_comment}` : ""}</small></div>{versionId === item.id && <Check />}</button>)}</div>}
             </SectionCard>
-            <SectionCard><div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "衝突及冪等性" : "Conflict and idempotency"}</p><h2>{isChinese ? "安全狀態" : "Safety states"}</h2></div></div>
-              {conflict ? <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "另一位審閱者已更新輸出" : "Another reviewer changed this output"}</strong><p>{isChinese ? "未儲存文字仍保留在本機。載入最新版本、比較內容，再建立新版本。" : "Unsaved text is preserved locally. Load the latest version, compare, then create a new version."}</p><Button size="sm" onClick={loadLatest}><RefreshCw /> {isChinese ? "安全載入最新狀態" : "Load latest safely"}</Button></div></div> : <div className="idempotent-state"><CheckCircle2 /><div><strong>{isChinese ? "目前沒有衝突" : "No active conflict"}</strong><p>{isChinese ? zhFor(locale, "重複審批或匯出會返回原本結果，不會重複工作或用量。") : "Repeated approval or export returns the original transition without duplicate work or usage."}</p></div></div>}
-              <div className="audit-mini">{relatedAudit.length === 0 ? <div><span>—</span><p>{isChinese ? "尚未有審計事件。" : "No audit events yet."}</p></div> : relatedAudit.map((row) => <div key={row.id}><span>{formatDateTime(row.created_at, locale, timezone)}</span><p><strong>{auditEventLabel(row.event, locale)}</strong> · {auditActorLabel(row.actor_type, isChinese)}{typeof row.payload?.version_no === "number" ? ` · ${versionLabel(row.payload.version_no)}` : ""}</p></div>)}</div>
+            <SectionCard><div className="section-card-heading"><div><p className="eyebrow">{ac.history.safetyEyebrow}</p><h2>{ac.history.safetyTitle}</h2></div></div>
+              {conflict ? <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{ac.editor.conflictTitle}</strong><p>{ac.editor.conflictBody}</p><Button size="sm" onClick={loadLatest}><RefreshCw /> {ac.editor.loadLatest}</Button></div></div> : <div className="idempotent-state"><CheckCircle2 /><div><strong>{ac.history.noConflict}</strong><p>{ac.history.idempotent}</p></div></div>}
+              <div className="audit-mini">{relatedAudit.length === 0 ? <div><span>—</span><p>{ac.history.noAudit}</p></div> : relatedAudit.map((row) => <div key={row.id}><span>{formatDateTime(row.created_at, locale, timezone)}</span><p><strong>{auditEventLabel(row.event, locale)}</strong> · {auditActorLabel(row.actor_type, locale !== "en")}{typeof row.payload?.version_no === "number" ? ` · ${versionLabel(row.payload.version_no)}` : ""}</p></div>)}</div>
             </SectionCard>
           </div>
         </TabsContent>
       </Tabs>
 
-      <div className="sticky-approval-bar"><div><span className="sticky-status"><FileClock /></span><span><strong>{versionName} · {dirty ? (isChinese ? "未儲存" : "Unsaved") : approvalText(approval)}</strong><small>{effectiveRole === "viewer" ? (isChinese ? "檢視者只讀" : "Viewer access is read only") : (isChinese ? "核准不會自動發佈；匯出後才計用量" : "Approval does not publish; usage counts after export")}</small></span></div><div><Button variant="outline" onClick={() => void saveDraft()} disabled={!canEdit || !dirty}><Save /> {isChinese ? "儲存" : "Save"}</Button><Button onClick={() => void (isApprovedCurrent ? deliver("export") : approveDraft())} disabled={isApprovedCurrent ? !canDeliver : !canApproveCurrent}>{isApprovedCurrent ? <><Download /> {isChinese ? "匯出" : "Export"}</> : <><BadgeCheck /> {isChinese ? "核准" : "Approve"}</>}</Button></div></div>
+      <div className="sticky-approval-bar"><div><span className="sticky-status"><FileClock /></span><span><strong>{versionName} · {dirty ? ac.sticky.unsaved : approvalText(approval)}</strong><small>{effectiveRole === "viewer" ? ac.sticky.viewer : ac.sticky.note}</small></span></div><div><Button variant="outline" onClick={() => void saveDraft()} disabled={!canEdit || !dirty}><Save /> {ac.sticky.save}</Button><Button onClick={() => void (isApprovedCurrent ? deliver("export") : approveDraft())} disabled={isApprovedCurrent ? !canDeliver : !canApproveCurrent}>{isApprovedCurrent ? <><Download /> {ac.provenance.export}</> : <><BadgeCheck /> {ac.sticky.approve}</>}</Button></div></div>
     </div>
   )
 }
