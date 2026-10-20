@@ -408,8 +408,7 @@ button:focus-visible {
 .flow-steps,
 .report-page > .loop-ribbon,
 .unlock-banner,
-.partial-result-card,
-.onboarding-layout > aside {
+.partial-result-card {
   border-radius: 24px;
   background: var(--inverse);
 }
@@ -2063,9 +2062,6 @@ button:focus-visible {
 .owner-priority-evidence .why-now-box span { font-size: 14px; line-height: 1.6; }
 .owner-priority-evidence .why-now-box small { margin-top: 8px; font-size: 12px; }
 .owner-approval-note { margin: 20px 0 0; color: var(--soft); font-size: 13px; }
-.owner-more-group { margin-top: 28px; }
-.owner-more-group > h2 { margin-bottom: 14px; font-size: 19px; }
-.owner-more-group .more-link-grid h3 { margin: 0; font-size: 15px; font-weight: 600; }
 .owner-workflow-disclosure .provenance-chain { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
 .owner-workflow-disclosure .provenance-chain li:not(:last-child)::after { display: none; }
 @media (max-width: 767px) {
