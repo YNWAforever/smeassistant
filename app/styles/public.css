@@ -461,3 +461,12 @@
   .report-page .unlock-banner form { display: none; }
   .report-page a[href^="#"]::after { content: none; }
 }
+
+/* ── Unlock (Phase 3) ───────────────────────────────────────────────── */
+/* Report delivery is the one required consent; the two optional ones read as optional. */
+.unlock-form-card { border-color: var(--line); border-radius: 20px; box-shadow: var(--shadow-md); }
+.unlock-form-card .consent-row:has(#delivery-consent) { border-color: var(--brand); background: var(--brand-softer); }
+.unlock-form-card .consent-row:has(#discussion-consent) { margin-top: 12px; }
+.unlock-form-card .consent-row:has(:is(#discussion-consent, #marketing-consent)) { border-style: dashed; background: transparent; }
+.unlock-benefits > div { border-color: var(--line); background: var(--paper); }
+.unlock-benefits svg { color: var(--brand-text); }
