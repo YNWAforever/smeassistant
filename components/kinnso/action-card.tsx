@@ -5,7 +5,7 @@ import { copy, type PrototypeLocale } from "@/lib/copy"
 import { fill } from "@/lib/copy-ui"
 import type { FactTypeName } from "@/lib/domain-labels"
 
-import { FactTypeBadge } from "./fact-type-badge"
+import { FactTypeBadge } from "@/components/visual/fact-type"
 
 type Level = "low" | "medium" | "high"
 

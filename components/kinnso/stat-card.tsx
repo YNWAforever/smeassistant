@@ -4,7 +4,7 @@ import { copy, type PrototypeLocale } from "@/lib/copy"
 import type { FactTypeName } from "@/lib/domain-labels"
 
 import { formatObservedDate } from "./evidence-badge"
-import { FactTypeBadge } from "./fact-type-badge"
+import { FactTypeBadge } from "@/components/visual/fact-type"
 
 export type StatDelta = { value: number | null; comparable: boolean }
 

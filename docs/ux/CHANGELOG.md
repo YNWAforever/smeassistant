@@ -2,6 +2,20 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## Phase 1B: visual explanation and motion (2026-10-20)
+
+- **Motion:** CSS presets with the still state as the default, plus small hooks (1.1 KB gzipped). Reduced motion shows every final state at once.
+- **Visuals (`components/visual/`, 9.1 KB gzipped in total):**
+  - score dial, coverage meter, trend chip and sparkline
+  - impact/effort matrix and before/after compare
+  - loop stepper, approval flow and scan progress
+  - evidence preview, the "?" explainer and empty-state illustrations
+  - feedback moments
+  - a CSS page fade
+- **Guardrails built in:** nothing compares scans that aren't comparable; unknown values are never 0; the matrix is labelled Recommended and before/after Attributed.
+- **Checks:** zero axe violations and zero layout shift on the gallery in three locales, at two widths, in light and dark.
+- **Not on pages yet:** they're wired in Phases 2–4.
+
 ## Phase 1: design system (2026-10-19)
 
 - **Tokens and stylesheet structure**
