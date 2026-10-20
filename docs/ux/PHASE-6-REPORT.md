@@ -133,7 +133,7 @@ All checks ran one after another on the final commit.
    - The access-request components stay as they are, because they are shared with ops.
    - These, the public demo workspace and the public pages are for Phase 7.
 
-## Open questions
+## Decisions on the open questions (2026-10-20, recommendations accepted)
 
-1. Should the coverage-based legacy CSS prune go into Phase 7, before or alongside the repo-hygiene work?
-2. The workspace shell costs about 70 KB of Radix code. Is a 300 KB workspace budget the right ceiling, or should it be tighter?
+1. **The coverage-based legacy CSS prune goes into Phase 7.** It will record interaction states (dialogs, toasts, errors, flag-gated modes) as well as pages, and keep the pixel check from this phase as its guard.
+2. **The workspace JS budget stays at 300 KB.** It leaves about 30 KB of headroom over today's largest page. The shared shell's Radix parts stay as they are.
