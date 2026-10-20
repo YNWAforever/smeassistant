@@ -85,3 +85,20 @@ a.destination-row[aria-current="true"] { border-color: var(--brand); }
 .action-side-panel [role="tablist"] { overflow-x: auto; scrollbar-width: thin; }
 .action-side-panel > *, .action-side-panel .action-detail-page, .action-side-panel .action-detail-page > * { min-width: 0; }
 .action-side-panel .sticky-approval-bar { flex-wrap: wrap; }
+
+/* Today's getting-started checklist (Phase 5). */
+.getting-started { display: grid; gap: 10px; margin-top: 20px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--card); }
+.getting-started-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+.getting-started h2 { margin: 0; font-size: 1.125rem; }
+.getting-started > p { margin: 0; color: var(--ink-2); font-size: 0.875rem; }
+.getting-started-progress { color: var(--ink-3); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+.getting-started-bar { display: block; height: 6px; overflow: hidden; border-radius: 999px; background: var(--canvas); }
+.getting-started-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--success); }
+.getting-started ol { display: grid; gap: 2px; margin: 4px 0 0; padding: 0; list-style: none; }
+.getting-started li { display: grid; grid-template-columns: 24px minmax(0, 1fr); align-items: center; gap: 10px; min-height: 44px; font-size: 0.9375rem; }
+.getting-started li a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: var(--ink); font-weight: 600; }
+.getting-started li a svg { width: 16px; height: 16px; color: var(--brand-text); }
+.getting-started li[data-done] > span:last-child { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--line); }
+.getting-started-mark { display: grid; width: 22px; height: 22px; place-items: center; border: 1.5px solid var(--line); border-radius: 999px; }
+.getting-started li[data-done] .getting-started-mark { border-color: transparent; background: var(--success-soft); color: var(--success-text); }
+.getting-started-mark svg { width: 14px; height: 14px; }

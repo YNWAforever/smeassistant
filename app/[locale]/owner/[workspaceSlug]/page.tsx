@@ -8,6 +8,8 @@ import { currentScanConsentPolicyVersion } from "@/lib/scan/consent";
 import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 import { loadWorkspaceProblems } from "@/lib/workspace/problems";
 import { getHomeBrief } from "@/lib/workspace/queries-pages";
+import { loadGettingStarted } from "@/lib/workspace/getting-started";
+import { GettingStarted } from "@/components/workspace/getting-started";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +24,7 @@ export async function generateMetadata(props: OwnerPageProps): Promise<Metadata>
  */
 export default async function WorkspaceHome(props: OwnerPageProps) {
   const page = await loadOwnerPage(props);
-  const [brief, problems] = await Promise.all([
+  const [brief, problems, gettingStarted] = await Promise.all([
     getHomeBrief(page.ctx, page.locationSlug),
     loadWorkspaceProblems({
       workspaceId: page.ctx.workspace.id,
@@ -30,6 +32,7 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
       membership: page.membership,
       tier: page.ctx.workspace.tier,
     }),
+    loadGettingStarted(page.ctx, page.membership, page.locale),
   ]);
   const locationId = page.locationSlug === "all" ? "all" : page.ctx.locations.find((l) => l.slug === page.locationSlug)?.id ?? "all";
   const forbidden = page.query.forbidden === "1";
@@ -51,6 +54,7 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
         brief={brief}
         demo={page.ctx.workspace.isDemo}
         role={page.membership.role}
+        gettingStarted={gettingStarted && <GettingStarted items={gettingStarted} locale={page.locale} />}
         problems={problems && (
           <NeedsAttentionCard
             locale={page.locale}

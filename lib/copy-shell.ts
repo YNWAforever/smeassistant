@@ -52,6 +52,14 @@ export type ShellCopy = {
    * can change it; the server checks stay the authority. {role} and {name} are
    * filled by components/states/role-notice.tsx.
    */
+  /** Today's getting-started checklist (Phase 5); hides itself once every item is done. */
+  gettingStarted: {
+    title: string
+    lead: string
+    progress: string
+    done: string
+    items: { ownership: string; brand: string; google: string; approve: string; deliver: string }
+  }
   /** Choosing a workspace after sign-in (Phase 5). {n} and {email} are filled with `fill`. */
   select: {
     signedInAs: string
@@ -164,6 +172,13 @@ export const shellEn: ShellCopy = {
     done: "{approved} of {total} approved",
     version: "Version {n}",
   },
+  gettingStarted: {
+    title: "Getting started",
+    lead: "Five steps to your first delivered piece of work. This list disappears once they are all done.",
+    progress: "{done} of {total} done",
+    done: "Done",
+    items: { ownership: "Ownership confirmed", brand: "Set your brand voice", google: "Connect Google Business", approve: "Approve your first draft", deliver: "Export or copy it" },
+  },
   select: {
     signedInAs: "Signed in as {email}",
     title: "Choose a workspace",
@@ -274,6 +289,13 @@ export const shellZhHK: ShellCopy = {
     done: "已審批 {total} 份中的 {approved} 份",
     version: "第 {n} 版",
   },
+  gettingStarted: {
+    title: "開始使用",
+    lead: "五個步驟，完成第一份送出的工作。全部完成後，此清單會自動隱藏。",
+    progress: "已完成 {done} / {total}",
+    done: "已完成",
+    items: { ownership: "擁有權已確認", brand: "設定品牌語氣", google: "連接 Google 商家", approve: "審批第一份草稿", deliver: "匯出或複製" },
+  },
   select: {
     signedInAs: "已登入：{email}",
     title: "選擇工作台",
@@ -383,6 +405,13 @@ export const shellZhTW: ShellCopy = {
     failed: "無法核准：請開啟審閱",
     done: "已核准 {total} 份中的 {approved} 份",
     version: "第 {n} 版",
+  },
+  gettingStarted: {
+    title: "開始使用",
+    lead: "五個步驟，完成第一份送出的工作。全部完成後，這份清單會自動隱藏。",
+    progress: "已完成 {done} / {total}",
+    done: "已完成",
+    items: { ownership: "擁有權已確認", brand: "設定品牌語氣", google: "連結 Google 商家", approve: "核准第一份草稿", deliver: "匯出或複製" },
   },
   select: {
     signedInAs: "已登入：{email}",

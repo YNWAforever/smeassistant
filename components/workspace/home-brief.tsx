@@ -40,6 +40,8 @@ export interface HomeBriefViewProps {
   role?: WorkspaceRole
   /** NeedsAttentionCard, rendered directly after the PageIntro so its <h2> never precedes this page's <h1>. */
   problems?: ReactNode
+  /** The getting-started checklist, rendered after today's priority so it never pushes it below the fold. */
+  gettingStarted?: ReactNode
 }
 
 function actionHref(locale: PrototypeLocale, slug: string, action: ActionOverview, location: string): string {
@@ -49,7 +51,7 @@ function actionHref(locale: PrototypeLocale, slug: string, action: ActionOvervie
     ? `${href}?version=${encodeURIComponent(action.latestVersion.id)}` : href, location)
 }
 
-export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, role, consentPolicyVersion, problems }: HomeBriefViewProps) {
+export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, role, consentPolicyVersion, problems, gettingStarted }: HomeBriefViewProps) {
   const t = copy[locale].home
   const focus = copy[locale].ownerFocus
   const isChinese = locale !== "en"
@@ -144,6 +146,8 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         <Button asChild variant="outline"><Link href={withLocation(`${base}/actions`, location)}>{focus.allTasks}<ArrowRight /></Link></Button>
         <Button asChild variant="outline"><Link href={withLocation(`${base}/actions/new`, location)}>{focus.create}<ArrowRight /></Link></Button>
       </div>
+
+      {gettingStarted}
 
       {priority && <details className="owner-disclosure owner-priority-evidence">
         <summary>{focus.why}</summary>
