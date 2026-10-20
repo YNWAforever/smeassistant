@@ -65,8 +65,8 @@ Each step was run against the local fixture with a scratch replica of the spec, 
 | Route | Before | After |
 |---|---|---|
 | Actions queue | 282 KB | **241 KB** |
-| Action detail | 275 KB | 272 KB |
-| New | 251 KB | 251 KB |
+| Action detail | 275 KB | 270 KB |
+| New | 251 KB | 249 KB |
 | Today | 228 KB | 228 KB |
 | Insights | 220 KB | 220 KB |
 | Landing | 217 KB | 217 KB |
@@ -105,7 +105,14 @@ Each step was run against the local fixture with a scratch replica of the spec, 
 
 All checks ran one after another on the final commit.
 
-Gate results are added when the sequential run finishes.
+| Gate | Result |
+|---|---|
+| `corepack pnpm typecheck` | pass |
+| `corepack pnpm lint` | 0 errors, 40 warnings (unchanged) |
+| `corepack pnpm test` | 5,999 + 62 root tests. Packages: scoring 183, region 23, contracts 20, scan-engine 299. All pass. |
+| `corepack pnpm build` | pass |
+| `test:secret-boundary`, `test:no-supabase`, `test:no-self-service-claim` | pass |
+| `test:js-budget` (new) | pass. Largest: action detail 270 KB, New 249 KB, Actions queue 241 KB (budget 300 KB). |
 
 `e2e` and `e2e:acceptance` need Docker, so they were not run locally; CI runs both.
 
