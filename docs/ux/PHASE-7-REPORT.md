@@ -105,7 +105,16 @@ Captures:
 
 ## Verification
 
-Gate results are added when the sequential run finishes.
+All checks ran one after another on the final commit.
+
+| Gate | Result |
+|---|---|
+| `corepack pnpm typecheck` | pass |
+| `corepack pnpm lint` | 0 errors, 10 warnings (was 40) |
+| `corepack pnpm test` | 6,045 + 62 root tests. Packages: scoring 183, region 23, contracts 20, scan-engine 299. All pass. |
+| `corepack pnpm build` | pass |
+| `test:secret-boundary`, `test:no-supabase`, `test:no-self-service-claim` | pass |
+| `test:js-budget` | pass. Largest: action detail 268 KB, New 248 KB, Actions queue 240 KB (budget 300 KB). |
 
 `e2e` and `e2e:acceptance` need Docker, so they were not run locally; CI runs both.
 
