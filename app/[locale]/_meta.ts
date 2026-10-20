@@ -64,7 +64,7 @@ export function publicPageMetadata(locale: PrototypeLocale, page: "landing" | "s
   const c = copy[locale];
   switch (page) {
     case "landing":
-      return publicMetadata({ locale, path: "/", title: c.landing.title, description: c.landing.body });
+      return publicMetadata({ locale, path: "/", title: c.site.hero.title, description: c.site.hero.lead });
     case "scan":
       return publicMetadata({
         locale,
