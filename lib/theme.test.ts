@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest"
 import { parseThemePreference, resolveTheme, themeBootScript, THEME_STORAGE_KEY } from "./theme"
 
 describe("workspace theme", () => {
-  it("accepts only light or dark as an explicit choice; anything else follows the device", () => {
-    expect(parseThemePreference("light")).toBe("light")
+  it("defaults to light; dark and match-device are explicit choices", () => {
     expect(parseThemePreference("dark")).toBe("dark")
-    for (const value of [null, undefined, "", "system", "DARK", 1]) expect(parseThemePreference(value)).toBe("system")
+    expect(parseThemePreference("system")).toBe("system")
+    for (const value of [null, undefined, "", "light", "DARK", 1]) expect(parseThemePreference(value)).toBe("light")
   })
 
   it("resolves system from the device and keeps explicit choices", () => {
@@ -21,8 +21,12 @@ describe("workspace theme", () => {
     const html = { dataset: {} as Record<string, string> }
     const run = new Function("localStorage", "window", "document", themeBootScript)
     run({ getItem: () => { throw new Error("blocked") } }, { matchMedia: () => ({ matches: true }) }, { documentElement: html })
-    expect(html.dataset.theme).toBe("dark")
-    run({ getItem: () => "light" }, { matchMedia: () => ({ matches: true }) }, { documentElement: html })
     expect(html.dataset.theme).toBe("light")
+    run({ getItem: () => null }, { matchMedia: () => ({ matches: true }) }, { documentElement: html })
+    expect(html.dataset.theme).toBe("light")
+    run({ getItem: () => "system" }, { matchMedia: () => ({ matches: true }) }, { documentElement: html })
+    expect(html.dataset.theme).toBe("dark")
+    run({ getItem: () => "dark" }, { matchMedia: () => ({ matches: false }) }, { documentElement: html })
+    expect(html.dataset.theme).toBe("dark")
   })
 })

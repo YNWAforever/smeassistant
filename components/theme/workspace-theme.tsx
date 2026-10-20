@@ -27,7 +27,7 @@ function readPreference(): ThemePreference {
   try {
     return parseThemePreference(window.localStorage.getItem(THEME_STORAGE_KEY))
   } catch {
-    return "system"
+    return "light"
   }
 }
 
@@ -37,7 +37,7 @@ function readPreference(): ThemePreference {
  * workspace on a client-side navigation.
  */
 export function WorkspaceTheme({ children }: { children: ReactNode }) {
-  const [preference, setPreferenceState] = useState<ThemePreference>("system")
+  const [preference, setPreferenceState] = useState<ThemePreference>("light")
   const [prefersDark, setPrefersDark] = useState(false)
 
   useIsomorphicLayoutEffect(() => {
@@ -71,8 +71,7 @@ export function WorkspaceTheme({ children }: { children: ReactNode }) {
   const setPreference = useCallback((next: ThemePreference) => {
     setPreferenceState(next)
     try {
-      if (next === "system") window.localStorage.removeItem(THEME_STORAGE_KEY)
-      else window.localStorage.setItem(THEME_STORAGE_KEY, next)
+      window.localStorage.setItem(THEME_STORAGE_KEY, next)
     } catch {
       // Storage unavailable: the choice still applies for this page view.
     }

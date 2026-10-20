@@ -11,7 +11,7 @@ export type ThemePreference = (typeof themePreferences)[number]
 export type ResolvedTheme = "light" | "dark"
 
 export function parseThemePreference(value: unknown): ThemePreference {
-  return value === "light" || value === "dark" ? value : "system"
+  return value === "dark" || value === "system" ? value : "light"
 }
 
 export function resolveTheme(preference: ThemePreference, prefersDark: boolean): ResolvedTheme {
@@ -24,4 +24,4 @@ export function resolveTheme(preference: ThemePreference, prefersDark: boolean):
  * sees a light flash. Storage can throw (private mode, blocked site data); the
  * device setting is then used.
  */
-export const themeBootScript = `(function(){try{var p=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});}catch(e){p=null}var d=p==="dark"||(p!=="light"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.dataset.theme=d?"dark":"light";})();`
+export const themeBootScript = `(function(){try{var p=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});}catch(e){p=null}var d=p==="dark"||(p==="system"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.dataset.theme=d?"dark":"light";})();`
