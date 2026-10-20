@@ -15,10 +15,10 @@ import { StatCard } from "@/components/kinnso/stat-card"
 import { EmptyState, ErrorState, PartialDataState, PermissionDenied } from "@/components/kinnso/states"
 import { VersionDiff } from "@/components/kinnso/version-diff"
 import { Button } from "@/components/ui/button"
-import { CoverageMeter } from "@/components/visual/coverage-meter"
-import { FactTypeLegend } from "@/components/visual/fact-type"
-import { ScoreDial } from "@/components/visual/score-dial"
 import { supportedLocales, type PrototypeLocale } from "@/lib/copy"
+
+import { Section } from "./section"
+import { VisualGallery } from "./visual-gallery"
 
 const SWATCHES = [
   ["canvas", "paper", "paper-2", "line"],
@@ -50,15 +50,6 @@ const SAMPLE = {
     { key: "web", label: "Website", state: "failed" as const },
   ],
   observedAt: "2026-10-19T06:00:00Z",
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="grid gap-4 border-t border-line pt-8" aria-labelledby={`ds-${title}`}>
-      <h2 id={`ds-${title}`} className="text-xl font-bold text-ink">{title}</h2>
-      {children}
-    </section>
-  )
 }
 
 export function DesignSystemGallery({ locale }: { locale: PrototypeLocale }) {
@@ -128,17 +119,13 @@ export function DesignSystemGallery({ locale }: { locale: PrototypeLocale }) {
           </div>
         </Section>
 
-        <Section title="Score, coverage and evidence">
-          <div className="flex flex-wrap items-start gap-8">
-            <ScoreDial score={62} coverage={60} locale={locale} />
-            <ScoreDial score={null} coverage={35} locale={locale} />
-          </div>
-          <CoverageMeter sources={SAMPLE.sources} locale={locale} />
+        <VisualGallery locale={locale} />
+
+        <Section title="Evidence badges">
           <div className="flex flex-wrap gap-2">
             <EvidenceBadge source="Google Maps" state="measured" observedAt={SAMPLE.observedAt} locale={locale} />
             <EvidenceBadge source="Instagram" state="unavailable" observedAt={null} locale={locale} />
           </div>
-          <FactTypeLegend locale={locale} />
         </Section>
 
         <Section title="Stat cards">
@@ -166,6 +153,11 @@ export function DesignSystemGallery({ locale }: { locale: PrototypeLocale }) {
             <ErrorState onRetry={() => {}} locale={locale} />
             <PartialDataState locale={locale} />
             <PermissionDenied locale={locale} />
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <EmptyState kind="noData" actionHref={`/${locale}/scan`} locale={locale} />
+            <EmptyState kind="noActions" actionHref="#" locale={locale} />
+            <EmptyState kind="allDone" actionHref="#" locale={locale} />
           </div>
           <SkeletonList rows={2} label="Loading" />
         </Section>
