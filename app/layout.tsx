@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
-import "@fontsource-variable/geist/wght.css";
 import "./globals.css";
 import { HydrationMarker } from "@/components/hydration-marker";
 import { Toaster } from "@/components/ui/sonner";
