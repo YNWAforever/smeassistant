@@ -73,6 +73,9 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: First-load JS budget per route
+        run: pnpm test:js-budget
+
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 

@@ -21,6 +21,7 @@
     "e2e:acceptance": "playwright test --config playwright.acceptance.config.ts",
     "e2e:live": "playwright test --config playwright.live.config.ts",
     "test:secret-boundary": "node scripts/assert-secret-boundary.mjs",
+    "test:js-budget": "node scripts/check-route-js.mjs",
     "db:verify": "tsx scripts/neon/verify-migrations.ts",
     "db:types": "tsx scripts/gen-types.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
