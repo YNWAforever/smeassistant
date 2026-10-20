@@ -10,6 +10,9 @@ import type { AccessRequestCopy } from "@/lib/copy-access-request"
 import type { AssistantSheetCopy } from "@/lib/copy-assistant"
 import type { DemoWorkspaceCopy } from "@/lib/copy-demo-workspace"
 import type { PricingPageCopy } from "@/lib/copy-pricing"
+import type { ProductCopy } from "@/lib/copy-product"
+import type { ActionTabsCopy } from "@/lib/copy-action-tabs"
+import type { WorkspaceLabelsCopy } from "@/lib/copy-workspace-labels"
 import type { OnboardingCopy } from "@/lib/copy-onboarding"
 import type { ShellCopy } from "@/lib/copy-shell"
 import type { UiCopy } from "@/lib/copy-ui"
@@ -520,6 +523,12 @@ export type Copy = {
   demoWorkspace: DemoWorkspaceCopy
   /** The pricing page (lib/copy-pricing.ts). */
   pricingPage: PricingPageCopy
+  /** Capability and fact-type badges, score dial, loop ribbon and language selector (lib/copy-product.ts). */
+  product: ProductCopy
+  /** The action detail's Workflow and Evidence tabs and version origin (lib/copy-action-tabs.ts). */
+  actionTabs: ActionTabsCopy
+  /** Guardrail warnings, comparison reasons, effort and ledger labels built by lib helpers (lib/copy-workspace-labels.ts). */
+  workspaceLabels: WorkspaceLabelsCopy
 }
 
 /**
