@@ -15,7 +15,7 @@ export function NeedsAttentionCard({ problems, ...surface }: ProblemSurfaceProps
     <SectionCard>
       <div className="section-card-heading">
         <div><h2>{t(locale, "problems.homeTitle")}</h2></div>
-        <Button asChild variant="ghost"><Link href={`/${locale}/owner/${workspaceSlug}/activity`}>{t(locale, "problems.homeMore")} <ArrowRight /></Link></Button>
+        <Button asChild variant="ghost"><Link href={`/${locale}/owner/${workspaceSlug}/settings/activity`}>{t(locale, "problems.homeMore")} <ArrowRight /></Link></Button>
       </div>
       {problems.slice(0, 2).map((problem) => <ProblemItem key={`${problem.kind}:${problem.id}`} problem={problem} {...surface} />)}
     </SectionCard>

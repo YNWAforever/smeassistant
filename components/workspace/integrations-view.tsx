@@ -79,7 +79,7 @@ export function IntegrationsView({ locale, workspaceSlug, workspaceId, timezone,
   ]
   return (
     <div className="settings-page integrations-page">
-      <PageIntro eyebrow={isChinese ? "連接權限範圍及來源狀態" : "Connection scope and provider health"} title={isChinese ? "連接與整合" : "Integrations"} description={isChinese ? "讀取證據、生成草稿與外部發佈是不同能力；每項連接都顯示實際權限及復原路徑。" : "Evidence reads, draft generation and external publishing are separate capabilities with explicit scope and recovery."} actions={<Button asChild variant="outline"><Link href={`${base}/activity`}><History /> {isChinese ? "查看復原紀錄" : "View recovery log"}</Link></Button>} />
+      <PageIntro eyebrow={isChinese ? "連接權限範圍及來源狀態" : "Connection scope and provider health"} title={isChinese ? "連接與整合" : "Integrations"} description={isChinese ? "讀取證據、生成草稿與外部發佈是不同能力；每項連接都顯示實際權限及復原路徑。" : "Evidence reads, draft generation and external publishing are separate capabilities with explicit scope and recovery."} actions={<Button asChild variant="outline"><Link href={`${base}/settings/activity`}><History /> {isChinese ? "查看復原紀錄" : "View recovery log"}</Link></Button>} />
       <div className="integration-grid">
         {cards.map((card) => (
           <SectionCard key={card.key}>

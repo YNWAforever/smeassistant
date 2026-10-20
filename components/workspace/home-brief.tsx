@@ -7,8 +7,6 @@ import { CapabilityBadge, FactType, PageIntro, ScoreDial, SectionCard, TrendIcon
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { EvidenceGallery } from "@/components/workspace/evidence-gallery"
-import { FixPackCard } from "@/components/workspace/fix-pack-card"
-import { PackCard, type PackCardProps } from "@/components/workspace/pack-card"
 import { LocationSelect } from "@/components/workspace/location-select"
 import { RescanButton } from "@/components/workspace/rescan-button"
 import { copy, homeReviewCopy, type PrototypeLocale } from "@/lib/copy"
@@ -36,30 +34,24 @@ export interface HomeBriefViewProps {
   locations: Array<{ slug: string; name: string }>
   brief: HomeBriefWithEvidence
   demo?: boolean
-  /** When present, the Fix Pack drafts card (agent_runs) renders after the secondary grid. */
-  fixPack?: { workspaceId: string; role: WorkspaceRole }
-  /**
-   * P4.2, present only with WORK_PACKS_ENABLED on (lib/workspace/packs.ts loadHomeWorkPacks).
-   * Home then renders the starter pack card and, under "Earlier staff drafts", only
-   * the pending Fix Pack drafts. Absent, Home renders exactly the `fixPack` card above.
-   */
-  workPacks?: { enabled: true; card: Omit<PackCardProps, "locale">; earlierDrafts: { workspaceId: string; role: WorkspaceRole } }
   /** Server-resolved; see RescanButton for why it cannot be computed client-side. */
   consentPolicyVersion: string
   /** The signed-in member's real role; drives the Rescan button (hidden for viewers). Omitted = no rescan control. */
   role?: WorkspaceRole
   /** NeedsAttentionCard, rendered directly after the PageIntro so its <h2> never precedes this page's <h1>. */
   problems?: ReactNode
+  /** The getting-started checklist, rendered after today's priority so it never pushes it below the fold. */
+  gettingStarted?: ReactNode
 }
 
 function actionHref(locale: PrototypeLocale, slug: string, action: ActionOverview, location: string): string {
   const base = `/${locale}/owner/${slug}`
-  const href = action.templateKey === "google-reconnect" ? `${base}/settings/integrations` : `${base}/actions/${action.id}`
+  const href = action.templateKey === "google-reconnect" ? `${base}/business/integrations` : `${base}/actions/${action.id}`
   return withLocation(action.templateKey !== "google-reconnect" && action.latestVersion
     ? `${href}?version=${encodeURIComponent(action.latestVersion.id)}` : href, location)
 }
 
-export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, fixPack, workPacks, role, consentPolicyVersion, problems }: HomeBriefViewProps) {
+export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, role, consentPolicyVersion, problems, gettingStarted }: HomeBriefViewProps) {
   const t = copy[locale].home
   const focus = copy[locale].ownerFocus
   const isChinese = locale !== "en"
@@ -152,8 +144,10 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
 
       <div className="owner-home-shortcuts">
         <Button asChild variant="outline"><Link href={withLocation(`${base}/actions`, location)}>{focus.allTasks}<ArrowRight /></Link></Button>
-        <Button asChild variant="outline"><Link href={withLocation(`${base}/create`, location)}>{focus.create}<ArrowRight /></Link></Button>
+        <Button asChild variant="outline"><Link href={withLocation(`${base}/actions/new`, location)}>{focus.create}<ArrowRight /></Link></Button>
       </div>
+
+      {gettingStarted}
 
       {priority && <details className="owner-disclosure owner-priority-evidence">
         <summary>{focus.why}</summary>
@@ -234,14 +228,6 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         </div>
       </SectionCard>
 
-      {workPacks ? (
-        <>
-          <PackCard locale={locale} {...workPacks.card} />
-          <FixPackCard mode="earlier" locale={locale} workspaceId={workPacks.earlierDrafts.workspaceId} viewerRole={workPacks.earlierDrafts.role} actionsHref={`${base}/actions?view=drafts`} />
-        </>
-      ) : (
-        fixPack && <FixPackCard locale={locale} workspaceId={fixPack.workspaceId} viewerRole={fixPack.role} createHref={withLocation(`${base}/create`, location)} actionsHref={`${base}/actions?view=drafts`} />
-      )}
       </details>
 
       <p className="owner-approval-note">{focus.approvalNote}</p>
@@ -259,7 +245,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         </section>
 
           <SectionCard className="integration-health-card">
-            <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "資料來源可靠度" : "Source reliability"}</p><h2>{isChinese ? "連接狀態" : "Integration health"}</h2></div><Button asChild variant="ghost"><Link href={`${base}/settings/integrations`}>{isChinese ? "管理" : "Manage"}</Link></Button></div>
+            <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "資料來源可靠度" : "Source reliability"}</p><h2>{isChinese ? "連接狀態" : "Integration health"}</h2></div><Button asChild variant="ghost"><Link href={`${base}/business/integrations`}>{isChinese ? "管理" : "Manage"}</Link></Button></div>
             <div className="integration-compact-list">
               {[
                 { name: isChinese ? zhFor(locale, "Google 商戶檔案") : "Google Business Profile", ok: brief.integrations.google.status === "active", warn: brief.integrations.google.status !== "active", note: brief.integrations.google.status === "active" ? (isChinese ? "已連接" : "Connected") : (isChinese ? "需要連接" : "Requires connection") },
@@ -275,7 +261,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
             {brief.ledger.regressed.map((key) => <article key={`r-${key}`}><FactType type="Observed" /><div><h3>{findingLabel(key, locale)}</h3><p>{isChinese ? "在最新可比較掃描中出現退步。" : "Regressed in the latest comparable scan."}</p><small>{isChinese ? "退步" : "Regressed"}</small></div><Button asChild variant="outline" size="sm"><Link href={withLocation(`${base}/actions`, location)}>{isChinese ? "立即處理" : "Act now"}</Link></Button></article>)}
             {brief.ledger.resolved.map((key) => <article key={`s-${key}`}><FactType type="Observed" /><div><h3>{findingLabel(key, locale)}</h3><p>{isChinese ? "在最新可比較掃描中已解決。" : "Resolved in the latest comparable scan."}</p><small>{isChinese ? "已解決" : "Resolved"}</small></div><Button asChild variant="outline" size="sm"><Link href={withLocation(`${base}/insights`, location)}>{isChinese ? "查看證明" : "View proof"}</Link></Button></article>)}
             {brief.ledger.decayed.map((key) => <article key={`d-${key}`}><FactType type="Observed" /><div><h3>{findingLabel(key, locale)}</h3><p>{isChinese ? "時間推移導致的變化，不視為退步。" : "Time-driven change; not treated as a regression."}</p><small>{isChinese ? "時間推移" : "Decayed"}</small></div></article>)}
-            {!changed.comparable && <article><FactType type="Unknown" /><div><h3>{isChinese ? "比較暫時未能取得" : "Comparison unavailable"}</h3><p>{changedReason ?? (isChinese ? "需要兩次符合資格的掃描才會推論變化。" : "Two eligible scans are needed before any change is inferred.")}</p><small>{isChinese ? "覆蓋缺口 · 不計分" : "Coverage gap · Not scored"}</small></div><Button asChild variant="outline" size="sm"><Link href={`${base}/settings/integrations`}>{isChinese ? "檢查來源" : "Check source"}</Link></Button></article>}
+            {!changed.comparable && <article><FactType type="Unknown" /><div><h3>{isChinese ? "比較暫時未能取得" : "Comparison unavailable"}</h3><p>{changedReason ?? (isChinese ? "需要兩次符合資格的掃描才會推論變化。" : "Two eligible scans are needed before any change is inferred.")}</p><small>{isChinese ? "覆蓋缺口 · 不計分" : "Coverage gap · Not scored"}</small></div><Button asChild variant="outline" size="sm"><Link href={`${base}/business/integrations`}>{isChinese ? "檢查來源" : "Check source"}</Link></Button></article>}
           </div>
         </SectionCard>
 

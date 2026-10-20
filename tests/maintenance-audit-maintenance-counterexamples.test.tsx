@@ -8,7 +8,7 @@ const fixture = vi.hoisted(() => ({ listActions: vi.fn(), loadOwnerPage: vi.fn()
 vi.mock("@/lib/workspace/queries-pages", () => ({ listCreateRecommendationSummaries: fixture.listActions }));
 vi.mock("@/lib/workspace/page-context", () => ({ loadOwnerPage: fixture.loadOwnerPage, inScopeFor: () => true, ownerPageMetadata: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }), usePathname: () => "/en/owner/audit/create", useSearchParams: () => new URLSearchParams() }));
-import CreateRoute from "@/app/[locale]/owner/[workspaceSlug]/create/page";
+import CreateRoute from "@/app/[locale]/owner/[workspaceSlug]/actions/new/page";
 import { CalendarView } from "@/components/workspace/calendar-view";
 
 const props = { params: Promise.resolve({ locale: "en", workspaceSlug: "audit" }) };

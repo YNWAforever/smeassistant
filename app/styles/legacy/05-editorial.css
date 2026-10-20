@@ -1,0 +1,365 @@
+/*
+ * Public marketing design system (redesign approved 2026-10-14): a modern,
+ * friendly SaaS look for local SMEs in Kinnso's warm palette (kinnso.ai:
+ * primary oklch(76% .158 55) orange, secondary oklch(83% .143 85) amber,
+ * peach tint scale, zinc ink, system sans). Everything is namespaced `ed-`
+ * so it never fights the older public CSS layers.
+ */
+
+/* ---------- Page ground ---------- */
+
+/* Each section carries half the rhythm on each side, so neighbours sit one
+   --ed-section apart rather than two. */
+
+/* ---------- Type ---------- */
+
+/* Chinese: no negative tracking, a little more leading, and lines break at
+   punctuation or between words (phrase spans), never inside a word. */
+
+/* ---------- Buttons ---------- */
+
+/* Primary: Kinnso orange with ink text (white on this orange fails WCAG AA). */
+
+/* Secondary: ink. */
+
+/* ---------- Cards ---------- */
+
+/* ---------- 01 Hero ---------- */
+
+/* ---------- 02 Moment ---------- */
+
+/* ---------- 03 Promises ---------- */
+
+/* ---------- 04 Story ---------- */
+
+/* ---------- Section heads ---------- */
+
+/* ---------- 05 Sources ---------- */
+
+/* ---------- 06 Loop ---------- */
+
+/* ---------- 07 Compare: a warm peach panel ---------- */
+
+/* ---------- 08 Team ---------- */
+
+/* ---------- 09 Case ---------- */
+
+/* ---------- 10 Outcomes ---------- */
+
+/* ---------- 11 Plans ---------- */
+
+/* ---------- 12 Workspace: the one dark band ---------- */
+
+/* ---------- Motion ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+
+  @keyframes ed-rise {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+/* ---------- Responsive ---------- */
+
+/* ---------- Shared public header (all public pages) ---------- */
+
+.public-site .public-header-inner {
+  border-color: var(--ed-line);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--paper) 86%, transparent);
+  box-shadow: 0 8px 30px -16px oklch(40% 0.08 55 / 0.25);
+}
+
+.public-site .public-header[data-scrolled] .public-header-inner {
+  border-color: var(--ed-line);
+  box-shadow: 0 12px 36px -16px oklch(40% 0.08 55 / 0.32);
+}
+
+.public-site .brand-mark {
+  border-radius: 999px;
+  background: var(--ed-orange);
+  color: var(--ed-ink);
+  box-shadow: none;
+}
+
+.public-site .brand-lockup strong {
+  font-family: var(--ed-sans);
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.public-site .public-nav a {
+  color: var(--ed-ink-2);
+  font-family: var(--ed-sans);
+  font-size: 14px;
+  font-weight: 560;
+}
+
+.public-site .public-nav a:hover {
+  background: var(--ed-peach-100);
+  color: var(--ed-orange-800);
+}
+
+.public-site .header-actions > :is(.button, [data-slot="button"]) {
+  border-radius: 999px;
+  font-family: var(--ed-sans);
+  font-size: 14px;
+  font-weight: 620;
+}
+
+.public-site .public-header .header-actions .header-sign-in {
+  border-color: var(--ed-line);
+  background: var(--ed-surface);
+  color: var(--ed-ink);
+}
+
+.public-site .public-header .header-actions .header-sign-in:hover {
+  border-color: var(--ed-peach-200);
+  background: var(--ed-peach-50);
+}
+
+.public-site .public-header .header-actions .header-scan-cta,
+.public-site .public-header .header-actions .header-scan-cta:hover,
+.public-site .public-header .header-actions .header-scan-cta:focus-visible {
+  border-color: var(--ed-orange) !important;
+  background: var(--ed-orange) !important;
+  color: var(--ed-ink) !important;
+  box-shadow: 0 8px 18px -8px oklch(64% 0.146 57 / 0.55);
+}
+
+.public-site .public-header .header-actions .header-scan-cta:hover {
+  border-color: var(--ed-orange-hover) !important;
+  background: var(--ed-orange-hover) !important;
+}
+
+/* ---------- Shared public footer ---------- */
+
+.public-site .public-footer {
+  background: var(--inverse);
+  color: rgb(255 255 255 / 0.72);
+  font-family: var(--ed-sans);
+}
+
+.public-site .public-footer .brand-lockup small {
+  color: var(--ed-orange);
+}
+
+.public-site .public-footer nav a:hover {
+  color: var(--ed-orange);
+}
+
+.public-site .public-footer .footer-statement {
+  background: linear-gradient(180deg, oklch(80% 0.15 60 / 0.95), oklch(76% 0.158 55 / 0.15) 92%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Cards whose last item must sit on the bottom edge (chip, output, CTA) are
+   flex columns: `margin-top: auto` has no effect inside a grid. */
+
+/* The page ground behind the public site (the body showed through as a strip). */
+
+/* The assistant trigger keeps its behaviour; only its colour joins the palette. */
+
+/* ---------- Phone refinements ---------- */
+
+@media (max-width: 767px) {
+  /* A 13-character Chinese phrase must fit one 358px line, or keep-all falls
+     back to breaking inside a word (循/環). */
+
+  /* Caption sits clear of the photo credit. */
+
+  /* One photograph on a phone: the overlapping second one only crowds it. */
+}
+
+/* ---------- Warm theme for every public page ----------
+   The older public pages (pricing, methodology, trust, scan, report, sign-in)
+   are built on ramp-refresh/polish variables. Remapping those variables on
+   .public-site moves all of them onto the Kinnso palette at once, without
+   touching the owner workspace (which does not render inside .public-site). */
+
+.public-site {
+  background: var(--ed-bg);
+  font-family: var(--ed-sans);
+}
+
+body:has(.public-site) {
+  background: var(--ed-bg);
+}
+
+.public-site :is(h1, h2, h3) {
+  font-family: var(--ed-sans);
+}
+
+/* Report links and panels used blue/sky; they join the warm palette. */
+
+/* Dark panels hard-coded to the old green-black move to warm ink. */
+
+.public-site .pricing-featured {
+  border-color: var(--ed-orange);
+  background: var(--ed-surface);
+  box-shadow: 0 0 0 1px var(--ed-orange), var(--ed-shadow-lg);
+}
+
+/* Scan steps sidebar: teal states become warm. */
+.public-site .flow-steps li {
+  color: rgb(255 255 255 / 0.62);
+}
+
+.public-site .flow-steps li > span {
+  border-color: rgb(255 255 255 / 0.25);
+}
+
+.public-site .flow-steps .is-active {
+  background: rgb(255 255 255 / 0.08);
+  color: #fff;
+}
+
+.public-site .flow-steps .is-active > span {
+  border-color: var(--ed-orange);
+  background: var(--ed-orange);
+  color: var(--ed-ink);
+}
+
+.public-site .flow-steps .is-complete {
+  color: oklch(88% 0.08 70);
+}
+
+/* shadcn tokens inside the public site: warm ink primary, white fields. */
+
+.public-site :is(input:not([type="radio"], [type="checkbox"]), textarea, [data-slot="select-trigger"]) {
+  background-color: var(--ed-surface);
+}
+
+/* ---------- Owner workspace (Kinnso light) ---------- */
+
+.workspace-shell {
+  font-family: var(--ed-sans);
+}
+
+.workspace-root,
+.workspace-main {
+  background: var(--ed-bg) !important;
+}
+
+.workspace-shell .workspace-sidebar {
+  border-right: 1px solid var(--ed-line);
+  background: var(--paper) !important;
+  color: var(--ed-ink);
+}
+
+.workspace-shell .brand-lockup-inverse strong {
+  color: var(--ed-ink);
+}
+
+.workspace-shell .brand-lockup-inverse small {
+  color: var(--ed-ink-3);
+}
+
+.workspace-shell .brand-lockup-inverse .brand-mark,
+.workspace-shell .workspace-avatar {
+  background: var(--ed-orange);
+  color: var(--ed-ink);
+}
+
+.workspace-shell .brand-lockup-inverse .brand-mark {
+  border-radius: 999px;
+}
+
+.workspace-shell .workspace-switcher {
+  border-color: var(--ed-line);
+  background: var(--ed-peach-50);
+  color: var(--ed-ink);
+}
+
+.workspace-shell .workspace-switcher:hover {
+  border-color: var(--ed-peach-200);
+  background: var(--ed-peach-100);
+}
+
+.workspace-shell .workspace-switcher small,
+.workspace-shell .account-button small {
+  color: var(--ed-ink-3);
+}
+
+.workspace-shell .workspace-sidebar [data-sidebar="group-label"] {
+  color: var(--ed-ink-3);
+}
+
+.workspace-shell .workspace-sidebar [data-sidebar="menu-button"] {
+  color: var(--ed-ink-2);
+  font-size: 14px;
+  font-weight: 560;
+}
+
+.workspace-shell .workspace-sidebar [data-active="true"] {
+  background: var(--ed-peach-100) !important;
+  color: var(--ed-orange-800) !important;
+  font-weight: 700;
+}
+
+.workspace-shell .workspace-sidebar [data-sidebar="menu-button"]:hover:not([data-active="true"]) {
+  background: var(--ed-peach-50);
+  color: var(--ed-ink);
+}
+
+.workspace-shell .workspace-sidebar [data-sidebar="menu-badge"] {
+  color: var(--ed-orange-800);
+}
+
+.workspace-shell .workspace-sidebar [data-sidebar="separator"] {
+  background: var(--ed-line);
+}
+
+.workspace-shell .usage-mini {
+  border-color: var(--ed-line-warm);
+  background: var(--ed-peach-50);
+  color: var(--ed-ink-2);
+}
+
+.workspace-shell .usage-mini strong {
+  color: var(--ed-ink);
+}
+
+.workspace-shell .usage-track {
+  background: var(--ed-peach-200);
+}
+
+.workspace-shell .usage-track span {
+  background: var(--ed-orange);
+}
+
+.workspace-shell .account-button {
+  color: var(--ed-ink);
+}
+
+.workspace-shell .account-button:hover {
+  background: var(--ed-peach-50);
+}
+
+.workspace-shell .account-avatar {
+  background: var(--inverse);
+  color: #fff;
+}
+
+.workspace-shell .workspace-topbar {
+  border-bottom-color: var(--ed-line);
+  background: color-mix(in oklab, var(--paper) 86%, transparent);
+}
+
+.workspace-shell .usage-mini :is(span, small) {
+  color: var(--ed-ink-3);
+}
+
+/* Status colours keep their meaning (review on #70). The brand remap above
+   moves --teal onto the orange accent family, but these selectors read
+   --teal to mean success / measured / ready, so they get the status green
+   back on the element itself; descendants (e.g. the score dial's ring)
+   inherit it. Applies to the public site and the workspace alike. */
+
+/* Contrast fixes found by axe after the token pass (docs/ux Phase 1):
+   eyebrows on dark panels use the light brand tone, not brand text. */
+.public-site :is(.flow-steps, .public-demo-flow) .eyebrow {
+  color: var(--brand);
+}

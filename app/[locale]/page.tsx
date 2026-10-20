@@ -20,5 +20,5 @@ export default async function Landing({ params }: { params: Promise<{ locale: st
   // to /scan?market=… — the locale never changes it afterwards (guardrail 11).
   // This route is not force-dynamic, so `billing.open` is fixed at build time
   // (a known limitation, task-4-brief.md step 3) until it is next rebuilt.
-  return <LandingPage locale={locale} market={localeToMarket(locale)} billing={publicBilling()} heroPhrases={phrases(copy[locale].landing.title, locale)} />;
+  return <LandingPage locale={locale} market={localeToMarket(locale)} billing={publicBilling()} heroPhrases={phrases(copy[locale].site.hero.title, locale)} />;
 }

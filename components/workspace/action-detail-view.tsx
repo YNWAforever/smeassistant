@@ -1,4 +1,5 @@
 import { ActionDetailClient } from "@/components/workspace/action-detail-client"
+import { ActionProgress } from "@/components/workspace/action-progress"
 import type { PrototypeLocale } from "@/lib/copy"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import type { OfferCardData } from "@/components/workspace/action-detail-client"
@@ -26,6 +27,7 @@ export interface ActionDetailViewProps {
   publishPanel?: PublishPanel | null
   ownerCheck?: OwnerCheckContext
   ownerCheckIdentity?: string
+  embedded?: boolean
 }
 
 /**
@@ -36,5 +38,10 @@ export interface ActionDetailViewProps {
  * re-renders from the database, never from optimistic state.
  */
 export function ActionDetailView(props: ActionDetailViewProps) {
-  return <ActionDetailClient {...props} />
+  return (
+    <>
+      <ActionProgress versions={props.detail.versions} locale={props.locale} />
+      <ActionDetailClient {...props} />
+    </>
+  )
 }

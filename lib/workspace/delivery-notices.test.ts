@@ -63,7 +63,7 @@ describe("sendDeliveryNotices", () => {
     expect(mocks.inserted.map((row) => row.kind)).toEqual(["delivery.exported", "usage.allowance_80"]);
     expect(mocks.inserted[1]).toMatchObject({
       title: { en: "1 approved delivery left this period" },
-      href: "/owner/kam-man-house/settings/billing",
+      href: "/owner/kam-man-house/settings/plan",
     });
     expect(mocks.hasInMonth).toHaveBeenCalledWith(WORKSPACE, "usage.allowance_80", "2026-10");
 

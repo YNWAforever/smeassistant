@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
-import { TriangleAlert } from "lucide-react";
 
+import { RoleNotice } from "@/components/states/role-notice";
 import { HomeBriefView } from "@/components/workspace/home-brief";
 import { NeedsAttentionCard } from "@/components/workspace/needs-attention-card";
 import { filterToLocation } from "@/lib/ops/owner-actions";
 import { currentScanConsentPolicyVersion } from "@/lib/scan/consent";
 import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
-import { loadHomeWorkPacks } from "@/lib/workspace/packs";
 import { loadWorkspaceProblems } from "@/lib/workspace/problems";
 import { getHomeBrief } from "@/lib/workspace/queries-pages";
-import { zhFor } from "@/lib/zh-tw"
+import { loadGettingStarted } from "@/lib/workspace/getting-started";
+import { GettingStarted } from "@/components/workspace/getting-started";
 
 export const dynamic = "force-dynamic";
 
@@ -24,10 +24,7 @@ export async function generateMetadata(props: OwnerPageProps): Promise<Metadata>
  */
 export default async function WorkspaceHome(props: OwnerPageProps) {
   const page = await loadOwnerPage(props);
-  // P4.2: undefined, with no SQL, while WORK_PACKS_ENABLED is off. "All" is a single
-  // location's pack when the workspace has only one; with several there is none to start for.
-  const homeLocation = page.locationSlug === "all" ? (page.ctx.locations.length === 1 ? page.ctx.locations[0] : null) : page.ctx.locations.find((l) => l.slug === page.locationSlug) ?? null;
-  const [brief, problems, workPacks] = await Promise.all([
+  const [brief, problems, gettingStarted] = await Promise.all([
     getHomeBrief(page.ctx, page.locationSlug),
     loadWorkspaceProblems({
       workspaceId: page.ctx.workspace.id,
@@ -35,13 +32,13 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
       membership: page.membership,
       tier: page.ctx.workspace.tier,
     }),
-    loadHomeWorkPacks(page.ctx, page.membership, { id: homeLocation?.id ?? null, isAll: homeLocation === null && page.ctx.locations.length > 1 }),
+    loadGettingStarted(page.ctx, page.membership, page.locale),
   ]);
   const locationId = page.locationSlug === "all" ? "all" : page.ctx.locations.find((l) => l.slug === page.locationSlug)?.id ?? "all";
   const forbidden = page.query.forbidden === "1";
   return (
     <>
-      {forbidden && <div className="permission-note" role="alert"><TriangleAlert /><span>{page.isChinese ? zhFor(page.locale, "你的角色或地點範圍不允許該操作，已返回工作台首頁。") : "Your role or location scope does not allow that action; you have been returned to the workspace home."}</span></div>}
+      {forbidden && <RoleNotice kind="forbidden" locale={page.locale} />}
       <HomeBriefView
         locale={page.locale}
         workspaceSlug={page.workspaceSlug}
@@ -56,9 +53,8 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
         locations={page.locations}
         brief={brief}
         demo={page.ctx.workspace.isDemo}
-        fixPack={{ workspaceId: page.ctx.workspace.id, role: page.membership.role }}
-        workPacks={workPacks}
         role={page.membership.role}
+        gettingStarted={gettingStarted && <GettingStarted items={gettingStarted} locale={page.locale} />}
         problems={problems && (
           <NeedsAttentionCard
             locale={page.locale}

@@ -1,9 +1,10 @@
 import Link from "next/link"
 import { CalendarClock, MapPin, TriangleAlert } from "lucide-react"
 
+import { EmptyState } from "@/components/kinnso/states"
 import { Badge } from "@/components/ui/badge"
 import { PageIntro, SectionCard } from "@/components/product-ui"
-import type { PrototypeLocale } from "@/lib/copy"
+import { copy, type PrototypeLocale } from "@/lib/copy"
 import { resolveText } from "@/lib/domain"
 import { formatDay, ordinal, priorityClass, priorityLabel, withLocation } from "@/lib/workspace/format"
 import type { CalendarModel } from "@/lib/workspace/queries-pages"
@@ -18,12 +19,13 @@ import { zhFor } from "@/lib/zh-tw"
  * `next_run_at <` query anywhere), and CLAUDE.md forbids adding a second
  * scheduler here. A rescan happens when the owner starts one.
  */
-export function CalendarView({ locale, workspaceSlug, timezone, model }: { locale: PrototypeLocale; workspaceSlug: string; timezone: string; model: CalendarModel }) {
+/** `embedded`: shown as the Due view inside the Actions queue frame, which supplies the header. */
+export function CalendarView({ locale, workspaceSlug, timezone, model, embedded = false }: { locale: PrototypeLocale; workspaceSlug: string; timezone: string; model: CalendarModel; embedded?: boolean }) {
   const isChinese = locale !== "en"
   const base = `/${locale}/owner/${workspaceSlug}`
   return (
     <div className="calendar-page">
-      <PageIntro eyebrow={isChinese ? zhFor(locale, "已規劃工作及監察") : "Planned work and monitoring"} title={isChinese ? "日曆" : "Calendar"} description={isChinese ? "所有日期都帶完整年份與狀態；目前沒有已驗證的外部發佈連接器。" : "Every item has a full date and explicit state; no external publishing connector is verified."} />
+      {!embedded && <PageIntro eyebrow={isChinese ? zhFor(locale, "已規劃工作及監察") : "Planned work and monitoring"} title={isChinese ? "日曆" : "Calendar"} description={isChinese ? "所有日期都帶完整年份與狀態；目前沒有已驗證的外部發佈連接器。" : "Every item has a full date and explicit state; no external publishing connector is verified."} />}
       <SectionCard className="calendar-card">
         <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? zhFor(locale, "監察節奏") : "Monitoring cadence"}</p><h2>{isChinese ? "重新掃描節奏" : "Rescan cadence"}</h2></div><Badge variant="outline">{isChinese ? "由你執行" : "You run these"}</Badge></div>
         {model.nextScans.length === 0 ? <p>{isChinese ? "尚未有節奏。付費方案在你首次重新掃描後，會在這裡記錄每月節奏。" : "No cadence yet. On the paid tier, your first rescan records a monthly cadence here."}</p> : (
@@ -35,7 +37,7 @@ export function CalendarView({ locale, workspaceSlug, timezone, model }: { local
       </SectionCard>
       <SectionCard>
         <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "有到期日的行動" : "Actions with a due date"}</p><h2>{isChinese ? "已規劃工作" : "Planned work"}</h2></div><Badge variant="outline">{model.dueActions.length}</Badge></div>
-        {model.dueActions.length === 0 ? <p>{isChinese ? "尚未有行動設定到期日。" : "No action has a due date yet."}</p> : (
+        {model.dueActions.length === 0 ? <EmptyState locale={locale} kind="noData" title={copy[locale].shell.empty.due.title} body={copy[locale].shell.empty.due.body} /> : (
           <div className="compact-action-list">
             {model.dueActions.map((action) => <Link key={action.id} href={withLocation(`${base}/actions/${action.id}`, action.location.slug === "all" ? undefined : action.location.slug)}><span className={`priority-marker ${priorityClass(action.priority)}`} /><div><strong>{resolveText(action.title, locale)}</strong><small><MapPin /> {resolveText(action.location.name, locale)} · {formatDay(action.dueAt ?? null, locale, timezone)} · {priorityLabel(action.priority, locale)}</small></div></Link>)}
           </div>

@@ -40,7 +40,7 @@ describe("RescanButton", () => {
     const html = renderToStaticMarkup(<RescanButton {...base} tier="lite" role="owner" />);
     expect(html).toContain('disabled=""');
     expect(html).toContain("Growth Workspace plan");
-    expect(html).toContain('href="/en/owner/shop/settings/billing"');
+    expect(html).toContain('href="/en/owner/shop/settings/plan"');
   });
   it("is enabled for a paid owner with a location, disabled for the all-locations scope", () => {
     expect(renderToStaticMarkup(<RescanButton {...base} tier="paid" role="manager" />)).not.toContain('disabled=""');
@@ -68,12 +68,12 @@ describe("TeamView", () => {
     expect(html).toContain("Remove ken@example.com");
     expect(html).not.toContain("Remove owner@example.com");
     expect(html).not.toContain("Preview as");
-    expect(html).not.toContain("permission-banner");
+    expect(html).not.toContain("role-notice");
     expect(html).toContain("Invite pending");
   });
   it("shows managers and viewers the read-only table behind the permission banner", () => {
     const html = renderToStaticMarkup(<TeamView locale="zh-HK" workspaceId="ws" role="viewer" timezone="Asia/Hong_Kong" model={team} />);
-    expect(html).toContain("permission-banner");
+    expect(html).toContain("role-notice");
     expect(html).not.toContain("邀請成員");
     expect(html).not.toContain("移除");
     expect(html).toContain("Yik Yam Street");
@@ -93,14 +93,14 @@ describe("BrandView", () => {
     const owner = renderToStaticMarkup(<BrandView locale="en" workspaceId="ws" actorId="fixture-owner" role="owner" brand={brand} />);
     expect(owner).toContain('type="submit"');
     expect(owner).toContain("Save current profile");
-    expect(owner).not.toContain("permission-banner");
+    expect(owner).not.toContain("role-notice");
     expect(owner).toContain("Clear and professional");
     expect(owner).toContain("20 seats");
     expect(owner).toContain('value="seats"');
     expect(owner).toContain("Updated 2026-09-01");
     const viewer = renderToStaticMarkup(<BrandView locale="zh-TW" workspaceId="ws" actorId="fixture-viewer" role="viewer" brand={brand} />);
     expect(viewer).not.toContain('type="submit"');
-    expect(viewer).toContain("permission-banner");
+    expect(viewer).toContain("role-notice");
     expect(viewer).toContain('readOnly=""');
   });
 });

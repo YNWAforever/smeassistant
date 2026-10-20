@@ -62,8 +62,8 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string; zhTW?:
 
 export const AUDIT_ACTOR_LABELS: Record<"user" | "agent" | "system" | "scanner", { en: string; zh: string }> = {
   user: { en: "Member", zh: "成員" },
-  agent: { en: "Visibility Workspace", zh: "能見度工作台" },
-  system: { en: "Visibility Workspace", zh: "能見度工作台" },
+  agent: { en: "Kinnso OS", zh: "Kinnso OS" },
+  system: { en: "Kinnso OS", zh: "Kinnso OS" },
   scanner: { en: "Scanner", zh: "掃描器" },
 };
 

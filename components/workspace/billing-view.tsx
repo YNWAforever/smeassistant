@@ -1,7 +1,8 @@
 import Link from "next/link"
-import { ArrowRight, BadgeCheck, CheckCircle2, CircleDashed, CreditCard, ShieldAlert, ShieldCheck } from "lucide-react"
+import { ArrowRight, BadgeCheck, CheckCircle2, CircleDashed, CreditCard, ShieldCheck } from "lucide-react"
 
 import { PageIntro, SectionCard } from "@/components/product-ui"
+import { RoleNotice } from "@/components/states/role-notice"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -57,7 +58,7 @@ export function BillingView({ locale, workspaceId, role, timezone, model, checko
   return (
     <div className="settings-page billing-page">
       <PageIntro eyebrow={isChinese ? "方案、核准後交付及付款週期" : "Plan, approved deliveries and payment lifecycle"} title={isChinese ? "方案與帳單" : "Plan & billing"} description={isChinese ? "單一、可核對的用量口徑：生成、修改、拒絕及失敗不扣除；首次核准後匯出或發佈才計 1 次。" : "One auditable metric: generation, revision, rejection and failure are free; first approved export or publish counts as one delivery."} />
-      {role !== "owner" && <div className="permission-banner"><ShieldAlert /><div><strong>{isChinese ? "沒有帳單管理權限" : "No billing authority"}</strong><span>{isChinese ? "經理及檢視者可查看方案與營運限制，但不能更改付款或成員權益。" : "Managers and viewers may inspect plan limits but cannot change payment or entitlements."}</span></div><Badge variant="outline">{isChinese ? "權限不足" : "Permission denied"}</Badge></div>}
+      {role !== "owner" && <RoleNotice kind="billing" locale={locale} />}
       {checkout === "success" && <div className="context-banner" role="status"><CheckCircle2 /><div><strong>{isChinese ? "Stripe 已收到你的訂閱" : "Stripe received your subscription"}</strong><span>{isChinese ? "方案會在 Stripe 確認付款後自動更新；如未即時顯示，請稍後重新整理。" : "The plan updates automatically once Stripe confirms payment; refresh shortly if it has not changed yet."}</span></div></div>}
       {checkout === "cancelled" && <div className="context-banner" role="status"><CircleDashed /><div><strong>{isChinese ? "已取消結帳" : "Checkout cancelled"}</strong><span>{isChinese ? "沒有任何費用；你可隨時再次訂閱。" : "Nothing was charged; you can subscribe again at any time."}</span></div></div>}
       <section className="billing-overview">

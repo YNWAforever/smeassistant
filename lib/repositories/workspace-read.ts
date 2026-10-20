@@ -159,6 +159,13 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
     // workspace-wide action must stay counted in a location-scoped total --
     // exactly as actions() does above. Dropping that arm would make Home's
     // counters SMALLER than the same location's Actions tab.
+    // Getting-started checklist (Phase 5): has any version in this workspace
+    // been approved? approved_at stays set when a later edit supersedes it; a
+    // later decision can clear it, so an exported version also counts.
+    async anyApprovedVersion(workspaceId: string): Promise<boolean> {
+      const [row] = await rows<{ approved: boolean }>("SELECT EXISTS(SELECT 1 FROM output_versions WHERE workspace_id=$1 AND (approved_at IS NOT NULL OR first_exported_at IS NOT NULL)) AS approved", [workspaceId]);
+      return row?.approved === true;
+    },
     async draftVersions(workspaceId: string, locationId?: string | null): Promise<Array<{ id: string }>> {
       return rows<{ id: string }>("SELECT v.id FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id WHERE a.workspace_id=$1 AND v.approval_state='draft' AND ($2::uuid IS NULL OR a.location_id=$2 OR a.location_id IS NULL)", [workspaceId, locationId ?? null]);
     },

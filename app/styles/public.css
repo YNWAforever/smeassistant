@@ -1,0 +1,472 @@
+/*
+ * Redesigned public pages (docs/ux Phase 2): landing, methodology, trust and
+ * pricing. This file sits in the `pages` layer, after `legacy`, so the old
+ * element rules (heading tracking, input backgrounds) never override a
+ * redesigned page. Tokens only, mobile first. Motion is opt-in: the still,
+ * finished state is the default and animation runs only when the device
+ * allows motion and the manual switch is off.
+ */
+
+/* ── Shared ─────────────────────────────────────────────────────────── */
+.pl-landing,
+.pl-page {
+  --pl-max: 72rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(56px, 9vw, 112px);
+  width: min(100% - 32px, var(--pl-max));
+  margin-inline: auto;
+  padding-block: clamp(24px, 5vw, 64px) clamp(56px, 8vw, 96px);
+  color: var(--ink);
+}
+
+.pl-section { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; scroll-margin-top: 96px; }
+
+.pl-heading {
+  font-size: clamp(1.5rem, 3.2vw, 2.25rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.pl-body, .pl-lead { color: var(--ink-2); margin: 0; }
+.pl-body { max-width: 40rem; }
+
+.pl-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.pl-link {
+  color: var(--brand-text);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+.pl-link:hover { text-decoration-thickness: 2px; }
+
+.pl-aside { margin: 0; font-size: 0.875rem; color: var(--ink-2); }
+
+.pl-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+
+/* One primary button per screen: brand orange with dark ink (CLAUDE.md 2026-10-19). */
+.pl-cta,
+.pl-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 22px;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  font-size: 1rem;
+  text-decoration: none;
+}
+.pl-cta {
+  width: 100%;
+  border: 0;
+  background: var(--brand);
+  color: var(--on-brand);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+.pl-cta:hover { background: var(--brand-hover); }
+.pl-cta svg { width: 18px; height: 18px; }
+.pl-secondary {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+}
+.pl-secondary:hover { border-color: var(--ink-3); }
+
+.pl-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  padding: 20px;
+  box-shadow: var(--shadow-xs);
+}
+
+.pl-chip {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  border-radius: var(--radius-pill);
+  padding: 2px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+.pl-chip-brand { background: var(--brand-soft); color: var(--brand-text); }
+
+/* ── Hero ───────────────────────────────────────────────────────────── */
+.pl-hero {
+  display: grid;
+  gap: 32px;
+  align-items: center;
+}
+@media (min-width: 1024px) {
+  .pl-hero { grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 56px; }
+}
+
+.pl-hero-copy { display: grid; gap: 16px; }
+
+.pl-display {
+  margin: 0;
+  font-size: clamp(2.25rem, 7vw, 4rem);
+  font-weight: 750;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.pl-phrase { display: inline-block; }
+.pl-lead { font-size: clamp(1.0625rem, 1.6vw, 1.25rem); max-width: 34rem; }
+
+.pl-scan {
+  display: grid;
+  gap: 14px;
+  margin-top: 8px;
+  max-width: 34rem;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 4px);
+  background: var(--paper);
+  box-shadow: var(--shadow-md);
+}
+
+.pl-field { position: relative; }
+.pl-field input {
+  min-height: 52px;
+  padding-inline-start: 44px;
+  border-radius: 14px;
+  background: var(--paper);
+  font-size: 1rem;
+}
+.pl-field-icon {
+  position: absolute;
+  inset-inline-start: 16px;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translateY(-50%);
+  color: var(--ink-3);
+  pointer-events: none;
+}
+
+.pl-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--danger-text);
+}
+.pl-error svg { width: 16px; height: 16px; flex: none; }
+
+.pl-market { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pl-market legend { font-size: 0.875rem; font-weight: 600; color: var(--ink-2); padding: 0; margin-bottom: 8px; }
+.pl-market-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pl-market-choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.pl-market-choice:has([data-state="checked"]) { border-color: var(--brand); background: var(--brand-soft); }
+.pl-market-choice span { display: grid; line-height: 1.25; }
+.pl-market-choice small { font-size: 0.75rem; font-weight: 500; color: var(--ink-3); }
+
+.pl-note { margin: 0; text-align: center; font-size: 0.875rem; color: var(--ink-2); }
+.pl-locale-note { margin: 0; text-align: center; font-size: 0.75rem; color: var(--ink-3); }
+
+/* Hero loop (components/public/landing/hero-loop.tsx). */
+.pl-loop {
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 8px);
+  background: linear-gradient(160deg, var(--paper), var(--paper-2));
+  padding: clamp(12px, 3vw, 24px);
+  box-shadow: var(--shadow-sm);
+}
+.pl-loop * { transform-box: fill-box; transform-origin: center; }
+.pl-loop-field { fill: var(--paper); stroke: var(--line); }
+.pl-loop-stroke { fill: none; stroke: var(--ink-3); stroke-width: 2; stroke-linecap: round; }
+.pl-loop-typed { fill: var(--line); transform-origin: left center; }
+.pl-loop-rowbg { fill: var(--paper); stroke: var(--line); }
+.pl-loop-label { fill: var(--ink-2); font-size: 12px; font-weight: 600; }
+.pl-loop-ok { fill: var(--success-soft); stroke: var(--success); stroke-width: 1.5; }
+.pl-loop-check { fill: none; stroke: var(--success-text); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pl-loop-missing { fill: none; stroke: var(--ink-3); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.pl-loop-track { fill: none; stroke: var(--line); stroke-width: 10; }
+.pl-loop-arc { fill: none; stroke: var(--brand); stroke-width: 10; stroke-linecap: round; }
+.pl-loop-cardbg { fill: var(--paper); stroke: var(--brand); stroke-width: 1.5; }
+.pl-loop-chip { fill: var(--brand-soft); }
+.pl-loop-line { fill: var(--line); }
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-motion="reduce"]) .pl-loop-typed { animation: pl-loop-type 8s var(--ease-out) infinite both; }
+  :root:not([data-motion="reduce"]) .pl-loop-row {
+    animation: pl-loop-in 8s var(--ease-out) infinite both;
+    animation-delay: calc(0.6s + var(--i, 0) * 0.45s);
+  }
+  :root:not([data-motion="reduce"]) .pl-loop-arc {
+    animation: pl-loop-in 8s var(--ease-out) infinite both;
+    animation-delay: calc(3.2s + var(--i, 0) * 0.3s);
+  }
+  :root:not([data-motion="reduce"]) .pl-loop-card {
+    animation: pl-loop-in 8s var(--ease-spring) infinite both;
+    animation-delay: 4.6s;
+  }
+  [data-offscreen] .pl-loop *,
+  .pl-loop[data-offscreen] * { animation-play-state: paused !important; }
+
+  /* Step icons pop once when their section arrives (MotionDirector reveal). */
+  :root:not([data-motion="reduce"]) [data-reveal="in"] .pl-step-icon {
+    animation: k-scale-in var(--duration-slow) var(--ease-spring) both;
+    animation-delay: calc(var(--i, 0) * 120ms + 150ms);
+  }
+}
+
+@keyframes pl-loop-type {
+  0% { transform: scaleX(0); }
+  10%, 90% { transform: scaleX(1); }
+  100% { transform: scaleX(0); }
+}
+@keyframes pl-loop-in {
+  0% { opacity: 0; transform: translateY(6px); }
+  8%, 70% { opacity: 1; transform: none; }
+  80%, 100% { opacity: 0; transform: none; }
+}
+
+/* ── How it works ───────────────────────────────────────────────────── */
+.pl-steps { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
+@media (min-width: 768px) { .pl-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.pl-step {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+.pl-step h3 { margin: 0; font-size: 1.125rem; font-weight: 700; letter-spacing: -0.01em; }
+.pl-step p { margin: 0; color: var(--ink-2); }
+.pl-step-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--brand-soft);
+  color: var(--brand-text);
+}
+.pl-step-icon svg { width: 24px; height: 24px; }
+.pl-step-num {
+  position: absolute;
+  top: 16px;
+  inset-inline-end: 18px;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--line);
+}
+
+/* ── What we check ──────────────────────────────────────────────────── */
+.pl-sources {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (min-width: 640px) { .pl-sources { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .pl-sources { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.pl-source {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+}
+@media (min-width: 1024px) { .pl-source { flex-direction: column; } }
+.pl-source span:last-child { display: grid; gap: 2px; }
+.pl-source strong { font-size: 0.9375rem; }
+.pl-source small { font-size: 0.8125rem; color: var(--ink-2); line-height: 1.4; }
+.pl-source-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+.pl-source-icon svg { width: 18px; height: 18px; }
+
+/* ── Sample report ──────────────────────────────────────────────────── */
+.pl-sample-head { display: grid; gap: 10px; }
+.pl-sample-grid { display: grid; gap: 16px; align-items: start; }
+@media (min-width: 900px) { .pl-sample-grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); } }
+
+/* ── Pricing teaser ─────────────────────────────────────────────────── */
+.pl-plans { display: grid; gap: 16px; }
+@media (min-width: 768px) { .pl-plans { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.pl-plan {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+.pl-plan h3 { margin: 0; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em; }
+.pl-plan p { margin: 0; color: var(--ink-2); }
+.pl-plan .pl-secondary { justify-self: start; margin-top: 4px; }
+.pl-plan-featured { border-color: var(--brand); box-shadow: var(--shadow-sm); }
+.pl-plan .pl-price { font-size: 2rem; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
+.pl-price small { font-size: 0.875rem; font-weight: 600; color: var(--ink-2); }
+.pl-plan .pl-note { text-align: start; font-size: 0.8125rem; }
+
+/* ── FAQ ────────────────────────────────────────────────────────────── */
+.pl-faq {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  padding-inline: 20px;
+  max-width: 48rem;
+}
+.pl-faq [data-slot="accordion-trigger"] { min-height: 56px; font-size: 1rem; font-weight: 600; }
+.pl-faq [data-slot="accordion-content"] { color: var(--ink-2); font-size: 0.9375rem; }
+
+/* ── Trust strip ────────────────────────────────────────────────────── */
+.pl-trust {
+  display: grid;
+  gap: 14px;
+  justify-items: start;
+  padding: 20px;
+  border-radius: var(--radius);
+  background: var(--inverse);
+  color: var(--on-inverse);
+}
+.pl-trust ul { display: flex; flex-wrap: wrap; gap: 10px 24px; margin: 0; padding: 0; list-style: none; font-weight: 600; }
+.pl-trust li { display: inline-flex; align-items: center; gap: 8px; }
+.pl-trust svg { width: 18px; height: 18px; color: var(--brand); }
+.pl-trust .pl-link { color: var(--on-inverse); }
+@media (min-width: 768px) {
+  .pl-trust { grid-template-columns: 1fr auto; align-items: center; padding: 20px 28px; }
+}
+
+/* ── Content pages (methodology, trust, pricing) ────────────────────── */
+.pl-page { gap: clamp(40px, 6vw, 72px); }
+.pl-intro { gap: 14px; max-width: 46rem; }
+.pl-title {
+  margin: 0;
+  font-size: clamp(1.875rem, 5vw, 3rem);
+  font-weight: 750;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+.pl-card-title { margin: 0; font-size: 1.125rem; font-weight: 700; letter-spacing: -0.01em; }
+
+.pl-split { display: grid; gap: 16px; align-items: stretch; }
+.pl-split > .pl-panel { align-content: start; }
+@media (min-width: 900px) { .pl-split { grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr); } }
+.pl-formula {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--paper-2);
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+.pl-dials { display: flex; flex-wrap: wrap; gap: 20px 28px; align-items: center; }
+.pl-trends { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: flex-start; }
+
+.pl-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+@media (min-width: 768px) { .pl-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.pl-list-item {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+}
+.pl-list-item small { color: var(--ink-2); font-size: 0.875rem; }
+.pl-list-item[data-claimed="false"] { border-style: dashed; background: transparent; }
+
+@media (min-width: 1024px) { .pl-steps-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.pl-pillars { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
+@media (min-width: 768px) { .pl-pillars { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.pl-table { padding: 8px; }
+.pl-table table { font-size: 0.875rem; }
+.pl-table :is(th, td) { white-space: normal; min-width: 9rem; vertical-align: top; padding-block: 10px; }
+.pl-table th:nth-child(2),
+.pl-table td:nth-child(2) { background: var(--brand-soft); color: var(--ink); font-weight: 600; }
+
+.pl-dl { display: grid; gap: 0; margin: 0; padding: 4px 20px; }
+.pl-dl > div { display: grid; gap: 4px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.pl-dl > div:last-child { border-bottom: 0; }
+@media (min-width: 768px) { .pl-dl > div { grid-template-columns: 14rem 1fr; gap: 16px; } }
+.pl-dl dt { font-weight: 700; }
+.pl-dl dd { margin: 0; color: var(--ink-2); }
+
+.pl-limits {
+  display: flex;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius);
+  background: var(--warning-soft);
+  color: var(--ink);
+}
+.pl-limits > svg { flex: none; width: 22px; height: 22px; color: var(--warning-text); margin-top: 2px; }
+.pl-limits h2 { margin: 0 0 6px; font-size: 1.0625rem; font-weight: 700; letter-spacing: 0; }
+.pl-limits p { margin: 0 0 8px; color: var(--ink-2); }
+.pl-limits p:last-child { margin-bottom: 0; }
+
+/* ── Scanning page (Phase 3) ────────────────────────────────────────── */
+.scanning-page .scan-status-hero { display: grid; gap: 12px; justify-items: start; }
+.scanning-page .scan-status-hero .k-steps { width: 100%; max-width: 36rem; margin-top: 8px; }
+.scan-progress-panel { display: grid; gap: 12px; }
+.scan-elapsed { margin: 0; font-size: 0.8125rem; color: var(--ink-3); }
+
+/* ── Report print / save as PDF (Phase 3) ───────────────────────────── */
+/* The demo bar stays so a printed sample is still labelled Demo. */
+@media print {
+  body:has(.report-page) { background: #fff; }
+  body:has(.report-page) :is(.skip-link, .public-header, .public-footer, .assistant-launcher, nextjs-portal) { display: none !important; }
+  .report-page :is(.k-coverage, .k-score, .k-trend-chip, meter) { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .report-page .unlock-banner form { display: none; }
+  .report-page a[href^="#"]::after { content: none; }
+}
+
+/* ── Unlock (Phase 3) ───────────────────────────────────────────────── */
+/* Report delivery is the one required consent; the two optional ones read as optional. */
+.unlock-form-card { border-color: var(--line); border-radius: 20px; box-shadow: var(--shadow-md); }
+.unlock-form-card .consent-row:has(#delivery-consent) { border-color: var(--brand); background: var(--brand-softer); }
+.unlock-form-card .consent-row:has(#discussion-consent) { margin-top: 12px; }
+.unlock-form-card .consent-row:has(:is(#discussion-consent, #marketing-consent)) { border-style: dashed; background: transparent; }
+.unlock-benefits > div { border-color: var(--line); background: var(--paper); }
+.unlock-benefits svg { color: var(--brand-text); }

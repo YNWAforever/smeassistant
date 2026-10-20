@@ -1,15 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { FileImage, FileText } from "lucide-react"
 
+import { EmptyState } from "@/components/kinnso/states"
 import { PageIntro, SectionCard } from "@/components/product-ui"
+import { RoleNotice } from "@/components/states/role-notice"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AssetRightsControls, AssetUploadDialog } from "@/components/workspace/assets-client"
 import {AssetPreview} from './asset-preview'
 import { LocationSelect } from "@/components/workspace/location-select"
-import type { PrototypeLocale } from "@/lib/copy"
+import { copy, type PrototypeLocale } from "@/lib/copy"
 import type { AssetItem } from "@/lib/workspace/assets"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import { formatDateTime } from "@/lib/workspace/format"
@@ -44,11 +45,11 @@ export function AssetsView({ locale, workspaceId, timezone, role, location, loca
         description={isChinese ? zhFor(locale, "每項素材都顯示來源、權利、地點與目前用途；不會把上載等同可安全發佈。") : "Every asset shows provenance, rights, location and current use; upload is not treated as permission to publish."}
         actions={<><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /><AssetUploadDialog locale={locale} workspaceId={workspaceId} locations={locations.map((l) => ({ id: l.id, name: l.name }))} defaultLocationId={defaultLocationId} disabled={!canUpload} /></>}
       />
-      {role === "viewer" && <div className="permission-banner"><FileText /><div><strong>{isChinese ? "檢視者權限" : "Viewer access"}</strong><span>{isChinese ? zhFor(locale, "可查看素材及使用權；上載及確認會安全拒絕。") : "Assets and rights are visible; upload and confirmation fail closed."}</span></div><Badge variant="outline">{isChinese ? "只讀" : "Read only"}</Badge></div>}
+      {role === "viewer" && <RoleNotice kind="viewerAssets" locale={locale} />}
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList variant="line"><TabsTrigger value="all">{isChinese ? "所有素材" : "All assets"} <span>{scoped.length}</span></TabsTrigger><TabsTrigger value="approved">{isChinese ? "已核准" : "Approved"} <span>{scoped.filter((r) => r.rights_status === "approved").length}</span></TabsTrigger><TabsTrigger value="review">{isChinese ? "需要審閱" : "Needs review"} <span>{scoped.filter((r) => r.rights_status !== "approved").length}</span></TabsTrigger></TabsList>
         <TabsContent value={tab}>
-          {rows.length === 0 ? <div className="empty-state"><span><FileImage /></span><h2>{isChinese ? "尚未有素材" : "No assets yet"}</h2><p>{isChinese ? zhFor(locale, "上載相片或餐牌，確認使用權後即可用於社交帖文草稿。") : "Upload a photo or menu; once rights are confirmed it can be used in social post drafts."}</p></div> : (
+          {rows.length === 0 ? <EmptyState locale={locale} kind="noData" title={copy[locale].shell.empty.assets.title} body={copy[locale].shell.empty.assets.body} /> : (
             <div className="asset-grid">{rows.map((asset) => (
               <SectionCard key={asset.id}>
                 <div className="asset-preview"><AssetPreview asset={asset} workspaceId={workspaceId} locale={locale}/></div>

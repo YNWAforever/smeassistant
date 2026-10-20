@@ -4,6 +4,16 @@
 
 > User-approved amendment (2026-10-15): review replies acknowledge and thank the reviewer; any next step uses current confirmed facts, with contact-only feedback as the safe default. Never require an unconfirmed improvement promise or physical return invitation. Rating-only reviews do not establish a visit, purchase or service failure. This supersedes the mandatory "one concrete improvement, invite back" wording in section 3.7. Existing fact validation, version approval and delivery boundaries remain required.
 
+> User-approved amendment (2026-10-19): the UX redesign (`docs/ux/`) may restyle the site and change its information architecture. This supersedes §0.1 "Preserve the visual design" and §5 "Never restyle" for that work, while keeping §5's content rules. Decisions:
+> - **Product name:** Kinnso OS.
+> - **Brand colour:** Kinnso orange. On orange use dark ink text; white text on orange is not used.
+> - **Dark mode:** owner workspace only, following the OS setting, with a light/dark/system switch.
+> - **Fonts:** system fonts only, no CJK web font.
+> - **Ownership:** OAuth-verified claim is the intended production path. Setting `WORKSPACE_CLAIM_VIA_OAUTH_ENABLED` is a separate hosted action.
+> - **Process:** guardrail fixes ship first as their own PR.
+>
+> Every guardrail in §0 is unchanged. Graphics and motion must stay honest: no implied measured result, revenue or causation.
+
 > **What this file is.** The operating manual + executable integration playbook for Claude Code in this repo.
 > Part A (sections 0–3) is always-on context and contracts. Part B (section 4) is the phased playbook.
 > Sections 5–7 are content rules, verification and pitfalls. Appendix D is the decisions log. Read Part A fully before touching code.
@@ -1353,6 +1363,7 @@ corepack pnpm seed:demo --owned-test      # creates, seeds, verifies and destroy
 | 2026-09-03 | Fix Pack drafts surfaced read-only (approve/reject) rather than merged into versions | assumed, v1 |
 | 2026-09-03 | Tooling: Node 22, pnpm via corepack, no Supabase CLI, Docker for verify/integration | assumed |
 | 2026-10-14 | Public site redesigned as a modern, friendly SaaS look in the Kinnso palette (kinnso.ai: orange primary, amber secondary, peach tints, zinc ink, sans type). Supersedes the §0.1/§5 "preserve the visual design / never restyle" rule; extended to the owner workspace the same day (white sidebar, warm shell). Design system lives in `app/editorial.css` (`ed-*` + variable remaps); legacy stylesheets were hue-shifted, status colours (measured/observed/success) kept | decided (Willy) |
+| 2026-10-19 | UX redesign authorised (restyle + IA). Kinnso OS name; Kinnso orange brand; workspace-only dark mode (OS + toggle); system fonts; OAuth claim as production path; guardrail fixes first (PR #94). Plan and audit in `docs/ux/` | decided (Willy) |
 | open | Retention periods on the Trust page; owned photos for `public/brand/` | Willy |
 | open | Whether the 13 local-only commits and stale worktrees in `Documents\smescanner` get archived (tag) and removed | Willy |
 | open | Re-pin cadence: when upstream changes `scoringVersion` or the lease, both apps must move together | Willy + upstream maintainer |

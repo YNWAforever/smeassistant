@@ -89,7 +89,7 @@ export async function sendAllowanceNotice(input: { workspaceId: string; usage: U
         `${usage.approvedDeliveries} of ${usage.allowance} approved deliveries used. Upgrade for unlimited deliveries.`,
         `已用 ${usage.approvedDeliveries} / ${usage.allowance} 項批准交付。升級即可無限交付。`,
       ),
-      href: home ? `${home}/settings/billing` : null,
+      href: home ? `${home}/settings/plan` : null,
     });
   } catch {
     console.error("[workspace/delivery-notices] allowance notice not sent", {

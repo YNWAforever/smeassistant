@@ -1,0 +1,55 @@
+/*
+ * Accessibility floor, loaded last. WCAG 2.2 AA asks for 24 px targets; the
+ * product brief asks for 44 px on touch screens. Applies to touch pointers
+ * only, so desktop density is unchanged.
+ */
+
+@media (pointer: coarse) {
+  :is(
+    button,
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="option"],
+    summary,
+    select,
+    [data-slot="button"],
+    [data-slot="select-trigger"],
+    .mobile-bottom-nav a,
+    .button
+  ) {
+    min-height: 44px;
+  }
+
+  [data-slot="button"][data-size^="icon"] {
+    min-width: 44px;
+  }
+
+  input:not([type="checkbox"], [type="radio"], [type="hidden"]),
+  textarea {
+    min-height: 44px;
+  }
+}
+
+/* Focus must survive forced-colours mode, where box-shadow rings vanish. */
+:focus-visible {
+  outline-color: var(--focus);
+}
+
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 2px solid CanvasText;
+    outline-offset: 2px;
+  }
+}
+
+/* Manual reduced-motion switch (design-system preview and, later, a user
+   setting). Mirrors the OS preference handled in the legacy layer. */
+:root[data-motion="reduce"] *,
+:root[data-motion="reduce"] *::before,
+:root[data-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}

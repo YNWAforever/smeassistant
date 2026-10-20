@@ -1,0 +1,104 @@
+/*
+ * Redesigned workspace pages (docs/ux Phase 4). In the `pages` layer, after
+ * `legacy`, like public.css. Tokens only, so the workspace dark theme applies.
+ */
+
+/* Destination landing pages (Business, Settings) and the Locations list */
+.destination-page { display: grid; gap: 20px; max-width: 760px; }
+.destination-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.destination-row {
+  display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 12px 16px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--paper); color: var(--ink); text-decoration: none;
+  transition: border-color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+}
+a.destination-row:hover { border-color: var(--brand); background: var(--brand-softer); }
+a.destination-row:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+a.destination-row[aria-current="true"] { border-color: var(--brand); }
+.destination-row[data-locked="true"] { border-style: dashed; background: var(--paper-2); color: var(--ink-2); }
+.destination-icon { display: grid; flex-shrink: 0; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--brand-soft); color: var(--brand-text); }
+.destination-icon svg { width: 20px; height: 20px; }
+.destination-text { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.destination-text strong { font-size: 15px; }
+.destination-text small { color: var(--ink-3); font-size: 13px; line-height: 1.45; }
+.destination-chevron { flex-shrink: 0; width: 18px; height: 18px; color: var(--ink-3); }
+.destination-lock { display: inline-flex; flex-shrink: 0; align-items: center; gap: 6px; color: var(--ink-3); font-size: 12px; font-weight: 600; }
+.destination-lock svg { width: 14px; height: 14px; }
+
+/* Actions › New: the three ways to start */
+.new-mode-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: 8px; margin-bottom: 20px; }
+.new-mode-tabs a {
+  display: flex; align-items: flex-start; gap: 10px; min-height: 44px; padding: 12px 14px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--paper); color: var(--ink); text-decoration: none;
+}
+.new-mode-tabs a:hover { border-color: var(--brand); }
+.new-mode-tabs a[aria-current="page"] { border-color: var(--brand); background: var(--brand-softer); box-shadow: inset 0 0 0 1px var(--brand); }
+.new-mode-tabs a:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.new-mode-tabs svg { flex-shrink: 0; width: 18px; height: 18px; margin-top: 2px; color: var(--brand-text); }
+.new-mode-tabs span { display: grid; gap: 2px; }
+.new-mode-tabs strong { font-size: 14px; }
+.new-mode-tabs small { color: var(--ink-3); font-size: 12px; line-height: 1.4; }
+
+/* Actions: detail beside the queue (?open=id). Wide screens only; smaller
+   screens open the full page, so Preview links are hidden there. */
+.action-card-links { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.action-preview-link { display: none; align-items: center; min-height: 44px; padding: 0 12px; color: var(--brand-text); font-weight: 600; text-decoration: none; }
+.action-preview-link:hover { text-decoration: underline; }
+.action-side-panel { display: grid; gap: 16px; align-content: start; min-width: 0; margin-top: 20px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); }
+.action-side-panel-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+.action-side-panel-bar a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 10px; border-radius: 10px; color: var(--ink-2); font-size: 14px; font-weight: 600; text-decoration: none; }
+.action-side-panel-bar a:hover { background: var(--paper-2); color: var(--ink); }
+.action-side-panel-bar svg { width: 16px; height: 16px; }
+@media (min-width: 1280px) {
+  .action-preview-link { display: inline-flex; }
+  .actions-split { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(460px, 1.15fr); gap: 20px; align-items: start; }
+  .action-side-panel { position: sticky; top: 88px; max-height: calc(100dvh - 104px); margin-top: 0; overflow-y: auto; overscroll-behavior: contain; }
+}
+
+/* Approval flow and version comparison above an action's detail */
+.action-progress { display: grid; gap: 10px; margin-bottom: 16px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+.action-progress-diff > summary { cursor: pointer; min-height: 32px; color: var(--brand-text); font-size: 14px; font-weight: 600; }
+.action-progress-diff > summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+
+/* Bulk approve: safe drafts, each read before approval */
+.bulk-approve { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; margin-bottom: 16px; padding: 16px 18px; border: 1px solid var(--brand); border-radius: 14px; background: var(--brand-softer); }
+.bulk-approve > div { flex: 1 1 280px; min-width: 0; }
+.bulk-approve h2 { margin: 0 0 4px; font-size: 16px; }
+.bulk-approve p { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.5; }
+.bulk-approve-dialog { max-height: 90dvh; overflow-y: auto; }
+.bulk-approve-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.bulk-approve-list li { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
+.bulk-approve-list li[data-outcome="approved"] { border-color: var(--success-border); background: var(--success-soft); }
+.bulk-approve-list small { color: var(--ink-3); }
+.bulk-approve-list blockquote { margin: 0; padding: 8px 12px; border-left: 3px solid var(--line-warm); color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.bulk-approve-read { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; cursor: pointer; }
+.bulk-approve-status { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
+.bulk-approve-status svg { width: 16px; height: 16px; }
+/* The detail's approval bar is fixed to the viewport on its own page; in the
+   panel it sticks to the bottom of the panel, so it never covers the list. */
+.action-side-panel .sticky-approval-bar { position: sticky; inset: auto 0 0 0; margin-top: 12px; }
+
+/* The detail inside the panel: the narrow-screen layout (one column), whatever the viewport. */
+.action-side-panel .action-detail-page { padding-bottom: 0; }
+.action-side-panel .action-detail-header { flex-direction: column; gap: 14px; padding: 18px; }
+.action-side-panel .action-detail-toolbar { flex-wrap: wrap; gap: 8px; }
+.action-side-panel :is(.draft-layout, .workflow-state-layout, .history-layout, .evidence-detail-grid) { grid-template-columns: minmax(0, 1fr); padding: 12px; }
+.action-side-panel [role="tablist"] { overflow-x: auto; scrollbar-width: thin; }
+.action-side-panel > *, .action-side-panel .action-detail-page, .action-side-panel .action-detail-page > * { min-width: 0; }
+.action-side-panel .sticky-approval-bar { flex-wrap: wrap; }
+
+/* Today's getting-started checklist (Phase 5). */
+.getting-started { display: grid; gap: 10px; margin-top: 20px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--card); }
+.getting-started-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+.getting-started h2 { margin: 0; font-size: 1.125rem; }
+.getting-started > p { margin: 0; color: var(--ink-2); font-size: 0.875rem; }
+.getting-started-progress { color: var(--ink-3); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+.getting-started-bar { display: block; height: 6px; overflow: hidden; border-radius: 999px; background: var(--canvas); }
+.getting-started-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--success); }
+.getting-started ol { display: grid; gap: 2px; margin: 4px 0 0; padding: 0; list-style: none; }
+.getting-started li { display: grid; grid-template-columns: 24px minmax(0, 1fr); align-items: center; gap: 10px; min-height: 44px; font-size: 0.9375rem; }
+.getting-started li a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: var(--ink); font-weight: 600; }
+.getting-started li a svg { width: 16px; height: 16px; color: var(--brand-text); }
+.getting-started li[data-done] > span:last-child { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--line); }
+.getting-started-mark { display: grid; width: 22px; height: 22px; place-items: center; border: 1.5px solid var(--line); border-radius: 999px; }
+.getting-started li[data-done] .getting-started-mark { border-color: transparent; background: var(--success-soft); color: var(--success-text); }
+.getting-started-mark svg { width: 14px; height: 14px; }

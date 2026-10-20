@@ -3,13 +3,14 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ArrowRight, Check, CircleAlert, Link2, RefreshCw, ScanSearch } from "lucide-react"
+import { ArrowRight, Link2, RefreshCw } from "lucide-react"
 
-import { FactType, ProviderBadge, PublicPageFrame, SectionCard } from "@/components/product-ui"
+import { FactType, PublicPageFrame, SectionCard } from "@/components/product-ui"
 import { ScanStuckCard } from "@/components/scan-stuck-card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
+import { ScanProgress } from "@/components/visual/scan-progress"
+import { LoopStepper } from "@/components/visual/steps"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import type { ProviderState } from "@/lib/demo-data"
 import { t } from "@/lib/i18n"
@@ -29,7 +30,6 @@ import {
   formatElapsed,
   initialPollLoopState,
   isTerminalStatus,
-  progressPercent,
   readPollRecord,
   scanReference,
   scanViewState,
@@ -58,28 +58,6 @@ const PHASE_PROVIDER_STATE: Record<CollectorPhase, ProviderState> = {
   unavailable: "unavailable",
   failed: "failed",
   stalled: "pending",
-}
-
-const PHASE_ICON_CLASS: Record<CollectorPhase, string> = {
-  pending: "collector-pending",
-  running: "collector-pending",
-  awaiting_result: "collector-pending",
-  not_provided: "collector-unavailable",
-  done: "collector-measured",
-  unavailable: "collector-unavailable",
-  failed: "collector-unavailable",
-  stalled: "collector-pending",
-}
-
-const PHASE_ICON: Record<CollectorPhase, typeof Check> = {
-  pending: RefreshCw,
-  running: RefreshCw,
-  awaiting_result: RefreshCw,
-  not_provided: CircleAlert,
-  done: Check,
-  unavailable: CircleAlert,
-  failed: CircleAlert,
-  stalled: CircleAlert,
 }
 
 /** localStorage access itself can throw in privacy modes, not just its methods. */
@@ -304,40 +282,46 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
     <PublicPageFrame locale={locale}>
       <main className="scanning-page">
         <div className="scan-status-hero" data-state={view}>
-          <div className="scan-pulse" aria-hidden="true">
-            <ScanSearch />
-          </div>
           <Badge variant="outline">
             {c.reference} · {scanReference(jobId)}
           </Badge>
           <h1>{view === "ready" ? c.titleReady : view === "failed" ? c.titleFailed : c.title}</h1>
-          {view !== "ready" && view !== "failed" && <p>{c.body}</p>}
-          <div className="scan-progress-summary">
-            <Progress value={progressPercent(index)} aria-label={interpolate(c.progress, { done: index })} />
-            <span>{interpolate(c.progress, { done: index })}</span>
-            <span>{elapsed < 60 ? interpolate(c.elapsed, { seconds: elapsed }) : interpolate(c.elapsedMinutes, formatElapsed(elapsed))}</span>
+          {/* Kept in the layout once the scan ends, so the hero does not shrink and move the page; hidden from sight and from screen readers. */}
+          <p className={view === "ready" || view === "failed" ? "scan-hero-placeholder" : undefined} aria-hidden={view === "ready" || view === "failed" ? true : undefined}>{c.body}</p>
+          <LoopStepper current="scan" locale={locale} />
+        </div>
+
+        <div className="pl-panel scan-progress-panel">
+          <ScanProgress
+            locale={locale}
+            label={c.title}
+            sources={COLLECTOR_KEYS.map((key) => ({ key, label: c.collectors[key], state: PHASE_PROVIDER_STATE[phases[key]], detail: c.phase[phases[key]] }))}
+          />
+          <p className="scan-elapsed">
+            {interpolate(c.progress, { done: index })} · {elapsed < 60 ? interpolate(c.elapsed, { seconds: elapsed }) : interpolate(c.elapsedMinutes, formatElapsed(elapsed))}
+          </p>
+        </div>
+
+        {paused && (
+          <div className="partial-result-card" role="status">
+            <div>
+              <p>{t(locale, "pause.scans")}</p>
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="collector-list" aria-live="polite" aria-label={c.title}>
-          {COLLECTOR_KEYS.map((key) => {
-            const phase = phases[key]
-            const Icon = PHASE_ICON[phase]
-            return (
-              <article key={key}>
-                <span className={`collector-icon ${PHASE_ICON_CLASS[phase]}`}>
-                  <Icon />
-                </span>
-                <div>
-                  <h2>{c.collectors[key]}</h2>
-                  <p>{c.phase[phase]}</p>
-                </div>
-                <ProviderBadge state={PHASE_PROVIDER_STATE[phase]} locale={locale} />
-              </article>
-            )
-          })}
-        </div>
+        {atCapacity && (
+          <div className="partial-result-card" role="status">
+            <div>
+              <p>{c.atCapacity}</p>
+            </div>
+          </div>
+        )}
 
+        {/* An outcome (ready, stalled, stuck or failed) takes the place of the
+            recovery cards, which only matter while a scan is still running.
+            The source list above stays, so each source keeps showing its own
+            state, and nothing above the outcome moves when it appears. */}
         {/* `reportHref &&` stays: readyBody promises an automatic redirect that
             the redirect effect cannot perform without a slug. */}
         {reportHref && view === "ready" && (
@@ -390,22 +374,6 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
 
         {view === "dead_lettered" && <ScanStuckCard locale={locale} reference={scanReference(jobId)} />}
 
-        {paused && (
-          <div className="partial-result-card" role="status">
-            <div>
-              <p>{t(locale, "pause.scans")}</p>
-            </div>
-          </div>
-        )}
-
-        {atCapacity && (
-          <div className="partial-result-card" role="status">
-            <div>
-              <p>{c.atCapacity}</p>
-            </div>
-          </div>
-        )}
-
         {view === "failed" && (
           <div className="partial-result-card">
             <div>
@@ -422,6 +390,7 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
           </div>
         )}
 
+        {!((reportHref && view === "ready") || (view === "stalled" && stalled) || view === "dead_lettered" || view === "failed") && (
         <div className="recovery-grid">
           <SectionCard>
             <Link2 />
@@ -444,6 +413,7 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
             <span className="step-kicker">{index} / {SCAN_STAGE_COUNT}</span>
           </SectionCard>
         </div>
+        )}
       </main>
     </PublicPageFrame>
   )

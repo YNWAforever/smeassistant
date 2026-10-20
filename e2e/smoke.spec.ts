@@ -24,7 +24,7 @@ for (const route of ROUTES) {
     const response = await page.goto(route.path);
     expect(response?.status(), `${route.path} should answer 200`).toBe(200);
     expect(new URL(page.url()).pathname).toBe(route.finalPath);
-    await expect(page).toHaveTitle(/SME Scanner/);
+    await expect(page).toHaveTitle(/Kinnso OS/);
     await expect(page.locator("html")).toHaveAttribute("lang", route.lang);
   });
 }

@@ -4,9 +4,9 @@ import { sql } from "../../test/e2e/environment";
 test.use({ trace: "off", screenshot: "off", video: "off" });
 
 for (const item of [
-  { locale: "en", width: 1440, more: "More", send: "Email me a code", verify: "Verify and continue" },
-  { locale: "zh-HK", width: 390, more: "更多", send: "寄出登入驗證碼", verify: "驗證並繼續" },
-  { locale: "zh-TW", width: 390, more: "更多", send: "寄送登入驗證碼", verify: "驗證並繼續" },
+  { locale: "en", width: 1440, settings: "Settings", send: "Email me a code", verify: "Verify and continue" },
+  { locale: "zh-HK", width: 390, settings: "設定", send: "寄出登入驗證碼", verify: "驗證並繼續" },
+  { locale: "zh-TW", width: 390, settings: "設定", send: "寄送登入驗證碼", verify: "驗證並繼續" },
 ]) {
   test(`existing owner signs out through the UI and signs back in with a code (${item.locale}, ${item.width}px)`, async ({ page, merchant, environment }, info) => {
     sql(environment.db, `insert into brand_profiles(workspace_id,voice) values ('${merchant.workspaceId}','professional');`);
@@ -18,8 +18,9 @@ for (const item of [
       await expect(page.locator(".account-button")).toHaveAttribute("href", `/${item.locale}/owner/select-workspace`);
       await page.locator(".account-button").click();
     } else {
-      await page.getByRole("link", { name: item.more, exact: true }).click();
-      await page.getByRole("link", { name: /^地點|^據點|^Locations/ }).click();
+      // Phones: Settings › Switch workspace or sign out (the sidebar's account control is hidden).
+      await page.getByRole("link", { name: item.settings, exact: true }).click();
+      await page.getByRole("link", { name: /^切換工作台|^Switch workspace/ }).click();
     }
     await expect(page).toHaveURL(new RegExp(`/${item.locale}/owner/select-workspace$`));
     await expect(page.getByRole("link", { name: /Acceptance HK/ }).first()).toBeVisible();

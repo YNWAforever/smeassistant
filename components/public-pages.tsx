@@ -9,11 +9,9 @@ import {
   MapPin,
   ScanSearch,
   ShieldCheck,
-  TriangleAlert,
-  UserCheck,
 } from "lucide-react"
 
-import { DemoBadge, FactType, ProviderBadge, PublicPageFrame, SectionCard } from "@/components/product-ui"
+import { DemoBadge, PublicPageFrame, SectionCard } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { allowanceText, type PublicBilling } from "@/lib/commercial/presentation"
@@ -23,14 +21,10 @@ import { formatMarketPrice, marketPricing } from "@/lib/funnel/pricing"
 import { t } from "@/lib/i18n"
 import { interpolate } from "@/lib/share"
 import { getMarketConfig, type Market } from "@sme-scanner/region"
-import type { ScoreResult } from "@sme-scanner/scoring"
 
 // No re-exports of the page components: Next ships every client component a
 // server module imports, so a barrel here made each public page download the
 // landing, scan, scanning, report and unlock pages. Import them directly.
-
-/** Pinned to the scorer both apps run (CLAUDE.md guardrail 16); a bump upstream breaks this line. */
-const SCORING_VERSION: ScoreResult["scoringVersion"] = "2026-08-16"
 
 export function PricingPage({ locale, market, billing }: { locale: PrototypeLocale; market: Market; billing: PublicBilling }) {
   const isChinese = locale !== "en"
@@ -50,7 +44,7 @@ export function PricingPage({ locale, market, billing }: { locale: PrototypeLoca
     {
       key: "free",
       label: "一次免費掃描",
-      title: "SME Scanner",
+      title: copy[locale].site.pricing.freeTitle,
       price: "免費",
       cadence: "",
       description: "先看清目前的能見度、證據來源及最值得處理的問題。",
@@ -101,7 +95,7 @@ export function PricingPage({ locale, market, billing }: { locale: PrototypeLoca
     },
   ]) : [
     {
-      key: "free", label: "One free scan", title: "SME Scanner", price: "Free", cadence: "", description: "See current visibility, source evidence and the best issue to tackle first.", meta: "No login to start", features: ["One public evidence scan", "Score with coverage", "Three safe priorities", "Methodology, sources and limitations", liteAllowance], cta: "Start free scan", href: `/${locale}/scan`, featured: false,
+      key: "free", label: "One free scan", title: copy[locale].site.pricing.freeTitle, price: "Free", cadence: "", description: "See current visibility, source evidence and the best issue to tackle first.", meta: "No login to start", features: ["One public evidence scan", "Score with coverage", "Three safe priorities", "Methodology, sources and limitations", liteAllowance], cta: "Start free scan", href: `/${locale}/scan`, featured: false,
     },
     {
       key: "growth", label: "Best for one location", title: "Growth Workspace", price: growthPrice, cadence: ` / ${f.perMonth}`, description: "For a small team that wants recurring improvement without managing a bundle of AI tools.", meta: "1 location", features: [paidAllowance, "Comparable rescans, run whenever you choose", "Complete AI Visibility Team", "Versions, owner approval and proof"], cta: "Start Growth", href: `/${locale}/owner/sign-in?plan=growth`, featured: true,
@@ -134,47 +128,6 @@ export function PricingPage({ locale, market, billing }: { locale: PrototypeLoca
         <p className="plan-test-note">{billing.open ? p.planNote : f.planNote}</p>
         <SectionCard className="pricing-usage-banner"><FileCheck2 /><div><p className="eyebrow">{isChinese ? "核准後交付，不是代幣" : "Approved deliveries, not tokens"}</p><h2>{isChinese ? "只有指定版本獲核准並首次成功匯出或發佈，才計 1 次交付。" : "One delivery is counted only after an exact version is approved and first exported or published."}</h2><p>{isChinese ? zhFor(locale, "查看證據、優先排序、重新掃描、生成、修改、退回、拒絕或執行失敗都不扣除用量。所有 Workspace 方案都包括安全檢查、店主審批、活動紀錄及可還原路徑。") : "Evidence, prioritisation, rescans, generation, revisions, returns, rejections and failed runs use no allowance. Safety checks, owner approval, activity history and recovery are included in every Workspace plan."}</p></div></SectionCard>
         <SectionCard className="pricing-faq"><div><p className="eyebrow">{isChinese ? "簡單選擇" : "Simple choices"}</p><h2>{isChinese ? "我應選哪個方案？" : "Which plan fits?"}</h2><p>{isChinese ? zhFor(locale, "先免費掃描。單一地點可由增長工作台開始；第 2 或第 3 個地點出現時才考慮多地點。需要專人推進時，再選專人服務。") : "Start free. Choose Growth for one location, Multi-location when a second or third location appears, and Managed when you need human execution."}</p></div><div><h3>{isChinese ? "內容會自動發佈嗎？" : "Will content auto-publish?"}</h3><p>{isChinese ? zhFor(locale, "不會。每次匯出或發佈前都需要正確權限及明確店主審批；專人服務亦不例外。") : "No. Every export or publish step requires the right permission and an explicit owner approval, including Managed Visibility."}</p></div><div><h3>{p.faqFinalTitle}</h3><p>{billing.open ? p.faqFinalBody : notOpenNode}</p></div></SectionCard>
-      </main>
-    </PublicPageFrame>
-  )
-}
-
-export function MethodologyPage({ locale }: { locale: PrototypeLocale }) {
-  const isChinese = locale !== "en"
-  return (
-    <PublicPageFrame locale={locale}>
-      <main className="content-page methodology-page">
-        <header className="content-page-intro"><Badge variant="outline">{interpolate(copy[locale].funnel.methodology.versionBadge, { version: SCORING_VERSION })}</Badge><h1>{isChinese ? "如何處理證據、覆蓋範圍及可比較變化" : "How evidence, coverage and comparable change are handled"}</h1><p>{isChinese ? "評分只協助作決定，不是收入證明，亦不能取代原始證據。" : "The score is a decision aid, not proof of revenue or a substitute for the source evidence."}</p></header>
-        <section className="method-principles"><article><span>01</span><h2>{isChinese ? "先有證據，後有評分" : "Evidence before score"}</h2><p>{isChinese ? zhFor(locale, "每項發現由可觀察來源開始，並保留市場或搜尋脈絡、時間、來源狀態、量度值及安全證據參考。") : "Every finding begins with an observable source, market or query context, timestamp, provider state, measured value and a safe evidence reference."}</p></article><article><span>02</span><h2>{isChinese ? "先看覆蓋，再作比較" : "Coverage before comparison"}</h2><p>{isChinese ? zhFor(locale, "已量度、未能取得、未支援及失敗互不相同。缺少證據會排除，不會靜默轉成零分。") : "Measured, unavailable, unsupported and failed are distinct. Missing evidence is excluded—not silently converted to zero."}</p></article><article><span>03</span><h2>{isChinese ? "可以比較，才談變化" : "Comparable before change"}</h2><p>{isChinese ? "只有相關證據及市場脈絡符合資格規則，兩次掃描才會比較。" : "Two scans are compared only when the relevant evidence and market context meet the eligibility rule."}</p></article></section>
-        <div className="method-layout"><SectionCard><p className="eyebrow">{isChinese ? "目前可支援的版面" : "Currently supportable surfaces"}</p><h2>{isChinese ? "產品可以如實命名的範圍" : "What the product may name"}</h2><ul className="evidence-list"><li><Badge variant="outline">{isChinese ? "已支援" : "Supported"}</Badge><span><strong>{isChinese ? "Google 搜尋與地圖" : "Google Search and Maps"}</strong><small>{isChinese ? zhFor(locale, "支援自然、本地及商戶實體證據。") : "Supported organic, local and entity evidence."}</small></span></li><li><Badge variant="outline">{isChinese ? "有條件支援" : "Supported · conditional"}</Badge><span><strong>Google AI Overview and AI Mode</strong><small>{isChinese ? zhFor(locale, "只在支援的搜尋字詞出現相關版面時量度。") : "Only when those surfaces appear for the supported query."}</small></span></li><li><Badge variant="outline">{isChinese ? "已支援 · 覆蓋因來源而異" : "Supported · coverage varies"}</Badge><span><strong>{isChinese ? "Instagram 與公開網站" : "Instagram and public website"}</strong><small>{isChinese ? "視乎來源及公開頁面可用性。" : "Subject to provider and public-page availability."}</small></span></li><li><ProviderBadge state="unsupported" locale={locale} /><span><strong>ChatGPT and Perplexity probes</strong><small>{isChinese ? "未有可重現的第一方證據前不作支援聲稱。" : "Not claimed until reproducible first-party evidence exists."}</small></span></li></ul></SectionCard><SectionCard><p className="eyebrow">{isChinese ? "解讀合約" : "Interpretation contract"}</p><h2>{isChinese ? "6 個標籤避免虛假肯定" : "Six labels prevent false certainty"}</h2><div className="fact-definition-list"><div><FactType type="Observed" /><p>{isChinese ? zhFor(locale, "直接量度的證據。") : "Directly measured evidence."}</p></div><div><FactType type="Inference" /><p>{isChinese ? "根據證據及規則作出的解讀。" : "A rule-based interpretation of the evidence."}</p></div><div><FactType type="Recommended" /><p>{isChinese ? "建議的業務行動。" : "A proposed business action."}</p></div><div><FactType type="Attributed" /><p>{isChinese ? "後續變化可能與行動相關，方法會列明。" : "A later change plausibly linked to an action, with method stated."}</p></div><div><FactType type="Estimated" /><p>{isChinese ? "保留假設的模型估算。" : "A modelled result whose assumptions remain visible."}</p></div><div><FactType type="Unknown" /><p>{isChinese ? "證據不足或不能比較。" : "Evidence is insufficient or incomparable."}</p></div></div></SectionCard></div>
-        <SectionCard className="formula-card"><div><p className="eyebrow">{isChinese ? zhFor(locale, "兼顧覆蓋率的評分") : "Coverage-aware scoring"}</p><h2>{isChinese ? zhFor(locale, "評分 = 已量度訊號加權值 ÷ 合資格已量度權重") : "Score = weighted measured signals ÷ eligible measured weight"}</h2><p>{isChinese ? zhFor(locale, "未能取得或未支援的模組會降低覆蓋率，但不會降低評分。量度證據太少時，評分可以暫不顯示。") : "Unavailable or unsupported modules reduce coverage. They do not reduce the score. A score may be withheld when too little evidence is measured."}</p></div><div className="formula-example"><span>{isChinese ? "例子" : "Example"}</span><strong>{isChinese ? "評分 62" : "62 score"}</strong><small>{isChinese ? zhFor(locale, "覆蓋率 78% · 4 個主要來源中量度 3 個") : "78% coverage · 3 of 4 primary sources"}</small></div></SectionCard>
-        <div className="limitations-box"><TriangleAlert /><div><h2>{isChinese ? "限制" : "Limitations"}</h2><p>{isChinese ? zhFor(locale, "結果會因搜尋字詞、地點、語言、裝置、來源可用性及觀察時間而異。能見度變化不能證明收入、預訂或顧客意向有變。") : "Results can vary by query, location, language, device, provider availability and observation time. Visibility movement does not prove changes in revenue, reservations or customer intent."}</p></div></div>
-      </main>
-    </PublicPageFrame>
-  )
-}
-
-export function TrustPage({ locale }: { locale: PrototypeLocale }) {
-  const isChinese = locale !== "en"
-  const tr = copy[locale].funnel.trust
-  const pillars = isChinese ? zhDeep(locale, [
-    { icon: ShieldCheck, title: "設計上保護證據", body: "公開預覽排除店主專屬資料、來源原始載荷及內部識別碼。" },
-    { icon: UserCheck, title: "人工審批是界線", body: "已生成工作仍是草稿，直至獲授權人士批准一個不可變版本。" },
-    { icon: LockKeyhole, title: "伺服器強制執行範圍", body: "正式變更必須驗證角色、工作台、地點、權益及整合權限。" },
-    { icon: FileCheck2, title: "只追加的責任紀錄", body: "行動、編輯、決定及送達嘗試都會建立限定範圍的審計事件。" },
-  ]) : [
-    { icon: ShieldCheck, title: "Evidence-safe by design", body: "Public previews exclude owner-only details, raw provider payloads and internal identifiers." },
-    { icon: UserCheck, title: "Human approval is a boundary", body: "Generated work remains a draft until an authorised person approves one immutable version." },
-    { icon: LockKeyhole, title: "Server-enforced scope", body: "Production mutations must verify role, workspace, location, entitlement and integration permission." },
-    { icon: FileCheck2, title: "Append-only accountability", body: "Actions, edits, decisions and delivery attempts create a scoped audit event." },
-  ]
-  return (
-    <PublicPageFrame locale={locale}>
-      <main className="content-page trust-page">
-        <header className="content-page-intro"><Badge variant="outline">{isChinese ? zhFor(locale, "安全、私隱與人工控制") : "Security, privacy and human control"}</Badge><h1>{isChinese ? "一個身份、一條權限界線、一份審計紀錄" : "One identity, one permission boundary, one audit trail"}</h1><p>{tr.intro}</p></header>
-        <div className="trust-pillar-grid">{pillars.map(({ icon: Icon, title, body }) => <article key={title}><span><Icon /></span><h2>{title}</h2><p>{body}</p></article>)}</div>
-        <div className="method-layout"><SectionCard><p className="eyebrow">{isChinese ? zhFor(locale, "審批合約") : "Approval contract"}</p><h2>{isChinese ? "對外送達是獨立狀態轉換" : "External delivery is a separate transition"}</h2><ol className="number-list"><li><span>1</span><div><strong>{isChinese ? "準備" : "Prepare"}</strong><p>{isChinese ? "輸入按範圍限制，不受信任內容只會當成資料，不會當成指令。" : "Inputs are scoped and untrusted content is treated as data, not instruction."}</p></div></li><li><span>2</span><div><strong>{isChinese ? "審閱一個版本" : "Review a version"}</strong><p>{isChinese ? zhFor(locale, "編輯已批准版本會建立新草稿並重設審批。") : "Editing an approved version creates a new draft and resets approval."}</p></div></li><li><span>3</span><div><strong>{isChinese ? "確認目標" : "Confirm the target"}</strong><p>{isChinese ? "送達需要獲授權角色、正確連接範圍、冪等處理及可復原失敗路徑。" : "Delivery requires an authorised role, connected scope, idempotency and recoverable failure handling."}</p></div></li></ol></SectionCard><SectionCard><p className="eyebrow">{tr.boundaryEyebrow}</p><h2>{tr.boundaryTitle}</h2><dl className="trust-dl">{tr.rows.map((row) => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}</dl><p className="limitation-note">{tr.retentionNote}</p><Link className="policy-link" href={`/${locale}/legal/privacy`}>{tr.policyLink}<ArrowRight aria-hidden="true" /></Link></SectionCard></div>
-        <SectionCard className="retention-summary"><div><ShieldCheck /><div><h2>{isChinese ? "資料保留與刪除仍屬正式產品合約" : "Retention and deletion remain production contracts"}</h2><p>{isChinese ? "掃描證據、Agent 輸入與輸出、素材、審計事件、OAuth 代幣及帳單紀錄需要各自的用途、保留、存取與刪除規則。未有明確合約同意前，客戶資料不會用於模型訓練。" : "Scan evidence, agent inputs and outputs, assets, audit events, OAuth tokens and billing records need separate purpose, retention, access and deletion rules. Customer data is not used for model training without explicit contractual consent."}</p></div></div><Button asChild variant="outline"><Link href={`/${locale}/methodology`}>{isChinese ? zhFor(locale, "查看量度限制") : "Read measurement limitations"}</Link></Button></SectionCard>
       </main>
     </PublicPageFrame>
   )

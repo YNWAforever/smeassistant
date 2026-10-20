@@ -1,0 +1,160 @@
+/*
+ * Kinnso OS motion presets (components/visual). The still state is the
+ * default: every preset only animates when the device allows motion AND the
+ * manual switch (html[data-motion="reduce"]) is off, so reduced motion needs
+ * no per-component fallback. Presets move transform and opacity only. The
+ * score arc follows the counted number from JS (useCountUp), a paint-only
+ * change inside a fixed-size SVG, so nothing shifts layout.
+ *
+ * Durations come from tokens.css: fast/base/slow for feedback (150–300 ms),
+ * explain (600 ms) for explanatory sequences. --i staggers list items.
+ */
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-motion="reduce"]) .k-fade-up {
+    animation: k-fade-up var(--duration-slow) var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * var(--stagger));
+  }
+  :root:not([data-motion="reduce"]) .k-scale-in {
+    animation: k-scale-in var(--duration-base) var(--ease-spring) both;
+    animation-delay: calc(var(--i, 0) * var(--stagger));
+  }
+  :root:not([data-motion="reduce"]) .k-slide-panel {
+    animation: k-slide-panel var(--duration-slow) var(--ease-out) both;
+  }
+  :root:not([data-motion="reduce"]) .k-progress-fill {
+    animation: k-progress-fill var(--duration-explain) var(--ease-out) both;
+  }
+  :root:not([data-motion="reduce"]) .k-progress-bar {
+    transition: transform var(--duration-explain) var(--ease-out);
+  }
+  :root:not([data-motion="reduce"]) .k-check-draw {
+    animation: k-check-draw var(--duration-slow) var(--ease-out) both;
+    animation-delay: var(--duration-fast);
+  }
+  :root:not([data-motion="reduce"]) .k-shimmer {
+    animation: k-shimmer 1.4s linear infinite;
+  }
+  :root:not([data-motion="reduce"]) .k-pulse {
+    animation: k-pulse 1.6s var(--ease-in-out) infinite;
+  }
+  :root:not([data-motion="reduce"]) [data-reveal-state="pending"] .k-reveal {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  :root:not([data-motion="reduce"]) [data-reveal-state="in"] .k-reveal {
+    animation: k-fade-up var(--duration-explain) var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * var(--stagger) * 2);
+  }
+  :root:not([data-motion="reduce"]) .k-changed {
+    animation: k-scale-in var(--duration-base) var(--ease-spring);
+  }
+  :root:not([data-motion="reduce"]) .k-pulse-once {
+    animation: k-pulse-ring 1.2s var(--ease-out) 2;
+  }
+  :root:not([data-motion="reduce"]) .k-morph {
+    transition: transform var(--duration-base) var(--ease-spring), opacity var(--duration-fast) var(--ease-out);
+  }
+  @media (min-width: 768px) {
+    :root:not([data-motion="reduce"]) .k-page-enter {
+      animation: k-page-enter var(--duration-base) var(--ease-out) both;
+    }
+  }
+  /* Explainer demos loop only while hovered or focused (InlineExplainer). */
+  :root:not([data-motion="reduce"]) .k-demo .k-demo-card {
+    animation: k-demo-card 8s var(--ease-in-out) infinite;
+  }
+  :root:not([data-motion="reduce"]) .k-demo .k-demo-lock {
+    animation: k-demo-lock 8s var(--ease-in-out) infinite;
+    transform-origin: 120px 32px;
+  }
+  :root:not([data-motion="reduce"]) .k-demo .k-demo-done {
+    animation: k-demo-done 8s var(--ease-in-out) infinite;
+  }
+  .k-demo:not([data-playing]) * {
+    animation-play-state: paused !important;
+  }
+  /* Loops only run while on screen (useInView sets data-offscreen). */
+  [data-offscreen] .k-shimmer,
+  [data-offscreen] .k-pulse,
+  [data-offscreen].k-pulse,
+  [data-offscreen] .k-demo * {
+    animation-play-state: paused !important;
+  }
+}
+
+@keyframes k-fade-up {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes k-scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes k-slide-panel {
+  from { opacity: 0; transform: translate3d(24px, 0, 0); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes k-page-enter {
+  from { opacity: 0; }
+}
+@keyframes k-demo-card {
+  0%, 8% { transform: none; opacity: 1; }
+  30%, 52% { transform: translateX(56px); opacity: 1; }
+  80% { transform: translateX(150px); opacity: 1; }
+  90%, 100% { transform: translateX(150px); opacity: 0; }
+}
+@keyframes k-demo-lock {
+  0%, 40%, 60%, 100% { transform: none; }
+  50% { transform: scale(1.15); }
+}
+@keyframes k-demo-done {
+  0%, 78% { opacity: 0.35; }
+  86%, 96% { opacity: 1; }
+  100% { opacity: 0.35; }
+}
+@keyframes k-pulse-ring {
+  from { opacity: 0.7; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.35); }
+}
+@keyframes k-progress-fill {
+  from { transform: scaleX(0); }
+}
+@keyframes k-check-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes k-shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+@keyframes k-pulse {
+  0%, 100% { opacity: 1; transform: none; }
+  50% { opacity: 0.45; transform: scale(0.85); }
+}
+
+/* Check marks draw along a normalised path (pathLength="1"). */
+.k-check-path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+/* Progress bars fill by scaleX so the track never changes size. */
+.k-progress-bar {
+  transform-origin: left center;
+  transform: scaleX(var(--progress, 0));
+}
+:dir(rtl) .k-progress-bar { transform-origin: right center; }
+
+/* Shimmer overlay for pending blocks: decorative, never carries meaning. */
+.k-shimmer-host {
+  position: relative;
+  overflow: hidden;
+}
+.k-shimmer-host > .k-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--paper) 70%, transparent), transparent);
+  transform: translateX(-100%);
+  pointer-events: none;
+}

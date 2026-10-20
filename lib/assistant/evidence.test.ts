@@ -28,7 +28,7 @@ describe("buildEvidenceRefs", () => {
       `ev_${SNAPSHOT_ID}_composite`,
     ]);
     expect(refs.every((r) => r.scanId === "job-head" && r.observedAt === snapshot.observedAt)).toBe(true);
-    expect(refs[0]).toMatchObject({ value: "62/100", factType: "Observed", source: "SME Scanner · Yik Yam" });
+    expect(refs[0]).toMatchObject({ value: "62/100", factType: "Observed", source: "Kinnso OS · Yik Yam" });
     expect(refs[1]).toMatchObject({ value: "78%" });
     expect(refs.at(-1)).toMatchObject({ factType: "Observed", value: "66 → 62 (-4)", label: "Composite score change" });
   });

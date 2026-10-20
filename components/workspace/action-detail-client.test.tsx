@@ -110,7 +110,7 @@ function versionRow(overrides: Partial<ActionDetail["versions"][number]> & { id:
   };
 }
 
-function render(templateKey: TemplateKey, measurements: ActionDetail["measurements"] = []) {
+function render(templateKey: TemplateKey, measurements: ActionDetail["measurements"] = [], embedded = false) {
   const root = document.createElement("div");
   root.innerHTML = renderToStaticMarkup(
     <ActionDetailClient
@@ -125,10 +125,18 @@ function render(templateKey: TemplateKey, measurements: ActionDetail["measuremen
       auditRows={[]}
       locations={[{ slug: "yik-yam", name: "Yik Yam" }]}
       approvedAssets={[]}
+      embedded={embedded}
     />,
   );
   return root;
 }
+
+it("drops the Back to actions link in the side panel, where Close keeps the queue's filters", () => {
+  expect(render("review-response").textContent).toContain("Back to actions");
+  const panel = render("review-response", [], true);
+  expect(panel.textContent).not.toContain("Back to actions");
+  expect(panel.querySelector("h1")).toBeNull();
+});
 
 function verificationMarkup(value: ActionDetail, auditRows: AuditEventRow[] = [], locale: "en" | "zh-HK" | "zh-TW" = "en", ownerCheck?: OwnerCheckContext) {
   const root = document.createElement("div");

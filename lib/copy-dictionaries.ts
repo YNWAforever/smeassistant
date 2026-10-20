@@ -1,4 +1,10 @@
 import type { Copy, FunnelCopy, PrototypeLocale } from "@/lib/copy"
+import { publicEn, publicZhHK, publicZhTW } from "@/lib/copy-public"
+import { infoEn, infoZhHK, infoZhTW } from "@/lib/copy-public-info"
+import { reportEn, reportZhHK, reportZhTW } from "@/lib/copy-report"
+import { onboardingEn, onboardingZhHK, onboardingZhTW } from "@/lib/copy-onboarding"
+import { shellEn, shellZhHK, shellZhTW } from "@/lib/copy-shell"
+import { uiEn, uiZhHK, uiZhTW } from "@/lib/copy-ui"
 import { workspaceEn, workspaceZhHK, workspaceZhTW } from "@/lib/copy-workspace"
 
 /**
@@ -9,8 +15,8 @@ import { workspaceEn, workspaceZhHK, workspaceZhTW } from "@/lib/copy-workspace"
  */
 const funnelEn: FunnelCopy = {
   demoBar: { title: "Demo data", body: "Fixed, sanitised Kam Man House sample", note: "No live scans, payments or external publishing on this page" },
-  footer: { tagline: "Evidence first, action next.", body: "SME Scanner by Fimmick · Evidence first, action next.", privacy: "Privacy", terms: "Terms" },
-  notFound: { eyebrow: "404 · Not found", title: "There is no evidence at this address.", body: "The link may be mistyped, or the page has moved. Reports and workspaces are never guessed from a URL, so nothing private is shown here.", home: "Back to SME Scanner", scan: "Start a free scan", sample: "See a sample report" },
+  footer: { tagline: "Evidence first, action next.", body: "Kinnso OS by Fimmick · Evidence first, action next.", privacy: "Privacy", terms: "Terms" },
+  notFound: { eyebrow: "404 · Not found", title: "There is no evidence at this address.", body: "The link may be mistyped, or the page has moved. Reports and workspaces are never guessed from a URL, so nothing private is shown here.", home: "Back to Kinnso OS", scan: "Start a free scan", sample: "See a sample report" },
   landing: {
     timing: "A free scan takes a few minutes. Completion time varies by source availability.",
     planNote: "Prices shown for the selected market · Interface language never changes market or currency",
@@ -25,7 +31,7 @@ const funnelEn: FunnelCopy = {
     progressLabel: "Scan setup {percent}% complete",
     securityTitle: "Public evidence only",
     securityBody: "No owner-only data is requested in the free scan.",
-    backHome: "Back to SME Scanner",
+    backHome: "Back to Kinnso OS",
     businessLabel: "Business name or Google Maps link",
     businessHint: "Add an area or address if several businesses share the same name.",
     searchButton: "Find business",
@@ -197,7 +203,7 @@ const funnelEn: FunnelCopy = {
     proofEyebrow: "Verified report proof",
     proofTitle: "Sanitised public evidence behind the score",
     proofBody: "Bounded excerpts from public sources captured at scan time. Provider identifiers, raw payloads and private data are never shown.",
-    dashboard: { engagement: "Sampled engagement", searchVisibility: "Search visibility", unavailable: "Measurement unavailable", statistics: "Key statistics", rubric: "Report rubric scores", rubricNote: "Scores use the report criteria, out of 100. Missing evidence is not a zero score.", comparisons: "Observed search comparisons", comparisonsNote: "Businesses observed for this query and engine. This sample is not an industry average.", noComparisons: "No matching observed statistics are available for comparison.", sampleSize: "Sample size", dateUnavailable: "Observation date unavailable", observed: "Observed", scanned: "Scan date", details: "Measurement details", summary: "Report interpretation", unavailableReason: "There is not enough supported evidence to report this measurement.", followersUnit: "followers", reviewsUnit: "reviews", countUnit: "observations", currentBusiness: "Your business", coverageUnavailable: "Coverage unavailable", responseRate: "Review response rate", unansweredReviews: "Recent reviews without a reply", websiteChecks: "Website checks passed", websiteSource: "Website", outOf: "/ {total}", queriesOutOf: "/ {total} queries", rubricSample: "Observed by source", rubricSampleNote: "This sanitised sample shows each source's observed value; per-source rubric scores are only published in real reports." },
+    dashboard: { engagement: "Sampled engagement", searchVisibility: "Search visibility", unavailable: "Measurement unavailable", statistics: "Key statistics", rubric: "Report rubric scores", rubricNote: "Scores use the report criteria, out of 100. Missing evidence is not a zero score.", comparisons: "Observed search comparisons", comparisonsNote: "Businesses observed for this query and engine. This sample is not an industry average.", noComparisons: "No matching observed statistics are available for comparison.", sampleSize: "Sample size", dateUnavailable: "Date not recorded", observed: "Observed", scanned: "Scan date", details: "Measurement details", summary: "Report interpretation", unavailableReason: "There is not enough supported evidence to report this measurement.", followersUnit: "followers", reviewsUnit: "reviews", countUnit: "observations", currentBusiness: "Your business", coverageUnavailable: "Coverage unavailable", responseRate: "Review response rate", unansweredReviews: "Recent reviews without a reply", websiteChecks: "Website checks passed", websiteSource: "Website", outOf: "/ {total}", queriesOutOf: "/ {total} queries", rubricSample: "Observed by source", rubricSampleNote: "This sanitised sample shows each source's observed value; per-source rubric scores are only published in real reports." },
     proof: {
       ig: "Instagram proof",
       gbp: "Google Business proof",
@@ -229,7 +235,7 @@ const funnelEn: FunnelCopy = {
     },
     evidenceEyebrow: "Original evidence",
     evidenceTitle: "Public-source content captured at scan time",
-    evidenceBody: "Provider facts are shown separately from SME Scanner analysis. Media is stored only where the retention setting allows it.",
+    evidenceBody: "Provider facts are shown separately from Kinnso OS analysis. Media is stored only where the retention setting allows it.",
     evidenceCaptured: "Captured {date}",
     evidenceMetadataOnly: "Metadata only · snapshot not stored",
     evidenceStoredUnavailable: "Stored image unavailable",
@@ -365,8 +371,8 @@ const funnelEn: FunnelCopy = {
 
 const funnelZhHK: FunnelCopy = {
   demoBar: { title: "示範資料", body: "固定並已清理的錦汶館資料", note: "此頁不包含即時掃描、付款或自動對外發佈" },
-  footer: { tagline: "證據為先，行動為本。", body: "SME Scanner by Fimmick · 證據為先，行動為本。", privacy: "私隱政策", terms: "使用條款" },
-  notFound: { eyebrow: "404 · 找不到頁面", title: "呢個網址未有任何證據。", body: "連結可能輸入有誤，或頁面已經移走。報告及工作台不會由網址推測，所以這裡不會顯示任何私人資料。", home: "返回 SME Scanner", scan: "開始免費掃描", sample: "查看示範報告" },
+  footer: { tagline: "證據為先，行動為本。", body: "Kinnso OS by Fimmick · 證據為先，行動為本。", privacy: "私隱政策", terms: "使用條款" },
+  notFound: { eyebrow: "404 · 找不到頁面", title: "呢個網址未有任何證據。", body: "連結可能輸入有誤，或頁面已經移走。報告及工作台不會由網址推測，所以這裡不會顯示任何私人資料。", home: "返回 Kinnso OS", scan: "開始免費掃描", sample: "查看示範報告" },
   landing: {
     timing: "免費掃描數分鐘內完成；完成時間視乎各資料來源供應情況。",
     planNote: "價格按所選市場顯示 · 介面語言不會自動改變市場或貨幣",
@@ -381,7 +387,7 @@ const funnelZhHK: FunnelCopy = {
     progressLabel: "掃描設定完成 {percent}%",
     securityTitle: "只收集公開證據",
     securityBody: "免費掃描不會要求店主專屬資料。",
-    backHome: "返回 SME Scanner",
+    backHome: "返回 Kinnso OS",
     businessLabel: "商戶名稱或 Google Maps 連結",
     businessHint: "如有多間同名商戶，請加入地區或地址。",
     searchButton: "尋找商戶",
@@ -553,7 +559,7 @@ const funnelZhHK: FunnelCopy = {
     proofEyebrow: "已驗證報告證據",
     proofTitle: "評分背後已清理的公開證據",
     proofBody: "掃描時擷取的公開來源節錄，範圍受限。來源識別碼、原始載荷及私人資料一律不會顯示。",
-    dashboard: { engagement: "抽樣互動率", searchVisibility: "搜尋能見度", unavailable: "未能量度", statistics: "關鍵數據", rubric: "報告準則評分", rubricNote: "按報告準則評分，滿分 100。缺少證據不等於零分。", comparisons: "搜尋結果實測比較", comparisonsNote: "只比較此搜尋字詞及引擎觀察到的商戶，樣本並非行業平均。", noComparisons: "目前沒有相符的實測數據可供比較。", sampleSize: "樣本數", dateUnavailable: "觀察日期未有提供", observed: "實測", scanned: "掃描日期", details: "量度詳情", summary: "報告解讀", unavailableReason: "目前證據不足，未能提供此項量度。", followersUnit: "位追蹤者", reviewsUnit: "則評論", countUnit: "次觀察", currentBusiness: "你的商戶", coverageUnavailable: "覆蓋率未有提供", responseRate: "評論回覆率", unansweredReviews: "未有回覆的近期評論", websiteChecks: "網站檢查通過項目", websiteSource: "網站", outOf: "／{total}", queriesOutOf: "／{total} 個查詢", rubricSample: "按來源觀察結果", rubricSampleNote: "此已清理示範只顯示各來源的觀察值；各來源的準則評分只會在真實報告中提供。" },
+    dashboard: { engagement: "抽樣互動率", searchVisibility: "搜尋能見度", unavailable: "未能量度", statistics: "關鍵數據", rubric: "報告準則評分", rubricNote: "按報告準則評分，滿分 100。缺少證據不等於零分。", comparisons: "搜尋結果實測比較", comparisonsNote: "只比較此搜尋字詞及引擎觀察到的商戶，樣本並非行業平均。", noComparisons: "目前沒有相符的實測數據可供比較。", sampleSize: "樣本數", dateUnavailable: "未有記錄日期", observed: "實測", scanned: "掃描日期", details: "量度詳情", summary: "報告解讀", unavailableReason: "目前證據不足，未能提供此項量度。", followersUnit: "位追蹤者", reviewsUnit: "則評論", countUnit: "次觀察", currentBusiness: "你的商戶", coverageUnavailable: "覆蓋率未有提供", responseRate: "評論回覆率", unansweredReviews: "未有回覆的近期評論", websiteChecks: "網站檢查通過項目", websiteSource: "網站", outOf: "／{total}", queriesOutOf: "／{total} 個查詢", rubricSample: "按來源觀察結果", rubricSampleNote: "此已清理示範只顯示各來源的觀察值；各來源的準則評分只會在真實報告中提供。" },
     proof: {
       ig: "Instagram 證據",
       gbp: "Google 商戶證據",
@@ -585,7 +591,7 @@ const funnelZhHK: FunnelCopy = {
     },
     evidenceEyebrow: "原始證據",
     evidenceTitle: "掃描時擷取的公開來源內容",
-    evidenceBody: "來源事實與 SME Scanner 的分析分開顯示。只有在保留設定容許時才會儲存媒體。",
+    evidenceBody: "來源事實與 Kinnso OS 的分析分開顯示。只有在保留設定容許時才會儲存媒體。",
     evidenceCaptured: "擷取於 {date}",
     evidenceMetadataOnly: "只有中繼資料 · 未儲存快照",
     evidenceStoredUnavailable: "已儲存相片暫時未能顯示",
@@ -710,8 +716,8 @@ const funnelZhHK: FunnelCopy = {
 
 const funnelZhTW: FunnelCopy = {
   demoBar: { title: "範例資料", body: "固定且已清理的錦汶館資料", note: "此頁不包含即時掃描、付款或自動對外發布" },
-  footer: { tagline: "證據為先，行動為本。", body: "SME Scanner by Fimmick · 證據為先，行動為本。", privacy: "隱私政策", terms: "使用條款" },
-  notFound: { eyebrow: "404 · 找不到頁面", title: "這個網址沒有任何證據。", body: "連結可能輸入有誤，或頁面已經移動。報告及工作台不會從網址推測，因此這裡不會顯示任何私人資料。", home: "返回 SME Scanner", scan: "開始免費掃描", sample: "查看示範報告" },
+  footer: { tagline: "證據為先，行動為本。", body: "Kinnso OS by Fimmick · 證據為先，行動為本。", privacy: "隱私政策", terms: "使用條款" },
+  notFound: { eyebrow: "404 · 找不到頁面", title: "這個網址沒有任何證據。", body: "連結可能輸入有誤，或頁面已經移動。報告及工作台不會從網址推測，因此這裡不會顯示任何私人資料。", home: "返回 Kinnso OS", scan: "開始免費掃描", sample: "查看示範報告" },
   landing: {
     timing: "免費掃描數分鐘內完成；完成時間依各資料來源狀況而異。",
     planNote: "價格依所選市場顯示 · 介面語言不會自動改變市場或貨幣",
@@ -726,7 +732,7 @@ const funnelZhTW: FunnelCopy = {
     progressLabel: "掃描設定完成 {percent}%",
     securityTitle: "只收集公開證據",
     securityBody: "免費掃描不會要求店家專屬資料。",
-    backHome: "返回 SME Scanner",
+    backHome: "返回 Kinnso OS",
     businessLabel: "店家名稱或 Google Maps 連結",
     businessHint: "若有多家同名店家，請加入地區或地址。",
     searchButton: "尋找店家",
@@ -898,7 +904,7 @@ const funnelZhTW: FunnelCopy = {
     proofEyebrow: "已驗證報告證據",
     proofTitle: "分數背後已清理的公開證據",
     proofBody: "掃描時擷取的公開來源節錄，範圍受限。來源識別碼、原始資料與私人資料一律不會顯示。",
-    dashboard: { engagement: "抽樣互動率", searchVisibility: "搜尋能見度", unavailable: "無法衡量", statistics: "關鍵數據", rubric: "報告準則評分", rubricNote: "依報告準則評分，滿分 100。缺少證據不等於零分。", comparisons: "搜尋結果實測比較", comparisonsNote: "僅比較此搜尋字詞及引擎觀察到的店家，樣本並非產業平均。", noComparisons: "目前沒有相符的實測數據可供比較。", sampleSize: "樣本數", dateUnavailable: "未提供觀察日期", observed: "實測", scanned: "掃描日期", details: "衡量詳情", summary: "報告解讀", unavailableReason: "目前證據不足，無法提供此項衡量。", followersUnit: "位追蹤者", reviewsUnit: "則評論", countUnit: "次觀察", currentBusiness: "你的店家", coverageUnavailable: "未提供涵蓋率", responseRate: "評論回覆率", unansweredReviews: "尚未回覆的近期評論", websiteChecks: "網站檢查通過項目", websiteSource: "網站", outOf: "／{total}", queriesOutOf: "／{total} 個查詢", rubricSample: "依來源的觀察結果", rubricSampleNote: "此已清理示範僅顯示各來源的觀察值；各來源的準則評分只會在真實報告中提供。" },
+    dashboard: { engagement: "抽樣互動率", searchVisibility: "搜尋能見度", unavailable: "無法衡量", statistics: "關鍵數據", rubric: "報告準則評分", rubricNote: "依報告準則評分，滿分 100。缺少證據不等於零分。", comparisons: "搜尋結果實測比較", comparisonsNote: "僅比較此搜尋字詞及引擎觀察到的店家，樣本並非產業平均。", noComparisons: "目前沒有相符的實測數據可供比較。", sampleSize: "樣本數", dateUnavailable: "未記錄日期", observed: "實測", scanned: "掃描日期", details: "衡量詳情", summary: "報告解讀", unavailableReason: "目前證據不足，無法提供此項衡量。", followersUnit: "位追蹤者", reviewsUnit: "則評論", countUnit: "次觀察", currentBusiness: "你的店家", coverageUnavailable: "未提供涵蓋率", responseRate: "評論回覆率", unansweredReviews: "尚未回覆的近期評論", websiteChecks: "網站檢查通過項目", websiteSource: "網站", outOf: "／{total}", queriesOutOf: "／{total} 個查詢", rubricSample: "依來源的觀察結果", rubricSampleNote: "此已清理示範僅顯示各來源的觀察值；各來源的準則評分只會在真實報告中提供。" },
     proof: {
       ig: "Instagram 證據",
       gbp: "Google 商家證據",
@@ -930,7 +936,7 @@ const funnelZhTW: FunnelCopy = {
     },
     evidenceEyebrow: "原始證據",
     evidenceTitle: "掃描時擷取的公開來源內容",
-    evidenceBody: "來源事實與 SME Scanner 的分析分開顯示。只有在保留設定允許時才會儲存媒體。",
+    evidenceBody: "來源事實與 Kinnso OS 的分析分開顯示。只有在保留設定允許時才會儲存媒體。",
     evidenceCaptured: "擷取於 {date}",
     evidenceMetadataOnly: "僅有中繼資料 · 未儲存快照",
     evidenceStoredUnavailable: "已儲存相片暫時無法顯示",
@@ -1122,9 +1128,16 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
       howMeasured: "How this was measured",
       back: "Back",
       continue: "Continue",
+      theme: { label: "Appearance", light: "Light", dark: "Dark", system: "Match device" },
     },
     funnel: funnelEn,
     workspace: workspaceEn,
+    ui: uiEn,
+    site: publicEn,
+    siteInfo: infoEn,
+    report: reportEn,
+    shell: shellEn,
+    onboarding: onboardingEn,
   },
   "zh-HK": {
     language: "繁體中文（香港）",
@@ -1194,9 +1207,16 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
       howMeasured: "了解評分方法",
       back: "返回",
       continue: "繼續",
+      theme: { label: "外觀", light: "淺色", dark: "深色", system: "跟隨裝置" },
     },
     funnel: funnelZhHK,
     workspace: workspaceZhHK,
+    ui: uiZhHK,
+    site: publicZhHK,
+    siteInfo: infoZhHK,
+    report: reportZhHK,
+    shell: shellZhHK,
+    onboarding: onboardingZhHK,
   },
   "zh-TW": {
     language: "繁體中文（台灣）",
@@ -1266,8 +1286,15 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
       howMeasured: "了解評分方法",
       back: "返回",
       continue: "繼續",
+      theme: { label: "外觀", light: "淺色", dark: "深色", system: "跟隨裝置" },
     },
     funnel: funnelZhTW,
     workspace: workspaceZhTW,
+    ui: uiZhTW,
+    site: publicZhTW,
+    siteInfo: infoZhTW,
+    report: reportZhTW,
+    shell: shellZhTW,
+    onboarding: onboardingZhTW,
   },
 }

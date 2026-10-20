@@ -15,7 +15,7 @@ import { ContextualAssistant } from "@/components/pocket-assistant/assistant-lau
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DemoBadge, FactType, PublicPageFrame, ScoreDial } from "@/components/product-ui"
-import type { PrototypeLocale } from "@/lib/copy"
+import { copy, type PrototypeLocale } from "@/lib/copy"
 import { zhFor } from "@/lib/zh-tw"
 
 export function PublicDemoWorkspacePage({ locale }: { locale: PrototypeLocale }) {
@@ -68,7 +68,7 @@ export function PublicDemoWorkspacePage({ locale }: { locale: PrototypeLocale })
 
         <section className="public-demo-flow">
           <div>
-            <p className="eyebrow">Visibility Operator</p>
+            <p className="eyebrow">{copy[locale].shell.assistant.name}</p>
             <h2>{isChinese ? "由問題開始，不用選擇十個 AI 工具。" : "Start from the problem, not a grid of ten AI tools."}</h2>
             <p>{isChinese ? zhFor(locale, "助理按目前證據選擇評論回覆能力，解釋優先原因，預覽一則草稿，再清楚停在審批界線。") : "The operator selects the review-response capability from the evidence, explains the priority, previews a draft and stops at the approval boundary."}</p>
           </div>
