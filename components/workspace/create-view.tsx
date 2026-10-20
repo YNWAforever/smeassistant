@@ -19,13 +19,13 @@ import { ContextualAssistant } from "@/components/pocket-assistant/assistant-lau
 import { CapabilityBadge, FactType, PageIntro, SectionCard } from "@/components/product-ui"
 import { LocationSelect } from "@/components/workspace/location-select"
 import { copy, type PrototypeLocale } from "@/lib/copy"
-import { resolveText, type FactType as EvidenceFactType } from "@/lib/domain"
+import { type FactType as EvidenceFactType } from "@/lib/domain"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import { createObjectiveAction } from "@/lib/workspace/client"
 import { effortLabel, withLocation } from "@/lib/workspace/format"
 import { isOfferTemplate, TEMPLATES, type OfferTemplateKey, type TemplateKey } from "@/lib/workspace/templates"
 import { t } from "@/lib/i18n"
-import { zhFor } from "@/lib/zh-tw"
+import { fill } from "@/lib/copy-ui"
 
 export interface CreateViewProps {
   locale: PrototypeLocale
@@ -79,7 +79,7 @@ const SECONDARY_GOALS = GOALS.filter((goal) => !LEAD_KEYS.includes(goal.key))
 const ORDERED_GOALS = [...LEAD_GOALS, ...SECONDARY_GOALS]
 
 export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, location, locationId, locations, openActions }: CreateViewProps) {
-  const isChinese = locale !== "en"
+  const pc = copy[locale].workspaceActions.create
   const router = useRouter()
   const base = `/${locale}/owner/${workspaceSlug}`
   const labels = copy[locale].workspace.templates
@@ -99,7 +99,7 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
   async function startDraft() {
     if (!canCreate) return
     if (objectiveTooShort) {
-      toast.error(isChinese ? "請用一兩句寫下你想達成的目標。" : "Describe the objective in a sentence or two first.")
+      toast.error(pc.describeTheObjectiveIn)
       return
     }
     setStage("queued")
@@ -108,8 +108,8 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
     if (!result.ok) {
       setStage("failed")
       setFailure(result.error)
-      if (result.status === 403) toast.error(isChinese ? zhFor(locale, "你的角色或地點範圍不允許建立行動。") : "Your role or location scope cannot create actions.")
-      else if (result.status === 429) toast.error(isChinese ? "請求過於頻繁，請稍後再試。" : "Too many requests; try again shortly.")
+      if (result.status === 403) toast.error(pc.yourRoleOrLocation)
+      else if (result.status === 429) toast.error(copy[locale].workspace.offers.errors.rate)
       return
     }
     // A 201 only means the action row exists. The run's own outcome comes back
@@ -126,15 +126,15 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
       // F-14: the same objective was submitted twice; the first draft is still being written.
       toast.message(locale === "zh-HK" ? "行動已建立；草稿仍在生成中，沒有重複收費。" : locale === "zh-TW" ? "行動已建立；草稿仍在產生中，沒有重複計費。" : "Action created; its draft is still being written and nothing was charged twice.")
     } else if (runError) {
-      toast.error(isChinese ? "行動已建立，但未能開始生成草稿。" : "Action created, but the draft could not be started.")
+      toast.error(pc.actionCreatedButThe)
     } else if (factsNeeded?.length) {
-      toast.message(isChinese ? "行動已建立；需要補充資料才能生成草稿。" : "Action created; a few details are needed before a draft can be written.")
+      toast.message(pc.actionCreatedAFew)
     } else if (state === "failed") {
-      toast.error(isChinese ? "行動已建立，但今次未能產生草稿，請在行動頁重試。" : "Action created, but the draft could not be generated this time — retry from the action page.")
+      toast.error(pc.draftFailedRetry)
     } else if (versionId) {
-      toast.success(isChinese ? "已建立行動，第一份草稿已儲存。" : "Action created and the first draft is saved.")
+      toast.success(pc.actionCreatedAndThe)
     } else {
-      toast.success(isChinese ? "已建立行動。" : "Action created.")
+      toast.success(pc.actionCreated)
     }
     router.push(withLocation(`${base}/actions/${actionId}`, location))
   }
@@ -152,11 +152,11 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
       <button key={goal.key} type="button" className={selectedKey === goal.key ? "goal-card is-selected" : "goal-card"} aria-pressed={selectedKey === goal.key} onClick={() => { setSelectedKey(goal.key); setStage("idle") }}>
         <span><Icon /></span>
         <div>
-          <Badge variant="outline">{open?.factType==='Observed' ? (isChinese ? "證據建議" : "Evidence-led") : open?.factType==='Recommended' || !open ? (isChinese ? zhFor(locale, "店主目標") : "Owner objective") : (isChinese?"來源未確認":"Source unconfirmed")}</Badge>
+          <Badge variant="outline">{open?.factType==='Observed' ? pc.evidenceLed : open?.factType==='Recommended' || !open ? pc.ownerObjective : pc.sourceUnconfirmed}</Badge>
           <CapabilityBadge value={goal.capability} />
           <h2>{labels[goal.key].title}</h2>
           <p>{open ? open.evidence : labels[goal.key].summary}</p>
-          <small>{isChinese ? zhFor(locale, `店主${effortLabel(goal.effortMinutes, locale)}審閱`) : `${effortLabel(goal.effortMinutes, locale)} to review`}</small>
+          <small>{fill(pc.toReview, { effortMinutes: effortLabel(goal.effortMinutes, locale) })}</small>
         </div>
         <ChevronRight />
       </button>
@@ -166,24 +166,24 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
   return (
     <div className="create-page">
       <PageIntro
-        eyebrow={isChinese ? "以成果為本的內容建立中心" : "Outcome-led creation centre"}
-        title={isChinese ? "你想完成甚麼？" : "What do you want to get done?"}
-        description={isChinese ? zhFor(locale, "先選業務成果；工作台會在背後協調證據、草稿、品牌檢查與審批。你毋須先理解每個 Agent。") : "Choose a business outcome; the workspace coordinates evidence, drafting, brand checks and approval behind the scenes."}
-        actions={<><ContextualAssistant locale={locale} surface="create" mode="live" context={{ workspaceId, locationId: locationId ?? undefined }} basePath={base} locationParam={location} /><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /><Button asChild variant="outline"><Link href={withLocation(`${base}/actions`, location)}>{isChinese ? "開啟行動清單" : "Open action queue"}<ArrowRight /></Link></Button></>}
+        eyebrow={pc.outcomeLedCreationCentre}
+        title={pc.whatDoYouWant}
+        description={pc.chooseABusinessOutcome}
+        actions={<><ContextualAssistant locale={locale} surface="create" mode="live" context={{ workspaceId, locationId: locationId ?? undefined }} basePath={base} locationParam={location} /><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /><Button asChild variant="outline"><Link href={withLocation(`${base}/actions`, location)}>{pc.openActionQueue}<ArrowRight /></Link></Button></>}
       />
       {!canCreate && <RoleNotice kind="createReadOnly" locale={locale} />}
       <Tabs value={tab} onValueChange={setTab} className="create-tabs">
-        <TabsList variant="line"><TabsTrigger value="recommended">{isChinese ? "根據證據建議" : "Recommended from evidence"} <span>{recommended.length}</span></TabsTrigger><TabsTrigger value="all">{isChinese ? "所有成果" : "All outcomes"}</TabsTrigger></TabsList>
+        <TabsList variant="line"><TabsTrigger value="recommended">{pc.recommendedFromEvidence} <span>{recommended.length}</span></TabsTrigger><TabsTrigger value="all">{pc.allOutcomes}</TabsTrigger></TabsList>
         <TabsContent value={tab}>
           {tab === "recommended" ? (
-            recommended.length === 0 ? <div className="empty-state"><span><CheckCircle2 /></span><h2>{isChinese ? zhFor(locale, "此地點目前沒有證據建議的目標") : "No evidence-led goals for this location right now"}</h2><p>{isChinese ? zhFor(locale, "你仍可從「所有成果」以店主目標開始。") : "You can still start from an owner objective under All outcomes."}</p></div> : (
+            recommended.length === 0 ? <div className="empty-state"><span><CheckCircle2 /></span><h2>{pc.noEvidenceLedGoals}</h2><p>{pc.youCanStillStart}</p></div> : (
               <div className="goal-card-grid">{recommended.map(goalCard)}</div>
             )
           ) : (
             <>
-              <p className="eyebrow">{isChinese ? "建議由這裡開始" : "Recommended starting points"}</p>
+              <p className="eyebrow">{pc.recommendedStartingPoints}</p>
               <div className="goal-card-grid">{LEAD_GOALS.map(goalCard)}</div>
-              <p className="eyebrow">{isChinese ? "其他能力" : "Other capabilities"}</p>
+              <p className="eyebrow">{pc.otherCapabilities}</p>
               <div className="goal-card-grid">{SECONDARY_GOALS.map(goalCard)}</div>
             </>
           )}
@@ -191,19 +191,19 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
       </Tabs>
       <div className="create-review-layout">
         <SectionCard>
-          <p className="eyebrow">{existing ? (isChinese ? "為何現在建議" : "Why this is suggested") : (isChinese ? zhFor(locale, "店主目標") : "Owner objective")}</p><h2>{labels[selected.key].title}</h2>
-          <div className="fact-stack">{existing ? <div><FactType type={existing.factType ?? "Unknown"} /><p>{existing.source ? `${existing.source} · ` : ""}{existing.evidence}{existing.freshness ? ` · ${existing.freshness}` : ""}</p></div> : <div><FactType type="Unknown" /><p>{isChinese ? zhFor(locale, "此目標沒有量度證據支持；它會標示為店主目標，而非發現。") : "No measured evidence backs this goal; it is labelled an owner objective, not a finding."}</p></div>}<div><FactType type="Recommended" /><p>{labels[selected.key].summary}</p></div></div>
-          <div className="field-stack"><Label htmlFor="objective">{isChinese ? "你想達成甚麼？" : "What do you want to achieve?"}</Label><Textarea id="objective" rows={4} value={objective} onChange={(event) => setObjective(event.target.value)} placeholder={isChinese ? "例如：本週推廣午市套餐，語氣溫暖，不提及價格。" : "For example: promote this week's lunch set in a warm tone, without mentioning prices."} disabled={!canCreate || stage === "queued"} /><small>{isChinese ? zhFor(locale, "目標會以「建議」事實類型記錄在行動證據中，店主資料仍由你確認。") : "The objective is recorded on the action as a Recommended fact; owner facts still come from you."}</small></div>
-          <div className="required-inputs"><strong>{isChinese ? "開始前所需資料" : "Required before starting"}</strong>{selected.requiredInputs.length === 0 ? <span><CheckCircle2 /> {isChinese ? "不需要額外資料" : "No extra inputs needed"}</span> : selected.requiredInputs.map((key) => <span key={key}><AlertTriangle /> {inputs[key] ?? key}</span>)}<span><CheckCircle2 /> {isChinese ? zhFor(locale, "事實資料仍由店主確認") : "Owner still confirms factual claims"}</span></div>
-          {existing && <p className="limitation-note"><Sparkles /> {isChinese ? zhFor(locale, "此地點已有一項開啟中的同類行動。") : "An open action of this kind already exists for this location."} <Link href={withLocation(`${base}/actions/${existing.id}`, location)}>{isChinese ? "開啟現有行動" : "Open the existing action"}</Link></p>}
+          <p className="eyebrow">{existing ? pc.whyThisIsSuggested : pc.ownerObjective}</p><h2>{labels[selected.key].title}</h2>
+          <div className="fact-stack">{existing ? <div><FactType type={existing.factType ?? "Unknown"} /><p>{existing.source ? `${existing.source} · ` : ""}{existing.evidence}{existing.freshness ? ` · ${existing.freshness}` : ""}</p></div> : <div><FactType type="Unknown" /><p>{pc.noMeasuredEvidenceBacks}</p></div>}<div><FactType type="Recommended" /><p>{labels[selected.key].summary}</p></div></div>
+          <div className="field-stack"><Label htmlFor="objective">{pc.objectiveLabel}</Label><Textarea id="objective" rows={4} value={objective} onChange={(event) => setObjective(event.target.value)} placeholder={pc.forExamplePromoteThis} disabled={!canCreate || stage === "queued"} /><small>{pc.theObjectiveIsRecorded}</small></div>
+          <div className="required-inputs"><strong>{pc.requiredBeforeStarting}</strong>{selected.requiredInputs.length === 0 ? <span><CheckCircle2 /> {pc.noExtraInputsNeeded}</span> : selected.requiredInputs.map((key) => <span key={key}><AlertTriangle /> {inputs[key] ?? key}</span>)}<span><CheckCircle2 /> {pc.ownerStillConfirmsFactual}</span></div>
+          {existing && <p className="limitation-note"><Sparkles /> {pc.anOpenActionOf} <Link href={withLocation(`${base}/actions/${existing.id}`, location)}>{pc.openTheExistingAction}</Link></p>}
         </SectionCard>
         <SectionCard className="usage-before-generation">
-          <p className="eyebrow">{isChinese ? "用量與交付" : "Usage and delivery"}</p><h2>{isChinese ? "生成及修改不扣除用量" : "Generation and revision use no allowance"}</h2>
-          <p>{isChinese ? "只有指定版本獲核准並完成匯出或發佈，才計 1 次核准後交付。Agent 只使用你確認的事實；缺少資料時會先要求輸入，而不是猜測。" : "One approved delivery is counted only after an exact version is approved and exported or published. The agent uses only facts you confirmed; when something is missing it asks for input rather than guessing."}</p>
-          {stage === "idle" && <Button className="w-full" onClick={() => void startDraft()} disabled={!canCreate}><WandSparkles /> {isChinese ? "建立行動並生成草稿" : "Create the action and draft"}</Button>}
-          {stage === "queued" && <div className="run-state-box run-running" role="status"><LoaderCircle className="animate-spin" /><div><strong>{isChinese ? "正在建立行動並準備草稿" : "Creating the action and preparing a draft"}</strong><span>{isChinese ? "同時驗證來源證據、品牌規則及必要資料。" : "Validating source evidence, guardrails and required facts."}</span></div></div>}
-          {stage === "failed" && <div className="run-state-box run-failed" role="alert"><XCircle /><div><strong>{isChinese ? "未能建立行動" : "The action could not be created"}</strong><span>{isChinese ? "現有內容已保留，亦不會扣除交付額。" : "Existing work is preserved and no delivery is consumed."}{failure ? ` · ${failure}` : ""}</span></div><Button variant="outline" onClick={() => void startDraft()}>{isChinese ? "重試" : "Retry"}</Button></div>}
-          <small>{isChinese ? zhFor(locale, `範圍：${location === "all" ? "所有地點" : locations.find((l) => l.slug === location)?.name ?? location}`) : `Scope: ${location === "all" ? "all locations" : locations.find((l) => l.slug === location)?.name ?? location}`}{existing ? ` · ${resolveText({ en: "evidence-led", "zh-HK": "證據建議", "zh-TW": "證據建議" }, locale)}` : ""}</small>
+          <p className="eyebrow">{pc.usageAndDelivery}</p><h2>{pc.generationAndRevisionUse}</h2>
+          <p>{pc.oneApprovedDeliveryIs}</p>
+          {stage === "idle" && <Button className="w-full" onClick={() => void startDraft()} disabled={!canCreate}><WandSparkles /> {pc.createTheActionAnd}</Button>}
+          {stage === "queued" && <div className="run-state-box run-running" role="status"><LoaderCircle className="animate-spin" /><div><strong>{pc.creatingTheActionAnd}</strong><span>{pc.validatingSourceEvidenceGuardrails}</span></div></div>}
+          {stage === "failed" && <div className="run-state-box run-failed" role="alert"><XCircle /><div><strong>{pc.theActionCouldNot}</strong><span>{pc.existingWorkIsPreserved}{failure ? ` · ${failure}` : ""}</span></div><Button variant="outline" onClick={() => void startDraft()}>{copy[locale].workspace.packs.retry}</Button></div>}
+          <small>{fill(pc.scope, { scope: location === "all" ? pc.scopeAll : locations.find((l) => l.slug === location)?.name ?? location })}{existing ? ` · ${pc.scopeEvidenceLed}` : ""}</small>
         </SectionCard>
       </div>
     </div>
