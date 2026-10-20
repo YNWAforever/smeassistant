@@ -2,6 +2,14 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## Phase 7: repo hygiene and finishing (2026-10-20)
+
+- **Names:** the paid plan is called the Growth plan (增長方案 / 成長方案) everywhere, and the product is called Kinnso OS everywhere, including the report title and the WhatsApp message. A test stops old names coming back.
+- **Search engines** now get every page in every language with the right language links. The launch check passes in full.
+- **All interface text** lives in the shared copy files in English, Hong Kong Chinese and Taiwan Chinese, including the demo workspace, pricing and Ask Kinnso. Nothing looks different.
+- **Tidier repository:** 27 unused interface components removed, old agent files archived under `docs/archive/`, a new README for Kinnso OS, and an index of the redesign docs.
+- **Legacy styles were measured** across every page, role, size and theme. The rules not seen in use all style real states (offline, conflicts, unread notifications), so none were deleted. Shrinking them means moving those screens onto the new styles.
+
 ## Phase 6: quality (2026-10-20)
 
 - **An action that isn't there is a real 404 again**, including a mistyped link, which used to show a server error.
