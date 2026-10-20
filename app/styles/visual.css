@@ -45,3 +45,44 @@ li[data-state="pending"] > .k-state-icon { color: var(--brand-text); }
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
+
+/* Trend chip: direction carried by icon and words as well as colour. */
+.k-trend-chip { background: var(--paper-2); color: var(--ink-2); }
+.k-trend-chip[data-trend="up"] { background: var(--success-soft); color: var(--success-text); }
+.k-trend-chip[data-trend="down"] { background: var(--danger-soft); color: var(--danger-text); }
+
+/* Impact/effort matrix. */
+.k-matrix-best { fill: var(--brand-soft); }
+.k-matrix-label { fill: var(--ink-3); font-size: 12px; }
+.k-matrix-axis { fill: var(--ink-2); font-size: 12px; font-weight: 600; }
+.k-matrix-dot { fill: var(--brand); stroke: var(--paper); stroke-width: 2; }
+.k-matrix-num { fill: var(--on-brand); font-size: 12px; font-weight: 700; }
+.k-matrix-badge { background: var(--brand); color: var(--on-brand); }
+
+/* Before/after: both layers share one grid cell, so sliding never resizes. */
+.k-compare-pane {
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) - 4px);
+  background: var(--paper-2);
+  padding: 12px;
+}
+.k-compare-stage {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) - 4px);
+  overflow: hidden;
+}
+.k-compare-layer {
+  grid-area: 1 / 1;
+  background: var(--paper-2);
+  padding: 12px;
+}
+.k-compare-after { background: var(--paper); }
+.k-compare-divider {
+  position: absolute;
+  inset-block: 0;
+  width: 2px;
+  margin-inline-start: -1px;
+  background: var(--brand);
+  pointer-events: none;
+}
