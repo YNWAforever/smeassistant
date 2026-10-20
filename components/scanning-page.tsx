@@ -286,7 +286,8 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
             {c.reference} · {scanReference(jobId)}
           </Badge>
           <h1>{view === "ready" ? c.titleReady : view === "failed" ? c.titleFailed : c.title}</h1>
-          {view !== "ready" && view !== "failed" && <p>{c.body}</p>}
+          {/* Kept in the layout once the scan ends, so the hero does not shrink and move the page; hidden from sight and from screen readers. */}
+          <p className={view === "ready" || view === "failed" ? "scan-hero-placeholder" : undefined} aria-hidden={view === "ready" || view === "failed" ? true : undefined}>{c.body}</p>
           <LoopStepper current="scan" locale={locale} />
         </div>
 
@@ -301,6 +302,26 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
           </p>
         </div>
 
+        {paused && (
+          <div className="partial-result-card" role="status">
+            <div>
+              <p>{t(locale, "pause.scans")}</p>
+            </div>
+          </div>
+        )}
+
+        {atCapacity && (
+          <div className="partial-result-card" role="status">
+            <div>
+              <p>{c.atCapacity}</p>
+            </div>
+          </div>
+        )}
+
+        {/* An outcome (ready, stalled, stuck or failed) takes the place of the
+            recovery cards, which only matter while a scan is still running.
+            The source list above stays, so each source keeps showing its own
+            state, and nothing above the outcome moves when it appears. */}
         {/* `reportHref &&` stays: readyBody promises an automatic redirect that
             the redirect effect cannot perform without a slug. */}
         {reportHref && view === "ready" && (
@@ -353,22 +374,6 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
 
         {view === "dead_lettered" && <ScanStuckCard locale={locale} reference={scanReference(jobId)} />}
 
-        {paused && (
-          <div className="partial-result-card" role="status">
-            <div>
-              <p>{t(locale, "pause.scans")}</p>
-            </div>
-          </div>
-        )}
-
-        {atCapacity && (
-          <div className="partial-result-card" role="status">
-            <div>
-              <p>{c.atCapacity}</p>
-            </div>
-          </div>
-        )}
-
         {view === "failed" && (
           <div className="partial-result-card">
             <div>
@@ -385,6 +390,7 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
           </div>
         )}
 
+        {!((reportHref && view === "ready") || (view === "stalled" && stalled) || view === "dead_lettered" || view === "failed") && (
         <div className="recovery-grid">
           <SectionCard>
             <Link2 />
@@ -407,6 +413,7 @@ export function ScanningPage({ locale, jobId }: { locale: PrototypeLocale; jobId
             <span className="step-kicker">{index} / {SCAN_STAGE_COUNT}</span>
           </SectionCard>
         </div>
+        )}
       </main>
     </PublicPageFrame>
   )
