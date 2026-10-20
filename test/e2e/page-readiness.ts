@@ -13,7 +13,7 @@ export function workspaceReadTarget(origin: string, current: string, target: str
       !/^\/(?:en|zh-HK|zh-TW)\/owner\/acceptance-(?:hk|tw)-[a-f0-9]{8}(?:\/|$)/.test(url.pathname)) return null;
     // Auth links/callbacks and all APIs are outside the document path above.
     // Only known read filters may be preloaded, never one-use Auth query data.
-    if ([...url.searchParams.keys()].some(key => !["view", "location", "cursor"].includes(key))) return null;
+    if ([...url.searchParams.keys()].some(key => !["view", "location", "cursor", "mode", "open"].includes(key))) return null;
     url.hash = "";
     return url.href;
   } catch { return null; }

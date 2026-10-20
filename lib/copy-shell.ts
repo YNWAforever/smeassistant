@@ -18,7 +18,7 @@ export type ShellCopy = {
   notifications: { label: string; unread: string }
   assistant: { name: string }
   business: { title: string; lead: string; profile: Item; locations: Item; assets: Item; integrations: Item }
-  settings: { title: string; lead: string; team: Item; plan: Item; notifications: Item; activity: Item }
+  settings: { title: string; lead: string; team: Item; plan: Item; notifications: Item; activity: Item; account: Item }
   locked: string
   locations: { title: string; lead: string; primary: string; place: string; noPlace: string; switch: string; empty: string }
   newAction: { title: string; lead: string; label: string; goal: Item; offer: Item; pack: Item }
@@ -120,10 +120,11 @@ export const shellEn: ShellCopy = {
   settings: {
     title: "Settings",
     lead: "Who has access, your plan, and what we tell you.",
-    team: { title: "Team and roles", body: "Invite people and set their access" },
+    team: { title: "Team & roles", body: "Invite people and set their access" },
     plan: { title: "Plan and usage", body: "Approved deliveries this month and billing" },
     notifications: { title: "Notifications", body: "Choose which updates you get" },
     activity: { title: "Activity", body: "Every decision, export and scan" },
+    account: { title: "Switch workspace or sign out", body: "Open another workspace, or sign out of this account" },
   },
   locked: "Owner only",
   locations: {
@@ -241,6 +242,7 @@ export const shellZhHK: ShellCopy = {
     plan: { title: "方案與用量", body: "本月核准後交付及帳單" },
     notifications: { title: "通知", body: "選擇接收哪些更新" },
     activity: { title: "活動紀錄", body: "每個決定、匯出及掃描" },
+    account: { title: "切換工作台或登出", body: "開啟另一個工作台，或登出此帳戶" },
   },
   locked: "只限店主",
   locations: {
@@ -358,6 +360,7 @@ export const shellZhTW: ShellCopy = {
     plan: { title: "方案與用量", body: "本月核准後交付與帳單" },
     notifications: { title: "通知", body: "選擇接收哪些更新" },
     activity: { title: "活動紀錄", body: "每個決定、匯出與掃描" },
+    account: { title: "切換工作台或登出", body: "開啟另一個工作台，或登出這個帳戶" },
   },
   locked: "僅限店家負責人",
   locations: {

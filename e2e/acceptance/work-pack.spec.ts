@@ -39,18 +39,10 @@ test("the starter pack becomes drafts, one is approved and exported, and startin
   await signIn(page, environment, merchant);
   expect(used()).toBe("0");
 
-  // 1. Home: the pack is tucked into the collapsed supporting-task disclosure, and no pack exists yet.
-  await page.goto(`/zh-HK/owner/${merchant.slug}`);
-  const tasksDisclosure = page.locator("details.owner-tasks-disclosure");
-  const card = tasksDisclosure.locator(".pack-card");
-  const openTasksDisclosure = async () => {
-    if ((await tasksDisclosure.getAttribute("open")) === null) {
-      await tasksDisclosure.locator("summary").click();
-    }
-    await expect(tasksDisclosure).toHaveAttribute("open", "");
-  };
-  await expect(card.getByText(DISCLOSURE)).toBeHidden();
-  await openTasksDisclosure();
+  // 1. Actions › New › Starter pack (UX Phase 4 moved the pack off Today); no pack exists yet.
+  const packPage = `/zh-HK/owner/${merchant.slug}/actions/new?mode=pack`;
+  await page.goto(packPage);
+  const card = page.locator(".pack-card");
   await expect(card.getByText(DISCLOSURE)).toBeVisible();
   const startButton = card.getByRole("button", { name: "開始套裝", exact: true });
   await expect(startButton).toBeEnabled();
@@ -90,9 +82,8 @@ test("the starter pack becomes drafts, one is approved and exported, and startin
   expect((await download).suggestedFilename()).toMatch(/-v1\.md$/);
   await expect.poll(used).toBe("1");
 
-  // Home now shows that item as exported (the other items are unchanged).
-  await page.goto(`/zh-HK/owner/${merchant.slug}`);
-  await openTasksDisclosure();
+  // The starter pack now shows that item as exported (the other items are unchanged).
+  await page.goto(packPage);
   await expect(card.locator(`li[data-template="review-response"]`).getByText(EXPORTED)).toBeVisible();
   await expect(card.locator(`li[data-template="website-basics"]`).getByText(DRAFT_READY)).toBeVisible();
 

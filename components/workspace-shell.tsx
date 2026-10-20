@@ -103,7 +103,8 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
       <a className="skip-link" href="#main-content">{t.skip}</a>
       <Sidebar collapsible="none" className="workspace-sidebar hidden md:flex">
         <SidebarHeader className="workspace-sidebar-header">
-          <Link className="brand-lockup brand-lockup-inverse" href={scopedHref(base)}>
+          {/* The plain workspace URL (no ?location=): the home link signed-in tests and bookmarks rely on. */}
+          <Link className="brand-lockup brand-lockup-inverse" href={base}>
             <span className="brand-mark" aria-hidden="true"><Search /></span>
             <span><strong>{t.brand.name}</strong><small>{t.brand.tagline}</small></span>
           </Link>

@@ -67,6 +67,11 @@ describe("five-destination owner navigation (Phase 4)", () => {
     expect(view(pathname).querySelector(".workspace-topbar-context strong")?.textContent).toBe(label);
   });
 
+  it("links the brand to the plain workspace URL, with no location parameter", () => {
+    // Signed-in flows (and the acceptance sign-in fixture) wait for this exact href.
+    expect(view("/en/owner/example/actions").querySelector(".brand-lockup")?.getAttribute("href")).toBe("/en/owner/example");
+  });
+
   it("shows the Kinnso OS brand, never the old product names", () => {
     const text = view("/en/owner/example").textContent ?? "";
     expect(text).toContain("Kinnso OS");
