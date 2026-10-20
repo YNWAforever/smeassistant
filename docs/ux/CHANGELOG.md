@@ -2,6 +2,25 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## Phase 3: scan and report (2026-10-20)
+
+- **Report rebuilt** in reading order:
+  - score with coverage, and a change shown only for comparable scans
+  - "Do this first"
+  - one card per source
+  - key numbers, evidence photos, then every finding
+- **"Do this first" is much higher on a phone:** 2,114 px from the top on an unlocked report instead of 4,977.
+- **Findings** can be filtered by priority and source. Each one says why it matters, what to do next, and which source, date and limitation it comes from.
+- **Undated evidence** shows the scan date, else "Date not recorded".
+- **Save, share, print** on unlocked reports:
+  - Save to my workspace leads to the Google-verified claim.
+  - Copy link shares the public preview.
+  - Print / save as PDF prints the whole report without site chrome.
+- **Public preview** now shows each source's coverage and limitation openly instead of in a closed panel.
+- **Scanning page** shows one row per source with its current step, and rows no longer jump when the status changes.
+- **Unlock page:** the one required consent is set apart from the optional ones.
+- **Scan wizard** split into a state hook and one file per step, with no visual change.
+
 ## Phase 2: public site (2026-10-20)
 
 - **Kinnso OS brand** in the header, footer, page titles and Open Graph images, with a simpler nav (How it works · Pricing · Methodology) and one Free scan button.

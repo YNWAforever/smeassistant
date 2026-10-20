@@ -52,11 +52,11 @@ describe("dashboard summary", () => {
   it("retains zero, first scan, coverage, business and access note without a synthetic delta", () => {
     const root = markup(<DashboardSummary report={report} />);
     expect(root.textContent).toContain("Fixture Cafe");
-    expect(root.querySelector(".score-number")?.textContent).toBe("0");
+    expect(root.querySelector(".k-score")?.getAttribute("data-score")).toBe("0");
     expect(root.textContent).toContain(copy.en.funnel.report.firstScan);
     expect(root.textContent).toContain("50%");
     expect(root.textContent).toContain(copy.en.funnel.report.viewerNote);
-    expect(root.querySelector(".delta-up, .delta-down")).toBeNull();
+    expect(root.querySelector("[data-trend]")).toBeNull();
   });
   it.each(["en", "zh-HK", "zh-TW"] as const)("uses localized current-report copy when score comparison has not been evaluated in %s", locale => {
     const root = markup(<DashboardSummary report={{ ...report, locale, comparison: { kind: "not_evaluated" } }} />);
@@ -80,7 +80,8 @@ describe("dashboard summary", () => {
   it("shows incomparable reasons even when the overall score is withheld", () => {
     const root = markup(<DashboardSummary report={{ ...report, score: null, comparison: { kind: "incomparable", reason: "Scoring versions differ" } }} />);
     expect(root.textContent).toContain("Scoring versions differ");
-    expect(root.querySelector(".score-dial")).toBeNull();
+    expect(root.querySelector(".k-score")?.getAttribute("data-score")).toBe("none");
+    expect(root.querySelector('[data-trend="none"]')).not.toBeNull();
   });
   it("mounts metric comparison before current health without sending its delta to the score dial", () => {
     const scanComparison: NonNullable<ReportProps["scanComparison"]> = { kind: "available", changes: {
@@ -91,13 +92,13 @@ describe("dashboard summary", () => {
     } };
     const root = markup(<DashboardSummary report={{ ...report, scanComparison }} />);
     const panel = root.querySelector("#scan-comparison-title")!.closest("section")!;
-    const dial = root.querySelector(".score-dial")!;
+    const dial = root.querySelector(".k-score")!;
     expect(panel.compareDocumentPosition(dial) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(root.querySelector(".delta-up, .delta-down")).toBeNull();
+    expect(root.querySelector("[data-trend]")).toBeNull();
     expect(root.querySelectorAll("h1")).toHaveLength(1);
   });  it("shows a comparable delta only with the existing comparable classification", () => {
     const root = markup(<DashboardSummary report={{ ...report, comparison: { kind: "comparable", delta: -4, title: "Comparable scan", body: "Shared measured sources" } }} />);
-    expect(root.querySelector(".delta-down")?.textContent).toContain("-4");
+    expect(root.querySelector('[data-trend="down"]')?.textContent).toContain("4");
     expect(root.textContent).toContain("Shared measured sources");
   });
   it("discloses a long supported summary as inference and preserves every word", () => {
@@ -142,9 +143,13 @@ describe("dashboard metrics", () => {
     expect(root.querySelector("time")).toBeNull();
     expect(root.querySelector("h2")?.textContent).toBeTruthy();
   });
-  it("omits privileged content for public or locked projections even if supplied", () => {
+  it("omits privileged content for public or locked projections even if supplied, but keeps source coverage", () => {
     for (const r of [{ ...report, access: "public" as const }, { ...report, locked: { hiddenFindingCount: 3, unlockHref: "/unlock" } }]) {
-      expect(renderToStaticMarkup(<DashboardMetrics report={r} dashboard={dashboard} />)).toBe("");
+      const root = markup(<DashboardMetrics report={r} dashboard={dashboard} />);
+      expect(root.querySelector("[data-metric]")).toBeNull();
+      expect(root.querySelector("#dashboard-statistics, #dashboard-comparisons")).toBeNull();
+      expect(root.querySelectorAll("[aria-labelledby='dashboard-rubric'] article")).toHaveLength(2);
+      expect(renderToStaticMarkup(<DashboardMetrics report={{ ...r, modules: [] }} dashboard={dashboard} />)).toBe("");
     }
   });
 });
@@ -193,11 +198,11 @@ describe("dashboard page integration", () => {
     expect(cards).toHaveLength(Math.min(count, 3));
     expect(Array.from(cards).map(card => card.querySelector("h3")?.textContent)).toEqual(detailed.priorities.slice(0, Math.min(count, 3)).map(item => item.label));
   });
-  it("puts metrics before priorities and gallery before collapsed full evidence with visible anchor targets", () => {
+  it("puts priorities before source cards and gallery before collapsed full evidence with visible anchor targets", () => {
     const root = markup(<ReportPage {...detailed} />);
     expect(root.querySelectorAll("h1")).toHaveLength(1);
     const priorities = root.querySelector('[data-dashboard-priorities]')!;
-    expect(root.querySelector('meter')!.compareDocumentPosition(priorities) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(priorities.compareDocumentPosition(root.querySelector('meter')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const anchor = root.querySelector('#report-detail-ig')!;
     expect(anchor).not.toBeNull();
     expect(anchor.closest('details')).toBeNull();
@@ -230,7 +235,7 @@ it.each(['en', 'zh-HK', 'zh-TW'] as const)('renders no-image partial and failed 
     const root = markup(<ReportPage {...report} locale={locale} status={status} score={null} modules={report.modules.filter(item => item.state !== 'measured')} proof={null} evidence={[]} />);
     expect(root.querySelector('img')).toBeNull();
     expect(root.querySelector('meter')).toBeNull();
-    expect(root.querySelector('.score-dial')).toBeNull();
+    expect(root.querySelector('.k-score')?.getAttribute('data-score')).toBe('none');
     expect(root.textContent).toContain(copy[locale].funnel.report.dashboard.unavailable);
   }
 });

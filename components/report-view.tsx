@@ -1,183 +1,34 @@
-import { EvidenceGallery } from "@/components/report/evidence-gallery"
-import { DashboardSummary } from "@/components/report/dashboard-summary"
-import { DashboardMetrics } from "@/components/report/dashboard-metrics"
-import { DashboardPriorities } from "@/components/report/dashboard-priorities"
-import { buildReportDashboard } from "@/lib/funnel/report-dashboard"
-import styles from "@/components/report/dashboard.module.css"
-import Link from "next/link"
-import { RecoveryForm } from "@/components/report/recovery-form"
 import { ArrowRight, Check, LockKeyhole, MessageCircle, TriangleAlert } from "lucide-react"
+import Link from "next/link"
 
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
-import {
-  FactType,
-  LoopRibbon,
-  ProviderBadge,
-  PublicPageFrame,
-  SectionCard,
-} from "@/components/product-ui"
-import { Badge } from "@/components/ui/badge"
+import { FactType, PublicPageFrame, SectionCard } from "@/components/product-ui"
+import { DashboardMetrics } from "@/components/report/dashboard-metrics"
+import { DashboardPriorities } from "@/components/report/dashboard-priorities"
+import { DashboardSummary } from "@/components/report/dashboard-summary"
+import styles from "@/components/report/dashboard.module.css"
+import { EvidenceGallery } from "@/components/report/evidence-gallery"
+import { FindingsBrowser } from "@/components/report/findings-browser"
+import { ProofPanels } from "@/components/report/proof-panels"
+import { RecoveryForm } from "@/components/report/recovery-form"
 import { Button } from "@/components/ui/button"
+import { LoopStepper } from "@/components/visual/steps"
 import { copy } from "@/lib/copy"
-import type { ReportProofData, ReportProps } from "@/lib/funnel/report-props"
+import { buildReportDashboard } from "@/lib/funnel/report-dashboard"
+import type { ReportProps } from "@/lib/funnel/report-props"
 import { interpolate } from "@/lib/share"
 
 /**
  * The report renders entirely from ReportProps (lib/funnel/report-props.ts):
  * the public preview, the unlocked viewer/member model and /sample-report all
  * take the same shape, so nothing here reads lib/demo-data or the database.
- * No hooks — the route segment renders this on the server.
+ *
+ * Reading order: score and coverage, "Do this first", the unlock step (locked
+ * only), each source, key numbers, evidence photos, every finding, then the
+ * supporting detail. Privileged sections render only when unlocked.
  */
-
-function ProofRows({ rows }: { rows: Array<[string, string]> }) {
-  return (
-    <dl className="trust-dl">
-      {rows.map(([label, value]) => (
-        <div key={label}>
-          <dt>{label}</dt>
-          <dd>{value}</dd>
-        </div>
-      ))}
-    </dl>
-  )
-}
-
-function ProofPanels({ proof, locale }: { proof: ReportProofData; locale: ReportProps["locale"] }) {
-  const c = copy[locale].funnel.report
-  const p = c.proof
-  const yesNo = (value: boolean | null | undefined) => (value == null ? p.unknown : value ? p.yes : p.no)
-  const panels: Array<{ key: string; title: string; rows: Array<[string, string]>; extra?: React.ReactNode }> = []
-
-  if (proof.ig) {
-    const ig = proof.ig
-    panels.push({
-      key: "ig",
-      title: p.ig,
-      rows: [
-        [p.followers, ig.followers == null ? p.unknown : String(ig.followers)],
-        [p.following, String(ig.following)],
-        [p.posts, String(ig.postsCount)],
-      ],
-      extra: ig.bio ? <p className="proof-caveat">{ig.bio}</p> : null,
-    })
-  }
-  if (proof.gbp) {
-    const gbp = proof.gbp
-    panels.push({
-      key: "gbp",
-      title: p.gbp,
-      rows: [
-        [p.rating, gbp.rating == null ? p.unknown : String(gbp.rating)],
-        [p.reviews, gbp.reviewsCount == null ? p.unknown : String(gbp.reviewsCount)],
-      ],
-      extra: gbp.recentReviews.length ? (
-        <ul className="evidence-list">
-          {gbp.recentReviews.slice(0, 3).map((review, index) => (
-            <li key={`${review.time}-${index}`}>
-              <Badge variant="outline">{review.rating} ★</Badge>
-              <span>
-                <strong>{review.text}</strong>
-                <small>{review.ownerResponse ? p.ownerReply : p.noReply}</small>
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : null,
-    })
-  }
-  if (proof.aeo) {
-    const aeo = proof.aeo
-    const site = aeo.website
-    panels.push({
-      key: "aeo",
-      title: p.aeo,
-      rows: site
-        ? [
-            [p.website, site.url],
-            [p.faqSchema, yesNo(site.hasFaqSchema)],
-            [p.metaLength, String(site.metaDescriptionLength)],
-            [p.h1Count, String(site.h1Count)],
-          ]
-        : [],
-      extra: aeo.runs.length ? (
-        <ul className="evidence-list">
-          {aeo.runs.slice(0, 4).map((run) => (
-            <li key={run.query}>
-              <FactType type="Observed" />
-              <span>
-                <strong>{run.query}</strong>
-                <small>{`${p.overview}: ${yesNo(run.aiOverviewMentioned)} · ${p.mode}: ${yesNo(run.aiModeMentioned)} · ${p.organic}: ${run.organicRank ?? p.unknown}`}</small>
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : null,
-    })
-  }
-  if (proof.merchant) {
-    const runs = proof.merchant.runs
-    panels.push({
-      key: "merchant",
-      title: p.merchant,
-      rows: [],
-      extra: runs.length ? (
-        <ul className="evidence-list">
-          {runs.slice(0, 4).map((run, index) => (
-            <li key={`${run.query}-${index}`}>
-              <FactType type="Observed" />
-              <span>
-                <strong>{run.query}</strong>
-                <small>{`${p.found}: ${yesNo(run.found)} · ${p.cited}: ${yesNo(run.aiCited)} · ${p.organic}: ${run.organicRank ?? p.unknown} · ${p.competitors}: ${run.competitors.length}`}</small>
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : null,
-    })
-  }
-  if (proof.trust) {
-    const trust = proof.trust
-    panels.push({
-      key: "trust",
-      title: p.trust,
-      rows: [
-        [p.reviews, trust.reviews == null ? p.unknown : String(trust.reviews)],
-        [p.rating, trust.rating == null ? p.unknown : String(trust.rating)],
-        [p.response, trust.responseRate == null ? p.unknown : `${trust.responseRate}%`],
-        [p.followers, trust.followers == null ? p.unknown : String(trust.followers)],
-        [p.days, trust.daysSinceLastReview == null ? p.unknown : String(trust.daysSinceLastReview)],
-      ],
-    })
-  }
-
-  if (!panels.length) return null
-
-  return (
-    <section className="report-section">
-      <div className="section-heading-inline">
-        <div>
-          <p className="eyebrow">{c.proofEyebrow}</p>
-          <h2>{c.proofTitle}</h2>
-        </div>
-      </div>
-      <p className="proof-caveat">{c.proofBody}</p>
-      <div className="method-layout">
-        {panels.map((panel) => (
-          <SectionCard key={panel.key}>
-            <h3>{panel.title}</h3>
-            {panel.rows.length > 0 && <ProofRows rows={panel.rows} />}
-            {panel.extra}
-          </SectionCard>
-        ))}
-      </div>
-    </section>
-  )
-}
-
 export function ReportPage(props: ReportProps) {
-  const { locale, sample, modules, locked } = props
-  // Module times are ISO when present; show them as a local date-time in the report's market.
-  const observedFormat = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: props.market === "tw" ? "Asia/Taipei" : "Asia/Hong_Kong" })
+  const { locale, sample, locked } = props
   const t = copy[locale]
   const c = t.funnel.report
   const authorized = props.access !== "public" && !locked
@@ -209,106 +60,48 @@ export function ReportPage(props: ReportProps) {
             </Button>
           </SectionCard>
         )}
-        <DashboardMetrics report={props} dashboard={dashboard} />
         <DashboardPriorities report={props} />
-        {authorized && <EvidenceGallery items={props.evidence} locale={locale} timeZone={props.market === "tw" ? "Asia/Taipei" : "Asia/Hong_Kong"} />}
-        {sample && <ContextualAssistant locale={locale} surface="report" />}
-        <LoopRibbon active={sample ? 2 : 1} />
-        <details className={styles.detailDisclosure}>
-          <summary>{c.passportTitle}</summary><div className="section-heading-inline">
-            <div>
-              <p className="eyebrow">{c.passportEyebrow}</p>
-              <h2>{c.passportTitle}</h2>
-            </div>
-            <Link href={`/${locale}/methodology`}>{c.fullMethodology}</Link>
-          </div>
-          <div className="evidence-passport">
-            {modules.map((module) => (
-              <article key={module.key}>
-                <div>
-                  <h3>{module.label}</h3>
-                  {module.detail && <p>{module.detail}</p>}
-                  {module.observedAt && (Number.isNaN(Date.parse(module.observedAt)) ? <small>{module.observedAt}</small> : <small><time dateTime={module.observedAt}>{observedFormat.format(new Date(module.observedAt))}</time></small>)}
-                </div>
-                <div className="evidence-passport-value">
-                  <strong>{module.value}</strong>
-                  <ProviderBadge state={module.state} locale={locale} />
-                </div>
-              </article>
-            ))}
-          </div>
-        </details>
 
         {locked && (
           <section className="unlock-banner">
             <div>
-              <LockKeyhole />
+              <LockKeyhole aria-hidden="true" />
               <div>
                 <p className="eyebrow">{c.unlockEyebrow}</p>
                 <h2>{c.unlockTitle}</h2>
                 <p>{c.unlockBody}</p>
-                <small>{locale==='en' && locked.hiddenFindingCount===1?'1 more finding in the full report':interpolate(c.unlockHidden, { count: locked.hiddenFindingCount })}</small>
+                <small>{locale === "en" && locked.hiddenFindingCount === 1 ? "1 more finding in the full report" : interpolate(c.unlockHidden, { count: locked.hiddenFindingCount })}</small>
               </div>
             </div>
             <Button asChild size="lg">
               <Link href={locked.unlockHref}>
-                {c.unlockButton} <ArrowRight />
+                {c.unlockButton} <ArrowRight aria-hidden="true" />
               </Link>
             </Button>
             {props.recoveryAvailable && <RecoveryForm locale={locale} slug={props.slug} />}
           </section>
         )}
 
+        <DashboardMetrics report={props} dashboard={dashboard} />
+        {authorized && <EvidenceGallery items={props.evidence} locale={locale} timeZone={props.market === "tw" ? "Asia/Taipei" : "Asia/Hong_Kong"} />}
+
         {authorized && (
-          <section className="report-section">
+          <section className="report-section" aria-labelledby="report-findings-title">
             <div className="section-heading-inline">
               <div>
                 <p className="eyebrow">{c.findingsEyebrow}</p>
-                <h2>{c.findingsTitle}</h2>
+                <h2 id="report-findings-title">{c.findingsTitle}</h2>
               </div>
             </div>
             {props.findingGroups.length === 0 ? (
               <div className="limitations-box">
-                <TriangleAlert />
+                <TriangleAlert aria-hidden="true" />
                 <div>
                   <p>{c.findingsEmpty}</p>
                 </div>
               </div>
             ) : (
-              props.findingGroups.map((group) => (
-                <div key={group.module}><h3 id={`report-detail-${group.module}`} className={styles.detailAnchor}>{group.label}</h3><details className={styles.detailDisclosure}><summary>{c.findingsTitle} · {group.label}</summary>
-
-                  <ul className="evidence-list">
-                    {group.findings.map((finding) => (
-                      <li key={finding.id}>
-                        <Badge variant="outline" className={`priority-${finding.tone}`}>
-                          {finding.severityLabel}
-                        </Badge>
-                        <span>
-                          <strong>{finding.label}</strong>
-                          {finding.message && <small>{finding.message}</small>}
-                          {finding.overallImpact && <small>{finding.overallImpact}</small>}
-                          {finding.action && (
-                            <small>
-                              {c.actionLabel}: {finding.action}
-                            </small>
-                          )}
-                          {finding.evidence.length > 0 && (
-                            <small>
-                              {c.evidenceLabel}: {finding.evidence.map(([key, value]) => `${key}: ${value}`).join(" · ")}
-                            </small>
-                          )}
-                          {finding.fixPackDraft && (
-                            <small>
-                              {c.draftLabel}: {finding.fixPackDraft}
-                            </small>
-                          )}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </details></div>
-              ))
+              <FindingsBrowser groups={props.findingGroups} modules={props.modules} scannedAt={props.scannedAt} locale={locale} />
             )}
           </section>
         )}
@@ -331,11 +124,13 @@ export function ReportPage(props: ReportProps) {
         )}
         {authorized && props.proof && <details className={styles.detailDisclosure}><summary>{c.proofTitle}</summary><ProofPanels proof={props.proof} locale={locale} /></details>}
 
+        {sample && <ContextualAssistant locale={locale} surface="report" />}
+        <div className={styles.loop}><LoopStepper current="decide" locale={locale} /></div>
 
         {props.ctas.length > 0 && (
-          <SectionCard className="retention-summary">
+          <SectionCard className="retention-summary report-contact">
             <div>
-              <MessageCircle />
+              <MessageCircle aria-hidden="true" />
               <div>
                 <p className="eyebrow">{c.ctaEyebrow}</p>
                 <h2>{c.ctaTitle}</h2>

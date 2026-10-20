@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { DemoBadge, FactType, ScoreDial } from "@/components/product-ui";
+import { DemoBadge, FactType } from "@/components/product-ui";
+import { CoverageMeter } from "@/components/visual/coverage-meter";
+import { ScoreDial } from "@/components/visual/score-dial";
+import { TrendChip } from "@/components/visual/trend";
+import { ReportActions } from "./report-actions";
 import { Badge } from "@/components/ui/badge";
 import { copy } from "@/lib/copy";
 import type { ReportProps } from "@/lib/funnel/report-props";
@@ -41,7 +45,10 @@ export function DashboardSummary({ report }: { report: ReportProps }) {
     <ScanComparisonPanel report={report} />
     <div className={styles.health}>
       <div className={styles.dial}>
-        {score == null ? <div className={styles.withheld}><strong>{c.notScored}</strong></div> : <ScoreDial score={score} coverage={report.coverage} {...(comparison.kind === "comparable" ? { delta: comparison.delta } : {})} />}
+        {/* A null score is "no score yet", never 0 (guardrail 2); only a comparable pair carries a change (guardrail 3). */}
+        <ScoreDial score={failed ? null : score} coverage={report.coverage} locale={report.locale} size={140} comparable={comparison.kind === "comparable"} />
+        {comparison.kind === "comparable" && <TrendChip delta={comparison.delta} comparable locale={report.locale} />}
+        {comparison.kind === "incomparable" && <TrendChip delta={null} comparable={false} locale={report.locale} />}
         <span className={styles.caption}>{d.rubric}</span>
       </div>
       <div className={styles.takeaway}>
@@ -49,6 +56,7 @@ export function DashboardSummary({ report }: { report: ReportProps }) {
         <h2>{title}</h2><p>{body}</p>
         {comparison.kind === "first_scan" && <span className={styles.chip}>{c.firstScan}</span>}
         {comparison.kind === "incomparable" && (failed || score == null) && <p className={styles.notice}>{c.comparisonLabel}: {comparison.reason}</p>}
+        {report.modules.length > 0 && <div className={styles.meter}><CoverageMeter locale={report.locale} sources={report.modules.map(module => ({ key: module.key, label: module.label, state: module.state }))} /></div>}
         <dl className={styles.coverage}>
           <div><dt>{copy[report.locale].common.coverage}</dt><dd>{report.coverage == null ? d.coverageUnavailable : `${new Intl.NumberFormat(report.locale).format(report.coverage)}%`}</dd></div>
           <div><dt>{c.measuredLabel}</dt><dd>{sources(measured)}</dd></div>
@@ -59,18 +67,18 @@ export function DashboardSummary({ report }: { report: ReportProps }) {
     </div>
     {summary && (summary.length > 240 ? <details className={styles.disclosure}><summary>{d.summary}</summary><FactType type="Inference" /><p>{summary}</p></details> : <div className={styles.interpretation}><FactType type="Inference" /><p>{summary}</p></div>)}
     {/* The claim hand-off. An unlocked report proves the reader has this
-        device's viewer grant, not that they manage the business -- so this
-        only offers the sign-in step, where ownership is actually verified
-        (guardrail 15). Members already have a workspace, and the demo/sample
-        surfaces must never link into a real claim. */}
-    {!report.sample && report.access === "viewer" && report.slug && (
+        device's viewer grant, not that they manage the business -- so "Save to
+        my workspace" only offers the sign-in step, where ownership is actually
+        verified (guardrail 15). Members already have a workspace, and the
+        demo/sample surfaces must never link into a real claim. */}
+    {!report.sample && report.access !== "public" && !report.locked && (
       <aside className={styles.claim}>
-        <FactType type="Unknown" />
-        <div>
+        {report.access === "viewer" && report.slug && <div>
+          <FactType type="Unknown" />
           <h2>{c.claimTitle}</h2>
           <p>{c.claimBody}</p>
-        </div>
-        <Link href={`/${report.locale}/owner/sign-in?claim=${encodeURIComponent(report.slug)}`}>{c.claimCta} →</Link>
+        </div>}
+        <ReportActions locale={report.locale} claimHref={report.access === "viewer" && report.slug ? `/${report.locale}/owner/sign-in?claim=${encodeURIComponent(report.slug)}` : undefined} />
       </aside>
     )}
   </section>;
