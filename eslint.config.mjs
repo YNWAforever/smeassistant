@@ -19,6 +19,7 @@ const eslintConfig = defineConfig([
     "test-results/**",
     // Generated local workflow logs and helper scripts; never application source.
     ".superpowers/**",
+    "docs/archive/**",
     // Local agent worktrees and settings.
     ".claude/**",
   ]),

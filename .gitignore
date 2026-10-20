@@ -51,5 +51,8 @@ next-env.d.ts
 /.worktrees/
 /.claude/worktrees/
 
+# local agent workflow output (the tracked history moved to docs/archive/superpowers)
+/.superpowers/
+
 # opt-in real-model evaluation output (P4.4)
 eval-results/
