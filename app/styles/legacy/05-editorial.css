@@ -6,39 +6,6 @@
  * so it never fights the older public CSS layers.
  */
 
-:root {
-  --ed-bg: #fffaf5;
-  --ed-surface: #ffffff;
-  --ed-peach-50: oklch(97.49% 0.013 35.83);
-  --ed-peach-100: oklch(95.09% 0.024 43.21);
-  --ed-peach-200: oklch(90.04% 0.052 43.77);
-  --ed-orange: oklch(76.09% 0.158 55.34);
-  --ed-orange-hover: oklch(70% 0.155 56);
-  --ed-orange-600: oklch(64.2% 0.146 57.27);
-  --ed-orange-700: oklch(50.97% 0.115 57.33);
-  --ed-orange-800: oklch(38.66% 0.088 57.46);
-  --ed-amber: oklch(83.49% 0.143 85.36);
-  --ed-ink: oklch(21% 0.006 285.885);
-  --ed-ink-2: oklch(37% 0.012 285.8);
-  --ed-ink-3: oklch(52% 0.016 285.938);
-  --ed-line: oklch(92% 0.004 286.32);
-  --ed-line-warm: oklch(90% 0.025 50);
-  --ed-green: oklch(58% 0.13 155);
-
-  --ed-sans: "Geist Variable", "PingFang HK", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
-
-  --ed-ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --ed-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ed-radius: 1.25rem;
-  --ed-radius-sm: 0.75rem;
-  --ed-max: 1200px;
-  --ed-gutter: clamp(16px, 4vw, 40px);
-  --ed-section: clamp(72px, 9vw, 120px);
-  --ed-shadow-sm: 0 1px 2px oklch(40% 0.08 55 / 0.06);
-  --ed-shadow: 0 1px 2px oklch(40% 0.08 55 / 0.05), 0 10px 30px -14px oklch(40% 0.08 55 / 0.18);
-  --ed-shadow-lg: 0 2px 4px oklch(40% 0.08 55 / 0.05), 0 24px 60px -24px oklch(40% 0.1 55 / 0.28);
-}
-
 /* ---------- Page ground ---------- */
 
 .public-site:has(.ed-landing) {
@@ -226,7 +193,7 @@
 }
 
 .ed-chip-solid {
-  background: var(--ed-ink);
+  background: var(--inverse);
   box-shadow: none;
   color: #fff;
 }
@@ -338,13 +305,13 @@
 }
 
 .ed-pill-lime .ed-pill-icon {
-  background: var(--ed-ink);
+  background: var(--inverse);
   color: #fff;
 }
 
 /* Secondary: ink. */
 .ed-pill-ink {
-  background: var(--ed-ink);
+  background: var(--inverse);
   color: #fff;
   box-shadow: 0 8px 20px -10px oklch(21% 0.006 285 / 0.45);
 }
@@ -620,8 +587,8 @@
   gap: 0.5rem;
   padding: 0.7rem 0.9rem;
   border-radius: var(--ed-radius-sm);
-  background: #fff1ed;
-  color: #9a3412;
+  background: var(--brand-softer);
+  color: var(--danger-text);
   font-size: 0.9rem;
 }
 
@@ -1237,7 +1204,7 @@
 }
 
 .ed-control {
-  background: var(--ed-ink);
+  background: var(--inverse);
   box-shadow: none;
 }
 
@@ -1357,7 +1324,7 @@
   width: fit-content;
   padding: 0.22rem 0.6rem;
   border-radius: 999px;
-  background: oklch(58% 0.13 155);
+  background: var(--success-text);
   color: #fff;
   font-size: 0.78rem;
   font-style: normal;
@@ -1511,7 +1478,7 @@
   border-radius: 2rem;
   background:
     radial-gradient(60% 80% at 100% 0%, oklch(76% 0.158 55 / 0.28), transparent 60%),
-    var(--ed-ink);
+    var(--inverse);
   color: #fff;
 }
 
@@ -1656,14 +1623,14 @@
 
 /* ---------- Responsive ---------- */
 
-@media (max-width: 1100px) {
+@media (max-width: 1279px) {
   .ed-team-grid,
   .ed-plan-grid,
   .ed-bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ed-loop-line { grid-template-columns: repeat(4, minmax(0, 1fr)); border-radius: 1.5rem; }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1023px) {
   .ed-landing > :is(.ed-hero, .ed-story, .ed-case, .ed-workspace) {
     grid-template-columns: 1fr;
   }
@@ -1683,9 +1650,6 @@
 }
 
 @media (max-width: 767px) {
-  :root {
-    --ed-section: 64px;
-  }
 
   .ed-moment-figure {
     aspect-ratio: 4 / 5;
@@ -1735,7 +1699,7 @@
 .public-site .public-header-inner {
   border-color: var(--ed-line);
   border-radius: 999px;
-  background: rgb(255 255 255 / 0.86);
+  background: color-mix(in oklab, var(--paper) 86%, transparent);
   box-shadow: 0 8px 30px -16px oklch(40% 0.08 55 / 0.25);
 }
 
@@ -1804,7 +1768,7 @@
 /* ---------- Shared public footer ---------- */
 
 .public-site .public-footer {
-  background: var(--ed-ink);
+  background: var(--inverse);
   color: rgb(255 255 255 / 0.72);
   font-family: var(--ed-sans);
 }
@@ -1938,21 +1902,6 @@ body:has(.ed-landing) {
    touching the owner workspace (which does not render inside .public-site). */
 
 .public-site {
-  --ink: var(--ed-ink);
-  --soft: var(--ed-ink-2);
-  --paper: var(--ed-surface);
-  --canvas: var(--ed-bg);
-  --teal: var(--ed-orange-700);
-  --teal-dark: var(--ed-orange-800);
-  --teal-soft: var(--ed-peach-100);
-  --lime: var(--ed-orange);
-  --lime-strong: var(--ed-orange-hover);
-  --lime-soft: var(--ed-peach-100);
-  --peach: var(--ed-peach-100);
-  --border: var(--ed-line);
-  --ring: var(--ed-orange);
-  --shadow-sm: var(--ed-shadow);
-  --shadow-md: var(--ed-shadow-lg);
   background: var(--ed-bg);
   font-family: var(--ed-sans);
 }
@@ -1966,21 +1915,16 @@ body:has(.public-site) {
 }
 
 /* Report links and panels used blue/sky; they join the warm palette. */
-.public-site {
-  --blue: var(--ed-orange-700);
-  --blue-soft: var(--ed-peach-100);
-  --sky: var(--ed-peach-50);
-}
 
 /* Dark panels hard-coded to the old green-black move to warm ink. */
 .public-site :is(.flow-steps, .report-page > .loop-ribbon, .unlock-banner, .formula-card, .partial-result-card, .onboarding-layout > aside, .recommended-label, .prototype-bar) {
-  background: var(--ed-ink);
+  background: var(--inverse);
 }
 
 .public-site .section-card.formula-card {
   background:
     radial-gradient(circle at 92% 0%, oklch(76% 0.158 55 / 0.22), transparent 22rem),
-    var(--ed-ink);
+    var(--inverse);
 }
 
 .public-site .pricing-featured {
@@ -2019,13 +1963,6 @@ body:has(.public-site) {
 }
 
 /* shadcn tokens inside the public site: warm ink primary, white fields. */
-.public-site {
-  --primary: var(--ed-ink);
-  --primary-foreground: #fff;
-  --foreground: var(--ed-ink);
-  --card-foreground: var(--ed-ink);
-  --input: var(--ed-line);
-}
 
 .public-site :is(input:not([type="radio"], [type="checkbox"]), textarea, [data-slot="select-trigger"]) {
   background-color: var(--ed-surface);
@@ -2041,23 +1978,6 @@ body:has(.public-site) {
 /* ---------- Owner workspace (Kinnso light) ---------- */
 
 .workspace-shell {
-  --sidebar: #ffffff;
-  --sidebar-foreground: var(--ed-ink);
-  --sidebar-primary: var(--ed-orange);
-  --sidebar-primary-foreground: var(--ed-ink);
-  --sidebar-accent: var(--ed-peach-100);
-  --sidebar-accent-foreground: var(--ed-orange-800);
-  --sidebar-border: var(--ed-line);
-  --sidebar-ring: var(--ed-orange);
-  --lime: var(--ed-orange);
-  --lime-strong: var(--ed-orange-hover);
-  --lime-soft: var(--ed-peach-100);
-  --teal: var(--ed-orange-700);
-  --teal-dark: var(--ed-orange-800);
-  --teal-soft: var(--ed-peach-100);
-  --primary: var(--ed-ink);
-  --primary-foreground: #fff;
-  --ring: var(--ed-orange);
   font-family: var(--ed-sans);
 }
 
@@ -2068,7 +1988,7 @@ body:has(.public-site) {
 
 .workspace-shell .workspace-sidebar {
   border-right: 1px solid var(--ed-line);
-  background: #fff !important;
+  background: var(--paper) !important;
   color: var(--ed-ink);
 }
 
@@ -2162,13 +2082,13 @@ body:has(.public-site) {
 }
 
 .workspace-shell .account-avatar {
-  background: var(--ed-ink);
+  background: var(--inverse);
   color: #fff;
 }
 
 .workspace-shell .workspace-topbar {
   border-bottom-color: var(--ed-line);
-  background: rgb(255 255 255 / 0.86);
+  background: color-mix(in oklab, var(--paper) 86%, transparent);
 }
 
 .workspace-shell .usage-mini :is(span, small) {
@@ -2180,14 +2100,9 @@ body:has(.public-site) {
    --teal to mean success / measured / ready, so they get the status green
    back on the element itself; descendants (e.g. the score dial's ring)
    inherit it. Applies to the public site and the workspace alike. */
-:is(.public-site, .workspace-shell) :is(
-  .delta-up, .health-ok, .score-dial, .collector-measured, .legend-measured,
-  .movement-resolved, .approved-state, .idempotent-state, .integration-logo.is-live,
-  .summary-icon.up, .proof-value, .before-after-values .observed-change,
-  .scan-status-hero[data-state="ready"] .scan-pulse,
-  .required-inputs > span:has(.lucide-circle-check-big, .lucide-circle-check)
-) {
-  --teal: oklch(50% 0.12 155);
-  --teal-dark: oklch(40% 0.1 155);
-  --teal-soft: oklch(96.5% 0.03 155);
+
+/* Contrast fixes found by axe after the token pass (docs/ux Phase 1):
+   eyebrows on dark panels use the light brand tone, not brand text. */
+.public-site :is(.flow-steps, .public-demo-flow) .eyebrow {
+  color: var(--brand);
 }

@@ -1,0 +1,334 @@
+/*
+ * Kinnso OS design tokens: the single source of colour, type, space, radius,
+ * elevation and motion. Values are taken from the Kinnso palette that the
+ * public site and workspace already render; nothing here is a new look.
+ *
+ * Layers: Tailwind theme → tokens → base → components → utilities → legacy
+ * (the pre-redesign stylesheets, kept last so the existing pages render as
+ * before while they are migrated) → i18n (Chinese line-height and breaking).
+ *
+ * Dark mode is workspace-only (CLAUDE.md, 2026-10-19). components/theme/
+ * sets html[data-theme] while an owner page is mounted, and a saved dark
+ * choice applies before hydration only with the workspace marker present
+ * (lib/theme.ts); public pages stay light.
+ */
+
+@layer tokens {
+  :root {
+    /* ── Primitives ─────────────────────────────────────────────────── */
+    --k-neutral-0: oklch(100% 0 0);
+    --k-neutral-25: oklch(99.1% 0.006 70);      /* #fffaf5 page ground */
+    --k-neutral-50: oklch(97.49% 0.013 35.83);  /* peach-50 */
+    --k-neutral-100: oklch(96.5% 0.004 286);
+    --k-neutral-200: oklch(92% 0.004 286.32);
+    --k-neutral-300: oklch(87% 0.006 286);
+    --k-neutral-400: oklch(70.5% 0.015 286);
+    --k-neutral-500: oklch(52% 0.016 285.938);  /* 5.5:1 on white */
+    --k-neutral-600: oklch(44% 0.014 285.9);
+    --k-neutral-700: oklch(37% 0.012 285.8);
+    --k-neutral-800: oklch(27.4% 0.006 286);
+    --k-neutral-900: oklch(21% 0.006 285.885);  /* ink, 17:1 on page */
+    --k-neutral-950: oklch(14.1% 0.005 285.8);
+
+    --k-orange-50: oklch(97.49% 0.013 35.83);
+    --k-orange-100: oklch(95.09% 0.024 43.21);
+    --k-orange-200: oklch(90.04% 0.052 43.77);
+    --k-orange-400: oklch(76.09% 0.158 55.34);  /* brand */
+    --k-orange-500: oklch(70% 0.155 56);
+    --k-orange-600: oklch(64.2% 0.146 57.27);   /* ≥3:1 on white: focus, borders */
+    --k-orange-700: oklch(50.97% 0.115 57.33);  /* ≥4.5:1 on white: brand text */
+    --k-orange-800: oklch(38.66% 0.088 57.46);
+    --k-orange-900: oklch(30% 0.065 57);
+
+    --k-green-100: oklch(95% 0.04 155);
+    --k-green-500: oklch(58% 0.13 155);
+    --k-green-700: oklch(46% 0.11 155);         /* AA text on white and green-100 */
+    --k-amber-100: oklch(96% 0.05 85);
+    --k-amber-400: oklch(83.49% 0.143 85.36);
+    --k-amber-700: oklch(48% 0.11 65);          /* AA text on amber-100 (was 4.35:1) */
+    --k-red-100: oklch(95% 0.03 25);
+    --k-red-600: oklch(52% 0.17 25);
+    --k-red-700: oklch(46% 0.15 25);
+
+    /* ── Semantic: light (default) ──────────────────────────────────── */
+    --canvas: var(--k-neutral-25);
+    --paper: var(--k-neutral-0);
+    --paper-2: var(--k-neutral-50);
+    --ink: var(--k-neutral-900);
+    --ink-2: var(--k-neutral-700);
+    --ink-3: var(--k-neutral-500);
+    --line: var(--k-neutral-200);
+    --line-warm: oklch(90% 0.025 50);
+    /* Dark panels that stay dark in both themes (footer, scan steps). */
+    --inverse: var(--k-neutral-900);
+    --on-inverse: var(--k-neutral-0);
+
+    --brand: var(--k-orange-400);
+    --brand-hover: var(--k-orange-500);
+    --brand-pressed: var(--k-orange-600);
+    --brand-text: var(--k-orange-700);
+    --brand-strong: var(--k-orange-800);
+    --brand-soft: var(--k-orange-100);
+    --brand-softer: var(--k-orange-50);
+    --on-brand: var(--k-neutral-900);           /* never white on orange (2.2:1) */
+    --focus: var(--k-orange-600);
+
+    --success: var(--k-green-500);
+    --success-text: var(--k-green-700);
+    --success-soft: var(--k-green-100);
+    --warning: var(--k-amber-400);
+    --warning-text: var(--k-amber-700);
+    --warning-soft: var(--k-amber-100);
+    --danger: var(--k-red-600);
+    --danger-text: var(--k-red-700);
+    --danger-soft: var(--k-red-100);
+    --warning-border: oklch(82% 0.08 70);
+    --info-soft: oklch(95% 0.018 240);
+    --info-text: oklch(45% 0.09 240);
+    --violet-soft: oklch(94.5% 0.02 330);
+    --violet-text: oklch(45% 0.08 330);
+    --danger-border: oklch(80% 0.07 25);
+    --success-border: oklch(82% 0.07 155);
+
+    /* ── Type ───────────────────────────────────────────────────────── */
+    /* System fonts only (CLAUDE.md 2026-10-19): no web font is downloaded.
+       Latin system faces first, then the per-locale CJK faces below, so
+       Chinese never falls to a generic face with the wrong regional glyphs. */
+    --font-latin: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    --font-sans: var(--font-latin), "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", "Noto Sans CJK TC", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: var(--font-sans);
+    --leading-body: 1.6;
+    --leading-heading: 1.15;
+
+    /* ── Space, radius, elevation ───────────────────────────────────── */
+    --gutter: clamp(16px, 4vw, 40px);
+    --section: clamp(72px, 9vw, 120px);
+    --content: 1320px;
+    --radius: 1rem;
+    --radius-pill: 999px;
+    --shadow-sm: 0 1px 2px oklch(40% 0.08 55 / 0.05), 0 10px 30px -14px oklch(40% 0.08 55 / 0.18);
+    --shadow-md: 0 2px 4px oklch(40% 0.08 55 / 0.05), 0 24px 60px -24px oklch(40% 0.1 55 / 0.28);
+    --shadow-xs: 0 1px 2px oklch(40% 0.08 55 / 0.06);
+
+    /* ── Motion (CLAUDE.md UX amendment: feedback 150–300ms, explain ≤600ms) */
+    --duration-fast: 150ms;
+    --duration-base: 220ms;
+    --duration-slow: 300ms;
+    --duration-explain: 600ms;
+    --stagger: 40ms;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+
+    /* ── z-index scale ──────────────────────────────────────────────── */
+    --z-sticky: 40;
+    --z-bar: 45;
+    --z-overlay: 50;
+    --z-toast: 60;
+    --z-skip: 100;
+
+    color-scheme: light;
+  }
+
+  :root:lang(zh-HK) {
+    --font-sans: var(--font-latin), "PingFang HK", "Microsoft JhengHei", "Noto Sans HK", "Noto Sans CJK HK", system-ui, sans-serif;
+  }
+  :root:lang(zh-TW) {
+    --font-sans: var(--font-latin), "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", "Noto Sans CJK TC", system-ui, sans-serif;
+  }
+  :root:lang(zh) {
+    --leading-body: 1.75;
+    --leading-heading: 1.3;
+  }
+
+  /* ── Semantic: dark (workspace only) ──────────────────────────────────
+     After hydration WorkspaceTheme sets the resolved html[data-theme]. Before
+     it, a saved dark choice (html[data-theme-pref], from the cookie) applies
+     only while the workspace marker is on the page (lib/theme.ts). */
+  :root[data-theme="dark"],
+  :root[data-theme-pref="dark"]:not([data-theme]):has([data-theme-scope]) {
+    --canvas: var(--k-neutral-950);
+    --paper: oklch(19% 0.006 286);
+    --paper-2: oklch(23% 0.008 286);
+    --ink: oklch(96% 0.004 286);
+    --ink-2: oklch(84% 0.008 286);
+    --ink-3: oklch(71% 0.012 286);
+    --line: oklch(31% 0.008 286);
+    --line-warm: oklch(34% 0.03 55);
+    --inverse: oklch(26% 0.008 286);
+    --on-inverse: oklch(96% 0.004 286);
+    --brand: var(--k-orange-400);
+    --brand-hover: oklch(80% 0.14 60);
+    --brand-pressed: var(--k-orange-500);
+    --brand-text: oklch(80% 0.13 60);
+    --brand-strong: oklch(86% 0.1 60);
+    --brand-soft: oklch(30% 0.05 55);
+    --brand-softer: oklch(25% 0.03 55);
+    --on-brand: var(--k-neutral-950);
+    --focus: var(--k-orange-400);
+    --success-text: oklch(78% 0.13 155);
+    --success-soft: oklch(28% 0.05 155);
+    --warning-text: oklch(84% 0.12 85);
+    --warning-soft: oklch(30% 0.05 80);
+    --danger-text: oklch(76% 0.14 25);
+    --danger-soft: oklch(30% 0.06 25);
+    --warning-border: oklch(45% 0.08 75);
+    --info-soft: oklch(28% 0.03 240);
+    --info-text: oklch(80% 0.08 240);
+    --violet-soft: oklch(28% 0.03 330);
+    --violet-text: oklch(82% 0.06 330);
+    --danger-border: oklch(45% 0.09 25);
+    --success-border: oklch(45% 0.08 155);
+    --shadow-xs: 0 1px 2px oklch(0% 0 0 / 0.4);
+    --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.4), 0 10px 30px -14px oklch(0% 0 0 / 0.6);
+    --shadow-md: 0 2px 4px oklch(0% 0 0 / 0.4), 0 24px 60px -24px oklch(0% 0 0 / 0.7);
+    color-scheme: dark;
+  }
+
+  /*
+   * Compatibility names: the pre-redesign stylesheets and shadcn read these.
+   * They resolve to the semantic tokens above, so light and dark follow
+   * automatically. Retire each alias once nothing references it.
+   */
+  :root {
+    --background: var(--canvas);
+    --foreground: var(--ink);
+    --card: var(--paper);
+    --card-foreground: var(--ink);
+    --popover: var(--paper);
+    --popover-foreground: var(--ink);
+    --primary: var(--ink);
+    --primary-foreground: var(--paper);
+    --secondary: var(--paper-2);
+    --secondary-foreground: var(--ink);
+    --muted: var(--paper-2);
+    --muted-foreground: var(--ink-3);
+    --accent: var(--brand-soft);
+    --accent-foreground: var(--ink);
+    --destructive: var(--danger);
+    --border: var(--line);
+    --input: var(--line);
+    --ring: var(--focus);
+    --sidebar: var(--paper);
+    --sidebar-foreground: var(--ink);
+    --sidebar-primary: var(--brand);
+    --sidebar-primary-foreground: var(--on-brand);
+    --sidebar-accent: var(--brand-soft);
+    --sidebar-accent-foreground: var(--brand-strong);
+    --sidebar-border: var(--line);
+    --sidebar-ring: var(--focus);
+
+    --soft: var(--ink-2);
+    /* Legacy hue names: "teal" and "lime" were renamed in place to orange by the
+       2026-10-14 palette change. They mean brand-text and brand respectively. */
+    --teal: var(--brand-text);
+    --teal-dark: var(--brand-strong);
+    --teal-soft: var(--brand-soft);
+    --lime: var(--brand);
+    --lime-strong: var(--brand-hover);
+    --lime-soft: var(--brand-soft);
+    --peach: var(--brand-soft);
+    --blue: var(--brand-text);
+    --blue-soft: var(--brand-soft);
+    --sky: var(--brand-softer);
+    --lilac: var(--brand-softer);
+    --amber: var(--warning-text);
+    --amber-soft: var(--warning-soft);
+    --red: var(--danger-text);
+    --red-soft: var(--danger-soft);
+
+    --ed-bg: var(--canvas);
+    --ed-surface: var(--paper);
+    --ed-peach-50: var(--brand-softer);
+    --ed-peach-100: var(--brand-soft);
+    --ed-peach-200: var(--k-orange-200);
+    --ed-orange: var(--brand);
+    --ed-orange-hover: var(--brand-hover);
+    --ed-orange-600: var(--brand-pressed);
+    --ed-orange-700: var(--brand-text);
+    --ed-orange-800: var(--brand-strong);
+    --ed-amber: var(--warning);
+    --ed-ink: var(--ink);
+    --ed-ink-2: var(--ink-2);
+    --ed-ink-3: var(--ink-3);
+    --ed-line: var(--line);
+    --ed-line-warm: var(--line-warm);
+    --ed-green: var(--success);
+    --ed-sans: var(--font-sans);
+    --ed-ease: cubic-bezier(0.32, 0.72, 0, 1);
+    --ed-ease-out: var(--ease-out);
+    --ed-radius: 1.25rem;
+    --ed-radius-sm: 0.75rem;
+    --ed-max: 1200px;
+    --ed-gutter: var(--gutter);
+    --ed-section: var(--section);
+    --ed-shadow-sm: var(--shadow-xs);
+    --ed-shadow: var(--shadow-sm);
+    --ed-shadow-lg: var(--shadow-md);
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-canvas: var(--canvas);
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-text: var(--brand-text);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
+  --color-on-brand: var(--on-brand);
+  --color-success: var(--success);
+  --color-success-text: var(--success-text);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-text: var(--warning-text);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-text: var(--danger-text);
+  --color-danger-soft: var(--danger-soft);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-pill: 999px;
+
+  --text-2xs: 0.75rem;
+  --text-2xs--line-height: 1.4;
+}
+
+/* Tailwind's dark: variant follows the workspace theme attribute only, so
+   OS dark mode no longer restyles public pages (audit §e). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *, [data-theme-pref="dark"]:not([data-theme]):has([data-theme-scope]) *));

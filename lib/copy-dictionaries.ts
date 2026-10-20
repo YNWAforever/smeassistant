@@ -1,4 +1,5 @@
 import type { Copy, FunnelCopy, PrototypeLocale } from "@/lib/copy"
+import { uiEn, uiZhHK, uiZhTW } from "@/lib/copy-ui"
 import { workspaceEn, workspaceZhHK, workspaceZhTW } from "@/lib/copy-workspace"
 
 /**
@@ -1122,9 +1123,11 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
       howMeasured: "How this was measured",
       back: "Back",
       continue: "Continue",
+      theme: { label: "Appearance", light: "Light", dark: "Dark", system: "Match device" },
     },
     funnel: funnelEn,
     workspace: workspaceEn,
+    ui: uiEn,
   },
   "zh-HK": {
     language: "繁體中文（香港）",
@@ -1194,9 +1197,11 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
       howMeasured: "了解評分方法",
       back: "返回",
       continue: "繼續",
+      theme: { label: "外觀", light: "淺色", dark: "深色", system: "跟隨裝置" },
     },
     funnel: funnelZhHK,
     workspace: workspaceZhHK,
+    ui: uiZhHK,
   },
   "zh-TW": {
     language: "繁體中文（台灣）",
@@ -1266,8 +1271,10 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
       howMeasured: "了解評分方法",
       back: "返回",
       continue: "繼續",
+      theme: { label: "外觀", light: "淺色", dark: "深色", system: "跟隨裝置" },
     },
     funnel: funnelZhTW,
     workspace: workspaceZhTW,
+    ui: uiZhTW,
   },
 }

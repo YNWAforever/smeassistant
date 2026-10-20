@@ -1,16 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { headers } from "next/headers";
-import "@fontsource-variable/inter/opsz.css";
-import "@fontsource-variable/geist/wght.css";
+import { cookies, headers } from "next/headers";
 import "./globals.css";
-import "./responsive.css";
-import "./ramp-refresh.css";
-import "./polish.css";
-import "./editorial.css";
 import { HydrationMarker } from "@/components/hydration-marker";
 import { Toaster } from "@/components/ui/sonner";
 import { LOCALE_HEADER, resolveHtmlLang } from "@/lib/funnel/locale-redirect";
 import { getSiteUrl } from "@/lib/share";
+import { THEME_COOKIE, themePrefAttribute } from "@/lib/theme";
 
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
@@ -38,6 +33,10 @@ export const viewport: Viewport = { themeColor: "#f39a3d", width: "device-width"
  * stamps every locale-prefixed request with `x-sme-locale`; `resolveHtmlLang`
  * turns that into a served locale, falling back to zh-HK for the paths the
  * proxy does not touch (route handlers, Next internals).
+ *
+ * `data-theme-pref` carries the owner's saved workspace theme from its cookie
+ * (lib/theme.ts). It only darkens the page while the workspace marker is
+ * present, so public pages stay light, and it needs no inline script.
  */
 export default async function RootLayout({
   children,
@@ -45,8 +44,9 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const lang = resolveHtmlLang((await headers()).get(LOCALE_HEADER));
+  const themePref = themePrefAttribute((await cookies()).get(THEME_COOKIE)?.value);
   return (
-    <html lang={lang} data-scroll-behavior="smooth">
+    <html lang={lang} data-scroll-behavior="smooth" data-theme-pref={themePref}>
       <body className="antialiased">{children}<Toaster richColors position="top-right" /><HydrationMarker /></body>
     </html>
   );
