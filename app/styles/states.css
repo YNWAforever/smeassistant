@@ -1,0 +1,42 @@
+/* Phase 5: route-level states (error.tsx, not-found.tsx, loading.tsx, global-error.tsx). */
+
+.route-state {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  min-height: 50vh;
+  padding: 24px 16px;
+}
+main.route-state { min-height: 70vh; padding-top: 12vh; }
+.route-state > .kinnso-state { max-width: 560px; width: 100%; }
+.kinnso-state-reference { margin: 4px 0 0; font-variant-numeric: tabular-nums; user-select: all; }
+
+.page-skeleton { display: grid; gap: 20px; width: 100%; max-width: 1120px; justify-self: stretch; }
+.route-state .page-skeleton { justify-self: center; }
+.page-skeleton-intro { display: grid; gap: 10px; }
+.page-skeleton-tabs { display: flex; gap: 8px; overflow: hidden; }
+.page-skeleton-grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1024px) {
+  .page-skeleton-today .page-skeleton-grid,
+  .page-skeleton-cards .page-skeleton-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .page-skeleton-today .page-skeleton-grid > :first-child { grid-column: 1 / -1; }
+}
+
+/* global-error.tsx renders without providers or components; plain, token-based styles only. */
+.global-error {
+  max-width: 520px;
+  margin: 0 auto;
+  gap: 12px;
+  text-align: center;
+  color: var(--ink);
+  background: var(--canvas, var(--background));
+}
+.global-error h1 { font-size: 1.5rem; font-weight: 650; }
+.global-error-brand { font-weight: 700; color: var(--ink-2); }
+.global-error-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; }
+.global-error-actions > * {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px;
+  border-radius: 999px; border: 1px solid var(--line, currentColor); font-weight: 600;
+}
+.global-error-actions > button { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+.global-error-reference { font-size: 0.75rem; color: var(--ink-3); user-select: all; }

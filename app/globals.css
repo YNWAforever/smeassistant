@@ -35,6 +35,7 @@
 @import "./styles/legacy/05-editorial.css" layer(legacy);
 @import "./styles/public.css" layer(pages);
 @import "./styles/workspace.css" layer(pages);
+@import "./styles/states.css" layer(pages);
 @import "./styles/i18n.css" layer(i18n);
 @import "./styles/a11y.css" layer(a11y);
 

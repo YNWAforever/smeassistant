@@ -26,6 +26,13 @@ export type UiCopy = {
     partialBody: string
     deniedTitle: string
     deniedBody: string
+    /** Shown under an error with Next's digest, so the owner can quote it to Fimmick. */
+    reference: string
+    loading: string
+    home: string
+    today: string
+    notFoundTitle: string
+    notFoundBody: string
   }
   table: { empty: string }
   confirm: { cancel: string; confirm: string }
@@ -79,6 +86,12 @@ export const uiEn: UiCopy = {
     partialBody: "Some sources could not be checked. Missing sources lower coverage, not the score.",
     deniedTitle: "You can view, not change",
     deniedBody: "Your role or location scope does not allow this. Ask the workspace owner.",
+    reference: "Reference: {code}",
+    loading: "Loading…",
+    home: "Go to the home page",
+    today: "Back to Today",
+    notFoundTitle: "We could not find that page",
+    notFoundBody: "It may have moved, or the link is out of date.",
   },
   table: { empty: "No rows to show" },
   confirm: { cancel: "Cancel", confirm: "Confirm" },
@@ -131,6 +144,12 @@ export const uiZhHK: UiCopy = {
     partialBody: "部分來源未能檢查。缺少的來源只會降低覆蓋率，不會拉低評分。",
     deniedTitle: "你只能查看，不能修改",
     deniedBody: "你的角色或地點範圍不允許此操作。請聯絡工作台擁有人。",
+    reference: "參考編號：{code}",
+    loading: "載入中…",
+    home: "前往首頁",
+    today: "返回今日",
+    notFoundTitle: "找不到此頁",
+    notFoundBody: "此頁可能已搬遷，或連結已過時。",
   },
   table: { empty: "沒有資料" },
   confirm: { cancel: "取消", confirm: "確認" },
@@ -183,6 +202,12 @@ export const uiZhTW: UiCopy = {
     partialBody: "部分來源無法檢查。缺少的來源只會降低涵蓋率，不會拉低評分。",
     deniedTitle: "你只能檢視，無法修改",
     deniedBody: "你的角色或據點範圍不允許此操作。請聯絡工作台擁有者。",
+    reference: "參考編號：{code}",
+    loading: "載入中…",
+    home: "前往首頁",
+    today: "返回今日",
+    notFoundTitle: "找不到這個頁面",
+    notFoundBody: "這個頁面可能已移動，或連結已過期。",
   },
   table: { empty: "沒有資料" },
   confirm: { cancel: "取消", confirm: "確認" },
