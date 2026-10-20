@@ -25,9 +25,10 @@ describe("EvidencePreview", () => {
     expect(screen.getByRole("link", { name: "View source" }).getAttribute("rel")).toContain("noopener")
   })
 
-  it("renders nothing without a source or a valid observed date", () => {
-    expect(render(<EvidencePreview source=" " observedAt="2026-10-19T06:00:00Z" factType="Observed" locale="en" />).container.innerHTML).toBe("")
-    expect(render(<EvidencePreview source="Instagram" observedAt="not a date" factType="Observed" locale="en" />).container.innerHTML).toBe("")
+  it("renders nothing without a source, a valid observed date or a limitation", () => {
+    expect(render(<EvidencePreview source=" " observedAt="2026-10-19T06:00:00Z" factType="Observed" limitation="Sample" locale="en" />).container.innerHTML).toBe("")
+    expect(render(<EvidencePreview source="Instagram" observedAt="not a date" factType="Observed" limitation="Sample" locale="en" />).container.innerHTML).toBe("")
+    expect(render(<EvidencePreview source="Instagram" observedAt="2026-10-19T06:00:00Z" factType="Observed" limitation=" " locale="en" />).container.innerHTML).toBe("")
   })
 })
 

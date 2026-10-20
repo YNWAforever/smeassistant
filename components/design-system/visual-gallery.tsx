@@ -147,7 +147,7 @@ export function VisualGallery({ locale }: { locale: PrototypeLocale }) {
         <FactTypeLegend locale={locale} />
         <div className="grid gap-3 md:grid-cols-2">
           <EvidencePreview source="Google Maps" observedAt={OBSERVED} factType="Observed" snippet="Friendly staff and the best wonton noodles in Tin Hau." limitation="Newest 5 reviews only" href="https://example.com" locale={locale} />
-          <EvidencePreview source="Instagram" observedAt={OBSERVED} factType="Estimated" snippet="Last post 23 days ago" locale={locale} />
+          <EvidencePreview source="Instagram" observedAt={OBSERVED} factType="Estimated" snippet="Last post 23 days ago" limitation="Public posts only; Stories are not visible" locale={locale} />
         </div>
         <div className="flex flex-wrap gap-6">
           {illustrationKinds.map((kind) => <figure key={kind} className="grid justify-items-center gap-1 text-xs text-ink-3"><EmptyIllustration kind={kind} /><figcaption>{kind}</figcaption></figure>)}

@@ -10,9 +10,9 @@ import { FactTypeBadge } from "./fact-type"
 
 /**
  * One piece of evidence: a snippet or source thumbnail with its source,
- * observed date, fact type and limitation (guardrail 1). It renders nothing
- * without a source and a valid observed date, so no claim appears without
- * provenance. `thumbnail` is inline SVG or an icon, never a raster.
+ * observed date, fact type and plain-language limitation (guardrail 1). It
+ * renders nothing without a source, a valid observed date and a limitation,
+ * so no claim appears without its provenance and its limits. `thumbnail` is inline SVG or an icon, never a raster.
  */
 export function EvidencePreview({
   source,
@@ -30,14 +30,14 @@ export function EvidencePreview({
   factType: FactTypeName
   snippet?: string
   thumbnail?: ReactNode
-  limitation?: string
+  limitation: string
   href?: string
   locale: PrototypeLocale
   timeZone?: string
 }) {
   const t = copy[locale].ui
   const date = formatObservedDate(observedAt, locale, timeZone)
-  if (!source.trim() || !date) return null
+  if (!source.trim() || !date || !limitation.trim()) return null
   return (
     <article className="k-evidence kinnso-card grid grid-cols-[auto_1fr] gap-3 p-3">
       <span className="k-evidence-thumb grid size-12 place-items-center rounded-lg" aria-hidden="true">
@@ -50,12 +50,10 @@ export function EvidencePreview({
           <FactTypeBadge type={factType} locale={locale} />
         </header>
         {snippet && <blockquote className="k-evidence-snippet line-clamp-2 text-sm text-ink-2">{snippet}</blockquote>}
-        {limitation && (
-          <p className="text-xs text-ink-3">
-            <span className="font-semibold">{t.visual.evidence.limitation}: </span>
-            {limitation}
-          </p>
-        )}
+        <p className="text-xs text-ink-3">
+          <span className="font-semibold">{t.visual.evidence.limitation}: </span>
+          {limitation}
+        </p>
         {href && (
           <p className="text-xs">
             <a href={href} target="_blank" rel="noopener noreferrer" className="kinnso-link font-semibold text-brand-text">
