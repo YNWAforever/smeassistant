@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
+import { RoleNotice } from "@/components/states/role-notice"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -170,7 +171,7 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
         description={isChinese ? zhFor(locale, "先選業務成果；工作台會在背後協調證據、草稿、品牌檢查與審批。你毋須先理解每個 Agent。") : "Choose a business outcome; the workspace coordinates evidence, drafting, brand checks and approval behind the scenes."}
         actions={<><ContextualAssistant locale={locale} surface="create" mode="live" context={{ workspaceId, locationId: locationId ?? undefined }} basePath={base} locationParam={location} /><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /><Button asChild variant="outline"><Link href={withLocation(`${base}/actions`, location)}>{isChinese ? "開啟行動清單" : "Open action queue"}<ArrowRight /></Link></Button></>}
       />
-      {!canCreate && <div className="permission-banner"><AlertTriangle /><div><strong>{isChinese ? zhFor(locale, "此角色或地點範圍只可查看") : "Read only for this role or location scope"}</strong><span>{isChinese ? zhFor(locale, "建立行動需要店主或負責此地點的經理。") : "Creating an action needs an owner or a manager in scope for this location."}</span></div><Badge variant="outline">{isChinese ? "只讀" : "Read only"}</Badge></div>}
+      {!canCreate && <RoleNotice kind="createReadOnly" locale={locale} />}
       <Tabs value={tab} onValueChange={setTab} className="create-tabs">
         <TabsList variant="line"><TabsTrigger value="recommended">{isChinese ? "根據證據建議" : "Recommended from evidence"} <span>{recommended.length}</span></TabsTrigger><TabsTrigger value="all">{isChinese ? "所有成果" : "All outcomes"}</TabsTrigger></TabsList>
         <TabsContent value={tab}>

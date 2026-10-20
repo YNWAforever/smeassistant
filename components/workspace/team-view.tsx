@@ -1,5 +1,6 @@
-import { ShieldAlert, UserCheck, UserCog, UserRound } from "lucide-react"
+import { UserCheck, UserCog, UserRound } from "lucide-react"
 
+import { RoleNotice } from "@/components/states/role-notice"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { PageIntro, SectionCard } from "@/components/product-ui"
@@ -55,7 +56,7 @@ export function TeamView({ locale, workspaceId, role, timezone, model, invitatio
         actions={owner ? <InviteMemberSheet locale={locale} workspaceId={workspaceId} /> : null}
       />
       {!owner && (
-        <div className="permission-banner"><ShieldAlert /><div><strong>{isChinese ? `${roleLabel(role, locale)}權限` : `${roleLabel(role, locale)} access`}</strong><span>{role === "viewer" ? (isChinese ? "只可查看證據及成效；成員管理會安全拒絕。" : "Evidence and outcomes only; membership changes fail closed.") : (isChinese ? zhFor(locale, "可在分配地點準備及審批內容，但不能管理帳單或成員。") : "Prepare and approve in assigned locations; no billing or membership changes.")}</span></div><Badge variant="outline">{isChinese ? "拒絕操作" : "Fail closed"}</Badge></div>
+        <RoleNotice kind={role === "viewer" ? "teamViewer" : "teamManager"} role={role} locale={locale} />
       )}
       <SectionCard className="team-table-card">
         <Table>

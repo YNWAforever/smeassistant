@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { TriangleAlert } from "lucide-react";
 
+import { RoleNotice } from "@/components/states/role-notice";
 import { HomeBriefView } from "@/components/workspace/home-brief";
 import { NeedsAttentionCard } from "@/components/workspace/needs-attention-card";
 import { filterToLocation } from "@/lib/ops/owner-actions";
@@ -8,7 +8,6 @@ import { currentScanConsentPolicyVersion } from "@/lib/scan/consent";
 import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 import { loadWorkspaceProblems } from "@/lib/workspace/problems";
 import { getHomeBrief } from "@/lib/workspace/queries-pages";
-import { zhFor } from "@/lib/zh-tw"
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +35,7 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
   const forbidden = page.query.forbidden === "1";
   return (
     <>
-      {forbidden && <div className="permission-note" role="alert"><TriangleAlert /><span>{page.isChinese ? zhFor(page.locale, "你的角色或地點範圍不允許該操作，已返回工作台首頁。") : "Your role or location scope does not allow that action; you have been returned to the workspace home."}</span></div>}
+      {forbidden && <RoleNotice kind="forbidden" locale={page.locale} />}
       <HomeBriefView
         locale={page.locale}
         workspaceSlug={page.workspaceSlug}

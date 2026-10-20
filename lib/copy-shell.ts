@@ -47,6 +47,27 @@ export type ShellCopy = {
     done: string
     version: string
   }
+  /**
+   * Role and scope notices (Phase 5). Each says what this role can do and who
+   * can change it; the server checks stay the authority. {role} and {name} are
+   * filled by components/states/role-notice.tsx.
+   */
+  access: {
+    readOnly: string
+    ownerOnly: string
+    askOwner: string
+    viewer: Item
+    viewerAction: Item
+    viewerAssets: Item
+    outOfScope: Item
+    createReadOnly: Item
+    brand: Item
+    billing: Item
+    teamViewer: Item
+    teamManager: Item
+    forbidden: Item
+    notMember: Item & { hint: string }
+  }
 }
 
 export const shellEn: ShellCopy = {
@@ -121,6 +142,22 @@ export const shellEn: ShellCopy = {
     failed: "Not approved: open it to review",
     done: "{approved} of {total} approved",
     version: "Version {n}",
+  },
+  access: {
+    readOnly: "Read only",
+    ownerOnly: "Owner only",
+    askOwner: "Only the workspace owner can change roles and locations, in Settings › Team.",
+    viewer: { title: "Viewer access", body: "You can see evidence, actions and results. Drafting, approving, delivering and billing need an owner or a manager." },
+    viewerAction: { title: "Viewer access", body: "You can see the evidence and history. Editing, drafting, approving and exporting need an owner or a manager." },
+    viewerAssets: { title: "Viewer access", body: "You can see assets and their usage rights. Uploading and confirming rights need an owner or a manager." },
+    outOfScope: { title: "Outside your locations", body: "You can read this action. Editing, approving and delivering it needs the owner or a manager of its location." },
+    createReadOnly: { title: "Read only for your role or locations", body: "Starting new work here needs the owner or a manager of this location." },
+    brand: { title: "{role} access", body: "You can read the business profile. Only the owner can save changes." },
+    billing: { title: "Owner only", body: "You can see the plan and its limits. Only the owner can change the plan or payment." },
+    teamViewer: { title: "{role} access", body: "You can see who is in this workspace. Only the owner can manage people and their access." },
+    teamManager: { title: "{role} access", body: "You can prepare and approve work in your locations. Only the owner can manage people and billing." },
+    forbidden: { title: "That wasn't open to your role", body: "Your role or locations don't allow that page or action, so we brought you back to Today." },
+    notMember: { title: "No access to “{name}”", body: "You are not a member of that workspace, or your access was removed.", hint: "Choose a workspace you can open below, or ask its owner to invite you." },
   },
 }
 
@@ -197,6 +234,22 @@ export const shellZhHK: ShellCopy = {
     done: "已審批 {total} 份中的 {approved} 份",
     version: "第 {n} 版",
   },
+  access: {
+    readOnly: "只讀",
+    ownerOnly: "只限店主",
+    askOwner: "只有工作台店主可在「設定 › 團隊」更改角色及地點。",
+    viewer: { title: "檢視者權限", body: "你可查看證據、行動及成效；起草、審批、送出及帳單需要店主或經理。" },
+    viewerAction: { title: "檢視者權限", body: "你可查看證據及紀錄；編輯、起草、審批及匯出需要店主或經理。" },
+    viewerAssets: { title: "檢視者權限", body: "你可查看素材及其使用權；上載及確認使用權需要店主或經理。" },
+    outOfScope: { title: "超出你負責的地點", body: "你可查看此行動；編輯、審批及送出需要店主或負責該地點的經理。" },
+    createReadOnly: { title: "你的角色或地點只可查看", body: "在此開始新工作需要店主或負責此地點的經理。" },
+    brand: { title: "{role}權限", body: "你可查看商戶資料；只有店主可以儲存更改。" },
+    billing: { title: "只限店主", body: "你可查看方案及其限制；只有店主可以更改方案或付款。" },
+    teamViewer: { title: "{role}權限", body: "你可查看工作台成員；只有店主可以管理成員及其權限。" },
+    teamManager: { title: "{role}權限", body: "你可在負責的地點準備及審批工作；只有店主可以管理成員及帳單。" },
+    forbidden: { title: "你的角色不可使用該頁面", body: "你的角色或地點不允許該頁面或操作，所以已帶你返回今日。" },
+    notMember: { title: "無法開啟「{name}」", body: "你不是該工作台的成員，或你的權限已被移除。", hint: "請從下方選擇你可開啟的工作台，或請其店主邀請你。" },
+  },
 }
 
 export const shellZhTW: ShellCopy = {
@@ -271,5 +324,21 @@ export const shellZhTW: ShellCopy = {
     failed: "無法核准：請開啟審閱",
     done: "已核准 {total} 份中的 {approved} 份",
     version: "第 {n} 版",
+  },
+  access: {
+    readOnly: "唯讀",
+    ownerOnly: "僅限店家負責人",
+    askOwner: "只有工作台負責人可以在「設定 › 團隊」變更角色與據點。",
+    viewer: { title: "檢視者權限", body: "你可以檢視證據、行動與成效；起草、核准、送出與帳務需要負責人或經理。" },
+    viewerAction: { title: "檢視者權限", body: "你可以檢視證據與紀錄；編輯、起草、核准與匯出需要負責人或經理。" },
+    viewerAssets: { title: "檢視者權限", body: "你可以檢視素材與使用權；上傳與確認使用權需要負責人或經理。" },
+    outOfScope: { title: "超出你負責的據點", body: "你可以檢視這個行動；編輯、核准與送出需要負責人或該據點的經理。" },
+    createReadOnly: { title: "你的角色或據點僅能檢視", body: "在這裡開始新工作需要負責人或此據點的經理。" },
+    brand: { title: "{role}權限", body: "你可以檢視店家資料；只有負責人可以儲存變更。" },
+    billing: { title: "僅限店家負責人", body: "你可以檢視方案與限制；只有負責人可以變更方案或付款。" },
+    teamViewer: { title: "{role}權限", body: "你可以檢視工作台成員；只有負責人可以管理成員與權限。" },
+    teamManager: { title: "{role}權限", body: "你可以在負責的據點準備與核准工作；只有負責人可以管理成員與帳務。" },
+    forbidden: { title: "你的角色無法使用該頁面", body: "你的角色或據點不允許該頁面或操作，因此已帶你回到今日。" },
+    notMember: { title: "無法開啟「{name}」", body: "你不是該工作台的成員，或你的權限已被移除。", hint: "請從下方選擇你可以開啟的工作台，或請負責人邀請你。" },
   },
 }

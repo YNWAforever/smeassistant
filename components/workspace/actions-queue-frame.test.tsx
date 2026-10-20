@@ -42,7 +42,7 @@ describe("Actions queue frame (Phase 4)", () => {
     }
     const viewer = frame("viewer");
     expect(viewer.querySelector('a[href*="/actions/new"]')).toBeNull();
-    expect(viewer.querySelector(".permission-banner")).not.toBeNull();
+    expect(viewer.querySelector(".role-notice[data-kind=viewer]")).not.toBeNull();
   });
 
   it.each(["zh-HK", "zh-TW"] as const)("localises the tabs in %s", (locale) => {

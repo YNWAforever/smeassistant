@@ -40,3 +40,29 @@ main.route-state { min-height: 70vh; padding-top: 12vh; }
 }
 .global-error-actions > button { background: var(--brand); color: var(--on-brand); border-color: transparent; }
 .global-error-reference { font-size: 0.75rem; color: var(--ink-3); user-select: all; }
+
+/* RoleNotice: what this role can do here and who can change it. */
+.role-notice {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--ink);
+}
+.role-notice > svg { width: 20px; height: 20px; margin-top: 1px; color: var(--ink-2); }
+.role-notice[role="alert"] { border-color: color-mix(in oklch, var(--brand) 45%, var(--line)); background: var(--brand-softer); }
+.role-notice[role="alert"] > svg { color: var(--brand-text); }
+.role-notice > div { display: grid; gap: 4px; min-width: 0; }
+.role-notice strong { font-weight: 650; }
+.role-notice span { color: var(--ink-2); font-size: 0.875rem; line-height: 1.5; }
+.role-notice small { color: var(--ink-3); font-size: 0.75rem; }
+.role-notice[role="alert"] { grid-template-columns: 20px minmax(0, 1fr); }
+@media (max-width: 639px) {
+  .role-notice { grid-template-columns: 20px minmax(0, 1fr); }
+  .role-notice > [data-slot="badge"] { grid-column: 2; justify-self: start; }
+}

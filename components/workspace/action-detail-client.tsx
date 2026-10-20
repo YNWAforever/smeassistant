@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
+import { RoleNotice } from "@/components/states/role-notice"
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
@@ -695,8 +696,8 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
       </SectionCard>}
 
       {offline && <div className="offline-banner" role="status"><CloudOff /><div><strong>{isChinese ? "你目前離線" : "You are offline"}</strong><span>{isChinese ? zhFor(locale, "文字會保留在此裝置，但儲存、審批及匯出會暫停，直至伺服器確認安全轉換。") : "Text remains on this device, but save, approval and export stay blocked until the server confirms a safe transition."}</span></div><Button variant="outline" onClick={() => { if (navigator.onLine) router.refresh(); else toast.message(isChinese ? "仍然離線；請檢查網絡連線。" : "Still offline; check your connection.") }}>{isChinese ? "重新連接" : "Reconnect"}</Button></div>}
-      {effectiveRole === "viewer" && <div className="permission-banner"><ShieldAlert /><div><strong>{isChinese ? "檢視者權限" : "Viewer access"}</strong><span>{isChinese ? zhFor(locale, "可查看證據及紀錄；編輯、生成、審批及匯出會安全拒絕。") : "Evidence and history are visible; editing, generation, approval and export fail closed."}</span></div><Badge variant="outline">{isChinese ? "只讀" : "Read only"}</Badge></div>}
-      {role === "manager" && !inScope && <div className="permission-banner"><ShieldAlert /><div><strong>{isChinese ? zhFor(locale, "超出你的地點權限範圍") : "Outside your location scope"}</strong><span>{isChinese ? zhFor(locale, "你可查看此行動，但另一地點或所有地點的編輯、審批及送出仍會被拒絕。") : "You may inspect this action, but editing, approval and delivery remain blocked for another location or all-location work."}</span></div><Badge variant="outline">{isChinese ? "拒絕操作" : "Fail closed"}</Badge></div>}
+      {effectiveRole === "viewer" && <RoleNotice kind="viewerAction" locale={locale} />}
+      {role === "manager" && !inScope && <RoleNotice kind="outOfScope" locale={locale} />}
 
       {offerStale && (
         <div className="permission-banner" role="alert" data-testid="offer-stale-banner">
