@@ -10,10 +10,10 @@ import { THEME_COOKIE, themePrefAttribute } from "@/lib/theme";
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   title: {
-    default: "SME Scanner Visibility Workspace",
+    default: "Kinnso OS",
     // Page titles come from lib/copy.ts in all three locales; the brand is
     // appended once here so no page has to repeat it.
-    template: "%s · SME Scanner",
+    template: "%s · Kinnso OS",
   },
   description: "為中小企而設的證據優先能見度工作台：找出變化、準備行動、由店主審批，再以重新掃描證明改善。",
   icons: {
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     shortcut: "/favicon.svg",
     apple: "/apple-icon",
   },
-  openGraph: { siteName: "SME Scanner", type: "website" },
+  openGraph: { siteName: "Kinnso OS", type: "website" },
 };
 
 /** Brand orange (Kinnso palette); matches the brand mark and the OG card. */

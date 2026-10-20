@@ -10,7 +10,7 @@ import { seoDescription } from "@/lib/seo-copy";
  *
  * Titles and descriptions come from `lib/copy.ts` so all three locales stay in
  * one place; the brand suffix is applied once by the root layout's title
- * template (`%s · SME Scanner`).
+ * template (`%s · Kinnso OS`).
  *
  * `localeAlternates` (lib/seo.ts, ported from upstream) emits the default
  * locale unprefixed because upstream runs `localePrefix: "as-needed"`. Every
@@ -48,9 +48,9 @@ export function publicMetadata(input: {
     description,
     alternates: publicAlternates(locale, path),
     openGraph: {
-      siteName: "SME Scanner",
-      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "SME Scanner Visibility Workspace" }],
-      title: `${title} · SME Scanner`,
+      siteName: "Kinnso OS",
+      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Kinnso OS by Fimmick" }],
+      title: `${title} · Kinnso OS`,
       description,
       type: "website",
       locale,
