@@ -19,7 +19,17 @@ const eslintConfig = defineConfig([
     "test-results/**",
     // Generated local workflow logs and helper scripts; never application source.
     ".superpowers/**",
+    // Local agent worktrees and settings.
+    ".claude/**",
   ]),
+  {
+    // A leading underscore marks a parameter or binding that is unused on
+    // purpose (fixed signatures, test doubles). Only real leftovers warn.
+    ignores: ["packages/**"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" }],
+    },
+  },
   {
     files: ["components/ui/**/*.{ts,tsx}", "hooks/use-mobile.ts"],
     rules: {
