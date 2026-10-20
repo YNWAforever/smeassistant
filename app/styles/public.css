@@ -451,3 +451,13 @@
 .scanning-page .scan-status-hero .k-steps { width: 100%; max-width: 36rem; margin-top: 8px; }
 .scan-progress-panel { display: grid; gap: 12px; }
 .scan-elapsed { margin: 0; font-size: 0.8125rem; color: var(--ink-3); }
+
+/* ── Report print / save as PDF (Phase 3) ───────────────────────────── */
+/* The demo bar stays so a printed sample is still labelled Demo. */
+@media print {
+  body:has(.report-page) { background: #fff; }
+  body:has(.report-page) :is(.skip-link, .public-header, .public-footer, .assistant-launcher, nextjs-portal) { display: none !important; }
+  .report-page :is(.k-coverage, .k-score, .k-trend-chip, meter) { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .report-page .unlock-banner form { display: none; }
+  .report-page a[href^="#"]::after { content: none; }
+}

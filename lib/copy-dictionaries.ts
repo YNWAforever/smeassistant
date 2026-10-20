@@ -1,6 +1,7 @@
 import type { Copy, FunnelCopy, PrototypeLocale } from "@/lib/copy"
 import { publicEn, publicZhHK, publicZhTW } from "@/lib/copy-public"
 import { infoEn, infoZhHK, infoZhTW } from "@/lib/copy-public-info"
+import { reportEn, reportZhHK, reportZhTW } from "@/lib/copy-report"
 import { uiEn, uiZhHK, uiZhTW } from "@/lib/copy-ui"
 import { workspaceEn, workspaceZhHK, workspaceZhTW } from "@/lib/copy-workspace"
 
@@ -200,7 +201,7 @@ const funnelEn: FunnelCopy = {
     proofEyebrow: "Verified report proof",
     proofTitle: "Sanitised public evidence behind the score",
     proofBody: "Bounded excerpts from public sources captured at scan time. Provider identifiers, raw payloads and private data are never shown.",
-    dashboard: { engagement: "Sampled engagement", searchVisibility: "Search visibility", unavailable: "Measurement unavailable", statistics: "Key statistics", rubric: "Report rubric scores", rubricNote: "Scores use the report criteria, out of 100. Missing evidence is not a zero score.", comparisons: "Observed search comparisons", comparisonsNote: "Businesses observed for this query and engine. This sample is not an industry average.", noComparisons: "No matching observed statistics are available for comparison.", sampleSize: "Sample size", dateUnavailable: "Observation date unavailable", observed: "Observed", scanned: "Scan date", details: "Measurement details", summary: "Report interpretation", unavailableReason: "There is not enough supported evidence to report this measurement.", followersUnit: "followers", reviewsUnit: "reviews", countUnit: "observations", currentBusiness: "Your business", coverageUnavailable: "Coverage unavailable", responseRate: "Review response rate", unansweredReviews: "Recent reviews without a reply", websiteChecks: "Website checks passed", websiteSource: "Website", outOf: "/ {total}", queriesOutOf: "/ {total} queries", rubricSample: "Observed by source", rubricSampleNote: "This sanitised sample shows each source's observed value; per-source rubric scores are only published in real reports." },
+    dashboard: { engagement: "Sampled engagement", searchVisibility: "Search visibility", unavailable: "Measurement unavailable", statistics: "Key statistics", rubric: "Report rubric scores", rubricNote: "Scores use the report criteria, out of 100. Missing evidence is not a zero score.", comparisons: "Observed search comparisons", comparisonsNote: "Businesses observed for this query and engine. This sample is not an industry average.", noComparisons: "No matching observed statistics are available for comparison.", sampleSize: "Sample size", dateUnavailable: "Date not recorded", observed: "Observed", scanned: "Scan date", details: "Measurement details", summary: "Report interpretation", unavailableReason: "There is not enough supported evidence to report this measurement.", followersUnit: "followers", reviewsUnit: "reviews", countUnit: "observations", currentBusiness: "Your business", coverageUnavailable: "Coverage unavailable", responseRate: "Review response rate", unansweredReviews: "Recent reviews without a reply", websiteChecks: "Website checks passed", websiteSource: "Website", outOf: "/ {total}", queriesOutOf: "/ {total} queries", rubricSample: "Observed by source", rubricSampleNote: "This sanitised sample shows each source's observed value; per-source rubric scores are only published in real reports." },
     proof: {
       ig: "Instagram proof",
       gbp: "Google Business proof",
@@ -556,7 +557,7 @@ const funnelZhHK: FunnelCopy = {
     proofEyebrow: "已驗證報告證據",
     proofTitle: "評分背後已清理的公開證據",
     proofBody: "掃描時擷取的公開來源節錄，範圍受限。來源識別碼、原始載荷及私人資料一律不會顯示。",
-    dashboard: { engagement: "抽樣互動率", searchVisibility: "搜尋能見度", unavailable: "未能量度", statistics: "關鍵數據", rubric: "報告準則評分", rubricNote: "按報告準則評分，滿分 100。缺少證據不等於零分。", comparisons: "搜尋結果實測比較", comparisonsNote: "只比較此搜尋字詞及引擎觀察到的商戶，樣本並非行業平均。", noComparisons: "目前沒有相符的實測數據可供比較。", sampleSize: "樣本數", dateUnavailable: "觀察日期未有提供", observed: "實測", scanned: "掃描日期", details: "量度詳情", summary: "報告解讀", unavailableReason: "目前證據不足，未能提供此項量度。", followersUnit: "位追蹤者", reviewsUnit: "則評論", countUnit: "次觀察", currentBusiness: "你的商戶", coverageUnavailable: "覆蓋率未有提供", responseRate: "評論回覆率", unansweredReviews: "未有回覆的近期評論", websiteChecks: "網站檢查通過項目", websiteSource: "網站", outOf: "／{total}", queriesOutOf: "／{total} 個查詢", rubricSample: "按來源觀察結果", rubricSampleNote: "此已清理示範只顯示各來源的觀察值；各來源的準則評分只會在真實報告中提供。" },
+    dashboard: { engagement: "抽樣互動率", searchVisibility: "搜尋能見度", unavailable: "未能量度", statistics: "關鍵數據", rubric: "報告準則評分", rubricNote: "按報告準則評分，滿分 100。缺少證據不等於零分。", comparisons: "搜尋結果實測比較", comparisonsNote: "只比較此搜尋字詞及引擎觀察到的商戶，樣本並非行業平均。", noComparisons: "目前沒有相符的實測數據可供比較。", sampleSize: "樣本數", dateUnavailable: "未有記錄日期", observed: "實測", scanned: "掃描日期", details: "量度詳情", summary: "報告解讀", unavailableReason: "目前證據不足，未能提供此項量度。", followersUnit: "位追蹤者", reviewsUnit: "則評論", countUnit: "次觀察", currentBusiness: "你的商戶", coverageUnavailable: "覆蓋率未有提供", responseRate: "評論回覆率", unansweredReviews: "未有回覆的近期評論", websiteChecks: "網站檢查通過項目", websiteSource: "網站", outOf: "／{total}", queriesOutOf: "／{total} 個查詢", rubricSample: "按來源觀察結果", rubricSampleNote: "此已清理示範只顯示各來源的觀察值；各來源的準則評分只會在真實報告中提供。" },
     proof: {
       ig: "Instagram 證據",
       gbp: "Google 商戶證據",
@@ -901,7 +902,7 @@ const funnelZhTW: FunnelCopy = {
     proofEyebrow: "已驗證報告證據",
     proofTitle: "分數背後已清理的公開證據",
     proofBody: "掃描時擷取的公開來源節錄，範圍受限。來源識別碼、原始資料與私人資料一律不會顯示。",
-    dashboard: { engagement: "抽樣互動率", searchVisibility: "搜尋能見度", unavailable: "無法衡量", statistics: "關鍵數據", rubric: "報告準則評分", rubricNote: "依報告準則評分，滿分 100。缺少證據不等於零分。", comparisons: "搜尋結果實測比較", comparisonsNote: "僅比較此搜尋字詞及引擎觀察到的店家，樣本並非產業平均。", noComparisons: "目前沒有相符的實測數據可供比較。", sampleSize: "樣本數", dateUnavailable: "未提供觀察日期", observed: "實測", scanned: "掃描日期", details: "衡量詳情", summary: "報告解讀", unavailableReason: "目前證據不足，無法提供此項衡量。", followersUnit: "位追蹤者", reviewsUnit: "則評論", countUnit: "次觀察", currentBusiness: "你的店家", coverageUnavailable: "未提供涵蓋率", responseRate: "評論回覆率", unansweredReviews: "尚未回覆的近期評論", websiteChecks: "網站檢查通過項目", websiteSource: "網站", outOf: "／{total}", queriesOutOf: "／{total} 個查詢", rubricSample: "依來源的觀察結果", rubricSampleNote: "此已清理示範僅顯示各來源的觀察值；各來源的準則評分只會在真實報告中提供。" },
+    dashboard: { engagement: "抽樣互動率", searchVisibility: "搜尋能見度", unavailable: "無法衡量", statistics: "關鍵數據", rubric: "報告準則評分", rubricNote: "依報告準則評分，滿分 100。缺少證據不等於零分。", comparisons: "搜尋結果實測比較", comparisonsNote: "僅比較此搜尋字詞及引擎觀察到的店家，樣本並非產業平均。", noComparisons: "目前沒有相符的實測數據可供比較。", sampleSize: "樣本數", dateUnavailable: "未記錄日期", observed: "實測", scanned: "掃描日期", details: "衡量詳情", summary: "報告解讀", unavailableReason: "目前證據不足，無法提供此項衡量。", followersUnit: "位追蹤者", reviewsUnit: "則評論", countUnit: "次觀察", currentBusiness: "你的店家", coverageUnavailable: "未提供涵蓋率", responseRate: "評論回覆率", unansweredReviews: "尚未回覆的近期評論", websiteChecks: "網站檢查通過項目", websiteSource: "網站", outOf: "／{total}", queriesOutOf: "／{total} 個查詢", rubricSample: "依來源的觀察結果", rubricSampleNote: "此已清理示範僅顯示各來源的觀察值；各來源的準則評分只會在真實報告中提供。" },
     proof: {
       ig: "Instagram 證據",
       gbp: "Google 商家證據",
@@ -1132,6 +1133,7 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     ui: uiEn,
     site: publicEn,
     siteInfo: infoEn,
+    report: reportEn,
   },
   "zh-HK": {
     language: "繁體中文（香港）",
@@ -1208,6 +1210,7 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     ui: uiZhHK,
     site: publicZhHK,
     siteInfo: infoZhHK,
+    report: reportZhHK,
   },
   "zh-TW": {
     language: "繁體中文（台灣）",
@@ -1284,5 +1287,6 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     ui: uiZhTW,
     site: publicZhTW,
     siteInfo: infoZhTW,
+    report: reportZhTW,
   },
 }
