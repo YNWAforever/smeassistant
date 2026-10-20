@@ -45,7 +45,7 @@ it.each([
   expect(screen.queryByRole("textbox", { name: /Approved factual claims|已核准事實描述/ })).not.toBeInTheDocument();
   expect(screen.getByText(voice)).toBeInTheDocument();
   expect(screen.getByText("Confirmed fact A")).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: link })).toHaveAttribute("href", `/${locale}/owner/workspace-a/settings/brand`);
+  expect(screen.getByRole("link", { name: link })).toHaveAttribute("href", `/${locale}/owner/workspace-a/business/profile`);
   expect(request).not.toHaveBeenCalled();
 });
 
@@ -54,7 +54,7 @@ it("shows an existing unset voice without inventing the warm default", () => {
   expect(screen.getByText("Not set")).toBeInTheDocument();
   expect(screen.queryByText("Warm, local and sincere")).not.toBeInTheDocument();
   expect(screen.queryByRole("combobox", { name: /Brand voice|品牌語氣/ })).not.toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Open brand settings" })).toHaveAttribute("href", "/en/owner/workspace-a/settings/brand");
+  expect(screen.getByRole("link", { name: "Open brand settings" })).toHaveAttribute("href", "/en/owner/workspace-a/business/profile");
 });
 
 it("keeps a new brand editable and only submits it on explicit completion", async () => {

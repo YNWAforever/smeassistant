@@ -2,6 +2,15 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## Phase 4: workspace shell and navigation (2026-10-20)
+
+- **Five destinations:** Today, Actions, Insights, Business, Settings. Phones get a 5-tab bar, and the usage meter sits in the sidebar.
+- **Ask Kinnso** (問 Kinnso) is the assistant's name, opened from the top bar. "SME Scanner" now reads "Kinnso OS" across the workspace.
+- **Old links keep working:** Create, Calendar, Assets, Brand, Integrations, Billing, Activity and More answer with a permanent redirect to their new home, keeping `?location=`.
+- **One Actions queue** with status tabs plus Due (the old Calendar) and Fix Pack views. A New button starts work from a goal, an offer or the starter pack; the offer and starter pack modes stay behind their flags.
+- **Action detail opens beside the queue** on wide screens. Each action shows draft → needs approval → approved → delivered, and what changed since the previous version.
+- **Bulk approve** for review replies and social posts only. Each draft's full text must be ticked as read, and each approval still goes through the usual server checks.
+
 ## Phase 3: scan and report (2026-10-20)
 
 - **Report rebuilt** in reading order:

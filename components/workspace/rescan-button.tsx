@@ -42,7 +42,7 @@ export function RescanButton({ locale, workspaceId, workspaceSlug, locationId, t
   if (role === "viewer") return null
   const t = COPY[locale]
   const paid = tier === "paid"
-  const billingHref = `/${locale}/owner/${workspaceSlug}/settings/billing`
+  const billingHref = `/${locale}/owner/${workspaceSlug}/settings/plan`
 
   async function rescan() {
     if (!locationId || !paid || busy) return

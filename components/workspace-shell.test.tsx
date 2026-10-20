@@ -27,28 +27,55 @@ function view(pathname: string) {
   return root;
 }
 
-describe("focused owner navigation", () => {
-  it("keeps five destinations in desktop navigation and carries the selected branch to More", () => {
+describe("five-destination owner navigation (Phase 4)", () => {
+  it("keeps five destinations in desktop navigation, each carrying the selected branch", () => {
     const sidebar = view("/en/owner/example").querySelector(".workspace-sidebar")!;
-    const links = sidebar.querySelectorAll("[data-slot='sidebar-menu'] a");
-    expect(links).toHaveLength(5);
-    expect(sidebar.querySelector('a[href="/en/owner/example/more?location=branch"]')).not.toBeNull();
-    expect(sidebar.querySelector('a[href*="/settings/team"]')).toBeNull();
+    const links = Array.from(sidebar.querySelectorAll("[data-slot='sidebar-menu'] a")).map((link) => link.getAttribute("href"));
+    expect(links).toEqual([
+      "/en/owner/example?location=branch",
+      "/en/owner/example/actions?location=branch",
+      "/en/owner/example/insights?location=branch",
+      "/en/owner/example/business?location=branch",
+      "/en/owner/example/settings?location=branch",
+    ]);
   });
 
-  it.each(["/en/owner/example/actions", "/en/owner/example/actions/action-1"])("marks Actions current even with a branch query (%s)", pathname => {
+  it.each([
+    ["/en/owner/example", "/en/owner/example?location=branch"],
+    ["/en/owner/example/actions", "/en/owner/example/actions?location=branch"],
+    ["/en/owner/example/actions/action-1", "/en/owner/example/actions?location=branch"],
+    ["/en/owner/example/actions/new", "/en/owner/example/actions?location=branch"],
+    ["/en/owner/example/packs/p1", "/en/owner/example/actions?location=branch"],
+    ["/en/owner/example/insights", "/en/owner/example/insights?location=branch"],
+    ["/en/owner/example/business/assets", "/en/owner/example/business?location=branch"],
+    ["/en/owner/example/business/profile", "/en/owner/example/business?location=branch"],
+    ["/en/owner/example/settings/team", "/en/owner/example/settings?location=branch"],
+    ["/en/owner/example/settings", "/en/owner/example/settings?location=branch"],
+  ])("marks one destination current on %s, in the sidebar and the mobile bar", (pathname, href) => {
     const root = view(pathname);
-    const active = root.querySelectorAll('a[href="/en/owner/example/actions?location=branch"][aria-current="page"]');
-    expect(active).toHaveLength(2);
+    const current = root.querySelectorAll('a[aria-current="page"]');
+    expect(current).toHaveLength(2);
+    for (const link of current) expect(link.getAttribute("href")).toBe(href);
   });
 
-  it.each(["/en/owner/example/assets", "/en/owner/example/settings/team"])("marks More current for its supporting destination (%s)", pathname => {
-    const root = view(pathname);
-    expect(root.querySelectorAll('a[href="/en/owner/example/more?location=branch"][aria-current="page"]')).toHaveLength(2);
+  it.each([
+    ["/en/owner/example/actions/new", "New action"],
+    ["/en/owner/example/actions/action-1", "Review & approve"],
+    ["/en/owner/example/business/integrations", "Business"],
+    ["/en/owner/example/settings/plan", "Settings"],
+  ])("names the current section on %s", (pathname, label) => {
+    expect(view(pathname).querySelector(".workspace-topbar-context strong")?.textContent).toBe(label);
   });
 
-  it("names More in the current-section context when its menu is open", () => {
-    expect(view("/en/owner/example/more").querySelector(".workspace-topbar-context strong")?.textContent).toBe("More");
+  it("links the brand to the plain workspace URL, with no location parameter", () => {
+    // Signed-in flows (and the acceptance sign-in fixture) wait for this exact href.
+    expect(view("/en/owner/example/actions").querySelector(".brand-lockup")?.getAttribute("href")).toBe("/en/owner/example");
+  });
+
+  it("shows the Kinnso OS brand, never the old product names", () => {
+    const text = view("/en/owner/example").textContent ?? "";
+    expect(text).toContain("Kinnso OS");
+    expect(text).not.toMatch(/Visibility Workspace|SME Scanner/);
   });
 
   it.each(["en", "zh-HK", "zh-TW"] as const)("the account control opens the authenticated account/workspace page (%s)", locale => {

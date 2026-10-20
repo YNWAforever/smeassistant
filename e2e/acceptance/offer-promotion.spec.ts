@@ -25,7 +25,7 @@ test("an offer becomes two drafts, one is approved and exported, and an edited o
   expect(used()).toBe("0");
 
   // 1. Create an offer (HKD 1280, today through today + 14) and confirm it.
-  await page.goto(`/zh-HK/owner/${merchant.slug}/offers`);
+  await page.goto(`/zh-HK/owner/${merchant.slug}/actions/new?mode=offer`);
   await clickUntil(page.getByRole("button", { name: "新增優惠" }), page.locator("#offer-title"));
   await page.locator("#offer-location").selectOption({ label: "Primary" });
   await page.locator("#offer-title").fill("Autumn tasting set");
@@ -73,7 +73,7 @@ test("an offer becomes two drafts, one is approved and exported, and an edited o
   await expect.poll(used).toBe("1");
 
   // 4. Change the price to 1180 (back to a draft), then confirm it again.
-  await page.goto(`/zh-HK/owner/${merchant.slug}/offers`);
+  await page.goto(`/zh-HK/owner/${merchant.slug}/actions/new?mode=offer`);
   const again = page.locator(".offer-card", { hasText: "Autumn tasting set" });
   await clickUntil(again.getByRole("button", { name: "編輯" }), page.locator("#offer-price"));
   await page.locator("#offer-price").fill("1180");

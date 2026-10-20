@@ -253,7 +253,7 @@ describe("GbpPublishCard", () => {
   it("connection_missing shows the integrations link", () => {
     mount({ panel: panel({ connectionActive: false, eligibility: { ok: false, reason: "connection_missing" }, canPublish: false }) })
     const link = screen.getByRole("link", { name: text.connectGoogle })
-    expect(link).toHaveAttribute("href", "/en/owner/kam-man-house/settings/integrations")
+    expect(link).toHaveAttribute("href", "/en/owner/kam-man-house/business/integrations")
     expect(screen.queryByRole("button", { name: text.publishButton })).not.toBeInTheDocument()
   })
 

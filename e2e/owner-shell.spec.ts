@@ -51,13 +51,33 @@ test("the prototype bridge no longer serves the owner entry pages", async ({ pag
 // sign-in without a session). The prototype bridge (`app/[...path]`) is gone,
 // so nothing under /owner/<slug>/* can render demo data; the public demo page
 // keeps its own route.
-for (const segment of ["actions", "insights", "activity", "calendar", "more", "create", "assets", "settings/integrations", "settings/notifications", "settings/billing", "settings/team", "settings/brand"]) {
+for (const segment of ["actions", "actions/new", "insights", "business", "business/assets", "business/profile", "business/integrations", "business/locations", "settings", "settings/activity", "settings/notifications", "settings/plan", "settings/team"]) {
   test(`/zh-HK/owner/kam-man-house/${segment} is a real route that requires sign-in`, async ({ page }) => {
     await page.goto(`/zh-HK/owner/kam-man-house/${segment}`);
     const url = new URL(page.url());
     expect(url.pathname).toBe("/zh-HK/owner/sign-in");
     // The proxy gates the full owner path even when managed auth is unconfigured.
     expect(url.searchParams.get("returnTo")).toBe(`/zh-HK/owner/kam-man-house/${segment}`);
+  });
+}
+
+// UX Phase 4 moved these pages; the old URL answers 308 before the sign-in gate,
+// so sign-in returns the owner to the page's new home.
+for (const [from, to] of [
+  ["create", "actions/new"],
+  ["calendar", "actions?view=due"],
+  ["assets", "business/assets"],
+  ["settings/brand", "business/profile"],
+  ["settings/integrations", "business/integrations"],
+  ["settings/billing", "settings/plan"],
+  ["activity", "settings/activity"],
+  ["more", "settings"],
+] as const) {
+  test(`the old /zh-HK/owner/kam-man-house/${from} URL leads to ${to}`, async ({ page }) => {
+    await page.goto(`/zh-HK/owner/kam-man-house/${from}`);
+    const url = new URL(page.url());
+    expect(url.pathname).toBe("/zh-HK/owner/sign-in");
+    expect(url.searchParams.get("returnTo")).toBe(`/zh-HK/owner/kam-man-house/${to}`);
   });
 }
 

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useRef, useState, useSyncExternalStore } from "react"
 import {
   AlertTriangle, ArrowLeft, BadgeCheck, Check, CheckCircle2, CircleAlert, Clock3, CloudOff, Copy, Download, FileClock, FileImage,
-  History, LoaderCircle, MapPin, MessageSquare, PencilLine, RefreshCw, Save, Send, ShieldAlert, ShieldCheck, Sparkles, Tag, UserRound, WandSparkles, X,
+  History, LoaderCircle, MapPin, MessageSquare, PencilLine, RefreshCw, Save, Send, ShieldAlert, ShieldCheck, Tag, UserRound, WandSparkles, X,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
@@ -38,12 +37,14 @@ import { t } from "@/lib/i18n"
 import { aiBudgetRefusal } from "@/lib/budgets/messages"
 import { runErrorLabel } from "@/lib/assistant/draft-failure"
 import { formatOfferDate, isOfferStaleCode, offerStaleKind, type OfferStaleKind } from "@/lib/workspace/offer-format"
-import { basisLabel, buildExportText, effortLabel, formatDateTime, metricLabel, numericOrNull, priorityClass, priorityLabel, signed, stateLabel, withLocation } from "@/lib/workspace/format"
+import { buildExportText, effortLabel, formatDateTime, priorityClass, priorityLabel, stateLabel, withLocation } from "@/lib/workspace/format"
 import type { ActionDetail, AuditEventRow, VersionRow } from "@/lib/workspace/queries-pages"
-import { clientHydrated, originLabel, ownerInputPatch, runProgress, serverHydrated, subscribeHydration, subscribeOnline } from "@/components/workspace/action-detail/helpers"
+import { EvidenceTab } from "@/components/workspace/action-detail/evidence-tab"
+import { WorkflowTab } from "@/components/workspace/action-detail/workflow-tab"
+import { clientHydrated, originLabel, ownerInputPatch, serverHydrated, subscribeHydration, subscribeOnline } from "@/components/workspace/action-detail/helpers"
 import { guardrailText } from "@/lib/workspace/guardrail-text"
 import { zhFor } from "@/lib/zh-tw"
-import { evidenceValueLabel, sourceLabel } from "@/lib/workspace/source-label"
+import { sourceLabel } from "@/lib/workspace/source-label"
 import { actionVerificationView } from "@/lib/workspace/action-verification"
 import { OwnerReviewCheckPanel } from "@/components/workspace/owner-review-check-panel"
 import { EMPTY_OWNER_CHECK, ownerCheckNextStep, type OwnerCheckContext } from "@/lib/workspace/owner-review-check"
@@ -76,6 +77,8 @@ export interface ActionDetailClientProps {
   publishPanel?: PublishPanel | null
   ownerCheck?: OwnerCheckContext
   ownerCheckIdentity?: string
+  /** Shown in the Actions side panel, under the queue's own h1: the title becomes an h2. */
+  embedded?: boolean
 }
 
 export interface OfferCardData {
@@ -125,7 +128,7 @@ function VersionBoundActionDetail(props: ActionDetailClientProps) {
   </>
 }
 
-function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false, initialVersionId = null, publishPanel = null, ownerCheck = EMPTY_OWNER_CHECK, ownerCheckIdentity }: ActionDetailClientProps) {
+function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false, initialVersionId = null, publishPanel = null, ownerCheck = EMPTY_OWNER_CHECK, ownerCheckIdentity, embedded = false }: ActionDetailClientProps) {
   const isChinese = locale !== "en"
   const router = useRouter()
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -649,7 +652,8 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
   return (
     <div className="action-detail-page">
       <div className="action-detail-toolbar">
-        <Link href={withLocation(`${base}/actions`, location)} className="back-link"><ArrowLeft /> {isChinese ? "返回行動" : "Back to actions"}</Link>
+        {/* In the side panel, Close (which keeps the queue's filters) replaces this link. */}
+        {!embedded && <Link href={withLocation(`${base}/actions`, location)} className="back-link"><ArrowLeft /> {isChinese ? "返回行動" : "Back to actions"}</Link>}
         <div>
           {role === "owner" ? (
             <Select disabled={!hydrated} value={previewRole} onValueChange={(value) => setPreviewRole(value as PreviewRole)}>
@@ -664,7 +668,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
       <header className="action-detail-header">
         <div>
           <div className="action-detail-badges"><Badge variant="outline" className={priorityClass(action.priority)}>{priorityLabel(action.priority, locale)}</Badge><Badge variant="outline">{dirty ? (isChinese ? "未儲存修改" : "Unsaved changes") : action.applied || action.verified ? resolveText(action.displayPhase, locale) : selectedVersion ? approvalText(approval) : resolveText(action.displayPhase, locale)}</Badge><CapabilityBadge value={action.capability} context="action" /></div>
-          <h1>{resolveText(action.title, locale)}</h1><p>{resolveText(action.summary, locale)}</p>
+          {embedded ? <h2>{resolveText(action.title, locale)}</h2> : <h1>{resolveText(action.title, locale)}</h1>}<p>{resolveText(action.summary, locale)}</p>
           <div className="header-meta"><span><MapPin />{locationName}</span><span><Clock3 />{effortLabel(action.effortMinutes, locale)}</span><span><UserRound />{action.assignee?.name ?? (isChinese ? "未指派" : "Unassigned")}</span></div>
         </div>
         <div className="action-detail-next"><small>{isChinese ? "下一步" : "Direct next step"}</small><strong>{effectiveRole === "viewer" ? (isChinese ? "查看證據" : "Inspect the evidence") : showInputForm ? (isChinese ? "提供所需資料" : "Provide the required inputs") : dirty ? (isChinese ? "先儲存新版本" : "Save a new version first") : action.applied || action.verified ? verificationNext : isApprovedCurrent ? (isChinese ? "匯出已核准版本" : "Export approved version") : selectedVersion ? (isChinese ? `審閱並核准${versionName}` : `Review and approve ${versionName}`) : (isChinese ? "生成第一份草稿" : "Generate the first draft")}</strong><span>{isChinese ? "到期：" : "Due "}{action.dueAt ? formatDateTime(action.dueAt, locale, timezone) : "—"}</span></div>
@@ -698,7 +702,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
         <div className="permission-banner" role="alert" data-testid="offer-stale-banner">
           <AlertTriangle />
           <div><strong>{offersCopy.stale[offerStale]}</strong></div>
-          {offersEnabled && <Link href={withLocation(`${base}/offers`, location)}>{offersCopy.card.viewOffers}</Link>}
+          {offersEnabled && <Link href={withLocation(`${base}/actions/new?mode=offer`, location)}>{offersCopy.card.viewOffers}</Link>}
         </div>
       )}
 
@@ -746,7 +750,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
                       </div>
                     ))}
                   </dl>
-                  <p className="limitation-note"><Link href={`${base}/settings/brand`}>{isChinese ? "在品牌設定中修改" : "Edit in Brand settings"}</Link></p>
+                  <p className="limitation-note"><Link href={`${base}/business/profile`}>{isChinese ? "在品牌設定中修改" : "Edit in Brand settings"}</Link></p>
                 </details>
               )}
               {checklistSteps && (
@@ -837,7 +841,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
                         <SelectTrigger id={`input-${key}`} aria-label={inputs[key] ?? key}><SelectValue placeholder={isChinese ? "選擇已核准素材或純文字" : "Choose an approved asset or text only"} /></SelectTrigger>
                         <SelectContent><SelectItem value="text_only">{isChinese ? "純文字（不使用相片）" : "Text only (no photo)"}</SelectItem>{approvedAssets.map((asset) => <SelectItem key={asset.id} value={asset.id}>{asset.filename}</SelectItem>)}</SelectContent>
                       </Select>
-                      {approvedAssets.length === 0 && <small>{isChinese ? zhFor(locale, "尚未有已核准素材；可先上載並確認使用權，或選擇純文字。") : "No approved assets yet; upload and confirm rights first, or choose text only."} <Link href={`${base}/assets`}>{isChinese ? "前往素材" : "Go to assets"}</Link></small>}
+                      {approvedAssets.length === 0 && <small>{isChinese ? zhFor(locale, "尚未有已核准素材；可先上載並確認使用權，或選擇純文字。") : "No approved assets yet; upload and confirm rights first, or choose text only."} <Link href={`${base}/business/assets`}>{isChinese ? "前往素材" : "Go to assets"}</Link></small>}
                     </div>
                   ) : (
                     <div key={key} className="field-stack"><Label htmlFor={`input-${key}`}>{faqQuestionByKey.get(key) ? resolveText(faqQuestionByKey.get(key)!.question, locale) : (inputs[key] ?? key)}</Label>{key.startsWith("owner_fact") || key === "menu_items" || key === "reviews_without_response" ? <Textarea id={`input-${key}`} rows={3} value={inputValues[key] ?? faqQuestionByKey.get(key)?.prefill ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} /> : <Input id={`input-${key}`} value={inputValues[key] ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} />}{faqQuestionByKey.get(key)?.prefill && <small>{isChinese ? "已按品牌設定中已儲存的資料預填，可自行修改。" : "Prefilled from a fact already saved in Brand settings; edit as needed."}</small>}</div>
@@ -939,7 +943,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
                 </div>}
               </SectionCard>
               <SectionCard className="delivery-card"><div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "送出" : "Delivery"}</p><h2>{social ? (isChinese ? "匯出至 Instagram" : "Export for Instagram") : (isChinese ? "匯出已核准版本" : "Export the approved version")}</h2></div><CapabilityBadge value={publishPanel ? googleBusinessPublishCapability({ enabled: publishPanel.enabled, connectionActive: publishPanel.connectionActive }) : "Requires connection"} /></div><p>{publishPanel?.enabled ? copy[locale].workspace.publish.deliveryIntro : isChinese ? "目前沒有已驗證的直接發佈連接器。只有指定版本獲核准並完成匯出，才計 1 次核准後交付。" : "No verified direct-publishing connector is present. One approved delivery is counted only after exact-version approval and export."}</p>
-                {allowanceBlocked && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "本月核准後交付額已用完" : "This month's approved-delivery allowance is used up"}</strong><p>{isChinese ? "版本仍已核准並保留；升級方案或等待下月額度後即可匯出。" : "The version stays approved; upgrade the plan or wait for next month's allowance to export it."}</p><Button asChild size="sm" variant="outline"><Link href={`${base}/settings/billing`}>{isChinese ? "查看帳單與方案" : "View billing and plans"}</Link></Button></div></div>}
+                {allowanceBlocked && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "本月核准後交付額已用完" : "This month's approved-delivery allowance is used up"}</strong><p>{isChinese ? "版本仍已核准並保留；升級方案或等待下月額度後即可匯出。" : "The version stays approved; upgrade the plan or wait for next month's allowance to export it."}</p><Button asChild size="sm" variant="outline"><Link href={`${base}/settings/plan`}>{isChinese ? "查看帳單與方案" : "View billing and plans"}</Link></Button></div></div>}
                 <Button className="w-full" variant={isApprovedCurrent ? "default" : "outline"} disabled={!canDeliver} onClick={() => void deliver("export")}>{busy === "export" ? <LoaderCircle className="animate-spin" /> : exported ? <Check /> : <Download />} {exported ? (isChinese ? "再次匯出（不重複計算）" : "Export again (not counted twice)") : (isChinese ? "匯出已核准版本" : "Export approved version")}</Button>
                 <Button className="w-full" variant="outline" disabled={!canDeliver} onClick={() => void deliver("copy")}>{busy === "copy" ? <LoaderCircle className="animate-spin" /> : <Copy />} {isChinese ? "複製文字" : "Copy text"}</Button>
                 {publishPanel && selectedVersion && <GbpPublishCard locale={locale} versionId={selectedVersion.id} versionNo={selectedVersion.version_no} body={selectedVersion.body} approved={isApprovedCurrent} panel={effectiveRole === role ? publishPanel : { ...publishPanel, mayAct: publishPanel.mayAct && effectiveRole !== "viewer", canPublish: publishPanel.canPublish && effectiveRole !== "viewer", canDelete: false }} workspaceSlug={workspaceSlug} timezone={timezone} onChanged={() => router.refresh()} />}
@@ -951,22 +955,11 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
         </TabsContent>
 
         <TabsContent value="evidence">
-          <div className="evidence-detail-grid">
-            <SectionCard><div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "已觀察事實" : "Observed fact"}</p><h2>{sourceLabel(action.evidence.source, locale)}</h2></div><FactType type={action.evidence.factType} /></div><div className="evidence-big-value">{evidenceValueLabel(action.evidence.value, locale) || "—"}<span>{resolveText(action.evidence.detail, locale)}</span></div><dl className="evidence-detail-dl"><div><dt>{isChinese ? "觀察時間" : "Observed"}</dt><dd>{formatDateTime(action.evidence.observedAt, locale, timezone)}</dd></div><div><dt>{isChinese ? zhFor(locale, "地點") : "Location"}</dt><dd>{locationName}</dd></div><div><dt>{isChinese ? "新鮮度" : "Freshness"}</dt><dd>{resolveText(action.evidence.freshness, locale) || "—"}</dd></div><div><dt>{isChinese ? zhFor(locale, "量度") : "Measurement"}</dt><dd>{stateLabel(action.measurementState, locale)}</dd></div></dl></SectionCard>
-            <SectionCard><p className="eyebrow">{isChinese ? "解讀與限制" : "Interpretation and limitation"}</p><h2>{isChinese ? "為何建立此行動" : "Why this action exists"}</h2><div className="fact-stack"><div><FactType type={action.evidence.factType} /><p>{resolveText(action.evidence.detail, locale)}</p></div><div><FactType type="Inference" /><p>{action.priorityFactors.map((factor) => `${resolveText(factor.label, locale)} ${signed(factor.points)}`).join(" · ") || priorityLabel(action.priority, locale)}</p></div><div><FactType type="Recommended" /><p>{resolveText(action.title, locale)}</p></div><div><FactType type="Unknown" /><p>{isChinese ? zhFor(locale, "此行動沒有量度收入、預訂量或顧客意圖。") : "Revenue, reservations and customer intent are not measured by this action."}</p></div></div></SectionCard>
-            {measurements.length > 0 && <SectionCard><p className="eyebrow">{isChinese ? zhFor(locale, "量度") : "Measurement"}</p><h2>{isChinese ? "行動前後" : "Before and after"}</h2><dl className="trust-dl">{measurements.map((m) => <div key={m.id}><dt>{metricLabel(m.metric_key, locale)} · <FactType type={m.fact_type} />{m.fact_type === "Attributed" ? <span> · {basisLabel(m.attribution_basis, locale)}</span> : null}</dt><dd>{m.before_value ?? "—"} → {m.after_value ?? "—"} ({signed(numericOrNull(m.delta), 1)})</dd></div>)}</dl></SectionCard>}
-          </div>
+          <EvidenceTab action={action} measurements={measurements} locale={locale} timezone={timezone} locationName={locationName} />
         </TabsContent>
 
         <TabsContent value="workflow">
-          <div className="workflow-state-layout">
-            <SectionCard><div className="section-card-heading"><div><p className="eyebrow">Agent run</p><h2>{isChinese ? "可復原執行狀態" : "Recoverable run state"}</h2></div><Badge variant="outline">{isChinese ? "獨立狀態機" : "Separate state machine"}</Badge></div>
-              <div className={`run-state-box run-${workflowState === "succeeded" ? "ready" : workflowState === "running" || workflowState === "queued" ? workflowState : workflowState ? "failed" : "ready"}`}>{!workflowState || workflowState === "succeeded" ? <Sparkles /> : workflowState === "running" ? <LoaderCircle className="animate-spin" /> : workflowState === "queued" ? <FileClock /> : <CircleAlert />}<div><strong>{workflowLabel}</strong><span>{workflowState === "timed_out" ? (isChinese ? "上一次執行沒有完成並已釋放；現有草稿已保留，可再按生成重試。" : "The previous run did not finish and has been released; your existing draft is preserved — press Generate to try again.") : workflowState === "failed" ? (isChinese ? "現有草稿已保留；失敗不扣除用量。" : "Existing draft preserved; failures do not consume usage.") : (isChinese ? "生成及修改不扣除客戶用量。" : "Generation and revision do not consume customer usage.")}{latestRun?.error ? ` · ${runErrorLabel(locale, latestRun.error)}` : ""}</span></div></div>
-              <Progress value={runProgress(workflowState ?? undefined)} aria-label={isChinese ? `執行狀態：${workflowLabel}` : `Run state ${workflowLabel}`} />
-              {runs.length === 0 ? <p className="limitation-note">{isChinese ? "尚未執行。" : "No runs yet."}</p> : <div className="version-list">{runs.map((run) => <div key={run.id}><span><FileClock /></span><div><strong>{run.agent_key} · {stateLabel(run.state, locale)}</strong><small>{formatDateTime(run.created_at, locale, timezone)}{run.finished_at ? ` → ${formatDateTime(run.finished_at, locale, timezone)}` : ""}{run.error ? ` · ${runErrorLabel(locale, run.error)}` : ""}</small></div></div>)}</div>}
-            </SectionCard>
-            <SectionCard><p className="eyebrow">{isChinese ? "獨立生命週期摘要" : "Independent lifecycle summary"}</p><h2>{isChinese ? "不以一個含糊狀態代表所有事情" : "No single overloaded status"}</h2><dl className="state-machine-dl"><div><dt>{isChinese ? "行動" : "Action"}</dt><dd><Badge variant="outline">{stateLabel(action.actionState, locale)}</Badge></dd></div><div><dt>Agent run</dt><dd><Badge variant="outline">{workflowLabel}</Badge></dd></div><div><dt>{isChinese ? zhFor(locale, "審批") : "Approval"}</dt><dd><Badge variant="outline">{approvalText(approval)}</Badge></dd></div><div><dt>{isChinese ? "送出" : "Delivery"}</dt><dd><Badge variant="outline">{stateLabel(delivery, locale)}</Badge></dd></div><div><dt>{isChinese ? zhFor(locale, "量度") : "Measurement"}</dt><dd><Badge variant="outline">{stateLabel(action.measurementState, locale)}</Badge></dd></div></dl></SectionCard>
-          </div>
+          <WorkflowTab action={action} runs={runs} workflowState={workflowState} workflowLabel={workflowLabel} approvalLabel={approvalText(approval)} delivery={delivery} locale={locale} timezone={timezone} />
         </TabsContent>
 
         <TabsContent value="history">

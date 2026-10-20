@@ -6,7 +6,6 @@ import { NeedsAttentionCard } from "@/components/workspace/needs-attention-card"
 import { filterToLocation } from "@/lib/ops/owner-actions";
 import { currentScanConsentPolicyVersion } from "@/lib/scan/consent";
 import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
-import { loadHomeWorkPacks } from "@/lib/workspace/packs";
 import { loadWorkspaceProblems } from "@/lib/workspace/problems";
 import { getHomeBrief } from "@/lib/workspace/queries-pages";
 import { zhFor } from "@/lib/zh-tw"
@@ -24,10 +23,7 @@ export async function generateMetadata(props: OwnerPageProps): Promise<Metadata>
  */
 export default async function WorkspaceHome(props: OwnerPageProps) {
   const page = await loadOwnerPage(props);
-  // P4.2: undefined, with no SQL, while WORK_PACKS_ENABLED is off. "All" is a single
-  // location's pack when the workspace has only one; with several there is none to start for.
-  const homeLocation = page.locationSlug === "all" ? (page.ctx.locations.length === 1 ? page.ctx.locations[0] : null) : page.ctx.locations.find((l) => l.slug === page.locationSlug) ?? null;
-  const [brief, problems, workPacks] = await Promise.all([
+  const [brief, problems] = await Promise.all([
     getHomeBrief(page.ctx, page.locationSlug),
     loadWorkspaceProblems({
       workspaceId: page.ctx.workspace.id,
@@ -35,7 +31,6 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
       membership: page.membership,
       tier: page.ctx.workspace.tier,
     }),
-    loadHomeWorkPacks(page.ctx, page.membership, { id: homeLocation?.id ?? null, isAll: homeLocation === null && page.ctx.locations.length > 1 }),
   ]);
   const locationId = page.locationSlug === "all" ? "all" : page.ctx.locations.find((l) => l.slug === page.locationSlug)?.id ?? "all";
   const forbidden = page.query.forbidden === "1";
@@ -56,8 +51,6 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
         locations={page.locations}
         brief={brief}
         demo={page.ctx.workspace.isDemo}
-        fixPack={{ workspaceId: page.ctx.workspace.id, role: page.membership.role }}
-        workPacks={workPacks}
         role={page.membership.role}
         problems={problems && (
           <NeedsAttentionCard

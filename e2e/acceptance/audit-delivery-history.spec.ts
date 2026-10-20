@@ -187,7 +187,7 @@ test("bilingual completed-page reloads preserve exact version, approval, deliver
     const base = `/${locale}/owner/${merchant.slug}`;
     for (const route of ["action", "billing", "completed"] as const) {
       const path = route === "action" ? `${base}/actions/${merchant.actionId}`
-        : route === "billing" ? `${base}/settings/billing` : `${base}/actions?view=completed`;
+        : route === "billing" ? `${base}/settings/plan` : `${base}/actions?view=completed`;
       expect((await page.goto(path))?.status()).toBe(200);
       for (const load of ["initial", "reload"] as const) {
         if (load === "reload") expect((await page.reload())?.status()).toBe(200);

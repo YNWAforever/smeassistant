@@ -149,7 +149,7 @@ test("TW workspace switched to Hong Kong locale retains TWD and LINE contact beh
   const merchant = await seedMerchant(environment, "tw");
   const job = report(environment, merchant, "tw", true);
   await signIn(page, environment, merchant);
-  await page.goto(`/zh-HK/owner/${merchant.slug}/settings/billing`);
+  await page.goto(`/zh-HK/owner/${merchant.slug}/settings/plan`);
   await expect(page.locator("body")).toContainText(/TWD|NT\$/);
   await page.goto(`/zh-HK/unlock/${job.slug}?market=tw`);
   await expect(page.getByText("LINE", { exact: true }).first()).toBeVisible();

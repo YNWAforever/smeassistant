@@ -4,7 +4,7 @@ import { sql, type AcceptanceEnvironment } from "../../test/e2e/environment";
 import { seedMerchant, type MerchantSeed } from "../../test/e2e/seed";
 
 const body = { voice: "direct", approved_claims: ["Established 1998"], prohibited_terms: ["Guaranteed"], languages: ["en"], facts: { hours: "11-22" }, expectedRevisionId: null };
-const settingsPath = (merchant: MerchantSeed) => `/en/owner/${merchant.slug}/settings/brand`;
+const settingsPath = (merchant: MerchantSeed) => `/en/owner/${merchant.slug}/business/profile`;
 const apiPath = (merchant: MerchantSeed) => `/api/workspaces/${merchant.workspaceId}/brand`;
 function seedBrand(environment: AcceptanceEnvironment, merchant: MerchantSeed, voice: "professional" | "unknown" = "professional") {
   sql(environment.db, `insert into brand_profiles(workspace_id,voice,approved_claims,prohibited_terms,languages,facts)

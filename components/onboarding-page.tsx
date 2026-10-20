@@ -181,7 +181,7 @@ function OnboardingForm({ locale, claim, plan, resumeStep, saved = null, savedUn
   const effectiveLocationName = locationOverride && locationName.trim() ? locationName.trim() : workspaceName.trim()
   const existingBrand = ownsWorkspace && saved?.brandProfileExists === true
   const brandHref = saved?.workspaceSlug && /^[a-z0-9_-]+$/i.test(saved.workspaceSlug)
-    ? `/${locale}/owner/${encodeURIComponent(saved.workspaceSlug)}/settings/brand` : null
+    ? `/${locale}/owner/${encodeURIComponent(saved.workspaceSlug)}/business/profile` : null
   const reloadHref = `/${locale}/owner/onboarding${claim ? `?claim=${encodeURIComponent(claim)}` : ""}`
   const canContinue = !savedUnavailable && Boolean(evidence) && ownsWorkspace && (step === 1 || workspaceName.trim().length > 0)
 

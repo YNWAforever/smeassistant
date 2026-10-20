@@ -1,4 +1,5 @@
-import type { HomeBriefViewProps } from "@/components/workspace/home-brief";
+import type { PackCardProps } from "@/components/workspace/pack-card";
+import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace";
 import type { Membership } from "@/lib/auth";
 import { packRepository } from "@/lib/repositories/packs";
 import { buildPackOverview, type PackItemRow, type PackOverview, type WorkPack } from "@/lib/workspace/packs-model";
@@ -42,6 +43,9 @@ export async function loadPackOverview(ctx: WorkspaceContext, pack: WorkPack, it
   );
 }
 
+/** The starter pack card's data (Actions › New › Starter pack), present only while WORK_PACKS_ENABLED is on. */
+export type WorkPacksView = { enabled: true; card: Omit<PackCardProps, "locale">; earlierDrafts: { workspaceId: string; role: WorkspaceRole } };
+
 /**
  * The Home `workPacks` prop (ruling P1). With WORK_PACKS_ENABLED off this returns
  * undefined without touching the repository, so no SQL is issued against
@@ -56,7 +60,7 @@ export async function loadHomeWorkPacks(
   ctx: WorkspaceContext,
   membership: Membership,
   location: { id: string | null; isAll: boolean },
-): Promise<HomeBriefViewProps["workPacks"]> {
+): Promise<WorkPacksView | undefined> {
   if (!workPacksEnabled()) return undefined;
   const repository = packRepository();
   const readOpen = async (locationId: string | null): Promise<PackOverview | null> => {

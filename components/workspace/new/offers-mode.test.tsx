@@ -7,7 +7,7 @@ vi.mock("@/lib/repositories/offers", () => ({ offerRepository: () => ({ list: mo
 vi.mock("@/lib/workspace/assets", async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), listAssets: mocks.listAssets }));
 vi.mock("@/components/workspace/offers-view", () => ({ OffersView: () => null }));
 
-import Page from "./page";
+import Page from "./offers-mode";
 
 const props = { params: Promise.resolve({ locale: "en", workspaceSlug: "kam-man-house" }) };
 const LOCATIONS = [
@@ -32,7 +32,7 @@ function pageFor(membership: Record<string, unknown>, query: Record<string, stri
   });
 }
 
-describe("offers page", () => {
+describe("offers mode (Actions › New)", () => {
   beforeEach(() => {
     vi.stubEnv("OFFER_PROMOTIONS_ENABLED", "true");
     mocks.list.mockResolvedValue([offer("o-ws", null), offer("o-1", "loc-1"), offer("o-2", "loc-2")]);

@@ -13,7 +13,6 @@ vi.mock("@/components/pocket-assistant/assistant-sheet", () => ({ ContextualAssi
 import type { ShellWorkspace } from "@/components/product-ui";
 import { CapabilityBadge } from "@/components/product-ui";
 import { WorkspaceShell } from "@/components/workspace-shell";
-import { MoreView } from "@/components/workspace/more-view";
 import { copy } from "@/lib/copy";
 
 beforeAll(() => {
@@ -45,37 +44,26 @@ const workspace: ShellWorkspace = {
 
 function mount(overrides: Partial<ShellWorkspace> = {}, locale: "en" | "zh-HK" | "zh-TW" = "en") {
   const value = { ...workspace, ...overrides };
-  return render(<WorkspaceShell locale={locale} workspace={value}><MoreView locale={locale} workspaceSlug={value.slug} locationSlug={value.defaultLocationSlug} locationCount={value.locations.length} offersEnabled={value.offersEnabled} /></WorkspaceShell>);
+  return render(<WorkspaceShell locale={locale} workspace={value}><h1>Page</h1></WorkspaceShell>);
 }
 
 const offersLinks = () => screen.queryAllByRole("link").filter((link) => link.getAttribute("href")?.includes("/offers"));
 
-describe("WorkspaceShell Offers through More (P4.1)", () => {
-  it("has no Offers link when offersEnabled is absent", () => {
-    mount();
+// Phase 4: Offers is a mode of Actions › New, never a navigation destination, whatever the flag.
+describe("WorkspaceShell destinations (Phase 4)", () => {
+  it.each([undefined, false, true])("shows the same five destinations with offersEnabled=%s and no Offers link", (offersEnabled) => {
+    mount({ offersEnabled });
     expect(offersLinks()).toHaveLength(0);
-    expect(screen.queryByRole("link", { name: "Offers" })).toBeNull();
+    for (const key of ["today", "actions", "insights", "business", "settings"] as const) {
+      expect(screen.getAllByRole("link", { name: copy.en.shell.nav[key] })).toHaveLength(2); // sidebar and mobile bar
+    }
   });
 
-  it("has no Offers link when offersEnabled is false", () => {
-    mount({ offersEnabled: false });
-    expect(offersLinks()).toHaveLength(0);
-  });
-
-  it("reaches one scoped Offers link through More only when enabled", () => {
-    mount({ offersEnabled: true });
-    const menuLinks = screen.getAllByRole("link", { name: copy.en.nav.more });
-    expect(menuLinks).toHaveLength(2); // Desktop and mobile use the same destination.
-    for (const link of menuLinks) expect(link).toHaveAttribute("href", "/en/owner/kam-man-house/more?location=yik-yam");
-    const links = offersLinks();
-    expect(links).toHaveLength(1);
-    expect(links[0]).toHaveAttribute("href", "/en/owner/kam-man-house/offers?location=yik-yam");
-    expect(links[0]).toHaveTextContent("Offers");
-  });
-
-  it.each(["zh-HK", "zh-TW"] as const)("localises the label in %s", (locale) => {
-    mount({ offersEnabled: true }, locale);
-    expect(offersLinks()[0]).toHaveTextContent(copy[locale].workspace.offers.nav);
+  it.each(["zh-HK", "zh-TW"] as const)("localises every destination in %s", (locale) => {
+    mount({}, locale);
+    for (const key of ["today", "actions", "insights", "business", "settings"] as const) {
+      expect(screen.getAllByRole("link", { name: copy[locale].shell.nav[key] }).length).toBeGreaterThan(0);
+    }
   });
 });
 

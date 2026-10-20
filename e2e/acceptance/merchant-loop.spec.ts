@@ -73,7 +73,7 @@ for (const market of ["hk", "tw"] as const) test(`${market}: local fixture link 
   const v3 = await edit.json() as { versionId: string; versionNo: number };
   expect(v3.versionNo).toBe(3);
   expect((await page.request.post(`/api/versions/${v3.versionId}/export`, { data: { mode: "copy", idempotency_key: randomUUID() } })).status()).toBe(409);
-  await page.goto(`/zh-HK/owner/${merchant.slug}/settings/billing`);
+  await page.goto(`/zh-HK/owner/${merchant.slug}/settings/plan`);
   expect(sql(environment.db, `select market from workspaces where id='${merchant.workspaceId}';`)).toBe(market);
   if (market === "tw") await expect(page.locator("body")).toContainText(/TWD|NT\$/);
   await page.goto(link);
