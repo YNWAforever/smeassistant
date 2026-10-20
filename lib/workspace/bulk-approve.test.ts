@@ -18,7 +18,7 @@ const draft = (actionId = "a1", overrides: Partial<VersionRow> = {}): VersionRow
   first_exported_at: null, origin: "agent", agentKey: null, checked: false, guardrails: [], agentNotes: [], acceptanceCriteria: [], offerRevision: null, ...overrides,
 } as VersionRow)
 const overview = (rowOverrides: Partial<ActionRow> = {}, version: VersionRow | null = draft(rowOverrides.id ?? "a1")) =>
-  buildActionOverview(row(rowOverrides), { location: { id: rowOverrides.location_id === undefined ? "loc-1" : rowOverrides.location_id, slug: "yik-yam", name: { en: "Yik Yam" } }, latestRun: null, latestVersion: version })
+  buildActionOverview(row(rowOverrides), { location: { id: rowOverrides.location_id === undefined ? "loc-1" : rowOverrides.location_id, slug: "yik-yam", name: { en: "Yik Yam", "zh-HK": "Yik Yam", "zh-TW": "Yik Yam" } }, latestRun: null, latestVersion: version })
 
 describe("bulk approve eligibility", () => {
   it("offers review replies and social posts whose latest version is a draft", () => {

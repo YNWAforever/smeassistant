@@ -26,7 +26,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { useIsMobile } from "@/hooks/use-mobile"
-import type { PrototypeLocale } from "@/lib/copy"
+import { copy, type PrototypeLocale } from "@/lib/copy"
 import { nextStepHref } from "@/lib/assistant/next-step"
 import { localized, resolveText, type LocalizedText } from "@/lib/domain"
 import {
@@ -373,7 +373,7 @@ export function ContextualAssistant({
   return (
     <Sheet open={open} onOpenChange={changeOpen}>
       <SheetTrigger asChild disabled={disabled}>
-        {trigger ?? <Button className="assistant-launcher" variant="outline" disabled={disabled} aria-label={triggerLabel ?? (isChinese ? "問隨身增長助理" : "Ask Visibility Operator")}><Sparkles aria-hidden="true" /><span>{triggerLabel ?? (isChinese ? "問隨身增長助理" : "Ask Visibility Operator")}</span></Button>}
+        {trigger ?? <Button className="assistant-launcher" variant="outline" disabled={disabled} aria-label={triggerLabel ?? copy[locale].shell.assistant.name}><Sparkles aria-hidden="true" /><span>{triggerLabel ?? copy[locale].shell.assistant.name}</span></Button>}
       </SheetTrigger>
       <SheetContent
         side={isMobile ? "bottom" : "right"}
@@ -385,7 +385,7 @@ export function ContextualAssistant({
             <div>
               {/* The name is the title; the badge says what the answers are drawn from. */}
               <Badge variant="outline">{mode === "live" ? (isChinese ? "只用本工作台證據" : "This workspace's evidence") : (isChinese ? "示範資料" : "Demo data")}</Badge>
-              <SheetTitle>{isChinese ? "隨身增長助理" : "Visibility Operator"}</SheetTitle>
+              <SheetTitle>{copy[locale].shell.assistant.name}</SheetTitle>
             </div>
           </div>
           <SheetDescription>{isChinese ? zhFor(locale, `目前情境：${surfaceTitle(surface, true)}。解釋證據、建議下一步及準備新草稿，但不會自行批准或發佈。`) : `Current context: ${surfaceTitle(surface, false)}. It explains evidence, recommends a next step and prepares new drafts—never approval or publishing.`}</SheetDescription>

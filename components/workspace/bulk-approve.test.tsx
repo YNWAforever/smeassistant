@@ -10,8 +10,8 @@ import { BulkApprove } from "./bulk-approve"
 
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 const items = [
-  { actionId: "a1", versionId: "v1", versionNo: 2, title: { en: "Reply to Mei" }, body: "Thank you, Mei!" },
-  { actionId: "a2", versionId: "v2", versionNo: 1, title: { en: "Reply to Ken" }, body: "Thanks, Ken." },
+  { actionId: "a1", versionId: "v1", versionNo: 2, title: { en: "Reply to Mei", "zh-HK": "回覆 Mei", "zh-TW": "回覆 Mei" }, body: "Thank you, Mei!" },
+  { actionId: "a2", versionId: "v2", versionNo: 1, title: { en: "Reply to Ken", "zh-HK": "回覆 Ken", "zh-TW": "回覆 Ken" }, body: "Thanks, Ken." },
 ]
 
 it("renders nothing without safe drafts", () => {

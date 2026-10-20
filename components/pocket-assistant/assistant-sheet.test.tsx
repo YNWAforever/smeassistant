@@ -7,7 +7,7 @@ import type { AssistantSurface } from "@/lib/pocket-assistant/contracts";
 import { getMessages } from "@/lib/i18n";
 
 const WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";
-const TRIGGER = { en: "Ask Visibility Operator", "zh-HK": "問隨身增長助理", "zh-TW": "問隨身增長助理" } as const;
+const TRIGGER = { en: "Ask Kinnso", "zh-HK": "問 Kinnso", "zh-TW": "問 Kinnso" } as const;
 const QUESTION = { en: "Draft one suitable review reply", "zh-HK": "草擬 1 則合適的評論回覆", "zh-TW": "草擬 1 則合適的評論回覆" } as const;
 
 beforeEach(() => {
