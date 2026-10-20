@@ -29,23 +29,23 @@ test("T-15 attached owner resumes persisted brand setup and repeats completion w
   const job = report(environment, merchant, "hk", true);
   await signIn(page, environment, merchant);
   await page.goto(`/en/owner/onboarding?claim=${job.slug}`);
-  await expect(page.locator(".step-kicker")).toHaveText("Step 2 of 2");
+  await expect(page.locator(".step-kicker")).toHaveText("Step 3 of 3");
   await expect(page.locator("#workspace-name")).toHaveValue("Acceptance HK");
   await page.locator("#workspace-name").fill("Saved HK fixture");
   const completion = page.waitForResponse(r => r.url().endsWith("/api/workspaces/claim") && r.request().method() === "POST");
-  await page.getByRole("button", { name: "Finish setup and view results", exact: true }).click();
+  await page.getByRole("button", { name: "Finish and see results", exact: true }).click();
   expect((await completion).status()).toBe(200);
   await page.goto(`/en/owner/onboarding?claim=${job.slug}`);
-  await expect(page.locator(".step-kicker")).toHaveText("Step 2 of 2");
+  await expect(page.locator(".step-kicker")).toHaveText("Step 3 of 3");
   await expect(page.locator("#workspace-name")).toHaveValue("Saved HK fixture");
   expect(sql(environment.db, `select count(*) from workspace_members where workspace_id='${merchant.workspaceId}' and role='owner' and accepted_at is not null;`)).toBe("1");
   expect(sql(environment.db, `select count(*) from scan_snapshots where job_id='${job.id}';`)).toBe("1");
 });
 
 for (const { locale, finish } of [
-  { locale: "en", finish: "Finish setup and view results" },
-  { locale: "zh-HK", finish: "完成設定，查看結果" },
-  { locale: "zh-TW", finish: "完成設定，查看結果" },
+  { locale: "en", finish: "Finish and see results" },
+  { locale: "zh-HK", finish: "完成並查看結果" },
+  { locale: "zh-TW", finish: "完成並查看結果" },
 ]) test(`new owner completes essentials and sees the first evidence-backed result (${locale})`, async ({ page, merchant, environment }, testInfo) => {
   // All rows belong to this test's fresh, labelled disposable database. Start
   // with staff-assigned ownership but no location, brand, snapshot or draft.
@@ -60,7 +60,7 @@ for (const { locale, finish } of [
   await signIn(page, environment, merchant);
   await page.setViewportSize(locale === "en" ? { width: 1280, height: 900 } : { width: 390, height: 844 });
   await page.goto(`/${locale}/owner/onboarding?claim=${slug}`);
-  await expect(page.locator(".step-kicker")).toHaveText(locale === "en" ? "Step 2 of 2" : "第 2 步，共 2 步");
+  await expect(page.locator(".step-kicker")).toHaveText(locale === "en" ? "Step 3 of 3" : "第 2 步，共 2 步");
   await expect(page.locator("#primary-address")).toHaveValue("12 Fixture Road");
   await expect(page.locator("#instagram-handle")).toHaveCount(0);
   await expect(page.locator(".onboarding-form > details")).not.toHaveAttribute("open");
@@ -73,9 +73,9 @@ for (const { locale, finish } of [
   // A real browser runs the click's default action after React updates the
   // step. Continue must not become the newly rendered form's submit button.
   await page.getByRole("button", { name: locale === "en" ? "Back" : "返回", exact: true }).click();
-  await expect(page.locator(".step-kicker")).toHaveText(locale === "en" ? "Step 1 of 2" : "第 1 步，共 2 步");
+  await expect(page.locator(".step-kicker")).toHaveText(locale === "en" ? "Step 2 of 3" : "第 1 步，共 2 步");
   await page.getByRole("button", { name: locale === "en" ? "Continue" : "繼續", exact: true }).click();
-  await expect(page.locator(".step-kicker")).toHaveText(locale === "en" ? "Step 2 of 2" : "第 2 步，共 2 步");
+  await expect(page.locator(".step-kicker")).toHaveText(locale === "en" ? "Step 3 of 3" : "第 2 步，共 2 步");
   await expect(page.getByRole("button", { name: finish, exact: true })).toBeEnabled();
   expect(submittedSetups).toHaveLength(0);
   expect(sql(environment.db, `select count(*) from scan_snapshots where job_id='${jobId}';`)).toBe("0");

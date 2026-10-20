@@ -25,9 +25,9 @@ function seedBrand(env: AcceptanceEnvironment, merchant: MerchantSeed, voice = "
 }
 
 for (const item of [
-  { locale: "en", width: 1440, back: "Back", next: "Continue", access: "Business and access", essentials: "Essentials and results", finish: "Finish setup and view results", more: "More settings (optional)", voice: "Concise and professional", brandLink: "Open brand settings" },
-  { locale: "zh-HK", width: 390, back: "返回", next: "繼續", access: "商戶及存取權", essentials: "基本資料及結果", finish: "完成設定，查看結果", more: "更多設定（選填）", voice: "簡潔、專業", brandLink: "前往品牌設定" },
-  { locale: "zh-TW", width: 390, back: "返回", next: "繼續", access: "店家與存取權", essentials: "基本資料與結果", finish: "完成設定，查看結果", more: "更多設定（選填）", voice: "簡潔、專業", brandLink: "前往品牌設定" },
+  { locale: "en", width: 1440, back: "Back", next: "Continue", access: "Verify ownership", essentials: "Business basics", finish: "Finish and see results", more: "More settings (optional)", voice: "Concise and professional", brandLink: "Open business profile" },
+  { locale: "zh-HK", width: 390, back: "返回", next: "繼續", access: "驗證擁有權", essentials: "商戶基本資料", finish: "完成並查看結果", more: "更多設定（選填）", voice: "簡潔、專業", brandLink: "開啟商戶資料" },
+  { locale: "zh-TW", width: 390, back: "返回", next: "繼續", access: "驗證擁有權", essentials: "店家基本資料", finish: "完成並查看結果", more: "更多設定（選填）", voice: "簡潔、專業", brandLink: "開啟店家資料" },
 ]) {
   test(`existing brand stays read-only and survives another-tab update (${item.locale})`, async ({ page, merchant, environment }, info) => {
     const job = seedReport(environment, merchant);
@@ -143,7 +143,7 @@ test("existing brand with no supported voice stays unset and preserves its other
   await page.screenshot({ path: image, fullPage: true });
   await info.attach("Existing unset brand", { path: image, contentType: "image/png" });
   const completion = page.waitForResponse(r => r.url().endsWith("/api/workspaces/claim") && r.request().method() === "POST");
-  await page.getByRole("button", { name: "完成設定，查看結果", exact: true }).click();
+  await page.getByRole("button", { name: "完成並查看結果", exact: true }).click();
   expect((await completion).status()).toBe(200);
   expect(sql(environment.db, `select length(voice) from brand_profiles where workspace_id='${merchant.workspaceId}';`)).toBe("0");
   expect(sql(environment.db, `select facts->>'fixture_fact' from brand_profiles where workspace_id='${merchant.workspaceId}';`)).toBe("Preserved fact");
@@ -159,11 +159,11 @@ test("failed completion keeps fields and focus, and a double-click retry creates
     submissions++;
     return submissions === 1 ? route.fulfill({ status: 503, contentType: "application/json", body: '{"error":"fixture_unavailable"}' }) : route.continue();
   });
-  await page.getByRole("button", { name: "Finish setup and view results", exact: true }).click();
+  await page.getByRole("button", { name: "Finish and see results", exact: true }).click();
   await expect(page.locator(".onboarding-card").getByRole("alert")).toBeFocused();
   await expect(page.locator("#workspace-name")).toHaveValue("Retry fixture name");
   expect(sql(environment.db, `select count(*) from brand_profiles where workspace_id='${merchant.workspaceId}';`)).toBe("0");
-  await page.getByRole("button", { name: "Finish setup and view results", exact: true }).dblclick();
+  await page.getByRole("button", { name: "Finish and see results", exact: true }).dblclick();
   await expect(page).toHaveURL(new RegExp(`/en/owner/${merchant.slug}$`));
   expect(submissions).toBe(2); // one rejected transport, one explicit successful retry
   expect(sql(environment.db, `select count(*) from locations where workspace_id='${merchant.workspaceId}';`)).toBe("1");
@@ -177,7 +177,7 @@ test("a viewer cannot use onboarding to read or change the owner's brand", async
   await signIn(page, environment, merchant, "viewer");
   await page.goto(`/en/owner/onboarding?claim=${job.slug}`);
   await expect(page.getByRole("region", { name: "Saved brand settings" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Open brand settings" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Open business profile" })).toHaveCount(0);
   await expect(page.locator("#workspace-name")).toHaveCount(0);
   const denied = await page.request.post("/api/workspaces/claim", { data: {
     claim_slug: job.slug, workspace_name: "Forbidden fixture", primary_location: { name: "Forbidden" },

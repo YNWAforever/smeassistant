@@ -36,9 +36,9 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 it.each([
-  { locale: "en" as const, voice: "Concise and professional", link: "Open brand settings" },
-  { locale: "zh-HK" as const, voice: "簡潔、專業", link: "前往品牌設定" },
-  { locale: "zh-TW" as const, voice: "簡潔、專業", link: "前往品牌設定" },
+  { locale: "en" as const, voice: "Concise and professional", link: "Open business profile" },
+  { locale: "zh-HK" as const, voice: "簡潔、專業", link: "開啟商戶資料" },
+  { locale: "zh-TW" as const, voice: "簡潔、專業", link: "開啟店家資料" },
 ])("shows stored brand settings without ignored editors in $locale", ({ locale, voice, link }) => {
   render(<OnboardingPage {...props({ locale })} />);
   expect(screen.queryByRole("combobox", { name: /Brand voice|品牌語氣/ })).not.toBeInTheDocument();
@@ -54,7 +54,7 @@ it("shows an existing unset voice without inventing the warm default", () => {
   expect(screen.getByText("Not set")).toBeInTheDocument();
   expect(screen.queryByText("Warm, local and sincere")).not.toBeInTheDocument();
   expect(screen.queryByRole("combobox", { name: /Brand voice|品牌語氣/ })).not.toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Open brand settings" })).toHaveAttribute("href", "/en/owner/workspace-a/business/profile");
+  expect(screen.getByRole("link", { name: "Open business profile" })).toHaveAttribute("href", "/en/owner/workspace-a/business/profile");
 });
 
 it("keeps a new brand editable and only submits it on explicit completion", async () => {
@@ -62,7 +62,7 @@ it("keeps a new brand editable and only submits it on explicit completion", asyn
   render(<OnboardingPage {...props({ saved: { ...saved, brandProfileExists: false, voice: null, approvedClaims: "" } })} />);
   expect(screen.getByRole("combobox", { name: "Brand voice" })).toBeEnabled();
   expect(request).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", { name: "Finish setup and view results" }));
+  fireEvent.click(screen.getByRole("button", { name: "Finish and see results" }));
   await waitFor(() => expect(navigation.push).toHaveBeenCalledWith("/en/owner/workspace-a"));
   expect(JSON.parse(String(request.mock.calls[0][1]?.body))).toMatchObject({ brand_voice: "warm", approved_claims: [] });
 });
@@ -70,7 +70,7 @@ it("keeps a new brand editable and only submits it on explicit completion", asyn
 it("moves focus to the newly opened step without submitting", () => {
   render(<OnboardingPage {...props({ locale: "zh-HK", resumeStep: 1 })} />);
   fireEvent.click(screen.getByRole("button", { name: "繼續" }));
-  expect(screen.getByRole("heading", { name: "基本資料及結果", level: 2 })).toHaveFocus();
+  expect(screen.getByRole("heading", { name: "商戶基本資料", level: 2 })).toHaveFocus();
   expect(request).not.toHaveBeenCalled();
 });
 
@@ -79,7 +79,7 @@ it("does not send stale existing-brand fields when another tab changes them", as
   const view = render(<OnboardingPage {...props()} />);
   view.rerender(<OnboardingPage {...props({ saved: { ...saved, voice: "playful", approvedClaims: "New fact from another tab" } })} />);
   expect(screen.getByText("Playful and energetic")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Finish setup and view results" }));
+  fireEvent.click(screen.getByRole("button", { name: "Finish and see results" }));
   await waitFor(() => expect(request).toHaveBeenCalledTimes(1));
   const body = JSON.parse(String(request.mock.calls[0][1]?.body));
   expect(body).not.toHaveProperty("brand_voice");
@@ -91,7 +91,7 @@ it("drops the old workspace draft and ignores its delayed completion after switc
   request.mockImplementation(() => new Promise<Response>(resolve => { finish = resolve; }));
   const view = render(<OnboardingPage {...props()} />);
   fireEvent.change(screen.getByLabelText("Business name"), { target: { value: "Unsaved A" } });
-  fireEvent.click(screen.getByRole("button", { name: "Finish setup and view results" }));
+  fireEvent.click(screen.getByRole("button", { name: "Finish and see results" }));
   view.rerender(<OnboardingPage {...props({
     scopeKey: "actor-b", claim: "fixture_report_b",
     evidence: { ...props().evidence!, shareSlug: "fixture_report_b", workspaceId: "workspace-b" },
@@ -100,7 +100,7 @@ it("drops the old workspace draft and ignores its delayed completion after switc
   expect(screen.getByLabelText("Business name")).toHaveValue("Confirmed B");
   await act(async () => { finish(Response.json({ workspaceSlug: "workspace-a" })); });
   expect(navigation.push).not.toHaveBeenCalled();
-  expect(screen.getByRole("button", { name: "Finish setup and view results" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Finish and see results" })).toBeEnabled();
 });
 
 it("bounds same-frame duplicate submit events to one request", async () => {
@@ -116,11 +116,11 @@ it("focuses a failed-save explanation and retains inputs for an explicit retry",
     .mockResolvedValueOnce(Response.json({ workspaceSlug: "workspace-a" }));
   render(<OnboardingPage {...props()} />);
   fireEvent.change(screen.getByLabelText("Business name"), { target: { value: "Retained name" } });
-  fireEvent.click(screen.getByRole("button", { name: "Finish setup and view results" }));
+  fireEvent.click(screen.getByRole("button", { name: "Finish and see results" }));
   const error = await screen.findByRole("alert");
   expect(error).toHaveFocus();
   expect(screen.getByLabelText("Business name")).toHaveValue("Retained name");
-  fireEvent.click(screen.getByRole("button", { name: "Finish setup and view results" }));
+  fireEvent.click(screen.getByRole("button", { name: "Finish and see results" }));
   await waitFor(() => expect(navigation.push).toHaveBeenCalledWith("/en/owner/workspace-a"));
   expect(request).toHaveBeenCalledTimes(2);
 });
@@ -128,9 +128,9 @@ it("focuses a failed-save explanation and retains inputs for an explicit retry",
 it("does not present guessed editable settings after a server read failure", () => {
   render(<OnboardingPage {...props({ saved: null, savedUnavailable: true })} />);
   expect(screen.queryByLabelText("Business name")).not.toBeInTheDocument();
-  expect(screen.getByRole("alert")).toHaveTextContent(/could not read/i);
-  expect(screen.getByRole("link", { name: "Reload settings" })).toHaveAttribute("href", "/en/owner/onboarding?claim=fixture_report_a");
-  expect(screen.queryByRole("button", { name: "Finish setup and view results" })).not.toBeInTheDocument();
+  expect(screen.getByRole("alert")).toHaveTextContent(/couldn.t read/i);
+  expect(screen.getByRole("link", { name: "Try again" })).toHaveAttribute("href", "/en/owner/onboarding?claim=fixture_report_a");
+  expect(screen.queryByRole("button", { name: "Finish and see results" })).not.toBeInTheDocument();
 });
 
 it("initializes recovered settings from persisted business and branch values", async () => {
@@ -139,7 +139,7 @@ it("initializes recovered settings from persisted business and branch values", a
   view.rerender(<OnboardingPage {...props({ saved: { ...saved, locationAddress: "Confirmed address A" } })} />);
   expect(screen.getByLabelText("Business name")).toHaveValue("Confirmed A");
   expect(screen.getByLabelText("Address (optional)")).toHaveValue("Confirmed address A");
-  fireEvent.click(screen.getByRole("button", { name: "Finish setup and view results" }));
+  fireEvent.click(screen.getByRole("button", { name: "Finish and see results" }));
   await waitFor(() => expect(request).toHaveBeenCalledTimes(1));
   expect(JSON.parse(String(request.mock.calls[0][1]?.body))).toMatchObject({
     workspace_name: "Confirmed A",
@@ -158,6 +158,6 @@ it("preserves an unsaved business draft during ordinary same-scope server refres
 it("does not reveal saved brand details or a settings link without ownership", () => {
   render(<OnboardingPage {...props({ ownsWorkspace: false, resumeStep: 4 })} />);
   expect(screen.queryByText("Confirmed fact A")).not.toBeInTheDocument();
-  expect(screen.queryByRole("link", { name: "Open brand settings" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "Open business profile" })).not.toBeInTheDocument();
   expect(screen.queryByLabelText("Business name")).not.toBeInTheDocument();
 });

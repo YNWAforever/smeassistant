@@ -51,14 +51,14 @@ describe("focused onboarding journey", () => {
   it("lets a verified new owner finish from the prefilled essentials without a connection step", async () => {
     request.mockResolvedValue(Response.json({ ok: true, workspaceSlug: "fixture-bakery", locationId: "fixture-location", matchedActionId: null }));
     setup();
-    expect(screen.getByText("Step 2 of 2")).toBeInTheDocument();
+    expect(screen.getByText("Step 3 of 3")).toBeInTheDocument();
     expect(screen.getByLabelText("Business name")).toHaveValue("Fixture Bakery");
     // A district is useful context, but it is not a confirmed street address.
     expect(screen.getByLabelText("Address (optional)")).toHaveValue("");
     expect(screen.queryByLabelText(/Instagram/i)).not.toBeInTheDocument();
     const optional = screen.getByText("More settings (optional)").closest("details");
     expect(optional).not.toHaveAttribute("open");
-    fireEvent.click(screen.getByRole("button", { name: "Finish setup and view results" }));
+    fireEvent.click(screen.getByRole("button", { name: "Finish and see results" }));
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith("/en/owner/fixture-bakery"));
     expect(request).toHaveBeenCalledTimes(1);
     expect(request.mock.calls[0][0]).toBe("/api/workspaces/claim");
@@ -71,12 +71,12 @@ describe("focused onboarding journey", () => {
 
   it("shows verification beside the business and refuses a forged resume step", () => {
     setup({ ownsWorkspace: false, oauthEnabled: true, resumeStep: 4 });
-    expect(screen.getByText("Step 1 of 2")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Verify ownership with Google" })).toHaveAttribute(
+    expect(screen.getByText("Step 2 of 3")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Verify with Google" })).toHaveAttribute(
       "href", "/api/oauth/google/claim/start?slug=fixture_report_123&locale=en",
     );
     expect(screen.getByRole("link", { name: "View scan report" })).toHaveAttribute("href", "/en/r/fixture_report_123");
-    expect(screen.queryByRole("button", { name: "Finish setup and view results" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Finish and see results" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Business name")).not.toBeInTheDocument();
     expect(request).not.toHaveBeenCalled();
   });
@@ -91,14 +91,14 @@ describe("focused onboarding journey", () => {
   it("offers a scan as the next step when there is no report", () => {
     setup({ evidence: null, ownsWorkspace: false });
     expect(within(screen.getByRole("main")).getByRole("link", { name: /Free scan/i })).toHaveAttribute("href", "/en/scan");
-    expect(screen.queryByRole("button", { name: "Finish setup and view results" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Finish and see results" })).not.toBeInTheDocument();
   });
 
   it("keeps the business market when the interface uses a different locale and opens the promised action", async () => {
     request.mockResolvedValue(Response.json({ ok: true, workspaceSlug: "fixture-tw", locationId: "fixture-location", matchedActionId: "fixture-action" }));
     setup({ evidence: { ...evidence, region: "tw" } });
     fireEvent.change(screen.getByLabelText("Business name"), { target: { value: "Confirmed Bakery" } });
-    fireEvent.click(screen.getByRole("button", { name: "Finish setup and view results" }));
+    fireEvent.click(screen.getByRole("button", { name: "Finish and see results" }));
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith("/en/owner/fixture-tw/actions/fixture-action"));
     expect(JSON.parse(String(request.mock.calls[0][1]?.body))).toMatchObject({
       workspace_name: "Confirmed Bakery", primary_location: { name: "Confirmed Bakery", address: null },
@@ -110,7 +110,7 @@ describe("focused onboarding journey", () => {
     request.mockResolvedValue(Response.json({ ok: true, workspaceSlug: "fixture-bakery", locationId: "fixture-location", matchedActionId: null }));
     setup({ saved: { workspaceName: "Bakery Group", locationName: "Central Branch", locationAddress: "12 Fixture Road", voice: "professional", approvedClaims: "Owner confirmed fact", hasLocation: true, brandProfileExists: true, workspaceSlug: "fixture-bakery" } });
     fireEvent.change(screen.getByLabelText("Business name"), { target: { value: "Renamed Group" } });
-    fireEvent.click(screen.getByRole("button", { name: "Finish setup and view results" }));
+    fireEvent.click(screen.getByRole("button", { name: "Finish and see results" }));
     await waitFor(() => expect(navigation.push).toHaveBeenCalled());
     expect(JSON.parse(String(request.mock.calls[0][1]?.body))).toMatchObject({
       workspace_name: "Renamed Group", primary_location: { name: "Central Branch", address: "12 Fixture Road" },
@@ -123,7 +123,7 @@ describe("focused onboarding journey", () => {
     request.mockResolvedValue(Response.json({ ok: true, workspaceSlug: "fixture-bakery", locationId: "fixture-location", matchedActionId: null }));
     setup({ saved: { workspaceName: "Assigned workspace", locationName: null, locationAddress: null, voice: null, approvedClaims: "", hasLocation: false, brandProfileExists: false, workspaceSlug: "fixture-bakery" } });
     fireEvent.change(screen.getByLabelText("Business name"), { target: { value: "Corrected Bakery" } });
-    fireEvent.click(screen.getByRole("button", { name: "Finish setup and view results" }));
+    fireEvent.click(screen.getByRole("button", { name: "Finish and see results" }));
     await waitFor(() => expect(navigation.push).toHaveBeenCalled());
     expect(JSON.parse(String(request.mock.calls[0][1]?.body))).toMatchObject({
       workspace_name: "Corrected Bakery", primary_location: { name: "Corrected Bakery" },
@@ -141,7 +141,7 @@ describe("focused onboarding journey", () => {
     expect(location).toHaveValue("");
     expect(location).toHaveAttribute("placeholder", "Fixture Bakery");
     fireEvent.click(screen.getByText("More settings (optional)"));
-    const finish = screen.getByRole("button", { name: "Finish setup and view results" });
+    const finish = screen.getByRole("button", { name: "Finish and see results" });
     expect(finish).toBeEnabled();
     fireEvent.click(finish);
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith("/en/owner/fixture-bakery"));
@@ -159,7 +159,7 @@ describe("focused onboarding journey", () => {
     expect(location).toHaveValue("Central ");
     fireEvent.change(location, { target: { value: "Central Branch " } });
     expect(location).toHaveValue("Central Branch ");
-    fireEvent.click(screen.getByRole("button", { name: "Finish setup and view results" }));
+    fireEvent.click(screen.getByRole("button", { name: "Finish and see results" }));
     await waitFor(() => expect(navigation.push).toHaveBeenCalled());
     expect(JSON.parse(String(request.mock.calls[0][1]?.body)).primary_location.name).toBe("Central Branch");
   });
@@ -169,11 +169,11 @@ describe("focused onboarding journey", () => {
       .mockResolvedValueOnce(Response.json({ ok: true, workspaceSlug: "fixture-bakery", locationId: "fixture-location", matchedActionId: null }));
     setup();
     fireEvent.change(screen.getByLabelText("Address (optional)"), { target: { value: "12 Fixture Road" } });
-    fireEvent.click(screen.getByRole("button", { name: "Finish setup and view results" }));
+    fireEvent.click(screen.getByRole("button", { name: "Finish and see results" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/Network error/i);
     expect(screen.getByLabelText("Address (optional)")).toHaveValue("12 Fixture Road");
     expect(navigation.push).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Finish setup and view results" }));
+    fireEvent.click(screen.getByRole("button", { name: "Finish and see results" }));
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith("/en/owner/fixture-bakery"));
     expect(request).toHaveBeenCalledTimes(2);
     expect(JSON.parse(String(request.mock.calls[1][1]?.body)).primary_location.address).toBe("12 Fixture Road");
@@ -182,8 +182,8 @@ describe("focused onboarding journey", () => {
   it("does not treat an incomplete success response as a usable result", async () => {
     request.mockResolvedValue(Response.json({ ok: true }));
     setup();
-    fireEvent.click(screen.getByRole("button", { name: "Finish setup and view results" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(/Could not open your results/i);
+    fireEvent.click(screen.getByRole("button", { name: "Finish and see results" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/couldn.t open your results/i);
     expect(navigation.push).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Business name")).toHaveValue("Fixture Bakery");
   });
@@ -192,7 +192,7 @@ describe("focused onboarding journey", () => {
     let finish!: (response: Response) => void;
     request.mockImplementation(() => new Promise<Response>((resolve) => { finish = resolve; }));
     setup();
-    fireEvent.click(screen.getByRole("button", { name: "Finish setup and view results" }));
+    fireEvent.click(screen.getByRole("button", { name: "Finish and see results" }));
     const saving = screen.getByRole("button", { name: "Saving…" });
     expect(saving).toBeDisabled();
     fireEvent.click(saving);

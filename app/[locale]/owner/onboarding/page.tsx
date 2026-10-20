@@ -22,12 +22,11 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const locale = normaliseLocale((await params).locale);
-  const isChinese = locale !== "en";
   return {
     ...publicMetadata({
       locale,
       path: "/owner/onboarding",
-      title: isChinese ? "設定工作台" : "Set up your workspace",
+      title: copy[locale].onboarding.title,
       description: copy[locale].funnel.trust.intro,
     }),
     robots: { index: false, follow: false },
@@ -47,12 +46,12 @@ function text(...values: unknown[]): string | null {
  * already shows on `/r/[slug]`, nothing owner-only. Read with the service role
  * after `requireUser`; a bad or unknown slug simply yields no evidence.
  */
-async function loadClaimEvidence(slug: string): Promise<ClaimEvidence | null> {
+async function loadClaimEvidence(slug: string): Promise<ClaimEvidence | null | "failed"> {
   let data:ClaimJob|null;
   try { data = await claimsRepository.jobBySlug(slug); }
   catch {
     console.error("[onboarding] claim evidence lookup failed", {category:"workspace_query_failed"});
-    return null;
+    return "failed";
   }
   if (!data) return null;
   const snapshot = data.input_snapshot ?? {};
@@ -69,12 +68,16 @@ async function loadClaimEvidence(slug: string): Promise<ClaimEvidence | null> {
   };
 }
 
-/** Accepted owner row for this user on the job's workspace — the only thing that unlocks setup. */
-async function ownsWorkspace(userId: string, workspaceId: string): Promise<boolean> {
+/**
+ * Accepted owner row for this user on the job's workspace — the only thing that
+ * unlocks setup. A failed read is "failed", not "not the owner", so the page
+ * can say so instead of asking a verified owner to verify again.
+ */
+async function ownsWorkspace(userId: string, workspaceId: string): Promise<boolean | "failed"> {
   try { return (await membershipRepository.accepted(userId,workspaceId))?.role === "owner"; }
   catch {
     console.error("[onboarding] ownership lookup failed",{category:"workspace_query_failed"});
-    return false;
+    return "failed";
   }
 }
 
@@ -136,8 +139,11 @@ export default async function OwnerOnboarding({
   const returnTo = `/${locale}/owner/onboarding${search.size ? `?${search.toString()}` : ""}`;
   const user = await requireUser(locale, returnTo);
 
-  const evidence = claim ? await loadClaimEvidence(claim) : null;
-  const owned = evidence?.workspaceId ? await ownsWorkspace(user.id, evidence.workspaceId) : false;
+  const evidenceRead = claim ? await loadClaimEvidence(claim) : null;
+  const evidence = evidenceRead === "failed" ? null : evidenceRead;
+  const ownedRead = evidence?.workspaceId ? await ownsWorkspace(user.id, evidence.workspaceId) : false;
+  const owned = ownedRead === true;
+  const lookupFailed = evidenceRead === "failed" || ownedRead === "failed";
   const [gbpConnected, saved] = owned && evidence?.workspaceId
     ? await Promise.all([hasActiveGbpConnection(evidence.workspaceId), loadSavedSetup(evidence.workspaceId)])
     : [false, null];
@@ -171,8 +177,8 @@ export default async function OwnerOnboarding({
     }) : null;
   const accessRequest = requestUnavailable ? (
     <div role="alert">
-      <p>{locale === "en" ? "We could not read this report's application status. Please reload before applying." : locale === "zh-TW" ? "目前無法讀取這份報告的申請狀態，請重新載入後再申請。" : "暫時未能讀取這份報告的申請狀態，請重新載入後再申請。"}</p>
-      <a href={returnTo}>{locale === "en" ? "Try again" : "重新載入"}</a>
+      <p>{copy[locale].onboarding.errors.requestStatus}</p>
+      <a href={returnTo}>{copy[locale].onboarding.errors.reload}</a>
     </div>
   ) : myRequest ? (
     <AccessRequestStatus
@@ -199,6 +205,7 @@ export default async function OwnerOnboarding({
       evidence={evidence}
       ownsWorkspace={owned}
       gbpConnected={gbpConnected}
+      lookupFailed={lookupFailed}
     />
   );
 }
