@@ -65,7 +65,7 @@ export default async function ActionsRoute(props: OwnerPageProps) {
   try { result = await listActions(page.ctx, filters); }
   catch (error) {
     if (!(error instanceof Error) || !["invalid_action_cursor", "invalid_action_page_size", "invalid_action_filter"].includes(error.message)) throw error;
-    return <div role="alert"><p>{page.locale === "en" ? "This page link is invalid or its filters have changed. Refresh the list." : "此頁連結無效或篩選條件已變更，請重新載入清單。"}</p><a href={`/${page.locale}/owner/${page.workspaceSlug}/actions`}>{page.locale === "en" ? "Refresh list" : "重新載入清單"}</a></div>;
+    return <div role="alert"><p>{copy[page.locale].workspaceActions.actionsList.thisPageLinkIs}</p><a href={`/${page.locale}/owner/${page.workspaceSlug}/actions`}>{copy[page.locale].workspaceActions.actionsList.refreshList}</a></div>;
   }
   // ?open=id: the action's detail beside the list (wide screens). The same loader as the full
   // page, so it carries the same membership and location checks; an unknown id shows no panel.

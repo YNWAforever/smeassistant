@@ -10,7 +10,7 @@ import { LocationSelect } from "@/components/workspace/location-select"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { comparisonReasonText, findingLabel, formatDay, metricLabel, scorePercent, signed, withLocation } from "@/lib/workspace/format"
 import type { InsightsModel } from "@/lib/workspace/queries-pages"
-import { zhFor } from "@/lib/zh-tw"
+import { fill } from "@/lib/copy-ui"
 
 export interface InsightsViewProps {
   locale: PrototypeLocale
@@ -29,15 +29,15 @@ const reasonText = comparisonReasonText
  * across it (CLAUDE.md Phase 3 item 4 "no line across gaps").
  */
 function SeriesStrip({ model, locale, timezone }: { model: InsightsModel; locale: PrototypeLocale; timezone: string }) {
-  const isChinese = locale !== "en"
+  const pc = copy[locale].workspaceHome.insights
   return (
-    <ol className="trend-strip" aria-label={isChinese ? "能見度評分序列" : "Visibility score series"}>
+    <ol className="trend-strip" aria-label={pc.visibilityScoreSeries}>
       {model.series.map((point, index) => (
         <li key={point.snapshotId} className={point.comparable || index === 0 ? "is-linked" : "is-gap"}>
           <strong>{point.score === null ? "—" : Math.round(point.score)}</strong>
           <small>{formatDay(point.observedAt, locale, timezone)}</small>
           <span>{scorePercent(point.coverage)}%</span>
-          {index > 0 && !point.comparable && <em>{isChinese ? "缺口" : "gap"}</em>}
+          {index > 0 && !point.comparable && <em>{pc.gap}</em>}
         </li>
       ))}
     </ol>
@@ -46,6 +46,7 @@ function SeriesStrip({ model, locale, timezone }: { model: InsightsModel; locale
 
 export function InsightsView({ locale, workspaceSlug, timezone, locations, model }: InsightsViewProps) {
   const isChinese = locale !== "en"
+  const pc = copy[locale].workspaceHome.insights
   const base = `/${locale}/owner/${workspaceSlug}`
   const isAll = model.locationSlug === "all"
   const head = model.series.at(-1) ?? null
@@ -54,17 +55,17 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
   const delta = comparable ? trend.delta : null
   return (
     <div className="insights-page">
-      <PageIntro eyebrow={isChinese ? "可比較變化及成果證據" : "Comparable change and outcome evidence"} title={isChinese ? "成效" : "Insights"} description={isChinese ? "把已觀察事實、可能相關的變化與仍未知的結果分開，避免用單一分數製造虛假把握。" : "Observed facts, possibly related changes and unknown outcomes stay separate."} actions={<LocationSelect locale={locale} value={model.locationSlug} locations={locations} className="location-select" ariaLabel={isChinese ? zhFor(locale, "選擇成效地點") : "Choose insights location"} />} />
-      {isAll && <div className="request-context-banner"><ShieldCheck /><div><strong>{isChinese ? "不製造合併平均分" : "No invented aggregate score"}</strong><span>{isChinese ? zhFor(locale, "不同地點的來源覆蓋與掃描日期不一致，因此先逐店呈現，待各店都有可比較掃描才顯示合併趨勢。") : "Locations have different coverage and scan dates, so they remain separate until each has comparable scans."}</span></div></div>}
+      <PageIntro eyebrow={pc.comparableChangeAndOutcome} title={copy[locale].shell.nav.insights} description={pc.observedFactsPossiblyRelated} actions={<LocationSelect locale={locale} value={model.locationSlug} locations={locations} className="location-select" ariaLabel={pc.chooseInsightsLocation} />} />
+      {isAll && <div className="request-context-banner"><ShieldCheck /><div><strong>{pc.noInventedAggregateScore}</strong><span>{pc.locationsHaveDifferentCoverage}</span></div></div>}
       {isAll ? (
         <div className="location-proof-grid">
           {model.perLocation.map((row) => (
             <SectionCard key={row.location.id}>
               <p className="eyebrow">{row.location.name}</p>
               <h2>{row.score === null ? "—" : Math.round(row.score)} <small>/ 100</small></h2>
-              <p>{row.coverage === null ? (isChinese ? "尚未有掃描" : "No scan yet") : `${isChinese ? zhFor(locale, "覆蓋率") : "Coverage"} ${scorePercent(row.coverage)}% · ${row.comparable ? (isChinese ? "可比較" : "Comparable") : (isChinese ? "尚需一次可比較掃描" : "One more comparable scan required")}`}</p>
-              <Badge variant="outline">{row.comparable ? <CheckCircle2 /> : <CircleDashed />} {row.comparable ? (isChinese ? "有趨勢" : "Trend available") : (isChinese ? "暫無趨勢" : "No trend yet")}</Badge>
-              <Link href={withLocation(`${base}/insights`, row.location.slug)}>{isChinese ? zhFor(locale, "查看地點") : "Open location"} <ArrowRight /></Link>
+              <p>{row.coverage === null ? pc.noScanYet : `${copy[locale].common.coverage} ${scorePercent(row.coverage)}% · ${row.comparable ? pc.comparable : pc.oneMoreComparableScan}`}</p>
+              <Badge variant="outline">{row.comparable ? <CheckCircle2 /> : <CircleDashed />} {row.comparable ? pc.trendAvailable : pc.noTrendYet}</Badge>
+              <Link href={withLocation(`${base}/insights`, row.location.slug)}>{pc.openLocation} <ArrowRight /></Link>
             </SectionCard>
           ))}
         </div>
@@ -72,25 +73,25 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
         <EmptyState locale={locale} kind="noData" title={copy[locale].shell.empty.insights.title} body={copy[locale].shell.empty.insights.body} action={<Button asChild variant="outline" className="min-h-11"><Link href={withLocation(base, model.locationSlug)}>{copy[locale].shell.empty.insights.action}</Link></Button>} />
       ) : (
         <>
-          {!comparable && <SectionCard className="no-comparable-card"><CircleDashed /><div><p className="eyebrow">{isChinese ? "暫無可比較掃描" : "No comparable scan yet"}</p><h2>{reasonText(trend.reasonCode, isChinese)}</h2><p>{isChinese ? zhFor(locale, "符合資格前不顯示趨勢；分數與覆蓋率仍按每次掃描如實列出。") : "No trend is shown until eligibility is met; each scan's score and coverage are still listed honestly."}</p></div></SectionCard>}
+          {!comparable && <SectionCard className="no-comparable-card"><CircleDashed /><div><p className="eyebrow">{pc.noComparableScanYet}</p><h2>{reasonText(trend.reasonCode, isChinese)}</h2><p>{pc.noTrendIsShown}</p></div></SectionCard>}
           <div className="insight-summary-grid">
-            <SectionCard className="insight-stat"><TrendIcon delta={comparable ? delta : null} /><span>{isChinese ? "能見度評分" : "Visibility score"}</span><strong>{signed(delta)}</strong><small>{comparable && trend.base !== null && trend.head !== null ? `${Math.round(trend.base)} → ${Math.round(trend.head)} · ${isChinese ? "可比較" : "comparable"}` : reasonText(trend.reasonCode, isChinese)}</small></SectionCard>
-            <SectionCard className="insight-stat"><CheckCircle2 /><span>{isChinese ? "已解決問題" : "Resolved findings"}</span><strong>{model.ledgerComparable ? model.ledger.resolved.length : "—"}</strong><small>{model.ledgerComparable ? (isChinese ? "跨兩次符合資格掃描" : "Across eligible scans") : copy[locale].home.noComparable}</small></SectionCard>
-            <SectionCard className="insight-stat"><TrendingDown /><span>{isChinese ? "新退步" : "Regressed findings"}</span><strong>{model.ledgerComparable ? model.ledger.regressed.length : "—"}</strong><small>{model.ledgerComparable ? (isChinese ? "最新可比較掃描" : "Latest comparable scan") : copy[locale].home.noComparable}</small></SectionCard>
-            <SectionCard className="insight-stat"><CircleDashed /><span>{isChinese ? zhFor(locale, "覆蓋率") : "Coverage"}</span><strong>{scorePercent(head.coverage)}%</strong><small>{isChinese ? zhFor(locale, "未量度來源不當作零分") : "Unmeasured sources are not zero"}</small></SectionCard>
+            <SectionCard className="insight-stat"><TrendIcon delta={comparable ? delta : null} /><span>{pc.visibilityScore}</span><strong>{signed(delta)}</strong><small>{comparable && trend.base !== null && trend.head !== null ? `${Math.round(trend.base)} → ${Math.round(trend.head)} · ${pc.comparableSuffix}` : reasonText(trend.reasonCode, isChinese)}</small></SectionCard>
+            <SectionCard className="insight-stat"><CheckCircle2 /><span>{pc.resolvedFindings}</span><strong>{model.ledgerComparable ? model.ledger.resolved.length : "—"}</strong><small>{model.ledgerComparable ? pc.acrossEligibleScans : copy[locale].home.noComparable}</small></SectionCard>
+            <SectionCard className="insight-stat"><TrendingDown /><span>{pc.regressedFindings}</span><strong>{model.ledgerComparable ? model.ledger.regressed.length : "—"}</strong><small>{model.ledgerComparable ? pc.latestComparableScan : copy[locale].home.noComparable}</small></SectionCard>
+            <SectionCard className="insight-stat"><CircleDashed /><span>{copy[locale].common.coverage}</span><strong>{scorePercent(head.coverage)}%</strong><small>{pc.unmeasuredSourcesAreNot}</small></SectionCard>
           </div>
           <SectionCard className="trend-card">
-            <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? zhFor(locale, "整體能見度及覆蓋率") : "Visibility and coverage"}</p><h2>{isChinese ? `${model.series.length} 次掃描的能見度評分` : `Visibility score across ${model.series.length} ${model.series.length === 1 ? "scan" : "scans"}`}</h2></div><Badge variant="outline">{isChinese ? "不跨越證據缺口" : "No line across evidence gaps"}</Badge></div>
+            <div className="section-card-heading"><div><p className="eyebrow">{pc.visibilityAndCoverage}</p><h2>{fill(model.series.length === 1 ? pc.scoreAcrossOne : pc.scoreAcrossMany, { scans: model.series.length })}</h2></div><Badge variant="outline">{pc.noLineAcrossEvidence}</Badge></div>
             <SeriesStrip model={model} locale={locale} timezone={timezone} />
             <Table>
-              <TableCaption>{isChinese ? "無障礙資料表：圖表的相同數據" : "Accessible data table for the same series"}</TableCaption>
-              <TableHeader><TableRow><TableHead>{isChinese ? "掃描日期" : "Scan date"}</TableHead><TableHead>{isChinese ? "評分" : "Score"}</TableHead><TableHead>{isChinese ? zhFor(locale, "覆蓋率") : "Coverage"}</TableHead><TableHead>{isChinese ? "比較資格" : "Eligibility"}</TableHead></TableRow></TableHeader>
-              <TableBody>{model.series.map((point) => <TableRow key={point.snapshotId}><TableCell>{formatDay(point.observedAt, locale, timezone)}</TableCell><TableCell>{point.score === null ? (isChinese ? "暫不顯示" : "Withheld") : Math.round(point.score)}</TableCell><TableCell>{scorePercent(point.coverage)}%</TableCell><TableCell>{point.comparable ? (isChinese ? "可比較" : "Comparable") : reasonText(point.incomparableReason, isChinese)}</TableCell></TableRow>)}</TableBody>
+              <TableCaption>{pc.accessibleDataTableFor}</TableCaption>
+              <TableHeader><TableRow><TableHead>{pc.scanDate}</TableHead><TableHead>{pc.score}</TableHead><TableHead>{copy[locale].common.coverage}</TableHead><TableHead>{pc.eligibility}</TableHead></TableRow></TableHeader>
+              <TableBody>{model.series.map((point) => <TableRow key={point.snapshotId}><TableCell>{formatDay(point.observedAt, locale, timezone)}</TableCell><TableCell>{point.score === null ? pc.withheld : Math.round(point.score)}</TableCell><TableCell>{scorePercent(point.coverage)}%</TableCell><TableCell>{point.comparable ? pc.comparable : reasonText(point.incomparableReason, isChinese)}</TableCell></TableRow>)}</TableBody>
             </Table>
           </SectionCard>
           <div className="before-after-grid">
             {model.metricCards.map((card) => (
-              <SectionCard key={card.metricKey} className="metric-change-card"><FactType type={card.factType} /><p className="eyebrow">{metricLabel(card.metricKey, locale)}</p><h2>{card.after === null ? "—" : card.after}{card.delta !== null && <small> {signed(card.delta, 1)}</small>}</h2><p>{card.before !== null && card.factType !== "Unknown" ? `${isChinese ? "由" : "From"} ${card.before} · ${formatDay(card.observedAt, locale, timezone)}` : (isChinese ? "沒有可比較的前值" : "No comparable earlier value")}</p></SectionCard>
+              <SectionCard key={card.metricKey} className="metric-change-card"><FactType type={card.factType} /><p className="eyebrow">{metricLabel(card.metricKey, locale)}</p><h2>{card.after === null ? "—" : card.after}{card.delta !== null && <small> {signed(card.delta, 1)}</small>}</h2><p>{card.before !== null && card.factType !== "Unknown" ? `${pc.from} ${card.before} · ${formatDay(card.observedAt, locale, timezone)}` : pc.noComparableEarlierValue}</p></SectionCard>
             ))}
           </div>
           {/* This card used to join every percentage with arrows and nothing
@@ -100,34 +101,34 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
               because an ambiguity retry added a second probe that scan, and two
               points three months apart reading as consecutive because the scan
               between them errored and was silently dropped. */}
-          {model.aeoTrend.surfaces.some((s) => s.points.length > 0) && <SectionCard className="surface-trend-card"><div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "搜尋及 AI 介面" : "Search and AI surfaces"}</p><h2>{isChinese ? "被引用比率" : "Presence rate"}</h2></div><FactType type="Observed" /></div>
+          {model.aeoTrend.surfaces.some((s) => s.points.length > 0) && <SectionCard className="surface-trend-card"><div className="section-card-heading"><div><p className="eyebrow">{pc.searchAndAiSurfaces}</p><h2>{pc.presenceRate}</h2></div><FactType type="Observed" /></div>
             <ul className="evidence-list">{model.aeoTrend.surfaces.filter((s) => s.points.length > 0).map((surface) => (
               <li key={surface.surface}>
                 <Badge variant="outline">{metricLabel(`aeo.${surface.surface}_presence_rate`, locale)}</Badge>
                 <span>
                   <strong>{Math.round((surface.points.at(-1)?.presenceRate ?? 0) * 100)}%</strong>
-                  <small>{surface.points.map((point) => `${formatDay(point.capturedAt, locale, timezone)}: ${point.cited}/${point.total}${point.skippedScans > 0 ? (isChinese ? zhFor(locale, `（前有 ${point.skippedScans} 次未量度）`) : ` (after ${point.skippedScans} unmeasured)`) : ""}`).join(" · ")}</small>
+                  <small>{surface.points.map((point) => `${formatDay(point.capturedAt, locale, timezone)}: ${point.cited}/${point.total}${point.skippedScans > 0 ? (fill(pc.afterUnmeasured, { skippedScans: point.skippedScans })) : ""}`).join(" · ")}</small>
                 </span>
               </li>
             ))}</ul>
-            <p className="limitation-note">{isChinese ? zhFor(locale, "分母是該次掃描實際取得結果的查詢數，並非計劃查詢數；不同掃描可能不同，所以百分比之間未必可直接比較。未量度的掃描不會當作 0%。") : "The denominator is the queries that returned a usable result in that scan, not the queries planned, and it can differ between scans — so the percentages are not always comparable to each other. A scan that measured nothing is never counted as 0%."}</p>
+            <p className="limitation-note">{pc.theDenominatorIsThe}</p>
           </SectionCard>}
-          {(model.ledger.resolved.length > 0 || model.ledger.regressed.length > 0 || model.ledger.decayed.length > 0) && <SectionCard className="change-ledger-card"><div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "變化紀錄" : "Change ledger"}</p><h2>{isChinese ? "已解決、退步及時間推移" : "Resolved, regressed and decayed"}</h2></div></div><ul className="evidence-list">{model.ledger.resolved.map((k) => <li key={`r${k}`}><Badge variant="outline">{isChinese ? "已解決" : "Resolved"}</Badge><span><strong>{findingLabel(k, locale)}</strong></span></li>)}{model.ledger.regressed.map((k) => <li key={`g${k}`}><Badge variant="outline">{isChinese ? "退步" : "Regressed"}</Badge><span><strong>{findingLabel(k, locale)}</strong></span></li>)}{model.ledger.decayed.map((k) => <li key={`d${k}`}><Badge variant="outline">{isChinese ? "時間推移" : "Decayed"}</Badge><span><strong>{findingLabel(k, locale)}</strong></span></li>)}</ul></SectionCard>}
+          {(model.ledger.resolved.length > 0 || model.ledger.regressed.length > 0 || model.ledger.decayed.length > 0) && <SectionCard className="change-ledger-card"><div className="section-card-heading"><div><p className="eyebrow">{pc.changeLedger}</p><h2>{pc.resolvedRegressedAndDecayed}</h2></div></div><ul className="evidence-list">{model.ledger.resolved.map((k) => <li key={`r${k}`}><Badge variant="outline">{pc.resolved}</Badge><span><strong>{findingLabel(k, locale)}</strong></span></li>)}{model.ledger.regressed.map((k) => <li key={`g${k}`}><Badge variant="outline">{pc.regressed}</Badge><span><strong>{findingLabel(k, locale)}</strong></span></li>)}{model.ledger.decayed.map((k) => <li key={`d${k}`}><Badge variant="outline">{pc.decayed}</Badge><span><strong>{findingLabel(k, locale)}</strong></span></li>)}</ul></SectionCard>}
           {/* P2.1 item 7: the approved/exported WORK itself, not only the
               scores and checks it produced -- deliveries was never read
               anywhere before this. */}
           {model.deliveries.length > 0 && (
             <SectionCard className="delivered-work-card">
-              <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "已核准並送出的工作" : "Approved and exported work"}</p><h2>{isChinese ? "最近送出的內容" : "Recently delivered"}</h2></div></div>
+              <div className="section-card-heading"><div><p className="eyebrow">{pc.approvedAndExportedWork}</p><h2>{pc.recentlyDelivered}</h2></div></div>
               <Table>
-                <TableCaption className="sr-only">{isChinese ? "已核准並送出的內容列表" : "Approved and exported content"}</TableCaption>
-                <TableHeader><TableRow><TableHead>{isChinese ? "行動" : "Action"}</TableHead><TableHead>{isChinese ? "版本" : "Version"}</TableHead><TableHead>{isChinese ? "方式" : "Mode"}</TableHead><TableHead>{isChinese ? "送出時間" : "Delivered"}</TableHead></TableRow></TableHeader>
+                <TableCaption className="sr-only">{pc.approvedAndExportedContent}</TableCaption>
+                <TableHeader><TableRow><TableHead>{pc.action}</TableHead><TableHead>{pc.version}</TableHead><TableHead>{pc.mode}</TableHead><TableHead>{pc.delivered}</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {model.deliveries.map((row) => (
                     <TableRow key={`${row.action_id}-${row.version_no}`}>
                       <TableCell><Link href={withLocation(`${base}/actions/${row.action_id}`, model.locationSlug)}>{row.title[locale] ?? row.title.en}</Link></TableCell>
-                      <TableCell>{isChinese ? `第 ${row.version_no} 版` : `v${row.version_no}`}</TableCell>
-                      <TableCell>{row.mode === "export" ? (isChinese ? "匯出" : "Export") : row.mode === "copy" ? (isChinese ? "複製" : "Copy") : (isChinese ? "發佈" : "Publish")}{row.channel ? ` · ${row.channel}` : ""}</TableCell>
+                      <TableCell>{fill(pc.versionShort, { version_no: row.version_no })}</TableCell>
+                      <TableCell>{row.mode === "export" ? (copy[locale].ui.visual.feedback.export) : row.mode === "copy" ? pc.copy : pc.publish}{row.channel ? ` · ${row.channel}` : ""}</TableCell>
                       <TableCell>{formatDay(row.delivered_at, locale, timezone)}</TableCell>
                     </TableRow>
                   ))}
