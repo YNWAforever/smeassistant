@@ -441,6 +441,8 @@ export type Copy = {
     noLocationBody: string
     noLocationCta: string
     month: string
+    /** Shown in place of a count when no comparable scan exists: unknown, never 0. */
+    noComparable: string
   }
   ownerFocus: {
     why: string

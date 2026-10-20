@@ -8,8 +8,8 @@ import { reportsRepository } from "@/lib/repositories/reports";
 
 /**
  * Ported verbatim from upstream `apps/web/app/[locale]/r/[slug]/opengraph-image.tsx`
- * → `@sme-scanner/contracts`). It reads the legacy `module_scores` column, not
- * `module_results`, because the share card predates the coverage-aware payload.
+ * → `@sme-scanner/contracts`). Module chips come from `module_results` (legacy
+ * rows fall back to `module_scores`); an unmeasured module gets no chip, never 0.
  *
  * The page itself is `noindex` (see page.tsx); this card exists for deliberate
  * link shares, which noindex does not govern.

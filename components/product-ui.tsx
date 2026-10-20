@@ -13,10 +13,13 @@ import {
   Home,
   LockKeyhole,
   Menu,
+  Minus,
   MoreHorizontal,
   PlusCircle,
   ShieldCheck,
   Sparkles,
+  TrendingDown,
+  TrendingUp,
   X,
 } from "lucide-react"
 import { useEffect, type ReactNode } from "react"
@@ -293,6 +296,12 @@ export function PageIntro({ eyebrow, title, description, actions }: { eyebrow?: 
       {actions && <div className="page-intro-actions">{actions}</div>}
     </header>
   )
+}
+
+/** Direction glyph for a change. No comparable change (null) or no movement is flat, never an up-trend. */
+export function TrendIcon({ delta }: { delta: number | null }) {
+  if (delta === null || delta === 0 || !Number.isFinite(delta)) return <Minus aria-hidden="true" data-trend="flat" />
+  return delta < 0 ? <TrendingDown aria-hidden="true" data-trend="down" /> : <TrendingUp aria-hidden="true" data-trend="up" />
 }
 
 export function FactType({ type }: { type: "Observed" | "Inference" | "Recommended" | "Attributed" | "Estimated" | "Unknown" }) {

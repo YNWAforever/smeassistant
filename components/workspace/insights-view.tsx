@@ -1,11 +1,11 @@
 import Link from "next/link"
-import { ArrowRight, CheckCircle2, CircleDashed, ShieldCheck, TrendingDown, TrendingUp } from "lucide-react"
+import { ArrowRight, CheckCircle2, CircleDashed, ShieldCheck, TrendingDown } from "lucide-react"
 
-import { FactType, PageIntro, SectionCard } from "@/components/product-ui"
+import { FactType, PageIntro, SectionCard, TrendIcon } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { LocationSelect } from "@/components/workspace/location-select"
-import type { PrototypeLocale } from "@/lib/copy"
+import { copy, type PrototypeLocale } from "@/lib/copy"
 import { comparisonReasonText, findingLabel, formatDay, metricLabel, scorePercent, signed, withLocation } from "@/lib/workspace/format"
 import type { InsightsModel } from "@/lib/workspace/queries-pages"
 import { zhFor } from "@/lib/zh-tw"
@@ -72,9 +72,9 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
         <>
           {!comparable && <SectionCard className="no-comparable-card"><CircleDashed /><div><p className="eyebrow">{isChinese ? "暫無可比較掃描" : "No comparable scan yet"}</p><h2>{reasonText(trend.reasonCode, isChinese)}</h2><p>{isChinese ? zhFor(locale, "符合資格前不顯示趨勢；分數與覆蓋率仍按每次掃描如實列出。") : "No trend is shown until eligibility is met; each scan's score and coverage are still listed honestly."}</p></div></SectionCard>}
           <div className="insight-summary-grid">
-            <SectionCard className="insight-stat">{delta !== null && delta < 0 ? <TrendingDown /> : <TrendingUp />}<span>{isChinese ? "能見度評分" : "Visibility score"}</span><strong>{signed(delta)}</strong><small>{comparable && trend.base !== null && trend.head !== null ? `${Math.round(trend.base)} → ${Math.round(trend.head)} · ${isChinese ? "可比較" : "comparable"}` : reasonText(trend.reasonCode, isChinese)}</small></SectionCard>
-            <SectionCard className="insight-stat"><CheckCircle2 /><span>{isChinese ? "已解決問題" : "Resolved findings"}</span><strong>{model.ledger.resolved.length}</strong><small>{isChinese ? "跨兩次符合資格掃描" : "Across eligible scans"}</small></SectionCard>
-            <SectionCard className="insight-stat"><TrendingDown /><span>{isChinese ? "新退步" : "Regressed findings"}</span><strong>{model.ledger.regressed.length}</strong><small>{isChinese ? "最新可比較掃描" : "Latest comparable scan"}</small></SectionCard>
+            <SectionCard className="insight-stat"><TrendIcon delta={comparable ? delta : null} /><span>{isChinese ? "能見度評分" : "Visibility score"}</span><strong>{signed(delta)}</strong><small>{comparable && trend.base !== null && trend.head !== null ? `${Math.round(trend.base)} → ${Math.round(trend.head)} · ${isChinese ? "可比較" : "comparable"}` : reasonText(trend.reasonCode, isChinese)}</small></SectionCard>
+            <SectionCard className="insight-stat"><CheckCircle2 /><span>{isChinese ? "已解決問題" : "Resolved findings"}</span><strong>{model.ledgerComparable ? model.ledger.resolved.length : "—"}</strong><small>{model.ledgerComparable ? (isChinese ? "跨兩次符合資格掃描" : "Across eligible scans") : copy[locale].home.noComparable}</small></SectionCard>
+            <SectionCard className="insight-stat"><TrendingDown /><span>{isChinese ? "新退步" : "Regressed findings"}</span><strong>{model.ledgerComparable ? model.ledger.regressed.length : "—"}</strong><small>{model.ledgerComparable ? (isChinese ? "最新可比較掃描" : "Latest comparable scan") : copy[locale].home.noComparable}</small></SectionCard>
             <SectionCard className="insight-stat"><CircleDashed /><span>{isChinese ? zhFor(locale, "覆蓋率") : "Coverage"}</span><strong>{scorePercent(head.coverage)}%</strong><small>{isChinese ? zhFor(locale, "未量度來源不當作零分") : "Unmeasured sources are not zero"}</small></SectionCard>
           </div>
           <SectionCard className="trend-card">

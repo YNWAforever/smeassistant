@@ -95,6 +95,41 @@ describe("buildShareCardData", () => {
       ],
     });
   });
+  it("leaves unmeasured modules off the card instead of showing 0", () => {
+    const data = buildShareCardData({
+      business_name: "Kam Man",
+      overall_score: 62,
+      module_scores: { gbp: { score: 72 }, aeo: { score: 47 } },
+      module_results: {
+        ig: { status: "unavailable", score: null, confidence: "low", evidenceCollectedAt: null, limitationCode: "IG_HANDLE_NOT_PROVIDED" },
+        gbp: { status: "measured", score: 72.4, confidence: "medium", evidenceCollectedAt: null, limitationCode: null },
+        aeo: { status: "measured", score: 47, confidence: "medium", evidenceCollectedAt: null, limitationCode: null },
+      },
+    });
+    expect(data.modules).toEqual([{ key: "gbp", score: 72 }, { key: "aeo", score: 47 }]);
+  });
+  it("prefers module_results over a legacy module score for a module that was not measured", () => {
+    const data = buildShareCardData({
+      business_name: "X",
+      overall_score: 50,
+      module_scores: { ig: { score: 0 } },
+      module_results: { ig: { status: "failed", score: null, confidence: "low", evidenceCollectedAt: null, limitationCode: null } },
+    });
+    expect(data.modules).toEqual([]);
+  });
+  it("falls back to module_scores for a module that module_results omits", () => {
+    const data = buildShareCardData({
+      business_name: "X",
+      overall_score: 60,
+      module_scores: { ig: { score: 0 }, gbp: { score: 70 } },
+      module_results: { ig: { status: "unavailable", score: null, confidence: "none", evidenceCollectedAt: null, limitationCode: null } },
+    });
+    expect(data.modules).toEqual([{ key: "gbp", score: 70 }]);
+  });
+  it("skips a legacy module with no numeric score", () => {
+    const data = buildShareCardData({ business_name: "X", overall_score: 50, module_scores: { gbp: { score: 70 } } });
+    expect(data.modules).toEqual([{ key: "gbp", score: 70 }]);
+  });
   it("returns a fallback card when job is null", () => {
     expect(buildShareCardData(null).found).toBe(false);
   });

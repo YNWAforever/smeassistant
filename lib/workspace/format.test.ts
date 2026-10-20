@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { basisLabel, buildExportText, comparisonReasonText, ordinal } from "./format";
+import { basisLabel, buildExportText, comparisonReasonText, numericOrNull, ordinal, signed } from "./format";
 
 describe("ordinal", () => {
   it("covers every day a monthly cadence can fall on", () => {
@@ -112,5 +112,20 @@ describe("buildExportText", () => {
   it("localizes the instructions and disclaimer in zh-HK and zh-TW", () => {
     expect(buildExportText({ ...base, templateKey: "website-basics", locale: "zh-HK" })).toContain("網站編輯器");
     expect(buildExportText({ ...base, templateKey: "website-basics", locale: "zh-TW" })).toContain("網站編輯器");
+  });
+});
+
+describe("numericOrNull", () => {
+  it("keeps a missing value unknown instead of coercing it to 0", () => {
+    expect(numericOrNull(null)).toBeNull();
+    expect(numericOrNull(undefined)).toBeNull();
+    expect(numericOrNull("")).toBeNull();
+    expect(numericOrNull("not a number")).toBeNull();
+    expect(signed(numericOrNull(null), 1)).toBe("—");
+  });
+  it("parses Postgres numerics and keeps a real zero", () => {
+    expect(numericOrNull("40.5")).toBe(40.5);
+    expect(numericOrNull(0)).toBe(0);
+    expect(signed(numericOrNull("-11"), 1)).toBe("-11");
   });
 });

@@ -222,6 +222,11 @@ describe("getHomeBrief", () => {
     state.diffs.d1 = { id: "d1", comparable: false, incomparable_reason: "SCORING_VERSION_MISMATCH", composite_withheld_reason: null, composite_base: 66, composite_head: 62, composite_delta: -4, resolved_findings: [], regressed_findings: [], decayed_findings: [] };
     const brief = await getHomeBrief(ctx, "yik-yam");
     expect(repository.diff).toHaveBeenCalledWith("d1", "ws-1", "job-1");
+    // No comparable pair: change counts are unknown, never 0, and no ledger.
+    expect(brief.month).toMatchObject({ resolved: null, regressed: null });
+    state.diffs.d1 = { ...state.diffs.d1, resolved_findings: ["gbp.rating_low"], regressed_findings: ["gbp.owner_response_low"] };
+    expect((await getHomeBrief(ctx, "yik-yam")).ledger).toEqual({ resolved: [], regressed: [], decayed: [] });
+    state.diffs.d1 = { ...state.diffs.d1, resolved_findings: [], regressed_findings: [] };
     expect(brief.snapshot?.id).toBe("snap-1");
     expect(brief.changed).toMatchObject({ factType: "Unknown", delta: null, reason: "SCORING_VERSION_MISMATCH", comparable: false });
     // A recurring day, never a stored date: `scan_schedules.next_run_at` is
@@ -234,6 +239,7 @@ describe("getHomeBrief", () => {
     expect(comparable.changed).toMatchObject({ factType: "Observed", delta: -4, comparable: true });
     expect(comparable.month.resolved).toBe(1);
     expect(comparable.month.regressed).toBe(1);
+    expect(comparable.ledger).toMatchObject({ resolved: ["gbp.rating_low"], regressed: ["gbp.owner_response_low"] });
   });
 });
 
@@ -345,6 +351,18 @@ describe("getInsights", () => {
     const one = await getInsights(ctx, "yik-yam");
     expect(one.series).toHaveLength(1);
     expect(one.metricCards.find((c) => c.metricKey === "gbp.rating")).toMatchObject({ after: 4.2, factType: "Unknown", delta: null });
+  });
+
+  it("fills the change ledger only from a comparable diff (guardrail 3)", async () => {
+    state.snapshots = [snapshotRow({ diff_id: "d1" })];
+    state.diffs.d1 = { id: "d1", comparable: false, incomparable_reason: "NO_SHARED_MEASURED_MODULE", composite_withheld_reason: null, composite_base: null, composite_head: null, composite_delta: null, resolved_findings: ["gbp.rating_low"], regressed_findings: ["gbp.owner_response_low"], decayed_findings: [] };
+    const incomparable = await getInsights(ctx, "yik-yam");
+    expect(incomparable.ledgerComparable).toBe(false);
+    expect(incomparable.ledger).toEqual({ resolved: [], regressed: [], decayed: [] });
+    state.diffs.d1 = { ...state.diffs.d1, comparable: true, incomparable_reason: null };
+    const comparable = await getInsights(ctx, "yik-yam");
+    expect(comparable.ledgerComparable).toBe(true);
+    expect(comparable.ledger.resolved).toEqual(["gbp.rating_low"]);
   });
 
   it("shows the approved/exported work itself, not only scores and checks (P2.1 item 7)", async () => {

@@ -12,7 +12,7 @@ import { InsightsView } from "./insights-view";
 const location = { id: "loc-1", slug: "yik-yam", name: "Yik Yam Street", address: null, district: null, isPrimary: true, placeId: "p1" };
 const at = "2026-08-25T01:42:00Z";
 
-function model(): InsightsModel {
+function model(overrides: Partial<InsightsModel> = {}): InsightsModel {
   return {
     locationSlug: "yik-yam",
     location,
@@ -23,15 +23,17 @@ function model(): InsightsModel {
       { metricKey: "gbp.response_rate_pct", before: 18, after: 46, delta: 28, factType: "Attributed", observedAt: at },
       { metricKey: "aeo.ai_citation_count", before: null, after: 1, delta: null, factType: "Unknown", observedAt: at },
     ],
+    ledgerComparable: true,
     ledger: { resolved: ["ig.bio_cta"], regressed: [], decayed: [] },
     perLocation: [],
     deliveries: [{ action_id: "a1", template_key: "ig-bio", title: { en: "Rewrite the bio", "zh-HK": "重寫簡介（港）", "zh-TW": "重寫簡介（台）" }, version_no: 1, mode: "copy", channel: null, delivered_at: at }],
+    ...overrides,
   };
 }
 
-function render(locale: "en" | "zh-HK" | "zh-TW") {
+function render(locale: "en" | "zh-HK" | "zh-TW", overrides: Partial<InsightsModel> = {}) {
   const root = document.createElement("div");
-  root.innerHTML = renderToStaticMarkup(<InsightsView locale={locale} workspaceSlug="kam-man-house" timezone="Asia/Hong_Kong" locations={[{ slug: location.slug, name: location.name }]} model={model()} />);
+  root.innerHTML = renderToStaticMarkup(<InsightsView locale={locale} workspaceSlug="kam-man-house" timezone="Asia/Hong_Kong" locations={[{ slug: location.slug, name: location.name }]} model={model(overrides)} />);
   return root;
 }
 
@@ -53,5 +55,19 @@ describe("InsightsView", () => {
   it("titles delivered work in the page's own locale", () => {
     expect(render("zh-TW").textContent).toContain("重寫簡介（台）");
     expect(render("zh-HK").textContent).toContain("重寫簡介（港）");
+  });
+});
+
+describe("InsightsView without a comparable diff (guardrails 2 and 3)", () => {
+  it("shows resolved and regressed as unknown rather than 0", () => {
+    const stats = Array.from(render("en", { ledgerComparable: false, ledger: { resolved: [], regressed: [], decayed: [] } }).querySelectorAll(".insight-stat"));
+    expect(stats[1].querySelector("strong")?.textContent).toBe("—");
+    expect(stats[2].querySelector("strong")?.textContent).toBe("—");
+    expect(stats[1].textContent).toContain("No comparable scan yet");
+  });
+  it("uses a flat glyph for the score card when there is no comparable change", () => {
+    const first = render("en").querySelector(".insight-stat");
+    expect(first?.querySelector('[data-trend="flat"]')).not.toBeNull();
+    expect(first?.querySelector('[data-trend="up"]')).toBeNull();
   });
 });

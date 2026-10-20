@@ -560,7 +560,7 @@ export function LandingPage({ locale, market: initialMarket, billing, heroPhrase
                 <li className="is-after"><span>{sampleCase.after}</span><strong className="ed-figure">31%</strong><small>{sampleCase.afterLabel}</small><em>{sampleCase.delta}</em></li>
               </ol>
               <div className="ed-case-evidence">
-                <FactType type="Observed" />
+                <FactType type="Attributed" />
                 <div><strong>{sampleCase.evidenceTitle}</strong><p>{sampleCase.caveat}</p></div>
               </div>
             </div>
@@ -645,7 +645,7 @@ export function LandingPage({ locale, market: initialMarket, billing, heroPhrase
             <div className="ed-bezel-core">
               <div className="ed-brief-top"><div><small>錦汶館 · Yik Yam Street</small><strong>{landingUi.briefTitle}</strong></div><DemoBadge locale={locale} /></div>
               <div className="ed-brief-score"><ScoreDial score={62} coverage={78} delta={-4} /><div><span className="ed-kicker">{landingUi.briefPriority}</span><strong>{landingUi.briefAction}</strong><small>{landingUi.briefMeta}</small></div></div>
-              <div className="ed-brief-proof"><FactType type="Observed" /><span>{landingUi.briefProof}</span></div>
+              <div className="ed-brief-proof"><FactType type="Attributed" /><span>{landingUi.briefProof}</span></div>
             </div>
           </div>
         </section>
