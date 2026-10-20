@@ -209,3 +209,19 @@ li[data-state="pending"] > .k-state-icon { color: var(--brand-text); }
 .k-ill-danger-dot { fill: var(--danger); }
 .k-ill-keyhole { fill: var(--brand-text); }
 .k-ill-keyhole-line { stroke: var(--brand-text); stroke-width: 3; }
+
+/* Feedback moments */
+.k-approved { background: var(--success-soft); color: var(--success-text); }
+.k-approved-ring { fill: none; stroke: currentColor; stroke-width: 1.5; }
+.k-approved-tick { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.k-usage-track {
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--paper-2);
+  overflow: hidden;
+}
+.k-usage-fill { display: block; height: 100%; background: var(--brand); }
+.k-usage-fill[data-full] { background: var(--warning); }
+.k-usage-counted { color: var(--success-text); }
+.k-first-ring { box-shadow: 0 0 0 3px var(--brand); border-radius: var(--radius); opacity: 0; }
+.k-first-note { background: var(--brand-soft); color: var(--brand-text); }
