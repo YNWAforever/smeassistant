@@ -2,6 +2,20 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## Phase 5: onboarding and states (2026-10-20)
+
+- **Error and loading pages:** a failed page shows a friendly error in the page's language, with Try again and a short reference code to quote to Fimmick. Workspace pages show skeletons while loading and a not-found that leads back to Today.
+- **One role notice:** every "you can view, not change" banner now says what your role can do and who can change it.
+- **Sign-in, onboarding and choosing a workspace** have a simple header with brand, language and Help, and sign-in says Kinnso OS.
+- **Onboarding** is a three-step wizard: Signed in, Verify ownership, Business basics. A failed lookup shows an error with a retry instead of the wrong next step.
+- **Choosing a workspace:** one card per workspace, listing each location's score (or "No score yet"), coverage and urgent count.
+- **Getting started** on Today: five steps to the first delivered piece of work. The list hides itself once everything is done.
+- **Empty states** across the workspace have an illustration, one line and one next step.
+- **The scanning page no longer jumps** when the scan finishes.
+- **Phase 4 fixes:**
+  - The brand link goes to the plain workspace URL again.
+  - On a phone, Settings › "Switch workspace or sign out" is the way to sign out.
+
 ## Phase 4: workspace shell and navigation (2026-10-20)
 
 - **Five destinations:** Today, Actions, Insights, Business, Settings. Phones get a 5-tab bar, and the usage meter sits in the sidebar.
