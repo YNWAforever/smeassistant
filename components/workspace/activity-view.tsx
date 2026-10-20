@@ -18,7 +18,6 @@ type DetailLocale = PrototypeLocale
  * and byte counts in the Detail column as raw codes.
  */
 function detail(row: AuditEventRow, locale: DetailLocale): string {
-  const isChinese = locale !== "en"
   const pc = copy[locale].workspaceHome.activity
   const pick =(labels: Record<string, string>, key: string) => (Object.hasOwn(labels, key) ? labels[key] : null)
   const payload = row.payload ?? {}
@@ -45,14 +44,13 @@ function detail(row: AuditEventRow, locale: DetailLocale): string {
   if (cancelled) parts.push(fill(cancelled === 1 ? pc.cancelledOne : pc.cancelledMany, { cancelled }))
 
   if (parts.length === 0) {
-    const entity = auditEntityLabel(row.entity_type, isChinese)
+    const entity = auditEntityLabel(row.entity_type, locale)
     if (entity) parts.push(entity)
   }
   return parts.join(" · ")
 }
 
 export function ActivityView({ locale, timezone, events, problems }: { locale: PrototypeLocale; timezone: string; events: AuditEventRow[]; problems?: ReactNode }) {
-  const isChinese = locale !== "en"
   const pc = copy[locale].workspaceHome.activity
   return (
     <div className="activity-page">
@@ -67,7 +65,7 @@ export function ActivityView({ locale, timezone, events, problems }: { locale: P
             {events.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>{formatDateTime(row.created_at, locale, timezone)}</TableCell>
-                <TableCell>{activityActorLabel(row, isChinese)}</TableCell>
+                <TableCell>{activityActorLabel(row, locale)}</TableCell>
                 <TableCell>{auditEventLabel(row.event, locale)}</TableCell>
                 <TableCell>{detail(row, locale)}</TableCell>
               </TableRow>

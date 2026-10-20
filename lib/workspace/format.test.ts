@@ -19,8 +19,8 @@ describe("comparisonReasonText", () => {
       "INSUFFICIENT_INDEPENDENT_CHANNELS",
       "NO_DIFF",
     ]) {
-      const en = comparisonReasonText(code, false);
-      const zh = comparisonReasonText(code, true);
+      const en = comparisonReasonText(code, "en");
+      const zh = comparisonReasonText(code, "zh-HK");
       expect(en).not.toBe("");
       expect(zh).not.toBe("");
       expect(en).not.toBe(zh);
@@ -33,13 +33,13 @@ describe("comparisonReasonText", () => {
   it("never echoes an unrecognised code back to the owner", () => {
     // The previous Insights catalogue fell through to `reason ?? default`, so a
     // new engine code would have surfaced raw on the page.
-    expect(comparisonReasonText("SOME_FUTURE_CODE", false)).toBe("No comparable scan yet");
-    expect(comparisonReasonText("SOME_FUTURE_CODE", true)).toBe("尚無可比較掃描");
+    expect(comparisonReasonText("SOME_FUTURE_CODE", "en")).toBe("No comparable scan yet");
+    expect(comparisonReasonText("SOME_FUTURE_CODE", "zh-HK")).toBe("尚無可比較掃描");
   });
 
   it("handles a missing reason", () => {
-    expect(comparisonReasonText(null, false)).toBe("No comparable scan yet");
-    expect(comparisonReasonText(undefined, true)).toBe("尚無可比較掃描");
+    expect(comparisonReasonText(null, "en")).toBe("No comparable scan yet");
+    expect(comparisonReasonText(undefined, "zh-HK")).toBe("尚無可比較掃描");
   });
 });
 

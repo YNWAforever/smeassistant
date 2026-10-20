@@ -45,7 +45,6 @@ function SeriesStrip({ model, locale, timezone }: { model: InsightsModel; locale
 }
 
 export function InsightsView({ locale, workspaceSlug, timezone, locations, model }: InsightsViewProps) {
-  const isChinese = locale !== "en"
   const pc = copy[locale].workspaceHome.insights
   const base = `/${locale}/owner/${workspaceSlug}`
   const isAll = model.locationSlug === "all"
@@ -73,9 +72,9 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
         <EmptyState locale={locale} kind="noData" title={copy[locale].shell.empty.insights.title} body={copy[locale].shell.empty.insights.body} action={<Button asChild variant="outline" className="min-h-11"><Link href={withLocation(base, model.locationSlug)}>{copy[locale].shell.empty.insights.action}</Link></Button>} />
       ) : (
         <>
-          {!comparable && <SectionCard className="no-comparable-card"><CircleDashed /><div><p className="eyebrow">{pc.noComparableScanYet}</p><h2>{reasonText(trend.reasonCode, isChinese)}</h2><p>{pc.noTrendIsShown}</p></div></SectionCard>}
+          {!comparable && <SectionCard className="no-comparable-card"><CircleDashed /><div><p className="eyebrow">{pc.noComparableScanYet}</p><h2>{reasonText(trend.reasonCode, locale)}</h2><p>{pc.noTrendIsShown}</p></div></SectionCard>}
           <div className="insight-summary-grid">
-            <SectionCard className="insight-stat"><TrendIcon delta={comparable ? delta : null} /><span>{pc.visibilityScore}</span><strong>{signed(delta)}</strong><small>{comparable && trend.base !== null && trend.head !== null ? `${Math.round(trend.base)} → ${Math.round(trend.head)} · ${pc.comparableSuffix}` : reasonText(trend.reasonCode, isChinese)}</small></SectionCard>
+            <SectionCard className="insight-stat"><TrendIcon delta={comparable ? delta : null} /><span>{pc.visibilityScore}</span><strong>{signed(delta)}</strong><small>{comparable && trend.base !== null && trend.head !== null ? `${Math.round(trend.base)} → ${Math.round(trend.head)} · ${pc.comparableSuffix}` : reasonText(trend.reasonCode, locale)}</small></SectionCard>
             <SectionCard className="insight-stat"><CheckCircle2 /><span>{pc.resolvedFindings}</span><strong>{model.ledgerComparable ? model.ledger.resolved.length : "—"}</strong><small>{model.ledgerComparable ? pc.acrossEligibleScans : copy[locale].home.noComparable}</small></SectionCard>
             <SectionCard className="insight-stat"><TrendingDown /><span>{pc.regressedFindings}</span><strong>{model.ledgerComparable ? model.ledger.regressed.length : "—"}</strong><small>{model.ledgerComparable ? pc.latestComparableScan : copy[locale].home.noComparable}</small></SectionCard>
             <SectionCard className="insight-stat"><CircleDashed /><span>{copy[locale].common.coverage}</span><strong>{scorePercent(head.coverage)}%</strong><small>{pc.unmeasuredSourcesAreNot}</small></SectionCard>
@@ -86,7 +85,7 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
             <Table>
               <TableCaption>{pc.accessibleDataTableFor}</TableCaption>
               <TableHeader><TableRow><TableHead>{pc.scanDate}</TableHead><TableHead>{pc.score}</TableHead><TableHead>{copy[locale].common.coverage}</TableHead><TableHead>{pc.eligibility}</TableHead></TableRow></TableHeader>
-              <TableBody>{model.series.map((point) => <TableRow key={point.snapshotId}><TableCell>{formatDay(point.observedAt, locale, timezone)}</TableCell><TableCell>{point.score === null ? pc.withheld : Math.round(point.score)}</TableCell><TableCell>{scorePercent(point.coverage)}%</TableCell><TableCell>{point.comparable ? pc.comparable : reasonText(point.incomparableReason, isChinese)}</TableCell></TableRow>)}</TableBody>
+              <TableBody>{model.series.map((point) => <TableRow key={point.snapshotId}><TableCell>{formatDay(point.observedAt, locale, timezone)}</TableCell><TableCell>{point.score === null ? pc.withheld : Math.round(point.score)}</TableCell><TableCell>{scorePercent(point.coverage)}%</TableCell><TableCell>{point.comparable ? pc.comparable : reasonText(point.incomparableReason, locale)}</TableCell></TableRow>)}</TableBody>
             </Table>
           </SectionCard>
           <div className="before-after-grid">

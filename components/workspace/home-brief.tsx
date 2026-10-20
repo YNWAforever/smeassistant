@@ -54,7 +54,6 @@ function actionHref(locale: PrototypeLocale, slug: string, action: ActionOvervie
 export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, role, consentPolicyVersion, problems, gettingStarted }: HomeBriefViewProps) {
   const t = copy[locale].home
   const focus = copy[locale].ownerFocus
-  const isChinese = locale !== "en"
   const pc = copy[locale].workspaceHome.home
   const base = `/${locale}/owner/${workspaceSlug}`
   const location = brief.locationSlug
@@ -74,7 +73,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
   // Mirrors RescanButton: only a paid owner or manager has the control the empty state would point at.
   const canRescan = tier === "paid" && (role === "owner" || role === "manager")
   const changedBadge = changed.comparable ? pc.comparable : pc.notComparable
-  const changedReason = changed.comparable ? null : comparisonReasonText(changed.reason, isChinese)
+  const changedReason = changed.comparable ? null : comparisonReasonText(changed.reason, locale)
   // F-19: never promise ready work that does not exist. No linked business, or
   // one location with no snapshot, means nothing has been scanned yet. The
   // all-locations view never has a snapshot (no aggregate score), so it only
