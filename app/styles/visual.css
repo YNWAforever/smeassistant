@@ -183,9 +183,10 @@ li[data-state="pending"] > .k-state-icon { color: var(--brand-text); }
 }
 
 /* Inline explainer */
-.k-explainer-trigger { color: var(--ink-3); }
-.k-explainer-trigger:hover,
-.k-explainer-trigger[data-state="open"] { color: var(--brand-text); background: var(--brand-soft); }
+/* 44 px hit area around a 24 px visual, so the line height never changes. */
+.k-explainer-trigger { color: var(--ink-3); border-radius: 50%; }
+.k-explainer-trigger:hover .k-explainer-dot,
+.k-explainer-trigger[data-state="open"] .k-explainer-dot { color: var(--brand-text); background: var(--brand-soft); }
 .k-demo {
   border-radius: calc(var(--radius) - 6px);
   background: var(--paper-2);

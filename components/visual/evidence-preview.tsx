@@ -57,10 +57,12 @@ export function EvidencePreview({
           </p>
         )}
         {href && (
-          <a href={href} target="_blank" rel="noopener noreferrer" className="kinnso-link inline-flex w-fit items-center gap-1 text-xs font-semibold text-brand-text">
-            {t.visual.evidence.viewSource}
-            <ExternalLink aria-hidden="true" className="size-3" />
-          </a>
+          <p className="text-xs">
+            <a href={href} target="_blank" rel="noopener noreferrer" className="kinnso-link font-semibold text-brand-text">
+              {t.visual.evidence.viewSource}
+              <ExternalLink aria-hidden="true" className="ms-1 inline size-3 align-[-1px]" />
+            </a>
+          </p>
         )}
       </div>
     </article>

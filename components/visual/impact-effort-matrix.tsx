@@ -72,7 +72,8 @@ export function ImpactEffortMatrix({ items, locale, maxEffortMinutes = 30 }: { i
             <text x={inset + 6} y={inset + span - 6} className="k-matrix-label">{t.quadrants.fillIns}</text>
             <text x={inset + span - 6} y={inset + span - 6} textAnchor="end" className="k-matrix-label">{t.quadrants.later}</text>
             <text x={inset + span / 2} y={size - 4} textAnchor="middle" className="k-matrix-axis">{t.effort} →</text>
-            <text x={10} y={inset + span / 2} textAnchor="middle" className="k-matrix-axis" transform={`rotate(-90 10 ${inset + span / 2})`}>{t.impact} →</text>
+            {/* Horizontal on purpose: rotated Chinese text is hard to read. */}
+            <text x={inset} y={14} className="k-matrix-axis">↑ {t.impact}</text>
             {ordered.map(({ item }, index) => {
               const { cx, cy } = place(item)
               return (
@@ -88,7 +89,7 @@ export function ImpactEffortMatrix({ items, locale, maxEffortMinutes = 30 }: { i
               <li key={item.id} className="flex items-start gap-2" data-quadrant={quadrant}>
                 <span className="k-matrix-badge grid size-6 shrink-0 place-items-center rounded-full text-xs font-bold" aria-hidden="true">{index + 1}</span>
                 <span className="grid">
-                  {item.href ? <Link href={item.href} className="kinnso-link font-semibold text-ink">{item.title}</Link> : <span className="font-semibold text-ink">{item.title}</span>}
+                  <span className="font-semibold text-ink">{item.href ? <Link href={item.href} className="kinnso-link">{item.title}</Link> : item.title}</span>
                   <span className="text-xs text-ink-3">{t.quadrants[quadrant]} · {fill(minutes, { n: item.effortMinutes })}</span>
                 </span>
               </li>

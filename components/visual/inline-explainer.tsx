@@ -19,8 +19,10 @@ export function InlineExplainer({ label, answer, demo, locale }: { label: string
   return (
     <Popover onOpenChange={(open) => { if (!open) setPlaying(false) }}>
       <PopoverTrigger asChild>
-        <button type="button" className="k-explainer-trigger inline-grid size-6 place-items-center rounded-full align-middle" aria-label={question}>
-          <CircleHelp aria-hidden="true" className="size-4" />
+        <button type="button" className="k-explainer-trigger -m-2.5 inline-grid size-11 place-items-center align-middle" aria-label={question}>
+          <span className="k-explainer-dot grid size-6 place-items-center rounded-full" aria-hidden="true">
+            <CircleHelp className="size-4" />
+          </span>
         </button>
       </PopoverTrigger>
       <PopoverContent
