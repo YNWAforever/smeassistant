@@ -1,8 +1,9 @@
 import Link from "next/link"
-import { ArrowRight, CheckCircle2, Filter, MapPin, ShieldAlert, ShieldCheck, Sparkles } from "lucide-react"
+import { ArrowRight, CheckCircle2, Filter, MapPin, ShieldCheck, Sparkles } from "lucide-react"
 
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
-import { CapabilityBadge, FactType, PageIntro } from "@/components/product-ui"
+import { CapabilityBadge, FactType } from "@/components/product-ui"
+import { ActionsQueueFrame, type QueueView } from "@/components/workspace/actions-queue-frame"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { LocationSelect } from "@/components/workspace/location-select"
@@ -32,16 +33,14 @@ export interface ActionsListViewProps {
   members?: AssignmentMember[]
 }
 
-const VIEWS: Array<{ key: NonNullable<ActionFilters["view"]>; en: string; zh: string }> = [
-  { key: "all", en: "All", zh: "全部" },
-  { key: "needs_input", en: "Needs input", zh: "需要資料" },
-  { key: "drafts", en: "Drafts", zh: "草稿" },
-  { key: "awaiting_approval", en: "Approvals", zh: "待審批" },
-  { key: "completed", en: "Completed", zh: "已完成" },
-]
-
-function tabHref(base: string, filters: ActionFilters, view: string): string {
+/** A queue tab's URL. Status tabs keep the list's filters; Due and Fix Pack keep only the location. */
+export function tabHref(base: string, filters: ActionFilters, view: string): string {
   const query = new URLSearchParams()
+  if (view === "due" || view === "fixpack") {
+    if (filters.location) query.set("location", filters.location)
+    query.set("view", view)
+    return `${base}/actions?${query}`
+  }
   if (filters.location) query.set("location", filters.location)
   if (filters.channel) query.set("channel", filters.channel)
   if (filters.status) query.set("status", filters.status)
@@ -88,36 +87,31 @@ export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, 
   ]
   const statuses = ["recommended", "needs_input", "ready", "in_progress", "completed", "dismissed", "expired"].map((value) => ({ value, label: (copy[locale].workspace.states as Record<string, string>)[value] ?? value }))
   return (
-    <div className="actions-page">
-      <PageIntro
-        eyebrow={isChinese ? "實證支持的工作清單" : "Evidence-backed work queue"}
-        title={isChinese ? "行動" : "Actions"}
-        description={isChinese ? zhFor(locale, "根據已量度的發現或清楚標示的店主目標排定優次，而非互不相干的 Agent 展示。") : "Prioritised from measured findings or a clearly labelled owner objective—never a disconnected agent gallery."}
-        actions={<><ContextualAssistant locale={locale} surface="actions" triggerLabel={isChinese ? "比較優先次序" : "Compare priorities"} autoAsk="compare_priorities" mode="live" context={{ workspaceId, locationId: locationId ?? undefined }} basePath={base} locationParam={location} /><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /></>}
-      />
-      {role === "viewer" && <div className="permission-banner"><ShieldAlert /><div><strong>{isChinese ? "檢視者權限" : "Viewer access"}</strong><span>{isChinese ? zhFor(locale, "你可查看證據及已量度成效，但不能生成、編輯、審批、送出或管理帳單。") : "You can inspect evidence and measured outcomes, but cannot generate, edit, approve, deliver or manage billing."}</span></div><Badge variant="outline">{isChinese ? "只讀" : "Read only"}</Badge></div>}
-      <div className="action-tabs">
-        <nav className="action-tab-list" aria-label={isChinese ? "行動分類" : "Action views"}>
-          {VIEWS.map((tab) => <Link key={tab.key} href={tabHref(base, filters, tab.key)} aria-current={view === tab.key ? "page" : undefined} className={view === tab.key ? "is-active" : ""}>{isChinese ? tab.zh : tab.en} <span>{result.counts[tab.key]}</span></Link>)}
-        </nav>
-        <div className="action-tab-content">
-          <section className="filter-bar" aria-label={isChinese ? "行動篩選" : "Action filters"}>
-            <ActionSearch key={filters.q ?? ""} value={filters.q ?? ""} label={isChinese ? "搜尋標題及摘要" : "Search title and summary"} submitLabel={isChinese ? "搜尋" : "Search"} />
-            <span className="filter-label"><Filter /> {isChinese ? "篩選" : "Filter"}</span>
-            <ActionFilterSelect param="channel" value={filters.channel ?? "all"} options={channels} allLabel={isChinese ? "所有渠道" : "All channels"} ariaLabel={isChinese ? "篩選渠道" : "Filter by channel"} />
-            <ActionFilterSelect param="status" value={filters.status ?? "all"} options={statuses} allLabel={isChinese ? "所有狀態" : "All statuses"} ariaLabel={isChinese ? "篩選狀態" : "Filter by status"} />
-            <ActionFilterSelect param="assignee" value={filters.assignee ?? "all"} options={[{ value: "unassigned", label: isChinese ? "未指派" : "Unassigned" }, ...members.map(m => ({ value: m.id, label: m.name }))]} allLabel={isChinese ? "所有負責人" : "All assignees"} ariaLabel={isChinese ? "篩選負責人" : "Filter by assignee"} />
-            <ActionFilterSelect param="due" value={filters.due ?? "all"} options={[{ value: "overdue", label: isChinese ? "已逾期" : "Overdue" }, { value: "today", label: isChinese ? "今日" : "Today" }, { value: "next_7_days", label: isChinese ? "未來七日" : "Next 7 days" }, { value: "none", label: isChinese ? "沒有到期日" : "No due date" }]} allLabel={isChinese ? "所有到期日" : "All due dates"} ariaLabel={isChinese ? "篩選到期日" : "Filter by due date"} />
-          </section>
-          <div className="queue-summary"><span><strong>{result.actions.length}</strong> {isChinese ? "項行動（本頁）" : "actions on this page"}</span><span>{isChinese ? "按優先分數、更新時間及 ID 排序" : "Sorted by priority, update time and ID"}</span></div>
-          {bulkEnabled && role !== "viewer" ? <BulkActionSelection key={JSON.stringify([workspaceId,role,locationId,filters.q,filters.assignee,filters.due,filters.channel,filters.status,view])} locale={locale} workspaceId={workspaceId} timezone={timezone} members={members} items={result.actions.map(action => ({ actionId: action.id, expectedUpdatedAt: action.updatedAt, title: resolveText(action.title,locale), closed: ["completed","dismissed","cancelled","expired"].includes(action.actionState) }))} cards={result.actions.map(action => <ActionCard key={action.id} action={action} locale={locale} base={base} timezone={timezone} location={location} />)} /> : result.actions.length ? <div className="action-list">{result.actions.map((action) => <ActionCard key={action.id} action={action} locale={locale} base={base} timezone={timezone} location={location} />)}</div> : <div className="empty-state"><span><CheckCircle2 /></span><h2>{isChinese ? "沒有符合篩選條件的行動" : "No actions match these filters"}</h2><p>{isChinese ? "請重設一項或多項篩選；沒有行動不代表沒有證據。" : "Reset one or more filters; an empty list does not mean there is no evidence."}</p></div>}
-          <nav className="queue-pages" aria-label={isChinese ? "清單分頁" : "List pages"}>
-            <Link href={tabHref(base, filters, view)}>{isChinese ? "重新載入第一頁" : "Refresh first page"}</Link>
-            {result.nextCursor && <Link href={`${tabHref(base, filters, view)}${tabHref(base, filters, view).includes("?") ? "&" : "?"}cursor=${encodeURIComponent(result.nextCursor)}`}>{isChinese ? "下一頁" : "Next page"}</Link>}
-          </nav>
-        </div>
-      </div>
+    <ActionsQueueFrame
+      locale={locale}
+      workspaceSlug={workspaceSlug}
+      role={role}
+      view={view}
+      location={location}
+      counts={result.counts as Partial<Record<QueueView, number>>}
+      tabHref={(key) => tabHref(base, filters, key)}
+      tools={<><ContextualAssistant locale={locale} surface="actions" triggerLabel={isChinese ? "比較優先次序" : "Compare priorities"} autoAsk="compare_priorities" mode="live" context={{ workspaceId, locationId: locationId ?? undefined }} basePath={base} locationParam={location} /><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /></>}
+    >
+      <section className="filter-bar" aria-label={isChinese ? "行動篩選" : "Action filters"}>
+        <ActionSearch key={filters.q ?? ""} value={filters.q ?? ""} label={isChinese ? "搜尋標題及摘要" : "Search title and summary"} submitLabel={isChinese ? "搜尋" : "Search"} />
+        <span className="filter-label"><Filter /> {isChinese ? "篩選" : "Filter"}</span>
+        <ActionFilterSelect param="channel" value={filters.channel ?? "all"} options={channels} allLabel={isChinese ? "所有渠道" : "All channels"} ariaLabel={isChinese ? "篩選渠道" : "Filter by channel"} />
+        <ActionFilterSelect param="status" value={filters.status ?? "all"} options={statuses} allLabel={isChinese ? "所有狀態" : "All statuses"} ariaLabel={isChinese ? "篩選狀態" : "Filter by status"} />
+        <ActionFilterSelect param="assignee" value={filters.assignee ?? "all"} options={[{ value: "unassigned", label: isChinese ? "未指派" : "Unassigned" }, ...members.map(m => ({ value: m.id, label: m.name }))]} allLabel={isChinese ? "所有負責人" : "All assignees"} ariaLabel={isChinese ? "篩選負責人" : "Filter by assignee"} />
+        <ActionFilterSelect param="due" value={filters.due ?? "all"} options={[{ value: "overdue", label: isChinese ? "已逾期" : "Overdue" }, { value: "today", label: isChinese ? "今日" : "Today" }, { value: "next_7_days", label: isChinese ? "未來七日" : "Next 7 days" }, { value: "none", label: isChinese ? "沒有到期日" : "No due date" }]} allLabel={isChinese ? "所有到期日" : "All due dates"} ariaLabel={isChinese ? "篩選到期日" : "Filter by due date"} />
+      </section>
+      <div className="queue-summary"><span><strong>{result.actions.length}</strong> {isChinese ? "項行動（本頁）" : "actions on this page"}</span><span>{isChinese ? "按優先分數、更新時間及 ID 排序" : "Sorted by priority, update time and ID"}</span></div>
+      {bulkEnabled && role !== "viewer" ? <BulkActionSelection key={JSON.stringify([workspaceId,role,locationId,filters.q,filters.assignee,filters.due,filters.channel,filters.status,view])} locale={locale} workspaceId={workspaceId} timezone={timezone} members={members} items={result.actions.map(action => ({ actionId: action.id, expectedUpdatedAt: action.updatedAt, title: resolveText(action.title,locale), closed: ["completed","dismissed","cancelled","expired"].includes(action.actionState) }))} cards={result.actions.map(action => <ActionCard key={action.id} action={action} locale={locale} base={base} timezone={timezone} location={location} />)} /> : result.actions.length ? <div className="action-list">{result.actions.map((action) => <ActionCard key={action.id} action={action} locale={locale} base={base} timezone={timezone} location={location} />)}</div> : <div className="empty-state"><span><CheckCircle2 /></span><h2>{isChinese ? "沒有符合篩選條件的行動" : "No actions match these filters"}</h2><p>{isChinese ? "請重設一項或多項篩選；沒有行動不代表沒有證據。" : "Reset one or more filters; an empty list does not mean there is no evidence."}</p></div>}
+      <nav className="queue-pages" aria-label={isChinese ? "清單分頁" : "List pages"}>
+        <Link href={tabHref(base, filters, view)}>{isChinese ? "重新載入第一頁" : "Refresh first page"}</Link>
+        {result.nextCursor && <Link href={`${tabHref(base, filters, view)}${tabHref(base, filters, view).includes("?") ? "&" : "?"}cursor=${encodeURIComponent(result.nextCursor)}`}>{isChinese ? "下一頁" : "Next page"}</Link>}
+      </nav>
       <div className="queue-footnote"><ShieldCheck /><p><strong>{isChinese ? "獨立生命週期狀態：" : "Separate lifecycle states:"}</strong>{isChinese ? zhFor(locale, " 行動、Agent 執行、審批、送出及量度會分開追蹤，避免一個含糊狀態代表所有事情。") : " action, agent run, approval, delivery and measurement are tracked independently. The customer-facing phase above is derived for scanning, not stored as one overloaded status."}</p></div>
-    </div>
+    </ActionsQueueFrame>
   )
 }

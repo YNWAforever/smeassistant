@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 
-import { ActionsListView } from "@/components/workspace/actions-list-view";
+import { ActionsListView, tabHref } from "@/components/workspace/actions-list-view";
+import { ActionsQueueFrame, type QueueView } from "@/components/workspace/actions-queue-frame";
+import { FixPackCard } from "@/components/workspace/fix-pack-card";
+import { copy } from "@/lib/copy";
 import { CalendarView } from "@/components/workspace/calendar-view";
 import type { ActionState } from "@/lib/domain";
 import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
@@ -20,10 +23,22 @@ export async function generateMetadata(props: OwnerPageProps): Promise<Metadata>
 
 export default async function ActionsRoute(props: OwnerPageProps) {
   const page = await loadOwnerPage(props);
-  // ?view=due is the old Calendar (dated work and the rescan cadence), now a view of the queue.
-  if (page.query.view === "due") {
-    const model = await getCalendar(page.ctx, page.locationSlug);
-    return <CalendarView locale={page.locale} workspaceSlug={page.workspaceSlug} timezone={page.ctx.workspace.timezone} model={model} />;
+  // ?view=due is the old Calendar (dated work and the rescan cadence); ?view=fixpack is the
+  // Fix Pack drafts card that used to sit on Today. Both are views of the same queue.
+  if (page.query.view === "due" || page.query.view === "fixpack") {
+    const queueView: QueueView = page.query.view;
+    const base = `/${page.locale}/owner/${page.workspaceSlug}`;
+    const frame = { locale: page.locale, workspaceSlug: page.workspaceSlug, role: page.membership.role, view: queueView, location: page.locationSlug, tabHref: (key: QueueView) => tabHref(base, { location: page.locationSlug }, key) };
+    if (queueView === "due") {
+      const model = await getCalendar(page.ctx, page.locationSlug);
+      return <ActionsQueueFrame {...frame}><CalendarView locale={page.locale} workspaceSlug={page.workspaceSlug} timezone={page.ctx.workspace.timezone} model={model} embedded /></ActionsQueueFrame>;
+    }
+    return (
+      <ActionsQueueFrame {...frame}>
+        <p className="limitation-note">{copy[page.locale].shell.views.fixPackLead}</p>
+        <FixPackCard locale={page.locale} workspaceId={page.ctx.workspace.id} viewerRole={page.membership.role} actionsHref={`${base}/actions?view=drafts`} />
+      </ActionsQueueFrame>
+    );
   }
   const view = page.query.view && VIEWS.has(page.query.view) ? (page.query.view as ActionFilters["view"]) : "all";
   const filters: ActionFilters = {

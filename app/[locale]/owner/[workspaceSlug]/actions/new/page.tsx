@@ -33,7 +33,7 @@ export default async function NewActionRoute(props: OwnerPageProps) {
     ...(offerPromotionsEnabled() && !page.ctx.workspace.isDemo ? (["offer"] as const) : []),
     ...(workPacksEnabled() ? (["pack"] as const) : []),
   ];
-  const requested = page.query.mode as NewMode | undefined;
+  const requested = page.query?.mode as NewMode | undefined;
   const mode: NewMode = requested && available.includes(requested) ? requested : "goal";
   const base = `/${page.locale}/owner/${page.workspaceSlug}/actions/new`;
   return (

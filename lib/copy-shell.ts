@@ -23,6 +23,14 @@ export type ShellCopy = {
   locations: { title: string; lead: string; primary: string; place: string; noPlace: string; switch: string; empty: string }
   newAction: { title: string; lead: string; label: string; goal: Item; offer: Item; pack: Item }
   views: { due: string; fixPack: string; fixPackLead: string }
+  queue: {
+    eyebrow: string
+    title: string
+    lead: string
+    newAction: string
+    navLabel: string
+    tabs: { all: string; needs_input: string; drafts: string; awaiting_approval: string; completed: string }
+  }
 }
 
 export const shellEn: ShellCopy = {
@@ -73,6 +81,14 @@ export const shellEn: ShellCopy = {
     due: "Due",
     fixPack: "Fix Pack",
     fixPackLead: "Drafts prepared by the Fimmick team. Approve or reject each one.",
+  },
+  queue: {
+    eyebrow: "Evidence-backed work queue",
+    title: "Actions",
+    lead: "Ranked from measured findings or a goal you set. Open one to review, approve and deliver.",
+    newAction: "New",
+    navLabel: "Action views",
+    tabs: { all: "All", needs_input: "Needs input", drafts: "Drafts", awaiting_approval: "Approvals", completed: "Completed" },
   },
 }
 
@@ -125,6 +141,14 @@ export const shellZhHK: ShellCopy = {
     fixPack: "Fix Pack",
     fixPackLead: "由 Fimmick 團隊準備的草稿，請逐一批准或拒絕。",
   },
+  queue: {
+    eyebrow: "有實證支持的工作清單",
+    title: "行動",
+    lead: "按已量度的發現或你設定的目標排序。開啟一項即可審閱、審批及送出。",
+    newAction: "新增",
+    navLabel: "行動分類",
+    tabs: { all: "全部", needs_input: "需要資料", drafts: "草稿", awaiting_approval: "待審批", completed: "已完成" },
+  },
 }
 
 export const shellZhTW: ShellCopy = {
@@ -175,5 +199,13 @@ export const shellZhTW: ShellCopy = {
     due: "到期",
     fixPack: "Fix Pack",
     fixPackLead: "由 Fimmick 團隊準備的草稿，請逐一核准或拒絕。",
+  },
+  queue: {
+    eyebrow: "有實證支持的工作清單",
+    title: "行動",
+    lead: "依已量測的發現或你設定的目標排序。開啟一項即可審閱、核准及送出。",
+    newAction: "新增",
+    navLabel: "行動分類",
+    tabs: { all: "全部", needs_input: "需要資料", drafts: "草稿", awaiting_approval: "待核准", completed: "已完成" },
   },
 }
