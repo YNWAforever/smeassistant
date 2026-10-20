@@ -1,32 +1,32 @@
 import Link from "next/link"
-import { ArrowRight, Building2, MapPin, ScanSearch } from "lucide-react"
+import { ArrowRight, MapPin, ScanSearch } from "lucide-react"
 
 import { AuthFrame } from "@/components/auth/auth-frame"
 import { RoleNotice } from "@/components/states/role-notice"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import type { PrototypeLocale } from "@/lib/copy"
+import { EmptyIllustration } from "@/components/visual/illustrations"
+import { copy, type PrototypeLocale } from "@/lib/copy"
+import { fill } from "@/lib/copy-ui"
 import type { WorkspaceCard } from "@/lib/workspace/queries"
 import { noWorkspaceCopy } from "@/lib/workspace/no-workspace-copy"
 import { avatarInitial, formatCoverage, roleLabel } from "@/lib/workspace/shell"
-import { zhFor } from "@/lib/zh-tw"
 
-function marketLabel(market: "hk" | "tw", isChinese: boolean) {
-  if (market === "tw") return isChinese ? "台灣市場" : "Taiwan market"
-  return isChinese ? "香港市場" : "Hong Kong market"
+function plural(forms: { one: string; other: string }, n: number) {
+  return fill(n === 1 ? forms.one : forms.other, { n })
 }
 
-function urgentCopy(count: number, isChinese: boolean) {
-  if (count === 0) return isChinese ? "沒有緊急行動" : "No urgent actions"
-  if (isChinese) return `${count} 項緊急行動`
-  return count === 1 ? "1 urgent action" : `${count} urgent actions`
+function urgentLabel(t: SelectCopy, n: number) {
+  return n === 0 ? t.urgent.zero : plural(t.urgent, n)
 }
+
+type SelectCopy = (typeof copy)["en"]["shell"]["select"]
 
 /**
- * The prototype's select-workspace design bound to accepted memberships
- * (CLAUDE.md Phase 2 item 5): one card per workspace (all locations) and one
- * per location with the latest snapshot's score / coverage and open urgent
- * count. Server component: the only interaction is the sign-out form, which
+ * Accepted memberships after sign-in (CLAUDE.md Phase 2 item 5, Phase 5
+ * layout): one card per workspace that opens all locations, listing each
+ * location with its latest score (or "No score yet"), coverage and urgent
+ * count. Scores are never combined across locations. Server component: the only interaction is the sign-out form, which
  * posts to a server action.
  */
 export function SelectWorkspacePage({
@@ -54,50 +54,68 @@ export function SelectWorkspacePage({
   /** WORKSPACE_CLAIM_VIA_OAUTH_ENABLED, read by the page; decides which claim control the empty state names. */
   oauthClaimEnabled?: boolean
 }) {
-  const isChinese = locale !== "en"
+  const t = copy[locale].shell.select
   const empty = noWorkspaceCopy(locale, oauthClaimEnabled)
-  const accountExit = <form action={signOutAction}><Button variant="outline" type="submit">{isChinese ? zhFor(locale, "登出並用另一個電郵登入") : "Sign out and use another email"}</Button></form>
+  const accountExit = <form action={signOutAction}><Button variant="outline" type="submit">{t.signOut}</Button></form>
   return (
     <AuthFrame locale={locale}>
       <main className="select-workspace-page">
-        <header><Badge variant="outline">{isChinese ? `已登入 · ${email}` : `Signed in as ${email}`}</Badge><h1>{isChinese ? zhFor(locale, "選擇工作台或地點") : "Choose a workspace or location"}</h1><p>{isChinese ? zhFor(locale, "選擇後會再次檢查你的角色及地點範圍。") : "Your role and location scope are re-checked after selection."}</p></header>
+        <header><Badge variant="outline">{fill(t.signedInAs, { email })}</Badge><h1>{t.title}</h1><p>{t.lead}</p></header>
         {denied && <RoleNotice kind="notMember" name={denied} locale={locale} />}
         {accessRequest}
         {cards.length === 0 ? (
           <div className="empty-state">
-            <span><Building2 /></span>
-            <h2>{isChinese ? "尚未連結任何工作台" : "No workspace linked yet"}</h2>
+            <EmptyIllustration kind="noData" />
+            <h2>{t.emptyTitle}</h2>
             <p>{empty.lead}</p>
-            <p>{empty.owner}</p>
-            <p>{empty.colleague}</p>
-            <div className="flow-card-footer">
-              {accountExit}
-              <Button asChild><Link href={`/${locale}/scan`}><ScanSearch />{empty.scanCta}<ArrowRight /></Link></Button>
-            </div>
+            <Button asChild className="min-h-11"><Link href={`/${locale}/scan`}><ScanSearch />{empty.scanCta}<ArrowRight /></Link></Button>
+            {/* The two real paths for someone who already scanned or works for an owner; text only, so the scan stays the one link out. */}
+            <details className="select-empty-paths">
+              <summary>{t.alreadyScanned}</summary>
+              <p>{empty.owner}</p>
+              <p>{empty.colleague}</p>
+            </details>
+            <div className="flow-card-footer">{accountExit}</div>
           </div>
         ) : (
-          <div className="workspace-choice-grid">
+          <div className="ws-card-list">
             {cards.map((card) => {
               const base = `/${locale}/owner/${card.workspace.slug}`
-              const count = card.locations.length
-              const locationsCopy = isChinese ? zhFor(locale, `${count} 個地點 · ${marketLabel(card.workspace.market, true)}`) : `${count} ${count === 1 ? "location" : "locations"} · ${marketLabel(card.workspace.market, false)}`
               // Two workspaces can share a business name (e.g. an earlier claim); the slug tells them apart.
               const sameName = cards.filter((other) => other.workspace.name === card.workspace.name).length > 1
-              return [
-                <Link key={card.workspace.id} href={`${base}?location=all`}><span className="workspace-choice-icon">{avatarInitial(card.workspace.name)}</span><div><Badge>{roleLabel(card.role, locale)}</Badge><h2>{card.workspace.name}</h2><p>{locationsCopy}{sameName ? ` · /${card.workspace.slug}` : ""}</p><small>{isChinese ? zhFor(locale, "所有地點存取") : "All-locations access"}</small></div><ArrowRight /></Link>,
-                ...card.locations.map((location) => {
-                  const score = location.latestScore === null ? "—" : String(Math.round(location.latestScore))
-                  const coverage = formatCoverage(location.latestCoverage)
-                  const summary = location.lastScanAt === null
-                    ? (isChinese ? "尚未有掃描" : "No scan yet")
-                    : isChinese
-                      ? `評分 ${score} · 覆蓋率 ${coverage === null ? "—" : `${coverage}%`}`
-                      : `Score ${score} · Coverage ${coverage === null ? "—" : `${coverage}%`}`
-                  return (
-                    <Link key={location.id} href={`${base}?location=${location.slug}`}><span className="workspace-choice-icon"><MapPin /></span><div><Badge variant="outline">{isChinese ? zhFor(locale, "地點") : "Location"}</Badge><h2>{location.name}</h2><p>{summary}</p><small>{urgentCopy(location.urgentActions, isChinese)}</small></div><ArrowRight /></Link>
-                  )
-                }),
-              ]
+              return (
+                <section key={card.workspace.id} className="ws-card" aria-label={card.workspace.name}>
+                  <Link className="ws-card-head" href={`${base}?location=all`} aria-label={fill(t.open, { name: card.workspace.name })}>
+                    <span className="workspace-choice-icon" aria-hidden="true">{avatarInitial(card.workspace.name)}</span>
+                    <span className="ws-card-title">
+                      <strong>{card.workspace.name}</strong>
+                      <small>{[plural(t.locations, card.locations.length), t.markets[card.workspace.market], sameName ? `/${card.workspace.slug}` : null].filter(Boolean).join(" · ")}</small>
+                    </span>
+                    <Badge>{roleLabel(card.role, locale)}</Badge>
+                    <ArrowRight aria-hidden="true" />
+                  </Link>
+                  <ul className="ws-card-locations">
+                    {card.locations.map((location) => {
+                      const coverage = formatCoverage(location.latestCoverage)
+                      const scanned = location.lastScanAt !== null
+                      return (
+                        <li key={location.id}>
+                          <Link href={`${base}?location=${location.slug}`}>
+                            <MapPin aria-hidden="true" />
+                            <span className="ws-loc-name">{location.name}</span>
+                            <span className="ws-loc-score">{!scanned ? t.noScan : location.latestScore === null ? t.noScore : fill(t.score, { n: Math.round(location.latestScore) })}</span>
+                            <span className="ws-loc-coverage">
+                              {scanned && coverage !== null && <span className="ws-loc-bar" aria-hidden="true"><span style={{ width: `${coverage}%` }} /></span>}
+                              <small>{!scanned ? "" : coverage === null ? t.noCoverage : fill(t.coverage, { n: coverage })}</small>
+                            </span>
+                            <span className="ws-loc-urgent" data-urgent={location.urgentActions > 0 ? "" : undefined}>{urgentLabel(t, location.urgentActions)}</span>
+                          </Link>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </section>
+              )
             })}
           </div>
         )}

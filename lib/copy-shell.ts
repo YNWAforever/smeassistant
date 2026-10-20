@@ -52,6 +52,25 @@ export type ShellCopy = {
    * can change it; the server checks stay the authority. {role} and {name} are
    * filled by components/states/role-notice.tsx.
    */
+  /** Choosing a workspace after sign-in (Phase 5). {n} and {email} are filled with `fill`. */
+  select: {
+    signedInAs: string
+    title: string
+    lead: string
+    open: string
+    allLocations: string
+    locations: { one: string; other: string }
+    markets: { hk: string; tw: string }
+    noScan: string
+    score: string
+    noScore: string
+    coverage: string
+    noCoverage: string
+    urgent: { zero: string; one: string; other: string }
+    emptyTitle: string
+    alreadyScanned: string
+    signOut: string
+  }
   /** Signed-in tasks outside a workspace (sign-in, onboarding, choosing a workspace). */
   auth: { help: string; helpLabel: string; home: string }
   access: {
@@ -145,6 +164,24 @@ export const shellEn: ShellCopy = {
     done: "{approved} of {total} approved",
     version: "Version {n}",
   },
+  select: {
+    signedInAs: "Signed in as {email}",
+    title: "Choose a workspace",
+    lead: "Your role and locations are checked again when you open one.",
+    open: "Open {name}",
+    allLocations: "All locations",
+    locations: { one: "1 location", other: "{n} locations" },
+    markets: { hk: "Hong Kong", tw: "Taiwan" },
+    noScan: "No scan yet",
+    score: "Score {n}",
+    noScore: "No score yet",
+    coverage: "{n}% coverage",
+    noCoverage: "Coverage unknown",
+    urgent: { zero: "Nothing urgent", one: "1 urgent action", other: "{n} urgent actions" },
+    emptyTitle: "No workspace linked yet",
+    alreadyScanned: "I've already scanned my business",
+    signOut: "Sign out and use another email",
+  },
   auth: { help: "Help", helpLabel: "Questions about Kinnso OS", home: "Kinnso OS home" },
   access: {
     readOnly: "Read only",
@@ -237,6 +274,24 @@ export const shellZhHK: ShellCopy = {
     done: "已審批 {total} 份中的 {approved} 份",
     version: "第 {n} 版",
   },
+  select: {
+    signedInAs: "已登入：{email}",
+    title: "選擇工作台",
+    lead: "開啟時會再次核對你的角色及地點範圍。",
+    open: "開啟 {name}",
+    allLocations: "所有地點",
+    locations: { one: "1 個地點", other: "{n} 個地點" },
+    markets: { hk: "香港", tw: "台灣" },
+    noScan: "尚未掃描",
+    score: "評分 {n}",
+    noScore: "暫未有評分",
+    coverage: "覆蓋率 {n}%",
+    noCoverage: "覆蓋率未知",
+    urgent: { zero: "沒有緊急行動", one: "1 項緊急行動", other: "{n} 項緊急行動" },
+    emptyTitle: "尚未連結任何工作台",
+    alreadyScanned: "我已掃描過我的商戶",
+    signOut: "登出並用另一個電郵登入",
+  },
   auth: { help: "說明", helpLabel: "關於 Kinnso OS 的常見問題", home: "Kinnso OS 首頁" },
   access: {
     readOnly: "只讀",
@@ -328,6 +383,24 @@ export const shellZhTW: ShellCopy = {
     failed: "無法核准：請開啟審閱",
     done: "已核准 {total} 份中的 {approved} 份",
     version: "第 {n} 版",
+  },
+  select: {
+    signedInAs: "已登入：{email}",
+    title: "選擇工作台",
+    lead: "開啟時會再次確認您的角色與據點範圍。",
+    open: "開啟 {name}",
+    allLocations: "所有據點",
+    locations: { one: "1 個據點", other: "{n} 個據點" },
+    markets: { hk: "香港", tw: "台灣" },
+    noScan: "尚未掃描",
+    score: "分數 {n}",
+    noScore: "尚無分數",
+    coverage: "涵蓋率 {n}%",
+    noCoverage: "涵蓋率未知",
+    urgent: { zero: "沒有緊急行動", one: "1 項緊急行動", other: "{n} 項緊急行動" },
+    emptyTitle: "尚未連結任何工作台",
+    alreadyScanned: "我已經掃描過我的店家",
+    signOut: "登出並改用另一個電子郵件登入",
   },
   auth: { help: "說明", helpLabel: "關於 Kinnso OS 的常見問題", home: "Kinnso OS 首頁" },
   access: {
