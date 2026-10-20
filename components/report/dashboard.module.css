@@ -158,5 +158,4 @@
   .summary { background: none; border-color: #ccc; }
   .claim :global(.report-actions), .filters { display: none; }
   .priorities article, .scoreRow, .metric, .panel, .detailDisclosure, .finding { break-inside: avoid; }
-  .findingGroup[hidden], .finding[hidden] { display: revert; }
 }

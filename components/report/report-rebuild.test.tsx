@@ -115,12 +115,15 @@ describe("ReportActions", () => {
     expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/en/r/fixture`);
   });
 
-  it("opens collapsed sections for printing and closes them again", () => {
-    document.body.innerHTML = '<main class="report-page"><details id="a"></details><details id="b" open></details></main>';
+  it("opens collapsed sections and filtered findings for printing, then restores them", () => {
+    document.body.innerHTML = '<main class="report-page"><details id="a"></details><details id="b" open></details><li id="f" data-print-reveal hidden></li><li id="g" hidden></li></main>';
     render(<ReportActions locale="en" />);
     window.dispatchEvent(new Event("beforeprint"));
     expect((document.getElementById("a") as HTMLDetailsElement).open).toBe(true);
+    expect(document.getElementById("f")!.hidden).toBe(false);
+    expect(document.getElementById("g")!.hidden).toBe(true);
     window.dispatchEvent(new Event("afterprint"));
+    expect(document.getElementById("f")!.hidden).toBe(true);
     expect((document.getElementById("a") as HTMLDetailsElement).open).toBe(false);
     expect((document.getElementById("b") as HTMLDetailsElement).open).toBe(true);
   });

@@ -14,20 +14,26 @@ import { copy, type PrototypeLocale } from "@/lib/copy"
  * caller passes `claimHref` for an unlocked viewer only. The copied link is the
  * public share URL: anyone it is sent to sees the free preview.
  *
- * Printing opens every collapsed section first and closes them again after,
- * so the PDF holds the whole report.
+ * Printing opens every collapsed section and shows findings a filter hid,
+ * then restores both, so the PDF holds the whole report.
  */
 export function ReportActions({ locale, claimHref }: { locale: PrototypeLocale; claimHref?: string }) {
   const t = copy[locale].report.actions
   useEffect(() => {
     let opened: HTMLDetailsElement[] = []
+    let revealed: HTMLElement[] = []
     const before = () => {
       opened = Array.from(document.querySelectorAll<HTMLDetailsElement>(".report-page details:not([open])"))
       opened.forEach((detail) => { detail.open = true })
+      // Findings hidden by a filter print too; CSS cannot undo [hidden] (Tailwind's preflight marks it !important).
+      revealed = Array.from(document.querySelectorAll<HTMLElement>(".report-page [data-print-reveal][hidden]"))
+      revealed.forEach((element) => { element.hidden = false })
     }
     const after = () => {
       opened.forEach((detail) => { detail.open = false })
+      revealed.forEach((element) => { element.hidden = true })
       opened = []
+      revealed = []
     }
     window.addEventListener("beforeprint", before)
     window.addEventListener("afterprint", after)

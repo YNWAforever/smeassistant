@@ -57,13 +57,13 @@ export function FindingsBrowser({ groups, modules, scannedAt, locale }: { groups
         const source = modules.find((row) => row.key === group.module)
         const visible = group.findings.filter((finding) => matches(finding.severity, finding.module))
         return (
-          <div key={group.module} hidden={visible.length === 0} className={styles.findingGroup}>
+          <div key={group.module} hidden={visible.length === 0} data-print-reveal className={styles.findingGroup}>
             <h3 id={`report-detail-${group.module}`} className={styles.detailAnchor}>{group.label}</h3>
             <details className={styles.detailDisclosure}>
               <summary>{c.findingsTitle} · {group.label} ({visible.length})</summary>
               <ul className={styles.findingList}>
                 {group.findings.map((finding) => (
-                  <li key={finding.id} hidden={!matches(finding.severity, finding.module)} className={styles.finding}>
+                  <li key={finding.id} hidden={!matches(finding.severity, finding.module)} data-print-reveal className={styles.finding}>
                     <div className={styles.findingHead}>
                       <Badge variant="outline" className={`priority-${finding.tone}`}>{finding.severityLabel}</Badge>
                       <strong>{finding.label}</strong>
