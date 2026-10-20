@@ -68,7 +68,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
             )}
           </div>
         </div>
-        <div style={{ display: "flex", color: ACCENT, fontSize: 28, fontWeight: 700, letterSpacing: 1 }}>FIMMICK · SME SCANNER</div>
+        <div style={{ display: "flex", color: ACCENT, fontSize: 28, fontWeight: 700, letterSpacing: 1 }}>KINNSO OS · BY FIMMICK</div>
       </div>
     ),
     { ...size, fonts: fonts.length ? fonts : undefined },
