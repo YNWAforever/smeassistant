@@ -2,6 +2,15 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## Phase 6: quality (2026-10-20)
+
+- **An action that isn't there is a real 404 again**, including a mistyped link, which used to show a server error.
+- **Action detail** is split into small parts, and its text, like the rest of the workspace's, now lives in the shared copy files. Nothing looks different.
+- **Phones:** every button, chip, checkbox and switch has a 44 px touch area, without stretching how it looks. The language label in the top bar is no longer cut off. Queue cards with a long status no longer run off the screen.
+- **Faster Actions queue:** it loads 41 KB less JavaScript, because the side panel's editor loads only when a panel opens. CI now fails a build that pushes any page over its JavaScript budget.
+- **Accessibility checks:** 0 axe violations on every workspace page in light and dark, and every keyboard stop shows a focus ring. Sign-in fields keep a visible focus ring in Windows high contrast.
+- **New acceptance tests** for bulk approve, the getting-started checklist, the side panel and the 404.
+
 ## Phase 5: onboarding and states (2026-10-20)
 
 - **Error and loading pages:** a failed page shows a friendly error in the page's language, with Try again and a short reference code to quote to Fimmick. Workspace pages show skeletons while loading and a not-found that leads back to Today.
