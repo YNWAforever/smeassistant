@@ -4,7 +4,6 @@
 
 @media (max-width: 1279px){
   .pricing-grid{grid-template-columns:repeat(2,1fr)}
-  .trust-pillar-grid{grid-template-columns:repeat(2,1fr)}
 }
 
 @media (max-width: 1023px){
@@ -14,8 +13,6 @@
   .flow-steps{display:none}
   .flow-card{min-height:auto}
   .priority-report-grid,.pricing-grid,.pricing-faq{grid-template-columns:1fr}
-  .formula-card{align-items:flex-start;flex-direction:column}
-  .formula-example{text-align:left}
 }
 
 @media (max-width:767px){
@@ -29,7 +26,7 @@
   .landing-hero,.report-page,.content-page,.flow-page,.scanning-page{width:calc(100% - 28px)}
   .landing-hero{min-height:0;padding:52px 0}
   .landing-hero h1{font-size:42px}
-  .recovery-grid,.method-principles,.trust-pillar-grid{grid-template-columns:1fr}
+  .recovery-grid{grid-template-columns:1fr}
   .section-heading-inline{align-items:flex-start;flex-direction:column}
   .loop-ribbon{width:max-content;min-width:100%;grid-template-columns:repeat(8,86px);overflow-x:auto;justify-content:flex-start}
   .loop-ribbon li{min-width:86px}
