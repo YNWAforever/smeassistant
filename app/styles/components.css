@@ -31,10 +31,8 @@
   border-radius: var(--radius);
   background: var(--paper);
 }
-.kinnso-state-icon { background: var(--paper-2); color: var(--ink-2); }
-.kinnso-state-error .kinnso-state-icon { background: var(--danger-soft); color: var(--danger-text); }
-.kinnso-state-partial .kinnso-state-icon { background: var(--warning-soft); color: var(--warning-text); }
-.kinnso-state-denied .kinnso-state-icon { background: var(--brand-soft); color: var(--brand-text); }
+/* Illustrated states carry their own colours; the partial state keeps a tinted icon. */
+.kinnso-state-partial .kinnso-state-icon > span { background: var(--warning-soft); color: var(--warning-text); }
 
 /* Approval bar */
 .kinnso-approval-bar {

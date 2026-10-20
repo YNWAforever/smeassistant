@@ -174,3 +174,38 @@ li[data-state="pending"] > .k-state-icon { color: var(--brand-text); }
 .k-scan-row[data-state="failed"] .k-state-icon { color: var(--danger-text); }
 .k-scan-row[data-state="unavailable"] .k-state-icon,
 .k-scan-row[data-state="unsupported"] .k-state-icon { color: var(--ink-3); }
+
+/* Evidence preview */
+.k-evidence-thumb { background: var(--paper-2); color: var(--ink-2); }
+.k-evidence-snippet {
+  border-inline-start: 3px solid var(--line-warm);
+  padding-inline-start: 8px;
+}
+
+/* Inline explainer */
+.k-explainer-trigger { color: var(--ink-3); }
+.k-explainer-trigger:hover,
+.k-explainer-trigger[data-state="open"] { color: var(--brand-text); background: var(--brand-soft); }
+.k-demo {
+  border-radius: calc(var(--radius) - 6px);
+  background: var(--paper-2);
+  padding: 8px;
+}
+
+/* Empty-state illustrations (one stroke weight, tokens only). */
+.k-illustration { overflow: visible; }
+.k-illustration * { vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
+.k-ill-shadow { fill: var(--paper-2); }
+.k-ill-paper { fill: var(--paper); stroke: var(--ink-3); stroke-width: 2; }
+.k-ill-line { stroke: var(--line); stroke-width: 3; }
+.k-ill-box { fill: var(--paper-2); stroke: var(--ink-3); stroke-width: 2; }
+.k-ill-accent { fill: var(--brand-soft); stroke: var(--brand); stroke-width: 2; }
+.k-ill-accent-ring { fill: var(--paper); stroke: var(--brand); stroke-width: 3; }
+.k-ill-accent-stroke { fill: none; stroke: var(--brand); stroke-width: 3; }
+.k-ill-success { fill: var(--success-soft); stroke: var(--success); stroke-width: 2; }
+.k-ill-check { fill: none; stroke: var(--success-text); stroke-width: 4; }
+.k-ill-spark { fill: var(--brand); }
+.k-ill-danger-stroke { stroke: var(--danger); stroke-width: 4; }
+.k-ill-danger-dot { fill: var(--danger); }
+.k-ill-keyhole { fill: var(--brand-text); }
+.k-ill-keyhole-line { stroke: var(--brand-text); stroke-width: 3; }
