@@ -40,7 +40,7 @@ describe("RescanButton", () => {
     const html = renderToStaticMarkup(<RescanButton {...base} tier="lite" role="owner" />);
     expect(html).toContain('disabled=""');
     expect(html).toContain("Growth Workspace plan");
-    expect(html).toContain('href="/en/owner/shop/settings/billing"');
+    expect(html).toContain('href="/en/owner/shop/settings/plan"');
   });
   it("is enabled for a paid owner with a location, disabled for the all-locations scope", () => {
     expect(renderToStaticMarkup(<RescanButton {...base} tier="paid" role="manager" />)).not.toContain('disabled=""');

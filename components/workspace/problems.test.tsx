@@ -34,7 +34,7 @@ describe("NeedsAttentionCard", () => {
   it("shows at most two problems and links to Activity", () => {
     const root = html(<NeedsAttentionCard {...common} problems={[problem("none"), problem("none", { id: "b" }), problem("none", { id: "c" })]} />);
     expect(root.querySelectorAll("[data-problem]")).toHaveLength(2);
-    expect(root.querySelector('a[href="/en/owner/kam-man-house/activity"]')).not.toBeNull();
+    expect(root.querySelector('a[href="/en/owner/kam-man-house/settings/activity"]')).not.toBeNull();
   });
 });
 

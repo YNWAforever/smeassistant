@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { OffersView } from "@/components/workspace/offers-view";
@@ -6,22 +5,16 @@ import { offerRepository } from "@/lib/repositories/offers";
 import { assetLocationScope, listAssets } from "@/lib/workspace/assets";
 import { canManageOffer, canReadOffer, canUseOffer } from "@/lib/workspace/offers";
 import { offerPromotionsEnabled } from "@/lib/workspace/offers-flag";
-import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
-
-export const dynamic = "force-dynamic";
-
-export async function generateMetadata(props: OwnerPageProps): Promise<Metadata> {
-  return ownerPageMetadata(props, { en: "Offers", zh: "優惠" });
-}
+import { loadOwnerPage, type OwnerPageProps } from "@/lib/workspace/page-context";
 
 /**
- * Offers (P4.1). Shipped dark: while OFFER_PROMOTIONS_ENABLED is off this is
+ * Offers (P4.1), the "Offer" mode of Actions › New. Shipped dark: while OFFER_PROMOTIONS_ENABLED is off this is
  * indistinguishable from a missing page. Visibility and the manage/use decisions
  * are computed here with the same helpers the routes call, and travel as maps
  * keyed by location id or "workspace" (functions are not serialisable); the UI
  * mirrors them and the routes remain the authority.
  */
-export default async function OffersRoute(props: OwnerPageProps) {
+export default async function OffersMode(props: OwnerPageProps) {
   if (!offerPromotionsEnabled()) notFound();
   const page = await loadOwnerPage(props);
   const { membership, ctx } = page;

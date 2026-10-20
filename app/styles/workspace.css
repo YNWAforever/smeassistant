@@ -1,0 +1,39 @@
+/*
+ * Redesigned workspace pages (docs/ux Phase 4). In the `pages` layer, after
+ * `legacy`, like public.css. Tokens only, so the workspace dark theme applies.
+ */
+
+/* Destination landing pages (Business, Settings) and the Locations list */
+.destination-page { display: grid; gap: 20px; max-width: 760px; }
+.destination-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.destination-row {
+  display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 12px 16px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--paper); color: var(--ink); text-decoration: none;
+  transition: border-color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+}
+a.destination-row:hover { border-color: var(--brand); background: var(--brand-softer); }
+a.destination-row:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+a.destination-row[aria-current="true"] { border-color: var(--brand); }
+.destination-row[data-locked="true"] { border-style: dashed; background: var(--paper-2); color: var(--ink-2); }
+.destination-icon { display: grid; flex-shrink: 0; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--brand-soft); color: var(--brand-text); }
+.destination-icon svg { width: 20px; height: 20px; }
+.destination-text { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.destination-text strong { font-size: 15px; }
+.destination-text small { color: var(--ink-3); font-size: 13px; line-height: 1.45; }
+.destination-chevron { flex-shrink: 0; width: 18px; height: 18px; color: var(--ink-3); }
+.destination-lock { display: inline-flex; flex-shrink: 0; align-items: center; gap: 6px; color: var(--ink-3); font-size: 12px; font-weight: 600; }
+.destination-lock svg { width: 14px; height: 14px; }
+
+/* Actions › New: the three ways to start */
+.new-mode-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: 8px; margin-bottom: 20px; }
+.new-mode-tabs a {
+  display: flex; align-items: flex-start; gap: 10px; min-height: 44px; padding: 12px 14px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--paper); color: var(--ink); text-decoration: none;
+}
+.new-mode-tabs a:hover { border-color: var(--brand); }
+.new-mode-tabs a[aria-current="page"] { border-color: var(--brand); background: var(--brand-softer); box-shadow: inset 0 0 0 1px var(--brand); }
+.new-mode-tabs a:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.new-mode-tabs svg { flex-shrink: 0; width: 18px; height: 18px; margin-top: 2px; color: var(--brand-text); }
+.new-mode-tabs span { display: grid; gap: 2px; }
+.new-mode-tabs strong { font-size: 14px; }
+.new-mode-tabs small { color: var(--ink-3); font-size: 12px; line-height: 1.4; }

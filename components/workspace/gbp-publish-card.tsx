@@ -108,7 +108,7 @@ function Stars({ rating, label }: { rating: GbpReviewTarget["starRating"]; label
 
 export function GbpPublishCard({ locale, versionId, versionNo, body, approved, panel, workspaceSlug, timezone, onChanged }: GbpPublishCardProps) {
   const t = copy[locale].workspace.publish
-  const integrationsHref = `/${locale}/owner/${workspaceSlug}/settings/integrations`
+  const integrationsHref = `/${locale}/owner/${workspaceSlug}/business/integrations`
 
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)

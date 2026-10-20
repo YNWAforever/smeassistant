@@ -39,7 +39,7 @@ for (const item of [
     await expect(summary.getByText(item.voice, { exact: true })).toBeVisible();
     await expect(page.locator("#onboarding-voice")).toHaveCount(0);
     await expect(page.locator("#approved-claims")).toHaveCount(0);
-    await expect(summary.getByRole("link", { name: item.brandLink })).toHaveAttribute("href", `/${item.locale}/owner/${merchant.slug}/settings/brand`);
+    await expect(summary.getByRole("link", { name: item.brandLink })).toHaveAttribute("href", `/${item.locale}/owner/${merchant.slug}/business/profile`);
     const screenshot = info.outputPath(`existing-brand-${item.locale}.png`);
     await page.screenshot({ path: screenshot, fullPage: true });
     await info.attach("Existing brand read-only summary", { path: screenshot, contentType: "image/png" });
@@ -48,7 +48,7 @@ for (const item of [
     // must survive the stale onboarding submission, including on mobile.
     const other = await page.context().newPage();
     await other.setViewportSize({ width: item.width, height: 900 });
-    await other.goto(`/${item.locale}/owner/${merchant.slug}/settings/brand`);
+    await other.goto(`/${item.locale}/owner/${merchant.slug}/business/profile`);
     await waitForHydration(other);
     await other.getByRole("combobox", { name: item.locale === "en" ? "Choose voice" : "選擇語氣" }).click();
     await other.getByRole("option", { name: item.locale === "en" ? "Short and direct" : "簡短直接", exact: true }).click();

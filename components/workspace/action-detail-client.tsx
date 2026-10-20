@@ -698,7 +698,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
         <div className="permission-banner" role="alert" data-testid="offer-stale-banner">
           <AlertTriangle />
           <div><strong>{offersCopy.stale[offerStale]}</strong></div>
-          {offersEnabled && <Link href={withLocation(`${base}/offers`, location)}>{offersCopy.card.viewOffers}</Link>}
+          {offersEnabled && <Link href={withLocation(`${base}/actions/new?mode=offer`, location)}>{offersCopy.card.viewOffers}</Link>}
         </div>
       )}
 
@@ -746,7 +746,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
                       </div>
                     ))}
                   </dl>
-                  <p className="limitation-note"><Link href={`${base}/settings/brand`}>{isChinese ? "在品牌設定中修改" : "Edit in Brand settings"}</Link></p>
+                  <p className="limitation-note"><Link href={`${base}/business/profile`}>{isChinese ? "在品牌設定中修改" : "Edit in Brand settings"}</Link></p>
                 </details>
               )}
               {checklistSteps && (
@@ -837,7 +837,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
                         <SelectTrigger id={`input-${key}`} aria-label={inputs[key] ?? key}><SelectValue placeholder={isChinese ? "選擇已核准素材或純文字" : "Choose an approved asset or text only"} /></SelectTrigger>
                         <SelectContent><SelectItem value="text_only">{isChinese ? "純文字（不使用相片）" : "Text only (no photo)"}</SelectItem>{approvedAssets.map((asset) => <SelectItem key={asset.id} value={asset.id}>{asset.filename}</SelectItem>)}</SelectContent>
                       </Select>
-                      {approvedAssets.length === 0 && <small>{isChinese ? zhFor(locale, "尚未有已核准素材；可先上載並確認使用權，或選擇純文字。") : "No approved assets yet; upload and confirm rights first, or choose text only."} <Link href={`${base}/assets`}>{isChinese ? "前往素材" : "Go to assets"}</Link></small>}
+                      {approvedAssets.length === 0 && <small>{isChinese ? zhFor(locale, "尚未有已核准素材；可先上載並確認使用權，或選擇純文字。") : "No approved assets yet; upload and confirm rights first, or choose text only."} <Link href={`${base}/business/assets`}>{isChinese ? "前往素材" : "Go to assets"}</Link></small>}
                     </div>
                   ) : (
                     <div key={key} className="field-stack"><Label htmlFor={`input-${key}`}>{faqQuestionByKey.get(key) ? resolveText(faqQuestionByKey.get(key)!.question, locale) : (inputs[key] ?? key)}</Label>{key.startsWith("owner_fact") || key === "menu_items" || key === "reviews_without_response" ? <Textarea id={`input-${key}`} rows={3} value={inputValues[key] ?? faqQuestionByKey.get(key)?.prefill ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} /> : <Input id={`input-${key}`} value={inputValues[key] ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} />}{faqQuestionByKey.get(key)?.prefill && <small>{isChinese ? "已按品牌設定中已儲存的資料預填，可自行修改。" : "Prefilled from a fact already saved in Brand settings; edit as needed."}</small>}</div>
@@ -939,7 +939,7 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
                 </div>}
               </SectionCard>
               <SectionCard className="delivery-card"><div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "送出" : "Delivery"}</p><h2>{social ? (isChinese ? "匯出至 Instagram" : "Export for Instagram") : (isChinese ? "匯出已核准版本" : "Export the approved version")}</h2></div><CapabilityBadge value={publishPanel ? googleBusinessPublishCapability({ enabled: publishPanel.enabled, connectionActive: publishPanel.connectionActive }) : "Requires connection"} /></div><p>{publishPanel?.enabled ? copy[locale].workspace.publish.deliveryIntro : isChinese ? "目前沒有已驗證的直接發佈連接器。只有指定版本獲核准並完成匯出，才計 1 次核准後交付。" : "No verified direct-publishing connector is present. One approved delivery is counted only after exact-version approval and export."}</p>
-                {allowanceBlocked && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "本月核准後交付額已用完" : "This month's approved-delivery allowance is used up"}</strong><p>{isChinese ? "版本仍已核准並保留；升級方案或等待下月額度後即可匯出。" : "The version stays approved; upgrade the plan or wait for next month's allowance to export it."}</p><Button asChild size="sm" variant="outline"><Link href={`${base}/settings/billing`}>{isChinese ? "查看帳單與方案" : "View billing and plans"}</Link></Button></div></div>}
+                {allowanceBlocked && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{isChinese ? "本月核准後交付額已用完" : "This month's approved-delivery allowance is used up"}</strong><p>{isChinese ? "版本仍已核准並保留；升級方案或等待下月額度後即可匯出。" : "The version stays approved; upgrade the plan or wait for next month's allowance to export it."}</p><Button asChild size="sm" variant="outline"><Link href={`${base}/settings/plan`}>{isChinese ? "查看帳單與方案" : "View billing and plans"}</Link></Button></div></div>}
                 <Button className="w-full" variant={isApprovedCurrent ? "default" : "outline"} disabled={!canDeliver} onClick={() => void deliver("export")}>{busy === "export" ? <LoaderCircle className="animate-spin" /> : exported ? <Check /> : <Download />} {exported ? (isChinese ? "再次匯出（不重複計算）" : "Export again (not counted twice)") : (isChinese ? "匯出已核准版本" : "Export approved version")}</Button>
                 <Button className="w-full" variant="outline" disabled={!canDeliver} onClick={() => void deliver("copy")}>{busy === "copy" ? <LoaderCircle className="animate-spin" /> : <Copy />} {isChinese ? "複製文字" : "Copy text"}</Button>
                 {publishPanel && selectedVersion && <GbpPublishCard locale={locale} versionId={selectedVersion.id} versionNo={selectedVersion.version_no} body={selectedVersion.body} approved={isApprovedCurrent} panel={effectiveRole === role ? publishPanel : { ...publishPanel, mayAct: publishPanel.mayAct && effectiveRole !== "viewer", canPublish: publishPanel.canPublish && effectiveRole !== "viewer", canDelete: false }} workspaceSlug={workspaceSlug} timezone={timezone} onChanged={() => router.refresh()} />}

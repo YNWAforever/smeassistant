@@ -56,7 +56,7 @@ function tabHref(base: string, filters: ActionFilters, view: string): string {
 
 function ActionCard({ action, locale, base, timezone, location }: { action: ActionOverview; locale: PrototypeLocale; base: string; timezone: string; location: string }) {
   const isChinese = locale !== "en"
-  const href = withLocation(action.templateKey === "google-reconnect" ? `${base}/settings/integrations` : `${base}/actions/${action.id}`, location)
+  const href = withLocation(action.templateKey === "google-reconnect" ? `${base}/business/integrations` : `${base}/actions/${action.id}`, location)
   const phase = action.displayPhaseKey
   const cta = phase === "draft_ready" || phase === "changes_requested" ? (isChinese ? "審閱草稿" : "Review draft") : phase === "requires_connection" ? (isChinese ? "審閱依賴項目" : "Review dependency") : action.missingInputs.length > 0 ? (isChinese ? "審閱所需資料" : "Review inputs") : (isChinese ? "開啟行動" : "Open action")
   const topFactors = [...action.priorityFactors].sort((a, b) => b.points - a.points).slice(0, 3)

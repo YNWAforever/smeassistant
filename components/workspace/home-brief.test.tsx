@@ -277,7 +277,7 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
     const shortcuts = view().querySelector(".owner-home-shortcuts");
     expect(shortcuts).not.toBeNull();
     expect(shortcuts?.querySelector('a[href="/en/owner/kam-man-house/actions?location=yik-yam"]')).not.toBeNull();
-    expect(shortcuts?.querySelector('a[href="/en/owner/kam-man-house/create?location=yik-yam"]')).not.toBeNull();
+    expect(shortcuts?.querySelector('a[href="/en/owner/kam-man-house/actions/new?location=yik-yam"]')).not.toBeNull();
   });
 
   it("takes an existing draft straight to review instead of promising a new start", () => {

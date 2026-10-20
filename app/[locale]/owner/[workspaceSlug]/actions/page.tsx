@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 
 import { ActionsListView } from "@/components/workspace/actions-list-view";
+import { CalendarView } from "@/components/workspace/calendar-view";
 import type { ActionState } from "@/lib/domain";
 import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
-import { listActions, type ActionFilters } from "@/lib/workspace/queries-pages";
+import { getCalendar, listActions, type ActionFilters } from "@/lib/workspace/queries-pages";
 import { actionBulkAssignEnabled } from "@/lib/workspace/bulk-flag";
 import { membershipRepository } from "@/lib/repositories/membership";
 
@@ -19,6 +20,11 @@ export async function generateMetadata(props: OwnerPageProps): Promise<Metadata>
 
 export default async function ActionsRoute(props: OwnerPageProps) {
   const page = await loadOwnerPage(props);
+  // ?view=due is the old Calendar (dated work and the rescan cadence), now a view of the queue.
+  if (page.query.view === "due") {
+    const model = await getCalendar(page.ctx, page.locationSlug);
+    return <CalendarView locale={page.locale} workspaceSlug={page.workspaceSlug} timezone={page.ctx.workspace.timezone} model={model} />;
+  }
   const view = page.query.view && VIEWS.has(page.query.view) ? (page.query.view as ActionFilters["view"]) : "all";
   const filters: ActionFilters = {
     location: page.locationSlug,
