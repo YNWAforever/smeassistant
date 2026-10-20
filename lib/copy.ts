@@ -3,6 +3,9 @@ import type { PublicCopy } from "@/lib/copy-public"
 import type { PublicInfoCopy } from "@/lib/copy-public-info"
 import type { ReportUiCopy } from "@/lib/copy-report"
 import type { ActionCopy } from "@/lib/copy-action"
+import type { WorkspaceActionsCopy } from "@/lib/copy-workspace-actions"
+import type { WorkspaceBusinessCopy } from "@/lib/copy-workspace-business"
+import type { WorkspaceHomeCopy } from "@/lib/copy-workspace-home"
 import type { OnboardingCopy } from "@/lib/copy-onboarding"
 import type { ShellCopy } from "@/lib/copy-shell"
 import type { UiCopy } from "@/lib/copy-ui"
@@ -499,6 +502,12 @@ export type Copy = {
   onboarding: OnboardingCopy
   /** Action detail: editor, approval, delivery and history (lib/copy-action.ts). */
   action: ActionCopy
+  /** Today, Insights, Due, Activity and the location picker (lib/copy-workspace-home.ts). */
+  workspaceHome: WorkspaceHomeCopy
+  /** The Actions queue, New and the Fix Pack card (lib/copy-workspace-actions.ts). */
+  workspaceActions: WorkspaceActionsCopy
+  /** Plan, Assets, Team, Integrations, Notifications and the owner check (lib/copy-workspace-business.ts). */
+  workspaceBusiness: WorkspaceBusinessCopy
 }
 
 /**

@@ -3,6 +3,9 @@ import { publicEn, publicZhHK, publicZhTW } from "@/lib/copy-public"
 import { infoEn, infoZhHK, infoZhTW } from "@/lib/copy-public-info"
 import { reportEn, reportZhHK, reportZhTW } from "@/lib/copy-report"
 import { actionEn, actionZhHK, actionZhTW } from "@/lib/copy-action"
+import { workspaceActionsEn, workspaceActionsZhHK, workspaceActionsZhTW } from "@/lib/copy-workspace-actions"
+import { workspaceBusinessEn, workspaceBusinessZhHK, workspaceBusinessZhTW } from "@/lib/copy-workspace-business"
+import { workspaceHomeEn, workspaceHomeZhHK, workspaceHomeZhTW } from "@/lib/copy-workspace-home"
 import { onboardingEn, onboardingZhHK, onboardingZhTW } from "@/lib/copy-onboarding"
 import { shellEn, shellZhHK, shellZhTW } from "@/lib/copy-shell"
 import { uiEn, uiZhHK, uiZhTW } from "@/lib/copy-ui"
@@ -1140,6 +1143,9 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     shell: shellEn,
     onboarding: onboardingEn,
     action: actionEn,
+    workspaceHome: workspaceHomeEn,
+    workspaceActions: workspaceActionsEn,
+    workspaceBusiness: workspaceBusinessEn,
   },
   "zh-HK": {
     language: "繁體中文（香港）",
@@ -1220,6 +1226,9 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     shell: shellZhHK,
     onboarding: onboardingZhHK,
     action: actionZhHK,
+    workspaceHome: workspaceHomeZhHK,
+    workspaceActions: workspaceActionsZhHK,
+    workspaceBusiness: workspaceBusinessZhHK,
   },
   "zh-TW": {
     language: "繁體中文（台灣）",
@@ -1300,5 +1309,8 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     shell: shellZhTW,
     onboarding: onboardingZhTW,
     action: actionZhTW,
+    workspaceHome: workspaceHomeZhTW,
+    workspaceActions: workspaceActionsZhTW,
+    workspaceBusiness: workspaceBusinessZhTW,
   },
 }
