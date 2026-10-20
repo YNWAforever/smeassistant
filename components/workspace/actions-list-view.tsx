@@ -1,4 +1,5 @@
 import Link from "next/link"
+import type { ReactNode } from "react"
 import { ArrowRight, CheckCircle2, Filter, MapPin, ShieldCheck, Sparkles } from "lucide-react"
 
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
@@ -31,6 +32,8 @@ export interface ActionsListViewProps {
   result: ActionListResult
   bulkEnabled?: boolean
   members?: AssignmentMember[]
+  /** The open action's detail (?open=id), shown beside the list on wide screens. */
+  panel?: ReactNode
 }
 
 /** A queue tab's URL. Status tabs keep the list's filters; Due and Fix Pack keep only the location. */
@@ -53,7 +56,7 @@ export function tabHref(base: string, filters: ActionFilters, view: string): str
   return qs ? `${base}/actions?${qs}` : `${base}/actions`
 }
 
-function ActionCard({ action, locale, base, timezone, location }: { action: ActionOverview; locale: PrototypeLocale; base: string; timezone: string; location: string }) {
+function ActionCard({ action, locale, base, timezone, location, previewHref }: { action: ActionOverview; locale: PrototypeLocale; base: string; timezone: string; location: string; previewHref?: string }) {
   const isChinese = locale !== "en"
   const href = withLocation(action.templateKey === "google-reconnect" ? `${base}/business/integrations` : `${base}/actions/${action.id}`, location)
   const phase = action.displayPhaseKey
@@ -69,16 +72,19 @@ function ActionCard({ action, locale, base, timezone, location }: { action: Acti
       <div className="action-card-content"><div><p className="eyebrow">{sourceLabel(action.evidence.source, locale)}</p><h2>{resolveText(action.title, locale)}</h2><p>{resolveText(action.summary, locale)}</p></div><div className="action-evidence"><FactType type={action.evidence.factType} />{action.evidence.value && <strong className="action-evidence-value">{evidenceValueLabel(action.evidence.value, locale)}</strong>}<p>{resolveText(action.evidence.detail, locale)}</p><small>{[resolveText(action.evidence.freshness, locale), formatDateTime(action.evidence.observedAt, locale, timezone)].filter(Boolean).join(" · ")}</small></div></div>
       <div className="priority-reason"><Sparkles /><div><strong>{isChinese ? "為何列為優先" : "Why this priority"}</strong><span>{topFactors.map((f) => `${resolveText(f.label, locale)} ${f.points > 0 ? "+" : ""}${f.points}`).join(" · ")}</span></div></div>
       <dl className="action-card-meta"><div><dt>{isChinese ? zhFor(locale, "店主所需時間") : "Owner effort"}</dt><dd>{effortLabel(action.effortMinutes, locale)}</dd></div><div><dt>{isChinese ? "負責人" : "Assignee"}</dt><dd className="break-all">{assigneeName}</dd></div><div><dt>{isChinese ? "到期日" : "Due"}</dt><dd>{action.dueAt ? formatDateTime(action.dueAt, locale, timezone) : "—"}</dd></div><div><dt>{isChinese ? "所需資料" : "Inputs"}</dt><dd>{action.missingInputs.length ? (isChinese ? `缺 ${action.missingInputs.length} 項` : `${action.missingInputs.length} missing`) : (isChinese ? "齊備" : "Ready")}</dd></div></dl>
-      <div className="action-card-footer"><span>{isChinese ? "最近更新：" : "Last changed "}{formatDateTime(action.updatedAt, locale, timezone)}</span><Button asChild><Link href={href}>{cta}<ArrowRight /></Link></Button></div>
+      <div className="action-card-footer"><span>{isChinese ? "最近更新：" : "Last changed "}{formatDateTime(action.updatedAt, locale, timezone)}</span><span className="action-card-links">{previewHref && <Link className="action-preview-link" href={previewHref} scroll={false}>{copy[locale].shell.panel.preview}</Link>}<Button asChild><Link href={href}>{cta}<ArrowRight /></Link></Button></span></div>
     </article>
   )
 }
 
-export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, role, locations, locationId, filters, result, bulkEnabled = false, members = [] }: ActionsListViewProps) {
+export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, role, locations, locationId, filters, result, bulkEnabled = false, members = [], panel }: ActionsListViewProps) {
   const isChinese = locale !== "en"
   const base = `/${locale}/owner/${workspaceSlug}`
   const view = filters.view ?? "all"
   const location = filters.location ?? "all"
+  // Preview opens the side panel and keeps the list's filters; google-reconnect has no detail to preview.
+  const previewHref = (action: ActionOverview) => action.templateKey === "google-reconnect" ? undefined : `${tabHref(base, filters, view)}${tabHref(base, filters, view).includes("?") ? "&" : "?"}open=${encodeURIComponent(action.id)}`
+  const card = (action: ActionOverview) => <ActionCard key={action.id} action={action} locale={locale} base={base} timezone={timezone} location={location} previewHref={previewHref(action)} />
   const channels = [
     { value: "google", label: "Google" },
     { value: "instagram", label: "Instagram" },
@@ -97,20 +103,25 @@ export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, 
       tabHref={(key) => tabHref(base, filters, key)}
       tools={<><ContextualAssistant locale={locale} surface="actions" triggerLabel={isChinese ? "比較優先次序" : "Compare priorities"} autoAsk="compare_priorities" mode="live" context={{ workspaceId, locationId: locationId ?? undefined }} basePath={base} locationParam={location} /><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /></>}
     >
-      <section className="filter-bar" aria-label={isChinese ? "行動篩選" : "Action filters"}>
-        <ActionSearch key={filters.q ?? ""} value={filters.q ?? ""} label={isChinese ? "搜尋標題及摘要" : "Search title and summary"} submitLabel={isChinese ? "搜尋" : "Search"} />
-        <span className="filter-label"><Filter /> {isChinese ? "篩選" : "Filter"}</span>
-        <ActionFilterSelect param="channel" value={filters.channel ?? "all"} options={channels} allLabel={isChinese ? "所有渠道" : "All channels"} ariaLabel={isChinese ? "篩選渠道" : "Filter by channel"} />
-        <ActionFilterSelect param="status" value={filters.status ?? "all"} options={statuses} allLabel={isChinese ? "所有狀態" : "All statuses"} ariaLabel={isChinese ? "篩選狀態" : "Filter by status"} />
-        <ActionFilterSelect param="assignee" value={filters.assignee ?? "all"} options={[{ value: "unassigned", label: isChinese ? "未指派" : "Unassigned" }, ...members.map(m => ({ value: m.id, label: m.name }))]} allLabel={isChinese ? "所有負責人" : "All assignees"} ariaLabel={isChinese ? "篩選負責人" : "Filter by assignee"} />
-        <ActionFilterSelect param="due" value={filters.due ?? "all"} options={[{ value: "overdue", label: isChinese ? "已逾期" : "Overdue" }, { value: "today", label: isChinese ? "今日" : "Today" }, { value: "next_7_days", label: isChinese ? "未來七日" : "Next 7 days" }, { value: "none", label: isChinese ? "沒有到期日" : "No due date" }]} allLabel={isChinese ? "所有到期日" : "All due dates"} ariaLabel={isChinese ? "篩選到期日" : "Filter by due date"} />
-      </section>
-      <div className="queue-summary"><span><strong>{result.actions.length}</strong> {isChinese ? "項行動（本頁）" : "actions on this page"}</span><span>{isChinese ? "按優先分數、更新時間及 ID 排序" : "Sorted by priority, update time and ID"}</span></div>
-      {bulkEnabled && role !== "viewer" ? <BulkActionSelection key={JSON.stringify([workspaceId,role,locationId,filters.q,filters.assignee,filters.due,filters.channel,filters.status,view])} locale={locale} workspaceId={workspaceId} timezone={timezone} members={members} items={result.actions.map(action => ({ actionId: action.id, expectedUpdatedAt: action.updatedAt, title: resolveText(action.title,locale), closed: ["completed","dismissed","cancelled","expired"].includes(action.actionState) }))} cards={result.actions.map(action => <ActionCard key={action.id} action={action} locale={locale} base={base} timezone={timezone} location={location} />)} /> : result.actions.length ? <div className="action-list">{result.actions.map((action) => <ActionCard key={action.id} action={action} locale={locale} base={base} timezone={timezone} location={location} />)}</div> : <div className="empty-state"><span><CheckCircle2 /></span><h2>{isChinese ? "沒有符合篩選條件的行動" : "No actions match these filters"}</h2><p>{isChinese ? "請重設一項或多項篩選；沒有行動不代表沒有證據。" : "Reset one or more filters; an empty list does not mean there is no evidence."}</p></div>}
-      <nav className="queue-pages" aria-label={isChinese ? "清單分頁" : "List pages"}>
-        <Link href={tabHref(base, filters, view)}>{isChinese ? "重新載入第一頁" : "Refresh first page"}</Link>
-        {result.nextCursor && <Link href={`${tabHref(base, filters, view)}${tabHref(base, filters, view).includes("?") ? "&" : "?"}cursor=${encodeURIComponent(result.nextCursor)}`}>{isChinese ? "下一頁" : "Next page"}</Link>}
-      </nav>
+      <div className={panel ? "actions-split" : undefined}>
+        <div className="actions-split-list">
+          <section className="filter-bar" aria-label={isChinese ? "行動篩選" : "Action filters"}>
+            <ActionSearch key={filters.q ?? ""} value={filters.q ?? ""} label={isChinese ? "搜尋標題及摘要" : "Search title and summary"} submitLabel={isChinese ? "搜尋" : "Search"} />
+            <span className="filter-label"><Filter /> {isChinese ? "篩選" : "Filter"}</span>
+            <ActionFilterSelect param="channel" value={filters.channel ?? "all"} options={channels} allLabel={isChinese ? "所有渠道" : "All channels"} ariaLabel={isChinese ? "篩選渠道" : "Filter by channel"} />
+            <ActionFilterSelect param="status" value={filters.status ?? "all"} options={statuses} allLabel={isChinese ? "所有狀態" : "All statuses"} ariaLabel={isChinese ? "篩選狀態" : "Filter by status"} />
+            <ActionFilterSelect param="assignee" value={filters.assignee ?? "all"} options={[{ value: "unassigned", label: isChinese ? "未指派" : "Unassigned" }, ...members.map(m => ({ value: m.id, label: m.name }))]} allLabel={isChinese ? "所有負責人" : "All assignees"} ariaLabel={isChinese ? "篩選負責人" : "Filter by assignee"} />
+            <ActionFilterSelect param="due" value={filters.due ?? "all"} options={[{ value: "overdue", label: isChinese ? "已逾期" : "Overdue" }, { value: "today", label: isChinese ? "今日" : "Today" }, { value: "next_7_days", label: isChinese ? "未來七日" : "Next 7 days" }, { value: "none", label: isChinese ? "沒有到期日" : "No due date" }]} allLabel={isChinese ? "所有到期日" : "All due dates"} ariaLabel={isChinese ? "篩選到期日" : "Filter by due date"} />
+          </section>
+          <div className="queue-summary"><span><strong>{result.actions.length}</strong> {isChinese ? "項行動（本頁）" : "actions on this page"}</span><span>{isChinese ? "按優先分數、更新時間及 ID 排序" : "Sorted by priority, update time and ID"}</span></div>
+          {bulkEnabled && role !== "viewer" ? <BulkActionSelection key={JSON.stringify([workspaceId,role,locationId,filters.q,filters.assignee,filters.due,filters.channel,filters.status,view])} locale={locale} workspaceId={workspaceId} timezone={timezone} members={members} items={result.actions.map(action => ({ actionId: action.id, expectedUpdatedAt: action.updatedAt, title: resolveText(action.title,locale), closed: ["completed","dismissed","cancelled","expired"].includes(action.actionState) }))} cards={result.actions.map(card)} /> : result.actions.length ? <div className="action-list">{result.actions.map(card)}</div> : <div className="empty-state"><span><CheckCircle2 /></span><h2>{isChinese ? "沒有符合篩選條件的行動" : "No actions match these filters"}</h2><p>{isChinese ? "請重設一項或多項篩選；沒有行動不代表沒有證據。" : "Reset one or more filters; an empty list does not mean there is no evidence."}</p></div>}
+          <nav className="queue-pages" aria-label={isChinese ? "清單分頁" : "List pages"}>
+            <Link href={tabHref(base, filters, view)}>{isChinese ? "重新載入第一頁" : "Refresh first page"}</Link>
+            {result.nextCursor && <Link href={`${tabHref(base, filters, view)}${tabHref(base, filters, view).includes("?") ? "&" : "?"}cursor=${encodeURIComponent(result.nextCursor)}`}>{isChinese ? "下一頁" : "Next page"}</Link>}
+          </nav>
+        </div>
+        {panel}
+      </div>
       <div className="queue-footnote"><ShieldCheck /><p><strong>{isChinese ? "獨立生命週期狀態：" : "Separate lifecycle states:"}</strong>{isChinese ? zhFor(locale, " 行動、Agent 執行、審批、送出及量度會分開追蹤，避免一個含糊狀態代表所有事情。") : " action, agent run, approval, delivery and measurement are tracked independently. The customer-facing phase above is derived for scanning, not stored as one overloaded status."}</p></div>
     </ActionsQueueFrame>
   )

@@ -1,4 +1,11 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { Maximize2, X } from "lucide-react";
+
+import { UUID_RE } from "@/app/api/actions/_shared/mutation";
+import { ActionDetailView } from "@/components/workspace/action-detail-view";
+import { loadActionDetailProps } from "@/lib/workspace/action-detail-props";
+import { withLocation } from "@/lib/workspace/format";
 
 import { ActionsListView, tabHref } from "@/components/workspace/actions-list-view";
 import { ActionsQueueFrame, type QueueView } from "@/components/workspace/actions-queue-frame";
@@ -58,6 +65,22 @@ export default async function ActionsRoute(props: OwnerPageProps) {
     if (!(error instanceof Error) || !["invalid_action_cursor", "invalid_action_page_size", "invalid_action_filter"].includes(error.message)) throw error;
     return <div role="alert"><p>{page.locale === "en" ? "This page link is invalid or its filters have changed. Refresh the list." : "此頁連結無效或篩選條件已變更，請重新載入清單。"}</p><a href={`/${page.locale}/owner/${page.workspaceSlug}/actions`}>{page.locale === "en" ? "Refresh list" : "重新載入清單"}</a></div>;
   }
+  // ?open=id: the action's detail beside the list (wide screens). The same loader as the full
+  // page, so it carries the same membership and location checks; an unknown id shows no panel.
+  const openId = page.query.open && UUID_RE.test(page.query.open) ? page.query.open : null;
+  const openDetail = openId ? await loadActionDetailProps(page, openId, page.query.version ?? null) : null;
+  const base = `/${page.locale}/owner/${page.workspaceSlug}`;
+  const closeQuery = new URLSearchParams(Object.entries(page.query).filter((entry): entry is [string, string] => entry[1] !== undefined && entry[0] !== "open" && entry[0] !== "version"));
+  const panelCopy = copy[page.locale].shell.panel;
+  const panel = openDetail && openId ? (
+    <aside className="action-side-panel" aria-label={panelCopy.label}>
+      <div className="action-side-panel-bar">
+        <Link href={`${base}/actions${closeQuery.size ? `?${closeQuery}` : ""}`} scroll={false}><X aria-hidden="true" />{panelCopy.close}</Link>
+        <Link href={withLocation(`${base}/actions/${openId}`, page.locationSlug)}><Maximize2 aria-hidden="true" />{panelCopy.fullPage}</Link>
+      </div>
+      <ActionDetailView {...openDetail} embedded />
+    </aside>
+  ) : undefined;
   const members = (await membershipRepository.team(page.ctx.workspace.id)).filter(m => m.accepted_at && m.user_id && ["owner","manager"].includes(m.role)).map(m => ({ id: m.user_id!, name: m.email }));
   return (
     <ActionsListView
@@ -72,6 +95,7 @@ export default async function ActionsRoute(props: OwnerPageProps) {
       result={result}
       bulkEnabled={actionBulkAssignEnabled()}
       members={members}
+      panel={panel}
     />
   );
 }

@@ -37,3 +37,24 @@ a.destination-row[aria-current="true"] { border-color: var(--brand); }
 .new-mode-tabs span { display: grid; gap: 2px; }
 .new-mode-tabs strong { font-size: 14px; }
 .new-mode-tabs small { color: var(--ink-3); font-size: 12px; line-height: 1.4; }
+
+/* Actions: detail beside the queue (?open=id). Wide screens only; smaller
+   screens open the full page, so Preview links are hidden there. */
+.action-card-links { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.action-preview-link { display: none; align-items: center; min-height: 44px; padding: 0 12px; color: var(--brand-text); font-weight: 600; text-decoration: none; }
+.action-preview-link:hover { text-decoration: underline; }
+.action-side-panel { display: grid; gap: 16px; align-content: start; min-width: 0; margin-top: 20px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); }
+.action-side-panel-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+.action-side-panel-bar a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 10px; border-radius: 10px; color: var(--ink-2); font-size: 14px; font-weight: 600; text-decoration: none; }
+.action-side-panel-bar a:hover { background: var(--paper-2); color: var(--ink); }
+.action-side-panel-bar svg { width: 16px; height: 16px; }
+@media (min-width: 1280px) {
+  .action-preview-link { display: inline-flex; }
+  .actions-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(420px, 0.95fr); gap: 20px; align-items: start; }
+  .action-side-panel { position: sticky; top: 88px; max-height: calc(100dvh - 104px); margin-top: 0; overflow-y: auto; overscroll-behavior: contain; }
+}
+
+/* Approval flow and version comparison above an action's detail */
+.action-progress { display: grid; gap: 10px; margin-bottom: 16px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+.action-progress-diff > summary { cursor: pointer; min-height: 32px; color: var(--brand-text); font-size: 14px; font-weight: 600; }
+.action-progress-diff > summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }

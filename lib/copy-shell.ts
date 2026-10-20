@@ -31,6 +31,7 @@ export type ShellCopy = {
     navLabel: string
     tabs: { all: string; needs_input: string; drafts: string; awaiting_approval: string; completed: string }
   }
+  panel: { label: string; preview: string; close: string; fullPage: string }
 }
 
 export const shellEn: ShellCopy = {
@@ -90,6 +91,7 @@ export const shellEn: ShellCopy = {
     navLabel: "Action views",
     tabs: { all: "All", needs_input: "Needs input", drafts: "Drafts", awaiting_approval: "Approvals", completed: "Completed" },
   },
+  panel: { label: "Action details", preview: "Preview", close: "Close details", fullPage: "Open full page" },
 }
 
 export const shellZhHK: ShellCopy = {
@@ -149,6 +151,7 @@ export const shellZhHK: ShellCopy = {
     navLabel: "行動分類",
     tabs: { all: "全部", needs_input: "需要資料", drafts: "草稿", awaiting_approval: "待審批", completed: "已完成" },
   },
+  panel: { label: "行動詳情", preview: "預覽", close: "關閉詳情", fullPage: "開啟完整頁面" },
 }
 
 export const shellZhTW: ShellCopy = {
@@ -208,4 +211,5 @@ export const shellZhTW: ShellCopy = {
     navLabel: "行動分類",
     tabs: { all: "全部", needs_input: "需要資料", drafts: "草稿", awaiting_approval: "待核准", completed: "已完成" },
   },
+  panel: { label: "行動詳情", preview: "預覽", close: "關閉詳情", fullPage: "開啟完整頁面" },
 }
