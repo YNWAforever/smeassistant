@@ -23,6 +23,8 @@
 @import "../vendor/shadcn-tailwind-4.13.0.css";
 @import "./styles/tokens.css";
 @import "./styles/components.css" layer(components);
+@import "./styles/motion.css" layer(components);
+@import "./styles/visual.css" layer(components);
 
 @import "./styles/legacy/01-prototype.css" layer(legacy);
 @import "./styles/legacy/02-responsive.css" layer(legacy);

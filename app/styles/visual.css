@@ -1,0 +1,5 @@
+/*
+ * Kinnso OS visual explanation components (components/visual/*). Token-only,
+ * so light and workspace-dark both follow tokens.css. Motion lives in
+ * motion.css; everything here is the still state.
+ */
