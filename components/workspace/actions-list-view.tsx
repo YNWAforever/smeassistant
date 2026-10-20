@@ -86,8 +86,15 @@ export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, 
   const base = `/${locale}/owner/${workspaceSlug}`
   const view = filters.view ?? "all"
   const location = filters.location ?? "all"
-  // Preview opens the side panel and keeps the list's filters; google-reconnect has no detail to preview.
-  const previewHref = (action: ActionOverview) => action.templateKey === "google-reconnect" ? undefined : `${tabHref(base, filters, view)}${tabHref(base, filters, view).includes("?") ? "&" : "?"}open=${encodeURIComponent(action.id)}`
+  // Preview opens the side panel and keeps the list's filters and page; google-reconnect has no detail to preview.
+  const previewHref = (action: ActionOverview) => {
+    if (action.templateKey === "google-reconnect") return undefined
+    const list = tabHref(base, filters, view)
+    const extra = new URLSearchParams()
+    if (filters.cursor) extra.set("cursor", filters.cursor)
+    extra.set("open", action.id)
+    return `${list}${list.includes("?") ? "&" : "?"}${extra}`
+  }
   const card = (action: ActionOverview) => <ActionCard key={action.id} action={action} locale={locale} base={base} timezone={timezone} location={location} previewHref={previewHref(action)} />
   const channels = [
     { value: "google", label: "Google" },

@@ -652,7 +652,8 @@ function ActionDetailEditor({ locale, workspaceSlug, workspaceId, timezone, role
   return (
     <div className="action-detail-page">
       <div className="action-detail-toolbar">
-        <Link href={withLocation(`${base}/actions`, location)} className="back-link"><ArrowLeft /> {isChinese ? "返回行動" : "Back to actions"}</Link>
+        {/* In the side panel, Close (which keeps the queue's filters) replaces this link. */}
+        {!embedded && <Link href={withLocation(`${base}/actions`, location)} className="back-link"><ArrowLeft /> {isChinese ? "返回行動" : "Back to actions"}</Link>}
         <div>
           {role === "owner" ? (
             <Select disabled={!hydrated} value={previewRole} onValueChange={(value) => setPreviewRole(value as PreviewRole)}>

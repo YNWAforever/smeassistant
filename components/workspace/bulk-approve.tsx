@@ -21,6 +21,8 @@ type Outcome = "approved" | "failed"
  * shown and must be ticked as read before it can be approved. Approvals run
  * one at a time through the existing approve route, which re-checks role,
  * scope and state; a refusal is reported per draft and never retried.
+ * The dialog works on a snapshot taken when it opens, and the page refreshes
+ * only once it closes, so the results stay readable until then.
  */
 export function BulkApprove({ locale, items }: { locale: PrototypeLocale; items: BulkApproveItem[] }) {
   const t = copy[locale].shell.bulk
@@ -28,11 +30,13 @@ export function BulkApprove({ locale, items }: { locale: PrototypeLocale; items:
   const [read, setRead] = useState<Set<string>>(() => new Set())
   const [outcomes, setOutcomes] = useState<Record<string, Outcome>>({})
   const [running, setRunning] = useState(false)
-  if (items.length === 0) return null
+  const [open, setOpen] = useState(false)
+  const [shown, setShown] = useState(items)
+  if (items.length === 0 && !open) return null
 
-  const pending = items.filter((item) => outcomes[item.versionId] !== "approved")
+  const pending = shown.filter((item) => outcomes[item.versionId] !== "approved")
   const selected = pending.filter((item) => read.has(item.versionId))
-  const approvedCount = items.filter((item) => outcomes[item.versionId] === "approved").length
+  const approvedCount = shown.filter((item) => outcomes[item.versionId] === "approved").length
   const finished = Object.keys(outcomes).length > 0 && !running
 
   const toggle = (versionId: string, checked: boolean) => setRead((current) => {
@@ -49,7 +53,18 @@ export function BulkApprove({ locale, items }: { locale: PrototypeLocale; items:
       setOutcomes((current) => ({ ...current, [item.versionId]: result.ok ? "approved" : "failed" }))
     }
     setRunning(false)
-    router.refresh()
+  }
+
+  function onOpenChange(next: boolean) {
+    if (running) return
+    if (next) {
+      setShown(items)
+      setRead(new Set())
+      setOutcomes({})
+    } else if (Object.values(outcomes).includes("approved")) {
+      router.refresh()
+    }
+    setOpen(next)
   }
 
   return (
@@ -58,7 +73,7 @@ export function BulkApprove({ locale, items }: { locale: PrototypeLocale; items:
         <h2 id="bulk-approve-title">{interpolate(t.title, { count: items.length })}</h2>
         <p>{t.body}</p>
       </div>
-      <Dialog>
+      <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogTrigger asChild><Button><BadgeCheck aria-hidden="true" />{t.open}</Button></DialogTrigger>
         <DialogContent className="bulk-approve-dialog">
           <DialogHeader>
@@ -66,7 +81,7 @@ export function BulkApprove({ locale, items }: { locale: PrototypeLocale; items:
             <DialogDescription>{t.dialogBody}</DialogDescription>
           </DialogHeader>
           <ul className="bulk-approve-list">
-            {items.map((item) => {
+            {shown.map((item) => {
               const outcome = outcomes[item.versionId]
               return (
                 <li key={item.versionId} data-outcome={outcome}>
@@ -88,7 +103,7 @@ export function BulkApprove({ locale, items }: { locale: PrototypeLocale; items:
               )
             })}
           </ul>
-          {finished && <p role="status">{interpolate(t.done, { approved: approvedCount, total: items.length })}</p>}
+          {finished && <p role="status">{interpolate(t.done, { approved: approvedCount, total: shown.length })}</p>}
           <DialogFooter>
             <DialogClose asChild><Button variant="outline">{t.cancel}</Button></DialogClose>
             <Button onClick={() => void approveSelected()} disabled={running || selected.length === 0}>

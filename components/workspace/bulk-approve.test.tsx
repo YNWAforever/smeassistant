@@ -21,7 +21,7 @@ it("renders nothing without safe drafts", () => {
 
 it("shows each draft's full text and approves only the drafts ticked as read, one at a time", async () => {
   mocks.approve.mockResolvedValueOnce({ ok: true, data: {} })
-  render(<BulkApprove locale="en" items={items} />)
+  const view = render(<BulkApprove locale="en" items={items} />)
   expect(screen.getByRole("heading", { name: "2 drafts ready to approve" })).toBeTruthy()
   fireEvent.click(screen.getByRole("button", { name: "Review and approve" }))
   expect(screen.getByText("Thank you, Mei!")).toBeTruthy()
@@ -30,11 +30,37 @@ it("shows each draft's full text and approves only the drafts ticked as read, on
   expect(approve).toBeDisabled()
   fireEvent.click(screen.getAllByRole("checkbox")[0])
   fireEvent.click(screen.getByRole("button", { name: "Approve 1 selected" }))
-  await waitFor(() => expect(mocks.refresh).toHaveBeenCalled())
+  await waitFor(() => expect(screen.getByRole("status").textContent).toBe("1 of 2 approved"))
   expect(mocks.approve).toHaveBeenCalledTimes(1)
   expect(mocks.approve).toHaveBeenCalledWith("v1")
   expect(screen.getByText("Approved")).toBeTruthy()
+  // The page refreshes only when the dialog closes, so the results stay put meanwhile.
+  expect(mocks.refresh).not.toHaveBeenCalled()
+  view.rerender(<BulkApprove locale="en" items={[items[1]]} />)
   expect(screen.getByRole("status").textContent).toBe("1 of 2 approved")
+  expect(screen.getByText("Thank you, Mei!")).toBeTruthy()
+  fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0])
+  expect(mocks.refresh).toHaveBeenCalledTimes(1)
+})
+
+it("keeps the results of a fully successful run visible until the dialog closes", async () => {
+  mocks.approve.mockResolvedValue({ ok: true, data: {} })
+  const view = render(<BulkApprove locale="en" items={items} />)
+  fireEvent.click(screen.getByRole("button", { name: "Review and approve" }))
+  for (const box of screen.getAllByRole("checkbox")) fireEvent.click(box)
+  fireEvent.click(screen.getByRole("button", { name: "Approve 2 selected" }))
+  await waitFor(() => expect(screen.getByRole("status").textContent).toBe("2 of 2 approved"))
+  view.rerender(<BulkApprove locale="en" items={[]} />)
+  expect(screen.getByRole("status").textContent).toBe("2 of 2 approved")
+  fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0])
+  expect(mocks.refresh).toHaveBeenCalledTimes(1)
+})
+
+it("does not refresh when the dialog closes without an approval", () => {
+  render(<BulkApprove locale="en" items={items} />)
+  fireEvent.click(screen.getByRole("button", { name: "Review and approve" }))
+  fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0])
+  expect(mocks.refresh).not.toHaveBeenCalled()
 })
 
 it("reports a refused approval on that draft and keeps it unapproved", async () => {

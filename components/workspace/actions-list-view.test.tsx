@@ -48,6 +48,14 @@ it("gives each card a Preview link that keeps the list filters, and places the p
   expect(panel.parentElement).toHaveClass("actions-split");
 });
 
+it("keeps the current page in the Preview link, so Close returns to it", () => {
+  const action = buildActionOverview(row, { location: null, latestRun: null, latestVersion: null });
+  render(<ActionsListView locale="en" workspaceSlug="shop" workspaceId="w" timezone="Asia/Hong_Kong" role="owner" locations={[]} locationId={null}
+    filters={{ location: "all", view: "drafts", cursor: "page_2" }}
+    result={{ actions: [action], counts: { all: 1, drafts: 1, needs_input: 0, awaiting_approval: 0, completed: 0 }, nextCursor: null, hasMore: false }} />);
+  expect(screen.getByRole("link", { name: "Preview" })).toHaveAttribute("href", "/en/owner/shop/actions?location=all&view=drafts&cursor=page_2&open=action");
+});
+
 it("has no Preview link for a reconnect action, whose card goes to Integrations", () => {
   const action = buildActionOverview({ ...row, template_key: "google-reconnect" }, { location: null, latestRun: null, latestVersion: null });
   render(<ActionsListView locale="en" workspaceSlug="shop" workspaceId="w" timezone="Asia/Hong_Kong" role="owner" locations={[]} locationId={null}
