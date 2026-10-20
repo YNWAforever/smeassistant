@@ -1,5 +1,6 @@
 import type { Copy, FunnelCopy, PrototypeLocale } from "@/lib/copy"
 import { publicEn, publicZhHK, publicZhTW } from "@/lib/copy-public"
+import { infoEn, infoZhHK, infoZhTW } from "@/lib/copy-public-info"
 import { uiEn, uiZhHK, uiZhTW } from "@/lib/copy-ui"
 import { workspaceEn, workspaceZhHK, workspaceZhTW } from "@/lib/copy-workspace"
 
@@ -1130,6 +1131,7 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     workspace: workspaceEn,
     ui: uiEn,
     site: publicEn,
+    siteInfo: infoEn,
   },
   "zh-HK": {
     language: "繁體中文（香港）",
@@ -1205,6 +1207,7 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     workspace: workspaceZhHK,
     ui: uiZhHK,
     site: publicZhHK,
+    siteInfo: infoZhHK,
   },
   "zh-TW": {
     language: "繁體中文（台灣）",
@@ -1280,5 +1283,6 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     workspace: workspaceZhTW,
     ui: uiZhTW,
     site: publicZhTW,
+    siteInfo: infoZhTW,
   },
 }
