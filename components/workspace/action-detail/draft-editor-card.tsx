@@ -31,7 +31,7 @@ export function DraftEditorCard({ ed }: { ed: ActionEditor }) {
   } = ed
   return (
     <SectionCard className="draft-editor-card">
-      <div className="section-card-heading"><div><p className="eyebrow">{checklistSteps ? checklistSteps.where : ac.editor.generatedOutput}</p><h2>{copy[locale].workspace.templates[action.templateKey]?.workflow ?? action.templateKey}</h2></div><div><Badge variant="outline">{checklistSteps ? stateLabel(action.actionState, locale) : versionName}</Badge>{!checklistSteps && selectedVersion && <Badge variant="outline">{originLabel(selectedVersion.origin, locale !== "en")}</Badge>}</div></div>
+      <div className="section-card-heading"><div><p className="eyebrow">{checklistSteps ? checklistSteps.where : ac.editor.generatedOutput}</p><h2>{copy[locale].workspace.templates[action.templateKey]?.workflow ?? action.templateKey}</h2></div><div><Badge variant="outline">{checklistSteps ? stateLabel(action.actionState, locale) : versionName}</Badge>{!checklistSteps && selectedVersion && <Badge variant="outline">{originLabel(selectedVersion.origin, locale)}</Badge>}</div></div>
       {social && approvedAssets.length > 0 && <div className="asset-reference"><span><FileImage /></span><div><strong>{approvedAssets[0].filename}</strong><small>{fill(ac.editor.approvedAsset, { n: approvedAssets.length })}</small></div><Badge variant="outline">{ac.editor.approved}</Badge></div>}
       <div className="original-context"><FactType type={action.evidence.factType} /><div><strong>{ac.editor.sourceFinding}</strong><p>{resolveText(action.evidence.detail, locale)}</p><small>{formatDateTime(action.evidence.observedAt, locale, timezone)} · {ac.editor.sourcePreserved}</small></div></div>
       {offer && (
