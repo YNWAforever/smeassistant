@@ -415,7 +415,6 @@ button:focus-visible {
 }
 
 .flow-card,
-.collector-list,
 .unlock-form-card,
 .auth-card,
 .onboarding-card,
@@ -436,12 +435,6 @@ button:focus-visible {
 
 .recommended-label {
   background: var(--inverse);
-}
-
-.scan-pulse {
-  background: var(--lime-soft);
-  color: var(--brand-text);
-  box-shadow: 0 0 0 14px rgba(240, 175, 109, .16);
 }
 
 .score-dial {

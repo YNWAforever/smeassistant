@@ -249,10 +249,6 @@ body {
   [data-reveal="pending"] .score-dial {
     --score: 0deg !important;
   }
-
-  .scan-pulse {
-    animation: pulse-ring 2.4s var(--ease-out) infinite;
-  }
 }
 
 @property --score {
@@ -1201,9 +1197,6 @@ body {
 
 /* ── Public: scanning outcome ──────────────────────────────────────────── */
 /* The pulse kept running on a finished or stopped scan. */
-.scan-status-hero:is([data-state="ready"], [data-state="failed"], [data-state="dead_lettered"]) .scan-pulse { animation: none; }
-.scan-status-hero[data-state="ready"] .scan-pulse { background: var(--teal-soft); color: var(--teal); box-shadow: 0 0 0 14px rgba(105, 60, 15, .08); }
-.scan-status-hero[data-state="failed"] .scan-pulse { background: var(--paper-2); color: var(--ink-3); box-shadow: none; }
 
 /* The phone bottom nav (z 60) sat above every overlay (sheets, dialogs and
    select menus are z 50): it stayed bright and clickable over an open sheet. */

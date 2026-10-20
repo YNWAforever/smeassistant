@@ -34,8 +34,6 @@
   .two-column-fields,.coverage-source-list{grid-template-columns:1fr}
   .candidate-card{grid-template-columns:40px 1fr}
   .candidate-card .button{grid-column:1/-1}
-  .collector-list article{grid-template-columns:34px 1fr}
-  .collector-list article>.badge{grid-column:2}
   .partial-result-card,.evidence-passport article,.unlock-banner{align-items:flex-start;flex-direction:column}
   .report-page>.loop-ribbon{width:100%;grid-template-columns:repeat(8,86px);overflow-x:auto}
   .unlock-page,.auth-page,.onboarding-page,.select-workspace-page{width:calc(100% - 28px);padding:42px 0}

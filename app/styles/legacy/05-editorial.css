@@ -202,11 +202,6 @@ body:has(.public-site) {
   box-shadow: 0 0 0 1px var(--ed-orange), var(--ed-shadow-lg);
 }
 
-.public-site .scan-pulse {
-  background: var(--ed-peach-100);
-  color: var(--ed-orange-800);
-}
-
 /* Scan steps sidebar: teal states become warm. */
 .public-site .flow-steps li {
   color: rgb(255 255 255 / 0.62);
