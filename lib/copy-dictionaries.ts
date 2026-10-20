@@ -6,6 +6,13 @@ import { actionEn, actionZhHK, actionZhTW } from "@/lib/copy-action"
 import { workspaceActionsEn, workspaceActionsZhHK, workspaceActionsZhTW } from "@/lib/copy-workspace-actions"
 import { workspaceBusinessEn, workspaceBusinessZhHK, workspaceBusinessZhTW } from "@/lib/copy-workspace-business"
 import { workspaceHomeEn, workspaceHomeZhHK, workspaceHomeZhTW } from "@/lib/copy-workspace-home"
+import { accessRequestEn, accessRequestZhHK, accessRequestZhTW } from "@/lib/copy-access-request"
+import { assistantSheetEn, assistantSheetZhHK, assistantSheetZhTW } from "@/lib/copy-assistant"
+import { demoWorkspaceEn, demoWorkspaceZhHK, demoWorkspaceZhTW } from "@/lib/copy-demo-workspace"
+import { pricingPageEn, pricingPageZhHK, pricingPageZhTW } from "@/lib/copy-pricing"
+import { productEn, productZhHK, productZhTW } from "@/lib/copy-product"
+import { actionTabsEn, actionTabsZhHK, actionTabsZhTW } from "@/lib/copy-action-tabs"
+import { workspaceLabelsEn, workspaceLabelsZhHK, workspaceLabelsZhTW } from "@/lib/copy-workspace-labels"
 import { onboardingEn, onboardingZhHK, onboardingZhTW } from "@/lib/copy-onboarding"
 import { shellEn, shellZhHK, shellZhTW } from "@/lib/copy-shell"
 import { uiEn, uiZhHK, uiZhTW } from "@/lib/copy-ui"
@@ -1146,6 +1153,13 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     workspaceHome: workspaceHomeEn,
     workspaceActions: workspaceActionsEn,
     workspaceBusiness: workspaceBusinessEn,
+    accessRequest: accessRequestEn,
+    assistantSheet: assistantSheetEn,
+    demoWorkspace: demoWorkspaceEn,
+    pricingPage: pricingPageEn,
+    product: productEn,
+    actionTabs: actionTabsEn,
+    workspaceLabels: workspaceLabelsEn,
   },
   "zh-HK": {
     language: "繁體中文（香港）",
@@ -1229,6 +1243,13 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     workspaceHome: workspaceHomeZhHK,
     workspaceActions: workspaceActionsZhHK,
     workspaceBusiness: workspaceBusinessZhHK,
+    accessRequest: accessRequestZhHK,
+    assistantSheet: assistantSheetZhHK,
+    demoWorkspace: demoWorkspaceZhHK,
+    pricingPage: pricingPageZhHK,
+    product: productZhHK,
+    actionTabs: actionTabsZhHK,
+    workspaceLabels: workspaceLabelsZhHK,
   },
   "zh-TW": {
     language: "繁體中文（台灣）",
@@ -1312,5 +1333,12 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     workspaceHome: workspaceHomeZhTW,
     workspaceActions: workspaceActionsZhTW,
     workspaceBusiness: workspaceBusinessZhTW,
+    accessRequest: accessRequestZhTW,
+    assistantSheet: assistantSheetZhTW,
+    demoWorkspace: demoWorkspaceZhTW,
+    pricingPage: pricingPageZhTW,
+    product: productZhTW,
+    actionTabs: actionTabsZhTW,
+    workspaceLabels: workspaceLabelsZhTW,
   },
 }

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { copy, type PrototypeLocale } from "@/lib/copy"
 
 /**
  * Asks Fimmick to assign this report's workspace (Phase 2 item 27).
@@ -29,7 +30,8 @@ const CHANNELS: Record<"hk" | "tw", Array<{ value: string; label: string }>> = {
   ],
 }
 
-export function AccessRequestForm({ slug, market, isChinese }: { slug: string; market: "hk" | "tw"; isChinese: boolean }) {
+export function AccessRequestForm({ slug, market, locale }: { slug: string; market: "hk" | "tw"; locale: PrototypeLocale }) {
+  const t = copy[locale].accessRequest
   const router = useRouter()
   const [intent, setIntent] = useState("")
   const [channel, setChannel] = useState(CHANNELS[market][0].value)
@@ -41,7 +43,7 @@ export function AccessRequestForm({ slug, market, isChinese }: { slug: string; m
     event.preventDefault()
     if (busy) return
     if (!intent.trim() || !contact.trim()) {
-      toast.error(isChinese ? "請填寫你的說明及聯絡方式。" : "Describe your request and how to reach you.")
+      toast.error(t.toasts.missing)
       return
     }
     setBusy(true)
@@ -58,25 +60,21 @@ export function AccessRequestForm({ slug, market, isChinese }: { slug: string; m
     })
     setBusy(false)
     if (response.ok) {
-      toast.success(isChinese ? "已記錄你的申請。" : "Your request is recorded.")
+      toast.success(t.toasts.recorded)
       router.refresh()
       return
     }
-    if (response.status === 429) toast.error(isChinese ? "請求過於頻繁，請稍後再試。" : "Too many requests; try again shortly.")
-    else if (response.status === 404) toast.error(isChinese ? "此報告未能與你的帳戶對應。" : "This report could not be matched to your account.")
-    else toast.error(isChinese ? "未能提交申請。" : "The request could not be submitted.")
+    if (response.status === 429) toast.error(t.toasts.tooMany)
+    else if (response.status === 404) toast.error(t.toasts.notMatched)
+    else toast.error(t.toasts.failed)
   }
 
   return (
     <form className="field-stack" onSubmit={(event) => void submit(event)}>
-      <p>
-        {isChinese
-          ? "提交申請不等於證明擁有權；Fimmick 會另行核實。"
-          : "Filing a request is not proof of ownership; Fimmick verifies it separately."}
-      </p>
-      <Label htmlFor="request-intent">{isChinese ? "你想申請甚麼？" : "What are you asking for?"}</Label>
+      <p>{t.form.notProof}</p>
+      <Label htmlFor="request-intent">{t.form.intent}</Label>
       <Textarea id="request-intent" rows={3} value={intent} onChange={(event) => setIntent(event.target.value)} disabled={busy} />
-      <Label htmlFor="request-channel">{isChinese ? "聯絡方式" : "How should we reach you?"}</Label>
+      <Label htmlFor="request-channel">{t.form.channel}</Label>
       <select
         id="request-channel"
         className="native-select"
@@ -88,22 +86,18 @@ export function AccessRequestForm({ slug, market, isChinese }: { slug: string; m
           <option key={option.value} value={option.value}>{option.label}</option>
         ))}
       </select>
-      <Label htmlFor="request-contact">{isChinese ? "聯絡號碼或地址" : "Number or address"}</Label>
+      <Label htmlFor="request-contact">{t.form.contact}</Label>
       <Input id="request-contact" value={contact} onChange={(event) => setContact(event.target.value)} disabled={busy} />
-      <Label htmlFor="request-evidence">{isChinese ? "可供核實的參考（選填）" : "Something we can check (optional)"}</Label>
+      <Label htmlFor="request-evidence">{t.form.evidence}</Label>
       <Input
         id="request-evidence"
         value={evidence}
         onChange={(event) => setEvidence(event.target.value)}
         disabled={busy}
-        placeholder={isChinese ? "例如商業登記號碼" : "For example a business registration number"}
+        placeholder={t.form.evidencePlaceholder}
       />
-      <small>
-        {isChinese
-          ? "請填寫可獨立核實的參考，不需上載文件。"
-          : "A reference we can check independently. Do not upload documents; there is no upload here."}
-      </small>
-      <Button type="submit" disabled={busy}>{isChinese ? "提交申請" : "Send the request"}</Button>
+      <small>{t.form.evidenceNote}</small>
+      <Button type="submit" disabled={busy}>{t.form.submit}</Button>
     </form>
   )
 }

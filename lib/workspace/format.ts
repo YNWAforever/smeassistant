@@ -1,5 +1,6 @@
 import type { PrototypeLocale } from "@/lib/copy";
 import { copy } from "@/lib/copy";
+import { fill } from "@/lib/copy-ui";
 import type { Priority } from "@/lib/domain";
 import { findingLabel as localizedFindingLabel } from "@/lib/funnel/report-labels";
 import { readableFindingKey } from "@/lib/report/finding-label";
@@ -14,20 +15,17 @@ import type { TemplateKey } from "@/lib/workspace/templates";
  * default deliberately does NOT echo an unrecognised code -- that is how the
  * raw value reached the page in the first place.
  */
-export function comparisonReasonText(reason: string | null | undefined, isChinese: boolean): string {
+export function comparisonReasonText(reason: string | null | undefined, locale: PrototypeLocale): string {
+  const t = copy[locale].workspaceLabels.comparison;
   switch (reason) {
     case "SCORING_VERSION_MISMATCH":
-      return isChinese ? "評分版本不同" : "Scoring version changed";
     case "SCORING_VERSION_UNKNOWN":
-      return isChinese ? "評分版本未知" : "Scoring version unknown";
     case "NO_SHARED_MEASURED_MODULE":
-      return isChinese ? "沒有共同已量度來源" : "No shared measured source";
     case "INSUFFICIENT_INDEPENDENT_CHANNELS":
-      return isChinese ? "獨立來源不足" : "Too few independent channels";
     case "NO_DIFF":
-      return isChinese ? "尚未有第二次可比較的掃描" : "No second comparable scan yet";
+      return t[reason];
     default:
-      return isChinese ? "尚無可比較掃描" : "No comparable scan yet";
+      return t.none;
   }
 }
 
@@ -71,7 +69,7 @@ export function ordinal(day: number): string {
  * is precisely how the odd one out gets missed.
  */
 export function effortLabel(minutes: number, locale: PrototypeLocale): string {
-  return locale === "en" ? `about ${minutes} minutes` : `約 ${minutes} 分鐘`;
+  return fill(copy[locale].workspaceLabels.effort, { minutes });
 }
 
 export function priorityLabel(priority: Priority, locale: PrototypeLocale): string {
@@ -147,8 +145,7 @@ export function buildExportText(input: {
   acceptanceCriteria: readonly string[];
   locale: PrototypeLocale;
 }): string {
-  const isChinese = input.locale !== "en";
-  let text = input.altText ? `${input.body}\n\n---\n${isChinese ? "圖片替代文字" : "Alt text"}: ${input.altText}\n` : input.body;
+  let text = input.altText ? `${input.body}\n\n---\n${copy[input.locale].workspaceLabels.altText}: ${input.altText}\n` : input.body;
   const websiteExport = copy[input.locale].workspace.websiteExport;
   const instructions = websiteExport.instructions[input.templateKey];
   if (!instructions) return text;

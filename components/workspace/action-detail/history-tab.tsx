@@ -16,7 +16,7 @@ export function HistoryTab({ ed }: { ed: ActionEditor }) {
       </SectionCard>
       <SectionCard><div className="section-card-heading"><div><p className="eyebrow">{ac.history.safetyEyebrow}</p><h2>{ac.history.safetyTitle}</h2></div></div>
         {conflict ? <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{ac.editor.conflictTitle}</strong><p>{ac.editor.conflictBody}</p><Button size="sm" onClick={loadLatest}><RefreshCw /> {ac.editor.loadLatest}</Button></div></div> : <div className="idempotent-state"><CheckCircle2 /><div><strong>{ac.history.noConflict}</strong><p>{ac.history.idempotent}</p></div></div>}
-        <div className="audit-mini">{relatedAudit.length === 0 ? <div><span>—</span><p>{ac.history.noAudit}</p></div> : relatedAudit.map((row) => <div key={row.id}><span>{formatDateTime(row.created_at, locale, timezone)}</span><p><strong>{auditEventLabel(row.event, locale)}</strong> · {auditActorLabel(row.actor_type, locale !== "en")}{typeof row.payload?.version_no === "number" ? ` · ${versionLabel(row.payload.version_no)}` : ""}</p></div>)}</div>
+        <div className="audit-mini">{relatedAudit.length === 0 ? <div><span>—</span><p>{ac.history.noAudit}</p></div> : relatedAudit.map((row) => <div key={row.id}><span>{formatDateTime(row.created_at, locale, timezone)}</span><p><strong>{auditEventLabel(row.event, locale)}</strong> · {auditActorLabel(row.actor_type, locale)}{typeof row.payload?.version_no === "number" ? ` · ${versionLabel(row.payload.version_no)}` : ""}</p></div>)}</div>
       </SectionCard>
     </div>
   )

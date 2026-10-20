@@ -18,7 +18,7 @@ export type WorkspaceActionsCopy = {
     separateLifecycleStates: string; actionAgentRunApproval: string; thisPageLinkIs: string; refreshList: string;
   }
   create: {
-    describeTheObjectiveIn: string; yourRoleOrLocation: string; actionCreatedButThe: string; actionCreatedAFew: string; draftFailedRetry: string;
+    describeTheObjectiveIn: string; yourRoleOrLocation: string; actionCreatedButThe: string; actionCreatedRunInProgress: string; actionCreatedAFew: string; draftFailedRetry: string;
     actionCreatedAndThe: string; actionCreated: string; evidenceLed: string; ownerObjective: string; sourceUnconfirmed: string;
     toReview: string; outcomeLedCreationCentre: string; whatDoYouWant: string; chooseABusinessOutcome: string; openActionQueue: string;
     recommendedFromEvidence: string; allOutcomes: string; noEvidenceLedGoals: string; youCanStillStart: string; recommendedStartingPoints: string;
@@ -80,6 +80,7 @@ export const workspaceActionsEn: WorkspaceActionsCopy = {
     describeTheObjectiveIn: "Describe the objective in a sentence or two first.",
     yourRoleOrLocation: "Your role or location scope cannot create actions.",
     actionCreatedButThe: "Action created, but the draft could not be started.",
+    actionCreatedRunInProgress: "Action created; its draft is still being written and nothing was charged twice.",
     actionCreatedAFew: "Action created; a few details are needed before a draft can be written.",
     draftFailedRetry: "Action created, but the draft could not be generated this time — retry from the action page.",
     actionCreatedAndThe: "Action created and the first draft is saved.",
@@ -178,6 +179,7 @@ export const workspaceActionsZhHK: WorkspaceActionsCopy = {
     describeTheObjectiveIn: "請用一兩句寫下你想達成的目標。",
     yourRoleOrLocation: "你的角色或地點範圍不允許建立行動。",
     actionCreatedButThe: "行動已建立，但未能開始生成草稿。",
+    actionCreatedRunInProgress: "行動已建立；草稿仍在生成中，沒有重複收費。",
     actionCreatedAFew: "行動已建立；需要補充資料才能生成草稿。",
     draftFailedRetry: "行動已建立，但今次未能產生草稿，請在行動頁重試。",
     actionCreatedAndThe: "已建立行動，第一份草稿已儲存。",
@@ -267,6 +269,7 @@ export const workspaceActionsZhTW: WorkspaceActionsCopy = {
     describeTheObjectiveIn: "請用一兩句寫下你想達成的目標。",
     yourRoleOrLocation: "你的角色或據點範圍不允許建立行動。",
     actionCreatedButThe: "行動已建立，但未能開始生成草稿。",
+    actionCreatedRunInProgress: "行動已建立；草稿仍在產生中，沒有重複計費。",
     actionCreatedAFew: "行動已建立；需要補充資料才能生成草稿。",
     draftFailedRetry: "行動已建立，但今次未能產生草稿，請在行動頁重試。",
     actionCreatedAndThe: "已建立行動，第一份草稿已儲存。",

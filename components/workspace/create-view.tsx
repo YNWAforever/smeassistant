@@ -124,7 +124,7 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
       toast.error(t(locale, "pause.ai"))
     } else if (runError === "run_in_progress") {
       // F-14: the same objective was submitted twice; the first draft is still being written.
-      toast.message(locale === "zh-HK" ? "行動已建立；草稿仍在生成中，沒有重複收費。" : locale === "zh-TW" ? "行動已建立；草稿仍在產生中，沒有重複計費。" : "Action created; its draft is still being written and nothing was charged twice.")
+      toast.message(pc.actionCreatedRunInProgress)
     } else if (runError) {
       toast.error(pc.actionCreatedButThe)
     } else if (factsNeeded?.length) {

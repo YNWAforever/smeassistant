@@ -1,3 +1,5 @@
+import { copy, type PrototypeLocale } from "@/lib/copy";
+
 /**
  * Display labels for audit_events rows (CLAUDE.md §3.11), shared by the
  * Activity page and the action detail history tab. Plain data, safe to import
@@ -60,12 +62,7 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string; zhTW?:
   "pack.started": { en: "Starter pack started", zh: "已開始入門套裝", zhTW: "已開始入門套組" },
 };
 
-export const AUDIT_ACTOR_LABELS: Record<"user" | "agent" | "system" | "scanner", { en: string; zh: string }> = {
-  user: { en: "Member", zh: "成員" },
-  agent: { en: "Kinnso OS", zh: "Kinnso OS" },
-  system: { en: "Kinnso OS", zh: "Kinnso OS" },
-  scanner: { en: "Scanner", zh: "掃描器" },
-};
+type AuditActor = "user" | "agent" | "system" | "scanner";
 
 /**
  * Events only an allowlisted operator writes. They are stored with actor_type
@@ -80,35 +77,15 @@ const OPERATOR_EVENTS = new Set([
   "access_request.rejected",
   "ops.scan.released",
 ]);
-const OPERATOR_LABEL = { en: "Operator", zh: "營運人員" };
-
-export function activityActorLabel(row: { event: string; actor_type: keyof typeof AUDIT_ACTOR_LABELS }, isChinese: boolean): string {
-  const label = row.actor_type === "user" && OPERATOR_EVENTS.has(row.event)
-    ? OPERATOR_LABEL
-    : AUDIT_ACTOR_LABELS[row.actor_type] ?? AUDIT_ACTOR_LABELS.system;
-  return isChinese ? label.zh : label.en;
+export function activityActorLabel(row: { event: string; actor_type: AuditActor }, locale: PrototypeLocale): string {
+  const actors = copy[locale].workspaceLabels.actors;
+  return row.actor_type === "user" && OPERATOR_EVENTS.has(row.event) ? actors.operator : actors[row.actor_type] ?? actors.system;
 }
 
 /** What an event was about, when it has no other detail. Unknown types show nothing, never the raw table name. */
-const AUDIT_ENTITY_LABELS: Record<string, { en: string; zh: string }> = {
-  audit_job: { en: "Scan", zh: "掃描" },
-  action: { en: "Action", zh: "行動" },
-  action_run: { en: "Draft run", zh: "草稿生成" },
-  agent_run: { en: "Fix Pack draft", zh: "Fix Pack 草稿" },
-  output_version: { en: "Version", zh: "版本" },
-  delivery: { en: "Delivery", zh: "交付" },
-  asset: { en: "Asset", zh: "素材" },
-  brand_profile: { en: "Brand profile", zh: "品牌資料" },
-  offer: { en: "Offer", zh: "優惠" },
-  workspace: { en: "Workspace", zh: "工作台" },
-  workspace_member: { en: "Member", zh: "成員" },
-  workspace_access_request: { en: "Access request", zh: "存取申請" },
-  oauth_connection: { en: "Connection", zh: "連接" },
-};
-
-export function auditEntityLabel(entityType: string | null, isChinese: boolean): string | null {
-  const label = entityType ? AUDIT_ENTITY_LABELS[entityType] : undefined;
-  return label ? (isChinese ? label.zh : label.en) : null;
+export function auditEntityLabel(entityType: string | null, locale: PrototypeLocale): string | null {
+  const entities: Record<string, string> = copy[locale].workspaceLabels.entities;
+  return entityType && Object.hasOwn(entities, entityType) ? entities[entityType] : null;
 }
 
 export function auditEventLabel(event: string, locale: "en" | "zh-HK" | "zh-TW"): string {
@@ -118,7 +95,7 @@ export function auditEventLabel(event: string, locale: "en" | "zh-HK" | "zh-TW")
   return locale === "zh-TW" ? label.zhTW ?? label.zh : label.zh;
 }
 
-export function auditActorLabel(actor: keyof typeof AUDIT_ACTOR_LABELS, isChinese: boolean): string {
-  const label = AUDIT_ACTOR_LABELS[actor] ?? AUDIT_ACTOR_LABELS.system;
-  return isChinese ? label.zh : label.en;
+export function auditActorLabel(actor: AuditActor, locale: PrototypeLocale): string {
+  const actors = copy[locale].workspaceLabels.actors;
+  return actors[actor] ?? actors.system;
 }

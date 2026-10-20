@@ -8,9 +8,9 @@ import type { AssistantArtifact } from "@/lib/pocket-assistant/contracts";
 afterEach(cleanup);
 
 it.each([
-  { isChinese: false, version: 1, label: "Draft preview" },
-  { isChinese: true, version: 7, label: "草稿預覽" },
-])("does not present an unsaved preview counter as a stored version: $label", ({ isChinese, version, label }) => {
+  { locale: "en" as const, version: 1, label: "Draft preview" },
+  { locale: "zh-HK" as const, version: 7, label: "草稿預覽" },
+])("does not present an unsaved preview counter as a stored version: $label", ({ locale, version, label }) => {
   const artifact: AssistantArtifact = {
     type: "review_reply",
     artifactId: "example-preview",
@@ -20,7 +20,7 @@ it.each([
     acceptanceCriteria: ["Owner approval is still required."],
   };
 
-  render(<AssistantArtifactPreview artifact={artifact} isChinese={isChinese} />);
+  render(<AssistantArtifactPreview artifact={artifact} locale={locale} />);
 
   expect(screen.getByText(label, { exact: true })).toBeInTheDocument();
   expect(screen.queryByText(`v${version}`, { exact: true })).not.toBeInTheDocument();
