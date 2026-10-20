@@ -444,7 +444,7 @@
     "actionLabel": "Do this",
     "fixPackDraftLabel": "Draft for you to use",
     "ctaBodyPersonalized": "Your top opportunities: {issues}. We'll follow up within 24 hours to help you start fixing these.",
-    "whatsappMessagePersonalized": "Hi Fimmick, I saw my SME Scanner report for {business} — my top gaps are: {issues}. Can we talk?",
+    "whatsappMessagePersonalized": "Hi Fimmick, I saw my Kinnso OS report for {business} — my top gaps are: {issues}. Can we talk?",
     "ctaTitle": "Want Fimmick to help you improve?",
     "ctaBody": "We'll reach out within 24 hours to help you fix every issue above.",
     "ctaBtn": "WhatsApp Fimmick →",
@@ -499,7 +499,7 @@
     "shareNative": "Share",
     "downloadPdf": "Download PDF",
     "shareText": "Check out {business}'s AI visibility report ({score}/100) 👀",
-    "metaTitle": "{business}'s AI Visibility Score: {score}/100 | SME Scanner",
+    "metaTitle": "{business}'s AI Visibility Score: {score}/100 | Kinnso OS",
     "metaDescription": "Can AI, Google & Instagram find {business}? See its visibility score and where to improve."
   },
   "legal": {

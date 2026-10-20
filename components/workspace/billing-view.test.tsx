@@ -17,7 +17,7 @@ import { t } from "@/lib/i18n";
  * P3.3 task 5: the owner billing page must never offer Stripe (enabled or
  * disabled) while billing is closed, for any role, and must say so with the
  * shared `commercial.notOpen` label instead of the old "Subscribe to unlock
- * the Growth Workspace" copy.
+ * the Growth plan" copy.
  */
 function baseModel(overrides: Partial<BillingModel> = {}): BillingModel {
   return {
@@ -56,7 +56,7 @@ describe("BillingView while billing is closed", () => {
     expect(root.textContent).not.toContain("管理帳單");
     expect(root.textContent).toContain(t("en", "commercial.notOpen"));
     expect(root.textContent).toContain("1 / 3");
-    expect(root.textContent).not.toContain("Subscribe to unlock the Growth Workspace");
+    expect(root.textContent).not.toContain("Subscribe to unlock the Growth plan");
     expect(root.textContent).not.toContain("unlimited once subscribed");
     expect(root.textContent).toContain("Fimmick staff grant");
   });

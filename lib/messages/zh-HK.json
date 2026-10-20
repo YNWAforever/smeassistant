@@ -444,7 +444,7 @@
     "actionLabel": "即刻做",
     "fixPackDraftLabel": "已幫你寫好底稿",
     "ctaBodyPersonalized": "你嘅首要改善位：{issues}。我哋會喺 24 小時內同你跟進，教你點樣即刻著手。",
-    "whatsappMessagePersonalized": "你好 Fimmick，我睇咗我間舖嘅 SME Scanner 報告 — {business}，主要嘅改善位係：{issues}。可唔可以傾吓？",
+    "whatsappMessagePersonalized": "你好 Fimmick，我睇咗我間舖嘅 Kinnso OS 報告 — {business}，主要嘅改善位係：{issues}。可唔可以傾吓？",
     "ctaTitle": "想 Fimmick 團隊幫你優化？",
     "ctaBody": "我哋 24 小時內聯絡，幫你逐一解決以上問題。",
     "ctaBtn": "WhatsApp 聯絡 Fimmick →",
@@ -499,7 +499,7 @@
     "shareNative": "分享",
     "downloadPdf": "下載 PDF",
     "shareText": "睇下我哋【{business}】嘅 AI 能見度報告（{score}/100）👀",
-    "metaTitle": "{business} 的 AI 能見度評分：{score}/100｜SME Scanner",
+    "metaTitle": "{business} 的 AI 能見度評分：{score}/100｜Kinnso OS",
     "metaDescription": "AI、Google、Instagram 搵唔搵到「{business}」？睇吓佢哋嘅能見度評分同改善方向。"
   },
   "legal": {

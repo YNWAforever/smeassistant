@@ -111,7 +111,7 @@ export function rescanFailureMessage(result: Extract<ClientResult<unknown>, { ok
 const COPY = {
   en: {
     label: "Rescan",
-    tier: "Rescans are part of the Growth Workspace plan.",
+    tier: "Rescans are part of the Growth plan.",
     billing: "See plans",
     chooseLocation: "Choose one location to rescan",
     queued: "Rescan queued; collecting fresh evidence.",
@@ -130,7 +130,7 @@ const COPY = {
   },
   "zh-HK": {
     label: "重新掃描",
-    tier: "重新掃描屬於增長工作台方案。",
+    tier: "重新掃描屬於增長方案。",
     billing: "查看方案",
     chooseLocation: "請先選擇一個地點",
     queued: "已排隊重新掃描；正在收集最新證據。",
@@ -149,7 +149,7 @@ const COPY = {
   },
   "zh-TW": {
     label: "重新掃描",
-    tier: "重新掃描屬於成長工作台方案。",
+    tier: "重新掃描屬於成長方案。",
     billing: "查看方案",
     chooseLocation: "請先選擇一個據點",
     queued: "已排入重新掃描；正在收集最新證據。",

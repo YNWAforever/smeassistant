@@ -62,7 +62,7 @@ export type WorkspaceBusinessCopy = {
 
 export const workspaceBusinessEn: WorkspaceBusinessCopy = {
   billing: {
-    growthWorkspace: "Growth Workspace",
+    growthWorkspace: "Growth plan",
     freePlan: "Free plan",
     unlimited: "unlimited",
     planApprovedDeliveriesAnd: "Plan, approved deliveries and payment lifecycle",
@@ -78,7 +78,7 @@ export const workspaceBusinessEn: WorkspaceBusinessCopy = {
     currentlyFreeAllowance: "Currently free · {allowanceLabel} approved deliveries/month",
     subscriptionActive: "Subscription active",
     notSubscribed: "Not subscribed",
-    upgradeToGrowthWorkspace: "Upgrade to Growth Workspace",
+    upgradeToGrowthWorkspace: "Upgrade to the Growth plan",
     approvedDeliveriesThisMonth: "Approved deliveries this month",
     approvedDeliveriesUsedThis: "Approved deliveries used this month",
     noCap: "{period} · no cap",
@@ -89,7 +89,7 @@ export const workspaceBusinessEn: WorkspaceBusinessCopy = {
     topUpPlanned: "Top-up · Planned",
     paymentLifecycle: "Payment lifecycle",
     yourSubscriptionIsManaged: "Your subscription is managed by Stripe",
-    subscribeToUnlockThe: "Subscribe to unlock the Growth Workspace",
+    subscribeToUnlockThe: "Subscribe to unlock the Growth plan",
     theWorkspaceRemainsAvailable: "The workspace remains available during grace; entitlement is reconciled from subscription state, not webhook order.",
     tierChangesArriveOnly: "Tier changes arrive only through the Stripe webhook or a Fimmick staff grant; this page never edits entitlements itself.",
     immutableTierLedger: "Immutable tier ledger",
@@ -251,7 +251,7 @@ export const workspaceBusinessEn: WorkspaceBusinessCopy = {
 
 export const workspaceBusinessZhHK: WorkspaceBusinessCopy = {
   billing: {
-    growthWorkspace: "增長工作台",
+    growthWorkspace: "增長方案",
     freePlan: "免費方案",
     unlimited: "不限",
     planApprovedDeliveriesAnd: "方案、核准後交付及付款週期",
@@ -267,7 +267,7 @@ export const workspaceBusinessZhHK: WorkspaceBusinessCopy = {
     currentlyFreeAllowance: "目前為免費方案 · 每月 {allowanceLabel} 次核准後交付",
     subscriptionActive: "訂閱生效中",
     notSubscribed: "尚未訂閱",
-    upgradeToGrowthWorkspace: "升級至增長工作台",
+    upgradeToGrowthWorkspace: "升級至增長方案",
     approvedDeliveriesThisMonth: "本月核准後交付",
     approvedDeliveriesUsedThis: "本月核准後交付用量",
     noCap: "{period} · 不設上限",
@@ -278,7 +278,7 @@ export const workspaceBusinessZhHK: WorkspaceBusinessCopy = {
     topUpPlanned: "加購用量 · 規劃中",
     paymentLifecycle: "付款週期",
     yourSubscriptionIsManaged: "訂閱由 Stripe 管理",
-    subscribeToUnlockThe: "訂閱後即時解鎖增長工作台",
+    subscribeToUnlockThe: "訂閱後即時解鎖增長方案",
     theWorkspaceRemainsAvailable: "寬限期內工作台仍可使用；權益以目前訂閱狀態核對，不依賴 webhook 到達次序。",
     tierChangesArriveOnly: "方案變更只會經 Stripe webhook 或 Fimmick 職員授權寫入；此頁面不會自行更改權益。",
     immutableTierLedger: "不可變更的方案紀錄",
@@ -435,7 +435,7 @@ export const workspaceBusinessZhHK: WorkspaceBusinessCopy = {
 
 export const workspaceBusinessZhTW: WorkspaceBusinessCopy = {
   billing: {
-    growthWorkspace: "成長工作台",
+    growthWorkspace: "成長方案",
     freePlan: "免費方案",
     unlimited: "不限",
     planApprovedDeliveriesAnd: "方案、核准後交付及付款週期",
@@ -451,7 +451,7 @@ export const workspaceBusinessZhTW: WorkspaceBusinessCopy = {
     currentlyFreeAllowance: "目前為免費方案 · 每月 {allowanceLabel} 次核准後交付",
     subscriptionActive: "訂閱生效中",
     notSubscribed: "尚未訂閱",
-    upgradeToGrowthWorkspace: "升級至增長工作台",
+    upgradeToGrowthWorkspace: "升級至成長方案",
     approvedDeliveriesThisMonth: "本月核准後交付",
     approvedDeliveriesUsedThis: "本月核准後交付用量",
     noCap: "{period} · 不設上限",
@@ -462,7 +462,7 @@ export const workspaceBusinessZhTW: WorkspaceBusinessCopy = {
     topUpPlanned: "加購用量 · 規劃中",
     paymentLifecycle: "付款週期",
     yourSubscriptionIsManaged: "訂閱由 Stripe 管理",
-    subscribeToUnlockThe: "訂閱後即時解鎖成長工作台",
+    subscribeToUnlockThe: "訂閱後即時解鎖成長方案",
     theWorkspaceRemainsAvailable: "寬限期內工作台仍可使用；權益以目前訂閱狀態核對，不依賴 webhook 到達次序。",
     tierChangesArriveOnly: "方案變更只會經 Stripe webhook 或 Fimmick 職員授權寫入；此頁面不會自行更改權益。",
     immutableTierLedger: "不可變更的方案紀錄",

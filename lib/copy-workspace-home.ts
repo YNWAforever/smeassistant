@@ -68,7 +68,7 @@ export type WorkspaceHomeCopy = {
 
 export const workspaceHomeEn: WorkspaceHomeCopy = {
   home: {
-    growthWorkspace: "Growth Workspace",
+    growthWorkspace: "Growth plan",
     freePlan: "Free plan",
     comparable: "Comparable",
     notComparable: "Not comparable",
@@ -244,7 +244,7 @@ export const workspaceHomeEn: WorkspaceHomeCopy = {
 
 export const workspaceHomeZhHK: WorkspaceHomeCopy = {
   home: {
-    growthWorkspace: "增長工作台",
+    growthWorkspace: "增長方案",
     freePlan: "免費方案",
     comparable: "可比較",
     notComparable: "未能比較",
@@ -420,7 +420,7 @@ export const workspaceHomeZhHK: WorkspaceHomeCopy = {
 
 export const workspaceHomeZhTW: WorkspaceHomeCopy = {
   home: {
-    growthWorkspace: "成長工作台",
+    growthWorkspace: "成長方案",
     freePlan: "免費方案",
     comparable: "可比較",
     notComparable: "未能比較",
