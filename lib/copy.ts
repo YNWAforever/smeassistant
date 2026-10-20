@@ -6,6 +6,10 @@ import type { ActionCopy } from "@/lib/copy-action"
 import type { WorkspaceActionsCopy } from "@/lib/copy-workspace-actions"
 import type { WorkspaceBusinessCopy } from "@/lib/copy-workspace-business"
 import type { WorkspaceHomeCopy } from "@/lib/copy-workspace-home"
+import type { AccessRequestCopy } from "@/lib/copy-access-request"
+import type { AssistantSheetCopy } from "@/lib/copy-assistant"
+import type { DemoWorkspaceCopy } from "@/lib/copy-demo-workspace"
+import type { PricingPageCopy } from "@/lib/copy-pricing"
 import type { OnboardingCopy } from "@/lib/copy-onboarding"
 import type { ShellCopy } from "@/lib/copy-shell"
 import type { UiCopy } from "@/lib/copy-ui"
@@ -508,6 +512,14 @@ export type Copy = {
   workspaceActions: WorkspaceActionsCopy
   /** Plan, Assets, Team, Integrations, Notifications and the owner check (lib/copy-workspace-business.ts). */
   workspaceBusiness: WorkspaceBusinessCopy
+  /** The ownership access request form and status (lib/copy-access-request.ts). */
+  accessRequest: AccessRequestCopy
+  /** Ask Kinnso, the contextual assistant sheet (lib/copy-assistant.ts). */
+  assistantSheet: AssistantSheetCopy
+  /** The public demo workspace (lib/copy-demo-workspace.ts). */
+  demoWorkspace: DemoWorkspaceCopy
+  /** The pricing page (lib/copy-pricing.ts). */
+  pricingPage: PricingPageCopy
 }
 
 /**
