@@ -1,7 +1,8 @@
 import Link from "next/link"
 import type { ReactNode } from "react"
-import { ArrowRight, CheckCircle2, Filter, MapPin, ShieldCheck, Sparkles } from "lucide-react"
+import { ArrowRight, Filter, MapPin, ShieldCheck, Sparkles } from "lucide-react"
 
+import { EmptyState } from "@/components/kinnso/states"
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
 import { CapabilityBadge, FactType } from "@/components/product-ui"
 import { ActionsQueueFrame, type QueueView } from "@/components/workspace/actions-queue-frame"
@@ -81,6 +82,18 @@ function ActionCard({ action, locale, base, timezone, location, previewHref }: {
   )
 }
 
+/**
+ * The queue's empty state: with filters on it offers to clear them (an empty
+ * filtered list says nothing about the evidence); with none it says there is
+ * nothing to do and offers a new action to those who may start one.
+ */
+function QueueEmpty({ locale, filtered, clearHref, newHref }: { locale: PrototypeLocale; filtered: boolean; clearHref: string; newHref: string | null }) {
+  const t = copy[locale].shell.empty
+  const item = filtered ? t.filtered : t.actions
+  const href = filtered ? clearHref : newHref
+  return <EmptyState locale={locale} kind={filtered ? "noData" : "allDone"} title={item.title} body={item.body} action={href ? <Button asChild variant={filtered ? "outline" : "default"} className="min-h-11"><Link href={href}>{item.action}</Link></Button> : undefined} />
+}
+
 export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, role, locations, locationId, filters, result, bulkEnabled = false, members = [], panel, bulkApprove = [] }: ActionsListViewProps) {
   const isChinese = locale !== "en"
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -126,7 +139,7 @@ export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, 
           </section>
           {role !== "viewer" && <BulkApprove locale={locale} items={bulkApprove} />}
           <div className="queue-summary"><span><strong>{result.actions.length}</strong> {isChinese ? "項行動（本頁）" : "actions on this page"}</span><span>{isChinese ? "按優先分數、更新時間及 ID 排序" : "Sorted by priority, update time and ID"}</span></div>
-          {bulkEnabled && role !== "viewer" ? <BulkActionSelection key={JSON.stringify([workspaceId,role,locationId,filters.q,filters.assignee,filters.due,filters.channel,filters.status,view])} locale={locale} workspaceId={workspaceId} timezone={timezone} members={members} items={result.actions.map(action => ({ actionId: action.id, expectedUpdatedAt: action.updatedAt, title: resolveText(action.title,locale), closed: ["completed","dismissed","cancelled","expired"].includes(action.actionState) }))} cards={result.actions.map(card)} /> : result.actions.length ? <div className="action-list">{result.actions.map(card)}</div> : <div className="empty-state"><span><CheckCircle2 /></span><h2>{isChinese ? "沒有符合篩選條件的行動" : "No actions match these filters"}</h2><p>{isChinese ? "請重設一項或多項篩選；沒有行動不代表沒有證據。" : "Reset one or more filters; an empty list does not mean there is no evidence."}</p></div>}
+          {bulkEnabled && role !== "viewer" ? <BulkActionSelection key={JSON.stringify([workspaceId,role,locationId,filters.q,filters.assignee,filters.due,filters.channel,filters.status,view])} locale={locale} workspaceId={workspaceId} timezone={timezone} members={members} items={result.actions.map(action => ({ actionId: action.id, expectedUpdatedAt: action.updatedAt, title: resolveText(action.title,locale), closed: ["completed","dismissed","cancelled","expired"].includes(action.actionState) }))} cards={result.actions.map(card)} /> : result.actions.length ? <div className="action-list">{result.actions.map(card)}</div> : <QueueEmpty locale={locale} filtered={Boolean(filters.q || filters.channel || filters.status || filters.assignee || filters.due || view !== "all")} clearHref={tabHref(base, { location: filters.location }, "all")} newHref={role === "viewer" ? null : withLocation(`${base}/actions/new`, location)} />}
           <nav className="queue-pages" aria-label={isChinese ? "清單分頁" : "List pages"}>
             <Link href={tabHref(base, filters, view)}>{isChinese ? "重新載入第一頁" : "Refresh first page"}</Link>
             {result.nextCursor && <Link href={`${tabHref(base, filters, view)}${tabHref(base, filters, view).includes("?") ? "&" : "?"}cursor=${encodeURIComponent(result.nextCursor)}`}>{isChinese ? "下一頁" : "Next page"}</Link>}

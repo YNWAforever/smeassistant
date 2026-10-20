@@ -60,6 +60,6 @@ describe("NotificationList", () => {
   });
 
   it("says so when there is nothing, instead of an empty card", () => {
-    expect(render([]).textContent).toContain("No notifications yet.");
+    expect(render([]).textContent).toContain("You're all caught up");
   });
 });

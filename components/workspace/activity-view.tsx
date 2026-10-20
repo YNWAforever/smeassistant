@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 
+import { EmptyState } from "@/components/kinnso/states"
 import { PageIntro, SectionCard } from "@/components/product-ui"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { copy, type PrototypeLocale } from "@/lib/copy"
@@ -70,12 +71,12 @@ export function ActivityView({ locale, timezone, events, problems }: { locale: P
     <div className="activity-page">
       <PageIntro eyebrow={isChinese ? zhFor(locale, "只增不改的店主審計紀錄") : "Append-only owner audit"} title={isChinese ? "活動紀錄" : "Activity"} description={isChinese ? zhFor(locale, "記錄來源、版本、角色、審批及交付；最新事件在上，原始內容不會藏在分析事件內。") : "Source, version, role, approval and delivery events are recorded latest-first without putting raw content in analytics."} />
       {problems}
+      {events.length === 0 ? <EmptyState locale={locale} kind="noData" title={copy[locale].shell.empty.activity.title} body={copy[locale].shell.empty.activity.body} /> : (
       <SectionCard className="activity-card">
         <Table className="activity-table">
           <TableCaption>{isChinese ? "工作台事件，按時間由新至舊排列" : "Workspace events, latest first"}</TableCaption>
           <TableHeader><TableRow><TableHead>{isChinese ? "時間" : "Time"}</TableHead><TableHead>{isChinese ? "操作人" : "Actor"}</TableHead><TableHead>{isChinese ? "事件" : "Event"}</TableHead><TableHead>{isChinese ? "詳情" : "Detail"}</TableHead></TableRow></TableHeader>
           <TableBody>
-            {events.length === 0 && <TableRow><TableCell colSpan={4}>{isChinese ? "尚未有事件。" : "No events yet."}</TableCell></TableRow>}
             {events.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>{formatDateTime(row.created_at, locale, timezone)}</TableCell>
@@ -87,6 +88,7 @@ export function ActivityView({ locale, timezone, events, problems }: { locale: P
           </TableBody>
         </Table>
       </SectionCard>
+      )}
     </div>
   )
 }

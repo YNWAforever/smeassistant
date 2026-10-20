@@ -1,9 +1,10 @@
 import Link from "next/link"
 import { CalendarClock, MapPin, TriangleAlert } from "lucide-react"
 
+import { EmptyState } from "@/components/kinnso/states"
 import { Badge } from "@/components/ui/badge"
 import { PageIntro, SectionCard } from "@/components/product-ui"
-import type { PrototypeLocale } from "@/lib/copy"
+import { copy, type PrototypeLocale } from "@/lib/copy"
 import { resolveText } from "@/lib/domain"
 import { formatDay, ordinal, priorityClass, priorityLabel, withLocation } from "@/lib/workspace/format"
 import type { CalendarModel } from "@/lib/workspace/queries-pages"
@@ -36,7 +37,7 @@ export function CalendarView({ locale, workspaceSlug, timezone, model, embedded 
       </SectionCard>
       <SectionCard>
         <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "有到期日的行動" : "Actions with a due date"}</p><h2>{isChinese ? "已規劃工作" : "Planned work"}</h2></div><Badge variant="outline">{model.dueActions.length}</Badge></div>
-        {model.dueActions.length === 0 ? <p>{isChinese ? "尚未有行動設定到期日。" : "No action has a due date yet."}</p> : (
+        {model.dueActions.length === 0 ? <EmptyState locale={locale} kind="noData" title={copy[locale].shell.empty.due.title} body={copy[locale].shell.empty.due.body} /> : (
           <div className="compact-action-list">
             {model.dueActions.map((action) => <Link key={action.id} href={withLocation(`${base}/actions/${action.id}`, action.location.slug === "all" ? undefined : action.location.slug)}><span className={`priority-marker ${priorityClass(action.priority)}`} /><div><strong>{resolveText(action.title, locale)}</strong><small><MapPin /> {resolveText(action.location.name, locale)} · {formatDay(action.dueAt ?? null, locale, timezone)} · {priorityLabel(action.priority, locale)}</small></div></Link>)}
           </div>

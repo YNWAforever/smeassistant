@@ -62,3 +62,20 @@ it("has no Preview link for a reconnect action, whose card goes to Integrations"
     filters={{}} result={{ actions: [action], counts: { all: 1, drafts: 0, needs_input: 0, awaiting_approval: 0, completed: 0 }, nextCursor: null, hasMore: false }} />);
   expect(screen.queryByRole("link", { name: "Preview" })).toBeNull();
 });
+
+it("an empty filtered queue offers to clear the filters, keeping the location", () => {
+  render(<ActionsListView locale="en" workspaceSlug="shop" workspaceId="w" timezone="Asia/Hong_Kong" role="owner" locations={[]} locationId={null}
+    filters={{ location: "tin-hau", channel: "google" }} result={{ actions: [], counts: { all: 0, drafts: 0, needs_input: 0, awaiting_approval: 0, completed: 0 }, nextCursor: null, hasMore: false }} />);
+  expect(screen.getByRole("heading", { name: "No actions match these filters" })).toBeTruthy();
+  expect(screen.getByRole("link", { name: "Clear filters" })).toHaveAttribute("href", "/en/owner/shop/actions?location=tin-hau");
+});
+
+it("an empty unfiltered queue says there is nothing to do, with New only for those who may start work", () => {
+  const result = { actions: [], counts: { all: 0, drafts: 0, needs_input: 0, awaiting_approval: 0, completed: 0 }, nextCursor: null, hasMore: false };
+  const owner = render(<ActionsListView locale="en" workspaceSlug="shop" workspaceId="w" timezone="Asia/Hong_Kong" role="owner" locations={[]} locationId={null} filters={{ location: "all" }} result={result} />);
+  expect(screen.getByRole("heading", { name: "Nothing to do right now" })).toBeTruthy();
+  expect(screen.getAllByRole("link", { name: "New action" }).some((link) => link.getAttribute("href") === "/en/owner/shop/actions/new?location=all")).toBe(true);
+  owner.unmount();
+  render(<ActionsListView locale="en" workspaceSlug="shop" workspaceId="w" timezone="Asia/Hong_Kong" role="viewer" locations={[]} locationId={null} filters={{ location: "all" }} result={result} />);
+  expect(screen.queryByRole("link", { name: "New action" })).toBeNull();
+});

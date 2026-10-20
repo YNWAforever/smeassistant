@@ -6,10 +6,11 @@ import Link from "next/link"
 import { Check, LoaderCircle } from "lucide-react"
 import { toast } from "sonner"
 
+import { EmptyState } from "@/components/kinnso/states"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import type { PrototypeLocale } from "@/lib/copy"
+import { copy, type PrototypeLocale } from "@/lib/copy"
 import { resolveText } from "@/lib/domain"
 import { t } from "@/lib/i18n"
 import { formatDateTime } from "@/lib/workspace/format"
@@ -160,7 +161,7 @@ export function NotificationList({ locale, workspaceId, timezone, rows }: { loca
     router.refresh()
   }
 
-  if (rows.length === 0) return <p>{c.empty}</p>
+  if (rows.length === 0) return <EmptyState locale={locale} kind="allDone" title={copy[locale].shell.empty.notifications.title} body={copy[locale].shell.empty.notifications.body} />
   return (
     <>
       <div className="compact-action-list">

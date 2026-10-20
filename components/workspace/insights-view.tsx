@@ -1,9 +1,11 @@
 import Link from "next/link"
 import { ArrowRight, CheckCircle2, CircleDashed, ShieldCheck, TrendingDown } from "lucide-react"
 
+import { EmptyState } from "@/components/kinnso/states"
 import { FactType, PageIntro, SectionCard, TrendIcon } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
 import { LocationSelect } from "@/components/workspace/location-select"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { comparisonReasonText, findingLabel, formatDay, metricLabel, scorePercent, signed, withLocation } from "@/lib/workspace/format"
@@ -67,7 +69,7 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
           ))}
         </div>
       ) : !head ? (
-        <SectionCard className="no-comparable-card"><CircleDashed /><div><p className="eyebrow">{isChinese ? "尚未有掃描" : "No scan yet"}</p><h2>{isChinese ? "完成第一次掃描後，成效會在這裡出現" : "Insights appear after the first scan completes"}</h2></div></SectionCard>
+        <EmptyState locale={locale} kind="noData" title={copy[locale].shell.empty.insights.title} body={copy[locale].shell.empty.insights.body} action={<Button asChild variant="outline" className="min-h-11"><Link href={withLocation(base, model.locationSlug)}>{copy[locale].shell.empty.insights.action}</Link></Button>} />
       ) : (
         <>
           {!comparable && <SectionCard className="no-comparable-card"><CircleDashed /><div><p className="eyebrow">{isChinese ? "暫無可比較掃描" : "No comparable scan yet"}</p><h2>{reasonText(trend.reasonCode, isChinese)}</h2><p>{isChinese ? zhFor(locale, "符合資格前不顯示趨勢；分數與覆蓋率仍按每次掃描如實列出。") : "No trend is shown until eligibility is met; each scan's score and coverage are still listed honestly."}</p></div></SectionCard>}

@@ -52,6 +52,18 @@ export type ShellCopy = {
    * can change it; the server checks stay the authority. {role} and {name} are
    * filled by components/states/role-notice.tsx.
    */
+  /** Empty states across the workspace (Phase 5): one line and at most one next step. */
+  empty: {
+    actions: Item & { action: string }
+    filtered: Item & { action: string }
+    due: Item
+    fixPack: Item & { action: string; drafts: string }
+    insights: Item & { action: string }
+    assets: Item
+    activity: Item
+    notifications: Item
+    locations: Item & { action: string }
+  }
   /** Today's getting-started checklist (Phase 5); hides itself once every item is done. */
   gettingStarted: {
     title: string
@@ -173,6 +185,17 @@ export const shellEn: ShellCopy = {
     done: "{approved} of {total} approved",
     version: "Version {n}",
   },
+  empty: {
+    actions: { title: "Nothing to do right now", body: "New actions appear when a scan finds something worth fixing. You can also start from a goal.", action: "New action" },
+    filtered: { title: "No actions match these filters", body: "Change or clear the filters. An empty list does not mean there is no evidence.", action: "Clear filters" },
+    due: { title: "Nothing is due", body: "Give an action a due date and it appears here, with your next scan." },
+    fixPack: { title: "No drafts from the Fimmick team", body: "When the team prepares review replies or posts for you, they wait here for your approval.", action: "Start your own", drafts: "Open your drafts" },
+    insights: { title: "Insights appear after your first scan", body: "Each scan adds evidence. Changes show only once two comparable scans exist.", action: "Back to Today" },
+    assets: { title: "No assets yet", body: "Upload photos or menus you have the right to use. Drafts only use assets you have approved." },
+    activity: { title: "No activity yet", body: "Drafts, approvals, exports and scans are recorded here as they happen." },
+    notifications: { title: "You're all caught up", body: "Scan results, approvals and exports will show up here." },
+    locations: { title: "No locations yet", body: "A location is added when a scan of your business is claimed.", action: "Run a free scan" },
+  },
   gettingStarted: {
     title: "Getting started",
     lead: "Five steps to your first delivered piece of work. This list disappears once they are all done.",
@@ -291,6 +314,17 @@ export const shellZhHK: ShellCopy = {
     done: "已審批 {total} 份中的 {approved} 份",
     version: "第 {n} 版",
   },
+  empty: {
+    actions: { title: "暫時沒有待辦", body: "掃描發現值得處理的問題時，新行動會出現在這裡。你亦可由目標開始。", action: "新增行動" },
+    filtered: { title: "沒有符合篩選條件的行動", body: "請更改或清除篩選。清單空白不代表沒有證據。", action: "清除篩選" },
+    due: { title: "沒有到期項目", body: "為行動設定到期日後，它會與下次掃描一同顯示在這裡。" },
+    fixPack: { title: "暫時沒有 Fimmick 團隊準備的草稿", body: "團隊為你準備評論回覆或帖文時，會在這裡等你審批。", action: "自行開始", drafts: "查看你的草稿" },
+    insights: { title: "完成第一次掃描後，成效會在這裡出現", body: "每次掃描都會加入證據；要有兩次可比較的掃描，才會顯示變化。", action: "返回今日" },
+    assets: { title: "尚未有素材", body: "上載你有權使用的相片或餐牌。草稿只會使用你已核准的素材。" },
+    activity: { title: "尚未有活動", body: "草稿、審批、匯出及掃描都會在發生時記錄在這裡。" },
+    notifications: { title: "沒有新通知", body: "掃描結果、審批及匯出會在這裡顯示。" },
+    locations: { title: "尚未有地點", body: "認領你商戶的掃描後，便會加入地點。", action: "免費掃描" },
+  },
   gettingStarted: {
     title: "開始使用",
     lead: "五個步驟，完成第一份送出的工作。全部完成後，此清單會自動隱藏。",
@@ -408,6 +442,17 @@ export const shellZhTW: ShellCopy = {
     failed: "無法核准：請開啟審閱",
     done: "已核准 {total} 份中的 {approved} 份",
     version: "第 {n} 版",
+  },
+  empty: {
+    actions: { title: "目前沒有待辦", body: "掃描發現值得處理的問題時，新行動會出現在這裡。您也可以從目標開始。", action: "新增行動" },
+    filtered: { title: "沒有符合篩選條件的行動", body: "請變更或清除篩選。清單空白不代表沒有證據。", action: "清除篩選" },
+    due: { title: "沒有到期項目", body: "為行動設定到期日後，它會和下次掃描一起顯示在這裡。" },
+    fixPack: { title: "目前沒有 Fimmick 團隊準備的草稿", body: "團隊為您準備評論回覆或貼文時，會在這裡等您核准。", action: "自行開始", drafts: "查看您的草稿" },
+    insights: { title: "完成第一次掃描後，成效會顯示在這裡", body: "每次掃描都會加入證據；要有兩次可比較的掃描，才會顯示變化。", action: "回到今日" },
+    assets: { title: "尚無素材", body: "上傳您有權使用的照片或菜單。草稿只會使用您已核准的素材。" },
+    activity: { title: "尚無活動", body: "草稿、核准、匯出與掃描都會在發生時記錄在這裡。" },
+    notifications: { title: "沒有新通知", body: "掃描結果、核准與匯出會顯示在這裡。" },
+    locations: { title: "尚無據點", body: "認領您店家的掃描後，就會加入據點。", action: "免費掃描" },
   },
   gettingStarted: {
     title: "開始使用",

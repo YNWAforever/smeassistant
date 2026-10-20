@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { Check, Sparkles, X } from "lucide-react"
 
+import { EmptyState } from "@/components/kinnso/states"
 import { SectionCard } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -92,11 +93,16 @@ export function FixPackCard({ locale, workspaceId, viewerRole, actionsHref, crea
         // card doesn't know.
         !error && <p>{isChinese ? "載入中…" : "Loading…"}</p>
       ) : visible.length === 0 ? (
-        <>
-          <p>{isChinese ? zhFor(locale, "目前沒有待審閱的職員草稿。你可以在「製作內容」準備自己的評論回覆或帖文。") : "No staff drafts to review. You can prepare your own review replies or posts in Create content."}</p>
-          {createHref && <p><Link href={createHref}>{isChinese ? zhFor(locale, "製作內容") : "Create content"}</Link></p>}
-          {actionsHref && <p className="limitation-note"><Link href={actionsHref}>{isChinese ? "查看草稿" : "Open drafts"}</Link></p>}
-        </>
+        <EmptyState
+          locale={locale}
+          kind="allDone"
+          title={copy[locale].shell.empty.fixPack.title}
+          body={copy[locale].shell.empty.fixPack.body}
+          action={createHref || actionsHref ? <div className="flex flex-wrap justify-center gap-2">
+            {createHref && <Button asChild variant="outline" className="min-h-11"><Link href={createHref}>{copy[locale].shell.empty.fixPack.action}</Link></Button>}
+            {actionsHref && <Button asChild variant="ghost" className="min-h-11"><Link href={actionsHref}>{copy[locale].shell.empty.fixPack.drafts}</Link></Button>}
+          </div> : undefined}
+        />
       ) : (
         <div className="fix-pack-list">
           {visible.map((draft) => (

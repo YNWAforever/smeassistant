@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
 
+import { EmptyState } from "@/components/kinnso/states";
+import { Button } from "@/components/ui/button";
 import { PageIntro } from "@/components/product-ui";
 import { Badge } from "@/components/ui/badge";
 import { copy } from "@/lib/copy";
@@ -27,7 +29,7 @@ export default async function LocationsRoute(props: OwnerPageProps) {
     <div className="destination-page">
       <PageIntro title={t.title} description={t.lead} />
       {page.ctx.locations.length === 0 ? (
-        <p className="limitation-note">{t.empty}</p>
+        <EmptyState locale={page.locale} kind="noData" title={copy[page.locale].shell.empty.locations.title} body={copy[page.locale].shell.empty.locations.body} action={<Button asChild className="min-h-11"><Link href={`/${page.locale}/scan`}>{copy[page.locale].shell.empty.locations.action}</Link></Button>} />
       ) : (
         <ul className="destination-list">
           {page.ctx.locations.map((location) => (
