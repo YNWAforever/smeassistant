@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Activity, Bell, CreditCard, Users } from "lucide-react";
+import { Activity, ArrowLeftRight, Bell, CreditCard, Users } from "lucide-react";
 
 import { DestinationIndex } from "@/components/workspace/destination-index";
 import { copy } from "@/lib/copy";
@@ -26,6 +26,8 @@ export default async function SettingsRoute(props: OwnerPageProps) {
         { key: "plan", ...t.settings.plan, icon: CreditCard, href: `${base}/plan` },
         { key: "notifications", ...t.settings.notifications, icon: Bell, href: `${base}/notifications` },
         { key: "activity", ...t.settings.activity, icon: Activity, href: `${base}/activity` },
+        // The only way to switch workspace or sign out on a phone, where the sidebar's account controls are hidden.
+        { key: "account", ...t.settings.account, icon: ArrowLeftRight, href: `/${page.locale}/owner/select-workspace` },
       ]}
     />
   );
