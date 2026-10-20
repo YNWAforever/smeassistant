@@ -6,6 +6,9 @@ import { copy, type PrototypeLocale } from "@/lib/copy"
 import { fill } from "@/lib/copy-ui"
 
 import type { CoverageSource } from "./coverage-meter"
+
+/** A source row; `detail` replaces the generic state word with a more precise one (e.g. "Not provided"). */
+export type ScanProgressSource = CoverageSource & { detail?: string }
 import { PROVIDER_STATE_ICONS } from "./icons"
 import { useChangeFlash, useInView } from "./motion"
 
@@ -15,14 +18,14 @@ import { useChangeFlash, useInView } from "./motion"
  * in once. Failed and unavailable stay distinct, and neither counts as a
  * zero (guardrail 2). Only the summary line is announced.
  */
-export function ScanProgress({ sources, locale }: { sources: CoverageSource[]; locale: PrototypeLocale }) {
+export function ScanProgress({ sources, locale, label }: { sources: ScanProgressSource[]; locale: PrototypeLocale; label?: string }) {
   const t = copy[locale].ui
   const [viewRef, inView] = useInView<HTMLElement>()
   const listRef = useChangeFlash<HTMLUListElement>(sources.map((source) => source.state))
   const done = sources.filter((source) => source.state !== "pending").length
   const summary = done === sources.length ? t.visual.scan.complete : fill(t.visual.scan.progress, { done, total: sources.length })
   return (
-    <section ref={viewRef} aria-label={t.visual.scan.label} className="k-scan grid gap-3" data-offscreen={inView ? undefined : ""}>
+    <section ref={viewRef} aria-label={label ?? t.visual.scan.label} className="k-scan grid gap-3" data-offscreen={inView ? undefined : ""}>
       <div className="grid gap-1.5">
         <p className="text-sm font-semibold text-ink" role="status">{summary}</p>
         <div className="k-scan-track" aria-hidden="true">
@@ -40,7 +43,7 @@ export function ScanProgress({ sources, locale }: { sources: CoverageSource[]; l
                 <Icon aria-hidden="true" className="k-state-icon size-4 shrink-0" />
               )}
               <span className="flex-1 text-sm text-ink">{source.label}</span>
-              <span className="text-xs text-ink-2">{t.providerStates[source.state]}</span>
+              <span className="text-xs text-ink-2">{source.detail ?? t.providerStates[source.state]}</span>
             </li>
           )
         })}

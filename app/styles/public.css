@@ -445,3 +445,9 @@
 .pl-limits h2 { margin: 0 0 6px; font-size: 1.0625rem; font-weight: 700; letter-spacing: 0; }
 .pl-limits p { margin: 0 0 8px; color: var(--ink-2); }
 .pl-limits p:last-child { margin-bottom: 0; }
+
+/* ── Scanning page (Phase 3) ────────────────────────────────────────── */
+.scanning-page .scan-status-hero { display: grid; gap: 12px; justify-items: start; }
+.scanning-page .scan-status-hero .k-steps { width: 100%; max-width: 36rem; margin-top: 8px; }
+.scan-progress-panel { display: grid; gap: 12px; }
+.scan-elapsed { margin: 0; font-size: 0.8125rem; color: var(--ink-3); }
