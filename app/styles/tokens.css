@@ -8,8 +8,9 @@
  * before while they are migrated) → i18n (Chinese line-height and breaking).
  *
  * Dark mode is workspace-only (CLAUDE.md, 2026-10-19). components/theme/
- * sets html[data-theme] while an owner page is mounted; public pages never
- * carry the attribute, so they stay light.
+ * sets html[data-theme] while an owner page is mounted, and a saved dark
+ * choice applies before hydration only with the workspace marker present
+ * (lib/theme.ts); public pages stay light.
  */
 
 @layer tokens {
@@ -140,8 +141,12 @@
     --leading-heading: 1.3;
   }
 
-  /* ── Semantic: dark (workspace only) ──────────────────────────────── */
-  :root[data-theme="dark"] {
+  /* ── Semantic: dark (workspace only) ──────────────────────────────────
+     After hydration WorkspaceTheme sets the resolved html[data-theme]. Before
+     it, a saved dark choice (html[data-theme-pref], from the cookie) applies
+     only while the workspace marker is on the page (lib/theme.ts). */
+  :root[data-theme="dark"],
+  :root[data-theme-pref="dark"]:not([data-theme]):has([data-theme-scope]) {
     --canvas: var(--k-neutral-950);
     --paper: oklch(19% 0.006 286);
     --paper-2: oklch(23% 0.008 286);
@@ -326,4 +331,4 @@
 
 /* Tailwind's dark: variant follows the workspace theme attribute only, so
    OS dark mode no longer restyles public pages (audit §e). */
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *, [data-theme-pref="dark"]:not([data-theme]):has([data-theme-scope]) *));

@@ -1,18 +1,19 @@
 // @vitest-environment jsdom
-import { act, render, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { ThemeMenu, WorkspaceTheme } from "./workspace-theme"
-import { THEME_STORAGE_KEY } from "@/lib/theme"
+import { ThemeMenu, useWorkspaceTheme, WorkspaceTheme } from "./workspace-theme"
 
 function mockDevice(dark: boolean) {
   vi.stubGlobal("matchMedia", (query: string) => ({ matches: dark && query.includes("dark"), addEventListener: vi.fn(), removeEventListener: vi.fn() }))
 }
 
 afterEach(() => {
+  cleanup()
   vi.unstubAllGlobals()
-  window.localStorage.clear()
   delete document.documentElement.dataset.theme
+  delete document.documentElement.dataset.themePref
+  document.cookie = "kinnso-theme=; Max-Age=0; Path=/"
 })
 
 describe("WorkspaceTheme", () => {
@@ -24,15 +25,35 @@ describe("WorkspaceTheme", () => {
 
   it("follows the device only when match-device is saved", () => {
     mockDevice(true)
-    window.localStorage.setItem(THEME_STORAGE_KEY, "system")
+    document.documentElement.dataset.themePref = "system"
     render(<WorkspaceTheme><p>page</p></WorkspaceTheme>)
     expect(document.documentElement.dataset.theme).toBe("dark")
   })
 
   it("applies a saved dark choice", () => {
     mockDevice(false)
-    window.localStorage.setItem(THEME_STORAGE_KEY, "dark")
+    document.documentElement.dataset.themePref = "dark"
     render(<WorkspaceTheme><p>page</p></WorkspaceTheme>)
+    expect(document.documentElement.dataset.theme).toBe("dark")
+  })
+
+  it("renders the hidden workspace marker the pre-hydration CSS keys on", () => {
+    mockDevice(false)
+    const { container } = render(<WorkspaceTheme><p>page</p></WorkspaceTheme>)
+    const marker = container.querySelector("[data-theme-scope]")
+    expect(marker?.hasAttribute("hidden")).toBe(true)
+  })
+
+  it("saves a choice to the cookie the server reads, and applies it at once", () => {
+    mockDevice(false)
+    function Pick() {
+      const theme = useWorkspaceTheme()
+      return <button type="button" onClick={() => theme?.setPreference("dark")}>pick</button>
+    }
+    render(<WorkspaceTheme><Pick /></WorkspaceTheme>)
+    act(() => { fireEvent.click(screen.getByRole("button", { name: "pick" })) })
+    expect(document.cookie).toContain("kinnso-theme=dark")
+    expect(document.documentElement.dataset.themePref).toBe("dark")
     expect(document.documentElement.dataset.theme).toBe("dark")
   })
 

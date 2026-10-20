@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { copy, type PrototypeLocale } from "@/lib/copy"
-import { parseThemePreference, resolveTheme, THEME_STORAGE_KEY, type ResolvedTheme, type ThemePreference } from "@/lib/theme"
+import { parseThemePreference, resolveTheme, themeCookie, type ResolvedTheme, type ThemePreference } from "@/lib/theme"
 
 // useLayoutEffect warns during SSR; the effect only matters in the browser.
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect
@@ -23,18 +23,16 @@ const DARK_QUERY = "(prefers-color-scheme: dark)"
 type ThemeState = { preference: ThemePreference; resolved: ResolvedTheme; setPreference: (next: ThemePreference) => void }
 const ThemeContext = createContext<ThemeState | null>(null)
 
+/** The saved choice, as the root layout rendered it from the cookie. */
 function readPreference(): ThemePreference {
-  try {
-    return parseThemePreference(window.localStorage.getItem(THEME_STORAGE_KEY))
-  } catch {
-    return "light"
-  }
+  return parseThemePreference(document.documentElement.dataset.themePref)
 }
 
 /**
  * Owns `html[data-theme]` while a workspace page is mounted and removes it on
  * the way back to a public page, so dark mode never leaks out of the
- * workspace on a client-side navigation.
+ * workspace on a client-side navigation. The hidden `data-theme-scope`
+ * marker lets tokens.css apply a saved dark choice before hydration.
  */
 export function WorkspaceTheme({ children }: { children: ReactNode }) {
   const [preference, setPreferenceState] = useState<ThemePreference>("light")
@@ -60,25 +58,19 @@ export function WorkspaceTheme({ children }: { children: ReactNode }) {
     delete document.documentElement.dataset.theme
   }, [])
 
-  useEffect(() => {
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === THEME_STORAGE_KEY) setPreferenceState(parseThemePreference(event.newValue))
-    }
-    window.addEventListener("storage", onStorage)
-    return () => window.removeEventListener("storage", onStorage)
-  }, [])
-
   const setPreference = useCallback((next: ThemePreference) => {
     setPreferenceState(next)
-    try {
-      window.localStorage.setItem(THEME_STORAGE_KEY, next)
-    } catch {
-      // Storage unavailable: the choice still applies for this page view.
-    }
+    document.cookie = themeCookie(next)
+    document.documentElement.dataset.themePref = next
   }, [])
 
   const value = useMemo(() => ({ preference, resolved, setPreference }), [preference, resolved, setPreference])
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+  return (
+    <ThemeContext.Provider value={value}>
+      <span data-theme-scope="" hidden />
+      {children}
+    </ThemeContext.Provider>
+  )
 }
 
 export function useWorkspaceTheme(): ThemeState | null {

@@ -1,10 +1,20 @@
 /**
- * Workspace colour theme (CLAUDE.md 2026-10-19: dark mode is workspace-only,
- * following the device with a light/dark/system switch). The preference is a
- * per-browser convenience in localStorage; nothing is stored server-side.
- * Public pages never set `html[data-theme]`, so they always render light.
+ * Workspace colour theme (CLAUDE.md 2026-10-19: dark mode is workspace-only;
+ * decided 2026-10-20: light by default, with a light/dark/match-device
+ * switch). The choice is a per-browser convenience kept in a cookie so the
+ * server can render it before first paint, with no inline script and no
+ * hydration mismatch:
+ *
+ * - the root layout renders the saved choice as `html[data-theme-pref]`;
+ * - tokens.css applies dark only while a workspace marker
+ *   (`[data-theme-scope]`) is on the page, so public pages stay light;
+ * - after hydration WorkspaceTheme sets the resolved `html[data-theme]`,
+ *   which wins, and removes it on the way out of the workspace.
+ *
+ * "Match device" is resolved on the client, so a device in dark mode sees
+ * the light theme until hydration on a full page load.
  */
-export const THEME_STORAGE_KEY = "kinnso-theme"
+export const THEME_COOKIE = "kinnso-theme"
 
 export const themePreferences = ["system", "light", "dark"] as const
 export type ThemePreference = (typeof themePreferences)[number]
@@ -19,9 +29,13 @@ export function resolveTheme(preference: ThemePreference, prefersDark: boolean):
   return preference
 }
 
-/**
- * Runs before first paint on a full workspace load so a dark-mode owner never
- * sees a light flash. Storage can throw (private mode, blocked site data); the
- * device setting is then used.
- */
-export const themeBootScript = `(function(){try{var p=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});}catch(e){p=null}var d=p==="dark"||(p==="system"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.dataset.theme=d?"dark":"light";})();`
+/** The cookie the switch writes: one year, whole site, never sent cross-site. */
+export function themeCookie(preference: ThemePreference): string {
+  return `${THEME_COOKIE}=${preference}; Path=/; Max-Age=31536000; SameSite=Lax`
+}
+
+/** `html[data-theme-pref]` for the root layout; light (the default) renders no attribute. */
+export function themePrefAttribute(cookieValue: string | undefined): Exclude<ThemePreference, "light"> | undefined {
+  const preference = parseThemePreference(cookieValue)
+  return preference === "light" ? undefined : preference
+}
