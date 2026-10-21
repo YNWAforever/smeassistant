@@ -26,10 +26,10 @@
 .priority-reason span{color:var(--soft);font-size:12px}
 .action-card-meta{display:grid;margin:16px 0 0;grid-template-columns:repeat(4,1fr);border-block:1px solid var(--border)}
 .action-card-meta div{padding:10px;border-right:1px solid var(--border)}
-.action-card-meta dt{color:var(--soft);font-size:12px;text-transform:uppercase}
+.action-card-meta dt{color:var(--soft);text-transform:uppercase}
 .action-card-meta dd{margin:4px 0;font-size:12px;font-weight:650}
 .action-card-footer{display:flex;padding-top:14px;align-items:center;justify-content:space-between}
-.action-card-footer>span{color:var(--soft);font-size:12px}
+.action-card-footer>span{color:var(--soft)}
 @media (max-width: 1023px){
 .action-card-content{grid-template-columns:1fr}}
 @media (max-width:767px){
