@@ -225,7 +225,7 @@
 .month-metrics .metric-icon {
   border-radius: 12px;
   background: var(--lime);
-  color: var(--ink);
+  color: var(--on-brand);
 }
 .month-metrics strong { font-size: 24px; }
 .month-metrics span { font-size: 12px; }
@@ -315,7 +315,7 @@
 .workspace-agent-strip li > span svg { width: 12px; }
 .workspace-agent-strip li > strong { font-size: 12px; }
 .workspace-agent-strip li.is-complete > span { border-color: #477932; background: #477932; color: #fff; }
-.workspace-agent-strip li.is-current > span { border-color: #1a1a1d; background: var(--lime); color: var(--ink); box-shadow: 0 0 0 4px rgba(240, 175, 109, .28); }
+.workspace-agent-strip li.is-current > span { border-color: #1a1a1d; background: var(--lime); color: var(--on-brand); box-shadow: 0 0 0 4px rgba(240, 175, 109, .28); }
 .workspace-agent-strip > small { display: flex; grid-column: 2; margin-top: -8px; align-items: center; justify-content: flex-end; gap: 6px; color: var(--ink-3); font-size: 12px; }
 .workspace-agent-strip > small svg { width: 13px; }
 @media (max-width: 1279px){

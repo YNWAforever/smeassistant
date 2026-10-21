@@ -113,7 +113,7 @@
   font-variant-numeric: tabular-nums;
 }
 .action-tab-list > a[aria-current="page"] { background: var(--inverse); color: #fff; }
-.action-tab-list > a[aria-current="page"] > span { background: var(--lime); color: var(--ink); }
+.action-tab-list > a[aria-current="page"] > span { background: var(--lime); color: var(--on-brand); }
 .action-search {
   display: flex;
   min-width: min(100%, 320px);
