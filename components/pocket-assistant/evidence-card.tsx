@@ -1,6 +1,8 @@
 import { CalendarClock, Database, MapPin } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
+import { copy, type PrototypeLocale } from "@/lib/copy"
+import { fill } from "@/lib/copy-ui"
 import type { EvidenceReference } from "@/lib/pocket-assistant/contracts"
 import { evidenceValueLabel, sourceLabel } from "@/lib/workspace/source-label"
 
@@ -22,19 +24,20 @@ function observedText(observedAt: string, locale: string): string {
   return new Intl.DateTimeFormat(locale === "en" ? "en-GB" : locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Hong_Kong" }).format(time)
 }
 
-export function AssistantEvidenceCard({ evidence, isChinese, locale = isChinese ? "zh-HK" : "en" }: { evidence: EvidenceReference; isChinese: boolean; locale?: string }) {
+export function AssistantEvidenceCard({ evidence, locale }: { evidence: EvidenceReference; locale: PrototypeLocale }) {
+  const t = copy[locale].assistantSheet.evidenceCard
   return (
     <article className="assistant-evidence-card">
       <div className="assistant-evidence-head">
-        <Badge variant="outline">{isChinese ? "已觀察" : evidence.factType}</Badge>
+        <Badge variant="outline">{fill(t.factBadge, { type: evidence.factType })}</Badge>
         <code>{scanReference(evidence.scanId)}</code>
       </div>
       <strong>{evidence.label}</strong>
       <span className="assistant-evidence-value">{evidenceValueLabel(evidence.value, locale)}</span>
       <dl>
-        <div><dt><MapPin aria-hidden="true" />{isChinese ? "來源" : "Source"}</dt><dd>{sourceLabel(evidence.source, locale)}</dd></div>
-        <div><dt><CalendarClock aria-hidden="true" />{isChinese ? "觀察時間" : "Observed"}</dt><dd>{observedText(evidence.observedAt, locale)}</dd></div>
-        <div><dt><Database aria-hidden="true" />{isChinese ? "證據" : "Evidence"}</dt><dd>{evidence.evidenceId.replace(UUID, (id) => id.slice(0, 8))}</dd></div>
+        <div><dt><MapPin aria-hidden="true" />{t.source}</dt><dd>{sourceLabel(evidence.source, locale)}</dd></div>
+        <div><dt><CalendarClock aria-hidden="true" />{t.observedAt}</dt><dd>{observedText(evidence.observedAt, locale)}</dd></div>
+        <div><dt><Database aria-hidden="true" />{t.evidence}</dt><dd>{evidence.evidenceId.replace(UUID, (id) => id.slice(0, 8))}</dd></div>
       </dl>
     </article>
   )

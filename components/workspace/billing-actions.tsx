@@ -5,7 +5,7 @@ import { CreditCard } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
-import type { PrototypeLocale } from "@/lib/copy"
+import { copy, type PrototypeLocale } from "@/lib/copy"
 import { createOwnerBillingLink } from "@/lib/owner/billing-client"
 
 /**
@@ -15,7 +15,7 @@ import { createOwnerBillingLink } from "@/lib/owner/billing-client"
  * rule server-side; this is display convenience, not the boundary.
  */
 export function BillingActions({ locale, workspaceId, paid }: { locale: PrototypeLocale; workspaceId: string; paid: boolean }) {
-  const isChinese = locale !== "en"
+  const pc = copy[locale].workspaceBusiness.billing
   const [pending, setPending] = useState(false)
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -25,9 +25,9 @@ export function BillingActions({ locale, workspaceId, paid }: { locale: Prototyp
     setPending(false)
     if (!result.ok) {
       const message =
-        result.error === "already_paid" ? (isChinese ? "此工作台已是付費方案。" : "This workspace is already on the paid plan.")
-        : result.error === "no_subscription" ? (isChinese ? "尚未有訂閱；請先透過 Stripe 訂閱。" : "No subscription yet; subscribe via Stripe first.")
-        : (isChinese ? "暫時未能連接付款服務，請稍後再試。" : "The payment service is unavailable right now; please try again later.")
+        result.error === "already_paid" ? pc.thisWorkspaceIsAlready
+        : result.error === "no_subscription" ? pc.noSubscriptionYetSubscribe
+        : pc.thePaymentServiceIs
       toast.error(message)
       return
     }
@@ -36,8 +36,8 @@ export function BillingActions({ locale, workspaceId, paid }: { locale: Prototyp
 
   return (
     <form className="plan-actions" onSubmit={onSubmit}>
-      <Button type="submit" disabled={pending}><CreditCard /> {paid ? (isChinese ? "管理帳單" : "Manage billing") : (isChinese ? "透過 Stripe 訂閱" : "Subscribe via Stripe")}</Button>
-      <Button type="button" variant="outline" disabled>{isChinese ? "加購用量 · 規劃中" : "Top-up · Planned"}</Button>
+      <Button type="submit" disabled={pending}><CreditCard /> {paid ? pc.manageBilling : pc.subscribeViaStripe}</Button>
+      <Button type="button" variant="outline" disabled>{pc.topUpPlanned}</Button>
     </form>
   )
 }

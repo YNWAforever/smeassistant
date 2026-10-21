@@ -2,6 +2,17 @@ export const supportedLocales = ["en", "zh-HK", "zh-TW"] as const
 import type { PublicCopy } from "@/lib/copy-public"
 import type { PublicInfoCopy } from "@/lib/copy-public-info"
 import type { ReportUiCopy } from "@/lib/copy-report"
+import type { ActionCopy } from "@/lib/copy-action"
+import type { WorkspaceActionsCopy } from "@/lib/copy-workspace-actions"
+import type { WorkspaceBusinessCopy } from "@/lib/copy-workspace-business"
+import type { WorkspaceHomeCopy } from "@/lib/copy-workspace-home"
+import type { AccessRequestCopy } from "@/lib/copy-access-request"
+import type { AssistantSheetCopy } from "@/lib/copy-assistant"
+import type { DemoWorkspaceCopy } from "@/lib/copy-demo-workspace"
+import type { PricingPageCopy } from "@/lib/copy-pricing"
+import type { ProductCopy } from "@/lib/copy-product"
+import type { ActionTabsCopy } from "@/lib/copy-action-tabs"
+import type { WorkspaceLabelsCopy } from "@/lib/copy-workspace-labels"
 import type { OnboardingCopy } from "@/lib/copy-onboarding"
 import type { ShellCopy } from "@/lib/copy-shell"
 import type { UiCopy } from "@/lib/copy-ui"
@@ -496,6 +507,28 @@ export type Copy = {
   shell: ShellCopy
   /** First-run wizard (lib/copy-onboarding.ts). */
   onboarding: OnboardingCopy
+  /** Action detail: editor, approval, delivery and history (lib/copy-action.ts). */
+  action: ActionCopy
+  /** Today, Insights, Due, Activity and the location picker (lib/copy-workspace-home.ts). */
+  workspaceHome: WorkspaceHomeCopy
+  /** The Actions queue, New and the Fix Pack card (lib/copy-workspace-actions.ts). */
+  workspaceActions: WorkspaceActionsCopy
+  /** Plan, Assets, Team, Integrations, Notifications and the owner check (lib/copy-workspace-business.ts). */
+  workspaceBusiness: WorkspaceBusinessCopy
+  /** The ownership access request form and status (lib/copy-access-request.ts). */
+  accessRequest: AccessRequestCopy
+  /** Ask Kinnso, the contextual assistant sheet (lib/copy-assistant.ts). */
+  assistantSheet: AssistantSheetCopy
+  /** The public demo workspace (lib/copy-demo-workspace.ts). */
+  demoWorkspace: DemoWorkspaceCopy
+  /** The pricing page (lib/copy-pricing.ts). */
+  pricingPage: PricingPageCopy
+  /** Capability and fact-type badges, score dial, loop ribbon and language selector (lib/copy-product.ts). */
+  product: ProductCopy
+  /** The action detail's Workflow and Evidence tabs and version origin (lib/copy-action-tabs.ts). */
+  actionTabs: ActionTabsCopy
+  /** Guardrail warnings, comparison reasons, effort and ledger labels built by lib helpers (lib/copy-workspace-labels.ts). */
+  workspaceLabels: WorkspaceLabelsCopy
 }
 
 /**

@@ -240,6 +240,7 @@ const WHERE_WARN = localized("Nothing is approved, sent or published from here."
 const THIS_ACTION = localized("this action", "此行動");
 const UNKNOWN_VERSION = localized("unknown", "不明");
 const NONE = localized("none", "無");
+const NO_FACTORS = localized("no priority factors were recorded", "沒有記錄優先因素");
 
 type Vars = Record<string, string | number>;
 
@@ -265,7 +266,7 @@ function factorPoints(action: ActionOverview): number {
 
 function topFactors(action: ActionOverview, locale: PrototypeLocale, count: number): string {
   const sorted = [...action.priorityFactors].sort((a, b) => b.points - a.points).slice(0, count);
-  if (!sorted.length) return locale === "en" ? "no priority factors were recorded" : "沒有記錄優先因素";
+  if (!sorted.length) return NO_FACTORS[locale];
   return joinList(sorted.map((f) => `${f.label[locale]} +${f.points}`), locale);
 }
 

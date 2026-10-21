@@ -18,12 +18,11 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const locale = normaliseLocale((await params).locale);
-  const isChinese = locale !== "en";
   return {
     ...publicMetadata({
       locale,
       path: "/owner/select-workspace",
-      title: isChinese ? "選擇工作台" : "Choose a workspace",
+      title: copy[locale].shell.select.title,
       description: copy[locale].funnel.trust.intro,
     }),
     robots: { index: false, follow: false },
@@ -58,7 +57,7 @@ export default async function OwnerSelectWorkspace({
         myRequest ? (
           <AccessRequestStatus
             status={deriveRequestStatus(myRequest.request, myRequest.events)}
-            isChinese={locale !== "en"}
+            locale={locale}
             businessName={myRequest.request.business_name ?? myRequest.request.share_slug}
           />
         ) : undefined

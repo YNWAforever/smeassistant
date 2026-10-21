@@ -275,7 +275,7 @@ export const draftVersions = [
   {
     id: "v1",
     label: "Version 1 · Generated",
-    author: "Visibility Workspace",
+    author: "Kinnso OS",
     time: "26 Aug · 10:04",
     content:
       "多謝你的寶貴意見。很抱歉午市期間讓你久等，我們會改善安排，期待你再次光臨錦汶館。",
@@ -291,8 +291,8 @@ export const integrations = [
 
 export const activity = [
   { time: "26 Aug · 10:18", actor: "Willy Lai · Owner", event: "Edited review reply", detail: "Created version 2 from version 1" },
-  { time: "26 Aug · 10:04", actor: "Visibility Workspace", event: "Draft prepared", detail: "7 review replies · generation used no approved-delivery allowance (demo)" },
-  { time: "25 Aug · 09:49", actor: "Visibility Workspace", event: "Action prioritised", detail: "Response-rate regression · priority factors recorded" },
+  { time: "26 Aug · 10:04", actor: "Kinnso OS", event: "Draft prepared", detail: "7 review replies · generation used no approved-delivery allowance (demo)" },
+  { time: "25 Aug · 09:49", actor: "Kinnso OS", event: "Action prioritised", detail: "Response-rate regression · priority factors recorded" },
   { time: "25 Aug · 09:47", actor: "Scanner", event: "Comparable scan completed", detail: "Score 62 · coverage 78% · 3 of 4 primary sources measured" },
 ] as const
 

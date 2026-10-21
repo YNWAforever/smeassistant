@@ -14,7 +14,7 @@ export default defineConfig({
     environment: "node",
     include: ["test/integration/*.integration.test.ts"],
     // packages/* run their own vitest via `pnpm -r test`; Playwright owns e2e/.
-    exclude: ["node_modules/**", ".next/**", "e2e/**", "packages/**"],
+    exclude: ["node_modules/**", ".next/**", "e2e/**", "packages/**", "docs/**"],
     // Every integration case uses owned PostgreSQL; missing Docker fails the gate.
     setupFiles: ["./test/e2e/transport-guard.cjs"],
     globalSetup: ["./test/integration/global-setup.ts"],

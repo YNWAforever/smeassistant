@@ -83,7 +83,7 @@ describe("LandingPage sections", () => {
 
   it("speaks Taiwanese Mandarin in zh-TW, not the zh-HK register", () => {
     const text = markup("zh-TW").textContent ?? ""
-    expect(text).toContain("成長工作台")
+    expect(text).toContain("成長方案")
     expect(text).not.toMatch(/[嘅呢揀咗]/)
   })
 })

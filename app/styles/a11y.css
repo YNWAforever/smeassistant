@@ -16,13 +16,39 @@
     [data-slot="button"],
     [data-slot="select-trigger"],
     .mobile-bottom-nav a,
+    .action-tab-list > a,
+    .queue-pages > a,
     .button
-  ) {
+  ):not([data-slot="checkbox"], [data-slot="switch"]) {
     min-height: 44px;
   }
 
-  [data-slot="button"][data-size^="icon"] {
+  /* Icon buttons (a Radix trigger renames their data-slot, so match the size)
+     and the phone-width Ask Kinnso button, which shows only its icon. */
+  [data-size^="icon"],
+  .workspace-topbar .assistant-launcher {
     min-width: 44px;
+  }
+
+  /* Checkboxes and switches keep their drawn size; an invisible extension makes
+     the touch target 44 px without stretching the control. */
+  :is([data-slot="checkbox"], [data-slot="switch"]) {
+    position: relative;
+  }
+
+  :is([data-slot="checkbox"], [data-slot="switch"])::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+
+  /* The tab strip grows with its 44 px tabs instead of clipping them. */
+  [data-slot="tabs-list"] {
+    height: auto;
   }
 
   input:not([type="checkbox"], [type="radio"], [type="hidden"]),

@@ -2,6 +2,23 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## Phase 7: repo hygiene and finishing (2026-10-20)
+
+- **Names:** the paid plan is called the Growth plan (增長方案 / 成長方案) everywhere, and the product is called Kinnso OS everywhere, including the report title and the WhatsApp message. A test stops old names coming back.
+- **Search engines** now get every page in every language with the right language links. The launch check passes in full.
+- **All interface text** lives in the shared copy files in English, Hong Kong Chinese and Taiwan Chinese, including the demo workspace, pricing and Ask Kinnso. Nothing looks different.
+- **Tidier repository:** 27 unused interface components removed, old agent files archived under `docs/archive/`, a new README for Kinnso OS, and an index of the redesign docs.
+- **Legacy styles were measured** across every page, role, size and theme. The rules not seen in use all style real states (offline, conflicts, unread notifications), so none were deleted. Shrinking them means moving those screens onto the new styles.
+
+## Phase 6: quality (2026-10-20)
+
+- **An action that isn't there is a real 404 again**, including a mistyped link, which used to show a server error.
+- **Action detail** is split into small parts, and its text, like the rest of the workspace's, now lives in the shared copy files. Nothing looks different.
+- **Phones:** every button, chip, checkbox and switch has a 44 px touch area, without stretching how it looks. The language label in the top bar is no longer cut off. Queue cards with a long status no longer run off the screen.
+- **Faster Actions queue:** it loads 41 KB less JavaScript, because the side panel's editor loads only when a panel opens. CI now fails a build that pushes any page over its JavaScript budget.
+- **Accessibility checks:** 0 axe violations on every workspace page in light and dark, and every keyboard stop shows a focus ring. Sign-in fields keep a visible focus ring in Windows high contrast.
+- **New acceptance tests** for bulk approve, the getting-started checklist, the side panel and the 404.
+
 ## Phase 5: onboarding and states (2026-10-20)
 
 - **Error and loading pages:** a failed page shows a friendly error in the page's language, with Try again and a short reference code to quote to Fimmick. Workspace pages show skeletons while loading and a not-found that leads back to Today.

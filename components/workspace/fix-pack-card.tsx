@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { listDrafts, reviewDraft, type OwnerFixPackDraft } from "@/lib/owner/fix-pack-card-client"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
-import { zhFor } from "@/lib/zh-tw"
+import { fill } from "@/lib/copy-ui"
 
 /**
  * Pending + approved Fix Pack drafts (agent_runs) on the owner Home. Every
@@ -33,7 +33,7 @@ import { zhFor } from "@/lib/zh-tw"
  * is gone: with the starter pack on Home, "drafts are not available" is noise.
  */
 export function FixPackCard({ locale, workspaceId, viewerRole, actionsHref, createHref, mode = "full" }: { locale: PrototypeLocale; workspaceId: string; viewerRole: WorkspaceRole; actionsHref?: string; createHref?: string; mode?: "full" | "earlier" }) {
-  const isChinese = locale !== "en"
+  const pc = copy[locale].workspaceActions.fixPack
   const [drafts, setDrafts] = useState<OwnerFixPackDraft[] | null>(null)
   const [error, setError] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
@@ -86,12 +86,12 @@ export function FixPackCard({ locale, workspaceId, viewerRole, actionsHref, crea
           never does. The heading now describes what the surface IS -- a review
           queue for staff-prepared drafts -- without asserting that anything is
           currently filling it. */}
-      <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "Fix Pack 草稿" : "Fix Pack drafts"}</p><h2>{earlier ? copy[locale].workspace.packs.earlierDrafts : isChinese ? zhFor(locale, "由職員準備、待你審批的回覆及帖文") : "Staff-prepared replies and posts awaiting your review"}</h2></div><Badge variant="outline"><Sparkles /> {isChinese ? `${pending} 份待審` : `${pending} pending`}</Badge></div>
+      <div className="section-card-heading"><div><p className="eyebrow">{pc.fixPackDrafts}</p><h2>{earlier ? copy[locale].workspace.packs.earlierDrafts : pc.staffPreparedRepliesAnd}</h2></div><Badge variant="outline"><Sparkles /> {fill(pc.pending, { pending })}</Badge></div>
       {visible === null ? (
         // Covers both "still loading" and "initial load failed" -- rendering
         // the empty-state copy under a load FAILURE would assert something the
         // card doesn't know.
-        !error && <p>{isChinese ? "載入中…" : "Loading…"}</p>
+        !error && <p>{copy[locale].ui.states.loading}</p>
       ) : visible.length === 0 ? (
         <EmptyState
           locale={locale}
@@ -107,21 +107,21 @@ export function FixPackCard({ locale, workspaceId, viewerRole, actionsHref, crea
         <div className="fix-pack-list">
           {visible.map((draft) => (
             <article key={draft.id} className="fix-pack-draft">
-              <p className="eyebrow">{draft.businessName ? `${draft.businessName} · ` : ""}{draft.findingLabel} · {draft.status === "draft" ? (isChinese ? zhFor(locale, "待審批") : "Pending approval") : (isChinese ? "已核准" : "Approved")}</p>
+              <p className="eyebrow">{draft.businessName ? `${draft.businessName} · ` : ""}{draft.findingLabel} · {draft.status === "draft" ? pc.pendingApproval : (copy[locale].workspace.packs.states.approved)}</p>
               {draft.reviewExcerpt && <blockquote className="limitation-note">{draft.reviewRating !== null && <span>★ {draft.reviewRating} · </span>}{draft.reviewExcerpt}</blockquote>}
               {draft.draftText && <p style={{ whiteSpace: "pre-wrap" }}>{draft.draftText}</p>}
               {canApprove && draft.status === "draft" && (
                 <div className="plan-actions">
-                  <Button size="sm" disabled={busy === draft.id} onClick={() => handleReview(draft.id, "approved")}><Check /> {isChinese ? "核准" : "Approve"}</Button>
-                  <Button size="sm" variant="outline" disabled={busy === draft.id} onClick={() => handleReview(draft.id, "rejected")}><X /> {isChinese ? "拒絕" : "Reject"}</Button>
+                  <Button size="sm" disabled={busy === draft.id} onClick={() => handleReview(draft.id, "approved")}><Check /> {copy[locale].ui.approval.approve}</Button>
+                  <Button size="sm" variant="outline" disabled={busy === draft.id} onClick={() => handleReview(draft.id, "rejected")}><X /> {pc.reject}</Button>
                 </div>
               )}
             </article>
           ))}
         </div>
       )}
-      {error && <p className="limitation-note" role="alert">{drafts === null ? (isChinese ? zhFor(locale, "未能載入職員草稿，請重新整理頁面再試。") : "Could not load staff drafts. Refresh the page to try again.") : (isChinese ? zhFor(locale, "操作未能完成，請檢查最新狀態再試。") : "The action could not be completed. Check the latest state and try again.")}</p>}
-      {!canApprove && drafts && drafts.length > 0 && <p className="limitation-note">{isChinese ? zhFor(locale, "檢視者只可查看草稿；核准由店主或經理處理。") : "Viewers can inspect drafts; approval is for owners and managers."}</p>}
+      {error && <p className="limitation-note" role="alert">{drafts === null ? pc.couldNotLoadStaff : pc.theActionCouldNot}</p>}
+      {!canApprove && drafts && drafts.length > 0 && <p className="limitation-note">{pc.viewersCanInspectDrafts}</p>}
     </SectionCard>
   )
 }

@@ -23,10 +23,13 @@
   line-height: 1.4;
 }
 
-/* Keep CJK words together in headings and balance the lines; long unbroken
-   strings still wrap rather than overflow on narrow screens. */
+/* Headings break like Chinese body text, with strict line-break rules so
+   punctuation such as 。 never starts a line, and balanced lines. keep-all made
+   a whole clause one unbreakable word: wider than the heading, it then broke
+   at an arbitrary point and could strand the closing 。 alone. */
 :lang(zh) :is(h1, h2, h3) {
-  word-break: keep-all;
+  word-break: normal;
+  line-break: strict;
   overflow-wrap: anywhere;
   text-wrap: balance;
 }

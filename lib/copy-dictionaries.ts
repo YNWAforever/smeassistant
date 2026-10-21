@@ -2,6 +2,17 @@ import type { Copy, FunnelCopy, PrototypeLocale } from "@/lib/copy"
 import { publicEn, publicZhHK, publicZhTW } from "@/lib/copy-public"
 import { infoEn, infoZhHK, infoZhTW } from "@/lib/copy-public-info"
 import { reportEn, reportZhHK, reportZhTW } from "@/lib/copy-report"
+import { actionEn, actionZhHK, actionZhTW } from "@/lib/copy-action"
+import { workspaceActionsEn, workspaceActionsZhHK, workspaceActionsZhTW } from "@/lib/copy-workspace-actions"
+import { workspaceBusinessEn, workspaceBusinessZhHK, workspaceBusinessZhTW } from "@/lib/copy-workspace-business"
+import { workspaceHomeEn, workspaceHomeZhHK, workspaceHomeZhTW } from "@/lib/copy-workspace-home"
+import { accessRequestEn, accessRequestZhHK, accessRequestZhTW } from "@/lib/copy-access-request"
+import { assistantSheetEn, assistantSheetZhHK, assistantSheetZhTW } from "@/lib/copy-assistant"
+import { demoWorkspaceEn, demoWorkspaceZhHK, demoWorkspaceZhTW } from "@/lib/copy-demo-workspace"
+import { pricingPageEn, pricingPageZhHK, pricingPageZhTW } from "@/lib/copy-pricing"
+import { productEn, productZhHK, productZhTW } from "@/lib/copy-product"
+import { actionTabsEn, actionTabsZhHK, actionTabsZhTW } from "@/lib/copy-action-tabs"
+import { workspaceLabelsEn, workspaceLabelsZhHK, workspaceLabelsZhTW } from "@/lib/copy-workspace-labels"
 import { onboardingEn, onboardingZhHK, onboardingZhTW } from "@/lib/copy-onboarding"
 import { shellEn, shellZhHK, shellZhTW } from "@/lib/copy-shell"
 import { uiEn, uiZhHK, uiZhTW } from "@/lib/copy-ui"
@@ -307,9 +318,9 @@ const funnelEn: FunnelCopy = {
   pricing: {
     badge: "Plans for the selected market",
     marketNote: "Prices shown in {currency} for the {market} market",
-    planNote: "Growth Workspace is billed via Stripe · Multi-location and managed plans are activated by the Fimmick team · Interface language never changes market or currency",
+    planNote: "The Growth plan is billed via Stripe · Multi-location and managed plans are activated by the Fimmick team · Interface language never changes market or currency",
     faqFinalTitle: "How do I subscribe?",
-    faqFinalBody: "Growth Workspace is a monthly Stripe subscription per location. Multi-location and Managed Visibility are activated by the Fimmick team after a short conversation. Interface language is separate from market and currency.",
+    faqFinalBody: "The Growth plan is a monthly Stripe subscription per location. Multi-location and Managed Visibility are activated by the Fimmick team after a short conversation. Interface language is separate from market and currency.",
     contactFimmick: "Contact Fimmick",
   },
   methodology: { versionBadge: "Version 2.0 · scoring {version}" },
@@ -663,9 +674,9 @@ const funnelZhHK: FunnelCopy = {
   pricing: {
     badge: "按所選市場顯示的方案",
     marketNote: "價格以{currency}顯示 · {market}",
-    planNote: "增長工作台透過 Stripe 訂閱 · 多地點及專人服務由 Fimmick 團隊人手開通 · 介面語言不會自動改變市場或貨幣",
+    planNote: "增長方案透過 Stripe 訂閱 · 多地點及專人服務由 Fimmick 團隊人手開通 · 介面語言不會自動改變市場或貨幣",
     faqFinalTitle: "如何訂閱？",
-    faqFinalBody: "增長工作台按地點以 Stripe 每月訂閱；多地點及專人能見度服務經簡短溝通後由 Fimmick 團隊人手開通。介面語言與市場、貨幣分開設定。",
+    faqFinalBody: "增長方案按地點以 Stripe 每月訂閱；多地點及專人能見度服務經簡短溝通後由 Fimmick 團隊人手開通。介面語言與市場、貨幣分開設定。",
     contactFimmick: "聯絡 Fimmick",
   },
   methodology: { versionBadge: "2.0 版本 · 評分 {version}" },
@@ -1008,9 +1019,9 @@ const funnelZhTW: FunnelCopy = {
   pricing: {
     badge: "依所選市場顯示的方案",
     marketNote: "價格以{currency}顯示 · {market}",
-    planNote: "成長工作台透過 Stripe 訂閱 · 多據點與專人服務由 Fimmick 團隊人工開通 · 介面語言不會自動改變市場或貨幣",
+    planNote: "成長方案透過 Stripe 訂閱 · 多據點與專人服務由 Fimmick 團隊人工開通 · 介面語言不會自動改變市場或貨幣",
     faqFinalTitle: "如何訂閱？",
-    faqFinalBody: "成長工作台依據點以 Stripe 每月訂閱；多據點與專人能見度服務經簡短溝通後由 Fimmick 團隊人工開通。介面語言與市場、貨幣分開設定。",
+    faqFinalBody: "成長方案依據點以 Stripe 每月訂閱；多據點與專人能見度服務經簡短溝通後由 Fimmick 團隊人工開通。介面語言與市場、貨幣分開設定。",
     contactFimmick: "聯絡 Fimmick",
   },
   methodology: { versionBadge: "2.0 版本 · 評分 {version}" },
@@ -1138,6 +1149,17 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     report: reportEn,
     shell: shellEn,
     onboarding: onboardingEn,
+    action: actionEn,
+    workspaceHome: workspaceHomeEn,
+    workspaceActions: workspaceActionsEn,
+    workspaceBusiness: workspaceBusinessEn,
+    accessRequest: accessRequestEn,
+    assistantSheet: assistantSheetEn,
+    demoWorkspace: demoWorkspaceEn,
+    pricingPage: pricingPageEn,
+    product: productEn,
+    actionTabs: actionTabsEn,
+    workspaceLabels: workspaceLabelsEn,
   },
   "zh-HK": {
     language: "繁體中文（香港）",
@@ -1217,6 +1239,17 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     report: reportZhHK,
     shell: shellZhHK,
     onboarding: onboardingZhHK,
+    action: actionZhHK,
+    workspaceHome: workspaceHomeZhHK,
+    workspaceActions: workspaceActionsZhHK,
+    workspaceBusiness: workspaceBusinessZhHK,
+    accessRequest: accessRequestZhHK,
+    assistantSheet: assistantSheetZhHK,
+    demoWorkspace: demoWorkspaceZhHK,
+    pricingPage: pricingPageZhHK,
+    product: productZhHK,
+    actionTabs: actionTabsZhHK,
+    workspaceLabels: workspaceLabelsZhHK,
   },
   "zh-TW": {
     language: "繁體中文（台灣）",
@@ -1296,5 +1329,16 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     report: reportZhTW,
     shell: shellZhTW,
     onboarding: onboardingZhTW,
+    action: actionZhTW,
+    workspaceHome: workspaceHomeZhTW,
+    workspaceActions: workspaceActionsZhTW,
+    workspaceBusiness: workspaceBusinessZhTW,
+    accessRequest: accessRequestZhTW,
+    assistantSheet: assistantSheetZhTW,
+    demoWorkspace: demoWorkspaceZhTW,
+    pricingPage: pricingPageZhTW,
+    product: productZhTW,
+    actionTabs: actionTabsZhTW,
+    workspaceLabels: workspaceLabelsZhTW,
   },
 }

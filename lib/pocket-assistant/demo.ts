@@ -40,7 +40,7 @@ const evidence = {
     label: "最新能見度快照",
     value: "62/100 · 覆蓋率 78%",
     observedAt: "2026-08-25T09:42:00+08:00",
-    source: "SME Scanner · 香港市場",
+    source: "Kinnso OS · 香港市場",
   },
   social: {
     evidenceId: "ev_social_gap_20260822",

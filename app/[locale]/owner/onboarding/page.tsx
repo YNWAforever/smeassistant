@@ -183,11 +183,11 @@ export default async function OwnerOnboarding({
   ) : myRequest ? (
     <AccessRequestStatus
       status={deriveRequestStatus(myRequest.request, myRequest.events)}
-      isChinese={locale !== "en"}
+      locale={locale}
       businessName={myRequest.request.business_name ?? myRequest.request.share_slug}
     />
   ) : evidence ? (
-    <AccessRequestForm slug={evidence.shareSlug} market={market} isChinese={locale !== "en"} />
+    <AccessRequestForm slug={evidence.shareSlug} market={market} locale={locale} />
   ) : undefined;
 
   return (

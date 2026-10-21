@@ -5,7 +5,7 @@ import { toTaiwanWording, zhDeep, zhFor } from "./zh-tw";
 describe("Taiwan wording", () => {
   it("swaps Hong Kong terms for Taiwan ones", () => {
     expect(toTaiwanWording("所有地點的店主私隱設定，由店主審批後上載")).toBe("所有據點的店家隱私設定，由店家核准後上傳");
-    expect(toTaiwanWording("增長工作台持續監察覆蓋率")).toBe("成長工作台持續監控涵蓋率");
+    expect(toTaiwanWording("增長方案持續監察覆蓋率")).toBe("成長方案持續監控涵蓋率");
   });
 
   it("only changes zh-TW text", () => {

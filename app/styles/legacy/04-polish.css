@@ -1067,9 +1067,7 @@ body {
 /* ── Workspace: team, notifications, more ──────────────────────────────── */
 .member-scope label > span { display: inline-flex; align-items: center; gap: 5px; }
 .member-scope label > span svg { width: 13px; }
-.role-contract-grid p,
-.more-link-grid p { color: var(--ink-3); font-size: 12px; line-height: 1.45; }
-.more-link-grid h2 { font-size: 15px; }
+.role-contract-grid p { color: var(--ink-3); font-size: 12px; line-height: 1.45; }
 
 /* A notification row has no priority marker: the four-column queue grid put
    its text in the 6px marker column, one word per line. */

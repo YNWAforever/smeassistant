@@ -3,9 +3,10 @@ import { Bell, TriangleAlert } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { PageIntro, SectionCard } from "@/components/product-ui"
 import { MyMailPreferencesForm, NotificationList, WorkspaceMailSwitchesForm } from "@/components/workspace/notifications-client"
-import type { PrototypeLocale } from "@/lib/copy"
+import { copy, type PrototypeLocale } from "@/lib/copy"
 import { t } from "@/lib/i18n"
 import type { MemberMailState, NotificationsModel } from "@/lib/workspace/queries-pages"
+import { fill } from "@/lib/copy-ui"
 
 /** The note for every state except "open", which alone may say "we'll email you". */
 const MAIL_STATE_NOTE: Record<Exclude<MemberMailState, "open">, string> = {
@@ -29,7 +30,7 @@ const MAIL_STATE_NOTE: Record<Exclude<MemberMailState, "open">, string> = {
  * `workspace_notifications` for the signed-in member.
  */
 export function NotificationsView({ locale, workspaceId, timezone, model }: { locale: PrototypeLocale; workspaceId: string; timezone: string; model: NotificationsModel }) {
-  const isChinese = locale !== "en"
+  const pc = copy[locale].workspaceBusiness.notifications
   const unread = model.inApp.filter((n) => !n.read_at).length
   const isOwner = model.role === "owner"
   // One note, from the one effective state computed server-side
@@ -43,7 +44,7 @@ export function NotificationsView({ locale, workspaceId, timezone, model }: { lo
     : <p className="limitation-note"><TriangleAlert /> {t(locale, MAIL_STATE_NOTE[model.mailState], { address })}</p>
   return (
     <div className="settings-page notifications-page">
-      <PageIntro eyebrow={isChinese ? "以同意為本的提示" : "Consent-led alerts"} title={isChinese ? "通知" : "Notifications"} description={isChinese ? "只保留有用營運訊號。你可以按類別選擇，並在下方查看工作台的應用內通知。" : "Only useful operational signals. Choose them by category, and read this workspace's in-app notifications alongside."} />
+      <PageIntro eyebrow={pc.consentLedAlerts} title={copy[locale].shell.notifications.label} description={pc.onlyUsefulOperationalSignals} />
       <div className="settings-grid">
         <SectionCard>
           <div className="section-card-heading"><div><p className="eyebrow">Email</p><h2>{t(locale, "mail.allowTitle")}</h2></div></div>
@@ -57,7 +58,7 @@ export function NotificationsView({ locale, workspaceId, timezone, model }: { lo
           {mailNote}
         </SectionCard>
         <SectionCard>
-          <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "應用內" : "In-app"}</p><h2>{isChinese ? "通知" : "Notifications"}</h2></div><Badge variant="outline"><Bell /> {isChinese ? `${unread} 則未讀` : `${unread} unread`}</Badge></div>
+          <div className="section-card-heading"><div><p className="eyebrow">{pc.inApp}</p><h2>{copy[locale].shell.notifications.label}</h2></div><Badge variant="outline"><Bell /> {fill(pc.unread, { unread })}</Badge></div>
           <NotificationList locale={locale} workspaceId={workspaceId} timezone={timezone} rows={model.inApp} />
         </SectionCard>
       </div>
