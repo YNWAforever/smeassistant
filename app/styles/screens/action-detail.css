@@ -162,4 +162,7 @@
 .asset-meta dt { color: var(--ink-3); font-size: 12px; font-weight: 650; letter-spacing: .02em; }
 .asset-meta dd { margin: 4px 0 0; color: var(--ink); font-size: 13px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
 .offer-card .asset-meta { margin-bottom: 4px; }
+/* Dark-mode fix (Phase 8): the bar's light warm-grey border showed as a bright outline on the dark theme. */
+:root[data-theme="dark"] .sticky-approval-bar,
+:root[data-theme-pref="dark"]:not([data-theme]):has([data-theme-scope]) .sticky-approval-bar { border-color: var(--line-warm); }
 }
