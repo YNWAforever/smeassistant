@@ -76,7 +76,6 @@ body {
 .price,
 .public-demo-evidence strong,
 .public-demo-proof-value,
-.assistant-evidence-value,
 .priority-rank {
   font-feature-settings: "tnum", "cv11";
   font-variant-numeric: tabular-nums;
@@ -561,17 +560,7 @@ body {
 /* Brand, assistant, bell, language and demo badge did not fit in 390px: the
    brand text collapsed into a one-character column and the badge overflowed. */
 @media (max-width: 767px) {
-  .workspace-topbar { gap: 6px; padding-inline: 12px; }
-  .workspace-topbar .workspace-topbar-spacer { display: none; }
-  .workspace-mobile-brand { display: flex; min-width: 0; flex: 1 1 auto; }
-  .workspace-mobile-brand > span:last-child { min-width: 0; }
-  .workspace-mobile-brand strong,
-  .workspace-mobile-brand small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .workspace-topbar .locale-trigger { width: auto; min-width: 0; padding-inline: 10px; }
-  .workspace-topbar .locale-full { display: none; }
-  .workspace-topbar .locale-short { display: inline; }
   /* Demo workspaces already show the demo bar above the shell. */
-  .workspace-topbar .demo-badge { display: none; }
 }
 
 /* Evidence date on tinted cards (axe 3.6:1). */
@@ -589,8 +578,6 @@ body {
 
 /* Inactive tabs and bottom-nav labels were 4.3–4.4:1 (axe). */
 .workspace-root [data-slot="tabs-trigger"]:not([data-state="active"]) { color: var(--ink-3); }
-.mobile-bottom-nav a { color: var(--ink-3); }
-.mobile-bottom-nav a.is-active { color: var(--brand-text); }
 /* The approval card kept its widest unwrapped button as its minimum width. */
 /* Side cards are ~310px: badges wrap under the title instead of crushing it. */
 
@@ -896,7 +883,6 @@ body {
 
 /* The phone bottom nav (z 60) sat above every overlay (sheets, dialogs and
    select menus are z 50): it stayed bright and clickable over an open sheet. */
-@media (max-width: 767px) { .mobile-bottom-nav { z-index: 40; } }
 
 /* ── Keyboard: skip link and focus clear of sticky bars ────────────────── */
 /* The first Tab stop was the logo; the workspace sidebar put about a dozen
@@ -917,11 +903,8 @@ body {
 }
 .skip-link:focus-visible { transform: none; outline: 3px solid var(--lime); outline-offset: 2px; }
 .skip-target { scroll-margin-top: 110px; }
-.skip-target:focus, .workspace-content:focus { outline: none; }
+.skip-target:focus { outline: none; }
 /* Keep a focused control from being scrolled under the sticky header or the
    phone bottom nav (WCAG 2.4.11). */
 html { scroll-padding-top: 96px; }
-@media (max-width: 767px) {
-  html:has(.mobile-bottom-nav) { scroll-padding-top: 72px; scroll-padding-bottom: 96px; }
-}
 @media (prefers-reduced-motion: reduce) { .skip-link { transition: none; } }
