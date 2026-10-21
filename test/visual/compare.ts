@@ -18,6 +18,8 @@ mkdirSync(out, { recursive: true });
 const names = [...new Set([...readdirSync(dirA), ...readdirSync(dirB)])].filter((n) => n.endsWith(".png")).sort();
 const browser = await chromium.launch(LAUNCH);
 const page = await browser.newPage();
+// tsx keeps function names through a `__name` helper that the page does not have.
+await page.evaluate("window.__name = (fn) => fn");
 const summary: Record<string, string> = {};
 let changed = 0;
 for (const name of names) {

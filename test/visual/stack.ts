@@ -20,7 +20,7 @@ const text = (en: string, zh: string) => quote({ en, "zh-HK": zh, "zh-TW": zh })
 // Fixed instants keep every rendered date identical between captures.
 const AT = { scan: "2026-10-12T02:00:00Z", v1: "2026-10-13T03:00:00Z", v2: "2026-10-14T04:00:00Z", run: "2026-10-13T02:58:00Z" };
 
-/** Runs the fixture scan through the public API, then attaches it to the merchant's primary location. */
+/** Runs the fixture scan through the public API for the merchant's primary location. */
 async function attachScan(env: AcceptanceEnvironment, merchant: MerchantSeed): Promise<string> {
   const start = await fetch(`${env.app}/api/scan/start`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
     locale: "en", market: "HK", business_name: "Kam Man House (visual fixture)", continue_without_place: true, website_url: "",
@@ -28,9 +28,11 @@ async function attachScan(env: AcceptanceEnvironment, merchant: MerchantSeed): P
   }) });
   if (!start.ok) throw new Error(`scan_start_failed:${start.status}:${await start.text()}`);
   const { jobId } = await start.json() as { jobId: string };
+  // Attached before processing, like a rescan, so post-processing builds the snapshot and derives actions.
+  sql(env.db, `update audit_jobs set workspace_id='${merchant.workspaceId}', location_id='${merchant.locationId}' where id='${jobId}';`);
   const processed = await fetch(`${env.app}/api/scan/process`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jobId }), signal: AbortSignal.timeout(300_000) });
   if (!processed.ok) throw new Error(`scan_process_failed:${processed.status}`);
-  sql(env.db, `update audit_jobs set workspace_id='${merchant.workspaceId}', location_id='${merchant.locationId}', completed_at='${AT.scan}' where id='${jobId}';`);
+  sql(env.db, `update audit_jobs set completed_at='${AT.scan}' where id='${jobId}'; update scan_snapshots set observed_at='${AT.scan}' where job_id='${jobId}';`);
   return jobId;
 }
 

@@ -26,7 +26,12 @@ export function visualStates(stack: VisualStack): VisualState[] {
     // Today and the shell
     { name: "today", role: "owner", path: "~" },
     { name: "today-viewer", role: "viewer", path: "~" },
-    { name: "assistant", role: "owner", path: "~", setup: async (page) => { await page.locator(".workspace-topbar .assistant-launcher").first().click(); await page.waitForTimeout(600); } },
+    { name: "assistant", role: "owner", path: "~", setup: async (page) => {
+      await page.locator(".workspace-topbar .assistant-launcher").first().click();
+      // The sheet loads its suggested questions after opening.
+      await page.waitForLoadState("networkidle");
+      await page.waitForTimeout(1000);
+    } },
     // Actions queue
     { name: "actions", role: "owner", path: "~/actions" },
     { name: "actions-due", role: "owner", path: "~/actions?view=due" },
