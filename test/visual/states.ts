@@ -69,6 +69,8 @@ export function visualStates(stack: VisualStack): VisualState[] {
     // Insights, New, Business, Settings
     { name: "insights", role: "owner", path: "~/insights", setup: openAll },
     { name: "new", role: "owner", path: "~/actions/new" },
+    { name: "new-offer", role: "owner", path: "~/actions/new?mode=offer" },
+    { name: "new-pack", role: "owner", path: "~/actions/new?mode=pack" },
     { name: "business", role: "owner", path: "~/business" },
     { name: "profile", role: "owner", path: "~/business/profile" },
     { name: "locations", role: "owner", path: "~/business/locations" },
