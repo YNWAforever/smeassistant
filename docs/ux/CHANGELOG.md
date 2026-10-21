@@ -2,6 +2,12 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## Phase 9: tidy the workspace screen files (2026-10-21)
+
+- **Dark mode:** icons and step numbers on orange are now dark, as in light mode, instead of white.
+- **Nothing else looks different.** The workspace style files lost repeated rules, unneeded `!important`, and 36 old sidebar colours that never showed. Every step was checked against 284 screenshots.
+- **A colour sheet** lists the 56 colours still written by hand, with the nearest theme colour and a suggestion for each, for you to decide.
+
 ## Phase 8: workspace screens off the legacy stylesheet (2026-10-21)
 
 - **Nothing looks different.** Action detail, Today, the Actions queue, Insights, the shell, Ask Kinnso, Business, Settings and New now have their own style files. Every change was checked against 284 screenshots in two languages, two widths, and light and dark.
