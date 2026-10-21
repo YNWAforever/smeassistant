@@ -18,6 +18,11 @@ const tab = (index: number) => async (page: Page) => {
   await page.locator(".detail-tab-list [role=tab]").nth(index).click();
   await page.waitForTimeout(300);
 };
+// Opens every closed disclosure in the page body, so content styled only when expanded is captured.
+const openAll = async (page: Page) => {
+  await page.locator("main details:not([open])").evaluateAll((all) => all.forEach((d) => d.setAttribute("open", "")));
+  await page.waitForTimeout(300);
+};
 const period = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Hong_Kong", year: "numeric", month: "2-digit" }).format(new Date()).slice(0, 7);
 
 export function visualStates(stack: VisualStack): VisualState[] {
@@ -25,6 +30,7 @@ export function visualStates(stack: VisualStack): VisualState[] {
   return [
     // Today and the shell
     { name: "today", role: "owner", path: "~" },
+    { name: "today-open", role: "owner", path: "~", setup: openAll },
     { name: "today-viewer", role: "viewer", path: "~" },
     { name: "assistant", role: "owner", path: "~", setup: async (page) => {
       await page.locator(".workspace-topbar .assistant-launcher").first().click();
@@ -41,6 +47,7 @@ export function visualStates(stack: VisualStack): VisualState[] {
     { name: "actions-panel", role: "owner", path: `~/actions?open=${ids.draft}`, widths: [1440] },
     // Action detail: approved with two versions and a failed run, a draft, missing inputs
     { name: "action-approved", role: "owner", path: `~/actions/${ids.approved}` },
+    { name: "action-approved-open", role: "owner", path: `~/actions/${ids.approved}`, setup: openAll },
     { name: "action-evidence", role: "owner", path: `~/actions/${ids.approved}`, setup: tab(1) },
     { name: "action-workflow", role: "owner", path: `~/actions/${ids.approved}`, setup: tab(2) },
     { name: "action-history", role: "owner", path: `~/actions/${ids.approved}`, setup: tab(3) },
@@ -60,7 +67,7 @@ export function visualStates(stack: VisualStack): VisualState[] {
       await page.locator(".conflict-state").first().waitFor({ timeout: 10_000 });
     } },
     // Insights, New, Business, Settings
-    { name: "insights", role: "owner", path: "~/insights" },
+    { name: "insights", role: "owner", path: "~/insights", setup: openAll },
     { name: "new", role: "owner", path: "~/actions/new" },
     { name: "business", role: "owner", path: "~/business" },
     { name: "profile", role: "owner", path: "~/business/profile" },

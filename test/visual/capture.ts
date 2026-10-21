@@ -22,8 +22,8 @@ const locales = list("VISUAL_LOCALES", "en,zh-HK"), widths = list("VISUAL_WIDTHS
 const out = `${VISUAL_DIR}/${tag}`;
 mkdirSync(out, { recursive: true });
 
-// Hide what changes between identical runs: the dev overlay, the caret and running animations.
-const STILL = "nextjs-portal{display:none!important}*,*::before,*::after{caret-color:transparent!important;animation-play-state:paused!important;transition:none!important}";
+// Hide what changes between identical runs: the dev overlay and the caret; animations jump to their end state.
+const STILL = "nextjs-portal{display:none!important}*,*::before,*::after{caret-color:transparent!important;animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important;transition-delay:0s!important}";
 const browser = await chromium.launch(LAUNCH);
 const manifest: Record<string, { status: number; url: string; overflow: boolean; errors: string[] }> = {};
 try {
