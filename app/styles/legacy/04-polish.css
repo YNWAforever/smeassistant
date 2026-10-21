@@ -537,8 +537,6 @@ body {
 
 /* Card headings were set at 400 under bold page titles; give the workspace
    the same display hierarchy as the public site. */
-.workspace-root :is(h1, h2) { font-weight: 700; letter-spacing: -.028em; }
-.workspace-root h3 { font-weight: 640; letter-spacing: -.012em; }
 
 /* The open-actions count read as body copy at 16px above the list. */
 .compact-action-list > p {
@@ -577,7 +575,6 @@ body {
 }
 
 /* Inactive tabs and bottom-nav labels were 4.3–4.4:1 (axe). */
-.workspace-root [data-slot="tabs-trigger"]:not([data-state="active"]) { color: var(--ink-3); }
 /* The approval card kept its widest unwrapped button as its minimum width. */
 /* Side cards are ~310px: badges wrap under the title instead of crushing it. */
 
@@ -612,7 +609,6 @@ body {
 /* ── Workspace: body copy in cards ─────────────────────────────────────── */
 /* An unclassed paragraph in a workspace card fell back to the 17px body size,
    larger than the card's own heading (Brand "Versioning", Billing). */
-:where(.workspace-root .section-card) > p:not([class]) { color: var(--ink-3); font-size: 13px; line-height: 1.55; }
 
 /* ── Workspace: assets ─────────────────────────────────────────────────── */
 

@@ -35,6 +35,7 @@
 @import "./styles/legacy/03-ramp-refresh.css" layer(legacy);
 @import "./styles/legacy/04-polish.css" layer(legacy);
 @import "./styles/legacy/05-editorial.css" layer(legacy);
+@import "./styles/screens/workspace-base.css" layer(pages);
 @import "./styles/screens/action-detail.css" layer(pages);
 @import "./styles/screens/today.css" layer(pages);
 @import "./styles/screens/actions-insights.css" layer(pages);

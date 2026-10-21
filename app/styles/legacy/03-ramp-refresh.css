@@ -397,11 +397,6 @@ button:focus-visible {
 }
 
 /* Authenticated workspace */
-.workspace-root {
-  background:
-    radial-gradient(circle at 92% 5%, rgba(240, 175, 109, .12), transparent 22rem),
-    var(--paper-2);
-}
 
 .usage-track {
   height: 7px;
@@ -546,8 +541,6 @@ button:focus-visible {
 }
 
 /* Owner pages favour legibility over dense dashboard metadata. */
-.workspace-root small { font-size: 12px !important; line-height: 1.45; }
-.workspace-root .eyebrow { font-size: 12px; }
 
 @media (max-width: 767px) {
   .prototype-bar { font-size: 12px; }

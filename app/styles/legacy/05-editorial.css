@@ -234,10 +234,6 @@ body:has(.public-site) {
 
 /* ---------- Owner workspace (Kinnso light) ---------- */
 
-.workspace-root {
-  background: var(--ed-bg) !important;
-}
-
 /* Status colours keep their meaning (review on #70). The brand remap above
    moves --teal onto the orange accent family, but these selectors read
    --teal to mean success / measured / ready, so they get the status green
