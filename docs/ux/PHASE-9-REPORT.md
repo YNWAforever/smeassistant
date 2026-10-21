@@ -22,6 +22,7 @@ There are no changes to API contracts, migrations, `packages/*`, auth logic, dat
 | `3299228` | **Dark-mode fix: dark text on orange.** See below. |
 | `cf001c3` | **Two near-identical colours become tokens** (delta E 0.63 and 1.57). |
 | `7e5e573` | **Capture tool:** the Ask Kinnso sheet is captured only once its question groups have finished loading. |
+| `db3dbc4` | **Two brief-card borders become `--line`** (delta E 2.6), as decided on the swatch sheet. |
 
 ### Dark mode
 
@@ -29,15 +30,17 @@ The month-metrics icons on Today, the agent strip's current step and the count o
 
 [Before](phase-9/orange-icons-dark-before.png) · [after](phase-9/orange-icons-dark-after.png)
 
-### Colour decisions waiting for you
+### Colour decisions
 
-The swatch sheet lists the 56 literal colour uses left after the dead ones went: [Workspace colour audit](https://claude.ai/artifact/A9MAEXVNdUUxmz43kMgTAs) (private to you).
+The swatch sheet lists the 56 literal colour uses left after the dead ones went: [Workspace colour audit](https://claude.ai/artifact/A9MAEXVNdUUxmz43kMgTAs) (private to you). You decided on 2026-10-21 to follow every suggestion on it:
 
-| Group | Uses | What the sheet recommends |
+| Group | Uses | Result |
 |---|---|---|
-| Swapped | 2 | Done in `cf001c3`. |
-| Your call | 30 | A suggestion per row. Two brief-card borders (delta E 2.6 from `--line`) are worth swapping. The rest sit on dark surfaces, are shadows, or are white text on a fill that stays dark in both themes, so I suggest keeping them. |
+| Swapped | 4 | Two near-identical colours in `cf001c3`. The borders on the Today brief cards and on "Why you can trust this" in `db3dbc4`: in light mode they move by at most 12 levels in one colour channel, and in dark mode they now use the theme's line colour. [Dark before](phase-9/brief-border-dark-before.png) · [after](phase-9/brief-border-dark-after.png) |
+| Kept | 28 | They sit on dark surfaces, are shadows, or are white text on a fill that stays dark in both themes. |
 | Leave untouched | 24 | Never seen on the captured pages, but not proven unused. |
+
+The border change was checked on Today, Today with every disclosure open and Today as a viewer: 24 captures in en and zh-HK, at 390 and 1440 px, in light and dark. Each capture differs only along the card borders.
 
 ## How each step was checked
 
@@ -66,7 +69,7 @@ Two things went wrong along the way and were caught:
 | Screen files | 79.8 KB, 849 rules, 2,448 declarations | **75.6 KB, 814 rules, 2,317 declarations** |
 | Duplicate selectors | 100 | 78 |
 | `!important` | 33 | 11 |
-| Literal colours | 76 | 54 |
+| Literal colours | 76 | 52 |
 
 ## Verification
 
@@ -85,9 +88,8 @@ All checks ran one after another on the final commit.
 ## Deviations from the plan
 
 1. **78 duplicate selectors remain.** Merging them could change which rule wins, so they stay where they are. Each could be done by hand with a check, but the gain is small.
-2. **Only two colours became tokens.** That is what the approved threshold allows. The other 30 visible uses need your call on the swatch sheet.
+2. **Only four colours became tokens.** Two passed the approved threshold. You chose two more from the swatch sheet and kept the other 28 as written.
 
 ## Open questions
 
-1. Which of the 30 "Your call" colours should become tokens? Answering by row group is enough. For example: "swap the two brief-card borders, keep the rest".
-2. Phase 8's PR is still waiting for #101 to merge. Merge #101 first, or open Phase 8 now against `ux/phase-7-hygiene`?
+1. Phase 8's PR is still waiting for [YNWAforever/smeassistant#101](https://github.com/YNWAforever/smeassistant/pull/101) to merge, as agreed. Phase 9's PR follows Phase 8's.

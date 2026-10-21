@@ -6,7 +6,7 @@ Each phase has a full report in `docs/ux/`.
 
 - **Dark mode:** icons and step numbers on orange are now dark, as in light mode, instead of white.
 - **Nothing else looks different.** The workspace style files lost repeated rules, unneeded `!important`, and 36 old sidebar colours that never showed. Every step was checked against 284 screenshots.
-- **A colour sheet** lists the 56 colours still written by hand, with the nearest theme colour and a suggestion for each, for you to decide.
+- **A colour sheet** lists the 56 colours still written by hand. Four now use theme colours, including the Today card borders, which now follow dark mode. The rest stay as written.
 
 ## Phase 8: workspace screens off the legacy stylesheet (2026-10-21)
 
