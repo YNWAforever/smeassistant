@@ -2,6 +2,11 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## Phase 11: the legacy stylesheet is gone (2026-10-21)
+
+- **Nothing looks different.** The last pre-redesign styles were either unused (deleted) or basic defaults for text, links, focus rings, buttons and selects, which now have their own files. Every page was checked against 372 screenshots.
+- **One question for you:** the arrow links on the landing page's sample case are dark because of an old rule; the kit meant them to be brand brown. They stay dark until you decide.
+
 ## Phase 10: shared and public styles off the legacy stylesheet (2026-10-21)
 
 - **Nothing looks different.** The public pages (landing, scan, scanning, report, unlock, pricing, methodology, trust, legal, sign-in, onboarding, demo, 404) and the styles they share with the workspace now have their own files. Every page was checked against 372 screenshots before and after.
