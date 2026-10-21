@@ -3,9 +3,9 @@
  * elevation and motion. Values are taken from the Kinnso palette that the
  * public site and workspace already render; nothing here is a new look.
  *
- * Layers: Tailwind theme → tokens → base → components → utilities → legacy
- * (the pre-redesign stylesheets, kept last so the existing pages render as
- * before while they are migrated) → i18n (Chinese line-height and breaking).
+ * Layers: Tailwind theme → tokens → base → components → utilities → pages
+ * (shared, public and screen sub-layers) → i18n (Chinese line-height and
+ * breaking) → a11y. The order is set in app/globals.css.
  *
  * Dark mode is workspace-only (CLAUDE.md, 2026-10-19). components/theme/
  * sets html[data-theme] while an owner page is mounted, and a saved dark

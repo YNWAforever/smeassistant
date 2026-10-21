@@ -8,7 +8,7 @@ import { useEffect } from "react"
  * page: server-rendered content is visible without JavaScript, sections that
  * are already on screen when the effect runs are never hidden, and the whole
  * layer is skipped for `prefers-reduced-motion: reduce`. CSS for every state
- * lives in app/styles/legacy/04-polish.css under `[data-reveal]`.
+ * lives in app/styles/base.css under `[data-reveal]`.
  */
 const REVEAL_SELECTOR = [
   ".public-site main > section",

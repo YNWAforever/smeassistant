@@ -1,6 +1,6 @@
 /*
- * Chinese typography (zh-HK, zh-TW). Loaded in the i18n layer, after legacy,
- * so these win over the older per-component sizes. System fonts only
+ * Chinese typography (zh-HK, zh-TW). Loaded in the i18n layer, after pages,
+ * so these win over the per-component sizes. System fonts only
  * (CLAUDE.md 2026-10-19); the per-locale stacks live in tokens.css.
  */
 

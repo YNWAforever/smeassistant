@@ -1,5 +1,6 @@
 /* Actions queue and Insights, moved out of legacy (docs/ux Phase 8). */
 @layer screens {
+.action-list{display:grid;gap:10px}
 .action-tabs{border:1px solid var(--border);background:var(--paper)}
 .action-tab-list{width:100%;min-height:52px;justify-content:flex-start;border-bottom:1px solid var(--border)}
 .action-tab-list button{flex:0 0 auto;min-height:50px}

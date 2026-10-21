@@ -1,8 +1,7 @@
 /*
  * Redesigned public pages (docs/ux Phase 2): landing, methodology, trust and
- * pricing. This file sits in the `pages` layer, after `legacy`, so the old
- * element rules (heading tracking, input backgrounds) never override a
- * redesigned page. Tokens only, mobile first. Motion is opt-in: the still,
+ * pricing. This file sits directly in the `pages` layer, so element defaults (base.css)
+ * and the shared, public and screen sub-layers never override a redesigned page. Tokens only, mobile first. Motion is opt-in: the still,
  * finished state is the default and animation runs only when the device
  * allows motion and the manual switch is off.
  */

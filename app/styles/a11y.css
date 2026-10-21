@@ -70,7 +70,7 @@
 }
 
 /* Manual reduced-motion switch (design-system preview and, later, a user
-   setting). Mirrors the OS preference handled in the legacy layer. */
+   setting). Mirrors the OS preference handled in base.css. */
 :root[data-motion="reduce"] *,
 :root[data-motion="reduce"] *::before,
 :root[data-motion="reduce"] *::after {

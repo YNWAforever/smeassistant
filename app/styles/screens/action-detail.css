@@ -53,7 +53,7 @@
 .brand-check-panel>p svg{width:13px;color:var(--amber)}
 .approval-panel{display:grid;align-self:start;gap:12px}
 .approval-panel h2{font-size:19px}
-/* Not the plain paragraphs directly in a section card: the workspace-wide rule for those stays in legacy. */
+/* Not the plain paragraphs directly in a section card: the workspace-wide rule for those lives in shared.css. */
 .approval-panel p[class],.approval-panel>p,.approval-panel :not(.section-card)>p{color:var(--soft);font-size:12px}
 .decision-stack{display:grid;margin-top:16px;gap:7px}
 .approved-state,.idempotent-state{display:flex;margin-top:14px;padding:12px;align-items:center;gap:9px;border-radius:8px;background:var(--teal-soft);color:var(--teal-dark)}

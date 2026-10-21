@@ -113,7 +113,8 @@ try {
   }
   await browser.close();
   const database = sql(env.db, "select current_database();");
-  const stack: VisualStack = { app: env.app, container: env.db, database, slug: merchant.slug, workspaceId: merchant.workspaceId, jobId, ids, sessions };
+  const shareSlug = sql(env.db, `select share_slug from audit_jobs where id='${jobId}';`);
+  const stack: VisualStack = { app: env.app, container: env.db, database, slug: merchant.slug, workspaceId: merchant.workspaceId, jobId, shareSlug, ids, sessions };
   mkdirSync(VISUAL_DIR, { recursive: true });
   writeFileSync(STACK_FILE, JSON.stringify(stack, null, 1));
   console.log(`visual stack ready at ${env.app} (Ctrl-C to stop)`);
