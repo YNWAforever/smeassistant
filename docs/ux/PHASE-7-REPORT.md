@@ -124,9 +124,11 @@ All checks ran one after another on the final commit.
 2. **`!important` count unchanged (46).** Removing them is only safe screen by screen, alongside the move to the new styles.
 3. **`lib/llm-translate.ts` and the `lib/db/schema/*` files stay.** knip reports them as unused. The schema files are read by the type generator rather than imported, and the translate helper is a ported upstream helper that CLAUDE.md lists for reuse.
 
-## Open questions
+## Decisions after review (2026-10-21, recommendations accepted)
 
-1. **Line breaks in Chinese headings.** Big Chinese headings use `word-break: keep-all` so that a word such as 循環 isn't split across lines (Phase 1). When a whole clause is wider than the heading, the browser has to break it somewhere, and it can push the closing 。 onto a line of its own. You can see this on the pricing page at 1440 px ([capture](phase-7/pricing-zh-HK-1440.jpg)); it was already there in Phase 6. Two options:
-   - **Recommended:** use normal CJK breaking for zh headings, keeping the strict line-break rules. Punctuation then never starts a line, but a word can be split across two lines, which is common in Chinese typesetting.
-   - Keep `keep-all` and shorten or rewrite the headings that are too long.
-2. **Moving legacy screens onto the new styles:** should it be the next piece of work, and in which order? I'd start with action detail and Today, which use the most legacy rules.
+1. **Chinese headings now use normal CJK line breaking**, keeping strict line-break rules and balanced lines (`app/styles/i18n.css`).
+   - **Before** (`keep-all`): 690 zh-HK and zh-TW headings were checked across 15 pages at 390, 768 and 1440 px. In 2 of them, a line began with punctuation: the pricing heading at 1440 px, which stranded its closing 。.
+   - **After:** 0. The 60 zh-HK captures show 0 axe violations and no overflow.
+   - **Trade-off:** a word can now split across two lines, as in 一／隊 on the pricing heading. That is common in Chinese typesetting.
+   - [Before](phase-7/pricing-zh-HK-1440.jpg) · [after](phase-7/pricing-zh-HK-1440-after.jpg)
+2. **Next piece of work:** move the screens that still depend on the legacy stylesheet onto the new styles, starting with action detail and Today. The plan comes separately.
