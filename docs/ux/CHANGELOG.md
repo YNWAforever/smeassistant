@@ -2,6 +2,13 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## Phase 8: workspace screens off the legacy stylesheet (2026-10-21)
+
+- **Nothing looks different.** Action detail, Today, the Actions queue, Insights, the shell, Ask Kinnso, Business, Settings and New now have their own style files. Every change was checked against 284 screenshots in two languages, two widths, and light and dark.
+- **One dark-mode fix:** the approval bar on action detail no longer has a bright outline in the dark theme.
+- **The old stylesheet is half the size** (157 KB to 84 KB). What remains is mostly the public pages and a few shared styles.
+- **A screenshot tool** in `test/visual/` captures states that normal test data never shows, such as a version conflict, being offline or a used-up allowance, and compares two runs pixel by pixel.
+
 ## Phase 7: repo hygiene and finishing (2026-10-20)
 
 - **Names:** the paid plan is called the Growth plan (增長方案 / 成長方案) everywhere, and the product is called Kinnso OS everywhere, including the report title and the WhatsApp message. A test stops old names coming back.

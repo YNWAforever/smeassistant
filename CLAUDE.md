@@ -68,7 +68,7 @@ The interface was redesigned in Phases 1–7 (`docs/ux/`, index in `docs/ux/READ
 
 - **Product name:** Kinnso OS, by Fimmick. The paid plan is the Growth plan (增長方案 / 成長方案). The assistant is "Ask Kinnso" (問 Kinnso).
 - **Workspace:** five destinations — Today, Actions, Insights, Business, Settings. Old owner URLs answer 308 to their new home (`lib/workspace/route-redirects.ts`, called from `proxy.ts`).
-- **Styles:** tokens in `app/styles/tokens.css`; cascade layers `theme, tokens, base, components, utilities, legacy, pages, i18n, a11y` (`app/globals.css`). New styles go in `pages` (or `components`), never in `legacy/`. Dark mode is workspace-only.
+- **Styles:** tokens in `app/styles/tokens.css`; cascade layers `theme, tokens, base, components, utilities, legacy, pages, i18n, a11y` (`app/globals.css`). New styles go in `pages` (or `components`), never in `legacy/`. Workspace screen styles live in `app/styles/screens/` (the `screens` sub-layer of `pages`); check style moves with `test/visual/`. Dark mode is workspace-only.
 - **Components:** `components/kinnso/` (kit), `components/visual/` (visuals and motion), `components/states/` (error, loading, empty, `RoleNotice`), `components/ui/` (shadcn primitives).
 - **Copy:** every user-facing string lives in `lib/copy.ts` or a `lib/copy-*.ts` dictionary, in en, zh-HK and zh-TW, with parity tests. No inline `isChinese ? … : …`. Old product and plan names are blocked by `tests/product-name.test.ts`.
 - **Budgets:** first-load JS per route is checked after the build (`corepack pnpm test:js-budget`: workspace 300 KB, other routes 240 KB, gzipped).
@@ -1379,6 +1379,7 @@ corepack pnpm seed:demo --owned-test      # creates, seeds, verifies and destroy
 | 2026-10-20 | States (Phase 5): the getting-started checklist hides itself when done (nothing stored); error pages show Next's digest as a reference; after Google verification onboarding goes straight to Business basics | decided (Willy) |
 | 2026-10-20 | Quality (Phase 6): hard 404 for unknown actions; JS budgets workspace 300 KB / other 240 KB; Lighthouse runs outside the repo (adding it changed production dependency resolution) | decided (Willy) |
 | 2026-10-20 | Hygiene (Phase 7): the paid plan is the "Growth plan" (增長方案 / 成長方案); `.superpowers/` evidence archived in `docs/archive/superpowers`; access-request strings move into a shared dictionary; legacy CSS use measured (none pruned: unseen rules style real states); Chinese headings use normal CJK line breaking | decided (Willy) |
+| 2026-10-21 | Legacy CSS (Phase 8): workspace screens moved to `app/styles/screens/` pixel-identically in light; dark fixes only where a legacy colour ignored the theme; public pages later; the state-capture tool stays manual (`test/visual/`) | decided (Willy) |
 | open | Retention periods on the Trust page; owned photos for `public/brand/` | Willy |
 | open | Whether the 13 local-only commits and stale worktrees in `Documents\smescanner` get archived (tag) and removed | Willy |
 | open | Re-pin cadence: when upstream changes `scoringVersion` or the lease, both apps must move together | Willy + upstream maintainer |
