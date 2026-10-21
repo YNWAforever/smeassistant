@@ -531,102 +531,8 @@ body {
 
 /* The view tabs became links in a <nav>, but the CSS still targeted the old
    Tabs buttons, so they ran together as plain text ("All 2Needs input 1…"). */
-.action-tab-list {
-  display: flex;
-  padding: 8px 12px;
-  align-items: center;
-  gap: 4px;
-  scrollbar-width: none;
-}
-
-.action-tab-list > a {
-  display: inline-flex;
-  flex: 0 0 auto;
-  min-height: 40px;
-  padding: 0 14px;
-  align-items: center;
-  gap: 8px;
-  border-radius: 999px;
-  color: var(--soft);
-  font-size: 13px;
-  font-weight: 650;
-  white-space: nowrap;
-  transition: background-color .2s ease, color .2s ease;
-}
-
-.action-tab-list > a:hover { background: var(--paper-2); color: var(--ink); }
-
-.action-tab-list > a > span {
-  display: inline-grid;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  place-items: center;
-  border-radius: 999px;
-  background: var(--paper-2);
-  color: var(--ink);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-.action-tab-list > a[aria-current="page"] { background: var(--inverse); color: #fff; }
-.action-tab-list > a[aria-current="page"] > span { background: var(--lime); color: var(--ink); }
 
 /* Search used a bare bordered input and a text-only submit. */
-.action-search {
-  display: flex;
-  min-width: min(100%, 320px);
-  flex: 1 1 320px;
-  gap: 8px;
-}
-
-.action-search-field {
-  position: relative;
-  display: block;
-  flex: 1 1 auto;
-}
-
-.action-search-field > svg {
-  position: absolute;
-  top: 50%;
-  left: 12px;
-  width: 16px;
-  color: var(--soft);
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-.action-search-field [data-slot="input"] {
-  min-height: 44px;
-  padding-left: 36px;
-  border-radius: 999px;
-  background: var(--paper);
-}
-
-.filter-bar .filter-label { font-size: 12px; }
-.queue-summary { font-size: 12px; }
-
-.queue-pages {
-  display: flex;
-  margin-top: 16px;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.queue-pages > a {
-  display: inline-flex;
-  min-height: 40px;
-  padding: 0 16px;
-  align-items: center;
-  border: 1px solid var(--input);
-  border-radius: 999px;
-  background: var(--paper);
-  font-size: 13px;
-  font-weight: 650;
-}
-
-.queue-pages > a:hover { border-color: rgba(31, 28, 24, .3); }
-.queue-footnote { font-size: 12px; line-height: 1.55; }
 
 /* ── Workspace: home and shared headings ───────────────────────────────── */
 
@@ -647,15 +553,6 @@ body {
 /* The card's decorative ring ran through the translucent "Ask why" button. */
 
 /* The list card never showed the observed value its evidence carries. */
-.action-evidence-value {
-  display: block;
-  margin: 10px 0 4px;
-  color: var(--ink);
-  font-size: 18px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  letter-spacing: -.02em;
-}
 
 /* Language picker: full name by default, short code where a bar is tight. */
 .locale-short { display: none; }
@@ -678,7 +575,6 @@ body {
 }
 
 /* Evidence date on tinted cards (axe 3.6:1). */
-.action-evidence small { color: var(--ink-3); }
 
 /* ── Workspace: action detail ──────────────────────────────────────────── */
 /* Three long button labels in one unwrapped row pushed the draft card past
@@ -706,141 +602,8 @@ body {
 /* ── Workspace: insights ───────────────────────────────────────────────── */
 /* The page shipped with no styles for its own classes: stat cards, the score
    series and before/after cards rendered as unformatted text. */
-.insights-page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
-.insights-page > .page-intro { margin-bottom: 4px; }
-
-.insight-summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.insight-stat.section-card {
-  display: grid;
-  padding: 20px;
-  grid-template-columns: 1fr;
-  align-content: start;
-  gap: 4px;
-}
-.insight-stat > svg {
-  width: 34px;
-  height: 34px;
-  margin-bottom: 12px;
-  padding: 8px;
-  border-radius: 10px;
-  background: var(--teal-soft);
-  color: var(--teal);
-}
-.insight-stat > span { color: var(--soft); font-size: 12px; font-weight: 650; }
-.insight-stat > strong {
-  color: var(--ink);
-  font-size: clamp(30px, 3vw, 40px);
-  font-feature-settings: "tnum", "cv11";
-  font-variant-numeric: tabular-nums;
-  font-weight: 720;
-  letter-spacing: -.04em;
-  line-height: 1.05;
-}
-.insight-stat > small { color: var(--ink-3); font-size: 12px; line-height: 1.4; }
-
-.no-comparable-card.section-card { display: flex; align-items: flex-start; gap: 14px; }
-.no-comparable-card > svg { width: 22px; flex: 0 0 auto; margin-top: 2px; color: var(--amber); }
-.no-comparable-card h2 { margin: 6px 0; font-size: 18px; }
-.no-comparable-card p:not(.eyebrow) { margin: 0; color: var(--soft); font-size: 12px; }
 
 /* Score series: points joined by a line only when comparable; a gap is dashed. */
-.trend-strip {
-  display: grid;
-  margin: 22px 0 8px;
-  padding: 0;
-  grid-auto-columns: minmax(112px, 1fr);
-  grid-auto-flow: column;
-  list-style: none;
-  overflow-x: auto;
-}
-.trend-strip li { position: relative; display: grid; padding: 0 8px 14px; align-content: start; justify-items: center; gap: 3px; text-align: center; }
-.trend-strip li::before {
-  position: absolute;
-  top: 22px;
-  right: 50%;
-  width: 100%;
-  height: 2px;
-  content: "";
-  background: var(--teal);
-  opacity: .35;
-}
-.trend-strip li:first-child::before { display: none; }
-.trend-strip li.is-gap::before { background: none; border-top: 2px dashed var(--line); opacity: 1; }
-.trend-strip strong {
-  position: relative;
-  display: grid;
-  min-width: 46px;
-  height: 46px;
-  padding-inline: 8px;
-  place-items: center;
-  border: 2px solid var(--teal);
-  border-radius: 999px;
-  background: var(--paper);
-  color: var(--ink);
-  font-size: 17px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 720;
-}
-.trend-strip li:last-child strong { border-color: var(--ink); background: var(--inverse); color: var(--lime); }
-.trend-strip small { margin-top: 6px; color: var(--soft); font-size: 12px; white-space: nowrap; }
-.trend-strip span { color: var(--ink-3); font-size: 12px; font-variant-numeric: tabular-nums; }
-.trend-strip em {
-  margin-top: 2px;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: var(--amber-soft);
-  color: var(--brand-text);
-  font-size: 12px;
-  font-style: normal;
-  font-weight: 700;
-}
-.trend-card [data-slot="table-caption"] { color: var(--ink-3); font-size: 12px; }
-
-.before-after-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-.metric-change-card.section-card { display: grid; padding: 20px; align-content: start; justify-items: start; gap: 6px; }
-.metric-change-card .eyebrow { margin-top: 8px; }
-.metric-change-card h2 {
-  display: flex;
-  margin: 2px 0 0;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 34px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 720;
-  letter-spacing: -.04em;
-}
-.metric-change-card h2 small {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--paper-2);
-  color: var(--ink-2);
-  font-size: 12px;
-  letter-spacing: 0;
-}
-.metric-change-card p:not(.eyebrow) { margin: 0; color: var(--ink-3); font-size: 12px; }
-
-.surface-trend-card .evidence-list li { align-items: center; padding: 10px 0; border-top: 1px solid var(--border); }
-.surface-trend-card .evidence-list li:first-child { border-top: 0; }
-.surface-trend-card .evidence-list .badge { min-width: 150px; justify-content: flex-start; }
-.surface-trend-card .evidence-list strong { font-size: 18px; font-variant-numeric: tabular-nums; }
-.surface-trend-card .evidence-list small { color: var(--ink-3); font-size: 12px; line-height: 1.5; }
-.insights-page .delivered-work-card { margin-top: 0; }
-
-@media (max-width: 1279px) {
-  .insight-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 767px) {
-  .insight-stat.section-card,
-  .metric-change-card.section-card { padding: 16px; }
-  .surface-trend-card .evidence-list li { flex-direction: column; align-items: flex-start; gap: 6px; }
-  .surface-trend-card .evidence-list .badge { min-width: 0; }
-}
-@media (max-width: 639px) {
-  .insight-summary-grid { gap: 8px; }
-  .insight-stat.section-card { padding: 14px; }
-  .insight-stat > svg { margin-bottom: 6px; }
-  .insight-stat > strong { font-size: 28px; }
-}
 
 /* ── Workspace: billing ────────────────────────────────────────────────── */
 /* The status badge stretched to the head's height and rendered as a circle. */
@@ -908,30 +671,6 @@ body {
 .instagram-handle-form .field-stack { flex: 1 1 260px; }
 
 /* ── Workspace: calendar ───────────────────────────────────────────────── */
-.calendar-list { display: grid; margin: 16px 0 6px; padding: 0; list-style: none; }
-.calendar-list li {
-  display: grid;
-  padding: 12px 0;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  border-top: 1px solid var(--border);
-}
-.calendar-list li > span {
-  display: grid;
-  width: 40px;
-  height: 40px;
-  place-items: center;
-  border-radius: 11px;
-  background: var(--teal-soft);
-  color: var(--teal);
-}
-.calendar-list li > span svg { width: 18px; }
-.calendar-list li > div { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
-.calendar-list strong { font-size: 14px; }
-.calendar-list small { color: var(--ink-3); font-size: 12px; }
-.calendar-list li > a { color: var(--teal); font-size: 13px; font-weight: 650; }
-.calendar-page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .compact-action-list small { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .compact-action-list small svg { width: 12px; flex: 0 0 auto; }
 
@@ -996,10 +735,7 @@ body {
   .integration-head > :last-child:not(div) { grid-column: 2; justify-self: start; }
   .integration-grid .integration-actions [data-slot="button"] { width: 100%; }
   .create-tabs [data-slot="tabs-content"] { padding: 12px; }
-  .calendar-list li { grid-template-columns: 40px minmax(0, 1fr); }
-  .calendar-list li > a { grid-column: 2; }
 }
-.calendar-list li > a { align-self: center; }
 .integration-grid .instagram-handle-form { margin-top: 4px; }
 .pack-card .evidence-list li > a { align-self: center; }
 @media (max-width: 767px) {

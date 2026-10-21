@@ -168,31 +168,6 @@ button:focus-visible {
 
 .public-menu-trigger { display: none; }
 
-.request-context-banner {
-  display: grid;
-  margin-bottom: 18px;
-  padding: 16px 18px;
-  grid-template-columns: 24px 1fr auto;
-  align-items: center;
-  gap: 12px;
-  border: 1px solid var(--line-warm);
-  border-radius: 16px;
-  background: var(--lime-soft);
-}
-
-.request-context-banner > svg { width: 20px; color: var(--brand-text); }
-.request-context-banner strong { display: block; font-size: 13px; }
-.request-context-banner span { display: block; margin-top: 4px; color: var(--ink-3); font-size: 12px; line-height: 1.55; }
-
-.location-proof-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-.location-proof-grid h2 { margin: 10px 0 4px; font-size: clamp(32px, 4vw, 52px); }
-.location-proof-grid h2 small { color: var(--ink-3); font-size: 14px; font-weight: 600; }
-.location-proof-grid p { margin-bottom: 14px; color: var(--ink-3); }
-
 .sheet-form { display: grid; gap: 18px; padding: 22px 0; }
 .guardrail-list { display: grid; gap: 10px; margin-top: 18px; }
 .guardrail-list span { display: flex; gap: 9px; align-items: flex-start; color: var(--ink-2); font-size: 12px; line-height: 1.5; }
@@ -631,7 +606,6 @@ button:focus-visible {
 }
 
 /* Shared app surfaces */
-.action-tabs,
 .action-card,
 .goal-card,
 .plan-card,
@@ -649,10 +623,6 @@ button:focus-visible {
 .action-card,
 .workspace-choice-grid a {
   transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
-}
-
-.action-evidence {
-  border-radius: 12px;
 }
 
 /* Coordinated agent team and owner-friendly plans */
@@ -715,13 +685,8 @@ button:focus-visible {
 /* Owner pages favour legibility over dense dashboard metadata. */
 .workspace-root small { font-size: 12px !important; line-height: 1.45; }
 .workspace-root .eyebrow { font-size: 12px; }
-.workspace-root .action-card-meta dt,
-.workspace-root .action-card-footer > span { font-size: 12px; }
 
 @media (max-width: 767px) {
-  .location-proof-grid { grid-template-columns: 1fr; }
-  .request-context-banner { grid-template-columns: 22px 1fr; }
-  .request-context-banner > .badge { grid-column: 2; justify-self: start; }
   .mobile-bottom-nav a { font-size: 12px; }
   .workspace-mobile-brand strong { font-size: 12px; }
   .workspace-mobile-brand small { font-size: 12px !important; }
