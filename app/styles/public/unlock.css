@@ -1,0 +1,55 @@
+/* Styles for the unlock page, moved verbatim from the legacy stylesheet (Phase 10).
+   Imported as layer(pages) after shared.css: they beat legacy and shared rules. */
+@layer public {
+  @media (max-width: 1023px){
+  .unlock-page{grid-template-columns:1fr}
+  .unlock-page{gap:32px}}
+  @media (max-width:767px){
+  .unlock-page{width:calc(100% - 28px);padding:42px 0}
+  .unlock-form-card{padding:22px}}
+  .unlock-page{width:min(1050px,calc(100% - 40px));margin:auto;padding:75px 0;display:grid;grid-template-columns:1fr 430px;align-items:center;gap:80px}
+  .unlock-context h1{margin:18px 0;font-size:clamp(38px,5vw,58px);line-height:1.05}
+  .unlock-context>p{color:var(--soft);line-height:1.7}
+  .unlock-benefits{display:grid;margin-top:30px;gap:12px}
+  .unlock-benefits>div{display:flex;padding:14px;align-items:center;gap:13px;border:1px solid var(--border);border-radius:9px;background:color-mix(in oklab, var(--paper) 75%, transparent)}
+  .unlock-benefits svg{width:20px;color:var(--teal)}
+  .unlock-benefits span{display:flex;flex-direction:column}
+  .unlock-benefits strong{font-size:12px}
+  .unlock-benefits small{color:var(--soft);font-size:12px}
+  .unlock-form-card{padding:32px;border:1px solid var(--border);border-radius:14px;background:var(--paper);box-shadow:var(--shadow-md)}
+  .unlock-form-card h2{margin:18px 0 6px;font-size:24px}
+  .unlock-form-card>p{color:var(--soft);font-size:12px}
+  @media (max-width: 1023px){
+  .unlock-page{grid-template-columns:1fr}
+  .unlock-page{gap:32px}}
+  @media (max-width:767px){
+  .unlock-page{width:calc(100% - 28px);padding:42px 0}
+  .unlock-form-card{padding:22px}}
+  .unlock-form-card {
+    border-color: rgba(31, 28, 24, .09);
+    border-radius: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .policy-link {
+    display: inline-flex;
+    width: fit-content;
+    min-height: 44px;
+    align-items: center;
+    gap: 6px;
+    color: var(--teal-dark);
+    font-size: 13px;
+    font-weight: 650;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+    text-underline-offset: 4px;
+    transition: text-decoration-color .2s ease;
+  }
+  .policy-link:hover { text-decoration-color: currentColor; }
+  .policy-link svg { width: 14px; transition: transform .3s var(--ease-spring); }
+  .policy-link:hover svg { transform: translateX(3px); }
+  .unlock-form-card > [data-slot="button"] { margin-top: 22px; }
+  .unlock-form-card > p { line-height: 1.6; }
+  @media (min-width: 1024px){
+  .unlock-page { align-items: start; }
+  .unlock-context { position: sticky; top: 120px; padding-top: 40px; }}
+}

@@ -1,0 +1,60 @@
+/* Styles for the report page, moved verbatim from the legacy stylesheet (Phase 10).
+   Imported as layer(pages) after shared.css: they beat legacy and shared rules. */
+@layer public {
+  @media (max-width: 1023px){
+  .method-layout{grid-template-columns:1fr}}
+  @media (max-width:767px){
+  .report-page{width:calc(100% - 28px)}
+  .unlock-banner{align-items:stretch;flex-direction:column}
+  .retention-summary{align-items:flex-start;flex-direction:column}}
+  .section-heading-inline>a{display:inline-flex;align-items:center;gap:7px;color:var(--teal-dark);font-size:13px;font-weight:750}
+  .section-heading-inline>a svg{width:15px}
+  .report-section,.report-page{width:min(var(--content),calc(100% - 40px));margin-inline:auto}
+  .section-heading-inline{display:flex;margin-bottom:28px;align-items:end;justify-content:space-between;gap:24px}
+  .section-heading-inline h2{margin:0;font-size:clamp(26px,3vw,38px)}
+  .report-page{padding:56px 0}
+  .report-section{padding-top:70px}
+  .evidence-excerpt{display:grid;margin-top:20px;padding:13px;gap:6px;border-left:3px solid var(--teal);background:var(--paper-2)}
+  .evidence-excerpt strong{font-size:12px}
+  .evidence-excerpt span{color:var(--ink-2);font-size:12px}
+  .evidence-excerpt small{color:#78817f;font-size:12px}
+  .recommendation-line{display:flex;margin-top:12px;gap:8px}
+  .recommendation-line>span:last-child{color:var(--soft);font-size:12px}
+  .unlock-banner{display:flex;margin-top:70px;padding:30px;align-items:center;justify-content:space-between;gap:30px;border-radius:12px;background:var(--inverse);color:white}
+  .unlock-banner>div{display:flex;gap:18px}
+  .unlock-banner>div>svg{width:27px;color:#cea881}
+  .unlock-banner .eyebrow{color:#cea881}
+  .unlock-banner h2{margin:7px 0;font-size:23px}
+  .unlock-banner p{margin:0;color:#cec7c0;font-size:12px}
+  .method-layout{display:grid;margin-top:18px;grid-template-columns:1fr 1fr;gap:18px}
+  .limitations-box{display:flex;margin-top:18px;padding:20px;gap:13px;border:1px solid var(--line-warm);background:var(--amber-soft)}
+  .limitations-box svg{width:20px;color:var(--amber)}
+  .limitations-box h2{font-size:15px}
+  .limitations-box p{margin:0;color:var(--brand-text);font-size:12px}
+  .retention-summary{display:flex;margin-top:18px;align-items:center;justify-content:space-between;gap:26px}
+  .retention-summary>div{display:flex;gap:14px}
+  .retention-summary svg{width:23px;color:var(--teal)}
+  .retention-summary p{margin:0;color:var(--soft);font-size:12px}
+  @media (max-width: 1023px){
+  .method-layout{grid-template-columns:1fr}}
+  @media (max-width:767px){
+  .report-page{width:calc(100% - 28px)}
+  .section-heading-inline{align-items:flex-start;flex-direction:column}
+  .unlock-banner{align-items:flex-start;flex-direction:column}
+  .retention-summary{align-items:flex-start;flex-direction:column}}
+  @media (max-width: 639px){
+  .unlock-banner .button{width:100%}}
+  .section-heading-inline h2 {
+    font-weight: 780;
+    letter-spacing: -.045em;
+  }
+  .unlock-banner {
+    border-radius: 24px;
+    background: var(--inverse);
+  }
+  .report-handoff-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}

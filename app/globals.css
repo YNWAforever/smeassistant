@@ -35,6 +35,16 @@
 @import "./styles/legacy/03-ramp-refresh.css" layer(legacy);
 @import "./styles/legacy/04-polish.css" layer(legacy);
 @import "./styles/legacy/05-editorial.css" layer(legacy);
+@import "./styles/shared.css" layer(pages);
+@import "./styles/public/chrome.css" layer(pages);
+@import "./styles/public/landing.css" layer(pages);
+@import "./styles/public/scan.css" layer(pages);
+@import "./styles/public/report.css" layer(pages);
+@import "./styles/public/unlock.css" layer(pages);
+@import "./styles/public/content.css" layer(pages);
+@import "./styles/public/auth.css" layer(pages);
+@import "./styles/public/demo.css" layer(pages);
+@import "./styles/public/editorial.css" layer(pages);
 @import "./styles/screens/workspace-base.css" layer(pages);
 @import "./styles/screens/action-detail.css" layer(pages);
 @import "./styles/screens/today.css" layer(pages);

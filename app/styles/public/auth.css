@@ -1,0 +1,48 @@
+/* Styles for onboarding and workspace selection, moved verbatim from the legacy stylesheet (Phase 10).
+   Imported as layer(pages) after shared.css: they beat legacy and shared rules. */
+@layer public {
+  @media (max-width:767px){
+  .onboarding-page,.select-workspace-page{width:calc(100% - 28px);padding:42px 0}
+  .onboarding-card{padding:22px}
+  .workspace-choice-icon{width:44px;height:44px}}
+  .onboarding-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+  .onboarding-page,.select-workspace-page{width:min(980px,calc(100% - 40px));margin:auto;padding:60px 0}
+  .onboarding-head h1,.select-workspace-page h1{margin:15px 0;font-size:40px}
+  .onboarding-card{min-height:550px;padding:28px;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:12px;background:var(--paper)}
+  .onboarding-choice{display:flex;padding:20px;gap:16px;border:1px solid var(--line-warm);border-radius:10px;background:var(--paper-2)}
+  .onboarding-icon{display:grid;width:52px;height:52px;place-items:center;border-radius:10px;background:var(--teal);color:white}
+  .onboarding-choice dl div{display:grid;padding:6px 0;grid-template-columns:100px 1fr;border-top:1px solid var(--line);font-size:12px}
+  .onboarding-choice dd{margin:0}
+  .connection-choice>div{display:flex;padding:18px;align-items:center;gap:13px;border:1px solid var(--border);border-radius:9px}
+  .connection-choice>div>span{display:grid;width:42px;height:42px;place-items:center;border-radius:9px;background:var(--teal-soft);color:var(--teal)}
+  .connection-choice>div>div{flex:1}
+  .connection-choice p{margin:0;color:var(--soft);font-size:12px}
+  .workspace-choice-icon{display:grid;width:56px;height:56px;place-items:center;border-radius:11px;background:var(--teal-soft);color:var(--teal);font-size:20px;font-weight:800}
+  @media (max-width:767px){
+  .onboarding-page,.select-workspace-page{width:calc(100% - 28px);padding:42px 0}
+  .onboarding-card{padding:22px}
+  .workspace-choice-icon{width:44px;height:44px}}
+  .onboarding-card {
+    border-color: rgba(31, 28, 24, .09);
+    border-radius: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .onboarding-choice { border-radius: 14px; }
+  .onboarding-choice > div { min-width: 0; flex: 1 1 auto; }
+  .onboarding-choice h2 { margin: 8px 0 4px; font-size: 18px; }
+  .onboarding-choice p { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.5; }
+  .onboarding-choice dl { width: 100%; margin: 14px 0 0; }
+  .onboarding-choice dl div { grid-template-columns: minmax(100px, 160px) minmax(0, 1fr); padding: 9px 0; font-size: 13px; }
+  .onboarding-choice dt { color: var(--ink-3); }
+  .onboarding-choice dd { font-weight: 600; overflow-wrap: anywhere; }
+  .onboarding-card { min-height: 0; }
+  @media (max-width: 767px){
+  .onboarding-head { flex-direction: column; gap: 10px; }
+  .onboarding-head > div { width: 100%; }
+  .onboarding-head h1 { font-size: clamp(30px, 8vw, 36px); line-height: 1.12; }
+  .onboarding-choice { padding: 16px; flex-direction: column; gap: 12px; }
+  .onboarding-choice dl div { grid-template-columns: 1fr; gap: 2px; }}
+  .onboarding-choice a:not([data-slot="button"]) { display: inline-block; margin-top: 12px; color: var(--teal); font-size: 13px; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; }
+  .connection-choice > div > span:not(:first-child) { display: inline-flex; width: auto; height: auto; padding: 2px 8px; place-items: initial; border-radius: 999px; flex: 0 0 auto; }
+  .connection-choice p { color: var(--ink-3); font-size: 12px; line-height: 1.45; }
+}

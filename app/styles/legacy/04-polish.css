@@ -31,29 +31,9 @@ body {
 /* One display voice. Several pages set h1 at weight 400 while the landing
    page used 790; headings now share one weight and an optical-size-aware
    tracking that keeps words from touching at 70px+. */
-.public-site :is(h1, h2) {
-  font-weight: 720;
-  letter-spacing: -.034em;
-}
-
-.public-site h1 {
-  letter-spacing: -.042em;
-}
 
 /* Headings that never set leading inherited body leading (~1.6). Zero-class
    specificity so every section-specific line-height still wins. */
-:where(.public-site) :is(h1, h2) {
-  line-height: 1.08;
-}
-
-:where(.public-site) h3 {
-  line-height: 1.22;
-}
-
-.public-site h3 {
-  font-weight: 640;
-  letter-spacing: -.016em;
-}
 
 /* Han characters are full-width and already evenly spaced: Latin-tuned
    negative tracking made 「讓更多顧客找到你」 overlap. */
@@ -62,20 +42,7 @@ body {
   line-height: 1.22;
 }
 
-:lang(zh) .public-site h1 {
-  line-height: 1.16;
-}
-
-:lang(zh) .eyebrow,
-:lang(zh) .step-kicker {
-  letter-spacing: .08em;
-}
-
 /* Figures */
-.score-number,
-.price,
-.public-demo-evidence strong,
-.public-demo-proof-value,
 .priority-rank {
   font-feature-settings: "tnum", "cv11";
   font-variant-numeric: tabular-nums;
@@ -85,34 +52,9 @@ body {
 
 /* "Contact Fimmick" sits where a price would; it is words, not a figure. */
 
-.pricing-card .price:not(:has(small)):not(.price-text) {
-  max-width: 10ch;
-  font-size: 17px;
-  letter-spacing: -.012em;
-  line-height: 1.2;
-  text-align: right;
-}
-
 /* ── Surfaces and interaction ─────────────────────────────────────────── */
 
 /* Header tightens once the page scrolls. */
-.public-header-inner {
-  transition: box-shadow .35s var(--ease-out), background-color .35s var(--ease-out), border-color .35s var(--ease-out);
-}
-
-.public-header[data-scrolled] .public-header-inner {
-  border-color: rgba(31, 28, 24, .1);
-  background: color-mix(in oklab, var(--paper) 82%, transparent);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, .8) inset, 0 18px 44px rgba(33, 30, 26, .12);
-  backdrop-filter: blur(22px) saturate(1.4);
-}
-
-.public-nav a {
-  position: relative;
-  transition: background-color .2s ease, color .2s ease;
-}
-
-.header-locale { display: contents; }
 
 /* Arrows travel a few pixels toward where the link goes. */
 
@@ -129,14 +71,6 @@ body {
 
 /* Hero: a fine grain over the lime gradient and a soft light that follows
    the pointer (set by MotionDirector; it rests top-right otherwise). */
-.landing-hero {
-  --mx: 78%;
-  --my: 12%;
-  background:
-    radial-gradient(520px circle at var(--mx) var(--my), color-mix(in oklab, var(--paper) 55%, transparent), transparent 62%),
-    radial-gradient(circle at 92% 4%, color-mix(in oklab, var(--paper) 60%, transparent), transparent 18rem),
-    linear-gradient(135deg, var(--brand-soft) 0%, #f8c897 46%, #efad6b 100%);
-}
 
 /* Images that fail or are still loading show a quiet surface, not alt text
    spilling over captions. Screen readers still get the alt. */
@@ -151,58 +85,14 @@ body {
 
 /* Scan step 1: the search button and the manual-entry link sat on one line
    with no gap. */
-.flow-card .step-content {
-  display: grid;
-  gap: 18px;
-}
-
-.flow-card .step-content > [data-slot="button"],
-.flow-card .step-content > .text-action {
-  justify-self: start;
-}
 
 /* ── Footer sign-off ───────────────────────────────────────────────────── */
-
-.public-footer {
-  position: relative;
-  flex-wrap: wrap;
-  overflow: hidden;
-}
-
-.public-footer .footer-statement {
-  flex: 1 0 100%;
-  margin: 28px 0 -0.16em;
-  color: transparent;
-  background: linear-gradient(180deg, rgba(240, 175, 109, .95), rgba(240, 175, 109, .22) 92%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  font-size: clamp(40px, 6.4vw, 92px);
-  font-weight: 760;
-  letter-spacing: -.05em;
-  line-height: .9;
-  white-space: nowrap;
-  user-select: none;
-}
-
-:lang(zh) .public-footer .footer-statement {
-  letter-spacing: .02em;
-  line-height: 1;
-}
 
 /* ── Motion ────────────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: no-preference) {
   /* Entrance for what is on screen at load; CSS-only so it also runs before
      hydration. */
-  .content-page-intro > *,
-  .flow-layout > * {
-    animation: rise-in .9s var(--ease-out) both;
-  }
-
-  .content-page-intro > :nth-child(2) { animation-delay: .06s; }
-  .content-page-intro > :nth-child(3) { animation-delay: .12s; }
-  .content-page-intro > :nth-child(4) { animation-delay: .18s; }
-  .flow-layout > :nth-child(2) { animation-delay: .08s; }
 
   /* Scroll reveal, staged by MotionDirector. Only sections that start below
      the fold are ever set to "pending". */
@@ -220,31 +110,8 @@ body {
   /* Hover lift must not wait for the reveal delay. */
 
   /* The loop ribbon draws itself left to right. */
-  [data-reveal] .loop-ribbon li {
-    transition: opacity .6s var(--ease-out), transform .6s var(--ease-out);
-  }
-
-  [data-reveal="pending"] .loop-ribbon li {
-    opacity: 0;
-    transform: translate3d(-8px, 0, 0);
-  }
-
-  [data-reveal] .loop-ribbon li:nth-child(2) { transition-delay: .06s; }
-  [data-reveal] .loop-ribbon li:nth-child(3) { transition-delay: .12s; }
-  [data-reveal] .loop-ribbon li:nth-child(4) { transition-delay: .18s; }
-  [data-reveal] .loop-ribbon li:nth-child(5) { transition-delay: .24s; }
-  [data-reveal] .loop-ribbon li:nth-child(6) { transition-delay: .3s; }
-  [data-reveal] .loop-ribbon li:nth-child(7) { transition-delay: .36s; }
-  [data-reveal] .loop-ribbon li:nth-child(8) { transition-delay: .42s; }
 
   /* Score arcs sweep in when their section arrives. */
-  [data-reveal] .score-dial {
-    transition: --score 1.6s var(--ease-out) .2s;
-  }
-
-  [data-reveal="pending"] .score-dial {
-    --score: 0deg !important;
-  }
 }
 
 @property --score {
@@ -276,8 +143,6 @@ body {
     opacity: 1 !important;
     transform: none !important;
   }
-
-  .footer-statement { display: none; }
 }
 
 /* ── Mobile ────────────────────────────────────────────────────────────── */
@@ -285,7 +150,6 @@ body {
 @media (max-width: 1023px) {
   /* `1fr` let the photo column's min-content push the section 220px past
      the viewport, where overflow-x clipped it. */
-  .landing-hero,
   .comparison-heading {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -293,42 +157,12 @@ body {
 
 @media (max-width: 767px) {
 
-  .public-footer .footer-statement { font-size: 11.5vw; white-space: normal; }
-  :lang(zh) .public-footer .footer-statement { font-size: 8.4vw; white-space: nowrap; }
-
   /* The header carried brand, language, sign-in and menu in 362px; the menu
      trigger was clipped off-screen. The language control moves into the
      menu sheet (.mobile-sheet-locale) at this width. */
-  .public-header-inner {
-    gap: 8px;
-    padding: 0 8px 0 10px;
-  }
-
-  .public-header .brand-lockup small { display: none; }
-  .public-header .brand-lockup { gap: 8px; }
-  .public-header .brand-lockup strong { font-size: 15px; white-space: nowrap; }
-  .header-actions { gap: 6px; margin-left: auto; }
-  .header-locale { display: none; }
-  .public-header .header-actions .header-sign-in { padding-inline: 11px; font-size: 12px; white-space: nowrap; }
-  .public-menu-trigger { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 999px; }
 }
 
 /* Narrow-phone exception (≤380 px): hide the wordmark so the header fits. */
-@media (max-width: 380px) {
-  .public-header .brand-lockup > span:last-child { display: none; }
-}
-
-.mobile-sheet-locale {
-  margin: 8px 16px 16px;
-}
-
-.mobile-sheet-locale [data-slot="select-trigger"] {
-  width: 100%;
-}
-
-@media (min-width: 768px) {
-  .mobile-sheet-locale { display: none; }
-}
 
 /* Comparison table: row rules fell back to currentColor (near-black). */
 .comparison-table :is(tr, th, td) {
@@ -359,152 +193,16 @@ body {
 }
 
 /* Policy links sat in cards as bare 16px block links. */
-.policy-link {
-  display: inline-flex;
-  width: fit-content;
-  min-height: 44px;
-  align-items: center;
-  gap: 6px;
-  color: var(--teal-dark);
-  font-size: 13px;
-  font-weight: 650;
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
-  text-underline-offset: 4px;
-  transition: text-decoration-color .2s ease;
-}
-
-.policy-link:hover { text-decoration-color: currentColor; }
-.policy-link svg { width: 14px; transition: transform .3s var(--ease-spring); }
-.policy-link:hover svg { transform: translateX(3px); }
 
 /* Dark status cards (scanning, unlock banner): the body read 12px while the
    reason line under it rendered larger, and the default button was ink on an
    ink panel. */
-.partial-result-card p {
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.partial-result-card small {
-  display: block;
-  max-width: 620px;
-  margin-top: 10px;
-  color: #b5aea6;
-  font-size: 12.5px;
-  line-height: 1.6;
-}
-
-:is(.partial-result-card, .unlock-banner) [data-slot="button"][data-variant="default"] {
-  border-color: var(--lime);
-  background: var(--lime);
-  color: var(--ink) !important;
-}
-
-:is(.partial-result-card, .unlock-banner) [data-slot="button"][data-variant="default"]:hover {
-  background: var(--lime-strong);
-}
 
 /* 404 */
-.not-found-page {
-  display: grid;
-  width: min(760px, calc(100% - 40px));
-  min-height: 62svh;
-  margin: 0 auto;
-  padding: 96px 0 40px;
-  align-content: center;
-  justify-items: center;
-  text-align: center;
-}
-
-.not-found-mark {
-  display: grid;
-  width: 72px;
-  height: 72px;
-  margin-bottom: 24px;
-  place-items: center;
-  border: 1px solid rgba(31, 28, 24, .12);
-  border-radius: 22px;
-  background: var(--lime);
-  color: var(--ink);
-  box-shadow: 0 18px 40px rgba(116, 77, 37, .2);
-}
-
-.not-found-mark svg { width: 30px; height: 30px; }
-
-.not-found-page h1 {
-  max-width: 680px;
-  margin: 6px 0 18px;
-  font-size: clamp(38px, 6vw, 68px);
-  line-height: 1;
-}
-
-.not-found-body {
-  max-width: 560px;
-  margin: 0 0 30px;
-  color: var(--soft);
-  font-size: 16px;
-  line-height: 1.7;
-}
-
-.not-found-actions {
-  display: flex;
-  margin-bottom: 14px;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .not-found-page > * { animation: rise-in .9s var(--ease-out) both; }
-  .not-found-page > :nth-child(2) { animation-delay: .05s; }
-  .not-found-page > :nth-child(3) { animation-delay: .1s; }
-  .not-found-page > :nth-child(4) { animation-delay: .15s; }
-  .not-found-page > :nth-child(5) { animation-delay: .2s; }
-}
 
 /* Unlock form: choice rows kept a 64px floor whatever their content, help
    text was set solid at 10px, the radio group doubled its gaps, and the
    submit button touched the last row. */
-.consent-row {
-  min-height: 52px;
-  margin-top: 10px;
-  padding: 14px 16px;
-  align-items: center;
-  border-radius: 14px;
-  background: var(--paper);
-  cursor: pointer;
-  transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease;
-}
-
-.consent-row:has(small) { align-items: flex-start; }
-.consent-row:has(small) > [data-slot] { margin-top: 2px; }
-.consent-row strong { font-size: 13px; line-height: 1.35; }
-.consent-row small { font-size: 12px; line-height: 1.55; }
-
-.consent-row:hover { border-color: rgba(31, 28, 24, .22); }
-
-.consent-row:has([data-state="checked"]) {
-  border-color: #986939;
-  background: var(--lime-soft);
-  box-shadow: 0 0 0 1px #986939 inset;
-}
-
-.consent-row:has(:focus-visible) {
-  outline: 3px solid var(--ring);
-  outline-offset: 2px;
-}
-
-[data-slot="radio-group"]:has(> .consent-row) { gap: 8px; }
-[data-slot="radio-group"] > .consent-row { margin-top: 0; }
-
-.unlock-form-card > [data-slot="button"] { margin-top: 22px; }
-.unlock-form-card > p { line-height: 1.6; }
-
-@media (min-width: 1024px) {
-  .unlock-page { align-items: start; }
-  .unlock-context { position: sticky; top: 120px; padding-top: 40px; }
-}
 
 /* ── Contrast (WCAG 2.2 AA, axe-verified) ─────────────────────────────── */
 
@@ -514,8 +212,6 @@ body {
 /* Eyebrows on ink panels used the light-surface teal (2.9:1). */
 
 /* Secondary text on tinted cards needs a darker grey than on white. */
-.public-demo-evidence small { color: var(--ink-3); }
-.provider-unsupported { color: var(--ink-3) !important; }
 
 /* Focus rings on ink panels: the forest ring is ~3.3:1 against #172019; lime
    is well clear of the 3:1 non-text minimum. */
@@ -539,11 +235,6 @@ body {
    the same display hierarchy as the public site. */
 
 /* The open-actions count read as body copy at 16px above the list. */
-.compact-action-list > p {
-  margin: 0 0 4px;
-  color: var(--soft);
-  font-size: 13px;
-}
 
 /* "+9 change": the unit is a word, not a figure. */
 
@@ -552,7 +243,6 @@ body {
 /* The list card never showed the observed value its evidence carries. */
 
 /* Language picker: full name by default, short code where a bar is tight. */
-.locale-short { display: none; }
 
 /* ── Workspace: phone top bar ──────────────────────────────────────────── */
 /* Brand, assistant, bell, language and demo badge did not fit in 390px: the
@@ -566,12 +256,8 @@ body {
 /* ── Workspace: action detail ──────────────────────────────────────────── */
 /* Three long button labels in one unwrapped row pushed the draft card past
    its column (and to 682px on a 390px phone). */
-.draft-editor-actions { flex-wrap: wrap; }
 @media (max-width: 767px) {
-  .draft-editor-actions { flex-direction: column; align-items: stretch; }
-  .draft-editor-actions > .button,
-  .draft-editor-actions > button,
-  .draft-editor-actions > [data-slot="button"] { width: 100%; white-space: normal; height: auto; min-height: 40px; }
+  .draft-editor-actions > .button { width: 100%; white-space: normal; height: auto; min-height: 40px; }
 }
 
 /* Inactive tabs and bottom-nav labels were 4.3–4.4:1 (axe). */
@@ -599,8 +285,6 @@ body {
 /* ── Workspace: integrations ───────────────────────────────────────────── */
 
 /* ── Workspace: calendar ───────────────────────────────────────────────── */
-.compact-action-list small { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.compact-action-list small svg { width: 12px; flex: 0 0 auto; }
 
 /* ── Workspace: create ─────────────────────────────────────────────────── */
 
@@ -616,19 +300,7 @@ body {
 
 /* A notification row has no priority marker: the four-column queue grid put
    its text in the 6px marker column, one word per line. */
-.compact-action-list > div {
-  display: grid;
-  min-height: 60px;
-  padding: 12px 0;
-  grid-template-columns: 10px minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-  border-top: 1px solid var(--border);
-}
-.compact-action-list > div::before { width: 8px; height: 8px; content: ""; border-radius: 50%; }
 .compact-action-list > .is-unread::before { background: var(--teal); }
-.compact-action-list > div strong { font-size: 14px; }
-.compact-action-list > div small { margin-top: 3px; color: var(--ink-3); font-size: 12px; }
 .compact-action-list > .is-unread strong { color: var(--ink); }
 
 /* ── Workspace: activity ───────────────────────────────────────────────── */
@@ -639,82 +311,19 @@ body {
 /* ── Public: legal documents ───────────────────────────────────────────── */
 /* Policy text ran at 12–13px across the full 1300px container (~200
    characters a line). It now reads at a book measure beside a contents list. */
-.legal-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
-.legal-toc { padding: 18px 20px; border: 1px solid var(--border); border-radius: 16px; background: var(--paper); }
-.legal-toc ol { display: grid; margin: 10px 0 0; padding: 0; gap: 2px; counter-reset: legal; list-style: none; }
-.legal-toc li { counter-increment: legal; }
-.legal-toc a {
-  display: grid;
-  padding: 7px 8px;
-  grid-template-columns: 22px minmax(0, 1fr);
-  border-radius: 8px;
-  color: var(--ink-2);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.35;
-}
-.legal-toc a::before { content: counter(legal, decimal-leading-zero); color: var(--soft); font-size: 12px; font-variant-numeric: tabular-nums; line-height: 1.6; }
-.legal-toc a:hover { background: var(--teal-soft); color: var(--ink); }
-.legal-sections { display: grid; gap: 12px; }
-.legal-sections > .section-card { padding: clamp(20px, 2.4vw, 32px); scroll-margin-top: 110px; }
-.legal-sections h2 { margin: 0 0 10px; font-size: clamp(18px, 1.6vw, 21px); scroll-margin-top: 110px; }
-.legal-body { max-width: 68ch; margin: 0; color: var(--ink-2); font-size: 15px; line-height: 1.7; white-space: pre-line; }
-:lang(zh) .legal-body { max-width: 40em; font-size: 16px; line-height: 1.85; letter-spacing: .02em; }
-.legal-back { margin-top: 24px; }
-.legal-back a { color: var(--teal); font-weight: 650; }
-@media (min-width: 1024px) {
-  .legal-layout { grid-template-columns: 260px minmax(0, 1fr); align-items: start; gap: 28px; }
-  .legal-toc { position: sticky; top: 104px; }
-}
 
 /* ── Public: unsubscribe ───────────────────────────────────────────────── */
-.unsubscribe-page { display: grid; width: min(560px, calc(100% - 28px)); min-height: 52vh; margin: 0 auto; padding: 72px 0; place-items: center; }
-.unsubscribe-card.section-card { display: grid; width: 100%; padding: clamp(24px, 4vw, 40px); justify-items: start; gap: 14px; }
-.unsubscribe-card h1 { margin: 0; font-size: clamp(26px, 3vw, 34px); letter-spacing: -.03em; }
-.unsubscribe-card p { margin: 0; color: var(--ink-3); font-size: 15px; line-height: 1.6; }
 
 /* Short pages: keep the footer at the bottom of the window. */
-.public-site { display: flex; min-height: 100svh; flex-direction: column; }
-.public-site > main { flex: 1 0 auto; }
 
 /* ── Owner: onboarding ─────────────────────────────────────────────────── */
 /* The step title sat flush against its card, the claim-evidence table took
    half the card, and on phones the page title shared a row with the status
    badge (60% width) while Back and Continue touched. */
-.onboarding-card .step-kicker + h2,
-.onboarding-card .step-kicker + h1 { margin: 6px 0 18px; font-size: clamp(20px, 2vw, 24px); letter-spacing: -.02em; }
-.onboarding-choice { border-radius: 14px; }
-.onboarding-choice > div { min-width: 0; flex: 1 1 auto; }
-.onboarding-choice h2 { margin: 8px 0 4px; font-size: 18px; }
-.onboarding-choice p { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.5; }
-.onboarding-choice dl { width: 100%; margin: 14px 0 0; }
-.onboarding-choice dl div { grid-template-columns: minmax(100px, 160px) minmax(0, 1fr); padding: 9px 0; font-size: 13px; }
-.onboarding-choice dt { color: var(--ink-3); }
-.onboarding-choice dd { font-weight: 600; overflow-wrap: anywhere; }
-.onboarding-card { min-height: 0; }
-.onboarding-card > .flow-card-footer { margin-top: 28px; gap: 10px; }
-@media (max-width: 767px) {
-  .onboarding-head { flex-direction: column; gap: 10px; }
-  .onboarding-head > div { width: 100%; }
-  .onboarding-head h1 { font-size: clamp(30px, 8vw, 36px); line-height: 1.12; }
-  .onboarding-card > .flow-card-footer { gap: 10px; }
-  .onboarding-choice { padding: 16px; flex-direction: column; gap: 12px; }
-  .onboarding-choice dl div { grid-template-columns: 1fr; gap: 2px; }
-}
-.onboarding-choice a:not([data-slot="button"]) { display: inline-block; margin-top: 12px; color: var(--teal); font-size: 13px; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; }
 /* `.connection-choice > div > span` styles the icon chip, and also caught the
    capability badge beside it, forcing it into a 42px box. */
-.connection-choice > div > span:not(:first-child) { display: inline-flex; width: auto; height: auto; padding: 2px 8px; place-items: initial; border-radius: 999px; flex: 0 0 auto; }
-.connection-choice p { color: var(--ink-3); font-size: 12px; line-height: 1.45; }
 
 /* Scan form errors scroll into view beneath the sticky header and take focus. */
-.flow-card .form-error { scroll-margin-top: 112px; }
-.flow-card .form-error:focus { outline: none; }
-.flow-card .form-error:focus-visible { outline: 3px solid var(--ring, #383840); outline-offset: 2px; }
-.flow-card { scroll-margin-top: 24px; }
-.flow-card-header h1:focus { outline: none; }
-.unlock-form-card .form-error { scroll-margin-top: 112px; }
-.unlock-form-card .form-error:focus { outline: none; }
 
 /* ── Public: scanning outcome ──────────────────────────────────────────── */
 /* The pulse kept running on a finished or stopped scan. */
@@ -725,24 +334,6 @@ body {
 /* ── Keyboard: skip link and focus clear of sticky bars ────────────────── */
 /* The first Tab stop was the logo; the workspace sidebar put about a dozen
    stops before the content. */
-.skip-link {
-  position: fixed;
-  z-index: 100;
-  top: 10px;
-  left: 10px;
-  padding: 10px 16px;
-  border-radius: 999px;
-  background: var(--inverse);
-  color: var(--lime);
-  font-size: 14px;
-  font-weight: 700;
-  transform: translateY(-160%);
-  transition: transform .18s var(--ease-out);
-}
-.skip-link:focus-visible { transform: none; outline: 3px solid var(--lime); outline-offset: 2px; }
-.skip-target { scroll-margin-top: 110px; }
-.skip-target:focus { outline: none; }
 /* Keep a focused control from being scrolled under the sticky header or the
    phone bottom nav (WCAG 2.4.11). */
 html { scroll-padding-top: 96px; }
-@media (prefers-reduced-motion: reduce) { .skip-link { transition: none; } }

@@ -64,96 +64,7 @@
 
 /* ---------- Shared public header (all public pages) ---------- */
 
-.public-site .public-header-inner {
-  border-color: var(--ed-line);
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--paper) 86%, transparent);
-  box-shadow: 0 8px 30px -16px oklch(40% 0.08 55 / 0.25);
-}
-
-.public-site .public-header[data-scrolled] .public-header-inner {
-  border-color: var(--ed-line);
-  box-shadow: 0 12px 36px -16px oklch(40% 0.08 55 / 0.32);
-}
-
-.public-site .brand-mark {
-  border-radius: 999px;
-  background: var(--ed-orange);
-  color: var(--ed-ink);
-  box-shadow: none;
-}
-
-.public-site .brand-lockup strong {
-  font-family: var(--ed-sans);
-  font-size: 16px;
-  font-weight: 750;
-}
-
-.public-site .public-nav a {
-  color: var(--ed-ink-2);
-  font-family: var(--ed-sans);
-  font-size: 14px;
-  font-weight: 560;
-}
-
-.public-site .public-nav a:hover {
-  background: var(--ed-peach-100);
-  color: var(--ed-orange-800);
-}
-
-.public-site .header-actions > :is(.button, [data-slot="button"]) {
-  border-radius: 999px;
-  font-family: var(--ed-sans);
-  font-size: 14px;
-  font-weight: 620;
-}
-
-.public-site .public-header .header-actions .header-sign-in {
-  border-color: var(--ed-line);
-  background: var(--ed-surface);
-  color: var(--ed-ink);
-}
-
-.public-site .public-header .header-actions .header-sign-in:hover {
-  border-color: var(--ed-peach-200);
-  background: var(--ed-peach-50);
-}
-
-.public-site .public-header .header-actions .header-scan-cta,
-.public-site .public-header .header-actions .header-scan-cta:hover,
-.public-site .public-header .header-actions .header-scan-cta:focus-visible {
-  border-color: var(--ed-orange) !important;
-  background: var(--ed-orange) !important;
-  color: var(--ed-ink) !important;
-  box-shadow: 0 8px 18px -8px oklch(64% 0.146 57 / 0.55);
-}
-
-.public-site .public-header .header-actions .header-scan-cta:hover {
-  border-color: var(--ed-orange-hover) !important;
-  background: var(--ed-orange-hover) !important;
-}
-
 /* ---------- Shared public footer ---------- */
-
-.public-site .public-footer {
-  background: var(--inverse);
-  color: rgb(255 255 255 / 0.72);
-  font-family: var(--ed-sans);
-}
-
-.public-site .public-footer .brand-lockup small {
-  color: var(--ed-orange);
-}
-
-.public-site .public-footer nav a:hover {
-  color: var(--ed-orange);
-}
-
-.public-site .public-footer .footer-statement {
-  background: linear-gradient(180deg, oklch(80% 0.15 60 / 0.95), oklch(76% 0.158 55 / 0.15) 92%);
-  -webkit-background-clip: text;
-  background-clip: text;
-}
 
 /* Cards whose last item must sit on the bottom edge (chip, output, CTA) are
    flex columns: `margin-top: auto` has no effect inside a grid. */
@@ -179,58 +90,13 @@
    .public-site moves all of them onto the Kinnso palette at once, without
    touching the owner workspace (which does not render inside .public-site). */
 
-.public-site {
-  background: var(--ed-bg);
-  font-family: var(--ed-sans);
-}
-
-body:has(.public-site) {
-  background: var(--ed-bg);
-}
-
-.public-site :is(h1, h2, h3) {
-  font-family: var(--ed-sans);
-}
-
 /* Report links and panels used blue/sky; they join the warm palette. */
 
 /* Dark panels hard-coded to the old green-black move to warm ink. */
 
-.public-site .pricing-featured {
-  border-color: var(--ed-orange);
-  background: var(--ed-surface);
-  box-shadow: 0 0 0 1px var(--ed-orange), var(--ed-shadow-lg);
-}
-
 /* Scan steps sidebar: teal states become warm. */
-.public-site .flow-steps li {
-  color: rgb(255 255 255 / 0.62);
-}
-
-.public-site .flow-steps li > span {
-  border-color: rgb(255 255 255 / 0.25);
-}
-
-.public-site .flow-steps .is-active {
-  background: rgb(255 255 255 / 0.08);
-  color: #fff;
-}
-
-.public-site .flow-steps .is-active > span {
-  border-color: var(--ed-orange);
-  background: var(--ed-orange);
-  color: var(--ed-ink);
-}
-
-.public-site .flow-steps .is-complete {
-  color: oklch(88% 0.08 70);
-}
 
 /* shadcn tokens inside the public site: warm ink primary, white fields. */
-
-.public-site :is(input:not([type="radio"], [type="checkbox"]), textarea, [data-slot="select-trigger"]) {
-  background-color: var(--ed-surface);
-}
 
 /* ---------- Owner workspace (Kinnso light) ---------- */
 
@@ -242,6 +108,33 @@ body:has(.public-site) {
 
 /* Contrast fixes found by axe after the token pass (docs/ux Phase 1):
    eyebrows on dark panels use the light brand tone, not brand text. */
-.public-site :is(.flow-steps, .public-demo-flow) .eyebrow {
-  color: var(--brand);
+
+/* The scan CTA stays in legacy: its !important colours must meet the
+   [data-slot="button"][data-variant="default"] !important rule in the same
+   layer, where the more specific selector wins. In a later layer it would lose. */
+.public-header .header-actions .header-scan-cta,
+.public-header .header-actions .header-scan-cta:hover,
+.public-header .header-actions .header-scan-cta:focus-visible {
+  border-color: var(--lime) !important;
+  background: var(--lime) !important;
+  color: var(--ink) !important;
+  box-shadow: 0 8px 18px rgba(116, 77, 37, .16);
+}
+.public-site .public-header .header-actions .header-scan-cta,
+.public-site .public-header .header-actions .header-scan-cta:hover,
+.public-site .public-header .header-actions .header-scan-cta:focus-visible {
+  border-color: var(--ed-orange) !important;
+  background: var(--ed-orange) !important;
+  color: var(--ed-ink) !important;
+  box-shadow: 0 8px 18px -8px oklch(64% 0.146 57 / 0.55);
+}
+.public-site .public-header .header-actions .header-scan-cta:hover {
+  border-color: var(--ed-orange-hover) !important;
+  background: var(--ed-orange-hover) !important;
+}
+/* Same reason: an !important colour on a default button. */
+:is(.partial-result-card, .unlock-banner) [data-slot="button"][data-variant="default"] {
+  border-color: var(--lime);
+  background: var(--lime);
+  color: var(--ink) !important;
 }
