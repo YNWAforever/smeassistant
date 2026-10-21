@@ -1,5 +1,5 @@
 /* Styles for pricing, legal and 404 pages (the unsubscribe page is at the end of editorial.css), moved verbatim from the legacy stylesheet (Phase 10).
-   Imported as layer(pages) after shared.css: they beat legacy and shared rules. */
+   Imported as layer(pages) after shared.css: they beat shared rules. */
 @layer public {
   @media (max-width: 1279px){
   .pricing-grid{grid-template-columns:1fr 1fr}}

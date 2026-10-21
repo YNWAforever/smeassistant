@@ -1,5 +1,5 @@
 /* Styles for the public header, menu, footer and page intro, moved verbatim from the legacy stylesheet (Phase 10).
-   Imported as layer(pages) after shared.css: they beat legacy and shared rules. */
+   Imported as layer(pages) after shared.css: they beat shared rules. */
 @layer public {
   .page-intro{display:flex;margin-bottom:26px;align-items:flex-end;justify-content:space-between;gap:28px}
   .page-intro h1{margin:0 0 7px;font-size:clamp(28px,3vw,40px)}

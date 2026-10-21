@@ -17,7 +17,7 @@
 .role-contract-grid h2{font-size:15px}
 .settings-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
 .settings-checkboxes,.switch-list{display:grid;margin:16px 0;gap:12px}
-/* field-stack (still in legacy) came later and set these on the brand checkbox group. */
+/* field-stack (now in shared.css) came later in legacy and set these on the brand checkbox group. */
 .settings-checkboxes.field-stack,.switch-list.field-stack{margin-top:20px;gap:8px}
 .settings-checkboxes legend{margin-bottom:11px}
 .settings-checkboxes label,.switch-list label{display:flex;align-items:center;gap:9px;font-size:12px}
@@ -31,7 +31,7 @@
 .plan-card-head{display:flex;justify-content:space-between}
 .plan-card-head h2{margin:16px 0 6px;font-family:var(--font-mono);font-size:30px}
 .plan-card-head h2 span{font-family:var(--font-sans);font-size:12px}
-/* Not the plain paragraphs directly in the card: the workspace-wide section-card rule for those stays in legacy. */
+/* Not the plain paragraphs directly in the card: the workspace-wide section-card rule for those lives in shared.css. */
 .plan-card-head p,.payment-retry-card p[class],.payment-retry-card>* p{color:var(--soft);font-size:12px}
 .usage-large{margin:26px 0}
 .usage-large>div{display:flex;margin-bottom:9px;justify-content:space-between;font-size:12px}

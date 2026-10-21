@@ -1,5 +1,6 @@
 /* Workspace shell and the Ask Kinnso sheet, moved out of legacy (docs/ux Phase 8). */
 @layer screens {
+.usage-track{height:7px;margin:9px 0;overflow:hidden;border-radius:99px;background:#46413b}.usage-track span{display:block;height:100%;border-radius:999px;background:var(--lime)}
 .workspace-shell{min-height:100svh}
 .has-env-bar .workspace-shell{min-height:calc(100svh - 30px)!important}
 .workspace-sidebar{top:0;height:100svh;border-right:0!important}
@@ -125,7 +126,7 @@
   color: var(--ink);
   box-shadow: 0 8px 18px rgba(62, 55, 48, .08);
 }
-/* In a phone-width draft action row the row's own button height won in legacy (it stays there, shared with ops). */
+/* In a phone-width draft action row the row's own button height won in legacy (that rule is now in shared.css, shared with ops). */
 @media (max-width: 767px) {
   .draft-editor-actions > .assistant-launcher { min-height: 40px; }
 }

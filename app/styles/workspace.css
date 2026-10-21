@@ -1,6 +1,6 @@
 /*
- * Redesigned workspace pages (docs/ux Phase 4). In the `pages` layer, after
- * `legacy`, like public.css. Tokens only, so the workspace dark theme applies.
+ * Redesigned workspace pages (docs/ux Phase 4). Directly in the `pages` layer,
+ * like public.css. Tokens only, so the workspace dark theme applies.
  */
 
 /* Destination landing pages (Business, Settings) and the Locations list */

@@ -1,5 +1,5 @@
 /* Styles for the landing page hero, loop ribbon and score dial, moved verbatim from the legacy stylesheet (Phase 10).
-   Imported as layer(pages) after shared.css: they beat legacy and shared rules. */
+   Imported as layer(pages) after shared.css: they beat shared rules. */
 @layer public {
   @media (max-width: 1023px){
   .landing-hero{grid-template-columns:1fr}
@@ -167,4 +167,8 @@
   .landing-hero {
       grid-template-columns: minmax(0, 1fr);
     }}
+  /* The sample-case card links rendered in the card's ink because the old legacy
+     `a { color: inherit }` beat the kit's text-brand-text utility. Kept as they
+     were when that rule moved to the base layer (Phase 11). */
+  .pl-sample .kinnso-card > .kinnso-link { color: inherit; }
 }

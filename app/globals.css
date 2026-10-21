@@ -4,19 +4,20 @@
  *
  *   theme      Tailwind's default theme variables
  *   tokens     Kinnso OS design tokens (app/styles/tokens.css) - win over theme
- *   base       Tailwind preflight
+ *   base       Tailwind preflight, then element defaults (app/styles/base.css)
  *   components new token-based component classes
  *   utilities  Tailwind utilities
- *   legacy     pre-redesign stylesheets, kept last so existing pages render as
- *              before; each page moves out of this layer as it is redesigned
- *   pages      redesigned pages (Phase 2+), after legacy so old element rules
- *              never override them. Its `screens` sub-layer holds rules moved
- *              out of legacy screen by screen (Phase 8): they beat what is left
- *              in legacy, and rules placed directly in `pages` still beat them
- *   i18n       Chinese typography that must win over legacy sizes
+ *   pages      page styles, in sub-layers: `shared` (classes the public site and
+ *              workspace share, plus button and select styles that override
+ *              utilities), `public` (public pages, editorial.css last) and
+ *              `screens` (workspace screens). Rules placed directly in `pages`
+ *              beat all three
+ *   i18n       Chinese typography that must win over page sizes
  *   a11y       touch-target and focus floor, last so nothing undercuts it
+ *
+ * The pre-redesign `legacy` layer was emptied and removed in docs/ux Phase 11.
  */
-@layer theme, tokens, base, components, utilities, legacy, pages, i18n, a11y;
+@layer theme, tokens, base, components, utilities, pages, i18n, a11y;
 
 @import "tailwindcss" source(none);
 @source "../app";
@@ -26,15 +27,11 @@
 @import "tw-animate-css";
 @import "../vendor/shadcn-tailwind-4.13.0.css";
 @import "./styles/tokens.css";
+@import "./styles/base.css" layer(base);
 @import "./styles/components.css" layer(components);
 @import "./styles/motion.css" layer(components);
 @import "./styles/visual.css" layer(components);
 
-@import "./styles/legacy/01-prototype.css" layer(legacy);
-@import "./styles/legacy/02-responsive.css" layer(legacy);
-@import "./styles/legacy/03-ramp-refresh.css" layer(legacy);
-@import "./styles/legacy/04-polish.css" layer(legacy);
-@import "./styles/legacy/05-editorial.css" layer(legacy);
 @import "./styles/shared.css" layer(pages);
 @import "./styles/public/chrome.css" layer(pages);
 @import "./styles/public/landing.css" layer(pages);

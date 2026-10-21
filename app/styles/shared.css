@@ -1,9 +1,34 @@
 /* Classes both the public site and the owner workspace use: eyebrows, section
    cards, limitation notes, field stacks, empty states, consent rows, the brand
-   lockup and the capability, provider, fact-type and priority badges. Moved
+   lockup and the capability, provider, fact-type and priority badges, plus the
+   button, select and form-control styles (Phase 11). Moved
    verbatim from the legacy stylesheet (Phase 10). Imported as layer(pages)
-   before the screen files, so they beat legacy and screen rules beat them. */
+   before the public and screen files, which beat them. */
 @layer shared {
+  /* Buttons, selects and form controls (shadcn data-slot). These override Tailwind
+     utilities on the primitives, so they sit here rather than in components. */
+  [data-slot="button"] {
+    border-radius: 999px;
+    font-weight: 760;
+    letter-spacing: -.01em;
+    transition: transform .25s var(--ease-out), box-shadow .25s var(--ease-out), background-color .2s ease, border-color .2s ease;
+  }
+  [data-slot="button"][data-variant="default"] { background: var(--primary); color: var(--primary-foreground) !important; }
+  [data-slot="button"][data-variant="default"]:hover { box-shadow: 0 10px 24px rgba(31, 28, 24, .18); }
+  [data-slot="button"][data-variant="outline"] { border-color: var(--input); background: var(--paper); color: var(--foreground) !important; }
+  [data-slot="button"][data-variant="ghost"] { color: var(--foreground); }
+  [data-slot="select-trigger"] { background: var(--paper); color: var(--foreground) !important; }
+  [data-slot="select-value"] { color: inherit !important; opacity: 1; }
+  [data-slot="button"]:focus-visible,
+  [data-slot="select-trigger"]:focus-visible,
+  a:focus-visible,
+  button:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+  [data-slot="button"]:hover { transform: translateY(-1px); }
+  [data-slot="button"]:active { transform: translateY(0); }
+  [data-slot="radio-group-item"],
+  [data-slot="checkbox"],
+  [data-slot="switch"] { min-height: 0; }
+
   .proof-caveat{display:flex;margin:15px 0;gap:7px}
   .proof-caveat>span:last-child{color:var(--soft);font-size:12px}
   .compact-action-list{display:grid;margin-top:17px}
@@ -205,4 +230,36 @@
   .skip-link:focus-visible { transform: none; outline: 3px solid var(--lime); outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce){
   .skip-link { transition: none; }}
+
+  .compact-action-list > .is-unread::before { background: var(--teal); }
+  .compact-action-list > .is-unread strong { color: var(--ink); }
+
+  /* Orange buttons. Their !important colours must meet the default-button
+     !important colour above in the same layer, where these more specific
+     selectors win. */
+  .public-header .header-actions .header-scan-cta,
+  .public-header .header-actions .header-scan-cta:hover,
+  .public-header .header-actions .header-scan-cta:focus-visible {
+    border-color: var(--lime) !important;
+    background: var(--lime) !important;
+    color: var(--ink) !important;
+    box-shadow: 0 8px 18px rgba(116, 77, 37, .16);
+  }
+  .public-site .public-header .header-actions .header-scan-cta,
+  .public-site .public-header .header-actions .header-scan-cta:hover,
+  .public-site .public-header .header-actions .header-scan-cta:focus-visible {
+    border-color: var(--ed-orange) !important;
+    background: var(--ed-orange) !important;
+    color: var(--ed-ink) !important;
+    box-shadow: 0 8px 18px -8px oklch(64% 0.146 57 / 0.55);
+  }
+  .public-site .public-header .header-actions .header-scan-cta:hover {
+    border-color: var(--ed-orange-hover) !important;
+    background: var(--ed-orange-hover) !important;
+  }
+  :is(.partial-result-card, .unlock-banner) [data-slot="button"][data-variant="default"] {
+    border-color: var(--lime);
+    background: var(--lime);
+    color: var(--ink) !important;
+  }
 }
