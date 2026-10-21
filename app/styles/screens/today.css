@@ -1,23 +1,17 @@
 /* Today, moved out of legacy (docs/ux Phase 8). */
 @layer screens {
 .location-select{min-width:170px}
-.context-banner{margin:0 0 18px;align-items:center}
-.context-banner{border-color:var(--line-warm);background:var(--blue-soft);color:var(--brand-text)}
+.context-banner{border-color:var(--line-warm)}
 .section-card-heading,.month-brief-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
-.section-card-heading h2,.month-brief-heading h2{margin:0;font-size:20px}
-.owner-brief-grid{display:grid;grid-template-columns:.76fr 1.3fr .9fr;gap:14px}
-.brief-score-card,.brief-priority-card,.brief-proof-card{padding:22px;border:1px solid var(--border);border-radius:12px;background:var(--paper);box-shadow:var(--shadow-sm)}
+.section-card-heading h2,.month-brief-heading h2{margin:0}
+.owner-brief-grid{display:grid}
+.brief-score-card,.brief-priority-card,.brief-proof-card{border:1px solid var(--border);background:var(--paper)}
 .card-label-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .card-label-row>span:first-child{display:inline-flex;align-items:center;gap:7px;color:var(--soft);font-size:12px;font-weight:750;text-transform:uppercase}
 .card-label-row svg{width:14px}
-.brief-score-card .score-dial-wrap{margin:25px 0 20px;flex-direction:column;align-items:flex-start}
-.brief-score-card .score-dial{width:118px;height:118px}
-.brief-score-card .score-dial-core{width:96px;height:96px}
 .coverage-source-line{display:flex;margin-bottom:20px;gap:10px}
 .coverage-source-line span{display:flex;align-items:center;gap:5px;color:var(--soft);font-size:12px}
 .coverage-source-line svg{width:11px}
-.brief-priority-card{border-color:var(--line-warm);background:linear-gradient(145deg,var(--paper),var(--paper-2))}
-.brief-priority-card h2{margin:24px 0 9px;font-size:clamp(22px,2.4vw,32px)}
 .brief-priority-card>p{color:var(--soft);font-size:12px}
 .why-now-box{display:flex;margin:22px 0 16px;padding:14px;gap:11px;border-left:3px solid var(--teal);background:var(--paper-2)}
 .why-now-box>div{display:flex;flex-direction:column}
@@ -27,26 +21,25 @@
 .brief-action-meta{display:flex;margin-bottom:18px;gap:15px}
 .brief-action-meta span{display:flex;align-items:center;gap:5px;color:var(--soft);font-size:12px}
 .brief-action-meta svg{width:12px}
-.brief-proof-card h2{margin:12px 0 8px;font-size:19px}
+.brief-proof-card h2{margin:12px 0 8px}
 .brief-proof-card>p{color:var(--soft);font-size:12px}
-.proof-value{display:flex;margin-top:24px;gap:6px;color:var(--teal)}
+.proof-value{display:flex;margin-top:24px;gap:6px}
 .proof-value svg{width:24px}
 .proof-value strong{font-family:var(--font-mono);font-size:42px}
-.proof-value strong span{font-size:14px}
-.month-brief{margin-top:14px;padding:22px;border:1px solid var(--border);border-radius:12px;background:var(--inverse);color:white}
+.month-brief{color:white}
 .month-brief .eyebrow{color:#cba680}
 .next-scan{display:flex;align-items:center;gap:10px}
 .next-scan svg{width:19px;color:#cba680}
 .next-scan span{display:flex;flex-direction:column;color:#bfb6ae;font-size:12px}
 .next-scan strong{color:white;font-size:12px}
-.month-metrics{display:grid;margin-top:20px;grid-template-columns:repeat(4,1fr);border:1px solid #5e4d3c}
+.month-metrics{display:grid;margin-top:20px;grid-template-columns:repeat(4,1fr)}
 .month-metrics article{display:grid;padding:16px;grid-template-columns:34px 1fr;align-items:center;gap:10px;border-right:1px solid #5e4d3c}
-.month-metrics .metric-icon{display:grid;width:32px;height:32px;place-items:center;border-radius:8px;background:#393940;color:#cea983}
+.month-metrics .metric-icon{display:grid;width:32px;height:32px;place-items:center}
 .month-metrics svg{width:16px}
 .month-metrics article>div{display:flex;align-items:baseline;gap:6px}
-.month-metrics strong{font-family:var(--font-mono);font-size:22px}
-.month-metrics span{color:#dedad6;font-size:12px}
-.month-metrics small{grid-column:2;color:#a89c90;font-size:12px}
+.month-metrics strong{font-family:var(--font-mono)}
+.month-metrics span{color:#dedad6}
+.month-metrics small{grid-column:2;color:#a89c90}
 .integration-compact-list,.change-ledger{display:grid;margin-top:17px}
 .priority-marker{width:4px;height:32px;border-radius:99px;background:#b4afa9}
 .priority-marker.priority-urgent{background:var(--red)}
@@ -61,10 +54,9 @@
 .health-warn{background:var(--amber-soft);color:var(--amber)}
 .health-neutral{background:var(--blue-soft);color:var(--blue)}
 .health-ok svg,.health-warn svg,.health-neutral svg{width:14px}
-.change-ledger-card{margin-top:14px}
 .change-ledger article{display:grid;min-height:74px;padding:12px 0;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;border-top:1px solid var(--border)}
 .change-ledger h3{margin:0;font-size:12px}
-.change-ledger p{margin:4px 0;color:var(--soft);font-size:12px}
+.change-ledger p{margin:4px 0;color:var(--soft)}
 .change-ledger small{font-size:12px;color:#78817e}
 .operational-footnote .cap-demo{margin-left:auto}
 .section-card-heading>div:last-child{display:flex;gap:6px}
@@ -73,15 +65,11 @@
 .owner-brief-grid{grid-template-columns:1fr 1.35fr}
 .brief-proof-card{grid-column:1/-1}}
 @media (max-width:767px){
-.evidence-passport article{align-items:flex-start;flex-direction:column}
 .owner-brief-grid{grid-template-columns:1fr}
 .brief-proof-card{grid-column:auto}
 .month-metrics{grid-template-columns:1fr 1fr}
 .month-metrics article:nth-child(2n){border-right:0}
 .plan-actions{flex-direction:column}}
-@media (max-width: 639px){
-.month-metrics{grid-template-columns:1fr}
-.month-metrics article{border-right:0}}
 .brief-score-card>a,.brief-proof-card>a{display:inline-flex;align-items:center;gap:7px;color:var(--teal-dark);font-size:13px;font-weight:750}
 .brief-score-card>a svg,.brief-proof-card>a svg{width:15px}
 .context-banner{display:flex;margin:16px 0;padding:14px 16px;align-items:flex-start;gap:12px;border:1px solid var(--line-warm);border-radius:9px;background:var(--amber-soft);color:var(--brand-text)}
@@ -97,7 +85,7 @@
 .evidence-passport p{margin:4px 0;color:var(--soft);font-size:12px}
 .evidence-passport small{font-size:12px;color:#7a8380}
 .evidence-passport-value{display:flex;flex-direction:column;align-items:flex-end;gap:7px}
-.operational-footnote{display:flex;margin-top:18px;padding:13px 15px;align-items:center;gap:10px;border:1px solid var(--border);border-radius:9px;background:var(--paper-2);color:var(--soft);font-size:12px}
+.operational-footnote{display:flex;margin-top:18px;padding:13px 15px;align-items:center;gap:10px;border:1px solid var(--border);color:var(--soft);font-size:12px}
 .operational-footnote svg{width:17px;color:var(--teal)}
 @media (max-width:767px){
 .evidence-passport article{align-items:flex-start;flex-direction:column}}

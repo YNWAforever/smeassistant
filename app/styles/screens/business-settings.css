@@ -1,7 +1,6 @@
 /* Business, Settings and New, moved out of legacy (docs/ux Phase 8). */
 @layer screens {
-.permission-banner{margin:0 0 18px;align-items:center}
-.permission-banner{border-color:var(--warning-border);background:var(--brand-soft);color:var(--warning-text)}
+.permission-banner{border-color:var(--warning-border)}
 .run-failed{background:var(--red-soft)}
 .create-tabs{border:1px solid var(--border);border-radius:12px;background:var(--paper);overflow:hidden}
 .create-tabs>[role=tablist]{width:100%;min-height:52px;padding:0 18px;justify-content:flex-start;border-bottom:1px solid var(--border)}
@@ -11,17 +10,16 @@
 .goal-card:disabled{opacity:.58}
 .goal-card h2{margin:20px 0 8px;font-size:18px}
 .goal-card>p{margin:0;color:var(--soft);font-size:12px;line-height:1.6}
-.asset-grid{display:grid;margin-top:16px;grid-template-columns:repeat(4,1fr);gap:12px}
+.asset-grid{display:grid;margin-top:16px;gap:12px}
 .team-table-card{overflow-x:auto}
 .role-contract-grid{display:grid;margin-top:14px;grid-template-columns:repeat(3,1fr);gap:14px}
 .role-contract-grid .section-card>svg{width:23px;color:var(--teal)}
 .role-contract-grid h2{font-size:15px}
-.role-contract-grid p{color:var(--soft);font-size:12px}
 .settings-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
 .settings-checkboxes,.switch-list{display:grid;margin:16px 0;gap:12px}
 /* field-stack (still in legacy) came later and set these on the brand checkbox group. */
 .settings-checkboxes.field-stack,.switch-list.field-stack{margin-top:20px;gap:8px}
-.settings-checkboxes legend{margin-bottom:11px;font-size:12px;font-weight:750}
+.settings-checkboxes legend{margin-bottom:11px}
 .settings-checkboxes label,.switch-list label{display:flex;align-items:center;gap:9px;font-size:12px}
 .switch-list label>span{display:flex;flex-direction:column}
 .switch-list small{color:var(--soft);font-size:12px}
@@ -29,8 +27,6 @@
 .member-cell{display:flex;align-items:center;gap:9px}
 .member-cell>span{display:grid;width:32px;height:32px;place-items:center;border-radius:50%;background:var(--teal-soft);color:var(--teal);font-size:12px;font-weight:800}
 .member-cell>div{display:flex;flex-direction:column}
-.member-cell strong{font-size:12px}
-.member-cell small{color:var(--soft);font-size:12px}
 .billing-overview{display:grid;grid-template-columns:1.25fr .75fr;gap:14px}
 .plan-card-head{display:flex;justify-content:space-between}
 .plan-card-head h2{margin:16px 0 6px;font-family:var(--font-mono);font-size:30px}
@@ -178,7 +174,6 @@
 .pack-card .evidence-list li > svg { width: 20px; color: var(--teal); }
 .pack-card .evidence-list li > span { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 8px; }
 .pack-card .evidence-list strong { font-size: 14px; }
-.pack-card .evidence-list li > a { color: var(--teal); font-size: 13px; font-weight: 650; }
 @media (max-width: 1023px){
 .create-review-layout { grid-template-columns: minmax(0, 1fr); }}
 @media (max-width: 767px){
@@ -187,7 +182,7 @@
 .integration-grid .integration-actions [data-slot="button"] { width: 100%; }
 .create-tabs [data-slot="tabs-content"] { padding: 12px; }}
 .integration-grid .instagram-handle-form { margin-top: 4px; }
-.pack-card .evidence-list li > a { align-self: center; }
+.pack-card .evidence-list li > a { color: var(--teal); font-size: 13px; font-weight: 650; align-self: center; }
 @media (max-width: 767px){
 .integration-grid .integration-actions { flex-direction: column; align-items: stretch; }
 .integration-grid .integration-actions > .limitation-note { justify-content: flex-start; text-align: left; }
