@@ -155,7 +155,7 @@
 .brief-priority-card > p { grid-area: summary; max-width: 680px; color: var(--ink-2); font-size: 13px; line-height: 1.6; }
 .brief-priority-card .why-now-box { grid-area: evidence; align-self: stretch; margin: 28px 0 18px; border: 0; border-radius: 18px; background: color-mix(in oklab, var(--paper) 68%, transparent); }
 .brief-priority-card .brief-action-meta { grid-area: meta; align-self: end; margin: 22px 0 0; }
-.brief-priority-card > [data-slot="button"] { grid-area: action; align-self: end; justify-self: stretch; min-height: 52px; z-index: 1; color: #fff !important; }
+.brief-priority-card > [data-slot="button"] { grid-area: action; align-self: end; justify-self: stretch; min-height: 52px; z-index: 1; color: #fff; }
 .brief-priority-card > [data-slot="button"]:hover { color: #fff !important; }
 .brief-score-card,
 .brief-proof-card {

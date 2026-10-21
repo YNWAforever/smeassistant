@@ -7,6 +7,6 @@
 .workspace-root [data-slot="tabs-trigger"]:not([data-state="active"]) { color: var(--ink-3); }
 :where(.workspace-root .section-card) > p:not([class]) { color: var(--ink-3); font-size: 13px; line-height: 1.55; }
 .workspace-root {min-height:100svh;
-  background: var(--ed-bg) !important;
+  background: var(--ed-bg);
 }
 }
