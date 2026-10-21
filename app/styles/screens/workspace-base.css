@@ -1,0 +1,18 @@
+/* Workspace-wide rules scoped to .workspace-root, moved out of legacy (docs/ux Phase 8). Before the screen files, so screen rules keep winning where they did. */
+@layer screens {
+.workspace-root{min-height:100svh;background:var(--paper-2)}
+.workspace-root {
+  background:
+    radial-gradient(circle at 92% 5%, rgba(240, 175, 109, .12), transparent 22rem),
+    var(--paper-2);
+}
+.workspace-root small { font-size: 12px !important; line-height: 1.45; }
+.workspace-root .eyebrow { font-size: 12px; }
+.workspace-root :is(h1, h2) { font-weight: 700; letter-spacing: -.028em; }
+.workspace-root h3 { font-weight: 640; letter-spacing: -.012em; }
+.workspace-root [data-slot="tabs-trigger"]:not([data-state="active"]) { color: var(--ink-3); }
+:where(.workspace-root .section-card) > p:not([class]) { color: var(--ink-3); font-size: 13px; line-height: 1.55; }
+.workspace-root {
+  background: var(--ed-bg) !important;
+}
+}

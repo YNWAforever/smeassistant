@@ -15,6 +15,7 @@ The redesign of the SME scanner workspace as **Kinnso OS** (decided 2026-10-19).
 | 5 | Onboarding and states | [PHASE-5-REPORT.md](PHASE-5-REPORT.md) |
 | 6 | Quality: accessibility, performance, copy, acceptance | [PHASE-6-REPORT.md](PHASE-6-REPORT.md) |
 | 7 | Repo hygiene and finishing | [PHASE-7-REPORT.md](PHASE-7-REPORT.md) |
+| 8 | Workspace screens off the legacy stylesheet | [PHASE-8-REPORT.md](PHASE-8-REPORT.md) |
 
 [CHANGELOG.md](CHANGELOG.md) summarises every phase in plain language.
 
@@ -26,6 +27,8 @@ Each report starts with that phase's decisions. The decisions that hold across t
 |---|---|
 | Design tokens (colour, type, spacing, radius, motion) | `app/styles/tokens.css` |
 | Stylesheets, in cascade-layer order | `app/globals.css` imports `theme, tokens, base, components, utilities, legacy, pages, i18n, a11y` |
+| Workspace screen styles (moved out of legacy) | `app/styles/screens/`, in the `screens` sub-layer of `pages` |
+| Pixel check for style changes (manual) | `test/visual/` |
 | Component kit | `components/kinnso/` |
 | Visuals and motion (score dial, coverage, charts, steps, illustrations) | `components/visual/` |
 | Page states (error, loading, empty, role notices) | `components/states/` |

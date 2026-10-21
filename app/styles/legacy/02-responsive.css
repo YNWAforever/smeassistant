@@ -34,7 +34,7 @@
   .two-column-fields,.coverage-source-list{grid-template-columns:1fr}
   .candidate-card{grid-template-columns:40px 1fr}
   .candidate-card .button{grid-column:1/-1}
-  .partial-result-card,.evidence-passport article,.unlock-banner{align-items:flex-start;flex-direction:column}
+  .partial-result-card,.unlock-banner{align-items:flex-start;flex-direction:column}
   .report-page>.loop-ribbon{width:100%;grid-template-columns:repeat(8,86px);overflow-x:auto}
   .unlock-page,.auth-page,.onboarding-page,.select-workspace-page{width:calc(100% - 28px);padding:42px 0}
   .unlock-form-card,.auth-card,.onboarding-card{padding:22px}

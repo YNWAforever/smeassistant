@@ -47,12 +47,12 @@ Run heavy gates sequentially with `VITEST_MAX_WORKERS=1`. The demo seed command 
 | Path | Contents |
 |---|---|
 | `app/` | Routes (App Router). Every route is locale-prefixed: `en`, `zh-HK`, `zh-TW`. `proxy.ts` handles locale redirects, sessions and old-URL redirects. |
-| `app/styles/` | Design tokens and stylesheets, in cascade layers. `legacy/` holds the pre-redesign CSS that is still in use. |
+| `app/styles/` | Design tokens and stylesheets, in cascade layers. `screens/` holds the workspace screens' styles; `legacy/` holds the pre-redesign CSS still used by the public pages and shared classes. |
 | `components/` | `kinnso/` (component kit), `visual/` (visuals and motion), `states/` (error, loading, empty, role notices), `workspace/` (owner screens), `ui/` (shadcn primitives). |
 | `lib/` | Data access through the repositories in `lib/repositories` and `lib/db`, workspace logic in `lib/workspace`, and all user-facing text in `lib/copy.ts` and `lib/copy-*.ts`. |
 | `packages/` | Vendored scoring, region, scan-engine and contracts packages. They are changed only by re-pinning; see each `VENDOR.md`. |
 | `neon/` | Neon migrations. |
-| `e2e/`, `test/`, `tests/` | Browser specs, fixture tooling and root tests. |
+| `e2e/`, `test/`, `tests/` | Browser specs, fixture tooling and root tests. `test/visual/` is a manual pixel-comparison tool for style changes. |
 | `docs/` | Reports and runbooks: `ux/` (redesign), `integration/` (deployment and integration), `implementation/`, `audits/`, `operations/`, and `archive/`. |
 
 ## Database
