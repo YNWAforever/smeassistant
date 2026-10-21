@@ -47,7 +47,7 @@ Run heavy gates sequentially with `VITEST_MAX_WORKERS=1`. The demo seed command 
 | Path | Contents |
 |---|---|
 | `app/` | Routes (App Router). Every route is locale-prefixed: `en`, `zh-HK`, `zh-TW`. `proxy.ts` handles locale redirects, sessions and old-URL redirects. |
-| `app/styles/` | Design tokens and stylesheets, in cascade layers. `screens/` holds the workspace screens' styles; `legacy/` holds the pre-redesign CSS still used by the public pages and shared classes. |
+| `app/styles/` | Design tokens and stylesheets, in cascade layers. `shared.css` holds classes the public site and workspace share, `public/` the public pages' styles and `screens/` the workspace screens' styles; `legacy/` keeps base element rules and pre-redesign CSS no page uses any more. |
 | `components/` | `kinnso/` (component kit), `visual/` (visuals and motion), `states/` (error, loading, empty, role notices), `workspace/` (owner screens), `ui/` (shadcn primitives). |
 | `lib/` | Data access through the repositories in `lib/repositories` and `lib/db`, workspace logic in `lib/workspace`, and all user-facing text in `lib/copy.ts` and `lib/copy-*.ts`. |
 | `packages/` | Vendored scoring, region, scan-engine and contracts packages. They are changed only by re-pinning; see each `VENDOR.md`. |

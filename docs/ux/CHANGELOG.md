@@ -2,6 +2,12 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## Phase 10: shared and public styles off the legacy stylesheet (2026-10-21)
+
+- **Nothing looks different.** The public pages (landing, scan, scanning, report, unlock, pricing, methodology, trust, legal, sign-in, onboarding, demo, 404) and the styles they share with the workspace now have their own files. Every page was checked against 372 screenshots before and after.
+- **The old stylesheet is down to 32 KB** (from 84 KB). What remains is base element rules, two button colour rules that have to stay, and about 7 KB of classes no page uses any more, listed in the report for a decision.
+- **The screenshot tool** now covers the public pages too, signed out and in light mode.
+
 ## Phase 9: tidy the workspace screen files (2026-10-21)
 
 - **Dark mode:** icons and step numbers on orange are now dark, as in light mode, instead of white.
