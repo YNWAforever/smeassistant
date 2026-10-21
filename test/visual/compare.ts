@@ -16,6 +16,7 @@ if (!before || !after) throw new Error("Usage: tsx test/visual/compare.ts <befor
 const dirA = `${VISUAL_DIR}/${before}`, dirB = `${VISUAL_DIR}/${after}`, out = `${VISUAL_DIR}/diff-${before}-${after}`;
 mkdirSync(out, { recursive: true });
 const names = [...new Set([...readdirSync(dirA), ...readdirSync(dirB)])].filter((n) => n.endsWith(".png")).sort();
+if (!names.length) throw new Error(`No captures in ${dirA} or ${dirB}`);
 const browser = await chromium.launch(LAUNCH);
 const page = await browser.newPage();
 // tsx keeps function names through a `__name` helper that the page does not have.

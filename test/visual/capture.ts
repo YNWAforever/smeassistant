@@ -18,6 +18,9 @@ const list = (name: string, fallback: string) => (process.env[name] ?? fallback)
 const stack = JSON.parse(readFileSync(STACK_FILE, "utf8")) as VisualStack;
 const only = list("VISUAL_ONLY", "");
 const states = visualStates(stack).filter((s) => !only.length || only.includes(s.name));
+// A misspelt name would otherwise capture nothing and let a later comparison pass on zero captures.
+const unknown = only.filter((name) => !visualStates(stack).some((s) => s.name === name));
+if (unknown.length) throw new Error(`Unknown VISUAL_ONLY state(s): ${unknown.join(", ")}`);
 const locales = list("VISUAL_LOCALES", "en,zh-HK"), widths = list("VISUAL_WIDTHS", "390,1440").map(Number), schemes = list("VISUAL_SCHEMES", "light,dark");
 const out = `${VISUAL_DIR}/${tag}`;
 mkdirSync(out, { recursive: true });
