@@ -43,12 +43,6 @@ body {
 }
 
 /* Figures */
-.priority-rank {
-  font-feature-settings: "tnum", "cv11";
-  font-variant-numeric: tabular-nums;
-  font-weight: 720;
-  letter-spacing: -.04em;
-}
 
 /* "Contact Fimmick" sits where a price would; it is words, not a figure. */
 
@@ -150,9 +144,6 @@ body {
 @media (max-width: 1023px) {
   /* `1fr` let the photo column's min-content push the section 220px past
      the viewport, where overflow-x clipped it. */
-  .comparison-heading {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 @media (max-width: 767px) {
@@ -165,19 +156,6 @@ body {
 /* Narrow-phone exception (≤380 px): hide the wordmark so the header fits. */
 
 /* Comparison table: row rules fell back to currentColor (near-black). */
-.comparison-table :is(tr, th, td) {
-  border-color: rgba(31, 28, 24, .08);
-}
-
-.comparison-table tbody tr {
-  transition: background-color .2s ease;
-}
-
-@media (hover: hover) {
-  .comparison-table tbody tr:hover > :not(.is-sme) {
-    background: rgba(242, 237, 232, .55);
-  }
-}
 
 /* The Operator note sat flush against the agent cards. */
 
@@ -256,9 +234,6 @@ body {
 /* ── Workspace: action detail ──────────────────────────────────────────── */
 /* Three long button labels in one unwrapped row pushed the draft card past
    its column (and to 682px on a 390px phone). */
-@media (max-width: 767px) {
-  .draft-editor-actions > .button { width: 100%; white-space: normal; height: auto; min-height: 40px; }
-}
 
 /* Inactive tabs and bottom-nav labels were 4.3–4.4:1 (axe). */
 /* The approval card kept its widest unwrapped button as its minimum width. */

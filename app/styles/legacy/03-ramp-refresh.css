@@ -20,7 +20,6 @@ p {
   text-wrap: pretty;
 }
 
-.button,
 [data-slot="button"] {
   border-radius: 999px;
   font-weight: 760;
@@ -62,12 +61,10 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
-.button:hover,
 [data-slot="button"]:hover {
   transform: translateY(-1px);
 }
 
-.button:active,
 [data-slot="button"]:active {
   transform: translateY(0);
 }
@@ -76,12 +73,6 @@ button:focus-visible {
 /* Sign-in stays reachable on phones (it used to be `hidden lg:inline-flex`),
    just tighter so it does not crowd the scan CTA and the menu trigger. The
    44px min height keeps the touch target within guidance. */
-
-.comparison-fairness-note {
-  margin: 12px 0 0;
-  color: var(--ink-3);
-  font-size: 12px;
-}
 
 /* Landing hero */
 
@@ -92,114 +83,8 @@ button:focus-visible {
 /* Public content cards */
 
 /* Differentiation and outcome proof */
-.comparison-section {
-  width: min(var(--content), calc(100% - 40px));
-  margin: 104px auto 0;
-  scroll-margin-top: 120px;
-}
-
-.comparison-heading {
-  display: grid;
-  grid-template-columns: 1.05fr .8fr;
-  align-items: end;
-  gap: clamp(28px, 6vw, 86px);
-}
-
-.comparison-heading h2 {
-  max-width: 780px;
-  margin: 12px 0 0;
-  font-size: clamp(36px, 4.6vw, 60px);
-  font-weight: 790;
-  letter-spacing: -.058em;
-  line-height: 1.02;
-}
-
-.comparison-heading > p {
-  margin: 0;
-  color: var(--ink-3);
-  font-size: 14px;
-  line-height: 1.75;
-}
-
-.comparison-promises {
-  display: grid;
-  margin: 38px 0 14px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.comparison-promises span {
-  display: flex;
-  min-height: 58px;
-  padding: 13px 16px;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid rgba(31, 28, 24, .09);
-  border-radius: 16px;
-  background: var(--paper);
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 730;
-}
-
-.comparison-promises svg {
-  width: 20px;
-  flex: 0 0 auto;
-  padding: 3px;
-  border-radius: 50%;
-  background: var(--lime);
-}
-
-.comparison-table-shell {
-  overflow: auto;
-  border: 1px solid rgba(31, 28, 24, .12);
-  border-radius: 24px;
-  background: var(--paper);
-  box-shadow: 0 18px 50px rgba(31, 28, 24, .07);
-}
-
-.comparison-table-shell [data-slot="table-container"] { overflow: visible; }
-
-.comparison-table-shell:focus-visible {
-  outline: 3px solid var(--ring);
-  outline-offset: 3px;
-}
-
-.comparison-table {
-  min-width: 940px;
-  table-layout: fixed;
-}
-
-.comparison-table th,
-.comparison-table td {
-  padding: 18px 16px;
-  border-right: 1px solid var(--line);
-  white-space: normal;
-  vertical-align: top;
-  font-size: 12px;
-  line-height: 1.55;
-}
-
-.comparison-table th:last-child,
-.comparison-table td:last-child { border-right: 0; }
-.comparison-table thead th { height: 68px; vertical-align: middle; background: var(--paper-2); font-size: 12px; font-weight: 780; }
-.comparison-table thead th:first-child,
-.comparison-table tbody th { width: 150px; color: var(--ink-2); font-weight: 780; }
-.comparison-table .is-sme { background: var(--lime-soft); color: var(--ink); }
-.comparison-table thead .is-sme { background: var(--lime); font-size: 14px; }
-.comparison-table td.is-sme { position: relative; padding-left: 42px; font-weight: 690; }
-.comparison-table td.is-sme > svg { position: absolute; top: 18px; left: 16px; width: 17px; padding: 2px; border-radius: 50%; background: var(--inverse); color: var(--lime); }
-.comparison-scroll-note { display: none; margin: 10px 2px 0; color: var(--ink-3); font-size: 12px; }
 
 /* Scan and supporting public routes */
-
-.auth-card,
-.priority-report-grid article,
-.workspace-choice-grid a {
-  border-color: rgba(31, 28, 24, .09);
-  border-radius: 20px;
-  box-shadow: var(--shadow-sm);
-}
 
 /* Authenticated workspace */
 
@@ -227,62 +112,13 @@ button:focus-visible {
 
 /* Shared app surfaces */
 
-.workspace-choice-grid a:hover {
-  border-color: #b69473;
-  box-shadow: 0 16px 38px rgba(31, 28, 24, .08);
-  transform: translateY(-2px);
-}
-
-.workspace-choice-grid a {
-  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
-}
-
 /* Coordinated agent team and owner-friendly plans */
 
 /* Responsive refresh */
 
-@media (max-width: 1023px) {
-
-  .comparison-heading {
-    grid-template-columns: 1fr;
-    align-items: start;
-  }
-}
-
 /* Owner pages favour legibility over dense dashboard metadata. */
 
-@media (max-width: 767px) {
-
-  .comparison-section {
-    width: calc(100% - 28px);
-    margin-top: 72px;
-  }
-
-  .comparison-heading h2 {
-    font-size: 40px;
-  }
-
-  .comparison-promises {
-    grid-template-columns: 1fr;
-  }
-
-  .comparison-table-shell {
-    border-radius: 18px;
-  }
-
-  .comparison-scroll-note { display: block; }
-}
-
-@media (max-width: 639px) {
-
-  .comparison-heading h2 {
-    font-size: 34px;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .workspace-choice-grid a,
-  .button,
   [data-slot="button"] {
     transition: none;
   }

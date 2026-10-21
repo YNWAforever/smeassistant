@@ -1,11 +1,1 @@
-@media (max-width: 1023px){
-  .auth-page{grid-template-columns:1fr}
-  .auth-page{gap:32px}
-  .priority-report-grid{grid-template-columns:1fr}
-}
 
-@media (max-width:767px){
-  .auth-page{width:calc(100% - 28px);padding:42px 0}
-  .auth-card{padding:22px}
-  .workspace-choice-grid a{grid-template-columns:46px 1fr 18px}
-}
