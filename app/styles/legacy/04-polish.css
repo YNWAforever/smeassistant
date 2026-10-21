@@ -74,8 +74,6 @@ body {
 /* Figures */
 .score-number,
 .price,
-.proof-value strong,
-.month-metrics strong,
 .public-demo-evidence strong,
 .public-demo-proof-value,
 .assistant-evidence-value,
@@ -645,15 +643,8 @@ body {
 }
 
 /* "+9 change": the unit is a word, not a figure. */
-.proof-value strong span {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0;
-}
 
 /* The card's decorative ring ran through the translucent "Ask why" button. */
-.brief-priority-card .brief-priority-actions { position: relative; z-index: 1; }
-.brief-priority-card .assistant-launcher { background: var(--lime-soft); }
 
 /* The list card never showed the observed value its evidence carries. */
 .action-evidence-value {
@@ -706,16 +697,11 @@ body {
 .mobile-bottom-nav a.is-active { color: var(--brand-text); }
 /* The approval card kept its widest unwrapped button as its minimum width. */
 /* Side cards are ~310px: badges wrap under the title instead of crushing it. */
-@media (max-width: 767px) {
-  .section-card-heading { flex-wrap: wrap; gap: 8px 12px; }
-  .section-card-heading > div:last-child { flex-wrap: wrap; }
-}
 
 /* ── Card headings ─────────────────────────────────────────────────────── */
 /* `.section-card-heading > div:last-child` is the badge group; when a heading
    has no badges the title block is also the last child and its eyebrow and h2
    were laid out side by side ("CHANGE LEDGER Resolved, regressed…"). */
-.section-card-heading > div:only-child { display: block; }
 
 /* ── Workspace: insights ───────────────────────────────────────────────── */
 /* The page shipped with no styles for its own classes: stat cards, the score
@@ -838,9 +824,6 @@ body {
 .surface-trend-card .evidence-list .badge { min-width: 150px; justify-content: flex-start; }
 .surface-trend-card .evidence-list strong { font-size: 18px; font-variant-numeric: tabular-nums; }
 .surface-trend-card .evidence-list small { color: var(--ink-3); font-size: 12px; line-height: 1.5; }
-.change-ledger-card .evidence-list li { align-items: center; }
-.change-ledger-card .evidence-list strong { font-size: 13px; font-weight: 650; }
-.insights-page .change-ledger-card,
 .insights-page .delivered-work-card { margin-top: 0; }
 
 @media (max-width: 1279px) {
@@ -1047,8 +1030,6 @@ body {
 .asset-preview img { width: 100%; height: 100%; object-fit: cover; }
 .asset-preview button { color: var(--teal); font-size: 12px; font-weight: 650; }
 .asset-preview button:hover { text-decoration: underline; }
-.asset-grid .section-card-heading { flex-wrap: wrap; gap: 6px 10px; }
-.asset-grid .section-card-heading h2 { margin-top: 4px; font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
 
 /* ── Workspace: team, notifications, more ──────────────────────────────── */
 .member-scope label > span { display: inline-flex; align-items: center; gap: 5px; }
@@ -1057,7 +1038,6 @@ body {
 
 /* A notification row has no priority marker: the four-column queue grid put
    its text in the 6px marker column, one word per line. */
-.compact-action-list > a:not(:has(> .priority-marker)),
 .compact-action-list > div {
   display: grid;
   min-height: 60px;
@@ -1067,15 +1047,11 @@ body {
   gap: 12px;
   border-top: 1px solid var(--border);
 }
-.compact-action-list > a:not(:has(> .priority-marker))::before,
 .compact-action-list > div::before { width: 8px; height: 8px; content: ""; border-radius: 50%; }
 .compact-action-list > .is-unread::before { background: var(--teal); }
-.compact-action-list > a:not(:has(> .priority-marker)) strong,
 .compact-action-list > div strong { font-size: 14px; }
-.compact-action-list > a:not(:has(> .priority-marker)) small,
 .compact-action-list > div small { margin-top: 3px; color: var(--ink-3); font-size: 12px; }
 .compact-action-list > .is-unread strong { color: var(--ink); }
-.compact-action-list + .plan-actions { margin-top: 14px; }
 .asset-preview a { color: var(--teal); font-size: 12px; font-weight: 650; }
 .member-cell strong { font-size: 13px; overflow-wrap: anywhere; }
 .member-cell small { font-size: 12px; color: var(--ink-3); }

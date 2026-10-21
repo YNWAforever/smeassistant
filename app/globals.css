@@ -36,6 +36,7 @@
 @import "./styles/legacy/04-polish.css" layer(legacy);
 @import "./styles/legacy/05-editorial.css" layer(legacy);
 @import "./styles/screens/action-detail.css" layer(pages);
+@import "./styles/screens/today.css" layer(pages);
 @import "./styles/public.css" layer(pages);
 @import "./styles/workspace.css" layer(pages);
 @import "./styles/states.css" layer(pages);

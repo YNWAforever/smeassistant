@@ -184,20 +184,6 @@ button:focus-visible {
 .request-context-banner strong { display: block; font-size: 13px; }
 .request-context-banner span { display: block; margin-top: 4px; color: var(--ink-3); font-size: 12px; line-height: 1.55; }
 
-.aggregate-empty {
-  display: grid;
-  place-items: center;
-  min-height: 190px;
-  padding: 28px;
-  text-align: center;
-  border: 1px dashed #c5beb6;
-  border-radius: 18px;
-  background: var(--paper-2);
-}
-.aggregate-empty > svg { width: 28px; height: 28px; color: var(--brand-text); }
-.aggregate-empty h2 { margin: 12px 0 6px; font-size: 18px; }
-.aggregate-empty p { max-width: 34ch; color: var(--ink-3); font-size: 12px; line-height: 1.55; }
-
 .location-proof-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -602,241 +588,38 @@ button:focus-visible {
   background: var(--paper);
 }
 
-.owner-brief-grid {
-  grid-template-columns: 1fr 1fr;
-  grid-template-areas:
-    "priority priority"
-    "score proof";
-  gap: 16px;
-}
-
-.brief-priority-card { grid-area: priority; }
-.brief-score-card { grid-area: score; }
-.brief-proof-card { grid-area: proof; }
-
-.brief-score-card,
-.brief-priority-card,
-.brief-proof-card {
-  min-width: 0;
-  padding: clamp(22px, 3vw, 32px);
-  border-color: rgba(31, 28, 24, .09);
-  border-radius: 24px;
-  box-shadow: var(--shadow-sm);
-}
-
-.brief-priority-card {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(260px, .72fr);
-  grid-template-areas:
-    "label label"
-    "title evidence"
-    "summary evidence"
-    "meta action";
-  gap: 0 32px;
-  overflow: hidden;
-  border-color: #b3814f;
-  background:
-    radial-gradient(circle at 96% 2%, color-mix(in oklab, var(--paper) 70%, transparent), transparent 14rem),
-    linear-gradient(125deg, var(--lime-soft), var(--lime));
-  box-shadow: 0 20px 55px rgba(102, 71, 40, .14);
-}
-
-.brief-priority-card::after {
-  position: absolute;
-  right: -75px;
-  bottom: -110px;
-  width: 260px;
-  height: 260px;
-  border: 1px solid rgba(31, 28, 24, .12);
-  border-radius: 50%;
-  content: "";
-  /* Decoration only: it overlaps the card's action buttons and must never take their clicks. */
-  pointer-events: none;
-}
-
-.brief-priority-card .card-label-row { grid-area: label; }
-.brief-priority-card h2 { grid-area: title; margin: 30px 0 10px; max-width: 700px; font-size: clamp(28px, 3.2vw, 46px); line-height: 1; letter-spacing: -.055em; }
-.brief-priority-card > p { grid-area: summary; max-width: 680px; color: var(--ink-2); font-size: 13px; line-height: 1.6; }
-.brief-priority-card .why-now-box { grid-area: evidence; align-self: stretch; margin: 28px 0 18px; border: 0; border-radius: 18px; background: color-mix(in oklab, var(--paper) 68%, transparent); }
-.brief-priority-card .brief-action-meta { grid-area: meta; align-self: end; margin: 22px 0 0; }
-.brief-priority-card > [data-slot="button"] { grid-area: action; align-self: end; justify-self: stretch; min-height: 52px; z-index: 1; color: #fff !important; }
-.brief-priority-card > [data-slot="button"]:hover { color: #fff !important; }
-
-.brief-score-card,
-.brief-proof-card {
-  background: var(--paper);
-}
-
-.brief-score-card .score-dial-wrap {
-  margin: 28px 0 22px;
-  flex-direction: row;
-  align-items: center;
-}
-
-.brief-score-card .score-dial {
-  width: 132px;
-  height: 132px;
-}
-
-.brief-score-card .score-dial-core {
-  width: 106px;
-  height: 106px;
-}
-
-.brief-proof-card {
-  background: var(--sky);
-}
-
-.proof-value {
-  color: var(--brand-text);
-}
-
-.brief-proof-card h2 {
-  font-size: clamp(21px, 2vw, 28px);
-}
-
-.brief-proof-card > p,
-.brief-priority-card > p {
-  font-size: 13px;
-  line-height: 1.65;
-}
-
-.card-label-row > span:first-child,
-.coverage-source-line span,
-.brief-action-meta span,
 .proof-caveat > span:last-child {
   font-size: 12px;
 }
-
-.brief-priority-card .why-now-box span {
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.brief-priority-card .why-now-box small {
-  font-size: 12px;
-}
-
-.month-brief {
-  margin-top: 16px;
-  padding: 28px;
-  border: 0;
-  border-radius: 24px;
-  background: var(--inverse);
-  box-shadow: var(--shadow-md);
-}
-
-.month-brief .eyebrow,
-.next-scan svg {
-  color: var(--lime);
-}
-
-.month-metrics {
-  gap: 10px;
-  border: 0;
-}
-
-.month-metrics article {
-  min-height: 92px;
-  border: 1px solid #393941;
-  border-radius: 16px;
-  background: var(--inverse);
-}
-
-.month-metrics .metric-icon {
-  border-radius: 12px;
-  background: var(--lime);
-  color: var(--ink);
-}
-
-.month-metrics strong { font-size: 24px; }
-.month-metrics span { font-size: 12px; }
-.month-metrics small { font-size: 12px; }
 
 .section-card {
   padding: 26px;
   background: var(--paper);
 }
 
-.section-card-heading h2,
-.month-brief-heading h2 {
-  font-size: 21px;
-  letter-spacing: -.035em;
-}
-
-.pending-approval-card { background: var(--paper); }
-.integration-health-card { background: var(--lilac); }
-.change-ledger-card { margin-top: 16px; }
-
 /* FA-04: the decision queue now stands alone (it was half of .home-secondary-grid). */
-.owner-home-page > .pending-approval-card { margin-top: 16px; }
 
 /* FA-04: 「為何可信」 holds the methodology, closed by default. */
-.trust-disclosure { margin-top: 16px; }
-.trust-disclosure > summary {
-  display: flex;
-  min-height: 48px;
-  padding: 0 22px;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid rgba(31, 28, 24, .09);
-  border-radius: 20px;
-  background: var(--paper);
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 750;
-  cursor: pointer;
-  list-style: none;
-}
-.trust-disclosure > summary::-webkit-details-marker { display: none; }
-.trust-disclosure > summary::after { margin-left: auto; color: var(--ink-3); content: "+"; font-size: 18px; font-weight: 500; }
-.trust-disclosure[open] > summary::after { content: "−"; }
-.trust-disclosure > summary:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
-.trust-disclosure > summary svg { width: 16px; color: var(--teal); }
-.trust-disclosure[open] > summary { margin-bottom: 16px; }
 
 /* FA-04: on phones the owner-home controls (Rescan, location) share one row
    instead of stacking, so 今日要做 and its button clear the bottom nav at
    375×812 (e2e/acceptance/home-today.spec.ts). A viewer has no Rescan; the
    location select then takes the whole row. */
 @media (max-width: 767px) {
-  .owner-home-page .page-intro-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 8px; }
-  .owner-home-page .page-intro-actions > :only-child { grid-column: 1 / -1; }
-  .owner-home-page .page-intro-actions > *,
-  .owner-home-page .page-intro-actions .rescan-gate > [data-slot="button"] { width: 100%; min-width: 0; }
-  .owner-home-page .page-intro-actions .rescan-gate { display: grid; gap: 4px; }
   /* Keep the primary action above wrapped effort/status metadata on phones. */
-  .owner-home-page .brief-priority-card { grid-template-areas: "label" "title" "summary" "evidence" "action" "meta"; }
-  .owner-home-page .brief-priority-actions { grid-area: action; }
 }
 
-.compact-action-list a,
-.integration-compact-list > div,
-.change-ledger article {
+.compact-action-list a {
   min-height: 76px;
   padding-block: 12px;
 }
 
-.compact-action-list strong,
-.integration-compact-list strong,
-.change-ledger h3 {
+.compact-action-list strong {
   font-size: 13px;
 }
 
-.compact-action-list small,
-.integration-compact-list small,
-.change-ledger small {
+.compact-action-list small {
   font-size: 12px;
-}
-
-.change-ledger p {
-  font-size: 12px;
-}
-
-.operational-footnote {
-  border-radius: 14px;
-  background: var(--paper-2);
 }
 
 .mobile-bottom-nav {
@@ -868,8 +651,7 @@ button:focus-visible {
   transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
 }
 
-.action-evidence,
-.why-now-box {
+.action-evidence {
   border-radius: 12px;
 }
 
@@ -892,34 +674,6 @@ button:focus-visible {
 .pricing-usage-banner h2 { margin: 7px 0 9px; font-size: 22px; }
 .pricing-usage-banner p:last-child { margin: 0; color: var(--ink-3); font-size: 12px; line-height: 1.65; }
 
-.workspace-agent-strip {
-  display: grid;
-  margin: 0 0 18px;
-  padding: 20px;
-  grid-template-columns: minmax(260px, .72fr) minmax(420px, 1.28fr);
-  align-items: center;
-  gap: 18px 28px;
-  border: 1px solid var(--line-warm);
-  border-radius: 20px;
-  background: linear-gradient(115deg, var(--brand-soft), var(--paper) 58%);
-}
-
-.workspace-agent-summary { display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 12px; }
-.workspace-agent-summary > span { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 14px; background: var(--inverse); color: var(--lime); }
-.workspace-agent-summary > span svg { width: 20px; }
-.workspace-agent-summary h2 { margin: 7px 0 4px; font-size: 15px; }
-.workspace-agent-summary p { margin: 0; color: var(--ink-3); font-size: 12px; }
-.workspace-agent-strip ol { display: grid; margin: 0; padding: 0; grid-template-columns: repeat(4, minmax(0, 1fr)); list-style: none; }
-.workspace-agent-strip li { position: relative; display: grid; justify-items: center; gap: 7px; color: var(--ink-3); text-align: center; }
-.workspace-agent-strip li:not(:last-child)::after { position: absolute; top: 13px; left: calc(50% + 15px); width: calc(100% - 30px); height: 1px; content: ""; background: var(--line); }
-.workspace-agent-strip li > span { position: relative; z-index: 1; display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid #aaa299; border-radius: 50%; background: var(--paper); font-size: 12px; }
-.workspace-agent-strip li > span svg { width: 12px; }
-.workspace-agent-strip li > strong { font-size: 12px; }
-.workspace-agent-strip li.is-complete > span { border-color: #477932; background: #477932; color: #fff; }
-.workspace-agent-strip li.is-current > span { border-color: #1a1a1d; background: var(--lime); color: var(--ink); box-shadow: 0 0 0 4px rgba(240, 175, 109, .28); }
-.workspace-agent-strip > small { display: flex; grid-column: 2; margin-top: -8px; align-items: center; justify-content: flex-end; gap: 6px; color: var(--ink-3); font-size: 12px; }
-.workspace-agent-strip > small svg { width: 13px; }
-
 /* Responsive refresh */
 @media (max-width: 1279px) {
   .landing-hero {
@@ -929,25 +683,6 @@ button:focus-visible {
 
   .pricing-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .workspace-agent-strip {
-    grid-template-columns: 1fr;
-  }
-
-  .workspace-agent-strip > small {
-    grid-column: 1;
-    margin-top: 0;
-    justify-content: flex-start;
-  }
-
-  .brief-priority-card {
-    grid-template-columns: 1fr;
-    grid-template-areas: "label" "title" "summary" "evidence" "meta" "action";
-  }
-
-  .brief-priority-card .why-now-box {
-    margin-top: 18px;
   }
 }
 
@@ -974,11 +709,6 @@ button:focus-visible {
   .comparison-heading {
     grid-template-columns: 1fr;
     align-items: start;
-  }
-
-  .owner-brief-grid {
-    grid-template-columns: 1fr;
-    grid-template-areas: "priority" "score" "proof";
   }
 }
 
@@ -1059,19 +789,6 @@ button:focus-visible {
     flex-direction: column;
   }
 
-  .workspace-agent-strip {
-    padding: 18px 14px;
-  }
-
-  .workspace-agent-strip ol {
-    grid-template-columns: 1fr 1fr;
-    gap: 16px 8px;
-  }
-
-  .workspace-agent-strip li::after {
-    display: none;
-  }
-
   .public-footer {
     width: calc(100% - 20px);
     padding: 36px 22px max(46px, env(safe-area-inset-bottom));
@@ -1086,35 +803,8 @@ button:focus-visible {
     font-size: 34px;
   }
 
-  .brief-score-card,
-  .brief-priority-card,
-  .brief-proof-card,
-  .month-brief,
   .section-card {
     border-radius: 20px;
-  }
-
-  .brief-priority-card h2 {
-    /* FA-04: 12px (was 24px) so the 今日要做 button clears the bottom nav at 375×812. */
-    margin-top: 12px;
-    font-size: 32px;
-  }
-
-  .brief-score-card .score-dial-wrap {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .brief-action-meta {
-    flex-wrap: wrap;
-  }
-
-  .month-metrics {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .month-metrics article {
-    border-right: 1px solid #393941 !important;
   }
 }
 
@@ -1122,14 +812,6 @@ button:focus-visible {
 
   .comparison-heading h2 {
     font-size: 34px;
-  }
-
-  .month-metrics {
-    grid-template-columns: 1fr;
-  }
-
-  .month-metrics article {
-    border-right: 1px solid #393941 !important;
   }
 }
 
@@ -1618,8 +1300,7 @@ button:focus-visible {
   font-size: 12px;
 }
 
-.report-handoff-actions,
-.brief-priority-actions {
+.report-handoff-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -1987,8 +1668,7 @@ button:focus-visible {
     grid-column: auto;
   }
 
-  .public-demo-flow-actions [data-slot="button"],
-  .brief-priority-actions [data-slot="button"] {
+  .public-demo-flow-actions [data-slot="button"] {
     width: 100%;
   }
 }
@@ -2032,30 +1712,3 @@ button:focus-visible {
 }
 
 /* Owner daily focus: one next task; supporting detail stays available on demand. */
-.owner-home-page.owner-daily-focus { max-width: 860px; margin-inline: auto; }
-.owner-home-page.owner-daily-focus > .owner-brief-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "priority"; }
-.owner-home-page.owner-daily-focus .brief-priority-card { display: block; grid-area: auto; padding: clamp(20px, 3vw, 30px); background: var(--paper); border-color: var(--border); box-shadow: var(--shadow-sm); }
-.owner-home-page.owner-daily-focus .brief-priority-card::after { content: none; }
-.owner-home-page.owner-daily-focus .brief-priority-card h2 { margin: 16px 0 12px; font-size: clamp(23px, 2.5vw, 32px); line-height: 1.35; letter-spacing: -.025em; text-wrap: balance; }
-.owner-home-page.owner-daily-focus .brief-action-meta { margin: 16px 0; flex-wrap: wrap; }
-.owner-home-page.owner-daily-focus .brief-priority-actions { display: flex; justify-content: flex-start; }
-.owner-home-shortcuts { display: flex; flex-wrap: wrap; gap: 12px; margin: 18px 0 24px; }
-.owner-disclosure { margin-top: 12px; border-top: 1px solid var(--border); }
-.owner-disclosure > summary { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 12px 2px; color: var(--ink); font-size: 14px; font-weight: 600; cursor: pointer; list-style: none; }
-.owner-disclosure > summary::-webkit-details-marker { display: none; }
-.owner-disclosure > summary::after { content: "+"; margin-left: auto; font-size: 18px; }
-.owner-disclosure[open] > summary::after { content: "−"; }
-.owner-disclosure > summary:focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; }
-.owner-disclosure[open] > summary { margin-bottom: 12px; }
-.owner-results-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "score proof"; gap: 16px; }
-.owner-results-tools { display: flex; flex-wrap: wrap; margin-bottom: 16px; gap: 12px; }
-.owner-priority-evidence .why-now-box { margin: 0 0 16px; }
-.owner-priority-evidence .why-now-box span { font-size: 14px; line-height: 1.6; }
-.owner-priority-evidence .why-now-box small { margin-top: 8px; font-size: 12px; }
-.owner-approval-note { margin: 20px 0 0; color: var(--soft); font-size: 13px; }
-@media (max-width: 767px) {
-  .owner-home-page.owner-daily-focus .page-intro h1 { font-size: 28px; line-height: 1.3; }
-  .owner-home-page.owner-daily-focus .brief-priority-card h2 { font-size: 24px; }
-  .owner-results-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "score" "proof"; }
-  .owner-home-shortcuts > a { flex: 1 1 160px; min-height: 44px; }
-}
