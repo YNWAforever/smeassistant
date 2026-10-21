@@ -18,6 +18,15 @@ const tab = (index: number) => async (page: Page) => {
   await page.locator(".detail-tab-list [role=tab]").nth(index).click();
   await page.waitForTimeout(300);
 };
+// Waits until the DOM has been quiet for 700 ms (at most 10 s), for content that arrives in stages.
+const settle = (page: Page) => page.evaluate(() => new Promise<void>((resolve) => {
+  let timer = setTimeout(done, 700);
+  const observer = new MutationObserver(() => { clearTimeout(timer); timer = setTimeout(done, 700); });
+  const cap = setTimeout(done, 10_000);
+  function done() { observer.disconnect(); clearTimeout(cap); resolve(); }
+  observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+}));
+
 // Opens every closed disclosure in the page body, so content styled only when expanded is captured.
 const openAll = async (page: Page) => {
   await page.locator("main details:not([open])").evaluateAll((all) => all.forEach((d) => d.setAttribute("open", "")));
@@ -34,9 +43,9 @@ export function visualStates(stack: VisualStack): VisualState[] {
     { name: "today-viewer", role: "viewer", path: "~" },
     { name: "assistant", role: "owner", path: "~", setup: async (page) => {
       await page.locator(".workspace-topbar .assistant-launcher").first().click();
-      // The sheet loads its suggested questions after opening.
+      // The sheet loads its suggested question groups in more than one request.
       await page.waitForLoadState("networkidle");
-      await page.waitForTimeout(1000);
+      await settle(page);
     } },
     // Actions queue
     { name: "actions", role: "owner", path: "~/actions" },

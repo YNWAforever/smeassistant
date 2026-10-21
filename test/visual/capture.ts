@@ -34,6 +34,8 @@ try {
         const context = await browser.newContext({ baseURL: stack.app, viewport: { width, height: 900 }, deviceScaleFactor: 1, reducedMotion: "reduce", colorScheme: scheme === "dark" ? "dark" : "light", storageState: stack.sessions[state.role] });
         await context.addCookies([{ name: "kinnso-theme", value: scheme, url: stack.app }]);
         const page = await context.newPage();
+        // tsx keeps function names through a `__name` helper that pages do not have.
+        await page.addInitScript("window.__name = (fn) => fn");
         const errors: string[] = [];
         page.on("pageerror", (e) => errors.push(e.message));
         page.on("console", (m) => { if (m.type() === "error") errors.push(m.text().slice(0, 200)); });
