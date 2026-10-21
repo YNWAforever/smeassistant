@@ -83,7 +83,17 @@ async function signIn(context: BrowserContext, env: AcceptanceEnvironment, merch
   return context.storageState();
 }
 
-const env = await startEnvironment();
+// The fixture's health check allows 60 s; a cold `next dev` compile on a slow disk can exceed it.
+// A second start reuses the warm .next/dev cache.
+async function start(): Promise<AcceptanceEnvironment> {
+  for (let attempt = 1; ; attempt++) {
+    try { return await startEnvironment(); } catch (error) {
+      if (attempt === 3) throw error;
+      console.log(`stack start attempt ${attempt} failed (${error instanceof Error ? error.message : error}); retrying with the warm cache`);
+    }
+  }
+}
+const env = await start();
 const stop = async () => { try { await env.stop(); } finally { process.exit(0); } };
 process.once("SIGINT", stop);
 process.once("SIGTERM", stop);
