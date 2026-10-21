@@ -33,8 +33,8 @@ try {
   for (const state of states) {
     if (state.sql) stackSql(stack, state.sql(stack));
     try {
-      for (const locale of locales) for (const width of widths.filter((w) => !state.widths || state.widths.includes(w))) for (const scheme of schemes) {
-        const context = await browser.newContext({ baseURL: stack.app, viewport: { width, height: 900 }, deviceScaleFactor: 1, reducedMotion: "reduce", colorScheme: scheme === "dark" ? "dark" : "light", storageState: stack.sessions[state.role] });
+      for (const locale of locales) for (const width of widths.filter((w) => !state.widths || state.widths.includes(w))) for (const scheme of schemes.filter((s) => !state.schemes || state.schemes.includes(s))) {
+        const context = await browser.newContext({ baseURL: stack.app, viewport: { width, height: 900 }, deviceScaleFactor: 1, reducedMotion: "reduce", colorScheme: scheme === "dark" ? "dark" : "light", storageState: state.role === "guest" ? undefined : stack.sessions[state.role] });
         await context.addCookies([{ name: "kinnso-theme", value: scheme, url: stack.app }]);
         const page = await context.newPage();
         // tsx keeps function names through a `__name` helper that pages do not have.
@@ -42,6 +42,7 @@ try {
         const errors: string[] = [];
         page.on("pageerror", (e) => errors.push(e.message));
         page.on("console", (m) => { if (m.type() === "error") errors.push(m.text().slice(0, 200)); });
+        await state.before?.(page, stack);
         const path = state.path.startsWith("~") ? `/${locale}/owner/${stack.slug}${state.path.slice(1)}` : `/${locale}${state.path}`;
         const response = await page.goto(path, { waitUntil: "networkidle", timeout: 240_000 });
         await page.waitForFunction(() => document.documentElement.dataset.hydrated === "true", undefined, { timeout: 60_000 }).catch(() => errors.push("not hydrated"));

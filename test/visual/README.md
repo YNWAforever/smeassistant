@@ -39,7 +39,7 @@ Narrow a run with environment variables:
   - adds actions, versions, runs and notifications with fixed dates;
   - signs in an owner, a manager and a viewer;
   - writes `test-results/visual/stack.json`.
-- **`states.ts`** lists the states. A state can click into a tab, go offline, intercept a request (the version conflict), or change rows with SQL and put them back afterwards (the used-up allowance).
+- **`states.ts`** lists the states. A state can click into a tab, go offline, intercept a request (the version conflict), or change rows with SQL and put them back afterwards (the used-up allowance). Public pages (`pub-*`) are captured signed out (`role: "guest"`) and in light only, since dark mode exists only in the workspace. The scanning page answers from stubbed status requests under a fixed clock, so its elapsed time never changes.
 - **`capture.ts`** takes a full-page screenshot of every state. It hides the dev overlay and the text caret and stops animations, so two runs with no change give identical images.
 - **`compare.ts`** compares two runs pixel by pixel. It decodes images in Chromium, so it needs no image library.
 

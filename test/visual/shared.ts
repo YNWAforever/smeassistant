@@ -4,7 +4,7 @@ import type { BrowserContext } from "@playwright/test";
 export type Role = "owner" | "manager" | "viewer";
 type StorageState = Awaited<ReturnType<BrowserContext["storageState"]>>;
 export interface VisualStack {
-  app: string; container: string; database: string; slug: string; workspaceId: string; jobId: string;
+  app: string; container: string; database: string; slug: string; workspaceId: string; jobId: string; shareSlug: string;
   ids: { approved: string; draft: string; needsInput: string; completed: string };
   sessions: Record<Role, StorageState>;
 }
