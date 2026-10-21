@@ -9,7 +9,7 @@
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { chromium } from "@playwright/test";
-import { BROWSER_ARGS, STACK_FILE, VISUAL_DIR, stackSql, type VisualStack } from "./shared";
+import { LAUNCH, STACK_FILE, VISUAL_DIR, stackSql, type VisualStack } from "./shared";
 import { visualStates } from "./states";
 
 const tag = process.argv[2];
@@ -24,7 +24,7 @@ mkdirSync(out, { recursive: true });
 
 // Hide what changes between identical runs: the dev overlay, the caret and running animations.
 const STILL = "nextjs-portal{display:none!important}*,*::before,*::after{caret-color:transparent!important;animation-play-state:paused!important;transition:none!important}";
-const browser = await chromium.launch({ args: BROWSER_ARGS });
+const browser = await chromium.launch(LAUNCH);
 const manifest: Record<string, { status: number; url: string; overflow: boolean; errors: string[] }> = {};
 try {
   for (const state of states) {

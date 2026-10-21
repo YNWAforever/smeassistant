@@ -13,7 +13,7 @@ import { chromium, type BrowserContext } from "@playwright/test";
 import { startEnvironment, sql, type AcceptanceEnvironment } from "../e2e/environment";
 import { seedMerchant, type MerchantSeed } from "../e2e/seed";
 import { LEGAL_POLICY_VERSION } from "../../lib/legal/policy";
-import { BROWSER_ARGS, STACK_FILE, VISUAL_DIR, type Role, type VisualStack } from "./shared";
+import { LAUNCH, STACK_FILE, VISUAL_DIR, type Role, type VisualStack } from "./shared";
 
 const quote = (value: unknown) => `'${JSON.stringify(value).replaceAll("'", "''")}'`;
 const text = (en: string, zh: string) => quote({ en, "zh-HK": zh, "zh-TW": zh });
@@ -102,7 +102,7 @@ try {
   sql(env.db, `update workspaces set business_name='錦汶館 (visual fixture)' where id='${merchant.workspaceId}';`);
   const jobId = await attachScan(env, merchant);
   const ids = seedStates(env, merchant);
-  const browser = await chromium.launch({ args: BROWSER_ARGS });
+  const browser = await chromium.launch(LAUNCH);
   const sessions = {} as VisualStack["sessions"];
   for (const role of ["owner", "manager", "viewer"] as const) {
     const context = await browser.newContext({ baseURL: env.app });

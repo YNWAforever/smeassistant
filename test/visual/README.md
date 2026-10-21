@@ -30,6 +30,7 @@ Narrow a run with environment variables:
 | `VISUAL_LOCALES` | `en,zh-HK` | `zh-TW` |
 | `VISUAL_WIDTHS` | `390,1440` | `768` |
 | `VISUAL_SCHEMES` | `light,dark` | `dark` |
+| `VISUAL_CHROMIUM` | Playwright's browser | `/opt/pw-browsers/chromium` |
 
 ## How it works
 

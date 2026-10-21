@@ -12,7 +12,8 @@ export interface VisualStack {
 export const VISUAL_DIR = "test-results/visual";
 export const STACK_FILE = `${VISUAL_DIR}/stack.json`;
 // Loopback only, like the acceptance suite: any external request fails instead of leaving the machine.
-export const BROWSER_ARGS = ["--proxy-server=http://127.0.0.1:9", "--proxy-bypass-list=localhost;127.0.0.1;[::1]"];
+// VISUAL_CHROMIUM points at a local Chromium when Playwright's pinned browser is not installed.
+export const LAUNCH = { args: ["--proxy-server=http://127.0.0.1:9", "--proxy-bypass-list=localhost;127.0.0.1;[::1]"], executablePath: process.env.VISUAL_CHROMIUM || undefined };
 
 /** SQL against the stack's own labelled container and database only. */
 export function stackSql(stack: VisualStack, query: string): string {

@@ -9,14 +9,14 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { chromium } from "@playwright/test";
-import { VISUAL_DIR } from "./shared";
+import { LAUNCH, VISUAL_DIR } from "./shared";
 
 const [before, after] = process.argv.slice(2);
 if (!before || !after) throw new Error("Usage: tsx test/visual/compare.ts <before> <after>");
 const dirA = `${VISUAL_DIR}/${before}`, dirB = `${VISUAL_DIR}/${after}`, out = `${VISUAL_DIR}/diff-${before}-${after}`;
 mkdirSync(out, { recursive: true });
 const names = [...new Set([...readdirSync(dirA), ...readdirSync(dirB)])].filter((n) => n.endsWith(".png")).sort();
-const browser = await chromium.launch();
+const browser = await chromium.launch(LAUNCH);
 const page = await browser.newPage();
 const summary: Record<string, string> = {};
 let changed = 0;
