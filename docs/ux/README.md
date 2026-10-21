@@ -16,6 +16,7 @@ The redesign of the SME scanner workspace as **Kinnso OS** (decided 2026-10-19).
 | 6 | Quality: accessibility, performance, copy, acceptance | [PHASE-6-REPORT.md](PHASE-6-REPORT.md) |
 | 7 | Repo hygiene and finishing | [PHASE-7-REPORT.md](PHASE-7-REPORT.md) |
 | 8 | Workspace screens off the legacy stylesheet | [PHASE-8-REPORT.md](PHASE-8-REPORT.md) |
+| 9 | Tidy the workspace screen files | [PHASE-9-REPORT.md](PHASE-9-REPORT.md) |
 
 [CHANGELOG.md](CHANGELOG.md) summarises every phase in plain language.
 

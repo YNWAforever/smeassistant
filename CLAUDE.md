@@ -1380,6 +1380,7 @@ corepack pnpm seed:demo --owned-test      # creates, seeds, verifies and destroy
 | 2026-10-20 | Quality (Phase 6): hard 404 for unknown actions; JS budgets workspace 300 KB / other 240 KB; Lighthouse runs outside the repo (adding it changed production dependency resolution) | decided (Willy) |
 | 2026-10-20 | Hygiene (Phase 7): the paid plan is the "Growth plan" (增長方案 / 成長方案); `.superpowers/` evidence archived in `docs/archive/superpowers`; access-request strings move into a shared dictionary; legacy CSS use measured (none pruned: unseen rules style real states); Chinese headings use normal CJK line breaking | decided (Willy) |
 | 2026-10-21 | Legacy CSS (Phase 8): workspace screens moved to `app/styles/screens/` pixel-identically in light; dark fixes only where a legacy colour ignored the theme; public pages later; the state-capture tool stays manual (`test/visual/`) | decided (Willy) |
+| 2026-10-21 | Screen-file tidy (Phase 9): merge duplicates and drop dead or unneeded rules pixel-identically; literal colours become tokens only under delta E 2, the rest are listed for Willy's decision; text on orange uses `--on-brand` | decided (Willy) |
 | open | Retention periods on the Trust page; owned photos for `public/brand/` | Willy |
 | open | Whether the 13 local-only commits and stale worktrees in `Documents\smescanner` get archived (tag) and removed | Willy |
 | open | Re-pin cadence: when upstream changes `scoringVersion` or the lease, both apps must move together | Willy + upstream maintainer |

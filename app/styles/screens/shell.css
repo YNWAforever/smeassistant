@@ -1,45 +1,39 @@
 /* Workspace shell and the Ask Kinnso sheet, moved out of legacy (docs/ux Phase 8). */
 @layer screens {
-.workspace-shell{min-height:100svh!important}
+.workspace-shell{min-height:100svh}
 .has-env-bar .workspace-shell{min-height:calc(100svh - 30px)!important}
-.workspace-sidebar{top:0!important;height:100svh!important;border-right:0!important;background:var(--inverse)!important}
+.workspace-sidebar{top:0;height:100svh;border-right:0!important}
 .has-env-bar .workspace-sidebar{top:30px!important;height:calc(100svh - 30px)!important}
 .has-env-bar .workspace-topbar{top:30px}
 .workspace-sidebar-header{padding:18px 16px 12px}
-.brand-lockup-inverse .brand-mark{background:#cea67e;color:var(--ink)}
-.brand-lockup-inverse strong{color:white}
-.brand-lockup-inverse small{color:#beb5ad}
-.workspace-switcher{display:grid;width:100%;min-height:66px;margin-top:18px;padding:10px;grid-template-columns:38px 1fr 16px;align-items:center;gap:9px;border:1px solid #5f4f3e;border-radius:9px;background:var(--inverse);color:white;text-align:left}
-.workspace-avatar{display:grid;width:36px;height:36px;place-items:center;border-radius:8px;background:var(--brand-soft);color:var(--ink);font-weight:800}
+.workspace-switcher{display:grid;width:100%;grid-template-columns:38px 1fr 16px;align-items:center;gap:9px;border:1px solid #5f4f3e;text-align:left}
+.workspace-avatar{display:grid;place-items:center;font-weight:800}
 .workspace-switcher>span:nth-child(2),.account-button>span:nth-child(2){display:flex;min-width:0;flex-direction:column}
-.workspace-switcher strong,.account-button strong{font-size:12px}
-.workspace-switcher small,.account-button small{margin-top:3px;color:#c1b9b1;font-size:12px}
+.workspace-switcher small,.account-button small{margin-top:3px;color:#c1b9b1}
 .workspace-switcher>svg{width:14px}
-.workspace-sidebar [data-sidebar=group-label]{color:#9f9284;font-size:12px;letter-spacing:.1em;text-transform:uppercase}
-.workspace-sidebar [data-sidebar=menu-button]{min-height:40px;color:#d3cec8;font-size:12px}
-.workspace-sidebar [data-active=true]{background:#59442e!important;color:white!important}
+.workspace-sidebar [data-sidebar=group-label]{font-size:12px;letter-spacing:.1em;text-transform:uppercase}
+.workspace-sidebar [data-sidebar=menu-button]{min-height:40px}
 .workspace-sidebar-footer{padding:12px 16px 16px}
-.usage-mini{padding:12px;border:1px solid #5e4e3d;border-radius:9px;background:var(--inverse)}
+.usage-mini{padding:12px;border:1px solid #5e4e3d}
 .usage-mini>div:first-child{display:flex;justify-content:space-between;color:#d0cac3;font-size:12px}
-.usage-mini strong{color:white}
 .usage-mini small{color:#a89c90;font-size:12px}
-.account-button{display:grid;min-height:54px;padding:9px;grid-template-columns:34px 1fr 18px;align-items:center;gap:8px;border:0;background:transparent;color:white;text-align:left}
-.account-avatar{display:grid;width:32px;height:32px;place-items:center;border-radius:50%;background:#5a4632;font-size:12px}
+.account-button{display:grid;min-height:54px;padding:9px;grid-template-columns:34px 1fr 18px;align-items:center;gap:8px;border:0;background:transparent;text-align:left}
+.account-avatar{display:grid;width:32px;height:32px;place-items:center;border-radius:50%;font-size:12px}
 .account-button>svg{width:15px}
-.workspace-main{min-width:0;background:var(--paper-2)}
-.workspace-topbar{position:sticky;z-index:40;top:0;display:flex;min-height:64px;padding:8px 24px;align-items:center;gap:8px;border-bottom:1px solid var(--border);background:color-mix(in oklab, var(--paper-2) 93%, transparent);backdrop-filter:blur(14px)}
+.workspace-main{min-width:0}
+.workspace-topbar{position:sticky;z-index:40;top:0;display:flex;padding:8px 24px;align-items:center;gap:8px;border-bottom:1px solid var(--border);backdrop-filter:blur(14px)}
 .workspace-topbar-spacer{flex:1}
 .notification-button{position:relative}
 .notification-dot{position:absolute;top:9px;right:9px;width:7px;height:7px;border:1px solid var(--line);border-radius:50%;background:var(--red)}
-.workspace-content{width:100%;max-width:1480px;margin:0 auto;padding:30px clamp(20px,3vw,44px) 95px}
+.workspace-content{width:100%;margin:0 auto;padding:30px clamp(20px,3vw,44px) 95px}
 .mobile-bottom-nav{display:none}
 .workspace-mobile-brand{align-items:center;gap:8px}
 .workspace-mobile-brand>span:last-child{display:flex;flex-direction:column}
 .workspace-mobile-brand strong{font-size:12px}
 .workspace-mobile-brand small{color:var(--soft);font-size:12px}
 @media (max-width:767px){
-.workspace-sidebar{display:none!important}
-.workspace-shell{display:block!important}
+.workspace-sidebar{display:none}
+.workspace-shell{display:block}
 .workspace-topbar{top:0;min-height:58px;padding:7px 14px}
 .has-env-bar .workspace-topbar{top:38px}
 .workspace-mobile-brand{display:flex}
@@ -48,39 +42,16 @@
 .mobile-bottom-nav a{display:flex;min-height:52px;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--ink-3);font-size:12px;font-weight:750}
 .mobile-bottom-nav a svg{width:18px}
 .mobile-bottom-nav a.is-active{color:var(--teal)}}
-.workspace-main {
-  background:
-    radial-gradient(circle at 92% 5%, rgba(240, 175, 109, .12), transparent 22rem),
-    var(--paper-2);
-}
-.workspace-sidebar {
-  background: var(--inverse) !important;
-}
-.brand-lockup-inverse .brand-mark {
-  background: var(--lime);
-  color: var(--ink);
-}
-.brand-lockup-inverse small {
-  color: #b7b1ab;
-}
 .workspace-switcher {
   min-height: 72px;
   margin-top: 20px;
   padding: 11px;
-  border-color: #504a45;
   border-radius: 16px;
-  background: var(--inverse);
-}
-.workspace-switcher:hover {
-  border-color: #736b63;
-  background: var(--inverse);
 }
 .workspace-avatar {
   width: 40px;
   height: 40px;
   border-radius: 13px;
-  background: var(--lime);
-  color: var(--ink);
 }
 .workspace-switcher strong,
 .account-button strong {
@@ -91,24 +62,12 @@
   font-size: 12px;
 }
 .workspace-sidebar [data-sidebar="group-label"] {
-  color: #9c9690;
   font-size: 12px;
   letter-spacing: .13em;
 }
 .workspace-sidebar [data-sidebar="menu-button"] {
   min-height: 44px;
   border-radius: 12px;
-  color: #d2cdc8;
-  font-size: 12px;
-}
-.workspace-sidebar [data-active="true"] {
-  background: var(--lime) !important;
-  color: var(--ink) !important;
-  font-weight: 780;
-}
-.workspace-sidebar [data-sidebar="menu-button"]:hover:not([data-active="true"]) {
-  background: var(--inverse);
-  color: #fff;
 }
 .workspace-sidebar [data-sidebar="content"] {
   overflow-x: hidden;
@@ -117,14 +76,10 @@
   scrollbar-color: #59524b transparent;
 }
 .usage-mini {
-  border-color: #49443e;
   border-radius: 15px;
-  background: var(--inverse);
 }
 .workspace-topbar {
   min-height: 68px;
-  border-bottom-color: rgba(221, 217, 212, .9);
-  background: color-mix(in oklab, var(--paper) 86%, transparent);
   box-shadow: 0 7px 25px rgba(31, 28, 24, .035);
 }
 .workspace-topbar-context {
@@ -156,21 +111,18 @@
 .mobile-bottom-nav {
   background: color-mix(in oklab, var(--paper) 96%, transparent);
 }
-.mobile-bottom-nav a.is-active {
-  color: var(--brand-text);
-}
 @media (max-width: 767px){
 .mobile-bottom-nav a { font-size: 12px; }
 .workspace-mobile-brand strong { font-size: 12px; }
-.workspace-mobile-brand small { font-size: 12px !important; }
+.workspace-mobile-brand small { font-size: 12px; }
 .workspace-content {
     padding: 24px 14px 112px;
   }}
 .assistant-launcher {
   min-height: 42px;
-  border-color: #a67b50 !important;
-  background: var(--lime-soft) !important;
-  color: var(--ink) !important;
+  border-color: #a67b50;
+  background: var(--lime-soft);
+  color: var(--ink);
   box-shadow: 0 8px 18px rgba(62, 55, 48, .08);
 }
 /* In a phone-width draft action row the row's own button height won in legacy (it stays there, shared with ops). */
@@ -426,7 +378,6 @@
   color: var(--teal-dark);
   font-family: var(--font-mono);
   font-size: 18px;
-  font-weight: 800;
 }
 .assistant-evidence-card dl {
   display: grid;
@@ -592,7 +543,7 @@
     padding-inline: 0;
   }
 .assistant-sheet {
-    border-radius: 24px 24px 0 0 !important;
+    border-radius: 24px 24px 0 0;
   }
 .assistant-sheet-header {
     padding: 18px 16px 14px;
@@ -634,11 +585,11 @@ html:has(.mobile-bottom-nav) { scroll-padding-top: 72px; scroll-padding-bottom: 
   font-family: var(--ed-sans);
 }
 .workspace-main {
-  background: var(--ed-bg) !important;
+  background: var(--ed-bg);
 }
 .workspace-shell .workspace-sidebar {
   border-right: 1px solid var(--ed-line);
-  background: var(--paper) !important;
+  background: var(--paper);
   color: var(--ed-ink);
 }
 .workspace-shell .brand-lockup-inverse strong {
@@ -677,8 +628,8 @@ html:has(.mobile-bottom-nav) { scroll-padding-top: 72px; scroll-padding-bottom: 
   font-weight: 560;
 }
 .workspace-shell .workspace-sidebar [data-active="true"] {
-  background: var(--ed-peach-100) !important;
-  color: var(--ed-orange-800) !important;
+  background: var(--ed-peach-100);
+  color: var(--ed-orange-800);
   font-weight: 700;
 }
 .workspace-shell .workspace-sidebar [data-sidebar="menu-button"]:hover:not([data-active="true"]) {
