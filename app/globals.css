@@ -10,7 +10,9 @@
  *   legacy     pre-redesign stylesheets, kept last so existing pages render as
  *              before; each page moves out of this layer as it is redesigned
  *   pages      redesigned pages (Phase 2+), after legacy so old element rules
- *              never override them
+ *              never override them. Its `screens` sub-layer holds rules moved
+ *              out of legacy screen by screen (Phase 8): they beat what is left
+ *              in legacy, and rules placed directly in `pages` still beat them
  *   i18n       Chinese typography that must win over legacy sizes
  *   a11y       touch-target and focus floor, last so nothing undercuts it
  */
@@ -33,6 +35,7 @@
 @import "./styles/legacy/03-ramp-refresh.css" layer(legacy);
 @import "./styles/legacy/04-polish.css" layer(legacy);
 @import "./styles/legacy/05-editorial.css" layer(legacy);
+@import "./styles/screens/action-detail.css" layer(pages);
 @import "./styles/public.css" layer(pages);
 @import "./styles/workspace.css" layer(pages);
 @import "./styles/states.css" layer(pages);

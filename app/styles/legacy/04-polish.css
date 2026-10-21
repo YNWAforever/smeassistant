@@ -76,7 +76,6 @@ body {
 .price,
 .proof-value strong,
 .month-metrics strong,
-.evidence-big-value,
 .public-demo-evidence strong,
 .public-demo-proof-value,
 .assistant-evidence-value,
@@ -694,10 +693,6 @@ body {
 /* Three long button labels in one unwrapped row pushed the draft card past
    its column (and to 682px on a 390px phone). */
 .draft-editor-actions { flex-wrap: wrap; }
-.draft-layout > *,
-.workflow-state-layout > *,
-.history-layout > *,
-.evidence-detail-grid > * { min-width: 0; }
 @media (max-width: 767px) {
   .draft-editor-actions { flex-direction: column; align-items: stretch; }
   .draft-editor-actions > .button,
@@ -710,11 +705,7 @@ body {
 .mobile-bottom-nav a { color: var(--ink-3); }
 .mobile-bottom-nav a.is-active { color: var(--brand-text); }
 /* The approval card kept its widest unwrapped button as its minimum width. */
-.approval-panel > * { min-width: 0; }
-.approval-panel [data-slot="button"] { height: auto; min-height: 40px; white-space: normal; }
 /* Side cards are ~310px: badges wrap under the title instead of crushing it. */
-.approval-panel .section-card-heading { flex-wrap: wrap; gap: 8px 12px; }
-.approval-panel .section-card-heading h2 { font-size: 19px; }
 @media (max-width: 767px) {
   .section-card-heading { flex-wrap: wrap; gap: 8px 12px; }
   .section-card-heading > div:last-child { flex-wrap: wrap; }
@@ -893,7 +884,6 @@ body {
 /* ── Workspace: shared label/value lists ───────────────────────────────── */
 /* `asset-meta` and `integration-meta` dl blocks had no rules: each dt and dd
    stacked as full-size body text. */
-.asset-meta,
 .integration-meta {
   display: grid;
   margin: 16px 0 0;
@@ -901,11 +891,8 @@ body {
   gap: 0;
   border-top: 1px solid var(--border);
 }
-.asset-meta > div,
 .integration-meta > div { min-width: 0; padding: 11px 14px 11px 0; border-bottom: 1px solid var(--border); }
-.asset-meta dt,
 .integration-meta dt { color: var(--ink-3); font-size: 12px; font-weight: 650; letter-spacing: .02em; }
-.asset-meta dd,
 .integration-meta dd { margin: 4px 0 0; color: var(--ink); font-size: 13px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
 
 /* ── Workspace: integrations ───────────────────────────────────────────── */
@@ -1010,7 +997,6 @@ body {
 .usage-before-generation [data-slot="button"] { width: 100%; height: auto; min-height: 44px; margin-top: 10px; white-space: normal; }
 
 /* ── Workspace: offers and packs ───────────────────────────────────────── */
-.offer-card .asset-meta { margin-bottom: 4px; }
 .pack-card .evidence-list { margin: 0 0 6px; gap: 0; }
 .pack-card .evidence-list li { display: grid; padding: 14px 0; grid-template-columns: 22px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; border-top: 1px solid var(--border); }
 .pack-card .evidence-list li:first-child { border-top: 0; }

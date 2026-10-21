@@ -849,10 +849,7 @@ button:focus-visible {
 
 /* Shared app surfaces */
 .action-tabs,
-.action-detail-tabs,
 .action-card,
-.action-detail-header,
-.asset-reference,
 .goal-card,
 .plan-card,
 .team-table-card {
@@ -872,8 +869,7 @@ button:focus-visible {
 }
 
 .action-evidence,
-.why-now-box,
-.original-context {
+.why-now-box {
   border-radius: 12px;
 }
 
@@ -989,23 +985,18 @@ button:focus-visible {
 /* Owner pages favour legibility over dense dashboard metadata. */
 .workspace-root small { font-size: 12px !important; line-height: 1.45; }
 .workspace-root .eyebrow { font-size: 12px; }
-.workspace-root .provenance-chain strong { font-size: 12px; }
-.workspace-root .provenance-chain small { white-space: normal; }
 .workspace-root .action-card-meta dt,
-.workspace-root .action-card-footer > span,
-.workspace-root .sticky-approval-bar small { font-size: 12px; }
+.workspace-root .action-card-footer > span { font-size: 12px; }
 
 @media (max-width: 767px) {
   .location-proof-grid { grid-template-columns: 1fr; }
   .request-context-banner { grid-template-columns: 22px 1fr; }
   .request-context-banner > .badge { grid-column: 2; justify-self: start; }
-  .sticky-approval-bar { position: static; margin-top: 16px; }
   .mobile-bottom-nav a { font-size: 12px; }
   .workspace-mobile-brand strong { font-size: 12px; }
   .workspace-mobile-brand small { font-size: 12px !important; }
   .prototype-bar { font-size: 12px; }
   .fact-type { font-size: 12px; }
-  .provenance-node { font-size: 12px; }
 }
 
 @media (max-width: 767px) {
@@ -2062,12 +2053,9 @@ button:focus-visible {
 .owner-priority-evidence .why-now-box span { font-size: 14px; line-height: 1.6; }
 .owner-priority-evidence .why-now-box small { margin-top: 8px; font-size: 12px; }
 .owner-approval-note { margin: 20px 0 0; color: var(--soft); font-size: 13px; }
-.owner-workflow-disclosure .provenance-chain { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
-.owner-workflow-disclosure .provenance-chain li:not(:last-child)::after { display: none; }
 @media (max-width: 767px) {
   .owner-home-page.owner-daily-focus .page-intro h1 { font-size: 28px; line-height: 1.3; }
   .owner-home-page.owner-daily-focus .brief-priority-card h2 { font-size: 24px; }
   .owner-results-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "score" "proof"; }
   .owner-home-shortcuts > a { flex: 1 1 160px; min-height: 44px; }
-  .owner-workflow-disclosure .provenance-chain { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
