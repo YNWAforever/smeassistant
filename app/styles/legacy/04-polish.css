@@ -594,144 +594,20 @@ body {
 
 /* ── Workspace: billing ────────────────────────────────────────────────── */
 /* The status badge stretched to the head's height and rendered as a circle. */
-.plan-card-head { align-items: flex-start; }
-.plan-card-head > .badge { flex: 0 0 auto; }
-.plan-card .upgrade-price {
-  display: inline-flex;
-  margin: 14px 0 0;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: var(--lime-soft);
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 650;
-}
-.billing-overview > *,
-.billing-detail-grid > * { min-width: 0; }
-.billing-detail-grid .section-card > h2 { margin: 8px 0 12px; font-size: 19px; }
-.billing-detail-grid .section-card > p:not(.eyebrow):not(.limitation-note) { margin: 0 0 16px; color: var(--ink-3); font-size: 13px; line-height: 1.55; }
-@media (max-width: 767px) {
-  .plan-card .upgrade-price { display: flex; border-radius: 12px; }
-}
 
 /* ── Workspace: shared label/value lists ───────────────────────────────── */
 /* `asset-meta` and `integration-meta` dl blocks had no rules: each dt and dd
    stacked as full-size body text. */
-.integration-meta {
-  display: grid;
-  margin: 16px 0 0;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0;
-  border-top: 1px solid var(--border);
-}
-.integration-meta > div { min-width: 0; padding: 11px 14px 11px 0; border-bottom: 1px solid var(--border); }
-.integration-meta dt { color: var(--ink-3); font-size: 12px; font-weight: 650; letter-spacing: .02em; }
-.integration-meta dd { margin: 4px 0 0; color: var(--ink); font-size: 13px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
 
 /* ── Workspace: integrations ───────────────────────────────────────────── */
-.integration-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-.integration-grid > .section-card { min-width: 0; }
-.integration-head { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 14px; }
-.integration-head > span:first-child {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border-radius: 12px;
-  background: var(--teal-soft);
-  color: var(--teal);
-}
-.integration-head > span:first-child svg { width: 20px; height: 20px; }
-.integration-head h2 { margin: 0; font-size: 17px; }
-.integration-head p { margin: 3px 0 0; color: var(--ink-3); font-size: 13px; }
-.integration-grid .integration-actions {
-  display: flex;
-  margin-top: 16px;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 12px;
-}
-.integration-grid .integration-actions > .limitation-note { flex: 1 1 100%; margin: 0; }
-.instagram-handle-form { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: flex-start; gap: 10px; }
-.instagram-handle-form > [data-slot="button"] { margin-top: 27px; }
-.instagram-handle-form > * { min-width: 0; }
-.instagram-handle-form .field-stack { flex: 1 1 260px; }
 
 /* ── Workspace: calendar ───────────────────────────────────────────────── */
 .compact-action-list small { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .compact-action-list small svg { width: 12px; flex: 0 0 auto; }
 
 /* ── Workspace: create ─────────────────────────────────────────────────── */
-.goal-card-grid { display: grid; margin: 4px 0 18px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; }
-.goal-card-grid .goal-card { display: grid; min-height: 0; grid-template-columns: 40px minmax(0, 1fr) 18px; align-items: start; gap: 12px; }
-.goal-card > span {
-  display: grid;
-  width: 40px;
-  height: 40px;
-  place-items: center;
-  border-radius: 11px;
-  background: var(--teal-soft);
-  color: var(--teal);
-}
-.goal-card > span svg { width: 18px; }
-.goal-card > div { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 6px; }
-.goal-card > div > h2 { flex: 1 1 100%; margin: 8px 0 0; font-size: 16px; }
-.goal-card > div > p { flex: 1 1 100%; margin: 0; color: var(--ink-3); font-size: 13px; line-height: 1.5; }
-.goal-card > div > small { flex: 1 1 100%; color: var(--ink-3); font-size: 12px; }
-.goal-card > svg:last-child { width: 18px; align-self: center; color: var(--soft); }
-.goal-card.is-selected > span { background: var(--paper); }
-.goal-card.is-selected { border-color: var(--teal); background: var(--teal-soft); box-shadow: 0 0 0 1px var(--teal) inset; }
-.create-tabs [data-slot="tabs-content"] { padding: 18px; }
-.create-tabs [data-slot="tabs-content"] > .eyebrow { margin: 0 0 10px; }
-.create-review-layout { display: grid; margin-top: 14px; grid-template-columns: minmax(0, 1.5fr) minmax(280px, .75fr); align-items: start; gap: 14px; }
-.create-review-layout > * { min-width: 0; }
-.required-inputs { display: flex; margin-top: 18px; flex-wrap: wrap; align-items: center; gap: 8px; }
-.required-inputs > strong { flex: 1 1 100%; font-size: 13px; }
-.required-inputs > span {
-  display: inline-flex;
-  padding: 6px 11px;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid var(--warning-border);
-  border-radius: 999px;
-  background: var(--amber-soft);
-  color: var(--brand-text);
-  font-size: 12px;
-  font-weight: 600;
-}
-.required-inputs > span:has(.lucide-circle-check-big, .lucide-circle-check) { border-color: var(--line-warm); background: var(--teal-soft); color: var(--ink-2); }
-.required-inputs > span svg { width: 14px; height: 14px; }
-.usage-before-generation h2 { margin: 8px 0; font-size: 18px; }
-.usage-before-generation > p:not(.eyebrow):not(.limitation-note) { color: var(--ink-3); font-size: 13px; line-height: 1.55; }
-.usage-before-generation [data-slot="button"] { width: 100%; height: auto; min-height: 44px; margin-top: 10px; white-space: normal; }
 
 /* ── Workspace: offers and packs ───────────────────────────────────────── */
-.pack-card .evidence-list { margin: 0 0 6px; gap: 0; }
-.pack-card .evidence-list li { display: grid; padding: 14px 0; grid-template-columns: 22px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; border-top: 1px solid var(--border); }
-.pack-card .evidence-list li:first-child { border-top: 0; }
-.pack-card .evidence-list li > svg { width: 20px; color: var(--teal); }
-.pack-card .evidence-list li > span { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 8px; }
-.pack-card .evidence-list strong { font-size: 14px; }
-.pack-card .evidence-list li > a { color: var(--teal); font-size: 13px; font-weight: 650; }
-
-@media (max-width: 1023px) {
-  .create-review-layout { grid-template-columns: minmax(0, 1fr); }
-}
-@media (max-width: 767px) {
-  .integration-head { grid-template-columns: 40px minmax(0, 1fr); }
-  .integration-head > :last-child:not(div) { grid-column: 2; justify-self: start; }
-  .integration-grid .integration-actions [data-slot="button"] { width: 100%; }
-  .create-tabs [data-slot="tabs-content"] { padding: 12px; }
-}
-.integration-grid .instagram-handle-form { margin-top: 4px; }
-.pack-card .evidence-list li > a { align-self: center; }
-@media (max-width: 767px) {
-  .integration-grid .integration-actions { flex-direction: column; align-items: stretch; }
-  .integration-grid .integration-actions > .limitation-note { justify-content: flex-start; text-align: left; }
-  .integration-grid .instagram-handle-form { padding: 0; }
-  .instagram-handle-form .field-stack { flex: 1 1 auto; width: 100%; }
-  .instagram-handle-form > [data-slot="button"] { margin-top: 0; }
-}
 
 /* ── Workspace: body copy in cards ─────────────────────────────────────── */
 /* An unclassed paragraph in a workspace card fell back to the 17px body size,
@@ -739,25 +615,8 @@ body {
 :where(.workspace-root .section-card) > p:not([class]) { color: var(--ink-3); font-size: 13px; line-height: 1.55; }
 
 /* ── Workspace: assets ─────────────────────────────────────────────────── */
-.asset-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
-.asset-grid > .section-card { display: flex; min-width: 0; padding: 16px; flex-direction: column; }
-.asset-preview {
-  display: grid;
-  margin-bottom: 14px;
-  aspect-ratio: 4 / 3;
-  place-items: center;
-  overflow: hidden;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--paper-2), var(--paper-2));
-}
-.asset-preview img { width: 100%; height: 100%; object-fit: cover; }
-.asset-preview button { color: var(--teal); font-size: 12px; font-weight: 650; }
-.asset-preview button:hover { text-decoration: underline; }
 
 /* ── Workspace: team, notifications, more ──────────────────────────────── */
-.member-scope label > span { display: inline-flex; align-items: center; gap: 5px; }
-.member-scope label > span svg { width: 13px; }
-.role-contract-grid p { color: var(--ink-3); font-size: 12px; line-height: 1.45; }
 
 /* A notification row has no priority marker: the four-column queue grid put
    its text in the 6px marker column, one word per line. */
@@ -775,28 +634,11 @@ body {
 .compact-action-list > div strong { font-size: 14px; }
 .compact-action-list > div small { margin-top: 3px; color: var(--ink-3); font-size: 12px; }
 .compact-action-list > .is-unread strong { color: var(--ink); }
-.asset-preview a { color: var(--teal); font-size: 12px; font-weight: 650; }
-.member-cell strong { font-size: 13px; overflow-wrap: anywhere; }
-.member-cell small { font-size: 12px; color: var(--ink-3); }
 
 /* ── Workspace: activity ───────────────────────────────────────────────── */
 /* On phones the four-column audit table scrolled sideways inside a container
    keyboard users could not reach (axe scrollable-region-focusable); each event
    now reads as one stacked row: time, event, then actor · detail. */
-@media (max-width: 767px) {
-  .activity-table thead { display: none; }
-  .activity-table,
-  .activity-table tbody { display: block; }
-  .activity-table caption { display: block; margin: 0 0 6px; text-align: left; }
-  .activity-table tr { display: flex; padding: 12px 0; flex-wrap: wrap; align-items: baseline; border-bottom: 1px solid var(--border); }
-  .activity-table td { display: block; padding: 0; border: 0; white-space: normal; }
-  .activity-table td:nth-child(1) { flex: 1 1 100%; order: 0; color: var(--ink-3); font-size: 12px; font-variant-numeric: tabular-nums; }
-  .activity-table td:nth-child(3) { flex: 1 1 100%; order: 1; margin: 3px 0 2px; color: var(--ink); font-size: 14px; font-weight: 650; }
-  .activity-table td:nth-child(2) { order: 2; color: var(--ink-3); font-size: 12px; }
-  .activity-table td:nth-child(4) { order: 3; color: var(--ink-3); font-size: 12px; }
-  .activity-table td:nth-child(4):not(:empty)::before { content: "\00a0·\00a0"; }
-  .activity-table td[colspan] { flex-basis: 100%; font-size: 13px; }
-}
 
 /* ── Public: legal documents ───────────────────────────────────────────── */
 /* Policy text ran at 12–13px across the full 1300px container (~200

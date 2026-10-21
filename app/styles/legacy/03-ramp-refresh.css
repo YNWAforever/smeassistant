@@ -168,11 +168,6 @@ button:focus-visible {
 
 .public-menu-trigger { display: none; }
 
-.sheet-form { display: grid; gap: 18px; padding: 22px 0; }
-.guardrail-list { display: grid; gap: 10px; margin-top: 18px; }
-.guardrail-list span { display: flex; gap: 9px; align-items: flex-start; color: var(--ink-2); font-size: 12px; line-height: 1.5; }
-.guardrail-list svg { width: 16px; height: 16px; flex: 0 0 16px; color: var(--danger-text); }
-
 .comparison-fairness-note {
   margin: 12px 0 0;
   color: var(--ink-3);
@@ -477,10 +472,7 @@ button:focus-visible {
 }
 
 /* Shared app surfaces */
-.action-card,
-.goal-card,
-.plan-card,
-.team-table-card {
+.action-card {
   border-radius: 18px;
 }
 
