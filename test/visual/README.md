@@ -45,4 +45,10 @@ Narrow a run with environment variables:
 
 Before and after captures read the same rows from one running stack, so IDs and dates match. Restarting the stack gives new IDs, so take a fresh baseline after a restart.
 
+## Pitfalls
+
+- **The dev server can miss git's rewrites.** After `git stash`, `git stash pop` or a branch switch, `next dev` sometimes keeps serving the old stylesheet. Save `app/globals.css` again (any edit, then undo it) and check that the served CSS is the one you expect before capturing.
+- **Text in the fixed, blurred approval bar** can differ by a few hundred glyph pixels between runs. If a capture differs only there, compare computed styles before treating it as a change.
+- **Two runs with no change must give zero differences.** Check that first when adding a state.
+
 Everything stays on loopback: the browser's proxy blocks other hosts, and SQL refuses any container but the stack's own.
