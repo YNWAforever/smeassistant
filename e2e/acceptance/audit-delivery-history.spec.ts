@@ -225,7 +225,13 @@ test("bilingual completed-page reloads preserve exact version, approval, deliver
         } else {
           const card = page.locator(".action-card").filter({ has: page.getByRole("heading", { name: chinese ? "回覆評論" : "Reply to reviews", exact: true }) });
           await expect(card).toBeVisible();
-          await expect(card.getByText(chinese ? "已套用（店主回報）" : "Applied (reported)", { exact: true })).toBeVisible();
+          const why = card.locator("details.trust-disclosure");
+          await expect(why).not.toHaveAttribute("open");
+          const summary = why.locator(":scope > summary");
+          await expect(summary).toHaveText(chinese ? "點解咁講" : "Why you can trust this");
+          await summary.click();
+          await expect(why).toHaveAttribute("open", "");
+          await expect(why.getByText(chinese ? "已套用（店主回報）" : "Applied (reported)", { exact: true })).toBeVisible();
         }
         expect(snapshot(), `${locale} ${route} ${load} must not mutate durable records`).toEqual(before);
         expect(mutations).toEqual([]);
