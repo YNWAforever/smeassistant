@@ -106,6 +106,14 @@ export interface SnapshotRow {
 }
 
 
+/** One row per location for workspace selection; no snapshot means null evidence. */
+export interface LocationCardRow extends LocationRow {
+  overall_score: SnapshotRow["overall_score"];
+  coverage: SnapshotRow["coverage"];
+  observed_at: string | null;
+  urgent_actions: number;
+}
+
 /** 'YYYY-MM' in the workspace's timezone (§3.10). An unknown IANA name falls back to UTC rather than throwing. */
 export function currentPeriod(timezone: string, now: Date = new Date()): string {
   const options: Intl.DateTimeFormatOptions = { year: "numeric", month: "2-digit" };
@@ -197,10 +205,6 @@ export async function countUrgentActions(workspaceId: string, locationId?: strin
   return read("actions", () => workspaceReadRepository().urgentActions(workspaceId, locationId));
 }
 
-async function latestSnapshot(workspaceId: string, locationId: string): Promise<SnapshotRow | null> {
-  return read("snapshots", () => workspaceReadRepository().latestSnapshot(workspaceId, locationId));
-}
-
 // Memoised per server render (React `cache`): the workspace layout and its page
 // both load this context, and each uncached call is four queries including the
 // usage upsert. Keyed by primitives because each guard builds a new membership.
@@ -231,29 +235,31 @@ export async function listWorkspaceCards(userId: string): Promise<WorkspaceCard[
   const memberships = await listMemberships(userId);
   if (memberships.length === 0) return [];
   const workspaceIds = memberships.map((m) => m.workspaceId);
-  const workspaceRows = await read("workspaces", () => workspaceReadRepository().workspaces(workspaceIds));
-  const byId = new Map((workspaceRows ?? []).map((row) => [row.id, summariseWorkspace(row)]));
-  const locationRows = await loadLocationRows(workspaceIds);
+  const repository = workspaceReadRepository();
+  const [workspaceRows, locationRows] = await Promise.all([
+    read("workspaces", () => repository.workspaces(workspaceIds)),
+    read("locations", () => repository.locationCards(workspaceIds)),
+  ]);
+  const byId = new Map(workspaceRows.map((row) => [row.id, summariseWorkspace(row)]));
+  const locationsByWorkspace = new Map<string, WorkspaceCardLocation[]>();
+  for (const row of locationRows) {
+    if (!row.workspace_id) continue;
+    const locations = locationsByWorkspace.get(row.workspace_id) ?? [];
+    locations.push({
+      ...summariseLocation(row),
+      latestScore: toNumber(row.overall_score),
+      latestCoverage: toNumber(row.coverage),
+      urgentActions: row.urgent_actions,
+      lastScanAt: row.observed_at,
+    });
+    locationsByWorkspace.set(row.workspace_id, locations);
+  }
 
   const cards: WorkspaceCard[] = [];
   for (const membership of memberships) {
     const workspace = byId.get(membership.workspaceId);
     if (!workspace) continue;
-    const locations = await Promise.all(
-      locationRows
-        .filter((row) => row.workspace_id === workspace.id)
-        .map(async (row): Promise<WorkspaceCardLocation> => {
-          const [snapshot, urgentActions] = await Promise.all([latestSnapshot(workspace.id, row.id), countUrgentActions(workspace.id, row.id)]);
-          return {
-            ...summariseLocation(row),
-            latestScore: toNumber(snapshot?.overall_score),
-            latestCoverage: toNumber(snapshot?.coverage),
-            urgentActions,
-            lastScanAt: snapshot?.observed_at ?? null,
-          };
-        }),
-    );
-    cards.push({ workspace, role: membership.role, locations });
+    cards.push({ workspace, role: membership.role, locations: locationsByWorkspace.get(workspace.id) ?? [] });
   }
   return cards;
 }
