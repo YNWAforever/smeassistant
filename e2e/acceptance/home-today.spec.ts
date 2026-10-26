@@ -32,9 +32,12 @@ for (const visual of [
     const card = page.locator(".brief-priority-card").first();
     await expect(page.locator("h1")).toContainText(visual.heading);
     const title = card.locator("h2");
+    const sentence = card.locator(".coach-sentence");
     const button = card.locator(".brief-priority-actions a");
     await expect(title).toBeVisible();
+    await expect(sentence).toBeVisible();
     await expect(button).toBeVisible();
+    await expect(card.locator(".brief-action-meta")).toHaveCount(0);
 
     const limit = await visibleLimit(page);
     await test.info().attach("first-screen-layout", {
@@ -44,12 +47,13 @@ for (const visual of [
         viewport: page.viewportSize(),
         visibleLimit: limit,
         title: await title.boundingBox(),
+        sentence: await sentence.boundingBox(),
         primaryAction: await button.boundingBox(),
-        metadata: await card.locator(".brief-action-meta").boundingBox(),
       }),
     });
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
     expect(await bottom(title)).toBeLessThanOrEqual(limit);
+    expect(await bottom(sentence)).toBeLessThanOrEqual(limit);
     expect(await bottom(button)).toBeLessThanOrEqual(limit);
     // A visible button can still be covered by the fixed navigation.
     expect(await button.evaluate((element) => {
@@ -63,9 +67,12 @@ for (const visual of [
     await expect(evidence).not.toHaveAttribute("open");
     await expect(page.locator(".brief-score-card")).toBeHidden();
     await expect(page.locator(".why-now-box").first()).toBeHidden();
+    // Effort, phase and version stay in the closed 「why this first」 disclosure, not on the open card.
+    await expect(evidence.locator(".brief-action-meta")).toBeHidden();
     await page.screenshot({ path: test.info().outputPath("owner-daily-focus-mobile.png"), fullPage: true });
     await evidence.locator("summary").click();
     await expect(evidence.locator(".why-now-box")).toBeVisible();
+    await expect(evidence.locator(".brief-action-meta")).toBeVisible();
     await evidence.locator("summary").click();
     await results.locator("summary").click();
     await expect(results.locator(".brief-score-card")).toBeVisible();
