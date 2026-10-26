@@ -1,0 +1,25 @@
+{
+  "baseline_commit": "85dbcd6cdfecbecad450977c5d9b9d5a732f94a5",
+  "branch": "fix/audit-p0-cleanup",
+  "scope": "Changed runtime, tooling and test files; documentation and build artifacts excluded. SHA256 of final bytes after independent review corrections.",
+  "files": {
+    "app/auth/callback/viewer-grant.test.ts": null,
+    "lib/db/config.test.ts": "993cefd11f26b6e182e95ca5e078f17e1764581654857a2a7b1502bed225cc77",
+    "lib/db/config.ts": "2e8a875d3b086610e983e9e88c39d4c1026b19ba4fe6b750058632097958d68e",
+    "lib/identity/claim-viewer-grant.ts": null,
+    "lib/identity/complete-sign-in-ports.test.ts": "4b84f1a9d55e0a617eb587cb4c193a5054d388215aa408734c053d7b994d7b11",
+    "lib/identity/complete-sign-in-ports.ts": "18898c7259cf7908e3dbc85f69e9ab3365d8d8abe6bf8d492bd8859ee5c3e378",
+    "lib/oauth/claim-flow-flag.ts": "762ec012c1e08c98ca1ee9bbfedfc00aa3708174ddc7a9e577f69f69867d5af7",
+    "lib/repositories/claims.ts": "a5b4ffb74cdfc6dad8ab381bfb068f65d3da248a42550757deae973d7a5e1860",
+    "lib/verify/website-sweep.test.ts": "e3f41d16b01319970d662867d2542cdefded9ace2f52eb26f51c3fdfe3bb1854",
+    "lib/website/checks.test.ts": "c43715d42668baaf8c33dc1f381975b61825f735e4d02960c802adb58db31096",
+    "lib/website/checks.ts": "08a7194188230487e0df9c1d2f52dcd3c3109015fa14416ec1298b023a45b9b8",
+    "lib/website/safe-fetch.test.ts": "07f3c78c54d76dfc45e871c85f4c52507a627c82f715b55ba5c87d730731cf97",
+    "lib/website/safe-fetch.ts": "a46b09e220583683735df548ffed08ce8bb46990e980e77c9fcf5312ddfbd323",
+    "lib/workspace/claim-scan.test.ts": "addfd2153c9aeea91d5557d423ca88f7dad761b44fd68a9b35ac527c98e3f7e5",
+    "lib/workspace/claim-scan.ts": "9d096b74e43e986407414e71681739bd909955416da291cf3b0125ce4147f73d",
+    "scripts/assert-no-self-service-claim.mjs": "f763916281769637414f96e215802e58e3898b8bed6d7016f3b182da1f2a3554",
+    "test/integration/neon-membership.integration.test.ts": "03d8fdae3686ca261a7e92a45ffd64f7e49eff444a813b63152d0787b06db93b",
+    "test/integration/neon-owner-sign-in-completion.integration.test.ts": "3fe78730fe9b3c8539679593ed509b4dd677b507140f7175196016c5be598317"
+  }
+}

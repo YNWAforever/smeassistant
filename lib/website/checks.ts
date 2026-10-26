@@ -1,4 +1,5 @@
 import { requestSignal } from "@/lib/jobs/execution-budget";
+import { fetchWebsiteSafely } from "./safe-fetch";
 
 /**
  * Website checks (CLAUDE.md §3.6.2). Fifteen display-only checks run at snapshot
@@ -50,7 +51,6 @@ export interface RunWebsiteChecksOptions {
 }
 
 const DEFAULT_TIMEOUT_MS = 5_000;
-const MAX_BYTES = 512 * 1024;
 
 function attr(tag: string, name: string): string | null {
   const match = tag.match(new RegExp(`\\b${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, "i"));
@@ -214,7 +214,6 @@ export async function runWebsiteChecksWithUrl(
   url: string,
   opts: RunWebsiteChecksOptions = {},
 ): Promise<WebsiteChecksFetch> {
-  const doFetch = opts.fetch ?? globalThis.fetch;
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   let target: URL;
   try {
@@ -224,15 +223,11 @@ export async function runWebsiteChecksWithUrl(
   }
   const controller = requestSignal(timeoutMs);
   try {
-    const response = await doFetch(target.toString(), {
-      signal: controller.signal,
-      redirect: "follow",
-      headers: { "user-agent": "SMEScannerWorkspace/1.0 (+website-checks)", accept: "text/html,application/xhtml+xml" },
+    const response = await fetchWebsiteSafely(target.toString(), {
+      signal: controller.signal, timeoutMs, fetch: opts.fetch,
     });
     if (!response.ok) return { checks: EMPTY_WEBSITE_CHECKS, finalUrl: null };
-    const html = (await response.text()).slice(0, MAX_BYTES);
-    const finalUrl = response.url || target.toString();
-    return { checks: summarise(inspectHtml(html, finalUrl)), finalUrl };
+    return { checks: summarise(inspectHtml(response.html, response.finalUrl)), finalUrl: response.finalUrl };
   } catch {
     // Unreachable, timed out, TLS failure: website state becomes `unavailable`
     // (evaluated = 0). Never guess a partial result.
@@ -242,7 +237,7 @@ export async function runWebsiteChecksWithUrl(
   }
 }
 
-/** Byte-identical behaviour to before: the scan path's entry point. */
+/** Scan entry point; preserves the persisted WebsiteChecks shape. */
 export async function runWebsiteChecks(url: string, opts: RunWebsiteChecksOptions = {}): Promise<WebsiteChecks> {
   return (await runWebsiteChecksWithUrl(url, opts)).checks;
 }

@@ -1,10 +1,6 @@
-// Guardrail 15: OWNER_SELF_SERVICE_CLAIM is a scan-hijack primitive (email-match
-// self-service ownership) and must never be enabled -- lib/workspace/claim-scan.ts
-// already reads it as a strict `=== "true"` check, defaulting closed, but that is
-// only the runtime behavior. This is the separate build/deploy-startup half of
-// P1.2's requirement: fail the gate outright if the variable is ever set to any
-// truthy-looking value in the environment this check runs in, rather than relying
-// solely on the runtime code path to keep it off.
+// Guardrail 15: reject stale deployment configuration for the retired,
+// insecure email/grant ownership path. Runtime code never enables that path;
+// keep this gate so configuration drift is caught before deployment too.
 const value = process.env.OWNER_SELF_SERVICE_CLAIM;
 if (value !== undefined && value.trim() !== "" && value.trim().toLowerCase() !== "false") {
   console.error(

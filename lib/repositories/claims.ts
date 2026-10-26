@@ -52,9 +52,6 @@ export const claimsRepository = {
  async attachJob(jobId:string,workspaceId:string,db:Pick<Pool,"query">=getPool()):Promise<boolean> {
   return Boolean((await db.query("UPDATE audit_jobs SET workspace_id=$2 WHERE id=$1 AND workspace_id IS NULL RETURNING id",[jobId,workspaceId])).rows.length);
  },
- async firstLeadEmail(jobId:string):Promise<string|null> {
-  return (await getPool().query<{email:string}>("SELECT email FROM leads WHERE job_id=$1 AND email IS NOT NULL ORDER BY created_at,id LIMIT 1",[jobId])).rows[0]?.email??null;
- },
  /**
   * Mail eligibility only: may this address be sent a sign-in link for this
   * report? It never grants workspace access or ownership -- that stays
