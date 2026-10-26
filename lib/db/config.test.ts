@@ -1,6 +1,13 @@
+import { createRequire } from "node:module";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { readDatabaseConfig } from "./config";
+
+// Exercise the pinned driver's effective TLS options without opening a socket.
+const require = createRequire(import.meta.url);
+const ConnectionParameters = require("pg/lib/connection-parameters") as new (config: string | { connectionString: string }) => {
+  ssl: boolean | { rejectUnauthorized?: boolean; checkServerIdentity?: unknown };
+};
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -122,5 +129,75 @@ describe("readDatabaseConfig", () => {
         DATABASE_URL_UNPOOLED: "postgresql://owner:password@db.example/app",
       }),
     ).toThrow("database_configuration_insecure");
+  });
+
+  describe("effective production transport", () => {
+    const secureUrl = "postgresql://app:synthetic@db.example/app?sslmode=verify-full";
+    const nested = encodeURIComponent("postgresql://app:synthetic@db.example/app?sslmode=disable");
+    const insecureQueries = [
+      "sslmode=verify-full&sslmode=disable",
+      "sslmode=verify-full&%73slmode=no-verify",
+      "sslmode=verify-full&sslmode=verify-full",
+      "sslmode=no-verify",
+      "sslmode=VERIFY-FULL",
+      "sslmode=require&uselibpqcompat=true",
+      "sslmode=verify-ca&uselibpqcompat=true",
+      "sslmode=require&uselibpqcompat=false&uselibpqcompat=true",
+      `sslmode=verify-full&connectionString=${nested}`,
+      `sslmode=verify-full&%63onnectionString=${nested}`,
+    ];
+
+    it.each(insecureQueries)("rejects app and migration TLS overrides: %s", query => {
+      vi.stubEnv("NODE_ENV", "production");
+      const unsafeUrl = `postgresql://app:synthetic@db.example/app?${query}`;
+      for (const env of [
+        { DATABASE_URL: unsafeUrl },
+        { DATABASE_URL: secureUrl, DATABASE_URL_UNPOOLED: unsafeUrl },
+      ]) {
+        expect(() => readDatabaseConfig(env)).toThrow("database_configuration_insecure");
+      }
+    });
+
+    it.each([
+      "sslmode=require&channel_binding=require",
+      "%73slmode=%72equire&channel_binding=require",
+      "sslmode=verify-ca&uselibpqcompat=false",
+      "sslmode=verify-full&uselibpqcompat=true",
+      "sslmode=verify-full&ssl=0",
+      "sslmode=verify-full&ssl=no-verify",
+      "ssl%6dode=verify-full&x=%zz",
+      "ssl%6dode=verify-full&x=two words",
+    ])("retains certificate and hostname verification with %s", query => {
+      vi.stubEnv("NODE_ENV", "production");
+      const url = `postgresql://app:synthetic@db.example/app?${query}`;
+      const config = readDatabaseConfig({ DATABASE_URL: url, DATABASE_URL_UNPOOLED: url });
+      for (const connectionUrl of [config.applicationUrl, config.migrationUrl!]) {
+        expect(new URL(connectionUrl).searchParams.get("sslmode")).toBe("verify-full");
+        const { ssl } = new ConnectionParameters(connectionUrl);
+        expect(ssl).toBeTruthy();
+        expect(ssl).not.toBe(false);
+        expect(ssl).not.toHaveProperty("rejectUnauthorized", false);
+        expect(ssl).not.toHaveProperty("checkServerIdentity");
+      }
+    });
+
+    it("preserves plaintext disposable local fixtures outside production", () => {
+      vi.stubEnv("NODE_ENV", "test");
+      const config = readDatabaseConfig({ DATABASE_URL: "postgresql://fixture:synthetic@127.0.0.1/fixture?sslmode=disable" });
+      expect(new ConnectionParameters(config.applicationUrl).ssl).toBe(false);
+    });
+
+    it("does not inherit a weak PGSSLMODE for either production URL", () => {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("PGSSLMODE", "no-verify");
+      const config = readDatabaseConfig({ DATABASE_URL: secureUrl, DATABASE_URL_UNPOOLED: secureUrl });
+      for (const connectionString of [config.applicationUrl, config.migrationUrl!]) {
+        // Pools pass an options object, which takes the driver's second parse path.
+        const { ssl } = new ConnectionParameters({ connectionString });
+        expect(ssl).toBeTruthy();
+        expect(ssl).not.toHaveProperty("rejectUnauthorized", false);
+        expect(ssl).not.toHaveProperty("checkServerIdentity");
+      }
+    });
   });
 });

@@ -52,7 +52,8 @@ describe("Brand settings reliability", () => {
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "12-23" } });
     save();
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveFocus();
+    // The alert commits before its passive effect assigns focus.
+    await waitFor(() => expect(alert).toHaveFocus());
     expect(screen.getByLabelText("Approved claims (one per line)")).toHaveValue("Draft claim");
     expect(screen.getByLabelText("Prohibited terms (one per line)")).toHaveValue("No promises");
     expect(screen.getByLabelText("Value")).toHaveValue("12-23");

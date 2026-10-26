@@ -2,7 +2,7 @@ import "server-only";
 import type { Pool, QueryResultRow } from "pg";
 import type { MonthWindow } from "../workspace/month-window";
 import { getPool } from "../db/client";
-import type { WorkspaceRow, LocationRow, UsageRow, SnapshotRow } from "../workspace/queries";
+import type { WorkspaceRow, LocationRow, UsageRow, SnapshotRow, LocationCardRow } from "../workspace/queries";
 
 import type { ActionState } from "../domain";
 import type { ActionRow } from "../workspace/overview";
@@ -50,6 +50,34 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
     async locations(workspaceIds: string[]): Promise<LocationRow[]> {
       if (!workspaceIds.length) return [];
       return rows<LocationRow>(`SELECT ${LOCATION_COLUMNS} FROM locations WHERE workspace_id = ANY($1::uuid[]) ORDER BY is_primary DESC, name ASC`, [workspaceIds]);
+    },
+    /** Selector summaries in one statement, independent of membership/location count. */
+    async locationCards(workspaceIds: string[]): Promise<LocationCardRow[]> {
+      if (!workspaceIds.length) return [];
+      // Reduce each source BEFORE joining: snapshot history must not multiply
+      // urgent counts. Both keys bind evidence/actions to the location's tenant.
+      // Set-based reads avoid repeated history scans on the current schema.
+      return rows<LocationCardRow>(`WITH latest AS (
+          SELECT DISTINCT ON (workspace_id, location_id)
+            workspace_id, location_id, overall_score, coverage, observed_at
+          FROM scan_snapshots
+          WHERE workspace_id=ANY($1::uuid[]) AND location_id IS NOT NULL
+          ORDER BY workspace_id, location_id, observed_at DESC, created_at DESC, id DESC
+        ), urgent AS (
+          SELECT workspace_id, location_id, count(*)::int AS count
+          FROM actions
+          WHERE workspace_id=ANY($1::uuid[]) AND location_id IS NOT NULL
+            AND priority='urgent' AND action_state NOT IN ('completed','dismissed','cancelled','expired')
+          GROUP BY workspace_id, location_id
+        )
+        SELECT l.id, l.workspace_id, l.slug, l.name, l.address, l.district, l.is_primary, l.place_id,
+          s.overall_score, s.coverage, s.observed_at::text,
+          coalesce(u.count,0)::int AS urgent_actions
+        FROM locations l
+        LEFT JOIN latest s ON s.workspace_id=l.workspace_id AND s.location_id=l.id
+        LEFT JOIN urgent u ON u.workspace_id=l.workspace_id AND u.location_id=l.id
+        WHERE l.workspace_id=ANY($1::uuid[])
+        ORDER BY l.is_primary DESC, l.name ASC`, [workspaceIds]);
     },
     async usage(workspaceId: string, period: string, allowance: number | null): Promise<UsageRow> {
       // Insert and re-read in separate statements: a concurrent conflict winner is

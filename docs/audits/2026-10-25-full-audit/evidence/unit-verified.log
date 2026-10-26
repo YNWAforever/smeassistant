@@ -1,0 +1,63 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test /workspace/smeassistant
+> vitest run --exclude lib/evidence/safe-media.test.ts && vitest run lib/evidence/safe-media.test.ts && corepack pnpm -r test
+
+
+ RUN  v4.1.11 /workspace/smeassistant
+
+
+ Test Files  505 passed (505)
+      Tests  6078 passed (6078)
+   Start at  02:59:58
+   Duration  281.87s (transform 9.06s, setup 44.78s, import 64.18s, tests 84.24s, environment 25.65s)
+
+
+ RUN  v4.1.11 /workspace/smeassistant
+
+
+ Test Files  1 passed (1)
+      Tests  62 passed (62)
+   Start at  03:04:40
+   Duration  1.60s (transform 80ms, setup 100ms, import 107ms, tests 1.24s, environment 0ms)
+
+Scope: 4 of 5 workspace projects
+packages/region test$ vitest run
+packages/scoring test$ vitest run
+packages/region test: (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+packages/region test:   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+packages/region test: Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+packages/region test:  RUN  v4.1.11 /workspace/smeassistant/packages/region
+packages/scoring test: (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+packages/scoring test:   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+packages/scoring test: Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+packages/scoring test:  RUN  v4.1.11 /workspace/smeassistant/packages/scoring
+packages/region test:  Test Files  3 passed (3)
+packages/region test:       Tests  23 passed (23)
+packages/region test:    Start at  03:04:42
+packages/region test:    Duration  515ms (transform 57ms, setup 0ms, import 94ms, tests 22ms, environment 0ms)
+packages/region test: Done
+packages/scoring test:  Test Files  16 passed (16)
+packages/scoring test:       Tests  183 passed (183)
+packages/scoring test:    Start at  03:04:42
+packages/scoring test:    Duration  2.25s (transform 232ms, setup 0ms, import 440ms, tests 104ms, environment 1ms)
+packages/scoring test: Done
+packages/contracts test$ vitest run
+packages/contracts test: (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+packages/contracts test:   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+packages/contracts test: Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+packages/contracts test:  RUN  v4.1.11 /workspace/smeassistant/packages/contracts
+packages/contracts test:  Test Files  3 passed (3)
+packages/contracts test:       Tests  20 passed (20)
+packages/contracts test:    Start at  03:04:45
+packages/contracts test:    Duration  440ms (transform 43ms, setup 0ms, import 79ms, tests 18ms, environment 0ms)
+packages/contracts test: Done
+packages/scan-engine test$ vitest run
+packages/scan-engine test: (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+packages/scan-engine test:   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+packages/scan-engine test: Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+packages/scan-engine test:  RUN  v4.1.11 /workspace/smeassistant/packages/scan-engine
+packages/scan-engine test:  Test Files  28 passed (28)
+packages/scan-engine test:       Tests  299 passed (299)
+packages/scan-engine test:    Start at  03:04:46
+packages/scan-engine test:    Duration  4.25s (transform 372ms, setup 0ms, import 769ms, tests 358ms, environment 2ms)
+packages/scan-engine test: Done
