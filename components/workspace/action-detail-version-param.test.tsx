@@ -186,6 +186,7 @@ describe("the action page's version landing (P4.3)", () => {
 
   it("puts the inputs anchor on the input form when it shows", () => {
     mount({ missingInputs: ["brand_voice"] });
+    fireEvent.click(screen.getByRole("button", { name: "Change the draft" }));
     const form = document.querySelector("form.input-form");
     expect(form).not.toBeNull();
     expect(document.querySelector("#inputs")).toBe(form);

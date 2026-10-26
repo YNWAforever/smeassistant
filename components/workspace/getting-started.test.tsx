@@ -14,13 +14,23 @@ const items = [
   { key: "deliver" as const, done: false, href: "/en/owner/kam/actions?view=awaiting_approval" },
 ]
 
-it("counts real steps, links only open steps the role may reach, and marks done ones", () => {
+it("shows only the next unfinished step and its permitted link", () => {
   render(<GettingStarted items={items} locale="en" />)
-  expect(screen.getByText("2 of 5 done")).toBeTruthy()
   expect(screen.getByRole("link", { name: "Set your brand voice" })).toHaveAttribute("href", "/en/owner/kam/business/profile")
-  expect(screen.queryByRole("link", { name: "Connect Google Business" })).toBeNull()
-  expect(screen.queryByRole("link", { name: /Approve your first draft/ })).toBeNull()
-  expect(screen.getByText("Approve your first draft").closest("li")).toHaveAttribute("data-done")
+  expect(screen.queryByText("Connect Google Business")).toBeNull()
+  expect(screen.queryByText("Approve your first draft")).toBeNull()
+  expect(screen.queryAllByRole("listitem")).toHaveLength(1)
+})
+
+it("hides setup after first delivery even when earlier steps are incomplete", () => {
+  const { container } = render(<GettingStarted items={items.map(item => item.key === "deliver" ? { ...item, done: true } : item)} locale="en" />)
+  expect(container.textContent).toBe("")
+})
+
+it("keeps a step without a permitted link as text", () => {
+  render(<GettingStarted items={items.map(item => ({ ...item, href: null }))} locale="en" />)
+  expect(screen.queryByRole("link")).toBeNull()
+  expect(screen.getByText("Set your brand voice")).toBeTruthy()
 })
 
 it.each(["zh-HK", "zh-TW"] as const)("is written in %s", (locale) => {

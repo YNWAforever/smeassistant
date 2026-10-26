@@ -32,7 +32,8 @@
 .provenance-chain small{font-size:12px}
 .provenance-chain .is-complete .provenance-node{background:#28584d;color:#9ce0ce}
 .provenance-chain .is-active .provenance-node{border-color:var(--line-warm);background:#cca37a;color:var(--ink)}
-.draft-layout,.workflow-state-layout,.history-layout,.evidence-detail-grid{display:grid;padding:18px;grid-template-columns:minmax(0,1.5fr) minmax(280px,.65fr);gap:14px}
+.draft-layout{display:grid;grid-template-columns:minmax(0,1fr);padding:18px;gap:14px}
+.workflow-state-layout,.history-layout,.evidence-detail-grid{display:grid;padding:18px;grid-template-columns:minmax(0,1.5fr) minmax(280px,.65fr);gap:14px}
 .asset-reference{display:grid;margin:16px 0;padding:12px;grid-template-columns:40px 1fr auto;align-items:center;gap:10px;border:1px solid var(--border);border-radius:8px;background:var(--paper-2)}
 .asset-reference>span{display:grid;width:38px;height:38px;place-items:center;border-radius:7px;background:var(--teal-soft);color:var(--teal)}
 .asset-reference svg{width:18px}

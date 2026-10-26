@@ -63,12 +63,14 @@ test("an offer becomes two drafts, one is approved and exported, and an edited o
 
   // 3. Approve and export the Instagram draft: usage goes up by exactly one.
   await page.goto(instagramHref);
-  await expect(page.getByRole("button", { name: "核准第 1 版" }).first()).toBeEnabled();
-  await clickUntil(page.getByRole("button", { name: "核准第 1 版" }).first(), page.getByRole("dialog"));
-  await page.getByRole("dialog").getByRole("button", { name: "核准第 1 版" }).click();
-  await expect(page.getByRole("button", { name: /匯出已核准版本/ }).first()).toBeEnabled();
+  await expect(page.locator(".approval-panel").getByRole("button", { name: "確認呢一版", exact: true })).toBeEnabled();
+  await clickUntil(page.locator(".approval-panel").getByRole("button", { name: "確認呢一版", exact: true }), page.getByRole("dialog"));
+  await page.getByRole("dialog").getByRole("button", { name: "確認呢一版", exact: true }).click();
+  const why = page.locator("details.owner-workflow-disclosure");
+  await why.locator(":scope > summary").click();
+  await expect(why.getByRole("button", { name: "下載文字檔", exact: true })).toBeEnabled();
   const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: /匯出已核准版本/ }).first().click();
+  await why.getByRole("button", { name: "下載文字檔", exact: true }).click();
   expect((await download).suggestedFilename()).toMatch(/-v1\.md$/);
   await expect.poll(used).toBe("1");
 
@@ -89,7 +91,7 @@ test("an offer becomes two drafts, one is approved and exported, and an edited o
   // every Approve control, and the server still refuses a direct approve with 409 offer_changed.
   await page.goto(googleHref);
   await expect(page.getByTestId("offer-stale-banner")).toContainText(OFFER_CHANGED);
-  const approves = page.getByRole("button", { name: /^核准/ });
+  const approves = page.getByRole("button", { name: "確認呢一版", exact: true });
   await expect(approves.first()).toBeVisible();
   for (const button of await approves.all()) await expect(button).toBeDisabled();
   await expect(page.locator("body")).not.toContainText("offer_changed");

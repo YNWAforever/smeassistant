@@ -45,6 +45,43 @@ describe("InsightsView", () => {
     expect(cards[1].textContent).toContain("No comparable earlier value");
   });
 
+  it("opens the explanation with before and after, with series and presence rates still closed", () => {
+    const root = render("zh-HK");
+    const why = root.querySelector("details.insights-why");
+    expect(why?.children[1].classList.contains("before-after-grid")).toBe(true);
+    expect(why?.children[1].textContent).toContain("18 → 46");
+    for (const selector of [".insights-series-disclosure", ".insights-presence-disclosure"]) {
+      const disclosure = why?.querySelector(selector);
+      expect(disclosure?.tagName).toBe("DETAILS");
+      expect(disclosure?.hasAttribute("open")).toBe(false);
+    }
+    expect(why?.querySelector(".trend-card table")?.closest("details")?.classList.contains("insights-series-disclosure")).toBe(true);
+    expect(why?.querySelector(".surface-trend-card")?.closest("details")?.classList.contains("insights-presence-disclosure")).toBe(true);
+  });
+
+  it("does not invent an earlier value for unknown facts", () => {
+    const cards = Array.from(render("en").querySelectorAll(".metric-change-card"));
+    expect(cards[1].querySelector("h2")?.textContent).toBe("— → 1");
+    expect(cards[1].textContent).toContain("No comparable earlier value");
+  });
+
+  it("keeps the comparison limitation first when no metric values are available", () => {
+    const why = render("en", { metricCards: [] }).querySelector("details.insights-why");
+    expect(why?.children[1].textContent).toContain("No comparable earlier value");
+  });
+
+  it("keeps all locations separate without a combined score", () => {
+    const root = render("zh-HK", {
+      locationSlug: "all",
+      perLocation: [{ location, score: 62, coverage: 0.9, comparable: false, observedAt: at }],
+    });
+    expect(root.querySelector(".page-intro")?.textContent).not.toContain("62");
+    expect(root.querySelector(".insight-summary-grid")).toBeNull();
+    const why = root.querySelector("details.insights-why");
+    expect(why?.hasAttribute("open")).toBe(false);
+    expect(why?.querySelector(".location-proof-grid")?.textContent).toContain("62");
+  });
+
   it("names findings and AI surfaces in words, not codes", () => {
     const text = render("en").textContent ?? "";
     expect(text).not.toContain("bio cta");

@@ -7,8 +7,8 @@ export type GettingStartedKey = "ownership" | "brand" | "google" | "approve" | "
 export type GettingStartedItem = { key: GettingStartedKey; done: boolean; href: string | null }
 
 /**
- * Today's getting-started checklist (Phase 5 decision: it hides itself once
- * every item is done; no dismissal is stored). Every item is read from data
+ * Today's next setup step (hidden after the first delivery; no dismissal
+ * is stored). Every item is read from data
  * the workspace already holds, scoped to this workspace:
  *  - ownership: being here at all means the claim was verified or assigned;
  *  - brand: a saved brand profile with a voice;
@@ -30,6 +30,7 @@ export async function loadGettingStarted(ctx: WorkspaceContext, membership: Memb
       read.anyApprovedVersion(id),
       read.deliveries(id, null, 1),
     ])
+    if (deliveries.length > 0) return null
     const base = `/${locale}/owner/${ctx.workspace.slug}`
     const owner = membership.role === "owner"
     const items: GettingStartedItem[] = [

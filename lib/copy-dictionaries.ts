@@ -1123,7 +1123,7 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     },
     ownerFocus: {
       why: "Why this task first?", results: "View recent results", otherTasks: "Other tasks and drafts",
-      allTasks: "View all tasks", create: "Prepare new content", review: "Review draft", view: "View task", export: "Export approved version", connect: "Check connection",
+      allTasks: "View all tasks", create: "Prepare new content", review: "Review draft", view: "View task", export: "Copy text", connect: "Check connection",
       workflow: "View source and workflow", contentGroup: "Content", historyGroup: "Work history", settingsGroup: "Workspace settings",
       moreIntro: "Manage your content, work history and workspace settings.", approvalNote: "Review before export. Nothing is published automatically.",
     },
@@ -1213,7 +1213,7 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     },
     ownerFocus: {
       why: "點解先做呢項？", results: "睇最近結果", otherTasks: "其他待辦同草稿",
-      allTasks: "查看所有待辦", create: "準備新內容", review: "審閱草稿", view: "查看待辦", export: "匯出已核准版本", connect: "查看連接",
+      allTasks: "查看所有待辦", create: "準備新內容", review: "審閱草稿", view: "查看待辦", export: "複製文字", connect: "查看連接",
       workflow: "點解咁講", contentGroup: "內容資料", historyGroup: "工作紀錄", settingsGroup: "工作台設定",
       moreIntro: "管理素材、品牌資料、工作紀錄與工作台設定。", approvalNote: "你睇過先至可以匯出。唔會自動發佈。",
     },
@@ -1303,7 +1303,7 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     },
     ownerFocus: {
       why: "為什麼先處理這項？", results: "查看最近成效", otherTasks: "其他待辦與草稿",
-      allTasks: "查看所有待辦", create: "準備新內容", review: "審閱草稿", view: "查看待辦", export: "匯出已核准版本", connect: "查看連接",
+      allTasks: "查看所有待辦", create: "準備新內容", review: "審閱草稿", view: "查看待辦", export: "複製文字", connect: "查看連接",
       workflow: "查看來源及流程", contentGroup: "內容資料", historyGroup: "工作紀錄", settingsGroup: "工作台設定",
       moreIntro: "管理素材、品牌資料、工作紀錄與工作台設定。", approvalNote: "審閱確認後才可匯出，不會自動發布。",
     },

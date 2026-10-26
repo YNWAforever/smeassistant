@@ -8,7 +8,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // Extend the one that matches what you are asserting; reaching for render()
 // and then wanting fireEvent is the mistake this note exists to prevent.
 import { renderToStaticMarkup } from "react-dom/server";
-import { act, cleanup, fireEvent, render as renderLive, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render as renderLive, screen, within } from "@testing-library/react";
+
+// The page and sticky bar deliberately repeat the current step's primary.
+function pageButton(name: string | RegExp) {
+  return screen.getAllByRole("button", { name })[0];
+}
+function editSavedDraft() {
+  const change = screen.queryAllByRole("button", { name: /^(Change the draft|唔啱，改返|不合適，修改草稿)$/ })[0];
+  if (change) fireEvent.click(change);
+}
+function openWhy() {
+  const why = document.querySelector<HTMLDetailsElement>("details.owner-workflow-disclosure");
+  if (why && !why.open) fireEvent.click(why.querySelector("summary")!);
+}
+async function confirmSavedVersion(name: string) {
+  fireEvent.click(pageButton(name));
+  const dialog = screen.getByRole("dialog");
+  await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name })); });
+}
 
 const clientMocks = vi.hoisted(() => ({ markApplied: vi.fn(), retractApplied: vi.fn(), runAction: vi.fn(), approveVersion: vi.fn(), exportVersion: vi.fn() }));
 const toastMocks = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn(), message: vi.fn() }));
@@ -170,7 +188,7 @@ describe("focused draft review", () => {
       reviewReference: "Synthetic review", note: "", evidenceAssetId: null, evidenceLabel: null, previousId: null,
       recordedAt: "2026-10-19T00:00:00Z", independent: false }] };
     const root = verificationMarkup(value, [], "en", context);
-    expect(root.querySelector(".action-detail-next strong")?.textContent).toBe("Await independent confirmation");
+    expect(root.querySelector(".action-verification-result")?.textContent).toContain("Await independent confirmation");
     expect(root.querySelector(".action-verification-result")?.textContent).toContain("Current sources cannot verify");
   });
   it("retains owner check history after the applied mark is withdrawn", () => {
@@ -193,7 +211,19 @@ describe("focused draft review", () => {
     expect(root.querySelector("[data-testid=owner-steps]")?.closest("details")).toBeNull();
   });
 
-  it("reads 改稿 → 確認 → 發出 for a saved zh-HK draft and does not use that path for a checklist", () => {
+  it("shows only saved text and confirmation controls at the confirm step", () => {
+    const draft = detail("review-response");
+    draft.versions = [versionRow({ id: "v1", version_no: 1, approval_state: "draft" })];
+    const root = verificationMarkup(draft, [], "zh-HK");
+    expect(root.querySelector("#draft-content")?.hasAttribute("readonly")).toBe(true);
+    expect(root.querySelector(".draft-editor-card > .draft-editor-actions")).toBeNull();
+    expect(root.querySelector(".delivery-card")).toBeNull();
+    expect(root.querySelector(".approval-panel")?.textContent).toContain("確認呢一版");
+    expect(root.querySelector(".approval-panel")?.textContent).toContain("唔啱，改返");
+    expect(root.querySelector('[role="tab"][data-state]')?.textContent).not.toContain("來源證據");
+  });
+
+  it("reads 改稿 → 確認 → 複製文字 for a saved zh-HK draft and does not use that path for a checklist", () => {
     const draft = detail("review-response");
     draft.versions = [versionRow({ id: "v1", version_no: 1, approval_state: "draft" })];
     const root = verificationMarkup(draft, [], "zh-HK");
@@ -201,11 +231,11 @@ describe("focused draft review", () => {
     expect(steps?.textContent).toContain("改稿");
     expect(steps?.textContent).toContain("→");
     expect(steps?.textContent).toContain("確認");
-    expect(steps?.textContent).toContain("發出");
+    expect(steps?.textContent).toContain("複製文字");
     expect(steps?.querySelector('[aria-current="step"]')?.textContent).toContain("確認");
-    expect(root.querySelector(".draft-editor-card")?.textContent).toContain("改稿");
+    expect(root.querySelector("#draft-content")?.hasAttribute("readonly")).toBe(true);
     expect(root.querySelector(".approval-panel")?.textContent).toContain("確認");
-    expect(root.querySelector(".delivery-card")?.textContent).toContain("發出");
+    expect(root.querySelector(".delivery-card")).toBeNull();
     expect([...root.querySelectorAll("[role=tab]")].map((tab) => tab.textContent).join(" ")).not.toContain("流程狀態");
     expect(verificationMarkup(detail(CHECKLIST_TEMPLATES[0].key), [], "zh-HK").querySelector("[data-testid=owner-steps]")).toBeNull();
   });
@@ -223,7 +253,8 @@ describe("focused draft review", () => {
         auditRows={[]} locations={[]} approvedAssets={[]} />,
     );
     expect(root.textContent).toContain("Current sources cannot verify this specific Google review reply.");
-    expect(root.querySelector(".action-detail-next strong")?.textContent).toBe("Check the reply in Google");
+    expect(root.querySelector(".action-verification-result")?.textContent).toContain("Check the reply in Google");
+    expect(root.querySelector(".action-detail-badges")?.closest("details")).not.toBeNull();
     expect(root.querySelector(".action-detail-badges")?.textContent).toContain("Applied (reported)");
   });
 
@@ -259,7 +290,7 @@ describe("focused draft review", () => {
     value.action.applied = true;
     const root = verificationMarkup(value, [], locale);
     expect(root.textContent).toContain("目前來源無法核實這則 Google 評論的指定回覆。");
-    expect(root.querySelector(".action-detail-next strong")?.textContent).toBe("到 Google 核對回覆");
+    expect(root.querySelector(".action-verification-result")?.textContent).toContain("到 Google 核對回覆");
   });
 
   it("keeps another workspace's verification receipt and source out of the action", () => {
@@ -285,9 +316,9 @@ describe("focused draft review", () => {
     value.action.displayPhaseKey = "verified";
     value.versions = [versionRow({ id: "ver-2", version_no: 2, approval_state: "approved" })];
     const root = verificationMarkup(value);
-    expect(root.querySelector(".action-detail-badges")?.textContent).toContain("Verified external change");
-    expect(root.querySelector(".action-detail-next strong")?.textContent).toBe("Review business results separately");
-    expect(root.textContent).toContain("Version 2 approved");
+    expect(root.querySelector(".action-verification-result")?.textContent).toContain("Matching external change observed");
+    expect(root.querySelector(".action-verification-result")?.textContent).toContain("Review business results separately");
+    expect(root.querySelector(".version-approval-record")?.textContent).toContain("Version 2 approved");
   });
 
   it("links a proven recurrence back to the completed work in the same workspace", () => {
@@ -297,6 +328,162 @@ describe("focused draft review", () => {
     const link = root.querySelector('a[href="/en/owner/kam-man-house/actions/11111111-2222-4333-8444-555555555555?location=yik-yam"]');
     expect(link).not.toBeNull();
     expect(link?.textContent).toContain("Follow-up to completed work");
+  });
+});
+
+describe("owner step controls", () => {
+  beforeEach(() => {
+    clientMocks.approveVersion.mockReset();
+    clientMocks.exportVersion.mockReset();
+  });
+  afterEach(cleanup);
+
+  function mountVersion(approval: "draft" | "approved" = "draft") {
+    const value = detail("review-response");
+    value.versions = [versionRow({ id: "saved-version-2", version_no: 2, approval_state: approval, body: "The exact saved reply" })];
+    return renderLive(<ActionDetailClient locale="en" workspaceSlug="kam-man-house" workspaceId="ws-1"
+      timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={value}
+      auditRows={[]} locations={[]} approvedAssets={[]} />);
+  }
+
+  it("offers one Generate control in the editor before the first draft", () => {
+    renderLive(<ActionDetailClient locale="en" workspaceSlug="kam-man-house" workspaceId="ws-1"
+      timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={detail("review-response")}
+      auditRows={[]} locations={[]} approvedAssets={[]} />);
+    const generate = screen.getByRole("button", { name: /^Generate a draft$/ });
+    expect(generate.closest(".draft-editor-card")).not.toBeNull();
+    expect(document.querySelector(".sticky-approval-bar")).toBeNull();
+  });
+
+  it("keeps Regenerate unique on re-edit and repeats Save only while text is dirty", () => {
+    mountVersion();
+    fireEvent.click(pageButton("Change the draft"));
+    expect(screen.getByRole("button", { name: /^Regenerate/ }).closest(".draft-editor-card")).not.toBeNull();
+    expect(document.querySelector(".sticky-approval-bar")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "Unsaved owner revision" } });
+    expect(screen.getByRole("button", { name: /^Regenerate/ })).toBeDisabled();
+    const sticky = document.querySelector(".sticky-approval-bar")! as HTMLElement;
+    expect(within(sticky).getByRole("button", { name: "Save manual edits as a new version" })).toBeEnabled();
+    fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "The exact saved reply" } });
+    expect(screen.getByRole("button", { name: /^Regenerate/ })).toBeEnabled();
+    expect(document.querySelector(".sticky-approval-bar")).toBeNull();
+  });
+
+  it.each([".approval-panel", ".sticky-approval-bar"])("uses the same exact-version dialog from %s", async (selector) => {
+    mountVersion();
+    const primary = within(document.querySelector(selector)! as HTMLElement).getByRole("button", { name: "Confirm this version" });
+    fireEvent.click(primary);
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(clientMocks.approveVersion).not.toHaveBeenCalled();
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: copy.en.action.approval.keepReviewing }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(clientMocks.approveVersion).not.toHaveBeenCalled();
+    fireEvent.click(primary);
+    clientMocks.approveVersion.mockReturnValue(new Promise<never>(() => {}));
+    await act(async () => {
+      fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Confirm this version" }));
+    });
+    expect(clientMocks.approveVersion).toHaveBeenCalledTimes(1);
+    expect(clientMocks.approveVersion).toHaveBeenCalledWith("saved-version-2", undefined);
+    expect(clientMocks.exportVersion).not.toHaveBeenCalled();
+  });
+
+  it("returns from saved read-only text to one editable draft without approval or delivery peers", () => {
+    mountVersion();
+    expect(screen.getByLabelText("Draft")).toHaveAttribute("readonly");
+    expect(screen.queryByRole("button", { name: /Generate a draft|Regenerate with the agent/ })).toBeNull();
+    fireEvent.click(pageButton("Change the draft"));
+    const draft = screen.getByLabelText("Draft");
+    expect(draft).not.toHaveAttribute("readonly");
+    expect(draft).toHaveValue("The exact saved reply");
+    fireEvent.change(draft, { target: { value: "Owner's edited reply" } });
+    expect(pageButton("Save manual edits as a new version")).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Confirm this version" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Copy text/ })).toBeNull();
+    expect(document.querySelector(".approval-panel")).toBeNull();
+    expect(clientMocks.approveVersion).not.toHaveBeenCalled();
+    expect(clientMocks.exportVersion).not.toHaveBeenCalled();
+  });
+
+  it("can return to the saved confirmation after opening the editor, but never drops dirty text", () => {
+    mountVersion();
+    fireEvent.click(pageButton("Change the draft"));
+    const draft = screen.getByLabelText("Draft");
+    const back = pageButton("Review saved text");
+    expect(draft).not.toHaveAttribute("readonly");
+    expect(back).toBeEnabled();
+    fireEvent.change(draft, { target: { value: "Still editing this reply" } });
+    expect(back).toBeDisabled();
+    fireEvent.click(back);
+    expect(draft).toHaveValue("Still editing this reply");
+    expect(draft).not.toHaveAttribute("readonly");
+    fireEvent.change(draft, { target: { value: "The exact saved reply" } });
+    expect(back).toBeEnabled();
+    fireEvent.click(back);
+    expect(screen.getByLabelText("Draft")).toHaveAttribute("readonly");
+    expect(pageButton("Confirm this version")).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Review saved text" })).toBeNull();
+    expect(clientMocks.approveVersion).not.toHaveBeenCalled();
+    expect(clientMocks.exportVersion).not.toHaveBeenCalled();
+  });
+
+  it("retains the published receipt under Why when a historical superseded version is selected", () => {
+    const value = detail("review-response");
+    value.versions = [
+      versionRow({ id: "current-draft", version_no: 3, approval_state: "draft", body: "New draft" }),
+      versionRow({ id: "published-old-version", version_no: 2, approval_state: "superseded", delivery_state: "published", body: "Previously published reply" }),
+    ];
+    renderLive(<ActionDetailClient locale="en" workspaceSlug="kam-man-house" workspaceId="ws-1"
+      timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={value}
+      initialVersionId="published-old-version" auditRows={[]} locations={[]} approvedAssets={[]}
+      publishPanel={{ enabled: false, connectionActive: false, eligibility: { ok: false, reason: "flag_off" },
+        mayAct: false, canPublish: false, canDelete: false,
+        deliveries: [{ id: "published-receipt", versionId: "published-old-version", state: "published", reason: null,
+          verifiedAt: "2026-10-18T10:00:00Z", createdAt: "2026-10-18T09:59:00Z" }] }} />);
+    const receipt = screen.getByText(copy.en.workspace.publish.state.published);
+    const why = receipt.closest("details.owner-workflow-disclosure");
+    expect(why).not.toBeNull();
+    expect(why?.hasAttribute("open")).toBe(false);
+    expect(screen.getByLabelText("Draft")).toHaveValue("Previously published reply");
+    expect(screen.queryByRole("button", { name: /Publish directly|Post to Google/ })).toBeNull();
+    expect(clientMocks.exportVersion).not.toHaveBeenCalled();
+  });
+
+  it("keeps version selection available while author, state and audit details stay folded", () => {
+    mountVersion();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Version & audit history" }), { button: 0 });
+    const version = pageButton(/^Version 2/);
+    expect(version.closest("details")).toBeNull();
+    const technical = document.querySelector(".version-technical-records");
+    expect(technical?.textContent).toContain("Agent");
+    const why = technical?.closest("details");
+    expect(why).not.toBeNull();
+    expect(why?.hasAttribute("open")).toBe(false);
+    expect(document.querySelector(".audit-mini")?.closest("details")).toBe(why);
+  });
+
+  it("offers copy after confirmation and keeps file export in the closed explanation", () => {
+    mountVersion("approved");
+    expect(screen.getByLabelText("Draft")).toHaveAttribute("readonly");
+    const copyButtons = screen.getAllByRole("button", { name: /^Copy text/ });
+    expect(copyButtons).toHaveLength(2);
+    expect(copyButtons.every(button => button.closest("details") === null)).toBe(true);
+    const why = document.querySelector("details.owner-workflow-disclosure");
+    const exportButton = within(why! as HTMLElement).getByRole("button", { name: "Download text file", hidden: true });
+    expect(exportButton.closest("details")).toBe(why);
+    expect(why?.hasAttribute("open")).toBe(false);
+    expect(why?.textContent).toContain("Download text file");
+    expect(screen.queryByRole("button", { name: /Publish directly|Post to Google/ })).toBeNull();
+    expect(document.querySelector(".delivery-card")?.textContent).toContain(copy.en.action.delivery.noConnector);
+  });
+
+  it("keeps the header to a title and sentence with diagnostic chrome in the explanation", () => {
+    mountVersion();
+    const header = document.querySelector(".action-detail-header");
+    expect(header?.querySelector("h1")?.textContent).toBe("Action title");
+    expect(header?.querySelector("p")?.textContent).toBe("Action summary");
+    expect(header?.querySelector(".action-detail-badges, .header-meta, .action-detail-next")).toBeNull();
+    expect(document.querySelector(".action-detail-badges")?.closest("details.owner-workflow-disclosure")).not.toBeNull();
   });
 });
 
@@ -311,7 +498,8 @@ describe("delivery submission identity", () => {
     renderLive(<ActionDetailClient locale="en" workspaceSlug="kam-man-house" workspaceId="ws-1"
       timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={value}
       auditRows={[]} locations={[]} approvedAssets={[]} />);
-    const button = screen.getByRole("button", { name: "Export approved version" });
+    openWhy();
+    const button = pageButton("Download text file");
     await act(async () => { button.click(); button.click(); });
     expect(clientMocks.exportVersion).toHaveBeenCalledTimes(1);
   });
@@ -395,12 +583,9 @@ describe("assistant revisions preserve unsaved edits", () => {
         approvedAssets={[]}
       />,
     );
-    const trigger = screen.getByRole("button", {
-      name: chinese ? "用助理修改並建立新版本" : "Revise with operator as a new version",
-    });
-    const regenerate = screen.getByRole("button", {
-      name: chinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version",
-    });
+    editSavedDraft();
+    const trigger = pageButton(chinese ? "用助理修改並建立新版本" : "Revise with operator as a new version");
+    const regenerate = pageButton(chinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version");
     const editor = screen.getByLabelText(field === "body" ? (chinese ? "草稿" : "Draft") : "Image alt text");
     const savedValue = field === "body" ? "Saved example reply" : "Saved example description";
     expect(trigger).toBeEnabled();
@@ -410,9 +595,7 @@ describe("assistant revisions preserve unsaved edits", () => {
     expect(trigger).toBeDisabled();
     expect(regenerate).toBeDisabled();
     expect(editor).toHaveValue("Unsaved local edit");
-    expect(screen.getByRole("button", {
-      name: chinese ? "儲存手動修改為新版本" : "Save manual edits as a new version",
-    })).toBeEnabled();
+    expect(pageButton(chinese ? "儲存手動修改為新版本" : "Save manual edits as a new version")).toBeEnabled();
     expect(screen.getByText(message)).toBeInTheDocument();
     fireEvent.click(trigger);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -462,9 +645,10 @@ describe("all generation paths preserve unsaved edits", () => {
     value.action.actionState = "needs_input";
     value.action.missingInputs = ["language"];
     renderLive(element(value));
+    editSavedDraft();
     fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "Unsaved reply" } });
     fireEvent.change(screen.getByLabelText(copy.en.workspace.inputs.language), { target: { value: "en" } });
-    const submit = screen.getByRole("button", { name: "Save inputs and generate" });
+    const submit = pageButton("Save inputs and generate");
     expect(submit).toBeDisabled();
     // Enter submits the form without relying on the disabled button.
     await act(async () => { fireEvent.submit(screen.getByRole("form", { name: "Required inputs" })); });
@@ -475,11 +659,12 @@ describe("all generation paths preserve unsaved edits", () => {
 
   it("refuses dirty owner-review-note generation before saving the note", async () => {
     renderLive(element(withReviews(draft())));
+    editSavedDraft();
     fireEvent.click(screen.getByText(copy.en.workspace.scanInputs.addOwn));
     const note = document.querySelector<HTMLTextAreaElement>("#input-owner-review")!;
     fireEvent.change(note, { target: { value: "Additional owner-supplied review" } });
     fireEvent.change(screen.getByLabelText("Image alt text"), { target: { value: "Unsaved description" } });
-    const generate = screen.getByRole("button", { name: copy.en.workspace.scanInputs.addOwnSubmit });
+    const generate = pageButton(copy.en.workspace.scanInputs.addOwnSubmit);
     expect(generate).toBeDisabled();
     fireEvent.click(generate);
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -490,15 +675,16 @@ describe("all generation paths preserve unsaved edits", () => {
   it.each(["regenerate", "manual save"] as const)("keeps the editor locked after %s succeeds until its saved version arrives", async (kind) => {
     const value = draft();
     const view = renderLive(element(value));
+    editSavedDraft();
     clientMocks.runAction.mockResolvedValue({ ok: true, data: { state: "succeeded", versionId: "new-version", versionNo: 4 } });
     fetchSpy.mockResolvedValue(Response.json({ versionId: "new-version", versionNo: 4 }));
     if (kind === "manual save") fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "Manually saved reply" } });
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: kind === "manual save" ? "Save manual edits as a new version" : "Regenerate with the agent as a new version" }));
+      fireEvent.click(pageButton(kind === "manual save" ? "Save manual edits as a new version" : "Regenerate with the agent as a new version"));
     });
     expect(screen.getByLabelText("Draft")).toBeDisabled();
     expect(screen.getByLabelText("Image alt text")).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Reload saved version" })).toBeEnabled();
+    expect(pageButton("Reload saved version")).toBeEnabled();
     const refreshed = { ...value, versions: [
       versionRow({ id: "new-version", version_no: 4, approval_state: "draft", body: kind === "manual save" ? "Manually saved reply" : "Generated reply" }),
       ...value.versions,
@@ -514,8 +700,9 @@ describe("all generation paths preserve unsaved edits", () => {
     fetchSpy.mockImplementation(() => new Promise<Response>((resolve) => { finish = resolve; }));
     const value = draft();
     const view = renderLive(element(value));
+    editSavedDraft();
     fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "Manually saved reply" } });
-    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save manual edits as a new version" })); });
+    await act(async () => { fireEvent.click(pageButton("Save manual edits as a new version")); });
     view.rerender(element({ ...value, versions: [
       versionRow({ id: "new-version", version_no: 4, approval_state: "draft", body: "Manually saved reply" }),
       ...value.versions,
@@ -529,27 +716,29 @@ describe("all generation paths preserve unsaved edits", () => {
   it("shows the latest saved text for comparison and rebases only after an explicit choice", async () => {
     const value = draft();
     const view = renderLive(element(value));
+    editSavedDraft();
     fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "My local changes" } });
     fetchSpy.mockResolvedValue(Response.json({ error: "version_conflict" }, { status: 409 }));
-    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save manual edits as a new version" })); });
-    fireEvent.click(screen.getByRole("button", { name: "Load latest safely" }));
+    await act(async () => { fireEvent.click(pageButton("Save manual edits as a new version")); });
+    fireEvent.click(pageButton("Load latest safely"));
     view.rerender(element({ ...value, versions: [
       versionRow({ id: "newer-version", version_no: 4, approval_state: "draft", body: "Another reviewer's saved changes" }),
       ...value.versions,
     ] }));
     expect(screen.getByLabelText("Draft")).toHaveValue("My local changes");
     expect(screen.getByLabelText("Latest saved draft for comparison")).toHaveValue("Another reviewer's saved changes");
-    expect(screen.getByRole("button", { name: "Approve Version 3" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Keep my edits over Version 4" }));
+    expect(screen.queryByRole("button", { name: "Confirm this version" })).toBeNull();
+    fireEvent.click(pageButton("Keep my edits over Version 4"));
     expect(screen.getByLabelText("Draft")).toHaveValue("My local changes");
     fetchSpy.mockResolvedValue(Response.json({ versionId: "merged-version", versionNo: 5 }));
-    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save manual edits as a new version" })); });
+    await act(async () => { fireEvent.click(pageButton("Save manual edits as a new version")); });
     const writes = fetchSpy.mock.calls.filter(([url]) => String(url).endsWith("/versions"));
     expect(JSON.parse(String(writes.at(-1)?.[1]?.body))).toMatchObject({ body: "My local changes", base_version_id: "newer-version" });
   });
 
   it("drops a previous workspace's unsaved editor when soft navigation reuses the page", () => {
     const view = renderLive(element(draft()));
+    editSavedDraft();
     fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "Private unsaved workspace A text" } });
     const other = draft();
     other.action = { ...other.action, id: "action-b" };
@@ -563,21 +752,23 @@ describe("all generation paths preserve unsaved edits", () => {
 
   it("requires reading current run status after a lost generation response before another model request", async () => {
     renderLive(element(draft()));
+    editSavedDraft();
     clientMocks.runAction.mockResolvedValue({ ok: false, status: 0, error: "network" });
-    const generate = screen.getByRole("button", { name: "Regenerate with the agent as a new version" });
+    const generate = pageButton("Regenerate with the agent as a new version");
     await act(async () => { fireEvent.click(generate); });
     expect(generate).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Reload draft and run status" })).toBeEnabled();
+    expect(pageButton("Reload draft and run status")).toBeEnabled();
     fireEvent.click(generate);
     expect(clientMocks.runAction).toHaveBeenCalledTimes(1);
   });
   it("blocks another inference when the failed response still has usage settlement pending", async () => {
     renderLive(element(draft()));
+    editSavedDraft();
     clientMocks.runAction.mockResolvedValue({ ok: true, data: { runId: "pending-usage", state: "failed", error: "timeout", usagePending: true } });
-    const generate = screen.getByRole("button", { name: "Regenerate with the agent as a new version" });
+    const generate = pageButton("Regenerate with the agent as a new version");
     await act(async () => { fireEvent.click(generate); });
     expect(generate).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Reload draft and run status" })).toBeEnabled();
+    expect(pageButton("Reload draft and run status")).toBeEnabled();
     expect(String(toastMocks.error.mock.calls.at(-1)?.[0])).not.toContain("nothing was counted");
   });
   it("keeps an unsettled provider run blocked after a server reload", () => {
@@ -585,47 +776,50 @@ describe("all generation paths preserve unsaved edits", () => {
     value.runs = [{ id: "pending-usage", action_id: "act-1", agent_key: "review_reply", state: "failed", error: "timeout",
       created_at: "2026-10-17T08:00:00Z", finished_at: "2026-10-17T08:00:45Z", usage_pending: true }];
     renderLive(element(value));
-    expect(screen.getByRole("button", { name: "Regenerate with the agent as a new version" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Reload draft and run status" })).toBeEnabled();
+    editSavedDraft();
+    expect(pageButton("Regenerate with the agent as a new version")).toBeDisabled();
+    expect(pageButton("Reload draft and run status")).toBeEnabled();
   });
 
   it("clears a fulfilled facts request after a definitive generation failure so retry does not ask again", async () => {
     const value = draft();
     value.versions = [];
     const view = renderLive(element(value));
+    editSavedDraft();
     clientMocks.runAction
       .mockResolvedValueOnce({ ok: true, data: { runId: "missing-run", state: "succeeded", factsNeeded: ["reviews_without_response"] } })
       .mockResolvedValueOnce({ ok: true, data: { runId: "failed-run", state: "failed", error: "unconfirmed_business_fact" } });
-    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /^Generate a draft$/ })); });
+    await act(async () => { fireEvent.click(pageButton(/^Generate a draft$/)); });
     const input = document.querySelector<HTMLTextAreaElement>("#input-reviews_without_response")!;
     expect(input).not.toBeNull();
     fireEvent.change(input, { target: { value: "A review supplied by the owner" } });
     fetchSpy.mockResolvedValue(Response.json({ action: value.action }));
-    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save inputs and generate" })); });
+    await act(async () => { fireEvent.click(pageButton("Save inputs and generate")); });
     // The server has stored the input even though the provider could not
     // supply a safe draft. The old local request must not outlive that read.
     view.rerender(element({ ...value, action: { ...value.action, actionState: "needs_input", missingInputs: [] } }));
     expect(document.querySelector("#input-reviews_without_response")).toBeNull();
-    expect(screen.getByRole("button", { name: /^Generate a draft$/ })).toBeEnabled();
+    expect(pageButton(/^Generate a draft$/)).toBeEnabled();
     expect(clientMocks.runAction).toHaveBeenCalledTimes(2);
   });
 
   it("clears an old conflict after the server confirms an explicitly regenerated version", async () => {
     const value = draft();
     const view = renderLive(element(value));
+    editSavedDraft();
     fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "An abandoned local edit" } });
     fetchSpy.mockResolvedValue(Response.json({ error: "version_conflict" }, { status: 409 }));
-    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save manual edits as a new version" })); });
+    await act(async () => { fireEvent.click(pageButton("Save manual edits as a new version")); });
     fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "Saved reply" } });
     clientMocks.runAction.mockResolvedValue({ ok: true, data: { state: "succeeded", versionId: "regenerated-version", versionNo: 5 } });
-    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Regenerate with the agent as a new version" })); });
+    await act(async () => { fireEvent.click(pageButton("Regenerate with the agent as a new version")); });
     view.rerender(element({ ...value, versions: [
       versionRow({ id: "regenerated-version", version_no: 5, approval_state: "draft", body: "A fresh server-confirmed reply" }),
       ...value.versions,
     ] }));
     expect(screen.getByLabelText("Draft")).toHaveValue("A fresh server-confirmed reply");
     expect(screen.queryByText("Another reviewer changed this output")).toBeNull();
-    expect(screen.getByRole("button", { name: /^Approve Version 5$/ })).toBeEnabled();
+    expect(pageButton("Confirm this version")).toBeEnabled();
   });
 
   it.each(["required inputs", "owner review note"] as const)("still generates from clean %s", async (kind) => {
@@ -635,15 +829,16 @@ describe("all generation paths preserve unsaved edits", () => {
       value.action.missingInputs = ["language"];
     } else withReviews(value);
     renderLive(element(value));
+    editSavedDraft();
     fetchSpy.mockResolvedValue(Response.json({ ok: true }));
     clientMocks.runAction.mockResolvedValue({ ok: true, data: { state: "succeeded", versionId: "new-version", versionNo: 4 } });
     if (kind === "required inputs") {
       fireEvent.change(screen.getByLabelText(copy.en.workspace.inputs.language), { target: { value: "en" } });
-      await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save inputs and generate" })); });
+      await act(async () => { fireEvent.click(pageButton("Save inputs and generate")); });
     } else {
       fireEvent.click(screen.getByText(copy.en.workspace.scanInputs.addOwn));
       fireEvent.change(document.querySelector<HTMLTextAreaElement>("#input-owner-review")!, { target: { value: "Additional review" } });
-      await act(async () => { fireEvent.click(screen.getByRole("button", { name: copy.en.workspace.scanInputs.addOwnSubmit })); });
+      await act(async () => { fireEvent.click(pageButton(copy.en.workspace.scanInputs.addOwnSubmit)); });
     }
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(clientMocks.runAction).toHaveBeenCalledWith("act-1", { inputs: kind === "required inputs" ? { language: "en" } : { reviews_without_response: "Additional review" } });
@@ -662,12 +857,13 @@ describe("all generation paths preserve unsaved edits", () => {
       return Response.json({ versionId: "assistant-version", versionNo: 4 });
     });
     renderLive(element(draft()));
+    editSavedDraft();
     const editor = screen.getByLabelText("Draft");
-    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Revise with operator as a new version" })); });
+    await act(async () => { fireEvent.click(pageButton("Revise with operator as a new version")); });
     const warmer = await screen.findByRole("button", { name: "Make it warmer without overpromising" });
     await act(async () => { fireEvent.click(warmer); });
     const createName = "Create a new version without overwriting";
-    expect(screen.getByRole("button", { name: createName })).toBeInTheDocument();
+    expect(pageButton(createName)).toBeInTheDocument();
     if (makeDirty) {
       // Models an editor update while a previously opened assistant is still
       // holding its preview. A disabled launcher alone cannot secure the save.
@@ -676,7 +872,7 @@ describe("all generation paths preserve unsaved edits", () => {
       expect(editor).toHaveValue("Unsaved reply");
       expect(fetchSpy.mock.calls.filter(([url]) => String(url).endsWith("/versions"))).toHaveLength(0);
     } else {
-      await act(async () => { fireEvent.click(screen.getByRole("button", { name: createName })); });
+      await act(async () => { fireEvent.click(pageButton(createName)); });
       const saves = fetchSpy.mock.calls.filter(([url]) => String(url).endsWith("/versions"));
       expect(saves).toHaveLength(1);
       expect(JSON.parse(String(saves[0][1]?.body))).toEqual({
@@ -734,11 +930,12 @@ describe("version history preserves unsaved edits", () => {
     mountHistory(locale);
     const chinese = locale !== "en";
     const editorLabel = field === "body" ? (chinese ? "草稿" : "Draft") : "Image alt text";
+    editSavedDraft();
     const historyTab = () => screen.getByRole("tab", { name: chinese ? /版本/ : /Version & audit history/ });
     const draftTab = () => screen.getByRole("tab", { name: chinese ? /草稿/ : /Draft & approval/ });
     fireEvent.change(screen.getByLabelText(editorLabel), { target: { value: "Unsaved local edit" } });
     fireEvent.mouseDown(historyTab(), { button: 0 });
-    fireEvent.click(screen.getByRole("button", { name: chinese ? /^第 2 版/ : /^Version 2/ }));
+    fireEvent.click(pageButton(chinese ? /^第 2 版/ : /^Version 2/));
     fireEvent.mouseDown(draftTab(), { button: 0 });
 
     expect(screen.getByLabelText(editorLabel)).toHaveValue("Unsaved local edit");
@@ -751,7 +948,7 @@ describe("version history preserves unsaved edits", () => {
       target: { value: field === "body" ? "Current reply" : "Current description" },
     });
     fireEvent.mouseDown(historyTab(), { button: 0 });
-    fireEvent.click(screen.getByRole("button", { name: chinese ? /^第 2 版/ : /^Version 2/ }));
+    fireEvent.click(pageButton(chinese ? /^第 2 版/ : /^Version 2/));
     fireEvent.mouseDown(draftTab(), { button: 0 });
     expect(screen.getByLabelText(chinese ? "草稿" : "Draft")).toHaveValue("Earlier reply");
     expect(screen.getByLabelText(chinese ? "圖片替代文字" : "Image alt text")).toHaveValue("Earlier description");
@@ -760,9 +957,10 @@ describe("version history preserves unsaved edits", () => {
 
   it("does not reset local edits when the already selected version is clicked", () => {
     mountHistory();
+    editSavedDraft();
     fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "Unsaved local edit" } });
     fireEvent.mouseDown(screen.getByRole("tab", { name: /Version & audit history/ }), { button: 0 });
-    fireEvent.click(screen.getByRole("button", { name: /^Version 3/ }));
+    fireEvent.click(pageButton(/^Version 3/));
     fireEvent.mouseDown(screen.getByRole("tab", { name: /Draft & approval/ }), { button: 0 });
     expect(screen.getByLabelText("Draft")).toHaveValue("Unsaved local edit");
     expect(toastMocks.error).not.toHaveBeenCalled();
@@ -787,7 +985,8 @@ describe("checklist templates have a completion path", () => {
 
   it.each(CHECKLIST_TEMPLATES.map((t) => [t.key] as const))("%s promises no approval or export", (key) => {
     const text = render(key).textContent ?? "";
-    expect(text).toContain("There is no version to approve or export");
+    expect(text).toContain(checklistCopy.note);
+    expect(render(key).querySelector(".approval-panel")).toBeNull();
     expect(text).not.toContain("Approve version");
   });
 
@@ -836,7 +1035,7 @@ describe("the owner's applied assertion", () => {
     );
   }
 
-  const markButton = () => screen.getByRole("button", { name: new RegExp(appliedCopy.markButton, "i") });
+  const markButton = () => pageButton(new RegExp(appliedCopy.markButton, "i"));
 
   it("calls the applied endpoint instead of patching action_state", () => {
     mount(CHECKLIST_KEY);
@@ -892,7 +1091,7 @@ describe("the owner's applied assertion", () => {
     expect(screen.getByText(/You marked this applied on 13 Sept 2026 · not independently verified/)).toBeInTheDocument();
     expect(screen.getByText(appliedCopy.retractHint)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: new RegExp(appliedCopy.markButton, "i") })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: new RegExp(appliedCopy.retract, "i") }));
+    fireEvent.click(pageButton(new RegExp(appliedCopy.retract, "i")));
     expect(clientMocks.retractApplied).toHaveBeenCalledWith("act-1");
   });
 
@@ -923,10 +1122,11 @@ describe("the owner's applied assertion", () => {
       ];
     }, "owner", "zh-HK");
 
+    expect(document.querySelector(".action-detail-badges")?.closest("details")).not.toBeNull();
     expect(document.querySelector(".action-detail-badges")?.textContent).toContain("已套用（店主回報）");
-    expect(document.querySelector(".action-detail-next strong")?.textContent).toBe("到 Google 核對回覆");
+    expect(document.querySelector(".action-verification-result")?.textContent).toContain("到 Google 核對回覆");
     // The immutable version approval remains visible in its own record.
-    expect(screen.getByText("第 1 版已核准")).toBeInTheDocument();
+    expect(document.querySelector(".version-approval-record")?.textContent).toContain("第 1 版已核准");
   });
 
   it("hides the control from viewers", () => {
@@ -1033,8 +1233,7 @@ describe("the Before and after measurement card", () => {
         approvedAssets={[]}
       />,
     );
-    const evidenceTab = screen.getByRole("tab", { name: "Source evidence" });
-    fireEvent.mouseDown(evidenceTab, { button: 0, ctrlKey: false });
+    openWhy();
   }
 
   it("renders 'basis not recorded' for a null attribution_basis and no other basis string", () => {
@@ -1084,7 +1283,7 @@ describe("the AI drafting limit", () => {
       />,
     );
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: new RegExp(label) }));
+      fireEvent.click(pageButton(new RegExp(label)));
     });
     expect(clientMocks.runAction).toHaveBeenCalledWith("act-1", {});
     expect(toastMocks.error).toHaveBeenCalledWith(getMessages(locale).budget.aiLimit);
@@ -1123,7 +1322,7 @@ describe("AI drafting paused for maintenance (P3.5d)", () => {
       />,
     );
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: new RegExp(label) }));
+      fireEvent.click(pageButton(new RegExp(label)));
     });
     expect(clientMocks.runAction).toHaveBeenCalledWith("act-1", {});
     expect(toastMocks.error).toHaveBeenCalledWith(getMessages(locale).pause.ai);
@@ -1165,7 +1364,7 @@ describe("the fallback failure toast", () => {
       />,
     );
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: new RegExp(label) }));
+      fireEvent.click(pageButton(new RegExp(label)));
     });
     expect(clientMocks.runAction).toHaveBeenCalledWith("act-1", {});
     expect(toastMocks.error).toHaveBeenCalledWith(expected);
@@ -1206,8 +1405,9 @@ describe("provider limits while generating a draft", () => {
         approvedAssets={[]}
       />,
     );
+    editSavedDraft();
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: generateLabel }));
+      fireEvent.click(pageButton(generateLabel));
     });
     const alert = screen.getByRole("alert");
     expect(alert.textContent).toMatch(limitLabel);
@@ -1396,7 +1596,7 @@ describe("offer promotion actions (P4.1)", () => {
   ] satisfies Array<[string, Parameters<typeof mountOffer>[0]]>)("disables every Approve control while the stale-offer banner shows (%s)", (_kind, props) => {
     mountOffer(props);
     expect(screen.getByTestId("offer-stale-banner")).toBeInTheDocument();
-    const approves = screen.getAllByRole("button", { name: /^Approve/ });
+    const approves = screen.getAllByRole("button", { name: /^Confirm this version/ });
     expect(approves.length).toBeGreaterThan(0);
     for (const button of approves) expect(button).toBeDisabled();
   });
@@ -1404,7 +1604,8 @@ describe("offer promotion actions (P4.1)", () => {
   it("disables Export and Copy for an approved version once its offer has ended", () => {
     mountOffer({ offer: { ...offer, expired: true }, latestVersionOfferRevision: 2, versions: [versionRow({ id: "ver-1", version_no: 1, approval_state: "approved", offerRevision: 2 })] });
     expect(screen.getByTestId("offer-stale-banner")).toHaveTextContent(offerCopy.stale.offer_expired);
-    for (const name of [/^Export/, /^Copy text/]) {
+    openWhy();
+    for (const name of [/^Download text file/, /^Copy/]) {
       const buttons = screen.getAllByRole("button", { name });
       for (const button of buttons) expect(button).toBeDisabled();
     }
@@ -1422,7 +1623,8 @@ describe("offer promotion actions (P4.1)", () => {
       initialVersionId: "ver-1",
     });
     expect(screen.getByTestId("offer-stale-banner")).toHaveTextContent(offerCopy.stale.offer_changed);
-    for (const name of [/^Export/, /^Copy text/]) {
+    openWhy();
+    for (const name of [/^Download text file/, /^Copy/]) {
       for (const button of screen.getAllByRole("button", { name })) expect(button).toBeDisabled();
     }
   });
@@ -1430,13 +1632,14 @@ describe("offer promotion actions (P4.1)", () => {
   it("keeps Export enabled for an approved version of a current, confirmed offer", () => {
     mountOffer({ latestVersionOfferRevision: 2, versions: [versionRow({ id: "ver-1", version_no: 1, approval_state: "approved", offerRevision: 2 })] });
     expect(screen.queryByTestId("offer-stale-banner")).toBeNull();
-    expect(screen.getAllByRole("button", { name: /^Export/ }).some((button) => !(button as HTMLButtonElement).disabled)).toBe(true);
+    openWhy();
+    expect(screen.getAllByRole("button", { name: /^Download text file/ }).some((button) => !(button as HTMLButtonElement).disabled)).toBe(true);
   });
 
   it("maps an approve answering 409 offer_changed to the owner copy, never the code", async () => {
     clientMocks.approveVersion.mockResolvedValue({ ok: false, status: 409, error: "offer_changed" });
     mountOffer({ latestVersionOfferRevision: 2, versions: [versionRow({ id: "ver-1", version_no: 1, approval_state: "draft", offerRevision: 2 })] });
-    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Approve" })); });
+    await confirmSavedVersion("Confirm this version");
     expect(clientMocks.approveVersion).toHaveBeenCalledWith("ver-1", undefined);
     expect(toastMocks.error).toHaveBeenCalledWith(offerCopy.stale.offer_changed);
     expect(screen.getByTestId("offer-stale-banner")).toHaveTextContent(offerCopy.stale.offer_changed);
@@ -1448,8 +1651,8 @@ describe("offer promotion actions (P4.1)", () => {
       clientMocks.approveVersion.mockResolvedValue({ ok: false, status: 409, error: code });
       toastMocks.error.mockReset();
       mountOffer({ locale, latestVersionOfferRevision: 2, versions: [versionRow({ id: "ver-1", version_no: 1, approval_state: "draft", offerRevision: 2 })] });
-      const approve = locale === "en" ? "Approve" : "核准";
-      await act(async () => { fireEvent.click(screen.getByRole("button", { name: approve })); });
+      const approve = copy[locale].action.approval.approve;
+      await confirmSavedVersion(approve);
       expect(toastMocks.error).toHaveBeenCalledWith(copy[locale].workspace.offers.stale[code]);
       expect(document.body.textContent ?? "").not.toContain(code);
       cleanup();
@@ -1468,7 +1671,7 @@ describe("offer promotion actions (P4.1)", () => {
     };
     const v1 = versionRow({ id: "ver-1", version_no: 1, approval_state: "draft", offerRevision: 2 });
     const view = renderLive(current([v1], 2));
-    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Approve" })); });
+    await confirmSavedVersion("Confirm this version");
     expect(screen.getByTestId("offer-stale-banner")).toBeInTheDocument();
     // A new draft is generated from the current offer: the page re-renders with it.
     view.rerender(current([versionRow({ id: "ver-2", version_no: 2, approval_state: "draft", offerRevision: 2 }), v1], 2));

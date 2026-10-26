@@ -83,6 +83,16 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
   const unscanned = !priority && (!hasLocations || (location !== "all" && !snapshot))
   const pageTitle = priority || followUp ? t.title : unscanned ? t.noScanTitle : t.quietTitle
   const pageSubtitle = priority || followUp ? t.subtitle : unscanned ? t.noScanSubtitle : t.quietSubtitle
+  const resultCopy = copy[locale].workspaceHome.insights
+  const resolved = changed.comparable ? brief.ledger.resolved.length : 0
+  const regressed = changed.comparable ? brief.ledger.regressed.length : 0
+  const resultSentence = location === "all" ? resultCopy.allLead
+    : !snapshot ? resultCopy.missingFirst
+    : resolved > 0 && regressed === 0 ? fill(resultCopy.betterResolved, { n: resolved })
+    : regressed > 0 && resolved === 0 ? fill(resultCopy.worseRegressed, { n: regressed })
+    : resolved > 0 && regressed > 0 ? fill(resultCopy.mixed, { resolved, regressed })
+    : changed.comparable && changed.delta !== null ? changed.delta > 0 ? resultCopy.better : changed.delta < 0 ? resultCopy.worse : resultCopy.same
+    : changed.reason ? fill(resultCopy.missingBecause, { reason: comparisonReasonText(changed.reason, locale) }) : resultCopy.missingFirst
   const priorityCta = role === "viewer" ? focus.view
     : priority?.templateKey === "google-reconnect" ? focus.connect
     : priority?.missingInputs.length ? t.addFacts
@@ -135,17 +145,29 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         </article>}
       </section>
 
+      {!priority && !followUp && (brief.openActionCount ?? brief.openActions.length) === 0 && gettingStarted}
+
       {problems}
 
-      {priority && <details className="owner-disclosure owner-priority-evidence">
-        <summary>{focus.why}</summary>
+      <section className="owner-results-disclosure" aria-label={focus.results}>
+        <p>{resultSentence}</p>
+        <Link href={withLocation(`${base}/insights`, location)}>{focus.results}<ArrowRight /></Link>
+      </section>
+
+      <section className="owner-tasks-disclosure" aria-label={focus.otherTasks}>
+        <p>{focus.otherTasks} <Badge variant="outline">{brief.openActionCount ?? brief.openActions.length}</Badge></p>
+        <Link href={withLocation(`${base}/actions`, location)}>{focus.allTasks}<ArrowRight /></Link>
+      </section>
+
+      {/* Scores and supporting records stay available without competing with the coach. */}
+      <details className="trust-disclosure owner-priority-evidence">
+        <summary><ShieldCheck /> {t.trust}</summary>
+      {priority && <>
         <div className="brief-action-meta"><Badge className={priorityClass(priority.priority)}>{priorityLabel(priority.priority, locale)}</Badge><span><Clock3 /> {effortLabel(priority.effortMinutes, locale)} {pc.ownerTime}</span><span><FileClock /> {resolveText(priority.displayPhase, locale)}</span>{priority.latestVersion && <span>{versionLabel(priority.latestVersion.versionNo)}</span>}</div>
         <div className="why-now-box"><FactType type={priority.evidence.factType} /><div><strong>{t.whyNow}</strong><span>{resolveText(priority.evidence.detail, locale)}</span><small>{pc.observed} {formatDateTime(priority.evidence.observedAt, locale, timezone)} · {sourceLabel(priority.evidence.source, locale)}</small></div></div>
         <ContextualAssistant locale={locale} surface="home" triggerLabel={pc.askWhyThisComes} autoAsk="explain_priority" mode="live" context={{ workspaceId, locationId: brief.location?.id, snapshotId: snapshot?.id }} basePath={base} locationParam={location} />
-      </details>}
+      </>}
 
-      <details className="owner-disclosure owner-results-disclosure">
-        <summary>{focus.results}</summary>
         {hasLocations && location === "all" && <div className="context-banner" role="status"><CircleAlert /><div><strong>{pc.contextChangedToAll}</strong><span>{pc.summaryDataIsLocation}</span></div></div>}
         {role && <div className="owner-results-tools"><RescanButton locale={locale} workspaceId={workspaceId} workspaceSlug={workspaceSlug} locationId={brief.location?.id ?? null} tier={tier} role={role} consentPolicyVersion={consentPolicyVersion} /></div>}
         <div className="owner-results-grid">
@@ -204,30 +226,6 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
           <article><span className="metric-icon completed"><CircleCheck /></span><div><strong>{month.completed}</strong><span>{pc.actionsCompleted}</span></div><small>{fill(pc.measuredCount, { measured: month.measured })}</small></article>
         </div>
       </section>
-      </details>
-
-      <details className="owner-disclosure owner-tasks-disclosure">
-        <summary>{focus.otherTasks}{brief.openActionCount !== undefined && <Badge variant="outline">{brief.openActionCount}</Badge>}</summary>
-      <div className="owner-home-shortcuts">
-        <Button asChild variant="outline"><Link href={withLocation(`${base}/actions`, location)}>{focus.allTasks}<ArrowRight /></Link></Button>
-        <Button asChild variant="outline"><Link href={withLocation(`${base}/actions/new`, location)}>{focus.create}<ArrowRight /></Link></Button>
-      </div>
-      {gettingStarted}
-      <SectionCard className="pending-approval-card">
-        <div className="section-card-heading"><div><p className="eyebrow">{pc.decisionQueue}</p><h2>{pc.openActions}</h2></div><Button asChild variant="ghost"><Link href={withLocation(`${base}/actions`, location)}>{pc.viewAll} <ArrowRight /></Link></Button></div>
-        <div className="compact-action-list">
-          {brief.openActionCount !== undefined && <p>{fill(pc.openActionsPriorityItems, { openActionCount: brief.openActionCount })}</p>}
-          {brief.openActions.length === 0 && <p>{pc.noOpenActions}</p>}
-          {brief.openActions.slice(0, 3).map((action) => <Link key={action.id} href={actionHref(locale, workspaceSlug, action, location)}><span className={`priority-marker ${priorityClass(action.priority)}`} /><div><strong>{resolveText(action.title, locale)}</strong><small>{resolveText(action.location.name, locale)} · {resolveText(action.displayPhase, locale)}</small></div><span className="compact-effort">{effortLabel(action.effortMinutes, locale)}</span><ArrowRight /></Link>)}
-        </div>
-      </SectionCard>
-
-      </details>
-
-      {/* The methodology stays one tap away, closed by default so the
-          next action owns the first screen (native <details>: no JS, keyboard-operable). */}
-      <details className="trust-disclosure">
-        <summary><ShieldCheck /> {t.trust}</summary>
         <p className="owner-approval-note">{focus.approvalNote}</p>
         <section className="workspace-agent-strip" aria-label={pc.aiVisibilityTeamStatus}>
           <div className="workspace-agent-summary"><span><Sparkles /></span><div><Badge variant="outline">{tierLabel}{demo ? pc.demo : ""}</Badge><h2>{unscanned ? pc.aiVisibilityTeamIs : fill(decisions === 1 ? pc.teamFinishedOne : pc.teamFinishedMany, { decisions })}</h2><p>{pc.specialistsCoordinateBackstageYou}</p></div></div>

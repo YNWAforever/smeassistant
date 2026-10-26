@@ -772,7 +772,7 @@ export const workspaceZhHK: WorkspaceCopy = {
   },
   publish: {
     deliveryIntro: "以店主身份將已核准的回覆發佈到所選的 Google 評論。只有經核實的發佈才計 1 次核准後交付，已匯出的版本不會重複計算。",
-    publishButton: "發佈到 Google",
+    publishButton: "貼去 Google",
     dialogTitle: "將此已核准回覆發佈到 Google？",
     dialogDescription: "請選擇這則回覆所回應的評論。回覆會公開發佈在你的 Google 商家檔案。",
     pickReview: "要回覆的評論",

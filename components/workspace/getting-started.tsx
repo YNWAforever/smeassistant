@@ -1,39 +1,21 @@
 import Link from "next/link"
-import { ArrowRight, Check } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 
 import { copy, type PrototypeLocale } from "@/lib/copy"
-import { fill } from "@/lib/copy-ui"
 import type { GettingStartedItem } from "@/lib/workspace/getting-started"
 
-/**
- * Today's getting-started checklist. Done items show a tick; open items link
- * to where the step happens when the role may go there. Progress is a count
- * of real steps, never a score.
- */
+/** Only the next unfinished setup step, until the workspace's first delivery. */
 export function GettingStarted({ items, locale }: { items: GettingStartedItem[]; locale: PrototypeLocale }) {
   const t = copy[locale].shell.gettingStarted
-  const done = items.filter((item) => item.done).length
+  if (items.some((item) => item.key === "deliver" && item.done)) return null
+  const next = items.find((item) => !item.done)
+  if (!next) return null
   return (
     <section className="getting-started" aria-labelledby="getting-started-title">
-      <div className="getting-started-head">
-        <h2 id="getting-started-title">{t.title}</h2>
-        <span className="getting-started-progress">{fill(t.progress, { done, total: items.length })}</span>
-      </div>
-      <p>{t.lead}</p>
-      <span className="getting-started-bar" aria-hidden="true"><span style={{ width: `${Math.round((done / items.length) * 100)}%` }} /></span>
-      <ol>
-        {items.map((item) => {
-          const label = t.items[item.key]
-          return (
-            <li key={item.key} data-done={item.done ? "" : undefined}>
-              <span className="getting-started-mark" aria-hidden="true">{item.done ? <Check /> : null}</span>
-              {item.done || !item.href
-                ? <span>{label}{item.done && <span className="sr-only"> · {t.done}</span>}</span>
-                : <Link href={item.href}>{label}<ArrowRight aria-hidden="true" /></Link>}
-            </li>
-          )
-        })}
-      </ol>
+      <h2 id="getting-started-title">{t.title}</h2>
+      <ol><li>
+        {next.href ? <Link href={next.href}>{t.items[next.key]}<ArrowRight aria-hidden="true" /></Link> : <span>{t.items[next.key]}</span>}
+      </li></ol>
     </section>
   )
 }

@@ -28,10 +28,24 @@ async function saveBrand(page: Page, merchant: MerchantSeed, facts: Record<strin
   expect(saved.status()).toBe(200);
   return (await saved.json()).brand as { revisionId: string };
 }
+async function editSaved(page: Page, chinese = false) {
+  const text = page.locator("#draft-content");
+  if ((await text.getAttribute("readonly")) === null) return;
+  const change = page.locator(".approval-panel").getByRole("button", { name: chinese ? "唔啱，改返" : "Change the draft", exact: true });
+  if (await change.count()) await change.click();
+  else {
+    const why = page.locator("details.owner-workflow-disclosure");
+    await why.evaluate(element => { (element as HTMLDetailsElement).open = true; });
+    await why.getByRole("button", { name: chinese ? "改稿" : "Edit", exact: true }).click();
+  }
+  await expect(text).not.toHaveAttribute("readonly");
+}
+const confirmButton = (page: Page, chinese = false) => page.locator(".approval-panel").getByRole("button", { name: chinese ? "確認呢一版" : "Confirm this version", exact: true });
 async function generate(page: Page, merchant: MerchantSeed, body: string, env: AcceptanceEnvironment, chinese = false) {
   await modelOutput(env, body);
+  await editSaved(page, chinese);
   const response = page.waitForResponse(r => r.url().endsWith(`/api/actions/${merchant.actionId}/run`) && r.request().method() === "POST");
-  await page.getByRole("button", { name: chinese ? /^(生成草稿|以 Agent 重新生成為新版本)$/ : /^(Generate a draft|Regenerate with the agent as a new version)$/ }).click();
+  await page.locator(".draft-editor-card").getByRole("button", { name: chinese ? /^(生成草稿|以 Agent 重新生成為新版本)$/ : /^(Generate a draft|Regenerate with the agent as a new version)$/ }).click();
   const saved = await response;
   expect(saved.status()).toBe(200);
   const result = await saved.json() as { versionId: string; versionNo: number };
@@ -40,8 +54,8 @@ async function generate(page: Page, merchant: MerchantSeed, body: string, env: A
   return result;
 }
 async function approve(page: Page, merchant: MerchantSeed, env: AcceptanceEnvironment, versionNo: number, chinese = false) {
-  const name = chinese ? `核准第 ${versionNo} 版` : `Approve Version ${versionNo}`;
-  await page.getByRole("button", { name, exact: true }).click();
+  const name = chinese ? "確認呢一版" : "Confirm this version";
+  await confirmButton(page, chinese).click();
   const response = page.waitForResponse(r => /\/api\/versions\/[^/]+\/approve$/.test(new URL(r.url()).pathname));
   await page.getByRole("dialog").getByRole("button", { name, exact: true }).click();
   expect((await response).status()).toBe(200);
@@ -83,8 +97,9 @@ test.afterEach(async ({ page }) => { expect(deliveriesByTest.get(page)).toEqual(
 test("assistant preview remains retryable when saving fails", async ({ page, merchant, environment }) => {
   await signIn(page, environment, merchant);
   await page.goto(`/en/owner/${merchant.slug}/actions/${merchant.actionId}`);
-  await page.getByRole("button", { name: "Generate a draft", exact: true }).click();
+  await page.locator(".draft-editor-card").getByRole("button", { name: "Generate a draft", exact: true }).click();
   await expect(page.locator("#draft-content")).toHaveValue(/Thank you/, { timeout: 90_000 });
+  await editSaved(page);
   await page.getByRole("button", { name: "Revise with operator as a new version" }).click();
   await page.getByRole("button", { name: "Make it warmer without overpromising" }).click();
   const save = page.getByRole("button", { name: "Create a new version without overwriting" });
@@ -116,7 +131,7 @@ test("S1 existing brand: recommendation, source/time/limits, first saved draft a
   const started = performance.now();
   await page.goto(`/en/owner/${merchant.slug}?location=primary`);
   const reason = page.locator("details.owner-priority-evidence");
-  await reason.locator("summary").focus();
+  await reason.locator(":scope > summary").focus();
   await page.keyboard.press("Enter");
   await expect(reason).toContainText("One synthetic review is waiting for a reply.");
   await expect(reason).toContainText("Observed");
@@ -124,7 +139,7 @@ test("S1 existing brand: recommendation, source/time/limits, first saved draft a
   await page.screenshot({ path: `${evidenceDir}/desktop-recommendation.png`, fullPage: true });
   await page.locator(".brief-priority-actions a").click();
   await expect(page).toHaveURL(new RegExp(`/actions/${merchant.actionId}`));
-  await page.getByRole("tab", { name: "Source evidence", exact: true }).click();
+  await page.locator("details.owner-workflow-disclosure").evaluate(element => { (element as HTMLDetailsElement).open = true; });
   await expect(page.locator(".evidence-detail-grid")).toContainText("Revenue, reservations and customer intent are not measured by this action.");
   await page.getByRole("tab", { name: "Draft & approval", exact: true }).click();
   const body = "Thank you for your review. We appreciate your feedback.";
@@ -143,10 +158,11 @@ test("S1 existing brand: recommendation, source/time/limits, first saved draft a
   expect(repeat.status()).toBe(200);
   expect(sql(environment.db, `select count(*) from audit_events where workspace_id='${merchant.workspaceId}' and event='version.approved';`)).toBe("1");
   const edited = `${body} Please leave any further feedback in this review thread.`;
+  await editSaved(page);
   await page.locator("#draft-content").fill(edited);
-  await expect(page.getByRole("button", { name: "Approve Version 1", exact: true })).toBeDisabled();
-  await page.getByRole("button", { name: "Save manual edits as a new version" }).click();
-  await expect(page.getByRole("button", { name: "Approve Version 2", exact: true })).toBeEnabled();
+  await expect(confirmButton(page)).toHaveCount(0);
+  await page.locator(".draft-editor-card").getByRole("button", { name: "Save manual edits as a new version" }).click();
+  await expect(confirmButton(page)).toBeEnabled();
   expect(sql(environment.db, `select approval_state || ':' || coalesce(approved_by::text,'none') from output_versions where action_id='${merchant.actionId}' and version_no=2;`)).toBe("draft:none");
   expect(sql(environment.db, `select count(*) from audit_events where workspace_id='${merchant.workspaceId}' and event='version.approved';`)).toBe("1");
   await page.reload(); await waitForHydration(page);
@@ -162,7 +178,7 @@ test("S2 incomplete facts: required review is asked for, invented operations are
   await page.goto(actionPath(merchant));
   const before = (await prompts(environment)).length;
   const requested = page.waitForResponse(r => r.url().endsWith(`/api/actions/${merchant.actionId}/run`));
-  await page.getByRole("button", { name: "Generate a draft", exact: true }).click();
+  await page.locator(".draft-editor-card").getByRole("button", { name: "Generate a draft", exact: true }).click();
   const missing = await requested;
   expect(missing.status()).toBe(200);
   expect((await missing.json()).factsNeeded).toContain("reviews_without_response");
@@ -177,7 +193,7 @@ test("S2 incomplete facts: required review is asked for, invented operations are
   expect(rejected.versionId).toBeUndefined();
   expect(versionCount(environment, merchant)).toBe("0");
   await expect(page.getByRole("alert").filter({ hasText: /Last generation failed/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Generate a draft", exact: true })).toBeEnabled();
+  await expect(page.locator(".draft-editor-card").getByRole("button", { name: "Generate a draft", exact: true })).toBeEnabled();
   const safe = "Thank you for your kind review. We appreciate you sharing your feedback.";
   const saved = await generate(page, merchant, safe, environment);
   await page.reload(); await waitForHydration(page);
@@ -202,7 +218,8 @@ test("S3 selected branch: other branch facts and imported metadata never enter t
   expect(prompt).not.toContain("99 Imported B Street");
   await page.reload(); await waitForHydration(page);
   await expect(page.locator("#draft-content")).toHaveValue(safe);
-  await expect(page.locator(".action-detail-page")).toContainText("Other");
+  await page.locator("details.owner-workflow-disclosure").evaluate(element => { (element as HTMLDetailsElement).open = true; });
+  await expect(page.locator(".evidence-detail-grid")).toContainText("Other");
   await approve(page, merchant, environment, saved.versionNo);
   record("scenario-3", { result: "PASS", selectedLocation: merchant.otherLocationId, excludedOtherBranchAndImportedAddress: true, version: saved });
 });
@@ -223,6 +240,7 @@ test("S4 Hong Kong mobile: shorten, tone and CTA revisions save, fresh login rea
   for (const [index, revision] of revised.entries()) {
     const previousBody = await page.locator("#draft-content").inputValue();
     await modelOutput(environment, revision.body);
+    await editSaved(page, true);
     await page.getByRole("button", { name: "用助理修改並建立新版本" }).click();
     await page.getByRole("button", { name: revision.label, exact: true }).click();
     await expect(page.getByRole("button", { name: "建立新版本（不覆蓋現有內容）" })).toBeVisible({ timeout: 90000 });
@@ -237,12 +255,13 @@ test("S4 Hong Kong mobile: shorten, tone and CTA revisions save, fresh login rea
     await expect(page.locator("#draft-content")).toHaveValue(revision.body);
     expect(versionCount(environment, merchant)).toBe(String(index + 2));
   }
+  await editSaved(page, true);
   await page.locator("#draft-content").fill(`${revised[2].body} 多謝你。`);
-  await expect(page.getByRole("button", { name: "核准第 4 版", exact: true })).toBeDisabled();
-  await page.getByRole("button", { name: "儲存手動修改為新版本", exact: true }).click();
+  await expect(confirmButton(page, true)).toHaveCount(0);
+  await page.locator(".draft-editor-card").getByRole("button", { name: "儲存手動修改為新版本", exact: true }).click();
   const finalBody = `${revised[2].body} 多謝你。`;
   await expect(page.locator("#draft-content")).toHaveValue(finalBody);
-  await expect(page.getByRole("button", { name: "核准第 5 版", exact: true })).toBeEnabled();
+  await expect(confirmButton(page, true)).toBeEnabled();
   await page.screenshot({ path: `${evidenceDir}/mobile-saved-revision.png`, fullPage: true });
   expect((await page.request.post("/api/auth/sign-out")).status()).toBe(200);
   const fresh = await browser.newContext({ baseURL: environment.app, viewport: { width: 390, height: 844 } });
@@ -267,19 +286,21 @@ test("S5 old tab compares before saving; invalid provider output preserves draft
   const stale = await context.newPage();
   try {
     await stale.goto(actionPath(merchant)); await waitForHydration(stale);
+    await editSaved(stale);
     await stale.locator("#draft-content").fill("My retained local revision. Thank you for your review.");
+    await editSaved(page);
     await page.locator("#draft-content").fill("A newer saved reply from the first tab.");
-    await page.getByRole("button", { name: "Save manual edits as a new version" }).click();
-    await expect(page.getByRole("button", { name: "Approve Version 2", exact: true })).toBeEnabled();
-    await stale.getByRole("button", { name: "Save manual edits as a new version" }).click();
+    await page.locator(".draft-editor-card").getByRole("button", { name: "Save manual edits as a new version" }).click();
+    await expect(confirmButton(page)).toBeEnabled();
+    await stale.locator(".draft-editor-card").getByRole("button", { name: "Save manual edits as a new version" }).click();
     await expect(stale.getByText("Another reviewer changed this output", { exact: true })).toBeVisible();
     await stale.getByRole("button", { name: "Load latest safely", exact: true }).click();
     await expect(stale.getByLabel("Latest saved draft for comparison")).toHaveValue("A newer saved reply from the first tab.");
     await expect(stale.locator("#draft-content")).toHaveValue("My retained local revision. Thank you for your review.");
     await stale.screenshot({ path: `${evidenceDir}/desktop-conflict-comparison.png`, fullPage: true });
     await stale.getByRole("button", { name: "Keep my edits over Version 2" }).click();
-    await stale.getByRole("button", { name: "Save manual edits as a new version" }).click();
-    await expect(stale.getByRole("button", { name: "Approve Version 3", exact: true })).toBeEnabled();
+    await stale.locator(".draft-editor-card").getByRole("button", { name: "Save manual edits as a new version" }).click();
+    await expect(confirmButton(stale)).toBeEnabled();
     expect((await stale.request.post(`/api/versions/${v1.versionId}/approve`, { data: {} })).status()).toBe(409);
     await fetch(`${environment.llm}/mode`, { method: "POST", body: "invalid" });
     const failed = await stale.request.post(`/api/actions/${merchant.actionId}/run`, { data: { locale: "en" } });
@@ -347,7 +368,7 @@ test("a lost generation response is reconciled by reading the saved draft instea
     expect(completed.status()).toBe(200);
     await route.abort("failed");
   });
-  const button = page.getByRole("button", { name: "Generate a draft", exact: true });
+  const button = page.locator(".draft-editor-card").getByRole("button", { name: "Generate a draft", exact: true });
   await button.click();
   await expect(page.getByText("The generation outcome is not confirmed", { exact: true })).toBeVisible();
   await expect(button).toBeDisabled();

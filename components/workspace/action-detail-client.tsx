@@ -12,12 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { copy, homeReviewCopy } from "@/lib/copy"
 import { withLocation } from "@/lib/workspace/format"
 import { EvidenceTab } from "@/components/workspace/action-detail/evidence-tab"
-import { OwnerSteps, ownerStepIndex } from "@/components/workspace/action-detail/owner-steps"
+import { OwnerSteps, editorStep } from "@/components/workspace/action-detail/owner-steps"
 import { WorkflowTab } from "@/components/workspace/action-detail/workflow-tab"
 import { DetailHeader } from "@/components/workspace/action-detail/detail-header"
 import { VerificationResult } from "@/components/workspace/action-detail/verification-result"
 import { DraftEditorCard } from "@/components/workspace/action-detail/draft-editor-card"
-import { ApprovalPanel } from "@/components/workspace/action-detail/approval-panel"
+import { ApprovalPanel, ConfirmVersionDialog, VersionDetails } from "@/components/workspace/action-detail/approval-panel"
 import { HistoryTab } from "@/components/workspace/action-detail/history-tab"
 import { StickyApprovalBar } from "@/components/workspace/action-detail/sticky-approval-bar"
 import { useActionEditor } from "@/components/workspace/action-detail/use-action-editor"
@@ -57,7 +57,7 @@ function VersionBoundActionDetail(props: ActionDetailClientProps) {
   </>
 }
 
-/** The action detail: header, the 改稿 → 確認 → 發出 path, then evidence and history. Agent run stays in a closed disclosure. */
+/** The action detail: header, the 改稿 → 確認 → 複製文字 path, then evidence and history. Agent run stays in a closed disclosure. */
 function ActionDetailEditor(props: ActionDetailClientProps) {
   const ed = useActionEditor(props)
   const {
@@ -69,7 +69,7 @@ function ActionDetailEditor(props: ActionDetailClientProps) {
     <div className="action-detail-page">
       <DetailHeader ed={ed} />
 
-      <VerificationResult ed={ed} />
+
 
       {offline && <div className="offline-banner" role="status"><CloudOff /><div><strong>{ac.offline.title}</strong><span>{ac.offline.body}</span></div><Button variant="outline" onClick={() => { if (navigator.onLine) router.refresh(); else toast.message(ac.toasts.stillOffline) }}>{ac.offline.reconnect}</Button></div>}
       {effectiveRole === "viewer" && <RoleNotice kind="viewerAction" locale={locale} />}
@@ -83,10 +83,10 @@ function ActionDetailEditor(props: ActionDetailClientProps) {
         </div>
       )}
 
-      {action.delivery !== "checklist" && <OwnerSteps locale={locale} index={ownerStepIndex({ isApprovedCurrent: ed.isApprovedCurrent, dirty: ed.dirty, approval, hasVersion: ed.selectedVersion != null })} />}
+      {action.delivery !== "checklist" && <OwnerSteps locale={locale} index={editorStep(ed)} />}
 
       <Tabs defaultValue="draft" className="action-detail-tabs">
-        <TabsList variant="line" className="detail-tab-list"><TabsTrigger value="draft">{ac.tabs.draft}</TabsTrigger><TabsTrigger value="evidence">{ac.tabs.evidence}</TabsTrigger><TabsTrigger value="history">{ac.tabs.history}</TabsTrigger></TabsList>
+        <TabsList variant="line" className="detail-tab-list"><TabsTrigger value="draft">{ac.tabs.draft}</TabsTrigger><TabsTrigger value="history">{ac.tabs.history}</TabsTrigger></TabsList>
 
         <TabsContent value="draft">
           <div className="draft-layout">
@@ -96,10 +96,6 @@ function ActionDetailEditor(props: ActionDetailClientProps) {
           </div>
         </TabsContent>
 
-        <TabsContent value="evidence">
-          <EvidenceTab action={action} measurements={measurements} locale={locale} timezone={timezone} locationName={locationName} />
-        </TabsContent>
-
         <TabsContent value="history">
           <HistoryTab ed={ed} />
         </TabsContent>
@@ -107,12 +103,16 @@ function ActionDetailEditor(props: ActionDetailClientProps) {
 
       <details className="owner-disclosure owner-workflow-disclosure">
         <summary>{copy[locale].ownerFocus.workflow}</summary>
+        <EvidenceTab action={action} measurements={measurements} locale={locale} timezone={timezone} locationName={locationName} />
+        <VersionDetails ed={ed} />
+        <VerificationResult ed={ed} />
         <ol className="provenance-chain" aria-label={ac.provenance.aria}>
           {provenance.map((item, index) => <li key={item.label} className={`is-${item.state}`}><span className="provenance-node">{item.state === "complete" ? <Check /> : index + 1}</span><div><strong>{item.label}</strong><small>{item.detail}</small></div></li>)}
         </ol>
         <WorkflowTab action={action} runs={runs} workflowState={workflowState} workflowLabel={workflowLabel} approvalLabel={approvalText(approval)} delivery={delivery} locale={locale} timezone={timezone} />
       </details>
 
+      <ConfirmVersionDialog ed={ed} />
       <StickyApprovalBar ed={ed} />
     </div>
   )
