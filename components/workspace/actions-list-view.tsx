@@ -12,6 +12,7 @@ import { LocationSelect } from "@/components/workspace/location-select"
 import { ActionSearch } from "@/components/workspace/action-filters"
 import { BulkActionSelection, type AssignmentMember } from "@/components/workspace/bulk-action-dialog"
 import { BulkApprove } from "@/components/workspace/bulk-approve"
+import { TemplateIcon } from "@/components/workspace/template-icon"
 import type { BulkApproveItem } from "@/lib/workspace/bulk-approve"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { resolveText } from "@/lib/domain"
@@ -72,7 +73,7 @@ function ActionCard({ action, locale, base, timezone, location, previewHref }: {
       <div className="action-card-top">
         <span className="action-scope"><MapPin />{resolveText(action.location.name, locale)}</span>
       </div>
-      <div className="action-card-content"><div><h2>{resolveText(action.title, locale)}</h2><p>{resolveText(action.summary, locale)}</p></div></div>
+      <div className="action-card-content"><TemplateIcon templateKey={action.templateKey} /><div><h2>{resolveText(action.title, locale)}</h2><p>{resolveText(action.summary, locale)}</p></div></div>
       {/* What an owner scans the list for, without opening anything: how urgent, where it stands, how long it takes. */}
       <div className="action-card-badges"><Badge variant="outline" className={priorityClass(action.priority)}>{priorityLabel(action.priority, locale)}</Badge><Badge variant="outline">{resolveText(action.displayPhase, locale)}</Badge><span className="action-card-effort"><Clock3 aria-hidden="true" />{effortLabel(action.effortMinutes, locale)}</span></div>
       <details className="trust-disclosure action-card-evidence">

@@ -2,6 +2,21 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## Friendlier owner screens: icons, charts, photos and progress (2026-10-26)
+
+- **Icons:** every kind of task has its own picture (reviews, posts, Google, search, website) on Today and To do.
+- **Today, "your month":**
+  - a ring of tasks done this month out of what is open;
+  - a weekly streak;
+  - the four sources the last scan could check;
+  - five badges: first confirm, first copy, five done, full profile, four-week streak.
+
+  It all counts what the owner did, never results, and says so. The score stays under 點解咁講.
+- **Photos:** the shop's own confirmed photos on Today and the Shop page; where there are none, a credited sample photo (the three Pexels images the landing page once used), labelled 示意圖, and an "add photos" button.
+- **Shop:** a profile card with a ring and a six-item checklist (voice, facts, lines you're happy to say, a photo, Google, Instagram) linking to where each is filled in.
+- **Better?:** a bar per scan showing how much each scan could check (never the score), with scans that cannot be compared marked.
+- **Simpler words:** task summaries, the usage note, the "start writing" button and the only-one-scan message are shorter.
+
 ## Owner quick fixes (2026-10-26)
 
 - **Today:** the results and other-tasks rows are styled cards; "other tasks" no longer counts the task already shown; the button says what happens next ("打開再複製", "睇草稿再確認", "連接 Google") and the card shows the first lines of the draft; the sidebar badge reads "1 項緊急".

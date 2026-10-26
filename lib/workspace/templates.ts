@@ -191,7 +191,7 @@ export const TEMPLATES: ActionTemplate[] = [
     channel: "google",
     outcome: localized("A checklist of the exact fields to fix on the profile", "一份列明檔案上需修正欄位的檢查清單"),
     title: localized("Complete the Google Business Profile basics", "補齊 Google 商家檔案基本資料"),
-    summary: localized("Opening hours and categories are missing or incomplete on the public profile.", "公開檔案的營業時間或類別缺失或不完整。"),
+    summary: localized("Your opening hours or categories on Google are not filled in.", "Google 上面嘅營業時間或類別未填齊。", "Google 上的營業時間或類別還沒填齊。"),
     workflow: localized("Profile checklist", "檔案檢查清單"),
   },
   {
@@ -348,7 +348,7 @@ export const TEMPLATES: ActionTemplate[] = [
     verifyChecks: ["title", "meta_description_50_160", "single_h1"],
     outcome: localized("Title, description and heading copy for your website", "網站的標題、簡介及標題文字"),
     title: localized("Fix the website basics", "修正網站基本資料"),
-    summary: localized("Title, description and heading copy that describes the business plainly.", "以清楚描述業務的標題、簡介及標題文字。"),
+    summary: localized("Make your website's title and description say clearly what you do.", "寫清楚網站標題同簡介，講明你做咩。", "寫清楚網站標題和簡介，說明你做什麼。"),
     workflow: localized("Website basics workflow", "網站基本資料流程"),
   },
   {
@@ -453,7 +453,7 @@ export const TEMPLATES: ActionTemplate[] = [
     channel: "google",
     outcome: localized("Google Business access restored so profile data can be read", "恢復 Google 商家檔案權限，以便讀取檔案資料"),
     title: localized("Restore Google Business access", "重新連接 Google 商家檔案權限"),
-    summary: localized("Reconnect the account before non-public profile data can be read safely.", "恢復連接後，才可安全取得非公開營運資料。"),
+    summary: localized("Reconnect Google so Kinnso can read your reviews and listing again.", "重新連接 Google，Kinnso 先讀到你嘅評論同資料。", "重新連接 Google，Kinnso 才能讀取你的評論和資料。"),
     workflow: localized("Connection recovery", "連接恢復"),
   },
 ];

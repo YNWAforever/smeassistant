@@ -1,6 +1,6 @@
 import Link from "next/link"
 import type { ReactNode } from "react"
-import { ArrowRight, CheckCircle2, CircleDashed, ShieldCheck, TrendingDown } from "lucide-react"
+import { ArrowRight, BarChart3, CheckCircle2, CircleDashed, ShieldCheck, TrendingDown } from "lucide-react"
 
 import { EmptyState } from "@/components/kinnso/states"
 import { FactType, PageIntro, SectionCard, TrendIcon } from "@/components/product-ui"
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { LocationSelect } from "@/components/workspace/location-select"
+import { ScanHistoryBars } from "@/components/visual/scan-history-bars"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { comparisonReasonText, findingLabel, formatDay, metricLabel, scorePercent, signed, withLocation } from "@/lib/workspace/format"
 import type { InsightsModel } from "@/lib/workspace/queries-pages"
@@ -118,6 +119,16 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
           <p>{fill(pc.baselineBody, { coverage: scorePercent(head.coverage) ?? "—" })}</p>
           {rescan && <div className="insights-baseline-actions">{rescan}</div>}
         </SectionCard>}
+        <SectionCard className="insights-history">
+          <div className="section-card-heading"><div><h2>{pc.historyTitle}</h2></div><BarChart3 aria-hidden="true" /></div>
+          <ScanHistoryBars title={pc.historyTitle} gapLabel={pc.gap} bars={model.series.map((point, index) => ({
+            id: point.snapshotId,
+            label: formatDay(point.observedAt, locale, timezone),
+            coverage: scorePercent(point.coverage),
+            comparableToPrevious: index === 0 || point.comparable,
+          })).slice(-6)} />
+          <p className="limitation-note">{pc.historyNote}</p>
+        </SectionCard>
         <details className="owner-disclosure insights-why">
           <summary>{copy[locale].home.trust}</summary>
           <div className="before-after-grid">

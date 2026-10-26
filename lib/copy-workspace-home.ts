@@ -46,6 +46,8 @@ export type WorkspaceHomeCopy = {
     missingFirst: string; missingBecause: string; allLead: string;
     /** The visible starting point after one scan, so the page has a next step. */
     baselineEyebrow: string; baselineTitle: string; baselineBody: string;
+    /** The visible per-scan chart: how much each scan could check, never the score. */
+    historyTitle: string; historyNote: string;
     locationReady: string; locationWaiting: string;
   }
   calendar: {
@@ -223,6 +225,8 @@ export const workspaceHomeEn: WorkspaceHomeCopy = {
     mixed: "Mixed. {resolved} issues are gone, and {regressed} new ones showed up.",
     quietChange: "We can compare with last time, but there is no clear change yet.",
     missingFirst: "There is no earlier visit to compare. Scan this shop again to see whether it got better.",
+    historyTitle: "How much each scan could check",
+    historyNote: "Taller means more of your Google, Instagram, search and website could be read. It is not your score.",
     baselineEyebrow: "Your starting point",
     baselineTitle: "Scanned on {date}",
     baselineBody: "We could check {coverage}% of what we look for. Scan this location again later to see what changed.",
@@ -416,6 +420,8 @@ export const workspaceHomeZhHK: WorkspaceHomeCopy = {
     mixed: "有好有壞。{resolved} 樣問題唔見咗，但多咗 {regressed} 樣。",
     quietChange: "可以同之前比，但未見到具體變化。",
     missingFirst: "未有上次可以比。再掃一次同一間舖，先知道有冇好啲。",
+    historyTitle: "每次掃描查到幾多",
+    historyNote: "條柱愈高，即係愈多 Google、Instagram、搜尋同網站資料睇得到。呢個唔係分數。",
     baselineEyebrow: "你嘅起點",
     baselineTitle: "{date} 掃描咗一次",
     baselineBody: "今次查到 {coverage}% 要睇嘅資料。遲啲同一間舖再掃一次，就知道有冇好啲。",
@@ -609,6 +615,8 @@ export const workspaceHomeZhTW: WorkspaceHomeCopy = {
     mixed: "有好有壞。{resolved} 個問題不見了，但多了 {regressed} 個。",
     quietChange: "可以跟上一次比，但還沒看到明顯變化。",
     missingFirst: "還沒有上一次可以比。再掃描一次這間店，才知道有沒有比較好。",
+    historyTitle: "每次掃描查到多少",
+    historyNote: "長條愈高，代表愈多 Google、Instagram、搜尋和網站資料可以讀取。這不是分數。",
     baselineEyebrow: "你的起點",
     baselineTitle: "{date} 掃描過一次",
     baselineBody: "這次查到 {coverage}% 要看的資料。之後同一個據點再掃描一次，就知道有沒有變好。",

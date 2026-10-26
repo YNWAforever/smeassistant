@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { EvidenceGallery } from "@/components/workspace/evidence-gallery"
 import { LocationSelect } from "@/components/workspace/location-select"
 import { RescanButton } from "@/components/workspace/rescan-button"
+import { TemplateIcon } from "@/components/workspace/template-icon"
 import { copy, homeReviewCopy, type PrototypeLocale } from "@/lib/copy"
 import { ownerCheckNextStep } from "@/lib/workspace/owner-review-check"
 import { resolveText } from "@/lib/domain"
@@ -42,6 +43,10 @@ export interface HomeBriefViewProps {
   problems?: ReactNode
   /** The getting-started checklist, rendered after today's priority so it never pushes it below the fold. */
   gettingStarted?: ReactNode
+  /** "Your month": effort ring, streak, sources, badges (TodayProgress), after the coach card. */
+  progressPanel?: ReactNode
+  /** The shop's photos (ShopPhotoStrip), after the follow-on rows. */
+  photoStrip?: ReactNode
 }
 
 function actionHref(locale: PrototypeLocale, slug: string, action: ActionOverview, location: string): string {
@@ -51,7 +56,7 @@ function actionHref(locale: PrototypeLocale, slug: string, action: ActionOvervie
     ? `${href}?version=${encodeURIComponent(action.latestVersion.id)}` : href, location)
 }
 
-export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, role, consentPolicyVersion, problems, gettingStarted }: HomeBriefViewProps) {
+export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, role, consentPolicyVersion, problems, gettingStarted, progressPanel, photoStrip }: HomeBriefViewProps) {
   const t = copy[locale].home
   const focus = copy[locale].ownerFocus
   const pc = copy[locale].workspaceHome.home
@@ -118,7 +123,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         {(priority || !followUp) && <article className="brief-priority-card">
           {priority ? (
             <>
-              <h2>{resolveText(priority.title, locale)}</h2>
+              <div className="brief-priority-head"><TemplateIcon templateKey={priority.templateKey} size="lg" /><h2>{resolveText(priority.title, locale)}</h2></div>
               <p className="coach-sentence">{resolveText(priority.summary, locale)}</p>
               {brief.priorityPreview && <blockquote className="brief-draft-preview" data-testid="home-draft-preview">{brief.priorityPreview}</blockquote>}
               <div className="brief-priority-actions"><Button asChild size="lg"><Link href={actionHref(locale, workspaceSlug, priority, location)}>{priorityCta}<ArrowRight /></Link></Button></div>
@@ -153,6 +158,8 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
 
       {problems}
 
+      {progressPanel}
+
       <section className="owner-results-disclosure" aria-label={focus.results}>
         <p>{resultSentence}</p>
         <Link href={withLocation(`${base}/insights`, location)}>{focus.results}<ArrowRight /></Link>
@@ -162,6 +169,8 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         <p>{focus.otherTasks} <Badge variant="outline">{otherTasks}</Badge></p>
         <Link href={withLocation(`${base}/actions`, location)}>{focus.allTasks}<ArrowRight /></Link>
       </section>}
+
+      {photoStrip}
 
       {/* Scores and supporting records stay available without competing with the coach. */}
       <details className="trust-disclosure owner-priority-evidence">

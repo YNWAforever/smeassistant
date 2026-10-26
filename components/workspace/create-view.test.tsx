@@ -133,9 +133,9 @@ describe("CreateView and the AI drafting limit", () => {
   afterEach(cleanup);
 
   it.each([
-    ["en", "What do you want to achieve?", "Create the action and draft"],
-    ["zh-HK", "你想達成甚麼？", "建立行動並生成草稿"],
-    ["zh-TW", "你想達成甚麼？", "建立行動並生成草稿"],
+    ["en", "What do you want to achieve?", "Start writing"],
+    ["zh-HK", "你想達成甚麼？", "開始寫稿"],
+    ["zh-TW", "你想達成甚麼？", "開始寫稿"],
   ] as const)("says in %s that the action exists but today's drafting limit was reached", async (locale, field, button) => {
     renderLive(
       <CreateView
@@ -169,9 +169,9 @@ describe("CreateView while AI drafting is paused (P3.5d)", () => {
   afterEach(cleanup);
 
   it.each([
-    ["en", "What do you want to achieve?", "Create the action and draft"],
-    ["zh-HK", "你想達成甚麼？", "建立行動並生成草稿"],
-    ["zh-TW", "你想達成甚麼？", "建立行動並生成草稿"],
+    ["en", "What do you want to achieve?", "Start writing"],
+    ["zh-HK", "你想達成甚麼？", "開始寫稿"],
+    ["zh-TW", "你想達成甚麼？", "開始寫稿"],
   ] as const)("says in %s that the action exists but AI drafting is paused", async (locale, field, button) => {
     renderLive(
       <CreateView

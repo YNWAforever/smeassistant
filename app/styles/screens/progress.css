@@ -1,0 +1,129 @@
+/* Owner progress, badges, task-type icons and shop photos (2026-10-26).
+   Effort uses the success green so it never reads as the orange score dial. */
+
+/* Task-type icon: a soft tile per kind of work. */
+.template-icon { display: inline-grid; flex: none; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--brand-softer); color: var(--brand-text); }
+.template-icon svg { width: 18px; height: 18px; }
+.template-icon[data-size="sm"] { width: 28px; height: 28px; border-radius: 8px; }
+.template-icon[data-size="sm"] svg { width: 15px; height: 15px; }
+.template-icon[data-size="lg"] { width: 48px; height: 48px; border-radius: 14px; }
+.template-icon[data-size="lg"] svg { width: 24px; height: 24px; }
+.template-icon[data-tone="reviews"] { background: var(--warning-soft); color: var(--warning-text); }
+.template-icon[data-tone="google"] { background: var(--info-soft); color: var(--info-text); }
+.template-icon[data-tone="social"] { background: var(--brand-soft); color: var(--brand-text); }
+.template-icon[data-tone="search"] { background: var(--success-soft); color: var(--success-text); }
+
+.brief-priority-head { display: flex; align-items: center; gap: 14px; margin: 4px 0 12px; }
+.owner-home-page.owner-daily-focus .brief-priority-head h2 { margin: 0; }
+
+/* Effort ring. */
+.k-progress-ring { position: relative; display: inline-grid; flex: none; margin: 0; place-items: center; }
+.k-progress-ring svg { position: absolute; inset: 0; }
+.k-progress-ring-arc { stroke: var(--success); transition: stroke-dashoffset 700ms var(--ease-out, ease-out); }
+.k-progress-ring figcaption { position: relative; display: flex; align-items: baseline; gap: 1px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.k-progress-ring figcaption strong { font-size: 26px; font-weight: 720; letter-spacing: -.03em; }
+.k-progress-ring figcaption small { color: var(--ink-3); font-size: 13px; font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .k-progress-ring-arc { transition: none; } }
+
+/* "Your month" panel. */
+.today-progress { margin-top: 12px; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--paper); }
+.today-progress-title { margin: 0 0 14px; font-size: 17px; font-weight: 700; }
+.today-progress-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px 24px; }
+.today-progress-month { display: flex; align-items: center; gap: 16px; }
+.today-progress-big { margin: 0 0 6px; color: var(--ink); font-size: 16px; font-weight: 650; line-height: 1.45; }
+.today-progress-streak { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 4px 10px; border-radius: 999px; background: var(--canvas); color: var(--ink-2); font-size: 13px; font-weight: 600; }
+.today-progress-streak svg { width: 15px; height: 15px; color: var(--ink-3); }
+.today-progress-streak[data-active] { background: var(--warning-soft); color: var(--warning-text); }
+.today-progress-streak[data-active] svg { color: var(--brand); }
+.today-progress-hint { margin: 6px 0 0; color: var(--ink-3); font-size: 13px; line-height: 1.5; }
+.today-progress-label { display: block; margin-bottom: 8px; color: var(--ink-3); font-size: 12px; font-weight: 650; letter-spacing: .02em; }
+.today-progress-profile-head { display: flex; justify-content: space-between; gap: 8px; color: var(--ink-3); font-size: 13px; }
+.today-progress-profile-head strong { color: var(--success-text); font-size: 13px; }
+.today-progress-steps { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-top: 8px; }
+.today-progress-steps span { height: 8px; border-radius: 999px; background: var(--line); }
+.today-progress-steps span[data-done] { background: var(--success); }
+.today-progress-link { display: inline-flex; min-height: 44px; align-items: center; gap: 4px; color: var(--brand-text); font-size: 13px; font-weight: 650; }
+.today-progress-link svg { width: 14px; height: 14px; }
+.today-progress-sources { grid-column: 1 / -1; padding-top: 14px; border-top: 1px solid var(--border); }
+.today-badges { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.today-badges ul { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.today-badges li { display: grid; justify-items: center; gap: 6px; padding: 10px 4px; border-radius: 12px; background: var(--canvas); color: var(--ink-3); text-align: center; }
+.today-badge-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: var(--line); }
+.today-badge-icon svg { width: 18px; height: 18px; }
+.today-badge-name { font-size: 12px; font-weight: 650; line-height: 1.3; }
+.today-badges li[data-earned] { background: var(--warning-soft); color: var(--warning-text); }
+.today-badges li[data-earned] .today-badge-icon { background: var(--brand); color: var(--on-brand); animation: k-badge-pop 420ms var(--ease-out, ease-out) both; }
+@keyframes k-badge-pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .today-badges li[data-earned] .today-badge-icon { animation: none; } }
+.today-progress-note { margin: 14px 0 0; color: var(--ink-3); font-size: 12px; line-height: 1.5; }
+
+/* Shop photos. */
+.shop-photos { margin-top: 12px; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--paper); }
+.shop-photos-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.shop-photos-head h2, .shop-photos-copy h2 { margin: 0; font-size: 17px; font-weight: 700; }
+.shop-photos-head a { display: inline-flex; min-height: 44px; align-items: center; gap: 4px; color: var(--brand-text); font-size: 13px; font-weight: 650; }
+.shop-photos-head a svg { width: 14px; height: 14px; }
+.shop-photos-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.shop-photos-grid img { display: block; width: 100%; aspect-ratio: 1; border-radius: 12px; background: var(--canvas); object-fit: cover; }
+.shop-photos-empty { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: center; gap: 20px; }
+.shop-photos-sample { position: relative; margin: 0; overflow: hidden; border-radius: 14px; background: linear-gradient(135deg, var(--brand-softer), var(--warning-soft)); aspect-ratio: 16 / 10; }
+.shop-photos-sample-image { width: 100%; height: 100%; background-position: center; background-size: cover; }
+.shop-photos-sample figcaption { position: absolute; right: 8px; bottom: 8px; left: 8px; }
+.shop-photos-sample figcaption a { display: inline-block; padding: 2px 8px; border-radius: 999px; background: color-mix(in oklab, var(--paper) 88%, transparent); color: var(--ink-2); font-size: 12px; }
+.shop-photos-copy p { margin: 8px 0 14px; color: var(--ink-2); font-size: 15px; line-height: 1.55; }
+.shop-photos-add { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; padding: 0 18px; border-radius: 999px; background: var(--brand); color: var(--on-brand); font-size: 14px; font-weight: 700; }
+.shop-photos-add svg { width: 18px; height: 18px; }
+
+@media (max-width: 767px) {
+  .today-progress, .shop-photos { padding: 16px; }
+  .today-progress-grid { grid-template-columns: minmax(0, 1fr); }
+  .today-badges ul { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .shop-photos-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .shop-photos-empty { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* To-do card with its task icon. */
+.action-card .action-card-content { grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 14px; }
+.action-card .action-card-content > div > p:last-child { color: var(--soft); font-size: 13px; }
+
+/* Better?: one bar per scan, coverage only. */
+.insights-history { margin-bottom: 16px; }
+.insights-history .section-card-heading svg { width: 20px; height: 20px; color: var(--ink-3); }
+.insights-history h2 { margin: 0; font-size: 18px; }
+.k-scan-bars { margin: 12px 0 8px; }
+.k-scan-bars-plot { display: flex; align-items: flex-end; gap: 14px; min-height: 180px; padding-bottom: 4px; overflow-x: auto; }
+.k-scan-bar { display: grid; flex: 0 0 64px; justify-items: center; gap: 6px; }
+.k-scan-bar-value { color: var(--ink); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.k-scan-bar-track { position: relative; display: block; width: 36px; height: 120px; overflow: hidden; border-radius: 10px; background: var(--canvas); }
+.k-scan-bar-fill { position: absolute; right: 0; bottom: 0; left: 0; border-radius: 10px; background: linear-gradient(180deg, var(--info-text), color-mix(in oklab, var(--info-text) 55%, var(--paper))); transition: height 600ms var(--ease-out, ease-out); }
+.k-scan-bar[data-gap] .k-scan-bar-track { outline: 2px dashed var(--line); outline-offset: 3px; }
+.k-scan-bar-label { color: var(--ink-3); font-size: 12px; text-align: center; white-space: nowrap; }
+.k-scan-bar-gap { color: var(--warning-text); font-size: 11px; font-weight: 650; }
+@media (prefers-reduced-motion: reduce) { .k-scan-bar-fill { transition: none; } }
+
+/* Shop page header: photo, profile ring and checklist. */
+.shop-profile-card { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 20px; margin: 0 0 18px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--paper); }
+.shop-profile-photo { position: relative; margin: 0; min-height: 200px; overflow: hidden; border-radius: 14px; background: linear-gradient(135deg, var(--brand-softer), var(--warning-soft)); }
+.shop-profile-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.shop-profile-photo .shop-photos-sample-image { position: absolute; inset: 0; }
+.shop-profile-photo figcaption { position: absolute; right: 8px; bottom: 8px; left: 8px; }
+.shop-profile-photo figcaption a { display: inline-block; padding: 2px 8px; border-radius: 999px; background: color-mix(in oklab, var(--paper) 88%, transparent); color: var(--ink-2); font-size: 12px; }
+.shop-profile-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.shop-profile-head h2 { margin: 0 0 4px; font-size: 18px; }
+.shop-profile-level { display: inline-flex; align-items: center; gap: 6px; margin: 0; color: var(--success-text); font-size: 14px; font-weight: 700; }
+.shop-profile-level svg { width: 16px; height: 16px; }
+.shop-profile-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; margin: 0; padding: 0; list-style: none; }
+.shop-profile-items a, .shop-profile-row { display: flex; min-height: 40px; align-items: center; gap: 8px; color: var(--ink-2); font-size: 14px; }
+.shop-profile-items a { color: var(--brand-text); font-weight: 600; }
+.shop-profile-items a > svg { width: 14px; height: 14px; margin-left: auto; }
+.shop-profile-check { display: inline-grid; flex: none; place-items: center; width: 22px; height: 22px; border: 2px solid var(--line); border-radius: 999px; }
+.shop-profile-check[data-done] { border-color: transparent; color: var(--success); }
+.shop-profile-check svg { width: 22px; height: 22px; }
+.shop-profile-items li[data-done] .shop-profile-row { color: var(--ink); }
+@media (max-width: 767px) {
+  .shop-profile-card { grid-template-columns: minmax(0, 1fr); }
+  .shop-profile-photo { min-height: 160px; }
+  .shop-profile-items { grid-template-columns: minmax(0, 1fr); }
+}
+.shop-photos-sample, .shop-profile-photo { display: grid; place-items: center; }
+.shop-photos-placeholder { position: relative; width: 48px; height: 48px; color: var(--brand-text); opacity: .55; }
