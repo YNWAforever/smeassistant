@@ -51,17 +51,17 @@ const offersLinks = () => screen.queryAllByRole("link").filter((link) => link.ge
 
 // Phase 4: Offers is a mode of Actions › New, never a navigation destination, whatever the flag.
 describe("WorkspaceShell destinations (Phase 4)", () => {
-  it.each([undefined, false, true])("shows the same five destinations with offersEnabled=%s and no Offers link", (offersEnabled) => {
+  it.each([undefined, false, true])("shows the same four destinations with offersEnabled=%s and no Offers link", (offersEnabled) => {
     mount({ offersEnabled });
     expect(offersLinks()).toHaveLength(0);
-    for (const key of ["today", "actions", "insights", "business", "settings"] as const) {
+    for (const key of ["today", "actions", "insights", "business"] as const) {
       expect(screen.getAllByRole("link", { name: copy.en.shell.nav[key] })).toHaveLength(2); // sidebar and mobile bar
     }
   });
 
   it.each(["zh-HK", "zh-TW"] as const)("localises every destination in %s", (locale) => {
     mount({}, locale);
-    for (const key of ["today", "actions", "insights", "business", "settings"] as const) {
+    for (const key of ["today", "actions", "insights", "business"] as const) {
       expect(screen.getAllByRole("link", { name: copy[locale].shell.nav[key] }).length).toBeGreaterThan(0);
     }
   });

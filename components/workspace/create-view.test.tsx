@@ -75,14 +75,24 @@ describe("CreateView goal ordering", () => {
     expect(TEMPLATES.filter(isOfferTemplate).map((t) => t.key)).toEqual(["offer-instagram-post", "offer-google-post"]);
   });
 
-  it("renders a second group so the remaining capabilities are demoted, not hidden", () => {
-    const root = render();
-    const headings = Array.from(root.querySelectorAll(".eyebrow")).map((n) => n.textContent?.trim());
-    expect(headings).toContain("Recommended starting points");
-    expect(headings).toContain("Other capabilities");
-    // Demoted means below the lead group, not removed.
+  it.each(["en", "zh-HK", "zh-TW"] as const)("shows only three goals until other writing is opened (%s)", locale => {
+    const root = render({ locale });
+    const more = root.querySelector("details.other-goals")!;
+    expect(more).not.toBeNull();
+    expect(more.hasAttribute("open")).toBe(false);
+    expect(more.querySelector("summary")?.textContent).toBe(locale === "en" ? "Other ways to write" : "其他寫法");
+    const face = [...root.querySelectorAll(".goal-card")].filter(card => !card.closest("details"));
+    expect(face.map(card => card.querySelector("h2")?.textContent)).toEqual(LEAD_KEYS.map(key => copy[locale].workspace.templates[key].title));
     expect(cardTitles(root).length).toBe(AGENT_TEMPLATES.length);
   });
+
+  it("keeps secondary evidence-led goals in the disclosure and starts on a visible lead goal", () => {
+    const root = render({ openActions: [{ id: "social", templateKey: "social-post", evidence: "A social opportunity", freshness: "today", factType: "Observed" }] });
+    expect(root.querySelector(".goal-card.is-selected h2")?.textContent).toBe("Reply to unanswered Google reviews");
+    expect(root.querySelector("details .goal-card h2")?.textContent).toBeTruthy();
+    expect(root.querySelector('[role="tablist"]')).toBeNull();
+  });
+
 });
 
 describe("CreateView capability labelling", () => {
@@ -183,4 +193,13 @@ describe("CreateView while AI drafting is paused (P3.5d)", () => {
     expect(clientMocks.createObjectiveAction).toHaveBeenCalledOnce();
     expect(toastMocks.error).toHaveBeenCalledWith(getMessages(locale).pause.ai);
   });
+});
+
+
+it("keeps the selected goal's fact-type labels inside a closed explanation", () => {
+  const root = render({ locale: "zh-HK" });
+  const facts = root.querySelector(".fact-stack")!;
+  expect(facts.closest("details")?.hasAttribute("open")).toBe(false);
+  expect(facts.closest("details")?.querySelector("summary")?.textContent).toBe("點解咁講");
+  expect(root.querySelector(".page-intro")?.textContent ?? "").not.toContain("Agent");
 });

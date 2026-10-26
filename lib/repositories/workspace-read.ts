@@ -55,7 +55,7 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
     async locationCards(workspaceIds: string[]): Promise<LocationCardRow[]> {
       if (!workspaceIds.length) return [];
       // Reduce each source BEFORE joining: snapshot history must not multiply
-      // urgent counts. Both keys bind evidence/actions to the location's tenant.
+      // action counts. Both keys bind evidence/actions to the location's tenant.
       // Set-based reads avoid repeated history scans on the current schema.
       return rows<LocationCardRow>(`WITH latest AS (
           SELECT DISTINCT ON (workspace_id, location_id)
@@ -63,19 +63,21 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
           FROM scan_snapshots
           WHERE workspace_id=ANY($1::uuid[]) AND location_id IS NOT NULL
           ORDER BY workspace_id, location_id, observed_at DESC, created_at DESC, id DESC
-        ), urgent AS (
-          SELECT workspace_id, location_id, count(*)::int AS count
+        ), waiting AS (
+          SELECT workspace_id, location_id, count(*)::int AS count, count(*) FILTER (WHERE priority='urgent')::int AS urgent_count
           FROM actions
-          WHERE workspace_id=ANY($1::uuid[]) AND location_id IS NOT NULL
-            AND priority='urgent' AND action_state NOT IN ('completed','dismissed','cancelled','expired')
+          WHERE workspace_id=ANY($1::uuid[])
+            AND action_state NOT IN ('completed','dismissed','cancelled','expired')
           GROUP BY workspace_id, location_id
         )
         SELECT l.id, l.workspace_id, l.slug, l.name, l.address, l.district, l.is_primary, l.place_id,
           s.overall_score, s.coverage, s.observed_at::text,
-          coalesce(u.count,0)::int AS urgent_actions
+          coalesce(u.urgent_count,0)::int AS urgent_actions,
+          (coalesce(u.count,0)+coalesce(w.count,0))::int AS waiting_actions
         FROM locations l
         LEFT JOIN latest s ON s.workspace_id=l.workspace_id AND s.location_id=l.id
-        LEFT JOIN urgent u ON u.workspace_id=l.workspace_id AND u.location_id=l.id
+        LEFT JOIN waiting u ON u.workspace_id=l.workspace_id AND u.location_id=l.id
+        LEFT JOIN waiting w ON w.workspace_id=l.workspace_id AND w.location_id IS NULL
         WHERE l.workspace_id=ANY($1::uuid[])
         ORDER BY l.is_primary DESC, l.name ASC`, [workspaceIds]);
     },

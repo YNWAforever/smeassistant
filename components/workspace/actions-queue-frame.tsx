@@ -11,13 +11,11 @@ import { withLocation } from "@/lib/workspace/format"
 
 export type QueueView = "all" | "needs_input" | "drafts" | "awaiting_approval" | "completed" | "due" | "fixpack"
 
-const STATUS_VIEWS = ["all", "needs_input", "drafts", "awaiting_approval", "completed"] as const
-
 /**
  * The Actions queue chrome shared by the list, Due and Fix Pack views: one
- * header, one New button and one tab row, so the old Calendar and the Home
+ * header, one New button and a secondary More menu, so the old Calendar and the Home
  * Fix Pack card read as views of the same queue (docs/ux target IA §2).
- * Counts appear only on the status tabs, where the list query computed them.
+ * Legacy status URLs stay addressable; the default face is one waiting list.
  */
 export function ActionsQueueFrame({
   locale,
@@ -25,7 +23,6 @@ export function ActionsQueueFrame({
   role,
   view,
   tabHref,
-  counts,
   location,
   tools,
   children,
@@ -43,7 +40,6 @@ export function ActionsQueueFrame({
   const t = copy[locale].shell
   const base = `/${locale}/owner/${workspaceSlug}`
   const tabs: Array<{ key: QueueView; label: string }> = [
-    ...STATUS_VIEWS.map((key) => ({ key, label: t.queue.tabs[key] })),
     { key: "due", label: t.views.due },
     { key: "fixpack", label: t.views.fixPack },
   ]
@@ -60,13 +56,13 @@ export function ActionsQueueFrame({
       />
       {role === "viewer" && <RoleNotice kind="viewer" locale={locale} />}
       <div className="action-tabs">
-        <nav className="action-tab-list" aria-label={t.queue.navLabel}>
-          {tabs.map((tab) => (
-            <Link key={tab.key} href={tabHref(tab.key)} aria-current={view === tab.key ? "page" : undefined} className={view === tab.key ? "is-active" : ""}>
-              {tab.label}{counts?.[tab.key] !== undefined && <> <span>{counts[tab.key]}</span></>}
-            </Link>
-          ))}
-        </nav>
+        {view !== "all" && <Link href={tabHref("all")}>{t.queue.title}</Link>}
+        <details className="queue-more owner-disclosure">
+          <summary>{t.queue.more}</summary>
+          <nav aria-label={t.queue.navLabel}>
+            {tabs.map((tab) => <Link key={tab.key} href={tabHref(tab.key)} aria-current={view === tab.key ? "page" : undefined}>{tab.label}</Link>)}
+          </nav>
+        </details>
         <div className="action-tab-content">{children}</div>
       </div>
     </div>

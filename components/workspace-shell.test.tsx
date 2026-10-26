@@ -27,8 +27,8 @@ function view(pathname: string) {
   return root;
 }
 
-describe("five-destination owner navigation (Phase 4)", () => {
-  it("keeps five destinations in desktop navigation, each carrying the selected branch", () => {
+describe("four-destination owner navigation (Phase 2)", () => {
+  it("keeps four destinations in desktop navigation, each carrying the selected branch", () => {
     const sidebar = view("/en/owner/example").querySelector(".workspace-sidebar")!;
     const links = Array.from(sidebar.querySelectorAll("[data-slot='sidebar-menu'] a")).map((link) => link.getAttribute("href"));
     expect(links).toEqual([
@@ -36,7 +36,6 @@ describe("five-destination owner navigation (Phase 4)", () => {
       "/en/owner/example/actions?location=branch",
       "/en/owner/example/insights?location=branch",
       "/en/owner/example/business?location=branch",
-      "/en/owner/example/settings?location=branch",
     ]);
   });
 
@@ -49,8 +48,8 @@ describe("five-destination owner navigation (Phase 4)", () => {
     ["/en/owner/example/insights", "/en/owner/example/insights?location=branch"],
     ["/en/owner/example/business/assets", "/en/owner/example/business?location=branch"],
     ["/en/owner/example/business/profile", "/en/owner/example/business?location=branch"],
-    ["/en/owner/example/settings/team", "/en/owner/example/settings?location=branch"],
-    ["/en/owner/example/settings", "/en/owner/example/settings?location=branch"],
+    ["/en/owner/example/settings/team", "/en/owner/example/business?location=branch"],
+    ["/en/owner/example/settings", "/en/owner/example/business?location=branch"],
   ])("marks one destination current on %s, in the sidebar and the mobile bar", (pathname, href) => {
     const root = view(pathname);
     const current = root.querySelectorAll('a[aria-current="page"]');
@@ -61,8 +60,8 @@ describe("five-destination owner navigation (Phase 4)", () => {
   it.each([
     ["/en/owner/example/actions/new", "New action"],
     ["/en/owner/example/actions/action-1", "Review & approve"],
-    ["/en/owner/example/business/integrations", "Business"],
-    ["/en/owner/example/settings/plan", "Settings"],
+    ["/en/owner/example/business/integrations", "Shop"],
+    ["/en/owner/example/settings/plan", "Shop"],
   ])("names the current section on %s", (pathname, label) => {
     expect(view(pathname).querySelector(".workspace-topbar-context strong")?.textContent).toBe(label);
   });
@@ -87,4 +86,25 @@ describe("five-destination owner navigation (Phase 4)", () => {
     expect(account?.getAttribute("title")).toBe("owner@example.test");
     expect(account?.textContent).toContain("Owner");
   });
+});
+
+
+it.each([
+  ["en", ["Today", "To do", "Better?", "Shop"]],
+  ["zh-HK", ["今日", "待辦", "好啲？", "舖"]],
+  ["zh-TW", ["今天", "待辦", "有好一點？", "店裡"]],
+] as const)("offers four matching shop destinations on mobile and desktop (%s)", (locale, labels) => {
+  route.pathname = `/${locale}/owner/example/settings/notifications`;
+  const root = document.createElement("div");
+  root.innerHTML = renderToStaticMarkup(<WorkspaceShell locale={locale} workspace={workspace}><h1>Page</h1></WorkspaceShell>);
+  expect([...root.querySelectorAll(".mobile-bottom-nav a")].map(a => a.textContent)).toEqual(labels);
+  expect([...root.querySelectorAll("[data-slot='sidebar-menu'] a")].map(a => a.textContent)).toEqual(labels);
+  expect(root.querySelector('.mobile-bottom-nav [aria-current="page"]')?.getAttribute("href")).toBe(`/${locale}/owner/example/business?location=branch`);
+});
+
+it.each([0, 1, 2])("shows a mobile top-bar location control only for multiple branches (%s)", count => {
+  const root = document.createElement("div");
+  const locations = [{ slug: "branch", name: "Branch" }, { slug: "second", name: "Second branch" }].slice(0, count);
+  root.innerHTML = renderToStaticMarkup(<WorkspaceShell locale="en" workspace={{ ...workspace, locations }}><h1>Page</h1></WorkspaceShell>);
+  expect(root.querySelectorAll(".workspace-topbar .workspace-mobile-brand [role=combobox]")).toHaveLength(count > 1 ? 1 : 0);
 });

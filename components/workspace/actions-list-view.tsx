@@ -1,15 +1,15 @@
 import Link from "next/link"
 import type { ReactNode } from "react"
-import { ArrowRight, Filter, MapPin, ShieldCheck, Sparkles } from "lucide-react"
+import { ArrowRight, MapPin, ShieldCheck } from "lucide-react"
 
 import { EmptyState } from "@/components/kinnso/states"
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
-import { CapabilityBadge, FactType } from "@/components/product-ui"
+import { FactType } from "@/components/product-ui"
 import { ActionsQueueFrame, type QueueView } from "@/components/workspace/actions-queue-frame"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { LocationSelect } from "@/components/workspace/location-select"
-import { ActionFilterSelect, ActionSearch } from "@/components/workspace/action-filters"
+import { ActionSearch } from "@/components/workspace/action-filters"
 import { BulkActionSelection, type AssignmentMember } from "@/components/workspace/bulk-action-dialog"
 import { BulkApprove } from "@/components/workspace/bulk-approve"
 import type { BulkApproveItem } from "@/lib/workspace/bulk-approve"
@@ -66,17 +66,19 @@ function ActionCard({ action, locale, base, timezone, location, previewHref }: {
   const href = withLocation(action.templateKey === "google-reconnect" ? `${base}/business/integrations` : `${base}/actions/${action.id}`, location)
   const phase = action.displayPhaseKey
   const cta = phase === "draft_ready" || phase === "changes_requested" ? (copy[locale].ownerFocus.review) : phase === "requires_connection" ? pc.reviewDependency : action.missingInputs.length > 0 ? pc.reviewInputs : pc.openAction
-  const topFactors = [...action.priorityFactors].sort((a, b) => b.points - a.points).slice(0, 3)
   const assigneeName = action.assignee?.name || (action.assignee ? pc.assignedMemberUnavailable : pc.unassigned)
   return (
     <article className="action-card">
       <div className="action-card-top">
-        <div className="action-card-badges"><Badge variant="outline" className={priorityClass(action.priority)}>{priorityLabel(action.priority, locale)}</Badge><Badge variant="outline">{resolveText(action.displayPhase, locale)}</Badge><CapabilityBadge value={action.capability} context="action" /></div>
         <span className="action-scope"><MapPin />{resolveText(action.location.name, locale)}</span>
       </div>
-      <div className="action-card-content"><div><p className="eyebrow">{sourceLabel(action.evidence.source, locale)}</p><h2>{resolveText(action.title, locale)}</h2><p>{resolveText(action.summary, locale)}</p></div><div className="action-evidence"><FactType type={action.evidence.factType} />{action.evidence.value && <strong className="action-evidence-value">{evidenceValueLabel(action.evidence.value, locale)}</strong>}<p>{resolveText(action.evidence.detail, locale)}</p><small>{[resolveText(action.evidence.freshness, locale), formatDateTime(action.evidence.observedAt, locale, timezone)].filter(Boolean).join(" · ")}</small></div></div>
-      <div className="priority-reason"><Sparkles /><div><strong>{pc.whyThisPriority}</strong><span>{topFactors.map((f) => `${resolveText(f.label, locale)} ${f.points > 0 ? "+" : ""}${f.points}`).join(" · ")}</span></div></div>
-      <dl className="action-card-meta"><div><dt>{pc.ownerEffort}</dt><dd>{effortLabel(action.effortMinutes, locale)}</dd></div><div><dt>{pc.assignee}</dt><dd className="break-all">{assigneeName}</dd></div><div><dt>{pc.due}</dt><dd>{action.dueAt ? formatDateTime(action.dueAt, locale, timezone) : "—"}</dd></div><div><dt>{pc.inputs}</dt><dd>{action.missingInputs.length ? (fill(pc.missing, { missingInputs: action.missingInputs.length })) : pc.ready}</dd></div></dl>
+      <div className="action-card-content"><div><h2>{resolveText(action.title, locale)}</h2><p>{resolveText(action.summary, locale)}</p></div></div>
+      <details className="trust-disclosure">
+        <summary>{copy[locale].home.trust}</summary>
+        <div className="action-card-badges"><Badge variant="outline" className={priorityClass(action.priority)}>{priorityLabel(action.priority, locale)}</Badge><Badge variant="outline">{resolveText(action.displayPhase, locale)}</Badge></div>
+        <div className="action-evidence"><p className="eyebrow">{sourceLabel(action.evidence.source, locale)}</p><FactType type={action.evidence.factType} />{action.evidence.value && <strong className="action-evidence-value">{evidenceValueLabel(action.evidence.value, locale)}</strong>}<p>{resolveText(action.evidence.detail, locale)}</p><small>{[resolveText(action.evidence.freshness, locale), formatDateTime(action.evidence.observedAt, locale, timezone)].filter(Boolean).join(" · ")}</small></div>
+        <dl className="action-card-meta"><div><dt>{pc.ownerEffort}</dt><dd>{effortLabel(action.effortMinutes, locale)}</dd></div><div><dt>{pc.assignee}</dt><dd className="break-all">{assigneeName}</dd></div><div><dt>{pc.due}</dt><dd>{action.dueAt ? formatDateTime(action.dueAt, locale, timezone) : "—"}</dd></div><div><dt>{pc.inputs}</dt><dd>{action.missingInputs.length ? (fill(pc.missing, { missingInputs: action.missingInputs.length })) : pc.ready}</dd></div></dl>
+      </details>
       <div className="action-card-footer"><span>{pc.lastChanged}{formatDateTime(action.updatedAt, locale, timezone)}</span><span className="action-card-links">{previewHref && <Link className="action-preview-link" href={previewHref} scroll={false}>{copy[locale].shell.panel.preview}</Link>}<Button asChild><Link href={href}>{cta}<ArrowRight /></Link></Button></span></div>
     </article>
   )
@@ -99,6 +101,7 @@ export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, 
   const base = `/${locale}/owner/${workspaceSlug}`
   const view = filters.view ?? "all"
   const location = filters.location ?? "all"
+  const narrowed = Boolean(filters.channel || filters.status || filters.assignee || filters.due || view !== "all")
   // Preview opens the side panel and keeps the list's filters and page; google-reconnect has no detail to preview.
   const previewHref = (action: ActionOverview) => {
     if (action.templateKey === "google-reconnect") return undefined
@@ -109,13 +112,6 @@ export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, 
     return `${list}${list.includes("?") ? "&" : "?"}${extra}`
   }
   const card = (action: ActionOverview) => <ActionCard key={action.id} action={action} locale={locale} base={base} timezone={timezone} location={location} previewHref={previewHref(action)} />
-  const channels = [
-    { value: "google", label: "Google" },
-    { value: "instagram", label: "Instagram" },
-    { value: "website", label: copy[locale].ui.sources.website },
-    { value: "search_ai", label: pc.searchAi },
-  ]
-  const statuses = ["recommended", "needs_input", "ready", "in_progress", "completed", "dismissed", "expired"].map((value) => ({ value, label: (copy[locale].workspace.states as Record<string, string>)[value] ?? value }))
   return (
     <ActionsQueueFrame
       locale={locale}
@@ -131,12 +127,8 @@ export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, 
         <div className="actions-split-list">
           <section className="filter-bar" aria-label={pc.actionFilters}>
             <ActionSearch key={filters.q ?? ""} value={filters.q ?? ""} label={pc.searchTitleAndSummary} submitLabel={pc.search} />
-            <span className="filter-label"><Filter /> {pc.filter}</span>
-            <ActionFilterSelect param="channel" value={filters.channel ?? "all"} options={channels} allLabel={pc.allChannels} ariaLabel={pc.filterByChannel} />
-            <ActionFilterSelect param="status" value={filters.status ?? "all"} options={statuses} allLabel={pc.allStatuses} ariaLabel={pc.filterByStatus} />
-            <ActionFilterSelect param="assignee" value={filters.assignee ?? "all"} options={[{ value: "unassigned", label: pc.unassigned }, ...members.map(m => ({ value: m.id, label: m.name }))]} allLabel={pc.allAssignees} ariaLabel={pc.filterByAssignee} />
-            <ActionFilterSelect param="due" value={filters.due ?? "all"} options={[{ value: "overdue", label: pc.overdue }, { value: "today", label: copy[locale].shell.nav.today }, { value: "next_7_days", label: pc.next7Days }, { value: "none", label: pc.noDueDate }]} allLabel={pc.allDueDates} ariaLabel={pc.filterByDueDate} />
           </section>
+          {narrowed && result.actions.length > 0 && <Link className="queue-clear-filters" href={tabHref(base, { location: filters.location }, "all")}>{copy[locale].shell.empty.filtered.action}</Link>}
           {role !== "viewer" && <BulkApprove locale={locale} items={bulkApprove} />}
           <div className="queue-summary"><span><strong>{result.actions.length}</strong> {pc.actionsOnThisPage}</span><span>{pc.sortedByPriorityUpdate}</span></div>
           {result.actions.length === 0 ? <QueueEmpty locale={locale} filtered={Boolean(filters.q || filters.channel || filters.status || filters.assignee || filters.due || view !== "all")} clearHref={tabHref(base, { location: filters.location }, "all")} newHref={role === "viewer" ? null : withLocation(`${base}/actions/new`, location)} /> : bulkEnabled && role !== "viewer" ? <BulkActionSelection key={JSON.stringify([workspaceId,role,locationId,filters.q,filters.assignee,filters.due,filters.channel,filters.status,view])} locale={locale} workspaceId={workspaceId} timezone={timezone} members={members} items={result.actions.map(action => ({ actionId: action.id, expectedUpdatedAt: action.updatedAt, title: resolveText(action.title,locale), closed: ["completed","dismissed","cancelled","expired"].includes(action.actionState) }))} cards={result.actions.map(card)} /> : <div className="action-list">{result.actions.map(card)}</div>}
@@ -147,7 +139,7 @@ export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, 
         </div>
         {panel}
       </div>
-      <div className="queue-footnote"><ShieldCheck /><p><strong>{pc.separateLifecycleStates}</strong>{pc.actionAgentRunApproval}</p></div>
+      <details className="trust-disclosure"><summary>{copy[locale].home.trust}</summary><div className="queue-footnote"><ShieldCheck /><p><strong>{pc.separateLifecycleStates}</strong>{pc.actionAgentRunApproval}</p></div></details>
     </ActionsQueueFrame>
   )
 }

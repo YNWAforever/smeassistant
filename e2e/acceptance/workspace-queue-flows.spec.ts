@@ -63,7 +63,7 @@ test("a viewer is offered no bulk approval and the approve route refuses them", 
   const version = seedDraft(environment.db, merchant.workspaceId, merchant.actionId);
   await signIn(page, environment, merchant, "viewer");
   await page.goto(`/en/owner/${merchant.slug}/actions`);
-  await expect(page.getByRole("heading", { level: 1, name: "Actions" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "To do" })).toBeVisible();
   await expect(page.locator(".bulk-approve")).toHaveCount(0);
   expect((await page.request.post(`/api/versions/${version}/approve`, { data: {} })).status()).toBe(403);
   expect(sql(environment.db, `select approval_state from output_versions where id='${version}';`)).toBe("draft");

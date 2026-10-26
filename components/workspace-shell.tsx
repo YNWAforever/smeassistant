@@ -11,7 +11,6 @@ import {
   Home,
   MoreHorizontal,
   Search,
-  Settings,
 } from "lucide-react"
 import { useEffect, type ReactNode } from "react"
 
@@ -36,6 +35,7 @@ import { interpolate } from "@/lib/share"
 import { accountInitials, resolveLocationSlug, usagePercent } from "@/lib/workspace/shell"
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
 import { ThemeMenu, WorkspaceTheme } from "@/components/theme/workspace-theme"
+import { LocationSelect } from "@/components/workspace/location-select"
 import { useFocusClearOfBars } from "@/hooks/use-focus-clear-of-bars"
 import type { AssistantSurface } from "@/lib/pocket-assistant/contracts"
 import { DemoBadge, EnvironmentBar, LocaleSelect, type ShellWorkspace } from "@/components/product-ui"
@@ -45,18 +45,16 @@ import { DemoBadge, EnvironmentBar, LocaleSelect, type ShellWorkspace } from "@/
  * of components/product-ui.tsx so public pages, which import that module for
  * their own chrome, do not download the sidebar and tooltip code.
  *
- * Five destinations (docs/ux target IA §2): Today, Actions, Insights,
- * Business, Settings. Each owns the routes under its suffix, so a deep page
- * (an action, an asset, a team page) keeps its destination highlighted.
+ * Four destinations: Today, To do, Better?, Shop. Shop owns existing Business
+ * and Settings routes, so bookmarked settings pages keep the same highlight.
  */
-type DestinationKey = "today" | "actions" | "insights" | "business" | "settings"
+type DestinationKey = "today" | "actions" | "insights" | "business"
 
 const DESTINATIONS: ReadonlyArray<{ key: DestinationKey; icon: typeof Home; suffix: string; owns: string[] }> = [
   { key: "today", icon: Home, suffix: "", owns: [] },
   { key: "actions", icon: FileClock, suffix: "/actions", owns: ["/actions", "/packs"] },
   { key: "insights", icon: BarChart3, suffix: "/insights", owns: ["/insights"] },
-  { key: "business", icon: Building2, suffix: "/business", owns: ["/business"] },
-  { key: "settings", icon: Settings, suffix: "/settings", owns: ["/settings"] },
+  { key: "business", icon: Building2, suffix: "/business", owns: ["/business", "/settings"] },
 ]
 
 /** Which destination a workspace path belongs to; Today owns the workspace root. */
@@ -152,7 +150,7 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
         <header className="workspace-topbar">
           <div className="workspace-mobile-brand md:hidden">
             <span className="brand-mark" aria-hidden="true"><Search /></span>
-            <span><strong>{t.brand.name}</strong><small>{workspace.name} · {locationName}</small></span>
+            <span><strong>{workspace.name}</strong>{workspace.locations.length > 1 ? <LocationSelect locale={locale} value={location} locations={workspace.locations} className="mobile-location-select" /> : <small>{locationName}</small>}</span>
           </div>
           <div className="workspace-topbar-context hidden md:flex" aria-label={`${t.context.owner}: ${workspaceSection}`}>
             <span>{t.context.owner}</span>

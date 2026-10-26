@@ -104,9 +104,9 @@ describe("workspace cards (Phase 5)", () => {
     workspace: { id: "ws", slug: "kam", name: "Kam Man House", market: "hk", ...base },
     role: "owner",
     locations: [
-      { id: "l1", slug: "tin-hau", name: "Tin Hau", isPrimary: true, latestScore: 62.4, latestCoverage: 0.78, urgentActions: 2, lastScanAt: "2026-10-01T00:00:00Z" },
-      { id: "l2", slug: "yik-yam", name: "Yik Yam", isPrimary: false, latestScore: null, latestCoverage: 0.25, urgentActions: 0, lastScanAt: "2026-10-01T00:00:00Z" },
-      { id: "l3", slug: "new", name: "New branch", isPrimary: false, latestScore: null, latestCoverage: null, urgentActions: 0, lastScanAt: null },
+      { id: "l1", slug: "tin-hau", name: "Tin Hau", isPrimary: true, latestScore: 62.4, latestCoverage: 0.78, urgentActions: 0, waitingActions: 2, lastScanAt: "2026-10-01T00:00:00Z" },
+      { id: "l2", slug: "yik-yam", name: "Yik Yam", isPrimary: false, latestScore: null, latestCoverage: 0.25, urgentActions: 0, waitingActions: 0, lastScanAt: "2026-10-01T00:00:00Z" },
+      { id: "l3", slug: "new", name: "New branch", isPrimary: false, latestScore: null, latestCoverage: null, urgentActions: 0, waitingActions: 0, lastScanAt: null },
     ],
   } as WorkspaceCard
 
@@ -116,24 +116,28 @@ describe("workspace cards (Phase 5)", () => {
     return root
   }
 
-  it("opens all locations from the card head and each location from its row", () => {
+  it("opens the primary location from the card head and each location from its row", () => {
     const root = cardMarkup()
-    expect(root.querySelector(".ws-card-head")?.getAttribute("href")).toBe("/en/owner/kam?location=all")
+    expect(root.querySelector(".ws-card-head")?.getAttribute("href")).toBe("/en/owner/kam?location=tin-hau")
     expect([...root.querySelectorAll(".ws-card-locations a")].map((a) => a.getAttribute("href"))).toEqual([
       "/en/owner/kam?location=tin-hau", "/en/owner/kam?location=yik-yam", "/en/owner/kam?location=new",
     ])
   })
 
-  it("never shows a withheld score as a number and never invents coverage for an unscanned location", () => {
-    const rows = [...cardMarkup().querySelectorAll(".ws-card-locations li")].map((li) => li.textContent ?? "")
-    expect(rows[0]).toContain("Score 62")
-    expect(rows[0]).toContain("78% coverage")
-    expect(rows[0]).toContain("2 urgent actions")
-    expect(rows[1]).toContain("No score yet")
-    expect(rows[1]).not.toMatch(/Score \d/)
-    expect(rows[2]).toContain("No scan yet")
-    expect(rows[2]).not.toMatch(/coverage/i)
-  })
+  it.each([
+    ["en", "Something is waiting for you", "No scan yet", "Nothing waiting"],
+    ["zh-HK", "有一件等你", "未掃過", "暫時冇嘢等你"],
+    ["zh-TW", "有件事等你", "還沒掃過", "暫時沒事等你"],
+  ] as const)("uses a simple honest waiting state without score or coverage (%s)", (locale, waiting, noScan, quiet) => {
+    const root = cardMarkup(locale);
+    const rows = [...root.querySelectorAll(".ws-card-locations li")].map(li => li.textContent ?? "");
+    expect(root.querySelector(".ws-card")?.textContent).toContain(locale === "en" ? "Hong Kong" : "香港");
+    expect(rows[0]).toContain(waiting);
+    expect(rows[1]).toContain(quiet);
+    expect(rows[2]).toContain(noScan);
+    expect(root.querySelector(".ws-card")?.textContent).not.toMatch(/Score|score|coverage|評分|覆蓋率|分數|涵蓋率|62|78%/);
+    expect(root.querySelector(".ws-loc-bar")).toBeNull();
+  });
 
   it.each(["zh-HK", "zh-TW"] as const)("speaks %s on the cards", (locale) => {
     const text = cardMarkup(locale).textContent ?? ""

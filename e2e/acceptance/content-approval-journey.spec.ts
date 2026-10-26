@@ -62,6 +62,13 @@ async function approve(page: Page, merchant: MerchantSeed, env: AcceptanceEnviro
   expect(sql(env.db, `select approval_state from output_versions where action_id='${merchant.actionId}' and version_no=${versionNo};`)).toBe("approved");
   expect(sql(env.db, `select count(*) from deliveries where workspace_id='${merchant.workspaceId}';`)).toBe("0");
   expect(sql(env.db, `select coalesce(sum(approved_deliveries),0) from workspace_usage where workspace_id='${merchant.workspaceId}';`)).toBe("0");
+  // The response commits approval before router.refresh replaces Confirm with
+  // Copy. Continue only from that owner-visible state, not a disappearing Change button.
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator(".approval-panel").getByRole("button", {
+    name: chinese ? "複製" : "Copy text", exact: true,
+  })).toBeEnabled();
+  await expect(confirmButton(page, chinese)).toHaveCount(0);
 }
 function record(name: string, data: Record<string, unknown>) {
   mkdirSync(evidenceDir, { recursive: true });

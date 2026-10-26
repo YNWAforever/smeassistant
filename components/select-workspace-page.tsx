@@ -10,25 +10,13 @@ import { copy, type PrototypeLocale } from "@/lib/copy"
 import { fill } from "@/lib/copy-ui"
 import type { WorkspaceCard } from "@/lib/workspace/queries"
 import { noWorkspaceCopy } from "@/lib/workspace/no-workspace-copy"
-import { avatarInitial, formatCoverage, roleLabel } from "@/lib/workspace/shell"
+import { avatarInitial, roleLabel } from "@/lib/workspace/shell"
 
 function plural(forms: { one: string; other: string }, n: number) {
   return fill(n === 1 ? forms.one : forms.other, { n })
 }
 
-function urgentLabel(t: SelectCopy, n: number) {
-  return n === 0 ? t.urgent.zero : plural(t.urgent, n)
-}
-
-type SelectCopy = (typeof copy)["en"]["shell"]["select"]
-
-/**
- * Accepted memberships after sign-in (CLAUDE.md Phase 2 item 5, Phase 5
- * layout): one card per workspace that opens all locations, listing each
- * location with its latest score (or "No score yet"), coverage and urgent
- * count. Scores are never combined across locations. Server component: the only interaction is the sign-out form, which
- * posts to a server action.
- */
+/** Accepted shops: open the primary branch, with a simple waiting/no-scan state. */
 export function SelectWorkspacePage({
   locale,
   cards,
@@ -82,10 +70,11 @@ export function SelectWorkspacePage({
             {cards.map((card) => {
               const base = `/${locale}/owner/${card.workspace.slug}`
               // Two workspaces can share a business name (e.g. an earlier claim); the slug tells them apart.
+              const defaultLocation = card.locations.find(location => location.isPrimary) ?? card.locations[0]
               const sameName = cards.filter((other) => other.workspace.name === card.workspace.name).length > 1
               return (
                 <section key={card.workspace.id} className="ws-card" aria-label={card.workspace.name}>
-                  <Link className="ws-card-head" href={`${base}?location=all`} aria-label={fill(t.open, { name: card.workspace.name })}>
+                  <Link className="ws-card-head" href={defaultLocation ? `${base}?location=${defaultLocation.slug}` : base} aria-label={fill(t.open, { name: card.workspace.name })}>
                     <span className="workspace-choice-icon" aria-hidden="true">{avatarInitial(card.workspace.name)}</span>
                     <span className="ws-card-title">
                       <strong>{card.workspace.name}</strong>
@@ -96,19 +85,13 @@ export function SelectWorkspacePage({
                   </Link>
                   <ul className="ws-card-locations">
                     {card.locations.map((location) => {
-                      const coverage = formatCoverage(location.latestCoverage)
                       const scanned = location.lastScanAt !== null
                       return (
                         <li key={location.id}>
                           <Link href={`${base}?location=${location.slug}`}>
                             <MapPin aria-hidden="true" />
                             <span className="ws-loc-name">{location.name}</span>
-                            <span className="ws-loc-score">{!scanned ? t.noScan : location.latestScore === null ? t.noScore : fill(t.score, { n: Math.round(location.latestScore) })}</span>
-                            <span className="ws-loc-coverage">
-                              {scanned && coverage !== null && <span className="ws-loc-bar" aria-hidden="true"><span style={{ width: `${coverage}%` }} /></span>}
-                              <small>{!scanned ? "" : coverage === null ? t.noCoverage : fill(t.coverage, { n: coverage })}</small>
-                            </span>
-                            <span className="ws-loc-urgent" data-urgent={location.urgentActions > 0 ? "" : undefined}>{urgentLabel(t, location.urgentActions)}</span>
+                            <span className="ws-loc-urgent" data-urgent={location.waitingActions > 0 ? "" : undefined}>{location.waitingActions > 0 ? t.waiting : !scanned ? t.noScan : t.quiet}</span>
                           </Link>
                         </li>
                       )
