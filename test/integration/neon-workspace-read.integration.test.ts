@@ -61,6 +61,56 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon workspace read models
     expect(await repository.locations([other])).toEqual([]);
     expect(await repository.latestSnapshot(other, rows[0].id)).toBeNull();
   });
+  it("batches selector summaries without mixing workspaces, history or urgent counts", async () => {
+    const id = await workspace(), other = await workspace("other"), empty = await workspace("empty");
+    const locations = (await runtime.query(`INSERT INTO locations(workspace_id,slug,name,is_primary) VALUES
+      ($1,'b','B',false),($1,'a','A',false),($1,'p','Primary',true),($2,'other','Other',true)
+      RETURNING id,slug`, [id, other])).rows as Array<{ id: string; slug: string }>;
+    const primary = locations.find(row => row.slug === "p")!.id;
+    const otherLocation = locations.find(row => row.slug === "other")!.id;
+    const jobs = (await runtime.query(`INSERT INTO audit_jobs(workspace_id,business_name,region)
+      VALUES($1,'Shop','hk'),($1,'Shop','hk'),($2,'Other','hk') RETURNING id`, [id, other])).rows;
+    for (const [index, job] of jobs.entries()) {
+      // The third row deliberately points a different workspace at this location.
+      await runtime.query(`INSERT INTO scan_snapshots(job_id,workspace_id,location_id,market,observed_at,overall_score,coverage,module_states,metrics)
+        VALUES($1,$2,$3,'hk',$4,$5,$6,'{}','{}')`,
+      [job.id, index === 2 ? other : id, primary, `2026-10-0${index + 1}`, index === 0 ? 75 : null, index === 2 ? 1 : 0]);
+    }
+    await action(id, primary, 60);
+    await action(id, primary, 70);
+    for (const state of ["completed", "dismissed", "cancelled", "expired"]) {
+      const closed = await action(id, primary, 80);
+      await runtime.query("UPDATE actions SET action_state=$2 WHERE id=$1", [closed, state]);
+    }
+    const nonUrgent = await action(id, primary, 30);
+    await runtime.query("UPDATE actions SET priority='high' WHERE id=$1", [nonUrgent]);
+    await action(id, null, 90); // Workspace-wide actions were never counted per location.
+    await action(other, primary, 99); // Must not inflate the first workspace's count.
+    await action(other, otherLocation, 99);
+
+    const query = vi.spyOn(runtime, "query");
+    try {
+      const summaries = await repository.locationCards([id, empty]);
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(summaries.map(row => row.name)).toEqual(["Primary", "A", "B"]);
+      expect(summaries[0]).toMatchObject({ id: primary, workspace_id: id, overall_score: null, coverage: "0", urgent_actions: 2 });
+      expect(summaries[0].observed_at).toContain("2026-10-02");
+      expect(summaries[1]).toMatchObject({ overall_score: null, coverage: null, observed_at: null, urgent_actions: 0 });
+      query.mockClear();
+      const both = await repository.locationCards([id, other]);
+      expect(both.map(row => row.id).sort()).toEqual(locations.map(row => row.id).sort());
+      const primarySummary = both.find(row => row.id === primary);
+      expect(primarySummary).toMatchObject({ overall_score: null, coverage: "0", urgent_actions: 2 });
+      expect(primarySummary?.observed_at).toContain("2026-10-02");
+      expect(both.find(row => row.id === otherLocation)).toMatchObject({ overall_score: null, coverage: null, observed_at: null, urgent_actions: 1 });
+      expect(query).toHaveBeenCalledTimes(1);
+      query.mockClear();
+      expect(await repository.locationCards([])).toEqual([]);
+      expect(query).not.toHaveBeenCalled();
+      expect(await repository.locationCards([empty])).toEqual([]);
+    } finally { query.mockRestore(); }
+  });
+
   it("does not turn SQL failure into an empty workspace", async () => {
     const unavailable = new Pool({ connectionString: fixture.databaseUrl });
     await unavailable.end();

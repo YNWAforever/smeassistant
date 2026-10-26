@@ -13,7 +13,7 @@ const state = vi.hoisted(() => ({
   workspaceError: null as null | { code: string; message: string },
 }));
 const repository = vi.hoisted(() => ({
-  workspaces: vi.fn(), locations: vi.fn(), usage: vi.fn(),
+  workspaces: vi.fn(), locations: vi.fn(), locationCards: vi.fn(), usage: vi.fn(),
   unreadNotifications: vi.fn(), urgentActions: vi.fn(), latestSnapshot: vi.fn(), latestReport: vi.fn(),
 }));
 vi.mock("@/lib/repositories/workspace-read", () => ({ workspaceReadRepository: () => repository }));
@@ -72,6 +72,10 @@ beforeEach(() => {
     return state.workspaces;
   });
   repository.locations.mockImplementation(async () => state.locations);
+  repository.locationCards.mockImplementation(async () => state.locations.map(row => ({
+    ...row, overall_score: null, coverage: null, observed_at: null,
+    ...state.snapshots[String(row.id)], urgent_actions: state.urgent,
+  })));
   repository.usage.mockImplementation(async (_id, period, allowance) => state.usage ?? { period, approved_deliveries: 0, allowance });
   repository.unreadNotifications.mockImplementation(async () => state.unread);
   repository.urgentActions.mockImplementation(async () => state.urgent);
@@ -186,8 +190,46 @@ describe("listWorkspaceCards", () => {
     expect(cards[1].role).toBe("viewer");
     expect(cards[1].locations[0]).toMatchObject({ slug: "main", latestScore: null, latestCoverage: null, lastScanAt: null });
 
-    expect(repository.latestSnapshot).toHaveBeenCalledWith("ws-1", "loc-1");
-    expect(repository.urgentActions).toHaveBeenCalledWith("ws-1", "loc-1");
+    expect(repository.locationCards).toHaveBeenCalledExactlyOnceWith(["ws-1", "ws-2"]);
+    expect(repository.latestSnapshot).not.toHaveBeenCalled();
+    expect(repository.urgentActions).not.toHaveBeenCalled();
+  });
+
+  it("loads many workspaces and locations with two repository reads, preserving membership order", async () => {
+    state.memberships = Array.from({ length: 5 }, (_, i) => ({ ...membership, workspaceId: `ws-${i}` }));
+    state.workspaces = state.memberships.map(m => ({ ...workspaceRow, id: m.workspaceId })).reverse();
+    state.locations = state.memberships.flatMap(m => Array.from({ length: 12 }, (_, i) => ({
+      id: `${m.workspaceId}-loc-${i}`, workspace_id: m.workspaceId, slug: `shop-${i}`,
+      name: `Shop ${i}`, address: null, district: null, is_primary: i === 0,
+    })));
+    const cards = await listWorkspaceCards("user-1");
+    expect(cards.map(card => card.workspace.id)).toEqual(["ws-0", "ws-1", "ws-2", "ws-3", "ws-4"]);
+    expect(cards.map(card => card.locations.length)).toEqual([12, 12, 12, 12, 12]);
+    expect(cards[0].locations[0]).toMatchObject({ latestScore: null, latestCoverage: null, urgentActions: 0, lastScanAt: null });
+    expect(repository.workspaces).toHaveBeenCalledTimes(1);
+    expect(repository.locationCards).toHaveBeenCalledTimes(1);
+    expect(repository.locations).not.toHaveBeenCalled();
+    expect(repository.latestSnapshot).not.toHaveBeenCalled();
+    expect(repository.urgentActions).not.toHaveBeenCalled();
+  });
+
+  it("preserves measured zero values and does not fabricate evidence for an unscanned location", async () => {
+    state.memberships = [membership];
+    state.workspaces = [workspaceRow];
+    state.locations = [{ id: "loc-1", workspace_id: "ws-1", slug: "main", name: "Main", is_primary: true }];
+    state.snapshots = { "loc-1": { overall_score: "0", coverage: "0", observed_at: "2026-10-01" } };
+    const [card] = await listWorkspaceCards("user-1");
+    expect(card.locations[0]).toMatchObject({ latestScore: 0, latestCoverage: 0, lastScanAt: "2026-10-01" });
+  });
+
+  it("fails closed when the batch summary read fails", async () => {
+    state.memberships = [membership];
+    state.workspaces = [workspaceRow];
+    repository.locationCards.mockRejectedValueOnce(new Error("private SQL detail"));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await expect(listWorkspaceCards("user-1")).rejects.toThrow("Unable to load locations");
+    } finally { error.mockRestore(); }
   });
 
   it("skips a membership whose workspace row is missing rather than inventing one", async () => {
