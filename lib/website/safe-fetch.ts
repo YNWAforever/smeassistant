@@ -200,17 +200,22 @@ function cancelResponse(response: Response): void {
 }
 
 /** Bound injected and native dependencies, including stalled body reads. */
-function withinSignal<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+function withinSignal<T>(work: Promise<T>, signal: AbortSignal, onAbandoned?: (value: T) => void): Promise<T> {
   if (signal.aborted) {
     // The dependency was started before this helper received its promise.
     // Observe its rejection even when the enclosing budget already expired.
-    void work.catch(() => {});
+    void work.then(value => onAbandoned?.(value), () => {});
     return Promise.reject(signal.reason);
   }
   return new Promise<T>((resolve, reject) => {
     const abort = () => reject(signal.reason);
     signal.addEventListener("abort", abort, { once: true });
-    work.then(resolve, reject).finally(() => signal.removeEventListener("abort", abort));
+    work.then(value => {
+      if (signal.aborted) {
+        onAbandoned?.(value);
+        reject(signal.reason);
+      } else resolve(value);
+    }, reject).finally(() => signal.removeEventListener("abort", abort));
   });
 }
 
@@ -277,6 +282,7 @@ export async function fetchWebsiteSafely(urlText: string, dependencies: SafeWebs
   const requester = dependencies.requestPinned ?? requestPinnedWebsite;
   try {
     for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects += 1) {
+      if (signal.aborted) return { ok: false, code: "WEBSITE_FETCH_FAILED" };
       let addresses: string[] | null;
       try {
         addresses = await withinSignal(resolvePublicAddresses(currentUrl, resolver, signal), signal);
@@ -284,18 +290,18 @@ export async function fetchWebsiteSafely(urlText: string, dependencies: SafeWebs
         return { ok: false, code: "WEBSITE_FETCH_FAILED" };
       }
       if (!addresses) return { ok: false, code: "WEBSITE_URL_BLOCKED" };
+      if (signal.aborted) return { ok: false, code: "WEBSITE_FETCH_FAILED" };
 
       let response: Response;
       try {
-        response = await withinSignal(
-          dependencies.fetch
-            ? dependencies.fetch(currentUrl.toString(), {
-              signal, redirect: "manual",
-              headers: { "user-agent": "SMEScannerWorkspace/1.0 (+website-checks)", accept: ACCEPT_HEADER, "accept-encoding": "identity" },
-            })
-            : requester(currentUrl, addresses[0]!, signal),
-          signal,
-        );
+        const pendingResponse = dependencies.fetch
+          ? dependencies.fetch(currentUrl.toString(), {
+            signal, redirect: "manual",
+            headers: { "user-agent": "SMEScannerWorkspace/1.0 (+website-checks)", accept: ACCEPT_HEADER, "accept-encoding": "identity" },
+          })
+          : requester(currentUrl, addresses[0]!, signal);
+        // Clean up even when a dependency resolves after the abort race ended.
+        response = await withinSignal(pendingResponse, signal, cancelResponse);
       } catch {
         return { ok: false, code: "WEBSITE_FETCH_FAILED" };
       }

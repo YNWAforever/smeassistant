@@ -59,3 +59,23 @@ it("resumes existing verified ownership without creating or reattaching a worksp
   expect(mocks.create).not.toHaveBeenCalled();
   expect(mocks.attach).not.toHaveBeenCalled();
 });
+
+it("does not attach a foreign-owned report to the recipient's existing workspace", async () => {
+  mocks.owned.mockResolvedValue({ workspaceId: "recipient-workspace" });
+  mocks.job.mockResolvedValue({ id: "job", workspace_id: "foreign-workspace" });
+  const ports = await createCompletionPorts(new Request("https://app.test/api/owner/sign-in/complete"));
+  expect(await ports.finishClaim(user, flow)).toBe("/en/owner/onboarding?claim=shared-report&claimed=requires_verification");
+  expect(mocks.create).not.toHaveBeenCalled();
+  expect(mocks.attach).not.toHaveBeenCalled();
+  expect(mocks.leadEmail).not.toHaveBeenCalled();
+  expect(mocks.grant).not.toHaveBeenCalled();
+});
+
+it("does not resolve ownership when sign-in has no report claim", async () => {
+  const ports = await createCompletionPorts(new Request("https://app.test/api/owner/sign-in/complete"));
+  expect(await ports.finishClaim(user, { ...flow, claim: null })).toBeNull();
+  expect(mocks.owned).not.toHaveBeenCalled();
+  expect(mocks.job).not.toHaveBeenCalled();
+  expect(mocks.create).not.toHaveBeenCalled();
+  expect(mocks.attach).not.toHaveBeenCalled();
+});

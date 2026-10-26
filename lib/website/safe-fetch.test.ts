@@ -91,14 +91,53 @@ describe("application website transport", () => {
     expect(request).not.toHaveBeenCalled();
   });
 
-  it("settles an already-expired budget without leaking a rejected DNS promise", async () => {
+  it("observes a DNS rejection that arrives after cancellation", async () => {
+    const budget = new AbortController();
+    let rejectDns!: (reason: Error) => void;
+    const dns = new Promise<string[]>((_resolve, reject) => { rejectDns = reject; });
+    const work = fetchWebsiteSafely("https://shop.example", {
+      signal: budget.signal, resolveHost: () => dns,
+    });
+    budget.abort();
+    expect(await work).toEqual({ ok: false, code: "WEBSITE_FETCH_FAILED" });
+    rejectDns(new Error("DNS cancelled"));
+    // Vitest fails the run if the abandoned dependency rejects unobserved.
+    await new Promise(resolve => setTimeout(resolve, 0));
+  });
+
+  it("does not start DNS or a request for an already-expired budget", async () => {
     const budget = new AbortController();
     budget.abort();
+    const resolveHost = vi.fn(publicDns);
+    const requestPinned = vi.fn(async () => html());
     expect(await fetchWebsiteSafely("https://shop.example", {
-      signal: budget.signal, resolveHost: async () => { throw budget.signal.reason; },
+      signal: budget.signal, resolveHost, requestPinned,
     })).toEqual({ ok: false, code: "WEBSITE_FETCH_FAILED" });
-    // Vitest also fails this run if the started dependency rejects unobserved.
-    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(resolveHost).not.toHaveBeenCalled();
+    expect(requestPinned).not.toHaveBeenCalled();
+  });
+
+  it.each(["after return", "between promise reactions"] as const)("cancels an abandoned response: %s", async (ordering) => {
+    const budget = new AbortController();
+    const cancel = vi.fn();
+    let respond!: (response: Response) => void;
+    let started!: () => void;
+    const requestStarted = new Promise<void>(resolve => { started = resolve; });
+    const pending = new Promise<Response>(resolve => { respond = resolve; });
+    const work = fetchWebsiteSafely("https://shop.example", {
+      signal: budget.signal, resolveHost: publicDns,
+      requestPinned: () => { started(); return pending; },
+    });
+    await requestStarted;
+    if (ordering === "after return") {
+      budget.abort();
+      expect(await work).toEqual({ ok: false, code: "WEBSITE_FETCH_FAILED" });
+    }
+    respond(new Response(new ReadableStream({ cancel }), { headers: { "content-type": "text/html" } }));
+    if (ordering === "between promise reactions") queueMicrotask(() => budget.abort());
+    expect(await work).toEqual({ ok: false, code: "WEBSITE_FETCH_FAILED" });
+    await pending;
+    expect(cancel).toHaveBeenCalledOnce();
   });
 
   it("bounds stalled streams and cancels them on deadline", async () => {

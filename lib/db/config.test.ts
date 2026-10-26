@@ -5,7 +5,7 @@ import { readDatabaseConfig } from "./config";
 
 // Exercise the pinned driver's effective TLS options without opening a socket.
 const require = createRequire(import.meta.url);
-const ConnectionParameters = require("pg/lib/connection-parameters") as new (url: string) => {
+const ConnectionParameters = require("pg/lib/connection-parameters") as new (config: string | { connectionString: string }) => {
   ssl: boolean | { rejectUnauthorized?: boolean; checkServerIdentity?: unknown };
 };
 
@@ -138,6 +138,8 @@ describe("readDatabaseConfig", () => {
       "sslmode=verify-full&sslmode=disable",
       "sslmode=verify-full&%73slmode=no-verify",
       "sslmode=verify-full&sslmode=verify-full",
+      "sslmode=no-verify",
+      "sslmode=VERIFY-FULL",
       "sslmode=require&uselibpqcompat=true",
       "sslmode=verify-ca&uselibpqcompat=true",
       "sslmode=require&uselibpqcompat=false&uselibpqcompat=true",
@@ -161,6 +163,8 @@ describe("readDatabaseConfig", () => {
       "%73slmode=%72equire&channel_binding=require",
       "sslmode=verify-ca&uselibpqcompat=false",
       "sslmode=verify-full&uselibpqcompat=true",
+      "sslmode=verify-full&ssl=0",
+      "sslmode=verify-full&ssl=no-verify",
       "ssl%6dode=verify-full&x=%zz",
       "ssl%6dode=verify-full&x=two words",
     ])("retains certificate and hostname verification with %s", query => {
@@ -181,6 +185,19 @@ describe("readDatabaseConfig", () => {
       vi.stubEnv("NODE_ENV", "test");
       const config = readDatabaseConfig({ DATABASE_URL: "postgresql://fixture:synthetic@127.0.0.1/fixture?sslmode=disable" });
       expect(new ConnectionParameters(config.applicationUrl).ssl).toBe(false);
+    });
+
+    it("does not inherit a weak PGSSLMODE for either production URL", () => {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("PGSSLMODE", "no-verify");
+      const config = readDatabaseConfig({ DATABASE_URL: secureUrl, DATABASE_URL_UNPOOLED: secureUrl });
+      for (const connectionString of [config.applicationUrl, config.migrationUrl!]) {
+        // Pools pass an options object, which takes the driver's second parse path.
+        const { ssl } = new ConnectionParameters({ connectionString });
+        expect(ssl).toBeTruthy();
+        expect(ssl).not.toHaveProperty("rejectUnauthorized", false);
+        expect(ssl).not.toHaveProperty("checkServerIdentity");
+      }
     });
   });
 });
