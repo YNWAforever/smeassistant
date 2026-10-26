@@ -1,6 +1,6 @@
-# Kinnso OS architecture
+# smeassistant architecture
 
-This is the merchant app in `YNWAforever/smeassistant` (historical repository name).
+`smeassistant` is the merchant app in `YNWAforever/smeassistant`.
 It is a Next.js 16 App Router application with React 19 and TypeScript, deployed
 as a server application. Start with [development and verification](docs/DEVELOPMENT.md)
 for commands. [CLAUDE.md](CLAUDE.md) owns product guardrails; its dated amendments
