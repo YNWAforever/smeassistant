@@ -4,8 +4,7 @@ import { sql } from "../../test/e2e/environment";
 
 /**
  * Phase 4/5 flows against the real routes: the Actions side panel, bulk
- * approve with read-before-approve, the getting-started checklist reading the
- * approval back, and a hard 404 for an action that is not there.
+ * approve with read-before-approve, Today reading the approved version back, and a hard 404 for an action that is not there.
  */
 
 function seedDraft(db: string, workspaceId: string, actionId: string): string {
@@ -14,13 +13,22 @@ function seedDraft(db: string, workspaceId: string, actionId: string): string {
   return version;
 }
 
-test("owner reads and bulk-approves a review reply, and Today ticks the first approval", async ({ page, merchant, environment }) => {
+test("owner reads and bulk-approves a review reply, and Today advances the first draft from review to copy", async ({ page, merchant, environment }) => {
   const version = seedDraft(environment.db, merchant.workspaceId, merchant.actionId);
   await signIn(page, environment, merchant, "owner");
 
-  await page.goto(`/en/owner/${merchant.slug}`);
-  const approveStep = page.locator(".getting-started li", { hasText: "Approve your first draft" });
-  await expect(approveStep).not.toHaveAttribute("data-done");
+  const faces = [
+    { locale: "en", review: "Review draft", copy: "Copy text" },
+    { locale: "zh-HK", review: "審閱草稿", copy: "複製文字" },
+  ] as const;
+  expect(sql(environment.db, `select count(*) from output_versions where workspace_id='${merchant.workspaceId}' and approval_state='approved';`)).toBe("0");
+  for (const face of faces) {
+    await page.goto(`/${face.locale}/owner/${merchant.slug}?location=primary`);
+    const review = page.locator(".brief-priority-card").getByRole("link", { name: face.review, exact: true });
+    await expect(review).toBeVisible();
+    await expect(review).toHaveAttribute("href", `/${face.locale}/owner/${merchant.slug}/actions/${merchant.actionId}?version=${version}&location=primary`);
+    await expect(page.locator(".getting-started")).toHaveCount(0);
+  }
 
   await page.goto(`/en/owner/${merchant.slug}/actions`);
   const bulk = page.locator(".bulk-approve");
@@ -38,8 +46,17 @@ test("owner reads and bulk-approves a review reply, and Today ticks the first ap
   await dialog.getByRole("button", { name: "Close" }).first().click();
   await expect(page.locator(".bulk-approve")).toHaveCount(0);
 
-  await page.goto(`/en/owner/${merchant.slug}`);
-  await expect(approveStep).toHaveAttribute("data-done", "");
+  // Today's visible next step reflects the first approval, rather than a
+  // completed setup tick that Phase 1 deliberately removed from task-bearing homes.
+  for (const face of faces) {
+    await page.goto(`/${face.locale}/owner/${merchant.slug}?location=primary`);
+    const coach = page.locator(".brief-priority-card");
+    const copy = coach.getByRole("link", { name: face.copy, exact: true });
+    await expect(copy).toBeVisible();
+    await expect(copy).toHaveAttribute("href", `/${face.locale}/owner/${merchant.slug}/actions/${merchant.actionId}?version=${version}&location=primary`);
+    await expect(coach.getByRole("link", { name: face.review, exact: true })).toHaveCount(0);
+    await expect(page.locator(".getting-started")).toHaveCount(0);
+  }
 });
 
 test("a viewer is offered no bulk approval and the approve route refuses them", async ({ page, merchant, environment }) => {
