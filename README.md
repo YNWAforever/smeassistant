@@ -1,6 +1,6 @@
-# smeassistant
+# Kinnso OS
 
-smeassistant, by Fimmick, helps Hong Kong and Taiwan small businesses see how they appear on Google, Instagram and AI search. Then it prepares the work to improve it.
+Kinnso OS, by Fimmick, helps Hong Kong and Taiwan small businesses see how they appear on Google, Instagram and AI search. Then it prepares the work to improve it.
 
 - **Scan:** a free scan collects public evidence and scores it. Missing evidence lowers coverage, never the score.
 - **Act:** the owner workspace turns findings into prioritised actions and drafts.
