@@ -117,7 +117,8 @@ for (const role of ["manager", "viewer"] as const) {
     seedBrand(environment, merchant);
     await signIn(page, environment, merchant, role);
     await page.goto(settingsPath(merchant));
-    await expect(page.getByText("You can read the business profile. Only the owner can save changes.")).toBeVisible();
+    await expect(page.getByText(role === "viewer" ? "You can look; ask the owner to make changes." : "You can read the business profile. Only the owner can save changes.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Ask the owner to change it", exact: true })).toBeDisabled();
     await expect(page.getByRole("combobox", { name: "Choose voice" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Save current profile" })).toHaveCount(0);
     expect((await page.request.get(apiPath(merchant))).status()).toBe(200);

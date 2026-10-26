@@ -29,3 +29,14 @@ it("surfaces a failed read instead of presenting it as no work or a saved check"
   await expect(repository.homeReviewCandidates("synthetic-workspace", null, null))
     .rejects.toMatchObject({ message: "workspace_read_unavailable", code: "42501" });
 });
+
+it("reads only the latest pending clipboard confirmation in this exact scope, excluding any applied or retracted statement", async () => {
+  const query = vi.fn().mockResolvedValue({ rows: [] });
+  const repository = workspaceReadRepository({ query } as unknown as Pick<Pool, "query">);
+  expect(await repository.homeCopyFollowUp("workspace", "location", ["location"])).toBeNull();
+  const [sql, values] = query.mock.calls[0] as [string, unknown[]];
+  expect(values).toEqual(["workspace", "location", ["location"], "action.copy_follow_up_recorded"]);
+  for (const guard of ["a.workspace_id=$1", "v.workspace_id=a.workspace_id", "payload->>'versionId'=v.id::text", "e.payload->>'decision'='pending'", "d.mode='copy'", "p.output_version_id=v.id", "a.location_id=ANY($3::uuid[])"]) expect(sql).toContain(guard);
+  expect(sql).not.toMatch(/\b(?:INSERT|UPDATE|DELETE)\b/);
+  expect(sql.trim()).toMatch(/LIMIT 1$/);
+});

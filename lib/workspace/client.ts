@@ -82,6 +82,10 @@ function post<T>(url: string, body: unknown): Promise<ClientResult<T>> {
   return request<T>(url, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body ?? {}) });
 }
 
+export function recordCopyFollowUp(actionId: string, command: { versionId: string; decision: "pending" | "not_yet" | "later"; expectedRecordId?: string; locale: string }): Promise<ClientResult<{ id: string }>> {
+  return post(`/api/actions/${encodeURIComponent(actionId)}/copy-follow-up`, command);
+}
+
 export function recordOwnerCheck(actionId: string, command: OwnerCheckCommand & { locale?: string }): Promise<ClientResult<{ record: OwnerCheckRecord; duplicate: boolean }>> {
   return post(`/api/actions/${encodeURIComponent(actionId)}/owner-check`, command);
 }

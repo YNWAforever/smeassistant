@@ -26,7 +26,7 @@ export interface ApplicationInsert {
  */
 export type AssertOutcome =
   | { ok: true; id: string }
-  | { ok: false; reason: 'closed' | 'duplicate'; existingId?: string };
+  | { ok: false; reason: 'closed' | 'duplicate' | 'version_not_applicable'; existingId?: string };
 
 export interface ApplicationRepository {
   /** Non-retracted rows for these actions, newest first. */
@@ -139,6 +139,17 @@ export function applicationRepository(client?: Pick<Pool, 'query'> & Partial<Pic
       // withTransaction runs everything on one checked-out client (BEGIN/COMMIT/ROLLBACK
       // on the same connection), unlike issuing BEGIN on the pool directly.
       return withTransaction(async (conn) => {
+        // create_output_version takes this same lock before reading/inserting
+        // the head. Acquire it before any statement whose snapshot decides
+        // whether the action still has work, including a concurrent new draft.
+        await conn.query('SELECT id FROM actions WHERE workspace_id=$1 AND id=$2 FOR UPDATE', [row.workspace_id, row.action_id]);
+        // The route's early approval check can race another approval while
+        // this transaction waits for the action lock. Revalidate the exact
+        // immutable version under that lock before writing an assertion.
+        if (row.output_version_id && !(await conn.query(
+          "SELECT id FROM output_versions WHERE workspace_id=$1 AND action_id=$2 AND id=$3 AND approval_state='approved'",
+          [row.workspace_id, row.action_id, row.output_version_id],
+        )).rows[0]) return { ok: false, reason: 'version_not_applicable' };
         const inserted = await conn.query<{ id: string }>(
           `INSERT INTO action_applications(workspace_id, action_id, output_version_id, source, asserted_by, note, evidence)
            SELECT $1, $2, $3, $4, $5, $6, $7
@@ -154,9 +165,24 @@ export function applicationRepository(client?: Pick<Pool, 'query'> & Partial<Pic
         );
         if (inserted.rows[0]) {
           await conn.query(
-            `UPDATE actions SET action_state = 'completed', completed_at = $3, updated_at = $3
+            // An older copied version can be reported posted while a newer
+            // draft still waits for a decision. Record the exact assertion
+            // without completing that remaining work.
+            `UPDATE actions SET
+              action_state = CASE WHEN EXISTS (
+                SELECT 1 FROM output_versions applied JOIN output_versions newer
+                  ON newer.workspace_id=applied.workspace_id AND newer.action_id=applied.action_id
+                WHERE applied.workspace_id=$1 AND applied.action_id=$2 AND applied.id=$4::uuid
+                  AND newer.version_no>applied.version_no AND newer.approval_state IN ('draft','changes_requested')
+              ) THEN 'in_progress' ELSE 'completed' END,
+              completed_at = CASE WHEN EXISTS (
+                SELECT 1 FROM output_versions applied JOIN output_versions newer
+                  ON newer.workspace_id=applied.workspace_id AND newer.action_id=applied.action_id
+                WHERE applied.workspace_id=$1 AND applied.action_id=$2 AND applied.id=$4::uuid
+                  AND newer.version_no>applied.version_no AND newer.approval_state IN ('draft','changes_requested')
+              ) THEN NULL ELSE $3::timestamptz END, updated_at = $3
              WHERE id = $2 AND workspace_id = $1`,
-            [row.workspace_id, row.action_id, nowIso],
+            [row.workspace_id, row.action_id, nowIso, row.output_version_id],
           );
           return { ok: true, id: inserted.rows[0].id };
         }

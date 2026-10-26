@@ -29,7 +29,7 @@ function failureMessage(result: Extract<ClientResult<unknown>, { ok: false }>, t
   return fill(text.theRequestFailed, { error: result.error })
 }
 
-export function AssetUploadDialog({ locale, workspaceId, locations, defaultLocationId, disabled }: { locale: PrototypeLocale; workspaceId: string; locations: Array<{ id: string; name: string }>; defaultLocationId: string | null; disabled: boolean }) {
+export function AssetUploadDialog({ locale, workspaceId, locations, defaultLocationId, disabled, triggerLabel }: { locale: PrototypeLocale; workspaceId: string; locations: Array<{ id: string; name: string }>; defaultLocationId: string | null; disabled: boolean; triggerLabel?: string }) {
   const pc = copy[locale].workspaceBusiness.assets
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -57,7 +57,7 @@ export function AssetUploadDialog({ locale, workspaceId, locations, defaultLocat
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild><Button variant="outline" disabled={disabled}><Plus /> {pc.addAsset}</Button></DialogTrigger>
+      <DialogTrigger asChild><Button variant="outline" disabled={disabled}><Plus /> {triggerLabel ?? pc.addAsset}</Button></DialogTrigger>
       <DialogContent>
         <form onSubmit={(event) => void submit(event)} className="field-stack">
           <DialogHeader><DialogTitle>{pc.uploadAnAsset}</DialogTitle><DialogDescription>{pc.jpegPngWebpOr}</DialogDescription></DialogHeader>

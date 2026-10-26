@@ -1,3 +1,5 @@
+import { recordCopyFollowUp } from "@/lib/workspace/client"
+import { copyFollowUpCopy } from "@/lib/workspace/copy-follow-up"
 import { toast } from "sonner"
 
 import type { DemoAssistantRunResponse } from "@/lib/pocket-assistant/contracts"
@@ -331,8 +333,10 @@ export function createEditorActions(state: EditorState) {
         toast.error(ac.toasts.clipboard)
         // The delivery is recorded either way. A first copy still says usage went
         // up; a repeat must not then claim "Approved text copied" over the error.
-        if (!result.data.counted) { router.refresh(); return }
+        router.refresh(); return
       }
+      const followUp = await recordCopyFollowUp(action.id, { versionId: selectedVersion.id, decision: "pending", locale })
+      if (!followUp.ok) toast.message(copyFollowUpCopy[locale].unavailable)
     }
     toast.success(result.data.counted ? ac.toasts.counted : (mode === "copy" ? ac.toasts.copiedAgain : ac.toasts.exportedAgain))
     router.refresh()

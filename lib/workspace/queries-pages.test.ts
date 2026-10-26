@@ -29,7 +29,7 @@ const repository = vi.hoisted(() => ({
   latestConnection: vi.fn(), measurements: vi.fn(), draftVersions: vi.fn(),
   completedActions: vi.fn(), schedules: vi.fn(), aeoSnapshots: vi.fn(),
   activity: vi.fn(), notifications: vi.fn(), notificationPreferences: vi.fn(),
-  deliveries: vi.fn(), homeReviewCandidates: vi.fn(),
+  deliveries: vi.fn(), homeReviewCandidates: vi.fn(), homeCopyFollowUp: vi.fn(async () => null),
 }));
 vi.mock("@/lib/repositories/workspace-read", () => ({ workspaceReadRepository: () => repository }));
 const listRepository = vi.hoisted(() => ({ page: vi.fn(), counts: vi.fn() }));

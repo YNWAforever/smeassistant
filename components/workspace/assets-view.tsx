@@ -42,7 +42,7 @@ export function AssetsView({ locale, workspaceId, timezone, role, location, loca
         eyebrow={pc.approvedInputsAndUsage}
         title={pc.brandAssets}
         description={pc.everyAssetShowsProvenance}
-        actions={<><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /><AssetUploadDialog locale={locale} workspaceId={workspaceId} locations={locations.map((l) => ({ id: l.id, name: l.name }))} defaultLocationId={defaultLocationId} disabled={!canUpload} /></>}
+        actions={<><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /><AssetUploadDialog locale={locale} workspaceId={workspaceId} locations={locations.map((l) => ({ id: l.id, name: l.name }))} defaultLocationId={defaultLocationId} disabled={!canUpload} triggerLabel={role === "viewer" ? copy[locale].shell.access.askOwnerAction : undefined} /></>}
       />
       {role === "viewer" && <RoleNotice kind="viewerAssets" locale={locale} />}
       <Tabs value={tab} onValueChange={setTab}>

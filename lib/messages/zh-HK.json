@@ -72,8 +72,8 @@
       "none": "擁有人或負責此地點的經理可以處理。"
     },
     "button": {
-      "open_action": "開啟行動",
-      "reauthorise": "重新授權",
+      "open_action": "再開張稿",
+      "reauthorise": "再連 Google",
       "contact_support": "聯絡 Fimmick"
     },
     "reason": {

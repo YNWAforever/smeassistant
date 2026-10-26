@@ -94,7 +94,7 @@ describe("returning owner version-bound follow-up", () => {
     expect(card?.querySelector('a[data-newer-draft]')?.getAttribute("href"))
       .toBe("/en/owner/synthetic/actions/applied-review?version=draft-v3&location=central");
     expect(card?.textContent).toMatch(/Version 3.*draft/i);
-    expect(root.textContent).not.toContain("No action needs your decision right now");
+    expect(card?.closest("details")?.hasAttribute("open")).toBe(false);
   });
   it("shows a read-only next step, hides foreign workspace follow-ups and keeps the true empty state", () => {
     expect(home(followUp, "viewer").textContent).toContain("View saved check");
@@ -198,7 +198,7 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
     brief.priority = opts.priority === undefined ? priority() : opts.priority;
     Object.assign(brief, { openActionCount: opts.openActionCount });
     if (opts.openActions) brief.openActions = opts.openActions;
-    if (opts.withSnapshot) brief.snapshot = snapshot;
+    if (opts.withSnapshot) { brief.snapshot = snapshot; brief.location = { id: "loc-1", slug: "yik-yam", name: "Yik Yam", isPrimary: true, address: null, district: null, placeId: null }; }
     const root = document.createElement("div");
     root.innerHTML = renderToStaticMarkup(
       <HomeBriefView
@@ -330,9 +330,9 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
   });
 
   it("gives an empty week a concrete next step, naming Rescan only to someone who can use it", () => {
-    const paidOwner = view({ priority: null, withSnapshot: true, tier: "paid", role: "owner" }).querySelector(".brief-priority-card")?.textContent ?? "";
-    expect(paidOwner).toContain("Nothing new this week; check back after your next scan.");
-    expect(paidOwner).toContain("To check now, use Rescan.");
+    const paidOwner = view({ priority: null, withSnapshot: true, tier: "paid", role: "owner" }).querySelector(".owner-results-disclosure")?.textContent ?? "";
+    expect(paidOwner).toContain("Take another look at the shop when you are ready.");
+    expect(paidOwner).toContain("Rescan");
     for (const textOf of [
       view({ priority: null, withSnapshot: true, tier: "lite", role: "owner" }),
       view({ priority: null, withSnapshot: true, tier: "paid", role: "viewer" }),
@@ -447,4 +447,19 @@ describe("month metrics without a comparable scan (guardrail 2)", () => {
     expect(label?.querySelector('[data-trend="flat"]')).not.toBeNull();
     expect(label?.querySelector('[data-trend="up"]')).toBeNull();
   });
+});
+
+it("uses a successful copy as Today's single coach card while another priority waits in To do", () => {
+  const priority = buildActionOverview(actionRow, { location: { id: "loc-1", slug: "central", name: { en: "Central", "zh-HK": "中環", "zh-TW": "中環" } }, latestRun: null, latestVersion: null });
+  const brief = { ...baseBrief(null), locationSlug: "central", priority, openActions: [priority], copyFollowUp: {
+    id: "41", workspaceId: "ws-1", actionId: "copied-action", locationId: "loc-1", versionId: "copied-v2", versionNo: 2,
+    title: { en: "Copied reply", "zh-HK": "複製咗嘅回覆", "zh-TW": "已複製的回覆" }, canRecord: true,
+  } } as HomeBrief;
+  const root = document.createElement("div");
+  root.innerHTML = renderToStaticMarkup(<HomeBriefView locale="zh-HK" workspaceSlug="shop" workspaceId="ws-1" workspaceName="Test shop" tier="lite" timezone="Asia/Hong_Kong" role="owner" locations={[{ slug: "central", name: "Central" }]} consentPolicyVersion="2026-07-28" brief={brief} />);
+  expect(root.querySelectorAll(".owner-brief-grid .brief-priority-card")).toHaveLength(1);
+  const card = root.querySelector(".owner-brief-grid .brief-priority-card");
+  expect(card?.querySelector("h2")?.textContent).toBe("你貼咗未？");
+  expect([...card!.querySelectorAll("button")].map(button => button.textContent)).toEqual(["貼咗", "未貼", "遲啲"]);
+  expect(card?.textContent).not.toMatch(/Completed|已套用|獨立核實|Version/);
 });

@@ -9,6 +9,7 @@ import type { ActionRow } from "../workspace/overview";
 import { parseVersionMeta } from "../workspace/version-meta";
 import type { ScanSnapshotRow, ScanDiffRow } from "../workspace/snapshots";
 import type { AeoSnapshotRow } from "../trends/aeo-trend-model";
+import { COPY_FOLLOW_UP_EVENT, type HomeCopyFollowUp } from "../workspace/copy-follow-up";
 import type { HomeReviewCandidate } from "../workspace/home-review-follow-up";
 import { OWNER_REVIEW_CHECK_EVENT } from "../workspace/owner-review-check";
 import type { RunRow, VersionRow, MeasurementRow, AuditEventRow, NotificationRow, IntegrationsModel, DeliveredWorkRow } from "../workspace/queries-pages";
@@ -198,6 +199,22 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
     },
     async draftVersions(workspaceId: string, locationId?: string | null): Promise<Array<{ id: string }>> {
       return rows<{ id: string }>("SELECT v.id FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id WHERE a.workspace_id=$1 AND v.approval_state='draft' AND ($2::uuid IS NULL OR a.location_id=$2 OR a.location_id IS NULL)", [workspaceId, locationId ?? null]);
+    },
+    async homeCopyFollowUp(workspaceId: string, locationId: string | null, allowedLocationIds: string[] | null): Promise<Omit<HomeCopyFollowUp, "canRecord"> | null> {
+      const result = await rows<Omit<HomeCopyFollowUp, "canRecord">>(`SELECT e.id::text,a.workspace_id AS "workspaceId",a.id AS "actionId",a.location_id AS "locationId",
+        v.id AS "versionId",v.version_no AS "versionNo",a.title
+        FROM actions a JOIN output_versions v ON v.workspace_id=a.workspace_id AND v.action_id=a.id
+        JOIN LATERAL (SELECT id,payload,created_at FROM audit_events WHERE workspace_id=a.workspace_id
+          AND entity_type='action' AND entity_id=a.id AND event=$4 AND location_id IS NOT DISTINCT FROM a.location_id
+          AND payload->>'versionId'=v.id::text ORDER BY created_at DESC,id DESC LIMIT 1) e ON true
+        WHERE a.workspace_id=$1 AND v.approval_state='approved' AND (e.payload->>'decision'='pending' OR e.payload->>'decision'='later' AND e.created_at<=now()-interval '24 hours')
+        AND a.action_state NOT IN ('dismissed','cancelled','expired')
+        AND ($2::uuid IS NULL OR a.location_id=$2 OR a.location_id IS NULL)
+        AND ($3::uuid[] IS NULL OR a.location_id IS NULL OR a.location_id=ANY($3::uuid[]))
+        AND EXISTS(SELECT 1 FROM deliveries d WHERE d.workspace_id=a.workspace_id AND d.version_id=v.id AND d.mode='copy' AND d.state='exported')
+        AND NOT EXISTS(SELECT 1 FROM action_applications p WHERE p.workspace_id=a.workspace_id AND p.action_id=a.id AND p.output_version_id=v.id)
+        ORDER BY e.created_at DESC,e.id DESC LIMIT 1`, [workspaceId, locationId, allowedLocationIds, COPY_FOLLOW_UP_EVENT]);
+      return result[0] ?? null;
     },
     async homeReviewCandidates(workspaceId: string, locationId: string | null, allowedLocationIds: string[] | null): Promise<HomeReviewCandidate[]> {
       return rows<HomeReviewCandidate>(`SELECT a.workspace_id,a.id AS action_id,a.location_id,a.title,a.action_state,

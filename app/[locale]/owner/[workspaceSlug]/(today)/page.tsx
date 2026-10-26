@@ -5,7 +5,7 @@ import { HomeBriefView } from "@/components/workspace/home-brief";
 import { NeedsAttentionCard } from "@/components/workspace/needs-attention-card";
 import { filterToLocation } from "@/lib/ops/owner-actions";
 import { currentScanConsentPolicyVersion } from "@/lib/scan/consent";
-import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
+import { inScopeFor, loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 import { loadWorkspaceProblems } from "@/lib/workspace/problems";
 import { getHomeBrief } from "@/lib/workspace/queries-pages";
 import { loadGettingStarted } from "@/lib/workspace/getting-started";
@@ -54,6 +54,7 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
         brief={brief}
         demo={page.ctx.workspace.isDemo}
         role={page.membership.role}
+        rescanInScope={inScopeFor(page.membership, brief.location?.id ?? null)}
         gettingStarted={gettingStarted && <GettingStarted items={gettingStarted} locale={page.locale} />}
         problems={problems && (
           <NeedsAttentionCard

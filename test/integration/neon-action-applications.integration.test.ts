@@ -75,6 +75,82 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("action applications", () =
     expect((await runtime.query("SELECT action_state FROM actions WHERE id=$1", [action])).rows[0].action_state).toBe("completed");
   });
 
+  it("keeps a newer unapproved draft actionable when the copied earlier version is reported posted", async () => {
+    const { ws, user, action } = await seed("in_progress");
+    const copied = await approvedVersion(ws, action);
+    await runtime.query("INSERT INTO output_versions(workspace_id,action_id,version_no,body,author_type,approval_state) VALUES($1,$2,2,'New draft','user','draft')", [ws, action]);
+    const result = await applicationRepository(runtime).assertApplied({ workspace_id: ws, action_id: action,
+      output_version_id: copied, source: "owner_asserted", asserted_by: user, note: null, evidence: null }, new Date().toISOString());
+    expect(result.ok).toBe(true);
+    expect((await runtime.query("SELECT action_state,completed_at FROM actions WHERE id=$1", [action])).rows[0]).toMatchObject({ action_state: "in_progress", completed_at: null });
+    expect((await runtime.query("SELECT output_version_id FROM action_applications WHERE action_id=$1", [action])).rows[0].output_version_id).toBe(copied);
+  });
+
+  it("serialises an applied assertion behind a concurrent new-version action lock", async () => {
+    const { ws, user, action } = await seed("in_progress");
+    const copied = await approvedVersion(ws, action);
+    const writer = await runtime.connect();
+    const asserter = await runtime.connect();
+    const pid = (await asserter.query("SELECT pg_backend_pid() AS pid")).rows[0].pid;
+    let applying: ReturnType<ReturnType<typeof applicationRepository>["assertApplied"]> | undefined;
+    try {
+      await writer.query("BEGIN");
+      await writer.query("SELECT id FROM actions WHERE workspace_id=$1 AND id=$2 FOR UPDATE", [ws, action]);
+      await writer.query("INSERT INTO output_versions(workspace_id,action_id,version_no,body,author_type,approval_state) VALUES($1,$2,2,'Concurrent draft','user','draft')", [ws, action]);
+      applying = applicationRepository({ query: runtime.query.bind(runtime), connect: async () => asserter } as unknown as Pool).assertApplied({
+        workspace_id: ws, action_id: action, output_version_id: copied, source: "owner_asserted", asserted_by: user, note: null, evidence: null,
+      }, new Date().toISOString());
+      let queuedAtAction = false;
+      for (let attempt = 0; attempt < 100; attempt++) {
+        const state = (await owner.query("SELECT wait_event_type,query FROM pg_stat_activity WHERE pid=$1", [pid])).rows[0];
+        if (state?.wait_event_type === "Lock" && state.query.startsWith("SELECT id FROM actions")) { queuedAtAction = true; break; }
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+      expect(queuedAtAction).toBe(true);
+      await writer.query("COMMIT");
+      expect((await applying).ok).toBe(true);
+      expect((await runtime.query("SELECT action_state,completed_at FROM actions WHERE id=$1", [action])).rows[0]).toMatchObject({ action_state: "in_progress", completed_at: null });
+    } finally {
+      await writer.query("ROLLBACK");
+      writer.release();
+      if (applying) await applying; else asserter.release();
+    }
+  });
+
+  it("revalidates the copied version after a concurrent approval supersedes it under the action lock", async () => {
+    const { ws, user, action } = await seed("in_progress");
+    const copied = await approvedVersion(ws, action);
+    const newer = (await runtime.query("INSERT INTO output_versions(workspace_id,action_id,version_no,body,author_type,approval_state) VALUES($1,$2,2,'New draft','user','draft') RETURNING id", [ws, action])).rows[0].id;
+    expect(await applicationRepository(runtime).approvedVersion(ws, action, copied)).toBe(true);
+    const writer = await runtime.connect();
+    const asserter = await runtime.connect();
+    const pid = (await asserter.query("SELECT pg_backend_pid() AS pid")).rows[0].pid;
+    let applying: ReturnType<ReturnType<typeof applicationRepository>["assertApplied"]> | undefined;
+    try {
+      await writer.query("BEGIN");
+      await writer.query("SELECT public.approve_output_version($1,$2,null)", [newer, user]);
+      applying = applicationRepository({ query: runtime.query.bind(runtime), connect: async () => asserter } as unknown as Pool).assertApplied({
+        workspace_id: ws, action_id: action, output_version_id: copied, source: "owner_asserted", asserted_by: user, note: null, evidence: null,
+      }, new Date().toISOString());
+      let queuedAtAction = false;
+      for (let attempt = 0; attempt < 100; attempt++) {
+        const state = (await owner.query("SELECT wait_event_type,query FROM pg_stat_activity WHERE pid=$1", [pid])).rows[0];
+        if (state?.wait_event_type === "Lock" && state.query.startsWith("SELECT id FROM actions")) { queuedAtAction = true; break; }
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+      expect(queuedAtAction).toBe(true);
+      await writer.query("COMMIT");
+      expect(await applying).toEqual({ ok: false, reason: "version_not_applicable" });
+      expect((await runtime.query("SELECT count(*)::int AS n FROM action_applications WHERE action_id=$1", [action])).rows[0].n).toBe(0);
+      expect((await runtime.query("SELECT action_state FROM actions WHERE id=$1", [action])).rows[0].action_state).toBe("in_progress");
+      expect((await runtime.query("SELECT approval_state,delivery_state FROM output_versions WHERE id=$1", [newer])).rows[0]).toMatchObject({ approval_state: "approved", delivery_state: "export_ready" });
+    } finally {
+      await writer.query("ROLLBACK");
+      writer.release();
+      if (applying) await applying; else asserter.release();
+    }
+  });
+
   it("refuses to assert on a dismissed action and writes nothing", async () => {
     const { ws, user, action } = await seed("dismissed");
     const created = await applicationRepository(runtime).assertApplied(
