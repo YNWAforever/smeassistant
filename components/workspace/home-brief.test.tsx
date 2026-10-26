@@ -237,11 +237,15 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
     expect(root.querySelector(".brief-priority-card h2")?.closest("details")).toBeNull();
   });
 
-  it("offers short routes to all tasks and content creation without losing the branch", () => {
-    const shortcuts = view().querySelector(".owner-home-shortcuts");
-    expect(shortcuts).not.toBeNull();
+  it("keeps routes to all tasks and content creation inside a closed disclosure", () => {
+    const root = view();
+    const shortcuts = root.querySelector(".owner-home-shortcuts");
+    const disclosure = shortcuts?.closest("details.owner-tasks-disclosure");
+    expect(disclosure).not.toBeNull();
+    expect(disclosure?.hasAttribute("open")).toBe(false);
     expect(shortcuts?.querySelector('a[href="/en/owner/kam-man-house/actions?location=yik-yam"]')).not.toBeNull();
     expect(shortcuts?.querySelector('a[href="/en/owner/kam-man-house/actions/new?location=yik-yam"]')).not.toBeNull();
+    expect(root.querySelector(".brief-priority-actions a")?.closest("details")).toBeNull();
   });
 
   it("takes an existing draft straight to review instead of promising a new start", () => {
@@ -264,10 +268,20 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
     expect(view({ priority: action, role: "owner" }).querySelector(".brief-priority-actions a")?.textContent).toContain("View task");
   });
 
-  it("labels the card 今日要做 in every locale", () => {
-    expect(view({ locale: "en" }).querySelector(".brief-priority-card")?.textContent).toContain("Do this today");
-    expect(view({ locale: "zh-HK" }).querySelector(".brief-priority-card")?.textContent).toContain("今日要做");
-    expect(view({ locale: "zh-TW" }).querySelector(".brief-priority-card")?.textContent).toContain("今日要做");
+  it("leads zh-HK with 而家最應做 and one sentence, and keeps workflow chrome folded", () => {
+    const root = view({ locale: "zh-HK" });
+    expect(root.querySelector("h1")?.textContent).toBe("而家最應做");
+    expect(root.querySelector(".page-intro p:not(.eyebrow)")).toBeNull();
+    const card = root.querySelector(".brief-priority-card");
+    expect(card?.querySelector("h2")?.textContent).toBe("回覆未回覆的 Google 評論");
+    expect(card?.querySelector(".coach-sentence")?.textContent).toBe("7 則評論等待回覆。");
+    expect(card?.querySelector(".brief-action-meta")).toBeNull();
+    expect(card?.querySelector(".brief-priority-actions a")?.closest("details")).toBeNull();
+    const why = root.querySelector("details.owner-priority-evidence");
+    expect(why?.hasAttribute("open")).toBe(false);
+    expect(why?.querySelector(".brief-action-meta")).not.toBeNull();
+    expect(view({ locale: "en" }).querySelector("h1")?.textContent).toBe("Start with this today.");
+    expect(view({ locale: "zh-TW" }).querySelector("h1")?.textContent).toBe("今天先處理這一項");
   });
 
   it("names one verb on the card's button: Start, or Add the missing facts when inputs are missing", () => {

@@ -75,7 +75,11 @@ describe("zh-HK Today and Insights shop language", () => {
     expect(insights.coverageLead).toBe("呢次查到")
     expect(insights.eligibility).toBe("可唔可以同上次比")
     expect(copy["zh-HK"].home.trust).toBe("點解咁講")
+    expect(copy["zh-HK"].home.title).toBe("而家最應做")
     expect(copy["zh-HK"].home.quietTitle).toBe("而家冇嘢要你決定")
+    expect(insights.leadTitle).toBe("有冇好啲")
+    expect(insights.missingFirst).toContain("再掃一次同一間舖")
+    expect(insights.betterResolved).toContain("{n}")
     for (const jargon of ["覆蓋率", "快照", "比較資格", "可比較掃描", "AI 能見度團隊", "不製造合併平均分", "已量度", "專員"]) {
       expect(joined, jargon).not.toContain(jargon)
     }

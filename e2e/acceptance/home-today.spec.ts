@@ -4,7 +4,7 @@ import { test, expect, signIn } from "../../test/e2e/fixtures";
 /**
  * FA-04: on a 375×812 phone the owner sees today's action and its button
  * without scrolling, and nothing hides it -- not the methodology (now inside
- * the closed 「為何可信」 disclosure) and not the fixed mobile bottom nav.
+ * the closed disclosure) and not the fixed mobile bottom nav.
  */
 async function bottom(locator: Locator): Promise<number> {
   const box = await locator.boundingBox();
@@ -20,17 +20,17 @@ async function visibleLimit(page: Page): Promise<number> {
 }
 
 for (const visual of [
-  { locale: "en", label: "Do this today", trust: "Why you can trust this" },
-  { locale: "zh-HK", label: "今日要做", trust: "點解咁講" },
-  { locale: "zh-TW", label: "今日要做", trust: "為何可信" },
+  { locale: "en", heading: "Start with this today.", trust: "Why you can trust this" },
+  { locale: "zh-HK", heading: "而家最應做", trust: "點解咁講" },
+  { locale: "zh-TW", heading: "今天先處理這一項", trust: "為何可信" },
 ] as const) {
   test(`owner home shows today's action above the fold at 375px (${visual.locale})`, async ({ page, merchant, environment }) => {
     await signIn(page, environment, merchant, "owner");
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto(`/${visual.locale}/owner/${merchant.slug}`);
 
-    const card = page.locator(".brief-priority-card");
-    await expect(card).toContainText(visual.label);
+    const card = page.locator(".brief-priority-card").first();
+    await expect(page.locator("h1")).toContainText(visual.heading);
     const title = card.locator("h2");
     const button = card.locator(".brief-priority-actions a");
     await expect(title).toBeVisible();

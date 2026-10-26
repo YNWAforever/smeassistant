@@ -7,7 +7,7 @@ vi.mock("next/navigation", () => ({ usePathname: () => "/en/owner/kam-man-house/
 import { buildAeoTrendModel } from "@/lib/trends/aeo-trend-model";
 import { buildTrendModel } from "@/lib/trends/history-model";
 import type { InsightsModel } from "@/lib/workspace/queries-pages";
-import { InsightsView } from "./insights-view";
+import { InsightsView, insightsLeadSentence } from "./insights-view";
 
 const location = { id: "loc-1", slug: "yik-yam", name: "Yik Yam Street", address: null, district: null, isPrimary: true, placeId: "p1" };
 const at = "2026-08-25T01:42:00Z";
@@ -69,6 +69,33 @@ describe("InsightsView", () => {
     expect(root.textContent).toContain("睇今次同上次差幾遠。");
     expect(root.textContent).not.toContain("不製造合併平均分");
     expect(root.textContent).not.toContain("比較資格");
+  });
+
+  it("leads zh-HK with 有冇好啲 and keeps score maths inside 點解咁講", () => {
+    const root = render("zh-HK");
+    const intro = root.querySelector(".page-intro");
+    expect(intro?.querySelector("h1")?.textContent).toBe("有冇好啲");
+    expect(intro?.textContent).toContain("好咗");
+    expect(intro?.textContent).not.toMatch(/分母|%|評分方法/);
+    const why = root.querySelector("details.insights-why");
+    expect(why?.hasAttribute("open")).toBe(false);
+    expect(why?.querySelector("summary")?.textContent).toContain("點解咁講");
+    expect(why?.querySelector(".insight-summary-grid")).not.toBeNull();
+    expect(why?.querySelector(".surface-trend-card")).not.toBeNull();
+    expect(why?.textContent).toContain("睇今次同上次差幾遠。");
+  });
+
+  it("says what is missing in shop language when a comparison is not possible", () => {
+    const root = render("zh-HK", { ledgerComparable: false, ledger: { resolved: [], regressed: [], decayed: [] } });
+    const intro = root.querySelector(".page-intro");
+    expect(intro?.querySelector("h1")?.textContent).toBe("有冇好啲");
+    expect(intro?.textContent).toContain("未有上次可以比");
+    expect(intro?.textContent).not.toMatch(/分母|覆蓋率|評分版本/);
+    expect(insightsLeadSentence(model({
+      ledgerComparable: false,
+      ledger: { resolved: [], regressed: [], decayed: [] },
+      trend: { ...buildTrendModel(null), reasonCode: "NO_SHARED_MEASURED_MODULE", direction: "unavailable" },
+    }), "zh-HK")).toContain("上次同今次查到嘅嘢唔同");
   });
 
   it("titles delivered work in the page's own locale", () => {

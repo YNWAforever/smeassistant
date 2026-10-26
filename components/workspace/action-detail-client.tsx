@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { copy, homeReviewCopy } from "@/lib/copy"
 import { withLocation } from "@/lib/workspace/format"
 import { EvidenceTab } from "@/components/workspace/action-detail/evidence-tab"
+import { OwnerSteps, ownerStepIndex } from "@/components/workspace/action-detail/owner-steps"
 import { WorkflowTab } from "@/components/workspace/action-detail/workflow-tab"
 import { DetailHeader } from "@/components/workspace/action-detail/detail-header"
 import { VerificationResult } from "@/components/workspace/action-detail/verification-result"
@@ -56,7 +57,7 @@ function VersionBoundActionDetail(props: ActionDetailClientProps) {
   </>
 }
 
-/** The action detail: header, verification, the draft/evidence/workflow/history tabs and the sticky approval bar. */
+/** The action detail: header, the 改稿 → 確認 → 發出 path, then evidence and history. Agent run stays in a closed disclosure. */
 function ActionDetailEditor(props: ActionDetailClientProps) {
   const ed = useActionEditor(props)
   const {
@@ -82,15 +83,10 @@ function ActionDetailEditor(props: ActionDetailClientProps) {
         </div>
       )}
 
-      <details className="owner-disclosure owner-workflow-disclosure">
-        <summary>{copy[locale].ownerFocus.workflow}</summary>
-      <ol className="provenance-chain" aria-label={ac.provenance.aria}>
-        {provenance.map((item, index) => <li key={item.label} className={`is-${item.state}`}><span className="provenance-node">{item.state === "complete" ? <Check /> : index + 1}</span><div><strong>{item.label}</strong><small>{item.detail}</small></div></li>)}
-      </ol>
-      </details>
+      {action.delivery !== "checklist" && <OwnerSteps locale={locale} index={ownerStepIndex({ isApprovedCurrent: ed.isApprovedCurrent, dirty: ed.dirty, approval, hasVersion: ed.selectedVersion != null })} />}
 
       <Tabs defaultValue="draft" className="action-detail-tabs">
-        <TabsList variant="line" className="detail-tab-list"><TabsTrigger value="draft">{ac.tabs.draft}</TabsTrigger><TabsTrigger value="evidence">{ac.tabs.evidence}</TabsTrigger><TabsTrigger value="workflow">{ac.tabs.workflow}</TabsTrigger><TabsTrigger value="history">{ac.tabs.history}</TabsTrigger></TabsList>
+        <TabsList variant="line" className="detail-tab-list"><TabsTrigger value="draft">{ac.tabs.draft}</TabsTrigger><TabsTrigger value="evidence">{ac.tabs.evidence}</TabsTrigger><TabsTrigger value="history">{ac.tabs.history}</TabsTrigger></TabsList>
 
         <TabsContent value="draft">
           <div className="draft-layout">
@@ -104,14 +100,18 @@ function ActionDetailEditor(props: ActionDetailClientProps) {
           <EvidenceTab action={action} measurements={measurements} locale={locale} timezone={timezone} locationName={locationName} />
         </TabsContent>
 
-        <TabsContent value="workflow">
-          <WorkflowTab action={action} runs={runs} workflowState={workflowState} workflowLabel={workflowLabel} approvalLabel={approvalText(approval)} delivery={delivery} locale={locale} timezone={timezone} />
-        </TabsContent>
-
         <TabsContent value="history">
           <HistoryTab ed={ed} />
         </TabsContent>
       </Tabs>
+
+      <details className="owner-disclosure owner-workflow-disclosure">
+        <summary>{copy[locale].ownerFocus.workflow}</summary>
+        <ol className="provenance-chain" aria-label={ac.provenance.aria}>
+          {provenance.map((item, index) => <li key={item.label} className={`is-${item.state}`}><span className="provenance-node">{item.state === "complete" ? <Check /> : index + 1}</span><div><strong>{item.label}</strong><small>{item.detail}</small></div></li>)}
+        </ol>
+        <WorkflowTab action={action} runs={runs} workflowState={workflowState} workflowLabel={workflowLabel} approvalLabel={approvalText(approval)} delivery={delivery} locale={locale} timezone={timezone} />
+      </details>
 
       <StickyApprovalBar ed={ed} />
     </div>

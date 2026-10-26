@@ -83,6 +83,8 @@ export type ActionCopy = {
   }
   offline: { title: string; body: string; reconnect: string }
   tabs: { draft: string; evidence: string; workflow: string; history: string }
+  /** The owner path on an action: edit, confirm, then send. Checklist actions do not use it. */
+  ownerSteps: { aria: string; edit: string; confirm: string; send: string }
   editor: {
     generatedOutput: string
     approvedAsset: string
@@ -267,6 +269,7 @@ export const actionEn: ActionCopy = {
     reconnect: "Reconnect",
   },
   tabs: { draft: "Draft & approval", evidence: "Source evidence", workflow: "Workflow states", history: "Version & audit history" },
+  ownerSteps: { aria: "What you do", edit: "Edit", confirm: "Confirm", send: "Send" },
   editor: {
     generatedOutput: "Generated output",
     approvedAsset: "Approved asset · {n} available",
@@ -464,8 +467,9 @@ export const actionZhHK: ActionCopy = {
     reconnect: "重新連接",
   },
   tabs: { draft: "草稿與審批", evidence: "來源證據", workflow: "流程狀態", history: "版本及審計紀錄" },
+  ownerSteps: { aria: "你要做嘅三步", edit: "改稿", confirm: "確認", send: "發出" },
   editor: {
-    generatedOutput: "生成輸出",
+    generatedOutput: "改稿",
     approvedAsset: "已核准素材 · 共 {n} 項可用",
     approved: "已核准",
     sourceFinding: "來源發現",
@@ -524,10 +528,10 @@ export const actionZhHK: ActionCopy = {
     note: "沒有可審批或匯出的版本，也不會扣除核准後交付額。",
   },
   approval: {
-    eyebrow: "審批決定",
+    eyebrow: "確認",
     approvedTitle: "{version}已核准",
-    safeDecision: "一項安全的店主決定",
-    scope: "核准只適用於這個不可變更版本。任何修改都必須另存新版本，再次審批。",
+    safeDecision: "確認呢一版",
+    scope: "確認只計呢一版。改完要另存一版，再確認一次。",
     comment: "審閱者備註",
     commentPlaceholder: "審計紀錄的選填備註",
     approved: "已核准",
@@ -544,9 +548,9 @@ export const actionZhHK: ActionCopy = {
     rejectVersion: "拒絕此版本",
   },
   delivery: {
-    eyebrow: "送出",
-    titleSocial: "匯出至 Instagram",
-    title: "匯出已核准版本",
+    eyebrow: "發出",
+    titleSocial: "發出去 Instagram",
+    title: "發出呢一版",
     noConnector: "目前沒有已驗證的直接發佈連接器。只有指定版本獲核准並完成匯出，才計 1 次核准後交付。",
     allowanceTitle: "本月核准後交付額已用完",
     allowanceBody: "版本仍已核准並保留；升級方案或等待下月額度後即可匯出。",
@@ -661,6 +665,7 @@ export const actionZhTW: ActionCopy = {
     reconnect: "重新連接",
   },
   tabs: { draft: "草稿與核准", evidence: "來源證據", workflow: "流程狀態", history: "版本及審計紀錄" },
+  ownerSteps: { aria: "你要做的三步", edit: "改稿", confirm: "確認", send: "發出" },
   editor: {
     generatedOutput: "生成輸出",
     approvedAsset: "已核准素材 · 共 {n} 項可用",

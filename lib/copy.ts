@@ -441,7 +441,7 @@ export type Copy = {
     changed: string
     priority: string
     proof: string
-    /** FA-04: the 今日要做 card's one verb, and the variant when facts are missing. */
+    /** The coach card's one verb, and the variant when facts are missing. */
     start: string
     addFacts: string
     whyNow: string
