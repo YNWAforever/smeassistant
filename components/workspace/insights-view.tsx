@@ -55,14 +55,14 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
   return (
     <div className="insights-page">
       <PageIntro eyebrow={pc.comparableChangeAndOutcome} title={copy[locale].shell.nav.insights} description={pc.observedFactsPossiblyRelated} actions={<LocationSelect locale={locale} value={model.locationSlug} locations={locations} className="location-select" ariaLabel={pc.chooseInsightsLocation} />} />
-      {isAll && <div className="request-context-banner"><ShieldCheck /><div><strong>{pc.noInventedAggregateScore}</strong><span>{pc.locationsHaveDifferentCoverage}</span></div></div>}
+      {isAll && <div className="request-context-banner"><ShieldCheck /><div><strong>{pc.noInventedAggregateScore}</strong><details className="owner-disclosure"><summary>{copy[locale].home.trust}</summary><span>{pc.locationsHaveDifferentCoverage}</span></details></div></div>}
       {isAll ? (
         <div className="location-proof-grid">
           {model.perLocation.map((row) => (
             <SectionCard key={row.location.id}>
               <p className="eyebrow">{row.location.name}</p>
               <h2>{row.score === null ? "—" : Math.round(row.score)} <small>/ 100</small></h2>
-              <p>{row.coverage === null ? pc.noScanYet : `${copy[locale].common.coverage} ${scorePercent(row.coverage)}% · ${row.comparable ? pc.comparable : pc.oneMoreComparableScan}`}</p>
+              <p>{row.coverage === null ? pc.noScanYet : `${pc.coverageLead} ${scorePercent(row.coverage)}% · ${row.comparable ? pc.comparable : pc.oneMoreComparableScan}`}</p>
               <Badge variant="outline">{row.comparable ? <CheckCircle2 /> : <CircleDashed />} {row.comparable ? pc.trendAvailable : pc.noTrendYet}</Badge>
               <Link href={withLocation(`${base}/insights`, row.location.slug)}>{pc.openLocation} <ArrowRight /></Link>
             </SectionCard>
@@ -77,14 +77,14 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
             <SectionCard className="insight-stat"><TrendIcon delta={comparable ? delta : null} /><span>{pc.visibilityScore}</span><strong>{signed(delta)}</strong><small>{comparable && trend.base !== null && trend.head !== null ? `${Math.round(trend.base)} → ${Math.round(trend.head)} · ${pc.comparableSuffix}` : reasonText(trend.reasonCode, locale)}</small></SectionCard>
             <SectionCard className="insight-stat"><CheckCircle2 /><span>{pc.resolvedFindings}</span><strong>{model.ledgerComparable ? model.ledger.resolved.length : "—"}</strong><small>{model.ledgerComparable ? pc.acrossEligibleScans : copy[locale].home.noComparable}</small></SectionCard>
             <SectionCard className="insight-stat"><TrendingDown /><span>{pc.regressedFindings}</span><strong>{model.ledgerComparable ? model.ledger.regressed.length : "—"}</strong><small>{model.ledgerComparable ? pc.latestComparableScan : copy[locale].home.noComparable}</small></SectionCard>
-            <SectionCard className="insight-stat"><CircleDashed /><span>{copy[locale].common.coverage}</span><strong>{scorePercent(head.coverage)}%</strong><small>{pc.unmeasuredSourcesAreNot}</small></SectionCard>
+            <SectionCard className="insight-stat"><CircleDashed /><span>{pc.coverageLead}</span><strong>{scorePercent(head.coverage)}%</strong><details className="owner-disclosure"><summary>{copy[locale].home.trust}</summary><small>{pc.unmeasuredSourcesAreNot}</small></details></SectionCard>
           </div>
           <SectionCard className="trend-card">
             <div className="section-card-heading"><div><p className="eyebrow">{pc.visibilityAndCoverage}</p><h2>{fill(model.series.length === 1 ? pc.scoreAcrossOne : pc.scoreAcrossMany, { scans: model.series.length })}</h2></div><Badge variant="outline">{pc.noLineAcrossEvidence}</Badge></div>
             <SeriesStrip model={model} locale={locale} timezone={timezone} />
             <Table>
               <TableCaption>{pc.accessibleDataTableFor}</TableCaption>
-              <TableHeader><TableRow><TableHead>{pc.scanDate}</TableHead><TableHead>{pc.score}</TableHead><TableHead>{copy[locale].common.coverage}</TableHead><TableHead>{pc.eligibility}</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>{pc.scanDate}</TableHead><TableHead>{pc.score}</TableHead><TableHead>{pc.coverageLead}</TableHead><TableHead>{pc.eligibility}</TableHead></TableRow></TableHeader>
               <TableBody>{model.series.map((point) => <TableRow key={point.snapshotId}><TableCell>{formatDay(point.observedAt, locale, timezone)}</TableCell><TableCell>{point.score === null ? pc.withheld : Math.round(point.score)}</TableCell><TableCell>{scorePercent(point.coverage)}%</TableCell><TableCell>{point.comparable ? pc.comparable : reasonText(point.incomparableReason, locale)}</TableCell></TableRow>)}</TableBody>
             </Table>
           </SectionCard>
@@ -110,7 +110,7 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
                 </span>
               </li>
             ))}</ul>
-            <p className="limitation-note">{pc.theDenominatorIsThe}</p>
+            <details className="owner-disclosure"><summary>{copy[locale].home.trust}</summary><p className="limitation-note">{pc.theDenominatorIsThe}</p></details>
           </SectionCard>}
           {(model.ledger.resolved.length > 0 || model.ledger.regressed.length > 0 || model.ledger.decayed.length > 0) && <SectionCard className="change-ledger-card"><div className="section-card-heading"><div><p className="eyebrow">{pc.changeLedger}</p><h2>{pc.resolvedRegressedAndDecayed}</h2></div></div><ul className="evidence-list">{model.ledger.resolved.map((k) => <li key={`r${k}`}><Badge variant="outline">{pc.resolved}</Badge><span><strong>{findingLabel(k, locale)}</strong></span></li>)}{model.ledger.regressed.map((k) => <li key={`g${k}`}><Badge variant="outline">{pc.regressed}</Badge><span><strong>{findingLabel(k, locale)}</strong></span></li>)}{model.ledger.decayed.map((k) => <li key={`d${k}`}><Badge variant="outline">{pc.decayed}</Badge><span><strong>{findingLabel(k, locale)}</strong></span></li>)}</ul></SectionCard>}
           {/* P2.1 item 7: the approved/exported WORK itself, not only the

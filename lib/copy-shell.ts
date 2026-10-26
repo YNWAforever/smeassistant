@@ -319,7 +319,7 @@ export const shellZhHK: ShellCopy = {
     filtered: { title: "沒有符合篩選條件的行動", body: "請更改或清除篩選。清單空白不代表沒有證據。", action: "清除篩選" },
     due: { title: "沒有到期項目", body: "為行動設定到期日後，它會與下次掃描一同顯示在這裡。" },
     fixPack: { title: "暫時沒有 Fimmick 團隊準備的草稿", body: "團隊為你準備評論回覆或帖文時，會在這裡等你審批。", action: "自行開始", drafts: "查看你的草稿" },
-    insights: { title: "完成第一次掃描後，成效會在這裡出現", body: "每次掃描都會加入證據；要有兩次可比較的掃描，才會顯示變化。", action: "返回今日" },
+    insights: { title: "掃一次之後，先有結果睇", body: "每次掃描會記下查到嘅資料。要有兩次可以比，先會話你有咩變。", action: "返去今日" },
     assets: { title: "尚未有素材", body: "上載你有權使用的相片或餐牌。草稿只會使用你已核准的素材。" },
     activity: { title: "尚未有活動", body: "草稿、審批、匯出及掃描都會在發生時記錄在這裡。" },
     notifications: { title: "沒有新通知", body: "掃描結果、審批及匯出會在這裡顯示。" },

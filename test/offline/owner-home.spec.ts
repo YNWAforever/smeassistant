@@ -226,7 +226,7 @@ for (const locale of ["en", "zh-HK"] as const) {
     await expect(cards.getByRole("link")).toBeVisible();
     app.state.priority = false; await page.reload();
     await expect(cards).toHaveCount(1);
-    await expect(cards).toContainText(locale === "en" ? "No action needs your decision right now" : "暫時沒有需要你決定的行動");
+    await expect(cards).toContainText(locale === "en" ? "No action needs your decision right now" : "而家冇嘢要你決定");
     await expect(page.getByTestId("fixture-usage")).toContainText("2/3");
     expect(app.state.calls).toHaveLength(0); expect(app.state.usage).toBe(2);
   });

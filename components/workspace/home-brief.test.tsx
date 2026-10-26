@@ -184,7 +184,7 @@ describe("HomeBriefView without Fix Pack or starter pack cards (Phase 4)", () =>
 
 /**
  * FA-04: home leads with the one thing to do today; the methodology stays one
- * tap away inside a closed 「為何可信」 disclosure.
+ * tap away inside a closed 「點解咁講」 disclosure.
  */
 describe("HomeBriefView today-first layout (FA-04)", () => {
   function priority(missing: string[] = []) {
@@ -276,7 +276,7 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
     expect(view({ locale: "zh-HK", priority: priority() }).querySelector(".brief-priority-actions a")?.textContent).toContain("開始處理");
   });
 
-  it("folds the methodology into one closed 「為何可信」 disclosure", () => {
+  it("folds the methodology into one closed 「點解咁講」 disclosure", () => {
     const disclosure = view().querySelector("details.trust-disclosure");
     expect(disclosure).not.toBeNull();
     expect(disclosure!.hasAttribute("open")).toBe(false);
@@ -284,7 +284,7 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
     for (const inside of [".workspace-agent-strip", ".integration-health-card", ".change-ledger-card", ".operational-footnote"]) {
       expect(disclosure!.querySelector(inside)).not.toBeNull();
     }
-    expect(view({ locale: "zh-HK" }).querySelector("details.trust-disclosure summary")?.textContent).toContain("為何可信");
+    expect(view({ locale: "zh-HK" }).querySelector("details.trust-disclosure summary")?.textContent).toContain("點解咁講");
   });
 
   it("keeps the decision queue outside the disclosure", () => {
@@ -298,7 +298,7 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
     for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
       const root = view({ locale, openActionCount: 37, openActions: actions });
       const queue = root.querySelector(".pending-approval-card");
-      expect(queue?.textContent).toContain(locale === "en" ? "37 open actions" : "共有 37 項待辦");
+      expect(queue?.textContent).toContain(locale === "en" ? "37 open actions" : locale === "zh-HK" ? "一共 37 項" : "共有 37 項待辦");
       expect(queue?.querySelectorAll(".compact-action-list a")).toHaveLength(3);
       expect(root.querySelector("details.trust-disclosure .pending-approval-card")).toBeNull();
     }
@@ -316,7 +316,7 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
       expect(text).toContain("Nothing new this week; check back after your next scan.");
       expect(text).not.toContain("Rescan");
     }
-    expect(view({ locale: "zh-HK", priority: null, withSnapshot: true, tier: "lite" }).querySelector(".brief-priority-card")?.textContent).toContain("本週沒有新行動，下次掃描後再看。");
+    expect(view({ locale: "zh-HK", priority: null, withSnapshot: true, tier: "lite" }).querySelector(".brief-priority-card")?.textContent).toContain("今個星期冇新嘢。下次掃完再睇。");
   });
 });
 
@@ -370,6 +370,42 @@ describe("HomeBriefView for an unscanned or unlinked workspace (F-19)", () => {
       expect(root.querySelector("h1")?.textContent).toBe(copy.en.home.title);
       expect(root.textContent).toMatch(/finished the analysis/);
     }
+  });
+});
+
+describe("zh-HK shop language when the score is withheld", () => {
+  it("leads with the data gap and keeps the zero rule under 點解咁講", () => {
+    const brief = baseBrief(null);
+    brief.snapshot = { ...snapshot, overallScore: null, coverage: 0.6 };
+    const root = document.createElement("div");
+    root.innerHTML = renderToStaticMarkup(
+      <HomeBriefView
+        locale="zh-HK"
+        workspaceSlug="kam-man-house"
+        workspaceId="ws-1"
+        workspaceName="Kam Man House"
+        tier="paid"
+        timezone="Asia/Hong_Kong"
+        locations={[{ slug: "yik-yam", name: "奕蔭街" }]}
+        brief={brief}
+        consentPolicyVersion="2026-07-28"
+        role="owner"
+      />,
+    );
+    const score = root.querySelector(".brief-score-card");
+    expect(score?.querySelector("h2")?.textContent).toBe("資料未夠，暫時未評");
+    expect(score?.textContent).toContain("呢次查到 60% 資料");
+    expect(score?.textContent).not.toContain("唔會當零分");
+    const trust = root.querySelector("details.trust-disclosure");
+    expect(trust?.hasAttribute("open")).toBe(false);
+    expect(trust?.querySelector("summary")?.textContent).toContain("點解咁講");
+    expect(trust?.textContent).toContain("唔會當零分");
+    expect(trust?.textContent).toContain("唔會自動發佈");
+    const text = root.textContent ?? "";
+    expect(text).not.toContain("AI 能見度團隊");
+    expect(text).not.toContain("覆蓋率");
+    expect(text).not.toContain("快照");
+    expect(root.querySelector("h1")?.textContent).toBe("而家冇嘢要你決定");
   });
 });
 
