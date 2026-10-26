@@ -346,6 +346,29 @@ describe("owner step controls", () => {
       auditRows={[]} locations={[]} approvedAssets={[]} />);
   }
 
+  it("offers one Generate control in the editor before the first draft", () => {
+    renderLive(<ActionDetailClient locale="en" workspaceSlug="kam-man-house" workspaceId="ws-1"
+      timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={detail("review-response")}
+      auditRows={[]} locations={[]} approvedAssets={[]} />);
+    const generate = screen.getByRole("button", { name: /^Generate a draft$/ });
+    expect(generate.closest(".draft-editor-card")).not.toBeNull();
+    expect(document.querySelector(".sticky-approval-bar")).toBeNull();
+  });
+
+  it("keeps Regenerate unique on re-edit and repeats Save only while text is dirty", () => {
+    mountVersion();
+    fireEvent.click(pageButton("Change the draft"));
+    expect(screen.getByRole("button", { name: /^Regenerate/ }).closest(".draft-editor-card")).not.toBeNull();
+    expect(document.querySelector(".sticky-approval-bar")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "Unsaved owner revision" } });
+    expect(screen.getByRole("button", { name: /^Regenerate/ })).toBeDisabled();
+    const sticky = document.querySelector(".sticky-approval-bar")! as HTMLElement;
+    expect(within(sticky).getByRole("button", { name: "Save manual edits as a new version" })).toBeEnabled();
+    fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "The exact saved reply" } });
+    expect(screen.getByRole("button", { name: /^Regenerate/ })).toBeEnabled();
+    expect(document.querySelector(".sticky-approval-bar")).toBeNull();
+  });
+
   it.each([".approval-panel", ".sticky-approval-bar"])("uses the same exact-version dialog from %s", async (selector) => {
     mountVersion();
     const primary = within(document.querySelector(selector)! as HTMLElement).getByRole("button", { name: "Confirm this version" });
