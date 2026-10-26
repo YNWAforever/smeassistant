@@ -1,6 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { runWebsiteVerification } from "./website-sweep";
 
+vi.mock("node:dns/promises", () => ({ Resolver: class {
+  resolve4() { return Promise.resolve(["93.184.216.34"]); }
+  resolve6() { return Promise.resolve([]); }
+  cancel() {}
+} }));
+
 const html = (body: string) =>
   `<!doctype html><html lang="en"><head><title>A shop that is long enough</title><meta name="description" content="${"d".repeat(80)}"></head><body><h1>One</h1>${body}</body></html>`;
 const FAQ = `<script type="application/ld+json">{"@type":"FAQPage","mainEntity":[]}</script>`;
