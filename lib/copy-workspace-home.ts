@@ -41,6 +41,10 @@ export type WorkspaceHomeCopy = {
     approvedAndExportedWork: string; recentlyDelivered: string; approvedAndExportedContent: string; action: string; version: string;
     mode: string; delivered: string; versionShort: string; copy: string; publish: string;
     scoreAcrossOne: string; scoreAcrossMany: string;
+    leadTitle: string; better: string; worse: string; same: string;
+    betterResolved: string; worseRegressed: string; mixed: string; quietChange: string;
+    missingFirst: string; missingBecause: string; allLead: string;
+    locationReady: string; locationWaiting: string;
   }
   calendar: {
     plannedWorkAndMonitoring: string; calendar: string; everyItemHasA: string; monitoringCadence: string; rescanCadence: string;
@@ -208,6 +212,19 @@ export const workspaceHomeEn: WorkspaceHomeCopy = {
     publish: "Publish",
     scoreAcrossOne: "Visibility score across {scans} scan",
     scoreAcrossMany: "Visibility score across {scans} scans",
+    leadTitle: "Did it get better?",
+    better: "Yes. It is better than last time.",
+    worse: "Not yet. It is not better than last time.",
+    same: "About the same as last time.",
+    betterResolved: "Yes. Better than last time — {n} issues are gone.",
+    worseRegressed: "Not yet. {n} new issues since last time.",
+    mixed: "Mixed. {resolved} issues are gone, and {regressed} new ones showed up.",
+    quietChange: "We can compare with last time, but there is no clear change yet.",
+    missingFirst: "There is no earlier visit to compare. Scan this shop again to see whether it got better.",
+    missingBecause: "{reason} Scan again to see whether it got better.",
+    allLead: "Each shop stays separate. Open one to see whether it got better.",
+    locationReady: "Can compare with last time",
+    locationWaiting: "No earlier visit to compare",
   },
   calendar: {
     plannedWorkAndMonitoring: "Planned work and monitoring",
@@ -385,6 +402,19 @@ export const workspaceHomeZhHK: WorkspaceHomeCopy = {
     publish: "發佈",
     scoreAcrossOne: "{scans} 次掃描嘅分數",
     scoreAcrossMany: "{scans} 次掃描嘅分數",
+    leadTitle: "有冇好啲",
+    better: "有。比上次好咗。",
+    worse: "未算。比上次未見好啲。",
+    same: "差唔多，同之前一樣。",
+    betterResolved: "有。比上次好咗，{n} 樣問題已經唔見咗。",
+    worseRegressed: "未算。比上次多咗 {n} 樣問題。",
+    mixed: "有好有壞。{resolved} 樣問題唔見咗，但多咗 {regressed} 樣。",
+    quietChange: "可以同之前比，但未見到具體變化。",
+    missingFirst: "未有上次可以比。再掃一次同一間舖，先知道有冇好啲。",
+    missingBecause: "{reason}。再掃一次同一間舖，先知道有冇好啲。",
+    allLead: "每間舖分開睇，唔會砌一個總分。揀一間舖，先知道有冇好啲。",
+    locationReady: "可以同之前比",
+    locationWaiting: "未有上次可以比",
   },
   calendar: {
     plannedWorkAndMonitoring: "已規劃工作及監察",
@@ -562,6 +592,19 @@ export const workspaceHomeZhTW: WorkspaceHomeCopy = {
     publish: "發佈",
     scoreAcrossOne: "{scans} 次掃描的能見度評分",
     scoreAcrossMany: "{scans} 次掃描的能見度評分",
+    leadTitle: "有沒有比較好",
+    better: "有。比上次好。",
+    worse: "還沒有。比上次沒有比較好。",
+    same: "跟上次差不多。",
+    betterResolved: "有。比上次好，{n} 個問題已經不見了。",
+    worseRegressed: "還沒有。比上次多了 {n} 個問題。",
+    mixed: "有好有壞。{resolved} 個問題不見了，但多了 {regressed} 個。",
+    quietChange: "可以跟上一次比，但還沒看到明顯變化。",
+    missingFirst: "還沒有上一次可以比。再掃描一次這間店，才知道有沒有比較好。",
+    missingBecause: "{reason}。再掃描一次，才知道有沒有比較好。",
+    allLead: "每間店分開看，不會做成一個總分。選一間店，才知道有沒有比較好。",
+    locationReady: "可以跟上一次比",
+    locationWaiting: "還沒有上一次可以比",
   },
   calendar: {
     plannedWorkAndMonitoring: "已規劃工作及監控",

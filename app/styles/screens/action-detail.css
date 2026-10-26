@@ -163,4 +163,10 @@
 /* Dark-mode fix (Phase 8): the bar's light warm-grey border showed as a bright outline on the dark theme. */
 :root[data-theme="dark"] .sticky-approval-bar,
 :root[data-theme-pref="dark"]:not([data-theme]):has([data-theme-scope]) .sticky-approval-bar { border-color: var(--line-warm); }
+.owner-steps { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 4px; margin: 4px 0 16px; padding: 0; list-style: none; }
+.owner-steps li { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-3); font-size: 15px; }
+.owner-steps li.is-current { color: var(--ink); }
+.owner-steps li.is-current strong { font-weight: 750; }
+.owner-steps li.is-done { color: var(--ink-2); }
+.owner-steps-arrow { color: var(--ink-3); font-size: 16px; }
 }

@@ -414,6 +414,7 @@
 @media (max-width: 767px){
 .owner-home-page.owner-daily-focus .page-intro h1 { font-size: 28px; line-height: 1.3; }
 .owner-home-page.owner-daily-focus .brief-priority-card h2 { font-size: 24px; }
+.owner-home-page.owner-daily-focus .brief-priority-card .coach-sentence { margin: 8px 0 20px; color: var(--ink-2); font-size: 16px; line-height: 1.55; }
 .owner-results-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "score" "proof"; }
 .owner-home-shortcuts > a { flex: 1 1 160px; min-height: 44px; }}
 .proof-value strong,

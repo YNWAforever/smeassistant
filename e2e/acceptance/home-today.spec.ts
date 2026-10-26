@@ -4,7 +4,7 @@ import { test, expect, signIn } from "../../test/e2e/fixtures";
 /**
  * FA-04: on a 375×812 phone the owner sees today's action and its button
  * without scrolling, and nothing hides it -- not the methodology (now inside
- * the closed 「為何可信」 disclosure) and not the fixed mobile bottom nav.
+ * the closed disclosure) and not the fixed mobile bottom nav.
  */
 async function bottom(locator: Locator): Promise<number> {
   const box = await locator.boundingBox();
@@ -20,21 +20,24 @@ async function visibleLimit(page: Page): Promise<number> {
 }
 
 for (const visual of [
-  { locale: "en", label: "Do this today", trust: "Why you can trust this" },
-  { locale: "zh-HK", label: "今日要做", trust: "點解咁講" },
-  { locale: "zh-TW", label: "今日要做", trust: "為何可信" },
+  { locale: "en", heading: "Start with this today.", trust: "Why you can trust this" },
+  { locale: "zh-HK", heading: "而家最應做", trust: "點解咁講" },
+  { locale: "zh-TW", heading: "今天先處理這一項", trust: "為何可信" },
 ] as const) {
   test(`owner home shows today's action above the fold at 375px (${visual.locale})`, async ({ page, merchant, environment }) => {
     await signIn(page, environment, merchant, "owner");
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto(`/${visual.locale}/owner/${merchant.slug}`);
 
-    const card = page.locator(".brief-priority-card");
-    await expect(card).toContainText(visual.label);
+    const card = page.locator(".brief-priority-card").first();
+    await expect(page.locator("h1")).toContainText(visual.heading);
     const title = card.locator("h2");
+    const sentence = card.locator(".coach-sentence");
     const button = card.locator(".brief-priority-actions a");
     await expect(title).toBeVisible();
+    await expect(sentence).toBeVisible();
     await expect(button).toBeVisible();
+    await expect(card.locator(".brief-action-meta")).toHaveCount(0);
 
     const limit = await visibleLimit(page);
     await test.info().attach("first-screen-layout", {
@@ -44,12 +47,13 @@ for (const visual of [
         viewport: page.viewportSize(),
         visibleLimit: limit,
         title: await title.boundingBox(),
+        sentence: await sentence.boundingBox(),
         primaryAction: await button.boundingBox(),
-        metadata: await card.locator(".brief-action-meta").boundingBox(),
       }),
     });
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
     expect(await bottom(title)).toBeLessThanOrEqual(limit);
+    expect(await bottom(sentence)).toBeLessThanOrEqual(limit);
     expect(await bottom(button)).toBeLessThanOrEqual(limit);
     // A visible button can still be covered by the fixed navigation.
     expect(await button.evaluate((element) => {
@@ -63,9 +67,12 @@ for (const visual of [
     await expect(evidence).not.toHaveAttribute("open");
     await expect(page.locator(".brief-score-card")).toBeHidden();
     await expect(page.locator(".why-now-box").first()).toBeHidden();
+    // Effort, phase and version stay in the closed 「why this first」 disclosure, not on the open card.
+    await expect(evidence.locator(".brief-action-meta")).toBeHidden();
     await page.screenshot({ path: test.info().outputPath("owner-daily-focus-mobile.png"), fullPage: true });
     await evidence.locator("summary").click();
     await expect(evidence.locator(".why-now-box")).toBeVisible();
+    await expect(evidence.locator(".brief-action-meta")).toBeVisible();
     await evidence.locator("summary").click();
     await results.locator("summary").click();
     await expect(results.locator(".brief-score-card")).toBeVisible();

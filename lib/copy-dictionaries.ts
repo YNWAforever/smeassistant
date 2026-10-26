@@ -1190,10 +1190,10 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
       checked: "可檢查的範圍",
     },
     home: {
-      title: "今日先處理呢樣",
+      title: "而家最應做",
       subtitle: "最緊要嗰樣先，其他遲啲再睇。",
       changed: "有咩變咗",
-      priority: "今日要做",
+      priority: "而家最應做",
       proof: "上次做完點",
       start: "開始處理",
       addFacts: "補返資料",
@@ -1214,7 +1214,7 @@ export const copyDictionaries: Record<PrototypeLocale, Copy> = {
     ownerFocus: {
       why: "點解先做呢項？", results: "睇最近結果", otherTasks: "其他待辦同草稿",
       allTasks: "查看所有待辦", create: "準備新內容", review: "審閱草稿", view: "查看待辦", export: "匯出已核准版本", connect: "查看連接",
-      workflow: "查看來源及流程", contentGroup: "內容資料", historyGroup: "工作紀錄", settingsGroup: "工作台設定",
+      workflow: "點解咁講", contentGroup: "內容資料", historyGroup: "工作紀錄", settingsGroup: "工作台設定",
       moreIntro: "管理素材、品牌資料、工作紀錄與工作台設定。", approvalNote: "你睇過先至可以匯出。唔會自動發佈。",
     },
     common: {

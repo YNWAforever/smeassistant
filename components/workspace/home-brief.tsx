@@ -38,7 +38,7 @@ export interface HomeBriefViewProps {
   consentPolicyVersion: string
   /** The signed-in member's real role; drives the Rescan button (hidden for viewers). Omitted = no rescan control. */
   role?: WorkspaceRole
-  /** NeedsAttentionCard, rendered directly after the PageIntro so its <h2> never precedes this page's <h1>. */
+  /** NeedsAttentionCard, after the coach card so its <h2> never precedes this page's <h1>. */
   problems?: ReactNode
   /** The getting-started checklist, rendered after today's priority so it never pushes it below the fold. */
   gettingStarted?: ReactNode
@@ -93,31 +93,26 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
   return (
     <div className="owner-home-page owner-daily-focus">
       <PageIntro
-        eyebrow={snapshot ? `${pc.snapshot} · ${formatDateTime(snapshot.observedAt, locale, timezone)}` : hasLocations && location === "all" ? pc.allLocationsNoCombined : pc.noSnapshotYet}
+        eyebrow={priority || followUp ? undefined : snapshot ? `${pc.snapshot} · ${formatDateTime(snapshot.observedAt, locale, timezone)}` : hasLocations && location === "all" ? pc.allLocationsNoCombined : pc.noSnapshotYet}
         title={pageTitle}
-        description={pageSubtitle}
+        description={priority || followUp ? undefined : pageSubtitle}
         actions={<LocationSelect locale={locale} value={location} locations={locations} />}
       />
-
-      {problems}
 
       {!hasLocations && <div className="context-banner" role="status"><CircleAlert /><div><strong>{t.noLocationTitle}</strong><span>{t.noLocationBody}</span><Link href={`/${locale}/scan`}>{t.noLocationCta}</Link></div></div>}
 
       <section className="owner-brief-grid" aria-label={pc.todaySOperatingBrief}>
         {(priority || !followUp) && <article className="brief-priority-card">
-          <div className="card-label-row"><span><Sparkles /> {t.priority}</span>{priority ? <Badge className={priorityClass(priority.priority)}>{priorityLabel(priority.priority, locale)}</Badge> : <Badge variant="outline">{pc.nothingOpen}</Badge>}</div>
           {priority ? (
             <>
               <h2>{resolveText(priority.title, locale)}</h2>
-              <p>{resolveText(priority.summary, locale)}</p>
-              <div className="brief-action-meta"><span><Clock3 /> {effortLabel(priority.effortMinutes, locale)} {pc.ownerTime}</span><span><FileClock /> {resolveText(priority.displayPhase, locale)}</span></div>
-              {priority.latestVersion && <p>{versionLabel(priority.latestVersion.versionNo)}</p>}
+              <p className="coach-sentence">{resolveText(priority.summary, locale)}</p>
               <div className="brief-priority-actions"><Button asChild size="lg"><Link href={actionHref(locale, workspaceSlug, priority, location)}>{priorityCta}<ArrowRight /></Link></Button></div>
             </>
           ) : followUp ? null : (
             <>
               <h2>{pc.noActionNeedsYour}</h2>
-              <p>{snapshot ? (canRescan ? `${t.emptyWeek} ${t.rescanNow}` : t.emptyWeek) : pc.actionsAreDerivedFrom}</p>
+              <p className="coach-sentence">{snapshot ? (canRescan ? `${t.emptyWeek} ${t.rescanNow}` : t.emptyWeek) : pc.actionsAreDerivedFrom}</p>
             </>
           )}
         </article>}
@@ -140,15 +135,11 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         </article>}
       </section>
 
-      <div className="owner-home-shortcuts">
-        <Button asChild variant="outline"><Link href={withLocation(`${base}/actions`, location)}>{focus.allTasks}<ArrowRight /></Link></Button>
-        <Button asChild variant="outline"><Link href={withLocation(`${base}/actions/new`, location)}>{focus.create}<ArrowRight /></Link></Button>
-      </div>
-
-      {gettingStarted}
+      {problems}
 
       {priority && <details className="owner-disclosure owner-priority-evidence">
         <summary>{focus.why}</summary>
+        <div className="brief-action-meta"><Badge className={priorityClass(priority.priority)}>{priorityLabel(priority.priority, locale)}</Badge><span><Clock3 /> {effortLabel(priority.effortMinutes, locale)} {pc.ownerTime}</span><span><FileClock /> {resolveText(priority.displayPhase, locale)}</span>{priority.latestVersion && <span>{versionLabel(priority.latestVersion.versionNo)}</span>}</div>
         <div className="why-now-box"><FactType type={priority.evidence.factType} /><div><strong>{t.whyNow}</strong><span>{resolveText(priority.evidence.detail, locale)}</span><small>{pc.observed} {formatDateTime(priority.evidence.observedAt, locale, timezone)} · {sourceLabel(priority.evidence.source, locale)}</small></div></div>
         <ContextualAssistant locale={locale} surface="home" triggerLabel={pc.askWhyThisComes} autoAsk="explain_priority" mode="live" context={{ workspaceId, locationId: brief.location?.id, snapshotId: snapshot?.id }} basePath={base} locationParam={location} />
       </details>}
@@ -217,6 +208,11 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
 
       <details className="owner-disclosure owner-tasks-disclosure">
         <summary>{focus.otherTasks}{brief.openActionCount !== undefined && <Badge variant="outline">{brief.openActionCount}</Badge>}</summary>
+      <div className="owner-home-shortcuts">
+        <Button asChild variant="outline"><Link href={withLocation(`${base}/actions`, location)}>{focus.allTasks}<ArrowRight /></Link></Button>
+        <Button asChild variant="outline"><Link href={withLocation(`${base}/actions/new`, location)}>{focus.create}<ArrowRight /></Link></Button>
+      </div>
+      {gettingStarted}
       <SectionCard className="pending-approval-card">
         <div className="section-card-heading"><div><p className="eyebrow">{pc.decisionQueue}</p><h2>{pc.openActions}</h2></div><Button asChild variant="ghost"><Link href={withLocation(`${base}/actions`, location)}>{pc.viewAll} <ArrowRight /></Link></Button></div>
         <div className="compact-action-list">
@@ -228,12 +224,11 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
 
       </details>
 
-      <p className="owner-approval-note">{focus.approvalNote}</p>
-
-      {/* FA-04: the methodology stays one tap away, closed by default so the
+      {/* The methodology stays one tap away, closed by default so the
           next action owns the first screen (native <details>: no JS, keyboard-operable). */}
       <details className="trust-disclosure">
         <summary><ShieldCheck /> {t.trust}</summary>
+        <p className="owner-approval-note">{focus.approvalNote}</p>
         <section className="workspace-agent-strip" aria-label={pc.aiVisibilityTeamStatus}>
           <div className="workspace-agent-summary"><span><Sparkles /></span><div><Badge variant="outline">{tierLabel}{demo ? pc.demo : ""}</Badge><h2>{unscanned ? pc.aiVisibilityTeamIs : fill(decisions === 1 ? pc.teamFinishedOne : pc.teamFinishedMany, { decisions })}</h2><p>{pc.specialistsCoordinateBackstageYou}</p></div></div>
           <ol>

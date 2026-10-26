@@ -188,7 +188,26 @@ describe("focused draft review", () => {
     const disclosure = root.querySelector(".provenance-chain")?.closest("details");
     expect(disclosure).not.toBeNull();
     expect(disclosure?.hasAttribute("open")).toBe(false);
+    expect(disclosure?.querySelector(".workflow-state-layout")).not.toBeNull();
     expect(root.querySelector(".draft-editor-card")?.closest("details")).toBeNull();
+    expect(root.querySelector("[data-testid=owner-steps]")?.closest("details")).toBeNull();
+  });
+
+  it("reads 改稿 → 確認 → 發出 for a saved zh-HK draft and does not use that path for a checklist", () => {
+    const draft = detail("review-response");
+    draft.versions = [versionRow({ id: "v1", version_no: 1, approval_state: "draft" })];
+    const root = verificationMarkup(draft, [], "zh-HK");
+    const steps = root.querySelector("[data-testid=owner-steps]");
+    expect(steps?.textContent).toContain("改稿");
+    expect(steps?.textContent).toContain("→");
+    expect(steps?.textContent).toContain("確認");
+    expect(steps?.textContent).toContain("發出");
+    expect(steps?.querySelector('[aria-current="step"]')?.textContent).toContain("確認");
+    expect(root.querySelector(".draft-editor-card")?.textContent).toContain("改稿");
+    expect(root.querySelector(".approval-panel")?.textContent).toContain("確認");
+    expect(root.querySelector(".delivery-card")?.textContent).toContain("發出");
+    expect([...root.querySelectorAll("[role=tab]")].map((tab) => tab.textContent).join(" ")).not.toContain("流程狀態");
+    expect(verificationMarkup(detail(CHECKLIST_TEMPLATES[0].key), [], "zh-HK").querySelector("[data-testid=owner-steps]")).toBeNull();
   });
 
   it("does not promise that a routine scan can verify a specific Google review reply", () => {
@@ -1239,8 +1258,11 @@ describe("failed assistant drafts in the run history", () => {
         approvedAssets={[]}
       />,
     );
-    fireEvent.mouseDown(screen.getByRole("tab", { name: LABELS[locale].tab }), { button: 0, ctrlKey: false });
-    const text = document.body.textContent ?? "";
+    expect(screen.queryByRole("tab", { name: LABELS[locale].tab })).toBeNull();
+    const disclosure = document.querySelector("details.owner-workflow-disclosure");
+    expect(disclosure).not.toBeNull();
+    expect(disclosure?.hasAttribute("open")).toBe(false);
+    const text = disclosure?.textContent ?? "";
     for (const code of CODES) {
       expect(text).toContain(LABELS[locale][code]);
       expect(text).not.toContain(code);

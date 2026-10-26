@@ -44,6 +44,29 @@ function SeriesStrip({ model, locale, timezone }: { model: InsightsModel; locale
   )
 }
 
+/** One sentence an owner can use: a felt change, or what is still missing. No score formula. */
+export function insightsLeadSentence(model: InsightsModel, locale: PrototypeLocale): string {
+  const pc = copy[locale].workspaceHome.insights
+  if (model.locationSlug === "all") return pc.allLead
+  const head = model.series.at(-1) ?? null
+  if (!head) return pc.missingFirst
+  const resolved = model.ledgerComparable ? model.ledger.resolved.length : 0
+  const regressed = model.ledgerComparable ? model.ledger.regressed.length : 0
+  const delta = model.trend.showScores ? model.trend.delta : null
+  if (model.ledgerComparable || delta !== null) {
+    if (resolved > 0 && regressed === 0) return fill(pc.betterResolved, { n: resolved })
+    if (regressed > 0 && resolved === 0) return fill(pc.worseRegressed, { n: regressed })
+    if (resolved > 0 && regressed > 0) return fill(pc.mixed, { resolved, regressed })
+    if (delta !== null && delta > 0) return pc.better
+    if (delta !== null && delta < 0) return pc.worse
+    if (delta === 0) return pc.same
+    return pc.quietChange
+  }
+  const reason = model.trend.reasonCode
+  if (!reason || reason === "NO_DIFF") return pc.missingFirst
+  return fill(pc.missingBecause, { reason: comparisonReasonText(reason, locale) })
+}
+
 export function InsightsView({ locale, workspaceSlug, timezone, locations, model }: InsightsViewProps) {
   const pc = copy[locale].workspaceHome.insights
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -52,26 +75,41 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
   const trend = model.trend
   const comparable = trend.showScores && trend.delta !== null
   const delta = comparable ? trend.delta : null
+  const sentence = insightsLeadSentence(model, locale)
   return (
     <div className="insights-page">
-      <PageIntro eyebrow={pc.comparableChangeAndOutcome} title={copy[locale].shell.nav.insights} description={pc.observedFactsPossiblyRelated} actions={<LocationSelect locale={locale} value={model.locationSlug} locations={locations} className="location-select" ariaLabel={pc.chooseInsightsLocation} />} />
-      {isAll && <div className="request-context-banner"><ShieldCheck /><div><strong>{pc.noInventedAggregateScore}</strong><details className="owner-disclosure"><summary>{copy[locale].home.trust}</summary><span>{pc.locationsHaveDifferentCoverage}</span></details></div></div>}
+      <PageIntro title={pc.leadTitle} description={isAll || head ? sentence : undefined} actions={<LocationSelect locale={locale} value={model.locationSlug} locations={locations} className="location-select" ariaLabel={pc.chooseInsightsLocation} />} />
       {isAll ? (
+        <>
         <div className="location-proof-grid">
           {model.perLocation.map((row) => (
             <SectionCard key={row.location.id}>
               <p className="eyebrow">{row.location.name}</p>
-              <h2>{row.score === null ? "—" : Math.round(row.score)} <small>/ 100</small></h2>
-              <p>{row.coverage === null ? pc.noScanYet : `${pc.coverageLead} ${scorePercent(row.coverage)}% · ${row.comparable ? pc.comparable : pc.oneMoreComparableScan}`}</p>
-              <Badge variant="outline">{row.comparable ? <CheckCircle2 /> : <CircleDashed />} {row.comparable ? pc.trendAvailable : pc.noTrendYet}</Badge>
+              <h2>{row.comparable ? pc.locationReady : pc.locationWaiting}</h2>
               <Link href={withLocation(`${base}/insights`, row.location.slug)}>{pc.openLocation} <ArrowRight /></Link>
             </SectionCard>
           ))}
         </div>
+        <details className="owner-disclosure insights-why">
+          <summary>{copy[locale].home.trust}</summary>
+          <div className="request-context-banner"><ShieldCheck /><div><strong>{pc.noInventedAggregateScore}</strong><span>{pc.locationsHaveDifferentCoverage}</span></div></div>
+          <div className="location-proof-grid">
+            {model.perLocation.map((row) => (
+              <SectionCard key={`${row.location.id}-score`}>
+                <p className="eyebrow">{row.location.name}</p>
+                <h2>{row.score === null ? "—" : Math.round(row.score)} <small>/ 100</small></h2>
+                <p>{row.coverage === null ? pc.noScanYet : `${pc.coverageLead} ${scorePercent(row.coverage)}% · ${row.comparable ? pc.comparable : pc.oneMoreComparableScan}`}</p>
+              </SectionCard>
+            ))}
+          </div>
+        </details>
+        </>
       ) : !head ? (
         <EmptyState locale={locale} kind="noData" title={copy[locale].shell.empty.insights.title} body={copy[locale].shell.empty.insights.body} action={<Button asChild variant="outline" className="min-h-11"><Link href={withLocation(base, model.locationSlug)}>{copy[locale].shell.empty.insights.action}</Link></Button>} />
       ) : (
-        <>
+        <details className="owner-disclosure insights-why">
+          <summary>{copy[locale].home.trust}</summary>
+          <p>{pc.observedFactsPossiblyRelated}</p>
           {!comparable && <SectionCard className="no-comparable-card"><CircleDashed /><div><p className="eyebrow">{pc.noComparableScanYet}</p><h2>{reasonText(trend.reasonCode, locale)}</h2><p>{pc.noTrendIsShown}</p></div></SectionCard>}
           <div className="insight-summary-grid">
             <SectionCard className="insight-stat"><TrendIcon delta={comparable ? delta : null} /><span>{pc.visibilityScore}</span><strong>{signed(delta)}</strong><small>{comparable && trend.base !== null && trend.head !== null ? `${Math.round(trend.base)} → ${Math.round(trend.head)} · ${pc.comparableSuffix}` : reasonText(trend.reasonCode, locale)}</small></SectionCard>
@@ -135,7 +173,7 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
               </Table>
             </SectionCard>
           )}
-        </>
+        </details>
       )}
     </div>
   )
