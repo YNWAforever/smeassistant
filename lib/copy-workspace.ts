@@ -709,7 +709,7 @@ export const workspaceZhHK: WorkspaceCopy = {
   },
   phases: {
     requires_connection: "需要連接", needs_input: "需要輸入", generating: "生成中", draft_ready: "草稿已備妥", changes_requested: "要求修改",
-    approved_export_ready: "已核准 · 可匯出", verified: "已在網站核實", exported: "已匯出", applied: "已套用（店主回報）", awaiting_comparable_scan: "等待可比較掃描", measured: "已量度", recommended: "建議",
+    approved_export_ready: "已核准 · 可匯出", verified: "已在網站核實", exported: "已匯出", applied: "已套用（店主回報）", awaiting_comparable_scan: "等可以同上次比", measured: "掃完有結果", recommended: "建議",
     publishing_to_google: "發佈到 Google · 尚未確認", published_on_google: "已發佈到 Google",
   },
   basis: {

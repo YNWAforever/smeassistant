@@ -21,7 +21,7 @@ async function visibleLimit(page: Page): Promise<number> {
 
 for (const visual of [
   { locale: "en", label: "Do this today", trust: "Why you can trust this" },
-  { locale: "zh-HK", label: "今日要做", trust: "為何可信" },
+  { locale: "zh-HK", label: "今日要做", trust: "點解咁講" },
   { locale: "zh-TW", label: "今日要做", trust: "為何可信" },
 ] as const) {
   test(`owner home shows today's action above the fold at 375px (${visual.locale})`, async ({ page, merchant, environment }) => {

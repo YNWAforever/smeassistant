@@ -82,11 +82,11 @@ export const productZhHK: ProductCopy = {
     Unknown: "未知",
   },
   score: {
-    aria: "能見度評分 {score} 分（滿分 100）。",
-    ariaCoverage: "覆蓋率 {coverage}%。",
-    ariaChange: "可比較變化 {delta}。",
-    coverage: "覆蓋率",
-    sinceComparable: "（自上次可比較掃描）",
+    aria: "分數 {score}，滿分 100。",
+    ariaCoverage: "呢次查到 {coverage}% 資料。",
+    ariaChange: "同上次可以比，變咗 {delta}。",
+    coverage: "今次資料",
+    sinceComparable: "（可以同上次比）",
   },
   loop: {
     label: "能見度改善循環",

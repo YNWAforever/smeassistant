@@ -52,6 +52,25 @@ describe("InsightsView", () => {
     expect(text).toContain("AI Overview presence");
   });
 
+  it("leads zh-HK coverage in shop language and keeps the missing-source rule under 點解咁講", () => {
+    const root = render("zh-HK");
+    const stats = Array.from(root.querySelectorAll(".insight-stat"));
+    const coverage = stats[3];
+    expect(coverage?.textContent).toContain("呢次查到");
+    expect(coverage?.textContent).not.toContain("覆蓋率");
+    const why = coverage?.querySelector("details");
+    expect(why?.hasAttribute("open")).toBe(false);
+    expect(why?.querySelector("summary")?.textContent).toContain("點解咁講");
+    expect(why?.textContent).toContain("唔會當零分");
+    expect(why?.textContent).toContain("唔會拉低分數");
+    const denominator = root.querySelector(".surface-trend-card details");
+    expect(denominator?.hasAttribute("open")).toBe(false);
+    expect(denominator?.textContent).toContain("唔會當 0%");
+    expect(root.textContent).toContain("睇今次同上次差幾遠。");
+    expect(root.textContent).not.toContain("不製造合併平均分");
+    expect(root.textContent).not.toContain("比較資格");
+  });
+
   it("titles delivered work in the page's own locale", () => {
     expect(render("zh-TW").textContent).toContain("重寫簡介（台）");
     expect(render("zh-HK").textContent).toContain("重寫簡介（港）");

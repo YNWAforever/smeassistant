@@ -58,3 +58,39 @@ describe.each(Object.entries(namespaces))("%s copy", (name, [enTree, hkTree, twT
     for (const tree of [en, ...Object.values(locales)]) for (const [key, value] of tree) expect(value.trim(), key).not.toBe("")
   })
 })
+
+describe("zh-HK Today and Insights shop language", () => {
+  const home = workspaceHomeZhHK.home
+  const insights = workspaceHomeZhHK.insights
+  const joined = Object.values(home).flatMap((value) => typeof value === "string" ? [value] : Object.values(value)).concat(Object.values(insights)).join("\n")
+
+  it("leads with shop language instead of the old measurement jargon", () => {
+    expect(home.noActionNeedsYour).toBe("而家冇嘢要你決定")
+    expect(home.scoreWithheldTooLittle).toBe("資料未夠，暫時未評")
+    expect(home.coverageMissingSourcesLower).toBe("呢次查到 {coverage}% 資料。")
+    expect(home.snapshot).toBe("今次掃描結果")
+    expect(home.noFabricatedAggregateScore).toBe("各舖分開睇分")
+    expect(home.teamFinishedOne).toContain("Kinnso 幫你準備咗")
+    expect(insights.noInventedAggregateScore).toBe("各舖分開睇分")
+    expect(insights.coverageLead).toBe("呢次查到")
+    expect(insights.eligibility).toBe("可唔可以同上次比")
+    expect(copy["zh-HK"].home.trust).toBe("點解咁講")
+    expect(copy["zh-HK"].home.quietTitle).toBe("而家冇嘢要你決定")
+    for (const jargon of ["覆蓋率", "快照", "比較資格", "可比較掃描", "AI 能見度團隊", "不製造合併平均分", "已量度", "專員"]) {
+      expect(joined, jargon).not.toContain(jargon)
+    }
+  })
+
+  it("keeps the honesty rules reachable in the disclosure copy", () => {
+    expect(home.everyNumberComesFrom).toContain("唔會當零分")
+    expect(home.everyNumberComesFrom).toContain("唔代表帶嚟收入或者訂座")
+    expect(home.neverAutoPublishedOne).toContain("唔會自動發佈")
+    expect(home.temporalAssociationOnlyNo).toContain("唔代表帶嚟收入或者訂座")
+    expect(insights.unmeasuredSourcesAreNot).toContain("唔會當零分")
+    expect(insights.unmeasuredSourcesAreNot).toContain("唔會拉低分數")
+    expect(insights.unmeasuredSourcesAreNot).toContain("唔會畫成一條線")
+    expect(insights.theDenominatorIsThe).toContain("唔會當 0%")
+    expect(insights.locationsHaveDifferentCoverage).toContain("唔會砌一個總分")
+    expect(insights.noTrendIsShown).toContain("唔會畫走勢")
+  })
+})
