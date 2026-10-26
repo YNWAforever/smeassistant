@@ -137,7 +137,7 @@ main.route-state { min-height: 70vh; padding-top: 12vh; }
 .ws-card-title small { color: var(--ink-3); font-size: 0.8125rem; }
 .ws-card-locations { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
 .ws-card-locations li + li { border-top: 1px solid var(--line); }
-.ws-card-locations a { display: grid; grid-template-columns: 18px minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 56px; padding: 10px 16px; color: var(--ink); font-size: 0.875rem; }
+.ws-card-locations a { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 56px; padding: 10px 16px; color: var(--ink); font-size: 0.875rem; }
 .ws-card-locations a:hover { background: var(--canvas); }
 .ws-card-locations a > svg { width: 16px; height: 16px; color: var(--ink-3); }
 .ws-loc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }

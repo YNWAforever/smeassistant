@@ -13,7 +13,6 @@ import { RoleNotice } from "@/components/states/role-notice"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
 import { CapabilityBadge, FactType, PageIntro, SectionCard } from "@/components/product-ui"
@@ -85,9 +84,7 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
   const labels = copy[locale].workspace.templates
   const inputs = copy[locale].workspace.inputs
   const openByTemplate = new Map(openActions.map((a) => [a.templateKey, a]))
-  const recommended = ORDERED_GOALS.filter((goal) => openByTemplate.has(goal.key))
-  const [tab, setTab] = useState(recommended.length ? "recommended" : "all")
-  const [selectedKey, setSelectedKey] = useState<TemplateKey>((recommended[0] ?? ORDERED_GOALS[0]).key)
+  const [selectedKey, setSelectedKey] = useState<TemplateKey>(LEAD_GOALS[0].key)
   const [objective, setObjective] = useState("")
   const [stage, setStage] = useState<"idle" | "queued" | "failed">("idle")
   const [failure, setFailure] = useState<string | null>(null)
@@ -172,27 +169,17 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
         actions={<><ContextualAssistant locale={locale} surface="create" mode="live" context={{ workspaceId, locationId: locationId ?? undefined }} basePath={base} locationParam={location} /><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /><Button asChild variant="outline"><Link href={withLocation(`${base}/actions`, location)}>{pc.openActionQueue}<ArrowRight /></Link></Button></>}
       />
       {!canCreate && <RoleNotice kind="createReadOnly" locale={locale} />}
-      <Tabs value={tab} onValueChange={setTab} className="create-tabs">
-        <TabsList variant="line"><TabsTrigger value="recommended">{pc.recommendedFromEvidence} <span>{recommended.length}</span></TabsTrigger><TabsTrigger value="all">{pc.allOutcomes}</TabsTrigger></TabsList>
-        <TabsContent value={tab}>
-          {tab === "recommended" ? (
-            recommended.length === 0 ? <div className="empty-state"><span><CheckCircle2 /></span><h2>{pc.noEvidenceLedGoals}</h2><p>{pc.youCanStillStart}</p></div> : (
-              <div className="goal-card-grid">{recommended.map(goalCard)}</div>
-            )
-          ) : (
-            <>
-              <p className="eyebrow">{pc.recommendedStartingPoints}</p>
-              <div className="goal-card-grid">{LEAD_GOALS.map(goalCard)}</div>
-              <p className="eyebrow">{pc.otherCapabilities}</p>
-              <div className="goal-card-grid">{SECONDARY_GOALS.map(goalCard)}</div>
-            </>
-          )}
-        </TabsContent>
-      </Tabs>
+      <div className="create-tabs">
+        <div className="goal-card-grid">{LEAD_GOALS.map(goalCard)}</div>
+        <details className="other-goals owner-disclosure">
+          <summary>{pc.otherCapabilities}</summary>
+          <div className="goal-card-grid">{SECONDARY_GOALS.map(goalCard)}</div>
+        </details>
+      </div>
       <div className="create-review-layout">
         <SectionCard>
           <p className="eyebrow">{existing ? pc.whyThisIsSuggested : pc.ownerObjective}</p><h2>{labels[selected.key].title}</h2>
-          <div className="fact-stack">{existing ? <div><FactType type={existing.factType ?? "Unknown"} /><p>{existing.source ? `${existing.source} · ` : ""}{existing.evidence}{existing.freshness ? ` · ${existing.freshness}` : ""}</p></div> : <div><FactType type="Unknown" /><p>{pc.noMeasuredEvidenceBacks}</p></div>}<div><FactType type="Recommended" /><p>{labels[selected.key].summary}</p></div></div>
+          <details className="owner-disclosure"><summary>{copy[locale].home.trust}</summary><div className="fact-stack">{existing ? <div><FactType type={existing.factType ?? "Unknown"} /><p>{existing.source ? `${existing.source} · ` : ""}{existing.evidence}{existing.freshness ? ` · ${existing.freshness}` : ""}</p></div> : <div><FactType type="Unknown" /><p>{pc.noMeasuredEvidenceBacks}</p></div>}<div><FactType type="Recommended" /><p>{labels[selected.key].summary}</p></div></div></details>
           <div className="field-stack"><Label htmlFor="objective">{pc.objectiveLabel}</Label><Textarea id="objective" rows={4} value={objective} onChange={(event) => setObjective(event.target.value)} placeholder={pc.forExamplePromoteThis} disabled={!canCreate || stage === "queued"} /><small>{pc.theObjectiveIsRecorded}</small></div>
           <div className="required-inputs"><strong>{pc.requiredBeforeStarting}</strong>{selected.requiredInputs.length === 0 ? <span><CheckCircle2 /> {pc.noExtraInputsNeeded}</span> : selected.requiredInputs.map((key) => <span key={key}><AlertTriangle /> {inputs[key] ?? key}</span>)}<span><CheckCircle2 /> {pc.ownerStillConfirmsFactual}</span></div>
           {existing && <p className="limitation-note"><Sparkles /> {pc.anOpenActionOf} <Link href={withLocation(`${base}/actions/${existing.id}`, location)}>{pc.openTheExistingAction}</Link></p>}

@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { copy, type PrototypeLocale } from "@/lib/copy"
+import { locationSwitchHref } from "@/lib/workspace/shell"
 
 /**
  * The prototype's location `Select`, bound to the `?location=` query param so
@@ -33,10 +34,7 @@ export function LocationSelect({
   const allLabel = pc.allLocations
   const current = value === "all" ? allLabel : (locations.find((l) => l.slug === value)?.name ?? value)
   function change(next: string) {
-    const query = new URLSearchParams(params.toString())
-    query.delete("cursor")
-    query.set("location", next)
-    router.push(`${pathname}?${query.toString()}`)
+    router.push(locationSwitchHref(pathname, params.toString(), next))
   }
   return (
     <Select value={value} onValueChange={change}>

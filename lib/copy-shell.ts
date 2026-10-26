@@ -1,8 +1,7 @@
 /**
- * Workspace shell and Phase 4 navigation strings, reached as copy[locale].shell.
- * Five destinations (docs/ux target IA §2): Today, Actions, Insights, Business,
- * Settings. Agent names are never shown; the assistant is "Ask Kinnso".
- * zh-HK is Hong Kong written Chinese, zh-TW uses Taiwan terms (店家, 據點).
+ * Workspace shell and owner navigation strings, reached as copy[locale].shell.
+ * Four destinations: Today, To do, Better?, Shop. Settings URLs remain under Shop.
+ * The assistant is "Ask Kinnso"; Chinese locales use shop language.
  */
 
 type Item = { title: string; body: string }
@@ -29,6 +28,7 @@ export type ShellCopy = {
     lead: string
     newAction: string
     navLabel: string
+    more: string
     tabs: { all: string; needs_input: string; drafts: string; awaiting_approval: string; completed: string }
   }
   panel: { label: string; preview: string; close: string; fullPage: string }
@@ -82,6 +82,8 @@ export type ShellCopy = {
     locations: { one: string; other: string }
     markets: { hk: string; tw: string }
     noScan: string
+    waiting: string
+    quiet: string
     score: string
     noScore: string
     coverage: string
@@ -114,7 +116,7 @@ export type ShellCopy = {
 export const shellEn: ShellCopy = {
   brand: { name: "Kinnso OS", tagline: "by Fimmick" },
   skip: "Skip to content",
-  nav: { label: "Workspace", today: "Today", actions: "Actions", insights: "Insights", business: "Business", settings: "Settings" },
+  nav: { label: "Workspace", today: "Today", actions: "To do", insights: "Better?", business: "Shop", settings: "Settings" },
   context: { owner: "Owner workspace", review: "Review & approve", newAction: "New action" },
   switcher: "Switch workspace or location",
   allLocations: "All locations",
@@ -122,17 +124,17 @@ export const shellEn: ShellCopy = {
   notifications: { label: "Notifications", unread: "Notifications, {count} unread" },
   assistant: { name: "Ask Kinnso" },
   business: {
-    title: "Business",
-    lead: "What we know about your business, and where it comes from.",
-    profile: { title: "Profile and facts", body: "Brand voice and confirmed facts" },
+    title: "Shop",
+    lead: "Your shop’s details, people and settings.",
+    profile: { title: "What we can say", body: "Your shop’s voice and confirmed facts" },
     locations: { title: "Locations", body: "Each location and its Google listing" },
     assets: { title: "Assets", body: "Photos and menus, with usage rights" },
-    integrations: { title: "Integrations", body: "Google Business Profile, Instagram, website" },
+    integrations: { title: "Google and Instagram", body: "Google Business Profile, Instagram, website" },
   },
   settings: {
     title: "Settings",
     lead: "Who has access, your plan, and what we tell you.",
-    team: { title: "Team & roles", body: "Invite people and set their access" },
+    team: { title: "Who can edit drafts", body: "Invite people and set their access" },
     plan: { title: "Plan and usage", body: "Approved deliveries this month and billing" },
     notifications: { title: "Notifications", body: "Choose which updates you get" },
     activity: { title: "Activity", body: "Every decision, export and scan" },
@@ -141,7 +143,7 @@ export const shellEn: ShellCopy = {
   locked: "Owner only",
   locations: {
     title: "Locations",
-    lead: "Switch location from the menu at the top of the sidebar.",
+    lead: "Choose a location below, or use the location menu at the top.",
     primary: "Main location",
     place: "Google listing linked",
     noPlace: "No Google listing linked",
@@ -150,7 +152,7 @@ export const shellEn: ShellCopy = {
   },
   newAction: {
     title: "New action",
-    lead: "Start from a goal, an offer or a starter pack. Nothing is published without your approval.",
+    lead: "Choose what you want to write. You confirm the draft before using it.",
     label: "Choose how to start",
     goal: { title: "From a goal", body: "Pick what you want to improve" },
     offer: { title: "Offer", body: "Promote an offer you confirm" },
@@ -158,15 +160,16 @@ export const shellEn: ShellCopy = {
   },
   views: {
     due: "Due",
-    fixPack: "Fix Pack",
+    fixPack: "Fimmick drafts",
     fixPackLead: "Drafts prepared by the Fimmick team. Approve or reject each one.",
   },
   queue: {
-    eyebrow: "Evidence-backed work queue",
-    title: "Actions",
-    lead: "Ranked from measured findings or a goal you set. Open one to review, approve and deliver.",
+    eyebrow: "Waiting for you",
+    title: "To do",
+    lead: "Pick one thing waiting for you, then open it to continue.",
     newAction: "New",
-    navLabel: "Action views",
+    navLabel: "More to do",
+    more: "More",
     tabs: { all: "All", needs_input: "Needs input", drafts: "Drafts", awaiting_approval: "Approvals", completed: "Completed" },
   },
   panel: { label: "Action details", preview: "Preview", close: "Close details", fullPage: "Open full page" },
@@ -212,6 +215,8 @@ export const shellEn: ShellCopy = {
     locations: { one: "1 location", other: "{n} locations" },
     markets: { hk: "Hong Kong", tw: "Taiwan" },
     noScan: "No scan yet",
+    waiting: "Something is waiting for you",
+    quiet: "Nothing waiting",
     score: "Score {n}",
     noScore: "No score yet",
     coverage: "{n}% coverage",
@@ -243,7 +248,7 @@ export const shellEn: ShellCopy = {
 export const shellZhHK: ShellCopy = {
   brand: { name: "Kinnso OS", tagline: "由 Fimmick 提供" },
   skip: "跳到主要內容",
-  nav: { label: "工作台", today: "今日", actions: "行動", insights: "成效", business: "商戶", settings: "設定" },
+  nav: { label: "工作台", today: "今日", actions: "待辦", insights: "好啲？", business: "舖", settings: "設定" },
   context: { owner: "店主工作台", review: "審閱與審批", newAction: "新行動" },
   switcher: "切換工作台或地點",
   allLocations: "所有地點",
@@ -251,17 +256,17 @@ export const shellZhHK: ShellCopy = {
   notifications: { label: "通知", unread: "通知，{count} 則未讀" },
   assistant: { name: "問 Kinnso" },
   business: {
-    title: "商戶",
-    lead: "我們對你商戶的了解，以及資料來源。",
-    profile: { title: "資料及事實", body: "品牌語氣及已確認的事實" },
+    title: "舖",
+    lead: "舖頭資料、同事同設定，都喺呢度。",
+    profile: { title: "可以講咩", body: "舖頭語氣同你確認過嘅資料" },
     locations: { title: "地點", body: "每個地點及其 Google 商戶檔案" },
-    assets: { title: "素材", body: "相片及餐牌，附使用權" },
-    integrations: { title: "連接", body: "Google 商家檔案、Instagram、網站" },
+    assets: { title: "相同事", body: "相片同餐牌，同埋邊啲可以用" },
+    integrations: { title: "Google、Instagram", body: "Google 商家檔案、Instagram、網站" },
   },
   settings: {
     title: "設定",
     lead: "誰可存取、你的方案，以及我們通知你甚麼。",
-    team: { title: "團隊與權限", body: "邀請同事並設定權限" },
+    team: { title: "邊個可以改稿", body: "加同事，同埋揀邊個可以改" },
     plan: { title: "方案與用量", body: "本月核准後交付及帳單" },
     notifications: { title: "通知", body: "選擇接收哪些更新" },
     activity: { title: "活動紀錄", body: "每個決定、匯出及掃描" },
@@ -270,7 +275,7 @@ export const shellZhHK: ShellCopy = {
   locked: "只限店主",
   locations: {
     title: "地點",
-    lead: "可在側欄頂部的選單切換地點。",
+    lead: "喺下面揀一間舖，或者用頁頂嘅地點選單。",
     primary: "主要地點",
     place: "已連結 Google 商戶檔案",
     noPlace: "未連結 Google 商戶檔案",
@@ -279,7 +284,7 @@ export const shellZhHK: ShellCopy = {
   },
   newAction: {
     title: "新行動",
-    lead: "由目標、優惠或入門套裝開始。未經你批准，不會發佈任何內容。",
+    lead: "揀你想寫咩。寫好之後，由你確認先用。",
     label: "選擇開始方式",
     goal: { title: "由目標開始", body: "選擇想改善的地方" },
     offer: { title: "優惠", body: "推廣你確認的優惠" },
@@ -287,15 +292,16 @@ export const shellZhHK: ShellCopy = {
   },
   views: {
     due: "到期",
-    fixPack: "Fix Pack",
+    fixPack: "Fimmick 嘅稿",
     fixPackLead: "由 Fimmick 團隊準備的草稿，請逐一批准或拒絕。",
   },
   queue: {
-    eyebrow: "有實證支持的工作清單",
-    title: "行動",
-    lead: "按已量度的發現或你設定的目標排序。開啟一項即可審閱、審批及送出。",
+    eyebrow: "等你處理",
+    title: "待辦",
+    lead: "呢啲等緊你。揀一件，開嚟繼續做。",
     newAction: "新增",
-    navLabel: "行動分類",
+    navLabel: "其他待辦",
+    more: "更多",
     tabs: { all: "全部", needs_input: "需要資料", drafts: "草稿", awaiting_approval: "待審批", completed: "已完成" },
   },
   panel: { label: "行動詳情", preview: "預覽", close: "關閉詳情", fullPage: "開啟完整頁面" },
@@ -340,7 +346,9 @@ export const shellZhHK: ShellCopy = {
     allLocations: "所有地點",
     locations: { one: "1 個地點", other: "{n} 個地點" },
     markets: { hk: "香港", tw: "台灣" },
-    noScan: "尚未掃描",
+    noScan: "未掃過",
+    waiting: "有一件等你",
+    quiet: "暫時冇嘢等你",
     score: "評分 {n}",
     noScore: "暫未有評分",
     coverage: "覆蓋率 {n}%",
@@ -372,7 +380,7 @@ export const shellZhHK: ShellCopy = {
 export const shellZhTW: ShellCopy = {
   brand: { name: "Kinnso OS", tagline: "由 Fimmick 提供" },
   skip: "跳到主要內容",
-  nav: { label: "工作台", today: "今日", actions: "行動", insights: "成效", business: "店家", settings: "設定" },
+  nav: { label: "工作台", today: "今天", actions: "待辦", insights: "有好一點？", business: "店裡", settings: "設定" },
   context: { owner: "店家工作台", review: "審閱與核准", newAction: "新行動" },
   switcher: "切換工作台或據點",
   allLocations: "所有據點",
@@ -380,17 +388,17 @@ export const shellZhTW: ShellCopy = {
   notifications: { label: "通知", unread: "通知，{count} 則未讀" },
   assistant: { name: "問 Kinnso" },
   business: {
-    title: "店家",
-    lead: "我們對你店家的了解，以及資料來源。",
-    profile: { title: "資料與事實", body: "品牌語氣與已確認的事實" },
+    title: "店裡",
+    lead: "店裡的資料、夥伴和設定，都在這裡。",
+    profile: { title: "可以說什麼", body: "店裡的語氣和你確認過的資料" },
     locations: { title: "據點", body: "每個據點及其 Google 商家檔案" },
-    assets: { title: "素材", body: "照片與菜單，附使用權" },
-    integrations: { title: "連接", body: "Google 商家檔案、Instagram、網站" },
+    assets: { title: "照片和菜單", body: "店裡的照片、菜單，以及哪些可以用" },
+    integrations: { title: "Google、Instagram", body: "Google 商家檔案、Instagram、網站" },
   },
   settings: {
     title: "設定",
     lead: "誰可存取、你的方案，以及我們通知你什麼。",
-    team: { title: "團隊與權限", body: "邀請同事並設定權限" },
+    team: { title: "誰可以改稿", body: "加入夥伴，選擇誰可以修改" },
     plan: { title: "方案與用量", body: "本月核准後交付與帳單" },
     notifications: { title: "通知", body: "選擇接收哪些更新" },
     activity: { title: "活動紀錄", body: "每個決定、匯出與掃描" },
@@ -399,7 +407,7 @@ export const shellZhTW: ShellCopy = {
   locked: "僅限店家負責人",
   locations: {
     title: "據點",
-    lead: "可在側欄頂部的選單切換據點。",
+    lead: "在下面選一家店，或用頁面上方的據點選單。",
     primary: "主要據點",
     place: "已連結 Google 商家檔案",
     noPlace: "未連結 Google 商家檔案",
@@ -408,7 +416,7 @@ export const shellZhTW: ShellCopy = {
   },
   newAction: {
     title: "新行動",
-    lead: "從目標、優惠或入門套組開始。未經你核准，不會發布任何內容。",
+    lead: "選你想寫什麼。寫好後，由你確認再使用。",
     label: "選擇開始方式",
     goal: { title: "從目標開始", body: "選擇想改善的地方" },
     offer: { title: "優惠", body: "推廣你確認的優惠" },
@@ -416,15 +424,16 @@ export const shellZhTW: ShellCopy = {
   },
   views: {
     due: "到期",
-    fixPack: "Fix Pack",
+    fixPack: "Fimmick 準備的稿",
     fixPackLead: "由 Fimmick 團隊準備的草稿，請逐一核准或拒絕。",
   },
   queue: {
-    eyebrow: "有實證支持的工作清單",
-    title: "行動",
-    lead: "依已量測的發現或你設定的目標排序。開啟一項即可審閱、核准及送出。",
+    eyebrow: "等你處理",
+    title: "待辦",
+    lead: "這些事在等你。選一件，打開繼續做。",
     newAction: "新增",
-    navLabel: "行動分類",
+    navLabel: "其他待辦",
+    more: "更多",
     tabs: { all: "全部", needs_input: "需要資料", drafts: "草稿", awaiting_approval: "待核准", completed: "已完成" },
   },
   panel: { label: "行動詳情", preview: "預覽", close: "關閉詳情", fullPage: "開啟完整頁面" },
@@ -469,7 +478,9 @@ export const shellZhTW: ShellCopy = {
     allLocations: "所有據點",
     locations: { one: "1 個據點", other: "{n} 個據點" },
     markets: { hk: "香港", tw: "台灣" },
-    noScan: "尚未掃描",
+    noScan: "還沒掃過",
+    waiting: "有件事等你",
+    quiet: "暫時沒事等你",
     score: "分數 {n}",
     noScore: "尚無分數",
     coverage: "涵蓋率 {n}%",

@@ -95,21 +95,21 @@ for (const visual of [
   });
 }
 
-test("desktop Business reaches supporting tools, and old links land on their new place", async ({ page, merchant, environment }) => {
+test("desktop Shop reaches supporting tools, and old links land on their new place", async ({ page, merchant, environment }) => {
   await signIn(page, environment, merchant, "owner");
   await page.goto(`/en/owner/${merchant.slug}?location=all`);
   const sidebar = page.locator(".workspace-sidebar");
-  await expect(sidebar.locator("[data-slot='sidebar-menu'] a")).toHaveCount(5);
+  await expect(sidebar.locator("[data-slot='sidebar-menu'] a")).toHaveCount(4);
   await page.screenshot({ path: test.info().outputPath("owner-daily-focus-desktop.png"), fullPage: true });
-  const business = sidebar.getByRole("link", { name: "Business", exact: true });
+  const business = sidebar.getByRole("link", { name: "Shop", exact: true });
   await business.click();
   await expect(page).toHaveURL(`${environment.app}/en/owner/${merchant.slug}/business?location=all`);
   await expect(business).toHaveAttribute("aria-current", "page");
-  await expect(page.locator(".workspace-topbar-context strong")).toHaveText("Business");
+  await expect(page.locator(".workspace-topbar-context strong")).toHaveText("Shop");
   await page.screenshot({ path: test.info().outputPath("owner-business-desktop.png"), fullPage: true });
   await page.getByRole("link", { name: /Assets/ }).click();
   await expect(page).toHaveURL(`${environment.app}/en/owner/${merchant.slug}/business/assets?location=all`);
-  await expect(sidebar.getByRole("link", { name: "Business", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(sidebar.getByRole("link", { name: "Shop", exact: true })).toHaveAttribute("aria-current", "page");
   // Old addresses keep working: Calendar lands on the Due view, Create on New.
   await page.goto(`/en/owner/${merchant.slug}/calendar?location=all`);
   await expect(page).toHaveURL(`${environment.app}/en/owner/${merchant.slug}/actions?location=all&view=due`);

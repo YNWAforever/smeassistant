@@ -53,6 +53,7 @@ export type WorkspaceCardLocation = LocationSummary & {
   latestScore: number | null;
   latestCoverage: number | null;
   urgentActions: number;
+  waitingActions: number;
   lastScanAt: string | null;
 };
 
@@ -112,6 +113,7 @@ export interface LocationCardRow extends LocationRow {
   coverage: SnapshotRow["coverage"];
   observed_at: string | null;
   urgent_actions: number;
+  waiting_actions: number;
 }
 
 /** 'YYYY-MM' in the workspace's timezone (§3.10). An unknown IANA name falls back to UTC rather than throwing. */
@@ -250,6 +252,7 @@ export async function listWorkspaceCards(userId: string): Promise<WorkspaceCard[
       latestScore: toNumber(row.overall_score),
       latestCoverage: toNumber(row.coverage),
       urgentActions: row.urgent_actions,
+      waitingActions: row.waiting_actions,
       lastScanAt: row.observed_at,
     });
     locationsByWorkspace.set(row.workspace_id, locations);

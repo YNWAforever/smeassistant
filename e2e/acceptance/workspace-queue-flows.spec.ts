@@ -14,13 +14,12 @@ function seedDraft(db: string, workspaceId: string, actionId: string): string {
   return version;
 }
 
-test("owner reads and bulk-approves a review reply, and Today ticks the first approval", async ({ page, merchant, environment }) => {
+test("owner reads and bulk-approves a review reply, and Today offers the approved copy", async ({ page, merchant, environment }) => {
   const version = seedDraft(environment.db, merchant.workspaceId, merchant.actionId);
   await signIn(page, environment, merchant, "owner");
 
   await page.goto(`/en/owner/${merchant.slug}`);
-  const approveStep = page.locator(".getting-started li", { hasText: "Approve your first draft" });
-  await expect(approveStep).not.toHaveAttribute("data-done");
+  await expect(page.locator(".brief-priority-actions a")).toHaveText("Review draft");
 
   await page.goto(`/en/owner/${merchant.slug}/actions`);
   const bulk = page.locator(".bulk-approve");
@@ -39,14 +38,14 @@ test("owner reads and bulk-approves a review reply, and Today ticks the first ap
   await expect(page.locator(".bulk-approve")).toHaveCount(0);
 
   await page.goto(`/en/owner/${merchant.slug}`);
-  await expect(approveStep).toHaveAttribute("data-done", "");
+  await expect(page.locator(".brief-priority-actions a")).toHaveText("Copy text");
 });
 
 test("a viewer is offered no bulk approval and the approve route refuses them", async ({ page, merchant, environment }) => {
   const version = seedDraft(environment.db, merchant.workspaceId, merchant.actionId);
   await signIn(page, environment, merchant, "viewer");
   await page.goto(`/en/owner/${merchant.slug}/actions`);
-  await expect(page.getByRole("heading", { level: 1, name: "Actions" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "To do" })).toBeVisible();
   await expect(page.locator(".bulk-approve")).toHaveCount(0);
   expect((await page.request.post(`/api/versions/${version}/approve`, { data: {} })).status()).toBe(403);
   expect(sql(environment.db, `select approval_state from output_versions where id='${version}';`)).toBe("draft");

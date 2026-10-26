@@ -18,22 +18,23 @@ function frame(role: "owner" | "manager" | "viewer", view: QueueView = "all", lo
 }
 
 describe("Actions queue frame (Phase 4)", () => {
-  it("shows the status tabs plus Due and Fix Pack as views of one queue", () => {
-    const tabs = Array.from(frame("owner").querySelectorAll("nav a"));
-    expect(tabs.map((tab) => tab.textContent?.replace(/\s*\d+$/, ""))).toEqual(["All", "Needs input", "Drafts", "Approvals", "Completed", "Due", "Fix Pack"]);
-    expect(tabs[0].textContent).toContain("4");
-    expect(tabs[5].textContent).toBe("Due");
+  it("keeps a single waiting list and puts Due and Fimmick drafts behind More", () => {
+    const root = frame("owner");
+    const more = root.querySelector("details")!;
+    expect(more).not.toBeNull();
+    expect(more.hasAttribute("open")).toBe(false);
+    expect(more.querySelector("summary")?.textContent).toBe("More");
+    expect([...more.querySelectorAll("a")].map(a => a.getAttribute("href"))).toEqual([
+      `${base}/actions?location=yik-yam&view=due`, `${base}/actions?location=yik-yam&view=fixpack`,
+    ]);
+    expect(root.querySelectorAll(".action-tab-list a")).toHaveLength(0);
+    expect(root.querySelector('a[href*="view=completed"]')).toBeNull();
   });
 
-  it("keeps list filters on status tabs and only the location on Due and Fix Pack", () => {
-    const hrefs = Array.from(frame("owner").querySelectorAll("nav a")).map((tab) => tab.getAttribute("href"));
-    expect(hrefs[2]).toBe(`${base}/actions?location=yik-yam&channel=google&view=drafts`);
-    expect(hrefs[5]).toBe(`${base}/actions?location=yik-yam&view=due`);
-    expect(hrefs[6]).toBe(`${base}/actions?location=yik-yam&view=fixpack`);
-  });
-
-  it("marks the current view", () => {
-    expect(frame("owner", "fixpack").querySelector('nav a[aria-current="page"]')?.textContent).toBe("Fix Pack");
+  it("keeps the selected secondary view accessible and provides a way back to the waiting list", () => {
+    const root = frame("owner", "fixpack");
+    expect(root.querySelector('a[aria-current="page"]')?.textContent).toBe("Fimmick drafts");
+    expect(root.querySelector(`a[href="${base}/actions?location=yik-yam&channel=google"]`)).not.toBeNull();
   });
 
   it("offers New to owners and managers but not viewers", () => {
@@ -45,9 +46,9 @@ describe("Actions queue frame (Phase 4)", () => {
     expect(viewer.querySelector(".role-notice[data-kind=viewer]")).not.toBeNull();
   });
 
-  it.each(["zh-HK", "zh-TW"] as const)("localises the tabs in %s", (locale) => {
-    const text = frame("owner", "all", locale).querySelector("nav")?.textContent ?? "";
+  it.each(["zh-HK", "zh-TW"] as const)("localises the More views in %s", (locale) => {
+    const text = frame("owner", "all", locale).querySelector("details")?.textContent ?? "";
     expect(text).toContain(copy[locale].shell.views.due);
-    expect(text).toContain(copy[locale].shell.queue.tabs.awaiting_approval);
+    expect(text).toContain(copy[locale].shell.views.fixPack);
   });
 });

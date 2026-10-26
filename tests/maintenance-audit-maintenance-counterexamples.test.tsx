@@ -40,8 +40,14 @@ it("includes an evidence-backed FAQ goal beyond the first 25 multi-location acti
   const root = document.createElement("div");
   root.innerHTML = renderToStaticMarkup(await CreateRoute(props));
   console.info("AUDIT recommended goal cards", Array.from(root.querySelectorAll(".goal-card h2")).map(n => n.textContent));
-  // The recommended tab must include the existing FAQ action, regardless of list page boundaries.
-  expect(root.querySelectorAll(".goal-card").length).toBe(2);
+  // The three lead goals remain visible; evidence-backed ones retain their source,
+  // including the existing FAQ beyond ordinary queue pagination.
+  const cards = [...root.querySelectorAll(".goal-card")];
+  expect(cards.filter(card => !card.closest("details"))).toHaveLength(3);
+  expect(cards.filter(card => card.textContent?.includes("Evidence-led"))).toHaveLength(2);
+  const faq = cards.find(card => card.querySelector("h2")?.textContent === "Add clear FAQ answers for search and AI");
+  expect(faq?.textContent).toContain("Evidence-led");
+  expect(faq?.textContent).toContain("Promote our lunch menu");
 });
 
 it("keeps the secondary shop selected when opening its cadence Insights link", () => {

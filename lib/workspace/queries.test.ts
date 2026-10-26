@@ -74,7 +74,7 @@ beforeEach(() => {
   repository.locations.mockImplementation(async () => state.locations);
   repository.locationCards.mockImplementation(async () => state.locations.map(row => ({
     ...row, overall_score: null, coverage: null, observed_at: null,
-    ...state.snapshots[String(row.id)], urgent_actions: state.urgent,
+    ...state.snapshots[String(row.id)], urgent_actions: state.urgent, waiting_actions: 3,
   })));
   repository.usage.mockImplementation(async (_id, period, allowance) => state.usage ?? { period, approved_deliveries: 0, allowance });
   repository.unreadNotifications.mockImplementation(async () => state.unread);
@@ -185,7 +185,7 @@ describe("listWorkspaceCards", () => {
     expect(cards[0].workspace.slug).toBe("kam-man-house");
     expect(cards[0].role).toBe("owner");
     expect(cards[0].locations).toEqual([
-      expect.objectContaining({ slug: "yik-yam", latestScore: 62, latestCoverage: 0.78, urgentActions: 1, lastScanAt: "2026-08-25T01:42:00.000Z" }),
+      expect.objectContaining({ slug: "yik-yam", latestScore: 62, latestCoverage: 0.78, urgentActions: 1, waitingActions: 3, lastScanAt: "2026-08-25T01:42:00.000Z" }),
     ]);
     expect(cards[1].role).toBe("viewer");
     expect(cards[1].locations[0]).toMatchObject({ slug: "main", latestScore: null, latestCoverage: null, lastScanAt: null });

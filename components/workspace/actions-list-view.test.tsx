@@ -79,3 +79,36 @@ it("an empty unfiltered queue says there is nothing to do, with New only for tho
   render(<ActionsListView locale="en" workspaceSlug="shop" workspaceId="w" timezone="Asia/Hong_Kong" role="viewer" locations={[]} locationId={null} filters={{ location: "all" }} result={result} />);
   expect(screen.queryByRole("link", { name: "New action" })).toBeNull();
 });
+
+
+it("shows waiting work in server order with search only, without capability or point maths", () => {
+  const first = buildActionOverview({ ...row, id: "first", title: { en: "First from server" }, priority_score: 10, priority_factors: [{ key: "impact", label: { en: "Impact" }, points: 15 }] }, { location: null, latestRun: null, latestVersion: null });
+  const second = buildActionOverview({ ...row, id: "second", title: { en: "Second from server" }, priority_score: 90 }, { location: null, latestRun: null, latestVersion: null });
+  const { container } = render(<ActionsListView locale="en" workspaceSlug="shop" workspaceId="w" timezone="Asia/Hong_Kong" role="owner" locations={[]} locationId={null}
+    filters={{}} result={{ actions: [first, second], counts: { all: 2, drafts: 0, needs_input: 0, awaiting_approval: 0, completed: 0 }, nextCursor: null, hasMore: false }} />);
+  expect(screen.getByRole("heading", { level: 1, name: "To do" })).toBeVisible();
+  expect([...container.querySelectorAll(".action-card h2")].map(h => h.textContent)).toEqual(["First from server", "Second from server"]);
+  expect(container.querySelectorAll(".filter-bar [role=combobox]")).toHaveLength(0);
+  expect(screen.getByRole("searchbox")).toBeVisible();
+  expect(container.querySelector(".priority-reason")).toBeNull();
+  expect(container.querySelector(".action-card")?.textContent).not.toMatch(/Feature available|Live|Beta|Impact \+15/);
+});
+
+
+it("keeps fact labels and lifecycle explanations inside closed trust disclosures", () => {
+  const action = buildActionOverview(row, { location: null, latestRun: null, latestVersion: null });
+  const { container } = render(<ActionsListView locale="zh-HK" workspaceSlug="shop" workspaceId="w" timezone="Asia/Hong_Kong" role="owner" locations={[]} locationId={null}
+    filters={{}} result={{ actions: [action], counts: { all: 1, drafts: 0, needs_input: 0, awaiting_approval: 0, completed: 0 }, nextCursor: null, hasMore: false }} />);
+  const evidence = container.querySelector(".action-evidence")!;
+  expect(evidence.closest("details")?.hasAttribute("open")).toBe(false);
+  expect(evidence.closest("details")?.querySelector("summary")?.textContent).toBe("點解咁講");
+  expect(container.querySelector(".queue-footnote")?.closest("details")?.hasAttribute("open")).toBe(false);
+});
+
+
+it.each([{ channel: "google" }, { status: "recommended" }, { assignee: "unassigned" }, { due: "today" }, { view: "drafts" }] as const)("lets a nonempty bookmarked list clear its active narrowing (%s)", narrowing => {
+  const action = buildActionOverview(row, { location: null, latestRun: null, latestVersion: null });
+  render(<ActionsListView locale="en" workspaceSlug="shop" workspaceId="w" timezone="Asia/Hong_Kong" role="owner" locations={[]} locationId={null}
+    filters={{ location: "primary", ...narrowing }} result={{ actions: [action], counts: { all: 1, drafts: 0, needs_input: 0, awaiting_approval: 0, completed: 0 }, nextCursor: null, hasMore: false }} />);
+  expect(screen.getByRole("link", { name: "Clear filters" })).toHaveAttribute("href", "/en/owner/shop/actions?location=primary");
+});
