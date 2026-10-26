@@ -4,7 +4,6 @@ import "server-only";
 import type { SessionUser } from "@/lib/auth";
 import { identityProvider } from "@/lib/identity/composition";
 import { authDiagnostic } from "@/lib/identity/sign-in-diagnostics";
-import { holdsViewerGrant } from "@/lib/identity/claim-viewer-grant";
 import type { AuthFlow } from "@/lib/identity/sign-in-flow";
 import { resolveApplicationUser } from "@/lib/identity/users";
 import { claimsRepository } from "@/lib/repositories/claims";
@@ -13,9 +12,7 @@ import { shouldRecordAccessRequest } from "@/lib/workspace/access-request";
 import { bindWorkspaceToUser } from "@/lib/workspace/bind-workspace";
 import { claimScan, type ClaimOutcome } from "@/lib/workspace/claim-scan";
 import {
-  attachJobToWorkspace,
   bindPendingMembership,
-  createWorkspaceWithOwner,
   findOwnedWorkspace,
 } from "@/lib/workspace/callback-queries";
 
@@ -42,17 +39,12 @@ async function finishClaim(user: SessionUser, flow: AuthFlow): Promise<string | 
   const outcome: ClaimOutcome = await claimScan({
     slug: flow.claim,
     sessionUser: { id: user.id, email: user.email ?? null },
-    selfServiceEnabled: process.env.OWNER_SELF_SERVICE_CLAIM === "true",
     lookupJobBySlug: claimsRepository.jobBySlug,
-    hasViewerGrant: holdsViewerGrant,
-    lookupLeadEmail: claimsRepository.firstLeadEmail,
     findWorkspaceForUser: async (userId) => {
       const result = await findOwnedWorkspace(userId);
       if (result.error) throw new Error("workspace lookup failed");
       return result.data ? { id: result.data.workspaceId } : null;
     },
-    createWorkspace: createWorkspaceWithOwner,
-    attachJobToWorkspace,
   });
   if (outcome.kind === "unavailable") return null;
   return `/${flow.locale}/owner/onboarding?claim=${encodeURIComponent(flow.claim)}&claimed=${outcome.kind}`;
