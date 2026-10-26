@@ -1,6 +1,6 @@
 # Local and managed identity acceptance
 
-`corepack pnpm e2e:acceptance` runs the 16 required merchant/public cases plus local logout and authenticated unknown-route regressions. `corepack pnpm e2e` starts a separate owned fixture on port3100; it never reuses a server. `corepack pnpm test:integration` selects every PostgreSQL integration case. Docker is required; missing Docker fails rather than skipping.
+`corepack pnpm e2e:acceptance` runs the local merchant/public acceptance cases, including logout and authenticated unknown-route regressions. `corepack pnpm e2e` starts a separate owned fixture on port3100; it never reuses a server. `corepack pnpm test:integration` selects every PostgreSQL integration case. Docker is required; missing Docker fails rather than skipping.
 
 The fixture owns an ephemeral labeled PostgreSQL16 container, network=none and a host loopback PostgreSQL relay over owned Docker exec pipes (the image's existing Perl IO runtime, no downloads), a local opaque-session identity service/mail capture, and fixture LLM/evidence. Node workers/Next children preload `transport-guard.cjs`. Chromium uses a loopback-only proxy bypass plus blocked external requests. No managed Auth table is seeded. App UUIDs and `auth_identities` are application-owned tables.
 
@@ -16,4 +16,4 @@ The hosted suite is opt-in: `corepack pnpm exec playwright test --config playwri
 - `NEON_AUTH_TEST_GOOGLE_EMAIL` and `NEON_AUTH_TEST_GOOGLE_STATE`, the authorized dedicated Google account and locally protected Playwright state file. The test must perform actual account selection and consent; it fails if no consent screen is presented.
 - `NEON_AUTH_TEST_LINK_TTL_MS`, the isolated provider's configured magic-link lifetime in milliseconds (1000 through3600000). The expiry case requests a real new message and waits this lifetime before attempting redemption; it never substitutes an arbitrary invalid link.
 
-Hosted tracing/screenshots/video are disabled to avoid writing session material. Opt-in is not permission to provision, deploy, migrate shared data, or contact unapproved recipients. `db:types` is currently explicitly unavailable after retirement of the old REST generator; Task15 owns final CLI cleanup. Neon types are authored in `lib/db/schema.ts`.
+Hosted tracing/screenshots/video are disabled to avoid writing session material. Opt-in is not permission to provision, deploy, migrate shared data, or contact unapproved recipients. `corepack pnpm db:types` generates `lib/db/database.types.ts` offline from the authored schema in `lib/db/schema/`; it does not use hosted introspection. See [the development guide](../../docs/DEVELOPMENT.md) for the local verification sequence.

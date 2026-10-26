@@ -9,6 +9,8 @@ Kinnso OS, by Fimmick, helps Hong Kong and Taiwan small businesses see how they 
 
 The product rules (guardrails, contracts and decisions) are in [CLAUDE.md](CLAUDE.md). The redesign that made the current interface is documented in [docs/ux](docs/ux/README.md).
 
+For the current runtime and core flows, see [ARCHITECTURE.md](ARCHITECTURE.md), including the risk map and next three engineering investments. For copyable setup, test, build and deployment-handoff commands, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+
 The merchant application uses Next.js 16, typed Neon PostgreSQL repositories and the pinned Neon managed Auth SDK. The legacy staff application remains separate. Hosted Neon branch, Auth configuration and staging origin are **NOT CHOSEN**; hosted acceptance and deployment are **NOT RUN**.
 
 ## Set up
