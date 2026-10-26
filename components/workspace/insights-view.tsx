@@ -109,6 +109,12 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
       ) : (
         <details className="owner-disclosure insights-why">
           <summary>{copy[locale].home.trust}</summary>
+          <div className="before-after-grid">
+            {model.metricCards.length === 0 && <p>{pc.noComparableEarlierValue}</p>}
+            {model.metricCards.map((card) => (
+              <SectionCard key={card.metricKey} className="metric-change-card"><FactType type={card.factType} /><p className="eyebrow">{metricLabel(card.metricKey, locale)}</p><h2>{card.factType !== "Unknown" && card.before !== null ? card.before : "—"} → {card.after === null ? "—" : card.after}</h2><p>{card.before !== null && card.factType !== "Unknown" ? `${pc.from} ${card.before} · ${formatDay(card.observedAt, locale, timezone)}` : pc.noComparableEarlierValue}</p></SectionCard>
+            ))}
+          </div>
           <p>{pc.observedFactsPossiblyRelated}</p>
           {!comparable && <SectionCard className="no-comparable-card"><CircleDashed /><div><p className="eyebrow">{pc.noComparableScanYet}</p><h2>{reasonText(trend.reasonCode, locale)}</h2><p>{pc.noTrendIsShown}</p></div></SectionCard>}
           <div className="insight-summary-grid">
@@ -117,6 +123,8 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
             <SectionCard className="insight-stat"><TrendingDown /><span>{pc.regressedFindings}</span><strong>{model.ledgerComparable ? model.ledger.regressed.length : "—"}</strong><small>{model.ledgerComparable ? pc.latestComparableScan : copy[locale].home.noComparable}</small></SectionCard>
             <SectionCard className="insight-stat"><CircleDashed /><span>{pc.coverageLead}</span><strong>{scorePercent(head.coverage)}%</strong><details className="owner-disclosure"><summary>{copy[locale].home.trust}</summary><small>{pc.unmeasuredSourcesAreNot}</small></details></SectionCard>
           </div>
+          <details className="owner-disclosure insights-series-disclosure">
+            <summary>{pc.visibilityAndCoverage}</summary>
           <SectionCard className="trend-card">
             <div className="section-card-heading"><div><p className="eyebrow">{pc.visibilityAndCoverage}</p><h2>{fill(model.series.length === 1 ? pc.scoreAcrossOne : pc.scoreAcrossMany, { scans: model.series.length })}</h2></div><Badge variant="outline">{pc.noLineAcrossEvidence}</Badge></div>
             <SeriesStrip model={model} locale={locale} timezone={timezone} />
@@ -126,11 +134,7 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
               <TableBody>{model.series.map((point) => <TableRow key={point.snapshotId}><TableCell>{formatDay(point.observedAt, locale, timezone)}</TableCell><TableCell>{point.score === null ? pc.withheld : Math.round(point.score)}</TableCell><TableCell>{scorePercent(point.coverage)}%</TableCell><TableCell>{point.comparable ? pc.comparable : reasonText(point.incomparableReason, locale)}</TableCell></TableRow>)}</TableBody>
             </Table>
           </SectionCard>
-          <div className="before-after-grid">
-            {model.metricCards.map((card) => (
-              <SectionCard key={card.metricKey} className="metric-change-card"><FactType type={card.factType} /><p className="eyebrow">{metricLabel(card.metricKey, locale)}</p><h2>{card.after === null ? "—" : card.after}{card.delta !== null && <small> {signed(card.delta, 1)}</small>}</h2><p>{card.before !== null && card.factType !== "Unknown" ? `${pc.from} ${card.before} · ${formatDay(card.observedAt, locale, timezone)}` : pc.noComparableEarlierValue}</p></SectionCard>
-            ))}
-          </div>
+          </details>
           {/* This card used to join every percentage with arrows and nothing
               else: no date, no denominator, no gap mark, no fact type -- on a
               page that otherwise badges "No line across evidence gaps". Two
@@ -138,7 +142,7 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
               because an ambiguity retry added a second probe that scan, and two
               points three months apart reading as consecutive because the scan
               between them errored and was silently dropped. */}
-          {model.aeoTrend.surfaces.some((s) => s.points.length > 0) && <SectionCard className="surface-trend-card"><div className="section-card-heading"><div><p className="eyebrow">{pc.searchAndAiSurfaces}</p><h2>{pc.presenceRate}</h2></div><FactType type="Observed" /></div>
+          {model.aeoTrend.surfaces.some((s) => s.points.length > 0) && <details className="owner-disclosure insights-presence-disclosure"><summary>{pc.presenceRate}</summary><SectionCard className="surface-trend-card"><div className="section-card-heading"><div><p className="eyebrow">{pc.searchAndAiSurfaces}</p><h2>{pc.presenceRate}</h2></div><FactType type="Observed" /></div>
             <ul className="evidence-list">{model.aeoTrend.surfaces.filter((s) => s.points.length > 0).map((surface) => (
               <li key={surface.surface}>
                 <Badge variant="outline">{metricLabel(`aeo.${surface.surface}_presence_rate`, locale)}</Badge>
@@ -149,7 +153,7 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
               </li>
             ))}</ul>
             <details className="owner-disclosure"><summary>{copy[locale].home.trust}</summary><p className="limitation-note">{pc.theDenominatorIsThe}</p></details>
-          </SectionCard>}
+          </SectionCard></details>}
           {(model.ledger.resolved.length > 0 || model.ledger.regressed.length > 0 || model.ledger.decayed.length > 0) && <SectionCard className="change-ledger-card"><div className="section-card-heading"><div><p className="eyebrow">{pc.changeLedger}</p><h2>{pc.resolvedRegressedAndDecayed}</h2></div></div><ul className="evidence-list">{model.ledger.resolved.map((k) => <li key={`r${k}`}><Badge variant="outline">{pc.resolved}</Badge><span><strong>{findingLabel(k, locale)}</strong></span></li>)}{model.ledger.regressed.map((k) => <li key={`g${k}`}><Badge variant="outline">{pc.regressed}</Badge><span><strong>{findingLabel(k, locale)}</strong></span></li>)}{model.ledger.decayed.map((k) => <li key={`d${k}`}><Badge variant="outline">{pc.decayed}</Badge><span><strong>{findingLabel(k, locale)}</strong></span></li>)}</ul></SectionCard>}
           {/* P2.1 item 7: the approved/exported WORK itself, not only the
               scores and checks it produced -- deliveries was never read

@@ -17,23 +17,25 @@ import { effortLabel, formatDateTime, stateLabel } from "@/lib/workspace/format"
 import { originLabel } from "@/components/workspace/action-detail/helpers"
 import { guardrailText } from "@/lib/workspace/guardrail-text"
 import { DraftInputs } from "@/components/workspace/action-detail/draft-inputs"
+import { editorStep } from "./owner-steps"
 import type { ActionEditor } from "@/components/workspace/action-detail/use-action-editor"
 
 /** The draft card: source context, inputs, the editor with its guardrail check, and the owner's applied assertion. */
 export function DraftEditorCard({ ed }: { ed: ActionEditor }) {
   const {
-    ac, action, altText, applied, appliedOn, approvedAssets, base, businessContext, busy, canAssert, canEdit, canGenerate,
+    ac, action, altText, approvedAssets, base, businessContext, busy, canEdit, canGenerate,
     checklistCopy, checklistSteps, comparing, conflict, content, createAssistantVersion, dirty, generate, guardrailBadge,
-    guardrailFlags, lastRunError, loadLatest, locale, location, markApplied, needsRunReconciliation, offer, offersCopy,
-    pendingSelect, resolveConflict, retractApplied, router, saveBeforeGenerationMessage, saveDraft, saveFailed,
+    guardrailFlags, lastRunError, loadLatest, locale, location, needsRunReconciliation, offer, offersCopy,
+    pendingSelect, resolveConflict, router, saveBeforeGenerationMessage, saveDraft, saveFailed,
     selectedVersion, setAltText, setContent, showInputForm, social, timezone, verified, verifiedOn, versionId, versionName,
     versions, workspaceId
   } = ed
+  const step = editorStep(ed)
   return (
     <SectionCard className="draft-editor-card">
-      <div className="section-card-heading"><div><p className="eyebrow">{checklistSteps ? checklistSteps.where : ac.editor.generatedOutput}</p><h2>{copy[locale].workspace.templates[action.templateKey]?.workflow ?? action.templateKey}</h2></div><div><Badge variant="outline">{checklistSteps ? stateLabel(action.actionState, locale) : versionName}</Badge>{!checklistSteps && selectedVersion && <Badge variant="outline">{originLabel(selectedVersion.origin, locale)}</Badge>}</div></div>
+      <div className="section-card-heading"><div>{checklistSteps && <p className="eyebrow">{checklistSteps.where}</p>}<h2>{checklistSteps ? checklistCopy.heading : step === 0 ? ac.ownerSteps.edit : step === 1 ? ac.ownerSteps.confirm : ac.ownerSteps.send}</h2></div><details><summary>{copy[locale].ownerFocus.why}</summary><Badge variant="outline">{checklistSteps ? stateLabel(action.actionState, locale) : versionName}</Badge>{!checklistSteps && selectedVersion && <Badge variant="outline">{originLabel(selectedVersion.origin, locale)}</Badge>}</details></div>
       {social && approvedAssets.length > 0 && <div className="asset-reference"><span><FileImage /></span><div><strong>{approvedAssets[0].filename}</strong><small>{fill(ac.editor.approvedAsset, { n: approvedAssets.length })}</small></div><Badge variant="outline">{ac.editor.approved}</Badge></div>}
-      <div className="original-context"><FactType type={action.evidence.factType} /><div><strong>{ac.editor.sourceFinding}</strong><p>{resolveText(action.evidence.detail, locale)}</p><small>{formatDateTime(action.evidence.observedAt, locale, timezone)} · {ac.editor.sourcePreserved}</small></div></div>
+      <details className="owner-disclosure"><summary>{copy[locale].ownerFocus.why}</summary><div className="original-context"><FactType type={action.evidence.factType} /><div><strong>{ac.editor.sourceFinding}</strong><p>{resolveText(action.evidence.detail, locale)}</p><small>{formatDateTime(action.evidence.observedAt, locale, timezone)} · {ac.editor.sourcePreserved}</small></div></div></details>
       {offer && (
         <div className="brand-check-panel" data-testid="offer-card">
           <div className="brand-check-head">
@@ -72,27 +74,29 @@ export function DraftEditorCard({ ed }: { ed: ActionEditor }) {
           <p className="limitation-note"><AlertTriangle /> {checklistCopy.note}</p>
         </div>
       )}
-      <DraftInputs ed={ed} />
+      {step === 0 && <DraftInputs ed={ed} />}
       {!checklistSteps && (<>
-      <div className="field-stack"><Label htmlFor="draft-content">{social ? ac.editor.caption : ac.editor.draft}</Label><Textarea id="draft-content" value={content} onChange={(event) => setContent(event.target.value)} rows={social ? 8 : 7} disabled={!canEdit} placeholder={selectedVersion ? undefined : ac.editor.placeholder} /><div className="field-helper-row"><span>{content.length} {ac.editor.characters}</span><span>{selectedVersion ? formatDateTime(selectedVersion.created_at, locale, timezone) : ""}</span></div></div>
-      {(social || altText) && <div className="field-stack"><Label htmlFor="alt-text">{ac.editor.altText}</Label><Textarea id="alt-text" value={altText} onChange={(event) => setAltText(event.target.value)} rows={3} disabled={!canEdit} /><small>{ac.editor.altTextNote}</small></div>}
+      <div className="field-stack"><Label htmlFor="draft-content">{social ? ac.editor.caption : ac.editor.draft}</Label><Textarea id="draft-content" value={content} onChange={(event) => setContent(event.target.value)} readOnly={step !== 0} rows={social ? 8 : 7} disabled={step === 0 && !canEdit} placeholder={selectedVersion ? undefined : ac.editor.placeholder} /><div className="field-helper-row"><span>{content.length} {ac.editor.characters}</span><span>{selectedVersion ? formatDateTime(selectedVersion.created_at, locale, timezone) : ""}</span></div></div>
+      {step !== 0 && altText && <details><summary>{copy[locale].ownerFocus.why}</summary><p>{ac.editor.altText}: {altText}</p></details>}
+      {step === 0 && (social || altText) && <div className="field-stack"><Label htmlFor="alt-text">{ac.editor.altText}</Label><Textarea id="alt-text" value={altText} onChange={(event) => setAltText(event.target.value)} rows={3} disabled={!canEdit} /><small>{ac.editor.altTextNote}</small></div>}
       {/* The agents compute guardrail violations and artifacts.ts
           persists them into meta.warnings, but nothing ever read them
           back: this panel showed a hard-coded "1 reminder" on every
           draft, so a prohibited brand term or a compensation promise
           looked exactly like a clean one to the person approving it. */}
-      <div className="brand-check-panel"><div className="brand-check-head"><ShieldCheck /><div><strong>{ac.editor.guardrailTitle}</strong><span>{ac.editor.guardrailSubtitle}</span></div><Badge variant="outline">{guardrailBadge}</Badge></div>
+      <details className="owner-disclosure"><summary>{copy[locale].ownerFocus.why}</summary><div className="brand-check-panel"><div className="brand-check-head"><ShieldCheck /><div><strong>{ac.editor.guardrailTitle}</strong><span>{ac.editor.guardrailSubtitle}</span></div><Badge variant="outline">{guardrailBadge}</Badge></div>
         {guardrailFlags.length > 0
           ? <ul className="evidence-list">{guardrailFlags.map((flag, index) => <li key={`${flag.code}-${index}`}><AlertTriangle /> <span>{guardrailText(flag, locale)}</span></li>)}</ul>
           : <p><ShieldCheck /> {selectedVersion?.checked
               ? ac.editor.checkedClean
               : ac.editor.notAgentChecked}</p>}
         {(selectedVersion?.agentNotes ?? []).map((note) => <p key={note} className="limitation-note"><AlertTriangle /> {note}</p>)}
-        <p className="limitation-note">{ac.editor.noInventedFacts}</p></div>
+        <p className="limitation-note">{ac.editor.noInventedFacts}</p></div></details>
       {needsRunReconciliation && <div className="conflict-state" role="alert"><CircleAlert /><div><strong>{ac.editor.reconcileTitle}</strong><p>{ac.editor.reconcileBody}</p><Button variant="outline" onClick={() => window.location.reload()}>{ac.editor.reconcileReload}</Button></div></div>}
       {lastRunError && <p className="limitation-note" role="alert"><CircleAlert /> {ac.editor.lastRunFailed}{runErrorLabel(locale, lastRunError)}</p>}
       {pendingSelect && <div className="draft-editor-actions" role="status"><span>{t(locale, "editor.waitingForVersion")}</span><Button variant="outline" onClick={() => router.refresh()}>{t(locale, "editor.retryVersion")}</Button></div>}
-      <div className="draft-editor-actions"><ContextualAssistant locale={locale} surface={social ? "create" : "action"} triggerLabel={ac.editor.reviseWithOperator} mode="live" context={{ workspaceId, locationId: action.location.id ?? undefined, actionId: action.id, versionId: selectedVersion?.id }} basePath={base} locationParam={location} reviewDraft={action.templateKey === "review-response"} onCreateVersion={dirty ? undefined : createAssistantVersion} disabled={!canEdit || dirty} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? ac.editor.regenerate : ac.editor.generate}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {ac.editor.saveManual}</Button></div>
+      {step === 0 && <><div className="draft-editor-actions"><ContextualAssistant locale={locale} surface={social ? "create" : "action"} triggerLabel={ac.editor.reviseWithOperator} mode="live" context={{ workspaceId, locationId: action.location.id ?? undefined, actionId: action.id, versionId: selectedVersion?.id }} basePath={base} locationParam={location} reviewDraft={action.templateKey === "review-response"} onCreateVersion={dirty ? undefined : createAssistantVersion} disabled={!canEdit || dirty} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? ac.editor.regenerate : ac.editor.generate}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {ac.editor.saveManual}</Button></div>
+      {selectedVersion && ed.editingVersionId === selectedVersion.id && <Button variant="ghost" disabled={dirty || !canEdit} onClick={() => ed.setEditingVersionId(null)}>{locale === "zh-HK" ? "睇返儲存嗰版" : "Review saved text"}</Button>}
       <p role="status" aria-live="polite">{busy === "save" ? ac.editor.saving : pendingSelect ? t(locale, "editor.waitingForVersion") : saveFailed ? ac.editor.saveFailed : dirty ? ac.editor.unsaved : selectedVersion ? fill(ac.editor.saved, { version: versionName }) : ac.editor.noSavedDraft}</p>
       {comparing && <section className="field-stack" aria-label={ac.editor.compareAria}>
         {versions[0] && versions[0].id !== versionId ? <>
@@ -108,6 +112,7 @@ export function DraftEditorCard({ ed }: { ed: ActionEditor }) {
       </section>}
       {dirty && <p className="limitation-note">{saveBeforeGenerationMessage}</p>}
       {conflict && <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{ac.editor.conflictTitle}</strong><p>{ac.editor.conflictBody}</p><Button size="sm" onClick={loadLatest}><RefreshCw /> {ac.editor.loadLatest}</Button></div></div>}
+      </>}
       </>)}
       {/* The assertion control, offered for checklist and drafted
           actions alike. Before: an offer to record what the owner tells
@@ -117,6 +122,18 @@ export function DraftEditorCard({ ed }: { ed: ActionEditor }) {
           markup on it would make the control vanish server-side and
           mid-request. A viewer has nothing to assert, so they get no
           control at all rather than a disabled one. */}
+      {!checklistSteps && <details className="owner-disclosure"><summary>{copy[locale].ownerFocus.why}</summary>
+        <AppliedAssertion ed={ed} />
+      </details>}
+      {checklistSteps && <AppliedAssertion ed={ed} />}
+      {verified && <p className="limitation-note">{t(locale, "verified.confirmedOn", { date: verifiedOn })}</p>}
+    </SectionCard>
+  )
+}
+
+function AppliedAssertion({ ed }: { ed: ActionEditor }) {
+  const { canAssert, applied, appliedOn, locale, canEdit, retractApplied, markApplied, busy } = ed
+  return <>
       {!canAssert ? null : applied ? (
         <div className="approved-state">
           <CheckCircle2 />
@@ -128,17 +145,9 @@ export function DraftEditorCard({ ed }: { ed: ActionEditor }) {
         </div>
       ) : (
         <div className="draft-editor-actions">
-          <Button onClick={() => void markApplied()} disabled={!canEdit}>{busy === "applied" ? <LoaderCircle className="animate-spin" /> : <CheckCircle2 />} {t(locale, "applied.markButton")}</Button>
+          <Button onClick={() => void markApplied()} disabled={!canEdit}>{busy === "applied" ? <LoaderCircle className="animate-spin" /> : <CheckCircle2 />} {locale === "zh-HK" ? "我做完" : t(locale, "applied.markButton")}</Button>
           <p className="limitation-note">{t(locale, "applied.markHint")}</p>
         </div>
       )}
-      {/* System-written, not the owner's claim -- so unlike the
-          applied control above there is nothing here to retract. Text
-          only, with the trailing clause stating exactly what a fetch
-          can and cannot establish. */}
-      {verified && (
-        <p className="limitation-note">{t(locale, "verified.confirmedOn", { date: verifiedOn })}</p>
-      )}
-    </SectionCard>
-  )
+    </>
 }

@@ -61,9 +61,11 @@ for (const visual of [
       return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
     })).toBe(true);
 
-    const results = page.locator("details.owner-results-disclosure");
+    const results = page.locator(".owner-results-disclosure");
     const evidence = page.locator("details.owner-priority-evidence");
-    await expect(results).not.toHaveAttribute("open");
+    await expect(results.locator("p")).toHaveCount(1);
+    await expect(results.locator("a")).toHaveCount(1);
+    await expect(results.locator(".brief-score-card")).toHaveCount(0);
     await expect(evidence).not.toHaveAttribute("open");
     await expect(page.locator(".brief-score-card")).toBeHidden();
     await expect(page.locator(".why-now-box").first()).toBeHidden();
@@ -74,11 +76,6 @@ for (const visual of [
     await expect(evidence.locator(".why-now-box")).toBeVisible();
     await expect(evidence.locator(".brief-action-meta")).toBeVisible();
     await evidence.locator("summary").click();
-    await results.locator("summary").click();
-    await expect(results.locator(".brief-score-card")).toBeVisible();
-    await expect(results.locator(".month-brief")).toBeVisible();
-    await results.locator("summary").click();
-
     // The methodology is one tap away, closed until asked for.
     const disclosure = page.locator("details.trust-disclosure");
     await expect(disclosure).not.toHaveAttribute("open");
@@ -87,6 +84,8 @@ for (const visual of [
     await expect(disclosure).toHaveAttribute("open", "");
     await expect(disclosure.locator("summary")).toContainText(visual.trust);
     await expect(page.locator(".workspace-agent-strip")).toBeVisible();
+    await expect(disclosure.locator(".brief-score-card")).toBeVisible();
+    await expect(disclosure.locator(".month-brief")).toBeVisible();
     await disclosure.locator("summary").focus();
     await page.keyboard.press("Enter");
     await expect(disclosure).not.toHaveAttribute("open");

@@ -51,3 +51,8 @@ it("shows nothing to viewers or on demo workspaces, and nothing rather than a wr
   repo.connection.mockRejectedValue(new Error("db"))
   expect(await loadGettingStarted(ctx(), member("owner"), "en")).toBeNull()
 })
+
+it("stops after the first delivery even without brand voice or a Google connection", async () => {
+  repo.deliveries.mockResolvedValue([{ action_id: "delivered" }])
+  expect(await loadGettingStarted(ctx(), member("owner"), "en")).toBeNull()
+})

@@ -69,6 +69,8 @@ function useEditorState({ locale, workspaceSlug, workspaceId, timezone, role, in
   const [versionId, setVersionId] = useState<string | null>(initialVersion?.id ?? null)
   const [content, setContent] = useState(initialVersion?.body ?? "")
   const [altText, setAltText] = useState(initialVersion?.alt_text ?? "")
+  const [editingVersionId, setEditingVersionId] = useState<string | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const [comment, setComment] = useState("")
   const [busy, setBusy] = useState<Busy>(null)
   const mutationPending = useRef(false)
@@ -235,6 +237,7 @@ function useEditorState({ locale, workspaceSlug, workspaceId, timezone, role, in
     ac, action, allowanceBlocked, altText, applied, appliedOn, approval, approvalText, approvedAssets, base,
     businessContext, busy, canApprove, canApproveCurrent, canAssert, canDeliver, canEdit, canGenerate, checklistCopy,
     checklistSteps, comment, comparing, conflict, content, delivery, dirty, effectiveRole, embedded, exported,
+    editingVersionId, setEditingVersionId, confirmOpen, setConfirmOpen,
     faqQuestionByKey, guardrailBadge, guardrailFlags, hydrated, inputs, inputValues, inScope, isApprovedCurrent,
     lastRunError, locale, location, locationName, measurements, mutationPending, neededKeys, needsRunReconciliation, offer,
     offersCopy, offersEnabled, offerStale, offline, ownerCheck, ownerCheckIdentity, pendingSelect, previewRole, provenance,

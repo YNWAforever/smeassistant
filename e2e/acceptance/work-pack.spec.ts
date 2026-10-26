@@ -73,12 +73,14 @@ test("the starter pack becomes drafts, one is approved and exported, and startin
   const reviewResponseActionId = sql(db, `select action_id from work_pack_items where pack_id='${packId}' and template_key='review-response';`);
   await reviewNext.click();
   await expect(page).toHaveURL(new RegExp(`/actions/${reviewResponseActionId}`));
-  await expect(page.getByRole("button", { name: "核准第 1 版" }).first()).toBeEnabled();
-  await clickUntil(page.getByRole("button", { name: "核准第 1 版" }).first(), page.getByRole("dialog"));
-  await page.getByRole("dialog").getByRole("button", { name: "核准第 1 版" }).click();
-  await expect(page.getByRole("button", { name: /匯出已核准版本/ }).first()).toBeEnabled();
+  await expect(page.locator(".approval-panel").getByRole("button", { name: "確認呢一版", exact: true })).toBeEnabled();
+  await clickUntil(page.locator(".approval-panel").getByRole("button", { name: "確認呢一版", exact: true }), page.getByRole("dialog"));
+  await page.getByRole("dialog").getByRole("button", { name: "確認呢一版", exact: true }).click();
+  const why = page.locator("details.owner-workflow-disclosure");
+  await why.locator(":scope > summary").click();
+  await expect(why.getByRole("button", { name: "下載文字檔", exact: true })).toBeEnabled();
   const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: /匯出已核准版本/ }).first().click();
+  await why.getByRole("button", { name: "下載文字檔", exact: true }).click();
   expect((await download).suggestedFilename()).toMatch(/-v1\.md$/);
   await expect.poll(used).toBe("1");
 

@@ -77,7 +77,9 @@ test("shows every version, approval, and repeated delivery audit without double-
     "Accepted review reply. Please leave another comment if we can help.",
   );
   await page.getByRole("tab", { name: "Version & audit history", exact: true }).click();
+  await page.locator(".history-layout > details").locator(":scope > summary").click();
   const auditList = page.locator(".audit-mini");
+  await expect(auditList).toBeVisible();
   await expect(auditList.getByText("Version saved", { exact: true })).toHaveCount(2);
   await expect(auditList.getByText("Version approved", { exact: true })).toHaveCount(1);
   await expect(auditList.getByText("Export recorded", { exact: true })).toHaveCount(2);
@@ -200,13 +202,17 @@ test("bilingual completed-page reloads preserve exact version, approval, deliver
         await expect(page).toHaveURL(new RegExp(`/${locale}/owner/${merchant.slug}/`));
         if (route === "action") {
           await expect(page.locator("#draft-content")).toHaveValue(savedBody);
-          await expect(page.locator(".action-detail-badges")).toContainText(chinese ? "已套用（店主回報）" : "Applied (reported)");
-          await expect(page.locator(".action-detail-next")).toContainText(chinese ? "到 Google 核對回覆" : "Check the reply in Google");
+          const why = page.locator("details.owner-workflow-disclosure");
+          await why.locator(":scope > summary").click();
+          await expect(why.locator(".action-detail-badges")).toContainText(chinese ? "已套用（店主回報）" : "Applied (reported)");
+          await expect(why.locator(".action-verification-result")).toContainText(chinese ? "到 Google 核對回覆" : "Check the reply in Google");
           await expect(page.locator(".action-verification-result")).toContainText(chinese
             ? "目前來源無法核實這則 Google 評論的指定回覆。"
             : "Current sources cannot verify this specific Google review reply.");
           await page.getByRole("tab", { name: chinese ? "版本及審計紀錄" : "Version & audit history", exact: true }).click();
+          await page.locator(".history-layout > details").locator(":scope > summary").click();
           const audit = page.locator(".audit-mini");
+          await expect(audit).toBeVisible();
           await expect(audit.getByText(chinese ? "版本已核准" : "Version approved", { exact: true })).toHaveCount(1);
           await expect(audit.getByText(chinese ? "已記錄匯出" : "Export recorded", { exact: true })).toHaveCount(1);
           await expect(audit.getByText(chinese ? "標記為已套用" : "Marked as applied", { exact: true })).toHaveCount(1);
@@ -238,7 +244,9 @@ test("bilingual completed-page reloads preserve exact version, approval, deliver
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`/en/owner/${merchant.slug}/actions/${merchant.actionId}`);
   await waitForHydration(page);
-  await expect(page.locator(".action-detail-badges")).toContainText("Applied (reported)");
+  const why = page.locator("details.owner-workflow-disclosure");
+  await why.locator(":scope > summary").click();
+  await expect(why.locator(".action-detail-badges")).toContainText("Applied (reported)");
   await page.screenshot({ path: testInfo.outputPath("en-desktop-completed.png"), fullPage: true });
   expect(snapshot()).toEqual(before);
   expect(mutations).toEqual([]);
