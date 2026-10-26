@@ -86,7 +86,7 @@ const PRIORITY_ANSWER = localized(
   "“{title}” is the top priority ({priority}) because {factors}. Evidence: {value} ({source}, {fact}). Estimated effort {effort} minutes; {inputs}.",
   "「{title}」是首要行動（{priority}），原因：{factors}。證據：{value}（{source}，{fact}）。預計需時 {effort} 分鐘；{inputs}。",
 );
-const PRIORITY_NEXT_READY = localized("Open the action and generate a draft; the owner approves a specific version before anything is exported.", "開啟該行動並產生草稿；店主核准指定版本後才可匯出。");
+const PRIORITY_NEXT_READY = localized("Open the action and generate a draft; the owner approves a specific version before anything is exported.", "開啟該行動並產生草稿；店主確認指定版本後才可匯出。");
 const PRIORITY_NEXT_INPUT = localized("Open the action and supply the missing inputs before generating a draft.", "開啟該行動，先補齊缺少的資料，再產生草稿。");
 const CHANGE_NO_DIFF = localized(
   "The latest scan ({date}) has no earlier scan to compare with, so the change is Unknown rather than zero. Score {score}, coverage {cov}.",
@@ -123,9 +123,9 @@ const SCORE_WITHHELD = localized("withheld (fewer than two independent sources m
 const LIMITS_NEXT = localized("Treat revenue and bookings as unknown; rescan with the same sources, location and scoring version before drawing a trend.", "把收入及預訂視為未知；以相同來源、地點及評分版本重掃後，才可畫出趨勢。");
 const PLAN = localized(
   "If the next scan shows no improvement: this week, work through “{title}” ({effort} minutes; evidence {value}). Once approved, record the version and the export time. Then rescan {loc} under the same scoring version ({version}) and read the delta only if scan_diffs marks the pair comparable.",
-  "如下次掃描沒有改善：本星期先完成「{title}」（{effort} 分鐘；證據 {value}）。核准後記錄版本及匯出時間。之後以相同評分版本（{version}）為 {loc} 重掃，只在 scan_diffs 標示可比較時才解讀變化。",
+  "如下次掃描沒有改善：本星期先完成「{title}」（{effort} 分鐘；證據 {value}）。確認後記錄版本及匯出時間。之後以相同評分版本（{version}）為 {loc} 重掃，只在 scan_diffs 標示可比較時才解讀變化。",
 );
-const PLAN_NEXT = localized("Approve a version this week; check delivery within 7 days; rescan in the next comparable window.", "本星期核准一個版本；7 日內檢查是否已送出；下一個可比較窗口重掃。");
+const PLAN_NEXT = localized("Approve a version this week; check delivery within 7 days; rescan in the next comparable window.", "本星期確認一個版本；7 日內檢查是否已送出；下一個可比較窗口重掃。");
 const PLAN_NO_ACTION = localized("There is no open action for {loc} to build a fallback plan from. {scan}", "{loc} 沒有未完成的行動可用作後備計劃。{scan}");
 const COMPARE_ONE = localized(
   "Only one open action exists for {loc}: “{title}” ({priority}). There is nothing to rank it against yet.",
@@ -147,17 +147,17 @@ const INSIGHTS_NEXT = localized("Keep scan id and observed time on every point; 
 const SEPARATE = localized("Snapshots from different dates must stay labelled separately.", "不同日期的快照必須分開標示。");
 const ASSET = localized(
   "This answer does not read asset rights. Only assets marked approved in Assets can back a social draft; anything still under review stays out of public content. {ig}",
-  "此回答不會讀取素材的使用權。只有在「素材」中標示為已核准的素材才可用於社交草稿；仍在審閱中的素材不可用於公開內容。{ig}",
+  "此回答不會讀取素材的使用權。只有在「素材」中標示為已確認的素材才可用於社交草稿；仍在審閱中的素材不可用於公開內容。{ig}",
 );
 const ASSET_IG = localized("Instagram evidence from {date}: {label} {value}.", "來自 {date} 的 Instagram 證據：{label} {value}。");
 const ASSET_IG_NONE = localized("Instagram was {status} in the latest scan, so there is no posting-gap number to cite.", "最新掃描中 Instagram 的狀態為「{status}」，因此沒有可引用的內容空檔數字。");
-const ASSET_NEXT = localized("Use an approved asset (or choose text-only) for the social draft; keep unreviewed uploads in Needs review.", "以已核准素材（或選擇純文字）建立社交草稿；未審閱的上載保留在「需要審閱」。");
+const ASSET_NEXT = localized("Use an approved asset (or choose text-only) for the social draft; keep unreviewed uploads in Needs review.", "以已確認素材（或選擇純文字）建立社交草稿；未審閱的上載保留在「需要審閱」。");
 const ASSET_WARN = localized("Uploading an asset does not grant the right to publish it.", "上載素材不等於已獲授權發佈。");
 const RESCAN = localized(
   "A rescan of {loc} counts as comparable only when: the same location and Google Business profile are scanned; the scoring version matches the latest scan ({version}); at least one source measured now ({names}) is measured again; and scan_diffs marks the pair comparable. The composite delta is still withheld when too few independent channels are measured.",
-  "{loc} 的重掃只在以下條件全部符合時才算可比較：掃描同一地點及 Google 商戶檔案；評分版本與最新掃描相同（{version}）；現時已量度的來源（{names}）至少有一個再次被量度；且 scan_diffs 標示為可比較。若已量度的獨立渠道太少，綜合變化仍會被保留。",
+  "{loc} 的重掃只在以下條件全部符合時才算可比較：掃描同一地點及 Google 商家檔案；評分版本與最新掃描相同（{version}）；現時已量度的來源（{names}）至少有一個再次被量度；且 scan_diffs 標示為可比較。若已量度的獨立渠道太少，綜合變化仍會被保留。",
 );
-const RESCAN_NEXT = localized("Start the rescan from the Rescan page after the approved version has been delivered; do not compare against a snapshot with a different scope.", "在核准版本送出後，於「重新掃描」頁啟動重掃；不要與範圍不同的快照比較。");
+const RESCAN_NEXT = localized("Start the rescan from the Rescan page after the approved version has been delivered; do not compare against a snapshot with a different scope.", "在確認版本送出後，於「重新掃描」頁啟動重掃；不要與範圍不同的快照比較。");
 const RESCAN_WARN = localized("A result that is not comparable is a new snapshot, not a trend.", "不可比較的結果只是新快照，不是趨勢。");
 // P4.3: "What detail do you need?" and "Where do I continue?". Both answer
 // from fresh rows without a snapshot, never call the model, and never claim
@@ -186,23 +186,23 @@ const MISSING_WARN = localized("Missing details stay Unknown; the assistant neve
 // same action may well have been approved and exported already.
 const VERSION_FOCUSED = localized(
   "Version v{n} of “{title}” is “{state}”. An authorised person must approve this exact version before it can be exported; this version has not been approved or sent.",
-  "「{title}」的 v{n} 版本目前狀態為「{state}」。須由獲授權人士核准此指定版本後才可匯出；此版本尚未獲核准或送出。",
-  "「{title}」的 v{n} 版本目前狀態為「{state}」。須由獲授權人士核准此指定版本後才可匯出；此版本尚未核准或送出。",
+  "「{title}」的 v{n} 版本目前狀態為「{state}」。須由獲授權人士確認此指定版本後才可匯出；此版本尚未獲確認或送出。",
+  "「{title}」的 v{n} 版本目前狀態為「{state}」。須由獲授權人士確認此指定版本後才可匯出；此版本尚未確認或送出。",
 );
 const WAITING_ONE = localized(
   "1 version is waiting for review: v{n} of “{title}” (“{state}”). An authorised person must approve a specific version before it can be exported.",
-  "有 1 個版本等待審閱：「{title}」的 v{n}（{state}）。須由獲授權人士核准指定版本後才可匯出。",
+  "有 1 個版本等待審閱：「{title}」的 v{n}（{state}）。須由獲授權人士確認指定版本後才可匯出。",
 );
 const WAITING_MANY = localized(
   "{count} versions are waiting for review. The oldest is v{n} of “{title}” (“{state}”). An authorised person must approve a specific version before it can be exported.",
-  "有 {count} 個版本等待審閱，最早的是「{title}」的 v{n}（{state}）。須由獲授權人士核准指定版本後才可匯出。",
+  "有 {count} 個版本等待審閱，最早的是「{title}」的 v{n}（{state}）。須由獲授權人士確認指定版本後才可匯出。",
 );
 // Minor 1: `assistantWaitingVersions` (lib/repositories/artifacts.ts) reads at
 // most this many rows, so at the cap the visible count is a floor, not a total.
 const WAITING_VERSIONS_READ_LIMIT = 20;
 const WAITING_CAPPED = localized(
   "{count} or more versions are waiting for review. The oldest is v{n} of “{title}” (“{state}”). An authorised person must approve a specific version before it can be exported.",
-  "有 {count} 個或以上版本等待審閱，最早的是「{title}」的 v{n}（{state}）。須由獲授權人士核准指定版本後才可匯出。",
+  "有 {count} 個或以上版本等待審閱，最早的是「{title}」的 v{n}（{state}）。須由獲授權人士確認指定版本後才可匯出。",
 );
 const VERSION_NEXT = localized("Open v{n} and review it.", "開啟 v{n} 進行審閱。");
 const VERSION_ASK = localized("Ask an owner or manager to review v{n}.", "請店主或經理審閱 v{n}。");
@@ -236,7 +236,7 @@ const GOOGLE_STATES: Record<Exclude<GoogleStatus, null | "active">, LocalizedTex
   revoked: localized("revoked", "已被撤銷"),
   error: localized("reporting an error", "出現錯誤"),
 };
-const WHERE_WARN = localized("Nothing is approved, sent or published from here.", "這裡不會核准、送出或發佈任何內容。");
+const WHERE_WARN = localized("Nothing is approved, sent or published from here.", "這裡不會確認、送出或發佈任何內容。");
 const THIS_ACTION = localized("this action", "此行動");
 const UNKNOWN_VERSION = localized("unknown", "不明");
 const NONE = localized("none", "無");

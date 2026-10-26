@@ -24,7 +24,7 @@
   }
 
   /* Icon buttons (a Radix trigger renames their data-slot, so match the size)
-     and the phone-width Ask Kinnso button, which shows only its icon. */
+     and the phone-width Ask Kinnso button. */
   [data-size^="icon"],
   .workspace-topbar .assistant-launcher {
     min-width: 44px;

@@ -66,9 +66,9 @@ it("does not refresh when the dialog closes without an approval", () => {
 it("reports a refused approval on that draft and keeps it unapproved", async () => {
   mocks.approve.mockResolvedValueOnce({ ok: false, status: 409, error: "version_closed" })
   render(<BulkApprove locale="zh-HK" items={[items[0]]} />)
-  fireEvent.click(screen.getByRole("button", { name: "審閱並審批" }))
+  fireEvent.click(screen.getByRole("button", { name: "審閱並確認" }))
   fireEvent.click(screen.getByRole("checkbox"))
-  fireEvent.click(screen.getByRole("button", { name: "審批已選的 1 份" }))
-  await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("未能審批"))
-  expect(screen.queryByText("已審批")).toBeNull()
+  fireEvent.click(screen.getByRole("button", { name: "確認已選的 1 份" }))
+  await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("未能確認"))
+  expect(screen.queryByText("已確認")).toBeNull()
 })

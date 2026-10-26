@@ -84,8 +84,8 @@ export const accessRequestZhHK: AccessRequestCopy = {
     eyebrow: "擁有權申請",
     pending: "已記錄你的申請。我們未就審核時間作出承諾。",
     awaiting_information: "Fimmick 需要你補充資料才能決定。",
-    approved: "申請已批准，工作台已建立。",
-    rejected: "申請未獲批准。",
+    approved: "申請已確認，工作台已建立。",
+    rejected: "申請未獲確認。",
     closed: "申請已結束。",
   },
 }
@@ -112,8 +112,8 @@ export const accessRequestZhTW: AccessRequestCopy = {
     eyebrow: "擁有權申請",
     pending: "已記錄你的申請。我們未就審核時間作出承諾。",
     awaiting_information: "Fimmick 需要你補充資料才能決定。",
-    approved: "申請已批准，工作台已建立。",
-    rejected: "申請未獲批准。",
+    approved: "申請已確認，工作台已建立。",
+    rejected: "申請未獲確認。",
     closed: "申請已結束。",
   },
 }

@@ -18,8 +18,8 @@ test("owner reads and bulk-approves a review reply, and Today advances the first
   await signIn(page, environment, merchant, "owner");
 
   const faces = [
-    { locale: "en", review: "Review draft", copy: "Copy text" },
-    { locale: "zh-HK", review: "審閱草稿", copy: "複製文字" },
+    { locale: "en", review: "Check the draft", copy: "Open and copy" },
+    { locale: "zh-HK", review: "睇草稿再確認", copy: "打開再複製" },
   ] as const;
   expect(sql(environment.db, `select count(*) from output_versions where workspace_id='${merchant.workspaceId}' and approval_state='approved';`)).toBe("0");
   for (const face of faces) {

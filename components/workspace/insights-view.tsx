@@ -1,4 +1,5 @@
 import Link from "next/link"
+import type { ReactNode } from "react"
 import { ArrowRight, CheckCircle2, CircleDashed, ShieldCheck, TrendingDown } from "lucide-react"
 
 import { EmptyState } from "@/components/kinnso/states"
@@ -18,6 +19,8 @@ export interface InsightsViewProps {
   timezone: string
   locations: Array<{ slug: string; name: string }>
   model: InsightsModel
+  /** The rescan control for this location (RescanButton), built by the page; omitted when there is none. */
+  rescan?: ReactNode
 }
 
 /** Moved to lib/workspace/format.ts so Home renders the same words. */
@@ -67,7 +70,7 @@ export function insightsLeadSentence(model: InsightsModel, locale: PrototypeLoca
   return fill(pc.missingBecause, { reason: comparisonReasonText(reason, locale) })
 }
 
-export function InsightsView({ locale, workspaceSlug, timezone, locations, model }: InsightsViewProps) {
+export function InsightsView({ locale, workspaceSlug, timezone, locations, model, rescan }: InsightsViewProps) {
   const pc = copy[locale].workspaceHome.insights
   const base = `/${locale}/owner/${workspaceSlug}`
   const isAll = model.locationSlug === "all"
@@ -107,6 +110,14 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
       ) : !head ? (
         <EmptyState locale={locale} kind="noData" title={copy[locale].shell.empty.insights.title} body={copy[locale].shell.empty.insights.body} action={<Button asChild variant="outline" className="min-h-11"><Link href={withLocation(base, model.locationSlug)}>{copy[locale].shell.empty.insights.action}</Link></Button>} />
       ) : (
+        <>
+        {/* One scan, nothing to compare yet: show the starting point and the way forward instead of a lone sentence. */}
+        {!comparable && !model.ledgerComparable && <SectionCard className="insights-baseline">
+          <p className="eyebrow">{pc.baselineEyebrow}</p>
+          <h2>{fill(pc.baselineTitle, { date: formatDay(head.observedAt, locale, timezone) })}</h2>
+          <p>{fill(pc.baselineBody, { coverage: scorePercent(head.coverage) ?? "—" })}</p>
+          {rescan && <div className="insights-baseline-actions">{rescan}</div>}
+        </SectionCard>}
         <details className="owner-disclosure insights-why">
           <summary>{copy[locale].home.trust}</summary>
           <div className="before-after-grid">
@@ -178,6 +189,7 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
             </SectionCard>
           )}
         </details>
+        </>
       )}
     </div>
   )

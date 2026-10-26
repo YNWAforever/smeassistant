@@ -1,7 +1,6 @@
 import Link from "next/link"
 import { History, PlugZap, TriangleAlert } from "lucide-react"
 
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CapabilityBadge, PageIntro, ProviderBadge, SectionCard } from "@/components/product-ui"
 import { GoogleDisconnectButton, InstagramHandleForm } from "@/components/workspace/integrations-client"
@@ -82,7 +81,7 @@ export function IntegrationsView({ locale, workspaceSlug, workspaceId, timezone,
         {cards.map((card) => (
           <SectionCard key={card.key}>
             <div className="integration-head"><span><PlugZap /></span><div><h2>{card.name}</h2><p>{card.status}</p></div>{card.badge ?? <CapabilityBadge value={card.capability} />}</div>
-            <dl className="integration-meta"><div><dt>{pc.lastSync}</dt><dd>{card.lastSync}</dd></div><div><dt>{pc.scope}</dt><dd>{card.scope}</dd></div><div><dt>{pc.capability}</dt><dd><Badge variant="outline">{card.capability}</Badge></dd></div></dl>
+            <dl className="integration-meta"><div><dt>{pc.lastSync}</dt><dd>{card.lastSync}</dd></div><div><dt>{pc.scope}</dt><dd>{card.scope}</dd></div></dl>
             {card.action && <div className="integration-actions">{card.action}</div>}
           </SectionCard>
         ))}

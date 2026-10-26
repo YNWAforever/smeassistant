@@ -24,7 +24,7 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string; zhTW?:
   "run.failed": { en: "Draft generation failed", zh: "草稿生成失敗" },
   "run.timed_out": { en: "Draft generation timed out", zh: "草稿生成逾時" },
   "version.created": { en: "Version saved", zh: "已儲存新版本" },
-  "version.approved": { en: "Version approved", zh: "版本已核准" },
+  "version.approved": { en: "Version approved", zh: "版本已確認" },
   "version.changes_requested": { en: "Changes requested", zh: "已要求修改" },
   "version.rejected": { en: "Version rejected", zh: "版本已拒絕" },
   "delivery.exported": { en: "Export recorded", zh: "已記錄匯出" },
@@ -45,7 +45,7 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string; zhTW?:
   "access_request.submitted": { en: "Access request submitted", zh: "已提交存取申請" },
   "access_request.reviewed": { en: "Access request opened by an operator", zh: "營運人員已開啟申請" },
   "access_request.information_requested": { en: "More information requested", zh: "已要求補充資料" },
-  "access_request.approved": { en: "Access request approved", zh: "存取申請已批准" },
+  "access_request.approved": { en: "Access request approved", zh: "存取申請已確認" },
   "access_request.rejected": { en: "Access request rejected", zh: "存取申請已拒絕" },
   // Distinct from workspace.claimed, which is the Google-attested path. Merging
   // them would make the ledger unable to tell an attested claim from an

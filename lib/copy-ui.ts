@@ -103,7 +103,7 @@ export const uiZhHK: UiCopy = {
   factTypes: {
     Observed: { label: "已觀察", description: "於所示時間直接在公開來源看到。" },
     Inference: { label: "推論", description: "根據證據作出的解讀，並非量度結果。" },
-    Recommended: { label: "建議", description: "建議的下一步；你核准前不會發生任何事。" },
+    Recommended: { label: "建議", description: "建議的下一步；你確認前不會發生任何事。" },
     Attributed: { label: "可能相關", description: "行動之後出現的變化；只代表時間先後，不證明由行動造成。" },
     Estimated: { label: "估算", description: "由樣本推算，可能與完整情況有出入。" },
     Unknown: { label: "未知", description: "無法從公開證據量度。" },
@@ -129,10 +129,10 @@ export const uiZhHK: UiCopy = {
   },
   approval: {
     versionLabel: "第 {n} 版",
-    locked: "核准會鎖定這個版本",
-    approve: "核准",
+    locked: "確認會鎖定這個版本",
+    approve: "確認",
     requestChanges: "要求修改",
-    viewerOnly: "只供查看：你的角色不能核准",
+    viewerOnly: "只供查看：你的角色不能確認",
   },
   diff: { title: "版本之間的改動", before: "修改前", after: "修改後", added: "新增", removed: "刪除", unchanged: "沒有改動" },
   states: {
@@ -161,7 +161,7 @@ export const uiZhTW: UiCopy = {
   factTypes: {
     Observed: { label: "已觀察", description: "於所示時間直接在公開來源看到。" },
     Inference: { label: "推論", description: "依據證據所做的解讀，並非量測結果。" },
-    Recommended: { label: "建議", description: "建議的下一步；你核准前不會執行任何動作。" },
+    Recommended: { label: "建議", description: "建議的下一步；你確認前不會執行任何動作。" },
     Attributed: { label: "可能相關", description: "行動之後出現的變化；僅代表時間先後，不證明由行動造成。" },
     Estimated: { label: "估算", description: "由樣本推算，可能與完整情況有落差。" },
     Unknown: { label: "未知", description: "無法從公開證據量測。" },
@@ -187,10 +187,10 @@ export const uiZhTW: UiCopy = {
   },
   approval: {
     versionLabel: "第 {n} 版",
-    locked: "核准會鎖定這個版本",
-    approve: "核准",
+    locked: "確認會鎖定這個版本",
+    approve: "確認",
     requestChanges: "要求修改",
-    viewerOnly: "僅供檢視：你的角色無法核准",
+    viewerOnly: "僅供檢視：你的角色無法確認",
   },
   diff: { title: "版本之間的變更", before: "變更前", after: "變更後", added: "新增", removed: "刪除", unchanged: "沒有變更" },
   states: {

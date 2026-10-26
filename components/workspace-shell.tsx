@@ -76,7 +76,7 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
   const locationName = location === "all" ? t.allLocations : (workspace.locations.find((item) => item.slug === location)?.name ?? location)
   const scopedHref = (href: string) => `${href}${href.includes("?") ? "&" : "?"}location=${location}`
   const usageShare = usagePercent(workspace.usage.approvedDeliveries, workspace.usage.allowance)
-  const actionsBadge = workspace.urgentActions && workspace.urgentActions > 0 ? String(workspace.urgentActions) : undefined
+  const actionsBadge = workspace.urgentActions && workspace.urgentActions > 0 ? interpolate(t.nav.urgent, { count: workspace.urgentActions }) : undefined
   const current = destinationFor(pathname, base)
   const isNewAction = pathname === `${base}/actions/new`
   const isActionDetail = !isNewAction && pathname.startsWith(`${base}/actions/`)

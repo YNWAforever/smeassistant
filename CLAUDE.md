@@ -1216,7 +1216,7 @@ evidence tab values from snapshot metrics; history from audit events; sticky app
 **Create / Assets / Calendar / Activity / Settings** — bind per §3.1; keep layouts; replace the sample rows.
 
 **Copy hygiene** — every new string exists in all three locales in `lib/copy.ts`; zh-HK uses 香港書面中文 (the prototype's register),
-zh-TW uses 台灣用語 (店家/核准/據點), en is concise British-neutral. Never mix locales in one string.
+zh-TW uses 台灣用語 (店家/據點; approval is 確認 in both Chinese locales, see Appendix D 2026-10-26), en is concise British-neutral. Never mix locales in one string.
 
 ---
 
@@ -1383,6 +1383,7 @@ corepack pnpm seed:demo --owned-test      # creates, seeds, verifies and destroy
 | 2026-10-21 | Screen-file tidy (Phase 9): merge duplicates and drop dead or unneeded rules pixel-identically; literal colours become tokens only under delta E 2, the rest are listed for Willy's decision; text on orange uses `--on-brand` | decided (Willy) |
 | 2026-10-21 | Shared classes and public pages (Phase 10): shared classes in a `pages.shared` sub-layer before `screens` (not `components`), public page rules in `pages.public`, light pixel-identical; unused legacy classes listed, not deleted | decided (Willy) |
 | 2026-10-21 | Legacy layer removed (Phase 11): unused legacy classes deleted; element defaults to `base`; the shadcn button/select overrides stay above utilities in `pages.shared`; pixel-identical | decided (Willy) |
+| 2026-10-26 | Owner glossary: approval is 確認 and waiting for approval is 待確認 in zh-HK and zh-TW (no 核准/批准/審批); the usage meter is 已用次數 (en "Used this month") with a note that only the first copy or export of a confirmed text counts; Google's listing is "Google 商家檔案" everywhere | decided (Willy) |
 | open | Retention periods on the Trust page; owned photos for `public/brand/` | Willy |
 | open | Whether the 13 local-only commits and stale worktrees in `Documents\smescanner` get archived (tag) and removed | Willy |
 | open | Re-pin cadence: when upstream changes `scoringVersion` or the lease, both apps must move together | Willy + upstream maintainer |

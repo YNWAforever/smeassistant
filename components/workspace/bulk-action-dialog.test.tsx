@@ -12,8 +12,12 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const draw = (locale: "en" | "zh-HK" | "zh-TW" = "en", key = "scope") => <BulkActionSelection key={key} locale={locale} workspaceId={id(99)} timezone="Asia/Hong_Kong" items={items} cards={items.map(i => <p key={i.actionId}>{i.title}</p>)} members={[]} />;
 it.each(["en", "zh-HK", "zh-TW"] as const)("%s requires explicit selection and preview before confirmation", locale => {
   render(draw(locale));
-  const trigger = screen.getByRole("button", { name: locale === "en" ? "Assign selected" : "分派已選行動" });
-  expect(trigger).toBeDisabled(); fireEvent.click(screen.getAllByRole("checkbox")[0]); fireEvent.click(trigger);
+  const name = locale === "en" ? "Assign selected" : "分派已選行動";
+  // No bulk bar until something is selected.
+  expect(screen.queryByRole("button", { name })).toBeNull();
+  fireEvent.click(screen.getAllByRole("checkbox")[0]);
+  const trigger = screen.getByRole("button", { name });
+  expect(trigger).toBeEnabled(); fireEvent.click(trigger);
   expect(screen.getByRole("dialog")).toBeVisible(); expect(screen.getByRole("button", { name: locale === "en" ? "Confirm changes" : "確認變更" })).toBeDisabled();
   expect(fetchMock).not.toHaveBeenCalled();
 });
@@ -46,7 +50,7 @@ it("retains explicit selection across pages and clears it with a new filter scop
   const view = render(draw()); fireEvent.click(screen.getAllByRole("checkbox")[0]);
   view.rerender(<BulkActionSelection key="scope" locale="en" workspaceId={id(99)} timezone="Asia/Hong_Kong" items={[]} cards={[]} members={[]} />);
   expect(screen.getByText("1 selected (maximum 50)")).toBeVisible();
-  view.rerender(draw("en", "changed-filter")); expect(screen.getByText("0 selected (maximum 50)")).toBeVisible();
+  view.rerender(draw("en", "changed-filter")); expect(screen.queryByRole("button", { name: "Assign selected" })).toBeNull();
 });
 it("caps explicit selection at 50 without offering all query results", () => {
   const many = Array.from({ length: 51 }, (_, i) => ({ ...items[0], actionId: id(i+1), title: `Action ${i+1}` }));

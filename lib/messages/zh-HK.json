@@ -102,8 +102,8 @@
   },
   "commercial": {
     "notOpen": "訂閱暫未開放 — 請聯絡 Fimmick",
-    "allowanceLine": "免費工作台：每月 {count} 次核准後交付",
-    "unlimitedLine": "每月不限核准後交付次數"
+    "allowanceLine": "免費工作台：每月可用 {count} 次",
+    "unlimitedLine": "每月次數不限"
   },
   "pause": {
     "scans": "掃描正暫停維護。你的掃描已儲存，請稍後再試。",
@@ -111,6 +111,7 @@
     "ai": "AI 草稿生成正暫停維護。沒有計算任何用量，請稍後再試。"
   },
   "mail": {
+    "eyebrow": "電郵",
     "allowTitle": "允許此工作台發送以下電郵",
     "myEmailsTitle": "我的電郵",
     "rescanComplete": "重新掃描完成",

@@ -24,7 +24,7 @@ for (const item of [
     }
     await expect(page).toHaveURL(new RegExp(`/${item.locale}/owner/select-workspace$`));
     await expect(page.getByRole("link", { name: /Acceptance HK/ }).first()).toBeVisible();
-    const signOut = page.getByRole("button", { name: /Sign out and use another email|登出.*登入/ });
+    const signOut = page.getByRole("button", { name: /Sign out and use another account|登出並(轉|改)用另一個帳戶/ });
     await signOut.focus();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/owner\/sign-in\?/);

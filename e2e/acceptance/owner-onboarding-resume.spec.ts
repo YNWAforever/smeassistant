@@ -52,7 +52,7 @@ for (const item of [
     await waitForHydration(other);
     await other.getByRole("combobox", { name: item.locale === "en" ? "Choose voice" : "選擇語氣" }).click();
     await other.getByRole("option", { name: item.locale === "en" ? "Short and direct" : "簡短直接", exact: true }).click();
-    await other.getByLabel(item.locale === "en" ? "Approved claims (one per line)" : "已核准字句（每行一項）").fill("New confirmed fixture claim");
+    await other.getByLabel(item.locale === "en" ? "Approved claims (one per line)" : "已確認字句（每行一項）").fill("New confirmed fixture claim");
     const updated = other.waitForResponse(r => r.url().endsWith(`/api/workspaces/${merchant.workspaceId}/brand`) && r.request().method() === "PUT");
     await other.getByRole("button", { name: item.locale === "en" ? "Save current profile" : "儲存目前品牌資料", exact: true }).click();
     const update = await updated;

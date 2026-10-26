@@ -79,6 +79,9 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
   // all-locations view never has a snapshot (no aggregate score), so it only
   // falls back to the quiet copy when nothing is open.
   const hasLocations = locations.length > 0
+  // "Other" tasks: the open total minus the one already shown above it.
+  const openTotal = brief.openActionCount ?? brief.openActions.length
+  const otherTasks = Math.max(0, openTotal - (priority ? 1 : 0))
   // An open action is real work whatever the snapshot state, so it always wins.
   const unscanned = !priority && (!hasLocations || (location !== "all" && !snapshot))
   const pageTitle = priority || followUp ? t.title : unscanned ? t.noScanTitle : t.quietTitle
@@ -117,6 +120,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
             <>
               <h2>{resolveText(priority.title, locale)}</h2>
               <p className="coach-sentence">{resolveText(priority.summary, locale)}</p>
+              {brief.priorityPreview && <blockquote className="brief-draft-preview" data-testid="home-draft-preview">{brief.priorityPreview}</blockquote>}
               <div className="brief-priority-actions"><Button asChild size="lg"><Link href={actionHref(locale, workspaceSlug, priority, location)}>{priorityCta}<ArrowRight /></Link></Button></div>
             </>
           ) : followUp ? null : (
@@ -145,7 +149,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         </article>}
       </section>
 
-      {!priority && !followUp && (brief.openActionCount ?? brief.openActions.length) === 0 && gettingStarted}
+      {!priority && !followUp && openTotal === 0 && gettingStarted}
 
       {problems}
 
@@ -154,10 +158,10 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         <Link href={withLocation(`${base}/insights`, location)}>{focus.results}<ArrowRight /></Link>
       </section>
 
-      <section className="owner-tasks-disclosure" aria-label={focus.otherTasks}>
-        <p>{focus.otherTasks} <Badge variant="outline">{brief.openActionCount ?? brief.openActions.length}</Badge></p>
+      {otherTasks > 0 && <section className="owner-tasks-disclosure" aria-label={focus.otherTasks}>
+        <p>{focus.otherTasks} <Badge variant="outline">{otherTasks}</Badge></p>
         <Link href={withLocation(`${base}/actions`, location)}>{focus.allTasks}<ArrowRight /></Link>
-      </section>
+      </section>}
 
       {/* Scores and supporting records stay available without competing with the coach. */}
       <details className="trust-disclosure owner-priority-evidence">

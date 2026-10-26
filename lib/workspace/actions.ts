@@ -223,7 +223,7 @@ export function deriveActions(input: DeriveActionsInput): DerivedAction[] {
         value: google ? google.status : "not_connected",
         detail: google
           ? localized(`The Google connection is ${google.status}.`, `Google 連接狀態：${google.status}。`)
-          : localized("Google Business Profile is not connected.", "尚未連接 Google 商戶檔案。"),
+          : localized("Google Business Profile is not connected.", "尚未連接 Google 商家檔案。"),
       }),
     );
   }

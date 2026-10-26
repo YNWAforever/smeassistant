@@ -28,7 +28,7 @@ const homeReviewZh = {
   check: "核對已儲存回覆", view: "查看已儲存核對", next: "下一步：",
   compare: "比對商戶、指定評論及此已儲存回覆。",
   independent: "獨立驗證仍待核實；店主聲明不代表已發佈或成效改善。",
-  newerDraft: "第 {n} 版是另一份待審草稿；此核對及已套用聲明只屬第 {applied} 版。",
+  newerDraft: "第 {n} 版是另一份待確認草稿；此核對及已套用聲明只屬第 {applied} 版。",
   reviewDraft: "審閱第 {n} 版草稿", returnHome: "返回今日首頁",
   returnBlocked: "請先儲存這份核對再返回。若結果未確認，請重試儲存；輸入會保留。",
   missingVersion: "無法讀取指定的已儲存版本",
@@ -80,7 +80,7 @@ export function normaliseLocale(value: string | undefined): PrototypeLocale {
 /**
  * Production copy for the public funnel (Phase 1). Every string exists in all
  * three locales; zh-HK is written Chinese in the prototype's register, zh-TW
- * uses Taiwan wording (店家／核准／據點), en is concise British-neutral.
+ * uses Taiwan wording (店家／確認／據點), en is concise British-neutral.
  * Data-derived labels (finding keys, module names, severities, candidate-search
  * errors, consent sentences) come from the upstream message bundle instead
  * (lib/i18n.ts + lib/messages/*.json).
@@ -462,7 +462,8 @@ export type Copy = {
     noComparable: string
   }
   ownerFocus: {
-    why: string
+    /** Each folded panel on the task screen is named for what it holds. */
+    panels: { version: string; finding: string; altText: string; brandCheck: string; applied: string; technical: string }
     results: string
     otherTasks: string
     allTasks: string

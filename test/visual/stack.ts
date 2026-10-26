@@ -57,7 +57,7 @@ function seedStates(env: AcceptanceEnvironment, merchant: MerchantSeed): VisualS
      insert into output_versions(workspace_id,action_id,version_no,body,author_type,author_user_id,approval_state,approved_by,approved_at,delivery_state,created_at) values
       ('${merchant.workspaceId}','${ids.approved}',2,'Thank you for visiting us. We are glad you enjoyed the noodles, and we will pass your kind words to the kitchen.','user','${owner}','approved','${owner}','${AT.v2}','export_ready','${AT.v2}');`,
     `insert into workspace_notifications(workspace_id,user_id,kind,title,body,href,read_at,created_at) values
-      ('${merchant.workspaceId}','${owner}','version.approved',${text("Reply approved", "回覆已批准")},${text("Version 2 is ready to export.", "第 2 版可以匯出。")},null,null,'${AT.v2}'),
+      ('${merchant.workspaceId}','${owner}','version.approved',${text("Reply approved", "回覆已確認")},${text("Version 2 is ready to export.", "第 2 版可以匯出。")},null,null,'${AT.v2}'),
       ('${merchant.workspaceId}','${owner}','scan.completed',${text("Scan finished", "掃描完成")},null,null,'${AT.scan}','${AT.scan}');`,
   ].join("\n"));
   return ids;

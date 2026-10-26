@@ -54,7 +54,8 @@ export function BulkActionSelection({ locale, workspaceId, timezone, items, card
   const status = (r: AssignmentResult) => ({ updated: text("Updated", "已更新"), no_change: text("Already set; no change", "設定相同，無需更改"), forbidden: text("Not eligible in current scope", "目前權限範圍不適用"), not_found: text("Unavailable", "無法存取"), conflict: text("Changed since preview; read again", "預覽後已變更，請重新讀取"), failed: text("Could not confirm; read again", "未能確認，請重新讀取") })[r.status];
   const valueText = (value: { assignee_user_id: string | null; due_at: string | null }) => `${members.find(m => m.id === value.assignee_user_id)?.name ?? (value.assignee_user_id ? text("Assigned member", "已指派成員") : text("Unassigned", "未指派"))} · ${value.due_at ? formatDateTime(value.due_at, locale, timezone) : text("No due date", "沒有到期日")}`;
   return <>
-    <div className="flex flex-wrap items-center gap-3 py-3">
+    {/* The bar appears once something is selected; until then each card's checkbox is the only control. */}
+    <div className="flex flex-wrap items-center gap-3 py-3" hidden={selected.size === 0 && !open}>
       <span role="status">{text(`${selected.size} selected (maximum 50)`, `已選 ${selected.size} 項（最多 50 項）`)}</span>
       <Button variant="outline" disabled={!selected.size || busy} onClick={() => setSelected(new Map())}>{text("Clear selection", "清除選取")}</Button>
       <Dialog open={open} onOpenChange={next => { if (busy) return; setOpen(next); if (next) { setPreview([]); setResults([]); setError(""); } }}>
@@ -76,6 +77,6 @@ export function BulkActionSelection({ locale, workspaceId, timezone, items, card
         </DialogContent>
       </Dialog>
     </div>
-    <div className="action-list">{items.length ? items.map((item, index) => <div key={item.actionId}><label className="flex min-h-11 items-center gap-2 py-2"><input type="checkbox" checked={selected.has(item.actionId)} disabled={item.closed || (!selected.has(item.actionId) && selected.size >= 50)} onChange={e => { setSelected(previous => { const next = new Map(previous); if (e.target.checked) next.set(item.actionId, item); else next.delete(item.actionId); return next; }); }} />{text(`Select ${item.title}`, `選取 ${item.title}`)}</label>{cards[index]}</div>) : <p>{text("No actions on this page. Change the filters or refresh the list.", "本頁沒有行動，請更改篩選或重新載入清單。")}</p>}</div>
+    <div className="action-list">{items.length ? items.map((item, index) => <div key={item.actionId}><label className="flex min-h-11 items-center gap-2 py-2"><input type="checkbox" checked={selected.has(item.actionId)} disabled={item.closed || (!selected.has(item.actionId) && selected.size >= 50)} onChange={e => { setSelected(previous => { const next = new Map(previous); if (e.target.checked) next.set(item.actionId, item); else next.delete(item.actionId); return next; }); }} /><span aria-hidden="true">{text("Select", "選取")}</span><span className="sr-only">{text(`Select ${item.title}`, `選取 ${item.title}`)}</span></label>{cards[index]}</div>) : <p>{text("No actions on this page. Change the filters or refresh the list.", "本頁沒有行動，請更改篩選或重新載入清單。")}</p>}</div>
   </>;
 }

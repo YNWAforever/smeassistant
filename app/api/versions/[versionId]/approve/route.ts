@@ -48,11 +48,11 @@ export async function POST(
         kind: "version.approved",
         title: localized(
           `Version ${result.versionNo} approved`,
-          `第 ${result.versionNo} 版已批准`,
+          `第 ${result.versionNo} 版已確認`,
         ),
         body: localized(
           "The approved version is ready to export.",
-          "已批准的版本可以匯出。",
+          "已確認的版本可以匯出。",
         ),
         href: home ? `${home}/actions/${auth.scope.actionId}` : null,
       });

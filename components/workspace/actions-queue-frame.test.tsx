@@ -23,7 +23,7 @@ describe("Actions queue frame (Phase 4)", () => {
     const more = root.querySelector("details")!;
     expect(more).not.toBeNull();
     expect(more.hasAttribute("open")).toBe(false);
-    expect(more.querySelector("summary")?.textContent).toBe("More");
+    expect(more.querySelector("summary")?.textContent).toBe("Due dates and Fimmick drafts");
     expect([...more.querySelectorAll("a")].map(a => a.getAttribute("href"))).toEqual([
       `${base}/actions?location=yik-yam&view=due`, `${base}/actions?location=yik-yam&view=fixpack`,
     ]);

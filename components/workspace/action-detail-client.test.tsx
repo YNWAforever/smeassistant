@@ -1126,7 +1126,7 @@ describe("the owner's applied assertion", () => {
     expect(document.querySelector(".action-detail-badges")?.textContent).toContain("已套用（店主回報）");
     expect(document.querySelector(".action-verification-result")?.textContent).toContain("到 Google 核對回覆");
     // The immutable version approval remains visible in its own record.
-    expect(document.querySelector(".version-approval-record")?.textContent).toContain("第 1 版已核准");
+    expect(document.querySelector(".version-approval-record")?.textContent).toContain("第 1 版已確認");
   });
 
   it("hides the control from viewers", () => {
@@ -1477,8 +1477,8 @@ describe("the brand guardrail panel names the P4.4 shared checks", () => {
   // in every locale.
   const EXPECTED = {
     en: ["Contains a link you did not supply — check it before approving.", "Mentions a price or superlative that is not in your confirmed facts — check it before approving.", "2 flagged"],
-    "zh-HK": ["含有你沒有提供的連結，審批前請先檢查。", "提及你未確認的價錢或誇大字眼，審批前請先檢查。", "2 項違規"],
-    "zh-TW": ["包含你沒有提供的連結，核准前請先確認。", "提到你未確認的價格或誇大用語，核准前請先確認。", "2 項違規"],
+    "zh-HK": ["含有你沒有提供的連結，確認前請先檢查。", "提及你未確認的價錢或誇大字眼，確認前請先檢查。", "2 項違規"],
+    "zh-TW": ["包含你沒有提供的連結，確認前請先確認。", "提到你未確認的價格或誇大用語，確認前請先確認。", "2 項違規"],
   } as const;
 
   it.each(Object.keys(EXPECTED) as Array<keyof typeof EXPECTED>)("renders both codes as guardrail findings in %s", (locale) => {

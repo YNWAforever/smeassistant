@@ -35,7 +35,14 @@ it.each(["en", "zh-HK", "zh-TW"] as const)("%s shows a bounded page and scoped n
   expect(Object.fromEntries(url.searchParams)).toMatchObject({ location: "all", channel: "google", status: "recommended", view: "drafts", pageSize: "50", cursor: "opaque_next", q: "reply", assignee: "unassigned", due: "today" });
   expect(screen.queryByRole("checkbox")).toBeNull();
   for (const link of screen.getAllByRole("link").filter(link => link.getAttribute("aria-current") !== null)) expect(link.getAttribute("href")).not.toContain("cursor");
-  expect(screen.getByText(locale === "en" ? "Refresh first page" : "重新載入第一頁")).toBeVisible();
+  // On a later page (cursor set) the list offers a way back to the first page.
+  expect(screen.getByText({ en: "Back to the first page", "zh-HK": "返去第一頁", "zh-TW": "回到第一頁" }[locale])).toBeVisible();
+});
+
+it("offers no first-page link on the first page", () => {
+  render(<ActionsListView locale="en" workspaceSlug="shop" workspaceId="w" timezone="Asia/Hong_Kong" role="viewer" locations={[]} locationId={null}
+    filters={{ location: "all" }} result={{ actions: [], counts: { all: 0, drafts: 0, needs_input: 0, awaiting_approval: 0, completed: 0 }, nextCursor: null, hasMore: false }} />);
+  expect(screen.queryByText("Back to the first page")).toBeNull();
 });
 
 it("gives each card a Preview link that keeps the list filters, and places the panel beside the list", () => {
@@ -95,13 +102,17 @@ it("shows waiting work in server order with search only, without capability or p
 });
 
 
-it("keeps fact labels and lifecycle explanations inside closed trust disclosures", () => {
+it("keeps evidence in a closed disclosure and the card summary in view", () => {
   const action = buildActionOverview(row, { location: null, latestRun: null, latestVersion: null });
   const { container } = render(<ActionsListView locale="zh-HK" workspaceSlug="shop" workspaceId="w" timezone="Asia/Hong_Kong" role="owner" locations={[]} locationId={null}
     filters={{}} result={{ actions: [action], counts: { all: 1, drafts: 0, needs_input: 0, awaiting_approval: 0, completed: 0 }, nextCursor: null, hasMore: false }} />);
   const evidence = container.querySelector(".action-evidence")!;
   expect(evidence.closest("details")?.hasAttribute("open")).toBe(false);
-  expect(evidence.closest("details")?.querySelector("summary")?.textContent).toBe("點解咁講");
+  expect(evidence.closest("details")?.querySelector("summary")?.textContent).toBe("睇證據");
+  // Priority, state and time needed are on the card, not folded away.
+  const card = container.querySelector(".action-card")!;
+  expect(card.querySelector(".action-card-badges")?.closest("details")).toBeNull();
+  expect(card.querySelector(".action-card-effort")?.textContent).toMatch(/\d/);
   expect(container.querySelector(".queue-footnote")?.closest("details")?.hasAttribute("open")).toBe(false);
 });
 

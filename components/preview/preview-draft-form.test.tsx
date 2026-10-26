@@ -142,8 +142,8 @@ describe("PreviewDraftForm", () => {
     expect(copy["zh-HK"].funnel.preview.notKept).toBe("此草稿不會保留，如需要請立即複製。");
     expect(copy["zh-TW"].funnel.preview.notKept).toBe("此草稿不會保留，如需要請立即複製。");
     expect(copy.en.funnel.preview.cta).toBe("Verify ownership to save and approve drafts");
-    expect(copy["zh-HK"].funnel.preview.cta).toBe("驗證擁有權以儲存及核准草稿");
-    expect(copy["zh-TW"].funnel.preview.cta).toBe("驗證擁有權以儲存並核准草稿");
+    expect(copy["zh-HK"].funnel.preview.cta).toBe("驗證擁有權以儲存及確認草稿");
+    expect(copy["zh-TW"].funnel.preview.cta).toBe("驗證擁有權以儲存並確認草稿");
     expect(copy.en.funnel.preview.submit).toBe("Draft a reply");
     expect(copy["zh-HK"].funnel.preview.submit).toBe("草擬回覆");
     expect(copy["zh-TW"].funnel.preview.submit).toBe("草擬回覆");

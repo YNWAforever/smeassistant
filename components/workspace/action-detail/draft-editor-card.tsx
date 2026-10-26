@@ -33,9 +33,9 @@ export function DraftEditorCard({ ed }: { ed: ActionEditor }) {
   const step = editorStep(ed)
   return (
     <SectionCard className="draft-editor-card">
-      <div className="section-card-heading"><div>{checklistSteps && <p className="eyebrow">{checklistSteps.where}</p>}<h2>{checklistSteps ? checklistCopy.heading : step === 0 ? ac.ownerSteps.edit : step === 1 ? ac.ownerSteps.confirm : ac.ownerSteps.send}</h2></div><details><summary>{copy[locale].ownerFocus.why}</summary><Badge variant="outline">{checklistSteps ? stateLabel(action.actionState, locale) : versionName}</Badge>{!checklistSteps && selectedVersion && <Badge variant="outline">{originLabel(selectedVersion.origin, locale)}</Badge>}</details></div>
+      <div className="section-card-heading"><div>{checklistSteps && <p className="eyebrow">{checklistSteps.where}</p>}<h2>{checklistSteps ? checklistCopy.heading : step === 0 ? ac.ownerSteps.edit : step === 1 ? ac.ownerSteps.confirm : ac.ownerSteps.send}</h2></div><details><summary>{copy[locale].ownerFocus.panels.version}</summary><Badge variant="outline">{checklistSteps ? stateLabel(action.actionState, locale) : versionName}</Badge>{!checklistSteps && selectedVersion && <Badge variant="outline">{originLabel(selectedVersion.origin, locale)}</Badge>}</details></div>
       {social && approvedAssets.length > 0 && <div className="asset-reference"><span><FileImage /></span><div><strong>{approvedAssets[0].filename}</strong><small>{fill(ac.editor.approvedAsset, { n: approvedAssets.length })}</small></div><Badge variant="outline">{ac.editor.approved}</Badge></div>}
-      <details className="owner-disclosure"><summary>{copy[locale].ownerFocus.why}</summary><div className="original-context"><FactType type={action.evidence.factType} /><div><strong>{ac.editor.sourceFinding}</strong><p>{resolveText(action.evidence.detail, locale)}</p><small>{formatDateTime(action.evidence.observedAt, locale, timezone)} · {ac.editor.sourcePreserved}</small></div></div></details>
+      <details className="owner-disclosure"><summary>{copy[locale].ownerFocus.panels.finding}</summary><div className="original-context"><FactType type={action.evidence.factType} /><div><strong>{ac.editor.sourceFinding}</strong><p>{resolveText(action.evidence.detail, locale)}</p><small>{formatDateTime(action.evidence.observedAt, locale, timezone)} · {ac.editor.sourcePreserved}</small></div></div></details>
       {offer && (
         <div className="brand-check-panel" data-testid="offer-card">
           <div className="brand-check-head">
@@ -77,14 +77,14 @@ export function DraftEditorCard({ ed }: { ed: ActionEditor }) {
       {step === 0 && <DraftInputs ed={ed} />}
       {!checklistSteps && (<>
       <div className="field-stack"><Label htmlFor="draft-content">{social ? ac.editor.caption : ac.editor.draft}</Label><Textarea id="draft-content" value={content} onChange={(event) => setContent(event.target.value)} readOnly={step !== 0} rows={social ? 8 : 7} disabled={step === 0 && !canEdit} placeholder={selectedVersion ? undefined : ac.editor.placeholder} /><div className="field-helper-row"><span>{content.length} {ac.editor.characters}</span><span>{selectedVersion ? formatDateTime(selectedVersion.created_at, locale, timezone) : ""}</span></div></div>
-      {step !== 0 && altText && <details><summary>{copy[locale].ownerFocus.why}</summary><p>{ac.editor.altText}: {altText}</p></details>}
+      {step !== 0 && altText && <details><summary>{copy[locale].ownerFocus.panels.altText}</summary><p>{ac.editor.altText}: {altText}</p></details>}
       {step === 0 && (social || altText) && <div className="field-stack"><Label htmlFor="alt-text">{ac.editor.altText}</Label><Textarea id="alt-text" value={altText} onChange={(event) => setAltText(event.target.value)} rows={3} disabled={!canEdit} /><small>{ac.editor.altTextNote}</small></div>}
       {/* The agents compute guardrail violations and artifacts.ts
           persists them into meta.warnings, but nothing ever read them
           back: this panel showed a hard-coded "1 reminder" on every
           draft, so a prohibited brand term or a compensation promise
           looked exactly like a clean one to the person approving it. */}
-      <details className="owner-disclosure"><summary>{copy[locale].ownerFocus.why}</summary><div className="brand-check-panel"><div className="brand-check-head"><ShieldCheck /><div><strong>{ac.editor.guardrailTitle}</strong><span>{ac.editor.guardrailSubtitle}</span></div><Badge variant="outline">{guardrailBadge}</Badge></div>
+      <details className="owner-disclosure"><summary>{copy[locale].ownerFocus.panels.brandCheck}</summary><div className="brand-check-panel"><div className="brand-check-head"><ShieldCheck /><div><strong>{ac.editor.guardrailTitle}</strong><span>{ac.editor.guardrailSubtitle}</span></div><Badge variant="outline">{guardrailBadge}</Badge></div>
         {guardrailFlags.length > 0
           ? <ul className="evidence-list">{guardrailFlags.map((flag, index) => <li key={`${flag.code}-${index}`}><AlertTriangle /> <span>{guardrailText(flag, locale)}</span></li>)}</ul>
           : <p><ShieldCheck /> {selectedVersion?.checked
@@ -122,7 +122,7 @@ export function DraftEditorCard({ ed }: { ed: ActionEditor }) {
           markup on it would make the control vanish server-side and
           mid-request. A viewer has nothing to assert, so they get no
           control at all rather than a disabled one. */}
-      {!checklistSteps && <details className="owner-disclosure"><summary>{copy[locale].ownerFocus.why}</summary>
+      {!checklistSteps && <details className="owner-disclosure"><summary>{copy[locale].ownerFocus.panels.applied}</summary>
         <AppliedAssertion ed={ed} />
       </details>}
       {checklistSteps && <AppliedAssertion ed={ed} />}

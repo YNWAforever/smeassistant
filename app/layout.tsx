@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     // appended once here so no page has to repeat it.
     template: "%s · Kinnso OS",
   },
-  description: "為中小企而設的證據優先能見度工作台：找出變化、準備行動、由店主審批，再以重新掃描證明改善。",
+  description: "為中小企而設的證據優先能見度工作台：找出變化、準備行動、由店主確認，再以重新掃描證明改善。",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

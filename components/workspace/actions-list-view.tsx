@@ -1,6 +1,6 @@
 import Link from "next/link"
 import type { ReactNode } from "react"
-import { ArrowRight, MapPin, ShieldCheck } from "lucide-react"
+import { ArrowRight, Clock3, MapPin, ShieldCheck } from "lucide-react"
 
 import { EmptyState } from "@/components/kinnso/states"
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
@@ -73,11 +73,12 @@ function ActionCard({ action, locale, base, timezone, location, previewHref }: {
         <span className="action-scope"><MapPin />{resolveText(action.location.name, locale)}</span>
       </div>
       <div className="action-card-content"><div><h2>{resolveText(action.title, locale)}</h2><p>{resolveText(action.summary, locale)}</p></div></div>
-      <details className="trust-disclosure">
-        <summary>{copy[locale].home.trust}</summary>
-        <div className="action-card-badges"><Badge variant="outline" className={priorityClass(action.priority)}>{priorityLabel(action.priority, locale)}</Badge><Badge variant="outline">{resolveText(action.displayPhase, locale)}</Badge></div>
+      {/* What an owner scans the list for, without opening anything: how urgent, where it stands, how long it takes. */}
+      <div className="action-card-badges"><Badge variant="outline" className={priorityClass(action.priority)}>{priorityLabel(action.priority, locale)}</Badge><Badge variant="outline">{resolveText(action.displayPhase, locale)}</Badge><span className="action-card-effort"><Clock3 aria-hidden="true" />{effortLabel(action.effortMinutes, locale)}</span></div>
+      <details className="trust-disclosure action-card-evidence">
+        <summary>{pc.seeEvidence}</summary>
         <div className="action-evidence"><p className="eyebrow">{sourceLabel(action.evidence.source, locale)}</p><FactType type={action.evidence.factType} />{action.evidence.value && <strong className="action-evidence-value">{evidenceValueLabel(action.evidence.value, locale)}</strong>}<p>{resolveText(action.evidence.detail, locale)}</p><small>{[resolveText(action.evidence.freshness, locale), formatDateTime(action.evidence.observedAt, locale, timezone)].filter(Boolean).join(" · ")}</small></div>
-        <dl className="action-card-meta"><div><dt>{pc.ownerEffort}</dt><dd>{effortLabel(action.effortMinutes, locale)}</dd></div><div><dt>{pc.assignee}</dt><dd className="break-all">{assigneeName}</dd></div><div><dt>{pc.due}</dt><dd>{action.dueAt ? formatDateTime(action.dueAt, locale, timezone) : "—"}</dd></div><div><dt>{pc.inputs}</dt><dd>{action.missingInputs.length ? (fill(pc.missing, { missingInputs: action.missingInputs.length })) : pc.ready}</dd></div></dl>
+        <dl className="action-card-meta"><div><dt>{pc.assignee}</dt><dd className="break-all">{assigneeName}</dd></div><div><dt>{pc.due}</dt><dd>{action.dueAt ? formatDateTime(action.dueAt, locale, timezone) : "—"}</dd></div><div><dt>{pc.inputs}</dt><dd>{action.missingInputs.length ? (fill(pc.missing, { missingInputs: action.missingInputs.length })) : pc.ready}</dd></div></dl>
       </details>
       <div className="action-card-footer"><span>{pc.lastChanged}{formatDateTime(action.updatedAt, locale, timezone)}</span><span className="action-card-links">{previewHref && <Link className="action-preview-link" href={previewHref} scroll={false}>{copy[locale].shell.panel.preview}</Link>}<Button asChild><Link href={href}>{cta}<ArrowRight /></Link></Button></span></div>
     </article>
@@ -133,7 +134,7 @@ export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, 
           <div className="queue-summary"><span><strong>{result.actions.length}</strong> {pc.actionsOnThisPage}</span><span>{pc.sortedByPriorityUpdate}</span></div>
           {result.actions.length === 0 ? <QueueEmpty locale={locale} filtered={Boolean(filters.q || filters.channel || filters.status || filters.assignee || filters.due || view !== "all")} clearHref={tabHref(base, { location: filters.location }, "all")} newHref={role === "viewer" ? null : withLocation(`${base}/actions/new`, location)} /> : bulkEnabled && role !== "viewer" ? <BulkActionSelection key={JSON.stringify([workspaceId,role,locationId,filters.q,filters.assignee,filters.due,filters.channel,filters.status,view])} locale={locale} workspaceId={workspaceId} timezone={timezone} members={members} items={result.actions.map(action => ({ actionId: action.id, expectedUpdatedAt: action.updatedAt, title: resolveText(action.title,locale), closed: ["completed","dismissed","cancelled","expired"].includes(action.actionState) }))} cards={result.actions.map(card)} /> : <div className="action-list">{result.actions.map(card)}</div>}
           <nav className="queue-pages" aria-label={pc.listPages}>
-            <Link href={tabHref(base, filters, view)}>{pc.refreshFirstPage}</Link>
+            {filters.cursor && <Link href={tabHref(base, filters, view)}>{pc.refreshFirstPage}</Link>}
             {result.nextCursor && <Link href={`${tabHref(base, filters, view)}${tabHref(base, filters, view).includes("?") ? "&" : "?"}cursor=${encodeURIComponent(result.nextCursor)}`}>{pc.nextPage}</Link>}
           </nav>
         </div>

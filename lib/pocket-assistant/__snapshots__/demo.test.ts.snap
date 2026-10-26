@@ -27,7 +27,7 @@ exports[`createDemoAssistantRun > asset_next_step / en 1`] = `
 
 exports[`createDemoAssistantRun > asset_next_step / zh-HK 1`] = `
 {
-  "answer": "目前已核准午市套餐相片可支援本週社交帖文；餐牌 PDF 仍需確認使用權與內容，未確認前不應交給圖片或海報能力作公開素材。",
+  "answer": "目前已確認午市套餐相片可支援本週社交帖文；餐牌 PDF 仍需確認使用權與內容，未確認前不應交給圖片或海報能力作公開素材。",
   "demoBoundary": "只使用已清理的錦汶館示範資料；不接受任意商戶、客戶或私人資料。",
   "evidenceRefs": [
     {
@@ -40,7 +40,7 @@ exports[`createDemoAssistantRun > asset_next_step / zh-HK 1`] = `
       "value": "最近確認帖文距今 16 日",
     },
   ],
-  "nextAction": "先用已核准相片建立社交草稿；把餐牌素材保留在『需要審閱』。",
+  "nextAction": "先用已確認相片建立社交草稿；把餐牌素材保留在『需要審閱』。",
   "requiresApproval": false,
   "runId": "demo_run_00000000-0000-4000-8000-000000000000",
   "state": "completed",
@@ -52,7 +52,7 @@ exports[`createDemoAssistantRun > asset_next_step / zh-HK 1`] = `
 
 exports[`createDemoAssistantRun > asset_next_step / zh-TW 1`] = `
 {
-  "answer": "目前已核准午市套餐相片可支援本週社交帖文；餐牌 PDF 仍需確認使用權與內容，未確認前不應交給圖片或海報能力作公開素材。",
+  "answer": "目前已確認午市套餐相片可支援本週社交帖文；餐牌 PDF 仍需確認使用權與內容，未確認前不應交給圖片或海報能力作公開素材。",
   "demoBoundary": "只使用已清理的錦汶館示範資料；不接受任意商戶、客戶或私人資料。",
   "evidenceRefs": [
     {
@@ -65,7 +65,7 @@ exports[`createDemoAssistantRun > asset_next_step / zh-TW 1`] = `
       "value": "最近確認帖文距今 16 日",
     },
   ],
-  "nextAction": "先用已核准相片建立社交草稿；把餐牌素材保留在『需要審閱』。",
+  "nextAction": "先用已確認相片建立社交草稿；把餐牌素材保留在『需要審閱』。",
   "requiresApproval": false,
   "runId": "demo_run_00000000-0000-4000-8000-000000000000",
   "state": "completed",
@@ -224,7 +224,7 @@ exports[`createDemoAssistantRun > draft_review_reply / en 1`] = `
     "acceptanceCriteria": [
       "不加入未確認事實",
       "不作過度承諾",
-      "由店主核准指定版本",
+      "由店主確認指定版本",
     ],
     "artifactId": "artifact_kmh_reply_demo",
     "body": "多謝你喜歡我們的食物，也謝謝你坦白告訴我們星期五午市等候較久。這次體驗未如理想，我們已把意見交給店內團隊跟進繁忙時段的安排。希望下次再見時，能為你帶來更順暢的體驗。",
@@ -256,12 +256,12 @@ exports[`createDemoAssistantRun > draft_review_reply / zh-HK 1`] = `
       "value": "18% · 7 則待回覆",
     },
   ],
-  "nextAction": "由店主檢查語氣及事實，建立新版本後才可核准；不會自動發佈。",
+  "nextAction": "由店主檢查語氣及事實，建立新版本後才可確認；不會自動發佈。",
   "output": {
     "acceptanceCriteria": [
       "不加入未確認事實",
       "不作過度承諾",
-      "由店主核准指定版本",
+      "由店主確認指定版本",
     ],
     "artifactId": "artifact_kmh_reply_demo",
     "body": "多謝你喜歡我們的食物，也謝謝你坦白告訴我們星期五午市等候較久。這次體驗未如理想，我們已把意見交給店內團隊跟進繁忙時段的安排。希望下次再見時，能為你帶來更順暢的體驗。",
@@ -293,12 +293,12 @@ exports[`createDemoAssistantRun > draft_review_reply / zh-TW 1`] = `
       "value": "18% · 7 則待回覆",
     },
   ],
-  "nextAction": "由店主檢查語氣及事實，建立新版本後才可核准；不會自動發佈。",
+  "nextAction": "由店主檢查語氣及事實，建立新版本後才可確認；不會自動發佈。",
   "output": {
     "acceptanceCriteria": [
       "不加入未確認事實",
       "不作過度承諾",
-      "由店主核准指定版本",
+      "由店主確認指定版本",
     ],
     "artifactId": "artifact_kmh_reply_demo",
     "body": "多謝你喜歡我們的食物，也謝謝你坦白告訴我們星期五午市等候較久。這次體驗未如理想，我們已把意見交給店內團隊跟進繁忙時段的安排。希望下次再見時，能為你帶來更順暢的體驗。",
@@ -799,7 +799,7 @@ exports[`createDemoAssistantRun > explain_priority / zh-HK 1`] = `
       "value": "31%",
     },
   ],
-  "nextAction": "先審閱最近 7 則評論的回覆草稿，再由店主核准指定版本。",
+  "nextAction": "先審閱最近 7 則評論的回覆草稿，再由店主確認指定版本。",
   "requiresApproval": false,
   "runId": "demo_run_00000000-0000-4000-8000-000000000000",
   "state": "completed",
@@ -833,7 +833,7 @@ exports[`createDemoAssistantRun > explain_priority / zh-TW 1`] = `
       "value": "31%",
     },
   ],
-  "nextAction": "先審閱最近 7 則評論的回覆草稿，再由店主核准指定版本。",
+  "nextAction": "先審閱最近 7 則評論的回覆草稿，再由店主確認指定版本。",
   "requiresApproval": false,
   "runId": "demo_run_00000000-0000-4000-8000-000000000000",
   "state": "completed",
@@ -862,7 +862,7 @@ exports[`createDemoAssistantRun > fallback_plan / en 1`] = `
   "output": {
     "acceptanceCriteria": [
       "7 則近期評論已有店主回覆",
-      "核准版本及匯出時間已記錄",
+      "確認版本及匯出時間已記錄",
       "重掃使用相同地點、來源及量度規則",
     ],
     "artifactId": "artifact_kmh_review_recovery",
@@ -880,7 +880,7 @@ exports[`createDemoAssistantRun > fallback_plan / en 1`] = `
 
 exports[`createDemoAssistantRun > fallback_plan / zh-HK 1`] = `
 {
-  "answer": "如果再次跌至 18%，本星期先處理最近 7 則未回覆評論；把投訴、一般意見及讚賞分批，先處理需要回應的服務問題。完成後記錄核准版本及匯出時間，再安排相同條件重掃。",
+  "answer": "如果再次跌至 18%，本星期先處理最近 7 則未回覆評論；把投訴、一般意見及讚賞分批，先處理需要回應的服務問題。完成後記錄確認版本及匯出時間，再安排相同條件重掃。",
   "demoBoundary": "只使用已清理的錦汶館示範資料；不接受任意商戶、客戶或私人資料。",
   "evidenceRefs": [
     {
@@ -897,7 +897,7 @@ exports[`createDemoAssistantRun > fallback_plan / zh-HK 1`] = `
   "output": {
     "acceptanceCriteria": [
       "7 則近期評論已有店主回覆",
-      "核准版本及匯出時間已記錄",
+      "確認版本及匯出時間已記錄",
       "重掃使用相同地點、來源及量度規則",
     ],
     "artifactId": "artifact_kmh_review_recovery",
@@ -915,7 +915,7 @@ exports[`createDemoAssistantRun > fallback_plan / zh-HK 1`] = `
 
 exports[`createDemoAssistantRun > fallback_plan / zh-TW 1`] = `
 {
-  "answer": "如果再次跌至 18%，本星期先處理最近 7 則未回覆評論；把投訴、一般意見及讚賞分批，先處理需要回應的服務問題。完成後記錄核准版本及匯出時間，再安排相同條件重掃。",
+  "answer": "如果再次跌至 18%，本星期先處理最近 7 則未回覆評論；把投訴、一般意見及讚賞分批，先處理需要回應的服務問題。完成後記錄確認版本及匯出時間，再安排相同條件重掃。",
   "demoBoundary": "只使用已清理的錦汶館示範資料；不接受任意商戶、客戶或私人資料。",
   "evidenceRefs": [
     {
@@ -932,7 +932,7 @@ exports[`createDemoAssistantRun > fallback_plan / zh-TW 1`] = `
   "output": {
     "acceptanceCriteria": [
       "7 則近期評論已有店主回覆",
-      "核准版本及匯出時間已記錄",
+      "確認版本及匯出時間已記錄",
       "重掃使用相同地點、來源及量度規則",
     ],
     "artifactId": "artifact_kmh_review_recovery",
@@ -968,7 +968,7 @@ exports[`createDemoAssistantRun > friendlier_review_reply / en 1`] = `
     "acceptanceCriteria": [
       "另存新版本",
       "保留原始評論證據連結",
-      "核准前不可匯出或發佈",
+      "確認前不可匯出或發佈",
     ],
     "artifactId": "artifact_kmh_reply_friendlier",
     "body": "多謝你喜歡我們的食物，也謝謝你坦白告訴我們星期五午市等候較久。這次體驗未如理想，我們已把意見交給店內團隊跟進繁忙時段的安排。希望下次再見時，能為你帶來更順暢的體驗。",
@@ -998,12 +998,12 @@ exports[`createDemoAssistantRun > friendlier_review_reply / zh-HK 1`] = `
       "value": "18% · 7 則待回覆",
     },
   ],
-  "nextAction": "建立新的不可變更版本，再由有權限的店主或經理核准。",
+  "nextAction": "建立新的不可變更版本，再由有權限的店主或經理確認。",
   "output": {
     "acceptanceCriteria": [
       "另存新版本",
       "保留原始評論證據連結",
-      "核准前不可匯出或發佈",
+      "確認前不可匯出或發佈",
     ],
     "artifactId": "artifact_kmh_reply_friendlier",
     "body": "多謝你喜歡我們的食物，也謝謝你坦白告訴我們星期五午市等候較久。這次體驗未如理想，我們已把意見交給店內團隊跟進繁忙時段的安排。希望下次再見時，能為你帶來更順暢的體驗。",
@@ -1033,12 +1033,12 @@ exports[`createDemoAssistantRun > friendlier_review_reply / zh-TW 1`] = `
       "value": "18% · 7 則待回覆",
     },
   ],
-  "nextAction": "建立新的不可變更版本，再由有權限的店主或經理核准。",
+  "nextAction": "建立新的不可變更版本，再由有權限的店主或經理確認。",
   "output": {
     "acceptanceCriteria": [
       "另存新版本",
       "保留原始評論證據連結",
-      "核准前不可匯出或發佈",
+      "確認前不可匯出或發佈",
     ],
     "artifactId": "artifact_kmh_reply_friendlier",
     "body": "多謝你喜歡我們的食物，也謝謝你坦白告訴我們星期五午市等候較久。這次體驗未如理想，我們已把意見交給店內團隊跟進繁忙時段的安排。希望下次再見時，能為你帶來更順暢的體驗。",
@@ -1190,7 +1190,7 @@ exports[`createDemoAssistantRun > generate_menu / en 1`] = `
     "acceptanceCriteria": [
       "中英文逐項對照",
       "致敏原由店主確認",
-      "核准後才可匯出",
+      "確認後才可匯出",
     ],
     "artifactId": "artifact_kmh_menu_demo",
     "body": "9 個項目等待英文標籤；保留中文原名、店主確認英文名稱及任何致敏原描述。",
@@ -1227,7 +1227,7 @@ exports[`createDemoAssistantRun > generate_menu / zh-HK 1`] = `
     "acceptanceCriteria": [
       "中英文逐項對照",
       "致敏原由店主確認",
-      "核准後才可匯出",
+      "確認後才可匯出",
     ],
     "artifactId": "artifact_kmh_menu_demo",
     "body": "9 個項目等待英文標籤；保留中文原名、店主確認英文名稱及任何致敏原描述。",
@@ -1264,7 +1264,7 @@ exports[`createDemoAssistantRun > generate_menu / zh-TW 1`] = `
     "acceptanceCriteria": [
       "中英文逐項對照",
       "致敏原由店主確認",
-      "核准後才可匯出",
+      "確認後才可匯出",
     ],
     "artifactId": "artifact_kmh_menu_demo",
     "body": "9 個項目等待英文標籤；保留中文原名、店主確認英文名稱及任何致敏原描述。",
@@ -1299,7 +1299,7 @@ exports[`createDemoAssistantRun > generate_social / en 1`] = `
   "nextAction": "Review the evidence and keep owner approval as the next control point.",
   "output": {
     "acceptanceCriteria": [
-      "使用已核准相片",
+      "使用已確認相片",
       "包含替代文字",
       "不加入未確認優惠",
     ],
@@ -1320,7 +1320,7 @@ exports[`createDemoAssistantRun > generate_social / en 1`] = `
 
 exports[`createDemoAssistantRun > generate_social / zh-HK 1`] = `
 {
-  "answer": "已根據已核准午市套餐相片準備社交文案；未加入價錢、優惠期限或未確認食材。",
+  "answer": "已根據已確認午市套餐相片準備社交文案；未加入價錢、優惠期限或未確認食材。",
   "demoBoundary": "只使用已清理的錦汶館示範資料；不接受任意商戶、客戶或私人資料。",
   "evidenceRefs": [
     {
@@ -1333,10 +1333,10 @@ exports[`createDemoAssistantRun > generate_social / zh-HK 1`] = `
       "value": "最近確認帖文距今 16 日",
     },
   ],
-  "nextAction": "核對相片使用權與替代文字，建立新版本後交店主核准。",
+  "nextAction": "核對相片使用權與替代文字，建立新版本後交店主確認。",
   "output": {
     "acceptanceCriteria": [
-      "使用已核准相片",
+      "使用已確認相片",
       "包含替代文字",
       "不加入未確認優惠",
     ],
@@ -1357,7 +1357,7 @@ exports[`createDemoAssistantRun > generate_social / zh-HK 1`] = `
 
 exports[`createDemoAssistantRun > generate_social / zh-TW 1`] = `
 {
-  "answer": "已根據已核准午市套餐相片準備社交文案；未加入價錢、優惠期限或未確認食材。",
+  "answer": "已根據已確認午市套餐相片準備社交文案；未加入價錢、優惠期限或未確認食材。",
   "demoBoundary": "只使用已清理的錦汶館示範資料；不接受任意商戶、客戶或私人資料。",
   "evidenceRefs": [
     {
@@ -1370,10 +1370,10 @@ exports[`createDemoAssistantRun > generate_social / zh-TW 1`] = `
       "value": "最近確認帖文距今 16 日",
     },
   ],
-  "nextAction": "核對相片使用權與替代文字，建立新版本後交店主核准。",
+  "nextAction": "核對相片使用權與替代文字，建立新版本後交店主確認。",
   "output": {
     "acceptanceCriteria": [
-      "使用已核准相片",
+      "使用已確認相片",
       "包含替代文字",
       "不加入未確認優惠",
     ],

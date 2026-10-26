@@ -42,7 +42,7 @@ it.each([
 ])("shows stored brand settings without ignored editors in $locale", ({ locale, voice, link }) => {
   render(<OnboardingPage {...props({ locale })} />);
   expect(screen.queryByRole("combobox", { name: /Brand voice|品牌語氣/ })).not.toBeInTheDocument();
-  expect(screen.queryByRole("textbox", { name: /Approved factual claims|已核准事實描述/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole("textbox", { name: /Approved factual claims|已確認事實描述/ })).not.toBeInTheDocument();
   expect(screen.getByText(voice)).toBeInTheDocument();
   expect(screen.getByText("Confirmed fact A")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: link })).toHaveAttribute("href", `/${locale}/owner/workspace-a/business/profile`);

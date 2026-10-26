@@ -2,6 +2,16 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## Owner quick fixes (2026-10-26)
+
+- **Today:** the results and other-tasks rows are styled cards; "other tasks" no longer counts the task already shown; the button says what happens next ("打開再複製", "睇草稿再確認", "連接 Google") and the card shows the first lines of the draft; the sidebar badge reads "1 項緊急".
+- **One word per idea:** approval is 確認 (待確認 while waiting) in both Chinese locales; the usage meter is 已用次數 with a note on what counts; Google's listing is "Google 商家檔案" everywhere; "相同事" is now "相片同餐牌".
+- **Task screen:** the five panels that were all called "點解先做呢項？" are named for what they hold (版本資料, 根據咩發現, 相片說明, 品牌檢查, 貼咗出去未？, 技術紀錄).
+- **To do:** priority, state and time needed show on each card; evidence folds under "睇證據"; the bulk-assign bar appears only after selecting; "更多" says what it holds.
+- **好啲？ after one scan:** a starting-point card with the scan date, coverage and the rescan button (or the plan link on the free tier). No score is shown for a single scan.
+- **Settings pages:** Plan, Team, Activity, Profile, Integrations and Notifications speak in owner words (no "webhook", "Agent", "伺服器端授權" or English badges).
+- **Phones:** one location menu (in the top bar), a labelled 問 Kinnso button, and no search-glass mark in the top bar.
+
 ## Phase 11: the legacy stylesheet is gone (2026-10-21)
 
 - **Nothing looks different.** The last pre-redesign styles were either unused (deleted) or basic defaults for text, links, focus rings, buttons and selects, which now have their own files. Every page was checked against 372 screenshots.

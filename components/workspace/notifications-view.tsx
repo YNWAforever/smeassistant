@@ -47,13 +47,13 @@ export function NotificationsView({ locale, workspaceId, timezone, model }: { lo
       <PageIntro eyebrow={pc.consentLedAlerts} title={copy[locale].shell.notifications.label} description={pc.onlyUsefulOperationalSignals} />
       <div className="settings-grid">
         <SectionCard>
-          <div className="section-card-heading"><div><p className="eyebrow">Email</p><h2>{t(locale, "mail.allowTitle")}</h2></div></div>
+          <div className="section-card-heading"><div><p className="eyebrow">{t(locale, "mail.eyebrow")}</p><h2>{t(locale, "mail.allowTitle")}</h2></div></div>
           <WorkspaceMailSwitchesForm locale={locale} workspaceId={workspaceId} initial={model.email} disabled={!isOwner} />
           {!isOwner && <p className="limitation-note"><TriangleAlert /> {t(locale, "mail.ownerOnly")}</p>}
           {mailNote}
         </SectionCard>
         <SectionCard>
-          <div className="section-card-heading"><div><p className="eyebrow">Email</p><h2>{t(locale, "mail.myEmailsTitle")}</h2></div></div>
+          <div className="section-card-heading"><div><p className="eyebrow">{t(locale, "mail.eyebrow")}</p><h2>{t(locale, "mail.myEmailsTitle")}</h2></div></div>
           <MyMailPreferencesForm locale={locale} workspaceId={workspaceId} initial={model.myEmails} workspaceGates={{ rescanComplete: model.email.rescanComplete, regressionAlert: model.email.regressionAlert }} />
           {mailNote}
         </SectionCard>

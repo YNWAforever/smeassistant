@@ -107,7 +107,7 @@ test("desktop Shop reaches supporting tools, and old links land on their new pla
   await expect(business).toHaveAttribute("aria-current", "page");
   await expect(page.locator(".workspace-topbar-context strong")).toHaveText("Shop");
   await page.screenshot({ path: test.info().outputPath("owner-business-desktop.png"), fullPage: true });
-  await page.getByRole("link", { name: /Assets/ }).click();
+  await page.getByRole("link", { name: /Photos and menus/ }).click();
   await expect(page).toHaveURL(`${environment.app}/en/owner/${merchant.slug}/business/assets?location=all`);
   await expect(sidebar.getByRole("link", { name: "Shop", exact: true })).toHaveAttribute("aria-current", "page");
   // Old addresses keep working: Calendar lands on the Due view, Create on New.

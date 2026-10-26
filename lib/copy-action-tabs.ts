@@ -119,7 +119,7 @@ export const actionTabsZhTW: ActionTabsCopy = {
     lifecycleEyebrow: "到而家做咗啲乜",
     lifecycleTitle: "寫稿、確認同之後嘅結果",
     action: "行動",
-    approval: "核准",
+    approval: "確認",
     delivery: "送出",
     measurement: "量測",
   },

@@ -66,6 +66,8 @@ export interface HomeBrief {
   snapshot: SnapshotRecord | null;
   changed: HomeChanged;
   priority: ActionOverview | null;
+  /** The opening of the priority's latest version, so Today shows what the owner is about to check. */
+  priorityPreview?: string | null;
   openActions: ActionOverview[];
   /** Total in the authorized scope; openActions is only the bounded first page. */
   openActionCount?: number;
@@ -425,7 +427,7 @@ const FROM_WORKSPACE_RECORD = localized("From the workspace record", "來自工�
 const FROM_LATEST_SCAN = localized("From the latest scan", "來自最新掃描", "來自最新掃描");
 const FROM_ASSETS = localized("From Assets", "來自素材", "來自素材");
 const ASSET_RIGHTS_LABEL: Record<string, LocalizedText> = {
-  approved: localized("Approved", "已核准", "已核准"),
+  approved: localized("Approved", "已確認", "已確認"),
   needs_review: localized("Needs review", "需要審閱", "需要審閱"),
   rejected: localized("Rejected", "已拒絕", "已拒絕"),
 };
@@ -446,7 +448,7 @@ async function buildBusinessContext(ctx: WorkspaceContext, row: ActionRow, actio
     { key: "brand_voice", label: localized("Brand voice", "品牌語氣", "品牌語氣"), value: localized(brand.voice, brand.voice), origin: FROM_BRAND_SETTINGS },
     {
       key: "approved_claims",
-      label: localized("Approved claims", "已核准聲稱", "已核准聲明"),
+      label: localized("Approved claims", "已確認聲稱", "已確認聲明"),
       value: brand.approvedClaims.length ? localized(brand.approvedClaims.join(" · "), brand.approvedClaims.join(" · ")) : NONE_SAVED,
       origin: FROM_BRAND_SETTINGS,
     },
@@ -669,6 +671,14 @@ export async function getIntegrations(ctx: WorkspaceContext, latest?: SnapshotRe
 // Home brief (§3.5.5)
 // ---------------------------------------------------------------------------
 
+/** First ~140 characters of a draft, whitespace collapsed; null when there is no text. */
+export function previewText(body: string | null): string | null {
+  const text = body?.replace(/\s+/g, " ").trim() ?? "";
+  if (!text) return null;
+  const chars = Array.from(text);
+  return chars.length > 140 ? `${chars.slice(0, 140).join("").trimEnd()}…` : text;
+}
+
 export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope): Promise<HomeBrief> {
   const repository = workspaceReadRepository();
   const location = resolveLocation(ctx, scope);
@@ -702,6 +712,10 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
   ]));
   const proofRow = measurements[0] ?? null;
   const drafts = draftVersions.length;
+  const priorityPreview = priority?.latestVersion
+    ? previewText((await read("home", () => repository.versions(workspaceId, [priority.id])))
+      .find((version) => version.id === priority.latestVersion?.id)?.body ?? null)
+    : null;
   const [integrations, evidence] = await Promise.all([getIntegrations(ctx, snapshot), loadHomeEvidence(snapshot?.jobId ?? null)]);
 
   return {
@@ -710,6 +724,7 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
     snapshot,
     changed,
     priority,
+    priorityPreview,
     reviewFollowUp: selectHomeReviewFollowUp(reviewCandidates, {
       workspaceId, locationId: location?.id ?? null, allowedLocationIds, role: ctx.membership.role,
     }),

@@ -123,8 +123,8 @@ describe("contextual answers (P4.3)", () => {
 
   const LABELS: Record<PrototypeLocale, [string, string]> = {
     en: ["Approved asset or text only", "Alt text"],
-    "zh-HK": ["已批准素材或純文字", "替代文字"],
-    "zh-TW": ["已批准素材或純文字", "替代文字"],
+    "zh-HK": ["已確認素材或純文字", "替代文字"],
+    "zh-TW": ["已確認素材或純文字", "替代文字"],
   };
   it.each(["en", "zh-HK", "zh-TW"] as PrototypeLocale[])("lists missing inputs by label in %s and links to the form", (locale) => {
     const answer = templateAnswer("explain_missing_inputs", context({ action: needy, actor: owner }, locale));
@@ -230,7 +230,7 @@ describe("contextual answers (P4.3)", () => {
   it("says there is no Google connection when none exists, in every locale (T3-d)", () => {
     const expected: Record<PrototypeLocale, string> = {
       en: "There is no Google Business connection.",
-      "zh-HK": "目前沒有 Google 商戶 的連接。",
+      "zh-HK": "目前沒有 Google 商家檔案 的連接。",
       "zh-TW": "目前沒有 Google 商家 的連線。",
     };
     for (const locale of LOCALES) {
@@ -329,14 +329,14 @@ describe("contextual answers (P4.3)", () => {
       for (const answer of answers) {
         const text = `${answer.answer} ${answer.nextAction}`;
         expect(text, locale).not.toMatch(/nothing has been approved or sent/i);
-        expect(text, locale).not.toContain("未有任何內容獲核准或送出");
+        expect(text, locale).not.toContain("未有任何內容獲確認或送出");
         expect(text, locale).not.toContain("未有任何內容");
       }
     }
     const zhTw = templateAnswer("where_to_continue", context({ actor: owner, signals: signals({ waitingVersions: two }), focusedVersionId: V2 }, "zh-TW"));
-    expect(zhTw.answer).toContain("此版本尚未核准或送出");
+    expect(zhTw.answer).toContain("此版本尚未確認或送出");
     const zhHk = templateAnswer("where_to_continue", context({ actor: owner, signals: signals({ waitingVersions: two }), focusedVersionId: V2 }, "zh-HK"));
-    expect(zhHk.answer).toContain("此版本尚未獲核准或送出");
+    expect(zhHk.answer).toContain("此版本尚未獲確認或送出");
   });
 
   it("names a focused waiting version outside a scoped manager's locations, read-only (R4)", () => {

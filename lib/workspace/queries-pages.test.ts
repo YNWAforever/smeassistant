@@ -56,7 +56,7 @@ vi.mock("@/lib/db/client", () => ({ getPool: () => ({}) }));
 const mailAvailabilityMock = vi.hoisted(() => ({ mailAvailability: vi.fn() }));
 vi.mock("@/lib/mail/availability", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/mail/availability")>()), mailAvailability: mailAvailabilityMock.mailAvailability }));
 
-import { getHomeBrief, getInsights, listActions, getActivity, getIntegrations, getAction, loadActionRows, loadDiffById, getNotifications } from "./queries-pages";
+import { getHomeBrief, previewText, getInsights, listActions, getActivity, getIntegrations, getAction, loadActionRows, loadDiffById, getNotifications } from "./queries-pages";
 
 it("searches only visible title/summary and applies it to counts (T-13)", async () => {
   state.actions = [actionRow({ id: "a1", title: { en: "Needle reply" }, action_state: "recommended" }), actionRow({ id: "a2", summary: { "zh-HK": "needle summary" }, action_state: "recommended" }), actionRow({ id: "a3", action_state: "recommended" })];
@@ -156,6 +156,18 @@ beforeEach(() => {
   state.brand = { workspaceId: "ws-1", voice: "warm", approvedClaims: [], prohibitedTerms: [], languages: ["zh-HK"], facts: {}, updatedAt: null };
   state.asset = null;
   state.deliveries = [];
+});
+
+describe("previewText", () => {
+  it("collapses whitespace, keeps short drafts whole and trims long ones to 140 characters", () => {
+    expect(previewText("  Thank you\n\nfor visiting.  ")).toBe("Thank you for visiting.");
+    expect(previewText("   ")).toBeNull();
+    expect(previewText(null)).toBeNull();
+    const long = "多謝".repeat(100);
+    const preview = previewText(long)!;
+    expect(Array.from(preview)).toHaveLength(141);
+    expect(preview.endsWith("…")).toBe(true);
+  });
 });
 
 describe("getHomeBrief", () => {

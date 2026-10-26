@@ -5,7 +5,7 @@ import { localized, resolveText, type LocalizedText } from "@/lib/domain";
 // they are translated at render time. Unknown sources are shown as stored.
 const SOURCE_TEXT: Record<string, LocalizedText> = {
   "Instagram public evidence": localized("Instagram public evidence", "Instagram 公開證據"),
-  "Google Business Profile": localized("Google Business Profile", "Google 商戶檔案", "Google 商家檔案"),
+  "Google Business Profile": localized("Google Business Profile", "Google 商家檔案", "Google 商家檔案"),
   "Search and AI surfaces": localized("Search and AI surfaces", "搜尋及 AI 介面", "搜尋與 AI 介面"),
   "Trust signals": localized("Trust signals", "信任訊號"),
   "Website checks": localized("Website checks", "網站檢查"),

@@ -15,7 +15,7 @@ export function HistoryTab({ ed }: { ed: ActionEditor }) {
       <SectionCard><p className="eyebrow">{ac.history.eyebrow}</p><h2>{ac.history.title}</h2>
         {versions.length === 0 ? <p>{ac.history.none}</p> : <div className="version-list">{versions.map((item) => <button key={item.id} type="button" disabled={!hydrated} onClick={() => selectVersion(item.id)} aria-pressed={versionId === item.id} className={versionId === item.id ? "is-active" : ""}><span><History /></span><div><strong>{versionLabel(item.version_no)}</strong><small>{formatDateTime(item.created_at, locale, timezone)}{item.reviewer_comment ? ` · ${item.reviewer_comment}` : ""}</small></div>{versionId === item.id && <Check />}</button>)}</div>}
       </SectionCard>
-      <details className="owner-disclosure"><summary>{copy[locale].ownerFocus.why}</summary>
+      <details className="owner-disclosure"><summary>{copy[locale].ownerFocus.panels.technical}</summary>
       <div className="version-technical-records">{versions.map((item) => <p key={item.id}>{versionLabel(item.version_no)} · {stateLabel(item.approval_state, locale)} · {item.author_type === "agent" ? ac.history.agent : ac.history.member}</p>)}</div>
       <SectionCard><div className="section-card-heading"><div><p className="eyebrow">{ac.history.safetyEyebrow}</p><h2>{ac.history.safetyTitle}</h2></div></div>
         {conflict ? <div className="conflict-state" role="alert"><ShieldAlert /><div><strong>{ac.editor.conflictTitle}</strong><p>{ac.editor.conflictBody}</p><Button size="sm" onClick={loadLatest}><RefreshCw /> {ac.editor.loadLatest}</Button></div></div> : <div className="idempotent-state"><CheckCircle2 /><div><strong>{ac.history.noConflict}</strong><p>{ac.history.idempotent}</p></div></div>}

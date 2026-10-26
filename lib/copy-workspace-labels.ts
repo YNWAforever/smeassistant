@@ -124,15 +124,15 @@ export const workspaceLabelsEn: WorkspaceLabelsCopy = {
 
 export const workspaceLabelsZhHK: WorkspaceLabelsCopy = {
   guardrails: {
-    offerPriceMismatch: "優惠金額或貨幣缺漏、不一致或不明確；審批前請核對已確認優惠。",
-    offerDatesMissing: "優惠起訖日期缺漏或不一致；審批前請核對日期及年份。",
-    offerProhibitedTerm: "含優惠禁用字眼；審批前請核對。",
+    offerPriceMismatch: "優惠金額或貨幣缺漏、不一致或不明確；確認前請核對已確認優惠。",
+    offerDatesMissing: "優惠起訖日期缺漏或不一致；確認前請核對日期及年份。",
+    offerProhibitedTerm: "含優惠禁用字眼；確認前請核對。",
     unexpectedLink: {
-      approver: "含有你沒有提供的連結，審批前請先檢查。",
+      approver: "含有你沒有提供的連結，確認前請先檢查。",
       visitor: "含有你沒有提供的連結，使用前請先檢查。",
     },
     unconfirmedClaim: {
-      approver: "提及你未確認的價錢或誇大字眼，審批前請先檢查。",
+      approver: "提及你未確認的價錢或誇大字眼，確認前請先檢查。",
       visitor: "提及你未確認的價錢或誇大字眼，使用前請先檢查。",
     },
     prohibitedTerm: "含品牌禁用詞：{detail}",
@@ -182,15 +182,15 @@ export const workspaceLabelsZhHK: WorkspaceLabelsCopy = {
 
 export const workspaceLabelsZhTW: WorkspaceLabelsCopy = {
   guardrails: {
-    offerPriceMismatch: "優惠金額或幣別缺漏、不一致或不明確；核准前請確認已確認優惠。",
-    offerDatesMissing: "優惠起訖日期缺漏或不一致；核准前請確認日期及年份。",
-    offerProhibitedTerm: "包含優惠禁用用語；核准前請確認。",
+    offerPriceMismatch: "優惠金額或幣別缺漏、不一致或不明確；確認前請確認已確認優惠。",
+    offerDatesMissing: "優惠起訖日期缺漏或不一致；確認前請確認日期及年份。",
+    offerProhibitedTerm: "包含優惠禁用用語；確認前請確認。",
     unexpectedLink: {
-      approver: "包含你沒有提供的連結，核准前請先確認。",
+      approver: "包含你沒有提供的連結，確認前請先確認。",
       visitor: "包含你沒有提供的連結，使用前請先確認。",
     },
     unconfirmedClaim: {
-      approver: "提到你未確認的價格或誇大用語，核准前請先確認。",
+      approver: "提到你未確認的價格或誇大用語，確認前請先確認。",
       visitor: "提到你未確認的價格或誇大用語，使用前請先確認。",
     },
     prohibitedTerm: "含品牌禁用詞：{detail}",

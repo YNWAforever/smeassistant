@@ -111,6 +111,7 @@
     "ai": "AI drafting is paused for maintenance. Nothing was counted; try again later."
   },
   "mail": {
+    "eyebrow": "Email",
     "allowTitle": "Allow these emails in this workspace",
     "myEmailsTitle": "My emails",
     "rescanComplete": "Rescan complete",

@@ -10,7 +10,7 @@ export type WorkspaceActionsCopy = {
   actionsList: {
     reviewDependency: string; reviewInputs: string; openAction: string; assignedMemberUnavailable: string; unassigned: string;
     whyThisPriority: string; ownerEffort: string; assignee: string; due: string; inputs: string;
-    missing: string; ready: string; lastChanged: string; searchAi: string; comparePriorities: string;
+    missing: string; ready: string; lastChanged: string; seeEvidence: string; searchAi: string; comparePriorities: string;
     actionFilters: string; searchTitleAndSummary: string; search: string; filter: string; allChannels: string;
     filterByChannel: string; allStatuses: string; filterByStatus: string; allAssignees: string; filterByAssignee: string;
     overdue: string; next7Days: string; noDueDate: string; allDueDates: string; filterByDueDate: string;
@@ -36,9 +36,9 @@ export type WorkspaceActionsCopy = {
 
 export const workspaceActionsEn: WorkspaceActionsCopy = {
   actionsList: {
-    reviewDependency: "Review dependency",
-    reviewInputs: "Review inputs",
-    openAction: "Open action",
+    reviewDependency: "Connect Google",
+    reviewInputs: "Add the missing facts",
+    openAction: "Start",
     assignedMemberUnavailable: "Assigned member unavailable",
     unassigned: "Unassigned",
     whyThisPriority: "Why this priority",
@@ -49,6 +49,7 @@ export const workspaceActionsEn: WorkspaceActionsCopy = {
     missing: "{missingInputs} missing",
     ready: "Ready",
     lastChanged: "Last changed ",
+    seeEvidence: "See the evidence",
     searchAi: "Search & AI",
     comparePriorities: "Compare priorities",
     actionFilters: "Action filters",
@@ -66,10 +67,10 @@ export const workspaceActionsEn: WorkspaceActionsCopy = {
     noDueDate: "No due date",
     allDueDates: "All due dates",
     filterByDueDate: "Filter by due date",
-    actionsOnThisPage: "actions on this page",
-    sortedByPriorityUpdate: "Sorted by priority, update time and ID",
+    actionsOnThisPage: "tasks on this page",
+    sortedByPriorityUpdate: "Most important first",
     listPages: "List pages",
-    refreshFirstPage: "Refresh first page",
+    refreshFirstPage: "Back to the first page",
     nextPage: "Next page",
     separateLifecycleStates: "Separate lifecycle states:",
     actionAgentRunApproval: " action, agent run, approval, delivery and measurement are tracked independently. The customer-facing phase above is derived for scanning, not stored as one overloaded status.",
@@ -135,9 +136,9 @@ export const workspaceActionsEn: WorkspaceActionsCopy = {
 
 export const workspaceActionsZhHK: WorkspaceActionsCopy = {
   actionsList: {
-    reviewDependency: "審閱依賴項目",
-    reviewInputs: "審閱所需資料",
-    openAction: "開啟行動",
+    reviewDependency: "連接 Google",
+    reviewInputs: "補返資料",
+    openAction: "開始處理",
     assignedMemberUnavailable: "已指派成員不可用",
     unassigned: "未指派",
     whyThisPriority: "為何列為優先",
@@ -148,6 +149,7 @@ export const workspaceActionsZhHK: WorkspaceActionsCopy = {
     missing: "缺 {missingInputs} 項",
     ready: "齊備",
     lastChanged: "最近更新：",
+    seeEvidence: "睇證據",
     searchAi: "搜尋及 AI",
     comparePriorities: "比較優先次序",
     actionFilters: "行動篩選",
@@ -165,13 +167,13 @@ export const workspaceActionsZhHK: WorkspaceActionsCopy = {
     noDueDate: "沒有到期日",
     allDueDates: "所有到期日",
     filterByDueDate: "篩選到期日",
-    actionsOnThisPage: "項行動（本頁）",
-    sortedByPriorityUpdate: "按優先分數、更新時間及 ID 排序",
+    actionsOnThisPage: "項待辦（本頁）",
+    sortedByPriorityUpdate: "最緊要嘅排先",
     listPages: "清單分頁",
-    refreshFirstPage: "重新載入第一頁",
+    refreshFirstPage: "返去第一頁",
     nextPage: "下一頁",
     separateLifecycleStates: "獨立生命週期狀態：",
-    actionAgentRunApproval: " 行動、Agent 執行、審批、送出及量度會分開追蹤，避免一個含糊狀態代表所有事情。",
+    actionAgentRunApproval: " 行動、Agent 執行、確認、送出及量度會分開追蹤，避免一個含糊狀態代表所有事情。",
     thisPageLinkIs: "此頁連結無效或篩選條件已變更，請重新載入清單。",
     refreshList: "重新載入清單",
   },
@@ -210,7 +212,7 @@ export const workspaceActionsZhHK: WorkspaceActionsCopy = {
     openTheExistingAction: "開啟現有行動",
     usageAndDelivery: "用量與交付",
     generationAndRevisionUse: "生成及修改不扣除用量",
-    oneApprovedDeliveryIs: "只有指定版本獲核准並完成匯出或發佈，才計 1 次核准後交付。Kinnso 只用你確認過嘅資料；缺少資料時會先要求輸入，而不是猜測。",
+    oneApprovedDeliveryIs: "只有指定版本獲確認並完成匯出或發佈，才計 1 次確認後交付。Kinnso 只用你確認過嘅資料；缺少資料時會先要求輸入，而不是猜測。",
     createTheActionAnd: "建立行動並生成草稿",
     creatingTheActionAnd: "正在建立行動並準備草稿",
     validatingSourceEvidenceGuardrails: "同時驗證來源證據、品牌規則及必要資料。",
@@ -220,14 +222,14 @@ export const workspaceActionsZhHK: WorkspaceActionsCopy = {
     scopeAll: "所有地點",
     scopeEvidenceLed: "證據建議",
   },
-  fixPack: { fixPackDrafts: "Fix Pack 草稿", staffPreparedRepliesAnd: "由職員準備、待你審批的回覆及帖文", pending: "{pending} 份待審", pendingApproval: "待審批", reject: "拒絕", couldNotLoadStaff: "未能載入職員草稿，請重新整理頁面再試。", theActionCouldNot: "操作未能完成，請檢查最新狀態再試。", viewersCanInspectDrafts: "檢視者只可查看草稿；核准由店主或經理處理。" },
+  fixPack: { fixPackDrafts: "Fix Pack 草稿", staffPreparedRepliesAnd: "由職員準備、待你確認的回覆及帖文", pending: "{pending} 份待確認", pendingApproval: "待確認", reject: "拒絕", couldNotLoadStaff: "未能載入職員草稿，請重新整理頁面再試。", theActionCouldNot: "操作未能完成，請檢查最新狀態再試。", viewersCanInspectDrafts: "檢視者只可查看草稿；確認由店主或經理處理。" },
 }
 
 export const workspaceActionsZhTW: WorkspaceActionsCopy = {
   actionsList: {
-    reviewDependency: "審閱依賴項目",
-    reviewInputs: "審閱所需資料",
-    openAction: "開啟行動",
+    reviewDependency: "連接 Google",
+    reviewInputs: "補上資料",
+    openAction: "開始處理",
     assignedMemberUnavailable: "已指派成員不可用",
     unassigned: "未指派",
     whyThisPriority: "為何列為優先",
@@ -238,6 +240,7 @@ export const workspaceActionsZhTW: WorkspaceActionsCopy = {
     missing: "缺 {missingInputs} 項",
     ready: "齊備",
     lastChanged: "最近更新：",
+    seeEvidence: "查看證據",
     searchAi: "搜尋及 AI",
     comparePriorities: "比較優先次序",
     actionFilters: "行動篩選",
@@ -255,13 +258,13 @@ export const workspaceActionsZhTW: WorkspaceActionsCopy = {
     noDueDate: "沒有到期日",
     allDueDates: "所有到期日",
     filterByDueDate: "篩選到期日",
-    actionsOnThisPage: "項行動（本頁）",
-    sortedByPriorityUpdate: "按優先分數、更新時間及 ID 排序",
+    actionsOnThisPage: "項待辦（本頁）",
+    sortedByPriorityUpdate: "最重要的排在前面",
     listPages: "清單分頁",
-    refreshFirstPage: "重新載入第一頁",
+    refreshFirstPage: "回到第一頁",
     nextPage: "下一頁",
     separateLifecycleStates: "獨立生命週期狀態：",
-    actionAgentRunApproval: " 行動、Agent 執行、核准、送出及量測會分開追蹤，避免一個含糊狀態代表所有事情。",
+    actionAgentRunApproval: " 行動、Agent 執行、確認、送出及量測會分開追蹤，避免一個含糊狀態代表所有事情。",
     thisPageLinkIs: "此頁連結無效或篩選條件已變更，請重新載入清單。",
     refreshList: "重新載入清單",
   },
@@ -300,7 +303,7 @@ export const workspaceActionsZhTW: WorkspaceActionsCopy = {
     openTheExistingAction: "開啟現有行動",
     usageAndDelivery: "用量與交付",
     generationAndRevisionUse: "生成及修改不扣除用量",
-    oneApprovedDeliveryIs: "只有指定版本獲核准並完成匯出或發佈，才計 1 次核准後交付。Kinnso 只用你確認過的資料；缺少資料時會先要求輸入，而不是猜測。",
+    oneApprovedDeliveryIs: "只有指定版本獲確認並完成匯出或發佈，才計 1 次確認後交付。Kinnso 只用你確認過的資料；缺少資料時會先要求輸入，而不是猜測。",
     createTheActionAnd: "建立行動並生成草稿",
     creatingTheActionAnd: "正在建立行動並準備草稿",
     validatingSourceEvidenceGuardrails: "同時驗證來源證據、品牌規則及必要資料。",
@@ -310,5 +313,5 @@ export const workspaceActionsZhTW: WorkspaceActionsCopy = {
     scopeAll: "所有據點",
     scopeEvidenceLed: "證據建議",
   },
-  fixPack: { fixPackDrafts: "Fix Pack 草稿", staffPreparedRepliesAnd: "由職員準備、待你核准的回覆及帖文", pending: "{pending} 份待審", pendingApproval: "待核准", reject: "拒絕", couldNotLoadStaff: "未能載入職員草稿，請重新整理頁面再試。", theActionCouldNot: "操作未能完成，請檢查最新狀態再試。", viewersCanInspectDrafts: "檢視者只可查看草稿；核准由店家或經理處理。" },
+  fixPack: { fixPackDrafts: "Fix Pack 草稿", staffPreparedRepliesAnd: "由職員準備、待你確認的回覆及帖文", pending: "{pending} 份待確認", pendingApproval: "待確認", reject: "拒絕", couldNotLoadStaff: "未能載入職員草稿，請重新整理頁面再試。", theActionCouldNot: "操作未能完成，請檢查最新狀態再試。", viewersCanInspectDrafts: "檢視者只可查看草稿；確認由店家或經理處理。" },
 }
