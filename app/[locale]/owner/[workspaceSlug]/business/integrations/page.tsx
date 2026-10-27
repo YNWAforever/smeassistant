@@ -8,7 +8,7 @@ import { getIntegrations } from "@/lib/workspace/queries-pages";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(props: OwnerPageProps): Promise<Metadata> {
-  return ownerPageMetadata(props, { en: "Integrations", zh: "連接與整合" });
+  return ownerPageMetadata(props, { en: "Google and Instagram", zh: "Google 同 Instagram", zhTW: "Google 與 Instagram" });
 }
 
 /** Owner-only (§3.9): managers and viewers are redirected by requireMembership. */

@@ -48,6 +48,7 @@
 @import "./styles/screens/actions-insights.css" layer(pages);
 @import "./styles/screens/shell.css" layer(pages);
 @import "./styles/screens/business-settings.css" layer(pages);
+@import "./styles/screens/progress.css" layer(pages);
 @import "./styles/public.css" layer(pages);
 @import "./styles/workspace.css" layer(pages);
 @import "./styles/states.css" layer(pages);

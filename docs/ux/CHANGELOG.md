@@ -2,6 +2,76 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## One word for each thing (2026-10-27, second pass)
+
+- **待辦, not 行動:** every owner screen, Ask Kinnso answer and owner email now calls a task 待辦, matching the nav. The public site keeps its own wording.
+- **相片 / 照片, not 素材:** photos and menus are called that, in the asset picker, the task screen, Activity and Ask Kinnso.
+- **Task states in plain words:** 草稿已寫好, 需補資料, 寫稿中, 需先連接, 已確認 · 可複製.
+- **To do:**
+  - A confirmed task's button says "打開再複製", as on Today; viewers see "查看待辦".
+  - The select box sits in each card's corner instead of its own row, so the list is about 12% shorter on a phone.
+- **Shop profile checklist:** screen readers say 填咗 / 未填 for each item instead of the badge words.
+- **Review fixes:**
+  - Today's photos follow the selected shop (shared photos plus that shop's), and a photo whose one-minute link expired before it loaded fetches a fresh link instead of showing a broken image.
+  - Better? calls only a first scan the starting point.
+  - Page titles use Taiwan wording in zh-TW.
+
+## Workspace clean-up: less to read, clearer next step (2026-10-27)
+
+- **Task screen:**
+  - The task's icon sits in the header.
+  - The three steps (改稿 → 確認 → 複製文字) are pills, with the current one in orange and a line saying nothing is sent without your OK.
+  - When there is a draft, the draft comes first and "what this is based on" folds below it.
+  - Tabs are "寫稿同確認" and "紀錄". The back link says "返回待辦".
+  - The approval flow no longer appears twice.
+  - On a desktop the floating approval bar is hidden, because the buttons are already on screen.
+- **New task:**
+  - Cards drop the "Live" badge; only Beta and similar labels show.
+  - The tags read 掃描發現 / 你嘅想法.
+  - The free-text box is optional ("有冇嘢想補充？").
+- **Plan:** one usage rule at the top instead of three notes. Before subscriptions open, a "聯絡 Fimmick" button appears when a contact channel is set.
+- **Google and Instagram (was 連接與整合):** each source has its icon, and the labels say what we check ("最近檢查", "我哋可以做咩", "只睇公開帖文，唔會幫你發佈").
+- **Notifications:**
+  - The two cards are "全間舖可以收嘅電郵（店主設定）" and "我自己收嘅電郵".
+  - "有嘢變差咗" replaces the regression-alert jargon.
+  - The why-mail-won't-arrive note shows once.
+- **Activity:** "要處理嘅問題", a "邊個做" column, and plain event names (掃描結果已儲存, 待辦已排序).
+- **Photos and menus, Team, Profile, choosing a workspace:**
+  - "加相或餐牌" and "等你確認".
+  - Each role is described in one line ("只可以睇，唔可以改").
+  - The Profile buttons read "儲存" and "加資料".
+  - The workspace picker reads "揀你想處理嘅舖頭".
+- **Viewers** no longer see "keep your streak" or "fill in your profile" nudges they cannot act on.
+- **English:**
+  - "Only one scan so far" reads as a full sentence.
+  - The first badge is "First confirm".
+  - The breadcrumb on a task reads "Task".
+
+## Friendlier owner screens: icons, charts, photos and progress (2026-10-26)
+
+- **Icons:** every kind of task has its own picture (reviews, posts, Google, search, website) on Today and To do.
+- **Today, "your month":**
+  - a ring of tasks done this month out of what is open;
+  - a weekly streak;
+  - the four sources the last scan could check;
+  - five badges: first confirm, first copy, five done, full profile, four-week streak.
+
+  It all counts what the owner did, never results, and says so. The score stays under 點解咁講.
+- **Photos:** the shop's own confirmed photos on Today and the Shop page; where there are none, a credited sample photo (the three Pexels images the landing page once used), labelled 示意圖, and an "add photos" button.
+- **Shop:** a profile card with a ring and a six-item checklist (voice, facts, lines you're happy to say, a photo, Google, Instagram) linking to where each is filled in.
+- **Better?:** a bar per scan showing how much each scan could check (never the score), with scans that cannot be compared marked.
+- **Simpler words:** task summaries, the usage note, the "start writing" button and the only-one-scan message are shorter.
+
+## Owner quick fixes (2026-10-26)
+
+- **Today:** the results and other-tasks rows are styled cards; "other tasks" no longer counts the task already shown; the button says what happens next ("打開再複製", "睇草稿再確認", "連接 Google") and the card shows the first lines of the draft; the sidebar badge reads "1 項緊急".
+- **One word per idea:** approval is 確認 (待確認 while waiting) in both Chinese locales; the usage meter is 已用次數 with a note on what counts; Google's listing is "Google 商家檔案" everywhere; "相同事" is now "相片同餐牌".
+- **Task screen:** the five panels that were all called "點解先做呢項？" are named for what they hold (版本資料, 根據咩發現, 相片說明, 品牌檢查, 貼咗出去未？, 技術紀錄).
+- **To do:** priority, state and time needed show on each card; evidence folds under "睇證據"; the bulk-assign bar appears only after selecting; "更多" says what it holds.
+- **好啲？ after one scan:** a starting-point card with the scan date, coverage and the rescan button (or the plan link on the free tier). No score is shown for a single scan.
+- **Settings pages:** Plan, Team, Activity, Profile, Integrations and Notifications speak in owner words (no "webhook", "Agent", "伺服器端授權" or English badges).
+- **Phones:** one location menu (in the top bar), a labelled 問 Kinnso button, and no search-glass mark in the top bar.
+
 ## Phase 11: the legacy stylesheet is gone (2026-10-21)
 
 - **Nothing looks different.** The last pre-redesign styles were either unused (deleted) or basic defaults for text, links, focus rings, buttons and selects, which now have their own files. Every page was checked against 372 screenshots.

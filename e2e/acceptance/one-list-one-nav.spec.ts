@@ -13,9 +13,9 @@ test("switching branches from an action leaves the old branch's editor and clear
 });
 
 for (const item of [
-  { locale: "en", labels: ["Today", "To do", "Better?", "Shop"], more: "More", due: "Due", drafts: "Fimmick drafts", other: "Other ways to write", waiting: "Something is waiting for you", noScan: "No scan yet", trust: "Why you can trust this" },
-  { locale: "zh-HK", labels: ["今日", "待辦", "好啲？", "舖"], more: "更多", due: "到期", drafts: "Fimmick 嘅稿", other: "其他寫法", waiting: "有一件等你", noScan: "未掃過", trust: "點解咁講" },
-  { locale: "zh-TW", labels: ["今天", "待辦", "有好一點？", "店裡"], more: "更多", due: "到期", drafts: "Fimmick 準備的稿", other: "其他寫法", waiting: "有件事等你", noScan: "還沒掃過", trust: "為何可信" },
+  { locale: "en", labels: ["Today", "To do", "Better?", "Shop"], more: "Due dates and Fimmick drafts", due: "Due", drafts: "Fimmick drafts", other: "Other ways to write", waiting: "Something is waiting for you", noScan: "No scan yet", trust: "Why you can trust this" },
+  { locale: "zh-HK", labels: ["今日", "待辦", "好啲？", "舖"], more: "到期日同 Fimmick 嘅稿", due: "到期", drafts: "Fimmick 嘅稿", other: "其他寫法", waiting: "有一件等你", noScan: "未掃過", trust: "點解咁講" },
+  { locale: "zh-TW", labels: ["今天", "待辦", "有好一點？", "店裡"], more: "到期日與 Fimmick 準備的稿", due: "到期", drafts: "Fimmick 準備的稿", other: "其他寫法", waiting: "有件事等你", noScan: "還沒掃過", trust: "為何可信" },
 ] as const) {
   test(`four mobile destinations, reachable settings and branch switching (${item.locale})`, async ({ page, merchant, environment }) => {
     await signIn(page, environment, merchant);

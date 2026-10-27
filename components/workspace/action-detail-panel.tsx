@@ -6,8 +6,8 @@ import type { ActionDetailViewProps } from "@/components/workspace/action-detail
 export function ActionDetailPanel(props: ActionDetailViewProps) {
   return (
     <>
-      <ActionProgress versions={props.detail.versions} locale={props.locale} />
       <LazyActionDetailClient {...props} embedded />
+      <ActionProgress versions={props.detail.versions} locale={props.locale} showFlow={false} />
     </>
   )
 }

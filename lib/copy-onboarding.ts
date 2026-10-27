@@ -103,7 +103,7 @@ export const onboardingEn: OnboardingCopy = {
     action: "Verify with Google",
     why: "why Google",
     whyAnswer: "Google confirms that you manage this Business Profile. Only then do we create the workspace and attach the report. We never match on email, and nothing is published.",
-    readOnly: "We only read the Business Profile. You can disconnect at any time under Business › Integrations, which deletes the stored credential.",
+    readOnly: "We only read the Business Profile. You can disconnect at any time under Shop › Google and Instagram, which deletes the stored credential.",
   },
   fimmick: {
     title: "Ask Fimmick to assign your workspace",
@@ -159,7 +159,7 @@ export const onboardingEn: OnboardingCopy = {
 
 export const onboardingZhHK: OnboardingCopy = {
   title: "設定你的工作台",
-  intro: "證明你經營這門生意，核對幾項資料，便可看到第一項建議行動。",
+  intro: "證明你經營這門生意，核對幾項資料，便可看到第一項建議待辦。",
   claimBadge: "認領報告 {ref}",
   plan: { kept: "已保留所選方案", growth: "增長方案", multi: "多地點方案" },
   steps: { label: "設定步驟", signedIn: "已登入", verify: "驗證擁有權", basics: "商戶基本資料", stepOf: "第 {n} 步，共 {total} 步", done: "已完成" },
@@ -188,7 +188,7 @@ export const onboardingZhHK: OnboardingCopy = {
     action: "以 Google 驗證",
     why: "為何使用 Google",
     whyAnswer: "Google 會確認你管理此商家檔案，我們才會建立工作台並附加報告。我們不會憑電郵配對，也不會發佈任何內容。",
-    readOnly: "我們只會讀取商家檔案。你可隨時在「商戶 › 連接與整合」解除連接，我們儲存的憑證會一併刪除。",
+    readOnly: "我們只會讀取商家檔案。你可隨時在「舖 › Google 同 Instagram」解除連接，我們儲存的憑證會一併刪除。",
   },
   fimmick: {
     title: "請 Fimmick 指派你的工作台",
@@ -203,7 +203,7 @@ export const onboardingZhHK: OnboardingCopy = {
   },
   verified: { title: "擁有權已確認", body: "核對預填資料後，便可查看結果。" },
   basics: {
-    intro: "核對商戶資料後，我們會開啟掃描結果及第一項建議行動。",
+    intro: "核對商戶資料後，我們會開啟掃描結果及第一項建議待辦。",
     businessName: "商戶名稱",
     address: "地址（選填）",
     connectionsLater: "Instagram、Google 連接及品牌語氣，都可以稍後再設定。",
@@ -213,7 +213,7 @@ export const onboardingZhHK: OnboardingCopy = {
     timezone: "時區",
     voice: "品牌語氣",
     voices: { warm: "親切、本地、真誠", professional: "簡潔、專業", playful: "活潑、有活力", direct: "直接、務實" },
-    claims: "已核准的事實（每行一項）",
+    claims: "已確認的事實（每行一項）",
     factsNote: "材料、致敏原、價格及法律聲明，必須經你確認後才會使用。",
     finish: "完成並查看結果",
     saving: "儲存中…",
@@ -244,7 +244,7 @@ export const onboardingZhHK: OnboardingCopy = {
 
 export const onboardingZhTW: OnboardingCopy = {
   title: "設定您的工作台",
-  intro: "證明您經營這家店，核對幾項資料，就能看到第一項建議行動。",
+  intro: "證明您經營這家店，核對幾項資料，就能看到第一項建議待辦。",
   claimBadge: "認領報告 {ref}",
   plan: { kept: "已保留選擇的方案", growth: "成長方案", multi: "多據點方案" },
   steps: { label: "設定步驟", signedIn: "已登入", verify: "驗證擁有權", basics: "店家基本資料", stepOf: "第 {n} 步，共 {total} 步", done: "已完成" },
@@ -273,7 +273,7 @@ export const onboardingZhTW: OnboardingCopy = {
     action: "透過 Google 驗證",
     why: "為什麼使用 Google",
     whyAnswer: "Google 會確認您管理這個商家檔案，我們才會建立工作台並附加報告。我們不會用電子郵件比對，也不會發佈任何內容。",
-    readOnly: "我們只會讀取商家檔案。您可以隨時在「店家 › 連線與整合」中斷連線，我們儲存的憑證也會一併刪除。",
+    readOnly: "我們只會讀取商家檔案。您可以隨時在「店裡 › Google 與 Instagram」中斷連線，我們儲存的憑證也會一併刪除。",
   },
   fimmick: {
     title: "請 Fimmick 指派您的工作台",
@@ -288,7 +288,7 @@ export const onboardingZhTW: OnboardingCopy = {
   },
   verified: { title: "擁有權已確認", body: "核對預先填好的資料後，就能查看結果。" },
   basics: {
-    intro: "核對店家資料後，我們會開啟掃描結果與第一項建議行動。",
+    intro: "核對店家資料後，我們會開啟掃描結果與第一項建議待辦。",
     businessName: "店家名稱",
     address: "地址（選填）",
     connectionsLater: "Instagram、Google 連線與品牌語氣，都可以之後再設定。",
@@ -298,7 +298,7 @@ export const onboardingZhTW: OnboardingCopy = {
     timezone: "時區",
     voice: "品牌語氣",
     voices: { warm: "親切、在地、真誠", professional: "簡潔、專業", playful: "活潑、有活力", direct: "直接、務實" },
-    claims: "已核准的事實（每行一項）",
+    claims: "已確認的事實（每行一項）",
     factsNote: "食材、過敏原、價格與法律聲明，必須經您確認後才會使用。",
     finish: "完成並查看結果",
     saving: "儲存中…",

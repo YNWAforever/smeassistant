@@ -148,7 +148,7 @@ test("S1 existing brand: recommendation, source/time/limits, first saved draft a
   await expect(page).toHaveURL(new RegExp(`/actions/${merchant.actionId}`));
   await page.locator("details.owner-workflow-disclosure").evaluate(element => { (element as HTMLDetailsElement).open = true; });
   await expect(page.locator(".evidence-detail-grid")).toContainText("Revenue, reservations and customer intent are not measured by this action.");
-  await page.getByRole("tab", { name: "Draft & approval", exact: true }).click();
+  await page.getByRole("tab", { name: "Write & confirm", exact: true }).click();
   const body = "Thank you for your review. We appreciate your feedback.";
   const saved = await generate(page, merchant, body, environment);
   const elapsedMs = Math.round(performance.now() - started);

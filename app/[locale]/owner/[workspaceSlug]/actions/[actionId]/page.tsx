@@ -8,7 +8,7 @@ import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/wor
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(props: OwnerPageProps): Promise<Metadata> {
-  return ownerPageMetadata(props, { en: "Action", zh: "行動" });
+  return ownerPageMetadata(props, { en: "Action", zh: "待辦" });
 }
 
 /**

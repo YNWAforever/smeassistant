@@ -44,9 +44,9 @@ beforeEach(() => {
 
 describe("sendDeliveryNotices", () => {
   it.each([
-    ["export", "Approved version exported", "已匯出批准版本"],
-    ["copy", "Approved version copied", "已複製批准版本"],
-    ["publish", "Approved reply published to Google", "已將核准回覆發佈到 Google"],
+    ["export", "Approved version exported", "已匯出確認版本"],
+    ["copy", "Approved version copied", "已複製確認版本"],
+    ["publish", "Approved reply published to Google", "已將確認回覆發佈到 Google"],
   ] as const)("%s: one delivery notice linking the action", async (kind, en, zh) => {
     await sendDeliveryNotices({ workspaceId: WORKSPACE, actionId: ACTION, kind, usage: usage(1, 3) });
     expect(mocks.inserted).toHaveLength(1);

@@ -38,7 +38,7 @@ describe("templateAnswer", () => {
     expect(answer.evidenceRefs.map((r) => r.evidenceId)).toContain(`ev_${SNAPSHOT_ID}_action_${actionRow.id}`);
     expect(answer.warnings).toHaveLength(1);
     const zh = templateAnswer("explain_priority", context({}, "zh-HK"));
-    expect(zh.answer).toContain("「回覆未回覆的 Google 評論」是首要行動（高）");
+    expect(zh.answer).toContain("「回覆未回覆的 Google 評論」是首要待辦（高）");
   });
 
   it("explains a comparable change in points, with the ledger and observed metric moves", () => {
@@ -71,7 +71,7 @@ describe("templateAnswer", () => {
     expect(templateAnswer("fallback_plan", none).answer).toContain("no open action for Yik Yam to build a fallback plan from");
     expect(templateAnswer("compare_priorities", none).answer).toContain("no open actions");
     expect(templateAnswer("compare_priorities", context({ actions: [overview(actionRow)] })).answer).toContain("Only one open action exists");
-    expect(templateAnswer("explain_priority", context({ actions: [], action: null }, "zh-TW")).answer).toContain("目前沒有未完成的行動");
+    expect(templateAnswer("explain_priority", context({ actions: [], action: null }, "zh-TW")).answer).toContain("目前沒有未完成的待辦");
   });
 
   it("ranks by factor points and flags missing inputs", () => {
@@ -123,8 +123,8 @@ describe("contextual answers (P4.3)", () => {
 
   const LABELS: Record<PrototypeLocale, [string, string]> = {
     en: ["Approved asset or text only", "Alt text"],
-    "zh-HK": ["已批准素材或純文字", "替代文字"],
-    "zh-TW": ["已批准素材或純文字", "替代文字"],
+    "zh-HK": ["已確認相片或純文字", "替代文字"],
+    "zh-TW": ["已確認相片或純文字", "替代文字"],
   };
   it.each(["en", "zh-HK", "zh-TW"] as PrototypeLocale[])("lists missing inputs by label in %s and links to the form", (locale) => {
     const answer = templateAnswer("explain_missing_inputs", context({ action: needy, actor: owner }, locale));
@@ -230,7 +230,7 @@ describe("contextual answers (P4.3)", () => {
   it("says there is no Google connection when none exists, in every locale (T3-d)", () => {
     const expected: Record<PrototypeLocale, string> = {
       en: "There is no Google Business connection.",
-      "zh-HK": "目前沒有 Google 商戶 的連接。",
+      "zh-HK": "目前沒有 Google 商家檔案 的連接。",
       "zh-TW": "目前沒有 Google 商家 的連線。",
     };
     for (const locale of LOCALES) {
@@ -329,14 +329,14 @@ describe("contextual answers (P4.3)", () => {
       for (const answer of answers) {
         const text = `${answer.answer} ${answer.nextAction}`;
         expect(text, locale).not.toMatch(/nothing has been approved or sent/i);
-        expect(text, locale).not.toContain("未有任何內容獲核准或送出");
+        expect(text, locale).not.toContain("未有任何內容獲確認或送出");
         expect(text, locale).not.toContain("未有任何內容");
       }
     }
     const zhTw = templateAnswer("where_to_continue", context({ actor: owner, signals: signals({ waitingVersions: two }), focusedVersionId: V2 }, "zh-TW"));
-    expect(zhTw.answer).toContain("此版本尚未核准或送出");
+    expect(zhTw.answer).toContain("此版本尚未確認或送出");
     const zhHk = templateAnswer("where_to_continue", context({ actor: owner, signals: signals({ waitingVersions: two }), focusedVersionId: V2 }, "zh-HK"));
-    expect(zhHk.answer).toContain("此版本尚未獲核准或送出");
+    expect(zhHk.answer).toContain("此版本尚未獲確認或送出");
   });
 
   it("names a focused waiting version outside a scoped manager's locations, read-only (R4)", () => {
@@ -363,8 +363,8 @@ describe("contextual answers (P4.3)", () => {
     const rows = signals({ waitingVersions: [waiting(V2, ready.id, 2, "2026-09-01T00:00:00Z")] });
     const expected: Record<PrototypeLocale, [string, string]> = {
       en: ["Nothing is waiting for review now in your locations", "No open action in your locations is waiting for details"],
-      "zh-HK": ["你負責的地點目前沒有等待審閱的項目", "你負責的地點目前沒有等待補充資料的未完成行動"],
-      "zh-TW": ["你負責的據點目前沒有等待審閱的項目", "你負責的據點目前沒有等待補充資料的未完成行動"],
+      "zh-HK": ["你負責的地點目前沒有等待審閱的項目", "你負責的地點目前沒有等待補充資料的未完成待辦"],
+      "zh-TW": ["你負責的據點目前沒有等待審閱的項目", "你負責的據點目前沒有等待補充資料的未完成待辦"],
     };
     for (const locale of LOCALES) {
       const where = templateAnswer("where_to_continue", context({ actor: scoped, signals: rows }, locale));

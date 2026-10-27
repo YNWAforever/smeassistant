@@ -27,7 +27,7 @@ export interface BuildEvidenceInput {
 export type ModuleKey = "google_business" | "instagram" | "search_ai" | "website";
 
 export const MODULE_NAMES: Record<ModuleKey, LocalizedText> = {
-  google_business: localized("Google Business", "Google 商戶", "Google 商家"),
+  google_business: localized("Google Business", "Google 商家檔案", "Google 商家"),
   instagram: localized("Instagram", "Instagram"),
   search_ai: localized("Search & AI surfaces", "搜尋與 AI 版面"),
   website: localized("Website", "網站"),

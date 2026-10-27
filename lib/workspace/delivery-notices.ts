@@ -19,9 +19,9 @@ import { allowanceWarnAt, type Usage } from "@/lib/workspace/usage";
 export type DeliveryNoticeKind = "export" | "copy" | "publish";
 
 const DELIVERY_TITLES: Record<DeliveryNoticeKind, LocalizedText> = {
-  export: localized("Approved version exported", "已匯出批准版本"),
-  copy: localized("Approved version copied", "已複製批准版本"),
-  publish: localized("Approved reply published to Google", "已將核准回覆發佈到 Google"),
+  export: localized("Approved version exported", "已匯出確認版本"),
+  copy: localized("Approved version copied", "已複製確認版本"),
+  publish: localized("Approved reply published to Google", "已將確認回覆發佈到 Google"),
 };
 
 export async function sendDeliveryNotices(input: {
@@ -42,11 +42,11 @@ export async function sendDeliveryNotices(input: {
         usage.allowance === null
           ? localized(
               `${usage.approvedDeliveries} approved deliveries this period.`,
-              `本期已批准交付 ${usage.approvedDeliveries} 項。`,
+              `本期已用 ${usage.approvedDeliveries} 次。`,
             )
           : localized(
               `${usage.approvedDeliveries} of ${usage.allowance} approved deliveries used this period.`,
-              `本期已用 ${usage.approvedDeliveries} / ${usage.allowance} 項批准交付。`,
+              `本期已用 ${usage.approvedDeliveries} / ${usage.allowance} 次。`,
             ),
       href: home ? `${home}/actions/${input.actionId}` : null,
     });
@@ -78,16 +78,16 @@ export async function sendAllowanceNotice(input: { workspaceId: string; usage: U
     await notifyWithRepository(repository, {
       workspaceId: input.workspaceId,
       kind: "usage.allowance_80",
-      // Two arguments, as everywhere else here: 核准後交付 is the term both
-      // Chinese locales already use for an approved delivery, so an explicit
+      // Two arguments, as everywhere else here: 已用次數 is the term both
+      // Chinese locales use for approved deliveries, so an explicit
       // zh-TW form would imply a variant that does not exist.
       title: localized(
         left === 1 ? "1 approved delivery left this period" : `${left} approved deliveries left this period`,
-        `本期尚餘 ${left} 項核准後交付`,
+        `本期尚餘 ${left} 次可用`,
       ),
       body: localized(
         `${usage.approvedDeliveries} of ${usage.allowance} approved deliveries used. Upgrade for unlimited deliveries.`,
-        `已用 ${usage.approvedDeliveries} / ${usage.allowance} 項批准交付。升級即可無限交付。`,
+        `已用 ${usage.approvedDeliveries} / ${usage.allowance} 次。升級即可不限次數。`,
       ),
       href: home ? `${home}/settings/plan` : null,
     });

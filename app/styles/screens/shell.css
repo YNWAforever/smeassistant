@@ -538,12 +538,28 @@
   color: #fff !important;
 }
 @media (max-width: 767px){
-.workspace-topbar .assistant-launcher span {
+/* Ask Kinnso keeps its name on phones: an unlabelled sparkle reads as decoration. */
+.workspace-topbar .assistant-launcher {
+    flex: none;
+    padding-inline: 10px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+.workspace-topbar .assistant-launcher svg {
     display: none;
   }
-.workspace-topbar .assistant-launcher {
-    width: 42px;
-    padding-inline: 0;
+/* With the labelled Ask Kinnso the shop name gives way first; the location stays readable. */
+.workspace-topbar .mobile-location-select {
+    width: 100%;
+    min-width: 0;
+  }
+/* The search-glass mark is decorative and read as a search button; phones give its room to the shop and location. */
+.workspace-mobile-brand > .brand-mark {
+    display: none;
+  }
+/* The top bar already carries the location menu on phones; the page copy would repeat it. */
+.workspace-shell:has(.workspace-topbar .mobile-location-select) .workspace-content .page-intro .location-select {
+    display: none;
   }
 .assistant-sheet {
     border-radius: 24px 24px 0 0;

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRight, BadgeCheck, CheckCircle2, CircleDashed, CreditCard, ShieldCheck } from "lucide-react"
+import { ArrowRight, CheckCircle2, CircleDashed, CreditCard, ShieldCheck } from "lucide-react"
 
 import { PageIntro, SectionCard } from "@/components/product-ui"
 import { RoleNotice } from "@/components/states/role-notice"
@@ -49,11 +49,9 @@ export function BillingView({ locale, workspaceId, role, timezone, model, checko
   const progress = unlimited ? 0 : Math.min(100, Math.round((usage.approvedDeliveries / Math.max(1, usage.allowance ?? 1)) * 100))
   const planName = paid ? pc.growthWorkspace : pc.freePlan
   const allowanceLabel = unlimited ? pc.unlimited : String(usage.allowance)
+  // Before billing opens, a configured contact channel adds a contact button
+  // under this label; without one there is no empty href (Review Focus 5).
   const notOpenLabel = t(locale, "commercial.notOpen")
-  // Same anchor/plain-text rule as the public pricing page (Task 4): a
-  // configured contact channel wraps the label in a link, otherwise it is
-  // plain text with no empty href (Review Focus 5).
-  const notOpenNode = contactHref ? <a href={contactHref}>{notOpenLabel}</a> : notOpenLabel
 
   return (
     <div className="settings-page billing-page">
@@ -66,10 +64,8 @@ export function BillingView({ locale, workspaceId, role, timezone, model, checko
           <div className="plan-card-head"><div><Badge>{planName}</Badge><h2>{formatPrice({...model.marketPrice,amount:paid?model.marketPrice.amount:0})} <span>{pc.month}</span></h2><p>{paid ? pc.growthPlanSummary : billingOpen ? (fill(pc.currentlyFreeApprovedDeliveries, { allowanceLabel })) : (fill(pc.currentlyFreeAllowance, { allowanceLabel }))}</p></div><Badge variant="outline">{paid ? pc.subscriptionActive : pc.notSubscribed}</Badge></div>
           {!paid && <p className="upgrade-price">{pc.upgradeToGrowthWorkspace}: {formatPrice(model.marketPrice)} {pc.month}</p>}
           <div className="usage-large"><div><span>{pc.approvedDeliveriesThisMonth}</span><strong>{usage.approvedDeliveries} / {allowanceLabel}</strong></div><Progress value={progress} aria-label={pc.approvedDeliveriesUsedThis} /><small>{unlimited ? (fill(pc.noCap, { period: usage.period })) : (fill(pc.remainPeriod, { remaining: String(remaining), period: usage.period }))}</small></div>
-          <div className="limitation-note"><CircleDashed /> {pc.generationRevisionsAndRejection}</div>
-          {!billingOpen ? (
-            <p className="limitation-note">{notOpenNode}</p>
-          ) : role === "owner" ? (
+          {/* The usage rule is the page's lead line; the "not open yet" note and its contact button live in the card beside this one. */}
+          {!billingOpen ? null : role === "owner" ? (
             <BillingActions locale={locale} workspaceId={workspaceId} paid={paid && model.stripeCustomer} />
           ) : (
             <div className="plan-actions"><Button disabled>{paid ? pc.manageBilling : pc.subscribeViaStripe}</Button><Button variant="outline" disabled>{pc.topUpPlanned}</Button></div>
@@ -79,6 +75,7 @@ export function BillingView({ locale, workspaceId, role, timezone, model, checko
           <div className="payment-retry-icon"><CreditCard /></div>
           <Badge variant="outline">{pc.paymentLifecycle}</Badge>
           <h2>{paid ? pc.yourSubscriptionIsManaged : !billingOpen ? notOpenLabel : pc.subscribeToUnlockThe}</h2>
+          {!paid && !billingOpen && contactHref && <Button asChild><a href={contactHref}>{t(locale, "commercial.contact")}<ArrowRight /></a></Button>}
           <p>{pc.theWorkspaceRemainsAvailable}</p>
           <p className="limitation-note"><ShieldCheck /> {pc.tierChangesArriveOnly}</p>
         </SectionCard>
@@ -103,7 +100,6 @@ export function BillingView({ locale, workspaceId, role, timezone, model, checko
               </TableBody>
             </Table>
           )}
-          <p className="limitation-note"><BadgeCheck /> {pc.failedRunsRegenerationAnd}</p>
         </SectionCard>
         <SectionCard>
           <p className="eyebrow">{pc.commercialBoundary}</p>

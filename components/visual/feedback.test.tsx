@@ -68,7 +68,7 @@ describe("UsageMeter", () => {
   it("shows an unlimited plan as a count without a bar", () => {
     const { container } = render(<UsageMeter used={7} allowance={null} locale="zh-HK" />)
     expect(screen.queryByRole("meter")).toBeNull()
-    expect(container.textContent).toContain("本月已核准交付 7 次")
+    expect(container.textContent).toContain("本月已用 7 次")
   })
 })
 

@@ -18,8 +18,8 @@ test("owner reads and bulk-approves a review reply, and Today advances the first
   await signIn(page, environment, merchant, "owner");
 
   const faces = [
-    { locale: "en", review: "Review draft", copy: "Copy text" },
-    { locale: "zh-HK", review: "審閱草稿", copy: "複製文字" },
+    { locale: "en", review: "Check the draft", copy: "Open and copy" },
+    { locale: "zh-HK", review: "睇草稿再確認", copy: "打開再複製" },
   ] as const;
   expect(sql(environment.db, `select count(*) from output_versions where workspace_id='${merchant.workspaceId}' and approval_state='approved';`)).toBe("0");
   for (const face of faces) {
@@ -80,7 +80,7 @@ test("the side panel opens beside the queue and closing it keeps the queue's fil
   // The queue keeps the page's only h1; the panel's title is an h2.
   await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
   await expect(panel.getByRole("link", { name: "Open full page" })).toHaveAttribute("href", new RegExp(`/actions/${merchant.actionId}`));
-  await panel.getByRole("tab", { name: "Version & audit history" }).click();
+  await panel.getByRole("tab", { name: "History" }).click();
   await expect(panel.getByRole("tabpanel")).toBeVisible();
   await panel.getByRole("link", { name: "Close details" }).click();
   await expect(page).not.toHaveURL(/open=/);

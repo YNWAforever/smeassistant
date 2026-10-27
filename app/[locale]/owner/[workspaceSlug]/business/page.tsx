@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Activity, ArrowLeftRight, Bell, Building2, CreditCard, Images, MapPin, PlugZap, Users } from "lucide-react";
 
 import { DestinationIndex } from "@/components/workspace/destination-index";
+import { ShopProfileCard } from "@/components/workspace/today-progress";
+import { loadShopProfile } from "@/lib/workspace/progress-loader";
+import { stockPhotosEnabled } from "@/lib/stock-photos";
 import { copy } from "@/lib/copy";
 import { withLocation } from "@/lib/workspace/format";
 import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
@@ -18,11 +21,19 @@ export default async function BusinessRoute(props: OwnerPageProps) {
   const t = copy[page.locale].shell;
   const base = `/${page.locale}/owner/${page.workspaceSlug}/business`;
   const settings = `/${page.locale}/owner/${page.workspaceSlug}/settings`;
+  const shop = await loadShopProfile(page.ctx);
+  const owner = page.membership.role === "owner";
+  // Each unfinished item links where it is filled in, only where this role may go.
+  const profileLinks = owner ? {
+    voice: `${base}/profile`, facts: `${base}/profile`, claims: `${base}/profile`,
+    photo: withLocation(`${base}/assets`, page.locationSlug), google: `${base}/integrations`, instagram: `${base}/integrations`,
+  } : page.membership.role === "manager" ? { photo: withLocation(`${base}/assets`, page.locationSlug) } : {};
   return (
     <DestinationIndex
       title={t.business.title}
       lead={t.business.lead}
       lockedLabel={t.locked}
+      header={shop && <ShopProfileCard locale={page.locale} workspaceId={page.ctx.workspace.id} profile={shop.profile} photo={shop.photo} links={profileLinks} showStock={stockPhotosEnabled()} />}
       links={[
         { key: "team", ...t.settings.team, icon: Users, href: withLocation(`${settings}/team`, page.locationSlug) },
         { key: "profile", ...t.business.profile, icon: Building2, href: `${base}/profile` },

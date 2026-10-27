@@ -10,6 +10,9 @@ import { loadWorkspaceProblems } from "@/lib/workspace/problems";
 import { getHomeBrief } from "@/lib/workspace/queries-pages";
 import { loadGettingStarted } from "@/lib/workspace/getting-started";
 import { GettingStarted } from "@/components/workspace/getting-started";
+import { ShopPhotoStrip, TodayProgress } from "@/components/workspace/today-progress";
+import { loadTodayProgress } from "@/lib/workspace/progress-loader";
+import { stockPhotosEnabled } from "@/lib/stock-photos";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +38,9 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
     loadGettingStarted(page.ctx, page.membership, page.locale),
   ]);
   const locationId = page.locationSlug === "all" ? "all" : page.ctx.locations.find((l) => l.slug === page.locationSlug)?.id ?? "all";
+  // Effort only: tasks done this month against what is still open, in this scope.
+  const today = await loadTodayProgress(page.ctx, { monthDone: brief.month.completed, open: brief.openActionCount ?? brief.openActions.length, locationId });
+  const base = `/${page.locale}/owner/${page.workspaceSlug}`;
   const forbidden = page.query.forbidden === "1";
   return (
     <>
@@ -56,6 +62,8 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
         role={page.membership.role}
         rescanInScope={inScopeFor(page.membership, brief.location?.id ?? null)}
         gettingStarted={gettingStarted && <GettingStarted items={gettingStarted} locale={page.locale} />}
+        progressPanel={today.progress && <TodayProgress locale={page.locale} progress={today.progress} moduleStates={brief.snapshot?.moduleStates ?? null} base={base} location={page.locationSlug} canAct={page.membership.role !== "viewer"} />}
+        photoStrip={today.progress && <ShopPhotoStrip locale={page.locale} workspaceId={page.ctx.workspace.id} photos={today.photos} base={base} location={page.locationSlug} canUpload={page.membership.role !== "viewer"} showStock={stockPhotosEnabled()} />}
         problems={problems && (
           <NeedsAttentionCard
             locale={page.locale}

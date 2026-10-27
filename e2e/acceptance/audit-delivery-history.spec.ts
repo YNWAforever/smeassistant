@@ -76,7 +76,7 @@ test("shows every version, approval, and repeated delivery audit without double-
   await expect(page.locator("#draft-content")).toHaveValue(
     "Accepted review reply. Please leave another comment if we can help.",
   );
-  await page.getByRole("tab", { name: "Version & audit history", exact: true }).click();
+  await page.getByRole("tab", { name: "History", exact: true }).click();
   await page.locator(".history-layout > details").locator(":scope > summary").click();
   const auditList = page.locator(".audit-mini");
   await expect(auditList).toBeVisible();
@@ -84,7 +84,7 @@ test("shows every version, approval, and repeated delivery audit without double-
   await expect(auditList.getByText("Version approved", { exact: true })).toHaveCount(1);
   await expect(auditList.getByText("Export recorded", { exact: true })).toHaveCount(2);
   const usage = page.locator(".usage-mini");
-  await expect(usage.getByText("Approved deliveries", { exact: true })).toBeVisible();
+  await expect(usage.getByText("Used this month", { exact: true })).toBeVisible();
   await expect(usage.getByText("1 / 3", { exact: true })).toBeVisible();
   await page.screenshot({ path: `${evidence}/audit-delivery-history.png`, fullPage: true });
 
@@ -209,14 +209,14 @@ test("bilingual completed-page reloads preserve exact version, approval, deliver
           await expect(page.locator(".action-verification-result")).toContainText(chinese
             ? "目前來源無法核實這則 Google 評論的指定回覆。"
             : "Current sources cannot verify this specific Google review reply.");
-          await page.getByRole("tab", { name: chinese ? "版本及審計紀錄" : "Version & audit history", exact: true }).click();
+          await page.getByRole("tab", { name: chinese ? "紀錄" : "History", exact: true }).click();
           await page.locator(".history-layout > details").locator(":scope > summary").click();
           const audit = page.locator(".audit-mini");
           await expect(audit).toBeVisible();
-          await expect(audit.getByText(chinese ? "版本已核准" : "Version approved", { exact: true })).toHaveCount(1);
+          await expect(audit.getByText(chinese ? "版本已確認" : "Version approved", { exact: true })).toHaveCount(1);
           await expect(audit.getByText(chinese ? "已記錄匯出" : "Export recorded", { exact: true })).toHaveCount(1);
           await expect(audit.getByText(chinese ? "標記為已套用" : "Marked as applied", { exact: true })).toHaveCount(1);
-          await expect(audit.locator("p").filter({ hasText: chinese ? "版本已核准" : "Version approved" })).toContainText(chinese ? "第 2 版" : "Version 2");
+          await expect(audit.locator("p").filter({ hasText: chinese ? "版本已確認" : "Version approved" })).toContainText(chinese ? "第 2 版" : "Version 2");
           await expect(audit.locator("p").filter({ hasText: chinese ? "已記錄匯出" : "Export recorded" })).toContainText(chinese ? "第 2 版" : "Version 2");
           if (load === "reload") await page.screenshot({ path: testInfo.outputPath(`${locale}-mobile-completed.png`), fullPage: true });
         } else if (route === "billing") {
@@ -228,10 +228,11 @@ test("bilingual completed-page reloads preserve exact version, approval, deliver
           const why = card.locator("details.trust-disclosure");
           await expect(why).not.toHaveAttribute("open");
           const summary = why.locator(":scope > summary");
-          await expect(summary).toHaveText(chinese ? "點解咁講" : "Why you can trust this");
+          await expect(summary).toHaveText(chinese ? "睇證據" : "See the evidence");
+          // The state is on the card itself; the disclosure holds the evidence.
+          await expect(card.getByText(chinese ? "已套用（店主回報）" : "Applied (reported)", { exact: true })).toBeVisible();
           await summary.click();
           await expect(why).toHaveAttribute("open", "");
-          await expect(why.getByText(chinese ? "已套用（店主回報）" : "Applied (reported)", { exact: true })).toBeVisible();
         }
         expect(snapshot(), `${locale} ${route} ${load} must not mutate durable records`).toEqual(before);
         expect(mutations).toEqual([]);

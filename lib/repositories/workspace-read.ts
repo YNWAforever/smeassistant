@@ -26,6 +26,18 @@ function pageLimit(value: number): number {
 const WORKSPACE_COLUMNS = "id, slug, business_name, market, tier, timezone, is_demo, instagram_handle, industry, district";
 const LOCATION_COLUMNS = "id, workspace_id, slug, name, address, district, is_primary, place_id";
 
+/** Audit events that count as "the owner did something this week". */
+const EFFORT_EVENTS = ["version.approved", "delivery.exported", "delivery.copied", "action.applied"];
+
+export interface EffortSignalsRow {
+  approved: number;
+  delivered: number;
+  completed: number;
+  /** Monday dates ('YYYY-MM-DD', workspace time) with at least one effort event. */
+  active_weeks: string[];
+  this_week: string;
+}
+
 export interface ActionVerificationScope {
   actionId: string;
   locationId: string | null;
@@ -193,6 +205,23 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
     // Getting-started checklist (Phase 5): has any version in this workspace
     // been approved? approved_at stays set when a later edit supersedes it; a
     // later decision can clear it, so an exported version also counts.
+    /**
+     * What the owner has done, for Today's progress and badges: confirmed
+     * versions, counted deliveries, completed tasks, and the local weeks
+     * (Monday start, last 12 weeks) with any confirm, copy, export or
+     * "marked as applied" event. Counts of effort, never of results.
+     */
+    async effortSignals(workspaceId: string, timezone: string): Promise<EffortSignalsRow> {
+      const [row] = await rows<EffortSignalsRow>(`SELECT
+        (SELECT count(*)::int FROM output_versions WHERE workspace_id=$1 AND approved_at IS NOT NULL) AS approved,
+        (SELECT count(*)::int FROM deliveries WHERE workspace_id=$1 AND counted=true) AS delivered,
+        (SELECT count(*)::int FROM actions WHERE workspace_id=$1 AND action_state='completed') AS completed,
+        COALESCE((SELECT array_agg(DISTINCT to_char(date_trunc('week', created_at AT TIME ZONE $2), 'YYYY-MM-DD'))
+          FROM audit_events WHERE workspace_id=$1 AND event = ANY($3::text[]) AND created_at > now() - interval '84 days'), '{}') AS active_weeks,
+        to_char(date_trunc('week', now() AT TIME ZONE $2), 'YYYY-MM-DD') AS this_week`,
+        [workspaceId, timezone, EFFORT_EVENTS]);
+      return row;
+    },
     async anyApprovedVersion(workspaceId: string): Promise<boolean> {
       const [row] = await rows<{ approved: boolean }>("SELECT EXISTS(SELECT 1 FROM output_versions WHERE workspace_id=$1 AND (approved_at IS NOT NULL OR first_exported_at IS NOT NULL)) AS approved", [workspaceId]);
       return row?.approved === true;

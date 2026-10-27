@@ -40,8 +40,8 @@ export interface ActionDetailViewProps {
 export function ActionDetailView(props: ActionDetailViewProps) {
   return (
     <>
-      <ActionProgress versions={props.detail.versions} locale={props.locale} />
       <ActionDetailClient {...props} />
+      <ActionProgress versions={props.detail.versions} locale={props.locale} showFlow={false} />
     </>
   )
 }

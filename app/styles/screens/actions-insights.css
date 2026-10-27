@@ -325,3 +325,16 @@
 .calendar-list li > a { grid-column: 2; }}
 .calendar-list li > a { color: var(--teal); font-size: 13px; font-weight: 650; align-self: center; }
 }
+/* Queue card: urgency, state and time stay visible; evidence folds into a quiet text toggle. */
+.action-card-badges{flex-wrap:wrap;align-items:center;margin-top:12px}
+.action-card-effort{display:inline-flex;align-items:center;gap:4px;color:var(--ink-3);font-size:13px}
+.action-card-effort svg{width:14px;height:14px}
+.action-card .action-card-evidence{margin-top:8px}
+.action-card .action-card-evidence > summary{min-height:44px;padding:0;border:0;background:none;box-shadow:none;color:var(--brand-text);font-size:13px;font-weight:600}
+.action-card .action-card-evidence > summary::after{margin-left:6px;font-size:15px}
+.action-tabs > .queue-more{margin-top:0;border-top:0;border-bottom:1px solid var(--border)}
+.action-tabs > .queue-more > summary{padding-inline:20px}
+.action-tabs > .queue-more > nav{display:flex;flex-wrap:wrap;gap:8px 16px;padding:0 20px 14px}
+.insights-baseline{margin-bottom:16px}
+.insights-baseline h2{margin:6px 0 8px;font-size:22px;line-height:1.35}
+.insights-baseline p:not(.eyebrow){margin:0;color:var(--ink-2);font-size:15px;line-height:1.6}

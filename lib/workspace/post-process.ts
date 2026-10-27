@@ -111,7 +111,7 @@ export async function postProcessWorkspaceScan(db: PoolClient, jobId: string, op
       title: localized(name ? `Scan completed for ${name}` : "Scan completed", name ? `${name} 掃描完成` : "掃描完成"),
       body: job.status === "partial"
         ? localized("Some sources could not be read; the report shows what was measured.", "部分來源無法讀取；報告只顯示已量度的部分。")
-        : localized("Your workspace has fresh evidence and refreshed actions.", "工作區已有最新證據及更新後的行動。"),
+        : localized("Your workspace has fresh evidence and refreshed actions.", "工作區已有最新證據及更新後的待辦。"),
       href,
     });
     if (notification.error) throw new Error(notification.error);

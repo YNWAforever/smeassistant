@@ -12,8 +12,8 @@ async function clickUntil(target: Locator, opened: Locator) {
 }
 
 // zh-HK strings, from lib/copy-workspace.ts (packs) and lib/copy-action.ts.
-const DISCLOSURE = "最多會建立 3 份草稿。核准並匯出草稿前不會計算用量；每份匯出的草稿計為 1 次交付。";
-const DRAFT_READY = "草稿已備妥";
+const DISCLOSURE = "最多會建立 3 份草稿。確認並匯出草稿前不會計算用量；每份匯出的草稿計為 1 次交付。";
+const DRAFT_READY = "草稿已寫好";
 const NEEDS_FACTS = "需要你補充資料";
 const EXPORTED = "已匯出";
 
@@ -65,7 +65,7 @@ test("the starter pack becomes drafts, one is approved and exported, and startin
   // Drafts exist, nothing is approved or counted, and the pack stores no approval or delivery state of its own.
   expect(sql(db, `select count(*) from output_versions v join work_pack_items i on i.action_id=v.action_id where i.pack_id='${packId}' and v.approval_state='draft';`)).toBe("2");
   expect(used()).toBe("0");
-  await expect(card.getByRole("button", { name: /核准|匯出/ })).toHaveCount(0);
+  await expect(card.getByRole("button", { name: /確認|匯出/ })).toHaveCount(0);
 
   // 3. "Review next" opens the review-response action page, where the draft is approved and exported.
   const reviewNext = card.getByRole("link", { name: "審閱下一份" });

@@ -1,3 +1,5 @@
+import { Lock } from "lucide-react"
+
 import { copy, type PrototypeLocale } from "@/lib/copy"
 
 /** Which of 改稿 → 確認 → 複製文字 the owner is on. A saved draft waits at 確認; an approved version is 複製文字. */
@@ -12,6 +14,7 @@ export function OwnerSteps({ locale, index }: { locale: PrototypeLocale; index: 
   const steps = copy[locale].action.ownerSteps
   const labels = [steps.edit, steps.confirm, steps.send]
   return (
+    <div className="owner-steps-wrap">
     <ol className="owner-steps" aria-label={steps.aria} data-testid="owner-steps">
       {labels.map((label, i) => (
         <li key={label} className={i === index ? "is-current" : i < index ? "is-done" : undefined} aria-current={i === index ? "step" : undefined}>
@@ -20,6 +23,8 @@ export function OwnerSteps({ locale, index }: { locale: PrototypeLocale; index: 
         </li>
       ))}
     </ol>
+    <p className="owner-steps-lock"><Lock aria-hidden="true" />{copy[locale].ui.visual.approvalFlow.lock}</p>
+    </div>
   )
 }
 

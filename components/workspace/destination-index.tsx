@@ -1,4 +1,5 @@
 import Link from "next/link"
+import type { ReactNode } from "react"
 import { ChevronRight, LockKeyhole, type LucideIcon } from "lucide-react"
 
 import { PageIntro } from "@/components/product-ui"
@@ -11,10 +12,11 @@ export type DestinationLink = { key: string; title: string; body: string; icon: 
  * never a link that bounces them (target IA "Role visibility"); the page
  * itself still enforces the role on the server.
  */
-export function DestinationIndex({ title, lead, links, lockedLabel }: { title: string; lead: string; links: DestinationLink[]; lockedLabel: string }) {
+export function DestinationIndex({ title, lead, links, lockedLabel, header }: { title: string; lead: string; links: DestinationLink[]; lockedLabel: string; header?: ReactNode }) {
   return (
     <div className="destination-page">
       <PageIntro title={title} description={lead} />
+      {header}
       <ul className="destination-list">
         {links.map(({ key, title: label, body, icon: Icon, href, locked }) => (
           <li key={key}>

@@ -53,8 +53,8 @@
   "problems": {
     "homeTitle": "Needs attention",
     "homeMore": "See every problem in Activity",
-    "activityTitle": "Problems & recovery",
-    "activityEmpty": "No open problems.",
+    "activityTitle": "Things to fix",
+    "activityEmpty": "Nothing to fix right now.",
     "reference": "Reference {reference}",
     "kind": {
       "scan_failed": "A scan did not finish",
@@ -101,6 +101,7 @@
     }
   },
   "commercial": {
+    "contact": "Contact Fimmick",
     "notOpen": "Subscriptions are not open yet — contact Fimmick",
     "allowanceLine": "Free workspace: {count} approved deliveries a month",
     "unlimitedLine": "Unlimited approved deliveries a month"
@@ -111,10 +112,11 @@
     "ai": "AI drafting is paused for maintenance. Nothing was counted; try again later."
   },
   "mail": {
-    "allowTitle": "Allow these emails in this workspace",
-    "myEmailsTitle": "My emails",
+    "eyebrow": "Email",
+    "allowTitle": "Emails for the whole shop (owner sets these)",
+    "myEmailsTitle": "Emails I get",
     "rescanComplete": "Rescan complete",
-    "regressionAlert": "New issues found (regression alert)",
+    "regressionAlert": "Something got worse",
     "monthlyDigest": "Monthly digest · Planned",
     "closedNote": "Email is not switched on yet. Your choices are saved and take effect once it is.",
     "openNote": "We'll email you at {address} when these happen.",

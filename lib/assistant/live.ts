@@ -93,12 +93,12 @@ const WARMER_INSTRUCTION = "Rewrite in a warmer, friendlier tone. Preserve only 
 
 export const LIVE_BOUNDARY = localized(
   "Answers use only this workspace's evidence snapshots; nothing is published or approved here.",
-  "回答只使用此工作區的證據快照；這裡不會發佈或核准任何內容。",
+  "回答只使用此工作區的證據快照；這裡不會發佈或確認任何內容。",
 );
 const AI_UNAVAILABLE = localized("AI drafting unavailable right now", "AI 草稿功能暫時無法使用");
 const NO_ACTION_FOR_DRAFT = localized(
   "No open action matches this request, so there is nothing to draft from. Create the action first.",
-  "沒有未完成的行動符合這項要求，因此沒有可用作草稿的基礎。請先建立行動。",
+  "沒有未完成的待辦符合這項要求，因此沒有可用作草稿的基礎。請先建立待辦。",
 );
 const DRAFT_ANSWER = localized(
   "A draft for “{title}” is ready for owner review. It uses only the brand facts and the evidence shown; nothing is saved until you create a new version.",
@@ -106,7 +106,7 @@ const DRAFT_ANSWER = localized(
 );
 const DRAFT_NEXT = localized(
   "Check tone and facts, create a new version, then approve a specific version; nothing publishes automatically.",
-  "檢查語氣及事實，建立新版本，再核准指定版本；不會自動發佈。",
+  "檢查語氣及事實，建立新版本，再確認指定版本；不會自動發佈。",
 );
 const NEEDS_FACTS = localized("The agent still needs: {facts}.", "Agent 仍需要：{facts}。");
 interface WorkspaceRow { business_name: string | null; market: string | null; timezone: string | null }

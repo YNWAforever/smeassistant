@@ -27,7 +27,7 @@ const CHANNELS = new Set(["google", "instagram", "website", "search_ai"]);
 const STATUSES = new Set(["recommended", "needs_input", "ready", "in_progress", "completed", "dismissed", "cancelled", "expired"]);
 
 export async function generateMetadata(props: OwnerPageProps): Promise<Metadata> {
-  return ownerPageMetadata(props, { en: "Actions", zh: "行動" });
+  return ownerPageMetadata(props, { en: "Actions", zh: "待辦" });
 }
 
 export default async function ActionsRoute(props: OwnerPageProps) {

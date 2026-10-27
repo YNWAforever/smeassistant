@@ -110,7 +110,7 @@ describe("the action page's version landing (P4.3)", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(locale === "en" ? "This saved version is unavailable" : "無法讀取指定的已儲存版本");
       expect(document.querySelector("#draft-content")).toBeNull();
       expect(screen.getByRole("link")).toHaveAttribute("href", `/${locale}/owner/kam-man-house?location=yik-yam`);
-      expect(screen.queryByRole("button", { name: /Approve|核准/ })).toBeNull();
+      expect(screen.queryByRole("button", { name: /Approve|確認/ })).toBeNull();
     });
   }
 

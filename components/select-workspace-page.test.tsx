@@ -85,7 +85,7 @@ describe("signed-in account exit", () => {
       }
       render(<SelectWorkspacePage locale={locale} cards={[card]} email="member@acceptance.test" signOutAction={signOutAction} />)
       expect(signOutAction).not.toHaveBeenCalled()
-      const button = screen.getByRole("button", { name: /Sign out and use another email|登出.*登入/ })
+      const button = screen.getByRole("button", { name: /Sign out and use another account|登出並(轉|改)用另一個帳戶/ })
       expect(button).toHaveAttribute("type", "submit")
       fireEvent.click(button)
       await waitFor(() => expect(signOutAction).toHaveBeenCalledTimes(1))
@@ -93,7 +93,7 @@ describe("signed-in account exit", () => {
 
     it(`keeps exactly one sign-out action for a memberless account (${locale})`, () => {
       render(<SelectWorkspacePage locale={locale} cards={[]} email="member@acceptance.test" signOutAction={async () => {}} />)
-      expect(screen.getAllByRole("button", { name: /Sign out and use another email|登出.*登入/ })).toHaveLength(1)
+      expect(screen.getAllByRole("button", { name: /Sign out and use another account|登出並(轉|改)用另一個帳戶/ })).toHaveLength(1)
     })
   }
 })

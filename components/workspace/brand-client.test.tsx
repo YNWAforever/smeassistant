@@ -26,7 +26,7 @@ const response = (status: number, body: unknown) => new Response(JSON.stringify(
 const mount = (brand = profile(), actorId = "owner-a") => render(
   <BrandSettingsForm locale="en" workspaceId={brand.workspaceId} actorId={actorId} brand={brand} readOnly={false} />,
 );
-const save = () => fireEvent.click(screen.getByRole("button", { name: "Save current profile" }));
+const save = () => fireEvent.click(screen.getByRole("button", { name: "Save" }));
 function pendingResponse() {
   let resolve!: (response: Response) => void;
   const promise = new Promise<Response>((done) => { resolve = done; });
@@ -104,7 +104,7 @@ describe("Brand settings reliability", () => {
       actorId={switchKind === "account" ? "owner-b" : "owner-a"} brand={nextBrand} readOnly={switchKind === "permission"} />);
     expect(screen.getByLabelText("Approved claims (one per line)")).toHaveValue("Owner B claim");
     expect(screen.getByRole("combobox", { name: "Choose voice" })).toHaveTextContent("Clear and professional");
-    if (switchKind !== "permission") expect(screen.getByRole("button", { name: "Save current profile" })).toBeEnabled();
+    if (switchKind !== "permission") expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
     await act(async () => pending.resolve(response(200, { brand: profile({ revisionId: NEXT_REVISION }) })));
     expect(mocks.success).not.toHaveBeenCalled();
     expect(mocks.refresh).not.toHaveBeenCalled();
@@ -120,12 +120,12 @@ describe("Brand settings reliability", () => {
     view.rerender(<BrandSettingsForm locale="en" workspaceId={WORKSPACE} actorId="owner-b" brand={profile()} readOnly={false} />);
     save();
     await act(async () => oldRequest.resolve(response(503, { error: "unavailable" })));
-    expect(screen.getByRole("button", { name: "Save current profile" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(mocks.error).not.toHaveBeenCalled();
     await act(async () => newRequest.resolve(response(200, { brand: profile({ revisionId: NEXT_REVISION }) })));
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: "Save current profile" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
   });
 
   it("retains a stale draft and requires explicit review and replacement before another save", async () => {
@@ -137,7 +137,7 @@ describe("Brand settings reliability", () => {
     save();
     expect(await screen.findByRole("alert")).toHaveTextContent(/another save/i);
     expect(screen.getByLabelText("Approved claims (one per line)")).toHaveValue("My stale draft");
-    expect(screen.getByRole("button", { name: "Save current profile" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Review latest profile" }));
     expect(await screen.findByRole("region", { name: "Latest saved profile" })).toHaveTextContent("Latest claim");
     expect(screen.getByLabelText("Approved claims (one per line)")).toHaveValue("My stale draft");
@@ -190,7 +190,7 @@ describe("Brand settings reliability", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Review latest profile" }));
     expect(await screen.findByText(/latest profile could not be loaded/i)).toBeVisible();
     expect(screen.getByLabelText("Approved claims (one per line)")).toHaveValue("My retained edits");
-    expect(screen.getByRole("button", { name: "Save current profile" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     expect(screen.queryByRole("region", { name: "Latest saved profile" })).not.toBeInTheDocument();
   });
 
@@ -198,7 +198,7 @@ describe("Brand settings reliability", () => {
     render(<BrandView locale="en" workspaceId={WORKSPACE} actorId="viewer-a" brand={profile()} role="viewer" />);
     expect(screen.getByRole("note")).toHaveTextContent("You can look; ask the owner to make changes.");
     expect(screen.getByRole("button", { name: "Ask the owner to change it" })).toBeDisabled();
-    expect(screen.queryByRole("button", { name: "Save current profile" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Choose voice" })).toBeDisabled();
     expect(screen.getByLabelText("Approved claims (one per line)")).toHaveAttribute("readonly");
   });

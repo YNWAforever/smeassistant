@@ -135,6 +135,35 @@ describe("InsightsView", () => {
     }), "zh-HK")).toContain("上次同今次查到嘅嘢唔同");
   });
 
+  it("shows the starting point, with the one rescan control above it, when there is nothing to compare yet", () => {
+    const root = document.createElement("div");
+    root.innerHTML = renderToStaticMarkup(<InsightsView locale="zh-HK" workspaceSlug="kam-man-house" timezone="Asia/Hong_Kong" locations={[{ slug: location.slug, name: location.name }]}
+      model={model({ ledgerComparable: false, ledger: { resolved: [], regressed: [], decayed: [] } })} rescan={<button type="button">重新掃描</button>} />);
+    const baseline = root.querySelector(".insights-baseline");
+    expect(baseline?.closest("details")).toBeNull();
+    expect(baseline?.textContent).toContain("你嘅起點");
+    expect(baseline?.textContent).toContain("90%");
+    // The page's rescan control appears once, at the top, not again in the card.
+    expect(baseline?.querySelector("button")).toBeNull();
+    expect([...root.querySelectorAll("button")].filter((b) => b.textContent === "重新掃描")).toHaveLength(1);
+    // No score is shown on the baseline: one scan is not a trend.
+    expect(baseline?.textContent).not.toContain("62");
+  });
+
+  it("calls only a first scan the starting point, not a later scan that cannot be compared", () => {
+    const later = { snapshotId: "s2", observedAt: "2026-09-25T00:00:00Z", score: 70, coverage: 0.5, comparable: false, incomparableReason: "NO_SHARED_MEASURED_MODULE" };
+    const base = model({ ledgerComparable: false, ledger: { resolved: [], regressed: [], decayed: [] } });
+    const root = document.createElement("div");
+    root.innerHTML = renderToStaticMarkup(<InsightsView locale="zh-HK" workspaceSlug="kam-man-house" timezone="Asia/Hong_Kong" locations={[{ slug: location.slug, name: location.name }]}
+      model={{ ...base, series: [...base.series, later] }} />);
+    expect(root.querySelector(".insights-baseline")).toBeNull();
+    expect(root.querySelectorAll(".k-scan-bar[data-gap]")).toHaveLength(1);
+  });
+
+  it("drops the starting-point card once a comparison exists", () => {
+    expect(render("en").querySelector(".insights-baseline")).toBeNull();
+  });
+
   it("titles delivered work in the page's own locale", () => {
     expect(render("zh-TW").textContent).toContain("重寫簡介（台）");
     expect(render("zh-HK").textContent).toContain("重寫簡介（港）");

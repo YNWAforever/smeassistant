@@ -193,10 +193,10 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
       { location: { id: actionRow.location_id, slug: "yik-yam", name: { en: "Yik Yam", "zh-HK": "奕蔭街", "zh-TW": "奕蔭街" } }, latestRun: null, latestVersion: null },
     );
   }
-  function view(opts: { locale?: "en" | "zh-HK" | "zh-TW"; tier?: "lite" | "paid"; role?: "owner" | "manager" | "viewer"; priority?: ReturnType<typeof priority> | null; withSnapshot?: boolean; openActionCount?: number; openActions?: HomeBrief["openActions"]; gettingStarted?: ReactNode } = {}) {
+  function view(opts: { locale?: "en" | "zh-HK" | "zh-TW"; tier?: "lite" | "paid"; role?: "owner" | "manager" | "viewer"; priority?: ReturnType<typeof priority> | null; withSnapshot?: boolean; openActionCount?: number; openActions?: HomeBrief["openActions"]; gettingStarted?: ReactNode; priorityPreview?: string } = {}) {
     const brief = baseBrief(null);
     brief.priority = opts.priority === undefined ? priority() : opts.priority;
-    Object.assign(brief, { openActionCount: opts.openActionCount });
+    Object.assign(brief, { openActionCount: opts.openActionCount, priorityPreview: opts.priorityPreview ?? null });
     if (opts.openActions) brief.openActions = opts.openActions;
     if (opts.withSnapshot) { brief.snapshot = snapshot; brief.location = { id: "loc-1", slug: "yik-yam", name: "Yik Yam", isPrimary: true, address: null, district: null, placeId: null }; }
     const root = document.createElement("div");
@@ -241,7 +241,8 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
   it("shows other tasks as one count and one link, without repeating cards or creation routes", () => {
     const root = view({ openActionCount: 37, openActions: [priority()] });
     const tasks = root.querySelector(".owner-tasks-disclosure");
-    expect(tasks?.textContent).toContain("37");
+    // The task on the card above is not one of the "other" tasks.
+    expect(tasks?.textContent).toContain("36");
     expect(tasks?.querySelectorAll("a")).toHaveLength(1);
     expect(tasks?.querySelector("a")?.getAttribute("href")).toBe("/en/owner/kam-man-house/actions?location=yik-yam");
     expect(tasks?.querySelector(".compact-action-list")).toBeNull();
@@ -259,14 +260,14 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
   it("takes an existing draft straight to review instead of promising a new start", () => {
     const action = { ...priority(), latestVersion: { id: "version-1", versionNo: 2, approvalState: "draft" as const, deliveryState: "not_requested" as const } };
     const link = view({ priority: action }).querySelector(".brief-priority-actions a");
-    expect(link?.textContent).toContain("Review draft");
+    expect(link?.textContent).toContain("Check the draft");
     expect(link?.getAttribute("href")).toContain("/actions/");
   });
 
   it.each(["owner", "manager", "viewer"] as const)("offers an approved version only within the %s role", (role) => {
     const action = { ...priority(), latestVersion: { id: "version-1", versionNo: 2, approvalState: "approved" as const, deliveryState: "export_ready" as const } };
     const link = view({ priority: action, role }).querySelector(".brief-priority-actions a");
-    expect(link?.textContent).toContain(role === "viewer" ? "View task" : "Copy text");
+    expect(link?.textContent).toContain(role === "viewer" ? "View task" : "Open and copy");
     expect(link?.getAttribute("href")).toContain("/actions/");
     if (role === "viewer") expect(link?.textContent).not.toContain("Export");
   });
@@ -313,10 +314,21 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
     const actions = [0, 1, 2].map((index) => ({ ...priority(), id: `action-${index}` }));
     for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
       const tasks = view({ locale, openActionCount: 37, openActions: actions }).querySelector(".owner-tasks-disclosure");
-      expect(tasks?.textContent).toContain("37");
+      expect(tasks?.textContent).toContain("36");
       expect(tasks?.querySelectorAll("a")).toHaveLength(1);
       expect(tasks?.querySelector(".compact-action-list")).toBeNull();
     }
+  });
+
+  it("hides the other-tasks row when the card already shows the only open task", () => {
+    expect(view({ openActionCount: 1, openActions: [priority()] }).querySelector(".owner-tasks-disclosure")).toBeNull();
+  });
+
+  it("shows the opening of the draft the owner is about to check", () => {
+    const action = { ...priority(), latestVersion: { id: "version-1", versionNo: 2, approvalState: "draft" as const, deliveryState: "not_requested" as const } };
+    const root = view({ priority: action, priorityPreview: "Thank you for visiting us." });
+    expect(root.querySelector('[data-testid="home-draft-preview"]')?.textContent).toBe("Thank you for visiting us.");
+    expect(view({ priority: action }).querySelector('[data-testid="home-draft-preview"]')).toBeNull();
   });
 
   it("only puts the next setup step under the coach when there is no task yet", () => {
@@ -462,4 +474,6 @@ it("uses a successful copy as Today's single coach card while another priority w
   expect(card?.querySelector("h2")?.textContent).toBe("你貼咗未？");
   expect([...card!.querySelectorAll("button")].map(button => button.textContent)).toEqual(["貼咗", "未貼", "遲啲"]);
   expect(card?.textContent).not.toMatch(/Completed|已套用|獨立核實|Version/);
+  // The waiting priority is not on screen, so it still counts in "other tasks".
+  expect(root.querySelector(".owner-tasks-disclosure .badge, .owner-tasks-disclosure [data-slot=badge]")?.textContent).toBe("1");
 });

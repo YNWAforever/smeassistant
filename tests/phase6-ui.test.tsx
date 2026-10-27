@@ -90,7 +90,7 @@ describe("BrandView", () => {
   it("binds the prototype layout to the profile and gates saving on the owner role", () => {
     const owner = renderToStaticMarkup(<BrandView locale="en" workspaceId="ws" actorId="fixture-owner" role="owner" brand={brand} />);
     expect(owner).toContain('type="submit"');
-    expect(owner).toContain("Save current profile");
+    expect(owner).toMatch(/<button[^>]*type="submit"[^>]*>.*?Save<\/button>/);
     expect(owner).not.toContain("role-notice");
     expect(owner).toContain("Clear and professional");
     expect(owner).toContain("20 seats");

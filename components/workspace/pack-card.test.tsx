@@ -296,7 +296,7 @@ describe("PackCard", () => {
   })
 
   it("never renders an approve, export, reject or bulk control in any state", async () => {
-    const forbidden = /approve|export|reject|核准|匯出|拒絕/i
+    const forbidden = /approve|export|reject|確認|匯出|拒絕/i
     const states = [
       packOf(),
       packOf([{ run: "failed" }, { actionState: "needs_input", run: "succeeded" }, { version: { approval: "draft" } }]),

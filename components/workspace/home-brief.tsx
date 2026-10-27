@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { EvidenceGallery } from "@/components/workspace/evidence-gallery"
 import { LocationSelect } from "@/components/workspace/location-select"
 import { RescanButton } from "@/components/workspace/rescan-button"
+import { TemplateIcon } from "@/components/workspace/template-icon"
 import { copy, homeReviewCopy, type PrototypeLocale } from "@/lib/copy"
 import { ownerCheckNextStep } from "@/lib/workspace/owner-review-check"
 import { resolveText } from "@/lib/domain"
@@ -45,6 +46,10 @@ export interface HomeBriefViewProps {
   problems?: ReactNode
   /** The getting-started checklist, rendered after today's priority so it never pushes it below the fold. */
   gettingStarted?: ReactNode
+  /** "Your month": effort ring, streak, sources, badges (TodayProgress), after the coach card. */
+  progressPanel?: ReactNode
+  /** The shop's photos (ShopPhotoStrip), after the follow-on rows. */
+  photoStrip?: ReactNode
 }
 
 function actionHref(locale: PrototypeLocale, slug: string, action: ActionOverview, location: string): string {
@@ -54,7 +59,7 @@ function actionHref(locale: PrototypeLocale, slug: string, action: ActionOvervie
     ? `${href}?version=${encodeURIComponent(action.latestVersion.id)}` : href, location)
 }
 
-export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, role, consentPolicyVersion, problems, gettingStarted, rescanInScope = true }: HomeBriefViewProps) {
+export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, role, consentPolicyVersion, problems, gettingStarted, rescanInScope = true, progressPanel, photoStrip }: HomeBriefViewProps) {
   const t = copy[locale].home
   const focus = copy[locale].ownerFocus
   const pc = copy[locale].workspaceHome.home
@@ -83,6 +88,10 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
   // all-locations view never has a snapshot (no aggregate score), so it only
   // falls back to the quiet copy when nothing is open.
   const hasLocations = locations.length > 0
+  // "Other" tasks: the open total minus the one already shown above it.
+  const openTotal = brief.openActionCount ?? brief.openActions.length
+  // The priority task is subtracted only when its card is on screen; the copy follow-up card replaces it.
+  const otherTasks = Math.max(0, openTotal - (priority && !copyFollowUp ? 1 : 0))
   // An open action is real work whatever the snapshot state, so it always wins.
   const unscanned = !priority && (!hasLocations || (location !== "all" && !snapshot))
   const pageTitle = priority || copyFollowUp ? t.title : unscanned ? t.noScanTitle : t.quietTitle
@@ -121,8 +130,9 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         {!copyFollowUp && <article className="brief-priority-card">
           {priority ? (
             <>
-              <h2>{resolveText(priority.title, locale)}</h2>
+              <div className="brief-priority-head"><TemplateIcon templateKey={priority.templateKey} size="lg" /><h2>{resolveText(priority.title, locale)}</h2></div>
               <p className="coach-sentence">{resolveText(priority.summary, locale)}</p>
+              {brief.priorityPreview && <blockquote className="brief-draft-preview" data-testid="home-draft-preview">{brief.priorityPreview}</blockquote>}
               <div className="brief-priority-actions"><Button asChild size="lg"><Link href={actionHref(locale, workspaceSlug, priority, location)}>{priorityCta}<ArrowRight /></Link></Button></div>
             </>
           ) : (
@@ -135,8 +145,9 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         {copyFollowUp && <CopyFollowUpCard followUp={copyFollowUp} locale={locale} viewer={role === "viewer"} />}
       </section>
 
-      {!priority && !copyFollowUp && (brief.openActionCount ?? brief.openActions.length) === 0 && gettingStarted}
+      {!priority && !copyFollowUp && openTotal === 0 && gettingStarted}
 
+      {progressPanel}
 
       <section className="owner-results-disclosure" aria-label={focus.results}>
         <p>{resultSentence}</p>
@@ -144,10 +155,12 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         <Link href={withLocation(`${base}/insights`, location)}>{focus.results}<ArrowRight /></Link>
       </section>
 
-      <section className="owner-tasks-disclosure" aria-label={focus.otherTasks}>
-        <p>{focus.otherTasks} <Badge variant="outline">{brief.openActionCount ?? brief.openActions.length}</Badge></p>
+      {otherTasks > 0 && <section className="owner-tasks-disclosure" aria-label={focus.otherTasks}>
+        <p>{focus.otherTasks} <Badge variant="outline">{otherTasks}</Badge></p>
         <Link href={withLocation(`${base}/actions`, location)}>{focus.allTasks}<ArrowRight /></Link>
-      </section>
+      </section>}
+
+      {photoStrip}
 
       {/* Scores and supporting records stay available without competing with the coach. */}
       <details className="trust-disclosure owner-priority-evidence">

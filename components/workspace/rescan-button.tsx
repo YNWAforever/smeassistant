@@ -135,7 +135,7 @@ const COPY = {
     atCapacity: "掃描服務暫時已滿額，請於數小時後再試。",
     cancel: "取消",
     consentTitle: "為這個地點重新收集公開證據？",
-    consentBody: "重新掃描會再次讀取與首次掃描相同的公開來源：你的 Google 商戶檔案、公開 Instagram 及網站。只收集公開證據，不會代你發佈任何內容。確認即表示你就下列政策版本給予同意。",
+    consentBody: "重新掃描會再次讀取與首次掃描相同的公開來源：你的 Google 商家檔案、公開 Instagram 及網站。只收集公開證據，不會代你發佈任何內容。確認即表示你就下列政策版本給予同意。",
     consentConfirm: "我同意，立即重新掃描",
     consentVersion: "政策版本",
   },
