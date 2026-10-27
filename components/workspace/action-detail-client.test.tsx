@@ -1026,6 +1026,8 @@ describe("checklist templates have a completion path", () => {
     for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
       const note = copy[locale].workspace.checklist.note;
       expect(note, locale).not.toMatch(/Google|Instagram/);
+      // It must not quote a button label either: the labels differ by locale.
+      expect(note, locale).not.toMatch(/「|Tapping|Done\b/);
     }
   });
 });
