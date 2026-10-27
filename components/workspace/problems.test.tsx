@@ -46,7 +46,7 @@ describe("ProblemItem buttons (via ProblemsList)", () => {
   it("links to the action for open_action", () => {
     const root = html(<ProblemsList {...common} problems={[problem("open_action", { kind: "draft_failed", actionId: "act-1", reference: "RUN-3FA85F", reason: "invalid_output" })]} />);
     expect(root.querySelector('a[href="/en/owner/kam-man-house/actions/act-1"]')?.textContent).toContain("Reopen draft");
-    expect(root.textContent).toContain("The draft could not be read.");
+    expect(root.textContent).toContain("The draft came back unreadable.");
   });
 
   it("links to Google re-authorisation for reauthorise", () => {
@@ -58,7 +58,7 @@ describe("ProblemItem buttons (via ProblemsList)", () => {
     expect(html(<ProblemsList {...common} problems={[problem("contact_support", { contactHref: "https://wa.me/85200000000" })]} />).querySelector('a[href="https://wa.me/85200000000"]')).not.toBeNull();
     const bare = html(<ProblemsList {...common} problems={[problem("contact_support")]} />);
     expect(bare.querySelector("a")).toBeNull();
-    expect(bare.textContent).toContain("Contact Fimmick and quote the reference below.");
+    expect(bare.textContent).toContain("Contact Fimmick and give them the reference number.");
   });
 
   it("shows only a disabled Ask owner control for a viewer, with reference under Why", () => {

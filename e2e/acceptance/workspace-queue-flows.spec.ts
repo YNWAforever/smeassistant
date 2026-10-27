@@ -32,8 +32,8 @@ test("owner reads and bulk-approves a review reply, and Today advances the first
 
   await page.goto(`/en/owner/${merchant.slug}/actions`);
   const bulk = page.locator(".bulk-approve");
-  await expect(bulk.getByRole("heading", { level: 2 })).toHaveText("1 drafts ready to approve");
-  await bulk.getByRole("button", { name: "Review and approve" }).click();
+  await expect(bulk.getByRole("heading", { level: 2 })).toHaveText("Drafts ready to confirm: 1");
+  await bulk.getByRole("button", { name: "Read and confirm" }).click();
 
   const dialog = page.getByRole("dialog", { name: "Approve drafts" });
   await expect(dialog.locator("blockquote")).toContainText("passed your note to the kitchen");

@@ -349,7 +349,7 @@ export const workspaceEn: WorkspaceCopy = {
       dates: "Enter both dates; the end date cannot be before the start date.",
       price: "Enter a price of 0 or more with at most 2 decimals, or leave it empty.",
       invalid: "Some details are not valid. Check the offer and try again.",
-      forbidden: "Your role or location scope does not allow this.",
+      forbidden: "You don't have permission for this. Ask the owner.",
       network: "The server could not be reached; what you typed is kept.",
       rate: "Too many requests; try again shortly.",
       revisionChanged: "This offer was changed elsewhere. Reload to see the latest version; what you typed is kept below.",
@@ -417,8 +417,8 @@ export const workspaceEn: WorkspaceCopy = {
     "website.checks_passed": "Website checks passed", "website.checks_evaluated": "Website checks evaluated", "website.has_faq_schema": "FAQ schema present",
   },
   phases: {
-    requires_connection: "Requires connection", needs_input: "Needs input", generating: "Generating", draft_ready: "Draft ready", changes_requested: "Changes requested",
-    approved_export_ready: "Approved · export ready", verified: "Verified on site", exported: "Exported", applied: "Applied (reported)", awaiting_comparable_scan: "Awaiting comparable scan", measured: "Measured", recommended: "Recommended",
+    requires_connection: "Requires connection", needs_input: "Needs details", generating: "Generating", draft_ready: "Draft ready", changes_requested: "Changes requested",
+    approved_export_ready: "Approved · ready to copy", verified: "Verified on site", exported: "Exported", applied: "Applied (reported)", awaiting_comparable_scan: "Awaiting comparable scan", measured: "Measured", recommended: "Recommended",
     publishing_to_google: "Publishing to Google · unconfirmed", published_on_google: "Published on Google",
   },
   basis: {
@@ -459,7 +459,7 @@ export const workspaceEn: WorkspaceCopy = {
   ]),
   checklist: {
     heading: "Steps to complete",
-    note: "These steps happen in the other product, not here. Marking them done records your own confirmation — the next scan is what checks the result.",
+    note: "Do these steps in that app, not here. Marking them done only notes that you did them; the next scan checks the result.",
     saveInputs: "Save what you set",
   },
   checklistSteps: {
@@ -469,7 +469,7 @@ export const workspaceEn: WorkspaceCopy = {
         "Open your Google Business Profile and choose Edit profile → Hours.",
         "Set hours for every day you trade, and mark the days you are closed.",
         "Under Edit profile → Business category, confirm the primary category and add any secondary ones that apply.",
-        "Save in Google, then record the hours and categories below so this action keeps what you set.",
+        "Save in Google, then record the hours and categories below so this task keeps what you set.",
       ],
     },
     "ig-highlights": {
@@ -540,7 +540,7 @@ export const workspaceEn: WorkspaceCopy = {
       too_soon: "Google may still be processing it. Check again in a few seconds.",
       rate_limited: "Too many requests. Try again later.",
       network: "The server could not be reached. Try again; the same request is never posted twice.",
-      forbidden: "Your role or location scope does not allow this.",
+      forbidden: "You don't have permission for this. Ask the owner.",
       generic: "The request failed. Try again, or contact Fimmick if it keeps happening.",
     },
   },
@@ -606,7 +606,7 @@ export const workspaceZhHK: WorkspaceCopy = {
     pageEyebrow: "工作套裝",
     pageDescription: "草稿會逐份在各待辦自己的頁面審閱、確認及匯出。這裏不會發布或傳送任何內容。",
     errors: { startFailed: "未能開始套裝，請稍後再試。", forbidden: "你的角色或地點範圍不可在此開始套裝。", network: "無法連接伺服器，請在網絡恢復後再試。" },
-    earlierDrafts: "較早前由職員準備的草稿",
+    earlierDrafts: "較早前 Fimmick 準備嘅稿",
   },
   offers: {
     nav: "優惠",
@@ -649,7 +649,7 @@ export const workspaceZhHK: WorkspaceCopy = {
       dates: "請填寫兩個日期，結束日期不可早於開始日期。",
       price: "價錢須為 0 或以上，最多兩位小數；或留空。",
       invalid: "部分資料無效，請檢查優惠後再試。",
-      forbidden: "你的角色或地點範圍不允許此操作。",
+      forbidden: "你冇權限做呢樣嘢，請問店主。",
       network: "無法連接伺服器；你輸入的內容已保留。",
       rate: "請求過於頻繁，請稍後再試。",
       revisionChanged: "此優惠已在其他地方被修改。請重新載入查看最新版本；你輸入的內容會保留在下方。",
@@ -747,7 +747,7 @@ export const workspaceZhHK: WorkspaceCopy = {
   ]),
   checklist: {
     heading: "完成步驟",
-    note: "這些步驟需在其他平台完成，不在此工作台進行。標示完成只是記錄你的確認；實際結果由下次掃描核實。",
+    note: "這些步驟要在上面所說的平台完成，不在這裡。標示完成只會記下你已做好；下次掃描才會核實結果。",
     saveInputs: "記錄你所設定的內容",
   },
   checklistSteps: {
@@ -757,7 +757,7 @@ export const workspaceZhHK: WorkspaceCopy = {
         "開啟 Google 商家檔案，選擇「編輯檔案」→「營業時間」。",
         "為每個營業日填寫時間，並標明休息日。",
         "在「編輯檔案」→「商家類別」確認主要類別，並加入適用的次要類別。",
-        "在 Google 儲存後，於下方記錄你設定的營業時間及類別，令此待辦保留你的設定。",
+        "在 Google 儲存後，在下面記下你設定的營業時間和類別。",
       ],
     },
     "ig-highlights": {
@@ -828,7 +828,7 @@ export const workspaceZhHK: WorkspaceCopy = {
       too_soon: "Google 可能仍在處理中，請數秒後再查核。",
       rate_limited: "請求過於頻繁，請稍後再試。",
       network: "無法連接伺服器。請再試一次；同一請求不會重複發佈。",
-      forbidden: "你的角色或地點範圍不允許此操作。",
+      forbidden: "你冇權限做呢樣嘢，請問店主。",
       generic: "操作失敗，請再試一次；如持續出現，請聯絡 Fimmick。",
     },
   },
@@ -878,7 +878,7 @@ export const workspaceZhTW: WorkspaceCopy = {
     pageEyebrow: "工作套組",
     pageDescription: "草稿會逐份在各待辦自己的頁面審閱、確認及匯出。這裡不會發布或傳送任何內容。",
     errors: { startFailed: "無法開始套組，請稍後再試。", forbidden: "你的角色或據點範圍不能在此開始套組。", network: "無法連線至伺服器，請在網路恢復後再試。" },
-    earlierDrafts: "先前由職員準備的草稿",
+    earlierDrafts: "先前 Fimmick 準備的稿",
   },
   offers: {
     nav: "優惠",
@@ -921,7 +921,7 @@ export const workspaceZhTW: WorkspaceCopy = {
       dates: "請填寫兩個日期，結束日期不能早於開始日期。",
       price: "價格須為 0 以上，最多兩位小數；或留空。",
       invalid: "部分資訊無效，請檢查優惠後再試一次。",
-      forbidden: "您的角色或據點範圍不允許此操作。",
+      forbidden: "您沒有權限執行這項操作，請詢問店家。",
       network: "無法連線至伺服器；您輸入的內容已保留。",
       rate: "請求過於頻繁，請稍後再試。",
       revisionChanged: "此優惠已在其他地方被修改。請重新載入以查看最新版本；您輸入的內容會保留在下方。",
@@ -1051,7 +1051,7 @@ export const workspaceZhTW: WorkspaceCopy = {
       too_soon: "Google 可能仍在處理中，請幾秒後再確認。",
       rate_limited: "請求過於頻繁，請稍後再試。",
       network: "無法連線至伺服器。請再試一次；同一個請求不會重複發布。",
-      forbidden: "您的角色或據點範圍不允許此操作。",
+      forbidden: "您沒有權限執行這項操作，請詢問店家。",
       generic: "操作失敗，請再試一次；如果持續發生，請聯絡 Fimmick。",
     },
   },

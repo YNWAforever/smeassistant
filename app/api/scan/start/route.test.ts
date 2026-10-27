@@ -294,6 +294,10 @@ describe("POST /api/scan/start progressive input", () => {
 describe("POST /api/scan/start analytics isolation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // clearAllMocks keeps queued mockImplementationOnce values; the never-settling
+    // one the first test queues (and never consumes) would hang the next test.
+    mocks.forwardEventToPostHog.mockReset();
+    mocks.forwardEventToPostHog.mockImplementation(async () => {});
     mocks.afterTasks.length = 0;
     mocks.enforceRateLimit.mockResolvedValue({ allowed: true, retryAfterSeconds: 1 });
     mocks.insert.mockResolvedValue({ id: "job-1" });

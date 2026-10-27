@@ -52,7 +52,7 @@
   },
   "problems": {
     "homeTitle": "需要處理",
-    "homeMore": "在活動紀錄查看所有問題",
+    "homeMore": "睇晒所有問題",
     "activityTitle": "要處理嘅問題",
     "activityEmpty": "暫時冇問題要處理。",
     "reference": "參考編號 {reference}",
@@ -63,13 +63,13 @@
       "google_connection": "Google 連接需要處理"
     },
     "next": {
-      "rescan": "為這個地點重新掃描。",
-      "contact_support": "請聯絡 Fimmick，並提供以下參考編號。",
-      "open_action": "開啟待辦，再次嘗試生成草稿。",
-      "reauthorise": "重新授權 Google 以恢復連接。",
-      "ask_owner": "請工作台擁有人重新連接 Google。",
-      "dead_lettered": "系統會在 24 小時內自動結束這次掃描，之後你可以重新掃描。",
-      "none": "擁有人或負責此地點的經理可以處理。"
+      "rescan": "再掃一次呢間舖。",
+      "contact_support": "請聯絡 Fimmick，話佢哋知參考編號。",
+      "open_action": "打開待辦，再寫一次草稿。",
+      "reauthorise": "再連一次 Google 就得。",
+      "ask_owner": "請店主再連一次 Google。",
+      "dead_lettered": "系統會喺 24 小時內自動停咗佢，之後你可以再掃。",
+      "none": "店主或者負責呢間舖嘅經理可以處理。"
     },
     "button": {
       "open_action": "再開張稿",
@@ -77,22 +77,22 @@
       "contact_support": "聯絡 Fimmick"
     },
     "reason": {
-      "ATTEMPTS_EXHAUSTED": "掃描嘗試三次後仍停止回應。",
-      "COLLECTION_FAILED": "收集公開證據失敗。",
-      "SCORING_FAILED": "評分失敗。",
-      "PERSIST_FAILED": "儲存結果失敗。",
-      "PROCESSOR_FAILED": "無法處理這次掃描。",
-      "CLAIM_FAILED": "無法開始這次掃描。",
-      "consent_missing": "這次掃描沒有已記錄的同意。",
-      "consent_policy_stale": "同意是按舊版政策作出的。",
-      "action_run_timeout": "生成草稿超時。",
-      "action_run_reaped": "生成草稿停止回應。",
-      "invalid_output": "無法讀取草稿。",
-      "action_run_failed": "生成草稿失敗。",
-      "expired": "Google 授權已過期。",
-      "error": "Google 回報連接錯誤。",
-      "workspace_post_process_failed": "掃描後更新工作台失敗。",
-      "generic": "出現問題。"
+      "ATTEMPTS_EXHAUSTED": "掃咗三次都卡住。",
+      "COLLECTION_FAILED": "未能讀取舖頭喺網上嘅資料。",
+      "SCORING_FAILED": "未能整理結果。",
+      "PERSIST_FAILED": "未能儲存結果。",
+      "PROCESSOR_FAILED": "掃描未能進行。",
+      "CLAIM_FAILED": "掃描未能開始。",
+      "consent_missing": "冇記錄到你同意掃描。",
+      "consent_policy_stale": "你嘅同意係按舊版條款。",
+      "action_run_timeout": "寫稿時間太長。",
+      "action_run_reaped": "寫稿卡住咗。",
+      "invalid_output": "寫出嚟嘅稿讀唔到。",
+      "action_run_failed": "寫唔到稿。",
+      "expired": "Google 連接已過期。",
+      "error": "Google 話連接有問題。",
+      "workspace_post_process_failed": "掃描後未能更新待辦。",
+      "generic": "出咗啲問題。"
     },
     "scanStuck": {
       "title": "這次掃描停止回應",

@@ -42,7 +42,7 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string; zhTW?:
   "asset.rights_confirmed": { en: "Asset rights confirmed", zh: "相片使用權已確認", zhTW: "照片使用權已確認" },
   "assistant.run": { en: "Operator answered", zh: "助理已回應" },
   "consent.public_evidence": { en: "Public evidence consent", zh: "公開證據同意" },
-  "fix_pack.reviewed": { en: "Fix Pack draft reviewed", zh: "Fix Pack 草稿已審閱" },
+  "fix_pack.reviewed": { en: "Fimmick draft reviewed", zh: "已處理 Fimmick 嘅稿", zhTW: "已處理 Fimmick 準備的稿" },
   "access_request.submitted": { en: "Access request submitted", zh: "已提交存取申請" },
   "access_request.reviewed": { en: "Access request opened by an operator", zh: "營運人員已開啟申請" },
   "access_request.information_requested": { en: "More information requested", zh: "已要求補充資料" },
