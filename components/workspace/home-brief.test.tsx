@@ -474,4 +474,6 @@ it("uses a successful copy as Today's single coach card while another priority w
   expect(card?.querySelector("h2")?.textContent).toBe("你貼咗未？");
   expect([...card!.querySelectorAll("button")].map(button => button.textContent)).toEqual(["貼咗", "未貼", "遲啲"]);
   expect(card?.textContent).not.toMatch(/Completed|已套用|獨立核實|Version/);
+  // The waiting priority is not on screen, so it still counts in "other tasks".
+  expect(root.querySelector(".owner-tasks-disclosure .badge, .owner-tasks-disclosure [data-slot=badge]")?.textContent).toBe("1");
 });

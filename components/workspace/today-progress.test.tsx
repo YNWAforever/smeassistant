@@ -62,6 +62,11 @@ describe("ShopPhotoStrip", () => {
     expect(root.textContent).not.toContain("Pexels")
   })
 
+  it("keeps the shop's location on the photo links", () => {
+    const root = render(<ShopPhotoStrip workspaceId="ws" locale="en" photos={[]} base="/en/owner/shop" location="tin-hau" canUpload showStock={false} />)
+    expect(root.querySelector(".shop-photos-add")?.getAttribute("href")).toBe("/en/owner/shop/business/assets?location=tin-hau")
+  })
+
   it("makes no outside request when sample photos are off", () => {
     const root = render(<ShopPhotoStrip workspaceId="ws" locale="en" photos={[]} base="/en/owner/shop" canUpload showStock={false} />)
     expect(root.innerHTML).not.toContain("pexels")

@@ -90,7 +90,8 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
   const hasLocations = locations.length > 0
   // "Other" tasks: the open total minus the one already shown above it.
   const openTotal = brief.openActionCount ?? brief.openActions.length
-  const otherTasks = Math.max(0, openTotal - (priority ? 1 : 0))
+  // The priority task is subtracted only when its card is on screen; the copy follow-up card replaces it.
+  const otherTasks = Math.max(0, openTotal - (priority && !copyFollowUp ? 1 : 0))
   // An open action is real work whatever the snapshot state, so it always wins.
   const unscanned = !priority && (!hasLocations || (location !== "all" && !snapshot))
   const pageTitle = priority || copyFollowUp ? t.title : unscanned ? t.noScanTitle : t.quietTitle

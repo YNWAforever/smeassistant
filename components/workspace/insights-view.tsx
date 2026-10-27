@@ -120,7 +120,6 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
           <p className="eyebrow">{pc.baselineEyebrow}</p>
           <h2>{fill(pc.baselineTitle, { date: formatDay(head.observedAt, locale, timezone) })}</h2>
           <p>{fill(pc.baselineBody, { coverage: scorePercent(head.coverage) ?? "—" })}</p>
-          {rescan && <div className="insights-baseline-actions">{rescan}</div>}
         </SectionCard>}
         <SectionCard className="insights-history">
           <div className="section-card-heading"><div><h2>{pc.historyTitle}</h2></div><BarChart3 aria-hidden="true" /></div>

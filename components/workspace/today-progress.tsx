@@ -7,6 +7,7 @@ import { ProgressRing } from "@/components/visual/progress-ring"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import { progressCopy } from "@/lib/copy-progress"
 import { fill } from "@/lib/copy-ui"
+import { withLocation } from "@/lib/workspace/format"
 import { STOCK_PHOTOS } from "@/lib/stock-photos"
 import { PRIMARY_SOURCES, type ModuleStates } from "@/lib/workspace/module-states"
 import type { BadgeKey, ProfileItemKey, Progress, ShopPhoto } from "@/lib/workspace/progress"
@@ -104,9 +105,11 @@ function ShopPhotoImage({ photo, workspaceId, locale }: { photo: ShopPhoto; work
 }
 
 /** The shop's own confirmed photos; a credited sample photo and an upload link when there are none. */
-export function ShopPhotoStrip({ locale, workspaceId, photos, base, canUpload, stock = "cafe", showStock = true }: {
+export function ShopPhotoStrip({ locale, workspaceId, photos, base, location, canUpload, stock = "cafe", showStock = true }: {
   locale: PrototypeLocale
   workspaceId: string
+  /** The page's ?location=, kept on the links so they open the shop whose photos are shown. */
+  location?: string
   photos: ShopPhoto[]
   base: string
   canUpload: boolean
@@ -115,7 +118,7 @@ export function ShopPhotoStrip({ locale, workspaceId, photos, base, canUpload, s
   showStock?: boolean
 }) {
   const t = progressCopy[locale].photos
-  const assetsHref = `${base}/business/assets`
+  const assetsHref = withLocation(`${base}/business/assets`, location)
   if (photos.length > 0) {
     return (
       <section className="shop-photos" aria-label={t.title}>

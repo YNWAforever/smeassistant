@@ -135,7 +135,7 @@ describe("InsightsView", () => {
     }), "zh-HK")).toContain("上次同今次查到嘅嘢唔同");
   });
 
-  it("shows the starting point and the rescan control when there is nothing to compare yet", () => {
+  it("shows the starting point, with the one rescan control above it, when there is nothing to compare yet", () => {
     const root = document.createElement("div");
     root.innerHTML = renderToStaticMarkup(<InsightsView locale="zh-HK" workspaceSlug="kam-man-house" timezone="Asia/Hong_Kong" locations={[{ slug: location.slug, name: location.name }]}
       model={model({ ledgerComparable: false, ledger: { resolved: [], regressed: [], decayed: [] } })} rescan={<button type="button">重新掃描</button>} />);
@@ -143,7 +143,9 @@ describe("InsightsView", () => {
     expect(baseline?.closest("details")).toBeNull();
     expect(baseline?.textContent).toContain("你嘅起點");
     expect(baseline?.textContent).toContain("90%");
-    expect(baseline?.querySelector("button")?.textContent).toBe("重新掃描");
+    // The page's rescan control appears once, at the top, not again in the card.
+    expect(baseline?.querySelector("button")).toBeNull();
+    expect([...root.querySelectorAll("button")].filter((b) => b.textContent === "重新掃描")).toHaveLength(1);
     // No score is shown on the baseline: one scan is not a trend.
     expect(baseline?.textContent).not.toContain("62");
   });

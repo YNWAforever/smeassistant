@@ -63,7 +63,7 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
         rescanInScope={inScopeFor(page.membership, brief.location?.id ?? null)}
         gettingStarted={gettingStarted && <GettingStarted items={gettingStarted} locale={page.locale} />}
         progressPanel={today.progress && <TodayProgress locale={page.locale} progress={today.progress} moduleStates={brief.snapshot?.moduleStates ?? null} base={base} location={page.locationSlug} canAct={page.membership.role !== "viewer"} />}
-        photoStrip={today.progress && <ShopPhotoStrip locale={page.locale} workspaceId={page.ctx.workspace.id} photos={today.photos} base={base} canUpload={page.membership.role !== "viewer"} showStock={stockPhotosEnabled()} />}
+        photoStrip={today.progress && <ShopPhotoStrip locale={page.locale} workspaceId={page.ctx.workspace.id} photos={today.photos} base={base} location={page.locationSlug} canUpload={page.membership.role !== "viewer"} showStock={stockPhotosEnabled()} />}
         problems={problems && (
           <NeedsAttentionCard
             locale={page.locale}
