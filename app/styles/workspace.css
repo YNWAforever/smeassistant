@@ -37,6 +37,13 @@ a.destination-row[aria-current="true"] { border-color: var(--brand); }
 .new-mode-tabs span { display: grid; gap: 2px; }
 .new-mode-tabs strong { font-size: 14px; }
 .new-mode-tabs small { color: var(--ink-3); font-size: 12px; line-height: 1.4; }
+/* Phones: one row of pills, so the page title is not pushed below three cards. */
+@media (max-width: 640px) {
+  .new-mode-tabs { display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; scrollbar-width: none; }
+  .new-mode-tabs a { flex: 0 0 auto; align-items: center; padding: 8px 14px; border-radius: 999px; }
+  .new-mode-tabs svg { margin-top: 0; }
+  .new-mode-tabs small { display: none; }
+}
 
 /* Actions: detail beside the queue (?open=id). Wide screens only; smaller
    screens open the full page, so Preview links are hidden there. */

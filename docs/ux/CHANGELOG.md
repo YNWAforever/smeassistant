@@ -2,6 +2,17 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## Brand profile words, viewer nudges, New task on phones (2026-10-27, third pass)
+
+- **Brand profile:** the form now uses the words from the Shop checklist. Field labels:
+  - "Lines you're happy to say" (你肯講嘅句子), not "Approved claims";
+  - "What Kinnso can use when writing", not "Facts available before generation";
+  - "Never say" / "Words never to use", not "Prohibited claims / terms".
+
+  The "could not verify" and "another save" messages say what happened in plain words.
+- **Viewers on Today:** the streak line says "未有連續紀錄" instead of asking them to do a task, and the empty photo card says the owner or a manager can add photos instead of asking them to upload.
+- **New task on a phone:** the three ways to start (由目標開始 / 優惠 / 入門套裝) are one row of pills instead of three stacked cards above the title (177 px shorter).
+
 ## Workspace audit follow-ups: problems, names and checklists (2026-10-27)
 
 Items left open from `artifacts/workspace-audit-redesign.md` (#110):

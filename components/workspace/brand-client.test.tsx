@@ -47,15 +47,15 @@ describe("Brand settings reliability", () => {
     fetchMock.mockResolvedValueOnce(response(503, { error: "unavailable" }))
       .mockResolvedValueOnce(response(200, { brand: profile({ revisionId: NEXT_REVISION }) }));
     mount();
-    fireEvent.change(screen.getByLabelText("Approved claims (one per line)"), { target: { value: "Draft claim" } });
-    fireEvent.change(screen.getByLabelText("Prohibited terms (one per line)"), { target: { value: "No promises" } });
+    fireEvent.change(screen.getByLabelText("Lines you're happy to say (one per line)"), { target: { value: "Draft claim" } });
+    fireEvent.change(screen.getByLabelText("Words never to use (one per line)"), { target: { value: "No promises" } });
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "12-23" } });
     save();
     const alert = await screen.findByRole("alert");
     // The alert commits before its passive effect assigns focus.
     await waitFor(() => expect(alert).toHaveFocus());
-    expect(screen.getByLabelText("Approved claims (one per line)")).toHaveValue("Draft claim");
-    expect(screen.getByLabelText("Prohibited terms (one per line)")).toHaveValue("No promises");
+    expect(screen.getByLabelText("Lines you're happy to say (one per line)")).toHaveValue("Draft claim");
+    expect(screen.getByLabelText("Words never to use (one per line)")).toHaveValue("No promises");
     expect(screen.getByLabelText("Value")).toHaveValue("12-23");
     expect(screen.getByRole("combobox", { name: "Choose voice" })).toHaveTextContent("Short and direct");
     expect(screen.getByRole("checkbox", { name: "English" })).toBeChecked();
@@ -75,10 +75,10 @@ describe("Brand settings reliability", () => {
   ])("rejects malformed or wrong-workspace success %j without refreshing or discarding inputs", async (body) => {
     fetchMock.mockResolvedValue(response(200, body));
     mount();
-    fireEvent.change(screen.getByLabelText("Approved claims (one per line)"), { target: { value: "Still a draft" } });
+    fireEvent.change(screen.getByLabelText("Lines you're happy to say (one per line)"), { target: { value: "Still a draft" } });
     save();
     await screen.findByRole("alert");
-    expect(screen.getByLabelText("Approved claims (one per line)")).toHaveValue("Still a draft");
+    expect(screen.getByLabelText("Lines you're happy to say (one per line)")).toHaveValue("Still a draft");
     expect(mocks.success).not.toHaveBeenCalled();
     expect(mocks.refresh).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Retry save" })).toBeEnabled();
@@ -88,7 +88,7 @@ describe("Brand settings reliability", () => {
     fetchMock.mockResolvedValue(response(200, { brand: profile() }));
     mount();
     save();
-    expect(await screen.findByRole("alert")).toHaveTextContent(/could not be verified/i);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/couldn.t check that it saved/i);
     expect(mocks.success).not.toHaveBeenCalled();
     expect(mocks.refresh).not.toHaveBeenCalled();
   });
@@ -97,18 +97,18 @@ describe("Brand settings reliability", () => {
     const pending = pendingResponse();
     fetchMock.mockReturnValueOnce(pending.promise);
     const view = mount();
-    fireEvent.change(screen.getByLabelText("Approved claims (one per line)"), { target: { value: "Owner A secret draft" } });
+    fireEvent.change(screen.getByLabelText("Lines you're happy to say (one per line)"), { target: { value: "Owner A secret draft" } });
     save();
     const nextBrand = profile({ workspaceId: switchKind === "workspace" ? "workspace-b" : WORKSPACE, voice: "professional", approvedClaims: ["Owner B claim"] });
     view.rerender(<BrandSettingsForm locale="en" workspaceId={nextBrand.workspaceId}
       actorId={switchKind === "account" ? "owner-b" : "owner-a"} brand={nextBrand} readOnly={switchKind === "permission"} />);
-    expect(screen.getByLabelText("Approved claims (one per line)")).toHaveValue("Owner B claim");
+    expect(screen.getByLabelText("Lines you're happy to say (one per line)")).toHaveValue("Owner B claim");
     expect(screen.getByRole("combobox", { name: "Choose voice" })).toHaveTextContent("Clear and professional");
     if (switchKind !== "permission") expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
     await act(async () => pending.resolve(response(200, { brand: profile({ revisionId: NEXT_REVISION }) })));
     expect(mocks.success).not.toHaveBeenCalled();
     expect(mocks.refresh).not.toHaveBeenCalled();
-    expect(screen.getByLabelText("Approved claims (one per line)")).toHaveValue("Owner B claim");
+    expect(screen.getByLabelText("Lines you're happy to say (one per line)")).toHaveValue("Owner B claim");
   });
 
   it("fences an old failure after an account switch while the new owner's save is pending", async () => {
@@ -133,16 +133,16 @@ describe("Brand settings reliability", () => {
       .mockResolvedValueOnce(response(200, { brand: profile({ voice: "professional", approvedClaims: ["Latest claim"], revisionId: NEXT_REVISION }) }))
       .mockResolvedValueOnce(response(200, { brand: profile({ voice: "professional", approvedClaims: ["Latest claim"], revisionId: "44444444-4444-4444-8444-444444444444" }) }));
     mount();
-    fireEvent.change(screen.getByLabelText("Approved claims (one per line)"), { target: { value: "My stale draft" } });
+    fireEvent.change(screen.getByLabelText("Lines you're happy to say (one per line)"), { target: { value: "My stale draft" } });
     save();
-    expect(await screen.findByRole("alert")).toHaveTextContent(/another save/i);
-    expect(screen.getByLabelText("Approved claims (one per line)")).toHaveValue("My stale draft");
+    expect(await screen.findByRole("alert")).toHaveTextContent(/someone else saved/i);
+    expect(screen.getByLabelText("Lines you're happy to say (one per line)")).toHaveValue("My stale draft");
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Review latest profile" }));
     expect(await screen.findByRole("region", { name: "Latest saved profile" })).toHaveTextContent("Latest claim");
-    expect(screen.getByLabelText("Approved claims (one per line)")).toHaveValue("My stale draft");
+    expect(screen.getByLabelText("Lines you're happy to say (one per line)")).toHaveValue("My stale draft");
     fireEvent.click(screen.getByRole("button", { name: "Use latest profile and replace my draft" }));
-    expect(screen.getByLabelText("Approved claims (one per line)")).toHaveValue("Latest claim");
+    expect(screen.getByLabelText("Lines you're happy to say (one per line)")).toHaveValue("Latest claim");
     save();
     await waitFor(() => expect(mocks.refresh).toHaveBeenCalledTimes(1));
     expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body)).expectedRevisionId).toBe(NEXT_REVISION);
@@ -185,11 +185,11 @@ describe("Brand settings reliability", () => {
     fetchMock.mockResolvedValueOnce(response(409, { error: "brand_revision_conflict" }))
       .mockResolvedValueOnce(response(200, { brand: profile({ workspaceId: "different-workspace" }) }));
     mount();
-    fireEvent.change(screen.getByLabelText("Approved claims (one per line)"), { target: { value: "My retained edits" } });
+    fireEvent.change(screen.getByLabelText("Lines you're happy to say (one per line)"), { target: { value: "My retained edits" } });
     save();
     fireEvent.click(await screen.findByRole("button", { name: "Review latest profile" }));
     expect(await screen.findByText(/latest profile could not be loaded/i)).toBeVisible();
-    expect(screen.getByLabelText("Approved claims (one per line)")).toHaveValue("My retained edits");
+    expect(screen.getByLabelText("Lines you're happy to say (one per line)")).toHaveValue("My retained edits");
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     expect(screen.queryByRole("region", { name: "Latest saved profile" })).not.toBeInTheDocument();
   });
@@ -200,6 +200,6 @@ describe("Brand settings reliability", () => {
     expect(screen.getByRole("button", { name: "Ask the owner to change it" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Choose voice" })).toBeDisabled();
-    expect(screen.getByLabelText("Approved claims (one per line)")).toHaveAttribute("readonly");
+    expect(screen.getByLabelText("Lines you're happy to say (one per line)")).toHaveAttribute("readonly");
   });
 });
