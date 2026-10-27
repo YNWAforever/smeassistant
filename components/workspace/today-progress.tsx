@@ -42,7 +42,7 @@ export function TodayProgress({ locale, progress, moduleStates, base, location, 
     ? PRIMARY_SOURCES.map((key) => ({ key, label: sourceLabels[key], state: moduleStates[key].status }))
     : null
   const next = progress.badges.find((badge) => !badge.earned)
-  const streakText = progress.streakWeeks === 0 ? t.streak.none
+  const streakText = progress.streakWeeks === 0 ? (canAct ? t.streak.none : t.streak.noneQuiet)
     : progress.streakWeeks === 1 ? t.streak.one : fill(t.streak.many, { n: progress.streakWeeks })
   const profile = progress.profile
   const nextItem = profile.items.find((item) => !item.done)
@@ -142,7 +142,7 @@ export function ShopPhotoStrip({ locale, workspaceId, photos, base, location, ca
       </figure>
       <div className="shop-photos-copy">
         <h2>{t.title}</h2>
-        <p>{t.empty}</p>
+        <p>{canUpload ? t.empty : t.emptyViewer}</p>
         {canUpload && <Link className="shop-photos-add" href={assetsHref}><ImagePlus aria-hidden="true" />{t.add}</Link>}
       </div>
     </section>

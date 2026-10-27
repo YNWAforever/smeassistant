@@ -47,6 +47,13 @@ describe("TodayProgress", () => {
     expect(root.querySelectorAll(".today-badges > .today-progress-hint")).toHaveLength(0)
   })
 
+  it("does not ask a viewer to start a streak", () => {
+    const fresh = buildProgress({ signals: { approved: 0, delivered: 0, completed: 0, active_weeks: [], this_week: "2026-10-26" }, monthDone: 0, open: 3, profile: emptyProfile })
+    const root = render(<TodayProgress locale="zh-HK" progress={fresh} moduleStates={null} base="/zh-HK/owner/shop" location="primary" canAct={false} />)
+    expect(root.textContent).toContain("未有連續紀錄")
+    expect(root.textContent).not.toContain("今個星期做一件")
+  })
+
   it("shows which sources were checked when there is a snapshot", () => {
     const state = (status: "measured" | "unavailable") => ({ status, confidence: "high" as const, limitationCode: null, score: null })
     const root = render(<TodayProgress locale="en" progress={progress} base="/en/owner/shop" location="primary"
@@ -77,6 +84,7 @@ describe("ShopPhotoStrip", () => {
     const root = render(<ShopPhotoStrip workspaceId="ws" locale="zh-HK" photos={[]} base="/zh-HK/owner/shop" canUpload={false} />)
     expect(root.textContent).toContain("示意圖")
     expect(root.querySelector(".shop-photos-add")).toBeNull()
+    expect(root.textContent).toContain("店主或經理可以加")
     expect(render(<ShopPhotoStrip workspaceId="ws" locale="zh-HK" photos={[]} base="/zh-HK/owner/shop" canUpload />).querySelector(".shop-photos-add")?.getAttribute("href")).toBe("/zh-HK/owner/shop/business/assets")
   })
 })
