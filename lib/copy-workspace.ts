@@ -459,7 +459,7 @@ export const workspaceEn: WorkspaceCopy = {
   ]),
   checklist: {
     heading: "Steps to complete",
-    note: "Do these steps in Google. Tapping Done only notes that you did them; the next scan checks the result.",
+    note: "Do these steps in that app, not here. Tapping Done only notes that you did them; the next scan checks the result.",
     saveInputs: "Save what you set",
   },
   checklistSteps: {
@@ -747,7 +747,7 @@ export const workspaceZhHK: WorkspaceCopy = {
   ]),
   checklist: {
     heading: "完成步驟",
-    note: "這些步驟要在 Google 完成。按「我做完」只會記下你已做好；下次掃描才會核實結果。",
+    note: "這些步驟要在上面所說的平台完成，不在這裡。按「我做完」只會記下你已做好；下次掃描才會核實結果。",
     saveInputs: "記錄你所設定的內容",
   },
   checklistSteps: {

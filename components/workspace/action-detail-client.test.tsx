@@ -1021,6 +1021,13 @@ describe("checklist templates have a completion path", () => {
     expect(text).toContain(checklistCopy.note);
     expect(checklistCopy.note).toContain("the next scan checks the result");
   });
+
+  it("keeps the shared note platform-neutral, since Google and Instagram checklists both show it", () => {
+    for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
+      const note = copy[locale].workspace.checklist.note;
+      expect(note, locale).not.toMatch(/Google|Instagram/);
+    }
+  });
 });
 
 describe("the owner's applied assertion", () => {
