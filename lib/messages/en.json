@@ -18,11 +18,11 @@
   "applied": {
     "markButton": "I've done it",
     "markHint": "We record what you tell us; the next scan is what checks it.",
-    "assertedOn": "You marked this applied on {date} · not independently verified",
+    "assertedOn": "You marked this done on {date} · not independently verified",
     "retract": "Withdraw this mark",
     "retractHint": "Withdrawing takes back the claim. The record of it stays in activity.",
-    "markedToast": "Recorded: you reported this as applied. The next scan will observe the result.",
-    "retractedToast": "Applied mark withdrawn."
+    "markedToast": "Recorded: you said you've done this. The next scan will check the result.",
+    "retractedToast": "Done mark withdrawn."
   },
   "verified": {
     "confirmedOn": "Verified on your site on {date} · we checked the page, not who changed it"

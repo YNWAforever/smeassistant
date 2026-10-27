@@ -12,7 +12,7 @@ async function clickUntil(target: Locator, opened: Locator) {
 }
 
 // zh-HK strings, from lib/copy-workspace.ts (packs) and lib/copy-action.ts.
-const DISCLOSURE = "最多會建立 3 份草稿。確認並匯出草稿前不會計算用量；每份匯出的草稿計為 1 次交付。";
+const DISCLOSURE = "最多會建立 3 份草稿。草稿要確認後再複製或匯出才計算；每份計 1 次。";
 const DRAFT_READY = "草稿已寫好";
 const NEEDS_FACTS = "需要你補充資料";
 const EXPORTED = "已匯出";

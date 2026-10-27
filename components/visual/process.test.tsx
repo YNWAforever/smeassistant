@@ -31,7 +31,7 @@ describe("ApprovalFlow", () => {
     const { container } = render(<ApprovalFlow state="needsApproval" locale="en" />)
     const approved = [...container.querySelectorAll("li")].find((li) => li.textContent?.includes("Approved"))
     expect(approved?.querySelector(".k-step-lock")).toBeTruthy()
-    expect(container.textContent).toContain("nothing goes out until you approve")
+    expect(container.textContent).toContain("nothing goes out until you confirm")
     expect(container.querySelector('[aria-current="step"]')?.textContent).toContain("Needs approval")
   })
 })

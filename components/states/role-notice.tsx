@@ -27,7 +27,9 @@ export function RoleNotice({ kind, locale, role, name }: { kind: RoleNoticeKind;
   const item = t[kind]
   const values = { role: role ? roleLabel(role, locale) : "", name: name ?? "" }
   const alert = kind === "forbidden" || kind === "notMember"
-  const hint = kind === "notMember" ? t.notMember.hint : kind === "forbidden" ? null : t.askOwner
+  // Owner-only pages already say who can change them; only a shop outside
+  // your scope needs the pointer to Team.
+  const hint = kind === "notMember" ? t.notMember.hint : kind === "outOfScope" ? t.askOwner : null
   return (
     <div className="role-notice" role={alert ? "alert" : "note"} data-kind={kind}>
       {alert ? <ShieldAlert aria-hidden="true" /> : <Lock aria-hidden="true" />}

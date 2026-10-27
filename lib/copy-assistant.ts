@@ -269,7 +269,7 @@ export const assistantSheetZhHK: AssistantSheetCopy = {
   saved: "第 {n} 版已儲存",
   createVersion: "建立新版本（不覆蓋現有內容）",
   approvalBoundary: {
-    requiresApproval: "此輸出需要獲授權人士確認指定版本；目前未發佈，也未扣除交付額。",
+    requiresApproval: "要由店主或經理確認其中一個版本；目前未發佈，也未計入已用次數。",
     explanationOnly: "這是解釋與建議，不會改變掃描分數、確認狀態或用量。",
   },
   runStatus: {
@@ -277,7 +277,7 @@ export const assistantSheetZhHK: AssistantSheetCopy = {
     readingDemo: "正在讀取固定示範證據",
     failed: "暫時未能完成",
     runningNote: "答案只用每次掃描各自的證據，不接受其他商戶資料。",
-    failedNote: "現有內容仍保留，失敗不會扣除交付額。",
+    failedNote: "現有內容仍保留，失敗不會計入已用次數。",
   },
   evidenceCard: {
     factBadge: "已觀察",
@@ -364,7 +364,7 @@ export const assistantSheetZhTW: AssistantSheetCopy = {
   saved: "第 {n} 版已儲存",
   createVersion: "建立新版本（不覆蓋現有內容）",
   approvalBoundary: {
-    requiresApproval: "此輸出需要獲授權人士確認指定版本；目前未發佈，也未扣除交付額。",
+    requiresApproval: "要由店主或經理確認其中一個版本；目前未發布，也未計入已用次數。",
     explanationOnly: "這是解釋與建議，不會改變掃描分數、確認狀態或用量。",
   },
   runStatus: {
@@ -372,7 +372,7 @@ export const assistantSheetZhTW: AssistantSheetCopy = {
     readingDemo: "正在讀取固定示範證據",
     failed: "暫時未能完成",
     runningNote: "答案只用每次掃描各自的證據，不接受其他商戶資料。",
-    failedNote: "現有內容仍保留，失敗不會扣除交付額。",
+    failedNote: "現有內容仍保留，失敗不會計入已用次數。",
   },
   evidenceCard: {
     factBadge: "已觀察",

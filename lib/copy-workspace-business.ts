@@ -153,7 +153,7 @@ export const workspaceBusinessEn: WorkspaceBusinessCopy = {
     role: "Role",
     locationScope: "Shops",
     billing: "Billing",
-    approve: "Approve",
+    approve: "Confirm",
     actions: "Actions",
     noMembersYet: "No members yet.",
     invitePending: "Invite pending · {timezone}",

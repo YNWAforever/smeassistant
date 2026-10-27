@@ -46,7 +46,7 @@ describe("TrustPage", () => {
     const page = root(<TrustPage locale="en" />)
     const approved = [...page.querySelectorAll(".k-step")].find((step) => step.textContent?.includes("Approved"))
     expect(approved?.querySelector(".k-step-lock")).not.toBeNull()
-    expect(page.textContent).toContain("nothing goes out until you approve")
+    expect(page.textContent).toContain("nothing goes out until you confirm")
   })
 
   it("keeps the reviewed data-boundary rows and the policy link", () => {

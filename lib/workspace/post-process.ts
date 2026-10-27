@@ -82,7 +82,7 @@ export async function postProcessWorkspaceScan(db: PoolClient, jobId: string, op
         completionJobId: job.id,
         kind: "scan.failed",
         title: localized(name ? `Scan failed for ${name}` : "Scan failed", name ? `${name} 掃描失敗` : "掃描失敗"),
-        body: localized("The scan could not finish. Try a rescan later or check the integrations page.", "掃描未能完成。請稍後重新掃描，或檢查整合頁面。"),
+        body: localized("The scan could not finish. Scan again later, or check Google and Instagram.", "掃描未能完成。請稍後再掃描，或到「Google 同 Instagram」檢查連接。", "掃描未能完成。請稍後再掃描，或到「Google 與 Instagram」檢查連接。"),
         href: await workspaceHref(db, job.workspace_id, job.location_id),
       });
       if (notification.error) throw new Error(notification.error);
@@ -110,8 +110,8 @@ export async function postProcessWorkspaceScan(db: PoolClient, jobId: string, op
       kind: "scan.completed",
       title: localized(name ? `Scan completed for ${name}` : "Scan completed", name ? `${name} 掃描完成` : "掃描完成"),
       body: job.status === "partial"
-        ? localized("Some sources could not be read; the report shows what was measured.", "部分來源無法讀取；報告只顯示已量度的部分。")
-        : localized("Your workspace has fresh evidence and refreshed actions.", "工作區已有最新證據及更新後的待辦。"),
+        ? localized("Some sources could not be read; the report shows what was measured.", "部分來源無法讀取；報告只顯示已量度的部分。", "部分來源無法讀取；報告只顯示已量測的部分。")
+        : localized("New scan results are in, and your to-do list is updated.", "新的掃描結果已經到，待辦亦已更新。", "新的掃描結果已經出來，待辦也已更新。"),
       href,
     });
     if (notification.error) throw new Error(notification.error);

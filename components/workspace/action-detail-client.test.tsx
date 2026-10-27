@@ -1123,7 +1123,7 @@ describe("the owner's applied assertion", () => {
     });
     // appliedOn is a pinned UTC ISO string from the repository; the component
     // formats it with the same helper every other date on this page uses.
-    expect(screen.getByText(/You marked this applied on 13 Sept 2026 · not independently verified/)).toBeInTheDocument();
+    expect(screen.getByText(/You marked this done on 13 Sept 2026 · not independently verified/)).toBeInTheDocument();
     expect(screen.getByText(appliedCopy.retractHint)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: new RegExp(appliedCopy.markButton, "i") })).toBeNull();
     fireEvent.click(pageButton(new RegExp(appliedCopy.retract, "i")));

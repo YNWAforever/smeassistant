@@ -22,7 +22,7 @@ import { copy } from "@/lib/copy"
 
 const text = copy.en.workspace.packs
 const READY = { ok: true, data: { runId: "run-1", state: "succeeded", versionId: "v-1", versionNo: 1 } }
-const DISCLOSURE = "Creates up to 3 drafts. Nothing is counted until you approve and export a draft; each one you export counts as 1 delivery."
+const DISCLOSURE = "Creates up to 3 drafts. Nothing counts until you confirm a draft and copy or export it; each one counts as 1 use."
 
 function mount(overrides: Partial<PackCardProps> = {}) {
   return render(
