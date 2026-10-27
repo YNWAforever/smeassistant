@@ -36,7 +36,7 @@ export const progressCopy: Record<PrototypeLocale, ProgressCopy> = {
     badgeLocked: "Not yet",
     nextBadge: "Next: {how}",
     badges: {
-      first_confirm: { name: "First OK", how: "confirm your first draft" },
+      first_confirm: { name: "First confirm", how: "confirm your first draft" },
       first_copy: { name: "First post out", how: "copy or export a confirmed text" },
       five_done: { name: "Five done", how: "finish 5 tasks" },
       profile_complete: { name: "Full profile", how: "fill in all 6 shop details" },

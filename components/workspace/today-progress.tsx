@@ -24,8 +24,10 @@ const BADGE_ICONS: Record<BadgeKey, typeof Award> = {
  * which sources the latest scan could check (guardrail 2: unavailable is not 0).
  * The score itself stays under 點解咁講 (decided 2026-10-26).
  */
-export function TodayProgress({ locale, progress, moduleStates, base, location }: {
+export function TodayProgress({ locale, progress, moduleStates, base, location, canAct = true }: {
   locale: PrototypeLocale
+  /** Viewers can't confirm, copy or edit the profile, so the nudges to do so are left out. */
+  canAct?: boolean
   progress: Progress
   moduleStates: ModuleStates | null
   base: string
@@ -55,7 +57,7 @@ export function TodayProgress({ locale, progress, moduleStates, base, location }
             <p className="today-progress-streak" data-active={progress.streakWeeks > 0 ? "" : undefined}>
               <Flame aria-hidden="true" /> <span>{streakText}</span>
             </p>
-            {progress.streakWeeks > 0 && !progress.activeThisWeek && <p className="today-progress-hint">{t.streak.keep}</p>}
+            {canAct && progress.streakWeeks > 0 && !progress.activeThisWeek && <p className="today-progress-hint">{t.streak.keep}</p>}
           </div>
         </div>
         <div className="today-progress-profile">
@@ -67,7 +69,7 @@ export function TodayProgress({ locale, progress, moduleStates, base, location }
             {profile.items.map((item) => <span key={item.key} data-done={item.done ? "" : undefined} title={t.profileItems[item.key]} />)}
           </div>
           <p className="today-progress-hint">{fill(t.profile.levelOf, { done: profile.done, total: profile.total })}</p>
-          {nextItem && <Link className="today-progress-link" href={`${base}/business?location=${location}`}>{fill(t.profile.next, { item: t.profileItems[nextItem.key] })}<ArrowRight aria-hidden="true" /></Link>}
+          {canAct && nextItem && <Link className="today-progress-link" href={`${base}/business?location=${location}`}>{fill(t.profile.next, { item: t.profileItems[nextItem.key] })}<ArrowRight aria-hidden="true" /></Link>}
         </div>
         {sources && <div className="today-progress-sources">
           <span className="today-progress-label">{t.sources}</span>
@@ -89,7 +91,7 @@ export function TodayProgress({ locale, progress, moduleStates, base, location }
             )
           })}
         </ul>
-        {next && <p className="today-progress-hint">{fill(t.nextBadge, { how: t.badges[next.key].how })}</p>}
+        {canAct && next && <p className="today-progress-hint">{fill(t.nextBadge, { how: t.badges[next.key].how })}</p>}
       </div>
       <p className="today-progress-note">{t.effortNote}</p>
     </section>

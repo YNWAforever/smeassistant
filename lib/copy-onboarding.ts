@@ -103,7 +103,7 @@ export const onboardingEn: OnboardingCopy = {
     action: "Verify with Google",
     why: "why Google",
     whyAnswer: "Google confirms that you manage this Business Profile. Only then do we create the workspace and attach the report. We never match on email, and nothing is published.",
-    readOnly: "We only read the Business Profile. You can disconnect at any time under Business › Integrations, which deletes the stored credential.",
+    readOnly: "We only read the Business Profile. You can disconnect at any time under Shop › Google and Instagram, which deletes the stored credential.",
   },
   fimmick: {
     title: "Ask Fimmick to assign your workspace",
@@ -188,7 +188,7 @@ export const onboardingZhHK: OnboardingCopy = {
     action: "以 Google 驗證",
     why: "為何使用 Google",
     whyAnswer: "Google 會確認你管理此商家檔案，我們才會建立工作台並附加報告。我們不會憑電郵配對，也不會發佈任何內容。",
-    readOnly: "我們只會讀取商家檔案。你可隨時在「商戶 › 連接與整合」解除連接，我們儲存的憑證會一併刪除。",
+    readOnly: "我們只會讀取商家檔案。你可隨時在「舖 › Google 同 Instagram」解除連接，我們儲存的憑證會一併刪除。",
   },
   fimmick: {
     title: "請 Fimmick 指派你的工作台",
@@ -273,7 +273,7 @@ export const onboardingZhTW: OnboardingCopy = {
     action: "透過 Google 驗證",
     why: "為什麼使用 Google",
     whyAnswer: "Google 會確認您管理這個商家檔案，我們才會建立工作台並附加報告。我們不會用電子郵件比對，也不會發佈任何內容。",
-    readOnly: "我們只會讀取商家檔案。您可以隨時在「店家 › 連線與整合」中斷連線，我們儲存的憑證也會一併刪除。",
+    readOnly: "我們只會讀取商家檔案。您可以隨時在「店裡 › Google 與 Instagram」中斷連線，我們儲存的憑證也會一併刪除。",
   },
   fimmick: {
     title: "請 Fimmick 指派您的工作台",

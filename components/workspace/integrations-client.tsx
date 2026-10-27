@@ -100,7 +100,7 @@ export function GoogleDisconnectButton({ locale, workspaceId }: { locale: Protot
 
 const COPY = {
   en: {
-    label: "Public Instagram handle", note: "Public evidence only; confirming a handle never grants publishing access.",
+    label: "Public Instagram handle", note: "We only look at public posts. We never post for you.",
     disconnect: "Disconnect", cancel: "Cancel",
     disconnectTitle: "Disconnect Google Business Profile?",
     // NOT "stops reading Google evidence": the scan engine never touches
@@ -118,7 +118,7 @@ const COPY = {
     network: "The server could not be reached; try again shortly.", failed: "The handle could not be saved.",
   },
   "zh-HK": {
-    label: "公開 Instagram 帳號", note: "只讀取公開證據；確認帳號不會授予任何發佈權限。",
+    label: "公開 Instagram 帳號", note: "我哋只睇公開帖文，唔會幫你發佈。",
     disconnect: "解除連接", cancel: "取消",
     disconnectTitle: "解除 Google 商家檔案連接？",
     disconnectNote: "已儲存的憑證會被刪除。工作台、擁有權、過往掃描及報告不受影響，掃描亦會繼續以公開來源進行。你可以隨時重新連接。",
@@ -132,7 +132,7 @@ const COPY = {
     network: "無法連接伺服器，請稍後再試。", failed: "未能儲存帳號。",
   },
   "zh-TW": {
-    label: "公開 Instagram 帳號", note: "只讀取公開證據；確認帳號不會授予任何發布權限。",
+    label: "公開 Instagram 帳號", note: "我們只看公開貼文，不會幫你發布。",
     disconnect: "解除連接", cancel: "取消",
     disconnectTitle: "解除 Google 商家檔案連接？",
     disconnectNote: "已儲存的憑證會被刪除。工作台、擁有權、過往掃描與報告不受影響，掃描也會繼續以公開來源進行。你可以隨時重新連接。",

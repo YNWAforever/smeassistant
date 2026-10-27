@@ -93,7 +93,7 @@ export const workspaceLabelsEn: WorkspaceLabelsCopy = {
     SCORING_VERSION_UNKNOWN: "Scoring version unknown",
     NO_SHARED_MEASURED_MODULE: "No shared measured source",
     INSUFFICIENT_INDEPENDENT_CHANNELS: "Too few independent channels",
-    NO_DIFF: "Only one scan so far. Scan again to compare",
+    NO_DIFF: "Only one scan so far, so nothing to compare yet",
     none: "No comparable scan yet",
   },
   effort: "about {minutes} minutes",
@@ -102,7 +102,7 @@ export const workspaceLabelsEn: WorkspaceLabelsCopy = {
     user: "Member",
     agent: "Kinnso OS",
     system: "Kinnso OS",
-    scanner: "Scanner",
+    scanner: "Scan",
     operator: "Operator",
   },
   entities: {
@@ -160,7 +160,7 @@ export const workspaceLabelsZhHK: WorkspaceLabelsCopy = {
     user: "成員",
     agent: "Kinnso OS",
     system: "Kinnso OS",
-    scanner: "掃描器",
+    scanner: "掃描",
     operator: "營運人員",
   },
   entities: {
@@ -218,7 +218,7 @@ export const workspaceLabelsZhTW: WorkspaceLabelsCopy = {
     user: "成員",
     agent: "Kinnso OS",
     system: "Kinnso OS",
-    scanner: "掃描器",
+    scanner: "掃描",
     operator: "營運人員",
   },
   entities: {

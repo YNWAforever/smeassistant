@@ -54,10 +54,10 @@ for (const item of [
     await other.getByRole("option", { name: item.locale === "en" ? "Short and direct" : "簡短直接", exact: true }).click();
     await other.getByLabel(item.locale === "en" ? "Approved claims (one per line)" : "已確認字句（每行一項）").fill("New confirmed fixture claim");
     const updated = other.waitForResponse(r => r.url().endsWith(`/api/workspaces/${merchant.workspaceId}/brand`) && r.request().method() === "PUT");
-    await other.getByRole("button", { name: item.locale === "en" ? "Save current profile" : "儲存目前品牌資料", exact: true }).click();
+    await other.getByRole("button", { name: item.locale === "en" ? "Save" : "儲存", exact: true }).click();
     const update = await updated;
     expect(update.status()).toBe(200);
-    await expect(other.getByText(item.locale === "en" ? "Current brand profile saved." : "目前品牌資料已儲存。", { exact: true })).toBeVisible();
+    await expect(other.getByText(item.locale === "en" ? "Saved." : "已儲存。", { exact: true })).toBeVisible();
     await other.screenshot({ path: info.outputPath(`brand-settings-saved-${item.locale}.png`), fullPage: true });
     await other.close();
     const completion = page.waitForResponse(r => r.url().endsWith("/api/workspaces/claim") && r.request().method() === "POST");

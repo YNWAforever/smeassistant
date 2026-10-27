@@ -99,7 +99,7 @@ describe("CreateView capability labelling", () => {
   // Guards the condition, not the four Beta instances: a template promoted or
   // demoted in lib/workspace/templates.ts is covered without editing this test.
   it.each(AGENT_TEMPLATES.map((t) => [t.key, t.capability] as const))(
-    "labels %s with its real capability (%s)",
+    "labels %s with its real capability (%s); Live needs no badge",
     (key, capability) => {
       const root = render();
       const title = copy.en.workspace.templates[key].title;
@@ -107,7 +107,8 @@ describe("CreateView capability labelling", () => {
         (node) => node.querySelector("h2")?.textContent?.trim() === title,
       );
       expect(card, `no card rendered for ${key}`).toBeTruthy();
-      expect(card?.textContent).toContain(capability);
+      if (capability === "Live") expect(card?.querySelector(".cap-live")).toBeNull();
+      else expect(card?.textContent).toContain(capability);
     },
   );
 
@@ -133,9 +134,9 @@ describe("CreateView and the AI drafting limit", () => {
   afterEach(cleanup);
 
   it.each([
-    ["en", "What do you want to achieve?", "Start writing"],
-    ["zh-HK", "你想達成甚麼？", "開始寫稿"],
-    ["zh-TW", "你想達成甚麼？", "開始寫稿"],
+    ["en", "Anything to add? (optional)", "Start writing"],
+    ["zh-HK", "有冇嘢想補充？（可以唔填）", "開始寫稿"],
+    ["zh-TW", "有沒有想補充的？（可以不填）", "開始寫稿"],
   ] as const)("says in %s that the action exists but today's drafting limit was reached", async (locale, field, button) => {
     renderLive(
       <CreateView
@@ -169,9 +170,9 @@ describe("CreateView while AI drafting is paused (P3.5d)", () => {
   afterEach(cleanup);
 
   it.each([
-    ["en", "What do you want to achieve?", "Start writing"],
-    ["zh-HK", "你想達成甚麼？", "開始寫稿"],
-    ["zh-TW", "你想達成甚麼？", "開始寫稿"],
+    ["en", "Anything to add? (optional)", "Start writing"],
+    ["zh-HK", "有冇嘢想補充？（可以唔填）", "開始寫稿"],
+    ["zh-TW", "有沒有想補充的？（可以不填）", "開始寫稿"],
   ] as const)("says in %s that the action exists but AI drafting is paused", async (locale, field, button) => {
     renderLive(
       <CreateView

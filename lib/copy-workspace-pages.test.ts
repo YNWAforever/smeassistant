@@ -21,7 +21,7 @@ const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) 
 // English writes the day as an ordinal ("12th"); Chinese writes the plain day number.
 const ORDINAL_DAY = new Set(["home.monthlyOn", "calendar.monthlyAround"])
 // Product names written the same way in every locale.
-const SHARED = new Set(["activity.providers.instagram", "activity.providers.ga4"])
+const SHARED = new Set(["activity.providers.instagram", "activity.providers.ga4", "integrations.instagramPublicEvidence"])
 
 const namespaces = {
   workspaceHome: [workspaceHomeEn, workspaceHomeZhHK, workspaceHomeZhTW],

@@ -39,6 +39,14 @@ describe("TodayProgress", () => {
     expect(root.querySelector(".k-score")).toBeNull()
   })
 
+  it("leaves out the nudges for a viewer, who cannot act on them", () => {
+    const root = render(<TodayProgress locale="zh-HK" progress={progress} moduleStates={null} base="/zh-HK/owner/shop" location="primary" canAct={false} />)
+    expect(root.textContent).toContain("連續 1 個星期")
+    expect(root.textContent).not.toContain("今個星期做一件，保持紀錄。")
+    expect(root.querySelector(".today-progress-link")).toBeNull()
+    expect(root.querySelectorAll(".today-badges > .today-progress-hint")).toHaveLength(0)
+  })
+
   it("shows which sources were checked when there is a snapshot", () => {
     const state = (status: "measured" | "unavailable") => ({ status, confidence: "high" as const, limitationCode: null, score: null })
     const root = render(<TodayProgress locale="en" progress={progress} base="/en/owner/shop" location="primary"

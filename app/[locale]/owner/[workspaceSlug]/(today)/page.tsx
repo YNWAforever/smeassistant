@@ -61,7 +61,7 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
         demo={page.ctx.workspace.isDemo}
         role={page.membership.role}
         gettingStarted={gettingStarted && <GettingStarted items={gettingStarted} locale={page.locale} />}
-        progressPanel={today.progress && <TodayProgress locale={page.locale} progress={today.progress} moduleStates={brief.snapshot?.moduleStates ?? null} base={base} location={page.locationSlug} />}
+        progressPanel={today.progress && <TodayProgress locale={page.locale} progress={today.progress} moduleStates={brief.snapshot?.moduleStates ?? null} base={base} location={page.locationSlug} canAct={page.membership.role !== "viewer"} />}
         photoStrip={today.progress && <ShopPhotoStrip locale={page.locale} photos={today.photos} base={base} canUpload={page.membership.role !== "viewer"} showStock={stockPhotosEnabled()} />}
         problems={problems && (
           <NeedsAttentionCard

@@ -2,6 +2,37 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## Workspace clean-up: less to read, clearer next step (2026-10-27)
+
+- **Task screen:**
+  - The task's icon sits in the header.
+  - The three steps (改稿 → 確認 → 複製文字) are pills, with the current one in orange and a line saying nothing is sent without your OK.
+  - When there is a draft, the draft comes first and "what this is based on" folds below it.
+  - Tabs are "寫稿同確認" and "紀錄". The back link says "返回待辦".
+  - The approval flow no longer appears twice.
+  - On a desktop the floating approval bar is hidden, because the buttons are already on screen.
+- **New task:**
+  - Cards drop the "Live" badge; only Beta and similar labels show.
+  - The tags read 掃描發現 / 你嘅想法.
+  - The free-text box is optional ("有冇嘢想補充？").
+- **Plan:** one usage rule at the top instead of three notes. Before subscriptions open, a "聯絡 Fimmick" button appears when a contact channel is set.
+- **Google and Instagram (was 連接與整合):** each source has its icon, and the labels say what we check ("最近檢查", "我哋可以做咩", "只睇公開帖文，唔會幫你發佈").
+- **Notifications:**
+  - The two cards are "全間舖可以收嘅電郵（店主設定）" and "我自己收嘅電郵".
+  - "有嘢變差咗" replaces the regression-alert jargon.
+  - The why-mail-won't-arrive note shows once.
+- **Activity:** "要處理嘅問題", a "邊個做" column, and plain event names (掃描結果已儲存, 待辦已排序).
+- **Photos and menus, Team, Profile, choosing a workspace:**
+  - "加相或餐牌" and "等你確認".
+  - Each role is described in one line ("只可以睇，唔可以改").
+  - The Profile buttons read "儲存" and "加資料".
+  - The workspace picker reads "揀你想處理嘅舖頭".
+- **Viewers** no longer see "keep your streak" or "fill in your profile" nudges they cannot act on.
+- **English:**
+  - "Only one scan so far" reads as a full sentence.
+  - The first badge is "First confirm".
+  - The breadcrumb on a task reads "Task".
+
 ## Friendlier owner screens: icons, charts, photos and progress (2026-10-26)
 
 - **Icons:** every kind of task has its own picture (reviews, posts, Google, search, website) on Today and To do.

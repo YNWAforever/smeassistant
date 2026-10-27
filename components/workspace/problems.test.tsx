@@ -72,6 +72,6 @@ describe("ProblemItem buttons (via ProblemsList)", () => {
   });
 
   it("says there are no open problems only when it was given an empty list", () => {
-    expect(html(<ProblemsList {...common} problems={[]} />).textContent).toContain("No open problems.");
+    expect(html(<ProblemsList {...common} problems={[]} />).textContent).toContain("Nothing to fix right now.");
   });
 });

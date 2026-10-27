@@ -150,7 +150,8 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
         <span><Icon /></span>
         <div>
           <Badge variant="outline">{open?.factType==='Observed' ? pc.evidenceLed : open?.factType==='Recommended' || !open ? pc.ownerObjective : pc.sourceUnconfirmed}</Badge>
-          <CapabilityBadge value={goal.capability} />
+          {/* "Live" is the normal case; only a Beta or connection-gated writer needs a label. */}
+          {goal.capability !== "Live" && <CapabilityBadge value={goal.capability} />}
           <h2>{labels[goal.key].title}</h2>
           <p>{open ? open.evidence : labels[goal.key].summary}</p>
           <small>{fill(pc.toReview, { effortMinutes: effortLabel(goal.effortMinutes, locale) })}</small>
@@ -190,7 +191,7 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
           {stage === "idle" && <Button className="w-full" onClick={() => void startDraft()} disabled={!canCreate}><WandSparkles /> {pc.createTheActionAnd}</Button>}
           {stage === "queued" && <div className="run-state-box run-running" role="status"><LoaderCircle className="animate-spin" /><div><strong>{pc.creatingTheActionAnd}</strong><span>{pc.validatingSourceEvidenceGuardrails}</span></div></div>}
           {stage === "failed" && <div className="run-state-box run-failed" role="alert"><XCircle /><div><strong>{pc.theActionCouldNot}</strong><span>{pc.existingWorkIsPreserved}{failure ? ` · ${failure}` : ""}</span></div><Button variant="outline" onClick={() => void startDraft()}>{copy[locale].workspace.packs.retry}</Button></div>}
-          <small>{fill(pc.scope, { scope: location === "all" ? pc.scopeAll : locations.find((l) => l.slug === location)?.name ?? location })}{existing ? ` · ${pc.scopeEvidenceLed}` : ""}</small>
+          <small>{fill(pc.scope, { scope: location === "all" ? pc.scopeAll : locations.find((l) => l.slug === location)?.name ?? location })}</small>
         </SectionCard>
       </div>
     </div>

@@ -150,9 +150,9 @@ function render(templateKey: TemplateKey, measurements: ActionDetail["measuremen
 }
 
 it("drops the Back to actions link in the side panel, where Close keeps the queue's filters", () => {
-  expect(render("review-response").textContent).toContain("Back to actions");
+  expect(render("review-response").textContent).toContain("Back to To do");
   const panel = render("review-response", [], true);
-  expect(panel.textContent).not.toContain("Back to actions");
+  expect(panel.textContent).not.toContain("Back to To do");
   expect(panel.querySelector("h1")).toBeNull();
 });
 
@@ -451,7 +451,7 @@ describe("owner step controls", () => {
 
   it("keeps version selection available while author, state and audit details stay folded", () => {
     mountVersion();
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Version & audit history" }), { button: 0 });
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "History" }), { button: 0 });
     const version = pageButton(/^Version 2/);
     expect(version.closest("details")).toBeNull();
     const technical = document.querySelector(".version-technical-records");
@@ -931,8 +931,8 @@ describe("version history preserves unsaved edits", () => {
     const chinese = locale !== "en";
     const editorLabel = field === "body" ? (chinese ? "草稿" : "Draft") : "Image alt text";
     editSavedDraft();
-    const historyTab = () => screen.getByRole("tab", { name: chinese ? /版本/ : /Version & audit history/ });
-    const draftTab = () => screen.getByRole("tab", { name: chinese ? /草稿/ : /Draft & approval/ });
+    const historyTab = () => screen.getByRole("tab", { name: chinese ? /^紀錄$/ : /^History$/ });
+    const draftTab = () => screen.getByRole("tab", { name: chinese ? /寫稿/ : /Write & confirm/ });
     fireEvent.change(screen.getByLabelText(editorLabel), { target: { value: "Unsaved local edit" } });
     fireEvent.mouseDown(historyTab(), { button: 0 });
     fireEvent.click(pageButton(chinese ? /^第 2 版/ : /^Version 2/));
@@ -959,9 +959,9 @@ describe("version history preserves unsaved edits", () => {
     mountHistory();
     editSavedDraft();
     fireEvent.change(screen.getByLabelText("Draft"), { target: { value: "Unsaved local edit" } });
-    fireEvent.mouseDown(screen.getByRole("tab", { name: /Version & audit history/ }), { button: 0 });
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /^History$/ }), { button: 0 });
     fireEvent.click(pageButton(/^Version 3/));
-    fireEvent.mouseDown(screen.getByRole("tab", { name: /Draft & approval/ }), { button: 0 });
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /Write & confirm/ }), { button: 0 });
     expect(screen.getByLabelText("Draft")).toHaveValue("Unsaved local edit");
     expect(toastMocks.error).not.toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();

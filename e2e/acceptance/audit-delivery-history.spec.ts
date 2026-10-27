@@ -76,7 +76,7 @@ test("shows every version, approval, and repeated delivery audit without double-
   await expect(page.locator("#draft-content")).toHaveValue(
     "Accepted review reply. Please leave another comment if we can help.",
   );
-  await page.getByRole("tab", { name: "Version & audit history", exact: true }).click();
+  await page.getByRole("tab", { name: "History", exact: true }).click();
   await page.locator(".history-layout > details").locator(":scope > summary").click();
   const auditList = page.locator(".audit-mini");
   await expect(auditList).toBeVisible();
@@ -209,7 +209,7 @@ test("bilingual completed-page reloads preserve exact version, approval, deliver
           await expect(page.locator(".action-verification-result")).toContainText(chinese
             ? "目前來源無法核實這則 Google 評論的指定回覆。"
             : "Current sources cannot verify this specific Google review reply.");
-          await page.getByRole("tab", { name: chinese ? "版本及審計紀錄" : "Version & audit history", exact: true }).click();
+          await page.getByRole("tab", { name: chinese ? "紀錄" : "History", exact: true }).click();
           await page.locator(".history-layout > details").locator(":scope > summary").click();
           const audit = page.locator(".audit-mini");
           await expect(audit).toBeVisible();

@@ -80,7 +80,7 @@ test("the side panel opens beside the queue and closing it keeps the queue's fil
   // The queue keeps the page's only h1; the panel's title is an h2.
   await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
   await expect(panel.getByRole("link", { name: "Open full page" })).toHaveAttribute("href", new RegExp(`/actions/${merchant.actionId}`));
-  await panel.getByRole("tab", { name: "Version & audit history" }).click();
+  await panel.getByRole("tab", { name: "History" }).click();
   await expect(panel.getByRole("tabpanel")).toBeVisible();
   await panel.getByRole("link", { name: "Close details" }).click();
   await expect(page).not.toHaveURL(/open=/);

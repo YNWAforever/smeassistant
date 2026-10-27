@@ -53,8 +53,8 @@
   "problems": {
     "homeTitle": "需要處理",
     "homeMore": "在活動紀錄查看所有問題",
-    "activityTitle": "問題與復原",
-    "activityEmpty": "目前沒有未處理的問題。",
+    "activityTitle": "要處理嘅問題",
+    "activityEmpty": "暫時冇問題要處理。",
     "reference": "參考編號 {reference}",
     "kind": {
       "scan_failed": "一次掃描未能完成",
@@ -101,6 +101,7 @@
     }
   },
   "commercial": {
+    "contact": "聯絡 Fimmick",
     "notOpen": "訂閱暫未開放 — 請聯絡 Fimmick",
     "allowanceLine": "免費工作台：每月可用 {count} 次",
     "unlimitedLine": "每月次數不限"
@@ -112,10 +113,10 @@
   },
   "mail": {
     "eyebrow": "電郵",
-    "allowTitle": "允許此工作台發送以下電郵",
-    "myEmailsTitle": "我的電郵",
+    "allowTitle": "全間舖可以收嘅電郵（店主設定）",
+    "myEmailsTitle": "我自己收嘅電郵",
     "rescanComplete": "重新掃描完成",
-    "regressionAlert": "發現新問題（退步提示）",
+    "regressionAlert": "有嘢變差咗",
     "monthlyDigest": "每月摘要 · 規劃中",
     "closedNote": "電郵功能尚未開啟。你的選擇已儲存，開啟後生效。",
     "openNote": "發生以下情況時，我們會電郵至 {address}。",

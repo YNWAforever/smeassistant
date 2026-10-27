@@ -70,18 +70,18 @@ describe("BillingView while billing is closed", () => {
     expect(root.textContent).toContain(t("en", "commercial.notOpen"));
   });
 
-  it("wraps the label in a link when a contact channel is configured", () => {
+  it("adds a contact button when a contact channel is configured", () => {
     const root = render({ role: "owner", billingOpen: false, contactHref: "mailto:hello@example.com" });
-    const notes = Array.from(root.querySelectorAll(".limitation-note"));
-    const labelNote = notes.find((n) => n.textContent?.includes(t("en", "commercial.notOpen")));
-    expect(labelNote?.querySelector("a")?.getAttribute("href")).toBe("mailto:hello@example.com");
+    expect(root.textContent).toContain(t("en", "commercial.notOpen"));
+    const contact = Array.from(root.querySelectorAll("a")).find((a) => a.textContent?.includes(t("en", "commercial.contact")));
+    expect(contact?.getAttribute("href")).toBe("mailto:hello@example.com");
   });
 
-  it("renders the label as plain text with no <a> when no contact channel is configured", () => {
+  it("shows the label with no contact link when no contact channel is configured", () => {
     const root = render({ role: "owner", billingOpen: false, contactHref: null });
-    const notes = Array.from(root.querySelectorAll(".limitation-note"));
-    const labelNote = notes.find((n) => n.textContent?.includes(t("en", "commercial.notOpen")));
-    expect(labelNote?.querySelector("a")).toBeNull();
+    expect(root.textContent).toContain(t("en", "commercial.notOpen"));
+    expect(Array.from(root.querySelectorAll("a")).some((a) => a.textContent?.includes(t("en", "commercial.contact")))).toBe(false);
+    expect(root.querySelector('a[href=""]')).toBeNull();
   });
 });
 

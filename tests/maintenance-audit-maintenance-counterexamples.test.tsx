@@ -44,9 +44,9 @@ it("includes an evidence-backed FAQ goal beyond the first 25 multi-location acti
   // including the existing FAQ beyond ordinary queue pagination.
   const cards = [...root.querySelectorAll(".goal-card")];
   expect(cards.filter(card => !card.closest("details"))).toHaveLength(3);
-  expect(cards.filter(card => card.textContent?.includes("Evidence-led"))).toHaveLength(2);
+  expect(cards.filter(card => card.textContent?.includes("From your scan"))).toHaveLength(2);
   const faq = cards.find(card => card.querySelector("h2")?.textContent === "Add clear FAQ answers for search and AI");
-  expect(faq?.textContent).toContain("Evidence-led");
+  expect(faq?.textContent).toContain("From your scan");
   expect(faq?.textContent).toContain("Promote our lunch menu");
 });
 

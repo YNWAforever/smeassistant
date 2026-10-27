@@ -127,3 +127,29 @@
 }
 .shop-photos-sample, .shop-profile-photo { display: grid; place-items: center; }
 .shop-photos-placeholder { position: relative; width: 48px; height: 48px; color: var(--brand-text); opacity: .55; }
+
+/* Task screen: icon header, one step path with the "nothing goes out" note under it. */
+.action-detail-page .action-detail-header { justify-content: flex-start; align-items: center; gap: 16px; padding: 20px 24px; }
+.action-detail-page .action-detail-header h1 { margin: 0 0 6px; font-size: clamp(24px, 2.6vw, 34px); }
+.action-detail-page .action-detail-header p { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.5; }
+.owner-steps-wrap { margin: 14px 0 10px; }
+.owner-steps-wrap .owner-steps { margin: 0; }
+.owner-steps-lock { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; color: var(--ink-3); font-size: 13px; }
+.owner-steps-lock svg { width: 14px; height: 14px; flex: none; }
+.action-progress[data-flow="hidden"] { margin-top: 16px; }
+@media (max-width: 767px) {
+  .action-detail-page .action-detail-header { padding: 16px; }
+}
+.owner-steps-wrap .owner-steps li strong { display: inline-flex; min-height: 34px; align-items: center; padding: 0 14px; border-radius: 999px; background: var(--canvas); font-size: 14px; font-weight: 650; }
+.owner-steps-wrap .owner-steps li.is-current strong { background: var(--brand); color: var(--on-brand); font-weight: 750; }
+.owner-steps-wrap .owner-steps li.is-done strong { background: var(--success-soft); color: var(--success-text); }
+.owner-steps-wrap .owner-steps li.is-done strong::before { content: "✓"; margin-right: 6px; }
+/* On wide screens the card's own buttons are always in view; the fixed bar only repeated them over the draft. Phones keep it. */
+@media (min-width: 1024px) {
+  .action-detail-page > .sticky-approval-bar { display: none; }
+}
+
+/* Integrations: one recognisable icon per source. */
+.integration-head > span[data-source="google"] { background: var(--info-soft); color: var(--info-text); }
+.integration-head > span[data-source="instagram"] { background: var(--brand-soft); color: var(--brand-text); }
+.integration-head > span[data-source="website"] { background: var(--success-soft); color: var(--success-text); }

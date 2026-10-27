@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { History, PlugZap, TriangleAlert } from "lucide-react"
+import { Camera, Globe2, History, MapPin, TriangleAlert } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { CapabilityBadge, PageIntro, ProviderBadge, SectionCard } from "@/components/product-ui"
@@ -38,6 +38,7 @@ export function IntegrationsView({ locale, workspaceSlug, workspaceId, timezone,
   const cards = [
     {
       key: "google",
+      icon: MapPin,
       name: pc.googleBusinessProfile,
       status: googleStatus,
       capability: googleCapability,
@@ -53,6 +54,7 @@ export function IntegrationsView({ locale, workspaceSlug, workspaceId, timezone,
     },
     {
       key: "instagram",
+      icon: Camera,
       name: pc.instagramPublicEvidence,
       status: model.instagram.handle ? `@${model.instagram.handle}` : pc.noHandleProvided,
       capability: "Beta" as Capability,
@@ -65,6 +67,7 @@ export function IntegrationsView({ locale, workspaceSlug, workspaceId, timezone,
     },
     {
       key: "website",
+      icon: Globe2,
       name: pc.publicWebsite,
       status: model.website.checksEvaluated ? (fill(pc.ofChecksPassed, { checksPassed: String(model.website.checksPassed), checksEvaluated: model.website.checksEvaluated })) : pc.notEvaluated,
       capability: "Live" as Capability,
@@ -80,7 +83,7 @@ export function IntegrationsView({ locale, workspaceSlug, workspaceId, timezone,
       <div className="integration-grid">
         {cards.map((card) => (
           <SectionCard key={card.key}>
-            <div className="integration-head"><span><PlugZap /></span><div><h2>{card.name}</h2><p>{card.status}</p></div>{card.badge ?? <CapabilityBadge value={card.capability} />}</div>
+            <div className="integration-head"><span data-source={card.key}><card.icon aria-hidden="true" /></span><div><h2>{card.name}</h2><p>{card.status}</p></div>{card.badge ?? <CapabilityBadge value={card.capability} />}</div>
             <dl className="integration-meta"><div><dt>{pc.lastSync}</dt><dd>{card.lastSync}</dd></div><div><dt>{pc.scope}</dt><dd>{card.scope}</dd></div></dl>
             {card.action && <div className="integration-actions">{card.action}</div>}
           </SectionCard>

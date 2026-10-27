@@ -18,14 +18,19 @@ export function approvalStepFor(version: Pick<VersionRow, "approval_state" | "de
   return "draft"
 }
 
-/** The approval flow for the latest version, and what changed since the version before it. */
-export function ActionProgress({ versions, locale }: { versions: VersionRow[]; locale: PrototypeLocale }) {
+/**
+ * The approval flow for the latest version, and what changed since the version
+ * before it. The task page passes `showFlow={false}`: its own 改稿 → 確認 → 複製
+ * path already says where the owner is, and two step bars read as two processes.
+ */
+export function ActionProgress({ versions, locale, showFlow = true }: { versions: VersionRow[]; locale: PrototypeLocale; showFlow?: boolean }) {
   const [latest, previous] = versions
   if (!latest) return null
+  if (!showFlow && !previous) return null
   const t = copy[locale].ui.diff
   return (
-    <section className="action-progress" aria-label={copy[locale].ui.visual.approvalFlow.label}>
-      <ApprovalFlow state={approvalStepFor(latest)} locale={locale} />
+    <section className="action-progress" aria-label={copy[locale].ui.visual.approvalFlow.label} data-flow={showFlow ? undefined : "hidden"}>
+      {showFlow && <ApprovalFlow state={approvalStepFor(latest)} locale={locale} />}
       {previous && (
         <details className="action-progress-diff">
           <summary>{t.title}</summary>

@@ -58,8 +58,8 @@ describe("four-destination owner navigation (Phase 2)", () => {
   });
 
   it.each([
-    ["/en/owner/example/actions/new", "New action"],
-    ["/en/owner/example/actions/action-1", "Review & approve"],
+    ["/en/owner/example/actions/new", "New task"],
+    ["/en/owner/example/actions/action-1", "Task"],
     ["/en/owner/example/business/integrations", "Shop"],
     ["/en/owner/example/settings/plan", "Shop"],
   ])("names the current section on %s", (pathname, label) => {
